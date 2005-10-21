@@ -54,7 +54,7 @@ except ImportError:
     ok = False
 
 
-mpi = (os.popen('mpicc -showme').read() != '') # XXX
+mpi = (os.popen('mpicc -showme').read() != '') # ???
 
 # BLAS and LAPACK???
 
