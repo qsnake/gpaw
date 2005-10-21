@@ -1,0 +1,80 @@
+# Copyright (C) 2003  CAMP
+# Please see the accompanying LICENSE file for further information.
+
+from __future__ import division
+
+import Numeric as num
+
+from gridpaw import _gridpaw
+from gridpaw import debug
+from gridpaw.utilities import is_contiguous
+
+
+class Transformer:
+    def __init__(self, gd, number, typecode, interpolate, p):
+        self.typecode = typecode
+        neighbors = gd.domain.get_neighbor_processors()
+
+        if gd.domain.comm.size>1:
+            comm = gd.domain.comm
+            if debug:
+                # Get the C-communicator from the debug-wrapper:
+                comm = comm.comm
+        else:
+            comm = None
+
+        if gd.domain.angle is None:
+            angle = 0
+        else:
+            angle = 1
+
+        self.transformer = _gridpaw.Transformer(
+            num.asarray(gd.myng, num.Int), p, number + 1, neighbors,
+            typecode == num.Float, comm, interpolate, angle)
+        
+        self.ngpin = tuple(gd.myng)
+        assert typecode in [num.Float, num.Complex]
+
+    def apply(self, input, output, phases=None):
+        assert is_contiguous(input, self.typecode)
+        assert is_contiguous(output, self.typecode)
+        assert input.shape == self.ngpin
+        assert output.shape == self.ngpout
+        self.transformer.apply(input, output, phases)
+
+
+class _Interpolator(Transformer):
+    def __init__(self, gd, order, typecode=num.Float):
+        Transformer.__init__(self, gd, order, typecode, interpolate=True, p=2)
+        self.ngpout = tuple(2 * num.array(self.ngpin))
+
+
+class _Restrictor(Transformer):
+    def __init__(self, gd, order, typ=num.Float, p=2):
+        Transformer.__init__(self, gd, order, typ, interpolate=False, p=p)
+        self.ngpout = tuple(num.array(self.ngpin) / p)
+
+
+if debug:
+    Interpolator = _Interpolator
+    Restrictor = _Restrictor
+else:
+    def Interpolator(gd, order, typecode=num.Float):
+        return _Interpolator(gd, order, typecode).transformer
+    def Restrictor(gd, order, typecode=num.Float, p=2):
+        return _Restrictor(gd, order, typecode, p).transformer    
+
+
+def coefs(k, p):
+    for i in range(0, k * p, p):
+        print '%2d' % i,
+        for x in range((k // 2 - 1) * p, k // 2 * p + 1):
+            n = 1
+            d = 1
+            for j in range(0, k * p, p):
+                if j == i:
+                    continue
+                n *= x - j
+                d *= i - j
+            print '%14.10f' % (n / d),
+        print

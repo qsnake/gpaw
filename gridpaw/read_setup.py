@@ -1,0 +1,146 @@
+# Copyright (C) 2003  CAMP
+# Please see the accompanying LICENSE file for further information.
+
+import os
+import xml.sax
+import md5
+import re
+from cStringIO import StringIO
+
+import Numeric as num
+
+
+class PAWXMLParser(xml.sax.handler.ContentHandler):
+    def __init__(self):
+        xml.sax.handler.ContentHandler.__init__(self)
+
+        self.n_j = []
+        self.l_j = []
+        self.f_j = []
+        self.eps_j = []
+        self.rcut_j = []
+        self.id_j = []
+        self.phi_jg = []
+        self.phit_jg = []
+        self.pt_jg = []
+        self.grid = None
+
+    def parse(self, filename):
+        try:
+            source = open(filename).read()
+        except IOError:
+            filename += '.gz'
+            source = os.popen('gunzip -c ' + filename, 'r').read()
+##            source = gzip.open(filename).read() ibm doesn't have zlib! XXX
+        fingerprint = md5.new(source).hexdigest()
+
+        # XXXX There must be a better way!
+        # We don't want to look at the dtd now.  Remove it:
+        source = re.compile(r'<!DOCTYPE .*?>', re.DOTALL).sub('', source, 1)
+
+        xml.sax.parse(StringIO(source), self) # XXX There is a special parse
+                                              # function that takes a string 
+        return (self.Z, self.Nc, self.Nv,
+                self.e_total,
+                self.e_kinetic,
+                self.e_electrostatic,
+                self.e_xc,
+                self.e_kinetic_core,
+                self.n_j,
+                self.l_j,
+                self.f_j,
+                self.eps_j,
+                self.rcut_j,
+                self.id_j,
+                self.grid,
+                self.rc,
+                self.nc_g,
+                self.nct_g,
+                self.vbar_g,
+                self.phi_jg,
+                self.phit_jg,
+                self.pt_jg,
+                self.e_kin_j1j2,
+                fingerprint,
+                filename)
+    
+    def startElement(self, name, attrs):
+        if name == 'atom':
+            self.Z = int(attrs['Z'])
+            self.Nc = int(attrs['core'])
+            self.Nv = int(attrs['valence'])
+        elif name == 'xc_functional':
+            if attrs['type'] == 'LDA':
+                self.xcname = 'LDA'
+            else:
+                assert attrs['type'] == 'GGA'
+                self.xcname = attrs['name']
+        elif name == 'generator':
+            assert attrs['type'] != 'non-relativistic'
+        elif name == 'ae_energy':
+            self.e_total = float(attrs['total'])
+            self.e_kinetic = float(attrs['kinetic'])
+            self.e_electrostatic = float(attrs['electrostatic'])
+            self.e_xc = float(attrs['xc'])
+        elif name == 'pseudo_energy':
+            # XXXX Remove this one!!!!!!!!!!!!!!!!!
+            self.et_kinetic = float(attrs['kinetic'])
+            self.et_electrostatic = float(attrs['electrostatic'])
+            self.et_xc = float(attrs['xc'])
+        elif name == 'core_energy':
+            self.e_kinetic_core = float(attrs['kinetic'])
+        elif name == 'state':
+            self.n_j.append(int(attrs.get('n', 0)))
+            self.l_j.append(int(attrs['l']))
+            self.f_j.append(int(attrs.get('f', 0))) #XXX no default!!!
+            self.eps_j.append(float(attrs['e']))
+            self.rcut_j.append(float(attrs.get('rc', -1)))
+            self.id_j.append(attrs['id'])
+        elif name == 'grid':
+            assert self.grid is None, 'More than one type of grid!'
+            self.grid = attrs
+        elif name == 'shape_function':
+            if False:
+                assert attrs['type'] == 'gauss'
+                self.rc = float(attrs['rc'])
+            else:
+                assert attrs['type'] == 'poly3'
+                self.rc = -1.0
+        elif name in ['ae_core_density', 'pseudo_core_density',
+                      'localized_potential', 'kinetic_energy_differences']:
+            self.data = []
+        elif name in ['ae_partial_wave', 'pseudo_partial_wave',
+                      'projector_function']:
+            self.data = []
+            self.id = attrs['state']
+        else:
+            self.data = None
+            
+    def characters(self, data):
+        if self.data is not None:
+            self.data.append(data)
+
+    def endElement(self, name):
+        if self.data is None:
+            return
+        x_g = num.array([float(x) for x in ''.join(self.data).split()])
+        if name == 'ae_core_density':
+            self.nc_g = x_g
+        elif name == 'pseudo_core_density':
+            self.nct_g = x_g
+        elif name == 'localized_potential':
+            self.vbar_g = x_g
+        elif name == 'kinetic_energy_differences':
+            self.e_kin_j1j2 = x_g
+        elif name == 'ae_partial_wave':
+            j = len(self.phi_jg)
+            assert self.id == self.id_j[j]
+            self.phi_jg.append(x_g)
+        elif name == 'pseudo_partial_wave':
+            j = len(self.phit_jg)
+            assert self.id == self.id_j[j]
+            self.phit_jg.append(x_g)
+        elif name == 'projector_function':
+            j = len(self.pt_jg)
+            assert self.id == self.id_j[j]
+            self.pt_jg.append(x_g)

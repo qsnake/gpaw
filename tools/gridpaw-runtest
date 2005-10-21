@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+
+# Emacs: treat this as -*- python -*-
+
+# read_setup.py
+#from gridpaw.atom.read_setup import PAWXMLParser
+#p = PAWXMLParser()
+#p.parse('/home/camp/tabasam/.gridpaw/setups/H.LDA')
+# path made user dependent
+#p.xcname # returne name of xc functional
+#p.Z # return element number
+
+import os
+import sys
+from optparse import OptionParser
+from gridpaw.tests.dimer import dimer
+from gridpaw.tests.eggbox import eggbox
+from gridpaw.tests.bulk import bulk
+from gridpaw.tests.hcp import hcp
+
+parser = OptionParser(usage='%prog [options] eggbox, dimer and eggbox tests',
+                      version='%prog 0.1')
+
+parser.add_option('-f', '--xcfunctional', type='string', default='LDA',
+                  help='Exchange-Correlation functional (default is LDA)',
+                  metavar='<XC>')
+
+parser.add_option('-i', '--grid_min', type='float', default=0.25,
+                  help='minimum grid space in the cell (default is 0.25 Aa)',
+                  metavar='<MIN>')
+
+parser.add_option('-a', '--grid_max', type='float', default=0.3,
+                  help='maximum grid space in the cell (default is 0.3 Aa)',
+                  metavar='<MAX>')
+
+parser.add_option('-c', '--cellsize', type='float', default=10.0,
+                  help='size of the cell (default is 10.0 Aa)',
+                  metavar='<C>')
+
+parser.add_option('-K', '--kpoints', type='int', default=6,
+                  help='Number of kpoints in each direction (default value 6)',
+                  metavar='<K>')
+
+parser.add_option('-n', '--numbercalc', type='float', default=10,
+                  help='number of variations (default is 10)',
+                  metavar='<N>')
+
+parser.add_option('-N', '--niflheim', action='store_true',
+                  help='Send job to niflheim.')
+
+parser.add_option('-k', '--que', type='string', default='medium',
+                  help='The que name on niflheim (default is medium)',
+                  metavar='<K>')
+
+parser.add_option('-p', '--numberofnodes', type='int', default=1,
+                  help='number of nodes used at niflheim (default value is 1)',
+                  metavar='<P>')
+
+options, args = parser.parse_args()
+
+symbol, testname = args
+f = options.xcfunctional
+
+if options.niflheim:
+    sys.argv.remove('-N')
+    k = options.que
+    p = options.numberofnodes
+    script = ' '.join(sys.argv) + '\n'
+    host = os.uname()[1]
+    dir = os.getcwd()
+    script += "scp %s-%s-%s.pickle %s:%s\n" % (symbol, testname, f, host, dir)
+    print script
+    os.popen("ssh svol qsub -q %s -l nodes=%s -" %(k, p), 'w').write(script)
+    raise SystemExit('Submitted job to niflheim')
+
+gmin = options.grid_min
+gmax = options.grid_max
+c = options.cellsize
+n = options.numbercalc
+K = options.kpoints
+
+if testname == 'dimer':
+    dimer(symbol, xc=f, hmin=gmin, hmax=gmax, a=c, g=n)
+    
+elif testname == 'eggbox':
+    eggbox(symbol, xc=f, hmin=gmin, hmax=gmax, a=c)
+    
+elif testname in ('fcc', 'bcc', 'diamond'):
+    bulk(symbol, xc=f, hmin=gmin, hmax=gmax, kpt= K, crys=testname, g=n)
+
+elif testname == 'hcp':
+    hcp(symbol, xc=f, hmin=gmin, hmax=gmax, kpt= K, g=n)
+    
+else:
+    print 'Unknown testname:', testname
+
+
