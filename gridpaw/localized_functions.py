@@ -5,10 +5,11 @@ from math import pi
 
 import Numeric as num
 
-from gridpaw import _gridpaw, enumerate
+from gridpaw import enumerate
 from gridpaw import debug
 from gridpaw.utilities import contiguous, is_contiguous
 import gridpaw.utilities.mpi as mpi
+import _gridpaw
 
 
 MASTER = 0

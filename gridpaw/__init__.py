@@ -68,17 +68,12 @@ while len(sys.argv) > i:
         i += 1
 
 try:
-    import gridpaw._gridpaw
+    import _gridpaw
 except ImportError:
     # gridpaw has not been installed correctly.  Maybe we can find the
     # extension in the distutils build directory:
-    path = __path__[0]
-    filename = ('../build/lib.%s-%s/gridpaw/_gridpaw.so' %
-                (get_platform(), sys.version[0:3]))
-    os.system('cd %s; rm -f _gridpaw.so; ln -sf %s' % (path, filename))
-    print 'Created a soft-link from %s/_gridpaw.so to %s/%s' % (path, path,
-                                                                filename)
-    del path, filename
+    sys.path.insert(0, join(__path__[0], '..', 'build',
+                            'lib.%s-%s' % (get_platform(), sys.version[0:3])))
 
 
 # Install call-back handler for USR1 signal:

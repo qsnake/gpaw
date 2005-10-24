@@ -3,8 +3,8 @@
 
 import Numeric as num
 
-from gridpaw import _gridpaw
 from gridpaw import debug
+import _gridpaw
 
 
 def diagonalize(a, w, b=None):

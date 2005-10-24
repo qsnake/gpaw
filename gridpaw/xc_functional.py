@@ -3,10 +3,10 @@
 
 import Numeric as num
 
-from gridpaw import _gridpaw
 from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.operators import Gradient
 from gridpaw.utilities import is_contiguous
+import _gridpaw
 
 
 class XCFunctional:

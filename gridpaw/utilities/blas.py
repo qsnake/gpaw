@@ -3,9 +3,9 @@
 
 import Numeric as num
 
-from gridpaw import _gridpaw
 from gridpaw.utilities import is_contiguous
 from gridpaw import debug
+import _gridpaw
 
 
 def gemm(alpha, a, b, beta, c):

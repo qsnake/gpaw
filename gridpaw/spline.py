@@ -3,8 +3,8 @@
 
 import Numeric as num
 
-from gridpaw import _gridpaw
 from gridpaw.utilities import contiguous
+import _gridpaw
 
 
 class Spline:

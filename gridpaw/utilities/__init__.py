@@ -5,7 +5,7 @@ from math import sqrt
 
 import Numeric as num
 
-from gridpaw import _gridpaw
+import _gridpaw
 
 
 erf = _gridpaw.erf

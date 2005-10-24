@@ -5,9 +5,9 @@ import os
 
 import Numeric as num
 
-from gridpaw import _gridpaw
 from gridpaw import debug
 from gridpaw.utilities import is_contiguous
+import _gridpaw
 
 
 MASTER = 0

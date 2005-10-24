@@ -5,9 +5,9 @@ from __future__ import division
 
 import Numeric as num
 
-from gridpaw import _gridpaw
 from gridpaw import debug
 from gridpaw.utilities import contiguous, is_contiguous
+import _gridpaw
 
     
 class _Operator:

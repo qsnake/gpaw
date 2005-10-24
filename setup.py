@@ -174,7 +174,7 @@ else:
 include_dirs += [join('c', 'bmgs'),
                  os.environ['HOME'] + '/include/python']
 
-extension = Extension('gridpaw._gridpaw',
+extension = Extension('_gridpaw',
                       glob('c/*.c') + ['c/bmgs/bmgs.c'],
                       libraries=libraries,
                       library_dirs=library_dirs,
