@@ -289,27 +289,7 @@ void bc_unpack1(const boundary_conditions* bc,
 	  }	  
       }
 }
-/*
-	    if (real)
-	      {
-		bmgs_rotate(a1 + (bc->sendstart[i][d][0] - p) *
-			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d],
-			    bc->rotbuf);
-		bmgs_paste(bc->rotbuf, bc->sendsize[i][d], 
-			   a2, bc->size2, bc->recvstart[i][1 - d]);
-	      }
-	    else
-	      {
-		bmgs_rotatez(((double_complex*)a1) + 
-			     (bc->sendstart[i][d][0] - p) *
-			     bc->size1[1] * bc->size1[2], 
-			     bc->sendsize[i][d],
-			    (double_complex*)bc->rotbuf);
-		bmgs_pastez((double_complex*)bc->rotbuf, bc->sendsize[i][d], 
-			    (double_complex*)a2, bc->size2,
-			    bc->recvstart[i][1 - d]);
-	      }
-*/
+
 void bc_unpack2(const boundary_conditions* bc, 
 		double* a2, int i,
 		MPI_Request recvreq[2],
