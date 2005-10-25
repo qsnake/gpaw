@@ -2,6 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 from __future__ import division
+from math import pi
 
 import Numeric as num
 
@@ -45,7 +46,7 @@ class _Operator:
         if gd.domain.angle is None:
             angle = 0
         else:
-            angle = 1
+            angle = int(angle / (pi / 2) + 0.5)
 
         self.operator = _gridpaw.Operator(coefs, offsets, ng, mp,
                                           neighbors, typecode == num.Float,

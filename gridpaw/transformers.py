@@ -2,6 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 from __future__ import division
+from math import pi
 
 import Numeric as num
 
@@ -26,7 +27,9 @@ class Transformer:
         if gd.domain.angle is None:
             angle = 0
         else:
-            angle = 1
+            angle = int(angle / (pi / 2) + 0.5)
+            if gd.domain.comm.size > 1:
+                raise NotImplementedError
 
         self.transformer = _gridpaw.Transformer(
             num.asarray(gd.myng, num.Int), p, number + 1, neighbors,

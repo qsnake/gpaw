@@ -28,6 +28,7 @@ typedef struct
   bool join[3];
   int ndouble;
   int angle;
+  double* rotbuf;
   MPI_Comm comm;
 } boundary_conditions;
 

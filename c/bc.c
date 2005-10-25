@@ -126,6 +126,15 @@ boundary_conditions* bc_init(const int size1[3], const int padding[2],
       if (n > bc->maxrecv)
 	bc->maxrecv = n;
     }
+
+  if (angle != 0)
+    {
+      int s0 = bc->sendsize[0][0][0];
+      if (bc->sendsize[0][1][0] > s0)
+	s0 = bc->sendsize[0][1][0];
+      bc->rotbuf = (double*)malloc(s0 * size1[1] * size1[2] *
+				   bc->ndouble * sizeof(double));
+    }
   return bc;
 }
 
@@ -243,19 +252,64 @@ void bc_unpack1(const boundary_conditions* bc,
   for (int d = 0; d < 2; d++)
     if (bc->sendproc[i][d] == COPY_DATA)
       {
-	if (real)
-	  bmgs_translate(a2, bc->size2, bc->sendsize[i][d],
-			 bc->sendstart[i][d], bc->recvstart[i][1 - d]);
+	if (bc->angle == 0 || i != 0)
+	  {
+	    if (real)
+	      bmgs_translate(a2, bc->size2, bc->sendsize[i][d],
+			     bc->sendstart[i][d], bc->recvstart[i][1 - d]);
+	    else
+	      bmgs_translatemz((double_complex*)a2, bc->size2,
+			       bc->sendsize[i][d],
+			       bc->sendstart[i][d], bc->recvstart[i][1 - d],
+			       phases[d]);
+	  }
 	else
-	  bmgs_translatemz((double_complex*)a2, bc->size2, bc->sendsize[i][d],
-			   bc->sendstart[i][d], bc->recvstart[i][1 - d],
-			   phases[d]);
+	  {
+	    int p = bc->padding;
+	    if (real)
+	      {
+		bmgs_rotate(a1 + (bc->sendstart[i][d][0] - p) *
+			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d],
+			    bc->rotbuf, bc->angle * (2 * d - 1));
+		bmgs_paste(bc->rotbuf, bc->sendsize[i][d], 
+			   a2, bc->size2, bc->recvstart[i][1 - d]);
+	      }
+	    else
+	      {
+		bmgs_rotatez(((double_complex*)a1) + 
+			     (bc->sendstart[i][d][0] - p) *
+			     bc->size1[1] * bc->size1[2], 
+			     bc->sendsize[i][d],
+			    (double_complex*)bc->rotbuf, 
+			     bc->angle * (2 * d - 1));
+		bmgs_pastez((double_complex*)bc->rotbuf, bc->sendsize[i][d], 
+			    (double_complex*)a2, bc->size2,
+			    bc->recvstart[i][1 - d]);
+	      }
+	  }	  
       }
-
-  
 }
-
-
+/*
+	    if (real)
+	      {
+		bmgs_rotate(a1 + (bc->sendstart[i][d][0] - p) *
+			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d],
+			    bc->rotbuf);
+		bmgs_paste(bc->rotbuf, bc->sendsize[i][d], 
+			   a2, bc->size2, bc->recvstart[i][1 - d]);
+	      }
+	    else
+	      {
+		bmgs_rotatez(((double_complex*)a1) + 
+			     (bc->sendstart[i][d][0] - p) *
+			     bc->size1[1] * bc->size1[2], 
+			     bc->sendsize[i][d],
+			    (double_complex*)bc->rotbuf);
+		bmgs_pastez((double_complex*)bc->rotbuf, bc->sendsize[i][d], 
+			    (double_complex*)a2, bc->size2,
+			    bc->recvstart[i][1 - d]);
+	      }
+*/
 void bc_unpack2(const boundary_conditions* bc, 
 		double* a2, int i,
 		MPI_Request recvreq[2],
@@ -291,19 +345,10 @@ void bc_unpack2(const boundary_conditions* bc,
 	rbuf += bc->nrecv[i][d];
       }
 #ifndef GRIDPAW_AIX
+  // This does not work on the ibm!  We do a blocking send instead.
   for (int d = 0; d < 2; d++)
     if (sendreq[d] != 0)
       MPI_Wait(&sendreq[d], MPI_STATUS_IGNORE);
 #endif
 #endif // PARALLEL
-  if (bc->angle != 0 && i == 2)
-    for (int d = 0; d < 2; d++)
-      {
-	if (real)
-	  bmgs_rotate(bc->recvsize[0][d][0], bc->size1,
-		      a2, bc->size2, bc->recvstart[0][d]);
-	else
-	  bmgs_rotatez(bc->recvsize[0][d][0], bc->size1,
-		       (double_complex*)a2, bc->size2, bc->recvstart[0][d]);
-      }
 }
