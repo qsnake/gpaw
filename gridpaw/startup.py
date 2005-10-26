@@ -83,7 +83,7 @@ def create_paw_object(out, a0, Ha,
         # Reduce the the k-points to those in the irreducible part of
         # the Brillouin zone:
         symmetry, weights_k, ibzk_ki = reduce_kpoints(
-            bzk_ki, pos_ai, Z_a, domain, usesymm)
+            bzk_ki, pos_ai / a0, Z_a, domain, usesymm)
 
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:
