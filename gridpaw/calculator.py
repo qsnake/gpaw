@@ -174,7 +174,10 @@ class Calculator:
         numbers = atoms.GetAtomicNumbers()
         cell = num.array(atoms.GetUnitCell())
         bc = atoms.GetBoundaryConditions()
-        angle = atoms.GetRotationAngle()
+        try:
+            angle = atoms.GetRotationAngle()
+        except AttributeError:
+            angle = None
 	
         # Check that the cell is orthorhombic:
         check_unit_cell(cell)
@@ -256,7 +259,10 @@ class Calculator:
         numbers = atoms.GetAtomicNumbers()
         cell = atoms.GetUnitCell()
         bc = atoms.GetBoundaryConditions()
-        angle = atoms.GetRotationAngle()
+        try:
+            angle = atoms.GetRotationAngle()
+        except AttributeError:
+            angle = None
 	
         # Check that the cell is orthorhombic:
         check_unit_cell(cell)

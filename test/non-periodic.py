@@ -3,8 +3,6 @@ import Numeric as num
 import RandomArray as ra
 from gridpaw.grid_descriptor import GridDescriptor
 from gridpaw.domain import Domain
-from gridpaw.utilities import equal
-
 
 p = 0
 domain = Domain((8.0, 8.0, 8.0), periodic_i=(p, p, p))
@@ -21,4 +19,4 @@ gd2 = GridDescriptor(domain, (2*n, 2*n, 2*n))
 a2 = gd2.new_array()
 i = Interpolator(gd1, 1).apply
 i(a1, a2)
-equal(num.sum(a1.flat), num.sum(a2.flat) / 8)
+assert abs(num.sum(a1.flat) - num.sum(a2.flat) / 8) < 1e-10

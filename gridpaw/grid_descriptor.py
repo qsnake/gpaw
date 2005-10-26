@@ -208,32 +208,32 @@ class GridDescriptor:
             return boxes
 
 
-    def mirror(self, a, axis):
-        N = self.domain.parsize_i[axis]
-        if axis == 0:
+    def mirror(self, a, i):
+        N = self.domain.parsize_i[i]
+        if i == 0:
             b = a.copy()
         else:
             axes = [0, 1, 2]
-            axes[axis] = 0
-            axes[0] = axis
+            axes[i] = 0
+            axes[0] = i
             b = num.transpose(a, axes).copy()
-        n = self.domain.parpos_i[axis]
+        n = self.domain.parpos_i[i]
         m = (-n) % N
         if n != m:
-            rank = self.rank + (m - n) * self.domain.strides[axis]
+            rank = self.rank + (m - n) * self.domain.stride_i[i]
             request = self.comm.receive(b[0], rank, False)
             self.comm.send(b[0].copy(), rank)
             self.comm.wait(request)
         c = b[-1:0:-1].copy()
         m = N - n - 1
         if n != m:
-            rank = self.rank + (m - n) * self.domain.strides[axis]
+            rank = self.rank + (m - n) * self.domain.stride_i[i]
             request = self.comm.receive(b[1:], rank, False)
             self.comm.send(c, rank)
             self.comm.wait(request)
         else:
             b[1:] = c
-        if axis == 0:
+        if i == 0:
             return b
         else:
             return num.transpose(b, axes).copy()
