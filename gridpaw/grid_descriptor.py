@@ -162,8 +162,11 @@ class GridDescriptor:
                 begin = num.floor(newc - l).astype(num.Int) - 1
                 end = num.ceil(newc + l).astype(num.Int) + 1
                 begin = num.maximum(begin, self.begin)
-                end = num.minimum(end, self.end)                 
-                                  
+                end = num.minimum(end, self.end)                
+
+                begin = self.begin.copy();print '.....'
+                end = self.end.copy()
+                
                 if (begin[0] < end[0] and
                     begin[1] < end[1] and
                     begin[2] < end[2]):

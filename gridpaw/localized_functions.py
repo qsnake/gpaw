@@ -124,11 +124,23 @@ class _LocFuncs:
         self.boxes = []
         self.displacements = num.zeros((len(boxes), 3), num.Float)
         b = 0
+        angle = gd.domain.angle
+        
+        from math import cos, sin
         for begin, end, disp in boxes:
+            if angle is None:
+                rspos = spos
+            else:
+                da = angle*disp[0]
+                tspos = spos-0.5
+                rspos = num.array([tspos[0],
+                                   tspos[1]*cos(da)-tspos[2]*sin(da),
+                                   tspos[1]*sin(da) + tspos[2]*cos(da)])+0.5
+                                      
             box = LocalizedFunctions(functions, end - begin,
                                      gd.myng,
                                      begin - gd.begin0, gd.h,
-                                     begin - (spos - disp) * gd.ng,
+                                     begin - (rspos - disp) * gd.ng,
                                      npts, k, typecode, forces, lfbc)
             self.boxes.append(box)
             self.displacements[b] = disp
@@ -180,6 +192,7 @@ class _LocFuncs:
                 box.multiply(grids, tmp, derivatives)
                 result += tmp
         else:
+            #!!!
             # Should we store the phases for all possible kpoints? or should
             # we recalculate them???????
             phases = num.exp(2j * pi * num.dot(self.displacements, kpt))

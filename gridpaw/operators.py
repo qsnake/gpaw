@@ -46,7 +46,7 @@ class _Operator:
         if gd.domain.angle is None:
             angle = 0
         else:
-            angle = int(angle / (pi / 2) + 0.5)
+            angle = int(gd.domain.angle / (pi / 2) + 0.5)
 
         self.operator = _gridpaw.Operator(coefs, offsets, ng, mp,
                                           neighbors, typecode == num.Float,

@@ -82,7 +82,10 @@ class Symmetry:
                     ok = False
                     for a2, spos2 in specie:
                         sdiff = spos1 - spos2
+                        print sdiff
                         sdiff -= num.floor(sdiff + 0.5)
+                        print sdiff
+                        print num.dot(sdiff, sdiff), self.tol
                         if num.dot(sdiff, sdiff) < self.tol:
                             ok = True
                             map[a1] = a2
