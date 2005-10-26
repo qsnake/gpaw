@@ -32,16 +32,17 @@ def fail(msg, filename='/dev/null'):
 
 tests = ''
 # For a quick test - uncomment this line:
-#tests = 'PBE.py Gauss.py'
+tests = 'PBE.py Gauss.py'
 
 dir = tempfile.mkdtemp(prefix='gridpaw-')
 os.chdir(dir)
 
 # Checkout a fresh version and install:
 root = ':pserver:jensj@cvs.fysik.dtu.dk:/home/camp/CVSROOT'
-if os.system('cvs -d ' + root + ' checkout gridpaw') != 0:
+if os.system('svn export ' +
+             'http://svn.berlios.de/svnroot/repos/gridpaw/trunk') != 0:
     fail('Checkout failed!')
-os.chdir('gridpaw')
+os.chdir('trunk')
 if os.system('python setup.py install --home=%s' % dir) != 0:
     fail('Installation failed!')
 
@@ -81,7 +82,7 @@ if os.system(export + '/home/camp/jensj/bin/pylint gridpaw; ' +
     fail('PyLint failed!')
 
 # Generate tar-file:
-os.chdir('../../gridpaw')
+os.chdir('../../trunk')
 if False:#ok:
     assert os.system('python setup.py sdist;' +
                      'cp dist/*.tar.gz /home/camp/jensj/.gridpaw/cron') == 0
@@ -139,7 +140,7 @@ print >> f, """\
 # Coverage test:
 os.chdir('test')
 day = time.localtime()[6]
-if 1:#ok and day == 6: # only Sunday
+if ok and day == 6: # only Sunday
     if os.system(export +
                  'rm /home/camp/jensj/.gridpaw/cron/*.cover; ' +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +

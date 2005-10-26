@@ -17,7 +17,7 @@ p = [LocFuncs([s], gd, (0.5, 0.5, 0.25 + 0.25 * i), npts=0, lfbc=lfbc)
      for i in [0, 1, 2]]
 lfbc.broadcast()
 c = num.identity(1, num.Float)
-a = gd.array()
+a = gd.new_array()
 for q in p:
     q.add(a, c)
 x = num.sum(a.flat)

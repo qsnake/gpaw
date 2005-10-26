@@ -12,30 +12,29 @@ import _gridpaw
 
     
 class _Operator:
-    def __init__(self, coefs, offsets, gd, cfd, typecode=num.Float):
+    def __init__(self, coef_p, offset_pi, gd, cfd, typecode=num.Float):
         """Operator(coefs, offsets, gd, typecode) -> Operator object.
         """
 
-        maxoffsets = [max([offset[axis] for offset in offsets])
-                     for axis in range(3)]
-        mp = maxoffsets[0]
-        if maxoffsets[1] != mp or maxoffsets[2] != mp:
+        maxoffset_i = [max([offset_i[i] for offset_i in offset_pi])
+                       for i in range(3)]
+        mp = maxoffset_i[0]
+        if maxoffset_i[1] != mp or maxoffset_i[2] != mp:
 ##            print 'Warning: this should be optimized XXXX', maxoffsets, mp
-            mp = max(maxoffsets)
-##        ng = num.array(gd.myng, typecode=num.Int)
-        ng = gd.myng
-        ng2 = ng + 2 * mp
-        strides = num.array((ng2[1] * ng2[2], ng2[2], 1))
-        offsets = num.dot(offsets, strides)
-        coefs = contiguous(coefs, num.Float)
-        neighbors = gd.domain.get_neighbor_processors()
-        assert len(coefs.shape) == 1
-        assert coefs.shape == offsets.shape
+            mp = max(maxoffset_i)
+        N_i = gd.myN_i
+        M_i = N_i + 2 * mp
+        stride_i = num.array([M_i[1] * M_i[2], M_i[2], 1])
+        offset_p = num.dot(offset_pi, stride_i)
+        coef_p = contiguous(coef_p, num.Float)
+        neighbor_id = gd.domain.neighbor_id
+        assert len(coef_p.shape) == 1
+        assert coef_p.shape == offset_p.shape
         assert typecode in [num.Float, num.Complex]
         self.typecode = typecode
-        self.shape = tuple(gd.myng)
+        self.shape = tuple(N_i)
         
-        if gd.domain.comm.size>1:
+        if gd.domain.parallel:
             comm = gd.domain.comm
             if debug:
                 # get the C-communicator from the debug-wrapper:
@@ -48,18 +47,19 @@ class _Operator:
         else:
             angle = int(gd.domain.angle / (pi / 2) + 0.5)
 
-        self.operator = _gridpaw.Operator(coefs, offsets, ng, mp,
-                                          neighbors, typecode == num.Float,
+        self.operator = _gridpaw.Operator(coef_p, offset_p, N_i, mp,
+                                          neighbor_id, typecode == num.Float,
                                           comm, cfd, angle)
 
-    def apply(self, arrays, results, phases=None):
-        assert arrays.shape == results.shape
-        assert arrays.shape[-3:] == self.shape
-        assert is_contiguous(arrays, self.typecode)
-        assert is_contiguous(results, self.typecode)
-        assert self.typecode is num.Float or (phases.typecode() == num.Complex and
-                                         phases.shape == (6,))
-        self.operator.apply(arrays, results, phases)
+    def apply(self, in_xg, out_xg, phase_id=None):
+        assert in_xg.shape == out_xg.shape
+        assert in_xg.shape[-3:] == self.shape
+        assert is_contiguous(in_xg, self.typecode)
+        assert is_contiguous(out_xg, self.typecode)
+        assert (self.typecode is num.Float or
+                (phase_id.typecode() == num.Complex and
+                 phase_id.shape == (3 * 2,)))
+        self.operator.apply(in_xg, out_xg, phase_id)
 
     def get_diagonal_element(self):
         return self.operator.get_diagonal_element()
@@ -68,18 +68,18 @@ class _Operator:
 if debug:
     Operator = _Operator
 else:
-    def Operator(coefs, offsets, gd, cfd, typecode=num.Float):
-        return _Operator(coefs, offsets, gd, cfd, typecode).operator
+    def Operator(coef_p, offset_pi, gd, cfd, typecode=num.Float):
+        return _Operator(coef_p, offset_pi, gd, cfd, typecode).operator
 
 
-def Gradient(gd, axis, scale=1.0, n=1, typecode=num.Float):
-    h = gd.h[axis]
-    a = 0.5 / h * scale
-    coefs = [-a, a]
-    offsets = num.zeros((2, 3))
-    offsets[0, axis] = -1
-    offsets[1, axis] = 1
-    return Operator(coefs, offsets, gd, True, typecode)
+def Gradient(gd, i, scale=1.0, n=1, typecode=num.Float):
+    h = gd.h_i[i]
+    c = 0.5 / h * scale
+    coef_p = [-c, c]
+    offset_pi = num.zeros((2, 3))
+    offset_pi[0, i] = -1
+    offset_pi[1, i] = 1
+    return Operator(coef_p, offset_pi, gd, True, typecode)
 
 
 # Expansion coefficients for finite difference Laplacian.  The numbers are
@@ -106,7 +106,7 @@ def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
 
     Uses 6*n neighbors."""
     
-    h = gd.h
+    h = gd.h_i
     h2 = h**2
     offsets = [(0, 0, 0)]
     coefs = [scale * num.sum(num.divide(laplace[n][0], h2))]
@@ -122,7 +122,7 @@ def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
 
 
 def LaplaceA(gd, scale, typecode=num.Float):
-    c = num.divide(-1/12, gd.h**2) * scale
+    c = num.divide(-1/12, gd.h_i**2) * scale  # Why divide? XXX
     c0 = c[1] + c[2]
     c1 = c[0] + c[2]
     c2 = c[1] + c[0]

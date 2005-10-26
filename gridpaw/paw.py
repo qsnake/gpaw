@@ -73,7 +73,7 @@ class Paw:
         self.finegd = GridDescriptor(domain, 2 * N_i)
         if not self.gd.is_healthy():
             self.warn(
-                'VERY ANISOTROPIC GRIDSPACINGS: ' + str(self.a0 * self.gd.h))
+                'VERY ANISOTROPIC GRIDSPACINGS: ' + str(self.a0 * self.gd.h_i))
 
         if mpi.rank == MASTER:
             # Forces for all atoms:
@@ -383,7 +383,7 @@ class Paw:
         # Transfer the density to the fine grid:
         for s in range(self.nspins):
             self.interpolate(self.nt_sG[s], self.nt_sg[s])
-    
+
         self.calculate_potential()
 
         self.calculate_atomic_hamiltonians()

@@ -20,16 +20,15 @@ class KPoint:
     def __init__(self, gd, weight, s, k, u, k_i, typecode):
         self.gd = gd
         self.weight = weight
-        self.Htpsit_nG = None
         self.typecode = typecode
         
         if typecode == num.Float:
             # Gamma-point calculation:
-            self.phases = num.ones(6, num.Float) # XXX or None?
+            self.phase_id = num.ones((3 * 2,), num.Float) # XXX or None?
             self.k_i = None
         else:
-            displacements = self.gd.domain.get_displacements()
-            self.phases = num.exp(2j * pi * num.dot(displacements, k_i))
+            displacement_idi = self.gd.domain.displacement_idi
+            self.phase_id = num.exp(2j * pi * num.dot(displacement_idi, k_i))
             self.k_i = k_i
 
         self.s = s
@@ -42,6 +41,7 @@ class KPoint:
         self.root = u % self.comm.size
         
         self.psit_nG = None
+        self.Htpsit_nG = None
 
         self.timer = Timer()
         
@@ -55,9 +55,8 @@ class KPoint:
         self.S_n1n2 = num.zeros((nbands, nbands), self.typecode)
 
     def allocate_wavefunctions(self, nbands):
-        shape = (nbands,) + tuple(self.gd.myng)
-        self.psit_nG = num.zeros(shape, self.typecode)
-        self.Htpsit_nG = num.zeros(shape, self.typecode)
+        self.psit_nG = self.gd.new_array(nbands, self.typecode)
+        self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
         
     def diagonalize(self, kin, vt_sG, my_nuclei, nbands):
         """Diagonalize wave functions.
@@ -67,7 +66,7 @@ class KPoint:
         # Put in some yields ???? XXXX
         vt_G = vt_sG[self.s]
         self.timer.start('apply')
-        kin.apply(self.psit_nG, self.Htpsit_nG, self.phases)
+        kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_id)
         self.timer.stop('apply')
         self.timer.start('pot')
         self.Htpsit_nG += self.psit_nG * vt_G
@@ -139,7 +138,7 @@ class KPoint:
                 self.H_n1n2.flat[nao * (nbands + 1)::nbands + 1] = 1.0
                 slice = self.psit_nG[nao:]
                 grad = Gradient(self.gd, 0, typecode=self.typecode).apply
-                grad(self.psit_nG[:extra], slice, self.phases)
+                grad(self.psit_nG[:extra], slice, self.phase_id)
             self.timer.stop('extra')
         
     def calculate_residuals(self, p_nuclei):
@@ -208,9 +207,9 @@ class KPoint:
 
             dR_G = num.zeros(R_G.shape, self.typecode)
 
-            pR_G = preconditioner(R_G, self.phases, self.psit_nG[n], self.k_i)
+            pR_G = preconditioner(R_G, self.phase_id, self.psit_nG[n], self.k_i)
             
-            kin.apply(pR_G, dR_G, self.phases)
+            kin.apply(pR_G, dR_G, self.phase_id)
 
             dR_G += vt_G * pR_G
 
@@ -226,7 +225,7 @@ class KPoint:
 
             R_G *= 2.0 * lam
             scale_add_to(dR_G, lam**2, R_G)
-            self.psit_nG[n] += preconditioner(R_G, self.phases,
+            self.psit_nG[n] += preconditioner(R_G, self.phase_id,
                                               self.psit_nG[n], self.k_i)
 
     def create_atomic_orbitals(self, nao, nuclei):

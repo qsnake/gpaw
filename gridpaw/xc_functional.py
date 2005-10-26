@@ -95,7 +95,7 @@ class XCOperator:
                     self.dedab2_g = num.zeros(self.shape, num.Float)
         else:
             self.radial = False
-            self.shape = tuple(gd.myng)
+            self.shape = tuple(gd.myN_i)
             self.dv = gd.dv
             if xcfunc.gga:
                 self.ddr = [Gradient(gd, axis).apply for axis in range(3)]

@@ -20,13 +20,13 @@ class PoissonSolver:
         if self.AB:
             self.operators = [LaplaceA(gd, -scale)]
             self.B = LaplaceB(gd)
-            self.rhos = [gd.array()]
+            self.rhos = [gd.new_array()]
         else:
             self.operators = [Laplace(gd, scale, 3)]
             self.rhos = [None]
             
         self.phis = [None]
-        self.residuals = [gd.array()]
+        self.residuals = [gd.new_array()]
         self.interpolators = [Interpolator(gd, 1)]
         self.restrictors = [Restrictor(gd, 1)]
 
@@ -37,13 +37,13 @@ class PoissonSolver:
             except ValueError:
                 break
             self.operators.append(Laplace(gd, scale, 1))
-            self.phis.append(gd.array())
-            self.rhos.append(gd.array())
-            self.residuals.append(gd.array())
+            self.phis.append(gd.new_array())
+            self.rhos.append(gd.new_array())
+            self.residuals.append(gd.new_array())
             self.interpolators.append(Interpolator(gd, 1))
             self.restrictors.append(Restrictor(gd, 1))
             level += 1
-            print >> out, level, gd.ng
+            print >> out, level, gd.N_i
             
         self.levels = level
         self.eps = 1e-9
@@ -59,11 +59,10 @@ class PoissonSolver:
 
         niter = 1
 
-
-        while self.iterate(self.step) > self.eps and niter < 3000:
+        while self.iterate(self.step) > self.eps and niter < 300:
             niter += 1
-##        if niter == 300:
-        if niter == 3000:
+        if niter == 300:
+##        if niter == 3000:
             charge = num.sum(rho.flat) * self.dv
             print 'CHARGE:', charge
             raise RuntimeError('Poisson solver did not converge!')

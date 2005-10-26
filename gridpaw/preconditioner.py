@@ -16,9 +16,9 @@ class Preconditioner:
         self.kin0 = kin0
         self.kin1 = Laplace(gd1, -0.5, 1, typecode)
         self.kin2 = Laplace(gd2, -0.5, 1, typecode)
-        self.scratch0 = [gd0.array(typecode), gd0.array(typecode)]
-        self.scratch1 = [gd1.array(typecode), gd1.array(typecode), gd1.array(typecode)]
-        self.scratch2 = [gd2.array(typecode), gd2.array(typecode), gd2.array(typecode)]
+        self.scratch0 = gd0.new_array(2, typecode)
+        self.scratch1 = gd1.new_array(3, typecode)
+        self.scratch2 = gd2.new_array(3, typecode)
         self.step = 0.66666666 / kin0.get_diagonal_element()
         self.restrictor0 = Restrictor(gd0, 1, typecode).apply
         self.restrictor1 = Restrictor(gd1, 1, typecode).apply
@@ -56,15 +56,15 @@ class Teter:
     def __init__(self, gd, kin, typecode):
         print 'Teter, Payne and Allan FFT Preconditioning of residue vector'
         self.typecode = typecode
-        dims = gd.myng.copy()
+        dims = gd.myN_i.copy()
         dims.shape = (3, 1, 1, 1)
         icell = 1.0 / num.array(gd.domain.cell_i)
         icell.shape = (3, 1, 1, 1)
-        q_iq = ((num.indices(gd.myng) + dims / 2) % dims - dims / 2) * icell
+        q_iq = ((num.indices(gd.myN_i) + dims / 2) % dims - dims / 2) * icell
         self.q2_q = num.sum(q_iq**2)
 
-        self.r_iG = num.indices(gd.myng, num.Float) / dims
-        self.r_iG.shape = (3, gd.arraysize)
+        self.r_iG = num.indices(gd.myN_i, num.Float) / dims
+        self.r_iG.shape = (3, -1)
 
         self.cache = {}
         

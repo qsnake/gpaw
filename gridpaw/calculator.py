@@ -341,7 +341,7 @@ class Calculator:
         nc.version = version
 
         traj.Close()
-        self.paw.write(filename)
+        self.paw.write_netcdf(filename)
 
     def GetGGAHistogram(self, smax=10.0, nbins=200):
         return self.paw.get_gga_histogram(smax, nbins)

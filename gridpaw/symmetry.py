@@ -10,7 +10,7 @@ class Symmetry:
     def __init__(self, numbers, domain, tolerance=1e-9):
         self.numbers = numbers
         self.cell = domain.cell_i
-        self.bc = domain.periodic
+        self.bc = domain.periodic_i
         self.normalize = domain.normalize
         self.tol = tolerance
         # The identity:

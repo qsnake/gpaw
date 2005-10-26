@@ -303,24 +303,8 @@ void bc_unpack1(const boundary_conditions* bc,
 	  }	  
       }
 }
-/*
-	    if (real)
-	      {
-		bmgs_paste(a1 + (bc->sendstart[i][d][0] - p) *
-			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d], 
-			   a2, bc->size2, bc->recvstart[i][1 - d]);
-	      }
-	    else
-	      {
-		double_complex* aaa = (double_complex*)a1;
-		bmgs_pastez(aaa + 
-			     (bc->sendstart[i][d][0] - p) *
-			     bc->size1[1] * bc->size1[2], 
-			     bc->sendsize[i][d], 
-			    (double_complex*)a2, bc->size2,
-			    bc->recvstart[i][1 - d]);
-	      }
-*/
+
+
 void bc_unpack2(const boundary_conditions* bc, 
 		double* a2, int i,
 		MPI_Request recvreq[2],

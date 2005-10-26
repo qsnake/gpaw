@@ -9,7 +9,7 @@ def print_info(paw):
     out = paw.out
     domain = paw.domain
 #    print >> out, 'Gamma-point calculation'
-    print >> out, 'parallel: parsize = ', domain.parsize
+    print >> out, 'parallel: parsize = ', domain.parsize_i
 
 
 def print_converged(paw):
@@ -67,10 +67,10 @@ def plot_atoms(paw):
     for i in range(3):
         print >> out, '  %s-axis   %s   %8.4f   %3d    %8.4f' % \
               ('xyz'[i],
-               ['no ', 'yes'][domain.periodic[i]],
+               ['no ', 'yes'][domain.periodic_i[i]],
                paw.a0 * domain.cell_i[i],
-               paw.gd.ng[i],
-               paw.a0 * paw.gd.h[i])
+               paw.gd.N_i[i],
+               paw.a0 * paw.gd.h_i[i])
     print >> out
     
 

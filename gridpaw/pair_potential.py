@@ -17,7 +17,7 @@ class Neighbor:
 class PairPotential:
     def __init__(self, domain, setups):
         self.cell_i = domain.cell_i
-        self.bc_i = domain.periodic
+        self.bc_i = domain.periodic_i
 
         # Collect the pair potential cutoffs in a list:
         self.cutoff_a = []

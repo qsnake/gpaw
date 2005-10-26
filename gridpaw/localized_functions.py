@@ -119,7 +119,7 @@ class _LocFuncs:
         p = npts
         k = KK[0]
         if npts != 1:
-            rcut += (k / 2 - 1.0 / p) * max(gd.h)
+            rcut += (k / 2 - 1.0 / p) * max(gd.h_i)
         boxes = gd.get_boxes(spos, rcut, cut)
         self.boxes = []
         self.displacements = num.zeros((len(boxes), 3), num.Float)
@@ -127,7 +127,7 @@ class _LocFuncs:
         angle = gd.domain.angle
         
         from math import cos, sin
-        for begin, end, disp in boxes:
+        for beg_i, end_i, disp in boxes:
             if angle is None:
                 rspos = spos
             else:
@@ -137,10 +137,10 @@ class _LocFuncs:
                                    tspos[1]*cos(da)-tspos[2]*sin(da),
                                    tspos[1]*sin(da) + tspos[2]*cos(da)])+0.5
                                       
-            box = LocalizedFunctions(functions, end - begin,
-                                     gd.myng,
-                                     begin - gd.begin0, gd.h,
-                                     begin - (rspos - disp) * gd.ng,
+            box = LocalizedFunctions(functions, end_i - beg_i,
+                                     gd.myN_i,
+                                     beg_i - gd.beg0_i, gd.h_i,
+                                     beg_i - (rspos - disp) * gd.N_i,
                                      npts, k, typecode, forces, lfbc)
             self.boxes.append(box)
             self.displacements[b] = disp

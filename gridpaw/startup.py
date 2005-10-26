@@ -20,7 +20,7 @@ def create_paw_object(out, a0, Ha,
                       softgauss, order, usesymm, mix, old, fixdensity,
                       idiotproof, hund, lmax, onohirose, tolerance,
                       # Parallel stuff:
-                      parsize,
+                      parsize_i,
                       restart_file):
 
     magmom_a = num.array(magmom_a)
@@ -113,7 +113,7 @@ def create_paw_object(out, a0, Ha,
     myspins, myibzk_ki, myweights_k, domain_comm, kpt_comm = \
              distribute_kpoints_and_spins(nspins, ibzk_ki, weights_k)
 
-    domain.set_decomposition(domain_comm, parsize, N_i)
+    domain.set_decomposition(domain_comm, parsize_i, N_i)
 
     # We now have all the parameters needed to construct a PAW object:
     paw = Paw(a0, Ha,
@@ -142,7 +142,7 @@ def reduce_kpoints(bzk_ki, pos_ai, Z_a, domain, usesymm):
     part of the BZ."""
 
     for i in range(3):
-        if not domain.periodic[i] and num.sometrue(bzk_ki[:, i]):
+        if not domain.periodic_i[i] and num.sometrue(bzk_ki[:, i]):
             raise ValueError('K-points can only be used with PBCs!')
 
     # Construct a Symmetry instance containing the identity

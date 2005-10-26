@@ -7,13 +7,13 @@ from gridpaw.utilities.mpi import serial_comm
 
 
 class Domain:
-    def __init__(self, cell_i, periodic=(True, True, True), angle=None):
+    def __init__(self, cell_i, periodic_i=(True, True, True), angle=None):
         self.cell_i = num.array(cell_i, num.Float)
-        self.periodic = periodic
+        self.periodic_i = periodic_i
 	self.angle = angle
         self.set_decomposition(serial_comm, (1, 1, 1))
         
-    def set_decomposition(self, comm, parsize, N_i=None):
+    def set_decomposition(self, comm, parsize_i, N_i=None):
         self.comm = comm
 
         if self.comm.size > 1:
@@ -21,66 +21,63 @@ class Domain:
         else:
             self.parallel = False
             
-        if parsize is None:
-            parsize = decompose_domain(N_i, comm.size)
-        self.parsize = parsize
+        if parsize_i is None:
+            parsize_i = decompose_domain(N_i, comm.size)
+        self.parsize_i = parsize_i
 
-        self.strides = num.array([parsize[1] * parsize[2], parsize[2], 1])
+        self.stride_i = num.array([parsize_i[1] * parsize_i[2],
+                                   parsize_i[2],
+                                   1])
         
-        if parsize[0] * parsize[1] * parsize[2] != self.comm.size:
-            print parsize, self.comm.size
+        if parsize_i[0] * parsize_i[1] * parsize_i[2] != self.comm.size:
+            print parsize_i, self.comm.size
             raise RuntimeError
 
         rnk = self.comm.rank
-        self.parpos = num.array([rnk // self.strides[0],
-                                (rnk % self.strides[0]) // self.strides[1],
-                                rnk % self.strides[1]])
-        assert num.dot(self.parpos, self.strides) == rnk
+        self.parpos_i = num.array(
+            [rnk // self.stride_i[0],
+             (rnk % self.stride_i[0]) // self.stride_i[1],
+             rnk % self.stride_i[1]])
+        assert num.dot(self.parpos_i, self.stride_i) == rnk
 
         self.find_neighbor_processors_and_displacements()
 
-    def normalize(self, pos):
-        spos = pos / self.cell_i
+    def normalize(self, pos_i):
+        spos_i = pos_i / self.cell_i
         for i in range(3):
-            if self.periodic[i]:
-                spos[i] %= 1.0
-        return spos
+            if self.periodic_i[i]:
+                spos_i[i] %= 1.0
+        return spos_i
 
-    def difference(self, spos1, spos2):
-        return (spos1 - spos2) * self.cell_i
+    def difference(self, spos1_i, spos2_i):
+        return (spos1_i - spos2_i) * self.cell_i
     
-    def rank(self, spos):
-        rnk = num.clip(num.floor(spos * self.parsize).astype(num.Int),
-                      0, num.array(self.parsize) - 1)
+    def rank(self, spos_i):
+        rnk_i = num.clip(num.floor(spos_i * self.parsize_i).astype(num.Int),
+                         0, num.array(self.parsize_i) - 1)
         for i in range(3):
-            assert 0 <= rnk[i] < self.parsize[i], "Bad bad!"
-        return num.dot(rnk, self.strides)
+            assert 0 <= rnk_i[i] < self.parsize_i[i], "Bad bad!"
+        return num.dot(rnk_i, self.stride_i)
 
     def find_neighbor_processors_and_displacements(self):
-        self.neighbors = num.zeros(6, num.Int)
-        self.displacements = num.zeros((6, 3), num.Float)
-        n = 0
+        self.neighbor_id = num.zeros((3 * 2,), num.Int)
+        self.displacement_idi = num.zeros((3 * 2, 3), num.Float)
         for i in range(3):
-            p = self.parpos[i]
-            for d in [-1, 1]:
-                pd = p + d
-                pd0 = pd % self.parsize[i]
-                self.neighbors[n] = self.comm.rank + (pd0 - p) * self.strides[i]
+            p = self.parpos_i[i]
+            for d in range(2):
+                disp = 2 * d - 1
+                pd = p + disp
+                pd0 = pd % self.parsize_i[i]
+                self.neighbor_id[i*2+d] = (self.comm.rank +
+                                          (pd0 - p) * self.stride_i[i])
                 if pd0 != pd:
                     # Wrap around the box?
-                    if self.periodic[i]:
+                    if self.periodic_i[i]:
                         # Yes:
-                        self.displacements[n, i] = -d
+                        self.displacement_idi[i*2+d, i] = -disp
                     else:
                         # No:
-                        self.neighbors[n] = -1
-                n += 1
-
-    def get_neighbor_processors(self):
-        return self.neighbors
-    
-    def get_displacements(self):
-        return self.displacements
+                        self.neighbor_id[i*2+d] = -1
 
 
 def decompose_domain(ng, p):

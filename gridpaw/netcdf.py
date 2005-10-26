@@ -105,11 +105,11 @@ def write_netcdf(paw, filename):
         var[:] = wf.weights_k
 
         # Create dimensions for varioius netCDF variables:
-        N_i = paw.gd.ng
+        N_i = paw.gd.N_i
         nc.createDimension('ngptsx', N_i[0])
         nc.createDimension('ngptsy', N_i[1])
         nc.createDimension('ngptsz', N_i[2])
-        ng = paw.finegd.ng
+        ng = paw.finegd.N_i
         nc.createDimension('nfinegptsx', ng[0])
         nc.createDimension('nfinegptsy', ng[1])
         nc.createDimension('nfinegptsz', ng[2])
