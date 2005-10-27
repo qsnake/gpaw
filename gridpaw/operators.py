@@ -22,8 +22,8 @@ class _Operator:
         if maxoffset_i[1] != mp or maxoffset_i[2] != mp:
 ##            print 'Warning: this should be optimized XXXX', maxoffsets, mp
             mp = max(maxoffset_i)
-        N_i = gd.myN_i
-        M_i = N_i + 2 * mp
+        n_i = gd.n_i
+        M_i = n_i + 2 * mp
         stride_i = num.array([M_i[1] * M_i[2], M_i[2], 1])
         offset_p = num.dot(offset_pi, stride_i)
         coef_p = contiguous(coef_p, num.Float)
@@ -32,10 +32,10 @@ class _Operator:
         assert coef_p.shape == offset_p.shape
         assert typecode in [num.Float, num.Complex]
         self.typecode = typecode
-        self.shape = tuple(N_i)
+        self.shape = tuple(n_i)
         
-        if gd.domain.parallel:
-            comm = gd.domain.comm
+        if gd.comm.size > 1:
+            comm = gd.comm
             if debug:
                 # get the C-communicator from the debug-wrapper:
                 comm = comm.comm
@@ -47,7 +47,7 @@ class _Operator:
         else:
             angle = int(gd.domain.angle / (pi / 2) + 0.5)
 
-        self.operator = _gridpaw.Operator(coef_p, offset_p, N_i, mp,
+        self.operator = _gridpaw.Operator(coef_p, offset_p, n_i, mp,
                                           neighbor_id, typecode == num.Float,
                                           comm, cfd, angle)
 

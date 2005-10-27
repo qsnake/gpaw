@@ -138,7 +138,7 @@ class _LocFuncs:
                                    tspos[1]*sin(da) + tspos[2]*cos(da)])+0.5
                                       
             box = LocalizedFunctions(functions, end_i - beg_i,
-                                     gd.myN_i,
+                                     gd.n_i,
                                      beg_i - gd.beg0_i, gd.h_i,
                                      beg_i - (rspos - disp) * gd.N_i,
                                      npts, k, typecode, forces, lfbc)
@@ -154,7 +154,7 @@ class _LocFuncs:
             self.nfuncsD += 3 + l * (1 + 2 * l)
         self.typecode = typecode
 
-        self.set_communicator(gd.domain.comm, MASTER)
+        self.set_communicator(gd.comm, MASTER)
 
     def set_communicator(self, comm, root):
         self.comm = comm

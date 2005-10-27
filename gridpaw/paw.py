@@ -280,7 +280,7 @@ class Paw:
         nmykpts = self.wf.nmykpts
         nbands = self.wf.nbands
 
-        if not self.domain.parallel:
+        if self.domain.comm.size == 1:
             # Serial calculation:
             for nucleus in self.nuclei:
                 if nucleus.domain_overlap == NOT_INITIALIZED:
@@ -291,7 +291,6 @@ class Paw:
             self.p_nuclei = self.nuclei
             self.g_nuclei = self.nuclei
             return
-
 
         # Parallel calculation:
         natoms = len(self.nuclei)

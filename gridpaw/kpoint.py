@@ -37,7 +37,7 @@ class KPoint:
 
         # Which cpu does overlap-matrix Cholesky-decomposition and
         # Hamiltonian-matrix diagonalization?
-        self.comm = self.gd.domain.comm
+        self.comm = self.gd.comm
         self.root = u % self.comm.size
         
         self.psit_nG = None

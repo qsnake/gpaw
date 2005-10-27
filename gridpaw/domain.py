@@ -1,26 +1,43 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""Domain object.
+
+This module contains the definition of the ``Domain`` class and some helper functins for parallel domain decomposition.
+"""
+
 import Numeric as num
 
 from gridpaw.utilities.mpi import serial_comm
 
 
 class Domain:
+    """Domain class."""
     def __init__(self, cell_i, periodic_i=(True, True, True), angle=None):
+        """Create Domain object from a unit cell and boundary conditions.
+
+        The arguments are the lengths of the three axes, followed by a
+        tuple of three periodic-boundary flags (``bool``'s) and
+        finally a rotation angle applied to the unit cell after
+        translation of one lattice vector in the x-direction
+        (experimental feature)."""
+        
         self.cell_i = num.array(cell_i, num.Float)
         self.periodic_i = periodic_i
 	self.angle = angle
+        
         self.set_decomposition(serial_comm, (1, 1, 1))
         
-    def set_decomposition(self, comm, parsize_i, N_i=None):
+    def set_decomposition(self, comm, parsize_i=None, N_i=None):
+        """Set MPI-communicator and do domain decomposition.
+
+        With ``parsize_i=(a, b, c)``, the domin will be divided in
+        ``a*b*c`` sub-domains - one for each CPU in ``comm``.  If
+        ``parsize_i`` is not given, the number of grid points will be
+        used to suggest a good domain decomposition."""
+        
         self.comm = comm
 
-        if self.comm.size > 1:
-            self.parallel = True
-        else:
-            self.parallel = False
-            
         if parsize_i is None:
             parsize_i = decompose_domain(N_i, comm.size)
         self.parsize_i = parsize_i

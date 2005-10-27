@@ -16,8 +16,8 @@ class Transformer:
         self.typecode = typecode
         neighbor_id = gd.domain.neighbor_id
 
-        if gd.domain.comm.size>1:
-            comm = gd.domain.comm
+        if gd.comm.size > 1:
+            comm = gd.comm
             if debug:
                 # Get the C-communicator from the debug-wrapper:
                 comm = comm.comm
@@ -28,15 +28,15 @@ class Transformer:
             angle = 0
         else:
             angle = int(gd.domain.angle / (pi / 2) + 0.5)
-            if gd.domain.comm.size > 1:
+            if gd.comm.size > 1:
                 raise NotImplementedError
 
         self.transformer = _gridpaw.Transformer(
             # Why asarray here? XXX
-            num.asarray(gd.myN_i, num.Int), p, number + 1, neighbor_id,
+            num.asarray(gd.n_i, num.Int), p, number + 1, neighbor_id,
             typecode == num.Float, comm, interpolate, angle)
         
-        self.ngpin = tuple(gd.myN_i)
+        self.ngpin = tuple(gd.n_i)
         assert typecode in [num.Float, num.Complex]
 
     def apply(self, input, output, phases=None):

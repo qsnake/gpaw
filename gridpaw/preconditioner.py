@@ -56,14 +56,14 @@ class Teter:
     def __init__(self, gd, kin, typecode):
         print 'Teter, Payne and Allan FFT Preconditioning of residue vector'
         self.typecode = typecode
-        dims = gd.myN_i.copy()
+        dims = gd.n_i.copy()
         dims.shape = (3, 1, 1, 1)
         icell = 1.0 / num.array(gd.domain.cell_i)
         icell.shape = (3, 1, 1, 1)
-        q_iq = ((num.indices(gd.myN_i) + dims / 2) % dims - dims / 2) * icell
+        q_iq = ((num.indices(gd.n_i) + dims / 2) % dims - dims / 2) * icell
         self.q2_q = num.sum(q_iq**2)
 
-        self.r_iG = num.indices(gd.myN_i, num.Float) / dims
+        self.r_iG = num.indices(gd.n_i, num.Float) / dims
         self.r_iG.shape = (3, -1)
 
         self.cache = {}

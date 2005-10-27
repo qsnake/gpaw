@@ -53,10 +53,10 @@ class GridDescriptor:
         if num.sometrue(self.N_i % domain.parsize_i):
             raise ValueError('Bad number of CPUs!')
 
-        self.myN_i = self.N_i / domain.parsize_i
+        self.n_i = self.N_i / domain.parsize_i
 
-        self.beg_i = domain.parpos_i * self.myN_i
-        self.end_i = self.beg_i + self.myN_i
+        self.beg_i = domain.parpos_i * self.n_i
+        self.end_i = self.beg_i + self.n_i
         self.beg0_i = self.beg_i.copy()
 
         for i in range(3):
@@ -74,7 +74,7 @@ class GridDescriptor:
         ``Float``).  An extra dimension can be added with
         ``n=dim``."""
 
-        shape = self.myN_i
+        shape = self.n_i
         if n is not None:
             shape = (n,) + tuple(shape)
             
@@ -96,8 +96,8 @@ class GridDescriptor:
 
         Reurned descriptor has 2x2x2 fewer grid points."""
         
-        if num.sometrue(self.myN_i % 2):
-            raise ValueError('Grid %s not divisable by 2!' % self.myN_i)
+        if num.sometrue(self.n_i % 2):
+            raise ValueError('Grid %s not divisable by 2!' % self.n_i)
         return GridDescriptor(self.domain, self.N_i / 2)
 
     def get_boxes(self, spos, rcut, cut=True):
@@ -271,7 +271,7 @@ class GridDescriptor:
             # for the whole domain:
             B_g = num.zeros(self.N_i, num.Float)
             parsize_i = self.domain.parsize_i
-            n0, n1, n2 = self.myN_i
+            n0, n1, n2 = self.n_i
             c = 0
             for nx in range(parsize_i[0]):
                 for ny in range(parsize_i[1]):
@@ -313,7 +313,7 @@ class GridDescriptor:
             # for the whole domain:
             B_g = num.zeros(a_g.shape[:-3] + tuple(self.N_i), a_g.typecode())
             parsize_i = self.domain.parsize_i
-            n0, n1, n2 = self.myN_i
+            n0, n1, n2 = self.n_i
             c = 0
             for nx in range(parsize_i[0]):
                 for ny in range(parsize_i[1]):
@@ -332,7 +332,7 @@ class GridDescriptor:
         rho_ig = [num.sum(rho_xy, 1), num.sum(rho_xy, 0), num.sum(rho_xz, 0)]
         d_i = num.zeros(3, num.Float)
         for i in range(3):
-            r_g = (num.arange(self.myN_i[i], typecode=num.Float) +
+            r_g = (num.arange(self.n_i[i], typecode=num.Float) +
                    self.beg0_i[i]) * self.h_i[i]
             d_i[i] = -num.dot(r_g, rho_ig[i]) * self.dv
         self.comm.sum(d_i)
@@ -343,7 +343,7 @@ class GridDescriptor:
         nbands = len(psit_nG)
         Z_n1n2 = num.zeros((nbands, nbands), num.Complex)
         shape = (nbands, -1)
-        for g in range(self.myN_i[i]):
+        for g in range(self.n_i[i]):
             e = exp(2j * pi / self.N_i[i] * (g + self.beg0_i[i]))
             if i == 0:
                 A_nG = psit_nG[:, g].copy()
