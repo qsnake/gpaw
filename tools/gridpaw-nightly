@@ -19,10 +19,8 @@ import pylab
 
 
 def send_email(subject, filename='/dev/null'):
-##    for u in ['jensj', 'lhansen']:
-    for u in ['jensj']:
-        assert os.system('mail -s "%s" %s@fysik.dtu.dk < %s' %
-                         (subject, u, filename)) == 0
+    assert os.system('mail -s "%s" %gridpaw-developer@lists.berlios.de < %s' %
+                     (subject, filename)) == 0
 
 
 def fail(msg, filename='/dev/null'):
@@ -32,13 +30,12 @@ def fail(msg, filename='/dev/null'):
 
 tests = ''
 # For a quick test - uncomment this line:
-tests = 'PBE.py Gauss.py'
+#tests = 'PBE.py Gauss.py'
 
 dir = tempfile.mkdtemp(prefix='gridpaw-')
 os.chdir(dir)
 
 # Checkout a fresh version and install:
-root = ':pserver:jensj@cvs.fysik.dtu.dk:/home/camp/CVSROOT'
 if os.system('svn export ' +
              'http://svn.berlios.de/svnroot/repos/gridpaw/trunk') != 0:
     fail('Checkout failed!')
@@ -197,8 +194,12 @@ print >> out
 print >> out, '(coverage-test is performed Sunday nights only)'
 
 os.system('cd ..; epydoc --docformat restructuredtext ' +
-          '--name gridpaw --url http://wiki.fysik.dtu.dk/gridcode gridpaw; ' +
+          '--name gridpaw --url http://wiki.fysik.dtu.dk/gridcode gridpaw ' +
+          '>& warnings; ' +
           'cp -rp html /home/camp/jensj/.gridpaw/cron')
+
+if 'Warning:' in open('../warnings').read():
+    send_email('Warning(s) from epydoc!', '../warnings')
 
 os.system('cd; rm -r ' + dir)
 

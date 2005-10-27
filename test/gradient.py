@@ -25,7 +25,7 @@ domain = Domain((1.0, 7.0, 1.0), periodic_i=(1, 0, 1))
 gd = GridDescriptor(domain, (1, 7, 1))
 dady = gd.new_array()
 a = gd.new_array()
-grady = Gradient(gd, axis=1)
+grady = Gradient(gd, i=1)
 a[0, :, 0] = num.arange(7)
 grady.apply(a, dady)
 

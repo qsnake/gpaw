@@ -27,7 +27,7 @@ MASTER = 0
 class GridDescriptor:
     """Descriptor-class for uniform 3D grid
 
-    A `GridDescriptor` object holds information on how functions, such
+    A ``GridDescriptor`` object holds information on how functions, such
     as wave functions and electron densities, are discreticed in a
     certain domain in space.  The main information here is how many
     grid points are used in each direction of the unit cell.
@@ -40,7 +40,7 @@ class GridDescriptor:
     def __init__(self, domain, N_i):
         """Construct `GridDescriptor`
 
-        A uniform 3D grid is defined by a `Domain` object and the
+        A uniform 3D grid is defined by a ``Domain`` object and the
         number of grid points ``N_i`` in x, y, and z-directions (three
         integers)."""
         
@@ -84,7 +84,7 @@ class GridDescriptor:
             return num.empty(shape, typecode)
 
     def is_healthy(self):
-        """Sanity check"""
+        """Sanity check for grid spacings."""
         return max(self.h_i) / min(self.h_i) < 1.3
 
     def integrate(self, a_g):
@@ -92,7 +92,7 @@ class GridDescriptor:
         return self.comm.sum(num.sum(a_g.flat)) * self.dv
     
     def coarsen(self):
-        """Return coarsened `GridDescritor` object.
+        """Return coarsened `GridDescriptor` object.
 
         Reurned descriptor has 2x2x2 fewer grid points."""
         
@@ -208,84 +208,96 @@ class GridDescriptor:
             return boxes
 
 
-    def mirror(self, a, i):
+    def mirror(self, a_g, i):
+        """Apply mirror symmetry to array.
+
+        The mirror plane goes through origo and is perpendicular to
+        the ``i``'th axis: 0, 1, 2 -> *x*, *y*, *z*."""
+        
         N = self.domain.parsize_i[i]
         if i == 0:
-            b = a.copy()
+            b_g = a_g.copy()
         else:
             axes = [0, 1, 2]
             axes[i] = 0
             axes[0] = i
-            b = num.transpose(a, axes).copy()
+            b_g = num.transpose(a_g, axes).copy()
         n = self.domain.parpos_i[i]
         m = (-n) % N
         if n != m:
             rank = self.rank + (m - n) * self.domain.stride_i[i]
-            request = self.comm.receive(b[0], rank, False)
-            self.comm.send(b[0].copy(), rank)
+            request = self.comm.receive(b_g[0], rank, False)
+            self.comm.send(b_g[0].copy(), rank)
             self.comm.wait(request)
-        c = b[-1:0:-1].copy()
+        c_g = b_g[-1:0:-1].copy()
         m = N - n - 1
         if n != m:
             rank = self.rank + (m - n) * self.domain.stride_i[i]
-            request = self.comm.receive(b[1:], rank, False)
-            self.comm.send(c, rank)
+            request = self.comm.receive(b_g[1:], rank, False)
+            self.comm.send(c_g, rank)
             self.comm.wait(request)
         else:
-            b[1:] = c
+            b_g[1:] = c_g
         if i == 0:
-            return b
+            return b_g
         else:
-            return num.transpose(b, axes).copy()
+            return num.transpose(b_g, axes).copy()
                 
     def swap_axes(self, a_g, axes):
+        """Swap axes of array.
+
+        The ``axes`` argument gives the new ordering of the axes.
+        Example: With ``axes=(0, 2, 1)`` the *y*, *z* axes will be
+        swapped."""
+        
         assert num.alltrue(self.N_i == num.take(self.N_i, axes)), \
                'Can only swap axes with same length!'
 
-        if not (self.comm.size>1):
+        if self.comm.size == 1:
             return num.transpose(a_g, axes).copy()
 
         # Collect all arrays on the master, do the swapping, and
         # redistribute the result:
         if self.rank != MASTER:
             self.comm.gather(a_g, MASTER)
-            b_g = self.array()
+            b_g = self.new_array()
             self.comm.receive(b_g, MASTER)
             return b_g
         else:
-            b_cg = num.zeros((self.comm.size,) + a_g.shape, num.Float)
+            b_cg = self.new_array(self.comm.size)
             self.comm.gather(a_g, MASTER, b_cg)
 
             # Put the subdomains from the slaves into the big array
             # for the whole domain:
-            big_g = num.zeros(self.N_i, num.Float)
+            B_g = num.zeros(self.N_i, num.Float)
             parsize_i = self.domain.parsize_i
             n0, n1, n2 = self.myN_i
             c = 0
             for nx in range(parsize_i[0]):
                 for ny in range(parsize_i[1]):
                     for nz in range(parsize_i[2]):
-                        big_g[nx * n0:(nx + 1) * n0,
-                              ny * n1:(ny + 1) * n1,
-                              nz * n2:(nz + 1) * n2] = b_cg[c]
+                        B_g[nx * n0:(nx + 1) * n0,
+                            ny * n1:(ny + 1) * n1,
+                            nz * n2:(nz + 1) * n2] = b_cg[c]
                         c += 1
                         
-            big_g = num.transpose(big_g, axes).copy()
+            B_g = num.transpose(B_g, axes).copy()
 
             b_g = b_cg[0]
             c = 0
             for nx in range(parsize_i[0]):
                 for ny in range(parsize_i[1]):
                     for nz in range(parsize_i[2]):
-                        b_g[:] = big_g[nx * n0:(nx + 1) * n0,
-                                       ny * n1:(ny + 1) * n1,
-                                       nz * n2:(nz + 1) * n2]
+                        b_g[:] = B_g[nx * n0:(nx + 1) * n0,
+                                     ny * n1:(ny + 1) * n1,
+                                     nz * n2:(nz + 1) * n2]
                         if c != MASTER:
                             self.comm.send(b_g, c)
                         c += 1
-            return big_g[:n0, :n1, :n2].copy()
+            return B_g[:n0, :n1, :n2].copy()
 
     def collect(self, a_g):
+        """Collect distributed array to master-CPU."""
         if self.comm.size == 1:
             return a_g
 
@@ -294,38 +306,40 @@ class GridDescriptor:
             self.comm.gather(a_g, MASTER)
             return
         else:
-            b_cg = num.zeros((self.comm.size,) + a_g.shape, a_g.typecode())
+            b_cg = self.new_array(self.comm.size, a_g.typecode())
             self.comm.gather(a_g, MASTER, b_cg)
 
             # Put the subdomains from the slaves into the big array
             # for the whole domain:
-            big_g = num.zeros(a_g.shape[:-3] + tuple(self.N_i), a_g.typecode())
+            B_g = num.zeros(a_g.shape[:-3] + tuple(self.N_i), a_g.typecode())
             parsize_i = self.domain.parsize_i
             n0, n1, n2 = self.myN_i
             c = 0
             for nx in range(parsize_i[0]):
                 for ny in range(parsize_i[1]):
                     for nz in range(parsize_i[2]):
-                        big_g[...,
-                              nx * n0:(nx + 1) * n0,
-                              ny * n1:(ny + 1) * n1,
-                              nz * n2:(nz + 1) * n2] = b_cg[c]
+                        B_g[...,
+                            nx * n0:(nx + 1) * n0,
+                            ny * n1:(ny + 1) * n1,
+                            nz * n2:(nz + 1) * n2] = b_cg[c]
                         c += 1
-            return big_g
+            return B_g
         
     def calculate_dipole_moment(self, rho_xyz):
+        """Calculate dipole moment of density."""
         rho_xy = num.sum(rho_xyz, 2)
         rho_xz = num.sum(rho_xyz, 1)
         rho_ig = [num.sum(rho_xy, 1), num.sum(rho_xy, 0), num.sum(rho_xz, 0)]
         d_i = num.zeros(3, num.Float)
         for i in range(3):
-            ri = (num.arange(self.myN_i[i], typecode=num.Float) +
-                  self.beg0_i[i]) * self.h_i[i]
-            d_i[i] = -num.dot(ri, rho_ig[i]) * self.dv
+            r_g = (num.arange(self.myN_i[i], typecode=num.Float) +
+                   self.beg0_i[i]) * self.h_i[i]
+            d_i[i] = -num.dot(r_g, rho_ig[i]) * self.dv
         self.comm.sum(d_i)
         return d_i
 
     def wannier_matrix(self, psit_nG, i):
+        """Wannier localization integrals."""
         nbands = len(psit_nG)
         Z_n1n2 = num.zeros((nbands, nbands), num.Complex)
         shape = (nbands, -1)
@@ -350,18 +364,32 @@ class GridDescriptor:
     
 
 class RadialGridDescriptor:
+    """Descriptor-class for radial grid."""
     def __init__(self, r_g, dr_g):
+        """Construct `RadialGridDescriptor`.
+
+        The one-dimensional array ``r_g`` gives the radii of the grid
+        points according to some possibly non-linear function:
+        ``r_g[g]`` = *f(g)*.  The array ``dr_g[g]`` = *f'(g)* is used
+        for forming derivatives."""
+        
         self.r_g = r_g
         self.dr_g = dr_g
         self.dv_g = 4 * pi * r_g**2 * dr_g
 
     def derivative(self, n_g, dndr_g):
+        """Finite-difference derivative of radial function."""
         dndr_g[0] = n_g[1] - n_g[0]
         dndr_g[1:-1] = 0.5 * (n_g[2:] - n_g[:-2])
         dndr_g[-1] = n_g[-1] - n_g[-2]
         dndr_g /= self.dr_g
 
     def derivative2(self, a_g, b_g):
+        """Finite-difference derivative of radial function.
+
+        For an infinitely dense grid, this method would be identical
+        to the `derivative` method."""
+        
         c_g = a_g / self.dr_g
         b_g[0] = 0.5 * c_g[1] + c_g[0]
         b_g[1] = 0.5 * c_g[2] - c_g[0]

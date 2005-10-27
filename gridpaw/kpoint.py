@@ -24,7 +24,7 @@ class KPoint:
         
         if typecode == num.Float:
             # Gamma-point calculation:
-            self.phase_id = num.ones((3 * 2,), num.Float) # XXX or None?
+            self.phase_id = num.ones((3, 2), num.Float) # XXX or None?
             self.k_i = None
         else:
             displacement_idi = self.gd.domain.displacement_idi

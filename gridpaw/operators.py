@@ -58,7 +58,7 @@ class _Operator:
         assert is_contiguous(out_xg, self.typecode)
         assert (self.typecode is num.Float or
                 (phase_id.typecode() == num.Complex and
-                 phase_id.shape == (3 * 2,)))
+                 phase_id.shape == (3, 2)))
         self.operator.apply(in_xg, out_xg, phase_id)
 
     def get_diagonal_element(self):

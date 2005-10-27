@@ -44,10 +44,10 @@ class AllElectron:
         # Collect principal quantum numbers, angular momentum quantum
         # numbers, occupation numbers and eigenvalues (j is a combined
         # index for n and l):        
-        n_j = self.n_j = num.array([n for n, l, f, e in nlfe_j])
-        l_j = self.l_j = num.array([l for n, l, f, e in nlfe_j])
-        f_j = self.f_j = num.array([f for n, l, f, e in nlfe_j])
-        f_j = self.e_j = num.array([e for n, l, f, e in nlfe_j])
+        self.n_j = num.array([n for n, l, f, e in nlfe_j])
+        self.l_j = num.array([l for n, l, f, e in nlfe_j])
+        self.f_j = num.array([f for n, l, f, e in nlfe_j])
+        self.e_j = num.array([e for n, l, f, e in nlfe_j])
 
         print
         if scalarrel:
@@ -60,9 +60,6 @@ class AllElectron:
         # Number of orbitals:
         nj = len(nlfe_j)
 
-        # Maximum angular momentum quantum number:
-        lmax = max(l_j)
-        
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
         #     N - g
@@ -70,7 +67,7 @@ class AllElectron:
         #        rN
         # g = --------
         #     beta + r
-        maxnodes = max(n_j - l_j - 1)
+        maxnodes = max(self.n_j - self.l_j - 1)
         N = (maxnodes + 1) * 150
         print N, 'radial gridpoints.'
         beta = 0.4

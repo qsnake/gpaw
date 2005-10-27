@@ -60,24 +60,24 @@ class Domain:
         return num.dot(rnk_i, self.stride_i)
 
     def find_neighbor_processors_and_displacements(self):
-        self.neighbor_id = num.zeros((3 * 2,), num.Int)
-        self.displacement_idi = num.zeros((3 * 2, 3), num.Float)
+        self.neighbor_id = num.zeros((3, 2), num.Int)
+        self.displacement_idi = num.zeros((3, 2, 3), num.Float)
         for i in range(3):
             p = self.parpos_i[i]
             for d in range(2):
                 disp = 2 * d - 1
                 pd = p + disp
                 pd0 = pd % self.parsize_i[i]
-                self.neighbor_id[i*2+d] = (self.comm.rank +
+                self.neighbor_id[i, d] = (self.comm.rank +
                                           (pd0 - p) * self.stride_i[i])
                 if pd0 != pd:
                     # Wrap around the box?
                     if self.periodic_i[i]:
                         # Yes:
-                        self.displacement_idi[i*2+d, i] = -disp
+                        self.displacement_idi[i, d, i] = -disp
                     else:
                         # No:
-                        self.neighbor_id[i*2+d] = -1
+                        self.neighbor_id[i, d] = -1
 
 
 def decompose_domain(ng, p):
