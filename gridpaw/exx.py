@@ -19,13 +19,13 @@ class ExxSingle:
         self.EGaussSelf1 = -num.sqrt(a/2/pi)            # gaussian self energy for Z=1
 
         # calculate reciprocal lattice vectors
-        dim     = num.array(gd.ng,typecode=num.Int); dim=num.reshape(dim,(3,1,1,1))
+        dim     = num.array(gd.N_i,typecode=num.Int); dim=num.reshape(dim,(3,1,1,1))
         dk      = 2*pi / num.array(gd.domain.cell_i,typecode=num.Float); dk=num.reshape(dk,(3, 1, 1, 1)) 
-        k       = ((num.indices(self.gd.ng)+dim/2)%dim - dim/2)*dk
+        k       = ((num.indices(self.gd.N_i)+dim/2)%dim - dim/2)*dk
         self.k2 = 1.0*sum(k**2); self.k2[0,0,0]=1.0
 
         # determine N^3
-        self.N3 = self.gd.ng[0]*self.gd.ng[1]*self.gd.ng[2]
+        self.N3 = self.gd.N_i[0]*self.gd.N_i[1]*self.gd.N_i[2]
 
     def getExchangeEnergy(self,n, method='recip'):
         '''Returns exchange energy of input density 'n' '''
@@ -75,14 +75,14 @@ class ExxSingle:
 ''' AUXHILLIARY FUNCTIONS... should be moved to Utillities module'''
 
 def rSquared(gd):
-    I=num.indices(gd.ng)
-    dr = num.reshape(gd.h,(3,1,1,1))
+    I=num.indices(gd.N_i)
+    dr = num.reshape(gd.h_i,(3,1,1,1))
     r0 = -0.5*num.reshape(gd.domain.cell_i,(3,1,1,1))
     r0 = num.ones(I.shape)*r0
     r2 = num.sum((r0+I*dr)**2)
 
     # remove zero at origin
-    middle = gd.ng/2.
+    middle = gd.N_i/2.
     if num.alltrue(middle==num.floor(middle)):
         z=middle.astype(int)
         r2[z[0],z[1],z[2]]=1e-12
@@ -107,51 +107,7 @@ def packNEW(M2):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] =  M2[r, c] + M2[c,r]
+            M[p] =  M2[r, c] + num.conjugate(M2[c,r])
             p += 1
     assert p == len(M)
     return M
-
-'''-------------START INPUT HERE---------------
-
- def gt1S(self):
-        from gridpaw.spline import Spline
-        from gridpaw.localized_functions import LocFuncs
-
-        gt_L  = []
-        rc    = 0.9
-        a     = 9/rc**2
-        N     = 100
-        r     = num.arange(N+1)*rc/N
-        gauss = 4*num.sqrt(a**3/pi)*num.exp(-a*r**2); gauss[-1]=0
-        s     = Spline(0,rc,gauss)
-        for nucleus in self.nuclei:
-            gt_L.append(LocFuncs([s], self.gd, nucleus.spos))
-        return gt_L
-   
-    def exx(self):
-        from gridpaw.exx import ExxSingle
-        from gridpaw.exx import packNEW
-
-        self.timer.start('exx')
-        exx_single = ExxSingle(self.gd)
-        exx=0.0
-        gt_L = self.gt1S()
-        for n in range(self.nbands):
-            for m in range(self.nbands):
-                n_G = cc(self.kpts[0].psit_nG[m])*self.kpts[0].psit_nG[n]
-                for a, nucleus in enumerate(self.nuclei):
-                    Pm_i = self.kpts[0].f_n[m]*cc(nucleus.P_uni[0,m])
-                    Pn_i = self.kpts[0].f_n[n]*nucleus.P_uni[0,n]
-                    D_i1i2 = real(num.outerproduct(Pm_i,Pn_i))
-                    D_p = packNEW(D_i1i2)
-                    Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-                    gt_L[a].add(n_G,Q_L)
-                exx+=exx_single.getExchangeEnergy(n_G)
-        self.timer.stop('exx')
-        return exx
-
-
-
-
-------------END INPUT HERE---------------'''

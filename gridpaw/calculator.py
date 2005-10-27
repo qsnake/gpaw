@@ -401,6 +401,16 @@ class Calculator:
         """Return k-points in the irreducible part of the Brillouin zone."""
         return self.paw.get_ibz_kpoints()
 
+    def GetExactExchange(self):
+        paw = self.paw
+        paw.timer.start('exx')
+        exx = paw.wf.exx(paw.nuclei, paw.gd)
+        paw.timer.stop('exx')
+        return exx*paw.Ha
+    
+    def GetXCEnergy(self):
+        return self.paw.Exc*self.paw.Ha
+
     # Alternative name:
     GetKPoints = GetIBZKPoints
  
