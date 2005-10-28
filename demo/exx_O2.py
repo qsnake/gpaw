@@ -1,5 +1,6 @@
 from ASE import Atom, ListOfAtoms
 from gridpaw import Calculator
+from gridpaw.atom.all_electron import AllElectron as AE
 
 a = 6.8
 b = a / 2
@@ -28,6 +29,9 @@ excO2 = calc2.GetXCEnergy()
 exxO  = calc.GetExactExchange()
 exxO2 = calc2.GetExactExchange()
 
+atom    = AE('O'); atom.run()
+ExxAtom = atom.exactExchange()
+
 print '\t\t\tO atom\t|\tO2 molecule'
 print 'ENERGIES:'
 print 'potential:\t%2.5f\t|\t%2.5f' %(eO,eO2) 
@@ -38,5 +42,7 @@ print 'potential:\t\t%3.5f' %(eO2-2*eO)
 print 'exchange:\t\t%3.5f' %((eO2-excO2 + exxO2)-2*(eO-excO+exxO)) 
 print ' '
 print 'Exchange-only atomization energy in kcal/mol: ', ((eO2-excO2 + exxO2)-2*(eO-excO+exxO))*23.2407
-
-
+print ' '
+print 'All electron single atom radial calculator exchange energy:\n
+[Eval-val, Eval-core, Ecore-core]'
+print ExxAtom

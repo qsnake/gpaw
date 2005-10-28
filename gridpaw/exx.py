@@ -13,7 +13,7 @@ class ExxSingle:
         r  = num.sqrt(r2)
 
         # construct gauss density, potential, and self energy for Z=1
-        a                = 22./min(gd.domain.cell_i)**2     # 'width' of gaussian distribution
+        a                = 22./min(gd.domain.cell_i)**2 # 'width' of gaussian distribution
         self.ng1         = num.exp(-a*r2)*(a/pi)**(1.5) # gaussian density for Z=1
         self.vgauss1     = erf3D(num.sqrt(a)*r)/r       # gaussian potential for Z=1
         self.EGaussSelf1 = -num.sqrt(a/2/pi)            # gaussian self energy for Z=1
