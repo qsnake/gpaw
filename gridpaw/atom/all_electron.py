@@ -96,7 +96,15 @@ class AllElectron:
         # Initialize with Slater function:
         for l, e, u in zip(self.l_j, self.e_j, self.u_j):
             a = sqrt(-2.0 * e)
-            u[:] = r**(1 + l) * num.exp(-a * r)
+
+            # This one: "u[:] = r**(1 + l) * num.exp(-a * r)" gives
+            # OverflowError: math range error
+            u[:] = r**(1 + l)
+            rmax = 350.0 / a
+            gmax = int(rmax * self.N / (self.beta + rmax))
+            u[:gmax] *= num.exp(-a * r[:gmax])
+            u[gmax:] = 0.0
+
             norm = num.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
         
