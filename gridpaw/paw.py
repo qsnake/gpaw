@@ -227,7 +227,7 @@ class Paw:
         movement = False
         distribute_atoms = False
         for nucleus, pos_i in zip(self.nuclei, pos_ai):
-            spos_i = self.domain.normalize(pos_i)
+            spos_i = self.domain.scale_position(pos_i)
             if num.sometrue(spos_i != nucleus.spos):
                 movement = True
                 nucleus.spos = spos_i

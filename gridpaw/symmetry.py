@@ -11,7 +11,7 @@ class Symmetry:
         self.numbers = numbers
         self.cell = domain.cell_i
         self.bc = domain.periodic_i
-        self.normalize = domain.normalize
+        self.scale_position = domain.scale_position
         self.tol = tolerance
         # The identity:
         self.symmetries = [((0, 1, 2), (1, 1, 1))]
@@ -66,7 +66,7 @@ class Symmetry:
         # each atomic number:
         species = {}
         for a, Z in enumerate(self.numbers):
-            spos = self.normalize(positions[a])
+            spos = self.scale_position(positions[a])
             if species.has_key(Z):
                 species[Z].append((a, spos))
             else:
@@ -102,8 +102,8 @@ class Symmetry:
                     a2 = map[a1]
                     Z2 = self.numbers[a2]
                     assert Z1 == Z2
-                    spos1 = self.normalize(positions[a1])
-                    spos2 = self.normalize(positions[a2])
+                    spos1 = self.scale_position(positions[a1])
+                    spos2 = self.scale_position(positions[a2])
                     sdiff = num.take(spos1 * mirror, swap) - spos2
                     sdiff -= num.floor(sdiff + 0.5)
                     assert num.dot(sdiff, sdiff) < self.tol

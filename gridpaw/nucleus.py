@@ -254,10 +254,10 @@ class Nucleus:
     def adjust_residual(self, R_nG, eps_n, s, u, k_i):
         assert self.domain_overlap >= PROJECTOR_FUNCTION
         if self.domain_overlap == EVERYTHING:
-            H_i1i2 = unpack(self.H_sp[s])
+            H_ii = unpack(self.H_sp[s])
             P_ni = self.P_uni[u]
-            coefs_ni =  (num.dot(P_ni, H_i1i2) -
-                         num.dot(P_ni * eps_n[:, None], self.setup.O_i1i2))
+            coefs_ni =  (num.dot(P_ni, H_ii) -
+                         num.dot(P_ni * eps_n[:, None], self.setup.O_ii))
             self.pt_i.add(R_nG, coefs_ni, k_i, communicate=True)
         else:
             self.pt_i.add(R_nG, None, k_i, communicate=True)
@@ -272,16 +272,16 @@ class Nucleus:
             self.pt_i.multiply(pR_G, None, k_i)
 
         if self.domain_overlap == EVERYTHING:
-            H_i1i2 = unpack(self.H_sp[s])
-            coefs_i = (num.dot(dP_i, H_i1i2) -
-                       num.dot(dP_i * eps, self.setup.O_i1i2))
+            H_ii = unpack(self.H_sp[s])
+            coefs_i = (num.dot(dP_i, H_ii) -
+                       num.dot(dP_i * eps, self.setup.O_ii))
             self.pt_i.add(dR_G, coefs_i, k_i, communicate=True)
         else:
             self.pt_i.add(dR_G, None, k_i, communicate=True)
 
-    def symmetrize(self, D_ai1i2, map_sa, s):
-        D_i1i2 = self.setup.symmetrize(self.a, D_ai1i2, map_sa)
-        self.D_sp[s] = pack(D_i1i2)
+    def symmetrize(self, D_aii, map_sa, s):
+        D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
+        self.D_sp[s] = pack(D_ii)
 
     def calculate_force(self, vHt_g, nt_g, vt_G):
         if self.domain_overlap == EVERYTHING:
@@ -350,16 +350,16 @@ class Nucleus:
         if self.domain_overlap == EVERYTHING:
             P_ni = cc(self.P_uni[u])
             nb = P_ni.shape[0]
-            H_i1i2 = unpack(self.H_sp[s])
-            O_i1i2 = self.setup.O_i1i2
+            H_ii = unpack(self.H_sp[s])
+            O_ii = self.setup.O_ii
             nk = self.setup.get_number_of_derivatives()
             F_nk = num.zeros((nb, nk), self.typecode)
             # ???? Optimization: Take the real value of F_nk * P_ni early.
             self.pt_i.multiply(psit_nG, F_nk, k_i, derivatives=True)
             F_nk *= f_n[:, None]
-            F_ik = num.dot(H_i1i2, num.dot(num.transpose(P_ni), F_nk))
+            F_ik = num.dot(H_ii, num.dot(num.transpose(P_ni), F_nk))
             F_nk *= eps_n[:, None]
-            F_ik -= num.dot(O_i1i2, num.dot(num.transpose(P_ni), F_nk))
+            F_ik -= num.dot(O_ii, num.dot(num.transpose(P_ni), F_nk))
             F_ik *= 2.0
             i = 0
             k = 0

@@ -152,12 +152,12 @@ class WaveFunctions:
                                           comm, symmetry):
         for nucleus in my_nuclei:
             ni = nucleus.get_number_of_partial_waves()
-            D_si1i2 = num.zeros((self.nspins, ni, ni), num.Float)
+            D_sii = num.zeros((self.nspins, ni, ni), num.Float)
             for kpt in self.kpts:
                 P_ni = nucleus.P_uni[kpt.u]
-                D_si1i2[kpt.s] += real(num.dot(cc(num.transpose(P_ni)),
+                D_sii[kpt.s] += real(num.dot(cc(num.transpose(P_ni)),
                                                P_ni * kpt.f_n[:, None]))
-            nucleus.D_sp[:] = [pack(D) for D in D_si1i2]
+            nucleus.D_sp[:] = [pack(D) for D in D_sii]
 
             self.kpt_comm.sum(nucleus.D_sp)
 
@@ -176,9 +176,9 @@ class WaveFunctions:
                 D_asp.append(D_sp)
 
             for s in range(self.nspins):
-                D_ai1i2 = [unpack2(D_sp[s]) for D_sp in D_asp]
+                D_aii = [unpack2(D_sp[s]) for D_sp in D_asp]
                 for nucleus in my_nuclei:
-                    nucleus.symmetrize(D_ai1i2, symmetry.maps, s)
+                    nucleus.symmetrize(D_aii, symmetry.maps, s)
 
     def print_eigenvalues(self, out, Ha):
         if (self.kpt_comm.size > 1 or

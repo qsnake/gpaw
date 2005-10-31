@@ -61,7 +61,7 @@ class Mixer1:
         # History for Pulay mixing of densities:
         self.nt_iG = [] # Pseudo-electron densities
         self.R_iG = []  # Residuals
-        self.A_i1i2 = num.zeros((0, 0), num.Float)
+        self.A_ii = num.zeros((0, 0), num.Float)
 
         # Collect atomic density matrices:
         self.D_a = [(nucleus.D_sp[s], [], []) for nucleus in my_nuclei]
@@ -86,24 +86,24 @@ class Mixer1:
                 dD_ip.append(D_p - D_ip[-1])
 
             # Update matrix:
-            A_i1i2 = num.zeros((iold, iold), num.Float)
+            A_ii = num.zeros((iold, iold), num.Float)
             i1 = 0
             i2 = iold - 1
             for R_1G in self.R_iG:
                 a = comm.sum(num.dot(R_1G.flat, R_G.flat))
-                A_i1i2[i1, i2] = a
-                A_i1i2[i2, i1] = a
+                A_ii[i1, i2] = a
+                A_ii[i2, i1] = a
                 i1 += 1
-            A_i1i2[:i2, :i2] = self.A_i1i2[-i2:, -i2:]
-            self.A_i1i2 = A_i1i2
+            A_ii[:i2, :i2] = self.A_ii[-i2:, -i2:]
+            self.A_ii = A_ii
 
             try:
-                B_i1i2 = linalg.inverse(A_i1i2)
+                B_ii = linalg.inverse(A_ii)
             except linalg.LinAlgError:
                 alpha_i = num.zeros(iold, num.Float)
                 alpha_i[-1] = 1.0
             else:
-                alpha_i = num.sum(B_i1i2, 1)
+                alpha_i = num.sum(B_ii, 1)
                 try:
                     # Normalize:
                     alpha_i /= num.sum(alpha_i)
@@ -156,7 +156,7 @@ class MixerSum:
         # History for Pulay mixing of densities:
         self.nt_iG = [] # Pseudo-electron densities
         self.R_iG = []  # Residuals
-        self.A_i1i2 = num.zeros((0, 0), num.Float)
+        self.A_ii = num.zeros((0, 0), num.Float)
 
         # Collect atomic density matrices:
         self.D_a = [(nucleus.D_sp, [], []) for nucleus in my_nuclei]
@@ -189,24 +189,24 @@ class MixerSum:
                 dD_isp.append(D_sp - D_isp[-1])
 
             # Update matrix:
-            A_i1i2 = num.zeros((iold, iold), num.Float)
+            A_ii = num.zeros((iold, iold), num.Float)
             i1 = 0
             i2 = iold - 1
             for R_1G in self.R_iG:
                 a = comm.sum(num.dot(R_1G.flat, R_G.flat))
-                A_i1i2[i1, i2] = a
-                A_i1i2[i2, i1] = a
+                A_ii[i1, i2] = a
+                A_ii[i2, i1] = a
                 i1 += 1
-            A_i1i2[:i2, :i2] = self.A_i1i2[-i2:, -i2:]
-            self.A_i1i2 = A_i1i2
+            A_ii[:i2, :i2] = self.A_ii[-i2:, -i2:]
+            self.A_ii = A_ii
 
             try:
-                B_i1i2 = linalg.inverse(A_i1i2)
+                B_ii = linalg.inverse(A_ii)
             except linalg.LinAlgError:
                 alpha_i = num.zeros(iold, num.Float)
                 alpha_i[-1] = 1.0
             else:
-                alpha_i = num.sum(B_i1i2, 1)
+                alpha_i = num.sum(B_ii, 1)
                 try:
                     # Normalize:
                     alpha_i /= num.sum(alpha_i)

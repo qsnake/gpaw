@@ -341,7 +341,7 @@ class GridDescriptor:
     def wannier_matrix(self, psit_nG, i):
         """Wannier localization integrals."""
         nbands = len(psit_nG)
-        Z_n1n2 = num.zeros((nbands, nbands), num.Complex)
+        Z_nn = num.zeros((nbands, nbands), num.Complex)
         shape = (nbands, -1)
         for g in range(self.n_i[i]):
             e = exp(2j * pi / self.N_i[i] * (g + self.beg0_i[i]))
@@ -352,15 +352,15 @@ class GridDescriptor:
             else:
                 A_nG = psit_nG[:, :, :, g].copy()
             A_nG.shape = shape
-            Z_n1n2 += e * num.dot(cc(A_nG), num.transpose(A_nG))
-        self.comm.sum(Z_n1n2, MASTER)
+            Z_nn += e * num.dot(cc(A_nG), num.transpose(A_nG))
+        self.comm.sum(Z_nn, MASTER)
         #                __        __      __
         #        ~      \         2||  a  \     a  a    a  *
         # Z    = Z    +  )  exp[i --- R ]  )   P  O   (P  )
         #  nmx    nmx   /__        L   x  /__   ni ii'  mi'
         #
         #                a                 ii'
-        return Z_n1n2 * self.dv
+        return Z_nn * self.dv
     
 
 class RadialGridDescriptor:

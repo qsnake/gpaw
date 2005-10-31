@@ -30,7 +30,7 @@ def fail(msg, filename='/dev/null'):
 
 tests = ''
 # For a quick test - uncomment this line:
-#tests = 'PBE.py Gauss.py'
+##tests = 'PBE.py Gauss.py'
 
 dir = tempfile.mkdtemp(prefix='gridpaw-')
 os.chdir(dir)
@@ -196,6 +196,7 @@ print >> out, '(coverage-test is performed Sunday nights only)'
 os.system('cd ..; epydoc --docformat restructuredtext ' +
           '--name gridpaw --url http://wiki.fysik.dtu.dk/gridcode gridpaw ' +
           '>& warnings; ' +
+          'rm -rf /home/camp/jensj/.gridpaw/cron/html; ' +
           'cp -rp html /home/camp/jensj/.gridpaw/cron')
 
 if 'Warning:' in open('../warnings').read():

@@ -403,7 +403,7 @@ class Setup:
         self.M -= e_electrostatic
         self.E = e_total
 
-        self.O_i1i2 = sqrt(4.0 * pi) * unpack(self.Delta_pL[:, 0].copy())
+        self.O_ii = sqrt(4.0 * pi) * unpack(self.Delta_pL[:, 0].copy())
 
         K_q = []
         for j1 in range(nj):
@@ -548,20 +548,20 @@ class Setup:
 
     def calculate_rotations(self, R_slm1m2):
         nsym = len(R_slm1m2)
-        self.R_si1i2 = num.zeros((nsym, self.ni, self.ni), num.Float)
+        self.R_sii = num.zeros((nsym, self.ni, self.ni), num.Float)
         i1 = 0
         for l in self.l_j:
             i2 = i1 + 2 * l + 1
             for s, R_lm1m2 in enumerate(R_slm1m2):
-                self.R_si1i2[s, i1:i2, i1:i2] = R_slm1m2[s][l]
+                self.R_sii[s, i1:i2, i1:i2] = R_slm1m2[s][l]
             i1 = i2
 
-    def symmetrize(self, a, D_ai1i2, map_sa):
-        D_i1i2 = num.zeros((self.ni, self.ni), num.Float)
-        for s, R_i1i2 in enumerate(self.R_si1i2):
-            D_i1i2 += num.dot(R_i1i2, num.dot(D_ai1i2[map_sa[s][a]],
-                                              num.transpose(R_i1i2)))
-        return D_i1i2 / len(map_sa)
+    def symmetrize(self, a, D_aii, map_sa):
+        D_ii = num.zeros((self.ni, self.ni), num.Float)
+        for s, R_ii in enumerate(self.R_sii):
+            D_ii += num.dot(R_ii, num.dot(D_aii[map_sa[s][a]],
+                                              num.transpose(R_ii)))
+        return D_ii / len(map_sa)
 
     # Get rid of all these methods: XXXXXXXXXXXXXXXXXXXXXX
     def get_smooth_core_density(self):

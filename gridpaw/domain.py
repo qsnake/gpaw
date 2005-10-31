@@ -19,7 +19,7 @@ class Domain:
         The arguments are the lengths of the three axes, followed by a
         tuple of three periodic-boundary flags (``bool``'s) and
         finally a rotation angle applied to the unit cell after
-        translation of one lattice vector in the x-direction
+        translation of one lattice vector in the *x*-direction
         (experimental feature)."""
         
         self.cell_i = num.array(cell_i, num.Float)
@@ -40,15 +40,14 @@ class Domain:
 
         if parsize_i is None:
             parsize_i = decompose_domain(N_i, comm.size)
-        self.parsize_i = parsize_i
+        self.parsize_i = num.array(parsize_i)
 
         self.stride_i = num.array([parsize_i[1] * parsize_i[2],
                                    parsize_i[2],
                                    1])
         
-        if parsize_i[0] * parsize_i[1] * parsize_i[2] != self.comm.size:
-            print parsize_i, self.comm.size
-            raise RuntimeError
+        if num.product(self.parsize_i) != self.comm.size:
+            raise RuntimeError('Bad domain decomposition!')
 
         rnk = self.comm.rank
         self.parpos_i = num.array(
@@ -57,28 +56,41 @@ class Domain:
              rnk % self.stride_i[1]])
         assert num.dot(self.parpos_i, self.stride_i) == rnk
 
-        self.find_neighbor_processors_and_displacements()
+        self.find_neighbor_processors()
 
-    def normalize(self, pos_i):
+    def scale_position(self, pos_i):
+        """Return scaled position.
+
+        Return array with the coordinates scaled to the interval [0,
+        1)."""
+        
         spos_i = pos_i / self.cell_i
         for i in range(3):
             if self.periodic_i[i]:
                 spos_i[i] %= 1.0
         return spos_i
 
-    def difference(self, spos1_i, spos2_i):
-        return (spos1_i - spos2_i) * self.cell_i
-    
     def rank(self, spos_i):
+        """Calculate rank of domain containing scaled position."""
         rnk_i = num.clip(num.floor(spos_i * self.parsize_i).astype(num.Int),
                          0, num.array(self.parsize_i) - 1)
         for i in range(3):
             assert 0 <= rnk_i[i] < self.parsize_i[i], "Bad bad!"
         return num.dot(rnk_i, self.stride_i)
 
-    def find_neighbor_processors_and_displacements(self):
+    def find_neighbor_processors(self):
+        """Find neighbor processors - surprise!
+
+        With ``i`` and ``d`` being the indices for the axis (x, y or
+        z) and direction + or - (0 or 1), two attributes are
+        calculated:
+
+        * ``neighbor_id``:  Rank of neighbor.
+        * ``disp_id``:  Displacement for neighbor.
+        """
+        
         self.neighbor_id = num.zeros((3, 2), num.Int)
-        self.displacement_idi = num.zeros((3, 2, 3), num.Float)
+        self.disp_id = num.zeros((3, 2), num.Int)
         for i in range(3):
             p = self.parpos_i[i]
             for d in range(2):
@@ -91,7 +103,7 @@ class Domain:
                     # Wrap around the box?
                     if self.periodic_i[i]:
                         # Yes:
-                        self.displacement_idi[i, d, i] = -disp
+                        self.disp_id[i, d] = -disp
                     else:
                         # No:
                         self.neighbor_id[i, d] = -1

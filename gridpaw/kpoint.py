@@ -3,6 +3,7 @@
 
 from __future__ import generators
 from math import pi
+from cmath import exp
 
 import Numeric as num
 import LinearAlgebra as linalg
@@ -12,7 +13,6 @@ from gridpaw.utilities.complex import cc, real
 from gridpaw.utilities.lapack import diagonalize
 from gridpaw.utilities import scale_add_to, square_scale_add_to, unpack
 from gridpaw.utilities.timing import Timer
-import gridpaw.utilities.mpi as mpi
 from gridpaw.operators import Gradient
 
 
@@ -22,13 +22,15 @@ class KPoint:
         self.weight = weight
         self.typecode = typecode
         
+        self.phase_id = num.ones((3, 2), num.Complex)
         if typecode == num.Float:
             # Gamma-point calculation:
-            self.phase_id = num.ones((3, 2), num.Float) # XXX or None?
             self.k_i = None
         else:
-            displacement_idi = self.gd.domain.displacement_idi
-            self.phase_id = num.exp(2j * pi * num.dot(displacement_idi, k_i))
+            disp_id = self.gd.domain.disp_id
+            for i in range(3):
+                for d in range(2):
+                    self.phase_id[i, d] = exp(2j * pi * disp_id[i, d] * k_i[i])
             self.k_i = k_i
 
         self.s = s
@@ -51,8 +53,8 @@ class KPoint:
             self.allocate_wavefunctions(nbands)
         self.eps_n = num.zeros(nbands, num.Float)
         self.f_n = num.ones(nbands, num.Float) * self.weight
-        self.H_n1n2 = num.zeros((nbands, nbands), self.typecode)
-        self.S_n1n2 = num.zeros((nbands, nbands), self.typecode)
+        self.H_nn = num.zeros((nbands, nbands), self.typecode)
+        self.S_nn = num.zeros((nbands, nbands), self.typecode)
 
     def allocate_wavefunctions(self, nbands):
         self.psit_nG = self.gd.new_array(nbands, self.typecode)
@@ -72,46 +74,45 @@ class KPoint:
         self.Htpsit_nG += self.psit_nG * vt_G
         self.timer.stop('pot')
         self.timer.start('H')
-        self.H_n1n2[:] = 0.0  # is that necessary? XXXX
-        r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_n1n2)
+        self.H_nn[:] = 0.0  # is that necessary? XXXX
+        r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
         self.timer.stop('H')
 
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
-            self.H_n1n2 += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[self.s]),
+            self.H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[self.s]),
                                                cc(num.transpose(P_ni))))
 
-        self.comm.sum(self.H_n1n2, self.root)
+        self.comm.sum(self.H_nn, self.root)
         
         self.timer.start('diag')
         if self.comm.rank == self.root:
-            info = diagonalize(self.H_n1n2, self.eps_n)
+            info = diagonalize(self.H_nn, self.eps_n)
             if info != 0:
                 raise RuntimeError, 'Very Bad!!'
         self.timer.stop('diag')
         
-        if mpi.parallel:
-            self.comm.broadcast(self.H_n1n2, self.root)
-            self.comm.broadcast(self.eps_n, self.root)
+        self.comm.broadcast(self.H_nn, self.root)
+        self.comm.broadcast(self.eps_n, self.root)
 
         # Rotate psit_nG:
         # We should block this so that we can use a smaller temp !!!!!
         self.timer.start('rot1')
         temp = num.array(self.psit_nG)
-        gemm(1.0, temp, self.H_n1n2, 0.0, self.psit_nG)
+        gemm(1.0, temp, self.H_nn, 0.0, self.psit_nG)
         self.timer.stop('rot1')
         
         # Rotate Htpsit_nG:
         self.timer.start('rot2')
         temp[:] = self.Htpsit_nG
-        gemm(1.0, temp, self.H_n1n2, 0.0, self.Htpsit_nG)
+        gemm(1.0, temp, self.H_nn, 0.0, self.Htpsit_nG)
         self.timer.stop('rot2')
         
         # Rotate P_ani:
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
             temp_ni = P_ni.copy()
-            gemm(1.0, temp_ni, self.H_n1n2, 0.0, P_ni)
+            gemm(1.0, temp_ni, self.H_nn, 0.0, P_ni)
         
         if nbands != self.nbands:
             self.timer.start('extra')
@@ -121,7 +122,7 @@ class KPoint:
             psitao_nG = self.psit_nG
             Htpsitao_nG = self.Htpsit_nG
             epsao_n = self.eps_n
-            Hao_n1n2 = self.H_n1n2
+            Hao_nn = self.H_nn
             
             self.allocate(nbands)
 
@@ -129,13 +130,13 @@ class KPoint:
             self.psit_nG[:nmin] = psitao_nG[:nmin]
             self.Htpsit_nG[:nmin] = Htpsitao_nG[:nmin]
             self.eps_n[:nmin] = epsao_n[:nmin]
-            self.H_n1n2[:nmin, :nmin] = Hao_n1n2[:nmin, :nmin]
-            del psitao_nG, Htpsitao_nG, epsao_n, Hao_n1n2
+            self.H_nn[:nmin, :nmin] = Hao_nn[:nmin, :nmin]
+            del psitao_nG, Htpsitao_nG, epsao_n, Hao_nn
 
             extra = nbands - nao
             if extra > 0:
                 self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
-                self.H_n1n2.flat[nao * (nbands + 1)::nbands + 1] = 1.0
+                self.H_nn.flat[nao * (nbands + 1)::nbands + 1] = 1.0
                 slice = self.psit_nG[nao:]
                 grad = Gradient(self.gd, 0, typecode=self.typecode).apply
                 grad(self.psit_nG[:extra], slice, self.phase_id)
@@ -157,16 +158,17 @@ class KPoint:
         return error
         
     def orthonormalize(self, my_nuclei):
-        S = self.S_n1n2
+        S_nn = self.S_nn
 
         # Fill in the lower triangle:
-        rk(self.gd.dv, self.psit_nG, 0.0, S)
+        rk(self.gd.dv, self.psit_nG, 0.0, S_nn)
         
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
-            S += num.dot(P_ni, cc(num.innerproduct(nucleus.setup.O_i1i2, P_ni)))
+            S_nn += num.dot(P_ni,
+                            cc(num.innerproduct(nucleus.setup.O_ii, P_ni)))
         
-        self.comm.sum(S, self.root)
+        self.comm.sum(S_nn, self.root)
 
         yield None
 
@@ -174,21 +176,19 @@ class KPoint:
             # inverse returns a non-contigous matrix - grrrr!  That is
             # why there is a copy.  Should be optimized with a
             # different lapack call to invert a triangular matrix XXXXX
-            S = linalg.inverse(
-                linalg.cholesky_decomposition(S)).copy()
+            S_nn = linalg.inverse(linalg.cholesky_decomposition(S_nn)).copy()
 
         yield None
 
-        if mpi.parallel:
-            self.comm.broadcast(S, self.root)
+        self.comm.broadcast(S_nn, self.root)
 
         # This step will overwrite the Htpsit_nG array!
-        gemm(1.0, self.psit_nG, S, 0.0, self.Htpsit_nG)
+        gemm(1.0, self.psit_nG, S_nn, 0.0, self.Htpsit_nG)
         self.psit_nG, self.Htpsit_nG = self.Htpsit_nG, self.psit_nG
 
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
-            gemm(1.0, P_ni.copy(), S, 0.0, P_ni)
+            gemm(1.0, P_ni.copy(), S_nn, 0.0, P_ni)
 
         yield None
 
