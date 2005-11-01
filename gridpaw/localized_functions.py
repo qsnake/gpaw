@@ -129,11 +129,11 @@ class LocFuncs:
             for box in self.box_b:
                 box.add(coef_xi, a_xg)
         else:
-            if self.phases.has_key(id(k_i)):
-                phase_b = self.phases[id(k_i)]
-            else:
-                phase_b = num.exp(-2j * pi * num.dot(self.disp_bi, k_i))
-                self.phases[id(k_i)] = phase_b
+##            if self.phases.has_key(id(k_i)):
+##                phase_b = self.phases[id(k_i)]
+##            else:
+            phase_b = num.exp(-2j * pi * num.dot(self.disp_bi, k_i))
+##                self.phases[id(k_i)] = phase_b
                 
             for box, phase in zip(self.box_b, phase_b):
                 box.add(coef_xi * phase, a_xg)
@@ -162,11 +162,11 @@ class LocFuncs:
                 box.multiply(a_xg, tmp_xi, derivatives)
                 result_xi += tmp_xi
         else:
-            if self.phases.has_key(id(k_i)):
-                phase_b = self.phases[id(k_i)]
-            else:
-                phase_b = num.exp(-2j * pi * num.dot(self.disp_bi, k_i))
-                self.phases[id(k_i)] = phase_b
+##            if self.phases.has_key(id(k_i)):
+##                phase_b = self.phases[id(k_i)]
+##            else:
+            phase_b = num.exp(2j * pi * num.dot(self.disp_bi, k_i))
+##                self.phases[id(k_i)] = phase_b
             for box, phase in zip(self.box_b, phase_b):
                 box.multiply(a_xg, tmp_xi, derivatives)
                 result_xi += phase * tmp_xi

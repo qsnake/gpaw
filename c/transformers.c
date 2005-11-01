@@ -137,7 +137,7 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   PyObject* comm_obj;
   int interpolate;
   int angle;
-  if (!PyArg_ParseTuple(args, "OiiOiOiiOO", 
+  if (!PyArg_ParseTuple(args, "OiiOiOii", 
                         &size, &p, &k, &neighbors, &real, &comm_obj,
 			&interpolate, &angle))
     return NULL;
