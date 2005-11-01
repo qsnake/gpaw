@@ -41,8 +41,8 @@ class GridDescriptor:
         """Construct `GridDescriptor`
 
         A uniform 3D grid is defined by a ``Domain`` object and the
-        number of grid points ``N_i`` in x, y, and z-directions (three
-        integers)."""
+        number of grid points ``N_i`` in *x*, *y*, and *z*-directions
+        (three integers)."""
         
         self.domain = domain
         self.comm = domain.comm

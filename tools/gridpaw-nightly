@@ -17,9 +17,13 @@ import matplotlib
 matplotlib.use('Agg')
 import pylab
 
+import docutils
+print docutils.__version__
+
 
 def send_email(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" %gridpaw-developer@lists.berlios.de < %s' %
+##    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
 
 
@@ -137,7 +141,7 @@ print >> f, """\
 # Coverage test:
 os.chdir('test')
 day = time.localtime()[6]
-if ok and day == 6: # only Sunday
+if ok:#################### and day == 6: # only Sunday
     if os.system(export +
                  'rm /home/camp/jensj/.gridpaw/cron/*.cover; ' +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +
@@ -193,7 +197,7 @@ else:
 print >> out
 print >> out, '(coverage-test is performed Sunday nights only)'
 
-os.system('cd ..; epydoc --docformat restructuredtext ' +
+os.system(export + 'cd ..; epydoc --docformat restructuredtext ' +
           '--name gridpaw --url http://wiki.fysik.dtu.dk/gridcode gridpaw ' +
           '>& warnings; ' +
           'rm -rf /home/camp/jensj/.gridpaw/cron/html; ' +

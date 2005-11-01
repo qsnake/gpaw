@@ -137,7 +137,7 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   PyObject* comm_obj;
   int interpolate;
   int angle;
-  if (!PyArg_ParseTuple(args, "OiiOiOii", 
+  if (!PyArg_ParseTuple(args, "OiiOiOiiOO", 
                         &size, &p, &k, &neighbors, &real, &comm_obj,
 			&interpolate, &angle))
     return NULL;
@@ -161,7 +161,8 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
       padding[0] = k / 2 - 1;
       padding[1] = k / 2;
     }
-  self->bc = bc_init(INTP(size), padding, nb, comm, real, 0, angle);
+  self->bc = bc_init(INTP(size), padding, nb, comm, real, 0, 
+		     angle);
   const int* size1 = self->bc->size1;
   const int* size2 = self->bc->size2;
 

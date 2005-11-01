@@ -3,8 +3,8 @@
 
 """Nucleus class.
 
-A Paw object has a list of nuclei. Each Nucleus is described by a
-setup object and a scaled position plus some extra stuff..."""
+A Paw object has a list of nuclei. Each nucleus is described by a
+``Setup`` object and a scaled position plus some extra stuff..."""
 
 import Numeric as num
 
@@ -19,6 +19,7 @@ NOTHING = 0
 COMPENSATION_CHARGE = 1
 PROJECTOR_FUNCTION = 2
 EVERYTHING = 3
+
 
 class Nucleus:
     def __init__(self, setup, a, typecode, onohirose=1):
@@ -196,18 +197,18 @@ class Nucleus:
         if self.domain_overlap == EVERYTHING:
             P_ni = self.P_uni[kpt.u]
             P_ni[:] = 0.0 # why????
-            self.pt_i.multiply(kpt.psit_nG, P_ni, kpt.k_i)
+            self.pt_i.integrate(kpt.psit_nG, P_ni, kpt.k_i)
         else:
-            self.pt_i.multiply(kpt.psit_nG, None, kpt.k_i)
+            self.pt_i.integrate(kpt.psit_nG, None, kpt.k_i)
 
     def calculate_projections2(self, psit_G, k_i):
         assert self.domain_overlap >= PROJECTOR_FUNCTION
         if self.domain_overlap == EVERYTHING:
             P_i = num.zeros(self.get_number_of_partial_waves(), self.typecode)
-            self.pt_i.multiply(psit_G, P_i, k_i)
+            self.pt_i.integrate(psit_G, P_i, k_i)
             return P_i
         else:
-            self.pt_i.multiply(psit_G, None, k_i)
+            self.pt_i.integrate(psit_G, None, k_i)
             return None
     
     def calculate_multipole_moments(self):
@@ -225,8 +226,8 @@ class Nucleus:
                 W_L += num.dot(neighbor.v, neighbor.nucleus.Q_L)
             U = 0.5 * num.dot(self.Q_L, W_L)
         
-            self.vhat_L.multiply(nt, W_L)
-            self.ghat_L.multiply(vHt_g, W_L)
+            self.vhat_L.integrate(nt, W_L)
+            self.ghat_L.integrate(vHt_g, W_L)
 
             Exc = a.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
 
@@ -248,8 +249,8 @@ class Nucleus:
             return Ekin, Epot, Ebar, Exc
         
         else:
-            self.vhat_L.multiply(nt, None)
-            self.ghat_L.multiply(vHt_g, None)
+            self.vhat_L.integrate(nt, None)
+            self.ghat_L.integrate(vHt_g, None)
             return 0.0, 0.0, 0.0, 0.0
 
     def adjust_residual(self, R_nG, eps_n, s, u, k_i):
@@ -268,9 +269,9 @@ class Nucleus:
         if self.domain_overlap == EVERYTHING:
             ni = self.get_number_of_partial_waves()
             dP_i = num.zeros(ni, self.typecode)
-            self.pt_i.multiply(pR_G, dP_i, k_i)
+            self.pt_i.integrate(pR_G, dP_i, k_i)
         else:
-            self.pt_i.multiply(pR_G, None, k_i)
+            self.pt_i.integrate(pR_G, None, k_i)
 
         if self.domain_overlap == EVERYTHING:
             H_ii = unpack(self.H_sp[s])
@@ -290,8 +291,8 @@ class Nucleus:
             nk = (3, 9, 22)[lmax]
             # ???? Optimization: do the sum over L before the sum over g and G.
             F_k = num.zeros(nk, num.Float)
-            self.ghat_L.multiply(vHt_g, F_k, derivatives=True)
-            self.vhat_L.multiply(nt_g, F_k, derivatives=True) 
+            self.ghat_L.integrate(vHt_g, F_k, derivatives=True)
+            self.vhat_L.integrate(nt_g, F_k, derivatives=True) 
             
             Q_L = self.Q_L
             F = self.F_i
@@ -312,12 +313,12 @@ class Nucleus:
 
             # Force from smooth core charge:
             F_k = num.zeros(3, num.Float)
-            self.nct.multiply(vt_G, F_k, derivatives=True)
+            self.nct.integrate(vt_G, F_k, derivatives=True)
             F += F_k
 
             # Force from localized potential:
             F_k = num.zeros(3, num.Float)
-            self.vbar.multiply(nt_g, F_k, derivatives=True)
+            self.vbar.integrate(nt_g, F_k, derivatives=True)
             F += F_k
 
             dF = num.zeros(((lmax + 1)**2, 3), num.Float)
@@ -328,17 +329,17 @@ class Nucleus:
             F += num.dot(self.Q_L, dF)
         else:
             if self.domain_overlap >= COMPENSATION_CHARGE:
-                self.ghat_L.multiply(vHt_g, None, derivatives=True)
-                self.vhat_L.multiply(nt_g, None, derivatives=True) 
+                self.ghat_L.integrate(vHt_g, None, derivatives=True)
+                self.vhat_L.integrate(nt_g, None, derivatives=True) 
             if self.nct is None:
                 self.comm.sum(num.zeros(3, num.Float), self.rank)
             else:
-                self.nct.multiply(vt_G, None, derivatives=True)
+                self.nct.integrate(vt_G, None, derivatives=True)
             if self.domain_overlap >= PROJECTOR_FUNCTION:
                 if self.vbar is None:
                     self.pt_i.comm.sum(num.zeros(3, num.Float), self.pt_i.root)
                 else:
-                    self.vbar.multiply(nt_g, None, derivatives=True)
+                    self.vbar.integrate(nt_g, None, derivatives=True)
 
     def calculate_force_kpoint(self, kpt):
         assert self.domain_overlap >= PROJECTOR_FUNCTION
@@ -356,7 +357,7 @@ class Nucleus:
             nk = self.setup.get_number_of_derivatives()
             F_nk = num.zeros((nb, nk), self.typecode)
             # ???? Optimization: Take the real value of F_nk * P_ni early.
-            self.pt_i.multiply(psit_nG, F_nk, k_i, derivatives=True)
+            self.pt_i.integrate(psit_nG, F_nk, k_i, derivatives=True)
             F_nk *= f_n[:, None]
             F_ik = num.dot(H_ii, num.dot(num.transpose(P_ni), F_nk))
             F_nk *= eps_n[:, None]
@@ -380,4 +381,4 @@ class Nucleus:
                 i += 2 * l + 1
                 k += 3 + l * (1 + 2 * l)
         else:
-            self.pt_i.multiply(psit_nG, None, k_i, derivatives=True)
+            self.pt_i.integrate(psit_nG, None, k_i, derivatives=True)
