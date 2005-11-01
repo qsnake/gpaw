@@ -16,7 +16,7 @@ class Symmetry:
         # The identity:
         self.symmetries = [((0, 1, 2), (1, 1, 1))]
 
-    def analyze(self, positions):
+    def analyze(self, pos_ai):
         """Analyse(atoms)
 
         Find a list of symmetry operations."""
@@ -55,9 +55,9 @@ class Symmetry:
         self.symmetries = [(swap, mirror)
                            for swap in swaps for mirror in mirrors]
         
-        self.prune_symmetries(positions)
+        self.prune_symmetries(pos_ai)
 
-    def prune_symmetries(self, positions):
+    def prune_symmetries(self, pos_ai):
         """prune_symmetries(atoms)
 
         Remove symmetries that are not satisfied."""
@@ -66,22 +66,22 @@ class Symmetry:
         # each atomic number:
         species = {}
         for a, Z in enumerate(self.numbers):
-            spos = self.scale_position(positions[a])
+            spos_i = self.scale_position(pos_ai[a])
             if species.has_key(Z):
-                species[Z].append((a, spos))
+                species[Z].append((a, spos_i))
             else:
-                species[Z] = [(a, spos)]
+                species[Z] = [(a, spos_i)]
 
         symmok = []
         maps = []
         for swap, mirror in self.symmetries:
-            map = num.zeros(len(positions))
+            map = num.zeros(len(pos_ai))
             for specie in species.values():
-                for a1, spos1 in specie:
-                    spos1 = num.take(spos1 * mirror, swap)
+                for a1, spos1_i in specie:
+                    spos1_i = num.take(spos1_i * mirror, swap)
                     ok = False
-                    for a2, spos2 in specie:
-                        sdiff = spos1 - spos2
+                    for a2, spos2_i in specie:
+                        sdiff = spos1_i - spos2_i
                         sdiff -= num.floor(sdiff + 0.5)
                         if num.dot(sdiff, sdiff) < self.tol:
                             ok = True
@@ -102,22 +102,22 @@ class Symmetry:
                     a2 = map[a1]
                     Z2 = self.numbers[a2]
                     assert Z1 == Z2
-                    spos1 = self.scale_position(positions[a1])
-                    spos2 = self.scale_position(positions[a2])
-                    sdiff = num.take(spos1 * mirror, swap) - spos2
+                    spos1_i = self.scale_position(pos_ai[a1])
+                    spos2_i = self.scale_position(pos_ai[a2])
+                    sdiff = num.take(spos1_i * mirror, swap) - spos2_i
                     sdiff -= num.floor(sdiff + 0.5)
                     assert num.dot(sdiff, sdiff) < self.tol
 
         self.maps = maps
         self.symmetries = symmok
                 
-    def check(self, positions):
+    def check(self, pos_ai):
         """Check(positions) -> boolean
 
         Check if positions satisfy symmetry operations."""
 
         nsymold = len(self.symmetries)
-        self.prune_symmetries(positions)
+        self.prune_symmetries(pos_ai)
         if len(self.symmetries) < nsymold:
             raise RuntimeError('Boken symmetry!')
 

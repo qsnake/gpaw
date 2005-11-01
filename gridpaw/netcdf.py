@@ -50,7 +50,6 @@ def read_netcdf(paw, filename):
 
     # Read projections:
     for nucleus in paw.nuclei:
-        nucleus.spos
         nucleus.allocate(wf.nspins, wf.nmykpts, wf.nbands)
     P_skni = vars['Projections']
     for ns in range(wf.nspins): 

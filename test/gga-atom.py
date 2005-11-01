@@ -4,7 +4,7 @@ from gridpaw.utilities import equal
 from gridpaw.setup import Setup
 from gridpaw.domain import Domain
 from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.localized_functions import LocFuncs
+from gridpaw.localized_functions import create_localized_functions
 from gridpaw.spline import Spline
 from gridpaw.xc_functional import XCFunctional, XCOperator
 from gridpaw.utilities import pack
@@ -31,7 +31,7 @@ for name in ['LDA', 'PBE']:
     n = 90
     domain = Domain((a, a, a))
     gd = GridDescriptor(domain, (n, n, n))
-    pr = LocFuncs(wt_j, gd, (0.5, 0.5, 0.5), npts=0)
+    pr = create_localized_functions(wt_j, gd, (0.5, 0.5, 0.5), onohirose=1)
 
     coefs = num.identity(niAO, num.Float)
     psit_ig = num.zeros((niAO, n, n, n), num.Float)
@@ -61,8 +61,8 @@ for name in ['LDA', 'PBE']:
 
 
 
-    p = LocFuncs([d.get_smooth_core_density()],
-                 gd, (0.5, 0.5, 0.5), npts=0)
+    p = create_localized_functions([d.get_smooth_core_density()],
+                                   gd, (0.5, 0.5, 0.5), onohirose=1)
     p.add(n_g, num.ones(1, num.Float))
     xc = XCOperator(xcfunc, gd, nspins=1)
     xc.get_energy_and_potential(n_g, v_g)

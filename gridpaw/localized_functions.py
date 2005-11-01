@@ -14,29 +14,51 @@ import _gridpaw
 MASTER = 0
 
 
+def create_localized_functions(functions, gd, spos_i, onohirose=5,
+                               typecode=num.Float, cut=False,
+                               forces=True, lfbc=None):
+    """Create `LocFuncs` object.
 
+    From a list of splines, a grid-descriptor and a scaled position,
+    create a `LocFuncs` object.  If this domain does not contribute to
+    the localized finctions, ``None`` is returned.
 
-def LocFuncs(functions, gd, spos, npts=5, typecode=num.Float, cut=False,
-             forces=True, lfbc=None):
-    lf = _LocFuncs(functions, gd, spos, npts, typecode, cut, forces, lfbc)
-    if len(lf.boxes) > 0:
-        return lf
+    ============= ======================== ===================================
+    keyword       type
+    ============= ======================== ===================================
+    ``onohirose`` ``int``                  Grid point density used for
+                                           Ono-Hirose double-grid
+                                           technique (5 is default and 1 is
+                                           off).
+    ``typecode``  ``Float`` or ``Complex`` Type of arrays to operate on.
+    ``cut``       ``bool``                 Allow functions to cut boundaries
+                                           when not periodic.
+    ``forces``    ``bool``                 Calculate derivatives.
+    ``lfbc``      `LocFuncBroadcaster`     Parallelization ...
+    ============= ======================== ===================================
+    """
+
+    lf_i = LocFuncs(functions, gd, spos_i, onohirose,
+                    typecode, cut, forces, lfbc)
+    if len(lf_i.boxes) > 0:
+        return lf_i
     else:
+        # No boxes in this domain:
         return None
 
 
-class _LocFuncs:
-    def __init__(self, functions, gd, spos, npts, typecode, cut, forces, lfbc):
+class LocFuncs:
+    def __init__(self, functions, gd, spos_i, onohirose,
+                 typecode, cut, forces, lfbc):
         
         # We assume that all functions have the same cut-off:
         rcut = functions[0].get_cutoff()
-        if npts==0:
-            npts=1#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        p = npts
-        k = KK[0]
-        if npts != 1:
+        p = onohirose
+        assert p > 0
+        k = 6
+        if p != 1:
             rcut += (k / 2 - 1.0 / p) * max(gd.h_i)
-        boxes = gd.get_boxes(spos, rcut, cut)
+        boxes = gd.get_boxes(spos_i, rcut, cut)
         self.boxes = []
         self.displacements = num.zeros((len(boxes), 3), num.Float)
         b = 0
@@ -45,19 +67,20 @@ class _LocFuncs:
         from math import cos, sin
         for beg_i, end_i, disp in boxes:
             if angle is None:
-                rspos = spos
+                rspos_i = spos_i
             else:
                 da = angle*disp[0]
-                tspos = spos-0.5
-                rspos = num.array([tspos[0],
-                                   tspos[1]*cos(da)-tspos[2]*sin(da),
-                                   tspos[1]*sin(da) + tspos[2]*cos(da)])+0.5
+                tspos_i = spos_i-0.5
+                rspos_i = num.array(
+                    [tspos_i[0],
+                     tspos_i[1]*cos(da)-tspos_i[2]*sin(da),
+                     tspos_i[1]*sin(da) + tspos_i[2]*cos(da)]) + 0.5
                                       
             box = LocalizedFunctions(functions, end_i - beg_i,
                                      gd.n_i,
                                      beg_i - gd.beg0_i, gd.h_i,
-                                     beg_i - (rspos - disp) * gd.N_i,
-                                     npts, k, typecode, forces, lfbc)
+                                     beg_i - (rspos_i - disp) * gd.N_i,
+                                     p, k, typecode, forces, lfbc)
             self.boxes.append(box)
             self.displacements[b] = disp
             b += 1
@@ -123,41 +146,15 @@ class _LocFuncs:
             box.add_density(n_G, f_i)
 
 
-class LocFuncBroadcaster:
-    def __init__(self, comm):
-        self.comm = comm
-        self.size = comm.size
-        self.rank = comm.rank
-        self.reset()
-
-    def reset(self):
-        self.lfs = []
-        self.root = 0
-
-    def next(self):
-        compute = (self.root == self.rank)
-        self.root = (self.root + 1) % self.size
-        return compute
-
-    def add(self, lf):
-        self.lfs.append(lf)
-    
-    def broadcast(self):
-        if self.size > 1:
-            for root, lf in enumerate(self.lfs):
-                lf.broadcast(self.comm, root % self.size)
-        self.reset()
-
-
 class _LocalizedFunctions:
     def __init__(self, radials, dims, dimsbig, corner,
-                 h, pos, p, k, typecode, forces, locfuncbcaster):
+                 h, pos_i, p, k, typecode, forces, locfuncbcaster):
         radials = [radial.spline for radial in radials]
         dims = contiguous(dims, num.Int)
         dimsbig = contiguous(dimsbig, num.Int)
         corner = contiguous(corner, num.Int)
         h = contiguous(h, num.Float)
-        pos = contiguous(pos * h, num.Float)
+        pos_i = contiguous(pos_i * h, num.Float)
         assert typecode in [num.Float, num.Complex]
         self.ngp = tuple(dimsbig)
         self.nfuncs = 0
@@ -177,7 +174,7 @@ class _LocalizedFunctions:
             radials, dims,
             dimsbig,
             corner,
-            h, pos, p, k,
+            h, pos_i, p, k,
             typecode == num.Float,
             forces, compute)
         if locfuncbcaster is not None:
@@ -227,7 +224,35 @@ if debug:
     LocalizedFunctions = _LocalizedFunctions
 else:
     def LocalizedFunctions(radials, dims, dimsbig, corner,
-                           h, pos, ninter, k, typecode, forces, lfbc):
+                           h, pos_i, ninter, k, typecode, forces, lfbc):
         return _LocalizedFunctions(radials, dims, dimsbig, corner,
-                                   h, pos, ninter, k, typecode,
+                                   h, pos_i, ninter, k, typecode,
                                    forces, lfbc).lfs
+
+
+class LocFuncBroadcaster:
+    def __init__(self, comm):
+        self.comm = comm
+        self.size = comm.size
+        self.rank = comm.rank
+        self.reset()
+
+    def reset(self):
+        self.lfs = []
+        self.root = 0
+
+    def next(self):
+        compute = (self.root == self.rank)
+        self.root = (self.root + 1) % self.size
+        return compute
+
+    def add(self, lf):
+        self.lfs.append(lf)
+    
+    def broadcast(self):
+        if self.size > 1:
+            for root, lf in enumerate(self.lfs):
+                lf.broadcast(self.comm, root % self.size)
+        self.reset()
+
+

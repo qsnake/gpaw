@@ -100,13 +100,13 @@ class GridDescriptor:
             raise ValueError('Grid %s not divisable by 2!' % self.n_i)
         return GridDescriptor(self.domain, self.N_i / 2)
 
-    def get_boxes(self, spos, rcut, cut=True):
+    def get_boxes(self, spos_i, rcut, cut=True):
         """Find boxes enclosing sphere."""
         N_i = self.N_i
         ncut = rcut / self.h_i
-        npos = spos * N_i
-        beg_i = num.ceil(npos - ncut).astype(num.Int)
-        end_i   = num.ceil(npos + ncut).astype(num.Int)
+        npos_i = spos_i * N_i
+        beg_i = num.ceil(npos_i - ncut).astype(num.Int)
+        end_i   = num.ceil(npos_i + ncut).astype(num.Int)
 
         if cut:
             for i in range(3):

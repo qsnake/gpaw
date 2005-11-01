@@ -14,7 +14,6 @@ from gridpaw.utilities.complex import cc, real
 from gridpaw.utilities import run_threaded, pack, unpack2
 from gridpaw.utilities.timing import Timer
 from gridpaw.operators import Laplace
-import gridpaw.utilities.mpi as mpi
 import gridpaw.occupations as occupations
 from gridpaw.preconditioner import Preconditioner
 
@@ -209,13 +208,14 @@ class WaveFunctions:
         '''Calculate exact exchange energy'''
         from gridpaw.exx import ExxSingle
         from gridpaw.exx import packNEW
-	from gridpaw.localized_functions import LocFuncs
+	from gridpaw.localized_functions import create_localized_functions
 
 	# construct gauss functions
         gt_aL=[]
         for nucleus in nuclei:
             gSpline = nucleus.setup.get_shape_function()
-            gt_aL.append(LocFuncs(gSpline, gd, nucleus.spos))
+            gt_aL.append(create_localized_functions(gSpline, gd,
+                                                    nucleus.spos_i))
 
         # load single exchange calculator
         exx_single = ExxSingle(gd)

@@ -228,9 +228,9 @@ class Paw:
         distribute_atoms = False
         for nucleus, pos_i in zip(self.nuclei, pos_ai):
             spos_i = self.domain.scale_position(pos_i)
-            if num.sometrue(spos_i != nucleus.spos):
+            if num.sometrue(spos_i != nucleus.spos_i):
                 movement = True
-                nucleus.spos = spos_i
+                nucleus.spos_i = spos_i
                 nucleus.make_localized_grids(self.gd, self.finegd,
                                              self.locfuncbcaster)
                 rank = self.domain.rank(spos_i)

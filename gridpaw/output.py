@@ -2,7 +2,6 @@ import Numeric as num
 from ASE.ChemicalElements.symbol import symbols
 
 from gridpaw import debug, enumerate, sigusr1
-import gridpaw.utilities.mpi as mpi
 
 
 def print_info(paw):
@@ -57,7 +56,7 @@ def plot_atoms(paw):
     nuclei = paw.nuclei
     out = paw.out
     cell_i = domain.cell_i
-    pos_ai = cell_i * [nucleus.spos for nucleus in nuclei]
+    pos_ai = cell_i * [nucleus.spos_i for nucleus in nuclei]
     Z_a = [nucleus.setup.Z for nucleus in nuclei]
     print >> out, plot(pos_ai, Z_a, cell_i)
     print >> out

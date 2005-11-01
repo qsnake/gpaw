@@ -9,7 +9,7 @@ setup object and a scaled position plus some extra stuff..."""
 import Numeric as num
 
 from gridpaw.utilities.complex import real, cc
-from gridpaw.localized_functions import LocFuncs
+from gridpaw.localized_functions import create_localized_functions
 from gridpaw.utilities import unpack, pack
 import gridpaw.utilities.mpi as mpi
 
@@ -26,7 +26,7 @@ class Nucleus:
         self.a = a
         self.typecode = typecode
         self.onohirose = onohirose
-        self.spos = None
+        self.spos_i = None
         self.rank = None
         lmax = self.setup.lmax
         self.domain_overlap = NOT_INITIALIZED
@@ -69,39 +69,40 @@ class Nucleus:
     def make_localized_grids(self, gd, finegd, lfbc):
         # Smooth core density:
         nct = self.setup.get_smooth_core_density()
-        self.nct = LocFuncs([nct], gd, self.spos, cut=True, lfbc=lfbc,
-                            npts=self.onohirose)
+        create = create_localized_functions
+        self.nct = create([nct], gd, self.spos_i, cut=True, lfbc=lfbc,
+                          onohirose=self.onohirose)
 
         # Shape function:
         ghat_l = self.setup.get_shape_function()
-        self.ghat_L = LocFuncs(ghat_l, finegd, self.spos, lfbc=lfbc,
-                               npts=self.onohirose)
+        self.ghat_L = create(ghat_l, finegd, self.spos_i, lfbc=lfbc,
+                             onohirose=self.onohirose)
             
         # Potential:
         vhat_l = self.setup.get_potential()
-        self.vhat_L = LocFuncs(vhat_l, finegd, self.spos, lfbc=lfbc,
-                               npts=self.onohirose)
+        self.vhat_L = create(vhat_l, finegd, self.spos_i, lfbc=lfbc,
+                             onohirose=self.onohirose)
 
         assert (self.ghat_L is None) == (self.vhat_L is None)
         
         # Projectors:
         pt_j = self.setup.get_projectors()
-        self.pt_i = LocFuncs(pt_j, gd, self.spos, typecode=self.typecode,
-                             lfbc=lfbc, npts=self.onohirose)
+        self.pt_i = create(pt_j, gd, self.spos_i, typecode=self.typecode,
+                           lfbc=lfbc, onohirose=self.onohirose)
         
         # Localized potential:
         vbar = self.setup.get_localized_potential()
-        self.vbar = LocFuncs([vbar], finegd, self.spos, lfbc=lfbc,
-                             npts=self.onohirose)
+        self.vbar = create([vbar], finegd, self.spos_i, lfbc=lfbc,
+                           onohirose=self.onohirose)
 
         if self.pt_i is None:
             assert self.vbar is None
         
     def initialize_atomic_orbitals(self, gd, lfbc):
         phit_j = self.setup.get_atomic_orbitals()
-        self.phit_j = LocFuncs(phit_j, gd, self.spos, npts=1,
-                               typecode=self.typecode,
-                               cut=True, forces=False, lfbc=lfbc)
+        self.phit_j = create_localized_functions(
+            phit_j, gd, self.spos_i, onohirose=1, typecode=self.typecode,
+            cut=True, forces=False, lfbc=lfbc)
 
     def get_number_of_atomic_orbitals(self):
         return self.setup.get_number_of_atomic_orbitals()
