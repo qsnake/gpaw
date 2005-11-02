@@ -33,6 +33,7 @@ class WaveFunctions:
         self.typecode = typecode
         self.bzk_ki = bzk_ki
         self.ibzk_ki = ibzk_ki
+        self.myibzk_ki = myibzk_ki
         self.weights_k = weights_k
         self.kpt_comm = kpt_comm
         

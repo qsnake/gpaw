@@ -124,8 +124,10 @@ class Paw:
                                               wave_functions=True):
         output.plot_atoms(self)
 
+        
         for nucleus in self.nuclei:
-            nucleus.initialize_atomic_orbitals(self.gd, self.locfuncbcaster)
+            nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_ki,
+                                               self.locfuncbcaster)
         self.locfuncbcaster.broadcast()
 
         if density:
@@ -135,7 +137,7 @@ class Paw:
 
         if wave_functions:
             self.wf.initialize_from_atomic_orbitals(self.nuclei,
-                                                    self.my_nuclei,self.out)
+                                                    self.my_nuclei, self.out)
 
         # Free allocated space for radial grids:
         for setup in self.setups.values():
@@ -232,6 +234,7 @@ class Paw:
                 movement = True
                 nucleus.spos_i = spos_i
                 nucleus.make_localized_grids(self.gd, self.finegd,
+                                             self.wf.myibzk_ki,
                                              self.locfuncbcaster)
                 rank = self.domain.rank(spos_i)
                 # Did the atom move to another processor?

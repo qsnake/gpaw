@@ -149,7 +149,7 @@ class KPoint:
             R -= eps * psit_G
         
         for nucleus in p_nuclei:
-            nucleus.adjust_residual(R_n, self.eps_n, self.s, self.u, self.k_i)
+            nucleus.adjust_residual(R_n, self.eps_n, self.s, self.u, self.k)
 
         error = 0.0
         for R, f in zip(R_n, self.f_n):
@@ -217,7 +217,7 @@ class KPoint:
 
             for nucleus in p_nuclei:
                 nucleus.adjust_residual2(pR_G, dR_G, self.eps_n[n],
-                                         self.s, self.k_i)
+                                         self.s, self.k)
             
             RdR = self.comm.sum(real(num.dot(cc(R_G).flat, dR_G.flat)))
             dRdR = self.comm.sum(real(num.dot(cc(dR_G.flat), dR_G.flat)))
@@ -237,6 +237,6 @@ class KPoint:
         nao0 = 0
         for nucleus in nuclei:
             nao1 = nao0 + nucleus.get_number_of_atomic_orbitals()
-            nucleus.create_atomic_orbitals(self.psit_nG[nao0:nao1], self.k_i)
+            nucleus.create_atomic_orbitals(self.psit_nG[nao0:nao1], self.k)
             nao0 = nao1
         assert nao0 == nao

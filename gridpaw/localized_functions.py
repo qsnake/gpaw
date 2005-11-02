@@ -104,14 +104,17 @@ class LocFuncs:
 
         self.set_communicator(gd.comm, MASTER)
 
-        self.phases = {}
+        self.phase_kb = None
 
     def set_communicator(self, comm, root):
         """Set MPI-communicator and master CPU."""
         self.comm = comm
         self.root = root
+
+    def set_phase_factors(self, k_ki):
+        self.phase_kb = num.exp(2j * pi * num.innerproduct(k_ki, self.disp_bi))
         
-    def add(self, a_xg, coef_xi, k_i=None, communicate=False):
+    def add(self, a_xg, coef_xi, k=None, communicate=False):
         """Add localized functions to extended arrays.
 
         Add the product of ``coef_xi`` and the localized functions to
@@ -121,24 +124,18 @@ class LocFuncs:
         
         if communicate:
             if coef_xi is None:
-                shape = grids.shape[:-3] + (self.ni,)
+                shape = a_xg.shape[:-3] + (self.ni,)
                 coef_xi = num.zeros(shape, self.typecode)
             self.comm.broadcast(coef_xi, self.root)
             
-        if k_i is None:
+        if k is None or self.phase_kb is None:
             for box in self.box_b:
                 box.add(coef_xi, a_xg)
         else:
-##            if self.phases.has_key(id(k_i)):
-##                phase_b = self.phases[id(k_i)]
-##            else:
-            phase_b = num.exp(-2j * pi * num.dot(self.disp_bi, k_i))
-##                self.phases[id(k_i)] = phase_b
-                
-            for box, phase in zip(self.box_b, phase_b):
-                box.add(coef_xi * phase, a_xg)
+            for box, phase in zip(self.box_b, self.phase_kb[k]):
+                box.add(coef_xi / phase, a_xg)
 
-    def integrate(self, a_xg, result_xi, k_i=None, derivatives=False):
+    def integrate(self, a_xg, result_xi, k=None, derivatives=False):
         """Calculate integrals of arrays times localized functions.
 
         Return the interal of extended arrays times localized
@@ -157,17 +154,13 @@ class LocFuncs:
         if result_xi is None:
             result_xi = num.zeros(shape, self.typecode)
             
-        if k_i is None:
+        if k is None or self.phase_kb is None:
             for box in self.box_b:
                 box.multiply(a_xg, tmp_xi, derivatives)
                 result_xi += tmp_xi
         else:
-##            if self.phases.has_key(id(k_i)):
-##                phase_b = self.phases[id(k_i)]
-##            else:
-            phase_b = num.exp(2j * pi * num.dot(self.disp_bi, k_i))
-##                self.phases[id(k_i)] = phase_b
-            for box, phase in zip(self.box_b, phase_b):
+            print k, self.phase_kb
+            for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.multiply(a_xg, tmp_xi, derivatives)
                 result_xi += phase * tmp_xi
 

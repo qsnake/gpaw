@@ -67,7 +67,7 @@ class Nucleus:
         if self.nct is not None:
             self.nct.set_communicator(comm, root)
 
-    def make_localized_grids(self, gd, finegd, lfbc):
+    def make_localized_grids(self, gd, finegd, k_ki, lfbc):
         # Smooth core density:
         nct = self.setup.get_smooth_core_density()
         create = create_localized_functions
@@ -90,6 +90,8 @@ class Nucleus:
         pt_j = self.setup.get_projectors()
         self.pt_i = create(pt_j, gd, self.spos_i, typecode=self.typecode,
                            lfbc=lfbc, onohirose=self.onohirose)
+        if self.typecode == num.Complex:
+            self.pt_i.set_phase_factors(k_ki)
         
         # Localized potential:
         vbar = self.setup.get_localized_potential()
@@ -99,11 +101,13 @@ class Nucleus:
         if self.pt_i is None:
             assert self.vbar is None
         
-    def initialize_atomic_orbitals(self, gd, lfbc):
+    def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
         phit_j = self.setup.get_atomic_orbitals()
-        self.phit_j = create_localized_functions(
+        self.phit_i = create_localized_functions(
             phit_j, gd, self.spos_i, onohirose=1, typecode=self.typecode,
             cut=True, forces=False, lfbc=lfbc)
+        if self.typecode == num.Complex:
+            self.phit_i.set_phase_factors(k_ki)
 
     def get_number_of_atomic_orbitals(self):
         return self.setup.get_number_of_atomic_orbitals()
@@ -111,16 +115,16 @@ class Nucleus:
     def get_number_of_partial_waves(self):
         return self.setup.get_number_of_partial_waves()
     
-    def create_atomic_orbitals(self, psit_iG, k_i):
-        if self.phit_j is None:
+    def create_atomic_orbitals(self, psit_iG, k):
+        if self.phit_i is None:
             # Nothing to do in this domain:
             return
 
         coefs = num.identity(len(psit_iG), psit_iG.typecode())
-        self.phit_j.add(psit_iG, coefs, k_i)
+        self.phit_i.add(psit_iG, coefs, k)
 
     def add_atomic_density(self, nt_sG, magmom, hund):
-        if self.phit_j is None:
+        if self.phit_i is None:
             # Nothing to do in this domain:
             print 'self.phitj is none'
             return
@@ -159,7 +163,7 @@ class Nucleus:
         assert magmom == 0.0
 
         for s in range(ns):
-            self.phit_j.add_density(nt_sG[s], f_si[s])
+            self.phit_i.add_density(nt_sG[s], f_si[s])
 
         if self.domain_overlap == EVERYTHING:
             ni = self.get_number_of_partial_waves()
@@ -197,20 +201,10 @@ class Nucleus:
         if self.domain_overlap == EVERYTHING:
             P_ni = self.P_uni[kpt.u]
             P_ni[:] = 0.0 # why????
-            self.pt_i.integrate(kpt.psit_nG, P_ni, kpt.k_i)
+            self.pt_i.integrate(kpt.psit_nG, P_ni, kpt.k)
         else:
-            self.pt_i.integrate(kpt.psit_nG, None, kpt.k_i)
+            self.pt_i.integrate(kpt.psit_nG, None, kpt.k)
 
-    def calculate_projections2(self, psit_G, k_i):
-        assert self.domain_overlap >= PROJECTOR_FUNCTION
-        if self.domain_overlap == EVERYTHING:
-            P_i = num.zeros(self.get_number_of_partial_waves(), self.typecode)
-            self.pt_i.integrate(psit_G, P_i, k_i)
-            return P_i
-        else:
-            self.pt_i.integrate(psit_G, None, k_i)
-            return None
-    
     def calculate_multipole_moments(self):
         if self.domain_overlap == EVERYTHING:
             self.Q_L[:] = num.dot(num.sum(self.D_sp), self.setup.Delta_pL)
@@ -253,33 +247,33 @@ class Nucleus:
             self.ghat_L.integrate(vHt_g, None)
             return 0.0, 0.0, 0.0, 0.0
 
-    def adjust_residual(self, R_nG, eps_n, s, u, k_i):
+    def adjust_residual(self, R_nG, eps_n, s, u, k):
         assert self.domain_overlap >= PROJECTOR_FUNCTION
         if self.domain_overlap == EVERYTHING:
             H_ii = unpack(self.H_sp[s])
             P_ni = self.P_uni[u]
             coefs_ni =  (num.dot(P_ni, H_ii) -
                          num.dot(P_ni * eps_n[:, None], self.setup.O_ii))
-            self.pt_i.add(R_nG, coefs_ni, k_i, communicate=True)
+            self.pt_i.add(R_nG, coefs_ni, k, communicate=True)
         else:
-            self.pt_i.add(R_nG, None, k_i, communicate=True)
+            self.pt_i.add(R_nG, None, k, communicate=True)
             
-    def adjust_residual2(self, pR_G, dR_G, eps, s, k_i):
+    def adjust_residual2(self, pR_G, dR_G, eps, s, k):
         assert self.domain_overlap >= PROJECTOR_FUNCTION
         if self.domain_overlap == EVERYTHING:
             ni = self.get_number_of_partial_waves()
             dP_i = num.zeros(ni, self.typecode)
-            self.pt_i.integrate(pR_G, dP_i, k_i)
+            self.pt_i.integrate(pR_G, dP_i, k)
         else:
-            self.pt_i.integrate(pR_G, None, k_i)
+            self.pt_i.integrate(pR_G, None, k)
 
         if self.domain_overlap == EVERYTHING:
             H_ii = unpack(self.H_sp[s])
             coefs_i = (num.dot(dP_i, H_ii) -
                        num.dot(dP_i * eps, self.setup.O_ii))
-            self.pt_i.add(dR_G, coefs_i, k_i, communicate=True)
+            self.pt_i.add(dR_G, coefs_i, k, communicate=True)
         else:
-            self.pt_i.add(dR_G, None, k_i, communicate=True)
+            self.pt_i.add(dR_G, None, k, communicate=True)
 
     def symmetrize(self, D_aii, map_sa, s):
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
@@ -348,7 +342,7 @@ class Nucleus:
         psit_nG = kpt.psit_nG
         s = kpt.s
         u = kpt.u
-        k_i = kpt.k_i
+        k = kpt.k
         if self.domain_overlap == EVERYTHING:
             P_ni = cc(self.P_uni[u])
             nb = P_ni.shape[0]
@@ -357,7 +351,7 @@ class Nucleus:
             nk = self.setup.get_number_of_derivatives()
             F_nk = num.zeros((nb, nk), self.typecode)
             # ???? Optimization: Take the real value of F_nk * P_ni early.
-            self.pt_i.integrate(psit_nG, F_nk, k_i, derivatives=True)
+            self.pt_i.integrate(psit_nG, F_nk, k, derivatives=True)
             F_nk *= f_n[:, None]
             F_ik = num.dot(H_ii, num.dot(num.transpose(P_ni), F_nk))
             F_nk *= eps_n[:, None]
@@ -381,4 +375,4 @@ class Nucleus:
                 i += 2 * l + 1
                 k += 3 + l * (1 + 2 * l)
         else:
-            self.pt_i.integrate(psit_nG, None, k_i, derivatives=True)
+            self.pt_i.integrate(psit_nG, None, k, derivatives=True)
