@@ -210,6 +210,9 @@ class WaveFunctions:
         from gridpaw.exx import packNEW
 	from gridpaw.localized_functions import create_localized_functions
 
+        # ensure gamma point calculation
+        assert (self.nkpts == 1)
+
 	# construct gauss functions
         gt_aL=[]
         for nucleus in nuclei:
@@ -221,29 +224,32 @@ class WaveFunctions:
         exx_single = ExxSingle(gd)
 
 	# calculate exact exchange
-        exx=0.0
+        exx = exxa = 0.0
         for spin in range(self.nspins):
 	    for n in range(self.nbands):
 		for m in range(self.nbands):
                     # calculate joint occupation number
-                    fnm = self.kpts[spin].f_n[n]*self.kpts[spin].f_n[m]*self.nspins/2
+                    fnm = (self.kpts[spin].f_n[n] *
+                           self.kpts[spin].f_n[m]) * self.nspins / 2
 
                     # determine current exchange density
-                    n_G = cc(self.kpts[spin].psit_nG[m])*self.kpts[spin].psit_nG[n]
+                    n_G = cc(self.kpts[spin].psit_nG[m])*\
+                          self.kpts[spin].psit_nG[n]
                     for a, nucleus in enumerate(nuclei):
                         # generate density matrix
                         Pm_i = cc(nucleus.P_uni[spin,m])
                         Pn_i = nucleus.P_uni[spin,n]
-                        D_i1i2 = num.outerproduct(Pm_i,Pn_i)
-                        D_p = packNEW(D_i1i2)
+                        D_ii = num.outerproduct(Pm_i,Pn_i)
+                        D_p = packNEW(D_ii)
 
                         # add compensation charges to exchange density
                         Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
 			gt_aL[a].add(n_G, Q_L)
 
                         # add atomic contribution to exchange energy
-                        #C_pp = nucleus.setup.M_pp
-                        #exx += -.5* num.dot(D_p, num.dot(C_pp, D_p))
+                        C_pp = nucleus.setup.M_pp
+                        exxa += -.5*fnm*num.dot(D_p, num.dot(C_pp, D_p))
+
                     # add the nm contribution to exchange energy
                     exx += fnm*exx_single.getExchangeEnergy(n_G)
-        return exx
+        return exx+exxa

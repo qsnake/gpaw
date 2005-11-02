@@ -2,10 +2,12 @@ import Numeric as num
 from math import pi
 
 class ExxSingle:
-    '''Class used to calculate the exchange energy of given single orbital electron density'''
+    '''Class used to calculate the exchange energy of given
+    single orbital electron density'''
     
     def __init__(self, gd):
-        '''Class should be initialized with a grid_descriptor 'gd' from the gridpaw module'''       
+        '''Class should be initialized with a grid_descriptor 'gd' from
+        the gridpaw module'''       
         self.gd = gd
 
         # determine r^2 and r matrices
@@ -13,15 +15,21 @@ class ExxSingle:
         r  = num.sqrt(r2)
 
         # construct gauss density, potential, and self energy for Z=1
-        a                = 22./min(gd.domain.cell_i)**2 # 'width' of gaussian distribution
-        self.ng1         = num.exp(-a*r2)*(a/pi)**(1.5) # gaussian density for Z=1
-        self.vgauss1     = erf3D(num.sqrt(a)*r)/r       # gaussian potential for Z=1
-        self.EGaussSelf1 = -num.sqrt(a/2/pi)            # gaussian self energy for Z=1
+        # 'width' of gaussian distribution
+        a                = 22./min(gd.domain.cell_i)**2
+        # gaussian density for Z=1
+        self.ng1         = num.exp(-a*r2)*(a/pi)**(1.5)
+        # gaussian potential for Z=1
+        self.vgauss1     = erf3D(num.sqrt(a)*r)/r
+        # gaussian self energy for Z=1
+        self.EGaussSelf1 = -num.sqrt(a/2/pi)
 
         # calculate reciprocal lattice vectors
-        dim     = num.array(gd.N_i,typecode=num.Int); dim=num.reshape(dim,(3,1,1,1))
-        dk      = 2*pi / num.array(gd.domain.cell_i,typecode=num.Float); dk=num.reshape(dk,(3, 1, 1, 1)) 
-        k       = ((num.indices(self.gd.N_i)+dim/2)%dim - dim/2)*dk
+        dim = num.array(gd.N_i,typecode=num.Int);
+        dim = num.reshape(dim,(3,1,1,1))
+        dk  = 2*pi / num.array(gd.domain.cell_i,typecode=num.Float);
+        dk  = num.reshape(dk,(3, 1, 1, 1)) 
+        k   = ((num.indices(self.gd.N_i)+dim/2)%dim - dim/2)*dk
         self.k2 = 1.0*sum(k**2); self.k2[0,0,0]=1.0
 
         # determine N^3
@@ -51,7 +59,8 @@ class ExxSingle:
         return exx+Ecorr
     
     def neutralize(self, n):
-        '''Method for neutralizing input density 'n' with nonzero total charge.\n Returns energy correction caused by making 'n' neutral'''
+        '''Method for neutralizing input density 'n' with nonzero total
+        charge. Returns energy correction caused by making 'n' neutral'''
         
         Z = self.gd.integrate(n)
         #print 'Total charge before neutralize: ', Z

@@ -369,7 +369,7 @@ class AllElectron:
     
     def exactExchange(self,Ncore = 0):
         '''Returns the exact exchange energy of the current atom'''
-        
+
         # get Gaunt coefficients
         from gridpaw.gaunt import gaunt
 
@@ -393,6 +393,13 @@ class AllElectron:
         # initialize potential calculator (returns v*r^2*dr/dg)
         H = Hartree(a1_g, a2_lg, a3_g, self.r, self.dr).solve
 
+        # Hydrogen hack!
+        # activate hack by uncommenting below lines, and running:
+        #from gridpaw.atom.all_electron import AllElectron as AE; atom=AE('H'); atom.run(); atom.exactExchange()
+        #
+        #self.u_j[0] = 2. * num.exp(-self.r)*self.r
+        #print 'WARNING: Doing Hydrogen hack!!!'
+        
         # initialize output 3-vector of the form
         # Exx = [Eval-val, Eval-core, Ecore-core]
         Exx = num.zeros(3,typecode=num.Float)
@@ -406,44 +413,27 @@ class AllElectron:
 
                 # electron density
                 n = self.u_j[j1]*self.u_j[j2]
-                # n[0] = 0.0
                 n[1:] /= self.r[1:]**2
 
                 # L summation
                 for l in range(l1 + l2 + 1):
                     vr2dr = H(n, l)
-                    G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2, l**2:(l+1)**2]**2
+                    G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2,\
+                               l**2:(l+1)**2]**2
                     vr2dr *= num.sum(G2.copy().flat)
 
                 # Determine type of Exx contribution
-                if ((j1+1 > Ncore) & (j2+1 > Ncore)): # val-val
+                # val-val interaction
+                if ((j1+1 > Ncore) & (j2+1 > Ncore)): 
                     Exx[0] +=-.5*f12*num.dot(n,vr2dr)
-                if (((j1+1 > Ncore) & (j2 < Ncore)) | ((j1 < Ncore) & (j2+1 > Ncore))): # val-core
+                # val-core interaction
+                if (((j1+1 > Ncore) & (j2 < Ncore)) |\
+                    ((j1 < Ncore) & (j2+1 > Ncore))): 
                     Exx[1] +=-.5*f12*num.dot(n,vr2dr)
-                if ((j1 < Ncore) & (j2 < Ncore)): # core-core
+                # core-core interaction
+                if ((j1 < Ncore) & (j2 < Ncore)): 
                     Exx[2] +=-.5*f12*num.dot(n,vr2dr)
         return Exx
-
-
-    ##                 for m in range(2 * l + 1):
-    ##                     L = l**2 + m
-    ##                     for m1 in range(2 * l1 + 1):
-    ##                         L1 = l1**2 + m1
-    ##                         for m2 in range(2 * l2 + 1):
-    ##                             L2 = l2**2 + m2
-    ##                             if (gaunt[L1,L2,L]!=0):
-    ##                                 vr += vr0 * gaunt[L1,L2,L]
-
-    
-    ##             vr=num.zeros(self.N)
-    ##             for L in range((l_j[j1]+l_j[j2]+1)**2):
-    ##                 for L1 in range(l_j[j1]**2,(l_j[j1]+1)**2):
-    ##                     for L2 in range(l_j[j2]**2,(l_j[j2]+1)**2):
-    ##                         if (gaunt[L1,L2,L]!=0):
-    ##                             vr+=H(n*gaunt[L1,L2,L],sqrt(L)-1)
-
-
-
 
 def shoot(w, l, vr, eps, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     if scalarrel:

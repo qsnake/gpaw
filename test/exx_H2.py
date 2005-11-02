@@ -1,7 +1,8 @@
 from ASE import Atom, ListOfAtoms
 from gridpaw import Calculator
+from gridpaw.atom.all_electron import AllElectron as AE
 
-a = 5.5
+a = 5.2
 b = a / 2
 d = 0.74
 
@@ -27,15 +28,23 @@ excH2 = calc2.GetXCEnergy()
 exxH  = calc.GetExactExchange()
 exxH2 = calc2.GetExactExchange()
 
+atom    = AE('H'); atom.run()
+ExxAtom = atom.exactExchange()
+
+print '\n|-------------------------OUTPUT---------------------------|\n'
 print '\t\t\tH atom\t|\tH2 molecule'
 print 'ENERGIES:'
-print 'potential:\t%2.5f\t|\t%2.5f' %(eH,eH2) 
-print 'exchange:\t%2.5f\t|\t%2.5f' %(exxH,exxH2)
+print 'potential:\t%5.5f\t|\t%5.5f' %(eH,eH2) 
+print 'exchange:\t%5.5f\t|\t%5.5f' %(exxH,exxH2)
 print ' '
 print 'ATOMIZATION ENERGIES'
-print 'potential:\t\t%3.5f' %(eH2-2*eH) 
-print 'exchange:\t\t%3.5f' %((eH2-excH2 + exxH2)-2*(eH-excH+exxH)) 
+print 'potential:\t\t%5.5f' %(eH2-2*eH) 
+print 'exchange:\t\t%5.5f' %((eH2-excH2 + exxH2)-2*(eH-excH+exxH)) 
 print ' '
 print 'Exchange-only atomization energy in kcal/mol: ', ((eH2-excH2 + exxH2)-2*(eH-excH+exxH))*23.2407
-
-
+print ' '
+print 'All electron single atom radial calculator exchange energy: (spin saturated)'
+print '[Eval-val, Eval-core, Ecore-core] = ', ExxAtom*27.2
+print ' '
+print 'Exact exchange for hydrogen in eV: ', -5/16.*27.2
+print '\n|-------------------------OUTPUT---------------------------|\n'
