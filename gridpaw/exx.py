@@ -49,7 +49,7 @@ class ExxSingle:
             solver.solve(v,n)
             exx = -0.5*(v*n).sum()*self.gd.dv
         elif method=='recip':
-            from numarray.fft import fftnd
+            from FFT import fftnd
             nk = fftnd(n)
             exx = -0.5*self.gd.integrate(num.absolute(nk)**2*4*pi/self.k2)/(self.N3)
         else:
