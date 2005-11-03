@@ -159,7 +159,6 @@ class LocFuncs:
                 box.multiply(a_xg, tmp_xi, derivatives)
                 result_xi += tmp_xi
         else:
-            print k, self.phase_kb
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.multiply(a_xg, tmp_xi, derivatives)
                 result_xi += phase * tmp_xi
