@@ -23,6 +23,12 @@ def create_paw_object(out, a0, Ha,
                       parsize_i,
                       restart_file):
 
+    if angle is not None:
+        if softgauss:
+            raise NotImplementedError
+        if usesymm:
+            raise NotImplementedError
+    
     magmom_a = num.array(magmom_a)
     magnetic = num.sometrue(magmom_a)
 
