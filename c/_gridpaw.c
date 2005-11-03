@@ -35,8 +35,7 @@ extern PyTypeObject MPIType;
 #endif
 
 #ifndef GRIDPAW_INTERPRETER
-DL_EXPORT(void) init_gridpaw(void)
-//PyMODINIT_FUNC init_gridpaw(void)  Python 2.3!!!
+PyMODINIT_FUNC init_gridpaw(void)
 {
 #ifdef PARALLEL
   if (PyType_Ready(&MPIType) < 0)

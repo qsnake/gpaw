@@ -13,8 +13,8 @@ print
 
 ok = True
 
-if sys.version_info < (2, 2, 1, 'final', 0):
-    print 'Python 2.2.2 or later is required!'
+if sys.version_info < (2, 3, 0, 'final', 0):
+    print 'Python 2.3.1 or later is required!'
     print 'Try "python2 requirements.py".  If that works, you will need'
     print 'to substitute "python2" for "python" in all further commands'
     print 'you use in relation to gridpaw.'

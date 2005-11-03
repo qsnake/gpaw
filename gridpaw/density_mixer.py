@@ -14,7 +14,6 @@ Ref. to Kresse-paper ... XXX
 import Numeric as num
 import LinearAlgebra as linalg
 
-from gridpaw import enumerate
 from gridpaw.utilities.blas import axpy
 
 

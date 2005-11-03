@@ -7,7 +7,6 @@ import Numeric as num
 from ASE.ChemicalElements.symbol import symbols
 from ASE.Units import Convert
 
-from gridpaw import debug, enumerate, sigusr1
 from gridpaw.rotation import rotation
 from gridpaw.kpoint import KPoint
 from gridpaw.utilities.complex import cc, real

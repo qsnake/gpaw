@@ -6,7 +6,6 @@ from math import sqrt
 import Numeric as num
 import LinearAlgebra as linalg
 
-from gridpaw import enumerate
 from gridpaw.spherical_harmonics import Y
 
 

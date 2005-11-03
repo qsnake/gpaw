@@ -8,7 +8,6 @@ from math import pi, cos, sin
 
 import Numeric as num
 
-from gridpaw import enumerate
 from gridpaw import debug
 from gridpaw.utilities import contiguous, is_contiguous
 import _gridpaw

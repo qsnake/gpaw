@@ -3,8 +3,6 @@
 
 import Numeric as num
 
-from gridpaw import enumerate
-
 
 class NeighborList:
     """Skin stuff ...

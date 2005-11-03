@@ -5,7 +5,6 @@ if os.uname()[4] == 'i686':
     import Scientific.IO.NetCDF as NetCDF
 from ASE.ChemicalElements.symbol import symbols
 
-from gridpaw import debug, enumerate, sigusr1
 import gridpaw.utilities.mpi as mpi
 
 

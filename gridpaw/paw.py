@@ -8,7 +8,7 @@ import time
 
 import Numeric as num
 
-from gridpaw import debug, enumerate, sigusr1
+from gridpaw import debug, sigusr1
 from gridpaw.grid_descriptor import GridDescriptor
 from gridpaw.pair_potential import PairPotential
 from gridpaw.poisson_solver import PoissonSolver

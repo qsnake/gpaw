@@ -3,7 +3,7 @@
 
 import Numeric as num
 
-from gridpaw import debug, enumerate
+from gridpaw import debug
 
 
 class Symmetry:

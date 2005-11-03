@@ -16,7 +16,6 @@ from ASE.ChemicalElements.name import names
 from gridpaw.atom.configurations import configurations
 from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.xc_functional import XCOperator, XCFunctional
-from gridpaw import enumerate
 
 
 alpha = 1 / 137.036

@@ -23,8 +23,8 @@ Functional Theory (DFT) code featuring: Flexible boundary conditions,
 k-points and gradient corrected exchange-corellation functionals."""
 
 
-if sys.version_info < (2, 2, 1, 'final', 0):
-    raise SystemExit, 'Python 2.2.2 or later is required!'
+if sys.version_info < (2, 3, 0, 'final', 0):
+    raise SystemExit, 'Python 2.3.1 or later is required!'
 
 
 # ???? Use a setup.cfg file and the config command:

@@ -9,7 +9,7 @@ import Numeric as num
 from ASE.ChemicalElements.name import names
 
 from gridpaw.read_setup import PAWXMLParser
-from gridpaw import setup_home, enumerate
+from gridpaw import setup_home
 from gridpaw.gaunt import gaunt as G_L1L2L
 from gridpaw.spline import Spline
 from gridpaw.grid_descriptor import RadialGridDescriptor

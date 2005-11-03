@@ -1,8 +1,6 @@
 import Numeric as num
 from ASE.ChemicalElements.symbol import symbols
 
-from gridpaw import debug, enumerate, sigusr1
-
 
 def print_info(paw):
     out = paw.out

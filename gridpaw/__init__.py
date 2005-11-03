@@ -1,7 +1,6 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-from __future__ import generators
 import os
 import sys
 import signal
@@ -12,20 +11,6 @@ from os.path import join
 import Numeric as num
 
 
-try:
-    enumerate
-except NameError:
-    def enumerate(collection):
-        """Generates an indexed series:  (0,coll[0]), (1,coll[1]) ..."""
-        x = 0
-        it = iter(collection)
-        while 1:
-            yield (x, it.next())
-            x += 1
-else:
-    enumerate = enumerate
-
- 
 home = os.environ['HOME']
 
 
