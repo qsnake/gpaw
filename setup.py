@@ -3,13 +3,14 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-from distutils.core import setup, Extension
-from glob import glob
-from os.path import join
-
 import os
 import sys
 import re
+from distutils.core import setup, Extension
+from distutils.util import get_platform
+from glob import glob
+from os.path import join
+from stat import ST_MTIME
 
 
 # Get the current version number:
@@ -171,11 +172,11 @@ else:
         include_dirs += [dir.replace('pgi', 'gcc')
                          for dir in re.findall('-I(\S+)', output)]
 
-include_dirs += [join('c', 'bmgs'),
-                 os.environ['HOME'] + '/include/python']
+include_dirs += [os.environ['HOME'] + '/include/python']
 
+sources = glob('c/*.c') + ['c/bmgs/bmgs.c']
 extension = Extension('_gridpaw',
-                      glob('c/*.c') + ['c/bmgs/bmgs.c'],
+                      sources,
                       libraries=libraries,
                       library_dirs=library_dirs,
                       include_dirs=include_dirs,
@@ -185,7 +186,46 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-headers = glob(join('c', '*.h'))
+# Modification times:
+mtimes = {}
+
+def mtime(path, name):
+    """Return modification time.
+
+    The modification time of a source file is returned.  I one of its
+    dependencies is newer, the mtime of that file is returned."""
+
+    global mtimes
+    if mtimes.has_key(name):
+        return mtimes[name]
+    t = os.stat(path + name)[ST_MTIME]
+    for line in file(path + name):
+        if line[0] == '#' and line[1:].lstrip().startswith('include "'):
+            name2 = line.split('"')[1]
+            if name2 != name:
+                t = max(t, mtime(path, name2))
+    mtimes[name] = t
+    return t
+
+plat = get_platform() + '-' + sys.version[0:3]
+
+# Remove object files if any dependencies have changed:
+remove = False
+for source in sources:
+    path, name = os.path.split(source)
+    t = mtime(path + '/', name)
+    o = 'build/temp.%s/%s.o' % (plat, source[:-2])  # object file
+    if os.path.exists(o) and t > os.stat(o)[ST_MTIME]:
+        print 'removing', o
+        os.remove(o)
+        remove = True
+
+so = 'build/lib.%s/_gridpaw.so' % plat
+if os.path.exists(so) and remove:
+    # Remove shared object C-extension:
+    print 'removing', so
+    os.remove(so)
+
 
 setup(name = 'gridpaw',
       version=version,
@@ -202,7 +242,6 @@ setup(name = 'gridpaw',
       ext_modules=[extension],
       scripts=scripts,
       long_description=long_description,
-      headers=headers,
 ##      data_files=[('doc', ['doc/index.txt'])],
       )
 
