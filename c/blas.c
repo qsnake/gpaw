@@ -47,17 +47,15 @@ PyObject* gemm(PyObject *self, PyObject *args)
     m *= a->dimensions[i];
   int k = a->dimensions[0];
   int n = b->dimensions[0];
-  char transa = 'n';
-  char transb = 'n';
   if (a->descr->type_num == PyArray_DOUBLE)
-    dgemm_(&transa, &transb, &m, &n, &k, 
+    dgemm_("n", "n", &m, &n, &k, 
            &(alpha.real),
            DOUBLEP(a), &m, 
            DOUBLEP(b), &k,
            &(beta.real), 
            DOUBLEP(c), &m);
   else
-    zgemm_(&transa, &transb, &m, &n, &k, 
+    zgemm_("n", "n", &m, &n, &k, 
            &alpha,
            (void*)COMPLEXP(a), &m, 
            (void*)COMPLEXP(b), &k,
@@ -103,18 +101,16 @@ PyObject* rk(PyObject *self, PyObject *args)
   PyArrayObject* c;
   if (!PyArg_ParseTuple(args, "dOdO", &alpha, &a, &beta, &c)) 
     return NULL;
-  char uplo = 'u';
-  char trans = 'c';
   int n = a->dimensions[0];
   int k = a->dimensions[1];
   for (int d = 2; d < a->nd; d++)
     k *= a->dimensions[d];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dsyrk_(&uplo, &trans, &n, &k, 
+    dsyrk_("u", "c", &n, &k, 
            &alpha, DOUBLEP(a), &k, &beta,
            DOUBLEP(c), &n);
   else
-    zherk_(&uplo, &trans, &n, &k, 
+    zherk_("u", "c", &n, &k, 
            &alpha, (void*)COMPLEXP(a), &k, &beta,
            (void*)COMPLEXP(c), &n);
   Py_RETURN_NONE;
@@ -129,19 +125,17 @@ PyObject* r2k(PyObject *self, PyObject *args)
   PyArrayObject* c;
   if (!PyArg_ParseTuple(args, "DOOdO", &alpha, &a, &b, &beta, &c)) 
     return NULL;
-  char uplo = 'u';
-  char trans = 'c';
   int n = a->dimensions[0];
   int k = a->dimensions[1];
   for (int d = 2; d < a->nd; d++)
     k *= a->dimensions[d];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dsyr2k_(&uplo, &trans, &n, &k, 
+    dsyr2k_("u", "c", &n, &k, 
             (double*)(&alpha), DOUBLEP(a), &k, 
             DOUBLEP(b), &k, &beta,
             DOUBLEP(c), &n);
   else
-    zher2k_(&uplo, &trans, &n, &k, 
+    zher2k_("u", "u", &n, &k, 
             (void*)(&alpha), (void*)COMPLEXP(a), &k, 
             (void*)COMPLEXP(b), &k, &beta,
             (void*)COMPLEXP(c), &n);

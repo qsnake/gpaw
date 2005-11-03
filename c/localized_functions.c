@@ -69,10 +69,9 @@ static PyObject * localized_functions_multiply(LocalizedFunctionsObject *self,
     for (int n = 0; n < na; n++)
       {
 	bmgs_cut(a, self->size, self->start, w, self->size0);
-	char trans = 't';
 	double zero = 0.0;
 	int inc = 1;
-	dgemv_(&trans, &ng0, &nf, &self->dv, f, &ng0, w, &inc, &zero, b, &inc);
+	dgemv_("t", &ng0, &nf, &self->dv, f, &ng0, w, &inc, &zero, b, &inc);
 
 	a += ng;
 	b += nf;
@@ -82,10 +81,9 @@ static PyObject * localized_functions_multiply(LocalizedFunctionsObject *self,
       {
 	bmgs_cutz((const double_complex*)a, self->size, self->start, 
 		  (double_complex*)w, self->size0);
-	char trans = 'n';
 	double zero = 0.0;
 	int inc = 2;
-	dgemm_(&trans, &trans, &inc, &nf, &ng0, &self->dv, w, &inc, f, &ng0,
+	dgemm_("n", "n", &inc, &nf, &ng0, &self->dv, w, &inc, f, &ng0,
 	       &zero, b, &inc);
 
 	a += 2 * ng;
@@ -116,11 +114,10 @@ static PyObject * localized_functions_add(LocalizedFunctionsObject *self,
   if (aa->descr->type_num == PyArray_DOUBLE)
     for (int n = 0; n < na; n++)
       {
-	char trans = 'n';
 	double zero = 0.0;
 	double one = 1.0;
 	int inc = 1;
-	dgemv_(&trans, &ng0, &nf, &one, f, &ng0, c, &inc, &zero, w, &inc);
+	dgemv_("n", &ng0, &nf, &one, f, &ng0, c, &inc, &zero, w, &inc);
 	bmgs_pastep(w, self->size0, a, self->size, self->start);
 	a += ng;
 	c += nf;
@@ -128,12 +125,10 @@ static PyObject * localized_functions_add(LocalizedFunctionsObject *self,
   else
     for (int n = 0; n < na; n++)
       {
-	char transa = 'n';
-	char transb = 't';
 	double zero = 0.0;
 	double one = 1.0;
 	int inc = 2;
-	dgemm_(&transa, &transb, &inc, &ng0, &nf, &one, c, &inc, f, &ng0,
+	dgemm_("n", "t", &inc, &ng0, &nf, &one, c, &inc, f, &ng0,
 	       &zero, w, &inc);
 	bmgs_pastepz((const double_complex*)w, self->size0, 
 		    (double_complex*)a, self->size, self->start);

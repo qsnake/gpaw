@@ -100,7 +100,8 @@ elif machine == 'x86_64':
                          for dir in re.findall('-L(\S+)', output)]
         include_dirs += [dir.replace('pgi', 'gcc')
                          for dir in re.findall('-I(\S+)', output)]
-elif machine == '00105CDA4C00':
+
+elif sys.platform == 'aix5':
 
     #
     # o|_  _ _
@@ -186,30 +187,30 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-# Modification times:
-mtimes = {}
+# Distutils does not do deep dependencies correctly.  We take care of
+# that here so that "python setup.py build_ext" always does the right
+# thing!
 
+mtimes = {}  # modification times
+include = re.compile('^#\s*include "(\S+)"', re.MULTILINE)
 def mtime(path, name):
     """Return modification time.
 
-    The modification time of a source file is returned.  I one of its
+    The modification time of a source file is returned.  If one of its
     dependencies is newer, the mtime of that file is returned."""
 
     global mtimes
     if mtimes.has_key(name):
         return mtimes[name]
     t = os.stat(path + name)[ST_MTIME]
-    for line in file(path + name):
-        if line[0] == '#' and line[1:].lstrip().startswith('include "'):
-            name2 = line.split('"')[1]
-            if name2 != name:
-                t = max(t, mtime(path, name2))
+    for name2 in include.findall(open(path + name).read()):
+        if name2 != name:
+            t = max(t, mtime(path, name2))
     mtimes[name] = t
     return t
 
-plat = get_platform() + '-' + sys.version[0:3]
-
 # Remove object files if any dependencies have changed:
+plat = get_platform() + '-' + sys.version[0:3]
 remove = False
 for source in sources:
     path, name = os.path.split(source)
@@ -245,7 +246,7 @@ setup(name = 'gridpaw',
 ##      data_files=[('doc', ['doc/index.txt'])],
       )
 
-if machine == '00105CDA4C00':
+if sys.platform == 'aix5':
 
     #
     # o|_  _ _

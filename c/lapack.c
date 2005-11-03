@@ -39,8 +39,6 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
   PyArrayObject* b = 0;
   if (!PyArg_ParseTuple(args, "OO|O", &a, &w, &b)) 
     return NULL;
-  char jobz = 'V';
-  char uplo = 'U';
   int n = a->dimensions[0];
   int lda = n;
   int ldb = n;
@@ -51,10 +49,10 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
       int lwork = 3 * n + 1;
       double* work = (double*)malloc(lwork * sizeof(double));
       if (b == 0)
-        dsyev_(&jobz, &uplo, &n, DOUBLEP(a), &lda,
+        dsyev_("V", "U", &n, DOUBLEP(a), &lda,
                DOUBLEP(w), work, &lwork, &info);
       else
-        dsygv_(&itype, &jobz, &uplo, &n, DOUBLEP(a), &lda,
+        dsygv_(&itype, "V", "U", &n, DOUBLEP(a), &lda,
                 DOUBLEP(b), &ldb, DOUBLEP(w), 
                 work, &lwork, &info);
       free(work);
@@ -66,11 +64,11 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
       void* work = malloc(lwork * 2 * sizeof(double));
       double* rwork = (double*)malloc(lrwork * sizeof(double));
       if (b == 0)
-        zheev_(&jobz, &uplo, &n, (void*)a->data, &lda,
+        zheev_("V", "U", &n, (void*)a->data, &lda,
                (double*)w->data, 
                work, &lwork, rwork, &lrwork, &info);
       else
-        zhegv_(&itype, &jobz, &uplo, &n, (void*)COMPLEXP(a), &lda,
+        zhegv_(&itype, "V", "U", &n, (void*)COMPLEXP(a), &lda,
                 (void*)COMPLEXP(b), &lda,
                 DOUBLEP(w), 
                 work, &lwork, rwork, &lrwork, &info);
