@@ -38,26 +38,26 @@ class XCFunctional:
         
         if xcname == 'LDA':
             self.gga = False
-            type = 117 # not used!
+            code = 117 # not used!
         else:
             self.gga = True
             if xcname == 'PBE':
-                type = 0
+                code = 0
             elif xcname == 'revPBE':
-                type = 1
+                code = 1
             elif xcname == 'RPBE':
-                type = 2
+                code = 2
             elif xcname.startswith('XC'):
-                type = 3
+                code = 3
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 
-        if type == 3:
+        if code == 3:
             i = int(xcname[3])
             s0 = float(xcname[5:])
-            self.xc = _gridpaw.XCFunctional(type, self.gga, scalarrel, s0, i)
+            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel, s0, i)
         else:
-            self.xc = _gridpaw.XCFunctional(type, self.gga, scalarrel)
+            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
 
     def exchange(self, rs, a2=0):
         return self.xc.exchange(rs, a2)
@@ -95,16 +95,16 @@ class XCOperator:
                     self.dedab2_g = num.zeros(self.shape, num.Float)
         else:
             self.radial = False
-            self.shape = tuple(gd.n_i)
+            self.shape = tuple(gd.n_c)
             self.dv = gd.dv
             if xcfunc.gga:
-                self.ddr = [Gradient(gd, axis).apply for axis in range(3)]
-                self.dndr_ig = num.zeros((3,) + self.shape, num.Float)
+                self.ddr = [Gradient(gd, c).apply for c in range(3)]
+                self.dndr_cg = num.zeros((3,) + self.shape, num.Float)
                 self.a2_g = num.zeros(self.shape, num.Float)
                 self.deda2_g = num.zeros(self.shape, num.Float)
                 if nspins == 2:
-                    self.dnadr_ig = num.zeros((3,) + self.shape, num.Float)
-                    self.dnbdr_ig = num.zeros((3,) + self.shape, num.Float)
+                    self.dnadr_cg = num.zeros((3,) + self.shape, num.Float)
+                    self.dnbdr_cg = num.zeros((3,) + self.shape, num.Float)
                     self.aa2_g = num.zeros(self.shape, num.Float)
                     self.ab2_g = num.zeros(self.shape, num.Float)
                     self.dedaa2_g = num.zeros(self.shape, num.Float)
@@ -130,9 +130,9 @@ class XCOperator:
                 self.rgd.derivative(n_g, self.dndr_g)
                 self.a2_g[:] = self.dndr_g**2
             else:
-                for i in range(3):
-                    self.ddr[i](n_g, self.dndr_ig[i])
-                self.a2_g[:] = num.sum(self.dndr_ig**2)
+                for c in range(3):
+                    self.ddr[c](n_g, self.dndr_cg[c])
+                self.a2_g[:] = num.sum(self.dndr_cg**2)
 
             self.xc.calculate_spinpaired(self.e_g,
                                          n_g, v_g,
@@ -146,9 +146,9 @@ class XCOperator:
                 tmp_g[0] = tmp_g[1]
                 v_g -= 2.0 * tmp_g
             else:
-                tmp_g = self.dndr_ig[0]
-                for i in range(3):
-                    self.ddr[i](self.deda2_g * self.dndr_ig[i], tmp_g)
+                tmp_g = self.dndr_cg[0]
+                for c in range(3):
+                    self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
                     v_g -= 2.0 * tmp_g
         else:
             self.xc.calculate_spinpaired(self.e_g, n_g, v_g)
@@ -173,13 +173,13 @@ class XCOperator:
                 self.aa2_g[:] = self.dnadr_g**2
                 self.ab2_g[:] = self.dnbdr_g**2
             else:
-                for i in range(3):
-                    self.ddr[i](na_g, self.dnadr_ig[i])
-                    self.ddr[i](nb_g, self.dnbdr_ig[i])
-                self.dndr_ig[:] = self.dnadr_ig + self.dnbdr_ig
-                self.a2_g[:] = num.sum(self.dndr_ig**2)
-                self.aa2_g[:] = num.sum(self.dnadr_ig**2)
-                self.ab2_g[:] = num.sum(self.dnbdr_ig**2)
+                for c in range(3):
+                    self.ddr[c](na_g, self.dnadr_cg[c])
+                    self.ddr[c](nb_g, self.dnbdr_cg[c])
+                self.dndr_cg[:] = self.dnadr_cg + self.dnbdr_cg
+                self.a2_g[:] = num.sum(self.dndr_cg**2)
+                self.aa2_g[:] = num.sum(self.dnadr_cg**2)
+                self.ab2_g[:] = num.sum(self.dnbdr_cg**2)
 
             self.xc.calculate_spinpolarized(self.e_g,
                                            na_g, va_g,
@@ -207,13 +207,13 @@ class XCOperator:
                 tmp_g[0] = tmp_g[1]
                 vb_g -= 4.0 * tmp_g
             else:
-                for i in range(3):
-                    self.ddr[i](self.deda2_g * self.dndr_ig[i], tmp_g)
+                for c in range(3):
+                    self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
                     va_g -= 2.0 * tmp_g
                     vb_g -= 2.0 * tmp_g
-                    self.ddr[i](self.dedaa2_g * self.dnadr_ig[i], tmp_g)
+                    self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
                     va_g -= 4.0 * tmp_g
-                    self.ddr[i](self.dedab2_g * self.dnbdr_ig[i], tmp_g)
+                    self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
                     vb_g -= 4.0 * tmp_g
         else:
             self.xc.calculate_spinpolarized(self.e_g, na_g, va_g, nb_g, vb_g)

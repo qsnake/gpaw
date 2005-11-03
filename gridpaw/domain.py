@@ -13,7 +13,7 @@ from gridpaw.utilities.mpi import serial_comm
 
 class Domain:
     """Domain class."""
-    def __init__(self, cell_i, periodic_i=(True, True, True), angle=None):
+    def __init__(self, cell, periodic=(True, True, True), angle=None):
         """Create Domain object from a unit cell and boundary conditions.
 
         The arguments are the lengths of the three axes, followed by a
@@ -22,61 +22,61 @@ class Domain:
         translation of one lattice vector in the *x*-direction
         (experimental feature)."""
         
-        self.cell_i = num.array(cell_i, num.Float)
-        self.periodic_i = periodic_i
+        self.cell_c = num.array(cell, num.Float)
+        self.periodic_c = periodic
 	self.angle = angle
         
         self.set_decomposition(serial_comm, (1, 1, 1))
         
-    def set_decomposition(self, comm, parsize_i=None, N_i=None):
+    def set_decomposition(self, comm, parsize_c=None, N_c=None):
         """Set MPI-communicator and do domain decomposition.
 
-        With ``parsize_i=(a, b, c)``, the domin will be divided in
+        With ``parsize_c=(a, b, c)``, the domin will be divided in
         ``a*b*c`` sub-domains - one for each CPU in ``comm``.  If
-        ``parsize_i`` is not given, the number of grid points will be
+        ``parsize_c`` is not given, the number of grid points will be
         used to suggest a good domain decomposition."""
         
         self.comm = comm
 
-        if parsize_i is None:
-            parsize_i = decompose_domain(N_i, comm.size)
-        self.parsize_i = num.array(parsize_i)
+        if parsize_c is None:
+            parsize_c = decompose_domain(N_c, comm.size)
+        self.parsize_c = num.array(parsize_c)
 
-        self.stride_i = num.array([parsize_i[1] * parsize_i[2],
-                                   parsize_i[2],
+        self.stride_c = num.array([parsize_c[1] * parsize_c[2],
+                                   parsize_c[2],
                                    1])
         
-        if num.product(self.parsize_i) != self.comm.size:
+        if num.product(self.parsize_c) != self.comm.size:
             raise RuntimeError('Bad domain decomposition!')
 
         rnk = self.comm.rank
-        self.parpos_i = num.array(
-            [rnk // self.stride_i[0],
-             (rnk % self.stride_i[0]) // self.stride_i[1],
-             rnk % self.stride_i[1]])
-        assert num.dot(self.parpos_i, self.stride_i) == rnk
+        self.parpos_c = num.array(
+            [rnk // self.stride_c[0],
+             (rnk % self.stride_c[0]) // self.stride_c[1],
+             rnk % self.stride_c[1]])
+        assert num.dot(self.parpos_c, self.stride_c) == rnk
 
         self.find_neighbor_processors()
 
-    def scale_position(self, pos_i):
+    def scale_position(self, pos_c):
         """Return scaled position.
 
         Return array with the coordinates scaled to the interval [0,
         1)."""
         
-        spos_i = pos_i / self.cell_i
-        for i in range(3):
-            if self.periodic_i[i]:
-                spos_i[i] %= 1.0
-        return spos_i
+        spos_c = pos_c / self.cell_c
+        for c in range(3):
+            if self.periodic_c[c]:
+                spos_c[c] %= 1.0
+        return spos_c
 
-    def rank(self, spos_i):
+    def rank(self, spos_c):
         """Calculate rank of domain containing scaled position."""
-        rnk_i = num.clip(num.floor(spos_i * self.parsize_i).astype(num.Int),
-                         0, num.array(self.parsize_i) - 1)
-        for i in range(3):
-            assert 0 <= rnk_i[i] < self.parsize_i[i], "Bad bad!"
-        return num.dot(rnk_i, self.stride_i)
+        rnk_c = num.clip(num.floor(spos_c * self.parsize_c).astype(num.Int),
+                         0, num.array(self.parsize_c) - 1)
+        for c in range(3):
+            assert 0 <= rnk_c[c] < self.parsize_c[c], "Bad bad!"
+        return num.dot(rnk_c, self.stride_c)
 
     def find_neighbor_processors(self):
         """Find neighbor processors - surprise!
@@ -85,28 +85,28 @@ class Domain:
         z) and direction + or - (0 or 1), two attributes are
         calculated:
 
-        * ``neighbor_id``:  Rank of neighbor.
-        * ``disp_id``:  Displacement for neighbor.
+        * ``neighbor_cd``:  Rank of neighbor.
+        * ``disp_cd``:  Displacement for neighbor.
         """
         
-        self.neighbor_id = num.zeros((3, 2), num.Int)
-        self.disp_id = num.zeros((3, 2), num.Int)
-        for i in range(3):
-            p = self.parpos_i[i]
+        self.neighbor_cd = num.zeros((3, 2), num.Int)
+        self.sdisp_cd = num.zeros((3, 2), num.Int)
+        for c in range(3):
+            p = self.parpos_c[c]
             for d in range(2):
-                disp = 2 * d - 1
-                pd = p + disp
-                pd0 = pd % self.parsize_i[i]
-                self.neighbor_id[i, d] = (self.comm.rank +
-                                          (pd0 - p) * self.stride_i[i])
+                sdisp = 2 * d - 1
+                pd = p + sdisp
+                pd0 = pd % self.parsize_c[c]
+                self.neighbor_cd[c, d] = (self.comm.rank +
+                                          (pd0 - p) * self.stride_c[c])
                 if pd0 != pd:
                     # Wrap around the box?
-                    if self.periodic_i[i]:
+                    if self.periodic_c[c]:
                         # Yes:
-                        self.disp_id[i, d] = -disp
+                        self.sdisp_cd[c, d] = -sdisp
                     else:
                         # No:
-                        self.neighbor_id[i, d] = -1
+                        self.neighbor_cd[c, d] = -1
 
 
 def decompose_domain(ng, p):

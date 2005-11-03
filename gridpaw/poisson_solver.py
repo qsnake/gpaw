@@ -43,7 +43,7 @@ class PoissonSolver:
             self.interpolators.append(Interpolator(gd, 1))
             self.restrictors.append(Restrictor(gd, 1))
             level += 1
-            print >> out, level, gd.N_i
+            print >> out, level, gd.N_c
             
         self.levels = level
         self.eps = 1e-9

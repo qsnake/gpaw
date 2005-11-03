@@ -123,16 +123,16 @@ class Calculator:
             out = open(out, 'w')
         self.out = out
 
-    def set_kpts(self, bzk_ki):
+    def set_kpts(self, bzk_kc):
         """Set the scaled k-points. 
         
         ``kpts`` should be an array of scaled k-points."""
         
-        if bzk_ki is None:
-            bzk_ki = (1, 1, 1)
-        if type(bzk_ki[0]) is int:
-            bzk_ki = MonkhorstPack(bzk_ki)
-        self.bzk_ki = num.array(bzk_ki)
+        if bzk_kc is None:
+            bzk_kc = (1, 1, 1)
+        if type(bzk_kc[0]) is int:
+            bzk_kc = MonkhorstPack(bzk_kc)
+        self.bzk_kc = num.array(bzk_kc)
         self.reset()
      
     def update_energy_and_forces(self):
@@ -200,7 +200,7 @@ class Calculator:
                 positions, numbers, magmoms, cell, bc, angle,
                 self.h, self.gpts, self.xc,
                 self.nbands, self.spinpol, self.width,
-                self.bzk_ki,
+                self.bzk_kc,
                 self.softgauss,
                 self.order,
                 self.usesymm,
@@ -391,7 +391,7 @@ class Calculator:
  
     def GetBZKPoints(self):
         """Return the k-points."""
-        return self.bzk_ki
+        return self.bzk_kc
  
     def GetSpinPolarized(self):
         """Is it a spin-polarized calculation?"""
@@ -429,8 +429,8 @@ class Calculator:
 
     def GetWannierLocalizationMatrix(self, G_I=None, nbands=None, spin=None,
                                      kpoint=0, nextkpoint=0, dirG=0):
-        i = G_I.index(1)
-        return self.paw.get_wannier_integral(i)
+        c = G_I.index(1)
+        return self.paw.get_wannier_integral(c)
 
     def GetMagneticMoment(self):
         return self.paw.get_magnetic_moment()

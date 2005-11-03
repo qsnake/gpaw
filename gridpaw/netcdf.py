@@ -92,22 +92,22 @@ def write_netcdf(paw, filename):
         nc = NetCDF.NetCDFFile(filename, 'a')
 
         # Write the k-points:
-        nc.createDimension('nbzkpts', len(wf.bzk_ki))
+        nc.createDimension('nbzkpts', len(wf.bzk_kc))
         nc.createDimension('nibzkpts', wf.nkpts)
         var = nc.createVariable('BZKPoints', num.Float, ('nbzkpts', '3'))
-        var[:] = wf.bzk_ki
+        var[:] = wf.bzk_kc
         var = nc.createVariable('IBZKPoints', num.Float, ('nibzkpts', '3'))
-        var[:] = wf.ibzk_ki
+        var[:] = wf.ibzk_kc
         var = nc.createVariable('IBZKPointWeights', num.Float,
                                 ('nibzkpts',))
         var[:] = wf.weights_k
 
         # Create dimensions for varioius netCDF variables:
-        N_i = paw.gd.N_i
-        nc.createDimension('ngptsx', N_i[0])
-        nc.createDimension('ngptsy', N_i[1])
-        nc.createDimension('ngptsz', N_i[2])
-        ng = paw.finegd.N_i
+        N_c = paw.gd.N_c
+        nc.createDimension('ngptsx', N_c[0])
+        nc.createDimension('ngptsy', N_c[1])
+        nc.createDimension('ngptsz', N_c[2])
+        ng = paw.finegd.N_c
         nc.createDimension('nfinegptsx', ng[0])
         nc.createDimension('nfinegptsy', ng[1])
         nc.createDimension('nfinegptsz', ng[2])

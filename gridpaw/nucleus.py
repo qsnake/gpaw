@@ -27,7 +27,7 @@ class Nucleus:
         self.a = a
         self.typecode = typecode
         self.onohirose = onohirose
-        self.spos_i = None
+        self.spos_c = None
         self.rank = None
         lmax = self.setup.lmax
         self.domain_overlap = NOT_INITIALIZED
@@ -41,7 +41,7 @@ class Nucleus:
         self.D_sp = num.zeros((nspins, np), num.Float)
         self.H_sp = num.zeros((nspins, np), num.Float)
         self.P_uni = num.zeros((nspins * nkpts, nbands, ni), self.typecode)
-        self.F_i = num.zeros(3, num.Float)
+        self.F_c = num.zeros(3, num.Float)
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape
@@ -71,31 +71,31 @@ class Nucleus:
         # Smooth core density:
         nct = self.setup.get_smooth_core_density()
         create = create_localized_functions
-        self.nct = create([nct], gd, self.spos_i, cut=True, lfbc=lfbc,
+        self.nct = create([nct], gd, self.spos_c, cut=True, lfbc=lfbc,
                           onohirose=self.onohirose)
 
         # Shape function:
         ghat_l = self.setup.get_shape_function()
-        self.ghat_L = create(ghat_l, finegd, self.spos_i, lfbc=lfbc,
+        self.ghat_L = create(ghat_l, finegd, self.spos_c, lfbc=lfbc,
                              onohirose=self.onohirose)
             
         # Potential:
         vhat_l = self.setup.get_potential()
-        self.vhat_L = create(vhat_l, finegd, self.spos_i, lfbc=lfbc,
+        self.vhat_L = create(vhat_l, finegd, self.spos_c, lfbc=lfbc,
                              onohirose=self.onohirose)
 
         assert (self.ghat_L is None) == (self.vhat_L is None)
         
         # Projectors:
         pt_j = self.setup.get_projectors()
-        self.pt_i = create(pt_j, gd, self.spos_i, typecode=self.typecode,
+        self.pt_i = create(pt_j, gd, self.spos_c, typecode=self.typecode,
                            lfbc=lfbc, onohirose=self.onohirose)
         if self.typecode == num.Complex:
             self.pt_i.set_phase_factors(k_ki)
         
         # Localized potential:
         vbar = self.setup.get_localized_potential()
-        self.vbar = create([vbar], finegd, self.spos_i, lfbc=lfbc,
+        self.vbar = create([vbar], finegd, self.spos_c, lfbc=lfbc,
                            onohirose=self.onohirose)
 
         if self.pt_i is None:
@@ -104,7 +104,7 @@ class Nucleus:
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
         phit_j = self.setup.get_atomic_orbitals()
         self.phit_i = create_localized_functions(
-            phit_j, gd, self.spos_i, onohirose=1, typecode=self.typecode,
+            phit_j, gd, self.spos_c, onohirose=1, typecode=self.typecode,
             cut=True, forces=False, lfbc=lfbc)
         if self.typecode == num.Complex:
             self.phit_i.set_phase_factors(k_ki)
@@ -289,21 +289,21 @@ class Nucleus:
             self.vhat_L.integrate(nt_g, F_k, derivatives=True) 
             
             Q_L = self.Q_L
-            F = self.F_i
+            F = self.F_c
             F[:] += Q_L[0] * F_k[:3]
             if lmax > 0:
                 F += Q_L[1] * F_k[3:6]
                 F += Q_L[2] * num.array([F_k[4], F_k[6], F_k[7]])
                 F += Q_L[3] * num.array([F_k[5], F_k[7], F_k[8]])
             if lmax > 1:
-                f_im = num.zeros(15, num.Float)
-                f_im[:7] = F_k[9:16]
-                f_im[7] = F_k[10]
-                f_im[8:10] = F_k[16:18]
-                f_im[10] = F_k[10]
-                f_im[11:] = F_k[18:]
-                f_im.shape = (3, 5)
-                F += num.dot(f_im, Q_L[4:])
+                f_cm = num.zeros(15, num.Float)
+                f_cm[:7] = F_k[9:16]
+                f_cm[7] = F_k[10]
+                f_cm[8:10] = F_k[16:18]
+                f_cm[10] = F_k[10]
+                f_cm[11:] = F_k[18:]
+                f_cm.shape = (3, 5)
+                F += num.dot(f_cm, Q_L[4:])
 
             # Force from smooth core charge:
             F_k = num.zeros(3, num.Float)
@@ -359,7 +359,7 @@ class Nucleus:
             F_ik *= 2.0
             i = 0
             k = 0
-            F = self.F_i
+            F = self.F_c
             for l in self.setup.l_j:
                 f = real(F_ik[i:, k:])
                 if l == 0:

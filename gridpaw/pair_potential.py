@@ -16,8 +16,8 @@ class Neighbor:
 
 class PairPotential:
     def __init__(self, domain, setups):
-        self.cell_i = domain.cell_i
-        self.bc_i = domain.periodic_i
+        self.cell_c = domain.cell_c
+        self.bc_c = domain.periodic_c
 
         # Collect the pair potential cutoffs in a list:
         self.cutoff_a = []
@@ -34,17 +34,17 @@ class PairPotential:
 
         self.neighborlist = None
         
-    def update(self, pos_ai, nuclei):
+    def update(self, pos_ac, nuclei):
         if self.neighborlist is None:
             # Make a neighbor list object:
             drift = 0.3
             Z_a = [nucleus.setup.Z for nucleus in nuclei]
-            self.neighborlist = NeighborList(Z_a, pos_ai,
-                                             self.cell_i, self.bc_i,
+            self.neighborlist = NeighborList(Z_a, pos_ac,
+                                             self.cell_c, self.bc_c,
                                              self.cutoff_a, drift)
             updated = False
         else:
-            updated = self.neighborlist.update_list(pos_ai)
+            updated = self.neighborlist.update_list(pos_ac)
 
         # Reset all pairs:
         for nucleus in nuclei:
@@ -58,7 +58,7 @@ class PairPotential:
                 nucleus2 = nuclei[n2]
                 Z2 = nucleus2.setup.Z
                 interaction = self.interactions[(Z1, Z2)]
-                diff = pos_ai[n2] - pos_ai[n1]
+                diff = pos_ac[n2] - pos_ac[n1]
                 V = num.zeros(interaction.v_LL.shape, num.Float)
                 dVdr = num.zeros(interaction.dvdr_LLi.shape, num.Float)
                 for offset in offsets:
@@ -81,7 +81,7 @@ class PairPotential:
         print >> out, 'pair potential:'
         print >> out, '  cutoffs:'
             print >> out, '   ', setup.symbol, setup.rcut2 * a0
-        npairs = self.neighborlist.number_of_pairs() - len(pos_ai)
+        npairs = self.neighborlist.number_of_pairs() - len(pos_ac)
         if npairs == 0:
             print >> out, '  There are no pair interactions.'
         elif npairs == 1:

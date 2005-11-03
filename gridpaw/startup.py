@@ -13,14 +13,14 @@ from gridpaw.parallel import distribute_kpoints_and_spins
 
 
 def create_paw_object(out, a0, Ha,
-                      pos_ai, Z_a, magmom_a, cell_i, bc_i, angle,
-                      h, N_i, xcname,
+                      pos_ac, Z_a, magmom_a, cell_c, bc_c, angle,
+                      h, N_c, xcname,
                       nbands, spinpol, kT,
-                      bzk_ki,
+                      bzk_kc,
                       softgauss, order, usesymm, mix, old, fixdensity,
                       idiotproof, hund, lmax, onohirose, tolerance,
                       # Parallel stuff:
-                      parsize_i,
+                      parsize_c,
                       restart_file):
 
     if angle is not None:
@@ -33,7 +33,7 @@ def create_paw_object(out, a0, Ha,
     magnetic = num.sometrue(magmom_a)
 
     # Is this a gamma-point calculation?
-    gamma = (len(bzk_ki) == 1 and not num.sometrue(bzk_ki[0]))
+    gamma = (len(bzk_kc) == 1 and not num.sometrue(bzk_kc[0]))
 
     # Default values:
     if spinpol is None:
@@ -61,35 +61,35 @@ def create_paw_object(out, a0, Ha,
     setups = construct_setups(Z_a, xcfunc, lmax, nspins, softgauss)
 
     # Default value for grid spacing:
-    if N_i is None:
+    if N_c is None:
         if h is None:
             # Find the smalles recommended grid spacing:
             h = 1000.0
             for setup in setups.values():
                 h = min(h, a0 * setup.get_recommended_grid_spacing())
 
-        # N_i should be a multiplum of 4:
-        N_i = [max(4, int(L / h / 4 + 0.5) * 4) for L in cell_i]
+        # N_c should be a multiplum of 4:
+        N_c = [max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c]
     else:
         if h is not None:
             raise TypeError("""You can't use both "gpts" and "h"!""")
-    N_i = num.array(N_i)
+    N_c = num.array(N_c)
 
     # Create a Domain object:
-    domain = Domain(cell_i / a0, bc_i, angle)
+    domain = Domain(cell_c / a0, bc_c, angle)
 
     # Brillouin-zone stuff:
     if gamma:
         typecode = num.Float
         symmetry = None
         weights_k = [1.0]
-        ibzk_ki = num.zeros((1, 3), num.Float)
+        ibzk_kc = num.zeros((1, 3), num.Float)
     else:
         typecode = num.Complex
         # Reduce the the k-points to those in the irreducible part of
         # the Brillouin zone:
-        symmetry, weights_k, ibzk_ki = reduce_kpoints(
-            bzk_ki, pos_ai / a0, Z_a, domain, usesymm)
+        symmetry, weights_k, ibzk_kc = reduce_kpoints(
+            bzk_kc, pos_ac / a0, Z_a, domain, usesymm)
 
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:
@@ -116,23 +116,23 @@ def create_paw_object(out, a0, Ha,
 
     # Get the local number of spins and k-points, and return a
     # domain_comm and kpt_comm for this processor:
-    myspins, myibzk_ki, myweights_k, domain_comm, kpt_comm = \
-             distribute_kpoints_and_spins(nspins, ibzk_ki, weights_k)
+    myspins, myibzk_kc, myweights_k, domain_comm, kpt_comm = \
+             distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k)
 
-    domain.set_decomposition(domain_comm, parsize_i, N_i)
+    domain.set_decomposition(domain_comm, parsize_c, N_c)
 
     # We now have all the parameters needed to construct a PAW object:
     paw = Paw(a0, Ha,
-              setups, nuclei, domain, N_i, symmetry, xcfunc,
+              setups, nuclei, domain, N_c, symmetry, xcfunc,
               nvalence, nbands, nspins, kT,
-              typecode, bzk_ki, ibzk_ki, weights_k,
+              typecode, bzk_kc, ibzk_kc, weights_k,
               order, usesymm, mix, old, fixdensity, idiotproof,
               # Parallel stuff:
-              myspins, myibzk_ki, myweights_k, kpt_comm,
+              myspins, myibzk_kc, myweights_k, kpt_comm,
               out)
 
     if restart_file is None:
-        paw.set_positions(pos_ai / a0)
+        paw.set_positions(pos_ac / a0)
         paw.initialize_density_and_wave_functions(hund, magmom_a)
     else:
         paw.initialize_from_netcdf(restart_file)
@@ -141,14 +141,14 @@ def create_paw_object(out, a0, Ha,
     return paw
 
     
-def reduce_kpoints(bzk_ki, pos_ai, Z_a, domain, usesymm):
+def reduce_kpoints(bzk_kc, pos_ac, Z_a, domain, usesymm):
     """Reduce the number of k-points using symmetry.
 
     Returns symmetry object, weights and k-points in the irreducible
     part of the BZ."""
 
-    for i in range(3):
-        if not domain.periodic_i[i] and num.sometrue(bzk_ki[:, i]):
+    for c in range(3):
+        if not domain.periodic_c[c] and num.sometrue(bzk_kc[:, c]):
             raise ValueError('K-points can only be used with PBCs!')
 
     # Construct a Symmetry instance containing the identity
@@ -157,17 +157,17 @@ def reduce_kpoints(bzk_ki, pos_ai, Z_a, domain, usesymm):
 
     if usesymm:
         # Find symmetry operations of atoms:
-        symmetry.analyze(pos_ai)
+        symmetry.analyze(pos_ac)
 
     # Reduce the set of k-points:
-    ibzk_ki, weights_k = symmetry.reduce(bzk_ki)
+    ibzk_kc, weights_k = symmetry.reduce(bzk_kc)
 
     if usesymm:
         symmetry = symmetry
     else:
         symmetry = None
 
-    return symmetry, weights_k, ibzk_ki
+    return symmetry, weights_k, ibzk_kc
 
 
 def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss):

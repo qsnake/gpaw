@@ -1,6 +1,8 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""This module defines a ``KPoint`` class."""
+
 from math import pi
 from cmath import exp
 
@@ -16,27 +18,32 @@ from gridpaw.operators import Gradient
 
 
 class KPoint:
-    def __init__(self, gd, weight, s, k, u, k_i, typecode):
+    """The ``KPoint`` class takes care of all wave functions for a
+    certain **k**-point and a certain spin."""
+    
+    def __init__(self, gd, weight, s, k, u, k_c, typecode):
+        
         self.gd = gd
         self.weight = weight
         self.typecode = typecode
         
-        self.phase_id = num.ones((3, 2), num.Complex)
+        self.phase_cd = num.ones((3, 2), num.Complex)
         if typecode == num.Float:
             # Gamma-point calculation:
-            self.k_i = None
+            self.k_c = None
         else:
-            disp_id = self.gd.domain.disp_id
-            for i in range(3):
+            sdisp_cd = self.gd.domain.sdisp_cd
+            for c in range(3):
                 for d in range(2):
-                    self.phase_id[i, d] = exp(2j * pi * disp_id[i, d] * k_i[i])
-            self.k_i = k_i
+                    self.phase_cd[c, d] = exp(2j * pi *
+                                              sdisp_cd[c, d] * k_c[c])
+            self.k_c = k_c
 
-        self.s = s
-        self.k = k
-        self.u = u
+        self.s = s  # spin index
+        self.k = k  # k-point index
+        self.u = u  # combined spin and k-point index
 
-        # Which cpu does overlap-matrix Cholesky-decomposition and
+        # Which CPU does overlap-matrix Cholesky-decomposition and
         # Hamiltonian-matrix diagonalization?
         self.comm = self.gd.comm
         self.root = u % self.comm.size
@@ -60,14 +67,31 @@ class KPoint:
         self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
         
     def diagonalize(self, kin, vt_sG, my_nuclei, nbands):
-        """Diagonalize wave functions.
+        """Subspace diagonalization of wave functions.
 
+        First, the Hamiltonian (defined by ``kin``, ``vt_sG``, and
+        ``my_nuclei``) is applied to the wavefunctions, then the
+        ``H_nn`` matrix is calculated and diagonalized, and finally,
+        the wave functions are rotated.  Also the projections
+        ``P_uni`` (an attribute of the nuclei) are rotated.
+
+        If this is the first iteration and we are starting from atomic
+        orbitals, then the desired number of bands (``nbands``) will
+        most likely differ from the number of current atomic orbitals
+        (``self.nbands``).  If this is the case, then new arrays are
+        allocated:
+
+        * Too many bands: The bands with the lowest eigenvalues are
+          used.
+        * Too few bands: Extra wave functions calculated as the
+          derivative of the wave functions with respect to the
+          *x*-coordinate.
         """
 
         # Put in some yields ???? XXXX
         vt_G = vt_sG[self.s]
         self.timer.start('apply')
-        kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_id)
+        kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
         self.timer.stop('apply')
         self.timer.start('pot')
         self.Htpsit_nG += self.psit_nG * vt_G
@@ -138,7 +162,7 @@ class KPoint:
                 self.H_nn.flat[nao * (nbands + 1)::nbands + 1] = 1.0
                 slice = self.psit_nG[nao:]
                 grad = Gradient(self.gd, 0, typecode=self.typecode).apply
-                grad(self.psit_nG[:extra], slice, self.phase_id)
+                grad(self.psit_nG[:extra], slice, self.phase_cd)
             self.timer.stop('extra')
         
     def calculate_residuals(self, p_nuclei):
@@ -206,9 +230,10 @@ class KPoint:
 
             dR_G = num.zeros(R_G.shape, self.typecode)
 
-            pR_G = preconditioner(R_G, self.phase_id, self.psit_nG[n], self.k_i)
+            pR_G = preconditioner(R_G, self.phase_cd, self.psit_nG[n],
+                                  self.k_c)
             
-            kin.apply(pR_G, dR_G, self.phase_id)
+            kin.apply(pR_G, dR_G, self.phase_cd)
 
             dR_G += vt_G * pR_G
 
@@ -224,8 +249,8 @@ class KPoint:
 
             R_G *= 2.0 * lam
             scale_add_to(dR_G, lam**2, R_G)
-            self.psit_nG[n] += preconditioner(R_G, self.phase_id,
-                                              self.psit_nG[n], self.k_i)
+            self.psit_nG[n] += preconditioner(R_G, self.phase_cd,
+                                              self.psit_nG[n], self.k_c)
 
     def create_atomic_orbitals(self, nao, nuclei):
         # Allocate space for wave functions, occupation numbers,

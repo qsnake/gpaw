@@ -56,28 +56,28 @@ class Teter:
     def __init__(self, gd, kin, typecode):
         print 'Teter, Payne and Allan FFT Preconditioning of residue vector'
         self.typecode = typecode
-        dims = gd.n_i.copy()
+        dims = gd.n_c.copy()
         dims.shape = (3, 1, 1, 1)
-        icell = 1.0 / num.array(gd.domain.cell_i)
+        icell = 1.0 / num.array(gd.domain.cell_c)
         icell.shape = (3, 1, 1, 1)
-        q_iq = ((num.indices(gd.n_i) + dims / 2) % dims - dims / 2) * icell
-        self.q2_q = num.sum(q_iq**2)
+        q_cq = ((num.indices(gd.n_c) + dims / 2) % dims - dims / 2) * icell
+        self.q2_q = num.sum(q_cq**2)
 
-        self.r_iG = num.indices(gd.n_i, num.Float) / dims
-        self.r_iG.shape = (3, -1)
+        self.r_cG = num.indices(gd.n_c, num.Float) / dims
+        self.r_cG.shape = (3, -1)
 
         self.cache = {}
         
-    def __call__(self, R_G, phases, phit_G, kpt_i):
+    def __call__(self, R_G, phases, phit_G, kpt_c):
         from FFT import fftnd, inverse_fftnd
-        if kpt_i is None:
+        if kpt_c is None:
             phit_q = fftnd(phit_G)
         else:
-            phase_G = self.cache.get(kpt_i)
+            phase_G = self.cache.get(kpt_c)
             if phase_G is None:
-                phase_G = num.exp(-2j * pi * num.dot(kpt_i, self.r_iG))
+                phase_G = num.exp(-2j * pi * num.dot(kpt_c, self.r_cG))
                 phase_G.shape = phit_G.shape
-                self.cache[kpt_i] = phase_G
+                self.cache[kpt_c] = phase_G
             phit_q = fftnd(phit_G * phase_G)
             
         norm = num.dot(phit_q.flat, num.conjugate(phit_q.flat))
@@ -93,7 +93,7 @@ class Teter:
         K_q += 27.0
         K_q /= (K_q + 16.0 * x_q**4)
        
-        if kpt_i is None:
+        if kpt_c is None:
             return inverse_fftnd(K_q * fftnd(R_G)).astype(num.Float)
         else:
             return inverse_fftnd(K_q * fftnd(phase_G * R_G)) / phase_G

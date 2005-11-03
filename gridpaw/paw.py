@@ -42,13 +42,13 @@ class Paw:
     ..."""
     
     def __init__(self, a0, Ha,
-                 setups, nuclei, domain, N_i, symmetry, xcfunc,
+                 setups, nuclei, domain, N_c, symmetry, xcfunc,
                  nvalence, nbands, nspins, kT,
-                 typecode, bzk_ki, ibzk_ki, weights_k,
+                 typecode, bzk_kc, ibzk_kc, weights_k,
                  order, usesymm, mix, old, fixdensity, idiotproof,
                  # Parallel stuff:
                  myspins,
-                 myibzk_ki, myweights_k, kpt_comm,
+                 myibzk_kc, myweights_k, kpt_comm,
                  out):
         
         self.timer = Timer()
@@ -69,15 +69,15 @@ class Paw:
         
         # Construct grid descriptors for coarse grids (wave functions) and
         # fine grids (densities and potentials):
-        self.gd = GridDescriptor(domain, N_i)
-        self.finegd = GridDescriptor(domain, 2 * N_i)
+        self.gd = GridDescriptor(domain, N_c)
+        self.finegd = GridDescriptor(domain, 2 * N_c)
         if not self.gd.is_healthy():
             self.warn(
-                'VERY ANISOTROPIC GRIDSPACINGS: ' + str(self.a0 * self.gd.h_i))
+                'VERY ANISOTROPIC GRIDSPACINGS: ' + str(self.a0 * self.gd.h_c))
 
         if mpi.rank == MASTER:
             # Forces for all atoms:
-            self.F_ai = num.zeros((len(nuclei), 3), num.Float)
+            self.F_ac = num.zeros((len(nuclei), 3), num.Float)
             
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
@@ -92,8 +92,8 @@ class Paw:
         # Wave functions ...
         self.wf = WaveFunctions(self.gd, nvalence, nbands, nspins,
                                 typecode, kT / Ha,
-                                bzk_ki, ibzk_ki, weights_k,
-                                myspins, myibzk_ki, myweights_k, kpt_comm)
+                                bzk_kc, ibzk_kc, weights_k,
+                                myspins, myibzk_kc, myweights_k, kpt_comm)
 
         self.locfuncbcaster = LocFuncBroadcaster(kpt_comm)
         
@@ -126,7 +126,7 @@ class Paw:
 
         
         for nucleus in self.nuclei:
-            nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_ki,
+            nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_kc,
                                                self.locfuncbcaster)
         self.locfuncbcaster.broadcast()
 
@@ -178,10 +178,10 @@ class Paw:
                 out = DownTheDrain()
         self.out = out
 
-    def calculate(self, pos_ai, cell_i, angle):
-        pos_ai = pos_ai / self.a0
-        cell_i = cell_i / self.a0
-        self.set_positions(pos_ai)
+    def calculate(self, pos_ac, cell_c, angle):
+        pos_ac = pos_ac / self.a0
+        cell_c = cell_c / self.a0
+        self.set_positions(pos_ac)
 
         assert not self.converged
 
@@ -225,18 +225,18 @@ class Paw:
             # Energy extrapolated to zero Kelvin:
             return self.Ha * (self.Etot + 0.5 * self.S)
 
-    def set_positions(self, pos_ai):
+    def set_positions(self, pos_ac):
         movement = False
         distribute_atoms = False
-        for nucleus, pos_i in zip(self.nuclei, pos_ai):
-            spos_i = self.domain.scale_position(pos_i)
-            if num.sometrue(spos_i != nucleus.spos_i):
+        for nucleus, pos_c in zip(self.nuclei, pos_ac):
+            spos_c = self.domain.scale_position(pos_c)
+            if num.sometrue(spos_c != nucleus.spos_c):
                 movement = True
-                nucleus.spos_i = spos_i
+                nucleus.spos_c = spos_c
                 nucleus.make_localized_grids(self.gd, self.finegd,
-                                             self.wf.myibzk_ki,
+                                             self.wf.myibzk_kc,
                                              self.locfuncbcaster)
-                rank = self.domain.rank(spos_i)
+                rank = self.domain.rank(spos_c)
                 # Did the atom move to another processor?
                 if nucleus.rank != rank:
                     # Yes!
@@ -255,9 +255,9 @@ class Paw:
             self.mixer.reset(self.my_nuclei)
             
             if self.symmetry:
-                self.symmetry.check(pos_ai)
+                self.symmetry.check(pos_ac)
                 
-            neighborlist_update = self.pairpot.update(pos_ai, self.nuclei)
+            neighborlist_update = self.pairpot.update(pos_ac, self.nuclei)
 
             if neighborlist_update:
                 print >> self.out
@@ -273,10 +273,10 @@ class Paw:
                 self.nct_G *= 0.5
 
                 print >> self.out, 'Positions:'
-                for a, pos_i in enumerate(pos_ai):
+                for a, pos_c in enumerate(pos_ac):
                     symbol = self.nuclei[a].setup.symbol
                     print >> self.out, '%3d %2s %8.4f%8.4f%8.4f' % \
-                  ((a, symbol) + tuple(self.a0 * pos_i))
+                  ((a, symbol) + tuple(self.a0 * pos_c))
 
     def distribute_atoms(self):
         nspins = self.nspins
@@ -499,7 +499,7 @@ class Paw:
             raise RuntimeError, warning
 
     def get_ibz_kpoints(self):
-        return self.ibzk_ki
+        return self.ibzk_kc
     
     def get_fermi_level(self):
         e = self.occupation.get_fermi_level()
@@ -566,7 +566,7 @@ class Paw:
 
             for nucleus in self.p_nuclei:
                 if nucleus.domain_overlap == EVERYTHING:
-                    nucleus.F_i[:] = 0.0
+                    nucleus.F_c[:] = 0.0
 
             self.wf.calculate_force_contribution(self.p_nuclei, self.my_nuclei)
 
@@ -574,37 +574,37 @@ class Paw:
                 nucleus.calculate_force(self.vHt_g, nt_g, vt_G)
 
             # Master (domain_comm 0) collects forces from nuclei into
-            # self.F_ai:
+            # self.F_ac:
             if mpi.rank == MASTER:
                 for a, nucleus in enumerate(self.nuclei):
                     if nucleus.domain_overlap == EVERYTHING:
-                        self.F_ai[a] = nucleus.F_i
+                        self.F_ac[a] = nucleus.F_c
                     else:
-                        self.domain.comm.receive(self.F_ai[a], nucleus.rank)
+                        self.domain.comm.receive(self.F_ac[a], nucleus.rank)
             else:
                 for nucleus in self.my_nuclei:
-                    self.domain.comm.send(nucleus.F_i, MASTER)
+                    self.domain.comm.send(nucleus.F_c, MASTER)
 
             if self.symmetry is not None and mpi.rank == MASTER:
                 # Symmetrize forces:
-                F_ai = num.zeros((len(self.nuclei), 3), num.Float)
+                F_ac = num.zeros((len(self.nuclei), 3), num.Float)
                 for map_a, symmetry in zip(self.symmetry.maps,
                                            self.symmetry.symmetries):
                     swap, mirror = symmetry
                     for a1, a2 in enumerate(map_a):
-                        F_ai[a2] += num.take(self.F_ai[a1] * mirror, swap)
-                self.F_ai[:] = F_ai / len(self.symmetry.symmetries)
+                        F_ac[a2] += num.take(self.F_ac[a1] * mirror, swap)
+                self.F_ac[:] = F_ac / len(self.symmetry.symmetries)
 
             if mpi.rank == MASTER:
                 for a, nucleus in enumerate(self.nuclei):
                     print >> self.out, 'forces ', \
-                          a, nucleus.setup.symbol, self.F_ai[a] * c
+                          a, nucleus.setup.symbol, self.F_ac[a] * c
                     
 
             self.forces_ok = True
 
         if mpi.rank == MASTER:
-            return c * self.F_ai
+            return c * self.F_ac
 
     def get_number_of_iterations(self):
         return self.niter

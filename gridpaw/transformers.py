@@ -14,7 +14,7 @@ import _gridpaw
 class Transformer:
     def __init__(self, gd, number, typecode, interpolate, p):
         self.typecode = typecode
-        neighbor_id = gd.domain.neighbor_id
+        neighbor_cd = gd.domain.neighbor_cd
 
         if gd.comm.size > 1:
             comm = gd.comm
@@ -33,10 +33,10 @@ class Transformer:
 
         self.transformer = _gridpaw.Transformer(
             # Why asarray here? XXX
-            num.asarray(gd.n_i, num.Int), p, number + 1, neighbor_id,
+            num.asarray(gd.n_c, num.Int), p, number + 1, neighbor_cd,
             typecode == num.Float, comm, interpolate, angle)
         
-        self.ngpin = tuple(gd.n_i)
+        self.ngpin = tuple(gd.n_c)
         assert typecode in [num.Float, num.Complex]
 
     def apply(self, input, output, phases=None):

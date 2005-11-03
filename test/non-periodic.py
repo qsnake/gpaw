@@ -5,7 +5,7 @@ from gridpaw.grid_descriptor import GridDescriptor
 from gridpaw.domain import Domain
 
 p = 0
-domain = Domain((8.0, 8.0, 8.0), periodic_i=(p, p, p))
+domain = Domain((8.0, 8.0, 8.0), periodic=(p, p, p))
 n = 20
 gd1 = GridDescriptor(domain, (n, n, n))
 a1 = gd1.new_array()

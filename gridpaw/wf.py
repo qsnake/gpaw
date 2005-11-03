@@ -23,28 +23,28 @@ MASTER = 0
 class WaveFunctions:
     def __init__(self, gd, nvalence, nbands, nspins,
                  typecode, kT,
-                 bzk_ki, ibzk_ki, weights_k,
-                 myspins, myibzk_ki, myweights_k, kpt_comm):
+                 bzk_kc, ibzk_kc, weights_k,
+                 myspins, myibzk_kc, myweights_k, kpt_comm):
 
         self.nvalence = nvalence
         self.nbands = nbands
         self.nspins = nspins
         self.typecode = typecode
-        self.bzk_ki = bzk_ki
-        self.ibzk_ki = ibzk_ki
-        self.myibzk_ki = myibzk_ki
+        self.bzk_kc = bzk_kc
+        self.ibzk_kc = ibzk_kc
+        self.myibzk_kc = myibzk_kc
         self.weights_k = weights_k
         self.kpt_comm = kpt_comm
         
-        self.nkpts = len(ibzk_ki)
-        self.nmykpts = len(myibzk_ki)
+        self.nkpts = len(ibzk_kc)
+        self.nmykpts = len(myibzk_kc)
 
         self.kpts = []
         u = 0
         for s in myspins: 
-            for k, k_i in enumerate(myibzk_ki):
+            for k, k_c in enumerate(myibzk_kc):
                 weight = myweights_k[k] * 2 / nspins
-                self.kpts.append(KPoint(gd, weight, s, k, u, k_i, typecode))
+                self.kpts.append(KPoint(gd, weight, s, k, u, k_c, typecode))
                 u += 1
         
         # Kinetic energy operator:
@@ -145,7 +145,7 @@ class WaveFunctions:
                 nucleus.calculate_force_kpoint(kpt)
 
         for nucleus in my_nuclei:
-            self.kpt_comm.sum(nucleus.F_i)
+            self.kpt_comm.sum(nucleus.F_c)
 
     def calculate_atomic_density_matrices(self, my_nuclei, nuclei,
                                           comm, symmetry):
@@ -218,7 +218,7 @@ class WaveFunctions:
         for nucleus in nuclei:
             gSpline = nucleus.setup.get_shape_function()
             gt_aL.append(create_localized_functions(gSpline, gd,
-                                                    nucleus.spos_i))
+                                                    nucleus.spos_c))
 
         # load single exchange calculator
         exx_single = ExxSingle(gd)

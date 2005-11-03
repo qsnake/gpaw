@@ -16,7 +16,7 @@ class ExxSingle:
 
         # construct gauss density, potential, and self energy for Z=1
         # 'width' of gaussian distribution
-        a                = 22./min(gd.domain.cell_i)**2
+        a                = 22./min(gd.domain.cell_c)**2
         # gaussian density for Z=1
         self.ng1         = num.exp(-a*r2)*(a/pi)**(1.5)
         # gaussian potential for Z=1
@@ -25,15 +25,15 @@ class ExxSingle:
         self.EGaussSelf1 = -num.sqrt(a/2/pi)
 
         # calculate reciprocal lattice vectors
-        dim = num.array(gd.N_i,typecode=num.Int);
+        dim = num.array(gd.N_c,typecode=num.Int);
         dim = num.reshape(dim,(3,1,1,1))
-        dk  = 2*pi / num.array(gd.domain.cell_i,typecode=num.Float);
+        dk  = 2*pi / num.array(gd.domain.cell_c,typecode=num.Float);
         dk  = num.reshape(dk,(3, 1, 1, 1)) 
-        k   = ((num.indices(self.gd.N_i)+dim/2)%dim - dim/2)*dk
+        k   = ((num.indices(self.gd.N_c)+dim/2)%dim - dim/2)*dk
         self.k2 = 1.0*sum(k**2); self.k2[0,0,0]=1.0
 
         # determine N^3
-        self.N3 = self.gd.N_i[0]*self.gd.N_i[1]*self.gd.N_i[2]
+        self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
 
     def getExchangeEnergy(self,n, method='recip'):
         '''Returns exchange energy of input density 'n' '''
@@ -84,14 +84,14 @@ class ExxSingle:
 ''' AUXHILLIARY FUNCTIONS... should be moved to Utillities module'''
 
 def rSquared(gd):
-    I=num.indices(gd.N_i)
-    dr = num.reshape(gd.h_i,(3,1,1,1))
-    r0 = -0.5*num.reshape(gd.domain.cell_i,(3,1,1,1))
+    I=num.indices(gd.N_c)
+    dr = num.reshape(gd.h_c,(3,1,1,1))
+    r0 = -0.5*num.reshape(gd.domain.cell_c,(3,1,1,1))
     r0 = num.ones(I.shape)*r0
     r2 = num.sum((r0+I*dr)**2)
 
     # remove zero at origin
-    middle = gd.N_i/2.
+    middle = gd.N_c/2.
     if num.alltrue(middle==num.floor(middle)):
         z=middle.astype(int)
         r2[z[0],z[1],z[2]]=1e-12

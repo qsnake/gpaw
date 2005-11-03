@@ -14,7 +14,7 @@ a = gd.new_array()
 b = gd.new_array()
 a[-1, 1, 1] = 1
 
-gradx = Gradient(gd, i=0)
+gradx = Gradient(gd, c=0)
 gradx.apply(a, b)
 assert b[0, 3, 3] == -0.5
 
@@ -33,4 +33,6 @@ a2[4:, 1:, 1:] = a2[:4, :0:-1, :0:-1]
 lap.apply(a2[:4], b)
 lap2 = Laplace(gd)
 lap2.apply(a2, b2)
-assert num.sum(b.flat) * 2 == num.sum(b2.flat)
+print num.sum(b.flat) * 2 - num.sum(b2.flat)
+assert abs(num.sum(b.flat) * 2 - num.sum(b2.flat)) < 1.5e-14
+

@@ -3,16 +3,16 @@ import Numeric as num
 import gridpaw.utilities.mpi as mpi
 
 
-def distribute_kpoints_and_spins(nspins, ibzk_ki, weights_k):
+def distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k):
 
     # Distribute the spins and kpoints among processors a new comm
     # will be defined for each process.
 
     p = mpi.size
     if p == 1: 
-        return range(nspins), ibzk_ki, weights_k, mpi.world, mpi.world
+        return range(nspins), ibzk_kc, weights_k, mpi.world, mpi.world
 
-    nkpts = len(ibzk_ki)
+    nkpts = len(ibzk_kc)
     tot = nspins*nkpts
 
     # find greatest common divisor of the number of
@@ -91,16 +91,16 @@ def distribute_kpoints_and_spins(nspins, ibzk_ki, weights_k):
 
 
     # number of kpoints per domain_comm
-    kpoints_per_domain_comm = (len(ibzk_ki)*nspins)/(len(myspins)*number_domain_comms)
+    kpoints_per_domain_comm = (len(ibzk_kc)*nspins)/(len(myspins)*number_domain_comms)
 
     # index into k-points
     kpt_index = (my_domain_comm*len(myspins))/nspins
 
     n = kpt_index*kpoints_per_domain_comm
     m = (kpt_index+1)*kpoints_per_domain_comm
-    my_ibzk_ki = ibzk_ki[n:m]
+    my_ibzk_kc = ibzk_kc[n:m]
     my_weights_k = weights_k[n:m]
 
-    return myspins, my_ibzk_ki, my_weights_k, domain_comm, kpt_comm
+    return myspins, my_ibzk_kc, my_weights_k, domain_comm, kpt_comm
 
 
