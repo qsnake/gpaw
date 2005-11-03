@@ -135,7 +135,7 @@ PyObject* r2k(PyObject *self, PyObject *args)
             DOUBLEP(b), &k, &beta,
             DOUBLEP(c), &n);
   else
-    zher2k_("u", "u", &n, &k, 
+    zher2k_("u", "c", &n, &k, 
             (void*)(&alpha), (void*)COMPLEXP(a), &k, 
             (void*)COMPLEXP(b), &k, &beta,
             (void*)COMPLEXP(c), &n);
