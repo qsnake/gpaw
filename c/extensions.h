@@ -1,4 +1,4 @@
-#include "Python.h"
+#include <Python.h>
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
 

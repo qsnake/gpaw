@@ -1,8 +1,8 @@
-#include "Python.h"
+#include <Python.h>
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
 #include "extensions.h"
-#include "bmgs.h"
+#include "bmgs/bmgs.h"
 #include "bc.h"
 #include "mympi.h"
 

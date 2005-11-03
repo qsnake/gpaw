@@ -1,6 +1,6 @@
-#include "bmgs.h"
+#include "bmgs/bmgs.h"
 #ifdef PARALLEL
-#include "mpi.h"
+#include <mpi.h>
 #else
 typedef int* MPI_Request; // !!!!!!!???????????
 typedef int* MPI_Comm;

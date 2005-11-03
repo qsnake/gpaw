@@ -1,10 +1,10 @@
 #ifdef PARALLEL
-#include "Python.h"
+#include <Python.h>
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
 #include <mpi.h>
 #include "extensions.h"
-#include "structmember.h"
+#include <structmember.h>
 #include "mympi.h"
 
 static void mpi_dealloc(MPIObject *obj)

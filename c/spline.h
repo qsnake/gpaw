@@ -1,5 +1,5 @@
 #include "extensions.h"
-#include <bmgs.h>
+#include "bmgs/bmgs.h"
 
 typedef struct 
 {

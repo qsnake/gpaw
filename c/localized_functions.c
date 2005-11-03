@@ -1,8 +1,8 @@
+#include "spline.h"
 #include <malloc.h>
 #include <stdlib.h>
-#include "spline.h"
 #ifdef PARALLEL
-#  include "mpi.h"
+#  include <mpi.h>
 #else
    typedef int* MPI_Request; // !!!!!!!???????????
    typedef int* MPI_Comm;
