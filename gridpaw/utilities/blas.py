@@ -9,23 +9,27 @@ import _gridpaw
 
 
 def gemm(alpha, a, b, beta, c):
-    assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float) and
+    assert ((is_contiguous(a, num.Float) and
+             is_contiguous(b, num.Float) and
              is_contiguous(c, num.Float) and
              type(alpha) is float and type(beta) is float) or
-            (is_contiguous(a, num.Complex) and is_contiguous(b, num.Complex) and
+            (is_contiguous(a, num.Complex) and
+             is_contiguous(b, num.Complex) and
              is_contiguous(c, num.Complex)))
-##    assert len(a.shape) == 2 and len(b.shape) == 2
     assert len(b.shape) == 2
     assert a.shape[0] == b.shape[1]
     assert c.shape == b.shape[0:1] + a.shape[1:]
     _gridpaw.gemm(alpha, a, b, beta, c)
+
     
 def axpy(alpha, x, y):
-    if type(alpha) is float:
-        assert is_contiguous(x, num.Float) and is_contiguous(y, num.Float)
-    else:
-        assert type(alpha) is complex
+    if type(alpha) is complex:
         assert is_contiguous(x, num.Complex) and is_contiguous(y, num.Complex)
+    else:
+        assert type(alpha) is float
+        assert x.typecode() in [num.Float, num.Complex]
+        assert x.typecode() == y.typecode()
+        assert x.iscontiguous() and y.iscontiguous()
     assert x.shape == y.shape
     _gridpaw.axpy(alpha, x, y)
 

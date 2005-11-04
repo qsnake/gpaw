@@ -273,6 +273,7 @@ class KPoint:
 
             R_G *= 2.0 * lam
             axpy(lam**2, dR_G, R_G)
+##            R_G += lam**2 * dR_G
             self.psit_nG[n] += preconditioner(R_G, self.phase_cd,
                                               self.psit_nG[n], self.k_c)
 

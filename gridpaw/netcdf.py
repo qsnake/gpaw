@@ -33,19 +33,18 @@ def read_netcdf(paw, filename):
 
     if vars.has_key('PseudoWaveFunctions'):
         psit_unG = vars['PseudoWaveFunctions']
-        f_un = vars['OccupationNumbers']
-        n = 0 
-        for ns in range(wf.nspins):
-            for nk in range(wf.nkpts): 
-
-                kpt = wf.kpts[n]
+        f_skn = vars['OccupationNumbers']
+        u = 0 
+        for s in range(wf.nspins):
+            for k in range(wf.nkpts): 
+                kpt = wf.kpt_u[u]
                 kpt.allocate(wf.nbands)
-                kpt.psit_nG = NetCDFWaveFunction(psit_unG, ns, nk,
+                kpt.psit_nG = NetCDFWaveFunction(psit_unG, s, k,
                                                  scale=a0**1.5,
                                                  cmplx=not realvalued)
-                kpt.f_n[:] = f_un[ns, nk]
+                kpt.f_n[:] = f_skn[s, k]
 
-                n += 1
+                u += 1
 
     # Read projections:
     for nucleus in paw.nuclei:
@@ -198,7 +197,7 @@ def write_netcdf(paw, filename):
         u = 0
         for s in range(wf.nspins):
             for k in range(wf.nkpts):
-                var[s, k] = wf.kpts[u].eps_n * Ha
+                var[s, k] = wf.kpt_u[u].eps_n * Ha
                 u += 1
 
         # Write the occupation numbers:
@@ -207,7 +206,7 @@ def write_netcdf(paw, filename):
         u = 0
         for s in range(wf.nspins):
             for k in range(wf.nkpts):
-                var[s, k] = wf.kpts[u].f_n
+                var[s, k] = wf.kpt_u[u].f_n
                 u += 1
 
         var = nc.createVariable('PseudoElectronDensity', num.Float,
@@ -233,7 +232,7 @@ def write_netcdf(paw, filename):
     u = 0
     for s in range(wf.nspins):
         for k in range(wf.nkpts):
-            for n, psit_G in enumerate(wf.kpts[u].psit_nG):
+            for n, psit_G in enumerate(wf.kpt_u[u].psit_nG):
                 a_G = paw.gd.collect(psit_G)
                 if mpi.rank == MASTER:
                     if realvalued:

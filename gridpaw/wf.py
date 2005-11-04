@@ -50,12 +50,12 @@ class WaveFunctions:
         self.nkpts = len(ibzk_kc)
         self.nmykpts = len(myibzk_kc)
 
-        self.kpts = []
+        self.kpt_u = []
         u = 0
         for s in myspins: 
             for k, k_c in enumerate(myibzk_kc):
                 weight = myweights_k[k] * 2 / nspins
-                self.kpts.append(KPoint(gd, weight, s, k, u, k_c, typecode))
+                self.kpt_u.append(KPoint(gd, weight, s, k, u, k_c, typecode))
                 u += 1
         
         # Kinetic energy operator:
@@ -97,11 +97,11 @@ class WaveFunctions:
             nucleus.allocate(self.nspins, self.nmykpts, nao)
             nucleus.D_sp = D_sp # XXXXXXXXXXX
 
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             kpt.create_atomic_orbitals(nao, nuclei)
 
     def calculate_occupation_numbers(self):
-        return self.occupation.calculate(self.kpts)
+        return self.occupation.calculate(self.kpt_u)
 
     def calculate_electron_density(self, nt_sG, nct_G, symmetry, gd):
         """Calculate pseudo electron-density.
@@ -113,7 +113,7 @@ class WaveFunctions:
         nt_sG[:] = 0.0
 
         # Add contribution from all k-points:
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             kpt.add_to_density(nt_sG[kpt.s])
 
         self.kpt_comm.sum(nt_sG)
@@ -126,37 +126,37 @@ class WaveFunctions:
                 symmetry.symmetrize(nt_G, gd)
 
     def calculate_projections_and_orthogonalize(self, p_nuclei, my_nuclei):
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             for nucleus in p_nuclei:
                 nucleus.calculate_projections(kpt)
 
-        run_threaded([kpt.orthonormalize(my_nuclei) for kpt in self.kpts])
+        run_threaded([kpt.orthonormalize(my_nuclei) for kpt in self.kpt_u])
 
     def diagonalize(self, vt_sG, my_nuclei):
         """Apply Hamiltonian and do subspace diagonalization."""
-##        for kpt in self.kpts:
+##        for kpt in self.kpt_u:
 ##            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
         run_threaded([kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
-                      for kpt in self.kpts])
+                      for kpt in self.kpt_u])
 
     def sum_eigenvalues(self):
         Eeig = 0.0
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             Eeig += num.dot(kpt.f_n, kpt.eps_n)    
         return self.kpt_comm.sum(Eeig)
 
     def calculate_residuals(self, p_nuclei):
         error = 0.0
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             error += kpt.calculate_residuals(p_nuclei)
         return self.kpt_comm.sum(error) / self.nvalence
 
     def rmm_diis(self, p_nuclei, vt_sG):
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             kpt.rmm_diis(p_nuclei, self.preconditioner, self.kin, vt_sG)
     
     def calculate_force_contribution(self, p_nuclei, my_nuclei):
-        for kpt in self.kpts:
+        for kpt in self.kpt_u:
             for nucleus in p_nuclei:
                 nucleus.calculate_force_kpoint(kpt)
 
@@ -168,7 +168,7 @@ class WaveFunctions:
         for nucleus in my_nuclei:
             ni = nucleus.get_number_of_partial_waves()
             D_sii = num.zeros((self.nspins, ni, ni), num.Float)
-            for kpt in self.kpts:
+            for kpt in self.kpt_u:
                 P_ni = nucleus.P_uni[kpt.u]
                 D_sii[kpt.s] += real(num.dot(cc(num.transpose(P_ni)),
                                                P_ni * kpt.f_n[:, None]))
@@ -203,17 +203,17 @@ class WaveFunctions:
         
         if self.nspins == 1:
             print >> out, ' band     eps        occ'
-            kpt = self.kpts[0]
+            kpt = self.kpt_u[0]
             for n in range(self.nbands):
                 print >> out, ('%4d %10.5f %10.5f' %
                                (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
         else:
             print >> out, '                up                   down'
             print >> out, ' band     eps        occ        eps        occ'
-            epsa_n = self.kpts[0].eps_n
-            epsb_n = self.kpts[1].eps_n
-            fa_n = self.kpts[0].f_n
-            fb_n = self.kpts[1].f_n
+            epsa_n = self.kpt_u[0].eps_n
+            epsb_n = self.kpt_u[1].eps_n
+            fa_n = self.kpt_u[0].f_n
+            fb_n = self.kpt_u[1].f_n
             for n in range(self.nbands):
                 print >> out, ('%4d %10.5f %10.5f %10.5f %10.5f' %
                                (n,
@@ -245,12 +245,12 @@ class WaveFunctions:
 	    for n in range(self.nbands):
 		for m in range(self.nbands):
                     # calculate joint occupation number
-                    fnm = (self.kpts[spin].f_n[n] *
-                           self.kpts[spin].f_n[m]) * self.nspins / 2
+                    fnm = (self.kpt_u[spin].f_n[n] *
+                           self.kpt_u[spin].f_n[m]) * self.nspins / 2
 
                     # determine current exchange density
-                    n_G = cc(self.kpts[spin].psit_nG[m])*\
-                          self.kpts[spin].psit_nG[n]
+                    n_G = cc(self.kpt_u[spin].psit_nG[m])*\
+                          self.kpt_u[spin].psit_nG[n]
                     for a, nucleus in enumerate(nuclei):
                         # generate density matrix
                         Pm_i = cc(nucleus.P_uni[spin,m])

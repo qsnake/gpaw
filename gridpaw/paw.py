@@ -161,7 +161,7 @@ class Paw:
         for nucleus in self.nuclei:
             del nucleus.neighbors
 
-        for kpt in self.wf.kpts:
+        for kpt in self.wf.kpt_u:
             self.timer.add(kpt.timer)
         self.timer.write(self.out)
 

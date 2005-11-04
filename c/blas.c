@@ -78,6 +78,8 @@ PyObject* axpy(PyObject *self, PyObject *args)
   int incy = 1;
   if (PyFloat_Check(alpha))
     {
+      if (x->descr->type_num == PyArray_CDOUBLE)
+	n *= 2;
       PyFloatObject* palpha = (PyFloatObject*)alpha;
       daxpy_(&n, &(palpha->ob_fval), 
             DOUBLEP(x), &incx,
