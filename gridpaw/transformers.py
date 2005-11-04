@@ -27,7 +27,8 @@ class Transformer:
         if gd.domain.angle is None:
             angle = 0
         else:
-            angle = int(gd.domain.angle / (pi / 2) + 0.5)
+            # fixed 
+	    angle = int(round(gd.domain.angle / (pi / 2)))
             if gd.comm.size > 1:
                 raise NotImplementedError
 

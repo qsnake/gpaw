@@ -7,7 +7,8 @@ d = 1.0
 H1 = ListOfAtoms([Atom('H', (d / 2, a / 2, a / 2 + 0.25))],
                  periodic=(1, 0, 0),
                  cell=(d, a, a),
-                 angle=pi)
+                 angle=pi
+                 )
 calc1 = Calculator(nbands=1, h=0.25, kpts=(4, 1, 1), softgauss=0, usesymm=0,
                    tolerance=1e-11)
 H1.SetCalculator(calc1)

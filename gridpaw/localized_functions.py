@@ -57,9 +57,8 @@ class LocFuncs:
         """Create `LocFuncs` object.
 
         Use `creat_localized_functions()` to create this object."""
-        
-        angle = gd.domain.angle
-
+        self.angle = gd.domain.angle
+        angle = self.angle
         # We assume that all functions have the same cut-off:
         rcut = functions[0].get_cutoff()
 
@@ -127,7 +126,14 @@ class LocFuncs:
                 shape = a_xg.shape[:-3] + (self.ni,)
                 coef_xi = num.zeros(shape, self.typecode)
             self.comm.broadcast(coef_xi, self.root)
-            
+
+        # coef_xi must be rotated. What exactly is coef_xi?
+        # print "coef_xi: ", coef_xi
+        #
+        
+        if self.angle is not None:
+            pass
+        
         if k is None or self.phase_kb is None:
             for box in self.box_b:
                 box.add(coef_xi, a_xg)
