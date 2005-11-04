@@ -239,7 +239,7 @@ class KPoint:
                 nt_G += f * psit_G**2
         else:
             for psit_G, f in zip(self.psit_nG, self.f_n):
-                nt_G += f * (psit_G * psit_G.conjugate()).real
+                nt_G += f * (psit_G * num.conjugate(psit_G)).real
                 
     def rmm_diis(self, p_nuclei, preconditioner, kin, vt_sG):
         """Improve the wave functions.
