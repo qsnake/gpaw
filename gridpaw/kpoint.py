@@ -9,10 +9,10 @@ from cmath import exp
 import Numeric as num
 import LinearAlgebra as linalg
 
-from gridpaw.utilities.blas import rk, r2k, gemm
+from gridpaw.utilities.blas import axpy, rk, r2k, gemm
 from gridpaw.utilities.complex import cc, real
 from gridpaw.utilities.lapack import diagonalize
-from gridpaw.utilities import scale_add_to, square_scale_add_to, unpack
+from gridpaw.utilities import unpack
 from gridpaw.utilities.timing import Timer
 from gridpaw.operators import Gradient
 
@@ -101,7 +101,6 @@ class KPoint:
 
         kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
         self.Htpsit_nG += self.psit_nG * vt_sG[self.s]
-##        self.H_nn[:] = 0.0 ##### XXX
         r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
 
         for nucleus in my_nuclei:
@@ -152,16 +151,12 @@ class KPoint:
             del tmp_nG
 
             tmp_n = self.eps_n
-##            tmp_nn = self.H_nn
             self.allocate(nbands)
             self.eps_n[:nmin] = tmp_n[:nmin]
-##            self.H_nn[:nmin, :nmin] = tmp_nn[:nmin, :nmin]
-            del tmp_n###, tmp_nn
 
             extra = nbands - nao
             if extra > 0:
                 self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
-##                self.H_nn.flat[nao * (nbands + 1)::nbands + 1] = 1.0
                 slice_nG = self.psit_nG[nao:]
                 ddx = Gradient(self.gd, 0, typecode=self.typecode).apply
                 ddx(self.psit_nG[:extra], slice_nG, self.phase_cd)
@@ -169,21 +164,39 @@ class KPoint:
         yield None
         
     def calculate_residuals(self, p_nuclei):
-        R_n = self.Htpsit_nG
+        """Calculate wave function residuals.
+
+        On entry, ``Htpsit_nG`` contains the soft part of the
+        Hamiltonian applied to the wave functions.  After this call,
+        ``Htpsit_nG`` holds the residuals::
+
+          ^  ~        ^  ~   
+          H psi - eps S psi =
+                                _ 
+              ~  ~         ~   \   ~a    a           a     ~a   ~
+              H psi - eps psi + )  p  (dH    - eps dS    )<p  |psi>
+                               /_   i1   i1i2        i1i2   i2
+                              ai1i2
+
+                                
+        The size of the residuals is returned."""
+        
+        R_nG = self.Htpsit_nG
         # optimize XXX 
-        for R, eps, psit_G in zip(R_n, self.eps_n, self.psit_nG):
-            R -= eps * psit_G
+        for R_G, eps, psit_G in zip(R_nG, self.eps_n, self.psit_nG):
+            R_G -= eps * psit_G
         
         for nucleus in p_nuclei:
-            nucleus.adjust_residual(R_n, self.eps_n, self.s, self.u, self.k)
+            nucleus.adjust_residual(R_nG, self.eps_n, self.s, self.u, self.k)
 
         error = 0.0
-        for R, f in zip(R_n, self.f_n):
-            error += f * real(num.dot(cc(R).flat, R.flat))
+        for R_G, f in zip(R_nG, self.f_n):
+            error += f * real(num.dot(cc(R_G).flat, R_G.flat))
 
         return error
         
     def orthonormalize(self, my_nuclei):
+        """Orthogonalize wave functions."""
         S_nn = self.S_nn
 
         # Fill in the lower triangle:
@@ -202,7 +215,8 @@ class KPoint:
             # inverse returns a non-contigous matrix - grrrr!  That is
             # why there is a copy.  Should be optimized with a
             # different lapack call to invert a triangular matrix XXXXX
-            S_nn = linalg.inverse(linalg.cholesky_decomposition(S_nn)).copy()
+            S_nn[:] = linalg.inverse(
+                linalg.cholesky_decomposition(S_nn)).copy()
 
         yield None
 
@@ -210,7 +224,7 @@ class KPoint:
 
         # This step will overwrite the Htpsit_nG array!
         gemm(1.0, self.psit_nG, S_nn, 0.0, self.Htpsit_nG)
-        self.psit_nG, self.Htpsit_nG = self.Htpsit_nG, self.psit_nG
+        self.psit_nG, self.Htpsit_nG = self.Htpsit_nG, self.psit_nG  # swap
 
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
@@ -219,14 +233,21 @@ class KPoint:
         yield None
 
     def add_to_density(self, nt_G):
+        """Add contribution to pseudo electron-density."""
         if self.typecode is num.Float:
             for psit_G, f in zip(self.psit_nG, self.f_n):
-                square_scale_add_to(psit_G, f, nt_G)
+                nt_G += f * psit_G**2
         else:
             for psit_G, f in zip(self.psit_nG, self.f_n):
-                nt_G.flat[:] += f * real(psit_G.flat * cc(psit_G.flat))
+                nt_G += f * (psit_G * psit_G.conjugate()).real
                 
     def rmm_diis(self, p_nuclei, preconditioner, kin, vt_sG):
+        """Improve the wave functions.
+
+        Take two steps along the preconditioned residuals.  Step
+        lengths are optimized for the first step and reused for the
+        seconf."""
+        
         vt_G = vt_sG[self.s]
         for n in range(self.nbands):
             R_G = self.Htpsit_nG[n]
@@ -251,14 +272,18 @@ class KPoint:
             lam = -RdR / dRdR
 
             R_G *= 2.0 * lam
-            scale_add_to(dR_G, lam**2, R_G)
+            axpy(lam**2, dR_G, R_G)
             self.psit_nG[n] += preconditioner(R_G, self.phase_cd,
                                               self.psit_nG[n], self.k_c)
 
     def create_atomic_orbitals(self, nao, nuclei):
+        """Initialize the wave functions from atomic orbitals.
+
+        Create ``nao`` atomic orbitals."""
+        
         # Allocate space for wave functions, occupation numbers,
         # eigenvalues and projections:
-        self.allocate(nao)  # nao: number of atomic orbitals
+        self.allocate(nao)
         self.psit_nG = self.gd.new_array(nao, self.typecode)
         self.Htpsit_nG = self.gd.new_array(nao, self.typecode)
         

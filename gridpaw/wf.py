@@ -1,3 +1,5 @@
+"""Module defining a ``WaveFunctions`` class."""
+
 import sys
 import os
 from math import pi, sqrt, log
@@ -21,10 +23,19 @@ MASTER = 0
 
 
 class WaveFunctions:
+    """Class for handling wave functions.
+
+    A ``WaveFunctions`` object has a list of `KPoint` objects that
+    store the actual wave functions, occupation numbers and
+    eigenvalues."""
+    
     def __init__(self, gd, nvalence, nbands, nspins,
                  typecode, kT,
                  bzk_kc, ibzk_kc, weights_k,
                  myspins, myibzk_kc, myweights_k, kpt_comm):
+        """Construct wave-function object.
+
+        """
 
         self.nvalence = nvalence
         self.nbands = nbands

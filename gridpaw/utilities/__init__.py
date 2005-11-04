@@ -1,6 +1,8 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""Utility functions and classes."""
+
 from math import sqrt
 
 import Numeric as num
@@ -8,31 +10,25 @@ import Numeric as num
 import _gridpaw
 
 
+# Error function:
 erf = _gridpaw.erf
-#XXXfrom libgridpaw import erf
 
-def contiguous(array, type):
+
+def contiguous(array, typecode):
     """Convert a sequence to a contiguous Numeric array."""
-    array = num.asarray(array, type)
+    array = num.asarray(array, typecode)
     if array.iscontiguous():
         return array
     else:
         return num.array(array)
 
-def is_contiguous(array, type=None):
+
+def is_contiguous(array, typecode=None):
     """Check for contiguity and type."""
-    if type is None:
+    if typecode is None:
         return array.iscontiguous()
     else:
-        return array.iscontiguous() and array.typecode() == type
-
-
-# These should use BLAS:
-def scale_add_to(dwf, s, wf):
-    wf += s * dwf
-    
-def square_scale_add_to(wf, s, rho):
-    rho.flat[:] += s * wf.flat**2
+        return array.iscontiguous() and array.typecode() == typecode
 
 
 def unpack(M):
@@ -69,14 +65,17 @@ def pack(M2):
 
 
 def check_unit_cell(cell):
+    """Check that the unit cell (3*3 matrix) is orthorhombic (diagonal)."""
     c = cell.copy()
     # Zero the diagonal:
     c.flat[::4] = 0.0
     if num.sometrue(c.flat):
-        raise RuntimeError, 'Unit cell not orthorhombic'
+        raise RuntimeError('Unit cell not orthorhombic')
     
 
 class DownTheDrain:
+    """Definition of a stream that throws away all output."""
+    
     def write(self, string):
         pass
     
@@ -85,6 +84,13 @@ class DownTheDrain:
 
 
 def run_threaded(tasks):
+    """Run list of tasks in small steps.
+
+    Given a list of ``tasks`` (generators), take on step in each and
+    repeat that until eash generator is one.  This function is used
+    for parallelization by running different tasks in separate
+    threads."""
+
     try:
         while True:
             for task in tasks:
@@ -94,7 +100,7 @@ def run_threaded(tasks):
 
 
 def warning(msg):
-    r"""Warning(msg) -> msg in a box.
+    r"""Put string in a box.
 
     >>> print Warning('Watch your step!')
      /\/\/\/\/\/\/\/\/\/\/\

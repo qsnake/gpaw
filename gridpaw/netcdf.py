@@ -39,7 +39,7 @@ def read_netcdf(paw, filename):
             for nk in range(wf.nkpts): 
 
                 kpt = wf.kpts[n]
-                kpt.allocate(wf.nbands, wavefunctions=False)
+                kpt.allocate(wf.nbands)
                 kpt.psit_nG = NetCDFWaveFunction(psit_unG, ns, nk,
                                                  scale=a0**1.5,
                                                  cmplx=not realvalued)
