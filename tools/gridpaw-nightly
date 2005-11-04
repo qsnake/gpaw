@@ -22,8 +22,8 @@ print docutils.__version__
 
 
 def send_email(subject, filename='/dev/null'):
-##    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
-    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+##    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
 
 
@@ -141,7 +141,7 @@ print >> f, """\
 # Coverage test:
 os.chdir('test')
 day = time.localtime()[6]
-if ok:#################### and day == 6: # only Sunday
+if ok and day == 6:  # only Sunday
     if os.system(export +
                  'rm /home/camp/jensj/.gridpaw/cron/*.cover; ' +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +

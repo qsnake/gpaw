@@ -45,7 +45,7 @@ static void localized_functions_dealloc(LocalizedFunctionsObject *self)
   PyObject_DEL(self);
 }
 
-static PyObject * localized_functions_multiply(LocalizedFunctionsObject *self,
+static PyObject * localized_functions_integrate(LocalizedFunctionsObject *self,
                                               PyObject *args)
 {
   const PyArrayObject* aa;
@@ -183,8 +183,8 @@ static PyObject * localized_functions_broadcast(LocalizedFunctionsObject*
 #endif
 
 static PyMethodDef localized_functions_methods[] = {
-    {"multiply",
-     (PyCFunction)localized_functions_multiply, METH_VARARGS, 0},
+    {"integrate",
+     (PyCFunction)localized_functions_integrate, METH_VARARGS, 0},
     {"add",
      (PyCFunction)localized_functions_add, METH_VARARGS, 0},
     {"add_density",

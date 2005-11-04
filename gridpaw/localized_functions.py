@@ -162,11 +162,11 @@ class LocFuncs:
             
         if k is None or self.phase_kb is None:
             for box in self.box_b:
-                box.multiply(a_xg, tmp_xi, derivatives)
+                box.integrate(a_xg, tmp_xi, derivatives)
                 result_xi += tmp_xi
         else:
             for box, phase in zip(self.box_b, self.phase_kb[k]):
-                box.multiply(a_xg, tmp_xi, derivatives)
+                box.integrate(a_xg, tmp_xi, derivatives)
                 result_xi += phase * tmp_xi
 
         self.comm.sum(result_xi, self.root)
@@ -251,8 +251,8 @@ class LocalizedFunctionsWrapper:
         if derivatives:
             assert result_xi.shape[-1] == self.niD
         else:
-            assert results.shape[-1] == self.ni
-        self.lfs.multiply(a_xg, result_xi, derivatives)
+            assert result_xi.shape[-1] == self.ni
+        self.lfs.integrate(a_xg, result_xi, derivatives)
 
     def add(self, coef_xi, a_xg):
         """Add localized functions to extended arrays.

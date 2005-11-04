@@ -18,11 +18,27 @@ from gridpaw.operators import Gradient
 
 
 class KPoint:
-    """The ``KPoint`` class takes care of all wave functions for a
+    """Class for a singel **k**-point.
+
+    The ``KPoint`` class takes care of all wave functions for a
     certain **k**-point and a certain spin."""
     
     def __init__(self, gd, weight, s, k, u, k_c, typecode):
-        
+        """Construct **k**-point object.
+
+        Parameters:
+         ============ ==========================================
+         ``gd``       Grid-descriptor.
+         ``weight``   Weight of this **k**-point.
+         ``s``        Spin-index.
+         ``k``        **k**-point index.
+         ``u``        Combined spin and **k**-point index.
+         ``k_c``      Scaled **k**-point vector.
+         ``typecode`` Data type for wave functions (``Float`` or
+                      ``Complex``).
+         ============ ==========================================
+        """
+
         self.gd = gd
         self.weight = weight
         self.typecode = typecode
@@ -53,24 +69,19 @@ class KPoint:
 
         self.timer = Timer()
         
-    def allocate(self, nbands, wavefunctions=True):
+    def allocate(self, nbands):
+        """Allocate arrays."""
         self.nbands = nbands
-        if wavefunctions:
-            self.allocate_wavefunctions(nbands)
         self.eps_n = num.zeros(nbands, num.Float)
         self.f_n = num.ones(nbands, num.Float) * self.weight
         self.H_nn = num.zeros((nbands, nbands), self.typecode)
         self.S_nn = num.zeros((nbands, nbands), self.typecode)
 
-    def allocate_wavefunctions(self, nbands):
-        self.psit_nG = self.gd.new_array(nbands, self.typecode)
-        self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
-        
     def diagonalize(self, kin, vt_sG, my_nuclei, nbands):
         """Subspace diagonalization of wave functions.
 
         First, the Hamiltonian (defined by ``kin``, ``vt_sG``, and
-        ``my_nuclei``) is applied to the wavefunctions, then the
+        ``my_nuclei``) is applied to the wave functions, then the
         ``H_nn`` matrix is calculated and diagonalized, and finally,
         the wave functions are rotated.  Also the projections
         ``P_uni`` (an attribute of the nuclei) are rotated.
@@ -88,18 +99,10 @@ class KPoint:
           *x*-coordinate.
         """
 
-        # Put in some yields ???? XXXX
-        vt_G = vt_sG[self.s]
-        self.timer.start('apply')
         kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
-        self.timer.stop('apply')
-        self.timer.start('pot')
-        self.Htpsit_nG += self.psit_nG * vt_G
-        self.timer.stop('pot')
-        self.timer.start('H')
-        self.H_nn[:] = 0.0  # is that necessary? XXXX
+        self.Htpsit_nG += self.psit_nG * vt_sG[self.s]
+##        self.H_nn[:] = 0.0 ##### XXX
         r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
-        self.timer.stop('H')
 
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
@@ -107,29 +110,27 @@ class KPoint:
                                                cc(num.transpose(P_ni))))
 
         self.comm.sum(self.H_nn, self.root)
+
+        yield None
         
-        self.timer.start('diag')
         if self.comm.rank == self.root:
             info = diagonalize(self.H_nn, self.eps_n)
             if info != 0:
                 raise RuntimeError, 'Very Bad!!'
-        self.timer.stop('diag')
+        
+        yield None
         
         self.comm.broadcast(self.H_nn, self.root)
         self.comm.broadcast(self.eps_n, self.root)
 
         # Rotate psit_nG:
         # We should block this so that we can use a smaller temp !!!!!
-        self.timer.start('rot1')
         temp = num.array(self.psit_nG)
         gemm(1.0, temp, self.H_nn, 0.0, self.psit_nG)
-        self.timer.stop('rot1')
         
         # Rotate Htpsit_nG:
-        self.timer.start('rot2')
         temp[:] = self.Htpsit_nG
         gemm(1.0, temp, self.H_nn, 0.0, self.Htpsit_nG)
-        self.timer.stop('rot2')
         
         # Rotate P_ani:
         for nucleus in my_nuclei:
@@ -138,32 +139,34 @@ class KPoint:
             gemm(1.0, temp_ni, self.H_nn, 0.0, P_ni)
         
         if nbands != self.nbands:
-            self.timer.start('extra')
-            nao = self.nbands
-            
-            # Hold on to atomic stuff before reallocating:
-            psitao_nG = self.psit_nG
-            Htpsitao_nG = self.Htpsit_nG
-            epsao_n = self.eps_n
-            Hao_nn = self.H_nn
-            
-            self.allocate(nbands)
-
+            nao = self.nbands  # number of atomic orbitals
             nmin = min(nao, nbands)
-            self.psit_nG[:nmin] = psitao_nG[:nmin]
-            self.Htpsit_nG[:nmin] = Htpsitao_nG[:nmin]
-            self.eps_n[:nmin] = epsao_n[:nmin]
-            self.H_nn[:nmin, :nmin] = Hao_nn[:nmin, :nmin]
-            del psitao_nG, Htpsitao_nG, epsao_n, Hao_nn
+            
+            tmp_nG = self.psit_nG
+            self.psit_nG = self.gd.new_array(nbands, self.typecode)
+            self.psit_nG[:nmin] = tmp_nG[:nmin]
+
+            tmp_nG = self.Htpsit_nG
+            self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
+            self.Htpsit_nG[:nmin] = tmp_nG[:nmin]
+            del tmp_nG
+
+            tmp_n = self.eps_n
+##            tmp_nn = self.H_nn
+            self.allocate(nbands)
+            self.eps_n[:nmin] = tmp_n[:nmin]
+##            self.H_nn[:nmin, :nmin] = tmp_nn[:nmin, :nmin]
+            del tmp_n###, tmp_nn
 
             extra = nbands - nao
             if extra > 0:
                 self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
-                self.H_nn.flat[nao * (nbands + 1)::nbands + 1] = 1.0
-                slice = self.psit_nG[nao:]
-                grad = Gradient(self.gd, 0, typecode=self.typecode).apply
-                grad(self.psit_nG[:extra], slice, self.phase_cd)
-            self.timer.stop('extra')
+##                self.H_nn.flat[nao * (nbands + 1)::nbands + 1] = 1.0
+                slice_nG = self.psit_nG[nao:]
+                ddx = Gradient(self.gd, 0, typecode=self.typecode).apply
+                ddx(self.psit_nG[:extra], slice_nG, self.phase_cd)
+        
+        yield None
         
     def calculate_residuals(self, p_nuclei):
         R_n = self.Htpsit_nG
@@ -256,6 +259,8 @@ class KPoint:
         # Allocate space for wave functions, occupation numbers,
         # eigenvalues and projections:
         self.allocate(nao)  # nao: number of atomic orbitals
+        self.psit_nG = self.gd.new_array(nao, self.typecode)
+        self.Htpsit_nG = self.gd.new_array(nao, self.typecode)
         
         # fill in the atomic orbitals:
         nao0 = 0

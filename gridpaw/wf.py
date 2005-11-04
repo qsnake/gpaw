@@ -93,9 +93,11 @@ class WaveFunctions:
         return self.occupation.calculate(self.kpts)
 
     def calculate_electron_density(self, nt_sG, nct_G, symmetry, gd):
-        """Calculate pseudo electron density.
+        """Calculate pseudo electron-density.
 
-        The pseudo electron density is calculated for wave functions, occupation numbers, and the smoot core density, and finally symmetrized."""
+        The pseudo electron-density ``nt_sG`` is calculated from the
+        wave functions, the occupation numbers, and the smoot core
+        density ``nct_G``, and finally symmetrized."""
         
         nt_sG[:] = 0.0
 
@@ -120,8 +122,11 @@ class WaveFunctions:
         run_threaded([kpt.orthonormalize(my_nuclei) for kpt in self.kpts])
 
     def diagonalize(self, vt_sG, my_nuclei):
-        for kpt in self.kpts:
-            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
+        """Apply Hamiltonian and do subspace diagonalization."""
+##        for kpt in self.kpts:
+##            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
+        run_threaded([kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
+                      for kpt in self.kpts])
 
     def sum_eigenvalues(self):
         Eeig = 0.0

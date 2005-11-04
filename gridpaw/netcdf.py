@@ -219,7 +219,7 @@ def write_netcdf(paw, filename):
     if mpi.rank == MASTER:
         var[:] = nt_sg / a0**3
 
-    # Write the wavefunctions:
+    # Write the wave functions:
     if mpi.rank == MASTER:
         if realvalued:
             var = nc.createVariable('PseudoWaveFunctions', num.Float,

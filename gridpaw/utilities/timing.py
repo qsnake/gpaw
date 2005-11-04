@@ -81,7 +81,6 @@ class Timer:
         n = max([len(name) for name in self.timers]) + 1
         names_and_times = self.timers.items()
         names_and_times.sort()
-        names_and_times.append(('total', tot))
         for name, t in names_and_times:
             r = t / tot
             p = 100 * r
