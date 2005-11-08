@@ -98,12 +98,47 @@ class LocFuncs:
             l = radial.get_angular_momentum_number()
             self.ni += 2 * l + 1; 
             self.niD += 3 + l * (1 + 2 * l)
+
+        if angle is not None:
+            nb = len(self.box_b)
+            self.R_bii = num.zeros((nb, self.ni, self.ni), num.Float)
+            self.R_biiT= num.zeros((nb, self.ni, self.ni), num.Float)
+            for b, sdisp_c in enumerate(self.sdisp_bc):
+                n1 = 0
+                for radial in functions:
+                    l = radial.get_angular_momentum_number()
+                    n2 = n1 + 2 * l + 1
+                    self.R_bii[b, n1:n2, n1:n2]=self.rmatrix(sdisp_c[0] * angle*0.2, l)
+                    self.R_biiT[b, n1:n2, n1:n2]=self.rmatrix(-sdisp_c[0] * angle*0.2, l)
+                    n1 = n2
+                               
         self.typecode = typecode
 
         self.set_communicator(gd.comm, MASTER)
 
         self.phase_kb = None
 
+    def rmatrix(self, da, l):
+        c = cos(da)
+        s = sin(da)
+        if l is 0:
+            return num.asarray([1])
+        if l is 1:
+            r = num.asarray([
+                [1, 0, 0],
+                [0, c,-s],
+                [0, s, c]])
+            return r
+        if l is 2:
+            r = num.asarray([
+                [c,       0, -s,           0,           0],
+                [0, c*c-s*s,  0,    -0.5*s*c,    -0.5*s*c],
+                [s,       0,  c,           0,           0],
+                [0,   2*s*c,  0,   1-0.5*s*s,    -0.5*s*s],
+                [0,   6*s*c,  0,    -1.5*s*s, c*c-0.5*s*s]
+                ])
+            return r
+        
     def set_communicator(self, comm, root):
         """Set MPI-communicator and master CPU."""
         self.comm = comm
@@ -127,24 +162,27 @@ class LocFuncs:
                 coef_xi = num.zeros(shape, self.typecode)
             self.comm.broadcast(coef_xi, self.root)
 
-        # coef_xi must be rotated. What exactly is coef_xi?
-        # print "coef_xi: ", coef_xi
-        #
-        
-        if self.angle is not None:
-            pass
-        
-        if k is None or self.phase_kb is None:
+        if (k is None or self.phase_kb is None) and self.angle is None:
+            # No k-points, no rotation
             for box in self.box_b:
                 box.add(coef_xi, a_xg)
-        else:
+        elif self.angle is None:
+            # K-points, no rotation
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.add(coef_xi / phase, a_xg)
-
+        elif (k is None or self.phase_kb is None) and self.angle is not None:
+            # Rotation, but no k-points
+            for box, R_ii in zip(self.box_b, self.R_biiT):
+                box.add(num.dot(coef_xi, R_ii), a_xg) 
+        else:
+            # Rotation and k-points
+            for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.R_biiT):
+                box.add(num.dot(coef_xi, R_ii) / phase, a_xg)
+                
     def integrate(self, a_xg, result_xi, k=None, derivatives=False):
         """Calculate integrals of arrays times localized functions.
 
-        Return the interal of extended arrays times localized
+        Return the integral of extended arrays times localized
         functions in ``result_xi``.  Correct phase-factors are used if
         the **k**-point index ``k`` is not ``None`` (Block
         boundary-condtions).  If ``derivatives`` is true (defaults to
@@ -160,15 +198,27 @@ class LocFuncs:
         if result_xi is None:
             result_xi = num.zeros(shape, self.typecode)
             
-        if k is None or self.phase_kb is None:
+        if (k is None or self.phase_kb is None) and self.angle is None:
+            # No k-points, no rotation
             for box in self.box_b:
                 box.integrate(a_xg, tmp_xi, derivatives)
-                result_xi += tmp_xi
-        else:
+                result_xi += tmp_xi                
+        elif self.angle is None:
+            # K-points, no rotation
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.integrate(a_xg, tmp_xi, derivatives)
                 result_xi += phase * tmp_xi
-
+        elif (k is None or self.phase_kb[k] is None) and self.angle is not None:
+            # Rotation, no k-points
+            for box, R_ii in zip(self.box_b, self.R_bii):
+                box.integrate(a_xg, tmp_xi, derivatives)
+                result_xi += num.dot(tmp_xi, R_ii)
+        else:
+            # Rotation and k-points
+            for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.R_bii):
+                box.integrate(a_xg, tmp_xi, derivatives)
+                result_xi += phase * num.dot(tmp_xi, R_ii)
+               
         self.comm.sum(result_xi, self.root)
 
     def add_density(self, n_G, f_i):
