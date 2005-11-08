@@ -108,8 +108,10 @@ class LocFuncs:
                 for radial in functions:
                     l = radial.get_angular_momentum_number()
                     n2 = n1 + 2 * l + 1
-                    self.R_bii[b, n1:n2, n1:n2]=self.rmatrix(sdisp_c[0] * angle*0.2, l)
-                    self.R_biiT[b, n1:n2, n1:n2]=self.rmatrix(-sdisp_c[0] * angle*0.2, l)
+                    self.R_bii[b, n1:n2, n1:n2]=self.rmatrix(
+                        -sdisp_c[0] * angle, l)
+                    self.R_biiT[b, n1:n2, n1:n2]=self.rmatrix(
+                        sdisp_c[0] * angle, l)
                     n1 = n2
                                
         self.typecode = typecode
@@ -121,15 +123,15 @@ class LocFuncs:
     def rmatrix(self, da, l):
         c = cos(da)
         s = sin(da)
-        if l is 0:
+        if l == 0:
             return num.asarray([1])
-        if l is 1:
+        if l == 1:
             r = num.asarray([
                 [1, 0, 0],
                 [0, c,-s],
                 [0, s, c]])
             return r
-        if l is 2:
+        if l == 2:
             r = num.asarray([
                 [c,       0, -s,           0,           0],
                 [0, c*c-s*s,  0,    -0.5*s*c,    -0.5*s*c],
@@ -208,7 +210,7 @@ class LocFuncs:
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.integrate(a_xg, tmp_xi, derivatives)
                 result_xi += phase * tmp_xi
-        elif (k is None or self.phase_kb[k] is None) and self.angle is not None:
+        elif (k is None or self.phase_kb is None) and self.angle is not None:
             # Rotation, no k-points
             for box, R_ii in zip(self.box_b, self.R_bii):
                 box.integrate(a_xg, tmp_xi, derivatives)

@@ -27,16 +27,38 @@ class KPoint:
         """Construct **k**-point object.
 
         Parameters:
-         ============ ==========================================
-         ``gd``       Grid-descriptor.
+         ============ =======================================================
+         ``gd``       Descriptor for wave-function grid.
          ``weight``   Weight of this **k**-point.
-         ``s``        Spin-index.
+         ``s``        Spin index: up or down (0 or 1).
          ``k``        **k**-point index.
          ``u``        Combined spin and **k**-point index.
-         ``k_c``      Scaled **k**-point vector.
-         ``typecode`` Data type for wave functions (``Float`` or
-                      ``Complex``).
-         ============ ==========================================
+         ``k_c``      scaled **k**-point vector (coordinates scaled to
+                      [-0.5:0.5] interval).
+         ``typecode`` Data type of wave functions (``Float`` or ``Complex``).
+         ============ =======================================================
+
+        Attributes:
+         ============= =======================================================
+         ``phase_cd``  Bloch phase-factors for translations - axis ``c=0,1,2``
+                       and direction ``d=0,1``.
+         ``eps_n``     Eigenvalues.
+         ``f_n``       Occupation numbers.
+         ``H_nn``      Hamiltonian matrix.
+         ``S_nn``      Overlap matrix.
+         ``psit_nG``   Wave functions.
+         ``Htpsit_nG`` Pseudo-part of the Hamiltonian applied to the wave
+                       functions.
+         ``timer``    ``Timer`` object.
+         ``nbands``    Number of bands.
+         ============= =======================================================
+
+        Parallel stuff:
+         ======== =======================================================
+         ``comm`` MPI-communicator for domain.
+         ``root`` Rank of the CPU that does the matrix diagonalization of
+                  ``H_nn`` and the Cholesky decomposition of ``S_nn``.
+         ======== =======================================================
         """
 
         self.gd = gd

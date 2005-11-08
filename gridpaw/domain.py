@@ -12,7 +12,11 @@ from gridpaw.utilities.mpi import serial_comm
 
 
 class Domain:
-    """Domain class."""
+    """Domain class.
+
+    A ``Domain`` object (in `domain.py`) holds informaion on the unit
+    cell and the boundary conditions"""
+    
     def __init__(self, cell, periodic=(True, True, True), angle=None):
         """Create Domain object from a unit cell and boundary conditions.
 
@@ -20,7 +24,20 @@ class Domain:
         tuple of three periodic-boundary flags (``bool``'s) and
         finally a rotation angle applied to the unit cell after
         translation of one lattice vector in the *x*-direction
-        (experimental feature)."""
+        (experimental feature).
+
+        Parallel stuff:
+         =============== ==================================================
+         ``sdisp_cd``    Scaled displacement in direction ``d`` along axis
+                         ``c``.
+        ``comm``         MPI-communicator for this domain.
+         ``neighbor_cd`` Rank of neighbor CPU in direction ``d`` along axis
+                         ``c``.
+         ``parpos_c``    Position of this CPU in the 3D grid of all CPUs.
+         ``parsize_c``   Domain decomposition.
+         ``stride_c``    Strides.
+         =============== ==================================================
+        """
         
         self.cell_c = num.array(cell, num.Float)
         self.periodic_c = periodic

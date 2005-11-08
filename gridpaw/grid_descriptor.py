@@ -35,14 +35,50 @@ class GridDescriptor:
     There are methods for tasks such as allocating arrays, performing
     rotation- and mirror-symmetry operations and integrating functions
     over space.  All methods work correctly also when the domain is
-    parallelized via domain decomposition."""
+    parallelized via domain decomposition.
+
+    This is how a 2x2x2 3D array is layed out in memory::
+
+        3-----7
+        |\    |\
+        | \   | \
+        |  1-----5      z
+        2--|--6  |   y  |
+         \ |   \ |    \ |
+          \|    \|     \|
+           0-----4      +-----x
+
+    Example:
+
+     >>> a = num.zeros((2, 2, 2))
+     >>> a.flat[:] = range(8)
+     >>> a
+     array([[[0, 1],
+             [2, 3]],
+            [[4, 5],
+             [6, 7]]])
+     """
     
     def __init__(self, domain, N_c):
         """Construct `GridDescriptor`
 
         A uniform 3D grid is defined by a ``Domain`` object and the
         number of grid points ``N_c`` in *x*, *y*, and *z*-directions
-        (three integers)."""
+        (three integers).
+
+        Attributes:
+         ========== ========================================================
+         ``domain`` Domain_ object.
+         ``dv``     Volume per grid point.
+         ``h_c``    Array of the grid spacing along the three axes.
+         ``N_c``    Array of the number of grid points along the three axes.
+         ``n_c``    Number of grid points on this CPU.
+         ``beg0_c`` Beginning of grid-point indices (inclusive).
+         ``beg_c``  Beginning of grid-point indices (inclusive).
+         ``end_c``  End of grid-point indices (exclusive.
+         ``comm``   MPI-communicator for domain decomosition.
+         ========== ========================================================
+        """
         
         self.domain = domain
         self.comm = domain.comm

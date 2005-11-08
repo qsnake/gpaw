@@ -19,5 +19,5 @@ atoms.SetCalculator(Calculator(h=0.25, nbands=4, out=None))
 energy = atoms.GetPotentialEnergy()
 
 # The three eigenvalues e[1], e[2], and e[3] must be degenerate:
-e = atoms.GetCalculator().paw.wf.kpts[0].eps_n
+e = atoms.GetCalculator().paw.wf.kpt_u[0].eps_n
 equal(e[1], e[3], 1e-11)

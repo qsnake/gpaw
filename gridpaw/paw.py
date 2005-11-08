@@ -1,6 +1,8 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""This module defines a PAW-class."""
+
 import sys
 import os
 from math import pi, sqrt, log
@@ -39,7 +41,95 @@ MASTER = 0
 class Paw:
     """This is the main calculation object for doing a PAW calculation.
 
-    ..."""
+    The ``Paw`` object is the central object for a calculation.
+    Instantiating such an object by hand is not recommended.  Use the
+    ``create_paw_object()`` helper-function instead (it will supply
+    many default values) - this function is used py the ASE-calculator
+    interface.
+
+    These are the most important attributes of a ``Paw`` object:
+     =============== =====================================================
+     ``domain``      Domain object.
+     ``setups``      Dictionary mapping chemical symbols to setup objects.
+     ``symmetry``    Symmetry object.
+     ``timer``       Timer object.
+     ``wf``          ``WaveFunctions`` object.
+     ``xc``          ``XCOperator`` object.
+     ``xcfunc``      ``XCFunctional`` object.
+     ``nuclei``      List of ``Nucleus`` objects.
+     ``out``         Output stream for text.
+     ``pairpot``     ``PairPotential`` object.
+     ``poisson``     ``PoissonSolver``.
+     ``gd``          Grid descriptor for coarse grids.
+     ``finegd``      Grid descriptor for fine grids.
+     ``restrict``    Function for restricting the effective potential.
+     ``interpolate`` Function for interpolating the electron density.
+     ``mixer``       ``DensityMixer`` object.
+     =============== =====================================================
+
+    Energy contributions and forces:
+     =========== ================================
+     ``Ekin``    Kinetic energy
+     ``Epot``    Potential energy
+     ``Etot``    Total energy
+     ``Etotold`` Total energy from last iteration
+     ``Exc``     Exchange-Correlation energy
+     ``S``       Entropy
+     ``Ebar``    Should be close to zero!
+     ``F_ai``    Forces
+     =========== ================================
+
+
+    The attributes ``tolerance``, ``fixdensity``, ``idiotproof`` and
+    ``usesymm`` have the same meaning as the corresponding
+    ``Calculator`` keywords (see the Manual_).  Internal units are
+    Hartree and Angstrom and ``Ha`` and ``a0`` are the conversion
+    factors to external `ASE units`_.  ``error`` is the error in the
+    Kohn-Sham wave functions - should be zero (or small) for a
+    converged calculation.
+
+    Booleans describing the current state:
+     ============= ======================================
+     ``forces_ok`` Have the forces bee calculated yet?
+     ``converged`` Do we have a self-consistent solution?
+     ============= ======================================
+
+    Number of iterations for:
+     ============ ===============================
+     ``nfermi``   finding the Fermi-level
+     ``niter``    solving the Kohn-Sham equations
+     ``npoisson`` Solving the Poisson equation
+     ============ ===============================
+
+    Soft and smooth pseudo functions on uniform 3D grids:
+     ========== =========================================
+     ``nt_sG``  Electron density on the coarse grid.
+     ``nt_sg``  Electron density on the fine grid.
+     ``rhot_g`` Charge density on the coarse grid.
+     ``nct_G``  Core electron-density on the coarse grid.
+     ``vHt_g``  Hartree potential on the fine grid.
+     ``vt_sG``  Effective potential on the coarse grid.
+     ``vt_sg``  Effective potential on the fine grid.
+     ========== =========================================
+
+    Only attribute not mentioned now is ``nspins`` (number of spins) and
+    those used for parallelization_:
+
+     ================== =================================================== 
+     ``my_nuclei``      List of nuclei that have their
+                        center in this domain.
+     ``p_nuclei``       List of nuclei with projector functions
+                        overlapping this domain.
+     ``g_nuclei``       List of nuclei with compensation charges
+                        overlapping this domain.
+     ``locfuncbcaster`` ``LocFuncBroadcaster`` object for parallelizing 
+                        evaluation of localized functions (used when
+                        parallelizing over **k**-points).
+     ================== ===================================================
+
+    .. _Manual: https://wiki.fysik.dtu.dk/gridcode/Manual
+    .. _ASE unit: https://wiki.fysik.dtu.dk/ase/Units
+    """
     
     def __init__(self, a0, Ha,
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
