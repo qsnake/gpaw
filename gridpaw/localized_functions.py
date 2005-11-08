@@ -109,9 +109,9 @@ class LocFuncs:
                     l = radial.get_angular_momentum_number()
                     n2 = n1 + 2 * l + 1
                     self.R_bii[b, n1:n2, n1:n2]=self.rmatrix(
-                        -sdisp_c[0] * angle, l)
-                    self.R_biiT[b, n1:n2, n1:n2]=self.rmatrix(
                         sdisp_c[0] * angle, l)
+                    self.R_biiT[b, n1:n2, n1:n2]=self.rmatrix(
+                        -sdisp_c[0] * angle, l)
                     n1 = n2
                                
         self.typecode = typecode
