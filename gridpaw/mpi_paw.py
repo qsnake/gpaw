@@ -6,6 +6,7 @@ import sys
 import pickle
 import socket
 
+from gridpaw import debug
 from gridpaw.utilities.socket import send, recv
 import gridpaw.utilities.timing as timing
 
@@ -28,33 +29,30 @@ class MPIPaw:
         s.listen(1)
 
         job = 'python -c "from gridpaw.mpi_run import run; run(%d)"' % port
+        if debug:
+            job += ' --gridpaw-debug'
         # Start remote calculator:
         if os.uname()[4] == 'sun4u':
             n = len(open(hostfile).readlines())
-            boot = ''
-            cmd = ('GRIDPAW_PARALLEL=1;' +
-                   'export GRIDPAW_PARALLEL;' +
+            cmd = ('GRIDPAW_PARALLEL=1; ' +
+                   'export GRIDPAW_PARALLEL; ' +
                    'mprun -np %d %s &' % (n, job))
+
         elif sys.platform == 'aix5':
-            boot = ''
             if os.environ.has_key('LOADL_PROCESSOR_LIST'):
-                cmd = ('export GRIDPAW_PARALLEL=1;' +
+                cmd = ('export GRIDPAW_PARALLEL=1; ' +
                        "poe 'gridpaw-%s' &" % job)
             else:
                 n = len(open(hostfile).readlines())
-                cmd = ('export GRIDPAW_PARALLEL=1;' +
+                cmd = ('export GRIDPAW_PARALLEL=1; ' +
                        "poe 'gridpaw-%s' -procs %d -hfile %s &" %
                        (job, n, hostfile))
+
         else:
-            boot = 'lamboot -v %s' % hostfile
-            cmd = 'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job
+            cmd = ('lamboot -v %s; ' % hostfile +
+                   'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job)
 
         # Start remote calculator:
-        if boot != '':
-            error = os.system(boot)
-            if error != 0:
-                raise RuntimeError
-
         error = os.system(cmd)
         if error != 0:
             raise RuntimeError

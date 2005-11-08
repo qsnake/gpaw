@@ -231,10 +231,16 @@ class Calculator:
                     self.hosts = None
             elif os.environ.has_key('NSLOTS'):
                 # This job was submitted to the Grid Engine queing system:
-                self.hosts = ['dummy'] * int(os.environ['NSLOTS'])
+                self.hosts = int(os.environ['NSLOTS'])
             elif os.environ.has_key('LOADL_PROCESSOR_LIST'):
-                self.hosts = 'dummy'
+                self.hosts = 'dummy file-name'
 
+        if type(self.hosts) is int:
+            if self.hosts == 1:
+                self.hosts = None
+            else:
+                self.hosts = [os.uname()[1]] * self.hosts
+            
         if type(self.hosts) is list:
             # We need the hosts in a file:
             self.tempfile = tempfile.mktemp()

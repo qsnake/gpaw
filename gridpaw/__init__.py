@@ -11,12 +11,11 @@ from os.path import join
 import Numeric as num
 
 
-home = os.environ['HOME']
-
-
 class GPError(Exception):
     pass
 
+
+home = os.environ['HOME']
 
 # Check for special command line arguments:
 debug = False
@@ -41,6 +40,8 @@ while len(sys.argv) > i:
             gpspecial = arg.split('=')[1]
         elif arg.startswith('--gridpaw-hosts='):
             hosts = arg.split('=')[1].split(',')
+            if len(hosts) == 1 and hosts[0].isdigit():
+                hosts = int(hosts[0])
         elif arg.startswith('--gridpaw-hostfile='):
             hosts = arg.split('=')[1]
         elif arg.startswith('--gridpaw-domain-decomposition='):
