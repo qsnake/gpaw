@@ -32,7 +32,7 @@ class Nucleus:
 
      ============= ========================================================
      ``setup``     ``Setup`` object.
-     ``spos_i``    Scaled position.
+     ``spos_c``    Scaled position.
      ``a``         Index number for this nucleus.
      ``typecode``  Data type of wave functions (``Float`` or ``Complex``).
      ``neighbors`` List of overlapping neighbor nuclei.
@@ -259,7 +259,7 @@ class Nucleus:
             a = self.setup
             W_L = num.zeros((a.lmax + 1)**2, num.Float)
             for neighbor in self.neighbors:
-                W_L += num.dot(neighbor.v, neighbor.nucleus.Q_L)
+                W_L += num.dot(neighbor.v, neighbor.nucleus().Q_L)
             U = 0.5 * num.dot(self.Q_L, W_L)
         
             self.vhat_L.integrate(nt, W_L)
@@ -361,7 +361,7 @@ class Nucleus:
             for neighbor in self.neighbors:
                 for i in range(3):
                     dF[:, i] += num.dot(neighbor.dvdr[:, :, i],
-                                        neighbor.nucleus.Q_L)
+                                        neighbor.nucleus().Q_L)
             F += num.dot(self.Q_L, dF)
         else:
             if self.domain_overlap >= COMPENSATION_CHARGE:

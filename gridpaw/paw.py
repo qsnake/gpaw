@@ -4,7 +4,6 @@
 """This module defines a PAW-class."""
 
 import sys
-import os
 from math import pi, sqrt, log
 import time
 
@@ -14,9 +13,7 @@ from gridpaw import debug, sigusr1
 from gridpaw.grid_descriptor import GridDescriptor
 from gridpaw.pair_potential import PairPotential
 from gridpaw.poisson_solver import PoissonSolver
-from gridpaw.rotation import rotation
 from gridpaw.density_mixer import Mixer, MixerSum
-from gridpaw.utilities.complex import cc, real
 from gridpaw.utilities import DownTheDrain, warning
 from gridpaw.utilities.timing import Timer
 from gridpaw.transformers import Interpolator, Restrictor
@@ -207,6 +204,10 @@ class Paw:
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(domain, setups)
 
+        self.my_nuclei = self.nuclei
+        self.p_nuclei = self.nuclei
+        self.g_nuclei = self.nuclei
+        
         output.print_info(self)
 
     def initialize_density_and_wave_functions(self, hund, magmom_a,
@@ -247,10 +248,7 @@ class Paw:
         self.converged = False
         
     def __del__(self):
-        # Remove cyclic references: ????  XXXX
-        for nucleus in self.nuclei:
-            del nucleus.neighbors
-
+        """Destructor:  Write timing output before closing."""
         for kpt in self.wf.kpt_u:
             self.timer.add(kpt.timer)
         self.timer.write(self.out)
@@ -379,15 +377,11 @@ class Paw:
                 if nucleus.domain_overlap == NOT_INITIALIZED:
                     nucleus.allocate(nspins, nmykpts, nbands)
                 nucleus.domain_overlap = EVERYTHING
-
-            self.my_nuclei = self.nuclei
-            self.p_nuclei = self.nuclei
-            self.g_nuclei = self.nuclei
             return
 
         # Parallel calculation:
         natoms = len(self.nuclei)
-        domain_overlap_a = num.zeros(natoms, num.Int)
+        domovl_a = num.zeros(natoms, num.Int)
         self.my_nuclei = []
         self.p_nuclei = []
         self.g_nuclei = []
@@ -409,25 +403,25 @@ class Paw:
                             nucleus.deallocate()
 
             nucleus.domain_overlap = domain_overlap
-            domain_overlap_a[a] = domain_overlap
+            domovl_a[a] = domain_overlap
 
-        domain_overlap_ca = num.zeros((self.domain.comm.size, natoms), num.Int)
-        self.domain.comm.all_gather(domain_overlap_a, domain_overlap_ca)
+        domovl_ca = num.zeros((self.domain.comm.size, natoms), num.Int)
+        self.domain.comm.all_gather(domovl_a, domovl_ca)
 
         # Make groups:
         for a, nucleus in enumerate(self.nuclei):
-            domain_overlap_c = domain_overlap_ca[:, a]
+            domovl_c = domovl_ca[:, a]
 
             # Who owns the atom?
-            root = num.argmax(domain_overlap_c)
+            root = num.argmax(domovl_c)
 
-            g_group = [c for c, b in enumerate(domain_overlap_c) if
+            g_group = [c for c, b in enumerate(domovl_c) if
                        b >= COMPENSATION_CHARGE]
             g_root = g_group.index(root)
             g_comm = self.domain.comm.new_communicator(
                 num.array(g_group, num.Int))
 
-            p_group = [c for c, b in enumerate(domain_overlap_c) if
+            p_group = [c for c, b in enumerate(domovl_c) if
                        b >= PROJECTOR_FUNCTION]
             p_root = p_group.index(root)
             p_comm = self.domain.comm.new_communicator(
@@ -443,7 +437,7 @@ class Paw:
             # or from a restart file.  We scale the density to match
             # the compensation charges.
 
-            Nt = self.gd.integrate(self.nt_sG.flat)
+            Nt = self.gd.integrate(self.nt_sG)
             self.calculate_multipole_moments()
             Q = 0.0
             for nuclei in self.my_nuclei:
@@ -457,9 +451,9 @@ class Paw:
 
         wf = self.wf
         
-        # Put the calculation of P in kpt.Ortho method? XXXXX
         wf.calculate_projections_and_orthogonalize(self.p_nuclei,
                                                    self.my_nuclei)
+
         if niter > 0:
             if not self.fixdensity:
                 wf.calculate_electron_density(self.nt_sG, self.nct_G,
@@ -488,8 +482,7 @@ class Paw:
 
         # Calculate occupations numbers, and return entropy, number of
         # iteration, and magnetic moment:
-        self.nfermi, self.magmom, self.S = \
-                self.wf.calculate_occupation_numbers()
+        self.nfermi, self.magmom, self.S = wf.calculate_occupation_numbers()
         
         dsum = self.domain.comm.sum
         self.Ekin = dsum(self.Ekin) + wf.sum_eigenvalues()
@@ -543,12 +536,12 @@ class Paw:
         for nucleus in self.g_nuclei:
             nucleus.add_hat_potential(vt_g)
 
-        self.Epot = num.dot(vt_g.flat, self.rhot_g.flat) * self.finegd.dv 
+        self.Epot = num.vdot(vt_g, self.rhot_g) * self.finegd.dv 
 
         for nucleus in self.p_nuclei:
             nucleus.add_localized_potential(vt_g)
 
-        self.Ebar = num.dot(vt_g.flat, self.rhot_g.flat) * self.finegd.dv 
+        self.Ebar = num.vdot(vt_g, self.rhot_g) * self.finegd.dv 
         self.Ebar -= self.Epot
         
         if self.nspins == 2:
@@ -566,22 +559,19 @@ class Paw:
         for nucleus in self.g_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
 
-        assert self.finegd.integrate(self.rhot_g.flat) < 0.2
-## XXX        self.rhot_g -= sum / self.finegd.arraysize / mpi.size
+        assert self.finegd.integrate(self.rhot_g) < 0.2
 
         # npoisson is the number of iterations:
         self.timer.start('poisson')
         self.npoisson = self.poisson.solve(self.vHt_g, self.rhot_g)
         self.timer.stop('poisson')
         
-        self.Epot += 0.5 * num.dot(self.vHt_g.flat,
-                                   self.rhot_g.flat) * self.finegd.dv
+        self.Epot += 0.5 * num.vdot(self.vHt_g, self.rhot_g) * self.finegd.dv
         self.Ekin = 0.0
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, self.nt_sG):
             vt_g += self.vHt_g
             self.restrict(vt_g, vt_G)
-            self.Ekin -= num.dot(vt_G.flat,
-                                (nt_G - self.nct_G).flat) * self.gd.dv
+            self.Ekin -= num.vdot(vt_G, nt_G - self.nct_G) * self.gd.dv
 
     def warn(self, message):
         print >> self.out, warning(message)
@@ -592,7 +582,7 @@ class Paw:
         return self.ibzk_kc
     
     def get_fermi_level(self):
-        e = self.occupation.get_fermi_level()
+        e = self.wf.occupation.get_fermi_level()
         if e is None:
             e = 100.0
         return e * self.Ha

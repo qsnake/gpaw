@@ -213,7 +213,7 @@ class KPoint:
 
         error = 0.0
         for R_G, f in zip(R_nG, self.f_n):
-            error += f * real(num.dot(cc(R_G).flat, R_G.flat))
+            error += f * real(num.vdot(R_G, R_G))
 
         return error
         
@@ -289,8 +289,8 @@ class KPoint:
                 nucleus.adjust_residual2(pR_G, dR_G, self.eps_n[n],
                                          self.s, self.k)
             
-            RdR = self.comm.sum(real(num.dot(cc(R_G).flat, dR_G.flat)))
-            dRdR = self.comm.sum(real(num.dot(cc(dR_G.flat), dR_G.flat)))
+            RdR = self.comm.sum(real(num.vdot(R_G, dR_G)))
+            dRdR = self.comm.sum(real(num.vdot(dR_G, dR_G)))
             lam = -RdR / dRdR
 
             R_G *= 2.0 * lam

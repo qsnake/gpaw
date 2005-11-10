@@ -3,6 +3,8 @@
 
 import Numeric as num
 
+from gridpaw.transrotation import rotate
+
 
 class NeighborList:
     """Skin stuff ...
@@ -22,7 +24,7 @@ class NeighborList:
     
     """
     
-    def __init__(self, numbers, positions, cell, bc, cutoffs, drift):
+    def __init__(self, numbers, positions, cell, bc, angle, cutoffs, drift):
         """NeighborList(atoms, cutoffs) -> neighbor list.
 
         Construct a neighbor list object from a list of atoms and some
@@ -49,6 +51,7 @@ class NeighborList:
             n += 1
 
         self.cell = cell
+        self.angle = angle
         self.numbers = numbers
         self.make_list(positions)
 
@@ -112,6 +115,9 @@ class NeighborList:
                 diff = pos2 - pos1
                 offset0 = num.floor(diff / size + 0.5) * size
                 diff -= offset0
+                if self.angle is not None:
+                    r_c = pos2 - size / 2
+                    rotate(diff, r_c, self.angle * offset0[0] / size[0])
                 offsets = []
                 rcut, ncells = self.stuff[(Z1, Z2)]
                 for n0 in range(-ncells[0], ncells[0] + 1):
@@ -119,6 +125,8 @@ class NeighborList:
                         for n2 in range(-ncells[2], ncells[2] + 1):
                             offset = size * (n0, n1, n2)
                             difference = diff + offset
+                            if self.angle is not None:
+                                rotate(difference, r_c, self.angle * n0)
                             if num.dot(difference, difference) < rcut**2:
                                 offsets.append(offset)
                 if offsets:

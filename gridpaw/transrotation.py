@@ -1,3 +1,8 @@
+from math import sin, cos
+
+import Numeric as num
+
+
 def RotationCoef(N, dt):
 	"""Calculate coefficients for rotation.
 	
@@ -10,8 +15,6 @@ def RotationCoef(N, dt):
 	  M'[i] = c1[i]*M[v[i]] + c2[i]*M[v[i]+1] +
 	          c3[i]*M[v[i]+N] + c4[i]*M[v[i]+1+N]
 	"""
-	import Numeric as num
-	from math import sin,cos
 
         coords=num.indices((N,N)).astype(num.Float)
 	coords=num.reshape(coords, (2,N*N))
@@ -59,3 +62,12 @@ def RotationCoef(N, dt):
         c4 = col*row*valids         # x (row+1, col+1)
 
         return [c1, c2, c3, c4, v]
+
+
+def rotate(diff_c, r_c, angle):
+	cs = cos(angle)
+	sn = sin(angle)
+	R_cc = num.array([(1,   0,  0),
+			  (0,  cs, sn),
+			  (0, -sn, cs)])
+	diff_c += r_c - num.dot(R_cc, r_c)

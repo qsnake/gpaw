@@ -78,7 +78,7 @@ class PoissonSolver:
             else:
                 self.operators[level].apply(self.phis[level], residual)
                 residual -= self.rhos[level]
-            error = self.gd.comm.sum(num.dot(residual.flat, residual.flat))
+            error = self.gd.comm.sum(num.vdot(residual, residual))
             if niter == 1 and level < self.levels:
                 self.restrictors[level].apply(residual, self.rhos[level + 1])
                 self.phis[level + 1][:] = 0.0

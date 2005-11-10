@@ -80,7 +80,7 @@ class Teter:
                 self.cache[kpt_c] = phase_G
             phit_q = fftnd(phit_G * phase_G)
             
-        norm = num.dot(phit_q.flat, num.conjugate(phit_q.flat))
+        norm = num.vdot(phit_q, phit_q)
         h_q = phit_q * num.conjugate(phit_q) * self.q2_q / norm
         ekin = num.sum(h_q.flat)
         x_q = self.q2_q / ekin

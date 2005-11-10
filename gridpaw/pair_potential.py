@@ -1,15 +1,18 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+import weakref
+
 import Numeric as num
 
 from gridpaw.interaction import GInteraction2 as GInteraction
 from gridpaw.neighbor_list import NeighborList
+from gridpaw.transrotation import rotate
 
 
 class Neighbor:
     def __init__(self, v, dvdr, nucleus):
-        self.nucleus = nucleus
+        self.nucleus = weakref.ref(nucleus)
         self.v = v
         self.dvdr = dvdr
 
@@ -18,6 +21,7 @@ class PairPotential:
     def __init__(self, domain, setups):
         self.cell_c = domain.cell_c
         self.bc_c = domain.periodic_c
+        self.angle = domain.angle
 
         # Collect the pair potential cutoffs in a list:
         self.cutoff_a = []
@@ -41,6 +45,7 @@ class PairPotential:
             Z_a = [nucleus.setup.Z for nucleus in nuclei]
             self.neighborlist = NeighborList(Z_a, pos_ac,
                                              self.cell_c, self.bc_c,
+                                             self.angle,
                                              self.cutoff_a, drift)
             updated = False
         else:
@@ -61,8 +66,12 @@ class PairPotential:
                 diff = pos_ac[n2] - pos_ac[n1]
                 V = num.zeros(interaction.v_LL.shape, num.Float)
                 dVdr = num.zeros(interaction.dvdr_LLi.shape, num.Float)
+                r_c = pos_ac[n2] - self.cell_c / 2
                 for offset in offsets:
                     difference = diff + offset
+                    if self.angle is not None:
+                        rotate(difference, r_c,
+                               self.angle * offset[0] / self.cell_c[0])
                     v, dvdr = interaction(difference)
                     V += v
                     dVdr += dvdr

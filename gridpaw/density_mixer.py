@@ -89,7 +89,7 @@ class Mixer1:
             i1 = 0
             i2 = iold - 1
             for R_1G in self.R_iG:
-                a = comm.sum(num.dot(R_1G.flat, R_G.flat))
+                a = comm.sum(num.vdot(R_1G, R_G))
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
                 i1 += 1
@@ -192,7 +192,7 @@ class MixerSum:
             i1 = 0
             i2 = iold - 1
             for R_1G in self.R_iG:
-                a = comm.sum(num.dot(R_1G.flat, R_G.flat))
+                a = comm.sum(num.vdot(R_1G, R_G))
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
                 i1 += 1
