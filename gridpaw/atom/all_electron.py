@@ -58,7 +58,7 @@ class AllElectron:
 
         # Number of orbitals:
         nj = len(nlfe_j)
-
+        
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
         #     N - g
@@ -364,75 +364,7 @@ class AllElectron:
         kr[1:] = f0 * u[1:] + fm * u[:-1]
         kr[1:-1] += fp[:-1] * u[2:]
         kr[0] = 0.0
-        return kr
-    
-    def exactExchange(self,Ncore = 0):
-        '''Returns the exact exchange energy of the current atom'''
-
-        # get Gaunt coefficients
-        from gridpaw.gaunt import gaunt
-
-        # get Hartree potential calculator
-        from gridpaw.setup import Hartree
-
-        # maximum angular momentum
-        Lmax=(2*max(self.l_j)+1)**2
-
-        # number of orbitals
-        Nj = len(self.n_j)
-
-        # diagonal +-1 elements in Hartree matrix
-        a1_g = 1.0 - 0.5 * self.d2gdr2 * self.dr**2
-        a2_lg = -2.0 * num.ones((Lmax, self.N), num.Float)
-        x_g = (self.dr / self.r)**2
-        for l in range(1, Lmax):
-            a2_lg[l] -= l * (l + 1) * x_g
-        a3_g = 1.0 + 0.5 * self.d2gdr2 * self.dr**2
-
-        # initialize potential calculator (returns v*r^2*dr/dg)
-        H = Hartree(a1_g, a2_lg, a3_g, self.r, self.dr).solve
-
-        # Hydrogen hack!
-        # activate hack by uncommenting below lines, and running:
-        #from gridpaw.atom.all_electron import AllElectron as AE; atom=AE('H'); atom.run(); atom.exactExchange()
-        #
-        #self.u_j[0] = 2. * num.exp(-self.r)*self.r
-        #print 'WARNING: Doing Hydrogen hack!!!'
-        
-        # initialize output 3-vector of the form
-        # Exx = [Eval-val, Eval-core, Ecore-core]
-        Exx = num.zeros(3,typecode=num.Float)
-        for j1 in range(Nj):
-            l1 = self.l_j[j1]
-            for j2 in range(Nj):
-                l2 = self.l_j[j2]
-
-                # joint occupation number
-                f12 = self.f_j[j1]*self.f_j[j2]/2.
-
-                # electron density
-                n = self.u_j[j1]*self.u_j[j2]
-                n[1:] /= self.r[1:]**2
-
-                # L summation
-                for l in range(l1 + l2 + 1):
-                    vr2dr = H(n, l)
-                    G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2,\
-                               l**2:(l+1)**2]**2
-                    vr2dr *= num.sum(G2.copy().flat)
-
-                # Determine type of Exx contribution
-                # val-val interaction
-                if ((j1+1 > Ncore) & (j2+1 > Ncore)): 
-                    Exx[0] +=-.5*f12*num.dot(n,vr2dr)
-                # val-core interaction
-                if (((j1+1 > Ncore) & (j2 < Ncore)) |\
-                    ((j1 < Ncore) & (j2+1 > Ncore))): 
-                    Exx[1] +=-.5*f12*num.dot(n,vr2dr)
-                # core-core interaction
-                if ((j1 < Ncore) & (j2 < Ncore)): 
-                    Exx[2] +=-.5*f12*num.dot(n,vr2dr)
-        return Exx
+        return kr    
 
 def shoot(w, l, vr, eps, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     if scalarrel:
@@ -481,9 +413,7 @@ def shoot(w, l, vr, eps, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     w[:gtp + 2] *= wtp / w[gtp]
     dwdrminus = 0.5 * (w[gtp + 1] - w[gtp - 1]) / dr[gtp]
     return nodes, (dwdrplus - dwdrminus) * wtp
-
-
+            
 if __name__ == '__main__':
     a = AllElectron('Cu', scalarrel=True)
     a.run()
-    

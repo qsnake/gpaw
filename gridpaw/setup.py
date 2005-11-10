@@ -73,6 +73,7 @@ class Hartree:
             vr_g[g] = (c_g[g + 1]
                       - self.a2_lg[l, g] * vr_g[g + 1]
                       - self.a3_g[g] * vr_g[g + 2]) / self.a1_g[g]
+
         if l == 0:
             vr_g += 4 * pi * Q
         else:

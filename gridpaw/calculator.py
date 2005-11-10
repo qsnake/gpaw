@@ -408,9 +408,10 @@ class Calculator:
         return self.paw.get_ibz_kpoints()
 
     def GetExactExchange(self):
+        from gridpaw.exx import exactExchange as exx
         paw = self.paw
         paw.timer.start('exx')
-        exx = paw.wf.exx(paw.nuclei, paw.gd)
+        exx = exx(paw.wf, paw.nuclei, paw.gd)
         paw.timer.stop('exx')
         return exx*paw.Ha
     

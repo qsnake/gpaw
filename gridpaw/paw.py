@@ -452,7 +452,7 @@ class Paw:
 
             # Nt + Q must be zero:
             x = -Q / Nt
-            assert 0.93 < x < 1.07, 'x=%f' % x
+            assert 0.83 < x < 1.17, 'x=%f' % x
             self.nt_sG *= x
 
         wf = self.wf
