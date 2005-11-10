@@ -72,7 +72,7 @@ else:
         return _Operator(coef_p, offset_pc, gd, cfd, typecode).operator
 
 
-def Gradient(gd, c, scale=1.0, n=1, typecode=num.Float):
+def Gradient(gd, c, scale=1.0, typecode=num.Float):
     h = gd.h_c[c]
     a = 0.5 / h * scale
     coef_p = [-a, a]

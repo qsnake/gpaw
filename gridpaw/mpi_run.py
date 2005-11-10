@@ -3,7 +3,6 @@ import socket
 import StringIO
 
 import gridpaw.utilities.mpi as mpi
-from gridpaw.paw import Paw
 from gridpaw.startup import create_paw_object
 from gridpaw.utilities.socket import send, recv
 from gridpaw.utilities.timing import clock

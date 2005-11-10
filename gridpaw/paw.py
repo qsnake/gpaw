@@ -202,7 +202,7 @@ class Paw:
             self.mixer = Mixer(mix, old, nspins)
 
         # Pair potential for electrostatic interacitons:
-        self.pairpot = PairPotential(domain, setups)
+        self.pairpot = PairPotential(setups)
 
         self.my_nuclei = self.nuclei
         self.p_nuclei = self.nuclei
@@ -345,7 +345,8 @@ class Paw:
             if self.symmetry:
                 self.symmetry.check(pos_ac)
                 
-            neighborlist_update = self.pairpot.update(pos_ac, self.nuclei)
+            neighborlist_update = self.pairpot.update(pos_ac, self.nuclei,
+                                                      self.domain)
 
             if neighborlist_update:
                 print >> self.out

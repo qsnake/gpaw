@@ -3,8 +3,8 @@
 
 """Domain object.
 
-This module contains the definition of the ``Domain`` class and some helper functins for parallel domain decomposition.
-"""
+This module contains the definition of the ``Domain`` class and some
+helper functins for parallel domain decomposition.  """
 
 import Numeric as num
 
@@ -41,7 +41,7 @@ class Domain:
         
         self.cell_c = num.array(cell, num.Float)
         self.periodic_c = periodic
-	self.angle = angle
+        self.angle = angle
         
         self.set_decomposition(serial_comm, (1, 1, 1))
         

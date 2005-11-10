@@ -11,18 +11,14 @@ from gridpaw.transrotation import rotate
 
 
 class Neighbor:
-    def __init__(self, v, dvdr, nucleus):
+    def __init__(self, v_LL, dvdr_LLc, nucleus):
         self.nucleus = weakref.ref(nucleus)
-        self.v = v
-        self.dvdr = dvdr
+        self.v_LL = v_LL
+        self.dvdr_LLc = dvdr_LLc
 
 
 class PairPotential:
-    def __init__(self, domain, setups):
-        self.cell_c = domain.cell_c
-        self.bc_c = domain.periodic_c
-        self.angle = domain.angle
-
+    def __init__(self, setups):
         # Collect the pair potential cutoffs in a list:
         self.cutoff_a = []
         for Z, setup in setups.items():
@@ -38,15 +34,12 @@ class PairPotential:
 
         self.neighborlist = None
         
-    def update(self, pos_ac, nuclei):
+    def update(self, pos_ac, nuclei, domain):
         if self.neighborlist is None:
             # Make a neighbor list object:
-            drift = 0.3
             Z_a = [nucleus.setup.Z for nucleus in nuclei]
-            self.neighborlist = NeighborList(Z_a, pos_ac,
-                                             self.cell_c, self.bc_c,
-                                             self.angle,
-                                             self.cutoff_a, drift)
+            self.neighborlist = NeighborList(Z_a, pos_ac, domain,
+                                             self.cutoff_a)
             updated = False
         else:
             updated = self.neighborlist.update_list(pos_ac)
@@ -56,31 +49,32 @@ class PairPotential:
             nucleus.neighbors = []
 
         # Make new pairs:
-        for n1 in range(len(nuclei)):
-            nucleus1 = nuclei[n1]
+        cell_c = domain.cell_c
+        angle = domain.angle
+        for a1 in range(len(nuclei)):
+            nucleus1 = nuclei[a1]
             Z1 = nucleus1.setup.Z
-            for n2, offsets in self.neighborlist.neighbors(n1):
-                nucleus2 = nuclei[n2]
+            for a2, offsets in self.neighborlist.neighbors(a1):
+                nucleus2 = nuclei[a2]
                 Z2 = nucleus2.setup.Z
                 interaction = self.interactions[(Z1, Z2)]
-                diff = pos_ac[n2] - pos_ac[n1]
-                V = num.zeros(interaction.v_LL.shape, num.Float)
-                dVdr = num.zeros(interaction.dvdr_LLi.shape, num.Float)
-                r_c = pos_ac[n2] - self.cell_c / 2
+                diff_c = pos_ac[a2] - pos_ac[a1]
+                V_LL = num.zeros(interaction.v_LL.shape, num.Float)  #  XXXX!
+                dVdr_LLc = num.zeros(interaction.dvdr_LLc.shape, num.Float)
+                r_c = pos_ac[a2] - cell_c / 2
                 for offset in offsets:
-                    difference = diff + offset
-                    if self.angle is not None:
-                        rotate(difference, r_c,
-                               self.angle * offset[0] / self.cell_c[0])
-                    v, dvdr = interaction(difference)
-                    V += v
-                    dVdr += dvdr
-#                print V, dVdr
-                nucleus1.neighbors.append(Neighbor(V, dVdr, nucleus2))
+                    d_c = diff_c + offset
+                    if angle is not None:
+                        rotate(d_c, r_c, angle * offset[0] / cell_c[0])
+                    v_LL, dvdr_LLc = interaction(d_c)
+                    V_LL += v_LL
+                    dVdr_LLc += dvdr_LLc
+                nucleus1.neighbors.append(Neighbor(V_LL, dVdr_LLc, nucleus2))
                 if nucleus2 is not nucleus1:
                     nucleus2.neighbors.append(
-                        Neighbor(num.transpose(V),
-                                 -num.transpose(dVdr, (1, 0, 2)), nucleus1))
+                        Neighbor(num.transpose(V_LL),
+                                 -num.transpose(dVdr_LLc, (1, 0, 2)),
+                                 nucleus1))
         return updated
 
     def print_info(self, out):

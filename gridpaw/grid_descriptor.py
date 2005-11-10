@@ -226,8 +226,9 @@ class GridDescriptor:
                 l = 0.5*(end_c - beg_c)
                 c = 0.5*(end_c + beg_c) - 0.5 * N_c
                 
-                newc = num.array([c[0],c[1]*cos(da)-c[2]*sin(da),
-                                 c[1]*sin(da) + c[2]*cos(da)])+0.5*N_c
+                newc = num.array([c[0],
+                                  c[1] * cos(da) - c[2] * sin(da),
+                                  c[1] * sin(da) + c[2] * cos(da)]) + 0.5 * N_c
                 
                 beg_c = num.floor(newc - l).astype(num.Int) - 1
                 end_c = num.ceil(newc + l).astype(num.Int) + 1

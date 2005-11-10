@@ -259,7 +259,7 @@ class Nucleus:
             a = self.setup
             W_L = num.zeros((a.lmax + 1)**2, num.Float)
             for neighbor in self.neighbors:
-                W_L += num.dot(neighbor.v, neighbor.nucleus().Q_L)
+                W_L += num.dot(neighbor.v_LL, neighbor.nucleus().Q_L)
             U = 0.5 * num.dot(self.Q_L, W_L)
         
             self.vhat_L.integrate(nt, W_L)
@@ -359,8 +359,8 @@ class Nucleus:
 
             dF = num.zeros(((lmax + 1)**2, 3), num.Float)
             for neighbor in self.neighbors:
-                for i in range(3):
-                    dF[:, i] += num.dot(neighbor.dvdr[:, :, i],
+                for c in range(3):
+                    dF[:, c] += num.dot(neighbor.dvdr_LLc[:, :, c],
                                         neighbor.nucleus().Q_L)
             F += num.dot(self.Q_L, dF)
         else:

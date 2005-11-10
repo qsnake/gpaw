@@ -61,7 +61,6 @@ class XCAtom3:
         else:
             self.weights = weights
             self.Y_yL = Y_nL[:, :self.Lmax].copy()
-        ny = len(self.weights)
         jlL = []
         for j, l in jl:
             for m in range(2 * l + 1):
