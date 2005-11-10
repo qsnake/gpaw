@@ -9,7 +9,7 @@ from math import pi, cos, sin
 import Numeric as num
 
 from gridpaw import debug
-from gridpaw.utilities import contiguous, is_contiguous
+from gridpaw.utilities import is_contiguous
 import _gridpaw
 
 
@@ -346,7 +346,7 @@ else:
 
 
 class LocFuncBroadcaster:
-    """"""
+    """..."""
     def __init__(self, comm):
         self.comm = comm
         self.size = comm.size

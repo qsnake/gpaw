@@ -21,7 +21,7 @@ class MPIPaw:
         while True:
             try:
                 s.bind(("localhost", port))
-            except:
+            except socket.error:
                 port += 1
             else:
                 break
@@ -58,7 +58,8 @@ class MPIPaw:
             raise RuntimeError
 
         self.sckt, addr = s.accept()
-
+        print >> out, addr
+        
         string = pickle.dumps(args)
 
         send(self.sckt, string)

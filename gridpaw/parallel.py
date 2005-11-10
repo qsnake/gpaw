@@ -42,8 +42,9 @@ def distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k):
 
     my_domain_comm = mygroup
 
-    if nproc_per_group>1: 
-        domain_comm = mpi.world.new_communicator(num.array(group_members[mygroup]))
+    if nproc_per_group > 1: 
+        domain_comm = mpi.world.new_communicator(
+            num.array(group_members[mygroup]))
     else:
         domain_comm = mpi.serial_comm
 
@@ -68,7 +69,8 @@ def distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k):
     # find group members for this kpt_comm
     group_members = []
     for igroup in range(number_kpt_comms):
-        members = [n*number_kpt_comms + igroup for n in range(nproc_per_kpt_comm)]
+        members = [n * number_kpt_comms + igroup
+                   for n in range(nproc_per_kpt_comm)]
         group_members.append(members)
         if mpi.rank in members:
             mygroup = igroup
@@ -91,7 +93,8 @@ def distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k):
 
 
     # number of kpoints per domain_comm
-    kpoints_per_domain_comm = (len(ibzk_kc)*nspins)/(len(myspins)*number_domain_comms)
+    kpoints_per_domain_comm = (len(ibzk_kc) * nspins /
+                               (len(myspins) * number_domain_comms))
 
     # index into k-points
     kpt_index = (my_domain_comm*len(myspins))/nspins

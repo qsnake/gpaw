@@ -10,7 +10,7 @@ from math import pi
 N = 49
 
 if __name__ == '__main__':
-    from spherical_harmonics import Y
+    from gridpaw.spherical_harmonics import Y
     print 'Constructing "%d.pickle" ...' % N
     weights = num.zeros(N, num.Float)
     YY = num.zeros((N, 45), num.Float)

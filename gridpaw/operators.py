@@ -94,11 +94,8 @@ laplace = [[0],
 
 # Check numbers:
 if debug:
-    for a in laplace:
-        sum = a[0]
-        for x in a[1:]:
-            sum += 2 * x
-        assert abs(sum) < 1e-11
+    for coefs in laplace:
+        assert abs(coefs[0] + 2 * sum(coefs[1:])) < 1e-11
 
 
 def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
