@@ -1,5 +1,4 @@
 include LICENSE requirements.py
-recursive-include doc *.txt *.py *.png *.jpg *.gif *.css *.agr
 include c/*.h
 include c/bmgs/*.h
 include c/bmgs/*.c
