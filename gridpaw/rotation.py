@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-from math import sqrt
+from math import sqrt, cos, sin
 
 import Numeric as num
 import LinearAlgebra as linalg
@@ -26,17 +26,17 @@ def Y_matrix(l, symmetry):
     mirror)."""
     
     swap, mirror = symmetry
-    Y_m1m2 = num.zeros((2 * l + 1, 2 * l + 1), num.Float)
+    Y_mm = num.zeros((2 * l + 1, 2 * l + 1), num.Float)
     for m1, point in enumerate(sphere_lm[l]):
         x, y, z = num.take(point * mirror, swap)
         for m2 in range(2 * l + 1):
             L = l**2 + m2
-            Y_m1m2[m1, m2] = Y(L, x, y, z)
-    return Y_m1m2
+            Y_mm[m1, m2] = Y(L, x, y, z)
+    return Y_mm
 
 
 identity = ((0, 1, 2), (1, 1, 1))
-iY_lm1m2 = [linalg.inverse(Y_matrix(l, identity)) for l in range(3)]
+iY_lmm = [linalg.inverse(Y_matrix(l, identity)) for l in range(3)]
          
 
 def rotation(l, symmetry):
@@ -44,7 +44,24 @@ def rotation(l, symmetry):
 
     Find the transformation from Y_lm1 to Y_lm2."""
     
-    return num.dot(iY_lm1m2[l], Y_matrix(l, symmetry))
+    return num.dot(iY_lmm[l], Y_matrix(l, symmetry))
+
+
+def Y_rotation(l, angle):
+    Y_mm = num.zeros((2 * l + 1, 2 * l + 1), num.Float)
+    sn = sin(angle)
+    cs = cos(angle)
+    for m1, point in enumerate(sphere_lm[l]):
+        x = point[0]
+        y = cs * point[1] - sn * point[2]
+        z = sn * point[1] + cs * point[2]
+        for m2 in range(2 * l + 1):
+            L = l**2 + m2
+            Y_mm[m1, m2] = Y(L, x, y, z)
+    return Y_mm
+
+def transrotation(l, angle):
+    return num.dot(iY_lmm[l], Y_rotation(l, angle))
 
 
 del s, identity

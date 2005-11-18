@@ -10,6 +10,7 @@ import Numeric as num
 
 from gridpaw import debug
 from gridpaw.utilities import is_contiguous
+from gridpaw.rotation import transrotation
 import _gridpaw
 
 
@@ -56,7 +57,8 @@ class LocFuncs:
                  typecode, cut, forces, lfbc):
         """Create `LocFuncs` object.
 
-        Use `creat_localized_functions()` to create this object."""
+        Use `create_localized_functions()` to create this object."""
+        
         self.angle = gd.domain.angle
         angle = self.angle
         # We assume that all functions have the same cut-off:
@@ -132,13 +134,15 @@ class LocFuncs:
                 [0, s, c]])
             return r
         if l == 2:
-            r = num.asarray([
-                [c,       0, -s,           0,           0],
-                [0, c*c-s*s,  0,    -0.5*s*c,    -0.5*s*c],
-                [s,       0,  c,           0,           0],
-                [0,   2*s*c,  0,   1-0.5*s*s,    -0.5*s*s],
-                [0,   6*s*c,  0,    -1.5*s*s, c*c-0.5*s*s]
-                ])
+##            r = transrotation(2, -da)
+            r = num.transpose(transrotation(2, da))
+##             r = num.asarray([
+##                 [c,       0, -s,           0,           0],
+##                 [0, c*c-s*s,  0,    -0.5*s*c,    -0.5*s*c],
+##                 [s,       0,  c,           0,           0],
+##                 [0,   2*s*c,  0,   1-0.5*s*s,    -0.5*s*s],
+##                 [0,   6*s*c,  0,    -1.5*s*s, c*c-0.5*s*s]
+##                 ])
             return r
         
     def set_communicator(self, comm, root):

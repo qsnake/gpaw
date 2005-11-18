@@ -548,14 +548,14 @@ class Setup:
                 print >> out, '     %s    %7.3f' % ('spd'[l], Ha * eps)
         print >> out"""
 
-    def calculate_rotations(self, R_slm1m2):
-        nsym = len(R_slm1m2)
+    def calculate_rotations(self, R_slmm):
+        nsym = len(R_slmm)
         self.R_sii = num.zeros((nsym, self.ni, self.ni), num.Float)
         i1 = 0
         for l in self.l_j:
             i2 = i1 + 2 * l + 1
-            for s, R_lm1m2 in enumerate(R_slm1m2):
-                self.R_sii[s, i1:i2, i1:i2] = R_slm1m2[s][l]
+            for s, R_lmm in enumerate(R_slmm):
+                self.R_sii[s, i1:i2, i1:i2] = R_lmm[l]
             i1 = i2
 
     def symmetrize(self, a, D_aii, map_sa):

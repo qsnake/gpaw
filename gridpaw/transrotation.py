@@ -70,4 +70,4 @@ def rotate(diff_c, r_c, angle):
     R_cc = num.array([(1,   0,  0),
 		      (0,  cs, sn),
 		      (0, -sn, cs)])
-    diff_c += r_c - num.dot(R_cc, r_c)
+    diff_c -= r_c - num.dot(R_cc, r_c)

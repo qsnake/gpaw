@@ -82,7 +82,6 @@ class NeighborList:
     def make_list(self, pos_ac):
         """Build the list."""
         self.list = []
-        # Using an O(N^2) method!!!!!!
         # Build the list:
         cell_c = self.cell_c
         for a1, pos1_c in enumerate(pos_ac):
@@ -104,7 +103,7 @@ class NeighborList:
                             offset = cell_c * (n0, n1, n2)
                             d_c = diff_c + offset
                             if self.angle is not None:
-                                rotate(d_c, r_c, self.angle * n0)
+                                rotate(d_c, r_c, -self.angle * n0)
                             if num.dot(d_c, d_c) < rcut**2:
                                 offsets.append(offset)
                 if offsets:

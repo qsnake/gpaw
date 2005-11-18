@@ -5,20 +5,20 @@ from math import pi
 d = 1.4
 a = 4 * d
 x = 0.2
-C1 = ListOfAtoms([Atom('C', (d / 2, a / 2, a / 2 + x))],
+C1 = ListOfAtoms([Atom('C', (0, a / 2, a / 2 + x))],
                  periodic=(1, 0, 0),
                  cell=(d, a, a),
                  angle=-pi / 2
                  )
-calc1 = Calculator(nbands=3, h=d / 8, kpts=(8, 1, 1), softgauss=1, usesymm=0,
+calc1 = Calculator(nbands=3, h=d / 8, kpts=(8, 1, 1), softgauss=1,
                    tolerance=1e-11)
 C1.SetCalculator(calc1)
 e1 = C1.GetPotentialEnergy()
 
-C4 = ListOfAtoms([Atom('C', (1 * d / 2, a / 2, a / 2 + x)),
-                  Atom('C', (3 * d / 2, a / 2 + x, a / 2)),
-                  Atom('C', (5 * d / 2, a / 2, a / 2 - x)),
-                  Atom('C', (7 * d / 2, a / 2 - x, a / 2))],
+C4 = ListOfAtoms([Atom('C', (0 * d / 2, a / 2, a / 2 + x)),
+                  Atom('C', (2 * d / 2, a / 2 + x, a / 2)),
+                  Atom('C', (4 * d / 2, a / 2, a / 2 - x)),
+                  Atom('C', (6 * d / 2, a / 2 - x, a / 2))],
                  periodic=(1, 0, 0),
                  cell=(4 * d, a, a))
 calc4 = Calculator(nbands=12, h=d / 8, kpts=(2, 1, 1), softgauss=1,

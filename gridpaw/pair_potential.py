@@ -65,7 +65,8 @@ class PairPotential:
                 for offset in offsets:
                     d_c = diff_c + offset
                     if angle is not None:
-                        rotate(d_c, r_c, angle * offset[0] / cell_c[0])
+                        rotate(d_c, r_c, -angle * offset[0] / cell_c[0])
+                    print a1, a2, d_c
                     v_LL, dvdr_LLc = interaction(d_c)
                     V_LL += v_LL
                     dVdr_LLc += dvdr_LLc

@@ -25,6 +25,8 @@ def create_paw_object(out, a0, Ha,
 
     if angle is not None:
         usesymm = False
+        if lmax not in [None, 0]:
+            raise NotImplementedError
     
     magmom_a = num.array(magmom_a)
     magnetic = num.sometrue(magmom_a)
@@ -90,11 +92,11 @@ def create_paw_object(out, a0, Ha,
 
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:
-        R_slm1m2 = [[rotation(l, symm) for l in range(3)]
+        R_slmm = [[rotation(l, symm) for l in range(3)]
                     for symm in symmetry.symmetries]
 
         for setup in setups.values():
-            setup.calculate_rotations(R_slm1m2)
+            setup.calculate_rotations(R_slmm)
 
     # Build list of nuclei:
     nuclei = [Nucleus(setups[Z], a, typecode, onohirose)
