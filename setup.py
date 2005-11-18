@@ -24,16 +24,33 @@ k-points and gradient corrected exchange-corellation functionals."""
 
 
 if sys.version_info < (2, 3, 0, 'final', 0):
-    raise SystemExit, 'Python 2.3.1 or later is required!'
+    raise SystemExit('Python 2.3.1 or later is required!')
+    
+try:
+    import Numeric
+except ImportError:
+    raise SystemExit('Numeric is not installed!')
 
+msg = []
 
-# ???? Use a setup.cfg file and the config command:
-#  check_func
-#  check_lib
-#  check_header
+try:
+    import ASE
+except ImportError:
+    msg += ['* ASE is not installed!  You may be able to install gridpaw, but',
+            "  you can't use it without ASE!"]
 
-
-
+try:
+    import Scientific.IO.NetCDF
+except ImportError:
+    try:
+        import Scientific
+    except ImportError:
+        msg = ['* Scientific is not installed.']
+    else:
+        msg = ['* Scientific.IO.NetCDF is not installed (the NetCDF C-library',
+               '  is probably missing).']
+    msg += ['  You will not be able to write and read wavefunctions!']
+        
 
 scripts = glob(join('tools', 'gridpaw-*[a-z]'))
 
@@ -117,14 +134,9 @@ elif sys.platform == 'aix5':
     include_dirs += ['/usr/lpp/ppe.poe/include']
     libraries += ['mpi']
     library_dirs += ['/usr/lpp/ppe.poe/lib']
-#    runtime_library_dirs = ['/opt/SUNWspro/lib', '/opt/SUNWhpc/lib']
-#    extra_link_args = ['-Bstatic', '-lsunperf', '-lfsu', '-lmtsk']
 
     define_macros.append(('NO_C99_COMPLEX', '1'))
     define_macros.append(('PARALLEL', '1'))
-#    extra_link_args += ['-Wl,-rpath=/opt/acml/gnu64/lib']
-#    print 'Using ACML library'
-
 
 else:
 
@@ -150,7 +162,6 @@ else:
                 atlas = True
                 break
         if atlas:
-##            libraries += ['lapack', 'cblas', 'blas']
             libraries += ['lapack', 'atlas', 'blas']
             library_dirs += [dir]
             print 'Using ATLAS library'
@@ -159,9 +170,7 @@ else:
 
     output = os.popen('mpicc -showme').read()
 
-    if output == '':
-        print 'SERIAL version'
-    else:
+    if output != '':
         define_macros.append(('PARALLEL', '1'))
         libraries += re.findall(' -l(\S+)', output)
         while 'aio' in libraries:
@@ -172,6 +181,7 @@ else:
                          for dir in re.findall('-L(\S+)', output)]
         include_dirs += [dir.replace('pgi', 'gcc')
                          for dir in re.findall('-I(\S+)', output)]
+
 
 include_dirs += [os.environ['HOME'] + '/include/python']
 
@@ -187,10 +197,10 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
+
 # Distutils does not do deep dependencies correctly.  We take care of
 # that here so that "python setup.py build_ext" always does the right
 # thing!
-
 mtimes = {}  # modification times
 include = re.compile('^#\s*include "(\S+)"', re.MULTILINE)
 def mtime(path, name):
@@ -243,7 +253,6 @@ setup(name = 'gridpaw',
       ext_modules=[extension],
       scripts=scripts,
       long_description=long_description,
-##      data_files=[('doc', ['doc/index.txt'])],
       )
 
 if sys.platform == 'aix5':
@@ -252,50 +261,45 @@ if sys.platform == 'aix5':
     # o|_  _ _
     # ||_)| | |
     #
-
-    # Normally nothing needs to be changed below
+    
+    # On the IBM, we must make a special Python interpreter with our
+    # MPI code built in.  This sucks, but there is no other way!
+    
     import distutils
     import distutils.sysconfig
     import os  
 
     cfgDict = distutils.sysconfig.get_config_vars()
 
-    # Name of the MPI compilation script.
     mpicompiler = 'mpcc_r'
-    sources='c/_gridpaw.c'
+    sources = 'c/_gridpaw.c'
 
-
-    cmd = '%s -DGRIDPAW_INTERPRETER=1 %s %s -o tools/gridpaw-python -I%s %s %s -L%s -lpython%s %s %s %s %s %s' % \
-          (mpicompiler,
-           ' '.join(['-D%s=%s' % x for x in define_macros]),
-           cfgDict['LINKFORSHARED'].replace('Modules', cfgDict['LIBPL']), 
-           cfgDict['INCLUDEPY'],
-           sources,
-           ' '.join(['build/temp.aix-5.2-2.3/' + x[:-1] + 'o'
-                     for x in glob('c/[a-z]*.c') + ['c/bmgs/bmgs.c']]),
-           cfgDict['LIBPL'],
-           cfgDict['VERSION'], 
-           cfgDict['LIBS'], 
-           cfgDict['LIBM'],
-           ' '.join(['-l' + lib for lib in libraries]),
-           ' '.join(extra_compile_args),
-           ' '.join(extra_link_args))
+    cmd = ('%s -DGRIDPAW_INTERPRETER=1 %s %s -o tools/gridpaw-python' +
+           ' -I%s %s %s -L%s -lpython%s %s %s %s %s %s') % \
+           (mpicompiler,
+            ' '.join(['-D%s=%s' % x for x in define_macros]),
+            cfgDict['LINKFORSHARED'].replace('Modules', cfgDict['LIBPL']), 
+            cfgDict['INCLUDEPY'],
+            sources,
+            ' '.join(['build/temp.aix-5.2-2.3/' + x[:-1] + 'o'
+                      for x in glob('c/[a-z]*.c') + ['c/bmgs/bmgs.c']]),
+            cfgDict['LIBPL'],
+            cfgDict['VERSION'], 
+            cfgDict['LIBS'], 
+            cfgDict['LIBM'],
+            ' '.join(['-l' + lib for lib in libraries]),
+            ' '.join(extra_compile_args),
+            ' '.join(extra_link_args))
     
     print 'cmd = ', cmd 
     os.system(cmd)
-    """
-    extra_compile_args += ['-qlanglvl=stdc99']
 
-    libraries += ['f', 'essl', 'lapack']
-    define_macros.append(('GRIDPAW_AIX', '1'))
-    include_dirs += ['/usr/lpp/ppe.poe/include']
-    libraries += ['mpi']
-    library_dirs += ['/usr/lpp/ppe.poe/lib']
-#    runtime_library_dirs = ['/opt/SUNWspro/lib', '/opt/SUNWhpc/lib']
-#    extra_link_args = ['-Bstatic', '-lsunperf', '-lfsu', '-lmtsk']
 
-    define_macros.append(('NO_C99_COMPLEX', '1'))
-    define_macros.append(('PARALLEL', '1'))
-#    extra_link_args += ['-Wl,-rpath=/opt/acml/gnu64/lib']
-#    print 'Using ACML library'
-"""
+
+if ('PARALLEL', '1') not in define_macros:
+    msg += ['* Only a serial version of gridpaw was build!']
+    
+
+for line in msg:
+    print line
+
