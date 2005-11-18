@@ -91,10 +91,10 @@ class NeighborList:
                 Z2 = self.Z_a[a2]
                 diff_c = pos2_c - pos1_c
                 offset0 = num.floor(diff_c / cell_c + 0.5) * cell_c
-                diff_c -= offset0
+                diff_c -= offset0  # XXX only for periodic BC's!!!!
                 if self.angle is not None:
                     r_c = pos2_c - cell_c / 2
-                    rotate(diff_c, r_c, self.angle * offset0[0] / cell_c[0])
+                    rotate(diff_c, r_c, -self.angle * offset0[0] / cell_c[0])
                 offsets = []
                 rcut, ncells = self.stuff[(Z1, Z2)]
                 for n0 in range(-ncells[0], ncells[0] + 1):
@@ -103,7 +103,7 @@ class NeighborList:
                             offset = cell_c * (n0, n1, n2)
                             d_c = diff_c + offset
                             if self.angle is not None:
-                                rotate(d_c, r_c, -self.angle * n0)
+                                rotate(d_c, r_c, self.angle * n0)
                             if num.dot(d_c, d_c) < rcut**2:
                                 offsets.append(offset)
                 if offsets:

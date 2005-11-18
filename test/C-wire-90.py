@@ -1,30 +1,37 @@
 from ASE import Atom, ListOfAtoms
 from gridpaw import Calculator
 from math import pi
+#from ASE.Visualization.RasMol import RasMol
 
-d = 1.4
+d = 1.1
 a = 4 * d
-x = 0.2
-C1 = ListOfAtoms([Atom('C', (0, a / 2, a / 2 + x))],
+x = 0.52
+y = x / 2**0.5
+C2 = ListOfAtoms([Atom('C', (0 * d / 2, a / 2, a / 2 + x)),
+                  Atom('C', (2 * d / 2, a / 2 + y, a / 2 + y))],
                  periodic=(1, 0, 0),
-                 cell=(d, a, a),
-                 angle=-pi / 2
+                 cell=(2 * d, a, a),
+                 angle=pi / 2
                  )
-calc1 = Calculator(nbands=3, h=d / 8, kpts=(8, 1, 1), softgauss=1,
+calc2 = Calculator(nbands=6, h=d / 8, kpts=(8, 1, 1),
                    tolerance=1e-11)
-C1.SetCalculator(calc1)
-e1 = C1.GetPotentialEnergy()
+C2.SetCalculator(calc2)
+e2 = C2.GetPotentialEnergy()
 
-C4 = ListOfAtoms([Atom('C', (0 * d / 2, a / 2, a / 2 + x)),
-                  Atom('C', (2 * d / 2, a / 2 + x, a / 2)),
-                  Atom('C', (4 * d / 2, a / 2, a / 2 - x)),
-                  Atom('C', (6 * d / 2, a / 2 - x, a / 2))],
+C8 = ListOfAtoms([Atom('C', (0 * d / 2, a / 2, a / 2 + x)),
+                  Atom('C', (2 * d / 2, a / 2 + y, a / 2 + y)),
+                  Atom('C', (4 * d / 2, a / 2 + x, a / 2)),
+                  Atom('C', (6 * d / 2, a / 2 + y, a / 2 - y)),
+                  Atom('C', (8 * d / 2, a / 2, a / 2 - x)),
+                  Atom('C', (10 * d / 2, a / 2 - y, a / 2 - y)),
+                  Atom('C', (12 * d / 2, a / 2 - x, a / 2)),
+                  Atom('C', (14 * d / 2, a / 2 - y, a / 2 + y))],
                  periodic=(1, 0, 0),
-                 cell=(4 * d, a, a))
-calc4 = Calculator(nbands=12, h=d / 8, kpts=(2, 1, 1), softgauss=1,
+                 cell=(8 * d, a, a))
+calc8 = Calculator(nbands=24, h=d / 8, kpts=(2, 1, 1),
                    tolerance=1e-11)
-C4.SetCalculator(calc4)
-e4 = C4.GetPotentialEnergy()
+C8.SetCalculator(calc8)
+e8 = C8.GetPotentialEnergy()
 
-print e1 - e4 / 4
-assert abs(e1 - e4 / 4) < 0.000015
+print e2 / 2 - e8 / 8
+assert abs(e2 / 2 - e8 / 8) < 2e-6

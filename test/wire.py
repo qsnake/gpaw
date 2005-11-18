@@ -24,4 +24,5 @@ H2.SetCalculator(calc2)
 e2 = H2.GetPotentialEnergy()
 
 print e1 - e2 / 2
-assert abs(e1 - e2 / 2) < 0.00015
+assert abs(e1 - e2 / 2) < 5e-6
+
