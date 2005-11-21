@@ -191,7 +191,8 @@ class AllElectron:
         print '---------------------------------------------'
         for m, l, f, e, u in zip(n_j, l_j, f_j, e_j, self.u_j):
             # Find kinetic energy:
-            k = e - num.sum((u**2 * vr * dr)[1:] / r[1:])
+            k = e - num.sum((num.where(u < 1e-160, 0, u)**2 * # XXX Numeric!
+                             vr * dr)[1:] / r[1:])
             
             # Find outermost maximum:
             g = self.N - 4
@@ -236,7 +237,8 @@ class AllElectron:
             print >> f, r, a
     
     def calculate_density(self):
-        n = num.dot(self.f_j, self.u_j**2) / (4 * pi)
+        n = num.dot(self.f_j,
+                    num.where(self.u_j < 1e-160, 0, self.u_j)**2) / (4 * pi)
         n[1:] /= self.r[1:]**2
         n[0] = n[1]
         return n
@@ -329,7 +331,7 @@ class AllElectron:
                 delta /= 2
             de = 1.0
             while abs(de) > 1e-9:
-                norm = num.dot(u**2, dr)
+                norm = num.dot(num.where(u < 1e-160, 0, u)**2, dr)
                 u *= 1.0 / sqrt(norm)
                 de = 0.5 * A / norm
                 x = abs(de / e)
@@ -340,7 +342,7 @@ class AllElectron:
                 nn, A = shoot(u, l, vr, e, self.r2dvdr, r, dr, c10, c2,
                               self.scalarrel)
             self.e_j[j] = e
-            u *= 1.0 / sqrt(num.dot(u**2, dr))
+            u *= 1.0 / sqrt(num.dot(num.where(u < 1e-160, 0, u)**2, dr))
 
     def kin(self, l, u, e=None):
         r = self.r[1:]

@@ -14,11 +14,41 @@ from gridpaw.polynomium import a_i, c_l
 from gridpaw.utilities.lapack import diagonalize
 
 
+parameters = {
+    #     (core,      rcut)  
+    'H' : ('',        0.9),
+    'He': ('',        1.5),
+    'Li': ('[He]',    2.0, {0: [0.8], 1: [0.0]}),
+    'Be': ('[He]',    1.5),
+    'C' : ('[He]',    1.0),
+    'N' : ('[He]',    1.1),
+    'O' : ('[He]',    1.2),
+    'F' : ('[He]',    1.2),
+    'Na': ('[Ne]',    2.3, {0: [0.8], 1: [0.0]}),
+    'Mg': ('[Ne]',    2.2),
+    'Al': ('[Ne]',    2.0),
+    'Si': ('[Ne]',    2.0),
+    'P' : ('[Ne]',    2.0),
+    'S' : ('[Ne]',    1.87),
+    'Cl': ('[Ne]',    1.5),
+    'V' : ('[Ar]',    2.2),
+    'Fe': ('[Ar]',    2.3),
+    'Cu': ('[Ar]',   [2.3, 2.3, 2.1]),
+    'Ga': ('[Ar]3d',  2.0),
+    'As': ('[Ar]',    2.0),
+    'Zr': ('[Ar]3d',  2.0),
+    'Mo': ('[Kr]',   [2.8, 2.8, 2.3]),
+    'Ru': ('[Kr]',   [2.5, 2.4, 2.5], {0: [0.8], 1: [0.0], 2: [0.8]}),
+    'Pt': ('[Xe]4f',  2.5),
+    'Au': ('[Xe]4f',  2.5)
+    }
+
+
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
-    def run(self, core, rcut, extra=None, logderiv=True, vt0=None):
+    def run(self, core, rcut, extra, logderiv=True, vt0=None):
         self.core = core
         if type(rcut) is float:
             rcut_l = [rcut]
@@ -78,13 +108,16 @@ class Generator(AllElectron):
         # Calculate the kinetic energy of the core states:
         Ekincore = 0.0
         for f, e, u in zip(f_j[:njcore], e_j[:njcore], self.u_j[:njcore]):
+            u = num.where(u < 1e-160, 0, u)  # XXX Numeric!
             Ekincore += f * (e - num.sum((u**2 * self.vr * dr)[1:] / r[1:]))
 
         # Calculate core density:
         if njcore == 0:
             nc = num.zeros(N, num.Float)
         else:
-            nc = num.dot(f_j[:njcore], self.u_j[:njcore]**2) / (4 * pi)
+            uc_j = self.u_j[:njcore]
+            uc_j = num.where(uc_j < 1e-160, 0, uc_j)  # XXX Numeric!
+            nc = num.dot(f_j[:njcore], uc_j**2) / (4 * pi)
             nc[1:] /= r[1:]**2
             nc[0] = nc[1]
 
@@ -139,15 +172,14 @@ class Generator(AllElectron):
                 n_ln[1] = [n]
                 f_ln[1] = [0.0]
                 e_ln[1] = [e]
-##                e_ln[1] = [-0.03]
 
             # Make sure we have two projectors for each occupied channel:
             for l in range(lmax + 1):
                 if len(n_ln[l]) < 2:
                     # Only one - add one more:
                     n = 1 + n_ln[l][0]
-                    e = 1.0 + e_ln[l][0]
-##                    e = 0.0###### + e_ln[l][0]
+##                    e = 1.0 + e_ln[l][0]
+                    e = 0.0
                     n_ln[l].append(n)
                     f_ln[l].append(0.0)
                     e_ln[l].append(e)
@@ -162,9 +194,7 @@ class Generator(AllElectron):
 
         self.lmax = lmax
 
-        print lmax, rcut_l
         rcut_l.extend([max(rcut_l)] * (lmax + 1 - len(rcut_l)))
-        print lmax, rcut_l
         
         print 'Cutoffs:',
         for rc, s in zip(rcut_l, 'spd'):

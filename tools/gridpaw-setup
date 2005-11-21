@@ -4,7 +4,7 @@
 
 from optparse import OptionParser
 
-from gridpaw.atom.generator import Generator
+from gridpaw.atom.generator import Generator, parameters
 
 
 parser = OptionParser(usage='%prog [options] [elements]',
@@ -30,59 +30,26 @@ parser.add_option('-e', '--extra', type='string', default=None,
 
 options, args = parser.parse_args()
 
-parameters = {
-    #     (rcut, core)  
-    'H' : (0.9, ''),
-    'He': (1.5, ''),
-    'Li': (1.5, '[He]'),
-    'Be': (1.5, '[He]'),
-    'C' : (1.0, '[He]'),
-    'N' : (1.1, '[He]'),
-    'O' : (1.2, '[He]'),
-    'F' : (1.2, '[He]'),
-    'Na': (2.3, '[Ne]'),
-    'Mg': (2.2, '[Ne]'),
-    'Al': (2.0, '[Ne]'),
-    'Si': (2.0, '[Ne]'),
-    'P' : (2.0, '[Ne]'),
-    'S' : (1.87, '[Ne]'),
-    'Cl': (1.5, '[Ne]'),
-    'V' : (2.2, '[Ar]'),
-    'Fe': (2.2, '[Ar]'),
-    'Cu': (2.0, '[Ar]'),
-    'Ga': (2.0, '[Ar]3d'),
-    'As': (2.0, '[Ar]'),
-    'Zr': (2.0, '[Ar]3d'),
-    'Mo': (2.3, '[Kr]'),
-    'Ru': (2.4, '[Kr]'),
-    'Pt': (2.5, '[Xe]4f'),
-    'Au': (2.5, '[Xe]4f')
-    }
-
 if args:
     atoms = args
 else:
     atoms = parameters.keys()
 
 for symbol in atoms:
-    rcut, core = parameters[symbol]
+    g = Generator(symbol, options.xcfunctional,
+                  scalarrel=bool(options.scalar_relativistic))
+    try:
+        core, rcut = parameters[symbol]
+        extra = None
+    except ValueError:
+        core, rcut, extra = parameters[symbol]
     v0 = options.potential
     if options.radius is not None:
         rcut = [float(x) for x in options.radius.split(',')]
-    if options.extra is None:
-        extra = None
-    else:
+    if options.extra is not None:
         extra = {}
         if options.extra != '':
             for l, x in enumerate(options.extra.split(';')):
                 extra[l] = [float(y) for y in x.split(',')]
-    g = Generator(symbol, options.xcfunctional,
-                  scalarrel=bool(options.scalar_relativistic))
     g.run(core, rcut, extra, logderiv=not options.quick, vt0=v0)
 
-"""
-import glob, os
-for f in glob.glob('*.PBE'):
-    os.system('mv ' + f + ' ' + f[:-4] + '2.PBE')
-
-"""
