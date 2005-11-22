@@ -47,10 +47,12 @@ class _Operator:
                                           comm, cfd)
 
         if gd.domain.angle is not None:
-            angle = int(round(gd.domain.angle / (pi / 2)))
+            angle = gd.domain.angle
             coefs = num.array([1.0])
             offsets = num.array([1])
-            self.operator.set_rotation(angle, coefs, offsets)
+            self.operator.set_rotation(angle, coefs, offsets, 0)
+            # Dirty trick to keep arrays alive: XXXXX
+            x = [coefs, offsets]; x.append(x)
             
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape

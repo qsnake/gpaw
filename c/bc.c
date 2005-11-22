@@ -10,7 +10,7 @@
 
 boundary_conditions* bc_init(const int size1[3], const int padding[2], 
 			     const int neighbors[3][2],
-			     MPI_Comm comm, bool real, bool cfd, int angle)
+			     MPI_Comm comm, bool real, bool cfd)
 {
   boundary_conditions* bc = 
     (boundary_conditions*)malloc(sizeof(boundary_conditions));
@@ -29,7 +29,6 @@ boundary_conditions* bc_init(const int size1[3], const int padding[2],
   //hvorfor er kun padding[0] vigtig her?!?
   //bare en pointer der saettes? de andre vaerdier kan stadig naas.    
   bc->padding = padding[0];
-  bc->angle = angle;
 
   int rank = 0;
   if (comm != MPI_COMM_NULL)
@@ -127,16 +126,27 @@ boundary_conditions* bc_init(const int size1[3], const int padding[2],
 	bc->maxrecv = n;
     }
 
-  if (angle != 0)
-    {
-      int s0 = bc->sendsize[0][0][0];
-      if (bc->sendsize[0][1][0] > s0)
-	s0 = bc->sendsize[0][1][0];
-      bc->rotbuf = (double*)malloc(s0 * size1[1] * size1[2] *
-				   bc->ndouble * sizeof(double));
-    }
+  bc->angle = 0.0;
+  bc->rotbuf = 0;
+
   return bc;
 }
+
+
+void bc_set_rotation(boundary_conditions* bc,
+		     double angle, double* coefs, int* offsets, int exact)
+{
+  bc->angle = angle;
+  bc->rotcoefs = coefs;
+  bc->rotoffsets = offsets;
+  bc->exact = exact;
+  int s0 = bc->sendsize[0][0][0];
+  if (bc->sendsize[0][1][0] > s0)
+    s0 = bc->sendsize[0][1][0];
+  bc->rotbuf = (double*)malloc(s0 * bc->size1[1] * bc->size1[2] *
+				   bc->ndouble * sizeof(double));
+}
+
 
 void bc_unpack1(const boundary_conditions* bc, 
 		const double* a1, double* a2, int i,
@@ -252,7 +262,7 @@ void bc_unpack1(const boundary_conditions* bc,
   for (int d = 0; d < 2; d++)
     if (bc->sendproc[i][d] == COPY_DATA)
       {
-	if (bc->angle == 0 || i != 0)
+	if (bc->angle == 0.0 || i != 0)
 	  {
 	    if (real)
 	      bmgs_translate(a2, bc->size2, bc->sendsize[i][d],
@@ -276,7 +286,8 @@ void bc_unpack1(const boundary_conditions* bc,
 		  c[n] = 0.0;
 		bmgs_rotate(a1 + (bc->sendstart[i][d][0] - p) *
 			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d],
-			    bc->rotbuf, bc->angle * (2 * d - 1));
+			    bc->rotbuf, bc->angle * (2 * d - 1),
+			    bc->rotcoefs, bc->rotoffsets, bc->exact);
 		bmgs_paste(bc->rotbuf, bc->sendsize[i][d], 
 			   a2, bc->size2, bc->recvstart[i][1 - d]);
 	      }
@@ -292,8 +303,9 @@ void bc_unpack1(const boundary_conditions* bc,
 			     (bc->sendstart[i][d][0] - p) *
 			     bc->size1[1] * bc->size1[2], 
 			     bc->sendsize[i][d],
-			    (double_complex*)bc->rotbuf, 
-			     bc->angle * (2 * d - 1));
+			     (double_complex*)bc->rotbuf, 
+			     bc->angle * (2 * d - 1),
+			     bc->rotcoefs, bc->rotoffsets, bc->exact);
 		for (int n = 0; n < nn; n++)
 		  c[n] *= phases[d];
 		bmgs_pastez((double_complex*)bc->rotbuf, bc->sendsize[i][d], 

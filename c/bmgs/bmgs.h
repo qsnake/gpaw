@@ -80,7 +80,8 @@ void bmgs_paste(const double* a, const int n[3],
 		double* b, const int m[3], const int c[3]);
 void bmgs_pastep(const double* a, const int n[3],
 		double* b, const int m[3], const int c[3]);
-void bmgs_rotate(const double* a, const int size[3], double* b, int angle);
+void bmgs_rotate(const double* a, const int size[3], double* b, double angle,
+		 double*, int*, int exact);
 void bmgs_translate(double* a, const int sizea[3], const int size[3],
 		    const int start1[3], const int start2[3]);
 void bmgs_restrict(int k, int p, 
@@ -107,7 +108,8 @@ void bmgs_pastepz(const double_complex* a, const int n[3],
 		  double_complex* b, const int m[3],
 		  const int c[3]);
 void bmgs_rotatez(const double_complex* a, const int size[3],
-		  double_complex* b, int angle);
+		  double_complex* b, double angle,
+		  double*, int*, int exact);
 void bmgs_translatemz(double_complex* a, const int sizea[3], const int size[3],
 		      const int start1[3], const int start2[3],
 		      double_complex phase);

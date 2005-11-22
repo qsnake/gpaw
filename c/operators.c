@@ -106,13 +106,31 @@ static PyObject * Operator_get_diagonal_element(OperatorObject *self,
   return Py_BuildValue("d", d);
 }
 
+
+static PyObject* Operator_rotation(OperatorObject *self, PyObject *args)
+{
+  double angle;
+  PyArrayObject* rotcoefs;
+  PyArrayObject* rotoffsets;
+  int exact;
+  if (!PyArg_ParseTuple(args, "dOOi", &angle, &rotcoefs, &rotoffsets, &exact))
+    return NULL;
+
+  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs), INTP(rotoffsets), exact);
+  Py_RETURN_NONE;
+}
+
+
 static PyMethodDef Operator_Methods[] = {
     {"apply", 
      (PyCFunction)Operator_apply, METH_VARARGS, NULL},
     {"get_diagonal_element", 
      (PyCFunction)Operator_get_diagonal_element, METH_VARARGS, NULL},
+    {"set_rotation", 
+     (PyCFunction)Operator_rotation, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
+
 
 static PyObject* Operator_getattr(PyObject *obj, char *name)
 {
@@ -140,10 +158,9 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   int real;
   PyObject* comm_obj;
   int cfd;
-  int angle;
-  if (!PyArg_ParseTuple(args, "OOOiOiOii", 
+  if (!PyArg_ParseTuple(args, "OOOiOiOi", 
                         &coefs, &offsets, &size, &range, &neighbors,
-			&real, &comm_obj, &cfd, &angle))
+			&real, &comm_obj, &cfd))
     return NULL;
 
   OperatorObject *self = PyObject_NEW(OperatorObject, &OperatorType);
@@ -160,7 +177,7 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   if (comm_obj != Py_None)
     comm = ((MPIObject*)comm_obj)->comm;
 
-  self->bc = bc_init(INTP(size), padding, nb, comm, real, cfd, angle);
+  self->bc = bc_init(INTP(size), padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
   self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 

@@ -106,8 +106,22 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject* Transformer_rotation(TransformerObject *self, PyObject *args)
+{
+  double angle;
+  PyArrayObject* rotcoefs;
+  PyArrayObject* rotoffsets;
+  int exact;
+  if (!PyArg_ParseTuple(args, "dOOi", &angle, &rotcoefs, &rotoffsets, &exact))
+    return NULL;
+
+  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs), INTP(rotoffsets), exact);
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef Transformer_Methods[] = {
     {"apply", (PyCFunction)Transformer_apply, METH_VARARGS, NULL},
+    {"set_rotation", (PyCFunction)Transformer_rotation, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
@@ -136,10 +150,9 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   int real;
   PyObject* comm_obj;
   int interpolate;
-  int angle;
-  if (!PyArg_ParseTuple(args, "OiiOiOii", 
+  if (!PyArg_ParseTuple(args, "OiiOiOi", 
                         &size, &p, &k, &neighbors, &real, &comm_obj,
-			&interpolate, &angle))
+			&interpolate))
     return NULL;
 
   TransformerObject* self = PyObject_NEW(TransformerObject, &TransformerType);
@@ -161,8 +174,7 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
       padding[0] = k / 2 - 1;
       padding[1] = k / 2;
     }
-  self->bc = bc_init(INTP(size), padding, nb, comm, real, 0, 
-		     angle);
+  self->bc = bc_init(INTP(size), padding, nb, comm, real, 0);
   const int* size1 = self->bc->size1;
   const int* size2 = self->bc->size2;
 

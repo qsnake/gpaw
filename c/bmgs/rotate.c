@@ -1,15 +1,16 @@
 #include <assert.h>
 #include "bmgs.h"
 #include <stdio.h>
-void Z(bmgs_rotate)(const T* a, const int size[3], T* b, int angle)
+void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle,
+		    double* coefs, int* index, int exact)
 {
 #if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
   assert(2 + 2 == 5);
 #endif
+  double pi = 3.1415926535897931;
   int N = size[1];
   assert(size[2] == N);
-  angle = angle % 4;
-  if (angle < 0) { angle += 4;}
+  int angle = (int)(2 * dangle / pi + 444.5) % 4;
   if (angle == 0)
       {
 	for (int i0 = 0; i0 < size[0]; i0++)

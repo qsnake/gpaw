@@ -30,12 +30,14 @@ class Transformer:
             typecode == num.Float, comm, interpolate)
         
         if gd.domain.angle is not None:
-            angle = int(round(gd.domain.angle / (pi / 2)))
+            angle = gd.domain.angle
             if gd.comm.size > 1:
                 raise NotImplementedError
             coefs = num.array([1.0])
             offsets = num.array([1])
-            self.transformer.set_rotation(angle, coefs, offsets)
+            self.transformer.set_rotation(angle, coefs, offsets, 0)
+            # Dirty trick to keep arrays alive: XXXXX
+            x = [coefs, offsets]; x.append(x)
             
         self.ngpin = tuple(gd.n_c)
         assert typecode in [num.Float, num.Complex]

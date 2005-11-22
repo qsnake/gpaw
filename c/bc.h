@@ -27,8 +27,11 @@ typedef struct
   bool zero[3];
   bool join[3];
   int ndouble;
-  int angle;
+  double angle;
   double* rotbuf;
+  double* rotcoefs;
+  int* rotoffsets;
+  int exact;
   MPI_Comm comm;
 } boundary_conditions;
 
@@ -37,7 +40,7 @@ const static int DO_NOTHING = -3; // ??????????
 
 boundary_conditions* bc_init(const int size1[3], const int padding[2], 
 			     const int neighbors[3][2],
-			     MPI_Comm comm, bool real, bool cfd, int angle);
+			     MPI_Comm comm, bool real, bool cfd);
 void bc_unpack1(const boundary_conditions* bc, 
 		const double* input, double* output, int i,
 		MPI_Request recvreq[2],
@@ -49,3 +52,5 @@ void bc_unpack2(const boundary_conditions* bc,
 		MPI_Request recvreq[2],
 		MPI_Request sendreq[2], 
 		double* rbuf);
+void bc_set_rotation(boundary_conditions* bc,
+		     double angle, double* coefs, int* offsets, int exact);
