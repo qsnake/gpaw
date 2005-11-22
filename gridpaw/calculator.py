@@ -273,7 +273,7 @@ class Calculator:
         # Check that the cell is orthorhombic:
         check_unit_cell(cell)
 
-        self.paw.calculate(positions, num.diagonal(cell), angle)
+        self.paw.find_ground_state(positions, num.diagonal(cell), angle)
         
         # Save the state of the atoms:
         self.lastcount = atoms.GetCount()
@@ -367,7 +367,7 @@ class Calculator:
     def GetPotentialEnergy(self, force_consistent=False):
         """Return the energy for the current state of the ListOfAtoms."""
         self.update_energy_and_forces()
-        return self.paw.get_potential_energy(force_consistent)
+        return self.paw.get_total_energy(force_consistent)
 
     def GetCartesianForces(self):
         """Return the forces for the current state of the ListOfAtoms."""

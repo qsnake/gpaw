@@ -42,15 +42,16 @@ class _Operator:
         else:
             comm = None
 
-        if gd.domain.angle is None:
-            angle = 0
-        else:
-            angle = int(round(gd.domain.angle / (pi / 2)))
-
         self.operator = _gridpaw.Operator(coef_p, offset_p, n_c, mp,
                                           neighbor_cd, typecode == num.Float,
-                                          comm, cfd, angle)
+                                          comm, cfd)
 
+        if gd.domain.angle is not None:
+            angle = int(round(gd.domain.angle / (pi / 2)))
+            coefs = num.array([1.0])
+            offsets = num.array([1])
+            self.operator.set_rotation(angle, coefs, offsets)
+            
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape
         assert in_xg.shape[-3:] == self.shape

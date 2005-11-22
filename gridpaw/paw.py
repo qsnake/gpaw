@@ -39,11 +39,7 @@ class Paw:
     """This is the main calculation object for doing a PAW calculation.
 
     The ``Paw`` object is the central object for a calculation.
-    Instantiating such an object by hand is not recommended.  Use the
-    ``create_paw_object()`` helper-function instead (it will supply
-    many default values) - this function is used py the ASE-calculator
-    interface.
-
+    
     These are the most important attributes of a ``Paw`` object:
      =============== =====================================================
      ``domain``      Domain object.
@@ -137,7 +133,14 @@ class Paw:
                  myspins,
                  myibzk_kc, myweights_k, kpt_comm,
                  out):
+        """
+        Create the PAW-object.
         
+        Instantiating such an object by hand is *not* recommended!
+        Use the ``create_paw_object()`` helper-function instead (it
+        will supply many default values).  The helper-function is used
+        py the ``Calculator``."""
+
         self.timer = Timer()
 
         self.a0 = a0  # Bohr and...
@@ -213,8 +216,15 @@ class Paw:
     def initialize_density_and_wave_functions(self, hund, magmom_a,
                                               density=True,
                                               wave_functions=True):
-        output.plot_atoms(self)
+        """Initialize density and/or wave functions.
 
+        By default both wave functions and densities are initialized
+        (from atomic orbitals) - this can be turned off with the
+        ``density`` and ``wave_functions`` keywords.  The density will
+        be constructed with the specified magnetic mioments and
+        obeying Hund's rules if ``hund`` is true."""
+        
+        output.plot_atoms(self)
         
         for nucleus in self.nuclei:
             nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_kc,
@@ -254,11 +264,17 @@ class Paw:
         self.timer.write(self.out)
 
     def set_convergence_criteria(self, tol):
+        """Set convergence criteria.
+
+        Stop iterating when the size of the residuals is belov
+        ``tol``."""
+        
         if hasattr(self, 'tolerance') and tol < self.tolerance:
             self.converged = False
         self.tolerance = tol
         
     def set_output(self, out):
+        """Set the output stream for text output."""
         if mpi.rank != MASTER:                
             if debug:
                 out = sys.stderr
@@ -266,7 +282,8 @@ class Paw:
                 out = DownTheDrain()
         self.out = out
 
-    def calculate(self, pos_ac, cell_c, angle):
+    def find_ground_state(self, pos_ac, cell_c, angle):
+        """Start iterating towards the ground state."""
         pos_ac = pos_ac / self.a0
         cell_c = cell_c / self.a0
         self.set_positions(pos_ac)
@@ -279,13 +296,13 @@ class Paw:
                        log10     total     iterations:
               time     error     energy    fermi  poisson  magmom"""
 
-        niter = 0
+        self.niter = 0
         while not self.converged:
-            self.converge(niter)
+            self.converge(self.niter)
             # Output from each iteration:
             t = time.localtime()
             out.write('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
-                      (niter,
+                      (self.niter,
                        t[3], t[4], t[5],
                        log(self.error) / log(10),
                        self.Ha * (self.Etot + 0.5 * self.S),
@@ -297,15 +314,19 @@ class Paw:
                 print >> out, '       --'
                 
             out.flush()
-            niter += 1
-            if niter > 1240:
+            self.niter += 1
+            if self.niter > 1240:
                 raise RuntimeError('Did not converge!')
-
-        self.niter = niter
 
         output.print_converged(self)
 
-    def get_potential_energy(self, force_consistent):
+    def get_total_energy(self, force_consistent):
+        """Return total energy.
+
+        Both the energy extrapolated to zero Kelvin and the energy
+        consistent with the forces (the free energy) can be
+        returned."""
+        
         if force_consistent:
             # Free energy:
             return self.Ha * self.Etot
@@ -314,6 +335,12 @@ class Paw:
             return self.Ha * (self.Etot + 0.5 * self.S)
 
     def set_positions(self, pos_ac):
+        """Update the positions of the atoms.
+
+        Localized functions centered on atoms that have moved will
+        have to be computed again.  Also the neighbor list and the
+        array holding all the pseudo core densities are updated."""
+        
         movement = False
         distribute_atoms = False
         for nucleus, pos_c in zip(self.nuclei, pos_ac):

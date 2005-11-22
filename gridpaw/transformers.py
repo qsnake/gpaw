@@ -24,19 +24,19 @@ class Transformer:
         else:
             comm = None
 
-        if gd.domain.angle is None:
-            angle = 0
-        else:
-            # fixed 
-            angle = int(round(gd.domain.angle / (pi / 2)))
-            if gd.comm.size > 1:
-                raise NotImplementedError
-
         self.transformer = _gridpaw.Transformer(
             # Why asarray here? XXX
             num.asarray(gd.n_c, num.Int), p, number + 1, neighbor_cd,
-            typecode == num.Float, comm, interpolate, angle)
+            typecode == num.Float, comm, interpolate)
         
+        if gd.domain.angle is not None:
+            angle = int(round(gd.domain.angle / (pi / 2)))
+            if gd.comm.size > 1:
+                raise NotImplementedError
+            coefs = num.array([1.0])
+            offsets = num.array([1])
+            self.transformer.set_rotation(angle, coefs, offsets)
+            
         self.ngpin = tuple(gd.n_c)
         assert typecode in [num.Float, num.Complex]
 
