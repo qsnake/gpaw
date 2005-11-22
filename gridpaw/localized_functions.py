@@ -104,7 +104,7 @@ class LocFuncs:
         if angle is not None:
             nb = len(self.box_b)
             self.R_bii = num.zeros((nb, self.ni, self.ni), num.Float)
-            self.R_biiT= num.zeros((nb, self.ni, self.ni), num.Float)
+            self.invR_bii= num.zeros((nb, self.ni, self.ni), num.Float)
             for b, sdisp_c in enumerate(self.sdisp_bc):
                 n1 = 0
                 for radial in functions:
@@ -112,37 +112,48 @@ class LocFuncs:
                     n2 = n1 + 2 * l + 1
                     self.R_bii[b, n1:n2, n1:n2]=self.rmatrix(
                         sdisp_c[0] * angle, l)
-                    self.R_biiT[b, n1:n2, n1:n2]=self.rmatrix(
+                    self.invR_bii[b, n1:n2, n1:n2]=self.rmatrix(
                         -sdisp_c[0] * angle, l)
                     n1 = n2
-                               
+                    
         self.typecode = typecode
-
         self.set_communicator(gd.comm, MASTER)
-
         self.phase_kb = None
 
     def rmatrix(self, da, l):
-        c = cos(da)
-        s = sin(da)
         if l == 0:
-            return num.asarray([1])
+            return num.asarray([1.0], num.Float)
         if l == 1:
+            c = cos(da)
+            s = sin(da)
             r = num.asarray([
-                [1, 0, 0],
-                [0, c,-s],
-                [0, s, c]])
+                [1.0, 0.0, 0.0],
+                [0.0,   c,  -s],
+                [0.0,   s,   c]], num.Float)
             return r
         if l == 2:
-##            r = transrotation(2, -da)
-            r = num.transpose(transrotation(2, da))
-##             r = num.asarray([
-##                 [c,       0, -s,           0,           0],
-##                 [0, c*c-s*s,  0,    -0.5*s*c,    -0.5*s*c],
-##                 [s,       0,  c,           0,           0],
-##                 [0,   2*s*c,  0,   1-0.5*s*s,    -0.5*s*s],
-##                 [0,   6*s*c,  0,    -1.5*s*s, c*c-0.5*s*s]
-##                 ])
+            c = cos(da)
+            s = sin(da)
+            cc = c*c
+            ss = s*s
+            sc = s*c
+            sq3=3.0**0.5
+            # Without normalization:
+            #r = num.asarray([
+            #    [  c,    0.0,  -s,       0.0,       0.0],
+            #    [0.0,  cc-ss, 0.0,   -0.5*sc,   -0.5*sc],
+            #    [  s,    0.0,   c,       0.0,       0.0],
+            #    [0.0, 2.0*sc, 0.0, cc+0.5*ss,   -0.5*ss],
+            #    [0.0, 6.0*sc, 0.0,   -1.5*ss, cc-0.5*ss]
+            #    ], num.Float)
+            # With new normalization:
+            r = num.asarray([
+                [  c,    0.0,  -s,         0.0,         0.0],
+                [0.0,  cc-ss, 0.0,         -sc,     -sq3*sc],
+                [  s,    0.0,   c,         0.0,         0.0],
+                [0.0,     sc, 0.0,   cc+0.5*ss, -0.5*sq3*ss],
+                [0.0, sq3*sc, 0.0, -0.5*sq3*ss,   cc-0.5*ss]
+                ], num.Float)
             return r
         
     def set_communicator(self, comm, root):
@@ -178,13 +189,13 @@ class LocFuncs:
                 box.add(coef_xi / phase, a_xg)
         elif (k is None or self.phase_kb is None) and self.angle is not None:
             # Rotation, but no k-points
-            for box, R_ii in zip(self.box_b, self.R_biiT):
+            for box, R_ii in zip(self.box_b, self.invR_bii):
                 box.add(num.dot(coef_xi, R_ii), a_xg) 
         else:
             # Rotation and k-points
-            for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.R_biiT):
+            for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.invR_bii):
                 box.add(num.dot(coef_xi, R_ii) / phase, a_xg)
-                
+                                                
     def integrate(self, a_xg, result_xi, k=None, derivatives=False):
         """Calculate integrals of arrays times localized functions.
 

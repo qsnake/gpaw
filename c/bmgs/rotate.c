@@ -10,8 +10,7 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, int angle)
   assert(size[2] == N);
   angle = angle % 4;
   if (angle < 0) { angle += 4;}
-
-    if (angle == 0)
+  if (angle == 0)
       {
 	for (int i0 = 0; i0 < size[0]; i0++)
 	  {
@@ -31,7 +30,8 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, int angle)
 	  { 
 	  for (int i2 = 1; i2 < N ; i2++)
 	     {
-		*(b++) = *a;
+		*b = *a;
+		b++;
 		a += N;
 	     }
 	      a -= N*(N-1)+1;
@@ -62,7 +62,8 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, int angle)
 	    {
 	      for (int i2 = 1; i2 < N ; i2++)
 		{
-		  *(b++) = *a;
+		  *b = *a;
+		  b++;
 		  a -= N;
 		}
 	      a += N*N-N+1;
