@@ -10,20 +10,20 @@ from gridpaw.spherical_harmonics import YL
 from gridpaw.sphere import Y_nL, points, weights
 
 """
-                         3 
-           __   dn       __   __    dY
- __  2    \       L  2  \    \        L  2
-(\/n) = (  ) Y  --- )  + ) (  )  n  --- )
-          /__ L dr      /__  /__  L dr
-                                      i
-           L            i=1    L
+                           3 
+             __   dn       __   __    dY
+   __  2    \       L  2  \    \        L  2
+  (\/n) = (  ) Y  --- )  + ) (  )  n  --- )
+            /__ L dr      /__  /__  L dr
+                                        i
+             L            i=1    L 
 
 
-      dY
-        L
-A   = --- r
- Li   dr
-        i
+        dY
+          L
+  A   = --- r
+   Li   dr
+          i
 
 """
 
@@ -465,71 +465,6 @@ class XCAtom3:
 
         return E - self.Exc0
 
-    def get_gga_histogram(self, D_sp):
-        r_g = self.rgd.r_g
-        xcfunc = self.xc.get_xc_functional()
-        assert len(D_sp) == 1
-        D_p = D_sp[0]
-        D_Lq = num.dot(self.B_Lqp, D_p)
-        n_Lg = num.dot(D_Lq, self.n_qg)
-        n_Lg[0] += self.nc_g * sqrt(4 * pi)
-        nt_Lg = num.dot(D_Lq, self.nt_qg)
-        nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-        dndr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
-        dntdr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
-        for L in range(self.Lmax):
-            self.rgd.derivative(n_Lg[L], dndr_Lg[L])
-            self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
-        y = 0
-        c = 0.5 / (3 * pi**2)**(1.0 / 3.0)
-        se_g = num.zeros((self.ng * len(self.Y_yL), 2), num.Float)
-        Exc = 0.0
-        g = 0
-        for w, Y_L in zip(self.weights, self.Y_yL):
-            A_Li = A_Liy[:self.Lmax, :, y]
-            n_g = num.dot(Y_L, n_Lg)
-            a1x_g = num.dot(A_Li[:, 0], n_Lg)
-            a1y_g = num.dot(A_Li[:, 1], n_Lg)
-            a1z_g = num.dot(A_Li[:, 2], n_Lg)
-            a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
-            a2_g[1:] /= r_g[1:]**2
-            a2_g[0] = a2_g[1]
-            a1_g = num.dot(Y_L, dndr_Lg)
-            a2_g += a1_g**2
-            v_g = num.zeros(self.ng, num.Float) 
-            e_g = num.zeros(self.ng, num.Float) 
-            deda2_g = num.zeros(self.ng, num.Float)
-            xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-            Exc += w * num.dot(e_g, self.dv_g)
-
-            se_g[g:g+self.ng, 0] = c * a2_g**0.5 * n_g**(-4.0 / 3.0)
-            se_g[g:g+self.ng, 1] = w * e_g * self.dv_g
-            g += self.ng
-
-            n_g = num.dot(Y_L, nt_Lg)
-            a1x_g = num.dot(A_Li[:, 0], nt_Lg)
-            a1y_g = num.dot(A_Li[:, 1], nt_Lg)
-            a1z_g = num.dot(A_Li[:, 2], nt_Lg)
-            a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
-            a2_g[1:] /= r_g[1:]**2
-            a2_g[0] = a2_g[1]
-            a1_g = num.dot(Y_L, dntdr_Lg)
-            a2_g += a1_g**2
-            v_g = num.zeros(self.ng, num.Float) 
-            e_g = num.zeros(self.ng, num.Float) 
-            deda2_g = num.zeros(self.ng, num.Float)
-            xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-            Exc -= w * num.dot(e_g, self.dv_g)
-
-            se_g[g:g+self.ng, 0] = c * a2_g**0.5 * n_g**(-4.0 / 3.0)
-            se_g[g:g+self.ng, 1] = -w * e_g * self.dv_g
-            g += self.ng
-
-            y += 1
-        print Exc
-        return se_g
-
-#print >> sys.stderr, 'XCATOM333'
 XCAtom = XCAtom3
 
 

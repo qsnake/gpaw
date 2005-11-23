@@ -113,14 +113,27 @@ class Calculator:
         self.parallel_cputime = 0.0
 
     def reset(self):
+        """Delete PAW-object."""
         self.stop_paw()
         self.restart_file = None     # ??????
-        self.positions = None
-        self.cell = None
-        self.bc = None
-        self.numbers = None
+        self.pos_ac = None
+        self.cell_cc = None
+        self.periodic_c = None
+        self.Z_a = None
 
     def set_out(self, out):
+        """Set the stream for text output.
+
+        If `out` is not a stream-object, then it must be one of:
+
+        ``None``:
+          Throw output away.
+        ``'-'``:
+          Use standard-output (``sys.stduot``).
+        A filename:
+          open a new file.
+        """
+        
         if out is None:
             out = DownTheDrain()
         elif out == '-':
@@ -141,7 +154,8 @@ class Calculator:
         self.bzk_kc = num.array(bzk_kc)
         self.reset()
      
-    def update_energy_and_forces(self):
+    def update(self):
+        """Update PAW calculaton if needed."""
         atoms = self.atoms()
 
         if self.paw is not None and self.lastcount == atoms.GetCount():
@@ -149,40 +163,39 @@ class Calculator:
             return
 
         if (self.paw is None or
-            atoms.GetAtomicNumbers() != self.numbers or
-            atoms.GetUnitCell() != self.cell or
-            atoms.GetBoundaryConditions() != self.bc):
+            atoms.GetAtomicNumbers() != self.Z_a or
+            atoms.GetUnitCell() != self.cell_cc or
+            atoms.GetBoundaryConditions() != self.periodic_c):
             # Drastic changes:
-            self.initialize()
-            self.calculate()
+            self.initialize_paw_object()
+            self.find_ground_state()
         else:
             # Something else has changed:
-##             if (atoms.GetUnitCell() != self.cell or
-##                 atoms.GetCartesianPositions() != self.positions):
-            if (atoms.GetCartesianPositions() != self.positions):
+            if (atoms.GetCartesianPositions() != self.pos_ac):
                 # It was the positions:
-                self.calculate()
+                self.find_ground_state()
             else:
                 # It was something that we don't care about - like
                 # velocities, masses, ...
                 pass
     
-    def initialize(self):
+    def initialize_paw_object(self):
+        """Initialize PAW-object."""
         atoms = self.atoms()
 
-        positions = atoms.GetCartesianPositions()
-        numbers = atoms.GetAtomicNumbers()
-        cell = num.array(atoms.GetUnitCell())
-        bc = atoms.GetBoundaryConditions()
+        pos_ac = atoms.GetCartesianPositions()
+        Z_a = atoms.GetAtomicNumbers()
+        cell_cc = num.array(atoms.GetUnitCell())
+        periodic_c = atoms.GetBoundaryConditions()
         try:
             angle = atoms.GetRotationAngle()
         except AttributeError:
             angle = None
 	
         # Check that the cell is orthorhombic:
-        check_unit_cell(cell)
+        check_unit_cell(cell_cc)
         # Get the diagonal:
-        cell = num.diagonal(cell)
+        cell_c = num.diagonal(cell_cc)
 
         magmoms = [atom.GetMagneticMoment() for atom in atoms]
 
@@ -197,14 +210,15 @@ class Calculator:
             
         args = [self.out,
                 self.a0, self.Ha,
-                positions, numbers, magmoms, cell, bc, angle,
+                pos_ac, Z_a, magmoms, cell_c, periodic_c, angle,
                 self.h, self.gpts, self.xc,
                 self.nbands, self.spinpol, self.width,
                 self.bzk_kc,
                 self.softgauss,
                 self.order,
                 self.usesymm,
-                self.mix, self.old,
+                self.mix,
+                self.old,
                 self.fixdensity,
                 self.idiotproof,
                 self.hund,
@@ -237,6 +251,7 @@ class Calculator:
 
         if type(self.hosts) is int:
             if self.hosts == 1:
+                # Only one node - don't do a parallel calculation:
                 self.hosts = None
             else:
                 self.hosts = [os.uname()[1]] * self.hosts
@@ -249,7 +264,7 @@ class Calculator:
                 print >> f, host
             f.close()
             self.hosts = self.tempfile
-            # (self.tempfile is unlinked in Calculator.__del__)
+            # (self.tempfile is removed in Calculator.__del__)
 
         # What kind of calculation should we do?
         if self.hosts is None:
@@ -259,42 +274,45 @@ class Calculator:
             # Parallel:
             self.paw = MPIPaw(self.hosts, *args)
             
-    def calculate(self):
+    def find_ground_state(self):
+        """Tell PAW-object to start iterating ..."""
         atoms = self.atoms()
-        positions = atoms.GetCartesianPositions()
-        numbers = atoms.GetAtomicNumbers()
-        cell = atoms.GetUnitCell()
-        bc = atoms.GetBoundaryConditions()
+        pos_ac = atoms.GetCartesianPositions()
+        Z_a = atoms.GetAtomicNumbers()
+        cell_cc = atoms.GetUnitCell()
+        periodic_c = atoms.GetBoundaryConditions()
         try:
             angle = atoms.GetRotationAngle()
         except AttributeError:
             angle = None
 	
         # Check that the cell is orthorhombic:
-        check_unit_cell(cell)
+        check_unit_cell(cell_cc)
 
-        self.paw.find_ground_state(positions, num.diagonal(cell), angle)
+        self.paw.find_ground_state(pos_ac, num.diagonal(cell_cc), angle)
         
         # Save the state of the atoms:
         self.lastcount = atoms.GetCount()
-        self.positions = positions
-        self.cell = cell
-        self.bc = bc
+        self.pos_ac = pos_ac
+        self.cell_cc = cell_cc
+        self.periodic_c = periodic_c
         self.angle = angle
-        self.numbers = numbers
+        self.Z_a = Z_a
 
         timing.update()
 
     def stop_paw(self):
+        """Delete PAW-object."""
         if isinstance(self.paw, MPIPaw):
             # Stop old MPI calculation and get total CPU time for all CPUs:
             self.parallel_cputime += self.paw.stop()
         self.paw = None
         
     def __del__(self):
+        """Destructor:  Write timing output before closing."""
         if self.tempfile is not None:
             # Delete hosts file:
-            os.unlink(self.tempfile)
+            os.remove(self.tempfile)
 
         self.stop_paw()
         
@@ -309,10 +327,19 @@ class Calculator:
         print >> self.out, 'walltime: %f' % (time.time() - self.t0)
         print >> self.out, 'date    :', time.asctime()
 
-    ###################
-    # User interface: #
-    ###################
+    #####################
+    ## User interface: ##
+    #####################
     def Set(self, **kwargs):
+        """Set keyword parameters.
+
+        Works like this:
+
+        >>> calc.Set(out='stuff.txt')
+        >>> calc.Set(nbands=24, spinpol=True)
+
+        """
+
         for name, value in kwargs.items():
             method_name = 'set_' + name
             if hasattr(self, method_name):
@@ -324,23 +351,34 @@ class Calculator:
         self.reset()
             
     def GetReferenceEnergy(self):
+        """Get reference energy for all-electron atoms."""
         return self.paw.Eref * self.Ha
 
     def GetEnsembleCoefficients(self):
+        """Get BEE ensemble coefficients.
+
+        See The ASE manual_ for details.
+
+        .. _manual:: https://wiki.fysik.dtu.dk/ase/Utilities
+                     #bayesian-error-estimate-bee
+        """
+
         E = self.GetPotentialEnergy()
         E0 = self.GetXCDifference('XC-9-1.0')
         coefs = (E + E0,
                  self.GetXCDifference('XC-0-1.0') - E0,
                  self.GetXCDifference('XC-1-1.0') - E0,
                  self.GetXCDifference('XC-2-1.0') - E0)
-        print >> self.out, 'ensemble: (%.9f, %.9f, %.9f, %.9f)' % coefs
+        print >> self.out, 'BEE: (%.9f, %.9f, %.9f, %.9f)' % coefs
         return num.array(coefs)
 
     def GetXCDifference(self, xcname):
-        self.update_energy_and_forces()
+        """Calculate non-seflconsistent XC-energy difference."""
+        self.update()
         return self.paw.get_xc_difference(xcname)
 
     def Write(self, filename):
+        """Write current state to a netCDF file."""
         traj = NetCDFTrajectory(filename, self.atoms())
 
         # Write the atoms:
@@ -355,23 +393,21 @@ class Calculator:
         traj.Close()
         self.paw.write_netcdf(filename)
 
-    def GetGGAHistogram(self, smax=10.0, nbins=200):
-        return self.paw.get_gga_histogram(smax, nbins)
-
     def GetNumberOfIterations(self):
+        """Return the number of SCF iterations."""
         return self.paw.niter
 
-    ##################
-    # ASE interface: #
-    ##################
+    ####################
+    ## ASE interface: ##
+    ####################
     def GetPotentialEnergy(self, force_consistent=False):
         """Return the energy for the current state of the ListOfAtoms."""
-        self.update_energy_and_forces()
+        self.update()
         return self.paw.get_total_energy(force_consistent)
 
     def GetCartesianForces(self):
         """Return the forces for the current state of the ListOfAtoms."""
-        self.update_energy_and_forces()
+        self.update()
         return self.paw.get_cartesian_forces()
       
     def GetStress(self):
@@ -407,6 +443,9 @@ class Calculator:
         """Return k-points in the irreducible part of the Brillouin zone."""
         return self.paw.ibzk_kc
 
+    # Alternative name:
+    GetKPoints = GetIBZKPoints
+ 
     def GetExactExchange(self):
         from gridpaw.exx import exactExchange as exx
         paw = self.paw
@@ -418,9 +457,6 @@ class Calculator:
     def GetXCEnergy(self):
         return self.paw.Exc * self.Ha
 
-    # Alternative name:
-    GetKPoints = GetIBZKPoints
- 
     def GetIBZKPointWeights(self):
         """Weights of the k-points. 
         
@@ -429,28 +465,35 @@ class Calculator:
         return self.weights
 
     def GetDensityArray(self):
+        """Return pseudo-density array."""
         return self.paw.get_density_array()
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
+        """Return pseudo-wave-function array."""
         return self.paw.get_wave_function_array(band, kpt, spin)
 
     def GetWannierLocalizationMatrix(self, *args):
+        """Calculate integrals for maximally localized Wannier functions."""
         c = args[0].index(1)
         return self.paw.get_wannier_integrals(c)
 
     def GetMagneticMoment(self):
+        """Return the magnetic moment."""
         return self.paw.magmom
 
     def GetFermiLevel(self):
+        """Return the Fermi-level."""
         return self.paw.get_fermi_level()
 
     def GetElectronicStates(self):
+        """Return electronic-state object."""
         from ASE.Utilities.ElectronicStates import ElectronicStates
         self.Write('tmp27.nc')
         return ElectronicStates('tmp27.nc')
     
     # @staticmethod  # (Python 2.4 style)
     def ReadAtoms(filename, **overruling_kwargs):
+        """Read state from a netCDF file."""
         traj = NetCDFTrajectory(filename)
         atoms = traj.GetListOfAtoms()
         nc = traj.nc
@@ -481,7 +524,7 @@ class Calculator:
         # Wave functions and other stuff will be read from 'filename'
         # later, when requiered:
         calc.restart_file = filename
-        calc.initialize()
+        calc.initialize_paw_object()
         calc.lastcount = atoms.GetCount()
         return atoms
 
