@@ -33,7 +33,33 @@ class WaveFunctions:
     (spin-saturated calculation).  Example: For a spin-polarized
     calculation on an isolated molecule, the **k**-point list will
     have length two (assuming the calculation is not parallelized over
-    **k**-points/spin)."""
+    **k**-points/spin).
+
+    Attributes:
+     ================== =================================================
+     ``kpt_u``          List of **k**-point objects.
+     ``kin``            Finite-difference Laplacian (times -0.5).
+     ``preconditioner`` Preconditioner object.
+     ``occupation``     Occupation-number object.
+     ``nkpts``          Number of irreducible **k**-points.
+     ``nmykpts``        Number of irreducible **k**-points on *this* CPU.
+     ``nvalence``       Number of valence electrons.
+     ``nbands``         Number of bands.
+     ``nspins``         Number of spins.
+     ``typecode``       Data type of wave functions (``Float`` or
+                        ``Complex``).
+     ``bzk_kc``         Scaled **k**-points used for sampling the whole
+                        Brillouin zone - values scaled to [-0.5, 0.5).  
+     ``ibzk_kc``        Scaled **k**-points in the irreducible part of the
+                        Brillouin zone.
+     ``weights_k``      Weights of the **k**-points in the irreducible part
+                        of the Brillouin zone (summing up to 1).
+     ``myibzk_kc``      Scaled **k**-points in the irreducible part of the
+                        Brillouin zone for this CPU.
+     ``kpt_comm``       MPI-communicator for parallelization over
+                        **k**-points.
+     ================== =================================================
+    """
     
     def __init__(self, gd, nvalence, nbands, nspins,
                  typecode, kT,
@@ -41,6 +67,7 @@ class WaveFunctions:
                  myspins, myibzk_kc, myweights_k, kpt_comm):
         """Construct wave-function object.
 
+        Parameters:
          =============== ===================================================
          ``gd``          Descriptor for wave-function grid.
          ``nvalence``    Number of valence electrons.
@@ -49,30 +76,19 @@ class WaveFunctions:
          ``typecode``    Data type of wave functions (``Float`` or
                          ``Complex``).
          ``kT``          Temperature for Fermi-distribution.
-         ``bzk_ki``      Scaled **k**-points used for sampling the whole
+         ``bzk_kc``      Scaled **k**-points used for sampling the whole
                          Brillouin zone - values scaled to [-0.5, 0.5).  
-         ``ibzk_ki``     Scaled **k**-points in the irreducible part of the
+         ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
                          Brillouin zone.
          ``myspins``     List of spin-indices for this CPU.
          ``weights_k``   Weights of the **k**-points in the irreducible part
                          of the Brillouin zone (summing up to 1).
-         ``myibzk_ki``   Scaled **k**-points in the irreducible part of the
+         ``myibzk_kc``   Scaled **k**-points in the irreducible part of the
                          Brillouin zone for this CPU.
          ``myweights_k`` Weights of the **k**-points on this CPU.
          ``kpt_comm``    MPI-communicator for parallelization over
                          **k**-points.
          =============== ===================================================
-
-        Attributes:
-
-         ================== =================================================
-         ``kpt_u``          List of **k**-point objects.
-         ``kin``            Finite-difference Laplacian (times -0.5).
-         ``preconditioner`` Preconditioner object.
-         ``occupation``     Occupation-number object.
-         ``nkpts``          Number of irreducible **k**-points.
-         ``nmykpts``        Number of irreducible **k**-points on *this* CPU.
-         ================== =================================================
         """
 
         self.nvalence = nvalence

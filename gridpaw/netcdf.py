@@ -164,7 +164,8 @@ def write_netcdf(paw, filename):
         P_uni = paw.get_nucleus_P_uni(nucleus)
         if mpi.rank == MASTER:
             ni = P_uni.shape[2]
-            P_uni.shape = (wf.nspins, wf.nkpts, wf.nbands, ni)
+            P_uni.shape = (wf.nspins, wf.nkpts, wf.nbands, ni) # don't forget
+            # to restore the shape! XXX
             if realvalued:
                 var[:, :, :, i:i + ni] = P_uni
             else:

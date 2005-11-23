@@ -52,8 +52,6 @@ except ImportError:
     msg += ['  You will not be able to write and read wavefunctions!']
         
 
-scripts = glob(join('tools', 'gridpaw-*[a-z]'))
-
 libraries = []
 library_dirs = []
 include_dirs = []
@@ -237,6 +235,8 @@ if os.path.exists(so) and remove:
     print 'removing', so
     os.remove(so)
 
+
+scripts = glob(join('tools', 'gridpaw-*[a-z]'))
 
 setup(name = 'gridpaw',
       version=version,

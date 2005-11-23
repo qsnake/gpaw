@@ -100,6 +100,12 @@ class Calculator:
         print >> out, 'Arch:', uname[4]
         print >> out, 'Pid: ', os.getpid()
 
+        lengthunit = units.GetLengthUnit()
+        energyunit = units.GetEnergyUnit()
+        print >> out, 'units:', lengthunit, 'and', energyunit
+        self.a0 = Convert(1, 'Bohr', lengthunit)
+        self.Ha = Convert(1, 'Hartree', energyunit)
+
         self.reset()
 
         self.tempfile = None
@@ -164,12 +170,6 @@ class Calculator:
     def initialize(self):
         atoms = self.atoms()
 
-        lengthunit = units.GetLengthUnit()
-        energyunit = units.GetEnergyUnit()
-        print >> self.out, 'units:', lengthunit, 'and', energyunit
-        a0 = Convert(1, 'Bohr', lengthunit)
-        Ha = Convert(1, 'Hartree', energyunit)
-
         positions = atoms.GetCartesianPositions()
         numbers = atoms.GetAtomicNumbers()
         cell = num.array(atoms.GetUnitCell())
@@ -196,7 +196,7 @@ class Calculator:
             self.parsize = gridpaw.parsize
             
         args = [self.out,
-                a0, Ha,
+                self.a0, self.Ha,
                 positions, numbers, magmoms, cell, bc, angle,
                 self.h, self.gpts, self.xc,
                 self.nbands, self.spinpol, self.width,
@@ -324,7 +324,7 @@ class Calculator:
         self.reset()
             
     def GetReferenceEnergy(self):
-        return self.paw.get_reference_energy()
+        return self.paw.Eref * self.Ha
 
     def GetEnsembleCoefficients(self):
         E = self.GetPotentialEnergy()
@@ -359,7 +359,7 @@ class Calculator:
         return self.paw.get_gga_histogram(smax, nbins)
 
     def GetNumberOfIterations(self):
-        return self.paw.get_number_of_iterations()
+        return self.paw.niter
 
     ##################
     # ASE interface: #
@@ -401,11 +401,11 @@ class Calculator:
  
     def GetSpinPolarized(self):
         """Is it a spin-polarized calculation?"""
-        return self.paw.get_spinpol()
+        return self.paw.nspins == 2
     
     def GetIBZKPoints(self):
         """Return k-points in the irreducible part of the Brillouin zone."""
-        return self.paw.get_ibz_kpoints()
+        return self.paw.ibzk_kc
 
     def GetExactExchange(self):
         from gridpaw.exx import exactExchange as exx
@@ -413,10 +413,10 @@ class Calculator:
         paw.timer.start('exx')
         exx = exx(paw.wf, paw.nuclei, paw.gd)
         paw.timer.stop('exx')
-        return exx*paw.Ha
+        return exx * self.Ha
     
     def GetXCEnergy(self):
-        return self.paw.Exc*self.paw.Ha
+        return self.paw.Exc * self.Ha
 
     # Alternative name:
     GetKPoints = GetIBZKPoints
@@ -434,13 +434,12 @@ class Calculator:
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         return self.paw.get_wave_function_array(band, kpt, spin)
 
-    def GetWannierLocalizationMatrix(self, G_I=None, nbands=None, spin=None,
-                                     kpoint=0, nextkpoint=0, dirG=0):
-        c = G_I.index(1)
-        return self.paw.get_wannier_integral(c)
+    def GetWannierLocalizationMatrix(self, *args):
+        c = args[0].index(1)
+        return self.paw.get_wannier_integrals(c)
 
     def GetMagneticMoment(self):
-        return self.paw.get_magnetic_moment()
+        return self.paw.magmom
 
     def GetFermiLevel(self):
         return self.paw.get_fermi_level()
@@ -450,7 +449,7 @@ class Calculator:
         self.Write('tmp27.nc')
         return ElectronicStates('tmp27.nc')
     
-    # @staticmethod
+    # @staticmethod  # (Python 2.4 style)
     def ReadAtoms(filename, **overruling_kwargs):
         traj = NetCDFTrajectory(filename)
         atoms = traj.GetListOfAtoms()

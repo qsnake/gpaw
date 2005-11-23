@@ -8,4 +8,5 @@ H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=0)],
 calc = Calculator(nbands=1, h=0.20, onohirose=5, tolerance=0.001, softgauss=0)
 H.SetCalculator(calc)
 print H.GetPotentialEnergy()
+print calc.paw.niter
 

@@ -62,14 +62,14 @@ class Paw:
 
     Energy contributions and forces:
      =========== ================================
-     ``Ekin``    Kinetic energy
-     ``Epot``    Potential energy
-     ``Etot``    Total energy
-     ``Etotold`` Total energy from last iteration
-     ``Exc``     Exchange-Correlation energy
-     ``S``       Entropy
+     ``Ekin``    Kinetic energy.
+     ``Epot``    Potential energy.
+     ``Etot``    Total energy.
+     ``Exc``     Exchange-Correlation energy.
+     ``Eref``    Reference energy for all-electron atoms.
+     ``S``       Entropy.
      ``Ebar``    Should be close to zero!
-     ``F_ai``    Forces
+     ``F_ai``    Forces.
      =========== ================================
 
 
@@ -139,11 +139,11 @@ class Paw:
         Instantiating such an object by hand is *not* recommended!
         Use the ``create_paw_object()`` helper-function instead (it
         will supply many default values).  The helper-function is used
-        py the ``Calculator``."""
+        by the ``Calculator`` object."""
 
         self.timer = Timer()
 
-        self.a0 = a0  # Bohr and...
+        self.a0 = a0  # Bohr and ...
         self.Ha = Ha  # Hartree units are used internally
         self.setups = setups
         self.nuclei = nuclei
@@ -211,6 +211,12 @@ class Paw:
         self.p_nuclei = self.nuclei
         self.g_nuclei = self.nuclei
         
+        self.Eref = 0.0
+        for nucleus in self.nuclei:
+            self.Eref += nucleus.setup.E
+
+        self.tolerance = 100000000000.0
+        
         output.print_info(self)
 
     def initialize_density_and_wave_functions(self, hund, magmom_a,
@@ -254,7 +260,6 @@ class Paw:
             from gridpaw.occupations import FixMom
             self.wf.occupation = FixMom(self.wf.occupation.ne, self.nspins, M)
 
-        self.Etot = 9999.9
         self.converged = False
         
     def __del__(self):
@@ -269,7 +274,7 @@ class Paw:
         Stop iterating when the size of the residuals is belov
         ``tol``."""
         
-        if hasattr(self, 'tolerance') and tol < self.tolerance:
+        if tol < self.tolerance:
             self.converged = False
         self.tolerance = tol
         
@@ -298,7 +303,7 @@ class Paw:
 
         self.niter = 0
         while not self.converged:
-            self.converge(self.niter)
+            self.improve_wave_functions()
             # Output from each iteration:
             t = time.localtime()
             out.write('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
@@ -338,8 +343,8 @@ class Paw:
         """Update the positions of the atoms.
 
         Localized functions centered on atoms that have moved will
-        have to be computed again.  Also the neighbor list and the
-        array holding all the pseudo core densities are updated."""
+        have to be computed again.  Neighbor list is updated and the
+        array holding all the pseudo core densities is updated."""
         
         movement = False
         distribute_atoms = False
@@ -395,6 +400,7 @@ class Paw:
                   ((a, symbol) + tuple(self.a0 * pos_c))
 
     def distribute_atoms(self):
+        """Distribute atoms on all CPUs."""
         nspins = self.nspins
         nmykpts = self.wf.nmykpts
         nbands = self.wf.nbands
@@ -458,20 +464,21 @@ class Paw:
             nucleus.set_communicators(self.domain.comm, root,
                                       g_comm, g_root, p_comm, p_root)
             
-    def converge(self, niter):
-        if niter == 0:
+    def improve_wave_functions(self):
+        """Iterate towards self-consistency."""
+        if self.niter == 0:
             # We don't have any occupation numbers.  The initial
             # electron density comes from overlapping atomic densities
             # or from a restart file.  We scale the density to match
             # the compensation charges.
 
-            Nt = self.gd.integrate(self.nt_sG)
             self.calculate_multipole_moments()
             Q = 0.0
             for nuclei in self.my_nuclei:
                 Q += nuclei.Q_L[0]
             Q = sqrt(4 * pi) * self.domain.comm.sum(Q)
 
+            Nt = self.gd.integrate(self.nt_sG)
             # Nt + Q must be zero:
             x = -Q / Nt
             assert 0.83 < x < 1.17, 'x=%f' % x
@@ -482,7 +489,7 @@ class Paw:
         wf.calculate_projections_and_orthogonalize(self.p_nuclei,
                                                    self.my_nuclei)
 
-        if niter > 0:
+        if self.niter > 0:
             if not self.fixdensity:
                 wf.calculate_electron_density(self.nt_sG, self.nct_G,
                                               self.symmetry, self.gd)
@@ -504,12 +511,13 @@ class Paw:
 
         wf.diagonalize(self.vt_sG, self.my_nuclei)
 
-        if niter == 0:
+        if self.niter == 0:
             for nucleus in self.my_nuclei:
                 nucleus.reallocate(wf.nbands)
 
-        # Calculate occupations numbers, and return entropy, number of
-        # iteration, and magnetic moment:
+        # Calculate occupations numbers, and return number of
+        # iterations, magnetic moment and entropy:
+        
         self.nfermi, self.magmom, self.S = wf.calculate_occupation_numbers()
         
         dsum = self.domain.comm.sum
@@ -517,14 +525,11 @@ class Paw:
         self.Epot = dsum(self.Epot)
         self.Ebar = dsum(self.Ebar)
         self.Exc = dsum(self.Exc)
-        self.Etotold = self.Etot
         self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
 
         self.error = dsum(wf.calculate_residuals(self.p_nuclei))
 
-        dEtot = abs(self.Etot - self.Etotold)
-        de = 1e-8
-        if self.error > self.tolerance and dEtot > de and not sigusr1[0]:
+        if self.error > self.tolerance and not sigusr1[0]:
             self.timer.start('SD')
             wf.rmm_diis(self.p_nuclei, self.vt_sG)
             self.timer.stop('SD')
@@ -535,6 +540,7 @@ class Paw:
                 sigusr1[0] = False
 
     def calculate_atomic_hamiltonians(self):
+        """Calculate atomic hamiltonians."""
         self.timer.start('atham')
         nt_sg = self.nt_sg
         if self.nspins == 2:
@@ -551,10 +557,17 @@ class Paw:
         self.timer.stop('atham')
 
     def calculate_multipole_moments(self):
+        """Calculate multipole moments."""
         for nucleus in self.nuclei:
             nucleus.calculate_multipole_moments()
             
     def calculate_potential(self):
+        """Calculate effective potential.
+
+        The XC-potential and the Hartree potentials are evaluated on
+        the fine grid, and the sum is then restricted to the coarse
+        grid."""
+        
         self.rhot_g[:] = self.nt_sg[0]
         if self.nspins == 2:
             self.rhot_g += self.nt_sg[1]
@@ -587,10 +600,10 @@ class Paw:
         for nucleus in self.g_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
 
-        assert self.finegd.integrate(self.rhot_g) < 0.2
+        assert abs(self.finegd.integrate(self.rhot_g)) < 0.2
 
-        # npoisson is the number of iterations:
         self.timer.start('poisson')
+        # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, self.rhot_g)
         self.timer.stop('poisson')
         
@@ -602,43 +615,42 @@ class Paw:
             self.Ekin -= num.vdot(vt_G, nt_G - self.nct_G) * self.gd.dv
 
     def warn(self, message):
+        """Print a wrning-message."""
         print >> self.out, warning(message)
         if self.idiotproof:
-            raise RuntimeError, warning
+            raise RuntimeError(warning)
 
-    def get_ibz_kpoints(self):
-        return self.ibzk_kc
-    
     def get_fermi_level(self):
+        """Return the Fermi-level."""
         e = self.wf.occupation.get_fermi_level()
         if e is None:
             e = 100.0
         return e * self.Ha
 
     def get_density_array(self):
+        """Return pseudo-density array."""
         c = 1.0 / self.a0**3
         if self.nspins == 2:
-            return self.nt_sg * c
+            return self.nt_sG * c
         else:
-            return self.nt_sg[0] * c
+            return self.nt_sG[0] * c
 
     def get_wave_function_array(self, n, k, s):
+        """Return pseudo-wave-function array."""
         u = s + 2 * k
         c = 1.0 / self.a0**1.5
-        return self.kpts[u].psit_nG[n] * c
+        return self.wf.kpt_u[u].psit_nG[n] * c
 
-    def get_wannier_integral(self, i):
-        assert self.nspins == 1 and self.nmykpts == 1
-        return self.gd.wannier_matrix(self.kpts[0].psit_nG, i)
-
-    def get_magnetic_moment(self):
-        return self.magmom
+    def get_wannier_integrals(self, i):
+        """Calculate integrals for maximally localized Wannier functions."""
+        assert self.nspins == 1 and self.wf.typcode is num.Float
+        return self.gd.wannier_matrix(self.wf.kpt_u[0].psit_nG, i)
 
     def get_xc_difference(self, xcname):
-        assert self.xcfunc.gga, 'Must be a GGA calculation'
+        """Calculate non-seflconsistent XC-energy difference."""
+        assert self.xcfunc.gga, 'Must be a GGA calculation' # XXX
         oldxcname = self.xcfunc.get_xc_name()
         self.xcfunc.set_xc_functional(xcname)
-##        xcfunc.set_relativistic(True)
         
         v_g = self.finegd.new_array()  # not used for anything!
         if self.nspins == 2:
@@ -656,11 +668,11 @@ class Paw:
         Exc = self.domain.comm.sum(Exc)
 
         self.xcfunc.set_xc_functional(oldxcname)
-##        xcfunc.set_relativistic(True)
         
         return self.Ha * (Exc - self.Exc)
     
     def get_cartesian_forces(self):
+        """Return the atomic forces."""
         c = self.Ha / self.a0
         
         if not self.forces_ok:
@@ -714,8 +726,14 @@ class Paw:
         if mpi.rank == MASTER:
             return c * self.F_ac
 
-    def get_number_of_iterations(self):
-        return self.niter
+    def write_netcdf(self, filename):
+        """Write current state to a netDF file."""
+        netcdf.write_netcdf(self, filename)
+        
+    def initialize_from_netcdf(self, filename):
+        """Read state from a netCDF file."""
+        netcdf.read_netcdf(self, filename)
+        output.plot_atoms(self)
 
     def get_nucleus_P_uni(self,nucleus):
         """ return to the master the nucleus with
@@ -731,16 +749,3 @@ class Paw:
         else:
             if nucleus.domain_overlap == EVERYTHING:
                 self.domain.comm.send(nucleus.P_uni, MASTER)
-
-    def get_reference_energy(self):
-        Eref = 0.0
-        for nucleus in self.nuclei:
-            Eref += nucleus.setup.E
-        return self.Ha * Eref
-    
-    def write_netcdf(self, filename):
-        netcdf.write_netcdf(self, filename)
-        
-    def initialize_from_netcdf(self, filename):
-        netcdf.read_netcdf(self, filename)
-        output.plot_atoms(self)

@@ -116,6 +116,8 @@ static PyObject* Transformer_rotation(TransformerObject *self, PyObject *args)
     return NULL;
 
   bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs), INTP(rotoffsets), exact);
+  Py_INCREF(rotcoefs);  // XXX
+  Py_INCREF(rotoffsets);  // XXX
   Py_RETURN_NONE;
 }
 

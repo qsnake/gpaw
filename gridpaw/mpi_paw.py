@@ -8,10 +8,14 @@ import socket
 
 from gridpaw import debug
 from gridpaw.utilities.socket import send, recv
+from gridpaw.paw import Paw
 import gridpaw.utilities.timing as timing
 
 
 class MPIPaw:
+    # List of methods for Paw object:
+    paw_methods = dir(Paw)
+    
     def __init__(self, hostfile, out, *args):
         self.out = out
         # Make connection:
@@ -80,10 +84,17 @@ class MPIPaw:
     def __del__(self):
         self.sckt.close()
 
-    def __getattr__(self, methodname):
-        """Catch methods"""
-        self.methodname = methodname
-        return self.method
+    def __getattr__(self, attr):
+        """Catch calls to methods and attributes."""
+        if attr in self.paw_methods:
+            self.methodname = attr
+            return self.method
+        
+        # OK, attr was not a method - it was an attribute.
+        # Send attribue name:
+        string = pickle.dumps((attr, None, None))
+        send(self.sckt, string)
+        return pickle.loads(recv(self.sckt))
 
     def method(self, *args, **kwargs):
         """Communicate with remote calculation.
@@ -107,4 +118,4 @@ class MPIPaw:
             elif tag == 'result':
                 return stuff
             else:
-                raise RuntimeError, 'Unknown tag: ' + tag
+                raise RuntimeError('Unknown tag: ' + tag)

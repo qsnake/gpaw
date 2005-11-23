@@ -2,6 +2,8 @@ import pickle
 import socket
 import StringIO
 
+import Numeric as num
+
 import gridpaw.utilities.mpi as mpi
 from gridpaw.startup import create_paw_object
 from gridpaw.utilities.socket import send, recv
@@ -45,18 +47,27 @@ def run(port):
     if mpi.rank == MASTER:
         send(sckt, 'Got your arguments - now give me some commands')
 
-    # Wait for commands and delegate them to calculators:
+    # Wait for commands and delegate them to Paw objects:
     while True:
         if mpi.rank == MASTER:
             string = recv(sckt)
             mpi.broadcast_string(string)
         else:
             string = mpi.broadcast_string()
-        methodname, args, kwargs = pickle.loads(string)
 
-        if methodname == 'Stop':
+        attr, args, kwargs = pickle.loads(string)
+        if args is None:
+            # We just need an attribute:
+            if mpi.rank == MASTER:
+                obj = getattr(paw, attr)
+                assert type(obj) in [float, int, bool, num.ArrayType]
+                send(sckt, pickle.dumps(obj))
+            continue
+
+        # We need to call a method:
+        if attr == 'Stop':
             break
-        method = getattr(paw, methodname)
+        method = getattr(paw, attr)
         result = method(*args, **kwargs)
         if mpi.rank == MASTER:
             string = pickle.dumps(('result', result))

@@ -36,8 +36,6 @@ class Transformer:
             coefs = num.array([1.0])
             offsets = num.array([1])
             self.transformer.set_rotation(angle, coefs, offsets, 0)
-            # Dirty trick to keep arrays alive: XXXXX
-            x = [coefs, offsets]; x.append(x)
             
         self.ngpin = tuple(gd.n_c)
         assert typecode in [num.Float, num.Complex]
