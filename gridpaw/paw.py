@@ -466,7 +466,27 @@ class Paw:
             
     def improve_wave_functions(self):
         """Iterate towards self-consistency."""
-        if self.niter == 0:
+
+        wf = self.wf
+
+        from netcdf import NetCDFWaveFunction
+        if isinstance(wf.kpt_u[0].psit_nG,NetCDFWaveFunction):
+            assert self.niter==0
+            # Calculation started from a NetCDF restart file.
+            # Allocate array for wavefunctions and copy data from the
+            # NetCDFWaveFunction class
+            self.calculate_multipole_moments()
+            u = 0
+            for s in range(wf.nspins):
+                for k in range(wf.nkpts):
+                    kpt = wf.kpt_u[u]
+                    tmp_nG = kpt.psit_nG
+                    kpt.psit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
+                    kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
+                    kpt.psit_nG[:] = tmp_nG[:]
+                    u += 1
+                    
+        elif self.niter == 0:
             # We don't have any occupation numbers.  The initial
             # electron density comes from overlapping atomic densities
             # or from a restart file.  We scale the density to match
@@ -483,8 +503,6 @@ class Paw:
             x = -Q / Nt
             assert 0.83 < x < 1.17, 'x=%f' % x
             self.nt_sG *= x
-
-        wf = self.wf
         
         wf.calculate_projections_and_orthogonalize(self.p_nuclei,
                                                    self.my_nuclei)
@@ -596,7 +614,7 @@ class Paw:
             self.Exc = self.xc.get_energy_and_potential(
                 self.nt_sg[0], self.vt_sg[0])
         self.timer.stop('xc')
-        
+
         for nucleus in self.g_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
 
