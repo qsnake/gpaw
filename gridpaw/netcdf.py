@@ -81,7 +81,12 @@ def read_netcdf(paw, filename):
     paw.Exc = nc.Exc[0] / Ha
     paw.S = nc.S[0] / Ha
 
-    paw.nt_sg[:] = vars['PseudoElectronDensity'][:] * a0**3
+    # Read pseudoelectron density on the coarse grid
+    paw.nt_sG[:] = vars['PseudoElectronDensity'][:] * a0**3
+
+    # Transfer the density to the fine grid:
+    for s in range(paw.nspins):
+        paw.interpolate(paw.nt_sG[s], paw.nt_sg[s])
 
 def write_netcdf(paw, filename):
     wf = paw.wf
@@ -210,14 +215,24 @@ def write_netcdf(paw, filename):
                 var[s, k] = wf.kpt_u[u].f_n
                 u += 1
 
+
+    # Write the pseudodensity on the coarse grid
+    if mpi.rank==MASTER:
         var = nc.createVariable('PseudoElectronDensity', num.Float,
                                 ('nspins',
-                                 'nfinegptsx', 'nfinegptsy', 'nfinegptsz'))
-
-    # Write the pseudodensity:
-    nt_sg = paw.gd.collect(paw.nt_sg)
+                                 'ngptsx', 'ngptsy', 'ngptsz'))
+    nt_sG = paw.gd.collect(paw.nt_sG)
     if mpi.rank == MASTER:
-        var[:] = nt_sg / a0**3
+        var[:] = nt_sG / a0**3
+
+    # Write the pseudo charge density on the fine grid (rhot_g)
+    if mpi.rank == MASTER:
+        var = nc.createVariable('PseudoChargeDensity', num.Float,
+                                ('nspins',
+                                 'nfinegptsx', 'nfinegptsy', 'nfinegptsz'))
+    rhot_g = paw.gd.collect(paw.rhot_g)
+    if mpi.rank == MASTER:
+        var[:] = rhot_g / a0**3
 
     # Write the wave functions:
     if mpi.rank == MASTER:

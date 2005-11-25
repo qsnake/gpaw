@@ -130,8 +130,8 @@ def create_paw_object(out, a0, Ha,
               myspins, myibzk_kc, myweights_k, kpt_comm,
               out)
 
+    paw.set_positions(pos_ac / a0)
     if restart_file is None:
-        paw.set_positions(pos_ac / a0)
         paw.initialize_density_and_wave_functions(hund, magmom_a)
     else:
         paw.initialize_from_netcdf(restart_file)
