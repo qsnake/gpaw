@@ -304,8 +304,8 @@ class Setup:
         self.Delta_pL = num.zeros((np, Lmax), num.Float)
         for l in range(lmax + 1):
             L = l**2
-            delta_p = num.dot(Delta_lq[l], T_Lqp[L])
             for m in range(2 * l + 1):
+                delta_p = num.dot(Delta_lq[l], T_Lqp[L + m])
                 self.Delta_pL[:, L + m] = delta_p
 
         Delta = num.dot(nc_g - nct_g, r_g**2 * dr_g) - Z / sqrt(4 * pi)

@@ -1,18 +1,10 @@
 """Module defining a ``WaveFunctions`` class."""
 
-import sys
-import os
-from math import pi, sqrt, log
-import time
-
 import Numeric as num
-from ASE.ChemicalElements.symbol import symbols
-from ASE.Units import Convert
 
 from gridpaw.kpoint import KPoint
 from gridpaw.utilities.complex import cc, real
 from gridpaw.utilities import run_threaded, pack, unpack2
-from gridpaw.utilities.timing import Timer
 from gridpaw.operators import Laplace
 import gridpaw.occupations as occupations
 from gridpaw.preconditioner import Preconditioner
@@ -128,6 +120,7 @@ class WaveFunctions:
         self.occupation.kT = kT # XXX
 
     def initialize_from_atomic_orbitals(self, nuclei, my_nuclei, out):
+        """Initialize wave function from atomic orbitals."""
         # count the total number of atomic orbitals (bands):
         nao = 0
         for nucleus in nuclei:
@@ -155,6 +148,7 @@ class WaveFunctions:
             kpt.create_atomic_orbitals(nao, nuclei)
 
     def calculate_occupation_numbers(self):
+        """Calculate occupation numbers."""
         return self.occupation.calculate(self.kpt_u)
 
     def calculate_electron_density(self, nt_sG, nct_G, symmetry, gd):
@@ -180,6 +174,7 @@ class WaveFunctions:
                 symmetry.symmetrize(nt_G, gd)
 
     def calculate_projections_and_orthogonalize(self, p_nuclei, my_nuclei):
+        """Calculate projections and orthogonalize wave functions."""
         for kpt in self.kpt_u:
             for nucleus in p_nuclei:
                 nucleus.calculate_projections(kpt)
@@ -194,22 +189,26 @@ class WaveFunctions:
                       for kpt in self.kpt_u])
 
     def sum_eigenvalues(self):
+        """Sum up all eigenvalues weighted with occupation numbers."""
         Eeig = 0.0
         for kpt in self.kpt_u:
             Eeig += num.dot(kpt.f_n, kpt.eps_n)    
         return self.kpt_comm.sum(Eeig)
 
     def calculate_residuals(self, p_nuclei):
+        """Calculate wave function residuals and return error."""
         error = 0.0
         for kpt in self.kpt_u:
             error += kpt.calculate_residuals(p_nuclei)
         return self.kpt_comm.sum(error) / self.nvalence
 
     def rmm_diis(self, p_nuclei, vt_sG):
+        """Do RMM-DIIS update of wave functions."""
         for kpt in self.kpt_u:
             kpt.rmm_diis(p_nuclei, self.preconditioner, self.kin, vt_sG)
     
     def calculate_force_contribution(self, p_nuclei, my_nuclei):
+        """Calculate force-contribution from k-points."""
         for kpt in self.kpt_u:
             for nucleus in p_nuclei:
                 nucleus.calculate_force_kpoint(kpt)
@@ -219,14 +218,15 @@ class WaveFunctions:
 
     def calculate_atomic_density_matrices(self, my_nuclei, nuclei,
                                           comm, symmetry):
+        """Compute atomic density matrices."""
         for nucleus in my_nuclei:
             ni = nucleus.get_number_of_partial_waves()
             D_sii = num.zeros((self.nspins, ni, ni), num.Float)
             for kpt in self.kpt_u:
                 P_ni = nucleus.P_uni[kpt.u]
                 D_sii[kpt.s] += real(num.dot(cc(num.transpose(P_ni)),
-                                               P_ni * kpt.f_n[:, None]))
-            nucleus.D_sp[:] = [pack(D) for D in D_sii]
+                                             P_ni * kpt.f_n[:, None]))
+            nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
 
             self.kpt_comm.sum(nucleus.D_sp)
 
@@ -250,6 +250,7 @@ class WaveFunctions:
                     nucleus.symmetrize(D_aii, symmetry.maps, s)
 
     def print_eigenvalues(self, out, Ha):
+        """Print eigenvalues and occupation numbers."""
         if (self.kpt_comm.size > 1 or
             self.kpt_comm.size * self.nmykpts / self.nspins > 1):
             # not implemented yet:

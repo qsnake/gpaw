@@ -16,15 +16,9 @@ class PoissonSolver:
         scale = -0.25 / pi 
         print >> out, 'poisson solver:'
         self.dv = gd.dv
-        self.AB = True
-        if self.AB:
-            self.operators = [LaplaceA(gd, -scale)]
-            self.B = LaplaceB(gd)
-            self.rhos = [gd.new_array()]
-        else:
-            self.operators = [Laplace(gd, scale, 3)]
-            self.rhos = [None]
-            
+        self.operators = [LaplaceA(gd, -scale)]
+        self.B = LaplaceB(gd)
+        self.rhos = [gd.new_array()]
         self.phis = [None]
         self.residuals = [gd.new_array()]
         self.interpolators = [Interpolator(gd, 1)]
@@ -52,10 +46,7 @@ class PoissonSolver:
     def solve(self, phi, rho):
         self.phis[0] = phi
 
-        if self.AB:
-            self.B.apply(rho, self.rhos[0])
-        else:
-            self.rhos[0] = rho
+        self.B.apply(rho, self.rhos[0])
 
         niter = 1
 

@@ -617,7 +617,7 @@ class Paw:
 
         for nucleus in self.g_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
-
+        
         assert abs(self.finegd.integrate(self.rhot_g)) < 0.2
 
         self.timer.start('poisson')
@@ -661,7 +661,7 @@ class Paw:
 
     def get_wannier_integrals(self, i):
         """Calculate integrals for maximally localized Wannier functions."""
-        assert self.nspins == 1 and self.wf.typcode is num.Float
+        assert self.nspins == 1 and self.wf.typecode is num.Float
         return self.gd.wannier_matrix(self.wf.kpt_u[0].psit_nG, i)
 
     def get_xc_difference(self, xcname):

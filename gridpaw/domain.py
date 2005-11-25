@@ -30,7 +30,7 @@ class Domain:
          =============== ==================================================
          ``sdisp_cd``    Scaled displacement in direction ``d`` along axis
                          ``c``.
-        ``comm``         MPI-communicator for this domain.
+         ``comm``        MPI-communicator for this domain.
          ``neighbor_cd`` Rank of neighbor CPU in direction ``d`` along axis
                          ``c``.
          ``parpos_c``    Position of this CPU in the 3D grid of all CPUs.

@@ -207,7 +207,7 @@ class KPoint:
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, self.eps_n, self.psit_nG):
             R_G -= eps * psit_G
-        
+
         for nucleus in p_nuclei:
             nucleus.adjust_residual(R_nG, self.eps_n, self.s, self.u, self.k)
 

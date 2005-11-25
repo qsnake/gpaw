@@ -58,7 +58,7 @@ class Nucleus:
      ``D_sp``  Atomic density matrix (``D_{\sigma i_1i_2}^a``).
      ``dH_sp`` Atomic Hamiltonian correction (``\Delta H_{\sigma i_1i_2}^a``).
      ``Q_L``   Multipole moments  (``Q_{\ell m}^a``).
-     ``F_i``   Force.
+     ``F_c``   Force.
      ========= ===============================================================
 
     Parallel stuff: ``comm``, ``rank`` and ``domain_overlap``
@@ -253,7 +253,7 @@ class Nucleus:
             self.Q_L[0] += self.setup.Delta0
         self.comm.broadcast(self.Q_L, self.rank)
             
-    def calculate_hamiltonian(self, nt, vHt_g):
+    def calculate_hamiltonian(self, nt_g, vHt_g):
         assert self.domain_overlap >= COMPENSATION_CHARGE
         if self.domain_overlap == EVERYTHING:
             a = self.setup
@@ -261,8 +261,8 @@ class Nucleus:
             for neighbor in self.neighbors:
                 W_L += num.dot(neighbor.v_LL, neighbor.nucleus().Q_L)
             U = 0.5 * num.dot(self.Q_L, W_L)
-        
-            self.vhat_L.integrate(nt, W_L)
+
+            self.vhat_L.integrate(nt_g, W_L)
             self.ghat_L.integrate(vHt_g, W_L)
 
             Exc = a.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
@@ -270,6 +270,7 @@ class Nucleus:
             D_p = num.sum(self.D_sp)
             dH_p = (a.K_p + a.M_p + a.MB_p + 2.0 * num.dot(a.M_pp, D_p) +
                     num.dot(a.Delta_pL, W_L))
+
             Ekin = num.dot(a.K_p, D_p) + a.Kc
 
             Ebar = a.MB + num.dot(a.MB_p, D_p)
@@ -285,7 +286,7 @@ class Nucleus:
             return Ekin, Epot, Ebar, Exc
         
         else:
-            self.vhat_L.integrate(nt, None)
+            self.vhat_L.integrate(nt_g, None)
             self.ghat_L.integrate(vHt_g, None)
             return 0.0, 0.0, 0.0, 0.0
 
