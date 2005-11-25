@@ -22,8 +22,9 @@ parameters = {
     'Be': ('[He]',    1.5),
     'C' : ('[He]',    1.0),
     'N' : ('[He]',    1.1),
-    'O' : ('[He]',    1.2),
-    'F' : ('[He]',    1.2),
+    'O' : ('[He]',    1.2, {0: [1.0], 1: [1.0], 2: [1.0]}),
+    'F' : ('[He]',    1.2, {0: [1.0], 1: [1.0], 2: [1.0]}),
+    'Ne': ('[He]',    2.3),    
     'Na': ('[Ne]',    2.3),
     'Mg': ('[Ne]',    2.2),
     'Al': ('[Ne]',    2.0),
@@ -48,7 +49,10 @@ class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
-    def run(self, core, rcut, extra, logderiv=True, vt0=None):
+
+    def run(self, core, rcut, extra, logderiv=True, vt0=None,
+            constructX=False):
+
         self.core = core
         if type(rcut) is float:
             rcut_l = [rcut]
@@ -102,7 +106,8 @@ class Generator(AllElectron):
             j += 1
             core = core[2:]
         njcore = j
-
+        self.njcore = njcore
+        
         self.Nv = sum(f_j[njcore:])
 
         # Calculate the kinetic energy of the core states:
@@ -179,6 +184,7 @@ class Generator(AllElectron):
                     # Only one - add one more:
                     n = 1 + n_ln[l][0]
                     e = 1.0 + e_ln[l][0]
+
                     n_ln[l].append(n)
                     f_ln[l].append(0.0)
                     e_ln[l].append(e)
@@ -473,6 +479,15 @@ class Generator(AllElectron):
             
         self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
                       nc, nct, Ekincore, dK_ln1n2, vbar)
+
+        if constructX:
+            from gridpaw.exx import constructX
+            from gridpaw.exx import atomicExactExchange as aExx
+            import pickle
+            f = open(self.symbol +'.' +self.xcname + '.VC','w')
+            X_p = constructX(self)
+            ExxC = aExx(self,'core-core')
+            pickle.dump((ExxC,X_p),f)
 
     def diagonalize(self, h):
         ng = 300
