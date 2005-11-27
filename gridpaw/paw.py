@@ -219,126 +219,6 @@ class Paw:
         
         output.print_info(self)
 
-    def initialize_density_and_wave_functions(self, hund, magmom_a,
-                                              density=True,
-                                              wave_functions=True):
-        """Initialize density and/or wave functions.
-
-        By default both wave functions and densities are initialized
-        (from atomic orbitals) - this can be turned off with the
-        ``density`` and ``wave_functions`` keywords.  The density will
-        be constructed with the specified magnetic mioments and
-        obeying Hund's rules if ``hund`` is true."""
-        
-        output.plot_atoms(self)
-        
-        for nucleus in self.nuclei:
-            nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_kc,
-                                               self.locfuncbcaster)
-        self.locfuncbcaster.broadcast()
-
-        if density:
-            self.nt_sG[:] = self.nct_G
-            for magmom, nucleus in zip(magmom_a, self.nuclei):
-                nucleus.add_atomic_density(self.nt_sG, magmom, hund)
-
-        if wave_functions:
-            self.wf.initialize_from_atomic_orbitals(self.nuclei,
-                                                    self.my_nuclei, self.out)
-
-        # Free allocated space for radial grids:
-        for setup in self.setups.values():
-            setup.delete_atomic_orbitals()
-        for nucleus in self.nuclei:
-            try:
-                del nucleus.phit_j
-            except AttributeError:
-                continue
-
-        if hund:
-            M = int(0.5 + num.sum(magmom_a))
-            from gridpaw.occupations import FixMom
-            self.wf.occupation = FixMom(self.wf.occupation.ne, self.nspins, M)
-
-        self.converged = False
-        
-    def __del__(self):
-        """Destructor:  Write timing output before closing."""
-        for kpt in self.wf.kpt_u:
-            self.timer.add(kpt.timer)
-        self.timer.write(self.out)
-
-    def set_convergence_criteria(self, tol):
-        """Set convergence criteria.
-
-        Stop iterating when the size of the residuals is belov
-        ``tol``."""
-        
-        if tol < self.tolerance:
-            self.converged = False
-        self.tolerance = tol
-        
-    def set_output(self, out):
-        """Set the output stream for text output."""
-        if mpi.rank != MASTER:                
-            if debug:
-                out = sys.stderr
-            else:
-                out = DownTheDrain()
-        self.out = out
-
-    def find_ground_state(self, pos_ac, cell_c, angle):
-        """Start iterating towards the ground state."""
-        pos_ac = pos_ac / self.a0
-        cell_c = cell_c / self.a0
-        self.set_positions(pos_ac)
-
-        assert not self.converged
-
-        out = self.out
-        
-        print >> out, """\
-                       log10     total     iterations:
-              time     error     energy    fermi  poisson  magmom"""
-
-        self.niter = 0
-        while not self.converged:
-            self.improve_wave_functions()
-            # Output from each iteration:
-            t = time.localtime()
-            out.write('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
-                      (self.niter,
-                       t[3], t[4], t[5],
-                       log(self.error) / log(10),
-                       self.Ha * (self.Etot + 0.5 * self.S),
-                       self.nfermi,
-                       self.npoisson))
-            if self.nspins == 2:
-                print >> out, '%11.4f' % self.magmom
-            else:
-                print >> out, '       --'
-                
-            out.flush()
-            self.niter += 1
-            if self.niter > 1240:
-                raise RuntimeError('Did not converge!')
-
-        output.print_converged(self)
-
-    def get_total_energy(self, force_consistent):
-        """Return total energy.
-
-        Both the energy extrapolated to zero Kelvin and the energy
-        consistent with the forces (the free energy) can be
-        returned."""
-        
-        if force_consistent:
-            # Free energy:
-            return self.Ha * self.Etot
-        else:
-            # Energy extrapolated to zero Kelvin:
-            return self.Ha * (self.Etot + 0.5 * self.S)
-
     def set_positions(self, pos_ac):
         """Update the positions of the atoms.
 
@@ -399,78 +279,127 @@ class Paw:
                     print >> self.out, '%3d %2s %8.4f%8.4f%8.4f' % \
                   ((a, symbol) + tuple(self.a0 * pos_c))
 
-    def distribute_atoms(self):
-        """Distribute atoms on all CPUs."""
-        nspins = self.nspins
-        nmykpts = self.wf.nmykpts
-        nbands = self.wf.nbands
+    def initialize_density_and_wave_functions(self, hund, magmom_a,
+                                              density=True,
+                                              wave_functions=True):
+        """Initialize density and/or wave functions.
 
-        if self.domain.comm.size == 1:
-            # Serial calculation:
-            for nucleus in self.nuclei:
-                if nucleus.domain_overlap == NOT_INITIALIZED:
-                    nucleus.allocate(nspins, nmykpts, nbands)
-                nucleus.domain_overlap = EVERYTHING
-            return
+        By default both wave functions and densities are initialized
+        (from atomic orbitals) - this can be turned off with the
+        ``density`` and ``wave_functions`` keywords.  The density will
+        be constructed with the specified magnetic mioments and
+        obeying Hund's rules if ``hund`` is true."""
+        
+        output.plot_atoms(self)
+        
+        for nucleus in self.nuclei:
+            nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_kc,
+                                               self.locfuncbcaster)
+        self.locfuncbcaster.broadcast()
 
-        # Parallel calculation:
-        natoms = len(self.nuclei)
-        domovl_a = num.zeros(natoms, num.Int)
-        self.my_nuclei = []
-        self.p_nuclei = []
-        self.g_nuclei = []
-        for a, nucleus in enumerate(self.nuclei):
-            domain_overlap = NOTHING
-            if nucleus.ghat_L is not None:
-                domain_overlap = COMPENSATION_CHARGE
-                self.g_nuclei.append(nucleus)
-                if nucleus.pt_i is not None:
-                    domain_overlap = PROJECTOR_FUNCTION
-                    self.p_nuclei.append(nucleus)
-                    if nucleus.rank == self.domain.comm.rank:
-                        domain_overlap = EVERYTHING
-                        self.my_nuclei.append(nucleus)
-                        if nucleus.domain_overlap < EVERYTHING:
-                            nucleus.allocate(nspins, nmykpts, nbands)
-                    else:
-                        if nucleus.domain_overlap == EVERYTHING:
-                            nucleus.deallocate()
+        if density:
+            self.nt_sG[:] = self.nct_G
+            for magmom, nucleus in zip(magmom_a, self.nuclei):
+                nucleus.add_atomic_density(self.nt_sG, magmom, hund)
 
-            nucleus.domain_overlap = domain_overlap
-            domovl_a[a] = domain_overlap
+        if wave_functions:
+            self.wf.initialize_from_atomic_orbitals(self.nuclei,
+                                                    self.my_nuclei, self.out)
 
-        domovl_ca = num.zeros((self.domain.comm.size, natoms), num.Int)
-        self.domain.comm.all_gather(domovl_a, domovl_ca)
+        # Free allocated space for radial grids:
+        for setup in self.setups.values():
+            setup.delete_atomic_orbitals()
+        for nucleus in self.nuclei:
+            try:
+                del nucleus.phit_j
+            except AttributeError:
+                continue
 
-        # Make groups:
-        for a, nucleus in enumerate(self.nuclei):
-            domovl_c = domovl_ca[:, a]
+        if hund:
+            M = int(0.5 + num.sum(magmom_a))
+            from gridpaw.occupations import FixMom
+            self.wf.occupation = FixMom(self.wf.occupation.ne, self.nspins, M)
 
-            # Who owns the atom?
-            root = num.argmax(domovl_c)
+        self.converged = False
+        
+    def set_convergence_criteria(self, tol):
+        """Set convergence criteria.
 
-            g_group = [c for c, b in enumerate(domovl_c) if
-                       b >= COMPENSATION_CHARGE]
-            g_root = g_group.index(root)
-            g_comm = self.domain.comm.new_communicator(
-                num.array(g_group, num.Int))
+        Stop iterating when the size of the residuals is belov
+        ``tol``."""
+        
+        if tol < self.tolerance:
+            self.converged = False
+        self.tolerance = tol
+        
+    def set_output(self, out):
+        """Set the output stream for text output."""
+        if mpi.rank != MASTER:                
+            if debug:
+                out = sys.stderr
+            else:
+                out = DownTheDrain()
+        self.out = out
 
-            p_group = [c for c, b in enumerate(domovl_c) if
-                       b >= PROJECTOR_FUNCTION]
-            p_root = p_group.index(root)
-            p_comm = self.domain.comm.new_communicator(
-                num.array(p_group, num.Int))
+    def get_total_energy(self, force_consistent):
+        """Return total energy.
 
-            nucleus.set_communicators(self.domain.comm, root,
-                                      g_comm, g_root, p_comm, p_root)
-            
+        Both the energy extrapolated to zero Kelvin and the energy
+        consistent with the forces (the free energy) can be
+        returned."""
+        
+        if force_consistent:
+            # Free energy:
+            return self.Ha * self.Etot
+        else:
+            # Energy extrapolated to zero Kelvin:
+            return self.Ha * (self.Etot + 0.5 * self.S)
+
+    def find_ground_state(self, pos_ac, cell_c, angle):
+        """Start iterating towards the ground state."""
+        pos_ac = pos_ac / self.a0
+        cell_c = cell_c / self.a0
+        self.set_positions(pos_ac)
+
+        assert not self.converged
+
+        out = self.out
+        
+        print >> out, """\
+                       log10     total     iterations:
+              time     error     energy    fermi  poisson  magmom"""
+
+        self.niter = 0
+        while not self.converged:
+            self.improve_wave_functions()
+            # Output from each iteration:
+            t = time.localtime()
+            out.write('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
+                      (self.niter,
+                       t[3], t[4], t[5],
+                       log(self.error) / log(10),
+                       self.Ha * (self.Etot + 0.5 * self.S),
+                       self.nfermi,
+                       self.npoisson))
+            if self.nspins == 2:
+                print >> out, '%11.4f' % self.magmom
+            else:
+                print >> out, '       --'
+                
+            out.flush()
+            self.niter += 1
+            if self.niter > 1240:
+                raise RuntimeError('Did not converge!')
+
+        output.print_converged(self)
+
     def improve_wave_functions(self):
         """Iterate towards self-consistency."""
 
         wf = self.wf
 
         from netcdf import NetCDFWaveFunction
-        if isinstance(wf.kpt_u[0].psit_nG,NetCDFWaveFunction):
+        if isinstance(wf.kpt_u[0].psit_nG, NetCDFWaveFunction):
             assert self.niter==0
             # Calculation started from a NetCDF restart file.
             # Allocate array for wavefunctions and copy data from the
@@ -557,6 +486,71 @@ class Paw:
                 print >> self.out, 'SCF-ITERATIONS STOPPED BY USER!'
                 sigusr1[0] = False
 
+    def distribute_atoms(self):
+        """Distribute atoms on all CPUs."""
+        nspins = self.nspins
+        nmykpts = self.wf.nmykpts
+        nbands = self.wf.nbands
+
+        if self.domain.comm.size == 1:
+            # Serial calculation:
+            for nucleus in self.nuclei:
+                if nucleus.domain_overlap == NOT_INITIALIZED:
+                    nucleus.allocate(nspins, nmykpts, nbands)
+                nucleus.domain_overlap = EVERYTHING
+            return
+
+        # Parallel calculation:
+        natoms = len(self.nuclei)
+        domovl_a = num.zeros(natoms, num.Int)
+        self.my_nuclei = []
+        self.p_nuclei = []
+        self.g_nuclei = []
+        for a, nucleus in enumerate(self.nuclei):
+            domain_overlap = NOTHING
+            if nucleus.ghat_L is not None:
+                domain_overlap = COMPENSATION_CHARGE
+                self.g_nuclei.append(nucleus)
+                if nucleus.pt_i is not None:
+                    domain_overlap = PROJECTOR_FUNCTION
+                    self.p_nuclei.append(nucleus)
+                    if nucleus.rank == self.domain.comm.rank:
+                        domain_overlap = EVERYTHING
+                        self.my_nuclei.append(nucleus)
+                        if nucleus.domain_overlap < EVERYTHING:
+                            nucleus.allocate(nspins, nmykpts, nbands)
+                    else:
+                        if nucleus.domain_overlap == EVERYTHING:
+                            nucleus.deallocate()
+
+            nucleus.domain_overlap = domain_overlap
+            domovl_a[a] = domain_overlap
+
+        domovl_ca = num.zeros((self.domain.comm.size, natoms), num.Int)
+        self.domain.comm.all_gather(domovl_a, domovl_ca)
+
+        # Make groups:
+        for a, nucleus in enumerate(self.nuclei):
+            domovl_c = domovl_ca[:, a]
+
+            # Who owns the atom?
+            root = num.argmax(domovl_c)
+
+            g_group = [c for c, b in enumerate(domovl_c) if
+                       b >= COMPENSATION_CHARGE]
+            g_root = g_group.index(root)
+            g_comm = self.domain.comm.new_communicator(
+                num.array(g_group, num.Int))
+
+            p_group = [c for c, b in enumerate(domovl_c) if
+                       b >= PROJECTOR_FUNCTION]
+            p_root = p_group.index(root)
+            p_comm = self.domain.comm.new_communicator(
+                num.array(p_group, num.Int))
+
+            nucleus.set_communicators(self.domain.comm, root,
+                                      g_comm, g_root, p_comm, p_root)
+            
     def calculate_atomic_hamiltonians(self):
         """Calculate atomic hamiltonians."""
         self.timer.start('atham')
@@ -632,63 +626,6 @@ class Paw:
             self.restrict(vt_g, vt_G)
             self.Ekin -= num.vdot(vt_G, nt_G - self.nct_G) * self.gd.dv
 
-    def warn(self, message):
-        """Print a wrning-message."""
-        print >> self.out, warning(message)
-        if self.idiotproof:
-            raise RuntimeError(warning)
-
-    def get_fermi_level(self):
-        """Return the Fermi-level."""
-        e = self.wf.occupation.get_fermi_level()
-        if e is None:
-            e = 100.0
-        return e * self.Ha
-
-    def get_density_array(self):
-        """Return pseudo-density array."""
-        c = 1.0 / self.a0**3
-        if self.nspins == 2:
-            return self.nt_sG * c
-        else:
-            return self.nt_sG[0] * c
-
-    def get_wave_function_array(self, n, k, s):
-        """Return pseudo-wave-function array."""
-        u = s + 2 * k
-        c = 1.0 / self.a0**1.5
-        return self.wf.kpt_u[u].psit_nG[n] * c
-
-    def get_wannier_integrals(self, i):
-        """Calculate integrals for maximally localized Wannier functions."""
-        assert self.nspins == 1 and self.wf.typecode is num.Float
-        return self.gd.wannier_matrix(self.wf.kpt_u[0].psit_nG, i)
-
-    def get_xc_difference(self, xcname):
-        """Calculate non-seflconsistent XC-energy difference."""
-        assert self.xcfunc.gga, 'Must be a GGA calculation' # XXX
-        oldxcname = self.xcfunc.get_xc_name()
-        self.xcfunc.set_xc_functional(xcname)
-        
-        v_g = self.finegd.new_array()  # not used for anything!
-        if self.nspins == 2:
-            Exc = self.xc.get_energy_and_potential(self.nt_sg[0], v_g, 
-                                                   self.nt_sg[1], v_g)
-        else:
-            Exc = self.xc.get_energy_and_potential(self.nt_sg[0], v_g)
-
-        for nucleus in self.my_nuclei:
-            D_sp = nucleus.D_sp
-            H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
-            Exc += nucleus.setup.xc.calculate_energy_and_derivatives(D_sp,
-                                                                     H_sp)
-
-        Exc = self.domain.comm.sum(Exc)
-
-        self.xcfunc.set_xc_functional(oldxcname)
-        
-        return self.Ha * (Exc - self.Exc)
-    
     def get_cartesian_forces(self):
         """Return the atomic forces."""
         c = self.Ha / self.a0
@@ -753,6 +690,69 @@ class Paw:
         netcdf.read_netcdf(self, filename)
         output.plot_atoms(self)
 
+    def warn(self, message):
+        """Print a wrning-message."""
+        print >> self.out, warning(message)
+        if self.idiotproof:
+            raise RuntimeError(warning)
+
+    def __del__(self):
+        """Destructor:  Write timing output before closing."""
+        for kpt in self.wf.kpt_u:
+            self.timer.add(kpt.timer)
+        self.timer.write(self.out)
+
+    def get_fermi_level(self):
+        """Return the Fermi-level."""
+        e = self.wf.occupation.get_fermi_level()
+        if e is None:
+            e = 100.0
+        return e * self.Ha
+
+    def get_density_array(self):
+        """Return pseudo-density array."""
+        c = 1.0 / self.a0**3
+        if self.nspins == 2:
+            return self.nt_sG * c
+        else:
+            return self.nt_sG[0] * c
+
+    def get_wave_function_array(self, n, k, s):
+        """Return pseudo-wave-function array."""
+        u = s + 2 * k
+        c = 1.0 / self.a0**1.5
+        return self.wf.kpt_u[u].psit_nG[n] * c
+
+    def get_wannier_integrals(self, i):
+        """Calculate integrals for maximally localized Wannier functions."""
+        assert self.nspins == 1 and self.wf.typecode is num.Float
+        return self.gd.wannier_matrix(self.wf.kpt_u[0].psit_nG, i)
+
+    def get_xc_difference(self, xcname):
+        """Calculate non-seflconsistent XC-energy difference."""
+        assert self.xcfunc.gga, 'Must be a GGA calculation' # XXX
+        oldxcname = self.xcfunc.get_xc_name()
+        self.xcfunc.set_xc_functional(xcname)
+        
+        v_g = self.finegd.new_array()  # not used for anything!
+        if self.nspins == 2:
+            Exc = self.xc.get_energy_and_potential(self.nt_sg[0], v_g, 
+                                                   self.nt_sg[1], v_g)
+        else:
+            Exc = self.xc.get_energy_and_potential(self.nt_sg[0], v_g)
+
+        for nucleus in self.my_nuclei:
+            D_sp = nucleus.D_sp
+            H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
+            Exc += nucleus.setup.xc.calculate_energy_and_derivatives(D_sp,
+                                                                     H_sp)
+
+        Exc = self.domain.comm.sum(Exc)
+
+        self.xcfunc.set_xc_functional(oldxcname)
+        
+        return self.Ha * (Exc - self.Exc)
+    
     def get_nucleus_P_uni(self,nucleus):
         """ return to the master the nucleus with
             domain_overlap = EVERYTHING
