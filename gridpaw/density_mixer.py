@@ -63,6 +63,7 @@ class Mixer1:
         self.A_ii = num.zeros((0, 0), num.Float)
 
         # Collect atomic density matrices:
+        # XXX ref to nucleus!n
         self.D_a = [(nucleus.D_sp[s], [], []) for nucleus in my_nuclei]
 
     def mix(self, nt_G, comm):

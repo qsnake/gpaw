@@ -7,11 +7,11 @@ from gridpaw import debug
 
 
 class Symmetry:
-    def __init__(self, numbers, domain, tolerance=1e-9):
-        self.numbers = numbers
-        self.cell = domain.cell_c
-        self.bc = domain.periodic_c
-        self.scale_position = domain.scale_position
+    def __init__(self, Z_a, domain, tolerance=1e-9):
+        self.Z_a = Z_a
+        self.cell_c = domain.cell_c
+        self.periodic_c = domain.periodic_c
+        self.scale_position = domain.scale_position  # XXX ref to domain!
         self.tol = tolerance
         # The identity:
         self.symmetries = [((0, 1, 2), (1, 1, 1))]
@@ -27,8 +27,8 @@ class Symmetry:
                             (1, 0, 2), (1, 2, 0),
                             (2, 0, 1), (2, 1, 0)]
         # Only swap axes of equal length:
-        cellsyms = [[abs(self.cell[c1] - self.cell[c2]) < self.tol and
-                     self.bc[c1] and self.bc[c2]
+        cellsyms = [[abs(self.cell_c[c1] - self.cell_c[c2]) < self.tol and
+                     self.periodic_c[c1] and self.periodic_c[c2]
                      for c1 in range(3)]
                     for c2 in range(3)]
         swaps = []
@@ -45,7 +45,7 @@ class Symmetry:
 
         mirrors = [[1], [1], [1]]
         for c in range(3):
-            if self.bc[c]:
+            if self.periodic_c[c]:
                 mirrors[c].append(-1)
         mirrors = [(m0, m1, m2)
                    for m0 in mirrors[0]
@@ -65,7 +65,7 @@ class Symmetry:
         # Build lists of (atom number, scaled position) tuples.  One list for
         # each atomic number:
         species = {}
-        for a, Z in enumerate(self.numbers):
+        for a, Z in enumerate(self.Z_a):
             spos_c = self.scale_position(pos_ac[a])
             if species.has_key(Z):
                 species[Z].append((a, spos_c))
@@ -98,9 +98,9 @@ class Symmetry:
         if debug:
             for symmetry, map in zip(symmok, maps):
                 swap, mirror = symmetry
-                for a1, Z1 in enumerate(self.numbers):
+                for a1, Z1 in enumerate(self.Z_a):
                     a2 = map[a1]
-                    Z2 = self.numbers[a2]
+                    Z2 = self.Z_a[a2]
                     assert Z1 == Z2
                     spos1_c = self.scale_position(pos_ac[a1])
                     spos2_c = self.scale_position(pos_ac[a2])
