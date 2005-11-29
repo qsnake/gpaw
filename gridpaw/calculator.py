@@ -489,7 +489,6 @@ class Calculator:
 
     def GetElectronicStates(self):
         """Return electronic-state object."""
-        return None
         from ASE.Utilities.ElectronicStates import ElectronicStates
         self.Write('tmp27.nc')
         return ElectronicStates('tmp27.nc')
