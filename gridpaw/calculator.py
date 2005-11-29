@@ -15,8 +15,10 @@ import weakref
 
 import Numeric as num
 from ASE.Units import units, Convert
-if os.uname()[4] == 'i686':
+try:
     from ASE.Trajectories.NetCDFTrajectory import NetCDFTrajectory
+except ImportError:
+    print "No Netcdf installed"
 from ASE.Utilities.MonkhorstPack import MonkhorstPack
 
 from gridpaw.utilities import DownTheDrain, check_unit_cell

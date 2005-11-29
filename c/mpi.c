@@ -271,7 +271,15 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   MPI_Comm_group(self->comm, &group);
   int n = ranks->dimensions[0];
   MPI_Group newgroup;
-  MPI_Group_incl(group, n, INTP(ranks), &newgroup);
+  // Stupid hack; MPI_Group_incl wants a int argument;
+  // Numeric arrays are long (might be different from ints)
+  // More clever ways are welcomed...
+  int* ranks_int = (int*) malloc(n*sizeof(int));
+  long* ranks_long = INTP(ranks);
+  for (int i=0; i < n ; i++ )
+    ranks_int[i]=ranks_long[i];
+  MPI_Group_incl(group, n, ranks_int, &newgroup);
+  free(ranks_int);
   MPI_Comm comm;
   MPI_Comm_create(self->comm, newgroup, &comm);
   MPI_Group_free(&newgroup);

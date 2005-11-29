@@ -1,8 +1,10 @@
 import os
 
 import Numeric as num
-if os.uname()[4] == 'i686':
+try:
     import Scientific.IO.NetCDF as NetCDF
+except ImportError:
+    print "No netcdf installed"
 from ASE.ChemicalElements.symbol import symbols
 
 import gridpaw.utilities.mpi as mpi

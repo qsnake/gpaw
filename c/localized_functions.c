@@ -236,9 +236,9 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
   if (self == NULL)
     return NULL;
 
-  const int* size0 = INTP(size0_array);
-  const int* size = INTP(size_array);
-  const int* start = INTP(start_array);
+  const long* size0 = INTP(size0_array);
+  const long* size = INTP(size_array);
+  const long* start = INTP(start_array);
   const double* h = DOUBLEP(h_array);
   const double* C = DOUBLEP(C_array);
   self->dv = h[0] * h[1] * h[2];
@@ -305,18 +305,18 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
 	      const bmgsspline* spline = 
 		&(((SplineObject*)PyList_GetItem(radials, j))->spline);
 	      if (j == 0)
-		bmgs_radial1(spline, size0, C, h, bin, d);
-	      bmgs_radial2(spline, size0, bin, d, f0, fd0);
+		bmgs_radial1(spline, self->size0, C, h, bin, d);
+	      bmgs_radial2(spline, self->size0, bin, d, f0, fd0);
 	      int l = spline->l;
 	      for (int k = 0; k < 2 * l + 1; k++)
 		{
-		  bmgs_radial3(spline, k, size0, C, h, f0, a);
+		  bmgs_radial3(spline, k, self->size0, C, h, f0, a);
 		  a += ng0;
 		}
 	      if (forces)
 		for (int k = 0; k < 3 + l * (2 * l + 1); k++)
 		  {
-		    bmgs_radiald3(spline, k, size0, C, h, f0, fd0, ad);
+		    bmgs_radiald3(spline, k, self->size0, C, h, f0, fd0, ad);
 		    ad += ng0;
 		  }
 	    }

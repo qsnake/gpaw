@@ -64,8 +64,8 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
       void* work = malloc(lwork * 2 * sizeof(double));
       double* rwork = (double*)malloc(lrwork * sizeof(double));
       if (b == 0)
-        zheev_("V", "U", &n, (void*)a->data, &lda,
-               (double*)w->data, 
+        zheev_("V", "U", &n, (void*)COMPLEXP(a), &lda,
+               DOUBLEP(w), 
                work, &lwork, rwork, &lrwork, &info);
       else
         zhegv_(&itype, "V", "U", &n, (void*)COMPLEXP(a), &lda,

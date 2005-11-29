@@ -5,19 +5,19 @@
 // Expansion coefficients for finite difference Laplacian.  The numbers are
 // from J. R. Chelikowsky et al., Phys. Rev. B 50, 11355 (1994):
 
-bmgsstencil bmgs_stencil(int ncoefs, const double* coefs, const int* offsets,
-			 int r, const int n[3])
+bmgsstencil bmgs_stencil(int ncoefs, const double* coefs, const long* offsets,
+			 int r, const long n[3])
 {
   bmgsstencil stencil = 
     {ncoefs,
      (double*)malloc(ncoefs * sizeof(double)),
-     (int*)malloc(ncoefs * sizeof(int)),
+     (long*)malloc(ncoefs * sizeof(long)),
      {n[0], n[1], n[2]},
      {2 * r * (n[2] + 2 * r) * (n[1] + 2 * r),
      2 * r * (n[2] + 2 * r),
      2 * r}};
   memcpy(stencil.coefs, coefs, ncoefs * sizeof(double));
-  memcpy(stencil.offsets, offsets, ncoefs * sizeof(int));
+  memcpy(stencil.offsets, offsets, ncoefs * sizeof(long));
   return stencil;
 }
 
@@ -31,11 +31,11 @@ static const double laplace[4][5] =
 
 bmgsstencil bmgs_laplace(int k, double scale, 
 				const double h[3],
-				const int n[3])
+				const long n[3])
 {
   int ncoefs = 3 * k - 2;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
-  int* offsets = (int*)malloc(ncoefs * sizeof(int));
+  long* offsets = (long*)malloc(ncoefs * sizeof(long));
   double f1 = 1.0 / (h[0] * h[0]);
   double f2 = 1.0 / (h[1] * h[1]);
   double f3 = 1.0 / (h[2] * h[2]);
@@ -66,11 +66,11 @@ bmgsstencil bmgs_laplace(int k, double scale,
 
 bmgsstencil bmgs_mslaplaceA(double scale, 
 				   const double h[3],
-				   const int n[3])
+				   const long n[3])
 {
   int ncoefs = 19;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
-  int* offsets = (int*)malloc(ncoefs * sizeof(int));
+  long* offsets = (long*)malloc(ncoefs * sizeof(long));
   double e[3]  = {-scale / (12.0 * h[0] * h[0]),
 		  -scale / (12.0 * h[1] * h[1]),
 		  -scale / (12.0 * h[2] * h[2])};
@@ -109,11 +109,11 @@ bmgsstencil bmgs_mslaplaceA(double scale,
 }
 
 
-bmgsstencil bmgs_mslaplaceB(const int n[3])
+bmgsstencil bmgs_mslaplaceB(const long n[3])
 {
   int ncoefs = 7;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
-  int* offsets = (int*)malloc(ncoefs * sizeof(int));
+  long* offsets = (long*)malloc(ncoefs * sizeof(long));
   double s[3] = {(n[2] + 2) * (n[1] + 2), n[2] + 2, 1};
   int k = 0;
   coefs[k] = 0.5;
@@ -136,11 +136,11 @@ bmgsstencil bmgs_mslaplaceB(const int n[3])
 
 
 bmgsstencil bmgs_gradient(int k, int i, double h, 
-				 const int n[3])
+				 const long n[3])
 {
   int ncoefs = k - 1;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
-  int* offsets = (int*)malloc(ncoefs * sizeof(int));
+  long* offsets = (long*)malloc(ncoefs * sizeof(long));
   int r = 1;
   double s[3] = {(n[2] + 2 * r) * (n[1] + 2 * r), n[2] + 2 * r, 1};
   double c = 0.5 / h;

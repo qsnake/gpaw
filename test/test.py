@@ -8,6 +8,7 @@ import glob
 import time
 import pickle
 import sys
+import os
 import gc
 import StringIO
 from optparse import OptionParser
@@ -54,8 +55,10 @@ for test in exclude:
 gc.set_debug(gc.DEBUG_SAVEALL)
 
 # Read old timings if they are present:
+machine=os.uname()[4]
+timings_file='timings.pickle_' + machine
 try:
-    timings = pickle.loads(file('timings.pickle').read())
+    timings = pickle.loads(file(timings_file).read())
 except IOError:
     timings = {}
 
@@ -159,4 +162,4 @@ if len(tests) > 1:
     print
 
 # Save new timings:
-file('timings.pickle', 'w').write(pickle.dumps(timings))
+file(timings_file, 'w').write(pickle.dumps(timings))

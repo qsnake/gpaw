@@ -172,7 +172,7 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   self->stencil = bmgs_stencil(coefs->dimensions[0], DOUBLEP(coefs),
 			       INTP(offsets), range, INTP(size));
 
-  const int (*nb)[2] = (const int (*)[2])INTP(neighbors);
+  const long (*nb)[2] = (const long (*)[2])INTP(neighbors);
   int padding[2] = {range, range};
 
   MPI_Comm comm = MPI_COMM_NULL;

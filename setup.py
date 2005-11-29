@@ -70,7 +70,7 @@ if machine == 'sun4u':
     #
     
     include_dirs += ['/opt/SUNWhpc/include']
-    extra_compile_args += ['-KPIC']
+    extra_compile_args += ['-KPIC','-fast']
     libraries += ['mpi']
     library_dirs += ['/opt/SUNWspro/lib',
                      '/opt/SUNWhpc/lib']

@@ -169,7 +169,7 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   if (comm_obj != Py_None)
     comm = ((MPIObject*)comm_obj)->comm;
 
-  const int (*nb)[2] = (const int (*)[2])INTP(neighbors);
+  const long (*nb)[2] = (const long (*)[2])INTP(neighbors);
   int padding[2] = {k * p / 2 - 1, k * p / 2 - p};
   if (interpolate)
     {

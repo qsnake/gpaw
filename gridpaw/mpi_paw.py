@@ -51,6 +51,10 @@ class MPIPaw:
                 cmd = ('export GRIDPAW_PARALLEL=1; ' +
                        "poe 'gridpaw-%s' -procs %d -hfile %s &" %
                        (job, n, hostfile))
+        elif os.uname()[1]=='sepeli.csc.fi':
+            n = len(open(hostfile).readlines())
+            cmd = ('export GRIDPAW_PARALLEL=1; ' +
+                  'mpiexec -n %d %s' % (n, job))
 
         else:
             cmd = ('lamboot -v %s; ' % hostfile +

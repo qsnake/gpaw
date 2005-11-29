@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <malloc.h>
 
-boundary_conditions* bc_init(const int size1[3], const int padding[2], 
-			     const int neighbors[3][2],
+boundary_conditions* bc_init(const long size1[3], const int padding[2], 
+			     const long neighbors[3][2],
 			     MPI_Comm comm, bool real, bool cfd)
 {
   boundary_conditions* bc = 
@@ -297,8 +297,14 @@ void bc_unpack1(const boundary_conditions* bc,
 			  bc->sendsize[i][d][1] * 
 			  bc->sendsize[i][d][2]);
 		double_complex* c = (double_complex*)bc->rotbuf;
-		for (int n = 0; n < nn; n++)
-		  c[n] = 0.0;
+		for (int n = 0; n < nn; n++) {
+#ifdef NO_C99_COMPLEX		  
+		  c[n].r = 0.0;
+		  c[n].i = 0.0;
+#else
+		  c[n] = 0.0;	  
+#endif
+		}
 		bmgs_rotatez(((double_complex*)a1) + 
 			     (bc->sendstart[i][d][0] - p) *
 			     bc->size1[1] * bc->size1[2], 
@@ -306,8 +312,14 @@ void bc_unpack1(const boundary_conditions* bc,
 			     (double_complex*)bc->rotbuf, 
 			     bc->angle * (2 * d - 1),
 			     bc->rotcoefs, bc->rotoffsets, bc->exact);
-		for (int n = 0; n < nn; n++)
+		for (int n = 0; n < nn; n++) {
+#ifdef NO_C99_COMPLEX		  
+		  c[n].r = c[n].r*phases[d].r-c[n].i*phases[d].i;
+		  c[n].i = c[n].r*phases[d].i+c[n].i*phases[d].r;
+#else
 		  c[n] *= phases[d];
+#endif
+		}
 		bmgs_pastez((double_complex*)bc->rotbuf, bc->sendsize[i][d], 
 			    (double_complex*)a2, bc->size2,
 			    bc->recvstart[i][1 - d]);

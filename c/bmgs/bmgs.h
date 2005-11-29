@@ -28,9 +28,9 @@ typedef struct
 {
   int ncoefs;
   double* coefs;
-  int* offsets;
-  int n[3];
-  int j[3];
+  long* offsets;
+  long n[3];
+  long j[3];
 } bmgsstencil;
 
 typedef struct
@@ -41,15 +41,15 @@ typedef struct
   double* data;
 } bmgsspline;
 
-bmgsstencil bmgs_stencil(int ncoefs, const double* coefs, const int* offsets, 
-			 int range, const int size[3]);
-bmgsstencil bmgs_laplace(int k, double scale, const double h[3], const int n[3]);
+bmgsstencil bmgs_stencil(int ncoefs, const double* coefs, const long* offsets, 
+			 int range, const long size[3]);
+bmgsstencil bmgs_laplace(int k, double scale, const double h[3], const long n[3]);
 bmgsstencil bmgs_mslaplaceA(double scale, 
 				   const double h[3],
-				   const int n[3]);
-bmgsstencil bmgs_mslaplaceB(const int n[3]);
+				   const long n[3]);
+bmgsstencil bmgs_mslaplaceB(const long n[3]);
 bmgsstencil bmgs_gradient(int k, int i, double h, 
-			  const int n[3]);
+			  const long n[3]);
 void bmgs_deletestencil(bmgsstencil* spline);
 bmgsspline bmgs_spline(int l, double dr, int nbins, double* f);
 double bmgs_splinevalue(const bmgsspline* spline, double r);
