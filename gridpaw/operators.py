@@ -9,7 +9,7 @@ import Numeric as num
 from gridpaw import debug
 from gridpaw.utilities import contiguous, is_contiguous
 import _gridpaw
-
+import gridpaw.transrotation as tr
     
 class _Operator:
     def __init__(self, coef_p, offset_pc, gd, cfd, typecode=num.Float):
@@ -48,10 +48,9 @@ class _Operator:
 
         if gd.domain.angle is not None:
             angle = gd.domain.angle
-            coefs = num.array([1.0])
-            offsets = num.array([1])
+            [coefs,offsets]= tr.RotationCoef(n_c[1], angle)
             self.operator.set_rotation(angle, coefs, offsets, 0)
-            
+                     
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape
         assert in_xg.shape[-3:] == self.shape

@@ -3,7 +3,7 @@
 
 from __future__ import division
 from math import pi
-
+import gridpaw.transrotation as tr
 import Numeric as num
 
 from gridpaw import debug
@@ -33,8 +33,10 @@ class Transformer:
             angle = gd.domain.angle
             if gd.comm.size > 1:
                 raise NotImplementedError
-            coefs = num.array([1.0])
-            offsets = num.array([1])
+            #rotationcoefs for other displacements must be determined
+            #and stored in some structure.
+            [coefs1,offsets1]= tr.RotationCoef(gd.n_c[1], angle)
+            [coefs2,offsets2]= tr.RotationCoef(gd.n_c[1], -angle)
             self.transformer.set_rotation(angle, coefs, offsets, 0)
             
         self.ngpin = tuple(gd.n_c)

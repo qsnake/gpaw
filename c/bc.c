@@ -18,16 +18,12 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
   for (int i = 0; i < 3; i++)
     {
       bc->size1[i] = size1[i];
-      //hvad er padding, og hvorfor har den to dimensioner??
-      //Maaske foer og efter cellen?? 
       bc->size2[i] = size1[i] + padding[0] + padding[1]; 
       bc->zero[i] = (neighbors[i][0] < 0);
     }
 
   bc->comm = comm;
   bc->ndouble = (real ? 1 : 2);
-  //hvorfor er kun padding[0] vigtig her?!?
-  //bare en pointer der saettes? de andre vaerdier kan stadig naas.    
   bc->padding = padding[0];
 
   int rank = 0;

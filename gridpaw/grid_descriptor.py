@@ -203,9 +203,6 @@ class GridDescriptor:
 
             return boxes
         else:
-            #angle er on, derfor kun periodicitet i 1.akse
-            #roter centrum.
-         
             for b0, e0 in range_c[0]:
                 b1, e1 = range_c[1][0]
                 b2, e2 = range_c[2][0]
