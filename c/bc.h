@@ -30,7 +30,7 @@ typedef struct
   double angle;
   double* rotbuf;
   double* rotcoefs;
-  int* rotoffsets;
+  long* rotoffsets;
   int exact;
   MPI_Comm comm;
 } boundary_conditions;

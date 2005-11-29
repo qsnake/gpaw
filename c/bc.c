@@ -134,7 +134,7 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
 
 
 void bc_set_rotation(boundary_conditions* bc,
-		     double angle, double* coefs, int* offsets, int exact)
+		     double angle, double* coefs, long* offsets, int exact)
 {
   bc->angle = angle;
   bc->rotcoefs = coefs;

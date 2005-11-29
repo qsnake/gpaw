@@ -2,7 +2,7 @@
 #include "bmgs.h"
 #include <stdio.h>
 void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle,
-		    double* coefs, int* index, int exact)
+		    double* coefs, long* index, int exact)
 {
 #if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
   assert(2 + 2 == 5);
