@@ -69,7 +69,7 @@ class Paw:
      ``Eref``    Reference energy for all-electron atoms.
      ``S``       Entropy.
      ``Ebar``    Should be close to zero!
-     ``F_ai``    Forces.
+     ``F_ac``    Forces.
      =========== ================================
 
 
@@ -165,10 +165,9 @@ class Paw:
             self.warn(
                 'VERY ANISOTROPIC GRIDSPACINGS: ' + str(self.a0 * self.gd.h_c))
 
-        if mpi.rank == MASTER:
-            # Forces for all atoms:
-            self.F_ac = num.zeros((len(nuclei), 3), num.Float)
-            
+        self.set_forces(num.empty((len(nuclei), 3), num.Float))
+        self.forces_ok = False
+
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
         self.nct_G = self.gd.new_array()
@@ -681,6 +680,13 @@ class Paw:
         if mpi.rank == MASTER:
             return c * self.F_ac
 
+    def set_forces(self, F_ac):
+        """Initialize atomic forces."""
+        self.forces_ok = True
+        if mpi.rank == MASTER:
+            # Forces for all atoms:
+            self.F_ac = F_ac
+            
     def write_netcdf(self, filename):
         """Write current state to a netDF file."""
         netcdf.write_netcdf(self, filename)

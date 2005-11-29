@@ -28,7 +28,7 @@ class _Operator:
         offset_p = num.dot(offset_pc, stride_c)
         coef_p = contiguous(coef_p, num.Float)
         neighbor_cd = gd.domain.neighbor_cd
-        assert len(coef_p.shape) == 1
+        assert num.rank(coef_p) == 1
         assert coef_p.shape == offset_p.shape
         assert typecode in [num.Float, num.Complex]
         self.typecode = typecode

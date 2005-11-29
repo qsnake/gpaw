@@ -16,7 +16,7 @@ def gemm(alpha, a, b, beta, c):
             (is_contiguous(a, num.Complex) and
              is_contiguous(b, num.Complex) and
              is_contiguous(c, num.Complex)))
-    assert len(b.shape) == 2
+    assert num.rank(b) == 2
     assert a.shape[0] == b.shape[1]
     assert c.shape == b.shape[0:1] + a.shape[1:]
     _gridpaw.gemm(alpha, a, b, beta, c)
@@ -37,7 +37,7 @@ def axpy(alpha, x, y):
 def rk(alpha, a, beta, c):
     assert (is_contiguous(a, num.Float) and is_contiguous(c, num.Float) or
             is_contiguous(a, num.Complex) and is_contiguous(c, num.Complex))
-    assert len(a.shape) > 1
+    assert num.rank(a) > 1
     assert c.shape == (a.shape[0], a.shape[0])
     _gridpaw.rk(alpha, a, beta, c)
 
@@ -47,7 +47,7 @@ def r2k(alpha, a, b, beta, c):
              is_contiguous(c, num.Float) and type(alpha) is float) or
             (is_contiguous(a, num.Complex) and is_contiguous(b, num.Complex) and
              is_contiguous(c, num.Complex)))
-    assert len(a.shape) > 1
+    assert num.rank(a) > 1
     assert a.shape == b.shape
     assert c.shape == (a.shape[0], a.shape[0])
     _gridpaw.r2k(alpha, a, b, beta, c)

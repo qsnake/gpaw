@@ -97,7 +97,7 @@ class AllElectron:
             a = sqrt(-2.0 * e)
 
             # This one: "u[:] = r**(1 + l) * num.exp(-a * r)" gives
-            # OverflowError: math range error
+            # OverflowError: math range error XXX
             u[:] = r**(1 + l)
             rmax = 350.0 / a
             gmax = int(rmax * self.N / (self.beta + rmax))

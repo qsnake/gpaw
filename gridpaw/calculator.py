@@ -487,6 +487,7 @@ class Calculator:
 
     def GetElectronicStates(self):
         """Return electronic-state object."""
+        return None
         from ASE.Utilities.ElectronicStates import ElectronicStates
         self.Write('tmp27.nc')
         return ElectronicStates('tmp27.nc')
@@ -518,6 +519,9 @@ class Calculator:
         
         kwargs.update(overruling_kwargs)
         calc = Calculator(**kwargs)
+
+        # Get the forces from the old calculation:
+        F_ac = atoms.GetCartesianForces()
         
         atoms.SetCalculator(calc)
 
@@ -525,6 +529,7 @@ class Calculator:
         # later, when requiered:
         calc.restart_file = filename
         calc.initialize_paw_object()
+        calc.paw.set_forces(F_ac)
         calc.lastcount = atoms.GetCount()
         return atoms
 
