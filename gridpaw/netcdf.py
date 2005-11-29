@@ -96,7 +96,6 @@ def write_netcdf(paw, filename):
     Ha = paw.Ha
     if mpi.rank == MASTER:
         nc = NetCDF.NetCDFFile(filename, 'a')
-
         # Write the k-points:
         nc.createDimension('nbzkpts', len(wf.bzk_kc))
         nc.createDimension('nibzkpts', wf.nkpts)
@@ -272,16 +271,27 @@ class NetCDFWaveFunction:
         self.u = (s, k)
         self.scale = scale
         self.cmplx = cmplx
-        
+        netcdfshape = self.psit_unG.shape
+        if self.cmplx:
+            self.shape = netcdfshape[2:-1]
+        else:
+            self.shape = netcdfshape[2:]
+            
     def __getitem__(self, index):
         if type(index) is not tuple:
             index = (index,)
         if self.cmplx:
-            a = self.psit_unG[self.u + index]
+            try: 
+                a = self.psit_unG[self.u + index]
+            except IOError: 
+                raise IndexError
             w = num.zeros(a.shape[:-1], num.Complex)
             w.real = a[..., 0]
             w.imag = a[..., 1]
             w *= self.scale
             return w
         else:
-            return self.scale * self.psit_unG[self.u + index]
+            try: 
+                return self.scale * self.psit_unG[self.u + index]
+            except IOError:
+                raise IndexError
