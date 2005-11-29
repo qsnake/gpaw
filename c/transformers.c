@@ -109,15 +109,21 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
 static PyObject* Transformer_rotation(TransformerObject *self, PyObject *args)
 {
   double angle;
-  PyArrayObject* rotcoefs;
-  PyArrayObject* rotoffsets;
+  PyArrayObject* rotcoefs1;
+  PyArrayObject* rotoffsets1;
+  PyArrayObject* rotcoefs2;
+  PyArrayObject* rotoffsets2;
   int exact;
-  if (!PyArg_ParseTuple(args, "dOOi", &angle, &rotcoefs, &rotoffsets, &exact))
+  if (!PyArg_ParseTuple(args, "dOOOOi", &angle, &rotcoefs1, &rotoffsets1,
+			&rotcoefs2, &rotoffsets2, &exact))
     return NULL;
 
-  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs), INTP(rotoffsets), exact);
-  Py_INCREF(rotcoefs);  // XXX
-  Py_INCREF(rotoffsets);  // XXX
+  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs1), INTP(rotoffsets1), 
+		  DOUBLEP(rotcoefs2), INTP(rotoffsets2), exact);
+  Py_INCREF(rotcoefs1);  // XXX
+  Py_INCREF(rotoffsets1);  // XXX
+  Py_INCREF(rotcoefs2);  // XXX
+  Py_INCREF(rotoffsets2);  // XXX
   Py_RETURN_NONE;
 }
 

@@ -74,3 +74,13 @@ def rotate(diff_c, r_c, angle):
 		      (0,  cs, sn),
 		      (0, -sn, cs)])
     diff_c -= r_c - num.dot(R_cc, r_c)
+
+
+if __name__ == '__main__':
+    from math import pi
+    c, v = RotationCoef(4, -pi)
+    c.shape = (4,4,4)
+    for x in c:
+        print x
+    v.shape = (4, 4)
+    print v

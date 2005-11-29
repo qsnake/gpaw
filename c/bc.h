@@ -29,8 +29,10 @@ typedef struct
   int ndouble;
   double angle;
   double* rotbuf;
-  double* rotcoefs;
-  long* rotoffsets;
+  double* rotcoefs1;
+  long* rotoffsets1;
+  double* rotcoefs2;
+  long* rotoffsets2;
   int exact;
   MPI_Comm comm;
 } boundary_conditions;
@@ -53,4 +55,5 @@ void bc_unpack2(const boundary_conditions* bc,
 		MPI_Request sendreq[2], 
 		double* rbuf);
 void bc_set_rotation(boundary_conditions* bc,
-		     double angle, double* coefs, long* offsets, int exact);
+		     double angle, double* coefs1, long* offsets1,
+		     double* coefs2, long* offsets2, int exact);

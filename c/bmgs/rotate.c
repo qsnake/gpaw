@@ -1,8 +1,8 @@
 #include <assert.h>
 #include "bmgs.h"
 #include <stdio.h>
-void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle,
-		    double* coefs1, long* v1, double* coefs2, long* v2, int exact, int signchange)
+void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle, int d,
+		    double* coefs1, long* v1, double* coefs2, long* v2, int exact)
 {
 #if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
   assert(2 + 2 == 5);
@@ -14,20 +14,27 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle,
     {
       const int Nsq = N*N;
       long *v;
-      if (signchange == 0) {
-	double* c1 = coefs1; double* c2 = coefs1+Nsq; 
-	double* c3 = coefs1+2*Nsq; double* c4 = coefs1+3*Nsq;
+      double* c1;
+      double* c2;
+      double* c3;
+      double* c4;
+      if (d == 1) {
+	c1 = coefs1; 
+	c2 = coefs1+Nsq; 
+	c3 = coefs1+2*Nsq;
+	c4 = coefs1+3*Nsq;
 	v = v1; }
       else {
-	double* c1 = coefs2; double* c2 = coefs2+Nsq; 
-	double* c3 = coefs2+2*Nsq; double* c4 = coefs2+3*Nsq;
+	c1 = coefs2;
+	c2 = coefs2+Nsq; 
+	c3 = coefs2+2*Nsq;
+	c4 = coefs2+3*Nsq;
 	v = v2; }
-      double* c1 = coefs; double* c2 = coefs+Nsq; 
-      double* c3 = coefs+2*Nsq; double* c4 = coefs+3*Nsq;
       for (int i1 = 0; i1 < Nsq; i1++)
 	{
 	  for (long i0Nsq = 0; i0Nsq < size[0]*Nsq ; i0Nsq+=Nsq)
-	    {*(b+i0Nsq) = *c1*(*(a+i0Nsq+*v)) + *c2*(*(a+i0Nsq+*v+1)) + *c3*(*(a+i0Nsq+*v+N)) + *c4*(*(a+i0Nsq+*v+N+1));
+	    {
+	      *(b+i0Nsq) = *c1*(*(a+i0Nsq+*v)) + *c2*(*(a+i0Nsq+*v+1)) + *c3*(*(a+i0Nsq+*v+N)) + *c4*(*(a+i0Nsq+*v+N+1));
 	    } 
 	  c1++; c2++; c3++; c4++; v++; b++;
 	}
