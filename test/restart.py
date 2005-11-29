@@ -12,4 +12,9 @@ if 1:
     calc.Write('tmp.nc')
 h = Calculator.ReadAtoms('tmp.nc', out=None)
 equal(e, h.GetPotentialEnergy(), 3e-5)
+
+calc = h.GetCalculator()
+elec_states = calc.GetElectronicStates()
+equal(len(elec_states),1,0)
+
 os.remove('tmp.nc')
