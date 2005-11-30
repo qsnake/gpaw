@@ -16,6 +16,6 @@
 #  define Py_RETURN_NONE return Py_INCREF(Py_None), Py_None
 #endif
 
-#define INTP(a) ((long*)((a)->data))
+#define LONGP(a) ((long*)((a)->data))
 #define DOUBLEP(a) ((double*)((a)->data))
 #define COMPLEXP(a) ((double_complex*)((a)->data))

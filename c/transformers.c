@@ -118,8 +118,8 @@ static PyObject* Transformer_rotation(TransformerObject *self, PyObject *args)
 			&rotcoefs2, &rotoffsets2, &exact))
     return NULL;
 
-  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs1), INTP(rotoffsets1), 
-		  DOUBLEP(rotcoefs2), INTP(rotoffsets2), exact);
+  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs1), LONGP(rotoffsets1), 
+		  DOUBLEP(rotcoefs2), LONGP(rotoffsets2), exact);
   Py_INCREF(rotcoefs1);  // XXX
   Py_INCREF(rotoffsets1);  // XXX
   Py_INCREF(rotcoefs2);  // XXX
@@ -175,14 +175,14 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   if (comm_obj != Py_None)
     comm = ((MPIObject*)comm_obj)->comm;
 
-  const long (*nb)[2] = (const long (*)[2])INTP(neighbors);
+  const long (*nb)[2] = (const long (*)[2])LONGP(neighbors);
   int padding[2] = {k * p / 2 - 1, k * p / 2 - p};
   if (interpolate)
     {
       padding[0] = k / 2 - 1;
       padding[1] = k / 2;
     }
-  self->bc = bc_init(INTP(size), padding, nb, comm, real, 0);
+  self->bc = bc_init(LONGP(size), padding, nb, comm, real, 0);
   const int* size1 = self->bc->size1;
   const int* size2 = self->bc->size2;
 

@@ -236,9 +236,9 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
   if (self == NULL)
     return NULL;
 
-  const long* size0 = INTP(size0_array);
-  const long* size = INTP(size_array);
-  const long* start = INTP(start_array);
+  const long* size0 = LONGP(size0_array);
+  const long* size = LONGP(size_array);
+  const long* start = LONGP(start_array);
   const double* h = DOUBLEP(h_array);
   const double* C = DOUBLEP(C_array);
   self->dv = h[0] * h[1] * h[2];

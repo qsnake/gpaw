@@ -119,8 +119,8 @@ static PyObject* Operator_rotation(OperatorObject *self, PyObject *args)
 			&rotcoefs2, &rotoffsets2, &exact))
     return NULL;
 
-  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs1), INTP(rotoffsets1),
-		  DOUBLEP(rotcoefs2), INTP(rotoffsets2), exact);
+  bc_set_rotation(self->bc, angle, DOUBLEP(rotcoefs1), LONGP(rotoffsets1),
+		  DOUBLEP(rotcoefs2), LONGP(rotoffsets2), exact);
   Py_INCREF(rotcoefs1);  // XXX
   Py_INCREF(rotoffsets1);  // XXX
   Py_INCREF(rotcoefs2);  // XXX
@@ -176,16 +176,16 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
     return NULL;
 
   self->stencil = bmgs_stencil(coefs->dimensions[0], DOUBLEP(coefs),
-			       INTP(offsets), range, INTP(size));
+			       LONGP(offsets), range, LONGP(size));
 
-  const long (*nb)[2] = (const long (*)[2])INTP(neighbors);
+  const long (*nb)[2] = (const long (*)[2])LONGP(neighbors);
   int padding[2] = {range, range};
 
   MPI_Comm comm = MPI_COMM_NULL;
   if (comm_obj != Py_None)
     comm = ((MPIObject*)comm_obj)->comm;
 
-  self->bc = bc_init(INTP(size), padding, nb, comm, real, cfd);
+  self->bc = bc_init(LONGP(size), padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
   self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 

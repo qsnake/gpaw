@@ -31,13 +31,13 @@ static PyObject * mpi_receive(MPIObject *self, PyObject *args)
     n *= a->dimensions[d];
   if (block)
     {
-      MPI_Recv(INTP(a), n, MPI_BYTE, src, 77, self->comm, MPI_STATUS_IGNORE);
+      MPI_Recv(LONGP(a), n, MPI_BYTE, src, 77, self->comm, MPI_STATUS_IGNORE);
       Py_RETURN_NONE;
     }
   else
     {
       MPI_Request req;
-      MPI_Irecv(INTP(a), n, MPI_BYTE, src, 77, self->comm, &req);
+      MPI_Irecv(LONGP(a), n, MPI_BYTE, src, 77, self->comm, &req);
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
@@ -54,13 +54,13 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
     n *= a->dimensions[d];
   if (block)
     {
-      MPI_Send(INTP(a), n, MPI_BYTE, dest, 77, self->comm);
+      MPI_Send(LONGP(a), n, MPI_BYTE, dest, 77, self->comm);
       Py_RETURN_NONE;
     }
   else
     {
       MPI_Request req;
-      MPI_Isend(INTP(a), n, MPI_BYTE, dest, 77, self->comm, &req);
+      MPI_Isend(LONGP(a), n, MPI_BYTE, dest, 77, self->comm, &req);
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
@@ -103,8 +103,8 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
         {
           double* b = (double*)malloc(n * sizeof(double));
           // XXX Use MPI_IN_PLACE!!
-          MPI_Allreduce(INTP(a), b, n, MPI_DOUBLE, MPI_SUM, self->comm);
-          memcpy(INTP(a), b, n * sizeof(double));
+          MPI_Allreduce(LONGP(a), b, n, MPI_DOUBLE, MPI_SUM, self->comm);
+          memcpy(LONGP(a), b, n * sizeof(double));
           free(b);
         }
       else
@@ -115,10 +115,10 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
           if (rank == root)
             b = (double*)malloc(n * sizeof(double));
           // XXX Use MPI_IN_PLACE!!
-          MPI_Reduce(INTP(a), b, n, MPI_DOUBLE, MPI_SUM, root, self->comm);
+          MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_SUM, root, self->comm);
           if (rank == root)
             {
-              memcpy(INTP(a), b, n * sizeof(double));
+              memcpy(LONGP(a), b, n * sizeof(double));
               free(b);
             }
         }
@@ -136,7 +136,7 @@ static PyObject * mpi_allgather(MPIObject *self, PyObject *args)
   for (int d = 0; d < a->nd; d++)
     n *= a->dimensions[d];
   // What about endianness????
-  MPI_Allgather(INTP(a), n, MPI_BYTE, INTP(b), n, MPI_BYTE, self->comm);
+  MPI_Allgather(LONGP(a), n, MPI_BYTE, LONGP(b), n, MPI_BYTE, self->comm);
   Py_RETURN_NONE;
 }
  
@@ -151,9 +151,9 @@ static PyObject * mpi_gather(MPIObject *self, PyObject *args)
   for (int d = 0; d < a->nd; d++)
     n *= a->dimensions[d];
   if (b == 0)  // What about endianness????
-    MPI_Gather(INTP(a), n, MPI_BYTE, 0, n, MPI_BYTE, root, self->comm);
+    MPI_Gather(LONGP(a), n, MPI_BYTE, 0, n, MPI_BYTE, root, self->comm);
   else
-    MPI_Gather(INTP(a), n, MPI_BYTE, INTP(b), n, MPI_BYTE, root, self->comm);
+    MPI_Gather(LONGP(a), n, MPI_BYTE, LONGP(b), n, MPI_BYTE, root, self->comm);
   Py_RETURN_NONE;
 }
  
@@ -166,7 +166,7 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
   int n = buf->descr->elsize;
   for (int d = 0; d < buf->nd; d++)
     n *= buf->dimensions[d];
-  MPI_Bcast(INTP(buf), n, MPI_BYTE, root, self->comm);
+  MPI_Bcast(LONGP(buf), n, MPI_BYTE, root, self->comm);
   Py_RETURN_NONE;
 }
 
@@ -275,7 +275,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   // Numeric arrays are long (might be different from ints)
   // More clever ways are welcomed...
   int* ranks_int = (int*) malloc(n*sizeof(int));
-  long* ranks_long = INTP(ranks);
+  long* ranks_long = LONGP(ranks);
   for (int i=0; i < n ; i++ )
     ranks_int[i]=ranks_long[i];
   MPI_Group_incl(group, n, ranks_int, &newgroup);
