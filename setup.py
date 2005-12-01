@@ -100,7 +100,9 @@ elif machine == 'x86_64':
     extra_link_args += ['-Wl,-rpath=/opt/acml/gnu64/lib']
     print 'Using ACML library'
 
-    output = os.popen('mpicc -showme').read()
+    output = os.popen('mpicc -showme 2>/dev/null').read()
+    if output == '':
+        output = os.popen('mpicc -show 2>/dev/null').read()
 
     if output == '':
         print 'SERIAL version'
@@ -166,7 +168,9 @@ else:
         else:
             libraries += ['blas', 'lapack']
 
-    output = os.popen('mpicc -showme').read()
+    output = os.popen('mpicc -showme 2>/dev/null').read()
+    if output == '':
+        output = os.popen('mpicc -show 2>/dev/null').read()
 
     if output != '':
         define_macros.append(('PARALLEL', '1'))
