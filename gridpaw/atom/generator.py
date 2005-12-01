@@ -50,8 +50,7 @@ class Generator(AllElectron):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
 
-    def run(self, core, rcut, extra, logderiv=True, vt0=None,
-            constructX=False):
+    def run(self, core, rcut, extra, logderiv=True, vt0=None):
 
         self.core = core
         if type(rcut) is float:
@@ -479,15 +478,6 @@ class Generator(AllElectron):
             
         self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
                       nc, nct, Ekincore, dK_ln1n2, vbar)
-
-        if constructX:
-            from gridpaw.exx import constructX
-            from gridpaw.exx import atomicExactExchange as aExx
-            import pickle
-            f = open(self.symbol +'.' +self.xcname + '.VC','w')
-            X_p = constructX(self)
-            ExxC = aExx(self,'core-core')
-            pickle.dump((ExxC,X_p),f)
 
     def diagonalize(self, h):
         ng = 300

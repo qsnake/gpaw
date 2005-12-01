@@ -1,7 +1,7 @@
 from ASE import Atom, ListOfAtoms
 from gridpaw import Calculator
 from gridpaw.atom.all_electron import AllElectron as AE
-from gridpaw.exx import atomicExactExchange as aExx
+from gridpaw.exx import atomic_exact_exchange as aExx
 
 a = 5.2
 b = a / 2
@@ -26,8 +26,8 @@ eH    = H.GetPotentialEnergy()
 eH2   = H2.GetPotentialEnergy()
 excH  = calc.GetXCEnergy()
 excH2 = calc2.GetXCEnergy()
-exxH  = calc.GetExactExchange()[0]
-exxH2 = calc2.GetExactExchange()[0]
+exxH  = calc.GetExactExchange()
+exxH2 = calc2.GetExactExchange()
 
 atom    = AE('H'); atom.run()
 ExxAtom = aExx(atom)

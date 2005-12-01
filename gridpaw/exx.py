@@ -2,12 +2,12 @@ import Numeric as num
 from math import pi
 
 class ExxSingle:
-    '''Class used to calculate the exchange energy of given
-    single orbital electron density'''
+    """Class used to calculate the exchange energy of given
+    single orbital electron density"""
     
     def __init__(self, gd):
-        '''Class should be initialized with a grid_descriptor 'gd' from
-        the gridpaw module'''       
+        """Class should be initialized with a grid_descriptor 'gd' from
+        the gridpaw module"""       
         self.gd = gd
 
         # determine r^2 and r matrices
@@ -27,19 +27,19 @@ class ExxSingle:
         self.EGaussSelf1 = -num.sqrt(a/2/pi)
 
         # calculate reciprocal lattice vectors
-        dim = num.array(gd.N_c,typecode=num.Int);
-        dim = num.reshape(dim,(3,1,1,1))
-        dk  = 2*pi / num.array(gd.domain.cell_c,typecode=num.Float);
-        dk  = num.reshape(dk,(3, 1, 1, 1)) 
-        k   = ((num.indices(self.gd.N_c)+dim/2)%dim - dim/2)*dk
-        self.k2 = 1.0*sum(k**2)
+        dim = gd.N_c.copy()
+        dim.shape = (3,1,1,1)
+        dk = 2*pi / gd.domain.cell_c
+        dk.shape = (3, 1, 1, 1)
+        k = ((num.indices(self.gd.N_c)+dim/2)%dim - dim/2)*dk
+        self.k2 = sum(k**2)
         self.k2[0,0,0] = 1.0
 
         # determine N^3
         self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
 
-    def getExchangeEnergy(self,n, method='recip', Z=None):
-        '''Returns exchange energy of input density 'n' '''
+    def get_single_exchange(self, n, method = 'recip', Z = None):
+        """Returns exchange energy of input density 'n' """
 
         # make density charge neutral, and get energy correction
         Ecorr = self.neutralize(n, Z)
@@ -56,22 +56,16 @@ class ExxSingle:
             nk = fftnd(n)
             exx = -0.5*self.gd.integrate(num.absolute(nk)**2*4*pi/self.k2)\
                   /(self.N3)
-        else:
-            print 'method name ', method, 'not recognized'
+        else: raise RunTimeError('method name ', method, 'not recognized')
 
         # return resulting exchange energy
-        return exx+Ecorr
+        return exx + Ecorr
     
     def neutralize(self, n, Z):
-        '''Method for neutralizing input density 'n' with nonzero total
-        charge. Returns energy correction caused by making 'n' neutral'''
+        """Method for neutralizing input density 'n' with nonzero total
+        charge. Returns energy correction caused by making 'n' neutral"""
 
-        if (Z==None):
-            Z = self.gd.integrate(n)
-        elif (Z.__class__ == int):
-            Z=float(Z)
-        elif (Z.__class__ != float):
-            print 'Error total charge not a number or string "none"!'
+        if Z==None: Z = self.gd.integrate(n)
         
         if Z<1e-8: return 0
         else:
@@ -79,8 +73,8 @@ class ExxSingle:
             ng = Z*self.ng1 # gaussian density
             
             # calculate energy corrections
-            EGaussN    = -0.5*self.gd.integrate(n*Z*self.vgauss1)
-            EGaussSelf = Z**2*self.EGaussSelf1
+            EGaussN    = -0.5 * Z * self.gd.integrate(n*self.vgauss1)
+            EGaussSelf = Z**2 * self.EGaussSelf1
             
             # neutralize density
             n -= ng
@@ -89,12 +83,12 @@ class ExxSingle:
             Ecorr = - EGaussSelf + 2 * EGaussN
             return Ecorr
 
-def exactExchange(wf, nuclei, gd):
-    '''Calculate exact exchange energy'''
+def get_exact_exchange(wf, nuclei, gd, decompose = False):
+    """Calculate exact exchange energy"""
     from gridpaw.localized_functions import create_localized_functions
 
     # ensure gamma point calculation
-    assert (wf.nkpts == 1)
+    assert wf.typecode == num.Float
 
     # construct gauss functions
     gt_aL=[]
@@ -104,7 +98,7 @@ def exactExchange(wf, nuclei, gd):
                                                 nucleus.spos_c))
 
     # load single exchange calculator
-    exx_single = ExxSingle(gd).getExchangeEnergy
+    exx_single = ExxSingle(gd).get_single_exchange
 
     # calculate exact exchange
     exxs = exxa = 0.0
@@ -114,7 +108,7 @@ def exactExchange(wf, nuclei, gd):
                 # calculate joint occupation number
                 fnm = (wf.kpt_u[spin].f_n[n] *
                        wf.kpt_u[spin].f_n[m]) * wf.nspins / 2.
-
+                
                 # determine current exchange density
                 n_G = wf.kpt_u[spin].psit_nG[m]*\
                       wf.kpt_u[spin].psit_nG[n]
@@ -135,41 +129,57 @@ def exactExchange(wf, nuclei, gd):
                     exxa -= fnm*num.dot(D_p, num.dot(C_pp, D_p))
                     
                 # determine total charge of exchange density
-                if (n == m): Z = 1
+                if n == m: Z = 1
                 else: Z = 0
 
                 # add the nm contribution to exchange energy
-                exxs += fnm*exx_single(n_G, Z = Z)
+                exxs += fnm * exx_single(n_G, Z = Z)
 
         # Determine the valence-core and core-core contributions
         ExxValCore = ExxCore = 0.0
-##         import pickle
-##         from gridpaw import home
+        import pickle
+        from gridpaw import home
 
-##         # add val-core and core-core contribution for each nucleus
-##         for nucleus in nuclei:
-##             # load data from file
-##             filename = home + '/trunk/gridpaw/atom/VC/' + \
-##                        nucleus.setup.symbol + '.' + \
-##                        nucleus.setup.xcname + '.VC'
-##             f = open(filename,'r')
-##             Exxc, X_p = pickle.load(f)
+        # add val-core and core-core contribution for each nucleus
+        for nucleus in nuclei:
+            try:
+                # load data from file
+                filename = home + '/trunk/gridpaw/atom/VC/' + \
+                           nucleus.setup.symbol + '.' + \
+                           nucleus.setup.xcname + '.VC'
+                f = open(filename,'r')
+                Exxc, X_p = pickle.load(f)
 
-##             # add core-core contribution from current nucleus
-##             ExxCore += Exxc
+                # add core-core contribution from current nucleus
+                ExxCore += Exxc
+                
+                # add val-core contribution from current nucleus
 
-##             # add val-core contribution from current nucleus
-##             ExxValCore += -num.dot(nucleus.D_sp[0],X_p)
+##              Hack for atomic Neon                
+##              D_p =  num.zeros((13,13))
+##              D_p[0,0] = D_p[2,2] = D_p[3,3] = D_p[4,4] = 2.
+##              D_p = packNEW(D_p)    
 
+                D_p = nucleus.D_sp[0]
+                ExxValCore += -num.dot(D_p,X_p)
+                
+            except IOError:
+                print 'WARNING: no VC file for', nucleus.setup.symbol
+                print 'file', filename, 'missing'
+                print 'Exact exchange energy may be incorrect'
+                
     # add all contributions, to get total exchange energy
     exx = exxs + exxa + ExxValCore + ExxCore
 
     # return result
-    return num.array([exx, exxs + exxa, ExxValCore, ExxCore])
+    if decompose:
+        return num.array([exx, exxs + exxa, ExxValCore, ExxCore])
+    else:
+        return exx
 
-def atomicExactExchange(atom, type = 'all'):
-    '''Returns the exact exchange energy of the atom defined by the
-    instantiated AllElectron object "atom" '''
+def atomic_exact_exchange(atom, type = 'all'):
+    """Returns the exact exchange energy of the atom defined by the
+    instantiated AllElectron object 'atom' """
 
     # get Gaunt coefficients
     from gridpaw.gaunt import gaunt
@@ -178,7 +188,7 @@ def atomicExactExchange(atom, type = 'all'):
     from gridpaw.setup import Hartree
 
     # maximum angular momentum
-    Lmax = (2*max(atom.l_j)+1)**2
+    Lmax = 2 * max(atom.l_j) + 1
 
     # number of valence, Nj, and core, Njcore, orbitals
     Nj     = len(atom.n_j)
@@ -191,12 +201,12 @@ def atomicExactExchange(atom, type = 'all'):
     elif type == 'val-core':
         nstates = range(Njcore,Nj)
         mstates = range(Njcore)
-    else: 'ERROR unknown type: ', type
+    else: raise RunTimeError('Unknown type of exchange: ', type)
 
     # diagonal +-1 elements in Hartree matrix
     a1_g  = 1.0 - 0.5 * (atom.d2gdr2 * atom.dr**2)[1:]
     a2_lg = -2.0 * num.ones((Lmax, atom.N - 1), num.Float)
-    x_g   = ((atom.dr / atom.r)**2)[1:]
+    x_g   = (atom.dr[1:] / atom.r[1:])**2
     for l in range(1, Lmax):
         a2_lg[l] -= l * (l + 1) * x_g
     a3_g = 1.0 + 0.5 * (atom.d2gdr2 * atom.dr**2)[1:]
@@ -232,11 +242,11 @@ def atomicExactExchange(atom, type = 'all'):
 
                 # take all m1 m2 and m values of Gaunt matrix of the form
                 # G(L1,L2,L) where L = {l,m}
-                G = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2,\
-                          l**2:(l+1)**2]
+                G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2,\
+                           l**2:(l+1)**2]**2
 
                 # add to total potential
-                vr2dr += vr2drl * num.sum(G.copy().flat)**2
+                vr2dr += vr2drl * num.sum(G2.copy().flat)
 
             # add to total exchange the contribution from current two states
             Exx += -.5 * f12 * num.dot(n,vr2dr)
@@ -244,20 +254,11 @@ def atomicExactExchange(atom, type = 'all'):
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.
 
-    # print info for test purposes only
-    print ''
-    print 'Atomic Exx of ' + atom.symbol + ' with:'
-    print str(Nj) + ' states'
-    print str(Njcore) + ' core states'
-    print str(len(range(Njcore,Nj))) + ' valence states'
-    print 'type = ' + type
-    print 'Exx = ', Exx
-
     # return exchange energy
     return Exx
 
 def constructX(gen):
-    '''Construct the X_p^a matrix for the given atom'''
+    """Construct the X_p^a matrix for the given atom"""
 
     # get Gaunt coefficients
     from gridpaw.gaunt import gaunt
@@ -266,7 +267,7 @@ def constructX(gen):
     from gridpaw.setup import Hartree
 
     # maximum angular momentum
-    Lmax = (2*max(gen.l_j,gen.lmax)+1)**2
+    Lmax = 2 * max(gen.l_j,gen.lmax) + 1
 
     # unpack valence states * r:
     uv_j = []
@@ -340,11 +341,11 @@ def constructX(gen):
             i1 += 2 * lv1 + 1
 
     # pack X_ii matrix
-    X_p = packNEW(X_ii)
+    X_p = packNEW(X_ii, symmetric = True)
     return X_p
 
 def coreStates(symbol, n,l,f):
-    '''method returning the number of core states for given element'''
+    """method returning the number of core states for given element"""
     
     from gridpaw.atom.configurations import configurations
     from gridpaw.atom.generator import parameters
@@ -372,12 +373,12 @@ def coreStates(symbol, n,l,f):
 
     return Njcore
 
-''' AUXHILLIARY FUNCTIONS... should be moved to Utillities module'''
+# AUXHILLIARY FUNCTIONS... should be moved to Utillities module... XXX
 
 def rSquared(gd):
-    '''constructs and returns a matrix containing the square of the distance
+    """constructs and returns a matrix containing the square of the distance
     from the origin which is placed in the center of the box described by the
-    given griddescriptor "gd". '''
+    given griddescriptor 'gd'. """
     
     I  = num.indices(gd.N_c)
     dr = num.reshape(gd.h_c,(3,1,1,1))
@@ -395,8 +396,8 @@ def rSquared(gd):
     return r2
 
 def erf3D(M):
-    '''return matrix with the value of the error function evaluated for each
-    element in input matrix "M". '''
+    """return matrix with the value of the error function evaluated for each
+    element in input matrix 'M'. """
     
     from gridpaw.utilities import erf
     
@@ -408,8 +409,8 @@ def erf3D(M):
                 res[k,l,m] = erf(M[k,l,m])
     return res
     
-def packNEW(M2):
-    '''new pack method'''
+def packNEW(M2, symmetric = False):
+    """new pack method"""
     
     n = len(M2)
     M = num.zeros(n * (n + 1) / 2, M2.typecode())
@@ -420,5 +421,8 @@ def packNEW(M2):
         for c in range(r + 1, n):
             M[p] =  M2[r, c] + num.conjugate(M2[c,r])
             p += 1
+            if symmetric:
+                error = abs(M2[r, c] - num.conjugate(M2[c, r]))
+                if error > 1e-6: print 'Error not symmetric by: ', error
     assert p == len(M)
     return M
