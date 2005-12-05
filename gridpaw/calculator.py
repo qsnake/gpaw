@@ -443,7 +443,10 @@ class Calculator:
     
     def GetIBZKPoints(self):
         """Return k-points in the irreducible part of the Brillouin zone."""
-        return self.paw.ibzk_kc
+        try: 
+            return self.paw.ibzk_kc
+        except:
+            return None
 
     # Alternative name:
     GetKPoints = GetIBZKPoints
