@@ -715,6 +715,10 @@ class Paw:
             e = 100.0
         return e * self.Ha
 
+    def get_ibz_kpoints(self):
+        """Return array of k-points in the irreducible part of the BZ."""
+        return self.wf.ibzk_kc
+
     def get_density_array(self):
         """Return pseudo-density array."""
         c = 1.0 / self.a0**3
