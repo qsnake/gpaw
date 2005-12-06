@@ -2,48 +2,43 @@ from gridpaw import Calculator
 from ASE import ListOfAtoms, Atom
 import Numeric as num
 from elements import elements
+import sys
 
 
-def atom_calc(symbol, xc='LDA', gpoints=28, a=5.0):
+def atom_calc(symbol, xc='LDA', gpoints=28, L=5.0):
 
-    """Atom_calc function
-    Calculate the total energy of the atom, when varying its position in the
-    cell with respect to the grid points.
-    """
+    """Eggbox test.
+    
+    Calculate the total energy of the atom, when varying its position
+    in the cell with respect to the grid points. ``symbol`` is the atomic
+    symbol name, ``xc`` is the exchange-correlation functional, gpoints is the
+    number of gridpoints in each direction and ``L`` is the size of the unit
+    cell. A list of 101 energies is returned."""
 
-    # calculation of the atom
+    energies = []
 
-    total_energy = []
-    atom_position = []
+    mag = elements[symbol]
 
-    m1 = elements[symbol]
-
-    atom = ListOfAtoms([Atom(symbol, (0, 0, 0), magmom=m1[0])],
-                       cell=(a, a, a), periodic=True)
+    atom = ListOfAtoms([Atom(symbol, (0, 0, 0), magmom=mag[0])],
+                       cell=(L, L, L), periodic=True)
 
     calc = Calculator(gpts=(gpoints, gpoints, gpoints), xc=xc,
-                      out="%s-%s.out" % (symbol, xc))
+                      out="%s-eggbox-%s.out" % (symbol, xc))
     atom.SetCalculator(calc)
 
-    h = a / gpoints
+    h = L / gpoints
 
     for j in range(101):
         k = j * h / 100.0
 
-        atom.SetCartesianPositions([ (k, 0, 0) ])
+        atom.SetCartesianPositions([(k, 0, 0)])
 
         e1 = atom.GetPotentialEnergy()
 
-        total_energy.append(e1)
+        energies.append(e1)
 
-    return total_energy
+    return energies
 
-
-if __name__ == '__main__':
-    import sys
-    symbol = sys.argv[1]
-    
-    atom_calc(symbol)
 
 
 

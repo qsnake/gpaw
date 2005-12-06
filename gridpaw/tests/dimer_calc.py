@@ -1,38 +1,40 @@
 from gridpaw import Calculator
 from ASE import ListOfAtoms, Atom
 from elements import elements
+import sys
 
 
-def dimer_calc(symbol, xc='LDA', gpoints=28, a = 7.0, n=10):
+def dimer_calc(symbol, xc='LDA', gpoints=28, L=None, n=10):
 
-    """Dimer_calc function
+    """Dimer_calc function.
+    
     Calculate the bond length of any given dimer for different bond lengths:
-    Symbol is the atomic symbol, xc is the exchange correlation function
-    (default is LDA), gpoints is the number of grid points in the cell in each
-    direction (default is 28), a is the length of the cubic cell (default is 7
-    aangstroem) and n is the number of the variation of the bond length
-    (default is 10).
+    ``Symbol`` is the atomic symbol name, ``xc`` is the exchange correlation
+    functional, ``gpoints`` is the number of grid points in the cell in each
+    direction, ``L`` is the size of the unit cell and ``n`` is number of the
+    variation of the bond length. A list of n number of energies and the
+    related bond lengths are returned.
     """
 
     mag = elements[symbol]
 
-    # calculation of the atom
-    atom = ListOfAtoms([Atom(symbol, (a/2, a/2, a/2), magmom=mag[0])],
-                       cell=(a, a, a))
+    # calculation of the atom:
+    atom = ListOfAtoms([Atom(symbol, (L/2, L/2, L/2), magmom=mag[0])],
+                       cell=(L, L, L))
 
     # gridpaw calculator:
     calc = Calculator(gpts=(gpoints, gpoints, gpoints), xc=xc,
-                      out="%s-%s.out" % (symbol, xc))
+                      out="%s2-atom-%s.out" % (symbol, xc))
 
     atom.SetCalculator(calc)
     e1 = atom.GetPotentialEnergy()
 
-    # calculation of the dimer
-    molecule = ListOfAtoms([Atom(symbol, (a/2 - mag[2]/2, a/2, a/2),
+    # calculation of the dimer:
+    molecule = ListOfAtoms([Atom(symbol, (L/2 - mag[2]/2, L/2, L/2),
                                  magmom=mag[1]),
-                            Atom(symbol, (a/2 + mag[2]/2, a/2, a/2),
+                            Atom(symbol, (L/2 + mag[2]/2, L/2, L/2),
                                  magmom=mag[1])],
-                            cell = (a, a, a))
+                            cell = (L, L, L))
 
     calc = Calculator(gpts=(gpoints, gpoints, gpoints), xc=xc,
                       out="%s-dimer-%s.out" % (symbol, xc))
@@ -40,20 +42,12 @@ def dimer_calc(symbol, xc='LDA', gpoints=28, a = 7.0, n=10):
    
     energies = []
     bondlengths = []
-
-    m = ( n - 1 )/2.0
-    f = int(m)
-  
-    if m > f:
-        i = 1
-    else:
-        i = 0
    
-    for j in range(-f, f + 1 + i):
-        k = mag[2] + 1 * j / 100.0
+    for j in range(n):
+        k = mag[2] + 0.05 * (j - 0.5 * n) / n
 
-        molecule.SetCartesianPositions([(a/2 - k/2, a/2, a/2),
-                                        (a/2 + k/2, a/2, a/2)])
+        molecule.SetCartesianPositions([(L/2 - k/2, L/2, L/2),
+                                        (L/2 + k/2, L/2, L/2)])
         e2 = molecule.GetPotentialEnergy()
         e3 = (2 * e1 - e2)
         
@@ -61,14 +55,3 @@ def dimer_calc(symbol, xc='LDA', gpoints=28, a = 7.0, n=10):
         energies.append(e3)
        
     return bondlengths, energies
-
- 
-if __name__ == '__main__':
-    import sys
-    symbol = sys.argv[1]
-    
-    dimer_calc(symbol)
-
-
-
-

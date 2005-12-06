@@ -1,14 +1,14 @@
 
 """ List of elements:
-This is a list of the atoms, which includes; The atomic symbol, the
-magnetic moment of the atom, the magnetic moment of the dimer, the experimental
+This is a list of the atoms, which includes; The atomic symbol, the magnetic
+moment of the atom, the magnetic moment of the dimer/bulk, the experimental
 value of the bond length in the dimer and the experimental value of the lattice
-constant a/c for the bulk crystal structure.
+constants a and c for the bulk crystal structure.
 """
 
 #      symbol, mm atom, mm dimer, bond length, lattice a, lattice c, eq crystal
 
-elements = {'H':  (1, 0, 0.74, 4.70, 3.40, 'hcp'),
+elements = {'H':  (1, 0, 0.74, 4.70, 3.40, 'dimer'),
             'He': (0, 0, 3.00, 4.24, 4.24, 'fcc'),
             'Li': (1, 0, 3.04, 3.51, 3.51, 'bcc'),
             'Be': (0, 0, 2.23, 2.29, 3.58, 'hcp'),
@@ -20,7 +20,7 @@ elements = {'H':  (1, 0, 0.74, 4.70, 3.40, 'hcp'),
             'Ne': (0, 0, 3.13, 4.43, 4.43, 'fcc'),
             'Na': (1, 0, 3.72, 4.29, 4.29, 'bcc'),
             'Mg': (0, 0, 3.20, 3.21, 5.21, 'hcp'),
-            'Al': (1, 0, 2.86, 2.83, 4.61, 'fcc'),  
+            'Al': (1, 0, 2.86, 4.05, 4.05, 'fcc'),  
             'Si': (2, 0, 2.35, 5.43, 5.43, 'diamond'),
             'P':  (3, 0, 2.21),
             'S':  (2, 1, 2.05),

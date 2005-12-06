@@ -4,44 +4,46 @@ import Numeric as num
 import pickle
 import matplotlib
 matplotlib.use('TkAgg')
-import pylab as py
+from pylab import *
 
 
 def eggboxfit(filename):
     
-    """eggboxfit function
+    """Eggbox report.
+    
     Load the pickle file made by the eggbox function. Calculate the delta
     energy (the difference between max and min of the total energy) and the max
-    force for each h, which include the whole array of the total energies at
-    varying positions. Then plots those values as function of the grid space h.
+    force for each grid spacing, h, at varying positions. Then plots those
+    values as function of the grid spacings, h.
     """
 
-    a = open(filename)
-    object = pickle.load(a)
+    file = open(filename)
+    object = pickle.load(file)
 
-    h = object['array of grid space']
+    h = object['Grid spacings']
     s = object['Atomic symbol']
-    e = object['Total energy of atom']
-    xc = object['exchange-correlation']
-    g = object['array of grid points']
-
-    f_E = open('Delta_Energy.dat', 'w')
-    f_f = open('Max_Forces.dat', 'w')
+    e = object['Total energies']
+    xc = object['Exchange-correlation functional']
 
     fmax = []
     delta_e = []
+    position = []
 
-    for i in range( len(h) ):
+    for i in range(len(h)):
         
         tot = max(e[i]) - min(e[i])
         delta_e.append(tot)
     
         f = (e[i,1:] - e[i,:-1]) / (h[i] / 101)
-        fm = max( abs(f) )
+        fm = max(abs(f))
         fmax.append(fm)
+        
+    energy = e[len(h)/2,:]
+    grid = h[len(h)/2]
 
-    print >> f_f, h, fmax
-    print >> f_E, h, delta_e
+    for j in range(101):
+        k = j / 100.0
+        position.append(k)
 
     # The figure are plotted
 
@@ -49,39 +51,64 @@ def eggboxfit(filename):
             'color'      : 'b',
             'fontweight' : 'bold',
             'fontsize'   : 11}
+    
+    figure(figsize = (10, 10))
+    subplot(311)
+    plot(h, delta_e, 'ro')
+    title("%s eggbox-test with %s" %(s, xc), font)
+    ylabel(r'$\Delta E_{max}[meV]$', font)
 
-    py.subplot(211)
-    py.plot(h, delta_e, 'ro')
-    py.title("Delta function of %s in eggbox with %s" %(s, xc), font)
-    py.ylabel('Max energy difference (eV)', font)
-
-    delta_min = py.amin(delta_e)
-    delta_max = py.amax(delta_e)
+    delta_min = amin(delta_e)
+    delta_max = amax(delta_e)
     delta_wid = abs(delta_max - delta_min)
-    h_min = py.amin(h)
-    h_max = py.amax(h)
+    h_min = amin(h)
+    h_max = amax(h)
     h_wid = abs(h_max - h_min)
-    py.axis([h_min-0.05*h_wid, h_max+0.05*h_wid,
+    axis([h_min-0.05*h_wid, h_max+0.05*h_wid,
              delta_min-0.05*delta_wid, delta_max+0.05*delta_wid])
     
-    py.subplot(212)
-    py.plot(h, fmax, 'g^')
-    py.xlabel('Grid space (Aangstroem)', font)
-    py.ylabel('Max force', font)
+    subplot(312)
+    plot(h, fmax, 'g^')
+    xlabel('h[Ang]', font)
+    ylabel(r'$F_{max}[eV/Ang]$', font)
+    axhline(y = 0.05, color = 'b')
+    text(h[1], 0.05, 'max force', font, color='k')
 
-    f_min = py.amin(fmax)
-    f_max = py.amax(fmax)
+    f_min = amin(fmax)
+    f_max = amax(fmax)
     f_wid = abs(f_max - f_min)
-    py.axis([h_min-0.05*h_wid, h_max+0.05*h_wid,
-             f_min-0.05*f_wid, f_max+0.05*f_wid])
+    f_limit_min = f_min - 0.1 * f_wid
+    f_limit_max = f_max + 0.1 * f_wid
+
+    if f_limit_max < 0.05:    
+        f_limit_max = 0.05 + 0.2 * f_wid
+    elif f_limit_min > 0.05:
+        f_limit_min = 0.05 - 0.2 * f_wid
     
-    py.savefig('%s-%s-eggbox-test.png' %(s, xc))
-    py.show()
+    axis([h_min-0.05*h_wid, h_max+0.05*h_wid,
+             f_limit_min, f_limit_max])
+
+    subplot(313)
+    plot(position, energy, 'ms')
+    xlabel('/h[Ang]', font)
+    ylabel('E[eV]', font)
+
+    energy_min = amin(energy)
+    energy_max = amax(energy)
+    energy_wid = abs(energy_max - energy_min)
+    position_min = amin(position)
+    position_max = amax(position)
+    position_wid = abs(position_max - position_min)
+    axis([position_min-0.05*position_wid, position_max+0.05*position_wid,
+             energy_min-0.005, energy_max+0.005])
+
+    savefig('%s-%s-eggbox-test.png' %(s, xc))
+    show()
     
     dir = os.getcwd()
     dir += '/%s-%s-eggbox-test.png' %(s, xc)
 
-    text = """\
+    report = """\
 Eggbox test
 =============
 
@@ -89,15 +116,8 @@ The maximum energy difference and force relative to its position in the grid
 space are plotted against the gridspace for %s. The %s exchange correlation
 functional has been used. The figure is shown below:
 
-.. image:: %s
+.. figure:: %s
 
 """ % (s, xc, dir)
 
-    return text
-
-
-if __name__ == '__main__':
-    
-    filename = sys.argv[1]
- 
-    eggboxfit(filename)
+    return report

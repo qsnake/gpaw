@@ -8,30 +8,31 @@ import sys
 
 def hcp(symbol, xc='LDA', hmin=0.2, hmax=0.3, kpt=6, g=10):
     
-    """hcp function
+    """hcp test.
+    
     Make use of the hcp_calc function and find the dependence of the cohesive
-    energy with the lattice constant a,c: symbol is the atomic symbol, xc is
-    the exchange correlation functional (default is LDA), it make an array of
-    the gridspace resulting from hmin and hmax (default is [0.2,..,0.3]), kpt
-    is the number of kpoints in each direction (default is (6, 6, 6)) and g is
-    the number of variations of the lattice constant. In the end the function
-    make a dictionary with use of pickle, where the results are saved.
+    energy with the lattice constant a and cov (c/a): ``symbol`` is the atomic
+    symbol name, ``xc`` is the exchange-correlation functional, it make an
+    array of the gridspace resulting from ``hmin`` and ``hmax``, ``kpt`` is the
+    number of k-points in each direction and ``g`` is the number of variations
+    of the lattice constants. A result of g*g energies are saved in the pickle
+    file from the hcp_calc function.
     """
 
-    name = "%s-hcp-%s.pickle" % (symbol, xc)
-
     data = {'Atomic symbol': symbol,
-            'exchange-correlation': xc,
-            'filename': name,
-            'kpoint set': kpt}
+            'Exchange-correlation functional': xc,
+            'Number of k-points': kpt}
 
     mag = elements[symbol]
-    a = mag[3]
-    c = mag[4]
-    print 'a: ', a, 'c: ', c
+
+    if mag[5] == 'hcp':
+        a = mag[3]
+        c = mag[4]
+    else:
+        a = mag[3]/sqrt(2)
+        c = a * 1.63
+
     cov = c/a
-    p = int(g)
-    data['number of calc'] = p
     grid = []
     z = []
     
@@ -52,31 +53,25 @@ def hcp(symbol, xc='LDA', hmin=0.2, hmax=0.3, kpt=6, g=10):
         z_res = (z1 * z2 * z3)**(1/3.)
         z.append(z_res)
         
-    energies = num.zeros((len(wide), int(g), int(g)), num.Float)
-    lattice = num.zeros((int(g)), num.Float)
-    cov = num.zeros((int(g)), num.Float)
-    
+    energies = num.zeros((len(wide), g, g), num.Float)
+    lattice = []
+    cova = []    
     i=0
+    
     for x in grid:
 
-        coh, gridp, covera = hcp_calc(symbol, xc=xc, gpoints=x, kpt=kpt, g=g)
-        lattice = gridp
-        cov = covera
+        coh, lat_cons, covera = hcp_calc(symbol, xc, x, kpt, g, a, cov)
+        lattice = lat_cons
+        cova = covera
         energies[i] = coh
-
+        
         i += 1
                 
     data['Cohesive energies'] = energies
     data['Lattice constants'] = lattice
-    data['covera c/a'] = cov
-    data['Grid space meanvalue'] = z
+    data['Covera c/a'] = cova
+    data['Grid spacing meanvalues'] = z
     data['Test name'] = 'hcp'
-
+    
+    name = "%s-hcp-%s.pickle" % (symbol, xc)
     pickle.dump(data, open(name, 'w'))
-
-
-if __name__ == '__main__':
-
-    symbol = sys.argv[1]
- 
-    hcp(symbol)

@@ -4,47 +4,35 @@ from ASE import ListOfAtoms, Atom
 from elements import elements
 from math import sqrt
 import Numeric as num
+import sys
 
 
-def hcp_calc(symbol, xc='LDA', gpoints=(28,28,28), kpt=6, g=10):
+def hcp_calc(symbol, xc='LDA', gpoints=None, kpt=6, g=10, a=None, cov=None):
 
-    """hcp_calc function
-    Calculate the cohesive energy:
-    Symbol is the atomic symbol, xc is the exchange correlation function
-    (default is LDA), gpoints is the number of grid points in the cell in each
-    direction (default is (28,28,28)), kpt is the kpoints in each direction and
-    g is the number of variation of the lattice constant a,c.
-    """
+    """Calculate the cohesive energy.
     
+    ``Symbol`` is the atomic symbol name, ``xc`` is the exchange-correlation
+    functional, ``gpoints`` is the number of grid points in the cell in each
+    direction, ``kpt`` is the number of k-points in each direction and ``g`` is
+    the number of variation of the lattice constants ``a`` and ``cov`` (c/a).
+    """
+
     mag = elements[symbol]
-    a = mag[3]
-    c = mag[4]
-    cov = c/a
-
-    j = []
+    lattice_constants = []
     covera = []
-
-    m = ( g - 1 ) / 2.0
-    f = int(m)
-  
-    if m > f:
-        i = 1
-    else:
-        i = 0
-            
-    for n in range( - f, f + 1 + i):
-        k = a + n * 0.05
-        c = cov + n * 0.05
-        j.append(k)
-        covera.append(c)
-
-    coh_energy = num.zeros((len(covera), len(j)), num.Float)
+    coh_energy = num.zeros((g, g), num.Float)
     k = 0
+    
+    for i in range(g):
+    
+        q = cov + cov * 0.1 * (i - 0.5 * g) / g
+        covera.append(q)
+        h = 0
+    
+        for j in range(g):
 
-    for q in covera:
-        i = 0
-
-        for y in j:
+            y = a + a * 0.1 * (j - 0.5 * g) / g
+            lattice_constants.append(y)
             L = 5 + y
             N = int(gpoints[0] / y * L / 4) * 4
 
@@ -71,30 +59,19 @@ def hcp_calc(symbol, xc='LDA', gpoints=(28,28,28), kpt=6, g=10):
 
             cell = [ y, sqrt(3.)*y , q*y]
             bulk.SetUnitCell(cell)
-            # plot = RasMol(bulk, (3,3,3))
 
             calc = Calculator(gpts=gpoints, kpts=(kpt, kpt-2, kpt-2), xc=xc,
                               out="%s-hcp-bulk-%s.out" % (symbol, xc))
 
             bulk.SetCalculator(calc)
             e2 = bulk.GetPotentialEnergy()
-            e3 = (e2 - 4*e1)/4
+            coh_energy[k, h] = (e2 - 4*e1)/4
 
-            # print k,i,coh_energy.shape
-            coh_energy[k, i] = e3
-
-            i += 1
+            h += 1
         k += 1
+        
+    return coh_energy, lattice_constants, covera
 
-    return coh_energy, j, covera
-
-
-  
-if __name__ == '__main__':
-    import sys
-    symbol = sys.argv[1]
- 
-    hcp_calc(symbol)
 
 
 

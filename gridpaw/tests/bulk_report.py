@@ -1,20 +1,20 @@
 from bulkfit import bulkfit
 import sys
 import os
-import Numeric as num
 import pickle
 import matplotlib
 matplotlib.use('TkAgg')
-import pylab as py
+from pylab import *
 
 
 def bulk_report(filename):
     
-    """bulk_report function
+    """bulk_report function.
+    
     Load the pickle file made from the bulk function, where the results of the
-    heavy calculation are saved. Make use of the bulk fit function to determine
+    heavy calculation are saved. Make use of the bulkfit function to determine
     the values of the min lattice constant and the related cohesive energy. In
-    the end plot those values for the variation of the grid spacing h.
+    the end plot those values for the variation of the grid spacings, h.
     """
 
     f = open(filename)
@@ -22,86 +22,76 @@ def bulk_report(filename):
            
     lat = object['Lattice constants']
     s = object['Atomic symbol']
-    xc = object['exchange-correlation']
+    xc = object['Exchange-correlation functional']
     coh = object['Cohesive energies']
-    grid = object['Grid space']
-    n = object['number of calc']
-    crys = object['crystal type']
-    kpoint = object['kpoint set']
-   
-    f_a = open('lattice_constants.dat', 'w')
-    f_b = open('bulk_modulus.dat', 'w')
-    f_c = open('cohesive_energies.dat', 'w')
-   
-    Grid_space = []
-    Coh_energy = []
-    Lat_cons = []
-    Bulk_mod = []
+    grid = object['Grid spacings']
+    crys = object['Crystal type']
+    kpoint = object['Number of k-points']
+ 
+    grid_space = []
+    coh_energy = []
+    lat_cons = []
+    bulk_mod = []
 
     for i in range(len(grid)):
 
         h = grid[i]
         c = coh[i]
         a = lat[i]
+     
+        fa, fEc, fB = bulkfit(a, c, crys)
 
-        Grid_space.append(h)
-                
-        fa, fEc, fB = bulkfit(a, c, n, crys)
-
-        print >> f_a, h, fa
-        print >> f_b, h, fB
-        print >> f_c, h, fEc
-
-        Coh_energy.append(fEc)
-        Lat_cons.append(fa)
-        Bulk_mod.append(fB)
- 
+        lat_cons.append(fa)
+        coh_energy.append(fEc)
+        bulk_mod.append(fB)
+        grid_space.append(h)
+        
         i += 1
 
-    # The figure is plotted
-
+    # The figure is plotted:
     font = {'fontname'   : 'Courier',
             'color'      : 'b',
             'fontweight' : 'bold',
             'fontsize'   : 11}
 
-    py.subplot(311)
-    py.plot(Grid_space, Coh_energy, 'ro')
-    py.title("%s bulk as %s structure with %s" %(s, crys, xc), font)
-    py.ylabel('Energy (eV)', font)
+    figure(figsize = (10, 10))
+    subplot(311)
+    plot(grid_space, coh_energy, 'ro')
+    title("%s in %s structure with %s" %(s, crys, xc), font)
+    ylabel(r'$E_c[eV]$', font, fontsize=12)
    
-    Coh_min = py.amin(Coh_energy)
-    Coh_max = py.amax(Coh_energy)
-    Coh_wid = abs(Coh_max - Coh_min)
-    Grid_min = py.amin(Grid_space)
-    Grid_max = py.amax(Grid_space)
-    Grid_wid = abs(Grid_max - Grid_min)
-    py.axis([Grid_min-0.05*Grid_wid, Grid_max+0.05*Grid_wid,
-             Coh_min-0.05*Coh_wid, Coh_max+0.05*Coh_wid])
+    coh_min = amin(coh_energy)
+    coh_max = amax(coh_energy)
+    coh_wid = abs(coh_max - coh_min)
+    grid_min = amin(grid_space)
+    grid_max = amax(grid_space)
+    grid_wid = abs(grid_max - grid_min)
+    axis([grid_min-0.05*grid_wid, grid_max+0.05*grid_wid,
+             coh_min-0.05*coh_wid, coh_max+0.05*coh_wid])
   
-    py.subplot(312)
-    py.plot(Grid_space, Lat_cons, 'g^')
-    py.ylabel('Lattice constant', font)
+    subplot(312)
+    plot(grid_space, lat_cons, 'g^')
+    ylabel('a[Ang]', font)
    
-    Lat_min = py.amin(Lat_cons)
-    Lat_max = py.amax(Lat_cons)
-    Lat_wid = abs(Lat_max - Lat_min)
-    py.axis([Grid_min-0.05*Grid_wid, Grid_max+0.05*Grid_wid,
-             Lat_min-0.05*Lat_wid, Lat_max+0.05*Lat_wid])
+    lat_min = amin(lat_cons)
+    lat_max = amax(lat_cons)
+    lat_wid = abs(lat_max - lat_min)
+    axis([grid_min-0.05*grid_wid, grid_max+0.05*grid_wid,
+             lat_min-0.05*lat_wid, lat_max+0.05*lat_wid])
     
-    py.subplot(313)
-    py.plot(Grid_space, Bulk_mod, 'ms')
-    py.xlabel('Grid space (Aangstroem)', font)
-    py.ylabel('Bulk mod (eV/Aa)', font)
+    subplot(313)
+    plot(grid_space, bulk_mod, 'ms')
+    xlabel('h[Ang]', font)
+    ylabel('B[GPa]', font)
    
-    Bulk_min = py.amin(Bulk_mod)
-    Bulk_max = py.amax(Bulk_mod)
-    Bulk_wid = abs(Bulk_max - Bulk_min)
-    py.axis([Grid_min-0.05*Grid_wid, Grid_max+0.05*Grid_wid,
-             Bulk_min-0.05*Bulk_wid, Bulk_max+0.05*Bulk_wid])
+    bulk_min = amin(bulk_mod)
+    bulk_max = amax(bulk_mod)
+    bulk_wid = abs(bulk_max - bulk_min)
+    axis([grid_min-0.05*grid_wid, grid_max+0.05*grid_wid,
+             bulk_min-0.05*bulk_wid, bulk_max+0.05*bulk_wid])
   
-    py.savefig('%s-Bulk-%s-%s-Report.png' %(s, crys, xc))
-    py.show()
+    savefig('%s-Bulk-%s-%s-Report.png' %(s, crys, xc))
+    show()
     
     dir = os.getcwd()
     dir += '/%s-Bulk-%s-%s-Report.png' %(s, crys, xc)
@@ -114,18 +104,8 @@ The lattice constant and the cohesive energy are plotted against the
 gridspace for %s. The %s exchange correlation functional has been
 used.  The bulk is a %s crystal structure. The figure is shown below:
 
-.. image:: %s
+.. figure:: %s
 
 """ % (s, xc, crys, dir)
 
     return text
-    
-
-if __name__ == '__main__':
-    import sys
-    filename = sys.argv[1]
- 
-    bulk_report(filename)
-
-
-
