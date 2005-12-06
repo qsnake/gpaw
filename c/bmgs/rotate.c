@@ -2,8 +2,8 @@
 #include "bmgs.h"
 #include <stdio.h>
 void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle, int d,
-		    double* coefs1, long* v1, double* coefs2, long* v2, 
-		    int exact)
+	    long c, double* pval1, long* pfrom1, long* pto1,
+		    double* pval2, long* pfrom2, long* pto2, int exact)
 {
   double pi = 3.1415926535897931;
   int N = size[1];
@@ -11,47 +11,23 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle, int d,
   if (exact == 0)
     {
       const int Nsq = N*N;
-      long *v;
-      double* c1;
-      double* c2;
-      double* c3;
-      double* c4;
+      double* pval;
+      long* pfrom;
+      long* pto;
       if (d == 1) {
-	c1 = coefs1; 
-	c2 = coefs1+Nsq; 
-	c3 = coefs1+2*Nsq;
-	c4 = coefs1+3*Nsq;
-	v = v1; }
+	pval = pval1; 
+	pfrom = pfrom1; 
+	pto = pto1;}
       else {
-	c1 = coefs2;
-	c2 = coefs2+Nsq; 
-	c3 = coefs2+2*Nsq;
-	c4 = coefs2+3*Nsq;
-	v = v2; }
-      for (int i1 = 0; i1 < Nsq; i1++)
+	pval = pval2;
+	pfrom = pfrom2; 
+	pto = pto2;}
+      for (long i1 = 0; i1 < c; i1++)
 	{
 	  for (long i0Nsq = 0; i0Nsq < size[0]*Nsq ; i0Nsq+=Nsq)
 	    {
-#if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
-	      (b+i0Nsq)->r = 
-		*c1* ((a+i0Nsq+*v)->r) + 
-		*c2*((a+i0Nsq+*v+1)->r) + 
-		*c3*((a+i0Nsq+*v+N)->r) + 
-		*c4*((a+i0Nsq+*v+N+1)->r);
-	      (b+i0Nsq)->i = 
-		*c1* ((a+i0Nsq+*v)->i) + 
-		*c2*((a+i0Nsq+*v+1)->i) + 
-		*c3*((a+i0Nsq+*v+N)->i) + 
-		*c4*((a+i0Nsq+*v+N+1)->i);
-#else
-	      *(b+i0Nsq) = 
-		*c1*(*(a+i0Nsq+*v)) + 
-		*c2*(*(a+i0Nsq+*v+1)) + 
-		*c3*(*(a+i0Nsq+*v+N)) + 
-		*c4*(*(a+i0Nsq+*v+N+1));
-#endif
+	      *(b+i0Nsq+*(pto+i1)) += *(pval+i1)**(a+i0Nsq+*(pfrom+i1));  
 	    } 
-	  c1++; c2++; c3++; c4++; v++; b++;
 	}
     }
   else 
@@ -119,10 +95,6 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle, int d,
 	      a += N*N-N+1;
 	      b += N; 
 	    }
-	}
-      else
-	{
-	  printf("Error: Angle= %d\n",angle);
 	}
     }
 }

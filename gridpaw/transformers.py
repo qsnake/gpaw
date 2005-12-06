@@ -33,12 +33,9 @@ class Transformer:
             angle = gd.domain.angle
             if gd.comm.size > 1:
                 raise NotImplementedError
-            #rotationcoefs for other displacements must be determined
-            #and stored in some structure.
-            coefs1, offsets1 = tr.RotationCoef(gd.n_c[1], angle)
-            coefs2, offsets2 = tr.RotationCoef(gd.n_c[1], -angle)
-            self.transformer.set_rotation(angle, coefs1, offsets1,
-                                          coefs2, offsets2, 0)
+            c1, pval1, pfrom1, pto1, pval2, pfrom2, pto2 = tr.RotationCoef(gd.n_c[1], angle)
+            self.transformer.set_rotation(angle, c1, pval1, pfrom1, pto1,
+                                          pval2, pfrom2, pto2, 0)
             
         self.ngpin = tuple(gd.n_c)
         assert typecode in [num.Float, num.Complex]

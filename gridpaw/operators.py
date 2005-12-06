@@ -48,10 +48,9 @@ class _Operator:
 
         if gd.domain.angle is not None:
             angle = gd.domain.angle
-            coefs1, offsets1 = tr.RotationCoef(n_c[1], angle)
-            coefs2, offsets2 = tr.RotationCoef(n_c[1], -angle)
-            self.operator.set_rotation(angle, coefs1, offsets1,
-                                          coefs2, offsets2, 0)
+            c1, pval1, pfrom1, pto1, pval2, pfrom2, pto2 = tr.RotationCoef(n_c[1], angle)
+            self.operator.set_rotation(angle, c1, pval1, pfrom1, pto1,
+                                          pval2, pfrom2, pto2, 0)
                      
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape

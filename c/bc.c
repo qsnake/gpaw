@@ -130,14 +130,17 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
 
 
 void bc_set_rotation(boundary_conditions* bc,
-		     double angle, double* coefs1, long* offsets1,
-		     double* coefs2, long* offsets2, int exact)
+		     double angle, long c, double* pval1, long* pfrom1, long* pto1,
+		     double* pval2, long* pfrom2, long* pto2, int exact)
 {
   bc->angle = angle;
-  bc->rotcoefs1 = coefs1;
-  bc->rotoffsets1 = offsets1;
-  bc->rotcoefs2 = coefs2;
-  bc->rotoffsets2 = offsets2;
+  bc->c = c;
+  bc->pval1 = pval1;
+  bc->pfrom1 = pfrom1;
+  bc->pto1 = pto1;  
+  bc->pval2 = pval2;
+  bc->pfrom2 = pfrom2;
+  bc->pto2 = pto2;  
   bc->exact = exact;
   int s0 = bc->sendsize[0][0][0];
   if (bc->sendsize[0][1][0] > s0)
@@ -286,8 +289,8 @@ void bc_unpack1(const boundary_conditions* bc,
 		bmgs_rotate(a1 + (bc->sendstart[i][d][0] - p) *
 			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d],
 			    bc->rotbuf, bc->angle * (2 * d - 1), d,
-			    bc->rotcoefs1, bc->rotoffsets1, 
-			    bc->rotcoefs2, bc->rotoffsets2, bc->exact);
+			    bc->c, bc->pval1,bc->pfrom1,bc->pto1, 
+			    bc->pval2, bc->pfrom2, bc->pto2, bc->exact);
 		bmgs_paste(bc->rotbuf, bc->sendsize[i][d], 
 			   a2, bc->size2, bc->recvstart[i][1 - d]);
 	      }
@@ -310,9 +313,9 @@ void bc_unpack1(const boundary_conditions* bc,
 			     bc->size1[1] * bc->size1[2], 
 			     bc->sendsize[i][d],
 			     (double_complex*)bc->rotbuf, 
-			     bc->angle * (2 * d - 1), d,
-			     bc->rotcoefs1, bc->rotoffsets1,
-			     bc->rotcoefs2, bc->rotoffsets2, bc->exact);
+			     bc->angle * (2 * d - 1), d,bc->c,
+			     bc->pval1, bc->pfrom1, bc->pto1,
+			     bc->pval2, bc->pfrom2, bc->pto2, bc->exact);
 		for (int n = 0; n < nn; n++) {
 #ifdef NO_C99_COMPLEX		  
 		  c[n].r = c[n].r*phases[d].r-c[n].i*phases[d].i;
