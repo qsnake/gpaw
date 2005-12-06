@@ -43,6 +43,7 @@ class Calculator:
                   'spinpol': None,
                   'gpts': None,
                   'h': None,
+                  'charge': 0,
                   'usesymm': True,
                   'width': None,
                   'mix': 0.25,
@@ -64,17 +65,19 @@ class Calculator:
         """ASE-calculator interface.
 
         The following parameters can be used: `nbands`, `xc`, `kpts`,
-        `spinpol`, `gpts`, `h`, `usesymm`, `width`, `mix`, `old`,
-        `hund`, `lmax`, `fixdensity`, `idiotproof`, `tolerance`,
-        `out`, `hosts`, `parsize`, `softgauss`, `order` and
-        `onohirose`.  If you don't specify any parameters, you will get:
+        `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
+        `old`, `hund`, `lmax`, `fixdensity`, `idiotproof`,
+        `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `order`
+        and `onohirose`.  If you don't specify any parameters, you
+        will get:
 
-        Defaults: LDA, gamma-point calculation, a reasonable
-        grid-spacing, zero Kelvin elctronic temperature, and the
-        number of bands will be half the number of valence electrons
-        plus 3 extra bands.  The calculation will be spin-polarized if
-        and only if one or more of the atoms have non-zero magnetic
-        moments.  Text output will be written to standard output.
+        Defaults: neutrally charged, LDA, gamma-point calculation, a
+        reasonable grid-spacing, zero Kelvin elctronic temperature,
+        and the number of bands will be half the number of valence
+        electrons plus 3 extra bands.  The calculation will be
+        spin-polarized if and only if one or more of the atoms have
+        non-zero magnetic moments.  Text output will be written to
+        standard output.
 
         For a non-gamma point calculation, the electronic temperature
         will be 0.1 eV (energies are extrapolated to zero Kelvin) and
@@ -361,8 +364,8 @@ class Calculator:
 
         See The ASE manual_ for details.
 
-        .. _manual:: https://wiki.fysik.dtu.dk/ase/Utilities
-                     #bayesian-error-estimate-bee
+        .. _manual: https://wiki.fysik.dtu.dk/ase/Utilities
+                    #bayesian-error-estimate-bee
         """
 
         E = self.GetPotentialEnergy()

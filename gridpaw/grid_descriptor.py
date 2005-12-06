@@ -68,7 +68,7 @@ class GridDescriptor:
 
         Attributes:
          ========== ========================================================
-         ``domain`` Domain_ object.
+         ``domain`` Domain object.
          ``dv``     Volume per grid point.
          ``h_c``    Array of the grid spacing along the three axes.
          ``N_c``    Array of the number of grid points along the three axes.

@@ -17,8 +17,8 @@ def RotationCoef(N, dt):
     are N^2-dimensional vectors. Given a matrix M reshaped as a vector,
     a rotation can be achieved as::
     
-    M'[i] = c1[i]*M[v[i]] + c2[i]*M[v[i]+1] +
-                c3[i]*M[v[i]+N] + c4[i]*M[v[i]+1+N]
+      M'[i] = c1[i]*M[v[i]] + c2[i]*M[v[i]+1] +
+              c3[i]*M[v[i]+N] + c4[i]*M[v[i]+1+N]
     """
     coords=num.indices((N,N)).astype(num.Float)
     coords=num.reshape(coords, (2,N*N))

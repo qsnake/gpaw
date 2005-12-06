@@ -49,7 +49,7 @@ class KPoint:
          ``psit_nG``   Wave functions.
          ``Htpsit_nG`` Pseudo-part of the Hamiltonian applied to the wave
                        functions.
-         ``timer``    ``Timer`` object.
+         ``timer``     ``Timer`` object.
          ``nbands``    Number of bands.
          ============= =======================================================
 

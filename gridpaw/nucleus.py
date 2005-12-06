@@ -36,7 +36,7 @@ class Nucleus:
      ``a``         Index number for this nucleus.
      ``typecode``  Data type of wave functions (``Float`` or ``Complex``).
      ``neighbors`` List of overlapping neighbor nuclei.
-     ``onohirose`` Number of grid points used for Ono-Hirose_ interpolation
+     ``onohirose`` Number of grid points used for Ono-Hirose interpolation
                    - currently 1, 2, 3, and 5 is implemented (1 means no
                    interpolation).
      ============= ========================================================

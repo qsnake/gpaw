@@ -106,7 +106,7 @@ class Paw:
      ========== =========================================
 
     Only attribute not mentioned now is ``nspins`` (number of spins) and
-    those used for parallelization_:
+    those used for parallelization:
 
      ================== =================================================== 
      ``my_nuclei``      List of nuclei that have their
@@ -121,7 +121,7 @@ class Paw:
      ================== ===================================================
 
     .. _Manual: https://wiki.fysik.dtu.dk/gridcode/Manual
-    .. _ASE unit: https://wiki.fysik.dtu.dk/ase/Units
+    .. _ASE units: https://wiki.fysik.dtu.dk/ase/Units
     """
     
     def __init__(self, a0, Ha,
@@ -399,7 +399,7 @@ class Paw:
 
         from netcdf import NetCDFWaveFunction
         if isinstance(wf.kpt_u[0].psit_nG, NetCDFWaveFunction):
-            assert self.niter==0
+            assert self.niter == 0
             # Calculation started from a NetCDF restart file.
             # Allocate array for wavefunctions and copy data from the
             # NetCDFWaveFunction class
