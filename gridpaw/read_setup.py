@@ -9,6 +9,8 @@ from cStringIO import StringIO
 
 import Numeric as num
 
+from gridpaw import setup_paths
+
 
 class PAWXMLParser(xml.sax.handler.ContentHandler):
     def __init__(self):
@@ -25,13 +27,24 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.pt_jg = []
         self.grid = None
 
-    def parse(self, filename):
-        try:
-            source = open(filename).read()
-        except IOError:
-            filename += '.gz'
-            source = os.popen('gunzip -c ' + filename, 'r').read()
-##            source = gzip.open(filename).read() ibm doesn't have zlib! XXX
+    def parse(self, symbol, xcname):
+        name = symbol + '.' + xcname
+        source = None
+        for path in setup_paths:
+            filename = os.path.join(path, name)
+            if os.path.isfile(filename):
+                source = open(filename).read()
+                break
+            else:
+                filename += '.gz'
+                if os.path.isfile(filename):
+                    source = os.popen('gunzip -c ' + filename, 'r').read()
+##                  source = gzip.open(filename).read() ibm has no zlib! XXX
+                    break
+        if source is None:
+            raise RuntimeError('Could not find %s-setup for %s.' %
+                               (xcname, symbol))
+        
         fingerprint = md5.new(source).hexdigest()
 
         # XXXX There must be a better way!

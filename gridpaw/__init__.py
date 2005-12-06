@@ -21,7 +21,6 @@ home = os.environ['HOME']
 debug = False
 hosts = None
 parsize = None
-setup_home = os.path.join(home, '.gridpaw/setups')
 gpspecial = None
 arg = None
 i = 1
@@ -70,11 +69,22 @@ def cb_handler(number, frame):
 signal.signal(signal.SIGUSR1, cb_handler)
 
 
+setup_paths = os.environ.get('GRIDPAWSETUPPATH', '')
+if setup_paths != '':
+    setup_paths = setup_paths.split(':')
+else:
+    path = join(home, '.gridpaw/setups')
+    if os.path.isdir(path):
+        setup_paths = [path]
+        print 'Using setups from:', path
+        print 'Please put that path in your GRIDPAWSETUPPATH environment',
+        print 'variable!'
+    else:
+        setup_paths = []
+
+
 from gridpaw.calculator import Calculator
-## def Calculator(*args, **kwargs):
-##     # Delayed import:
-##     from gridpaw.calculator import Calculator
-##     return Calculator(*args, **kwargs)
+
 
 # Clean up:
 del os, sys, get_platform, i, arg

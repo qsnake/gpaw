@@ -9,7 +9,6 @@ import Numeric as num
 from ASE.ChemicalElements.name import names
 
 from gridpaw.read_setup import PAWXMLParser
-from gridpaw import setup_home
 from gridpaw.gaunt import gaunt as G_L1L2L
 from gridpaw.spline import Spline
 from gridpaw.grid_descriptor import RadialGridDescriptor
@@ -88,8 +87,6 @@ class Setup:
         self.xcname = xcname
         self.softgauss = softgauss
         
-        filename = os.path.join(setup_home, symbol + '.' + xcname)
-
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
          e_kinetic_core,
@@ -99,7 +96,7 @@ class Setup:
          phi_jg, phit_jg, pt_jg,
          e_kin_j1j2,
          self.fingerprint,
-         filename) = PAWXMLParser().parse(filename)
+         filename) = PAWXMLParser().parse(symbol, xcname)
 
         self.filename = filename
         self.Nv = Nv

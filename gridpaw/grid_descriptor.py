@@ -232,8 +232,8 @@ class GridDescriptor:
                 beg_c = num.maximum(beg_c, self.beg_c)
                 end_c = num.minimum(end_c, self.end_c)                 
 
-##                 beg_c = self.beg_c.copy();print '.....'
-##                 end_c = self.end_c.copy()
+                beg_c = self.beg_c.copy();print '.....'
+                end_c = self.end_c.copy()
                 
                 if (beg_c[0] < end_c[0] and
                     beg_c[1] < end_c[1] and
