@@ -27,6 +27,50 @@ static void Operator_dealloc(OperatorObject *self)
   PyObject_DEL(self);
 }
 
+static PyObject * Operator_relax(OperatorObject *self,
+                                 PyObject *args)
+{
+  PyArrayObject* func;
+  PyArrayObject* source;
+  int nrelax;
+  if (!PyArg_ParseTuple(args, "OOi", &func, &source, &nrelax))
+    return NULL;
+
+  const boundary_conditions* bc = self->bc;
+  const int* size1 = bc->size1;
+
+  double* fun = DOUBLEP(func);
+  const double* src = DOUBLEP(source);
+  const double_complex* ph;
+
+  int start[3] = {0, 0, 0};
+  int size[3] = {size1[0], size1[1], size1[2]};
+  ph = 0;
+    for (int i = 0; i < 3; i++)
+      {
+        bc_unpack1(bc, fun, self->buf, i,
+                   self->recvreq, self->sendreq,
+                   self->recvbuf, self->sendbuf, ph + 2 * i);
+        bc_unpack2(bc, self->buf, i,
+                   self->recvreq, self->sendreq, self->recvbuf);
+      }
+
+  for (int n = 0; n < nrelax; n++ ) {
+
+    bmgs_relax(&self->stencil,self->buf,fun,src);
+    /*What about other than zero boundary conditions? (periodic, parallel,...)*/
+    for (int i = 0; i < 3; i++)
+      if (bc->zero[i])
+        {
+          size[i] = 1;
+          bmgs_zero(fun, size1, start, size);
+        }
+  }
+
+  Py_RETURN_NONE;
+}
+
+
 static PyObject * Operator_apply(OperatorObject *self,
                                  PyObject *args)
 {
@@ -137,6 +181,8 @@ static PyObject* Operator_rotation(OperatorObject *self, PyObject *args)
 static PyMethodDef Operator_Methods[] = {
     {"apply", 
      (PyCFunction)Operator_apply, METH_VARARGS, NULL},
+    {"relax",  
+     (PyCFunction)Operator_relax, METH_VARARGS, NULL},
     {"get_diagonal_element", 
      (PyCFunction)Operator_get_diagonal_element, METH_VARARGS, NULL},
     {"set_rotation", 

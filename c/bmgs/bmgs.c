@@ -1,4 +1,5 @@
 #include "fd.c"
+#include "relax.c"
 #include "cut.c"
 #include "zero.c"
 #include "paste.c"

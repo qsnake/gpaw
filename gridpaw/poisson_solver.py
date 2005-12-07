@@ -9,7 +9,6 @@ import Numeric as num
 from gridpaw.transformers import Interpolator, Restrictor
 from gridpaw.operators import Laplace, LaplaceA, LaplaceB
 
-
 class PoissonSolver:
     def __init__(self, gd, out=sys.stdout):
         self.gd = gd
@@ -25,6 +24,8 @@ class PoissonSolver:
         self.restrictors = [Restrictor(gd, 1)]
 
         level = 0
+        self.presmooths=[2]
+        self.postsmooths=[2]
         while level < 4:
             try:
                 gd = gd.coarsen()
@@ -36,20 +37,22 @@ class PoissonSolver:
             self.residuals.append(gd.new_array())
             self.interpolators.append(Interpolator(gd, 1))
             self.restrictors.append(Restrictor(gd, 1))
+            self.presmooths.append(4)
+            self.postsmooths.append(4)
             level += 1
             print >> out, level, gd.N_c
-            
+                    
         self.levels = level
         self.eps = 1e-9
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
+        self.presmooths[level]=8
+        self.postsmooths[level]=8
         
     def solve(self, phi, rho):
         self.phis[0] = phi
 
         self.B.apply(rho, self.rhos[0])
-
         niter = 1
-
         while self.iterate(self.step) > self.eps and niter < 300:
             niter += 1
         if niter == 300:
@@ -84,3 +87,30 @@ class PoissonSolver:
                 break
             
         return error
+
+
+    def iterate2(self, step, level=0):
+        """Uses the Gauss-Seidel relaxation for smoothing"""
+
+        residual = self.residuals[level]
+
+        if level < self.levels:
+            self.operators[level].relax(self.phis[level],self.rhos[level],self.presmooths[level])
+            self.operators[level].apply(self.phis[level], residual)
+            residual -= self.rhos[level]
+            self.restrictors[level].apply(residual,
+                                          self.rhos[level + 1])
+            self.phis[level + 1][:] = 0.0
+            self.iterate2(4.0 * step, level + 1)
+            self.interpolators[level + 1].apply(self.phis[level + 1],
+                                                residual)
+            self.phis[level] -= residual
+
+        self.operators[level].relax(self.phis[level],self.rhos[level],self.postsmooths[level])
+        self.operators[level].apply(self.phis[level], residual)
+        residual -= self.rhos[level]
+        error = self.gd.domain.comm.sum(num.dot(residual.flat,
+                                                residual.flat))
+
+        return error
+
