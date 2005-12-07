@@ -326,7 +326,7 @@ class GridDescriptor:
                                      ny * n1:(ny + 1) * n1,
                                      nz * n2:(nz + 1) * n2]
                         if r != MASTER:
-                            self.comm.send(b_g, c)
+                            self.comm.send(b_g, r)
                         r += 1
             return B_g[:n0, :n1, :n2].copy()
 
