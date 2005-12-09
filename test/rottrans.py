@@ -16,11 +16,12 @@ a[-1, 1, 1] = 1
 
 gradx = Gradient(gd, c=0)
 gradx.apply(a, b)
-assert b[0, 3, 3] == -0.5
+print b[0, 3, 3]
+assert abs(b[0, 3, 3] + 0.5) < 1e-12
 
 lap = Laplace(gd)
 lap.apply(a, b)
-assert b[0, 3, 3] == 1.0
+assert abs(b[0, 3, 3] - 1.0) < 1e-12
 
 domain = Domain((8.0, 4.0, 4.0), (1, 0, 0))
 gd = GridDescriptor(domain, (8, 4, 4))

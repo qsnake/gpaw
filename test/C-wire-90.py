@@ -3,7 +3,7 @@ from gridpaw import Calculator
 from math import pi
 #from ASE.Visualization.RasMol import RasMol
 
-d = 1.1
+d = 1.4
 a = 4 * d
 x = 0.52
 y = x / 2**0.5
