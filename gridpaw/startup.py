@@ -57,7 +57,7 @@ def create_paw_object(out, a0, Ha,
         nspins = 1
     
     # Construct a dictionary, mapping atomic numbers to PAW-setup objects:
-    setups = construct_setups(Z_a, xcfunc, lmax, nspins, softgauss)
+    setups = construct_setups(Z_a, xcfunc, lmax, nspins, softgauss, out)
 
     # Default value for grid spacing:
     if N_c is None:
@@ -169,7 +169,7 @@ def reduce_kpoints(bzk_kc, pos_ac, Z_a, domain, usesymm):
     return symmetry, weights_k, ibzk_kc
 
 
-def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss):
+def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss, out):
     # Construct necessary PAW-setup objects and count the number of
     # valence electrons:
     setups = {}
@@ -177,6 +177,7 @@ def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss):
         if Z not in setups:
             symbol = symbols[Z]
             setup = Setup(symbol, xcfunc, lmax, nspins, softgauss)
+            setup.print_info(out)
             setups[Z] = setup
             assert Z == setup.Z
     return setups

@@ -126,8 +126,10 @@ class Setup:
         phit_jg = phit_jg[:nj]
         pt_jg = pt_jg[:nj]
 
+        self.n_j = n_j
         self.l_j = l_j
         self.f_j = f_j
+        self.eps_j = eps_j
         
         imin, imax = [int(x) for x in grid['i'].split('-')]
         ng = imax - imin + 1
@@ -528,22 +530,21 @@ class Setup:
             i1 += 1
 
     def print_info(self, out):
-        pass
-    """
-        print >> out, symbol + ':'
-        print >> out, '  name   :', names[Z]
-        print >> out, '  Z      :', Z
-        print >> out, '  file   :', filename
-        print >> out, '  cutoffs: %5.3f (%4.2f Bohr), (%5.3f, %d)' \
-              % (a0 * rcut, rcut, a0 * rcut2, lmax)
-#        print >> out, '  alphas :', self.alpha, self.alpha2
+        print >> out
+        print >> out, self.symbol + '-setup:'
+        print >> out, '  name   :', names[self.Z]
+        print >> out, '  Z      :', self.Z
+        print >> out, '  file   :', self.filename
+        print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' \
+              % (self.rcut, self.lmax)
+##        print >> out, '  alphas :', self.alpha, self.alpha2
         print >> out, '  valence states:'
-        for n, l, f, eps in zip(n_j, l_j, f_j, eps_j):
+        for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if f > 0:
-                print >> out, '    %d%s(%d) %7.3f' % (n, 'spd'[l], f, Ha * eps)
+                print >> out, '    %d%s(%d) %7.3f Ha' % (n, 'spd'[l], f, eps)
             else:
-                print >> out, '     %s    %7.3f' % ('spd'[l], Ha * eps)
-        print >> out"""
+                print >> out, '     %s    %7.3f Ha' % ('spd'[l], eps)
+        print >> out
 
     def calculate_rotations(self, R_slmm):
         nsym = len(R_slmm)
