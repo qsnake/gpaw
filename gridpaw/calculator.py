@@ -539,3 +539,6 @@ class Calculator:
 
     # Make ReadAtoms a static method:
     ReadAtoms = staticmethod(ReadAtoms)
+
+    def GetListOfAtoms(self):
+        return self.atoms()

@@ -90,6 +90,8 @@ def create_paw_object(out, a0, Ha,
         symmetry, weights_k, ibzk_kc = reduce_kpoints(
             bzk_kc, pos_ac / a0, Z_a, domain, usesymm)
 
+        symmetry.print_symmetries(out)
+
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:
         R_slmm = [[rotation(l, symm) for l in range(3)]
