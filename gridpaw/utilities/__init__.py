@@ -83,6 +83,17 @@ class DownTheDrain:
         pass
 
 
+"""
+class OutputFilter:
+    def __init__(self, out, threshold, level=500):
+        self.threshold = threshold
+        self.verbosity = verbosity
+
+    def write(self, string):
+        if kfdce
+
+"""
+
 def run_threaded(tasks):
     """Run list of tasks in small steps.
 

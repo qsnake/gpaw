@@ -4,9 +4,12 @@ from ASE.ChemicalElements.symbol import symbols
 
 def print_info(paw):
     out = paw.out
+    print >> out, 'Reference energy:', paw.Eref * paw.Ha
+    
     domain = paw.domain
-#    print >> out, 'Gamma-point calculation'
-    print >> out, 'parallel: parsize = ', domain.parsize_c
+    if domain.comm.size > 1:
+        print >> out, ('Using domain decomposition: %d x %d x %d' %
+                       tuple(domain.parsize_c))
 
 
 def print_converged(paw):
@@ -15,9 +18,10 @@ def print_converged(paw):
 
     print >> out
     if len(paw.nuclei) == 1:
-        print >> out, 'energy contributions relative to reference atom:'
+        print >> out, 'energy contributions relative to reference atom:',
     else:
-        print >> out, 'energy contributions relative to reference atoms:'
+        print >> out, 'energy contributions relative to reference atoms:',
+    print >> out, '(reference = %.5f)' % (paw.Eref * paw.Ha)
 
     print >> out, '-------------------------'
 

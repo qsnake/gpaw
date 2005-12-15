@@ -175,7 +175,6 @@ class Symmetry:
 
     def print_symmetries(self, out):
         n = len(self.symmetries)
-        print >> out
         if n == 48:
             print >> out, 'symmetries: all'
             return

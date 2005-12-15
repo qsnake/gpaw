@@ -94,9 +94,15 @@ class Calculator:
 
         out = self.out
         print >> out
-        print >> out, '  _  _ o _| _  _           '
-        print >> out, ' (_||  |(_||_)(_|\/\/   -  ', version
-        print >> out, '  _|       |               '
+        print >> out, '   _                    '
+        print >> out, '  | |  ___ ___ ___ _ _  '
+        print >> out, ' |   ||_  |  _|  _| | | '
+        print >> out, '  | |_| . |_  |_  | | | '
+        print >> out, '  |___|___|___|___|___| '
+        print >> out
+        print >> out, '  _  _  _           '
+        print >> out, ' (_||_)(_|\/\/   -  ', version
+        print >> out, '  _||               '
         print >> out
 
         uname = os.uname()
@@ -104,6 +110,7 @@ class Calculator:
         print >> out, 'Date:', time.asctime()
         print >> out, 'Arch:', uname[4]
         print >> out, 'Pid: ', os.getpid()
+        print >> out
 
         lengthunit = units.GetLengthUnit()
         energyunit = units.GetEnergyUnit()
@@ -542,3 +549,4 @@ class Calculator:
 
     def GetListOfAtoms(self):
         return self.atoms()
+ 

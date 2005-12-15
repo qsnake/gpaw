@@ -83,6 +83,7 @@ def create_paw_object(out, a0, Ha,
         symmetry = None
         weights_k = [1.0]
         ibzk_kc = num.zeros((1, 3), num.Float)
+        print >> out, 'Gamma-point calculation'
     else:
         typecode = num.Complex
         # Reduce the the k-points to those in the irreducible part of
@@ -90,7 +91,15 @@ def create_paw_object(out, a0, Ha,
         symmetry, weights_k, ibzk_kc = reduce_kpoints(
             bzk_kc, pos_ac / a0, Z_a, domain, usesymm)
 
-        symmetry.print_symmetries(out)
+        if symmetry is not None:
+            symmetry.print_symmetries(out)
+
+        n = len(ibzk_kc)
+        print >> out
+        print >> out, (('%d k-point%s in the irreducible part of the ' +
+                       'Brillouin zone (total: %d)') %
+                       (n, ' s'[1:n], len(bzk_kc)))
+        print >> out
 
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:

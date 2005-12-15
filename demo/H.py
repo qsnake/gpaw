@@ -7,6 +7,8 @@ H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=0)],
                 cell=(a, a, a))
 calc = Calculator(nbands=1, h=0.20, onohirose=5, tolerance=0.001, softgauss=0)
 H.SetCalculator(calc)
-print H.GetPotentialEnergy()
-print calc.paw.niter
-
+if 0:
+    import profile
+    profile.run('H.GetPotentialEnergy()', 'H.prof')
+else:
+    H.GetPotentialEnergy()

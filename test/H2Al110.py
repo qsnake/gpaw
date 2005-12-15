@@ -18,7 +18,7 @@ slab = ListOfAtoms([Atom('Al', (0, 0, 0)),
                     Atom('Al', (a, 0, -2*d)),
                     Atom('H', (a/2-b/2, 0, z)),
                     Atom('H', (a/2+b/2, 0, z))],
-                   cell=(2*a, d, 5*d), periodic=True)
+                   cell=(2*a, d, 5*d), periodic=(1, 1, 1))
 slab.SetCalculator(Calculator(gpts=(24, 8, 40), nbands=28, kpts=(2, 6, 1)))
 e = slab.GetPotentialEnergy()
 

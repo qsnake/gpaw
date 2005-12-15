@@ -530,14 +530,11 @@ class Setup:
             i1 += 1
 
     def print_info(self, out):
-        print >> out
         print >> out, self.symbol + '-setup:'
         print >> out, '  name   :', names[self.Z]
         print >> out, '  Z      :', self.Z
         print >> out, '  file   :', self.filename
-        print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' \
-              % (self.rcut, self.lmax)
-##        print >> out, '  alphas :', self.alpha, self.alpha2
+        print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' % (self.rcut, self.lmax)
         print >> out, '  valence states:'
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if f > 0:

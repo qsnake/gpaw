@@ -12,8 +12,9 @@ parser = OptionParser(usage='%prog [options] [elements]',
 parser.add_option('-f', '--xcfunctional', type='string', default='LDA',
                   help='Exchange-Correlation functional (default value LDA)',
                   metavar='<XC>')
-parser.add_option('-s', '--scalar-relativistic', action='store_true',
-                  help='Do a scalar-relativistic calculation.')
+parser.add_option('-n', '--non-scalar-relativistic', action='store_true',
+                  default=False,
+                  help='Do *not* do a scalar-relativistic calculation.')
 parser.add_option('-r', '--radius', type='string', default=None,
                   help='Cutoff radii',
                   metavar='<rcut>')
@@ -27,6 +28,9 @@ parser.add_option('-a', '--all-electron-only', action='store_true',
 parser.add_option('-e', '--extra', type='string', default=None,
                   help='Extra projectors.',
                   metavar='0.0;0.0,1.0;0.0')
+parser.add_option('-c', '--core', type='string', default=None,
+                  help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
+                  metavar='<core>')
 
 options, args = parser.parse_args()
 
@@ -36,14 +40,25 @@ else:
     atoms = parameters.keys()
 
 for symbol in atoms:
+    print type(options.non_scalar_relativistic)
+    print options.non_scalar_relativistic
     g = Generator(symbol, options.xcfunctional,
-                  scalarrel=bool(options.scalar_relativistic))
+                  scalarrel=not options.non_scalar_relativistic)
     try:
-        core, rcut = parameters[symbol]
+        params = parameters[symbol]
+    except KeyError:
+        core = ''
+        rcut = 1.0
         extra = None
-    except ValueError:
-        core, rcut, extra = parameters[symbol]
+    else:
+        if len(params) == 2:
+            core, rcut = parameters[symbol]
+            extra = None
+        else:
+            core, rcut, extra = parameters[symbol]
     v0 = options.potential
+    if options.core is not None:
+        core = options.core
     if options.radius is not None:
         rcut = [float(x) for x in options.radius.split(',')]
     if options.extra is not None:
