@@ -5,6 +5,7 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle, int d,
 	    long c, double* pval1, long* pfrom1, long* pto1,
 		    double* pval2, long* pfrom2, long* pto2, int exact)
 {
+#ifndef NO_C99_COMPLEX
   double pi = 3.1415926535897931;
   int N = size[1];
   assert(size[2] == N);
@@ -97,4 +98,5 @@ void Z(bmgs_rotate)(const T* a, const int size[3], T* b, double dangle, int d,
 	    }
 	}
     }
+#endif
 }
