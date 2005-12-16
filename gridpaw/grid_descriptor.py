@@ -358,6 +358,37 @@ class GridDescriptor:
                             nz * n2:(nz + 1) * n2] = b_rg[r]
                         r += 1
             return B_g
+
+    def distribute(self,B_g,b_g):
+        """ distribute full array B_g to subdomains, result in
+        b_g. b_g must be allocated."""
+
+        if self.comm.size == 1:
+            b_g[:] = B_g[:]
+            return
+        
+        if self.rank != MASTER:
+            self.comm.receive(b_g,MASTER)
+            return
+        else:
+            r = 0
+            parsize_c = self.domain.parsize_c
+            n0, n1, n2 = self.n_c
+            for nx in range(parsize_c[0]):
+                for ny in range(parsize_c[1]):
+                    for nz in range(parsize_c[2]):
+                        b_g[:] = B_g[...,
+                                  nx * n0:(nx + 1) * n0,
+                                  ny * n1:(ny + 1) * n1,
+                                  nz * n2:(nz + 1) * n2]
+                        if r != MASTER:
+                            self.comm.send(b_g,r)
+                        r += 1
+
+            b_g[:] = B_g[:n0,:n1,:n2]
+            return
+            
+        
         
     def calculate_dipole_moment(self, rho_xyz):
         """Calculate dipole moment of density."""
