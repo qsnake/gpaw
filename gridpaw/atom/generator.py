@@ -243,7 +243,6 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut]
 
-        TM = False
         # Construct smooth wave functions:
         coefs = []
         for l, (u_n, s_n) in enumerate(zip(u_ln, s_ln)):
@@ -251,35 +250,18 @@ class Generator(AllElectron):
             gc = gcut_l[l]
             for u, s in zip(u_n, s_n):
                 s[:] = u
-                if TM:
-                    A = num.ones((4, 4), num.Float)
-                    A[:, 0] = 1.0
-                    A[:, 1] = r[gc - 2:gc + 2]**2
-                    A[:, 2] = A[:, 1]**2
-                    A[:, 3] = A[:, 1] * A[:, 2]
-                    a = num.log(u[gc - 2:gc + 2] /
-                               r[gc - 2:gc + 2]**(l + 1))
-                    a = solve_linear_equations(A, a)
-                    r1 = r[:gc]
-                    r2 = r1**2
-                    rl1 = r1**(l + 1)
-                    s[:gc] = rl1 * num.exp(a[0] + r2 *
-                                            (a[1] + r2 *
-                                             (a[2] + r2 *
-                                              a[3])))
-                else:
-                    A = num.ones((4, 4), num.Float)
-                    A[:, 0] = 1.0
-                    A[:, 1] = r[gc - 2:gc + 2]**2
-                    A[:, 2] = A[:, 1]**2
-                    A[:, 3] = A[:, 1] * A[:, 2]
-                    a = u[gc - 2:gc + 2] / r[gc - 2:gc + 2]**(l + 1)
-                    a = solve_linear_equations(A, a)
-                    r1 = r[:gc]
-                    r2 = r1**2
-                    rl1 = r1**(l + 1)
-                    s[:gc] = rl1 * (a[0] +
-                                      r2 * (a[1] + r2 * (a[2] + r2 * a[3])))
+                A = num.ones((4, 4), num.Float)
+                A[:, 0] = 1.0
+                A[:, 1] = r[gc - 2:gc + 2]**2
+                A[:, 2] = A[:, 1]**2
+                A[:, 3] = A[:, 1] * A[:, 2]
+                a = u[gc - 2:gc + 2] / r[gc - 2:gc + 2]**(l + 1)
+                a = solve_linear_equations(A, a)
+                r1 = r[:gc]
+                r2 = r1**2
+                rl1 = r1**(l + 1)
+                s[:gc] = rl1 * (a[0] +
+                                  r2 * (a[1] + r2 * (a[2] + r2 * a[3])))
 
                 coefs.append(a)
                 if nodeless:

@@ -23,6 +23,7 @@ hosts = None
 parsize = None
 gpspecial = None
 arg = None
+setup_paths = []
 i = 1
 while len(sys.argv) > i:
     arg = sys.argv[i]
@@ -32,7 +33,7 @@ while len(sys.argv) > i:
             debug = True
             print >> sys.stderr, 'gridpaw-DEBUG mode'
         elif arg.startswith('--gridpaw-setups='):
-            setup_home = arg.split('=')[1]
+            setup_paths = arg.split('=')[1].split(':')
         elif arg == '--gridpaw-poly':
             GAUSS = False
         elif arg.startswith('--gridpaw-special='):
@@ -69,18 +70,16 @@ def cb_handler(number, frame):
 signal.signal(signal.SIGUSR1, cb_handler)
 
 
-setup_paths = os.environ.get('GRIDPAWSETUPPATH', '')
-if setup_paths != '':
-    setup_paths = setup_paths.split(':')
-else:
+paths = os.environ.get('GRIDPAWSETUPPATH', '')
+if paths != '':
+    setup_paths += paths.split(':')
+if setup_paths == []:
     path = join(home, '.gridpaw/setups')
     if os.path.isdir(path):
         setup_paths = [path]
         print 'Using setups from:', path
         print 'Please put that path in your GRIDPAWSETUPPATH environment',
         print 'variable!'
-    else:
-        setup_paths = []
 
 
 from gridpaw.calculator import Calculator

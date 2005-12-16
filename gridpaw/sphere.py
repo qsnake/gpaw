@@ -32,6 +32,7 @@ if __name__ == '__main__':
     weights /= 4.0 * pi
     pickle.dump((weights, YY, Y_nL, points), open('%d.pickle' % N, 'w'))
 else:
-    from gridpaw import home
-    filename = home + '/.gridpaw/setups/%d.pickle' % N
+    from gridpaw import setup_paths
+    print setup_paths
+    filename = setup_paths[-1] + '/%d.pickle' % N
     weights, YY, Y_nL, points = pickle.load(open(filename))

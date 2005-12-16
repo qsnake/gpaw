@@ -100,6 +100,7 @@ class Calculator:
         print >> out, '  | |_| . |_  |_  | | | '
         print >> out, '  |___|___|___|___|___| '
         print >> out
+        print >> out, 'or'
         print >> out, '  _  _  _           '
         print >> out, ' (_||_)(_|\/\/   -  ', version
         print >> out, '  _||               '
