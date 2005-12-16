@@ -107,3 +107,41 @@ def distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k):
     return myspins, my_ibzk_kc, my_weights_k, domain_comm, kpt_comm
 
 
+
+
+""" find rank in kpt_comm for a given spin/kpoint pair
+    and find combined index u into kpt_u """
+def get_parallel_info_s_k(wf,s,k):
+
+    nmykpts = len(wf.myibzk_kc)
+    nmyspins = len(wf.myspins)
+
+    kc = wf.ibzk_kc[k]
+
+    # find index into myibz_kc for the given kpoint
+    my_ibz_index = k%nmykpts
+
+    # find index into myspins for the given spin
+    myspins_index = s%nmyspins
+
+    # print 'my_ibz_index: ',my_ibz_index
+    # print 'myspins_index ',myspins_index
+
+    # find nodes in each kpt-world
+    nnodes_kpt_world = wf.kpt_comm.size
+
+    # find rank in kpt_world that hold k and s
+    kpt_rank = s/nmyspins + (k/nmykpts)*wf.nspins/nmyspins
+
+        
+    # check all this
+    assert kpt_rank<wf.kpt_comm.size
+    if wf.kpt_comm.rank==kpt_rank:
+        assert s == wf.myspins[myspins_index]
+
+        my_kc= wf.myibzk_kc[my_ibz_index]
+        assert (num.sum(abs(my_kc-kc))< 0.00000001)
+
+    u = nmykpts*myspins_index + my_ibz_index
+
+    return kpt_rank,u
