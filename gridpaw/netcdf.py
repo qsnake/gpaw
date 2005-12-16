@@ -177,6 +177,7 @@ def write_netcdf(paw, filename):
             else:
                 var[:, :, :, i:i + ni, 0] = P_uni.real
                 var[:, :, :, i:i + ni, 1] = P_uni.imag
+            P_uni.shape = (wf.nspins * wf.nkpts, wf.nbands, ni)
             i += ni
     assert i == nproj
 
