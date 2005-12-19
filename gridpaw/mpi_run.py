@@ -8,6 +8,7 @@ import gridpaw.utilities.mpi as mpi
 from gridpaw.startup import create_paw_object
 from gridpaw.utilities.socket import send, recv
 from gridpaw.utilities.timing import clock
+from gridpaw.utilities import DownTheDrain
 
 
 MASTER = 0
@@ -37,7 +38,7 @@ def run(port):
         mpi.broadcast_string(string)
         output = SocketStringIO(sckt)
     else:
-        output = None
+        output = DownTheDrain()
         string = mpi.broadcast_string()
 
     args = pickle.loads(string)

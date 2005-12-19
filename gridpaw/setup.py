@@ -575,7 +575,7 @@ class Setup:
         return self.nk
     
     def get_recommended_grid_spacing(self):
-        return 0.2 # self.h ???  XXXXXXXXXXXXX
+        return 0.4 # self.h ???  XXXXXXXXXXXXX
 
     def get_projectors(self):
         return self.pt_j
