@@ -87,7 +87,7 @@ class Domain:
                 spos_c[c] %= 1.0
         return spos_c
 
-    def rank(self, spos_c):
+    def get_rank_for_position(self, spos_c):
         """Calculate rank of domain containing scaled position."""
         rnk_c = num.clip(num.floor(spos_c * self.parsize_c).astype(num.Int),
                          0, num.array(self.parsize_c) - 1)
