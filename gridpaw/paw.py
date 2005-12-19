@@ -235,7 +235,7 @@ class Paw:
                 nucleus.make_localized_grids(self.gd, self.finegd,
                                              self.wf.myibzk_kc,
                                              self.locfuncbcaster)
-                rank = self.domain.rank(spos_c)
+                rank = self.domain.get_rank_for_position(spos_c)
                 # Did the atom move to another processor?
                 if nucleus.rank != rank:
                     # Yes!
@@ -403,16 +403,23 @@ class Paw:
             # Calculation started from a NetCDF restart file.
             # Allocate array for wavefunctions and copy data from the
             # NetCDFWaveFunction class
-            self.calculate_multipole_moments()
             u = 0
-            for s in range(wf.nspins):
-                for k in range(wf.nkpts):
+            for s in range(len(wf.myspins)):
+                for k in range(wf.nmykpts):
                     kpt = wf.kpt_u[u]
                     tmp_nG = kpt.psit_nG
                     kpt.psit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
                     kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
-                    kpt.psit_nG[:] = tmp_nG[:]
+
+                    # distribute band by band to save memory
+                    for n in range(wf.nbands):
+                        kpt.gd.distribute(tmp_nG[n],kpt.psit_nG[n])
+
                     u += 1
+                    
+            self.calculate_multipole_moments()
+
+                    
                     
         elif self.niter == 0:
             # We don't have any occupation numbers.  The initial
@@ -487,7 +494,7 @@ class Paw:
 
     def distribute_atoms(self):
         """Distribute atoms on all CPUs."""
-        nspins = self.nspins
+        nspins = self.wf.nspins
         nmykpts = self.wf.nmykpts
         nbands = self.wf.nbands
 
@@ -728,10 +735,40 @@ class Paw:
             return self.nt_sG[0] * c
 
     def get_wave_function_array(self, n, k, s):
-        """Return pseudo-wave-function array."""
-        u = s + 2 * k
+        """Return pseudo-wave-function array.
+        For the parallel case find the rank in kpt_comm that contains
+        the (k,s) pair, for this rank, collect on the corresponding
+        domain a full array on the domain master and send this to the
+        global master.""" 
+        from parallel import get_parallel_info_s_k
+        
         c = 1.0 / self.a0**1.5
-        return self.wf.kpt_u[u].psit_nG[n] * c
+
+        kpt_rank,u=get_parallel_info_s_k(self.wf,s,k)
+
+        if not mpi.parallel:
+            psit_G = self.wf.kpt_u[u].psit_nG[n]
+            return psit_G*c
+
+        if self.wf.kpt_comm.rank==kpt_rank:
+            psit_G =  self.wf.kpt_u[u].psit_nG[n]
+            a_G = self.gd.collect(psit_G)
+
+            # domain master send this to the global master
+            if self.domain.comm.rank == 0:
+                self.wf.kpt_comm.send(a_G,MASTER)
+
+        if (mpi.rank==MASTER) and (self.wf.kpt_comm.size>1):
+            # allocate full wavefunction and receive 
+            psit_G =  self.wf.kpt_u[0].psit_nG[0]
+            a_G = num.zeros(psit_G.shape[:-3] + tuple(self.gd.N_c), psit_G.typecode())
+            self.wf.kpt_comm.receive(a_G,kpt_rank)
+        
+        if mpi.rank==MASTER:
+            return a_G*c
+        else: 
+            return
+
 
     def get_wannier_integrals(self, i):
         """Calculate integrals for maximally localized Wannier functions."""
@@ -763,17 +800,3 @@ class Paw:
         
         return self.Ha * (Exc - self.Exc)
     
-    def get_nucleus_P_uni(self,nucleus):
-        """ return to the master the nucleus with
-            domain_overlap = EVERYTHING
-        """
-        if mpi.rank==MASTER:
-            if nucleus.domain_overlap == EVERYTHING:
-                return nucleus.P_uni
-            else:
-                P_uni = nucleus.P_uni.Copy()
-                self.domain.comm.receive(P_uni, nucleus.rank)
-                return P_uni
-        else:
-            if nucleus.domain_overlap == EVERYTHING:
-                self.domain.comm.send(nucleus.P_uni, MASTER)
