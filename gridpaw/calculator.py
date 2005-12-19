@@ -551,3 +551,6 @@ class Calculator:
     def GetListOfAtoms(self):
         """Return attached "list of atoms" object."""
         return self.atoms()
+
+    def GetGridSpacings(self):
+        return self.paw.get_grid_spacings()

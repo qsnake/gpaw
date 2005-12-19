@@ -800,3 +800,5 @@ class Paw:
         
         return self.Ha * (Exc - self.Exc)
     
+    def get_grid_spacings(self):
+        return self.a0 * self.gd.h_c
