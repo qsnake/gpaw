@@ -163,6 +163,7 @@ class Setup:
             pt_jg[j] /= x
             e_kin_j1j2[j] *= x
             e_kin_j1j2[:, j] *= x
+            pt_jg[j] /= num.dot(phit_jg[j] * pt_jg[j] * r_g**2, dr_g)
 
         # Find cutoff for core density:
         if Nc == 0:
