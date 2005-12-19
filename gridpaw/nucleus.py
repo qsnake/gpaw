@@ -132,7 +132,7 @@ class Nucleus:
         pt_j = self.setup.get_projectors()
         self.pt_i = create(pt_j, gd, self.spos_c, typecode=self.typecode,
                            lfbc=lfbc, onohirose=self.onohirose)
-        if self.typecode == num.Complex:
+        if self.typecode == num.Complex and self.pt_i is not None:
             self.pt_i.set_phase_factors(k_ki)
         
         # Localized potential:
