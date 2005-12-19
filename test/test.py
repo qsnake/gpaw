@@ -32,21 +32,22 @@ parser.add_option('-f', '--run-failed-tests-only',
 
 parser.add_option('-p', '--parallel',
                   action='store_true',
-                  help='Run parallel tests only.')
+                  help='Add parallel tests.')
 
 options, tests = parser.parse_args()
 
-if options.parallel:
-    path = 'parallel/'
-else:
-    path = ''
-    
+path = ''
+
 if len(tests) == 0:
     tests = glob.glob(path + '*.py')
 
 exclude = ['__init__.py', 'test.py', 'grr.py', 'C-force.py']
 if options.exclude is not None:
     exclude += options.exclude.split(',')
+
+# exclude parallel tests if options.parallel is not set
+if not options.parallel: 
+    exclude.extend(['parallel-restart.py']) 
 
 for test in exclude:
     if path + test in tests:
