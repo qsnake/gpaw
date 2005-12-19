@@ -90,6 +90,7 @@ class WaveFunctions:
         self.bzk_kc = bzk_kc
         self.ibzk_kc = ibzk_kc
         self.myibzk_kc = myibzk_kc
+        self.myspins = myspins
         self.weights_k = weights_k
         self.kpt_comm = kpt_comm
         
