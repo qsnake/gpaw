@@ -40,8 +40,6 @@ else:
     atoms = parameters.keys()
 
 for symbol in atoms:
-    print type(options.non_scalar_relativistic)
-    print options.non_scalar_relativistic
     g = Generator(symbol, options.xcfunctional,
                   scalarrel=not options.non_scalar_relativistic)
     try:

@@ -112,7 +112,7 @@ class Generator(AllElectron):
         # Calculate the kinetic energy of the core states:
         Ekincore = 0.0
         for f, e, u in zip(f_j[:njcore], e_j[:njcore], self.u_j[:njcore]):
-            u = num.where(u < 1e-160, 0, u)  # XXX Numeric!
+            u = num.where(abs(u) < 1e-160, 0, u)  # XXX Numeric!
             Ekincore += f * (e - num.sum((u**2 * self.vr * dr)[1:] / r[1:]))
 
         # Calculate core density:
@@ -120,7 +120,7 @@ class Generator(AllElectron):
             nc = num.zeros(N, num.Float)
         else:
             uc_j = self.u_j[:njcore]
-            uc_j = num.where(uc_j < 1e-160, 0, uc_j)  # XXX Numeric!
+            uc_j = num.where(abs(uc_j) < 1e-160, 0, uc_j)  # XXX Numeric!
             nc = num.dot(f_j[:njcore], uc_j**2) / (4 * pi)
             nc[1:] /= r[1:]**2
             nc[0] = nc[1]
@@ -304,7 +304,6 @@ class Generator(AllElectron):
         gt[gcut:] = 0.0
         gt *= c_l[0] / rcut**3
         norm = num.dot(gt, dv)
-        print norm
         assert abs(norm - 1) < 1e-3
         gt /= norm
         
@@ -502,7 +501,7 @@ class Generator(AllElectron):
             else:
                 f = 0.0
             e0 = e_n[0]
-            if (f > 0 and abs(e - e0) > 0.001) or (f == 0 and e0 < self.emax):
+            if (f > 0 and abs(e - e0) > 0.002) or (f == 0 and e0 < self.emax):
                 print 'GHOST-state in %s-channel at %.6f' % ('spd'[l], e0)
                 self.ghost = True
 

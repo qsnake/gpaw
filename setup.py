@@ -96,10 +96,9 @@ elif machine == 'x86_64':
     extra_compile_args += ['-Wall', '-std=c99']
 
     libraries += ['acml', 'g2c']
-    library_dirs += ['/opt/acml/gnu64/lib']
-    extra_link_args += ['-Wl,-rpath=/opt/acml/gnu64/lib']
-##    library_dirs += ['/opt/acml2.7.0/gnu64/lib']
-##    extra_link_args += ['-Wl,-rpath=/opt/acml2.7.0/gnu64/lib']
+    acml = glob('/opt/acml*/gnu64/lib')[-1]
+    library_dirs += acml
+    extra_link_args += ['-Wl,-rpath=' + acml]
     print 'Using ACML library'
 
     output = os.popen('mpicc -showme 2>/dev/null').read()

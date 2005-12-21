@@ -156,12 +156,27 @@ def get_exact_exchange(wf, nuclei, gd, decompose = False):
                 # add val-core contribution from current nucleus
 
 ##              Hack for atomic Neon                
-##              D_p =  num.zeros((13,13))
-##              D_p[0,0] = D_p[2,2] = D_p[3,3] = D_p[4,4] = 2.
-##              D_p = packNEW(D_p)    
-
-                D_p = nucleus.D_sp[0]
+                if 0:
+                    D_p =  num.zeros((13,13), num.Float)
+                    D_p[0,0] = 2
+                    D_p[2,2] = D_p[3,3] = D_p[4,4] = 4.0 / 3
+                    D_p = packNEW(D_p)    
+                elif 0:
+                    D_p =  num.zeros((4, 4), num.Float)
+                    D_p[0,0] = 2
+                    D_p[1,1] = D_p[2,2] = D_p[3,3] = 4.0 / 3
+                    D_p = packNEW(D_p)
+                    print D_p
+                    print nucleus.D_sp[0]
+                    print D_p - nucleus.D_sp[0]
+                else:
+                    D_p = nucleus.D_sp[0]
+                    
                 ExxValCore += -num.dot(D_p,X_p)
+##                 print D_p * X_p
+##                 print nucleus.D_sp[0] * X_p
+##                 print num.dot(nucleus.D_sp[0],X_p)
+##                 print X_p
                 
             except IOError:
                 print 'WARNING: no VC file for', nucleus.setup.symbol
