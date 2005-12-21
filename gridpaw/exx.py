@@ -7,7 +7,8 @@ class ExxSingle:
     
     def __init__(self, gd):
         """Class should be initialized with a grid_descriptor 'gd' from
-        the gridpaw module"""       
+        the gridpaw module"""
+        
         self.gd = gd
 
         # determine r^2 and r matrices
@@ -15,7 +16,8 @@ class ExxSingle:
         r  = num.sqrt(r2)
 
         # 'width' of gaussian distribution
-        a = 22./min(gd.domain.cell_c)**2
+        # a=a0/... => ng~exp(-a0/4) on the boundary of the domain
+        a = 25./min(gd.domain.cell_c)**2
 
         # gaussian density for Z=1
         self.ng1 = num.exp(-a*r2)*(a/pi)**(1.5)
@@ -50,7 +52,7 @@ class ExxSingle:
             solver = PoissonSolver(self.gd)
             v = self.gd.array()
             solver.solve(v,n)
-            exx = -0.5*(v*n).sum()*self.gd.dv
+            exx = -0.5*self.gd.integrate(v*n)
         elif method=='recip':
             from FFT import fftnd
             nk = fftnd(n)
@@ -85,6 +87,7 @@ class ExxSingle:
 
 def get_exact_exchange(wf, nuclei, gd, decompose = False):
     """Calculate exact exchange energy"""
+    
     from gridpaw.localized_functions import create_localized_functions
 
     # ensure gamma point calculation
@@ -154,30 +157,31 @@ def get_exact_exchange(wf, nuclei, gd, decompose = False):
                 ExxCore += Exxc
                 
                 # add val-core contribution from current nucleus
+                D_p = nucleus.D_sp[0]
 
-##              Hack for atomic Neon                
-                if 0:
-                    D_p =  num.zeros((13,13), num.Float)
-                    D_p[0,0] = 2
-                    D_p[2,2] = D_p[3,3] = D_p[4,4] = 4.0 / 3
-                    D_p = packNEW(D_p)    
-                elif 0:
-                    D_p =  num.zeros((4, 4), num.Float)
-                    D_p[0,0] = 2
-                    D_p[1,1] = D_p[2,2] = D_p[3,3] = 4.0 / 3
-                    D_p = packNEW(D_p)
-                    print D_p
-                    print nucleus.D_sp[0]
-                    print D_p - nucleus.D_sp[0]
-                else:
-                    D_p = nucleus.D_sp[0]
-                    
-                ExxValCore += -num.dot(D_p,X_p)
-##                 print D_p * X_p
-##                 print nucleus.D_sp[0] * X_p
-##                 print num.dot(nucleus.D_sp[0],X_p)
-##                 print X_p
+##                Hack for atomic Neon                
+##                 D_p =  num.zeros((13,13))
+##                 D_p[0,0] = D_p[2,2] = D_p[3,3] = D_p[4,4] = 2.
+##                 D_p = packNEW(D_p)    
+
+##                Hack for atomic Magnesium
+##                 D_p =  num.zeros((5,5))
+##                 D_p[0,0] = 2.
+##                 D_p = packNEW(D_p)    
+
+##                Hack for atomic Oxygen
+##                 D_ii =  num.zeros((13,13),num.Float)
+##                 D_ii[0,0] = 2.
+##                 D_ii[2,2] = D_ii[3,3] = D_ii[4,4] = 4/3.
+##                 D_p = packNEW(D_ii)
+##                 D_p[0],D_p[13],D_p[25],D_p[36],D_p[46]
                 
+##                 print D_p
+##                 from gridpaw.utilities import unpack
+##                 print unpack(D_p)
+                
+                ExxValCore += -num.dot(D_p,X_p)
+               
             except IOError:
                 print 'WARNING: no VC file for', nucleus.setup.symbol
                 print 'file', filename, 'missing'
@@ -264,6 +268,8 @@ def atomic_exact_exchange(atom, type = 'all'):
                 vr2dr += vr2drl * num.sum(G2.copy().flat)
 
             # add to total exchange the contribution from current two states
+##             print -.5 * num.dot(n,vr2dr) # * 27.211395655517311
+##             print f12, j1, j2
             Exx += -.5 * f12 * num.dot(n,vr2dr)
 
     # double energy if mixed contribution
@@ -441,3 +447,19 @@ def packNEW(M2, symmetric = False):
                 if error > 1e-6: print 'Error not symmetric by: ', error
     assert p == len(M)
     return M
+
+if __name__ == '__main__':
+    from gridpaw.domain import Domain
+    from gridpaw.grid_descriptor import GridDescriptor
+
+    d  = Domain((20,20,20))   # domain object
+    N  = 2**5                 # number of grid points
+    Nc = (N,N,N)              # tuple with number of grid point along each axis
+    gd = GridDescriptor(d,Nc) # grid-descriptor object
+    r2 = rSquared(gd)         # matrix with the square of the radial coordinate
+    r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
+    nH = num.exp(-2*r)/pi     # density of the hydrogen atom
+
+    exx = ExxSingle(gd).get_single_exchange(nH, method = 'recip')
+    print 'Numerical result: ', exx
+    print 'Analytic result:  ', -5/16.
