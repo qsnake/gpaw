@@ -25,7 +25,7 @@ class PoissonSolver:
 
         level = 0
         self.presmooths=[2]
-        self.postsmooths=[2]
+        self.postsmooths=[1]
         while level < 4:
             try:
                 gd = gd.coarsen()
@@ -37,8 +37,8 @@ class PoissonSolver:
             self.residuals.append(gd.new_array())
             self.interpolators.append(Interpolator(gd, 1))
             self.restrictors.append(Restrictor(gd, 1))
-            self.presmooths.append(4)
-            self.postsmooths.append(4)
+            self.presmooths.append(6)
+            self.postsmooths.append(6)
             level += 1
             print >> out, level, gd.N_c
                     
@@ -53,7 +53,7 @@ class PoissonSolver:
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
-        while self.iterate(self.step) > self.eps and niter < 300:
+        while self.iterate2(self.step) > self.eps and niter < 300:
             niter += 1
         if niter == 300:
 ##        if niter == 3000:
@@ -90,12 +90,13 @@ class PoissonSolver:
 
 
     def iterate2(self, step, level=0):
-        """Uses the Gauss-Seidel relaxation for smoothing"""
+        """Smooths the solution in every multigrid level"""
 
         residual = self.residuals[level]
 
         if level < self.levels:
-            self.operators[level].relax(self.phis[level],self.rhos[level],self.presmooths[level])
+            self.operators[level].relax(self.phis[level],self.rhos[level],
+                                        self.presmooths[level])
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             self.restrictors[level].apply(residual,
@@ -106,11 +107,12 @@ class PoissonSolver:
                                                 residual)
             self.phis[level] -= residual
 
-        self.operators[level].relax(self.phis[level],self.rhos[level],self.postsmooths[level])
-        self.operators[level].apply(self.phis[level], residual)
-        residual -= self.rhos[level]
-        error = self.gd.domain.comm.sum(num.dot(residual.flat,
+        self.operators[level].relax(self.phis[level],self.rhos[level],
+                                    self.postsmooths[level])
+        if level == 0:
+            self.operators[level].apply(self.phis[level], residual)
+            residual -= self.rhos[level]
+            error = self.gd.domain.comm.sum(num.dot(residual.flat,
                                                 residual.flat))
-
-        return error
+            return error
 

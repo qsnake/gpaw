@@ -53,6 +53,7 @@ class Calculator:
                   'fixdensity': False,
                   'idiotproof': True,
                   'tolerance': 1.0e-9,
+                  'maxiter': 100,
                   'out': '-',
                   'hosts': None,
                   'parsize': None,
@@ -238,6 +239,7 @@ class Calculator:
                 self.lmax,
                 self.onohirose,
                 self.tolerance,
+                self.maxiter,
                 self.parsize,
                 self.restart_file,
                 ]

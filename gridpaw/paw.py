@@ -128,7 +128,7 @@ class Paw:
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
                  nvalence, nbands, nspins, kT,
                  typecode, bzk_kc, ibzk_kc, weights_k,
-                 order, usesymm, mix, old, fixdensity, idiotproof,
+                 order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
                  # Parallel stuff:
                  myspins,
                  myibzk_kc, myweights_k, kpt_comm,
@@ -153,6 +153,7 @@ class Paw:
         self.nspins = nspins
         self.usesymm = usesymm
         self.fixdensity = fixdensity
+        self.maxiter = maxiter
         self.idiotproof = idiotproof
 
         self.set_output(out)
@@ -482,7 +483,7 @@ class Paw:
 
         self.error = dsum(wf.calculate_residuals(self.p_nuclei))
 
-        if self.error > self.tolerance and not sigusr1[0]:
+        if (self.error > self.tolerance and self.niter < self.maxiter) and not sigusr1[0]:
             self.timer.start('SD')
             wf.rmm_diis(self.p_nuclei, self.vt_sG)
             self.timer.stop('SD')

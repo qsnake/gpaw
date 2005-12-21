@@ -1,7 +1,13 @@
+/* Copyright (C) 2005 CSC Scientific Computing Ltd., Espoo, Finland
+   Please see the accompanying LICENSE file for further information. */
+
+
 #include "bmgs.h"
 
 void bmgs_relax(const bmgsstencil* s, double* a, double* b, const double* src)
-     /* Gauss-Seidel relaxation for the equation operator a = src, solution is given in b */ 
+     /* Jacobi relaxation for the equation "operator" b = src
+        a contains the temporariry array holding also the boundary values. */
+
 {
 
   a += (s->j[0] + s->j[1] + s->j[2]) / 2;
@@ -15,7 +21,12 @@ void bmgs_relax(const bmgsstencil* s, double* a, double* b, const double* src)
 	      for (int c = 1; c < s->ncoefs; c++)
 		x += a[s->offsets[c]] * s->coefs[c];
 	      *b++ = (*src - x)/s->coefs[0];
-	      *a++ = (*src - x)/s->coefs[0];
+	      /*	      *a++ = (*src - x)/s->coefs[0];
+		 Above line would produce Gauss-Seidel relaxation;
+                 however, as the current implementation would modify also
+                 the zero boundary values, Gauss-Seidel does not converge 
+                 properly */
+	      a++;
 	      src++;
 	    }
 	  a += s->j[2];

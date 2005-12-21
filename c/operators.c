@@ -46,6 +46,8 @@ static PyObject * Operator_relax(OperatorObject *self,
   int start[3] = {0, 0, 0};
   int size[3] = {size1[0], size1[1], size1[2]};
   ph = 0;
+
+  for (int n = 0; n < nrelax; n++ ) {
     for (int i = 0; i < 3; i++)
       {
         bc_unpack1(bc, fun, self->buf, i,
@@ -54,19 +56,16 @@ static PyObject * Operator_relax(OperatorObject *self,
         bc_unpack2(bc, self->buf, i,
                    self->recvreq, self->sendreq, self->recvbuf);
       }
-
-  for (int n = 0; n < nrelax; n++ ) {
-
     bmgs_relax(&self->stencil,self->buf,fun,src);
-    /*What about other than zero boundary conditions? (periodic, parallel,...)*/
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++) {
       if (bc->zero[i])
-        {
-          size[i] = 1;
-          bmgs_zero(fun, size1, start, size);
-        }
+	{
+	  size[i] = 1;
+	  bmgs_zero(fun, size1, start, size);
+	  size[i] = size1[i];
+	}
+    }
   }
-
   Py_RETURN_NONE;
 }
 
