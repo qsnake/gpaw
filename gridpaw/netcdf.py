@@ -78,10 +78,6 @@ def read_netcdf(paw, filename):
     for s in range(paw.nspins):
         paw.interpolate(paw.nt_sG[s], paw.nt_sg[s])
 
-    # Read projections:
-    for nucleus in paw.nuclei:
-        nucleus.allocate(wf.nspins, wf.nmykpts, wf.nbands)
-
     P_skni = vars['Projections']
     i = 0
     for nucleus in paw.nuclei:
@@ -120,11 +116,19 @@ def read_netcdf(paw, filename):
     D_sq = vars['AtomicDensityMatrices']
     q1 = 0
     for nucleus in paw.nuclei:
-        D_sp = nucleus.D_sp
-        q2 = q1 + D_sp.shape[1]
-        D_sp[:] = D_sq[:, q1:q2]
-        q1 = q2
+        if nucleus.domain_overlap == EVERYTHING:
+            D_sp = nucleus.D_sp
+            q2 = q1 + D_sp.shape[1]
+            D_sp[:] = D_sq[:, q1:q2]
+            q1 = q2
+        else:
+            ni = nucleus.get_number_of_partial_waves()
+            np = ni * (ni + 1) / 2
+            q2 = q1 + np
+            q1 = q2
+            
     assert q2 == nc.dimensions['nadm']
+
 
 
 def write_netcdf(paw, filename):
