@@ -1,5 +1,4 @@
 from ASE import Crystal, Atom
-from gridpaw.utilities import equal
 from gridpaw import Calculator
 
 
@@ -13,4 +12,5 @@ calc.Set(spinpol=True)
 hydrogen[0].SetMagneticMoment(1.0)
 e2 = hydrogen.GetPotentialEnergy()
 de = e1 - e2
-equal(de, 0.787338432006, 1e-7)
+print de
+assert abs(de - 0.787318101852) < 1e-6

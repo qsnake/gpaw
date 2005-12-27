@@ -57,8 +57,12 @@ class MPIPaw:
                   'mpiexec -n %d %s' % (n, job))
 
         else:
-            cmd = ('lamboot -v %s; ' % hostfile +
-                   'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job)
+            if debug:
+                cmd = ('lamboot -v %s; ' % hostfile +
+                       'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job)
+            else:
+                cmd = ('lamboot -H %s; ' % hostfile +
+                       'mpirun -nw -x GRIDPAW_PARALLEL=1 C %s' % job)
 
         # Start remote calculator:
         error = os.system(cmd)
