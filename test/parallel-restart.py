@@ -9,22 +9,22 @@ from ASE.IO.Cube import WriteCube
 import time
 
 magmom = 0.0
-fcc = ListOfAtoms([Atom('Fe',magmom=magmom)],
-                   periodic=True)
-a = 0.707*3.61
-fcc.SetUnitCell((a, a, a))
 ng = 16
 
-nhostswrite = [1,2]
-nhostsread = [1,2]
+nhostswrite = [2]
+nhostsread = [2]
 
 tests = []
-for nkpt in [2,4]:
-   for magmom in [0.0]:
+for nkpt in [4]:
+   for magmom in [1.0]:
       test =  'test:  nkpt = %d magmom = %1.1f'%(nkpt,magmom)
       for nhosts in nhostswrite: 
        	print test
        	file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
+
+        fcc = ListOfAtoms([Atom('Fe',magmom=magmom)],
+                           periodic=True,
+                           cell = (2.55,2.55,2.55))
 
        	calc = Calculator(nbands=6,
                          gpts=(ng,ng,ng),
@@ -38,6 +38,7 @@ for nkpt in [2,4]:
        	e = fcc.GetPotentialEnergy()
        	calc.Write(file_prefix+'.nc')
 
+        del calc,fcc
        	time.sleep(10)
 
       for nhosts in nhostsread: 
