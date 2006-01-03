@@ -155,14 +155,14 @@ class Setup:
             nct_g *= Nc / Nc0
             
         for j in range(nj):
-            norm = num.dot((phi_jg[j] * r_g)**2, dr_g)
-##            print id_j[j], norm
-            x = 1.0 / sqrt(norm)
-            phi_jg[j] *= x
-            phit_jg[j] *= x
-            pt_jg[j] /= x
-            e_kin_j1j2[j] *= x
-            e_kin_j1j2[:, j] *= x
+##             norm = num.dot((phi_jg[j] * r_g)**2, dr_g)
+##             print id_j[j], norm
+##             x = 1.0 / sqrt(norm)
+##             phi_jg[j] *= x
+##             phit_jg[j] *= x
+##             pt_jg[j] /= x
+##             e_kin_j1j2[j] *= x
+##             e_kin_j1j2[:, j] *= x
             pt_jg[j] /= num.dot(phit_jg[j] * pt_jg[j] * r_g**2, dr_g)
 
         # Find cutoff for core density:
