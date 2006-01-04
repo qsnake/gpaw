@@ -68,9 +68,20 @@ if machine == 'sun4u':
     # |_ | ||\ |
     #  _||_|| \|
     #
-    
+
     include_dirs += ['/opt/SUNWhpc/include']
-    extra_compile_args += ['-KPIC','-fast']
+    extra_compile_args += ['-KPIC', '-fast']
+
+    # Suppress warning from -fast (-xarch=native):
+    f = open('cc-test.c', 'w')
+    f.write('int main(){}\n')
+    f.close()
+    stderr = os.popen3('cc cc-test.c -fast')[2].read()
+    arch = re.findall('-xarch=(\S+)', stderr)
+    os.remove('cc-test.c')
+    if len(arch) > 0:
+        extra_compile_args += ['-xarch=%s' % arch[-1]]
+        
     libraries += ['mpi']
     library_dirs += ['/opt/SUNWspro/lib',
                      '/opt/SUNWhpc/lib']
@@ -81,9 +92,14 @@ if machine == 'sun4u':
                      '/opt/SUNWhpc/lib/tcppm.so.2']
 
     # We need the -Bstatic before the -lsunperf and -lfsu:
-    extra_link_args = ['-Bstatic', '-lsunperf', '-lfsu', '-lmtsk']
+    extra_link_args = ['-Bstatic', '-lsunperf', '-lfsu']
+    cc_version = os.popen3('cc -V')[2].readline().split()[3]
+    if cc_version > '5.6':
+        libraries.append('mtsk')
+    else:
+        extra_link_args.append('-lmtsk')
+        define_macros.append(('NO_C99_COMPLEX', '1'))
 
-    define_macros.append(('NO_C99_COMPLEX', '1'))
     define_macros.append(('PARALLEL', '1'))
 
 elif machine == 'x86_64':
