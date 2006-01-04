@@ -242,6 +242,12 @@ class Paw:
                     # Yes!
                     distribute_atoms = True
                     nucleus.rank = rank
+
+                # XXX Right now we need to distribute all atoms to
+                # CPU's and make new MPI-groups for every little
+                # movement.  This should be fixed so that we only need
+                # to redistribute a single atom ...
+                distribute_atoms = True
         
         if movement:
             self.converged = False
@@ -528,9 +534,10 @@ class Paw:
                         self.my_nuclei.append(nucleus)
                         if nucleus.domain_overlap < EVERYTHING:
                             nucleus.allocate(nspins, nmykpts, nbands)
-                    else:
-                        if nucleus.domain_overlap == EVERYTHING:
-                            nucleus.deallocate()
+  
+            if (nucleus.domain_overlap == EVERYTHING and
+                domain_overlap < EVERYTHING):
+                nucleus.deallocate() # ...XXX
 
             nucleus.domain_overlap = domain_overlap
             domovl_a[a] = domain_overlap
