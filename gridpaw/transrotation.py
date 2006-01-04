@@ -1,6 +1,24 @@
 from math import sin, cos
 import Numeric as num
 
+def rotate(diff_c, r_c, angle):
+    cs = cos(angle)
+    sn = sin(angle)
+    R_cc = num.array([(1,   0,  0),
+		      (0,  cs, sn),
+		      (0, -sn, cs)])
+    diff_c -= r_c - num.dot(R_cc, r_c)
+
+
+if __name__ == '__main__':
+    from math import pi
+    c, v = RotationCoef(4, -pi)
+    c.shape = (4,4,4)
+    for x in c:
+        print x
+    v.shape = (4, 4)
+    print v
+
 def RotationCoef(N, dt):
     """Calculate coefficients for rotation.
         
@@ -78,62 +96,43 @@ def RotationCoef(N, dt):
     to2 = num.zeros(8*N*N)
 
     c = 0
-    # A (N*N, N*N) rotation-matrix is set up for the negative rotation.
-    rmat = num.zeros((N*N,N*N)).astype(num.Float)
-    for p in range(N*N):
-        v = v2[p]
-        rmat[p][v]     = c12[p]
-        rmat[p][v+1]   = c22[p]
-        rmat[p][v+N]   = c32[p]
-        rmat[p][v+N+1] = c42[p]
-    # it is transposed
-    rmat = num.transpose(rmat)
-
-    # and added to the rotation matrix of the positive rotation, which
-    # can be determined more easily.
+    # The positive and negative rotation-matrices are determined.
     for p in range(N*N):
         v = v1[p]
-        rmat[p][v]     += c11[p]
-        rmat[p][v+1]   += c21[p]
-        rmat[p][v+N]   += c31[p]
-        rmat[p][v+N+1] += c41[p]
+        to1[c] = from2[c] = p
+        from1[c] = to2[c] = v
+        val1[c] = c11[p]
+        c+=1
+        to1[c] = from2[c] = p
+        from1[c] = to2[c] = v+1
+        val1[c] = c21[p]
+        c+=1
+        to1[c] = from2[c] = p
+        from1[c] = to2[c] = v+N
+        val1[c] = c31[p]
+        c+=1
+        to1[c] = from2[c] = p
+        from1[c] = to2[c] = v+N+1
+        val1[c] = c41[p]
+        c+=1
 
-    # Since the rotation-matrix is sparse, it makes sense to collapse it,
-    # keeping only the non-zero elements.
-    for row in range(N*N): 
-        for col in range(N*N):
-            if rmat[row][col] != 0:
-                to1[c] = row  
-                from1[c] = col
-                # This guarantees that the matrix is Hermitian.
-                val1[c] = val2[c] = 0.5*rmat[row][col]
-                to2[c] = col
-                from2[c] = row
-                c += 1
+        v = v2[p]
+        to1[c] = from2[c] = v
+        from1[c] = to2[c] = p
+        val1[c] = c12[p]
+        c+=1
+        to1[c] = from2[c] = v+1
+        from1[c] = to2[c] = p
+        val1[c] = c22[p]
+        c+=1
+        to1[c] = from2[c] = v+N
+        from1[c] = to2[c] = p
+        val1[c] = c32[p]
+        c+=1
+        to1[c] = from2[c] = v+N+1
+        from1[c] = to2[c] = p
+        val1[c] = c42[p]
+        c+=1
         
-    val1 = val1[0:c]
-    from1 = from1[0:c]
-    to1 = to1[0:c]
-    val2 = val2[0:c]
-    from2 = from2[0:c]
-    to2 = to2[0:c]
-    
-    return c, val1, from1, to1, val2, from2, to2
-
-def rotate(diff_c, r_c, angle):
-    cs = cos(angle)
-    sn = sin(angle)
-    R_cc = num.array([(1,   0,  0),
-		      (0,  cs, sn),
-		      (0, -sn, cs)])
-    diff_c -= r_c - num.dot(R_cc, r_c)
-
-
-if __name__ == '__main__':
-    from math import pi
-    c, v = RotationCoef(4, -pi)
-    c.shape = (4,4,4)
-    for x in c:
-        print x
-    v.shape = (4, 4)
-    print v
+    val1 = 0.5*val1
+    return c, val1, from1, to1, val1, from2, to2
