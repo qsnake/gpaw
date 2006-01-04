@@ -414,7 +414,7 @@ class Paw:
 
                     # distribute band by band to save memory
                     for n in range(wf.nbands):
-                        kpt.gd.distribute(tmp_nG[n],kpt.psit_nG[n])
+                        kpt.gd.distribute(tmp_nG[n], kpt.psit_nG[n])
 
                     u += 1
                     
@@ -483,7 +483,9 @@ class Paw:
 
         self.error = dsum(wf.calculate_residuals(self.p_nuclei))
 
-        if (self.error > self.tolerance and self.niter < self.maxiter) and not sigusr1[0]:
+        if (self.error > self.tolerance and
+            self.niter < self.maxiter
+            and not sigusr1[0]):
             self.timer.start('SD')
             wf.rmm_diis(self.p_nuclei, self.vt_sG)
             self.timer.stop('SD')
@@ -751,22 +753,22 @@ class Paw:
             psit_G = self.wf.kpt_u[u].psit_nG[n]
             return psit_G*c
 
-        if self.wf.kpt_comm.rank==kpt_rank:
+        if self.wf.kpt_comm.rank == kpt_rank:
             psit_G =  self.wf.kpt_u[u].psit_nG[n]
             a_G = self.gd.collect(psit_G)
 
             # domain master send this to the global master
             if self.domain.comm.rank == 0:
-                self.wf.kpt_comm.send(a_G,MASTER)
+                self.wf.kpt_comm.send(a_G, MASTER)
 
-        if (mpi.rank==MASTER) and (self.wf.kpt_comm.size>1):
+        if mpi.rank == MASTER and self.wf.kpt_comm.size > 1:
             # allocate full wavefunction and receive 
             psit_G =  self.wf.kpt_u[0].psit_nG[0]
-            a_G = num.zeros(psit_G.shape[:-3] + tuple(self.gd.N_c), psit_G.typecode())
-            self.wf.kpt_comm.receive(a_G,kpt_rank)
+            a_G = num.zeros(psit_G.shape[:-3] + tuple(self.gd.N_c), psit_G.typecode()) # XXX ????
+            self.wf.kpt_comm.receive(a_G, kpt_rank)
         
-        if mpi.rank==MASTER:
-            return a_G*c
+        if mpi.rank == MASTER:
+            return a_G * c
         else: 
             return
 

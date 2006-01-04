@@ -1,6 +1,14 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""Main gridpaw module.
+
+Use like this::
+
+  from gridpaw import Calculator
+
+"""
+
 import os
 import sys
 import signal
@@ -9,10 +17,6 @@ from glob import glob
 from os.path import join
 
 import Numeric as num
-
-
-class GPError(Exception):
-    pass
 
 
 home = os.environ['HOME']
@@ -66,6 +70,7 @@ except ImportError:
 # (use "kill -s USR1 <pid>" to stop calculation)
 sigusr1 = [False]
 def cb_handler(number, frame):
+    """Call-back handler for USR1 signal."""
     sigusr1[0] = True
 signal.signal(signal.SIGUSR1, cb_handler)
 
