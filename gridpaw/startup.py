@@ -37,7 +37,7 @@ def create_paw_object(out, a0, Ha,
     # Default values:
     if spinpol is None:
         spinpol = magnetic
-    if hund is True and not spinpol:
+    if hund is True and (not spinpol or len(Z_a) != 1):
         hund = False
     if kT is None:
         if gamma:
