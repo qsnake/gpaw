@@ -590,7 +590,7 @@ class Setup:
     def get_atomic_hartree_potential(self):
         return self.vHt
     
-    def get_shape_function(self):
+    def get_shape_functions(self):
         return self.gt_l
     
     def get_potential(self):

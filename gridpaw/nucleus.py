@@ -117,7 +117,7 @@ class Nucleus:
                           onohirose=self.onohirose)
 
         # Shape function:
-        ghat_l = self.setup.get_shape_function()
+        ghat_l = self.setup.get_shape_functions()
         self.ghat_L = create(ghat_l, finegd, self.spos_c, lfbc=lfbc,
                              onohirose=self.onohirose)
             
