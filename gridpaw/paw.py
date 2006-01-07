@@ -705,7 +705,7 @@ class Paw:
             self.F_ac = F_ac
             
     def write_netcdf(self, filename):
-        """Write current state to a netDF file."""
+        """Write current state to a netCDF file."""
         netcdf.write_netcdf(self, filename)
         
     def initialize_from_netcdf(self, filename):
@@ -714,7 +714,7 @@ class Paw:
         output.plot_atoms(self)
 
     def warn(self, message):
-        """Print a wrning-message."""
+        """Print a warning-message."""
         print >> self.out, warning(message)
         if self.idiotproof:
             raise RuntimeError(warning)
