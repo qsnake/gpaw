@@ -363,6 +363,8 @@ else:
 class LocFuncBroadcaster:
     """..."""
     def __init__(self, comm):
+        if debug:
+            comm = comm.comm
         self.comm = comm
         self.size = comm.size
         self.rank = comm.rank

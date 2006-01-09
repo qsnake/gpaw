@@ -62,6 +62,9 @@ class _Operator:
                  phase_cd.shape == (3, 2)))
         self.operator.apply(in_xg, out_xg, phase_cd)
 
+    def relax(self, a, b, c):
+        self.operator.relax(a, b, c) # XXX ...
+        
     def get_diagonal_element(self):
         return self.operator.get_diagonal_element()
 
