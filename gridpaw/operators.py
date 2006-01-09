@@ -62,8 +62,13 @@ class _Operator:
                  phase_cd.shape == (3, 2)))
         self.operator.apply(in_xg, out_xg, phase_cd)
 
-    def relax(self, a, b, c):
-        self.operator.relax(a, b, c) # XXX ...
+    def relax(self, f_g, s_g, n):
+        assert f_g.shape == self.shape
+        assert s_g.shape == self.shape
+        assert is_contiguous(f_g, num.Float)
+        assert is_contiguous(s_g, num.Float)
+        assert self.typecode is num.Float
+        self.operator.relax(f_g, s_g, n)
         
     def get_diagonal_element(self):
         return self.operator.get_diagonal_element()
