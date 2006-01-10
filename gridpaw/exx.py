@@ -112,7 +112,7 @@ class ExxSingle:
             
             # neutralize density
             n -= ng
-
+            
             # determine correctional energy contribution due to neutralization
             Ecorr = - EGaussSelf + 2 * EGaussN
             return Ecorr
