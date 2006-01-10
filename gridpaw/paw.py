@@ -664,7 +664,7 @@ class Paw:
             for nucleus in self.nuclei:
                 nucleus.calculate_force(self.vHt_g, nt_g, vt_G)
 
-            # Master (domain_comm 0) collects forces from nuclei into
+            # Master collects forces from nuclei into
             # self.F_ac:
             if mpi.rank == MASTER:
                 for a, nucleus in enumerate(self.nuclei):
@@ -673,8 +673,9 @@ class Paw:
                     else:
                         self.domain.comm.receive(self.F_ac[a], nucleus.rank)
             else:
-                for nucleus in self.my_nuclei:
-                    self.domain.comm.send(nucleus.F_c, MASTER)
+                if self.wf.kpt_comm.rank == 0: 
+                    for nucleus in self.my_nuclei:
+                        self.domain.comm.send(nucleus.F_c, MASTER)
 
             if self.symmetry is not None and mpi.rank == MASTER:
                 # Symmetrize forces:
