@@ -49,20 +49,60 @@ for nkpt in [4]:
 				    mix = 0.1,
                                     old = 1,
                                     hosts=nhosts)
+        calc = atoms.GetCalculator()
         # atoms.SetCartesianPositions(atoms.GetCartesianPositions()+0.0000001)
         atoms.SetCartesianPositions(atoms.GetCartesianPositions()+0.01)
         atoms.SetCartesianPositions(atoms.GetCartesianPositions()-0.01)
-        e = erg = atoms.GetPotentialEnergy()
+        erg = atoms.GetPotentialEnergy()
+
 
         result = 'ok'
-        try: 
-           equal(e,e,1e-4)
-        except: 
-           result = 'failed'
+        equal(e,erg,1e-4)
 
         niter = atoms.GetCalculator().GetNumberOfIterations() 
         tests.append((test,result,niter,nhosts))
 
+del calc,atoms
 
 for test in tests: 
    print "%s ---- %10s --- %d ---- %d "%(test[0],test[1],test[2],test[3])
+
+
+
+nhosts = 4
+d = 2.0
+if 1: 
+    a = 5.0
+    O2 = ListOfAtoms([Atom('O',(0+d,d,d  ), magmom=1),
+                      Atom('O',(1.2+d,d,d), magmom=1)],
+                     periodic=1,
+                     cell=(a, a, a))
+    calc = Calculator(nbands=8, h=0.2,out = 'O2.txt',tolerance=1e-9,
+                      hosts = nhosts)
+    O2.SetCalculator(calc)
+    e0 = O2.GetPotentialEnergy()
+    f  = O2.GetCartesianForces()
+    equal(2.183981,sum(abs(f.flat)),1e-2)
+    calc.Write('O2.nc')
+
+    O2[1].SetCartesianPosition((1.21+d,d,d))
+    e2 = O2.GetPotentialEnergy()
+    niter2 = calc.GetNumberOfIterations()
+    f2 = O2.GetCartesianForces()
+
+    del calc,O2
+
+if 1: 
+    atoms = Calculator.ReadAtoms('O2.nc',out='O2-restart.txt',hosts=nhosts,
+                                 tolerance=1e-9)
+    e = atoms.GetPotentialEnergy()
+    atoms[1].SetCartesianPosition((1.21+d,d,d))
+    e1 = atoms.GetPotentialEnergy()
+    f1 = atoms.GetCartesianForces()
+    niter1 = atoms.GetCalculator().GetNumberOfIterations()
+
+    equal(e1,e2,1e-5)
+    equal(niter1,niter2,0)
+    equal(sum(abs(f1.flat-f2.flat)),0.0,1e-4)
+
+
