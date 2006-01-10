@@ -48,7 +48,8 @@ if os.system('python setup.py install --home=%s' % dir) != 0:
     fail('Installation failed!')
 
 export = ('export PYTHONPATH=%s/lib/python:%s/lib/python; ' % (dir, home) +
-          'export PATH=%s/bin:$PATH; ')
+          'export PATH=%s/bin:$PATH; ' +
+          'export GRIDPAWSETUPPATH=/usr/share/gridpaw/setups; ')
 
 # Run test-suite:
 os.chdir('test')
