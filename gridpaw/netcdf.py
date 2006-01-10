@@ -223,17 +223,18 @@ def write_netcdf(paw, filename):
                               nucleus.typecode)
         if paw.domain.comm.rank==MASTER: 
             if nucleus.domain_overlap == EVERYTHING:
-                P_uni = nucleus.P_uni
+                P_uni = nucleus.P_uni.copy()
             else:
                 paw.domain.comm.receive(P_uni, nucleus.rank)
         else:
             if nucleus.rank == paw.domain.comm.rank:
-                paw.domain.comm.send(nucleus.P_uni,MASTER)
+                assert nucleus.domain_overlap == EVERYTHING
+                paw.domain.comm.send(nucleus.P_uni.copy(),MASTER)
 
         for s in range(wf.nspins): 
            for k in range(wf.nkpts): 
-              kpt_rank,u = get_parallel_info_s_k(wf,s,k) 
-              if paw.wf.kpt_comm.rank == kpt_rank: 
+              kpt_rank,u = get_parallel_info_s_k(wf,s,k)
+              if (paw.wf.kpt_comm.rank == kpt_rank) and (paw.domain.comm.rank==MASTER):
                   P_uni_tot[s,k,:] = P_uni[u,:]
 
         paw.wf.kpt_comm.sum(P_uni_tot)
@@ -245,27 +246,38 @@ def write_netcdf(paw, filename):
             else:
                 var[:, :, :, i:i + ni, 0] = P_uni_tot.real
                 var[:, :, :, i:i + ni, 1] = P_uni_tot.imag
-            # P_uni.shape = (wf.nspins * wf.nkpts, wf.nbands, ni)
-            i += ni
+                
+        i += ni
 
-    if mpi.rank==MASTER:
+    if mpi.rank == MASTER:
         assert i == nproj
 
     if mpi.rank == MASTER:
         # Write atomic density matrices:
         var = nc.createVariable('AtomicDensityMatrices', num.Float,
                                 ('nspins', 'nadm'))
-        q1 = 0
-        for nucleus in paw.nuclei:
+    q1 = 0
+    for nucleus in paw.nuclei:
+        ni = nucleus.get_number_of_partial_waves()
+        np = ni * (ni + 1) / 2
+        D_sp = num.zeros((wf.nspins,np),num.Float)
+        if paw.domain.comm.rank == MASTER: 
             if nucleus.domain_overlap == EVERYTHING:
-                D_sp = nucleus.D_sp
-                q2 = q1 + D_sp.shape[1]
-                var[:, q1:q2] = D_sp
+                D_sp = nucleus.D_sp.copy()
             else:
-                ni = nucleus.get_number_of_partial_waves()
-                np = ni * (ni + 1) / 2
-                q2 = q1 + np
-            q1 = q2
+                paw.domain.comm.receive(D_sp,nucleus.rank)
+        else:
+            if nucleus.rank == paw.domain.comm.rank:
+                assert nucleus.domain_overlap == EVERYTHING
+                paw.domain.comm.send(nucleus.D_sp.copy(),MASTER)
+            
+        q2 = q1 + np
+
+        if mpi.rank == MASTER: 
+            var[:, q1:q1+np] = D_sp[:]
+        q1 = q2
+
+    if mpi.rank == MASTER: 
         assert q2 == nadm
 
     if mpi.rank == MASTER:
@@ -312,15 +324,6 @@ def write_netcdf(paw, filename):
         nt_sG = paw.gd.collect(paw.nt_sG[s])
         if mpi.rank == MASTER:
             var[s] = nt_sG / a0**3
-
-    # Write the pseudo charge density on the fine grid (rhot_g)
-    # if mpi.rank == MASTER:
-    #  var = nc.createVariable('PseudoChargeDensity', num.Float,
-    #                            ('nspins',
-    #                             'nfinegptsx', 'nfinegptsy', 'nfinegptsz'))
-    # rhot_g = paw.gd.collect(paw.rhot_g)
-    # if mpi.rank == MASTER:
-    #    var[:] = rhot_g / a0**3
 
     # Write the wave functions:
     if mpi.rank == MASTER:
