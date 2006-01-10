@@ -37,23 +37,22 @@ class PoissonSolver:
             self.residuals.append(gd.new_array())
             self.interpolators.append(Interpolator(gd, 1))
             self.restrictors.append(Restrictor(gd, 1))
-            self.presmooths.append(6)
-            self.postsmooths.append(6)
+            self.presmooths.append(4)
+            self.postsmooths.append(4)
             level += 1
             print >> out, level, gd.N_c
                     
         self.levels = level
-        self.eps = 1e-9
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
         self.presmooths[level]=8
         self.postsmooths[level]=8
         
-    def solve(self, phi, rho):
+    def solve(self, phi, rho,eps=1e-9):
         self.phis[0] = phi
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
-        while self.iterate2(self.step) > self.eps and niter < 300:
+        while self.iterate2(self.step) > eps and niter < 300:
             niter += 1
         if niter == 300:
 ##        if niter == 3000:
@@ -113,6 +112,6 @@ class PoissonSolver:
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
-                                                residual.flat))
+                                                residual.flat))*self.dv
             return error
 
