@@ -11,8 +11,8 @@ import time
 magmom = 0.0
 ng = 16
 
-nhostswrite = [2]
-nhostsread = [2]
+nhostswrite = [4]
+nhostsread = [4]
 
 tests = []
 for nkpt in [4]:
@@ -30,7 +30,7 @@ for nkpt in [4]:
                          gpts=(ng,ng,ng),
                          kpts=(2, 2, nkpt),
                          out=file_prefix+'.txt',
-                         tolerance = 1e-6, 
+                         tolerance = 1e-10, 
                          hosts=nhosts)
 	
        	fcc.SetCalculator(calc)
@@ -46,8 +46,7 @@ for nkpt in [4]:
         print '------ restart calculation  ',file_prefix
         atoms = Calculator.ReadAtoms(file_prefix+'.nc',
                                     out=file_prefix+'_restart.txt',
-				    mix = 0.1,
-                                    old = 1,
+                                    tolerance = 1e-10,
                                     hosts=nhosts)
         calc = atoms.GetCalculator()
         # atoms.SetCartesianPositions(atoms.GetCartesianPositions()+0.0000001)
@@ -66,7 +65,6 @@ del calc,atoms
 
 for test in tests: 
    print "%s ---- %10s --- %d ---- %d "%(test[0],test[1],test[2],test[3])
-
 
 
 nhosts = 4
@@ -103,6 +101,6 @@ if 1:
 
     equal(e1,e2,1e-5)
     equal(niter1,niter2,0)
-    equal(sum(abs(f1.flat-f2.flat)),0.0,1e-4)
+    equal(sum(abs(f1.flat-f2.flat)),0.0,1e-3)
 
 
