@@ -51,6 +51,8 @@ except ImportError:
                '  is probably missing).']
     msg += ['  You will not be able to write and read wavefunctions!']
         
+## import numpy
+## numpy.get_numpy_include()
 
 libraries = []
 library_dirs = []
