@@ -50,7 +50,7 @@ class ExxSingle:
         if method=='real':
             from gridpaw.poisson_solver import PoissonSolver
             solver = PoissonSolver(self.gd)
-            v = self.gd.array()
+            v = self.gd.new_array()
             solver.solve(v,n)
             exx = -0.5*self.gd.integrate(v*n)
         elif method=='recip':
@@ -96,7 +96,7 @@ def get_exact_exchange(wf, nuclei, gd, decompose = False):
     # construct gauss functions
     gt_aL=[]
     for nucleus in nuclei:
-        gSpline = nucleus.setup.get_shape_function()
+        gSpline = nucleus.setup.get_shape_functions()
         gt_aL.append(create_localized_functions(gSpline, gd,
                                                 nucleus.spos_c))
 
