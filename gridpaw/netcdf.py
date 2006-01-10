@@ -102,10 +102,10 @@ def read_netcdf(paw, filename):
             if nucleus.domain_overlap == EVERYTHING:
                 nucleus.P_uni[:] = P_uni[:]
             else:
-                paw.domain.comm.send(P_uni, nucleus.rank)
+                paw.domain.comm.send(P_uni, nucleus.rank, 200)
         else:
             if nucleus.rank == paw.domain.comm.rank:
-                paw.domain.comm.receive(nucleus.P_uni,MASTER)
+                paw.domain.comm.receive(nucleus.P_uni, MASTER, 200)
 
         i += ni
 
@@ -223,13 +223,13 @@ def write_netcdf(paw, filename):
                               nucleus.typecode)
         if paw.domain.comm.rank==MASTER: 
             if nucleus.domain_overlap == EVERYTHING:
-                P_uni = nucleus.P_uni.copy()
+                P_uni = nucleus.P_uni
             else:
-                paw.domain.comm.receive(P_uni, nucleus.rank)
+                paw.domain.comm.receive(P_uni, nucleus.rank, 300)
         else:
             if nucleus.rank == paw.domain.comm.rank:
                 assert nucleus.domain_overlap == EVERYTHING
-                paw.domain.comm.send(nucleus.P_uni.copy(),MASTER)
+                paw.domain.comm.send(nucleus.P_uni, MASTER, 300)
 
         for s in range(wf.nspins): 
            for k in range(wf.nkpts): 
@@ -263,13 +263,13 @@ def write_netcdf(paw, filename):
         D_sp = num.zeros((wf.nspins,np),num.Float)
         if paw.domain.comm.rank == MASTER: 
             if nucleus.domain_overlap == EVERYTHING:
-                D_sp = nucleus.D_sp.copy()
+                D_sp = nucleus.D_sp
             else:
-                paw.domain.comm.receive(D_sp,nucleus.rank)
+                paw.domain.comm.receive(D_sp, nucleus.rank, 207)
         else:
             if nucleus.rank == paw.domain.comm.rank:
                 assert nucleus.domain_overlap == EVERYTHING
-                paw.domain.comm.send(nucleus.D_sp.copy(),MASTER)
+                paw.domain.comm.send(nucleus.D_sp, MASTER, 207)
             
         q2 = q1 + np
 

@@ -23,21 +23,22 @@ static PyObject * mpi_receive(MPIObject *self, PyObject *args)
 {
   PyArrayObject* a;
   int src;
+  int tag = 123;
   int block = 1;
-  if (!PyArg_ParseTuple(args, "Oi|i", &a, &src, &block))
+  if (!PyArg_ParseTuple(args, "Oi|ii", &a, &src, &tag, &block))
     return NULL;
   int n = a->descr->elsize;
   for (int d = 0; d < a->nd; d++)
     n *= a->dimensions[d];
   if (block)
     {
-      MPI_Recv(LONGP(a), n, MPI_BYTE, src, 77, self->comm, MPI_STATUS_IGNORE);
+      MPI_Recv(LONGP(a), n, MPI_BYTE, src, tag, self->comm, MPI_STATUS_IGNORE);
       Py_RETURN_NONE;
     }
   else
     {
       MPI_Request req;
-      MPI_Irecv(LONGP(a), n, MPI_BYTE, src, 77, self->comm, &req);
+      MPI_Irecv(LONGP(a), n, MPI_BYTE, src, tag, self->comm, &req);
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
@@ -46,21 +47,22 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
 {
   PyArrayObject* a;
   int dest;
+  int tag = 123;
   int block = 1;
-  if (!PyArg_ParseTuple(args, "Oi|i", &a, &dest, &block))
+  if (!PyArg_ParseTuple(args, "Oi|ii", &a, &dest, &tag, &block))
     return NULL;
   int n = a->descr->elsize;
   for (int d = 0; d < a->nd; d++)
     n *= a->dimensions[d];
   if (block)
     {
-      MPI_Send(LONGP(a), n, MPI_BYTE, dest, 77, self->comm);
+      MPI_Send(LONGP(a), n, MPI_BYTE, dest, tag, self->comm);
       Py_RETURN_NONE;
     }
   else
     {
       MPI_Request req;
-      MPI_Isend(LONGP(a), n, MPI_BYTE, dest, 77, self->comm, &req);
+      MPI_Isend(LONGP(a), n, MPI_BYTE, dest, tag, self->comm, &req);
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }

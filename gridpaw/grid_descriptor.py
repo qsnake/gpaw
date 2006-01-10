@@ -260,15 +260,15 @@ class GridDescriptor:
         m = (-n) % N
         if n != m:
             rank = self.rank + (m - n) * self.domain.stride_c[c]
-            request = self.comm.receive(b_g[0], rank, False)
-            self.comm.send(b_g[0].copy(), rank)
+            request = self.comm.receive(b_g[0], rank, 117, False)
+            self.comm.send(b_g[0].copy(), rank, 117)
             self.comm.wait(request)
         c_g = b_g[-1:0:-1].copy()
         m = N - n - 1
         if n != m:
             rank = self.rank + (m - n) * self.domain.stride_c[c]
-            request = self.comm.receive(b_g[1:], rank, False)
-            self.comm.send(c_g, rank)
+            request = self.comm.receive(b_g[1:], rank, 118, False)
+            self.comm.send(c_g, rank, 118)
             self.comm.wait(request)
         else:
             b_g[1:] = c_g
@@ -295,7 +295,7 @@ class GridDescriptor:
         if self.rank != MASTER:
             self.comm.gather(a_g, MASTER)
             b_g = self.new_array()
-            self.comm.receive(b_g, MASTER)
+            self.comm.receive(b_g, MASTER, 111)
             return b_g
         else:
             b_rg = self.new_array(self.comm.size)
@@ -326,7 +326,7 @@ class GridDescriptor:
                                      ny * n1:(ny + 1) * n1,
                                      nz * n2:(nz + 1) * n2]
                         if r != MASTER:
-                            self.comm.send(b_g, r)
+                            self.comm.send(b_g, r, 111)
                         r += 1
             return B_g[:n0, :n1, :n2].copy()
 
@@ -368,7 +368,7 @@ class GridDescriptor:
             return
         
         if self.rank != MASTER:
-            self.comm.receive(b_g,MASTER)
+            self.comm.receive(b_g, MASTER, 42)
             return
         else:
             r = 0
@@ -378,11 +378,11 @@ class GridDescriptor:
                 for ny in range(parsize_c[1]):
                     for nz in range(parsize_c[2]):
                         b_g[:] = B_g[...,
-                                  nx * n0:(nx + 1) * n0,
-                                  ny * n1:(ny + 1) * n1,
-                                  nz * n2:(nz + 1) * n2]
+                                     nx * n0:(nx + 1) * n0,
+                                     ny * n1:(ny + 1) * n1,
+                                     nz * n2:(nz + 1) * n2]
                         if r != MASTER:
-                            self.comm.send(b_g,r)
+                            self.comm.send(b_g, r, 42)
                         r += 1
 
             b_g[:] = B_g[:n0,:n1,:n2]

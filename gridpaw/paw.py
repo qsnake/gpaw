@@ -671,11 +671,11 @@ class Paw:
                     if nucleus.domain_overlap == EVERYTHING:
                         self.F_ac[a] = nucleus.F_c
                     else:
-                        self.domain.comm.receive(self.F_ac[a], nucleus.rank)
+                        self.domain.comm.receive(self.F_ac[a], nucleus.rank, 7)
             else:
                 if self.wf.kpt_comm.rank == 0: 
                     for nucleus in self.my_nuclei:
-                        self.domain.comm.send(nucleus.F_c, MASTER)
+                        self.domain.comm.send(nucleus.F_c, MASTER, 7)
 
             if self.symmetry is not None and mpi.rank == MASTER:
                 # Symmetrize forces:
@@ -767,13 +767,13 @@ class Paw:
 
             # domain master send this to the global master
             if self.domain.comm.rank == 0:
-                self.wf.kpt_comm.send(a_G, MASTER)
+                self.wf.kpt_comm.send(a_G, MASTER, 13)
 
         if mpi.rank == MASTER and self.wf.kpt_comm.size > 1:
             # allocate full wavefunction and receive 
             psit_G =  self.wf.kpt_u[0].psit_nG[0]
             a_G = num.zeros(psit_G.shape[:-3] + tuple(self.gd.N_c), psit_G.typecode()) # XXX ????
-            self.wf.kpt_comm.receive(a_G, kpt_rank)
+            self.wf.kpt_comm.receive(a_G, kpt_rank, 13)
         
         if mpi.rank == MASTER:
             return a_G * c

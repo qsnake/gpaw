@@ -23,7 +23,7 @@ class SerialCommunicator:
     def broadcast(self, buf, root):
         pass
 
-    def send(self, buff, root):
+    def send(self, buff, root, tag=123, block=True):
         pass
 
 serial_comm = SerialCommunicator()
@@ -97,17 +97,17 @@ if parallel and debug:
             assert is_contiguous(buf)
             self.comm.broadcast(buf, root)
 
-        def send(self, a, dest, block=True):
+        def send(self, a, dest, tag=123, block=True):
             assert 0 <= dest < self.size
             assert dest != self.rank
             assert is_contiguous(a)
-            return self.comm.send(a, dest, block)
+            return self.comm.send(a, dest, tag, block)
             
-        def receive(self, a, src, block=True):
+        def receive(self, a, src, tag=123, block=True):
             assert 0 <= src < self.size
             assert src != self.rank
             assert is_contiguous(a)
-            return self.comm.receive(a, src, block)
+            return self.comm.receive(a, src, tag, block)
             
         def wait(self, request):
             self.comm.wait(request)
