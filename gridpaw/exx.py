@@ -1,6 +1,38 @@
 import Numeric as num
 from math import pi
 
+class Data: # Test class (for Fluorine only!)
+    def __init__(self):
+
+        self.f = open('exxNM.tmp', 'w')
+        self.txt = ''
+        self.temp = 0.0
+        self.tot = 0.0
+        print >>self.f, '        Exx v-v [eV]\n      _______________\nn m   Exx_s     Exx_a'
+        
+    def add(self, n, m, exxs, exxa):
+       
+        exxs *= 27.21139565551731
+        exxa *= 27.21139565551731
+        self.tot += exxs + exxa
+    
+        if n<4 and m<4:
+            print >>self.f, n, m, '%9.4f%8.4f' %(exxs, exxa)
+            self.f.flush()
+        if n==0 and m==0:
+            self.txt += '\nss = '+str(exxs+exxa)
+        if n==0 and m==1:
+            self.txt +='\nsp = ' + str(6*(exxs+exxa))
+        if n==3 and m==2:
+            self.temp += 6*(exxs+exxa)
+        if n==3 and m==3:
+            self.txt += '\npp = '+str(3*(exxs+exxa) + self.temp)
+
+    def finalize(self):
+        print >>self.f, self.txt
+        print >>self.f, 'Total Exx v-v:', self.tot
+        self.f.close()
+
 class ExxSingle:
     """Class used to calculate the exchange energy of given
     single orbital electron density"""
@@ -85,29 +117,49 @@ class ExxSingle:
             Ecorr = - EGaussSelf + 2 * EGaussN
             return Ecorr
 
-def get_exact_exchange(wf, nuclei, gd, decompose = False):
+def get_exact_exchange(paw, decompose = False, tempOFF = None):
     """Calculate exact exchange energy"""
     
     from gridpaw.localized_functions import create_localized_functions
+    from gridpaw.polynomium import a_i, c_l
+    from gridpaw.spline import Spline
+    from gridpaw import home
+    import pickle
 
+    wf = paw.wf
+    nuclei = paw.nuclei
+    gd = paw.finegd
+    
     # ensure gamma point calculation
     assert wf.typecode == num.Float
 
     # construct gauss functions
     gt_aL=[]
     for nucleus in nuclei:
-        gSpline = nucleus.setup.get_shape_functions()
-        gt_aL.append(create_localized_functions(gSpline, gd,
-                                                nucleus.spos_c))
+        rcut = nucleus.setup.rcut
+        lmax = nucleus.setup.lmax
+        x = num.arange(101) / 100.0
+        s = num.zeros(101, num.Float)
+        for i in range(4):
+            s += a_i[i] * x**i
+            
+        gSpline = [Spline(l, rcut, c_l[l] / rcut**(3 + l) * x**l * s)
+                   for l in range(lmax + 1)]
+##         gSpline = nucleus.setup.get_shape_functions()
+        gt_aL.append(create_localized_functions(gSpline, gd, nucleus.spos_c))
 
     # load single exchange calculator
     exx_single = ExxSingle(gd).get_single_exchange
 
     # calculate exact exchange
-    exxs = exxa = 0.0
+    Exxs = Exxa =  ExxValCore = ExxCore = 0.0
+##     dat = Data() #XXX
     for spin in range(wf.nspins):
         for n in range(wf.nbands):
-            for m in range(wf.nbands):
+            for m in range(n, wf.nbands):
+                # determine double count factor:
+                DC = 2 - (n == m)
+                
                 # calculate joint occupation number
                 fnm = (wf.kpt_u[spin].f_n[n] *
                        wf.kpt_u[spin].f_n[m]) * wf.nspins / 2.
@@ -115,6 +167,10 @@ def get_exact_exchange(wf, nuclei, gd, decompose = False):
                 # determine current exchange density
                 n_G = wf.kpt_u[spin].psit_nG[m]*\
                       wf.kpt_u[spin].psit_nG[n]
+
+                # and interpolate to the fine grid
+                n_g = gd.new_array()
+                paw.interpolate(n_G, n_g)
                 
                 for a, nucleus in enumerate(nuclei):
                     # generate density matrix
@@ -125,49 +181,48 @@ def get_exact_exchange(wf, nuclei, gd, decompose = False):
 
                     # add compensation charges to exchange density
                     Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-                    gt_aL[a].add(n_G, Q_L)
+                    gt_aL[a].add(n_g, Q_L)
 
                     # add atomic contribution to exchange energy
                     C_pp  = nucleus.setup.M_pp
-                    exxa -= fnm*num.dot(D_p, num.dot(C_pp, D_p))
+                    tempa = -fnm*num.dot(D_p, num.dot(C_pp, D_p)) * DC #XXX
+                    Exxa += tempa #XXX
                     
                 # determine total charge of exchange density
                 if n == m: Z = 1
                 else: Z = 0
 
                 # add the nm contribution to exchange energy
-                exxs += fnm * exx_single(n_G, Z = Z)
+                temps = fnm * exx_single(n_g, Z = Z) * DC #XXX
+                Exxs += temps #XXX
+##                 dat.add(n, m, temps, tempa) #XXX
+##     dat.finalize() #XXX
+    # Determine the valence-core and core-core contributions for each
+    # spin and nucleus
+    for nucleus in nuclei:
+        try:
+            # load data from file
+            filename = home + '/trunk/gridpaw/atom/VC/' + \
+                       nucleus.setup.symbol + '.' + \
+                       nucleus.setup.xcname + '.VC'
+            f = open(filename,'r')
+            Exxc, X_p = pickle.load(f)
 
-        # Determine the valence-core and core-core contributions
-        ExxValCore = ExxCore = 0.0
-        import pickle
-        from gridpaw import home
+            # add core-core contribution from current nucleus
+            ExxCore += Exxc
 
-        # add val-core and core-core contribution for each nucleus
-        for nucleus in nuclei:
-            try:
-                # load data from file
-                filename = home + '/trunk/gridpaw/atom/VC/' + \
-                           nucleus.setup.symbol + '.' + \
-                           nucleus.setup.xcname + '.VC'
-                f = open(filename,'r')
-                Exxc, X_p = pickle.load(f)
-
-                # add core-core contribution from current nucleus
-                ExxCore += Exxc
-                
-                # add val-core contribution from current nucleus
-                D_p = nucleus.D_sp[0]
-
+            # add val-core contribution from current nucleus
+            for spin in range(wf.nspins):
+                D_p = nucleus.D_sp[spin]
 ##                Hack for atomic Neon                
-##                 D_p =  num.zeros((13,13))
-##                 D_p[0,0] = D_p[2,2] = D_p[3,3] = D_p[4,4] = 2.
-##                 D_p = packNEW(D_p)    
+##                 D_ii =  num.zeros((13,13))
+##                 D_ii[0,0] = D_ii[2,2] = D_ii[3,3] = D_ii[4,4] = 2.
+##                 D_p = packNEW(D_ii)    
 
 ##                Hack for atomic Magnesium
-##                 D_p =  num.zeros((5,5))
-##                 D_p[0,0] = 2.
-##                 D_p = packNEW(D_p)    
+##                 D_ii =  num.zeros((5,5))
+##                 D_ii[0,0] = 2.
+##                 D_p = packNEW(D_ii)    
 
 ##                Hack for atomic Oxygen
 ##                 D_ii =  num.zeros((13,13),num.Float)
@@ -175,26 +230,26 @@ def get_exact_exchange(wf, nuclei, gd, decompose = False):
 ##                 D_ii[2,2] = D_ii[3,3] = D_ii[4,4] = 4/3.
 ##                 D_p = packNEW(D_ii)
 ##                 D_p[0],D_p[13],D_p[25],D_p[36],D_p[46]
-                
+
 ##                 print D_p
 ##                 from gridpaw.utilities import unpack
 ##                 print unpack(D_p)
-                
-                ExxValCore += -num.dot(D_p,X_p)
-               
-            except IOError:
-                print 'WARNING: no VC file for', nucleus.setup.symbol
-                print 'file', filename, 'missing'
-                print 'Exact exchange energy may be incorrect'
-                
+                ExxValCore += - num.dot(D_p, X_p)
+
+        except IOError:
+            print 'WARNING: no VC file for', nucleus.setup.symbol
+            print 'file', filename, 'missing'
+            print 'Exact exchange energy may be incorrect'
+
     # add all contributions, to get total exchange energy
-    exx = exxs + exxa + ExxValCore + ExxCore
+    if tempOFF != None: Exx = eval(tempOFF)
+    else: Exx = Exxs + Exxa + ExxValCore + ExxCore    
 
     # return result
     if decompose:
-        return num.array([exx, exxs + exxa, ExxValCore, ExxCore])
+        return num.array([Exx, Exxs + Exxa, ExxValCore, ExxCore])
     else:
-        return exx
+        return Exx
 
 def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
@@ -268,9 +323,8 @@ def atomic_exact_exchange(atom, type = 'all'):
                 vr2dr += vr2drl * num.sum(G2.copy().flat)
 
             # add to total exchange the contribution from current two states
-##             print -.5 * num.dot(n,vr2dr) # * 27.211395655517311
-##             print f12, j1, j2
             Exx += -.5 * f12 * num.dot(n,vr2dr)
+##             print j1, j2, f12, -.5 * f12 * num.dot(n,vr2dr)* 27.211395655517311
 
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.
@@ -444,7 +498,9 @@ def packNEW(M2, symmetric = False):
             p += 1
             if symmetric:
                 error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-                if error > 1e-6: print 'Error not symmetric by: ', error
+                if error > 1e-6:
+                    print 'Error not symmetric by:', error, '=',\
+                          error/M2[r,c]*100, '%'
     assert p == len(M)
     return M
 
