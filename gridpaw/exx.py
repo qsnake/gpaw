@@ -61,13 +61,16 @@ class ExxSingle:
         self.EGaussSelf1 = -num.sqrt(a/2/pi)
 
         # calculate reciprocal lattice vectors
-        dim = gd.N_c.copy()
-        dim.shape = (3,1,1,1)
+        dim = num.reshape(gd.N_c, (3,1,1,1))
         dk = 2*pi / gd.domain.cell_c
         dk.shape = (3, 1, 1, 1)
         k = ((num.indices(self.gd.N_c)+dim/2)%dim - dim/2)*dk
         self.k2 = sum(k**2)
         self.k2[0,0,0] = 1.0
+
+        # Ewald corection
+        rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
+        self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
 
         # determine N^3
         self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
@@ -81,15 +84,14 @@ class ExxSingle:
         # determine exchange energy of neutral density using specified method
         if method=='real':
             from gridpaw.poisson_solver import PoissonSolver
-            solver = PoissonSolver(self.gd)
+            solve = PoissonSolver(self.gd).solve
             v = self.gd.new_array()
-            solver.solve(v,n)
+            solve(v,n)
             exx = -0.5*self.gd.integrate(v*n)
         elif method=='recip':
             from FFT import fftnd
-            nk = fftnd(n)
-            exx = -0.5*self.gd.integrate(num.absolute(nk)**2*4*pi/self.k2)\
-                  /(self.N3)
+            I = num.absolute(fftnd(n))**2 * 4*pi/self.k2 * self.ewald
+            exx = -0.5*self.gd.integrate(I) / self.N3
         else: raise RunTimeError('method name ', method, 'not recognized')
 
         # return resulting exchange energy
@@ -117,7 +119,7 @@ class ExxSingle:
             Ecorr = - EGaussSelf + 2 * EGaussN
             return Ecorr
 
-def get_exact_exchange(paw, decompose = False, tempOFF = None):
+def get_exact_exchange(paw, decompose = False):
     """Calculate exact exchange energy"""
     
     from gridpaw.localized_functions import create_localized_functions
@@ -242,8 +244,7 @@ def get_exact_exchange(paw, decompose = False, tempOFF = None):
             print 'Exact exchange energy may be incorrect'
 
     # add all contributions, to get total exchange energy
-    if tempOFF != None: Exx = eval(tempOFF)
-    else: Exx = Exxs + Exxa + ExxValCore + ExxCore    
+    Exx = Exxs + Exxa + ExxValCore + ExxCore    
 
     # return result
     if decompose:
@@ -416,7 +417,7 @@ def constructX(gen):
             i1 += 2 * lv1 + 1
 
     # pack X_ii matrix
-    X_p = packNEW(X_ii, symmetric = True)
+    X_p = packNEW2(X_ii, symmetric = True)
     return X_p
 
 def coreStates(symbol, n,l,f):
@@ -504,12 +505,32 @@ def packNEW(M2, symmetric = False):
     assert p == len(M)
     return M
 
+def packNEW2(M2, symmetric = False):
+    """new pack method"""
+    
+    n = len(M2)
+    M = num.zeros(n * (n + 1) / 2, M2.typecode())
+    p = 0
+    for r in range(n):
+        M[p] = M2[r, r]
+        p += 1
+        for c in range(r + 1, n):
+            M[p] =  (M2[r, c] + num.conjugate(M2[c,r])) / 2. # <- divide by 2!!
+            p += 1
+            if symmetric:
+                error = abs(M2[r, c] - num.conjugate(M2[c, r]))
+                if error > 1e-6:
+                    print 'Error not symmetric by:', error, '=',\
+                          error/M2[r,c]*100, '%'
+    assert p == len(M)
+    return M
+
 if __name__ == '__main__':
     from gridpaw.domain import Domain
     from gridpaw.grid_descriptor import GridDescriptor
 
     d  = Domain((20,20,20))   # domain object
-    N  = 2**5                 # number of grid points
+    N  = 2**6                 # number of grid points
     Nc = (N,N,N)              # tuple with number of grid point along each axis
     gd = GridDescriptor(d,Nc) # grid-descriptor object
     r2 = rSquared(gd)         # matrix with the square of the radial coordinate
