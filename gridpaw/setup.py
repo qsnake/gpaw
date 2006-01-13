@@ -55,10 +55,10 @@ class Hartree:
         # |   0    0    0  a1_3 a2_3 |   | vr_3 |   | c_4 |
         # |   0    0    0    0  a1_4 |   | vr_4 |   | c_5 |
         #               __
-        #             4 || Q
-        # v  <--  v + ------
-        #               l+1
-        #              r
+        #             4 || Q   1
+        # v  <--  v + ------- ----
+        #             2 l + 1  l+1
+        #                     r
         #
         gcut = len(n_g)
         Q = num.dot(self.r_g**(2 + l) * self.dr_g, n_g)
@@ -147,7 +147,7 @@ class Setup:
         
 ##        print e_kin_j1j2
 
-        # Normalize everthing:
+        # Normalize everything:
         Nc0 = sqrt(4 * pi) * num.dot(nc_g, r_g**2 * dr_g)
 ##        print 'Core electrons', Nc0
         if Nc > 0:
