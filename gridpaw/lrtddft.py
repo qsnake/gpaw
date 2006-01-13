@@ -61,11 +61,17 @@ class LrTransitions:
     """Linear Response Transition objects
 
     Input parameters:
-    wf     = the ground wave function object, needed for number of spins
-             and occupations
-    nspins = number of spins considered in the calculation
-             Note: Valid only for unpolarised ground state calculation
-    eps    = Minimal occupation difference for a transition
+
+    wf:
+      the ground wave function object, needed for number of spins
+      and occupations
+      
+    nspins:
+      number of spins considered in the calculation
+      Note: Valid only for unpolarised ground state calculation
+
+    eps:
+      Minimal occupation difference for a transition
     """
 
     def __init__(self,
