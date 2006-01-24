@@ -23,7 +23,7 @@ from gridpaw.localized_functions import LocFuncBroadcaster
 import gridpaw.utilities.mpi as mpi
 from gridpaw import netcdf
 from gridpaw import output
-
+from parallel import get_parallel_info_s_k
 
 NOT_INITIALIZED = -1
 NOTHING = 0
@@ -751,7 +751,6 @@ class Paw:
         the (k,s) pair, for this rank, collect on the corresponding
         domain a full array on the domain master and send this to the
         global master.""" 
-        from parallel import get_parallel_info_s_k
         
         c = 1.0 / self.a0**1.5
 
@@ -781,10 +780,22 @@ class Paw:
             return
 
 
-    def get_wannier_integrals(self, i):
+    def get_wannier_integrals(self, i,s,k,k1,G_I):
         """Calculate integrals for maximally localized Wannier functions."""
-        assert self.nspins == 1 and self.wf.typecode is num.Float
-        return self.gd.wannier_matrix(self.wf.kpt_u[0].psit_nG, i)
+
+        assert self.wf.nspins>=s
+
+        kpt_rank,u = get_parallel_info_s_k(self.wf,s,k)
+        kpt_rank1,u1 = get_parallel_info_s_k(self.wf,s,k1)
+
+        # XXX not for the kpoint/spin parallel case
+        assert self.wf.kpt_comm.size==1
+
+        G = G_I[i]
+        return self.gd.wannier_matrix(self.wf.kpt_u[u].psit_nG,
+                                      self.wf.kpt_u[u1].psit_nG,
+                                      i,
+                                      k,k1,G)
 
     def get_xc_difference(self, xcname):
         """Calculate non-seflconsistent XC-energy difference."""

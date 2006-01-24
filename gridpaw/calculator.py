@@ -486,10 +486,12 @@ class Calculator:
         """Return pseudo-wave-function array."""
         return self.paw.get_wave_function_array(band, kpt, spin)
 
-    def GetWannierLocalizationMatrix(self, G_I, **args):
+    def GetWannierLocalizationMatrix(self, G_I,kpoint,nextkpoint,spin,
+                                     dirG, **args):
         """Calculate integrals for maximally localized Wannier functions."""
-        c = G_I.index(1)
-        return self.paw.get_wannier_integrals(c)
+
+        c = dirG.index(1)
+        return self.paw.get_wannier_integrals(c,spin,kpoint,nextkpoint,G_I)
 
     def GetMagneticMoment(self):
         """Return the magnetic moment."""

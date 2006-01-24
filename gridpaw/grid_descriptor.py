@@ -403,28 +403,70 @@ class GridDescriptor:
         self.comm.sum(d_c)
         return d_c
 
-    def wannier_matrix(self, psit_nG, c):
-        """Wannier localization integrals."""
+    def wannier_matrix(self, psit_nG, psit_nG1, c,k,k1,G):
+        """Wannier localization integrals:
+
+        For a given **k**,**k'** and **Ga** the soft part of Z is
+        given by:
+        (Eq. 28 ref1)
+
+            ~                       *
+            Z = Int exp[i (k'-k-Ga) r] u_nk(r) u_mk'(r) dr 
+
+        A gamma-point calculation correspond to the case (k=k').
+        If k<>k1 then k'-k-Ga=0. 
+
+        **Ga** is given by:
+                    __
+                   2||
+            G_a =  ---
+                    La
+                    
+        ref1: Thygesen et al, PRB 2005)
+
+        """
         nbands = len(psit_nG)
         Z_nn = num.zeros((nbands, nbands), num.Complex)
         shape = (nbands, -1)
+        
         for g in range(self.n_c[c]):
-            e = exp(2j * pi / self.N_c[c] * (g + self.beg0_c[c]))
+
             if c == 0:
                 A_nG = psit_nG[:, g].copy()
             elif c == 1:
                 A_nG = psit_nG[:, :, g].copy()
             else:
                 A_nG = psit_nG[:, :, :, g].copy()
+                
+            if k<>k1:
+                if c == 0:
+                    B_nG = psit_nG1[:, g].copy()
+                elif c == 1:
+                    B_nG = psit_nG1[:, :, g].copy()
+                else:
+                    B_nG = psit_nG1[:, :, :, g].copy()
+
+
+            if k==k1: 
+                e = exp(2j * pi / self.N_c[c] * (g + self.beg0_c[c]))
+                B_nG = A_nG
+            else:
+                e = 1.0
+
             A_nG.shape = shape
-            Z_nn += e * num.dot(cc(A_nG), num.transpose(A_nG))
+            B_nG.shape = shape
+            Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG))
+            
         self.comm.sum(Z_nn, MASTER)
+
+ 
         #                __        __      __
         #        ~      \         2||  a  \     a  a    a  *
         # Z    = Z    +  )  exp[i --- R ]  )   P  O   (P  )
         #  nmx    nmx   /__        L   x  /__   ni ii'  mi'
         #
         #                a                 ii'
+        
         return Z_nn * self.dv
     
 
