@@ -178,6 +178,16 @@ class Generator(AllElectron):
                 n_ln[1] = [n]
                 f_ln[1] = [0.0]
                 e_ln[1] = [e]
+            elif [len(n_n) for n_n in n_ln] == [0, 0, 1]:
+                # We have a d-channel, but no s- and p-channel.  Add them:
+                n = n_ln[2][0]
+                e = e_ln[2][0]
+                n_ln[0] = [n]
+                f_ln[0] = [0.0]
+                e_ln[0] = [e]
+                n_ln[1] = [n]
+                f_ln[1] = [0.0]
+                e_ln[1] = [e]
 
             # Make sure we have two projectors for each occupied channel:
             for l in range(lmax + 1):
