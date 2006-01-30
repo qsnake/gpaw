@@ -27,6 +27,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.pt_jg = []
         self.grid = None
         self.X_p = []
+        self.ExxC = None
 
     def parse(self, symbol, xcname):
         name = symbol + '.' + xcname
