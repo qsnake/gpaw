@@ -26,6 +26,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.phit_jg = []
         self.pt_jg = []
         self.grid = None
+        self.X_p = []
 
     def parse(self, symbol, xcname):
         name = symbol + '.' + xcname
@@ -74,6 +75,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 self.phit_jg,
                 self.pt_jg,
                 self.e_kin_j1j2,
+                self.X_p,
+                self.ExxC,
                 fingerprint,
                 filename)
     
@@ -120,12 +123,15 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 assert attrs['type'] == 'poly3'
                 self.rc = -1.0
         elif name in ['ae_core_density', 'pseudo_core_density',
-                      'localized_potential', 'kinetic_energy_differences']:
+                      'localized_potential', 'kinetic_energy_differences',
+                      'exact_exchange_X_matrix']:
             self.data = []
         elif name in ['ae_partial_wave', 'pseudo_partial_wave',
                       'projector_function']:
             self.data = []
             self.id = attrs['state']
+        elif name == 'exact_exchange':
+            self.ExxC = float(attrs['core-core'])
         else:
             self.data = None
             
@@ -157,3 +163,5 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             j = len(self.pt_jg)
             assert self.id == self.id_j[j]
             self.pt_jg.append(x_g)
+        elif name == 'exact_exchange_X_matrix':
+            self.X_p = x_g

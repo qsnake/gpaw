@@ -199,49 +199,17 @@ def get_exact_exchange(paw, decompose = False):
                 Exxs += temps #XXX
 ##                 dat.add(n, m, temps, tempa) #XXX
 ##     dat.finalize() #XXX
+
     # Determine the valence-core and core-core contributions for each
     # spin and nucleus
     for nucleus in nuclei:
-        try:
-            # load data from file
-            filename = home + '/trunk/gridpaw/atom/VC/' + \
-                       nucleus.setup.symbol + '.' + \
-                       nucleus.setup.xcname + '.VC'
-            f = open(filename,'r')
-            Exxc, X_p = pickle.load(f)
-
             # add core-core contribution from current nucleus
-            ExxCore += Exxc
+            ExxCore += nucleus.setup.ExxC
 
             # add val-core contribution from current nucleus
             for spin in range(wf.nspins):
                 D_p = nucleus.D_sp[spin]
-##                Hack for atomic Neon                
-##                 D_ii =  num.zeros((13,13))
-##                 D_ii[0,0] = D_ii[2,2] = D_ii[3,3] = D_ii[4,4] = 2.
-##                 D_p = packNEW(D_ii)    
-
-##                Hack for atomic Magnesium
-##                 D_ii =  num.zeros((5,5))
-##                 D_ii[0,0] = 2.
-##                 D_p = packNEW(D_ii)    
-
-##                Hack for atomic Oxygen
-##                 D_ii =  num.zeros((13,13),num.Float)
-##                 D_ii[0,0] = 2.
-##                 D_ii[2,2] = D_ii[3,3] = D_ii[4,4] = 4/3.
-##                 D_p = packNEW(D_ii)
-##                 D_p[0],D_p[13],D_p[25],D_p[36],D_p[46]
-
-##                 print D_p
-##                 from gridpaw.utilities import unpack
-##                 print unpack(D_p)
-                ExxValCore += - num.dot(D_p, X_p)
-
-        except IOError:
-            print 'WARNING: no VC file for', nucleus.setup.symbol
-            print 'file', filename, 'missing'
-            print 'Exact exchange energy may be incorrect'
+                ExxValCore += - num.dot(D_p, nucleus.setup.X_p)
 
     # add all contributions, to get total exchange energy
     Exx = Exxs + Exxa + ExxValCore + ExxCore    
@@ -325,7 +293,6 @@ def atomic_exact_exchange(atom, type = 'all'):
 
             # add to total exchange the contribution from current two states
             Exx += -.5 * f12 * num.dot(n,vr2dr)
-##             print j1, j2, f12, -.5 * f12 * num.dot(n,vr2dr)* 27.211395655517311
 
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.

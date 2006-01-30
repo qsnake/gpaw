@@ -94,13 +94,15 @@ class Setup:
          grid, rcgauss,
          nc_g, nct_g, vbar_g,
          phi_jg, phit_jg, pt_jg,
-         e_kin_j1j2,
+         e_kin_j1j2, X_p, ExxC,
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
         self.filename = filename
         self.Nv = Nv
         self.Z = Z
+        self.X_p = X_p
+        self.ExxC = ExxC
 
         nj0 = len(l_j)
         e_kin_j1j2.shape = (nj0, nj0)

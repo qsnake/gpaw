@@ -12,6 +12,8 @@ from gridpaw.version import version
 from gridpaw.atom.all_electron import AllElectron, shoot
 from gridpaw.polynomium import a_i, c_l
 from gridpaw.utilities.lapack import diagonalize
+from gridpaw.exx import constructX
+from gridpaw.exx import atomic_exact_exchange as aExx
 
 
 parameters = {
@@ -468,9 +470,12 @@ class Generator(AllElectron):
 
         for h in [0.05]:
             self.diagonalize(h)
-            
+
+        X_p = constructX(self)
+        ExxC = aExx(self,'core-core')
+        
         self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
-                      nc, nct, Ekincore, dK_ln1n2, vbar)
+                      nc, nct, Ekincore, dK_ln1n2, vbar, X_p, ExxC)
 
     def diagonalize(self, h):
         ng = 300
@@ -544,7 +549,7 @@ class Generator(AllElectron):
 
 
     def write_xml(self, n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
-                 nc, nct, Ekincore, dK_ln1n2, vbar):
+                 nc, nct, Ekincore, dK_ln1n2, vbar, X_p, ExxC):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
@@ -649,6 +654,13 @@ class Generator(AllElectron):
             for j2 in range(nj):
                 print >> xml, '%16.12e' % dK_j1j2[j1, j2],
         print >> xml, '\n  </kinetic_energy_differences>'
+
+        print >>xml, '  <exact_exchange_X_matrix>\n    ',
+        for x in X_p:
+            print >> xml, '%16.12e' % x,
+        print >>xml, '\n  </exact_exchange_X_matrix>'
+
+        print >> xml, '  <exact_exchange core-core="%f"/>' % ExxC
 
         print >> xml, '</paw_setup>'
 
