@@ -203,13 +203,20 @@ def get_exact_exchange(paw, decompose = False):
     # Determine the valence-core and core-core contributions for each
     # spin and nucleus
     for nucleus in nuclei:
-            # add core-core contribution from current nucleus
-            ExxCore += nucleus.setup.ExxC
+        # error handling for old setup files
+        if nucleus.setup.ExxC == None:
+            print 'Warning no exact exchange information in setup file'
+            print 'Value of exact exchange may be incorrect'
+            print 'Please regenerate setup file to correct error'
+            break
+      
+        # add core-core contribution from current nucleus
+        ExxCore += nucleus.setup.ExxC
 
-            # add val-core contribution from current nucleus
-            for spin in range(wf.nspins):
-                D_p = nucleus.D_sp[spin]
-                ExxValCore += - num.dot(D_p, nucleus.setup.X_p)
+        # add val-core contribution from current nucleus
+        for spin in range(wf.nspins):
+            D_p = nucleus.D_sp[spin]
+            ExxValCore += - num.dot(D_p, nucleus.setup.X_p)
 
     # add all contributions, to get total exchange energy
     Exx = Exxs + Exxa + ExxValCore + ExxCore    
