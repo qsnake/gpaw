@@ -376,6 +376,14 @@ def shoot(w, l, vr, eps, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     else:
         Mr = r
     c0 = l * (l + 1) + 2 * Mr * (vr - eps * r)
+    if gmax is None and num.alltrue(c0 > 0):
+        print """
+Problem with initial electron density guess!  Try to run the program
+with the '-n' option (non-scalar-relativistic calculation) and then
+try again without the '-n' option (this will generate a good initial
+guess for the density).
+"""
+        raise SystemExit
     c1 = c10
     if scalarrel:
         c0 += x * r2dvdr / Mr

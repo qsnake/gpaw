@@ -35,7 +35,7 @@ parameters = {
     'S' : ('[Ne]',    1.87),
     'Cl': ('[Ne]',    1.5),
     'V' : ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
-    'Cr' : ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
+    'Cr': ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
     'Fe': ('[Ar]',    2.3),
     'Ni': ('[Ar]',    2.3),
     'Cu': ('[Ar]',   [2.3, 2.3, 2.1]),
@@ -54,7 +54,7 @@ class Generator(AllElectron):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
 
-    def run(self, core, rcut, extra, logderiv=True, vt0=None):
+    def run(self, core, rcut, extra, logderiv=True, vt0=None, exx=False):
 
         self.core = core
         if type(rcut) is float:
@@ -213,7 +213,7 @@ class Generator(AllElectron):
         self.lmax = lmax
 
         rcut_l.extend([max(rcut_l)] * (lmax + 1 - len(rcut_l)))
-        
+
         print 'Cutoffs:',
         for rc, s in zip(rcut_l, 'spd'):
             print 'rc(%s)=%.3f' % (s, rc),
@@ -471,9 +471,13 @@ class Generator(AllElectron):
         for h in [0.05]:
             self.diagonalize(h)
 
-        X_p = constructX(self)
-        ExxC = aExx(self,'core-core')
-        
+        if exx:
+            X_p = constructX(self)
+            ExxC = aExx(self,'core-core')
+        else:
+            X_p = None
+            ExxC = None
+            
         self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
                       nc, nct, Ekincore, dK_ln1n2, vbar, X_p, ExxC)
 
@@ -518,7 +522,7 @@ class Generator(AllElectron):
             else:
                 f = 0.0
             e0 = e_n[0]
-            if (f > 0 and abs(e - e0) > 0.002) or (f == 0 and e0 < self.emax):
+            if (f > 0 and abs(e - e0) > 0.005) or (f == 0 and e0 < self.emax):
                 print 'GHOST-state in %s-channel at %.6f' % ('spd'[l], e0)
                 self.ghost = True
 
@@ -553,7 +557,7 @@ class Generator(AllElectron):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
-            raise RuntimeError
+            raise SystemExit
 
         print >> xml, '<?xml version="1.0"?>'
         dtd = 'http://www.fysik.dtu.dk/campos/atomic_setup/paw_setup.dtd'
@@ -655,12 +659,13 @@ class Generator(AllElectron):
                 print >> xml, '%16.12e' % dK_j1j2[j1, j2],
         print >> xml, '\n  </kinetic_energy_differences>'
 
-        print >>xml, '  <exact_exchange_X_matrix>\n    ',
-        for x in X_p:
-            print >> xml, '%16.12e' % x,
-        print >>xml, '\n  </exact_exchange_X_matrix>'
+        if X_p is not None:
+            print >>xml, '  <exact_exchange_X_matrix>\n    ',
+            for x in X_p:
+                print >> xml, '%16.12e' % x,
+            print >>xml, '\n  </exact_exchange_X_matrix>'
 
-        print >> xml, '  <exact_exchange core-core="%f"/>' % ExxC
+            print >> xml, '  <exact_exchange core-core="%f"/>' % ExxC
 
         print >> xml, '</paw_setup>'
 
