@@ -15,6 +15,9 @@ parser.add_option('-f', '--xcfunctional', type='string', default='LDA',
 parser.add_option('-n', '--non-scalar-relativistic', action='store_true',
                   default=False,
                   help='Do *not* do a scalar-relativistic calculation.')
+parser.add_option('-x', '--exact-exchange', action='store_true',
+                  default=False,
+                  help='Calculate exact exchange integrals.')
 parser.add_option('-r', '--radius', type='string', default=None,
                   help='Cutoff radii',
                   metavar='<rcut>')
@@ -64,5 +67,6 @@ for symbol in atoms:
         if options.extra != '':
             for l, x in enumerate(options.extra.split(';')):
                 extra[l] = [float(y) for y in x.split(',')]
-    g.run(core, rcut, extra, logderiv=not options.quick, vt0=v0)
+    g.run(core, rcut, extra, logderiv=not options.quick, vt0=v0,
+          exx=options.exact_exchange)
 

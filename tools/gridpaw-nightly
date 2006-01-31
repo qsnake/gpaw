@@ -205,7 +205,7 @@ os.system(export + 'cd ..; epydoc --docformat restructuredtext ' +
           'cp -rp html /home/camp/jensj/.gridpaw/cron')
 
 if 'Warning:' in open('../warnings').read():
-    send_email('Warning(s) from epydoc!', '../warnings')
+    pass#send_email('Warning(s) from epydoc!', '../warnings')
 
 os.system('cd; rm -r ' + dir)
 
