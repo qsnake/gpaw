@@ -95,16 +95,11 @@ class Calculator:
 
         out = self.out
         print >> out
-        print >> out, '   _                    '
-        print >> out, '  | |  ___ ___ ___ _ _  '
-        print >> out, ' |   ||_  |  _|  _| | | '
-        print >> out, '  | |_| . |_  |_  | | | '
-        print >> out, '  |___|___|___|___|___| '
-        print >> out
-        print >> out, 'or'
-        print >> out, '  _  _  _           '
-        print >> out, ' (_||_)(_|\/\/   -  ', version
-        print >> out, '  _||               '
+        print >> out, '  ___ ___ ___ _ _ _  '
+        print >> out, ' |   |   |_  | | | | '
+        print >> out, ' | | | | | . | | | | '
+        print >> out, ' |__ |  _|___|_____| ', version
+        print >> out, ' |___|_|             '
         print >> out
 
         uname = os.uname()
