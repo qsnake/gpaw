@@ -516,7 +516,7 @@ class Setup:
                 s += a_i[i] * x**i
             s[gc:] = 0.0
             self.gt_l = [Spline(l, rcut2,
-                                c_l[l] / rcut**(3 + l) * x**l * s)
+                                c_l[l] / rcut**(3 + 2 * l) * s)
                          for l in range(lmax + 1)]
 
         # Construct atomic density matrix for the ground state (to be
