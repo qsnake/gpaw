@@ -2,43 +2,11 @@ import Numeric as num
 from math import pi
 from gridpaw.utilities.complex import real
 
-class Data: # Test class (for Fluorine only!)
-    def __init__(self):
-
-        self.f = open('exxNM.tmp', 'w')
-        self.txt = ''
-        self.temp = 0.0
-        self.tot = 0.0
-        print >>self.f, '        Exx v-v [eV]\n      _______________\nn m   Exx_s     Exx_a'
-        
-    def add(self, n, m, exxs, exxa):
-       
-        exxs *= 27.21139565551731
-        exxa *= 27.21139565551731
-        self.tot += exxs + exxa
-    
-        if n<4 and m<4:
-            print >>self.f, n, m, '%9.4f%8.4f' %(exxs, exxa)
-            self.f.flush()
-        if n==0 and m==0:
-            self.txt += '\nss = '+str(exxs+exxa)
-        if n==0 and m==1:
-            self.txt +='\nsp = ' + str(6*(exxs+exxa))
-        if n==3 and m==2:
-            self.temp += 6*(exxs+exxa)
-        if n==3 and m==3:
-            self.txt += '\npp = '+str(3*(exxs+exxa) + self.temp)
-
-    def finalize(self):
-        print >>self.f, self.txt
-        print >>self.f, 'Total Exx v-v:', self.tot
-        self.f.close()
-
 class ExxSingle:
     """Class used to calculate the exchange energy of given
     single orbital electron density"""
     
-    def __init__(self, gd):
+    def __init__(self, gd, ewald = True):
         """Class should be initialized with a grid_descriptor 'gd' from
         the gridpaw module"""
         
@@ -70,8 +38,11 @@ class ExxSingle:
         self.k2[0,0,0] = 1.0
 
         # Ewald corection
-        rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
-        self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
+        if ewald:
+            rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
+            self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
+        else:
+            self.ewald = 1
 
         # determine N^3
         self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
@@ -122,14 +93,14 @@ class ExxSingle:
             Ecorr = - EGaussSelf + 2 * real(EGaussN)
             return Ecorr
 
-def get_exact_exchange(calc, decompose = False, wannier = False):
+def get_exact_exchange(calc, decompose = False, wannier = False, ewald = True):
     """Calculate exact exchange energy using Kohn-Sham orbitals"""
 
     # Get valence-valence contribution using specified method
     if wannier:
-        ExxVal = __valence_wannier__(calc)
+        ExxVal = __valence_wannier__(calc, ewald = ewald)
     else:
-        ExxVal = __valence_kohn_sham__(calc.paw)
+        ExxVal = __valence_kohn_sham__(calc.paw, ewald = ewald)
 
     # Get valence-core and core-core exact exchange contributions
     ExxValCore, ExxCore = __valence_core_core__(calc.paw.nuclei,
@@ -162,13 +133,16 @@ def __gauss_functions__(nuclei, gd):
 
     return gt_aL
 
-def __valence_kohn_sham__(paw):
+def __valence_kohn_sham__(paw, ewald = True):
     """Calculate valence-valence contribution to exact exchange
     energy using Kohn-Sham orbitals"""
     wf = paw.wf
     nuclei = paw.nuclei
     gd = paw.finegd
-    
+
+    # allocate space for fine grid density
+    n_g = gd.new_array()
+
     # ensure gamma point calculation
     assert wf.typecode == num.Float
 
@@ -176,11 +150,10 @@ def __valence_kohn_sham__(paw):
     gt_aL = __gauss_functions__(nuclei, gd)
 
     # load single exchange calculator
-    exx_single = ExxSingle(gd).get_single_exchange
+    exx_single = ExxSingle(gd, ewald).get_single_exchange
 
     # calculate exact exchange
     ExxVal = 0.0
-##     dat = Data() #XXX
     for spin in range(wf.nspins):
         for n in range(wf.nbands):
             for m in range(n, wf.nbands):
@@ -196,7 +169,6 @@ def __valence_kohn_sham__(paw):
                       wf.kpt_u[spin].psit_nG[n]
 
                 # and interpolate to the fine grid
-                n_g = gd.new_array()
                 paw.interpolate(n_G, n_g)
                 
                 for a, nucleus in enumerate(nuclei):
@@ -222,8 +194,6 @@ def __valence_kohn_sham__(paw):
                 # add the nm contribution to exchange energy
                 Exxs = fnm * exx_single(n_g, Z = Z) * DC
                 ExxVal += Exxs
-##                 dat.add(n, m, Exxs, Exxa) #XXX
-##     dat.finalize() #XXX
     return ExxVal
     
 def __valence_wannier__(calculator):
@@ -241,21 +211,22 @@ def __valence_wannier__(calculator):
     states = wf.nvalence * wf.nspins / 2
     print states
 
+    # allocate space for fine grid density
+    n_g = gd.new_array()
+
     # get gauss functions
     gt_aL = __gauss_functions__(nuclei, gd)
 
     # load single exchange calculator
-    exx_single = ExxSingle(gd).get_single_exchange
+    exx_single = ExxSingle(gd, ewald).get_single_exchange
 
     if wf.kpt_u[0].Htpsit_nG == None:
         wannierwave_nG = num.zeros((states,)+tuple(paw.gd.N_c),num.Float)
     else:
         wannierwave_nG = wf.kpt_u[0].Htpsit_nG[:states]
-    print wannierwave_nG.shape, wannierwave_nG.typecode()
     
     # calculate exact exchange
     ExxVal = 0.0
-##     dat = Data() #XXX
     for spin in range(wf.nspins):
         # do wannier stuff
         wannier = Wannier(numberofwannier=states,
@@ -263,12 +234,13 @@ def __valence_wannier__(calculator):
                           spin=spin)
         wannier.Localize()
         rotation = wannier.rotationmatrix[0]
-        print type(rotation)
-        print rotation.shape, rotation.typecode()
 
         psit_nG = wf.kpt_u[spin].psit_nG[:states]
-        print type(psit_nG)
+        print wannierwave_nG.shape, wannierwave_nG.typecode()
         print psit_nG.shape, psit_nG.typecode()
+        print rotation.shape, rotation.typecode()
+        print rotation
+
         gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
         
         for n in range(states):
@@ -277,11 +249,10 @@ def __valence_wannier__(calculator):
                 DC = 2 - (n == m)
 
                 # determine current exchange density
-                n_G = num.conjugate(wannierwave_ng[n]) * \
+                n_G = num.conjugate(wannierwave_nG[n]) * \
                       wannierwave_nG[n]
 
                 # and interpolate to the fine grid
-                n_g = gd.new_array()
                 interpolate(n_G, n_g)
                 
                 for a, nucleus in enumerate(nuclei):
@@ -306,12 +277,8 @@ def __valence_wannier__(calculator):
                 # add the nm contribution to exchange energy
                 Exxs = fnm * exx_single(n_g) * DC
                 ExxVal += Exxs
-##                 dat.add(n, m, Exxs, Exxa) #XXX
-##     dat.finalize() #XXX
-
     # double up if spin compensated
     ExxVal *= wf.nspins % 2 + 1
-
     return ExxVal
     
 def __valence_core_core__(nuclei, nspins):

@@ -31,7 +31,7 @@ Li2 = ListOfAtoms([Atom('Li', (b, b, b - d / 2)),
                    Atom('Li', (b, b, b + d / 2))],
                   cell=(a, a, a))
 
-calc  = Calculator(xc = 'PBE')
+calc = Calculator(xc='PBE',h=0.2,tolerance=1e-5)#reduced tolerance to save time
 
 # perform gridPAW calculation on isolated atom (spin polarized)
 Li.SetCalculator(calc)
