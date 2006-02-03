@@ -36,9 +36,6 @@ print '\n|-------------------------OUTPUT---------------------------|\n'
 print '\t\t\tH atom\t|\tH2 molecule'
 print 'ENERGIES:'
 print 'potential:\t%5.5f\t|\t%5.5f' %(eH,eH2)
-print exxH
-print exxH2
-
 print 'exchange:\t%5.5f\t|\t%5.5f' %(exxH,exxH2)
 print ' '
 print 'ATOMIZATION ENERGIES'
@@ -47,7 +44,7 @@ print 'exchange:\t\t%5.5f' %((eH2-excH2 + exxH2)-2*(eH-excH+exxH))
 print ' '
 print 'Exchange-only atomization energy in kcal/mol: ', ((eH2-excH2 + exxH2)-2*(eH-excH+exxH))*23.2407
 print ' '
-print 'All electron single atom radial calculator exchange energy: (spin saturated)'
+print 'All electron single atom exchange energy: (spin saturated)'
 print '  = ', ExxAtom*27.2
 print ' '
 print 'Exact exchange for hydrogen in eV: ', -5/16.*27.2
