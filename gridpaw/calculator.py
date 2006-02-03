@@ -456,10 +456,10 @@ class Calculator:
     # Alternative name:
     GetKPoints = GetIBZKPoints
  
-    def GetExactExchange(self, decompose = False, wannier = False):
+    def GetExactExchange(self, decompose=False, wannier=False, ewald=True):
         from gridpaw.exx import get_exact_exchange as exx
         self.paw.timer.start('exx')
-        exx = exx(self, decompose, wannier)
+        exx = exx(self, decompose, wannier, ewald)
         self.paw.timer.stop('exx')
         return exx * self.Ha
     
