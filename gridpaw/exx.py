@@ -6,7 +6,7 @@ class ExxSingle:
     """Class used to calculate the exchange energy of given
     single orbital electron density"""
     
-    def __init__(self, gd, ewald = True):
+    def __init__(self, gd):
         """Class should be initialized with a grid_descriptor 'gd' from
         the gridpaw module"""
         
@@ -38,16 +38,13 @@ class ExxSingle:
         self.k2[0,0,0] = 1.0
 
         # Ewald corection
-        if ewald:
-            rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
-            self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
-        else:
-            self.ewald = 1
+        rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
+        self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
 
         # determine N^3
         self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
 
-    def get_single_exchange(self, n, method = 'recip', Z = None):
+    def get_single_exchange(self, n, Z=None, ewald=True, method='recip'):
         """Returns exchange energy of input density 'n' """
 
         # make density charge neutral, and get energy correction
@@ -59,10 +56,11 @@ class ExxSingle:
             solve = PoissonSolver(self.gd).solve
             v = self.gd.new_array()
             solve(v,n)
-            exx = -0.5*self.gd.integrate(v*n)
+            exx = -0.5*self.gd.integrate(v * n)
         elif method=='recip':
             from FFT import fftnd
-            I = num.absolute(fftnd(n))**2 * 4*pi/self.k2 * self.ewald
+            I = num.absolute(fftnd(n))**2 * 4 * pi / self.k2
+            if ewald: I *= self.ewald
             exx = -0.5*self.gd.integrate(I) / self.N3
         else: raise RunTimeError('method name ', method, 'not recognized')
 
@@ -74,7 +72,7 @@ class ExxSingle:
         charge. Returns energy correction caused by making 'n' neutral"""
 
         if Z == None: Z = self.gd.integrate(n)
-        if type(Z) == complex: print '!!!!!!COMPLEX CHARGE!!!!!!'
+        if type(Z) == complex: print '!!!!!!COMPLEX CHARGE!!!!!!' # XXX
         
         if Z < 1e-8: return 0.0
         else:
@@ -93,14 +91,15 @@ class ExxSingle:
             Ecorr = - EGaussSelf + 2 * real(EGaussN)
             return Ecorr
 
-def get_exact_exchange(calc, decompose = False, wannier = False, ewald = True):
+def get_exact_exchange(calc, decompose = False, wannier = False,
+                       ewald = True, method = 'recip'):
     """Calculate exact exchange energy using Kohn-Sham orbitals"""
 
     # Get valence-valence contribution using specified method
     if wannier:
-        ExxVal = __valence_wannier__(calc, ewald = ewald)
+        ExxVal = __valence_wannier__(calc, ewald, method)
     else:
-        ExxVal = __valence_kohn_sham__(calc.paw, ewald = ewald)
+        ExxVal = __valence_kohn_sham__(calc.paw, ewald, method)
 
     # Get valence-core and core-core exact exchange contributions
     ExxValCore, ExxCore = __valence_core_core__(calc.paw.nuclei,
@@ -133,7 +132,7 @@ def __gauss_functions__(nuclei, gd):
 
     return gt_aL
 
-def __valence_kohn_sham__(paw, ewald = True):
+def __valence_kohn_sham__(paw, ewald, method):
     """Calculate valence-valence contribution to exact exchange
     energy using Kohn-Sham orbitals"""
     wf = paw.wf
@@ -150,7 +149,7 @@ def __valence_kohn_sham__(paw, ewald = True):
     gt_aL = __gauss_functions__(nuclei, gd)
 
     # load single exchange calculator
-    exx_single = ExxSingle(gd, ewald).get_single_exchange
+    exx_single = ExxSingle(gd).get_single_exchange
 
     # calculate exact exchange
     ExxVal = 0.0
@@ -192,11 +191,12 @@ def __valence_kohn_sham__(paw, ewald = True):
                 else: Z = 0
 
                 # add the nm contribution to exchange energy
-                Exxs = fnm * exx_single(n_g, Z = Z) * DC
+                Exxs = fnm * exx_single(n_g, Z=Z, ewald=ewald,
+                                        method=method) * DC
                 ExxVal += Exxs
     return ExxVal
     
-def __valence_wannier__(calculator):
+def __valence_wannier__(calculator, ewald, method):
     """Calculate valence-valence contribution to exact exchange
     energy using Wannier function"""
     from ASE.Utilities.Wannier import Wannier
@@ -218,7 +218,7 @@ def __valence_wannier__(calculator):
     gt_aL = __gauss_functions__(nuclei, gd)
 
     # load single exchange calculator
-    exx_single = ExxSingle(gd, ewald).get_single_exchange
+    exx_single = ExxSingle(gd).get_single_exchange
 
     if wf.kpt_u[0].Htpsit_nG == None:
         wannierwave_nG = num.zeros((states,)+tuple(paw.gd.N_c),num.Float)
@@ -275,7 +275,7 @@ def __valence_wannier__(calculator):
                     ExxVal += Exxa
 
                 # add the nm contribution to exchange energy
-                Exxs = fnm * exx_single(n_g) * DC
+                Exxs = fnm * exx_single(n_g, ewald=ewald, method=method) * DC
                 ExxVal += Exxs
     # double up if spin compensated
     ExxVal *= wf.nspins % 2 + 1
