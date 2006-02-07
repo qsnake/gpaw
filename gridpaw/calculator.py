@@ -385,7 +385,14 @@ class Calculator:
     def GetXCDifference(self, xcname):
         """Calculate non-seflconsistent XC-energy difference."""
         self.update()
-        return self.paw.get_xc_difference(xcname)
+
+        if xcname == 'EXX':
+            return self.GetExactExchange() - self.GetXCEnergy()
+        elif xcname == 'PBE0':
+            return self.paw.get_xc_difference(xcname) + \
+                   0.25 * self.GetExactExchange()
+        else:
+            return self.paw.get_xc_difference(xcname)
 
     def Write(self, filename):
         """Write current state to a netCDF file."""

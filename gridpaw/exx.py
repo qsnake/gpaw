@@ -234,7 +234,10 @@ def __valence_wannier__(calculator, ewald, method):
                           spin=spin)
         wannier.Localize()
         rotation = wannier.rotationmatrix[0]
-
+##         print 'BEFORE:', rotation
+##         rotation = num.absolute(rotation)
+##         print 'AFTER:', rotation
+        
         psit_nG = wf.kpt_u[spin].psit_nG[:states]
         print wannierwave_nG.shape, wannierwave_nG.typecode()
         print psit_nG.shape, psit_nG.typecode()
@@ -271,11 +274,11 @@ def __valence_wannier__(calculator, ewald, method):
 
                     # add atomic contribution to exchange energy
                     C_pp  = nucleus.setup.M_pp
-                    Exxa = -fnm*num.dot(D_p, num.dot(C_pp, D_p)) * DC
+                    Exxa = -num.dot(D_p, num.dot(C_pp, D_p)) * DC
                     ExxVal += Exxa
 
                 # add the nm contribution to exchange energy
-                Exxs = fnm * exx_single(n_g, ewald=ewald, method=method) * DC
+                Exxs = exx_single(n_g, ewald=ewald, method=method) * DC
                 ExxVal += Exxs
     # double up if spin compensated
     ExxVal *= wf.nspins % 2 + 1

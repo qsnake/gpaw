@@ -49,6 +49,8 @@ class XCFunctional:
                 code = 2
             elif xcname.startswith('XC'):
                 code = 3
+            elif xcname == 'PBE0':
+                code = 4
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 

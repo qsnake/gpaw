@@ -4,18 +4,25 @@
 #include "xc.h"
 #include "extensions.h"
 
-double pbe_exchange(const xc_parameters*,
+double pbe_exchange(const xc_parameters* par,
 		    double n, double rs, double a2,
 		    double* dedrs, double* deda2);
 double pbe_correlation(double n, double rs, double zeta, double a2, 
 		       bool gga, bool spinpol,
 		       double* dedrs, double* dedzeta, double* deda2);
-double rpbe_exchange(const xc_parameters*,
+double rpbe_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2);
-double ensemble_exchange(const xc_parameters*,
+double ensemble_exchange(const xc_parameters* par,
 			 double n, double rs, double a2,
 			 double* dedrs, double* deda2);
+
+double pbe0_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2)
+{
+  return 0.75 * pbe_exchange(par, n, rs, a2, dedrs, deda2);
+}
 
 typedef struct 
 {
@@ -268,13 +275,17 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       self->par.i = i;
       self->par.s0 = s0;
     }
+  else if (type == 4)
+    {
+      self->exchange = pbe0_exchange;
+    }
   else
     {
       if (type == 1)
 	// revPBE
         self->par.kappa = 1.245; 
       else
-	// revPBE
+	// PBE
 	self->par.kappa = 0.804;
       self->exchange = pbe_exchange;
     }
