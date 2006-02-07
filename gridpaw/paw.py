@@ -25,12 +25,6 @@ from gridpaw import netcdf
 from gridpaw import output
 from parallel import get_parallel_info_s_k
 
-NOT_INITIALIZED = -1
-NOTHING = 0
-COMPENSATION_CHARGE = 1
-PROJECTOR_FUNCTION = 2
-EVERYTHING = 3
-
 
 MASTER = 0
 
@@ -111,9 +105,9 @@ class Paw:
      ================== =================================================== 
      ``my_nuclei``      List of nuclei that have their
                         center in this domain.
-     ``p_nuclei``       List of nuclei with projector functions
+     ``pt_nuclei``      List of nuclei with projector functions
                         overlapping this domain.
-     ``g_nuclei``       List of nuclei with compensation charges
+     ``ghat_nuclei``    List of nuclei with compensation charges
                         overlapping this domain.
      ``locfuncbcaster`` ``LocFuncBroadcaster`` object for parallelizing 
                         evaluation of localized functions (used when
@@ -207,9 +201,9 @@ class Paw:
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(setups)
 
-        self.my_nuclei = self.nuclei
-        self.p_nuclei = self.nuclei
-        self.g_nuclei = self.nuclei
+        self.my_nuclei = []
+        self.pt_nuclei = []
+        self.ghat_nuclei = []
         
         self.Eref = 0.0
         for nucleus in self.nuclei:
@@ -227,27 +221,17 @@ class Paw:
         array holding all the pseudo core densities is updated."""
         
         movement = False
-        distribute_atoms = False
         for nucleus, pos_c in zip(self.nuclei, pos_ac):
             spos_c = self.domain.scale_position(pos_c)
             if num.sometrue(spos_c != nucleus.spos_c):
                 movement = True
-                nucleus.spos_c = spos_c
-                nucleus.make_localized_grids(self.gd, self.finegd,
-                                             self.wf.myibzk_kc,
-                                             self.locfuncbcaster)
                 rank = self.domain.get_rank_for_position(spos_c)
-                # Did the atom move to another processor?
-                if nucleus.rank != rank:
-                    # Yes!
-                    distribute_atoms = True
-                    nucleus.rank = rank
-
-                # XXX Right now we need to distribute all atoms to
-                # CPU's and make new MPI-groups for every little
-                # movement.  This should be fixed so that we only need
-                # to redistribute a single atom ...
-                distribute_atoms = True
+                nucleus.move(spos_c, self.gd, self.finegd,
+                             self.wf.myibzk_kc, self.locfuncbcaster,
+                             self.domain,
+                             rank, self.my_nuclei, self.pt_nuclei,
+                             self.ghat_nuclei,
+                             self.wf.nspins, self.wf.nmykpts, self.wf.nbands)
         
         if movement:
             self.converged = False
@@ -255,9 +239,6 @@ class Paw:
 
             self.locfuncbcaster.broadcast()
         
-            if distribute_atoms:
-                self.distribute_atoms()
-            
             self.mixer.reset(self.my_nuclei)
             
             if self.symmetry:
@@ -279,11 +260,11 @@ class Paw:
             if self.nspins == 2:
                 self.nct_G *= 0.5
 
-                print >> self.out, 'Positions:'
-                for a, pos_c in enumerate(pos_ac):
-                    symbol = self.nuclei[a].setup.symbol
-                    print >> self.out, '%3d %2s %8.4f%8.4f%8.4f' % \
-                  ((a, symbol) + tuple(self.a0 * pos_c))
+            print >> self.out, 'Positions:'
+            for a, pos_c in enumerate(pos_ac):
+                symbol = self.nuclei[a].setup.symbol
+                print >> self.out, '%3d %2s %8.4f%8.4f%8.4f' % \
+                      ((a, symbol) + tuple(self.a0 * pos_c))
 
     def initialize_density_and_wave_functions(self, hund, magmom_a,
                                               density=True,
@@ -446,7 +427,7 @@ class Paw:
             assert 0.83 < x < 1.17, 'x=%f' % x
             self.nt_sG *= x
         
-        wf.calculate_projections_and_orthogonalize(self.p_nuclei,
+        wf.calculate_projections_and_orthogonalize(self.pt_nuclei,
                                                    self.my_nuclei)
 
         if self.niter > 0:
@@ -487,13 +468,13 @@ class Paw:
         self.Exc = dsum(self.Exc)
         self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
 
-        self.error = dsum(wf.calculate_residuals(self.p_nuclei))
+        self.error = dsum(wf.calculate_residuals(self.pt_nuclei))
 
         if (self.error > self.tolerance and
             self.niter < self.maxiter
             and not sigusr1[0]):
             self.timer.start('SD')
-            wf.rmm_diis(self.p_nuclei, self.vt_sG)
+            wf.rmm_diis(self.pt_nuclei, self.vt_sG)
             self.timer.stop('SD')
         else:
             self.converged = True
@@ -501,72 +482,6 @@ class Paw:
                 print >> self.out, 'SCF-ITERATIONS STOPPED BY USER!'
                 sigusr1[0] = False
 
-    def distribute_atoms(self):
-        """Distribute atoms on all CPUs."""
-        nspins = self.wf.nspins
-        nmykpts = self.wf.nmykpts
-        nbands = self.wf.nbands
-
-        if self.domain.comm.size == 1:
-            # Serial calculation:
-            for nucleus in self.nuclei:
-                if nucleus.domain_overlap == NOT_INITIALIZED:
-                    nucleus.allocate(nspins, nmykpts, nbands)
-                nucleus.domain_overlap = EVERYTHING
-            return
-
-        # Parallel calculation:
-        natoms = len(self.nuclei)
-        domovl_a = num.zeros(natoms, num.Int)
-        self.my_nuclei = []
-        self.p_nuclei = []
-        self.g_nuclei = []
-        for a, nucleus in enumerate(self.nuclei):
-            domain_overlap = NOTHING
-            if nucleus.ghat_L is not None:
-                domain_overlap = COMPENSATION_CHARGE
-                self.g_nuclei.append(nucleus)
-                if nucleus.pt_i is not None:
-                    domain_overlap = PROJECTOR_FUNCTION
-                    self.p_nuclei.append(nucleus)
-                    if nucleus.rank == self.domain.comm.rank:
-                        domain_overlap = EVERYTHING
-                        self.my_nuclei.append(nucleus)
-                        if nucleus.domain_overlap < EVERYTHING:
-                            nucleus.allocate(nspins, nmykpts, nbands)
-  
-            if (nucleus.domain_overlap == EVERYTHING and
-                domain_overlap < EVERYTHING):
-                nucleus.deallocate() # ...XXX
-
-            nucleus.domain_overlap = domain_overlap
-            domovl_a[a] = domain_overlap
-
-        domovl_ca = num.zeros((self.domain.comm.size, natoms), num.Int)
-        self.domain.comm.all_gather(domovl_a, domovl_ca)
-
-        # Make groups:
-        for a, nucleus in enumerate(self.nuclei):
-            domovl_c = domovl_ca[:, a]
-
-            # Who owns the atom?
-            root = num.argmax(domovl_c)
-
-            g_group = [c for c, b in enumerate(domovl_c) if
-                       b >= COMPENSATION_CHARGE]
-            g_root = g_group.index(root)
-            g_comm = self.domain.comm.new_communicator(
-                num.array(g_group, num.Int))
-
-            p_group = [c for c, b in enumerate(domovl_c) if
-                       b >= PROJECTOR_FUNCTION]
-            p_root = p_group.index(root)
-            p_comm = self.domain.comm.new_communicator(
-                num.array(p_group, num.Int))
-
-            nucleus.set_communicators(self.domain.comm, root,
-                                      g_comm, g_root, p_comm, p_root)
-            
     def calculate_atomic_hamiltonians(self):
         """Calculate atomic hamiltonians."""
         self.timer.start('atham')
@@ -576,7 +491,7 @@ class Paw:
         else:
             nt_g = nt_sg[0]
 
-        for nucleus in self.g_nuclei:
+        for nucleus in self.ghat_nuclei:
             k, p, b, x = nucleus.calculate_hamiltonian(nt_g, self.vHt_g)
             self.Ekin += k
             self.Epot += p
@@ -602,12 +517,12 @@ class Paw:
 
         vt_g = self.vt_sg[0]
         vt_g[:] = 0.0
-        for nucleus in self.g_nuclei:
+        for nucleus in self.ghat_nuclei:
             nucleus.add_hat_potential(vt_g)
 
         self.Epot = num.vdot(vt_g, self.rhot_g) * self.finegd.dv 
 
-        for nucleus in self.p_nuclei:
+        for nucleus in self.ghat_nuclei:
             nucleus.add_localized_potential(vt_g)
 
         self.Ebar = num.vdot(vt_g, self.rhot_g) * self.finegd.dv 
@@ -625,7 +540,7 @@ class Paw:
                 self.nt_sg[0], self.vt_sg[0])
         self.timer.stop('xc')
 
-        for nucleus in self.g_nuclei:
+        for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
         
         assert abs(self.finegd.integrate(self.rhot_g)) < 0.2
@@ -655,11 +570,12 @@ class Paw:
                 vt_G = self.vt_sG[0]
 
 
-            for nucleus in self.p_nuclei:
-                if nucleus.domain_overlap == EVERYTHING:
+            for nucleus in self.pt_nuclei:
+                if nucleus.in_this_domain:
                     nucleus.F_c[:] = 0.0
 
-            self.wf.calculate_force_contribution(self.p_nuclei, self.my_nuclei)
+            self.wf.calculate_force_contribution(self.pt_nuclei,
+                                                 self.my_nuclei)
 
             for nucleus in self.nuclei:
                 nucleus.calculate_force(self.vHt_g, nt_g, vt_G)
@@ -668,7 +584,7 @@ class Paw:
             # self.F_ac:
             if mpi.rank == MASTER:
                 for a, nucleus in enumerate(self.nuclei):
-                    if nucleus.domain_overlap == EVERYTHING:
+                    if nucleus.in_this_domain:
                         self.F_ac[a] = nucleus.F_c
                     else:
                         self.domain.comm.receive(self.F_ac[a], nucleus.rank, 7)

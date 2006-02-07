@@ -14,13 +14,6 @@ from gridpaw.utilities import unpack, pack
 import gridpaw.utilities.mpi as mpi
 
 
-NOT_INITIALIZED = -1
-NOTHING = 0
-COMPENSATION_CHARGE = 1
-PROJECTOR_FUNCTION = 2
-EVERYTHING = 3
-
-
 class Nucleus:
     """Nucleus-class.
 
@@ -61,7 +54,7 @@ class Nucleus:
      ``F_c``   Force.
      ========= ===============================================================
 
-    Parallel stuff: ``comm``, ``rank`` and ``domain_overlap``
+    Parallel stuff: ``comm``, ``rank`` and ``in_this_domain``
     """
     def __init__(self, setup, a, typecode, onohirose=1):
         """Construct a ``Nucleus`` object."""
@@ -69,14 +62,24 @@ class Nucleus:
         self.a = a
         self.typecode = typecode
         self.onohirose = onohirose
-        self.spos_c = None
-        self.rank = None
         lmax = self.setup.lmax
-        self.domain_overlap = NOT_INITIALIZED
         self.Q_L = num.zeros((lmax + 1)**2, num.Float)
         self.neighbors = []
+        self.spos_c = num.array([-1.0, -1.0, -1.0])
+
+        self.rank = -1
         self.comm = mpi.serial_comm
-        
+        self.in_this_domain = False
+
+        self.pt_i = None
+        self.vbar = None
+        self.ghat_L = None
+        self.vhat_L = None
+        self.nct = None
+
+    def __cmp__(self, other):
+        return cmp(self.a, other.a)
+    
     def allocate(self, nspins, nkpts, nbands):
         ni = self.get_number_of_partial_waves()
         np = ni * (ni + 1) / 2
@@ -84,6 +87,9 @@ class Nucleus:
         self.H_sp = num.zeros((nspins, np), num.Float)
         self.P_uni = num.zeros((nspins * nkpts, nbands, ni), self.typecode)
         self.F_c = num.zeros(3, num.Float)
+
+    def deallocate(self):
+        del self.D_sp, self.H_sp, self.P_uni, self.F_c
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape
@@ -94,55 +100,101 @@ class Nucleus:
             P_uni[:, :nao, :] = self.P_uni
             self.P_uni = P_uni
 
-    def set_communicators(self, comm, root, g_comm, g_root, p_comm, p_root):
-        self.comm = comm
+    def move(self, spos_c, gd, finegd, k_ki, lfbc, domain,
+             rank, my_nuclei, pt_nuclei, ghat_nuclei,
+             nspins, nmykpts, nbands):
+        self.spos_c = spos_c
 
-        if g_comm is not None:
-            self.ghat_L.set_communicator(g_comm, g_root)
-            self.vhat_L.set_communicator(g_comm, g_root)
+        self.comm = domain.comm # ??? XXX
 
-        if p_comm is not None:
-            self.pt_i.set_communicator(p_comm, p_root)
-            if self.vbar is not None:
-                self.vbar.set_communicator(p_comm, p_root)
+        in_this_domain = (rank == self.comm.rank)
 
-        if self.nct is not None:
-            self.nct.set_communicator(comm, root)
-
-    def make_localized_grids(self, gd, finegd, k_ki, lfbc):
-        # Smooth core density:
-        nct = self.setup.get_smooth_core_density()
-        create = create_localized_functions
-        self.nct = create([nct], gd, self.spos_c, cut=True, lfbc=lfbc,
-                          onohirose=self.onohirose)
-
-        # Shape function:
-        ghat_l = self.setup.get_shape_functions()
-        self.ghat_L = create(ghat_l, finegd, self.spos_c, lfbc=lfbc,
-                             onohirose=self.onohirose)
+        if in_this_domain and not self.in_this_domain:
+            # Nuclei new on this cpu:
+            my_nuclei.append(self)
+            my_nuclei.sort()
+            self.allocate(nspins, nmykpts, nbands)
+            if self.rank != -1:
+                self.comm.receive(self.D_sp, self.rank, 555)
+        elif not in_this_domain and self.in_this_domain:
+            # Nuclei moved to other cpu:
+            my_nuclei.remove(self)
+            if self.rank != -1:
+                self.comm.send(self.D_sp, rank, 555)
+            self.deallocate()
             
-        # Potential:
-        vhat_l = self.setup.get_potential()
-        self.vhat_L = create(vhat_l, finegd, self.spos_c, lfbc=lfbc,
-                             onohirose=self.onohirose)
+        self.in_this_domain = in_this_domain
+        self.rank = rank
 
-        assert (self.ghat_L is None) == (self.vhat_L is None)
-        
+        # Shortcut:
+        create = create_localized_functions
+
         # Projectors:
         pt_j = self.setup.get_projectors()
-        self.pt_i = create(pt_j, gd, self.spos_c, typecode=self.typecode,
-                           lfbc=lfbc, onohirose=self.onohirose)
-        if self.typecode == num.Complex and self.pt_i is not None:
-            self.pt_i.set_phase_factors(k_ki)
+        pt_i = create(pt_j, gd, spos_c, typecode=self.typecode,
+                      lfbc=lfbc, onohirose=self.onohirose)
+
+        if self.typecode == num.Complex and pt_i is not None:
+            pt_i.set_phase_factors(k_ki)
+        
+        if pt_i is not None and self.pt_i is None:
+            pt_nuclei.append(self)
+            pt_nuclei.sort()
+        if pt_i is None and self.pt_i is not None:
+            pt_nuclei.remove(self)
+
+        self.pt_i = pt_i
         
         # Localized potential:
         vbar = self.setup.get_localized_potential()
-        self.vbar = create([vbar], finegd, self.spos_c, lfbc=lfbc,
-                           onohirose=self.onohirose)
+        vbar = create([vbar], finegd, spos_c, lfbc=lfbc,
+                      onohirose=self.onohirose)
 
-        if self.pt_i is None:
-            assert self.vbar is None
+        self.vbar = vbar
+
+        # Shape functions:
+        ghat_l = self.setup.get_shape_functions()
+        ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc,
+                        onohirose=self.onohirose)
+            
+        # Potential:
+        vhat_l = self.setup.get_potential()
+        vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc,
+                        onohirose=self.onohirose)
+
+        # ghat and vhat have the same size:
+        assert (ghat_L is None) == (vhat_L is None)
+
+        if ghat_L is not None and self.ghat_L is None:
+            ghat_nuclei.append(self)
+            ghat_nuclei.sort()
+        if ghat_L is None and self.ghat_L is not None:
+            ghatt_nuclei.remove(self)
+
+        self.ghat_L = ghat_L
+        self.vhat_L = vhat_L
         
+        # Smooth core density:
+        nct = self.setup.get_smooth_core_density()
+        self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc,
+                          onohirose=self.onohirose)
+
+        if self.comm.size > 1:
+            # Make MPI-group communicators:
+            flags = num.array([1 * (pt_i is not None) +
+                               2 * (vbar is not None) +
+                               4 * (ghat_L is not None)])
+
+            flags_r = num.zeros((self.comm.size, 1), num.Int)
+            self.comm.all_gather(flags, flags_r)
+            for mask, lfs in [(1, [pt_i]), (2, [vbar]), (4, [ghat_L, vhat_L])]:
+                group = [r for r, flags in enumerate(flags_r) if flags & mask]
+                root = group.index(rank)
+                comm = domain.get_communicator(group)
+                for lf in lfs:
+                    if lf is not None:
+                        lf.set_communicator(comm, root)
+
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
         phit_j = self.setup.get_atomic_orbitals()
         self.phit_i = create_localized_functions(
@@ -207,7 +259,7 @@ class Nucleus:
         for s in range(ns):
             self.phit_i.add_density(nt_sG[s], f_si[s])
 
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             ni = self.get_number_of_partial_waves()
             p = 0
             i0 = 0
@@ -239,8 +291,7 @@ class Nucleus:
             self.vbar.add(vt2, num.array([1.0]))
         
     def calculate_projections(self, kpt):
-        assert self.domain_overlap >= PROJECTOR_FUNCTION
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             P_ni = self.P_uni[kpt.u]
             P_ni[:] = 0.0 # why????
             self.pt_i.integrate(kpt.psit_nG, P_ni, kpt.k)
@@ -248,14 +299,13 @@ class Nucleus:
             self.pt_i.integrate(kpt.psit_nG, None, kpt.k)
 
     def calculate_multipole_moments(self):
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             self.Q_L[:] = num.dot(num.sum(self.D_sp), self.setup.Delta_pL)
             self.Q_L[0] += self.setup.Delta0
         self.comm.broadcast(self.Q_L, self.rank)
             
     def calculate_hamiltonian(self, nt_g, vHt_g):
-        assert self.domain_overlap >= COMPENSATION_CHARGE
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             a = self.setup
             W_L = num.zeros((a.lmax + 1)**2, num.Float)
             for neighbor in self.neighbors:
@@ -291,8 +341,7 @@ class Nucleus:
             return 0.0, 0.0, 0.0, 0.0
 
     def adjust_residual(self, R_nG, eps_n, s, u, k):
-        assert self.domain_overlap >= PROJECTOR_FUNCTION
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             H_ii = unpack(self.H_sp[s])
             P_ni = self.P_uni[u]
             coefs_ni =  (num.dot(P_ni, H_ii) -
@@ -302,15 +351,14 @@ class Nucleus:
             self.pt_i.add(R_nG, None, k, communicate=True)
             
     def adjust_residual2(self, pR_G, dR_G, eps, s, k):
-        assert self.domain_overlap >= PROJECTOR_FUNCTION
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             ni = self.get_number_of_partial_waves()
             dP_i = num.zeros(ni, self.typecode)
             self.pt_i.integrate(pR_G, dP_i, k)
         else:
             self.pt_i.integrate(pR_G, None, k)
 
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             H_ii = unpack(self.H_sp[s])
             coefs_i = (num.dot(dP_i, H_ii) -
                        num.dot(dP_i * eps, self.setup.O_ii))
@@ -323,7 +371,7 @@ class Nucleus:
         self.D_sp[s] = pack(D_ii)
 
     def calculate_force(self, vHt_g, nt_g, vt_G):
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             lmax = self.setup.lmax
             nk = (3, 9, 22)[lmax]
             # ???? Optimization: do the sum over L before the sum over g and G.
@@ -365,28 +413,26 @@ class Nucleus:
                                         neighbor.nucleus().Q_L)
             F += num.dot(self.Q_L, dF)
         else:
-            if self.domain_overlap >= COMPENSATION_CHARGE:
+            if self.ghat_L is not None:
                 self.ghat_L.integrate(vHt_g, None, derivatives=True)
-                self.vhat_L.integrate(nt_g, None, derivatives=True) 
+                self.vhat_L.integrate(nt_g, None, derivatives=True)
+                
             if self.nct is None:
                 self.comm.sum(num.zeros(3, num.Float), self.rank)
             else:
                 self.nct.integrate(vt_G, None, derivatives=True)
-            if self.domain_overlap >= PROJECTOR_FUNCTION:
-                if self.vbar is None:
-                    self.pt_i.comm.sum(num.zeros(3, num.Float), self.pt_i.root)
-                else:
-                    self.vbar.integrate(nt_g, None, derivatives=True)
+                
+            if self.vbar is not None:
+                self.vbar.integrate(nt_g, None, derivatives=True)
 
     def calculate_force_kpoint(self, kpt):
-        assert self.domain_overlap >= PROJECTOR_FUNCTION
         f_n = kpt.f_n
         eps_n = kpt.eps_n
         psit_nG = kpt.psit_nG
         s = kpt.s
         u = kpt.u
         k = kpt.k
-        if self.domain_overlap == EVERYTHING:
+        if self.in_this_domain:
             P_ni = cc(self.P_uni[u])
             nb = P_ni.shape[0]
             H_ii = unpack(self.H_sp[s])

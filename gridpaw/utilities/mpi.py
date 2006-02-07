@@ -28,7 +28,7 @@ class SerialCommunicator:
 
 serial_comm = SerialCommunicator()
 if debug:
-    serial_comm.comm = serial_comm
+    serial_comm.comm = serial_comm # cycle? XXX
 
 if os.environ.has_key('GRIDPAW_PARALLEL'):
     # This will call MPI_Init:

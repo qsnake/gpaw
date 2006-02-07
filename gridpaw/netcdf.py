@@ -98,8 +98,8 @@ def read_netcdf(paw, filename):
               if paw.wf.kpt_comm.rank == kpt_rank:
                   P_uni[u,:] = P_uni_tot[s,k,:]
 
-        if paw.domain.comm.rank==MASTER:
-            if nucleus.domain_overlap == EVERYTHING:
+        if paw.domain.comm.rank == MASTER:
+            if nucleus.in_this_domain:
                 nucleus.P_uni[:] = P_uni[:]
             else:
                 paw.domain.comm.send(P_uni, nucleus.rank, 200)
@@ -116,7 +116,7 @@ def read_netcdf(paw, filename):
     D_sq = vars['AtomicDensityMatrices']
     q1 = 0
     for nucleus in paw.nuclei:
-        if nucleus.domain_overlap == EVERYTHING:
+        if nucleus.in_this_domain:
             D_sp = nucleus.D_sp
             q2 = q1 + D_sp.shape[1]
             D_sp[:] = D_sq[:, q1:q2]
@@ -207,7 +207,7 @@ def write_netcdf(paw, filename):
 
 
     # master in each domain (domain_comm 0) collects projections
-    # with domain_overlap==EVERYTHING for the nkpt local kpoints,
+    # with nucleus.in_this_domain == True for the nkpt local kpoints,
     # these are then summed in P_uni_tot
     i = 0
     nnodes = wf.kpt_comm.size
@@ -222,13 +222,13 @@ def write_netcdf(paw, filename):
         P_uni_tot = num.zeros((wf.nspins, wf.nkpts, wf.nbands, ni),
                               nucleus.typecode)
         if paw.domain.comm.rank==MASTER: 
-            if nucleus.domain_overlap == EVERYTHING:
+            if nucleus.in_this_domain:
                 P_uni = nucleus.P_uni
             else:
                 paw.domain.comm.receive(P_uni, nucleus.rank, 300)
         else:
             if nucleus.rank == paw.domain.comm.rank:
-                assert nucleus.domain_overlap == EVERYTHING
+                assert nucleus.in_this_domain
                 paw.domain.comm.send(nucleus.P_uni, MASTER, 300)
 
         for s in range(wf.nspins): 
@@ -262,13 +262,13 @@ def write_netcdf(paw, filename):
         np = ni * (ni + 1) / 2
         D_sp = num.zeros((wf.nspins,np),num.Float)
         if paw.domain.comm.rank == MASTER: 
-            if nucleus.domain_overlap == EVERYTHING:
+            if nucleus.in_this_domain:
                 D_sp = nucleus.D_sp
             else:
                 paw.domain.comm.receive(D_sp, nucleus.rank, 207)
         else:
             if nucleus.rank == paw.domain.comm.rank:
-                assert nucleus.domain_overlap == EVERYTHING
+                assert nucleus.in_this_domain
                 paw.domain.comm.send(nucleus.D_sp, MASTER, 207)
             
         q2 = q1 + np

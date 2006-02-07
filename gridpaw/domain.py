@@ -44,6 +44,8 @@ class Domain:
         self.angle = angle
         
         self.set_decomposition(serial_comm, (1, 1, 1))
+
+        self.comms = {}
         
     def set_decomposition(self, comm, parsize_c=None, N_c=None):
         """Set MPI-communicator and do domain decomposition.
@@ -124,6 +126,14 @@ class Domain:
                     else:
                         # No:
                         self.neighbor_cd[c, d] = -1
+
+    def get_communicator(self, group):
+        t = tuple(group)
+        if t in self.comms:
+            return self.comms[t]
+        comm = self.comm.new_communicator(num.array(group))
+        self.comms[t] = comm
+        return comm
 
 
 def decompose_domain(ng, p):

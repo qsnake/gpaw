@@ -174,10 +174,10 @@ class WaveFunctions:
             for nt_G in nt_sG:
                 symmetry.symmetrize(nt_G, gd)
 
-    def calculate_projections_and_orthogonalize(self, p_nuclei, my_nuclei):
+    def calculate_projections_and_orthogonalize(self, pt_nuclei, my_nuclei):
         """Calculate projections and orthogonalize wave functions."""
         for kpt in self.kpt_u:
-            for nucleus in p_nuclei:
+            for nucleus in pt_nuclei:
                 nucleus.calculate_projections(kpt)
 
         run_threaded([kpt.orthonormalize(my_nuclei) for kpt in self.kpt_u])
@@ -196,22 +196,22 @@ class WaveFunctions:
             Eeig += num.dot(kpt.f_n, kpt.eps_n)    
         return self.kpt_comm.sum(Eeig)
 
-    def calculate_residuals(self, p_nuclei):
+    def calculate_residuals(self, pt_nuclei):
         """Calculate wave function residuals and return error."""
         error = 0.0
         for kpt in self.kpt_u:
-            error += kpt.calculate_residuals(p_nuclei)
+            error += kpt.calculate_residuals(pt_nuclei)
         return self.kpt_comm.sum(error) / self.nvalence
 
-    def rmm_diis(self, p_nuclei, vt_sG):
+    def rmm_diis(self, pt_nuclei, vt_sG):
         """Do RMM-DIIS update of wave functions."""
         for kpt in self.kpt_u:
-            kpt.rmm_diis(p_nuclei, self.preconditioner, self.kin, vt_sG)
+            kpt.rmm_diis(pt_nuclei, self.preconditioner, self.kin, vt_sG)
     
-    def calculate_force_contribution(self, p_nuclei, my_nuclei):
+    def calculate_force_contribution(self, pt_nuclei, my_nuclei):
         """Calculate force-contribution from k-points."""
         for kpt in self.kpt_u:
-            for nucleus in p_nuclei:
+            for nucleus in pt_nuclei:
                 nucleus.calculate_force_kpoint(kpt)
 
         for nucleus in my_nuclei:
@@ -235,7 +235,6 @@ class WaveFunctions:
             D_asp = []
             for nucleus in nuclei:
                 if comm.rank == nucleus.rank:
-                    assert nucleus.domain_overlap == 3 # EVERYTHING
                     D_sp = nucleus.D_sp
                     comm.broadcast(D_sp, nucleus.rank)
                 else:

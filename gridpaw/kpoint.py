@@ -185,7 +185,7 @@ class KPoint:
         
         yield None
         
-    def calculate_residuals(self, p_nuclei):
+    def calculate_residuals(self, pt_nuclei):
         """Calculate wave function residuals.
 
         On entry, ``Htpsit_nG`` contains the soft part of the
@@ -208,7 +208,7 @@ class KPoint:
         for R_G, eps, psit_G in zip(R_nG, self.eps_n, self.psit_nG):
             R_G -= eps * psit_G
 
-        for nucleus in p_nuclei:
+        for nucleus in pt_nuclei:
             nucleus.adjust_residual(R_nG, self.eps_n, self.s, self.u, self.k)
 
         error = 0.0
@@ -263,7 +263,7 @@ class KPoint:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 nt_G += f * (psit_G * num.conjugate(psit_G)).real
                 
-    def rmm_diis(self, p_nuclei, preconditioner, kin, vt_sG):
+    def rmm_diis(self, pt_nuclei, preconditioner, kin, vt_sG):
         """Improve the wave functions.
 
         Take two steps along the preconditioned residuals.  Step
@@ -285,7 +285,7 @@ class KPoint:
 
             dR_G -= self.eps_n[n] * pR_G
 
-            for nucleus in p_nuclei:
+            for nucleus in pt_nuclei:
                 nucleus.adjust_residual2(pR_G, dR_G, self.eps_n[n],
                                          self.s, self.k)
             
