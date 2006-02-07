@@ -152,6 +152,9 @@ def decompose_domain(ng, p):
         if cost < mincost:
             mincost = cost
             best = (p1, p2, p3)
+    if best is None:
+        raise RuntimeError("Can't decompose a %dx%dx%d grid on %d cpu's!" %
+                           (n1, n2, n3, p))
     return best
 
 
