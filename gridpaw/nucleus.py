@@ -78,6 +78,10 @@ class Nucleus:
         self.nct = None
 
     def __cmp__(self, other):
+        """Ordering of nuclei.
+
+        Use sequence number ``a`` to sort lists."""
+        
         return cmp(self.a, other.a)
     
     def allocate(self, nspins, nkpts, nbands):
@@ -87,9 +91,6 @@ class Nucleus:
         self.H_sp = num.zeros((nspins, np), num.Float)
         self.P_uni = num.zeros((nspins * nkpts, nbands, ni), self.typecode)
         self.F_c = num.zeros(3, num.Float)
-
-    def deallocate(self):
-        del self.D_sp, self.H_sp, self.P_uni, self.F_c
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape
@@ -101,12 +102,16 @@ class Nucleus:
             self.P_uni = P_uni
 
     def move(self, spos_c, gd, finegd, k_ki, lfbc, domain,
-             rank, my_nuclei, pt_nuclei, ghat_nuclei,
+             my_nuclei, pt_nuclei, ghat_nuclei,
              nspins, nmykpts, nbands):
+        """Move nucleus.
+
+        """
         self.spos_c = spos_c
 
         self.comm = domain.comm # ??? XXX
 
+        rank = domain.get_rank_for_position(spos_c)
         in_this_domain = (rank == self.comm.rank)
 
         if in_this_domain and not self.in_this_domain:
@@ -121,7 +126,7 @@ class Nucleus:
             my_nuclei.remove(self)
             if self.rank != -1:
                 self.comm.send(self.D_sp, rank, 555)
-            self.deallocate()
+            del self.D_sp, self.H_sp, self.P_uni, self.F_c
             
         self.in_this_domain = in_this_domain
         self.rank = rank
@@ -137,6 +142,7 @@ class Nucleus:
         if self.typecode == num.Complex and pt_i is not None:
             pt_i.set_phase_factors(k_ki)
         
+        # Update pt_nuclei:
         if pt_i is not None and self.pt_i is None:
             pt_nuclei.append(self)
             pt_nuclei.sort()
@@ -165,6 +171,7 @@ class Nucleus:
         # ghat and vhat have the same size:
         assert (ghat_L is None) == (vhat_L is None)
 
+        # Update ghat_nuclei:
         if ghat_L is not None and self.ghat_L is None:
             ghat_nuclei.append(self)
             ghat_nuclei.sort()

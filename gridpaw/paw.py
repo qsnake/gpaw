@@ -225,12 +225,10 @@ class Paw:
             spos_c = self.domain.scale_position(pos_c)
             if num.sometrue(spos_c != nucleus.spos_c):
                 movement = True
-                rank = self.domain.get_rank_for_position(spos_c)
                 nucleus.move(spos_c, self.gd, self.finegd,
                              self.wf.myibzk_kc, self.locfuncbcaster,
                              self.domain,
-                             rank, self.my_nuclei, self.pt_nuclei,
-                             self.ghat_nuclei,
+                             self.my_nuclei, self.pt_nuclei, self.ghat_nuclei,
                              self.wf.nspins, self.wf.nmykpts, self.wf.nbands)
         
         if movement:
