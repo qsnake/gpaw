@@ -170,6 +170,7 @@ def __valence_kohn_sham__(paw, ewald, method):
                 # and interpolate to the fine grid
                 paw.interpolate(n_G, n_g)
                 
+                # determine for each nucleus, the atomic correction
                 for a, nucleus in enumerate(nuclei):
                     # generate density matrix
                     Pm_i = nucleus.P_uni[spin,m]
@@ -200,16 +201,20 @@ def __valence_wannier__(calculator, ewald, method):
     """Calculate valence-valence contribution to exact exchange
     energy using Wannier function"""
     from ASE.Utilities.Wannier import Wannier
-    from gridpaw.utilities.blas import axpy, rk, r2k, gemm
+    from gridpaw.utilities.blas import gemm
     from gridpaw.transformers import Interpolator
 
     paw = calculator.paw
     wf = paw.wf
     nuclei = paw.nuclei
     gd = paw.finegd
-    interpolate = Interpolator(paw.gd, 5, num.Complex).apply
-    states = wf.nvalence * wf.nspins / 2
-    print states
+    real = (wf.typecode == num.Float)
+
+    # setup interpolator function.
+    if real:
+        interpolate = paw.interpolate#Interpolator(paw.gd, 5, num.Float).apply
+    else:
+        interpolate = Interpolator(paw.gd, 5, num.Complex).apply
 
     # allocate space for fine grid density
     n_g = gd.new_array()
@@ -220,53 +225,66 @@ def __valence_wannier__(calculator, ewald, method):
     # load single exchange calculator
     exx_single = ExxSingle(gd).get_single_exchange
 
-    if wf.kpt_u[0].Htpsit_nG == None:
-        wannierwave_nG = num.zeros((states,)+tuple(paw.gd.N_c),num.Float)
-    else:
-        wannierwave_nG = wf.kpt_u[0].Htpsit_nG[:states]
-    
+    # initialize variable for the list of wannier wave functions
+    wannierwave_nG = None
+
     # calculate exact exchange
     ExxVal = 0.0
     for spin in range(wf.nspins):
-        # do wannier stuff
+        # determine number of occupied orbitals for current spin
+        # Note! Cannot handle spin compensated with odd numbered electrons
+        # e.g. spin compensated H with 1/2 up electron and 1/2 down electron
+        states = int(round(num.sum(wf.kpt_u[spin].f_n))) * wf.nspins / 2
+
+        if states < 1: break # should not proceed if no orbitals are occupied
+        print states
+
+        # allocate space for wannier wave function if necessary
+        if wannierwave_nG == None:
+            if wf.kpt_u[spin].Htpsit_nG == None:
+                wannierwave_nG=num.zeros((states,)+tuple(paw.gd.N_c),num.Float)
+            else: wannierwave_nG = wf.kpt_u[spin].Htpsit_nG[:states]
+        
+        # determine the wannier rotation matrix
         wannier = Wannier(numberofwannier=states,
                           calculator=calculator,
                           spin=spin)
         wannier.Localize()
         rotation = wannier.rotationmatrix[0]
-##         print 'BEFORE:', rotation
-##         rotation = num.absolute(rotation)
-##         print 'AFTER:', rotation
-        
+        if real: rotation = rotation.real.copy()
+
+        # Get old wavefunctions and apply rotation to get wannier wavefunctions
         psit_nG = wf.kpt_u[spin].psit_nG[:states]
         print wannierwave_nG.shape, wannierwave_nG.typecode()
         print psit_nG.shape, psit_nG.typecode()
         print rotation.shape, rotation.typecode()
         print rotation
-
         gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
-        
+
+        # apply rotation to expansion coeff. P = <psitilde|ptilde>
+        P_ani = []
+        for nucleus in nuclei:
+            P_ani.append(num.matrixmultiply(rotation,
+                                            nucleus.P_uni[spin,:states]))
+
+        # determine Exx contribution from each valence-valence state-pair
         for n in range(states):
             for m in range(n, states):
                 # determine double count factor:
                 DC = 2 - (n == m)
 
                 # determine current exchange density
-                n_G = num.conjugate(wannierwave_nG[n]) * \
+                n_G = num.conjugate(wannierwave_nG[m]) * \
                       wannierwave_nG[n]
 
                 # and interpolate to the fine grid
                 interpolate(n_G, n_g)
-                
+
+                # determine for each nucleus, the atomic correction
                 for a, nucleus in enumerate(nuclei):
                     # generate density matrix
-                    Ni = len(nucleus.P_uni[0,0])
-                    Pm_i = Pn_i = num.zeros(Ni, num.Float)
-                    for state in range(states):
-                        Pm_i += rotation[m,state] * nucleus.P_uni[spin,state]
-                        Pn_i += rotation[n,state] * nucleus.P_uni[spin,state]
-                    D_ii = num.outerproduct(num.conjugate(Pm_i),Pn_i)
-                    D_p  = packNEW(D_ii)
+                    D_ii=num.outerproduct(num.conjugate(P_ani[a][m]),P_ani[a][n])
+                    D_p = packNEW(D_ii)
 
                     # add compensation charges to exchange density
                     Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
@@ -280,6 +298,7 @@ def __valence_wannier__(calculator, ewald, method):
                 # add the nm contribution to exchange energy
                 Exxs = exx_single(n_g, ewald=ewald, method=method) * DC
                 ExxVal += Exxs
+        print ExxVal
     # double up if spin compensated
     ExxVal *= wf.nspins % 2 + 1
     return ExxVal
