@@ -2,13 +2,57 @@ import Numeric as num
 from math import pi
 from gridpaw.utilities.complex import real
 
-class ExxSingle:
-    """Class used to calculate the exchange energy of given
-    single orbital electron density"""
-    
+class Translate:
+    """Class used to translate wave functions / densities."""
+    def __init__(self, sgd, lgd, type = num.Complex):
+        self.Ns = sgd.N_c
+        self.Nl = lgd.N_c
+
+        # ensure that the large grid-descriptor is an integer number of times
+        # bigger than the small grid-descriptor
+        for i in range(3):
+            N = self.Nl[i] / self.Ns[i]
+            assert N == round(N)
+        self.tmp = num.zeros(self.Nl, type)
+
+    def translate(self, w, R):
+        """Translate input array 'w' defined in the large grid-descriptor 'lgd'
+           distance 'R' measured in units of the small grid-descriptor 'sgd'.
+        """
+        R = num.array(R)
+
+        # ensure that R is within allowed range
+        for i in range(3):
+            assert R[i] > 0 and R[i] < self.Nl[i] / self.Ns[i]
+        tmp = self.tmp
+
+        # determine the size of the blocks to be moved
+        B = R * self.Ns
+        A = self.Nl - B
+
+        # translate 1. axis
+        tmp[:] = w
+        w[:A[0]] = tmp[B[0]:]
+        w[A[0]:] = tmp[:B[0]]
+        
+        # translate 2. axis
+        tmp[:] = w
+        w[:, :A[1]] = tmp[:, B[1]:]
+        w[:, A[1]:] = tmp[:, :B[1]]
+        
+        # translate 3. axis
+        tmp[:] = w
+        w[:, :, :A[2]] = tmp[:, :, B[2]:]
+        w[:, :, A[2]:] = tmp[:, :, :B[2]]
+
+class Coulomb:
+    """Class used to evaluate coulomb integrals, and exchange energies of given
+       single orbital electron densities
+    """
     def __init__(self, gd):
         """Class should be initialized with a grid_descriptor 'gd' from
-        the gridpaw module"""
+           the gridpaw module
+        """
         
         self.gd = gd
 
@@ -35,17 +79,48 @@ class ExxSingle:
         dk.shape = (3, 1, 1, 1)
         k = ((num.indices(self.gd.N_c)+dim/2)%dim - dim/2)*dk
         self.k2 = sum(k**2)
-        self.k2[0,0,0] = 1.0
+        self.k2[0,0,0] = 1.0 # 
 
         # Ewald corection
         rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
         self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
+        self.ewald[0,0,0] = 0.5 # limit of ewald / k2 for k -> 0
 
         # determine N^3
         self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
 
+    def neutralize(self, n, Z):
+        """Method for neutralizing input density 'n' with nonzero total
+           charge 'Z'. Returns energy correction caused by making 'n' neutral
+        """
+
+        if Z == None: Z = self.gd.integrate(n)
+        if type(Z) == complex: assert abs(Z.imag) < 1e-6
+        if Z < 1e-8: return 0.0
+        else:
+            # construct gauss density array
+            ng = Z*self.ng1 # gaussian density
+            
+            # calculate energy corrections
+            # XXX if Z is complex it should be conjugated here!
+            EGaussN    = -0.5 * Z * self.gd.integrate(n * self.vgauss1)
+            EGaussSelf = num.absolute(Z)**2 * self.EGaussSelf1
+            
+            # neutralize density
+            n -= ng
+            
+            # determine correctional energy contribution due to neutralization
+            Ecorr = - EGaussSelf + 2 * real(EGaussN)
+            return Ecorr
+
     def get_single_exchange(self, n, Z=None, ewald=True, method='recip'):
-        """Returns exchange energy of input density 'n' """
+        """Returns exchange energy of input density 'n' defined as
+                                              *
+                              /    /      n(r)  n(r')
+          -1/2 (n | n) = -1/2 | dr | dr'  ------------
+	                      /    /        |r - r'|
+	   where n could be complex.
+        """
 
         # make density charge neutral, and get energy correction
         Ecorr = self.neutralize(n, Z)
@@ -67,269 +142,417 @@ class ExxSingle:
         # return resulting exchange energy
         return exx + Ecorr
     
-    def neutralize(self, n, Z):
-        """Method for neutralizing input density 'n' with nonzero total
-        charge. Returns energy correction caused by making 'n' neutral"""
+    def single_coulomb(self, n):
+        """Evaluates the coulomb integral:
+                                    *
+                            /    /      n(r)  n(r')
+          ((n)) = (n | n) = | dr | dr'  -----------
+	                    /    /       |r - r'|
+	   where n could be complex.
+	"""
+        raise NotImplementedError
 
-        if Z == None: Z = self.gd.integrate(n)
-        if type(Z) == complex: print '!!!!!!COMPLEX CHARGE!!!!!!' # XXX
+    def dual_coulomb(self, n1, n2):
+        """Evaluates the coulomb integral:
+                                      *
+                      /    /      n1(r)  n2(r')
+          (n1 | n2) = | dr | dr'  -------------
+	              /    /         |r - r'|
+	   where n1 and n2 could be complex.
+	"""
+	from FFT import fftnd,inverse_fftnd
+
+        # Construct gauss density and potential for density 2
+	Z1  = self.gd.integrate(n1)
+        if type(Z1) == complex: assert abs(Z1.imag) < 1e-6
+	ng1 = Z1*self.ng1
+	vg1 = Z1*self.vgauss1
+
+	# Neutralize density n1
+	n1_neutral = n1 - ng1
+
+        # Construct gauss density and potential for density 2
+	Z2  = self.gd.integrate(n2)
+        if type(Z2) == complex: assert abs(Z2.imag) < 1e-6
+	ng2 = Z2*self.ng1
+	vg2 = Z2*self.vgauss1
+
+	# Neutralize density n2
+	n2_neutral = n2 - ng2
+
+        n2_neutral_k = fftnd(n2_neutral)
+	v2_neutral_k = (4*pi*n2_neutral_k)/self.k2
+	v2_neutral   = inverse_fftnd(v2_neutral_k)
+
+	exx   = self.gd.integrate(num.conjugate(n1_neutral) * v2_neutral)
+	corr1 = self.gd.integrate(ng1 * vg2)
+	corr2 = self.gd.integrate(n2 * vg1)
+	corr3 = self.gd.integrate(n1 * vg2)
+	return exx - corr1 + corr2 + corr3
+
+class PawExx:
+    """Class offering methods for non-selfconsistent evaluation of the
+       exchange energy of a gridPAW calculation.
+    """
+    def __init__(self, calc):
+        # store options in local varibles
+        self.calc = calc
+        self.wannier = None
+        self.ewald = None
+        self.method = None
+
+        # allocate space for fine grid density
+        self.n_g = calc.paw.finegd.new_array()
+
+        # load single exchange calculator
+        self.exx_single = Coulomb(calc.paw.finegd).get_single_exchange
         
-        if Z < 1e-8: return 0.0
-        else:
-            # construct gauss density array
-            ng = Z*self.ng1 # gaussian density
+    def get_exact_exchange(self,
+                           decompose = False,
+                           wannier   = False,
+                           ewald     = True,
+                           method    = 'recip'):
+        """Control method for the calculation of exact exchange energy"""
+
+        # check if desired calculation type is possible and setup interpolator
+        paw = self.calc.paw
+        if wannier != self.wannier:
+            if paw.wf.typecode == num.Float:
+                self.interpolate = paw.interpolate
+                #Interpolator(paw.gd, 5, num.Float).apply
+            elif wannier:
+                from gridpaw.transformers import Interpolator
+                self.interpolate = Interpolator(paw.gd, 5, num.Complex).apply
+            else:
+                raise RuntimeError('Cannot do k-point calculation without' + \
+                                   'wannier keyword')
+
+        # only do calculation if not previously done
+        if wannier != self.wannier or method != self.method or \
+               (method == 'recip' and ewald != self.ewald):
             
-            # calculate energy corrections
-            EGaussN    = -0.5 * num.conjugate(Z) * \
-                                              self.gd.integrate(n*self.vgauss1)
-            EGaussSelf = num.absolute(Z)**2 * self.EGaussSelf1
-            
-            # neutralize density
-            n -= ng
-            
-            # determine correctional energy contribution due to neutralization
-            Ecorr = - EGaussSelf + 2 * real(EGaussN)
-            return Ecorr
+            # update calculation parameters
+            self.wannier = wannier
+            self.ewald   = ewald
+            self.method  = method
 
-def get_exact_exchange(calc, decompose = False, wannier = False,
-                       ewald = True, method = 'recip'):
-    """Calculate exact exchange energy using Kohn-Sham orbitals"""
+            # Get valence-valence contribution using specified method
+            if not self.wannier:
+                self.ExxVal = self.valence_kohn_sham()
+            elif paw.wf.typecode == num.Float:
+                self.ExxVal = self.valence_wannier_gamma()
+            else:
+                self.ExxVal = self.valence_wannier_kpoints()
 
-    # Get valence-valence contribution using specified method
-    if wannier:
-        ExxVal = __valence_wannier__(calc, ewald, method)
-    else:
-        ExxVal = __valence_kohn_sham__(calc.paw, ewald, method)
+        if not hasattr(self, 'ExxCore'):
+            # Get valence-core and core-core exact exchange contributions
+            self.ExxValCore, self.ExxCore = self.valence_core_core(paw.nuclei,
+                                                                 paw.wf.nspins)
 
-    # Get valence-core and core-core exact exchange contributions
-    ExxValCore, ExxCore = __valence_core_core__(calc.paw.nuclei,
-                                                calc.paw.wf.nspins)
-    
-    # add all contributions, to get total exchange energy
-    Exx = ExxVal + ExxValCore + ExxCore    
+        # add all contributions, to get total exchange energy
+        self.Exx = self.ExxVal + self.ExxValCore + self.ExxCore    
 
-    # return result
-    if decompose: return num.array([Exx, ExxVal, ExxValCore, ExxCore])
-    else: return Exx
+        # return result
+        if decompose:
+            return num.array([self.Exx, self.ExxVal,
+                              self.ExxValCore, self.ExxCore])
+        else: return self.Exx
 
-def __gauss_functions__(nuclei, gd):
-    """construct gauss functions"""
-    from gridpaw.localized_functions import create_localized_functions
-    from gridpaw.polynomium import a_i, c_l
-    from gridpaw.spline import Spline
-    
-    gt_aL = []
-    for nucleus in nuclei:
-        rcut = nucleus.setup.rcut
-        lmax = nucleus.setup.lmax
-        x = num.arange(101) / 100.0
-        s = num.zeros(101, num.Float)
-        for i in range(4):
-            s += a_i[i] * x**i
-        gSpline = [Spline(l, rcut, c_l[l] / rcut**(3 + 2 * l) * s)
-                                                      for l in range(lmax + 1)]
-        gt_aL.append(create_localized_functions(gSpline, gd, nucleus.spos_c))
+    def gauss_functions(self, nuclei, gd):
+        """construct gauss functions"""
+        from gridpaw.localized_functions import create_localized_functions
+        from gridpaw.polynomium import a_i, c_l
+        from gridpaw.spline import Spline
 
-    return gt_aL
-
-def __valence_kohn_sham__(paw, ewald, method):
-    """Calculate valence-valence contribution to exact exchange
-    energy using Kohn-Sham orbitals"""
-    wf = paw.wf
-    nuclei = paw.nuclei
-    gd = paw.finegd
-
-    # allocate space for fine grid density
-    n_g = gd.new_array()
-
-    # ensure gamma point calculation
-    assert wf.typecode == num.Float
-
-    # get gauss functions
-    gt_aL = __gauss_functions__(nuclei, gd)
-
-    # load single exchange calculator
-    exx_single = ExxSingle(gd).get_single_exchange
-
-    # calculate exact exchange
-    ExxVal = 0.0
-    for spin in range(wf.nspins):
-        for n in range(wf.nbands):
-            for m in range(n, wf.nbands):
-                # determine double count factor:
-                DC = 2 - (n == m)
-                
-                # calculate joint occupation number
-                fnm = (wf.kpt_u[spin].f_n[n] *
-                       wf.kpt_u[spin].f_n[m]) * wf.nspins / 2.
-                
-                # determine current exchange density
-                n_G = wf.kpt_u[spin].psit_nG[m]*\
-                      wf.kpt_u[spin].psit_nG[n]
-
-                # and interpolate to the fine grid
-                paw.interpolate(n_G, n_g)
-                
-                # determine for each nucleus, the atomic correction
-                for a, nucleus in enumerate(nuclei):
-                    # generate density matrix
-                    Pm_i = nucleus.P_uni[spin,m]
-                    Pn_i = nucleus.P_uni[spin,n]
-                    D_ii = num.outerproduct(Pm_i,Pn_i)
-                    D_p  = packNEW(D_ii)
-
-                    # add compensation charges to exchange density
-                    Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-                    gt_aL[a].add(n_g, Q_L)
-
-                    # add atomic contribution to exchange energy
-                    C_pp  = nucleus.setup.M_pp
-                    Exxa = -fnm*num.dot(D_p, num.dot(C_pp, D_p)) * DC
-                    ExxVal += Exxa
-                    
-                # determine total charge of exchange density
-                if n == m: Z = 1
-                else: Z = 0
-
-                # add the nm contribution to exchange energy
-                Exxs = fnm * exx_single(n_g, Z=Z, ewald=ewald,
-                                        method=method) * DC
-                ExxVal += Exxs
-    return ExxVal
-    
-def __valence_wannier__(calculator, ewald, method):
-    """Calculate valence-valence contribution to exact exchange
-    energy using Wannier function"""
-    from ASE.Utilities.Wannier import Wannier
-    from gridpaw.utilities.blas import gemm
-    from gridpaw.transformers import Interpolator
-
-    paw = calculator.paw
-    wf = paw.wf
-    nuclei = paw.nuclei
-    gd = paw.finegd
-    real = (wf.typecode == num.Float)
-
-    # setup interpolator function.
-    if real:
-        interpolate = paw.interpolate#Interpolator(paw.gd, 5, num.Float).apply
-    else:
-        interpolate = Interpolator(paw.gd, 5, num.Complex).apply
-
-    # allocate space for fine grid density
-    n_g = gd.new_array()
-
-    # get gauss functions
-    gt_aL = __gauss_functions__(nuclei, gd)
-
-    # load single exchange calculator
-    exx_single = ExxSingle(gd).get_single_exchange
-
-    # initialize variable for the list of wannier wave functions
-    wannierwave_nG = None
-
-    # calculate exact exchange
-    ExxVal = 0.0
-    for spin in range(wf.nspins):
-        # determine number of occupied orbitals for current spin
-        # Note! Cannot handle spin compensated with odd numbered electrons
-        # e.g. spin compensated H with 1/2 up electron and 1/2 down electron
-        states = int(round(num.sum(wf.kpt_u[spin].f_n))) * wf.nspins / 2
-
-        if states < 1: break # should not proceed if no orbitals are occupied
-        print states
-
-        # allocate space for wannier wave function if necessary
-        if wannierwave_nG == None:
-            if wf.kpt_u[spin].Htpsit_nG == None:
-                wannierwave_nG=num.zeros((states,)+tuple(paw.gd.N_c),num.Float)
-            else: wannierwave_nG = wf.kpt_u[spin].Htpsit_nG[:states]
-        
-        # determine the wannier rotation matrix
-        wannier = Wannier(numberofwannier=states,
-                          calculator=calculator,
-                          spin=spin)
-        wannier.Localize()
-        rotation = wannier.rotationmatrix[0]
-        if real: rotation = rotation.real.copy()
-
-        # Get old wavefunctions and apply rotation to get wannier wavefunctions
-        psit_nG = wf.kpt_u[spin].psit_nG[:states]
-        print wannierwave_nG.shape, wannierwave_nG.typecode()
-        print psit_nG.shape, psit_nG.typecode()
-        print rotation.shape, rotation.typecode()
-        print rotation
-        gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
-
-        # apply rotation to expansion coeff. P = <psitilde|ptilde>
-        P_ani = []
+        gt_aL = []
         for nucleus in nuclei:
-            P_ani.append(num.matrixmultiply(rotation,
-                                            nucleus.P_uni[spin,:states]))
+            rcut = nucleus.setup.rcut
+            lmax = nucleus.setup.lmax
+            x = num.arange(101) / 100.0
+            s = num.zeros(101, num.Float)
+            for i in range(4):
+                s += a_i[i] * x**i
+            gSpline = [Spline(l, rcut, c_l[l] / rcut**(3 + 2 * l) * s)
+                       for l in range(lmax + 1)]
+            gt_aL.append(create_localized_functions(gSpline,gd,nucleus.spos_c))
+        return gt_aL
 
-        # determine Exx contribution from each valence-valence state-pair
-        for n in range(states):
-            for m in range(n, states):
-                # determine double count factor:
-                DC = 2 - (n == m)
+    def valence_kohn_sham(self):
+        """Calculate valence-valence contribution to exact exchange
+           energy using Kohn-Sham orbitals
+        """
+        wf = self.calc.paw.wf
+        nuclei = self.calc.paw.nuclei
+        finegd = self.calc.paw.finegd
 
-                # determine current exchange density
-                n_G = num.conjugate(wannierwave_nG[m]) * \
-                      wannierwave_nG[n]
+        # get gauss functions
+        gt_aL = self.gauss_functions(nuclei, finegd)
 
-                # and interpolate to the fine grid
-                interpolate(n_G, n_g)
+        # calculate exact exchange
+        ExxVal = 0.0
+        for spin in range(wf.nspins):
+            for n in range(wf.nbands):
+                for m in range(n, wf.nbands):
+                    # determine double count factor:
+                    DC = 2 - (n == m)
 
-                # determine for each nucleus, the atomic correction
-                for a, nucleus in enumerate(nuclei):
-                    # generate density matrix
-                    D_ii=num.outerproduct(num.conjugate(P_ani[a][m]),P_ani[a][n])
-                    D_p = packNEW(D_ii)
+                    # calculate joint occupation number
+                    fnm = (wf.kpt_u[spin].f_n[n] *
+                           wf.kpt_u[spin].f_n[m]) * wf.nspins / 2.
 
-                    # add compensation charges to exchange density
-                    Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-                    gt_aL[a].add(n_g, Q_L)
+                    # determine current exchange density
+                    n_G = wf.kpt_u[spin].psit_nG[m]*\
+                          wf.kpt_u[spin].psit_nG[n]
 
-                    # add atomic contribution to exchange energy
-                    C_pp  = nucleus.setup.M_pp
-                    Exxa = -num.dot(D_p, num.dot(C_pp, D_p)) * DC
-                    ExxVal += Exxa
+                    # and interpolate to the fine grid
+                    self.interpolate(n_G, self.n_g)
 
-                # add the nm contribution to exchange energy
-                Exxs = exx_single(n_g, ewald=ewald, method=method) * DC
-                ExxVal += Exxs
-        print ExxVal
-    # double up if spin compensated
-    ExxVal *= wf.nspins % 2 + 1
-    return ExxVal
+                    # determine for each nucleus, the atomic correction
+                    for a, nucleus in enumerate(nuclei):
+                        # generate density matrix
+                        Pm_i = nucleus.P_uni[spin,m]
+                        Pn_i = nucleus.P_uni[spin,n]
+                        D_ii = num.outerproduct(Pm_i,Pn_i)
+                        D_p  = packNEW(D_ii)
+
+                        # add compensation charges to exchange density
+                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                        gt_aL[a].add(self.n_g, Q_L)
+
+                        # add atomic contribution to exchange energy
+                        C_pp  = nucleus.setup.M_pp
+                        Exxa = -fnm*num.dot(D_p, num.dot(C_pp, D_p)) * DC
+                        ExxVal += Exxa
+
+                    # determine total charge of exchange density
+                    if n == m: Z = 1
+                    else: Z = 0
+
+                    # add the nm contribution to exchange energy
+                    Exxs = fnm * self.exx_single(self.n_g, Z=Z,
+                                                 ewald=self.ewald,
+                                                 method=self.method) * DC
+                    ExxVal += Exxs
+        return ExxVal
     
-def __valence_core_core__(nuclei, nspins):
-    """Determine the valence-core and core-core contributions for each
-     spin and nucleus"""
+    def valence_wannier_gamma(self):
+        """Calculate valence-valence contribution to exact exchange
+           energy using Wannier function
+        """
+        # load additional packages for wannier calculation
+        from ASE.Utilities.Wannier import Wannier
+        from gridpaw.utilities.blas import gemm
+        from gridpaw.transformers import Interpolator
 
-    ExxCore = ExxValCore = 0.0
+        wf = self.calc.paw.wf
+        nuclei = self.calc.paw.nuclei
+        finegd = self.calc.paw.finegd
 
-    for nucleus in nuclei:
-        # error handling for old setup files
-        if nucleus.setup.ExxC == None:
-            print 'Warning no exact exchange information in setup file'
-            print 'Value of exact exchange may be incorrect'
-            print 'Please regenerate setup file to correct error'
-            break
-      
-        # add core-core contribution from current nucleus
-        ExxCore += nucleus.setup.ExxC
+        # get gauss functions
+        gt_aL = self.gauss_functions(nuclei, finegd)
 
-        # add val-core contribution from current nucleus
-        for spin in range(nspins):
-            D_p = nucleus.D_sp[spin]
-            ExxValCore += - num.dot(D_p, nucleus.setup.X_p)
+        # initialize variable for the list of wannier wave functions
+        wannierwave_nG = None
 
-    return ExxValCore, ExxCore
+        # calculate exact exchange
+        ExxVal = 0.0
+        for spin in range(wf.nspins):
+            # determine number of occupied orbitals for current spin
+            # Note! Cannot handle spin compensated with odd numbered electrons
+            # e.g spin compensated H with 1/2 up electron and 1/2 down electron
+            states = int(round(num.sum(wf.kpt_u[spin].f_n))) * wf.nspins / 2
+
+            if states < 1: break # do not proceed if no orbitals are occupied
+
+            # allocate space for wannier wave function if necessary
+            if wannierwave_nG == None:
+                if wf.kpt_u[spin].Htpsit_nG == None:
+                    wannierwave_nG = num.zeros((states,) + 
+                                               tuple(self.paw.gd.N_c),
+                                               num.Float)
+                else: wannierwave_nG = wf.kpt_u[spin].Htpsit_nG[:states]
+
+            # determine the wannier rotation matrix
+            wannier = Wannier(numberofwannier=states,
+                              calculator=self.calc,
+                              spin=spin)
+            wannier.Localize()
+            U_knn = wannier.GetListOfRotationMatrices()
+            if real: rotation = U_knn[0].real.copy()
+
+            # apply rotation to old wavefunctions and get wannier wavefunctions
+            psit_nG = wf.kpt_u[spin].psit_nG[:states]
+            gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
+
+            # apply rotation to expansion coeff. P = <ptilde|psitilde>
+            P_ani = []
+            for nucleus in nuclei:
+                P_ani.append(num.matrixmultiply(rotation,
+                                                nucleus.P_uni[spin,:states]))
+
+            # determine Exx contribution from each valence-valence state-pair
+            for n in range(states):
+                for m in range(n, states):
+                    # determine double count factor:
+                    DC = 2 - (n == m)
+
+                    # determine current exchange density
+                    n_G = num.conjugate(wannierwave_nG[m]) * \
+                          wannierwave_nG[n]
+
+                    # and interpolate to the fine grid
+                    self.interpolate(n_G, self.n_g)
+
+                    # determine for each nucleus, the atomic correction
+                    for a, nucleus in enumerate(nuclei):
+                        # generate density matrix
+                        D_ii = num.outerproduct(num.conjugate(P_ani[a][m]),
+                                                P_ani[a][n])
+                        D_p = packNEW(D_ii)
+
+                        # add compensation charges to exchange density
+                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                        gt_aL[a].add(self.n_g, Q_L)
+
+                        # add atomic contribution to exchange energy
+                        C_pp  = nucleus.setup.M_pp
+                        Exxa = - num.dot(D_p, num.dot(C_pp, D_p)) * DC
+                        ExxVal += Exxa
+
+                    # add the nm contribution to exchange energy
+                    Exxs = self.exx_single(self.n_g, ewald=self.ewald,
+                                           method=self.method) * DC
+                    ExxVal += Exxs
+        # double up if spin compensated
+        ExxVal *= wf.nspins % 2 + 1
+        return ExxVal
+    
+    def valence_wannier_kpoints(self):
+        """Calculate valence-valence contribution to exact exchange
+           energy using Wannier function
+        """
+        raise NotImplementedError
+    
+        # load additional packages for wannier calculation
+        from ASE.Utilities.Wannier import Wannier
+        from gridpaw.utilities.blas import gemm
+        from gridpaw.transformers import Interpolator
+
+        wf = self.calc.paw.wf
+        nuclei = self.calc.paw.nuclei
+        finegd = self.calc.paw.finegd
+        wf.nkpts
+        wf.bzk_k_c
+        wf.ibzk_kc
+
+        # get gauss functions
+        gt_aL = self.gauss_functions(nuclei, finegd)
+
+        # initialize variable for the list of wannier wave functions
+        wannierwave_nG = None
+
+        # calculate exact exchange
+        ExxVal = 0.0
+        for spin in range(wf.nspins):
+            # determine number of occupied orbitals for current spin
+            # Note! Cannot handle spin compensated with odd numbered electrons
+            # e.g spin compensated H with 1/2 up electron and 1/2 down electron
+            states = int(round(num.sum(wf.kpt_u[spin].f_n))) * wf.nspins / 2
+
+            if states < 1: break # do not proceed if no orbitals are occupied
+
+            # allocate space for wannier wave function if necessary
+            if wannierwave_nG == None:
+                if wf.kpt_u[spin].Htpsit_nG == None:
+                    wannierwave_nG = num.zeros((states,) + 
+                                               tuple(self.paw.gd.N_c),
+                                               num.Float)
+                else: wannierwave_nG = wf.kpt_u[spin].Htpsit_nG[:states]
+
+            # determine the wannier rotation matrix
+            wannier = Wannier(numberofwannier=states,
+                              calculator=self.calc,
+                              spin=spin)
+            wannier.Localize()
+            U_knn = wannier.GetListOfRotationMatrices()
+            if real: rotation = U_knn[0].real.copy()
+
+            # apply rotation to old wavefunctions and get wannier wavefunctions
+            psit_nG = wf.kpt_u[spin].psit_nG[:states]
+            gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
+
+            # apply rotation to expansion coeff. P = <ptilde|psitilde>
+            P_ani = []
+            for nucleus in nuclei:
+                P_ani.append(num.matrixmultiply(rotation,
+                                                nucleus.P_uni[spin,:states]))
+
+            # determine Exx contribution from each valence-valence state-pair
+            for n in range(states):
+                for m in range(n, states):
+                    # determine double count factor:
+                    DC = 2 - (n == m)
+
+                    # determine current exchange density
+                    n_G = num.conjugate(wannierwave_nG[m]) * \
+                          wannierwave_nG[n]
+
+                    # and interpolate to the fine grid
+                    self.interpolate(n_G, self.n_g)
+
+                    # determine for each nucleus, the atomic correction
+                    for a, nucleus in enumerate(nuclei):
+                        # generate density matrix
+                        D_ii = num.outerproduct(num.conjugate(P_ani[a][m]),
+                                                P_ani[a][n])
+                        D_p = packNEW(D_ii)
+
+                        # add compensation charges to exchange density
+                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                        gt_aL[a].add(self.n_g, Q_L)
+
+                        # add atomic contribution to exchange energy
+                        C_pp  = nucleus.setup.M_pp
+                        Exxa = - num.dot(D_p, num.dot(C_pp, D_p)) * DC
+                        ExxVal += Exxa
+
+                    # add the nm contribution to exchange energy
+                    Exxs = self.exx_single(self.n_g, ewald=self.ewald,
+                                           method=self.method) * DC
+                    ExxVal += Exxs
+        # double up if spin compensated
+        ExxVal *= wf.nspins % 2 + 1
+        return ExxVal
+
+    def valence_core_core(self, nuclei, nspins):
+        """Determine the valence-core and core-core contributions for each
+           spin and nucleus
+        """
+
+        ExxCore = ExxValCore = 0.0
+
+        for nucleus in nuclei:
+            # error handling for old setup files
+            if nucleus.setup.ExxC == None:
+                print 'Warning no exact exchange information in setup file'
+                print 'Value of exact exchange may be incorrect'
+                print 'Please regenerate setup file to correct error'
+                break
+
+            # add core-core contribution from current nucleus
+            ExxCore += nucleus.setup.ExxC
+
+            # add val-core contribution from current nucleus
+            for spin in range(nspins):
+                D_p = nucleus.D_sp[spin]
+                ExxValCore += - num.dot(D_p, nucleus.setup.X_p)
+
+        return ExxValCore, ExxCore
 
 def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
-    instantiated AllElectron object 'atom' """
+       instantiated AllElectron object 'atom'
+    """
 
     # get Gaunt coefficients
     from gridpaw.gaunt import gaunt
@@ -527,8 +750,9 @@ def coreStates(symbol, n,l,f):
 
 def rSquared(gd):
     """constructs and returns a matrix containing the square of the distance
-    from the origin which is placed in the center of the box described by the
-    given griddescriptor 'gd'. """
+       from the origin which is placed in the center of the box described by
+       the given griddescriptor 'gd'.
+    """
     
     I  = num.indices(gd.N_c)
     dr = num.reshape(gd.h_c,(3,1,1,1))
@@ -547,7 +771,8 @@ def rSquared(gd):
 
 def erf3D(M):
     """return matrix with the value of the error function evaluated for each
-    element in input matrix 'M'. """
+       element in input matrix 'M'.
+    """
     
     from gridpaw.utilities import erf
     
@@ -599,7 +824,31 @@ def packNEW2(M2, symmetric = False):
     assert p == len(M)
     return M
 
-if __name__ == '__main__':
+def translate_test():
+    from gridpaw.domain import Domain
+    from gridpaw.grid_descriptor import GridDescriptor
+    from ASE.Visualization.VTK import VTKPlotArray
+    
+    d  = Domain((4,4,4))   # domain object
+    N  = 2**4                 # number of grid points
+    Nc = (N,N,N)              # tuple with number of grid point along each axis
+    gd = GridDescriptor(d,Nc) # grid-descriptor object
+
+    N  *= 4                   # number of grid points
+    Nc = (N,N,N)              # tuple with number of grid point along each axis
+    lgd = GridDescriptor(d,Nc)# grid-descriptor object
+
+    r2 = rSquared(lgd)        # matrix with the square of the radial coordinate
+    g  = num.exp(-r2)/ pi     # gaussian density 
+
+    trans = Translate(gd, lgd, num.Float).translate
+
+    g2 = g.copy()
+    trans(g2,(2,2,3))
+    a = 8 * num.identity(3, num.Float)
+    VTKPlotArray(g2, a)
+
+def single_exchange_test():
     from gridpaw.domain import Domain
     from gridpaw.grid_descriptor import GridDescriptor
 
@@ -611,6 +860,10 @@ if __name__ == '__main__':
     r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
     nH = num.exp(-2*r)/pi     # density of the hydrogen atom
 
-    exx = ExxSingle(gd).get_single_exchange(nH, method = 'recip')
+    exx = Coulomb(gd).get_single_exchange(nH, method = 'recip')
     print 'Numerical result: ', exx
     print 'Analytic result:  ', -5/16.
+
+if __name__ == '__main__':
+    single_exchange_test()
+    #translate_test()
