@@ -12,15 +12,10 @@ from gridpaw.read_setup import PAWXMLParser
 from gridpaw.gaunt import gaunt as G_L1L2L
 from gridpaw.spline import Spline
 from gridpaw.grid_descriptor import RadialGridDescriptor
-from gridpaw.utilities import unpack, erf
+from gridpaw.utilities import unpack, erf, fac
 from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
 from gridpaw.polynomium import a_i, c_l, b_lj
-
-
-fac = [1.0]
-for n in range(1, 10):
-    fac.append(fac[-1] * n)
 
 
 class Hartree:
@@ -503,7 +498,7 @@ class Setup:
         self.alpha2 = alpha2
 
         if GAUSS or softgauss:
-            d_l = [fac[l] * 2**(2 * l + 2) / fac[2 * l + 1] / sqrt(pi)
+            d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
                    for l in range(3)]
             g = alpha2**1.5 * num.exp(-alpha2 * r**2)
             g[-1] = 0.0

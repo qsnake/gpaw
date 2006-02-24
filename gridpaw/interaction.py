@@ -8,15 +8,13 @@ import Numeric as num
 from gridpaw.gauss import I
 from gridpaw.spherical_harmonics import YL
 from gridpaw.polynomium import I_l
+from gridpaw.utilities import fac
 
 
 GAUSS = False
 
-fac = [1.0]
-for n in range(1, 10):
-    fac.append(fac[-1] * n)
 
-d_l = [fac[l] * 2**(2 * l + 2) / fac[2 * l + 1] / sqrt(pi)
+d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
        for l in range(3)]
 
 class GInteraction2:
