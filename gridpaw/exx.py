@@ -1,18 +1,20 @@
 import Numeric as num
-from math import pi
+from Numeric import pi
 from gridpaw.utilities.complex import real
+from FFT import fftnd, inverse_fftnd
+from gridpaw.poisson_solver import PoissonSolver
+from gridpaw.utilities import DownTheDrain
 
 class Translate:
     """Class used to translate wave functions / densities."""
     def __init__(self, sgd, lgd, type = num.Complex):
         self.Ns = sgd.N_c
         self.Nl = lgd.N_c
+        self.Nr = 1. * self.Nl / self.Ns
 
         # ensure that the large grid-descriptor is an integer number of times
         # bigger than the small grid-descriptor
-        for i in range(3):
-            N = self.Nl[i] / self.Ns[i]
-            assert N == round(N)
+        assert num.alltrue(self.Nr == num.around(self.Nr))
         self.tmp = num.zeros(self.Nl, type)
 
     def translate(self, w, R):
@@ -20,11 +22,13 @@ class Translate:
            distance 'R' measured in units of the small grid-descriptor 'sgd'.
         """
         R = num.array(R)
-
-        # ensure that R is within allowed range
-        for i in range(3):
-            assert R[i] > 0 and R[i] < self.Nl[i] / self.Ns[i]
         tmp = self.tmp
+
+        # do nothing, if array is not moved
+        if num.alltrue(R == 0): return
+        
+        # ensure that R is within allowed range and of correct type
+        assert num.alltrue(R > 0 and R < self.Nr)
 
         # determine the size of the blocks to be moved
         B = R * self.Ns
@@ -52,26 +56,9 @@ class Coulomb:
     def __init__(self, gd):
         """Class should be initialized with a grid_descriptor 'gd' from
            the gridpaw module
-        """
-        
+        """        
         self.gd = gd
-
-        # determine r^2 and r matrices
-        r2 = rSquared(gd)
-        r  = num.sqrt(r2)
-
-        # 'width' of gaussian distribution
-        # a=a0/... => ng~exp(-a0/4) on the boundary of the domain
-        a = 25./min(gd.domain.cell_c)**2
-
-        # gaussian density for Z=1
-        self.ng1 = num.exp(-a*r2)*(a/pi)**(1.5)
-
-        # gaussian potential for Z=1
-        self.vgauss1 = erf3D(num.sqrt(a)*r)/r
-
-        # gaussian self energy for Z=1
-        self.EGaussSelf1 = -num.sqrt(a/2/pi)
+        self.ng1, self.vg1, self.Eg1 = self.construct_gauss(gd)
 
         # calculate reciprocal lattice vectors
         dim = num.reshape(gd.N_c, (3,1,1,1))
@@ -79,39 +66,97 @@ class Coulomb:
         dk.shape = (3, 1, 1, 1)
         k = ((num.indices(self.gd.N_c)+dim/2)%dim - dim/2)*dk
         self.k2 = sum(k**2)
-        self.k2[0,0,0] = 1.0 # 
+        self.k2[0,0,0] = 1.0
 
         # Ewald corection
-        rc = num.reshape(gd.domain.cell_c, (3,1,1,1)) / 2. 
-        self.ewald = num.ones(gd.N_c) - num.cos(sum(k * rc))
-        self.ewald[0,0,0] = 0.5 # limit of ewald / k2 for k -> 0
+        rc = .5 * num.average(gd.domain.cell_c)
+        self.ewald = num.ones(gd.N_c) - num.cos(num.sqrt(self.k2) * rc)
+        # lim k ->0 ewald / k2 
+        self.ewald[0,0,0] = .5 * rc**2
 
         # determine N^3
         self.N3 = self.gd.N_c[0]*self.gd.N_c[1]*self.gd.N_c[2]
 
-    def neutralize(self, n, Z):
+    def rSquared(gd):
+        """constructs and returns a matrix containing the square of the
+           distance from the origin which is placed in the center of the box
+           described by the given grid-descriptor 'gd'.
+        """
+
+        I  = num.indices(gd.N_c)
+        dr = num.reshape(gd.h_c,(3,1,1,1))
+        r0 = -0.5*num.reshape(gd.domain.cell_c,(3,1,1,1))
+        r0 = num.ones(I.shape)*r0
+        r2 = num.sum((r0+I*dr)**2)
+
+        # remove singularity at origin and replace with small number
+        middle = gd.N_c/2.
+        if num.alltrue(middle==num.floor(middle)):
+            z = middle.astype(int)
+            r2[z[0],z[1],z[2]] = 1e-12
+
+        # return r^2 matrix
+        return r2
+    rSquared = staticmethod(rSquared)
+
+    def erf3D(M):
+        """return matrix with the value of the error function evaluated for
+           each element in input matrix 'M'.
+        """
+        from gridpaw.utilities import erf
+
+        dim = M.shape
+        res = num.zeros(dim,num.Float)
+        for k in range(dim[0]):
+            for l in range(dim[1]):
+                for m in range(dim[2]):
+                    res[k,l,m] = erf(M[k,l,m])
+        return res
+    erf3D = staticmethod(erf3D)
+        
+    def construct_gauss(gd):
+        """Construct gaussian density, potential and self-energy"""
+        # determine r^2 and r matrices
+        r2 = Coulomb.rSquared(gd)
+        r  = num.sqrt(r2)
+
+        # 'width' of gaussian distribution
+        # a=a0/... => ng~exp(-a0/4) on the boundary of the domain
+        a = 25./min(gd.domain.cell_c)**2
+
+        # gaussian density for Z=1
+        ng1 = num.exp(-a*r2)*(a/pi)**(1.5)
+
+        # gaussian potential for Z=1
+        vg1 = Coulomb.erf3D(num.sqrt(a)*r)/r
+
+        # gaussian self energy for Z=1
+        Eg1 = -num.sqrt(a/2/pi)
+
+        return ng1, vg1, Eg1
+    construct_gauss = staticmethod(construct_gauss)
+
+    def neutralize(self, n, Z=None):
         """Method for neutralizing input density 'n' with nonzero total
            charge 'Z'. Returns energy correction caused by making 'n' neutral
         """
-
         if Z == None: Z = self.gd.integrate(n)
-        if type(Z) == complex: assert abs(Z.imag) < 1e-6
-        if Z < 1e-8: return 0.0
+        if type(Z) == complex: print Z; assert abs(Z.imag) < 1e-6
+        if abs(Z) < 1e-8: return 0.0
         else:
             # construct gauss density array
             ng = Z*self.ng1 # gaussian density
             
             # calculate energy corrections
-            # XXX if Z is complex it should be conjugated here!
-            EGaussN    = -0.5 * Z * self.gd.integrate(n * self.vgauss1)
-            EGaussSelf = num.absolute(Z)**2 * self.EGaussSelf1
+            EGaussN    = -0.5 * num.conjugate(Z)\
+                         * self.gd.integrate(n * self.vg1)
+            EGaussSelf = num.absolute(Z)**2 * self.Eg1
             
             # neutralize density
             n -= ng
             
-            # determine correctional energy contribution due to neutralization
-            Ecorr = - EGaussSelf + 2 * real(EGaussN)
-            return Ecorr
+            # return correctional energy contribution due to neutralization
+            return - EGaussSelf + 2 * real(EGaussN)
 
     def get_single_exchange(self, n, Z=None, ewald=True, method='recip'):
         """Returns exchange energy of input density 'n' defined as
@@ -121,36 +166,44 @@ class Coulomb:
 	                      /    /        |r - r'|
 	   where n could be complex.
         """
-
-        # make density charge neutral, and get energy correction
-        Ecorr = self.neutralize(n, Z)
-
         # determine exchange energy of neutral density using specified method
         if method=='real':
-            from gridpaw.poisson_solver import PoissonSolver
-            solve = PoissonSolver(self.gd).solve
+            # make density charge neutral, and get energy correction
+            Ecorr = self.neutralize(n, Z)
+
+            # determine potential
+            solve = PoissonSolver(self.gd, out=DownTheDrain()).solve
             v = self.gd.new_array()
             solve(v,n)
-            exx = -0.5*self.gd.integrate(v * n)
-        elif method=='recip':
-            from FFT import fftnd
-            I = num.absolute(fftnd(n))**2 * 4 * pi / self.k2
-            if ewald: I *= self.ewald
-            exx = -0.5*self.gd.integrate(I) / self.N3
-        else: raise RunTimeError('method name ', method, 'not recognized')
 
-        # return resulting exchange energy
-        return exx + Ecorr
+            # determine exchange energy
+            exx = -0.5*self.gd.integrate(v * n)
+
+            # return resulting exchange energy
+            return exx + Ecorr
+        elif method=='recip':
+            if ewald: return -.5 * self.single_coulomb(n)
+            else:
+                Ecorr = self.neutralize(n, Z)
+                I = num.absolute(fftnd(n))**2 * 4 * pi / self.k2
+                exx = -0.5*self.gd.integrate(I) / self.N3
+                
+                # return resulting exchange energy
+                return exx + Ecorr
+        else:
+            raise RunTimeError('method name ', method, 'not recognized')
     
     def single_coulomb(self, n):
         """Evaluates the coulomb integral:
-                                    *
+                                           *
                             /    /      n(r)  n(r')
           ((n)) = (n | n) = | dr | dr'  -----------
-	                    /    /       |r - r'|
+	                    /    /        |r - r'|
 	   where n could be complex.
 	"""
-        raise NotImplementedError
+        nk = fftnd(n)
+        I = num.absolute(nk)**2 * self.ewald / self.k2
+        return self.gd.integrate(I) * 4 * pi  / self.N3
 
     def dual_coulomb(self, n1, n2):
         """Evaluates the coulomb integral:
@@ -160,13 +213,26 @@ class Coulomb:
 	              /    /         |r - r'|
 	   where n1 and n2 could be complex.
 	"""
-	from FFT import fftnd,inverse_fftnd
+        n1k = fftnd(n1)
+        n2k = fftnd(n2)
 
+        I = num.conjugate(n1k) * n2k * self.ewald / self.k2
+        return self.gd.integrate(I) * 4 * pi  / self.N3
+   
+    def dual_coulomb_old(self, n1, n2):
+        """Evaluates the coulomb integral:
+                                      *
+                      /    /      n1(r)  n2(r')
+          (n1 | n2) = | dr | dr'  -------------
+	              /    /         |r - r'|
+	   where n1 and n2 could be complex.
+	"""
+        from FFT import inverse_fftnd
+        
         # Construct gauss density and potential for density 2
 	Z1  = self.gd.integrate(n1)
         if type(Z1) == complex: assert abs(Z1.imag) < 1e-6
 	ng1 = Z1*self.ng1
-	vg1 = Z1*self.vgauss1
 
 	# Neutralize density n1
 	n1_neutral = n1 - ng1
@@ -175,7 +241,6 @@ class Coulomb:
 	Z2  = self.gd.integrate(n2)
         if type(Z2) == complex: assert abs(Z2.imag) < 1e-6
 	ng2 = Z2*self.ng1
-	vg2 = Z2*self.vgauss1
 
 	# Neutralize density n2
 	n2_neutral = n2 - ng2
@@ -184,11 +249,10 @@ class Coulomb:
 	v2_neutral_k = (4*pi*n2_neutral_k)/self.k2
 	v2_neutral   = inverse_fftnd(v2_neutral_k)
 
-	exx   = self.gd.integrate(num.conjugate(n1_neutral) * v2_neutral)
-	corr1 = self.gd.integrate(ng1 * vg2)
-	corr2 = self.gd.integrate(n2 * vg1)
-	corr3 = self.gd.integrate(n1 * vg2)
-	return exx - corr1 + corr2 + corr3
+	exx   = num.conjugate(n1_neutral) * v2_neutral
+	corr1 = (Z1 * n2 + Z2 * n2) * self.vg1
+	corr2 = -2 * Z1 * Z2 * self.Eg1
+	return self.gd.integrate(exx + corr1) - corr2
 
 class PawExx:
     """Class offering methods for non-selfconsistent evaluation of the
@@ -258,7 +322,8 @@ class PawExx:
                               self.ExxValCore, self.ExxCore])
         else: return self.Exx
 
-    def gauss_functions(self, nuclei, gd):
+    def gauss_functions(gd, nuclei, R_Rc=num.zeros((1,3)),
+                        Nk_c=num.ones(3), type=num.Float):
         """construct gauss functions"""
         from gridpaw.localized_functions import create_localized_functions
         from gridpaw.polynomium import a_i, c_l
@@ -274,8 +339,35 @@ class PawExx:
                 s += a_i[i] * x**i
             gSpline = [Spline(l, rcut, c_l[l] / rcut**(3 + 2 * l) * s)
                        for l in range(lmax + 1)]
-            gt_aL.append(create_localized_functions(gSpline,gd,nucleus.spos_c))
+            for R in R_Rc:
+                spos_c = (nucleus.spos_c + R) / Nk_c
+                gt_L = create_localized_functions(gSpline, gd,
+                                                  spos_c, typecode=type)
+#                gt_L.set_phase_factors([[0, 0, 0]])
+                gt_aL.append(gt_L)
         return gt_aL
+    gauss_functions = staticmethod(gauss_functions)
+
+    def get_kpoint_dimensions(kpts):
+        """returns number of kpoints along each axis of input Monkhorst pack"""
+        nkpts = len(kpts)
+        print nkpts, kpts.shape
+        if nkpts == 1: return num.ones(3)
+        tol = 1e-5
+        Nk_c = num.zeros(3)
+        for c in range(3):
+            # sort kpoints in ascending order along current axis
+            slist = num.argsort(kpts[:,c])
+            skpts = num.take(kpts, slist)
+
+            # determine increment between kpoints along current axis
+            DeltaK = max([skpts[n+1,c] - skpts[n,c] for n in range(nkpts-1)])
+
+            # determine number of kpoints as inverse of distance between kpoints
+            if DeltaK > tol: Nk_c[c] = int(round(1/DeltaK)) 
+            else: Nk_c[c] = 1
+        return Nk_c
+    get_kpoint_dimensions= staticmethod(get_kpoint_dimensions)
 
     def valence_kohn_sham(self):
         """Calculate valence-valence contribution to exact exchange
@@ -286,7 +378,7 @@ class PawExx:
         finegd = self.calc.paw.finegd
 
         # get gauss functions
-        gt_aL = self.gauss_functions(nuclei, finegd)
+        gt_aL = self.gauss_functions(finegd, nuclei)
 
         # calculate exact exchange
         ExxVal = 0.0
@@ -349,7 +441,7 @@ class PawExx:
         finegd = self.calc.paw.finegd
 
         # get gauss functions
-        gt_aL = self.gauss_functions(nuclei, finegd)
+        gt_aL = self.gauss_functions(finegd, nuclei)
 
         # initialize variable for the list of wannier wave functions
         wannierwave_nG = None
@@ -368,7 +460,7 @@ class PawExx:
             if wannierwave_nG == None:
                 if wf.kpt_u[spin].Htpsit_nG == None:
                     wannierwave_nG = num.zeros((states,) + 
-                                               tuple(self.paw.gd.N_c),
+                                               tuple(self.calc.paw.gd.N_c),
                                                num.Float)
                 else: wannierwave_nG = wf.kpt_u[spin].Htpsit_nG[:states]
 
@@ -378,17 +470,15 @@ class PawExx:
                               spin=spin)
             wannier.Localize()
             U_knn = wannier.GetListOfRotationMatrices()
-            if real: rotation = U_knn[0].real.copy()
+            rotation = U_knn[0].real.copy()
 
             # apply rotation to old wavefunctions and get wannier wavefunctions
             psit_nG = wf.kpt_u[spin].psit_nG[:states]
             gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
 
             # apply rotation to expansion coeff. P = <ptilde|psitilde>
-            P_ani = []
-            for nucleus in nuclei:
-                P_ani.append(num.matrixmultiply(rotation,
-                                                nucleus.P_uni[spin,:states]))
+            P_ani = [num.matrixmultiply(rotation, nucleus.P_uni[spin,:states])
+                     for nucleus in nuclei]
 
             # determine Exx contribution from each valence-valence state-pair
             for n in range(states):
@@ -437,16 +527,38 @@ class PawExx:
         from ASE.Utilities.Wannier import Wannier
         from gridpaw.utilities.blas import gemm
         from gridpaw.transformers import Interpolator
+        from gridpaw.domain import Domain
+        from gridpaw.grid_descriptor import GridDescriptor
 
         wf = self.calc.paw.wf
         nuclei = self.calc.paw.nuclei
+        gd = self.calc.paw.gd
         finegd = self.calc.paw.finegd
-        wf.nkpts
-        wf.bzk_k_c
-        wf.ibzk_kc
+
+        assert len(wf.bzk_kc) == len(wf.ibzk_kc)
+        
+        # get information on the number of kpoints
+        Nk = wf.nkpts
+        Nk_c = self.get_kpoint_dimensions(num.array(wf.ibzk_kc))
+
+        # construct large grid-descriptor of repeated unitcell
+        ldomain = Domain(gd.domain.cell_c * Nk_c)
+        lgd = GridDescriptor(ldomain, gd.N_c * Nk_c)
+
+        # load single exchange calculator and translator
+        exx_single = Coulomb(lgd).get_single_exchange
+        translate = Translate(gd, lgd).translate
+
+        # construct translation vectors
+        R_Rc = num.zeros((Nk, 3))
+        for i in range(Nk_c[0]):
+            for j in range(Nk_c[1]):
+                for k in range(Nk_c[2]):
+                    tmp = [i, j, k]
+                    R_Rc[num.dot(tmp, Nk_c - 1)] = tmp
 
         # get gauss functions
-        gt_aL = self.gauss_functions(nuclei, finegd)
+        gt_AL = self.gauss_functions(lgd, nuclei, R_Rc, Nk_c, type=num.Complex)
 
         # initialize variable for the list of wannier wave functions
         wannierwave_nG = None
@@ -457,17 +569,16 @@ class PawExx:
             # determine number of occupied orbitals for current spin
             # Note! Cannot handle spin compensated with odd numbered electrons
             # e.g spin compensated H with 1/2 up electron and 1/2 down electron
+            # Note! This only works if there is a band gap, i.e. sum(f_n) must
+            # be identical for each kpoint
             states = int(round(num.sum(wf.kpt_u[spin].f_n))) * wf.nspins / 2
 
             if states < 1: break # do not proceed if no orbitals are occupied
 
             # allocate space for wannier wave function if necessary
             if wannierwave_nG == None:
-                if wf.kpt_u[spin].Htpsit_nG == None:
-                    wannierwave_nG = num.zeros((states,) + 
-                                               tuple(self.paw.gd.N_c),
-                                               num.Float)
-                else: wannierwave_nG = wf.kpt_u[spin].Htpsit_nG[:states]
+                wannierwave_nG = num.zeros((states,) + tuple(lgd.N_c),
+                                           num.Complex)
 
             # determine the wannier rotation matrix
             wannier = Wannier(numberofwannier=states,
@@ -475,62 +586,68 @@ class PawExx:
                               spin=spin)
             wannier.Localize()
             U_knn = wannier.GetListOfRotationMatrices()
-            if real: rotation = U_knn[0].real.copy()
 
             # apply rotation to old wavefunctions and get wannier wavefunctions
-            psit_nG = wf.kpt_u[spin].psit_nG[:states]
-            gemm(1.0, psit_nG, rotation, 0.0, wannierwave_nG)
+            wannierwave_nG = [wannier.GetGrid(n).GetArray()
+                              for n in range(states)]
 
             # apply rotation to expansion coeff. P = <ptilde|psitilde>
-            P_ani = []
+            P_Ani = []
             for nucleus in nuclei:
-                P_ani.append(num.matrixmultiply(rotation,
-                                                nucleus.P_uni[spin,:states]))
+                rot_k = [num.matrixmultiply(U_knn[k],
+                                   nucleus.P_uni[spin * Nk + k, :states])
+                         for k in range(Nk)]
+                for R in R_Rc:
+                    P_Ani.append(num.zeros(rot_k[0].shape, num.Complex))
+                    for k in range(Nk):
+                        phase = num.dot( -2*pi*wf.ibzk_kc[k], R)
+                        # perhaps R should be multiplied by domain size
+                        P_Ani[-1] += num.exp(1.j * phase) * rot_k[k]
+                    P_Ani[-1] /= Nk**.5
 
             # determine Exx contribution from each valence-valence state-pair
             for n in range(states):
                 for m in range(n, states):
-                    # determine double count factor:
-                    DC = 2 - (n == m)
+                    for Rn in R_Rc:
+                        # determine double count factor:
+                        DC = 2 - (n == m)
 
-                    # determine current exchange density
-                    n_G = num.conjugate(wannierwave_nG[m]) * \
-                          wannierwave_nG[n]
+                        translate(wannierwave_nG[n], Rn)
+                        # determine current exchange density
+                        n_G = num.conjugate(wannierwave_nG[m]) * \
+                              wannierwave_nG[n]
 
-                    # and interpolate to the fine grid
-                    self.interpolate(n_G, self.n_g)
+                        # determine for each nucleus, the atomic correction
+                        for a, nucleus in enumerate(nuclei):
+                            for R in range(Nk):
+                                # generate density matrix
+                                D_ii = num.outerproduct(num.conjugate( \
+                                    P_Ani[a*Nk+R][m]), P_Ani[a*Nk+R][n])
+                                D_p = packNEW(D_ii)
 
-                    # determine for each nucleus, the atomic correction
-                    for a, nucleus in enumerate(nuclei):
-                        # generate density matrix
-                        D_ii = num.outerproduct(num.conjugate(P_ani[a][m]),
-                                                P_ani[a][n])
-                        D_p = packNEW(D_ii)
+                                # add compensation charges to exchange density
+                                Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                                gt_AL[a*Nk+R].add(n_G, Q_L)
 
-                        # add compensation charges to exchange density
-                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-                        gt_aL[a].add(self.n_g, Q_L)
+                                # add atomic contribution to exchange energy
+                                C_pp  = nucleus.setup.M_pp
+                                Exxa  = - num.dot(D_p, num.dot(C_pp, D_p)) * DC
+                                ExxVal += Exxa
 
-                        # add atomic contribution to exchange energy
-                        C_pp  = nucleus.setup.M_pp
-                        Exxa = - num.dot(D_p, num.dot(C_pp, D_p)) * DC
-                        ExxVal += Exxa
-
-                    # add the nm contribution to exchange energy
-                    Exxs = self.exx_single(self.n_g, ewald=self.ewald,
-                                           method=self.method) * DC
-                    ExxVal += Exxs
+                        # add the nm contribution to exchange energy
+                        Exxs = exx_single(n_G, ewald=self.ewald,
+                                          method=self.method) * DC
+                        ExxVal += Exxs
         # double up if spin compensated
         ExxVal *= wf.nspins % 2 + 1
-        return ExxVal
+        return Nk * ExxVal
 
-    def valence_core_core(self, nuclei, nspins):
+    def valence_core_core(nuclei, nspins):
         """Determine the valence-core and core-core contributions for each
            spin and nucleus
         """
 
         ExxCore = ExxValCore = 0.0
-
         for nucleus in nuclei:
             # error handling for old setup files
             if nucleus.setup.ExxC == None:
@@ -548,6 +665,7 @@ class PawExx:
                 ExxValCore += - num.dot(D_p, nucleus.setup.X_p)
 
         return ExxValCore, ExxCore
+    valence_core_core = staticmethod(valence_core_core)
 
 def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
@@ -748,41 +866,6 @@ def coreStates(symbol, n,l,f):
 
 # AUXHILLIARY FUNCTIONS... should be moved to Utillities module... XXX
 
-def rSquared(gd):
-    """constructs and returns a matrix containing the square of the distance
-       from the origin which is placed in the center of the box described by
-       the given griddescriptor 'gd'.
-    """
-    
-    I  = num.indices(gd.N_c)
-    dr = num.reshape(gd.h_c,(3,1,1,1))
-    r0 = -0.5*num.reshape(gd.domain.cell_c,(3,1,1,1))
-    r0 = num.ones(I.shape)*r0
-    r2 = num.sum((r0+I*dr)**2)
-
-    # remove singularity at origin and replace with small number
-    middle = gd.N_c/2.
-    if num.alltrue(middle==num.floor(middle)):
-        z = middle.astype(int)
-        r2[z[0],z[1],z[2]] = 1e-12
-
-    # return r^2 matrix
-    return r2
-
-def erf3D(M):
-    """return matrix with the value of the error function evaluated for each
-       element in input matrix 'M'.
-    """
-    
-    from gridpaw.utilities import erf
-    
-    dim = M.shape
-    res = num.zeros(dim,num.Float)
-    for k in range(dim[0]):
-        for l in range(dim[1]):
-            for m in range(dim[2]):
-                res[k,l,m] = erf(M[k,l,m])
-    return res
     
 def packNEW(M2, symmetric = False):
     """new pack method"""
@@ -838,7 +921,7 @@ def translate_test():
     Nc = (N,N,N)              # tuple with number of grid point along each axis
     lgd = GridDescriptor(d,Nc)# grid-descriptor object
 
-    r2 = rSquared(lgd)        # matrix with the square of the radial coordinate
+    r2 = Coulomb.rSquared(lgd)# matrix with the square of the radial coordinate
     g  = num.exp(-r2)/ pi     # gaussian density 
 
     trans = Translate(gd, lgd, num.Float).translate
@@ -856,14 +939,17 @@ def single_exchange_test():
     N  = 2**6                 # number of grid points
     Nc = (N,N,N)              # tuple with number of grid point along each axis
     gd = GridDescriptor(d,Nc) # grid-descriptor object
-    r2 = rSquared(gd)         # matrix with the square of the radial coordinate
+    r2 = Coulomb.rSquared(gd) # matrix with the square of the radial coordinate
     r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
     nH = num.exp(-2*r)/pi     # density of the hydrogen atom
 
     exx = Coulomb(gd).get_single_exchange(nH, method = 'recip')
     print 'Numerical result: ', exx
     print 'Analytic result:  ', -5/16.
+    print -.5 * Coulomb(gd).dual_coulomb(nH, nH.copy())
+    print -.5 * Coulomb(gd).dual_coulomb_old(nH, nH.copy())
+    print -.5 * Coulomb(gd).single_coulomb(nH)
 
 if __name__ == '__main__':
     single_exchange_test()
-    #translate_test()
+    #translate_test()    

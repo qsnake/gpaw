@@ -74,16 +74,14 @@ print 'exchange : %5.2f' %((eH2-excH2 + exxH2)-2*(eH-excH+exxH))
 print ' '
 print 'METHOD TESTS:'
 print 'No wannier'
-print Test[0]
-print Test[1]
-print Test[2]
+print 'recip, ewald    :', Test[0]
+print 'recip, not ewald:', Test[1]
+print 'real            :', Test[2]
 print 'With wannier'
-print Test[3]
-print Test[4]
-print Test[4]
+print 'recip, ewald    :', Test[3]
+print 'recip, not ewald:', Test[4]
+print 'real            :', Test[5]
 print '\n|-------------------------OUTPUT---------------------------|\n'
-
-# EXPECTED OUTPUT:
 
 ## |-------------------------OUTPUT---------------------------|
 ## 
@@ -104,12 +102,12 @@ print '\n|-------------------------OUTPUT---------------------------|\n'
 ## 
 ## METHOD TESTS:
 ## No wannier
-## -8.53970558131
-## -8.53941991622
-## -8.53945539919
+## recip, ewald    : -8.53970558151
+## recip, not ewald: -8.53941991622
+## real            : -8.53945539919
 ## With wannier
-## -8.53970558837
-## -8.5394206669
-## -8.5394206669
+## recip, ewald    : -8.53970558857
+## recip, not ewald: -8.5394206669
+## real            : -8.53945540844
 ## 
 ## |-------------------------OUTPUT---------------------------|
