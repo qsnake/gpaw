@@ -57,17 +57,14 @@ while len(sys.argv) > i:
     else:
         i += 1
 
-try:
-    import _gridpaw
-except ImportError:
-    # gridpaw has not been installed correctly.  Maybe we can find the
-    # extension in the distutils build directory:
-    sys.path.insert(0, join(__path__[0], '..', 'build',
-                            'lib.%s-%s' % (get_platform(), sys.version[0:3])))
+# If we are running the code from the source directory, then we will
+# want to use the extension from the distutils build directory:
+sys.path.insert(0, join(__path__[0], '..', 'build',
+                        'lib.%s-%s' % (get_platform(), sys.version[0:3])))
 
 
 # Install call-back handler for USR1 signal:
-# (use "kill -s USR1 <pid>" to stop calculation)
+# (use "kill -s USR1 <pid>" to stop a calculation)
 sigusr1 = [False]
 def cb_handler(number, frame):
     """Call-back handler for USR1 signal."""
