@@ -57,12 +57,21 @@ class MPIPaw:
                   'mpiexec -n %d %s' % (n, job))
 
         else:
+            n0 = len(open(hostfile).readlines())
+            i, o, e = os.popen3('lamnodes C', 'r')
+            n = len(o.readlines())
+            cmd = ''
+            if n != n0:
+                if n > 0:
+                    cmd = 'lamhalt; '
+                if debug:
+                    cmd += 'lamboot -v %s; ' % hostfile
+                else:
+                    cmd += 'lamboot -H %s; ' % hostfile
             if debug:
-                cmd = ('lamboot -v %s; ' % hostfile +
-                       'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job)
+                cmd += 'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job
             else:
-                cmd = ('lamboot -H %s; ' % hostfile +
-                       'mpirun -nw -x GRIDPAW_PARALLEL=1 C %s' % job)
+                cmd += 'mpirun -nw -x GRIDPAW_PARALLEL=1 C %s' % job
 
         # Start remote calculator:
         error = os.system(cmd)
