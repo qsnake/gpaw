@@ -15,8 +15,6 @@ from optparse import OptionParser
 
 from ASE.Units import units
 
-import gridpaw
-
 
 parser = OptionParser(usage='%prog [options] [tests]',
                       version='%prog 0.1')
