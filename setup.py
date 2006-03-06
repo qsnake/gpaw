@@ -45,11 +45,11 @@ except ImportError:
     try:
         import Scientific
     except ImportError:
-        msg = ['* Scientific is not installed.']
+        msg += ['* Scientific is not installed.']
     else:
-        msg = ['* Scientific.IO.NetCDF is not installed (the NetCDF C-library',
-               '  is probably missing).']
-    msg += ['  You will not be able to write and read wavefunctions!']
+        msg += ['* Scientific.IO.NetCDF is not installed (the NetCDF',
+                '  C-library is probably missing).']
+    msg += ['  You will not be able to write and read wave functions!']
         
 ## import numpy
 ## numpy.get_numpy_include()
@@ -115,7 +115,7 @@ elif machine == 'x86_64':
 
     libraries += ['acml', 'g2c']
     acml = glob('/opt/acml*/gnu64/lib')[-1]
-    library_dirs += acml
+    library_dirs += [acml]
     extra_link_args += ['-Wl,-rpath=' + acml]
     print 'Using ACML library'
 
