@@ -8,10 +8,12 @@ from math import sqrt
 import Numeric as num
 
 import _gridpaw
+from gridpaw import debug
 
 
 # Error function:
 erf = _gridpaw.erf
+
 
 # Factorials:
 fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
@@ -33,6 +35,17 @@ def is_contiguous(array, typecode=None):
         return array.iscontiguous()
     else:
         return array.iscontiguous() and array.typecode() == typecode
+
+
+# Radial-grid Hartree solver:
+if debug:
+    def hartree(l, nrdr, a, vr):
+        assert is_contiguous(nrdr, num.Float)
+        assert is_contiguous(vr, num.Float)
+        assert nrdr.shape == vr.shape and len(vr.shape) == 1
+        return _gridpaw.hartree(l, nrdr, a, vr)
+else:
+    hartree = _gridpaw.hartree
 
 
 def unpack(M):

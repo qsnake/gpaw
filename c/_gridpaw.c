@@ -14,6 +14,7 @@ PyObject* NewSplineObject(PyObject *self, PyObject *args);
 PyObject* NewTransformerObject(PyObject *self, PyObject *args);
 PyObject* errorfunction(PyObject *self, PyObject *args);
 PyObject* unpack(PyObject *self, PyObject *args);
+PyObject* hartree(PyObject *self, PyObject *args);
 PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
@@ -30,6 +31,7 @@ static PyMethodDef functions[] = {
   {"Transformer", NewTransformerObject, METH_VARARGS, 0},
   {"erf",        errorfunction,        METH_VARARGS, 0},
   {"unpack",       unpack,           METH_VARARGS, 0},
+  {"hartree",        hartree,        METH_VARARGS, 0},
   {"XCFunctional",    NewXCFunctionalObject,    METH_VARARGS, 0},
  {0, 0, 0, 0}
 };
