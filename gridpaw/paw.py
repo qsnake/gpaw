@@ -123,9 +123,12 @@ class Paw:
                  nvalence, nbands, nspins, kT,
                  typecode, bzk_kc, ibzk_kc, weights_k,
                  order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
+                 convergeall,
                  # Parallel stuff:
                  myspins,
-                 myibzk_kc, myweights_k, kpt_comm,
+                 myibzk_kc,
+                 myweights_k,
+                 kpt_comm,
                  out):
         """
         Create the PAW-object.
@@ -149,6 +152,7 @@ class Paw:
         self.fixdensity = fixdensity
         self.maxiter = maxiter
         self.idiotproof = idiotproof
+        self.convergeall = convergeall
 
         self.set_output(out)
         
