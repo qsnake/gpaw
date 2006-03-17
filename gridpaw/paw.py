@@ -470,7 +470,8 @@ class Paw:
         self.Exc = dsum(self.Exc)
         self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
 
-        self.error = dsum(wf.calculate_residuals(self.pt_nuclei))
+        self.error = dsum(wf.calculate_residuals(self.pt_nuclei,
+                                                 self.convergeall))
 
         if (self.error > self.tolerance and
             self.niter < self.maxiter
