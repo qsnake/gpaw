@@ -196,11 +196,11 @@ class WaveFunctions:
             Eeig += num.dot(kpt.f_n, kpt.eps_n)    
         return self.kpt_comm.sum(Eeig)
 
-    def calculate_residuals(self, pt_nuclei):
+    def calculate_residuals(self, pt_nuclei, convergeall=False):
         """Calculate wave function residuals and return error."""
         error = 0.0
         for kpt in self.kpt_u:
-            error += kpt.calculate_residuals(pt_nuclei)
+            error += kpt.calculate_residuals(pt_nuclei,convergeall)
         return self.kpt_comm.sum(error) / self.nvalence
 
     def rmm_diis(self, pt_nuclei, vt_sG):
