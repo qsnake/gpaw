@@ -185,7 +185,7 @@ class KPoint:
         
         yield None
         
-    def calculate_residuals(self, pt_nuclei):
+    def calculate_residuals(self, pt_nuclei, converge_all=False):
         """Calculate wave function residuals.
 
         On entry, ``Htpsit_nG`` contains the soft part of the
@@ -201,7 +201,14 @@ class KPoint:
                               ai1i2
 
                                 
-        The size of the residuals is returned."""
+        The size of the residuals is returned.
+        
+        Parameters:
+        ================ ====================================================
+        ``pt_nuclei``    ?
+        ``converge_all`` flag to converge all wave functions or just occupied
+        ================ ====================================================
+        """
         
         R_nG = self.Htpsit_nG
         # optimize XXX 
@@ -213,7 +220,9 @@ class KPoint:
 
         error = 0.0
         for R_G, f in zip(R_nG, self.f_n):
-            error += f * real(num.vdot(R_G, R_G))
+            weight = f
+            if converge_all: weight = 1.
+            error += weight * real(num.vdot(R_G, R_G))
 
         return error
         
