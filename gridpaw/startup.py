@@ -19,6 +19,7 @@ def create_paw_object(out, a0, Ha,
                       bzk_kc,
                       softgauss, order, usesymm, mix, old, fixdensity,
                       idiotproof, hund, lmax, onohirose, tolerance,maxiter,
+                      convergeall,
                       # Parallel stuff:
                       parsize_c,
                       restart_file):
@@ -137,9 +138,13 @@ def create_paw_object(out, a0, Ha,
               nvalence, nbands, nspins, kT,
               typecode, bzk_kc, ibzk_kc, weights_k,
               order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
+              convergeall=convergeall,
               # Parallel stuff:
-              myspins, myibzk_kc, myweights_k, kpt_comm,
-              out)
+              myspins=myspins,
+              myibzk_kc=myibzk_kc,
+              myweights_k=myweights_k,
+              kpt_comm=kpt_comm,
+              out=out)
 
     paw.set_positions(pos_ac / a0)
     if restart_file is None:
