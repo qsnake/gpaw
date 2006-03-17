@@ -60,6 +60,7 @@ class Calculator:
                   'softgauss': True,
                   'order': 5,
                   'onohirose': 5,
+                  'convergeall' : False,
                   }
     
     def __init__(self, **kwargs):
@@ -68,14 +69,15 @@ class Calculator:
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
         `old`, `hund`, `lmax`, `fixdensity`, `idiotproof`,
-        `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `order`
-        and `onohirose`.  If you don't specify any parameters, you
-        will get:
+        `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `order`,
+        `onohirose` and `convergeall`.
+        If you don't specify any parameters, you will get:
 
         Defaults: neutrally charged, LDA, gamma-point calculation, a
         reasonable grid-spacing, zero Kelvin elctronic temperature,
         and the number of bands will be half the number of valence
-        electrons plus 3 extra bands.  The calculation will be
+        electrons plus 3 extra bands. Only occupied bands are used in
+        the convergence decision. The calculation will be
         spin-polarized if and only if one or more of the atoms have
         non-zero magnetic moments.  Text output will be written to
         standard output.
@@ -235,6 +237,7 @@ class Calculator:
                 self.onohirose,
                 self.tolerance,
                 self.maxiter,
+                self.convergeall,
                 self.parsize,
                 self.restart_file,
                 ]
