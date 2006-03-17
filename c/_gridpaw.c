@@ -68,6 +68,7 @@ extern DL_EXPORT(int) Py_Main(int, char **);
 int
 main(int argc, char **argv)
 {
+  MPI_Init(&argc, &argv);
   Py_Initialize();
   if (PyType_Ready(&MPIType) < 0)
     return -1;

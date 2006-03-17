@@ -202,7 +202,10 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
   if (! PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
     return -1;
 
-  MPI_Init(0, 0);
+#ifndef GRIDPAW_INTERPRETER
+  int argc = 0;
+  MPI_Init(&argc, 0);
+#endif
   MPI_Comm_size(MPI_COMM_WORLD, &(self->size));
   MPI_Comm_rank(MPI_COMM_WORLD, &(self->rank));
   self->comm = MPI_COMM_WORLD;
