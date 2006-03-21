@@ -91,3 +91,25 @@ def test_derivatives(R, a, b, alpha, beta, i):
     dIdRi2 /= -dr
     R[i] += 0.5 * dr
     return dIdRi, dIdRi2
+
+class Gauss:
+    """Normalised Gauss distribution
+
+    from gauss import Gauss
+
+    width=0.4
+    gs = Gauss(width)
+
+    for i in range(4):
+        print 'Gauss(x)=',gs.Get(x)
+    """
+    def __init__(self,width=0.08):
+        self.SetWidth(width)
+
+    def Get(self,x):
+        return self.norm * exp( self.scale*x**2 )
+    
+    def SetWidth(self,width=0.08):
+        self.norm=1./sqrt(2.*pi)/width
+        self.scale = -.5 / width**2
+
