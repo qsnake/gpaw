@@ -10,6 +10,7 @@ This module contains classes defining two kinds of grids:
 """
 
 import Numeric as num
+import RandomArray as random
 
 from math import pi, cos, sin
 from cmath import exp
@@ -118,7 +119,22 @@ class GridDescriptor:
             return num.zeros(shape, typecode)
         else:
             return num.empty(shape, typecode)
+        
+    def random_array(self, n=None, typecode=num.Float):
+        """Return new 3D array for this domain filled with random
+        numbers."""
+        
+        shape = self.n_c
+        if n is not None:
+            shape = (n,) + tuple(shape)
 
+        if typecode==num.Float:
+            return random.standard_normal(shape)
+        else:
+            arr=self.new_array(n,typecode)
+            arr.real=random.standard_normal(shape)
+            arr.imaginary=random.standard_normal(shape)
+            
     def is_healthy(self):
         """Sanity check for grid spacings."""
         return max(self.h_c) / min(self.h_c) < 1.3
@@ -468,7 +484,7 @@ class GridDescriptor:
         #                a                 ii'
         
         return Z_nn * self.dv
-    
+
 
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
