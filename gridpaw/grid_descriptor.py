@@ -75,8 +75,8 @@ class GridDescriptor:
          ``N_c``    Array of the number of grid points along the three axes.
          ``n_c``    Number of grid points on this CPU.
          ``beg0_c`` Beginning of grid-point indices (inclusive).
-         ``beg_c``  Beginning of grid-point indices (inclusive).
-         ``end_c``  End of grid-point indices (exclusive.
+         ``beg_c``  Beginning of grid-point indices (exclusive).
+         ``end_c``  End of grid-point indices (exclusive).
          ``comm``   MPI-communicator for domain decomosition.
          ========== ========================================================
         """
