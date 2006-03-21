@@ -2,6 +2,7 @@ import sys
 from math import exp, pi, sqrt
 
 from ASE.Units import Convert
+from gridpaw.gauss import Gauss
 
 def spectrum(exlist=None,
              filename=None,
@@ -75,18 +76,6 @@ def spectrum(exlist=None,
         e+=de
         
     if filename != None: out.close()
-
-class Gauss:
-    """Normalised Gauss distribution"""
-    def __init__(self,width=0.08):
-        self.SetWidth(width)
-
-    def Get(self,x):
-        return self.norm * exp( self.scale*x**2 )
-    
-    def SetWidth(self,width=0.08):
-        self.norm=1./sqrt(2.*pi)/width
-        self.scale = -.5 / width**2
 
 class Lorentz:
     """Normalised Lorentz distribution"""
