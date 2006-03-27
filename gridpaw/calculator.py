@@ -261,6 +261,8 @@ class Calculator:
                 self.hosts = int(os.environ['NSLOTS'])
             elif os.environ.has_key('LOADL_PROCESSOR_LIST'):
                 self.hosts = 'dummy file-name'
+            elif os.environ.has_key('GRIDPAW_MPIRUN'):
+                self.hosts = 'dummy file-name'
 
         if type(self.hosts) is int:
             if self.hosts == 1:

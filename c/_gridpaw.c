@@ -65,9 +65,12 @@ PyMODINIT_FUNC init_gridpaw(void)
 #ifdef GRIDPAW_INTERPRETER
 extern DL_EXPORT(int) Py_Main(int, char **);
 
+#include <mpi.h>
+
 int
 main(int argc, char **argv)
 {
+
   MPI_Init(&argc, &argv);
   Py_Initialize();
   if (PyType_Ready(&MPIType) < 0)

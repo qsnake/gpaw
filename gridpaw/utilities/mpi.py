@@ -5,7 +5,7 @@ import os
 
 import Numeric as num
 
-from gridpaw import debug
+from gridpaw import debug, parallel
 from gridpaw.utilities import is_contiguous
 import _gridpaw
 
@@ -30,7 +30,7 @@ serial_comm = SerialCommunicator()
 if debug:
     serial_comm.comm = serial_comm # cycle? XXX
 
-if os.environ.has_key('GRIDPAW_PARALLEL'):
+if os.environ.has_key('GRIDPAW_PARALLEL') or parallel:
     # This will call MPI_Init:
     world = _gridpaw.Communicator()
 else:

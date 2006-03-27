@@ -22,9 +22,10 @@ class MPIPaw:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         port = 17000
+        host = socket.gethostname()
         while True:
             try:
-                s.bind(("localhost", port))
+                s.bind((host, port))
             except socket.error:
                 port += 1
             else:
@@ -32,11 +33,24 @@ class MPIPaw:
 
         s.listen(1)
 
-        job = 'python -c "from gridpaw.mpi_run import run; run(%d)"' % port
+        if os.environ.has_key('GRIDPAW_PYTHON'):
+            job = os.environ.get('GRIDPAW_PYTHON')
+            job += """ -c 'from gridpaw.mpi_run import run; run("%s",%d)'""" % (host,port)
+        else:
+            job = """python -c 'from gridpaw.mpi_run import run; run("%s",%d)'""" % (host,port)
+
+        job += ' --gridpaw-parallel'
         if debug:
             job += ' --gridpaw-debug'
-        # Start remote calculator:
-        if os.uname()[4] == 'sun4u':
+
+        # Command for remote calculator:
+        if os.environ.has_key('GRIDPAW_MPIRUN'):
+            cmd=os.environ.get('GRIDPAW_MPIRUN')
+            if cmd.find('job') == -1:
+                raise RuntimeError, 'Invalid GRIDPAW_MPIRUN: ' + cmd
+            cmd=cmd.replace('job',job)
+
+        elif os.uname()[4] == 'sun4u':
             n = len(open(hostfile).readlines())
             cmd = ('GRIDPAW_PARALLEL=1; ' +
                    'export GRIDPAW_PARALLEL; ' +
@@ -45,11 +59,11 @@ class MPIPaw:
         elif sys.platform == 'aix5':
             if os.environ.has_key('LOADL_PROCESSOR_LIST'):
                 cmd = ('export GRIDPAW_PARALLEL=1; ' +
-                       "poe 'gridpaw-%s' &" % job)
+                       "poe '%s' &" % job)
             else:
                 n = len(open(hostfile).readlines())
                 cmd = ('export GRIDPAW_PARALLEL=1; ' +
-                       "poe 'gridpaw-%s' -procs %d -hfile %s &" %
+                       "poe '%s' -procs %d -hfile %s &" %
                        (job, n, hostfile))
         elif os.uname()[1]=='sepeli.csc.fi':
             n = len(open(hostfile).readlines())

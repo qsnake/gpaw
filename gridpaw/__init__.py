@@ -23,6 +23,7 @@ home = os.environ['HOME']
 
 # Check for special command line arguments:
 debug = False
+parallel = False
 hosts = None
 parsize = None
 gpspecial = None
@@ -40,6 +41,8 @@ while len(sys.argv) > i:
             setup_paths = arg.split('=')[1].split(':')
         elif arg == '--gridpaw-poly':
             GAUSS = False
+        elif arg == '--gridpaw-parallel':
+            parallel = True
         elif arg.startswith('--gridpaw-special='):
             gpspecial = arg.split('=')[1]
         elif arg.startswith('--gridpaw-hosts='):
@@ -69,7 +72,9 @@ sigusr1 = [False]
 def cb_handler(number, frame):
     """Call-back handler for USR1 signal."""
     sigusr1[0] = True
-signal.signal(signal.SIGUSR1, cb_handler)
+#mpich ch_p4 uses SIGUSR1, so in general case we cannot use
+#our own signal handler 
+#signal.signal(signal.SIGUSR1, cb_handler)
 
 
 paths = os.environ.get('GRIDPAWSETUPPATH', '')

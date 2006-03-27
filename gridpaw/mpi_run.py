@@ -28,11 +28,11 @@ class SocketStringIO(StringIO.StringIO):
         self.truncate(0)
 
 
-def run(port):
+def run(host,port):
     if mpi.rank == MASTER:
         # Establish socket connection:
         sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sckt.connect(('localhost', port))
+        sckt.connect((host, port))
         # Get pickled arguments:
         string = recv(sckt)
         mpi.broadcast_string(string)
