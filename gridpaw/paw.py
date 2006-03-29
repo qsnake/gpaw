@@ -18,7 +18,7 @@ from gridpaw.utilities import DownTheDrain, warning
 from gridpaw.utilities.timing import Timer
 from gridpaw.transformers import Interpolator, Restrictor
 from gridpaw.wf import WaveFunctions
-from gridpaw.xc_functional import XCOperator
+from gridpaw.xc_functional import XCOperator, XCFunctional
 from gridpaw.localized_functions import LocFuncBroadcaster
 import gridpaw.utilities.mpi as mpi
 from gridpaw import netcdf
