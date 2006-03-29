@@ -16,6 +16,9 @@ double rpbe_exchange(const xc_parameters* par,
 double ensemble_exchange(const xc_parameters* par,
 			 double n, double rs, double a2,
 			 double* dedrs, double* deda2);
+double pade_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2);
 
 double pbe0_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
@@ -254,7 +257,9 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
   int rel;
   double s0 = 1.0;
   int i = -1;
-  if (!PyArg_ParseTuple(args, "iii|di", &type, &gga, &rel, &s0, &i))
+  PyArrayObject* padearray = 0;
+  if (!PyArg_ParseTuple(args, "iii|diO", &type, &gga, &rel, &s0, &i,
+			&padearray))
     return NULL;
 
   XCFunctionalObject *self = PyObject_NEW(XCFunctionalObject,
@@ -278,6 +283,14 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
   else if (type == 4)
     {
       self->exchange = pbe0_exchange;
+    }
+  else if (type == 5)
+    {
+      self->exchange = pade_exchange;
+      int n = padearray->dimensions[0];
+      double* p = DOUBLEP(padearray);
+      for (int i = 0; <i < n; i++)
+	self->par.pade[i] = p[i];
     }
   else
     {

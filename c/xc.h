@@ -34,4 +34,5 @@ typedef struct
   double kappa;
   int i;
   double s0;
+  double pade[10];
 } xc_parameters;

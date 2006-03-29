@@ -719,8 +719,13 @@ class Paw:
     def get_xc_difference(self, xcname):
         """Calculate non-seflconsistent XC-energy difference."""
         assert self.xcfunc.gga, 'Must be a GGA calculation' # XXX
-        oldxcname = self.xcfunc.get_xc_name()
-        self.xcfunc.set_xc_functional(xcname)
+        if type(xcname) is str:
+            newxc = XCFunctional(xcname)
+        else:
+            newxc = xcname
+            
+        oldxc = self.xcfunc.xc
+        self.xcfunc.xc = newxc
         
         v_g = self.finegd.new_array()  # not used for anything!
         if self.nspins == 2:
@@ -737,7 +742,7 @@ class Paw:
 
         Exc = self.domain.comm.sum(Exc)
 
-        self.xcfunc.set_xc_functional(oldxcname)
+        self.xcfunc.xc = oldxc
         
         return self.Ha * (Exc - self.Exc)
     

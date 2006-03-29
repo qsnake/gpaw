@@ -31,3 +31,23 @@ double ensemble_exchange(const xc_parameters* par,
   e *= Fx;
   return e;
 }
+
+
+double pade_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2)
+{
+  double e = C1 / rs;
+  *dedrs = -e / rs;
+  double c = C2 * rs / n;
+  c *= c;
+  double s2 = a2 * c;
+  double* p = par.pade;
+  double Fx = p[0] + p[1] * s2;
+  double dFxds2 = p[1];
+  double ds2drs = 8.0 * c * a2 / rs;
+  *dedrs = *dedrs * Fx + e * dFxds2 * ds2drs;
+  *deda2 = e * dFxds2 * c;
+  e *= Fx;
+  return e;
+}

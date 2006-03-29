@@ -10,8 +10,38 @@ import _gridpaw
 
 
 class XCFunctional:
-    def __init__(self, xcname, scalarrel=True):
-        self.set_xc_functional(xcname, scalarrel)
+    def __init__(self, xcname, scalarrel=True, parameters=None):
+        self.xcname = xcname
+        
+        if xcname == 'LDA':
+            self.gga = False
+            code = 117 # not used!
+        else:
+            self.gga = True
+            if xcname == 'PBE':
+                code = 0
+            elif xcname == 'revPBE':
+                code = 1
+            elif xcname == 'RPBE':
+                code = 2
+            elif xcname.startswith('XC'):
+                code = 3
+            elif xcname == 'PBE0':
+                code = 4
+            elif xcname == 'PADE':
+                code = 5
+            else:
+                raise TypeError('Unknown exchange-correlation functional')
+
+        if code == 3:
+            i = int(xcname[3])
+            s0 = float(xcname[5:])
+            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel, s0, i)
+        if code == 5:
+            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel,
+                                            0.0, 0, num.array(parameters))
+        else:
+            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
         
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None):
         if self.gga:
@@ -32,34 +62,6 @@ class XCFunctional:
             
     def get_xc_name(self):
         return self.xcname
-
-    def set_xc_functional(self, xcname, scalarrel=True):
-        self.xcname = xcname
-        
-        if xcname == 'LDA':
-            self.gga = False
-            code = 117 # not used!
-        else:
-            self.gga = True
-            if xcname == 'PBE':
-                code = 0
-            elif xcname == 'revPBE':
-                code = 1
-            elif xcname == 'RPBE':
-                code = 2
-            elif xcname.startswith('XC'):
-                code = 3
-            elif xcname == 'PBE0':
-                code = 4
-            else:
-                raise TypeError('Unknown exchange-correlation functional')
-
-        if code == 3:
-            i = int(xcname[3])
-            s0 = float(xcname[5:])
-            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel, s0, i)
-        else:
-            self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
 
     def exchange(self, rs, a2=0):
         return self.xc.exchange(rs, a2)
