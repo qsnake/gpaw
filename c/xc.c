@@ -289,7 +289,7 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       self->exchange = pade_exchange;
       int n = padearray->dimensions[0];
       double* p = DOUBLEP(padearray);
-      for (int i = 0; <i < n; i++)
+      for (int i = 0; i < n; i++)
 	self->par.pade[i] = p[i];
     }
   else
