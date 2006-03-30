@@ -180,6 +180,7 @@ def write_netcdf(paw, filename):
         nc.Mix = [paw.mixer.beta]
         nc.Old = [paw.mixer.nmaxold]
         nc.MaximumAngularMomentum = [paw.nuclei[0].setup.lmax]
+        nc.SoftGauss = [paw.nuclei[0].setup.softgauss]
         nc.FixDensity = [paw.fixdensity]
         nc.IdiotProof = [paw.idiotproof]
         nc.Tolerance = [paw.tolerance]

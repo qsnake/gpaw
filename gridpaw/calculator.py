@@ -527,6 +527,7 @@ class Calculator:
                   'mix':         nc.Mix[0],
                   'old':         nc.Old[0],
                   'lmax':        nc.MaximumAngularMomentum[0],
+                  'softgauss':   nc.SoftGauss[0],
                   'fixdensity':  nc.FixDensity[0],
                   'idiotproof':  nc.IdiotProof[0],
                   'tolerance':   nc.Tolerance[0]}
