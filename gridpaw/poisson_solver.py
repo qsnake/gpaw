@@ -8,6 +8,7 @@ import Numeric as num
 
 from gridpaw.transformers import Interpolator, Restrictor
 from gridpaw.operators import Laplace, LaplaceA, LaplaceB
+from gridpaw.utilities.gauss import construct_gauss
 
 class PoissonSolver:
     def __init__(self, gd, out=sys.stdout):
@@ -47,8 +48,10 @@ class PoissonSolver:
         self.presmooths[level]=8
         self.postsmooths[level]=8
         
-    def solve(self, phi, rho,eps=1e-9):
+    def solve(self, phi, rho, eps=1e-9, charge=False):
         self.phis[0] = phi
+        if charge != False:
+            phi_gauss = self.neutralize(rho, charge)
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
@@ -59,6 +62,9 @@ class PoissonSolver:
             charge = num.sum(rho.flat) * self.dv
             print 'CHARGE:', charge
             raise RuntimeError('Poisson solver did not converge!')
+
+        if charge != False:
+            phi += phi_gauss
         return niter
         
     def iterate(self, step, level=0):
@@ -115,3 +121,16 @@ class PoissonSolver:
                                                 residual.flat))*self.dv
             return error
 
+    def neutralize(self, rho, charge):
+        if charge == None:
+            charge = self.gd.integrate(rho)
+            
+        if abs(charge) < 1e-7:
+            return 0
+
+        if not hasattr(self, 'ng'):
+            self.ng, self.vg = construct_gauss(self.gd)
+
+        rho -= charge * self.ng
+
+        return charge * self.vg

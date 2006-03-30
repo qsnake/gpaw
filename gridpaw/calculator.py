@@ -390,14 +390,7 @@ class Calculator:
     def GetXCDifference(self, xcname):
         """Calculate non-seflconsistent XC-energy difference."""
         self.update()
-
-        if xcname == 'EXX':
-            return self.GetExactExchange() - self.GetXCEnergy()
-        elif xcname == 'PBE0':
-            return self.paw.get_xc_difference(xcname) + \
-                   0.25 * self.GetExactExchange()
-        else:
-            return self.paw.get_xc_difference(xcname)
+        return self.paw.get_xc_difference(xcname)
 
     def Write(self, filename):
         """Write current state to a netCDF file."""
@@ -469,14 +462,10 @@ class Calculator:
     GetKPoints = GetIBZKPoints
  
     def GetExactExchange(self, decompose=False, wannier=False,
-                         ewald=True, method='recip'):
-        self.paw.timer.start('exx')
-        if not hasattr(self, 'Exx'):
-            from gridpaw.exx import PawExx
-            self.PawExx = PawExx(self)
-        exx = self.PawExx.get_exact_exchange(decompose, wannier, ewald, method)
-        self.paw.timer.stop('exx')
-        return exx * self.Ha
+                         ewald=True, method='recip', calc=None):
+        """Return non-selfconsistent value of exact exchange"""
+        return self.Ha * self.paw.get_exact_exchange(decompose, wannier,
+                                                     ewald, method, calc)
     
     def GetXCEnergy(self):
         return self.paw.Exc * self.Ha

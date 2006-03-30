@@ -726,6 +726,9 @@ class Paw:
             
         oldxc = self.xcfunc.xc
         self.xcfunc.xc = newxc
+
+        if xcname == 'EXX':
+            return self.Ha * (self.get_exact_exchange() - self.Exc)
         
         v_g = self.finegd.new_array()  # not used for anything!
         if self.nspins == 2:
@@ -741,6 +744,8 @@ class Paw:
                                                                      H_sp)
 
         Exc = self.domain.comm.sum(Exc)
+        if xcname == 'PBE0':
+            Exc += 0.25 * self.get_exact_exchange()
 
         self.xcfunc.xc = oldxc
         
@@ -748,3 +753,16 @@ class Paw:
     
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
+    
+    def get_exact_exchange(self, decompose, wannier, ewald, method, calc):
+##         if not hasattr(self, 'paw_exx'):
+##             from gridpaw.exx import PawExx
+##             self.paw_exx = PawExx(self)
+##         exx = self.paw_exx.get_exact_exchange(decompose, wannier,
+##                                               ewald, method, calc)
+
+        from gridpaw.exx import PawExx
+        exx = PawExx(self).get_exact_exchange(decompose, wannier,
+                                              ewald, method, calc)
+
+        return exx
