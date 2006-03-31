@@ -4,7 +4,7 @@ from gridpaw.utilities.complex import real
 from FFT import fftnd
 from gridpaw.poisson_solver import PoissonSolver
 from gridpaw.utilities import DownTheDrain
-from gridpaw.utilities.gauss import construct_gauss
+from gridpaw.utilities.gauss import Gaussian
 
 def construct_reciprocal(gd):
     """Construct the reciprocal lattice vectors correspoding to the
@@ -88,7 +88,9 @@ class Coulomb:
     def coulombNEW(self, n1, n2=None, Z2=None):
         # load gaussian related stuff if needed
         if not hasattr(self, 'ng'):
-            self.ng, self.vg = construct_gauss(self.gd)
+            gauss = Gaussian(self.gd)
+            self.ng = gauss.get_gauss(0) / (2 * num.sqrt(pi))
+            self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
 
         # Allocate array for the final integrand
         I = self.gd.new_array()
@@ -131,7 +133,9 @@ class Coulomb:
 	"""
         # load gaussian related stuff if needed
         if not hasattr(self, 'ng'):
-            self.ng, self.vg = construct_gauss(self.gd)
+            gauss = Gaussian(self.gd)
+            self.ng = gauss.get_gauss(0) / (2 * num.sqrt(pi))
+            self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
 
         # Allocate array for the final integrand
         I = self.gd.new_array()
@@ -177,14 +181,14 @@ def test(parallel=False):
     from gridpaw.domain import Domain
     from gridpaw.grid_descriptor import GridDescriptor
     from gridpaw.utilities.mpi import world
-    from gridpaw.utilities.gauss import rSquared
+    from gridpaw.utilities.gauss import coordinates
 
     d  = Domain((20, 20, 20)) # domain object
     N  = 2**6                 # number of grid points
     Nc = (N,N,N)              # tuple with number of grid point along each axis
     d.set_decomposition(world, N_c=Nc) # decompose domain on processors
     gd = GridDescriptor(d,Nc) # grid-descriptor object
-    r2 = rSquared(gd)         # matrix with the square of the radial coordinate
+    xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
     r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
     nH = num.exp(-2*r)/pi     # density of the hydrogen atom
 

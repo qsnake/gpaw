@@ -188,7 +188,7 @@ class PawExx:
 
         # get gauss functions
         if parallel:
-            assert True# XXX not self.paw.nuclei[0].setup.softgauss
+            assert not self.paw.nuclei[0].setup.softgauss
         else:
             gt_aL = self.gauss_functions(finegd, ghat_nuclei)
 
@@ -335,7 +335,7 @@ class PawExx:
     
     def valence_valence_kpoints(self):
         """Calculate valence-valence contribution to exact exchange
-           energy using...
+           energy using kohn-sham orbitals...
         """
         raise NotImplementedError
     
@@ -514,18 +514,31 @@ class PawExx:
                 break
 
             for spin in wf.myspins: # global spin index
-                # add core-core contribution
+                """Add core-core contribution:"""
                 if spin == 0:
                     ExxCC += nucleus.setup.ExxC
 
-                # add val-core contribution
+                """Add val-core contribution:
+                      vc,a     -    a    a
+                     E     = - >   D  * X
+                      xx       - p  p    p
+                """
                 D_p = nucleus.D_sp[spin]
                 ExxVC += - num.dot(D_p, nucleus.setup.X_p)
 
-            # determine the atomic corrections to the val-val interaction
-            # ExxVV = sum_{i1 i2 i3 i4} D_{i1 i3} C_{i1 i2 i3 i4} D_{i2 i4}
-            # ExxVV = sum_{n m i1 i2 i3 i4} f_n f_m
-            #               P_{n i1} P_{m i2} P_{n i3} P_{m i4} C_{i1 i2 i3 i4}
+            """Determine the atomic corrections to the val-val interaction:
+                       -- 
+                vv,a   \     a        a              a
+               E     = /    D      * C            * D
+                xx     --    i1,i3    i1,i2,i3,i4    i2,i4
+                    i1,i2,i3 ,4
+                 
+                       -- 
+                vv,a   \             a      a      a      a      a
+               E     = /    f * f * P    * P    * P    * P    * C    
+                xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
+                    n,m,i1,i2,i3,i4
+            """
             for u in range(len(wf.myspins)): # local spin index
                 #spin = wf.myspins[u] # global spin index XXX
                 for n in range(wf.nbands):
@@ -815,32 +828,6 @@ def packNEW2(M2, symmetric = False):
                           error/M2[r,c]*100, '%'
     assert p == len(M)
     return M
-
-def center_atoms(loa):
-    """Method for centering atoms in input ListOfAtoms"""
-    from gridpaw.utilities import check_unit_cell
-
-    # get unit cell, and check if it is valid
-    cell = loa.GetUnitCell()
-    check_unit_cell(cell)
-
-    # store only the diagonal of the unit cell
-    cell = num.array(cell.flat[::4])
-    
-    # get old positions
-    pos = loa.GetCartesianPositions()
-    N = len(loa)
-
-    # determine center of mass
-    com = num.zeros(3, num.Float)
-    for i in range(N):
-        com += pos[i]
-
-    # determine distance of com to center of cell
-    offset = (cell/2. - com/N) * num.ones((N,1))
-    
-    # set new positions
-    loa.SetCartesianPositions(pos + offset)
 
 if __name__ == '__main__':
     from gridpaw.domain import Domain

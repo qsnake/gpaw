@@ -114,8 +114,8 @@ class OutputFilter:
 def run_threaded(tasks):
     """Run list of tasks in small steps.
 
-    Given a list of ``tasks`` (generators), take on step in each and
-    repeat that until eash generator is one.  This function is used
+    Given a list of ``tasks`` (generators), take one step in each and
+    repeat that until each generator is one.  This function is used
     for parallelization by running different tasks in separate
     threads."""
 
@@ -150,6 +150,7 @@ def warning(msg):
 
 
 def center(atoms):
+    """Method for centering atoms in input ListOfAtoms"""
     pos = atoms.GetCartesianPositions()
     cntr = 0.5 * (num.minimum.reduce(pos) + num.maximum.reduce(pos))
     cell = num.diagonal(atoms.GetUnitCell())

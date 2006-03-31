@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from ASE import Atom, ListOfAtoms
 from gridpaw import Calculator
 from gridpaw.atom.all_electron import AllElectron as AE

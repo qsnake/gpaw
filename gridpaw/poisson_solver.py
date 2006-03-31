@@ -8,7 +8,7 @@ import Numeric as num
 
 from gridpaw.transformers import Interpolator, Restrictor
 from gridpaw.operators import Laplace, LaplaceA, LaplaceB
-from gridpaw.utilities.gauss import construct_gauss
+from gridpaw.utilities.gauss import Gaussian
 
 class PoissonSolver:
     def __init__(self, gd, out=sys.stdout):
@@ -129,7 +129,9 @@ class PoissonSolver:
             return 0
 
         if not hasattr(self, 'ng'):
-            self.ng, self.vg = construct_gauss(self.gd)
+            gauss = Gaussian(self.gd)
+            self.ng = gauss.get_gauss(0) / (2 * num.sqrt(pi))
+            self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
 
         rho -= charge * self.ng
 
