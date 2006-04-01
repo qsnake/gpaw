@@ -86,28 +86,6 @@ class Coulomb:
         return self.gd.integrate(I)
     
     def coulombNEW(self, n1, n2=None, Z2=None):
-        # load gaussian related stuff if needed
-        if not hasattr(self, 'ng'):
-            gauss = Gaussian(self.gd)
-            self.ng = gauss.get_gauss(0) / (2 * num.sqrt(pi))
-            self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
-
-        # Allocate array for the final integrand
-        I = self.gd.new_array()
-
-        # Determine total charges
-        if n2 == None: n2 = n1.copy()
-        if Z2 == None: Z2 = self.gd.integrate(n2)
-
-        solve = PoissonSolver(self.gd, out=DownTheDrain()).solve
-        n2_neutral = n2 - Z2 * self.ng
-        solve(I, n2_neutral)
-        I += Z2 * self.vg
-        I *= num.conjugate(n1)
-
-        return self.gd.integrate(I)
-
-    def coulombNEW2(self, n1, n2=None, Z2=None):
         I = self.gd.new_array()
         if n2 == None: n2 = n1.copy()
         solve = PoissonSolver(self.gd, out=DownTheDrain()).solve
@@ -202,7 +180,6 @@ def test(parallel=False):
         print 'Reciprocal  :', -.5 * C.coulomb(nH, space='recip')
         print 'Ewald trick :', -.5 * C.coulomb_ewald(nH)
         print 'NEW         :', -.5 * C.coulombNEW(nH)
-        print 'NEW2        :', -.5 * C.coulombNEW2(nH)
 
 if __name__ == '__main__':
     import os, sys

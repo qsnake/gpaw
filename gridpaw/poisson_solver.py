@@ -50,8 +50,16 @@ class PoissonSolver:
         
     def solve(self, phi, rho, eps=1e-9, charge=False):
         self.phis[0] = phi
+
+        # handling of charged densities
         if charge != False:
-            phi_gauss = self.neutralize(rho, charge)
+            if not hasattr(self, 'gauss'):
+                self.gauss = Gaussian(self.gd)
+            if charge == None or isinstance(charge, bool):# i.e. True but not 1
+                q = None
+            else:
+                q = charge / (2 * num.sqrt(pi))
+            phi_gauss = self.gauss.remove_moment(rho, L=0, q=q)
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
@@ -61,10 +69,14 @@ class PoissonSolver:
 ##        if niter == 3000:
             charge = num.sum(rho.flat) * self.dv
             print 'CHARGE:', charge
+            if charge > 1e-6:
+                print '  For charged systems, run poisson_solver with'
+                print '  keyword charge=True.'
             raise RuntimeError('Poisson solver did not converge!')
 
         if charge != False:
             phi += phi_gauss
+            
         return niter
         
     def iterate(self, step, level=0):
@@ -120,19 +132,3 @@ class PoissonSolver:
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
                                                 residual.flat))*self.dv
             return error
-
-    def neutralize(self, rho, charge):
-        if charge == None:
-            charge = self.gd.integrate(rho)
-            
-        if abs(charge) < 1e-7:
-            return 0
-
-        if not hasattr(self, 'ng'):
-            gauss = Gaussian(self.gd)
-            self.ng = gauss.get_gauss(0) / (2 * num.sqrt(pi))
-            self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
-
-        rho -= charge * self.ng
-
-        return charge * self.vg
