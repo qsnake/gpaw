@@ -51,7 +51,7 @@ class 'Normalization(l, m)', a polynomium in z accessed with method
 
 The normalization and the z-polynomium are both invariant of the sign of m
 The z-polynomium has powers l-|m|, l-|m|-2, l-|m|-4, l-..., i.e. it is strictly odd (even) if l-|m| is odd (even)
-The combined power of x and y is |m| in all terms
+The combined power of x and y is |m| in all terms of Phi
 """
 
 #--------------------------- RELEVANT USER METHODS ---------------------------
@@ -66,16 +66,19 @@ def lm_to_L(l,m):
     return l**2 + l + m
 
 def Y_to_string(l, m, deriv=None, multiply=None, numeric=False):
-    """                                 l
-       Return string representation of r  * Y (x, y, z)
-                                             lm
-       if deriv is None.
+    # for L in range(25): print Y_to_string(*L_to_lm(L))
+    """                                                   l    m
+       If deriv is None, return string representation of r  * Y (x, y, z)
+                                                               l
+       
        If deriv == q, return string is the derivative of above with respect
        to x, y or z if q is 0, 1 or 2 respectively.
+
        multiply=q indicates that the entire expression should be multiplied by
-       q
+       x, y or z if q is 0, 1 or 2 respectively.
+
        numeric=True/False indicates wheter the normalization constant should be
-       written as a number or an algebraic expression.
+       written as a numeric or an algebraic expression.
     """
     assert deriv == None or deriv in range(3)
     assert multiply == None or multiply in range(3)
@@ -120,7 +123,7 @@ def gauss_to_string(l, m, numeric=False):
 
 #----------------------------- TECHNICAL METHODS -----------------------------
 def to_string(l, xyzs, deriv=False):
-    """Return string representation of of xyz dictionary"""
+    """Return string representation of an xyz dictionary"""
     if xyzs == {}: return '0'
     out = ''
 
@@ -198,12 +201,12 @@ def legendre(l, m):
         result[:] += (2 * m - 1) * legendre(l - 1, m - 1)
     elif l == m + 1:
         """Use the recursion relation
-            l-1        l
-           P  (z) = z P (z)
-            l          l
+            l-1              l-1
+           P  (z) = (2l-1)z P   (z)
+            l                l-1
             
         """
-        result[1:] += legendre(l, l)
+        result[1:] += (2 * l - 1) * legendre(l-1, l-1)
     else:
         """Use the recursion relation
             m     2l-1    m       l+m-1  2  m
@@ -218,11 +221,9 @@ def legendre(l, m):
 def Phi(m):
     """ Determine the x and y dependence of the spherical harmonics from
                       |m|   |m|
-                   / r   sin  (theta) cos(|m| phi), m > 0
-                   |
-       Phi (phi) = | 1                            , m = 0
-          m        |
-                   |  |m|   |m|
+                   / r   sin  (theta) cos(|m| phi), m >= 0
+       Phi (phi) = |
+          m        |  |m|   |m|
                    \ r   sin  (theta) sin(|m| phi), m < 0
        Returns dictionary of format {(i, j): c} where c is the coefficient
        of x^i y^j
@@ -289,12 +290,14 @@ def dYdq(l, m, q):
         x, y, z = xyz
         r = l - x - y - z
 
+        # chain rule: diff coordinate q only
         if xyz[q] != 0:
             dxyz = list(xyz)
             dxyz[q] -= 1
             dxyz = tuple(dxyz)
             dxyzs[dxyz] = dxyzs.get(dxyz, 0) + xyz[q] * coef
         
+        # chain rule: diff coordinate r only
         if r != 0:
             dxyz = list(xyz)
             dxyz[q] += 1
@@ -334,6 +337,7 @@ def simplify(xyzs):
     return norm
 
 def q_times_xyzs(xyzs, q):
+    """multiply xyz dictionary by x, y, or z according to q = 0, 1, or 2"""
     qxyzs = {}
     for xyz, c in zip(xyzs.keys(), xyzs.values()):
         qxyz = list(xyz)
@@ -371,9 +375,8 @@ def orthogonal(L1, L2):
 
     return I
 
-def check_orthogonality():
-    """Check orthogonality for all combinations of the first 10 harmonics"""
-    N = 10
+def check_orthogonality(Lmax=10):
+    """Check orthogonality for all combinations of the first few harmonics"""
     all_passed = True
     for L1 in range(N+1):
         for L2 in range(L1, N+1):
@@ -599,9 +602,19 @@ def construct_python_code(file='temp.py', Lmax=8):
     f = open(file, 'w')
     print >>f, out
     f.close()        
+
+def construct_python_code2(lmax=3):
+    YL = []
+    norm = 1.
+    xyzs = {}
+    for L in range((lmax+1)**2):
+        l, m = L_to_lm(L)
+        norm, xyzs = Y_collect(l, m)
+        YL.append(zip(xyzs.values(), xyzs.keys()))
+    return YL
     
 def plot_spherical(l, m):
-    # for l in range(5): for m in range(-l, l+1): plot_spherical(l,m)
+    # for L in range(25): plot_spherical(*L_to_lm(L))
     Ntheta = 45
     Nphi = 90
     eps = 1e-7
