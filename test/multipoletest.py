@@ -6,8 +6,8 @@ from gridpaw.grid_descriptor import GridDescriptor
 from gridpaw.localized_functions import create_localized_functions
 from gridpaw.xc_functional import XCFunctional
 
-n = 40
-a = 8.0
+n = 40 /8 * 10
+a = 10.0
 domain = Domain((a, a, a))
 gd = GridDescriptor(domain, (n, n, n))
 c_LL = num.identity(9, num.Float)
@@ -21,6 +21,7 @@ for soft in [False, True]:
     gt_Lg.add(a_Lg, c_LL)
     for l in range(3):
         for m in range(2 * l + 1):
+            print soft, l, m
             L = l**2 + m
             a_g = a_Lg[L]
             Q0 = gd.integrate(a_g) / sqrt(4 * pi)
@@ -30,9 +31,11 @@ for soft in [False, True]:
                 Q1_m[:] = 0.0
             elif l == 1:
                 Q1_m[m] -= 1.0
-            assert abs(Q0) < 2e-8
+            print Q0, Q1_m
+            assert abs(Q0) < 7e-7
             assert num.alltrue(abs(Q1_m) < 3e-5)
-    b_Lg = num.reshape(a_Lg, (9, 40**3))
+    b_Lg = num.reshape(a_Lg, (9, n**3))
     S_LL = num.innerproduct(b_Lg, b_Lg)
     S_LL.flat[::10] = 0.0
-    assert num.alltrue(abs(S_LL) < 5e-6)
+    print max(abs(S_LL).flat)
+    assert num.alltrue(abs(S_LL) < 3e-6)

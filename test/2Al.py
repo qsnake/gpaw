@@ -10,7 +10,8 @@ bulk = Crystal([Atom('Al', (0, 0, 0)),
 n = 16
 calc = Calculator(gpts=(2*n, 2*n, 1*n),
                   nbands=1*8,
-                  kpts=(1, 1, 4))
+                  kpts=(1, 1, 4),
+                  tolerance=1e-11)
 ##                  out=None)
 bulk.SetCalculator(calc)
 e2 = bulk.GetPotentialEnergy()
