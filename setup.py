@@ -14,7 +14,7 @@ from glob import glob
 from os.path import join
 from stat import ST_MTIME
 
-from configuration import *
+from config import *
 
 # Get the current version number:
 execfile('gridpaw/version.py')
