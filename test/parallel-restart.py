@@ -29,7 +29,7 @@ for nkpt in [4]:
        	calc = Calculator(nbands=6,
                          gpts=(ng,ng,ng),
                          kpts=(2, 2, nkpt),
-                         out=file_prefix+'.txt',
+##                         out=file_prefix+'.txt',
                          tolerance = 1e-10, 
                          hosts=nhosts)
 	
@@ -80,7 +80,7 @@ if 1:
     O2.SetCalculator(calc)
     e0 = O2.GetPotentialEnergy()
     f  = O2.GetCartesianForces()
-    equal(2.183981,sum(abs(f.flat)),1e-2)
+    equal(4.90422438561, sum(abs(f.flat)), 1e-2)
     calc.Write('O2.nc')
 
     O2[1].SetCartesianPosition((1.21+d,d,d))

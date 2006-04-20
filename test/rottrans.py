@@ -27,6 +27,7 @@ domain = Domain((8.0, 4.0, 4.0), (1, 0, 0))
 gd = GridDescriptor(domain, (8, 4, 4))
 a2 = gd.new_array()
 b2 = gd.new_array()
+ra.seed(1, 2)
 a2[:] = ra.random(a2.shape)
 a2[:, 0] = 0.0
 a2[:, :, 0] = 0.0
