@@ -17,10 +17,11 @@ b = num.zeros((n * 2, n * 2, n * 2), num.Float)
 for k in [2, 4, 6]:
     inter = Interpolator(gd, k - 1).apply
     inter(a, b)
-    print k, num.sum(a.flat), num.sum(b.flat) / 8
-for p in [2, 5]:
-    b = num.zeros((n / p, n / p, n / p), num.Float)
-    for k in [2, 4, 6]:
-        restr = Restrictor(gd, k - 1, p=p).apply
-        restr(a, b)
-        print k, p, num.sum(a.flat), num.sum(b.flat) * p**3
+    print k, num.sum(a.flat) - num.sum(b.flat) / 8
+    assert abs(num.sum(a.flat) - num.sum(b.flat) / 8) < 2e-11
+b = num.zeros((n / 2, n / 2, n / 2), num.Float)
+for k in [2, 4, 6]:
+    restr = Restrictor(gd, k - 1).apply
+    restr(a, b)
+    print k, num.sum(a.flat) - num.sum(b.flat) * 8
+    assert abs(num.sum(a.flat) - num.sum(b.flat) * 8) < 1e-12
