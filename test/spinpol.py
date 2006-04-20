@@ -13,4 +13,4 @@ hydrogen[0].SetMagneticMoment(1.0)
 e2 = hydrogen.GetPotentialEnergy()
 de = e1 - e2
 print de
-assert abs(de - 0.787314101852) < 1e-4
+assert abs(de - 0.796845374716) < 1e-4
