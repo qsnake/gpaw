@@ -86,10 +86,8 @@ void bmgs_rotate(const double* a, const int size[3], double* b, double angle,
 		 int exact);
 void bmgs_translate(double* a, const int sizea[3], const int size[3],
 		    const int start1[3], const int start2[3]);
-void bmgs_restrict(int k, int p, 
-		   double* a, const int n[3], double* b, double* w);
-void bmgs_interpolate(int k, int p, 
-		      const double* a, const int n[3],
+void bmgs_restrict(int k, double* a, const int n[3], double* b, double* w);
+void bmgs_interpolate(int k, const double* a, const int n[3],
 		      double* b, double* w);
 // complex routines:
 void bmgs_fdz(const bmgsstencil* s, const double_complex* a,
@@ -116,11 +114,9 @@ void bmgs_rotatez(const double_complex* a, const int size[3],
 void bmgs_translatemz(double_complex* a, const int sizea[3], const int size[3],
 		      const int start1[3], const int start2[3],
 		      double_complex phase);
-void bmgs_restrictz(int k, int p,
-		    double_complex* a, 
+void bmgs_restrictz(int k, double_complex* a, 
 		    const int n[3], double_complex* b, double_complex* w);
-void bmgs_interpolatez(int k, int p,
-		       const double_complex* a, const int n[3],
+void bmgs_interpolatez(int k, const double_complex* a, const int n[3],
 		       double_complex* b, double_complex* w);
 
 #endif

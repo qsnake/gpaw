@@ -61,20 +61,20 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   if (real)
     {
       if (self->interpolate)
-	bmgs_interpolate(self->k, self->p, self->buf, bc->size2,
+	bmgs_interpolate(self->k, self->buf, bc->size2,
 			 out, self->buf2);
       else
-	bmgs_restrict(self->k, self->p, self->buf, bc->size2,
+	bmgs_restrict(self->k, self->buf, bc->size2,
 		      out, self->buf2);
     }
   else
     {
       if (self->interpolate)
-	bmgs_interpolatez(self->k, self->p, (double_complex*)self->buf,
+	bmgs_interpolatez(self->k, (double_complex*)self->buf,
 			  bc->size2, (double_complex*)out, 
 			  (double_complex*)self->buf2);
       else
-	bmgs_restrictz(self->k, self->p, (double_complex*)self->buf,
+	bmgs_restrictz(self->k, (double_complex*)self->buf,
 		       bc->size2, (double_complex*)out,
 		       (double_complex*)self->buf2);
     }
@@ -86,9 +86,9 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   for (int i = 0; i < 3; i++)
     {
       if (self->interpolate)
-	size[i] = bc->size1[i] * self->p;
+	size[i] = bc->size1[i] * 2;
       else
-	size[i] = bc->size1[i] / self->p;
+	size[i] = bc->size1[i] / 2;
       size3[i] = size[i];
     }
 
@@ -157,14 +157,13 @@ static PyTypeObject TransformerType = {
 PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
 {
   PyArrayObject* size;
-  int p;
   int k;
   PyArrayObject* neighbors;
   int real;
   PyObject* comm_obj;
   int interpolate;
-  if (!PyArg_ParseTuple(args, "OiiOiOi", 
-                        &size, &p, &k, &neighbors, &real, &comm_obj,
+  if (!PyArg_ParseTuple(args, "OiOiOi", 
+                        &size, &k, &neighbors, &real, &comm_obj,
 			&interpolate))
     return NULL;
 
@@ -173,7 +172,6 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
     return NULL;
 
   self->k = k;
-  self->p = p;
   self->interpolate = interpolate;
 
   MPI_Comm comm = MPI_COMM_NULL;
@@ -181,7 +179,7 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
     comm = ((MPIObject*)comm_obj)->comm;
 
   const long (*nb)[2] = (const long (*)[2])LONGP(neighbors);
-  int padding[2] = {k * p / 2 - 1, k * p / 2 - p};
+  int padding[2] = {k - 1, k - 2};
   if (interpolate)
     {
       padding[0] = k / 2 - 1;
@@ -194,10 +192,10 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 
 			      self->bc->ndouble * sizeof(double));
   if (interpolate)
-    self->buf2 = (double*)malloc(size2[0] * size1[1] * size1[2] * p * p *
+    self->buf2 = (double*)malloc(size2[0] * size1[1] * size1[2] * 4 *
 				 self->bc->ndouble * sizeof(double));
   else
-    self->buf2 = (double*)malloc(size2[0] * size2[1] * size1[2] / p * 
+    self->buf2 = (double*)malloc(size2[0] * size2[1] * size1[2] / 2 * 
 				 self->bc->ndouble * sizeof(double));
   self->sendbuf = (double*)malloc(self->bc->maxsend * sizeof(double));
   self->recvbuf = (double*)malloc(self->bc->maxrecv * sizeof(double));

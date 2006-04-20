@@ -220,15 +220,13 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
   PyArrayObject* start_array;
   PyArrayObject* h_array;
   PyArrayObject* C_array;
-  int pp;
-  int kk;
   int real;
   int forces;
   int compute;
-  if (!PyArg_ParseTuple(args, "OOOOOOiiiii", &radials, 
+  if (!PyArg_ParseTuple(args, "OOOOOOiii", &radials, 
 			&size0_array, &size_array,
                         &start_array, &h_array, &C_array,
-                        &pp, &kk, &real, &forces, &compute))
+                        &real, &forces, &compute))
     return NULL;
 
   LocalizedFunctionsObject *self = PyObject_NEW(LocalizedFunctionsObject,
@@ -289,99 +287,40 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
 
   if (compute)
     {
-      if (pp == 1)
+      int* bin = (int*)malloc(ng0 * sizeof(int));
+      double* d = (double*)malloc(ng0 * sizeof(double));
+      double* f0 = (double*)malloc(ng0 * sizeof(double));
+      double* fd0 = 0;
+      if (forces)
+	fd0 = (double*)malloc(ng0 * sizeof(double));
+	  
+      double* a = self->f;
+      double* ad = self->fd;
+      for (int j = 0; j < PyList_Size(radials); j++)
 	{
-	  int* bin = (int*)malloc(ng0 * sizeof(int));
-	  double* d = (double*)malloc(ng0 * sizeof(double));
-	  double* f0 = (double*)malloc(ng0 * sizeof(double));
-	  double* fd0 = 0;
-	  if (forces)
-	    fd0 = (double*)malloc(ng0 * sizeof(double));
-	  
-	  double* a = self->f;
-	  double* ad = self->fd;
-	  for (int j = 0; j < PyList_Size(radials); j++)
+	  const bmgsspline* spline = 
+	    &(((SplineObject*)PyList_GetItem(radials, j))->spline);
+	  if (j == 0)
+	    bmgs_radial1(spline, self->size0, C, h, bin, d);
+	  bmgs_radial2(spline, self->size0, bin, d, f0, fd0);
+	  int l = spline->l;
+	  for (int k = 0; k < 2 * l + 1; k++)
 	    {
-	      const bmgsspline* spline = 
-		&(((SplineObject*)PyList_GetItem(radials, j))->spline);
-	      if (j == 0)
-		bmgs_radial1(spline, self->size0, C, h, bin, d);
-	      bmgs_radial2(spline, self->size0, bin, d, f0, fd0);
-	      int l = spline->l;
-	      for (int k = 0; k < 2 * l + 1; k++)
-		{
-		  bmgs_radial3(spline, k, self->size0, C, h, f0, a);
-		  a += ng0;
-		}
-	      if (forces)
-		for (int k = 0; k < 3 + l * (2 * l + 1); k++)
-		  {
-		    bmgs_radiald3(spline, k, self->size0, C, h, f0, fd0, ad);
-		    ad += ng0;
-		  }
+	      bmgs_radial3(spline, k, self->size0, C, h, f0, a);
+	      a += ng0;
 	    }
 	  if (forces)
-	    free(fd0);
-	  free(f0);
-	  free(d);
-	  free(bin);
+	    for (int k = 0; k < 3 + l * (2 * l + 1); k++)
+	      {
+		bmgs_radiald3(spline, k, self->size0, C, h, f0, fd0, ad);
+		ad += ng0;
+	      }
 	}
-      else
-	{
-	  int size2[3];
-	  double h2[3];
-	  double C2[3];
-	  int ng02 = 1;
-	  for (int i = 0; i < 3; i++)
-	    {
-	      size2[i] = pp * size0[i] + pp * (kk - 1) - 1;
-	      h2[i] = h[i] / pp;
-	      C2[i] = C[i] - h2[i] * (pp * kk / 2 - 1);
-	      ng02 *= size2[i];
-	    }
-	  int* bin = (int*)malloc(ng02 * sizeof(int));
-	  double* d = (double*)malloc(ng02 * sizeof(double));
-	  double* f0 = (double*)malloc(ng02 * sizeof(double));
-	  double* f1 = (double*)malloc(ng02 * sizeof(double));
-	  double* f2 = (double*)malloc(size2[0] * size2[1] * size0[2] *
-				       sizeof(double));
-	  double* fd0 = 0;
-	  
-	  if (forces)
-	    fd0 = (double*)malloc(ng02 * sizeof(double));
-	  
-	  double* a = self->f;
-	  double* ad = self->fd;
-	  for (int j = 0; j < PyList_Size(radials); j++)
-	    {
-	      const bmgsspline* spline = 
-		&(((SplineObject*)PyList_GetItem(radials, j))->spline);
-	      if (j == 0)
-		bmgs_radial1(spline, size2, C2, h2, bin, d);
-	      bmgs_radial2(spline, size2, bin, d, f0, fd0);
-	      int l = spline->l;
-	      for (int k = 0; k < 2 * l + 1; k++)
-		{
-		  bmgs_radial3(spline, k, size2, C2, h2, f0, f1);
-		  bmgs_restrict(kk, pp, f1, size2, a, f2);
-		  a += ng0;
-		}
-	      if (forces)
-		for (int k = 0; k < 3 + l * (2 * l + 1); k++)
-		  {
-		    bmgs_radiald3(spline, k, size2, C2, h2, f0, fd0, f1);
-		    bmgs_restrict(kk, pp, f1, size2, ad, f2);
-		    ad += ng0;
-		  }
-	    }
-	  if (forces)
-	    free(fd0);
-	  free(f2);
-	  free(f1);
-	  free(f0);
-	  free(d);
-	  free(bin);
-	}
+      if (forces)
+	free(fd0);
+      free(f0);
+      free(d);
+      free(bin);
     }
   return (PyObject*)self;
 }

@@ -56,41 +56,34 @@ void IP1D(const T* a, int n, int m, T* b)
 
 #else
 #  define K 2
-#    define P 2
-#    define IP1D Z(bmgs_interpolate1D2_2)
-#    include "interpolate.c"
-#    undef P
-#    undef IP1D
+#  define IP1D Z(bmgs_interpolate1D2)
+#  include "interpolate.c"
+#  undef IP1D
 #  undef K
 #  define K 4
-#    define P 2
-#    define IP1D Z(bmgs_interpolate1D4_2)
-#    include "interpolate.c"
-#    undef P
-#    undef IP1D
+#  define IP1D Z(bmgs_interpolate1D4)
+#  include "interpolate.c"
+#  undef IP1D
 #  undef K
 #  define K 6
-#    define P 2
-#    define IP1D Z(bmgs_interpolate1D6_2)
-#    include "interpolate.c"
-#    undef P
-#    undef IP1D
+#  define IP1D Z(bmgs_interpolate1D6)
+#  include "interpolate.c"
+#  undef IP1D
 #  undef K
 
-void Z(bmgs_interpolate)(int k, int p, 
-			 const T* a, const int size[3], T* b, T* w)
+void Z(bmgs_interpolate)(int k, const T* a, const int size[3], T* b, T* w)
 {
   void (*ip)(const T*, int, int, T*);
   if (k == 2)
-    ip = Z(bmgs_interpolate1D2_2);
+    ip = Z(bmgs_interpolate1D2);
   else if (k == 4)
-    ip = Z(bmgs_interpolate1D4_2);
+    ip = Z(bmgs_interpolate1D4);
   else
-    ip = Z(bmgs_interpolate1D6_2);
+    ip = Z(bmgs_interpolate1D6);
   int e = k - 1;
   ip(a, (size[2] - e), size[0] * size[1], b);
-  ip(b, (size[1] - e), size[0] * (size[2] - e) * p, w);
-  ip(w, (size[0] - e), (size[1] - e) * (size[2] - e) * p * p, b);
+  ip(b, (size[1] - e), size[0] * (size[2] - e) * 2, w);
+  ip(w, (size[0] - e), (size[1] - e) * (size[2] - e) * 4, b);
 }
 
 
