@@ -24,8 +24,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.id_j = []
         self.phi_jg = []
         self.phit_jg = []
-        self.pt_jg = []
-        self.grid = None
+        self.ptcoef_j = []
         self.X_p = []
         self.ExxC = None
 
@@ -67,14 +66,15 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 self.eps_j,
                 self.rcut_j,
                 self.id_j,
-                self.grid,
-                self.rc,
+                self.ng,
+                self.beta,
                 self.nc_g,
                 self.nct_g,
-                self.vbar_g,
+                self.vbar0,
+                self.gamma,
                 self.phi_jg,
                 self.phit_jg,
-                self.pt_jg,
+                self.ptcoef_j,
                 self.e_kin_j1j2,
                 self.X_p,
                 self.ExxC,
@@ -82,6 +82,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 filename)
     
     def startElement(self, name, attrs):
+        if name == 'paw_setup':
+            assert attrs['version'] > '0.1'
         if name == 'atom':
             self.Z = int(attrs['Z'])
             self.Nc = int(attrs['core'])
@@ -99,11 +101,6 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.e_kinetic = float(attrs['kinetic'])
             self.e_electrostatic = float(attrs['electrostatic'])
             self.e_xc = float(attrs['xc'])
-        elif name == 'pseudo_energy':
-            # XXXX Remove this one!!!!!!!!!!!!!!!!!
-            self.et_kinetic = float(attrs['kinetic'])
-            self.et_electrostatic = float(attrs['electrostatic'])
-            self.et_xc = float(attrs['xc'])
         elif name == 'core_energy':
             self.e_kinetic_core = float(attrs['kinetic'])
         elif name == 'state':
@@ -114,21 +111,19 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.rcut_j.append(float(attrs.get('rc', -1)))
             self.id_j.append(attrs['id'])
         elif name == 'grid':
-            assert self.grid is None, 'More than one type of grid!'
-            self.grid = attrs
-        elif name == 'shape_function':
-            if False:
-                assert attrs['type'] == 'gauss'
-                self.rc = float(attrs['rc'])
-            else:
-                assert attrs['type'] == 'poly3'
-                self.rc = -1.0
-        elif name in ['ae_core_density', 'pseudo_core_density',
-                      'localized_potential', 'kinetic_energy_differences',
-                      'exact_exchange_X_matrix']:
+            assert attrs['eq'] == 'r=a*i/(n-i)'
+            self.ng = int(attrs['n'])
+            self.beta = float(attrs['a'])
+        elif name == 'localized_potential':
+            self.vbar0 = float(attrs['c'])
+            self.gamma = float(attrs['a'])
+        elif name == 'projector_function':
+            self.gamma = float(attrs['a'])
             self.data = []
-        elif name in ['ae_partial_wave', 'pseudo_partial_wave',
-                      'projector_function']:
+        elif name in ['ae_core_density', 'pseudo_core_density',
+                      'kinetic_energy_differences', 'exact_exchange_X_matrix']:
+            self.data = []
+        elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
             self.data = []
             self.id = attrs['state']
         elif name == 'exact_exchange':
@@ -148,8 +143,6 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.nc_g = x_g
         elif name == 'pseudo_core_density':
             self.nct_g = x_g
-        elif name == 'localized_potential':
-            self.vbar_g = x_g
         elif name == 'kinetic_energy_differences':
             self.e_kin_j1j2 = x_g
         elif name == 'ae_partial_wave':
@@ -160,9 +153,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             j = len(self.phit_jg)
             assert self.id == self.id_j[j]
             self.phit_jg.append(x_g)
-        elif name == 'projector_function':
-            j = len(self.pt_jg)
-            assert self.id == self.id_j[j]
-            self.pt_jg.append(x_g)
         elif name == 'exact_exchange_X_matrix':
             self.X_p = x_g
+        elif name == 'projector_function':
+           self.ptcoef_j.append(x_g)
+            

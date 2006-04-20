@@ -59,7 +59,6 @@ class Calculator:
                   'parsize': None,
                   'softgauss': True,
                   'order': 5,
-                  'onohirose': 5,
                   'convergeall' : False,
                   }
     
@@ -70,7 +69,8 @@ class Calculator:
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
         `old`, `hund`, `lmax`, `fixdensity`, `idiotproof`,
         `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `order`,
-        `onohirose` and `convergeall`.
+        and `convergeall`.
+
         If you don't specify any parameters, you will get:
 
         Defaults: neutrally charged, LDA, gamma-point calculation, a
@@ -109,6 +109,7 @@ class Calculator:
         print >> out, 'Date:', time.asctime()
         print >> out, 'Arch:', uname[4]
         print >> out, 'Pid: ', os.getpid()
+        print >> out, 'Dir: ', os.path.dirname(gridpaw.__file__)
         print >> out
 
         lengthunit = units.GetLengthUnit()
@@ -234,7 +235,6 @@ class Calculator:
                 self.idiotproof,
                 self.hund,
                 self.lmax,
-                self.onohirose,
                 self.tolerance,
                 self.maxiter,
                 self.convergeall,

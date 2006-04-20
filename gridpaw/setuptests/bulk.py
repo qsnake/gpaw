@@ -1,56 +1,98 @@
-from bulk_calc import bulk_calc
-import pickle
-from math import sqrt
-from elements import elements
+from math import sqrt, pi, cos, sin
+
+from ASE import  ListOfAtoms, Atom
+
+from gridpaw import Calculator
+from gridpaw.utilities import center
+from gridpaw.setuptests.singleatom import SingleAtom
 
 
-def bulk(symbol, xc='LDA', hmin=0.2, hmax=0.3, kpt=6, crys='fcc', g=10):
-    
-    """Bulk test.
-    
-    Make use of the bulk_calc function and find the dependence of the cohesive
-    energy with the lattice constant: ``symbol`` is the atomic symbol name,
-    ``xc`` is the exchange-correlation functional, it make an array of the
-    gridspace resulting from ``hmin`` and ``hmax``, ``kpt`` is the number of
-    kpoints in each direction, ``crys`` is the crystal structure type and ``g``
-    is the number of variations of the lattice constant. A result of g energies
-    are saved in the pickle file from the bulk_calc function.
-    """
-    
-    data = {'Atomic symbol': symbol,
-            'Exchange-correlation functional': xc,
-            'Crystal type': crys,
-            'Number of k-points': kpt}
+class D(dict):
+    def __init__(self, **kwargs):
+        dict.__init__(self, **kwargs)
 
-    mag = elements[symbol]
-    
-    if mag[5] == 'hcp':
-        a = sqrt(2) * mag[3]
-    else:
-        a = mag[3]        
-
-    grid = []
-    nmax = int(a / hmin / 4 + 0.5) * 4
-    nmin = int(a / hmax / 4 + 0.5) * 4
-
-    for n in range(nmin, nmax+1, 4):
-        y = n
-        grid.append(y)
-
-    energies = []
-    lattice = []
-    
-    for x in grid:
+    def __getattr__(self, key):
+        return self[key]
         
-        coh, gridp = bulk_calc(symbol, xc, x, kpt, crys, g, a)
-        lattice.append(gridp)
-        energies.append(coh)
+data = {'Fe': D(structure='bcc', magmom=2.2, volume=2.89**3/2),
+        }
 
-    z=[a / x for x in grid]
-    data['Grid spacings'] = z
-    data['Cohesive energies'] = energies
-    data['Lattice constants'] = lattice
-    data['Test name'] = 'bulk'
+class Bulk:
+    
+    def __init__(self, symbol, structure=None, a=None, c=None,
+                 h=None, kpts=None, magmom=None,
+                 parameters={}):
+        self.symbol = symbol
+        
+        d = data.get(symbol, {})
+        
+        if structure is None:
+            structure = d.structure
 
-    name = "%s-%s-%s.pickle" % (symbol, crys, xc)
-    pickle.dump(data, open(name, 'w'))
+        if magmom is None:
+            magmom = d.get('magmom', 0)
+
+        spos_ac = {'sc':      [(0, 0, 0)],
+                   'bcc':     [(0, 0, 0), (.5, .5, .5)],
+                   'fcc':     [(0, 0, 0), (0, .5, .5),
+                               (.5, 0, .5), (.5, .5, 0)],
+                   'diamond': [(0, 0, 0), (0, .5, .5),
+                               (.5, 0, .5), (.5, .5, 0),
+                               (.25, .25, .25), (.25, .75, .75),
+                               (.75, .25, .75), (.75, .75, .25)]}[structure]
+        
+        self.atoms = ListOfAtoms([Atom(symbol, spos_c, magmom=magmom)
+                                  for spos_c in spos_ac],
+                                 periodic=True)
+
+        V = d.volume
+
+        if structure == 'hcp':
+            if c is None:
+                coa = d.get('coa', sqrt(8.0 / 3))
+                if a is None:
+                    a = (V / coa / sqrt(3))**(1.0 / 3)
+                c = coa * a
+            else:
+                if a is None:
+                    a = sqrt(V / c / sqrt(3))
+            b = sqrt(3) * a
+        elif structure == 'hex':
+            raise NotImplementedError
+        else:
+            if a is None:
+                a = (V * len(spos_ac))**(1.0 / 3)
+            b = a
+            c = a
+            
+        self.atoms.SetUnitCell([a, b, c])
+
+        if kpts is None:
+            kpts = [2 * int(8.0 / L) for L in (a, b, c)]
+            
+        calc = Calculator(h=h, kpts=kpts, **parameters)
+        self.atoms.SetCalculator(calc)
+        
+    def energy(self):
+        return self.atoms.GetPotentialEnergy()
+
+    def atomize(self, L=7.0, verbose=False):
+        ec = -self.energy()
+        if verbose:
+            print '%s: %.3f eV' % (self.symbol, -ec)
+        energy = {}
+        h = num.sum(self.atoms.GetCalculator().GetGridSpacings()) / 3
+        a = 4 * int(L / h / 4 + 0.5)
+        self.atoms.SetCalculator(None)
+        for atom in self.atoms:
+            symbol = atom.GetChemicalSymbol()
+            if symbol not in energy:
+                if verbose:
+                    print '%s:' % symbol,
+                atom = SingleAtom(symbol, a=a, h=h,
+                                  parameters=self.parameters)
+                energy[symbol] = atom.energy()
+                if verbose:
+                    print '%.3f eV' % energy[symbol]
+            ec += energy[symbol]
+        return ec

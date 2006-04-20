@@ -16,6 +16,7 @@ from ASE.ChemicalElements.name import names
 from gridpaw.atom.configurations import configurations
 from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.xc_functional import XCOperator, XCFunctional
+from gridpaw.utilities import hartree
 
 
 alpha = 1 / 137.036
@@ -136,7 +137,7 @@ class AllElectron:
         niter = 0
         qOK = log(1e-10)
         while True:
-            vHr = self.calculate_hartree_potential(n)
+            vHr = self.calculate_hartree_potential(n) - Z
             vXC[:] = 0.0
             Exc = self.xc.get_energy_and_potential(n, vXC)
             vr[:] = vHr + vXC * r
@@ -245,6 +246,10 @@ class AllElectron:
         return n
     
     def calculate_hartree_potential(self, n):
+        vHr = num.zeros(self.N, num.Float)
+        hartree(0, n * self.r * self.dr, self.beta, vHr)
+        return vHr
+    
         #    2
         # 1 d (vr)      __
         # - ------ = -4 || n,  vr(oo) = 0,  vr(0) = -Z
@@ -257,7 +262,6 @@ class AllElectron:
         #     2   dr     dg     2
         #   dg                dr
         #
-        N = self.N
         r = self.r
         a = self.dr**-2         # (dg/dr)^2
         b = 0.5 * self.d2gdr2   # (d^2g/dr^2)/2
@@ -345,7 +349,7 @@ class AllElectron:
             self.e_j[j] = e
             u *= 1.0 / sqrt(num.dot(num.where(abs(u) < 1e-160, 0, u)**2, dr))
 
-    def kin(self, l, u, e=None):
+    def kin(self, l, u, e=None): # XXX move to Generator
         r = self.r[1:]
         dr = self.dr[1:]
         

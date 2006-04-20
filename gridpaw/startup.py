@@ -18,7 +18,7 @@ def create_paw_object(out, a0, Ha,
                       nbands, spinpol, kT,
                       bzk_kc,
                       softgauss, order, usesymm, mix, old, fixdensity,
-                      idiotproof, hund, lmax, onohirose, tolerance,maxiter,
+                      idiotproof, hund, lmax, tolerance,maxiter,
                       convergeall,
                       # Parallel stuff:
                       parsize_c,
@@ -111,8 +111,7 @@ def create_paw_object(out, a0, Ha,
             setup.calculate_rotations(R_slmm)
 
     # Build list of nuclei:
-    nuclei = [Nucleus(setups[Z], a, typecode, onohirose)
-              for a, Z in enumerate(Z_a)]
+    nuclei = [Nucleus(setups[Z], a, typecode) for a, Z in enumerate(Z_a)]
 
     # Sum up the number of valence electrons:
     nvalence = 0

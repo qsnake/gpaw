@@ -12,7 +12,7 @@ import _gridpaw
 
 
 class Transformer:
-    def __init__(self, gd, number, typecode, interpolate, p):
+    def __init__(self, gd, number, typecode, interpolate):
         self.typecode = typecode
         neighbor_cd = gd.domain.neighbor_cd
 
@@ -26,7 +26,7 @@ class Transformer:
 
         self.transformer = _gridpaw.Transformer(
             # Why asarray here? XXX
-            num.asarray(gd.n_c, num.Int), p, number + 1, neighbor_cd,
+            num.asarray(gd.n_c, num.Int), number + 1, neighbor_cd,
             typecode == num.Float, comm, interpolate)
         
         if gd.domain.angle is not None:
@@ -50,14 +50,14 @@ class Transformer:
 
 class _Interpolator(Transformer):
     def __init__(self, gd, order, typecode=num.Float):
-        Transformer.__init__(self, gd, order, typecode, interpolate=True, p=2)
+        Transformer.__init__(self, gd, order, typecode, interpolate=True)
         self.ngpout = tuple(2 * num.array(self.ngpin))
 
 
 class _Restrictor(Transformer):
-    def __init__(self, gd, order, typ=num.Float, p=2):
-        Transformer.__init__(self, gd, order, typ, interpolate=False, p=p)
-        self.ngpout = tuple(num.array(self.ngpin) / p)
+    def __init__(self, gd, order, typ=num.Float):
+        Transformer.__init__(self, gd, order, typ, interpolate=False)
+        self.ngpout = tuple(num.array(self.ngpin) / 2)
 
 
 if debug:
@@ -66,8 +66,8 @@ if debug:
 else:
     def Interpolator(gd, order, typecode=num.Float):
         return _Interpolator(gd, order, typecode).transformer
-    def Restrictor(gd, order, typecode=num.Float, p=2):
-        return _Restrictor(gd, order, typecode, p).transformer    
+    def Restrictor(gd, order, typecode=num.Float):
+        return _Restrictor(gd, order, typecode).transformer    
 
 
 def coefs(k, p):

@@ -15,7 +15,24 @@ from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.utilities import unpack, erf, fac
 from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
-from gridpaw.polynomium import a_i, c_l, b_lj
+
+
+#                       l
+#             __  __   r
+#     1      \   4||    <   * ^    ^
+#   ------ =  )  ---- ---- Y (r)Y (r),
+#    _ _     /__ 2l+1  l+1  lm   lm
+#   |r-r'|    lm      r
+#                      >
+# where
+#
+#   r = min(r, r')
+#    <
+#
+# and
+#
+#   r = max(r, r')
+#    >
 
 
 class Hartree:
@@ -86,10 +103,10 @@ class Setup:
          e_total, e_kinetic, e_electrostatic, e_xc,
          e_kinetic_core,
          n_j, l_j, f_j, eps_j, rcut_j, id_j,
-         grid, rcgauss,
-         nc_g, nct_g, vbar_g,
-         phi_jg, phit_jg, pt_jg,
-         e_kin_j1j2, X_p, ExxC,
+         ng, beta,
+         nc_g, nct_g, vbar0, gamma,
+         phi_jg, phit_jg, ptcoef_j,
+         e_kin_jj, X_p, ExxC,
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
@@ -99,80 +116,60 @@ class Setup:
         self.X_p = X_p
         self.ExxC = ExxC
 
-        nj0 = len(l_j)
-        e_kin_j1j2.shape = (nj0, nj0)
-
-        nj = 3
-        if Z > 4:
-            nj = 5
-        if Z > 18:
-            nj = 6
-
-        if nj > nj0:
-            nj = nj0
-            
-        e_kin_j1j2 = e_kin_j1j2[:nj, :nj].copy()
-        
-        n_j = n_j[:nj]
-        l_j = l_j[:nj]
-        f_j = f_j[:nj]
-        eps_j = eps_j[:nj]
-        rcut_j = rcut_j[:nj]
-        id_j = id_j[:nj]
-        phi_jg = phi_jg[:nj]
-        phit_jg = phit_jg[:nj]
-        pt_jg = pt_jg[:nj]
+        nj = len(l_j)
+        e_kin_jj.shape = (nj, nj)
 
         self.n_j = n_j
         self.l_j = l_j
         self.f_j = f_j
         self.eps_j = eps_j
-        
-        imin, imax = [int(x) for x in grid['i'].split('-')]
-        ng = imax - imin + 1
-##        print grid['eq']
-        if grid['eq'] == 'r=a*i/(n-i)':
-            a = float(grid['a'])
-            assert int(grid['n']) == ng
-        else:
-            raise RuntimeError, 'Unknown grid type: ' + grid['eq']
 
-        i = num.arange(ng, typecode=num.Float)
-        r_g = a * i / (ng - i)
-        dr_g = a * ng / (ng - i)**2
-        d2gdr2 = -2 * ng * a / (a + r_g)**3
-        
-##        print e_kin_j1j2
+        rcut = max(rcut_j)
+        rcut2 = 2.0 * rcut
+        rcut3 = 2.0 * rcut
+        gcut2 = int(rcut2 * ng / (rcut2 + beta))
+        gcut3 = int(rcut3 * ng / (rcut3 + beta))
+       
+        g = num.arange(ng, typecode=num.Float)
+        r_g = beta * g / (ng - g)
+        dr_g = beta * ng / (ng - g)**2
+        d2gdr2 = -2 * ng * beta / (beta + r_g)**3
 
-        # Normalize everything:
-        Nc0 = sqrt(4 * pi) * num.dot(nc_g, r_g**2 * dr_g)
-##        print 'Core electrons', Nc0
-        if Nc > 0:
-            nc_g *= Nc / Nc0
-            nct_g *= Nc / Nc0
-            
+        pt_jg = num.zeros((nj, ng), num.Float)
         for j in range(nj):
-##             norm = num.dot((phi_jg[j] * r_g)**2, dr_g)
-##             print id_j[j], norm
-##             x = 1.0 / sqrt(norm)
-##             phi_jg[j] *= x
-##             phit_jg[j] *= x
-##             pt_jg[j] /= x
-##             e_kin_j1j2[j] *= x
-##             e_kin_j1j2[:, j] *= x
-            pt_jg[j] /= num.dot(phit_jg[j] * pt_jg[j] * r_g**2, dr_g)
+            if j == 0 or l_j[j] > l_j[j - 1]:
+                # Moved to new l-chanel.  Reset n:
+                n = 0
+            x = r_g / rcut_j[j]
+            for m, c in enumerate(ptcoef_j[j]):
+                if m == 0:
+                    pt_jg[j, :gcut3] += (c * r_g[:gcut3]**(l_j[j] + 2 * m) *
+                                         num.exp(-gamma * x[:gcut3]**2))
+                else:
+                    pt_jg[j, :gcut3] += (c *
+                                         (r_g[:gcut3]**l_j[j] -
+                                          2.0 / (3 + 2 * l_j[j]) *
+                                          r_g[:gcut3]**(l_j[j] + 2 * m)) *
+                                         num.exp(-gamma * x[:gcut3]**2))
+##            pt_jg[j, :gcut2] -= pt_jg[j, gcut2 - 1]
+
+        if 0:
+            for j1 in range(nj):
+                for j2 in range(nj):
+                    if l_j[j1] == l_j[j2]:
+                        print j1, j2, num.dot(phit_jg[j1] * pt_jg[j2] * r_g**2,
+                                              dr_g)
 
         # Find cutoff for core density:
         if Nc == 0:
-            gcore = 7
+            rcore = 0.5
         else:
             N = 0.0
             g = ng - 1
             while N < 1e-7:
                 N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
                 g -= 1
-            gcore = g
-        rcore = r_g[gcore]
+            rcore = r_g[g]
 
         ni = 0
         niAO = 0
@@ -205,17 +202,12 @@ class Setup:
         nq = nj * (nj + 1) / 2
         Lmax = (lmax + 1)**2
         
-        # Find *one* cutoff for partial waves:
-        rcut = max(rcut_j)
-        gcut = int(ng * rcut / (a + rcut))
-##        rcut = r_g[gcut]  # XXXXXX
-##        print 'rcut:', rcut
-        
         # Construct splines:
-        self.nct = Spline(0, rcore, nct_g, r_g, a, zero=True)
-        self.vbar = Spline(0, rcut, vbar_g, r_g, a, zero=True)
-
-        self.vHt = None
+        self.nct = Spline(0, rcore, f_g=nct_g, r_g=r_g, beta=beta)
+        vbar_g = num.zeros(ng, num.Float)
+        x = r_g / rcut
+        vbar_g[:gcut3] = vbar0 * num.exp(-gamma * x[:gcut3]**2)
+        self.vbar = Spline(0, rcut3, coefs=[vbar0], alpha=gamma / rcut**2)
         
         def grr(phi_g, l, r_g):
             w_g = phi_g.copy()
@@ -229,31 +221,32 @@ class Setup:
         self.pt_j = []
         for j, pt_g in enumerate(pt_jg):
             l = l_j[j]
-            self.pt_j.append(Spline(l, rcut, grr(pt_g, l, r_g),
-                                    r_g, a, zero=1))
-
+            self.pt_j.append(Spline(l, rcut3,
+                                    coefs=ptcoef_j[j], alpha=gamma / rcut**2))
+     
         cutoff = 8.0 # ????????
         self.wtLCAO_j = []
         for j, phit_g in enumerate(phit_jg):
             if f_j[j] > 0:
                 l = l_j[j]
-                self.wtLCAO_j.append(Spline(l, cutoff, grr(phit_g, l, r_g),
-                                            r_g, a, zero=True))
+                self.wtLCAO_j.append(Spline(l, cutoff,
+                                            f_g=grr(phit_g, l, r_g),
+                                            r_g=r_g, beta=beta))
 
-        a1_g = 1.0 - 0.5 * (d2gdr2 * dr_g**2)[1:gcut + 1]
-        a2_lg = -2.0 * num.ones((lmax + 1, gcut), num.Float)
-        x_g = (dr_g[1:gcut + 1] / r_g[1:gcut + 1])**2
+        a1_g = 1.0 - 0.5 * (d2gdr2 * dr_g**2)[1:gcut2 + 1]
+        a2_lg = -2.0 * num.ones((lmax + 1, gcut2), num.Float)
+        x_g = (dr_g[1:gcut2 + 1] / r_g[1:gcut2 + 1])**2
         for l in range(1, lmax + 1):
             a2_lg[l] -= l * (l + 1) * x_g
-        a3_g = 1.0 + 0.5 * (d2gdr2 * dr_g**2)[1:gcut + 1]
+        a3_g = 1.0 + 0.5 * (d2gdr2 * dr_g**2)[1:gcut2 + 1]
 
-        r_g = r_g[:gcut].copy()
-        dr_g = dr_g[:gcut].copy()
-        phi_jg = num.array([phi_g[:gcut] for phi_g in phi_jg])
-        phit_jg = num.array([phit_g[:gcut] for phit_g in phit_jg])
-        nc_g = nc_g[:gcut].copy()
-        nct_g = nct_g[:gcut].copy()
-        vbar_g = vbar_g[:gcut].copy()
+        r_g = r_g[:gcut2].copy()
+        dr_g = dr_g[:gcut2].copy()
+        phi_jg = num.array([phi_g[:gcut2] for phi_g in phi_jg])
+        phit_jg = num.array([phit_g[:gcut2] for phit_g in phit_jg])
+        nc_g = nc_g[:gcut2].copy()
+        nct_g = nct_g[:gcut2].copy()
+        vbar_g = vbar_g[:gcut2].copy()
 
         T_Lqp = num.zeros((Lmax, nq, np), num.Float)
         p = 0
@@ -268,25 +261,17 @@ class Setup:
                 p += 1
             i1 += 1
 
-        GAUSS = False
-        g_lg = num.zeros((lmax + 1, gcut), num.Float)
-        if GAUSS:
-            g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * num.exp(-(r_g / rcgauss)**2)
-            for l in range(1, lmax + 1):
-                g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
-        else:
-            x_g = r_g / rcut
-            s_g = num.zeros(gcut, num.Float)
-            for i in range(4):
-                s_g += a_i[i] * x_g**i
-            for l in range(lmax + 1):
-                g_lg[l] = c_l[l] / rcut**(3 + l) * x_g**l * s_g 
+        g_lg = num.zeros((lmax + 1, gcut2), num.Float)
+        rcgauss = rcut / sqrt(gamma)
+        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * num.exp(-(r_g / rcgauss)**2)
+        for l in range(1, lmax + 1):
+            g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
                 
         for l in range(lmax + 1):
             g_lg[l] /= num.dot(r_g**(l + 2) * dr_g, g_lg[l])
 
-        n_qg = num.zeros((nq, gcut), num.Float)
-        nt_qg = num.zeros((nq, gcut), num.Float)
+        n_qg = num.zeros((nq, gcut2), num.Float)
+        nt_qg = num.zeros((nq, gcut2), num.Float)
         q = 0
         for j1 in range(nj):
             for j2 in range(j1, nj):
@@ -364,9 +349,6 @@ class Setup:
                                     num.dot(A_lq1q2[l], T_Lqp[L]))
                 L += 1
 
-##        print A_lq1q2
-##        print T_Lqp
-##        print self.M, self.M_p, self.M_pp
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
@@ -385,17 +367,16 @@ class Setup:
 
         # Dont forget to change the onsite interaction energy for soft = 0 XXX
         if softgauss:
-            if symbol == 'Cu':
-                rcut2 = self.rcut + 2.4
-            else:
-                rcut2 = self.rcut + 1.4
+            rcutsoft = rcut2 + 1.4
         else:
-            rcut2 = self.rcut
+            rcutsoft = rcut2
 
-        self.rcut2 = rcut2
+##        rcutsoft += 1.0
+        
+        self.rcutsoft = rcutsoft
         
         if xcname != self.xcname:
-            raise RuntimeError, 'Not the correct XC-functional!'
+            raise RuntimeError('Not the correct XC-functional!')
         
         # Use atomic all-electron energies as reference:
         self.Kc = e_kinetic_core - e_kinetic
@@ -407,112 +388,61 @@ class Setup:
         K_q = []
         for j1 in range(nj):
             for j2 in range(j1, nj):
-                K_q.append(e_kin_j1j2[j1, j2])
+                K_q.append(e_kin_jj[j1, j2])
         self.K_p = sqrt(4 * pi) * num.dot(K_q, T_Lqp[0])
         
         self.lmax = lmax
 
-        r = 0.01 * rcut2 * num.arange(101, typecode=num.Float)
-        gc = int(100 * rcut / rcut2) + 1
+        r = 0.02 * rcutsoft * num.arange(51, typecode=num.Float)
         alpha = rcgauss**-2
         self.alpha = alpha
         if softgauss:
             assert lmax <= 2
-            alpha2 = 22.0 / rcut2**2
+            alpha2 = 22.0 / rcutsoft**2
 
-            if GAUSS:
-                vt0 = 4 * pi * (num.array([erf(x) for x in sqrt(alpha) * r]) -
-                                num.array([erf(x) for x in sqrt(alpha2) * r]))
-                vt0[0] = 8 * sqrt(pi) * (sqrt(alpha) - sqrt(alpha2))
-                vt0[1:] /= r[1:]
-            else:
-                vt0 = -4 * pi * num.array([erf(y) for y in sqrt(alpha2) * r])
-                vt0[1:] /= r[1:]
-                vt0[0] = -8 * sqrt(pi) * sqrt(alpha2)
-                vt00 = vt0.copy()
-                x = (r / rcut)[:gc]
-                for j in range(6):
-                    vt0[:gc] += b_lj[0, j] / rcut * x**j
-                vt0[gc:] += 4 * pi / r[gc:]
-
-##             f = open('tmp', 'w')
-##             for R, V in zip(r, vt0):
-##                 s = a_i[0]+a_i[2]*(R/rcut)**2+a_i[3]*(R/rcut)**3
-##                 if R > rcut:
-##                     s = 0.0
-## ##                print >> f, R, V, 4/sqrt(pi)*(exp(-alpha2*R**2)*alpha2**1.5)
-##                 print >> f, R, V, (s * c_l[0] / rcut**3 - 0.000000000000000*
-##                                    4/sqrt(pi)*exp(-alpha2*R**2)*alpha2**1.5)
-##             print alpha, alpha2
-##             print 4/sqrt(pi) *alpha**1.5
-##             print 4/sqrt(pi) *alpha2**1.5
-## #            stop
+            vt0 = 4 * pi * (num.array([erf(x) for x in sqrt(alpha) * r]) -
+                            num.array([erf(x) for x in sqrt(alpha2) * r]))
+            vt0[0] = 8 * sqrt(pi) * (sqrt(alpha) - sqrt(alpha2))
+            vt0[1:] /= r[1:]
             vt_l = [vt0]
             if lmax >= 1:
                 arg = num.clip(alpha2 * r**2, 0.0, 700.0)
                 e2 = num.exp(-arg)
-                if GAUSS:
-                    arg = num.clip(alpha * r**2, 0.0, 700.0)
-                    e = num.exp(-arg)
-                    vt1 = vt0 / 3 - 8 * sqrt(pi) / 3 * (sqrt(alpha) * e -
-                                                        sqrt(alpha2) * e2)
-                    vt1[0] = 16 * sqrt(pi) / 9 * (alpha**1.5 - alpha2**1.5)
-                    vt1[1:] /= r[1:]**2
-                else:
-                    vt1 = vt00 / 3 + 8 * sqrt(pi) / 3 * sqrt(alpha2) * e2
-                    vt1[1:] /= r[1:]**2
-                    vt1[0] = -16 * sqrt(pi) / 9 * alpha2**1.5
-                    for j in range(6):
-                        vt1[:gc] += b_lj[1, j] / rcut**3 * x**j
-                    vt1[gc:] += 4 * pi / 3 / r[gc:]**3
+                arg = num.clip(alpha * r**2, 0.0, 700.0)
+                e = num.exp(-arg)
+                vt1 = vt0 / 3 - 8 * sqrt(pi) / 3 * (sqrt(alpha) * e -
+                                                    sqrt(alpha2) * e2)
+                vt1[0] = 16 * sqrt(pi) / 9 * (alpha**1.5 - alpha2**1.5)
+                vt1[1:] /= r[1:]**2
                 vt_l.append(vt1)
                 if lmax >= 2:
-                    if GAUSS:
-                        vt2 = vt0 / 5 - 8 * sqrt(pi) / 5 * \
-                              (sqrt(alpha) * (1 + 2 * alpha * r**2 / 3) * e -
-                               sqrt(alpha2) * (1 + 2 * alpha2 * r**2 / 3) * e2)
-                        vt2[0] = 32 * sqrt(pi) / 75 * (alpha**2.5 -
-                                                       alpha2**2.5)
-                        vt2[1:] /= r[1:]**4
-                    else:
-                        vt2 = vt00 / 5 + 8 * sqrt(pi) / 5 * \
-                              sqrt(alpha2) * (1 + 2 * alpha2 * r**2 / 3) * e2 
-                        vt2[1:] /= r[1:]**4
-                        vt2[0] = -32 * sqrt(pi) / 75 * alpha2**2.5
-                        for j in range(6):
-                            vt2[:gc] += b_lj[2, j] / rcut**5 * x**j
-                        vt2[gc:] += 4 * pi / 5 / r[gc:]**5
+                    vt2 = vt0 / 5 - 8 * sqrt(pi) / 5 * \
+                          (sqrt(alpha) * (1 + 2 * alpha * r**2 / 3) * e -
+                           sqrt(alpha2) * (1 + 2 * alpha2 * r**2 / 3) * e2)
+                    vt2[0] = 32 * sqrt(pi) / 75 * (alpha**2.5 -
+                                                   alpha2**2.5)
+                    vt2[1:] /= r[1:]**4
                     vt_l.append(vt2)
 
             self.Deltav_l = []
             for l in range(lmax + 1):
                 vtl = vt_l[l]
                 vtl[-1] = 0.0
-                self.Deltav_l.append(Spline(l, rcut2, vtl))
+                self.Deltav_l.append(Spline(l, rcutsoft, f_g=vtl))
 
         else:
             alpha2 = alpha
-            self.Deltav_l = [Spline(l, rcut2, 0 * r)
+            self.Deltav_l = [Spline(l, rcutsoft, f_g=0 * r)
                              for l in range(lmax + 1)]
 
         self.alpha2 = alpha2
 
-        if GAUSS or softgauss:
-            d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
-                   for l in range(3)]
-            g = alpha2**1.5 * num.exp(-alpha2 * r**2)
-            g[-1] = 0.0
-            self.gt_l = [Spline(l, rcut2, d_l[l] * alpha2**l * g)
-                         for l in range(lmax + 1)]
-        else:
-            x = r / rcut
-            s = num.zeros(101, num.Float)
-            for i in range(4):
-                s += a_i[i] * x**i
-            s[gc:] = 0.0
-            self.gt_l = [Spline(l, rcut2,
-                                c_l[l] / rcut**(3 + 2 * l) * s)
-                         for l in range(lmax + 1)]
+        d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
+               for l in range(3)]
+        g = alpha2**1.5 * num.exp(-alpha2 * r**2)
+        g[-1] = 0.0
+        self.gt_l = [Spline(l, rcutsoft, f_g=d_l[l] * alpha2**l * g)
+                     for l in range(lmax + 1)]
 
         # Construct atomic density matrix for the ground state (to be
         # used for testing):
@@ -572,7 +502,7 @@ class Setup:
         return self.nk
     
     def get_recommended_grid_spacing(self):
-        return 0.4 # self.h ???  XXXXXXXXXXXXX
+        return 0.4 # self.h ???  XXXXXXXXXXXX
 
     def get_projectors(self):
         return self.pt_j
@@ -582,11 +512,7 @@ class Setup:
 
     def delete_atomic_orbitals(self):
         del self.wtLCAO_j
-        del self.vHt  # XXXXXXXXXXX
 
-    def get_atomic_hartree_potential(self):
-        return self.vHt
-    
     def get_shape_functions(self):
         return self.gt_l
     

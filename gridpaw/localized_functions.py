@@ -17,7 +17,7 @@ import _gridpaw
 MASTER = 0
 
 
-def create_localized_functions(functions, gd, spos_c, onohirose=5,
+def create_localized_functions(functions, gd, spos_c,
                                typecode=num.Float, cut=False,
                                forces=True, lfbc=None):
     """Create `LocFuncs` object.
@@ -29,10 +29,6 @@ def create_localized_functions(functions, gd, spos_c, onohirose=5,
     ============= ======================== ===================================
     keyword       type
     ============= ======================== ===================================
-    ``onohirose`` ``int``                  Grid point density used for
-                                           Ono-Hirose double-grid
-                                           technique (5 is default and 1 is
-                                           off).
     ``typecode``  ``Float`` or ``Complex`` Type of arrays to operate on.
     ``cut``       ``bool``                 Allow functions to cut boundaries
                                            when not periodic.
@@ -41,7 +37,7 @@ def create_localized_functions(functions, gd, spos_c, onohirose=5,
     ============= ======================== ===================================
     """
 
-    lfs = LocFuncs(functions, gd, spos_c, onohirose,
+    lfs = LocFuncs(functions, gd, spos_c,
                     typecode, cut, forces, lfbc)
 
     if len(lfs.box_b) > 0:
@@ -53,7 +49,7 @@ def create_localized_functions(functions, gd, spos_c, onohirose=5,
 
 class LocFuncs:
     """Class to handle atomic-centered localized functions."""
-    def __init__(self, functions, gd, spos_c, onohirose,
+    def __init__(self, functions, gd, spos_c,
                  typecode, cut, forces, lfbc):
         """Create `LocFuncs` object.
 
@@ -63,13 +59,6 @@ class LocFuncs:
         angle = self.angle
         # We assume that all functions have the same cut-off:
         rcut = functions[0].get_cutoff()
-
-        p = onohirose
-        assert p > 0
-
-        k = 6
-        if p != 1:
-            rcut += (k / 2 - 1.0 / p) * max(gd.h_c)
 
         box_b = gd.get_boxes(spos_c, rcut, cut)
 
@@ -89,7 +78,7 @@ class LocFuncs:
                                       
             box = LocalizedFunctions(functions, beg_c, end_c,
                                      rspos_c, sdisp_c, gd,
-                                     p, k, typecode, forces, lfbc)
+                                     typecode, forces, lfbc)
             self.box_b.append(box)
             self.sdisp_bc[b] = sdisp_c
             b += 1
@@ -255,7 +244,7 @@ class LocalizedFunctionsWrapper:
     type-checking to the C-methods."""
     
     def __init__(self, functions, beg_c, end_c, spos_c, sdisp_c, gd,
-                 p, k, typecode, forces, locfuncbcaster):
+                 typecode, forces, locfuncbcaster):
         """Construct a ``LocalizedFunctions`` C-object.
 
         Evaluate function values from a list of splines
@@ -265,10 +254,7 @@ class LocalizedFunctionsWrapper:
         ``sdisp_c`` (in units of lattice vectors), and ``gd`` is the
         grid-descriptor.
 
-        ``p`` is the number of grid points used for the Ono-Hirose
-        double-grid technique and ``k`` is the order of the
-        interpolation.  Derivatives are calculated with
-        ``forces=True``."""
+        Derivatives are calculated when ``forces=True``."""
 
         assert typecode in [num.Float, num.Complex]
 
@@ -287,7 +273,7 @@ class LocalizedFunctionsWrapper:
 
         self.lfs = _gridpaw.LocalizedFunctions(
             [function.spline for function in functions],
-            size_c, gd.n_c, corner_c, gd.h_c, pos_c, p, k,
+            size_c, gd.n_c, corner_c, gd.h_c, pos_c,
             typecode == num.Float, forces, compute)
         
         if locfuncbcaster is not None:
@@ -354,9 +340,9 @@ if debug:
 else:
     # Just use the bare C-object for efficiency:
     def LocalizedFunctions(functions, beg_c, end_c, spos_c, sdisp_c, gd,
-                           p, k, typecode, forces, locfuncbcaster):
+                           typecode, forces, locfuncbcaster):
         return LocalizedFunctionsWrapper(functions, beg_c, end_c, spos_c,
-                                         sdisp_c, gd, p, k,
+                                         sdisp_c, gd,
                                          typecode, forces, locfuncbcaster).lfs
 
 

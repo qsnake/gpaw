@@ -20,12 +20,8 @@ d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
 class GInteraction2:
     def __init__(self, setupa, setupb):
         self.softgauss = setupa.softgauss
-
-        if self.softgauss:
-            self.rcut = setupa.rcut
-            self.alpha = 35.0 # XXX big enough?
-            self.beta = 35.0
-        
+        self.alpha = setupa.alpha
+        self.beta = setupb.alpha
         self.alpha2 = setupa.alpha2
         self.beta2 = setupb.alpha2
         self.lmaxa = setupa.lmax
@@ -59,12 +55,12 @@ class GInteraction2:
                                  self.beta**(1.5 + lb)
                         f2 *= x * self.alpha2**(1.5 + la) * \
                                   self.beta2**(1.5 + lb)
-                        if num.sometrue(R):
-                            assert num.dot(R, R) > 0.1
-                        else:
-                            f[:] = 0.0
-                            if La == Lb:
-                                f[0] = I_l[la] / self.rcut**(2 * la + 1)
+##                         if num.sometrue(R):
+##                             assert num.dot(R, R) > 0.1
+##                         else:
+##                             f[:] = 0.0
+##                             if La == Lb:
+##                                 f[0] = I_l[la] / self.rcut**(2 * la + 1)
 
                         self.v_LL[La, Lb] = f[0] - f2[0]
                         self.dvdr_LLc[La, Lb] = f[1:] - f2[1:]

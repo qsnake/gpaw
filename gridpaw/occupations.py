@@ -107,6 +107,11 @@ class FermiDirac(Dummy):
         self.kT = kT
         
     def calculate(self, kpts):
+        if 0:
+            print kpts[0].eps_n
+            kpts[0].f_n[:] = (1.2,1.2,1.2,1.2,1.2, 2, 0)
+            return -11, 0, 0 # XXXXXXX
+    
         if self.epsF is None:
             # Fermi level not set! Make a good guess:
             self.guess_fermi_level(kpts)

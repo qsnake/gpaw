@@ -22,7 +22,7 @@ class PairPotential:
         # Collect the pair potential cutoffs in a list:
         self.cutoff_a = []
         for Z, setup in setups.items():
-            self.cutoff_a.append((Z, setup.rcut2))
+            self.cutoff_a.append((Z, setup.rcutsoft))
         
         # Make pair interactions:
         items = setups.items()
@@ -83,7 +83,7 @@ class PairPotential:
 
         print >> out, 'pair potential:'
         print >> out, '  cutoffs:'
-            print >> out, '   ', setup.symbol, setup.rcut2 * a0
+            print >> out, '   ', setup.symbol, setup.rcutsoft * a0
         npairs = self.neighborlist.number_of_pairs() - len(pos_ac)
         if npairs == 0:
             print >> out, '  There are no pair interactions.'

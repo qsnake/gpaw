@@ -29,9 +29,6 @@ class Nucleus:
      ``a``         Index number for this nucleus.
      ``typecode``  Data type of wave functions (``Float`` or ``Complex``).
      ``neighbors`` List of overlapping neighbor nuclei.
-     ``onohirose`` Number of grid points used for Ono-Hirose interpolation
-                   - currently 1, 2, 3, and 5 is implemented (1 means no
-                   interpolation).
      ============= ========================================================
 
     Localized functions:
@@ -56,12 +53,11 @@ class Nucleus:
 
     Parallel stuff: ``comm``, ``rank`` and ``in_this_domain``
     """
-    def __init__(self, setup, a, typecode, onohirose=1):
+    def __init__(self, setup, a, typecode):
         """Construct a ``Nucleus`` object."""
         self.setup = setup
         self.a = a
         self.typecode = typecode
-        self.onohirose = onohirose
         lmax = self.setup.lmax
         self.Q_L = num.zeros((lmax + 1)**2, num.Float)
         self.neighbors = []
@@ -136,8 +132,7 @@ class Nucleus:
 
         # Projectors:
         pt_j = self.setup.get_projectors()
-        pt_i = create(pt_j, gd, spos_c, typecode=self.typecode,
-                      lfbc=lfbc, onohirose=self.onohirose)
+        pt_i = create(pt_j, gd, spos_c, typecode=self.typecode, lfbc=lfbc)
 
         if self.typecode == num.Complex and pt_i is not None:
             pt_i.set_phase_factors(k_ki)
@@ -153,20 +148,17 @@ class Nucleus:
         
         # Localized potential:
         vbar = self.setup.get_localized_potential()
-        vbar = create([vbar], finegd, spos_c, lfbc=lfbc,
-                      onohirose=self.onohirose)
+        vbar = create([vbar], finegd, spos_c, lfbc=lfbc)
 
         self.vbar = vbar
 
         # Shape functions:
         ghat_l = self.setup.get_shape_functions()
-        ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc,
-                        onohirose=self.onohirose)
+        ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc)
             
         # Potential:
         vhat_l = self.setup.get_potential()
-        vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc,
-                        onohirose=self.onohirose)
+        vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc)
 
         # ghat and vhat have the same size:
         assert (ghat_L is None) == (vhat_L is None)
@@ -183,9 +175,7 @@ class Nucleus:
         
         # Smooth core density:
         nct = self.setup.get_smooth_core_density()
-        self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc,
-                          onohirose=self.onohirose)
-
+        self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
         if self.comm.size > 1:
             # Make MPI-group communicators:
             flags = num.array([1 * (pt_i is not None) +
@@ -205,7 +195,7 @@ class Nucleus:
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
         phit_j = self.setup.get_atomic_orbitals()
         self.phit_i = create_localized_functions(
-            phit_j, gd, self.spos_c, onohirose=1, typecode=self.typecode,
+            phit_j, gd, self.spos_c, typecode=self.typecode,
             cut=True, forces=False, lfbc=lfbc)
         if self.typecode == num.Complex:
             self.phit_i.set_phase_factors(k_ki)
@@ -231,15 +221,19 @@ class Nucleus:
             return
 
         ns = len(nt_sG)
+        ni = self.get_number_of_partial_waves()
         niao = self.get_number_of_atomic_orbitals()
         f_si = num.zeros((ns, niao), num.Float)
         
+        if self.in_this_domain:
+            D_sii = num.zeros((ns, ni, ni), num.Float)
+
         i = 0
         for l, f in zip(self.setup.l_j, self.setup.f_j):
+            degeneracy = 2 * l + 1
             f = int(f)
             if f == 0:
-                continue
-            degeneracy = 2 * l + 1
+                break
             if hund:
                 # Use Hunds rules:
                 f_si[0, i:i + min(f, degeneracy)] = 1.0      # spin up
@@ -259,29 +253,21 @@ class Nucleus:
                     f_si[0, i:i + degeneracy] = 0.5 * (f + mag) / degeneracy
                     f_si[1, i:i + degeneracy] = 0.5 * (f - mag) / degeneracy
                     magmom -= mag
+                
+            if self.in_this_domain:
+                for m in range(degeneracy):
+                    D_sii[:, i + m, i + m] = f_si[:, i + m]
+
             i += degeneracy
         assert i == niao
         assert magmom == 0.0
 
+        if self.in_this_domain:
+            for s in range(ns):
+                self.D_sp[s] = pack(D_sii[s])
+
         for s in range(ns):
             self.phit_i.add_density(nt_sG[s], f_si[s])
-
-        if self.in_this_domain:
-            ni = self.get_number_of_partial_waves()
-            p = 0
-            i0 = 0
-            i = 0
-            for f, l in zip(self.setup.f_j, self.setup.l_j):
-                deg = 2 * l + 1
-                for m in range(deg):
-                    if f > 0.0: # XXX move out of loop?
-                        self.D_sp[:, p] = f_si[:, i]
-                        i += 1
-                    p += ni - i0
-                    i0 += 1
-            assert i == niao
-            assert i0 == ni
-            assert p == ni * (ni + 1) / 2
 
     def add_smooth_core_density(self, nct_G):
         if self.nct is not None:
