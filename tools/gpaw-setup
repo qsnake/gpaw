@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+# Emacs: treat this as -*- python -*-
+
+from optparse import OptionParser
+
+from gridpaw.atom.generator import Generator, parameters
+from gridpaw.atom.all_electron import AllElectron
+
+
+parser = OptionParser(usage='%prog [options] [elements]',
+                      version='%prog 0.1')
+parser.add_option('-f', '--xcfunctional', type='string', default='LDA',
+                  help='Exchange-Correlation functional (default value LDA)',
+                  metavar='<XC>')
+parser.add_option('-n', '--non-scalar-relativistic', action='store_true',
+                  default=False,
+                  help='Do *not* do a scalar-relativistic calculation.')
+parser.add_option('-x', '--exact-exchange', action='store_true',
+                  default=False,
+                  help='Calculate exact exchange integrals.')
+parser.add_option('-r', '--radius', type='string', default=None,
+                  help='Cutoff radii',
+                  metavar='<rcut>')
+parser.add_option('-v', '--potential', type='float', default=None,
+                  help='Effective potential at r=0',
+                  metavar='<v0>')
+parser.add_option('-q', '--quick', action='store_true',
+                  help='Skip generation logarithmic derivatives.')
+parser.add_option('-a', '--all-electron-only', action='store_true',
+                  help='Skip generation of PAW setup.')
+parser.add_option('-e', '--extra', type='string', default=None,
+                  help='Extra projectors.',
+                  metavar='0.0;0.0,1.0;0.0')
+parser.add_option('-c', '--core', type='string', default=None,
+                  help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
+                  metavar='<core>')
+
+options, args = parser.parse_args()
+
+if args:
+    atoms = args
+else:
+    atoms = parameters.keys()
+
+for symbol in atoms:
+    scalarrel = not options.non_scalar_relativistic
+
+    if options.all_electron_only:
+        a = AllElectron(symbol, options.xcfunctional, scalarrel)
+        a.run()
+        continue
+    
+    g = Generator(symbol, options.xcfunctional, scalarrel)
+
+    try:
+        params = parameters[symbol]
+    except KeyError:
+        core = ''
+        rcut = 1.0
+        extra = None
+    else:
+        if len(params) == 2:
+            core, rcut = parameters[symbol]
+            extra = None
+        else:
+            core, rcut, extra = parameters[symbol]
+    v0 = options.potential
+    if options.core is not None:
+        core = options.core
+    if options.radius is not None:
+        rcut = [float(x) for x in options.radius.split(',')]
+    if options.extra is not None:
+        extra = {}
+        if options.extra != '':
+            for l, x in enumerate(options.extra.split(';')):
+                extra[l] = [float(y) for y in x.split(',')]
+    g.run(core, rcut, extra, logderiv=not options.quick, vt0=v0,
+          exx=options.exact_exchange)
+
