@@ -18,7 +18,7 @@ p = [create_localized_functions([s], gd, (0.5, 0.5, 0.25 + 0.25 * i),
                                 lfbc=lfbc)
      for i in [0, 1, 2]]
 lfbc.broadcast()
-c = num.identity(1, num.Float)
+c = num.ones(1, num.Float)
 a = gd.new_array()
 for q in p:
     q.add(a, c)

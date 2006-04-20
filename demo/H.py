@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
 from gridpaw import Calculator
 
