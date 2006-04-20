@@ -27,4 +27,4 @@ H4.SetCalculator(calc4)
 e4 = H4.GetPotentialEnergy()
 
 print e1 - e4 / 4
-assert abs(e1 - e4 / 4) < 6e-7
+assert abs(e1 - e4 / 4) < 5e-6

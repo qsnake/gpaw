@@ -28,6 +28,10 @@ parser.add_option('-f', '--run-failed-tests-only',
                   action='store_true',
                   help='Run failed tests only.')
 
+parser.add_option('-d', '--debug',
+                  action='store_true', default=False,
+                  help='Run tests in debug mode.')
+
 parser.add_option('-p', '--parallel',
                   action='store_true',
                   help='Add parallel tests.')
@@ -38,6 +42,9 @@ path = ''
 
 if len(tests) == 0:
     tests = glob.glob(path + '*.py')
+
+if options.debug:
+    sys.argv.append('--gridpaw-debug')
 
 exclude = ['__init__.py', 'test.py', 'grr.py', 'C-force.py']
 if options.exclude is not None:
