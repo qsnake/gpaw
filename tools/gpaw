@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+# Emacs: treat this as -*- python -*-
+
+import sys
+from optparse import OptionParser
+
+
+parser = OptionParser(usage='%prog [options] molecule',
+                      version='%prog 0.1')
+parser.add_option('-p', '--spin-paired', action='store_true',
+                  default=False,
+                  help='Do a spin-paired calculation.')
+parser.add_option('-e', '--eggbox-test', action='store_true',
+                  default=False,
+                  help='Do eggbox test.')
+parser.add_option('-a', '--atomize', action='store_true',
+                  default=False,
+                  help='Calculate atomization energy.')
+parser.add_option('-c', '--cell', type='float', default=None,
+                  help='Size of unit cell (Angstrom).',
+                  metavar='<size>')
+parser.add_option('-g', '--grid-spacing', type='float', default=None,
+                  help='Grid spacing (Angstrom).',
+                  metavar='<size>')
+parser.add_option('-n', '--points', type='int', default=20,
+                  help='Number of points used for eggbox-test.',
+                  metavar='<integer>')
+parser.add_option('-x', '--extra-parameters', type='string', default='{}',
+                  help='Extra parameters.',
+                  metavar='''"{'xc': 'PBE', ...}"''')
+
+opt, args = parser.parse_args()
+
+if len(args) != 1:
+    print 'There must be one (and only one), molecule argument!'
+    sys.exit()
+
+from ASE.Units import Convert
+
+from gridpaw.setuptests.singleatom import SingleAtom
+from gridpaw.setuptests.molecule import Molecule
+
+formula = args[0]
+
+singleatom = True
+for c in formula[1:]:
+    if not c.islower():
+        singleatom = False
+        break
+
+parameters = eval(opt.extra_parameters)
+
+if singleatom:
+    if opt.eggbox_test:
+        parameters['out'] = 'eggbox-test.txt'
+
+    atom = SingleAtom(formula, a=opt.cell, spinpaired=opt.spin_paired,
+                      eggboxtest=opt.eggbox_test, h=opt.grid_spacing,
+                      parameters=parameters)
+
+    if opt.eggbox_test:
+        x, e, dedx = atom.eggboxtest(opt.points)
+        de = max(abs(e - e[0]))
+        f = max(abs(dedx))
+        print 'Maximum energy change: %.3f meV' % (1000 * de)
+        print 'Maximum force: %.3f meV/Ang' % (1000 * f)
+        out = open('eggbox-test.dat', 'w')
+        for a, b, c in zip(x, e, dedx):
+            print >> out, a, b - e[0], c
+        out.close()
+    else:
+        atom.energy()
+else:
+    if opt.atomize:
+        parameters['out'] = open('atomize.txt', 'w')
+
+    molecule = Molecule(formula, a=opt.cell, h=opt.grid_spacing,
+                        parameters=parameters)
+    if opt.atomize:
+        ea = molecule.atomize(verbose=True)
+        eakcalmol = Convert(ea, 'eV', 'kcal/mol/Nav')
+        print 'Atomization energy: %.3f eV (%.2f kcal/mol)' % (ea, eakcalmol)
+    else:
+        molecule.energy()
