@@ -15,7 +15,7 @@ gd = GridDescriptor(domain, (n, n, n))
 
 lfbc = LocFuncBroadcaster(mpi.world)
 p = [create_localized_functions([s], gd, (0.5, 0.5, 0.25 + 0.25 * i),
-                                onohirose=1, lfbc=lfbc)
+                                lfbc=lfbc)
      for i in [0, 1, 2]]
 lfbc.broadcast()
 c = num.identity(1, num.Float)
@@ -24,7 +24,7 @@ for q in p:
     q.add(a, c)
 x = num.sum(a.flat)
 
-p = [create_localized_functions([s], gd, (0.75, 0.25, 0.25 * i), onohirose=1)
+p = [create_localized_functions([s], gd, (0.75, 0.25, 0.25 * i))
      for i in [0, 1, 2]]
 a[:] = 0.0
 for q in p:
