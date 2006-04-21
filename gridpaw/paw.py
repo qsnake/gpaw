@@ -276,7 +276,7 @@ class Paw:
         By default both wave functions and densities are initialized
         (from atomic orbitals) - this can be turned off with the
         ``density`` and ``wave_functions`` keywords.  The density will
-        be constructed with the specified magnetic mioments and
+        be constructed with the specified magnetic moments and
         obeying Hund's rules if ``hund`` is true."""
         
         output.plot_atoms(self)

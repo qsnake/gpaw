@@ -97,7 +97,7 @@ class ZeroKelvin(Dummy):
         # copy back information
         if self.comm.size>1: 
             kpts[0].f_n = f_n[self.comm.rank]
-            
+
         return -1, ma - mb, 0.0
 
 
@@ -109,7 +109,8 @@ class FermiDirac(Dummy):
     def calculate(self, kpts):
         if 0:
             print kpts[0].eps_n
-            kpts[0].f_n[:] = (1.2,1.2,1.2,1.2,1.2, 2, 0)
+            kpts[0].f_n[:] = (1, 2./3, 2./3, 2./3, 0)
+            kpts[1].f_n[:] = (1, 0, 0, 0, 0)
             return -11, 0, 0 # XXXXXXX
     
         if self.epsF is None:

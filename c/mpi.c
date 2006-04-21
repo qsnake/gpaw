@@ -212,7 +212,6 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
   return 0;
 }
 
-
 // XXX use PyType_GenericNew !!!!!!!!!
 static PyObject *
 Noddy_new(PyTypeObject *type, PyObject *args, PyObject *kwds)

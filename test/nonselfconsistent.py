@@ -19,8 +19,11 @@ calc.Set(xc='revPBE')
 e2 = atoms.GetPotentialEnergy()
 e2ref = calc.GetReferenceEnergy()
 de21 = calc.GetXCDifference('PBE')
-equal(e1ref + e1 + de12, e2ref + e2, 12e-5)
-equal(de21, -de12, 7e-5)
+print e1ref + e1 + de12, e2ref + e2
+print e1ref + e1, e2ref + e2 + de21
+print de12, de21
+equal(e1ref + e1 + de12, e2ref + e2, 18e-5)
+equal(e1ref + e1, e2ref + e2 + de21, 18e-5)
 
 calc.Write('revPBE.nc')
 

@@ -35,8 +35,12 @@ parser.add_option('-e', '--extra', type='string', default=None,
 parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
+parser.add_option('-g', '--gamma', type='float', default=4.0,
+                  help='Gamma value used for projector functions.')
+parser.add_option('-s', '--scale-radius', type='float', default=2.0,
+                  help='Value used to scale radius.')
 
-options, args = parser.parse_args()
+opt, args = parser.parse_args()
 
 if args:
     atoms = args
@@ -44,14 +48,14 @@ else:
     atoms = parameters.keys()
 
 for symbol in atoms:
-    scalarrel = not options.non_scalar_relativistic
+    scalarrel = not opt.non_scalar_relativistic
 
-    if options.all_electron_only:
-        a = AllElectron(symbol, options.xcfunctional, scalarrel)
+    if opt.all_electron_only:
+        a = AllElectron(symbol, opt.xcfunctional, scalarrel)
         a.run()
         continue
     
-    g = Generator(symbol, options.xcfunctional, scalarrel)
+    g = Generator(symbol, opt.xcfunctional, scalarrel)
 
     try:
         params = parameters[symbol]
@@ -65,16 +69,17 @@ for symbol in atoms:
             extra = None
         else:
             core, rcut, extra = parameters[symbol]
-    v0 = options.potential
-    if options.core is not None:
-        core = options.core
-    if options.radius is not None:
-        rcut = [float(x) for x in options.radius.split(',')]
-    if options.extra is not None:
+    v0 = opt.potential
+    if opt.core is not None:
+        core = opt.core
+    if opt.radius is not None:
+        rcut = [float(x) for x in opt.radius.split(',')]
+    if opt.extra is not None:
         extra = {}
-        if options.extra != '':
-            for l, x in enumerate(options.extra.split(';')):
+        if opt.extra != '':
+            for l, x in enumerate(opt.extra.split(';')):
                 extra[l] = [float(y) for y in x.split(',')]
-    g.run(core, rcut, extra, logderiv=not options.quick, vt0=v0,
-          exx=options.exact_exchange)
+    g.run(core, rcut, extra, opt.gamma, opt.scale_radius,
+          logderiv=not opt.quick, vt0=v0,
+          exx=opt.exact_exchange)
 

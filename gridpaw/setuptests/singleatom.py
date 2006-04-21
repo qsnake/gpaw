@@ -25,7 +25,7 @@ class SingleAtom:
             
         if spinpaired:
             magmom = 0
-            width = 0.01  # eV
+            width = 0.01  # 1 meV
             hund = False
         else:
             width = 0
@@ -43,7 +43,7 @@ class SingleAtom:
                                 periodic=eggboxtest,
                                 cell=[a, a, a])
         
-        calc = Calculator(h=h, width=width, **parameters)
+        calc = Calculator(h=h, width=width, hund=hund, **parameters)
         self.atom.SetCalculator(calc)
         
     def energy(self):

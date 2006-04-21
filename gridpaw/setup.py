@@ -107,6 +107,7 @@ class Setup:
          nc_g, nct_g, vbar0, gamma,
          phi_jg, phit_jg, ptcoef_j,
          e_kin_jj, X_p, ExxC,
+         scale_radius,
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
@@ -125,8 +126,8 @@ class Setup:
         self.eps_j = eps_j
 
         rcut = max(rcut_j)
-        rcut2 = 2.0 * rcut
-        rcut3 = 2.0 * rcut
+        rcut2 = scale_radius * rcut
+        rcut3 = scale_radius * rcut
         gcut2 = int(rcut2 * ng / (rcut2 + beta))
         gcut3 = int(rcut3 * ng / (rcut3 + beta))
        

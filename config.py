@@ -196,6 +196,7 @@ def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
             #at the moment...
             mpicompiler = 'mpicc'   
             custom_interpreter = True            
+            mpi_define_macros.append(('PARALLEL', '1'))
         elif mpiflags.find('lam') != -1:
             #lam mpicc seems to be a little bit problematic for shared libs
             #so we try to construct here a proper library arguments

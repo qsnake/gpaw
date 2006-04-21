@@ -78,6 +78,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 self.e_kin_j1j2,
                 self.X_p,
                 self.ExxC,
+                self.scale_radius,
                 fingerprint,
                 filename)
     
@@ -119,6 +120,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.gamma = float(attrs['a'])
         elif name == 'projector_function':
             self.gamma = float(attrs['a'])
+            self.scale_radius = float(attrs.get('s', 2.0)) 
             self.data = []
         elif name in ['ae_core_density', 'pseudo_core_density',
                       'kinetic_energy_differences', 'exact_exchange_X_matrix']:

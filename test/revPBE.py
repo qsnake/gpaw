@@ -19,4 +19,4 @@ e2a = calc.GetReferenceEnergy()
 
 equal(e1a, -2.893, 27e-5)
 equal(e2a, -2.908, 40e-5)
-equal(e1, e2, 19e-5)
+equal(e1, e2, 29e-5)

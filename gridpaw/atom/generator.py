@@ -11,7 +11,7 @@ from ASE.ChemicalElements.name import names
 
 from gridpaw.atom.configurations import configurations
 from gridpaw.version import version
-from gridpaw.atom.all_electron import AllElectron, shoot
+from gridpaw.atom.all_electron2 import AllElectron, shoot
 from gridpaw.polynomium import a_i, c_l
 from gridpaw.utilities.lapack import diagonalize
 from gridpaw.exx import constructX
@@ -25,7 +25,7 @@ parameters = {
     'Li': ('[He]',    2.2),
     'Be': ('[He]',    1.5),
     'C' : ('[He]',    1.2),
-    'N' : ('[He]',    1.1),
+    'N' : ('[He]',    1.2),
     'O' : ('[He]',    1.2,            {0: [1.0], 1: [1.0], 2: [1.0]}),
     'F' : ('[He]',    1.2,            {0: [1.0], 1: [1.0], 2: [1.0]}),
     'Ne': ('[He]',    1.8),    
@@ -57,7 +57,8 @@ class Generator(AllElectron):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
 
-    def run(self, core, rcut, extra, logderiv=True, vt0=None, exx=False):
+    def run(self, core, rcut, extra, gamma, scale_radius,
+            logderiv=True, vt0=None, exx=False):
 
         self.core = core
         if type(rcut) is float:
@@ -246,7 +247,7 @@ class Generator(AllElectron):
         # Grid-index corresponding to rcut:
         gcut = int(rcut * N / (rcut + beta))
 
-        rcut2 = 2.0 * rcut
+        rcut2 = scale_radius * rcut
         gcut2 = int(rcut2 * N / (rcut2 + beta))
 
         # Outward integration of unbound states stops at 3 * rcut:
@@ -299,7 +300,7 @@ class Generator(AllElectron):
         # Calculate the shape function:
         x = r / rcut
         gaussian = num.zeros(N, num.Float)
-        self.gamma = 4.0
+        self.gamma = gamma
         gaussian[:gcut2] = num.exp(-self.gamma * x[:gcut2]**2)
         gt = 4 * (self.gamma / rcut**2)**1.5 / sqrt(pi) * gaussian
         norm = num.dot(gt, dv)
@@ -345,8 +346,9 @@ class Generator(AllElectron):
             a = vt[1:7:3]
             a = solve_linear_equations(num.transpose(A), a)
             self.vbar0 = a[1] * rcut**2 / self.gamma
+##            self.vbar0 = 0.0####################### XXXXXXXXX
             vbar = self.vbar0 * gaussian
-
+            
             vt += vbar
 
             self.dH_lnn = dH_lnn = []
@@ -510,7 +512,7 @@ class Generator(AllElectron):
             ExxC = None
             
         self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln,
-                      nc, nct, Ekincore, X_p, ExxC)
+                      nc, nct, Ekincore, X_p, ExxC, scale_radius)
 
     def diagonalize(self, h):
         ng = 300
@@ -584,7 +586,7 @@ class Generator(AllElectron):
 
 
     def write_xml(self, n_ln, f_ln, e_ln, u_ln, s_ln,
-                 nc, nct, Ekincore, X_p, ExxC):
+                 nc, nct, Ekincore, X_p, ExxC, scale_radius):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
@@ -715,7 +717,8 @@ class Generator(AllElectron):
                     print >> xml, '%16.12e' % x,
                 print >> xml, '\n  </%s>' % name
             print >> xml, ('  <projector_function state="%s" ' % id +
-                           'a="%.6e">\n    ' % self.gamma),
+                           'a="%.6e" s="%.6e">\n    ' % (self.gamma,
+                                                         scale_radius)),
             for x in ptcoef:
                 print >> xml, '%16.12e' % x,
             print >> xml, ('\n  </projector_function>')

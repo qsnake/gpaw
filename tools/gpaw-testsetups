@@ -42,7 +42,7 @@ from gridpaw.setuptests.molecule import Molecule
 parameters = eval(opt.extra_parameters)
 
 if len(symbols) == 0:
-    symbols = 'H He Li C N O Al Si'.split()
+    symbols = 'H He Li Be C N O F Al Si P Cl'.split()
 
 results = {}
 for symbol in symbols:
@@ -62,12 +62,17 @@ for n in range(n1, n2 + 4, 4):
                 results[symbol]['egg'].append((de, f))
         else:
             file = open(filename, 'w')
-            atom = SingleAtom(symbol, a=a, spinpaired=True, eggboxtest=True,
+            atom = SingleAtom(symbol, a=a, spinpaired=True,
+                              eggboxtest=True,
                               h=h, parameters=parameters)
-            x, e, dedx = atom.eggboxtest(opt.points)
-            de = max(abs(e - e[0]))
-            f = max(abs(dedx))
-            pickle.dump((de, f), file)
+            try:
+                x, e, dedx = atom.eggboxtest(opt.points)
+            except RuntimeError:
+                pass
+            else:
+                de = max(abs(e - e[0]))
+                f = max(abs(dedx))
+                pickle.dump((de, f), file)
 
 if opt.summary:
     print '\nEggbox-test (maximum energy variation)\nh:',
@@ -104,13 +109,17 @@ for n in range(n1, n2 + 4, 4):
                 results[symbol]['spin'].append((e0, es))
         else:
             file = open(filename, 'w')
-            atom = SingleAtom(symbol, a=a, spinpaired=True,
-                              h=h, parameters=parameters)
-            e0 = atom.energy()
-            atom = SingleAtom(symbol, a=a, spinpaired=False,
-                              h=h, parameters=parameters)
-            es = atom.energy()
-            pickle.dump((e0, es), file)
+            try:
+                atom = SingleAtom(symbol, a=a, spinpaired=True,
+                                  h=h, parameters=parameters)
+                e0 = atom.energy()
+                atom = SingleAtom(symbol, a=a, spinpaired=False,
+                                  h=h, parameters=parameters)
+                es = atom.energy()
+            except RuntimeError:
+                pass
+            else:
+                pickle.dump((e0, es), file)
 
 if opt.summary:
     print '\n\nEnergy of spinpaired spherical atom\nh:',
