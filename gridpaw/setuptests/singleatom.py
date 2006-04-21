@@ -46,7 +46,7 @@ class SingleAtom:
         return self.atom.GetPotentialEnergy()
 
     def eggboxtest(self, N=30):
-        x = num.zeros(N + 1, num.Float)
+        X = num.zeros(N + 1, num.Float)
         e = num.zeros(N + 1, num.Float)
         dedx = num.zeros(N + 1, num.Float)
         self.energy()
@@ -58,8 +58,8 @@ class SingleAtom:
             forces = self.atom.GetCartesianForces()
             # The two first points are only for warm up.
             if g >= 0:
-                x[g] = dx
+                X[g] = x
                 e[g] = energy
                 dedx[g] = -forces[0, 0]
             
-        return x, e, dedx
+        return X, e, dedx
