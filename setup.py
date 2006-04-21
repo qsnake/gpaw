@@ -22,7 +22,7 @@ execfile('gridpaw/version.py')
 long_description = """\
 A grid-based real-space Projector Augmented Wave (PAW) method Density
 Functional Theory (DFT) code featuring: Flexible boundary conditions,
-k-points and gradient corrected exchange-corellation functionals."""
+k-points and gradient corrected exchange-correlation functionals."""
 
 msg = [' ']
 
