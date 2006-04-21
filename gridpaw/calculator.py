@@ -53,7 +53,7 @@ class Calculator:
                   'fixdensity': False,
                   'idiotproof': True,
                   'tolerance': 1.0e-9,
-                  'maxiter': 100,
+                  'maxiter': 100000000,
                   'out': '-',
                   'hosts': None,
                   'parsize': None,

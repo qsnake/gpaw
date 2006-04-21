@@ -377,7 +377,7 @@ class Paw:
                 
             out.flush()
             self.niter += 1
-            if self.niter > 1240:
+            if self.niter > 120:
                 raise RuntimeError('Did not converge!')
 
         output.print_converged(self)
