@@ -1,5 +1,6 @@
-import Numeric as num
+import sys
 
+import Numeric as num
 from ASE.Units import units
 from ASE import Atom, ListOfAtoms
 
@@ -18,6 +19,9 @@ class SingleAtom:
                  eggboxtest=False, parameters={}):
         if a is None:
             a = 7.0  # Angstrom
+
+        if eggboxtest:
+            spinpaired = True
             
         if spinpaired:
             magmom = 0
@@ -45,13 +49,16 @@ class SingleAtom:
     def energy(self):
         return self.atom.GetPotentialEnergy()
 
-    def eggboxtest(self, N=30):
+    def eggboxtest(self, N=30, verbose=False):
         X = num.zeros(N + 1, num.Float)
         e = num.zeros(N + 1, num.Float)
         dedx = num.zeros(N + 1, num.Float)
+        self.atom[0].SetCartesianPosition([0, 0, 0])
         self.energy()
         h = self.atom.GetCalculator().GetGridSpacings()[0]
         for g in range(-2, N + 1):
+            if verbose:
+                sys.stderr.write('.')
             x = g * h / 2 / N
             self.atom[0].SetCartesianPosition([x, 0, 0])
             energy = self.energy()
@@ -61,5 +68,7 @@ class SingleAtom:
                 X[g] = x
                 e[g] = energy
                 dedx[g] = -forces[0, 0]
+        if verbose:
+            sys.stderr.write('\n')
             
         return X, e, dedx

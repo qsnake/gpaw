@@ -14,10 +14,10 @@ parser.add_option('-p', '--spin-paired', action='store_true',
 parser.add_option('-e', '--eggbox-test', action='store_true',
                   default=False,
                   help='Do eggbox test.')
-parser.add_option('-a', '--atomize', action='store_true',
+parser.add_option('-z', '--atomize', action='store_true',
                   default=False,
                   help='Calculate atomization energy.')
-parser.add_option('-c', '--cell', type='float', default=None,
+parser.add_option('-a', '--cell', type='float', default=None,
                   help='Size of unit cell (Angstrom).',
                   metavar='<size>')
 parser.add_option('-g', '--grid-spacing', type='float', default=None,
@@ -60,7 +60,7 @@ if singleatom:
                       parameters=parameters)
 
     if opt.eggbox_test:
-        x, e, dedx = atom.eggboxtest(opt.points)
+        x, e, dedx = atom.eggboxtest(opt.points, verbose=True)
         de = max(abs(e - e[0]))
         f = max(abs(dedx))
         print 'Maximum energy change: %.3f meV' % (1000 * de)

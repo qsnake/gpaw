@@ -1,0 +1,131 @@
+#!/usr/bin/env python
+
+# Emacs: treat this as -*- python -*-
+
+import os
+import sys
+import pickle
+from optparse import OptionParser
+
+
+parser = OptionParser(usage='%prog options',
+                      version='%prog 0.1')
+parser.add_option('-s', '--summary', action='store_true',
+                  default=False,
+                  help='Do a summary.')
+parser.add_option('-a', '--cell', type='float', default=7.0,
+                  help='Size of unit cell (Angstrom).',
+                  metavar='<size>')
+parser.add_option('-g', '--min-grid-spacing', type='float', default=0.15,
+                  help='Minimum grid spacing (Angstrom).',
+                  metavar='<length>')
+parser.add_option('-G', '--max_grid-spacing', type='float', default=0.27,
+                  help='Maximum grid spacing (Angstrom).',
+                  metavar='<length>')
+parser.add_option('-n', '--points', type='int', default=20,
+                  help='Number of points used for eggbox-test.',
+                  metavar='<integer>')
+parser.add_option('-x', '--extra-parameters', type='string', default='{}',
+                  help='Extra parameters.',
+                  metavar='''"{'xc': 'PBE', ...}"''')
+
+opt, symbols = parser.parse_args()
+
+from ASE.Units import Convert
+
+from gridpaw.setuptests.singleatom import SingleAtom
+from gridpaw.setuptests.molecule import Molecule
+
+parameters = eval(opt.extra_parameters)
+
+if len(symbols) == 0:
+    symbols = 'H He Li C N O Al Si'.split()
+
+results = {}
+for symbol in symbols:
+    results[symbol] = {'egg': [], 'spin': []}
+
+a = 4.0
+n1 = int(a / opt.max_grid_spacing / 4 + 0.5) * 4
+n2 = int(a / opt.min_grid_spacing / 4 + 0.5) * 4
+
+for n in range(n1, n2 + 4, 4):
+    h = a / n
+    for symbol in symbols:
+        filename = '%s.%d.egg' % (symbol, n)
+        if os.path.isfile(filename):
+            if opt.summary:
+                de, f = pickle.load(open(filename))
+                results[symbol]['egg'].append((de, f))
+        else:
+            file = open(filename, 'w')
+            atom = SingleAtom(symbol, a=a, spinpaired=True, eggboxtest=True,
+                              h=h, parameters=parameters)
+            x, e, dedx = atom.eggboxtest(opt.points)
+            de = max(abs(e - e[0]))
+            f = max(abs(dedx))
+            pickle.dump((de, f), file)
+
+if opt.summary:
+    print '\nEggbox-test (maximum energy variation)\nh:',
+    for n in range(n1, n2 + 4, 4):
+        h = a / n
+        print '%.6f' % h,
+    for symbol in symbols:
+        result = results[symbol]
+        print '\n%2s' % symbol,
+        for de, f in result['egg']:
+            print '%.6f' % de,
+
+    print '\n\nEggbox-tex (maximum force)\nh:',
+    for n in range(n1, n2 + 4, 4):
+        h = a / n
+        print '%.6f' % h,
+    for symbol in symbols:
+        result = results[symbol]
+        print '\n%2s' % symbol,
+        for de, f in result['egg']:
+            print '%.6f' % f,
+
+a = opt.cell
+n1 = int(a / opt.max_grid_spacing / 4 + 0.5) * 4
+n2 = int(a / opt.min_grid_spacing / 4 + 0.5) * 4
+
+for n in range(n1, n2 + 4, 4):
+    h = a / n
+    for symbol in symbols:
+        filename = '%s.%d.spin' % (symbol, n)
+        if os.path.isfile(filename):
+            if opt.summary:
+                e0, es = pickle.load(open(filename))
+                results[symbol]['spin'].append((e0, es))
+        else:
+            file = open(filename, 'w')
+            atom = SingleAtom(symbol, a=a, spinpaired=True,
+                              h=h, parameters=parameters)
+            e0 = atom.energy()
+            atom = SingleAtom(symbol, a=a, spinpaired=False,
+                              h=h, parameters=parameters)
+            es = atom.energy()
+            pickle.dump((e0, es), file)
+
+if opt.summary:
+    print '\n\nEnergy of spinpaired spherical atom\nh:',
+    for n in range(n1, n2 + 4, 4):
+        h = a / n
+        print '%6.4f' % h,
+    for symbol in symbols:
+        result = results[symbol]
+        print '\n%2s' % symbol,
+        for e0, es in result['spin']:
+            print '%6.3f' % e0,
+
+    print '\n\nSpinpolarization energy gain\nh:',
+    for n in range(n1, n2 + 4, 4):
+        h = a / n
+        print '%6.4f' % h,
+    for symbol in symbols:
+        result = results[symbol]
+        print '\n%2s' % symbol,
+        for e0, es in result['spin']:
+            print '%6.3f' % (e0 - es),
