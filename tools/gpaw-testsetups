@@ -10,6 +10,9 @@ from optparse import OptionParser
 
 parser = OptionParser(usage='%prog options',
                       version='%prog 0.1')
+parser.add_option('-e', '--eggbox-test', action='store_true',
+                  default=False,
+                  help='Do a summary.')
 parser.add_option('-s', '--summary', action='store_true',
                   default=False,
                   help='Do a summary.')
