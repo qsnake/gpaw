@@ -11,7 +11,7 @@ from ASE.ChemicalElements.name import names
 
 from gridpaw.atom.configurations import configurations
 from gridpaw.version import version
-from gridpaw.atom.all_electron2 import AllElectron, shoot
+from gridpaw.atom.all_electron import AllElectron, shoot
 from gridpaw.polynomium import a_i, c_l
 from gridpaw.utilities.lapack import diagonalize
 from gridpaw.exx import constructX
