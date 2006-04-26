@@ -77,11 +77,14 @@ class Timer:
         if len(self.timers) == 0:
             return
         print >> out, 'Timing:'
-        tot = time.time() - self.t0
+        t0 = time.time()
+        tot = t0 - self.t0
         n = max([len(name) for name in self.timers]) + 1
         names_and_times = self.timers.items()
         names_and_times.sort()
         for name, t in names_and_times:
+            if t < 0.0:
+                t += t0
             r = t / tot
             p = 100 * r
             i = int(50 * r + 0.5)

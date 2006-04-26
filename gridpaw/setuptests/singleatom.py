@@ -25,7 +25,7 @@ class SingleAtom:
             
         if spinpaired:
             magmom = 0
-            width = 0.01  # 1 meV
+            width = 0.1  # 0.1 eV
             hund = False
         else:
             width = 0

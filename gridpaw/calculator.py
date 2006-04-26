@@ -61,7 +61,7 @@ class Calculator:
                   'order': 5,
                   'convergeall' : False,
                   }
-    
+
     def __init__(self, **kwargs):
         """ASE-calculator interface.
 
@@ -88,7 +88,7 @@ class Calculator:
         **k**-points,"""
 
         self.t0 = time.time()
-
+    
         self.paw = None
 
         # Set default parameters and adjust with user parameters:
