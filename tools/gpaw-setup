@@ -35,7 +35,7 @@ parser.add_option('-e', '--extra', type='string', default=None,
 parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
-parser.add_option('-g', '--gamma', type='float', default=4.0,
+parser.add_option('-g', '--gamma', type='float', default=5.0,
                   help='Gamma value used for projector functions.')
 parser.add_option('-s', '--scale-radius', type='float', default=2.0,
                   help='Value used to scale radius.')

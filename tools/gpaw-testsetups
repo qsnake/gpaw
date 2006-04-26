@@ -44,6 +44,9 @@ parameters = eval(opt.extra_parameters)
 if len(symbols) == 0:
     symbols = 'H He Li Be C N O F Al Si P Cl'.split()
 
+nan = float('nan')
+inf = float('inf')
+
 results = {}
 for symbol in symbols:
     results[symbol] = {'egg': [], 'spin': []}
@@ -56,11 +59,15 @@ for n in range(n1, n2 + 4, 4):
     h = a / n
     for symbol in symbols:
         filename = '%s.%d.egg' % (symbol, n)
-        if os.path.isfile(filename):
-            if opt.summary:
+        if opt.summary:
+            try:
                 de, f = pickle.load(open(filename))
-                results[symbol]['egg'].append((de, f))
-        else:
+            except EOFError:
+                de, f = inf, inf
+            except IOError:
+                de, f = nan, nan
+            results[symbol]['egg'].append((de, f))
+        elif not os.path.isfile(filename):
             file = open(filename, 'w')
             atom = SingleAtom(symbol, a=a, spinpaired=True,
                               eggboxtest=True,
@@ -70,7 +77,7 @@ for n in range(n1, n2 + 4, 4):
             except RuntimeError:
                 pass
             else:
-                de = max(abs(e - e[0]))
+                de = max(e) - min(e)
                 f = max(abs(dedx))
                 pickle.dump((de, f), file)
 
@@ -81,7 +88,7 @@ if opt.summary:
         print '%.6f' % h,
     for symbol in symbols:
         result = results[symbol]
-        print '\n%2s' % symbol,
+        print '\n%-2s' % symbol,
         for de, f in result['egg']:
             print '%.6f' % de,
 
@@ -91,7 +98,7 @@ if opt.summary:
         print '%.6f' % h,
     for symbol in symbols:
         result = results[symbol]
-        print '\n%2s' % symbol,
+        print '\n%-2s' % symbol,
         for de, f in result['egg']:
             print '%.6f' % f,
 
@@ -103,11 +110,15 @@ for n in range(n1, n2 + 4, 4):
     h = a / n
     for symbol in symbols:
         filename = '%s.%d.spin' % (symbol, n)
-        if os.path.isfile(filename):
-            if opt.summary:
+        if opt.summary:
+            try:
                 e0, es = pickle.load(open(filename))
-                results[symbol]['spin'].append((e0, es))
-        else:
+            except EOFError:
+                e0, es = inf, inf
+            except IOError:
+                e0, es = nan, nan
+            results[symbol]['spin'].append((e0, es))
+        elif not os.path.isfile(filename):
             file = open(filename, 'w')
             try:
                 atom = SingleAtom(symbol, a=a, spinpaired=True,
@@ -128,7 +139,7 @@ if opt.summary:
         print '%6.4f' % h,
     for symbol in symbols:
         result = results[symbol]
-        print '\n%2s' % symbol,
+        print '\n%-2s' % symbol,
         for e0, es in result['spin']:
             print '%6.3f' % e0,
 
@@ -136,8 +147,9 @@ if opt.summary:
     for n in range(n1, n2 + 4, 4):
         h = a / n
         print '%6.4f' % h,
+    print '\n', '-' * (3 + (n2 - n1) * 7)
     for symbol in symbols:
         result = results[symbol]
-        print '\n%2s' % symbol,
+        print '\n%-2s' % symbol,
         for e0, es in result['spin']:
             print '%6.3f' % (e0 - es),
