@@ -180,7 +180,7 @@ if 'atomize' in tests:
         e = em[formula] = []
         for n in range(24, 52, 4):
             h = a / n
-            filename = '%s-%.3f.atomize' % (formula, h)
+            filename = '%s-8.0-%.3f.atomize' % (formula, h)
             if opt.summary:
                 try:
                     e0 = pickle.load(open(filename))
@@ -207,7 +207,7 @@ if 'atomize' in tests:
         e = ea[symbol] = []
         for n in range(24, 52, 4):
             h = a / n
-            filename = '%s-%.3f.atomize' % (symbol, h)
+            filename = '%s-8.0-%.3f.atomize' % (symbol, h)
             if opt.summary:
                 try:
                     e0 = pickle.load(open(filename))
@@ -246,3 +246,164 @@ if 'atomize' in tests:
                 else:
                     print '%6.3f' % (eval(s) - x * atomization[formula][1]),
 
+    h = 0.2
+    em = {}
+    for formula in molecules:
+        e = em[formula] = []
+        for n in range(40, 60, 4):
+            a = h * n
+            filename = '%s-%.1f-0.200.atomize' % (formula, a)
+            if opt.summary:
+                try:
+                    e0 = pickle.load(open(filename))
+                except EOFError:
+                    e0 = '?'
+                except IOError:
+                    e0 = 'm'
+                e.append(e0)
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    e0 = Molecule(formula, a=a, h=h,
+                                  parameters=parameters).energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump(e0, file)
+    atoms = {}
+    for molecule in molecules.values():
+        for atom in molecule:
+            atoms[atom.GetChemicalSymbol()] = 1
+    ea = {}
+    for symbol in atoms:
+        e = ea[symbol] = []
+        for n in range(40, 60, 4):
+            a = h * n
+            filename = '%s-%.1f-%.3f.atomize' % (symbol, a, h)
+            if opt.summary:
+                try:
+                    e0 = pickle.load(open(filename))
+                except EOFError:
+                    e0 = '?'
+                except IOError:
+                    e0 = 'm'
+                e.append(e0)
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    e0 = SingleAtom(symbol, a=a, spinpaired=False,
+                                    h=h, parameters=parameters).energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump(e0, file)
+    
+    if opt.summary:
+        print '\n\nAtomization energies:\nh:  ',
+        for n in range(40, 60, 4):
+            a = h * n
+            print '%6.3f' % a,
+        print '\n-----------------------------------------------',
+        for formula, molecule in molecules.items():
+            e = em[formula]
+            print '\n%-4s' % formula,
+            for i, e0 in enumerate(e):
+                s = '-' + str(e0)
+                for atom in molecule:
+                    s += '+' + str(ea[atom.GetChemicalSymbol()][i])
+                if '?' in s:
+                    print '   ?  ',
+                elif 'm' in s:
+                    print '      ',
+                else:
+                    print '%6.3f' % (eval(s) - x * atomization[formula][1]),
+
+    lmaxold = parameters.get('lmax', 0)
+    h = 0.2
+    a = 8.0
+    em = {}
+    for formula in molecules:
+        e = em[formula] = []
+        for lmax in range(3):
+            parameters['lmax'] = lmax
+            filename = '%s-%.1f-0.200%s.atomize' % (formula, a, '+' * lmax)
+            if opt.summary:
+                try:
+                    e0 = pickle.load(open(filename))
+                except EOFError:
+                    e0 = '?'
+                except IOError:
+                    e0 = 'm'
+                e.append(e0)
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    e0 = Molecule(formula, a=a, h=h,
+                                  parameters=parameters).energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump(e0, file)
+    atoms = {}
+    for molecule in molecules.values():
+        for atom in molecule:
+            atoms[atom.GetChemicalSymbol()] = 1
+    ea = {}
+    for symbol in atoms:
+        e = ea[symbol] = []
+        for lmax in range(3):
+            parameters['lmax'] = lmax
+            filename = '%s-%.1f-%.3f%s.atomize' % (symbol, a, h, '+' * lmax)
+            if opt.summary:
+                try:
+                    e0 = pickle.load(open(filename))
+                except EOFError:
+                    e0 = '?'
+                except IOError:
+                    e0 = 'm'
+                e.append(e0)
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    e0 = SingleAtom(symbol, a=a, spinpaired=False,
+                                    h=h, parameters=parameters).energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump(e0, file)
+
+    parameters['lmax'] = lmaxold
+            
+    if opt.summary:
+        print '\n\nAtomization energies:\nh:  ',
+        for lmax in range(3):
+            print '%d     ' % lmax,
+        print '\n-------------------------',
+        for formula, molecule in molecules.items():
+            e = em[formula]
+            print '\n%-4s' % formula,
+            for i, e0 in enumerate(e):
+                s = '-' + str(e0)
+                for atom in molecule:
+                    s += '+' + str(ea[atom.GetChemicalSymbol()][i])
+                if '?' in s:
+                    print '   ?  ',
+                elif 'm' in s:
+                    print '      ',
+                else:
+                    print '%6.3f' % (eval(s) - x * atomization[formula][1]),
+
+        print '\n\nAtomic energies:\nh:  ',
+        for lmax in range(3):
+            print '%d     ' % lmax,
+        print '\n-------------------------',
+        for symbol in atoms:
+            e = ea[symbol]
+            print '\n%-2s' % symbol,
+            for e0 in e:
+                if type(e0) is float:
+                    print '%6.3f' % e0,
+                elif e0 == '?':
+                    print '   ?  ',
+                else:
+                    print '      ',

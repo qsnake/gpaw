@@ -15,7 +15,7 @@ class Molecule:
             a = 7.0  # Angstrom
         self.a = a
         
-        self.atoms = molecules[formula]
+        self.atoms = molecules[formula].Copy()
         self.atoms.SetUnitCell([a, a, a], fix=True)
         
         calc = Calculator(h=h, **parameters)
