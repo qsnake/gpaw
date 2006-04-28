@@ -10,146 +10,239 @@ from optparse import OptionParser
 
 parser = OptionParser(usage='%prog options',
                       version='%prog 0.1')
-parser.add_option('-e', '--eggbox-test', action='store_true',
-                  default=False,
-                  help='Do a summary.')
 parser.add_option('-s', '--summary', action='store_true',
                   default=False,
                   help='Do a summary.')
-parser.add_option('-a', '--cell', type='float', default=7.0,
-                  help='Size of unit cell (Angstrom).',
-                  metavar='<size>')
-parser.add_option('-g', '--min-grid-spacing', type='float', default=0.15,
-                  help='Minimum grid spacing (Angstrom).',
-                  metavar='<length>')
-parser.add_option('-G', '--max_grid-spacing', type='float', default=0.27,
-                  help='Maximum grid spacing (Angstrom).',
-                  metavar='<length>')
-parser.add_option('-n', '--points', type='int', default=20,
-                  help='Number of points used for eggbox-test.',
-                  metavar='<integer>')
 parser.add_option('-x', '--extra-parameters', type='string', default='{}',
                   help='Extra parameters.',
                   metavar='''"{'xc': 'PBE', ...}"''')
 
-opt, symbols = parser.parse_args()
+opt, tests = parser.parse_args()
 
 from ASE.Units import Convert
 
 from gridpaw.setuptests.singleatom import SingleAtom
-from gridpaw.setuptests.molecule import Molecule
+from gridpaw.setuptests.molecule import molecules, Molecule
 
 parameters = eval(opt.extra_parameters)
 
-if len(symbols) == 0:
-    symbols = 'H He Li Be C N O F Al Si P Cl'.split()
+symbols = 'H He Li Be C N O F Al Si P Cl'.split()
 
-nan = float('nan')
-inf = float('inf')
+if len(tests) == 0:
+    tests = ['eggbox', 'spinpol', 'atomize']
 
-results = {}
-for symbol in symbols:
-    results[symbol] = {'egg': [], 'spin': []}
-
-a = 4.0
-n1 = int(a / opt.max_grid_spacing / 4 + 0.5) * 4
-n2 = int(a / opt.min_grid_spacing / 4 + 0.5) * 4
-
-for n in range(n1, n2 + 4, 4):
-    h = a / n
+if 'eggbox' in tests:
+    a = 5.0
+    data = {}
     for symbol in symbols:
-        filename = '%s.%d.egg' % (symbol, n)
-        if opt.summary:
-            try:
-                de, f = pickle.load(open(filename))
-            except EOFError:
-                de, f = inf, inf
-            except IOError:
-                de, f = nan, nan
-            results[symbol]['egg'].append((de, f))
-        elif not os.path.isfile(filename):
-            file = open(filename, 'w')
-            atom = SingleAtom(symbol, a=a, spinpaired=True,
-                              eggboxtest=True,
-                              h=h, parameters=parameters)
-            try:
-                x, e, dedx = atom.eggboxtest(opt.points)
-            except RuntimeError:
-                pass
-            else:
-                de = max(e) - min(e)
-                f = max(abs(dedx))
-                pickle.dump((de, f), file)
-
-if opt.summary:
-    print '\nEggbox-test (maximum energy variation)\nh:',
-    for n in range(n1, n2 + 4, 4):
-        h = a / n
-        print '%.6f' % h,
-    for symbol in symbols:
-        result = results[symbol]
-        print '\n%-2s' % symbol,
-        for de, f in result['egg']:
-            print '%.6f' % de,
-
-    print '\n\nEggbox-tex (maximum force)\nh:',
-    for n in range(n1, n2 + 4, 4):
-        h = a / n
-        print '%.6f' % h,
-    for symbol in symbols:
-        result = results[symbol]
-        print '\n%-2s' % symbol,
-        for de, f in result['egg']:
-            print '%.6f' % f,
-
-a = opt.cell
-n1 = int(a / opt.max_grid_spacing / 4 + 0.5) * 4
-n2 = int(a / opt.min_grid_spacing / 4 + 0.5) * 4
-
-for n in range(n1, n2 + 4, 4):
-    h = a / n
-    for symbol in symbols:
-        filename = '%s.%d.spin' % (symbol, n)
-        if opt.summary:
-            try:
-                e0, es = pickle.load(open(filename))
-            except EOFError:
-                e0, es = inf, inf
-            except IOError:
-                e0, es = nan, nan
-            results[symbol]['spin'].append((e0, es))
-        elif not os.path.isfile(filename):
-            file = open(filename, 'w')
-            try:
+        d = data[symbol] = []
+        for n in range(16, 36, 4):
+            h = a / n
+            filename = '%s-%.3f.egg' % (symbol, h)
+            if opt.summary:
+                try:
+                    de, f = pickle.load(open(filename))
+                except EOFError:
+                    de, f = '?', '?'
+                except IOError:
+                    de, f = ' ', ' '
+                d.append((de, f))
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
                 atom = SingleAtom(symbol, a=a, spinpaired=True,
+                                  eggboxtest=True,
                                   h=h, parameters=parameters)
-                e0 = atom.energy()
-                atom = SingleAtom(symbol, a=a, spinpaired=False,
-                                  h=h, parameters=parameters)
-                es = atom.energy()
-            except RuntimeError:
-                pass
-            else:
-                pickle.dump((e0, es), file)
+                try:
+                    x, e, dedx = atom.eggboxtest(9)
+                except RuntimeError:
+                    pass
+                else:
+                    de = max(e) - min(e)
+                    f = max(abs(dedx))
+                    pickle.dump((de, f), file)
 
-if opt.summary:
-    print '\n\nEnergy of spinpaired spherical atom\nh:',
-    for n in range(n1, n2 + 4, 4):
-        h = a / n
-        print '%6.4f' % h,
-    for symbol in symbols:
-        result = results[symbol]
-        print '\n%-2s' % symbol,
-        for e0, es in result['spin']:
-            print '%6.3f' % e0,
+    if opt.summary:
+        print '\nEggbox-test (maximum energy variation)\nh:',
+        for n in range(16, 36, 4):
+            h = a / n
+            print '%9.6f' % h,
+        print '\n-------------------------------------------------',
+        for symbol in symbols:
+            d = data[symbol]
+            print '\n%-2s' % symbol,
+            for de, f in d:
+                if type(de) is float:
+                    print '%9.6f' % de,
+                else:
+                    print '    %s    ' % de,
+        print '\n\nEggbox-tex (maximum force)\nh:',
+        for n in range(16, 36, 4):
+            h = a / n
+            print '%9.6f' % h,
+        print '\n---------------------------------',
+        for symbol in symbols:
+            d = data[symbol]
+            print '\n%-2s' % symbol,
+            for de, f in d:
+                if type(de) is float:
+                    print '%9.6f' % f,
+                else:
+                    print '    %s    ' % f,
 
-    print '\n\nSpinpolarization energy gain\nh:',
-    for n in range(n1, n2 + 4, 4):
-        h = a / n
-        print '%6.4f' % h,
-    print '\n', '-' * (3 + (n2 - n1) * 7)
+if 'spinpol' in tests:
+    a = 7.0
+    data = {}
     for symbol in symbols:
-        result = results[symbol]
-        print '\n%-2s' % symbol,
-        for e0, es in result['spin']:
-            print '%6.3f' % (e0 - es),
+        d = data[symbol] = []
+        for n in range(24, 48, 4):
+            h = a / n
+            filename = '%s-%.3f.spin' % (symbol, h)
+            if opt.summary:
+                try:
+                    e0, es = pickle.load(open(filename))
+                except EOFError:
+                    e0, es = '?', '?'
+                except IOError:
+                    e0, es = ' ', ' '
+                d.append((e0, es))
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    atom = SingleAtom(symbol, a=a, spinpaired=True,
+                                      h=h, parameters=parameters)
+                    e0 = atom.energy()
+                    atom = SingleAtom(symbol, a=a, spinpaired=False,
+                                      h=h, parameters=parameters)
+                    es = atom.energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump((e0, es), file)
+
+    if opt.summary:
+        print '\n\nEnergy of spinpaired spherical atom\nh:',
+        for n in range(24, 48, 4):
+            h = a / n
+            print '%8.4f' % h,
+        print '\n---------------------------------------------------',
+        for symbol in symbols:
+            d = data[symbol]
+            print '\n%-2s' % symbol,
+            for e0, es in d:
+                if type(e0) is float:
+                    print '%8.3f' % e0,
+                else:
+                    print '     %s  ' % e0,
+
+        print '\n\nSpinpolarization energy gain\nh:',
+        for n in range(24, 48, 4):
+            h = a / n
+            print '%8.4f' % h,
+        print '\n---------------------------------------------------',
+        for symbol in symbols:
+            d = data[symbol]
+            print '\n%-2s' % symbol,
+            for e0, es in d:
+                if type(e0) is float:
+                    print '%8.3f' % (e0 - es),
+                else:
+                    print '     %s  ' % e0,
+
+# atomization energies in kcal / mol:
+#                       Exp    LDA    PBE    PBEZY  RPBE   PBEVASP
+atomization = {'H2':   (109.5, 113.2, 104.6, 104.5, 105.5,   0  ),
+               'LiH':  ( 57.8,  61.0,  53.5,  53.5,  53.4,  53.5),
+               'CH4':  (419.3, 462.3, 419.8, 419.2, 410.6, 419.6),
+               'NH3':  (297.4, 337.3, 301.7, 301.0, 293.2, 301.7),
+               'OH':   (106.4, 124.1, 109.8, 109.5, 106.3, 109.7),
+               'H2O':  (232.2, 266.5, 234.2, 233.8, 226.6, 233.7),
+               'HF':   (140.8, 162.2, 142.0, 141.7, 137.5, 141.5),
+               'Li2':  ( 24.4,  23.9,  19.9,  19.7,  20.2,  19.9),
+               'LiF':  (138.9, 156.1, 138.6, 139.5, 132.9, 138.4),
+               'Be2':  (  3.0,  12.8,   9.8,   9.5,   7.9,   0  ),
+               'C2H2': (405.4, 460.3, 414.9, 412.9, 400.4, 414.5),
+               'C2H4': (562.6, 632.6, 571.5, 570.2, 554.5, 571.0),
+               'HCN':  (311.9, 361.0, 326.1, 324.5, 313.6, 326.3),
+               'CO':   (259.3, 299.1, 268.8, 267.6, 257.9, 268.6),
+               'N2':   (228.5, 267.4, 243.2, 241.2, 232.7, 243.7),
+               'NO':   (152.9, 198.7, 171.9, 169.7, 161.6, 172.0),
+               'O2':   (120.5, 175.0, 143.7, 141.7, 133.3, 143.3),
+               'F2':   ( 38.5,  78.2,  53.4,  51.9,  45.6,  52.6),
+               'P2':   (117.3, 143.8, 121.1, 117.2, 114.1, 121.5),
+               'Cl2':  ( 58.0,  83.0,  65.1,  63.1,  58.9,  65.8)}
+
+x = Convert(1, 'kcal/mol/Nav', 'eV')
+
+if 'atomize' in tests:
+    a = 8.0
+    em = {}
+    for formula in molecules:
+        e = em[formula] = []
+        for n in range(24, 52, 4):
+            h = a / n
+            filename = '%s-%.3f.atomize' % (formula, h)
+            if opt.summary:
+                try:
+                    e0 = pickle.load(open(filename))
+                except EOFError:
+                    e0 = '?'
+                except IOError:
+                    e0 = 'm'
+                e.append(e0)
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    e0 = Molecule(formula, a=a, h=h,
+                                  parameters=parameters).energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump(e0, file)
+    atoms = {}
+    for molecule in molecules.values():
+        for atom in molecule:
+            atoms[atom.GetChemicalSymbol()] = 1
+    ea = {}
+    for symbol in atoms:
+        e = ea[symbol] = []
+        for n in range(24, 52, 4):
+            h = a / n
+            filename = '%s-%.3f.atomize' % (symbol, h)
+            if opt.summary:
+                try:
+                    e0 = pickle.load(open(filename))
+                except EOFError:
+                    e0 = '?'
+                except IOError:
+                    e0 = 'm'
+                e.append(e0)
+            elif not os.path.isfile(filename):
+                file = open(filename, 'w')
+                try:
+                    e0 = SingleAtom(symbol, a=a, spinpaired=False,
+                                    h=h, parameters=parameters).energy()
+                except RuntimeError:
+                    pass
+                else:
+                    pickle.dump(e0, file)
+    
+    if opt.summary:
+        print '\n\nAtomization energies:\nh:  ',
+        for n in range(24, 52, 4):
+            h = a / n
+            print '%6.3f' % h,
+        print '\n-----------------------------------------------------',
+        for formula, molecule in molecules.items():
+            e = em[formula]
+            print '\n%-4s' % formula,
+            for i, e0 in enumerate(e):
+                s = '-' + str(e0)
+                for atom in molecule:
+                    s += '+' + str(ea[atom.GetChemicalSymbol()][i])
+                if '?' in s:
+                    print '   ?  ',
+                elif 'm' in s:
+                    print '      ',
+                else:
+                    print '%6.3f' % (eval(s) - x * atomization[formula][1]),
+

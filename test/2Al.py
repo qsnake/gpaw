@@ -21,4 +21,4 @@ bulk.SetCalculator(calc)
 calc.Set(nbands=16, kpts=(1, 1, 2), gpts=(2*n, 2*n, 2*n))
 e4 = bulk.GetPotentialEnergy()
 
-equal(e4 / 2, e2, 9e-6)
+equal(e4 / 2, e2, 48e-6)

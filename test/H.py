@@ -13,6 +13,7 @@ e1 = hydrogen.GetPotentialEnergy()
 
 calc.Set(kpts=(1, 1, 1))
 e2 = hydrogen.GetPotentialEnergy()
+print e1 - e2
 equal(e1, e2, 2e-15)
 
 calc.Set(width=0.00001)

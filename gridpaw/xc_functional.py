@@ -12,6 +12,8 @@ import _gridpaw
 class XCFunctional:
     def __init__(self, xcname, scalarrel=True, parameters=None):
         self.xcname = xcname
+        self.parameters = parameters
+        self.scalarrel = scalarrel
         
         if xcname == 'LDA':
             self.gga = False
@@ -42,7 +44,14 @@ class XCFunctional:
                                             0.0, 0, num.array(parameters))
         else:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
-        
+
+    def __getstate__(self):
+        return self.xcname, self.scalarrel, self.parameters
+
+    def __setstate__(self, state):
+        xcname, scalarrel, parameters = state
+        self.__init__(xcname, scalarrel, parameters)
+    
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None):
         if self.gga:
             # e_g.flat !!!!! XXX

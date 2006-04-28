@@ -25,24 +25,25 @@ class Molecule:
     def energy(self):
         return self.atoms.GetPotentialEnergy()
 
-    def atomize(self, verbose=False):
+    def atomize(self, verbose=False, atom_energies=None):
         ea = -self.energy()
         if verbose:
             print '%s: %.3f eV' % (self.formula, -ea)
-        energy = {}
+        if atom_energies is None:
+            atom_energies = {}
         h = self.atoms.GetCalculator().GetGridSpacings()[0]
         self.atoms.SetCalculator(None)
         for atom in self.atoms:
             symbol = atom.GetChemicalSymbol()
-            if symbol not in energy:
+            if symbol not in atom_energies:
                 if verbose:
                     print '%s:' % symbol,
                 atom = SingleAtom(symbol, a=self.a, h=h,
                                   parameters=self.parameters)
-                energy[symbol] = atom.energy()
+                atom_energies[symbol] = atom.energy()
                 if verbose:
-                    print '%.3f eV' % energy[symbol]
-            ea += energy[symbol]
+                    print '%.3f eV' % atom_energies[symbol]
+            ea += atom_energies[symbol]
         return ea
                 
 

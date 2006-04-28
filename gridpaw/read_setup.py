@@ -24,7 +24,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.id_j = []
         self.phi_jg = []
         self.phit_jg = []
-        self.ptcoef_j = []
+        self.G_jn = []
         self.X_p = []
         self.ExxC = None
 
@@ -74,17 +74,16 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 self.gamma,
                 self.phi_jg,
                 self.phit_jg,
-                self.ptcoef_j,
+                self.G_jn,
                 self.e_kin_j1j2,
                 self.X_p,
                 self.ExxC,
-                self.scale_radius,
                 fingerprint,
                 filename)
     
     def startElement(self, name, attrs):
         if name == 'paw_setup':
-            assert attrs['version'] > '0.1'
+            assert attrs['version'] > '0.2'
         if name == 'atom':
             self.Z = int(attrs['Z'])
             self.Nc = int(attrs['core'])
@@ -116,11 +115,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.ng = int(attrs['n'])
             self.beta = float(attrs['a'])
         elif name == 'localized_potential':
-            self.vbar0 = float(attrs['c'])
-            self.gamma = float(attrs['a'])
-        elif name == 'projector_function':
-            self.gamma = float(attrs['a'])
-            self.scale_radius = float(attrs.get('s', 2.0)) 
+            self.gamma = float(attrs['alpha'])
             self.data = []
         elif name in ['ae_core_density', 'pseudo_core_density',
                       'kinetic_energy_differences', 'exact_exchange_X_matrix']:
@@ -128,6 +123,9 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
             self.data = []
             self.id = attrs['state']
+        elif name == 'projector_function':
+            self.gamma = float(attrs['alpha'])
+            self.data = []
         elif name == 'exact_exchange':
             self.ExxC = float(attrs['core-core'])
         else:
@@ -147,6 +145,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.nct_g = x_g
         elif name == 'kinetic_energy_differences':
             self.e_kin_j1j2 = x_g
+        elif name == 'localized_potential':
+            self.vbar0 = x_g[0]
         elif name == 'ae_partial_wave':
             j = len(self.phi_jg)
             assert self.id == self.id_j[j]
@@ -155,8 +155,9 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             j = len(self.phit_jg)
             assert self.id == self.id_j[j]
             self.phit_jg.append(x_g)
+        elif name == 'projector_function':
+            j = len(self.G_jn)
+            assert self.id == self.id_j[j]
+            self.G_jn.append(x_g)
         elif name == 'exact_exchange_X_matrix':
             self.X_p = x_g
-        elif name == 'projector_function':
-           self.ptcoef_j.append(x_g)
-            

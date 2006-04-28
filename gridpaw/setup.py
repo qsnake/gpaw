@@ -105,9 +105,8 @@ class Setup:
          n_j, l_j, f_j, eps_j, rcut_j, id_j,
          ng, beta,
          nc_g, nct_g, vbar0, gamma,
-         phi_jg, phit_jg, ptcoef_j,
+         phi_jg, phit_jg, G_jn,
          e_kin_jj, X_p, ExxC,
-         scale_radius,
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
@@ -126,11 +125,9 @@ class Setup:
         self.eps_j = eps_j
 
         rcut = max(rcut_j)
-        rcut2 = scale_radius * rcut
-        rcut3 = scale_radius * rcut
+        rcut2 = 2 * rcut
         gcut2 = int(rcut2 * ng / (rcut2 + beta))
-        gcut3 = int(rcut3 * ng / (rcut3 + beta))
-       
+
         g = num.arange(ng, typecode=num.Float)
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
@@ -138,23 +135,16 @@ class Setup:
 
         pt_jg = num.zeros((nj, ng), num.Float)
         for j in range(nj):
-            if j == 0 or l_j[j] > l_j[j - 1]:
-                # Moved to new l-chanel.  Reset n:
-                n = 0
             x = r_g / rcut_j[j]
-            for m, c in enumerate(ptcoef_j[j]):
-                if m == 0:
-                    pt_jg[j, :gcut3] += (c * r_g[:gcut3]**(l_j[j] + 2 * m) *
-                                         num.exp(-gamma * x[:gcut3]**2))
-                else:
-                    pt_jg[j, :gcut3] += (c *
-                                         (r_g[:gcut3]**l_j[j] -
-                                          2.0 / (3 + 2 * l_j[j]) *
-                                          r_g[:gcut3]**(l_j[j] + 2 * m)) *
-                                         num.exp(-gamma * x[:gcut3]**2))
-##            pt_jg[j, :gcut2] -= pt_jg[j, gcut2 - 1]
+            for n, c in enumerate(G_jn[j]):
+                pt_jg[j, :gcut2] += (c * r_g[:gcut2]**(l_j[j] + 2 * n) *
+                                         num.exp(-gamma * x[:gcut2]**2))
 
         if 0:
+            for j in range(nj):
+                norm = num.dot((phi_jg[j] * r_g)**2, dr_g)
+                print id_j[j], norm, num.dot(phit_jg[j] * pt_jg[j] * r_g**2,
+                                             dr_g)
             for j1 in range(nj):
                 for j2 in range(nj):
                     if l_j[j1] == l_j[j2]:
@@ -207,8 +197,8 @@ class Setup:
         self.nct = Spline(0, rcore, f_g=nct_g, r_g=r_g, beta=beta)
         vbar_g = num.zeros(ng, num.Float)
         x = r_g / rcut
-        vbar_g[:gcut3] = vbar0 * num.exp(-gamma * x[:gcut3]**2)
-        self.vbar = Spline(0, rcut3, coefs=[vbar0], alpha=gamma / rcut**2)
+        vbar_g[:gcut2] = vbar0 * num.exp(-gamma * x[:gcut2]**2)
+        self.vbar = Spline(0, rcut2, coefs=[vbar0], alpha=gamma / rcut**2)
         
         def grr(phi_g, l, r_g):
             w_g = phi_g.copy()
@@ -220,10 +210,14 @@ class Setup:
             return w_g
         
         self.pt_j = []
-        for j, pt_g in enumerate(pt_jg):
+        for j, G_n in enumerate(G_jn):
             l = l_j[j]
-            self.pt_j.append(Spline(l, rcut3,
-                                    coefs=ptcoef_j[j], alpha=gamma / rcut**2))
+            if 0:
+                self.pt_j.append(Spline(l, rcut2, f_g=grr(pt_g, l, r_g),
+                                        r_g=r_g, beta=beta))
+            else:
+                self.pt_j.append(Spline(l, rcut2, coefs=G_n,
+                                        alpha=gamma / rcut**2))
      
         cutoff = 8.0 # ????????
         self.wtLCAO_j = []

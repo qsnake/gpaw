@@ -57,7 +57,7 @@ class Generator(AllElectron):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
 
-    def run(self, core, rcut, extra, gamma, scale_radius,
+    def run(self, core, rcut, extra, gamma,
             logderiv=True, vt0=None, exx=False):
 
         self.core = core
@@ -246,8 +246,9 @@ class Generator(AllElectron):
 
         # Grid-index corresponding to rcut:
         gcut = int(rcut * N / (rcut + beta))
+        gcut_l = [int(rc * N / (rc + beta)) for rc in rcut_l]
 
-        rcut2 = scale_radius * rcut
+        rcut2 = 2 * rcut
         gcut2 = int(rcut2 * N / (rcut2 + beta))
 
         # Outward integration of unbound states stops at 3 * rcut:
@@ -271,6 +272,34 @@ class Generator(AllElectron):
         assert Nctail < 1.1
         print 'Valence states: %d' % self.Nv
 
+        # Construct smooth wave functions:
+        coefs = []
+        for l, (u_n, s_n) in enumerate(zip(u_ln, s_ln)):
+            nodeless = True
+            gc = gcut_l[l]
+            for u, s in zip(u_n, s_n):
+                s[:] = u
+                A = num.ones((5, 5), num.Float)
+                A[:, 0] = 1.0
+                A[:, 1] = r[gc - 2:gc + 3]**2
+                A[:, 2] = A[:, 1]**2
+                A[:, 3] = A[:, 1] * A[:, 2]
+                A[:, 4] = A[:, 2]**2
+                a = u[gc - 2:gc + 3] / r[gc - 2:gc + 3]**(l + 1)
+                a = solve_linear_equations(A, a)
+                r1 = r[:gc]
+                r2 = r1**2
+                rl1 = r1**(l + 1)
+                s[:gc] = rl1 * (a[0] +
+                                  r2 * (a[1] + r2 * (a[2] +
+                                                     r2 * (a[3] + r2 * a[4]))))
+
+                coefs.append(a)
+                if nodeless:
+                    # The first state for each l must be nodeless:
+                    assert num.alltrue(s[1:gc] > 0.0)
+                    nodeless = False
+
         # Calculate pseudo core density:
         nct = nc.copy()
         A = num.ones((4, 4), num.Float)
@@ -284,17 +313,12 @@ class Generator(AllElectron):
         nct[:gcut] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
         print 'Pseudo-core charge: %.6f' % (4 * pi * num.dot(nct, dv))
         
-        # Calculate pseudo valence density:
-        nt = self.n.copy()
-        A = num.ones((4, 4), num.Float)
-        A[0] = 1.0
-        A[1] = r[gcut - 2:gcut + 2]**2
-        A[2] = A[1]**2
-        A[3] = A[1] * A[2]
-        a = self.n[gcut - 2:gcut + 2]
-        a = solve_linear_equations(num.transpose(A), a)
-        r2 = r[:gcut]**2
-        nt[:gcut] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
+        # ... and the soft valence density:
+        nt = num.zeros(N, num.Float)
+        for f_n, s_n in zip(f_ln, s_ln):
+            nt += num.dot(f_n, s_n**2) / (4 * pi)
+        nt[1:] /= r[1:]**2
+        nt[0] = nt[1]
         nt += nct
 
         # Calculate the shape function:
@@ -308,121 +332,79 @@ class Generator(AllElectron):
         assert abs(norm - 1) < 1e-2
         gt /= norm
         
+
+        # Calculate neutral smooth charge density:
+        Nt = num.dot(nt, dv)
+        rhot = nt - Nt * gt
+        print 'Pseudo-electron charge', 4 * pi * Nt
+
+        vHt = self.calculate_hartree_potential(rhot)
+        vHt[1:] /= r[1:]
+        vHt[0] = vHt[1]
+
+        vXCt = num.zeros(N, num.Float)
+        Exct = self.xc.get_energy_and_potential(nt, vXCt)
+        vt = vHt + vXCt
+
+        # Construct localized potential:
+        A = num.ones((2, 2), num.Float)
+        A[0] = 1.0
+        A[1] = r[1:7:3]**2
+        a = vt[1:7:3]
+        a = solve_linear_equations(num.transpose(A), a)
+        self.vbar0 = a[1] * rcut**2 / self.gamma
+##        self.vbar0 = 0.0
+        vbar = self.vbar0 * gaussian
+
+        vt += vbar
+
+        
         # Construct projector functions:
-        
-        for l, G_n in enumerate(G_ln):
-            x = r / rcut_l[l]
-            Gl = num.zeros(N, num.Float)
-            Gl[:gcut2] = num.exp(-self.gamma * x[:gcut2]**2)
-            for n, G in enumerate(G_n):
-                if n == 0:
-                    G[:] = Gl * r**(l + 1 + 2 * n)
-                else:
-                    G[:] = (Gl * r**(l + 1) -
-                            2.0 / (3 + 2 * l) * Gl * r**(l + 1 + 2 * n))
+        for l, (e_n, s_n, q_n) in enumerate(zip(e_ln, s_ln, q_ln)):
+            gc = gcut_l[l]
+            for e, s, q in zip(e_n, s_n, q_n):
+                q[:] = self.kin(l, s)
+                q += (vt - e) * s
+                q[gcut2:] = 0.0
 
-        print 'Pseudo-electron charge',
-        Nt0 = 0.0
-        while True:
-
-            sys.stdout.write('.')
-            sys.stdout.flush()
-            # Calculate neutral smooth charge density:
-            Nt = num.dot(nt, dv)
-            rhot = nt - Nt * gt
-
-            vHt = self.calculate_hartree_potential(rhot)
-            vHt[1:] /= r[1:]
-            vHt[0] = vHt[1]
-
-            vXCt = num.zeros(N, num.Float)
-            Exct = self.xc.get_energy_and_potential(nt, vXCt)
-            vt = vHt + vXCt
-
-            # Construct localized potential:
-            A = num.ones((2, 2), num.Float)
-            A[0] = 1.0
-            A[1] = r[1:7:3]**2
-            a = vt[1:7:3]
-            a = solve_linear_equations(num.transpose(A), a)
-            self.vbar0 = a[1] * rcut**2 / self.gamma
-##            self.vbar0 = 0.0####################### XXXXXXXXX
-            vbar = self.vbar0 * gaussian
+                
+        # Calculate matrix elements:
+        self.dK_lnn = dK_lnn = []
+        self.dH_lnn = dH_lnn = []
+        self.dO_lnn = dO_lnn = []
+        self.G_lnn = []
+        for l, (e_n, u_n, s_n, q_n) in enumerate(zip(e_ln, u_ln,
+                                                     s_ln, q_ln)):
+            ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]  
+            ks_n = [self.kin(l, s) for s in s_n]
+            dK_nn = 0.5 * (num.innerproduct(u_n, ku_n * dr) -
+                            num.innerproduct(s_n, ks_n * dr))
+            dK_nn += num.transpose(dK_nn)
+            dO_nn = (num.innerproduct(u_n, u_n * dr) -
+                       num.innerproduct(s_n, s_n * dr))
+            nn = len(e_n)
+            e_nn = num.zeros((nn, nn), num.Float)
+            e_nn.flat[::nn + 1] = e_n
+            A_nn = num.innerproduct(q_n, s_n * dr)
+            dH_nn = num.dot(e_nn, dO_nn) - A_nn
             
-            vt += vbar
+            dK_lnn.append(dK_nn)
+            dO_lnn.append(dO_nn)
+            dH_lnn.append(dH_nn)
 
-            self.dH_lnn = dH_lnn = []
-            self.dO_lnn = dO_lnn = []
-            self.dK_lnn = dK_lnn = []
-            self.ptcoef_ln = []
-            for l, (e_n, u_n, s_n, q_n, G_n) in \
-                    enumerate(zip(e_ln, u_ln, s_ln, q_ln, G_ln)):
-                for n, e in enumerate(e_n):
-                    a = self.integrate(l, vt, e, gcut2)
-                    b = self.integrate(l, vt, e, gcut2, G_n[n])
-
-                    C_kk = num.zeros((2, 2), num.Float)
-                    d_k = num.zeros(2, num.Float)
-
-                    C_kk[0, 0] = a[gcut2]
-                    C_kk[0, 1] = b[gcut2]
-                    d_k[0] = u_n[n][gcut2]
-
-                    C_kk[1, 0] = a[gcut2 - 1]
-                    C_kk[1, 1] = b[gcut2 - 1]
-                    d_k[1] = u_n[n][gcut2 - 1]
-
-                    d_k = solve_linear_equations(C_kk, d_k)
-                    alpha = d_k[0]
-                    eta = d_k[1]
-                    
-                    s_n[n] = alpha * a + eta * b
-                    s_n[n, gcut2:] = u_n[n, gcut2:]
-
-                    q_n[n] = G_n[n] * eta
-
-                dO_nn = num.inner(u_n, u_n * dr) - num.inner(s_n, s_n * dr)
-                e_nn = num.zeros((n + 1, n + 1), num.Float)
-                e_nn.flat[::n + 2] = e_n
+            if 1:
+                R = r[:gcut2]
+                for n, q in enumerate(q_n):
+                    q[:gcut2] = (R**(1 + l + 2 * n) *
+                                 num.exp(-gamma * (R / rcut_l[l])**2))
+        
                 A_nn = num.innerproduct(q_n, s_n * dr)
-                dH_nn = num.dot(e_nn, dO_nn) - A_nn
 
-                A_nn = num.innerproduct(G_n, s_n * dr)
-                # Orthonormalize projector functions:
-                A_nn = inverse(A_nn)
-                q_n[:] = num.dot(A_nn, G_n)
-                self.ptcoef_ln.append(A_nn)
-                
-                ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]  
-                ks_n = [self.kin(l, s) for s in s_n]
-                
-                # XXX Should only integrate to gcut2!
-                dK_nn = 0.5 * (num.inner(u_n, ku_n * dr) -
-                               num.inner(s_n, ks_n * dr))
-                dK_nn += num.transpose(dK_nn).copy()
-
-                dO_lnn.append(dO_nn)
-                dH_lnn.append(dH_nn)
-                dK_lnn.append(dK_nn)
-
-            if abs(Nt - Nt0) < 1e-7:
-                break
-            Nt0 = Nt
-
-##            print Nt, self.vbar0
+            # Orthonormalize projector functions:
+            A_nn = inverse(A_nn)
+            q_n[:] = num.dot(A_nn, q_n)
+            self.G_lnn.append(A_nn)
             
-            # ... and the soft valence density:
-            nt0 = nt
-            nt = num.zeros(N, num.Float)
-            for f_n, s_n in zip(f_ln, s_ln):
-                nt += num.dot(f_n, s_n**2) / (4 * pi)
-            nt[1:] /= r[1:]**2
-            nt[0] = nt[1]
-            nt += nct
-            nt += 0.5 * (nt0 - nt)
-
-        print '%.6f' % (4 * pi * Nt)
-        
         self.vt = vt
         
         print 'state    eigenvalue         norm'
@@ -511,8 +493,8 @@ class Generator(AllElectron):
             X_p = None
             ExxC = None
             
-        self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln,
-                      nc, nct, Ekincore, X_p, ExxC, scale_radius)
+        self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
+                      nc, nct, Ekincore, X_p, ExxC)
 
     def diagonalize(self, h):
         ng = 300
@@ -555,7 +537,7 @@ class Generator(AllElectron):
             else:
                 f = 0.0
             e0 = e_n[0]
-            if (f > 0 and abs(e - e0) > 0.01) or (f == 0 and e0 < self.emax):
+            if (f > 0 and abs(e - e0) > 0.012) or (f == 0 and e0 < self.emax):
                 print 'GHOST-state in %s-channel at %.6f' % ('spd'[l], e0)
                 self.ghost = True
 
@@ -585,8 +567,8 @@ class Generator(AllElectron):
         return s
 
 
-    def write_xml(self, n_ln, f_ln, e_ln, u_ln, s_ln,
-                 nc, nct, Ekincore, X_p, ExxC, scale_radius):
+    def write_xml(self, n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
+                  nc, nct, Ekincore, X_p, ExxC):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
@@ -598,7 +580,8 @@ class Generator(AllElectron):
         e_j = []
         u_j = []
         s_j = []
-        ptcoef_j = []
+        q_j = []
+        G_jn = []
         j_ln = [[0 for f in f_n] for f_n in f_ln]
         j = 0
         for l, f_n in enumerate(f_ln):
@@ -610,7 +593,8 @@ class Generator(AllElectron):
                     e_j.append(e_ln[l][n])
                     u_j.append(u_ln[l][n])
                     s_j.append(s_ln[l][n])
-                    ptcoef_j.append(self.ptcoef_ln[l][n])
+                    q_j.append(q_ln[l][n])
+                    G_jn.append(self.G_lnn[l][n])
                     j_ln[l][n] = j
                     j += 1
         for l, f_n in enumerate(f_ln):
@@ -622,7 +606,8 @@ class Generator(AllElectron):
                     e_j.append(e_ln[l][n])
                     u_j.append(u_ln[l][n])
                     s_j.append(s_ln[l][n])
-                    ptcoef_j.append(self.ptcoef_ln[l][n])
+                    q_j.append(q_ln[l][n])
+                    G_jn.append(self.G_lnn[l][n])
                     j_ln[l][n] = j
                     j += 1
         nj = j
@@ -640,7 +625,7 @@ class Generator(AllElectron):
         print >> xml, '<!DOCTYPE paw_setup SYSTEM'
         print >> xml, '  "%s">' % dtd
 
-        print >> xml, '<paw_setup version="0.2">'
+        print >> xml, '<paw_setup version="0.3">'
 
         name = names[self.Z].title()
         comment1 = name + ' setup for the Projector Augmented Wave method.'
@@ -689,7 +674,7 @@ class Generator(AllElectron):
         print >> xml, '  <grid eq="r=a*i/(n-i)" a="%f" n="%d" i="0-%d"' % \
               (self.beta, self.N, self.N - 1), 'id="g1"/>'
 
-        print >> xml, '  <shape_function type="poly3"/>'
+        print >> xml, '  <shape_function alpha="%.6e"/>' % self.gamma
 
         for name, a in [('ae_core_density', nc),
                         ('pseudo_core_density', nct)]:
@@ -697,11 +682,13 @@ class Generator(AllElectron):
             for x in a * sqrt(4 * pi):
                 print >> xml, '%16.12e' % x,
             print >> xml, '\n  </%s>' % name
-        print >> xml, ('  <localized_potential c="%.12e" a="%.6e"/>' %
-                       (self.vbar0 * sqrt(4 * pi), self.gamma))
+
+        print >> xml, '  <localized_potential alpha="%.6e">' % self.gamma
+        print >> xml, '    %.12e' % (self.vbar0 * sqrt(4 * pi))
+        print >> xml, '  </localized_potential>'
         
         r = self.r
-        for l, u, s, ptcoef in zip(l_j, u_j, s_j, ptcoef_j):
+        for l, u, s, q, G_n in zip(l_j, u_j, s_j, q_j, G_jn):
             id = ids.pop(0)
             for name, a in [('ae_partial_wave', u),
                             ('pseudo_partial_wave', s)]:
@@ -716,12 +703,12 @@ class Generator(AllElectron):
                 for x in p:
                     print >> xml, '%16.12e' % x,
                 print >> xml, '\n  </%s>' % name
+
             print >> xml, ('  <projector_function state="%s" ' % id +
-                           'a="%.6e" s="%.6e">\n    ' % (self.gamma,
-                                                         scale_radius)),
-            for x in ptcoef:
+                           'alpha="%.6e">\n    ' % self.gamma),
+            for x in G_n:
                 print >> xml, '%16.12e' % x,
-            print >> xml, ('\n  </projector_function>')
+            print >> xml, '\n  </projector_function>'
 
         print >> xml, '  <kinetic_energy_differences>\n    ',
         for j1 in range(nj):

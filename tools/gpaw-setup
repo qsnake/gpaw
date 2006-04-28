@@ -35,10 +35,8 @@ parser.add_option('-e', '--extra', type='string', default=None,
 parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
-parser.add_option('-g', '--gamma', type='float', default=5.0,
+parser.add_option('-g', '--gamma', type='float', default=4.0,
                   help='Gamma value used for projector functions.')
-parser.add_option('-s', '--scale-radius', type='float', default=2.0,
-                  help='Value used to scale radius.')
 
 opt, args = parser.parse_args()
 
@@ -79,7 +77,10 @@ for symbol in atoms:
         if opt.extra != '':
             for l, x in enumerate(opt.extra.split(';')):
                 extra[l] = [float(y) for y in x.split(',')]
-    g.run(core, rcut, extra, opt.gamma, opt.scale_radius,
+    gamma = opt.gamma
+    if symbol == 'H':
+        gamma = 3.0
+    g.run(core, rcut, extra, gamma,
           logderiv=not opt.quick, vt0=v0,
           exx=opt.exact_exchange)
 

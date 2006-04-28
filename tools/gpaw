@@ -65,7 +65,7 @@ if singleatom:
         f = max(abs(dedx))
         print 'Maximum energy change: %.3f meV' % (1000 * de)
         print 'Maximum force: %.3f meV/Ang' % (1000 * f)
-        print 'pi=fh/e: %.2f' % (f * 2 * x[-1] / de)
+        print 'pi = f * h / e: %.2f' % (f * 2 * x[-1] / de)
         out = open('eggbox-test.dat', 'w')
         for a, b, c in zip(x, e, dedx):
             print >> out, a, b - e[0], c

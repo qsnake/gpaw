@@ -159,5 +159,5 @@ def center(atoms):
 
 # Function used by test-suite:
 def equal(a, b, e=0):
-    assert abs(a - b) <= e, '%f != %f (error: %f)' % (a, b, a - b)
+    assert abs(a - b) <= e, '%f != %f (error: %f > %f)' % (a, b, abs(a - b), e)
 
