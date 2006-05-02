@@ -510,7 +510,8 @@ class PawExx:
             if nucleus.setup.ExxC == None:
                 print 'Warning no exact exchange information in setup file'
                 print 'Value of exact exchange may be incorrect'
-                print 'Please regenerate setup file to correct error'
+                print 'Please regenerate setup file  with "-x" option,'
+                print 'to correct error'
                 break
 
             for spin in wf.myspins: # global spin index

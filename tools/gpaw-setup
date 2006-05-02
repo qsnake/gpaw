@@ -26,7 +26,7 @@ parser.add_option('-v', '--potential', type='float', default=None,
                   help='Effective potential at r=0',
                   metavar='<v0>')
 parser.add_option('-q', '--quick', action='store_true',
-                  help='Skip generation logarithmic derivatives.')
+                  help='Skip generation of logarithmic derivatives.')
 parser.add_option('-a', '--all-electron-only', action='store_true',
                   help='Skip generation of PAW setup.')
 parser.add_option('-e', '--extra', type='string', default=None,
