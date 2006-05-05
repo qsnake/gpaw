@@ -754,15 +754,6 @@ class Paw:
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
     
-    def get_exact_exchange(self, decompose, wannier, ewald, method, calc):
-##         if not hasattr(self, 'paw_exx'):
-##             from gridpaw.exx import PawExx
-##             self.paw_exx = PawExx(self)
-##         exx = self.paw_exx.get_exact_exchange(decompose, wannier,
-##                                               ewald, method, calc)
-
+    def get_exact_exchange(self, decompose, method):
         from gridpaw.exx import PawExx
-        exx = PawExx(self).get_exact_exchange(decompose, wannier,
-                                              ewald, method, calc)
-
-        return exx
+        return PawExx(self).get_exact_exchange(decompose, method)

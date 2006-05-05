@@ -577,9 +577,9 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int q,
     print >>f, txt
     f.close()
     
-def construct_python_code(file='temp.py', Lmax=8):
+def construct_python_code(lmax=2):
     out= 'Y_L = ['
-    for L in range(Lmax + 1):
+    for L in range((Lmax + 1)**2):
         l, m = L_to_lm(L)
         out+= '\'' + Y_to_string(l, m, numeric=True) + '\', '
     out += ']'
@@ -599,9 +599,7 @@ def construct_python_code(file='temp.py', Lmax=8):
             out += '\'' + '\', '
     out += ']'
     
-    f = open(file, 'w')
-    print >>f, out
-    f.close()        
+    return out
 
 def construct_python_code2(lmax=3):
     YL = []

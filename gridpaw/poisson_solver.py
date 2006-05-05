@@ -48,17 +48,19 @@ class PoissonSolver:
         self.presmooths[level]=8
         self.postsmooths[level]=8
         
-    def solve(self, phi, rho, eps=1e-9, charge=False):
+    def solve(self, phi, rho, eps=1e-9, charge=0):
         self.phis[0] = phi
 
         # handling of charged densities
-        if charge != False:
+        if charge != 0:
             if not hasattr(self, 'gauss'):
                 self.gauss = Gaussian(self.gd)
-            if charge == None or isinstance(charge, bool):# i.e. True but not 1
-                q = None
-            else:
-                q = charge / (2 * num.sqrt(pi))
+
+            # determine monopole moment
+            if charge == None: q = None
+            else: q = charge / (2 * num.sqrt(pi))
+            
+            # remove monopole moment and get error correcting potential
             phi_gauss = self.gauss.remove_moment(rho, L=0, q=q)
 
         self.B.apply(rho, self.rhos[0])
@@ -74,8 +76,8 @@ class PoissonSolver:
                 print '  keyword charge=True.'
             raise RuntimeError('Poisson solver did not converge!')
 
-        if charge != False:
-            phi += phi_gauss
+        # correct error introduced by removing monopole
+        if charge != 0: phi += phi_gauss
             
         return niter
         
