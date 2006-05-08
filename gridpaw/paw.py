@@ -719,6 +719,10 @@ class Paw:
     def get_xc_difference(self, xcname):
         """Calculate non-seflconsistent XC-energy difference."""
         assert self.xcfunc.gga, 'Must be a GGA calculation' # XXX
+
+        if xcname == 'EXX':
+            return self.Ha * (self.get_exact_exchange() - self.Exc)
+        
         if type(xcname) is str:
             newxc = XCFunctional(xcname)
         else:
@@ -727,9 +731,6 @@ class Paw:
         oldxc = self.xcfunc.xc
         self.xcfunc.xc = newxc
 
-        if xcname == 'EXX':
-            return self.Ha * (self.get_exact_exchange() - self.Exc)
-        
         v_g = self.finegd.new_array()  # not used for anything!
         if self.nspins == 2:
             Exc = self.xc.get_energy_and_potential(self.nt_sg[0], v_g, 
@@ -754,6 +755,6 @@ class Paw:
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
     
-    def get_exact_exchange(self, decompose, method):
+    def get_exact_exchange(self, decompose=False, method='recip_gauss'):
         from gridpaw.exx import PawExx
         return PawExx(self).get_exact_exchange(decompose, method)

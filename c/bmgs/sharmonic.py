@@ -57,9 +57,9 @@ The combined power of x and y is |m| in all terms of Phi
 #--------------------------- RELEVANT USER METHODS ---------------------------
 def L_to_lm(L):
     """convert L index to (l, m) index"""
-    l = 0
-    while L / (l+1.)**2 >= 1:  l += 1
-    return l, L - l**2 - l
+    l = int(sqrt(L))
+    m = L - l**2 - l
+    return l, m
 
 def lm_to_L(l,m):
     """convert (l, m) index to L index"""
@@ -579,19 +579,19 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int q,
     
 def construct_python_code(lmax=2):
     out= 'Y_L = ['
-    for L in range((Lmax + 1)**2):
+    for L in range((lmax + 1)**2):
         l, m = L_to_lm(L)
         out+= '\'' + Y_to_string(l, m, numeric=True) + '\', '
     out += ']'
 
     out += '\ngauss_L = ['
-    for L in range(Lmax + 1):
+    for L in range((lmax + 1)**2):
         l, m = L_to_lm(L)
         out += '\'' + gauss_to_string(l, m, numeric=True) + '\', '
     out += ']'
     
     out += '\ngausspot_L = ['
-    for L in range(Lmax + 1):
+    for L in range((lmax + 1)**2):
         l, m = L_to_lm(L)
         if L == 0:
             out += '\'2*sqrt(pi)*erf3D(sqrt(a0)*r)/r\', '

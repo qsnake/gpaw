@@ -49,6 +49,9 @@ class SingleAtom:
     def energy(self):
         return self.atom.GetPotentialEnergy()
 
+    def non_self_xc(self, xcs=[]):
+        return [self.atom.GetCalculator().GetXCDifference(xc) for xc in xcs]
+
     def eggboxtest(self, N=30, verbose=False):
         X = num.zeros(N + 1, num.Float)
         e = num.zeros(N + 1, num.Float)

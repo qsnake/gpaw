@@ -5,6 +5,16 @@ def factorial(x):
     if x < 2: return 1
     else: return x * factorial(x - 1)
 
+def L_to_lm(L):
+    """convert L index to (l, m) index"""
+    l = int(num.sqrt(L))
+    m = L - l**2 - l
+    return l, m
+
+def lm_to_L(l,m):
+    """convert (l, m) index to L index"""
+    return l**2 + l + m
+
 def core_states(symbol):
     """method returning the number of core states for given element"""
     from gridpaw.atom.configurations import configurations
@@ -26,7 +36,7 @@ def core_states(symbol):
     Njcore = j + len(core)/2
     return Njcore
 
-def pack(M2, symmetric=True):
+def pack(M2, symmetric=True, tol=1e-6):
     """new pack method"""
     n = len(M2)
     M = num.zeros(n * (n + 1) / 2, M2.typecode())
@@ -39,12 +49,12 @@ def pack(M2, symmetric=True):
             p += 1
             if symmetric:
                 error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-                assert error < 2e-5, 'Not symmetric, error = %s = |%s-%s|'%(
-                    error, M2[r,c], M2[c,r])
+                assert error < tol, 'Not symmetric:\n' +\
+                       'error = %s = |%s-%s|'%(error, M2[r,c], M2[c,r])
     assert p == len(M)
     return M
 
-def pack2(M2, symmetric=True):
+def pack2(M2, symmetric=True, tol=1e-6):
     """new pack method"""
     n = len(M2)
     M = num.zeros(n * (n + 1) / 2, M2.typecode())
@@ -57,8 +67,8 @@ def pack2(M2, symmetric=True):
             p += 1
             if symmetric:
                 error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-                assert error < 2e-5, 'Not symmetric, error = %s = |%s-%s|'%(
-                    error, M2[r,c], M2[c,r])
+                assert error < tol, 'Not symmetric:\n' +\
+                       'error = %s = |%s-%s|'%(error, M2[r,c], M2[c,r])
     assert p == len(M)
     return M
 

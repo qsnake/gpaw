@@ -8,16 +8,6 @@ Y_L = ['0.282094791774', '0.488602511903 * y', '0.488602511903 * z', '0.48860251
 gauss_L = ['sqrt(a0**3*4)/pi * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * y * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * z * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * x * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * x*y * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * y*z * exp(-a0*r2)', 'sqrt(a0**7*0.355555555556)/pi * (3*z*z-r2) * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * x*z * exp(-a0*r2)', 'sqrt(a0**7*1.06666666667)/pi * (x*x-y*y) * exp(-a0*r2)', ]
 gausspot_L = ['2*sqrt(pi)*erf3D(sqrt(a0)*r)/r', '', '', '', '', '', '', '', '', ]
 
-def L_to_lm(L):
-    """convert L index to (l, m) index"""
-    l = 0
-    while L / (l+1.)**2 >= 1:  l += 1
-    return l, L - l**2 - l
-
-def lm_to_L(l,m):
-    """convert (l, m) index to L index"""
-    return l**2 + l + m
-
 class Gaussian:
     """Class offering several utilities related to the generalized gaussians:
                        _____                             2  

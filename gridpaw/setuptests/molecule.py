@@ -6,7 +6,6 @@ from gridpaw import Calculator
 from gridpaw.utilities import center
 from gridpaw.setuptests.singleatom import SingleAtom
 
-
 class Molecule:
     def __init__(self, formula, a=None, h=None, parameters={}):
         self.formula = formula
@@ -21,14 +20,17 @@ class Molecule:
         calc = Calculator(h=h, **parameters)
         self.atoms.SetCalculator(calc)
         center(self.atoms)
-        
+
     def energy(self):
         return self.atoms.GetPotentialEnergy()
+        
+    def non_self_xc(self, xcs=[]):
+        return [self.atoms.GetCalculator().GetXCDifference(xc) for xc in xcs]
 
-    def atomize(self, verbose=False, atom_energies=None):
-        ea = -self.energy()
+    def atomize(self, verbose=False, atom_energies=None, xcs=[]):
+        ea = [-self.energy()] + [-xcd for xcd in self.non_self_xc(xcs)]
         if verbose:
-            print '%s: %.3f eV' % (self.formula, -ea)
+            print '%s: %.3f eV' % (self.formula, -ea[0])
         if atom_energies is None:
             atom_energies = {}
         h = self.atoms.GetCalculator().GetGridSpacings()[0]
@@ -40,13 +42,14 @@ class Molecule:
                     print '%s:' % symbol,
                 atom = SingleAtom(symbol, a=self.a, h=h,
                                   parameters=self.parameters)
-                atom_energies[symbol] = atom.energy()
+                atom_energies[symbol] = [atom.energy()] + atom.non_self_xc(xcs)
                 if verbose:
-                    print '%.3f eV' % atom_energies[symbol]
-            ea += atom_energies[symbol]
-        return ea
+                    print '%.3f eV' % atom_energies[symbol][0]
+            for i in range(len(ea)):
+                ea[i] += atom_energies[symbol][i]
+        if xcs == []: return ea[0]
+        else: return ea
                 
-
 # Diatomic molecules: (Angstrom units)
 H2 = ListOfAtoms([Atom('H', (0, 0, 0)),
                   Atom('H', (0.7414, 0, 0))])

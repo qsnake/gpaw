@@ -24,7 +24,8 @@ class Coulomb:
 
         if method.startswith('recip'):
             if self.gd.domain.comm.size > 1:
-                raise RuntimeError('Cannot do parallel FFT')
+                raise RuntimeError('Cannot do parallel FFT, ' +\
+                                   'use method=\'real\'')
             if not hasattr(self, 'k2'):
                 self.k2, self.N3 = construct_reciprocal(self.gd)
             if method.endswith('ewald') and not hasattr(self, 'ewald'):

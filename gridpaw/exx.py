@@ -359,5 +359,5 @@ def constructX(gen):
             i1 += 2 * lv1 + 1
 
     # pack X_ii matrix
-    X_p = pack2(X_ii, symmetric = True)
+    X_p = pack2(X_ii, symmetric=True, tol=1e-4)
     return X_p
