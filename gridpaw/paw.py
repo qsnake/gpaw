@@ -699,13 +699,13 @@ class Paw:
             return
 
 
-    def get_wannier_integrals(self, i,s,k,k1,G_I):
+    def get_wannier_integrals(self, i, s, k, k1, G_I):
         """Calculate integrals for maximally localized Wannier functions."""
 
         assert self.wf.nspins>=s
 
-        kpt_rank,u = get_parallel_info_s_k(self.wf,s,k)
-        kpt_rank1,u1 = get_parallel_info_s_k(self.wf,s,k1)
+        kpt_rank,u = get_parallel_info_s_k(self.wf, s, k)
+        kpt_rank1,u1 = get_parallel_info_s_k(self.wf, s, k1)
 
         # XXX not for the kpoint/spin parallel case
         assert self.wf.kpt_comm.size==1
@@ -755,6 +755,6 @@ class Paw:
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
     
-    def get_exact_exchange(self, decompose=False, method='recip_gauss'):
+    def get_exact_exchange(self, decompose=False, method=None):
         from gridpaw.exx import PawExx
         return PawExx(self).get_exact_exchange(decompose, method)

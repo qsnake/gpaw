@@ -461,7 +461,7 @@ class Calculator:
     # Alternative name:
     GetKPoints = GetIBZKPoints
  
-    def GetExactExchange(self, decompose=False, method='recip_gauss'):
+    def GetExactExchange(self, decompose=False, method=None):
         """Return non-selfconsistent value of exact exchange"""
         return self.Ha * self.paw.get_exact_exchange(decompose, method)
     

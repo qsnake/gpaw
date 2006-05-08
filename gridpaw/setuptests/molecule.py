@@ -27,6 +27,11 @@ class Molecule:
     def non_self_xc(self, xcs=[]):
         return [self.atoms.GetCalculator().GetXCDifference(xc) for xc in xcs]
 
+    def relax(self, fmax=0.05):
+        from ASE.Dynamics.QuasiNewton import QuasiNewton
+        qn = QuasiNewton(self.atoms, fmax=fmax)
+        qn.Converge()
+
     def atomize(self, verbose=False, atom_energies=None, xcs=[]):
         ea = [-self.energy()] + [-xcd for xcd in self.non_self_xc(xcs)]
         if verbose:

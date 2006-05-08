@@ -10,9 +10,8 @@ out += 'All units in Ang and eV\n'
 # perform all electron calculation on isolated atom
 # Note: all electron calculations are always spin saturated
 #       and output is in atomic units!
-atom = AE('Li')
+atom = AE('Li', xcname='PBE', scalarrel=True)
 atom.run()
-atomExx = aExx(atom, 'all')
 out += '\nExchange energy of atom (spin saturated):'
 out += '\nvalence-valence: %s' %(aExx(atom, 'val-val') * 27.211395655517311)
 out += '\nvalence-core   : %s' %(aExx(atom, 'val-core') * 27.211395655517311)
@@ -39,11 +38,11 @@ P  = Li.GetPotentialEnergy()
 XC = calc.GetXCEnergy()
 XX = calc.GetExactExchange(decompose = True)
 out += '\n\nExchange energy of atom (spin polarized):'
-out += '\nvalence-valence: %s' %XX[1]
+out += '\nvalence-valence: %s' %(XX[0] + XX[1])
 out += '\nvalence-core   : %s' %XX[2]
 out += '\ncore-core      : %s' %XX[3]
-out += '\ntotal          : %s' %XX[0]
-XX = XX[0]
+out += '\ntotal          : %s' %sum(XX)
+XX = sum(XX)
 
 # perform gridPAW calculation on Li2 molecule
 Li2.SetCalculator(calc)

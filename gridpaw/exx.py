@@ -37,12 +37,18 @@ class PawExx:
             
     def get_exact_exchange(self,
                            decompose = False,
-                           method    = 'recip_gauss'
+                           method    = None
                            ):
         """Control method for the calculation of exact exchange energy.
            Allowed method names are 'real', 'recip_gauss', and 'recip_ewald'
         """
         paw = self.paw
+
+        if method == None:
+            if paw.domain.comm.size == 1: # parallel computation
+                method = 'recip_gauss'
+            else: # serial computation
+                method = 'real'
 
         # only do calculation if not previously done
         if method != self.method:            
