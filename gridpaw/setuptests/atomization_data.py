@@ -7,7 +7,7 @@
 # All values evaluated with PBE xc-orbitals and densities at
 # experimental geometries. Zero-point vibration has been removed
 # from experimental energies
-atomize = {
+atomization = {
 # Molec   expt    LSD    PBE    RPBE   BLYP
 'H2'  : ( 109.5, 113.2, 104.6, 105.5, 109.4),
 'LiH' : (  57.8,  61.0,  53.5,  53.4,  58.1),
@@ -34,7 +34,7 @@ atomize = {
 # exchange-only atomization energies in kcal / mol (= 43.364 meV)
 # All values evaluated with PBE xc-orbitals and densities at
 # experimental geometries.
-ex_atomize = {
+ex_atomization = {
 # Molec   exact   LSD    PBE    RPBE   BLYP
 'H2'  : (  84.0,  81.5,  84.8,  85.8,  85.4),
 'LiH' : (  33.9,  33.6,  36.9,  36.8,  36.2),

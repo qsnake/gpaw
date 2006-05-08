@@ -21,7 +21,7 @@ out += '\ntotal          : %s' %(aExx(atom, 'all') * 27.211395655517311)
 
 
 # setup gridPAW calculation
-a = 7.0    # size of unit cell
+a = 7.5    # size of unit cell
 h = 0.2    # grid spacing
 d = 2.6729 # binding lenght of Li2
 b = a / 2  # middle of unit cell
@@ -31,7 +31,7 @@ Li2 = ListOfAtoms([Atom('Li', (b, b, b - d / 2)),
                    Atom('Li', (b, b, b + d / 2))],
                   cell=(a, a, a))
 
-calc = Calculator(xc='PBE',h=0.2,tolerance=1e-5)#reduced tolerance to save time
+calc = Calculator(xc='PBE', h=0.2, softgauss=False, tolerance=1e-5)
 
 # perform gridPAW calculation on isolated atom (spin polarized)
 Li.SetCalculator(calc)
