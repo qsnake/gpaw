@@ -1,12 +1,7 @@
-# Data sets from:
-# Kurth, Perdew, and Blaha
-# Molecular and Solid-State Tests of Density Functional Approximations
-# International Journal of Quantum Chemistry, Vol. 85, 889-909 (1999)
-
 # atomization energies in kcal / mol (= 43.364 meV)
 # All values evaluated with PBE xc-orbitals and densities at
 # experimental geometries. Zero-point vibration has been removed
-# from experimental energies
+# from experimental energies (from [1]).
 atomization = {
 # Molec   expt    LSD    PBE    RPBE   BLYP
 'H2'  : ( 109.5, 113.2, 104.6, 105.5, 109.4),
@@ -33,7 +28,7 @@ atomization = {
 
 # exchange-only atomization energies in kcal / mol (= 43.364 meV)
 # All values evaluated with PBE xc-orbitals and densities at
-# experimental geometries.
+# experimental geometries. (from [1]).
 ex_atomization = {
 # Molec   exact   LSD    PBE    RPBE   BLYP
 'H2'  : (  84.0,  81.5,  84.8,  85.8,  85.4),
@@ -60,7 +55,7 @@ ex_atomization = {
 
 # Exchange energy of some spherical atoms in Hartrees (= 27.211 eV)
 # All functionals were evaluated with self-consistent exchange-only
-# OEP orbitals and densities
+# OEP orbitals and densities (from [1]).
 ex_energy = {
 # Atom       exact     LSD       PBE       RPBE      BLYP
 'H'   : (   0.3125,   0.2680,   0.3059,   0.3112,   0.3098),
@@ -79,10 +74,8 @@ ex_energy = {
 
 # Correlation energy of some spherical atoms in Hartrees (= 27.211 eV)
 # All functionals were evaluated with self-consistent exchange-only
-# OEP orbitals and densities. 'Exact' values are from:
-# Krieger, J. B.; Chen, J.; Iafrate, G. J.; Savin, A. In Electron
-# Correlations and Materials Properties; Gonis, A.; Kioussis,
-# N., Eds.; Plenum: New York, 1999.
+# OEP orbitals and densities (from [1]).
+# 'Exact' values are from reference [2]
 ec_energy = {
 # Atom     exact   LSD     PBE     BLYP
 'H'   : ( 0.0000, 0.0222, 0.0060, 0.0000),
@@ -98,3 +91,87 @@ ec_energy = {
 'Kr'  : ( 3.2693, 1.7672, 1.7486, 2.0788),
 'Xe'  : ( 5.1773, 2.9184, 2.7440, 3.1789)
 }
+
+
+# atomization energies in kcal / mol (= 43.364 meV).
+# All values evaluated with self-consistent orbitals and densities.
+# Geometry optimization to within 10meV/Ang.
+# Data from reference [3].
+atomization_vasp = {
+# Molecule        Expt. PBE_VASP PBE_G03 PBE0_VASP PBE0_G03
+# H2 missing
+'LiH'        : (     58,   53.5,   53.5,   52.6,   52.9,),
+'CH4'        : (    420,  419.6,  420.2,  417.2,  417.9,),
+'NH3'        : (    297,  301.7,  302.3,  294.7,  295.3,),
+'OH'         : (    107,  109.7,  110.1,  105.4,  105.8,),
+'H2O'        : (    233,  233.7,  234.5,  226.4,  227.3,),
+'HF'         : (    142,  141.5,  142.2,  136.2,  137.0,),
+'Li2'        : (     26,   19.9,   20.1,   19.3,   19.3,),
+'LiF'        : (    139,  138.4,  139.0,  131.0,  131.9,),
+# Be2 missing
+'C2H2'       : (    404,  414.5,  415.1,  404.5,  404.7,),
+'C2H4'       : (    562,  571.0,  571.9,  563.8,  564.2,),
+'HCN'        : (    313,  326.3,  326.5,  311.1,  311.5,),
+'CO'         : (    261,  268.6,  269.1,  255.3,  255.8,),
+'N2'         : (    227,  243.7,  243.9,  225.3,  225.9,),
+'NO'         : (    153,  172.0,  172.5,  153.3,  153.8,),
+'O2'         : (    118,  143.3,  144.0,  124.1,  124.9,),
+'F2'         : (     38,   52.6,   53.0,   35.2,   35.3,),
+'P2'         : (    116,  121.5,  121.7,  111.8,  111.7,),
+'Cl2'        : (     57,   65.8,   65.8,   60.1,   59.9,),
+# extra systems
+'S2'         : (     98,  115.4,  115.2,  107.3,  107.0,),
+'SiH2(s1A1d)': (    154,  147.9,  148.0,  147.2,  147.4,),
+'NaCl'       : (     99,   93.6,   94.5,   92.1,   93.6,),
+'CH3OH'      : (    513,  519.3,  520.4,  509.0,  510.3,),
+'SiH4'       : (    324,  313.3,  313.7,  315.0,  315.7,),
+'Si2H6'      : (    533,  519.5,  520.4,  522.2,  523.3,),
+'PH3'        : (    241,  239.0,  239.3,  237.3,  237.5,),
+'PH2'        : (    153,  154.5,  154.6,  153.0,  153.2,),
+'SiH3'       : (    226,  222.2,  222.6,  223.5,  223.8,),
+'NH'         : (     82,   88.6,   88.6,   85.2,   85.3,),
+'CH2(s3B1d)' : (    189,  194.4,  194.6,  193.9,  193.8,),
+'SH2'        : (    182,  182.0,  182.2,  179.8,  180.0,),
+'ClO'        : (     62,   81.6,   81.5,   67.4,   67.6,),
+'H2O2'       : (    268,  281.6,  282.6,  262.7,  263.8,),
+'ClF'        : (     62,   72.3,   72.5,   61.3,   61.3,),
+'HCO'        : (    279,  294.9,  295.5,  280.5,  280.9,),
+'SiH2(s3B1d)': (    131,  131.3,  131.8,  132.2,  132.5,),
+'CH3'        : (    306,  309.7,  310.1,  308.3,  308.6,),
+'CH2(s1A1d)' : (    182,  178.8,  179.1,  176.3,  176.5,),
+'SiO'        : (    191,  195.6,  196.6,  182.2,  183.3,),
+'Si2'        : (     74,   81.3,   81.4,   76.5,   77.3,),
+'CH'         : (     84,   84.7,   84.8,   83.3,   83.0,),
+'CN'         : (    179,  197.5,  197.7,  179.1,  179.1,),
+'Na2'        : (     19,   17.7,   18.1,   15.6,   15.9,),
+'SO2'        : (    253,  281.1,  280.7,  254.1,  253.5,),
+'NH2'        : (    182,  188.7,  188.9,  183.4,  183.3,),
+'CS'         : (    172,  179.5,  179.6,  168.0,  168.2,),
+'C2H6'       : (    711,  716.0,  717.1,  711.6,  712.4,),
+'CH3Cl'      : (    395,  399.4,  400.2,  395.0,  395.7,),
+'BeH'        : (     48,   55.5,   55.6,   55.4,   56.0,),
+'CO2'        : (    392,  415.4,  416.5,  390.8,  392.0,),
+'CH3SH'      : (    473,  477.8,  478.6,  472.7,  473.5,),
+'N2H4'       : (    437,  452.7,  453.7,  437.9,  438.8,),
+'SO'         : (    122,  141.5,  141.3,  127.9,  127.3,),
+'HOCl'       : (    165,  175.2,  175.7,  162.9,  163.3,),
+'H2CO'       : (    376,  385.5,  386.3,  371.9,  372.8,),
+'HCl'        : (    107,  106.3,  106.5,  104.4,  105.0,)
+}
+
+# References:
+# [1]:
+# Kurth, Perdew, and Blaha
+# Molecular and Solid-State Tests of Density Functional Approximations
+# International Journal of Quantum Chemistry, Vol. 85, 889-909 (1999)
+# [2]:
+# Krieger, Chen, Iafrate, and Savin
+# In Electron Correlations and Materials Properties
+# Gonis and Kioussis; eds.
+# Plenum: New York, 1999.
+# [3]:
+# Paier, Hirschl, Marsman, and Kresse
+# The Perdew-Burke-Ernzerhof exchange-correlation functional applied to the
+# G2-1 test set using a plane wave basis set
+# The Journal of Chemical Physics, Vol 122, 234102 (2005)
+
