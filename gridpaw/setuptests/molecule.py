@@ -29,14 +29,15 @@ class Molecule:
 
     def relax(self, fmax=0.05, verbose=False):
         from ASE.Dynamics.QuasiNewton import QuasiNewton
-        if verbose:
-            old_pos = self.atoms.GetCartesianPositions()
+        old_pos = self.atoms.GetCartesianPositions()
         qn = QuasiNewton(self.atoms, fmax=fmax)
         qn.Converge()
         if verbose:
             new_pos = self.atoms.GetCartesianPositions()
-            print 'Relaxed coordinates from\n%s\nto\n%s'%(old_pos, new_pos)
-
+            print 'Relaxed coordinates for %s from\n%s\nto\n%s\n'\
+                  'in %s function evaluations.'%(
+                self.formula, old_pos, new_pos, qn.GetNumberFuncEvals())
+            
     def atomize(self, verbose=False, atom_energies=None, xcs=[]):
         ea = [-self.energy()] + [-xcd for xcd in self.non_self_xc(xcs)]
         if verbose:
