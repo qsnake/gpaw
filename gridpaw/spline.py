@@ -27,8 +27,9 @@ class Spline:
                 f_g += c * e_g * r**(2 * n)
 
         elif beta is not None:
-            r = 0.01 * rmax * num.arange(101)
+##            r = 0.01 * rmax * num.arange(101)
 ##            r = 0.02 * rmax * num.arange(51)
+            r = 0.04 * rmax * num.arange(26)
             ng = len(f_g)
             g = (ng * r / (beta + r) + 0.5).astype(num.Int)
             g = num.clip(g, 1, ng - 2)

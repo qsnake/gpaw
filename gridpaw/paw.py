@@ -29,6 +29,10 @@ from parallel import get_parallel_info_s_k
 MASTER = 0
 
 
+class ConvergenceError(Exception):
+    pass
+
+
 class Paw:
     """This is the main calculation object for doing a PAW calculation.
 
@@ -378,7 +382,7 @@ class Paw:
             out.flush()
             self.niter += 1
             if self.niter > 120:
-                raise RuntimeError('Did not converge!')
+                raise ConvergenceError('Did not converge!')
 
         output.print_converged(self)
 

@@ -19,28 +19,28 @@ from gridpaw.exx import atomic_exact_exchange as aExx
 
 
 parameters = {
-    #     (core,      cutoff,         extra projectors),  
+    #     (  core,  cutoff,  extra projectors)  
     'H' : ('',        0.9),
     'He': ('',        1.5),
-    'Li': ('[He]',    2.2),
+    'Li': ('[He]',    2.0),
     'Be': ('[He]',    1.5),
-    'C' : ('[He]',    1.2),
-    'N' : ('[He]',    1.2),
-    'O' : ('[He]',    1.2,            {0: [1.0], 1: [1.0], 2: [1.0]}),
-    'F' : ('[He]',    1.2,            {0: [1.0], 1: [1.0], 2: [1.0]}),
+    'C' : ('[He]',    1.0),
+    'N' : ('[He]',    1.1),
+    'O' : ('[He]',    1.2, {0: [0.0], 1: [0.0], 2: [0.0]}),
+    'F' : ('[He]',    1.2, {0: [-0.99], 1: [-0.15], 2: [0.0]}),
     'Ne': ('[He]',    1.8),    
     'Na': ('[Ne]',    2.3),
     'Mg': ('[Ne]',    2.0),
     'Al': ('[Ne]',    2.0),
-    'Si': ('[Ne]',    1.7),
+    'Si': ('[Ne]',    2.0),
     'P' : ('[Ne]',    2.0),
     'S' : ('[Ne]',    1.87),
     'Cl': ('[Ne]',    1.5),
     'V' : ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
     'Cr': ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
-    'Fe': ('[Ar]',    2.1),
+    'Fe': ('[Ar]',    2.3),
     'Ni': ('[Ar]',    2.3),
-    'Cu': ('[Ar]',   [2.3, 2.3, 2.1]),
+    'Cu': ('[Ar]',    2.3),#[2.3, 2.3, 2.1]),
     'Ga': ('[Ar]3d',  2.0),
     'As': ('[Ar]',    2.0),
     'Zr': ('[Ar]3d',  2.0),
@@ -51,13 +51,12 @@ parameters = {
     'Au': ('[Xe]4f',  2.5)
     }
 
-
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
 
 
-    def run(self, core, rcut, extra, gamma,
+    def run(self, core, rcut, extra,
             logderiv=True, vt0=None, exx=False):
 
         self.core = core
@@ -228,13 +227,11 @@ class Generator(AllElectron):
         self.u_ln = u_ln = []  # phi * r
         self.s_ln = s_ln = []  # phi-tilde * r
         self.q_ln = q_ln = []  # p-tilde * r
-        G_ln = []
         for l in range(lmax + 1):
             nn = len(n_ln[l])
             u_ln.append(num.zeros((nn, N), num.Float))
             s_ln.append(num.zeros((nn, N), num.Float))
             q_ln.append(num.zeros((nn, N), num.Float))
-            G_ln.append(num.zeros((nn, N), num.Float))
             
         # Fill in all-electron wave functions:
         for l in range(lmax + 1):
@@ -279,20 +276,19 @@ class Generator(AllElectron):
             gc = gcut_l[l]
             for u, s in zip(u_n, s_n):
                 s[:] = u
-                A = num.ones((5, 5), num.Float)
+                A = num.ones((4, 4), num.Float)
                 A[:, 0] = 1.0
-                A[:, 1] = r[gc - 2:gc + 3]**2
+                A[:, 1] = r[gc - 2:gc + 2]**2
                 A[:, 2] = A[:, 1]**2
                 A[:, 3] = A[:, 1] * A[:, 2]
-                A[:, 4] = A[:, 2]**2
-                a = u[gc - 2:gc + 3] / r[gc - 2:gc + 3]**(l + 1)
+##                A[:, 4] = A[:, 2]**2
+                a = u[gc - 2:gc + 2] / r[gc - 2:gc + 2]**(l + 1)
                 a = solve_linear_equations(A, a)
                 r1 = r[:gc]
                 r2 = r1**2
                 rl1 = r1**(l + 1)
-                s[:gc] = rl1 * (a[0] +
-                                  r2 * (a[1] + r2 * (a[2] +
-                                                     r2 * (a[3] + r2 * a[4]))))
+                y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))## + r2 * a[4])))
+                s[:gc] = rl1 * y
 
                 coefs.append(a)
                 if nodeless:
@@ -324,11 +320,13 @@ class Generator(AllElectron):
         # Calculate the shape function:
         x = r / rcut
         gaussian = num.zeros(N, num.Float)
-        self.gamma = gamma
-        gaussian[:gcut2] = num.exp(-self.gamma * x[:gcut2]**2)
-        gt = 4 * (self.gamma / rcut**2)**1.5 / sqrt(pi) * gaussian
+        self.gamma = gamma = 10.0
+        gaussian[:gcut2] = num.exp(-gamma * x[:gcut2]**2)
+        gaussian2 = num.zeros(N, num.Float)
+        gaussian2[:gcut2] = num.exp(-gamma * x[:gcut2]**2)
+        gt = 4 * (gamma / rcut**2)**1.5 / sqrt(pi) * gaussian
         norm = num.dot(gt, dv)
-        print norm, norm-1
+##        print norm, norm-1
         assert abs(norm - 1) < 1e-2
         gt /= norm
         
@@ -346,40 +344,65 @@ class Generator(AllElectron):
         Exct = self.xc.get_energy_and_potential(nt, vXCt)
         vt = vHt + vXCt
 
+        filter = Filter(r[:gcut2], beta, N, rcut2)
+        
         # Construct localized potential:
-        A = num.ones((2, 2), num.Float)
-        A[0] = 1.0
-        A[1] = r[1:7:3]**2
-        a = vt[1:7:3]
-        a = solve_linear_equations(num.transpose(A), a)
-        self.vbar0 = a[1] * rcut**2 / self.gamma
-##        self.vbar0 = 0.0
-        vbar = self.vbar0 * gaussian
+        if 0:
+            A = num.ones((2, 2), num.Float)
+            A[0] = 1.0
+            A[1] = r[1:7:3]**2
+            a = vt[1:7:3]
+            a = solve_linear_equations(num.transpose(A), a)
+            self.vbar0 = a[1] * rcut**2 / gamma
 
-        vt += vbar
+            self.vbar0 = 0.0
+            vbar = self.vbar0 * gaussian2
+
+            vt += vbar
+        else:
+            A = num.ones((2, 2), num.Float)
+            A[0] = 1.0
+            A[1] = r[gcut - 1:gcut + 1]**2
+##            A[2] = A[1]**2
+            a = vt[gcut - 1:gcut + 1]
+            a = solve_linear_equations(num.transpose(A), a)
+            r2 = r**2
+            vbar = a[0] + r2 * (a[1])## + r2 * a[2])
+            vbar -= vt
+            vbar[gcut:] = 0.0
+##            vbar[:] = 0.0
+            vt += vbar
 
         
         # Construct projector functions:
         for l, (e_n, s_n, q_n) in enumerate(zip(e_ln, s_ln, q_ln)):
             gc = gcut_l[l]
             for e, s, q in zip(e_n, s_n, q_n):
-                q[:] = self.kin(l, s)
+##                q[:] = self.kin(l, s)
+                a = coefs.pop(0)
+                for k in range(3):
+                    b = l + 1 + 2 * k
+                    q += 0.5 * a[k + 1] * (l * (l + 1) -
+                                           (b + 2) * (b + 1)) * r**b
                 q += (vt - e) * s
-                q[gcut2:] = 0.0
+                q[gcut:] = 0.0
+##                q[gcut_l[l]??????:] = 0.0
 
-                
+        if 0:
+            vbar[1:gcut2] = filter.filter((vbar * r)[:gcut2], 0.01)[1:] / r[1:gcut2]
+            vbar[0] = vbar[1]
+        
         # Calculate matrix elements:
         self.dK_lnn = dK_lnn = []
         self.dH_lnn = dH_lnn = []
         self.dO_lnn = dO_lnn = []
-        self.G_lnn = []
         for l, (e_n, u_n, s_n, q_n) in enumerate(zip(e_ln, u_ln,
                                                      s_ln, q_ln)):
             ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]  
             ks_n = [self.kin(l, s) for s in s_n]
             dK_nn = 0.5 * (num.innerproduct(u_n, ku_n * dr) -
                             num.innerproduct(s_n, ks_n * dr))
-            dK_nn += num.transpose(dK_nn)
+            dK_nn += num.transpose(dK_nn).copy()
             dO_nn = (num.innerproduct(u_n, u_n * dr) -
                        num.innerproduct(s_n, s_n * dr))
             nn = len(e_n)
@@ -393,20 +416,17 @@ class Generator(AllElectron):
             dH_lnn.append(dH_nn)
 
             if 1:
-                R = r[:gcut2]
-                for n, q in enumerate(q_n):
-                    q[:gcut2] = (R**(1 + l + 2 * n) *
-                                 num.exp(-gamma * (R / rcut_l[l])**2))
-        
+                for q in q_n:
+                    q[1:] /= r[1:]**l
+                    q[:gcut2] = filter.filter(q[:gcut2]) * r[:gcut2]**l
                 A_nn = num.innerproduct(q_n, s_n * dr)
 
             # Orthonormalize projector functions:
             A_nn = inverse(A_nn)
             q_n[:] = num.dot(A_nn, q_n)
-            self.G_lnn.append(A_nn)
             
         self.vt = vt
-        
+
         print 'state    eigenvalue         norm'
         print '--------------------------------'
         for l, (n_n, f_n, e_n) in enumerate(zip(n_ln, f_ln, e_ln)):
@@ -486,15 +506,56 @@ class Generator(AllElectron):
         for h in [0.05]:
             self.diagonalize(h)
 
+        self.vn_j = vn_j = []
+        self.vl_j = vl_j = []
+        self.vf_j = vf_j = []
+        self.ve_j = ve_j = []
+        self.vu_j = vu_j = []
+        self.vs_j = vs_j = []
+        self.vq_j = vq_j = []
+        j_ln = [[0 for f in f_n] for f_n in f_ln]
+        j = 0
+        for l, f_n in enumerate(f_ln):
+            for n, f in enumerate(f_n):
+                if f > 0:
+                    vf_j.append(f)
+                    vn_j.append(n_ln[l][n])
+                    vl_j.append(l)
+                    ve_j.append(e_ln[l][n])
+                    vu_j.append(u_ln[l][n])
+                    vs_j.append(s_ln[l][n])
+                    vq_j.append(q_ln[l][n])
+                    j_ln[l][n] = j
+                    j += 1
+        for l, f_n in enumerate(f_ln):
+            for n, f in enumerate(f_n):
+                if f == 0:
+                    vf_j.append(0)
+                    vn_j.append(n_ln[l][n])
+                    vl_j.append(l)
+                    ve_j.append(e_ln[l][n])
+                    vu_j.append(u_ln[l][n])
+                    vs_j.append(s_ln[l][n])
+                    vq_j.append(q_ln[l][n])
+                    j_ln[l][n] = j
+                    j += 1
+        nj = j
+
+        self.dK_jj = num.zeros((nj, nj), num.Float)
+        for l, j_n in enumerate(j_ln):
+            for n1, j1 in enumerate(j_n):
+                for n2, j2 in enumerate(j_n):
+                    self.dK_jj[j1, j2] = self.dK_lnn[l][n1, n2]
+        
         if exx:
             X_p = constructX(self)
-            ExxC = aExx(self,'core-core')
+            ExxC = aExx(self, 'core-core')
         else:
             X_p = None
             ExxC = None
             
-        self.write_xml(n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
-                      nc, nct, Ekincore, X_p, ExxC)
+        self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
+                       nc, nct, Ekincore, X_p, ExxC, vbar)
 
     def diagonalize(self, h):
         ng = 300
@@ -537,7 +598,7 @@ class Generator(AllElectron):
             else:
                 f = 0.0
             e0 = e_n[0]
-            if (f > 0 and abs(e - e0) > 0.012) or (f == 0 and e0 < self.emax):
+            if (f > 0 and abs(e - e0) > 0.014) or (f == 0 and e0 < self.emax):
                 print 'GHOST-state in %s-channel at %.6f' % ('spd'[l], e0)
                 self.ghost = True
 
@@ -567,65 +628,20 @@ class Generator(AllElectron):
         return s
 
 
-    def write_xml(self, n_ln, f_ln, e_ln, u_ln, s_ln, q_ln,
-                  nc, nct, Ekincore, X_p, ExxC):
+    def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
+                  nc, nct, Ekincore, X_p, ExxC, vbar):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
             raise SystemExit
 
-        n_j = []
-        l_j = []
-        f_j = []
-        e_j = []
-        u_j = []
-        s_j = []
-        q_j = []
-        G_jn = []
-        j_ln = [[0 for f in f_n] for f_n in f_ln]
-        j = 0
-        for l, f_n in enumerate(f_ln):
-            for n, f in enumerate(f_n):
-                if f > 0:
-                    f_j.append(f)
-                    n_j.append(n_ln[l][n])
-                    l_j.append(l)
-                    e_j.append(e_ln[l][n])
-                    u_j.append(u_ln[l][n])
-                    s_j.append(s_ln[l][n])
-                    q_j.append(q_ln[l][n])
-                    G_jn.append(self.G_lnn[l][n])
-                    j_ln[l][n] = j
-                    j += 1
-        for l, f_n in enumerate(f_ln):
-            for n, f in enumerate(f_n):
-                if f == 0:
-                    f_j.append(0)
-                    n_j.append(n_ln[l][n])
-                    l_j.append(l)
-                    e_j.append(e_ln[l][n])
-                    u_j.append(u_ln[l][n])
-                    s_j.append(s_ln[l][n])
-                    q_j.append(q_ln[l][n])
-                    G_jn.append(self.G_lnn[l][n])
-                    j_ln[l][n] = j
-                    j += 1
-        nj = j
-
-        dK_jj = num.zeros((nj, nj), num.Float)
-        for l, j_n in enumerate(j_ln):
-            for n1, j1 in enumerate(j_n):
-                for n2, j2 in enumerate(j_n):
-                    dK_jj[j1, j2] = self.dK_lnn[l][n1, n2]
-        
-        
         print >> xml, '<?xml version="1.0"?>'
         dtd = 'http://www.fysik.dtu.dk/campos/atomic_setup/paw_setup.dtd'
 
         print >> xml, '<!DOCTYPE paw_setup SYSTEM'
         print >> xml, '  "%s">' % dtd
 
-        print >> xml, '<paw_setup version="0.3">'
+        print >> xml, '<paw_setup version="0.4">'
 
         name = names[self.Z].title()
         comment1 = name + ' setup for the Projector Augmented Wave method.'
@@ -664,7 +680,7 @@ class Generator(AllElectron):
         print >> xml, '  <valence_states>'
         ids = []
         line = '    <state n="%d" l="%d" f=%s rc="%4.2f" e="%7.4f" id="%s"/>'
-        for l, n, f, e in zip(l_j, n_j, f_j, e_j):
+        for l, n, f, e in zip(vl_j, vn_j, vf_j, ve_j):
             f = '%-4s' % ('"%d"' % f)
             id = self.symbol + str(n) + 'spdf'[l]
             print >> xml, line % (n, l, f, self.rcut_l[l], e, id)
@@ -677,21 +693,19 @@ class Generator(AllElectron):
         print >> xml, '  <shape_function alpha="%.6e"/>' % self.gamma
 
         for name, a in [('ae_core_density', nc),
-                        ('pseudo_core_density', nct)]:
+                        ('pseudo_core_density', nct),
+                        ('localized_potential', vbar)]:
             print >> xml, '  <%s grid="g1">\n    ' % name,
             for x in a * sqrt(4 * pi):
                 print >> xml, '%16.12e' % x,
             print >> xml, '\n  </%s>' % name
 
-        print >> xml, '  <localized_potential alpha="%.6e">' % self.gamma
-        print >> xml, '    %.12e' % (self.vbar0 * sqrt(4 * pi))
-        print >> xml, '  </localized_potential>'
-        
         r = self.r
-        for l, u, s, q, G_n in zip(l_j, u_j, s_j, q_j, G_jn):
+        for l, u, s, q, in zip(vl_j, vu_j, vs_j, vq_j):
             id = ids.pop(0)
             for name, a in [('ae_partial_wave', u),
-                            ('pseudo_partial_wave', s)]:
+                            ('pseudo_partial_wave', s),
+                            ('projector_function', q)]:
                 print >> xml, ('  <%s state="%s" grid="g1">\n    ' %
                                (name, id)),
                 p = a.copy()
@@ -704,18 +718,13 @@ class Generator(AllElectron):
                     print >> xml, '%16.12e' % x,
                 print >> xml, '\n  </%s>' % name
 
-            print >> xml, ('  <projector_function state="%s" ' % id +
-                           'alpha="%.6e">\n    ' % self.gamma),
-            for x in G_n:
-                print >> xml, '%16.12e' % x,
-            print >> xml, '\n  </projector_function>'
-
-        print >> xml, '  <kinetic_energy_differences>\n    ',
+        print >> xml, '  <kinetic_energy_differences>',
+        nj = len(self.dK_jj)
         for j1 in range(nj):
+            print >> xml, '\n    ',
             for j2 in range(nj):
-                print >> xml, '%16.12e' % dK_jj[j1, j2],
-            print >> xml
-        print >> xml, '  </kinetic_energy_differences>'
+                print >> xml, '%16.12e' % self.dK_jj[j1, j2],
+        print >> xml, '\n  </kinetic_energy_differences>'
 
         if X_p is not None:
             print >>xml, '  <exact_exchange_X_matrix>\n    ',
@@ -728,9 +737,48 @@ class Generator(AllElectron):
         print >> xml, '</paw_setup>'
 
 
-if __name__ == '__main__':
-    for r in [1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6]:
-        gen = Generator('Mg')#, scalarrel=True)
-##        gen.Run('[Ar]', r)
-##        gen.Run('[Xe]4f', r)
-        gen.run('[Ne]', r)
+from FFT import real_fft, inverse_real_fft
+
+class Filter:
+    def __init__(self, r_g, beta, N, rc):
+        M = 256
+        r_n = rc / M * num.arange(M)
+        g_n = (N * r_n / (beta + r_n) + 0.5).astype(num.Int)
+        self.g_n = num.clip(g_n, 1, len(r_g) - 2)
+        r1_n = num.take(r_g, self.g_n - 1)
+        r2_n = num.take(r_g, self.g_n)
+        r3_n = num.take(r_g, self.g_n + 1)
+        self.x1_n = (r_n - r2_n) * (r_n - r3_n) / (r1_n - r2_n) / (r1_n - r3_n)
+        self.x2_n = (r_n - r1_n) * (r_n - r3_n) / (r2_n - r1_n) / (r2_n - r3_n)
+        self.x3_n = (r_n - r1_n) * (r_n - r2_n) / (r3_n - r1_n) / (r3_n - r2_n)
+        n_g = (r_g * M / rc + 0.5).astype(num.Int)
+        self.n_g = num.clip(n_g, 1, M - 2)
+        r1_g = num.take(r_n, self.n_g - 1)
+        r2_g = num.take(r_n, self.n_g)
+        r3_g = num.take(r_n, self.n_g + 1)
+        self.x1_g = (r_g - r2_g) * (r_g - r3_g) / (r1_g - r2_g) / (r1_g - r3_g)
+        self.x2_g = (r_g - r1_g) * (r_g - r3_g) / (r2_g - r1_g) / (r2_g - r3_g)
+        self.x3_g = (r_g - r1_g) * (r_g - r2_g) / (r3_g - r1_g) / (r3_g - r2_g)
+        self.r_g = r_g
+        self.r_n = r_n
+        self.M = M
+        
+    def filter(self, f_g, a=0.05):
+        f1_n = num.take(f_g, self.g_n - 1)
+        f2_n = num.take(f_g, self.g_n)
+        f3_n = num.take(f_g, self.g_n + 1)
+        f_n = f1_n * self.x1_n + f2_n * self.x2_n + f3_n * self.x3_n
+        M = self.M
+        F_n = num.zeros(2 * M, num.Float)
+        F_n[:M] = f_n
+        F_n[M + 1:] = -f_n[-1:0:-1]
+        F_q = real_fft(F_n)
+        q = num.arange(M + 1)
+        F_q *= num.exp(-num.clip(a * q**2, 0.0, 100.0))
+        F_n = inverse_real_fft(F_q)
+        f_n = F_n[:M]
+        f1_g = num.take(f_n, self.n_g - 1)
+        f2_g = num.take(f_n, self.n_g)
+        f3_g = num.take(f_n, self.n_g + 1)
+        ff_g = f1_g * self.x1_g + f2_g * self.x2_g + f3_g * self.x3_g
+        return ff_g

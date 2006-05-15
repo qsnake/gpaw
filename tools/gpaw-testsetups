@@ -23,6 +23,8 @@ from ASE.Units import Convert
 
 from gridpaw.setuptests.singleatom import SingleAtom
 from gridpaw.setuptests.molecule import molecules, Molecule
+from gridpaw.paw import ConvergenceError
+
 
 parameters = eval(opt.extra_parameters)
 
@@ -49,12 +51,13 @@ if 'eggbox' in tests:
                 d.append((de, f))
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 atom = SingleAtom(symbol, a=a, spinpaired=True,
                                   eggboxtest=True,
                                   h=h, parameters=parameters)
                 try:
                     x, e, dedx = atom.eggboxtest(9)
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     de = max(e) - min(e)
@@ -107,6 +110,7 @@ if 'spinpol' in tests:
                 d.append((e0, es))
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     atom = SingleAtom(symbol, a=a, spinpaired=True,
                                       h=h, parameters=parameters)
@@ -114,7 +118,7 @@ if 'spinpol' in tests:
                     atom = SingleAtom(symbol, a=a, spinpaired=False,
                                       h=h, parameters=parameters)
                     es = atom.energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump((e0, es), file)
@@ -173,6 +177,8 @@ atomization = {'H2':   (109.5, 113.2, 104.6, 104.5, 105.5,   0  ),
 
 x = Convert(1, 'kcal/mol/Nav', 'eV')
 
+xc = 2
+
 if 'atomize' in tests:
     a = 8.0
     em = {}
@@ -191,10 +197,11 @@ if 'atomize' in tests:
                 e.append(e0)
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     e0 = Molecule(formula, a=a, h=h,
                                   parameters=parameters).energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump(e0, file)
@@ -218,10 +225,11 @@ if 'atomize' in tests:
                 e.append(e0)
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     e0 = SingleAtom(symbol, a=a, spinpaired=False,
                                     h=h, parameters=parameters).energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump(e0, file)
@@ -244,7 +252,7 @@ if 'atomize' in tests:
                 elif 'm' in s:
                     print '      ',
                 else:
-                    print '%6.3f' % (eval(s) - x * atomization[formula][1]),
+                    print '%6.3f' % (eval(s) - x * atomization[formula][xc]),
 
     h = 0.2
     em = {}
@@ -263,10 +271,11 @@ if 'atomize' in tests:
                 e.append(e0)
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     e0 = Molecule(formula, a=a, h=h,
                                   parameters=parameters).energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump(e0, file)
@@ -290,10 +299,11 @@ if 'atomize' in tests:
                 e.append(e0)
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     e0 = SingleAtom(symbol, a=a, spinpaired=False,
                                     h=h, parameters=parameters).energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump(e0, file)
@@ -316,7 +326,7 @@ if 'atomize' in tests:
                 elif 'm' in s:
                     print '      ',
                 else:
-                    print '%6.3f' % (eval(s) - x * atomization[formula][1]),
+                    print '%6.3f' % (eval(s) - x * atomization[formula][xc]),
 
     lmaxold = parameters.get('lmax', 0)
     h = 0.2
@@ -337,10 +347,11 @@ if 'atomize' in tests:
                 e.append(e0)
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     e0 = Molecule(formula, a=a, h=h,
                                   parameters=parameters).energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump(e0, file)
@@ -364,10 +375,11 @@ if 'atomize' in tests:
                 e.append(e0)
             elif not os.path.isfile(filename):
                 file = open(filename, 'w')
+                parameters['out']=filename+'.txt'
                 try:
                     e0 = SingleAtom(symbol, a=a, spinpaired=False,
                                     h=h, parameters=parameters).energy()
-                except RuntimeError:
+                except ConvergenceError:
                     pass
                 else:
                     pickle.dump(e0, file)
@@ -391,7 +403,7 @@ if 'atomize' in tests:
                 elif 'm' in s:
                     print '      ',
                 else:
-                    print '%6.3f' % (eval(s) - x * atomization[formula][1]),
+                    print '%6.3f' % (eval(s) - x * atomization[formula][xc]),
 
         print '\n\nAtomic energies:\nh:  ',
         for lmax in range(3):

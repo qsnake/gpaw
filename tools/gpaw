@@ -14,10 +14,16 @@ parser.add_option('-p', '--spin-paired', action='store_true',
 parser.add_option('-e', '--eggbox-test', action='store_true',
                   default=False,
                   help='Do eggbox test.')
+parser.add_option('-b', '--bulk-test', action='store_true',
+                  default=False,
+                  help='Do bulk test.')
 parser.add_option('-z', '--atomize', action='store_true',
                   default=False,
                   help='Calculate atomization energy.')
-parser.add_option('-a', '--cell', type='float', default=None,
+parser.add_option('-a', '--a-lattice-constant', type='float', default=None,
+                  help='Size of unit cell (Angstrom).',
+                  metavar='<size>')
+parser.add_option('-c', '--c-lattice-constant', type='float', default=None,
                   help='Size of unit cell (Angstrom).',
                   metavar='<size>')
 parser.add_option('-g', '--grid-spacing', type='float', default=None,
@@ -29,6 +35,13 @@ parser.add_option('-n', '--points', type='int', default=20,
 parser.add_option('-x', '--extra-parameters', type='string', default='{}',
                   help='Extra parameters.',
                   metavar='''"{'xc': 'PBE', ...}"''')
+parser.add_option('-P', '--setup-path', type='string', default=None,
+                  help='Path for setups.')
+parser.add_option('-s', '--crystal-structure', type='string', default=None,
+                  help='One of: sc, fcc, hcp, bcc, diamond.')
+parser.add_option('-f', '--xcfunctional', type='string', default='LDA',
+                  help='Exchange-Correlation functional (default value LDA)',
+                  metavar='<XC>')
 
 opt, args = parser.parse_args()
 
@@ -38,24 +51,50 @@ if len(args) != 1:
 
 from ASE.Units import Convert
 
+from gridpaw import setup_paths
 from gridpaw.setuptests.singleatom import SingleAtom
 from gridpaw.setuptests.molecule import Molecule
 
-formula = args[0]
 
 singleatom = True
-for c in formula[1:]:
+for c in args[0][1:]:
     if not c.islower():
         singleatom = False
         break
 
+if singleatom:
+    symbol = args[0]
+else:
+    formula = args[0]
+
 parameters = eval(opt.extra_parameters)
 
-if singleatom:
+parameters['xc'] = opt.xcfunctional
+
+if opt.setup_path is not None:
+    setup_paths.insert(0, opt.setup_path)
+    
+if not singleatom:
+    if opt.atomize:
+        parameters['out'] = open('atomize.txt', 'w')
+
+    molecule = Molecule(formula, a=opt.a_lattice_constant, h=opt.grid_spacing,
+                        parameters=parameters)
+    if opt.atomize:
+        ea = molecule.atomize(verbose=True)
+        eakcalmol = Convert(ea, 'eV', 'kcal/mol/Nav')
+        print 'Atomization energy: %.3f eV (%.2f kcal/mol)' % (ea, eakcalmol)
+    else:
+        molecule.energy()
+
+elif opt.bulk_test:
+    bulk = Bulk(symbol)
+else:
     if opt.eggbox_test:
         parameters['out'] = 'eggbox-test.txt'
 
-    atom = SingleAtom(formula, a=opt.cell, spinpaired=opt.spin_paired,
+    atom = SingleAtom(symbol, a=opt.a_lattice_constant,
+                      spinpaired=opt.spin_paired,
                       eggboxtest=opt.eggbox_test, h=opt.grid_spacing,
                       parameters=parameters)
 
@@ -72,15 +111,3 @@ if singleatom:
         out.close()
     else:
         atom.energy()
-else:
-    if opt.atomize:
-        parameters['out'] = open('atomize.txt', 'w')
-
-    molecule = Molecule(formula, a=opt.cell, h=opt.grid_spacing,
-                        parameters=parameters)
-    if opt.atomize:
-        ea = molecule.atomize(verbose=True)
-        eakcalmol = Convert(ea, 'eV', 'kcal/mol/Nav')
-        print 'Atomization energy: %.3f eV (%.2f kcal/mol)' % (ea, eakcalmol)
-    else:
-        molecule.energy()

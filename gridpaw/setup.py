@@ -104,8 +104,8 @@ class Setup:
          e_kinetic_core,
          n_j, l_j, f_j, eps_j, rcut_j, id_j,
          ng, beta,
-         nc_g, nct_g, vbar0, gamma,
-         phi_jg, phit_jg, G_jn,
+         nc_g, nct_g, vbar_g, gamma,
+         phi_jg, phit_jg, pt_jg,
          e_kin_jj, X_p, ExxC,
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
@@ -132,13 +132,6 @@ class Setup:
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
-
-        pt_jg = num.zeros((nj, ng), num.Float)
-        for j in range(nj):
-            x = r_g / rcut_j[j]
-            for n, c in enumerate(G_jn[j]):
-                pt_jg[j, :gcut2] += (c * r_g[:gcut2]**(l_j[j] + 2 * n) *
-                                         num.exp(-gamma * x[:gcut2]**2))
 
         if 0:
             for j in range(nj):
@@ -195,10 +188,7 @@ class Setup:
         
         # Construct splines:
         self.nct = Spline(0, rcore, f_g=nct_g, r_g=r_g, beta=beta)
-        vbar_g = num.zeros(ng, num.Float)
-        x = r_g / rcut
-        vbar_g[:gcut2] = vbar0 * num.exp(-gamma * x[:gcut2]**2)
-        self.vbar = Spline(0, rcut2, coefs=[vbar0], alpha=gamma / rcut**2)
+        self.vbar = Spline(0, rcut2, f_g=vbar_g, r_g=r_g, beta=beta)
         
         def grr(phi_g, l, r_g):
             w_g = phi_g.copy()
@@ -210,14 +200,10 @@ class Setup:
             return w_g
         
         self.pt_j = []
-        for j, G_n in enumerate(G_jn):
+        for j in range(nj):
             l = l_j[j]
-            if 0:
-                self.pt_j.append(Spline(l, rcut2, f_g=grr(pt_g, l, r_g),
-                                        r_g=r_g, beta=beta))
-            else:
-                self.pt_j.append(Spline(l, rcut2, coefs=G_n,
-                                        alpha=gamma / rcut**2))
+            self.pt_j.append(Spline(l, rcut2, f_g=grr(pt_jg[j], l, r_g),
+                                    r_g=r_g, beta=beta))
      
         cutoff = 8.0 # ????????
         self.wtLCAO_j = []
@@ -362,7 +348,7 @@ class Setup:
 
         # Dont forget to change the onsite interaction energy for soft = 0 XXX
         if softgauss:
-            rcutsoft = rcut2 + 1.4
+            rcutsoft = rcut2####### + 1.4
         else:
             rcutsoft = rcut2
 
@@ -389,11 +375,13 @@ class Setup:
         self.lmax = lmax
 
         r = 0.02 * rcutsoft * num.arange(51, typecode=num.Float)
+##        r = 0.04 * rcutsoft * num.arange(26, typecode=num.Float)
         alpha = rcgauss**-2
         self.alpha = alpha
         if softgauss:
             assert lmax <= 2
             alpha2 = 22.0 / rcutsoft**2
+            alpha2 = 15.0 / rcutsoft**2
 
             vt0 = 4 * pi * (num.array([erf(x) for x in sqrt(alpha) * r]) -
                             num.array([erf(x) for x in sqrt(alpha2) * r]))

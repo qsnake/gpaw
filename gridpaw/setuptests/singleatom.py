@@ -16,13 +16,16 @@ magmoms = {}
 
 class SingleAtom:
     def __init__(self, symbol, a=None, h=None, spinpaired=False,
-                 eggboxtest=False, parameters={}):
+                 eggboxtest=False, parameters={}, forcesymm=False):
         if a is None:
             a = 7.0  # Angstrom
 
         if eggboxtest:
             spinpaired = True
-            
+
+        periodic = eggboxtest
+        pos = (a / 2, a / 2, a / 2)
+        
         if spinpaired:
             magmom = 0
             width = 0.1  # 0.1 eV
@@ -30,6 +33,16 @@ class SingleAtom:
         else:
             width = 0
             hund = True
+            if symbol in ['C', 'O', 'F']:
+                if forcesymm:
+                    parameters['kpts'] = (2, 2, 2)
+                    periodic = True
+                    if symbol == 'O':
+                        pos = (0.1, 0, 0)
+                    else:
+                        pos = (0, 0, 0.1)
+                else:
+                    parameters['tolerance'] = 1e-7
             # Is this a special case?
             magmom = magmoms.get(symbol)
             if magmom is None:
@@ -38,9 +51,8 @@ class SingleAtom:
                 for n, l, f, e in configurations[symbol][1]:
                     magmom += min(f, 2 * (2 * l + 1) - f)
                     
-        self.atom = ListOfAtoms([Atom(symbol, [a / 2, a / 2, a / 2],
-                                      magmom=magmom)],
-                                periodic=eggboxtest,
+        self.atom = ListOfAtoms([Atom(symbol, pos, magmom=magmom)],
+                                periodic=periodic,
                                 cell=[a, a, a])
         
         calc = Calculator(h=h, width=width, hund=hund, **parameters)

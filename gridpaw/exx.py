@@ -293,15 +293,11 @@ def constructX(gen):
     # maximum angular momentum
     Lmax = 2 * max(gen.l_j,gen.lmax) + 1
 
-    # unpack valence states * r:
-    uv_j = []
-    lv_j = []
+    uv_j = gen.vu_j    # soft valence states * r:
+    lv_j = gen.vl_j
     Nvi  = 0 
-    for l, u_n in enumerate(gen.u_ln):
-        for u in u_n:
-            uv_j.append(u) # unpacked valence state array
-            lv_j.append(l) # corresponding angular momenta
-            Nvi += 2*l+1   # number of valence states (including m)
+    for l in lv_j:
+        Nvi += 2 * l + 1   # number of valence states (including m)
 
     # number of core and valence orbitals (j only, i.e. not m-number)
     Njcore = gen.njcore

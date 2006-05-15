@@ -19,6 +19,6 @@ for i in range(50):
     H[0].SetCartesianPosition(H[0].GetCartesianPosition() +
                               (0.0123456789, 0.023456789, 0.03456789))
 mem = float(os.popen(cmd).readlines()[-1].split()[-1])
-equal(e, e0, 0.0011)
+equal(e, e0, 0.0015)
 print mem, mem0
 assert mem < mem0 + 0.21

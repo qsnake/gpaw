@@ -32,10 +32,10 @@ for soft in [False, True]:
             elif l == 1:
                 Q1_m[m] -= 1.0
             print Q0, Q1_m
-            assert abs(Q0) < 7e-7
+            assert abs(Q0) < 2e-6
             assert num.alltrue(abs(Q1_m) < 3e-5)
     b_Lg = num.reshape(a_Lg, (9, n**3))
     S_LL = num.innerproduct(b_Lg, b_Lg)
     S_LL.flat[::10] = 0.0
     print max(abs(S_LL).flat)
-    assert num.alltrue(abs(S_LL) < 3e-6)
+    assert num.alltrue(abs(S_LL) < 1e-4)
