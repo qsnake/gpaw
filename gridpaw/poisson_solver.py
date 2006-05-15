@@ -8,10 +8,9 @@ import Numeric as num
 
 from gridpaw.transformers import Interpolator, Restrictor
 from gridpaw.operators import Laplace, LaplaceA, LaplaceB
-from gridpaw.utilities.gauss import Gaussian
 
 class PoissonSolver:
-    def __init__(self, gd, out=sys.stdout):
+    def __init__(self, gd, out=sys.stdout, load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         print >> out, 'poisson solver:'
@@ -47,21 +46,37 @@ class PoissonSolver:
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
         self.presmooths[level]=8
         self.postsmooths[level]=8
+
+        if load_gauss:
+            from gridpaw.utilities.gauss import Gaussian
+            gauss = Gaussian(self.gd)
+            self.rho_gauss = gauss.get_gauss(0)
+            self.phi_gauss = gauss.get_gauss_pot(0)
         
     def solve(self, phi, rho, eps=1e-9, charge=0):
         self.phis[0] = phi
 
         # handling of charged densities
-        if charge != 0:
-            if not hasattr(self, 'gauss'):
-                self.gauss = Gaussian(self.gd)
+        if charge == None:
+            charge = self.gd.integrate(rho)
+        if abs(charge)> 1e-6:
+            # Load necessary attributes
+            if not hasattr(self, 'rho_gauss'):
+                from gridpaw.utilities.gauss import Gaussian
+                gauss = Gaussian(self.gd)
+                self.rho_gauss = gauss.get_gauss(0)
+                self.phi_gauss = gauss.get_gauss_pot(0)
+                
+            # remove monopole moment
+            rho_neutral = rho - self.rho_gauss * charge / (2 * num.sqrt(pi))
 
-            # determine monopole moment
-            if charge == None: q = None
-            else: q = charge / (2 * num.sqrt(pi))
-            
-            # remove monopole moment and get error correcting potential
-            phi_gauss = self.gauss.remove_moment(rho, L=0, q=q)
+            # determine potential from neutralized density
+            self.solve(phi, rho_neutral, eps=eps, charge=0)
+
+            # correct error introduced by removing monopole
+            phi += self.phi_gauss * charge / (2 * num.sqrt(pi))
+
+            return
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
@@ -73,12 +88,9 @@ class PoissonSolver:
             print 'CHARGE:', charge
             if charge > 1e-6:
                 print '  For charged systems, run poisson_solver with'
-                print '  keyword charge=True.'
+                print '  keyword charge=None.'
             raise RuntimeError('Poisson solver did not converge!')
 
-        # correct error introduced by removing monopole
-        if charge != 0: phi += phi_gauss
-            
         return niter
         
     def iterate(self, step, level=0):
@@ -134,3 +146,12 @@ class PoissonSolver:
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
                                                 residual.flat))*self.dv
             return error
+
+    def load(self):
+        # Load necessary attributes
+        if not hasattr(self, 'rho_gauss'):
+            from gridpaw.utilities.gauss import Gaussian
+            gauss = Gaussian(self.gd)
+            self.rho_gauss = gauss.get_gauss(0)
+            self.phi_gauss = gauss.get_gauss_pot(0)
+                
