@@ -8,10 +8,7 @@ import _gridpaw
 
 
 class Spline:
-    def __init__(self, l, rmax,
-                 f_g=None,
-                 r_g=None, beta=None,
-                 coefs=None, alpha=None):
+    def __init__(self, l, rmax, f_g, r_g=None, beta=None):
         """Spline(l, rcut, list) -> Spline object
 
         The integer l gives the angular momentum quantum number and
@@ -19,17 +16,11 @@ class Spline:
         """
         assert 0.0 < rmax
 
-        if alpha is not None:
-            r = 0.01 * rmax * num.arange(101)
-            e_g = num.exp(-alpha * r**2)
-            f_g = num.zeros(101, num.Float)
-            for n, c in enumerate(coefs):
-                f_g += c * e_g * r**(2 * n)
-
-        elif beta is not None:
-##            r = 0.01 * rmax * num.arange(101)
-##            r = 0.02 * rmax * num.arange(51)
-            r = 0.04 * rmax * num.arange(26)
+        if beta is None:
+            f_g = contiguous(f_g, num.Float)
+        else:
+            K = 25
+            r = rmax / K * num.arange(K + 1)
             ng = len(f_g)
             g = (ng * r / (beta + r) + 0.5).astype(num.Int)
             g = num.clip(g, 1, ng - 2)
@@ -43,8 +34,6 @@ class Spline:
             f2 = num.take(f_g, g)
             f3 = num.take(f_g, g + 1)
             f_g = f1 * x1 + f2 * x2 + f3 * x3
-        else:
-            f_g = contiguous(f_g, num.Float)
 
         f_g[-1] = 0.0
         self.spline = _gridpaw.Spline(l, rmax, f_g)

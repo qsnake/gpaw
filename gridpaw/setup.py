@@ -187,9 +187,9 @@ class Setup:
         Lmax = (lmax + 1)**2
         
         # Construct splines:
-        self.nct = Spline(0, rcore, f_g=nct_g, r_g=r_g, beta=beta)
-        self.vbar = Spline(0, rcut2, f_g=vbar_g, r_g=r_g, beta=beta)
-        
+        self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
+        self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
+
         def grr(phi_g, l, r_g):
             w_g = phi_g.copy()
             if l > 0:
@@ -202,7 +202,7 @@ class Setup:
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
-            self.pt_j.append(Spline(l, rcut2, f_g=grr(pt_jg[j], l, r_g),
+            self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
                                     r_g=r_g, beta=beta))
      
         cutoff = 8.0 # ????????
@@ -211,7 +211,7 @@ class Setup:
             if f_j[j] > 0:
                 l = l_j[j]
                 self.wtLCAO_j.append(Spline(l, cutoff,
-                                            f_g=grr(phit_g, l, r_g),
+                                            grr(phit_g, l, r_g),
                                             r_g=r_g, beta=beta))
 
         a1_g = 1.0 - 0.5 * (d2gdr2 * dr_g**2)[1:gcut2 + 1]
@@ -411,11 +411,11 @@ class Setup:
             for l in range(lmax + 1):
                 vtl = vt_l[l]
                 vtl[-1] = 0.0
-                self.Deltav_l.append(Spline(l, rcutsoft, f_g=vtl))
+                self.Deltav_l.append(Spline(l, rcutsoft, vtl))
 
         else:
             alpha2 = alpha
-            self.Deltav_l = [Spline(l, rcutsoft, f_g=0 * r)
+            self.Deltav_l = [Spline(l, rcutsoft, 0 * r)
                              for l in range(lmax + 1)]
 
         self.alpha2 = alpha2
@@ -424,7 +424,7 @@ class Setup:
                for l in range(3)]
         g = alpha2**1.5 * num.exp(-alpha2 * r**2)
         g[-1] = 0.0
-        self.gt_l = [Spline(l, rcutsoft, f_g=d_l[l] * alpha2**l * g)
+        self.gt_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
                      for l in range(lmax + 1)]
 
         # Construct atomic density matrix for the ground state (to be

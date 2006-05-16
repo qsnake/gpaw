@@ -6,6 +6,7 @@ from math import pi, sqrt
 
 import Numeric as num
 num.inner = num.innerproduct # XXX numpy!
+from FFT import real_fft, inverse_real_fft
 from LinearAlgebra import solve_linear_equations, inverse
 from ASE.ChemicalElements.name import names
 
@@ -388,9 +389,6 @@ class Generator(AllElectron):
                 q[gcut:] = 0.0
 ##                q[gcut_l[l]??????:] = 0.0
 
-        if 0:
-            vbar[1:gcut2] = filter.filter((vbar * r)[:gcut2], 0.01)[1:] / r[1:gcut2]
-            vbar[0] = vbar[1]
         
         # Calculate matrix elements:
         self.dK_lnn = dK_lnn = []
@@ -417,8 +415,7 @@ class Generator(AllElectron):
 
             if 1:
                 for q in q_n:
-                    q[1:] /= r[1:]**l
-                    q[:gcut2] = filter.filter(q[:gcut2]) * r[:gcut2]**l
+                    q[:gcut2] = filter.filter(q[:gcut2], l)
                 A_nn = num.innerproduct(q_n, s_n * dr)
 
             # Orthonormalize projector functions:
@@ -737,8 +734,6 @@ class Generator(AllElectron):
         print >> xml, '</paw_setup>'
 
 
-from FFT import real_fft, inverse_real_fft
-
 class Filter:
     def __init__(self, r_g, beta, N, rc):
         M = 256
@@ -763,7 +758,8 @@ class Filter:
         self.r_n = r_n
         self.M = M
         
-    def filter(self, f_g, a=0.05):
+    def filter(self, f_g, l, a=0.05):
+        f_g[1:] /= self.r_g[1:]**l
         f1_n = num.take(f_g, self.g_n - 1)
         f2_n = num.take(f_g, self.g_n)
         f3_n = num.take(f_g, self.g_n + 1)
@@ -781,4 +777,4 @@ class Filter:
         f2_g = num.take(f_n, self.n_g)
         f3_g = num.take(f_n, self.n_g + 1)
         ff_g = f1_g * self.x1_g + f2_g * self.x2_g + f3_g * self.x3_g
-        return ff_g
+        return ff_g * self.r_g**l

@@ -71,12 +71,12 @@ class PoissonSolver:
             rho_neutral = rho - self.rho_gauss * charge / (2 * num.sqrt(pi))
 
             # determine potential from neutralized density
-            self.solve(phi, rho_neutral, eps=eps, charge=0)
+            niter = self.solve(phi, rho_neutral, eps=eps, charge=0)
 
             # correct error introduced by removing monopole
             phi += self.phi_gauss * charge / (2 * num.sqrt(pi))
 
-            return
+            return niter
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
