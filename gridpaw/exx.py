@@ -2,7 +2,10 @@ import Numeric as num
 from Numeric import pi
 from gridpaw.utilities.complex import real
 from gridpaw.coulomb import Coulomb
-from gridpaw.utilities.tools import pack
+from gridpaw.utilities.tools import pack, pack2
+from gridpaw.gaunt import gaunt
+from gridpaw.utilities import hartree
+
 
 class PawExx:
     """Class offering methods for non-selfconsistent evaluation of the
@@ -224,17 +227,9 @@ def atomic_exact_exchange(atom, type = 'all'):
         mstates = range(Njcore)
     else: raise RuntimeError('Unknown type of exchange: ', type)
 
-    # diagonal +-1 elements in Hartree matrix
-    a1_g  = 1.0 - 0.5 * (atom.d2gdr2 * atom.dr**2)[1:]
-    a2_lg = -2.0 * num.ones((Lmax, atom.N - 1), num.Float)
-    x_g   = (atom.dr[1:] / atom.r[1:])**2
-    for l in range(1, Lmax):
-        a2_lg[l] -= l * (l + 1) * x_g
-    a3_g = 1.0 + 0.5 * (atom.d2gdr2 * atom.dr**2)[1:]
-
-    # initialize potential calculator (returns v*r^2*dr/dg)
-    H = Hartree(a1_g, a2_lg, a3_g, atom.r, atom.dr).solve
-
+    vr = num.zeros(atom.N, num.Float)
+    vrl = num.zeros(atom.N, num.Float)
+    
     # do actual calculation of exchange contribution
     Exx = 0.0
     for j1 in nstates:
@@ -251,26 +246,26 @@ def atomic_exact_exchange(atom, type = 'all'):
 
             # electron density
             n = atom.u_j[j1]*atom.u_j[j2]
-            n[1:] /= atom.r[1:]**2
+            n[1:] /= atom.r[1:]
+            n *= atom.dr
 
             # determine potential times r^2 times length element dr/dg
-            vr2dr = num.zeros(atom.N, num.Float)
+            vr[:] = 0.0
 
             # L summation
             for l in range(l1 + l2 + 1):
                 # get potential for current l-value
-                vr2drl = H(n, l)
+                hartree(l, n, atom.beta, atom.N, vrl)
 
                 # take all m1 m2 and m values of Gaunt matrix of the form
                 # G(L1,L2,L) where L = {l,m}
-                G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2,\
-                           l**2:(l+1)**2]**2
+                G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2, l**2:(l+1)**2]**2
 
                 # add to total potential
-                vr2dr += vr2drl * num.sum(G2.copy().flat)
+                vr += vrl * num.sum(G2.copy().flat)
 
             # add to total exchange the contribution from current two states
-            Exx += -.5 * f12 * num.dot(n,vr2dr)
+            Exx += -.5 * f12 * num.dot(n, vr)
 
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.
@@ -280,15 +275,6 @@ def atomic_exact_exchange(atom, type = 'all'):
 
 def constructX(gen):
     """Construct the X_p^a matrix for the given atom"""
-
-    # get Gaunt coefficients
-    from gridpaw.gaunt import gaunt
-
-    # get Hartree potential calculator
-    from gridpaw.setup import Hartree
-
-    # get revised pack2 module
-    from gridpaw.utilities.tools import pack2
 
     # maximum angular momentum
     Lmax = 2 * max(gen.l_j,gen.lmax) + 1
@@ -306,19 +292,12 @@ def constructX(gen):
     # core states * r:
     uc_j = gen.u_j[:Njcore]
 
-    # diagonal +-1 elements in Hartree matrix
-    a1_g  = 1.0 - 0.5 * (gen.d2gdr2 * gen.dr**2)[1:]
-    a2_lg = -2.0 * num.ones((Lmax, gen.N - 1), num.Float)
-    x_g   = ((gen.dr / gen.r)**2)[1:]
-    for l in range(1, Lmax):
-        a2_lg[l] -= l * (l + 1) * x_g
-    a3_g = 1.0 + 0.5 * (gen.d2gdr2 * gen.dr**2)[1:]
-
-    # initialize potential calculator (returns v*r^2*dr/dg)
-    H = Hartree(a1_g, a2_lg, a3_g, gen.r, gen.dr).solve
-
+    r, dr, N, beta = gen.r, gen.dr, gen.N, gen.beta
+    
+    vr = num.zeros(N, num.Float)
+        
     # initialize X_ii matrix
-    X_ii = num.zeros((Nvi,Nvi), num.Float)
+    X_ii = num.zeros((Nvi, Nvi), num.Float)
 
     # sum over core states
     for jc in range(Njcore):
@@ -331,7 +310,8 @@ def constructX(gen):
 
             # electron density 1
             n1c = uv_j[jv1]*uc_j[jc]
-            n1c[1:] /= gen.r[1:]**2  
+            n1c[1:] /= r[1:]
+            n1c *= dr
 
             # sum over second valence state index
             i2 = 0
@@ -340,13 +320,15 @@ def constructX(gen):
                 
                 # electron density 2
                 n2c = uv_j[jv2]*uc_j[jc]
-                n2c[1:] /= gen.r[1:]**2  
+                n2c[1:] /= r[1:]
+                n2c *= dr
             
                 # sum expansion in angular momenta
                 for l in range(min(lv1,lv2) + lc + 1):
-                    # integrate density * potential
-                    nv = num.dot(n1c,H(n2c, l))
-
+                    # Integrate density * potential:
+                    hartree(l, n2c, beta, N, vr)
+                    nv = num.dot(n1c, vr)
+                    
                     # expansion coefficients
                     A_mm = X_ii[i1:i1 + 2 * lv1 + 1, i2:i2 + 2 * lv2 + 1]
                     for mc in range(2*lc+1):

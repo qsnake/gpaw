@@ -12,7 +12,7 @@ from gridpaw.read_setup import PAWXMLParser
 from gridpaw.gaunt import gaunt as G_L1L2L
 from gridpaw.spline import Spline
 from gridpaw.grid_descriptor import RadialGridDescriptor
-from gridpaw.utilities import unpack, erf, fac
+from gridpaw.utilities import unpack, erf, fac, hartree
 from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
 
@@ -33,63 +33,6 @@ from gridpaw.xc_functional import XCOperator
 #
 #   r = max(r, r')
 #    >
-
-
-class Hartree:
-    #
-    #     2
-    # 1  d        l(l + 1)         __
-    # - ---(vr) - -------- v = - 4 || n
-    # r   2           2
-    #   dr           r
-    #
-    #   2        2
-    #  d        d g  dr 2 d        l(l + 1)  dr 2          __      dr 2 
-    # ---(vr) + --- (--)  --(vr) - -------- (--)  vr = - 4 || n r (--)
-    #   2         2  dg   dg           2     dg                    dg
-    # dg        dr                    r
-    #
-    def __init__(self, a1_g, a2_lg, a3_g, r_g, dr_g):
-        self.a1_g = a1_g
-        self.a2_lg = a2_lg
-        self.a3_g = a3_g
-        self.r_g = r_g
-        self.dr_g = dr_g
-
-    def solve(self, n_g, l):
-        # for N = 6:
-        #
-        # vr_5 = 0
-        #
-        # | a1_0 a2_0 a3_0   0    0  |   | vr_0 |   | c_1 |
-        # |   0  a1_1 a2_1 a3_1   0  |   | vr_1 |   | c_2 |
-        # |   0    0  a1_2 a2_2 a3_2 | * | vr_2 | = | c_3 |
-        # |   0    0    0  a1_3 a2_3 |   | vr_3 |   | c_4 |
-        # |   0    0    0    0  a1_4 |   | vr_4 |   | c_5 |
-        #               __
-        #             4 || Q   1
-        # v  <--  v + ------- ----
-        #             2 l + 1  l+1
-        #                     r
-        #
-        gcut = len(n_g)
-        Q = num.dot(self.r_g**(2 + l) * self.dr_g, n_g)
-##        print 'Q:', Q
-        c_g = -4 * pi * self.r_g * self.dr_g**2 * n_g
-        vr_g = num.zeros(gcut, num.Float)
-        g = gcut - 2
-        vr_g[g] = (c_g[g + 1] - self.a2_lg[l, g] * vr_g[g + 1]) / self.a1_g[g]
-        while g > 0:
-            g -= 1
-            vr_g[g] = (c_g[g + 1]
-                      - self.a2_lg[l, g] * vr_g[g + 1]
-                      - self.a3_g[g] * vr_g[g + 2]) / self.a1_g[g]
-
-        if l == 0:
-            vr_g += 4 * pi * Q
-        else:
-            vr_g[1:] += 4 * pi * Q / (2 * l + 1) * self.r_g[1:]**-l
-        return vr_g * self.r_g * self.dr_g
 
 
 class Setup:
@@ -214,13 +157,6 @@ class Setup:
                                             grr(phit_g, l, r_g),
                                             r_g=r_g, beta=beta))
 
-        a1_g = 1.0 - 0.5 * (d2gdr2 * dr_g**2)[1:gcut2 + 1]
-        a2_lg = -2.0 * num.ones((lmax + 1, gcut2), num.Float)
-        x_g = (dr_g[1:gcut2 + 1] / r_g[1:gcut2 + 1])**2
-        for l in range(1, lmax + 1):
-            a2_lg[l] -= l * (l + 1) * x_g
-        a3_g = 1.0 + 0.5 * (d2gdr2 * dr_g**2)[1:gcut2 + 1]
-
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()
         phi_jg = num.array([phi_g[:gcut2] for phi_g in phi_jg])
@@ -274,17 +210,13 @@ class Setup:
         Delta = num.dot(nc_g - nct_g, r_g**2 * dr_g) - Z / sqrt(4 * pi)
         self.Delta0 = Delta
 
-        H = Hartree(a1_g, a2_lg, a3_g, r_g, dr_g).solve
-
-        if 0:
-            from gridpaw.utilities import hartree
-            def H(n_g, l):
-                yrrdr_g = num.zeros(gcut2, num.Float)
-                nrdr_g = n_g * r_g * dr_g
-                hartree(l, nrdr_g, beta, ng, yrrdr_g)
-                yrrdr_g *= r_g * dr_g
-                return yrrdr_g
-            
+        def H(n_g, l):
+            yrrdr_g = num.zeros(gcut2, num.Float)
+            nrdr_g = n_g * r_g * dr_g
+            hartree(l, nrdr_g, beta, ng, yrrdr_g)
+            yrrdr_g *= r_g * dr_g
+            return yrrdr_g
+        
         wnc_g = H(nc_g, l=0)
         wnct_g = H(nct_g, l=0)
         
