@@ -39,11 +39,11 @@ def is_contiguous(array, typecode=None):
 
 # Radial-grid Hartree solver:
 if debug:
-    def hartree(l, nrdr, a, vr):
+    def hartree(l, nrdr, b, N, vr):
         assert is_contiguous(nrdr, num.Float)
         assert is_contiguous(vr, num.Float)
         assert nrdr.shape == vr.shape and len(vr.shape) == 1
-        return _gridpaw.hartree(l, nrdr, a, vr)
+        return _gridpaw.hartree(l, nrdr, b, N, vr)
 else:
     hartree = _gridpaw.hartree
 

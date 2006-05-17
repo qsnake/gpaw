@@ -38,15 +38,16 @@ PyObject* hartree(PyObject *self, PyObject *args)
   int l;
   PyArrayObject* nrdr_array;
   double b;
+  int N;
   PyArrayObject* vr_array;
-  if (!PyArg_ParseTuple(args, "iOdO", &l, &nrdr_array, &b, &vr_array)) 
+  if (!PyArg_ParseTuple(args, "iOdiO", &l, &nrdr_array, &b, &N, &vr_array)) 
     return NULL;
-  const int N = nrdr_array->dimensions[0];
+  const int M = nrdr_array->dimensions[0];
   const double* nrdr = DOUBLEP(nrdr_array);
   double* vr = DOUBLEP(vr_array);
   double p = 0.0;
   double q = 0.0;
-  for (int g = N - 1; g > 0; g--)
+  for (int g = M - 1; g > 0; g--)
     {
       double r = b * g / (N - g);
       double rl = pow(r, l);
@@ -59,7 +60,7 @@ PyObject* hartree(PyObject *self, PyObject *args)
     }
   vr[0] = 0.0;
   double f = 4.0 * M_PI / (2 * l + 1);
-  for (int g = 1; g < N; g++)
+  for (int g = 1; g < M; g++)
     {
       double r = b * g / (N - g);
       vr[g] = f * (vr[g] + q / pow(r, l));

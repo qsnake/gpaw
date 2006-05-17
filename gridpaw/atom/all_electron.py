@@ -247,7 +247,7 @@ class AllElectron:
     
     def calculate_hartree_potential(self, n):
         vHr = num.zeros(self.N, num.Float)
-        hartree(0, n * self.r * self.dr, self.beta, vHr)
+        hartree(0, n * self.r * self.dr, self.beta, self.N, vHr)
         return vHr
     
         #    2

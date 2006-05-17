@@ -275,10 +275,19 @@ class Setup:
         self.Delta0 = Delta
 
         H = Hartree(a1_g, a2_lg, a3_g, r_g, dr_g).solve
-        
+
+        if 0:
+            from gridpaw.utilities import hartree
+            def H(n_g, l):
+                yrrdr_g = num.zeros(gcut2, num.Float)
+                nrdr_g = n_g * r_g * dr_g
+                hartree(l, nrdr_g, beta, ng, yrrdr_g)
+                yrrdr_g *= r_g * dr_g
+                return yrrdr_g
+            
         wnc_g = H(nc_g, l=0)
         wnct_g = H(nct_g, l=0)
-
+        
         wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
 
         wn_lqg = [num.array([H(n_qg[q], l) for q in range(nq)])
@@ -310,26 +319,26 @@ class Setup:
         AB_q = -num.dot(nt_qg, dv_g * vbar_g)
         self.MB_p = num.dot(AB_q, T_Lqp[0])
 
-        A_lq1q2 = []
+        A_lqq = []
         for l in range(lmax + 1):
-            A_q1q2 = 0.5 * num.dot(n_qg, num.transpose(wn_lqg[l]))
-            A_q1q2 -= 0.5 * num.dot(nt_qg, num.transpose(wnt_lqg[l]))
-            A_q1q2 -= 0.5 * num.outerproduct(Delta_lq[l],
+            A_qq = 0.5 * num.dot(n_qg, num.transpose(wn_lqg[l]))
+            A_qq -= 0.5 * num.dot(nt_qg, num.transpose(wnt_lqg[l]))
+            A_qq -= 0.5 * num.outerproduct(Delta_lq[l],
                                             num.dot(wnt_lqg[l], g_lg[l]))
-            A_q1q2 -= 0.5 * num.outerproduct(num.dot(nt_qg, wg_lg[l]),
+            A_qq -= 0.5 * num.outerproduct(num.dot(nt_qg, wg_lg[l]),
                                             Delta_lq[l])
-            A_q1q2 -= 0.5 * num.dot(g_lg[l], wg_lg[l]) * \
+            A_qq -= 0.5 * num.dot(g_lg[l], wg_lg[l]) * \
                       num.outerproduct(Delta_lq[l], Delta_lq[l])
-            A_lq1q2.append(A_q1q2)
-
+            A_lqq.append(A_qq)
+        
         self.M_pp = num.zeros((np, np), num.Float)
         L = 0
         for l in range(lmax + 1):
             for m in range(2 * l + 1):
                 self.M_pp += num.dot(num.transpose(T_Lqp[L]),
-                                    num.dot(A_lq1q2[l], T_Lqp[L]))
+                                    num.dot(A_lqq[l], T_Lqp[L]))
                 L += 1
-
+        
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
