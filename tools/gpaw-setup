@@ -4,9 +4,6 @@
 
 from optparse import OptionParser
 
-from gridpaw.atom.generator import Generator, parameters
-from gridpaw.atom.all_electron import AllElectron
-
 
 parser = OptionParser(usage='%prog [options] [elements]',
                       version='%prog 0.1')
@@ -37,6 +34,9 @@ parser.add_option('-c', '--core', type='string', default=None,
                   metavar='<core>')
 
 opt, args = parser.parse_args()
+
+from gridpaw.atom.generator import Generator, parameters
+from gridpaw.atom.all_electron import AllElectron
 
 if args:
     atoms = args

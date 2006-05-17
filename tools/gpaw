@@ -19,7 +19,7 @@ parser.add_option('-b', '--bulk-test', action='store_true',
                   help='Do bulk test.')
 parser.add_option('-z', '--atomize', action='store_true',
                   default=False,
-                  help='Calculate atomization energy.')
+                  help='Calculate atomization/cohesive energy.')
 parser.add_option('-a', '--a-lattice-constant', type='float', default=None,
                   help='Size of unit cell (Angstrom).',
                   metavar='<size>')
@@ -34,12 +34,12 @@ parser.add_option('-n', '--points', type='int', default=20,
                   metavar='<integer>')
 parser.add_option('-x', '--extra-parameters', type='string', default='{}',
                   help='Extra parameters.',
-                  metavar='''"{'xc': 'PBE', ...}"''')
+                  metavar='''"{'lmax': 2, ...}"''')
 parser.add_option('-P', '--setup-path', type='string', default=None,
-                  help='Path for setups.')
+                  help='Path for setups.', metavar='<path>')
 parser.add_option('-s', '--crystal-structure', type='string', default=None,
                   help='One of: sc, fcc, hcp, bcc, diamond.')
-parser.add_option('-f', '--xcfunctional', type='string', default='LDA',
+parser.add_option('-f', '--xc-functional', type='string', default='LDA',
                   help='Exchange-Correlation functional (default value LDA)',
                   metavar='<XC>')
 
@@ -69,7 +69,7 @@ else:
 
 parameters = eval(opt.extra_parameters)
 
-parameters['xc'] = opt.xcfunctional
+parameters['xc'] = opt.xc_functional
 
 if opt.setup_path is not None:
     setup_paths.insert(0, opt.setup_path)
