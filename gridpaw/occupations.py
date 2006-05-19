@@ -39,14 +39,12 @@ class FixMom(Dummy):
                 f_n[b] = 1.0
             return -1, 0.0, 0.0
 
-        ma = (self.ne + self.M) / 2
-        mb = (self.ne - self.M) / 2
-        fa_n, fb_n = [kpt.f_n for kpt in kpts]
-        fa_n[:ma] = 1.0
-        fb_n[:mb] = 1.0
-        fa_n[ma:] = 0.0
-        fb_n[mb:] = 0.0
-        return -1, ma - mb, 0.0
+        m_s = [(self.ne + self.M) / 2, (self.ne - self.M) / 2]
+        for kpt in kpts:
+            m = m_s[kpt.s]
+            kpt.f_n[:m] = 1.0
+            kpt.f_n[m:] = 0.0
+        return -1, self.M, 0.0
 
 
 class ZeroKelvin(Dummy):
