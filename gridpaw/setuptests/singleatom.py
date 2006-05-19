@@ -25,6 +25,8 @@ class SingleAtom:
 
         periodic = eggboxtest
         pos = (a / 2, a / 2, a / 2)
+
+        parameters = parameters.copy()
         
         if spinpaired:
             magmom = 0
@@ -43,6 +45,7 @@ class SingleAtom:
                         pos = (0, 0, 0.1)
                 else:
                     parameters['tolerance'] = 1e-7
+
             # Is this a special case?
             magmom = magmoms.get(symbol)
             if magmom is None:
