@@ -2,7 +2,7 @@ import Numeric as num
 from Numeric import pi
 from gridpaw.utilities.complex import real
 from gridpaw.coulomb import Coulomb
-from gridpaw.utilities.tools import pack, pack2
+from gridpaw.utilities.tools import pack, pack2, core_states
 from gridpaw.gaunt import gaunt
 from gridpaw.utilities import hartree
 
@@ -202,15 +202,6 @@ def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
        instantiated AllElectron object 'atom'
     """
-    # get Gaunt coefficients
-    from gridpaw.gaunt import gaunt
-
-    # get Hartree potential calculator
-    from gridpaw.setup import Hartree
-
-    # get core state counter
-    from gridpaw.utilities.tools import core_states
-
     # maximum angular momentum
     Lmax = 2 * max(atom.l_j) + 1
 
