@@ -103,15 +103,21 @@ class GridDescriptor:
         self.h_c = domain.cell_c / N_c
         self.dv = self.h_c[0] * self.h_c[1] * self.h_c[2]
 
-    def new_array(self, n=None, typecode=num.Float, zero=True):
+    def new_array(self, n=None, typecode=num.Float, zero=True,
+                  global_array=False):
         """Return new 3D array for this domain.
 
         The array will be zeroed unless ``zero=False`` is used.  The
         type can be set with the ``typecode`` keyword (default:
-        ``Float``).  An extra dimension can be added with
-        ``n=dim``."""
+        ``float``).  An extra dimension can be added with ``n=dim``.
+        A global array spanning all domains can be allocated with
+        ``global_array=True``."""
 
-        shape = self.n_c
+        if global_array:
+            shape = self.N_c
+        else:
+            shape = self.n_c
+            
         if n is not None:
             shape = (n,) + tuple(shape)
             

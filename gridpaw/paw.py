@@ -632,6 +632,10 @@ class Paw:
         """Write current state to a netCDF file."""
         netcdf.write_netcdf(self, filename)
         
+    def write_state_to_file(self, filename):
+        """Write current state to a file."""
+        io.write(self, filename)
+        
     def initialize_from_netcdf(self, filename):
         """Read state from a netCDF file."""
         netcdf.read_netcdf(self, filename)
@@ -677,31 +681,28 @@ class Paw:
         
         c = 1.0 / self.a0**1.5
 
-        kpt_rank,u=get_parallel_info_s_k(self.wf,s,k)
+        wf = self.wf
+        
+        kpt_rank, u = get_parallel_info_s_k(wf, s, k)
 
         if not mpi.parallel:
-            psit_G = self.wf.kpt_u[u].psit_nG[n]
-            return psit_G*c
+            psit_G = wf.kpt_u[u].psit_nG[n]
+            return psit_G * c
 
-        if self.wf.kpt_comm.rank == kpt_rank:
-            psit_G =  self.wf.kpt_u[u].psit_nG[n]
-            a_G = self.gd.collect(psit_G)
+        if wf.kpt_comm.rank == kpt_rank:
+            psit_G = self.gd.collect(wf.kpt_u[u].psit_nG[n])
 
             # domain master send this to the global master
-            if self.domain.comm.rank == 0:
-                self.wf.kpt_comm.send(a_G, MASTER, 13)
+            if self.domain.comm.rank == MASTER and kpt_rank != MASTER:
+                wf.kpt_comm.send(psit_G, MASTER, 13)
 
-        if mpi.rank == MASTER and self.wf.kpt_comm.size > 1:
+        if mpi.rank == MASTER and kpt_rank != MASTER:
             # allocate full wavefunction and receive 
-            psit_G =  self.wf.kpt_u[0].psit_nG[0]
-            a_G = num.zeros(psit_G.shape[:-3] + tuple(self.gd.N_c), psit_G.typecode()) # XXX ????
-            self.wf.kpt_comm.receive(a_G, kpt_rank, 13)
+            psit_G = self.gd.new_array(typecode=wf.typecode, global_array=True)
+            wf.kpt_comm.receive(psit_G, kpt_rank, 13)
         
         if mpi.rank == MASTER:
-            return a_G * c
-        else: 
-            return
-
+            return psit_G * c
 
     def get_wannier_integrals(self, i, s, k, k1, G_I):
         """Calculate integrals for maximally localized Wannier functions."""
