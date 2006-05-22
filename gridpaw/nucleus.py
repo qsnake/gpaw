@@ -176,6 +176,9 @@ class Nucleus:
         # Smooth core density:
         nct = self.setup.get_smooth_core_density()
         self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
+        if self.nct is not None:
+            self.nct.set_communicator(self.comm, rank)
+
         if self.comm.size > 1:
             # Make MPI-group communicators:
             flags = num.array([1 * (pt_i is not None) +
@@ -296,7 +299,7 @@ class Nucleus:
             self.Q_L[:] = num.dot(num.sum(self.D_sp), self.setup.Delta_pL)
             self.Q_L[0] += self.setup.Delta0
         self.comm.broadcast(self.Q_L, self.rank)
-            
+        
     def calculate_hamiltonian(self, nt_g, vHt_g):
         if self.in_this_domain:
             a = self.setup
