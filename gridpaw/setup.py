@@ -17,24 +17,6 @@ from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
 
 
-#                       l
-#             __  __   r
-#     1      \   4||    <   * ^    ^
-#   ------ =  )  ---- ---- Y (r)Y (r'),
-#    _ _     /__ 2l+1  l+1  lm   lm
-#   |r-r'|    lm      r
-#                      >
-# where
-#
-#   r = min(r, r')
-#    <
-#
-# and
-#
-#   r = max(r, r')
-#    >
-
-
 class Setup:
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True):
         xcname = xcfunc.get_xc_name()

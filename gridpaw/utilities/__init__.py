@@ -38,12 +38,55 @@ def is_contiguous(array, typecode=None):
 
 
 # Radial-grid Hartree solver:
+#
+#                       l
+#             __  __   r
+#     1      \   4||    <   * ^    ^
+#   ------ =  )  ---- ---- Y (r)Y (r'),
+#    _ _     /__ 2l+1  l+1  lm   lm
+#   |r-r'|    lm      r
+#                      >
+# where
+#
+#   r = min(r, r')
+#    <
+#
+# and
+#
+#   r = max(r, r')
+#    >
+#
+
 if debug:
-    def hartree(l, nrdr, b, N, vr):
+    def hartree(l, nrdr, beta, N, vr):
+        """Calculates radial Coulomb integral.
+
+        The following intgral is calculated::
+        
+                                      ^
+                             n (r')Y (r')
+                  ^    / _    l     lm
+          v (r)Y (r) = |dr --------------,
+           l    lm     /       _   _
+                              |r - r'|
+
+        where input and output arrays `nrdr` and `vr`::
+
+                  dr
+          n (r) r --  and  v (r) r,
+           l      dg        l
+
+        are defined on radial grids as::
+
+              beta g
+          r = ------,  g = 0, 1, ..., N - 1.
+              N - g
+
+        """
         assert is_contiguous(nrdr, num.Float)
         assert is_contiguous(vr, num.Float)
         assert nrdr.shape == vr.shape and len(vr.shape) == 1
-        return _gridpaw.hartree(l, nrdr, b, N, vr)
+        return _gridpaw.hartree(l, nrdr, beta, N, vr)
 else:
     hartree = _gridpaw.hartree
 
