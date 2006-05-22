@@ -42,22 +42,31 @@ mpi_runtime_library_dirs = []
 mpi_define_macros = []
 
 
-msg += check_packages()
-msg += get_system_config(define_macros, include_dirs, libraries, library_dirs,
-                         extra_link_args, extra_compile_args,
-                         runtime_library_dirs, extra_objects)
+packages = ['gridpaw',
+            'gridpaw.atom',
+            'gridpaw.utilities',
+            'gridpaw.setuptests']
+
+check_packages(packages, msg)
+
+get_system_config(define_macros, include_dirs, libraries, library_dirs,
+                  extra_link_args, extra_compile_args,
+                  runtime_library_dirs, extra_objects, msg)
+
 mpicompiler, custom_interpreter = get_parallel_config(mpi_libraries,
                                                       mpi_library_dirs,
                                                       mpi_include_dirs,
                                                       mpi_runtime_library_dirs,
                                                       mpi_define_macros)
 
+
+
 #User provided customizations
 if os.path.isfile('customize.py'):
     execfile('customize.py')
 
 if not custom_interpreter and mpicompiler:
-    msg += ['Compiling gpaw with %s' % mpicompiler]
+    msg += ['* Compiling gpaw with %s' % mpicompiler]
     #A sort of hack to change the used compiler
     cc = get_config_var('CC')
     oldcompiler=cc.split()[0]
@@ -74,12 +83,12 @@ elif not custom_interpreter:
     define_macros += mpi_define_macros
     
 
-#check the command line so that custom interpreter is build only with "build"
-#or "build_ext"
-if not ("build" in sys.argv or "build_ext" in sys.argv):
+# Check the command line so that custom interpreter is build only with "build"
+# or "build_ext":
+if 'build' not in sys.argv and 'build_ext' not in sys.argv:
     custom_interpreter = False
 
-#distutils clean does not remove the _gridpaw.so library do do it here:
+# distutils clean does not remove the _gridpaw.so library so do it here:
 plat = get_platform() + '-' + sys.version[0:3]
 gpawso = 'build/lib.%s/' % plat + '_gridpaw.so'
 if "clean" in sys.argv and os.path.isfile(gpawso):
@@ -102,7 +111,7 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-scripts = glob(join('tools', 'gridpaw-*[a-z]'))
+scripts = glob(join('tools', 'gpaw-*[a-z]'))
 if custom_interpreter:
     scripts.append('build/bin.%s/' % plat + 'gridpaw-python')
 
@@ -118,10 +127,7 @@ setup(name = 'gridpaw',
       url='http://www.fysik.dtu.dk',
       license='GPL',
       platforms=['unix'],
-      packages=['gridpaw',
-                'gridpaw.atom',
-                'gridpaw.utilities',
-                'gridpaw.setuptests'],
+      packages=packages,
       ext_modules=[extension],
       scripts=scripts,
       long_description=long_description,
@@ -135,9 +141,7 @@ if custom_interpreter:
 if ('PARALLEL', '1') not in define_macros:
     msg += ['* A serial version of gridpaw was build!']
 
-#Messages make sense only when building
+# Messages make sense only when building
 if "build" in sys.argv or "build_ext" in sys.argv:
     for line in msg:
         print line
-
-

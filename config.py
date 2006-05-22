@@ -12,10 +12,12 @@ from glob import glob
 from os.path import join
 from stat import ST_MTIME
 
-def check_packages():
-    #Check the python version and required extra packages
+def check_packages(packages, msg):
+    """Check the python version and required extra packages
 
-    msg = []
+    If ASE is not installed, the `packages` list is extended with the
+    ASE modules if they are found."""
+    
     if sys.version_info < (2, 3, 0, 'final', 0):
         raise SystemExit('Python 2.3.1 or later is required!')
     
@@ -23,12 +25,6 @@ def check_packages():
         import Numeric
     except ImportError:
         raise SystemExit('Numeric is not installed!')
-
-    try:
-        import ASE
-    except ImportError:
-        msg += ['* ASE is not installed!  You may be able to install gridpaw, but',
-                "  you can't use it without ASE!"]
 
     try:
         import Scientific.IO.NetCDF
@@ -42,8 +38,21 @@ def check_packages():
                     '  C-library is probably missing).']
         msg += ['  You will not be able to write and read wave functions!']
 
-    return msg
-        
+    try:
+        import ASE
+    except ImportError:
+        # Find ASE directories:
+        ase = []
+        for root, dirs, files in os.walk('ASE'):
+            if 'CVS' in dirs:
+                dirs.remove('CVS')
+            ase.append(root.replace('/', '.'))
+
+        if len(ase) == 0:
+            msg += ['* ASE is not installed!  You may be able to install',
+                    "  gpaw, but you can't use it without ASE!"]
+        else:
+            packages += ase
 
 def find_file(arg, dir, files):
     #looks if the first element of the list arg is contained in the list files
@@ -53,9 +62,9 @@ def find_file(arg, dir, files):
 
     
 def get_system_config(define_macros, include_dirs, libraries, library_dirs, extra_link_args,
-                      extra_compile_args, runtime_library_dirs, extra_objects):
+                      extra_compile_args, runtime_library_dirs, extra_objects,
+                      msg):
 
-    msg = []
     machine = os.uname()[4]
     if machine == 'sun4u':
 
@@ -270,8 +279,12 @@ def write_configuration(define_macros, include_dirs, libraries, library_dirs,
                         extra_link_args, extra_compile_args,
                         runtime_library_dirs,extra_objects):    
 
-    #Write the compilation configuration into a file
-    out=open('configuration.log','w')
+    # Write the compilation configuration into a file
+    try:
+        out = open('configuration.log', 'w')
+    except IOError, x:
+        print x
+        return
     print >> out, "Current configuration"
     print >> out, "libraries", libraries
     print >> out, "library_dirs", library_dirs
