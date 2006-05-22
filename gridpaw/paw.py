@@ -391,8 +391,7 @@ class Paw:
 
         wf = self.wf
 
-        from netcdf import NetCDFWaveFunction
-        if isinstance(wf.kpt_u[0].psit_nG, NetCDFWaveFunction):
+        if type(wf.kpt_u[0].psit_nG) is not num.arraytype:
             assert self.niter == 0
             # Calculation started from a NetCDF restart file.
             # Allocate array for wavefunctions and copy data from the
@@ -414,7 +413,6 @@ class Paw:
             self.calculate_multipole_moments()
 
                     
-                    
         elif self.niter == 0:
             # We don't have any occupation numbers.  The initial
             # electron density comes from overlapping atomic densities
@@ -426,7 +424,6 @@ class Paw:
             for nuclei in self.my_nuclei:
                 Q += nuclei.Q_L[0]
             Q = sqrt(4 * pi) * self.domain.comm.sum(Q)
-
             Nt = self.gd.integrate(self.nt_sG)
             # Nt + Q must be zero:
             x = -Q / Nt
@@ -577,9 +574,8 @@ class Paw:
                 vt_G = self.vt_sG[0]
 
 
-            for nucleus in self.pt_nuclei:
-                if nucleus.in_this_domain:
-                    nucleus.F_c[:] = 0.0
+            for nucleus in self.my_nuclei:
+                nucleus.F_c[:] = 0.0
 
             self.wf.calculate_force_contribution(self.pt_nuclei,
                                                  self.my_nuclei)
@@ -587,8 +583,7 @@ class Paw:
             for nucleus in self.nuclei:
                 nucleus.calculate_force(self.vHt_g, nt_g, vt_G)
 
-            # Master collects forces from nuclei into
-            # self.F_ac:
+            # Global master collects forces from nuclei into self.F_ac:
             if mpi.rank == MASTER:
                 for a, nucleus in enumerate(self.nuclei):
                     if nucleus.in_this_domain:

@@ -20,7 +20,7 @@ from gridpaw.xc_functional import XCOperator
 #                       l
 #             __  __   r
 #     1      \   4||    <   * ^    ^
-#   ------ =  )  ---- ---- Y (r)Y (r),
+#   ------ =  )  ---- ---- Y (r)Y (r'),
 #    _ _     /__ 2l+1  l+1  lm   lm
 #   |r-r'|    lm      r
 #                      >

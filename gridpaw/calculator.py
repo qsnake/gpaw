@@ -408,6 +408,10 @@ class Calculator:
         traj.Close()
         self.paw.write_netcdf(filename)
 
+    def write(self, filename):
+        """Write current state to file."""
+        self.paw.write_state_to_file(filename)
+        
     def GetNumberOfIterations(self):
         """Return the number of SCF iterations."""
         return self.paw.niter
