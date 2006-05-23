@@ -222,7 +222,6 @@ class AllElectron:
         self.Ekin = Ekin
         self.Epot = Epot
         self.Exc = Exc
-        print num.dot(n, r**2 * dr) * 4 * pi
 
     def write(self, array, name=None, n=None, l=None):
         if name:

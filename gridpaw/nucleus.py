@@ -200,7 +200,7 @@ class Nucleus:
         self.phit_i = create_localized_functions(
             phit_j, gd, self.spos_c, typecode=self.typecode,
             cut=True, forces=False, lfbc=lfbc)
-        if self.typecode == num.Complex:
+        if self.typecode == num.Complex and self.phit_i is not None:
             self.phit_i.set_phase_factors(k_ki)
 
     def get_number_of_atomic_orbitals(self):
