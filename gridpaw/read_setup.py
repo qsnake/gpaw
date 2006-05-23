@@ -29,6 +29,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.ExxC = None
 
     def parse(self, symbol, xcname):
+        if xcname == 'EXX': # XXX EXX hack 
+            xcname = 'LDA'
         name = symbol + '.' + xcname
         source = None
         for path in setup_paths:

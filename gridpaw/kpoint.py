@@ -99,7 +99,7 @@ class KPoint:
         self.H_nn = num.zeros((nbands, nbands), self.typecode)
         self.S_nn = num.zeros((nbands, nbands), self.typecode)
 
-    def diagonalize(self, kin, vt_sG, my_nuclei, nbands):
+    def diagonalize(self, kin, vt_sG, my_nuclei, nbands, exx):
         """Subspace diagonalization of wave functions.
 
         First, the Hamiltonian (defined by ``kin``, ``vt_sG``, and
@@ -123,12 +123,17 @@ class KPoint:
 
         kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
         self.Htpsit_nG += self.psit_nG * vt_sG[self.s]
+        if exx is not None:
+            exx.adjust_hamiltonian(psit_nG, self.Htpsit_nG, nbands, self.f_n,
+                                   self.u, self.s)
         r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
-
+        # XXX Do EXX here XXX
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
             self.H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[self.s]),
                                                cc(num.transpose(P_ni))))
+            if exx is not None:
+                exx.adjust_hamitonian_matrix(self.H_nn, P_ni, nucleus, self.s)
 
         self.comm.sum(self.H_nn, self.root)
 

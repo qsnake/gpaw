@@ -56,12 +56,11 @@ def is_contiguous(array, typecode=None):
 #   r = max(r, r')
 #    >
 #
-
 if debug:
     def hartree(l, nrdr, beta, N, vr):
         """Calculates radial Coulomb integral.
 
-        The following intgral is calculated::
+        The following integral is calculated::
         
                                       ^
                              n (r')Y (r')

@@ -6,8 +6,8 @@ import Numeric as num
 from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.operators import Gradient
 from gridpaw.utilities import is_contiguous
+from gridpaw.exx import XXFunctional
 import _gridpaw
-
 
 class XCFunctional:
     def __init__(self, xcname, scalarrel=True, parameters=None):
@@ -32,6 +32,8 @@ class XCFunctional:
                 code = 4
             elif xcname == 'PADE':
                 code = 5
+            elif xcname == 'EXX':
+                code = 6
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 
@@ -42,6 +44,8 @@ class XCFunctional:
         if code == 5:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel,
                                             0.0, 0, num.array(parameters))
+        if code == 3:
+            self.xc = XXFunctional()
         else:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
 

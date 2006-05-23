@@ -23,6 +23,7 @@ from gridpaw.localized_functions import LocFuncBroadcaster
 import gridpaw.utilities.mpi as mpi
 from gridpaw import netcdf
 from gridpaw import output
+from gridpaw.exx import get_exx
 from parallel import get_parallel_info_s_k
 
 
@@ -194,6 +195,7 @@ class Paw:
 
         # Interpolation function for the density:
         self.interpolate = Interpolator(self.gd, order, num.Float).apply
+        
         # Restrictor function for the potential:
         self.restrict = Restrictor(self.finegd, order, num.Float).apply
 
@@ -220,6 +222,12 @@ class Paw:
         self.tolerance = 100000000000.0
         
         output.print_info(self)
+
+        # exact-exchange functional object:
+        self.exx = get_exx(self.xcfunc.xcname, self.nuclei[0].setup.softgauss,
+                           typecode, self.gd, self.finegd, self.poisson,
+                           self.interpolate, self.restrict,
+                           self.my_nuclei, self.ghat_nuclei)
 
     def set_positions(self, pos_ac):
         """Update the positions of the atoms.
@@ -453,7 +461,7 @@ class Paw:
 
         self.calculate_atomic_hamiltonians()
 
-        wf.diagonalize(self.vt_sG, self.my_nuclei)
+        wf.diagonalize(self.vt_sG, self.my_nuclei, self.exx)
 
         if self.niter == 0:
             for nucleus in self.my_nuclei:
@@ -561,6 +569,12 @@ class Paw:
             self.restrict(vt_g, vt_G)
             self.Ekin -= num.vdot(vt_G, nt_G - self.nct_G) * self.gd.dv
 
+        # Exact-exchange correction
+        if self.exx is not None:
+            Exx = self.wf.kpt_comm.sum(self.exx.Exx)
+            Exc += Exx
+            Ekin -= 2 * Exx
+            
     def get_cartesian_forces(self):
         """Return the atomic forces."""
         c = self.Ha / self.a0
@@ -756,5 +770,5 @@ class Paw:
         return self.a0 * self.gd.h_c
     
     def get_exact_exchange(self, decompose=False, method=None):
-        from gridpaw.exx import PawExx
-        return PawExx(self).get_exact_exchange(decompose, method)
+        from gridpaw.exx import PerturbativeExx
+        return PerturbativeExx(self).get_exact_exchange(decompose, method)

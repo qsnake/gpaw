@@ -182,12 +182,12 @@ class WaveFunctions:
 
         run_threaded([kpt.orthonormalize(my_nuclei) for kpt in self.kpt_u])
 
-    def diagonalize(self, vt_sG, my_nuclei):
+    def diagonalize(self, vt_sG, my_nuclei, exx):
         """Apply Hamiltonian and do subspace diagonalization."""
 ##        for kpt in self.kpt_u:
 ##            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
-        run_threaded([kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
-                      for kpt in self.kpt_u])
+        run_threaded([kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands,
+                                      exx) for kpt in self.kpt_u])
 
     def sum_eigenvalues(self):
         """Sum up all eigenvalues weighted with occupation numbers."""

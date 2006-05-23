@@ -20,7 +20,8 @@ class Coulomb:
         
         # ensure that requested method is valid
         assert method in ('real', 'recip_gauss', 'recip_ewald'),\
-            'Invalid method name, use either real, recip_gauss, or recip_ewald'
+            str(method) + ' is an invalid method name,\n' +\
+            'use either real, recip_gauss, or recip_ewald'
 
         if method.startswith('recip'):
             if self.gd.domain.comm.size > 1:

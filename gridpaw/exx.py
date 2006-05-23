@@ -6,8 +6,118 @@ from gridpaw.utilities.tools import pack, pack2, core_states
 from gridpaw.gaunt import gaunt
 from gridpaw.utilities import hartree
 
+class XXFunctional:
+    def calculate_spinpaired(self, *args):
+        return 0.0
+    def calculate_spinpolarized(self, *args):
+        return 0.0    
 
-class PawExx:
+def get_exx(xcname, softgauss, typecode, gd, finegd, poisson,
+            interpolate, restrict, my_nuclei, ghat_nuclei):
+    if xcname != 'EXX':
+        return None
+    else:
+        # ensure that calculation is a Gamma point calculation
+        if typecode == num.Complex:
+            msg = 'k-point calculations with exact exchange has not yet\n'\
+                  'been implemented. Please use gamma point only.'
+            raise NotImplementedError(msg)
+        
+        # ensure that softgauss option is false
+        if softgauss:
+            msg = 'Exact exchange is currently not compatible with extra\n'\
+                  'soft compensation charges.\n'\
+                  'Please set keyword softgauss=False'
+            raise NotImplementedError(msg)
+
+        return SelfConsistentExx(gd, finegd, poisson, interpolate, restrict,
+                                 my_nuclei, ghat_nuclei)
+
+class SelfConsistentExx:
+    """Class offering methods for selfconsistent evaluation of the
+       exchange energy of a gridPAW calculation.
+    """
+    def __init__(self, gd, finegd, poisson, interpolate, restrict,
+                 my_nuclei, ghat_nuclei):
+##         self.gd = gd
+##         self.finegd = finegd
+        self.poisson = poisson
+        self.interpolate = interpolate
+        self.restrict = restrict
+        self.my_nuclei = my_nuclei
+        self.ghat_nuclei = ghat_nuclei
+
+        # allocate space for matrices
+        self.n_G = gd.new_array()
+        self.v_G = gd.new_array()
+        self.n_g = finegd.new_array()
+        self.v_g = finegd.new_array()
+
+        self.integrate = finegd.integrate
+        self.Exx = 0.0
+
+    def adjust_hamiltonian(self, psit_nG, Htpsit_nG, nbands, f_n, u, s):
+        """                  ~  ~
+           Adjust values of  H psi due to inclusion of exact exchange.
+           Called from kpoint.diagonalize.
+        """
+        for n in range(nbands):
+            for m in range(nbands):
+                # determine current exchange density
+                self.n_G[:] = psit_nG[m] * psit_nG[n] 
+
+                # and interpolate to the fine grid
+                self.interpolate(self.n_G, self.n_g)
+
+                # determine the compensation charges for each nucleus
+                for a, nucleus in enumerate(self.ghat_nuclei):
+                    if nucleus.in_this_domain:
+                        # generate density matrix
+                        Pm_i = nucleus.P_uni[u, m]
+                        Pn_i = nucleus.P_uni[u, n]
+                        D_ii = num.outerproduct(Pm_i, Pn_i)
+                        D_p  = pack(D_ii, symmetric=False)
+
+                        # determine compensation charge coefficients
+                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                    else:
+                        Q_L = None
+
+                    # add compensation charges to exchange density
+                    nucleus.ghat_L.add(self.n_g, Q_L, communicate=True)
+
+                # determine total charge of exchange density
+                Z = float(n == m)
+
+                # determine exchange potential
+                self.poisson.solve(self.v_g, self.n_g, charge=Z)
+
+                # update hamiltonian
+                restrict(self.v_g, self.v_G)
+                Htpsit_nG[n] -= f_n[m] * self.v_G * psit_nG[m]
+
+                # add the nm contribution to exchange energy
+                self.Exx -= .5 * f_n[n] * self.integrate(self.v_g * self.n_g)
+
+                # update the vxx_sni vector of the nuclei, used to determine
+                # the atomic hamiltonian
+                for nucleus in self.my_nuclei:
+                    v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
+                    nucleus.ghat_L.integrate(-v_g, v_L)
+                    nucleus.vxx_sni[s, n] += num.dot(
+                        unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
+                        nucleus.P_uni[u, m])
+
+    def adjust_hamitonian_matrix(self, H_nn, P_ni, nucleus, s):
+        H_nn += num.dot(P_ni, num.transpose(nucleus.vxx_sni[s]))
+
+    def adjust_residual(self, R_nG):
+        pass
+
+    def adjust_residual2(self, R_G):
+        pass
+
+class PerturbativeExx:
     """Class offering methods for non-selfconsistent evaluation of the
        exchange energy of a gridPAW calculation.
     """
@@ -52,18 +162,13 @@ class PawExx:
                 method = 'recip_gauss'
             else: # serial computation
                 method = 'real'
+        self.method = method
 
-        # only do calculation if not previously done
-        if method != self.method:            
-            # update calculation method
-            self.method  = method
-
-            # Get smooth pseudo exchange energy contribution
-            self.Exxt = self.get_pseudo_exchange()
+        # Get smooth pseudo exchange energy contribution
+        self.Exxt = self.get_pseudo_exchange()
 
         # Get atomic corrections
-        if not hasattr(self, 'ExxVV'):
-            self.ExxVV, self.ExxVC, self.ExxCC = self.atomic_corrections()
+        self.ExxVV, self.ExxVC, self.ExxCC = self.atomic_corrections()
         
         # sum contributions from all processors
         ksum = paw.wf.kpt_comm.sum
@@ -164,9 +269,15 @@ class PawExx:
                        -- 
                 vv,a   \     a        a              a
                E     = /    D      * C            * D
-                xx     --    i1,i3    i1,i2,i3,i4    i2,i4
-                    i1,i2,i3 ,4
+                xx     --    i1,i2    i1,i3,i2,i4    i3,i4
+                    i1,i2,i3,i4
                  
+                       -- 
+                vv,a   \     a        a              a
+               E     = /    D      * C            * D
+                xx     --    i1,i3    i1,i2,i3,i4    i2,i4
+                    i1,i2,i3,i4
+
                        -- 
                 vv,a   \             a      a      a      a      a
                E     = /    f * f * P    * P    * P    * P    * C    
@@ -232,21 +343,20 @@ def atomic_exact_exchange(atom, type = 'all'):
             l2 = atom.l_j[j2]
 
             # joint occupation number
-            f12 = .5 * atom.f_j[j1]/(2. * l1 + 1) * \
-                       atom.f_j[j2]/(2. * l2 + 1)
+            f12 = .5 * atom.f_j[j1] / (2. * l1 + 1) * \
+                       atom.f_j[j2] / (2. * l2 + 1)
 
-            # electron density
-            n = atom.u_j[j1]*atom.u_j[j2]
-            n[1:] /= atom.r[1:]
-            n *= atom.dr
+            # electron density times radius times length element
+            nrdr = atom.u_j[j1] * atom.u_j[j2] * atom.dr
+            nrdr[1:] /= atom.r[1:]
 
-            # determine potential times r^2 times length element dr/dg
+            # potential times radius
             vr[:] = 0.0
 
             # L summation
             for l in range(l1 + l2 + 1):
                 # get potential for current l-value
-                hartree(l, n, atom.beta, atom.N, vrl)
+                hartree(l, nrdr, atom.beta, atom.N, vrl)
 
                 # take all m1 m2 and m values of Gaunt matrix of the form
                 # G(L1,L2,L) where L = {l,m}
@@ -256,7 +366,7 @@ def atomic_exact_exchange(atom, type = 'all'):
                 vr += vrl * num.sum(G2.copy().flat)
 
             # add to total exchange the contribution from current two states
-            Exx += -.5 * f12 * num.dot(n, vr)
+            Exx += -.5 * f12 * num.dot(vr, nrdr)
 
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.
@@ -271,10 +381,10 @@ def constructX(gen):
     Lmax = 2 * max(gen.l_j,gen.lmax) + 1
 
     uv_j = gen.vu_j    # soft valence states * r:
-    lv_j = gen.vl_j
+    lv_j = gen.vl_j    # their repective l quantum numbers
     Nvi  = 0 
     for l in lv_j:
-        Nvi += 2 * l + 1   # number of valence states (including m)
+        Nvi += 2 * l + 1   # total number of valence states (including m)
 
     # number of core and valence orbitals (j only, i.e. not m-number)
     Njcore = gen.njcore
@@ -282,9 +392,9 @@ def constructX(gen):
 
     # core states * r:
     uc_j = gen.u_j[:Njcore]
-
     r, dr, N, beta = gen.r, gen.dr, gen.N, gen.beta
-    
+
+    # potential times radius
     vr = num.zeros(N, num.Float)
         
     # initialize X_ii matrix
@@ -299,10 +409,9 @@ def constructX(gen):
         for jv1 in range(Njval):
             lv1 = lv_j[jv1] 
 
-            # electron density 1
-            n1c = uv_j[jv1]*uc_j[jc]
+            # electron density 1 times radius times length element
+            n1c = uv_j[jv1] * uc_j[jc] * dr
             n1c[1:] /= r[1:]
-            n1c *= dr
 
             # sum over second valence state index
             i2 = 0
@@ -310,13 +419,12 @@ def constructX(gen):
                 lv2 = lv_j[jv2]
                 
                 # electron density 2
-                n2c = uv_j[jv2]*uc_j[jc]
+                n2c = uv_j[jv2] * uc_j[jc] * dr
                 n2c[1:] /= r[1:]
-                n2c *= dr
             
                 # sum expansion in angular momenta
                 for l in range(min(lv1,lv2) + lc + 1):
-                    # Integrate density * potential:
+                    # Int density * potential * r^2 * dr:
                     hartree(l, n2c, beta, N, vr)
                     nv = num.dot(n1c, vr)
                     
@@ -328,11 +436,11 @@ def constructX(gen):
                                         lc**2+mc,l**2 + m]
                             G2c = gaunt[lv2**2:(lv2 + 1)**2,
                                         lc**2+mc,l**2 + m]
-                            A_mm += nv * num.outerproduct(G1c,G2c)
+                            A_mm += nv * num.outerproduct(G1c, G2c)
                             
                 i2 += 2 * lv2 + 1
             i1 += 2 * lv1 + 1
 
     # pack X_ii matrix
-    X_p = pack2(X_ii, symmetric=True, tol=1e-4)
+    X_p = pack2(X_ii, symmetric=True, tol=1e-8)
     return X_p

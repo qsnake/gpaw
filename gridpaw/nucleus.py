@@ -87,6 +87,8 @@ class Nucleus:
         self.H_sp = num.zeros((nspins, np), num.Float)
         self.P_uni = num.zeros((nspins * nkpts, nbands, ni), self.typecode)
         self.F_c = num.zeros(3, num.Float)
+        if self.setup.xcname == 'EXX':
+            self.vxx_sni = num.zeros((nspins, nbands, ni), self.typecode)
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape
@@ -302,7 +304,7 @@ class Nucleus:
         
     def calculate_hamiltonian(self, nt_g, vHt_g):
         if self.in_this_domain:
-            a = self.setup
+            a = self.setup #note != self.a (which is just an index for nucleus)
             W_L = num.zeros((a.lmax + 1)**2, num.Float)
             for neighbor in self.neighbors:
                 W_L += num.dot(neighbor.v_LL, neighbor.nucleus().Q_L)
@@ -312,6 +314,9 @@ class Nucleus:
             self.ghat_L.integrate(vHt_g, W_L)
 
             Exc = a.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
+            if a.xcname == 'EXX': # XXX EXX hack 
+                Exc = a.ExxC - num.dot(D_p, (a.X_p + num.dot(a.M_pp, D_p)))
+                self.H_sp -= a.X_p - 2.0 * num.dot(a.M_pp, D_p)
 
             D_p = num.sum(self.D_sp)
             dH_p = (a.K_p + a.M_p + a.MB_p + 2.0 * num.dot(a.M_pp, D_p) +

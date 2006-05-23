@@ -16,7 +16,6 @@ from gridpaw.utilities import unpack, erf, fac, hartree
 from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
 
-
 class Setup:
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True):
         xcname = xcfunc.get_xc_name()
