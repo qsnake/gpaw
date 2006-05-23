@@ -80,7 +80,7 @@ if 1:
     O2.SetCalculator(calc)
     e0 = O2.GetPotentialEnergy()
     f  = O2.GetCartesianForces()
-    equal(4.90422438561, sum(abs(f.flat)), 1e-2)
+    equal(2.639877, sum(abs(f.flat)), 1e-2)
     calc.Write('O2.nc')
 
     O2[1].SetCartesianPosition((1.21+d,d,d))
