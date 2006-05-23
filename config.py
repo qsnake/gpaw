@@ -46,7 +46,8 @@ def check_packages(packages, msg):
         for root, dirs, files in os.walk('ASE'):
             if 'CVS' in dirs:
                 dirs.remove('CVS')
-            ase.append(root.replace('/', '.'))
+            if '__init__.py' in files:
+                ase.append(root.replace('/', '.'))
 
         if len(ase) == 0:
             msg += ['* ASE is not installed!  You may be able to install',
