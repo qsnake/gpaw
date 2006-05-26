@@ -11,8 +11,8 @@ import time
 magmom = 0.0
 ng = 16
 
-nhostswrite = [4]
-nhostsread = [4]
+nhostswrite = [8]
+nhostsread = [8]
 
 tests = []
 for nkpt in [4]:
@@ -67,7 +67,7 @@ for test in tests:
    print "%s ---- %10s --- %d ---- %d "%(test[0],test[1],test[2],test[3])
 
 
-nhosts = 4
+nhosts = 8
 d = 2.0
 if 1: 
     a = 5.0
