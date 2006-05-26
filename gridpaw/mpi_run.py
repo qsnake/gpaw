@@ -14,8 +14,7 @@ from gridpaw.utilities import DownTheDrain
 MASTER = 0
 
 
-"""Start a PAW calculation and listen for commands send through a
-socket."""
+"""Start a PAW calculation and listen for commands sent through a socket."""
 
 
 class SocketStringIO(StringIO.StringIO):

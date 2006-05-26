@@ -18,6 +18,7 @@ from gridpaw.utilities.lapack import diagonalize
 from gridpaw.utilities import hartree
 from gridpaw.exx import constructX
 from gridpaw.exx import atomic_exact_exchange as aExx
+from gridpaw.utilities import hartree
 
 
 parameters = {
@@ -338,7 +339,7 @@ class Generator(AllElectron):
         rhot = nt - Nt * gt
         print 'Pseudo-electron charge', 4 * pi * Nt
 
-        vHt = num.zeros(self.N, num.Float)
+        vHt = num.zeros(N, num.Float)
         hartree(0, rhot * r * dr, self.beta, self.N, vHt)
         vHt[1:] /= r[1:]
         vHt[0] = vHt[1]

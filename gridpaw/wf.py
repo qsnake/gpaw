@@ -56,7 +56,7 @@ class WaveFunctions:
     def __init__(self, gd, nvalence, nbands, nspins,
                  typecode, kT,
                  bzk_kc, ibzk_kc, weights_k,
-                 myspins, myibzk_kc, myweights_k, kpt_comm):
+                 kpt_comm):
         """Construct wave-function object.
 
         Parameters:
@@ -89,21 +89,23 @@ class WaveFunctions:
         self.typecode = typecode
         self.bzk_kc = bzk_kc
         self.ibzk_kc = ibzk_kc
-        self.myibzk_kc = myibzk_kc
-        self.myspins = myspins
         self.weights_k = weights_k
         self.kpt_comm = kpt_comm
-        
+
         self.nkpts = len(ibzk_kc)
-        self.nmykpts = len(myibzk_kc)
+
+        # Total number of k-point/spin combinations:
+        nu = self.nkpts * nspins
+        
+        # Number of k-point/spin combinations on this cpu:
+        self.nmyu = nu / kpt_comm.size
 
         self.kpt_u = []
-        u = 0
-        for s in myspins: 
-            for k, k_c in enumerate(myibzk_kc):
-                weight = myweights_k[k] * 2 / nspins
-                self.kpt_u.append(KPoint(gd, weight, s, k, u, k_c, typecode))
-                u += 1
+        for u in range(self.nmyu):
+            k, s = divmod(kpt_comm.rank * self.nmyu + u, nspins)
+            weight = weights_k[k] * 2 / nspins
+            k_c = ibzk_kc[k]
+            self.kpt_u.append(KPoint(gd, weight, s, k, u, k_c, typecode))
         
         # Kinetic energy operator:
         self.kin = Laplace(gd, -0.5, 2, typecode)
@@ -142,7 +144,7 @@ class WaveFunctions:
         for nucleus in my_nuclei:
             # XXX already allocated once, but with wrong size!!!
             D_sp = nucleus.D_sp # XXXXXXXXXXX
-            nucleus.allocate(self.nspins, self.nmykpts, nao)
+            nucleus.allocate(self.nspins, self.nmyu, nao)
             nucleus.D_sp = D_sp # XXXXXXXXXXX
 
         for kpt in self.kpt_u:
@@ -251,8 +253,7 @@ class WaveFunctions:
 
     def print_eigenvalues(self, out, Ha):
         """Print eigenvalues and occupation numbers."""
-        if (self.kpt_comm.size > 1 or
-            self.kpt_comm.size * self.nmykpts / self.nspins > 1):
+        if self.nkpts > 1 or self.kpt_comm.size > 1:
             # not implemented yet:
             return
         

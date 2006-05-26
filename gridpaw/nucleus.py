@@ -80,12 +80,12 @@ class Nucleus:
         
         return cmp(self.a, other.a)
     
-    def allocate(self, nspins, nkpts, nbands):
+    def allocate(self, nspins, nmyu, nbands):
         ni = self.get_number_of_partial_waves()
         np = ni * (ni + 1) / 2
         self.D_sp = num.zeros((nspins, np), num.Float)
         self.H_sp = num.zeros((nspins, np), num.Float)
-        self.P_uni = num.zeros((nspins * nkpts, nbands, ni), self.typecode)
+        self.P_uni = num.zeros((nmyu, nbands, ni), self.typecode)
         self.F_c = num.zeros(3, num.Float)
         if self.setup.xcname == 'EXX':
             self.vxx_sni = num.zeros((nspins, nbands, ni), self.typecode)
@@ -101,7 +101,7 @@ class Nucleus:
 
     def move(self, spos_c, gd, finegd, k_ki, lfbc, domain,
              my_nuclei, pt_nuclei, ghat_nuclei,
-             nspins, nmykpts, nbands):
+             nspins, nmyu, nbands):
         """Move nucleus.
 
         """
@@ -116,7 +116,7 @@ class Nucleus:
             # Nuclei new on this cpu:
             my_nuclei.append(self)
             my_nuclei.sort()
-            self.allocate(nspins, nmykpts, nbands)
+            self.allocate(nspins, nmyu, nbands)
             if self.rank != -1:
                 self.comm.receive(self.D_sp, self.rank, 555)
         elif not in_this_domain and self.in_this_domain:

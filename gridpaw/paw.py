@@ -24,7 +24,6 @@ import gridpaw.utilities.mpi as mpi
 from gridpaw import netcdf
 from gridpaw import output
 from gridpaw.exx import get_exx
-from parallel import get_parallel_info_s_k
 
 
 MASTER = 0
@@ -130,9 +129,6 @@ class Paw:
                  order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
                  convergeall,
                  # Parallel stuff:
-                 myspins,
-                 myibzk_kc,
-                 myweights_k,
                  kpt_comm,
                  out):
         """
@@ -186,7 +182,7 @@ class Paw:
         self.wf = WaveFunctions(self.gd, nvalence, nbands, nspins,
                                 typecode, kT / Ha,
                                 bzk_kc, ibzk_kc, weights_k,
-                                myspins, myibzk_kc, myweights_k, kpt_comm)
+                                kpt_comm)
 
         self.locfuncbcaster = LocFuncBroadcaster(kpt_comm)
         
@@ -242,10 +238,10 @@ class Paw:
             if num.sometrue(spos_c != nucleus.spos_c):
                 movement = True
                 nucleus.move(spos_c, self.gd, self.finegd,
-                             self.wf.myibzk_kc, self.locfuncbcaster,
+                             self.wf.ibzk_kc, self.locfuncbcaster,
                              self.domain,
                              self.my_nuclei, self.pt_nuclei, self.ghat_nuclei,
-                             self.wf.nspins, self.wf.nmykpts, self.wf.nbands)
+                             self.wf.nspins, self.wf.nmyu, self.wf.nbands)
         
         if movement:
             self.converged = False
@@ -294,7 +290,7 @@ class Paw:
         output.plot_atoms(self)
         
         for nucleus in self.nuclei:
-            nucleus.initialize_atomic_orbitals(self.gd, self.wf.myibzk_kc,
+            nucleus.initialize_atomic_orbitals(self.gd, self.wf.ibzk_kc,
                                                self.locfuncbcaster)
         self.locfuncbcaster.broadcast()
 
@@ -404,22 +400,16 @@ class Paw:
             # Calculation started from a NetCDF restart file.
             # Allocate array for wavefunctions and copy data from the
             # NetCDFWaveFunction class
-            u = 0
-            for s in range(len(wf.myspins)):
-                for k in range(wf.nmykpts):
-                    kpt = wf.kpt_u[u]
-                    tmp_nG = kpt.psit_nG
-                    kpt.psit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
-                    kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
+            for kpt in wf.kpt_u:
+                tmp_nG = kpt.psit_nG
+                kpt.psit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
+                kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
 
-                    # distribute band by band to save memory
-                    for n in range(wf.nbands):
-                        kpt.gd.distribute(tmp_nG[n], kpt.psit_nG[n])
-
-                    u += 1
+                # distribute band by band to save memory
+                for n in range(wf.nbands):
+                    kpt.gd.distribute(tmp_nG[n], kpt.psit_nG[n])
                     
             self.calculate_multipole_moments()
-
                     
         elif self.niter == 0:
             # We don't have any occupation numbers.  The initial
@@ -643,7 +633,7 @@ class Paw:
         
     def write_state_to_file(self, filename):
         """Write current state to a file."""
-        io.write(self, filename)
+        io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a)
         
     def initialize_from_netcdf(self, filename):
         """Read state from a netCDF file."""
@@ -692,7 +682,7 @@ class Paw:
 
         wf = self.wf
         
-        kpt_rank, u = get_parallel_info_s_k(wf, s, k)
+        kpt_rank, u = divmod(k * wf.nspins + s, wf.nmyu)
 
         if not mpi.parallel:
             psit_G = wf.kpt_u[u].psit_nG[n]
@@ -701,16 +691,18 @@ class Paw:
         if wf.kpt_comm.rank == kpt_rank:
             psit_G = self.gd.collect(wf.kpt_u[u].psit_nG[n])
 
-            # domain master send this to the global master
-            if self.domain.comm.rank == MASTER and kpt_rank != MASTER:
-                wf.kpt_comm.send(psit_G, MASTER, 13)
+            if kpt_rank == MASTER:
+                if mpi.rank == MASTER:
+                    return psit_G * c
 
-        if mpi.rank == MASTER and kpt_rank != MASTER:
+            # Domain master send this to the global master
+            if self.domain.comm.rank == MASTER:
+                wf.kpt_comm.send(psit_G, MASTER, 1398)
+
+        if mpi.rank == MASTER:
             # allocate full wavefunction and receive 
             psit_G = self.gd.new_array(typecode=wf.typecode, global_array=True)
-            wf.kpt_comm.receive(psit_G, kpt_rank, 13)
-        
-        if mpi.rank == MASTER:
+            wf.kpt_comm.receive(psit_G, kpt_rank, 1398)
             return psit_G * c
 
     def get_wannier_integrals(self, i, s, k, k1, G_I):
@@ -718,8 +710,8 @@ class Paw:
 
         assert self.wf.nspins>=s
 
-        kpt_rank,u = get_parallel_info_s_k(self.wf, s, k)
-        kpt_rank1,u1 = get_parallel_info_s_k(self.wf, s, k1)
+        kpt_rank, u = divmod(k * self.wf.nspins + s, self.wf.nmyu)
+        kpt_rank1, u1 = divmod(k1 * self.wf.nspins + s, self.wf.nmyu)
 
         # XXX not for the kpoint/spin parallel case
         assert self.wf.kpt_comm.size==1

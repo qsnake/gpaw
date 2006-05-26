@@ -35,7 +35,7 @@ def fail(msg, filename='/dev/null'):
 tests = ''
 # For a quick test - uncomment this line:
 ##tests = 'PBE.py Gauss.py'
-
+tests = 'PBE.py parallel-restart.py parmigrate.py'
 dir = tempfile.mkdtemp(prefix='gridpaw-')
 os.chdir(dir)
 
@@ -53,8 +53,8 @@ export = ('export PYTHONPATH=%s/lib/python:%s/lib/python; ' % (dir, home) +
 
 # Run test-suite:
 os.chdir('test')
-##if os.system(export + 'python test.py -p %s >& test.out' % tests) != 0:
-if os.system(export + 'python test.py %s >& test.out' % tests) != 0:
+if os.system(export + 'python test.py -p %s >& test.out' % tests) != 0:
+##if os.system(export + 'python test.py %s >& test.out' % tests) != 0:
     fail('Testsuite failed!')
 lines = open('test.out').readlines()
 ok = ('All tests passed!\n' in lines)

@@ -111,7 +111,7 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-scripts = glob(join('tools', 'gpaw-*[a-z]'))
+scripts = glob(join('tools', 'gpaw-*[a-z]')) + ['tools/gpaw']
 if custom_interpreter:
     scripts.append('build/bin.%s/' % plat + 'gridpaw-python')
 

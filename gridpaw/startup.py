@@ -84,6 +84,7 @@ def create_paw_object(out, a0, Ha,
         symmetry = None
         weights_k = [1.0]
         ibzk_kc = num.zeros((1, 3), num.Float)
+        nkpts = 1
         print >> out, 'Gamma-point calculation'
     else:
         typecode = num.Complex
@@ -95,11 +96,11 @@ def create_paw_object(out, a0, Ha,
         if symmetry is not None:
             symmetry.print_symmetries(out)
 
-        n = len(ibzk_kc)
+        nkpts = len(ibzk_kc)
         print >> out
         print >> out, (('%d k-point%s in the irreducible part of the ' +
                        'Brillouin zone (total: %d)') %
-                       (n, ' s'[1:n], len(bzk_kc)))
+                       (nkpts, ' s'[1:nkpts], len(bzk_kc)))
         print >> out
 
     if usesymm and symmetry is not None:
@@ -126,8 +127,7 @@ def create_paw_object(out, a0, Ha,
 
     # Get the local number of spins and k-points, and return a
     # domain_comm and kpt_comm for this processor:
-    myspins, myibzk_kc, myweights_k, domain_comm, kpt_comm = \
-             distribute_kpoints_and_spins(nspins, ibzk_kc, weights_k)
+    domain_comm, kpt_comm = distribute_kpoints_and_spins(nspins, nkpts)
 
     domain.set_decomposition(domain_comm, parsize_c, N_c)
 
@@ -139,9 +139,6 @@ def create_paw_object(out, a0, Ha,
               order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
               convergeall=convergeall,
               # Parallel stuff:
-              myspins=myspins,
-              myibzk_kc=myibzk_kc,
-              myweights_k=myweights_k,
               kpt_comm=kpt_comm,
               out=out)
 

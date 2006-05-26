@@ -193,7 +193,7 @@ class PerturbativeExx:
 
         # calculate exact exchange of smooth wavefunctions
         Exxt = 0.0
-        for u in range(len(wf.myspins)): # local spin index
+        for u, kpt in enumerate(wf.kpt_u):
             #spin = wf.myspins[u] # global spin index XXX
             for n in range(wf.nbands):
                 for m in range(n, wf.nbands):
@@ -201,12 +201,10 @@ class PerturbativeExx:
                     DC = 2 - (n == m)
 
                     # calculate joint occupation number
-                    fnm = (wf.kpt_u[u].f_n[n] *
-                           wf.kpt_u[u].f_n[m]) * wf.nspins / 2.
+                    fnm = (kpt.f_n[n] * kpt.f_n[m]) * wf.nspins / 2.
 
                     # determine current exchange density
-                    n_G = wf.kpt_u[u].psit_nG[m] * \
-                          wf.kpt_u[u].psit_nG[n] 
+                    n_G = kpt.psit_nG[m] * kpt.psit_nG[n] 
 
                     # and interpolate to the fine grid
                     self.interpolate(n_G, self.n_g)
@@ -252,17 +250,20 @@ class PerturbativeExx:
                 print 'to correct error'
                 break
 
-            for spin in wf.myspins: # global spin index
-                """Add core-core contribution:"""
-                if spin == 0:
+            for kpt in wf.kpt_u:
+                # Add core-core contribution:
+                s = kpt.s
+                if s == 0:
                     ExxCC += nucleus.setup.ExxC
 
-                """Add val-core contribution:
-                      vc,a     -    a    a
-                     E     = - >   D  * X
-                      xx       - p  p    p
-                """
-                D_p = nucleus.D_sp[spin]
+                # Add val-core contribution:
+                #              __
+                #     vc,a    \     a    a
+                #    E     = - )   D  * X
+                #     xx      /__   p    p
+                #              p
+
+                D_p = nucleus.D_sp[s]
                 ExxVC += - num.dot(D_p, nucleus.setup.X_p)
 
             """Determine the atomic corrections to the val-val interaction:
@@ -284,7 +285,7 @@ class PerturbativeExx:
                 xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
                     n,m,i1,i2,i3,i4
             """
-            for u in range(len(wf.myspins)): # local spin index
+            for u, kpt in enumerate(wf.kpt_u):
                 #spin = wf.myspins[u] # global spin index XXX
                 for n in range(wf.nbands):
                     for m in range(n, wf.nbands):
@@ -292,8 +293,7 @@ class PerturbativeExx:
                         DC = 2 - (n == m)
 
                         # calculate joint occupation number
-                        fnm = (wf.kpt_u[u].f_n[n] *
-                               wf.kpt_u[u].f_n[m]) * wf.nspins / 2.
+                        fnm = (kpt.f_n[n] * kpt.f_n[m]) * wf.nspins / 2.
 
                         # generate density matrix
                         Pm_i = nucleus.P_uni[u, m] # spin ??

@@ -381,7 +381,7 @@ class GridDescriptor:
                         r += 1
             return B_g
 
-    def distribute(self,B_g,b_g):
+    def distribute(self, B_g, b_g):
         """ distribute full array B_g to subdomains, result in
         b_g. b_g must be allocated."""
 

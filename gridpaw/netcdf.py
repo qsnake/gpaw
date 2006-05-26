@@ -1,7 +1,6 @@
 import os
 
 import Numeric as num
-from parallel import get_parallel_info_s_k
 
 try:
     import Scientific.IO.NetCDF as NetCDF
@@ -40,27 +39,20 @@ def read_netcdf(paw, filename):
 
     # wavefunctions: All processors keeps a reference to the netcdf variable 
     psit_unG = vars['PseudoWaveFunctions']
-    for s in range(wf.nspins):
-        for k in range(wf.nkpts):
-            kpt_rank,u = get_parallel_info_s_k(wf,s,k)
-            if wf.kpt_comm.rank==kpt_rank:
-                kpt = wf.kpt_u[u]
-                kpt.allocate(wf.nbands)
-                kpt.psit_nG = NetCDFWaveFunction(psit_unG, s, k,
-                                                 scale=a0**1.5,
-                                                 cmplx=not realvalued)
+    for kpt in wf.kpt_u:
+        kpt.allocate(wf.nbands)
+        kpt.psit_nG = NetCDFWaveFunction(psit_unG, kpt.s, kpt.k,
+                                         scale=a0**1.5,
+                                         cmplx=not realvalued)
     
     # eigenvalues and occupation
     eps_skn = vars['Eigenvalues']
     f_skn = vars['OccupationNumbers']
-    for s in range(wf.nspins):
-        for k in range(wf.nkpts):
-            kpt_rank,u = get_parallel_info_s_k(wf,s,k)
-            if wf.kpt_comm.rank==kpt_rank:
-                kpt = wf.kpt_u[u]
-                kpt.eps_n[:] = eps_skn[s,k]
-                kpt.f_n[:] = f_skn[s, k]
-
+    for kpt in wf.kpt_u:
+        k = kpt.k
+        s = kpt.s
+        kpt.eps_n[:] = eps_skn[s, k]
+        kpt.f_n[:] = f_skn[s, k]
 
     paw.Etot = vars['PotentialEnergy'][0] / Ha
     paw.Ekin = nc.Ekin[0] / Ha
@@ -72,7 +64,8 @@ def read_netcdf(paw, filename):
     # Read pseudoelectron density on the coarse grid and
     # distribute out to nodes
     for s in range(paw.nspins): 
-        paw.gd.distribute(vars['PseudoElectronDensity'][:][s] * a0**3,paw.nt_sG[s])
+        paw.gd.distribute(vars['PseudoElectronDensity'][:][s] * a0**3,
+                          paw.nt_sG[s])
 
     # Transfer the density to the fine grid:
     for s in range(paw.nspins):
@@ -82,35 +75,19 @@ def read_netcdf(paw, filename):
     i = 0
     for nucleus in paw.nuclei:
         ni = nucleus.get_number_of_partial_waves()
-        P_uni = num.zeros((wf.nspins*wf.nmykpts,wf.nbands,ni),nucleus.typecode)
-
-        P_uni_tot = num.zeros((wf.nspins, wf.nkpts, wf.nbands, ni),
-                               nucleus.typecode)
-        if realvalued:
-           P_uni_tot[:] = P_skni[:, :, :, i:i + ni]
-        else:
-           P_uni_tot[:].real = P_skni[:, :, :, i:i + ni, 0]
-           P_uni_tot[:].imag = P_skni[:, :, :, i:i + ni, 1]
-
-        for s in range(wf.nspins):
-           for k in range(wf.nkpts):
-              kpt_rank,u = get_parallel_info_s_k(wf,s,k)
-              if paw.wf.kpt_comm.rank == kpt_rank:
-                  P_uni[u,:] = P_uni_tot[s,k,:]
-
-        if paw.domain.comm.rank == MASTER:
-            if nucleus.in_this_domain:
-                nucleus.P_uni[:] = P_uni[:]
-            else:
-                paw.domain.comm.send(P_uni, nucleus.rank, 200)
-        else:
-            if nucleus.rank == paw.domain.comm.rank:
-                paw.domain.comm.receive(nucleus.P_uni, MASTER, 200)
-
+        if nucleus.in_this_domain:
+            P_uni = nucleus.P_uni
+            for u, kpt in enumerate(wf.kpt_u):
+                k = kpt.k
+                s = kpt.s
+                if realvalued:
+                    P_uni[u] = P_skni[s, k, :, i:i + ni]
+                else:
+                    P_uni[u].real = P_skni[s, k, :, i:i + ni, 0]
+                    P_uni[u].real = P_skni[s, k, :, i:i + ni, 0]
         i += ni
 
-    if mpi.rank==MASTER:
-        assert i == nc.dimensions['nproj']
+    assert i == nc.dimensions['nproj']
 
     # Read atomic density matrices:
     D_sq = vars['AtomicDensityMatrices']
@@ -194,6 +171,7 @@ def write_netcdf(paw, filename):
             epsF = 100.0
         nc.FermiLevel = [epsF * Ha]
 
+
     # write projections
     if mpi.rank == MASTER: 
 
@@ -205,121 +183,86 @@ def write_netcdf(paw, filename):
             var = nc.createVariable('Projections', num.Float,
                                     ('nspins', 'nibzkpts',
                                      'nbands', 'nproj', 'two'))
-
-
-    # master in each domain (domain_comm 0) collects projections
-    # with nucleus.in_this_domain == True for the nkpt local kpoints,
-    # these are then summed in P_uni_tot
-    i = 0
-    nnodes = wf.kpt_comm.size
-    nkpt = len(wf.myibzk_kc)
-    # note the layout of P_uni, it has allocated
-    # all spins 
-    nspins = wf.nspins      
-    rank = paw.wf.kpt_comm.rank 
-    for nucleus in paw.nuclei:
-        ni = nucleus.get_number_of_partial_waves()
-        P_uni = num.zeros((nspins*nkpt,wf.nbands,ni),nucleus.typecode)
-        P_uni_tot = num.zeros((wf.nspins, wf.nkpts, wf.nbands, ni),
-                              nucleus.typecode)
-        if paw.domain.comm.rank==MASTER: 
-            if nucleus.in_this_domain:
-                P_uni = nucleus.P_uni
-            else:
-                paw.domain.comm.receive(P_uni, nucleus.rank, 300)
-        else:
-            if nucleus.rank == paw.domain.comm.rank:
-                assert nucleus.in_this_domain
-                paw.domain.comm.send(nucleus.P_uni, MASTER, 300)
-
-        for s in range(wf.nspins): 
-           for k in range(wf.nkpts): 
-              kpt_rank,u = get_parallel_info_s_k(wf,s,k)
-              if (paw.wf.kpt_comm.rank == kpt_rank) and (paw.domain.comm.rank==MASTER):
-                  P_uni_tot[s,k,:] = P_uni[u,:]
-
-        paw.wf.kpt_comm.sum(P_uni_tot)
               
-        if mpi.rank == MASTER:
-            P_uni_tot.shape = (wf.nspins, wf.nkpts, wf.nbands, ni)
-            if realvalued:
-                var[:, :, :, i:i + ni] = P_uni_tot
-            else:
-                var[:, :, :, i:i + ni, 0] = P_uni_tot.real
-                var[:, :, :, i:i + ni, 1] = P_uni_tot.imag
-                
-        i += ni
-
     if mpi.rank == MASTER:
+        i = 0
+        for nucleus in paw.nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            for kpt_rank in range(wf.kpt_comm.size):
+                if kpt_rank == MASTER and nucleus.in_this_domain:
+                    P_uni = nucleus.P_uni
+                else:
+                    P_uni = num.zeros((wf.nmyu, wf.nbands, ni), wf.typecode)
+                    world_rank = nucleus.rank + kpt_rank * paw.domain.comm.size
+                    mpi.world.receive(P_uni, world_rank, 300)
+
+                for u in range(wf.nmyu):
+                    k, s = divmod(u + kpt_rank * wf.nmyu, wf.nspins)
+                    if realvalued:
+                        var[s, k, :, i:i + ni] = P_uni[u]
+                    else:
+                        var[s, k, :, i:i + ni, 0] = P_uni[u].real
+                        var[s, k, :, i:i + ni, 1] = P_uni[u].imag
+            i += ni
         assert i == nproj
+    else:
+        for nucleus in paw.my_nuclei:
+            mpi.world.send(nucleus.P_uni, MASTER, 300)
 
     if mpi.rank == MASTER:
         # Write atomic density matrices:
         var = nc.createVariable('AtomicDensityMatrices', num.Float,
                                 ('nspins', 'nadm'))
-    q1 = 0
-    for nucleus in paw.nuclei:
-        ni = nucleus.get_number_of_partial_waves()
-        np = ni * (ni + 1) / 2
-        D_sp = num.zeros((wf.nspins,np),num.Float)
-        if paw.domain.comm.rank == MASTER: 
+
+    if mpi.rank == MASTER:
+        q1 = 0
+        for nucleus in paw.nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            np = ni * (ni + 1) / 2
             if nucleus.in_this_domain:
                 D_sp = nucleus.D_sp
             else:
+                D_sp = num.zeros((wf.nspins, np), num.Float)
                 paw.domain.comm.receive(D_sp, nucleus.rank, 207)
-        else:
-            if nucleus.rank == paw.domain.comm.rank:
-                assert nucleus.in_this_domain
-                paw.domain.comm.send(nucleus.D_sp, MASTER, 207)
-            
-        q2 = q1 + np
-
-        if mpi.rank == MASTER: 
+            q2 = q1 + np
             var[:, q1:q1+np] = D_sp[:]
-        q1 = q2
-
-    if mpi.rank == MASTER: 
+            q1 = q2
         assert q2 == nadm
 
+    elif wf.kpt_comm.rank == MASTER:
+        for nucleus in paw.my_nuclei:
+            paw.domain.comm.send(nucleus.D_sp, MASTER, 207)
+
     if mpi.rank == MASTER:
-        # Write the eigenvalues:
-        var = nc.createVariable('Eigenvalues', num.Float,
+        # Write the eigenvalues and the occupation numbers:
+        vare = nc.createVariable('Eigenvalues', num.Float,
+                                ('nspins', 'nibzkpts', 'nbands'))
+        varf = nc.createVariable('OccupationNumbers', num.Float,
                                 ('nspins', 'nibzkpts', 'nbands'))
 
-    eps_n = num.zeros((wf.nspins,wf.nkpts,wf.nbands),num.Float)
-    utest = 0
-    for s in range(wf.nspins):
-        for k in range(wf.nkpts):
-            kpt_rank,u = get_parallel_info_s_k(wf,s,k)
-            if wf.kpt_comm.rank == kpt_rank:
-                eps_n[s, k] = wf.kpt_u[u].eps_n * Ha
-            utest += 1
-    wf.kpt_comm.sum(eps_n)
-
-    if mpi.rank == MASTER: 
-        var[:] = eps_n[:]
-
-    if mpi.rank == MASTER: 
-        # Write the occupation numbers:
-        var = nc.createVariable('OccupationNumbers', num.Float,
-                                ('nspins', 'nibzkpts', 'nbands'))
-        
-    f_n = num.zeros((wf.nspins,wf.nkpts,wf.nbands),num.Float)
-    for s in range(wf.nspins):
-        for k in range(wf.nkpts):
-            kpt_rank,u = get_parallel_info_s_k(wf,s,k)
-            if wf.kpt_comm.rank == kpt_rank:
-                f_n[s, k] = wf.kpt_u[u].f_n
-    wf.kpt_comm.sum(f_n)
-
-    if mpi.rank == MASTER: 
-        var[:] = f_n[:]
+    if mpi.rank == MASTER:
+        for kpt_rank in range(wf.kpt_comm.size):
+            for u in range(wf.nmyu):
+                k, s = divmod(u + kpt_rank * wf.nmyu, wf.nspins)
+                if kpt_rank == MASTER:
+                    eps_n = wf.kpt_u[u].eps_n
+                    f_n = wf.kpt_u[u].f_n
+                else:
+                    eps_n = num.zeros(wf.nbands, num.Float)
+                    f_n = num.zeros(wf.nbands, num.Float)
+                    wf.kpt_comm.receive(eps_n, kpt_rank, 4300)
+                    wf.kpt_comm.receive(f_n, kpt_rank, 4301)
+                vare[s, k, :] = eps_n * Ha
+                varf[s, k, :] = f_n
+    elif paw.domain.comm.rank == MASTER:
+        for kpt in wf.kpt_u:
+            wf.kpt_comm.send(kpt.eps_n, MASTER, 4300)
+            wf.kpt_comm.send(kpt.f_n, MASTER, 4301)
 
     # Write the pseudodensity on the coarse grid
     if mpi.rank==MASTER:
         var = nc.createVariable('PseudoElectronDensity', num.Float,
-                                ('nspins',
-                                 'ngptsx', 'ngptsy', 'ngptsz'))
+                                ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'))
 
     for s in range(wf.nspins):
         nt_sG = paw.gd.collect(paw.nt_sG[s])
@@ -340,7 +283,7 @@ def write_netcdf(paw, filename):
         for k in range(wf.nkpts):
             for n in range(wf.nbands):
                 a_G = paw.get_wave_function_array(n, k, s)
-                if mpi.rank==MASTER: 
+                if mpi.rank == MASTER: 
                     if realvalued:
                         var[s, k, n] = a_G
                     else:
