@@ -35,7 +35,7 @@ def fail(msg, filename='/dev/null'):
 tests = ''
 # For a quick test - uncomment this line:
 ##tests = 'PBE.py Gauss.py'
-tests = 'PBE.py parallel-restart.py parmigrate.py'
+##tests = 'PBE.py parallel-restart.py parmigrate.py'
 dir = tempfile.mkdtemp(prefix='gridpaw-')
 os.chdir(dir)
 

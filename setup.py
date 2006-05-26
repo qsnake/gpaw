@@ -43,6 +43,7 @@ mpi_define_macros = []
 
 
 packages = ['gridpaw',
+            'gridpaw.io',
             'gridpaw.atom',
             'gridpaw.utilities',
             'gridpaw.setuptests']
