@@ -15,15 +15,15 @@ from gridpaw.sphere import Y_nL, points, weights
    __  2    \       L  2  \    \        L  2
   (\/n) = (  ) Y  --- )  + ) (  )  n  --- )
             /__ L dr      /__  /__  L dr
-                                        i
-             L            i=1    L 
+                                        c
+             L            c=1    L 
 
 
         dY
           L
   A   = --- r
-   Li   dr
-          i
+   Lc   dr
+          c
 
 """
 
@@ -36,6 +36,7 @@ for R in points:
         for m in range(2 * l + 1):
             L = l**2 + m
             for c, n in YL[L]:
+                N = 0
                 for i in range(3):
                     ni = n[i]
                     if ni > 0:
@@ -44,7 +45,8 @@ for R in points:
                             if ii != i:
                                 a *= R[ii]**n[ii]
                         A_Liy[L, i, y] += a
-            A_Liy[L, :, y] -= l * R * Y_nL[y, L]
+                    N += ni
+            A_Liy[L, :, y] -= N * R * Y_nL[y, L]
     y += 1
 
 
