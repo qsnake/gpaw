@@ -18,6 +18,9 @@ PyObject* d2Excdn2(PyObject *self, PyObject *args)
     return NULL;
 
   int n = den->dimensions[0];
+/*   printf("<d2Excdn2> nd=%d\n",den->nd); */
+  for (int d = 1; d < den->nd; d++)
+    n *= den->dimensions[d];
   double *denp = DOUBLEP(den);
   double *resp = DOUBLEP(res);
   
@@ -34,8 +37,8 @@ PyObject* d2Excdnsdnt(PyObject *self, PyObject *args)
 {
   PyArrayObject* dup; /* "up" density */
   PyArrayObject* ddn; /* "down" density */
-  const int is;       /* i spin (0,1) */
-  const int ks;       /* k spin (0,1) */
+  int is;             /* i spin (0,1) */
+  int ks;             /* k spin (0,1) */
   PyArrayObject* res; /* derivative */
  
 /*   printf("<d2Excdnsdnt> is=%p ks=%p\n",is,ks); */
@@ -45,6 +48,8 @@ PyObject* d2Excdnsdnt(PyObject *self, PyObject *args)
 /*   printf("<d2Excdnsdnt> is=%d ks=%d\n",is,ks); */
 
   int n = dup->dimensions[0];
+  for (int d = 1; d < dup->nd; d++)
+    n *= dup->dimensions[d];
 /*   printf("<d2Excdnsdnt> n=%d\n",n); */
   double *dupp = DOUBLEP(dup);
   double *ddnp = DOUBLEP(ddn);
