@@ -5,43 +5,44 @@ from tools import Rational as Q
 
 """
 This is a script designed for construction of the real solid spherical
-harmonics (RSSH) in cartesian form. These can be written as:
+harmonics (RSSH) in cartesian form. These can be written as::
 
-       m    |m|  l  |m|
-Y  =  Y  = C    r  P  (cos theta) Phi (phi)
- L     l    l       l                m
+         m    |m|  l  |m|
+  Y  =  Y  = C    r  P  (cos theta) Phi (phi)
+   L     l    l       l                m
 
 where C_l^|m| is a normalization constant
 P_l^|m| is the associatied legendre polynomium
-and
-            / cos(m phi) , m > 0
-Phi (phi) = |   1        , m = 0
-   m        \ sin(-m phi), m < 0
+and:
 
-The first few harmonics are listed below:
-+----+---------------------+-__---------------------------------------+
-|  L | l |  m | r^l * Y    | \/ (r^l * Y)                             |
-+----+---s----+------------+------------------------------------------+
-|  0 | 0 |  0 | 1          | (0, 0, 0)                                |
-+----+---p----+------------+------------------------------------------+
-|  1 | 1 | -1 | y          | (0, 1, 0)                                |
-|  2 | 1 |  0 | z          | (0, 0, 1)                                |
-|  3 | 1 |  1 | x          | (1, 0, 0)                                |
-+----+---d----+------------+------------------------------------------+
-|  4 | 2 | -2 | xy         | ( y,  x,  0)                             |
-|  5 | 2 | -1 | yz         | ( 0,  z,  y)                             |
-|  6 | 2 |  0 | 3z^2-r^2   | (-x, -y, 2z)                             |
-|  7 | 2 |  1 | xz         | ( z,  0,  x)                             |
-|  8 | 2 |  2 | x^2-y^2    | ( x, -y,  0)                             |
-+----+---f----+------------+------------------------------------------+
-|  9 | 3 | -3 | 3x^2y-y^3  | (          2xy,       x^2-y^2,        0) |
-| 10 | 3 | -2 | xyz        | (           yz,            xz,       xy) |
-| 11 | 3 | -1 | 5yz^2-yr^2 | (         -2xy, 4z^2-x^2-3y^2,      8yz) |
-| 12 | 3 |  0 | 5z^3-3zr^2 | (         -2xz,          -2yz, 3z^2-r^2) |
-| 13 | 3 |  1 | 5xz^2-xr^2 | (4z^2-3x^2-y^2,          -2xy,      8xz) |
-| 14 | 3 |  2 | x^2z-y^2z  | (          2xz,          -2yz,  x^2-y^2) |
-| 15 | 3 |  3 | x^3-3xy^2  | (      x^2-y^2,          -2xy,        0) |
-+----+--------+----------+--------------------------------------------+
+              / cos(m phi) , m > 0
+  Phi (phi) = |   1        , m = 0
+     m        \ sin(-m phi), m < 0
+
+The first few harmonics are listed below::
+ +----+---------------------+-__---------------------------------------+
+ |  L | l |  m | r^l * Y    | \/ (r^l * Y)                             |
+ +----+---s----+------------+------------------------------------------+
+ |  0 | 0 |  0 | 1          | (0, 0, 0)                                |
+ +----+---p----+------------+------------------------------------------+
+ |  1 | 1 | -1 | y          | (0, 1, 0)                                |
+ |  2 | 1 |  0 | z          | (0, 0, 1)                                |
+ |  3 | 1 |  1 | x          | (1, 0, 0)                                |
+ +----+---d----+------------+------------------------------------------+
+ |  4 | 2 | -2 | xy         | ( y,  x,  0)                             |
+ |  5 | 2 | -1 | yz         | ( 0,  z,  y)                             |
+ |  6 | 2 |  0 | 3z^2-r^2   | (-x, -y, 2z)                             |
+ |  7 | 2 |  1 | xz         | ( z,  0,  x)                             |
+ |  8 | 2 |  2 | x^2-y^2    | ( x, -y,  0)                             |
+ +----+---f----+------------+------------------------------------------+
+ |  9 | 3 | -3 | 3x^2y-y^3  | (          2xy,       x^2-y^2,        0) |
+ | 10 | 3 | -2 | xyz        | (           yz,            xz,       xy) |
+ | 11 | 3 | -1 | 5yz^2-yr^2 | (         -2xy, 4z^2-x^2-3y^2,      8yz) |
+ | 12 | 3 |  0 | 5z^3-3zr^2 | (         -2xz,          -2yz, 3z^2-r^2) |
+ | 13 | 3 |  1 | 5xz^2-xr^2 | (4z^2-3x^2-y^2,          -2xy,      8xz) |
+ | 14 | 3 |  2 | x^2z-y^2z  | (          2xz,          -2yz,  x^2-y^2) |
+ | 15 | 3 |  3 | x^3-3xy^2  | (      x^2-y^2,          -2xy,        0) |
+ +----+--------+----------+--------------------------------------------+
 
 Y_lm is represented as a polynomium in x, y, and z
 
@@ -96,12 +97,13 @@ def Y_to_string(l, m, deriv=None, multiply=None, numeric=False):
     else: return norm.tostring(numeric) + (' * ' + string) * (string != '1')
 
 def gauss_to_string(l, m, numeric=False):
-    """Return string representation of the generalized gaussian
-                      _____                             2  
-        m            /  1       l!          l+3/2  -a0 r    l  m
-       g (x,y,z) =  / ----- --------- (4 a0)      e        r  Y (x,y,z)
-        l         \/  4 pi  (2l + 1)!                          l
-
+    """Return string representation of the generalized gaussian::
+    
+                       _____                             2  
+         m            /  1       l!          l+3/2  -a0 r    l  m
+        g (x,y,z) =  / ----- --------- (4 a0)      e        r  Y (x,y,z)
+         l         \/  4 pi  (2l + 1)!                          l
+         
        numeric=True/False indicates wheter the normalization constant should be
        written as a number or an algebraic expression.
     """
