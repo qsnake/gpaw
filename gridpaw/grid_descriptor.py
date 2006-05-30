@@ -447,10 +447,11 @@ class GridDescriptor:
         ref1: Thygesen et al, PRB 2005)
 
         """
+
         nbands = len(psit_nG)
         Z_nn = num.zeros((nbands, nbands), num.Complex)
         shape = (nbands, -1)
-        
+
         for g in range(self.n_c[c]):
 
             if c == 0:
@@ -480,7 +481,6 @@ class GridDescriptor:
             Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG))
             
         self.comm.sum(Z_nn, MASTER)
-
  
         #                __        __      __
         #        ~      \         2||  a  \     a  a    a  *

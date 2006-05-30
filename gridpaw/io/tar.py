@@ -1,60 +1,80 @@
 import os
-import xml.sax
+import time
 import tarfile
+import xml.sax
 
 import Numeric as num
+
+
+itemsizes = {'int': 4, 'float': 8, 'complex': 16}
 
     
 class Writer:
     def __init__(self, name):
         self.dims = {}
-        self.attrs = {}
         self.files = {}
-        self.xml = ['<gpaw_io version="0.1" endianness="%s">' %
-                    ('big', 'little')[num.LittleEndian]]
+        self.xml1 = ['<gpaw_io version="0.1" endianness="%s">' %
+                     ('big', 'little')[num.LittleEndian]]
+        self.xml2 = []
         if os.path.isdir(name):
-            os.rename(name, name + '.old')
-        self.file = tarfile.open(name, 'w')
+            os.rename(name, name[:-4] + '.old.gpw')
+        self.tar = tarfile.open(name, 'w')
+        self.mtime = int(time.time())
         
     def dimension(self, name, value):
-        self.dims[name] = length
+        self.dims[name] = value
 
     def __setitem__(self, name, value):
-        self.attrs[name] = value
+        self.xml1 += ['  <parameter %-20s value="%s"/>' %
+                      ('name="%s"' % name, value)]
         
     def add(self, name, shape, array=None, typecode=None, units=None):
         if array is not None:
+            array = num.asarray(array)
             typecode = {num.Int: int,
                         num.Float: float,
                         num.Complex: complex}[array.typecode()]
-        self.xml += ['  <array name="%s" type="%s">' %
-                     (name, typecode.__name__)]
-        self.xml += ['   <dimension length="%s" name="%s"/>' %
-                         (self.dims[dim], dim)
-                         for dim in shape]
-        self.xml += ['  </array>']
+        self.xml2 += ['  <array name="%s" type="%s">' %
+                      (name, typecode.__name__)]
+        self.xml2 += ['    <dimension length="%s" name="%s"/>' %
+                      (self.dims[dim], dim)
+                      for dim in shape]
+        self.xml2 += ['  </array>']
         self.shape = [self.dims[dim] for dim in shape]
+        size = itemsizes[typecode.__name__]
+        size *= num.product([self.dims[dim] for dim in shape])
+        self.write_header(name, size)
         if array is not None:
             self.fill(array)
 
     def fill(self, array):
-        i = self.i
-        indices = ()
-        shape = self.var.shape
-        n = len(shape) - len(array.shape)
-        for m in range(n - 1, 0, -1):
-            j = i % shape[m]
-            indices = (j,) + indices
-            i = (i - j) / shape[m]
-        indices = (i,) + indices
-        self.var[indices] = array
-        self.i += 1
+        self.write(array.tostring())
 
+    def write_header(self, name, size):
+        tarinfo = tarfile.TarInfo(name)
+        tarinfo.mtime = self.mtime
+        tarinfo.size = size
+        self.size = size
+        self.n = 0
+        self.tar.addfile(tarinfo)
+
+    def write(self, string):
+        self.tar.fileobj.write(string)
+        self.n += len(string)
+        if self.n == self.size:
+            blocks, remainder = divmod(self.size, tarfile.BLOCKSIZE)
+            if remainder > 0:
+                self.tar.fileobj.write('\0' * (tarfile.BLOCKSIZE - remainder))
+                blocks += 1
+            self.tar.offset += blocks * tarfile.BLOCKSIZE
+        
     def close(self):
-        self.xmk += ['  <parameter name="%s" value="%s"/>' % (name, value)
-                     for name, value in self.parameters.items()]
-        self.xml += ['</gpaw_io>']
-        open(self.dir + 'content.xml', 'w').write('\n'.join(self.xml))
+        self.xml2 += ['</gpaw_io>']
+        string = '\n'.join(self.xml1 + self.xml2)
+        self.write_header('info.xml', len(string))
+        self.write(string)
+        self.tar.close()
+
 
 class Reader(xml.sax.handler.ContentHandler):
     def __init__(self, name):
@@ -63,7 +83,8 @@ class Reader(xml.sax.handler.ContentHandler):
         self.typecodes = {}
         self.parameters = {}
         xml.sax.handler.ContentHandler.__init__(self)
-        xml.sax.parse(name + '/content.xml', self)
+        self.tar = tarfile.open(name, 'r')
+        xml.sax.parse(self.tar.extractfile('info.xml'), self)
 
     def startElement(self, tag, attrs):
         if tag == 'gpaw_io':
@@ -74,65 +95,88 @@ class Reader(xml.sax.handler.ContentHandler):
             self.typecodes[name] = attrs['type']
             self.shapes[name] = []
             self.name = name
-        elif tag == 'parameter':
-            self.parameters[attrs['name']] = eval(attrs['value'])
-        else:
-            assert tag == 'dimension'
+        elif tag == 'dimension':
             n = int(attrs['length'])
             self.shapes[self.name].append(n)
             self.dims[attrs['name']] = n
+        else:
+            assert tag == 'parameter'
+            try:
+                value = eval(attrs['value'])
+            except (SyntaxError, NameError):
+                value = attrs['value'].encode()
+            self.parameters[attrs['name']] = value
 
     def dimension(self, name):
         return self.dims[name]
     
     def __getitem__(self, name):
-        return self.attrs[name]
+        return self.parameters[name]
 
     def get(self, name, *indices):
-        a = num.fromstring(open(self.dir + name).read(),
-                           self.typecodes[name])
+        fileobj, shape, size, typecode = self.get_file_object(name, indices)
+        array = num.fromstring(fileobj.read(size), typecode)
         if self.byteswap:
-            a = a.byteswapped()
-        print a.shape,self.shapes, name
-        a.shape = self.shapes[name]
-        return a
-
+            array = array.byteswapped()
+        array.shape = shape
+        if shape == ():
+            return array.toscalar()
+        else:
+            return array
+    
     def get_reference(self, name, *indices):
-        return TarFileReference(self.nc.variables[name], indices)
+        fileobj, shape, size, typecode = self.get_file_object(name, indices)
+        return TarFileReference(fileobj, shape, typecode, self.byteswap)
+    
+    def get_file_object(self, name, indices):
+        typecode = {'int': num.Int,
+                    'float': num.Float,
+                    'complex': num.Complex}[self.typecodes[name]]
+        fileobj = self.tar.extractfile(name)
+        n = len(indices)
+        shape = self.shapes[name]
+        size = num.product(shape[n:]) * itemsizes[self.typecodes[name]]
+        offset = 0
+        stride = size
+        for i in range(n - 1, -1, -1):
+            offset += indices[i] * stride
+            stride *= shape[i]
+        fileobj.seek(offset)
+        return fileobj, shape[n:], size, typecode
+
+    def close(self):
+        self.tar.close()
 
 class TarFileReference:
-    def __init__(self, file, shape, typecode, byteswap, indices):
-        self.file = file
+    def __init__(self, fileobj, shape, typecode, byteswap):
+        self.fileobj = fileobj
+        self.shape = shape
         self.typecode = typecode
+        self.itemsize = itemsizes[{num.Int: 'int',
+                                   num.Float: 'float',
+                                   num.Complex: 'complex'}[typecode]]
         self.byteswap = byteswap
-        strides = [num.zeros(0, typecode).itemsize()]
-        for dim in shape[:0:-1]:
-            strides.insert(0, dim * strides[0])
-        n = len(indices)
-        self.offset = num.dot(strides[:n], indices)
-        self.strides = strides[n:]
-        self.shape = tuple(shape[n:])
+        self.offset = fileobj.tell()
+
+    def __len__(self):
+        return self.shape[0]
 
     def __getitem__(self, indices):
-        if type(indices) is not tuple:
+        if type(indices) is slice:
+            indices = ()
+        elif type(indices) is int:
             indices = (indices,)
         n = len(indices)
-        if type(indices[-1]) is int:
-            self.file.seek(self.offset + num.dot(self.strides[:n], indices))
-            a = num.fromstring(self.file.read(self.strides[n - 1]),
-                               self.typecode)
-        else:
-            start, stop = indices[-1].indices(self.shape[n - 1])[:2]
-            self.file.seek(self.offset + num.dot(self.strides[:n - 1],
-                                                 indices[:-1]) +
-                           start * self.strides[n - 1])
-            a = num.fromstring(self.file.read((stop - start) *
-                                              self.strides[n - 1]),
-                               self.typecode)
-            n -= 1
+
+        size = num.product(self.shape[n:]) * self.itemsize
+        offset = self.offset
+        stride = size
+        for i in range(n - 1, -1, -1):
+            offset += indices[i] * stride
+            stride *= self.shape[i]
+        self.fileobj.seek(offset)
+        array = num.fromstring(self.fileobj.read(size), self.typecode)
         if self.byteswap:
-            a = a.byteswapped()
-        print a.shape, self.shape, n
-        a.shape = self.shape[n:]
-        return a
-        
+            array = array.byteswapped()
+        array.shape = self.shape[n:]
+        return array

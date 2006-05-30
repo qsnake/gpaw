@@ -21,9 +21,9 @@ from gridpaw.wf import WaveFunctions
 from gridpaw.xc_functional import XCOperator, XCFunctional
 from gridpaw.localized_functions import LocFuncBroadcaster
 import gridpaw.utilities.mpi as mpi
-from gridpaw import netcdf
 from gridpaw import output
 from gridpaw.exx import get_exx
+import gridpaw.io
 
 
 MASTER = 0
@@ -396,18 +396,13 @@ class Paw:
         wf = self.wf
 
         if type(wf.kpt_u[0].psit_nG) is not num.arraytype:
-            assert self.niter == 0
-            # Calculation started from a NetCDF restart file.
-            # Allocate array for wavefunctions and copy data from the
-            # NetCDFWaveFunction class
-            for kpt in wf.kpt_u:
-                tmp_nG = kpt.psit_nG
-                kpt.psit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
-                kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
+            assert self.niter == 0 and not mpi.parallel
 
-                # distribute band by band to save memory
-                for n in range(wf.nbands):
-                    kpt.gd.distribute(tmp_nG[n], kpt.psit_nG[n])
+            # Calculation started from a restart file.  Allocate array
+            # for wavefunctions and copy data from the file:
+            for kpt in wf.kpt_u:
+                kpt.psit_nG = kpt.psit_nG[:]
+                kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
                     
             self.calculate_multipole_moments()
                     
@@ -627,17 +622,13 @@ class Paw:
             # Forces for all atoms:
             self.F_ac = F_ac
             
-    def write_netcdf(self, filename):
-        """Write current state to a netCDF file."""
-        netcdf.write_netcdf(self, filename)
-        
-    def write_state_to_file(self, filename):
+    def write_state_to_file(self, filename, pos_ac, magmom_a, tag_a):
         """Write current state to a file."""
-        io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a)
+        gridpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a)
         
-    def initialize_from_netcdf(self, filename):
-        """Read state from a netCDF file."""
-        netcdf.read_netcdf(self, filename)
+    def initialize_from_file(self, filename):
+        """Read state from a file."""
+        gridpaw.io.read(self, filename)
         output.plot_atoms(self)
 
     def warn(self, message):
@@ -678,22 +669,19 @@ class Paw:
         domain a full array on the domain master and send this to the
         global master.""" 
         
-        c = 1.0 / self.a0**1.5
-
         wf = self.wf
         
-        kpt_rank, u = divmod(k * wf.nspins + s, wf.nmyu)
+        kpt_rank, u = divmod(k + wf.nkpts * s, wf.nmyu)
 
         if not mpi.parallel:
-            psit_G = wf.kpt_u[u].psit_nG[n]
-            return psit_G * c
+            return wf.kpt_u[u].psit_nG[n]
 
         if wf.kpt_comm.rank == kpt_rank:
             psit_G = self.gd.collect(wf.kpt_u[u].psit_nG[n])
 
             if kpt_rank == MASTER:
                 if mpi.rank == MASTER:
-                    return psit_G * c
+                    return psit_G
 
             # Domain master send this to the global master
             if self.domain.comm.rank == MASTER:
@@ -703,15 +691,15 @@ class Paw:
             # allocate full wavefunction and receive 
             psit_G = self.gd.new_array(typecode=wf.typecode, global_array=True)
             wf.kpt_comm.receive(psit_G, kpt_rank, 1398)
-            return psit_G * c
+            return psit_G
 
     def get_wannier_integrals(self, i, s, k, k1, G_I):
         """Calculate integrals for maximally localized Wannier functions."""
 
         assert self.wf.nspins>=s
 
-        kpt_rank, u = divmod(k * self.wf.nspins + s, self.wf.nmyu)
-        kpt_rank1, u1 = divmod(k1 * self.wf.nspins + s, self.wf.nmyu)
+        kpt_rank, u = divmod(k + self.wf.nkpts * s, self.wf.nmyu)
+        kpt_rank1, u1 = divmod(k1 + self.wf.nkpts * s, self.wf.nmyu)
 
         # XXX not for the kpoint/spin parallel case
         assert self.wf.kpt_comm.size==1

@@ -146,7 +146,7 @@ def create_paw_object(out, a0, Ha,
     if restart_file is None:
         paw.initialize_density_and_wave_functions(hund, magmom_a)
     else:
-        paw.initialize_from_netcdf(restart_file)
+        paw.initialize_from_file(restart_file)
         
     paw.set_convergence_criteria(tolerance)
     return paw

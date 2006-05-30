@@ -8,24 +8,29 @@ from gridpaw.version import version
 
 MASTER = 0
 
-def openfile(filename, mode):
+def open(filename, mode='r'):
     if filename.endswith('.nc'):
         import gridpaw.io.netcdf as io
     else:
+        if not filename.endswith('.gpw'):
+            filename += '.gpw'
         import gridpaw.io.tar as io
 
     if mode == 'r':
         return io.Reader(filename)
-    else:
-        assert mode == 'w'
+    elif mode == 'w':
         return io.Writer(filename)
+    else:
+        raise ValueError("Illegal mode!  Use 'r' or 'w'.")
+
 
 def write(paw, filename, pos_ac, magmom_a, tag_a):
-
     wf = paw.wf
+
+    paw.get_cartesian_forces()
     
     if mpi.rank == MASTER:
-        w = openfile(filename, 'w')
+        w = open(filename, 'w')
 
         w['history'] = 'gpaw restart file'
         w['version'] = version
@@ -35,28 +40,28 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
         w.dimension('natoms', len(paw.nuclei))
         w.dimension('3', 3)
 
-        w.add('AtomicNumbers', int, ('natoms',),
-              [nucleus.Z for nucleus in paw.nuclei], units=(0, 0))
-        w.add('CartesianPositions', float, ('natoms', '3'), pos_ac,
+        w.add('AtomicNumbers', ('natoms',),
+              [nucleus.setup.Z for nucleus in paw.nuclei], units=(0, 0))
+        w.add('CartesianPositions', ('natoms', '3'), pos_ac,
               units=(1, 0))
-        w.add('MagneticMoments', float, ('natoms',), magmom_a, units=(0, 0))
-        w.add('Tags', int, ('natoms',), tag_a, units=(0, 0))
-        w.add('BoundaryConditions', int, paw.domain.periodic_c, units=(0, 0))
+        w.add('MagneticMoments', ('natoms',), magmom_a, units=(0, 0))
+        w.add('Tags', ('natoms',), tag_a, units=(0, 0))
+        w.add('BoundaryConditions', ('3',), paw.domain.periodic_c,
+              units=(0, 0))
         cell_cc = num.zeros((3, 3), num.Float)
         cell_cc.flat[::4] = paw.domain.cell_c  # fill in the diagonal
-        w.add('UnitCell', float, ('3', '3'), cell_cc, units=(1, 0))
+        w.add('UnitCell', ('3', '3'), cell_cc, units=(1, 0))
 
-        w.add('PotentialEnergy', float, (), paw.Etot + 0.5 * paw.S,
+        w.add('PotentialEnergy', (), paw.Etot + 0.5 * paw.S,
               units=(0, 1))
-        paw.get_cartesian_forces()
-        w.add('CartesianForces', float, ('natoms', '3'), pos_ac, units=(-1, 1))
+        w.add('CartesianForces', ('natoms', '3'), paw.F_ac, units=(-1, 1))
         
         # Write the k-points:
         w.dimension('nbzkpts', len(wf.bzk_kc))
         w.dimension('nibzkpts', wf.nkpts)
-        w.add('BZKPoints', float, ('nbzkpts', '3'), wf.bzk_kc)
-        w.add('IBZKPoints', float, ('nibzkpts', '3'), wf.ibzk_kc)
-        w.add('IBZKPointWeights', float, ('nibzkpts',), wf.weights_k)
+        w.add('BZKPoints', ('nbzkpts', '3'), wf.bzk_kc)
+        w.add('IBZKPoints', ('nibzkpts', '3'), wf.ibzk_kc)
+        w.add('IBZKPointWeights', ('nibzkpts',), wf.weights_k)
 
         # Create dimensions for varioius netCDF variables:
         N_c = paw.gd.N_c
@@ -100,12 +105,10 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
             epsF = 100.0
         w['FermiLevel'] = epsF
 
-        typecode
+        typecode = {num.Float: float, num.Complex: complex}[wf.typecode]
         # write projections
-        w.add('Projections', float,
-                    ('nspins', 'nibzkpts', 'nbands', 'nproj'))
-
-
+        w.add('Projections', ('nspins', 'nibzkpts', 'nbands', 'nproj'),
+              typecode=typecode)
               
     if mpi.rank == MASTER:
         all_P_uni = num.zeros((wf.nmyu, wf.nbands, nproj), wf.typecode)
@@ -146,8 +149,7 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
             all_D_sp[:, q1:q1+np] = D_sp
             q1 = q2
         assert q2 == nadm
-        w.add('AtomicDensityMatrices', float, ('nspins', 'nadm'),
-                    all_D_sp)
+        w.add('AtomicDensityMatrices', ('nspins', 'nadm'), all_D_sp)
         
     elif wf.kpt_comm.rank == MASTER:
         for nucleus in paw.my_nuclei:
@@ -155,10 +157,10 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
 
     # Write the eigenvalues:
     if mpi.rank == MASTER:
-        w.add('Eigenvalues', float, ('nspins', 'nibzkpts', 'nbands'))
+        w.add('Eigenvalues', ('nspins', 'nibzkpts', 'nbands'), typecode=float)
         for kpt_rank in range(wf.kpt_comm.size):
             for u in range(wf.nmyu):
-                k, s = divmod(u + kpt_rank * wf.nmyu, wf.nspins)
+                s, k = divmod(u + kpt_rank * wf.nmyu, wf.nkpts)
                 if kpt_rank == MASTER:
                     eps_n = wf.kpt_u[u].eps_n
                 else:
@@ -171,10 +173,11 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
 
     # Write the occupation numbers:
     if mpi.rank == MASTER:
-        w.add('Eigenvalues', float, ('nspins', 'nibzkpts', 'nbands'))
+        w.add('OccupationNumbers', ('nspins', 'nibzkpts', 'nbands'),
+              typecode=float)
         for kpt_rank in range(wf.kpt_comm.size):
             for u in range(wf.nmyu):
-                k, s = divmod(u + kpt_rank * wf.nmyu, wf.nspins)
+                s, k = divmod(u + kpt_rank * wf.nmyu, wf.nkpts)
                 if kpt_rank == MASTER:
                     f_n = wf.kpt_u[u].f_n
                 else:
@@ -187,8 +190,8 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
 
     # Write the pseudodensity on the coarse grid
     if mpi.rank == MASTER:
-        w.add('PseudoElectronDensity', float,
-                    ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'))
+        w.add('PseudoElectronDensity',
+              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
 
     if wf.kpt_comm.rank == MASTER:
         for s in range(wf.nspins):
@@ -198,14 +201,14 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
 
     # Write the wave functions:
     if mpi.rank == MASTER:
-        w.add('PseudoWaveFunctions', float,
-                    ('nspins', 'nibzkpts', 'nbands',
-                     'ngptsx', 'ngptsy', 'ngptsz'))
+        w.add('PseudoWaveFunctions', ('nspins', 'nibzkpts', 'nbands',
+                                      'ngptsx', 'ngptsy', 'ngptsz'),
+              typecode=typecode)
 
     for s in range(wf.nspins):
         for k in range(wf.nkpts):
             for n in range(wf.nbands):
-                psit_G = paw.get_wave_function(n, k, s)
+                psit_G = paw.get_wave_function_array(n, k, s)
                 if mpi.rank == MASTER: 
                     w.fill(psit_G)
                     
@@ -214,17 +217,31 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
         # written to disk:
         w.close()
 
-def read(paw, filename):
 
+def read(paw, filename):
     wf = paw.wf
     
-    r = openfile(filename, 'r')
+    r = open(filename, 'r')
     
-    # Wave functions: All processors keeps a reference to the file: 
-    psit_unG = vars['PseudoWaveFunctions']
-    for kpt in wf.kpt_u:
-        kpt.allocate(wf.nbands)
-        kpt.psit_nG = r.get_reference('PseudoWaveFunctions', kpt.s, kpt.k)
+    # Wave functions:
+    if mpi.parallel:
+        # Slice of the global array for this domain:
+        i = [slice(b, e) for b, e in zip(paw.gd.beg0_c, paw.gd.end_c)]
+        
+        for kpt in wf.kpt_u:
+            kpt.allocate(wf.nbands)
+            kpt.psit_nG = paw.gd.new_array(wf.nbands, wf.typecode)
+            kpt.Htpsit_nG = paw.gd.new_array(wf.nbands, wf.typecode)
+            # Read band by band to save memory
+            for n, psit_G in enumerate(kpt.psit_nG):
+                psit_G[:] = r.get('PseudoWaveFunctions', kpt.s, kpt.k, n)[i]
+    else:
+        # Serial calculation.  We may not be able to keep all the wave
+        # functions in memory - so psit_nG will be a special type of
+        # array that is really a reference to a file:
+        for kpt in wf.kpt_u:
+            kpt.allocate(wf.nbands)
+            kpt.psit_nG = r.get_reference('PseudoWaveFunctions', kpt.s, kpt.k)
     
     # Eigenvalues and occupation
     for kpt in wf.kpt_u:
@@ -233,12 +250,12 @@ def read(paw, filename):
         kpt.eps_n[:] = r.get('Eigenvalues', s, k)
         kpt.f_n[:] = r.get('OccupationNumbers', s, k)
 
-    paw.Etot = r.get('PotentialEnergy')[0]
     paw.Ekin = r['Ekin']
     paw.Epot = r['Epot']
     paw.Ebar = r['Ebar']
     paw.Exc = r['Exc']
     paw.S = r['S']
+    paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
     
     # Read pseudoelectron density on the coarse grid and
     # distribute out to nodes
@@ -265,7 +282,5 @@ def read(paw, filename):
         ni = nucleus.get_number_of_partial_waves()
         p2 = p1 + ni * (ni + 1) / 2
         if nucleus.in_this_domain:
-            nucleus.D_sp[:] = D_sp[:, q1:q2]
-        q1 = q2
-
-    r.close()
+            nucleus.D_sp[:] = D_sp[:, p1:p2]
+        p1 = p2

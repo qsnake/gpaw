@@ -16,20 +16,20 @@ nhostsread = [8]
 
 tests = []
 for nkpt in [4]:
-   for magmom in [1.0]:
+   for magmom in [3.0]:
       test =  'test:  nkpt = %d magmom = %1.1f'%(nkpt,magmom)
       for nhosts in nhostswrite: 
        	print test
        	file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
 
-        fcc = ListOfAtoms([Atom('Fe',magmom=magmom)],
+        fcc = ListOfAtoms([Atom('Fe', (0, 0, 0.0001) ,magmom=magmom)],
                            periodic=True,
                            cell = (2.55,2.55,2.55))
 
        	calc = Calculator(nbands=6,
                          gpts=(ng,ng,ng),
-                         kpts=(2, 2, nkpt),
-##                         out=file_prefix+'.txt',
+                         kpts=(4, 2, 2),
+                         out=file_prefix+'.txt',
                          tolerance = 1e-10, 
                          hosts=nhosts)
 	
@@ -39,7 +39,6 @@ for nkpt in [4]:
        	calc.Write(file_prefix+'.nc')
 
         del calc,fcc
-       	time.sleep(10)
 
       for nhosts in nhostsread: 
        	file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
@@ -49,16 +48,14 @@ for nkpt in [4]:
                                     tolerance = 1e-10,
                                     hosts=nhosts)
         calc = atoms.GetCalculator()
-        # atoms.SetCartesianPositions(atoms.GetCartesianPositions()+0.0000001)
-        atoms.SetCartesianPositions(atoms.GetCartesianPositions()+0.01)
-        atoms.SetCartesianPositions(atoms.GetCartesianPositions()-0.01)
+        atoms[0].SetCartesianPosition([0, 0, -0.0001])
         erg = atoms.GetPotentialEnergy()
 
 
         result = 'ok'
         equal(e,erg,1e-4)
 
-        niter = atoms.GetCalculator().GetNumberOfIterations() 
+        niter = calc.GetNumberOfIterations() 
         tests.append((test,result,niter,nhosts))
 
 del calc,atoms

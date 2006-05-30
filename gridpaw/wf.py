@@ -102,7 +102,7 @@ class WaveFunctions:
 
         self.kpt_u = []
         for u in range(self.nmyu):
-            k, s = divmod(kpt_comm.rank * self.nmyu + u, nspins)
+            s, k = divmod(kpt_comm.rank * self.nmyu + u, self.nkpts)
             weight = weights_k[k] * 2 / nspins
             k_c = ibzk_kc[k]
             self.kpt_u.append(KPoint(gd, weight, s, k, u, k_c, typecode))
