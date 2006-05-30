@@ -238,3 +238,37 @@ class XCOperator:
             return num.dot(self.e_g, self.dv_g)
         else:
             return num.sum(self.e_g.flat) * self.dv
+
+    def get_second_derivatives(self, na_g, nb_g=None,scale=.001):
+        """Second derivatives of Exc"""
+        
+        def invert(arr):
+            """Invert the Numeric array with 1/0=0"""
+            res=arr.copy()
+            for i in range(res.shape[0]):
+                for j in range(res.shape[1]):
+                    for k in range(res.shape[2]):
+                        if res[i,j,k]==0: pass
+                        else            : res[i,j,k]=1./res[i,j,k]
+            return res
+
+        def twopoint(xc,na_g,nb_g=None,scale=.001):
+            """two point derivative"""
+            # unpolarised
+            if nb_g is None: 
+                dn_g=scale*na_g
+                dinv_g=invert(dn_g)
+                np1_g=na_g+dn_g
+                vp1_g=na_g.copy()
+                xc.get_energy_and_potential(np1_g,vp1_g)
+                nm1_g=na_g-dn_g
+                vm1_g=na_g.copy()
+                xc.get_energy_and_potential(nm1_g,vm1_g)
+                d2Edn2_g=[range(1)]
+                d2Edn2_g[0]=.5*(vp1_g-vm1_g)*dinv_g
+            # polarized
+            else:
+                pass
+            return d2Edn2_g
+
+        return twopoint(self,na_g,nb_g,scale)
