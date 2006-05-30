@@ -137,14 +137,10 @@ class KPoint:
 
         self.comm.sum(self.H_nn, self.root)
 
-        yield None
-        
         if self.comm.rank == self.root:
             info = diagonalize(self.H_nn, self.eps_n)
             if info != 0:
                 raise RuntimeError, 'Very Bad!!'
-        
-        yield None
         
         self.comm.broadcast(self.H_nn, self.root)
         self.comm.broadcast(self.eps_n, self.root)
@@ -187,8 +183,6 @@ class KPoint:
                 slice_nG = self.psit_nG[nao:]
                 ddx = Gradient(self.gd, 0, typecode=self.typecode).apply
                 ddx(self.psit_nG[:extra], slice_nG, self.phase_cd)
-        
-        yield None
         
     def calculate_residuals(self, pt_nuclei, converge_all=False):
         """Calculate wave function residuals.
@@ -245,16 +239,12 @@ class KPoint:
         
         self.comm.sum(S_nn, self.root)
 
-        yield None
-
         if self.comm.rank == self.root:
             # inverse returns a non-contigous matrix - grrrr!  That is
             # why there is a copy.  Should be optimized with a
             # different lapack call to invert a triangular matrix XXXXX
             S_nn[:] = linalg.inverse(
                 linalg.cholesky_decomposition(S_nn)).copy()
-
-        yield None
 
         self.comm.broadcast(S_nn, self.root)
 
@@ -265,8 +255,6 @@ class KPoint:
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
             gemm(1.0, P_ni.copy(), S_nn, 0.0, P_ni)
-
-        yield None
 
     def add_to_density(self, nt_G):
         """Add contribution to pseudo electron-density."""

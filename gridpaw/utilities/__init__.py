@@ -153,22 +153,6 @@ class OutputFilter:
 
 """
 
-def run_threaded(tasks):
-    """Run list of tasks in small steps.
-
-    Given a list of ``tasks`` (generators), take one step in each and
-    repeat that until each generator is one.  This function is used
-    for parallelization by running different tasks in separate
-    threads."""
-
-    try:
-        while True:
-            for task in tasks:
-                task.next()
-    except StopIteration:
-        pass
-
-
 def warning(msg):
     r"""Put string in a box.
 

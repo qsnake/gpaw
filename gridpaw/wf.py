@@ -4,7 +4,7 @@ import Numeric as num
 
 from gridpaw.kpoint import KPoint
 from gridpaw.utilities.complex import cc, real
-from gridpaw.utilities import run_threaded, pack, unpack2
+from gridpaw.utilities import pack, unpack2
 from gridpaw.operators import Laplace
 import gridpaw.occupations as occupations
 from gridpaw.preconditioner import Preconditioner
@@ -182,14 +182,13 @@ class WaveFunctions:
             for nucleus in pt_nuclei:
                 nucleus.calculate_projections(kpt)
 
-        run_threaded([kpt.orthonormalize(my_nuclei) for kpt in self.kpt_u])
+        for kpt in self.kpt_u:
+            kpt.orthonormalize(my_nuclei)
 
     def diagonalize(self, vt_sG, my_nuclei, exx):
         """Apply Hamiltonian and do subspace diagonalization."""
-##        for kpt in self.kpt_u:
-##            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands)
-        run_threaded([kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands,
-                                      exx) for kpt in self.kpt_u])
+        for kpt in self.kpt_u:
+            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands, exx)
 
     def sum_eigenvalues(self):
         """Sum up all eigenvalues weighted with occupation numbers."""
