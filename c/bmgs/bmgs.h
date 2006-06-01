@@ -66,7 +66,7 @@ void bmgs_radial3(const bmgsspline* spline, int m,
 		  const double C[3],
 		  const double h[3],
 		  const double* f, double* a);
-void bmgs_radiald3(const bmgsspline* spline, int m, 
+void bmgs_radiald3(const bmgsspline* spline, int m, int c,
 		  const int n[3], 
 		  const double C[3],
 		  const double h[3],

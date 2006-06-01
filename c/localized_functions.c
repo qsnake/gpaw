@@ -50,8 +50,7 @@ static PyObject * localized_functions_integrate(LocalizedFunctionsObject *self,
 {
   const PyArrayObject* aa;
   PyArrayObject* bb;
-  int derivatives = 0;
-  if (!PyArg_ParseTuple(args, "OO|i", &aa, &bb, &derivatives))
+  if (!PyArg_ParseTuple(args, "OO", &aa, &bb))
     return NULL;
 
   const double* a = DOUBLEP(aa);
@@ -59,8 +58,54 @@ static PyObject * localized_functions_integrate(LocalizedFunctionsObject *self,
   int na = 1;
   for (int d = 0; d < aa->nd - 3; d++)
     na *= aa->dimensions[d];
-  int nf = (derivatives ? self->nfd : self->nf);
-  double* f = (derivatives ? self->fd : self->f);
+  int nf = self->nf;
+  double* f = self->f;
+  double* w = self->w;
+  int ng = self->ng;
+  int ng0 = self->ng0;
+
+  if (aa->descr->type_num == PyArray_DOUBLE)
+    for (int n = 0; n < na; n++)
+      {
+	bmgs_cut(a, self->size, self->start, w, self->size0);
+	double zero = 0.0;
+	int inc = 1;
+	dgemv_("t", &ng0, &nf, &self->dv, f, &ng0, w, &inc, &zero, b, &inc);
+
+	a += ng;
+	b += nf;
+      }
+  else
+    for (int n = 0; n < na; n++)
+      {
+	bmgs_cutz((const double_complex*)a, self->size, self->start, 
+		  (double_complex*)w, self->size0);
+	double zero = 0.0;
+	int inc = 2;
+	dgemm_("n", "n", &inc, &nf, &ng0, &self->dv, w, &inc, f, &ng0,
+	       &zero, b, &inc);
+
+	a += 2 * ng;
+	b += 2 * nf;
+      }
+  Py_RETURN_NONE;
+}
+
+static PyObject * localized_functions_derivative(
+		      LocalizedFunctionsObject *self, PyObject *args)
+{
+  const PyArrayObject* aa;
+  PyArrayObject* bb;
+  if (!PyArg_ParseTuple(args, "OO", &aa, &bb))
+    return NULL;
+
+  const double* a = DOUBLEP(aa);
+  double* b = DOUBLEP(bb);
+  int na = 1;
+  for (int d = 0; d < aa->nd - 3; d++)
+    na *= aa->dimensions[d];
+  int nf = self->nfd;
+  double* f = self->fd;
   double* w = self->w;
   int ng = self->ng;
   int ng0 = self->ng0;
@@ -185,6 +230,8 @@ static PyObject * localized_functions_broadcast(LocalizedFunctionsObject*
 static PyMethodDef localized_functions_methods[] = {
     {"integrate",
      (PyCFunction)localized_functions_integrate, METH_VARARGS, 0},
+    {"derivative",
+     (PyCFunction)localized_functions_derivative, METH_VARARGS, 0},
     {"add",
      (PyCFunction)localized_functions_add, METH_VARARGS, 0},
     {"add_density",
@@ -272,7 +319,7 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
 	}
       nf += (2 * l + 1); 
       if (forces)
-        nfd += 3 + l * (1 + 2 * l); 
+        nfd += 3 * (2 * l + 1); 
     }
   self->nf = nf;
   self->nfd = nfd;
@@ -304,17 +351,18 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
 	    bmgs_radial1(spline, self->size0, C, h, bin, d);
 	  bmgs_radial2(spline, self->size0, bin, d, f0, fd0);
 	  int l = spline->l;
-	  for (int k = 0; k < 2 * l + 1; k++)
+	  for (int m = -l; m <= l; m++)
 	    {
-	      bmgs_radial3(spline, k, self->size0, C, h, f0, a);
+	      bmgs_radial3(spline, m, self->size0, C, h, f0, a);
 	      a += ng0;
 	    }
 	  if (forces)
-	    for (int k = 0; k < 3 + l * (2 * l + 1); k++)
-	      {
-		bmgs_radiald3(spline, k, self->size0, C, h, f0, fd0, ad);
-		ad += ng0;
-	      }
+	    for (int m = -l; m <= l; m++)
+	      for (int c = 0; c < 3; c++)
+		{
+		  bmgs_radiald3(spline, m, c, self->size0, C, h, f0, fd0, ad);
+		  ad += ng0;
+		}
 	}
       if (forces)
 	free(fd0);

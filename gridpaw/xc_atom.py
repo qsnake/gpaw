@@ -36,7 +36,6 @@ for R in points:
         for m in range(2 * l + 1):
             L = l**2 + m
             for c, n in YL[L]:
-                N = 0
                 for i in range(3):
                     ni = n[i]
                     if ni > 0:
@@ -45,8 +44,7 @@ for R in points:
                             if ii != i:
                                 a *= R[ii]**n[ii]
                         A_Liy[L, i, y] += a
-                    N += ni
-            A_Liy[L, :, y] -= N * R * Y_nL[y, L]
+            A_Liy[L, :, y] -= l * R * Y_nL[y, L]
     y += 1
 
 

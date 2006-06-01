@@ -403,9 +403,6 @@ class Setup:
     def get_number_of_partial_waves(self):
         return self.ni
     
-    def get_number_of_derivatives(self):
-        return self.nk
-    
     def get_recommended_grid_spacing(self):
         return 0.4 # self.h ???  XXXXXXXXXXXX
 

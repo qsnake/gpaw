@@ -40,9 +40,9 @@ class SingleAtom:
                     parameters['kpts'] = (2, 2, 2)
                     periodic = True
                     if symbol == 'O':
-                        pos = (0.1, 0, 0)
+                        pos = (0, 0.1, 0)
                     else:
-                        pos = (0, 0, 0.1)
+                        pos = (0.1, 0, 0)
                 else:
                     parameters['tolerance'] = 1e-7
 

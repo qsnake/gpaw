@@ -30,8 +30,8 @@ for soft in [False, True]:
                 Q0 -= 1.0
                 Q1_m[:] = 0.0
             elif l == 1:
-                Q1_m[m] -= 1.0
-            print Q0, Q1_m
+                Q1_m[(m + 1) % 3] -= 1.0
+            print Q0, Q1_m, m
             assert abs(Q0) < 2e-6
             assert num.alltrue(abs(Q1_m) < 3e-5)
     b_Lg = num.reshape(a_Lg, (9, n**3))

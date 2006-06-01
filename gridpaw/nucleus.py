@@ -371,61 +371,6 @@ class Nucleus:
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
         self.D_sp[s] = pack(D_ii)
 
-    def calculate_force(self, vHt_g, nt_g, vt_G):
-        if self.in_this_domain:
-            lmax = self.setup.lmax
-            nk = (3, 9, 22)[lmax]
-            # ???? Optimization: do the sum over L before the sum over g and G.
-            F_k = num.zeros(nk, num.Float)
-            self.ghat_L.integrate(vHt_g, F_k, derivatives=True)
-            self.vhat_L.integrate(nt_g, F_k, derivatives=True) 
-            
-            Q_L = self.Q_L
-            F = self.F_c
-            F[:] += Q_L[0] * F_k[:3]
-            if lmax > 0:
-                F += Q_L[1] * F_k[3:6]
-                F += Q_L[2] * num.array([F_k[4], F_k[6], F_k[7]])
-                F += Q_L[3] * num.array([F_k[5], F_k[7], F_k[8]])
-            if lmax > 1:
-                f_cm = num.zeros(15, num.Float)
-                f_cm[:7] = F_k[9:16]
-                f_cm[7] = F_k[10]
-                f_cm[8:10] = F_k[16:18]
-                f_cm[10] = F_k[10]
-                f_cm[11:] = F_k[18:]
-                f_cm.shape = (3, 5)
-                F += num.dot(f_cm, Q_L[4:])
-
-            # Force from smooth core charge:
-            F_k = num.zeros(3, num.Float)
-            self.nct.integrate(vt_G, F_k, derivatives=True)
-            F += F_k
-
-            # Force from localized potential:
-            F_k = num.zeros(3, num.Float)
-            self.vbar.integrate(nt_g, F_k, derivatives=True)
-            F += F_k
-
-            dF = num.zeros(((lmax + 1)**2, 3), num.Float)
-            for neighbor in self.neighbors:
-                for c in range(3):
-                    dF[:, c] += num.dot(neighbor.dvdr_LLc[:, :, c],
-                                        neighbor.nucleus().Q_L)
-            F += num.dot(self.Q_L, dF)
-        else:
-            if self.ghat_L is not None:
-                self.ghat_L.integrate(vHt_g, None, derivatives=True)
-                self.vhat_L.integrate(nt_g, None, derivatives=True)
-                
-            if self.nct is None:
-                self.comm.sum(num.zeros(3, num.Float), self.rank)
-            else:
-                self.nct.integrate(vt_G, None, derivatives=True)
-                
-            if self.vbar is not None:
-                self.vbar.integrate(nt_g, None, derivatives=True)
-
     def calculate_force_kpoint(self, kpt):
         f_n = kpt.f_n
         eps_n = kpt.eps_n
@@ -438,31 +383,56 @@ class Nucleus:
             nb = P_ni.shape[0]
             H_ii = unpack(self.H_sp[s])
             O_ii = self.setup.O_ii
-            nk = self.setup.get_number_of_derivatives()
-            F_nk = num.zeros((nb, nk), self.typecode)
+            ni = self.setup.get_number_of_partial_waves()
+            F_nic = num.zeros((nb, ni, 3), self.typecode)
             # ???? Optimization: Take the real value of F_nk * P_ni early.
-            self.pt_i.integrate(psit_nG, F_nk, k, derivatives=True)
-            F_nk *= f_n[:, None]
-            F_ik = num.dot(H_ii, num.dot(num.transpose(P_ni), F_nk))
-            F_nk *= eps_n[:, None]
-            F_ik -= num.dot(O_ii, num.dot(num.transpose(P_ni), F_nk))
-            F_ik *= 2.0
-            i = 0
-            k = 0
+            self.pt_i.derivative(psit_nG, F_nic, k)
+            F_nic.shape = (nb, ni * 3)
+            F_nic *= f_n[:, None]
+            F_iic = num.dot(H_ii, num.dot(num.transpose(P_ni), F_nic))
+            F_nic *= eps_n[:, None]
+            F_iic -= num.dot(O_ii, num.dot(num.transpose(P_ni), F_nic))
+            F_iic *= 2.0
             F = self.F_c
-            for l in self.setup.l_j:
-                f = real(F_ik[i:, k:])
-                if l == 0:
-                    F += f[0][:3]
-                elif l == 1:
-                    F[0] += f[0, 0] + f[1, 1] + f[2, 2]
-                    F[1] += f[0, 1] + f[1, 3] + f[2, 4]
-                    F[2] += f[0, 2] + f[1, 4] + f[2, 5]
-                else:
-                    F[0] += f[0, 0] + f[1, 1] + f[2, 2] + f[3, 3] + f[4, 4]
-                    F[1] += f[0, 5] + f[1, 6] + f[2, 1] + f[3, 7] + f[4, 8]
-                    F[2] += f[0, 1] + f[1, 9] + f[2, 10] + f[3, 11] + f[4, 12]
-                i += 2 * l + 1
-                k += 3 + l * (1 + 2 * l)
+            F_iic.shape = (ni, ni, 3)
+            for i in range(ni):
+                F += real(F_iic[i, i])
         else:
-            self.pt_i.integrate(psit_nG, None, k, derivatives=True)
+            self.pt_i.derivative(psit_nG, None, k)
+
+    def calculate_force(self, vHt_g, nt_g, vt_G):
+        if self.in_this_domain:
+            lmax = self.setup.lmax
+            # ???? Optimization: do the sum over L before the sum over g and G.
+            F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
+            self.ghat_L.derivative(vHt_g, F_Lc)
+            self.vhat_L.derivative(nt_g, F_Lc) 
+            
+            Q_L = self.Q_L
+            F = self.F_c
+            F[:] += num.dot(Q_L, F_Lc)
+
+            # Force from smooth core charge:
+            self.nct.derivative(vt_G, F[None, :])
+
+            # Force from localized potential:
+            self.vbar.derivative(nt_g, F[None, :])
+
+            dF = num.zeros(((lmax + 1)**2, 3), num.Float)
+            for neighbor in self.neighbors:
+                for c in range(3):
+                    dF[:, c] += num.dot(neighbor.dvdr_LLc[:, :, c],
+                                        neighbor.nucleus().Q_L)
+            F += num.dot(self.Q_L, dF)
+        else:
+            if self.ghat_L is not None:
+                self.ghat_L.derivative(vHt_g, None)
+                self.vhat_L.derivative(nt_g, None)
+                
+            if self.nct is None:
+                self.comm.sum(num.zeros(3, num.Float), self.rank)
+            else:
+                self.nct.derivative(vt_G, None)
+                
+            if self.vbar is not None:
+                self.vbar.derivative(nt_g, None)

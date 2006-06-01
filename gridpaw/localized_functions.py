@@ -84,11 +84,9 @@ class LocFuncs:
             b += 1
         
         self.ni = 0
-        self.niD = 0
         for radial in functions:
             l = radial.get_angular_momentum_number()
-            self.ni += 2 * l + 1; 
-            self.niD += 3 + l * (1 + 2 * l)
+            self.ni += 2 * l + 1
 
         if angle is not None:
             nb = len(self.box_b)
@@ -116,9 +114,9 @@ class LocFuncs:
             c = cos(da)
             s = sin(da)
             r = num.asarray([
-                [1.0, 0.0, 0.0],
-                [0.0,   c,  -s],
-                [0.0,   s,   c]], num.Float)
+                [c, -s, 0],
+                [s,  c, 0],
+                [0,  0, 1]], num.Float)
             return r
         if l == 2:
             c = cos(da)
@@ -137,11 +135,11 @@ class LocFuncs:
             #    ], num.Float)
             # With new normalization:
             r = num.asarray([
-                [  c,    0.0,  -s,         0.0,         0.0],
-                [0.0,  cc-ss, 0.0,         -sc,     -sq3*sc],
-                [  s,    0.0,   c,         0.0,         0.0],
-                [0.0,     sc, 0.0,   cc+0.5*ss, -0.5*sq3*ss],
-                [0.0, sq3*sc, 0.0, -0.5*sq3*ss,   cc-0.5*ss]
+                [  c,    0.0,  0,-s,         0.0],
+                [0.0,  cc-ss, -sq3*sc,0.0,         -sc,     ],
+                [0.0, sq3*sc,   cc-0.5*ss, 0.0, -0.5*sq3*ss],
+                [  s,    0.0,         0.0,   c,         0.0],
+                [0.0,     sc, -0.5*sq3*ss, 0.0,   cc+0.5*ss]
                 ], num.Float)
             return r
         
@@ -185,21 +183,15 @@ class LocFuncs:
             for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.invR_bii):
                 box.add(num.dot(coef_xi, R_ii) / phase, a_xg)
                                                 
-    def integrate(self, a_xg, result_xi, k=None, derivatives=False):
+    def integrate(self, a_xg, result_xi, k=None):
         """Calculate integrals of arrays times localized functions.
 
         Return the integral of extended arrays times localized
         functions in ``result_xi``.  Correct phase-factors are used if
         the **k**-point index ``k`` is not ``None`` (Block
-        boundary-condtions).  If ``derivatives`` is true (defaults to
-        false), the *x*- *y*- and *z*-derivatives are calculated
-        instead."""
+        boundary-condtions)."""
         
-        if derivatives:
-            shape = a_xg.shape[:-3] + (self.niD,)
-        else:
-            shape = a_xg.shape[:-3] + (self.ni,)
-            
+        shape = a_xg.shape[:-3] + (self.ni,)
         tmp_xi = num.zeros(shape, self.typecode)
         if result_xi is None:
             result_xi = num.zeros(shape, self.typecode)
@@ -207,25 +199,61 @@ class LocFuncs:
         if (k is None or self.phase_kb is None) and self.angle is None:
             # No k-points, no rotation
             for box in self.box_b:
-                box.integrate(a_xg, tmp_xi, derivatives)
+                box.integrate(a_xg, tmp_xi)
                 result_xi += tmp_xi                
         elif self.angle is None:
             # K-points, no rotation
             for box, phase in zip(self.box_b, self.phase_kb[k]):
-                box.integrate(a_xg, tmp_xi, derivatives)
+                box.integrate(a_xg, tmp_xi)
                 result_xi += phase * tmp_xi
         elif (k is None or self.phase_kb is None) and self.angle is not None:
             # Rotation, no k-points
             for box, R_ii in zip(self.box_b, self.R_bii):
-                box.integrate(a_xg, tmp_xi, derivatives)
+                box.integrate(a_xg, tmp_xi)
                 result_xi += num.dot(tmp_xi, R_ii)
         else:
             # Rotation and k-points
             for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.R_bii):
-                box.integrate(a_xg, tmp_xi, derivatives)
+                box.integrate(a_xg, tmp_xi)
                 result_xi += phase * num.dot(tmp_xi, R_ii)
                
         self.comm.sum(result_xi, self.root)
+
+    def derivative(self, a_xg, result_xic, k=None):
+        """Calculate derivatives of localized integrals.
+
+        Return the *x*- *y*- and *z*-derivatives of the integral of
+        extended arrays times localized functions in ``result_xi``.
+        Correct phase-factors are used if the **k**-point index ``k``
+        is not ``None`` (Block boundary-condtions)."""
+        
+        shape = a_xg.shape[:-3] + (self.ni, 3)
+        tmp_xic = num.zeros(shape, self.typecode)
+        if result_xic is None:
+            result_xic = num.zeros(shape, self.typecode)
+            
+        if (k is None or self.phase_kb is None) and self.angle is None:
+            # No k-points, no rotation
+            for box in self.box_b:
+                box.derivative(a_xg, tmp_xic)
+                result_xic += tmp_xic                
+        elif self.angle is None:
+            # K-points, no rotation
+            for box, phase in zip(self.box_b, self.phase_kb[k]):
+                box.derivative(a_xg, tmp_xic)
+                result_xic += phase * tmp_xic
+        elif (k is None or self.phase_kb is None) and self.angle is not None:
+            # Rotation, no k-points
+            for box, R_ii in zip(self.box_b, self.R_bii):
+                box.derivative(a_xg, tmp_xic)
+                result_xic += num.dot(tmp_xic, R_ii)
+        else:
+            # Rotation and k-points
+            for box, phase, R_ii in zip(self.box_b, self.phase_kb[k], self.R_bii):
+                box.derivative(a_xg, tmp_xic)
+                result_xic += phase * num.dot(tmp_xic, R_ii)
+               
+        self.comm.sum(result_xic, self.root)
 
     def add_density(self, n_G, f_i):
         """Add atomic electron density to extended density array.
@@ -280,32 +308,41 @@ class LocalizedFunctionsWrapper:
             locfuncbcaster.add(self.lfs)
 
         self.ni = 0   # number of functions
-        self.niD = 0  # number of derivatives
         for function in functions:
             l = function.get_angular_momentum_number()
             self.ni += 2 * l + 1; 
-            self.niD += 3 + l * (1 + 2 * l)
 
         self.shape = tuple(gd.n_c)
         self.typecode = typecode
-
-    def integrate(self, a_xg, result_xi, derivatives=False):
+        self.forces = forces
+        
+    def integrate(self, a_xg, result_xi):
         """Calculate integrals of arrays times localized functions.
 
-        Return the interal of extended arrays times localized
-        functions in ``result_xi``.  If ``derivatives`` is true
-        (defaults to false), the *x*- *y*- and *z*-derivatives are
-        calculated instead."""
+        Return the integral of extended arrays times localized
+        functions in ``result_xi``."""
         
         assert is_contiguous(a_xg, self.typecode)
         assert is_contiguous(result_xi, self.typecode)
         assert a_xg.shape[:-3] == result_xi.shape[:-1]
         assert a_xg.shape[-3:] == self.shape
-        if derivatives:
-            assert result_xi.shape[-1] == self.niD
-        else:
-            assert result_xi.shape[-1] == self.ni
-        self.lfs.integrate(a_xg, result_xi, derivatives)
+        assert result_xi.shape[-1] == self.ni
+        self.lfs.integrate(a_xg, result_xi)
+
+    def derivative(self, a_xg, result_xic):
+        """Calculate x-, y-, z-derivatives of localized integrals.
+
+        Return the *x*- *y*- and *z*-derivatives of the integral of
+        extended arrays times localized functions in
+        ``result_xic``."""
+
+        assert self.forces
+        assert is_contiguous(a_xg, self.typecode)
+        assert is_contiguous(result_xic, self.typecode)
+        assert a_xg.shape[:-3] == result_xic.shape[:-2]
+        assert a_xg.shape[-3:] == self.shape
+        assert result_xic.shape[-2:] == (self.ni, 3)
+        self.lfs.derivative(a_xg, result_xic)
 
     def add(self, coef_xi, a_xg):
         """Add localized functions to extended arrays.

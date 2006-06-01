@@ -489,13 +489,12 @@ void bmgs_radial3(const bmgsspline* spline, int m,
 // --------------------- = g(r) q r^l Y_l^m + f(r) --------------
 //        dq                                             dq
 // where q={x, y, z} and g(r) = 1/r*(df/dr)
-void bmgs_radiald3(const bmgsspline* spline, int m, int q, 
+void bmgs_radiald3(const bmgsspline* spline, int m, int c, 
 		  const int n[3], 
 		  const double C[3],
 		  const double h[3],
 		  const double* f, const double* g, double* a)
 {
-  int q = 0;
   int l = spline->l;
 """
     start_case = """
@@ -532,17 +531,12 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int q,
             elif m == l: case += '\n' + ' ' * 18 +'else\n'
             else: case += '\n' + ' ' * 18 + 'else if (m == %s)\n' %m
             case += ' ' * 20 + 'a[q] = f[q] * '
-            case += Y_to_string(l,m) + ';'
+            case += Y_to_string(l,m, numeric=True) + ';'
         if 'r2' in case: txt += ' ' * 18 + 'double r2 = x*x+y*y+z*z;\n'
         txt += case
         txt += end_case
     txt += """  else
-    {
-      printf Error: Requested l quantum number not implemented yet!
-      printf run (gridpaw.sharmonic) construct_c_code(file=temp.c, lmax=3)
-      printf to generate the required code
-      assert 0 == 1
-    }
+    assert(0 == 1);
 }
 """
     
@@ -552,8 +546,8 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int q,
         txt += '  // ' + 'xyz'[q] + '\n'
         for l in range(0, lmax + 1):
             if l == 0 and q == 0:
-                txt += '  if (q == 0 && l == 0)'
-            else: txt += '  else if (q == %s && l == %s)' %(q, l)
+                txt += '  if (c == 0 && l == 0)'
+            else: txt += '  else if (c == %s && l == %s)' %(q, l)
         
             txt += start_case
             case = ''
@@ -562,21 +556,16 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int q,
                 elif m == l: case += '\n' + ' ' * 18 + 'else\n'
                 else: case += '\n' + ' ' * 18 + 'else if (m == %s)\n' %m
                 case += ' ' * 20 + 'a[q] = g[q] * '
-                case += Y_to_string(l, m, multiply=q)
-                diff = Y_to_string(l, m, deriv=q)
+                case += Y_to_string(l, m, multiply=q, numeric=True)
+                diff = Y_to_string(l, m, deriv=q, numeric=True)
                 if diff != '0':
                     case += ' + f[q] * ' + diff
                 case += ';'
-            if 'r2' in case: txt += ' ' * 18 + ' double r2 = x*x+y*y+z*z;\n'
+            if 'r2' in case: txt += ' ' * 18 + 'double r2 = x*x+y*y+z*z;\n'
             txt += case
             txt += end_case
     txt += """  else
-    {
-      printf Error: Requested l quantum number not implemented yet!
-      printf run (gridpaw.sharmonic) construct_c_code(file=temp.c, lmax=3)
-      printf to generate the required code
-      assert 0 == 1
-    }
+      assert(0 == 1);
 }
 """
     f = open(file, 'w')
@@ -652,3 +641,35 @@ title(sprintf('|Y_l^m(x,y,z)|^2   l, m = %d, %d', l, m),...
 light('Position',[0.1,-1.2,.3]);
 saveas(fig, sprintf('Y_%d_%d.eps',l,m),'epsc2')
     """
+
+def Y(l, m):
+    norm, p = Y_collect(l, m)
+    done = False
+    while not done:
+        p2 = {}
+        done = True
+        for (nx, ny, nz), c in p.items():
+            n = nx + ny + nz
+            if n < l:
+                p2[(nx + 2, ny, nz)] = p2.get((nx + 2, ny, nz), 0) + c
+                p2[(nx, ny + 2, nz)] = p2.get((nx, ny + 2, nz), 0) + c
+                p2[(nx, ny, nz + 2)] = p2.get((nx, ny, nz + 2), 0) + c
+                if n + 2 < l:
+                    done = False
+            else:
+                assert n == l
+                p2[(nx, ny, nz)] = p2.get((nx, ny, nz), 0) + c
+        p = p2
+    p2 = p.copy()
+    for n, c in p.items():
+        if c == 0:
+            del p2[n]
+    return p2
+
+for l in range(5):
+    for m in range(-l, l + 1):
+        print '%s,' % [(c, n) for n, c in Y(l, m).items()]
+
+print Y(3, -1)
+print Y_collect(3, -1)
+construct_c_code()
