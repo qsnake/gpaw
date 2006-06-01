@@ -92,7 +92,7 @@ class Calculator:
         # Set default parameters and adjust with user parameters:
         self.Set(**Calculator.parameters)
         self.Set(**kwargs)
-
+        
         out = self.out
         print >> out
         print >> out, '  ___ ___ ___ _ _ _  '
@@ -224,6 +224,7 @@ class Calculator:
                 pos_ac, Z_a, magmoms, cell_c, periodic_c, angle,
                 self.h, self.gpts, self.xc,
                 self.nbands, self.spinpol, self.width,
+                self.charge,
                 self.bzk_kc,
                 self.softgauss,
                 self.order,
