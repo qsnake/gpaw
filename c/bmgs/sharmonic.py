@@ -92,7 +92,7 @@ def Y_to_string(l, m, deriv=None, multiply=None, numeric=False):
     if multiply != None:
         xyzs = q_times_xyzs(xyzs, multiply)
 
-    string = to_string(l, xyzs, deriv != None)
+    string = to_string(l, xyzs, deriv != None, multiply != None)
     if string == '0': return '0'
     else: return norm.tostring(numeric) + (' * ' + string) * (string != '1')
 
@@ -124,14 +124,14 @@ def gauss_to_string(l, m, numeric=False):
     return string
 
 #----------------------------- TECHNICAL METHODS -----------------------------
-def to_string(l, xyzs, deriv=False):
+def to_string(l, xyzs, deriv=False, multiply=False):
     """Return string representation of an xyz dictionary"""
     if xyzs == {}: return '0'
     out = ''
 
-    for xyz, coef in zip(xyzs.keys(), xyzs.values()):
+    for xyz, coef in xyzs.items():
         x, y, z = xyz
-        r = l - x - y - z - deriv
+        r = l - x - y - z - deriv + multiply
         one = abs(coef) != 1 or (x == 0 and y == 0 and z == 0 and r == 0)
         out += sign(coef) + str(abs(coef)) * one
         out += ('*x'*x + '*y'*y + '*z'*z + '*r2'*(r/2))[1 - one:]
@@ -166,18 +166,21 @@ class Normalization:
     def multiply(self, x):
         self.norm *= x**2
 
+    def eval(self):
+        return sqrt(self.norm / pi)
+
     def tostring(self, numeric=False):
+        if numeric:
+            return str(self.eval())
+        
         n = self.norm
-        sn = sqrt(float(n))
+        sn = sqrt(n)
         if int(sn) == sn:
             string = str(sn) + '/sqrt(pi)'
         else:
             string = 'sqrt(' + str(n.nom) + \
                      ('./' + str(n.denom)) * (n.denom != 1) + '/pi)'
-        if numeric:
-            return str(eval(string))
-        else:
-            return string
+        return string
 
 def legendre(l, m):
     """Determine z dependence of spherical harmonic.
@@ -288,7 +291,7 @@ def dYdq(l, m, q):
     norm, xyzs = Y_collect(l, m)
     dxyzs = {}
     
-    for xyz, coef in zip(xyzs.keys(), xyzs.values()):
+    for xyz, coef in xyzs.items():
         x, y, z = xyz
         r = l - x - y - z
 
@@ -341,7 +344,7 @@ def simplify(xyzs):
 def q_times_xyzs(xyzs, q):
     """multiply xyz dictionary by x, y, or z according to q = 0, 1, or 2"""
     qxyzs = {}
-    for xyz, c in zip(xyzs.keys(), xyzs.values()):
+    for xyz, c in xyzs.items():
         qxyz = list(xyz)
         qxyz[q] += 1
         qxyz = tuple(qxyz)
@@ -380,8 +383,8 @@ def orthogonal(L1, L2):
 def check_orthogonality(Lmax=10):
     """Check orthogonality for all combinations of the first few harmonics"""
     all_passed = True
-    for L1 in range(N+1):
-        for L2 in range(L1, N+1):
+    for L1 in range(Lmax+1):
+        for L2 in range(L1, Lmax+1):
             I = orthogonal(L1, L2)
             passed =  abs(I - (L1 == L2)) < 3e-3
             all_passed *= passed
@@ -411,13 +414,13 @@ def symmetry1(lmax, display=True):
 
             for unique in unique_L:
                 if dxyzs == unique[4]:
-                    diff[name] = (norm / unique[3],) + unique[0:3]
+                    diff[name] = (norm.eval() / unique[3],) + unique[0:3]
                     identical = True
                     break
             if identical == False:
-                unique_L.append(name + (norm, dxyzs))
+                unique_L.append(name + (norm.eval(), dxyzs))
     if display:
-        for key, value in zip(diff.keys(), diff.values()):
+        for key, value in diff.items():
             print str(key) + ' = ' + str(value[0]) + ' * ' + str(value[1:])
     else: return diff
 
@@ -448,17 +451,18 @@ def symmetry2(l, display=True):
             
             for unique in unique_L:
                 if dxyzs == unique[4] and qxyzs == unique[6]:
-                    dnrel = dnorm / unique[3]
-                    qnrel = qnorm / unique[5]
+                    dnrel = dnorm.eval() / unique[3]
+                    qnrel = qnorm.eval() / unique[5]
                     print dnrel == qnrel
                     if dnrel == qnrel:
                         diff[name] = (dnrel,) + unique[0:3]
                         identical = True
                         break
             if identical == False:
-                unique_L.append(name + (dnorm, dxyzs, qnorm, qxyzs))
+                unique_L.append(name + (dnorm.eval(), dxyzs,
+                                        qnorm.eval(), qxyzs))
     if display:
-        for key, value in zip(diff.keys(), diff.values()):
+        for key, value in diff.items():
             print str(key) + ' = ' + str(value[0]) + ' * ' + str(value[1:])
     else: return diff
 

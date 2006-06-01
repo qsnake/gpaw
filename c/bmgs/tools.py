@@ -4,7 +4,9 @@ def factorial(x):
     else: return x * factorial(x - 1)
 
 def gcd(a, b):
-    """Return greatest common divisor of a and b"""
+    """Return greatest common divisor of a and b.
+       Uses the euclidian algorithm
+    """
     if b == 0: return a
     else: return gcd(b, a % b)
 
