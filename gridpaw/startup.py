@@ -16,6 +16,7 @@ def create_paw_object(out, a0, Ha,
                       pos_ac, Z_a, magmom_a, cell_c, bc_c, angle,
                       h, N_c, xcname,
                       nbands, spinpol, kT,
+                      charge,
                       bzk_kc,
                       softgauss, order, usesymm, mix, old, fixdensity,
                       idiotproof, hund, lmax, tolerance,maxiter,
@@ -118,6 +119,7 @@ def create_paw_object(out, a0, Ha,
     nvalence = 0
     for nucleus in nuclei:
         nvalence += nucleus.setup.get_number_of_valence_electrons()
+    nvalence -= int(charge-.9999999)
 
     if nbands is None:
         # Default value for number of bands:
@@ -134,7 +136,7 @@ def create_paw_object(out, a0, Ha,
     # We now have all the parameters needed to construct a PAW object:
     paw = Paw(a0, Ha,
               setups, nuclei, domain, N_c, symmetry, xcfunc,
-              nvalence, nbands, nspins, kT,
+              nvalence, charge, nbands, nspins, kT,
               typecode, bzk_kc, ibzk_kc, weights_k,
               order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
               convergeall=convergeall,
