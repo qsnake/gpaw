@@ -124,7 +124,7 @@ class Paw:
     
     def __init__(self, a0, Ha,
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
-                 nvalence, nbands, nspins, kT,
+                 nvalence, charge, nbands, nspins, kT,
                  typecode, bzk_kc, ibzk_kc, weights_k,
                  order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
                  convergeall,
@@ -143,6 +143,7 @@ class Paw:
 
         self.a0 = a0  # Bohr and ...
         self.Ha = Ha  # Hartree units are used internally
+        self.charge = charge
         self.setups = setups
         self.nuclei = nuclei
         self.domain = domain
@@ -540,7 +541,7 @@ class Paw:
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
         
-        assert abs(self.finegd.integrate(self.rhot_g)) < 0.2
+        assert abs(self.finegd.integrate(self.rhot_g)) < (0.2 - self.charge)
 
         self.timer.start('poisson')
         # npoisson is the number of iterations:
