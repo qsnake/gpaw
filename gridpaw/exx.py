@@ -158,9 +158,9 @@ class PerturbativeExx:
         paw = self.paw
 
         if method == None:
-            if paw.domain.comm.size == 1: # parallel computation
+            if paw.domain.comm.size == 1: # serial computation
                 method = 'recip_gauss'
-            else: # serial computation
+            else: # parallel computation
                 method = 'real'
         self.method = method
 

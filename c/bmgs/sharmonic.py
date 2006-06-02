@@ -115,9 +115,9 @@ def gauss_to_string(l, m, numeric=False):
     string = to_string(l, xyzs)
     string = (' * ' + string) * (string != '1')
     if numeric:
-        snorm = str(eval(str(norm.norm)))
+        snorm = repr(eval(repr(norm.norm)))
     else:
-        snorm = str(norm.norm)
+        snorm = repr(norm.norm)
     string = 'sqrt(a0**%s*'%(2*l+3) + snorm + ')/pi' + string
     string += ' * exp(-a0*r2)'
 
@@ -163,23 +163,32 @@ class Normalization:
         else:
             self.norm = Q((2 * l + 1) * factorial(l - m), 2 * factorial(l + m))
 
-    def multiply(self, x):
-        self.norm *= x**2
+    def __str__(self):
+        return self.tostring()
+
+    def __repr__(self):
+        return self.tostring()
+
+    def __float__(self):
+        return self.eval()
 
     def eval(self):
         return sqrt(self.norm / pi)
+    
+    def multiply(self, x):
+        self.norm *= x**2
 
     def tostring(self, numeric=False):
         if numeric:
-            return str(self.eval())
+            return repr(self.eval())
         
         n = self.norm
         sn = sqrt(n)
         if int(sn) == sn:
-            string = str(sn) + '/sqrt(pi)'
+            string = repr(sn) + '/sqrt(pi)'
         else:
-            string = 'sqrt(' + str(n.nom) + \
-                     ('./' + str(n.denom)) * (n.denom != 1) + '/pi)'
+            string = 'sqrt(' + repr(n.nom) + \
+                     ('./' + repr(n.denom)) * (n.denom != 1) + '/pi)'
         return string
 
 def legendre(l, m):
@@ -620,7 +629,7 @@ def plot_spherical(l, m):
             z = num.cos(theta)
             r2 = x*x + y*y + z*z
             assert abs(r2 - 1) < eps
-            phis += str(eval(Y_to_string(l, m))) + ' '
+            phis += repr(eval(Y_to_string(l, m))) + ' '
         print >>f, phis
     f.close()
     """ For plotting in Matlab, write function:

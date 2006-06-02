@@ -124,7 +124,10 @@ class Rational:
         return float(self.nom) / self.denom
 
     def __repr__(self):
-        return self.__str__()
+        out = repr(self.nom)
+        if self.denom != 1:
+            out += './' + repr(self.denom)
+        return out
 
     def __copy__(self):
         return Rational(self.nom, self.denom)
