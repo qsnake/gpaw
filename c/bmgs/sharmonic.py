@@ -164,24 +164,6 @@ class Normalization:
             self.norm = Q((2 * l + 1) * factorial(l - m), 2 * factorial(l + m))
 
     def __str__(self):
-        return self.tostring()
-
-    def __repr__(self):
-        return self.tostring()
-
-    def __float__(self):
-        return self.eval()
-
-    def eval(self):
-        return sqrt(self.norm / pi)
-    
-    def multiply(self, x):
-        self.norm *= x**2
-
-    def tostring(self, numeric=False):
-        if numeric:
-            return repr(self.eval())
-        
         n = self.norm
         sn = sqrt(n)
         if int(sn) == sn:
@@ -190,6 +172,21 @@ class Normalization:
             string = 'sqrt(' + repr(n.nom) + \
                      ('./' + repr(n.denom)) * (n.denom != 1) + '/pi)'
         return string
+
+    def __repr__(self):
+        return repr(self.__float__())
+
+    def __float__(self):
+        return sqrt(self.norm / pi)
+
+    def multiply(self, x):
+        self.norm *= x**2
+
+    def tostring(self, numeric=False):
+        if numeric:
+            return self.__repr__()
+        else:
+            return self.__str__()
 
 def legendre(l, m):
     """Determine z dependence of spherical harmonic.
