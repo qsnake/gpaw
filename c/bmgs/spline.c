@@ -3,14 +3,6 @@
 #include "bmgs.h"
 
 
-static const double Ys = 0.28209479177387814;
-static const double Yp = 0.48860251190291992;
-static const double Yd1 = 1.0925484305920792;
-static const double Yd2 = 0.54627421529603959;
-static const double Yd3 = 0.94617469575756008;
-static const double Yd4 = 0.31539156525252005;
-
-
 bmgsspline bmgs_spline(int l, double dr, int nbins, double* f)
 {
   double c = 3.0 / (dr * dr);
