@@ -623,9 +623,10 @@ class Paw:
             # Forces for all atoms:
             self.F_ac = F_ac
             
-    def write_state_to_file(self, filename, pos_ac, magmom_a, tag_a):
+    def write_state_to_file(self, filename, pos_ac, magmom_a, tag_a, mode):
         """Write current state to a file."""
-        gridpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a)
+        gridpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a,
+                         mode)
         
     def initialize_from_file(self, filename):
         """Read state from a file."""

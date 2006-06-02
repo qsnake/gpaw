@@ -24,7 +24,7 @@ def open(filename, mode='r'):
         raise ValueError("Illegal mode!  Use 'r' or 'w'.")
 
 
-def write(paw, filename, pos_ac, magmom_a, tag_a):
+def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
     wf = paw.wf
 
     paw.get_cartesian_forces()
@@ -199,18 +199,19 @@ def write(paw, filename, pos_ac, magmom_a, tag_a):
             if mpi.rank == MASTER:
                 w.fill(nt_sG)
 
-    # Write the wave functions:
-    if mpi.rank == MASTER:
-        w.add('PseudoWaveFunctions', ('nspins', 'nibzkpts', 'nbands',
-                                      'ngptsx', 'ngptsy', 'ngptsz'),
-              typecode=typecode)
+    if mode == 'all':
+        # Write the wave functions:
+        if mpi.rank == MASTER:
+            w.add('PseudoWaveFunctions', ('nspins', 'nibzkpts', 'nbands',
+                                          'ngptsx', 'ngptsy', 'ngptsz'),
+                  typecode=typecode)
 
-    for s in range(wf.nspins):
-        for k in range(wf.nkpts):
-            for n in range(wf.nbands):
-                psit_G = paw.get_wave_function_array(n, k, s)
-                if mpi.rank == MASTER: 
-                    w.fill(psit_G)
+        for s in range(wf.nspins):
+            for k in range(wf.nkpts):
+                for n in range(wf.nbands):
+                    psit_G = paw.get_wave_function_array(n, k, s)
+                    if mpi.rank == MASTER: 
+                        w.fill(psit_G)
                     
     if mpi.rank == MASTER:
         # Add sync here to ensure that the last wave function is

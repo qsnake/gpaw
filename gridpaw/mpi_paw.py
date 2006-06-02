@@ -3,7 +3,7 @@
 
 import os
 import sys
-import pickle
+import cPickle as pickle
 import socket
 
 from gridpaw import debug
@@ -94,7 +94,7 @@ class MPIPaw:
         self.sckt, addr = s.accept()
         print >> out, addr
         
-        string = pickle.dumps(args)
+        string = pickle.dumps(args, -1)
 
         send(self.sckt, string)
         ack = recv(self.sckt)
@@ -103,7 +103,7 @@ class MPIPaw:
         s.close()
 
     def stop(self):
-        send(self.sckt, pickle.dumps(("Stop", (), {})))
+        send(self.sckt, pickle.dumps(("Stop", (), {}), -1))
         string = recv(self.sckt)
         self.out.write(string)
         send(self.sckt,
@@ -122,7 +122,7 @@ class MPIPaw:
         
         # OK, attr was not a method - it was an attribute.
         # Send attribue name:
-        string = pickle.dumps((attr, None, None))
+        string = pickle.dumps((attr, None, None), -1)
         send(self.sckt, string)
         return pickle.loads(recv(self.sckt))
 
@@ -134,7 +134,7 @@ class MPIPaw:
         is also picked up and passed on."""
 
         # Send method name and arguments:
-        string = pickle.dumps((self.methodname, args, kwargs))
+        string = pickle.dumps((self.methodname, args, kwargs), -1)
         send(self.sckt, string)
         
         # Wait for result:

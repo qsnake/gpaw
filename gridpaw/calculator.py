@@ -392,12 +392,12 @@ class Calculator:
         self.update()
         return self.paw.get_xc_difference(xcname)
 
-    def Write(self, filename):
+    def Write(self, filename, mode='all'):
         """Write current state to file."""
         pos_ac = self.atoms().GetCartesianPositions()
         magmom_a = self.atoms().GetMagneticMoments()
         tag_a = self.atoms().GetTags()
-        self.paw.write_state_to_file(filename, pos_ac, magmom_a, tag_a)
+        self.paw.write_state_to_file(filename, pos_ac, magmom_a, tag_a, mode)
         
     def GetNumberOfIterations(self):
         """Return the number of SCF iterations."""
