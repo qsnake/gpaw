@@ -541,7 +541,14 @@ class Paw:
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
         
-        assert abs(self.finegd.integrate(self.rhot_g)) < (0.2 - self.charge)
+        if self.niter==0:
+            # The initial density is calculated in
+            # Nucleus.add_atomic_density() and that density
+            # will be a neutral density
+            # XXXX - should be initialised to right charge eventually
+            assert abs(self.finegd.integrate(self.rhot_g)) < 0.2
+        else:
+            assert abs(self.finegd.integrate(self.rhot_g)+self.charge) < 0.2
 
         self.timer.start('poisson')
         # npoisson is the number of iterations:
