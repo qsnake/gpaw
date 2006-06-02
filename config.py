@@ -62,10 +62,13 @@ def find_file(arg, dir, files):
         arg.append(dir)
 
     
-def get_system_config(define_macros, include_dirs, libraries, library_dirs, extra_link_args,
+def get_system_config(define_macros, undef_macros,
+                      include_dirs, libraries, library_dirs, extra_link_args,
                       extra_compile_args, runtime_library_dirs, extra_objects,
                       msg):
-
+    
+    undef_macros += ['NDEBUG']
+    
     machine = os.uname()[4]
     if machine == 'sun4u':
 

@@ -34,6 +34,7 @@ extra_compile_args = []
 runtime_library_dirs = []
 extra_objects = []
 define_macros = []
+undef_macros = []
 
 mpi_libraries = []
 mpi_library_dirs = []
@@ -50,7 +51,8 @@ packages = ['gridpaw',
 
 check_packages(packages, msg)
 
-get_system_config(define_macros, include_dirs, libraries, library_dirs,
+get_system_config(define_macros, undef_macros,
+                  include_dirs, libraries, library_dirs,
                   extra_link_args, extra_compile_args,
                   runtime_library_dirs, extra_objects, msg)
 
@@ -107,6 +109,7 @@ extension = Extension('_gridpaw',
                       library_dirs=library_dirs,
                       include_dirs=include_dirs,
                       define_macros=define_macros,
+                      undef_macros=undef_macros,
                       extra_link_args=extra_link_args,
                       extra_compile_args=extra_compile_args,
                       runtime_library_dirs=runtime_library_dirs,
