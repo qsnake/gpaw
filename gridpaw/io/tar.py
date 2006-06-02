@@ -168,9 +168,9 @@ class TarFileReference:
         return self.shape[0]
 
     def __getitem__(self, indices):
-        if type(indices) is slice:
+        if isinstance(indices, slice):
             indices = ()
-        elif type(indices) is int:
+        elif isinstance(indices, int):
             indices = (indices,)
         n = len(indices)
 

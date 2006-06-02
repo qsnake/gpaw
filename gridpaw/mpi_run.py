@@ -60,7 +60,7 @@ def run(host,port):
             # We just need an attribute:
             if mpi.rank == MASTER:
                 obj = getattr(paw, attr)
-                assert type(obj) in [float, int, bool, num.ArrayType]
+                assert isinstance(obj, (float, int, bool, num.ArrayType))
                 send(sckt, pickle.dumps(obj, -1))
             continue
 

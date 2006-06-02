@@ -17,7 +17,7 @@ class SerialCommunicator:
     size = 1
     rank = 0
     def sum(self, array, root=-1):
-        if type(array) in [float, complex]:
+        if isinstance(array, (float, complex)):
             return array
         
     def broadcast(self, buf, root):
@@ -63,8 +63,8 @@ if parallel and debug:
                 return _Communicator(comm)
 
         def sum(self, array, root=-1):
-            if type(array) in [float, complex]:
-                assert type(array) is float
+            if isinstance(array, (float, complex)):
+                assert isinstance(array, float)
                 return self.comm.sum(array, root)
             else:
                 tc = array.typecode()
@@ -119,7 +119,7 @@ if parallel and debug:
 
 def broadcast_string(string=None, root=MASTER, comm=world):
     if rank == root:
-        assert type(string) is str
+        assert isinstance(string, str)
         n = num.array(len(string), num.Int)
     else:
         assert string is None

@@ -79,7 +79,7 @@ class Reader:
     
     def __getitem__(self, name):
         value = getattr(self.nc, name)
-        if type(value) is str:
+        if isinstance(value, str):
             return value
         else:
             return value[0]
@@ -120,7 +120,7 @@ class NetCDFReference:
         return self.shape[0]
 
     def __getitem__(self, indices):
-        if type(indices) is not tuple:
+        if not isinstance(indices, tuple):
             indices = (indices,)
         if self.cmplx:
             x = self.var[self.indices + indices]

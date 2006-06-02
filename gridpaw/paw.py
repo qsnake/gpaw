@@ -396,7 +396,7 @@ class Paw:
 
         wf = self.wf
 
-        if type(wf.kpt_u[0].psit_nG) is not num.arraytype:
+        if not isinstance(wf.kpt_u[0].psit_nG, num.ArrayType):
             assert self.niter == 0 and not mpi.parallel
 
             # Calculation started from a restart file.  Allocate array
@@ -726,7 +726,7 @@ class Paw:
         if xcname == 'EXX':
             return self.Ha * (self.get_exact_exchange() - self.Exc)
         
-        if type(xcname) is str:
+        if isinstance(xcname, str):
             newxc = XCFunctional(xcname)
         else:
             newxc = xcname

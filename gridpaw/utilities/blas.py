@@ -12,7 +12,7 @@ def gemm(alpha, a, b, beta, c):
     assert ((is_contiguous(a, num.Float) and
              is_contiguous(b, num.Float) and
              is_contiguous(c, num.Float) and
-             type(alpha) is float and type(beta) is float) or
+             isinstance(alpha, float) and isinstance(beta, float)) or
             (is_contiguous(a, num.Complex) and
              is_contiguous(b, num.Complex) and
              is_contiguous(c, num.Complex)))
@@ -23,10 +23,10 @@ def gemm(alpha, a, b, beta, c):
 
     
 def axpy(alpha, x, y):
-    if type(alpha) is complex:
+    if isinstance(alpha, complex):
         assert is_contiguous(x, num.Complex) and is_contiguous(y, num.Complex)
     else:
-        assert type(alpha) is float
+        assert isinstance(alpha, float)
         assert x.typecode() in [num.Float, num.Complex]
         assert x.typecode() == y.typecode()
         assert x.iscontiguous() and y.iscontiguous()
@@ -44,7 +44,7 @@ def rk(alpha, a, beta, c):
     
 def r2k(alpha, a, b, beta, c):
     assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float) and
-             is_contiguous(c, num.Float) and type(alpha) is float) or
+             is_contiguous(c, num.Float) and isinstance(alpha, float)) or
             (is_contiguous(a, num.Complex) and is_contiguous(b, num.Complex) and
              is_contiguous(c, num.Complex)))
     assert num.rank(a) > 1

@@ -149,7 +149,7 @@ class Calculator:
             out = DownTheDrain()
         elif out == '-':
             out = sys.stdout
-        elif type(out) is str:
+        elif isinstance(out, str):
             out = open(out, 'w')
         self.out = out
 
@@ -160,7 +160,7 @@ class Calculator:
         
         if bzk_kc is None:
             bzk_kc = (1, 1, 1)
-        if type(bzk_kc[0]) is int:
+        if isinstance(bzk_kc[0], int):
             bzk_kc = MonkhorstPack(bzk_kc)
         self.bzk_kc = num.array(bzk_kc)
         self.reset()
@@ -264,14 +264,14 @@ class Calculator:
             elif os.environ.has_key('GRIDPAW_MPIRUN'):
                 self.hosts = 'dummy file-name'
 
-        if type(self.hosts) is int:
+        if isinstance(self.hosts, int):
             if self.hosts == 1:
                 # Only one node - don't do a parallel calculation:
                 self.hosts = None
             else:
                 self.hosts = [os.uname()[1]] * self.hosts
             
-        if type(self.hosts) is list:
+        if isinstance(self.hosts, list):
             # We need the hosts in a file:
             self.tempfile = tempfile.mktemp()
             f = open(self.tempfile, 'w')

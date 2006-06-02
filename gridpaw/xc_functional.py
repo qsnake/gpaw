@@ -89,7 +89,7 @@ class XCOperator:
 
         The string name must be one of LDA, PBE or revPBE."""
 
-        if type(xcfunc) is str:
+        if isinstance(xcfunc, str):
             xcfunc = XCFunctional(xcfunc)
         self.xc = xcfunc
         
