@@ -678,4 +678,4 @@ for l in range(5):
 
 print Y(3, -1)
 print Y_collect(3, -1)
-construct_c_code()
+construct_c_code(lmax=4)

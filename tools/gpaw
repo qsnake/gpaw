@@ -11,6 +11,9 @@ parser = OptionParser(usage='%prog [options] molecule',
 parser.add_option('-p', '--spin-paired', action='store_true',
                   default=False,
                   help='Do a spin-paired calculation.')
+parser.add_option('--debug', action='store_true',
+                  default=False,
+                  help='Turn on debug mode.')
 parser.add_option('-e', '--eggbox-test', action='store_true',
                   default=False,
                   help='Do eggbox test.')
@@ -48,6 +51,9 @@ opt, args = parser.parse_args()
 if len(args) != 1:
     print 'There must be one (and only one), molecule argument!'
     sys.exit()
+
+if opt.debug:
+    sys.argv.append('--gridpaw-debug')
 
 from ASE.Units import Convert
 

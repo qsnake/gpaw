@@ -184,6 +184,78 @@ void bmgs_radial3(const bmgsspline* spline, int m,
 	  x += h[0];
 	}
     }
+  else if (l == 3)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -3)
+                    a[q] = f[q] * 0.59004358992664352 * (-y*y*y+3*x*x*y);
+                  else if (m == -2)
+                    a[q] = f[q] * 2.8906114426405538 * x*y*z;
+                  else if (m == -1)
+                    a[q] = f[q] * 0.45704579946446577 * (-y*r2+5*y*z*z);
+                  else if (m == 0)
+                    a[q] = f[q] * 0.3731763325901154 * (5*z*z*z-3*z*r2);
+                  else if (m == 1)
+                    a[q] = f[q] * 0.45704579946446577 * (5*x*z*z-x*r2);
+                  else if (m == 2)
+                    a[q] = f[q] * 1.4453057213202769 * (x*x*z-y*y*z);
+                  else
+                    a[q] = f[q] * 0.59004358992664352 * (x*x*x-3*x*y*y);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
+  else if (l == 4)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -4)
+                    a[q] = f[q] * 2.5033429417967046 * (x*x*x*y-x*y*y*y);
+                  else if (m == -3)
+                    a[q] = f[q] * 1.7701307697799307 * (-y*y*y*z+3*x*x*y*z);
+                  else if (m == -2)
+                    a[q] = f[q] * 0.94617469575756008 * (-x*y*r2+7*x*y*z*z);
+                  else if (m == -1)
+                    a[q] = f[q] * 0.66904654355728921 * (-3*y*z*r2+7*y*z*z*z);
+                  else if (m == 0)
+                    a[q] = f[q] * 0.10578554691520431 * (-30*z*z*r2+3*r2*r2+35*z*z*z*z);
+                  else if (m == 1)
+                    a[q] = f[q] * 0.66904654355728921 * (7*x*z*z*z-3*x*z*r2);
+                  else if (m == 2)
+                    a[q] = f[q] * 0.47308734787878004 * (-x*x*r2+7*x*x*z*z+y*y*r2-7*y*y*z*z);
+                  else if (m == 3)
+                    a[q] = f[q] * 1.7701307697799307 * (x*x*x*z-3*x*y*y*z);
+                  else
+                    a[q] = f[q] * 0.62583573544917614 * (-6*x*x*y*y+x*x*x*x+y*y*y*y);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
   else
     assert(0 == 1);
 }
@@ -278,6 +350,78 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
 	  x += h[0];
 	}
     }
+  else if (c == 0 && l == 3)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -3)
+                    a[q] = g[q] * 0.59004358992664352 * (3*x*x*x*y-x*y*y*y) + f[q] * 3.5402615395598613 * x*y;
+                  else if (m == -2)
+                    a[q] = g[q] * 2.8906114426405538 * x*x*y*z + f[q] * 2.8906114426405538 * y*z;
+                  else if (m == -1)
+                    a[q] = g[q] * 0.45704579946446577 * (-x*y*r2+5*x*y*z*z) + f[q] * 0.91409159892893155 * -x*y;
+                  else if (m == 0)
+                    a[q] = g[q] * 0.3731763325901154 * (5*x*z*z*z-3*x*z*r2) + f[q] * 2.2390579955406924 * -x*z;
+                  else if (m == 1)
+                    a[q] = g[q] * 0.45704579946446577 * (-x*x*r2+5*x*x*z*z) + f[q] * 0.45704579946446577 * (5*z*z-r2-2*x*x);
+                  else if (m == 2)
+                    a[q] = g[q] * 1.4453057213202769 * (x*x*x*z-x*y*y*z) + f[q] * 2.8906114426405538 * x*z;
+                  else
+                    a[q] = g[q] * 0.59004358992664352 * (-3*x*x*y*y+x*x*x*x) + f[q] * 1.7701307697799307 * (x*x-y*y);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
+  else if (c == 0 && l == 4)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -4)
+                    a[q] = g[q] * 2.5033429417967046 * (-x*x*y*y*y+x*x*x*x*y) + f[q] * 2.5033429417967046 * (-y*y*y+3*x*x*y);
+                  else if (m == -3)
+                    a[q] = g[q] * 1.7701307697799307 * (-x*y*y*y*z+3*x*x*x*y*z) + f[q] * 10.620784618679583 * x*y*z;
+                  else if (m == -2)
+                    a[q] = g[q] * 0.94617469575756008 * (7*x*x*y*z*z-x*x*y*r2) + f[q] * 0.94617469575756008 * (-y*r2+7*y*z*z-2*x*x*y);
+                  else if (m == -1)
+                    a[q] = g[q] * 0.66904654355728921 * (-3*x*y*z*r2+7*x*y*z*z*z) + f[q] * 4.0142792613437353 * -x*y*z;
+                  else if (m == 0)
+                    a[q] = g[q] * 0.10578554691520431 * (-30*x*z*z*r2+3*x*r2*r2+35*x*z*z*z*z) + f[q] * 1.2694265629824517 * (-5*x*z*z+x*r2);
+                  else if (m == 1)
+                    a[q] = g[q] * 0.66904654355728921 * (-3*x*x*z*r2+7*x*x*z*z*z) + f[q] * 0.66904654355728921 * (7*z*z*z-6*x*x*z-3*z*r2);
+                  else if (m == 2)
+                    a[q] = g[q] * 0.47308734787878004 * (-x*x*x*r2+x*y*y*r2+7*x*x*x*z*z-7*x*y*y*z*z) + f[q] * 0.94617469575756008 * (-x*x*x+7*x*z*z-x*r2+x*y*y);
+                  else if (m == 3)
+                    a[q] = g[q] * 1.7701307697799307 * (-3*x*x*y*y*z+x*x*x*x*z) + f[q] * 5.3103923093397913 * (x*x*z-y*y*z);
+                  else
+                    a[q] = g[q] * 0.62583573544917614 * (-6*x*x*x*y*y+x*y*y*y*y+x*x*x*x*x) + f[q] * 2.5033429417967046 * (-3*x*y*y+x*x*x);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
   // y
   else if (c == 1 && l == 0)
     {
@@ -355,6 +499,78 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
 	  x += h[0];
 	}
     }
+  else if (c == 1 && l == 3)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -3)
+                    a[q] = g[q] * 0.59004358992664352 * (3*x*x*y*y-y*y*y*y) + f[q] * 1.7701307697799307 * (x*x-y*y);
+                  else if (m == -2)
+                    a[q] = g[q] * 2.8906114426405538 * x*y*y*z + f[q] * 2.8906114426405538 * x*z;
+                  else if (m == -1)
+                    a[q] = g[q] * 0.45704579946446577 * (-y*y*r2+5*y*y*z*z) + f[q] * 0.45704579946446577 * (5*z*z-r2-2*y*y);
+                  else if (m == 0)
+                    a[q] = g[q] * 0.3731763325901154 * (-3*y*z*r2+5*y*z*z*z) + f[q] * 2.2390579955406924 * -y*z;
+                  else if (m == 1)
+                    a[q] = g[q] * 0.45704579946446577 * (-x*y*r2+5*x*y*z*z) + f[q] * 0.91409159892893155 * -x*y;
+                  else if (m == 2)
+                    a[q] = g[q] * 1.4453057213202769 * (-y*y*y*z+x*x*y*z) + f[q] * 2.8906114426405538 * -y*z;
+                  else
+                    a[q] = g[q] * 0.59004358992664352 * (x*x*x*y-3*x*y*y*y) + f[q] * 3.5402615395598613 * -x*y;
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
+  else if (c == 1 && l == 4)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -4)
+                    a[q] = g[q] * 2.5033429417967046 * (x*x*x*y*y-x*y*y*y*y) + f[q] * 2.5033429417967046 * (x*x*x-3*x*y*y);
+                  else if (m == -3)
+                    a[q] = g[q] * 1.7701307697799307 * (3*x*x*y*y*z-y*y*y*y*z) + f[q] * 5.3103923093397913 * (x*x*z-y*y*z);
+                  else if (m == -2)
+                    a[q] = g[q] * 0.94617469575756008 * (-x*y*y*r2+7*x*y*y*z*z) + f[q] * 0.94617469575756008 * (-2*x*y*y+7*x*z*z-x*r2);
+                  else if (m == -1)
+                    a[q] = g[q] * 0.66904654355728921 * (-3*y*y*z*r2+7*y*y*z*z*z) + f[q] * 0.66904654355728921 * (7*z*z*z-3*z*r2-6*y*y*z);
+                  else if (m == 0)
+                    a[q] = g[q] * 0.10578554691520431 * (3*y*r2*r2-30*y*z*z*r2+35*y*z*z*z*z) + f[q] * 1.2694265629824517 * (y*r2-5*y*z*z);
+                  else if (m == 1)
+                    a[q] = g[q] * 0.66904654355728921 * (-3*x*y*z*r2+7*x*y*z*z*z) + f[q] * 4.0142792613437353 * -x*y*z;
+                  else if (m == 2)
+                    a[q] = g[q] * 0.47308734787878004 * (-7*y*y*y*z*z+y*y*y*r2+7*x*x*y*z*z-x*x*y*r2) + f[q] * 0.94617469575756008 * (y*r2+y*y*y-7*y*z*z-x*x*y);
+                  else if (m == 3)
+                    a[q] = g[q] * 1.7701307697799307 * (x*x*x*y*z-3*x*y*y*y*z) + f[q] * 10.620784618679583 * -x*y*z;
+                  else
+                    a[q] = g[q] * 0.62583573544917614 * (x*x*x*x*y-6*x*x*y*y*y+y*y*y*y*y) + f[q] * 2.5033429417967046 * (y*y*y-3*x*x*y);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
   // z
   else if (c == 2 && l == 0)
     {
@@ -425,6 +641,78 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
                     a[q] = g[q] * 1.0925484305920792 * x*z*z + f[q] * 1.0925484305920792 * x;
                   else
                     a[q] = g[q] * 0.54627421529603959 * (x*x*z-y*y*z);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
+  else if (c == 2 && l == 3)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -3)
+                    a[q] = g[q] * 0.59004358992664352 * (-y*y*y*z+3*x*x*y*z);
+                  else if (m == -2)
+                    a[q] = g[q] * 2.8906114426405538 * x*y*z*z + f[q] * 2.8906114426405538 * x*y;
+                  else if (m == -1)
+                    a[q] = g[q] * 0.45704579946446577 * (-y*z*r2+5*y*z*z*z) + f[q] * 3.6563663957157262 * y*z;
+                  else if (m == 0)
+                    a[q] = g[q] * 0.3731763325901154 * (-3*z*z*r2+5*z*z*z*z) + f[q] * 1.1195289977703462 * (3*z*z-r2);
+                  else if (m == 1)
+                    a[q] = g[q] * 0.45704579946446577 * (5*x*z*z*z-x*z*r2) + f[q] * 3.6563663957157262 * x*z;
+                  else if (m == 2)
+                    a[q] = g[q] * 1.4453057213202769 * (x*x*z*z-y*y*z*z) + f[q] * 1.4453057213202769 * (x*x-y*y);
+                  else
+                    a[q] = g[q] * 0.59004358992664352 * (x*x*x*z-3*x*y*y*z);
+                  z += h[2];
+		}
+	      y += h[1];
+	    }
+	  x += h[0];
+	}
+    }
+  else if (c == 2 && l == 4)
+    {
+      int q = 0;
+      double x = C[0];
+      for (int i0 = 0; i0 < n[0]; i0++)
+        {
+          double y = C[1];
+          for (int i1 = 0; i1 < n[1]; i1++)
+            {
+              double z = C[2];
+	      for (int i2 = 0; i2 < n[2]; i2++, q++)
+		{
+                  double r2 = x*x+y*y+z*z;
+                  if (m == -4)
+                    a[q] = g[q] * 2.5033429417967046 * (x*x*x*y*z-x*y*y*y*z);
+                  else if (m == -3)
+                    a[q] = g[q] * 1.7701307697799307 * (-y*y*y*z*z+3*x*x*y*z*z) + f[q] * 1.7701307697799307 * (-y*y*y+3*x*x*y);
+                  else if (m == -2)
+                    a[q] = g[q] * 0.94617469575756008 * (-x*y*z*r2+7*x*y*z*z*z) + f[q] * 11.354096349090721 * x*y*z;
+                  else if (m == -1)
+                    a[q] = g[q] * 0.66904654355728921 * (-3*y*z*z*r2+7*y*z*z*z*z) + f[q] * 2.0071396306718676 * (-y*r2+5*y*z*z);
+                  else if (m == 0)
+                    a[q] = g[q] * 0.10578554691520431 * (-30*z*z*z*r2+3*z*r2*r2+35*z*z*z*z*z) + f[q] * 1.6925687506432689 * (5*z*z*z-3*z*r2);
+                  else if (m == 1)
+                    a[q] = g[q] * 0.66904654355728921 * (-3*x*z*z*r2+7*x*z*z*z*z) + f[q] * 2.0071396306718676 * (5*x*z*z-x*r2);
+                  else if (m == 2)
+                    a[q] = g[q] * 0.47308734787878004 * (-x*x*z*r2+7*x*x*z*z*z+y*y*z*r2-7*y*y*z*z*z) + f[q] * 5.6770481745453605 * (x*x*z-y*y*z);
+                  else if (m == 3)
+                    a[q] = g[q] * 1.7701307697799307 * (x*x*x*z*z-3*x*y*y*z*z) + f[q] * 1.7701307697799307 * (x*x*x-3*x*y*y);
+                  else
+                    a[q] = g[q] * 0.62583573544917614 * (x*x*x*x*z-6*x*x*y*y*z+y*y*y*y*z);
                   z += h[2];
 		}
 	      y += h[1];

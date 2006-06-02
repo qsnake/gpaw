@@ -9,7 +9,7 @@ import Numeric as num
 from ASE.ChemicalElements.name import names
 
 from gridpaw.read_setup import PAWXMLParser
-from gridpaw.gaunt import gaunt as G_L1L2L
+from gridpaw.gaunt import gaunt as G_LLL
 from gridpaw.spline import Spline
 from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.utilities import unpack, erf, fac, hartree
@@ -84,12 +84,7 @@ class Setup:
         i = 0
         j = 0
         jlL_i = []
-        self.nk = 0
-        lmax1 = 0
         for l, f in zip(l_j, f_j):
-            self.nk += 3 + l * (1 + 2 * l)
-            if l > lmax1:
-                lmax1 = l
             if f > 0:
                 niAO += 2 * l + 1
             for m in range(2 * l + 1):
@@ -100,15 +95,12 @@ class Setup:
         self.ni = ni
         self.niAO = niAO
         
-        if 2 * lmax1 < lmax:
-            lmax = 2 * lmax1
-
-        if lmax1 > 1:
-            lmax1 = 1
-            
         np = ni * (ni + 1) / 2
         nq = nj * (nj + 1) / 2
-        Lmax = (lmax + 1)**2
+
+        lcut = max(l_j)
+        if 2 * lcut < lmax:
+            lcut = (lmax + 1) // 2
         
         # Construct splines:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
@@ -146,7 +138,8 @@ class Setup:
         nct_g = nct_g[:gcut2].copy()
         vbar_g = vbar_g[:gcut2].copy()
 
-        T_Lqp = num.zeros((Lmax, nq, np), num.Float)
+        Lcut = (2 * lcut + 1)**2
+        T_Lqp = num.zeros((Lcut, nq, np), num.Float)
         p = 0
         i1 = 0
         for j1, l1, L1 in jlL_i:
@@ -155,7 +148,7 @@ class Setup:
                     q = j2 + j1 * nj - j1 * (j1 + 1) / 2
                 else:
                     q = j1 + j2 * nj - j2 * (j2 + 1) / 2
-                T_Lqp[:, q, p] = G_L1L2L[L1, L2, :Lmax]
+                T_Lqp[:, q, p] = G_LLL[L1, L2, :Lcut]
                 p += 1
             i1 += 1
 
@@ -180,7 +173,8 @@ class Setup:
         Delta_lq = num.zeros((lmax + 1, nq), num.Float)
         for l in range(lmax + 1):
             Delta_lq[l] = num.dot(n_qg - nt_qg, r_g**(2 + l) * dr_g)
-            
+
+        Lmax = (lmax + 1)**2
         self.Delta_pL = num.zeros((np, Lmax), num.Float)
         for l in range(lmax + 1):
             L = l**2
@@ -204,9 +198,9 @@ class Setup:
         wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
 
         wn_lqg = [num.array([H(n_qg[q], l) for q in range(nq)])
-                  for l in range(lmax + 1)]
+                  for l in range(2 * lcut + 1)]
         wnt_lqg = [num.array([H(nt_qg[q], l) for q in range(nq)])
-                   for l in range(lmax + 1)]
+                   for l in range(2 * lcut + 1)]
 
         rdr_g = r_g * dr_g
         dv_g = r_g * rdr_g
@@ -233,23 +227,24 @@ class Setup:
         self.MB_p = num.dot(AB_q, T_Lqp[0])
 
         A_lqq = []
-        for l in range(lmax + 1):
+        for l in range(2 * lcut + 1):
             A_qq = 0.5 * num.dot(n_qg, num.transpose(wn_lqg[l]))
             A_qq -= 0.5 * num.dot(nt_qg, num.transpose(wnt_lqg[l]))
-            A_qq -= 0.5 * num.outerproduct(Delta_lq[l],
-                                            num.dot(wnt_lqg[l], g_lg[l]))
-            A_qq -= 0.5 * num.outerproduct(num.dot(nt_qg, wg_lg[l]),
-                                            Delta_lq[l])
-            A_qq -= 0.5 * num.dot(g_lg[l], wg_lg[l]) * \
-                      num.outerproduct(Delta_lq[l], Delta_lq[l])
+            if l <= lmax:
+                A_qq -= 0.5 * num.outerproduct(Delta_lq[l],
+                                               num.dot(wnt_lqg[l], g_lg[l]))
+                A_qq -= 0.5 * num.outerproduct(num.dot(nt_qg, wg_lg[l]),
+                                               Delta_lq[l])
+                A_qq -= 0.5 * num.dot(g_lg[l], wg_lg[l]) * \
+                        num.outerproduct(Delta_lq[l], Delta_lq[l])
             A_lqq.append(A_qq)
         
         self.M_pp = num.zeros((np, np), num.Float)
         L = 0
-        for l in range(lmax + 1):
+        for l in range(2 * lcut + 1):
             for m in range(2 * l + 1):
                 self.M_pp += num.dot(num.transpose(T_Lqp[L]),
-                                    num.dot(A_lqq[l], T_Lqp[L]))
+                                     num.dot(A_lqq[l], T_Lqp[L]))
                 L += 1
         
         # Make a radial grid descriptor:
@@ -264,7 +259,7 @@ class Setup:
                           for j, phit_g in enumerate(phit_jg)],
                          nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                          rgd, [(j, l_j[j]) for j in range(nj)],
-                         2 * lmax1, e_xc)
+                         2 * lcut, e_xc)
 
         self.rcut = rcut
 
@@ -343,7 +338,7 @@ class Setup:
         self.alpha2 = alpha2
 
         d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
-               for l in range(3)]
+               for l in range(lmax + 1)]
         g = alpha2**1.5 * num.exp(-alpha2 * r**2)
         g[-1] = 0.0
         self.gt_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)

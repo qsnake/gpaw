@@ -13,8 +13,8 @@ if 1:
     calc.Write('tmp.gpw')
 h = Calculator.ReadAtoms('tmp.nc', out=None)
 equal(e, h.GetPotentialEnergy(), 3e-5)
-#h = Calculator.ReadAtoms('tmp.gpw', out=None)
-#equal(e, h.GetPotentialEnergy(), 3e-5)
+h = Calculator.ReadAtoms('tmp.gpw', out=None)
+equal(e, h.GetPotentialEnergy(), 3e-5)
 
 if 1:
     calc = h.GetCalculator()
@@ -22,3 +22,4 @@ if 1:
     equal(len(elec_states),1,0)
 
 os.remove('tmp.nc')
+os.remove('tmp.gpw')

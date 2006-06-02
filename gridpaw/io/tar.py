@@ -84,7 +84,9 @@ class Reader(xml.sax.handler.ContentHandler):
         self.parameters = {}
         xml.sax.handler.ContentHandler.__init__(self)
         self.tar = tarfile.open(name, 'r')
-        xml.sax.parse(self.tar.extractfile('info.xml'), self)
+        f = self.tar.extractfile('info.xml')
+        xml.sax.parse(f, self)
+        del f.read
 
     def startElement(self, tag, attrs):
         if tag == 'gpaw_io':
@@ -116,6 +118,7 @@ class Reader(xml.sax.handler.ContentHandler):
     def get(self, name, *indices):
         fileobj, shape, size, typecode = self.get_file_object(name, indices)
         array = num.fromstring(fileobj.read(size), typecode)
+        del fileobj.read
         if self.byteswap:
             array = array.byteswapped()
         array.shape = shape
@@ -158,6 +161,9 @@ class TarFileReference:
         self.byteswap = byteswap
         self.offset = fileobj.tell()
 
+    def __del__(self):
+        del self.fileobj.read
+        
     def __len__(self):
         return self.shape[0]
 

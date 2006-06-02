@@ -334,7 +334,7 @@ if 'atomize' in tests:
     em = {}
     for formula in molecules:
         e = em[formula] = []
-        for lmax in range(3):
+        for lmax in range(4):
             parameters['lmax'] = lmax
             filename = '%s-%.1f-0.200%s.atomize' % (formula, a, '+' * lmax)
             if opt.summary:

@@ -86,6 +86,7 @@ class LocFuncs:
         self.ni = 0
         for radial in functions:
             l = radial.get_angular_momentum_number()
+            assert l <= 4, 'C-code only does l <= 4.'
             self.ni += 2 * l + 1
 
         if angle is not None:

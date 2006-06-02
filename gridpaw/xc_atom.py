@@ -28,11 +28,11 @@ from gridpaw.sphere import Y_nL, points, weights
 """
 
 
-A_Liy = num.zeros((9, 3, len(points)), num.Float)
+A_Liy = num.zeros((25, 3, len(points)), num.Float)
 
 y = 0
 for R in points:
-    for l in range(3):
+    for l in range(5):
         for m in range(2 * l + 1):
             L = l**2 + m
             for c, n in YL[L]:
