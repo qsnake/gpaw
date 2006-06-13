@@ -119,7 +119,10 @@ def create_paw_object(out, a0, Ha,
     nvalence = 0
     for nucleus in nuclei:
         nvalence += nucleus.setup.get_number_of_valence_electrons()
-    nvalence -= int(charge-.9999999)
+    if charge > 0:
+        nvalence -= int(charge)
+    else:
+        nvalence -= int(charge-.9999999)
 
     if nbands is None:
         # Default value for number of bands:
