@@ -53,12 +53,11 @@ class ZeroKelvin(Dummy):
 
     def calculate(self, kpts):
         if self.nspins == 1:
-            b = self.ne // 2
+            ne=0
             f_n = kpts[0].f_n
-            f_n[:b] = 2.0
-            f_n[b:] = 0.0
-            if 2 * b < self.ne:  # XXX warning here?
-                f_n[b] = 1.0
+            for i in range(len(f_n)):
+                f_n[i] = min(2.0,self.ne-ne)
+                ne += f_n[i]
             return -1, 0.0, 0.0
 
         nb = len(kpts[0].eps_n)
