@@ -553,7 +553,7 @@ class Paw:
         self.timer.start('poisson')
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, self.rhot_g,
-                                           charge=None)
+                                           charge=self.charge)
         self.timer.stop('poisson')
         
         self.Epot += 0.5 * num.vdot(self.vHt_g, self.rhot_g) * self.finegd.dv
