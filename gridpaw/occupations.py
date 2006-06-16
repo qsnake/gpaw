@@ -180,7 +180,7 @@ class FermiDirac(Dummy):
  
         # Sort them:
         eps_n = num.sort(eps_n)
-        n = self.ne * nu
+        n = int(self.ne * nu)
         self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
 
 
