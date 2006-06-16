@@ -74,7 +74,8 @@ for symbol in atoms:
         extra = {}
         if opt.extra != '':
             for l, x in enumerate(opt.extra.split(';')):
-                extra[l] = [float(y) for y in x.split(',')]
+                if x != '':
+                    extra[l] = [float(y) for y in x.split(',')]
     g.run(core, rcut, extra,
           logderiv=not opt.quick, vt0=v0,
           exx=opt.exact_exchange)

@@ -672,10 +672,10 @@ def Y(l, m):
             del p2[n]
     return p2
 
-for l in range(5):
+for l in range(7):
     for m in range(-l, l + 1):
         print '%s,' % [(c, n) for n, c in Y(l, m).items()]
 
 print Y(3, -1)
-print Y_collect(3, -1)
+print Y_collect(6, -6)
 construct_c_code(lmax=4)

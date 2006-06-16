@@ -24,7 +24,7 @@ class Rational:
        
     """
     def __init__(self, nom=0, denom=1):
-        assert type(nom) == type(denom) == int
+##        assert type(nom) == type(denom) == int
 
         # ensure that sign is in the nominator
         nom = cmp(denom, 0) * nom

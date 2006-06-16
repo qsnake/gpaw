@@ -222,7 +222,7 @@ class Generator(AllElectron):
         rcut_l.extend([rcut] * (lmax + 1 - len(rcut_l)))
 
         print 'Cutoffs:',
-        for rc, s in zip(rcut_l, 'spd'):
+        for rc, s in zip(rcut_l, 'spdf'):
             print 'rc(%s)=%.3f' % (s, rc),
         print
         print 'Kinetic energy of the core states: %.6f' % Ekincore
@@ -432,7 +432,8 @@ class Generator(AllElectron):
         print '--------------------------------'
         for l, (n_n, f_n, e_n) in enumerate(zip(n_ln, f_ln, e_ln)):
             for n in range(len(e_n)):
-                print '%d%s^%-2d: %12.6f' % (n_n[n], 'spd'[l], f_n[n], e_n[n]),
+                print '%d%s^%-2d: %12.6f' % (n_n[n], 'spdf'[l],
+                                             f_n[n], e_n[n]),
                 if f_n[n] > 0.0:
                     print '%12.6f' % num.dot(s_ln[l][n]**2, dr)
                 else:
@@ -454,8 +455,8 @@ class Generator(AllElectron):
                         dH_nn = dH_lnn[l]
                         q_n = q_ln[l]
 
-                    fae = open(self.symbol + '.ae.ld.' + 'spd'[l], 'w')
-                    fps = open(self.symbol + '.ps.ld.' + 'spd'[l], 'w')
+                    fae = open(self.symbol + '.ae.ld.' + 'spdf'[l], 'w')
+                    fps = open(self.symbol + '.ps.ld.' + 'spdf'[l], 'w')
 
                     ni = 300
                     e1 = -5.0
@@ -600,7 +601,7 @@ class Generator(AllElectron):
                 f = 0.0
             e0 = e_n[0]
             if (f > 0 and abs(e - e0) > 0.014) or (f == 0 and e0 < self.emax):
-                print 'GHOST-state in %s-channel at %.6f' % ('spd'[l], e0)
+                print 'GHOST-state in %s-channel at %.6f' % ('spdf'[l], e0)
                 self.ghost = True
 
     def integrate(self, l, vt, e, gld, q=None):
@@ -762,6 +763,7 @@ class Filter:
         self.r_n = r_n
         self.M = M
         
+##    def filter(self, f_g, l, a=0.05):
     def filter(self, f_g, l, a=0.05):
         f_g[1:] /= self.r_g[1:]**l
         f1_n = num.take(f_g, self.g_n - 1)

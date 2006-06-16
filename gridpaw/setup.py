@@ -366,9 +366,9 @@ class Setup:
         print >> out, '  valence states:'
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if f > 0:
-                print >> out, '    %d%s(%d) %7.3f Ha' % (n, 'spd'[l], f, eps)
+                print >> out, '    %d%s(%d) %7.3f Ha' % (n, 'spdf'[l], f, eps)
             else:
-                print >> out, '     %s    %7.3f Ha' % ('spd'[l], eps)
+                print >> out, '     %s    %7.3f Ha' % ('spdf'[l], eps)
         print >> out
 
     def calculate_rotations(self, R_slmm):
