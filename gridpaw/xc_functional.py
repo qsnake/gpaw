@@ -44,7 +44,7 @@ class XCFunctional:
         if code == 5:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel,
                                             0.0, 0, num.array(parameters))
-        if code == 3:
+        if code == 6:
             self.xc = XXFunctional()
         else:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
