@@ -170,7 +170,7 @@ class Calculator:
         self.h = h
         self.reset()
      
-    def set_h(self, gpts):
+    def set_gpts(self, gpts):
         self.h = None
         self.gpts = gpts
         self.reset()
@@ -533,7 +533,6 @@ class Calculator:
                   'tolerance':   r['Tolerance']}
         
         calc = Calculator(**kwargs)
-        calc.Set(**overruling_kwargs)
 
         Z_a = r.get('AtomicNumbers')
         pos_ac = r.get('CartesianPositions') * a0
@@ -568,6 +567,7 @@ class Calculator:
         calc.pos_ac = pos_ac
         calc.periodic_c = periodic_c
         calc.cell_c = cell_cc
+        calc.Set(**overruling_kwargs)
         
         return atoms
 

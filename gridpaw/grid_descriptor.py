@@ -481,7 +481,6 @@ class GridDescriptor:
             Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG))
             
         self.comm.sum(Z_nn, MASTER)
- 
         #                __        __      __
         #        ~      \         2||  a  \     a  a    a  *
         # Z    = Z    +  )  exp[i --- R ]  )   P  O   (P  )

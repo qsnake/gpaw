@@ -53,7 +53,6 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         # XXXX There must be a better way!
         # We don't want to look at the dtd now.  Remove it:
         source = re.compile(r'<!DOCTYPE .*?>', re.DOTALL).sub('', source, 1)
-
         xml.sax.parse(StringIO(source), self) # XXX There is a special parse
                                               # function that takes a string 
         return (self.Z, self.Nc, self.Nv,
@@ -117,7 +116,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.ng = int(attrs['n'])
             self.beta = float(attrs['a'])
         elif name == 'shape_function':
-            if 'rc' in attrs:
+            if attrs.has_key('rc'):
                 assert attrs['type'] == 'gauss'
                 self.rcgauss = float(attrs['rc'])
             else:
