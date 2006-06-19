@@ -117,8 +117,13 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.ng = int(attrs['n'])
             self.beta = float(attrs['a'])
         elif name == 'shape_function':
-            assert attrs['type'] == 'gauss'
-            self.rcgauss = float(attrs['rc'])
+            if 'rc' in attrs:
+                assert attrs['type'] == 'gauss'
+                self.rcgauss = float(attrs['rc'])
+            else:
+                # Old style: XXX
+                from math import sqrt
+                self.rcgauss = max(self.rcut_j) / sqrt(float(attrs['alpha']))
         elif name in ['ae_core_density', 'pseudo_core_density',
                       'localized_potential', 'zero_potential',
                       'kinetic_energy_differences', 'exact_exchange_X_matrix']:
