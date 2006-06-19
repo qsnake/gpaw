@@ -41,10 +41,10 @@ class XCFunctional:
             i = int(xcname[3])
             s0 = float(xcname[5:])
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel, s0, i)
-        if code == 5:
+        elif code == 5:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel,
                                             0.0, 0, num.array(parameters))
-        if code == 6:
+        elif code == 6:
             self.xc = XXFunctional()
         else:
             self.xc = _gridpaw.XCFunctional(code, self.gga, scalarrel)
