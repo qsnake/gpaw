@@ -164,6 +164,16 @@ class Calculator:
             bzk_kc = MonkhorstPack(bzk_kc)
         self.bzk_kc = num.array(bzk_kc)
         self.reset()
+
+    def set_h(self, h):
+        self.gpts = None
+        self.h = h
+        self.reset()
+     
+    def set_h(self, gpts):
+        self.h = None
+        self.gpts = gpts
+        self.reset()
      
     def update(self):
         """Update PAW calculaton if needed."""
@@ -522,8 +532,8 @@ class Calculator:
                   'idiotproof':  bool(r['IdiotProof']),  # numpy!
                   'tolerance':   r['Tolerance']}
         
-        kwargs.update(overruling_kwargs)
         calc = Calculator(**kwargs)
+        calc.Set(**overruling_kwargs)
 
         Z_a = r.get('AtomicNumbers')
         pos_ac = r.get('CartesianPositions') * a0
