@@ -28,7 +28,7 @@ class Setup:
          e_kinetic_core,
          n_j, l_j, f_j, eps_j, rcut_j, id_j,
          ng, beta,
-         nc_g, nct_g, vbar_g, gamma,
+         nc_g, nct_g, vbar_g, rcgauss,
          phi_jg, phit_jg, pt_jg,
          e_kin_jj, X_p, ExxC,
          self.fingerprint,
@@ -153,7 +153,6 @@ class Setup:
             i1 += 1
 
         g_lg = num.zeros((lmax + 1, gcut2), num.Float)
-        rcgauss = rcut / sqrt(gamma)
         g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * num.exp(-(r_g / rcgauss)**2)
         for l in range(1, lmax + 1):
             g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]

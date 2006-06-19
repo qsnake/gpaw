@@ -557,7 +557,7 @@ class Generator(AllElectron):
             ExxC = None
             
         self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                       nc, nct, Ekincore, X_p, ExxC, vbar)
+                       nc, nct, nt, Ekincore, X_p, ExxC, vbar)
 
     def diagonalize(self, h):
         ng = 300
@@ -631,7 +631,7 @@ class Generator(AllElectron):
 
 
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                  nc, nct, Ekincore, X_p, ExxC, vbar):
+                  nc, nct, nt, Ekincore, X_p, ExxC, vbar):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
@@ -643,7 +643,7 @@ class Generator(AllElectron):
         print >> xml, '<!DOCTYPE paw_setup SYSTEM'
         print >> xml, '  "%s">' % dtd
 
-        print >> xml, '<paw_setup version="0.4">'
+        print >> xml, '<paw_setup version="0.5">'
 
         name = names[self.Z].title()
         comment1 = name + ' setup for the Projector Augmented Wave method.'
@@ -689,14 +689,18 @@ class Generator(AllElectron):
             ids.append(id)
         print >> xml, '  </valence_states>'
 
-        print >> xml, '  <grid eq="r=a*i/(n-i)" a="%f" n="%d" i="0-%d"' % \
-              (self.beta, self.N, self.N - 1), 'id="g1"/>'
+        print >> xml, ('  <grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
+                       'istart="0" iend="%d" id="g1"/>') % \
+                       (self.beta, self.N, self.N - 1)
 
-        print >> xml, '  <shape_function alpha="%.6e"/>' % self.gamma
+        rcgauss = self.rcut / sqrt(self.gamma)
+        print >> xml, ('  <shape_function type="gauss" alpha="%.12e"/>' %
+                       rcgauss)
 
         for name, a in [('ae_core_density', nc),
                         ('pseudo_core_density', nct),
-                        ('localized_potential', vbar)]:
+                        ('pseudo_valence_density', nt - nct),
+                        ('zero_potential', vbar)]:
             print >> xml, '  <%s grid="g1">\n    ' % name,
             for x in a * sqrt(4 * pi):
                 print >> xml, '%16.12e' % x,

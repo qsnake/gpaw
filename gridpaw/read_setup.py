@@ -73,7 +73,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 self.nc_g,
                 self.nct_g,
                 self.vbar_g,
-                self.gamma,
+                self.rcgauss,
                 self.phi_jg,  
                 self.phit_jg,
                 self.pt_jg,
@@ -117,9 +117,10 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.ng = int(attrs['n'])
             self.beta = float(attrs['a'])
         elif name == 'shape_function':
-            self.gamma = float(attrs['alpha'])
+            assert attrs['type'] == 'gauss'
+            self.rcgauss = float(attrs['rc'])
         elif name in ['ae_core_density', 'pseudo_core_density',
-                      'localized_potential',
+                      'localized_potential', 'zero_potential',
                       'kinetic_energy_differences', 'exact_exchange_X_matrix']:
             self.data = []
         elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
@@ -147,7 +148,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.nct_g = x_g
         elif name == 'kinetic_energy_differences':
             self.e_kin_j1j2 = x_g
-        elif name == 'localized_potential':
+        elif name == 'localized_potential' or name == 'zero_potential': # XXX
             self.vbar_g = x_g
         elif name == 'ae_partial_wave':
             j = len(self.phi_jg)
