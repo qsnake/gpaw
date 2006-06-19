@@ -115,6 +115,9 @@ class Reader(xml.sax.handler.ContentHandler):
     def __getitem__(self, name):
         return self.parameters[name]
 
+    def has_array(self, name):
+        return name in self.shapes
+    
     def get(self, name, *indices):
         fileobj, shape, size, typecode = self.get_file_object(name, indices)
         array = num.fromstring(fileobj.read(size), typecode)

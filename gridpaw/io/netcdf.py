@@ -84,6 +84,9 @@ class Reader:
         else:
             return value[0]
 
+    def has_array(self, name):
+        return name in self.nc.variables
+    
     def get(self, name, *indices):
         var = self.nc.variables[name]
         if var.shape == ():

@@ -224,25 +224,29 @@ def read(paw, filename):
     
     r = open(filename, 'r')
     
-    # Wave functions:
-    if mpi.parallel:
-        # Slice of the global array for this domain:
-        i = [slice(b, e) for b, e in zip(paw.gd.beg0_c, paw.gd.end_c)]
+    for kpt in wf.kpt_u:
+        kpt.allocate(wf.nbands)
         
-        for kpt in wf.kpt_u:
-            kpt.allocate(wf.nbands)
-            kpt.psit_nG = paw.gd.new_array(wf.nbands, wf.typecode)
-            kpt.Htpsit_nG = paw.gd.new_array(wf.nbands, wf.typecode)
-            # Read band by band to save memory
-            for n, psit_G in enumerate(kpt.psit_nG):
-                psit_G[:] = r.get('PseudoWaveFunctions', kpt.s, kpt.k, n)[i]
-    else:
-        # Serial calculation.  We may not be able to keep all the wave
-        # functions in memory - so psit_nG will be a special type of
-        # array that is really a reference to a file:
-        for kpt in wf.kpt_u:
-            kpt.allocate(wf.nbands)
-            kpt.psit_nG = r.get_reference('PseudoWaveFunctions', kpt.s, kpt.k)
+    # Wave functions:
+    if r.has_array('PseudoWaveFunctions'):
+        if mpi.parallel:
+            # Slice of the global array for this domain:
+            i = [slice(b, e) for b, e in zip(paw.gd.beg0_c, paw.gd.end_c)]
+
+            for kpt in wf.kpt_u:
+                kpt.psit_nG = paw.gd.new_array(wf.nbands, wf.typecode)
+                kpt.Htpsit_nG = paw.gd.new_array(wf.nbands, wf.typecode)
+                # Read band by band to save memory
+                for n, psit_G in enumerate(kpt.psit_nG):
+                    psit_G[:] = r.get('PseudoWaveFunctions',
+                                      kpt.s, kpt.k, n)[i]
+        else:
+            # Serial calculation.  We may not be able to keep all the wave
+            # functions in memory - so psit_nG will be a special type of
+            # array that is really just a reference to a file:
+            for kpt in wf.kpt_u:
+                kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
+                                              kpt.s, kpt.k)
     
     # Eigenvalues and occupation
     for kpt in wf.kpt_u:
