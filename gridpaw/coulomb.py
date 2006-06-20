@@ -41,7 +41,7 @@ class Coulomb:
 
             if method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)
-                self.ng = gauss.get_gauss(0) / (2 * num.sqrt(pi))
+                self.ng = gauss.get_gauss(0)
                 self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
         else: # method == 'real'
             if not hasattr(self, 'solve'):
