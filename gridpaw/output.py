@@ -50,8 +50,10 @@ def print_converged(paw):
     print >> out, 'total charge: %f electrons' % charge
 
     dipole = paw.finegd.calculate_dipole_moment(paw.rhot_g)
-    print >> out, 'dipole moment: %s' % (dipole * paw.a0)
-
+    if paw.charge == 0:
+        print >> out, 'dipole moment: %s' % (dipole * paw.a0)
+    else:
+        print >> out, 'center of charge: %s' % (dipole * paw.a0)
 
 def plot_atoms(paw):
     domain = paw.domain
