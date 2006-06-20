@@ -68,7 +68,7 @@ class PoissonSolver:
                 self.phi_gauss = gauss.get_gauss_pot(0)
                 
             # remove monopole moment
-            rho_neutral = rho - self.rho_gauss * charge / (2 * num.sqrt(pi))
+            rho_neutral = rho - self.rho_gauss * charge
 
             # determine potential from neutralized density
             niter = self.solve(phi, rho_neutral, eps=eps, charge=0)
