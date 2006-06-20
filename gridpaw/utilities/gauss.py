@@ -31,7 +31,7 @@ class Gaussian:
         a0 = self.a0
         x, y, z  = tuple(self.xyz)
         r2 = self.r2
-        return eval(gauss_L[L])
+        return eval(gauss_L[L]+'*'+Y_L[L])
 
     def get_gauss_pot(self, L):
         a0 = self. a0
