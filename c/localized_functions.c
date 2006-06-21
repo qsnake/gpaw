@@ -299,14 +299,14 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
     } 
   int nf = 0;
   int nfd = 0;
-  int nbins;
-  double dr;
+  int nbins = 0;
+  double dr = 0.0;
   for (int j = 0; j < PyList_Size(radials); j++)
     {
       const bmgsspline* spline = 
 	&(((SplineObject*)PyList_GetItem(radials, j))->spline);
       int l = spline->l;
-      assert(l <= 2);
+      assert(l <= 4);
       if (j == 0)
 	{
 	  nbins = spline->nbins;
