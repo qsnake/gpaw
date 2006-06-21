@@ -689,7 +689,7 @@ class Generator(AllElectron):
             ids.append(id)
         print >> xml, '  </valence_states>'
 
-        print >> xml, ('  <grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
+        print >> xml, ('  <radial_grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
                        'istart="0" iend="%d" id="g1"/>') % \
                        (self.beta, self.N, self.N - 1)
 

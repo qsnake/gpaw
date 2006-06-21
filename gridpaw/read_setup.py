@@ -47,7 +47,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         if source is None:
             raise RuntimeError('Could not find %s-setup for %s.' %
                                (xcname, symbol))
-        
+
+        print filename
         fingerprint = md5.new(source).hexdigest()
 
         # XXXX There must be a better way!
@@ -111,7 +112,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.eps_j.append(float(attrs['e']))
             self.rcut_j.append(float(attrs.get('rc', -1)))
             self.id_j.append(attrs['id'])
-        elif name == 'grid':
+        elif name in ['grid', 'radial_grid']:  # XXX
             assert attrs['eq'] == 'r=a*i/(n-i)'
             self.ng = int(attrs['n'])
             self.beta = float(attrs['a'])
@@ -124,7 +125,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                 from math import sqrt
                 self.rcgauss = max(self.rcut_j) / sqrt(float(attrs['alpha']))
         elif name in ['ae_core_density', 'pseudo_core_density',
-                      'localized_potential', 'zero_potential',
+                      'localized_potential', 'zero_potential',  # XXX
                       'kinetic_energy_differences', 'exact_exchange_X_matrix']:
             self.data = []
         elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
@@ -152,7 +153,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             self.nct_g = x_g
         elif name == 'kinetic_energy_differences':
             self.e_kin_j1j2 = x_g
-        elif name == 'localized_potential' or name == 'zero_potential': # XXX
+        elif name in ['localized_potential', 'zero_potential']: # XXX
             self.vbar_g = x_g
         elif name == 'ae_partial_wave':
             j = len(self.phi_jg)
