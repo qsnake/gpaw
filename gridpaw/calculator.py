@@ -373,7 +373,7 @@ class Calculator:
                 if name not in self.parameters:
                     raise RuntimeError('Unknown keyword: ' + name)
                 setattr(self, name, value)
-        self.reset()
+                self.reset()
             
     def GetReferenceEnergy(self):
         """Get reference energy for all-electron atoms."""
