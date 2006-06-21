@@ -48,7 +48,6 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             raise RuntimeError('Could not find %s-setup for %s.' %
                                (xcname, symbol))
 
-        print filename
         fingerprint = md5.new(source).hexdigest()
 
         # XXXX There must be a better way!
