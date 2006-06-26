@@ -14,13 +14,13 @@ parser.add_option('-p', '--spin-paired', action='store_true',
 parser.add_option('--debug', action='store_true',
                   default=False,
                   help='Turn on debug mode.')
-parser.add_option('-e', '--eggbox-test', action='store_true',
+parser.add_option('--eggbox-test', action='store_true',
                   default=False,
                   help='Do eggbox test.')
-parser.add_option('-b', '--bulk-test', action='store_true',
+parser.add_option('--bulk-test', action='store_true',
                   default=False,
                   help='Do bulk test.')
-parser.add_option('-z', '--atomize', action='store_true',
+parser.add_option('--atomize', action='store_true',
                   default=False,
                   help='Calculate atomization/cohesive energy.')
 parser.add_option('-a', '--a-lattice-constant', type='float', default=None,
@@ -38,6 +38,8 @@ parser.add_option('-n', '--points', type='int', default=20,
 parser.add_option('-x', '--extra-parameters', type='string', default='{}',
                   help='Extra parameters.',
                   metavar='''"{'lmax': 2, ...}"''')
+parser.add_option('-X', '--X', type='string', default='',
+                  help='Extra parameter.')
 parser.add_option('-P', '--setup-path', type='string', default=None,
                   help='Path for setups.', metavar='<path>')
 parser.add_option('-s', '--crystal-structure', type='string', default=None,
@@ -45,6 +47,9 @@ parser.add_option('-s', '--crystal-structure', type='string', default=None,
 parser.add_option('-f', '--xc-functional', type='string', default='LDA',
                   help='Exchange-Correlation functional (default value LDA)',
                   metavar='<XC>')
+parser.add_option('-b', '--bands', type='int', default=None,
+                  help='Number of bands.',
+                  metavar='<nbands>')
 
 opt, args = parser.parse_args()
 
@@ -57,6 +62,7 @@ if opt.debug:
 
 from ASE.Units import Convert
 
+import gridpaw
 from gridpaw import setup_paths
 from gridpaw.setuptests.singleatom import SingleAtom
 from gridpaw.setuptests.molecule import Molecule
@@ -76,6 +82,8 @@ else:
 parameters = eval(opt.extra_parameters)
 
 parameters['xc'] = opt.xc_functional
+parameters['nbands'] = opt.bands
+gridpaw.x = opt.X
 
 if opt.setup_path is not None:
     setup_paths.insert(0, opt.setup_path)

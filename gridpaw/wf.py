@@ -8,6 +8,7 @@ from gridpaw.utilities import pack, unpack2
 from gridpaw.operators import Laplace
 import gridpaw.occupations as occupations
 from gridpaw.preconditioner import Preconditioner
+from gridpaw.random import RandomWaveFunctionGenerator
 
 
 MASTER = 0
@@ -113,6 +114,11 @@ class WaveFunctions:
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(gd, self.kin, typecode)
 
+        # If more states than we have atomic orbitals are required, we
+        # use random initial wave functions:
+        self.random_wave_function_generator = RandomWaveFunctionGenerator(
+            gd, typecode)
+        
         # Move all this occupation number stuff to occupation.py XXX
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
@@ -188,8 +194,16 @@ class WaveFunctions:
     def diagonalize(self, vt_sG, my_nuclei, exx):
         """Apply Hamiltonian and do subspace diagonalization."""
         for kpt in self.kpt_u:
-            kpt.diagonalize(self.kin, vt_sG, my_nuclei, self.nbands, exx)
+            kpt.diagonalize(self.kin, vt_sG, my_nuclei, exx)
 
+    def adjust_number_of_bands(self, my_nuclei):
+        for kpt in self.kpt_u:
+            kpt.adjust_number_of_bands(self.nbands,
+                                       self.random_wave_function_generator)
+
+        for nucleus in my_nuclei:
+            nucleus.reallocate(self.nbands)
+            
     def sum_eigenvalues(self):
         """Sum up all eigenvalues weighted with occupation numbers."""
         Eeig = 0.0
@@ -208,7 +222,7 @@ class WaveFunctions:
         """Do RMM-DIIS update of wave functions."""
         for kpt in self.kpt_u:
             kpt.rmm_diis(pt_nuclei, self.preconditioner, self.kin, vt_sG)
-    
+
     def calculate_force_contribution(self, pt_nuclei, my_nuclei):
         """Calculate force-contribution from k-points."""
         for kpt in self.kpt_u:

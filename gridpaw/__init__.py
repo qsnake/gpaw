@@ -26,7 +26,7 @@ debug = False
 parallel = False
 hosts = None
 parsize = None
-gpspecial = None
+x = ''
 arg = None
 setup_paths = []
 i = 1
@@ -43,8 +43,8 @@ while len(sys.argv) > i:
             GAUSS = False
         elif arg == '--gridpaw-parallel':
             parallel = True
-        elif arg.startswith('--gridpaw-special='):
-            gpspecial = arg.split('=')[1]
+        elif arg.startswith('--gridpaw-x='):
+            x = arg.split('=')[1]
         elif arg.startswith('--gridpaw-hosts='):
             hosts = arg.split('=')[1].split(',')
             if len(hosts) == 1 and hosts[0].isdigit():

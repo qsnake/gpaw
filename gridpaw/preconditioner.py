@@ -24,7 +24,7 @@ class Preconditioner:
         self.restrictor1 = Restrictor(gd1, 1, typecode).apply
         self.interpolator2 = Interpolator(gd2, 1, typecode).apply
         self.interpolator1 = Interpolator(gd1, 1, typecode).apply
-
+        
     def __call__(self, residual, phases, phit, kpt):
         step = self.step
         d0, q0 = self.scratch0

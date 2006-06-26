@@ -450,12 +450,10 @@ class Paw:
         wf.diagonalize(self.vt_sG, self.my_nuclei, self.exx)
 
         if self.niter == 0:
-            for nucleus in self.my_nuclei:
-                nucleus.reallocate(wf.nbands)
-
+            wf.adjust_number_of_bands(self.my_nuclei)
+                
         # Calculate occupations numbers, and return number of
         # iterations, magnetic moment and entropy:
-        
         self.nfermi, self.magmom, self.S = wf.calculate_occupation_numbers()
         
         dsum = self.domain.comm.sum
@@ -649,8 +647,9 @@ class Paw:
 
     def __del__(self):
         """Destructor:  Write timing output before closing."""
-        for kpt in self.wf.kpt_u:
-            self.timer.add(kpt.timer)
+        if hasattr(self, 'wf'):
+            for kpt in self.wf.kpt_u:
+                self.timer.add(kpt.timer)
         self.timer.write(self.out)
 
     def get_fermi_level(self):

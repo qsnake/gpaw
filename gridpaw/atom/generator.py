@@ -638,11 +638,6 @@ class Generator(AllElectron):
             raise SystemExit
 
         print >> xml, '<?xml version="1.0"?>'
-        dtd = 'http://www.fysik.dtu.dk/campos/atomic_setup/paw_setup.dtd'
-
-        print >> xml, '<!DOCTYPE paw_setup SYSTEM'
-        print >> xml, '  "%s">' % dtd
-
         print >> xml, '<paw_setup version="0.5">'
 
         name = names[self.Z].title()
@@ -667,7 +662,7 @@ class Generator(AllElectron):
         else:
             type = 'non-relativistic'
 
-        print >> xml, '  <generator type="%s" name="gridpaw-%s">' % \
+        print >> xml, '  <generator type="%s" name="gpaw-%s">' % \
               (type, version)
         print >> xml, '    Frozen core:', self.core or 'none'
         print >> xml, '  </generator>'
@@ -694,7 +689,7 @@ class Generator(AllElectron):
                        (self.beta, self.N, self.N - 1)
 
         rcgauss = self.rcut / sqrt(self.gamma)
-        print >> xml, ('  <shape_function type="gauss" alpha="%.12e"/>' %
+        print >> xml, ('  <shape_function type="gauss" rc="%.12e"/>' %
                        rcgauss)
 
         for name, a in [('ae_core_density', nc),

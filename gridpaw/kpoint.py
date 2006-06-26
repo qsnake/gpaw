@@ -99,7 +99,7 @@ class KPoint:
         self.H_nn = num.zeros((nbands, nbands), self.typecode)
         self.S_nn = num.zeros((nbands, nbands), self.typecode)
 
-    def diagonalize(self, kin, vt_sG, my_nuclei, nbands, exx):
+    def diagonalize(self, kin, vt_sG, my_nuclei, exx):
         """Subspace diagonalization of wave functions.
 
         First, the Hamiltonian (defined by ``kin``, ``vt_sG``, and
@@ -107,24 +107,13 @@ class KPoint:
         ``H_nn`` matrix is calculated and diagonalized, and finally,
         the wave functions are rotated.  Also the projections
         ``P_uni`` (an attribute of the nuclei) are rotated.
-
-        If this is the first iteration and we are starting from atomic
-        orbitals, then the desired number of bands (``nbands``) will
-        most likely differ from the number of current atomic orbitals
-        (``self.nbands``).  If this is the case, then new arrays are
-        allocated:
-
-        * Too many bands: The bands with the lowest eigenvalues are
-          used.
-        * Too few bands: Extra wave functions calculated as the
-          derivative of the wave functions with respect to the
-          *x*-coordinate.
         """
 
         kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
         self.Htpsit_nG += self.psit_nG * vt_sG[self.s]
         if exx is not None:
-            exx.adjust_hamiltonian(psit_nG, self.Htpsit_nG, nbands, self.f_n,
+            exx.adjust_hamiltonian(psit_nG, self.Htpsit_nG, self.nbands,
+                                   self.f_n,
                                    self.u, self.s)
         r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
         # XXX Do EXX here XXX
@@ -160,29 +149,44 @@ class KPoint:
             temp_ni = P_ni.copy()
             gemm(1.0, temp_ni, self.H_nn, 0.0, P_ni)
         
-        if nbands != self.nbands:
-            nao = self.nbands  # number of atomic orbitals
-            nmin = min(nao, nbands)
-            
-            tmp_nG = self.psit_nG
-            self.psit_nG = self.gd.new_array(nbands, self.typecode)
-            self.psit_nG[:nmin] = tmp_nG[:nmin]
+    def adjust_number_of_bands(self, nbands, random_wave_function_generator):
+        """Adjust the number of states.
 
-            tmp_nG = self.Htpsit_nG
-            self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
-            self.Htpsit_nG[:nmin] = tmp_nG[:nmin]
-            del tmp_nG
+        If we are starting from atomic orbitals, then the desired
+        number of bands (``nbands``) will most likely differ from the
+        number of current atomic orbitals (``self.nbands``).  If this
+        is the case, then new arrays are allocated:
 
-            tmp_n = self.eps_n
-            self.allocate(nbands)
-            self.eps_n[:nmin] = tmp_n[:nmin]
+        * Too many bands: The bands with the lowest eigenvalues are
+          used.
+        * Too few bands: Extra random wave functions are added.
+        """
+        
+        if nbands == self.nbands:
+            return
 
-            extra = nbands - nao
-            if extra > 0:
-                self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
-                slice_nG = self.psit_nG[nao:]
-                ddx = Gradient(self.gd, 0, typecode=self.typecode).apply
-                ddx(self.psit_nG[:extra], slice_nG, self.phase_cd)
+        nao = self.nbands  # number of atomic orbitals
+        nmin = min(nao, nbands)
+
+        tmp_nG = self.psit_nG
+        self.psit_nG = self.gd.new_array(nbands, self.typecode)
+        self.psit_nG[:nmin] = tmp_nG[:nmin]
+
+        tmp_nG = self.Htpsit_nG
+        self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
+        self.Htpsit_nG[:nmin] = tmp_nG[:nmin]
+        del tmp_nG
+
+        tmp_n = self.eps_n
+        self.allocate(nbands)
+        self.eps_n[:nmin] = tmp_n[:nmin]
+
+        extra = nbands - nao
+        if extra > 0:
+            # Generate random wave functions:
+            self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
+            for psit_G in self.psit_nG[nao:]:
+                random_wave_function_generator.generate(psit_G, self.phase_cd)
         
     def calculate_residuals(self, pt_nuclei, converge_all=False):
         """Calculate wave function residuals.
@@ -203,10 +207,11 @@ class KPoint:
         The size of the residuals is returned.
         
         Parameters:
-        ================ ====================================================
-        ``pt_nuclei``    ?
-        ``converge_all`` flag to converge all wave functions or just occupied
-        ================ ====================================================
+        ================ ================================================
+        ``pt_nuclei``    List of nuclei that have part of their projector
+                         functions in this domain.
+        ``converge_all`` Converge all wave functions or just occupied.
+        ================ ================================================
         """
         
         R_nG = self.Htpsit_nG

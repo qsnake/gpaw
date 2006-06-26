@@ -57,7 +57,7 @@ class Calculator:
                   'parsize': None,
                   'softgauss': True,
                   'order': 5,
-                  'convergeall' : False,
+                  'convergeall': False,
                   }
 
     def __init__(self, **kwargs):
