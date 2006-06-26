@@ -1,7 +1,10 @@
 import Numeric as num
-from RandomArray import random
+from RandomArray import random, seed
 
 from gridpaw.transformers import Interpolator
+
+
+seed(1, 2)
 
 
 class RandomWaveFunctionGenerator:
