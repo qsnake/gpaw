@@ -123,10 +123,10 @@ class Calculator:
 
         self.parallel_cputime = 0.0
 
-    def reset(self):
+    def reset(self,restart_file=None):
         """Delete PAW-object."""
         self.stop_paw()
-        self.restart_file = None     # ??????
+        self.restart_file = restart_file
         self.pos_ac = None
         self.cell_cc = None
         self.periodic_c = None
@@ -373,7 +373,7 @@ class Calculator:
                 if name not in self.parameters:
                     raise RuntimeError('Unknown keyword: ' + name)
                 setattr(self, name, value)
-                self.reset()
+                self.reset(self.restart_file)
             
     def GetReferenceEnergy(self):
         """Get reference energy for all-electron atoms."""
