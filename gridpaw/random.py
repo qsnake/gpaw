@@ -20,9 +20,9 @@ class RandomWaveFunctionGenerator:
         
     def generate(self, psit_G, phase_cd):
         if self.typecode == num.Float:
-            self.r2[:] = random(self.n2_c) - 0.5
+            self.r2[:] = random(self.r2.shape) - 0.5
         else:
-            self.r2.real = random(self.n2_c) - 0.5
-            self.r2.imag = random(self.n2_c) - 0.5
+            self.r2.real = random(self.r2.shape) - 0.5
+            self.r2.imag = random(self.r2.shape) - 0.5
         self.interpolate2(self.r2, self.r1, phase_cd)
         self.interpolate1(self.r1, psit_G, phase_cd)
