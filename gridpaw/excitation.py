@@ -1,6 +1,8 @@
+from math import pi, sqrt
 import Numeric as num
 import _gridpaw
 from gridpaw import debug
+from gridpaw.utilities.tools import pack
 
 # ..............................................................
 # general excitation classes
@@ -125,7 +127,10 @@ class KSSingles(ExcitationList):
                         self.append(ks)
 
 class KSSingle(Excitation):
-    """Single Kohn-Sham transition containing all it's indicees"""
+    """Single Kohn-Sham transition containing all it's indicees
+    pspin=physical spin
+    vspin=virtual  spin, i.e. spin in the code
+    """
     def __init__(self,iidx=None,jidx=None,pspin=None,vspin=None,
                  paw=None):
         
@@ -147,20 +152,26 @@ class KSSingle(Excitation):
         self.wfj = wf.kpt_u[vspin].psit_nG[jidx]
         me = gd.calculate_dipole_moment(self.GetPairDensity())
 ##         print '<KSSingle> pseudo mij=',me
-##         res =  gd.calculate_first_moments(wfi*wfj)
-##         print '<KSSingle> pseudo overlap=',res[0]
         
-        # augmetation contributions
+        # augmentation contributions
         for nucleus in paw.nuclei:
-            Ra = nucleus.spos_c*gd.N_c
-##            print '<KSSingle> nucleus.spos_c,gd.N_c,gd.h_c,Ra=',\
-##                  nucleus.spos_c,gd.N_c,gd.h_c,Ra
-##            print '<KSSingle> gd.beg0_c,gd.beg_c,gd.dv,gd.end_c',\
-##                  gd.beg0_c,gd.beg_c,gd.dv,gd.end_c
-            # L=0 terms
-            
+            Ra = nucleus.spos_c*paw.domain.cell_c
+            lmax=nucleus.setup.lmax
+            Pi_i = nucleus.P_uni[self.vspin,self.i]
+            Pj_i = nucleus.P_uni[self.vspin,self.j]
+            D_ii = num.outerproduct(Pi_i, Pj_i)
+            D_p  = pack(D_ii, symmetric=False)
+            # L=0 term
+            me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
+##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
+            # L=1 terms
+            if lmax>=1:
+                for i in range(3):
+                    # XXXX check def of Ylm used in setups XXXX
+                    me[i] += sqrt(4*pi/3)*\
+                             num.dot(D_p, nucleus.setup.Delta_pL[:,i+1])
         self.me=me
- ##       print '<KSSingle> mij=',me
+##         print '<KSSingle> mij,ma=',me,ma
         
     def __str__(self):
         str = "<KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
