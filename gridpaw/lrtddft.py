@@ -179,12 +179,6 @@ class LrTDDFT(ExcitationList):
         for j in range(len(self.kss)):
             self.append(LrTDDFTExcitation(Om,j))
  
-    def __str__(self):
-        str = "<LrTDDFT> %d excitations:\n" % len(self)
-        for ex in self:
-            str += '  '+ex.__str__()+"\n"
-        return str
-
 class LocalIntegrals:
     """Contains the local integrals needed for Linera response TDDFT"""
     def __init__(self,gen=None):
