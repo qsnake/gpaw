@@ -25,7 +25,6 @@ class ExcitationList(list):
             el.append(ex.GetEnergy())
         return el
         
-        
 class Excitation:
     def GetEnergy(self):
         """return the excitations energy relative to the ground state energy"""
@@ -144,9 +143,9 @@ class KSSingle(Excitation):
         
         # course grid contribution
         gd = wf.kpt_u[vspin].gd
-        wfi = wf.kpt_u[vspin].psit_nG[iidx]
-        wfj = wf.kpt_u[vspin].psit_nG[jidx]
-        me = gd.calculate_dipole_moment(wfi*wfj)
+        self.wfi = wf.kpt_u[vspin].psit_nG[iidx]
+        self.wfj = wf.kpt_u[vspin].psit_nG[jidx]
+        me = gd.calculate_dipole_moment(self.GetPairDensity())
 ##         print '<KSSingle> pseudo mij=',me
 ##         res =  gd.calculate_first_moments(wfi*wfj)
 ##         print '<KSSingle> pseudo overlap=',res[0]
@@ -169,45 +168,15 @@ class KSSingle(Excitation):
                self.energy*27.211)
         return str
     
-## def __rpa__(paw, ewald, method):
-##     """Calculate the RPA contribution"""
-##     wf = paw.wf
-##     nuclei = paw.nuclei
-##     gd = paw.finegd
+    #####################
+    ## User interface: ##
+    #####################
 
-##     # allocate space for fine grid density
-##     n_g = gd.new_array()
-    
-##     # get gauss functions
-##  #?   gt_aL = __gauss_functions__(nuclei, gd)
+    def GetEnergy(self):
+        return self.energy
 
-##     for spin in range(wf.nspins):
-##         for n in range(wf.nbands):
-##             for m in range(n, wf.nbands):
+    def GetWeight(self):
+        return self.fij
 
-##                 # determine current exchange densities
-##                 nij_G = wf.kpt_u[ijspin].psit_nG[i]*\
-##                         wf.kpt_u[ijspin].psit_nG[j]
-##                 nkq_G = wf.kpt_u[kqspin].psit_nG[k]*\
-##                          wf.kpt_u[kqspin].psit_nG[q]
-                
-##                 # and interpolate to the fine grid
-##                 paw.interpolate(nij_G, nij_g)
-##                 paw.interpolate(nkq_G, nkq_g)
-                
-##                 for a, nucleus in enumerate(nuclei):
-##                     # generate density matrix
-##                     Pm_i = nucleus.P_uni[spin,m]
-##                     Pn_i = nucleus.P_uni[spin,n]
-##                     D_ii = num.outerproduct(Pm_i,Pn_i)
-##                     D_p  = packNEW(D_ii)
-
-##                     # add compensation charges to exchange density
-##                     Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-##                     gt_aL[a].add(n_g, Q_L)
-
-##                     # add atomic contribution to exchange energy
-##                     C_pp  = nucleus.setup.M_pp
-##                     Exxa = -fnm*num.dot(D_p, num.dot(C_pp, D_p)) * DC
-##                     ExxVal += Exxa
-                   
+    def GetPairDensity(self):
+        return self.wfi*self.wfj
