@@ -24,6 +24,13 @@ class ExcitationList(list):
         for ex in self:
             el.append(ex.GetEnergy())
         return el
+    
+    def __str__(self):
+        string= str(type(self))
+        string+=" %d excitations:\n" % len(self)
+        for ex in self:
+            string += '  '+ex.__str__()+"\n"
+        return string
         
 class Excitation:
     def GetEnergy(self):
@@ -101,7 +108,7 @@ class KSSingles(ExcitationList):
         # get possible transitions
         for ispin in range(self.npspins):
             vspin=ispin
-            print "vspin=",vspin,"ispin=",ispin
+##            print "vspin=",vspin,"ispin=",ispin
             if self.nvspins<2:
                 vspin=0
             f=wf.kpt_u[vspin].f_n
@@ -116,13 +123,6 @@ class KSSingles(ExcitationList):
                         # this is an accepted transition
                         ks=KSSingle(i,j,ispin,vspin,paw)
                         self.append(ks)
-
-    def __str__(self):
-        str= "<KSSingles> npspins=%d, nvspins=%d" % \
-              (self.npspins, self.nvspins)
-        str+="\n ntrans=%d\n" % len(self)
-        for ex in self:  str+=ex.__str__()+'\n'      
-        return str
 
 class KSSingle(Excitation):
     """Single Kohn-Sham transition containing all it's indicees"""
