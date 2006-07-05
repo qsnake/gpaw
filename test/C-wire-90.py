@@ -34,4 +34,4 @@ C8.SetCalculator(calc8)
 e8 = C8.GetPotentialEnergy()
 
 print e2 / 2 - e8 / 8
-assert abs(e2 / 2 - e8 / 8) < 2e-6
+assert abs(e2 / 2 - e8 / 8) < 6e-6
