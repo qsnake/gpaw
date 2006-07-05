@@ -261,6 +261,8 @@ def read(paw, filename):
     paw.Exc = r['Exc']
     paw.S = r['S']
     paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
+
+    wf.occupation.set_fermi_level(r['FermiLevel'])
     
     # Read pseudoelectron density on the coarse grid and
     # distribute out to nodes
