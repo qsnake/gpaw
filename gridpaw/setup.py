@@ -111,7 +111,7 @@ class Setup:
         else:
             h = 0.2 / 0.529177
             filter = Filter(r_g[:gcut], dr_g[:gcut],
-                            rcut, rcut2, h, 256).filter
+                            rcut, rcut2, h).filter
             
         # Construct splines:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
