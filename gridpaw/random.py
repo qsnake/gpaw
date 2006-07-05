@@ -17,6 +17,8 @@ class RandomWaveFunctionGenerator:
         self.r2 = gd2.new_array(typecode=typecode)
         self.interpolate2 = Interpolator(gd2, 1, typecode).apply
         self.interpolate1 = Interpolator(gd1, 1, typecode).apply
+        cell_c = gd0.domain.cell_c
+        self.scale = (cell_c[0] * cell_c[1] * cell_c[2])**-0.5 * 7.7
         
     def generate(self, psit_G, phase_cd):
         if self.typecode == num.Float:
@@ -26,3 +28,4 @@ class RandomWaveFunctionGenerator:
             self.r2.imag = random(self.r2.shape) - 0.5
         self.interpolate2(self.r2, self.r1, phase_cd)
         self.interpolate1(self.r1, psit_G, phase_cd)
+        psit_G *= self.scale
