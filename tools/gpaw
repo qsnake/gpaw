@@ -6,7 +6,7 @@ import sys
 from optparse import OptionParser
 
 
-parser = OptionParser(usage='%prog [options] molecule',
+parser = OptionParser(usage='%prog [options] element/molecule',
                       version='%prog 0.1')
 parser.add_option('-p', '--spin-paired', action='store_true',
                   default=False,
@@ -17,7 +17,7 @@ parser.add_option('--debug', action='store_true',
 parser.add_option('--eggbox-test', action='store_true',
                   default=False,
                   help='Do eggbox test.')
-parser.add_option('--bulk-test', action='store_true',
+parser.add_option('--bulk', action='store_true',
                   default=False,
                   help='Do bulk test.')
 parser.add_option('--atomize', action='store_true',
@@ -35,6 +35,17 @@ parser.add_option('-g', '--grid-spacing', type='float', default=None,
 parser.add_option('-n', '--points', type='int', default=20,
                   help='Number of points used for eggbox-test.',
                   metavar='<integer>')
+parser.add_option('-k', '--kpoints', type='string', default=None,
+                  help='Number of k points (one or three integers).',
+                  metavar='<n1,n2,n3>')
+parser.add_option('-w', '--write', type='string', default=None,
+                  help='Write state to file (wave functions not written).',
+                  metavar='<filename.gpw>')
+parser.add_option('-W', '--write-all', type='string', default=None,
+                  help='Write state to file (including wave functions).',
+                  metavar='<filename.gpw>')
+parser.add_option('-m', '--magnetic-moment', type='float', default=None,
+                  help='Magnetic moment per unit cell.')
 parser.add_option('-x', '--extra-parameters', type='string', default='{}',
                   help='Extra parameters.',
                   metavar='''"{'lmax': 2, ...}"''')
@@ -54,7 +65,10 @@ parser.add_option('-b', '--bands', type='int', default=None,
 opt, args = parser.parse_args()
 
 if len(args) != 1:
-    print 'There must be one (and only one), molecule argument!'
+    if len(args) == 0:
+        print 'Missing element or molecule argument!'
+    else:
+        print 'Too many arguments!'
     sys.exit()
 
 if opt.debug:
@@ -66,6 +80,8 @@ import gridpaw
 from gridpaw import setup_paths
 from gridpaw.setuptests.singleatom import SingleAtom
 from gridpaw.setuptests.molecule import Molecule
+from gridpaw.setuptests.bulk import Bulk
+from gridpaw.setuptests.bulk import data as bulk_data
 
 
 singleatom = True
@@ -85,6 +101,13 @@ parameters['xc'] = opt.xc_functional
 parameters['nbands'] = opt.bands
 gridpaw.x = opt.X
 
+
+if singleatom and symbol in bulk_data:
+    opt.bulk = True
+
+if opt.crystal_structure is not None:
+    opt.bulk = True
+
 if opt.setup_path is not None:
     setup_paths.insert(0, opt.setup_path)
     
@@ -101,8 +124,23 @@ if not singleatom:
     else:
         molecule.energy()
 
-elif opt.bulk_test:
-    bulk = Bulk(symbol)
+elif opt.bulk:
+    if opt.kpoints is None:
+        kpts = None
+    else:
+        kpts = [int(k) for k in opt.kpoints.split(',')]
+        if len(kpts) == 1:
+            kpts = (kpts[0], kpts[0], kpts[0])
+        
+    bulk = Bulk(symbol, structure=opt.crystal_structure,
+                a=opt.a_lattice_constant, c=opt.c_lattice_constant,
+                 h=opt.grid_spacing, kpts=kpts, magmom=opt.magnetic_moment,
+                 parameters=parameters)
+    bulk.energy()
+    if opt.write:
+        bulk.atoms.GetCalculator().Write(opt.write, mode='no wave functions')
+    if opt.write_all:
+        bulk.atoms.GetCalculator().Write(opt.write_all)
 else:
     if opt.eggbox_test:
         parameters['out'] = 'eggbox-test.txt'
