@@ -15,6 +15,7 @@ class D(dict):
         return self[key]
         
 data = {'Fe': D(structure='bcc', magmom=2.2, volume=2.89**3/2),
+        'Cu': D(structure='fcc', volume=3.602**3/4),
         }
 
 class Bulk:
@@ -45,7 +46,7 @@ class Bulk:
                                   for spos_c in spos_ac],
                                  periodic=True)
 
-        V = d.volume
+        V = d.get('volume', 20.0)
 
         if structure == 'hcp':
             if c is None:
