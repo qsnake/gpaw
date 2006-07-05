@@ -416,7 +416,7 @@ class Nucleus:
 ##            self.nct.derivative(vt_G, F[num.NewAxis, :]) 
             self.nct.derivative(vt_G, num.reshape(F, (1, 3)))  # numpy!
 
-            # Force from localized potential:
+            # Force from zero potential:
             self.vbar.derivative(nt_g, num.reshape(F, (1, 3)))
 
             dF = num.zeros(((lmax + 1)**2, 3), num.Float)

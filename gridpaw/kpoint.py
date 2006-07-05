@@ -323,3 +323,4 @@ class KPoint:
             nucleus.create_atomic_orbitals(self.psit_nG[nao0:nao1], self.k)
             nao0 = nao1
         assert nao0 == nao
+

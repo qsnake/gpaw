@@ -15,6 +15,8 @@ from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.utilities import unpack, erf, fac, hartree
 from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
+from gridpaw.filter import Filter
+
 
 class Setup:
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True):
@@ -50,7 +52,8 @@ class Setup:
 
         rcut = max(rcut_j)
         rcut2 = 2 * rcut
-        gcut2 = int(rcut2 * ng / (rcut2 + beta))
+        gcut = 1 + int(rcut * ng / (rcut + beta))
+        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
 
         g = num.arange(ng, typecode=num.Float)
         r_g = beta * g / (ng - g)
@@ -101,10 +104,21 @@ class Setup:
         lcut = max(l_j)
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
-        
+
+        old_style = (pt_jg[0][gcut] != 0.0)
+        if old_style:
+            print 'OLD STYLE SETUP!'
+        else:
+            h = 0.2 / 0.529177
+            filter = Filter(r_g[:gcut], dr_g[:gcut],
+                            rcut, rcut2, h, 256).filter
+            
         # Construct splines:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
-        self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
+        if old_style:
+            self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
+        else:
+            self.vbar = Spline(0, rcut2, filter(vbar_g))
 
         def grr(phi_g, l, r_g):
             w_g = phi_g.copy()
@@ -118,8 +132,11 @@ class Setup:
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
-            self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
-                                    r_g=r_g, beta=beta))
+            if old_style:
+                self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
+                                        r_g=r_g, beta=beta))
+            else:
+                self.pt_j.append(Spline(l, rcut2, filter(pt_jg[j], l)))
      
         cutoff = 8.0 # ????????
         self.wtLCAO_j = []
