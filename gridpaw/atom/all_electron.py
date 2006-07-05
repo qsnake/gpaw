@@ -99,7 +99,7 @@ class AllElectron:
             # This one: "u[:] = r**(1 + l) * num.exp(-a * r)" gives
             # OverflowError: math range error XXX
             u[:] = r**(1 + l)
-            rmax = 350.0 / a
+            rmax = 350.0 / a     # numpy!
             gmax = int(rmax * self.N / (self.beta + rmax))
             u[:gmax] *= num.exp(-a * r[:gmax])
             u[gmax:] = 0.0

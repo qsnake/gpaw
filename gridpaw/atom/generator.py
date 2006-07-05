@@ -25,7 +25,7 @@ parameters = {
     #     (  core,  cutoff,  extra projectors)  
     'H' : ('',        0.9),
     'He': ('',        1.5),
-    'Li': ('[He]',    2.0),
+    'Li': ('[He]',    2.1),
     'Be': ('[He]',    1.5),
     'C' : ('[He]',    1.0),
     'N' : ('[He]',    1.1),
@@ -246,11 +246,11 @@ class Generator(AllElectron):
                 u_ln[l][n] = u
 
         # Grid-index corresponding to rcut:
-        gcut = int(rcut * N / (rcut + beta))
-        gcut_l = [int(rc * N / (rc + beta)) for rc in rcut_l]
+        gcut = 1 + int(rcut * N / (rcut + beta))
+        gcut_l = [1 + int(rc * N / (rc + beta)) for rc in rcut_l]
 
         rcut2 = 2 * rcut
-        gcut2 = int(rcut2 * N / (rcut2 + beta))
+        gcut2 = 1 + int(rcut2 * N / (rcut2 + beta))
 
         # Outward integration of unbound states stops at 3 * rcut:
         gmax = int(3 * rcut * N / (3 * rcut + beta))
@@ -351,7 +351,7 @@ class Generator(AllElectron):
 
         filter = Filter(r[:gcut2], beta, N, rcut2)
         
-        # Construct localized potential:
+        # Construct zero potential:
         if 0:
             A = num.ones((2, 2), num.Float)
             A[0] = 1.0
@@ -400,31 +400,43 @@ class Generator(AllElectron):
         self.dO_lnn = dO_lnn = []
         for l, (e_n, u_n, s_n, q_n) in enumerate(zip(e_ln, u_ln,
                                                      s_ln, q_ln)):
+            A_nn = num.innerproduct(s_n, q_n * dr)
+            # Do a LU decomposition of A:
+            nn = len(e_n)
+            if nn == 1:
+                L_nn = num.array([[1.0]])
+                U_nn = num.array([[A_nn[0, 0]]])
+            else:
+                L_nn = num.array([[1.0, 0.0],
+                                  [A_nn[1, 0] / A_nn[0, 0], 1.0]])
+                U_nn = num.array([[A_nn[0, 0], A_nn[0, 1]],
+                                  [0.0, A_nn[1, 1] - L_nn[1, 0] * A_nn[0, 1]]])
+
+            dO_nn = (num.innerproduct(u_n, u_n * dr) -
+                     num.innerproduct(s_n, s_n * dr))
+
+            e_nn = num.zeros((nn, nn), num.Float)
+            e_nn.flat[::nn + 1] = e_n
+            dH_nn = num.dot(dO_nn, e_nn) - A_nn
+
+            q_n[:] = num.dot(inverse(num.transpose(U_nn)), q_n)
+            s_n[:] = num.dot(inverse(L_nn), s_n)
+            u_n[:] = num.dot(inverse(L_nn), u_n)
+
+            dO_nn = num.dot(num.dot(inverse(L_nn), dO_nn),
+                            inverse(num.transpose(L_nn)))
+            dH_nn = num.dot(num.dot(inverse(L_nn), dH_nn),
+                            inverse(num.transpose(L_nn)))
+
             ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]  
             ks_n = [self.kin(l, s) for s in s_n]
             dK_nn = 0.5 * (num.innerproduct(u_n, ku_n * dr) -
-                            num.innerproduct(s_n, ks_n * dr))
+                           num.innerproduct(s_n, ks_n * dr))
             dK_nn += num.transpose(dK_nn).copy()
-            dO_nn = (num.innerproduct(u_n, u_n * dr) -
-                       num.innerproduct(s_n, s_n * dr))
-            nn = len(e_n)
-            e_nn = num.zeros((nn, nn), num.Float)
-            e_nn.flat[::nn + 1] = e_n
-            A_nn = num.innerproduct(q_n, s_n * dr)
-            dH_nn = num.dot(e_nn, dO_nn) - A_nn
-            
+
             dK_lnn.append(dK_nn)
             dO_lnn.append(dO_nn)
             dH_lnn.append(dH_nn)
-
-            if 1:
-                for q in q_n:
-                    q[:gcut2] = filter.filter(q[:gcut2], l)
-                A_nn = num.innerproduct(q_n, s_n * dr)
-
-            # Orthonormalize projector functions:
-            A_nn = inverse(A_nn)
-            q_n[:] = num.dot(A_nn, q_n)
             
         self.vt = vt
 
