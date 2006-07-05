@@ -413,10 +413,11 @@ class Nucleus:
             F[:] += num.dot(Q_L, F_Lc)
 
             # Force from smooth core charge:
-            self.nct.derivative(vt_G, F[None, :])
+##            self.nct.derivative(vt_G, F[num.NewAxis, :]) 
+            self.nct.derivative(vt_G, num.reshape(F, (1, 3)))  # numpy!
 
             # Force from localized potential:
-            self.vbar.derivative(nt_g, F[None, :])
+            self.vbar.derivative(nt_g, num.reshape(F, (1, 3)))
 
             dF = num.zeros(((lmax + 1)**2, 3), num.Float)
             for neighbor in self.neighbors:
