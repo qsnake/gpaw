@@ -702,6 +702,31 @@ class Paw:
             wf.kpt_comm.receive(psit_G, kpt_rank, 1398)
             return psit_G
 
+    def get_eigenvalues(self, k, s):
+        """Return eigenvalue array.
+        
+        For the parallel case find the rank in kpt_comm that contains
+        the (k,s) pair, for this rank, collect on the corresponding
+        domain a full array on the domain master and send this to the
+        global master.""" 
+        
+        wf = self.wf
+        
+        kpt_rank, u = divmod(k + wf.nkpts * s, wf.nmyu)
+
+        if kpt_rank == MASTER:
+            return wf.kpt_u[u].eps_n
+        
+        if wf.kpt_comm.rank == kpt_rank:
+            # Domain master send this to the global master
+            if self.domain.comm.rank == MASTER:
+                wf.kpt_comm.send(wf.kpy_u[u].eps_n, MASTER, 1301)
+        elif mpi.rank == MASTER:
+            eps_n = num.zeros(wf.nbands, num.Float)
+            wf.kpt_comm.receive(eps_n, kpt_rank, 1301)
+            return eps_n
+        
+
     def get_wannier_integrals(self, i, s, k, k1, G_I):
         """Calculate integrals for maximally localized Wannier functions."""
 
@@ -761,3 +786,6 @@ class Paw:
     def get_exact_exchange(self, decompose=False, method=None):
         from gridpaw.exx import PerturbativeExx
         return PerturbativeExx(self).get_exact_exchange(decompose, method)
+
+    def get_weights(self):
+        return self.wf.weights_k

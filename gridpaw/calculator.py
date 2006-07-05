@@ -474,7 +474,7 @@ class Calculator:
         
         The sum of all weights is one."""
         
-        return self.weights
+        return self.paw.get_weights()
 
     def GetDensityArray(self):
         """Return pseudo-density array."""
@@ -484,6 +484,10 @@ class Calculator:
         """Return pseudo-wave-function array."""
         c =  1.0 / self.a0**1.5
         return self.paw.get_wave_function_array(band, kpt, spin) * c
+
+    def GetEigenvalues(self, kpt=0, spin=0):
+        """Return eigenvalue array."""
+        return self.paw.get_eigenvalues(kpt, spin) * self.Ha
 
     def GetWannierLocalizationMatrix(self, G_I,kpoint,nextkpoint,spin,
                                      dirG, **args):
