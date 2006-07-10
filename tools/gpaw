@@ -35,6 +35,9 @@ parser.add_option('-g', '--grid-spacing', type='float', default=None,
 parser.add_option('-n', '--points', type='int', default=20,
                   help='Number of points used for eggbox-test.',
                   metavar='<integer>')
+parser.add_option('--parallel', type='int', default=None,
+                  help='Run in parallel using N prcessors.',
+                  metavar='N')
 parser.add_option('-k', '--kpoints', type='string', default=None,
                   help='Number of k points (one or three integers).',
                   metavar='<n1,n2,n3>')
@@ -99,6 +102,7 @@ parameters = eval(opt.extra_parameters)
 
 parameters['xc'] = opt.xc_functional
 parameters['nbands'] = opt.bands
+parameters['hosts'] = opt.parallel
 gridpaw.x = opt.X
 
 
