@@ -115,7 +115,7 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-scripts = glob(join('tools', 'gpaw-*[a-z]')) + ['tools/gpaw']
+scripts = glob(join('tools', 'gpaw*[a-z]')) 
 if custom_interpreter:
     scripts.append('build/bin.%s/' % plat + 'gridpaw-python')
 
@@ -123,7 +123,7 @@ write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,
                     runtime_library_dirs,extra_objects)
 
-setup(name = 'gridpaw',
+setup(name = 'gpaw',
       version=version,
       description='A grid-based real-space PAW method DFT code',
       author='J. J. Mortensen',
