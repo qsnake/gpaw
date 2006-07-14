@@ -15,10 +15,10 @@ a_Lg = gd.new_array(9)
 xcfunc = XCFunctional('LDA')
 for soft in [False, True]:
     s = Setup('Cu', xcfunc, lmax=2, softgauss=soft)
-    gt_l = s.get_shape_functions()
-    gt_Lg = create_localized_functions(gt_l, gd, (0.54321, 0.5432, 0.543))
+    ghat_l = s.ghat_l
+    ghat_Lg = create_localized_functions(ghat_l, gd, (0.54321, 0.5432, 0.543))
     a_Lg[:] = 0.0
-    gt_Lg.add(a_Lg, c_LL)
+    ghat_Lg.add(a_Lg, c_LL)
     for l in range(3):
         for m in range(2 * l + 1):
             print soft, l, m

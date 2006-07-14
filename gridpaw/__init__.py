@@ -88,7 +88,6 @@ if setup_paths == []:
         print 'Please put that path in your GRIDPAWSETUPPATH environment',
         print 'variable!'
 
-
 from gridpaw.calculator import Calculator
 
 

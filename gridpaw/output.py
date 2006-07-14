@@ -11,7 +11,6 @@ def print_info(paw):
         print >> out, ('Using domain decomposition: %d x %d x %d' %
                        tuple(domain.parsize_c))
 
-
 def print_converged(paw):
     out = paw.out
     print >> out, 'Converged after %d iterations.' % paw.niter

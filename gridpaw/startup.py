@@ -58,17 +58,22 @@ def create_paw_object(out, a0, Ha,
     else:
         nspins = 1
     
-    # Construct a dictionary, mapping atomic numbers to PAW-setup objects:
-    setups = construct_setups(Z_a, xcfunc, lmax, nspins, softgauss, out)
+    # Construct necessary PAW-setup objects and count the number of
+    # valence electrons:
+    setups = {}    # mapping from atomic numbers to PAW-setup objects
+    for Z in Z_a:
+        if Z not in setups:
+            symbol = symbols[Z]
+            setup = Setup(symbol, xcfunc, lmax, nspins, softgauss)
+            setup.print_info(out)
+            setups[Z] = setup
+            assert Z == setup.Z
 
     # Default value for grid spacing:
     if N_c is None:
         if h is None:
-            # Find the smalles recommended grid spacing:
-            h = 1000.0
-            for setup in setups.values():
-                h = min(h, a0 * setup.get_recommended_grid_spacing())
-
+            print >> out, 'Using default value for grid spacing.'
+            h = Convert(0.2, 'Ang', 'Bohr') * a0
         # N_c should be a multiplum of 4:
         N_c = [max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c]
     else:
@@ -118,11 +123,12 @@ def create_paw_object(out, a0, Ha,
     # Sum up the number of valence electrons:
     nvalence = 0
     for nucleus in nuclei:
-        nvalence += nucleus.setup.get_number_of_valence_electrons()
+        nvalence += nucleus.setup.Nv
     nvalence -= charge
-    if nvalence <= 0:
-        raise ValueError('Charge '+'%f' % (charge)+
-                         ' is not possible - not enough valence electrons')
+    if nvalence < 0:
+        raise ValueError(
+            'Charge %f is not possible - not enough valence electrons' %
+            charge)
 
     if nbands is None:
         # Default value for number of bands:

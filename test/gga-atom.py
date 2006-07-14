@@ -13,12 +13,12 @@ from gridpaw.utilities import pack
 ra.seed(1, 2)
 for name in ['LDA', 'PBE']:
     xcfunc = XCFunctional(name)
-    d = Setup('N', xcfunc)
-    ni = d.get_number_of_partial_waves()
-    niAO = d.get_number_of_atomic_orbitals()
-    wt0_j = d.get_atomic_orbitals()
+    s = Setup('N', xcfunc)
+    ni = s.ni
+    niAO = s.niAO
+    wt0_j = s.phit_j
 
-    rcut = d.xc.rgd.r_g[-1]
+    rcut = s.xc.rgd.r_g[-1]
 
     wt_j = []
     for wt0 in wt0_j:
@@ -62,8 +62,7 @@ for name in ['LDA', 'PBE']:
 
 
 
-    p = create_localized_functions([d.get_smooth_core_density()],
-                                   gd, (0.5, 0.5, 0.5))
+    p = create_localized_functions([s.nct], gd, (0.5, 0.5, 0.5))
     p.add(n_g, num.ones(1, num.Float))
     xc = XCOperator(xcfunc, gd, nspins=1)
     xc.get_energy_and_potential(n_g, v_g)
@@ -73,9 +72,9 @@ for name in ['LDA', 'PBE']:
 
     E2 = -num.dot(xc.e_g.flat, dv_g.flat)
 
-    d.xc.n_qg[:] = 0.0
-    d.xc.nc_g[:] = 0.0
-    E1 = d.xc.calculate_energy_and_derivatives([D_p], [H_p]) + d.xc.Exc0
+    s.xc.n_qg[:] = 0.0
+    s.xc.nc_g[:] = 0.0
+    E1 = s.xc.calculate_energy_and_derivatives([D_p], [H_p]) + s.xc.Exc0
 
     print name, E1, E2, E1 - E2
     equal(E1, E2, 0.0013)

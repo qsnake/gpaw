@@ -60,17 +60,6 @@ class Setup:
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
 
-        if 0:
-            for j in range(nj):
-                norm = num.dot((phi_jg[j] * r_g)**2, dr_g)
-                print id_j[j], norm, num.dot(phit_jg[j] * pt_jg[j] * r_g**2,
-                                             dr_g)
-            for j1 in range(nj):
-                for j2 in range(nj):
-                    if l_j[j1] == l_j[j2]:
-                        print j1, j2, num.dot(phit_jg[j1] * pt_jg[j2] * r_g**2,
-                                              dr_g)
-
         # Find cutoff for core density:
         if Nc == 0:
             rcore = 0.5
@@ -105,20 +94,9 @@ class Setup:
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
 
-        old_style = (pt_jg[0][gcut] != 0.0)
-        if old_style:
-            print 'OLD STYLE SETUP!'
-        else:
-            h = 0.2 / 0.529177
-            filter = Filter(r_g[:gcut], dr_g[:gcut],
-                            rcut, rcut2, h).filter
-            
         # Construct splines:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
-        if old_style:
-            self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
-        else:
-            self.vbar = Spline(0, rcut2, filter(vbar_g))
+        self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
 
         def grr(phi_g, l, r_g):
             w_g = phi_g.copy()
@@ -132,18 +110,15 @@ class Setup:
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
-            if old_style:
-                self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
-                                        r_g=r_g, beta=beta))
-            else:
-                self.pt_j.append(Spline(l, rcut2, filter(pt_jg[j], l)))
+            self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
+                                    r_g=r_g, beta=beta))
      
         cutoff = 8.0 # ????????
-        self.wtLCAO_j = []
+        self.phit_j = []
         for j, phit_g in enumerate(phit_jg):
             if f_j[j] > 0:
                 l = l_j[j]
-                self.wtLCAO_j.append(Spline(l, cutoff,
+                self.phit_j.append(Spline(l, cutoff,
                                             grr(phit_g, l, r_g),
                                             r_g=r_g, beta=beta))
 
@@ -241,7 +216,7 @@ class Setup:
         
         AB_q = -num.dot(nt_qg, dv_g * vbar_g)
         self.MB_p = num.dot(AB_q, T_Lqp[0])
-
+        
         A_lqq = []
         for l in range(2 * lcut + 1):
             A_qq = 0.5 * num.dot(n_qg, num.transpose(wn_lqg[l]))
@@ -340,15 +315,15 @@ class Setup:
                     vt2[1:] /= r[1:]**4
                     vt_l.append(vt2)
 
-            self.Deltav_l = []
+            self.vhat_l = []
             for l in range(lmax + 1):
                 vtl = vt_l[l]
                 vtl[-1] = 0.0
-                self.Deltav_l.append(Spline(l, rcutsoft, vtl))
+                self.vhat_l.append(Spline(l, rcutsoft, vtl))
 
         else:
             alpha2 = alpha
-            self.Deltav_l = [Spline(l, rcutsoft, 0 * r)
+            self.vhat_l = [Spline(l, rcutsoft, 0 * r)
                              for l in range(lmax + 1)]
 
         self.alpha2 = alpha2
@@ -357,7 +332,7 @@ class Setup:
                for l in range(lmax + 1)]
         g = alpha2**1.5 * num.exp(-alpha2 * r**2)
         g[-1] = 0.0
-        self.gt_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
+        self.ghat_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
                      for l in range(lmax + 1)]
 
         # Construct atomic density matrix for the ground state (to be
@@ -403,37 +378,3 @@ class Setup:
             D_ii += num.dot(R_ii, num.dot(D_aii[map_sa[s][a]],
                                               num.transpose(R_ii)))
         return D_ii / len(map_sa)
-
-    # Get rid of all these methods: XXXXXXXXXXXXXXXXXXXXXX
-    def get_smooth_core_density(self):
-        return self.nct
-
-    def get_number_of_atomic_orbitals(self):
-        return self.niAO
-
-    def get_number_of_partial_waves(self):
-        return self.ni
-    
-    def get_recommended_grid_spacing(self):
-        return 0.4 # self.h ???  XXXXXXXXXXXX
-
-    def get_projectors(self):
-        return self.pt_j
-
-    def get_atomic_orbitals(self):
-        return self.wtLCAO_j
-
-    def delete_atomic_orbitals(self):
-        del self.wtLCAO_j
-
-    def get_shape_functions(self):
-        return self.gt_l
-    
-    def get_potential(self):
-        return self.Deltav_l
-
-    def get_localized_potential(self):
-        return self.vbar
-
-    def get_number_of_valence_electrons(self):
-        return self.Nv

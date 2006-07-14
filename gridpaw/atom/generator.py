@@ -19,6 +19,7 @@ from gridpaw.utilities import hartree
 from gridpaw.exx import constructX
 from gridpaw.exx import atomic_exact_exchange as aExx
 from gridpaw.utilities import hartree
+from gridpaw.atom.filter import Filter
 
 
 parameters = {
@@ -349,8 +350,6 @@ class Generator(AllElectron):
         Exct = self.xc.get_energy_and_potential(nt, vXCt)
         vt = vHt + vXCt
 
-        filter = Filter(r[:gcut2], beta, N, rcut2)
-        
         # Construct zero potential:
         if 0:
             A = num.ones((2, 2), num.Float)
@@ -393,6 +392,11 @@ class Generator(AllElectron):
                 q[gcut:] = 0.0
 ##                q[gcut_l[l]??????:] = 0.0
 
+        self.write(vbar, 'vbar0')
+
+        filter = Filter(r, dr, rcut2, 0.4).filter
+
+        vbar = filter(vbar * r)
         
         # Calculate matrix elements:
         self.dK_lnn = dK_lnn = []
@@ -437,6 +441,13 @@ class Generator(AllElectron):
             dK_lnn.append(dK_nn)
             dO_lnn.append(dO_nn)
             dH_lnn.append(dH_nn)
+
+            for n, q in enumerate(q_n):
+                self.write(q, 'proj0', n=n_ln[l][n], l=l)
+                q[:] = filter(q, l) * r**(l + 1)
+
+            A_nn = num.innerproduct(s_n, q_n * dr)
+            q_n[:] = num.dot(inverse(num.transpose(A_nn)), q_n)
             
         self.vt = vt
 
@@ -502,7 +513,7 @@ class Generator(AllElectron):
                         e += (e2 - e1) / ni
             except KeyboardInterrupt:
                 pass
-            
+
         self.write(nc,'nc')
         self.write(nt, 'nt')
         self.write(nct, 'nct')
@@ -748,50 +759,3 @@ class Generator(AllElectron):
             print >> xml, '  <exact_exchange core-core="%f"/>' % ExxC
 
         print >> xml, '</paw_setup>'
-
-
-class Filter:
-    def __init__(self, r_g, beta, N, rc):
-        M = 256
-        r_n = rc / M * num.arange(M)
-        g_n = (N * r_n / (beta + r_n) + 0.5).astype(num.Int)
-        self.g_n = num.clip(g_n, 1, len(r_g) - 2)
-        r1_n = num.take(r_g, self.g_n - 1)
-        r2_n = num.take(r_g, self.g_n)
-        r3_n = num.take(r_g, self.g_n + 1)
-        self.x1_n = (r_n - r2_n) * (r_n - r3_n) / (r1_n - r2_n) / (r1_n - r3_n)
-        self.x2_n = (r_n - r1_n) * (r_n - r3_n) / (r2_n - r1_n) / (r2_n - r3_n)
-        self.x3_n = (r_n - r1_n) * (r_n - r2_n) / (r3_n - r1_n) / (r3_n - r2_n)
-        n_g = (r_g * M / rc + 0.5).astype(num.Int)
-        self.n_g = num.clip(n_g, 1, M - 2)
-        r1_g = num.take(r_n, self.n_g - 1)
-        r2_g = num.take(r_n, self.n_g)
-        r3_g = num.take(r_n, self.n_g + 1)
-        self.x1_g = (r_g - r2_g) * (r_g - r3_g) / (r1_g - r2_g) / (r1_g - r3_g)
-        self.x2_g = (r_g - r1_g) * (r_g - r3_g) / (r2_g - r1_g) / (r2_g - r3_g)
-        self.x3_g = (r_g - r1_g) * (r_g - r2_g) / (r3_g - r1_g) / (r3_g - r2_g)
-        self.r_g = r_g
-        self.r_n = r_n
-        self.M = M
-        
-##    def filter(self, f_g, l, a=0.05):
-    def filter(self, f_g, l, a=0.05):
-        f_g[1:] /= self.r_g[1:]**l
-        f1_n = num.take(f_g, self.g_n - 1)
-        f2_n = num.take(f_g, self.g_n)
-        f3_n = num.take(f_g, self.g_n + 1)
-        f_n = f1_n * self.x1_n + f2_n * self.x2_n + f3_n * self.x3_n
-        M = self.M
-        F_n = num.zeros(2 * M, num.Float)
-        F_n[:M] = f_n
-        F_n[M + 1:] = -f_n[-1:0:-1]
-        F_q = real_fft(F_n)
-        q = num.arange(M + 1)
-        F_q *= num.exp(-num.clip(a * q**2, 0.0, 100.0))
-        F_n = inverse_real_fft(F_q)
-        f_n = F_n[:M]
-        f1_g = num.take(f_n, self.n_g - 1)
-        f2_g = num.take(f_n, self.n_g)
-        f3_g = num.take(f_n, self.n_g + 1)
-        ff_g = f1_g * self.x1_g + f2_g * self.x2_g + f3_g * self.x3_g
-        return ff_g * self.r_g**l

@@ -85,8 +85,11 @@ class MPIPaw:
             if debug:
                 cmd += 'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job
             else:
-                cmd += 'mpirun -nw -x GRIDPAW_PARALLEL=1 -x PYTHONPATH -x GRIDPAWSETUPPATH C %s' % job
+#                cmd += 'mpirun -nw -x GRIDPAW_PARALLEL=1 -x PYTHONPATH -x GRIDPAWSETUPPATH C %s' % job
+                cmd += 'mpirun -nw -x GRIDPAW_PARALLEL=1 C %s' % job
         # Start remote calculator:
+        print cmd
+        print os.environ['GRIDPAWSETUPPATH']
         error = os.system(cmd)
         if error != 0:
             raise RuntimeError

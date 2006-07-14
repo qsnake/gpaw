@@ -58,7 +58,7 @@ class Nucleus:
         self.setup = setup
         self.a = a
         self.typecode = typecode
-        lmax = self.setup.lmax
+        lmax = setup.lmax
         self.Q_L = num.zeros((lmax + 1)**2, num.Float)
         self.neighbors = []
         self.spos_c = num.array([-1.0, -1.0, -1.0])
@@ -133,7 +133,7 @@ class Nucleus:
         create = create_localized_functions
 
         # Projectors:
-        pt_j = self.setup.get_projectors()
+        pt_j = self.setup.pt_j
         pt_i = create(pt_j, gd, spos_c, typecode=self.typecode, lfbc=lfbc)
 
         if self.typecode == num.Complex and pt_i is not None:
@@ -149,17 +149,17 @@ class Nucleus:
         self.pt_i = pt_i
         
         # Localized potential:
-        vbar = self.setup.get_localized_potential()
+        vbar = self.setup.vbar
         vbar = create([vbar], finegd, spos_c, lfbc=lfbc)
 
         self.vbar = vbar
 
         # Shape functions:
-        ghat_l = self.setup.get_shape_functions()
+        ghat_l = self.setup.ghat_l
         ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc)
             
         # Potential:
-        vhat_l = self.setup.get_potential()
+        vhat_l = self.setup.vhat_l
         vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc)
 
         # ghat and vhat have the same size:
@@ -176,7 +176,7 @@ class Nucleus:
         self.vhat_L = vhat_L
         
         # Smooth core density:
-        nct = self.setup.get_smooth_core_density()
+        nct = self.setup.nct
         self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
         if self.nct is not None:
             self.nct.set_communicator(self.comm, rank)
@@ -198,7 +198,7 @@ class Nucleus:
                         lf.set_communicator(comm, root)
 
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
-        phit_j = self.setup.get_atomic_orbitals()
+        phit_j = self.setup.phit_j
         self.phit_i = create_localized_functions(
             phit_j, gd, self.spos_c, typecode=self.typecode,
             cut=True, forces=False, lfbc=lfbc)
@@ -206,10 +206,10 @@ class Nucleus:
             self.phit_i.set_phase_factors(k_ki)
 
     def get_number_of_atomic_orbitals(self):
-        return self.setup.get_number_of_atomic_orbitals()
+        return self.setup.niAO
 
     def get_number_of_partial_waves(self):
-        return self.setup.get_number_of_partial_waves()
+        return self.setup.ni
     
     def create_atomic_orbitals(self, psit_iG, k):
         if self.phit_i is None:
@@ -304,8 +304,8 @@ class Nucleus:
         
     def calculate_hamiltonian(self, nt_g, vHt_g):
         if self.in_this_domain:
-            a = self.setup #note != self.a (which is just an index for nucleus)
-            W_L = num.zeros((a.lmax + 1)**2, num.Float)
+            s = self.setup
+            W_L = num.zeros((s.lmax + 1)**2, num.Float)
             for neighbor in self.neighbors:
                 W_L += num.dot(neighbor.v_LL, neighbor.nucleus().Q_L)
             U = 0.5 * num.dot(self.Q_L, W_L)
@@ -313,19 +313,19 @@ class Nucleus:
             self.vhat_L.integrate(nt_g, W_L)
             self.ghat_L.integrate(vHt_g, W_L)
 
-            Exc = a.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
-            if a.xcname == 'EXX': # XXX EXX hack 
-                Exc = a.ExxC - num.dot(D_p, (a.X_p + num.dot(a.M_pp, D_p)))
-                self.H_sp -= a.X_p - 2.0 * num.dot(a.M_pp, D_p)
+            Exc = s.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
+            if s.xcname == 'EXX': # XXX EXX hack 
+                Exc = s.ExxC - num.dot(D_p, (s.X_p + num.dot(s.M_pp, D_p)))
+                self.H_sp -= s.X_p - 2.0 * num.dot(s.M_pp, D_p)
 
             D_p = num.sum(self.D_sp)
-            dH_p = (a.K_p + a.M_p + a.MB_p + 2.0 * num.dot(a.M_pp, D_p) +
-                    num.dot(a.Delta_pL, W_L))
+            dH_p = (s.K_p + s.M_p + s.MB_p + 2.0 * num.dot(s.M_pp, D_p) +
+                    num.dot(s.Delta_pL, W_L))
 
-            Ekin = num.dot(a.K_p, D_p) + a.Kc
+            Ekin = num.dot(s.K_p, D_p) + s.Kc
 
-            Ebar = a.MB + num.dot(a.MB_p, D_p)
-            Epot = U + a.M + num.dot(D_p, (a.M_p + num.dot(a.M_pp, D_p)))
+            Ebar = s.MB + num.dot(s.MB_p, D_p)
+            Epot = U + s.M + num.dot(D_p, (s.M_p + num.dot(s.M_pp, D_p)))
             for H_p in self.H_sp:
                 H_p += dH_p
 
@@ -383,7 +383,7 @@ class Nucleus:
             nb = P_ni.shape[0]
             H_ii = unpack(self.H_sp[s])
             O_ii = self.setup.O_ii
-            ni = self.setup.get_number_of_partial_waves()
+            ni = self.setup.ni
             F_nic = num.zeros((nb, ni, 3), self.typecode)
             # ???? Optimization: Take the real value of F_nk * P_ni early.
             self.pt_i.derivative(psit_nG, F_nic, k)

@@ -306,12 +306,12 @@ class Paw:
 
         # Free allocated space for radial grids:
         for setup in self.setups.values():
-            setup.delete_atomic_orbitals()
+            del setup.phit_j
         for nucleus in self.nuclei:
             try:
                 del nucleus.phit_j
             except AttributeError:
-                continue
+                pass
 
         if hund:
             M = int(0.5 + num.sum(magmom_a))
