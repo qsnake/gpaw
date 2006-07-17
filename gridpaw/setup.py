@@ -15,7 +15,6 @@ from gridpaw.grid_descriptor import RadialGridDescriptor
 from gridpaw.utilities import unpack, erf, fac, hartree
 from gridpaw.xc_atom import XCAtom
 from gridpaw.xc_functional import XCOperator
-from gridpaw.filter import Filter
 
 
 class Setup:
