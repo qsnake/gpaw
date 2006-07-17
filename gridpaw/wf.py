@@ -216,7 +216,11 @@ class WaveFunctions:
         error = 0.0
         for kpt in self.kpt_u:
             error += kpt.calculate_residuals(pt_nuclei,convergeall)
-        return self.kpt_comm.sum(error) / self.nvalence
+
+        if self.nvalence == 0:
+            return 0.0
+        else:
+            return self.kpt_comm.sum(error) / self.nvalence
 
     def rmm_diis(self, pt_nuclei, vt_sG):
         """Do RMM-DIIS update of wave functions."""

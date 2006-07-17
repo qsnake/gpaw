@@ -323,7 +323,7 @@ class Paw:
     def set_convergence_criteria(self, tol):
         """Set convergence criteria.
 
-        Stop iterating when the size of the residuals is belov
+        Stop iterating when the size of the residuals are below
         ``tol``."""
         
         if tol < self.tolerance:
@@ -399,8 +399,8 @@ class Paw:
         if not isinstance(wf.kpt_u[0].psit_nG, num.ArrayType):
             assert self.niter == 0 and not mpi.parallel
 
-            # Calculation started from a restart file.  Allocate array
-            # for wavefunctions and copy data from the file:
+            # Calculation started from a restart file.  Allocate arrays
+            # for wave functions and copy data from the file:
             for kpt in wf.kpt_u:
                 kpt.psit_nG = kpt.psit_nG[:]
                 kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
@@ -413,16 +413,23 @@ class Paw:
             # or from a restart file.  We scale the density to match
             # the compensation charges.
 
+            if self.charge != 0.0:
+                x = float(wf.nvalence) / (wf.nvalence + self.charge)
+                for nucleus in self.my_nuclei:
+                    nucleus.D_sp *= x
+                self.nt_sG *= x
+                
             self.calculate_multipole_moments()
             Q = 0.0
-            for nuclei in self.my_nuclei:
-                Q += nuclei.Q_L[0]
+            for nucleus in self.my_nuclei:
+                Q += nucleus.Q_L[0]
             Q = sqrt(4 * pi) * self.domain.comm.sum(Q)
             Nt = self.gd.integrate(self.nt_sG)
-            # Nt + Q must be zero:
-            x = -Q / Nt
-            assert 0.83 < x < 1.17, 'x=%f' % x
-            self.nt_sG *= x
+            # Nt + Q must be equal to minus the total charge:
+            if Nt != 0.0:
+                x = -(self.charge + Q) / Nt
+                assert 0.83 < x < 1.17, 'x=%f' % x
+                self.nt_sG *= x
         
         wf.calculate_projections_and_orthogonalize(self.pt_nuclei,
                                                    self.my_nuclei)
@@ -465,6 +472,8 @@ class Paw:
 
         self.error = dsum(wf.calculate_residuals(self.pt_nuclei,
                                                  self.convergeall))
+        if self.error == 0:
+            self.error = self.tolerance
 
         if (self.error > self.tolerance and
             self.niter < self.maxiter
@@ -539,14 +548,7 @@ class Paw:
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
         
-        if self.niter==0:
-            # The initial density is calculated in
-            # Nucleus.add_atomic_density() and that density
-            # will be a neutral density
-            # XXXX - should be initialised to right charge eventually
-            assert abs(self.finegd.integrate(self.rhot_g)) < 0.2
-        else:
-            assert abs(self.finegd.integrate(self.rhot_g)+self.charge) < 0.2
+        assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 0.2
 
         self.timer.start('poisson')
         # npoisson is the number of iterations:

@@ -265,7 +265,6 @@ class Nucleus:
 
             i += degeneracy
         assert i == niao
-        assert magmom == 0.0
 
         if self.in_this_domain:
             for s in range(ns):
