@@ -1,4 +1,4 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-version = '0.13.0'
+version = '0.14.0'

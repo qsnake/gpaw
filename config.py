@@ -12,7 +12,7 @@ from glob import glob
 from os.path import join
 from stat import ST_MTIME
 
-def check_packages(packages, msg):
+def check_packages(packages, msg, force_inclusion_of_ase):
     """Check the python version and required extra packages
 
     If ASE is not installed, the `packages` list is extended with the
@@ -38,9 +38,15 @@ def check_packages(packages, msg):
                     '  C-library is probably missing).']
         msg += ['  You will not be able to write and read wave functions!']
 
-    try:
-        import ASE
-    except ImportError:
+    if not force_inclusion_of_ase:
+        try:
+            import ASE
+        except ImportError:
+            include_ase = True
+        else:
+            include_ase = False
+            
+    if force_inclusion_of_ase or include_ase:
         # Find ASE directories:
         ase = []
         for root, dirs, files in os.walk('ASE'):

@@ -3,6 +3,4 @@ include c/*.h
 include c/bmgs/*.h
 include c/bmgs/*.c
 include test/*.py
-include tools/gpaw*
-exclude tools/gpaw*~
 include demo/*.py

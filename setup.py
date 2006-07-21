@@ -49,7 +49,12 @@ packages = ['gridpaw',
             'gridpaw.utilities',
             'gridpaw.setuptests']
 
-check_packages(packages, msg)
+force_inclusion_of_ase = False
+if '--force-inclusion-of-ase' in sys.argv:
+    force_inclusion_of_ase = True
+    sys.argv.remove('--force-inclusion-of-ase')
+    
+check_packages(packages, msg, force_inclusion_of_ase)
 
 get_system_config(define_macros, undef_macros,
                   include_dirs, libraries, library_dirs,
@@ -115,7 +120,7 @@ extension = Extension('_gridpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-scripts = glob(join('tools', 'gpaw*[a-z]')) 
+scripts = glob(join('tools', 'gpa*[a-z]')) 
 if custom_interpreter:
     scripts.append('build/bin.%s/' % plat + 'gridpaw-python')
 
