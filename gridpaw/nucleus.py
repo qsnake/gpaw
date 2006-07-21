@@ -234,10 +234,10 @@ class Nucleus:
             D_sii = num.zeros((ns, ni, ni), num.Float)
 
         i = 0
-        for l, f in zip(self.setup.l_j, self.setup.f_j):
+        for n, l, f in zip(self.setup.n_j, self.setup.l_j, self.setup.f_j):
             degeneracy = 2 * l + 1
             f = int(f)
-            if f == 0:
+            if n < 0:
                 break
             if hund:
                 # Use Hunds rules:

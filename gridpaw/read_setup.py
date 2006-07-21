@@ -84,7 +84,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
     
     def startElement(self, name, attrs):
         if name == 'paw_setup':
-            assert attrs['version'] >= '0.4'
+            self.version = attrs['version']
+            assert self.version >= '0.4'
         if name == 'atom':
             self.Z = int(attrs['Z'])
             self.Nc = int(attrs['core'])
@@ -105,12 +106,15 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         elif name == 'core_energy':
             self.e_kinetic_core = float(attrs['kinetic'])
         elif name == 'state':
-            self.n_j.append(int(attrs.get('n', 0)))
+            self.n_j.append(int(attrs.get('n', -1)))
             self.l_j.append(int(attrs['l']))
-            self.f_j.append(int(attrs.get('f', 0))) #XXX no default!!!
+            self.f_j.append(int(attrs.get('f', 0)))
             self.eps_j.append(float(attrs['e']))
             self.rcut_j.append(float(attrs.get('rc', -1)))
             self.id_j.append(attrs['id'])
+            # Compatibility with old setups:
+            if self.version < '0.6' and self.f_j[-1] == 0:
+                self.n_j[-1] = -1
         elif name in ['grid', 'radial_grid']:  # XXX
             assert attrs['eq'] == 'r=a*i/(n-i)'
             self.ng = int(attrs['n'])

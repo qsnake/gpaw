@@ -30,8 +30,8 @@ parameters = {
     'Be': ('[He]',    1.5),
     'C' : ('[He]',    1.0),
     'N' : ('[He]',    1.1),
-    'O' : ('[He]',    1.2, {0: [0.0], 1: [0.0], 2: [0.0]}),
-    'F' : ('[He]',    1.2, {0: [-0.99], 1: [-0.15], 2: [0.0]}),
+    'O' : ('[He]',    1.2),# {0: [0.0], 1: [0.0], 2: [0.0]}),
+    'F' : ('[He]',    1.2),# {0: [-0.99], 1: [-0.15], 2: [0.0]}),
     'Ne': ('[He]',    1.8),    
     'Na': ('[Ne]',    2.3),
     'Mg': ('[Ne]',    2.0),
@@ -40,19 +40,19 @@ parameters = {
     'P' : ('[Ne]',    2.0),
     'S' : ('[Ne]',    1.87),
     'Cl': ('[Ne]',    1.5),
-    'V' : ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
-    'Cr': ('[Ar]',   [2.4, 2.4, 2.2], {0: [0.8], 1: [-0.2], 2: [0.8]}),
+    'V' : ('[Ar]',   [2.5, 2.4, 2.2]),
+    'Cr': ('[Ar]',   [2.4, 2.4, 2.2]),
     'Fe': ('[Ar]',    2.3),
     'Ni': ('[Ar]',    2.3),
-    'Cu': ('[Ar]',    2.3),#[2.3, 2.3, 2.1]),
-    'Ga': ('[Ar]3d',  2.0),
+    'Cu': ('[Ar]',   [2.3, 2.2, 2.1]),
+    'Ga': ('[Ar]3d',  2.2),
     'As': ('[Ar]',    2.0),
     'Zr': ('[Ar]3d',  2.0),
     'Mo': ('[Kr]',   [2.8, 2.8, 2.3]),
     'Ru': ('[Kr]',    2.6),
-    'Pd': ('[Kr]',   [2.3, 2.2, 1.9], {0: [-0.3], 1: [-0.3], 2: [0.8]}),
+    'Pd': ('[Kr]',   [2.3, 2.5, 2.0]),
     'Ag': ('[Kr]',    2.5),
-    'Pt': ('[Xe]4f',  2.5),
+    'Pt': ('[Xe]4f', [2.3, 2.5, 2.0]),
     'Au': ('[Xe]4f',  2.5)
     }
 
@@ -73,36 +73,13 @@ class Generator(AllElectron):
         self.rcut = rcut
         self.rcut_l = rcut_l
 
-        # Do all-electron calculation:
-        AllElectron.run(self)
-
-        print
-        print 'Generating PAW setup'
-        if core != '':
-            print 'Frozen core:', core
-            
-        # So far - no ghost-states:
-        self.ghost = False
-
-        N = self.N
-        r = self.r
-        dr = self.dr
-        d2gdr2 = self.d2gdr2
-        beta = self.beta
-
-        dv = r**2 * dr
-        
         Z = self.Z
 
         n_j = self.n_j
         l_j = self.l_j
         f_j = self.f_j
         e_j = self.e_j
-        nj = len(n_j)
 
-        # Highest occupied atomic orbital:
-        self.emax = max(e_j)
-        
         # Parse core string:
         j = 0
         if core.startswith('['):
@@ -118,8 +95,42 @@ class Generator(AllElectron):
             core = core[2:]
         njcore = j
         self.njcore = njcore
-        
+
+        if 2 in l_j[njcore:]:
+            # We have a bound valence d-state.  Add bound s- and
+            # p-states if not already there:
+            for l in [0, 1]:
+                if l not in l_j[njcore:]:
+                    n_j.append(1 + l + l_j.count(l))
+                    l_j.append(l)
+                    f_j.append(0.0)
+                    e_j.append(-0.01)
+
+        nj = len(n_j)
+                    
         self.Nv = sum(f_j[njcore:])
+
+        # Do all-electron calculation:
+        AllElectron.run(self)
+
+        # Highest occupied atomic orbital:
+        self.emax = max(e_j)
+        
+        N = self.N
+        r = self.r
+        dr = self.dr
+        d2gdr2 = self.d2gdr2
+        beta = self.beta
+
+        dv = r**2 * dr
+        
+        print
+        print 'Generating PAW setup'
+        if core != '':
+            print 'Frozen core:', core
+            
+        # So far - no ghost-states:
+        self.ghost = False
 
         # Calculate the kinetic energy of the core states:
         Ekincore = 0.0
@@ -153,7 +164,6 @@ class Generator(AllElectron):
                     n_n.append(n_j[j])
                     f_n.append(f_j[j])
                     e_n.append(e_j[j])
-                    assert f_j[j] > 0.0
             n_ln.append(n_n)
             f_ln.append(f_n)
             e_ln.append(e_n)
@@ -171,49 +181,27 @@ class Generator(AllElectron):
                     e_ln.append([])
                 lmax = lmaxextra
             for l in extra:
+                nn = -1
                 for e in extra[l]:
-                    if len(n_ln[l]) > 0:
-                        n = n_ln[l][-1] + 1
-                    else:
-                        n = l + 1
-                    n_ln[l].append(n)
+                    n_ln[l].append(nn)
                     f_ln[l].append(0.0)
                     e_ln[l].append(e)
+                    nn -= 1
         else:
             # Automatic:
-            if [len(n_n) for n_n in n_ln] == [1, 0, 1]:
-                # We have s- and d-channels, but no p-channel.  Add it:
-                n = n_ln[0][0]
-                e = e_ln[0][0]
-                n_ln[1] = [n]
-                f_ln[1] = [0.0]
-                e_ln[1] = [e]
-            elif [len(n_n) for n_n in n_ln] == [0, 0, 1]:
-                # We have a d-channel, but no s- and p-channel.  Add them:
-                n = n_ln[2][0]
-                e = e_ln[2][0]
-                n_ln[0] = [n]
-                f_ln[0] = [0.0]
-                e_ln[0] = [e]
-                n_ln[1] = [n]
-                f_ln[1] = [0.0]
-                e_ln[1] = [e]
 
             # Make sure we have two projectors for each occupied channel:
             for l in range(lmax + 1):
                 if len(n_ln[l]) < 2:
                     # Only one - add one more:
-                    n = 1 + n_ln[l][0]
-                    e = 1.0 + e_ln[l][0]
-
-                    n_ln[l].append(n)
+                    assert len(n_ln[l]) == 1
+                    n_ln[l].append(-1)
                     f_ln[l].append(0.0)
-                    e_ln[l].append(e)
+                    e_ln[l].append(1.0 + e_ln[l][0])
 
             if lmax < 2:
                 # Add extra projector for l = lmax + 1:
-                n = lmax + 2
-                n_ln.append([n])
+                n_ln.append([-1])
                 f_ln.append([0.0])
                 e_ln.append([0.0])
                 lmax += 1
@@ -243,7 +231,6 @@ class Generator(AllElectron):
             # Collect all-electron wave functions:
             u_n = [self.u_j[j] for j in range(njcore, nj) if l_j[j] == l]
             for n, u in enumerate(u_n):
-                assert f_ln[l][n] > 0.0
                 u_ln[l][n] = u
 
         # Grid-index corresponding to rcut:
@@ -260,9 +247,9 @@ class Generator(AllElectron):
         # Calculate unbound extra states:
         c2 = -(r / dr)**2
         c10 = -d2gdr2 * r**2
-        for l, (f_n, e_n, u_n) in enumerate(zip(f_ln, e_ln, u_ln)):
-            for f, e, u in zip(f_n, e_n, u_n):
-                if f == 0.0:
+        for l, (n_n, e_n, u_n) in enumerate(zip(n_ln, e_ln, u_ln)):
+            for n, e, u in zip(n_n, e_n, u_n):
+                if n < 0:
                     u[:] = 0.0
                     shoot(u, l, self.vr, e, self.r2dvdr, r, dr, c10, c2,
                           self.scalarrel, gmax=gmax)
@@ -286,19 +273,25 @@ class Generator(AllElectron):
                 A[:, 1] = r[gc - 2:gc + 2]**2
                 A[:, 2] = A[:, 1]**2
                 A[:, 3] = A[:, 1] * A[:, 2]
-##                A[:, 4] = A[:, 2]**2
                 a = u[gc - 2:gc + 2] / r[gc - 2:gc + 2]**(l + 1)
+                if 0:#nodeless:
+                    a = num.log(a)
                 a = solve_linear_equations(A, a)
                 r1 = r[:gc]
                 r2 = r1**2
                 rl1 = r1**(l + 1)
-                y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))## + r2 * a[4])))
+                y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))
+                if 0:#nodeless:
+                    y = num.exp(y)
                 s[:gc] = rl1 * y
 
                 coefs.append(a)
                 if nodeless:
-                    # The first state for each l must be nodeless:
-                    assert num.alltrue(s[1:gc] > 0.0)
+                    if not num.alltrue(s[1:gc] > 0.0):
+                        print ('Error:  The %d%s pseudo wave has a node!' %
+                               (n_ln[]l[0], 'spdf'[l]))
+                        raise SystemExit
+                    # Only the first state for each l must be nodeless:
                     nodeless = False
 
         # Calculate pseudo core density:
@@ -367,14 +360,13 @@ class Generator(AllElectron):
             A = num.ones((2, 2), num.Float)
             A[0] = 1.0
             A[1] = r[gcut - 1:gcut + 1]**2
-##            A[2] = A[1]**2
+            #A[2] = A[1]**2
             a = vt[gcut - 1:gcut + 1]
             a = solve_linear_equations(num.transpose(A), a)
             r2 = r**2
             vbar = a[0] + r2 * (a[1])## + r2 * a[2])
             vbar -= vt
             vbar[gcut:] = 0.0
-##            vbar[:] = 0.0
             vt += vbar
 
         
@@ -382,17 +374,16 @@ class Generator(AllElectron):
         for l, (e_n, s_n, q_n) in enumerate(zip(e_ln, s_ln, q_ln)):
             gc = gcut_l[l]
             for e, s, q in zip(e_n, s_n, q_n):
-##                q[:] = self.kin(l, s)
-                a = coefs.pop(0)
-                for k in range(3):
-                    b = l + 1 + 2 * k
-                    q += 0.5 * a[k + 1] * (l * (l + 1) -
-                                           (b + 2) * (b + 1)) * r**b
+                if 1:
+                    q[:] = self.kin(l, s)
+                else:
+                    a = coefs.pop(0)
+                    for k in range(3):
+                        b = l + 1 + 2 * k
+                        q += 0.5 * a[k + 1] * (l * (l + 1) -
+                                               (b + 2) * (b + 1)) * r**b
                 q += (vt - e) * s
                 q[gcut:] = 0.0
-##                q[gcut_l[l]??????:] = 0.0
-
-        self.write(vbar, 'vbar0')
 
         filter = Filter(r, dr, rcut2, 0.4).filter
 
@@ -443,7 +434,6 @@ class Generator(AllElectron):
             dH_lnn.append(dH_nn)
 
             for n, q in enumerate(q_n):
-                self.write(q, 'proj0', n=n_ln[l][n], l=l)
                 q[:] = filter(q, l) * r**(l + 1)
 
             A_nn = num.innerproduct(s_n, q_n * dr)
@@ -455,12 +445,13 @@ class Generator(AllElectron):
         print '--------------------------------'
         for l, (n_n, f_n, e_n) in enumerate(zip(n_ln, f_ln, e_ln)):
             for n in range(len(e_n)):
-                print '%d%s^%-2d: %12.6f' % (n_n[n], 'spdf'[l],
-                                             f_n[n], e_n[n]),
-                if f_n[n] > 0.0:
-                    print '%12.6f' % num.dot(s_ln[l][n]**2, dr)
+                if n_n[n] > 0:
+                    f = '(%d)' % f_n[n]
+                    print '%d%s%-4s: %12.6f %12.6f' % (
+                        n_n[n], 'spdf'[l], f, e_n[n],
+                        num.dot(s_ln[l][n]**2, dr))
                 else:
-                    print
+                    print '*%s    : %12.6f' % ('spdf'[l], e_n[n])
         print '--------------------------------'
 
         if logderiv:
@@ -523,7 +514,7 @@ class Generator(AllElectron):
         for l, (n_n, f_n, u_n, s_n, q_n) in enumerate(zip(n_ln, f_ln,
                                                           u_ln, s_ln, q_ln)):
             for n, f, u, s, q in zip(n_n, f_n, u_n, s_n, q_n):
-                if f == 0.0:
+                if n < 0:
                     self.write(u, 'ae', n=n, l=l)
                 self.write(s, 'ps', n=n, l=l)
                 self.write(q, 'proj', n=n, l=l)
@@ -540,11 +531,11 @@ class Generator(AllElectron):
         self.vq_j = vq_j = []
         j_ln = [[0 for f in f_n] for f_n in f_ln]
         j = 0
-        for l, f_n in enumerate(f_ln):
-            for n, f in enumerate(f_n):
-                if f > 0:
-                    vf_j.append(f)
-                    vn_j.append(n_ln[l][n])
+        for l, n_n in enumerate(n_ln):
+            for n, nn in enumerate(n_n):
+                if nn > 0:
+                    vf_j.append(f_ln[l][n])
+                    vn_j.append(nn)
                     vl_j.append(l)
                     ve_j.append(e_ln[l][n])
                     vu_j.append(u_ln[l][n])
@@ -552,11 +543,11 @@ class Generator(AllElectron):
                     vq_j.append(q_ln[l][n])
                     j_ln[l][n] = j
                     j += 1
-        for l, f_n in enumerate(f_ln):
-            for n, f in enumerate(f_n):
-                if f == 0:
+        for l, n_n in enumerate(n_ln):
+            for n, nn in enumerate(n_n):
+                if nn < 0:
                     vf_j.append(0)
-                    vn_j.append(n_ln[l][n])
+                    vn_j.append(nn)
                     vl_j.append(l)
                     ve_j.append(e_ln[l][n])
                     vu_j.append(u_ln[l][n])
@@ -601,6 +592,9 @@ class Generator(AllElectron):
             f3 = num.take(f, G + 1)
             return f1 * x1 + f2 * x2 + f3 * x3
         vt = interpolate(self.vt)
+        print
+        print 'state   all-electron     PAW'
+        print '-------------------------------'
         for l in range(3):
             if l <= self.lmax:
                 q_n = num.array([interpolate(q) for q in self.q_ln[l]])
@@ -616,16 +610,27 @@ class Generator(AllElectron):
             H.flat[ng::ng + 1] -= 0.5 / h**2
             S.flat[::ng + 1] += 1.0
             e_n = num.zeros(ng, num.Float)
-            diagonalize(H, e_n, S)
-            if l <= self.lmax:
-                f = self.f_ln[l][0]
-                e = self.e_ln[l][0]
+            error = diagonalize(H, e_n, S)
+            if error != 0:
+                raise RuntimeError
+            ePAW = e_n[0]
+            if l <= self.lmax and self.n_ln[l][0] > 0:
+                eAE = self.e_ln[l][0]
+                print '%d%s:   %12.6f %12.6f' % (self.n_ln[l][0],
+                                                 'spdf'[l], eAE, ePAW),
+                if abs(eAE - ePAW) > 0.014:
+                    print '  GHOST-STATE!'
+                    self.ghost = True
+                else:
+                    print
             else:
-                f = 0.0
-            e0 = e_n[0]
-            if (f > 0 and abs(e - e0) > 0.014) or (f == 0 and e0 < self.emax):
-                print 'GHOST-state in %s-channel at %.6f' % ('spdf'[l], e0)
-                self.ghost = True
+                print '*%s:                %12.6f' % ('spdf'[l], ePAW),
+                if ePAW < self.emax:
+                    print '  GHOST-STATE!'
+                    self.ghost = True
+                else:
+                    print
+        print '-------------------------------'
 
     def integrate(self, l, vt, e, gld, q=None):
         r = self.r[1:]
@@ -661,7 +666,7 @@ class Generator(AllElectron):
             raise SystemExit
 
         print >> xml, '<?xml version="1.0"?>'
-        print >> xml, '<paw_setup version="0.5">'
+        print >> xml, '<paw_setup version="0.6">'
 
         name = names[self.Z].title()
         comment1 = name + ' setup for the Projector Augmented Wave method.'
@@ -699,11 +704,16 @@ class Generator(AllElectron):
 
         print >> xml, '  <valence_states>'
         ids = []
-        line = '    <state n="%d" l="%d" f=%s rc="%4.2f" e="%7.4f" id="%s"/>'
+        line1 = '    <state n="%d" l="%d" f=%s rc="%5.3f" e="%8.5f" id="%s"/>'
+        line2 = '    <state       l="%d"        rc="%5.3f" e="%8.5f" id="%s"/>'
         for l, n, f, e in zip(vl_j, vn_j, vf_j, ve_j):
-            f = '%-4s' % ('"%d"' % f)
-            id = self.symbol + str(n) + 'spdf'[l]
-            print >> xml, line % (n, l, f, self.rcut_l[l], e, id)
+            if n > 0:
+                f = '%-4s' % ('"%d"' % f)
+                id = '%s-%d%s' % (self.symbol, n, 'spdf'[l])
+                print >> xml, line1 % (n, l, f, self.rcut_l[l], e, id)
+            else:
+                id = '%s-%s%d' % (self.symbol, 'spdf'[l], -n)
+                print >> xml, line2 % (l, self.rcut_l[l], e, id)
             ids.append(id)
         print >> xml, '  </valence_states>'
 

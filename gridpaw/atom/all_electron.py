@@ -43,10 +43,10 @@ class AllElectron:
         # Collect principal quantum numbers, angular momentum quantum
         # numbers, occupation numbers and eigenvalues (j is a combined
         # index for n and l):        
-        self.n_j = num.array([n for n, l, f, e in nlfe_j])
-        self.l_j = num.array([l for n, l, f, e in nlfe_j])
-        self.f_j = num.array([f for n, l, f, e in nlfe_j])
-        self.e_j = num.array([e for n, l, f, e in nlfe_j])
+        self.n_j = [n for n, l, f, e in nlfe_j]
+        self.l_j = [l for n, l, f, e in nlfe_j]
+        self.f_j = [f for n, l, f, e in nlfe_j]
+        self.e_j = [e for n, l, f, e in nlfe_j]
 
         print
         if scalarrel:
@@ -55,39 +55,6 @@ class AllElectron:
             print 'Atomic',
         print '%s calculation for %s (%s, Z=%d)' % (
             xcname, symbol, names[self.Z], self.Z)
-
-        # Number of orbitals:
-        nj = len(nlfe_j)
-        
-        #     beta g
-        # r = ------, g = 0, 1, ..., N - 1
-        #     N - g
-        #
-        #        rN
-        # g = --------
-        #     beta + r
-        maxnodes = max(self.n_j - self.l_j - 1)
-        N = (maxnodes + 1) * 150
-        print N, 'radial gridpoints.'
-        beta = 0.4
-        g = num.arange(N, typecode=num.Float)
-        self.r = beta * g / (N - g)
-        self.dr = beta * N / (N - g)**2
-        self.rgd = RadialGridDescriptor(self.r, self.dr)
-        self.d2gdr2 = -2 * N * beta / (beta + self.r)**3
-        self.N = N
-        self.beta = beta
-
-        # Radial wave functions multiplied by radius:
-        self.u_j = num.zeros((nj, N), num.Float)
-
-        # Effective potential multiplied by radius:
-        self.vr = num.zeros(N, num.Float)
-
-        # Electron density:
-        self.n = num.zeros(N, num.Float)
-
-        self.xc = XCOperator(XCFunctional(xcname, scalarrel), self.rgd)
 
     def intialize_wave_functions(self):
         r = self.r
@@ -108,19 +75,54 @@ class AllElectron:
             u *= 1.0 / sqrt(norm)
         
     def run(self):
-        Z = self.Z
-        r = self.r
-        dr = self.dr
-        n = self.n
-        vr = self.vr
+        #     beta g
+        # r = ------, g = 0, 1, ..., N - 1
+        #     N - g
+        #
+        #        rN
+        # g = --------
+        #     beta + r
 
-        vHr = num.zeros(self.N, num.Float)
-        vXC = num.zeros(self.N, num.Float)
+        maxnodes = max([n - l - 1 for n, l in zip(self.n_j, self.l_j)])
+        N = (maxnodes + 1) * 150
+        print N, 'radial gridpoints.'
+        beta = 0.4
+        g = num.arange(N, typecode=num.Float)
+        self.r = beta * g / (N - g)
+        self.dr = beta * N / (N - g)**2
+        self.rgd = RadialGridDescriptor(self.r, self.dr)
+        self.d2gdr2 = -2 * N * beta / (beta + self.r)**3
+        self.N = N
+        self.beta = beta
+
+        # Number of orbitals:
+        nj = len(self.n_j)
+        
+        # Radial wave functions multiplied by radius:
+        self.u_j = num.zeros((nj, self.N), num.Float)
+
+        # Effective potential multiplied by radius:
+        self.vr = num.zeros(N, num.Float)
+
+        # Electron density:
+        self.n = num.zeros(N, num.Float)
+
+        self.xc = XCOperator(XCFunctional(self.xcname, self.scalarrel),
+                             self.rgd)
 
         n_j = self.n_j
         l_j = self.l_j
         f_j = self.f_j
         e_j = self.e_j
+
+        Z = self.Z    # nuclear charge
+        r = self.r    # radial coordinate
+        dr = self.dr  # dr/dg
+        n = self.n    # electron density
+        vr = self.vr  # effective potential multiplied by r
+
+        vHr = num.zeros(self.N, num.Float)
+        vXC = num.zeros(self.N, num.Float)
 
         try:
             f = open(self.symbol + '.restart', 'r')
@@ -189,7 +191,9 @@ class AllElectron:
         pickle.dump(n, open(self.symbol + '.restart', 'w'))
 
         Epot = 2 * pi * num.dot(n * r * (vHr - Z), dr)
-        Ekin = num.dot(f_j, e_j) - 4 * pi * num.dot(n * vr * r, dr)
+        Ekin = -4 * pi * num.dot(n * vr * r, dr)
+        for f, e in zip(f_j, e_j):
+            Ekin += f * e
 
         print
         print 'Energy contributions:'
@@ -244,7 +248,11 @@ class AllElectron:
             
         if l is not None:
             assert n is not None
-            name += '.%d%s' % (n, 'spdf'[l])
+            if n > 0:
+                # Bound state:
+                name += '.%d%s' % (n, 'spdf'[l])
+            else:
+                name += '.x%d%s' % (-n, 'spdf'[l])
                 
         f = open(name, 'w')
         for r, a in zip(self.r, array):

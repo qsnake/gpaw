@@ -75,8 +75,8 @@ class Setup:
         i = 0
         j = 0
         jlL_i = []
-        for l, f in zip(l_j, f_j):
-            if f > 0:
+        for l, n in zip(l_j, n_j):
+            if n > 0:
                 niAO += 2 * l + 1
             for m in range(2 * l + 1):
                 jlL_i.append((j, l, l**2 + m))
@@ -97,29 +97,48 @@ class Setup:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
         self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
 
-        def grr(phi_g, l, r_g):
-            w_g = phi_g.copy()
-            if l > 0:
-                w_g[1:] /= r_g[1:]**l
-                w1, w2 = w_g[1:3]
-                r0, r1, r2 = r_g[0:3]
-                w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2) 
-            return w_g
-        
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
             self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
                                     r_g=r_g, beta=beta))
-     
-        cutoff = 8.0 # ????????
+
+        # Cutoff for atomic orbitals used for initial guess:
+        rcut3 = 8.0  # XXXXX Should depend on the size of the atom!
+        gcut3 = 1 + int(rcut3 * ng / (rcut3 + beta))
+
+        # We cut off the wave functions smoothly at rcut3 by the
+        # following replacement:
+        #
+        #            /
+        #           | f(r),                                   r < rcut2
+        #  f(r) <- <  f(r) - a(r) f(rcut3) - b(r) f'(rcut3),  rcut2 < r < rcut3
+        #           | 0,                                      r > rcut3
+        #            \
+        #
+        # where a(r) and b(r) are 4. order polynomials:
+        #
+        #  a(rcut2) = 0,  a'(rcut2) = 0,  a''(rcut2) = 0,
+        #  a(rcut3) = 1, a'(rcut3) = 0
+        #  b(rcut2) = 0, b'(rcut2) = 0, b''(rcut2) = 0,
+        #  b(rcut3) = 0, b'(rcut3) = 1
+        #
+        x = (r_g[gcut2:gcut3] - rcut2) / (rcut3 - rcut2)
+        a_g = 4 * x**3 * (1 - 0.75 * x)
+        b_g = x**3 * (x - 1) * (rcut3 - rcut2)
+        
         self.phit_j = []
         for j, phit_g in enumerate(phit_jg):
-            if f_j[j] > 0:
+            if n_j[j] > 0:
                 l = l_j[j]
-                self.phit_j.append(Spline(l, cutoff,
-                                            grr(phit_g, l, r_g),
-                                            r_g=r_g, beta=beta))
+                phit = phit_g[gcut3]
+                dphitdr = ((phit - phit_g[gcut3 - 1]) /
+                           (r_g[gcut3] - r_g[gcut3 - 1]))
+                phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
+                phit_g[gcut3:] = 0.0
+                self.phit_j.append(Spline(l, rcut3,
+                                          grr(phit_g, l, r_g),
+                                          r_g=r_g, beta=beta))
 
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()
@@ -355,10 +374,11 @@ class Setup:
         print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' % (self.rcut, self.lmax)
         print >> out, '  valence states:'
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
-            if f > 0:
-                print >> out, '    %d%s(%d) %7.3f Ha' % (n, 'spdf'[l], f, eps)
+            if n > 0:
+                f = '(%d)' % f
+                print >> out, '    %d%s%-4s %7.3f Ha' % (n, 'spdf'[l], f, eps)
             else:
-                print >> out, '     %s    %7.3f Ha' % ('spdf'[l], eps)
+                print >> out, '    *%s     %7.3f Ha' % ('spdf'[l], eps)
         print >> out
 
     def calculate_rotations(self, R_slmm):
@@ -377,3 +397,14 @@ class Setup:
             D_ii += num.dot(R_ii, num.dot(D_aii[map_sa[s][a]],
                                               num.transpose(R_ii)))
         return D_ii / len(map_sa)
+
+
+def grr(phi_g, l, r_g):
+    w_g = phi_g.copy()
+    if l > 0:
+        w_g[1:] /= r_g[1:]**l
+        w1, w2 = w_g[1:3]
+        r0, r1, r2 = r_g[0:3]
+        w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2) 
+    return w_g
+        
