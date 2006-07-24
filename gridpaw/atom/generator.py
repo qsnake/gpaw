@@ -289,7 +289,7 @@ class Generator(AllElectron):
                 if nodeless:
                     if not num.alltrue(s[1:gc] > 0.0):
                         print ('Error:  The %d%s pseudo wave has a node!' %
-                               (n_ln[]l[0], 'spdf'[l]))
+                               (n_ln[l][0], 'spdf'[l]))
                         raise SystemExit
                     # Only the first state for each l must be nodeless:
                     nodeless = False
