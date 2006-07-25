@@ -35,7 +35,7 @@ class SingleAtom:
         else:
             width = 0
             hund = True
-            if symbol in ['C', 'O', 'F']:
+            if symbol in ['C', 'O', 'F', 'Cl']:
                 if 1:#forcesymm:
                     parameters['kpts'] = (2, 2, 2)
                     periodic = True

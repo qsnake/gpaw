@@ -138,9 +138,8 @@ elif opt.bulk:
         
     bulk = Bulk(symbol, structure=opt.crystal_structure,
                 a=opt.a_lattice_constant, c=opt.c_lattice_constant,
-                 h=opt.grid_spacing, kpts=kpts, magmom=opt.magnetic_moment,
-                 parameters=parameters)
-    bulk.energy()
+                 magmom=opt.magnetic_moment)
+    bulk.energy(h=opt.grid_spacing, kpts=kpts, parameters=parameters)
     if opt.write:
         bulk.atoms.GetCalculator().Write(opt.write, mode='no wave functions')
     if opt.write_all:
