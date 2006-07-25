@@ -170,7 +170,7 @@ class Nucleus:
             ghat_nuclei.append(self)
             ghat_nuclei.sort()
         if ghat_L is None and self.ghat_L is not None:
-            ghatt_nuclei.remove(self)
+            ghat_nuclei.remove(self)
 
         self.ghat_L = ghat_L
         self.vhat_L = vhat_L
