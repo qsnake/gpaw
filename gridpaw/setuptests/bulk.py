@@ -16,13 +16,15 @@ for symbol in setup_parameters:
     structure = X['symmetry'].lower()
     if structure == 'cubic':
         structure = 'sc'
-    a = X['a']
-    coa = X.get('c/a', 1)
-    V = a**3 * coa * {'sc': 1, 'bcc': 0.5, 'fcc': 0.25, 'hcp': sqrt(3) / 2,
-                      'diamond': 0.128}
-    data[symbol] = {'structure': structure, 'volume': V}
-    if coa != 1:
-        data[symbol]['c/a'] = coa
+    s = {'sc': 1, 'bcc': 0.5, 'fcc': 0.25, 'hcp': sqrt(3) / 2,
+         'diamond': 0.128}.get(structure)
+    if s is not None:
+        a = X['a']
+        coa = X.get('c/a', 1)
+        V = a**3 * coa * s
+        data[symbol] = {'structure': structure, 'volume': V}
+        if coa != 1:
+            data[symbol]['c/a'] = coa
         
 data['Fe']['magmom'] = 2.2
 #data['Co']['magmom'] = 1.5
@@ -61,11 +63,11 @@ class Bulk:
             if c is None:
                 coa = d.get('c/a', sqrt(8.0 / 3))
                 if a is None:
-                    a = (V / coa / sqrt(3))**(1.0 / 3)
+                    a = (2 * V / coa / sqrt(3))**(1.0 / 3)
                 c = coa * a
             else:
                 if a is None:
-                    a = sqrt(V / c / sqrt(3))
+                    a = sqrt(2 * V / c / sqrt(3))
             b = sqrt(3) * a
         elif structure == 'fcc':
             if a is None:
