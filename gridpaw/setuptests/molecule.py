@@ -7,15 +7,21 @@ from gridpaw.utilities import center
 from gridpaw.setuptests.singleatom import SingleAtom
 
 class Molecule:
-    def __init__(self, formula, a=None, h=None, parameters={}):
+    def __init__(self, formula, a=None, b=None, c=None, h=None, parameters={}):
         self.formula = formula
         self.parameters = parameters
         if a is None:
             a = 7.0  # Angstrom
+        if b is None:
+            b = a
+        if c is None:
+            c = a
         self.a = a
+        self.b = b
+        self.c = c
         
         self.atoms = molecules[formula].Copy()
-        self.atoms.SetUnitCell([a, a, a], fix=True)
+        self.atoms.SetUnitCell([a, b, c], fix=True)
         
         calc = Calculator(h=h, **parameters)
         self.atoms.SetCalculator(calc)
@@ -51,7 +57,7 @@ class Molecule:
             if symbol not in atom_energies:
                 if verbose:
                     print '%s:' % symbol,
-                atom = SingleAtom(symbol, a=self.a, h=h,
+                atom = SingleAtom(symbol, a=self.a, b=self.b, c=self.c, h=h,
                                   parameters=self.parameters)
                 atom_energies[symbol] = [atom.energy()] + atom.non_self_xc(xcs)
                 if verbose:

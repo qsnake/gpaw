@@ -72,12 +72,21 @@ for formula in molecules:
         file = open(filename, 'w')
         parameters['out'] = formula + '.txt'
         try:
-            e0 = Molecule(formula, a=a, h=h,
-                          parameters=parameters).energy()
+            molecule = Molecule(formula, a=a + 1, b=a, c=a - 1, h=h,
+                                parameters=parameters)
+            e0 = molecule.energy()
+            
+            e_i = []
+            if len(molecule.atoms) == 2:
+                x = molecule.atoms[1].GetCartesianPosition()[0]
+                for i in range(5):
+                    molecule.atoms[1].SetCartesianPosition(
+                        [x + (i - 2) * 0.015, 0, 0])
+                    e_i.append(molecule.energy())
         except ConvergenceError:
             pass
         else:
-            pickle.dump(e0, file)
+            pickle.dump((e0, e_i), file)
     
     for atom in molecules[formula]:
         atoms[atom.GetChemicalSymbol()] = 1
@@ -96,7 +105,7 @@ for symbol in atoms:
         file = open(filename, 'w')
         parameters['out'] = symbol + '.txt'
         try:
-            e0 = SingleAtom(symbol, a=a, spinpaired=False,
+            e0 = SingleAtom(symbol, a=a + 1, b=a, c=a - 1, spinpaired=False,
                             h=h, parameters=parameters, forcesymm=1).energy()
         except ConvergenceError:
             pass
