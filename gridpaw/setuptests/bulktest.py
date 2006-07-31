@@ -14,6 +14,7 @@ opt, tests = parser.parse_args()
 import os
 import sys
 import pickle
+from math import sqrt
 
 import Numeric as npy
 from LinearAlgebra import inverse
@@ -24,10 +25,9 @@ from gridpaw.setuptests.bulk import Bulk, data
 from gridpaw.paw import ConvergenceError
 
 
-parameters = {'lmax': 2}
+parameters = {'lmax': 2, 'xc': 'PBE'}
 
 inf = 1e4000
-nan = inf - inf
 
 scale = npy.array([(1 + (i - 2) * 0.015) for i in range(5)])
 a = 12.0
@@ -78,14 +78,15 @@ for symbol in data:
         file = open(filename, 'w')
         parameters['out'] = symbol + '.txt'
         try:
-            e0 = SingleAtom(symbol, a=a, spinpaired=False,
+            e0 = SingleAtom(symbol, a=a, b=a + 1, c=a - 1,
+                            spinpaired=False,
                             h=h, parameters=parameters, forcesymm=1).energy()
         except ConvergenceError:
             pass
         else:
             pickle.dump(e0, file)
 
-from pylab import plot, show
+from pylab import plot, text, show
 if opt.summary:
     M = npy.zeros((4, 5), npy.Float)
     for n in range(4):
@@ -93,15 +94,52 @@ if opt.summary:
     M = npy.dot(inverse(npy.innerproduct(M, M)), M)
     for symbol in data:
         print symbol
-        ea = e[symbol] / N[symbol]
-        va = V[symbol] * scale**3 / N[symbol]
-        print ea
-        if inf in ea:
+        n0 = N[symbol]
+        eb = e[symbol] / n0
+        ea = e1[symbol]
+        v0 = V[symbol] / n0
+        if ea != inf:
+            eb -= ea
+        vb = v0 * scale**3
+        if inf in eb:
             continue
-        vfit = npy.arange(va[0] * 0.9, va[-1] * 1.1, va[2] * 0.02)
-        a = npy.dot(M, ea)
+        vfit = npy.arange(vb[0] * 0.9, vb[-1] * 1.1, v0 * 0.02)
+        a = npy.dot(M, eb)
+        xmin = (-2 * a[2] + sqrt(4 * a[2]**2 - 12 * a[1] * a[3])) / (6 * a[3])
+        vmin = v0 / xmin**3
+        B = xmin**2 / 9 / vmin * (2 * a[2] + 6 * a[3] * xmin)
+        ec = -a[0]
         efit = a[0]
         for n in range(1, 4):
-            efit += a[n] * (va[2] / vfit)**(n / 3.0)
-        plot(va, ea, 'o', vfit, efit, '-')
+            efit += a[n] * (v0 / vfit)**(n / 3.0)
+            ec -= a[n] * (v0 / vmin)**(n / 3.0)
+        print vmin, B, ec, ea
+        plot(vb, eb, 'ro')
+        plot(vfit, efit, 'k-')
+        text(vmin, -ec, symbol)
     show()
+
+Vexp = {'Na': 255.4,
+        }
+V1 = {'Na': 249.8,
+      'Al': 111.2,
+      'Si': 276.3,
+      'Ge': 322.1,
+      'Cu': 80.6,
+      'W':  108.9,
+      'Fe': 76.7,
+      'Pd': 103.2,
+      'Pt': 105.7,
+      'Au': 121.1,
+      }
+B1 = {'Na': 7.6,
+      'Al': 77.3,
+      'Si': 89.0,
+      'Ge': 59.9,
+      'Cu': 139,
+      'W':  298,
+      'Fe': 198,
+      'Pd': 174,
+      'Pt': 247,
+      'Au': 142
+      }

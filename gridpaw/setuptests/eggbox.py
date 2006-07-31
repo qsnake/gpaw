@@ -1,47 +1,80 @@
-from atom_calc import atom_calc
-import Numeric as num
-import pickle
+#!/usr/bin/env python
+
+# Emacs: treat this as -*- python -*-
+
+import os
 import sys
+import pickle
+from optparse import OptionParser
 
 
-def eggbox(symbol, xc='LDA', hmin=0.25, hmax=0.3, L = 7.0):
-    
-    """Eggbox test.
+parser = OptionParser(usage='%prog options',
+                      version='%prog 0.1')
+parser.add_option('-s', '--summary', action='store_true',
+                  default=False,
+                  help='Do a summary.')
 
-    Make use of the atom_calc function, but with an array of h (here are the
-    min and max of the gridspace entered as ``hmin`` and ``hmax``). ``Symbol``
-    is the atomic symbol name, ``xc`` is the exchange-correlation functional
-    and ``L`` is the cubic cell length. A list of 101 energies is returned at
-    varying positions in the grid space from the atom_calc function.
-    """
+opt, tests = parser.parse_args()
 
-    data = {'Atomic symbol': symbol,
-            'Size of unit cell': L,
-            'Exchange-correlation functional': xc}
-    
-    j = []
-    nmax = int(L / hmin / 4 + 0.5) * 4
-    nmin = int(L / hmax / 4 + 0.5) * 4
-              
-    for n in range(nmin, nmax + 1, 4):
-        k = n
-        j.append(k)
+from gridpaw.setuptests.singleatom import SingleAtom
+from gridpaw.paw import ConvergenceError
 
-    z = [L / x for x in j]
-    tot_energy = num.zeros((len(j), 101), num.Float)
+symbols = 'H He Li Be C N O F Al Si P Cl'.split()
 
-    i = 0
+a = 5.0
+data = {}
+for symbol in symbols:
+    d = data[symbol] = []
+    for n in range(16, 36, 4):
+        h = a / n
+        filename = '%s-%.3f.egg' % (symbol, h)
+        if opt.summary:
+            try:
+                de, f = pickle.load(open(filename))
+            except EOFError:
+                de, f = '?', '?'
+            except IOError:
+                de, f = ' ', ' '
+            d.append((de, f))
+        elif not os.path.isfile(filename):
+            file = open(filename, 'w')
+            parameters['out']=filename+'.txt'
+            atom = SingleAtom(symbol, a=a, spinpaired=True,
+                              eggboxtest=True,
+                              h=h, parameters=parameters)
+            try:
+                x, e, dedx = atom.eggboxtest(9)
+            except ConvergenceError:
+                pass
+            else:
+                de = max(e) - min(e)
+                f = max(abs(dedx))
+                pickle.dump((de, f), file)
 
-    for x in j:
-        
-        tot = atom_calc(symbol, xc, x, L)
-        tot_energy[i] = tot
-
-        i += 1
-        
-    data['Total energies'] = tot_energy
-    data['Grid spacings'] = z
-    data['Test name'] = 'eggbox'
-    
-    name = "%s-eggbox-%s.pickle" % (symbol, xc)
-    pickle.dump(data, open(name, 'w'))
+if opt.summary:
+    print '\nEggbox-test (maximum energy variation)\nh:',
+    for n in range(16, 36, 4):
+        h = a / n
+        print '%9.6f' % h,
+    print '\n-------------------------------------------------',
+    for symbol in symbols:
+        d = data[symbol]
+        print '\n%-2s' % symbol,
+        for de, f in d:
+            if type(de) is float:
+                print '%9.6f' % de,
+            else:
+                print '    %s    ' % de,
+    print '\n\nEggbox-tex (maximum force)\nh:',
+    for n in range(16, 36, 4):
+        h = a / n
+        print '%9.6f' % h,
+    print '\n---------------------------------',
+    for symbol in symbols:
+        d = data[symbol]
+        print '\n%-2s' % symbol,
+        for de, f in d:
+            if type(de) is float:
+                print '%9.6f' % f,
+            else:
+                print '    %s    ' % f,

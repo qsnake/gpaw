@@ -15,16 +15,22 @@ magmoms = {}
 
 
 class SingleAtom:
-    def __init__(self, symbol, a=None, h=None, spinpaired=False,
+    def __init__(self, symbol, a=None, b=None, c=None,
+                 h=None, spinpaired=False,
                  eggboxtest=False, parameters={}, forcesymm=False):
         if a is None:
             a = 7.0  # Angstrom
+
+        if b is None:
+            b = a
+        if c is None:
+            c = a
 
         if eggboxtest:
             spinpaired = True
 
         periodic = eggboxtest
-        pos = (a / 2, a / 2, a / 2)
+        pos = (a / 2, b / 2, c / 2)
 
         parameters = parameters.copy()
         
