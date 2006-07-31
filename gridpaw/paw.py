@@ -24,13 +24,10 @@ import gridpaw.utilities.mpi as mpi
 from gridpaw import output
 from gridpaw.exx import get_exx
 import gridpaw.io
+from gridpaw import ConvergenceError
 
 
 MASTER = 0
-
-
-class ConvergenceError(Exception):
-    pass
 
 
 class Paw:

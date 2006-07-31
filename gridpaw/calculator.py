@@ -365,6 +365,15 @@ class Calculator:
 
         """
 
+        # Be careful with both "h" and "gpts" keywords:
+        if 'h' in kwargs and 'gpts' in kwargs:
+            if kwargs['h'] is None:
+                del kwargs['h']
+            elif kwargs['gpts'] is None:
+                del kwargs['gpts']
+            else:
+                raise TypeError("""You can't use both "gpts" and "h"!""")
+            
         for name, value in kwargs.items():
             method_name = 'set_' + name
             if hasattr(self, method_name):

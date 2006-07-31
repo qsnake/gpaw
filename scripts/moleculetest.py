@@ -16,8 +16,8 @@ opt, tests = parser.parse_args()
 
 from ASE.Units import Convert
 
-from gridpaw.setuptests.singleatom import SingleAtom
-from gridpaw.setuptests.molecule import molecules, Molecule
+from gridpaw.utilities.singleatom import SingleAtom
+from gridpaw.utilities.molecule import molecules, Molecule
 from gridpaw.paw import ConvergenceError
 
 

@@ -6,7 +6,7 @@ from ASE.ChemicalElements.crystal_structure import crystal_structures
 
 from gridpaw import Calculator
 from gridpaw.utilities import center
-from gridpaw.setuptests.singleatom import SingleAtom
+from gridpaw.utilities.singleatom import SingleAtom
 from gridpaw.atom.generator import parameters as setup_parameters
 
 data = {}

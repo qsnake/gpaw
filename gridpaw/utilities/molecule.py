@@ -4,7 +4,7 @@ from ASE import  ListOfAtoms, Atom
 
 from gridpaw import Calculator
 from gridpaw.utilities import center
-from gridpaw.setuptests.singleatom import SingleAtom
+from gridpaw.utilities.singleatom import SingleAtom
 
 class Molecule:
     def __init__(self, formula, a=None, b=None, c=None, h=None, parameters={}):

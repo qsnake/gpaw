@@ -81,10 +81,10 @@ from ASE.Units import Convert
 
 import gridpaw
 from gridpaw import setup_paths
-from gridpaw.setuptests.singleatom import SingleAtom
-from gridpaw.setuptests.molecule import Molecule
-from gridpaw.setuptests.bulk import Bulk
-from gridpaw.setuptests.bulk import data as bulk_data
+from gridpaw.utilities.singleatom import SingleAtom
+from gridpaw.utilities.molecule import Molecule
+from gridpaw.utilities.bulk import Bulk
+from gridpaw.utilities.bulk import data as bulk_data
 
 
 singleatom = True

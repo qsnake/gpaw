@@ -20,8 +20,8 @@ import Numeric as npy
 from LinearAlgebra import inverse
 from ASE.Units import Convert
 
-from gridpaw.setuptests.singleatom import SingleAtom
-from gridpaw.setuptests.bulk import Bulk, data
+from gridpaw.utilities.singleatom import SingleAtom
+from gridpaw.utilities.bulk import Bulk, data
 from gridpaw.paw import ConvergenceError
 
 

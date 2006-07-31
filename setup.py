@@ -46,8 +46,7 @@ mpi_define_macros = []
 packages = ['gridpaw',
             'gridpaw.io',
             'gridpaw.atom',
-            'gridpaw.utilities',
-            'gridpaw.setuptests']
+            'gridpaw.utilities']
 
 force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:

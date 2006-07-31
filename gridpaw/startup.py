@@ -76,9 +76,6 @@ def create_paw_object(out, a0, Ha,
             h = Convert(0.2, 'Ang', 'Bohr') * a0
         # N_c should be a multiplum of 4:
         N_c = [max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c]
-    else:
-        if h is not None:
-            raise TypeError("""You can't use both "gpts" and "h"!""")
     N_c = num.array(N_c)
 
     # Create a Domain object:

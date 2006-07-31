@@ -8,6 +8,8 @@ import Numeric as num
 
 from gridpaw.transformers import Interpolator, Restrictor
 from gridpaw.operators import Laplace, LaplaceA, LaplaceB
+from gridpaw import ConvergenceError
+
 
 class PoissonSolver:
     def __init__(self, gd, out=sys.stdout, load_gauss=False):
@@ -81,16 +83,12 @@ class PoissonSolver:
 
         self.B.apply(rho, self.rhos[0])
         niter = 1
-        while self.iterate2(self.step) > eps and niter < 300:
+        while self.iterate2(self.step) > eps and niter < 100:
             niter += 1
-        if niter == 300:
-##        if niter == 3000:
+        if niter == 100:
             charge = num.sum(rho.flat) * self.dv
             print 'CHARGE:', charge
-            if charge > 1e-6:
-                print '  For charged systems, run poisson_solver with'
-                print '  keyword charge=None.'
-            raise RuntimeError('Poisson solver did not converge!')
+            raise ConvergenceError('Poisson solver did not converge!')
 
         return niter
         

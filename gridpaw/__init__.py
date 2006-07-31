@@ -19,6 +19,10 @@ from os.path import join
 import Numeric as num
 
 
+class ConvergenceError(Exception):
+    pass
+
+
 home = os.environ['HOME']
 
 # Check for special command line arguments:
