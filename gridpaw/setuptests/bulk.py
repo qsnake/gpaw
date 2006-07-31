@@ -1,6 +1,6 @@
-from math import sqrt, pi, cos, sin
+from math import sqrt
 
-from ASE import  ListOfAtoms, Atom
+from ASE import ListOfAtoms, Atom
 from ASE.ChemicalElements import numbers
 from ASE.ChemicalElements.crystal_structure import crystal_structures
 
@@ -18,7 +18,7 @@ for symbol in setup_parameters:
         structure = 'sc'
     s = {'sc': 1, 'bcc': 0.5, 'fcc': 0.25, 'hcp': sqrt(3) / 2,
          'diamond': 0.128}.get(structure)
-    if s is not None:
+    if s is not None and symbol is not 'P':
         a = X['a']
         coa = X.get('c/a', 1)
         V = a**3 * coa * s
@@ -86,7 +86,7 @@ class Bulk:
         cell = self.atoms.GetUnitCell()
         if kpts is None:
             kpts = [2 * int(8.0 / cell[c, c]) for c in range(3)]
-            
+
         calc = Calculator(h=h, gpts=gpts, kpts=kpts, **parameters)
         self.atoms.SetCalculator(calc)
         
