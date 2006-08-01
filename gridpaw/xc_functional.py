@@ -18,6 +18,9 @@ class XCFunctional:
         if xcname == 'LDA':
             self.gga = False
             code = 117 # not used!
+        elif xcname == 'LDAc':
+            self.gga = False
+            code = 7
         else:
             self.gga = True
             if xcname == 'PBE':
@@ -34,6 +37,8 @@ class XCFunctional:
                 code = 5
             elif xcname == 'EXX':
                 code = 6
+            elif xcname == 'revPBEx':
+                code = 8
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 

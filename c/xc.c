@@ -27,12 +27,29 @@ double pbe0_exchange(const xc_parameters* par,
   return 0.75 * pbe_exchange(par, n, rs, a2, dedrs, deda2);
 }
 
+double zero_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2)
+{
+  return 0.0;
+}
+
+double zero_correlation(double n, double rs, double zeta, double a2, 
+			bool gga, bool spinpol,
+			double* dedrs, double* dedzeta, double* deda2)
+{
+  return 0.0;
+}
+
 typedef struct 
 {
   PyObject_HEAD
   double (*exchange)(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2);
+  double (*correlation)(double n, double rs, double zeta, double a2, 
+			bool gga, bool spinpol,
+			double* dedrs, double* dedzeta, double* deda2);
   xc_parameters par;
 } XCFunctionalObject;
 
@@ -84,13 +101,13 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
         {
           double a2 = a2_g[g];
           ex = self->exchange(par, n, rs, a2, &dexdrs, &dexda2);
-          ec = pbe_correlation(n, rs, 0.0, a2, 1, 0, &decdrs, 0, &decda2);
+          ec = self->correlation(n, rs, 0.0, a2, 1, 0, &decdrs, 0, &decda2);
           deda2_g[g] = n * (dexda2 + decda2);
         }
       else
         {
           ex = self->exchange(par, n, rs, 0.0, &dexdrs, 0);
-          ec = pbe_correlation(n, rs, 0.0, 0.0, 0, 0, &decdrs, 0, 0);
+          ec = self->correlation(n, rs, 0.0, 0.0, 0, 0, &decdrs, 0, 0);
         }
       e_g[g] = n * (ex + ec);
       v_g[g] += ex + ec - rs * (dexdrs + decdrs) / 3.0;
@@ -169,8 +186,8 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
 			       &dexadrs, &dexada2);
           exb = self->exchange(par, nb, rsb, 4.0 * ab2_g[g],
 			       &dexbdrs, &dexbda2);
-          ec = pbe_correlation(n, rs, zeta, a2_g[g], 1, 1, 
-			       &decdrs, &decdzeta, &decda2);
+          ec = self->correlation(n, rs, zeta, a2_g[g], 1, 1, 
+				 &decdrs, &decdzeta, &decda2);
           dedaa2_g[g] = na * dexada2;
           dedab2_g[g] = nb * dexbda2;
           deda2_g[g] = n * decda2;
@@ -179,8 +196,8 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
         {
           exa = self->exchange(par, na, rsa, 0.0, &dexadrs, 0);
           exb = self->exchange(par, nb, rsb, 0.0, &dexbdrs, 0);
-          ec = pbe_correlation(n, rs, zeta, 0.0, 0, 1, 
-			       &decdrs, &decdzeta, 0);
+          ec = self->correlation(n, rs, zeta, 0.0, 0, 1, 
+				 &decdrs, &decdzeta, 0);
         }
       e_g[g] = 0.5 * (na * exa + nb * exb) + n * ec;
       va_g[g] += (exa + ec - (rsa * dexadrs + rs * decdrs) / 3.0 -
@@ -219,8 +236,8 @@ XCFunctional_correlation(XCFunctionalObject *self, PyObject *args)
   double dedzeta;
   double deda2;
   double n = 1.0 / (C0 * rs * rs * rs);
-  double ec = pbe_correlation(n, rs, zeta, a2, self->par.gga, 1,
-			      &dedrs, &dedzeta, &deda2);
+  double ec = self->correlation(n, rs, zeta, a2, self->par.gga, 1,
+				&dedrs, &dedzeta, &deda2);
   return Py_BuildValue("dddd", ec, dedrs, dedzeta, deda2); 
 }
 
@@ -270,8 +287,11 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
   self->par.gga = gga;
   self->par.rel = rel;
 
+  self->correlation = pbe_correlation;
+
   if (type == 2)
     {
+      // RPBE
       self->exchange = rpbe_exchange;
     }
   else if (type == 3)
@@ -282,15 +302,29 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
     }
   else if (type == 4)
     {
+      // PBE0
       self->exchange = pbe0_exchange;
     }
   else if (type == 5)
     {
+      // PADE
       self->exchange = pade_exchange;
       int n = padearray->dimensions[0];
       double* p = DOUBLEP(padearray);
       for (int i = 0; i < n; i++)
 	self->par.pade[i] = p[i];
+    }
+  else if (type == 7)
+    {
+      // LDAc
+      self->exchange = zero_exchange;
+    }
+  else if (type == 8)
+    {
+      // revPBEx
+      self->par.kappa = 1.245; 
+      self->exchange = pbe_exchange;
+      self->correlation = zero_correlation;
     }
   else
     {
@@ -300,6 +334,7 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       else
 	// PBE
 	self->par.kappa = 0.804;
+
       self->exchange = pbe_exchange;
     }
   return (PyObject*)self;
