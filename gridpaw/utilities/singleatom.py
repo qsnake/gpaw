@@ -62,7 +62,7 @@ class SingleAtom:
                     
         self.atom = ListOfAtoms([Atom(symbol, pos, magmom=magmom)],
                                 periodic=periodic,
-                                cell=[a, a, a])
+                                cell=[a, b, c])
         
         calc = Calculator(h=h, width=width, hund=hund, **parameters)
         self.atom.SetCalculator(calc)

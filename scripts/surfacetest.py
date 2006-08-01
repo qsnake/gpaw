@@ -22,6 +22,7 @@ from ASE import Atom, ListOfAtoms
 
 from gridpaw.utilities.bulk import data
 from gridpaw.paw import ConvergenceError
+from gridpaw.utilities import locked
 from gridpaw import Calculator
 
 
@@ -74,7 +75,7 @@ for symbol in data:
             except (EOFError, IOError):
                 e0 = None
             #e[formula] = e0
-        elif not os.path.isfile(filename):
+        elif not locked(filename):
             file = open(filename, 'w')
             try:
                 calc = Calculator(h=h, kpts=(2, 2, 1),
@@ -97,7 +98,7 @@ for symbol in data:
                     F = slab.GetCartesianForces()
                     f_i.append(F[0, 2] + F[2, 2])
             except ConvergenceError:
-                pass
+                print >> file, 'FAILED'
             else:
                 pickle.dump((e0, f0, e1, f1, e_i, f_i), file)
 
@@ -107,7 +108,7 @@ for symbol in data:
                 eb = pickle.load(open(filename))
             except (EOFError, IOError):
                 eb = None
-        elif not os.path.isfile(filename):
+        elif not locked(filename):
             file = open(filename, 'w')
             bulk = slab.Copy()
             bulk.SetUnitCell([a, a, a], fix=True)
@@ -117,7 +118,7 @@ for symbol in data:
             try:
                 e = bulk.GetPotentialEnergy()
             except ConvergenceError:
-                pass
+                print >> file, 'FAILED'
             else:
                 pickle.dump(e, file)
 
@@ -132,9 +133,9 @@ for symbol in data:
                 Eegg[symbol].append(emax)
                 Fegg[symbol].append(fmax)
 
-from pylab import plot, show, text, subplot
 
 if opt.summary:
+    from pylab import plot, show, text, subplot
     subplot(221)
     for symbol in data:
         if len(H[symbol]) > 1:

@@ -3,6 +3,7 @@
 
 """Utility functions and classes."""
 
+import os
 from math import sqrt
 
 import Numeric as num
@@ -186,3 +187,14 @@ def center(atoms):
 # Function used by test-suite:
 def equal(a, b, e=0):
     assert abs(a - b) <= e, '%f != %f (error: %f > %f)' % (a, b, abs(a - b), e)
+
+
+
+def locked(filename):
+    try:
+        os.open(filename, os.O_EXCL | os.O_RDWR | os.O_CREAT)
+    except OSError:
+        return True
+    os.remove(filename)
+    return False
+

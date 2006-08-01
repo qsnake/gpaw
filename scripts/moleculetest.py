@@ -18,6 +18,7 @@ from ASE.Units import Convert
 
 from gridpaw.utilities.singleatom import SingleAtom
 from gridpaw.utilities.molecule import molecules, Molecule
+from gridpaw.utilities import locked
 from gridpaw.paw import ConvergenceError
 
 
@@ -63,28 +64,26 @@ for formula in molecules:
     if opt.summary:
         try:
             e0 = pickle.load(open(filename))
-        except EOFError:
-            e0 = inf
-        except IOError:
+        except (EOFError, IOError):
             e0 = nan
         e[formula] = e0
-    elif not os.path.isfile(filename):
+    elif not locked(filename):
         file = open(filename, 'w')
         parameters['out'] = formula + '.txt'
         try:
-            molecule = Molecule(formula, a=a + 1, b=a, c=a - 1, h=h,
+            molecule = Molecule(formula, a=a + 4 * h, b=a, c=a - 4 * h, h=h,
                                 parameters=parameters)
             e0 = molecule.energy()
             
             e_i = []
             if len(molecule.atoms) == 2:
-                x = molecule.atoms[1].GetCartesianPosition()[0]
+                pos = molecule.atoms[1].GetCartesianPosition()
                 for i in range(5):
                     molecule.atoms[1].SetCartesianPosition(
-                        [x + (i - 2) * 0.015, 0, 0])
+                        pos + [(i - 2) * 0.015, 0, 0])
                     e_i.append(molecule.energy())
         except ConvergenceError:
-            pass
+            print >> file, 'FAILED'
         else:
             pickle.dump((e0, e_i), file)
     
@@ -96,19 +95,18 @@ for symbol in atoms:
     if opt.summary:
         try:
             e0 = pickle.load(open(filename))
-        except EOFError:
-            e0 = inf
-        except IOError:
+        except (EOFError, IOError):
             e0 = nan
         e[symbol] = e0
-    elif not os.path.isfile(filename):
+    elif not locked(filename):
         file = open(filename, 'w')
         parameters['out'] = symbol + '.txt'
         try:
-            e0 = SingleAtom(symbol, a=a + 1, b=a, c=a - 1, spinpaired=False,
+            e0 = SingleAtom(symbol, a=a + 4 * h, b=a, c=a - 4 * h,
+                            spinpaired=False,
                             h=h, parameters=parameters, forcesymm=1).energy()
         except ConvergenceError:
-            pass
+            print >> file, 'FAILED'
         else:
             pickle.dump(e0, file)
 

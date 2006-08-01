@@ -22,6 +22,7 @@ from ASE.Units import Convert
 
 from gridpaw.utilities.singleatom import SingleAtom
 from gridpaw.utilities.bulk import Bulk, data
+from gridpaw.utilities import locked
 from gridpaw.paw import ConvergenceError
 
 
@@ -55,7 +56,7 @@ for symbol in data:
                 e0 = m0 = inf
             e[symbol][i] = e0
             m[symbol][i] = m0
-        elif not os.path.isfile(filename):
+        elif not locked(filename):
             file = open(filename, 'w')
             parameters['out'] = '%s-bulk%d.txt' % (symbol, i)
             try:
@@ -63,7 +64,7 @@ for symbol in data:
                 e0, m0 = bulk.energy(gpts=gpts, kpts=kpts,
                                      parameters=parameters)
             except ConvergenceError:
-                pass
+                print >> file, 'FAILED'
             else:
                 pickle.dump((e0, m0), file)
 
@@ -74,20 +75,20 @@ for symbol in data:
         except (EOFError, IOError):
             e0 = inf
         e1[symbol] = e0
-    elif not os.path.isfile(filename):
+    elif not locked(filename):
         file = open(filename, 'w')
         parameters['out'] = symbol + '.txt'
         try:
-            e0 = SingleAtom(symbol, a=a, b=a + 1, c=a - 1,
+            e0 = SingleAtom(symbol, a=a, b=a + 4 * h, c=a - 4 * h,
                             spinpaired=False,
                             h=h, parameters=parameters, forcesymm=1).energy()
         except ConvergenceError:
-            pass
+            print >> file, 'FAILED'
         else:
             pickle.dump(e0, file)
 
-from pylab import plot, text, show
 if opt.summary:
+    from pylab import plot, text, show
     M = npy.zeros((4, 5), npy.Float)
     for n in range(4):
         M[n] = scale**-n
