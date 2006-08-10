@@ -138,6 +138,7 @@ class KSSingle(Excitation):
         self.j=jidx
         self.pspin=pspin
         self.vspin=vspin
+        self.paw=paw
         wf=paw.wf
         f=wf.kpt_u[vspin].f_n
         self.fij=f[iidx]-f[jidx]
@@ -156,7 +157,6 @@ class KSSingle(Excitation):
         # augmentation contributions
         for nucleus in paw.nuclei:
             Ra = nucleus.spos_c*paw.domain.cell_c
-            lmax=nucleus.setup.lmax
             Pi_i = nucleus.P_uni[self.vspin,self.i]
             Pj_i = nucleus.P_uni[self.vspin,self.j]
             D_ii = num.outerproduct(Pi_i, Pj_i)
@@ -165,7 +165,7 @@ class KSSingle(Excitation):
             me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
 ##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
             # L=1 terms
-            if lmax>=1:
+            if nucleus.setup.lmax>=1:
                 for i in range(3):
                     # XXXX check def of Ylm used in setups XXXX
                     me[i] += sqrt(4*pi/3)*\
@@ -191,3 +191,9 @@ class KSSingle(Excitation):
 
     def GetPairDensity(self):
         return self.wfi*self.wfj
+    
+    def GetFineGridPairDensity(self):
+        gd = self.paw.finegd
+        n_g = gd.new_array()
+        self.paw.interpolate(self.GetPairDensity(),n_g)
+        return n_g 
