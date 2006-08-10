@@ -17,12 +17,15 @@ class XCFunctional:
         
         if xcname == 'LDA':
             self.gga = False
+            self.maxDerivativeLevel=2
             code = 117 # not used!
         elif xcname == 'LDAc':
             self.gga = False
+            self.maxDerivativeLevel=2
             code = 7
         else:
             self.gga = True
+            self.maxDerivativeLevel=1
             if xcname == 'PBE':
                 code = 0
             elif xcname == 'revPBE':
@@ -77,6 +80,10 @@ class XCFunctional:
                                            deda2_g, dedaa2_g, dedab2_g)
         else:
             self.xc.calculate_spinpolarized(e_g.flat, na_g, va_g, nb_g, vb_g)
+
+    def get_max_derivative_level(self):
+        """maximal derivative level of Exc available""" 
+        return self.maxDerivativeLevel
             
     def get_xc_name(self):
         return self.xcname
@@ -86,7 +93,6 @@ class XCFunctional:
 
     def correlation(self, rs, zeta=0, a2=0):
         return self.xc.correlation(rs, zeta, a2)
-
 
 class XCOperator:
     def __init__(self, xcfunc, gd, nspins=1):
