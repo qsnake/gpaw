@@ -6,7 +6,10 @@ import xml.sax
 import Numeric as num
 
 
-itemsizes = {'int': 4, 'float': 8, 'complex': 16}
+intsize = num.array([1],num.Int).itemsize()
+floatsize = num.array([1],num.Float).itemsize()
+complexsize = num.array([1],num.Complex).itemsize()
+itemsizes = {'int': intsize, 'float': floatsize, 'complex': complexsize}
 
     
 class Writer:

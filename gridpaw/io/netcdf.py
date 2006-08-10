@@ -40,6 +40,8 @@ class Writer:
                 if typecode is complex:
                     var[:, 0] = array.real
                     var[:, 1] = array.imag
+                elif tc is num.Int:
+                    var[:] = array.astype('i')
                 else:
                     var[:] = array
         else:
