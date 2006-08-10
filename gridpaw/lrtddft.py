@@ -30,7 +30,8 @@ class OmegaMatrix:
                  calculator=None,
                  kss=None,
                  xc=None,
-                 derivativeLevel=None
+                 derivativeLevel=None,
+                 numscale=0.001
                  ):
         self.calculator = calculator
         self.kss = kss
@@ -45,7 +46,7 @@ class OmegaMatrix:
         else:
             self.xc = None
 
-        self.numscale=0.001
+        self.numscale=numscale
     
         self.full = self.get_full()
 
@@ -214,6 +215,7 @@ class OmegaMatrix:
         n_g = gd.new_array()
         phi_g = gd.new_array()
         Om = num.zeros((nij,nij),num.Float)
+##        return Om
         for ij in range(nij):
 ##            print ">> ij,energy=",ij,kss[ij].GetEnergy()
             paw.interpolate(kss[ij].GetPairDensity(),n_g)
@@ -240,7 +242,7 @@ class OmegaMatrix:
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
             raise RuntimeError('Diagonalisation error in OmegaMatrix')
-    
+
 class LrTDDFTExcitation(Excitation):
     def __init__(self,Om=None,i=None):
         if Om is None:
@@ -294,7 +296,8 @@ class LrTDDFT(ExcitationList):
                  istart=0,
                  jend=None,
                  xc=None,
-                 derivativeLevel=None):
+                 derivativeLevel=None,
+                 numscale=0.001):
         
         ExcitationList.__init__(self,calculator)
 
@@ -305,7 +308,9 @@ class LrTDDFT(ExcitationList):
         self.jend=None
         self.xc=None
         self.derivativeLevel=None
-        self.update(calculator,nspins,eps,istart,jend,xc,derivativeLevel)
+        self.numscale=numscale
+        self.update(calculator,nspins,eps,istart,jend,
+                    xc,derivativeLevel,numscale)
 
     def update(self,
                calculator=None,
@@ -314,7 +319,8 @@ class LrTDDFT(ExcitationList):
                istart=0,
                jend=None,
                xc=None,
-               derivativeLevel=None):
+               derivativeLevel=None,
+               numscale=0.001):
 
         changed=False
         if self.calculator!=calculator or \
@@ -333,17 +339,21 @@ class LrTDDFT(ExcitationList):
         self.jend = jend
         self.xc = xc
         self.derivativeLevel=derivativeLevel
+        self.numscale=numscale
         self.kss = KSSingles(calculator=calculator,
                              nspins=nspins,
                              eps=eps,
                              istart=istart,
                              jend=jend)
-        Om = OmegaMatrix(self.calculator,self.kss,
-                         self.xc,self.derivativeLevel)
+        self.Om = OmegaMatrix(self.calculator,self.kss,
+                              self.xc,self.derivativeLevel,self.numscale)
 ##         Om.diagonalize()
 
 ##         for j in range(len(self.kss)):
 ##             self.append(LrTDDFTExcitation(Om,j))
+        
+    def get_Om(self):
+        return self.Om
  
 class LocalIntegrals:
     """Contains the local integrals needed for Linear response TDDFT"""
