@@ -11,6 +11,12 @@ import Numeric as num
 
 from gridpaw import setup_paths
 
+try:
+    import gzip
+except:
+    has_gzip = False
+else:
+    has_gzip = True
 
 class PAWXMLParser(xml.sax.handler.ContentHandler):
     def __init__(self):
@@ -41,8 +47,10 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             else:
                 filename += '.gz'
                 if os.path.isfile(filename):
-                    source = os.popen('gunzip -c ' + filename, 'r').read()
-##                  source = gzip.open(filename).read() ibm has no zlib! XXX
+                    if has_gzip:
+                        source = gzip.open(filename).read()
+                    else:
+                        source = os.popen('gunzip -c ' + filename, 'r').read()
                     break
         if source is None:
             raise RuntimeError('Could not find %s-setup for %s.' %
