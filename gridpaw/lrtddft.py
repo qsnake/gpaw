@@ -5,6 +5,7 @@ from gridpaw import debug
 from gridpaw.poisson_solver import PoissonSolver
 from gridpaw.excitation import Excitation,ExcitationList,KSSingles
 from gridpaw.utilities.lapack import diagonalize
+from gridpaw.xc_functional import XCOperator, XCFunctional
 
 """This module defines a linear response TDDFT-class."""
 
@@ -30,21 +31,95 @@ class OmegaMatrix:
                  ):
         self.calculator = calculator
         self.kss = kss
-        self.xc = xc
-        self.get_full()
+        if xc is not None:
+            self.xc = XCOperator(xc,self.calculator.paw.finegd,
+                                 self.kss.npspins)
+        else:
+            self.xc = None 
+
+        self.epsilon=0.001
+        self.numscale=0.0001
     
+        self.full = self.get_full()
+
     def get_full(self,rpa=None):
         if rpa is None:
-            rpa =  self.get_rpa()
-        self.rpa = rpa
+            rpa = self.get_rpa()
+        Om = rpa
+        print '>> kss=',self.kss
+        print '>> self.xc=',self.xc
+        print '>> self.numscale=',self.calculator
 
-        if self.xc is None:
-            self.full = rpa
-        else:
-            raise NotImplementedError
+        if self.xc is not None:
+            paw = self.calculator.paw
+            wf = paw.wf
+            kss=self.kss
+            nij = len(kss)
+            if kss.nvspins==2: # spin polarised ground state calc.
+                print "spin polarised"
+                n_g = paw.nt_sg
+                v_g=n_g[0].copy()
+            else:
+                print "spin unpolarised"
+                if kss.npspins==2:
+                    n_g[0] = .5*paw.nt_sg[0]
+                    n_g[1] = n_g[0]
+                    v_g=n_g[0].copy()
+                else:
+                    n_g = paw.nt_sg[0]
+                    v_g=n_g.copy()
+            ns=self.numscale
+            xc=self.xc
+            for ij in range(nij):
+                for kq in range(ij,nij):
+                    
+                    if kss.npspins==2: # spin polarised
+                        nv_g = n_g.copy()
+                        nv_g[kss[ij].pspin] += kss[ij].GetFineGridPairDensity()
+                        nv_g[kss[kq].pspin] += kss[kq].GetFineGridPairDensity()
+                        Excpp = xc.get_energy_and_potential(\
+                            nv_g[0],v_g,nv_g[1],v_g)
+                        nv_g = n_g.copy()
+                        nv_g[kss[ij].pspin] += kss[ij].GetFineGridPairDensity()
+                        nv_g[kss[kq].pspin] -= kss[kq].GetFineGridPairDensity()
+                        Excpm = xc.get_energy_and_potential(\
+                            nv_g[0],v_g,nv_g[1],v_g)
+                        nv_g = n_g.copy()
+                        nv_g[kss[ij].pspin] -= kss[ij].GetFineGridPairDensity()
+                        nv_g[kss[kq].pspin] += kss[kq].GetFineGridPairDensity()
+                        Excmp = xc.get_energy_and_potential(\
+                            nv_g[0],v_g,nv_g[1],v_g)
+                        nv_g = n_g.copy()
+                        nv_g[kss[ij].pspin] -= kss[ij].GetFineGridPairDensity()
+                        nv_g[kss[kq].pspin] -= kss[kq].GetFineGridPairDensity()
+                        Excpp = xc.get_energy_and_potential(\
+                            nv_g[0],v_g,nv_g[1],v_g)
+                    else: # spin unpolarised
+                        nv_g=n_g + ns*kss[ij].GetFineGridPairDensity()\
+                              + ns*kss[kq].GetFineGridPairDensity()
+                        Excpp = xc.get_energy_and_potential(nv_g,v_g)
+                        nv_g=n_g + ns*kss[ij].GetFineGridPairDensity()\
+                              - ns*kss[kq].GetFineGridPairDensity()
+                        Excpm = xc.get_energy_and_potential(nv_g,v_g)
+                        nv_g=n_g - ns*kss[ij].GetFineGridPairDensity()\
+                              + ns*kss[kq].GetFineGridPairDensity()
+                        Excmp = xc.get_energy_and_potential(nv_g,v_g)
+                        nv_g=n_g - ns*kss[ij].GetFineGridPairDensity()\
+                              - ns*kss[kq].GetFineGridPairDensity()
+                        Excmm = xc.get_energy_and_potential(nv_g,v_g)
 
-    def get_rpa(self):
-        
+                    print 'ij,kq,nc=',ij,kq,ns
+                    print 'Excpp,Excpm,Excmp,Excmm',Excpp,Excpm,Excmp,Excmm
+                    print 'correction=',0.25*(Excpp-Excmp-Excpm+Excmm)/(ns*ns)
+                    Om[ij,kq] += 0.25*(Excpp-Excmp-Excpm+Excmm)/(ns*ns)
+                    if ij != kq:
+                        Om[kq,ij] += 0.25*(Excpp-Excmp-Excpm+Excmm)/(ns*ns)
+
+        print ">> Om=\n",Om
+        return Om
+
+    def get_rpa(self,epsilon=0.001):
+        """calculate RPA part of the omega matrix"""
         paw = self.calculator.paw
         gd = paw.finegd
         poisson = PoissonSolver(gd,paw.out)
@@ -56,7 +131,7 @@ class OmegaMatrix:
         phi_g = gd.new_array()
         Om = num.zeros((nij,nij),num.Float)
         for ij in range(nij):
-            print ">> ij=",ij
+            print ">> ij,energy=",ij,kss[ij].GetEnergy()
             paw.interpolate(kss[ij].GetPairDensity(),n_g)
 ##            print ">> integral=",gd.integrate(n_g)
             poisson.solve(phi_g,n_g,charge=None)
@@ -69,7 +144,6 @@ class OmegaMatrix:
                                   gd.integrate(n_g*phi_g)
                 if ij == kq:
                     Om[ij,kq] += kss[ij].GetEnergy()**2
-                    pass
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
@@ -168,19 +242,20 @@ class LrTDDFT(ExcitationList):
         self.eps = eps
         self.istart = istart
         self.jend = jend
+        self.xc = xc
         self.kss = KSSingles(calculator=calculator,
                              nspins=nspins,
                              eps=eps,
                              istart=istart,
                              jend=jend)
-        Om = OmegaMatrix(self.calculator,self.kss)
+        Om = OmegaMatrix(self.calculator,self.kss,self.xc)
         Om.diagonalize()
 
         for j in range(len(self.kss)):
             self.append(LrTDDFTExcitation(Om,j))
  
 class LocalIntegrals:
-    """Contains the local integrals needed for Linera response TDDFT"""
+    """Contains the local integrals needed for Linear response TDDFT"""
     def __init__(self,gen=None):
         if gen is not None:
             self.evaluate(gen)
