@@ -9,7 +9,7 @@ def equiv(xl,yl):
 #        print x,y
         assert abs(x-y) < 1e-8
 
-out=1
+out=0
 
 # unpolarised ......................................
 
@@ -23,21 +23,21 @@ equiv(xl=res,yl=expected)
 isp=1
 ksp=1
 expected=[-1.6505808,  -0.93437538]
-res=d2Excdnsdnt(dup,ddn,isp,ksp)
+res=d2Excdnsdnt(dup,ddn)
 if out: print res
-equiv(res,expected)
+equiv(res[isp][ksp],expected)
 
 isp=1
 ksp=0
 expected=[-0.18324442, -0.11948321]
-res=d2Excdnsdnt(dup,ddn,isp,ksp)
+res=d2Excdnsdnt(dup,ddn)
 if out: print res
-equiv(res,expected)
+equiv(res[isp][ksp],expected)
 
 isp=0
 ksp=0
 expected=[ -1.14670206, -11.02164441]
-res=d2Excdnsdnt(dup,ddn,isp,ksp)
+res=d2Excdnsdnt(dup,ddn)
 if out: print res
-equiv(res,expected)
+equiv(res[isp][ksp],expected)
 
