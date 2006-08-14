@@ -11,10 +11,11 @@ from gridpaw.xc_functional import XCOperator, XCFunctional
 
 def d2Excdnsdnt(dup,ddn):
     """Second derivative of Exc polarised"""
+    res=[[0, 0], [0, 0]]
     for ispin in range(2):
         for jspin in range(2):
-            res[ispin,jspin]=num.zeros(dup.shape,num.Float)
-            _gridpaw.d2Excdnsdnt(dup, ddn, ispin, kspin, res[ispin,jspin])
+            res[ispin][jspin]=num.zeros(dup.shape,num.Float)
+            _gridpaw.d2Excdnsdnt(dup, ddn, ispin, jspin, res[ispin][jspin])
     return res
 
 def d2Excdn2(den):
