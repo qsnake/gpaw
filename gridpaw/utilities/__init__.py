@@ -198,3 +198,26 @@ def locked(filename):
     os.remove(filename)
     return False
 
+def fix(formula):
+    s = '$'
+    j = 0
+    for i in range(len(formula)):
+        c = formula[i]
+        if c.isdigit():
+            s += r'\rm{' + formula[j:i] + '}_' + c
+            j = i + 1
+    if s == '$':
+        return s + formula + '$'
+    return s + '$'
+
+def fix2(formula):
+    s = ''
+    j = 0
+    for i in range(len(formula)):
+        c = formula[i]
+        if c.isdigit():
+            s += r'\ `' + c + '`:sub:\ '
+        else:
+            s += c
+    return s
+

@@ -29,14 +29,14 @@ from gridpaw import Calculator
 inf = 1e4000
 nan = inf - inf
 
-def qrt(x):
+def cbrt(x):
     return x**(1.0 / 3.0)
 
 scale = {'sc':      1,
-         'bcc':     qrt(2) * sqrt(3) / 2,
-         'fcc':     qrt(4) / sqrt(2),
-         'hcp':     qrt(2 / sqrt(3)),
-         'diamond': qrt(8) * sqrt(3) / 4}
+         'bcc':     cbrt(2) * sqrt(3) / 2,
+         'fcc':     cbrt(4) / sqrt(2),
+         'hcp':     cbrt(2 / sqrt(3)),
+         'diamond': cbrt(8) * sqrt(3) / 4}
 
 sigma = {}
 Eegg = {}
@@ -50,16 +50,18 @@ for symbol in data:
     magmom = X.get('magmom', 0)
 
     # Find nearest neighbor distance:
-    d = qrt(V / coa) * scale[structure]
+    d = cbrt(V / coa) * scale[structure]
     a = d * sqrt(2)
     z = a / 2
-    slab = ListOfAtoms([Atom(symbol, (0, 0, 0), magmom=magmom),
+    bulk = ListOfAtoms([Atom(symbol, (0, 0, 0), magmom=magmom),
                         Atom(symbol, (z, z, 0), magmom=magmom),
                         Atom(symbol, (0, z, z), magmom=magmom),
                         Atom(symbol, (z, 0, z), magmom=magmom)],
                        periodic=True,
-                       cell=(a, a, 2 * a))
-
+                       cell=(a, a, a))
+    slab = bulk.Copy()
+    slab.SetUnitCell([a, a, 2 * a], fix=True)
+    
     sigma[symbol] = []
     Eegg[symbol] = []
     Fegg[symbol] = []
@@ -72,7 +74,7 @@ for symbol in data:
         if opt.summary:
             try:
                 e0, f0, e1, f1, e_i, f_i = pickle.load(open(filename))
-            except (EOFError, IOError):
+            except (EOFError, IOError, ValueError):
                 e0 = None
             #e[formula] = e0
         elif not locked(filename):
@@ -106,12 +108,10 @@ for symbol in data:
         if opt.summary:
             try:
                 eb = pickle.load(open(filename))
-            except (EOFError, IOError):
+            except (EOFError, IOError, ValueError):
                 eb = None
         elif not locked(filename):
             file = open(filename, 'w')
-            bulk = slab.Copy()
-            bulk.SetUnitCell([a, a, a], fix=True)
             calc = Calculator(h=h, kpts=(2, 2, 2),
                               out='%s-bulk-%d.txt' % (symbol, g))
             bulk.SetCalculator(calc)

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-import os
-import sys
-import pickle
 from optparse import OptionParser
 
 
@@ -14,59 +12,86 @@ parser.add_option('-s', '--summary', action='store_true',
 
 opt, tests = parser.parse_args()
 
+import os
+import sys
+import pickle
+from math import sqrt
+
+import Numeric as npy
+from LinearAlgebra import inverse
 from ASE.Units import Convert
 
 from gridpaw.utilities.singleatom import SingleAtom
 from gridpaw.utilities.molecule import molecules, Molecule
-from gridpaw.utilities import locked
+from gridpaw.utilities import locked, fix, fix2
 from gridpaw.paw import ConvergenceError
+from atomization_data import atomization_vasp
 
 
-# atomization energies in kcal / mol:
-#                       Exp    LDA    PBE    PBEZY  RPBE   PBEVASP
-atomization = {'H2':   (109.5, 113.2, 104.6, 104.5, 105.5,   0  ),
-               'LiH':  ( 57.8,  61.0,  53.5,  53.5,  53.4,  53.5),
-               'CH4':  (419.3, 462.3, 419.8, 419.2, 410.6, 419.6),
-               'NH3':  (297.4, 337.3, 301.7, 301.0, 293.2, 301.7),
-               'OH':   (106.4, 124.1, 109.8, 109.5, 106.3, 109.7),
-               'H2O':  (232.2, 266.5, 234.2, 233.8, 226.6, 233.7),
-               'HF':   (140.8, 162.2, 142.0, 141.7, 137.5, 141.5),
-               'Li2':  ( 24.4,  23.9,  19.9,  19.7,  20.2,  19.9),
-               'LiF':  (138.9, 156.1, 138.6, 139.5, 132.9, 138.4),
-               'Be2':  (  3.0,  12.8,   9.8,   9.5,   7.9,   0  ),
-               'C2H2': (405.4, 460.3, 414.9, 412.9, 400.4, 414.5),
-               'C2H4': (562.6, 632.6, 571.5, 570.2, 554.5, 571.0),
-               'HCN':  (311.9, 361.0, 326.1, 324.5, 313.6, 326.3),
-               'CO':   (259.3, 299.1, 268.8, 267.6, 257.9, 268.6),
-               'N2':   (228.5, 267.4, 243.2, 241.2, 232.7, 243.7),
-               'NO':   (152.9, 198.7, 171.9, 169.7, 161.6, 172.0),
-               'O2':   (120.5, 175.0, 143.7, 141.7, 133.3, 143.3),
-               'F2':   ( 38.5,  78.2,  53.4,  51.9,  45.6,  52.6),
-               'P2':   (117.3, 143.8, 121.1, 117.2, 114.1, 121.5),
-               'Cl2':  ( 58.0,  83.0,  65.1,  63.1,  58.9,  65.8)}
+X = {}
 
-x = Convert(1, 'kcal/mol/Nav', 'eV')
+Ea12 = [('H2',   104.6, 104.5),
+        ('LiH',   53.5,  53.5),
+        ('CH4',  419.8, 419.2),
+        ('NH3',  301.7, 301.0),
+        ('OH',   109.8, 109.5),
+        ('H2O',  234.2, 233.8),
+        ('HF',   142.0, 141.7),
+        ('Li2',   19.9,  19.7),
+        ('LiF',  138.6, 139.5),
+        ('Be2',    9.8,   9.5),
+        ('C2H2', 414.9, 412.9),
+        ('C2H4', 571.5, 570.2),
+        ('HCN',  326.1, 324.5),
+        ('CO',   268.8, 267.6),
+        ('N2',   243.2, 241.2),
+        ('NO',   171.9, 169.7),
+        ('O2',   143.7, 141.7),
+        ('F2',    53.4,  51.9),
+        ('P2',   121.1, 117.2),
+        ('Cl2',   65.1,  63.1)]
 
-index = 2
+for formula, Ea1, Ea2 in Ea12:
+    X[formula] = {'dref': []}
+    X[formula]['Earef'] = [(Ea1 / 23.0605, 2), (Ea2 / 23.0605, 3)]
+
+for formula, d in [('Cl2', 1.999),
+                   ('CO',  1.136),
+                   ('F2',  1.414),
+                   ('Li2', 2.728),
+                   ('LiF', 1.583),
+                   ('LiH', 1.604),
+                   ('N2',  1.103),
+                   ('O2',  1.218)]:
+    X[formula]['dref'].append((d, 1))
+
+for formula, d in [('H2', 1.418),
+                   ('N2', 2.084),
+                   ('NO', 2.189),
+                   ('O2', 2.306),
+                   ('F2', 2.672)]:
+    X[formula]['dref'].append((d * 0.529177, 4))
 
 parameters = {'xc': 'PBE', 'lmax': 2}
 
-inf = 1e4000
-nan = inf - inf
-
+dd = npy.array([(i - 2) * 0.015 for i in range(5)])
 a = 12.0
-n = 72
+n = 76
 h = a / n
-e = {}
 atoms = {}
 for formula in molecules:
     filename = '%s.pickle' % formula
+    x = X[formula]
     if opt.summary:
         try:
-            e0 = pickle.load(open(filename))
-        except (EOFError, IOError):
-            e0 = nan
-        e[formula] = e0
+            e0, e_i = pickle.load(open(filename))
+        except (EOFError, IOError, ValueError):
+            e0 = e_i = None
+        x['Em0'] = e0
+        x['Em'] = npy.array(e_i)
+        if len(molecules[formula]) == 2:
+            pos = molecules[formula].GetCartesianPositions()
+            x['d0'] = pos[1, 0] - pos[0, 0]
     elif not locked(filename):
         file = open(filename, 'w')
         parameters['out'] = formula + '.txt'
@@ -74,13 +99,11 @@ for formula in molecules:
             molecule = Molecule(formula, a=a + 4 * h, b=a, c=a - 4 * h, h=h,
                                 parameters=parameters)
             e0 = molecule.energy()
-            
             e_i = []
             if len(molecule.atoms) == 2:
                 pos = molecule.atoms[1].GetCartesianPosition()
                 for i in range(5):
-                    molecule.atoms[1].SetCartesianPosition(
-                        pos + [(i - 2) * 0.015, 0, 0])
+                    molecule.atoms[1].SetCartesianPosition(pos + [dd[i], 0, 0])
                     e_i.append(molecule.energy())
         except ConvergenceError:
             print >> file, 'FAILED'
@@ -90,14 +113,15 @@ for formula in molecules:
     for atom in molecules[formula]:
         atoms[atom.GetChemicalSymbol()] = 1
 
+Ea = {}
 for symbol in atoms:
     filename = '%s.pickle' % symbol
     if opt.summary:
         try:
             e0 = pickle.load(open(filename))
-        except (EOFError, IOError):
-            e0 = nan
-        e[symbol] = e0
+        except (EOFError, IOError, ValueError):
+            e0 = None
+        Ea[symbol] = e0
     elif not locked(filename):
         file = open(filename, 'w')
         parameters['out'] = symbol + '.txt'
@@ -111,19 +135,158 @@ for symbol in atoms:
             pickle.dump(e0, file)
 
 if opt.summary:
-    print '\nAtomic energies:'
-    print '-----------------------'
-    for symbol in atoms:
-        print '%-4s %8.3f' % (symbol, e[symbol])
-    print '-----------------------'
-    print '\nAtomization energies:'
-    print '-----------------------------------------'
+    import pylab
     for formula, molecule in molecules.items():
-        ea = -e[formula]
+        x = X[formula]
+        if x['Em0'] is None:
+            continue
+        E0 = 0.0
+        ok = True
         for atom in molecule:
-            ea += e[atom.GetChemicalSymbol()]
-        earef = x * atomization[formula][index]
-        print ('%-4s %10.3f %8.3f %8.3f %8.3f' %
-               (formula, -e[formula], earef, ea, ea - earef))
-    print '-----------------------------------------'
-                                          
+            symbol = atom.GetChemicalSymbol()
+            if Ea[symbol] is None:
+                ok = False
+                break
+            E0 += Ea[symbol]
+        if ok:
+            x['Ea'] = E0 - x['Em0']
+        if len(molecule) == 2:
+            d = x['d0'] + dd
+            M = npy.zeros((4, 5), npy.Float)
+            for n in range(4):
+                M[n] = d**-n
+            M = npy.dot(inverse(npy.innerproduct(M, M)), M)
+            dfit = npy.arange(d[0] * 0.95, d[4] * 1.05, d[2] * 0.005)
+            a = npy.dot(M, x['Em'] - E0)
+            dmin = 1 / ((-2 * a[2] +
+                         sqrt(4 * a[2]**2 - 12 * a[1] * a[3])) / (6 * a[3]))
+            #B = xmin**2 / 9 / vmin * (2 * a[2] + 6 * a[3] * xmin)
+            emin = a[0]
+            efit = a[0]
+            for n in range(1, 4):
+                efit += a[n] * dfit**-n
+                emin += a[n] * dmin**-n
+
+            x['d'] = dmin
+            x['Eamin'] = -emin
+            
+            pylab.plot(dfit, efit, '-', color=0.7)
+            
+            if ok:
+                pylab.plot(d, x['Em'] - E0, 'go')
+            else:
+                pylab.plot(d, x['Em'] - E0, 'ro')
+
+            pylab.text(dfit[0], efit[0], fix(formula))
+
+    pylab.xlabel(u'Bond length [Å]')
+    pylab.ylabel('Energy [eV]')
+    pylab.savefig('molecules.png')
+
+    o = open('molecules.txt', 'w')
+    print >> o, """\
+==============
+Molecule tests
+==============
+
+Atomization energies (*E*\ `a`:sub:) and bond lengths (*d*) for 20
+small molecules calculated with the PBE functional.  All calculations
+are done in a box of size 12.6 x 12.0 x 11.4 Å with a grid spacing of
+*h*\ =0.16 Å and zero-boundary conditions.  Compensation charges are
+expanded with correct multipole moments up to *l*\ `max`:sub:\ =2.
+Open-shell atoms are treated as non-spherical with integer occupation
+numbers, and zero-point energy is not included in the atomization
+energies. The numbers are compared to very accurate, state-of-the-art,
+PBE calculations (*ref* subscripts).
+
+.. figure:: molecules.png
+   
+
+Relaxed geometries
+==================
+
+(*rlx* subscript)
+
+.. list-table::
+   :widths: 2 3 8 5 6 8
+
+   * -
+     - *d* [Å]
+     - *d*-*d*\ `ref`:sub: [Å]
+     - *E*\ `a,rlx`:sub: [eV]
+     - *E*\ `a,rlx`:sub:-*E*\ `a`:sub: [eV]
+     - *E*\ `a,rlx`:sub:-*E*\ `a,rlx,ref`:sub: [eV] [1]_"""
+    for formula, Ea1, Ea2 in Ea12:
+        x = X[formula]
+        if 'Eamin' in x:
+            print >> o, '   * -', fix2(formula)
+            print >> o, '     - %5.3f' % x['d']
+            if 'dref' in x:
+                print >> o, ('     - ' +
+                             ', '.join(['%+5.3f [%d]_' % (x['d'] - dref, ref)
+                                        for dref, ref in x['dref']]))
+            else:
+                print >> o, '     -'
+            print >> o, '     - %6.3f' % x['Eamin']
+            print >> o, '     - %6.3f' % (x['Eamin'] - x['Ea'])
+            if formula in atomization_vasp:
+                print >> o, '     - %6.3f' % (x['Eamin'] -
+                                              atomization_vasp[formula][1] /
+                                              23.0605)
+            else:
+                print >> o, '     -'
+
+    print >> o, """\
+
+Experimental geometries
+=======================
+
+.. list-table::
+   :widths: 6 6 12
+
+   * -
+     - *E*\ `a`:sub: [eV]
+     - *E*\ `a`:sub:-*E*\ `a,ref`:sub: [eV]"""
+    for formula, Ea1, Ea2 in Ea12:
+        x = X[formula]
+        print >> o, '   * -', fix2(formula)
+        if 'Ea' in x:
+            print >> o, '     - %6.3f' % x['Ea']
+            if 'Earef' in x:
+                print >> o, ('     - ' +
+                             ', '.join(['%+5.3f [%d]_' % (x['Ea'] - Ecref, ref)
+                                        for Ecref, ref in x['Earef']]))
+            else:
+                print >> o, '     -'
+        else:
+            print >> o, '     -'
+            print >> o, '     -'
+        
+    print >> o, """
+
+References
+==========
+
+.. [1] "The Perdew-Burke-Ernzerhof exchange-correlation functional
+       applied to the G2-1 test set using a plane-wave basis set",
+       J. Paier, R. Hirschl, M. Marsman and G. Kresse,
+       J. Chem. Phys. 122, 234102 (2005)
+
+.. [2] "Molecular and Solid.State Tests of Density Functional
+       Approximations: LSD, GGAs, and Meta-GGAs", S. Kurth,
+       J. P. Perdew and P. Blaha, Int. J. Quant. Chem. 75, 889-909
+       (1999)
+
+.. [3] "Comment on 'Generalized Gradient Approximation Made Simple'",
+       Y. Zhang and W. Yang, Phys. Rev. Lett.
+
+.. [4] Reply to [3]_, J. P. Perdew, K. Burke and M. Ernzerhof
+
+"""
+
+    o.close()
+    
+    os.system('rst2html.py ' +
+              '--no-footnote-backlinks ' +
+              '--trim-footnote-reference-space ' +
+              '--footnote-references=superscript molecules.txt molecules.html')
