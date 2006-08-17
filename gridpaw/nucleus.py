@@ -366,6 +366,39 @@ class Nucleus:
         else:
             self.pt_i.add(dR_G, None, k, communicate=True)
 
+    def apply_hamiltonian(self, psit_G, Htpsit_G, s, k):
+        """Applies the non-local part of the Hamiltonian to the
+           wave function psit_G and adds the result to Htpsit_G"""
+        if self.in_this_domain:
+            ni = self.get_number_of_partial_waves()
+            P_i = num.zeros(ni, self.typecode)
+            self.pt_i.integrate(psit_G, P_i, k)
+        else:
+            self.pt_i.integrate(psit_G, None, k)
+
+        if self.in_this_domain:
+            H_ii = unpack(self.H_sp[s])
+            coefs_i = (num.dot(P_i, H_ii))
+            self.pt_i.add(Htpsit_G, coefs_i, k, communicate=True)
+        else:
+            self.pt_i.add(Htpsit_G, None, k, communicate=True)
+
+    def apply_overlap(self, psit_G, Spsit_G, k):
+        """Applies the non-local part of the overlap operator to the
+           wave function psit_G and adds the result to Spsit_G"""
+        if self.in_this_domain:
+            ni = self.get_number_of_partial_waves()
+            P_i = num.zeros(ni, self.typecode)
+            self.pt_i.integrate(psit_G, P_i, k)
+        else:
+            self.pt_i.integrate(psit_G, None, k)
+
+        if self.in_this_domain:
+            coefs_i = (num.dot(P_i, self.setup.O_ii))
+            self.pt_i.add(Spsit_G, coefs_i, k, communicate=True)
+        else:
+            self.pt_i.add(Spsit_G, None, k, communicate=True)
+
     def symmetrize(self, D_aii, map_sa, s):
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
         self.D_sp[s] = pack(D_ii)

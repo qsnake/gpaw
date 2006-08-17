@@ -324,3 +324,22 @@ class KPoint:
             nao0 = nao1
         assert nao0 == nao
 
+    def apply_h(self, pt_nuclei, kin, vt_sG, psit, Htpsit):
+        """Applies the Hamiltonian to the wave function psit"""
+
+        Htpsit[:] = 0.0
+        kin.apply(psit, Htpsit, self.phase_cd)
+        Htpsit += psit * vt_sG[self.s]
+        
+        for nucleus in pt_nuclei:
+            #apply the non-local part
+            nucleus.apply_hamiltonian(psit, Htpsit, self.s, self.k)
+
+    def apply_s(self, pt_nuclei, psit, Spsit):
+        """Applies the overlap operator to the wave function psit"""
+
+        Spsit[:] = psit[:]
+        for nucleus in pt_nuclei:
+            #apply the non-local part
+            nucleus.apply_overlap(psit, Spsit, self.k)
+            

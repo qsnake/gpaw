@@ -62,6 +62,7 @@ gc.set_debug(gc.DEBUG_SAVEALL)
 
 # Read old timings if they are present:
 machine=os.uname()[4]
+host=os.uname()[1]
 timings_file='timings.pickle_' + machine
 try:
     timings = pickle.loads(file(timings_file).read())
@@ -78,6 +79,7 @@ if options.run_failed_tests_only:
 
 L = max([len(test) for told, test in tests])
 print '-----------------------------------------------------------------'
+print ' Running tests in ', host, ', architecture ', machine
 print ' test', ' ' * (L - 4), 'result      time (old)'
 print '-----------------------------------------------------------------'
 
