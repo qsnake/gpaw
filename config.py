@@ -189,53 +189,38 @@ def get_system_config(define_macros, undef_macros,
 def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
                         mpi_runtime_library_dirs,mpi_define_macros):
 
-    machine = os.uname()[4]
-    if machine == 'sun4u':
+    globals = {}
+    execfile('gridpaw/utilities/mpiconfig.py', globals)
+    mpi = globals['get_mpi_implementation']()
+    
+    if mpi == '':
+        mpicompiler = None
+        custom_interpreter = False
+
+    elif mpi == 'sun':
         mpi_libraries += ['mpi']
         mpi_define_macros.append(('PARALLEL', '1'))
         mpicompiler = None
         custom_interpreter = False
 
-    elif sys.platform == 'aix5':
+    elif mpi == 'poe':
         #On IBM we need a custom interpreter
         mpicompiler = 'mpcc_r'
         custom_interpreter = True
 
+    elif mpi in ['mpich', 'mvapich']:
+        #With mpich, a custom compiler is needed
+        #Do not know with mvapich, but cannot test with shared libraries
+        #at the moment...
+        mpicompiler = 'mpicc'   
+        custom_interpreter = True            
+        mpi_define_macros.append(('PARALLEL', '1'))
+
     else:
-        #On other systems we try mpicc both with -show and -showme options
-        mpiflags = os.popen('mpicc -showme 2>/dev/null').read()
-        if mpiflags == '':
-            mpiflags = os.popen('mpicc -show 2>/dev/null').read()
-        if mpiflags == '':
-            mpicompiler = None
-            custom_interpreter = False
-        elif mpiflags.find('mpich/') != -1 or mpiflags.find('mvapich') != -1:
-            #With mpich, a custom compiler is needed
-            #Do not know with mvapich, but cannot test with shared libraries
-            #at the moment...
-            mpicompiler = 'mpicc'   
-            custom_interpreter = True            
-            mpi_define_macros.append(('PARALLEL', '1'))
-        elif mpiflags.find('lam') != -1:
-            #lam mpicc seems to be a little bit problematic for shared libs
-            #so we try to construct here a proper library arguments
-            mpi_include_dirs += re.findall('-I(\S+)', mpiflags)
-            mpi_library_dirs += re.findall('-L(\S+)', mpiflags)
-            mpi_runtime_library_dirs += mpi_library_dirs
-            mpi_libraries += re.findall('-l(\S+)', mpiflags)
-            #Some libs are causing problems, so we remove them...
-            while 'aio' in mpi_libraries:
-                mpi_libraries.remove('aio')
-            while 'lamf77mpi' in mpi_libraries:
-                mpi_libraries.remove('lamf77mpi')
-            mpicompiler = None
-            custom_interpreter = False
-            mpi_define_macros.append(('PARALLEL', '1'))
-        else:
-            #Try to build the shared library with mpicc
-            mpicompiler = 'mpicc'   
-            custom_interpreter = False
-            mpi_define_macros.append(('PARALLEL', '1'))
+        #Try to build the shared library with mpicc
+        mpicompiler = 'mpicc'   
+        custom_interpreter = False
+        mpi_define_macros.append(('PARALLEL', '1'))
 
     return mpicompiler, custom_interpreter
 

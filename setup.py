@@ -74,14 +74,25 @@ if os.path.isfile('customize.py'):
 
 if not custom_interpreter and mpicompiler:
     msg += ['* Compiling gpaw with %s' % mpicompiler]
-    #A sort of hack to change the used compiler
-    cc = get_config_var('CC')
-    oldcompiler=cc.split()[0]
-    os.environ['CC']=cc.replace(oldcompiler,mpicompiler)
-    ld = get_config_var('LDSHARED')
-    oldlinker=ld.split()[0]
-    os.environ['LDSHARED']=ld.replace(oldlinker,mpicompiler)
+    # A hack to change the used compiler and linker:
+    vars = get_config_vars()
+    for key in ['CC', 'LDSHARED']:
+        value = vars[key].split()
+        # first argument is the compiler/linker.  Replace with mpicompiler:
+        value[0] = mpicompiler
+        vars[key] = ' '.join(value)
+        
     define_macros.append(('PARALLEL', '1'))
+    
+##     # A sort of hack to change the used compiler
+##     cc = get_config_var('CC')
+##     oldcompiler=cc.split()[0]
+##     os.environ['CC']=cc.replace(oldcompiler,mpicompiler)
+##     ld = get_config_var('LDSHARED')
+##     oldlinker=ld.split()[0]
+##     os.environ['LDSHARED']=ld.replace(oldlinker,mpicompiler)
+##     define_macros.append(('PARALLEL', '1'))
+    
 elif not custom_interpreter:
     libraries += mpi_libraries
     library_dirs += mpi_library_dirs

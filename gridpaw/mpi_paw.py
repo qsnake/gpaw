@@ -9,6 +9,7 @@ import socket
 from gridpaw import debug
 from gridpaw.utilities.socket import send, recv
 from gridpaw.paw import Paw
+from gridpaw.utilities.mpiconfig import get_mpi_command
 import gridpaw.utilities.timing as timing
 
 
@@ -33,69 +34,37 @@ class MPIPaw:
 
         s.listen(1)
 
-        if os.environ.has_key('GRIDPAW_PYTHON'):
-            job = os.environ.get('GRIDPAW_PYTHON')
-            job += """ -c 'from gridpaw.mpi_run import run; run("%s",%d)'""" % (host,port)
-        else:
-            job = """python -c 'from gridpaw.mpi_run import run; run("%s",%d)'""" % (host,port)
+        # The environment variable GRIDPAW_PYTHON can be set to a
+        # special Python interpreter with MPI built in.  The deafault
+        # is to use the standard Python interpreter and load in the
+        # MPI library dynamically at run time.
+        python = os.environ.get('GRIDPAW_PYTHON', 'python')
 
-        job += ' --gridpaw-parallel'
+        # This is the Python command that all processors wil run:
+        line = 'from gridpaw.mpi_run import run; run("%s", %d)' % (host, port)
+        
+        job = python + " -c '" + line + "' --gridpaw-parallel"
+
         if debug:
             job += ' --gridpaw-debug'
 
-        # Command for remote calculator:
-        if os.environ.has_key('GRIDPAW_MPIRUN'):
-            cmd=os.environ.get('GRIDPAW_MPIRUN')
-            if cmd.find('job') == -1:
-                raise RuntimeError, 'Invalid GRIDPAW_MPIRUN: ' + cmd
-            cmd=cmd.replace('job',job)
+        # Get the command to start mpi.  Typically this will be
+        # something like:
+        #
+        #   cmd = 'mpirun -np %(np)d --hostfile %(hostfile)s %(job)s &'
+        #
+        cmd = get_mpi_command(debug)
 
-        elif os.uname()[4] == 'sun4u':
-            n = len(open(hostfile).readlines())
-            cmd = ('GRIDPAW_PARALLEL=1; ' +
-                   'export GRIDPAW_PARALLEL; ' +
-                   'mprun -np %d %s &' % (n, job))
+        # Insert np, hostfile and job:
+        cmd = cmd % {'job': job,
+                     'hostfile': hostfile,
+                     'np': len(open(hostfile).readlines())}
 
-        elif sys.platform == 'aix5':
-            if os.environ.has_key('LOADL_PROCESSOR_LIST'):
-                cmd = ('export GRIDPAW_PARALLEL=1; ' +
-                       "poe '%s' &" % job)
-            else:
-                n = len(open(hostfile).readlines())
-                cmd = ('export GRIDPAW_PARALLEL=1; ' +
-                       "poe '%s' -procs %d -hfile %s &" %
-                       (job, n, hostfile))
-        elif os.uname()[1]=='sepeli.csc.fi':
-            n = len(open(hostfile).readlines())
-            cmd = ('export GRIDPAW_PARALLEL=1; ' +
-                  'mpiexec -n %d %s' % (n, job))
-
-        else:
-            n0 = len(open(hostfile).readlines())
-            i, o, e = os.popen3('lamnodes C', 'r')
-            n = len(o.readlines())
-            cmd = ''
-            if n != n0:
-                if n > 0:
-                    cmd = 'lamhalt; '
-                if debug:
-                    cmd += 'lamboot -v %s; ' % hostfile
-                else:
-                    cmd += 'lamboot -H %s; ' % hostfile
-            if debug:
-                cmd += 'mpirun -v -nw -x GRIDPAW_PARALLEL=1 C %s' % job
-            else:
-#                cmd += 'mpirun -nw -x GRIDPAW_PARALLEL=1 -x PYTHONPATH -x GRIDPAWSETUPPATH C %s' % job
-                cmd += 'mpirun -nw -x GRIDPAW_PARALLEL=1 C %s' % job
-        # Start remote calculator:
-        print cmd
-        print os.environ['GRIDPAWSETUPPATH']
         error = os.system(cmd)
         if error != 0:
             raise RuntimeError
 
         self.sckt, addr = s.accept()
-        print >> out, addr
         
         string = pickle.dumps(args, -1)
 

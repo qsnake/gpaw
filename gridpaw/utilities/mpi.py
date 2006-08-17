@@ -139,7 +139,3 @@ def all_gather_array(comm, a):
     all = num.zeros(shape, num.Float)
     comm.all_gather(a, all)
     return all.flat
-
-
-
-
