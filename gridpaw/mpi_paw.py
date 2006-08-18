@@ -34,16 +34,21 @@ class MPIPaw:
 
         s.listen(1)
 
-        # The environment variable GRIDPAW_PYTHON can be set to a
+        # The environment variable GPAW_PYTHON can be set to a
         # special Python interpreter with MPI built in.  The deafault
         # is to use the standard Python interpreter and load in the
         # MPI library dynamically at run time.
-        python = os.environ.get('GRIDPAW_PYTHON', 'python')
+        python = os.environ.get('GPAW_PYTHON', sys.executable)
 
         # This is the Python command that all processors wil run:
-        line = 'from gridpaw.mpi_run import run; run("%s", %d)' % (host, port)
+        # line = 'from gridpaw.mpi_run import run; run("%s", %d)' % (host, port)
+        f=open('par_run.py','w')
+        print >> f, 'from gridpaw.mpi_run import run'
+        print >> f, 'run("%s",%d)' % (host,port)
+        f.close()
         
-        job = python + " -c '" + line + "' --gridpaw-parallel"
+        #job = python + " -c '" + line + "' --gridpaw-parallel"
+        job = python + ' par_run.py' + ' --gridpaw-parallel'
 
         if debug:
             job += ' --gridpaw-debug'
@@ -54,11 +59,15 @@ class MPIPaw:
         #   cmd = 'mpirun -np %(np)d --hostfile %(hostfile)s %(job)s &'
         #
         cmd = get_mpi_command(debug)
+        try:
+            np = len(open(hostfile).readlines())
+        except:
+            np = None
 
         # Insert np, hostfile and job:
         cmd = cmd % {'job': job,
                      'hostfile': hostfile,
-                     'np': len(open(hostfile).readlines())}
+                     'np': np}
 
         error = os.system(cmd)
         if error != 0:
@@ -85,6 +94,7 @@ class MPIPaw:
 
     def __del__(self):
         self.sckt.close()
+        os.remove('par_run.py')
 
     def __getattr__(self, attr):
         """Catch calls to methods and attributes."""

@@ -273,6 +273,8 @@ class Calculator:
                 self.hosts = 'dummy file-name'
             elif os.environ.has_key('GRIDPAW_MPIRUN'):
                 self.hosts = 'dummy file-name'
+            elif os.environ.has_key('GPAW_MPI_COMMAND'):
+                self.hosts = 'dummy file-name'
 
         if isinstance(self.hosts, int):
             if self.hosts == 1:
