@@ -103,7 +103,7 @@ elif not custom_interpreter:
 
 # Check the command line so that custom interpreter is build only with "build"
 # or "build_ext":
-if 'build' not in sys.argv and 'build_ext' not in sys.argv:
+if 'clean' in sys.argv:
     custom_interpreter = False
 
 # distutils clean does not remove the _gridpaw.so library so do it here:
@@ -132,7 +132,7 @@ extension = Extension('_gridpaw',
 
 scripts = glob(join('tools', 'gpa*[a-z]')) 
 if custom_interpreter:
-    scripts.append('build/bin.%s/' % plat + 'gridpaw-python')
+    scripts.append('build/bin.%s/' % plat + 'gpaw-python')
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,

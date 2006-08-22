@@ -313,7 +313,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     if not os.path.isdir('build/bin.%s/' % plat):
         os.makedirs('build/bin.%s/' % plat)    
-    exefile = 'build/bin.%s/' % plat + '/gridpaw-python'
+    exefile = 'build/bin.%s/' % plat + '/gpaw-python'
 
     define_macros.append(('PARALLEL', '1'))
     define_macros.append(('GRIDPAW_INTERPRETER', '1'))
