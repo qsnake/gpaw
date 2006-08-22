@@ -1,25 +1,17 @@
 -----------------------------------------
- rspaw: a grid-based real-space PAW code
+ GPAW: a grid-based real-space PAW code
 -----------------------------------------
 
-Copyright (c) 2004 Jens Jørgen Mortensen (jensj@fysik.dtu.dk)
+Copyright (c) 2004 CAMP
 
 
 
 Installation
 ------------
 
-For installation instructions, please see installation.txt in the "doc"
-directory.
+For installation instructions, please see:
 
-
-
-
-Usage and More Information
---------------------------
-
-See http://www.fysik.dtu.dk/campos/GridPAW
-
+  http://wiki.fysik.dtu.dk/gridcode
 
 
 
@@ -34,20 +26,19 @@ See LICENSE
 File             Description
 ---------------  -------------------------------
 README.txt       This file
-setup.py         distutils script
-MANIFIST.in      distutils MANIFEST file
 LICENSE          GPL-license
-requirements.py  Script to test for requirements
+setup.py         distutils script
+config.py        Configuration stuff
+customize.py     Help distutils fin libraries
+MANIFIST.in      distutils MANIFEST.in file
 ---------------  -------------------------------
 
 ----------  ---------------
 Directory   Description
 ----------  ---------------
-doc         Documentation
 demo        Demo scripts
-rspaw       The Python code
+gridpaw     The Python code
 tools       Useful tools
 test        Test suite
-timing      Timing scripts
-librspaw    C++ extensions
+c           C-extensions
 ----------  ---------------
