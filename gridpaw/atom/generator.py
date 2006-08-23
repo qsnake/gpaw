@@ -276,14 +276,14 @@ class Generator(AllElectron):
                 A[:, 2] = A[:, 1]**2
                 A[:, 3] = A[:, 1] * A[:, 2]
                 a = u[gc - 2:gc + 2] / r[gc - 2:gc + 2]**(l + 1)
-                if 0:#nodeless:
+                if 0:#l < 2 and nodeless:
                     a = num.log(a)
                 a = solve_linear_equations(A, a)
                 r1 = r[:gc]
                 r2 = r1**2
                 rl1 = r1**(l + 1)
                 y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))
-                if 0:#nodeless:
+                if 0:#l < 2 and nodeless:
                     y = num.exp(y)
                 s[:gc] = rl1 * y
 
@@ -369,6 +369,8 @@ class Generator(AllElectron):
             vbar = a[0] + r2 * (a[1])## + r2 * a[2])
             vbar -= vt
             vbar[gcut:] = 0.0
+            #vbar[:] = 0.0;print 'VBAAAAAAAR'
+            #vbar *= 1;print 'VBAAAAAAAR'
             vt += vbar
 
         

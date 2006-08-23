@@ -53,7 +53,12 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
                         source = os.popen('gunzip -c ' + filename, 'r').read()
                     break
         if source is None:
-            raise RuntimeError('Could not find %s-setup for %s.' %
+            print """
+You need to set the GPAW_SETUP_PATH environment variable to point to
+the directory where the setup files are stored.  See
+http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
+            
+            raise RuntimeError('Could not find %s-setup for "%s".' %
                                (xcname, symbol))
 
         fingerprint = md5.new(source).hexdigest()

@@ -2,27 +2,34 @@
 # Please see the accompanying LICENSE file for further information.
 
 """
-Y_L:
+Real-valued spherical harmonics
 
-+----+---+-----+---------+
-|  L | l |  m  |         | 
-+----+---+-----+---------+ 
-|  0 | 0 |  0  | 1       |  
-+----+---+-----+---------+
-|  1 | 1 | -1  | y       |
-|  2 | 1 |  0  | z       |
-|  3 | 1 |  1  | x       |
-+----+---+-----+---------+
-|  4 | 2 | -2  | xy      |
-|  5 | 2 | -1  | yz      |
-|  6 | 2 |  0  | 3z2-r2  |
-|  7 | 2 |  1  | zx      |
-|  8 | 2 |  2  | x2-y2   |
-+----+---+-----+---------+
 
-Y_L1 * Y_L2 = sum_L G[L1, L2, L] * Y_L
+=== === === =======
+ L   l   m   
+=== === === =======
+ 0   0   0   1
+ 1   1  -1   y
+ 2   1   0   z
+ 3   1   1   x
+ 4   2  -2   xy
+ 5   2  -1   yz
+ 6   2   0   3z2-r2
+ 7   2   1   zx
+ 8   2   2   x2-y2
+=== === === =======
+
+
+Gaunt coefficients::
+
+                  __
+     ^      ^    \   L      ^
+  Y (r)  Y (r) =  ) G    Y (r)
+   L      L      /__ L L  L
+    1      2      L   1 2
 
 """
+
 
 from math import pi
 

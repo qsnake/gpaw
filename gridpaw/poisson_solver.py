@@ -82,6 +82,7 @@ class PoissonSolver:
             return niter
 
         self.B.apply(rho, self.rhos[0])
+        
         niter = 1
         while self.iterate2(self.step) > eps and niter < 100:
             niter += 1

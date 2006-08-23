@@ -207,11 +207,11 @@ class KPoint:
         The size of the residuals is returned.
         
         Parameters:
-        ================ ================================================
-        ``pt_nuclei``    List of nuclei that have part of their projector
-                         functions in this domain.
-        ``converge_all`` Converge all wave functions or just occupied.
-        ================ ================================================
+         ================ ================================================
+         ``pt_nuclei``    List of nuclei that have part of their projector
+                          functions in this domain.
+         ``converge_all`` Converge all wave functions or just occupied.
+         ================ ================================================
         """
         
         R_nG = self.Htpsit_nG

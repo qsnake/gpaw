@@ -426,25 +426,25 @@ class GridDescriptor:
         return d_c
 
     def wannier_matrix(self, psit_nG, psit_nG1, c,k,k1,G):
-        """Wannier localization integrals:
+        """Wannier localization integrals
 
         For a given **k**,**k'** and **Ga** the soft part of Z is
-        given by:
-        (Eq. 28 ref1)
+        given by (Eq. 28 ref1)::
 
-            ~                       *
+            ~                                 *
             Z = Int exp[i (k'-k-Ga) r] u_nk(r) u_mk'(r) dr 
 
         A gamma-point calculation correspond to the case (k=k').
         If k<>k1 then k'-k-Ga=0. 
 
-        **Ga** is given by:
+        **Ga** is given by::
+        
                     __
                    2||
             G_a =  ---
                     La
                     
-        ref1: Thygesen et al, PRB 2005)
+        ref1: Thygesen et al, PRB (2005)
 
         """
 

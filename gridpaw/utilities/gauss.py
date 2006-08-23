@@ -9,16 +9,19 @@ gauss_L = ['sqrt(a0**3*4)/pi * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * y *
 gausspot_L = ['2*sqrt(pi)*erf3D(sqrt(a0)*r)/r', '', '', '', '', '', '', '', '', ]
 
 class Gaussian:
-    """Class offering several utilities related to the generalized gaussians:
+    """Class offering several utilities related to the generalized gaussians
+
+    ::
+    
                        _____                             2  
                       /  1       l!          l+3/2  -a0 r    l  m
-       g (x,y,z) =   / ----- --------- (4 a0)      e        r  Y (x,y,z)
+       g (x,y,z) =   / ----- --------- (4 a0)      e        r  Y (x,y,z),
         L          \/  4 pi  (2l + 1)!                          l
 
-       where a0 is the width of the gaussian, and Y_l^m is a real spherical
-       harmonic.
-       The gaussians are centered in the middle of input grid-descriptor.
-    """
+    where a0 is the width of the gaussian, and Y_l^m is a real spherical
+    harmonic.
+    The gaussians are centered in the middle of input grid-descriptor."""
+    
     def __init__(self, gd, a0=21.):
         self.gd = gd
         self.xyz, self.r2 = coordinates(gd)

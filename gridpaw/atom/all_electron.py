@@ -268,12 +268,13 @@ class AllElectron:
         return n
     
     def solve(self):
-        """
-        Solve the Schrodinger equation::
+        """Solve the Schrodinger equation
+
+        ::
         
              2 
             d u     1  dv  du   u     l(l + 1)
-          - --- - ---- -- (-- - -) + [-------- + 2M(v - e)] u = 0
+          - --- - ---- -- (-- - -) + [-------- + 2M(v - e)] u = 0,
               2      2 dr  dr   r         2
             dr    2Mc                    r
 
@@ -306,8 +307,8 @@ class AllElectron:
             2  2   dg  1      0
           dg
 
-        with the vectors c , c , and c  defined by::
-                          0   1       2
+        with the vectors c0, c1, and c2  defined by::
+
                  2 dg 2
           c  = -r (--)
            2       dr
@@ -396,8 +397,10 @@ class AllElectron:
 
 def shoot(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     """n, A = shoot(u, l, vr, e, ...)
-       For guessed trial eigenenergy e, integrate the radial Schrodinger
-       equation::
+    
+    For guessed trial eigenenergy e, integrate the radial Schrodinger
+    equation::
+
           2 
          d u      du  
          --- c  + -- c  + u c  = 0
@@ -418,13 +421,14 @@ def shoot(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
         c  = l(l + 1) + 2M(v - e)r  + ---- --
          0                               2 dr
                                       2Mc
-       The resulting wavefunction is returned in input vector u.
-       The number of nodes of u is returned in attribute n.
-       Returned attribute A, is a measure of the size of the derivative
-       discontinuity at the classical turning point.
-       The trial energy e is correct if A is zero and n is the correct number
-       of nodes.
-    """
+                                      
+    The resulting wavefunction is returned in input vector u.
+    The number of nodes of u is returned in attribute n.
+    Returned attribute A, is a measure of the size of the derivative
+    discontinuity at the classical turning point.
+    The trial energy e is correct if A is zero and n is the correct number
+    of nodes."""
+    
     if scalarrel:
         x = 0.5 * alpha**2 # x = 1 / (2c^2)
         Mr = r * (1.0 + x * e) - x * vr
