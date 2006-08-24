@@ -9,7 +9,8 @@ from gridpaw.domain import Domain
 from gridpaw.symmetry import Symmetry
 from gridpaw.paw import Paw
 from gridpaw.xc_functional import XCFunctional
-from gridpaw.parallel import distribute_kpoints_and_spins
+from gridpaw.utilities import gcd
+import gridpaw.utilities.mpi as mpi
 
 
 def create_paw_object(out, a0, Ha,
@@ -201,3 +202,30 @@ def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss, out):
             setups[Z] = setup
             assert Z == setup.Z
     return setups
+
+
+def new_communicator(ranks):
+    if len(ranks) == 1:
+        return mpi.serial_comm
+    elif len(ranks) == mpi.size:
+        return mpi.world
+    else:
+        return mpi.world.new_communicator(num.array(ranks))
+
+
+def distribute_kpoints_and_spins(nspins, nkpts):
+    ntot = nspins * nkpts
+    size = mpi.size
+    rank = mpi.rank
+
+    ndomains = size / gcd(ntot, size)
+
+    r0 = (rank // ndomains) * ndomains
+    ranks = range(r0, r0 + ndomains)
+    domain_comm = new_communicator(ranks)
+
+    r0 = rank % ndomains
+    ranks = range(r0, r0 + size, ndomains)
+    kpt_comm = new_communicator(ranks)
+
+    return domain_comm, kpt_comm
