@@ -2,8 +2,11 @@
 # Please see the accompanying LICENSE file for further information.
 
 # Computer generated code:
+# format:
+#    'element': (atomic number, [(n, l, occ, energy), ...])
 
-configurations = {'Ac': (89,
+configurations = {
+ 'Ac': (89,
         [(1, 0, 2, -3443.1103670000002),
          (2, 0, 2, -592.62287800000001),
          (2, 1, 6, -572.7627),

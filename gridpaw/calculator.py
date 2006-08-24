@@ -72,7 +72,7 @@ class Calculator:
         If you don't specify any parameters, you will get:
 
         Defaults: neutrally charged, LDA, gamma-point calculation, a
-        reasonable grid-spacing, zero Kelvin elctronic temperature,
+        reasonable grid-spacing, zero Kelvin electronic temperature,
         and the number of bands will be half the number of valence
         electrons plus 3 extra bands. Only occupied bands are used in
         the convergence decision. The calculation will be

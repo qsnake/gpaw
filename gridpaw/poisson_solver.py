@@ -61,7 +61,7 @@ class PoissonSolver:
         # handling of charged densities
         if charge == None:
             charge = self.gd.integrate(rho)
-        if abs(charge)> 1e-6:
+        if abs(charge) > 1e-6:
             # Load necessary attributes
             if not hasattr(self, 'rho_gauss'):
                 from gridpaw.utilities.gauss import Gaussian

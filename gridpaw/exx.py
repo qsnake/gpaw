@@ -378,7 +378,7 @@ def constructX(gen):
     """Construct the X_p^a matrix for the given atom"""
 
     # maximum angular momentum
-    Lmax = 2 * max(gen.l_j,gen.lmax) + 1
+    Lmax = 2 * max(gen.l_j + [gen.lmax]) + 1
 
     uv_j = gen.vu_j    # soft valence states * r:
     lv_j = gen.vl_j    # their repective l quantum numbers

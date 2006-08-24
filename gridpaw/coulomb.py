@@ -37,7 +37,7 @@ class Coulomb:
                 self.ewald = num.ones(self.gd.N_c) - \
                              num.cos(num.sqrt(self.k2)* rc)
                 # lim k ->0 ewald / k2 
-                self.ewald[0,0,0] = 0.5 * rc**2
+                self.ewald[0, 0, 0] = .5 * rc**2
 
             if method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)
@@ -104,7 +104,7 @@ class Coulomb:
             I = self.gd.new_array()
             if n2 == None: n2 = n1; Z2 = Z1
             self.solve(I, n2, charge=Z2)
-            I *= num.conjugate(n1)
+            I *= num.conjugate(n1)           
         elif method == 'recip_ewald':
             n1k = fftnd(n1)
             if n2 == None: n2k = n1k
