@@ -49,6 +49,8 @@ class PoissonSolver:
         self.presmooths[level]=8
         self.postsmooths[level]=8
 
+        self.solver = self.iterate2
+
         if load_gauss:
             from gridpaw.utilities.gauss import Gaussian
             gauss = Gaussian(self.gd)
@@ -84,7 +86,7 @@ class PoissonSolver:
         self.B.apply(rho, self.rhos[0])
         
         niter = 1
-        while self.iterate2(self.step) > eps and niter < 100:
+        while self.solver(self.step) > eps and niter < 100:
             niter += 1
         if niter == 100:
             charge = num.sum(rho.flat) * self.dv
@@ -103,7 +105,7 @@ class PoissonSolver:
             else:
                 self.operators[level].apply(self.phis[level], residual)
                 residual -= self.rhos[level]
-            error = self.gd.comm.sum(num.vdot(residual, residual))
+            error = self.gd.comm.sum(num.vdot(residual, residual))*self.dv
             if niter == 1 and level < self.levels:
                 self.restrictors[level].apply(residual, self.rhos[level + 1])
                 self.phis[level + 1][:] = 0.0
@@ -127,7 +129,7 @@ class PoissonSolver:
 
         if level < self.levels:
             self.operators[level].relax(self.phis[level],self.rhos[level],
-                                        self.presmooths[level])
+                                        self.presmooths[level],0.66666666)
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             self.restrictors[level].apply(residual,
@@ -139,13 +141,44 @@ class PoissonSolver:
             self.phis[level] -= residual
 
         self.operators[level].relax(self.phis[level],self.rhos[level],
-                                    self.postsmooths[level])
+                                    self.postsmooths[level],0.66666666)
         if level == 0:
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
                                                 residual.flat))*self.dv
             return error
+
+
+    def iterate3(self, step, level=0):
+        residual = self.residuals[level]
+        if level < self.levels:
+            for n in range(self.presmooths[level]):
+                self.operators[level].apply(self.phis[level], residual)
+                residual -= self.rhos[level]
+                self.phis[level] -= step*residual
+            self.operators[level].apply(self.phis[level], residual)
+            residual -= self.rhos[level]
+            self.restrictors[level].apply(residual,
+                                          self.rhos[level + 1])
+            self.phis[level + 1][:] = 0.0
+            self.iterate3(4.0 * step, level + 1)
+            self.interpolators[level + 1].apply(self.phis[level + 1],
+                                                residual)
+            self.phis[level] -= residual
+
+        for n in range(self.postsmooths[level]):
+            self.operators[level].apply(self.phis[level], residual)
+            residual -= self.rhos[level]
+            self.phis[level] -= step*residual
+
+        if level == 0:
+            self.operators[level].apply(self.phis[level], residual)
+            residual -= self.rhos[level]
+            error = self.gd.domain.comm.sum(num.dot(residual.flat,
+                                                residual.flat))*self.dv            
+            return error
+
 
     def load(self):
         # Load necessary attributes

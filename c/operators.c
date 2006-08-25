@@ -32,8 +32,9 @@ static PyObject * Operator_relax(OperatorObject *self,
 {
   PyArrayObject* func;
   PyArrayObject* source;
+  double w = 1.0;
   int nrelax;
-  if (!PyArg_ParseTuple(args, "OOi", &func, &source, &nrelax))
+  if (!PyArg_ParseTuple(args, "OOi|d", &func, &source, &nrelax, &w))
     return NULL;
 
   const boundary_conditions* bc = self->bc;
@@ -56,7 +57,7 @@ static PyObject * Operator_relax(OperatorObject *self,
         bc_unpack2(bc, self->buf, i,
                    self->recvreq, self->sendreq, self->recvbuf);
       }
-    bmgs_relax(&self->stencil,self->buf,fun,src);
+    bmgs_relax(&self->stencil, self->buf, fun, src, w);
     for (int i = 0; i < 3; i++) {
       if (bc->zero[i])
 	{
