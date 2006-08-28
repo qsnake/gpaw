@@ -26,8 +26,9 @@ class PoissonSolver:
         self.restrictors = [Restrictor(gd, 1)]
 
         level = 0
-        self.presmooths=[2]
-        self.postsmooths=[1]
+        self.presmooths = [2]
+        self.postsmooths = [1]
+        self.weights = [2.0/3.0]
         while level < 4:
             try:
                 gd = gd.coarsen()
@@ -41,6 +42,7 @@ class PoissonSolver:
             self.restrictors.append(Restrictor(gd, 1))
             self.presmooths.append(4)
             self.postsmooths.append(4)
+            self.weights.append(1.0)
             level += 1
             print >> out, level, gd.N_c
                     
@@ -127,7 +129,7 @@ class PoissonSolver:
 
         if level < self.levels:
             self.operators[level].relax(self.phis[level],self.rhos[level],
-                                        self.presmooths[level])
+                                        self.presmooths[level],self.weights[level])
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             self.restrictors[level].apply(residual,
@@ -139,7 +141,7 @@ class PoissonSolver:
             self.phis[level] -= residual
 
         self.operators[level].relax(self.phis[level],self.rhos[level],
-                                    self.postsmooths[level])
+                                    self.postsmooths[level],self.weights[level])
         if level == 0:
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
