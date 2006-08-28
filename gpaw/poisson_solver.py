@@ -57,7 +57,7 @@ class PoissonSolver:
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
         
-    def solve(self, phi, rho, eps=1e-10, charge=0):
+    def solve(self, phi, rho, eps=2e-10, charge=0):
         self.phis[0] = phi
 
         # handling of charged densities
