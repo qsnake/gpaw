@@ -21,10 +21,10 @@ import Numeric as npy
 from LinearAlgebra import inverse
 from ASE.Units import Convert
 
-from gridpaw.utilities.singleatom import SingleAtom
-from gridpaw.utilities.molecule import molecules, Molecule
-from gridpaw.utilities import locked, fix, fix2
-from gridpaw.paw import ConvergenceError
+from gpaw.utilities.singleatom import SingleAtom
+from gpaw.utilities.molecule import molecules, Molecule
+from gpaw.utilities import locked, fix, fix2
+from gpaw.paw import ConvergenceError
 from atomization_data import atomization_vasp
 
 

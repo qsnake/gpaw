@@ -1,7 +1,7 @@
 import os
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
-from gridpaw.utilities import equal
+from gpaw import Calculator
+from gpaw.utilities import equal
 h = 0.2
 n = 24
 a = n * h

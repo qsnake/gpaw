@@ -1,6 +1,6 @@
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import Crystal, Atom
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 from ASE.Units import Convert, units
 
 

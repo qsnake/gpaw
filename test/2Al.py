@@ -1,6 +1,6 @@
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import Crystal, Atom
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 
 a = 4.05
 d = a / 2**0.5

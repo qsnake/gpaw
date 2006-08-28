@@ -1,7 +1,7 @@
 from ASE import Atom, ListOfAtoms
 from ASE.Calculators.CheckForce import CheckForce
-from gridpaw.utilities import equal
-from gridpaw import Calculator
+from gpaw.utilities import equal
+from gpaw import Calculator
 
 a = 6.0
 atoms = ListOfAtoms([Atom('C', [a / 2 + 0.0234,

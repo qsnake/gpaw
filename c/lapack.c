@@ -3,7 +3,7 @@
 #include <Numeric/arrayobject.h>
 #include "extensions.h"
 
-#ifdef GRIDPAW_AIX
+#ifdef GPAW_AIX
 #  define dsyev_ dsyev
 #  define zhegv_ zhegv
 #  define zheev_ zheev

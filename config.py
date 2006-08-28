@@ -128,7 +128,7 @@ def get_system_config(define_macros, undef_macros,
         extra_link_args += ['-bmaxdata:0x80000000', '-bmaxstack:0x80000000']
 
         libraries += ['f', 'essl', 'lapack']
-        define_macros.append(('GRIDPAW_AIX', '1'))
+        define_macros.append(('GPAW_AIX', '1'))
         #    mpicompiler = 'mpcc_r'
         #    custom_interpreter = True
 
@@ -190,7 +190,7 @@ def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
                         mpi_runtime_library_dirs,mpi_define_macros):
 
     globals = {}
-    execfile('gridpaw/utilities/mpiconfig.py', globals)
+    execfile('gpaw/mpi/config.py', globals)
     mpi = globals['get_mpi_implementation']()
     
     if mpi == '':
@@ -260,7 +260,7 @@ def check_dependencies(sources):
             os.remove(o)
             remove = True
 
-    so = 'build/lib.%s/_gridpaw.so' % plat
+    so = 'build/lib.%s/_gpaw.so' % plat
     if os.path.exists(so) and remove:
         # Remove shared object C-extension:
         # print 'removing', so
@@ -307,7 +307,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     cfiles = glob('c/[a-zA-Z]*.c') + ['c/bmgs/bmgs.c']
     for src in parallel_sources:
         cfiles.remove(src)
-    sources = ' '.join(parallel_sources+['c/_gridpaw.c'])
+    sources = ' '.join(parallel_sources+['c/_gpaw.c'])
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
                         for x in cfiles])
 
@@ -316,7 +316,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     exefile = 'build/bin.%s/' % plat + '/gpaw-python'
 
     define_macros.append(('PARALLEL', '1'))
-    define_macros.append(('GRIDPAW_INTERPRETER', '1'))
+    define_macros.append(('GPAW_INTERPRETER', '1'))
     macros = ' '.join(['-D%s=%s' % x for x in define_macros])
 
     include_dirs.append(cfgDict['INCLUDEPY'])

@@ -40,16 +40,16 @@ static PyMethodDef functions[] = {
 extern PyTypeObject MPIType;
 #endif
 
-#ifndef GRIDPAW_INTERPRETER
-PyMODINIT_FUNC init_gridpaw(void)
+#ifndef GPAW_INTERPRETER
+PyMODINIT_FUNC init_gpaw(void)
 {
 #ifdef PARALLEL
   if (PyType_Ready(&MPIType) < 0)
     return;
 #endif
 
-  PyObject* m = Py_InitModule3("_gridpaw", functions, 
-			       "C-extension for gridpaw\n\n...\n");
+  PyObject* m = Py_InitModule3("_gpaw", functions, 
+			       "C-extension for gpaw\n\n...\n");
   if (m == NULL)
     return;
   
@@ -62,7 +62,7 @@ PyMODINIT_FUNC init_gridpaw(void)
 }
 #endif
 
-#ifdef GRIDPAW_INTERPRETER
+#ifdef GPAW_INTERPRETER
 extern DL_EXPORT(int) Py_Main(int, char **);
 
 #include <mpi.h>
@@ -76,8 +76,8 @@ main(int argc, char **argv)
   if (PyType_Ready(&MPIType) < 0)
     return -1;
 
-  PyObject* m = Py_InitModule3("_gridpaw", functions, 
-			       "C-extension for gridpaw\n\n...\n");
+  PyObject* m = Py_InitModule3("_gpaw", functions, 
+			       "C-extension for gpaw\n\n...\n");
   if (m == NULL)
     return -1;
   

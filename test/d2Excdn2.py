@@ -1,4 +1,4 @@
-from gridpaw.lrtddft import d2Excdnsdnt,d2Excdn2
+from gpaw.lrtddft import d2Excdnsdnt,d2Excdn2
 import Numeric as num
 
 dup=num.array([.1,.3])

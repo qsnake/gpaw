@@ -1,8 +1,8 @@
 import Numeric as num
-from gridpaw.domain import Domain
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.localized_functions import create_localized_functions
-from gridpaw.spline import Spline
+from gpaw.domain import Domain
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.localized_functions import create_localized_functions
+from gpaw.spline import Spline
 
 s=Spline(0, 1.2, [1, 0.6, 0.1, 0.0])
 a = 4.0

@@ -1,7 +1,7 @@
 import Numeric as na
 from ASE.Utilities.BEE import GetEnsembleEnergies
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
+from gpaw import Calculator
 
 a = 4.0  # Size of unit cell (Angstrom)
 

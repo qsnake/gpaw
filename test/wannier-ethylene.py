@@ -1,9 +1,9 @@
-""" gridpaw wannier example for ethylene, 
+""" gpaw wannier example for ethylene, 
     corresponding to the ASE Wannier tutorial. 
 """
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
-from gridpaw.utilities import equal
+from gpaw import Calculator
+from gpaw.utilities import equal
 
 if 1:
     a = 6.0  # Size of unit cell (Angstrom)

@@ -1,10 +1,10 @@
 from math import sqrt, pi
 import Numeric as num
-from gridpaw.domain import Domain
-from gridpaw.setup import Setup
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.localized_functions import create_localized_functions
-from gridpaw.xc_functional import XCFunctional
+from gpaw.domain import Domain
+from gpaw.setup import Setup
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.localized_functions import create_localized_functions
+from gpaw.xc_functional import XCFunctional
 
 n = 40 /8 * 10
 a = 10.0

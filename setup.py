@@ -17,7 +17,7 @@ from stat import ST_MTIME
 from config import *
 
 # Get the current version number:
-execfile('gridpaw/version.py')
+execfile('gpaw/version.py')
 
 long_description = """\
 A grid-based real-space Projector Augmented Wave (PAW) method Density
@@ -43,10 +43,11 @@ mpi_runtime_library_dirs = []
 mpi_define_macros = []
 
 
-packages = ['gridpaw',
-            'gridpaw.io',
-            'gridpaw.atom',
-            'gridpaw.utilities']
+packages = ['gpaw',
+            'gpaw.io',
+            'gpaw.mpi',
+            'gpaw.atom',
+            'gpaw.utilities']
 
 force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:
@@ -106,9 +107,9 @@ elif not custom_interpreter:
 if 'clean' in sys.argv:
     custom_interpreter = False
 
-# distutils clean does not remove the _gridpaw.so library so do it here:
+# distutils clean does not remove the _gpaw.so library so do it here:
 plat = get_platform() + '-' + sys.version[0:3]
-gpawso = 'build/lib.%s/' % plat + '_gridpaw.so'
+gpawso = 'build/lib.%s/' % plat + '_gpaw.so'
 if "clean" in sys.argv and os.path.isfile(gpawso):
     print 'removing ', gpawso
     os.remove(gpawso)
@@ -118,7 +119,7 @@ include_dirs += [os.environ['HOME'] + '/include/python']
 sources = glob('c/*.c') + ['c/bmgs/bmgs.c']
 check_dependencies(sources)
 
-extension = Extension('_gridpaw',
+extension = Extension('_gpaw',
                       sources,
                       libraries=libraries,
                       library_dirs=library_dirs,
@@ -158,7 +159,7 @@ if custom_interpreter:
                       extra_link_args, extra_compile_args,mpicompiler)
 
 if ('PARALLEL', '1') not in define_macros:
-    msg += ['* A serial version of gridpaw was build!']
+    msg += ['* A serial version of gpaw was build!']
 
 # Messages make sense only when building
 if "build" in sys.argv or "build_ext" in sys.argv:

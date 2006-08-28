@@ -1,6 +1,6 @@
 from ASE import Crystal, Atom
-from gridpaw import Calculator
-from gridpaw.utilities import equal
+from gpaw import Calculator
+from gpaw.utilities import equal
 
 
 a = 4.0

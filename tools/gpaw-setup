@@ -35,8 +35,8 @@ parser.add_option('-c', '--core', type='string', default=None,
 
 opt, args = parser.parse_args()
 
-from gridpaw.atom.generator import Generator, parameters
-from gridpaw.atom.all_electron import AllElectron
+from gpaw.atom.generator import Generator, parameters
+from gpaw.atom.all_electron import AllElectron
 
 if args:
     atoms = args

@@ -1,8 +1,8 @@
 import os
 from ASE import Crystal, Atom
 from ASE.Units import units
-from gridpaw.utilities import equal
-from gridpaw import Calculator
+from gpaw.utilities import equal
+from gpaw import Calculator
 
 
 units.SetUnits('Bohr', 'Hartree')

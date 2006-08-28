@@ -1,5 +1,5 @@
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
+from gpaw import Calculator
 from math import pi
 #from ASE.Visualization.RasMol import RasMol
 

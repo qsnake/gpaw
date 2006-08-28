@@ -1,4 +1,4 @@
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import Atom,ListOfAtoms
 from ASE.Utilities.Wannier.Wannier import Wannier
 from ASE.IO.Cube import WriteCube
@@ -20,7 +20,7 @@ if 1:
     atoms = ListOfAtoms(atomslst,cell = (L,10,10),periodic=(True,True,True))
 
 
-    # gridpaw calculator
+    # gpaw calculator
     calc = Calculator(h=0.18, nbands=bands, xc='PBE',out='wire.txt',kpts=(21,1,1))
     atoms.SetCalculator(calc)
     # Displace kpoints sligthly, so that the symmetry program 

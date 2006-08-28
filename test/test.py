@@ -44,7 +44,7 @@ if len(tests) == 0:
     tests = glob.glob(path + '*.py')
 
 if options.debug:
-    sys.argv.append('--gridpaw-debug')
+    sys.argv.append('--gpaw-debug')
 
 exclude = ['__init__.py', 'test.py', 'grr.py', 'C-force.py']
 if options.exclude is not None:

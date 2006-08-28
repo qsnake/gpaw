@@ -75,16 +75,16 @@ if len(args) != 1:
     sys.exit()
 
 if opt.debug:
-    sys.argv.append('--gridpaw-debug')
+    sys.argv.append('--gpaw-debug')
 
 from ASE.Units import Convert
 
-import gridpaw
-from gridpaw import setup_paths
-from gridpaw.utilities.singleatom import SingleAtom
-from gridpaw.utilities.molecule import Molecule
-from gridpaw.utilities.bulk import Bulk
-from gridpaw.utilities.bulk import data as bulk_data
+import gpaw
+from gpaw import setup_paths
+from gpaw.utilities.singleatom import SingleAtom
+from gpaw.utilities.molecule import Molecule
+from gpaw.utilities.bulk import Bulk
+from gpaw.utilities.bulk import data as bulk_data
 
 
 singleatom = True
@@ -103,7 +103,7 @@ parameters = eval(opt.extra_parameters)
 parameters['xc'] = opt.xc_functional
 parameters['nbands'] = opt.bands
 parameters['hosts'] = opt.parallel
-gridpaw.x = opt.X
+gpaw.x = opt.X
 
 
 if singleatom and symbol in bulk_data:

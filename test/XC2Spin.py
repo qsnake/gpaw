@@ -1,9 +1,9 @@
 from math import pi
-from gridpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
-from gridpaw.domain import Domain
-from gridpaw.xc_functional import XCOperator
+from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
+from gpaw.domain import Domain
+from gpaw.xc_functional import XCOperator
 import Numeric as num
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 
 
 for name in ['LDA', 'PBE']:

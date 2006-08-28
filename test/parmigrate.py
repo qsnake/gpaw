@@ -1,5 +1,5 @@
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
+from gpaw import Calculator
 
 h = 0.2
 n = 24

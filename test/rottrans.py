@@ -3,9 +3,9 @@ from math import pi
 import Numeric as num
 import RandomArray as ra
 
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.domain import Domain
-from gridpaw.operators import Gradient, Laplace
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.domain import Domain
+from gpaw.operators import Gradient, Laplace
 
 
 domain = Domain((4.0, 4.0, 4.0), (1, 0, 0), angle=pi)

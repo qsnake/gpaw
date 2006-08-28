@@ -1,7 +1,7 @@
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import Crystal, Atom
 from ASE.Calculators.CheckForce import CheckForce
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 
 a = 5.404
 bulk = Crystal([Atom('Si', (0, 0, 0.1 / a)),

@@ -2,7 +2,7 @@ from math import pi
 import Numeric as num
 from ASE.Utilities.BEE import GetEnsembleEnergies
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
+from gpaw import Calculator
 
 a = 4.0  # Size of unit cell (Angstrom)
 

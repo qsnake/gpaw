@@ -2,7 +2,7 @@ import sys
 import StringIO
 stdout, sys.stdout = sys.stdout, StringIO.StringIO()
 stderr, sys.stderr = sys.stderr, StringIO.StringIO()
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import ListOfAtoms, Atom
 
 a = 5.0

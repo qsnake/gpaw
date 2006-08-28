@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
+from gpaw import Calculator
 
 a = 4.0
 H = ListOfAtoms([Atom('H', (a/2, a/2, a/2), magmom=1)],

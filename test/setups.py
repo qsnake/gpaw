@@ -1,11 +1,11 @@
 import glob
 
 import Numeric as num
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 from ASE.ChemicalElements.symbol import symbols
 
-from gridpaw.setup import Setup
-from gridpaw.xc_functional import XCFunctional
+from gpaw.setup import Setup
+from gpaw.xc_functional import XCFunctional
 
 
 ##for xcname in ['LDA', 'PBE', 'revPBE']:

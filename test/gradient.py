@@ -1,7 +1,7 @@
-from gridpaw.operators import Gradient
+from gpaw.operators import Gradient
 import Numeric as num
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.domain import Domain
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.domain import Domain
 
 
 domain = Domain((7.0, 1.0, 1.0))

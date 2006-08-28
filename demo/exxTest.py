@@ -1,7 +1,7 @@
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
-from gridpaw.atom.all_electron import AllElectron as AE
-from gridpaw.exx import atomic_exact_exchange as aExx
+from gpaw import Calculator
+from gpaw.atom.all_electron import AllElectron as AE
+from gpaw.exx import atomic_exact_exchange as aExx
 
 # initialize output text string
 out  = '|---------------------------------------------------|\n'

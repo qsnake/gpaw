@@ -1,7 +1,7 @@
 import os
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import Atom, ListOfAtoms
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 
 
 if 1:

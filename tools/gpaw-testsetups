@@ -21,9 +21,9 @@ opt, tests = parser.parse_args()
 
 from ASE.Units import Convert
 
-from gridpaw.setuptests.singleatom import SingleAtom
-from gridpaw.setuptests.molecule import molecules, Molecule
-from gridpaw.paw import ConvergenceError
+from gpaw.setuptests.singleatom import SingleAtom
+from gpaw.setuptests.molecule import molecules, Molecule
+from gpaw.paw import ConvergenceError
 
 
 parameters = eval(opt.extra_parameters)

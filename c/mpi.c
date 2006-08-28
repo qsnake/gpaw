@@ -202,7 +202,7 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
   if (! PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
     return -1;
 
-#ifndef GRIDPAW_INTERPRETER
+#ifndef GPAW_INTERPRETER
   int argc = 0;
   MPI_Init(&argc, 0);
 #endif

@@ -22,11 +22,11 @@ from LinearAlgebra import inverse
 from ASE.Units import Convert
 from ASE.ChemicalElements.symbol import symbols
 
-from gridpaw.utilities.singleatom import SingleAtom
-from gridpaw.utilities.bulk import Bulk
-from gridpaw.utilities.bulk import data as bulkdata
-from gridpaw.utilities import locked
-from gridpaw.paw import ConvergenceError
+from gpaw.utilities.singleatom import SingleAtom
+from gpaw.utilities.bulk import Bulk
+from gpaw.utilities.bulk import data as bulkdata
+from gpaw.utilities import locked
+from gpaw.paw import ConvergenceError
 
 X = {}
 for symbol in symbols:

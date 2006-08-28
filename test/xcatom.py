@@ -1,8 +1,8 @@
 import Numeric as num
 import RandomArray as ra
-from gridpaw.setup import Setup
-from gridpaw.xc_functional import XCFunctional
-from gridpaw.utilities import equal
+from gpaw.setup import Setup
+from gpaw.xc_functional import XCFunctional
+from gpaw.utilities import equal
 
 
 x = 0.000001

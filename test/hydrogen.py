@@ -1,5 +1,5 @@
-from gridpaw import Calculator
-from gridpaw.utilities import equal
+from gpaw import Calculator
+from gpaw.utilities import equal
 from ASE import ListOfAtoms, Atom
 
 a = 4.0

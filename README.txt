@@ -11,7 +11,7 @@ Installation
 
 For installation instructions, please see:
 
-  http://wiki.fysik.dtu.dk/gridcode
+  http://wiki.fysik.dtu.dk/gpaw
 
 
 
@@ -33,12 +33,12 @@ customize.py     Help distutils fin libraries
 MANIFIST.in      distutils MANIFEST.in file
 ---------------  -------------------------------
 
-----------  ---------------
-Directory   Description
-----------  ---------------
-demo        Demo scripts
-gridpaw     The Python code
-tools       Useful tools
-test        Test suite
-c           C-extensions
-----------  ---------------
+---------  ---------------
+Directory  Description
+---------  ---------------
+demo       Demo scripts
+gpaw       The Python code
+tools      Useful tools
+test       Test suite
+c          C-extensions
+---------  ---------------

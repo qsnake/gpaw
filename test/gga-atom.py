@@ -1,13 +1,13 @@
 import Numeric as num
 import RandomArray as ra
-from gridpaw.utilities import equal
-from gridpaw.setup import Setup
-from gridpaw.domain import Domain
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.localized_functions import create_localized_functions
-from gridpaw.spline import Spline
-from gridpaw.xc_functional import XCFunctional, XCOperator
-from gridpaw.utilities import pack
+from gpaw.utilities import equal
+from gpaw.setup import Setup
+from gpaw.domain import Domain
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.localized_functions import create_localized_functions
+from gpaw.spline import Spline
+from gpaw.xc_functional import XCFunctional, XCOperator
+from gpaw.utilities import pack
 
 
 ra.seed(1, 2)

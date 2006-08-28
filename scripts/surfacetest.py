@@ -20,10 +20,10 @@ import Numeric as npy
 from ASE.Units import Convert
 from ASE import Atom, ListOfAtoms
 
-from gridpaw.utilities.bulk import data
-from gridpaw.paw import ConvergenceError
-from gridpaw.utilities import locked
-from gridpaw import Calculator
+from gpaw.utilities.bulk import data
+from gpaw.paw import ConvergenceError
+from gpaw.utilities import locked
+from gpaw import Calculator
 
 
 inf = 1e4000

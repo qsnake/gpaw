@@ -1,6 +1,6 @@
 import Numeric as num
-from gridpaw.xc_functional import XCFunctional
-from gridpaw.utilities import equal
+from gpaw.xc_functional import XCFunctional
+from gpaw.utilities import equal
 
 
 for xc in [XCFunctional('PBE'),

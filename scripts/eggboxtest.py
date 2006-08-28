@@ -16,8 +16,8 @@ parser.add_option('-s', '--summary', action='store_true',
 
 opt, tests = parser.parse_args()
 
-from gridpaw.utilities.singleatom import SingleAtom
-from gridpaw.paw import ConvergenceError
+from gpaw.utilities.singleatom import SingleAtom
+from gpaw.paw import ConvergenceError
 
 symbols = 'H He Li Be C N O F Al Si P Cl'.split()
 

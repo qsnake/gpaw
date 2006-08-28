@@ -1,8 +1,8 @@
-from gridpaw.transformers import Interpolator
+from gpaw.transformers import Interpolator
 import Numeric as num
 import RandomArray as ra
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.domain import Domain
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.domain import Domain
 
 p = 0
 domain = Domain((8.0, 8.0, 8.0), periodic=(p, p, p))

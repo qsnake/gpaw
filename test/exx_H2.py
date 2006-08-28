@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
-from gridpaw.atom.all_electron import AllElectron as AE
-from gridpaw.exx import atomic_exact_exchange as aExx
+from gpaw import Calculator
+from gpaw.atom.all_electron import AllElectron as AE
+from gpaw.exx import atomic_exact_exchange as aExx
 
 a = 4.8 # => N = 4.8 / 0.2 = 24
 b = a / 2

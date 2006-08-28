@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
-from gridpaw import Calculator
+from gpaw import Calculator
 import Numeric as num
-from gridpaw.utilities import equal
+from gpaw.utilities import equal
 import Scientific.IO.NetCDF as NetCDF
 from ASE.IO.Cube import WriteCube
 

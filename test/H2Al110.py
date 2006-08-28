@@ -1,4 +1,4 @@
-from gridpaw import Calculator
+from gpaw import Calculator
 from ASE import ListOfAtoms, Atom
 
 a = 4.00

@@ -3,9 +3,9 @@
 
 import Numeric as num
 import RandomArray as ra
-from gridpaw.grid_descriptor import GridDescriptor
-from gridpaw.domain import Domain
-from gridpaw.transformers import Interpolator, Restrictor
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.domain import Domain
+from gpaw.transformers import Interpolator, Restrictor
 import time
 
 

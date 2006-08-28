@@ -1,5 +1,5 @@
-from gridpaw.utilities import equal
-from gridpaw.gauss import test_derivatives
+from gpaw.utilities import equal
+from gpaw.gauss import test_derivatives
 
 for i in range(3):
     i1, i2 = test_derivatives((1.0, -3.4, 1.2),
