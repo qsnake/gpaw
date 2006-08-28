@@ -36,7 +36,8 @@ def check_packages(packages, msg, force_inclusion_of_ase):
         else:
             msg += ['* Scientific.IO.NetCDF is not installed (the NetCDF',
                     '  C-library is probably missing).']
-        msg += ['  You will not be able to write and read wave functions!']
+        msg += ['  You will not be able to write and read wave functions',
+                '  in the netCDF format.']
 
     if not force_inclusion_of_ase:
         try:
@@ -350,8 +351,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     print cmd
     error=os.system(cmd)
     if error != 0:
-        msg += ['* Building of custom interpreter failed',
-                'only serial version of code will work']
+        msg += ['* FAILED!  Only serial version of code will work.']
 
     #remove the few object files from this directory
     for file in glob('*.o'):

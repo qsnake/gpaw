@@ -159,7 +159,7 @@ if custom_interpreter:
                       extra_link_args, extra_compile_args,mpicompiler)
 
 if ('PARALLEL', '1') not in define_macros:
-    msg += ['* A serial version of gpaw was build!']
+    msg += ['* Only a serial version of gpaw was build!']
 
 # Messages make sense only when building
 if "build" in sys.argv or "build_ext" in sys.argv:
