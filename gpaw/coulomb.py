@@ -1,7 +1,8 @@
 import Numeric as num
 from Numeric import pi
-from gpaw.utilities.complex import real
 from FFT import fftnd
+import gpaw
+from gpaw.utilities.complex import real
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.utilities import DownTheDrain
 from gpaw.utilities.gauss import Gaussian
@@ -9,11 +10,12 @@ from gpaw.utilities.tools import construct_reciprocal
 
 class Coulomb:
     """Class used to evaluate coulomb integrals"""
-    def __init__(self, gd):
+    def __init__(self, gd, poisson=None):
         """Class should be initialized with a grid_descriptor 'gd' from
            the gpaw module
         """        
         self.gd = gd
+        self.poisson = poisson
 
     def load(self, method):
         """Make sure all necessary attributes have been initialized"""
@@ -45,9 +47,12 @@ class Coulomb:
                 self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
         else: # method == 'real'
             if not hasattr(self, 'solve'):
-                self.solve = PoissonSolver(self.gd,
-                                           out=DownTheDrain(),
-                                           load_gauss=True).solve
+                if self.poisson is not None:
+                    self.solve = self.poisson.solve
+                else:
+                    self.solve = PoissonSolver(self.gd, nn=1,
+                                               out=DownTheDrain(),
+                                               load_gauss=True).solve
 
     def get_single_exchange(self, n, Z=None, method='recip_gauss'):
         """Returns exchange energy of input density.
