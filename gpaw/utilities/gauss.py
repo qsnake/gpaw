@@ -45,12 +45,12 @@ class Gaussian:
         else:
             raise NotImplementedError
 
-    def get_moment(self ,n, L):
+    def get_moment(self, n, L):
         r2 = self.r2
         x, y, z = tuple(self.xyz)
         return self.gd.integrate(n * eval(Y_L[L]))
 
-    def remove_moment(self, n ,L, q=None):
+    def remove_moment(self, n, L, q=None):
         # determine multipole moment
         if q == None:
             q = self.get_moment(n, L)

@@ -130,7 +130,7 @@ class PerturbativeExx:
         self.n_g = paw.finegd.new_array()
 
         # load single exchange calculator
-        self.exx_single = Coulomb(paw.finegd).get_single_exchange
+        self.exx_single = Coulomb(paw.finegd, paw.poisson).get_single_exchange
 
         # load interpolator
         self.interpolate = paw.interpolate
