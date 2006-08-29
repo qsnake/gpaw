@@ -122,7 +122,7 @@ def unpack2(M):
     
 def pack(M2):
     n = len(M2)
-    M = num.zeros(n * (n + 1) / 2, M2.typecode())
+    M = num.zeros(n * (n + 1) // 2, M2.typecode())
     p = 0
     for r in range(n):
         M[p] = M2[r, r]

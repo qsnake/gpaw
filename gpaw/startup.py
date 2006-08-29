@@ -218,7 +218,7 @@ def distribute_kpoints_and_spins(nspins, nkpts):
     size = mpi.size
     rank = mpi.rank
 
-    ndomains = size / gcd(ntot, size)
+    ndomains = size // gcd(ntot, size)
 
     r0 = (rank // ndomains) * ndomains
     ranks = range(r0, r0 + ndomains)

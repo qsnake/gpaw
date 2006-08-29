@@ -99,7 +99,7 @@ class WaveFunctions:
         nu = self.nkpts * nspins
         
         # Number of k-point/spin combinations on this cpu:
-        self.nmyu = nu / kpt_comm.size
+        self.nmyu = nu // kpt_comm.size
 
         self.kpt_u = []
         for u in range(self.nmyu):

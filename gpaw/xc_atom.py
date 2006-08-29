@@ -70,17 +70,17 @@ class XCAtom3:
         self.ng = ng
         ni = len(jlL)
         nj = len(jl)
-        np = ni * (ni + 1) / 2
-        nq = nj * (nj + 1) / 2
+        np = ni * (ni + 1) // 2
+        nq = nj * (nj + 1) // 2
         self.B_Lqp = num.zeros((self.Lmax, nq, np), num.Float)
         p = 0
         i1 = 0
         for j1, l1, L1 in jlL:
             for j2, l2, L2 in jlL[i1:]:
                 if j1 < j2:
-                    q = j2 + j1 * nj - j1 * (j1 + 1) / 2
+                    q = j2 + j1 * nj - j1 * (j1 + 1) // 2
                 else:
-                    q = j1 + j2 * nj - j2 * (j2 + 1) / 2
+                    q = j1 + j2 * nj - j2 * (j2 + 1) // 2
                 self.B_Lqp[:, q, p] = gaunt[L1, L2, :self.Lmax]
                 p += 1
             i1 += 1

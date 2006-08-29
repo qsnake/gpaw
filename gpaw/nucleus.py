@@ -82,7 +82,7 @@ class Nucleus:
     
     def allocate(self, nspins, nmyu, nbands):
         ni = self.get_number_of_partial_waves()
-        np = ni * (ni + 1) / 2
+        np = ni * (ni + 1) // 2
         self.D_sp = num.zeros((nspins, np), num.Float)
         self.H_sp = num.zeros((nspins, np), num.Float)
         self.P_uni = num.zeros((nmyu, nbands, ni), self.typecode)
