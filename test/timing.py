@@ -15,8 +15,8 @@ a = ra.random((n / 2, n / 2, n / 2))
 b = ra.random((n, n, n))
 c = ra.random((n * 2, n * 2, n * 2))
 
-inter = Interpolator(gd, 3).apply
-restr = Restrictor(gd, 3).apply
+inter = Interpolator(gd, 2).apply
+restr = Restrictor(gd, 2).apply
 
 t = time.clock()
 for i in range(8*300):

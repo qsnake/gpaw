@@ -55,7 +55,7 @@ class WaveFunctions:
     """
     
     def __init__(self, gd, nvalence, nbands, nspins,
-                 typecode, kT,
+                 typecode, kT, nn,
                  bzk_kc, ibzk_kc, weights_k,
                  kpt_comm):
         """Construct wave-function object.
@@ -109,7 +109,7 @@ class WaveFunctions:
             self.kpt_u.append(KPoint(gd, weight, s, k, u, k_c, typecode))
         
         # Kinetic energy operator:
-        self.kin = Laplace(gd, -0.5, 2, typecode)
+        self.kin = Laplace(gd, -0.5, nn, typecode)
 
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(gd, self.kin, typecode)

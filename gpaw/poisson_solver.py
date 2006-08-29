@@ -12,13 +12,19 @@ from gpaw import ConvergenceError
 
 
 class PoissonSolver:
-    def __init__(self, gd, out=sys.stdout, load_gauss=False):
+    def __init__(self, gd, nn, out=sys.stdout, load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         print >> out, 'poisson solver:'
         self.dv = gd.dv
-        self.operators = [LaplaceA(gd, -scale)]
-        self.B = LaplaceB(gd)
+        
+        if nn == 'M':
+            self.operators = [LaplaceA(gd, -scale)]
+            self.B = LaplaceB(gd)
+        else:
+            self.operators = [Laplace(gd, scale, nn)]
+            self.B = None
+
         self.rhos = [gd.new_array()]
         self.phis = [None]
         self.residuals = [gd.new_array()]
@@ -83,7 +89,10 @@ class PoissonSolver:
 
             return niter
 
-        self.B.apply(rho, self.rhos[0])
+        if self.B is None:
+            self.rhos[0][:] = rho
+        else:
+            self.B.apply(rho, self.rhos[0])
         
         niter = 1
         while self.iterate2(self.step) > eps and niter < 100:

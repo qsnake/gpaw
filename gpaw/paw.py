@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
@@ -123,7 +124,7 @@ class Paw:
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
                  nvalence, charge, nbands, nspins, kT,
                  typecode, bzk_kc, ibzk_kc, weights_k,
-                 order, usesymm, mix, old, fixdensity, maxiter, idiotproof,
+                 stencils, usesymm, mix, old, fixdensity, maxiter, idiotproof,
                  convergeall,
                  # Parallel stuff:
                  kpt_comm,
@@ -176,9 +177,13 @@ class Paw:
         self.vt_sg = self.finegd.new_array(nspins)
         self.nt_sg = self.finegd.new_array(nspins)
 
+        # Number of neighbor grid points used for finite difference
+        # Laplacian in the Schrödinger equation (1, 2, ...):
+        nn = stencils[0]
+
         # Wave functions ...
         self.wf = WaveFunctions(self.gd, nvalence, nbands, nspins,
-                                typecode, kT / Ha,
+                                typecode, kT / Ha, nn,
                                 bzk_kc, ibzk_kc, weights_k,
                                 kpt_comm)
 
@@ -187,14 +192,22 @@ class Paw:
         # exchange-correlation functional object:
         self.xc = XCOperator(xcfunc, self.finegd, nspins)
 
+        # Number of neighbor grid points used for interpolation (1, 2,
+        # or 3):
+        nn = stencils[2]
+
         # Interpolation function for the density:
-        self.interpolate = Interpolator(self.gd, order, num.Float).apply
+        self.interpolate = Interpolator(self.gd, nn, num.Float).apply
         
         # Restrictor function for the potential:
-        self.restrict = Restrictor(self.finegd, order, num.Float).apply
+        self.restrict = Restrictor(self.finegd, nn, num.Float).apply
 
-        # Solver for the posisson equation:
-        self.poisson = PoissonSolver(self.finegd, out)
+        # Number of neighbor grid points used for finite difference
+        # Laplacian in the Poisson equation (1, 2, ...):
+        self.poisson_stencil = nn = stencils[1]
+
+        # Solver for the Poisson equation:
+        self.poisson = PoissonSolver(self.finegd, nn, out)
    
         # Density mixer:
         if nspins == 2 and kT != 0:

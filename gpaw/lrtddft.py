@@ -208,7 +208,7 @@ class OmegaMatrix:
         """calculate RPA part of the omega matrix"""
         paw = self.calculator.paw
         gd = paw.finegd
-        poisson = PoissonSolver(gd,paw.out)
+        poisson = PoissonSolver(gd, paw.out, paw.poisson_stencil)
         kss=self.kss
 
         # calculate omega matrix

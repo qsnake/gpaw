@@ -15,13 +15,13 @@ ra.seed(7, 8)
 a = ra.random((n, n, n))
 b = num.zeros((n * 2, n * 2, n * 2), num.Float)
 for k in [2, 4, 6]:
-    inter = Interpolator(gd, k - 1).apply
+    inter = Interpolator(gd, k // 2).apply
     inter(a, b)
     print k, num.sum(a.flat) - num.sum(b.flat) / 8
     assert abs(num.sum(a.flat) - num.sum(b.flat) / 8) < 2e-11
 b = num.zeros((n / 2, n / 2, n / 2), num.Float)
 for k in [2, 4, 6]:
-    restr = Restrictor(gd, k - 1).apply
+    restr = Restrictor(gd, k // 2).apply
     restr(a, b)
     print k, num.sum(a.flat) - num.sum(b.flat) * 8
     assert abs(num.sum(a.flat) - num.sum(b.flat) * 8) < 1e-12

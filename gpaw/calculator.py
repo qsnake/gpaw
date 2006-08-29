@@ -56,7 +56,7 @@ class Calculator:
                   'hosts': None,
                   'parsize': None,
                   'softgauss': True,
-                  'order': 5,
+                  'stencils': (2, 'M', 3),
                   'convergeall': False,
                   }
 
@@ -66,7 +66,7 @@ class Calculator:
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
         `old`, `hund`, `lmax`, `fixdensity`, `idiotproof`,
-        `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `order`,
+        `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `stencils`,
         and `convergeall`.
 
         If you don't specify any parameters, you will get:
@@ -237,7 +237,7 @@ class Calculator:
                 self.charge,
                 self.bzk_kc,
                 self.softgauss,
-                self.order,
+                self.stencils,
                 self.usesymm,
                 self.mix,
                 self.old,
