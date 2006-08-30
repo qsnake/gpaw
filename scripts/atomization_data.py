@@ -207,7 +207,7 @@ atomization_vasp = {
 ## -----------------------
 ## MAE :   0.0   0.3   0.4
 ##
-## Where in the last two, geometry optimazation has been performed, but not in
+## Where in the last two, geometry optimization has been performed, but not in
 ## the first.
 
 # References:
