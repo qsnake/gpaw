@@ -5,7 +5,7 @@ import sys
 from math import pi, sqrt
 
 import Numeric as num
-num.inner = num.innerproduct # XXX numpy!
+from multiarray import innerproduct as inner # avoid the dotblas version!
 from FFT import real_fft, inverse_real_fft
 from LinearAlgebra import solve_linear_equations, inverse
 from ASE.ChemicalElements.name import names
@@ -422,7 +422,7 @@ class Generator(AllElectron):
         self.dO_lnn = dO_lnn = []
         for l, (e_n, u_n, s_n, q_n) in enumerate(zip(e_ln, u_ln,
                                                      s_ln, q_ln)):
-            A_nn = num.innerproduct(s_n, q_n * dr)
+            A_nn = inner(s_n, q_n * dr)
             # Do a LU decomposition of A:
             nn = len(e_n)
             if nn == 1:
@@ -434,8 +434,8 @@ class Generator(AllElectron):
                 U_nn = num.array([[A_nn[0, 0], A_nn[0, 1]],
                                   [0.0, A_nn[1, 1] - L_nn[1, 0] * A_nn[0, 1]]])
 
-            dO_nn = (num.innerproduct(u_n, u_n * dr) -
-                     num.innerproduct(s_n, s_n * dr))
+            dO_nn = (inner(u_n, u_n * dr) -
+                     inner(s_n, s_n * dr))
 
             e_nn = num.zeros((nn, nn), num.Float)
             e_nn.flat[::nn + 1] = e_n
@@ -452,8 +452,8 @@ class Generator(AllElectron):
 
             ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]  
             ks_n = [self.kin(l, s) for s in s_n]
-            dK_nn = 0.5 * (num.innerproduct(u_n, ku_n * dr) -
-                           num.innerproduct(s_n, ks_n * dr))
+            dK_nn = 0.5 * (inner(u_n, ku_n * dr) -
+                           inner(s_n, ks_n * dr))
             dK_nn += num.transpose(dK_nn).copy()
 
             dK_lnn.append(dK_nn)
@@ -463,7 +463,7 @@ class Generator(AllElectron):
             for n, q in enumerate(q_n):
                 q[:] = filter(q, l) * r**(l + 1)
 
-            A_nn = num.innerproduct(s_n, q_n * dr)
+            A_nn = inner(s_n, q_n * dr)
             q_n[:] = num.dot(inverse(num.transpose(A_nn)), q_n)
             
         self.vt = vt
@@ -516,7 +516,7 @@ class Generator(AllElectron):
                         if l <= lmax:
                             A_nn = dH_nn - e * dO_nn
                             s_n = [self.integrate(l, vt, e, gld, q) for q in q_n]
-                            B_nn = num.inner(q_n, s_n * dr)
+                            B_nn = inner(q_n, s_n * dr)
                             a_n = num.dot(q_n, s * dr)
 
                             B_nn = num.dot(A_nn, B_nn)

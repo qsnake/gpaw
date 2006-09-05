@@ -4,6 +4,7 @@
 from math import pi, sqrt
 
 import Numeric as num
+from multiarray import matrixproduct as dot3  # Avoid dotblas bug!
 
 from gpaw.gaunt import gaunt
 from gpaw.spherical_harmonics import YL
@@ -103,7 +104,7 @@ class XCAtom3:
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
-            D_Lq = num.dot(self.B_Lqp, D_p)
+            D_Lq = dot3(self.B_Lqp, D_p)
             n_Lg = num.dot(D_Lq, self.n_qg)
             n_Lg[0] += self.nc_g * sqrt(4 * pi)
             nt_Lg = num.dot(D_Lq, self.nt_qg)
@@ -119,11 +120,11 @@ class XCAtom3:
                 vxct_g = num.zeros(self.ng, num.Float) 
                 E -= self.xc.get_energy_and_potential(nt_g, vxct_g) * w
                 dEdD_q -= num.dot(self.nt_qg, vxct_g * self.dv_g)
-                dEdD_p += num.dot(num.dot(self.B_pqL, Y_L),
+                dEdD_p += num.dot(dot3(self.B_pqL, Y_L),
                                   dEdD_q) * w
         else:
             Da_p = D_sp[0]
-            Da_Lq = num.dot(self.B_Lqp, Da_p)
+            Da_Lq = dot3(self.B_Lqp, Da_p)
             na_Lg = num.dot(Da_Lq, self.n_qg)
             na_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
             nta_Lg = num.dot(Da_Lq, self.nt_qg)
@@ -131,7 +132,7 @@ class XCAtom3:
             dEdDa_p = H_sp[0][:]
             dEdDa_p[:] = 0.0
             Db_p = D_sp[1]
-            Db_Lq = num.dot(self.B_Lqp, Db_p)
+            Db_Lq = dot3(self.B_Lqp, Db_p)
             nb_Lg = num.dot(Db_Lq, self.n_qg)
             nb_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
             ntb_Lg = num.dot(Db_Lq, self.nt_qg)
@@ -155,9 +156,9 @@ class XCAtom3:
                                                    ntb_g, vxctb_g) * w
                 dEdDa_q -= num.dot(self.nt_qg, vxcta_g * self.dv_g)
                 dEdDb_q -= num.dot(self.nt_qg, vxctb_g * self.dv_g)
-                dEdDa_p += num.dot(num.dot(self.B_pqL, Y_L),
+                dEdDa_p += num.dot(dot3(self.B_pqL, Y_L),
                                   dEdDa_q) * w
-                dEdDb_p += num.dot(num.dot(self.B_pqL, Y_L),
+                dEdDb_p += num.dot(dot3(self.B_pqL, Y_L),
                                   dEdDb_q) * w
 
         return E - self.Exc0
@@ -168,7 +169,7 @@ class XCAtom3:
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
-            D_Lq = num.dot(self.B_Lqp, D_p)
+            D_Lq = dot3(self.B_Lqp, D_p)
             n_Lg = num.dot(D_Lq, self.n_qg)
             n_Lg[0] += self.nc_g * sqrt(4 * pi)
             nt_Lg = num.dot(D_Lq, self.nt_qg)
@@ -201,16 +202,16 @@ class XCAtom3:
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p += w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdD_p += w * num.dot(dot3(self.B_pqL, Y_L),
                                       num.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.n_qg, x_g * a1x_g))
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.n_qg, x_g * a1y_g))
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.n_qg, x_g * a1z_g))
 
@@ -232,23 +233,23 @@ class XCAtom3:
                 self.rgd.derivative2(x_g, x_g)
                 x_g += v_g * self.dv_g
                 B_Lqp = self.B_Lqp
-                dEdD_p -= w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdD_p -= w * num.dot(dot3(self.B_pqL, Y_L),
                                       num.dot(self.nt_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdD_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.nt_qg, x_g * a1x_g))
-                dEdD_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdD_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.nt_qg, x_g * a1y_g))
-                dEdD_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdD_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.nt_qg, x_g * a1z_g))
 
                 y += 1
         else:
             Da_p = D_sp[0]
-            Da_Lq = num.dot(self.B_Lqp, Da_p)
+            Da_Lq = dot3(self.B_Lqp, Da_p)
             na_Lg = num.dot(Da_Lq, self.n_qg)
             na_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
             nat_Lg = num.dot(Da_Lq, self.nt_qg)
@@ -262,7 +263,7 @@ class XCAtom3:
             dEdDa_p[:] = 0.0
             
             Db_p = D_sp[1]
-            Db_Lq = num.dot(self.B_Lqp, Db_p)
+            Db_Lq = dot3(self.B_Lqp, Db_p)
             nb_Lg = num.dot(Db_Lq, self.n_qg)
             nb_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
             nbt_Lg = num.dot(Db_Lq, self.nt_qg)
@@ -320,18 +321,18 @@ class XCAtom3:
                 self.rgd.derivative2(x_g, x_g)
                 B_Lqp = self.B_Lqp
                 
-                dEdD_p = w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdD_p = w * num.dot(dot3(self.B_pqL, Y_L),
                                      num.dot(self.n_qg, x_g))
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.n_qg, x_g * (aa1x_g +
                                                                 ab1x_g)))
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.n_qg, x_g * (aa1y_g +
                                                                 ab1y_g)))
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.n_qg, x_g * (aa1z_g +
                                                                 ab1z_g)))
@@ -341,32 +342,32 @@ class XCAtom3:
                 x_g = -4.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p += w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdDa_p += w * num.dot(dot3(self.B_pqL, Y_L),
                                       num.dot(self.n_qg, x_g))
                 x_g = 16.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p += w * num.dot(num.dot(self.B_pqL,
+                dEdDa_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.n_qg, x_g * aa1x_g))
-                dEdDa_p += w * num.dot(num.dot(self.B_pqL,
+                dEdDa_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.n_qg, x_g * aa1y_g))
-                dEdDa_p += w * num.dot(num.dot(self.B_pqL,
+                dEdDa_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.n_qg, x_g * aa1z_g))
 
                 x_g = -4.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p += w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdDb_p += w * num.dot(dot3(self.B_pqL, Y_L),
                                       num.dot(self.n_qg, x_g))
                 x_g = 16.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p += w * num.dot(num.dot(self.B_pqL,
+                dEdDb_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.n_qg, x_g * ab1x_g))
-                dEdDb_p += w * num.dot(num.dot(self.B_pqL,
+                dEdDb_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.n_qg, x_g * ab1y_g))
-                dEdDb_p += w * num.dot(num.dot(self.B_pqL,
+                dEdDb_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.n_qg, x_g * ab1z_g))
 
@@ -410,19 +411,19 @@ class XCAtom3:
                 
                 x_g = -2.0 * deda2_g * self.dv_g * (aa1_g + ab1_g)
                 self.rgd.derivative2(x_g, x_g)
-                dEdD_p = w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdD_p = w * num.dot(dot3(self.B_pqL, Y_L),
                                      num.dot(self.nt_qg, x_g))
 
                 x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.nt_qg, x_g * (aa1x_g +
                                                                 ab1x_g)))
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.nt_qg, x_g * (aa1y_g +
                                                                 ab1y_g)))
-                dEdD_p += w * num.dot(num.dot(self.B_pqL,
+                dEdD_p += w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.nt_qg, x_g * (aa1z_g +
                                                                 ab1z_g)))
@@ -432,32 +433,32 @@ class XCAtom3:
                 x_g = -4.0 * dedaa2_g * self.dv_g * aa1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += va_g * self.dv_g
-                dEdDa_p -= w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdDa_p -= w * num.dot(dot3(self.B_pqL, Y_L),
                                       num.dot(self.nt_qg, x_g))
                 x_g = 16.0 * pi * dedaa2_g * self.rgd.dr_g
-                dEdDa_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdDa_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.nt_qg, x_g * aa1x_g))
-                dEdDa_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdDa_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.nt_qg, x_g * aa1y_g))
-                dEdDa_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdDa_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.nt_qg, x_g * aa1z_g))
 
                 x_g = -4.0 * dedab2_g * self.dv_g * ab1_g
                 self.rgd.derivative2(x_g, x_g)
                 x_g += vb_g * self.dv_g
-                dEdDb_p -= w * num.dot(num.dot(self.B_pqL, Y_L),
+                dEdDb_p -= w * num.dot(dot3(self.B_pqL, Y_L),
                                       num.dot(self.nt_qg, x_g))
                 x_g = 16.0 * pi * dedab2_g * self.rgd.dr_g
-                dEdDb_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdDb_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 0]),
                                       num.dot(self.nt_qg, x_g * ab1x_g))
-                dEdDb_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdDb_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 1]),
                                       num.dot(self.nt_qg, x_g * ab1y_g))
-                dEdDb_p -= w * num.dot(num.dot(self.B_pqL,
+                dEdDb_p -= w * num.dot(dot3(self.B_pqL,
                                               A_Li[:, 2]),
                                       num.dot(self.nt_qg, x_g * ab1z_g))
 

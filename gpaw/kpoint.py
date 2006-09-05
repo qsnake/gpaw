@@ -8,6 +8,7 @@ from cmath import exp
 
 import Numeric as num
 import LinearAlgebra as linalg
+from multiarray import innerproduct as inner # avoid the dotblas version!
 
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
@@ -130,7 +131,7 @@ class KPoint:
             info = diagonalize(self.H_nn, self.eps_n)
             if info != 0:
                 raise RuntimeError, 'Very Bad!!'
-        
+
         self.comm.broadcast(self.H_nn, self.root)
         self.comm.broadcast(self.eps_n, self.root)
 
@@ -239,8 +240,8 @@ class KPoint:
         
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
-            S_nn += num.dot(P_ni,
-                            cc(num.innerproduct(nucleus.setup.O_ii, P_ni)))
+
+            S_nn += num.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
         
         self.comm.sum(S_nn, self.root)
 

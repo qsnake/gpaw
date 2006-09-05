@@ -16,8 +16,6 @@ from distutils.util import get_platform
 from glob import glob
 from os.path import join
 
-import Numeric as num
-
 
 class ConvergenceError(Exception):
     pass

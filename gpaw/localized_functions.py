@@ -7,6 +7,7 @@
 from math import pi, cos, sin
 
 import Numeric as num
+from multiarray import innerproduct as inner # avoid the dotblas version!
 
 from gpaw import debug
 from gpaw.utilities import is_contiguous
@@ -150,8 +151,7 @@ class LocFuncs:
         self.root = root
 
     def set_phase_factors(self, k_kc):
-        self.phase_kb = num.exp(2j * pi *
-                                num.innerproduct(k_kc, self.sdisp_bc))
+        self.phase_kb = num.exp(2j * pi * inner(k_kc, self.sdisp_bc))
         
     def add(self, a_xg, coef_xi, k=None, communicate=False):
         """Add localized functions to extended arrays.

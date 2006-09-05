@@ -79,7 +79,7 @@ if options.run_failed_tests_only:
 
 L = max([len(test) for told, test in tests])
 print '-----------------------------------------------------------------'
-print ' Running tests in ', host, ', architecture ', machine
+print ' Running tests on %s. Architecture: %s' % (host, machine)
 print ' test', ' ' * (L - 4), 'result      time (old)'
 print '-----------------------------------------------------------------'
 
