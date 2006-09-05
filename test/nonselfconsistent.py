@@ -25,10 +25,10 @@ print de12, de21
 equal(e1ref + e1 + de12, e2ref + e2, 18e-5)
 equal(e1ref + e1, e2ref + e2 + de21, 18e-5)
 
-calc.Write('revPBE.nc')
+calc.Write('revPBE.gpw')
 
-atoms = Calculator.ReadAtoms('revPBE.nc', out=None)
+atoms = Calculator.ReadAtoms('revPBE.gpw', out=None)
 de21b = atoms.GetCalculator().GetXCDifference('PBE')
 equal(de21, de21b, 9e-8)
 
-os.remove('revPBE.nc')
+os.remove('revPBE.gpw')
