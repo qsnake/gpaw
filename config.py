@@ -184,6 +184,14 @@ def get_system_config(define_macros, undef_macros,
                 libraries += ['blas', 'lapack']
                 msg +=  ['* Using standard lapack']
 
+    elif sys.platform == 'darwin':
+
+        extra_compile_args += ['-Wall', '-std=c99']
+        include_dirs += ['/usr/include/malloc']
+        
+        libraries += ['blas', 'lapack']
+        msg +=  ['* Using standard lapack']
+
     return msg
 
 
