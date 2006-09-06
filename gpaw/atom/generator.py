@@ -64,7 +64,8 @@ class Generator(AllElectron):
 
 
     def run(self, core, rcut, extra,
-            logderiv=True, vt0=None, exx=False):
+            logderiv=True, vt0=None, exx=False,
+            normconserving=''):
 
         self.core = core
         if type(rcut) is float:
@@ -82,6 +83,8 @@ class Generator(AllElectron):
         f_j = self.f_j
         e_j = self.e_j
 
+        normconserving_l = [x in normconserving for x in 'spdf']
+                
         # Parse core string:
         j = 0
         if core.startswith('['):
@@ -194,7 +197,7 @@ class Generator(AllElectron):
 
             # Make sure we have two projectors for each occupied channel:
             for l in range(lmax + 1):
-                if len(n_ln[l]) < 2:
+                if len(n_ln[l]) < 2 and not normconserving_l[l]:
                     # Only one - add one more:
                     assert len(n_ln[l]) == 1
                     n_ln[l].append(-1)
@@ -270,7 +273,39 @@ class Generator(AllElectron):
             gc = gcut_l[l]
             for u, s in zip(u_n, s_n):
                 s[:] = u
-                if 1:
+                if normconserving_l[l]:
+                    A = num.zeros((5, 5), num.Float)
+                    A[:4, 0] = 1.0
+                    A[:4, 1] = r[gc - 2:gc + 2]**2
+                    A[:4, 2] = A[:4, 1]**2
+                    A[:4, 3] = A[:4, 1] * A[:4, 2]
+                    A[:4, 4] = A[:4, 2]**2
+                    A[4, 4] = 1.0
+                    a = u[gc - 2:gc + 3] / r[gc - 2:gc + 3]**(l + 1)
+                    a = num.log(a)
+                    def f(x):
+                        a[4] = x
+                        b = solve_linear_equations(A, a)
+                        r1 = r[:gc]
+                        r2 = r1**2
+                        rl1 = r1**(l + 1)
+                        y = b[0] + r2 * (b[1] + r2 * (b[2] + r2 * (b[3] + r2 * b[4])))
+                        y = num.exp(y)
+                        s[:gc] = rl1 * y
+                        return num.dot(s**2, dr) - 1
+                    x1 = 0
+                    x2 = 0.01
+                    f1 = f(x1)
+                    f2 = f(x2)
+                    while abs(f1) > 1e-6:
+                        x0 = (x1 / f1 - x2 / f2) / (1 / f1 - 1 / f2)
+                        f0 = f(x0)
+                        print x0, f0
+                        if abs(f1) < abs(f2):
+                            x2, f2 = x1, f1
+                        x1, f1 = x0, f0
+                        
+                else:
                     A = num.ones((4, 4), num.Float)
                     A[:, 0] = 1.0
                     A[:, 1] = r[gc - 2:gc + 2]**2
@@ -287,31 +322,7 @@ class Generator(AllElectron):
                     if 0:#l < 2 and nodeless:
                         y = num.exp(y)
                     s[:gc] = rl1 * y
-                else:
-                    A = num.zeros((5, 5), num.Float)
-                    A[:4, 0] = 1.0
-                    A[:4, 1] = r[gc - 2:gc + 2]**2
-                    A[:4, 2] = A[:4, 1]**2
-                    A[:4, 3] = A[:4, 1] * A[:4, 2]
-                    A[:4, 4] = A[:4, 2]**2
-                    A[4, 4] = 1.0
-                    a = u[gc - 2:gc + 3] / r[gc - 2:gc + 3]**(l + 1)
-                    def f(x):
-                        a[4] = x
-                        b = solve_linear_equations(A, a)
-                        r1 = r[:gc]
-                        r2 = r1**2
-                        rl1 = r1**(l + 1)
-                        y = b[0] + r2 * (b[1] + r2 * (b[2] + r2 * (b[3] + r2 * b[4])))
-                        s[:gc] = rl1 * y
-                        return num.dot(s**2, dr)
-                    x1 = 0
-                    x2 = 1
-                    f1 = f(x1)
-                    f2 = f(x2)
-                    while abs(f1 - 1) > 1e-6:
-                        x3 = 0#???????????????
-                    print f(0),f(1.0), f(0), f(.5);adfg
+
                 coefs.append(a)
                 if nodeless:
                     if not num.alltrue(s[1:gc] > 0.0):

@@ -32,6 +32,8 @@ parser.add_option('-e', '--extra', type='string', default=None,
 parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
+parser.add_option('--normconserving', type='string', default='',
+                  help='Examples: s, sp')
 
 opt, args = parser.parse_args()
 
@@ -78,5 +80,6 @@ for symbol in atoms:
                     extra[l] = [float(y) for y in x.split(',')]
     g.run(core, rcut, extra,
           logderiv=not opt.quick, vt0=v0,
-          exx=opt.exact_exchange)
+          exx=opt.exact_exchange,
+          normconserving=opt.normconserving)
 
