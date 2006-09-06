@@ -189,8 +189,12 @@ def get_system_config(define_macros, undef_macros,
         extra_compile_args += ['-Wall', '-std=c99']
         include_dirs += ['/usr/include/malloc']
         
-        libraries += ['blas', 'lapack']
-        msg +=  ['* Using standard lapack']
+        if glob('/System/Library/Frameworks/vecLib.framework') != []:
+            extra_link_args += ['-framework vecLib']
+            msg += ['* Using vecLib']
+        else:
+            libraries += ['blas', 'lapack']
+            msg +=  ['* Using standard lapack']
 
     return msg
 
