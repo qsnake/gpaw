@@ -265,7 +265,19 @@ class LocFuncs:
         for box in self.box_b:
             box.add_density(n_G, f_i)
 
+    def normalize(self, I0):
+        """Normalize localized function.
 
+        The integral of the first function is normalized to the value
+        ``I0``."""
+
+        I = 0.0
+        for box in self.box_b:
+            I += box.norm()
+        I = self.comm.sum(I)
+        for box in self.box_b:
+            box.scale(I0 / I)
+        
 class LocalizedFunctionsWrapper:
     """Python wrapper class for C-extension: ``LocalizedFunctions``.
 
@@ -370,6 +382,14 @@ class LocalizedFunctionsWrapper:
         assert n_G.shape == self.shape
         assert f_i.shape == (self.ni,)
         self.lfs.add_density(n_G, f_i)
+
+    def norm(self):
+        """Integral of the first function."""
+        return self.lfs.norm()
+
+    def scale(self, s):
+        """Scale the first function."""
+        self.lfs.scale(s)
 
 
 if debug:

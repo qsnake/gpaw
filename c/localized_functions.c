@@ -210,6 +210,41 @@ static PyObject * localized_functions_add_density(LocalizedFunctionsObject*
   Py_RETURN_NONE;
 }
 
+static PyObject * localized_functions_norm(LocalizedFunctionsObject* self,
+					   PyObject *args)
+{
+  if (!PyArg_ParseTuple(args, ""))
+    return NULL;
+
+  const double* f = self->f;
+  double F = 0.0;
+  for (int n = 0; n < self->ng0; n++)
+    F += f[n];
+  
+  return Py_BuildValue("d", F * self->dv);
+}
+
+static PyObject * localized_functions_scale(LocalizedFunctionsObject* self,
+					    PyObject *args)
+{
+  double s;
+  if (!PyArg_ParseTuple(args, "d", &s))
+    return NULL;
+
+  double* f = self->f;
+  for (int n = 0; n < self->ng0; n++)
+    f[n] *= s;
+
+  if (self->nfd > 0)
+    {
+      double* fd = self->fd;
+      for (int n = 0; n < 3 * self->ng0; n++)
+	fd[n] *= s;
+    }
+
+  Py_RETURN_NONE;
+}
+
 #ifdef PARALLEL
 static PyObject * localized_functions_broadcast(LocalizedFunctionsObject*
 						self,
@@ -236,6 +271,10 @@ static PyMethodDef localized_functions_methods[] = {
      (PyCFunction)localized_functions_add, METH_VARARGS, 0},
     {"add_density",
      (PyCFunction)localized_functions_add_density, METH_VARARGS, 0},
+    {"norm",
+     (PyCFunction)localized_functions_norm, METH_VARARGS, 0},
+    {"scale",
+     (PyCFunction)localized_functions_scale, METH_VARARGS, 0},
 #ifdef PARALLEL
     {"broadcast",
      (PyCFunction)localized_functions_broadcast, METH_VARARGS, 0},

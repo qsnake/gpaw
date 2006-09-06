@@ -259,7 +259,10 @@ class Paw:
             self.forces_ok = False
 
             self.locfuncbcaster.broadcast()
-        
+
+            for nucleus in self.nuclei:
+                nucleus.normalize_shape_function_and_pseudo_core_density()
+                
             self.mixer.reset(self.my_nuclei)
             
             if self.symmetry:
@@ -278,6 +281,7 @@ class Paw:
             self.nct_G[:] = 0.0
             for nucleus in self.nuclei:
                 nucleus.add_smooth_core_density(self.nct_G)
+
             if self.nspins == 2:
                 self.nct_G *= 0.5
 
@@ -455,11 +459,22 @@ class Paw:
                 self.mixer.mix(self.nt_sG, self.domain.comm)
                 
             self.calculate_multipole_moments()
-
+            
         # Transfer the density to the fine grid:
         for s in range(self.nspins):
             self.interpolate(self.nt_sG[s], self.nt_sg[s])
 
+        # With periodic boundary conditions, the interpolation will
+        # conserve the number of electron.
+        if False in self.domain.periodic_c:
+            # With zero-boundary conditions in one or more directions,
+            # this is not the case.
+            for s in range(self.nspins):
+                Nt0 = self.gd.integrate(self.nt_sG[s])
+                Nt = self.finegd.integrate(self.nt_sg[s])
+                if Nt != 0.0:
+                    self.nt_sg[s] *= Nt0 / Nt
+        
         self.calculate_potential()
 
         self.calculate_atomic_hamiltonians()
@@ -557,8 +572,8 @@ class Paw:
 
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
-        
-        assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 0.2
+
+        assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 0.0002
 
         self.timer.start('poisson')
         # npoisson is the number of iterations:

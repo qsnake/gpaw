@@ -253,7 +253,7 @@ class KPoint:
                 linalg.cholesky_decomposition(S_nn)).copy()
 
         self.comm.broadcast(S_nn, self.root)
-
+        
         # This step will overwrite the Htpsit_nG array!
         gemm(1.0, self.psit_nG, S_nn, 0.0, self.Htpsit_nG)
         self.psit_nG, self.Htpsit_nG = self.Htpsit_nG, self.psit_nG  # swap

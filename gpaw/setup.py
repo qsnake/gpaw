@@ -36,7 +36,10 @@ class Setup:
          filename) = PAWXMLParser().parse(symbol, xcname)
 
         self.filename = filename
+
+        assert Nv + Nc == Z
         self.Nv = Nv
+        self.Nc = Nc
         self.Z = Z
         self.X_p = X_p
         self.ExxC = ExxC
@@ -272,7 +275,6 @@ class Setup:
 
         self.rcut = rcut
 
-        # Dont forget to change the onsite interaction energy for soft = 0 XXX
         if softgauss:
             rcutsoft = rcut2####### + 1.4
         else:

@@ -6,6 +6,8 @@
 A Paw object has a list of nuclei. Each nucleus is described by a
 ``Setup`` object and a scaled position plus some extra stuff..."""
 
+from math import pi, sqrt
+
 import Numeric as num
 
 from gpaw.utilities.complex import real, cc
@@ -157,7 +159,7 @@ class Nucleus:
         # Shape functions:
         ghat_l = self.setup.ghat_l
         ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc)
-            
+
         # Potential:
         vhat_l = self.setup.vhat_l
         vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc)
@@ -196,6 +198,26 @@ class Nucleus:
                 for lf in lfs:
                     if lf is not None:
                         lf.set_communicator(comm, root)
+
+    def normalize_shape_function_and_pseudo_core_density(self):
+        """Normalize shape function and pseudo core density.
+
+        When these functions are put on a grid, their integrals may
+        not be exactly what they should be.  We fix that here."""
+
+        if self.ghat_L is not None:
+            self.ghat_L.normalize(sqrt(4 * pi))
+
+        # Any core electrons?
+        if self.setup.Nc == 0:
+            return  # No!
+
+        # Yes.  Normalize smooth core density:
+        if self.nct is not None:
+            Nct = -(self.setup.Delta0 * sqrt(4 * pi) + self.setup.Nv)
+            self.nct.normalize(Nct)
+        else:
+            self.comm.sum(0.0)
 
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
         phit_j = self.setup.phit_j
@@ -276,7 +298,7 @@ class Nucleus:
     def add_smooth_core_density(self, nct_G):
         if self.nct is not None:
             self.nct.add(nct_G, num.ones(1, num.Float))
-            
+
     def add_compensation_charge(self, nt2):
         self.ghat_L.add(nt2, self.Q_L)
 
