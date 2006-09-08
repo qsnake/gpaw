@@ -76,7 +76,9 @@ class Timer:
     def write(self, out=sys.stdout):
         if len(self.timers) == 0:
             return
+        print >> out
         print >> out, 'Timing:'
+        print >> out, '------------------------------------------------------------'
         t0 = time.time()
         tot = t0 - self.t0
         n = max([len(name) for name in self.timers]) + 1
@@ -93,6 +95,9 @@ class Timer:
             else:
                 bar = '|%s|' % ('=' * (i - 1))
             print >> out, '%-*s%9.3f %5.1f%% %s' % (n, name + ':', t, p, bar)
+        print >> out, '------------------------------------------------------------'
+        print >> out, '%-*s%9.3f' % (n, 'Total' + ':', tot)
+        print >> out
                 
     def add(self, timer):
         for name, t in timer.timers.items():

@@ -127,7 +127,7 @@ class Paw:
                  stencils, usesymm, mix, old, fixdensity, maxiter, idiotproof,
                  convergeall,
                  # Parallel stuff:
-                 kpt_comm,
+                 kpt_comm, timer,
                  out):
         """
         Create the PAW-object.
@@ -137,8 +137,9 @@ class Paw:
         will supply many default values).  The helper-function is used
         by the ``Calculator`` object."""
 
-        self.timer = Timer()
+        self.timer = timer
 
+        self.timer.start('Init')
         self.a0 = a0  # Bohr and ...
         self.Ha = Ha  # Hartree units are used internally
         self.charge = charge
@@ -235,6 +236,7 @@ class Paw:
                            typecode, self.gd, self.finegd, self.poisson,
                            self.interpolate, self.restrict,
                            self.my_nuclei, self.ghat_nuclei)
+        self.timer.stop('Init')
 
     def set_positions(self, pos_ac):
         """Update the positions of the atoms.
@@ -243,6 +245,7 @@ class Paw:
         have to be computed again.  Neighbor list is updated and the
         array holding all the pseudo core densities is updated."""
         
+        self.timer.start('Init pos.')
         movement = False
         for nucleus, pos_c in zip(self.nuclei, pos_ac):
             spos_c = self.domain.scale_position(pos_c)
@@ -291,6 +294,8 @@ class Paw:
                 print >> self.out, '%3d %2s %8.4f%8.4f%8.4f' % \
                       ((a, symbol) + tuple(self.a0 * pos_c))
 
+        self.timer.stop('Init pos.')
+
     def initialize_density_and_wave_functions(self, hund, magmom_a,
                                               density=True,
                                               wave_functions=True):
@@ -302,6 +307,7 @@ class Paw:
         be constructed with the specified magnetic moments and
         obeying Hund's rules if ``hund`` is true."""
         
+        self.timer.start('Init dens.')
         output.plot_atoms(self)
         
         for nucleus in self.nuclei:
@@ -333,6 +339,7 @@ class Paw:
             self.wf.occupation = FixMom(self.wf.occupation.ne, self.nspins, M)
 
         self.converged = False
+        self.timer.stop('Init dens.')
         
     def set_convergence_criteria(self, tol):
         """Set convergence criteria.
@@ -382,6 +389,7 @@ class Paw:
               time     error     energy    fermi  poisson  magmom"""
 
         self.niter = 0
+
         while not self.converged:
             self.improve_wave_functions()
             # Output from each iteration:
@@ -444,10 +452,12 @@ class Paw:
                 x = -(self.charge + Q) / Nt
                 assert 0.83 < x < 1.17, 'x=%f' % x
                 self.nt_sG *= x
-        
+
+        self.timer.start('Orthogonalize')
         wf.calculate_projections_and_orthogonalize(self.pt_nuclei,
                                                    self.my_nuclei)
-
+        self.timer.stop('Orthogonalize')
+        self.timer.start('Calc. density')
         if self.niter > 0:
             if not self.fixdensity:
                 wf.calculate_electron_density(self.nt_sG, self.nct_G,
@@ -475,12 +485,16 @@ class Paw:
                 if Nt != 0.0:
                     self.nt_sg[s] *= Nt0 / Nt
         
+        self.timer.stop('Calc. density')
         self.calculate_potential()
 
+        self.timer.start('Atomic hamiltonians')
         self.calculate_atomic_hamiltonians()
+        self.timer.stop('Atomic hamiltonians')
 
+        self.timer.start('Subspace diag.')
         wf.diagonalize(self.vt_sG, self.my_nuclei, self.exx)
-
+        self.timer.stop('Subspace diag.')
         if self.niter == 0:
             wf.adjust_number_of_bands(self.my_nuclei)
                 
@@ -495,17 +509,19 @@ class Paw:
         self.Exc = dsum(self.Exc)
         self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
 
+        self.timer.start('Residuals')
         self.error = dsum(wf.calculate_residuals(self.pt_nuclei,
                                                  self.convergeall))
+        self.timer.stop('Residuals')
         if self.error == 0:
             self.error = self.tolerance
 
         if (self.error > self.tolerance and
             self.niter < self.maxiter
             and not sigusr1[0]):
-            self.timer.start('SD')
+            self.timer.start('RMM-DIIS')
             wf.rmm_diis(self.pt_nuclei, self.vt_sG)
-            self.timer.stop('SD')
+            self.timer.stop('RMM-DIIS')
         else:
             self.converged = True
             if sigusr1[0]:
@@ -514,7 +530,7 @@ class Paw:
 
     def calculate_atomic_hamiltonians(self):
         """Calculate atomic hamiltonians."""
-        self.timer.start('atham')
+
         nt_sg = self.nt_sg
         if self.nspins == 2:
             nt_g = nt_sg[0] + nt_sg[1]
@@ -527,7 +543,6 @@ class Paw:
             self.Epot += p
             self.Ebar += b
             self.Exc += x
-        self.timer.stop('atham')
 
     def calculate_multipole_moments(self):
         """Calculate multipole moments."""
@@ -561,25 +576,25 @@ class Paw:
         if self.nspins == 2:
             self.vt_sg[1, :] = vt_g
 
-        self.timer.start('xc')
+        self.timer.start('XC')
         if self.nspins == 2:
             self.Exc = self.xc.get_energy_and_potential(
                 self.nt_sg[0], self.vt_sg[0], self.nt_sg[1], self.vt_sg[1])
         else:
             self.Exc = self.xc.get_energy_and_potential(
                 self.nt_sg[0], self.vt_sg[0])
-        self.timer.stop('xc')
+        self.timer.stop('XC')
 
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
 
         assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 0.0002
 
-        self.timer.start('poisson')
+        self.timer.start('Poisson')
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, self.rhot_g,
                                            charge=-self.charge)
-        self.timer.stop('poisson')
+        self.timer.stop('Poisson')
         
         self.Epot += 0.5 * num.vdot(self.vHt_g, self.rhot_g) * self.finegd.dv
         self.Ekin = 0.0

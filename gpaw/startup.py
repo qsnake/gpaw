@@ -11,7 +11,7 @@ from gpaw.paw import Paw
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import gcd
 import gpaw.mpi as mpi
-
+from gpaw.utilities.timing import Timer
 
 def create_paw_object(out, a0, Ha,
                       pos_ac, Z_a, magmom_a, cell_c, bc_c, angle,
@@ -26,6 +26,8 @@ def create_paw_object(out, a0, Ha,
                       parsize_c,
                       restart_file):
 
+    timer = Timer()
+    timer.start('Init')
     if angle is not None:
         usesymm = False
         if lmax not in [None, 0]:
@@ -140,6 +142,7 @@ def create_paw_object(out, a0, Ha,
 
     domain.set_decomposition(domain_comm, parsize_c, N_c)
 
+    timer.stop('Init')
     # We now have all the parameters needed to construct a PAW object:
     paw = Paw(a0, Ha,
               setups, nuclei, domain, N_c, symmetry, xcfunc,
@@ -148,7 +151,7 @@ def create_paw_object(out, a0, Ha,
               stencils, usesymm, mix, old, fixdensity, maxiter, idiotproof,
               convergeall=convergeall,
               # Parallel stuff:
-              kpt_comm=kpt_comm,
+              kpt_comm=kpt_comm, timer = timer,
               out=out)
 
     paw.set_positions(pos_ac / a0)
