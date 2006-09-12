@@ -524,6 +524,6 @@ class Nucleus:
                 nct.add(n_sg[s], -num.ones(1, num.Float) / nspins)
 
             # Correct density, such that correction is norm-conserving
-            Core_c = num.around(gd.N_c * self.spos_c).astype(num.Int)
+            Core_c = num.around(gd.N_c * self.spos_c).astype(num.Int) % gd.N_c
             n_sg[s][Core_c] += (Ianal - Inum) / gd.dv
         
