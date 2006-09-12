@@ -203,7 +203,7 @@ class Nucleus:
         """Normalize shape function and pseudo core density.
 
         When these functions are put on a grid, their integrals may
-        not be exactly what they should be.  We fix that here."""
+        not be exactly what they should be. We fix that here."""
 
         if self.ghat_L is not None:
             self.ghat_L.normalize(sqrt(4 * pi))
@@ -334,14 +334,14 @@ class Nucleus:
             self.vhat_L.integrate(nt_g, W_L)
             self.ghat_L.integrate(vHt_g, W_L)
 
-            Exc = s.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
-            if s.xcname == 'EXX': # XXX EXX hack 
-                Exc = s.ExxC - num.dot(D_p, (s.X_p + num.dot(s.M_pp, D_p)))
-                self.H_sp -= s.X_p - 2.0 * num.dot(s.M_pp, D_p)
-
             D_p = num.sum(self.D_sp)
             dH_p = (s.K_p + s.M_p + s.MB_p + 2.0 * num.dot(s.M_pp, D_p) +
                     num.dot(s.Delta_pL, W_L))
+
+            Exc = s.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
+            if s.xcname == 'EXX': # XXX EXX hack
+                Exc = s.ExxC - num.dot(D_p, (s.X_p + num.dot(s.M_pp, D_p)))
+                self.H_sp -= s.X_p - 2.0 * num.dot(s.M_pp, D_p)
 
             Ekin = num.dot(s.K_p, D_p) + s.Kc
 
@@ -491,3 +491,39 @@ class Nucleus:
                 
             if self.vbar is not None:
                 self.vbar.derivative(nt_g, None)
+
+    def add_density_correction(self, n_sg, nspins, gd):
+        # Load splines
+        create = create_localized_functions
+        phi_j, phit_j, nc, nct = self.setup.get_partial_waves()
+
+        # Create localized functions from splines
+        phi_i = create(phi_j, gd, self.spos_c)
+        phit_i = create(phit_j, gd, self.spos_c)
+        nc = create([nc], gd, self.spos_c)
+        nct = create([nct], gd, self.spos_c)
+
+        # Normalize core densities:
+        Nc = self.setup.Nc
+        Nct = -(self.setup.Delta0 * sqrt(4 * pi) + self.setup.Nv)
+        if Nc != 0:
+            nc.normalize(Nc)
+            nct.normalize(Nct)
+        
+        for s in range(nspins):
+            # Numeric and analytic integrations of density corrections
+            Inum = 0.0
+            Ianal = sqrt(4 * pi) * num.dot(self.D_sp[s],
+                                           self.setup.Delta_pL[:,0])
+
+            # Add density corrections to input array n_G
+            Inum += phi_i.add_density2(n_sg[s], self.D_sp[s])
+            Inum += phit_i.add_density2(n_sg[s], -self.D_sp[s])
+            if Nc != 0:
+                nc.add(n_sg[s], num.ones(1, num.Float) / nspins)
+                nct.add(n_sg[s], -num.ones(1, num.Float) / nspins)
+
+            # Correct density, such that correction is norm-conserving
+            Core_c = num.around(gd.N_c * self.spos_c).astype(num.Int)
+            n_sg[s][Core_c] += (Ianal - Inum) / gd.dv
+        

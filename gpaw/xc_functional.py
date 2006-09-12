@@ -12,6 +12,7 @@ import _gpaw
 class XCFunctional:
     def __init__(self, xcname, scalarrel=True, parameters=None):
         self.xcname = xcname
+        self.hybrid = 0
         self.parameters = parameters
         self.scalarrel = scalarrel
         
@@ -40,6 +41,7 @@ class XCFunctional:
                 code = 5
             elif xcname == 'EXX':
                 code = 6
+                self.hybrid = 1
             elif xcname == 'revPBEx':
                 code = 8
             else:

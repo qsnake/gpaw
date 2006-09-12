@@ -265,9 +265,18 @@ class LocFuncs:
         for box in self.box_b:
             box.add_density(n_G, f_i)
 
+    def add_density2(self, n_G, D_p):
+        """Add atomic electron density to extended density array.
+        Special method for adding the atomic electron density
+        calculated from atomic orbitals and density matrix
+        ``D_p``. Returns integral of correction."""
+        I = 0.0
+        for box in self.box_b:
+            I += box.add_density2(n_G, D_p)
+        return I
+
     def normalize(self, I0):
         """Normalize localized function.
-
         The integral of the first function is normalized to the value
         ``I0``."""
 
@@ -383,6 +392,18 @@ class LocalizedFunctionsWrapper:
         assert f_i.shape == (self.ni,)
         self.lfs.add_density(n_G, f_i)
 
+    def add_density2(self, n_G, D_p):
+        """Add atomic electron density to extended density array.
+        Special method for adding the atomic electron density
+        calculated from atomic orbitals and density matrix
+        ``D_p``."""
+        
+        assert is_contiguous(n_G, num.Float)
+        assert is_contiguous(D_p, num.Float)
+        assert n_G.shape == self.shape
+        assert D_p.shape == (self.ni * (self.ni + 1) / 2,)
+        return self.lfs.add_density2(n_G, D_p)
+
     def norm(self):
         """Integral of the first function."""
         return self.lfs.norm()
@@ -390,7 +411,6 @@ class LocalizedFunctionsWrapper:
     def scale(self, s):
         """Scale the first function."""
         self.lfs.scale(s)
-
 
 if debug:
     # Add type and sanity checks:

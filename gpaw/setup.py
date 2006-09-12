@@ -400,6 +400,43 @@ class Setup:
                                               num.transpose(R_ii)))
         return D_ii / len(map_sa)
 
+    def get_partial_waves(self):
+        # load setup data from XML file
+        (Z, Nc, Nv,
+         e_total, e_kinetic, e_electrostatic, e_xc,
+         e_kinetic_core,
+         n_j, l_j, f_j, eps_j, rcut_j, id_j,
+         ng, beta,
+         nc_g, nct_g, vbar_g, rcgauss,
+         phi_jg, phit_jg, pt_jg,
+         e_kin_jj, X_p, ExxC,
+         self.fingerprint,
+         filename) = PAWXMLParser().parse(self.symbol, self.xcname)
+
+        # cutoffs
+        nj = len(l_j)
+        rcut2 = 2 * max(rcut_j)
+        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
+
+        # radial grid
+        g = num.arange(ng, typecode=num.Float)
+        r_g = beta * g / (ng - g)
+
+        # Construct splines:
+        nc_g[gcut2:] = nc_g[gcut2:] = 0.0
+        nc = Spline(0, rcut2, nc_g, r_g=r_g, beta=beta, points=100)
+        nct = Spline(0, rcut2, nct_g, r_g=r_g, beta=beta, points=100)
+        phi_j = []
+        phit_j = []
+        for j, (phi_g, phit_g) in enumerate(zip(phi_jg, phit_jg)):
+            l = l_j[j]
+            phi_g[gcut2:] = phit_g[gcut2:] = 0.0
+            phi_j.append(Spline(l, rcut2, grr(phi_g, l, r_g), r_g=r_g,
+                                 beta=beta, points=100))
+            phit_j.append(Spline(l, rcut2, grr(phit_g, l, r_g), r_g=r_g,
+                                 beta=beta, points=100))
+        return phi_j, phit_j, nc, nct
+
 
 def grr(phi_g, l, r_g):
     w_g = phi_g.copy()

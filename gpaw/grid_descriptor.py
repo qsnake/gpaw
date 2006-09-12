@@ -158,6 +158,12 @@ class GridDescriptor:
             raise ValueError('Grid %s not divisable by 2!' % self.n_c)
         return GridDescriptor(self.domain, self.N_c / 2)
 
+    def refine(self):
+        """Return refined `GridDescriptor` object.
+
+        Reurned descriptor has 2x2x2 more grid points."""
+        return GridDescriptor(self.domain, self.N_c * 2)
+
     def get_boxes(self, spos_c, rcut, cut=True):
         """Find boxes enclosing sphere."""
         N_c = self.N_c

@@ -8,7 +8,7 @@ import _gpaw
 
 
 class Spline:
-    def __init__(self, l, rmax, f_g, r_g=None, beta=None):
+    def __init__(self, l, rmax, f_g, r_g=None, beta=None, points=25):
         """Spline(l, rcut, list) -> Spline object
 
         The integer l gives the angular momentum quantum number and
@@ -19,8 +19,7 @@ class Spline:
         if beta is None:
             f_g = contiguous(f_g, num.Float)
         else:
-            K = 25
-            r = rmax / K * num.arange(K + 1)
+            r = rmax / points * num.arange(points + 1)
             ng = len(f_g)
             g = (ng * r / (beta + r) + 0.5).astype(num.Int)
             g = num.clip(g, 1, ng - 2)

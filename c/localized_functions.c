@@ -210,6 +210,43 @@ static PyObject * localized_functions_add_density(LocalizedFunctionsObject*
   Py_RETURN_NONE;
 }
 
+static PyObject * localized_functions_add_density2(LocalizedFunctionsObject*
+						  self,
+						  PyObject *args)
+{
+  PyArrayObject* dd; //density array to be added to
+  PyArrayObject* oo; // density matrix
+  if (!PyArg_ParseTuple(args, "OO", &dd, &oo))
+    return NULL;
+
+  const double* o = DOUBLEP(oo);
+  double* d = DOUBLEP(dd);
+  int nf = self->nf;
+  int ng0 = self->ng0;
+  const double* f = self->f;
+  double* w = self->w;
+
+  memset(w, 0, ng0 * sizeof(double));
+  int p = 0; // compressed ii index
+  double F = 0.0; // integrated value
+  for (int i = 0; i < nf; i++)
+    {
+    for (int j = i; j < nf; j++)
+      {
+	for (int n = 0; n < ng0; n++)
+	  {
+	    double tmp = o[p] * f[n + i * ng0] * f[n + j * ng0];
+	    F += tmp;
+	    w[n] += tmp;
+	  }
+	p++;
+      }
+    }
+  bmgs_pastep(w, self->size0, d, self->size, self->start);
+  //Py_RETURN_NONE;
+  return Py_BuildValue("d", F * self->dv);
+}
+
 static PyObject * localized_functions_norm(LocalizedFunctionsObject* self,
 					   PyObject *args)
 {
@@ -271,6 +308,8 @@ static PyMethodDef localized_functions_methods[] = {
      (PyCFunction)localized_functions_add, METH_VARARGS, 0},
     {"add_density",
      (PyCFunction)localized_functions_add_density, METH_VARARGS, 0},
+    {"add_density2",
+     (PyCFunction)localized_functions_add_density2, METH_VARARGS, 0},
     {"norm",
      (PyCFunction)localized_functions_norm, METH_VARARGS, 0},
     {"scale",

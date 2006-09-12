@@ -113,9 +113,8 @@ class KPoint:
         kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
         self.Htpsit_nG += self.psit_nG * vt_sG[self.s]
         if exx is not None:
-            exx.adjust_hamiltonian(psit_nG, self.Htpsit_nG, self.nbands,
-                                   self.f_n,
-                                   self.u, self.s)
+            exx.adjust_hamiltonian(self.psit_nG, self.Htpsit_nG, self.nbands,
+                                   self.f_n, self.u, self.s)
         r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
         # XXX Do EXX here XXX
         for nucleus in my_nuclei:

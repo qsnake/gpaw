@@ -4,7 +4,54 @@ from gpaw.utilities.complex import real
 from gpaw.coulomb import Coulomb
 from gpaw.utilities.tools import pack, pack2, core_states
 from gpaw.gaunt import gaunt
-from gpaw.utilities import hartree
+from gpaw.utilities import hartree, unpack
+
+class XCHandler:
+    """
+    Handle the set of exchange and correlation functionals, of the form
+
+               name     parameters
+    xcdict = {'xLDA':  {'coeff': 0.2, 'scalarrel': True},
+              'xEXX':  {'coeff': 0.8, 'screened': False}}
+              
+    """
+
+    hooks = {'LDA': {'xLDA': {}, 'cLDA': {}},
+             'PBE': {'xPBE': {}, 'cPBE': {}},
+             'EXX': {'xEXX': {}}}
+    
+    def __init__(self, xcdict):
+        self.set_xcdict(xcdict)
+
+    def set_xcdict(self, xcdict):
+        # ensure correct type
+        if type(xcdict) == str:
+            xcdict = hooks[xcdict]
+        else:
+            assert type(xcdict) == dict
+
+        # Check if it is hybrid calculation
+        if 'xEXX' in xcdict:
+            self.hybrid = xcdict['xExx'].get('coeff', 1.0)
+        else:
+            self.hybrid = 0.0
+
+        # make list of xc-functionals
+        self.functional_list = []
+        for xc, par in xcdict.items():
+            self.functional_list.append(XCFunctional(xc, **par))
+        
+    def calculate_spinpaired(self, *args):
+        E = 0.0
+        for xc in self.functional_list:
+            E += xc.calculate_spinpaired(*args)
+        return E
+    
+    def calculate_spinpolarized(self, *args):
+        E = 0.0
+        for xc in self.functional_list:
+            E += xc.calculate_spinpolarized(*args)
+        return E
 
 class XXFunctional:
     def calculate_spinpaired(self, *args):
@@ -13,9 +60,10 @@ class XXFunctional:
         return 0.0    
 
 def get_exx(xcname, softgauss, typecode, gd, finegd, poisson,
-            interpolate, restrict, my_nuclei, ghat_nuclei):
+            interpolate, restrict, my_nuclei, ghat_nuclei, nspins):
     if xcname != 'EXX':
         return None
+    
     else:
         # ensure that calculation is a Gamma point calculation
         if typecode == num.Complex:
@@ -31,14 +79,14 @@ def get_exx(xcname, softgauss, typecode, gd, finegd, poisson,
             raise NotImplementedError(msg)
 
         return SelfConsistentExx(gd, finegd, poisson, interpolate, restrict,
-                                 my_nuclei, ghat_nuclei)
+                                 my_nuclei, ghat_nuclei, nspins)
 
 class SelfConsistentExx:
     """Class offering methods for selfconsistent evaluation of the
        exchange energy of a gridPAW calculation.
     """
     def __init__(self, gd, finegd, poisson, interpolate, restrict,
-                 my_nuclei, ghat_nuclei):
+                 my_nuclei, ghat_nuclei, nspins):
 ##         self.gd = gd
 ##         self.finegd = finegd
         self.poisson = poisson
@@ -46,6 +94,7 @@ class SelfConsistentExx:
         self.restrict = restrict
         self.my_nuclei = my_nuclei
         self.ghat_nuclei = ghat_nuclei
+        self.nspins = nspins
 
         # allocate space for matrices
         self.n_G = gd.new_array()
@@ -61,6 +110,8 @@ class SelfConsistentExx:
            Adjust values of  H psi due to inclusion of exact exchange.
            Called from kpoint.diagonalize.
         """
+        if s == 0:
+            self.Exx = 0.0
         for n in range(nbands):
             for m in range(nbands):
                 # determine current exchange density
@@ -93,28 +144,34 @@ class SelfConsistentExx:
                 self.poisson.solve(self.v_g, self.n_g, charge=Z)
 
                 # update hamiltonian
-                restrict(self.v_g, self.v_G)
-                Htpsit_nG[n] -= f_n[m] * self.v_G * psit_nG[m]
+                self.restrict(self.v_g, self.v_G)
+                Htpsit_nG[n] -= f_n[m] / (self.nspins % 2 + 1) *\
+                                self.v_G * psit_nG[m]
 
                 # add the nm contribution to exchange energy
-                self.Exx -= .5 * f_n[n] * self.integrate(self.v_g * self.n_g)
+                self.Exx -= .5 * f_n[n] * f_n[m] / (self.nspins % 2 + 1) *\
+                            self.integrate(self.v_g * self.n_g)
 
                 # update the vxx_sni vector of the nuclei, used to determine
                 # the atomic hamiltonian
                 for nucleus in self.my_nuclei:
                     v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
-                    nucleus.ghat_L.integrate(-v_g, v_L)
+                    nucleus.ghat_L.integrate(-self.v_g, v_L)
                     nucleus.vxx_sni[s, n] += num.dot(
                         unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
                         nucleus.P_uni[u, m])
+#        print 'Exchange energy:', self.Exx
 
     def adjust_hamitonian_matrix(self, H_nn, P_ni, nucleus, s):
+        """Called from kpoint.diagonalize"""
         H_nn += num.dot(P_ni, num.transpose(nucleus.vxx_sni[s]))
 
     def adjust_residual(self, R_nG):
+        """from the nucleus class"""
         pass
 
     def adjust_residual2(self, R_G):
+        """from the nucleus class"""
         pass
 
 class PerturbativeExx:

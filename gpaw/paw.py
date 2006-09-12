@@ -235,7 +235,7 @@ class Paw:
         self.exx = get_exx(self.xcfunc.xcname, self.nuclei[0].setup.softgauss,
                            typecode, self.gd, self.finegd, self.poisson,
                            self.interpolate, self.restrict,
-                           self.my_nuclei, self.ghat_nuclei)
+                           self.my_nuclei, self.ghat_nuclei, self.nspins)
         self.timer.stop('Init')
 
     def set_positions(self, pos_ac):
@@ -601,13 +601,14 @@ class Paw:
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, self.nt_sG):
             vt_g += self.vHt_g
             self.restrict(vt_g, vt_G)
-            self.Ekin -= num.vdot(vt_G, nt_G - self.nct_G) * self.gd.dv
+            self.Ekin -= (1 - .5 * self.xcfunc.hybrid) * num.vdot( # EXX hack
+                vt_G, nt_G - self.nct_G) * self.gd.dv
 
         # Exact-exchange correction
         if self.exx is not None:
             Exx = self.wf.kpt_comm.sum(self.exx.Exx)
-            Exc += Exx
-            Ekin -= 2 * Exx
+            self.Exc += Exx
+            self.Ekin -= Exx
             
     def get_cartesian_forces(self):
         """Return the atomic forces."""
@@ -831,3 +832,39 @@ class Paw:
 
     def get_weights(self):
         return self.wf.weights_k
+
+    def get_all_electron_density(self, gridrefinement=2):
+        """Return real all-electron density array."""
+        # Unit conversion factor
+        c = 1.0 / self.a0**3
+
+        # Refinement of coarse grid, for representation of the AE-density
+        if gridrefinement == 1:
+            gd = self.gd
+            n_sg = self.nt_sG.copy()
+        elif gridrefinement == 2:
+            gd = self.finegd
+            n_sg = self.nt_sg.copy()
+        elif gridrefinement == 4:
+            # Interpolation function for the density:
+            interpolate = Interpolator(self.finegd, 3, num.Float).apply
+
+            # Extra fine grid
+            gd = self.finegd.refine()
+            
+            # Transfer the pseudo-density to the fine grid:
+            n_sg = gd.new_array(self.nspins)
+            for s in range(self.nspins):
+                interpolate(self.nt_sg[s], n_sg[s])
+        else:
+            raise NotImplementedError
+
+        # Add corrections to pseudo-density to get the AE-density
+        for nucleus in self.nuclei:
+            nucleus.add_density_correction(n_sg, self.nspins, gd)
+
+        # Return AE-(spin)-density
+        if self.nspins == 2:
+            return n_sg * c
+        else:
+            return n_sg[0] * c
