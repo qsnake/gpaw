@@ -7,12 +7,13 @@ from gpaw.gaunt import gaunt
 from gpaw.utilities import hartree, unpack
 
 class XCHandler:
-    """
-    Handle the set of exchange and correlation functionals, of the form
+    """Exchange correlation handler.
+    
+    Handle the set of exchange and correlation functionals, of the form::
 
-               name     parameters
-    xcdict = {'xLDA':  {'coeff': 0.2, 'scalarrel': True},
-              'xEXX':  {'coeff': 0.8, 'screened': False}}
+                 name     parameters
+      xcdict = {'xLDA':  {'coeff': 0.2, 'scalarrel': True},
+                'xEXX':  {'coeff': 0.8, 'screened': False}}
               
     """
 
