@@ -10,6 +10,7 @@ class Dummy:
         self.ne = ne
         self.nspins = nspins
         self.set_fermi_level(None)
+        self.kT = 0
         
     def set_communicator(self, comm):
         self.comm = comm
