@@ -126,7 +126,6 @@ class WaveFunctions:
         else:
             self.occupation = occupations.FermiDirac(nvalence, nspins, kT)
         self.occupation.set_communicator(kpt_comm)
-        self.occupation.kT = kT # XXX
 
     def initialize_from_atomic_orbitals(self, nuclei, my_nuclei, out):
         """Initialize wave function from atomic orbitals."""
