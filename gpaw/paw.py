@@ -686,7 +686,7 @@ class Paw:
         """Print a warning-message."""
         print >> self.out, warning(message)
         if self.idiotproof:
-            raise RuntimeError(warning)
+            raise RuntimeError(message)
 
     def __del__(self):
         """Destructor:  Write timing output before closing."""

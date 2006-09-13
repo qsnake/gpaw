@@ -32,8 +32,8 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
     if mpi.rank == MASTER:
         w = open(filename, 'w')
 
-        w['history'] = 'gpaw restart file'
-        w['version'] = version
+        w['history'] = 'GPAW restart file'
+        w['version'] = '0.2'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
         
@@ -105,12 +105,15 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
             epsF = 100.0
         w['FermiLevel'] = epsF
 
+        # Write fingerprint (md5-digest) for all setups:
+        for setup in paw.setups.values():
+            w[setup.symbol + 'Fingerprint'] = setup.fingerprint
+              
         typecode = {num.Float: float, num.Complex: complex}[wf.typecode]
         # write projections
         w.add('Projections', ('nspins', 'nibzkpts', 'nbands', 'nproj'),
               typecode=typecode)
-              
-    if mpi.rank == MASTER:
+
         all_P_uni = num.zeros((wf.nmyu, wf.nbands, nproj), wf.typecode)
         for kpt_rank in range(wf.kpt_comm.size):
             i = 0
@@ -214,7 +217,7 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
                         w.fill(psit_G)
                     
     if mpi.rank == MASTER:
-        # Add sync here to ensure that the last wave function is
+        # Close the file here to ensure that the last wave function is
         # written to disk:
         w.close()
 
@@ -223,7 +226,14 @@ def read(paw, filename):
     wf = paw.wf
     
     r = open(filename, 'r')
-    
+
+    if r['version'] >= 0.2:
+        for setup in paw.setups.values():
+            if setup.fingerprint != r[setup.symbol + 'Fingerprint']:
+                paw.warn(('Setup for %s (%s) not compatible ' +
+                          'with restart file.') %
+                         (setup.symbol, setup.filename))
+            
     for kpt in wf.kpt_u:
         kpt.allocate(wf.nbands)
         
@@ -248,7 +258,7 @@ def read(paw, filename):
                 kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
                                               kpt.s, kpt.k)
     
-    # Eigenvalues and occupation
+    # Eigenvalues and occupation numbers:
     for kpt in wf.kpt_u:
         k = kpt.k
         s = kpt.s

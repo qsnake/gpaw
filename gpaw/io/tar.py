@@ -72,7 +72,7 @@ class Writer:
             self.tar.offset += blocks * tarfile.BLOCKSIZE
         
     def close(self):
-        self.xml2 += ['</gpaw_io>']
+        self.xml2 += ['</gpaw_io>\n']
         string = '\n'.join(self.xml1 + self.xml2)
         self.write_header('info.xml', len(string))
         self.write(string)

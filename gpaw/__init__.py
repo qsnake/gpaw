@@ -83,7 +83,7 @@ paths = os.environ.get('GPAW_SETUP_PATH', '')
 if paths != '':
     setup_paths += paths.split(':')
 if setup_paths == []:
-    path = join(home, '.gpaw/setups')
+    path = join(home, '.gridpaw/setups')
     if os.path.isdir(path):
         setup_paths = [path]
         print 'Using setups from:', path

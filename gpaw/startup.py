@@ -20,7 +20,7 @@ def create_paw_object(out, a0, Ha,
                       charge,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, old, fixdensity,
-                      idiotproof, hund, lmax, tolerance,maxiter,
+                      idiotproof, hund, lmax, tolerance, maxiter,
                       convergeall,
                       # Parallel stuff:
                       parsize_c,
