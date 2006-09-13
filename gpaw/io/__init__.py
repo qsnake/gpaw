@@ -227,7 +227,11 @@ def read(paw, filename):
     
     r = open(filename, 'r')
 
-    if r['version'] >= 0.2:
+    version = r['version']
+    if isinstance(version, str):
+        version = 0.1
+
+    if version >= 0.2:
         for setup in paw.setups.values():
             if setup.fingerprint != r[setup.symbol + 'Fingerprint']:
                 paw.warn(('Setup for %s (%s) not compatible ' +
