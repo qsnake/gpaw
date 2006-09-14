@@ -597,3 +597,6 @@ class Calculator:
 
     def GetGridSpacings(self):
         return self.paw.get_grid_spacings()
+
+    def GetNumberOfGridPoints(self):
+        return self.paw.gd.N_c

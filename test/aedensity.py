@@ -17,7 +17,7 @@ center(NaCl)
 calc = Calculator(h=h, xc='LDA', nbands=5, lmax=0, tolerance=1e-6, hund=True)
 NaCl.SetCalculator(calc)
 NaCl.GetPotentialEnergy()
-n = num.sum(calc.GetAllElectronDensity(gridrefinement))
+n = calc.GetAllElectronDensity(gridrefinement)
 
 Z = num.sum(n.flat) * num.product(calc.GetGridSpacings() / gridrefinement)
 
