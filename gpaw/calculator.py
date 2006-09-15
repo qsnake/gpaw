@@ -30,7 +30,7 @@ import gpaw.io
 class Calculator:
     """This is the ASE-calculator frontend for doing a PAW calculation.
 
-    The calculator object controlls a paw object that does the actual
+    The calculator object controls a paw object that does the actual
     work.  The paw object can run in serial or in parallel, the
     calculator interface will allways be the same."""
 
@@ -551,7 +551,7 @@ class Calculator:
         
         calc = Calculator(**kwargs)
 
-        Z_a = r.get('AtomicNumbers')
+        Z_a = num.asarray(r.get('AtomicNumbers'), num.Int)
         pos_ac = r.get('CartesianPositions') * a0
         periodic_c = r.get('BoundaryConditions')
         cell_cc = r.get('UnitCell') * a0
