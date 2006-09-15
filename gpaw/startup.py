@@ -132,7 +132,7 @@ def create_paw_object(out, a0, Ha,
 
     if nbands is None:
         # Default value for number of bands:
-        nbands = (nvalence + 7) // 2 # make room for magnetisation XXX
+        nbands = (nvalence + 7) // 2 + int(num.sum(magmom_a) / 2)
     elif nvalence > 2 * nbands:
         raise ValueError('Too few bands!')
 
@@ -194,8 +194,7 @@ def reduce_kpoints(bzk_kc, pos_ac, Z_a, domain, usesymm):
 
 
 def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss, out):
-    # Construct necessary PAW-setup objects and count the number of
-    # valence electrons:
+    """Construct necessary PAW-setup objects."""
     setups = {}
     for Z in Z_a:
         if Z not in setups:
