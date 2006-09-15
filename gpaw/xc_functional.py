@@ -15,6 +15,7 @@ class XCFunctional:
         self.hybrid = 0
         self.parameters = parameters
         self.scalarrel = scalarrel
+        self.mgga = True
         
         if xcname == 'LDA':
             self.gga = False
@@ -44,6 +45,11 @@ class XCFunctional:
                 self.hybrid = 1
             elif xcname == 'revPBEx':
                 code = 8
+            elif xcname == 'TPSS':
+                # note: We might need two code numbers for non-selfconsistent
+                #       and selfconsistent TPSS
+                code = 10
+                self.mgga = True
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 
@@ -56,6 +62,8 @@ class XCFunctional:
                                             0.0, 0, num.array(parameters))
         elif code == 6:
             self.xc = XXFunctional()
+        elif code == 10:
+            self.xc = 'TPSS'
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel)
 
