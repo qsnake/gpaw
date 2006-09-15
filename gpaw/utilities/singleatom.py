@@ -16,7 +16,7 @@ magmoms = {}
 
 class SingleAtom:
     def __init__(self, symbol, a=None, b=None, c=None,
-                 h=None, spinpaired=False,
+                 h=None, gpts=None, spinpaired=False,
                  eggboxtest=False, parameters={}, forcesymm=False):
         if a is None:
             a = 7.0  # Angstrom
@@ -64,7 +64,7 @@ class SingleAtom:
                                 periodic=periodic,
                                 cell=[a, b, c])
         
-        calc = Calculator(h=h, width=width, hund=hund, **parameters)
+        calc = Calculator(h=h, gpts=gpts, width=width, hund=hund, **parameters)
         self.atom.SetCalculator(calc)
         
     def energy(self):
