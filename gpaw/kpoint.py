@@ -270,6 +270,17 @@ class KPoint:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 nt_G += f * (psit_G * num.conjugate(psit_G)).real
                 
+    def add_to_kinetic_electron_density(self, taut_G, ddr):
+        """Add contribution to pseudo kinetic electron density."""
+        for psit_G, f in zip(self.psit_nG, self.f_n):
+            d_G = num.zeros(psit_G.shape, num.Float)
+            for c in range(3):
+                ddr[c](psit_G,d_G)
+                if self.typecode is num.Float:
+                    taut_G += f * d_G[c]**2
+                else:
+                    taut_G += f * (d_G * num.conjugate(d_G)).real
+                
     def rmm_diis(self, pt_nuclei, preconditioner, kin, vt_sG):
         """Improve the wave functions.
 
