@@ -149,7 +149,7 @@ class Nucleus:
             pt_nuclei.remove(self)
 
         self.pt_i = pt_i
-        
+
         # Localized potential:
         vbar = self.setup.vbar
         vbar = create([vbar], finegd, spos_c, lfbc=lfbc)
@@ -160,6 +160,11 @@ class Nucleus:
         ghat_l = self.setup.ghat_l
         ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc)
 
+        #Step function
+        stepf = self.setup.stepf
+        stepf = create([stepf], finegd, spos_c, lfbc=lfbc)
+        self.stepf = stepf
+            
         # Potential:
         vhat_l = self.setup.vhat_l
         vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc)
@@ -191,7 +196,7 @@ class Nucleus:
 
             flags_r = num.zeros((self.comm.size, 1), num.Int)
             self.comm.all_gather(flags, flags_r)
-            for mask, lfs in [(1, [pt_i]), (2, [vbar]), (4, [ghat_L, vhat_L])]:
+            for mask, lfs in [(1, [pt_i]), (2, [vbar, stepf]), (4, [ghat_L, vhat_L])]:
                 group = [r for r, flags in enumerate(flags_r) if flags & mask]
                 root = group.index(rank)
                 comm = domain.get_communicator(group)
@@ -301,7 +306,7 @@ class Nucleus:
 
     def add_compensation_charge(self, nt2):
         self.ghat_L.add(nt2, self.Q_L)
-
+        
     def add_hat_potential(self, vt2):
         self.vhat_L.add(vt2, self.Q_L)
 
@@ -322,6 +327,12 @@ class Nucleus:
             self.Q_L[:] = num.dot(num.sum(self.D_sp), self.setup.Delta_pL)
             self.Q_L[0] += self.setup.Delta0
         self.comm.broadcast(self.Q_L, self.rank)
+
+    def calculate_magnetic_moments(self):
+        if self.in_this_domain:
+            dif = self.D_sp[0,:] - self.D_sp[1,:]
+            self.mom = num.dot(dif, self.setup.Delta_pL[:,0])
+        self.comm.broadcast(self.mom, self.rank)
         
     def calculate_hamiltonian(self, nt_g, vHt_g):
         if self.in_this_domain:

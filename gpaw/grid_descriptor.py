@@ -183,7 +183,9 @@ class GridDescriptor:
             for c in range(3):
                 if not self.domain.periodic_c[c] and \
                        (beg_c[c] < 0 or end_c[c] > N_c[c]):
-                    raise RuntimeError('Atom too close to boundary!')
+                    msg = 'Atom at %.3f %.3f %.3f too close to boundary ' % tuple(spos_c)
+                    msg += '(beg. of box %s, end of box %s)' % (beg_c, end_c)
+                    raise RuntimeError(msg)
 
         range_c = ([], [], [])
         

@@ -54,6 +54,14 @@ def print_converged(paw):
     else:
         print >> out, 'center of charge: %s' % (dipole * paw.a0)
 
+    if paw.nspins == 2:
+        print >> out
+        print >> out, 'total magnetic moment: %f' % paw.magmom
+        print >> out, 'local magnetic moments:'
+        for nucleus in paw.nuclei:
+            print >> out, nucleus.a, nucleus.mom
+        print >> out
+
 def plot_atoms(paw):
     domain = paw.domain
     nuclei = paw.nuclei

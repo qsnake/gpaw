@@ -411,6 +411,20 @@ class Paw:
             if self.niter > 120:
                 raise ConvergenceError('Did not converge!')
 
+        #calculate the total and local magnetic moments from spin density
+        if self.nspins == 2:
+            spindensity = self.nt_sg[0] - self.nt_sg[1]
+            self.magmom = self.finegd.integrate(spindensity)
+            self.calculate_magnetic_moments()
+            locmom = 0.0
+            for nucleus in self.my_nuclei:
+                locmom += nucleus.mom 
+                mom = num.array([0.0])
+                nucleus.stepf.integrate(spindensity,mom)
+                nucleus.mom += mom
+            locmom = self.domain.comm.sum(locmom)
+            self.magmom += locmom
+
         output.print_converged(self)
 
     def improve_wave_functions(self):
@@ -548,6 +562,10 @@ class Paw:
         """Calculate multipole moments."""
         for nucleus in self.nuclei:
             nucleus.calculate_multipole_moments()
+
+    def calculate_magnetic_moments(self):
+        for nucleus in self.nuclei:
+            nucleus.calculate_magnetic_moments()
             
     def calculate_potential(self):
         """Calculate effective potential.
