@@ -297,6 +297,9 @@ class KPoint:
             pR_G = preconditioner(R_G, self.phase_cd, self.psit_nG[n],
                                   self.k_c)
             
+            #self.psit_nG[n] += 0.5 * pR_G # XXX
+            #continue # XXX
+        
             kin.apply(pR_G, dR_G, self.phase_cd)
 
             dR_G += vt_G * pR_G
@@ -310,6 +313,7 @@ class KPoint:
             RdR = self.comm.sum(real(num.vdot(R_G, dR_G)))
             dRdR = self.comm.sum(real(num.vdot(dR_G, dR_G)))
             lam = -RdR / dRdR
+            #print lam # XXX
 
             R_G *= 2.0 * lam
             axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G

@@ -502,12 +502,12 @@ class Calculator:
         """Return eigenvalue array."""
         return self.paw.get_eigenvalues(kpt, spin) * self.Ha
 
-    def GetWannierLocalizationMatrix(self, G_I,kpoint,nextkpoint,spin,
+    def GetWannierLocalizationMatrix(self, G_I, kpoint, nextkpoint, spin,
                                      dirG, **args):
         """Calculate integrals for maximally localized Wannier functions."""
 
         c = dirG.index(1)
-        return self.paw.get_wannier_integrals(c,spin,kpoint,nextkpoint,G_I)
+        return self.paw.get_wannier_integrals(c, spin, kpoint, nextkpoint, G_I)
 
     def GetMagneticMoment(self):
         """Return the magnetic moment."""

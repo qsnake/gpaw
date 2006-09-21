@@ -878,9 +878,10 @@ class Paw:
             raise NotImplementedError
 
         # Add corrections to pseudo-density to get the AE-density
+        splines = {}
         for nucleus in self.nuclei:
-            nucleus.add_density_correction(n_sg, self.nspins, gd)
-
+            nucleus.add_density_correction(n_sg, self.nspins, gd, splines)
+        
         # Return AE-(spin)-density
         if self.nspins == 2:
             return n_sg * c

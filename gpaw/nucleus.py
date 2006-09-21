@@ -503,12 +503,17 @@ class Nucleus:
             if self.vbar is not None:
                 self.vbar.derivative(nt_g, None)
 
-    def add_density_correction(self, n_sg, nspins, gd):
+    def add_density_correction(self, n_sg, nspins, gd, splines={}):
         # Load splines
-        create = create_localized_functions
-        phi_j, phit_j, nc, nct = self.setup.get_partial_waves()
+        symbol = self.setup.symbol
+        if not symbol in splines:
+            phi_j, phit_j, nc, nct = self.setup.get_partial_waves()
+            splines[symbol] = (phi_j, phit_j, nc, nct)
+        else:
+            phi_j, phit_j, nc, nct = splines[symbol]
 
         # Create localized functions from splines
+        create = create_localized_functions
         phi_i = create(phi_j, gd, self.spos_c)
         phit_i = create(phit_j, gd, self.spos_c)
         nc = create([nc], gd, self.spos_c)
