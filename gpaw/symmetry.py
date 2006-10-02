@@ -119,7 +119,7 @@ class Symmetry:
         nsymold = len(self.symmetries)
         self.prune_symmetries(pos_ac)
         if len(self.symmetries) < nsymold:
-            raise RuntimeError('Boken symmetry!')
+            raise RuntimeError('Broken symmetry!')
 
     def reduce(self, bzkpts):
         # Add inversion symmetry if it's not there:

@@ -123,7 +123,7 @@ class Calculator:
 
         self.parallel_cputime = 0.0
 
-    def reset(self,restart_file=None):
+    def reset(self, restart_file=None):
         """Delete PAW-object."""
         self.stop_paw()
         self.restart_file = restart_file
