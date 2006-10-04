@@ -3,6 +3,7 @@ from math import sqrt
 from ASE import ListOfAtoms, Atom
 from ASE.ChemicalElements import numbers
 from ASE.ChemicalElements.crystal_structure import crystal_structures
+from ASE.ChemicalElements.covalent_radius import covalent_radii
 
 from gpaw import Calculator
 from gpaw.utilities import center
@@ -25,6 +26,11 @@ for symbol in setup_parameters:
         data[symbol] = {'structure': structure, 'volume': V}
         if coa != 1:
             data[symbol]['c/a'] = coa
+    elif structure == 'diatom':
+        data[symbol] = {'structure': 'sc', 'volume': X['d']**3}
+    elif structure == 'atom':
+        r = covalent_radii[Z]
+        data[symbol] = {'structure': 'sc', 'volume': (2 * r)**3}
         
 data['Fe']['magmom'] = 2.2
 #data['Co']['magmom'] = 1.5
