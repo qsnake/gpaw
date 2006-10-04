@@ -4,7 +4,7 @@ from RandomArray import random, seed
 from gpaw.transformers import Interpolator
 
 
-seed(1, 2)
+seed(1, 2)  # XXX What about parallel runs?  Should we seed with mpi.rank?
 
 
 class RandomWaveFunctionGenerator:

@@ -283,11 +283,10 @@ class Calculator:
             
         if isinstance(self.hosts, list):
             # We need the hosts in a file:
-            self.tempfile = tempfile.mktemp()
-            f = open(self.tempfile, 'w')
+            fd, self.tempfile = tempfile.mkstemp('.hosts')
             for host in self.hosts:
-                print >> f, host
-            f.close()
+                os.write(fd, host + '\n')
+            os.close(fd)
             self.hosts = self.tempfile
             # (self.tempfile is removed in Calculator.__del__)
 
