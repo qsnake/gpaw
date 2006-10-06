@@ -100,8 +100,8 @@ class Setup:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
         self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
 
-        #step function
-        stepf = num.ones(vbar_g.shape)
+        # Step function:
+        stepf = sqrt(4 * pi) * num.ones(vbar_g.shape)
         stepf[gcut:] = 0.0
         self.stepf = Spline(0, rcut2, stepf, r_g=r_g, beta=beta)
 

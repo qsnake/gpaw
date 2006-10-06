@@ -74,6 +74,7 @@ class Nucleus:
         self.ghat_L = None
         self.vhat_L = None
         self.nct = None
+        self.mom = num.array(0.0)
 
     def __cmp__(self, other):
         """Ordering of nuclei.
@@ -196,7 +197,9 @@ class Nucleus:
 
             flags_r = num.zeros((self.comm.size, 1), num.Int)
             self.comm.all_gather(flags, flags_r)
-            for mask, lfs in [(1, [pt_i]), (2, [vbar, stepf]), (4, [ghat_L, vhat_L])]:
+            for mask, lfs in [(1, [pt_i]),
+                              (2, [vbar, stepf]),
+                              (4, [ghat_L, vhat_L])]:
                 group = [r for r, flags in enumerate(flags_r) if flags & mask]
                 root = group.index(rank)
                 comm = domain.get_communicator(group)
@@ -331,7 +334,8 @@ class Nucleus:
     def calculate_magnetic_moments(self):
         if self.in_this_domain:
             dif = self.D_sp[0,:] - self.D_sp[1,:]
-            self.mom = num.dot(dif, self.setup.Delta_pL[:,0])
+            self.mom = num.array(sqrt(4 * pi) *
+                                 num.dot(dif, self.setup.Delta_pL[:,0]))
         self.comm.broadcast(self.mom, self.rank)
         
     def calculate_hamiltonian(self, nt_g, vHt_g):

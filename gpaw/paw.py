@@ -411,7 +411,7 @@ class Paw:
             if self.niter > 120:
                 raise ConvergenceError('Did not converge!')
 
-        #calculate the total and local magnetic moments from spin density
+        # Calculate the total and local magnetic moments from spin density:
         if self.nspins == 2:
             spindensity = self.nt_sg[0] - self.nt_sg[1]
             self.magmom = self.finegd.integrate(spindensity)
@@ -420,8 +420,8 @@ class Paw:
             for nucleus in self.my_nuclei:
                 locmom += nucleus.mom 
                 mom = num.array([0.0])
-                nucleus.stepf.integrate(spindensity,mom)
-                nucleus.mom += mom
+                nucleus.stepf.integrate(spindensity, mom)
+                nucleus.mom += mom[0]
             locmom = self.domain.comm.sum(locmom)
             self.magmom += locmom
 
