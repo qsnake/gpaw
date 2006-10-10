@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, sin, cos, pi
 
 from ASE import ListOfAtoms, Atom
 from ASE.ChemicalElements import numbers
@@ -17,9 +17,9 @@ for symbol in setup_parameters:
     structure = X['symmetry'].lower()
     if structure == 'cubic':
         structure = 'sc'
-    s = {'sc': 1, 'bcc': 0.5, 'fcc': 0.25, 'hcp': sqrt(3) / 2,
-         'diamond': 0.128}.get(structure)
-    if s is not None and symbol is not 'P':
+    s = {'sc': 1, 'bcc': 0.5, 'fcc': 0.25, 'hcp': sqrt(3) / 4,
+         'diamond': 0.125}.get(structure)
+    if s is not None and symbol != 'P':
         a = X['a']
         coa = X.get('c/a', 1)
         V = a**3 * coa * s
@@ -27,10 +27,16 @@ for symbol in setup_parameters:
         if coa != 1:
             data[symbol]['c/a'] = coa
     elif structure == 'diatom':
-        data[symbol] = {'structure': 'sc', 'volume': X['d']**3}
-    elif structure == 'atom':
-        r = covalent_radii[Z]
-        data[symbol] = {'structure': 'sc', 'volume': (2 * r)**3}
+        d = max(1.5, X['d'])
+        data[symbol] = {'structure': 'sc', 'volume': d**3}
+    elif structure in ['atom', 'orthorhombic', 'cubic']:
+        d = 2.5 * covalent_radii[Z]
+        data[symbol] = {'structure': 'sc', 'volume': d**3}
+    elif symbol in ['As', 'Sb', 'Bi']:
+        a = X['a']
+        t = X['alpha'] * pi / 180
+        V = a**3 * sin(t) * sqrt(1 - (cos(t) / cos(t / 2))**2) / 2
+        data[symbol] = {'structure': 'sc', 'volume': V}
         
 data['Fe']['magmom'] = 2.2
 #data['Co']['magmom'] = 1.5
@@ -54,10 +60,8 @@ class Bulk:
                    'fcc':      [(0, 0, 0), (.5, .5, .5)],
                    'hcp':      [(0, 0, 0), (.5, .5, 0),
                                 (.5, 1/6., .5), (0, 2/3., .5)],
-                   'diamond':  [(0, 0, 0), (0, .5, .5),
-                                (.5, 0, .5), (.5, .5, 0),
-                                (.25, .25, .25), (.25, .75, .75),
-                                (.75, .25, .75), (.75, .75, .25)]}[structure]
+                   'diamond':  [(0, 0, 0), (.25, .5, 0),
+                                (.5, .5, .5), (.75, 0, .5)]}[structure]
         
         self.atoms = ListOfAtoms([Atom(symbol, spos_c, magmom=magmom)
                                   for spos_c in spos_ac],
@@ -65,24 +69,26 @@ class Bulk:
 
         V = d.get('volume', 20.0)
 
+        natoms = len(spos_ac)
+        
         if structure == 'hcp':
             if c is None:
                 coa = d.get('c/a', sqrt(8.0 / 3))
                 if a is None:
-                    a = (2 * V / coa / sqrt(3))**(1.0 / 3)
+                    a = (4 * V / coa / sqrt(3))**(1.0 / 3)
                 c = coa * a
             else:
                 if a is None:
-                    a = sqrt(2 * V / c / sqrt(3))
+                    a = sqrt(4 * V / c / sqrt(3))
             b = sqrt(3) * a
-        elif structure == 'fcc':
+        elif structure in ['fcc', 'diamond']:
             if a is None:
-                a = (V * 4)**(1.0 / 3) / sqrt(2)
-            b = a
-            c = a * sqrt(2)
+                a = (V * 2 * natoms)**(1.0 / 3)
+            b = a / sqrt(2)
+            c = b
         else:
             if a is None:
-                a = (V * len(spos_ac))**(1.0 / 3)
+                a = (V * natoms)**(1.0 / 3)
             b = a
             c = a
             
