@@ -16,52 +16,52 @@ nhostsread = [8]
 
 tests = []
 for nkpt in [4]:
-   for magmom in [3.0]:
-      test =  'test:  nkpt = %d magmom = %1.1f'%(nkpt,magmom)
-      for nhosts in nhostswrite: 
-       	print test
-       	file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
+    for magmom in [3.0]:
+        test =  'test:  nkpt = %d magmom = %1.1f'%(nkpt,magmom)
+        for nhosts in nhostswrite: 
+       	    print test
+            file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
 
-        fcc = ListOfAtoms([Atom('Fe', (0, 0, 0.0001) ,magmom=magmom)],
-                           periodic=True,
-                           cell = (2.55,2.55,2.55))
+            fcc = ListOfAtoms([Atom('Fe', (0, 0, 0.0001) ,magmom=magmom)],
+                              periodic=True,
+                              cell = (2.55,2.55,2.55))
 
-       	calc = Calculator(nbands=6,
-                         gpts=(ng,ng,ng),
-                         kpts=(4, 2, 2),
-                         out=file_prefix+'.txt',
-                         tolerance = 1e-10, 
-                         hosts=nhosts)
+            calc = Calculator(nbands=6,
+                              gpts=(ng,ng,ng),
+                              kpts=(4, 2, 2),
+                              out=file_prefix+'.txt',
+                              tolerance = 1e-10, 
+                              hosts=nhosts)
 	
-       	fcc.SetCalculator(calc)
-       	fcc[0].SetMagneticMoment(magmom)
-       	e = fcc.GetPotentialEnergy()
-       	calc.Write(file_prefix+'.nc')
+            fcc.SetCalculator(calc)
+            fcc[0].SetMagneticMoment(magmom)
+            e = fcc.GetPotentialEnergy()
+            calc.Write(file_prefix+'.nc')
 
-        del calc,fcc
+            del calc,fcc
 
-      for nhosts in nhostsread: 
-       	file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
-        print '------ restart calculation  ',file_prefix
-        atoms = Calculator.ReadAtoms(file_prefix+'.nc',
-                                    out=file_prefix+'_restart.txt',
-                                    tolerance = 1e-10,
-                                    hosts=nhosts)
-        calc = atoms.GetCalculator()
-        atoms[0].SetCartesianPosition([0, 0, -0.0001])
-        erg = atoms.GetPotentialEnergy()
+        for nhosts in nhostsread: 
+            file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
+            print '------ restart calculation  ',file_prefix
+            atoms = Calculator.ReadAtoms(file_prefix+'.nc',
+                                         out=file_prefix+'_restart.txt',
+                                         tolerance = 1e-10,
+                                         hosts=nhosts)
+            calc = atoms.GetCalculator()
+            atoms[0].SetCartesianPosition([0, 0, -0.0001])
+            erg = atoms.GetPotentialEnergy()
 
 
-        result = 'ok'
-        equal(e,erg,1e-4)
+            result = 'ok'
+            equal(e,erg,1e-4)
 
-        niter = calc.GetNumberOfIterations() 
-        tests.append((test,result,niter,nhosts))
+            niter = calc.GetNumberOfIterations() 
+            tests.append((test,result,niter,nhosts))
 
 del calc,atoms
 
 for test in tests: 
-   print "%s ---- %10s --- %d ---- %d "%(test[0],test[1],test[2],test[3])
+    print "%s ---- %10s --- %d ---- %d "%(test[0],test[1],test[2],test[3])
 
 
 nhosts = 8
@@ -100,8 +100,8 @@ if 1:
     print niter1,niter2
     print sum(abs(f1.flat-f2.flat))
     print f1,f2
-    equal(e1,e2,2e-4)
-#    equal(niter1,niter2,0)
-    equal(sum(abs(f1.flat-f2.flat)),0.0,1e-1)
+    equal(e1,e2,2e-7)
+    equal(niter1,niter2,0)
+    equal(sum(abs(f1.flat-f2.flat)),0.0,1e-10)
 
 

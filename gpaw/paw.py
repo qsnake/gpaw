@@ -417,12 +417,13 @@ class Paw:
             self.magmom = self.finegd.integrate(spindensity)
             self.calculate_magnetic_moments()
             locmom = 0.0
-            for nucleus in self.my_nuclei:
-                locmom += nucleus.mom 
+            for nucleus in self.nuclei:
+                locmom += nucleus.mom[0]
                 mom = num.array([0.0])
-                nucleus.stepf.integrate(spindensity, mom)
-                nucleus.mom += mom[0]
-            locmom = self.domain.comm.sum(locmom)
+                if nucleus.stepf is not None:
+                    nucleus.stepf.integrate(spindensity, mom)
+                    nucleus.mom = num.array(nucleus.mom + mom[0])
+                nucleus.comm.broadcast(nucleus.mom, nucleus.rank)
             self.magmom += locmom
 
         output.print_converged(self)
