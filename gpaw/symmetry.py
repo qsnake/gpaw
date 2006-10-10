@@ -7,8 +7,9 @@ from gpaw import debug
 
 
 class Symmetry:
-    def __init__(self, Z_a, domain, tolerance=1e-9):
+    def __init__(self, Z_a, magmom_a, domain, tolerance=1e-9):
         self.Z_a = Z_a
+        self.magmom_a = magmom_a
         self.cell_c = domain.cell_c
         self.periodic_c = domain.periodic_c
         self.scale_position = domain.scale_position  # XXX ref to domain!
@@ -65,12 +66,12 @@ class Symmetry:
         # Build lists of (atom number, scaled position) tuples.  One list for
         # each atomic number:
         species = {}
-        for a, Z in enumerate(self.Z_a):
+        for a, ZM in enumerate(zip(self.Z_a, self.magmom_a)):
             spos_c = self.scale_position(pos_ac[a])
-            if species.has_key(Z):
-                species[Z].append((a, spos_c))
+            if species.has_key(ZM):
+                species[ZM].append((a, spos_c))
             else:
-                species[Z] = [(a, spos_c)]
+                species[ZM] = [(a, spos_c)]
 
         symmok = []
         maps = []
@@ -98,10 +99,12 @@ class Symmetry:
         if debug:
             for symmetry, map in zip(symmok, maps):
                 swap, mirror = symmetry
-                for a1, Z1 in enumerate(self.Z_a):
+                for a1, (Z1, M1) in enumerate(zip(self.Z_a, self.magmom_a)):
                     a2 = map[a1]
                     Z2 = self.Z_a[a2]
+                    M2 = self.magmom_a[a2]
                     assert Z1 == Z2
+                    assert M1 == M2
                     spos1_c = self.scale_position(pos_ac[a1])
                     spos2_c = self.scale_position(pos_ac[a2])
                     sdiff = num.take(spos1_c * mirror, swap) - spos2_c

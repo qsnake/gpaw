@@ -97,7 +97,7 @@ def create_paw_object(out, a0, Ha,
         # Reduce the the k-points to those in the irreducible part of
         # the Brillouin zone:
         symmetry, weights_k, ibzk_kc = reduce_kpoints(
-            bzk_kc, pos_ac / a0, Z_a, domain, usesymm)
+            bzk_kc, pos_ac / a0, Z_a, magmom_a, domain, usesymm)
 
         if symmetry is not None:
             symmetry.print_symmetries(out)
@@ -164,7 +164,7 @@ def create_paw_object(out, a0, Ha,
     return paw
 
     
-def reduce_kpoints(bzk_kc, pos_ac, Z_a, domain, usesymm):
+def reduce_kpoints(bzk_kc, pos_ac, Z_a, magmom_a, domain, usesymm):
     """Reduce the number of k-points using symmetry.
 
     Returns symmetry object, weights and k-points in the irreducible
@@ -176,7 +176,7 @@ def reduce_kpoints(bzk_kc, pos_ac, Z_a, domain, usesymm):
 
     # Construct a Symmetry instance containing the identity
     # operation only:
-    symmetry = Symmetry(Z_a, domain)
+    symmetry = Symmetry(Z_a, magmom_a, domain)
 
     if usesymm:
         # Find symmetry operations of atoms:
