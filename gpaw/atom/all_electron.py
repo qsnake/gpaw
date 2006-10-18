@@ -56,7 +56,7 @@ class AllElectron:
         print '%s calculation for %s (%s, Z=%d)' % (
             xcname, symbol, names[self.Z], self.Z)
 
-        self.nofile = False
+        self.nofiles = False
 
     def intialize_wave_functions(self):
         r = self.r
