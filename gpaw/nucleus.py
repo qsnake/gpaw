@@ -284,7 +284,7 @@ class Nucleus:
                     if f == 2 * degeneracy:
                         mag = 0.0
                     else:
-                        mag = min(magmom, degeneracy)
+                        mag = min(magmom, degeneracy, f)
                     f_si[0, i:i + degeneracy] = 0.5 * (f + mag) / degeneracy
                     f_si[1, i:i + degeneracy] = 0.5 * (f - mag) / degeneracy
                     magmom -= mag
