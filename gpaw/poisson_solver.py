@@ -95,9 +95,9 @@ class PoissonSolver:
             self.B.apply(rho, self.rhos[0])
         
         niter = 1
-        while self.iterate2(self.step) > eps and niter < 100:
+        while self.iterate2(self.step) > eps and niter < 200:
             niter += 1
-        if niter == 100:
+        if niter == 200:
             charge = num.sum(rho.flat) * self.dv
             print 'CHARGE:', charge
             raise ConvergenceError('Poisson solver did not converge!')
