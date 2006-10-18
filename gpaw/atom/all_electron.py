@@ -56,6 +56,8 @@ class AllElectron:
         print '%s calculation for %s (%s, Z=%d)' % (
             xcname, symbol, names[self.Z], self.Z)
 
+        self.nofile = False
+
     def intialize_wave_functions(self):
         r = self.r
         dr = self.dr
@@ -241,6 +243,9 @@ class AllElectron:
         self.Exc = Exc
 
     def write(self, array, name=None, n=None, l=None):
+        if self.nofiles:
+            return
+        
         if name:
             name = self.symbol + '.' + name
         else:

@@ -59,10 +59,10 @@ parameters = {
     }
 
 class Generator(AllElectron):
-    def __init__(self, symbol, xcname='LDA', scalarrel=False):
+    def __init__(self, symbol, xcname='LDA', scalarrel=False, nofiles=False):
         AllElectron.__init__(self, symbol, xcname, scalarrel)
-
-
+        self.nofiles = nofiles
+        
     def run(self, core, rcut, extra,
             logderiv=True, vt0=None, exx=False,
             normconserving=''):
@@ -326,7 +326,7 @@ class Generator(AllElectron):
                 coefs.append(a)
                 if nodeless:
                     if not num.alltrue(s[1:gc] > 0.0):
-                        print ('Error:  The %d%s pseudo wave has a node!' %
+                        print ('Error: The %d%s pseudo wave has a node!' %
                                (n_ln[l][0], 'spdf'[l]))
                         raise SystemExit
                     # Only the first state for each l must be nodeless:
@@ -608,8 +608,9 @@ class Generator(AllElectron):
             X_p = None
             ExxC = None
             
-        self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                       nc, nct, nt, Ekincore, X_p, ExxC, vbar)
+        if not self.nofiles:
+            self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
+                           nc, nct, nt, Ekincore, X_p, ExxC, vbar)
 
     def diagonalize(self, h):
         ng = 300
@@ -694,7 +695,6 @@ class Generator(AllElectron):
         for g in range(gld):
             s[g + 2] = (q[g + 1] - fm[g] * s[g] - f0[g] * s[g + 1]) / fp[g]
         return s
-
 
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar):
