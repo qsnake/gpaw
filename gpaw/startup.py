@@ -122,8 +122,10 @@ def create_paw_object(out, a0, Ha,
 
     # Sum up the number of valence electrons:
     nvalence = 0
+    nao = 0
     for nucleus in nuclei:
         nvalence += nucleus.setup.Nv
+        nao += nucleus.setup.niAO
     nvalence -= charge
     if nvalence < 0:
         raise ValueError(
@@ -132,8 +134,12 @@ def create_paw_object(out, a0, Ha,
 
     if nbands is None:
         # Default value for number of bands:
-        nbands = (nvalence + 7) // 2 + int(num.sum(magmom_a) / 2)
-    elif nvalence > 2 * nbands:
+        #nbands = (nvalence + 7) // 2 + int(num.sum(magmom_a) / 2)
+        nbands = nao
+    elif nbands <= 0:
+        nbands = (nvalence + 1) // 2 + (-nbands)
+        
+    if nvalence > 2 * nbands:
         raise ValueError('Too few bands!')
 
     # Get the local number of spins and k-points, and return a
