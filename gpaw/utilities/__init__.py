@@ -210,6 +210,7 @@ def locked(filename):
     return False
 
 def fix(formula):
+    """Convert chemical formula to LaTeX"""
     s = '$'
     j = 0
     for i in range(len(formula)):
@@ -218,10 +219,11 @@ def fix(formula):
             s += r'\rm{' + formula[j:i] + '}_' + c
             j = i + 1
     if s == '$':
-        return s + formula + '$'
+        return s + r'\rm{' + formula + '}$'
     return s + '$'
 
 def fix2(formula):
+    """Convert chemical formula to reStructureText"""
     s = ''
     j = 0
     for i in range(len(formula)):
@@ -231,4 +233,3 @@ def fix2(formula):
         else:
             s += c
     return s
-
