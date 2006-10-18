@@ -260,9 +260,6 @@ class Nucleus:
         niao = self.get_number_of_atomic_orbitals()
         f_si = num.zeros((ns, niao), num.Float)
         
-        if self.in_this_domain:
-            D_sii = num.zeros((ns, ni, ni), num.Float)
-
         i = 0
         for n, l, f in zip(self.setup.n_j, self.setup.l_j, self.setup.f_j):
             degeneracy = 2 * l + 1
@@ -289,14 +286,13 @@ class Nucleus:
                     f_si[1, i:i + degeneracy] = 0.5 * (f - mag) / degeneracy
                     magmom -= mag
                 
-            if self.in_this_domain:
-                for m in range(degeneracy):
-                    D_sii[:, i + m, i + m] = f_si[:, i + m]
-
             i += degeneracy
         assert i == niao
 
         if self.in_this_domain:
+            D_sii = num.zeros((ns, ni, ni), num.Float)
+            for i in range(niao):
+                D_sii[:, i, i] = f_si[:, i]
             for s in range(ns):
                 self.D_sp[s] = pack(D_sii[s])
 
