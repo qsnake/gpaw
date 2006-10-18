@@ -40,7 +40,7 @@ for symbol in setup_parameters:
         
 data['Fe']['magmom'] = 2.2
 #data['Co']['magmom'] = 1.5
-data['Ni']['magmom'] = 0.5
+data['Ni']['magmom'] = 0.6
 
 class Bulk:
     
