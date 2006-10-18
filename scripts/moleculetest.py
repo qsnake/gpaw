@@ -19,6 +19,7 @@ from math import sqrt
 
 import Numeric as npy
 from LinearAlgebra import inverse
+from LinearAlgebra import solve_linear_equations as solve
 from ASE.Units import Convert
 
 from gpaw.utilities.singleatom import SingleAtom
@@ -80,7 +81,7 @@ n = 76
 h = a / n
 atoms = {}
 for formula in molecules:
-    filename = '%s.pickle' % formula
+    filename = '%s.pckl' % formula
     x = X[formula]
     if opt.summary:
         try:
@@ -115,7 +116,7 @@ for formula in molecules:
 
 Ea = {}
 for symbol in atoms:
-    filename = '%s.pickle' % symbol
+    filename = '%s.pckl' % symbol
     if opt.summary:
         try:
             e0 = pickle.load(open(filename))
@@ -155,12 +156,14 @@ if opt.summary:
             M = npy.zeros((4, 5), npy.Float)
             for n in range(4):
                 M[n] = d**-n
-            M = npy.dot(inverse(npy.innerproduct(M, M)), M)
-            dfit = npy.arange(d[0] * 0.95, d[4] * 1.05, d[2] * 0.005)
-            a = npy.dot(M, x['Em'] - E0)
+            a = solve(npy.innerproduct(M, M), npy.dot(M, x['Em'] - E0))
+
             dmin = 1 / ((-2 * a[2] +
                          sqrt(4 * a[2]**2 - 12 * a[1] * a[3])) / (6 * a[3]))
             #B = xmin**2 / 9 / vmin * (2 * a[2] + 6 * a[3] * xmin)
+
+            dfit = npy.arange(d[0] * 0.95, d[4] * 1.05, d[2] * 0.005)
+
             emin = a[0]
             efit = a[0]
             for n in range(1, 4):
@@ -170,10 +173,10 @@ if opt.summary:
             x['d'] = dmin
             x['Eamin'] = -emin
             
-            pylab.plot(dfit, efit, '-', color=0.7)
+            pylab.plot(dfit, efit, '-', color='0.7')
             
             if ok:
-                pylab.plot(d, x['Em'] - E0, 'go')
+                pylab.plot(d, x['Em'] - E0, 'g.')
             else:
                 pylab.plot(d, x['Em'] - E0, 'ro')
 
@@ -185,6 +188,8 @@ if opt.summary:
 
     o = open('molecules.txt', 'w')
     print >> o, """\
+.. contents::
+
 ==============
 Molecule tests
 ==============
@@ -202,8 +207,8 @@ PBE calculations (*ref* subscripts).
 .. figure:: molecules.png
    
 
-Relaxed geometries
-==================
+Bond lengths and atomization energies at relaxed geometries
+===========================================================
 
 (*rlx* subscript)
 
@@ -238,8 +243,8 @@ Relaxed geometries
 
     print >> o, """\
 
-Experimental geometries
-=======================
+Atomization energies at experimental geometries
+===============================================
 
 .. list-table::
    :widths: 6 6 12
@@ -272,7 +277,7 @@ References
        J. Paier, R. Hirschl, M. Marsman and G. Kresse,
        J. Chem. Phys. 122, 234102 (2005)
 
-.. [2] "Molecular and Solid.State Tests of Density Functional
+.. [2] "Molecular and Solid State Tests of Density Functional
        Approximations: LSD, GGAs, and Meta-GGAs", S. Kurth,
        J. P. Perdew and P. Blaha, Int. J. Quant. Chem. 75, 889-909
        (1999)
