@@ -3,7 +3,7 @@
 
 """This module defines a ``KPoint`` class."""
 
-from math import pi
+from math import pi, sqrt
 from cmath import exp
 
 import Numeric as num
@@ -48,8 +48,7 @@ class KPoint:
          ``H_nn``      Hamiltonian matrix.
          ``S_nn``      Overlap matrix.
          ``psit_nG``   Wave functions.
-         ``Htpsit_nG`` Pseudo-part of the Hamiltonian applied to the wave
-                       functions.
+
          ``timer``     ``Timer`` object.
          ``nbands``    Number of bands.
          ============= =======================================================
@@ -88,7 +87,6 @@ class KPoint:
         self.root = u % self.comm.size
         
         self.psit_nG = None
-        self.Htpsit_nG = None
 
         self.timer = Timer()
         
@@ -97,57 +95,7 @@ class KPoint:
         self.nbands = nbands
         self.eps_n = num.zeros(nbands, num.Float)
         self.f_n = num.ones(nbands, num.Float) * self.weight
-        self.H_nn = num.zeros((nbands, nbands), self.typecode)
         self.S_nn = num.zeros((nbands, nbands), self.typecode)
-
-    def diagonalize(self, kin, vt_sG, my_nuclei, exx):
-        """Subspace diagonalization of wave functions.
-
-        First, the Hamiltonian (defined by ``kin``, ``vt_sG``, and
-        ``my_nuclei``) is applied to the wave functions, then the
-        ``H_nn`` matrix is calculated and diagonalized, and finally,
-        the wave functions are rotated.  Also the projections
-        ``P_uni`` (an attribute of the nuclei) are rotated.
-        """
-
-        kin.apply(self.psit_nG, self.Htpsit_nG, self.phase_cd)
-        self.Htpsit_nG += self.psit_nG * vt_sG[self.s]
-        if exx is not None:
-            exx.adjust_hamiltonian(self.psit_nG, self.Htpsit_nG, self.nbands,
-                                   self.f_n, self.u, self.s)
-        r2k(0.5 * self.gd.dv, self.psit_nG, self.Htpsit_nG, 0.0, self.H_nn)
-        # XXX Do EXX here XXX
-        for nucleus in my_nuclei:
-            P_ni = nucleus.P_uni[self.u]
-            self.H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[self.s]),
-                                               cc(num.transpose(P_ni))))
-            if exx is not None:
-                exx.adjust_hamitonian_matrix(self.H_nn, P_ni, nucleus, self.s)
-
-        self.comm.sum(self.H_nn, self.root)
-
-        if self.comm.rank == self.root:
-            info = diagonalize(self.H_nn, self.eps_n)
-            if info != 0:
-                raise RuntimeError, 'Very Bad!!'
-
-        self.comm.broadcast(self.H_nn, self.root)
-        self.comm.broadcast(self.eps_n, self.root)
-
-        # Rotate psit_nG:
-        # We should block this so that we can use a smaller temp !!!!!
-        temp = num.array(self.psit_nG)
-        gemm(1.0, temp, self.H_nn, 0.0, self.psit_nG)
-        
-        # Rotate Htpsit_nG:
-        temp[:] = self.Htpsit_nG
-        gemm(1.0, temp, self.H_nn, 0.0, self.Htpsit_nG)
-        
-        # Rotate P_ani:
-        for nucleus in my_nuclei:
-            P_ni = nucleus.P_uni[self.u]
-            temp_ni = P_ni.copy()
-            gemm(1.0, temp_ni, self.H_nn, 0.0, P_ni)
         
     def adjust_number_of_bands(self, nbands, random_wave_function_generator):
         """Adjust the number of states.
@@ -188,47 +136,6 @@ class KPoint:
             for psit_G in self.psit_nG[nao:]:
                 random_wave_function_generator.generate(psit_G, self.phase_cd)
         
-    def calculate_residuals(self, pt_nuclei, converge_all=False):
-        """Calculate wave function residuals.
-
-        On entry, ``Htpsit_nG`` contains the soft part of the
-        Hamiltonian applied to the wave functions.  After this call,
-        ``Htpsit_nG`` holds the residuals::
-
-          ^  ~        ^  ~   
-          H psi - eps S psi =
-                                _ 
-              ~  ~         ~   \   ~a    a           a     ~a   ~
-              H psi - eps psi + )  p  (dH    - eps dS    )<p  |psi>
-                               /_   i1   i1i2        i1i2   i2
-                              ai1i2
-
-                                
-        The size of the residuals is returned.
-        
-        Parameters:
-         ================ ================================================
-         ``pt_nuclei``    List of nuclei that have part of their projector
-                          functions in this domain.
-         ``converge_all`` Converge all wave functions or just occupied.
-         ================ ================================================
-        """
-        
-        R_nG = self.Htpsit_nG
-        # optimize XXX 
-        for R_G, eps, psit_G in zip(R_nG, self.eps_n, self.psit_nG):
-            R_G -= eps * psit_G
-
-        for nucleus in pt_nuclei:
-            nucleus.adjust_residual(R_nG, self.eps_n, self.s, self.u, self.k)
-
-        error = 0.0
-        for R_G, f in zip(R_nG, self.f_n):
-            weight = f
-            if converge_all: weight = 1.
-            error += weight * real(num.vdot(R_G, R_G))
-
-        return error
         
     def orthonormalize(self, my_nuclei):
         """Orthogonalize wave functions."""
@@ -261,6 +168,7 @@ class KPoint:
             P_ni = nucleus.P_uni[self.u]
             gemm(1.0, P_ni.copy(), S_nn, 0.0, P_ni)
 
+
     def add_to_density(self, nt_G):
         """Add contribution to pseudo electron-density."""
         if self.typecode is num.Float:
@@ -281,41 +189,6 @@ class KPoint:
                 else:
                     taut_G += f * (d_G * num.conjugate(d_G)).real
                 
-    def rmm_diis(self, pt_nuclei, preconditioner, kin, vt_sG):
-        """Improve the wave functions.
-
-        Take two steps along the preconditioned residuals.  Step
-        lengths are optimized for the first step and reused for the
-        seconf."""
-        
-        vt_G = vt_sG[self.s]
-        for n in range(self.nbands):
-            R_G = self.Htpsit_nG[n]
-
-            dR_G = num.zeros(R_G.shape, self.typecode)
-
-            pR_G = preconditioner(R_G, self.phase_cd, self.psit_nG[n],
-                                  self.k_c)
-            
-            kin.apply(pR_G, dR_G, self.phase_cd)
-
-            dR_G += vt_G * pR_G
-
-            dR_G -= self.eps_n[n] * pR_G
-
-            for nucleus in pt_nuclei:
-                nucleus.adjust_residual2(pR_G, dR_G, self.eps_n[n],
-                                         self.s, self.k)
-            
-            RdR = self.comm.sum(real(num.vdot(R_G, dR_G)))
-            dRdR = self.comm.sum(real(num.vdot(dR_G, dR_G)))
-            lam = -RdR / dRdR
-
-            R_G *= 2.0 * lam
-            axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
-            self.psit_nG[n] += preconditioner(R_G, self.phase_cd,
-                                              self.psit_nG[n], self.k_c)
-
     def create_atomic_orbitals(self, nao, nuclei):
         """Initialize the wave functions from atomic orbitals.
 

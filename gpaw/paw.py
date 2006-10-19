@@ -26,7 +26,7 @@ from gpaw import output
 from gpaw.exx import get_exx
 import gpaw.io
 from gpaw import ConvergenceError
-
+from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 
 MASTER = 0
 
@@ -184,7 +184,7 @@ class Paw:
 
         # Wave functions ...
         self.wf = WaveFunctions(self.gd, nvalence, nbands, nspins,
-                                typecode, kT / Ha, nn,
+                                typecode, kT / Ha,
                                 bzk_kc, ibzk_kc, weights_k,
                                 kpt_comm)
 
@@ -236,6 +236,12 @@ class Paw:
                            typecode, self.gd, self.finegd, self.poisson,
                            self.interpolate, self.restrict,
                            self.my_nuclei, self.ghat_nuclei, self.nspins)
+
+        nn = stencils[0]
+        self.eigensolver = RMM_DIIS(self.exx, self.timer,
+                                    self.convergeall, nn,
+                                    self.gd, typecode, nbands)
+
         self.timer.stop('Init')
 
     def set_positions(self, pos_ac):
@@ -390,8 +396,99 @@ class Paw:
 
         self.niter = 0
 
+        wf = self.wf
+
+        if not isinstance(wf.kpt_u[0].psit_nG, num.ArrayType):
+            assert not mpi.parallel
+
+            # Calculation started from a restart file.  Allocate arrays
+            # for wave functions and copy data from the file:
+            for kpt in wf.kpt_u:
+                kpt.psit_nG = kpt.psit_nG[:]
+                kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
+
+                                        
+        # We don't have any occupation numbers.  The initial
+        # electron density comes from overlapping atomic densities
+        # or from a restart file.  We scale the density to match
+        # the compensation charges.
+
+        if self.charge != 0.0:
+            x = float(wf.nvalence) / (wf.nvalence + self.charge)
+            for nucleus in self.my_nuclei:
+                nucleus.D_sp *= x
+            self.nt_sG *= x
+                
+        self.calculate_multipole_moments()
+        Q = 0.0
+        for nucleus in self.my_nuclei:
+            Q += nucleus.Q_L[0]
+        Q = sqrt(4 * pi) * self.domain.comm.sum(Q)
+        Nt = self.gd.integrate(self.nt_sG)
+        # Nt + Q must be equal to minus the total charge:
+        if Nt != 0.0:
+            x = -(self.charge + Q) / Nt
+            assert 0.83 < x < 1.17, 'x=%f' % x
+            self.nt_sG *= x
+
+        self.timer.start('Orthogonalize')
+        wf.calculate_projections_and_orthogonalize(self.pt_nuclei,
+                                                   self.my_nuclei)
+        self.timer.stop('Orthogonalize')
+
+        self.calculate_potential()
+
+        self.timer.start('Atomic hamiltonians')
+        self.calculate_atomic_hamiltonians()
+        self.timer.stop('Atomic hamiltonians')
+
+        self.timer.start('Subspace diag.')
+        work = self.gd.new_array(wf.kpt_u[0].nbands, wf.typecode)
+        for kpt in wf.kpt_u:
+            self.eigensolver.diagonalize(self.vt_sG, self.my_nuclei, kpt, work)
+        self.timer.stop('Subspace diag.')
+        del work
+        wf.adjust_number_of_bands(self.my_nuclei)
+
+
         while not self.converged:
-            self.improve_wave_functions()
+
+            self.calculate_potential()
+
+            self.timer.start('Atomic hamiltonians')
+            self.calculate_atomic_hamiltonians()
+            self.timer.stop('Atomic hamiltonians')
+
+            error, nfermi, magmom, S = self.eigensolver.iterate(wf, self.vt_sG,
+                                                                 self.my_nuclei, self.pt_nuclei)
+            
+            self.error, self.nfermi, self.magmom, self.S = error, nfermi, magmom, S
+
+            if self.error <= self.tolerance:
+                self.converged = True
+                
+            self.timer.start('Calc. density')
+            if not self.fixdensity and not self.converged:
+                wf.calculate_electron_density(self.nt_sG, self.nct_G,
+                                              self.symmetry, self.gd)
+                wf.calculate_atomic_density_matrices(self.my_nuclei,
+                                                     self.nuclei,
+                                                     self.domain.comm,
+                                                     self.symmetry)
+                self.mixer.mix(self.nt_sG, self.domain.comm)
+                
+            self.calculate_multipole_moments()
+            self.timer.stop('Calc. density')
+
+            dsum = self.domain.comm.sum
+            self.Ekin = dsum(self.Ekin) + wf.sum_eigenvalues()
+            self.Epot = dsum(self.Epot)
+            self.Ebar = dsum(self.Ebar)
+            self.Exc = dsum(self.Exc)
+            self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
+
+
+
             # Output from each iteration:
             t = time.localtime()
             out.write('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
@@ -411,6 +508,9 @@ class Paw:
             if self.niter > 120:
                 raise ConvergenceError('Did not converge!')
 
+            if self.niter > self.maxiter - 1:
+                break
+
         # Calculate the total and local magnetic moments from spin density:
         if self.nspins == 2:
             spindensity = self.nt_sg[0] - self.nt_sg[1]
@@ -428,120 +528,6 @@ class Paw:
 
         output.print_converged(self)
 
-    def improve_wave_functions(self):
-        """Iterate towards self-consistency."""
-
-        wf = self.wf
-
-        if not isinstance(wf.kpt_u[0].psit_nG, num.ArrayType):
-            assert self.niter == 0 and not mpi.parallel
-
-            # Calculation started from a restart file.  Allocate arrays
-            # for wave functions and copy data from the file:
-            for kpt in wf.kpt_u:
-                kpt.psit_nG = kpt.psit_nG[:]
-                kpt.Htpsit_nG = kpt.gd.new_array(wf.nbands, wf.typecode)
-                    
-            self.calculate_multipole_moments()
-                    
-        elif self.niter == 0:
-            # We don't have any occupation numbers.  The initial
-            # electron density comes from overlapping atomic densities
-            # or from a restart file.  We scale the density to match
-            # the compensation charges.
-
-            if self.charge != 0.0:
-                x = float(wf.nvalence) / (wf.nvalence + self.charge)
-                for nucleus in self.my_nuclei:
-                    nucleus.D_sp *= x
-                self.nt_sG *= x
-                
-            self.calculate_multipole_moments()
-            Q = 0.0
-            for nucleus in self.my_nuclei:
-                Q += nucleus.Q_L[0]
-            Q = sqrt(4 * pi) * self.domain.comm.sum(Q)
-            Nt = self.gd.integrate(self.nt_sG)
-            # Nt + Q must be equal to minus the total charge:
-            if Nt != 0.0:
-                x = -(self.charge + Q) / Nt
-                assert 0.83 < x < 1.17, 'x=%f' % x
-                self.nt_sG *= x
-
-        self.timer.start('Orthogonalize')
-        wf.calculate_projections_and_orthogonalize(self.pt_nuclei,
-                                                   self.my_nuclei)
-        self.timer.stop('Orthogonalize')
-        self.timer.start('Calc. density')
-        if self.niter > 0:
-            if not self.fixdensity:
-                wf.calculate_electron_density(self.nt_sG, self.nct_G,
-                                              self.symmetry, self.gd)
-                wf.calculate_atomic_density_matrices(self.my_nuclei,
-                                                     self.nuclei,
-                                                     self.domain.comm,
-                                                     self.symmetry)
-                self.mixer.mix(self.nt_sG, self.domain.comm)
-                
-            self.calculate_multipole_moments()
-            
-        # Transfer the density to the fine grid:
-        for s in range(self.nspins):
-            self.interpolate(self.nt_sG[s], self.nt_sg[s])
-
-        # With periodic boundary conditions, the interpolation will
-        # conserve the number of electron.
-        if False in self.domain.periodic_c:
-            # With zero-boundary conditions in one or more directions,
-            # this is not the case.
-            for s in range(self.nspins):
-                Nt0 = self.gd.integrate(self.nt_sG[s])
-                Nt = self.finegd.integrate(self.nt_sg[s])
-                if Nt != 0.0:
-                    self.nt_sg[s] *= Nt0 / Nt
-        
-        self.timer.stop('Calc. density')
-        self.calculate_potential()
-
-        self.timer.start('Atomic hamiltonians')
-        self.calculate_atomic_hamiltonians()
-        self.timer.stop('Atomic hamiltonians')
-
-        self.timer.start('Subspace diag.')
-        wf.diagonalize(self.vt_sG, self.my_nuclei, self.exx)
-        self.timer.stop('Subspace diag.')
-        if self.niter == 0:
-            wf.adjust_number_of_bands(self.my_nuclei)
-                
-        # Calculate occupations numbers, and return number of
-        # iterations, magnetic moment and entropy:
-        self.nfermi, self.magmom, self.S = wf.calculate_occupation_numbers()
-        
-        dsum = self.domain.comm.sum
-        self.Ekin = dsum(self.Ekin) + wf.sum_eigenvalues()
-        self.Epot = dsum(self.Epot)
-        self.Ebar = dsum(self.Ebar)
-        self.Exc = dsum(self.Exc)
-        self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
-
-        self.timer.start('Residuals')
-        self.error = dsum(wf.calculate_residuals(self.pt_nuclei,
-                                                 self.convergeall))
-        self.timer.stop('Residuals')
-        if self.error == 0:
-            self.error = self.tolerance
-
-        if (self.error > self.tolerance and
-            self.niter < self.maxiter
-            and not sigusr1[0]):
-            self.timer.start('RMM-DIIS')
-            wf.rmm_diis(self.pt_nuclei, self.vt_sG)
-            self.timer.stop('RMM-DIIS')
-        else:
-            self.converged = True
-            if sigusr1[0]:
-                print >> self.out, 'SCF-ITERATIONS STOPPED BY USER!'
-                sigusr1[0] = False
 
     def calculate_atomic_hamiltonians(self):
         """Calculate atomic hamiltonians."""
@@ -574,6 +560,22 @@ class Paw:
         The XC-potential and the Hartree potentials are evaluated on
         the fine grid, and the sum is then restricted to the coarse
         grid."""
+
+        # Transfer the density to the fine grid:
+        for s in range(self.nspins):
+            self.interpolate(self.nt_sG[s], self.nt_sg[s])
+
+        # With periodic boundary conditions, the interpolation will
+        # conserve the number of electron.
+        if False in self.domain.periodic_c:
+            # With zero-boundary conditions in one or more directions,
+            # this is not the case.
+            for s in range(self.nspins):
+                Nt0 = self.gd.integrate(self.nt_sG[s])
+                Nt = self.finegd.integrate(self.nt_sg[s])
+                if Nt != 0.0:
+                    self.nt_sg[s] *= Nt0 / Nt
+
         
         self.rhot_g[:] = self.nt_sg[0]
         if self.nspins == 2:

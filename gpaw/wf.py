@@ -5,9 +5,7 @@ import Numeric as num
 from gpaw.kpoint import KPoint
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities import pack, unpack2
-from gpaw.operators import Laplace
 import gpaw.occupations as occupations
-from gpaw.preconditioner import Preconditioner
 from gpaw.random import RandomWaveFunctionGenerator
 
 
@@ -31,8 +29,6 @@ class WaveFunctions:
     Attributes:
      ================== =================================================
      ``kpt_u``          List of **k**-point objects.
-     ``kin``            Finite-difference Laplacian (times -0.5).
-     ``preconditioner`` Preconditioner object.
      ``occupation``     Occupation-number object.
      ``nkpts``          Number of irreducible **k**-points.
      ``nmykpts``        Number of irreducible **k**-points on *this* CPU.
@@ -55,7 +51,7 @@ class WaveFunctions:
     """
     
     def __init__(self, gd, nvalence, nbands, nspins,
-                 typecode, kT, nn,
+                 typecode, kT,
                  bzk_kc, ibzk_kc, weights_k,
                  kpt_comm):
         """Construct wave-function object.
@@ -108,12 +104,6 @@ class WaveFunctions:
             k_c = ibzk_kc[k]
             self.kpt_u.append(KPoint(gd, weight, s, k, u, k_c, typecode))
         
-        # Kinetic energy operator:
-        self.kin = Laplace(gd, -0.5, nn, typecode)
-
-        # Preconditioner for the electronic gradients:
-        self.preconditioner = Preconditioner(gd, self.kin, typecode)
-
         # If more states than we have atomic orbitals are required, we
         # use random initial wave functions:
         self.random_wave_function_generator = RandomWaveFunctionGenerator(
@@ -190,10 +180,6 @@ class WaveFunctions:
         for kpt in self.kpt_u:
             kpt.orthonormalize(my_nuclei)
 
-    def diagonalize(self, vt_sG, my_nuclei, exx):
-        """Apply Hamiltonian and do subspace diagonalization."""
-        for kpt in self.kpt_u:
-            kpt.diagonalize(self.kin, vt_sG, my_nuclei, exx)
 
     def adjust_number_of_bands(self, my_nuclei):
         for kpt in self.kpt_u:
@@ -209,22 +195,6 @@ class WaveFunctions:
         for kpt in self.kpt_u:
             Eeig += num.dot(kpt.f_n, kpt.eps_n)    
         return self.kpt_comm.sum(Eeig)
-
-    def calculate_residuals(self, pt_nuclei, convergeall=False):
-        """Calculate wave function residuals and return error."""
-        error = 0.0
-        for kpt in self.kpt_u:
-            error += kpt.calculate_residuals(pt_nuclei,convergeall)
-
-        if self.nvalence == 0:
-            return 0.0
-        else:
-            return self.kpt_comm.sum(error) / self.nvalence
-
-    def rmm_diis(self, pt_nuclei, vt_sG):
-        """Do RMM-DIIS update of wave functions."""
-        for kpt in self.kpt_u:
-            kpt.rmm_diis(pt_nuclei, self.preconditioner, self.kin, vt_sG)
 
     def calculate_force_contribution(self, pt_nuclei, my_nuclei):
         """Calculate force-contribution from k-points."""
