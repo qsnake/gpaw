@@ -47,7 +47,8 @@ packages = ['gpaw',
             'gpaw.io',
             'gpaw.mpi',
             'gpaw.atom',
-            'gpaw.utilities']
+            'gpaw.utilities',
+            'gpaw.eigensolvers']
 
 force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:
