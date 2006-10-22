@@ -15,7 +15,7 @@ class RMM_DIIS(Eigensolver):
 
        It is expected that the trial wave functions are orthonormal
        and the integrals of projector functions and wave functions
-        ``nucleus.P_uni`` are already calculated
+       ``nucleus.P_uni`` are already calculated.
 
        Solution steps are:
 
