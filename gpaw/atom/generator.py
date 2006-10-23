@@ -293,14 +293,13 @@ class Generator(AllElectron):
                         y = num.exp(y)
                         s[:gc] = rl1 * y
                         return num.dot(s**2, dr) - 1
-                    x1 = 0
-                    x2 = 0.01
+                    x1 = 0.0
+                    x2 = 0.001
                     f1 = f(x1)
                     f2 = f(x2)
                     while abs(f1) > 1e-6:
                         x0 = (x1 / f1 - x2 / f2) / (1 / f1 - 1 / f2)
                         f0 = f(x0)
-                        print x0, f0
                         if abs(f1) < abs(f2):
                             x2, f2 = x1, f1
                         x1, f1 = x0, f0
