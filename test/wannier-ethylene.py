@@ -36,7 +36,7 @@ wannier = Wannier(numberofwannier=6, calculator=ethylene.GetCalculator())
 wannier.Localize()
 
 value = wannier.GetFunctionalValue() 
-equal(13.289973, value, 0.015)
+equal(13.289973, value, 0.020)
 
 for w in wannier.GetCenters():
     print w['radius'], w['pos']
