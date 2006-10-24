@@ -44,7 +44,9 @@ class Eigensolver:
             if wf.nvalence == 0:
                 self.error = tolerance
             else:
-                self.error = wf.kpt_comm.sum(self.error) / wf.nvalence
+                self.error = wf.kpt_comm.sum(self.error)
+                self.error = self.comm.sum(self.error) / wf.nvalence
+                
             if (self.error < tolerance):
                 break
 

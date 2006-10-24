@@ -99,9 +99,9 @@ if 1:
     print e1,e2
     print niter1,niter2
     print sum(abs(f1.flat-f2.flat))
-    print f1,f2
-    equal(e1,e2,2e-7)
+    print f1,f2, f1-f2
+    equal(e1,e2,8e-7)
     equal(niter1,niter2,0)
-    equal(sum(abs(f1.flat-f2.flat)),0.0,1e-10)
+    equal(sum(abs(f1.flat-f2.flat)),0.0,3e-5)
 
 
