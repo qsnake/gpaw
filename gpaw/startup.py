@@ -21,7 +21,7 @@ def create_paw_object(out, a0, Ha,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, old, fixdensity,
                       idiotproof, hund, lmax, tolerance, maxiter,
-                      convergeall,
+                      convergeall, eigensolver,
                       # Parallel stuff:
                       parsize_c,
                       restart_file):
@@ -155,7 +155,7 @@ def create_paw_object(out, a0, Ha,
               nvalence, charge, nbands, nspins, kT,
               typecode, bzk_kc, ibzk_kc, weights_k,
               stencils, usesymm, mix, old, fixdensity, maxiter, idiotproof,
-              convergeall=convergeall,
+              convergeall=convergeall, eigensolver=eigensolver,
               # Parallel stuff:
               kpt_comm=kpt_comm, timer = timer,
               out=out)

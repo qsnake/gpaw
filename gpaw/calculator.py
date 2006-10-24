@@ -58,6 +58,7 @@ class Calculator:
                   'softgauss': True,
                   'stencils': (2, 'M', 3),
                   'convergeall': False,
+                  'eigensolver': "rmm-diis",
                   }
 
     def __init__(self, **kwargs):
@@ -248,6 +249,7 @@ class Calculator:
                 self.tolerance,
                 self.maxiter,
                 self.convergeall,
+                self.eigensolver,
                 self.parsize,
                 self.restart_file,
                 ]

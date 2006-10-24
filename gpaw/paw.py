@@ -125,7 +125,7 @@ class Paw:
                  nvalence, charge, nbands, nspins, kT,
                  typecode, bzk_kc, ibzk_kc, weights_k,
                  stencils, usesymm, mix, old, fixdensity, maxiter, idiotproof,
-                 convergeall,
+                 convergeall, eigensolver,
                  # Parallel stuff:
                  kpt_comm, timer,
                  out):
@@ -238,9 +238,12 @@ class Paw:
                            self.my_nuclei, self.ghat_nuclei, self.nspins)
 
         nn = stencils[0]
-        self.eigensolver = RMM_DIIS(self.exx, self.timer,
-                                    self.convergeall, nn,
-                                    self.gd, typecode, nbands)
+        if eigensolver == "rmm-diis":
+            self.eigensolver = RMM_DIIS(self.exx, self.timer,
+                                        self.convergeall, nn,
+                                        self.gd, typecode, nbands)
+        else:
+            raise NotImplementedError('Eigensolver %s' % eigensolver)
 
         self.timer.stop('Init')
 
@@ -449,26 +452,14 @@ class Paw:
         self.timer.stop('Subspace diag.')
         del work
         wf.adjust_number_of_bands(self.my_nuclei)
+        error, nfermi, magmom, S = self.eigensolver.iterate(wf, self.vt_sG,
+                                                            self.my_nuclei, self.pt_nuclei,2)
 
-
+        # Self-consistency loop
         while not self.converged:
-
-            self.calculate_potential()
-
-            self.timer.start('Atomic hamiltonians')
-            self.calculate_atomic_hamiltonians()
-            self.timer.stop('Atomic hamiltonians')
-
-            error, nfermi, magmom, S = self.eigensolver.iterate(wf, self.vt_sG,
-                                                                 self.my_nuclei, self.pt_nuclei)
             
-            self.error, self.nfermi, self.magmom, self.S = error, nfermi, magmom, S
-
-            if self.error <= self.tolerance:
-                self.converged = True
-                
-            self.timer.start('Calc. density')
-            if not self.fixdensity and not self.converged:
+            if not self.fixdensity :
+                self.timer.start('Calc. density')
                 wf.calculate_electron_density(self.nt_sG, self.nct_G,
                                               self.symmetry, self.gd)
                 wf.calculate_atomic_density_matrices(self.my_nuclei,
@@ -477,9 +468,21 @@ class Paw:
                                                      self.symmetry)
                 self.mixer.mix(self.nt_sG, self.domain.comm)
                 
-            self.calculate_multipole_moments()
-            self.timer.stop('Calc. density')
+                self.calculate_multipole_moments()
+                self.timer.stop('Calc. density')
 
+
+                self.calculate_potential()
+
+                self.timer.start('Atomic hamiltonians')
+                self.calculate_atomic_hamiltonians()
+                self.timer.stop('Atomic hamiltonians')
+
+            error, nfermi, magmom, S = self.eigensolver.iterate(wf, self.vt_sG,
+                                                                 self.my_nuclei, self.pt_nuclei,1)
+            
+            self.error, self.nfermi, self.magmom, self.S = error, nfermi, magmom, S
+                
             dsum = self.domain.comm.sum
             self.Ekin = dsum(self.Ekin) + wf.sum_eigenvalues()
             self.Epot = dsum(self.Epot)
@@ -488,7 +491,9 @@ class Paw:
             self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
 
 
-
+            if self.error <= self.tolerance:
+                self.converged = True
+            
             # Output from each iteration:
             t = time.localtime()
             out.write('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
