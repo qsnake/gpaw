@@ -10,6 +10,11 @@ gaunt = num.array([[[0.28209479177387808, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
 
 if __name__ == '__main__':
+    # XXX
+    # There are 9*9*25=2025 elements.
+    # Of these, 162 are non-zero, and only 30 are distinct, i.e. only 1.5%.
+    # This should be stored more efficiently.
+    # XXX
     print 'Constructing "Gaunt.py" ...'
     from gpaw.spherical_harmonics import YL, gam
     lmax = 2
