@@ -452,8 +452,8 @@ class Paw:
         self.timer.stop('Subspace diag.')
         del work
         wf.adjust_number_of_bands(self.my_nuclei)
-        error, nfermi, magmom, S = self.eigensolver.iterate(wf, self.vt_sG,
-                                                            self.my_nuclei, self.pt_nuclei,2)
+        error, nfermi, magmom, S = self.eigensolver.iterate(
+            wf, self.vt_sG, self.my_nuclei, self.pt_nuclei, 2)
 
         # Self-consistency loop
         while not self.converged:
@@ -478,10 +478,11 @@ class Paw:
                 self.calculate_atomic_hamiltonians()
                 self.timer.stop('Atomic hamiltonians')
 
-            error, nfermi, magmom, S = self.eigensolver.iterate(wf, self.vt_sG,
-                                                                 self.my_nuclei, self.pt_nuclei,1)
+            error, nfermi, magmom, S = self.eigensolver.iterate(
+                wf, self.vt_sG, self.my_nuclei, self.pt_nuclei, 1)
             
-            self.error, self.nfermi, self.magmom, self.S = error, nfermi, magmom, S
+            self.error, self.nfermi, self.magmom, self.S = \
+                        error, nfermi, magmom, S
                 
             dsum = self.domain.comm.sum
             self.Ekin = dsum(self.Ekin) + wf.sum_eigenvalues()
