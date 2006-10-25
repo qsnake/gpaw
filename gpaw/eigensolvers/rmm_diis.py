@@ -13,23 +13,20 @@ from gpaw.eigensolvers import Eigensolver
 class RMM_DIIS(Eigensolver):
     """RMM-DIIS eigensolver
 
-       It is expected that the trial wave functions are orthonormal
-       and the integrals of projector functions and wave functions
-       ``nucleus.P_uni`` are already calculated.
+    It is expected that the trial wave functions are orthonormal
+    and the integrals of projector functions and wave functions
+    ``nucleus.P_uni`` are already calculated
 
-       Solution steps are:
+    Solution steps are:
 
-       Subspace diagonalization
-       Calculation of residuals
-       Improvement of wave functions:  psi' = psi + lambda PR + lambda PR'
-       Orthonormalization       
-    """
+    * Subspace diagonalization
+    * Calculation of residuals
+    * Improvement of wave functions:  psi' = psi + lambda PR + lambda PR'
+    * Orthonormalization"""
 
-    def __init__(self, exx,  timer, convergeall,
-                 nn, gd, typecode, nbands):
+    def __init__(self, exx,  timer, kpt_comm, gd, kin, typecode, nbands):
 
-        Eigensolver.__init__(self, exx, timer, convergeall,
-                             nn, gd, typecode)
+        Eigensolver.__init__(self, exx, timer, kpt_comm, gd, kin, typecode)
 
         # Allocate work arrays
         self.work1 = self.gd.new_array(nbands, typecode) #Hpsi, res
@@ -37,10 +34,10 @@ class RMM_DIIS(Eigensolver):
         
         self.S_nn = num.zeros((nbands, nbands), typecode)
 
-    def iterate_once(self, kpt, vt_sG, my_nuclei, pt_nuclei):      
+    def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a single RMM-DIIS iteration for the kpoint"""
 
-        self.diagonalize(vt_sG, my_nuclei, kpt, self.work1)
+        self.diagonalize(hamiltonian, kpt, self.work1)
 
         self.timer.start('Residuals')
         R_nG = self.work1
@@ -48,30 +45,32 @@ class RMM_DIIS(Eigensolver):
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             R_G -= eps * psit_G
 
-        for nucleus in pt_nuclei:
+        for nucleus in hamiltonian.pt_nuclei:
             nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
-        self.timer.stop('Residuals')
+        self.timer.stop()
 
         self.timer.start('RMM-DIIS')
-        vt_G = vt_sG[kpt.s]
+        vt_G = hamiltonian.vt_sG[kpt.s]
         dR_G = self.work2
+        error = 0.0
         for n in range(kpt.nbands):
             R_G = R_nG[n]
 
             weight = kpt.f_n[n]
-            if self.convergeall: weight = 1.
-            self.error += weight * real(num.vdot(R_G, R_G))
+            if self.convergeall:
+                weight = 1.0
+            error += weight * real(num.vdot(R_G, R_G))
 
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n],
                                   kpt.k_c)
 
-            self.kin.apply(pR_G, dR_G, kpt.phase_cd)
+            hamiltonian.kin.apply(pR_G, dR_G, kpt.phase_cd)
                 
             dR_G += vt_G * pR_G
 
             dR_G -= kpt.eps_n[n] * pR_G
 
-            for nucleus in pt_nuclei:
+            for nucleus in hamiltonian.pt_nuclei:
                 nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
                                          kpt.s, kpt.k)
             
@@ -84,10 +83,10 @@ class RMM_DIIS(Eigensolver):
             kpt.psit_nG[n] += self.preconditioner(R_G, kpt.phase_cd,
                                                  kpt.psit_nG[n], kpt.k_c)
             
-        self.timer.stop('RMM-DIIS')
+        self.timer.stop()
 
         self.timer.start('Orthogonalize')
-        for nucleus in pt_nuclei:
+        for nucleus in hamiltonian.pt_nuclei:
             nucleus.calculate_projections(kpt)
 
         S_nn = self.S_nn
@@ -95,7 +94,7 @@ class RMM_DIIS(Eigensolver):
         # Fill in the lower triangle:
         rk(self.gd.dv, kpt.psit_nG, 0.0, S_nn)
         
-        for nucleus in my_nuclei:
+        for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             S_nn += num.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
         
@@ -113,7 +112,10 @@ class RMM_DIIS(Eigensolver):
         gemm(1.0, kpt.psit_nG, S_nn, 0.0, self.work1)
         kpt.psit_nG, self.work1 = self.work1, kpt.psit_nG  # swap
 
-        for nucleus in my_nuclei:
+        for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             gemm(1.0, P_ni.copy(), S_nn, 0.0, P_ni)
-        self.timer.stop('Orthogonalize')
+        self.timer.stop()
+
+        return error
+    

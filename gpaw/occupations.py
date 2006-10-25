@@ -12,17 +12,24 @@ class Dummy:
         self.set_fermi_level(None)
         self.kT = 0
         
-    def set_communicator(self, comm):
-        self.comm = comm
+    def set_communicator(self, kpt_comm):
+        self.kpt_comm = kpt_comm
         
     def calculate(self, nspins, kpts):
-        return 0, 0.0, 0.0
+        return 0, 0.0, 0.0, 0.0
 
     def set_fermi_level(self, epsF):
         self.epsF = epsF
 
     def get_fermi_level(self):
         return self.epsF
+
+    def get_band_energy(self, kpt_u):
+        # Sum up all eigenvalues weighted with occupation numbers:
+        Eband = 0.0
+        for kpt in kpt_u:
+            Eband += num.dot(kpt.f_n, kpt.eps_n)    
+        return self.kpt_comm.sum(Eband)
 
 
 class FixMom(Dummy):
@@ -38,14 +45,14 @@ class FixMom(Dummy):
             f_n[b:] = 0.0
             if 2 * b < self.ne:  # XXX warning here?
                 f_n[b] = 1.0
-            return -1, 0.0, 0.0
+            return -1, 0.0, 0.0, self.get_band_energy(kpts)
 
         m_s = [(self.ne + self.M) / 2, (self.ne - self.M) / 2]
         for kpt in kpts:
             m = m_s[kpt.s]
             kpt.f_n[:m] = 1.0
             kpt.f_n[m:] = 0.0
-        return -1, self.M, 0.0
+        return -1, self.M, 0.0, self.get_band_energy(kpts)
 
 
 class ZeroKelvin(Dummy):
@@ -59,14 +66,14 @@ class ZeroKelvin(Dummy):
             for i in range(len(f_n)):
                 f_n[i] = min(2.0,self.ne-ne)
                 ne += f_n[i]
-            return -1, 0.0, 0.0
+            return -1, 0.0, 0.0, self.get_band_energy(kpts)
 
         nb = len(kpts[0].eps_n)
         
-        if self.comm.size>1: 
+        if self.kpt_comm.size>1: 
             nbands = len(kpts[0].eps_n)
-            all_eps_n = num.zeros((self.comm.size, nb), num.Float)
-            self.comm.all_gather(kpts[0].eps_n, all_eps_n)
+            all_eps_n = num.zeros((self.kpt_comm.size, nb), num.Float)
+            self.kpt_comm.all_gather(kpts[0].eps_n, all_eps_n)
             eps_n = all_eps_n
         else:
             eps_n = [kpt.eps_n for kpt in kpts]
@@ -80,8 +87,8 @@ class ZeroKelvin(Dummy):
             else:
                 mb += 1
 
-        if self.comm.size>1: 
-            f_n = num.zeros((self.comm.size, nb), num.Float)
+        if self.kpt_comm.size>1: 
+            f_n = num.zeros((self.kpt_comm.size, nb), num.Float)
         else:
             f_n = [kpt.f_n for kpt in kpts]
  
@@ -93,10 +100,10 @@ class ZeroKelvin(Dummy):
 
 
         # copy back information
-        if self.comm.size>1: 
-            kpts[0].f_n = f_n[self.comm.rank]
+        if self.kpt_comm.size>1: 
+            kpts[0].f_n = f_n[self.kpt_comm.rank]
 
-        return -1, ma - mb, 0.0
+        return -1, ma - mb, 0.0, self.get_band_energy(kpts)
 
 
 class FermiDirac(Dummy):
@@ -132,9 +139,9 @@ class FermiDirac(Dummy):
                 dnde += (dn - num.sum(kpt.f_n**2) / kpt.weight) / self.kT
 
 
-            n = self.comm.sum(n)
-            dnde = self.comm.sum(dnde)
-            magmom = self.comm.sum(magmom)
+            n = self.kpt_comm.sum(n)
+            dnde = self.kpt_comm.sum(dnde)
+            magmom = self.kpt_comm.sum(magmom)
         
             dn = self.ne - n
             if abs(dn) < 1.0e-9:
@@ -160,22 +167,22 @@ class FermiDirac(Dummy):
             y -= num.log(z)
             S -= kpt.weight * num.sum(y)
 
-        S = self.comm.sum(S)
+        S = self.kpt_comm.sum(S)
 
         if self.nspins == 1:
             magmom = 0.0
 
-        return niter, magmom, S * self.kT
+        return niter, magmom, S * self.kT, self.get_band_energy(kpts)
 
     def guess_fermi_level(self, kpts):
-        nu = len(kpts) * self.comm.size
+        nu = len(kpts) * self.kpt_comm.size
         nb = len(kpts[0].eps_n)
 
         # Make a long array for all the eigenvalues:
         list_eps_n =  num.array([kpt.eps_n for kpt in kpts])
 
-        if self.comm.size > 1:
-            eps_n = mpi.all_gather_array(self.comm, list_eps_n)
+        if self.kpt_comm.size > 1:
+            eps_n = mpi.all_gather_array(self.kpt_comm, list_eps_n)
         else:
             eps_n = list_eps_n.flat
  

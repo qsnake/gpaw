@@ -188,13 +188,14 @@ class PerturbativeExx:
         self.n_g = paw.finegd.new_array()
 
         # load single exchange calculator
-        self.exx_single = Coulomb(paw.finegd, paw.poisson).get_single_exchange
+        self.exx_single = Coulomb(paw.finegd,
+                                  paw.hamiltonian.poisson).get_single_exchange
 
         # load interpolator
-        self.interpolate = paw.interpolate
+        self.interpolate = paw.density.interpolate
 
         # ensure that calculation is a Gamma point calculation
-        if paw.wf.typecode == num.Complex:
+        if paw.typecode == num.Complex:
             msg = 'k-point calculations with exact exchange has not yet\n'\
                   'been implemented. Please use gamma point only.'
             raise NotImplementedError(msg)
@@ -229,7 +230,7 @@ class PerturbativeExx:
         self.ExxVV, self.ExxVC, self.ExxCC = self.atomic_corrections()
         
         # sum contributions from all processors
-        ksum = paw.wf.kpt_comm.sum
+        ksum = paw.kpt_comm.sum
         dsum = paw.domain.comm.sum
         self.Exxt  = ksum(self.Exxt)
         self.ExxVV = ksum(dsum(self.ExxVV))
@@ -245,21 +246,21 @@ class PerturbativeExx:
 
     def get_pseudo_exchange(self):
         """Calculate smooth contribution to exact exchange energy"""
-        wf = self.paw.wf
-        ghat_nuclei = self.paw.ghat_nuclei
-        finegd = self.paw.finegd
+        paw = self.paw
+        ghat_nuclei = paw.ghat_nuclei
+        finegd = paw.finegd
 
         # calculate exact exchange of smooth wavefunctions
         Exxt = 0.0
-        for u, kpt in enumerate(wf.kpt_u):
-            #spin = wf.myspins[u] # global spin index XXX
-            for n in range(wf.nbands):
-                for m in range(n, wf.nbands):
+        for u, kpt in enumerate(paw.kpt_u):
+            #spin = paw.myspins[u] # global spin index XXX
+            for n in range(paw.nbands):
+                for m in range(n, paw.nbands):
                     # determine double count factor:
                     DC = 2 - (n == m)
 
                     # calculate joint occupation number
-                    fnm = (kpt.f_n[n] * kpt.f_n[m]) * wf.nspins / 2.
+                    fnm = (kpt.f_n[n] * kpt.f_n[m]) * paw.nspins / 2.
 
                     # determine current exchange density
                     n_G = kpt.psit_nG[m] * kpt.psit_nG[n] 
@@ -297,7 +298,6 @@ class PerturbativeExx:
            interaction, the valence-core contribution, and the core-core
            contributions.
         """
-        wf = self.paw.wf
         ExxVV = ExxVC = ExxCC = 0.0
         for nucleus in self.paw.my_nuclei:
             # error handling for old setup files
@@ -308,7 +308,7 @@ class PerturbativeExx:
                 print 'to correct error'
                 break
 
-            for kpt in wf.kpt_u:
+            for kpt in paw.kpt_u:
                 # Add core-core contribution:
                 s = kpt.s
                 if s == 0:
@@ -343,15 +343,15 @@ class PerturbativeExx:
                 xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
                     n,m,i1,i2,i3,i4
             """
-            for u, kpt in enumerate(wf.kpt_u):
-                #spin = wf.myspins[u] # global spin index XXX
-                for n in range(wf.nbands):
-                    for m in range(n, wf.nbands):
+            for u, kpt in enumerate(paw.kpt_u):
+                #spin = paw.myspins[u] # global spin index XXX
+                for n in range(paw.nbands):
+                    for m in range(n, paw.nbands):
                         # determine double count factor:
                         DC = 2 - (n == m)
 
                         # calculate joint occupation number
-                        fnm = (kpt.f_n[n] * kpt.f_n[m]) * wf.nspins / 2.
+                        fnm = (kpt.f_n[n] * kpt.f_n[m]) * paw.nspins / 2.
 
                         # generate density matrix
                         Pm_i = nucleus.P_uni[u, m] # spin ??

@@ -40,9 +40,10 @@ class PairPotential:
             Z_a = [nucleus.setup.Z for nucleus in nuclei]
             self.neighborlist = NeighborList(Z_a, pos_ac, domain,
                                              self.cutoff_a)
-            updated = False
         else:
             updated = self.neighborlist.update_list(pos_ac)
+            if updated:
+                print 'Neighbor list has been updated!' # XXXXX
 
         # Reset all pairs:
         for nucleus in nuclei:
@@ -75,7 +76,6 @@ class PairPotential:
                         Neighbor(num.transpose(V_LL),
                                  -num.transpose(dVdr_LLc, (1, 0, 2)),
                                  nucleus1))
-        return updated
 
     def print_info(self, out):
         pass

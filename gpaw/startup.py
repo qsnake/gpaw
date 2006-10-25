@@ -20,9 +20,8 @@ def create_paw_object(out, a0, Ha,
                       charge,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, old, fixdensity,
-                      idiotproof, hund, lmax, tolerance, maxiter,
+                      hund, lmax, tolerance, maxiter,
                       convergeall, eigensolver,
-                      # Parallel stuff:
                       parsize_c,
                       restart_file):
 
@@ -148,25 +147,17 @@ def create_paw_object(out, a0, Ha,
 
     domain.set_decomposition(domain_comm, parsize_c, N_c)
 
-    timer.stop('Init')
+    timer.stop()
     # We now have all the parameters needed to construct a PAW object:
     paw = Paw(a0, Ha,
               setups, nuclei, domain, N_c, symmetry, xcfunc,
-              nvalence, charge, nbands, nspins, kT,
+              nvalence, charge, nbands, nspins,
               typecode, bzk_kc, ibzk_kc, weights_k,
-              stencils, usesymm, mix, old, fixdensity, maxiter, idiotproof,
-              convergeall=convergeall, eigensolver=eigensolver,
-              # Parallel stuff:
-              kpt_comm=kpt_comm, timer = timer,
-              out=out)
+              stencils, usesymm, mix, old, fixdensity, maxiter,
+              convergeall, eigensolver, pos_ac / a0, timer, kT / Ha, tolerance,
+              kpt_comm, restart_file, hund, magmom_a,
+              out)
 
-    paw.set_positions(pos_ac / a0)
-    if restart_file is None:
-        paw.initialize_density_and_wave_functions(hund, magmom_a)
-    else:
-        paw.initialize_from_file(restart_file)
-        
-    paw.set_convergence_criteria(tolerance)
     return paw
 
     
@@ -197,20 +188,6 @@ def reduce_kpoints(bzk_kc, pos_ac, Z_a, magmom_a, domain, usesymm):
         symmetry = None
 
     return symmetry, weights_k, ibzk_kc
-
-
-def construct_setups(Z_a, xcfunc, lmax, nspins, softgauss, out):
-    """Construct necessary PAW-setup objects."""
-    setups = {}
-    for Z in Z_a:
-        if Z not in setups:
-            symbol = symbols[Z]
-            setup = Setup(symbol, xcfunc, lmax, nspins, softgauss)
-            setup.print_info(out)
-            setups[Z] = setup
-            assert Z == setup.Z
-    return setups
-
 
 def new_communicator(ranks):
     if len(ranks) == 1:

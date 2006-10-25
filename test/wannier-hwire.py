@@ -27,11 +27,11 @@ if 1:
     # not use inversion symmetry to reduce kpoints.
     calc.bzk_kc[:,0] += 2e-5
     energy = atoms.GetPotentialEnergy()
-    calc.Write('wire.nc')
+    calc.Write('wire.gpw')
     
 
 nwannier = 1
-atoms = Calculator.ReadAtoms('wire.nc')
+atoms = Calculator.ReadAtoms('wire.gpw')
 calc = atoms.GetCalculator()
 wannier = Wannier(numberofwannier=nwannier,calculator=calc,occupationenergy=30.0)
 

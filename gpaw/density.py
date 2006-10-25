@@ -1,0 +1,241 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2003  CAMP
+# Please see the accompanying LICENSE file for further information.
+
+"""This module defines a density class."""
+
+import sys
+from math import pi, sqrt, log
+import time
+
+from Numeric import array, Float, dot, NewAxis, zeros, transpose
+
+from gpaw.density_mixer import Mixer, MixerSum
+from gpaw.transformers import Interpolator
+from gpaw.utilities import pack, unpack2
+from gpaw.utilities.complex import cc, real
+
+
+class Density:
+    """Density object.
+    
+    Attributes:
+     =============== =====================================================
+     ``nuclei``      List of ``Nucleus`` objects.
+     ``gd``          Grid descriptor for coarse grids.
+     ``finegd``      Grid descriptor for fine grids.
+     ``interpolate`` Function for interpolating the electron density.
+     ``mixer``       ``DensityMixer`` object.
+     =============== =====================================================
+
+    Soft and smooth pseudo functions on uniform 3D grids:
+     ========== =========================================
+     ``nt_sG``  Electron density on the coarse grid.
+     ``nt_sg``  Electron density on the fine grid.
+     ``nt_g``   Electron density on the fine grid.
+     ``rhot_g`` Charge density on the coarse grid.
+     ``nct_G``  Core electron-density on the coarse grid.
+     ========== =========================================
+    """
+    
+    def __init__(self, gd, finegd, charge, nspins,
+                 stencils, mix, old, timer, fixdensity, kpt_comm, kT,
+                 my_nuclei, ghat_nuclei, nuclei, nvalence):
+        """Create the Density object."""
+
+        self.charge = charge
+        self.nspins = nspins
+        self.gd = gd
+        self.finegd = finegd
+        self.my_nuclei = my_nuclei
+        self.ghat_nuclei = ghat_nuclei
+        self.nuclei = nuclei
+        self.timer = timer
+        self.fixdensity = fixdensity
+        self.kpt_comm = kpt_comm
+        
+        self.comm = gd.comm
+        
+        # Allocate arrays for potentials and densities on coarse and
+        # fine grids:
+        self.nct_G = self.gd.new_array()
+        self.nt_sG = self.gd.new_array(nspins)
+        self.rhot_g = self.finegd.new_array()
+        self.nt_sg = self.finegd.new_array(nspins)
+
+        if nspins == 1:
+            self.nt_g = self.nt_sg[0]
+        else:
+            self.nt_g = self.finegd.new_array()
+
+        # Number of neighbor grid points used for interpolation (1, 2,
+        # or 3):
+        nn = stencils[2]
+
+        # Interpolation function for the density:
+        self.interpolate = Interpolator(self.gd, nn, Float).apply
+        
+        # Density mixer:
+        if nspins == 2 and kT != 0:
+            self.mixer = MixerSum(mix, old)
+        else:
+            self.mixer = Mixer(mix, old, nspins)
+
+        self.nvalence = nvalence
+
+    def initialize(self, hund, magmom_a):
+        """Initialize density.
+
+        The density is initialized from atomic orbitals, and will
+        be constructed with the specified magnetic moments and
+        obeying Hund's rules if ``hund`` is true."""
+        
+        self.timer.start('Init dens.')
+
+        self.nt_sG[:] = self.nct_G
+        for magmom, nucleus in zip(magmom_a, self.nuclei):
+            nucleus.add_atomic_density(self.nt_sG, magmom, hund)
+
+        # The nucleus.add_atomic_density() method should be improved
+        # so that we don't have to do this scaling: XXX
+        if self.charge != 0.0:
+            x = float(self.nvalence) / (self.nvalence + self.charge)
+            for nucleus in self.my_nuclei:
+                nucleus.D_sp *= x
+            self.nt_sG *= x
+                
+        # We don't have any occupation numbers.  The initial
+        # electron density comes from overlapping atomic densities
+        # or from a restart file.  We scale the density to match
+        # the compensation charges;
+        for nucleus in self.nuclei:
+            nucleus.calculate_multipole_moments()
+
+        Q = 0.0
+        for nucleus in self.my_nuclei:
+            Q += nucleus.Q_L[0]
+        Q = sqrt(4 * pi) * self.comm.sum(Q)
+        Nt = self.gd.integrate(self.nt_sG)
+        # Nt + Q must be equal to minus the total charge:
+        if Nt != 0.0:
+            x = -(self.charge + Q) / Nt
+            assert 0.83 < x < 1.17, 'x=%f' % x
+            self.nt_sG *= x
+
+        self.interpolate_pseudo_density()
+
+        self.timer.stop()
+
+    def interpolate_pseudo_density(self):
+        """Transfer the density from the coarse to the fine grid."""
+        for s in range(self.nspins):
+            self.interpolate(self.nt_sG[s], self.nt_sg[s])
+
+        # With periodic boundary conditions, the interpolation will
+        # conserve the number of electron.
+        if False in self.gd.domain.periodic_c:
+            # With zero-boundary conditions in one or more directions,
+            # this is not the case.
+            for s in range(self.nspins):
+                Nt0 = self.gd.integrate(self.nt_sG[s])
+                Nt = self.finegd.integrate(self.nt_sg[s])
+                if Nt != 0.0:
+                    self.nt_sg[s] *= Nt0 / Nt
+
+    def update_pseudo_charge(self):
+        if self.nspins == 2:
+            self.nt_g[:] = self.nt_sg[0]
+            self.nt_g += self.nt_sg[1]
+
+        self.rhot_g[:] = self.nt_g
+        
+        for nucleus in self.nuclei:
+            nucleus.calculate_multipole_moments()
+
+        for nucleus in self.ghat_nuclei:
+            nucleus.add_compensation_charge(self.rhot_g)
+
+        assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 1e-7
+
+    def update(self, kpt_u, symmetry):
+        """Calculate pseudo electron-density.
+
+        The pseudo electron-density ``nt_sG`` is calculated from the
+        wave functions, the occupation numbers, and the smoot core
+        density ``nct_G``, and finally symmetrized and mixed."""
+
+        if self.fixdensity:
+            return
+        
+        self.nt_sG[:] = 0.0
+
+        # Add contribution from all k-points:
+        for kpt in kpt_u:
+            kpt.add_to_density(self.nt_sG[kpt.s])
+
+        self.kpt_comm.sum(self.nt_sG)
+
+        # add the smooth core density:
+        self.nt_sG += self.nct_G
+
+        # Compute atomic density matrices:
+        for nucleus in self.my_nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            D_sii = zeros((self.nspins, ni, ni), Float)
+            for kpt in kpt_u:
+                P_ni = nucleus.P_uni[kpt.u]
+                D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
+                                             P_ni * kpt.f_n[:, NewAxis]))
+            nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
+
+            self.kpt_comm.sum(nucleus.D_sp)
+
+        comm = self.comm
+        
+        if symmetry is not None:
+            for nt_G in self.nt_sG:
+                symmetry.symmetrize(nt_G, self.gd)
+
+            D_asp = []
+            for nucleus in self.nuclei:
+                if comm.rank == nucleus.rank:
+                    D_sp = nucleus.D_sp
+                    comm.broadcast(D_sp, nucleus.rank)
+                else:
+                    ni = nucleus.get_number_of_partial_waves()
+                    np = ni * (ni + 1) / 2
+                    D_sp = zeros((self.nspins, np), Float)
+                    comm.broadcast(D_sp, nucleus.rank)
+                D_asp.append(D_sp)
+
+            for s in range(self.nspins):
+                D_aii = [unpack2(D_sp[s]) for D_sp in D_asp]
+                for nucleus in self.my_nuclei:
+                    nucleus.symmetrize(D_aii, symmetry.maps, s)
+
+        self.mixer.mix(self.nt_sG, comm)
+
+        self.interpolate_pseudo_density()
+
+    def move(self):
+        self.mixer.reset(self.my_nuclei)
+            
+        # Set up smooth core density:
+        self.nct_G[:] = 0.0
+        for nucleus in self.nuclei:
+            nucleus.add_smooth_core_density(self.nct_G, self.nspins)
+
+    def calculate_local_magnetic_moments(self):
+        spindensity = self.nt_sg[0] - self.nt_sg[1]
+
+        for nucleus in self.nuclei:
+            nucleus.calculate_magnetic_moments()
+            
+        locmom = 0.0
+        for nucleus in self.nuclei:
+            locmom += nucleus.mom[0]
+            mom = array([0.0])
+            if nucleus.stepf is not None:
+                nucleus.stepf.integrate(spindensity, mom)
+                nucleus.mom = array(nucleus.mom + mom[0])
+            nucleus.comm.broadcast(nucleus.mom, nucleus.rank)

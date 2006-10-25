@@ -69,19 +69,18 @@ class OmegaMatrix:
 
         paw = self.calculator.paw
         gd = paw.finegd    
-        wf = paw.wf
         kss=self.kss
         nij = len(kss)
         
         if kss.nvspins==2: # spin polarised ground state calc.
-            n_g = paw.nt_sg
+            n_g = paw.density.nt_sg
             v_g=n_g[0].copy()
         else:
             if kss.npspins==2:
-                n_g[0] = .5*paw.nt_sg[0]
+                n_g[0] = .5*paw.density.nt_sg[0]
                 n_g[1] = n_g[0]
             else:
-                n_g = paw.nt_sg[0]
+                n_g = paw.density.nt_sg[0]
 
         if self.derivativeLevel==0:
             if kss.npspins==2:
@@ -208,7 +207,7 @@ class OmegaMatrix:
         """calculate RPA part of the omega matrix"""
         paw = self.calculator.paw
         gd = paw.finegd
-        poisson = PoissonSolver(gd, paw.out, paw.poisson_stencil)
+        poisson = PoissonSolver(gd, paw.out, paw.hamiltonian.poisson_stencil)
         kss=self.kss
 
         # calculate omega matrix
@@ -219,13 +218,13 @@ class OmegaMatrix:
 ##        return Om
         for ij in range(nij):
 ##            print ">> ij,energy=",ij,kss[ij].GetEnergy()
-            paw.interpolate(kss[ij].GetPairDensity(),n_g)
+            paw.density.interpolate(kss[ij].GetPairDensity(),n_g)
 ##            print ">> integral=",gd.integrate(n_g)
             poisson.solve(phi_g,n_g,charge=None)
             
             for kq in range(ij,nij):
 ##                print ">> kq=",kq
-                paw.interpolate(kss[kq].GetPairDensity(),n_g)
+                paw.density.interpolate(kss[kq].GetPairDensity(),n_g)
                 Om[ij,kq]=2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())*\
                                   gd.integrate(n_g*phi_g)

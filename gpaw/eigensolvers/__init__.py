@@ -12,22 +12,23 @@ from gpaw.utilities.complex import cc, real
 from gpaw.utilities import unpack
 
 class Eigensolver:
-    def __init__(self, exx, timer, convergeall, nn, gd, typecode):
+    def __init__(self, exx, timer, kpt_comm, gd, kin, typecode):
         self.exx = exx
         self.timer = timer
-        self.convergeall = convergeall
+        self.kpt_comm = kpt_comm
         self.typecode = typecode
         self.gd = gd
         self.comm = gd.comm
 
-        # Kinetic energy operator:
-        self.kin = Laplace(gd, -0.5, nn, typecode)
-
         # Preconditioner for the electronic gradients:
-        self.preconditioner = Preconditioner(gd, self.kin, typecode)
+        self.preconditioner = Preconditioner(gd, kin, typecode)
 
-
-    def iterate(self, wf, vt_sG, my_nuclei, pt_nuclei, niter=1, tolerance=1e-10):
+    def set_convergence_criteria(self, convergeall, tolerance, nvalence):
+        self.convergeall = convergeall
+        self.tolerance = tolerance
+        self.nvalence = nvalence
+        
+    def iterate(self, hamiltonian, kpt_u):
         """Solves eigenvalue problem iteratively
 
         This method is inherited by the actual eigensolver which should
@@ -35,25 +36,22 @@ class Eigensolver:
         a single kpoint.
         """
 
-        for it in range(niter):
-            self.error = 0.0
-            for kpt in wf.kpt_u:
-                self.iterate_once(kpt, vt_sG, my_nuclei, pt_nuclei)
-            nfermi, magmom, S = wf.calculate_occupation_numbers()
+        if self.nvalence == 0:
+            return self.tolerance, True
+        
+        error = 0.0
+        for kpt in kpt_u:
+            error += self.iterate_one_k_point(hamiltonian, kpt)
 
-            if wf.nvalence == 0:
-                self.error = tolerance
-            else:
-                self.error = wf.kpt_comm.sum(self.error)
-                self.error = self.comm.sum(self.error) / wf.nvalence
-                
-            if (self.error < tolerance):
-                break
+        error = self.comm.sum(self.kpt_comm.sum(error)) / self.nvalence
+        
+        return error, error <= self.tolerance
 
-        return self.error, nfermi, magmom, S
-
-
-    def diagonalize(self, vt_sG, my_nuclei, kpt, work):
+    def iterate_one_k_point(self, hamiltonian, kpt):
+        """Implemented in subclasses."""
+        return 0.0
+    
+    def diagonalize(self, hamiltonian, kpt, work):
         """Diagonalize the Hamiltonian in the subspace of kpt.psit_nG
 
         ``work`` is working array of same size as psit_nG which contains
@@ -77,14 +75,14 @@ class Eigensolver:
         psit_nG = kpt.psit_nG
         eps_n = kpt.eps_n
 
-        self.kin.apply(psit_nG, work, kpt.phase_cd)
-        work += kpt.psit_nG * vt_sG[kpt.s]
+        hamiltonian.kin.apply(psit_nG, work, kpt.phase_cd)
+        work += kpt.psit_nG * hamiltonian.vt_sG[kpt.s]
         if self.exx is not None:
             self.exx.adjust_hamiltonian(psit_nG, work, kpt.nbands,
-                                   kpt.f_n, kpt.u, kpt.s)
+                                        kpt.f_n, kpt.u, kpt.s)
         r2k(0.5 * self.gd.dv, psit_nG, work, 0.0, H_nn)
         # XXX Do EXX here XXX
-        for nucleus in my_nuclei:
+        for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
                                                cc(num.transpose(P_ni))))
@@ -111,9 +109,9 @@ class Eigensolver:
         gemm(1.0, temp, H_nn, 0.0, work)
         
         # Rotate P_ani:
-        for nucleus in my_nuclei:
+        for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             temp_ni = P_ni.copy()
             gemm(1.0, temp_ni, H_nn, 0.0, P_ni)
 
-        self.timer.stop('Subspace diag.')
+        self.timer.stop()

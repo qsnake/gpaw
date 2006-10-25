@@ -61,11 +61,14 @@ class Timer:
     def __init__(self):
         self.timers = {}
         self.t0 = time.time()
+        self.running = []
         
     def start(self, name):
         self.timers[name] = self.timers.get(name, 0.0) - time.time()
+        self.running.append(name)
         
-    def stop(self, name):
+    def stop(self):
+        name = self.running.pop()
         self.timers[name] += time.time()
             
     def gettime(self, name):

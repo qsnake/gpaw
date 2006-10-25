@@ -6,7 +6,7 @@ from gpaw.utilities import equal
 
 netcdf = True
 try:
-    import Scitentiic.IO.NetCDF
+    import Scientific.IO.NetCDF
 except ImportError:
     netcdf = False
 

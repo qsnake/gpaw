@@ -26,17 +26,17 @@ if 1:
     calc = Calculator(nbands=8, h=0.20, tolerance=0.001)
     ethylene.SetCalculator(calc)
     print ethylene.GetPotentialEnergy()
-    calc.Write('ethylene.nc')
+    calc.Write('ethylene.gpw')
 
 from ASE.Utilities.Wannier import Wannier
 
-ethylene = Calculator.ReadAtoms('ethylene.nc')
+ethylene = Calculator.ReadAtoms('ethylene.gpw')
 print ethylene.GetPotentialEnergy()
 wannier = Wannier(numberofwannier=6, calculator=ethylene.GetCalculator())
 wannier.Localize()
 
 value = wannier.GetFunctionalValue() 
-equal(13.289973, value, 0.020)
+equal(13.2806, value, 0.015)
 
 for w in wannier.GetCenters():
     print w['radius'], w['pos']

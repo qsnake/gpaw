@@ -49,7 +49,6 @@ class Calculator:
                   'hund': False,
                   'lmax': 0,
                   'fixdensity': False,
-                  'idiotproof': True,
                   'tolerance': 1.0e-9,
                   'maxiter': 100000000,
                   'out': '-',
@@ -66,9 +65,9 @@ class Calculator:
 
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
-        `old`, `hund`, `lmax`, `fixdensity`, `idiotproof`,
-        `tolerance`, `out`, `hosts`, `parsize`, `softgauss`, `stencils`,
-        and `convergeall`.
+        `old`, `hund`, `lmax`, `fixdensity`, `tolerance`, `out`,
+        `hosts`, `parsize`, `softgauss`, `stencils`, and
+        `convergeall`.
 
         If you don't specify any parameters, you will get:
 
@@ -243,7 +242,6 @@ class Calculator:
                 self.mix,
                 self.old,
                 self.fixdensity,
-                self.idiotproof,
                 self.hund,
                 self.lmax,
                 self.tolerance,
@@ -533,22 +531,21 @@ class Calculator:
 
         r = gpaw.io.open(filename, 'r')
         
-        kwargs = {'nbands':      r.dimension('nbands'),
-                  'xc':          r['XCFunctional'],
-                  'kpts':        r.get('BZKPoints'),
-                  'spinpol':     (r.dimension('nspins') == 2),
-                  'gpts':        (r.dimension('ngptsx'),
-                                  r.dimension('ngptsy'),
-                                  r.dimension('ngptsz')),
-                  'usesymm':     bool(r['UseSymmetry']),  # numpy!
-                  'width':       r['FermiWidth'] * Ha,
-                  'mix':         r['Mix'],
-                  'old':         r['Old'],
-                  'lmax':        r['MaximumAngularMomentum'],
-                  'softgauss':   bool(r['SoftGauss']),  # numpy!
-                  'fixdensity':  bool(r['FixDensity']),  # numpy!
-                  'idiotproof':  bool(r['IdiotProof']),  # numpy!
-                  'tolerance':   r['Tolerance']}
+        kwargs = {'nbands':     r.dimension('nbands'),
+                  'xc':         r['XCFunctional'],
+                  'kpts':       r.get('BZKPoints'),
+                  'spinpol':    (r.dimension('nspins') == 2),
+                  'gpts':       (r.dimension('ngptsx'),
+                                 r.dimension('ngptsy'),
+                                 r.dimension('ngptsz')),
+                  'usesymm':    bool(r['UseSymmetry']),  # numpy!
+                  'width':      r['FermiWidth'] * Ha,
+                  'mix':        r['Mix'],
+                  'old':        r['Old'],
+                  'lmax':       r['MaximumAngularMomentum'],
+                  'softgauss':  bool(r['SoftGauss']),  # numpy!
+                  'fixdensity': bool(r['FixDensity']),  # numpy!
+                  'tolerance':  r['Tolerance']}
         
         calc = Calculator(**kwargs)
 
@@ -584,7 +581,7 @@ class Calculator:
         calc.Z_a = Z_a
         calc.pos_ac = pos_ac
         calc.periodic_c = periodic_c
-        calc.cell_c = cell_cc
+        calc.cell_cc = cell_cc
         calc.Set(**overruling_kwargs)
         
         return atoms

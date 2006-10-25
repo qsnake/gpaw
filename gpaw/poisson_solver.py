@@ -12,10 +12,9 @@ from gpaw import ConvergenceError
 
 
 class PoissonSolver:
-    def __init__(self, gd, nn, out=sys.stdout, load_gauss=False):
+    def __init__(self, gd, nn, load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
-        print >> out, 'poisson solver:'
         self.dv = gd.dv
         
         if nn == 'M':
@@ -50,7 +49,6 @@ class PoissonSolver:
             self.postsmooths.append(4)
             self.weights.append(1.0)
             level += 1
-            print >> out, level, gd.N_c
                     
         self.levels = level
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()

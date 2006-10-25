@@ -8,14 +8,17 @@ from cmath import exp
 
 import Numeric as num
 import LinearAlgebra as linalg
+from RandomArray import random, seed
 from multiarray import innerproduct as inner # avoid the dotblas version!
 
+from gpaw import mpi
+from gpaw.operators import Gradient
+from gpaw.transformers import Interpolator
+from gpaw.utilities import unpack
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
-from gpaw.utilities import unpack
 from gpaw.utilities.timing import Timer
-from gpaw.operators import Gradient
 
 
 class KPoint:
@@ -97,7 +100,7 @@ class KPoint:
         self.f_n = num.ones(nbands, num.Float) * self.weight
         self.S_nn = num.zeros((nbands, nbands), self.typecode)
         
-    def adjust_number_of_bands(self, nbands, random_wave_function_generator):
+    def adjust_number_of_bands(self, nbands):
         """Adjust the number of states.
 
         If we are starting from atomic orbitals, then the desired
@@ -133,10 +136,31 @@ class KPoint:
         if extra > 0:
             # Generate random wave functions:
             self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
+            gd1 = self.gd.coarsen()
+            gd2 = gd1.coarsen()
+
+            psit_G1 = gd1.new_array(typecode=self.typecode)
+            psit_G2 = gd2.new_array(typecode=self.typecode)
+
+            interpolate2 = Interpolator(gd2, 1, self.typecode).apply
+            interpolate1 = Interpolator(gd1, 1, self.typecode).apply
+
+            shape = gd2.n_c
+
+            scale = sqrt(12 / num.product(gd2.domain.cell_c))
+
+            seed(1, 2 + mpi.rank)
+
             for psit_G in self.psit_nG[nao:]:
-                random_wave_function_generator.generate(psit_G, self.phase_cd)
-        
-        
+                if self.typecode == num.Float:
+                    psit_G2[:] = (random(shape) - 0.5) * scale
+                else:
+                    psit_G2.real = (random(shape) - 0.5) * scale
+                    psit_G2.imag = (random(shape) - 0.5) * scale
+
+                interpolate2(psit_G2, psit_G1, self.phase_cd)
+                interpolate2(psit_G1, psit_G, self.phase_cd)
+    
     def orthonormalize(self, my_nuclei):
         """Orthogonalize wave functions."""
         S_nn = self.S_nn

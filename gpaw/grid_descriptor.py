@@ -9,11 +9,10 @@ This module contains classes defining two kinds of grids:
 * Radial grids.
 """
 
-import Numeric as num
-import RandomArray as random
-
 from math import pi, cos, sin
 from cmath import exp
+
+import Numeric as num
 
 from gpaw.utilities.complex import cc
 
@@ -103,6 +102,9 @@ class GridDescriptor:
         self.h_c = domain.cell_c / N_c
         self.dv = self.h_c[0] * self.h_c[1] * self.h_c[2]
 
+        # Sanity check for grid spacings:
+        assert max(self.h_c) / min(self.h_c) < 1.3
+
     def new_array(self, n=None, typecode=num.Float, zero=True,
                   global_array=False):
         """Return new 3D array for this domain.
@@ -126,25 +128,6 @@ class GridDescriptor:
         else:
             return num.empty(shape, typecode)
         
-    def random_array(self, n=None, typecode=num.Float):
-        """Return new 3D array for this domain filled with random
-        numbers."""
-        
-        shape = self.n_c
-        if n is not None:
-            shape = (n,) + tuple(shape)
-
-        if typecode==num.Float:
-            return random.standard_normal(shape)
-        else:
-            arr=self.new_array(n,typecode)
-            arr.real=random.standard_normal(shape)
-            arr.imaginary=random.standard_normal(shape)
-            
-    def is_healthy(self):
-        """Sanity check for grid spacings."""
-        return max(self.h_c) / min(self.h_c) < 1.3
-
     def integrate(self, a_g):
         """Integrate function in array over domain."""
         return self.comm.sum(num.sum(a_g.flat)) * self.dv
@@ -460,6 +443,8 @@ class GridDescriptor:
         Z_nn = num.zeros((nbands, nbands), num.Complex)
         shape = (nbands, -1)
 
+        psit_nG = psit_nG[:]
+        psit_nG1 = psit_nG1[:]
         for g in range(self.n_c[c]):
 
             if c == 0:
@@ -469,7 +454,7 @@ class GridDescriptor:
             else:
                 A_nG = psit_nG[:, :, :, g].copy()
                 
-            if k<>k1:
+            if k != k1:
                 if c == 0:
                     B_nG = psit_nG1[:, g].copy()
                 elif c == 1:
@@ -478,7 +463,7 @@ class GridDescriptor:
                     B_nG = psit_nG1[:, :, :, g].copy()
 
 
-            if k==k1: 
+            if k == k1: 
                 e = exp(2j * pi / self.N_c[c] * (g + self.beg0_c[c]))
                 B_nG = A_nG
             else:

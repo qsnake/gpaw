@@ -299,9 +299,9 @@ class Nucleus:
         for s in range(ns):
             self.phit_i.add_density(nt_sG[s], f_si[s])
 
-    def add_smooth_core_density(self, nct_G):
+    def add_smooth_core_density(self, nct_G, nspins):
         if self.nct is not None:
-            self.nct.add(nct_G, num.ones(1, num.Float))
+            self.nct.add(nct_G, num.array([1.0 / nspins]))
 
     def add_compensation_charge(self, nt2):
         self.ghat_L.add(nt2, self.Q_L)

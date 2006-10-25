@@ -133,7 +133,7 @@ class Mixer1:
 class MixerSum:
     """Pulay density mixer."""
     
-    def __init__(self, beta, nold, nspins):
+    def __init__(self, beta, nold):
         """Mixer(beta, nold) -> mixer object.
 
         beta:  Mixing parameter between zero and one (one is most
