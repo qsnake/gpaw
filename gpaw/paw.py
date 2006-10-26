@@ -562,14 +562,6 @@ class Paw:
         """Return array of k-points in the irreducible part of the BZ."""
         return self.ibzk_kc
 
-    def get_density_array(self):
-        """Return pseudo-density array."""
-        c = 1.0 / self.a0**3
-        if self.nspins == 2:
-            return self.nt_sG * c
-        else:
-            return self.nt_sG[0] * c
-
     def get_wave_function_array(self, n, k, s):
         """Return pseudo-wave-function array.
         For the parallel case find the rank in kpt_comm that contains
@@ -685,43 +677,6 @@ class Paw:
 
     def get_weights(self):
         return self.weights_k
-
-    def get_all_electron_density(self, gridrefinement=2):
-        """Return real all-electron density array."""
-        # Unit conversion factor
-        c = 1.0 / self.a0**3
-
-        # Refinement of coarse grid, for representation of the AE-density
-        if gridrefinement == 1:
-            gd = self.gd
-            n_sg = self.density.nt_sG.copy()
-        elif gridrefinement == 2:
-            gd = self.finegd
-            n_sg = self.density.nt_sg.copy()
-        elif gridrefinement == 4:
-            # Interpolation function for the density:
-            interpolate = Interpolator(self.finegd, 3, num.Float).apply
-
-            # Extra fine grid
-            gd = self.finegd.refine()
-            
-            # Transfer the pseudo-density to the fine grid:
-            n_sg = gd.new_array(self.nspins)
-            for s in range(self.nspins):
-                interpolate(self.density.nt_sg[s], n_sg[s])
-        else:
-            raise NotImplementedError
-
-        # Add corrections to pseudo-density to get the AE-density
-        splines = {}
-        for nucleus in self.nuclei:
-            nucleus.add_density_correction(n_sg, self.nspins, gd, splines)
-        
-        # Return AE-(spin)-density
-        if self.nspins == 2:
-            return n_sg * c
-        else:
-            return n_sg[0] * c
 
     def load_wave_functions(self):
         if not isinstance(self.kpt_u[0].psit_nG, num.ArrayType):

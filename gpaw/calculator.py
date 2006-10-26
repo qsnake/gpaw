@@ -486,11 +486,12 @@ class Calculator:
 
     def GetDensityArray(self):
         """Return pseudo-density array."""
-        return self.paw.get_density_array()
+        return self.paw.density.get_density_array() / self.a0**3
 
     def GetAllElectronDensity(self, gridrefinement=2):
         """Return reconstructed all-electron density array."""
-        return self.paw.get_all_electron_density(gridrefinement)
+        return self.paw.density.get_all_electron_density(gridrefinement)\
+               / self.a0**3
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""

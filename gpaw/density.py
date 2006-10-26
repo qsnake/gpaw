@@ -239,3 +239,46 @@ class Density:
                 nucleus.stepf.integrate(spindensity, mom)
                 nucleus.mom = array(nucleus.mom + mom[0])
             nucleus.comm.broadcast(nucleus.mom, nucleus.rank)
+
+    def get_density_array(self):
+        """Return pseudo-density array."""
+        if self.nspins == 2:
+            return self.nt_sG
+        else:
+            return self.nt_sG[0]
+    
+    def get_all_electron_density(self, gridrefinement=2):
+        """Return real all-electron density array."""
+
+        # Refinement of coarse grid, for representation of the AE-density
+        if gridrefinement == 1:
+            gd = self.gd
+            n_sg = self.nt_sG.copy()
+        elif gridrefinement == 2:
+            gd = self.finegd
+            n_sg = self.nt_sg.copy()
+        elif gridrefinement == 4:
+            # Interpolation function for the density:
+            interpolate = Interpolator(self.finegd, 3, num.Float).apply
+
+            # Extra fine grid
+            gd = self.finegd.refine()
+            
+            # Transfer the pseudo-density to the fine grid:
+            n_sg = gd.new_array(self.nspins)
+            for s in range(self.nspins):
+                interpolate(self.nt_sg[s], n_sg[s])
+        else:
+            raise NotImplementedError
+
+        # Add corrections to pseudo-density to get the AE-density
+        splines = {}
+        for nucleus in self.nuclei:
+            nucleus.add_density_correction(n_sg, self.nspins, gd, splines)
+        
+        # Return AE-(spin)-density
+        if self.nspins == 2:
+            return n_sg
+        else:
+            return n_sg[0]
+
