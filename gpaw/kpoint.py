@@ -145,7 +145,7 @@ class KPoint:
             interpolate2 = Interpolator(gd2, 1, self.typecode).apply
             interpolate1 = Interpolator(gd1, 1, self.typecode).apply
 
-            shape = gd2.n_c
+            shape = tuple(gd2.n_c)
 
             scale = sqrt(12 / num.product(gd2.domain.cell_c))
 
