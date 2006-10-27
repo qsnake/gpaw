@@ -3,14 +3,9 @@ from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
 
 a = 5.0
-H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=0)],
-                periodic=0,
+H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
+                periodic=False,
                 cell=(a, a, a))
-#calc = Calculator(nbands=1, h=0.2, onohirose=1, tolerance=0.001, softgauss=0)
-calc = Calculator(nbands=2, h=0.2, softgauss=0,)# out=None)
-H.SetCalculator(calc)
-if 0:
-    import profile
-    profile.run('H.GetPotentialEnergy()', 'H.prof')
-else:
-    H.GetPotentialEnergy()
+
+H.SetCalculator(Calculator(nbands=1, h=0.2))
+e = H.GetPotentialEnergy()

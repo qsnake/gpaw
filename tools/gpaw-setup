@@ -26,7 +26,7 @@ parser.add_option('-q', '--quick', action='store_true',
                   help='Skip generation of logarithmic derivatives.')
 parser.add_option('-a', '--all-electron-only', action='store_true',
                   help='Skip generation of PAW setup.')
-parser.add_option('-e', '--extra', type='string', default=None,
+parser.add_option('-e', '--extra-projectors', type='string', default=None,
                   help='Extra projectors.',
                   metavar='0.0;0.0,1.0;0.0')
 parser.add_option('-c', '--core', type='string', default=None,
@@ -72,10 +72,10 @@ for symbol in atoms:
         core = opt.core
     if opt.radius is not None:
         rcut = [float(x) for x in opt.radius.split(',')]
-    if opt.extra is not None:
+    if opt.extra_projectors is not None:
         extra = {}
-        if opt.extra != '':
-            for l, x in enumerate(opt.extra.split(';')):
+        if opt.extra_projectors != '':
+            for l, x in enumerate(opt.extra_projectors.split(';')):
                 if x != '':
                     extra[l] = [float(y) for y in x.split(',')]
     g.run(core, rcut, extra,

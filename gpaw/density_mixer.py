@@ -2,12 +2,6 @@
 # Please see the accompanying LICENSE file for further information.
 
 """
-This module contains the Spin class.  A spin-polarized calculation
-has two spin objects and a spin-paired calculation only one.  Each
-spin object has an effective potential, a pseudo density and methods
-to updated the density.  Updating the density is done using Pulay
-mixing.
-
 Ref. to Kresse-paper ... XXX
 """
 

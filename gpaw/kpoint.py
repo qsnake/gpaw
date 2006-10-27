@@ -159,7 +159,7 @@ class KPoint:
                     psit_G2.imag = (random(shape) - 0.5) * scale
 
                 interpolate2(psit_G2, psit_G1, self.phase_cd)
-                interpolate2(psit_G1, psit_G, self.phase_cd)
+                interpolate1(psit_G1, psit_G, self.phase_cd)
     
     def orthonormalize(self, my_nuclei):
         """Orthogonalize wave functions."""
