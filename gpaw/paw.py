@@ -18,6 +18,7 @@ from gpaw import debug, sigusr1
 from gpaw import ConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers.rmm_diis import RMM_DIIS
+from gpaw.eigensolvers.cg import CG
 from gpaw.exx import get_exx
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
@@ -252,6 +253,10 @@ class Paw:
             self.eigensolver = RMM_DIIS(None, self.timer, kpt_comm,
                                         self.gd, self.hamiltonian.kin,
                                         typecode, nbands)
+        elif eigensolver == "cg":
+            self.eigensolver = CG(None, self.timer, kpt_comm, 
+                                  self.gd, self.hamiltonian.kin,
+                                  typecode, nbands)
         else:
             raise NotImplementedError('Eigensolver %s' % eigensolver)
 
@@ -420,6 +425,15 @@ class Paw:
 
         for nucleus in self.my_nuclei:
             nucleus.reallocate(self.nbands)
+
+        # If we added some random wave functions, they are not orthogonalized
+        # and their projections are zero...
+        # Should be done smarter way...
+        for kpt in self.kpt_u:
+            # Calculate projections and orthogonalize wave functions:
+            for nucleus in self.pt_nuclei:
+                nucleus.calculate_projections(kpt)
+            kpt.orthonormalize(self.my_nuclei)
 
         # Calculate occupation numbers:
         self.nfermi, self.magmom, self.S, Eband = \

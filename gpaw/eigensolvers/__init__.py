@@ -32,7 +32,7 @@ class Eigensolver:
         """Solves eigenvalue problem iteratively
 
         This method is inherited by the actual eigensolver which should
-        implement ``iterate_once`` method for a single iteration of
+        implement ``iterate_one_k_point`` method for a single iteration of
         a single kpoint.
         """
 
@@ -43,7 +43,10 @@ class Eigensolver:
         for kpt in kpt_u:
             error += self.iterate_one_k_point(hamiltonian, kpt)
 
-        error = self.comm.sum(self.kpt_comm.sum(error)) / self.nvalence
+        if self.convergeall:
+            error = self.comm.sum(self.kpt_comm.sum(error)) / kpt_u[0].nbands
+        else:
+            error = self.comm.sum(self.kpt_comm.sum(error)) / self.nvalence
         
         return error, error <= self.tolerance
 
