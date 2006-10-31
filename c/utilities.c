@@ -5,6 +5,78 @@
 #include <math.h>
 
 
+/* elementwise multiply and add result to another vector
+ * 
+ * c[i] += a[i] * b[i] ,  for i = every element in the vectors
+ */
+PyObject* elementwise_multiply_add(PyObject *self, PyObject *args)
+{
+  PyArrayObject* aa;
+  PyArrayObject* bb;
+  PyArrayObject* cc;
+  if (!PyArg_ParseTuple(args, "OOO", &aa, &bb, &cc)) 
+    return NULL;
+  const double* const a = DOUBLEP(aa);
+  const double* const b = DOUBLEP(bb);
+  double* const c = DOUBLEP(cc);
+  int n = 1;
+  for (int d = 0; d < aa->nd; d++)
+    n *= aa->dimensions[d];
+  for (int i = 0; i < n; i++)
+    {
+      c[i] += a[i] * b[i];
+    }
+  Py_RETURN_NONE;
+}
+
+/* vdot
+ * 
+ * If a and b are input vectors,
+ * a[0]*b[0] + a[1]*b[1] + a[2]*b[2] + ...
+ * is returned.
+ */
+PyObject* utilities_vdot(PyObject *self, PyObject *args)
+{
+  PyArrayObject* aa;
+  PyArrayObject* bb;
+  if (!PyArg_ParseTuple(args, "OO", &aa, &bb)) 
+    return NULL;
+  const double* const a = DOUBLEP(aa);
+  const double* const b = DOUBLEP(bb);
+  double sum = 0.0;
+  int n = 1;
+  for (int d = 0; d < aa->nd; d++)
+    n *= aa->dimensions[d];
+  for (int i = 0; i < n; i++)
+    {
+      sum += a[i] * b[i];
+    }
+  return PyFloat_FromDouble(sum);
+}
+
+/* vdot
+ * 
+ * If a is the input vector,
+ * a[0]*a[0] + a[1]*a[1] + a[2]*a[2] + ...
+ * is returned.
+ */
+PyObject* utilities_vdot_self(PyObject *self, PyObject *args)
+{
+  PyArrayObject* aa;
+  if (!PyArg_ParseTuple(args, "O", &aa)) 
+    return NULL;
+  const double* const a = DOUBLEP(aa);
+  double sum = 0.0;
+  int n = 1;
+  for (int d = 0; d < aa->nd; d++)
+    n *= aa->dimensions[d];
+  for (int i = 0; i < n; i++)
+    {
+      sum += a[i] * a[i];
+    }
+  return PyFloat_FromDouble(sum);
+}
+
 PyObject* errorfunction(PyObject *self, PyObject *args)
 {
   double x;

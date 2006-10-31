@@ -197,7 +197,7 @@ class KPoint:
         """Add contribution to pseudo electron-density."""
         if self.typecode is num.Float:
             for psit_G, f in zip(self.psit_nG, self.f_n):
-                nt_G += f * psit_G**2
+                axpy(f, psit_G**2, nt_G)  # nt_G += f * psit_G**2
         else:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 nt_G += f * (psit_G * num.conjugate(psit_G)).real

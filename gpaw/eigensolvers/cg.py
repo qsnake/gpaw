@@ -54,7 +54,7 @@ class CG(Eigensolver):
         self.timer.start('Residuals')        
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
-            R_G -= eps * psit_G
+            axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
         for nucleus in hamiltonian.pt_nuclei:
             nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)

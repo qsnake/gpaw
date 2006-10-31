@@ -12,6 +12,11 @@ import _gpaw
 from gpaw import debug
 
 
+elementwise_multiply_add = _gpaw.elementwise_multiply_add
+utilities_vdot = _gpaw.utilities_vdot
+utilities_vdot_self = _gpaw.utilities_vdot_self
+
+
 # Error function:
 erf = _gpaw.erf
 

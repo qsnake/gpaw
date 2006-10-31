@@ -5,6 +5,7 @@ from multiarray import innerproduct as inner # avoid the dotblas version!
 
 import LinearAlgebra as linalg
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
+from gpaw.utilities import elementwise_multiply_add, utilities_vdot, utilities_vdot_self
 from gpaw.utilities.complex import cc, real
 
 from gpaw.eigensolvers import Eigensolver
@@ -43,7 +44,7 @@ class RMM_DIIS(Eigensolver):
         R_nG = self.work1
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
-            R_G -= eps * psit_G
+            axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
         for nucleus in hamiltonian.pt_nuclei:
             nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
@@ -66,16 +67,23 @@ class RMM_DIIS(Eigensolver):
 
             hamiltonian.kin.apply(pR_G, dR_G, kpt.phase_cd)
                 
-            dR_G += vt_G * pR_G
-
-            dR_G -= kpt.eps_n[n] * pR_G
+            if (dR_G.typecode() == num.Float):
+                elementwise_multiply_add(vt_G, pR_G, dR_G)
+            else:
+                dR_G += vt_G * pR_G
+            
+            axpy(-kpt.eps_n[n], pR_G, dR_G)  # dR_G -= kpt.eps_n[n] * pR_G
 
             for nucleus in hamiltonian.pt_nuclei:
                 nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
                                          kpt.s, kpt.k)
             
-            RdR = self.comm.sum(real(num.vdot(R_G, dR_G)))
-            dRdR = self.comm.sum(real(num.vdot(dR_G, dR_G)))
+            if (dR_G.typecode() == num.Float):
+                RdR = self.comm.sum(utilities_vdot(R_G, dR_G))
+                dRdR = self.comm.sum(utilities_vdot_self(dR_G))
+            else:
+                RdR = self.comm.sum(real(num.vdot(R_G, dR_G)))
+                dRdR = self.comm.sum(real(num.vdot(dR_G, dR_G)))
             lam = -RdR / dRdR
 
             R_G *= 2.0 * lam
