@@ -161,7 +161,7 @@ class SelfConsistentExx:
                     nucleus.vxx_sni[s, n] += num.dot(
                         unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
                         nucleus.P_uni[u, m])
-#        print 'Exchange energy:', self.Exx
+        print 'Exchange energy:', self.Exx
 
     def adjust_hamitonian_matrix(self, H_nn, P_ni, nucleus, s):
         """Called from kpoint.diagonalize"""
@@ -188,8 +188,9 @@ class PerturbativeExx:
         self.n_g = paw.finegd.new_array()
 
         # load single exchange calculator
-        self.exx_single = Coulomb(paw.finegd,
-                                  paw.hamiltonian.poisson).get_single_exchange
+        self.coulomb = Coulomb(paw.finegd,
+                                  paw.hamiltonian.poisson).coulomb
+                 ## ---------->>> get_single_exchange <<<------
 
         # load interpolator
         self.interpolate = paw.density.interpolate
@@ -289,7 +290,7 @@ class PerturbativeExx:
                     Z = float(n == m)
 
                     # add the nm contribution to exchange energy
-                    Exxt += fnm * DC * self.exx_single(self.n_g, Z=Z,
+                    Exxt += -.5 * fnm * DC * self.coulomb(self.n_g, Z1=Z,
                                                        method=self.method)
         return Exxt
     
@@ -308,7 +309,7 @@ class PerturbativeExx:
                 print 'to correct error'
                 break
 
-            for kpt in paw.kpt_u:
+            for kpt in self.paw.kpt_u:
                 # Add core-core contribution:
                 s = kpt.s
                 if s == 0:
@@ -325,11 +326,6 @@ class PerturbativeExx:
                 ExxVC += - num.dot(D_p, nucleus.setup.X_p)
 
             """Determine the atomic corrections to the val-val interaction:
-                       -- 
-                vv,a   \     a        a              a
-               E     = /    D      * C            * D
-                xx     --    i1,i2    i1,i3,i2,i4    i3,i4
-                    i1,i2,i3,i4
                  
                        -- 
                 vv,a   \     a        a              a
@@ -343,15 +339,15 @@ class PerturbativeExx:
                 xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
                     n,m,i1,i2,i3,i4
             """
-            for u, kpt in enumerate(paw.kpt_u):
+            for u, kpt in enumerate(self.paw.kpt_u):
                 #spin = paw.myspins[u] # global spin index XXX
-                for n in range(paw.nbands):
-                    for m in range(n, paw.nbands):
+                for n in range(self.paw.nbands):
+                    for m in range(n, self.paw.nbands):
                         # determine double count factor:
                         DC = 2 - (n == m)
 
                         # calculate joint occupation number
-                        fnm = (kpt.f_n[n] * kpt.f_n[m]) * paw.nspins / 2.
+                        fnm = (kpt.f_n[n] * kpt.f_n[m]) * self.paw.nspins / 2.
 
                         # generate density matrix
                         Pm_i = nucleus.P_uni[u, m] # spin ??

@@ -214,7 +214,7 @@ static PyObject * localized_functions_add_density2(LocalizedFunctionsObject*
 						  self,
 						  PyObject *args)
 {
-  PyArrayObject* dd; //density array to be added to
+  PyArrayObject* dd; // density array to be added to
   PyArrayObject* oo; // density matrix
   if (!PyArg_ParseTuple(args, "OO", &dd, &oo))
     return NULL;
