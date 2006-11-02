@@ -16,15 +16,16 @@ from gpaw.eigensolvers import Eigensolver
 class CG(Eigensolver):
     """Conjugate gardient eigensolver
 
-       It is expected that the trial wave functions are orthonormal
-       and the integrals of projector functions and wave functions
-        ``nucleus.P_uni`` are already calculated
+    It is expected that the trial wave functions are orthonormal
+    and the integrals of projector functions and wave functions
+    ``nucleus.P_uni`` are already calculated.
 
-       Solution steps are:
+    Solution steps are:
 
-       * Subspace diagonalization
-       * Calculate all residuals
-       * Conjugate gradient steps"""
+    * Subspace diagonalization
+    * Calculate all residuals
+    * Conjugate gradient steps
+    """
 
     def __init__(self, exx,  timer, kpt_comm, gd, kin, typecode, nbands):
 
