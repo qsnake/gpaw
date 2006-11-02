@@ -82,7 +82,9 @@ class Eigensolver:
         work += kpt.psit_nG * hamiltonian.vt_sG[kpt.s]
         if self.exx is not None:
             self.exx.adjust_hamiltonian(psit_nG, work, kpt.nbands,
-                                        kpt.f_n, kpt.u, kpt.s)
+                                        kpt.f_n, kpt.u, kpt.s,
+                                        hamiltonian.poisson,
+                                        hamiltonian.restrict)
         r2k(0.5 * self.gd.dv, psit_nG, work, 0.0, H_nn)
         # XXX Do EXX here XXX
         for nucleus in hamiltonian.my_nuclei:

@@ -352,7 +352,7 @@ class Nucleus:
             Exc = s.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
             if s.xcname == 'EXX': # XXX EXX hack
                 Exc = s.ExxC - num.dot(D_p, (s.X_p + num.dot(s.M_pp, D_p)))
-                self.H_sp -= s.X_p - 2.0 * num.dot(s.M_pp, D_p)
+                self.H_sp -= s.X_p + 2.0 * num.dot(s.M_pp, D_p)
 
             Ekin = num.dot(s.K_p, D_p) + s.Kc
 

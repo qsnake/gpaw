@@ -43,7 +43,7 @@ class Hamiltonian:
     
     def __init__(self, gd, finegd, xcfunc, nspins, typecode, stencils, timer,
                  my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
-                 setups):
+                 setups, exx):
         """Create the Hamiltonian."""
 
         self.nspins = nspins
@@ -54,6 +54,7 @@ class Hamiltonian:
         self.ghat_nuclei = ghat_nuclei
         self.nuclei = nuclei
         self.timer = timer
+        self.exx = exx
 
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
@@ -87,13 +88,6 @@ class Hamiltonian:
    
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(setups)
-
-        self.exx = None
-##         # exact-exchange functional object:
-##         self.exx = get_exx(xcfunc.xcname, nuclei[0].setup.softgauss,
-##                            typecode, gd, finegd, self.poisson,
-##                            self.interpolate, self.restrict,
-##                            self.my_nuclei, self.ghat_nuclei, self.nspins)
 
         self.npoisson = 0
 
@@ -146,7 +140,7 @@ class Hamiltonian:
 
         # Exact-exchange correction
         if self.exx is not None:
-            Exx = self.kpt_comm.sum(self.exx.Exx)
+            Exx = self.exx.Exx
             Exc += Exx
             Ekin -= Exx
             

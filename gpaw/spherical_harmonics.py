@@ -31,11 +31,11 @@ Gaunt coefficients::
 """
 
 
-from math import pi
+from math import pi, sqrt
 
 from gpaw import debug
 
-# Computer generated table - do not touch!
+# Computer generated tables - do not touch!
 YL = [# s:
       [(1, (0, 0, 0))],
       # p:  
@@ -109,6 +109,16 @@ YL = [# s:
       [(-15, (4, 2, 0)), (-1, (0, 6, 0)), (1, (6, 0, 0)), (15, (2, 4, 0))]
      ]
 
+norms = ['sqrt(1./4/pi)', 'sqrt(3./4/pi)', 'sqrt(3./4/pi)', 'sqrt(3./4/pi)', 'sqrt(15./4/pi)', 'sqrt(15./4/pi)', 'sqrt(5./16/pi)', 'sqrt(15./4/pi)', 'sqrt(15./16/pi)', 'sqrt(35./32/pi)', 'sqrt(105./4/pi)', 'sqrt(21./32/pi)', 'sqrt(7./16/pi)', 'sqrt(21./32/pi)', 'sqrt(105./16/pi)', 'sqrt(35./32/pi)', 'sqrt(315./16/pi)', 'sqrt(315./32/pi)', 'sqrt(45./16/pi)', 'sqrt(45./32/pi)', 'sqrt(9./256/pi)', 'sqrt(45./32/pi)', 'sqrt(45./64/pi)', 'sqrt(315./32/pi)', 'sqrt(315./256/pi)', 'sqrt(693./512/pi)', 'sqrt(3465./16/pi)', 'sqrt(385./512/pi)', 'sqrt(1155./16/pi)', 'sqrt(165./256/pi)', 'sqrt(11./256/pi)', 'sqrt(165./256/pi)', 'sqrt(1155./64/pi)', 'sqrt(385./512/pi)', 'sqrt(3465./256/pi)', 'sqrt(693./512/pi)', 'sqrt(3003./512/pi)', 'sqrt(9009./512/pi)', 'sqrt(819./64/pi)', 'sqrt(1365./512/pi)', 'sqrt(1365./512/pi)', 'sqrt(273./256/pi)', 'sqrt(13./1024/pi)', 'sqrt(273./256/pi)', 'sqrt(1365./2048/pi)', 'sqrt(1365./512/pi)', 'sqrt(819./1024/pi)', 'sqrt(9009./512/pi)', 'sqrt(3003./2048/pi)']
+# End of computer generated code
+
+Lmax = len(norms)
+
+# Normalize
+for L in range(Lmax):
+    YL[L] = [(eval(norms[L]) * c, n) for c, n in YL[L]]
+
+# Only used for debug, and Gaunt coeff. generation
 g = [1.0]
 for l in range(9):
     g.append(g[-1] * (l + 0.5))
@@ -128,17 +138,14 @@ def yLL(L1, L2):
             s += c1 * c2 * gam(n1[0] + n2[0], n1[1] + n2[1], n1[2] + n2[2])
     return s
 
-for L in range(25):
-    s = 1.0 / yLL(L, L)**0.5
-    YL[L] = [(s * c, n) for c, n in YL[L]]
-
 if debug:
-    for L1 in range(25):
-        for L2 in range(25):
+    for L1 in range(Lmax):
+        for L2 in range(Lmax):
             r = 0.0
             if L1 == L2:
                 r = 1.0
             assert abs(yLL(L1, L2) - r) < 1e-14
+# End of debug part
 
 def Y(L, x, y, z):
     result = 0.0

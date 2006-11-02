@@ -3,7 +3,7 @@ from Numeric import pi
 from gpaw.utilities.complex import real
 from gpaw.coulomb import Coulomb
 from gpaw.utilities.tools import pack, pack2, core_states
-from gpaw.gaunt import gaunt
+from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, unpack
 
 class XCHandler:
@@ -60,8 +60,8 @@ class XXFunctional:
     def calculate_spinpolarized(self, *args):
         return 0.0    
 
-def get_exx(xcname, softgauss, typecode, gd, finegd, poisson,
-            interpolate, restrict, my_nuclei, ghat_nuclei, nspins):
+def get_exx(xcname, softgauss, typecode, gd, finegd, interpolate,
+            my_nuclei, ghat_nuclei, nspins):
     if xcname != 'EXX':
         return None
     
@@ -79,23 +79,19 @@ def get_exx(xcname, softgauss, typecode, gd, finegd, poisson,
                   'Please set keyword softgauss=False'
             raise NotImplementedError(msg)
 
-        return SelfConsistentExx(gd, finegd, poisson, interpolate, restrict,
+        return SelfConsistentExx(gd, finegd, interpolate,
                                  my_nuclei, ghat_nuclei, nspins)
 
 class SelfConsistentExx:
     """Class offering methods for selfconsistent evaluation of the
        exchange energy of a gridPAW calculation.
     """
-    def __init__(self, gd, finegd, poisson, interpolate, restrict,
+    def __init__(self, gd, finegd, interpolate,
                  my_nuclei, ghat_nuclei, nspins):
-##         self.gd = gd
-##         self.finegd = finegd
-        self.poisson = poisson
-        self.interpolate = interpolate
-        self.restrict = restrict
         self.my_nuclei = my_nuclei
         self.ghat_nuclei = ghat_nuclei
         self.nspins = nspins
+        self.interpolate = interpolate
 
         # allocate space for matrices
         self.n_G = gd.new_array()
@@ -106,10 +102,11 @@ class SelfConsistentExx:
         self.integrate = finegd.integrate
         self.Exx = 0.0
 
-    def adjust_hamiltonian(self, psit_nG, Htpsit_nG, nbands, f_n, u, s):
+    def adjust_hamiltonian(self, psit_nG, Htpsit_nG, nbands,
+                           f_n, u, s, poisson, restrict):
         """                  ~  ~
            Adjust values of  H psi due to inclusion of exact exchange.
-           Called from kpoint.diagonalize.
+           Called from kpoint.hamilton.diagonalize.
         """
         if s == 0:
             self.Exx = 0.0
@@ -142,11 +139,12 @@ class SelfConsistentExx:
                 Z = float(n == m)
 
                 # determine exchange potential
-                self.poisson.solve(self.v_g, self.n_g, charge=Z)
+                poisson.solve(self.v_g, -self.n_g, charge=-Z)
 
                 # update hamiltonian
-                self.restrict(self.v_g, self.v_G)
-                Htpsit_nG[n] -= f_n[m] / (self.nspins % 2 + 1) *\
+                restrict(self.v_g, self.v_G)
+                
+                Htpsit_nG[n] += f_n[m] / (self.nspins % 2 + 1) *\
                                 self.v_G * psit_nG[m]
 
                 # add the nm contribution to exchange energy
@@ -157,7 +155,7 @@ class SelfConsistentExx:
                 # the atomic hamiltonian
                 for nucleus in self.my_nuclei:
                     v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
-                    nucleus.ghat_L.integrate(-self.v_g, v_L)
+                    nucleus.ghat_L.integrate(self.v_g, v_L)
                     nucleus.vxx_sni[s, n] += num.dot(
                         unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
                         nucleus.P_uni[u, m])
@@ -165,6 +163,8 @@ class SelfConsistentExx:
 
     def adjust_hamitonian_matrix(self, H_nn, P_ni, nucleus, s):
         """Called from kpoint.diagonalize"""
+        print H_nn
+        print num.dot(P_ni, num.transpose(nucleus.vxx_sni[s]))
         H_nn += num.dot(P_ni, num.transpose(nucleus.vxx_sni[s]))
 
     def adjust_residual(self, R_nG):
@@ -367,8 +367,9 @@ def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
        instantiated AllElectron object 'atom'
     """
-    # maximum angular momentum
-    Lmax = 2 * max(atom.l_j) + 1
+
+    # make gaunt coeff. list
+    gaunt = make_gaunt(lmax=max(atom.l_j))
 
     # number of valence, Nj, and core, Njcore, orbitals
     Nj     = len(atom.n_j)
@@ -430,9 +431,8 @@ def atomic_exact_exchange(atom, type = 'all'):
 
 def constructX(gen):
     """Construct the X_p^a matrix for the given atom"""
-
-    # maximum angular momentum
-    Lmax = 2 * max(gen.l_j + [gen.lmax]) + 1
+    # make gaunt coeff. list
+    gaunt = make_gaunt(lmax=max(gen.l_j))
 
     uv_j = gen.vu_j    # soft valence states * r:
     lv_j = gen.vl_j    # their repective l quantum numbers

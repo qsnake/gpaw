@@ -217,18 +217,24 @@ class Paw:
         self.my_nuclei = []
         self.pt_nuclei = []
         self.ghat_nuclei = []
-        
+
         self.density = Density(self.gd, self.finegd, charge, nspins,
                                stencils, mix, old, timer, fixdensity, kpt_comm,
                                kT,
                                self.my_nuclei, self.ghat_nuclei, self.nuclei,
                                nvalence)
         
+        # exact-exchange functional object:
+        self.exx = get_exx(xcfunc.xcname, nuclei[0].setup.softgauss,
+                           typecode, self.gd, self.finegd,
+                           self.density.interpolate,
+                           self.my_nuclei, self.ghat_nuclei, self.nspins)
+
         self.hamiltonian = Hamiltonian(self.gd, self.finegd, xcfunc,
                                        nspins, typecode, stencils, timer,
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
-                                       self.nuclei, setups)
+                                       self.nuclei, setups, self.exx)
 
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
@@ -250,11 +256,11 @@ class Paw:
         output.print_info(self)
 
         if eigensolver == 'rmm-diis':
-            self.eigensolver = RMM_DIIS(None, self.timer, kpt_comm,
+            self.eigensolver = RMM_DIIS(self.exx, self.timer, kpt_comm,
                                         self.gd, self.hamiltonian.kin,
                                         typecode, nbands)
         elif eigensolver == "cg":
-            self.eigensolver = CG(None, self.timer, kpt_comm, 
+            self.eigensolver = CG(self.exx, self.timer, kpt_comm, 
                                   self.gd, self.hamiltonian.kin,
                                   typecode, nbands)
         else:

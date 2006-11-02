@@ -606,11 +606,13 @@ def construct_python_code2(lmax=3):
     YL = []
     norm = 1.
     xyzs = {}
+    norms = []
     for L in range((lmax+1)**2):
         l, m = L_to_lm(L)
         norm, xyzs = Y_collect(l, m)
+        norms.append(str(norm))
         YL.append(zip(xyzs.values(), xyzs.keys()))
-    return YL
+    return YL, norms
     
 def plot_spherical(l, m):
     # for L in range(25): plot_spherical(*L_to_lm(L))
@@ -672,10 +674,10 @@ def Y(l, m):
             del p2[n]
     return p2
 
-for l in range(7):
-    for m in range(-l, l + 1):
-        print '%s,' % [(c, n) for n, c in Y(l, m).items()]
+## for l in range(7):
+##     for m in range(-l, l + 1):
+##         print '%s,' % [(c, n) for n, c in Y(l, m).items()]
 
-print Y(3, -1)
-print Y_collect(6, -6)
-construct_c_code(lmax=4)
+## print Y(3, -1)
+## print Y_collect(6, -6)
+## construct_c_code(lmax=4)
