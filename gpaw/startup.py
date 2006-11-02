@@ -21,7 +21,7 @@ def create_paw_object(out, a0, Ha,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, old, fixdensity,
                       hund, lmax, tolerance, maxiter,
-                      convergeall, eigensolver,
+                      convergeall, eigensolver, relax,
                       parsize_c,
                       restart_file):
 
@@ -154,8 +154,8 @@ def create_paw_object(out, a0, Ha,
               nvalence, charge, nbands, nspins,
               typecode, bzk_kc, ibzk_kc, weights_k,
               stencils, usesymm, mix, old, fixdensity, maxiter,
-              convergeall, eigensolver, pos_ac / a0, timer, kT / Ha, tolerance,
-              kpt_comm, restart_file, hund, magmom_a,
+              convergeall, eigensolver, relax, pos_ac / a0, timer, kT / Ha,
+              tolerance, kpt_comm, restart_file, hund, magmom_a,
               out)
 
     return paw

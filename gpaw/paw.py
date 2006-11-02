@@ -131,8 +131,8 @@ class Paw:
                  nvalence, charge, nbands, nspins,
                  typecode, bzk_kc, ibzk_kc, weights_k,
                  stencils, usesymm, mix, old, fixdensity, maxiter,
-                 convergeall, eigensolver, pos_ac, timer, kT, tolerance,
-                 kpt_comm, restart_file, hund, magmom_a,
+                 convergeall, eigensolver, relax, pos_ac, timer, kT,
+                 tolerance, kpt_comm, restart_file, hund, magmom_a,
                  out):
         """Create the PAW-object.
         
@@ -231,7 +231,7 @@ class Paw:
                            self.my_nuclei, self.ghat_nuclei, self.nspins)
 
         self.hamiltonian = Hamiltonian(self.gd, self.finegd, xcfunc,
-                                       nspins, typecode, stencils, timer,
+                                       nspins, typecode, stencils, relax, timer,
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
                                        self.nuclei, setups, self.exx)

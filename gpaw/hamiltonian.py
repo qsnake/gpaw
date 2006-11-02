@@ -41,8 +41,8 @@ class Hamiltonian:
      ========== =========================================
     """
     
-    def __init__(self, gd, finegd, xcfunc, nspins, typecode, stencils, timer,
-                 my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
+    def __init__(self, gd, finegd, xcfunc, nspins, typecode, stencils, relax,
+                 timer, my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
                  setups, exx):
         """Create the Hamiltonian."""
 
@@ -84,7 +84,7 @@ class Hamiltonian:
         self.poisson_stencil = nn = stencils[1]
 
         # Solver for the Poisson equation:
-        self.poisson = PoissonSolver(finegd, nn)
+        self.poisson = PoissonSolver(finegd, nn, relax)
    
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(setups)

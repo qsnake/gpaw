@@ -58,6 +58,7 @@ class Calculator:
                   'stencils': (2, 'M', 3),
                   'convergeall': False,
                   'eigensolver': "rmm-diis",
+                  'relax': 'GS',
                   }
 
     def __init__(self, **kwargs):
@@ -248,6 +249,7 @@ class Calculator:
                 self.maxiter,
                 self.convergeall,
                 self.eigensolver,
+                self.relax,
                 self.parsize,
                 self.restart_file,
                 ]

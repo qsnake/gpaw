@@ -12,7 +12,7 @@ from gpaw import ConvergenceError
 
 
 class PoissonSolver:
-    def __init__(self, gd, nn, load_gauss=False):
+    def __init__(self, gd, nn, relax, load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         self.dv = gd.dv
@@ -24,6 +24,16 @@ class PoissonSolver:
             self.operators = [Laplace(gd, scale, nn)]
             self.B = None
 
+        # Relaxation method
+        if relax == 'GS':
+            # Gauss-Seidel
+            self.relax_method = 1
+        elif relax == 'J':
+            # Jacobi
+            self.relax_method = 2
+        else:
+            raise NotImplementedError('Relaxation method %s' % relax)
+
         self.rhos = [gd.new_array()]
         self.phis = [None]
         self.residuals = [gd.new_array()]
@@ -33,7 +43,11 @@ class PoissonSolver:
         level = 0
         self.presmooths = [2]
         self.postsmooths = [1]
+        
+        # Weights for the relaxation,
+        # only used if 'J' (Jacobi) is chosen as method
         self.weights = [2.0/3.0]
+        
         while level < 4:
             try:
                 gd = gd.coarsen()
@@ -135,7 +149,7 @@ class PoissonSolver:
         residual = self.residuals[level]
 
         if level < self.levels:
-            self.operators[level].relax(self.phis[level],self.rhos[level],
+            self.operators[level].relax(self.relax_method,self.phis[level],self.rhos[level],
                                         self.presmooths[level],self.weights[level])
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
@@ -147,7 +161,7 @@ class PoissonSolver:
                                                 residual)
             self.phis[level] -= residual
 
-        self.operators[level].relax(self.phis[level],self.rhos[level],
+        self.operators[level].relax(self.relax_method,self.phis[level],self.rhos[level],
                                     self.postsmooths[level],self.weights[level])
         if level == 0:
             self.operators[level].apply(self.phis[level], residual)

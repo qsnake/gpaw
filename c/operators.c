@@ -30,11 +30,12 @@ static void Operator_dealloc(OperatorObject *self)
 static PyObject * Operator_relax(OperatorObject *self,
                                  PyObject *args)
 {
+  int relax_method;
   PyArrayObject* func;
   PyArrayObject* source;
   double w = 1.0;
   int nrelax;
-  if (!PyArg_ParseTuple(args, "OOi|d", &func, &source, &nrelax, &w))
+  if (!PyArg_ParseTuple(args, "iOOi|d", &relax_method, &func, &source, &nrelax, &w))
     return NULL;
 
   const boundary_conditions* bc = self->bc;
@@ -57,7 +58,7 @@ static PyObject * Operator_relax(OperatorObject *self,
         bc_unpack2(bc, self->buf, i,
                    self->recvreq, self->sendreq, self->recvbuf);
       }
-    bmgs_relax(&self->stencil, self->buf, fun, src, w);
+    bmgs_relax(relax_method, &self->stencil, self->buf, fun, src, w, bc->zero);
     for (int i = 0; i < 3; i++) {
       if (bc->zero[i])
 	{

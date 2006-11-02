@@ -72,8 +72,8 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
 		  const double h[3],
 		  const double* f, const double* g, double* a);
 void bmgs_fd(const bmgsstencil* s, const double* a, double* b);
-void bmgs_relax(const bmgsstencil* s, double* a, double* b, 
-		const double* c, const double d);
+void bmgs_relax(const int relax_method, const bmgsstencil* s, double* a, double* b, 
+		const double* src, const double w, const bool* zero);
 void bmgs_cut(const double* a, const int n[3], const int c[3],
 	      double* b, const int m[3]);
 void bmgs_zero(double* a, const int n[3], const int c[3],
