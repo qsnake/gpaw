@@ -202,8 +202,10 @@ class KPoint:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 nt_G += f * (psit_G * num.conjugate(psit_G)).real
                 
-    def add_to_kinetic_electron_density(self, taut_G, ddr):
-        """Add contribution to pseudo kinetic electron density."""
+    def add_to_kinetic_energy_density(self, taut_G, ddr):
+        """Add contribution to pseudo kinetic energy density.
+        The derivative object ddr must be given.
+        """
         for psit_G, f in zip(self.psit_nG, self.f_n):
             d_G = num.zeros(psit_G.shape, num.Float)
             for c in range(3):
