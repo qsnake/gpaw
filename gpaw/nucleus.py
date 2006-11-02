@@ -259,7 +259,7 @@ class Nucleus:
         ni = self.get_number_of_partial_waves()
         niao = self.get_number_of_atomic_orbitals()
         f_si = num.zeros((ns, niao), num.Float)
-        
+
         i = 0
         for n, l, f in zip(self.setup.n_j, self.setup.l_j, self.setup.f_j):
             degeneracy = 2 * l + 1
@@ -278,10 +278,10 @@ class Nucleus:
                 if ns == 1:
                     f_si[0, i:i + degeneracy] = 1.0 * f / degeneracy
                 else:
-                    if f == 2 * degeneracy:
-                        mag = 0.0
-                    else:
-                        mag = min(magmom, degeneracy, f)
+                    maxmom = min(f, 2 * degeneracy - f)
+                    mag = magmom
+                    if abs(mag) > maxmom:
+                        mag = cmp(mag, 0) * maxmom
                     f_si[0, i:i + degeneracy] = 0.5 * (f + mag) / degeneracy
                     f_si[1, i:i + degeneracy] = 0.5 * (f - mag) / degeneracy
                     magmom -= mag
