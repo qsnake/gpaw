@@ -160,3 +160,8 @@ class Hamiltonian:
         Exc = comm.sum(Exc)
         
         return Ekin, Epot, Ebar, Exc
+
+    def set_xc(self,xcfunc):
+        """Set a new xc functional type"""
+        self.xc = XCOperator(xcfunc, self.finegd, self.nspins)
+        
