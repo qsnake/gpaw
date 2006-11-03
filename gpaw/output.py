@@ -8,13 +8,13 @@ from ASE.ChemicalElements.symbol import symbols
 def print_info(paw):
     out = paw.out
     print >> out, 'Reference energy:', paw.Eref * paw.Ha
-    
-    if paw.wf.kpt_comm.size > 1:
+
+    if paw.kpt_comm.size > 1:
         if paw.nspins == 2:
-            print >> out, ('Parallelization over k-points and spin with %d processors' % paw.wf.kpt_comm.size)
+            print >> out, ('Parallelization over k-points and spin with %d processors' % paw.kpt_comm.size)
         else:
             print >> out, ('Parallelization over k-points with %d processors'
-                           % paw.wf.kpt_comm.size)
+                           % paw.kpt_comm.size)
 
     domain = paw.domain
     if domain.comm.size > 1:
