@@ -183,6 +183,17 @@ def get_system_config(define_macros, undef_macros,
             else:
                 libraries += ['blas', 'lapack']
                 msg +=  ['* Using standard lapack']
+                
+            # add libg2c if available
+            g2c=False
+            for dir in ['/usr/lib', 'usr/local/lib']:
+                if glob(join(dir, 'libg2c.so')) != []:
+                    g2c=True
+                    break
+                if glob(join(dir, 'libg2c.a')) != []:
+                    g2c=True
+                    break
+            if g2c: libraries += ['g2c']
 
     elif sys.platform == 'darwin':
 
