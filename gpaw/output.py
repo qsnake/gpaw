@@ -9,6 +9,13 @@ def print_info(paw):
     out = paw.out
     print >> out, 'Reference energy:', paw.Eref * paw.Ha
     
+    if paw.wf.kpt_comm.size > 1:
+        if paw.nspins == 2:
+            print >> out, ('Parallelization over k-points and spin with %d processors' % paw.wf.kpt_comm.size)
+        else:
+            print >> out, ('Parallelization over k-points with %d processors'
+                           % paw.wf.kpt_comm.size)
+
     domain = paw.domain
     if domain.comm.size > 1:
         print >> out, ('Using domain decomposition: %d x %d x %d' %
@@ -141,7 +148,6 @@ def plot_atoms(paw):
                paw.gd.N_c[c],
                paw.a0 * paw.gd.h_c[c])
     print >> out
-    
 
 def plot(positions, numbers, cell):
     """Ascii-art plot of the atoms.
