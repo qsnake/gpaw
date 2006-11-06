@@ -459,21 +459,6 @@ class Paw:
             # Energy extrapolated to zero Kelvin:
             return self.Ha * (self.Etot + 0.5 * self.S)
 
-    def get_total_energy_non_self_consistent(self,xcfunc):
-        """Re-calculate the total energy non self consistent"""
-        self.hamiltonian.set_xc(xcfunc)
-        self.Ekin0, self.Epot, self.Ebar, self.Exc = \
-                    self.hamiltonian.update(self.density)
-        # Calculate occupation numbers:
-        self.nfermi, self.magmom, self.S, Eband = \
-                     self.occupation.calculate(self.kpt_u)
-        
-        self.Ekin = self.Ekin0 + Eband
-        self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
-                
-        return self.Ha * self.Etot
-        
-
     def get_cartesian_forces(self):
         """Return the atomic forces."""
         c = self.Ha / self.a0
