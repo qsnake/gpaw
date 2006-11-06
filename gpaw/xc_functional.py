@@ -15,7 +15,7 @@ class XCFunctional:
         self.hybrid = 0
         self.parameters = parameters
         self.scalarrel = scalarrel
-        self.mgga = True
+        self.mgga = False
         
         if xcname == 'LDA':
             self.gga = False
@@ -46,9 +46,7 @@ class XCFunctional:
             elif xcname == 'revPBEx':
                 code = 8
             elif xcname == 'TPSS':
-                # note: We might need two code numbers for non-selfconsistent
-                #       and selfconsistent TPSS
-                code = 10
+                code = 9
                 self.mgga = True
             else:
                 raise TypeError('Unknown exchange-correlation functional')
@@ -63,7 +61,7 @@ class XCFunctional:
         elif code == 6:
             self.xc = XXFunctional()
         elif code == 10:
-            self.xc = 'TPSS'
+            self.xc = _gpaw.MGGAFunctional(code)
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel)
 
@@ -259,4 +257,3 @@ class XCOperator:
             return num.dot(self.e_g, self.dv_g)
         else:
             return num.sum(self.e_g.flat) * self.dv
-
