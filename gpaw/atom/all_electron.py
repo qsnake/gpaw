@@ -15,7 +15,7 @@ from ASE.ChemicalElements.name import names
 
 from gpaw.atom.configurations import configurations
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.xc_functional import XCOperator, XCFunctional
+from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree
 
 # fine-structure constant
@@ -109,8 +109,8 @@ class AllElectron:
         # Electron density:
         self.n = num.zeros(N, num.Float)
 
-        self.xc = XCOperator(XCFunctional(self.xcname, self.scalarrel),
-                             self.rgd)
+        self.xc = XCRadialGrid(XCFunctional(self.xcname, self.scalarrel),
+                               self.rgd)
 
         n_j = self.n_j
         l_j = self.l_j

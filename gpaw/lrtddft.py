@@ -5,7 +5,7 @@ from gpaw import debug
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.excitation import Excitation,ExcitationList,KSSingles
 from gpaw.utilities.lapack import diagonalize
-from gpaw.xc_functional import XCOperator, XCFunctional
+from gpaw.xc_functional import XC3DGrid, XCFunctional
 
 """This module defines a linear response TDDFT-class."""
 
@@ -37,12 +37,12 @@ class OmegaMatrix:
         self.calculator = calculator
         self.kss = kss
         if xc is not None:
-            self.xc = XCOperator(xc,self.calculator.paw.finegd,
-                                 self.kss.npspins)
+            self.xc = XC3DGrid(xc,self.calculator.paw.finegd,
+                               self.kss.npspins)
             # check derivativeLevel
             if derivativeLevel is None:
                 derivativeLevel=\
-                    self.xc.get_xc_functional().get_max_derivative_level()
+                    self.xc.get_functional().get_max_derivative_level()
             self.derivativeLevel=derivativeLevel
         else:
             self.xc = None
@@ -62,8 +62,8 @@ class OmegaMatrix:
 ##         print '>> kss=',self.kss
 ##         print '>> self.xc=',self.xc
 ##         print '>> self.numscale=',self.numscale
-        xcf=self.xc.get_xc_functional()
-        print '<OmegaMatrix::get_full> xc=',xcf.get_xc_name()
+        xcf=self.xc.get_functional()
+        print '<OmegaMatrix::get_full> xc=',xcf.get_name()
         print '<OmegaMatrix::get_full> derivative Level=',self.derivativeLevel
         print '<OmegaMatrix::get_full> numscale=',self.numscale
 

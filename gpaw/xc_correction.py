@@ -99,7 +99,7 @@ class XCCorrection:
         self.rgd = rgd
        
     def calculate_energy_and_derivatives(self, D_sp, H_sp):
-        if self.xc.get_xc_functional().gga:
+        if self.xc.get_functional().gga:
             return self.GGA(D_sp, H_sp)
         E = 0.0
         if len(D_sp) == 1:
@@ -165,7 +165,7 @@ class XCCorrection:
 
     def GGA(self, D_sp, H_sp):
         r_g = self.rgd.r_g
-        xcfunc = self.xc.get_xc_functional()
+        xcfunc = self.xc.get_functional()
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]

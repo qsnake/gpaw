@@ -1,7 +1,7 @@
 from math import pi
 from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
 from gpaw.domain import Domain
-from gpaw.xc_functional import XCOperator
+from gpaw.xc_functional import XC3DGrid, XCRadialGrid
 import Numeric as num
 from gpaw.utilities import equal
 
@@ -10,7 +10,7 @@ for name in ['LDA', 'PBE']:
     r = 0.01 * num.arange(100)
     dr = 0.01 * num.ones(100, num.Float)
     rgd = RadialGridDescriptor(r, dr)
-    xc = XCOperator(name, rgd, nspins=2)
+    xc = XCRadialGrid(name, rgd, nspins=2)
     naa = num.exp(-r**2)
     nb = 0.5 * num.exp(-0.5 * r**2)
     va = num.zeros(100, num.Float)
@@ -28,7 +28,7 @@ for name in ['LDA', 'PBE']:
     N = 20
     a = 1.0
     gd = GridDescriptor(Domain((a, a, a)), (N, N, N))
-    xc = XCOperator(name, gd, nspins=2)
+    xc = XC3DGrid(name, gd, nspins=2)
     naa = 0.02 * num.ones((N, N, N), num.Float)
     nb = 0.03 * num.ones((N, N, N), num.Float)
     naa += 0.01 * num.cos(num.arange(N) * 2 * pi / N)

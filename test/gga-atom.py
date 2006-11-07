@@ -6,7 +6,7 @@ from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions
 from gpaw.spline import Spline
-from gpaw.xc_functional import XCFunctional, XCOperator
+from gpaw.xc_functional import XCFunctional, XC3DGrid
 from gpaw.utilities import pack
 
 
@@ -18,7 +18,7 @@ for name in ['LDA', 'PBE']:
     niAO = s.niAO
     wt0_j = s.phit_j
 
-    rcut = s.xc.rgd.r_g[-1]
+    rcut = s.xc_correction.rgd.r_g[-1]
 
     wt_j = []
     for wt0 in wt0_j:
@@ -64,7 +64,7 @@ for name in ['LDA', 'PBE']:
 
     p = create_localized_functions([s.nct], gd, (0.5, 0.5, 0.5))
     p.add(n_g, num.ones(1, num.Float))
-    xc = XCOperator(xcfunc, gd, nspins=1)
+    xc = XC3DGrid(xcfunc, gd, nspins=1)
     xc.get_energy_and_potential(n_g, v_g)
 
     r2_g = num.sum((num.indices((n, n, n)) - n / 2)**2)
@@ -72,9 +72,10 @@ for name in ['LDA', 'PBE']:
 
     E2 = -num.dot(xc.e_g.flat, dv_g.flat)
 
-    s.xc.n_qg[:] = 0.0
-    s.xc.nc_g[:] = 0.0
-    E1 = s.xc.calculate_energy_and_derivatives([D_p], [H_p]) + s.xc.Exc0
+    s.xc_correction.n_qg[:] = 0.0
+    s.xc_correction.nc_g[:] = 0.0
+    E1 = (s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p]) +
+          s.xc_correction.Exc0)
 
     print name, E1, E2, E1 - E2
     equal(E1, E2, 0.0013)

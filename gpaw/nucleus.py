@@ -349,7 +349,8 @@ class Nucleus:
             dH_p = (s.K_p + s.M_p + s.MB_p + 2.0 * num.dot(s.M_pp, D_p) +
                     num.dot(s.Delta_pL, W_L))
 
-            Exc = s.xc.calculate_energy_and_derivatives(self.D_sp, self.H_sp)
+            Exc = s.xc_correction.calculate_energy_and_derivatives(
+                self.D_sp, self.H_sp)
             if s.xcname == 'EXX': # XXX EXX hack
                 Exc = s.ExxC - num.dot(D_p, (s.X_p + num.dot(s.M_pp, D_p)))
                 self.H_sp -= s.X_p + 2.0 * num.dot(s.M_pp, D_p)

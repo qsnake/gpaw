@@ -83,7 +83,7 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
         w.dimension('nadm', nadm)
 
         # Write various parameters:
-        w['XCFunctional'] = paw.hamiltonian.xc.xc.get_xc_name()
+        w['XCFunctional'] = paw.hamiltonian.xc.xcfunc.get_name()
         w['UseSymmetry'] = paw.usesymm
         w['FermiWidth'] = paw.occupation.kT
         w['Mix'] = paw.density.mixer.beta

@@ -187,7 +187,6 @@ class Density:
                 D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
                                              P_ni * kpt.f_n[:, NewAxis]))
             nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
-
             self.kpt_comm.sum(nucleus.D_sp)
 
         comm = self.comm

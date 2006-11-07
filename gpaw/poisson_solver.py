@@ -12,7 +12,7 @@ from gpaw import ConvergenceError
 
 
 class PoissonSolver:
-    def __init__(self, gd, nn, relax, load_gauss=False):
+    def __init__(self, gd, nn, relax='GS', load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         self.dv = gd.dv
@@ -63,7 +63,7 @@ class PoissonSolver:
             self.postsmooths.append(4)
             self.weights.append(1.0)
             level += 1
-                    
+
         self.levels = level
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
         self.presmooths[level]=8
@@ -149,8 +149,10 @@ class PoissonSolver:
         residual = self.residuals[level]
 
         if level < self.levels:
-            self.operators[level].relax(self.relax_method,self.phis[level],self.rhos[level],
-                                        self.presmooths[level],self.weights[level])
+            self.operators[level].relax(self.relax_method,self.phis[level],
+                                        self.rhos[level],
+                                        self.presmooths[level],
+                                        self.weights[level])
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             self.restrictors[level].apply(residual,

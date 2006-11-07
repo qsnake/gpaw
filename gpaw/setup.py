@@ -14,12 +14,12 @@ from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree
 from gpaw.xc_correction import XCCorrection
-from gpaw.xc_functional import XCOperator
+from gpaw.xc_functional import XCRadialGrid
 
 
 class Setup:
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True):
-        xcname = xcfunc.get_xc_name()
+        xcname = xcfunc.get_name()
         self.symbol = symbol
         self.xcname = xcname
         self.softgauss = softgauss
@@ -267,16 +267,15 @@ class Setup:
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
-        xc = XCOperator(xcfunc, rgd, nspins)
+        xc = XCRadialGrid(xcfunc, rgd, nspins)
 
-        self.xc = XCCorrection(xc,
-                               [grr(phi_g, l_j[j], r_g)
-                                for j, phi_g in enumerate(phi_jg)],
-                               [grr(phit_g, l_j[j], r_g)
-                                for j, phit_g in enumerate(phit_jg)],
-                               nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-                               rgd, [(j, l_j[j]) for j in range(nj)],
-                               2 * lcut, e_xc)
+        self.xc_correction = XCCorrection(
+            xc,
+            [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
+            [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+            nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
+            rgd, [(j, l_j[j]) for j in range(nj)],
+            2 * lcut, e_xc)
 
         self.rcut = rcut
 

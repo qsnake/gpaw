@@ -16,7 +16,7 @@ from gpaw.operators import Laplace
 from gpaw.pair_potential import PairPotential
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.transformers import Restrictor
-from gpaw.xc_functional import XCOperator
+from gpaw.xc_functional import XC3DGrid
 
 
 class Hamiltonian:
@@ -24,7 +24,7 @@ class Hamiltonian:
 
     Attributes:
      =============== =====================================================
-     ``xc``          ``XCOperator`` object.
+     ``xc``          ``XC3DGrid`` object.
      ``nuclei``      List of ``Nucleus`` objects.
      ``pairpot``     ``PairPotential`` object.
      ``poisson``     ``PoissonSolver``.
@@ -70,7 +70,7 @@ class Hamiltonian:
         self.kin = Laplace(gd, -0.5, nn, typecode)
 
         # exchange-correlation functional object:
-        self.xc = XCOperator(xcfunc, finegd, nspins)
+        self.xc = XC3DGrid(xcfunc, finegd, nspins)
 
         # Number of neighbor grid points used for interpolation (1, 2,
         # or 3):
@@ -135,7 +135,7 @@ class Hamiltonian:
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, density.nt_sG):
             vt_g += self.vHt_g
             self.restrict(vt_g, vt_G)
-            Ekin -= (1 - .5 * self.xc.xc.hybrid) * num.vdot( # EXX hack
+            Ekin -= (1 - .5 * self.xc.xcfunc.hybrid) * num.vdot( # EXX hack
                 vt_G, nt_G - density.nct_G) * self.gd.dv
 
         # Exact-exchange correction

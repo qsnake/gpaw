@@ -34,15 +34,15 @@ MASTER = 0
 class Paw:
     """This is the main calculation object for doing a PAW calculation.
 
-    The ``Paw`` object is the central object for a calculation.
-    It is a container for **k**-points (there may only be one
-    **k**-point).  The attribute ``kpt_u`` is a list of ``KPoint`` objects (the **k**-point object stores the
-    actual wave functions, occupation numbers and eigenvalues).  Each
-    **k**-point object can be either spin up, spin down or no spin
-    (spin-saturated calculation).  Example: For a spin-polarized
-    calculation on an isolated molecule, the **k**-point list will
-    have length two (assuming the calculation is not parallelized over
-    **k**-points/spin).
+    The ``Paw`` object is the central object for a calculation.  It is
+    a container for **k**-points (there may only be one **k**-point).
+    The attribute ``kpt_u`` is a list of ``KPoint`` objects (the
+    **k**-point object stores the actual wave functions, occupation
+    numbers and eigenvalues).  Each **k**-point object can be either
+    spin up, spin down or no spin (spin-saturated calculation).
+    Example: For a spin-polarized calculation on an isolated molecule,
+    the **k**-point list will have length two (assuming the
+    calculation is not parallelized over **k**-points/spin).
     
     These are the most important attributes of a ``Paw`` object:
      =============== =====================================================
@@ -313,7 +313,7 @@ class Paw:
         assert not self.converged
 
         self.load_wave_functions()
-        
+            
         self.hamiltonian.update(self.density)
 
         self.niter = 0
@@ -424,7 +424,6 @@ class Paw:
             for nucleus in self.pt_nuclei:
                 nucleus.calculate_projections(kpt)
             kpt.orthonormalize(self.my_nuclei)
-
             self.eigensolver.diagonalize(self.hamiltonian, kpt, Htpsit_nG)
 
             kpt.adjust_number_of_bands(self.nbands)
@@ -650,23 +649,24 @@ class Paw:
                                       self.kpt_u[u1].psit_nG,
                                       i,
                                       k,k1,G)
-
+    
     def get_xc_difference(self, xcname):
         """Calculate non-seflconsistent XC-energy difference."""
-        xc = self.hamiltonian.xc
-        
-        assert xc.xc.gga, 'Must be a GGA calculation' # XXX
-
         if xcname == 'EXX':
             return self.Ha * (self.get_exact_exchange() - self.Exc)
         
+        oldxcfunc = self.hamiltonian.xc.xcfunc
+
         if isinstance(xcname, str):
-            newxc = XCFunctional(xcname)
+            newxcfunc = XCFunctional(xcname)
         else:
-            newxc = xcname
+            newxcfunc = xcname
             
-        oldxc = xc.xc.xc
-        xc.xc.xc = newxc
+        xc = self.hamiltonian.xc
+
+        xc.set_functional(newxcfunc)
+        for setup in self.setups.values():
+            setup.xc_correction.xc.set_functional(newxcfunc)
 
         v_g = self.finegd.new_array()  # not used for anything!
         nt_sg = self.density.nt_sg
@@ -678,16 +678,20 @@ class Paw:
         for nucleus in self.my_nuclei:
             D_sp = nucleus.D_sp
             H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
-            Exc += nucleus.setup.xc.calculate_energy_and_derivatives(D_sp,
-                                                                     H_sp)
+            xc_correction = nucleus.setup.xc_correction
+            Exc += xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
+            
         Exc = self.domain.comm.sum(Exc)
+
         if xcname == 'PBE0':
             Exc += 0.25 * self.get_exact_exchange()
 
-        xc.xc.xc = oldxc
-        
+        xc.set_functional(oldxcfunc)
+        for setup in self.setups.values():
+            setup.xc_correction.xc.set_functional(oldxcfunc)
+
         return self.Ha * (Exc - self.Exc)
-    
+
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
     
