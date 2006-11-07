@@ -13,7 +13,7 @@ from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree
-from gpaw.xc_atom import XCAtom
+from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCOperator
 
 
@@ -269,14 +269,14 @@ class Setup:
 
         xc = XCOperator(xcfunc, rgd, nspins)
 
-        self.xc = XCAtom(xc,
-                         [grr(phi_g, l_j[j], r_g)
-                          for j, phi_g in enumerate(phi_jg)],
-                         [grr(phit_g, l_j[j], r_g)
-                          for j, phit_g in enumerate(phit_jg)],
-                         nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-                         rgd, [(j, l_j[j]) for j in range(nj)],
-                         2 * lcut, e_xc)
+        self.xc = XCCorrection(xc,
+                               [grr(phi_g, l_j[j], r_g)
+                                for j, phi_g in enumerate(phi_jg)],
+                               [grr(phit_g, l_j[j], r_g)
+                                for j, phit_g in enumerate(phit_jg)],
+                               nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
+                               rgd, [(j, l_j[j]) for j in range(nj)],
+                               2 * lcut, e_xc)
 
         self.rcut = rcut
 

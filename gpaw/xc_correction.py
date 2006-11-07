@@ -49,7 +49,7 @@ for R in points:
     y += 1
 
 
-class XCAtom3:
+class XCCorrection:
     def __init__(self, xc, w_j, wt_j, nc, nct, rgd, jl, lmax, Exc0):
         self.nc_g = nc
         self.nct_g = nct
@@ -465,5 +465,3 @@ class XCAtom3:
                 y += 1
 
         return E - self.Exc0
-
-XCAtom = XCAtom3
