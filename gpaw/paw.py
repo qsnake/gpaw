@@ -712,17 +712,3 @@ class Paw:
                 kpt.psit_nG = kpt.psit_nG[:]
                 kpt.Htpsit_nG = kpt.gd.new_array(self.nbands, self.typecode)
 
-    def write_plt(self,fname,grid):
-        """Write grid to binary plt (gOpenMol) plot file.
-        The grid must be either in course or fine grid dimensions.
-        """
-        if tuple(self.gd.N_c) == grid.shape:
-            gd=self.gd
-        elif tuple(self.finegd.N_c) == grid.shape:
-            gd=self.finegd
-        else:
-            raise RuntimeError("unknow grid shape")
-
-        _gpaw.WritePLT(fname,gd.h_c,grid)
-
-        
