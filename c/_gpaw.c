@@ -21,7 +21,6 @@ PyObject* hartree(PyObject *self, PyObject *args);
 PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* elf(PyObject *self, PyObject *args);
-PyObject* WritePLT(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
@@ -44,7 +43,6 @@ static PyMethodDef functions[] = {
   {"XCFunctional",    NewXCFunctionalObject,    METH_VARARGS, 0},
   {"MGGAFunctional",    NewMGGAFunctionalObject,    METH_VARARGS, 0},
   {"elf",    elf,    METH_VARARGS, 0},
-  {"WritePLT",    WritePLT,    METH_VARARGS, 0},
  {0, 0, 0, 0}
 };
 
