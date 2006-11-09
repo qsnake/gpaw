@@ -163,8 +163,6 @@ class SelfConsistentExx:
 
     def adjust_hamitonian_matrix(self, H_nn, P_ni, nucleus, s):
         """Called from kpoint.diagonalize"""
-        print H_nn
-        print num.dot(P_ni, num.transpose(nucleus.vxx_sni[s]))
         H_nn += num.dot(P_ni, num.transpose(nucleus.vxx_sni[s]))
 
     def adjust_residual(self, R_nG):

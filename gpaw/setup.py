@@ -450,4 +450,3 @@ def grr(phi_g, l, r_g):
         r0, r1, r2 = r_g[0:3]
         w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2) 
     return w_g
-        

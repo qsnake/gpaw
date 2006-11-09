@@ -4,7 +4,6 @@ from ASE.Units import Convert
 
 from gpaw.nucleus import Nucleus
 from gpaw.rotation import rotation
-from gpaw.setup import Setup
 from gpaw.domain import Domain
 from gpaw.symmetry import Symmetry
 from gpaw.paw import Paw
@@ -21,7 +20,7 @@ def create_paw_object(out, a0, Ha,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, old, fixdensity,
                       hund, lmax, tolerance, maxiter,
-                      convergeall, eigensolver, relax,
+                      convergeall, eigensolver, relax, ae,
                       parsize_c,
                       restart_file):
 
@@ -59,7 +58,14 @@ def create_paw_object(out, a0, Ha,
         nspins = 2
     else:
         nspins = 1
-    
+
+    if ae:
+        from gpaw.ae import AllElectronSetup as Setup
+        softgauss = True
+        lmax = 0
+    else:
+        from gpaw.setup import Setup
+        
     # Construct necessary PAW-setup objects and count the number of
     # valence electrons:
     setups = {}    # mapping from atomic numbers to PAW-setup objects

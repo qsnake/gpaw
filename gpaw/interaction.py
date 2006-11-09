@@ -7,7 +7,6 @@ import Numeric as num
 
 from gpaw.gauss import I
 from gpaw.spherical_harmonics import YL
-from gpaw.polynomium import I_l
 from gpaw.utilities import fac
 
 

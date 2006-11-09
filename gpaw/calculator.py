@@ -59,6 +59,7 @@ class Calculator:
                   'convergeall': False,
                   'eigensolver': "rmm-diis",
                   'relax': 'GS',
+                  'ae': False,
                   }
 
     def __init__(self, **kwargs):
@@ -189,6 +190,7 @@ class Calculator:
             atoms.GetUnitCell() != self.cell_cc or
             atoms.GetBoundaryConditions() != self.periodic_c):
             # Drastic changes:
+            self.reset()
             self.initialize_paw_object()
             self.find_ground_state()
         else:
@@ -250,6 +252,7 @@ class Calculator:
                 self.convergeall,
                 self.eigensolver,
                 self.relax,
+                self.ae,
                 self.parsize,
                 self.restart_file,
                 ]
