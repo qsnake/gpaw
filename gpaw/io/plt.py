@@ -31,11 +31,7 @@ def write_plt(gd, grid, filename, type=4):
     f.write(pack('ff', x0, xe ))
 
     # we need a float array
-    if grid.typecode() == 'f':
-        fgrid = num.transpose(grid)
-    else:
-        fgrid = num.array(num.transpose(grid).tolist(),'f')
-     
+    fgrid = num.asarray(num.transpose(grid), num.Float32)
     f.write(fgrid.tostring())
 
     f.close()
