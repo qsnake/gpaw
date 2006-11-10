@@ -2,27 +2,31 @@
 
 from struct import pack
 import Numeric as num
+from gpaw.utilities import check_unit_cell
 
-def write_plt(gd, grid, filename, type=4):
-    """write: I: gd = grid descriptor
+def write_plt(cell, grid, filename, type=4):
+    """write: I: cell = unit cell object as given
+                        from ListOfAtoms.GetUnitCell()
                  grid = the grid to write
                  type = Type of surface (integer)
-    input is assumed to be in atomc units (Bohr)
-    """
+    input is assumed to be in atomc units (Bohr)"""
+    
+    # Check that the cell is orthorhombic
+    check_unit_cell(cell)
+    xe, ye, ze = num.diagonal(cell)
 
-    if tuple(gd.N_c) != grid.shape:
-        raise RuntimeError("grid descriptor does not correspond to the grid")
-    
-    scale = 0.52917725 # Bohr to Angstroem
-    
+    # Check, that the grid is 3D
+    if len(grid.shape) != 3:
+        raise RuntimeError("grid must be 3D")
+    nx, ny, nz = grid.shape
+    dx, dy, dz = [ xe/nx, ye/ny, ze/nz ]
+
     f = open(filename, 'w')
     f.write(pack('ii', 3, type))
-    nx, ny, nz = gd.N_c
     f.write(pack('iii', nx, ny, nz))
 
     # ASE uses (0,0,0) as origin ????
     x0 = y0 = z0 = 0.
-    dx, dy, dz = scale*gd.h_c
     xe = x0 +(nx-1)*dx
     ye = y0 +(ny-1)*dy
     ze = z0 +(nz-1)*dz
@@ -31,7 +35,12 @@ def write_plt(gd, grid, filename, type=4):
     f.write(pack('ff', x0, xe ))
 
     # we need a float array
-    fgrid = num.asarray(num.transpose(grid), num.Float32)
+    if grid.typecode() == 'f':
+        fgrid = num.transpose(grid)
+    else:
+        fgrid = num.array(num.transpose(grid).tolist(),'f')
+#    num.asarray does not work here !
+#    fgrid = num.asarray(num.transpose(grid), num.Float32)
     f.write(fgrid.tostring())
 
     f.close()
