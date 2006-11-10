@@ -5,11 +5,12 @@ import Numeric as num
 from gpaw.utilities import check_unit_cell
 
 def write_plt(cell, grid, filename, type=4):
-    """write: I: cell = unit cell object as given
-                        from ListOfAtoms.GetUnitCell()
-                 grid = the grid to write
-                 type = Type of surface (integer)
-    input is assumed to be in atomc units (Bohr)"""
+    """Input:
+    cell = unit cell object as given from ListOfAtoms.GetUnitCell()
+    grid = the grid to write
+    type = Type of surface (integer)
+    
+    cell is assume to be in Angstroms and the grid in atomc units (Bohr)"""
     
     # Check that the cell is orthorhombic
     check_unit_cell(cell)
