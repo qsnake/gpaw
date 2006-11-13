@@ -9,6 +9,7 @@ from math import pi, sqrt, log
 import time
 
 from Numeric import array, Float, dot, NewAxis, zeros, transpose
+from LinearAlgebra import solve_linear_equations as solve
 
 from gpaw.density_mixer import Mixer, MixerSum
 from gpaw.transformers import Interpolator
@@ -107,20 +108,46 @@ class Density:
         # We don't have any occupation numbers.  The initial
         # electron density comes from overlapping atomic densities
         # or from a restart file.  We scale the density to match
-        # the compensation charges;
+        # the compensation charges:
+
         for nucleus in self.nuclei:
             nucleus.calculate_multipole_moments()
+            
+        if self.nspins == 1:
 
-        Q = 0.0
-        for nucleus in self.my_nuclei:
-            Q += nucleus.Q_L[0]
-        Q = sqrt(4 * pi) * self.comm.sum(Q)
-        Nt = self.gd.integrate(self.nt_sG)
-        # Nt + Q must be equal to minus the total charge:
-        if Nt != 0.0:
-            x = -(self.charge + Q) / Nt
-            assert 0.83 < x < 1.17, 'x=%f' % x
-            self.nt_sG *= x
+            Q = 0.0
+            for nucleus in self.my_nuclei:
+                Q += nucleus.Q_L[0]
+            Q = sqrt(4 * pi) * self.comm.sum(Q)
+            Nt = self.gd.integrate(self.nt_sG)
+            # Nt + Q must be equal to minus the total charge:
+            if Nt != 0.0:
+                x = -(self.charge + Q) / Nt
+                assert 0.83 < x < 1.17, 'x=%f' % x
+                self.nt_sG *= x
+        else:
+            Q_s = array([0.0, 0.0])
+            for nucleus in self.my_nuclei:
+                s = nucleus.setup
+                Q_s += 0.5 * s.Delta0 + dot(nucleus.D_sp, s.Delta_pL[:, 0])
+            Q_s *= sqrt(4 * pi)
+            self.comm.sum(Q_s)
+            Nt_s = [self.gd.integrate(nt_G) for nt_G in self.nt_sG]
+
+            M = sum(magmom_a)
+            x, y = solve(array([[Nt_s[0],  Nt_s[1]],
+                                [Nt_s[0], -Nt_s[1]]]),
+                         array([-Q_s[0] - Q_s[1] - self.charge,
+                                -Q_s[0] + Q_s[1] + M]))
+
+            if self.charge == 0:
+                assert 0.83 < x < 1.17, 'x=%f' % x
+                assert 0.83 < y < 1.17, 'x=%f' % y
+
+            self.nt_sG[0] *= x
+            self.nt_sG[1] *= y
+
+        self.mixer.mix(self.nt_sG, self.comm)
 
         self.interpolate_pseudo_density()
 
@@ -258,7 +285,7 @@ class Density:
             n_sg = self.nt_sg.copy()
         elif gridrefinement == 4:
             # Interpolation function for the density:
-            interpolate = Interpolator(self.finegd, 3, num.Float).apply
+            interpolate = Interpolator(self.finegd, 3, Float).apply
 
             # Extra fine grid
             gd = self.finegd.refine()

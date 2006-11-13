@@ -314,7 +314,7 @@ class Paw:
         assert not self.converged
 
         self.load_wave_functions()
-            
+
         self.hamiltonian.update(self.density)
 
         self.niter = 0

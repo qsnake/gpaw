@@ -64,7 +64,7 @@ class Symmetry:
         Remove symmetries that are not satisfied."""
 
         # Build lists of (atom number, scaled position) tuples.  One list for
-        # each atomic number:
+        # each (atomic number, magnetic moment) combination:
         species = {}
         for a, ZM in enumerate(zip(self.Z_a, self.magmom_a)):
             spos_c = self.scale_position(pos_ac[a])

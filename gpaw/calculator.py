@@ -75,9 +75,9 @@ class Calculator:
 
         Defaults: neutrally charged, LDA, gamma-point calculation, a
         reasonable grid-spacing, zero Kelvin electronic temperature,
-        and the number of bands will be half the number of valence
-        electrons plus 3 extra bands. Only occupied bands are used in
-        the convergence decision. The calculation will be
+        and the number of bands will be equal to the number of atomic
+        orbitals present in the setups. Only occupied bands are used
+        in the convergence decision. The calculation will be
         spin-polarized if and only if one or more of the atoms have
         non-zero magnetic moments.  Text output will be written to
         standard output.
@@ -85,7 +85,7 @@ class Calculator:
         For a non-gamma point calculation, the electronic temperature
         will be 0.1 eV (energies are extrapolated to zero Kelvin) and
         all symmetries will be used to reduce the number of
-        **k**-points,"""
+        **k**-points."""
 
         self.t0 = time.time()
     
