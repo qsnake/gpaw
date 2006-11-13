@@ -2,6 +2,8 @@ import Numeric as num
 from ASE.ChemicalElements.symbol import symbols
 from ASE.Units import Convert
 
+import sys
+
 from gpaw.nucleus import Nucleus
 from gpaw.rotation import rotation
 from gpaw.domain import Domain
@@ -11,6 +13,8 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import gcd
 import gpaw.mpi as mpi
 from gpaw.utilities.timing import Timer
+
+from gpaw import dry_run
 
 def create_paw_object(out, a0, Ha,
                       pos_ac, Z_a, magmom_a, cell_c, bc_c, angle,
@@ -86,8 +90,22 @@ def create_paw_object(out, a0, Ha,
         N_c = [max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c]
     N_c = num.array(N_c)
 
+
     # Create a Domain object:
     domain = Domain(cell_c / a0, bc_c, angle)
+    h_c = domain.cell_c / N_c
+
+    print >> out, 'unitcell:'
+    print >> out, '         periodic  length  points   spacing'
+    print >> out, '  -----------------------------------------'
+    for c in range(3):
+        print >> out, '  %s-axis   %s   %8.4f   %3d    %8.4f' % \
+              ('xyz'[c],
+               ['no ', 'yes'][domain.periodic_c[c]],
+               a0 * domain.cell_c[c],
+               N_c[c],
+               a0 * h_c[c])
+    print >> out
 
     # Brillouin-zone stuff:
     if gamma:
@@ -146,6 +164,50 @@ def create_paw_object(out, a0, Ha,
         
     if nvalence > 2 * nbands:
         raise ValueError('Too few bands!')
+
+
+
+    if (dry_run):
+        # Estimate the amount of memory needed
+        float_size = num.array([1], num.Float).itemsize()
+        type_size = num.array([1],typecode).itemsize()
+        mem = 0.0
+        mem_wave_functions = nspins * nkpts * nbands * N_c[0] * N_c[1] * N_c[2]
+        mem_wave_functions *= type_size
+        mem += mem_wave_functions
+        mem_density_and_potential = N_c[0] * N_c[1] * N_c[2] * 8 * 2
+        mem_density_and_potential *= float_size
+        mem += mem_density_and_potential
+        mem_Htpsi = nbands * N_c[0] * N_c[1] * N_c[2]
+        mem_Htpsi *= type_size
+        mem += mem_Htpsi
+        mem_nuclei = 0.0
+        for nucleus in nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            np = ni * (ni + 1) // 2
+            # D_sp and H_sp
+            mem_nuclei += 2 * nspins * np * float_size
+            # P_uni
+            mem_nuclei += nspins * nkpts * nbands * ni * type_size
+            # projectors 
+            box = nucleus.setup.pt_j[0].get_cutoff() / h_c
+            mem_nuclei += ni * box[0] * box[1] * box[2] * type_size
+            # vbar and step
+            box = 8 * nucleus.setup.vbar.get_cutoff() / h_c
+            mem_nuclei += 2 * box[0] * box[1] * box[2] * float_size
+            # ghat and vhat
+            box = 8 * nucleus.setup.ghat_l[0].get_cutoff() / h_c
+            nl = len(nucleus.setup.ghat_l)
+            mem_nuclei += 2 * nl * box[0] * box[1] * box[2] * float_size
+
+        mem += mem_nuclei
+        # In Gigabytes:
+        mem /= 1024**3
+        print >> out, 'Estimated memory consumption: %f7.3 GB' % mem
+        print >> out
+        out.flush()
+        timer.stop()
+        sys.exit()
 
     # Get the local number of spins and k-points, and return a
     # domain_comm and kpt_comm for this processor:

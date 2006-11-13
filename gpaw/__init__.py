@@ -28,6 +28,7 @@ debug = False
 parallel = False
 hosts = None
 parsize = None
+dry_run = False
 x = ''
 arg = None
 setup_paths = []
@@ -45,6 +46,8 @@ while len(sys.argv) > i:
             GAUSS = False
         elif arg == '--gpaw-parallel':
             parallel = True
+        elif arg == '--gpaw-dry-run':
+            dry_run = True
         elif arg.startswith('--gpaw-x='):
             x = arg.split('=')[1]
         elif arg.startswith('--gpaw-hosts='):
