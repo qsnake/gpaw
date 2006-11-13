@@ -135,10 +135,19 @@ class Density:
             Nt_s = [self.gd.integrate(nt_G) for nt_G in self.nt_sG]
 
             M = sum(magmom_a)
-            x, y = solve(array([[Nt_s[0],  Nt_s[1]],
-                                [Nt_s[0], -Nt_s[1]]]),
-                         array([-Q_s[0] - Q_s[1] - self.charge,
-                                -Q_s[0] + Q_s[1] + M]))
+            x = 1.0
+            y = 1.0
+            if Nt_s[0] == 0:
+                if Nt_s[1] != 0:
+                    y = -(self.charge + Q_s[0] + Q_s[1]) / Nt_s[1]
+            else:
+                if Nt_s[1] == 0:
+                    x = -(self.charge + Q_s[0] + Q_s[1]) / Nt_s[0]
+                else:
+                    x, y = solve(array([[Nt_s[0],  Nt_s[1]],
+                                        [Nt_s[0], -Nt_s[1]]]),
+                                 array([-Q_s[0] - Q_s[1] - self.charge,
+                                        -Q_s[0] + Q_s[1] + M]))
 
             if self.charge == 0:
                 assert 0.83 < x < 1.17, 'x=%f' % x

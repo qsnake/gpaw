@@ -54,7 +54,7 @@ class Calculator:
                   'out': '-',
                   'hosts': None,
                   'parsize': None,
-                  'softgauss': True,
+                  'softgauss': False,
                   'stencils': (2, 'M', 3),
                   'convergeall': False,
                   'eigensolver': "rmm-diis",

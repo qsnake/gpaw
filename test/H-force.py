@@ -12,5 +12,5 @@ calc = Calculator(nbands=1, gpts=(n, n, n), out=None,
 atoms.SetCalculator(calc)
 for i in range(3):
     f1, f2 = CheckForce(atoms, 0, i, 0.001)
-    equal(f1, f2, 0.0029)
+    equal(f1, f2, 0.0072)
 
