@@ -149,10 +149,12 @@ class PoissonSolver:
         residual = self.residuals[level]
 
         if level < self.levels:
-            self.operators[level].relax(self.relax_method,self.phis[level],
+            self.operators[level].relax(self.relax_method,
+                                        self.phis[level],
                                         self.rhos[level],
                                         self.presmooths[level],
                                         self.weights[level])
+
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             self.restrictors[level].apply(residual,
@@ -163,13 +165,16 @@ class PoissonSolver:
                                                 residual)
             self.phis[level] -= residual
 
-        self.operators[level].relax(self.relax_method,self.phis[level],self.rhos[level],
-                                    self.postsmooths[level],self.weights[level])
+        self.operators[level].relax(self.relax_method,
+                                    self.phis[level],
+                                    self.rhos[level],
+                                    self.postsmooths[level],
+                                    self.weights[level])
         if level == 0:
             self.operators[level].apply(self.phis[level], residual)
             residual -= self.rhos[level]
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
-                                                residual.flat))*self.dv
+                                                    residual.flat)) * self.dv
             return error
 
     def load(self):

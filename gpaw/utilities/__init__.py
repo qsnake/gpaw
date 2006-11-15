@@ -27,10 +27,9 @@ fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
 
 
 def gcd(a, b):
-    """Return greatest common divisor of a and b.
-    
-    Uses the euclidian algorithm."""
-    
+    """Return greatest common divisor of a and b, using the
+       euclidian algorithm.
+    """
     if b == 0:
         return a
     else:

@@ -86,10 +86,10 @@ def get_kpoint_dimensions(kpts):
         skpts = num.take(kpts, slist)
 
         # determine increment between kpoints along current axis
-        DeltaK = max([skpts[n+1, c] - skpts[n, c] for n in range(nkpts-1)])
+        DeltaK = max([skpts[n + 1, c] - skpts[n, c] for n in range(nkpts - 1)])
 
         #determine number of kpoints as inverse of distance between kpoints
-        if DeltaK > tol: Nk_c[c] = int(round(1/DeltaK))
+        if DeltaK > tol: Nk_c[c] = int(round(1. / DeltaK))
         else: Nk_c[c] = 1
     return Nk_c
 
@@ -141,7 +141,7 @@ def erf3D(M):
     from gpaw.utilities import erf
 
     dim = M.shape
-    res = num.zeros(dim,num.Float)
+    res = num.zeros(dim, num.Float)
     for k in range(dim[0]):
         for l in range(dim[1]):
             for m in range(dim[2]):
@@ -191,3 +191,31 @@ class Translate:
         tmp[:] = w
         w[:, :, :A[2]] = tmp[:, :, B[2]:]
         w[:, :, A[2]:] = tmp[:, :, :B[2]]
+
+def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
+    """Convert planewave energy cutoff to a real-space gridspacing
+       using the conversion formula::
+                pi
+        h =   -----
+            \/ 2 E
+       in atomic units (Hartree and Bohr)
+    """
+    from ASE.Units import Convert
+    E = Convert(E, E_unit, 'Hartree')
+    h = num.pi / num.sqrt(2 * E)
+    h = Convert(h, 'Bohr', h_unit)
+    return h
+    
+def gridspacing_to_energy_cutoff(h, h_unit='Ang', E_unit='Hartree'):
+    """Convert real-space gridspacing to planewave energy cutoff
+       using the conversion formula::
+             1   pi  2
+        E  = - ( -- )
+         c   2   h
+       in atomic units (Hartree and Bohr)
+    """
+    from ASE.Units import Convert
+    h = Convert(h, h_unit, 'Bohr')
+    E = .5 * (num.pi / h)**2
+    E = Convert(E, 'Hartree', E_unit)
+    return E

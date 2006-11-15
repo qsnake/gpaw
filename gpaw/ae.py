@@ -6,7 +6,7 @@
 This module implements a special type of Setup object that allows us
 to do all-electron calculations for hydrogen atoms - all the PAW stuff
 is turned off.  Therefore, the densities will have sharp cusps at the
-nucleis, and dense grids are needed for accurate results.
+nuclei, and dense grids are needed for accurate results.
 
 This feature is only useful for testing!
 """
@@ -31,8 +31,8 @@ class AllElectronSetup:
         self.Nv = 1
         self.Nc = 0
         self.Z = 1
-        #self.X_p = X_p
-        #self.ExxC = ExxC
+        self.X_p = num.array([0.])
+        self.ExxC = 0.
 
         self.n_j = [1]
         self.l_j = [0]

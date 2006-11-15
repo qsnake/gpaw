@@ -83,7 +83,7 @@ if __name__ == '__main__':
     ## gauss.plot_gauss(1)
 
     # test if multipole works
-    d  = Domain((12,15,20))   # domain object
+    d  = Domain((14,15,16))   # domain object
     N  = 2**5                 # number of grid points
     Nc = (N,N,N)              # tuple with number of grid point along each axis
     gd = GridDescriptor(d,Nc) # grid-descriptor object
