@@ -104,7 +104,7 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
         w['FermiLevel'] = epsF
 
         # Write fingerprint (md5-digest) for all setups:
-        for setup in paw.setups.values():
+        for setup in paw.setups:
             w[names[setup.Z] + 'Fingerprint'] = setup.fingerprint
               
         typecode = {num.Float: float, num.Complex: complex}[paw.typecode]
@@ -226,7 +226,7 @@ def read(paw, filename):
     version = r['version']
     assert version >= 0.3
     
-    for setup in paw.setups.values():
+    for setup in paw.setups:
         if setup.fingerprint != r[names[setup.Z] + 'Fingerprint']:
             paw.warn(('Setup for %s (%s) not compatible ' +
                       'with restart file.') %

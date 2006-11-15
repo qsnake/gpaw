@@ -1,5 +1,6 @@
 import Numeric as num
 from ASE.ChemicalElements.symbol import symbols
+from ASE.ChemicalElements import numbers
 from ASE.Units import Convert
 
 import sys
@@ -13,6 +14,8 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import gcd
 import gpaw.mpi as mpi
 from gpaw.utilities.timing import Timer
+from gpaw.setup import create_setup
+            
 
 from gpaw import dry_run
 
@@ -24,7 +27,7 @@ def create_paw_object(out, a0, Ha,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, old, fixdensity,
                       hund, lmax, tolerance, maxiter,
-                      convergeall, eigensolver, relax, ae,
+                      convergeall, eigensolver, relax, setup_types,
                       parsize_c,
                       restart_file):
 
@@ -63,24 +66,6 @@ def create_paw_object(out, a0, Ha,
     else:
         nspins = 1
 
-    if ae:
-        from gpaw.ae import AllElectronSetup as Setup
-        softgauss = True
-        lmax = 0
-    else:
-        from gpaw.setup import Setup
-        
-    # Construct necessary PAW-setup objects and count the number of
-    # valence electrons:
-    setups = {}    # mapping from atomic numbers to PAW-setup objects
-    for Z in Z_a:
-        if Z not in setups:
-            symbol = symbols[Z]
-            setup = Setup(symbol, xcfunc, lmax, nspins, softgauss)
-            setup.print_info(out)
-            setups[Z] = setup
-            assert Z == setup.Z
-
     # Default value for grid spacing:
     if N_c is None:
         if h is None:
@@ -107,6 +92,40 @@ def create_paw_object(out, a0, Ha,
                a0 * h_c[c])
     print >> out
 
+    
+    if isinstance(setup_types, str):
+        setup_types = {None: setup_types}
+
+    # setup_types is a dictionary mapping chemical symbols and atom
+    # numbers to setup types.
+
+    # If present, None will map to the default type:
+    default = setup_types.get(None, 'paw')
+    
+    type_a = [default] * len(Z_a)
+
+    # First symbols ...
+    for symbol, type in setup_types.items():
+        if isinstance(symbol, str):
+            number = numbers[symbol]
+            for a, Z in enumerate(Z_a):
+                if Z == number:
+                    type_a[a] = type
+
+    # and then atom numbers:
+    for a, type in setup_types.items():
+        if isinstance(a, int):
+            type_a[a] = type
+    
+    # Construct necessary PAW-setup objects:
+    setups = {}
+    for a, (Z, type) in enumerate(zip(Z_a, type_a)):
+        if (Z, type) not in setups:
+            symbol = symbols[Z]
+            setup = create_setup(symbol, xcfunc, lmax, nspins, softgauss, type)
+            setup.print_info(out)
+            setups[(Z, type)] = setup
+
     # Brillouin-zone stuff:
     if gamma:
         typecode = num.Float
@@ -120,7 +139,7 @@ def create_paw_object(out, a0, Ha,
         # Reduce the the k-points to those in the irreducible part of
         # the Brillouin zone:
         symmetry, weights_k, ibzk_kc = reduce_kpoints(
-            bzk_kc, pos_ac / a0, Z_a, magmom_a, domain, usesymm)
+            bzk_kc, pos_ac / a0, Z_a, type_a, magmom_a, domain, usesymm)
 
         if symmetry is not None:
             symmetry.print_symmetries(out)
@@ -132,16 +151,20 @@ def create_paw_object(out, a0, Ha,
                        (nkpts, ' s'[1:nkpts], len(bzk_kc)))
         print >> out
 
+    # Build list of nuclei:
+    nuclei = []
+    for a, (Z, type) in enumerate(zip(Z_a, type_a)):
+        nuclei.append(Nucleus(setups[(Z, type)], a, typecode))
+        
+    setups = setups.values()
+    
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:
         R_slmm = [[rotation(l, symm) for l in range(3)]
                     for symm in symmetry.symmetries]
 
-        for setup in setups.values():
+        for setup in setups:
             setup.calculate_rotations(R_slmm)
-
-    # Build list of nuclei:
-    nuclei = [Nucleus(setups[Z], a, typecode) for a, Z in enumerate(Z_a)]
 
     # Sum up the number of valence electrons:
     nvalence = 0
@@ -229,7 +252,7 @@ def create_paw_object(out, a0, Ha,
     return paw
 
     
-def reduce_kpoints(bzk_kc, pos_ac, Z_a, magmom_a, domain, usesymm):
+def reduce_kpoints(bzk_kc, pos_ac, Z_a, type_a, magmom_a, domain, usesymm):
     """Reduce the number of k-points using symmetry.
 
     Returns symmetry object, weights and k-points in the irreducible
@@ -241,7 +264,7 @@ def reduce_kpoints(bzk_kc, pos_ac, Z_a, magmom_a, domain, usesymm):
 
     # Construct a Symmetry instance containing the identity
     # operation only:
-    symmetry = Symmetry(Z_a, magmom_a, domain)
+    symmetry = Symmetry(Z_a, type_a, magmom_a, domain)
 
     if usesymm:
         # Find symmetry operations of atoms:

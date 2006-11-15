@@ -21,24 +21,23 @@ class PairPotential:
     def __init__(self, setups):
         # Collect the pair potential cutoffs in a list:
         self.cutoff_a = []
-        for Z, setup in setups.items():
-            self.cutoff_a.append((Z, setup.rcutsoft))
+        for setup in setups:
+            self.cutoff_a.append((setup.symbol, setup.rcutsoft))
         
         # Make pair interactions:
-        items = setups.items()
         self.interactions = {}
-        for Z1, setup1 in items:
-            for Z2, setup2 in items:
+        for setup1 in setups:
+            for setup2 in setups:
                 interaction = GInteraction(setup1, setup2)
-                self.interactions[(Z1, Z2)] = interaction
+                self.interactions[(setup1.symbol, setup2.symbol)] = interaction
 
         self.neighborlist = None
         
     def update(self, pos_ac, nuclei, domain):
         if self.neighborlist is None:
             # Make a neighbor list object:
-            Z_a = [nucleus.setup.Z for nucleus in nuclei]
-            self.neighborlist = NeighborList(Z_a, pos_ac, domain,
+            symbol_a = [nucleus.setup.symbol for nucleus in nuclei]
+            self.neighborlist = NeighborList(symbol_a, pos_ac, domain,
                                              self.cutoff_a)
         else:
             updated = self.neighborlist.update_list(pos_ac)
@@ -54,11 +53,11 @@ class PairPotential:
         angle = domain.angle
         for a1 in range(len(nuclei)):
             nucleus1 = nuclei[a1]
-            Z1 = nucleus1.setup.Z
+            symbol1 = nucleus1.setup.symbol
             for a2, offsets in self.neighborlist.neighbors(a1):
                 nucleus2 = nuclei[a2]
-                Z2 = nucleus2.setup.Z
-                interaction = self.interactions[(Z1, Z2)]
+                symbol2 = nucleus2.setup.symbol
+                interaction = self.interactions[(symbol1, symbol2)]
                 diff_c = pos_ac[a2] - pos_ac[a1]
                 V_LL = num.zeros(interaction.v_LL.shape, num.Float)  #  XXXX!
                 dVdr_LLc = num.zeros(interaction.dvdr_LLc.shape, num.Float)

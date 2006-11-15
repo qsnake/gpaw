@@ -6,163 +6,24 @@ import sys
 from optparse import OptionParser
 
 
-parser = OptionParser(usage='%prog [options] element/molecule',
+parser = OptionParser(usage='%prog [options] file [, file2, ...]',
                       version='%prog 0.1')
-parser.add_option('-p', '--spin-paired', action='store_true',
+parser.add_option('-w', '--remove-wave-functions', action='store_true',
                   default=False,
-                  help='Do a spin-paired calculation.')
-parser.add_option('--debug', action='store_true',
-                  default=False,
-                  help='Turn on debug mode.')
-parser.add_option('--eggbox-test', action='store_true',
-                  default=False,
-                  help='Do eggbox test.')
-parser.add_option('--bulk', action='store_true',
-                  default=False,
-                  help='Do bulk test.')
-parser.add_option('--atomize', action='store_true',
-                  default=False,
-                  help='Calculate atomization/cohesive energy.')
-parser.add_option('-a', '--a-lattice-constant', type='float', default=None,
-                  help='Size of unit cell (Angstrom).',
-                  metavar='<size>')
-parser.add_option('-c', '--c-lattice-constant', type='float', default=None,
-                  help='Size of unit cell (Angstrom).',
-                  metavar='<size>')
-parser.add_option('-g', '--grid-spacing', type='float', default=None,
-                  help='Grid spacing (Angstrom).',
-                  metavar='<size>')
-parser.add_option('-n', '--points', type='int', default=20,
-                  help='Number of points used for eggbox-test.',
-                  metavar='<integer>')
-parser.add_option('--parallel', type='int', default=None,
-                  help='Run in parallel using N prcessors.',
-                  metavar='N')
-parser.add_option('-k', '--kpoints', type='string', default=None,
-                  help='Number of k points (one or three integers).',
-                  metavar='<n1,n2,n3>')
-parser.add_option('-w', '--write', type='string', default=None,
-                  help='Write state to file (wave functions not written).',
-                  metavar='<filename.gpw>')
-parser.add_option('-W', '--write-all', type='string', default=None,
-                  help='Write state to file (including wave functions).',
-                  metavar='<filename.gpw>')
-parser.add_option('-m', '--magnetic-moment', type='float', default=None,
-                  help='Magnetic moment per unit cell.')
-parser.add_option('-x', '--extra-parameters', type='string', default='{}',
-                  help='Extra parameters.',
-                  metavar='''"{'lmax': 2, ...}"''')
-parser.add_option('-X', '--X', type='string', default='',
-                  help='Extra parameter.')
-parser.add_option('-P', '--setup-path', type='string', default=None,
-                  help='Path for setups.', metavar='<path>')
-parser.add_option('-s', '--crystal-structure', type='string', default=None,
-                  help='One of: sc, fcc, hcp, bcc, diamond.')
-parser.add_option('-f', '--xc-functional', type='string', default='LDA',
-                  help='Exchange-Correlation functional (default value LDA)',
-                  metavar='<XC>')
-parser.add_option('-b', '--bands', type='int', default=None,
-                  help='Number of bands.',
-                  metavar='<nbands>')
+                  help='Remove wave functions from restatr file.')
 
 opt, args = parser.parse_args()
 
-if len(args) != 1:
-    if len(args) == 0:
-        print 'Missing element or molecule argument!'
-    else:
-        print 'Too many arguments!'
+if len(args) == 0:
+    print 'Missing file'
     sys.exit()
 
-if opt.debug:
-    sys.argv.append('--gpaw-debug')
+if opt.remove_wave_functions:
+    for name in args:
+        if name.endswith('.gpw'):
+            os.system('tar -f %s --delete PseudoWaveFunctions' % name)
+        else:
+            import gpaw
+            gpaw.Calculator.ReadAtoms(name).GetCalculator().Write(name, '')
 
-from ASE.Units import Convert
-
-import gpaw
-from gpaw import setup_paths
-from gpaw.utilities.singleatom import SingleAtom
-from gpaw.utilities.molecule import Molecule
-from gpaw.utilities.bulk import Bulk
-from gpaw.utilities.bulk import data as bulk_data
-
-
-singleatom = True
-for c in args[0][1:]:
-    if not c.islower():
-        singleatom = False
-        break
-
-if singleatom:
-    symbol = args[0]
-else:
-    formula = args[0]
-
-parameters = eval(opt.extra_parameters)
-
-parameters['xc'] = opt.xc_functional
-parameters['nbands'] = opt.bands
-parameters['hosts'] = opt.parallel
-gpaw.x = opt.X
-
-
-if singleatom and symbol in bulk_data:
-    opt.bulk = True
-
-if opt.crystal_structure is not None:
-    opt.bulk = True
-
-if opt.setup_path is not None:
-    setup_paths.insert(0, opt.setup_path)
-    
-if not singleatom:
-    if opt.atomize:
-        parameters['out'] = open('atomize.txt', 'w')
-
-    molecule = Molecule(formula, a=opt.a_lattice_constant, h=opt.grid_spacing,
-                        parameters=parameters)
-    if opt.atomize:
-        ea = molecule.atomize(verbose=True)
-        eakcalmol = Convert(ea, 'eV', 'kcal/mol/Nav')
-        print 'Atomization energy: %.3f eV (%.2f kcal/mol)' % (ea, eakcalmol)
-    else:
-        molecule.energy()
-
-elif opt.bulk:
-    if opt.kpoints is None:
-        kpts = None
-    else:
-        kpts = [int(k) for k in opt.kpoints.split(',')]
-        if len(kpts) == 1:
-            kpts = (kpts[0], kpts[0], kpts[0])
-        
-    bulk = Bulk(symbol, structure=opt.crystal_structure,
-                a=opt.a_lattice_constant, c=opt.c_lattice_constant,
-                 magmom=opt.magnetic_moment)
-    bulk.energy(h=opt.grid_spacing, kpts=kpts, parameters=parameters)
-    if opt.write:
-        bulk.atoms.GetCalculator().Write(opt.write, mode='no wave functions')
-    if opt.write_all:
-        bulk.atoms.GetCalculator().Write(opt.write_all)
-else:
-    if opt.eggbox_test:
-        parameters['out'] = 'eggbox-test.txt'
-
-    atom = SingleAtom(symbol, a=opt.a_lattice_constant,
-                      spinpaired=opt.spin_paired,
-                      eggboxtest=opt.eggbox_test, h=opt.grid_spacing,
-                      parameters=parameters)
-
-    if opt.eggbox_test:
-        x, e, dedx = atom.eggboxtest(opt.points, verbose=True)
-        de = max(e) - min(e)
-        f = max(abs(dedx))
-        print 'Maximum energy change: %.3f meV' % (1000 * de)
-        print 'Maximum force: %.3f meV/Ang' % (1000 * f)
-        print 'pi = f * h / e: %.2f' % (f * 2 * x[-1] / de)
-        out = open('eggbox-test.dat', 'w')
-        for a, b, c in zip(x, e, dedx):
-            print >> out, a, b - e[0], c
-        out.close()
-    else:
-        atom.energy()
+            

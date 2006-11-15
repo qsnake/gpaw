@@ -59,7 +59,7 @@ class Calculator:
                   'convergeall': False,
                   'eigensolver': "rmm-diis",
                   'relax': 'GS',
-                  'ae': False,
+                  'setups': 'paw',
                   }
 
     def __init__(self, **kwargs):
@@ -252,7 +252,7 @@ class Calculator:
                 self.convergeall,
                 self.eigensolver,
                 self.relax,
-                self.ae,
+                self.setups,
                 self.parsize,
                 self.restart_file,
                 ]

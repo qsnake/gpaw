@@ -10,7 +10,7 @@ from gpaw.transrotation import rotate
 
 class NeighborList:
     """Neighbor-list class."""
-    def __init__(self, Z_a, pos_ac, domain, cutoffs, drift=0.3):
+    def __init__(self, symbol_a, pos_ac, domain, cutoffs, drift=0.3):
         """Construct a ``NeighborList`` object.
 
         Construct a neighbor list object from a list of atomic numbers
@@ -25,20 +25,20 @@ class NeighborList:
         self.drift = drift
         self.cell_c = domain.cell_c
         self.angle = domain.angle
-        self.Z_a = Z_a
+        self.symbol_a = symbol_a
 
         self.stuff = {}
         n = 0
-        for Z1, rcut1 in cutoffs:
-            for Z2, rcut2 in cutoffs[n:]:
+        for symbol1, rcut1 in cutoffs:
+            for symbol2, rcut2 in cutoffs[n:]:
                 rcut = rcut1 + rcut2 + 2 * drift
                 ncells = (rcut / self.cell_c + 0.5).astype(num.Int)
                 for i in (0, 1, 2):
                     if not domain.periodic_c[i]:
                         ncells[i] = 0
-                self.stuff[(Z1, Z2)] = (rcut, ncells)
-                if Z1 != Z2:
-                    self.stuff[(Z2, Z1)] = (rcut, ncells)
+                self.stuff[(symbol1, symbol2)] = (rcut, ncells)
+                if symbol1 != symbol2:
+                    self.stuff[(symbol2, symbol1)] = (rcut, ncells)
             n += 1
 
         self.make_list(pos_ac)
@@ -85,10 +85,10 @@ class NeighborList:
         # Build the list:
         cell_c = self.cell_c
         for a1, pos1_c in enumerate(pos_ac):
-            Z1 = self.Z_a[a1]
+            symbol1 = self.symbol_a[a1]
             neighbors1 = []
             for a2, pos2_c in enumerate(pos_ac[:a1 + 1]):
-                Z2 = self.Z_a[a2]
+                symbol2 = self.symbol_a[a2]
                 diff_c = pos2_c - pos1_c
                 offset0 = num.floor(diff_c / cell_c + 0.5) * cell_c
                 diff_c -= offset0  # XXX only for periodic BC's!!!!
@@ -96,7 +96,7 @@ class NeighborList:
                     r_c = pos2_c - cell_c / 2
                     rotate(diff_c, r_c, -self.angle * offset0[0] / cell_c[0])
                 offsets = []
-                rcut, ncells = self.stuff[(Z1, Z2)]
+                rcut, ncells = self.stuff[(symbol1, symbol2)]
                 for n0 in range(-ncells[0], ncells[0] + 1):
                     for n1 in range(-ncells[1], ncells[1] + 1):
                         for n2 in range(-ncells[2], ncells[2] + 1):

@@ -20,14 +20,14 @@ from gpaw.utilities import erf
 
 
 class AllElectronSetup:
-    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True):
-        self.symbol = symbol
+    def __init__(self, symbol, xcfunc, nspins):
+        assert symbol == 'H'
+        self.symbol = symbol + '.ae'
         self.xcname = xcfunc.get_name()
-        self.softgauss = softgauss
+        self.softgauss = True
         
         self.fingerprint = ''
 
-        assert symbol == 'H'
         self.Nv = 1
         self.Nc = 0
         self.Z = 1

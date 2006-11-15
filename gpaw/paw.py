@@ -48,7 +48,7 @@ class Paw:
     These are the most important attributes of a ``Paw`` object:
      =============== =====================================================
      ``domain``      Domain object.
-     ``setups``      Dictionary mapping chemical symbols to setup objects.
+     ``setups``      List of setup objects.
      ``symmetry``    Symmetry object.
      ``timer``       Timer object.
      ``nuclei``      List of ``Nucleus`` objects.
@@ -295,7 +295,7 @@ class Paw:
             self.converged = False
 
             # Free allocated space for radial grids:
-            for setup in setups.values():
+            for setup in setups:
                 del setup.phit_j
             for nucleus in self.nuclei:
                 try:
@@ -666,7 +666,7 @@ class Paw:
         xc = self.hamiltonian.xc
 
         xc.set_functional(newxcfunc)
-        for setup in self.setups.values():
+        for setup in self.setups:
             setup.xc_correction.xc.set_functional(newxcfunc)
 
         v_g = self.finegd.new_array()  # not used for anything!
@@ -688,7 +688,7 @@ class Paw:
             Exc += 0.25 * self.get_exact_exchange()
 
         xc.set_functional(oldxcfunc)
-        for setup in self.setups.values():
+        for setup in self.setups:
             setup.xc_correction.xc.set_functional(oldxcfunc)
 
         return self.Ha * (Exc - self.Exc)

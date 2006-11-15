@@ -17,12 +17,32 @@ from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
 
+def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=True, type='paw'):
+    if type == 'ae':
+        from gpaw.ae import AllElectronSetup
+        return AllElectronSetup(symbol, xcfunc, nspins)
+    
+    if type == 'hgh':
+        from gpaw.hgh import HGHSetup
+        return HGHSetup(symbol, xcfunc, nspins)
+    
+    if type == 'hgh.sc':
+        from gpaw.hgh import HGHSetup
+        return HGHSetup(symbol, xcfunc, nspins, semicore=True)
+    
+    return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
+
+
 class Setup:
-    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True):
+    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True,
+                 type='paw'):
         xcname = xcfunc.get_name()
-        self.symbol = symbol
         self.xcname = xcname
         self.softgauss = softgauss
+
+        if type != 'paw':
+            symbol += '.' + type
+        self.symbol = symbol
         
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,

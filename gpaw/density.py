@@ -190,7 +190,7 @@ class Density:
 
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
-
+            
         assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 1e-7
 
     def update(self, kpt_u, symmetry):
