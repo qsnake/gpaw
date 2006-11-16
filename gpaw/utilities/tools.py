@@ -195,9 +195,11 @@ class Translate:
 def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     """Convert planewave energy cutoff to a real-space gridspacing
        using the conversion formula::
+       
                 pi
         h =   -----
             \/ 2 E
+       
        in atomic units (Hartree and Bohr)
     """
     from ASE.Units import Convert
@@ -209,9 +211,11 @@ def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
 def gridspacing_to_energy_cutoff(h, h_unit='Ang', E_unit='Hartree'):
     """Convert real-space gridspacing to planewave energy cutoff
        using the conversion formula::
+       
              1   pi  2
         E  = - ( -- )
          c   2   h
+       
        in atomic units (Hartree and Bohr)
     """
     from ASE.Units import Convert
