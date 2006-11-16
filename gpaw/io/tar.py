@@ -6,9 +6,9 @@ import xml.sax
 import Numeric as num
 
 
-intsize = num.array([1],num.Int).itemsize()
-floatsize = num.array([1],num.Float).itemsize()
-complexsize = num.array([1],num.Complex).itemsize()
+intsize = 4
+floatsize = num.array([1], num.Float).itemsize()
+complexsize = num.array([1], num.Complex).itemsize()
 itemsizes = {'int': intsize, 'float': floatsize, 'complex': complexsize}
 
     
@@ -51,7 +51,10 @@ class Writer:
             self.fill(array)
 
     def fill(self, array):
-        self.write(array.tostring())
+        if array.typecode() == num.Int and num.Int != num.Int32:
+            self.write(array.astype(num.Int32).tostring())
+        else:
+            self.write(array.tostring())
 
     def write_header(self, name, size):
         tarinfo = tarfile.TarInfo(name)
@@ -127,6 +130,8 @@ class Reader(xml.sax.handler.ContentHandler):
         del fileobj.read
         if self.byteswap:
             array = array.byteswapped()
+        if typecode == num.Int32:
+            array = num.asarray(array, num.Int)
         array.shape = shape
         if shape == ():
             return array.toscalar()
@@ -138,7 +143,7 @@ class Reader(xml.sax.handler.ContentHandler):
         return TarFileReference(fileobj, shape, typecode, self.byteswap)
     
     def get_file_object(self, name, indices):
-        typecode = {'int': num.Int,
+        typecode = {'int': num.Int32,
                     'float': num.Float,
                     'complex': num.Complex}[self.typecodes[name]]
         fileobj = self.tar.extractfile(name)
@@ -161,7 +166,7 @@ class TarFileReference:
         self.fileobj = fileobj
         self.shape = shape
         self.typecode = typecode
-        self.itemsize = itemsizes[{num.Int: 'int',
+        self.itemsize = itemsizes[{num.Int32: 'int',
                                    num.Float: 'float',
                                    num.Complex: 'complex'}[typecode]]
         self.byteswap = byteswap

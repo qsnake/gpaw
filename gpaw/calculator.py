@@ -552,7 +552,10 @@ class Calculator:
                   'softgauss':  bool(r['SoftGauss']),  # numpy!
                   'fixdensity': bool(r['FixDensity']),  # numpy!
                   'tolerance':  r['Tolerance']}
-        
+
+        if 'h' in overruling_kwargs:
+            del kwargs['gpts']
+        kwargs.update(overruling_kwargs)
         calc = Calculator(**kwargs)
 
         Z_a = num.asarray(r.get('AtomicNumbers'), num.Int)
@@ -588,7 +591,6 @@ class Calculator:
         calc.pos_ac = pos_ac
         calc.periodic_c = periodic_c
         calc.cell_cc = cell_cc
-        calc.Set(**overruling_kwargs)
         
         return atoms
 

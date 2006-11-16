@@ -219,7 +219,8 @@ class Paw:
         self.pt_nuclei = []
         self.ghat_nuclei = []
 
-        self.density = Density(self.gd, self.finegd, charge, nspins,
+        self.density = Density(self.gd, self.finegd, hund, magmom_a, charge,
+                               nspins,
                                stencils, mix, old, timer, fixdensity, kpt_comm,
                                kT,
                                self.my_nuclei, self.ghat_nuclei, self.nuclei,
@@ -272,36 +273,12 @@ class Paw:
 
         self.set_positions(pos_ac)
 
-        wf = False
-        dens = False
+        self.wave_functions_initialized = False
+        self.density_initialized = False
         if restart_file is not None:
-            wf = self.initialize_from_file(restart_file)
-            dens = True
-
-        if not wf: 
-            # Initialize wave functions and perhaps also the density
-            # from atomic orbitals:
-            for nucleus in self.nuclei:
-                nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc,
-                                                   self.locfuncbcaster)
-            self.locfuncbcaster.broadcast()
-
-            if not dens:
-                self.density.initialize(hund, magmom_a)
-
-            if not wf:
-                self.initialize_wave_functions()
-                
-            self.converged = False
-
-            # Free allocated space for radial grids:
-            for setup in setups:
-                del setup.phit_j
-            for nucleus in self.nuclei:
-                try:
-                    del nucleus.phit_j
-                except AttributeError:
-                    pass
+            self.wave_functions_initialized = self.initialize_from_file(
+                restart_file)
+            self.density_initialized = True
 
         self.timer.stop()
 
@@ -704,6 +681,33 @@ class Paw:
         return self.weights_k
 
     def load_wave_functions(self):
+        if not self.wave_functions_initialized: 
+            # Initialize wave functions and perhaps also the density
+            # from atomic orbitals:
+            for nucleus in self.nuclei:
+                nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc,
+                                                   self.locfuncbcaster)
+            self.locfuncbcaster.broadcast()
+
+            if not self.density_initialized:
+                self.density.initialize()
+                self.density_initialized = True
+                
+            if not self.wave_functions_initialized:
+                self.initialize_wave_functions()
+                self.wave_functions_initialized = True
+                
+            self.converged = False
+
+            # Free allocated space for radial grids:
+            for setup in self.setups:
+                del setup.phit_j
+            for nucleus in self.nuclei:
+                try:
+                    del nucleus.phit_j
+                except AttributeError:
+                    pass
+
         if not isinstance(self.kpt_u[0].psit_nG, num.ArrayType):
             assert not mpi.parallel
             # Calculation started from a restart file.  Allocate arrays

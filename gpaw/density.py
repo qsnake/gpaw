@@ -39,11 +39,13 @@ class Density:
      ========== =========================================
     """
     
-    def __init__(self, gd, finegd, charge, nspins,
+    def __init__(self, gd, finegd, hund, magmom_a, charge, nspins,
                  stencils, mix, old, timer, fixdensity, kpt_comm, kT,
                  my_nuclei, ghat_nuclei, nuclei, nvalence):
         """Create the Density object."""
 
+        self. hund = hund
+        self.magmom_a = magmom_a
         self.charge = charge
         self.nspins = nspins
         self.gd = gd
@@ -84,7 +86,7 @@ class Density:
 
         self.nvalence = nvalence
 
-    def initialize(self, hund, magmom_a):
+    def initialize(self):
         """Initialize density.
 
         The density is initialized from atomic orbitals, and will
@@ -94,8 +96,8 @@ class Density:
         self.timer.start('Init dens.')
 
         self.nt_sG[:] = self.nct_G
-        for magmom, nucleus in zip(magmom_a, self.nuclei):
-            nucleus.add_atomic_density(self.nt_sG, magmom, hund)
+        for magmom, nucleus in zip(self.magmom_a, self.nuclei):
+            nucleus.add_atomic_density(self.nt_sG, magmom, self.hund)
 
         # The nucleus.add_atomic_density() method should be improved
         # so that we don't have to do this scaling: XXX
@@ -134,7 +136,7 @@ class Density:
             self.comm.sum(Q_s)
             Nt_s = [self.gd.integrate(nt_G) for nt_G in self.nt_sG]
 
-            M = sum(magmom_a)
+            M = sum(self.magmom_a)
             x = 1.0
             y = 1.0
             if Nt_s[0] == 0:
