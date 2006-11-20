@@ -88,22 +88,28 @@ class GridDescriptor:
 
         if num.sometrue(self.N_c % domain.parsize_c):
             raise ValueError('Bad number of CPUs!')
-
-        self.n_c = self.N_c / domain.parsize_c
-
+        
+        self.n_c, remainder_c = divmod(N_c, domain.parsize_c)
         self.beg_c = domain.parpos_c * self.n_c
+        for c in range(3):
+            shift = domain.parpos_c[c] - domain.parsize_c[c] + remainder_c[c]
+            if shift >= 0:
+                self.n_c[c] += 1
+                self.beg_c[c] += shift
+                
         self.end_c = self.beg_c + self.n_c
         self.beg0_c = self.beg_c.copy()
 
         for c in range(3):
             if not self.domain.periodic_c[c] and self.beg_c[c] == 0:
                 self.beg_c[c] = 1
-        
+
         self.h_c = domain.cell_c / N_c
         self.dv = self.h_c[0] * self.h_c[1] * self.h_c[2]
 
         # Sanity check for grid spacings:
-        assert max(self.h_c) / min(self.h_c) < 1.3
+        if max(self.h_c) / min(self.h_c) > 1.3:
+            raise ValueError('Very anisotropic grid spacings: %s' % self.h_c)
 
     def new_array(self, n=None, typecode=num.Float, zero=True,
                   global_array=False):
@@ -198,62 +204,22 @@ class GridDescriptor:
         
         boxes = []
 
-        if self.domain.angle is None:
-            for b0, e0 in range_c[0]:
-                for b1, e1 in range_c[1]:
-                    for b2, e2 in range_c[2]:
-                        b = num.array((b0, b1, b2))
-                        e = num.array((e0, e1, e2))
-                        beg_c = num.array((b0 % N_c[0], b1 % N_c[1], b2 % N_c[2]))
-                        end_c = beg_c + e - b
-                        disp = (b - beg_c) / N_c
-                        beg_c = num.maximum(beg_c, self.beg_c)
-                        end_c = num.minimum(end_c, self.end_c)
-                        if (beg_c[0] < end_c[0] and
-                            beg_c[1] < end_c[1] and
-                            beg_c[2] < end_c[2]):
-                            boxes.append((beg_c, end_c, disp))
+        for b0, e0 in range_c[0]:
+            for b1, e1 in range_c[1]:
+                for b2, e2 in range_c[2]:
+                    b = num.array((b0, b1, b2))
+                    e = num.array((e0, e1, e2))
+                    beg_c = num.array((b0 % N_c[0], b1 % N_c[1], b2 % N_c[2]))
+                    end_c = beg_c + e - b
+                    disp = (b - beg_c) / N_c
+                    beg_c = num.maximum(beg_c, self.beg_c)
+                    end_c = num.minimum(end_c, self.end_c)
+                    if (beg_c[0] < end_c[0] and
+                        beg_c[1] < end_c[1] and
+                        beg_c[2] < end_c[2]):
+                        boxes.append((beg_c, end_c, disp))
 
-            return boxes
-        else:
-            for b0, e0 in range_c[0]:
-                b1, e1 = range_c[1][0]
-                b2, e2 = range_c[2][0]
-                
-                b = num.array((b0, b1, b2))
-                e = num.array((e0, e1, e2))
-                  
-                beg_c = num.array((b0 % N_c[0], b1 % N_c[1], b2 % N_c[2]))
-                end_c = beg_c + e - b
-                
-                disp = (b - beg_c) / N_c
-                da = self.domain.angle*disp[0]
-                
-                beg_c = num.maximum(beg_c, self.beg_c)
-                end_c = num.minimum(end_c, self.end_c)
-                
-                ###Noget her, foskydning?!?                  
-                l = 0.5*(end_c - beg_c)
-                c = 0.5*(end_c + beg_c) - 0.5 * N_c
-                
-                newc = num.array([c[0],
-                                  c[1] * cos(da) - c[2] * sin(da),
-                                  c[1] * sin(da) + c[2] * cos(da)]) + 0.5 * N_c
-                
-                beg_c = num.floor(newc - l).astype(num.Int) - 1
-                end_c = num.ceil(newc + l).astype(num.Int) + 1
-                beg_c = num.maximum(beg_c, self.beg_c)
-                end_c = num.minimum(end_c, self.end_c)                 
-
-##                beg_c = self.beg_c.copy();print '.....'
-##                end_c = self.end_c.copy()
-                
-                if (beg_c[0] < end_c[0] and
-                    beg_c[1] < end_c[1] and
-                    beg_c[2] < end_c[2]):
-                    boxes.append((beg_c, end_c, disp))
-            return boxes
-
+        return boxes
 
     def mirror(self, a_g, c):
         """Apply mirror symmetry to array.

@@ -282,7 +282,7 @@ class Paw:
 
         self.timer.stop()
 
-    def find_ground_state(self, pos_ac, cell_c, angle):
+    def find_ground_state(self, pos_ac, cell_c):
         """Start iterating towards the ground state."""
 
         pos_ac = pos_ac / self.a0
@@ -311,7 +311,7 @@ class Paw:
 
             self.Ekin = self.Ekin0 + Eband
             self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
-                
+
             output.iteration(self)
 
             self.niter += 1

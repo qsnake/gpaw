@@ -5,8 +5,6 @@
 
 import Numeric as num
 
-from gpaw.transrotation import rotate
-
 
 class NeighborList:
     """Neighbor-list class."""
@@ -24,7 +22,6 @@ class NeighborList:
 
         self.drift = drift
         self.cell_c = domain.cell_c
-        self.angle = domain.angle
         self.symbol_a = symbol_a
 
         self.stuff = {}
@@ -92,9 +89,6 @@ class NeighborList:
                 diff_c = pos2_c - pos1_c
                 offset0 = num.floor(diff_c / cell_c + 0.5) * cell_c
                 diff_c -= offset0  # XXX only for periodic BC's!!!!
-                if self.angle is not None:
-                    r_c = pos2_c - cell_c / 2
-                    rotate(diff_c, r_c, -self.angle * offset0[0] / cell_c[0])
                 offsets = []
                 rcut, ncells = self.stuff[(symbol1, symbol2)]
                 for n0 in range(-ncells[0], ncells[0] + 1):
@@ -102,8 +96,6 @@ class NeighborList:
                         for n2 in range(-ncells[2], ncells[2] + 1):
                             offset = cell_c * (n0, n1, n2)
                             d_c = diff_c + offset
-                            if self.angle is not None:
-                                rotate(d_c, r_c, self.angle * n0)
                             if num.dot(d_c, d_c) < rcut**2:
                                 offsets.append(offset)
                 if offsets:

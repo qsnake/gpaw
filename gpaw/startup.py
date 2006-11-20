@@ -20,7 +20,7 @@ from gpaw.setup import create_setup
 from gpaw import dry_run
 
 def create_paw_object(out, a0, Ha,
-                      pos_ac, Z_a, magmom_a, cell_c, bc_c, angle,
+                      pos_ac, Z_a, magmom_a, cell_c, bc_c,
                       h, N_c, xcname,
                       nbands, spinpol, kT,
                       charge,
@@ -33,10 +33,6 @@ def create_paw_object(out, a0, Ha,
 
     timer = Timer()
     timer.start('Init')
-    if angle is not None:
-        usesymm = False
-        if lmax not in [None, 0]:
-            raise NotImplementedError
     
     magmom_a = num.array(magmom_a)
     magnetic = num.sometrue(magmom_a)
@@ -77,7 +73,7 @@ def create_paw_object(out, a0, Ha,
 
 
     # Create a Domain object:
-    domain = Domain(cell_c / a0, bc_c, angle)
+    domain = Domain(cell_c / a0, bc_c)
     h_c = domain.cell_c / N_c
 
     print >> out, 'unitcell:'

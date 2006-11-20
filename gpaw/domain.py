@@ -17,14 +17,11 @@ class Domain:
     A ``Domain`` object (in `domain.py`) holds informaion on the unit
     cell and the boundary conditions"""
     
-    def __init__(self, cell, periodic=(True, True, True), angle=None):
+    def __init__(self, cell, periodic=(True, True, True)):
         """Create Domain object from a unit cell and boundary conditions.
 
         The arguments are the lengths of the three axes, followed by a
-        tuple of three periodic-boundary flags (``bool``'s) and
-        finally a rotation angle applied to the unit cell after
-        translation of one lattice vector in the *x*-direction
-        (experimental feature).
+        tuple of three periodic-boundary flags (``bool``'s).
 
         Parallel stuff:
          =============== ==================================================
@@ -41,7 +38,6 @@ class Domain:
         
         self.cell_c = num.array(cell, num.Float)
         self.periodic_c = periodic
-        self.angle = angle
         
         self.set_decomposition(serial_comm, (1, 1, 1))
 

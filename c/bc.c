@@ -122,31 +122,7 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
 	bc->maxrecv = n;
     }
 
-  bc->angle = 0.0;
-  bc->rotbuf = 0;
-
   return bc;
-}
-
-
-void bc_set_rotation(boundary_conditions* bc,
-		     double angle, long c, double* pval1, long* pfrom1, long* pto1,
-		     double* pval2, long* pfrom2, long* pto2, int exact)
-{
-  bc->angle = angle;
-  bc->c = c;
-  bc->pval1 = pval1;
-  bc->pfrom1 = pfrom1;
-  bc->pto1 = pto1;  
-  bc->pval2 = pval2;
-  bc->pfrom2 = pfrom2;
-  bc->pto2 = pto2;  
-  bc->exact = exact;
-  int s0 = bc->sendsize[0][0][0];
-  if (bc->sendsize[0][1][0] > s0)
-    s0 = bc->sendsize[0][1][0];
-  bc->rotbuf = (double*)malloc(s0 * bc->size1[1] * bc->size1[2] *
-				   bc->ndouble * sizeof(double));
 }
 
 
@@ -264,71 +240,14 @@ void bc_unpack1(const boundary_conditions* bc,
   for (int d = 0; d < 2; d++)
     if (bc->sendproc[i][d] == COPY_DATA)
       {
-	if (bc->angle == 0.0 || i != 0)
-	  {
-	    if (real)
-	      bmgs_translate(a2, bc->size2, bc->sendsize[i][d],
-			     bc->sendstart[i][d], bc->recvstart[i][1 - d]);
-	    else
-	      bmgs_translatemz((double_complex*)a2, bc->size2,
-			       bc->sendsize[i][d],
-			       bc->sendstart[i][d], bc->recvstart[i][1 - d],
-			       phases[d]);
-	  }
+	if (real)
+	  bmgs_translate(a2, bc->size2, bc->sendsize[i][d],
+			 bc->sendstart[i][d], bc->recvstart[i][1 - d]);
 	else
-	  {
-	    int p = bc->padding;
-	    if (real)
-	      {
-		int nn = (bc->sendsize[i][d][0] * 
-			  bc->sendsize[i][d][1] * 
-			  bc->sendsize[i][d][2]);
-		double* c = bc->rotbuf;
-		for (int n = 0; n < nn; n++)
-		  c[n] = 0.0;
-		bmgs_rotate(a1 + (bc->sendstart[i][d][0] - p) *
-			    bc->size1[1] * bc->size1[2], bc->sendsize[i][d],
-			    bc->rotbuf, bc->angle * (2 * d - 1), d,
-			    bc->c, bc->pval1,bc->pfrom1,bc->pto1, 
-			    bc->pval2, bc->pfrom2, bc->pto2, bc->exact);
-		bmgs_paste(bc->rotbuf, bc->sendsize[i][d], 
-			   a2, bc->size2, bc->recvstart[i][1 - d]);
-	      }
-	    else
-	      {
-		int nn = (bc->sendsize[i][d][0] * 
-			  bc->sendsize[i][d][1] * 
-			  bc->sendsize[i][d][2]);
-		double_complex* c = (double_complex*)bc->rotbuf;
-		for (int n = 0; n < nn; n++) {
-#ifdef NO_C99_COMPLEX		  
-		  c[n].r = 0.0;
-		  c[n].i = 0.0;
-#else
-		  c[n] = 0.0;	  
-#endif
-		}
-		bmgs_rotatez(((double_complex*)a1) + 
-			     (bc->sendstart[i][d][0] - p) *
-			     bc->size1[1] * bc->size1[2], 
-			     bc->sendsize[i][d],
-			     (double_complex*)bc->rotbuf, 
-			     bc->angle * (2 * d - 1), d,bc->c,
-			     bc->pval1, bc->pfrom1, bc->pto1,
-			     bc->pval2, bc->pfrom2, bc->pto2, bc->exact);
-		for (int n = 0; n < nn; n++) {
-#ifdef NO_C99_COMPLEX		  
-		  c[n].r = c[n].r*phases[d].r-c[n].i*phases[d].i;
-		  c[n].i = c[n].r*phases[d].i+c[n].i*phases[d].r;
-#else
-		  c[n] *= phases[d];
-#endif
-		}
-		bmgs_pastez((double_complex*)bc->rotbuf, bc->sendsize[i][d], 
-			    (double_complex*)a2, bc->size2,
-			    bc->recvstart[i][1 - d]);
-	      }
-	  }	  
+	  bmgs_translatemz((double_complex*)a2, bc->size2,
+			   bc->sendsize[i][d],
+			   bc->sendstart[i][d], bc->recvstart[i][1 - d],
+			       phases[d]);
       }
 }
 

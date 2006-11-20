@@ -42,7 +42,7 @@ class Eigensolver:
         error = 0.0
         for kpt in kpt_u:
             error += self.iterate_one_k_point(hamiltonian, kpt)
-
+            
         if self.convergeall:
             error = self.comm.sum(self.kpt_comm.sum(error)) / kpt_u[0].nbands
         else:
@@ -79,6 +79,7 @@ class Eigensolver:
         eps_n = kpt.eps_n
 
         hamiltonian.kin.apply(psit_nG, work, kpt.phase_cd)
+            
         work += kpt.psit_nG * hamiltonian.vt_sG[kpt.s]
         if self.exx is not None:
             self.exx.adjust_hamiltonian(psit_nG, work, kpt.nbands,

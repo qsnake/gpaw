@@ -3,7 +3,6 @@
 
 from __future__ import division
 from math import pi
-import gpaw.transrotation as tr
 import Numeric as num
 
 from gpaw import debug
@@ -29,14 +28,6 @@ class Transformer:
             num.asarray(gd.n_c, num.Int), 2 * nn, neighbor_cd,
             typecode == num.Float, comm, interpolate)
         
-        if gd.domain.angle is not None:
-            angle = gd.domain.angle
-            if gd.comm.size > 1:
-                raise NotImplementedError
-            c1, pval1, pfrom1, pto1, pval2, pfrom2, pto2 = tr.RotationCoef(gd.n_c[1], angle)
-            self.transformer.set_rotation(angle, c1, pval1, pfrom1, pto1,
-                                          pval2, pfrom2, pto2, 0)
-            
         self.ngpin = tuple(gd.n_c)
         assert typecode in [num.Float, num.Complex]
 

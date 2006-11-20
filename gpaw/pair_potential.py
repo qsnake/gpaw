@@ -7,7 +7,6 @@ import Numeric as num
 
 from gpaw.interaction import GInteraction2 as GInteraction
 from gpaw.neighbor_list import NeighborList
-from gpaw.transrotation import rotate
 
 
 class Neighbor:
@@ -50,7 +49,6 @@ class PairPotential:
 
         # Make new pairs:
         cell_c = domain.cell_c
-        angle = domain.angle
         for a1 in range(len(nuclei)):
             nucleus1 = nuclei[a1]
             symbol1 = nucleus1.setup.symbol
@@ -64,8 +62,6 @@ class PairPotential:
                 r_c = pos_ac[a2] - cell_c / 2
                 for offset in offsets:
                     d_c = diff_c + offset
-                    if angle is not None:
-                        rotate(d_c, r_c, angle * offset[0] / cell_c[0])
                     v_LL, dvdr_LLc = interaction(d_c)
                     V_LL += v_LL
                     dVdr_LLc += dvdr_LLc

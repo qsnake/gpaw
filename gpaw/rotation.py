@@ -60,8 +60,5 @@ def Y_rotation(l, angle):
             Y_mm[m1, m2] = Y(L, x, y, z)
     return Y_mm
 
-def transrotation(l, angle):
-    return num.dot(iY_lmm[l], Y_rotation(l, angle))
-
 
 del s, identity

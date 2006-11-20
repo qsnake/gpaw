@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <math.h>
+#include <assert.h>
 #include "bmgs.h"
 
 

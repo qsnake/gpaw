@@ -22,8 +22,8 @@ parser.add_option('-r', '--radius', type='string', default=None,
 parser.add_option('-v', '--potential', type='float', default=None,
                   help='Effective potential at r=0',
                   metavar='<v0>')
-parser.add_option('-q', '--quick', action='store_true',
-                  help='Skip generation of logarithmic derivatives.')
+parser.add_option('-l', '--logarithmic-derivatives', action='store_true',
+                  help='Calculate of logarithmic derivatives.')
 parser.add_option('-a', '--all-electron-only', action='store_true',
                   help='Skip generation of PAW setup.')
 parser.add_option('-e', '--extra-projectors', type='string', default=None,
@@ -79,7 +79,7 @@ for symbol in atoms:
                 if x != '':
                     extra[l] = [float(y) for y in x.split(',')]
     g.run(core, rcut, extra,
-          logderiv=not opt.quick, vt0=v0,
+          logderiv=opt.logarithmic_derivatives, vt0=v0,
           exx=opt.exact_exchange,
           normconserving=opt.normconserving)
 

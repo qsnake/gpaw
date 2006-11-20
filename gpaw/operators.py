@@ -9,7 +9,6 @@ import Numeric as num
 from gpaw import debug
 from gpaw.utilities import contiguous, is_contiguous
 import _gpaw
-import gpaw.transrotation as tr
     
 class _Operator:
     def __init__(self, coef_p, offset_pc, gd, cfd, typecode=num.Float):
@@ -46,12 +45,6 @@ class _Operator:
                                           neighbor_cd, typecode == num.Float,
                                           comm, cfd)
 
-        if gd.domain.angle is not None:
-            angle = gd.domain.angle
-            c1, pval1, pfrom1, pto1, pval2, pfrom2, pto2 = tr.RotationCoef(n_c[1], angle)
-            self.operator.set_rotation(angle, c1, pval1, pfrom1, pto1,
-                                          pval2, pfrom2, pto2, 0)
-                     
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape
         assert in_xg.shape[-3:] == self.shape

@@ -106,35 +106,8 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
-static PyObject* Transformer_rotation(TransformerObject *self, PyObject *args)
-{
-  double angle;
-  long c;
-  PyArrayObject* pval1;
-  PyArrayObject* pfrom1;
-  PyArrayObject* pto1;
-  PyArrayObject* pval2;
-  PyArrayObject* pfrom2;
-  PyArrayObject* pto2;
-  int exact;
-  if (!PyArg_ParseTuple(args, "dlOOOOOOi", &angle, &c, &pval1, &pfrom1,&pto1,
-			&pval2, &pfrom2, &pto2, &exact))
-    return NULL;
-
-  bc_set_rotation(self->bc, angle, c, DOUBLEP(pval1), LONGP(pfrom1), LONGP(pto1),
-		  DOUBLEP(pval2), LONGP(pfrom2), LONGP(pto2), exact);
-  Py_INCREF(pval1);  // XXX
-  Py_INCREF(pfrom1);  // XXX
-  Py_INCREF(pto1);  // XXX
-  Py_INCREF(pval2);  // XXX
-  Py_INCREF(pfrom2);  // XXX
-  Py_INCREF(pto2);  
-  Py_RETURN_NONE;
-}
-
 static PyMethodDef Transformer_Methods[] = {
     {"apply", (PyCFunction)Transformer_apply, METH_VARARGS, NULL},
-    {"set_rotation", (PyCFunction)Transformer_rotation, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 

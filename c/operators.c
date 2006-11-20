@@ -152,33 +152,6 @@ static PyObject * Operator_get_diagonal_element(OperatorObject *self,
 }
 
 
-static PyObject* Operator_rotation(OperatorObject *self, PyObject *args)
-{
-  double angle;
-  long c;
-  PyArrayObject* pval1;
-  PyArrayObject* pfrom1;
-  PyArrayObject* pto1;
-  PyArrayObject* pval2;
-  PyArrayObject* pfrom2;
-  PyArrayObject* pto2;
-  int exact;
-  if (!PyArg_ParseTuple(args, "dlOOOOOOi", &angle, &c, &pval1, &pfrom1,&pto1,
-			&pval2, &pfrom2, &pto2, &exact))
-    return NULL;
-
-  bc_set_rotation(self->bc, angle, c, DOUBLEP(pval1), LONGP(pfrom1), LONGP(pto1),
-		  DOUBLEP(pval2), LONGP(pfrom2), LONGP(pto2), exact);
-  Py_INCREF(pval1);  // XXX
-  Py_INCREF(pfrom1);
-  Py_INCREF(pto1);
-  Py_INCREF(pval2);  // XXX
-  Py_INCREF(pfrom2);  // XXX
-  Py_INCREF(pto2);  // XXX
-  Py_RETURN_NONE;
-}
-
-
 static PyMethodDef Operator_Methods[] = {
     {"apply", 
      (PyCFunction)Operator_apply, METH_VARARGS, NULL},
@@ -186,8 +159,6 @@ static PyMethodDef Operator_Methods[] = {
      (PyCFunction)Operator_relax, METH_VARARGS, NULL},
     {"get_diagonal_element", 
      (PyCFunction)Operator_get_diagonal_element, METH_VARARGS, NULL},
-    {"set_rotation", 
-     (PyCFunction)Operator_rotation, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 

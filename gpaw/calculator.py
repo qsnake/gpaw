@@ -211,10 +211,6 @@ class Calculator:
         Z_a = atoms.GetAtomicNumbers()
         cell_cc = num.array(atoms.GetUnitCell())
         periodic_c = atoms.GetBoundaryConditions()
-        try:
-            angle = atoms.GetRotationAngle()
-        except AttributeError:
-            angle = None
 	
         # Check that the cell is orthorhombic:
         check_unit_cell(cell_cc)
@@ -234,7 +230,7 @@ class Calculator:
             
         args = [self.out,
                 self.a0, self.Ha,
-                pos_ac, Z_a, magmoms, cell_c, periodic_c, angle,
+                pos_ac, Z_a, magmoms, cell_c, periodic_c,
                 self.h, self.gpts, self.xc,
                 self.nbands, self.spinpol, self.width,
                 self.charge,
@@ -310,22 +306,17 @@ class Calculator:
         Z_a = atoms.GetAtomicNumbers()
         cell_cc = atoms.GetUnitCell()
         periodic_c = atoms.GetBoundaryConditions()
-        try:
-            angle = atoms.GetRotationAngle()
-        except AttributeError:
-            angle = None
 	
         # Check that the cell is orthorhombic:
         check_unit_cell(cell_cc)
 
-        self.paw.find_ground_state(pos_ac, num.diagonal(cell_cc), angle)
+        self.paw.find_ground_state(pos_ac, num.diagonal(cell_cc))
         
         # Save the state of the atoms:
         self.lastcount = atoms.GetCount()
         self.pos_ac = pos_ac
         self.cell_cc = cell_cc
         self.periodic_c = periodic_c
-        self.angle = angle
         self.Z_a = Z_a
 
         timing.update()
