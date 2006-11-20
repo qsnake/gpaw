@@ -1,8 +1,36 @@
 """IO routines for gOpenMol binary plt format"""
 
-from struct import pack
+from struct import calcsize,pack,unpack
 import Numeric as num
 from gpaw.utilities import check_unit_cell
+
+def read_plt(filename):
+    """Read plt files
+    returns the cell(3x3 matrix) and the grid
+    """
+    f = open(filename)
+
+    fmt='iiiii'
+    d, d, nx, ny, nz = unpack(fmt,f.read(calcsize(fmt)))
+
+    fmt='ff'
+    z0, ze = unpack(fmt,f.read(calcsize(fmt)))
+    y0, ye = unpack(fmt,f.read(calcsize(fmt)))
+    x0, xe = unpack(fmt,f.read(calcsize(fmt)))
+    dz = (ze-z0)/(nz-1)
+    dy = (ye-y0)/(ny-1)
+    dx = (xe-x0)/(nx-1)
+    cell = num.zeros((3,3),num.Float)
+    cell[0,0] = nx*dx 
+    cell[1,1] = ny*dy 
+    cell[2,2] = nz*dz 
+    
+    fmt='f'
+    size = nx*ny*nz * calcsize(fmt)
+    arr = num.fromstring(f.read(size),num.Float32)
+    f.close()
+    
+    return cell, num.transpose(num.resize(arr,(nz,ny,nx)))
 
 def write_plt(cell, grid, filename, type=4):
     """Input:
