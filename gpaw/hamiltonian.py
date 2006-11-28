@@ -135,14 +135,13 @@ class Hamiltonian:
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, density.nt_sG):
             vt_g += self.vHt_g
             self.restrict(vt_g, vt_G)
-            Ekin -= (1 - .5 * self.xc.xcfunc.hybrid) * num.vdot( # EXX hack
-                vt_G, nt_G - density.nct_G) * self.gd.dv
+            Ekin -= num.vdot(vt_G, nt_G - density.nct_G) * self.gd.dv
 
         # Exact-exchange correction
         if self.exx is not None:
             Exx = self.exx.Exx
             Exc += Exx
-            Ekin -= Exx
+            Ekin -= 2 * self.xc.xcfunc.hybrid * Exx
             
         # Calculate atomic hamiltonians:
         for nucleus in self.ghat_nuclei:
