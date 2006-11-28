@@ -77,7 +77,7 @@ def get_exx(xcname, softgauss, typecode, gd, finegd, interpolate,
             msg = 'Exact exchange is currently not compatible with extra\n'\
                   'soft compensation charges.\n'\
                   'Please set keyword softgauss=False'
-            raise NotImplementedError(msg)
+            #raise NotImplementedError(msg)
 
         return SelfConsistentExx(gd, finegd, interpolate,
                                  my_nuclei, ghat_nuclei, nspins)
@@ -148,7 +148,7 @@ class SelfConsistentExx:
                                 self.v_G * psit_nG[m]
 
                 # add the nm contribution to exchange energy
-                self.Exx -= .5 * f_n[n] * f_n[m] / (self.nspins % 2 + 1) *\
+                self.Exx += .5 * f_n[n] * f_n[m] / (self.nspins % 2 + 1) *\
                             self.integrate(self.v_g * self.n_g)
 
                 # update the vxx_sni vector of the nuclei, used to determine
@@ -159,7 +159,7 @@ class SelfConsistentExx:
                     nucleus.vxx_sni[s, n] += num.dot(
                         unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
                         nucleus.P_uni[u, m])
-        print 'Exchange energy:', self.Exx
+        #print 'Exchange energy:', self.Exx
 
     def adjust_hamitonian_matrix(self, H_nn, P_ni, nucleus, s):
         """Called from kpoint.diagonalize"""
