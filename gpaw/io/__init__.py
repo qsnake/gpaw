@@ -270,7 +270,10 @@ def read(paw, filename):
         kpt.f_n[:] = r.get('OccupationNumbers', s, k)
 
     paw.Ekin = r['Ekin']
-    paw.Ekin0 = r['Ekin0']
+    try:
+        paw.Ekin0 = r['Ekin0']
+    except AttributeError, KeyError:
+        paw.Ekin0 = 0.0
     paw.Epot = r['Epot']
     paw.Ebar = r['Ebar']
     paw.Exc = r['Exc']
