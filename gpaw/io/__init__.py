@@ -227,7 +227,11 @@ def read(paw, filename):
     assert version >= 0.3
     
     for setup in paw.setups:
-        if setup.fingerprint != r[names[setup.Z] + 'Fingerprint']:
+        try:
+            fp = r[names[setup.Z] + 'Fingerprint']
+        except AttributeError, KeyError:
+            break
+        if setup.fingerprint != fp
             paw.warn(('Setup for %s (%s) not compatible ' +
                       'with restart file.') %
                      (setup.symbol, setup.filename))
