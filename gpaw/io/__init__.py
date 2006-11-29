@@ -231,7 +231,7 @@ def read(paw, filename):
             fp = r[names[setup.Z] + 'Fingerprint']
         except AttributeError, KeyError:
             break
-        if setup.fingerprint != fp
+        if setup.fingerprint != fp:
             paw.warn(('Setup for %s (%s) not compatible ' +
                       'with restart file.') %
                      (setup.symbol, setup.filename))
