@@ -12,7 +12,7 @@ from Numeric import array, Float, dot, NewAxis, zeros, transpose
 from LinearAlgebra import solve_linear_equations as solve
 
 from gpaw.density_mixer import Mixer, MixerSum
-from gpaw.transformers import Interpolator
+from gpaw.transformers import Transformer
 from gpaw.utilities import pack, unpack2
 from gpaw.utilities.complex import cc, real
 
@@ -76,7 +76,7 @@ class Density:
         nn = stencils[2]
 
         # Interpolation function for the density:
-        self.interpolate = Interpolator(self.gd, nn, Float).apply
+        self.interpolate = Transformer(self.gd, self.finegd, nn).apply
         
         # Density mixer:
         if nspins == 2 and kT != 0:

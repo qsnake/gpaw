@@ -5,7 +5,7 @@ import Numeric as num
 import RandomArray as ra
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
-from gpaw.transformers import Interpolator, Restrictor
+from gpaw.transformers import Transformer
 import time
 
 
@@ -13,15 +13,19 @@ n = 20
 gd = GridDescriptor(Domain((1,1,1)), (n,n,n))
 ra.seed(7, 8)
 a = ra.random((n, n, n))
-b = num.zeros((n * 2, n * 2, n * 2), num.Float)
+
+gd2 = gd.refine()
+b = gd2.new_array()
 for k in [2, 4, 6]:
-    inter = Interpolator(gd, k // 2).apply
+    inter = Transformer(gd, gd2, k // 2).apply
     inter(a, b)
     print k, num.sum(a.flat) - num.sum(b.flat) / 8
     assert abs(num.sum(a.flat) - num.sum(b.flat) / 8) < 3e-11
-b = num.zeros((n / 2, n / 2, n / 2), num.Float)
+
+gd2 = gd.coarsen()
+b = gd2.new_array()
 for k in [2, 4, 6]:
-    restr = Restrictor(gd, k // 2).apply
+    restr = Transformer(gd, gd2, k // 2).apply
     restr(a, b)
     print k, num.sum(a.flat) - num.sum(b.flat) * 8
     assert abs(num.sum(a.flat) - num.sum(b.flat) * 8) < 5e-12

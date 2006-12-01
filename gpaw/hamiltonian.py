@@ -15,7 +15,7 @@ from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.operators import Laplace
 from gpaw.pair_potential import PairPotential
 from gpaw.poisson_solver import PoissonSolver
-from gpaw.transformers import Restrictor
+from gpaw.transformers import Transformer
 from gpaw.xc_functional import XC3DGrid
 
 
@@ -77,7 +77,7 @@ class Hamiltonian:
         nn = stencils[2]
 
         # Restrictor function for the potential:
-        self.restrict = Restrictor(finegd, nn, num.Float).apply
+        self.restrict = Transformer(finegd, gd, nn).apply
 
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Poisson equation (1, 2, ...):

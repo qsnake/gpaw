@@ -6,7 +6,7 @@ import sys
 
 import Numeric as num
 
-from gpaw.transformers import Interpolator, Restrictor
+from gpaw.transformers import Transformer
 from gpaw.operators import Laplace, LaplaceA, LaplaceB
 from gpaw import ConvergenceError
 
@@ -37,8 +37,8 @@ class PoissonSolver:
         self.rhos = [gd.new_array()]
         self.phis = [None]
         self.residuals = [gd.new_array()]
-        self.interpolators = [Interpolator(gd, 1)]
-        self.restrictors = [Restrictor(gd, 1)]
+        self.interpolators = []
+        self.restrictors = []
 
         level = 0
         self.presmooths = [2]
@@ -50,22 +50,20 @@ class PoissonSolver:
         
         while level < 4:
             try:
-                gd = gd.coarsen()
+                gd2 = gd.coarsen()
             except ValueError:
                 break
-            self.operators.append(Laplace(gd, scale, 1))
-            self.phis.append(gd.new_array())
-            self.rhos.append(gd.new_array())
-            self.residuals.append(gd.new_array())
-            self.interpolators.append(Interpolator(gd, 1))
-            try:
-                self.restrictors.append(Restrictor(gd, 1))
-            except:
-                pass
+            self.operators.append(Laplace(gd2, scale, 1))
+            self.phis.append(gd2.new_array())
+            self.rhos.append(gd2.new_array())
+            self.residuals.append(gd2.new_array())
+            self.interpolators.append(Transformer(gd2, gd))
+            self.restrictors.append(Transformer(gd, gd2))
             self.presmooths.append(4)
             self.postsmooths.append(4)
             self.weights.append(1.0)
             level += 1
+            gd = gd2
 
         self.levels = level
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
@@ -134,8 +132,7 @@ class PoissonSolver:
                 self.restrictors[level].apply(residual, self.rhos[level + 1])
                 self.phis[level + 1][:] = 0.0
                 self.iterate(4.0 * step, level + 1)
-                self.interpolators[level + 1].apply(self.phis[level + 1],
-                                                    residual)
+                self.interpolators[level].apply(self.phis[level + 1], residual)
                 self.phis[level] -= residual
                 continue
             residual *= step
@@ -164,8 +161,7 @@ class PoissonSolver:
                                           self.rhos[level + 1])
             self.phis[level + 1][:] = 0.0
             self.iterate2(4.0 * step, level + 1)
-            self.interpolators[level + 1].apply(self.phis[level + 1],
-                                                residual)
+            self.interpolators[level].apply(self.phis[level + 1], residual)
             self.phis[level] -= residual
 
         self.operators[level].relax(self.relax_method,

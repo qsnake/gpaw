@@ -5,18 +5,20 @@ import Numeric as num
 import RandomArray as ra
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
-from gpaw.transformers import Interpolator, Restrictor
+from gpaw.transformers import Transformer
 import time
 
 
-n = 12
-gd = GridDescriptor(Domain((1,1,1)), (n,n,n))
-a = ra.random((n / 2, n / 2, n / 2))
-b = ra.random((n, n, n))
-c = ra.random((n * 2, n * 2, n * 2))
+n = 6
+gda = GridDescriptor(Domain((1,1,1)), (n,n,n))
+gdb = gda.refine()
+gdc = gdb.refine()
+a = gda.new_array()
+b = gdb.new_array()
+c = gdc.new_array()
 
-inter = Interpolator(gd, 2).apply
-restr = Restrictor(gd, 2).apply
+inter = Transformer(gdb, gdc, 2).apply
+restr = Transformer(gdb, gda, 2).apply
 
 t = time.clock()
 for i in range(8*300):

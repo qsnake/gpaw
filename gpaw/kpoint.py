@@ -13,7 +13,7 @@ from multiarray import innerproduct as inner # avoid the dotblas version!
 
 from gpaw import mpi
 from gpaw.operators import Gradient
-from gpaw.transformers import Interpolator
+from gpaw.transformers import Transformer
 from gpaw.utilities import unpack
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
@@ -142,8 +142,8 @@ class KPoint:
             psit_G1 = gd1.new_array(typecode=self.typecode)
             psit_G2 = gd2.new_array(typecode=self.typecode)
 
-            interpolate2 = Interpolator(gd2, 1, self.typecode).apply
-            interpolate1 = Interpolator(gd1, 1, self.typecode).apply
+            interpolate2 = Transformer(gd2, gd1, 1, self.typecode).apply
+            interpolate1 = Transformer(gd1, self.gd, 1, self.typecode).apply
 
             shape = tuple(gd2.n_c)
 

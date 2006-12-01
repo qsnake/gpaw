@@ -10,8 +10,8 @@ from gpaw.utilities import is_contiguous
 import _gpaw
 
 
-class Transformer:
-    def __init__(self, gdin, gdout, nn, typecode):
+class _Transformer:
+    def __init__(self, gdin, gdout, nn=1, typecode=num.Float):
         self.typecode = typecode
         neighbor_cd = gdin.domain.neighbor_cd
 
@@ -70,11 +70,12 @@ class Transformer:
         self.transformer.apply(input, output, phases)
 
 
-def Interpolator(gd, nn, typecode=num.Float):
-    return Transformer(gd, gd.refine(), nn, typecode)
-def Restrictor(gd, nn, typecode=num.Float):
-    return Transformer(gd, gd.coarsen(), nn, typecode)
-
+if debug:
+    Transformer = _Transformer
+else:
+    def Transformer(gdin, gdout, nn=1, typecode=num.Float):
+        return _Transformer(gdin, gdout, nn, typecode).transformer
+    
 
 def coefs(k, p):
     for i in range(0, k * p, p):

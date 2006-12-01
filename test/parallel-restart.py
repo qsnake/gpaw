@@ -64,7 +64,7 @@ for test in tests:
 
 nhosts = 8
 d = 2.0
-if 0: 
+if 1: 
     a = 5.0
     O2 = ListOfAtoms([Atom('O',(0+d,d,d  ), magmom=1),
                       Atom('O',(1.2+d,d,d), magmom=1)],
@@ -85,7 +85,7 @@ if 0:
 
     del calc,O2
 
-if 0: 
+if 1: 
     atoms = Calculator.ReadAtoms('O2.gpw',out='O2-restart.txt',hosts=nhosts,
                                  tolerance=1e-9)
     e = atoms.GetPotentialEnergy()

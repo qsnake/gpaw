@@ -5,7 +5,7 @@ from math import pi
 
 import Numeric as num
 
-from gpaw.transformers import Restrictor, Interpolator
+from gpaw.transformers import Transformer
 from gpaw.operators import Laplace
 
 from gpaw.utilities.blas import axpy
@@ -21,10 +21,10 @@ class Preconditioner:
         self.scratch1 = gd1.new_array(3, typecode, False)
         self.scratch2 = gd2.new_array(3, typecode, False)
         self.step = 0.66666666 / kin0.get_diagonal_element()
-        self.restrictor0 = Restrictor(gd0, 1, typecode).apply
-        self.restrictor1 = Restrictor(gd1, 1, typecode).apply
-        self.interpolator2 = Interpolator(gd2, 1, typecode).apply
-        self.interpolator1 = Interpolator(gd1, 1, typecode).apply
+        self.restrictor0 = Transformer(gd0, gd1, 1, typecode).apply
+        self.restrictor1 = Transformer(gd1, gd2, 1, typecode).apply
+        self.interpolator2 = Transformer(gd2, gd1, 1, typecode).apply
+        self.interpolator1 = Transformer(gd1, gd0, 1, typecode).apply
         
     def __call__(self, residual, phases, phit, kpt):
         step = self.step
