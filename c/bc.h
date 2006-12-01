@@ -23,9 +23,9 @@ typedef struct
   int nrecv[3][2];
   int maxsend;
   int maxrecv;
-  int padding;
-  bool zero[3];
-  bool join[3];
+  int padding[3];
+  bool sjoin[3];
+  bool rjoin[3];
   int ndouble;
   MPI_Comm comm;
 } boundary_conditions;
@@ -33,7 +33,9 @@ typedef struct
 const static int COPY_DATA = -2;
 const static int DO_NOTHING = -3; // ??????????
 
-boundary_conditions* bc_init(const long size1[3], const int padding[2], 
+boundary_conditions* bc_init(const long size1[3],
+			     const long padding[3][2], 
+			     const long npadding[3][2], 
 			     const long neighbors[3][2],
 			     MPI_Comm comm, bool real, bool cfd);
 void bc_unpack1(const boundary_conditions* bc, 

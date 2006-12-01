@@ -3,8 +3,6 @@ from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
 import Numeric as num
 from gpaw.utilities import equal
-import Scientific.IO.NetCDF as NetCDF
-from ASE.IO.Cube import WriteCube
 
 import time
 
@@ -36,14 +34,14 @@ for nkpt in [4]:
             fcc.SetCalculator(calc)
             fcc[0].SetMagneticMoment(magmom)
             e = fcc.GetPotentialEnergy()
-            calc.Write(file_prefix+'.nc')
+            calc.Write(file_prefix+'.gpw')
 
             del calc,fcc
 
         for nhosts in nhostsread: 
             file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
             print '------ restart calculation  ',file_prefix
-            atoms = Calculator.ReadAtoms(file_prefix+'.nc',
+            atoms = Calculator.ReadAtoms(file_prefix+'.gpw',
                                          out=file_prefix+'_restart.txt',
                                          tolerance = 1e-10,
                                          hosts=nhosts)
@@ -66,7 +64,7 @@ for test in tests:
 
 nhosts = 8
 d = 2.0
-if 1: 
+if 0: 
     a = 5.0
     O2 = ListOfAtoms([Atom('O',(0+d,d,d  ), magmom=1),
                       Atom('O',(1.2+d,d,d), magmom=1)],
@@ -78,7 +76,7 @@ if 1:
     e0 = O2.GetPotentialEnergy()
     f  = O2.GetCartesianForces()
     equal(2.1062, sum(abs(f.flat)), 1e-2)
-    calc.Write('O2.nc')
+    calc.Write('O2.gpw')
 
     O2[1].SetCartesianPosition((1.21+d,d,d))
     e2 = O2.GetPotentialEnergy()
@@ -87,8 +85,8 @@ if 1:
 
     del calc,O2
 
-if 1: 
-    atoms = Calculator.ReadAtoms('O2.nc',out='O2-restart.txt',hosts=nhosts,
+if 0: 
+    atoms = Calculator.ReadAtoms('O2.gpw',out='O2-restart.txt',hosts=nhosts,
                                  tolerance=1e-9)
     e = atoms.GetPotentialEnergy()
     atoms[1].SetCartesianPosition((1.21+d,d,d))

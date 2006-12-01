@@ -98,15 +98,15 @@ def construct_reciprocal(gd):
        grid defined in input grid-descriptor 'gd'
     """
     # calculate reciprocal lattice vectors
-    dim = num.reshape(gd.N_c, (3, 1, 1, 1))
+    dim = num.reshape(gd.n_c, (3, 1, 1, 1))
     dk = 2 * num.pi / gd.domain.cell_c
     dk.shape = (3, 1, 1, 1)
-    k = ((num.indices(gd.N_c) + dim / 2)%dim - dim / 2) * dk
+    k = ((num.indices(gd.n_c) + dim / 2)%dim - dim / 2) * dk
     k2 = sum(k**2)
     k2[0,0,0] = 1.0
 
     # determine N^3
-    N3 = gd.N_c[0] * gd.N_c[1] * gd.N_c[2]
+    N3 = gd.n_c[0] * gd.n_c[1] * gd.n_c[2]
 
     return k2, N3
 
@@ -118,7 +118,7 @@ def coordinates(gd):
     """    
     I  = num.indices(gd.n_c)
     dr = num.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = num.reshape(gd.h_c * gd.beg0_c - .5 * gd.domain.cell_c, (3,1,1,1))
+    r0 = num.reshape(gd.h_c * gd.beg_c - .5 * gd.domain.cell_c, (3,1,1,1))
     r0 = num.ones(I.shape)*r0
     xyz = r0 + I * dr
     r2 = num.sum(xyz**2)
@@ -127,8 +127,8 @@ def coordinates(gd):
     middle = gd.N_c / 2.
     # check that middle is a gridpoint and that it is on this CPU
     if num.alltrue(middle == num.floor(middle)) and \
-           num.alltrue(gd.beg0_c <= middle < gd.end_c):
-        m = (middle - gd.beg0_c).astype(int)
+           num.alltrue(gd.beg_c <= middle < gd.end_c):
+        m = (middle - gd.beg_c).astype(int)
         r2[m[0], m[1], m[2]] = 1e-12
 
     # return r^2 matrix

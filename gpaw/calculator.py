@@ -532,9 +532,9 @@ class Calculator:
                   'xc':         r['XCFunctional'],
                   'kpts':       r.get('BZKPoints'),
                   'spinpol':    (r.dimension('nspins') == 2),
-                  'gpts':       (r.dimension('ngptsx'),
-                                 r.dimension('ngptsy'),
-                                 r.dimension('ngptsz')),
+                  'gpts':       ((r.dimension('ngptsx') + 1) // 2 * 2,
+                                 (r.dimension('ngptsy') + 1) // 2 * 2,
+                                 (r.dimension('ngptsz') + 1) // 2 * 2),
                   'usesymm':    bool(r['UseSymmetry']),  # numpy!
                   'width':      r['FermiWidth'] * Ha,
                   'mix':        r['Mix'],

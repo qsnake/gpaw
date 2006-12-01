@@ -6,7 +6,7 @@ import sys
 import cPickle as pickle
 import socket
 
-from gpaw import debug
+from gpaw import debug, trace
 from gpaw.utilities.socket import send, recv
 from gpaw.paw import Paw
 from gpaw.mpi.config import get_mpi_command
@@ -52,6 +52,8 @@ class MPIPaw:
 
         if debug:
             job += ' --gpaw-debug'
+        if trace:
+            job += ' --gpaw-trace'
 
         # Get the command to start mpi.  Typically this will be
         # something like:
@@ -94,7 +96,10 @@ class MPIPaw:
 
     def __del__(self):
         self.sckt.close()
-        os.remove('par_run.py')
+        try:
+            os.remove('par_run.py')
+        except OSError:
+            pass
 
     def __getattr__(self, attr):
         """Catch calls to methods and attributes."""

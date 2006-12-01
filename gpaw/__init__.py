@@ -25,6 +25,7 @@ home = os.environ['HOME']
 
 # Check for special command line arguments:
 debug = False
+trace = False
 parallel = False
 hosts = None
 parsize = None
@@ -37,7 +38,9 @@ while len(sys.argv) > i:
     arg = sys.argv[i]
     if arg.startswith('--gpaw-'):
         # We have found a gpaw command line argument:
-        if arg == '--gpaw-debug':
+        if arg == '--gpaw-trace':
+            trace = True
+        elif arg == '--gpaw-debug':
             debug = True
             print >> sys.stderr, 'gpaw-DEBUG mode'
         elif arg.startswith('--gpaw-setups='):
@@ -96,5 +99,26 @@ if setup_paths == []:
 from gpaw.calculator import Calculator
 
 
+if trace:
+    indent = '    '
+    path = __path__[0]
+    from gpaw.mpi import parallel, rank
+    if parallel:
+        indent = 'CPU%d    ' % rank
+    def profile(frame, event, arg):
+        global indent
+        f = frame.f_code.co_filename
+        if not f.startswith(path):
+            return
+        
+        if event == 'call':
+            print '%s%s:%d(%s)' % (indent, f[len(path):], frame.f_lineno,
+                                   frame.f_code.co_name)
+            indent += '| '
+        elif event == 'return':
+            indent = indent[:-2]
+        
+    sys.setprofile(profile)
+    
 # Clean up:
 del os, sys, get_platform, i, arg

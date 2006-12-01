@@ -39,35 +39,25 @@ static PyObject * Operator_relax(OperatorObject *self,
     return NULL;
 
   const boundary_conditions* bc = self->bc;
-  const int* size1 = bc->size1;
 
   double* fun = DOUBLEP(func);
   const double* src = DOUBLEP(source);
   const double_complex* ph;
 
-  int start[3] = {0, 0, 0};
-  int size[3] = {size1[0], size1[1], size1[2]};
   ph = 0;
 
-  for (int n = 0; n < nrelax; n++ ) {
-    for (int i = 0; i < 3; i++)
-      {
-        bc_unpack1(bc, fun, self->buf, i,
-                   self->recvreq, self->sendreq,
-                   self->recvbuf, self->sendbuf, ph + 2 * i);
-        bc_unpack2(bc, self->buf, i,
-                   self->recvreq, self->sendreq, self->recvbuf);
-      }
-    bmgs_relax(relax_method, &self->stencil, self->buf, fun, src, w, bc->zero);
-    for (int i = 0; i < 3; i++) {
-      if (bc->zero[i])
+  for (int n = 0; n < nrelax; n++ ) 
+    {
+      for (int i = 0; i < 3; i++)
 	{
-	  size[i] = 1;
-	  bmgs_zero(fun, size1, start, size);
-	  size[i] = size1[i];
+	  bc_unpack1(bc, fun, self->buf, i,
+		     self->recvreq, self->sendreq,
+		     self->recvbuf, self->sendbuf, ph + 2 * i);
+	  bc_unpack2(bc, self->buf, i,
+		     self->recvreq, self->sendreq, self->recvbuf);
 	}
+      bmgs_relax(relax_method, &self->stencil, self->buf, fun, src, w);
     }
-  }
   Py_RETURN_NONE;
 }
 
@@ -115,20 +105,6 @@ static PyObject * Operator_apply(OperatorObject *self,
       else
 	bmgs_fdz(&self->stencil, (const double_complex*)self->buf, 
 		 (double_complex*)out);
-
-      // XXX
-      int start[3] = {0, 0, 0};
-      int size[3] = {size1[0], size1[1], size1[2]};
-      for (int i = 0; i < 3; i++)
-	if (bc->zero[i])
-	  {
-	    size[i] = 1;
-	    if (real)
-	      bmgs_zero(out, size1, start, size);
-	    else
-	      bmgs_zeroz((double_complex*)out, size1, start, size);
-	    size[i] = size1[i];
-	  }
 
       in += ng;
       out += ng;
@@ -202,13 +178,15 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
 			       LONGP(offsets), range, LONGP(size));
 
   const long (*nb)[2] = (const long (*)[2])LONGP(neighbors);
-  int padding[2] = {range, range};
+  const long padding[3][2] = {{range, range},
+			     {range, range},
+			     {range, range}};
 
   MPI_Comm comm = MPI_COMM_NULL;
   if (comm_obj != Py_None)
     comm = ((MPIObject*)comm_obj)->comm;
 
-  self->bc = bc_init(LONGP(size), padding, nb, comm, real, cfd);
+  self->bc = bc_init(LONGP(size), padding, padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
   self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 

@@ -15,6 +15,7 @@ typedef struct
   bool interpolate;
   MPI_Request recvreq[2];
   MPI_Request sendreq[2];
+  int skip[3][2];
   double* buf;
   double* buf2;
   double* sendbuf;
@@ -41,12 +42,8 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
 
   const double* in = DOUBLEP(input);
   double* out = DOUBLEP(output);
-  const double_complex* ph;
   bool real = (input->descr->type_num == PyArray_DOUBLE);
-  if (real)
-    ph = 0;
-  else
-    ph = COMPLEXP(phases);
+  const double_complex* ph = (real ? 0 : COMPLEXP(phases));
 
   const boundary_conditions* bc = self->bc;
   for (int i = 0; i < 3; i++)
@@ -56,12 +53,12 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
 		 self->recvbuf, self->sendbuf, ph + 2 * i);
       bc_unpack2(bc, self->buf, i, 
 		 self->recvreq, self->sendreq, self->recvbuf);
-     }
+    }
 
   if (real)
     {
       if (self->interpolate)
-	bmgs_interpolate(self->k, self->buf, bc->size2,
+	bmgs_interpolate(self->k, self->skip, self->buf, bc->size2,
 			 out, self->buf2);
       else
 	bmgs_restrict(self->k, self->buf, bc->size2,
@@ -70,7 +67,7 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   else
     {
       if (self->interpolate)
-	bmgs_interpolatez(self->k, (double_complex*)self->buf,
+	bmgs_interpolatez(self->k, self->skip, (double_complex*)self->buf,
 			  bc->size2, (double_complex*)out, 
 			  (double_complex*)self->buf2);
       else
@@ -79,30 +76,6 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
 		       (double_complex*)self->buf2);
     }
 
-  // XXX
-  int start[3] = {0, 0, 0};
-  int size[3];
-  int size3[3];
-  for (int i = 0; i < 3; i++)
-    {
-      if (self->interpolate)
-	size[i] = bc->size1[i] * 2;
-      else
-	size[i] = bc->size1[i] / 2;
-      size3[i] = size[i];
-    }
-
-  for (int i = 0; i < 3; i++)
-    if (bc->zero[i])
-      {
-	size[i] = 1;
-	if (real)
-	  bmgs_zero(out, size3, start, size);
-	else
-	  bmgs_zeroz((double_complex*)out, size3, start, size);
-	size[i] = size3[i];
-      }
-  
   Py_RETURN_NONE;
 }
 
@@ -131,12 +104,16 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
 {
   PyArrayObject* size;
   int k;
+  PyArrayObject* paddings;
+  PyArrayObject* npaddings;
+  PyArrayObject* skip;
   PyArrayObject* neighbors;
   int real;
   PyObject* comm_obj;
   int interpolate;
-  if (!PyArg_ParseTuple(args, "OiOiOi", 
-                        &size, &k, &neighbors, &real, &comm_obj,
+  if (!PyArg_ParseTuple(args, "OiOOOOiOi", 
+                        &size, &k, &paddings, &npaddings, &skip,
+			&neighbors, &real, &comm_obj,
 			&interpolate))
     return NULL;
 
@@ -152,23 +129,28 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
     comm = ((MPIObject*)comm_obj)->comm;
 
   const long (*nb)[2] = (const long (*)[2])LONGP(neighbors);
-  int padding[2] = {k - 1, k - 2};
-  if (interpolate)
-    {
-      padding[0] = k / 2 - 1;
-      padding[1] = k / 2;
-    }
-  self->bc = bc_init(LONGP(size), padding, nb, comm, real, 0);
-  const int* size1 = self->bc->size1;
+  const long (*pad)[2] = (const long (*)[2])LONGP(paddings);
+  const long (*npad)[2] = (const long (*)[2])LONGP(npaddings);
+  const long (*skp)[2] = (const long (*)[2])LONGP(skip);
+  self->bc = bc_init(LONGP(size), pad, npad, nb, comm, real, 0);
+  //const int* size1 = self->bc->size1;
   const int* size2 = self->bc->size2;
+
+  for (int c = 0; c < 3; c++)
+    for (int d = 0; d < 2; d++)
+      self->skip[c][d] = (int)skp[c][d];
 
   self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 
 			      self->bc->ndouble * sizeof(double));
   if (interpolate)
-    self->buf2 = (double*)malloc(size2[0] * size1[1] * size1[2] * 4 *
+    // Much larger than necessary!  I don't have the energy right now to
+    // estimate the minimum size of buf2!
+    self->buf2 = (double*)malloc(16 * size2[0] * size2[1] * size2[2] * 
 				 self->bc->ndouble * sizeof(double));
   else
-    self->buf2 = (double*)malloc(size2[0] * size2[1] * size1[2] / 2 * 
+    self->buf2 = (double*)malloc(size2[0] * size2[1] *
+				 //size1[2] / 2 * 
+				 (size2[2] - 2 * k + 3) / 2 * 
 				 self->bc->ndouble * sizeof(double));
   self->sendbuf = (double*)malloc(self->bc->maxsend * sizeof(double));
   self->recvbuf = (double*)malloc(self->bc->maxrecv * sizeof(double));

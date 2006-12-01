@@ -36,7 +36,7 @@ class Coulomb:
                 # cutoff radius
                 rc = 0.5 * num.average(self.gd.domain.cell_c)
                 # ewald potential: 1 - cos(k rc)
-                self.ewald = num.ones(self.gd.N_c) - \
+                self.ewald = num.ones(self.gd.n_c) - \
                              num.cos(num.sqrt(self.k2)* rc)
                 # lim k ->0 ewald / k2 
                 self.ewald[0, 0, 0] = .5 * rc**2

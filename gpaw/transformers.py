@@ -11,24 +11,55 @@ import _gpaw
 
 
 class Transformer:
-    def __init__(self, gd, nn, typecode, interpolate):
+    def __init__(self, gdin, gdout, nn, typecode):
         self.typecode = typecode
-        neighbor_cd = gd.domain.neighbor_cd
+        neighbor_cd = gdin.domain.neighbor_cd
 
-        if gd.comm.size > 1:
-            comm = gd.comm
+        if gdin.comm.size > 1:
+            comm = gdin.comm
             if debug:
                 # Get the C-communicator from the debug-wrapper:
                 comm = comm.comm
         else:
             comm = None
 
+        pad_cd = num.empty((3, 2), num.Int)
+        neighborpad_cd = num.empty((3, 2), num.Int)
+        skip_cd = num.empty((3, 2), num.Int)
+        
+        if gdin.N_c == 2 * gdout.N_c:
+            # Restriction:
+            pad_cd[:, 0] = 2 * nn - 1 - 2 * gdout.beg_c + gdin.beg_c
+            pad_cd[:, 1] = 2 * nn - 2 + 2 * gdout.end_c - gdin.end_c
+            neighborpad_cd[:, 0] = 2 * nn - 2 + 2 * gdout.beg_c - gdin.beg_c
+            neighborpad_cd[:, 1] = 2 * nn - 1 - 2 * gdout.end_c + gdin.end_c
+            interpolate = False
+        else:
+            assert gdout.N_c == 2 * gdin.N_c
+            # Interpolation:
+            pad_cd[:, 0] = nn - 1 - gdout.beg_c // 2 + gdin.beg_c
+            pad_cd[:, 1] = nn + gdout.end_c // 2 - gdin.end_c
+            neighborpad_cd[:, 0] = nn + gdout.beg_c // 2 - gdin.beg_c
+            neighborpad_cd[:, 1] = nn - 1 - gdout.end_c // 2 + gdin.end_c
+            skip_cd[:, 0] = gdout.beg_c % 2
+            skip_cd[:, 1] = gdout.end_c % 2
+            interpolate = True
+
+        if 0:
+            import mpi
+            print mpi.rank,pad_cd
+            print mpi.rank, neighborpad_cd
+            print mpi.rank,skip_cd
+            print mpi.rank, neighbor_cd
+            print mpi.rank, gdin.n_c
+            print mpi.rank, gdout.n_c
+            
         self.transformer = _gpaw.Transformer(
-            # Why asarray here? XXX
-            num.asarray(gd.n_c, num.Int), 2 * nn, neighbor_cd,
+            gdin.n_c, 2 * nn, pad_cd, neighborpad_cd, skip_cd, neighbor_cd,
             typecode == num.Float, comm, interpolate)
         
-        self.ngpin = tuple(gd.n_c)
+        self.ngpin = tuple(gdin.n_c)
+        self.ngpout = tuple(gdout.n_c)
         assert typecode in [num.Float, num.Complex]
 
     def apply(self, input, output, phases=None):
@@ -39,26 +70,10 @@ class Transformer:
         self.transformer.apply(input, output, phases)
 
 
-class _Interpolator(Transformer):
-    def __init__(self, gd, nn, typecode=num.Float):
-        Transformer.__init__(self, gd, nn, typecode, interpolate=True)
-        self.ngpout = tuple(2 * num.array(self.ngpin))
-
-
-class _Restrictor(Transformer):
-    def __init__(self, gd, nn, typ=num.Float):
-        Transformer.__init__(self, gd, nn, typ, interpolate=False)
-        self.ngpout = tuple(num.array(self.ngpin) / 2)
-
-
-if debug:
-    Interpolator = _Interpolator
-    Restrictor = _Restrictor
-else:
-    def Interpolator(gd, nn, typecode=num.Float):
-        return _Interpolator(gd, nn, typecode).transformer
-    def Restrictor(gd, nn, typecode=num.Float):
-        return _Restrictor(gd, nn, typecode).transformer    
+def Interpolator(gd, nn, typecode=num.Float):
+    return Transformer(gd, gd.refine(), nn, typecode)
+def Restrictor(gd, nn, typecode=num.Float):
+    return Transformer(gd, gd.coarsen(), nn, typecode)
 
 
 def coefs(k, p):

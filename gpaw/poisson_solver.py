@@ -16,7 +16,7 @@ class PoissonSolver:
         self.gd = gd
         scale = -0.25 / pi 
         self.dv = gd.dv
-        
+
         if nn == 'M':
             self.operators = [LaplaceA(gd, -scale)]
             self.B = LaplaceB(gd)
@@ -58,7 +58,10 @@ class PoissonSolver:
             self.rhos.append(gd.new_array())
             self.residuals.append(gd.new_array())
             self.interpolators.append(Interpolator(gd, 1))
-            self.restrictors.append(Restrictor(gd, 1))
+            try:
+                self.restrictors.append(Restrictor(gd, 1))
+            except:
+                pass
             self.presmooths.append(4)
             self.postsmooths.append(4)
             self.weights.append(1.0)

@@ -226,7 +226,7 @@ class LocalizedFunctionsWrapper:
             compute = locfuncbcaster.next()
             
         size_c = end_c - beg_c
-        corner_c = beg_c - gd.beg0_c
+        corner_c = beg_c - gd.beg_c
         pos_c = (beg_c - (spos_c - sdisp_c) * gd.N_c) * gd.h_c
 
         self.lfs = _gpaw.LocalizedFunctions(

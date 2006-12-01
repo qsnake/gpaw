@@ -5,7 +5,7 @@
 #include "bmgs.h"
 
 void bmgs_relax(const int relax_method, const bmgsstencil* s, double* a, double* b, 
-		const double* src, const double w, const bool* zero)
+		const double* src, const double w)
 {
 
 if (relax_method == 1)
@@ -18,41 +18,14 @@ if (relax_method == 1)
   
   // The number of steps in each direction
   long nstep[3] = {s->n[0], s->n[1], s->n[2]};
-  if (zero[0])
-      nstep[0]--;
-  if (zero[1])
-      nstep[1]--;
-  if (zero[2])
-      nstep[2]--;
-  
+
   a += (s->j[0] + s->j[1] + s->j[2]) / 2;
-  
-  if (zero[0])  // Skip static boundary values
-    {
-      a += (s->n[1] * (s->n[2] + s->j[2])) + s->j[1];
-      b += s->n[1] * s->n[2];
-      src += s->n[1] * s->n[2];
-    }
   
   for (int i0 = 0; i0 < nstep[0]; i0++)
     {
       
-      if (zero[1])  // Skip static boundary values
-        {
-          a += s->n[2] + s->j[2];
-          b += s->n[2];
-          src += s->n[2];
-        }
-      
       for (int i1 = 0; i1 < nstep[1]; i1++)
         {
-          
-          if (zero[2])  // Skip static boundary values
-            {
-              a++;
-              b++;
-              src++;
-            }
           
           for (int i2 = 0; i2 < nstep[2]; i2++)
             {

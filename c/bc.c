@@ -8,7 +8,9 @@
 #include <stdlib.h>
 #include <malloc.h>
 
-boundary_conditions* bc_init(const long size1[3], const int padding[2], 
+boundary_conditions* bc_init(const long size1[3],
+			     const long padding[3][2], 
+			     const long npadding[3][2], 
 			     const long neighbors[3][2],
 			     MPI_Comm comm, bool real, bool cfd)
 {
@@ -18,13 +20,12 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
   for (int i = 0; i < 3; i++)
     {
       bc->size1[i] = size1[i];
-      bc->size2[i] = size1[i] + padding[0] + padding[1]; 
-      bc->zero[i] = (neighbors[i][0] < 0);
+      bc->size2[i] = size1[i] + padding[i][0] + padding[i][1]; 
+      bc->padding[i] = padding[i][0];
     }
 
   bc->comm = comm;
   bc->ndouble = (real ? 1 : 2);
-  bc->padding = padding[0];
 
   int rank = 0;
   if (comm != MPI_COMM_NULL)
@@ -34,7 +35,7 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
   int size[3];
   for (int i = 0; i < 3; i++)
     {
-      start[i] = padding[0];
+      start[i] = padding[i][0];
       size[i] = size1[i];
     }
 
@@ -47,8 +48,8 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
 
       for (int d = 0; d < 2; d++)
 	{
-	  int ds = padding[1 - d];
-	  int dr = padding[d];
+	  int ds = npadding[i][d];
+	  int dr = padding[i][d];
 	  for (int j = 0; j < 3; j++)
 	    {
 	      bc->sendstart[i][d][j] = start[j];
@@ -63,8 +64,8 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
 	    }
 	  else
 	    {
-	      bc->sendstart[i][d][i] = size1[i];
-	      bc->recvstart[i][d][i] = size1[i] + ds;
+	      bc->sendstart[i][d][i] = padding[i][0] + size1[i] - ds;
+	      bc->recvstart[i][d][i] = padding[i][0] + size1[i];
 	    }
 	  bc->sendsize[i][d][i] = ds;
 	  bc->recvsize[i][d][i] = dr;
@@ -106,8 +107,10 @@ boundary_conditions* bc_init(const long size1[3], const int padding[2],
       // If the two neighboring processors along the
       // i'th axis are the same, then we join the two communications
       // into one:
-      bc->join[i] = ((bc->recvproc[i][0] == bc->recvproc[i][1]) && 
-		     bc->recvproc[i][0] >= 0);
+      bc->rjoin[i] = ((bc->recvproc[i][0] == bc->recvproc[i][1]) && 
+		      bc->recvproc[i][0] >= 0);
+      bc->sjoin[i] = ((bc->sendproc[i][0] == bc->sendproc[i][1]) && 
+		      bc->sendproc[i][0] >= 0);
     }
 
   bc->maxsend = 0;
@@ -141,7 +144,7 @@ void bc_unpack1(const boundary_conditions* bc,
       int p = bc->recvproc[i][d];
       if (p >= 0)
 	{
-	  if (bc->join[i])
+	  if (bc->rjoin[i])
 	    {
 	      if (d == 0)
 		{
@@ -173,8 +176,10 @@ void bc_unpack1(const boundary_conditions* bc,
 	  const int* size = bc->sendsize[i][d];
 	  if (i == 0)
 	    {
-	      int p = bc->padding;
-	      int start0[3] = {start[0] - p, start[1] - p, start[2] - p};
+	      const int* p = bc->padding;
+	      int start0[3] = {start[0] - p[0],
+			       start[1] - p[1],
+			       start[2] - p[2]};
 	      a = a1;
 	      start = start0;
 	      sizea = bc->size1;
@@ -191,7 +196,7 @@ void bc_unpack1(const boundary_conditions* bc,
 	    bmgs_cutmz((const double_complex*)a, sizea, start,
 		       (double_complex*)sbuf, size, phases[d]);
 
-	  if (bc->join[i])
+	  if (bc->sjoin[i])
 	    {
 	      if (d == 1)
 		{
@@ -225,9 +230,9 @@ void bc_unpack1(const boundary_conditions* bc,
       memset(a2, 0, (bc->size2[0] * bc->size2[1] * bc->size2[2] *
 		     bc->ndouble * sizeof(double))); // XXXXXXXXXXXXXXXXX
       
-      assert(bc->sendstart[0][0][0] == bc->padding);
+      /*      assert(bc->sendstart[0][0][0] == bc->padding);
       assert(bc->sendstart[0][0][1] == bc->padding);
-      assert(bc->sendstart[0][0][2] == bc->padding);
+      assert(bc->sendstart[0][0][2] == bc->padding);*/
       
       if (real)
 	bmgs_paste(a1, bc->size1, a2, bc->size2, bc->sendstart[0][0]);
@@ -265,7 +270,7 @@ void bc_unpack2(const boundary_conditions* bc,
   for (int d = 0; d < 2; d++)
     if (bc->recvproc[i][d] >= 0)
       {
-	if (bc->join[i])
+	if (bc->rjoin[i])
 	  {
 	    if (d == 0)
 	      {

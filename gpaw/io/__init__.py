@@ -62,11 +62,11 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode):
         w.add('IBZKPointWeights', ('nibzkpts',), paw.weights_k)
 
         # Create dimensions for varioius netCDF variables:
-        N_c = paw.gd.N_c
-        w.dimension('ngptsx', N_c[0])
-        w.dimension('ngptsy', N_c[1])
-        w.dimension('ngptsz', N_c[2])
-        ng = paw.finegd.N_c
+        ng = paw.gd.get_size_of_global_array()
+        w.dimension('ngptsx', ng[0])
+        w.dimension('ngptsy', ng[1])
+        w.dimension('ngptsz', ng[2])
+        ng = paw.finegd.get_size_of_global_array()
         w.dimension('nfinegptsx', ng[0])
         w.dimension('nfinegptsy', ng[1])
         w.dimension('nfinegptsz', ng[2])
@@ -245,7 +245,7 @@ def read(paw, filename):
         wf = True
         if mpi.parallel:
             # Slice of the global array for this domain:
-            i = [slice(b, e) for b, e in zip(paw.gd.beg0_c, paw.gd.end_c)]
+            i = [slice(b, e) for b, e in zip(paw.gd.beg_c, paw.gd.end_c)]
 
             for kpt in paw.kpt_u:
                 kpt.psit_nG = paw.gd.new_array(paw.nbands, paw.typecode)
