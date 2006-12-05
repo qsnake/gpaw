@@ -7,7 +7,7 @@ import LinearAlgebra as linalg
 from gpaw.operators import Laplace
 from gpaw.preconditioner import Preconditioner
 from gpaw.utilities.lapack import diagonalize
-from gpaw.utilities.blas import axpy, rk, r2k, gemm
+from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities import unpack
 
@@ -73,7 +73,7 @@ class Eigensolver:
            
         self.timer.start('Subspace diag.')
 
-        H_nn = num.zeros((kpt.nbands, kpt.nbands), self.typecode)
+        H_nn = num.empty((kpt.nbands, kpt.nbands), self.typecode)
 
         psit_nG = kpt.psit_nG
         eps_n = kpt.eps_n
@@ -86,6 +86,7 @@ class Eigensolver:
                                         kpt.f_n, kpt.u, kpt.s,
                                         hamiltonian.poisson,
                                         hamiltonian.restrict)
+        H_nn[:] = 0.0  # r2k fails without this!
         r2k(0.5 * self.gd.dv, psit_nG, work, 0.0, H_nn)
         # XXX Do EXX here XXX
         for nucleus in hamiltonian.my_nuclei:

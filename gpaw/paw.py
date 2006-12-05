@@ -257,22 +257,15 @@ class Paw:
 
         output.print_info(self)
 
-        if eigensolver == 'rmm-diis':
-            self.eigensolver = RMM_DIIS(self.exx, self.timer, kpt_comm,
-                                        self.gd, self.hamiltonian.kin,
-                                        typecode, nbands)
-        elif eigensolver == "cg":
-            self.eigensolver = CG(self.exx, self.timer, kpt_comm, 
-                                  self.gd, self.hamiltonian.kin,
-                                  typecode, nbands)
-        else:
-            raise NotImplementedError('Eigensolver %s' % eigensolver)
+        self.eigensolver = (eigensolver, convergeall, tolerance, nvalence)
 
-        self.eigensolver.set_convergence_criteria(convergeall, tolerance,
-                                                  nvalence)
+        for nucleus, pos_c in zip(self.nuclei, pos_ac):
+            spos_c = domain.scale_position(pos_c)
+            nucleus.set_position(spos_c, domain, self.my_nuclei,
+                                 self.nspins, self.nmyu, self.nbands)
 
-        self.set_positions(pos_ac)
-
+        self.density.mixer.reset(self.my_nuclei)
+            
         self.wave_functions_initialized = False
         self.density_initialized = False
         if restart_file is not None:
@@ -287,10 +280,10 @@ class Paw:
 
         pos_ac = pos_ac / self.a0
         cell_c = cell_c / self.a0
-        self.set_positions(pos_ac)
-        assert not self.converged
 
-        self.load_wave_functions()
+        self.load_wave_functions(pos_ac)
+
+        assert not self.converged
 
         self.hamiltonian.update(self.density)
 
@@ -334,13 +327,14 @@ class Paw:
         movement = False
         for nucleus, pos_c in zip(self.nuclei, pos_ac):
             spos_c = self.domain.scale_position(pos_c)
-            if num.sometrue(spos_c != nucleus.spos_c):
+            if num.sometrue(spos_c != nucleus.spos_c) or not nucleus.ready:
                 movement = True
+                nucleus.set_position(spos_c, self.domain, self.my_nuclei,
+                                     self.nspins, self.nmyu, self.nbands)
                 nucleus.move(spos_c, self.gd, self.finegd,
                              self.ibzk_kc, self.locfuncbcaster,
                              self.domain,
-                             self.my_nuclei, self.pt_nuclei, self.ghat_nuclei,
-                             self.nspins, self.nmyu, self.nbands)
+                             self.pt_nuclei, self.ghat_nuclei)
         
         if movement:
             self.converged = False
@@ -388,12 +382,12 @@ class Paw:
         for nucleus in self.my_nuclei:
             # XXX already allocated once, but with wrong size!!!
             ni = nucleus.get_number_of_partial_waves()
-            nucleus.P_uni = num.zeros((self.nmyu, nao, ni), self.typecode)
+            nucleus.P_uni = num.empty((self.nmyu, nao, ni), self.typecode)
 
         self.Ekin0, self.Epot, self.Ebar, self.Exc = \
                    self.hamiltonian.update(self.density)
         
-        Htpsit_nG = self.gd.new_array(nao, self.typecode)
+        Htpsit_nG = self.gd.empty(nao, self.typecode)
 
         for kpt in self.kpt_u:
             kpt.create_atomic_orbitals(nao, self.nuclei)
@@ -526,10 +520,11 @@ class Paw:
                 out = DownTheDrain()
         self.out = out
 
-    def write_state_to_file(self, filename, pos_ac, magmom_a, tag_a, mode):
+    def write_state_to_file(self, filename, pos_ac, magmom_a, tag_a, mode,
+                            setup_types):
         """Write current state to a file."""
         gpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a,
-                         mode)
+                         mode, setup_types)
         
     def initialize_from_file(self, filename):
         """Read state from a file."""
@@ -584,7 +579,7 @@ class Paw:
 
         if mpi.rank == MASTER:
             # allocate full wavefunction and receive 
-            psit_G = self.gd.new_array(typecode=self.typecode, global_array=True)
+            psit_G = self.gd.empty(typecode=self.typecode, global_array=True)
             self.kpt_comm.receive(psit_G, kpt_rank, 1398)
             return psit_G
 
@@ -646,7 +641,7 @@ class Paw:
         for setup in self.setups:
             setup.xc_correction.xc.set_functional(newxcfunc)
 
-        v_g = self.finegd.new_array()  # not used for anything!
+        v_g = self.finegd.empty()  # not used for anything!
         nt_sg = self.density.nt_sg
         if self.nspins == 2:
             Exc = xc.get_energy_and_potential(nt_sg[0], v_g, nt_sg[1], v_g)
@@ -680,7 +675,26 @@ class Paw:
     def get_weights(self):
         return self.weights_k
 
-    def load_wave_functions(self):
+    def load_wave_functions(self, pos_ac):
+        self.set_positions(pos_ac)
+
+        if isinstance(self.eigensolver, tuple):
+            eigensolver, convergeall, tolerance, nvalence = self.eigensolver
+            if eigensolver == 'rmm-diis':
+                self.eigensolver = RMM_DIIS(self.exx, self.timer,
+                                            self.kpt_comm,
+                                            self.gd, self.hamiltonian.kin,
+                                            self.typecode, self.nbands)
+            elif eigensolver == "cg":
+                self.eigensolver = CG(self.exx, self.timer, self.kpt_comm, 
+                                      self.gd, self.hamiltonian.kin,
+                                      self.typecode, self.nbands)
+            else:
+                raise NotImplementedError('Eigensolver %s' % eigensolver)
+
+            self.eigensolver.set_convergence_criteria(convergeall, tolerance,
+                                                      nvalence)
+            
         if not self.wave_functions_initialized: 
             # Initialize wave functions and perhaps also the density
             # from atomic orbitals:
@@ -714,5 +728,5 @@ class Paw:
             # for wave functions and copy data from the file:
             for kpt in self.kpt_u:
                 kpt.psit_nG = kpt.psit_nG[:]
-                kpt.Htpsit_nG = kpt.gd.new_array(self.nbands, self.typecode)
+                kpt.Htpsit_nG = kpt.gd.empty(self.nbands, self.typecode)
 

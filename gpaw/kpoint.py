@@ -15,7 +15,7 @@ from gpaw import mpi
 from gpaw.operators import Gradient
 from gpaw.transformers import Transformer
 from gpaw.utilities import unpack
-from gpaw.utilities.blas import axpy, rk, r2k, gemm
+from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.timing import Timer
@@ -96,9 +96,10 @@ class KPoint:
     def allocate(self, nbands):
         """Allocate arrays."""
         self.nbands = nbands
-        self.eps_n = num.zeros(nbands, num.Float)
-        self.f_n = num.ones(nbands, num.Float) * self.weight
-        self.S_nn = num.zeros((nbands, nbands), self.typecode)
+        self.eps_n = num.empty(nbands, num.Float)
+        self.f_n = num.empty(nbands, num.Float)
+        self.S_nn = num.empty((nbands, nbands), self.typecode)
+        self.S_nn[:] = 0.0  # rk fails the first time without this!
         
     def adjust_number_of_bands(self, nbands):
         """Adjust the number of states.
@@ -120,11 +121,11 @@ class KPoint:
         nmin = min(nao, nbands)
 
         tmp_nG = self.psit_nG
-        self.psit_nG = self.gd.new_array(nbands, self.typecode)
+        self.psit_nG = self.gd.empty(nbands, self.typecode)
         self.psit_nG[:nmin] = tmp_nG[:nmin]
 
         tmp_nG = self.Htpsit_nG
-        self.Htpsit_nG = self.gd.new_array(nbands, self.typecode)
+        self.Htpsit_nG = self.gd.empty(nbands, self.typecode)
         self.Htpsit_nG[:nmin] = tmp_nG[:nmin]
         del tmp_nG
 
@@ -139,8 +140,8 @@ class KPoint:
             gd1 = self.gd.coarsen()
             gd2 = gd1.coarsen()
 
-            psit_G1 = gd1.new_array(typecode=self.typecode)
-            psit_G2 = gd2.new_array(typecode=self.typecode)
+            psit_G1 = gd1.empty(typecode=self.typecode)
+            psit_G2 = gd2.empty(typecode=self.typecode)
 
             interpolate2 = Transformer(gd2, gd1, 1, self.typecode).apply
             interpolate1 = Transformer(gd1, self.gd, 1, self.typecode).apply
@@ -207,7 +208,7 @@ class KPoint:
         The derivative object ddr must be given.
         """
         for psit_G, f in zip(self.psit_nG, self.f_n):
-            d_G = num.zeros(psit_G.shape, num.Float)
+            d_G = self.gd.empty()
             for c in range(3):
                 ddr[c](psit_G,d_G)
                 if self.typecode is num.Float:
@@ -223,8 +224,8 @@ class KPoint:
         # Allocate space for wave functions, occupation numbers,
         # eigenvalues and projections:
         self.allocate(nao)
-        self.psit_nG = self.gd.new_array(nao, self.typecode)
-        self.Htpsit_nG = self.gd.new_array(nao, self.typecode)
+        self.psit_nG = self.gd.zeros(nao, self.typecode)
+        self.Htpsit_nG = self.gd.empty(nao, self.typecode)
         
         # fill in the atomic orbitals:
         nao0 = 0

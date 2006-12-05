@@ -88,7 +88,6 @@ def create_paw_object(out, a0, Ha,
                a0 * h_c[c])
     print >> out
 
-    
     if isinstance(setup_types, str):
         setup_types = {None: setup_types}
 

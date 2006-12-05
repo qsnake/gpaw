@@ -61,18 +61,17 @@ class Density:
         
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
-        self.nct_G = self.gd.new_array()
-        self.nt_sG = self.gd.new_array(nspins)
-        self.rhot_g = self.finegd.new_array()
-        self.nt_sg = self.finegd.new_array(nspins)
+        self.nct_G = self.gd.empty()
+        self.nt_sG = self.gd.empty(nspins)
+        self.rhot_g = self.finegd.empty()
+        self.nt_sg = self.finegd.empty(nspins)
 
         if nspins == 1:
             self.nt_g = self.nt_sg[0]
         else:
-            self.nt_g = self.finegd.new_array()
+            self.nt_g = self.finegd.empty()
 
-        # Number of neighbor grid points used for interpolation (1, 2,
-        # or 3):
+        # Number of neighbor grid points used for interpolation (1, 2, or 3):
         nn = stencils[2]
 
         # Interpolation function for the density:
@@ -302,7 +301,7 @@ class Density:
             gd = self.finegd.refine()
             
             # Transfer the pseudo-density to the fine grid:
-            n_sg = gd.new_array(self.nspins)
+            n_sg = gd.empty(self.nspins)
             for s in range(self.nspins):
                 interpolate(self.nt_sg[s], n_sg[s])
         else:

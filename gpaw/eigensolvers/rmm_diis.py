@@ -4,7 +4,7 @@ import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
 
 import LinearAlgebra as linalg
-from gpaw.utilities.blas import axpy, rk, r2k, gemm
+from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities import elementwise_multiply_add, utilities_vdot, utilities_vdot_self
 from gpaw.utilities.complex import cc, real
 
@@ -30,10 +30,11 @@ class RMM_DIIS(Eigensolver):
         Eigensolver.__init__(self, exx, timer, kpt_comm, gd, kin, typecode)
 
         # Allocate work arrays
-        self.work1 = self.gd.new_array(nbands, typecode) #Hpsi, res
-        self.work2 = num.zeros(gd.n_c, typecode) #dR
+        self.work1 = self.gd.empty(nbands, typecode) #Hpsi, res
+        self.work2 = self.gd.empty(typecode=typecode) #dR
         
-        self.S_nn = num.zeros((nbands, nbands), typecode)
+        self.S_nn = num.empty((nbands, nbands), typecode)
+        self.S_nn[:] = 0.0  # rk fails the first time without this!
 
     def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a single RMM-DIIS iteration for the kpoint"""

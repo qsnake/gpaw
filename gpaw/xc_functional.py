@@ -145,17 +145,17 @@ class XC3DGrid(XCGrid):
         self.dv = gd.dv
         if xcfunc.gga:
             self.ddr = [Gradient(gd, c).apply for c in range(3)]
-            self.dndr_cg = num.zeros((3,) + self.shape, num.Float)
-            self.a2_g = num.zeros(self.shape, num.Float)
-            self.deda2_g = num.zeros(self.shape, num.Float)
+            self.dndr_cg = gd.empty(3)
+            self.a2_g = gd.empty()
+            self.deda2_g = gd.empty()
             if self.nspins == 2:
-                self.dnadr_cg = num.zeros((3,) + self.shape, num.Float)
-                self.dnbdr_cg = num.zeros((3,) + self.shape, num.Float)
-                self.aa2_g = num.zeros(self.shape, num.Float)
-                self.ab2_g = num.zeros(self.shape, num.Float)
-                self.dedaa2_g = num.zeros(self.shape, num.Float)
-                self.dedab2_g = num.zeros(self.shape, num.Float)
-        self.e_g = gd.new_array()
+                self.dnadr_cg = gd.empty(3)
+                self.dnbdr_cg = gd.empty(3)
+                self.aa2_g = gd.empty()
+                self.ab2_g = gd.empty()
+                self.dedaa2_g = gd.empty()
+                self.dedab2_g = gd.empty()
+        self.e_g = gd.empty()
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g):
         if self.xcfunc.gga:
@@ -222,17 +222,17 @@ class XCRadialGrid(XCGrid):
         self.dv_g = gd.dv_g
         if xcfunc.gga:
             self.rgd = gd
-            self.dndr_g = num.zeros(self.shape, num.Float)
-            self.a2_g = num.zeros(self.shape, num.Float)
-            self.deda2_g = num.zeros(self.shape, num.Float)
+            self.dndr_g = num.empty(self.shape, num.Float)
+            self.a2_g = num.empty(self.shape, num.Float)
+            self.deda2_g = num.empty(self.shape, num.Float)
             if self.nspins == 2:
-                self.dnadr_g = num.zeros(self.shape, num.Float)
-                self.dnbdr_g = num.zeros(self.shape, num.Float)
-                self.aa2_g = num.zeros(self.shape, num.Float)
-                self.ab2_g = num.zeros(self.shape, num.Float)
-                self.dedaa2_g = num.zeros(self.shape, num.Float)
-                self.dedab2_g = num.zeros(self.shape, num.Float)
-        self.e_g = num.zeros(self.shape, num.Float) 
+                self.dnadr_g = num.empty(self.shape, num.Float)
+                self.dnbdr_g = num.empty(self.shape, num.Float)
+                self.aa2_g = num.empty(self.shape, num.Float)
+                self.ab2_g = num.empty(self.shape, num.Float)
+                self.dedaa2_g = num.empty(self.shape, num.Float)
+                self.dedab2_g = num.empty(self.shape, num.Float)
+        self.e_g = num.empty(self.shape, num.Float) 
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g):
         if self.xcfunc.gga:

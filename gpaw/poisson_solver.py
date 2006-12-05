@@ -34,9 +34,9 @@ class PoissonSolver:
         else:
             raise NotImplementedError('Relaxation method %s' % relax)
 
-        self.rhos = [gd.new_array()]
+        self.rhos = [gd.empty()]
         self.phis = [None]
-        self.residuals = [gd.new_array()]
+        self.residuals = [gd.empty()]
         self.interpolators = []
         self.restrictors = []
 
@@ -54,9 +54,9 @@ class PoissonSolver:
             except ValueError:
                 break
             self.operators.append(Laplace(gd2, scale, 1))
-            self.phis.append(gd2.new_array())
-            self.rhos.append(gd2.new_array())
-            self.residuals.append(gd2.new_array())
+            self.phis.append(gd2.empty())
+            self.rhos.append(gd2.empty())
+            self.residuals.append(gd2.empty())
             self.interpolators.append(Transformer(gd2, gd))
             self.restrictors.append(Transformer(gd, gd2))
             self.presmooths.append(4)

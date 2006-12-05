@@ -411,7 +411,8 @@ class Calculator:
         pos_ac = self.atoms().GetCartesianPositions()
         magmom_a = self.atoms().GetMagneticMoments()
         tag_a = self.atoms().GetTags()
-        self.paw.write_state_to_file(filename, pos_ac, magmom_a, tag_a, mode)
+        self.paw.write_state_to_file(filename, pos_ac, magmom_a, tag_a, mode,
+                                     self.setups)
         
     def GetNumberOfIterations(self):
         """Return the number of SCF iterations."""
@@ -527,7 +528,14 @@ class Calculator:
         Ha = Convert(1, 'Hartree', units.GetEnergyUnit())
 
         r = gpaw.io.open(filename, 'r')
-        
+
+        try:
+            setup_types = r['SetupTypes']
+        except AttributeError, KeyError:
+            setup_types = {None: 'paw'}
+        if isinstance(setup_types, str):
+            setup_types = eval(setup_types)
+            
         kwargs = {'nbands':     r.dimension('nbands'),
                   'xc':         r['XCFunctional'],
                   'kpts':       r.get('BZKPoints'),
@@ -542,7 +550,9 @@ class Calculator:
                   'lmax':       r['MaximumAngularMomentum'],
                   'softgauss':  bool(r['SoftGauss']),  # numpy!
                   'fixdensity': bool(r['FixDensity']),  # numpy!
-                  'tolerance':  r['Tolerance']}
+                  'tolerance':  r['Tolerance'],
+                  'setups':     setup_types
+                  }
 
         if 'h' in overruling_kwargs:
             del kwargs['gpts']

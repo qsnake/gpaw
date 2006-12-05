@@ -129,7 +129,7 @@ class NetCDFReference:
             indices = (indices,)
         if self.cmplx:
             x = self.var[self.indices + indices]
-            array = num.zeros(x.shape[:-1], num.Complex)
+            array = num.empty(x.shape[:-1], num.Complex)
             array.real = x[..., 0]
             array.imag = x[..., 1]
             return array

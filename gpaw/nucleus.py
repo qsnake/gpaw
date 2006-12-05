@@ -68,7 +68,8 @@ class Nucleus:
         self.rank = -1
         self.comm = mpi.serial_comm
         self.in_this_domain = False
-
+        self.ready = False
+        
         self.pt_i = None
         self.vbar = None
         self.ghat_L = None
@@ -98,13 +99,12 @@ class Nucleus:
         if nbands < nao:
             self.P_uni = self.P_uni[:, :nbands, :].copy()
         else:
-            P_uni = num.zeros((nu, nbands, ni), self.typecode)
+            P_uni = num.empty((nu, nbands, ni), self.typecode)
             P_uni[:, :nao, :] = self.P_uni
+            P_uni[:, nao:, :] = 0.0
             self.P_uni = P_uni
 
-    def move(self, spos_c, gd, finegd, k_ki, lfbc, domain,
-             my_nuclei, pt_nuclei, ghat_nuclei,
-             nspins, nmyu, nbands):
+    def set_position(self, spos_c, domain, my_nuclei, nspins, nmyu, nbands):
         """Move nucleus.
 
         """
@@ -131,6 +131,14 @@ class Nucleus:
             
         self.in_this_domain = in_this_domain
         self.rank = rank
+
+    def move(self, spos_c, gd, finegd, k_ki, lfbc, domain,
+             pt_nuclei, ghat_nuclei):
+        """Move nucleus.
+
+        """
+        rank = self.rank
+        in_this_domain = self.in_this_domain
 
         # Shortcut:
         create = create_localized_functions
@@ -206,6 +214,8 @@ class Nucleus:
                 for lf in lfs:
                     if lf is not None:
                         lf.set_communicator(comm, root)
+
+        self.ready = True
 
     def normalize_shape_function_and_pseudo_core_density(self):
         """Normalize shape function and pseudo core density.
@@ -316,7 +326,7 @@ class Nucleus:
     def calculate_projections(self, kpt):
         if self.in_this_domain:
             P_ni = self.P_uni[kpt.u]
-            P_ni[:] = 0.0 # why????
+            P_ni[:] = 0.0
             self.pt_i.integrate(kpt.psit_nG, P_ni, kpt.k)
         else:
             self.pt_i.integrate(kpt.psit_nG, None, kpt.k)

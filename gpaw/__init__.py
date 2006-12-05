@@ -68,6 +68,15 @@ while len(sys.argv) > i:
     else:
         i += 1
 
+if debug:
+    import Numeric
+    oldempty = Numeric.empty
+    def empty(*args, **kwargs):
+        a = oldempty(*args, **kwargs)
+        a[:] = 117
+        return a
+    Numeric.empty = empty
+
 # If we are running the code from the source directory, then we will
 # want to use the extension from the distutils build directory:
 sys.path.insert(0, join(__path__[0], '..', 'build',

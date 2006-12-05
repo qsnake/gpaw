@@ -58,9 +58,9 @@ class Hamiltonian:
 
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
-        self.vt_sG = gd.new_array(nspins)
-        self.vHt_g = finegd.new_array()        
-        self.vt_sg = finegd.new_array(nspins)
+        self.vt_sG = gd.empty(nspins)
+        self.vHt_g = finegd.zeros()        
+        self.vt_sg = finegd.empty(nspins)
 
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Schrödinger equation (1, 2, ...):
