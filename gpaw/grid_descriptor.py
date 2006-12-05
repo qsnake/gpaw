@@ -347,15 +347,14 @@ class GridDescriptor:
             requests = []
             r = 0
             for n0 in range(parsize_c[0]):
-                b0, e0 = self.n_cp[0][n0:n0 + 2]
+                b0, e0 = self.n_cp[0][n0:n0 + 2] - self.beg_c[0]
                 for n1 in range(parsize_c[1]):
-                    b1, e1 = self.n_cp[1][n1:n1 + 2]
+                    b1, e1 = self.n_cp[1][n1:n1 + 2] - self.beg_c[1]
                     for n2 in range(parsize_c[2]):
-                        b2, e2 = self.n_cp[2][n2:n2 + 2]
+                        b2, e2 = self.n_cp[2][n2:n2 + 2] - self.beg_c[2]
                         if r != MASTER:
-                            requests.append(self.comm.send(
-                                B_xg[..., b0:e0, b1:e1, b2:e2].copy(),
-                                r, 42, False))
+                            a_xg = B_xg[..., b0:e0, b1:e1, b2:e2].copy()
+                            requests.append(self.comm.send(a_xg, r, 42, False))
                         else:
                             b_xg[:] = B_xg[..., b0:e0, b1:e1, b2:e2]
                         r += 1

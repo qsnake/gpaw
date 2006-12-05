@@ -103,6 +103,8 @@ if parallel and debug:
             assert 0 <= dest < self.size
             assert dest != self.rank
             assert is_contiguous(a)
+            if not block:
+                assert sys.getrefcount(a) > 3
             return self.comm.send(a, dest, tag, block)
             
         def receive(self, a, src, tag=123, block=True):
