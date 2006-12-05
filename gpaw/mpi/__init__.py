@@ -2,6 +2,7 @@
 # Please see the accompanying LICENSE file for further information.
 
 import os
+import sys
 
 import Numeric as num
 
