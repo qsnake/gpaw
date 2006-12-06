@@ -45,14 +45,7 @@ class _Transformer:
             skip_cd[:, 1] = gdout.end_c % 2
             interpolate = True
 
-        if 0:
-            import mpi
-            print mpi.rank,pad_cd
-            print mpi.rank, neighborpad_cd
-            print mpi.rank,skip_cd
-            print mpi.rank, neighbor_cd
-            print mpi.rank, gdin.n_c
-            print mpi.rank, gdout.n_c
+        assert num.alltrue(pad_cd.flat >= 0)
             
         self.transformer = _gpaw.Transformer(
             gdin.n_c, 2 * nn, pad_cd, neighborpad_cd, skip_cd, neighbor_cd,

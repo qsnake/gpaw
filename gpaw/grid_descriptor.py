@@ -94,27 +94,21 @@ class GridDescriptor:
         self.beg_c = num.empty(3, num.Int)
         self.end_c = num.empty(3, num.Int)
 
-        self.n_cp = [num.zeros(parsize_c[c] + 1, num.Int) for c in range(3)]
+        self.n_cp = []
         for c in range(3):
+            n_p = num.arange(parsize_c[c] + 1) * float(N_c[c]) / parsize_c[c]
+            n_p = num.around(n_p + 0.4999).astype(num.Int)
+            
             if not domain.periodic_c[c]:
-                self.n_cp[c][0] = 1
+                n_p[0] = 1
 
-            g1 = 0
-            for p in range(parsize_c[c]):
-                g2 = g1 + n_c[c]
-                if p < remainder_c[c]:
-                    g2 += 1
-                self.n_cp[c][p + 1] = g2
-                g1 = g2
-
-                if g2 - self.n_cp[c][p] == 0:
-                    raise ValueError('Grid too small!')
+            if not num.alltrue(n_p[1:] - n_p[:-1]):
+                raise ValueError('Grid too small!')
                     
-            assert g2 == N_c[c]
-
-            self.beg_c[c] = self.n_cp[c][domain.parpos_c[c]]
-            self.end_c[c] = self.n_cp[c][domain.parpos_c[c] + 1]
-
+            self.beg_c[c] = n_p[domain.parpos_c[c]]
+            self.end_c[c] = n_p[domain.parpos_c[c] + 1]
+            self.n_cp.append(n_p)
+            
         self.n_c = self.end_c - self.beg_c
 
         self.h_c = domain.cell_c / N_c
