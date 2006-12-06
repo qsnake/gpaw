@@ -22,7 +22,7 @@ assert (num.array([-1]) % 3)[0] == -1 # Grrrr...!!!!
 
 
 MASTER = 0
-
+NONBLOCKING = False
 
 class GridDescriptor:
     """Descriptor-class for uniform 3D grid
@@ -265,14 +265,14 @@ class GridDescriptor:
         m = (-n) % N
         if n != m:
             rank = self.rank + (m - n) * self.domain.stride_c[c]
-            request = self.comm.receive(b_g[0], rank, 117, False)
+            request = self.comm.receive(b_g[0], rank, 117, NONBLOCKING)
             self.comm.send(b_g[0].copy(), rank, 117)
             self.comm.wait(request)
         c_g = b_g[-1:0:-1].copy()
         m = N - n - 1
         if n != m:
             rank = self.rank + (m - n) * self.domain.stride_c[c]
-            request = self.comm.receive(b_g[1:], rank, 118, False)
+            request = self.comm.receive(b_g[1:], rank, 118, NONBLOCKING)
             self.comm.send(c_g, rank, 118)
             self.comm.wait(request)
         else:
@@ -360,12 +360,16 @@ class GridDescriptor:
                         b2, e2 = self.n_cp[2][n2:n2 + 2] - self.beg_c[2]
                         if r != MASTER:
                             a_xg = B_xg[..., b0:e0, b1:e1, b2:e2].copy()
-                            requests.append(self.comm.send(a_xg, r, 42, False))
+                            request = self.comm.send(a_xg, r, 42, NONBLOCKING)
+                            # Remember to store a reference to the
+                            # send buffer (a_xg) so that is isn't
+                            # deallocated:
+                            requests.append((request, a_xg))
                         else:
                             b_xg[:] = B_xg[..., b0:e0, b1:e1, b2:e2]
                         r += 1
                         
-            for request in requests:
+            for request, a_xg in requests:
                 self.comm.wait(request)
         
     def calculate_dipole_moment(self, rho_xyz):

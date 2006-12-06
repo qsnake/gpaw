@@ -90,7 +90,7 @@ class Domain:
         rnk_c = num.clip(num.floor(spos_c * self.parsize_c).astype(num.Int),
                          0, num.array(self.parsize_c) - 1)
         for c in range(3):
-            assert 0 <= rnk_c[c] < self.parsize_c[c], "Bad bad!"
+            assert 0 <= rnk_c[c] < self.parsize_c[c], 'Bad bad!'
         return num.dot(rnk_c, self.stride_c)
 
     def find_neighbor_processors(self):
