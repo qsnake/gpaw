@@ -285,7 +285,8 @@ class Paw:
 
         assert not self.converged
 
-        self.hamiltonian.update(self.density)
+        self.Ekin0, self.Epot, self.Ebar, self.Exc = \
+                    self.hamiltonian.update(self.density)
 
         self.niter = 0
         # Self-consistency loop:
