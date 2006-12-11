@@ -1,54 +1,61 @@
 #!/usr/bin/env python
-
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
+from gpaw.utilities import center, equal
 from gpaw.atom.all_electron import AllElectron as AE
 from gpaw.exx import atomic_exact_exchange as aExx
+from ASE.Units import units
+units.SetEnergyUnit('Hartree')
 
-a = 4.8 # => N = 4.8 / 0.2 = 24
+a = 5.0 
+h = 0.178571
 b = a / 2
-d = 0.74
+d = 0.74 # H - H bonding distance
 
-H = ListOfAtoms([Atom('H', [b, b, b], magmom=1)],
+H = ListOfAtoms([Atom('H', [0, 0, 0], magmom=1)],
                 periodic=False,
                 cell=(a, a, a))
 
-Hs= ListOfAtoms([Atom('H', [b, b, b])],
+Hs= ListOfAtoms([Atom('H', [0, 0, 0])],
                 periodic=False,
                 cell=(a, a, a))
 
-H2= ListOfAtoms([Atom('H', [b, b, b+d/2], magmom=0),
-                 Atom('H', [b, b, b-d/2], magmom=0)],
+H2= ListOfAtoms([Atom('H', [0, 0, 0], magmom=0),
+                 Atom('H', [0, 0, d], magmom=0)],
                 periodic=False,
                 cell=(a, a, a))
+center(H)
+center(Hs)
+center(H2)
 
-calc  = Calculator(nbands=2, h=0.2, xc='PBE', tolerance=1e-7, softgauss=False)
-
-# Hydrogen reference energy and energy conversion factor:
-ref = -12.48992
-eV  = 27.211395655517311
+calc = Calculator(nbands=2, h=h, xc='PBE', tolerance=1e-7,
+                  out='exx_H2.txt', softgauss=False)
 
 # spin compensated calculation for H
 Hs.SetCalculator(calc)
 esH    = Hs.GetPotentialEnergy()
+esH   += calc.GetReferenceEnergy()
 esxxH  = calc.GetExactExchange(method='real')
 
 # calculation for H2
 H2.SetCalculator(calc)
 eH2   = H2.GetPotentialEnergy()
+eH2  += calc.GetReferenceEnergy()
 excH2 = calc.GetXCEnergy()
 exxH2 = calc.GetExactExchange(method='real')
 
 # spin polarized calculation for H
 H.SetCalculator(calc)
 eH    = H.GetPotentialEnergy()
+eH   += calc.GetReferenceEnergy()
 excH  = calc.GetXCEnergy()
 exxH  = calc.GetExactExchange(method='real')
 
 # spin compensated calculation for H with all-electron calculator
 atom     = AE('H'); atom.run()
-eTotAtom = (atom.Ekin + atom.Epot + atom.Exc) * eV - ref
-exxAtom  = aExx(atom) * eV
+eTotAtom = (atom.Ekin + atom.Epot + atom.Exc)
+exxAtom  = aExx(atom)
+
 
 #Test numbers
 Test=[
@@ -61,17 +68,17 @@ print '\n|-------------------------OUTPUT---------------------------|\n'
 print '          H atom  |  H2 molecule'
 print 'ENERGIES :        |'
 print 'potential: %6.2f | %6.2f (PAW spin polarized)' %(eH,eH2)
-print 'exchange : %6.2f | %6.2f (PAW spin polarized)' %(exxH,exxH2)
-print 'potential: %6.2f |   ---  (analytic result)' %(-eV/2 - ref)
-print 'exchange : %6.2f |   ---  (analytic result)' %(-5/16. * eV)
-print 'potential: %6.2f | %6.2f (PAW spin compensated)' %(esH,eH2)
-print 'exchange : %6.2f | %6.2f (PAW spin compensated)' %(esxxH,exxH2)
+print 'exchange : %6.2f | %6.2f (PAW spin polarized)' %(exxH, exxH2)
+print 'potential: %6.2f |   ---  (analytic result)' %(-.5)
+print 'exchange : %6.2f |   ---  (analytic result)' %(-5 / 16.)
+print 'potential: %6.2f | %6.2f (PAW spin compensated)' %(esH, eH2)
+print 'exchange : %6.2f | %6.2f (PAW spin compensated)' %(esxxH, exxH2)
 print 'potential: %6.2f |   ---  (all-electron spin compensated)' %eTotAtom
 print 'exchange : %6.2f |   ---  (all-electron spin compensated)' %exxAtom
 print ' '
 print 'ATOMIZATION ENERGIES (spin polarized):'
-print 'potential: %5.2f' %(eH2-2*eH) 
-print 'exchange : %5.2f' %((eH2-excH2 + exxH2)-2*(eH-excH+exxH)) 
+print 'potential: %5.2f' %(eH2 - 2 * eH) 
+print 'exchange : %5.2f' %((eH2 - excH2 + exxH2) - 2 * (eH - excH + exxH)) 
 print ' '
 print 'METHOD TESTS:'
 print 'recip, ewald:', Test[0]
@@ -79,28 +86,13 @@ print 'recip, gauss:', Test[1]
 print 'real        :', Test[2]
 print '\n|-------------------------OUTPUT---------------------------|\n'
 
+equal(eH,    -0.5,     1e-2)
+equal(exxH,  -5 / 16., 1e-2)
+equal(esH,   eTotAtom, 1e-2)
+equal(esxxH, exxAtom,  1e-2)
+equal(eH2,   -1.16417, 1e-3)
+equal(exxH2, -0.66378, 1e-3)
 
-## |-------------------------OUTPUT---------------------------|
-
-##           H atom  |  H2 molecule
-## ENERGIES :        |
-## potential:  -1.02 |  -6.85 (PAW spin polarized)
-## exchange :  -8.66 | -18.13 (PAW spin polarized)
-## potential:  -1.12 |   ---  (analytic result)
-## exchange :  -8.50 |   ---  (analytic result)
-## potential:   0.14 |  -6.85 (PAW spin compensated)
-## exchange :  -4.14 | -18.13 (PAW spin compensated)
-## potential:   0.36 |   ---  (all-electron spin compensated)
-## exchange :  -3.85 |   ---  (all-electron spin compensated)
-
-## ATOMIZATION ENERGIES (spin polarized):
-## potential: -4.81
-## exchange : -3.85
-
-## METHOD TESTS:
-## recip, ewald: -8.60099731627
-## recip, gauss: -8.65849861639
-## real        : -8.65910327914
-
-## |-------------------------OUTPUT---------------------------|
+for i in range(3):
+    equal(Test[i], -5 / 16., 1.5e-2)
 
