@@ -134,19 +134,38 @@ def coordinates(gd):
     # return r^2 matrix
     return xyz, r2
 
+def dagger(matrix, copy=True):
+    """Return hermitian conjugate of input matrix. If copy is False,
+       the input matrix will be changed (no new allocation of memory).
+    """
+    # First change the axis: (Does not allocate a new array)
+    matrix_conj = num.swapaxes(matrix, 0, 1)
+    if copy: # Allocate space for new array
+        return num.conjugate(matrix_conj)
+    else: # The input array is used for output
+        num.multiply(matrix_conj.imag, -1, matrix_conj.imag)
+        return matrix_conj
+
 def erf3D(M):
     """Return matrix with the value of the error function evaluated for
        each element in input matrix 'M'.
     """
     from gpaw.utilities import erf
+    return elementwise_apply(M, erf, copy=True)
 
-    dim = M.shape
-    res = num.zeros(dim, num.Float)
-    for k in range(dim[0]):
-        for l in range(dim[1]):
-            for m in range(dim[2]):
-                res[k, l, m] = erf(M[k, l, m])
-    return res
+def elementwise_apply(array, function, copy=True):
+    """Apply ``function`` to each element of input ``array``. If copy is False,
+       the input matrix will be changed (no new allocation of memory).
+    """
+    if copy: # Allocate space for new array
+        result = array.copy()
+    else: # The input array is used for output
+        result = array
+    
+    for n in range(len(array.flat)):
+        result.flat[n] = function(array.flat[n])
+
+    return result
 
 class Translate:
     """Class used to translate wave functions / densities."""
