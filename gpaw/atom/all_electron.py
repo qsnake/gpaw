@@ -285,11 +285,15 @@ class AllElectron:
     
     def calculate_kinetic_energy_density(self):
         """Return the kinetic energy density"""
+        return self.radial_kinetic_energy_density(self.f_j,self.l_j,
+                                                  self.u_j)
 
-        shape = self.u_j.shape[1]
+    def radial_kinetic_energy_density(self,f_j,l_j,u_j):
+        """Kinetic energy density from a restricted set of wf's"""
+        shape = u_j.shape[1]
         dudr = num.zeros(shape,num.Float)
         tau = num.zeros(shape,num.Float)
-        for f, l, u in zip(self.f_j,self.l_j,self.u_j):
+        for f, l, u in zip(f_j,l_j,u_j):
             self.rgd.derivative(u,dudr)
             # contribution from angular derivatives
             if l>0:
