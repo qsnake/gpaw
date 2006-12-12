@@ -76,7 +76,7 @@ class AllElectron:
             norm = num.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
         
-    def run(self):
+    def run(self,get_tau=False):
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
         #     N - g
@@ -163,12 +163,6 @@ class AllElectron:
             dn = self.calculate_density() - n
             n += dn
 
-##             tau = self.calculate_kinetic_energy_density()
-##             print "Ekin(tau)=",num.dot(tau *r*r , dr) * 4*pi
-##             tau = self.calculate_kinetic_energy_density2()
-##             print "Ekin(tau2)=",num.dot(tau *r*r , dr) * 4*pi
-
-
             # estimate error from the square of the density change integrated
             q = log(num.sum((r * dn)**2))
 
@@ -192,7 +186,14 @@ class AllElectron:
             niter += 1
             if niter > 117:
                 raise RuntimeError, 'Did not converge!'
-            
+
+        if get_tau:
+            print
+            tau = self.calculate_kinetic_energy_density()
+            print "Ekin(tau)=",num.dot(tau *r*r , dr) * 4*pi
+            tau = self.calculate_kinetic_energy_density2()
+            print "Ekin(tau2)=",num.dot(tau *r*r , dr) * 4*pi
+
         print
         print 'Converged in %d iteration%s.' % (niter, 's'[:niter != 1])
         
@@ -243,6 +244,7 @@ class AllElectron:
         self.write(vr, 'vr')
         self.write(vHr, 'vHr')
         self.write(vXC, 'vXC')
+        if(get_tau): self.write(tau, 'tau')
         
         self.Ekin = Ekin
         self.Epot = Epot
@@ -281,6 +283,17 @@ class AllElectron:
     def calculate_kinetic_energy_density(self):
         """Return the kinetic energy density"""
 
+        def pmax(l):
+            m=0
+            for x in l:
+                if(abs(x)>abs(m)): m=x
+            return m
+        def pmin(l):
+            m=99999999999999999
+            for x in l:
+                if abs(x)<abs(m) and x!=0: m=x
+            return m
+
         shape = self.u_j.shape[1]
         dudr = num.zeros(shape,num.Float)
         tau = num.zeros(shape,num.Float)
@@ -288,10 +301,10 @@ class AllElectron:
             self.rgd.derivative(u,dudr)
             # contribution from angular derivatives
             if l>0:
-                tau += f * l*(l+1) * num.where(abs(u) < 1e-160, 0, u**2)
+                tau += f * l*(l+1) * num.where(abs(u) < 1e-160, 0, u)**2
             # contribution from radial derivatives
             dudr = u - self.r*dudr
-            tau += f * num.where(abs(dudr) < 1e-160, 0, dudr**2)
+            tau += f * num.where(abs(dudr) < 1e-160, 0, dudr)**2
         tau[1:] /= self.r[1:]**4
         tau[0] = tau[1]
             
@@ -310,13 +323,13 @@ class AllElectron:
             else:    R[0] = 0
             self.rgd.derivative(R,dRdr)
             # contribution from radial derivatives
-            tau += f * num.where(abs(dRdr) < 1e-160, 0, dRdr**2)
+            tau += f * num.where(abs(dRdr) < 1e-160, 0, dRdr)**2
             # contribution from angular derivatives
             if l>0:
                 R[1:] = R[1:] / self.r[1:]
                 if l==1: R[0] = R[1]
                 else:    R[0] = 0
-                tau += f * l*(l+1) * num.where(abs(R) < 1e-160, 0, R**2)
+                tau += f * l*(l+1) * num.where(abs(R) < 1e-160, 0, R)**2
             
         return 0.5 * tau / (4 * pi)
         
