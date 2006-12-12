@@ -30,7 +30,7 @@ class AllElectron:
         Example:
 
         a = AllElectron('Fe')
-        a.Run()
+        a.run()
         """
 
         self.symbol = symbol
@@ -163,6 +163,12 @@ class AllElectron:
             dn = self.calculate_density() - n
             n += dn
 
+##             tau = self.calculate_kinetic_energy_density()
+##             print "Ekin(tau)=",num.dot(tau *r*r , dr) * 4*pi
+##             tau = self.calculate_kinetic_energy_density2()
+##             print "Ekin(tau2)=",num.dot(tau *r*r , dr) * 4*pi
+
+
             # estimate error from the square of the density change integrated
             q = log(num.sum((r * dn)**2))
 
@@ -272,6 +278,48 @@ class AllElectron:
         n[0] = n[1]
         return n
     
+    def calculate_kinetic_energy_density(self):
+        """Return the kinetic energy density"""
+
+        shape = self.u_j.shape[1]
+        dudr = num.zeros(shape,num.Float)
+        tau = num.zeros(shape,num.Float)
+        for f, l, u in zip(self.f_j,self.l_j,self.u_j):
+            self.rgd.derivative(u,dudr)
+            # contribution from angular derivatives
+            if l>0:
+                tau += f * l*(l+1) * num.where(abs(u) < 1e-160, 0, u**2)
+            # contribution from radial derivatives
+            dudr = u - self.r*dudr
+            tau += f * num.where(abs(dudr) < 1e-160, 0, dudr**2)
+        tau[1:] /= self.r[1:]**4
+        tau[0] = tau[1]
+            
+        return 0.5 * tau / (4 * pi)
+        
+    def calculate_kinetic_energy_density2(self):
+        """Return the kinetic energy density"""
+
+        shape = self.u_j.shape[1]
+        R = num.zeros(shape,num.Float)
+        dRdr = num.zeros(shape,num.Float)
+        tau = num.zeros(shape,num.Float)
+        for f, l, u in zip(self.f_j,self.l_j,self.u_j):
+            R[1:] = u[1:] / self.r[1:]
+            if l==0: R[0] = R[1]
+            else:    R[0] = 0
+            self.rgd.derivative(R,dRdr)
+            # contribution from radial derivatives
+            tau += f * num.where(abs(dRdr) < 1e-160, 0, dRdr**2)
+            # contribution from angular derivatives
+            if l>0:
+                R[1:] = R[1:] / self.r[1:]
+                if l==1: R[0] = R[1]
+                else:    R[0] = 0
+                tau += f * l*(l+1) * num.where(abs(R) < 1e-160, 0, R**2)
+            
+        return 0.5 * tau / (4 * pi)
+        
     def solve(self):
         """Solve the Schrodinger equation
 
