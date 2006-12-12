@@ -119,7 +119,8 @@ class XCGrid:
     def get_functional(self):
         return self.xcfunc
     
-    def get_energy_and_potential(self, na_g, va_g, nb_g=None, vb_g=None):
+    def get_energy_and_potential(self, na_g, va_g, nb_g=None, vb_g=None,
+                                 taua_g=None, taub_g=None):
         assert is_contiguous(na_g, num.Float)
         assert is_contiguous(va_g, num.Float)
         assert na_g.shape == va_g.shape == self.shape
@@ -155,6 +156,10 @@ class XC3DGrid(XCGrid):
                 self.ab2_g = gd.empty()
                 self.dedaa2_g = gd.empty()
                 self.dedab2_g = gd.empty()
+        if xcfunc.mgga:
+            self.taua_g = gd.empty()
+            if self.nspins == 2:
+                self.taub_g = gd.empty()
         self.e_g = gd.empty()
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g):
@@ -232,6 +237,11 @@ class XCRadialGrid(XCGrid):
                 self.ab2_g = num.empty(self.shape, num.Float)
                 self.dedaa2_g = num.empty(self.shape, num.Float)
                 self.dedab2_g = num.empty(self.shape, num.Float)
+        if xcfunc.mgga:
+            self.taua_g = num.empty(self.shape, num.Float)
+            if self.nspins == 2:
+                self.taub_g = num.empty(self.shape, num.Float)
+        
         self.e_g = num.empty(self.shape, num.Float) 
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g):
