@@ -153,6 +153,16 @@ class Generator(AllElectron):
             nc[1:] /= r[1:]**2
             nc[0] = nc[1]
 
+        # Calculate core kinetic energy density
+        if njcore == 0:
+            tauc = num.zeros(N, num.Float)
+        else:
+            tauc = self.radial_kinetic_energy_density(f_j[:njcore],
+                                                      l_j[:njcore],
+                                                      self.u_j[:njcore])
+            print "Kinetic energy of the core from tauc=",num.dot(tauc *r*r,
+                                                                  dr) * 4*pi
+
         lmax = max(l_j[njcore:])
 
         # Order valence states with respect to angular momentum
