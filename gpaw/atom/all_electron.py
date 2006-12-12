@@ -76,7 +76,7 @@ class AllElectron:
             norm = num.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
         
-    def run(self,get_tau=False):
+    def run(self):
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
         #     N - g
@@ -149,7 +149,11 @@ class AllElectron:
 
             # calculated exchange correlation potential and energy
             vXC[:] = 0.0
-            Exc = self.xc.get_energy_and_potential(n, vXC)
+
+            tau = None
+            if self.xc.xcfunc.mgga:
+                tau = self.calculate_kinetic_energy_density()
+            Exc = self.xc.get_energy_and_potential(n, vXC, taua_g=tau )
 
             # calculate new total Kohn-Sham effective potential and
             # admix with old version
@@ -187,12 +191,11 @@ class AllElectron:
             if niter > 117:
                 raise RuntimeError, 'Did not converge!'
 
-        if get_tau:
-            print
-            tau = self.calculate_kinetic_energy_density()
-            print "Ekin(tau)=",num.dot(tau *r*r , dr) * 4*pi
-            tau = self.calculate_kinetic_energy_density2()
-            print "Ekin(tau2)=",num.dot(tau *r*r , dr) * 4*pi
+##         print
+        tau = self.calculate_kinetic_energy_density()
+##         print "Ekin(tau)=",num.dot(tau *r*r , dr) * 4*pi
+##         tau = self.calculate_kinetic_energy_density2()
+##         print "Ekin(tau2)=",num.dot(tau *r*r , dr) * 4*pi
 
         print
         print 'Converged in %d iteration%s.' % (niter, 's'[:niter != 1])
@@ -244,7 +247,7 @@ class AllElectron:
         self.write(vr, 'vr')
         self.write(vHr, 'vHr')
         self.write(vXC, 'vXC')
-        if(get_tau): self.write(tau, 'tau')
+        self.write(tau, 'tau')
         
         self.Ekin = Ekin
         self.Epot = Epot
@@ -282,17 +285,6 @@ class AllElectron:
     
     def calculate_kinetic_energy_density(self):
         """Return the kinetic energy density"""
-
-        def pmax(l):
-            m=0
-            for x in l:
-                if(abs(x)>abs(m)): m=x
-            return m
-        def pmin(l):
-            m=99999999999999999
-            for x in l:
-                if abs(x)<abs(m) and x!=0: m=x
-            return m
 
         shape = self.u_j.shape[1]
         dudr = num.zeros(shape,num.Float)
