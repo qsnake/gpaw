@@ -166,7 +166,7 @@ def get_system_config(define_macros, undef_macros,
         if libs != []:
             libs.sort()
             libraries += ['mkl_lapack',
-                          'mkl_ia32', 'guide', 'pthread', 'mkl', 'mkl_def']
+                          'mkl_ia32', 'guide', 'pthread', 'mkl']#, 'mkl_def']
             library_dirs += libs
             msg +=  ['* Using MKL library: %s' % library_dirs[-1]]
             extra_link_args += ['-Wl,-rpath=' + library_dirs[-1]]
