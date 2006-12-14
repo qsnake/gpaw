@@ -66,7 +66,7 @@ class RMM_DIIS(Eigensolver):
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n],
                                   kpt.k_c)
 
-            if hamiltonian.xc.xcfunc.hybrid > 0.0:
+            if 0:#hamiltonian.xc.xcfunc.hybrid > 0.0:
                 kpt.psit_nG[n] += pR_G
                 continue
             

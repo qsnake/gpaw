@@ -95,7 +95,6 @@ class EXX:
 
                 self.Exx += (0.5 * f_n[n1] * f_n[n2] * hybrid * 
                              self.fineintegrate(self.vt_g * self.nt_g))
-                print self.Exx
                 self.Ekin -= (f_n[n1] * f_n[n2] * hybrid * 
                              self.integrate(self.vt_G * self.nt_G))
 
@@ -110,10 +109,13 @@ class EXX:
                     for nucleus in self.my_nuclei:
                         v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
                         nucleus.ghat_L.integrate(self.vt_g, v_L)
+                        v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
                         nucleus.vxx_uni[u, n1] += f_n[n2] * hybrid * num.dot(
-                            unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
-                            nucleus.P_uni[u, n2])
-                    
+                            v_ii, nucleus.P_uni[u, n2])
+
+                        if n1 == n2:
+                            nucleus.vxx_unii[u, n1] = f_n[n2] * hybrid * v_ii
+                            
         for nucleus in self.my_nuclei:
             if not self.energy_only:
                 H_nn += num.innerproduct(nucleus.vxx_uni[u], nucleus.P_uni[u])

@@ -91,8 +91,9 @@ class Nucleus:
         self.H_sp = num.zeros((nspins, np), num.Float)
         self.P_uni = num.zeros((nmyu, nbands, ni), self.typecode)
         self.F_c = num.zeros(3, num.Float)
-        if self.setup.xcname == 'EXX':
+        if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
             self.vxx_uni = num.empty((nmyu, nbands, ni), self.typecode)
+            self.vxx_unii = num.empty((nmyu, nbands, ni, ni), self.typecode)
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape
@@ -412,7 +413,7 @@ class Nucleus:
                        num.dot(dP_i * eps, self.setup.O_ii))
 
             if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
-                coefs_i += self.vxx_uni[u, n]
+                coefs_i += num.dot(self.vxx_unii[u, n], dP_i)
                 
             self.pt_i.add(dR_G, coefs_i, k, communicate=True)
         else:

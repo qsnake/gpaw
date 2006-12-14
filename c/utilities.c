@@ -6,9 +6,9 @@
 
 
 /* elementwise multiply and add result to another vector
-*
-* c[i] += a[i] * b[i] ,  for i = every element in the vectors
-*/
+ *
+ * c[i] += a[i] * b[i] ,  for i = every element in the vectors
+ */
 PyObject* elementwise_multiply_add(PyObject *self, PyObject *args)
 {
   PyArrayObject* aa;
