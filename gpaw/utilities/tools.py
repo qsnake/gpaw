@@ -101,9 +101,9 @@ def construct_reciprocal(gd):
     dim = num.reshape(gd.n_c, (3, 1, 1, 1))
     dk = 2 * num.pi / gd.domain.cell_c
     dk.shape = (3, 1, 1, 1)
-    k = ((num.indices(gd.n_c) + dim / 2)%dim - dim / 2) * dk
+    k = ((num.indices(gd.n_c) + dim / 2) % dim - dim / 2) * dk
     k2 = sum(k**2)
-    k2[0,0,0] = 1.0
+    k2[0, 0, 0] = 1.0
 
     # determine N^3
     N3 = gd.n_c[0] * gd.n_c[1] * gd.n_c[2]
@@ -118,8 +118,8 @@ def coordinates(gd):
     """    
     I  = num.indices(gd.n_c)
     dr = num.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = num.reshape(gd.h_c * gd.beg_c - .5 * gd.domain.cell_c, (3,1,1,1))
-    r0 = num.ones(I.shape)*r0
+    r0 = num.reshape(gd.h_c * gd.beg_c - .5 * gd.domain.cell_c, (3, 1, 1, 1))
+    r0 = num.ones(I.shape) * r0
     xyz = r0 + I * dr
     r2 = num.sum(xyz**2)
 

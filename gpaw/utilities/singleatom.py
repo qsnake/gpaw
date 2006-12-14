@@ -17,7 +17,7 @@ magmoms = {}
 class SingleAtom:
     def __init__(self, symbol, a=None, b=None, c=None,
                  h=None, gpts=None, spinpaired=False,
-                 eggboxtest=False, parameters={}, forcesymm=False):
+                 eggboxtest=False, parameters={}, forcesymm=True):
         if a is None:
             a = 7.0  # Angstrom
 
@@ -42,7 +42,7 @@ class SingleAtom:
             width = 0
             hund = True
             if symbol in ['C', 'O', 'F', 'Cl']:
-                if 1:#forcesymm:
+                if forcesymm:
                     parameters['kpts'] = (2, 2, 2)
                     periodic = True
                     if symbol == 'O':
@@ -50,7 +50,7 @@ class SingleAtom:
                     else:
                         pos = (0.1, 0, 0)
                 else:
-                    parameters['tolerance'] = 1e-7
+                    parameters['tolerance'] = 1e-6
 
             # Is this a special case?
             magmom = magmoms.get(symbol)

@@ -7,9 +7,11 @@ from gpaw.utilities import center
 from gpaw.utilities.singleatom import SingleAtom
 
 class Molecule:
-    def __init__(self, formula, a=None, b=None, c=None, h=None, parameters={}):
+    def __init__(self, formula, a=None, b=None, c=None, h=None,
+                 parameters={}, forcesymm=True):
         self.formula = formula
         self.parameters = parameters
+        self.forcesymm=forcesymm
         if a is None:
             a = 7.0  # Angstrom
         if b is None:
@@ -58,7 +60,8 @@ class Molecule:
                 if verbose:
                     print '%s:' % symbol,
                 atom = SingleAtom(symbol, a=self.a, b=self.b, c=self.c, h=h,
-                                  parameters=self.parameters)
+                                  parameters=self.parameters,
+                                  forcesymm=self.forcesymm)
                 atom_energies[symbol] = [atom.energy()] + atom.non_self_xc(xcs)
                 if verbose:
                     print '%.3f eV' % atom_energies[symbol][0]
