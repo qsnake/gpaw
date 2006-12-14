@@ -12,8 +12,7 @@ from gpaw.utilities.complex import cc, real
 from gpaw.utilities import unpack
 
 class Eigensolver:
-    def __init__(self, exx, timer, kpt_comm, gd, kin, typecode):
-        self.exx = exx
+    def __init__(self, timer, kpt_comm, gd, kin, typecode):
         self.timer = timer
         self.kpt_comm = kpt_comm
         self.typecode = typecode
@@ -54,10 +53,10 @@ class Eigensolver:
         """Implemented in subclasses."""
         return 0.0
     
-    def diagonalize(self, hamiltonian, kpt, work):
+    def diagonalize(self, hamiltonian, kpt, Htpsit_nG):
         """Diagonalize the Hamiltonian in the subspace of kpt.psit_nG
 
-        ``work`` is working array of same size as psit_nG which contains
+        ``Htpsit_nG`` is working array of same size as psit_nG which contains
         the local part of the Hamiltonian times psit on exit
 
         First, the Hamiltonian (defined by ``kin``, ``vt_sG``, and
@@ -78,22 +77,21 @@ class Eigensolver:
         psit_nG = kpt.psit_nG
         eps_n = kpt.eps_n
 
-        hamiltonian.kin.apply(psit_nG, work, kpt.phase_cd)
+        hamiltonian.kin.apply(psit_nG, Htpsit_nG, kpt.phase_cd)
             
-        work += kpt.psit_nG * hamiltonian.vt_sG[kpt.s]
-        if self.exx is not None:
-            self.exx.adjust_hamiltonian(psit_nG, work, kpt.nbands,
-                                        kpt.f_n, kpt.u, kpt.s,
-                                        hamiltonian.poisson,
-                                        hamiltonian.restrict)
+        Htpsit_nG += psit_nG * hamiltonian.vt_sG[kpt.s]
+
         H_nn[:] = 0.0  # r2k fails without this!
-        r2k(0.5 * self.gd.dv, psit_nG, work, 0.0, H_nn)
+        hamiltonian.xc.xcfunc.calculate_non_local_energy(kpt, Htpsit_nG, H_nn)
+
+        r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
+
         # XXX Do EXX here XXX
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
-                                               cc(num.transpose(P_ni))))
-            if self.exx is not None:
+                                          cc(num.transpose(P_ni))))
+            if 0:#self.exx is not None:
                 self.exx.adjust_hamitonian_matrix(H_nn, P_ni, nucleus, kpt.s)
 
         self.comm.sum(H_nn, kpt.root)
@@ -112,8 +110,8 @@ class Eigensolver:
         gemm(1.0, temp, H_nn, 0.0, psit_nG)
         
         # Rotate Htpsit_nG:
-        temp[:] = work
-        gemm(1.0, temp, H_nn, 0.0, work)
+        temp[:] = Htpsit_nG
+        gemm(1.0, temp, H_nn, 0.0, Htpsit_nG)
         
         # Rotate P_ani:
         for nucleus in hamiltonian.my_nuclei:

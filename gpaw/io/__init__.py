@@ -256,7 +256,7 @@ def read(paw, filename):
 
             for kpt in paw.kpt_u:
                 kpt.psit_nG = paw.gd.empty(paw.nbands, paw.typecode)
-                kpt.Htpsit_nG = paw.gd.empty(paw.nbands, paw.typecode)
+                #kpt.Htpsit_nG = paw.gd.empty(paw.nbands, paw.typecode)
                 # Read band by band to save memory
                 for n, psit_G in enumerate(kpt.psit_nG):
                     psit_G[:] = r.get('PseudoWaveFunctions',

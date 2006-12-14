@@ -27,9 +27,9 @@ class CG(Eigensolver):
     * Conjugate gradient steps
     """
 
-    def __init__(self, exx,  timer, kpt_comm, gd, kin, typecode, nbands):
+    def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
 
-        Eigensolver.__init__(self, exx, timer, kpt_comm, gd, kin, typecode)
+        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode)
 
         # Allocate work arrays
         self.work1 = self.gd.new_array(nbands, typecode) #Htpsit_nG

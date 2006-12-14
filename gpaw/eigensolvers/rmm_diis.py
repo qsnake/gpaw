@@ -25,9 +25,9 @@ class RMM_DIIS(Eigensolver):
     * Improvement of wave functions:  psi' = psi + lambda PR + lambda PR'
     * Orthonormalization"""
 
-    def __init__(self, exx,  timer, kpt_comm, gd, kin, typecode, nbands):
+    def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
 
-        Eigensolver.__init__(self, exx, timer, kpt_comm, gd, kin, typecode)
+        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode)
 
         # Allocate work arrays
         self.work1 = self.gd.empty(nbands, typecode) #Hpsi, res
@@ -66,6 +66,10 @@ class RMM_DIIS(Eigensolver):
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n],
                                   kpt.k_c)
 
+            if hamiltonian.xc.xcfunc.hybrid > 0.0:
+                kpt.psit_nG[n] += pR_G
+                continue
+            
             hamiltonian.kin.apply(pR_G, dR_G, kpt.phase_cd)
                 
             if (dR_G.typecode() == num.Float):
@@ -77,7 +81,10 @@ class RMM_DIIS(Eigensolver):
 
             for nucleus in hamiltonian.pt_nuclei:
                 nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
-                                         kpt.s, kpt.k)
+                                         kpt.u, kpt.s, kpt.k, n)
+            
+            if hamiltonian.xc.xcfunc.hybrid > 0.0:
+                dR_G += hamiltonian.xc.xcfunc.exx.vt_nG[n] * pR_G
             
             if (dR_G.typecode() == num.Float):
                 RdR = self.comm.sum(utilities_vdot(R_G, dR_G))

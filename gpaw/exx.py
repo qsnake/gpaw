@@ -4,7 +4,154 @@ from gpaw.utilities.complex import real
 from gpaw.coulomb import Coulomb
 from gpaw.utilities.tools import pack, pack2, core_states
 from gpaw.gaunt import make_gaunt
-from gpaw.utilities import hartree, unpack
+from gpaw.utilities import hartree, unpack, unpack2
+from gpaw.ae import AllElectronSetup
+
+
+class EXX:
+    """EXact eXchange.
+
+    Class offering methods for selfconsistent evaluation of the
+    exchange energy."""
+    
+    def __init__(self, gd, finegd, interpolate, restrict, poisson,
+                 my_nuclei, ghat_nuclei, nspins, nbands, energy_only=False):
+        
+        self.my_nuclei = my_nuclei
+        self.ghat_nuclei = ghat_nuclei
+        self.nspins = nspins
+        self.interpolate = interpolate
+        self.restrict = restrict
+        self.poisson = poisson
+        
+        # allocate space for matrices
+        self.nt_G = gd.empty()
+        self.vt_G = gd.empty()
+        self.nt_g = finegd.empty()
+        self.vt_g = finegd.empty()
+
+        self.fineintegrate = finegd.integrate
+        self.integrate = gd.integrate
+
+        self.energy_only = energy_only
+        if not energy_only:
+            self.vt_nG = gd.empty(nbands)
+
+    def calculate_energy(self, kpt, Htpsit_nG, H_nn, hybrid):
+        """Apply exact exchange operator."""
+
+        psit_nG = kpt.psit_nG[:]
+        f_n = kpt.f_n
+        u = kpt.u
+        s = kpt.s
+        
+        assert psit_nG.typecode() == num.Float
+
+        if u == 0:
+            self.Ekin = 0.0
+            self.Exx = 0.0
+            for nucleus in self.my_nuclei:
+                self.Exx += nucleus.setup.ExxC
+
+        if self.nspins == 1:
+            hybrid *= 0.5
+
+        if not self.energy_only:
+            for nucleus in self.my_nuclei:
+                nucleus.vxx_uni[:] = 0.0
+
+        for n1, psit1_G in enumerate(psit_nG):
+            for n2, psit2_G in enumerate(psit_nG):
+                # Determine current exchange density ...
+                self.nt_G[:] = psit1_G * psit2_G 
+
+                # and interpolate to the fine grid:
+                self.interpolate(self.nt_G, self.nt_g)
+
+                # Determine the compensation charges for each nucleus:
+                for nucleus in self.ghat_nuclei:
+                    if nucleus.in_this_domain:
+                        # Generate density matrix
+                        P1_i = nucleus.P_uni[u, n1]
+                        P2_i = nucleus.P_uni[u, n2]
+                        D_ii = num.outerproduct(P1_i, P2_i)
+                        D_p  = pack(D_ii, symmetric=False)
+
+                        # Determine compensation charge coefficients:
+                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                    else:
+                        Q_L = None
+
+                    # Add compensation charges to exchange density:
+                    nucleus.ghat_L.add(self.nt_g, Q_L, communicate=True)
+
+                # Determine total charge of exchange density:
+                Z = float(n1 == n2)
+
+                # Determine exchange potential:
+                self.vt_g[:] = 0.0
+                self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z)
+                self.restrict(self.vt_g, self.vt_G)
+
+                self.Exx += (0.5 * f_n[n1] * f_n[n2] * hybrid * 
+                             self.fineintegrate(self.vt_g * self.nt_g))
+                print self.Exx
+                self.Ekin -= (f_n[n1] * f_n[n2] * hybrid * 
+                             self.integrate(self.vt_G * self.nt_G))
+
+                if not self.energy_only:
+                    Htpsit_nG[n1] += f_n[n2] * hybrid * self.vt_G * psit2_G
+                    
+                    if n1 == n2:
+                        self.vt_nG[n1] = f_n[n1] * hybrid * self.vt_G
+                    
+                    # update the vxx_sni vector of the nuclei, used to determine
+                    # the atomic hamiltonian
+                    for nucleus in self.my_nuclei:
+                        v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
+                        nucleus.ghat_L.integrate(self.vt_g, v_L)
+                        nucleus.vxx_uni[u, n1] += f_n[n2] * hybrid * num.dot(
+                            unpack(num.dot(nucleus.setup.Delta_pL, v_L)),
+                            nucleus.P_uni[u, n2])
+                    
+        for nucleus in self.my_nuclei:
+            if not self.energy_only:
+                H_nn += num.innerproduct(nucleus.vxx_uni[u], nucleus.P_uni[u])
+
+            D_p = nucleus.D_sp[s]
+            D_ii = unpack2(D_p)
+            H_p = nucleus.H_sp[s]
+            
+            ni = len(D_ii)
+            def p(i1, i2):
+                if i1 > i2:
+                    return (i2 * (2 * ni - 1 - i2) // 2) + i1
+                else:
+                    return (i1 * (2 * ni - 1 - i1) // 2) + i2
+
+            setup = nucleus.setup
+            assert not setup.softgauss or isinstance(setup, AllElectronSetup)
+
+            C_pp = setup.M_pp
+
+            e0=self.Exx
+            for i1 in range(ni):
+                for i2 in range(ni):
+                    A = 0.0
+                    for i3 in range(ni):
+                        p13 = p(i1, i3)
+                        for i4 in range(ni):
+                            A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
+                    if not self.energy_only and i1 > i2:
+                        p12 = p(i1, i2)
+                        H_p[p12] -= 2 * A
+                    self.Exx -= hybrid * D_ii[i1, i2] * A
+            #print u,s,self.Exx-e0
+            #print setup.ExxC, num.dot(D_p, setup.X_p)
+            
+            self.Exx -= num.dot(D_p, setup.X_p)
+            if not self.energy_only:
+                H_p -= setup.X_p
 
 class XCHandler:
     """Exchange correlation handler.
@@ -227,7 +374,6 @@ class PerturbativeExx:
 
         # Get atomic corrections
         self.ExxVV, self.ExxVC, self.ExxCC = self.atomic_corrections()
-        
         # sum contributions from all processors
         ksum = paw.kpt_comm.sum
         dsum = paw.domain.comm.sum
@@ -430,7 +576,7 @@ def atomic_exact_exchange(atom, type = 'all'):
 def constructX(gen):
     """Construct the X_p^a matrix for the given atom"""
     # make gaunt coeff. list
-    gaunt = make_gaunt(lmax=max(gen.l_j))
+    gaunt = make_gaunt(lmax=gen.lmax)
 
     uv_j = gen.vu_j    # soft valence states * r:
     lv_j = gen.vl_j    # their repective l quantum numbers

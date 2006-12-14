@@ -6,25 +6,29 @@ import Numeric as num
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
-from gpaw.exx import XXFunctional
+from gpaw.exx import EXX, XXFunctional
 import _gpaw
 
 class XCFunctional:
     def __init__(self, xcname, scalarrel=True, parameters=None):
         self.xcname = xcname
-        self.hybrid = 0
+        self.hybrid = 0.0
         self.parameters = parameters
         self.scalarrel = scalarrel
         self.mgga = False
+        self.gga = False
         
         if xcname == 'LDA':
-            self.gga = False
             self.maxDerivativeLevel=2
             code = 117 # not used!
         elif xcname == 'LDAc':
-            self.gga = False
             self.maxDerivativeLevel=2
             code = 7
+        elif xcname == 'LDAx':
+            code = 11
+        elif xcname == 'EXX':
+            code = 6
+            self.hybrid = 1.0
         else:
             self.gga = True
             self.maxDerivativeLevel=1
@@ -37,12 +41,10 @@ class XCFunctional:
             elif xcname.startswith('XC'):
                 code = 3
             elif xcname == 'PBE0':
+                self.hybrid = 0.25
                 code = 4
             elif xcname == 'PADE':
                 code = 5
-            elif xcname == 'EXX':
-                code = 6
-                self.hybrid = 1
             elif xcname == 'revPBEx':
                 code = 8
             elif xcname == 'TPSS':
@@ -72,6 +74,24 @@ class XCFunctional:
         xcname, scalarrel, parameters = state
         self.__init__(xcname, scalarrel, parameters)
     
+    def set_non_local_things(self, paw, energy_only=False):
+        if self.hybrid > 0.0:
+            self.exx = EXX(paw.gd, paw.finegd, paw.density.interpolate,
+                           paw.hamiltonian.restrict, paw.hamiltonian.poisson,
+                           paw.my_nuclei, paw.ghat_nuclei,
+                           paw.nspins, paw.nbands,
+                           energy_only)
+
+    def calculate_non_local_energy(self, kpt, Htpsit_nG=None, H_nn=None):
+        if self.hybrid > 0.0:
+            self.exx.calculate_energy(kpt, Htpsit_nG, H_nn, self.hybrid)
+
+    def get_non_local_energy(self):
+        if self.hybrid > 0.0:
+            return self.exx.Exx
+        else:
+            return 0.0
+        
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None):
         if self.gga:
             # e_g.flat !!!!! XXX
@@ -208,8 +228,9 @@ class XC3DGrid(XCGrid):
                 self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
                 vb_g -= 4.0 * tmp_g
         else:
-            self.xcfunc.calculate_spinpolarized(self.e_g, na_g, va_g, nb_g, vb_g)
-
+            self.xcfunc.calculate_spinpolarized(self.e_g,
+                                                na_g, va_g,
+                                                nb_g, vb_g)
         return num.sum(self.e_g.flat) * self.dv
 
 class XCRadialGrid(XCGrid):

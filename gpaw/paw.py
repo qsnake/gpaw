@@ -19,7 +19,6 @@ from gpaw import ConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 from gpaw.eigensolvers.cg import CG
-from gpaw.exx import get_exx
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.kpoint import KPoint
@@ -226,18 +225,16 @@ class Paw:
                                self.my_nuclei, self.ghat_nuclei, self.nuclei,
                                nvalence)
         
-        # exact-exchange functional object:
-        self.exx = get_exx(xcfunc.xcname, nuclei[0].setup.softgauss,
-                           typecode, self.gd, self.finegd,
-                           self.density.interpolate,
-                           self.my_nuclei, self.ghat_nuclei, self.nspins)
-
         self.hamiltonian = Hamiltonian(self.gd, self.finegd, xcfunc,
-                                       nspins, typecode, stencils, relax, timer,
+                                       nspins,
+                                       typecode, stencils, relax,
+                                       timer,
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
-                                       self.nuclei, setups, self.exx)
+                                       self.nuclei, setups)
 
+        xcfunc.set_non_local_things(self)
+            
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
             self.occupation = occupations.ZeroKelvin(nvalence, nspins)
@@ -299,6 +296,10 @@ class Paw:
             self.error, self.converged = self.eigensolver.iterate(
                 self.hamiltonian, self.kpt_u)
 
+            self.Exc += self.hamiltonian.xc.xcfunc.get_non_local_energy()
+            if self.hamiltonian.xc.xcfunc.hybrid > 0.0:
+                self.Ekin0 += self.hamiltonian.xc.xcfunc.exx.Ekin
+                
             # Calculate occupation numbers:
             self.nfermi, self.magmom, self.S, Eband = \
                          self.occupation.calculate(self.kpt_u)
@@ -385,6 +386,21 @@ class Paw:
             ni = nucleus.get_number_of_partial_waves()
             nucleus.P_uni = num.empty((self.nmyu, nao, ni), self.typecode)
 
+        xcfunc = self.hamiltonian.xc.xcfunc
+        if xcfunc.hybrid > 0:
+            # At this point, we can't use orbital dependent
+            # functionals, because we don't have the right orbitals
+            # yet.  So we use a simple density functional to setup the
+            # initial hamiltonian:
+            if xcfunc.xcname == 'EXX':
+                localxcfunc = XCFunctional('LDAx')
+            else:
+                assert xcfunc.xcname == 'PBE0'
+                localxcfunc = XCFunctional('PBE')
+            self.hamiltonian.xc.set_functional(localxcfunc)
+            for setup in self.setups:
+                setup.xc_correction.xc.set_functional(localxcfunc)
+                            
         self.Ekin0, self.Epot, self.Ebar, self.Exc = \
                    self.hamiltonian.update(self.density)
         
@@ -397,9 +413,16 @@ class Paw:
             for nucleus in self.pt_nuclei:
                 nucleus.calculate_projections(kpt)
             kpt.orthonormalize(self.my_nuclei)
+
             self.eigensolver.diagonalize(self.hamiltonian, kpt, Htpsit_nG)
 
             kpt.adjust_number_of_bands(self.nbands)
+
+        if xcfunc.hybrid > 0:
+            # Switch back to the orbital dependent functional:
+            self.hamiltonian.xc.set_functional(xcfunc)
+            for setup in self.setups:
+                setup.xc_correction.xc.set_functional(xcfunc)
 
         for nucleus in self.my_nuclei:
             nucleus.reallocate(self.nbands)
@@ -625,29 +648,31 @@ class Paw:
                                       k,k1,G)
     
     def get_xc_difference(self, xcname):
-        """Calculate non-seflconsistent XC-energy difference."""
-        if xcname == 'EXX':
-            return self.Ha * (self.get_exact_exchange() - self.Exc)
-        
-        oldxcfunc = self.hamiltonian.xc.xcfunc
+        """Calculate non-selfconsistent XC-energy difference."""
+        xc = self.hamiltonian.xc
+        oldxcfunc = xc.xcfunc
 
         if isinstance(xcname, str):
             newxcfunc = XCFunctional(xcname)
         else:
             newxcfunc = xcname
-            
-        xc = self.hamiltonian.xc
+
+        newxcfunc.set_non_local_things(self, energy_only=True)
 
         xc.set_functional(newxcfunc)
         for setup in self.setups:
             setup.xc_correction.xc.set_functional(newxcfunc)
 
-        v_g = self.finegd.empty()  # not used for anything!
+        if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready:
+            self.set_positions(num.array([n.spos_c * self.domain.cell_c
+                                          for n in self.nuclei]))
+            
+        vt_g = self.finegd.empty()  # not used for anything!
         nt_sg = self.density.nt_sg
         if self.nspins == 2:
-            Exc = xc.get_energy_and_potential(nt_sg[0], v_g, nt_sg[1], v_g)
+            Exc = xc.get_energy_and_potential(nt_sg[0], vt_g, nt_sg[1], vt_g)
         else:
-            Exc = xc.get_energy_and_potential(nt_sg[0], v_g)
+            Exc = xc.get_energy_and_potential(nt_sg[0], vt_g)
 
         for nucleus in self.my_nuclei:
             D_sp = nucleus.D_sp
@@ -657,9 +682,10 @@ class Paw:
             
         Exc = self.domain.comm.sum(Exc)
 
-        if xcname == 'PBE0':
-            Exc += 0.25 * self.get_exact_exchange()
-
+        for kpt in self.kpt_u:
+            newxcfunc.calculate_non_local_energy(kpt)
+        Exc += newxcfunc.get_non_local_energy()
+        
         xc.set_functional(oldxcfunc)
         for setup in self.setups:
             setup.xc_correction.xc.set_functional(oldxcfunc)
@@ -671,8 +697,18 @@ class Paw:
     
     def get_exact_exchange(self, decompose=False, method=None):
         from gpaw.exx import PerturbativeExx
+        if not self.nuclei[0].ready:
+            self.set_positions(num.array([n.spos_c * self.domain.cell_c
+                                          for n in self.nuclei]))
         return PerturbativeExx(self).get_exact_exchange(decompose, method)
 
+    def get_exact_exchange_new(self):
+        dExc = self.get_xc_difference('EXX') / self.Ha
+        Exx = self.Exc + dExc
+        for nucleus in self.nuclei:
+            Exx += nucleus.setup.xc_correction.Exc0
+        return Exx
+    
     def get_weights(self):
         return self.weights_k
 
@@ -682,12 +718,12 @@ class Paw:
         if isinstance(self.eigensolver, tuple):
             eigensolver, convergeall, tolerance, nvalence = self.eigensolver
             if eigensolver == 'rmm-diis':
-                self.eigensolver = RMM_DIIS(self.exx, self.timer,
+                self.eigensolver = RMM_DIIS(self.timer,
                                             self.kpt_comm,
                                             self.gd, self.hamiltonian.kin,
                                             self.typecode, self.nbands)
-            elif eigensolver == "cg":
-                self.eigensolver = CG(self.exx, self.timer, self.kpt_comm, 
+            elif eigensolver == 'cg':
+                self.eigensolver = CG(self.timer, self.kpt_comm, 
                                       self.gd, self.hamiltonian.kin,
                                       self.typecode, self.nbands)
             else:
@@ -729,5 +765,5 @@ class Paw:
             # for wave functions and copy data from the file:
             for kpt in self.kpt_u:
                 kpt.psit_nG = kpt.psit_nG[:]
-                kpt.Htpsit_nG = kpt.gd.empty(self.nbands, self.typecode)
+                #kpt.Htpsit_nG = kpt.gd.empty(self.nbands, self.typecode)  # XXX
 

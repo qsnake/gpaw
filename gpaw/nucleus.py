@@ -92,7 +92,7 @@ class Nucleus:
         self.P_uni = num.zeros((nmyu, nbands, ni), self.typecode)
         self.F_c = num.zeros(3, num.Float)
         if self.setup.xcname == 'EXX':
-            self.vxx_sni = num.zeros((nspins, nbands, ni), self.typecode)
+            self.vxx_uni = num.empty((nmyu, nbands, ni), self.typecode)
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape
@@ -361,7 +361,7 @@ class Nucleus:
 
             Exc = s.xc_correction.calculate_energy_and_derivatives(
                 self.D_sp, self.H_sp)
-            if s.xcname == 'EXX': # XXX EXX hack
+            if 0:#s.xcname == 'EXX': # XXX EXX hack
                 Exc = s.ExxC - num.dot(D_p, (s.X_p + num.dot(s.M_pp, D_p)))
                 self.H_sp -= s.X_p + 2.0 * num.dot(s.M_pp, D_p)
 
@@ -390,11 +390,15 @@ class Nucleus:
             P_ni = self.P_uni[u]
             coefs_ni =  (num.dot(P_ni, H_ii) -
                          num.dot(P_ni * eps_n[:, None], self.setup.O_ii))
+
+            if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
+                coefs_ni += self.vxx_uni[u]
+                
             self.pt_i.add(R_nG, coefs_ni, k, communicate=True)
         else:
             self.pt_i.add(R_nG, None, k, communicate=True)
             
-    def adjust_residual2(self, pR_G, dR_G, eps, s, k):
+    def adjust_residual2(self, pR_G, dR_G, eps, u, s, k, n):
         if self.in_this_domain:
             ni = self.get_number_of_partial_waves()
             dP_i = num.zeros(ni, self.typecode)
@@ -406,6 +410,10 @@ class Nucleus:
             H_ii = unpack(self.H_sp[s])
             coefs_i = (num.dot(dP_i, H_ii) -
                        num.dot(dP_i * eps, self.setup.O_ii))
+
+            if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
+                coefs_i += self.vxx_uni[u, n]
+                
             self.pt_i.add(dR_G, coefs_i, k, communicate=True)
         else:
             self.pt_i.add(dR_G, None, k, communicate=True)

@@ -35,8 +35,13 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.ExxC = None
 
     def parse(self, symbol, xcname):
-        if xcname == 'EXX': # XXX EXX hack 
+        exx = False
+        if xcname == 'EXX': # XXX EXX hack
+            exx = True
             xcname = 'LDA'
+        elif xcname == 'PBE0': # XXX EXX hack
+            exx = True
+            xcname = 'PBE'
         name = symbol + '.' + xcname
         source = None
         for path in setup_paths:
@@ -68,6 +73,14 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
         source = re.compile(r'<!DOCTYPE .*?>', re.DOTALL).sub('', source, 1)
         xml.sax.parse(StringIO(source), self) # XXX There is a special parse
                                               # function that takes a string 
+
+        if exx:
+            self.e_total = 0.0
+            self.e_kinetic = 0.0
+            self.e_electrostatic = 0.0
+            self.e_xc = 0.0
+            self.e_kinetic_core = 0.0
+            
         return (self.Z, self.Nc, self.Nv,
                 self.e_total,
                 self.e_kinetic,

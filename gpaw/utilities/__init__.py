@@ -109,7 +109,7 @@ else:
 def unpack(M):
     assert is_contiguous(M, num.Float)
     n = int(sqrt(0.25 + 2.0 * len(M)))
-    M2 = num.zeros((n, n), num.Float)
+    M2 = num.empty((n, n), num.Float)
     _gpaw.unpack(M, M2)
     return M2
 

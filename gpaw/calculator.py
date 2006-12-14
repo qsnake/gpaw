@@ -471,6 +471,10 @@ class Calculator:
         """Return non-selfconsistent value of exact exchange"""
         return self.Ha * self.paw.get_exact_exchange(decompose, method)
     
+    def GetExactExchangeNew(self, decompose=False, method=None):
+        """Return non-selfconsistent value of exact exchange"""
+        return self.Ha * self.paw.get_exact_exchange_new()
+    
     def GetXCEnergy(self):
         return self.paw.Exc * self.Ha
 

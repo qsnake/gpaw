@@ -41,9 +41,10 @@ class Hamiltonian:
      ========== =========================================
     """
     
-    def __init__(self, gd, finegd, xcfunc, nspins, typecode, stencils, relax,
+    def __init__(self, gd, finegd, xcfunc, nspins,
+                 typecode, stencils, relax,
                  timer, my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
-                 setups, exx):
+                 setups):
         """Create the Hamiltonian."""
 
         self.nspins = nspins
@@ -54,7 +55,6 @@ class Hamiltonian:
         self.ghat_nuclei = ghat_nuclei
         self.nuclei = nuclei
         self.timer = timer
-        self.exx = exx
 
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
@@ -68,9 +68,6 @@ class Hamiltonian:
 
         # Kinetic energy operator:
         self.kin = Laplace(gd, -0.5, nn, typecode)
-
-        # exchange-correlation functional object:
-        self.xc = XC3DGrid(xcfunc, finegd, nspins)
 
         # Number of neighbor grid points used for interpolation (1, 2,
         # or 3):
@@ -90,6 +87,9 @@ class Hamiltonian:
         self.pairpot = PairPotential(setups)
 
         self.npoisson = 0
+
+        # Exchange-correlation functional object:
+        self.xc = XC3DGrid(xcfunc, finegd, nspins)
 
     def update(self, density):
         """Calculate effective potential.
@@ -137,12 +137,6 @@ class Hamiltonian:
             self.restrict(vt_g, vt_G)
             Ekin -= num.vdot(vt_G, nt_G - density.nct_G) * self.gd.dv
 
-        # Exact-exchange correction
-        if self.exx is not None:
-            Exx = self.exx.Exx
-            Exc += Exx
-            Ekin -= 2 * self.xc.xcfunc.hybrid * Exx
-            
         # Calculate atomic hamiltonians:
         for nucleus in self.ghat_nuclei:
             k, p, b, x = nucleus.calculate_hamiltonian(density.nt_g,

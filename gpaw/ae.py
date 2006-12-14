@@ -82,7 +82,9 @@ class AllElectronSetup:
         self.K_p = num.zeros(1, num.Float)
         
         self.xc_correction = self
-
+        self.xc = self
+        self.xc.set_functional(xcfunc)
+        
         self.lmax = 0
 
         rcutsoft = rcut2
@@ -110,10 +112,13 @@ class AllElectronSetup:
         g = alpha2**1.5 * num.exp(-alpha2 * r**2)
         g[-1] = 0.0
         self.ghat_l = [Spline(0, rcutsoft, d_0 * g)]
-        
+
+    # xc_correction methods:
     def calculate_energy_and_derivatives(self, D_sp, H_sp):
         H_sp[:] = 0.0
         return 0.0
+    def set_functional(self, xcfunc):
+        self.xcfunc = xcfunc
     
     def print_info(self, out):
         print >> out, 'All-electron calculation.'
