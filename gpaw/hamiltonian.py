@@ -10,7 +10,6 @@ from math import pi, sqrt, log
 
 import Numeric as num
 
-from gpaw.exx import get_exx
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.operators import Laplace
 from gpaw.pair_potential import PairPotential
