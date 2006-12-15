@@ -204,11 +204,15 @@ class XCHandler:
         return E
 
 class XXFunctional:
-    def calculate_spinpaired(self, *args):
-        return 0.0
-    def calculate_spinpolarized(self, *args):
-        return 0.0    
+    def calculate_spinpaired(self, e_g, n_g, v_g):
+        e_g[:] = 0.0    
+        v_g[:] = 0.0    
 
+    def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
+        e_g[:] = 0.0    
+        va_g[:] = 0.0    
+        vb_g[:] = 0.0    
+        
 def get_exx(xcname, softgauss, typecode, gd, finegd, interpolate,
             my_nuclei, ghat_nuclei, nspins):
     if xcname != 'EXX':
