@@ -53,7 +53,7 @@ if options.exclude is not None:
 # exclude parallel tests if options.parallel is not set
 if not options.parallel: 
     exclude.extend(['parallel-restart.py', 'parmigrate.py',
-                    'par8.py', 'par6.py']) 
+                    'par8.py', 'par6.py', 'exx_parallel.py']) 
 
 for test in exclude:
     if path + test in tests:
