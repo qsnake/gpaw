@@ -4,12 +4,11 @@ from gpaw.utilities.molecule import Molecule
 from ASE.Units import Convert
 from atomization_data import atomization
 
-def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=(),
-            forsymm=False, calc_parameters={}):
-    """Determine atomization energies for list of molecule specified by
+def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
+            forcesymm=False, calc_parameters={}):
+    """Determine atomization energies for list of molecules specified by
        string-list ``formulas``.
     """
-
     atom_energies = {}
     eas = {}
     errors = []
@@ -27,10 +26,11 @@ def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=(),
                                  atom_energies=atom_energies,
                                  xcs=non_self_xcs)
             except:
-                eas[formula] = 'Failed: ' + sys.exc_type + sys.exc_value
+                eas[formula] = 'Failed: ' + str(sys.exc_type) + ' ' + str(
+                    sys.exc_value)
                 errors.append(formula)
             else:
-                for i in range(len(xcs) + 1):
+                for i in range(len(non_self_xcs) + 1):
                     ea[i] *= kcal
                     if i > 0:
                         ea[i] += ea[0]
