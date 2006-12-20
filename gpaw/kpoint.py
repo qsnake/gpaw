@@ -49,13 +49,13 @@ class KPoint:
         (``kpt_comm``), then we have this equation relating ``s``,
         ``k`` and ``u``::
 
-           rP
-           -- + u = sK + k,
-           SK
+           rSK
+           --- + u = sK + k,
+            P
 
         where `r` is the processor rank within ``kpt_comm``.  The
-        number of processors `P` is always a multiple of total number
-        of spin/**k**-point pairs `SK`.
+        total number of spin/**k**-point pairs, `SK`, is always a
+        multiple of the number of processors, `P`.
 
         Attributes:
          ============= =======================================================
