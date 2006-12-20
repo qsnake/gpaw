@@ -20,13 +20,6 @@ double pade_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2);
 
-double pbe0_exchange(const xc_parameters* par,
-		     double n, double rs, double a2,
-		     double* dedrs, double* deda2)
-{
-  return 0.75 * pbe_exchange(par, n, rs, a2, dedrs, deda2);
-}
-
 double zero_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2)
@@ -109,8 +102,9 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
           ex = self->exchange(par, n, rs, 0.0, &dexdrs, 0);
           ec = self->correlation(n, rs, 0.0, 0.0, 0, 0, &decdrs, 0, 0);
         }
-      e_g[g] = n * (ex + ec);
-      v_g[g] += ex + ec - rs * (dexdrs + decdrs) / 3.0;
+      double h1 = 1.0 - par->hybrid;
+      e_g[g] = n * (h1 * ex + ec);
+      v_g[g] += h1 * ex + ec - rs * (h1 * dexdrs + decdrs) / 3.0;
     }
   Py_RETURN_NONE;
 }
@@ -199,10 +193,11 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
           ec = self->correlation(n, rs, zeta, 0.0, 0, 1, 
 				 &decdrs, &decdzeta, 0);
         }
-      e_g[g] = 0.5 * (na * exa + nb * exb) + n * ec;
-      va_g[g] += (exa + ec - (rsa * dexadrs + rs * decdrs) / 3.0 -
+      double h1 = 1.0 - par->hybrid;
+      e_g[g] = 0.5 * h1 * (na * exa + nb * exb) + n * ec;
+      va_g[g] += (h1 * exa + ec - (h1 * rsa * dexadrs + rs * decdrs) / 3.0 -
                   (zeta - 1.0) * decdzeta);
-      vb_g[g] += (exb + ec - (rsb * dexbdrs + rs * decdrs) / 3.0 -
+      vb_g[g] += (h1 * exb + ec - (h1 * rsb * dexbdrs + rs * decdrs) / 3.0 -
                   (zeta + 1.0) * decdzeta);
     }
   Py_RETURN_NONE;
@@ -286,6 +281,7 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
 
   self->par.gga = gga;
   self->par.rel = rel;
+  self->par.hybrid = 0.0;
 
   self->correlation = pbe_correlation;
 
@@ -303,7 +299,8 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
   else if (type == 4)
     {
       // PBE0
-      self->exchange = pbe0_exchange;
+      self->exchange = pbe_exchange;
+      self->par.hybrid = 0.25;
     }
   else if (type == 5)
     {

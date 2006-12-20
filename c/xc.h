@@ -32,6 +32,7 @@ typedef struct
   bool gga;
   bool rel;
   double kappa;
+  double hybrid;
   int i;
   double s0;
   double pade[10];
