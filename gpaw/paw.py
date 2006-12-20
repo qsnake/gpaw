@@ -57,7 +57,8 @@ class Paw:
      ``kpt_u``       List of **k**-point objects.
      ``occupation``  Occupation-number object.
      ``nkpts``       Number of irreducible **k**-points.
-     ``nmykpts``     Number of irreducible **k**-points on *this* CPU.
+     ``nmyu``        Number of irreducible spin/**k**-points pairs on
+                     *this* CPU.
      ``nvalence``    Number of valence electrons.
      ``nbands``      Number of bands.
      ``nspins``      Number of spins.

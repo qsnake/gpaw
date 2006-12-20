@@ -42,6 +42,21 @@ class KPoint:
          ``typecode`` Data type of wave functions (``Float`` or ``Complex``).
          ============ =======================================================
 
+        Note that ``s`` and ``k`` are global spin/**k**-point indices,
+        whereas ``u`` is a local spin/**k**-point pair index for this
+        processor.  So if we have `S` spins and `K` **k**-points, and
+        the spins/**k**-points are parallelized over `P` processors
+        (``kpt_comm``), then we have this equation relating ``s``,
+        ``k`` and ``u``::
+
+           rP
+           -- + u = sK + k,
+           SK
+
+        where `r` is the processor rank within ``kpt_comm``.  The
+        number of processors `P` is always a multiple of total number
+        of spin/**k**-point pairs `SK`.
+
         Attributes:
          ============= =======================================================
          ``phase_cd``  Bloch phase-factors for translations - axis ``c=0,1,2``
