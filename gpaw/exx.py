@@ -56,8 +56,6 @@ class EXX:
         if u == 0:
             self.Ekin = 0.0
             self.Exx = 0.0
-            for nucleus in self.my_nuclei:
-                self.Exx += nucleus.setup.ExxC
 
         if self.nspins == 1:
             hybrid *= 0.5
@@ -128,9 +126,9 @@ class EXX:
             if not self.energy_only:
                 H_nn += num.innerproduct(nucleus.vxx_uni[u], nucleus.P_uni[u])
 
-            D_p = nucleus.D_sp[s]
+            D_p  = nucleus.D_sp[s]
             D_ii = unpack2(D_p)
-            H_p = nucleus.H_sp[s]
+            H_p  = nucleus.H_sp[s]
             
             ni = len(D_ii)
             def p(i1, i2):
@@ -144,7 +142,7 @@ class EXX:
 
             C_pp = setup.M_pp
 
-            e0=self.Exx
+            e0 = self.Exx
             for i1 in range(ni):
                 for i2 in range(ni):
                     A = 0.0
@@ -156,12 +154,13 @@ class EXX:
                         p12 = p(i1, i2)
                         H_p[p12] -= 2 * A
                     self.Exx -= hybrid * D_ii[i1, i2] * A
-            #print u,s,self.Exx-e0
-            #print setup.ExxC, num.dot(D_p, setup.X_p)
             
-            self.Exx -= num.dot(D_p, setup.X_p)
+            self.Exx -= (self.nspins% 2 + 1) * hybrid * num.dot(D_p, setup.X_p)
             if not self.energy_only:
-                H_p -= setup.X_p
+                H_p -= (self.nspins % 2 + 1) * hybrid * setup.X_p
+
+            self.Exx += (2 * self.nspins % 3.5) * hybrid * nucleus.setup.ExxC
+    
 
 class XCHandler:
     """Exchange correlation handler.

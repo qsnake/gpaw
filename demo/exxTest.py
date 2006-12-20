@@ -1,7 +1,7 @@
 from ASE import Atom, ListOfAtoms
-from gpaw import Calculator
-from gpaw.atom.all_electron import AllElectron as AE
-from gpaw.exx import atomic_exact_exchange as aExx
+from gridpaw import Calculator
+from gridpaw.atom.all_electron import AllElectron as AE
+from gridpaw.exx import atomic_exact_exchange as aExx
 
 # initialize output text string
 out  = '|---------------------------------------------------|\n'
@@ -36,7 +36,7 @@ calc = Calculator(xc='PBE', h=0.2, softgauss=False, tolerance=1e-5)
 Li.SetCalculator(calc)
 P  = Li.GetPotentialEnergy()
 XC = calc.GetXCEnergy()
-XX = calc.GetExactExchange(decompose = True)
+XX = calc.GetExactExchange(decompose=True)
 out += '\n\nExchange energy of atom (spin polarized):'
 out += '\nvalence-valence: %s' %(XX[0] + XX[1])
 out += '\nvalence-core   : %s' %XX[2]
