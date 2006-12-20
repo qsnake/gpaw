@@ -23,12 +23,12 @@ class EXX:
     def __init__(self, gd, finegd, interpolate, restrict, poisson,
                  my_nuclei, ghat_nuclei, nspins, nbands, energy_only=False):
         
-        self.my_nuclei = my_nuclei
+        self.nspins      = nspins
+        self.my_nuclei   = my_nuclei
         self.ghat_nuclei = ghat_nuclei
-        self.nspins = nspins
         self.interpolate = interpolate
-        self.restrict = restrict
-        self.poisson = poisson
+        self.restrict    = restrict
+        self.poisson     = poisson
         
         # allocate space for matrices
         self.nt_G = gd.empty()
@@ -46,24 +46,24 @@ class EXX:
     def calculate_energy(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
 
-        psit_nG = kpt.psit_nG[:]
-        f_n = kpt.f_n
-        u = kpt.u
-        s = kpt.s
-        
+        psit_nG = kpt.psit_nG[:]  # wave function
+        deg = self.nspins % 2 + 1 # spin degeneracy
+        f_n = kpt.f_n             # occupation number
+        s   = kpt.s               # global spin index
+        u   = kpt.u               # local spin/kpoint index
+
+        # Ensure that calculation is a Gamma-point calculation
         assert psit_nG.typecode() == num.Float
 
         if u == 0:
             self.Ekin = 0.0
             self.Exx = 0.0
 
-        if self.nspins == 1:
-            hybrid *= 0.5
-
         if not self.energy_only:
             for nucleus in self.my_nuclei:
                 nucleus.vxx_uni[:] = 0.0
 
+        # Determine pseudo-exchange
         for n1, psit1_G in enumerate(psit_nG):
             for n2, psit2_G in enumerate(psit_nG):
                 # Determine current exchange density ...
@@ -97,16 +97,17 @@ class EXX:
                 self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z)
                 self.restrict(self.vt_g, self.vt_G)
 
-                self.Exx += (0.5 * f_n[n1] * f_n[n2] * hybrid * 
+                self.Exx += (0.5 * f_n[n1] * f_n[n2] * hybrid / deg * 
                              self.fineintegrate(self.vt_g * self.nt_g))
-                self.Ekin -= (f_n[n1] * f_n[n2] * hybrid * 
+                self.Ekin -= (f_n[n1] * f_n[n2] * hybrid / deg * 
                              self.integrate(self.vt_G * self.nt_G))
 
                 if not self.energy_only:
-                    Htpsit_nG[n1] += f_n[n2] * hybrid * self.vt_G * psit2_G
+                    Htpsit_nG[n1] += f_n[n2] * hybrid / deg * \
+                                     self.vt_G * psit2_G
                     
                     if n1 == n2:
-                        self.vt_nG[n1] = f_n[n1] * hybrid * self.vt_G
+                        self.vt_nG[n1] = f_n[n1] * hybrid / deg * self.vt_G
                     
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
@@ -115,21 +116,30 @@ class EXX:
                         v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
                         nucleus.ghat_L.integrate(self.vt_g, v_L)
                         v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
-                        nucleus.vxx_uni[u, n1] += f_n[n2] * hybrid * num.dot(
-                            v_ii, nucleus.P_uni[u, n2])
+                        nucleus.vxx_uni[u, n1] += f_n[n2] * hybrid / deg * \
+                                                  num.dot(v_ii,
+                                                          nucleus.P_uni[u, n2])
 
                         if n1 == n2:
-                            nucleus.vxx_unii[u, n1] = f_n[n2] * hybrid * v_ii
+                            nucleus.vxx_unii[u, n1] = f_n[n2] * hybrid / deg *\
+                                                      v_ii
                             
-        # Apply the atomic corrections to the hamiltonian matrix 
+        # Apply the atomic corrections to the energy and the Hamiltonian matrix
         for nucleus in self.my_nuclei:
+            # Ensure that calculation does not use extra soft comp. charges
+            setup = nucleus.setup
+            assert not setup.softgauss or isinstance(setup, AllElectronSetup)
+
+            # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
                 H_nn += num.innerproduct(nucleus.vxx_uni[u], nucleus.P_uni[u])
 
+            # Get atomic density and Hamiltonian matrices
             D_p  = nucleus.D_sp[s]
             D_ii = unpack2(D_p)
             H_p  = nucleus.H_sp[s]
-            
+
+            # Method for determining the packed state indices
             ni = len(D_ii)
             def p(i1, i2):
                 if i1 > i2:
@@ -137,12 +147,11 @@ class EXX:
                 else:
                     return (i1 * (2 * ni - 1 - i1) // 2) + i2
 
-            setup = nucleus.setup
-            assert not setup.softgauss or isinstance(setup, AllElectronSetup)
-
+            # Add atomic corrections to the valence-valence exchange energy
+            # --
+            # >  D   C     D
+            # --  ii  iiii  ii
             C_pp = setup.M_pp
-
-            e0 = self.Exx
             for i1 in range(ni):
                 for i2 in range(ni):
                     A = 0.0
@@ -152,64 +161,21 @@ class EXX:
                             A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
                     if not self.energy_only and i1 > i2:
                         p12 = p(i1, i2)
-                        H_p[p12] -= 2 * A
-                    self.Exx -= hybrid * D_ii[i1, i2] * A
+                        H_p[p12] -= 2 * hybrid* A
+                    self.Exx -= hybrid / deg * D_ii[i1, i2] * A
             
-            self.Exx -= (self.nspins% 2 + 1) * hybrid * num.dot(D_p, setup.X_p)
+            # Add valence-core exchange energy
+            # --
+            # >  X   D
+            # --  ii  ii
+            self.Exx -= hybrid * num.dot(D_p, setup.X_p)
             if not self.energy_only:
-                H_p -= (self.nspins % 2 + 1) * hybrid * setup.X_p
+                H_p -= hybrid * setup.X_p
 
-            self.Exx += (2 * self.nspins % 3.5) * hybrid * nucleus.setup.ExxC
+            # Add core-core exchange energy
+            if u == 0:
+                self.Exx += hybrid * nucleus.setup.ExxC
     
-
-class XCHandler:
-    """Exchange correlation handler.
-    
-    Handle the set of exchange and correlation functionals, of the form::
-
-                 name     parameters
-      xcdict = {'xLDA':  {'coeff': 0.2, 'scalarrel': True},
-                'xEXX':  {'coeff': 0.8, 'screened': False}}
-              
-    """
-
-    hooks = {'LDA': {'xLDA': {}, 'cLDA': {}},
-             'PBE': {'xPBE': {}, 'cPBE': {}},
-             'EXX': {'xEXX': {}}}
-    
-    def __init__(self, xcdict):
-        self.set_xcdict(xcdict)
-
-    def set_xcdict(self, xcdict):
-        # ensure correct type
-        if type(xcdict) == str:
-            xcdict = hooks[xcdict]
-        else:
-            assert type(xcdict) == dict
-
-        # Check if it is hybrid calculation
-        if 'xEXX' in xcdict:
-            self.hybrid = xcdict['xExx'].get('coeff', 1.0)
-        else:
-            self.hybrid = 0.0
-
-        # make list of xc-functionals
-        self.functional_list = []
-        for xc, par in xcdict.items():
-            self.functional_list.append(XCFunctional(xc, **par))
-        
-    def calculate_spinpaired(self, *args):
-        E = 0.0
-        for xc in self.functional_list:
-            E += xc.calculate_spinpaired(*args)
-        return E
-    
-    def calculate_spinpolarized(self, *args):
-        E = 0.0
-        for xc in self.functional_list:
-            E += xc.calculate_spinpolarized(*args)
-        return E
-
 class PerturbativeExx:
     """Class offering methods for non-selfconsistent evaluation of the
        exchange energy of a gridPAW calculation.
@@ -225,7 +191,6 @@ class PerturbativeExx:
         # load single exchange calculator
         self.coulomb = Coulomb(paw.finegd,
                                   paw.hamiltonian.poisson).coulomb
-                 ## ---------->>> get_single_exchange <<<------
 
         # load interpolator
         self.interpolate = paw.density.interpolate
