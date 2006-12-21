@@ -1,6 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+import array
 import Numeric as num
 
 from gpaw.grid_descriptor import RadialGridDescriptor
@@ -62,7 +63,7 @@ class XCFunctional:
                                             0.0, 0, num.array(parameters))
         elif code == 6:
             self.xc = XXFunctional()
-        elif code == 10:
+        elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code)
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel)
@@ -92,8 +93,17 @@ class XCFunctional:
         else:
             return 0.0
         
-    def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None):
-        if self.gga:
+    def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
+                             tau_g=None):
+        if self.mgga:
+            print "<calculate_spinpaired> type(v_g)=",type(v_g)
+            if type(v_g) != 'vxcOperator':
+                v_g = vxcOperator(v_g)
+            print "<calculate_spinpaired> 2 type(v_g)=",type(v_g)
+            print "<calculate_spinpaired> v_g=",v_g
+            self.xc.calculate_spinpaired(e_g.flat, n_g, v_g, a2_g, deda2_g,
+                                         tau_g)
+        elif self.gga:
             # e_g.flat !!!!! XXX
             self.xc.calculate_spinpaired(e_g.flat, n_g, v_g, a2_g, deda2_g)
         else:
@@ -145,7 +155,7 @@ class XCGrid:
         assert is_contiguous(va_g, num.Float)
         assert na_g.shape == va_g.shape == self.shape
         if nb_g is None:
-            return self.get_energy_and_potential_spinpaired(na_g, va_g)
+            return self.get_energy_and_potential_spinpaired(na_g, va_g, taua_g)
         else:
             assert is_contiguous(nb_g, num.Float)
             assert is_contiguous(vb_g, num.Float)
@@ -182,8 +192,20 @@ class XC3DGrid(XCGrid):
                 self.taub_g = gd.empty()
         self.e_g = gd.empty()
 
-    def get_energy_and_potential_spinpaired(self, n_g, v_g):
-        if self.xcfunc.gga:
+    def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None):
+        if self.xcfunc.mgga:
+            # derivatives of the density
+            for c in range(3):
+                self.ddr[c](n_g, self.dndr_cg[c])
+            self.a2_g[:] = num.sum(self.dndr_cg**2)
+            # derivatives of the tau
+            
+            self.xcfunc.calculate_spinpaired(self.e_g,
+                                             n_g, v_g,
+                                             self.a2_g,
+                                             self.deda2_g)
+            
+        elif self.xcfunc.gga:
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
             self.a2_g[:] = num.sum(self.dndr_cg**2)
@@ -265,8 +287,20 @@ class XCRadialGrid(XCGrid):
         
         self.e_g = num.empty(self.shape, num.Float) 
 
-    def get_energy_and_potential_spinpaired(self, n_g, v_g):
-        if self.xcfunc.gga:
+    def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None):
+        if self.xcfunc.mgga:
+            self.rgd.derivative(n_g, self.dndr_g)
+            self.a2_g[:] = self.dndr_g**2
+
+            print "<get_energy_and_potential_spinpaired> type=",type(v_g)
+            
+            self.xcfunc.calculate_spinpaired(self.e_g,
+                                             n_g, v_g,
+                                             self.a2_g,
+                                             self.deda2_g,
+                                             tau_g)
+            
+        elif self.xcfunc.gga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
 
@@ -325,3 +359,12 @@ class XCRadialGrid(XCGrid):
 
         return num.dot(self.e_g, self.dv_g)
 
+class vxcOperator(list):
+    """vxc as operator object"""
+    def __init__(self, v):
+        print "<vxcOperator::__init__> type(v)=",v
+        print "<vxcOperator::__init__> type(v)=",v.shape
+        # init the local part
+        list.__init__(self,v)
+        # lists for the operator part
+        
