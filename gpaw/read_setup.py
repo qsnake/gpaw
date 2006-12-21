@@ -80,7 +80,16 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.e_electrostatic = 0.0
             self.e_xc = 0.0
             self.e_kinetic_core = 0.0
-            
+
+        try: # XXXX There must be a better way!
+            self.tauc_g = self.tauc_g
+        except:
+            self.tauc_g = 0.0
+        try: # XXXX There must be a better way!
+            self.tauct_g = self.tauct_g
+        except:
+            self.tauct_g = 0.0
+        
         return (self.Z, self.Nc, self.Nv,
                 self.e_total,
                 self.e_kinetic,
@@ -105,6 +114,8 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 self.e_kin_j1j2,
                 self.X_p,
                 self.ExxC,
+                self.tauc_g,
+                self.tauct_g,
                 fingerprint,
                 filename)
     
@@ -155,7 +166,9 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 self.rcgauss = max(self.rcut_j) / sqrt(float(attrs['alpha']))
         elif name in ['ae_core_density', 'pseudo_core_density',
                       'localized_potential', 'zero_potential',  # XXX
-                      'kinetic_energy_differences', 'exact_exchange_X_matrix']:
+                      'kinetic_energy_differences', 'exact_exchange_X_matrix',
+                      'ae_core_kinetic_energy_density',
+                      'pseudo_core_kinetic_energy_density']:
             self.data = []
         elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
             self.data = []
@@ -182,6 +195,10 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.nct_g = x_g
         elif name == 'kinetic_energy_differences':
             self.e_kin_j1j2 = x_g
+        elif name == 'ae_core_kinetic_energy_density':
+            self.tauc_g = x_g
+        elif name == 'pseudo_core_kinetic_energy_density':
+            self.tauct_g = x_g
         elif name in ['localized_potential', 'zero_potential']: # XXX
             self.vbar_g = x_g
         elif name == 'ae_partial_wave':
