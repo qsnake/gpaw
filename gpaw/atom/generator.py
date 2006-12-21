@@ -627,7 +627,8 @@ class Generator(AllElectron):
             
         if not self.nofiles:
             self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                           nc, nct, nt, Ekincore, X_p, ExxC, vbar)
+                           nc, nct, nt, Ekincore, X_p, ExxC, vbar,
+                           tauc, tauct)
 
     def diagonalize(self, h):
         ng = 300
@@ -714,7 +715,8 @@ class Generator(AllElectron):
         return s
 
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                  nc, nct, nt, Ekincore, X_p, ExxC, vbar):
+                  nc, nct, nt, Ekincore, X_p, ExxC, vbar,
+                  tauc, tauct):
         xml = open(self.symbol + '.' + self.xcname, 'w')
 
         if self.ghost:
@@ -783,7 +785,9 @@ class Generator(AllElectron):
         for name, a in [('ae_core_density', nc),
                         ('pseudo_core_density', nct),
                         ('pseudo_valence_density', nt - nct),
-                        ('zero_potential', vbar)]:
+                        ('zero_potential', vbar),
+                        ('ae_core_kinetic_energy_density',tauc),
+                        ('pseudo_core_kinetic_energy_density',tauct)]:
             print >> xml, '  <%s grid="g1">\n    ' % name,
             for x in a * sqrt(4 * pi):
                 print >> xml, '%16.12e' % x,
