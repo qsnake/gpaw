@@ -4,6 +4,20 @@
 #include "xc.h"
 #include "extensions.h"
 
+void tpssfxu(double *n,    // I: density
+	     double *g,  // I: g=gradient squared=gamma 
+	     double *t,  // I: tau
+	     double *fxu,   // O: local Ex
+	     double *dfxudn,   // O: local derivative after n
+	     double *dfxudg, // O: local derivative after g
+	     double *dfxudtau, // O: local derivative after tau
+	     double *d2fxudndg,   // O: local second derivative after n and g
+	     double *d2fxudg2, // O: local second derivative after g
+	     double *d2fxudtaudg, // O: local derivative after tau and g
+	     double *d2fxudndt, // O: local derivative after n and tau
+	     double *d2fxud2t // O: local derivative after n and tau
+	     );
+
 typedef struct 
 {
   PyObject_HEAD
@@ -29,8 +43,10 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
   PyArrayObject* v_array;
   PyArrayObject* a2_array = 0;
   PyArrayObject* deda2_array = 0;
-  if (!PyArg_ParseTuple(args, "OOO|OO", &e_array, &n_array, &v_array,
-			&a2_array, &deda2_array))
+  PyArrayObject* tau_array;
+  printf("<MGGAFunctional_CalculateSpinPaired>\n");
+  if (!PyArg_ParseTuple(args, "OOOOOO", &e_array, &n_array, &v_array,
+			&a2_array, &deda2_array, &tau_array))
     return NULL;
 
   int ng = e_array->dimensions[0];
@@ -38,42 +54,36 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
 
   double* e_g = DOUBLEP(e_array);
   const double* n_g = DOUBLEP(n_array);
+  const double* a2_g = DOUBLEP(a2_array); 
+  const double* tau_g = DOUBLEP(n_array);
   double* v_g = DOUBLEP(v_array);
 
-  const double* a2_g = 0;
   double* deda2_g = 0;
-  if (par->gga)
-    {
-      a2_g = DOUBLEP(a2_array);
-      deda2_g = DOUBLEP(deda2_array);
-    }
+/*   if (par->gga) */
+/*     { */
+/*       a2_g = DOUBLEP(a2_array); */
+/*       deda2_g = DOUBLEP(deda2_array); */
+/*     } */
+  double fxu,dfxudn,dfxudg,dfxudtau,d2fxudndg,
+    d2fxudg2,d2fxudtaudg,d2fxudndt,d2fxud2t;
 
-  for (int g = 0; g < ng; g++)
+  for (int i = 0; i < ng; i++)
     {
-      double n = n_g[g];
-      if (n < NMIN)
-        n = NMIN;
-      double rs = pow(C0I / n, THIRD);
-      double dexdrs;
-      double dexda2;
-      double ex;
-      double decdrs;
-      double decda2;
-      double ec;
-      if (par->gga)
-        {
-          double a2 = a2_g[g];
-          ex = self->exchange(par, n, rs, a2, &dexdrs, &dexda2);
-          ec = self->correlation(n, rs, 0.0, a2, 1, 0, &decdrs, 0, &decda2);
-          deda2_g[g] = n * (dexda2 + decda2);
-        }
-      else
-        {
-          ex = self->exchange(par, n, rs, 0.0, &dexdrs, 0);
-          ec = self->correlation(n, rs, 0.0, 0.0, 0, 0, &decdrs, 0, 0);
-        }
-      e_g[g] = n * (ex + ec);
-      v_g[g] += ex + ec - rs * (dexdrs + decdrs) / 3.0;
+/*       printf("<MGGAFunctional_CalculateSpinPaired> i=%d\n",i); */
+      double n = n_g[i];
+      if (n < NMIN) n = 0;
+      double g = a2_g[i];
+      if (g < NMIN) g = 0;
+      double tau = tau_g[i];
+      if (tau < NMIN) tau = 0;
+
+      /* exchange */
+      tpssfxu(&n,&g,&tau,&fxu,&dfxudn,&dfxudg,&dfxudtau,&d2fxudndg,
+	      &d2fxudg2,&d2fxudtaudg,&d2fxudndt,&d2fxud2t);
+      e_g[i] = fxu;
+      
+      /* correlation */
+
     }
   Py_RETURN_NONE;
 }
