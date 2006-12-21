@@ -52,6 +52,7 @@ class Setup:
          nc_g, nct_g, vbar_g, rcgauss,
          phi_jg, phit_jg, pt_jg,
          e_kin_jj, X_p, ExxC,
+         tauc_g, tauct_g,
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
@@ -434,6 +435,7 @@ class Setup:
          nc_g, nct_g, vbar_g, rcgauss,
          phi_jg, phit_jg, pt_jg,
          e_kin_jj, X_p, ExxC,
+         tauc_g, tauct_g,
          self.fingerprint,
          filename) = PAWXMLParser().parse(self.symbol, self.xcname)
 
