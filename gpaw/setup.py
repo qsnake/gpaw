@@ -452,6 +452,10 @@ class Setup:
         nc_g[gcut2:] = nc_g[gcut2:] = 0.0
         nc = Spline(0, rcut2, nc_g, r_g=r_g, beta=beta, points=100)
         nct = Spline(0, rcut2, nct_g, r_g=r_g, beta=beta, points=100)
+        if tauc_g==0: tauc=0
+        else: tauc = Spline(0, rcut2, tauc_g, r_g=r_g, beta=beta, points=100)
+        if tauct_g==0: tauct=0
+        else: tauct = Spline(0, rcut2, tauct_g, r_g=r_g, beta=beta, points=100)
         phi_j = []
         phit_j = []
         for j, (phi_g, phit_g) in enumerate(zip(phi_jg, phit_jg)):
@@ -461,7 +465,7 @@ class Setup:
                                  beta=beta, points=100))
             phit_j.append(Spline(l, rcut2, grr(phit_g, l, r_g), r_g=r_g,
                                  beta=beta, points=100))
-        return phi_j, phit_j, nc, nct
+        return phi_j, phit_j, nc, nct, tauc, tauct
 
 
 def grr(phi_g, l, r_g):
