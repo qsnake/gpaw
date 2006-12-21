@@ -354,6 +354,12 @@ class Generator(AllElectron):
         nct[:gcut] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
         print 'Pseudo-core charge: %.6f' % (4 * pi * num.dot(nct, dv))
         
+        # ... and the pseudo core kinetic energy density:
+        tauct = tauc.copy()
+        a = tauc[gcut - 2:gcut + 2]
+        a = solve_linear_equations(num.transpose(A), a)
+        tauct[:gcut] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
+        
         # ... and the soft valence density:
         nt = num.zeros(N, num.Float)
         for f_n, s_n in zip(f_ln, s_ln):
@@ -557,6 +563,8 @@ class Generator(AllElectron):
         self.write(nct, 'nct')
         self.write(vbar, 'vbar')
         self.write(vt, 'vt')
+        self.write(tauc, 'tauc')
+        self.write(tauct, 'tauct')
 
         for l, (n_n, f_n, u_n, s_n, q_n) in enumerate(zip(n_ln, f_ln,
                                                           u_ln, s_ln, q_ln)):
