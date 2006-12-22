@@ -50,7 +50,8 @@ class SingleAtom:
                     else:
                         pos = (0.1, 0, 0)
                 else:
-                    parameters['tolerance'] = 1e-6
+                    tol = parameters.get('tolerance', 1e-99)
+                    parameters['tolerance'] = max(1e-6, tol)
 
             # Is this a special case?
             magmom = magmoms.get(symbol)

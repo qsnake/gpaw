@@ -1,3 +1,9 @@
+# Copyright (C) 2003  CAMP
+# Please see the accompanying LICENSE file for further information.
+
+"""This module provides all the classes and functions associated with the
+evaluation of exact exchange."""
+
 import Numeric as num
 from Numeric import pi
 from gpaw.coulomb import Coulomb
@@ -46,8 +52,8 @@ class EXX:
     def calculate_energy(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
 
-        psit_nG = kpt.psit_nG[:]  # wave function
-        deg = self.nspins % 2 + 1 # spin degeneracy
+        psit_nG = kpt.psit_nG[:]  # wave functions
+        deg = 2 / self.nspins     # spin degeneracy
         f_n = kpt.f_n             # occupation number
         s   = kpt.s               # global spin index
         u   = kpt.u               # local spin/kpoint index
@@ -100,7 +106,7 @@ class EXX:
                 self.Exx += (0.5 * f_n[n1] * f_n[n2] * hybrid / deg * 
                              self.fineintegrate(self.vt_g * self.nt_g))
                 self.Ekin -= (f_n[n1] * f_n[n2] * hybrid / deg * 
-                             self.integrate(self.vt_G * self.nt_G))
+                              self.integrate(self.vt_G * self.nt_G))
 
                 if not self.energy_only:
                     Htpsit_nG[n1] += f_n[n2] * hybrid / deg * \
@@ -161,7 +167,7 @@ class EXX:
                             A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
                     if not self.energy_only and i1 > i2:
                         p12 = p(i1, i2)
-                        H_p[p12] -= 2 * hybrid* A
+                        H_p[p12] -= 2 * hybrid * A # XXX: No '/ deg' ???
                     self.Exx -= hybrid / deg * D_ii[i1, i2] * A
             
             # Add valence-core exchange energy
@@ -178,7 +184,7 @@ class EXX:
     
 class PerturbativeExx:
     """Class offering methods for non-selfconsistent evaluation of the
-       exchange energy of a gridPAW calculation.
+       exchange energy of a *gpaw* calculation.
     """
     def __init__(self, paw):
         # store options in local varibles
@@ -189,8 +195,7 @@ class PerturbativeExx:
         self.n_g = paw.finegd.new_array()
 
         # load single exchange calculator
-        self.coulomb = Coulomb(paw.finegd,
-                                  paw.hamiltonian.poisson).coulomb
+        self.coulomb = Coulomb(paw.finegd, paw.hamiltonian.poisson).coulomb
 
         # load interpolator
         self.interpolate = paw.density.interpolate
@@ -253,7 +258,6 @@ class PerturbativeExx:
         # calculate exact exchange of smooth wavefunctions
         Exxt = 0.0
         for u, kpt in enumerate(paw.kpt_u):
-            #spin = paw.myspins[u] # global spin index XXX
             for n in range(paw.nbands):
                 for m in range(n, paw.nbands):
                     # determine double count factor:
@@ -272,8 +276,8 @@ class PerturbativeExx:
                     for a, nucleus in enumerate(ghat_nuclei):
                         if nucleus.in_this_domain:
                             # generate density matrix
-                            Pm_i = nucleus.P_uni[u, m] # spin ??
-                            Pn_i = nucleus.P_uni[u, n] # spin ??
+                            Pm_i = nucleus.P_uni[u, m]
+                            Pn_i = nucleus.P_uni[u, n]
                             D_ii = num.outerproduct(Pm_i,Pn_i)
                             D_p  = pack(D_ii, symmetric=False)
                             
@@ -339,7 +343,6 @@ class PerturbativeExx:
                     n,m,i1,i2,i3,i4
             """
             for u, kpt in enumerate(self.paw.kpt_u):
-                #spin = paw.myspins[u] # global spin index XXX
                 for n in range(self.paw.nbands):
                     for m in range(n, self.paw.nbands):
                         # determine double count factor:
@@ -349,8 +352,8 @@ class PerturbativeExx:
                         fnm = (kpt.f_n[n] * kpt.f_n[m]) * self.paw.nspins / 2.
 
                         # generate density matrix
-                        Pm_i = nucleus.P_uni[u, m] # spin ??
-                        Pn_i = nucleus.P_uni[u, n] # spin ??
+                        Pm_i = nucleus.P_uni[u, m]
+                        Pn_i = nucleus.P_uni[u, n]
                         D_ii = num.outerproduct(Pm_i,Pn_i)
                         D_p  = pack(D_ii, symmetric=False)
 
@@ -359,6 +362,32 @@ class PerturbativeExx:
 
                         # add atomic contribution to val-val interaction
                         ExxVV += - fnm * num.dot(D_p, num.dot(C_pp, D_p)) * DC
+
+        return ExxVV, ExxVC, ExxCC
+        #---------------------- TEST STUFF ------------------------
+        def p(i1, i2):
+            if i1 > i2:
+                return (i2 * (2 * ni - 1 - i2) // 2) + i1
+            else:
+                return (i1 * (2 * ni - 1 - i1) // 2) + i2
+
+        ExxVV_TEST = 0.0
+        for nucleus in self.paw.my_nuclei:
+            for s in range(self.paw.nspins):
+                D_p  = nucleus.D_sp[s]
+                D_ii = unpack2(D_p)
+                C_pp = nucleus.setup.M_pp
+                ni   = len(D_ii)
+                for i1 in range(ni):
+                    for i2 in range(ni):
+                        A = 0.0
+                        for i3 in range(ni):
+                            p13 = p(i1, i3)
+                            for i4 in range(ni):
+                                A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
+                        ExxVV_TEST -= D_ii[i1, i2] * A * 2 / self.paw.nspins
+        print 'Test of D*C*D summation:', ExxVV, ExxVV_TEST, ExxVV - ExxVV_TEST
+        #---------------------- TEST STUFF ------------------------
 
         return ExxVV, ExxVC, ExxCC
 
@@ -429,7 +458,11 @@ def atomic_exact_exchange(atom, type = 'all'):
     return Exx
 
 def constructX(gen):
-    """Construct the X_p^a matrix for the given atom"""
+    """Construct the X_p^a matrix for the given atom.
+
+    The X_p^a matrix describes the valence-core interactions of the
+    partial waves.
+    """
     # make gaunt coeff. list
     gaunt = make_gaunt(lmax=gen.lmax)
 
@@ -486,9 +519,9 @@ def constructX(gen):
                     for mc in range(2*lc+1):
                         for m in range(2*l+1):
                             G1c = gaunt[lv1**2:(lv1 + 1)**2,
-                                        lc**2+mc,l**2 + m]
+                                        lc**2 + mc, l**2 + m]
                             G2c = gaunt[lv2**2:(lv2 + 1)**2,
-                                        lc**2+mc,l**2 + m]
+                                        lc**2 + mc, l**2 + m]
                             A_mm += nv * num.outerproduct(G1c, G2c)
                             
                 i2 += 2 * lv2 + 1

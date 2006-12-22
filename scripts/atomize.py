@@ -26,8 +26,7 @@ def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
                                  atom_energies=atom_energies,
                                  xcs=non_self_xcs)
             except:
-                eas[formula] = 'Failed: ' + str(sys.exc_type) + ' ' + str(
-                    sys.exc_value)
+                eas[formula] = str(sys.exc_type) + ': ' + str(sys.exc_value)
                 errors.append(formula)
             else:
                 for i in range(len(non_self_xcs) + 1):

@@ -62,9 +62,18 @@ class Molecule:
                 atom = SingleAtom(symbol, a=self.a, b=self.b, c=self.c, h=h,
                                   parameters=self.parameters,
                                   forcesymm=self.forcesymm)
-                atom_energies[symbol] = [atom.energy()] + atom.non_self_xc(xcs)
+                try:
+                    error = True
+                    atom_energies[symbol] = [atom.energy()] + \
+                                            atom.non_self_xc(xcs)
+                    error = False
+                finally:
+                    if error:
+                        atom_energies[symbol] = None                    
                 if verbose:
                     print '%.3f eV' % atom_energies[symbol][0]
+            elif atom_energies[symbol] == None:
+                raise 'Known problems for atom', symbol
             for i in range(len(ea)):
                 ea[i] += atom_energies[symbol][i]
         if xcs == []: return ea[0]
