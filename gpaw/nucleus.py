@@ -524,7 +524,7 @@ class Nucleus:
         # Load splines
         symbol = self.setup.symbol
         if not symbol in splines:
-            phi_j, phit_j, nc, nct = self.setup.get_partial_waves()
+            phi_j, phit_j, nc, nct, tauc, tauct= self.setup.get_partial_waves()
             splines[symbol] = (phi_j, phit_j, nc, nct)
         else:
             phi_j, phit_j, nc, nct = splines[symbol]
