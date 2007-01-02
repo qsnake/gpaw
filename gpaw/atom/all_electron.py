@@ -193,9 +193,12 @@ class AllElectron:
 
 ##         print
         tau = self.calculate_kinetic_energy_density()
-##         print "Ekin(tau)=",num.dot(tau *r*r , dr) * 4*pi
-##         tau = self.calculate_kinetic_energy_density2()
-##         print "Ekin(tau2)=",num.dot(tau *r*r , dr) * 4*pi
+##         print "Ekin(tau)=",num.dot(tau *r**2 , dr) * 4*pi
+##         self.write(tau,'tau1')
+##         tau2 = self.calculate_kinetic_energy_density2()
+##         self.write(tau2,'tau2')
+##         self.write(tau-tau2,'tau12')
+##         print "Ekin(tau2)=",num.dot(tau2 *r**2 , dr) * 4*pi
 
         print
         print 'Converged in %d iteration%s.' % (niter, 's'[:niter != 1])
@@ -289,7 +292,8 @@ class AllElectron:
                                                   self.u_j)
 
     def radial_kinetic_energy_density(self,f_j,l_j,u_j):
-        """Kinetic energy density from a restricted set of wf's"""
+        """Kinetic energy density from a restricted set of wf's
+        """
         shape = u_j.shape[1]
         dudr = num.zeros(shape,num.Float)
         tau = num.zeros(shape,num.Float)
@@ -307,7 +311,11 @@ class AllElectron:
         return 0.5 * tau / (4 * pi)
         
     def calculate_kinetic_energy_density2(self):
-        """Return the kinetic energy density"""
+        """Return the kinetic energy density
+        calculation over R(r)=u(r)/r
+        slower convergence with # of radial grid points for
+        Ekin of H than radial_kinetic_energy_density
+        """
 
         shape = self.u_j.shape[1]
         R = num.zeros(shape,num.Float)
@@ -315,7 +323,11 @@ class AllElectron:
         tau = num.zeros(shape,num.Float)
         for f, l, u in zip(self.f_j,self.l_j,self.u_j):
             R[1:] = u[1:] / self.r[1:]
-            if l==0: R[0] = R[1]
+            if l==0:
+                # estimate value at origin by Taylor series to first order
+                d1=self.r[1]
+                d2=self.r[2]
+                R[0] = .5*(R[1]+R[2]+(R[1]-R[2])*(d1+d2)/(d2-d1))
             else:    R[0] = 0
             self.rgd.derivative(R,dRdr)
             # contribution from radial derivatives
