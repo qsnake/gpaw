@@ -121,6 +121,12 @@ class Setup:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
         self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
 
+        # Construct splines for core kinetic energy density:
+        if tauct_g == None:
+            print 'Warnig: No kinetic energy density information in setup file'
+            tauct_g = num.zeros(nct_g.shape,num.Float)
+        self.tauct = Spline(0, rcore, tauct_g, r_g=r_g, beta=beta)
+
         # Step function:
         stepf = sqrt(4 * pi) * num.ones(vbar_g.shape)
         stepf[gcut:] = 0.0
