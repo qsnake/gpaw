@@ -81,15 +81,9 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.e_xc = 0.0
             self.e_kinetic_core = 0.0
 
-        try: # XXXX There must be a better way!
-            self.tauc_g = self.tauc_g
-        except:
-            self.tauc_g = 0.0
-        try: # XXXX There must be a better way!
-            self.tauct_g = self.tauct_g
-        except:
-            self.tauct_g = 0.0
-        
+        if not hasattr(self, 'tauc_g'):
+            self.tauc_g = self.tauct_g = None
+   
         return (self.Z, self.Nc, self.Nv,
                 self.e_total,
                 self.e_kinetic,
