@@ -56,6 +56,7 @@ class AllElectronSetup:
         
         # Construct splines:
         self.nct = spline0
+        self.tauct = spline0
         self.vbar = spline0
 
         # Step function:
