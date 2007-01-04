@@ -36,6 +36,7 @@ class Nucleus:
     Localized functions:
      ========== ===========================================================
      ``nct``    Pseudo core electron density.
+     ``tauct``  Pseudo kinetic energy density.
      ``ghat_L`` Shape functions for compensation charges.
      ``vhat_L`` Correction potentials for overlapping compensation charges.
      ``pt_i``   Projector functions.
@@ -75,6 +76,7 @@ class Nucleus:
         self.ghat_L = None
         self.vhat_L = None
         self.nct = None
+        self.tauct = None
         self.mom = num.array(0.0)
 
     def __cmp__(self, other):
@@ -198,6 +200,12 @@ class Nucleus:
         if self.nct is not None:
             self.nct.set_communicator(self.comm, rank)
 
+        # Smooth core kinetic energy density:
+        tauct = self.setup.tauct
+        self.tauct = create([tauct], gd, spos_c, cut=True, lfbc=lfbc)
+        if self.tauct is not None:
+            self.tauct.set_communicator(self.comm, rank)
+            
         if self.comm.size > 1:
             # Make MPI-group communicators:
             flags = num.array([1 * (pt_i is not None) +
@@ -313,6 +321,10 @@ class Nucleus:
     def add_smooth_core_density(self, nct_G, nspins):
         if self.nct is not None:
             self.nct.add(nct_G, num.array([1.0 / nspins]))
+
+    def add_smooth_core_kinetic_energy_density(self, tauct_G, nspins):
+        if self.tauct is not None:
+            self.tauct.add(tauct_G, num.array([1.0 / nspins]))
 
     def add_compensation_charge(self, nt2):
         self.ghat_L.add(nt2, self.Q_L)
