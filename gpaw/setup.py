@@ -458,10 +458,11 @@ class Setup:
         nc_g[gcut2:] = nc_g[gcut2:] = 0.0
         nc = Spline(0, rcut2, nc_g, r_g=r_g, beta=beta, points=100)
         nct = Spline(0, rcut2, nct_g, r_g=r_g, beta=beta, points=100)
-        if tauc_g is None: tauc=None
-        else: tauc = Spline(0, rcut2, tauc_g, r_g=r_g, beta=beta, points=100)
-        if tauct_g is None: tauct=None
-        else: tauct = Spline(0, rcut2, tauct_g, r_g=r_g, beta=beta, points=100)
+        if tauc_g is None:
+            tauc_g = num.zeros(nct_g.shape,num.Float)
+            tauct_g = tauc_g
+        tauc = Spline(0, rcut2, tauc_g, r_g=r_g, beta=beta, points=100)
+        tauct = Spline(0, rcut2, tauct_g, r_g=r_g, beta=beta, points=100)
         phi_j = []
         phit_j = []
         for j, (phi_g, phit_g) in enumerate(zip(phi_jg, phit_jg)):
