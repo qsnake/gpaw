@@ -131,7 +131,7 @@ class Paw:
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
                  nvalence, charge, nbands, nspins,
                  typecode, bzk_kc, ibzk_kc, weights_k,
-                 stencils, usesymm, mix, old, fixdensity, maxiter,
+                 stencils, usesymm, mix, fixdensity, maxiter,
                  convergeall, eigensolver, relax, pos_ac, timer, kT,
                  tolerance, kpt_comm, restart_file, hund, magmom_a,
                  out):
@@ -221,7 +221,7 @@ class Paw:
 
         self.density = Density(self.gd, self.finegd, hund, magmom_a, charge,
                                nspins,
-                               stencils, mix, old, timer, fixdensity, kpt_comm,
+                               stencils, mix, timer, fixdensity, kpt_comm,
                                kT,
                                self.my_nuclei, self.ghat_nuclei, self.nuclei,
                                nvalence)

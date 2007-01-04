@@ -9,12 +9,13 @@ import Numeric as num
 import LinearAlgebra as linalg
 
 from gpaw.utilities.blas import axpy
+from gpaw.operators import Operator
 
 
 class Mixer:
     """Pulay density mixer."""
     
-    def __init__(self, beta, nold, nspins):
+    def __init__(self, parameters, gd, nspins):
         """Mixer(beta, nold) -> mixer object.
 
         beta:  Mixing parameter between zero and one (one is most
@@ -22,10 +23,10 @@ class Mixer:
                
         nold:  Maximum number of old densities."""
         
-        self.beta = beta
-        self.nmaxold = nold
-
-        self.mixers = [Mixer1(beta, nold) for s in range(nspins)]
+        self.mixers = [Mixer1(parameters, gd) for s in range(nspins)]
+        self.beta = parameters[0]
+        self.nmaxold = parameters[1]
+        self.x = parameters[2]
 
     def reset(self, my_nuclei):
         """Reset Density-history.
@@ -46,10 +47,21 @@ class Mixer:
 
 
 class Mixer1:
-    def __init__(self, beta, nold):
-        self.nmaxold = nold
-        self.beta = beta
-
+    def __init__(self, parameters, gd):
+        self.beta = parameters[0]
+        self.nmaxold = parameters[1]
+        self.x = parameters[2]
+        b = 0.25 * (self.x - 1)
+        a = 1.0 - 2.0 * b
+        self.metric = Operator([a,
+                                b, b, b, b, b, b],
+                               [(0, 0, 0),
+                                (-1, 0, 0), (1, 0, 0),
+                                (0, -1, 0), (0, 1, 0),
+                                (0, 0, -1), (0, 0, 1)],
+                               gd, True, num.Float).apply
+        self.mR_G = gd.empty()
+        
     def reset(self, my_nuclei, s):
         # History for Pulay mixing of densities:
         self.nt_iG = [] # Pseudo-electron densities
@@ -83,8 +95,9 @@ class Mixer1:
             A_ii = num.zeros((iold, iold), num.Float)
             i1 = 0
             i2 = iold - 1
+            self.metric(R_G, self.mR_G)
             for R_1G in self.R_iG:
-                a = comm.sum(num.vdot(R_1G, R_G))
+                a = comm.sum(num.vdot(R_1G, self.mR_G))
                 A_ii[i1, i2] = a
                 A_ii[i2, i1] = a
                 i1 += 1
@@ -127,7 +140,7 @@ class Mixer1:
 class MixerSum:
     """Pulay density mixer."""
     
-    def __init__(self, beta, nold):
+    def __init__(self, mix):
         """Mixer(beta, nold) -> mixer object.
 
         beta:  Mixing parameter between zero and one (one is most
@@ -136,8 +149,9 @@ class MixerSum:
         nold:  Maximum number of old densities.
         """
 
-        self.nmaxold = nold
-        self.beta = beta
+        self.beta = mix[0]
+        self.nmaxold = mix[1]
+        self.x = mix[2]
 
     def reset(self, my_nuclei):
         """Reset Density-history.
@@ -158,11 +172,7 @@ class MixerSum:
     def mix(self, nt_sG, comm):
         """Mix pseudo electron densities."""
 
-        nspins = len(nt_sG)
-        if nspins == 1:
-            nt_G = nt_sG[0].copy()
-        else:
-            nt_G = num.sum(nt_sG)
+        nt_G = num.sum(nt_sG)
 
         iold = len(self.nt_iG)
         if iold > 0:
@@ -225,9 +235,6 @@ class MixerSum:
         for D_sp, D_isp, dD_isp in self.D_a:
             D_isp.append(D_sp.copy())
 
-        if nspins == 1:
-            nt_sG[0] = nt_G
-        else:
-            dnt_G = nt_sG[0] - nt_sG[1]
-            nt_sG[0] = 0.5 * (nt_G + dnt_G)
-            nt_sG[1] = 0.5 * (nt_G - dnt_G)
+        dnt_G = nt_sG[0] - nt_sG[1]
+        nt_sG[0] = 0.5 * (nt_G + dnt_G)
+        nt_sG[1] = 0.5 * (nt_G - dnt_G)

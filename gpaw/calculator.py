@@ -44,8 +44,7 @@ class Calculator:
                   'charge': 0,
                   'usesymm': True,
                   'width': None,
-                  'mix': 0.25,
-                  'old': 3,
+                  'mix': (0.25, 3, 1.0),
                   'hund': False,
                   'lmax': 0,
                   'fixdensity': False,
@@ -67,7 +66,7 @@ class Calculator:
 
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
-        `old`, `hund`, `lmax`, `fixdensity`, `tolerance`, `out`,
+        `hund`, `lmax`, `fixdensity`, `tolerance`, `out`,
         `hosts`, `parsize`, `softgauss`, `stencils`, and
         `convergeall`.
 
@@ -239,7 +238,6 @@ class Calculator:
                 self.stencils,
                 self.usesymm,
                 self.mix,
-                self.old,
                 self.fixdensity,
                 self.hund,
                 self.lmax,
@@ -540,6 +538,11 @@ class Calculator:
         if isinstance(setup_types, str):
             setup_types = eval(setup_types)
             
+        try:
+            mix = (r['MixBeta'], r['MixOld'], r['MixMetric'])
+        except AttributeError, KeyError:
+            mix = (r['Mix'], r['Old'], 1.0)
+
         kwargs = {'nbands':     r.dimension('nbands'),
                   'xc':         r['XCFunctional'],
                   'kpts':       r.get('BZKPoints'),
@@ -549,8 +552,7 @@ class Calculator:
                                  (r.dimension('ngptsz') + 1) // 2 * 2),
                   'usesymm':    bool(r['UseSymmetry']),  # numpy!
                   'width':      r['FermiWidth'] * Ha,
-                  'mix':        r['Mix'],
-                  'old':        r['Old'],
+                  'mix':        mix,
                   'lmax':       r['MaximumAngularMomentum'],
                   'softgauss':  bool(r['SoftGauss']),  # numpy!
                   'fixdensity': bool(r['FixDensity']),  # numpy!

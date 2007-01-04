@@ -40,7 +40,7 @@ class Density:
     """
     
     def __init__(self, gd, finegd, hund, magmom_a, charge, nspins,
-                 stencils, mix, old, timer, fixdensity, kpt_comm, kT,
+                 stencils, mix, timer, fixdensity, kpt_comm, kT,
                  my_nuclei, ghat_nuclei, nuclei, nvalence):
         """Create the Density object."""
 
@@ -56,7 +56,7 @@ class Density:
         self.timer = timer
         self.fixdensity = fixdensity
         self.kpt_comm = kpt_comm
-        
+
         self.comm = gd.comm
         
         # Allocate arrays for potentials and densities on coarse and
@@ -79,9 +79,9 @@ class Density:
         
         # Density mixer:
         if nspins == 2 and kT != 0:
-            self.mixer = MixerSum(mix, old)
+            self.mixer = MixerSum(mix)
         else:
-            self.mixer = Mixer(mix, old, nspins)
+            self.mixer = Mixer(mix, self.gd, nspins)
 
         self.nvalence = nvalence
 
@@ -117,14 +117,24 @@ class Density:
         if self.nspins == 1:
 
             Q = 0.0
+            Q0 = 0.0
             for nucleus in self.my_nuclei:
                 Q += nucleus.Q_L[0]
+                Q0 += nucleus.setup.Delta0
             Q = sqrt(4 * pi) * self.comm.sum(Q)
+            Q0 = sqrt(4 * pi) * self.comm.sum(Q0)
             Nt = self.gd.integrate(self.nt_sG)
+
             # Nt + Q must be equal to minus the total charge:
-            if Nt != 0.0:
+            if Q0 - Q != 0:
+                x = (Nt + Q0 + self.charge) / (Q0 - Q)
+                for nucleus in self.my_nuclei:
+                    nucleus.D_sp *= x
+
+                for nucleus in self.nuclei:
+                    nucleus.calculate_multipole_moments()
+            else:
                 x = -(self.charge + Q) / Nt
-                assert 0.83 < x < 1.17, 'x=%f' % x
                 self.nt_sG *= x
         else:
             Q_s = array([0.0, 0.0])

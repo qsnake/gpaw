@@ -86,8 +86,9 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
         w['XCFunctional'] = paw.hamiltonian.xc.xcfunc.get_name()
         w['UseSymmetry'] = paw.usesymm
         w['FermiWidth'] = paw.occupation.kT
-        w['Mix'] = paw.density.mixer.beta
-        w['Old'] = paw.density.mixer.nmaxold
+        w['MixBeta'] = paw.density.mixer.beta
+        w['MixOld'] = paw.density.mixer.nmaxold
+        w['MixMetric'] = paw.density.mixer.x
         w['MaximumAngularMomentum'] = paw.nuclei[0].setup.lmax
         w['SoftGauss'] = paw.nuclei[0].setup.softgauss
         w['FixDensity'] = paw.density.fixdensity
