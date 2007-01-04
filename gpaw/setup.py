@@ -123,7 +123,7 @@ class Setup:
 
         # Construct splines for core kinetic energy density:
         if tauct_g == None:
-            print 'Warnig: No kinetic energy density information in setup file'
+##            print 'Warning: No kinetic energy density information in setup file'
             tauct_g = num.zeros(nct_g.shape,num.Float)
         self.tauct = Spline(0, rcore, tauct_g, r_g=r_g, beta=beta)
 
