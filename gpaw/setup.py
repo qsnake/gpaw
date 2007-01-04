@@ -458,9 +458,9 @@ class Setup:
         nc_g[gcut2:] = nc_g[gcut2:] = 0.0
         nc = Spline(0, rcut2, nc_g, r_g=r_g, beta=beta, points=100)
         nct = Spline(0, rcut2, nct_g, r_g=r_g, beta=beta, points=100)
-        if tauc_g==0: tauc=0
+        if tauc_g is None: tauc=None
         else: tauc = Spline(0, rcut2, tauc_g, r_g=r_g, beta=beta, points=100)
-        if tauct_g==0: tauct=0
+        if tauct_g is None: tauct=None
         else: tauct = Spline(0, rcut2, tauct_g, r_g=r_g, beta=beta, points=100)
         phi_j = []
         phit_j = []
