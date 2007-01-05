@@ -48,6 +48,8 @@ class XCFunctional:
                 code = 5
             elif xcname == 'revPBEx':
                 code = 8
+            elif xcname == 'RPBEx':
+                code = 12
             elif xcname == 'TPSS':
                 code = 9
                 self.mgga = True

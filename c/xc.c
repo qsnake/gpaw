@@ -323,6 +323,12 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       self->exchange = pbe_exchange;
       self->correlation = zero_correlation;
     }
+  else if (type == 12)
+    {
+      // RPBEx
+      self->exchange = rpbe_exchange;
+      self->correlation = zero_correlation;
+    }
   else if (type == 11)
     {
       // LDAx
