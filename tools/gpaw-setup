@@ -32,7 +32,7 @@ parser.add_option('-e', '--extra-projectors', type='string', default=None,
 parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
-parser.add_option('--normconserving', type='string', default='',
+parser.add_option('--normconserving', type='string',
                   help='Examples: s, sp')
 
 opt, args = parser.parse_args()
@@ -61,25 +61,38 @@ for symbol in atoms:
         core = ''
         rcut = 1.0
         extra = None
+        normcons = ''
     else:
         if len(params) == 2:
             core, rcut = parameters[symbol]
             extra = None
-        else:
+            normcons = ''
+        elif len(params) == 3:
             core, rcut, extra = parameters[symbol]
+            normcons = ''
+        else:
+            core, rcut, extra, normcons = parameters[symbol]
+            
     v0 = opt.potential
+
     if opt.core is not None:
         core = opt.core
+
     if opt.radius is not None:
         rcut = [float(x) for x in opt.radius.split(',')]
+
     if opt.extra_projectors is not None:
         extra = {}
         if opt.extra_projectors != '':
             for l, x in enumerate(opt.extra_projectors.split(';')):
                 if x != '':
                     extra[l] = [float(y) for y in x.split(',')]
+
+    if opt.normconserving is not None:
+        normcons = opt.normconserving
+
     g.run(core, rcut, extra,
           logderiv=opt.logarithmic_derivatives, vt0=v0,
           exx=opt.exact_exchange,
-          normconserving=opt.normconserving)
+          normconserving=normcons)
 
