@@ -432,6 +432,7 @@ class Setup:
         return D_ii / len(map_sa)
 
     def get_partial_waves(self):
+        """Return spline representation of partial waves and densities."""
         # load setup data from XML file
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,

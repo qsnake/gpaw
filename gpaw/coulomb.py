@@ -150,12 +150,12 @@ def test(N=2**5, a=20):
     import time
 
     d  = Domain((a, a, a))    # domain object
-    Nc = (N,N,N)              # tuple with number of grid point along each axis
+    Nc = (N, N, N)            # tuple with number of grid point along each axis
     d.set_decomposition(world, N_c=Nc) # decompose domain on processors
-    gd = GridDescriptor(d,Nc) # grid-descriptor object
+    gd = GridDescriptor(d, Nc)# grid-descriptor object
     xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
     r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
-    nH = num.exp(-2*r)/pi     # density of the hydrogen atom
+    nH = num.exp(-2 * r) / pi # density of the hydrogen atom
     C = Coulomb(gd)           # coulomb calculator
     
     if parallel:

@@ -67,8 +67,8 @@ class PoissonSolver:
 
         self.levels = level
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
-        self.presmooths[level]=8
-        self.postsmooths[level]=8
+        self.presmooths[level] = 8
+        self.postsmooths[level] = 8
 
         if load_gauss:
             from gpaw.utilities.gauss import Gaussian

@@ -1,19 +1,19 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-import sys
+#import sys
 from math import pi, sqrt
 
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
-from FFT import real_fft, inverse_real_fft
+#from FFT import real_fft, inverse_real_fft
 from LinearAlgebra import solve_linear_equations, inverse
 from ASE.ChemicalElements.name import names
 
 from gpaw.atom.configurations import configurations
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
-from gpaw.polynomium import a_i, c_l
+#from gpaw.polynomium import a_i, c_l
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import hartree
 from gpaw.exx import constructX
