@@ -107,6 +107,7 @@ else:
 
 
 def unpack(M):
+    """Unpack 1D array to 2D, assuming a packing as in ``pack``."""
     assert is_contiguous(M, num.Float)
     n = int(sqrt(0.25 + 2.0 * len(M)))
     M2 = num.empty((n, n), num.Float)
@@ -115,16 +116,18 @@ def unpack(M):
 
     
 def unpack2(M):
+    """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
     assert is_contiguous(M, num.Float)
     n = int(sqrt(0.25 + 2.0 * len(M)))
     M2 = num.zeros((n, n), num.Float)
     _gpaw.unpack(M, M2)
     M2 *= 0.5
-    M2.flat[0::n + 1] *= 2
+    M2.flat[0::n + 1] *= 2 # note * 2
     return M2
 
     
-def pack(M2):
+def pack(M2, tolerance=1e-10):
+    """Pack a 2D array to 1D, adding offdiagonal terms."""
     n = len(M2)
     M = num.zeros(n * (n + 1) // 2, M2.typecode())
     p = 0
@@ -132,8 +135,26 @@ def pack(M2):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] = 2 * M2[r, c]
-            assert abs(M2[r, c] - M2[c, r]) < 1e-10 # ?????
+            M[p] = M2[r, c] + num.conjugate(M2[c, r])
+            error = abs(M2[r, c] - num.conjugate(M2[c, r]))
+            assert error < tolerance, 'Pack not symmetric by %s'%error
+            p += 1
+    assert p == len(M)
+    return M
+
+
+def pack2(M2, tolerance=1e-10):
+    """Pack a 2D array to 1D, averaging offdiagonal terms."""
+    n = len(M2)
+    M = num.zeros(n * (n + 1) // 2, M2.typecode())
+    p = 0
+    for r in range(n):
+        M[p] = M2[r, r]
+        p += 1
+        for c in range(r + 1, n):
+            M[p] = (M2[r, c] + num.conjugate(M2[c, r])) / 2. # note / 2.
+            error = abs(M2[r, c] - num.conjugate(M2[c, r]))
+            assert error < tolerance, 'Pack not symmetric by %s'%error
             p += 1
     assert p == len(M)
     return M

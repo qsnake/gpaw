@@ -33,44 +33,8 @@ def core_states(symbol):
         core_symbol = a[1:]
         j = len(configurations[core_symbol][1])
 
-    Njcore = j + len(core)/2
+    Njcore = j + len(core) / 2
     return Njcore
-
-def pack(M2, symmetric=True, tol=1e-6):
-    """new pack method"""
-    n = len(M2)
-    M = num.zeros(n * (n + 1) / 2, M2.typecode())
-    p = 0
-    for r in range(n):
-        M[p] = M2[r, r]
-        p += 1
-        for c in range(r + 1, n):
-            M[p] =  M2[r, c] + num.conjugate(M2[c,r])
-            p += 1
-            if symmetric:
-                error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-                assert error < tol, 'Not symmetric:\n' +\
-                       'error = %s = |%s-%s|'%(error, M2[r,c], M2[c,r])
-    assert p == len(M)
-    return M
-
-def pack2(M2, symmetric=True, tol=1e-6):
-    """new pack method"""
-    n = len(M2)
-    M = num.zeros(n * (n + 1) / 2, M2.typecode())
-    p = 0
-    for r in range(n):
-        M[p] = M2[r, r]
-        p += 1
-        for c in range(r + 1, n):
-            M[p] =  (M2[r, c] + num.conjugate(M2[c,r])) / 2. # <- divide by 2!!
-            p += 1
-            if symmetric:
-                error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-                assert error < tol, 'Not symmetric:\n' +\
-                       'error = %s = |%s-%s|'%(error, M2[r,c], M2[c,r])
-    assert p == len(M)
-    return M
 
 def get_kpoint_dimensions(kpts):
     """Returns number of k-points along each axis of input Monkhorst pack.

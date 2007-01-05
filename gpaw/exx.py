@@ -7,9 +7,9 @@ evaluation of exact exchange."""
 import Numeric as num
 from Numeric import pi
 from gpaw.coulomb import Coulomb
-from gpaw.utilities.tools import pack, pack2, core_states
+from gpaw.utilities.tools import core_states
 from gpaw.gaunt import make_gaunt
-from gpaw.utilities import hartree, unpack, unpack2
+from gpaw.utilities import hartree, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
 
 class XXFunctional:
@@ -27,44 +27,40 @@ class EXX:
     exchange energy."""
     
     def __init__(self, gd, finegd, interpolate, restrict, poisson,
-                 my_nuclei, ghat_nuclei, nspins, nbands, energy_only=False):
-        
+                 my_nuclei, ghat_nuclei, nspins, nbands, kcomm, dcomm,
+                 energy_only=False):
+
+        # Initialize class-attributes
         self.nspins      = nspins
         self.my_nuclei   = my_nuclei
         self.ghat_nuclei = ghat_nuclei
         self.interpolate = interpolate
         self.restrict    = restrict
         self.poisson     = poisson
+        self.rank        = dcomm.rank
+        self.psum        = lambda x: kcomm.sum(dcomm.sum(x))
+        self.energy_only = energy_only
+        self.integrate   = gd.integrate
+        self.fineintegrate = finegd.integrate
         
-        # allocate space for matrices
+        # Allocate space for matrices
         self.nt_G = gd.empty()
         self.vt_G = gd.empty()
         self.nt_g = finegd.empty()
         self.vt_g = finegd.empty()
-
-        self.fineintegrate = finegd.integrate
-        self.integrate = gd.integrate
-
-        self.energy_only = energy_only
         if not energy_only:
             self.vt_nG = gd.empty(nbands)
 
     def calculate_energy(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
 
+        # Initialize method-attributes
         psit_nG = kpt.psit_nG[:]  # wave functions
+        Exx = Ekin = 0.0          # Energy of eXact eXchange and kinetic energy
         deg = 2 / self.nspins     # spin degeneracy
         f_n = kpt.f_n             # occupation number
         s   = kpt.s               # global spin index
         u   = kpt.u               # local spin/kpoint index
-
-        # Ensure that calculation is a Gamma-point calculation
-        assert psit_nG.typecode() == num.Float
-
-        if u == 0:
-            self.Ekin = 0.0
-            self.Exx = 0.0
-
         if not self.energy_only:
             for nucleus in self.my_nuclei:
                 nucleus.vxx_uni[:] = 0.0
@@ -85,7 +81,7 @@ class EXX:
                         P1_i = nucleus.P_uni[u, n1]
                         P2_i = nucleus.P_uni[u, n2]
                         D_ii = num.outerproduct(P1_i, P2_i)
-                        D_p  = pack(D_ii, symmetric=False)
+                        D_p  = pack(D_ii, tolerance=1e3)
 
                         # Determine compensation charge coefficients:
                         Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
@@ -103,15 +99,16 @@ class EXX:
                 self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z)
                 self.restrict(self.vt_g, self.vt_G)
 
-                self.Exx += (0.5 * f_n[n1] * f_n[n2] * hybrid / deg * 
-                             self.fineintegrate(self.vt_g * self.nt_g))
-                self.Ekin -= (f_n[n1] * f_n[n2] * hybrid / deg * 
-                              self.integrate(self.vt_G * self.nt_G))
+                # Integrate the potential on fine and coarse grids
+                int_fine = self.fineintegrate(self.vt_g * self.nt_g)
+                int_coarse = self.integrate(self.vt_G * self.nt_G)
+                if self.rank == 0: # Only add to energy on master CPU
+                    Exx += 0.5 * f_n[n1] * f_n[n2] * hybrid / deg * int_fine
+                    Ekin -= f_n[n1] * f_n[n2] * hybrid / deg * int_coarse
 
                 if not self.energy_only:
                     Htpsit_nG[n1] += f_n[n2] * hybrid / deg * \
                                      self.vt_G * psit2_G
-                    
                     if n1 == n2:
                         self.vt_nG[n1] = f_n[n1] * hybrid / deg * self.vt_G
                     
@@ -168,19 +165,27 @@ class EXX:
                     if not self.energy_only and i1 > i2:
                         p12 = p(i1, i2)
                         H_p[p12] -= 2 * hybrid * A # XXX: No '/ deg' ???
-                    self.Exx -= hybrid / deg * D_ii[i1, i2] * A
+                    Exx -= hybrid / deg * D_ii[i1, i2] * A
             
             # Add valence-core exchange energy
             # --
             # >  X   D
             # --  ii  ii
-            self.Exx -= hybrid * num.dot(D_p, setup.X_p)
+            Exx -= hybrid * num.dot(D_p, setup.X_p)
             if not self.energy_only:
                 H_p -= hybrid * setup.X_p
 
             # Add core-core exchange energy
-            if u == 0:
-                self.Exx += hybrid * nucleus.setup.ExxC
+            if s == 0:
+                Exx += hybrid * nucleus.setup.ExxC
+
+        # Update the class attributes
+        if u == 0:
+            self.Exx = self.psum(Exx)
+            self.Ekin = self.psum(Ekin)
+        else:
+            self.Exx += self.psum(Exx)
+            self.Ekin += self.psum(Ekin)
     
 class PerturbativeExx:
     """Class offering methods for non-selfconsistent evaluation of the
@@ -273,13 +278,13 @@ class PerturbativeExx:
                     self.interpolate(n_G, self.n_g)
 
                     # determine the compensation charges for each nucleus
-                    for a, nucleus in enumerate(ghat_nuclei):
+                    for nucleus in ghat_nuclei:
                         if nucleus.in_this_domain:
                             # generate density matrix
                             Pm_i = nucleus.P_uni[u, m]
                             Pn_i = nucleus.P_uni[u, n]
-                            D_ii = num.outerproduct(Pm_i,Pn_i)
-                            D_p  = pack(D_ii, symmetric=False)
+                            D_ii = num.outerproduct(Pm_i, Pn_i)
+                            D_p  = pack(D_ii, tolerance=1e3)
                             
                             # determine compensation charge coefficients
                             Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
@@ -355,7 +360,7 @@ class PerturbativeExx:
                         Pm_i = nucleus.P_uni[u, m]
                         Pn_i = nucleus.P_uni[u, n]
                         D_ii = num.outerproduct(Pm_i,Pn_i)
-                        D_p  = pack(D_ii, symmetric=False)
+                        D_p  = pack(D_ii, tolerance=1e3)
 
                         # C_iiii from setup file
                         C_pp  = nucleus.setup.M_pp
@@ -528,5 +533,5 @@ def constructX(gen):
             i1 += 2 * lv1 + 1
 
     # pack X_ii matrix
-    X_p = pack2(X_ii, symmetric=True, tol=1e-8)
+    X_p = pack2(X_ii, tolerance=1e-8)
     return X_p

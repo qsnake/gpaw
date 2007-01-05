@@ -79,10 +79,13 @@ class XCFunctional:
     
     def set_non_local_things(self, paw, energy_only=False):
         if self.hybrid > 0.0:
+            if paw.typecode == num.Complex:
+                raise NotImplementedError, 'k-point calculation with EXX'
             self.exx = EXX(paw.gd, paw.finegd, paw.density.interpolate,
                            paw.hamiltonian.restrict, paw.hamiltonian.poisson,
                            paw.my_nuclei, paw.ghat_nuclei,
                            paw.nspins, paw.nbands,
+                           paw.kpt_comm, paw.domain.comm,
                            energy_only)
 
     def calculate_non_local_energy(self, kpt, Htpsit_nG=None, H_nn=None):
