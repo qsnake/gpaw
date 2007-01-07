@@ -390,7 +390,7 @@ class PerturbativeExx:
                             p13 = p(i1, i3)
                             for i4 in range(ni):
                                 A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
-                        ExxVV_TEST -= D_ii[i1, i2] * A * 2 / self.paw.nspins
+                        ExxVV_TEST -= D_ii[i1, i2] * A * self.paw.nspins / 2.
         print 'Test of D*C*D summation:', ExxVV, ExxVV_TEST, ExxVV - ExxVV_TEST
         #---------------------- TEST STUFF ------------------------
 
