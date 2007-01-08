@@ -2,7 +2,7 @@ from math import pi, sqrt
 import Numeric as num
 import _gpaw
 from gpaw import debug
-from gpaw.utilities.tools import pack
+from gpaw.utilities import pack
 
 # ..............................................................
 # general excitation classes
@@ -160,7 +160,7 @@ class KSSingle(Excitation):
             Pi_i = nucleus.P_uni[self.vspin,self.i]
             Pj_i = nucleus.P_uni[self.vspin,self.j]
             D_ii = num.outerproduct(Pi_i, Pj_i)
-            D_p  = pack(D_ii, symmetric=False)
+            D_p  = pack(D_ii, tolerance=1e3)
             # L=0 term
             me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
 ##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
