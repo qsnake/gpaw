@@ -233,14 +233,14 @@ class Paw:
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
                                        self.nuclei, setups)
-
-        xcfunc.set_non_local_things(self)
             
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
             self.occupation = occupations.ZeroKelvin(nvalence, nspins)
         else:
             self.occupation = occupations.FermiDirac(nvalence, nspins, kT)
+
+        xcfunc.set_non_local_things(self)
 
         if hund:
             assert len(magmom_a) == 1
@@ -300,6 +300,9 @@ class Paw:
             self.Exc += self.hamiltonian.xc.xcfunc.get_non_local_energy()
             if self.hamiltonian.xc.xcfunc.hybrid > 0.0:
                 self.Ekin0 += self.hamiltonian.xc.xcfunc.exx.Ekin
+
+            if self.hamiltonian.xc.xcfunc.orbital_dependent:
+                self.Ekin0 += self.hamiltonian.xc.xcfunc.get_extra_kinetic_energy()
                 
             # Calculate occupation numbers:
             self.nfermi, self.magmom, self.S, Eband = \

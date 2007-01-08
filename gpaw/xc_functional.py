@@ -8,6 +8,8 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.exx import EXX, XXFunctional
+from gpaw.kli import KLIFunctional
+
 import _gpaw
 
 class XCFunctional:
@@ -17,7 +19,8 @@ class XCFunctional:
         self.parameters = parameters
         self.scalarrel = scalarrel
         self.mgga = False
-        self.gga = False
+        self.gga = False 
+        self.orbital_dependent = False
         
         if xcname == 'LDA':
             self.maxDerivativeLevel=2
@@ -27,6 +30,9 @@ class XCFunctional:
             code = 7
         elif xcname == 'LDAx':
             code = 11
+        elif xcname == 'KLI':  
+            code = 15               
+            self.orbital_dependent = True
         elif xcname == 'EXX':
             code = 6
             self.hybrid = 1.0
@@ -67,6 +73,8 @@ class XCFunctional:
             self.xc = XXFunctional()
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code)
+        elif code == 15:
+            self.xc = KLIFunctional() 
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel)
 
@@ -76,8 +84,18 @@ class XCFunctional:
     def __setstate__(self, state):
         xcname, scalarrel, parameters = state
         self.__init__(xcname, scalarrel, parameters)
+
+    def get_extra_kinetic_energy(self):
+        if (self.orbital_dependent):
+            return self.xc.get_extra_kinetic_energy()
+        else:
+            return 0.0
+                                    
     
     def set_non_local_things(self, paw, energy_only=False):
+        if self.orbital_dependent:
+            self.xc.pass_paw_object(paw)
+
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:
                 raise NotImplementedError, 'k-point calculation with EXX'
@@ -89,10 +107,16 @@ class XCFunctional:
                            energy_only)
 
     def calculate_non_local_energy(self, kpt, Htpsit_nG=None, H_nn=None):
+        if self.orbital_dependent:
+            self.xc.calculate_energy(kpt, Htpsit_nG, H_nn)
+
         if self.hybrid > 0.0:
             self.exx.calculate_energy(kpt, Htpsit_nG, H_nn, self.hybrid)
 
     def get_non_local_energy(self):
+        if self.orbital_dependent:
+            return self.xc.get_non_local_energy()
+
         if self.hybrid > 0.0:
             return self.exx.Exx
         else:
