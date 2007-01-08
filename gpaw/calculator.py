@@ -443,6 +443,10 @@ class Calculator:
         """Return the number of bands."""
         return self.nbands 
   
+    def SetNumberOfBands(self, nbands):
+        """Set the number of bands."""
+        self.Set(nbands=nbands)
+  
     def GetXCFunctional(self):
         """Return the XC-functional identifier.
         
