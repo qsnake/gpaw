@@ -57,7 +57,7 @@ class Excitation:
 # KS excitation classes
 
 class KSSingles(ExcitationList):
-    """Kohn-Sham single perticle excitations
+    """Kohn-Sham single particle excitations
 
     Input parameters:
 
@@ -90,8 +90,8 @@ class KSSingles(ExcitationList):
             self.calculator=calculator
         
         paw = self.calculator.paw
-        wf = paw.wf
-
+        self.kpt_u = paw.kpt_u
+        
         self.istart=istart
         self.jend=jend
 
@@ -101,8 +101,8 @@ class KSSingles(ExcitationList):
         #       i.e. the spin used in the ground state calculation
         # pspin is the physical spin of the wave functions
         #       i.e. the spin of the excited states
-        self.nvspins = wf.nspins
-        self.npspins = wf.nspins
+        self.nvspins = paw.nspins
+        self.npspins = paw.nspins
         if self.nvspins < 2:
             if nspins>self.nvspins:
                 self.npspins = nspins
@@ -113,7 +113,7 @@ class KSSingles(ExcitationList):
 ##            print "vspin=",vspin,"ispin=",ispin
             if self.nvspins<2:
                 vspin=0
-            f=wf.kpt_u[vspin].f_n
+            f=self.kpt_u[vspin].f_n
             if self.jend==None: jend=len(f)
             else              : jend=min(self.jend+1,len(f))
 ##             print "<KSSingles::build> occupation list f=",f
@@ -139,20 +139,20 @@ class KSSingle(Excitation):
         self.pspin=pspin
         self.vspin=vspin
         self.paw=paw
-        wf=paw.wf
-        f=wf.kpt_u[vspin].f_n
+
+        f=paw.kpt_u[vspin].f_n
         self.fij=f[iidx]-f[jidx]
-        e=wf.kpt_u[vspin].eps_n
+        e=paw.kpt_u[vspin].eps_n
         self.energy=e[jidx]-e[iidx]
 
         # calculate matrix elements
         
         # course grid contribution
-        gd = wf.kpt_u[vspin].gd
-        self.wfi = wf.kpt_u[vspin].psit_nG[iidx]
-        self.wfj = wf.kpt_u[vspin].psit_nG[jidx]
+        gd = paw.kpt_u[vspin].gd
+        self.wfi = paw.kpt_u[vspin].psit_nG[iidx]
+        self.wfj = paw.kpt_u[vspin].psit_nG[jidx]
         me = gd.calculate_dipole_moment(self.GetPairDensity())
-##         print '<KSSingle> pseudo mij=',me
+##        print '<KSSingle> pseudo mij=',me
         
         # augmentation contributions
         for nucleus in paw.nuclei:
@@ -160,7 +160,7 @@ class KSSingle(Excitation):
             Pi_i = nucleus.P_uni[self.vspin,self.i]
             Pj_i = nucleus.P_uni[self.vspin,self.j]
             D_ii = num.outerproduct(Pi_i, Pj_i)
-            D_p  = pack(D_ii, tolerance=1e3)
+            D_p  = pack(D_ii, symmetric=False)
             # L=0 term
             me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
 ##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
