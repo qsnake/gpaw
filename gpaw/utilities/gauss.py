@@ -18,8 +18,8 @@ class Gaussian:
        g (x,y,z) =   / ----- --------- (4 a0)      e        r  Y (x,y,z),
         L          \/  4 pi  (2l + 1)!                          l
 
-    where a0 is the width of the gaussian, and Y_l^m is a real spherical
-    harmonic.
+    where a0 is the inverse width of the gaussian, and Y_l^m is a real
+    spherical harmonic.
     The gaussians are centered in the middle of input grid-descriptor."""
     
     def __init__(self, gd, a0=21.):
@@ -28,7 +28,8 @@ class Gaussian:
         self.set_width(a0)
 
     def set_width(self, a0=21.):
-        self.a0 = a0 / min(self.gd.domain.cell_c)
+        """Set exponent of exp-function to a0 on the boundary."""
+        self.a0 = 4 * a0 / min(self.gd.domain.cell_c)**2
         
     def get_gauss(self, L):
         a0 = self.a0
