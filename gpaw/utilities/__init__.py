@@ -106,6 +106,13 @@ else:
     hartree = _gpaw.hartree
 
 
+def packed_index(i1, i2, ni):
+    """Return a packed index"""
+    if i1 > i2:
+        return (i2 * (2 * ni - 1 - i2) // 2) + i1
+    else:
+        return (i1 * (2 * ni - 1 - i1) // 2) + i2
+
 def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
     assert is_contiguous(M, num.Float)
@@ -121,8 +128,8 @@ def unpack2(M):
     n = int(sqrt(0.25 + 2.0 * len(M)))
     M2 = num.zeros((n, n), num.Float)
     _gpaw.unpack(M, M2)
-    M2 *= 0.5
-    M2.flat[0::n + 1] *= 2 # note * 2
+    M2 *= 0.5 # divide all by 2
+    M2.flat[0::n + 1] *= 2 # rescale diagonal to original size
     return M2
 
     
@@ -148,6 +155,7 @@ def pack(M2, tolerance=1e-10):
     assert p == len(M)
     return M
 
+
 def element_from_packed(M,i,j):
     """Return a specific element from a packed array (by ``pack``)."""
     n=int(sqrt(2*len(M)+.25)) 
@@ -160,6 +168,7 @@ def element_from_packed(M,i,j):
     if i==j:  return M[p]
     elif i>j: return .5*M[p]
     else:     return .5*num.conjugate(M[p])
+
 
 def pack2(M2, tolerance=1e-10):
     """Pack a 2D array to 1D, averaging offdiagonal terms."""
