@@ -118,7 +118,6 @@ PyObject* unpack_complex(PyObject *self, PyObject *args)
     for (int c = r; c < n; c++)
       {
         double_complex d = *datap++;
-	printf("r=%d,c=%d d=(%g,%g)\n",r,c,creal(d),cimag(d));
         data[c + r * n] = d;
         data[r + c * n] = conj(d);
       }
