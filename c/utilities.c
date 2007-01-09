@@ -105,6 +105,26 @@ PyObject* unpack(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+PyObject* unpack_complex(PyObject *self, PyObject *args)
+{
+  PyArrayObject* ap;
+  PyArrayObject* a;
+  if (!PyArg_ParseTuple(args, "OO", &ap, &a)) 
+    return NULL;
+  int n = a->dimensions[0];
+  double_complex* datap = COMPLEXP(ap);
+  double_complex* data = COMPLEXP(a);
+  for (int r = 0; r < n; r++)
+    for (int c = r; c < n; c++)
+      {
+        double_complex d = *datap++;
+	printf("r=%d,c=%d d=(%g,%g)\n",r,c,creal(d),cimag(d));
+        data[c + r * n] = d;
+        data[r + c * n] = conj(d);
+      }
+  Py_RETURN_NONE;
+}
+
 PyObject* hartree(PyObject *self, PyObject *args)
 {
   int l;
