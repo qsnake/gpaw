@@ -115,18 +115,20 @@ class EXX:
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
                     # residuals
-                    for nucleus in self.my_nuclei:
+                    for nucleus in self.ghat_nuclei:
                         v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
                         nucleus.ghat_L.integrate(self.vt_g, v_L)
-                        v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
-                        nucleus.vxx_uni[u, n1] += f_n[n2] * hybrid / deg * \
-                                                  num.dot(v_ii,
-                                                          nucleus.P_uni[u, n2])
 
-                        if n1 == n2:
-                            nucleus.vxx_unii[u, n1] = f_n[n2] * hybrid / deg *\
-                                                      v_ii
-                            
+                        if nucleus in self.my_nuclei:
+                            v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
+                            nucleus.vxx_uni[u, n1] += (
+                                f_n[n2] * hybrid / deg * num.dot(
+                                v_ii, nucleus.P_uni[u, n2]))
+
+                            if n1 == n2:
+                                nucleus.vxx_unii[u, n1] = (
+                                    f_n[n2] * hybrid / deg * v_ii)
+        
         # Apply the atomic corrections to the energy and the Hamiltonian matrix
         for nucleus in self.my_nuclei:
             # Ensure that calculation does not use extra soft comp. charges
@@ -181,11 +183,9 @@ class EXX:
 
         # Update the class attributes
         if u == 0:
-            self.Exx = self.psum(Exx)
-            self.Ekin = self.psum(Ekin)
-        else:
-            self.Exx += self.psum(Exx)
-            self.Ekin += self.psum(Ekin)
+            self.Exx = self.Ekin = 0
+        self.Exx += self.psum(Exx)
+        self.Ekin += self.psum(Ekin)
     
 class PerturbativeExx:
     """Class offering methods for non-selfconsistent evaluation of the
@@ -391,7 +391,8 @@ class PerturbativeExx:
                             for i4 in range(ni):
                                 A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
                         ExxVV_TEST -= D_ii[i1, i2] * A * self.paw.nspins / 2.
-        print 'Test of D*C*D summation:', ExxVV, ExxVV_TEST, ExxVV - ExxVV_TEST
+        print 'Test of D*C*D summation: %0.7f %0.7f %0.7f' % tuple(num.array(
+            [ExxVV, ExxVV_TEST, ExxVV - ExxVV_TEST]) * 27.211395655517311)
         #---------------------- TEST STUFF ------------------------
 
         return ExxVV, ExxVC, ExxCC
