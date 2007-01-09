@@ -115,15 +115,6 @@ def packed_index(i1, i2, ni):
 
 def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
-    assert is_contiguous(M, num.Float)
-    n = int(sqrt(0.25 + 2.0 * len(M)))
-    M2 = num.empty((n, n), num.Float)
-    _gpaw.unpack(M, M2)
-    return M2
-
-    
-def unpack2(M):
-    """Unpack 1D array to 2D, assuming a packing as in ``pack``."""
     assert is_contiguous(M)
     n = int(sqrt(0.25 + 2.0 * len(M)))
     M2 = num.zeros((n, n), M.typecode())
@@ -131,8 +122,14 @@ def unpack2(M):
         _gpaw.unpack_complex(M, M2)
     else:
         _gpaw.unpack(M, M2)
+    return M2
+
+    
+def unpack2(M):
+    """Unpack 1D array to 2D, assuming a packing as in ``pack``."""
+    M2 = unpack(M)
     M2 *= 0.5 # divide all by 2
-    M2.flat[0::n + 1] *= 2 # rescale diagonal to original size
+    M2.flat[0::len(M2) + 1] *= 2 # rescale diagonal to original size
     return M2
 
     
