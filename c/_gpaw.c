@@ -17,6 +17,7 @@ PyObject* utilities_vdot(PyObject *self, PyObject *args);
 PyObject* utilities_vdot_self(PyObject *self, PyObject *args);
 PyObject* errorfunction(PyObject *self, PyObject *args);
 PyObject* unpack(PyObject *self, PyObject *args);
+PyObject* unpack_complex(PyObject *self, PyObject *args);
 PyObject* hartree(PyObject *self, PyObject *args);
 PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
@@ -39,6 +40,7 @@ static PyMethodDef functions[] = {
   {"utilities_vdot_self", utilities_vdot_self, METH_VARARGS, 0},
   {"erf",        errorfunction,        METH_VARARGS, 0},
   {"unpack",       unpack,           METH_VARARGS, 0},
+  {"unpack_complex",       unpack_complex,           METH_VARARGS, 0},
   {"hartree",        hartree,        METH_VARARGS, 0},
   {"XCFunctional",    NewXCFunctionalObject,    METH_VARARGS, 0},
   {"MGGAFunctional",    NewMGGAFunctionalObject,    METH_VARARGS, 0},
