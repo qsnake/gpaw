@@ -124,10 +124,13 @@ def unpack(M):
     
 def unpack2(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack``."""
-    assert is_contiguous(M, num.Float)
+    assert is_contiguous(M)
     n = int(sqrt(0.25 + 2.0 * len(M)))
-    M2 = num.zeros((n, n), num.Float)
-    _gpaw.unpack(M, M2)
+    M2 = num.zeros((n, n), M.typecode())
+    if M.typecode() == num.Complex:
+        _gpaw.unpack_complex(M, M2)
+    else:
+        _gpaw.unpack(M, M2)
     M2 *= 0.5 # divide all by 2
     M2.flat[0::n + 1] *= 2 # rescale diagonal to original size
     return M2
