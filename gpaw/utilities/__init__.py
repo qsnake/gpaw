@@ -113,6 +113,7 @@ def packed_index(i1, i2, ni):
     else:
         return (i1 * (2 * ni - 1 - i1) // 2) + i2
 
+
 def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
     assert is_contiguous(M)
@@ -135,11 +136,16 @@ def unpack2(M):
     
 def pack(M2, tolerance=1e-10):
     """Pack a 2D array to 1D, adding offdiagonal terms.
-    The matrix      / a00 a01 a02 \
-                 M2=| a10 a11 a12 |
-                    \ a20 a21 a22 /
-    is transformed to the vector
-       M=(a00,a01+a10*,a02+a20*,a11,a12+a21*,a22)
+    
+    The matrix::
+    
+           / a00 a01 a02 \
+      M2 = | a10 a11 a12 |
+           \ a20 a21 a22 /
+                
+    is transformed to the vector::
+    
+      M = (a00, a01 + a10*, a02 + a20*, a11, a12 + a21*, a22)
     """
     n = len(M2)
     M = num.zeros(n * (n + 1) // 2, M2.typecode())
@@ -150,24 +156,10 @@ def pack(M2, tolerance=1e-10):
         for c in range(r + 1, n):
             M[p] = M2[r, c] + num.conjugate(M2[c, r])
             error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-            assert error < tolerance, 'Pack not symmetric by %s'%error+' %'
+            assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
             p += 1
     assert p == len(M)
     return M
-
-
-def element_from_packed(M,i,j):
-    """Return a specific element from a packed array (by ``pack``)."""
-    n=int(sqrt(2*len(M)+.25)) 
-    assert i<n
-    assert j<n
-    if i > j:
-        p = (j * (2 * n - 1 - j) // 2) + i
-    else: 
-        p = (i * (2 * n - 1 - i) // 2) + j
-    if i==j:  return M[p]
-    elif i>j: return .5*M[p]
-    else:     return .5*num.conjugate(M[p])
 
 
 def pack2(M2, tolerance=1e-10):
@@ -181,10 +173,23 @@ def pack2(M2, tolerance=1e-10):
         for c in range(r + 1, n):
             M[p] = (M2[r, c] + num.conjugate(M2[c, r])) / 2. # note / 2.
             error = abs(M2[r, c] - num.conjugate(M2[c, r]))
-            assert error < tolerance, 'Pack not symmetric by %s'%error+' %'
+            assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
             p += 1
     assert p == len(M)
     return M
+
+
+def element_from_packed(M, i, j):
+    """Return a specific element from a packed array (by ``pack``)."""
+    n = int(sqrt(2 * len(M) + .25)) 
+    assert i < n and j < n
+    p = packed_index(i, j, n)
+    if i == j:
+        return M[p]
+    elif i > j:
+        return .5 * M[p]
+    else:
+        return .5 * num.conjugate(M[p])
 
 
 def check_unit_cell(cell):
@@ -252,7 +257,6 @@ def equal(a, b, e=0):
     assert abs(a - b) <= e, '%g != %g (error: %g > %g)' % (a, b, abs(a - b), e)
 
 
-
 def locked(filename):
     try:
         os.open(filename, os.O_EXCL | os.O_RDWR | os.O_CREAT)
@@ -260,6 +264,7 @@ def locked(filename):
         return True
     os.remove(filename)
     return False
+
 
 def fix(formula):
     """Convert chemical formula to LaTeX"""
@@ -273,6 +278,7 @@ def fix(formula):
     if s == '$':
         return s + r'\rm{' + formula + '}$'
     return s + '$'
+
 
 def fix2(formula):
     """Convert chemical formula to reStructureText"""

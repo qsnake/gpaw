@@ -9,7 +9,7 @@ from Numeric import pi
 from gpaw.coulomb import Coulomb
 from gpaw.utilities.tools import core_states
 from gpaw.gaunt import make_gaunt
-from gpaw.utilities import hartree, unpack, unpack2, pack, pack2
+from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
 
 class XXFunctional:
@@ -143,15 +143,8 @@ class EXX:
             D_p  = nucleus.D_sp[s]
             D_ii = unpack2(D_p)
             H_p  = nucleus.H_sp[s]
-
-            # Method for determining the packed state indices
             ni = len(D_ii)
-            def p(i1, i2):
-                if i1 > i2:
-                    return (i2 * (2 * ni - 1 - i2) // 2) + i1
-                else:
-                    return (i1 * (2 * ni - 1 - i1) // 2) + i2
-
+            
             # Add atomic corrections to the valence-valence exchange energy
             # --
             # >  D   C     D
@@ -161,11 +154,12 @@ class EXX:
                 for i2 in range(ni):
                     A = 0.0
                     for i3 in range(ni):
-                        p13 = p(i1, i3)
+                        p13 = packed_index(i1, i3, ni)
                         for i4 in range(ni):
-                            A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
+                            p24 = packed_index(i2, i4, ni)
+                            A += C_pp[p13, p24] * D_ii[i3, i4]
                     if not self.energy_only and i1 > i2:
-                        p12 = p(i1, i2)
+                        p12 = packed_index(i1, i2, ni)
                         H_p[p12] -= 2 * hybrid * A # XXX: No '/ deg' ???
                     Exx -= hybrid / deg * D_ii[i1, i2] * A
             
@@ -370,12 +364,6 @@ class PerturbativeExx:
 
         return ExxVV, ExxVC, ExxCC
         #---------------------- TEST STUFF ------------------------
-        def p(i1, i2):
-            if i1 > i2:
-                return (i2 * (2 * ni - 1 - i2) // 2) + i1
-            else:
-                return (i1 * (2 * ni - 1 - i1) // 2) + i2
-
         ExxVV_TEST = 0.0
         for nucleus in self.paw.my_nuclei:
             for s in range(self.paw.nspins):
@@ -387,14 +375,14 @@ class PerturbativeExx:
                     for i2 in range(ni):
                         A = 0.0
                         for i3 in range(ni):
-                            p13 = p(i1, i3)
+                            p13 = packed_index(i1, i3, ni)
                             for i4 in range(ni):
-                                A += C_pp[p13, p(i2, i4)] * D_ii[i3, i4]
+                                p24 = packed_index(i2, i4, ni)
+                                A += C_pp[p13, p24] * D_ii[i3, i4]
                         ExxVV_TEST -= D_ii[i1, i2] * A * self.paw.nspins / 2.
         print 'Test of D*C*D summation: %0.7f %0.7f %0.7f' % tuple(num.array(
             [ExxVV, ExxVV_TEST, ExxVV - ExxVV_TEST]) * 27.211395655517311)
         #---------------------- TEST STUFF ------------------------
-
         return ExxVV, ExxVC, ExxCC
 
 def atomic_exact_exchange(atom, type = 'all'):
