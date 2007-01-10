@@ -20,11 +20,7 @@ def core_states(symbol):
     from gpaw.atom.configurations import configurations
     from gpaw.atom.generator import parameters
 
-    try:
-        core, rcut = parameters[symbol]
-        extra = None
-    except ValueError:
-        core, rcut, extra = parameters[symbol]
+    core = parameters[symbol][0]
     
     # Parse core string:
     j = 0
