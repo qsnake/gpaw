@@ -1,24 +1,19 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-#import sys
 from math import pi, sqrt
 
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
-#from FFT import real_fft, inverse_real_fft
 from LinearAlgebra import solve_linear_equations, inverse
 from ASE.ChemicalElements.name import names
 
 from gpaw.atom.configurations import configurations
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
-#from gpaw.polynomium import a_i, c_l
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import hartree
-from gpaw.exx import constructX
-from gpaw.exx import atomic_exact_exchange as aExx
-from gpaw.utilities import hartree
+from gpaw.exx import constructX, atomic_exact_exchange
 from gpaw.atom.filter import Filter
 
 
@@ -299,7 +294,8 @@ class Generator(AllElectron):
                         r1 = r[:gc]
                         r2 = r1**2
                         rl1 = r1**(l + 1)
-                        y = b[0] + r2 * (b[1] + r2 * (b[2] + r2 * (b[3] + r2 * b[4])))
+                        y = b[0] + r2 * (b[1] + r2 * (b[2] + r2 * (b[3] + r2
+                                                                   * b[4])))
                         y = num.exp(y)
                         s[:gc] = rl1 * y
                         return num.dot(s**2, dr) - 1
@@ -541,7 +537,8 @@ class Generator(AllElectron):
                         s = self.integrate(l, vt, e, gld)
                         if l <= lmax:
                             A_nn = dH_nn - e * dO_nn
-                            s_n = [self.integrate(l, vt, e, gld, q) for q in q_n]
+                            s_n = [self.integrate(l, vt, e, gld, q)
+                                   for q in q_n]
                             B_nn = inner(q_n, s_n * dr)
                             a_n = num.dot(q_n, s * dr)
 
@@ -620,7 +617,7 @@ class Generator(AllElectron):
         
         if exx:
             X_p = constructX(self)
-            ExxC = aExx(self, 'core-core')
+            ExxC = atomic_exact_exchange(self, 'core-core')
         else:
             X_p = None
             ExxC = None

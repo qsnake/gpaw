@@ -8,13 +8,32 @@ gaunt = num.array([[[0.28209479177387808, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 # End of computer generated code
 
 def make_gaunt(lmax=2):
-    from gpaw.spherical_harmonics import YL, gam
     Lmax = (lmax + 1)**2
     L2max = (2 * lmax + 1)**2
+
+    # Try to load old gaunt matrix
+    try:
+        from gpaw.gaunt import gaunt
+    except ImportError:
+        gaunt = num.zeros((0, 0, 0), num.Float)
+        
+    # Don't recalculate if already present
+    if Lmax <= gaunt.shape[0]:
+        return gaunt[:Lmax, :Lmax, :L2max]
+
+    # More element needed, setup new matrix
+    from gpaw.spherical_harmonics import YL, gam
+    old = gaunt
+    del gaunt
     gaunt = num.zeros((Lmax, Lmax, L2max), num.Float)
-    for L1 in range(Lmax):
-        for L2 in range(Lmax):
-            for L in range(L2max):
+
+    # Insert old values
+    gaunt[:old.shape[0], :old.shape[1], :old.shape[2]] = old
+
+    # Insert new values
+    for L1 in range(old.shape[0], Lmax):
+        for L2 in range(old.shape[1], Lmax):
+            for L in range(old.shape[2], L2max):
                 r = 0.0
                 for c1, n1 in YL[L1]:
                     for c2, n2 in YL[L2]:

@@ -457,9 +457,7 @@ def constructX(gen):
     The X_p^a matrix describes the valence-core interactions of the
     partial waves.
     """
-    # make gaunt coeff. list
-    gaunt = make_gaunt(lmax=gen.lmax)
-
+    # initialize attributes
     uv_j = gen.vu_j    # soft valence states * r:
     lv_j = gen.vl_j    # their repective l quantum numbers
     Nvi  = 0 
@@ -479,6 +477,10 @@ def constructX(gen):
         
     # initialize X_ii matrix
     X_ii = num.zeros((Nvi, Nvi), num.Float)
+
+    # make gaunt coeff. list
+    lmax = max(gen.l_j[:Njcore])
+    gaunt = make_gaunt(lmax=lmax)
 
     # sum over core states
     for jc in range(Njcore):
@@ -503,15 +505,15 @@ def constructX(gen):
                 n2c[1:] /= r[1:]
             
                 # sum expansion in angular momenta
-                for l in range(min(lv1,lv2) + lc + 1):
+                for l in range(min(lv1, lv2) + lc + 1):
                     # Int density * potential * r^2 * dr:
                     hartree(l, n2c, beta, N, vr)
                     nv = num.dot(n1c, vr)
                     
                     # expansion coefficients
                     A_mm = X_ii[i1:i1 + 2 * lv1 + 1, i2:i2 + 2 * lv2 + 1]
-                    for mc in range(2*lc+1):
-                        for m in range(2*l+1):
+                    for mc in range(2 * lc + 1):
+                        for m in range(2 * l + 1):
                             G1c = gaunt[lv1**2:(lv1 + 1)**2,
                                         lc**2 + mc, l**2 + m]
                             G2c = gaunt[lv2**2:(lv2 + 1)**2,
