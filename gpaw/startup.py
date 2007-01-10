@@ -14,6 +14,7 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import gcd
 import gpaw.mpi as mpi
 from gpaw.utilities.timing import Timer
+from gpaw.utilities.memory import estimate_memory
 from gpaw.setup import create_setup
             
 
@@ -187,42 +188,7 @@ def create_paw_object(out, a0, Ha,
 
     if (dry_run):
         # Estimate the amount of memory needed
-        float_size = num.array([1], num.Float).itemsize()
-        type_size = num.array([1],typecode).itemsize()
-        mem = 0.0
-        mem_wave_functions = nspins * nkpts * nbands * N_c[0] * N_c[1] * N_c[2]
-        mem_wave_functions *= type_size
-        mem += mem_wave_functions
-        mem_density_and_potential = N_c[0] * N_c[1] * N_c[2] * 8 * 2
-        mem_density_and_potential *= float_size
-        mem += mem_density_and_potential
-        mem_Htpsi = nbands * N_c[0] * N_c[1] * N_c[2]
-        mem_Htpsi *= type_size
-        mem += mem_Htpsi
-        mem_nuclei = 0.0
-        for nucleus in nuclei:
-            ni = nucleus.get_number_of_partial_waves()
-            np = ni * (ni + 1) // 2
-            # D_sp and H_sp
-            mem_nuclei += 2 * nspins * np * float_size
-            # P_uni
-            mem_nuclei += nspins * nkpts * nbands * ni * type_size
-            # projectors 
-            box = nucleus.setup.pt_j[0].get_cutoff() / h_c
-            mem_nuclei += ni * box[0] * box[1] * box[2] * type_size
-            # vbar and step
-            box = 8 * nucleus.setup.vbar.get_cutoff() / h_c
-            mem_nuclei += 2 * box[0] * box[1] * box[2] * float_size
-            # ghat and vhat
-            box = 8 * nucleus.setup.ghat_l[0].get_cutoff() / h_c
-            nl = len(nucleus.setup.ghat_l)
-            mem_nuclei += 2 * nl * box[0] * box[1] * box[2] * float_size
-
-        mem += mem_nuclei
-        # In Gigabytes:
-        mem /= 1024**3
-        print >> out, 'Estimated memory consumption: %f7.3 GB' % mem
-        print >> out
+        estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c, out)
         out.flush()
         timer.stop()
         sys.exit()
