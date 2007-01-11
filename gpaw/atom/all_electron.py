@@ -18,6 +18,8 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree
 
+# KLI functional is handled separately at least for now
+from gpaw.kli import KLIFunctional
 # fine-structure constant
 alpha = 1 / 137.036
 
@@ -109,8 +111,13 @@ class AllElectron:
         # Electron density:
         self.n = num.zeros(N, num.Float)
 
-        self.xc = XCRadialGrid(XCFunctional(self.xcname, self.scalarrel),
-                               self.rgd)
+        do_kli = (self.xcname == 'KLI')
+
+        if not do_kli:
+            self.xc = XCRadialGrid(XCFunctional(self.xcname, self.scalarrel),
+                                   self.rgd)
+        else:
+            self.xc = KLIFunctional()
 
         n_j = self.n_j
         l_j = self.l_j
@@ -132,9 +139,16 @@ class AllElectron:
             self.intialize_wave_functions()
             n[:] = self.calculate_density()
         else:
-            print 'Using old density for initial guess.'
-            n[:] = pickle.load(f)
-            n *= Z / (num.dot(n * r**2, dr) * 4 * pi)
+            if not do_kli:
+                print 'Using old density for initial guess.'
+                n[:] = pickle.load(f)
+                n *= Z / (num.dot(n * r**2, dr) * 4 * pi)
+            else:
+                # Do not start from initial guess when doing KLI!
+                # This is because we need wavefunctions as well
+                # on the first iteration.
+                self.intialize_wave_functions()
+                n[:] = self.calculate_density()
 
         bar = '|------------------------------------------------|'
         print bar
@@ -150,10 +164,14 @@ class AllElectron:
             # calculated exchange correlation potential and energy
             vXC[:] = 0.0
 
-            tau = None
-            if self.xc.xcfunc.mgga:
-                tau = self.calculate_kinetic_energy_density()
-            Exc = self.xc.get_energy_and_potential(n, vXC, taua_g=tau )
+            if not do_kli:
+                tau = None
+                if self.xc.xcfunc.mgga:
+                    tau = self.calculate_kinetic_energy_density()
+                Exc = self.xc.get_energy_and_potential(n, vXC, taua_g=tau )
+            else:
+                Exc = self.xc.calculate_1d_kli_potential(r, dr, self.beta, self.N,
+                                                   self.u_j, self.f_j, self.l_j, vXC)
 
             # calculate new total Kohn-Sham effective potential and
             # admix with old version
@@ -218,6 +236,7 @@ class AllElectron:
         print 'Potential: %+13.6f' % Epot
         print '-------------------------'
         print 'Total:     %+13.6f' % (Ekin + Exc + Epot)
+        self.ETotal = Ekin + Exc + Epot
         print
 
         print 'state    eigenvalue         ekin         rmax'
