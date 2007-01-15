@@ -5,35 +5,33 @@ from gpaw.Function1D import Function1D
 from math import sqrt, pi
 
 class KLIFunctional:
-    """KLI functional
-       --------------
+    """KLI functional.
+    
+    Based on article:
 
-       Based on article:
          Phys. Rev. A Vol 45 p.101
          Krieger, Li, Iafrate
          Construction and application of an accurate local spin-polarized
          Kohn-Sham potential with integer discontinuity: Exchange-only theory.
 
-       All the equations are refered with [nn] refering to equation in this
-       article.
+    All the equations are refered with [nn] refering to equation in this
+    article.
 
-       NOTE: This is the first beta version that works(???) only with
-       all-electron mode.
-       There will be also an assertion that has to be disabled in order to
-       get this working, since the charge is not remaining neutral.
+    NOTE: This is the first beta version that works(???) only with
+    all-electron mode.
+    There will be also an assertion that has to be disabled in order to
+    get this working, since the charge is not remaining neutral.
 
------------------------------------------------------------------------------
-       2007/11/1: Added calculate_kli_general, which may later be generalized
-       to calculate 1d, all-electron and maybe even paw kli functionals.
-       Currently it is only used on 1D-kli code.
-
-       The 1D-KLI code is currently working for small atoms with fully
-       occupied subshells. The kli-potential itself is calculated excatly up
-       to the missing gaunt's coefficients (l>2), but it is spherically
-       averaged at the end. It is hard to estimate the effect of this,
-       since the setup generator is spin-symmetric and is using fractional
-       occupations to get spherically averaged density.
------------------------------------------------------------------------------
+    2007/11/1: Added calculate_kli_general, which may later be generalized
+    to calculate 1d, all-electron and maybe even paw kli functionals.
+    Currently it is only used on 1D-kli code.
+    
+    The 1D-KLI code is currently working for small atoms with fully
+    occupied subshells. The kli-potential itself is calculated excatly up
+    to the missing gaunt's coefficients (l>2), but it is spherically
+    averaged at the end. It is hard to estimate the effect of this,
+    since the setup generator is spin-symmetric and is using fractional
+    occupations to get spherically averaged density.
     """
 
     # This initializes the KLI functional
