@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import re
+from optparse import OptionParser
+
+import Numeric as num
+from ASE.IO.xyz import ReadXYZ
+from ASE.Utilities.GeometricTransforms import Translate
+from ASE.IO.Cube import WriteCubeFloat
+from gpaw.io.plt import read_plt
+
+parser = OptionParser(usage='%prog plt structure',
+                      version='%prog 0.1')
+opt, args = parser.parse_args()
+## print opt, args
+
+if len(args) < 2:
+    print 'Missing file names'
+    sys.exit()
+
+def getext(string):
+    p = re.compile("\.")
+    words = p.split(string)
+    ext = words.pop()
+    base = "".join("%s." % w for w in words)
+    return ext, base
+
+pltf, structf = args
+
+print "# <plt2cube> reading plt file:",pltf
+cell, grid, origin = read_plt(pltf)
+## print "cell,shape,origin=", cell,grid.shape, origin
+
+print "# <plt2cube> reading structure file:",structf
+atoms = ReadXYZ(structf)
+Translate(atoms,tuple(-1.*num.array(origin)),'cartesian')
+atoms.SetUnitCell(cell,fix=True)
+
+ext, ofname = getext(pltf)
+ofname += "cube"
+print "# <plt2cube> writing cube file:", ofname
+WriteCubeFloat(atoms,grid,ofname)
+
