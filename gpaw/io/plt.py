@@ -13,14 +13,11 @@ def read_plt(filename):
     # check endian encoding
     byteswap = False
     three, tos = unpack(fmt,f.read(calcsize(fmt)))
-##    print "<read_plt> three=",three
     if three != 3: byteswap = True
 
     fmt='iii'
     if byteswap: fmt='>iii'
-    nx, ny, nz = unpack(fmt,f.read(calcsize(fmt)))
-##    print "<read_plt> nx,ny,nz=",nx,ny,nz
-    
+    nz, ny, nx = unpack(fmt,f.read(calcsize(fmt)))
 
     fmt='ff'
     if byteswap: fmt='>ff'
@@ -38,13 +35,11 @@ def read_plt(filename):
     fmt='f'
     if byteswap: fmt='>f'
     size = nx*ny*nz * calcsize(fmt)
-##    print "<read_plt> nx,ny,nz=",nx,ny,nz
-##    print "<read_plt> size=",size
     arr = num.fromstring(f.read(size),num.Float32)
     if byteswap: arr = arr.byteswapped()
     f.close()
 
-    return cell, num.transpose(num.resize(arr,(nx,ny,nz))), (x0,y0,z0)
+    return cell, num.transpose(num.resize(arr,(nz,ny,nx))), (x0,y0,z0)
 
 def write_plt(cell, grid, filename,
               origin=(0.0,0.0,0.0), # ASE uses (0,0,0) as origin
@@ -54,7 +49,7 @@ def write_plt(cell, grid, filename,
     grid = the grid to write
     type = Type of surface (integer)
     
-    cell is assume to be in Angstroms and the grid in atomc units (Bohr)"""
+    cell is assumed to be in Angstroms and the grid in atomc units (Bohr)"""
     
     # Check that the cell is orthorhombic
     check_unit_cell(cell)
@@ -68,7 +63,7 @@ def write_plt(cell, grid, filename,
 
     f = open(filename, 'w')
     f.write(pack('ii', 3, type))
-    f.write(pack('iii', nx, ny, nz))
+    f.write(pack('iii', nz, ny, nx))
 
     x0, y0, z0 = origin
     xe = x0 +(nx-1)*dx
@@ -83,8 +78,8 @@ def write_plt(cell, grid, filename,
         fgrid = num.transpose(grid)
     else:
         fgrid = num.array(num.transpose(grid).tolist(),'f')
-#    num.asarray does not work here !
-#    fgrid = num.asarray(num.transpose(grid), num.Float32)
+        #    num.asarray does not work here !
+        #    fgrid = num.asarray(num.transpose(grid), num.Float32)
     f.write(fgrid.tostring())
 
     f.close()
