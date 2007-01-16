@@ -145,7 +145,7 @@ def get_system_config(define_macros, undef_macros,
         libraries += ['acml', 'g2c']
         acml = glob('/opt/acml*/gnu64/lib')[-1]
         library_dirs += [acml]
-        extra_link_args += ['-Wl,-rpath=' + acml]
+        #extra_link_args += ['-Wl,-rpath=' + acml]
         msg += ['* Using ACML library']
 
 
@@ -169,7 +169,7 @@ def get_system_config(define_macros, undef_macros,
                           'mkl_ia32', 'guide', 'pthread', 'mkl']#, 'mkl_def']
             library_dirs += libs
             msg +=  ['* Using MKL library: %s' % library_dirs[-1]]
-            extra_link_args += ['-Wl,-rpath=' + library_dirs[-1]]
+            #extra_link_args += ['-Wl,-rpath=' + library_dirs[-1]]
         else:
             atlas = False
             for dir in ['/usr/lib', 'usr/local/lib']:
