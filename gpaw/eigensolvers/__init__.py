@@ -12,15 +12,25 @@ from gpaw.utilities.complex import cc, real
 from gpaw.utilities import unpack
 
 class Eigensolver:
-    def __init__(self, timer, kpt_comm, gd, kin, typecode):
+    def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
         self.timer = timer
         self.kpt_comm = kpt_comm
         self.typecode = typecode
         self.gd = gd
         self.comm = gd.comm
+        self.nbands = nbands
 
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(gd, kin, typecode)
+
+        # Soft part of the Hamiltonian times psit
+        self.Htpsit_nG = self.gd.empty(nbands, typecode)
+
+        # Work array for e.g. subspace rotations
+        self.work = self.gd.empty(nbands, typecode)
+
+        # Hamiltonian matrix
+        self.H_nn = num.empty((nbands, nbands), self.typecode)
 
     def set_convergence_criteria(self, convergeall, tolerance, nvalence):
         self.convergeall = convergeall
@@ -53,7 +63,7 @@ class Eigensolver:
         """Implemented in subclasses."""
         return 0.0
     
-    def diagonalize(self, hamiltonian, kpt, Htpsit_nG):
+    def diagonalize(self, hamiltonian, kpt):
         """Diagonalize the Hamiltonian in the subspace of kpt.psit_nG
 
         ``Htpsit_nG`` is working array of same size as psit_nG which contains
@@ -72,10 +82,13 @@ class Eigensolver:
            
         self.timer.start('Subspace diag.')
 
-        H_nn = num.empty((kpt.nbands, kpt.nbands), self.typecode)
-
+        if self.nbands != kpt.nbands:
+            raise RuntimeError('Bands: %d != %d' % (self.nbands, kpt.nbands))
+        
+        Htpsit_nG = self.Htpsit_nG
         psit_nG = kpt.psit_nG
         eps_n = kpt.eps_n
+        H_nn = self.H_nn
 
         hamiltonian.kin.apply(psit_nG, Htpsit_nG, kpt.phase_cd)
             
@@ -105,18 +118,17 @@ class Eigensolver:
         self.comm.broadcast(eps_n, kpt.root)
 
         # Rotate psit_nG:
-        # We should block this so that we can use a smaller temp !!!!!
-        temp = num.array(psit_nG)
-        gemm(1.0, temp, H_nn, 0.0, psit_nG)
+        gemm(1.0, psit_nG, H_nn, 0.0, self.work)
         
         # Rotate Htpsit_nG:
-        temp[:] = Htpsit_nG
-        gemm(1.0, temp, H_nn, 0.0, Htpsit_nG)
+        gemm(1.0, Htpsit_nG, H_nn, 0.0, psit_nG)
+
+        #Switch the references
+        kpt.psit_nG, self.Htpsit_nG, self.work = self.work, psit_nG, Htpsit_nG
         
-        # Rotate P_ani:
+        # Rotate P_uni:
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
-            temp_ni = P_ni.copy()
-            gemm(1.0, temp_ni, H_nn, 0.0, P_ni)
+            gemm(1.0, P_ni.copy(), H_nn, 0.0, P_ni)
 
         self.timer.stop()

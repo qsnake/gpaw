@@ -27,22 +27,18 @@ class RMM_DIIS(Eigensolver):
 
     def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
 
-        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode)
+        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode, nbands)
 
-        # Allocate work arrays
-        self.work1 = self.gd.empty(nbands, typecode) #Hpsi, res
-        self.work2 = self.gd.empty(typecode=typecode) #dR
-        
         self.S_nn = num.empty((nbands, nbands), typecode)
         self.S_nn[:] = 0.0  # rk fails the first time without this!
 
     def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a single RMM-DIIS iteration for the kpoint"""
 
-        self.diagonalize(hamiltonian, kpt, self.work1)
+        self.diagonalize(hamiltonian, kpt)
 
         self.timer.start('Residuals')
-        R_nG = self.work1
+        R_nG = self.Htpsit_nG
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
@@ -53,7 +49,7 @@ class RMM_DIIS(Eigensolver):
 
         self.timer.start('RMM-DIIS')
         vt_G = hamiltonian.vt_sG[kpt.s]
-        dR_G = self.work2
+        dR_G = self.work[0]
         error = 0.0
         for n in range(kpt.nbands):
             R_G = R_nG[n]
@@ -125,8 +121,8 @@ class RMM_DIIS(Eigensolver):
 
         self.comm.broadcast(S_nn, kpt.root)
         
-        gemm(1.0, kpt.psit_nG, S_nn, 0.0, self.work1)
-        kpt.psit_nG, self.work1 = self.work1, kpt.psit_nG  # swap
+        gemm(1.0, kpt.psit_nG, S_nn, 0.0, self.work)
+        kpt.psit_nG, self.work = self.work, kpt.psit_nG  # swap
 
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]

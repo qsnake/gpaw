@@ -17,8 +17,10 @@ from gpaw import output
 from gpaw import debug, sigusr1
 from gpaw import ConvergenceError
 from gpaw.density import Density
+from gpaw.eigensolvers import Eigensolver
 from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 from gpaw.eigensolvers.cg import CG
+from gpaw.eigensolvers.davidson import Davidson
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.kpoint import KPoint
@@ -408,7 +410,9 @@ class Paw:
         self.Ekin0, self.Epot, self.Ebar, self.Exc = \
                    self.hamiltonian.update(self.density)
         
-        Htpsit_nG = self.gd.empty(nao, self.typecode)
+        eig = Eigensolver(self.timer,self.kpt_comm,
+                       self.gd, self.hamiltonian.kin,
+                       self.typecode, nao)
 
         for kpt in self.kpt_u:
             kpt.create_atomic_orbitals(nao, self.nuclei)
@@ -418,7 +422,7 @@ class Paw:
                 nucleus.calculate_projections(kpt)
             kpt.orthonormalize(self.my_nuclei)
 
-            self.eigensolver.diagonalize(self.hamiltonian, kpt, Htpsit_nG)
+            eig.diagonalize(self.hamiltonian, kpt)
 
             kpt.adjust_number_of_bands(self.nbands)
 
@@ -718,23 +722,6 @@ class Paw:
 
     def load_wave_functions(self, pos_ac):
         self.set_positions(pos_ac)
-
-        if isinstance(self.eigensolver, tuple):
-            eigensolver, convergeall, tolerance, nvalence = self.eigensolver
-            if eigensolver == 'rmm-diis':
-                self.eigensolver = RMM_DIIS(self.timer,
-                                            self.kpt_comm,
-                                            self.gd, self.hamiltonian.kin,
-                                            self.typecode, self.nbands)
-            elif eigensolver == 'cg':
-                self.eigensolver = CG(self.timer, self.kpt_comm, 
-                                      self.gd, self.hamiltonian.kin,
-                                      self.typecode, self.nbands)
-            else:
-                raise NotImplementedError('Eigensolver %s' % eigensolver)
-
-            self.eigensolver.set_convergence_criteria(convergeall, tolerance,
-                                                      nvalence)
             
         if not self.wave_functions_initialized: 
             # Initialize wave functions and perhaps also the density
@@ -748,9 +735,8 @@ class Paw:
                 self.density.initialize()
                 self.density_initialized = True
                 
-            if not self.wave_functions_initialized:
-                self.initialize_wave_functions()
-                self.wave_functions_initialized = True
+            self.initialize_wave_functions()
+            self.wave_functions_initialized = True
                 
             self.converged = False
 
@@ -770,4 +756,25 @@ class Paw:
             for kpt in self.kpt_u:
                 kpt.psit_nG = kpt.psit_nG[:]
                 #kpt.Htpsit_nG = kpt.gd.empty(self.nbands, self.typecode)  # XXX
+
+        if isinstance(self.eigensolver, tuple):
+            eigensolver, convergeall, tolerance, nvalence = self.eigensolver
+            if eigensolver == 'rmm-diis':
+                self.eigensolver = RMM_DIIS(self.timer,
+                                            self.kpt_comm,
+                                            self.gd, self.hamiltonian.kin,
+                                            self.typecode, self.nbands)
+            elif eigensolver == 'cg':
+                self.eigensolver = CG(self.timer, self.kpt_comm, 
+                                      self.gd, self.hamiltonian.kin,
+                                      self.typecode, self.nbands)
+            elif eigensolver == 'dav':
+                self.eigensolver = Davidson(self.timer, self.kpt_comm, 
+                                      self.gd, self.hamiltonian.kin,
+                                      self.typecode, self.nbands)
+            else:
+                raise NotImplementedError('Eigensolver %s' % eigensolver)
+
+            self.eigensolver.set_convergence_criteria(convergeall, tolerance,
+                                                      nvalence)
 

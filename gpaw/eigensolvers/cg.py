@@ -29,29 +29,26 @@ class CG(Eigensolver):
 
     def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
 
-        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode)
+        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode, nbands)
 
-        # Allocate work arrays
-        self.work1 = self.gd.new_array(nbands, typecode) #Htpsit_nG
-        self.work2 = self.gd.new_array(nbands, typecode) #Res, Htphi_G
-        self.work3 = num.zeros(gd.n_c, typecode) #phi
-        self.work4 = num.zeros(gd.n_c, typecode) #phi_old_G
-        
-        self.S_nn = num.zeros((nbands, nbands), typecode)
+        # Allocate arrays
+        self.phi_G = gd.empty(typecode=typecode)
+        self.phi_old_G = gd.empty(typecode=typecode)
+
         # self.f = open('CG_debug','w')
 
     def iterate_one_k_point(self, hamiltonian, kpt, niter=4):      
         """Do a conjugate gradient iterations for the kpoint"""
-        
-        Htpsit_nG = self.work1
-        R_nG = self.work2
-        Htphi_G = self.work2[0]
-        phi_G = self.work3
-        phi_old_G = self.work4
+    
+        phi_G = self.phi_G
+        phi_old_G = self.phi_old_G
 
-        self.diagonalize(hamiltonian, kpt, Htpsit_nG)
+        self.diagonalize(hamiltonian, kpt)
             
-        R_nG[:] = Htpsit_nG
+        R_nG = self.work
+        Htphi_G = self.work[0]
+
+        R_nG[:] = self.Htpsit_nG
         self.timer.start('Residuals')        
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
@@ -67,7 +64,7 @@ class CG(Eigensolver):
         total_error = 0.0
         for n in range(kpt.nbands):
             R_G = R_nG[n]
-            Htpsit_G = Htpsit_nG[n]
+            Htpsit_G = self.Htpsit_nG[n]
             gamma_old = 1.0
             phi_old_G[:] = 0.0
             error = real(num.vdot(R_G, R_G))

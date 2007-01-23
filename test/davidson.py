@@ -14,6 +14,6 @@ calc = Calculator(h=h,
                   tolerance=1e-10)
 bulk.SetCalculator(calc)
 e0 = bulk.GetPotentialEnergy()
-calc.Set(eigensolver="cg")
+calc.Set(eigensolver="dav")
 e1 = bulk.GetPotentialEnergy()
-equal(e0, e1, 1.4e-5)
+equal(e0, e1, 2.0e-5)
