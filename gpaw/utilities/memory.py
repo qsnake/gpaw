@@ -146,11 +146,12 @@ def estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c, out):
     nao_tot = 0
     mem_temp = 0
     for nucleus in nuclei:
-        # phit (boxes can be cut, so this is probably largely overestimated)
         box = 2 * nucleus.setup.phit_j[0].get_cutoff() / h_c
+        box_size = box[0] * box[1] * box[2]
+        box_size = min(grid_size, box_size)
         nao = nucleus.setup.niAO
         nao_tot += nao
-        mem_temp += 2 * nao * box[0] * box[1] * box[2]
+        mem_temp += 2 * nao * box_size
     print >> out, "Atomic orbitals: %.3f" % (mem_temp * type_size/scale)
 
     mem_temp += (nao_tot ) * grid_size
