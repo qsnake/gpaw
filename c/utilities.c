@@ -165,3 +165,84 @@ PyObject* hartree(PyObject *self, PyObject *args)
     }
   Py_RETURN_NONE;
 }
+
+PyObject* localize(PyObject *self, PyObject *args)
+{
+  PyArrayObject* Z_nnc;
+  PyArrayObject* U_nn;
+  if (!PyArg_ParseTuple(args, "OO", &Z_nnc, &U_nn)) 
+    return NULL;
+
+#if defined(NO_C99_COMPLEX)	
+  Py_RETURN_NONE;
+#else
+
+  int n = U_nn->dimensions[0];
+  double complex (*Z)[n][3] = (double complex (*)[n][3])COMPLEXP(Z_nnc);
+  double (*U)[n] = (double (*)[n])DOUBLEP(U_nn);
+
+  double value = 0.0;
+  for (int a = 0; a < n; a++)
+    {
+      for (int b = a + 1; b < n; b++)
+	{
+	  double complex* Zaa = Z[a][a];
+	  double complex* Zab = Z[a][b];
+	  double complex* Zbb = Z[b][b];
+	  double x = 0.0;
+	  double y = 0.0;
+	  for (int c = 0; c < 3; c++)
+	    {
+	      x += (0.25 * creal(Zbb[c] * conj(Zbb[c])) +
+		    0.25 * creal(Zaa[c] * conj(Zaa[c])) -
+		    0.5 * creal(Zaa[c] * conj(Zbb[c])) -
+		    creal(Zab[c] * conj(Zab[c])));
+	      y += creal((Zaa[c] - Zbb[c]) * conj(Zab[c]));
+	    }
+	  double t = 0.25 * atan2(y, x);
+	  double C = cos(t);
+	  double S = sin(t);
+	  for (int i = 0; i < a; i++)
+	    for (int c = 0; c < 3; c++)
+	      {
+		double complex Ziac = Z[i][a][c];
+		Z[i][a][c] = C * Ziac + S * Z[i][b][c];
+		Z[i][b][c] = C * Z[i][b][c] - S * Ziac;
+	      }
+	  for (int c = 0; c < 3; c++)
+	    {
+	      double complex Zaac = Zaa[c];
+	      double complex Zabc = Zab[c];
+	      double complex Zbbc = Zbb[c];
+	      Zaa[c] = C * C * Zaac + 2 * C * S * Zabc + S * S * Zbbc;
+	      Zbb[c] = C * C * Zbbc - 2 * C * S * Zabc + S * S * Zaac;
+	      Zab[c] = S * C * (Zbbc - Zaac) + (C * C - S * S) * Zabc;
+	    }
+	  for (int i = a + 1; i < b; i++)
+	    for (int c = 0; c < 3; c++)
+	      {
+		double complex Zaic = Z[a][i][c];
+		Z[a][i][c] = C * Zaic + S * Z[i][b][c];
+		Z[i][b][c] = C * Z[i][b][c] - S * Zaic;
+	      }
+	  for (int i = b + 1; i < n; i++)
+	    for (int c = 0; c < 3; c++)
+	      {
+		double complex Zaic = Z[a][i][c];
+		Z[a][i][c] = C * Zaic + S * Z[b][i][c];
+		Z[b][i][c] = C * Z[b][i][c] - S * Zaic;
+	      }
+	  for (int i = 0; i < n; i++)
+	    {
+	      double Uia = U[i][a];
+	      U[i][a] = C * Uia + S * U[i][b];
+	      U[i][b] = C * U[i][b] - S * Uia;
+	    }
+	}
+      double complex* Zaa = Z[a][a];
+      for (int c = 0; c < 3; c++)
+	value += creal(Zaa[c] * conj(Zaa[c]));
+    }
+  return Py_BuildValue("d", value);
+#endif
+}

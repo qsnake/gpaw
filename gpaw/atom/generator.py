@@ -18,7 +18,7 @@ from gpaw.atom.filter import Filter
 
 
 parameters = {
-    #     (  core,  cutoff,  extra projectors)  
+    #     (  core,  cutoff(s),   extra projectors)  
     'H' : ('',        0.9),
     'He': ('',        1.5),
     'Li': ('[He]',    2.1),

@@ -290,12 +290,10 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
 {
   int type;
   int gga;
-  int rel;
   double s0 = 1.0;
   int i = -1;
   PyArrayObject* padearray = 0;
-  if (!PyArg_ParseTuple(args, "iii|diO", &type, &gga, &rel, &s0, &i,
-			&padearray))
+  if (!PyArg_ParseTuple(args, "ii|diO", &type, &gga, &s0, &i, &padearray))
     return NULL;
 
   XCFunctionalObject *self = PyObject_NEW(XCFunctionalObject,
@@ -304,7 +302,6 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
     return NULL;
 
   self->par.gga = gga;
-  self->par.rel = rel;
   self->par.hybrid = 0.0;
 
   self->correlation = pbe_correlation;

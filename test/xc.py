@@ -1,6 +1,4 @@
 from gpaw.xc_functional import XCFunctional
-from gpaw.utilities import equal
-
 
 for name in ['PBE', 'LDA', 'RPBE', 'revPBE', 'LDAc', 'LDAx', 'RPBEx', 'revPBEx',
              'PW91']:

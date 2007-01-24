@@ -20,4 +20,4 @@ H2 = ListOfAtoms([Atom('H', (c - s, c - s, c - s)),
 H2.SetCalculator(Calculator(h=0.1, setups='ae'))
 e2 = H2.GetPotentialEnergy()
 print e1, e2, 2 * e1 - e2
-assert abs(2 * e1 - e2 - 4.55344347714) < 1e-5
+assert abs(2 * e1 - e2 - 4.55354160381) < 1e-5

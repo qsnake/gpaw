@@ -245,15 +245,9 @@ static PyTypeObject MGGAFunctionalType = {
 PyObject * NewMGGAFunctionalObject(PyObject *obj, PyObject *args)
 {
   int type;
-  int gga;
-  int rel;
-  double s0 = 1.0;
-  int i = -1;
-  PyArrayObject* padearray = 0;
-  if (!PyArg_ParseTuple(args, "i|diO", &type, &gga, &rel, &s0, &i,
-			&padearray))
+  if (!PyArg_ParseTuple(args, "i", &type))
     return NULL;
-  printf("<NewMGGAFunctionalObject> type=%d\n",type);
+  printf("<NewMGGAFunctionalObject> type=%d\n", type);
 
   MGGAFunctionalObject *self = PyObject_NEW(MGGAFunctionalObject,
 					    &MGGAFunctionalType);

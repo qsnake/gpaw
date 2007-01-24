@@ -19,6 +19,7 @@ PyObject* errorfunction(PyObject *self, PyObject *args);
 PyObject* unpack(PyObject *self, PyObject *args);
 PyObject* unpack_complex(PyObject *self, PyObject *args);
 PyObject* hartree(PyObject *self, PyObject *args);
+PyObject* localize(PyObject *self, PyObject *args);
 PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* elf(PyObject *self, PyObject *args);
@@ -42,6 +43,7 @@ static PyMethodDef functions[] = {
   {"unpack",       unpack,           METH_VARARGS, 0},
   {"unpack_complex",       unpack_complex,           METH_VARARGS, 0},
   {"hartree",        hartree,        METH_VARARGS, 0},
+  {"localize",       localize,        METH_VARARGS, 0},
   {"XCFunctional",    NewXCFunctionalObject,    METH_VARARGS, 0},
   {"MGGAFunctional",    NewMGGAFunctionalObject,    METH_VARARGS, 0},
   {"elf",    elf,    METH_VARARGS, 0},

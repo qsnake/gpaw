@@ -13,11 +13,10 @@ from gpaw.kli import KLIFunctional
 import _gpaw
 
 class XCFunctional:
-    def __init__(self, xcname, scalarrel=True, parameters=None):
+    def __init__(self, xcname, parameters=None):
         self.xcname = xcname
         self.hybrid = 0.0
         self.parameters = parameters
-        self.scalarrel = scalarrel
         self.mgga = False
         self.gga = False 
         self.orbital_dependent = False
@@ -67,10 +66,10 @@ class XCFunctional:
         if code == 3:
             i = int(xcname[3])
             s0 = float(xcname[5:])
-            self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel, s0, i)
+            self.xc = _gpaw.XCFunctional(code, self.gga, s0, i)
         elif code == 5:
-            self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel,
-                                            0.0, 0, num.array(parameters))
+            self.xc = _gpaw.XCFunctional(code, self.gga,
+                                         0.0, 0, num.array(parameters))
         elif code == 6:
             self.xc = XXFunctional()
         elif code == 9:
@@ -78,14 +77,14 @@ class XCFunctional:
         elif code == 15:
             self.xc = KLIFunctional() 
         else:
-            self.xc = _gpaw.XCFunctional(code, self.gga, scalarrel)
+            self.xc = _gpaw.XCFunctional(code, self.gga)
 
     def __getstate__(self):
-        return self.xcname, self.scalarrel, self.parameters
+        return self.xcname, self.parameters
 
     def __setstate__(self, state):
-        xcname, scalarrel, parameters = state
-        self.__init__(xcname, scalarrel, parameters)
+        xcname, parameters = state
+        self.__init__(xcname, parameters)
 
     def get_extra_kinetic_energy(self):
         if (self.orbital_dependent):

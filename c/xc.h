@@ -30,7 +30,6 @@ typedef int bool;
 typedef struct 
 {
   bool gga;
-  bool rel;
   double kappa;
   double hybrid;
   int i;

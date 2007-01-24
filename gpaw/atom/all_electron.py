@@ -114,8 +114,7 @@ class AllElectron:
         do_kli = (self.xcname == 'KLI')
 
         if not do_kli:
-            self.xc = XCRadialGrid(XCFunctional(self.xcname, self.scalarrel),
-                                   self.rgd)
+            self.xc = XCRadialGrid(XCFunctional(self.xcname), self.rgd)
         else:
             self.xc = KLIFunctional()
 
