@@ -10,6 +10,12 @@ double pbe_exchange(const xc_parameters* par,
 double pbe_correlation(double n, double rs, double zeta, double a2, 
 		       bool gga, bool spinpol,
 		       double* dedrs, double* dedzeta, double* deda2);
+double pw91_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2);
+double pw91_correlation(double n, double rs, double zeta, double a2, 
+			bool gga, bool spinpol,
+			double* dedrs, double* dedzeta, double* deda2);
 double rpbe_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2);
@@ -236,6 +242,23 @@ XCFunctional_correlation(XCFunctionalObject *self, PyObject *args)
   return Py_BuildValue("dddd", ec, dedrs, dedzeta, deda2); 
 }
 
+static PyObject* 
+XCFunctional_correlation0(XCFunctionalObject *self, PyObject *args)
+{
+  double rs;
+  double a2;
+  if (!PyArg_ParseTuple(args, "dd", &rs, &a2)) 
+    return NULL;
+
+  double dedrs;
+  double dedzeta;
+  double deda2;
+  double n = 1.0 / (C0 * rs * rs * rs);
+  double ec = self->correlation(n, rs, 0.0, a2, self->par.gga, 0,
+				&dedrs, &dedzeta, &deda2);
+  return Py_BuildValue("dddd", ec, dedrs, dedzeta, deda2); 
+}
+
 static PyMethodDef XCFunctional_Methods[] = {
     {"calculate_spinpaired", 
      (PyCFunction)XCFunctional_CalculateSpinPaired, METH_VARARGS, 0},
@@ -243,6 +266,7 @@ static PyMethodDef XCFunctional_Methods[] = {
      (PyCFunction)XCFunctional_CalculateSpinPolarized, METH_VARARGS, 0},
     {"exchange", (PyCFunction)XCFunctional_exchange, METH_VARARGS, 0},
     {"correlation", (PyCFunction)XCFunctional_correlation, METH_VARARGS, 0},
+    {"correlation0", (PyCFunction)XCFunctional_correlation0, METH_VARARGS, 0},
     {NULL, NULL, 0, NULL}
 };
 
@@ -328,6 +352,12 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       // RPBEx
       self->exchange = rpbe_exchange;
       self->correlation = zero_correlation;
+    }
+  else if (type == 14)
+    {
+      // PW91
+      self->exchange = pw91_exchange;
+      self->correlation = pw91_correlation;
     }
   else if (type == 11)
     {
