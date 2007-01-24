@@ -46,6 +46,7 @@ for name in ['PBE', 'LDA', 'RPBE', 'revPBE', 'LDAc', 'LDAx', 'RPBEx', 'revPBEx',
             de = abs(e - E[0])
             if de > error:
                 error = de
+    assert error < 3.5e-9
     print name, error
 
 
