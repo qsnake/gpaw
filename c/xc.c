@@ -30,6 +30,8 @@ double zero_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2)
 {
+  *dedrs = 0.0;
+  *deda2 = 0.0;
   return 0.0;
 }
 
@@ -37,6 +39,9 @@ double zero_correlation(double n, double rs, double zeta, double a2,
 			bool gga, bool spinpol,
 			double* dedrs, double* dedzeta, double* deda2)
 {
+  *dedrs = 0.0;
+  *dedzeta = 0.0;
+  *deda2 = 0.0;
   return 0.0;
 }
 
