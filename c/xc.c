@@ -31,7 +31,8 @@ double zero_exchange(const xc_parameters* par,
 		     double* dedrs, double* deda2)
 {
   *dedrs = 0.0;
-  *deda2 = 0.0;
+  if (par->gga)
+    *deda2 = 0.0;
   return 0.0;
 }
 
@@ -40,8 +41,10 @@ double zero_correlation(double n, double rs, double zeta, double a2,
 			double* dedrs, double* dedzeta, double* deda2)
 {
   *dedrs = 0.0;
-  *dedzeta = 0.0;
-  *deda2 = 0.0;
+  if (spinpol)
+    *dedzeta = 0.0;
+  if (gga)
+    *deda2 = 0.0;
   return 0.0;
 }
 
@@ -226,6 +229,8 @@ XCFunctional_exchange(XCFunctionalObject *self, PyObject *args)
   double deda2;
   double n = 1.0 / (C0 * rs * rs * rs);
   double ex = self->exchange(&self->par, n, rs, a2, &dedrs, &deda2);
+  if (!(self->par.gga))
+    deda2 = 0.0;
   return Py_BuildValue("ddd", ex, dedrs, deda2); 
 }
 
@@ -244,6 +249,8 @@ XCFunctional_correlation(XCFunctionalObject *self, PyObject *args)
   double n = 1.0 / (C0 * rs * rs * rs);
   double ec = self->correlation(n, rs, zeta, a2, self->par.gga, 1,
 				&dedrs, &dedzeta, &deda2);
+  if (!(self->par.gga))
+    deda2 = 0.0;
   return Py_BuildValue("dddd", ec, dedrs, dedzeta, deda2); 
 }
 
@@ -261,7 +268,9 @@ XCFunctional_correlation0(XCFunctionalObject *self, PyObject *args)
   double n = 1.0 / (C0 * rs * rs * rs);
   double ec = self->correlation(n, rs, 0.0, a2, self->par.gga, 0,
 				&dedrs, &dedzeta, &deda2);
-  return Py_BuildValue("dddd", ec, dedrs, dedzeta, deda2); 
+  if (!(self->par.gga))
+    deda2 = 0.0;
+  return Py_BuildValue("dddd", ec, dedrs, 0.0, deda2); 
 }
 
 static PyMethodDef XCFunctional_Methods[] = {
