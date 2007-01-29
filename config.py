@@ -142,11 +142,13 @@ def get_system_config(define_macros, undef_macros,
     
         extra_compile_args += ['-Wall', '-std=c99']
 
-        libraries += ['acml', 'g2c']
-        acml = glob('/opt/acml*/gnu64/lib')[-1]
-        library_dirs += [acml]
-        #extra_link_args += ['-Wl,-rpath=' + acml]
-        msg += ['* Using ACML library']
+        # Look for ACML libraries:
+        acml = glob('/opt/acml*/gnu64/lib')
+        if len(acml) > 0:
+            libraries += ['acml', 'g2c']
+            library_dirs += [acml[-1]]
+            #extra_link_args += ['-Wl,-rpath=' + acml]
+            msg += ['* Using ACML library']
 
 
     elif machine == 'i686':
