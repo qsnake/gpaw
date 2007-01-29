@@ -127,50 +127,6 @@ def elementwise_apply(array, function, copy=True):
 
     return result
 
-class Translate:
-    """Class used to translate wave functions / densities."""
-    def __init__(self, sgd, lgd, type=num.Complex):
-        self.Ns = sgd.N_c
-        self.Nl = lgd.N_c
-        self.Nr = float(self.Nl / self.Ns)
-
-        # ensure that the large grid-descriptor is an integer number of times
-        # bigger than the small grid-descriptor
-        assert num.alltrue(self.Nr == num.around(self.Nr))
-        self.tmp = num.zeros(self.Nl, type)
-
-    def translate(self, w, R):
-        """Translate input array 'w' defined in the large grid-descriptor 'lgd'
-           distance 'R' measured in units of the small grid-descriptor 'sgd'.
-        """
-        R = num.array(R)
-        tmp = self.tmp
-
-        # do nothing, if array is not moved
-        if num.alltrue(R == 0): return
-        
-        # ensure that R is within allowed range and of correct type
-        assert num.alltrue(R > 0 and R < self.Nr)
-
-        # determine the size of the blocks to be moved
-        B = R * self.Ns
-        A = self.Nl - B
-
-        # translate 1. axis
-        tmp[:] = w
-        w[:A[0]] = tmp[B[0]:]
-        w[A[0]:] = tmp[:B[0]]
-        
-        # translate 2. axis
-        tmp[:] = w
-        w[:, :A[1]] = tmp[:, B[1]:]
-        w[:, A[1]:] = tmp[:, :B[1]]
-        
-        # translate 3. axis
-        tmp[:] = w
-        w[:, :, :A[2]] = tmp[:, :, B[2]:]
-        w[:, :, A[2]:] = tmp[:, :, :B[2]]
-
 def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     """Convert planewave energy cutoff to a real-space gridspacing
        using the conversion formula::
