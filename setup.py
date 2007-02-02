@@ -108,12 +108,18 @@ elif not custom_interpreter:
 if 'clean' in sys.argv:
     custom_interpreter = False
 
-# distutils clean does not remove the _gpaw.so library so do it here:
+# distutils clean does not remove the _gpaw.so library and gpaw-python
+# binary so do it here:
 plat = get_platform() + '-' + sys.version[0:3]
 gpawso = 'build/lib.%s/' % plat + '_gpaw.so'
-if "clean" in sys.argv and os.path.isfile(gpawso):
-    print 'removing ', gpawso
-    os.remove(gpawso)
+gpawbin = 'build/bin.%s/' % plat + 'gpaw-python'
+if "clean" in sys.argv:
+    if os.path.isfile(gpawso):
+        print 'removing ', gpawso
+        os.remove(gpawso)
+    if os.path.isfile(gpawbin):
+        print 'removing ', gpawbin
+        os.remove(gpawbin)
 
 include_dirs += [os.environ['HOME'] + '/include/python']
 
@@ -133,8 +139,6 @@ extension = Extension('_gpaw',
                       extra_objects=extra_objects)
 
 scripts = glob(join('tools', 'gpa*[a-z]')) 
-if custom_interpreter:
-    scripts.append('build/bin.%s/' % plat + 'gpaw-python')
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,
@@ -156,8 +160,24 @@ setup(name = 'gpaw',
 
 
 if custom_interpreter:
+    scripts.append('build/bin.%s/' % plat + 'gpaw-python')
     msg += build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                       extra_link_args, extra_compile_args,mpicompiler)
+    # install also gpaw-python if necessary
+    setup(name = 'gpaw',
+          version=version,
+          description='A grid-based real-space PAW method DFT code',
+          author='J. J. Mortensen',
+          author_email='jensj@fysik.dtu.dk',
+          url='http://www.fysik.dtu.dk',
+          license='GPL',
+          platforms=['unix'],
+          packages=packages,
+          ext_modules=[extension],
+          scripts=scripts,
+          long_description=long_description,
+          )
+
 
 if ('PARALLEL', '1') not in define_macros:
     msg += ['* Only a serial version of gpaw was build!']
