@@ -479,10 +479,7 @@ def constructX(gen):
     X_ii = num.zeros((Nvi, Nvi), num.Float)
 
     # make gaunt coeff. list
-    if Njcore == 0:
-        lmax = 0
-    else:
-        lmax = max(gen.l_j[:Njcore])
+    lmax = max(gen.l_j[:Njcore] + gen.vl_j)
     gaunt = make_gaunt(lmax=lmax)
 
     # sum over core states
@@ -521,9 +518,7 @@ def constructX(gen):
                                         lc**2 + mc, l**2 + m]
                             G2c = gaunt[lv2**2:(lv2 + 1)**2,
                                         lc**2 + mc, l**2 + m]
-                            print G1c.shape, G2c.shape, A_mm.shape
                             A_mm += nv * num.outerproduct(G1c, G2c)
-                            
                 i2 += 2 * lv2 + 1
             i1 += 2 * lv1 + 1
 
