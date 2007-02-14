@@ -4,11 +4,105 @@ import _gpaw
 from gpaw import debug
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.excitation import Excitation,ExcitationList,KSSingles
+from gpaw.utilities import packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.xc_functional import XC3DGrid, XCFunctional
 
 """This module defines a linear response TDDFT-class."""
 
+class LrTDDFT(ExcitationList):
+    """Linear Response TDDFT excitation class
+    
+    Input parameters:
+
+    calculator:
+      the calculator object after a ground state calculation
+      
+    nspins:
+      number of spins considered in the calculation
+      Note: Valid only for unpolarised ground state calculation
+
+    eps:
+      Minimal occupation difference for a transition (default 0.001)
+
+    istart:
+      First occupied state to consider
+    jend:
+      Last unoccupied state to consider
+      
+    xc:
+      Exchange-Correlation approximation in the Kernel
+    derivativeLevel:
+      0: use Exc, 1: use vxc, 2: use fxc  if available
+    """
+    def __init__(self,
+                 calculator=None,
+                 nspins=None,
+                 eps=0.001,
+                 istart=0,
+                 jend=None,
+                 xc=None,
+                 derivativeLevel=None,
+                 numscale=0.001):
+        
+        ExcitationList.__init__(self,calculator)
+
+        self.calculator=None
+        self.nspins=None
+        self.eps=None
+        self.istart=None
+        self.jend=None
+        self.xc=None
+        self.derivativeLevel=None
+        self.numscale=numscale
+        self.update(calculator,nspins,eps,istart,jend,
+                    xc,derivativeLevel,numscale)
+        return self
+
+    def update(self,
+               calculator=None,
+               nspins=None,
+               eps=0.001,
+               istart=0,
+               jend=None,
+               xc=None,
+               derivativeLevel=None,
+               numscale=0.001):
+
+        changed=False
+        if self.calculator!=calculator or \
+           self.nspins != nspins or \
+           self.eps != eps or \
+           self.istart != istart or \
+           self.jend != jend :
+            changed=True
+
+        if not changed: return
+
+        self.calculator = calculator
+        self.nspins = nspins
+        self.eps = eps
+        self.istart = istart
+        self.jend = jend
+        self.xc = xc
+        self.derivativeLevel=derivativeLevel
+        self.numscale=numscale
+        self.kss = KSSingles(calculator=calculator,
+                             nspins=nspins,
+                             eps=eps,
+                             istart=istart,
+                             jend=jend)
+        self.Om = OmegaMatrix(self.calculator,self.kss,
+                              self.xc,self.derivativeLevel,self.numscale)
+        self.Om.diagonalize()
+        print "diagonal Om=",self.Om
+
+        for j in range(len(self.kss)):
+            self.append(LrTDDFTExcitation(self.Om,j))
+        
+    def get_Om(self):
+        return self.Om
+ 
 def d2Excdnsdnt(dup,ddn):
     """Second derivative of Exc polarised"""
     res=[[0, 0], [0, 0]]
@@ -49,6 +143,11 @@ class OmegaMatrix:
 
         self.numscale=numscale
     
+        self.singletsinglet=False
+        if kss.nvspins<2 and kss.npspins<2:
+             # this will be a singlet to singlet calculation only
+             self.singletsinglet=True
+
         self.full = self.get_full()
 
     def get_full(self,rpa=None):
@@ -71,7 +170,7 @@ class OmegaMatrix:
         gd = paw.finegd    
         kss=self.kss
         nij = len(kss)
-        
+
         if kss.nvspins==2: # spin polarised ground state calc.
             n_g = paw.density.nt_sg
             v_g=n_g[0].copy()
@@ -203,37 +302,70 @@ class OmegaMatrix:
         print ">> Om=\n",Om
         return Om
 
-    def get_rpa(self,epsilon=0.001):
+    def get_rpa(self):
         """calculate RPA part of the omega matrix"""
         paw = self.calculator.paw
         gd = paw.finegd
-        poisson = PoissonSolver(gd, paw.out, paw.hamiltonian.poisson_stencil)
+        poisson = PoissonSolver(gd, paw.hamiltonian.poisson_stencil)
         kss=self.kss
+##      print "<get_rpa> self.kss=",self.kss
 
         # calculate omega matrix
         nij = len(kss)
+##      print "<get_rpa> nij=",nij
+        
         n_g = gd.new_array()
         phi_g = gd.new_array()
         Om = num.zeros((nij,nij),num.Float)
 ##        return Om
         for ij in range(nij):
-##            print ">> ij,energy=",ij,kss[ij].GetEnergy()
+            print ">> ij,energy=",ij,kss[ij].GetEnergy()
             paw.density.interpolate(kss[ij].GetPairDensity(),n_g)
 ##            print ">> integral=",gd.integrate(n_g)
             poisson.solve(phi_g,n_g,charge=None)
             
             for kq in range(ij,nij):
-##                print ">> kq=",kq
+##              print ">> kq=",kq
                 paw.density.interpolate(kss[kq].GetPairDensity(),n_g)
-                Om[ij,kq]=2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
-                                  kss[ij].GetWeight()*kss[kq].GetWeight())*\
-                                  gd.integrate(n_g*phi_g)
+                pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
+                                  kss[ij].GetWeight()*kss[kq].GetWeight())
+                if self.singletsinglet: pre*=2.
+                
+                Om[ij,kq]= pre * gd.integrate(n_g*phi_g)
+
+                # Add atomic corrections
+                print ">> corrections"
+                Ia = 0
+                for nucleus in paw.my_nuclei:
+                    ni = nucleus.get_number_of_partial_waves()
+                    Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
+                    Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
+                    Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
+                    Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
+                    C_pp = nucleus.setup.M_pp
+
+                    #   ----
+                    # 2 >      P   P  C    P  P
+                    #   ----    ip  jr prst ks qt
+                    #   prst
+                    for p in range(ni):
+                        for r in range(ni):
+                            pr = packed_index(p, r, ni)
+                            for s in range(ni):
+                                for t in range(ni):
+                                    st = packed_index(s, t, ni)
+                                    Ia += Pi_i[p]*Pj_i[r]*\
+                                          2*C_pp[pr, st]*\
+                                          Pk_i[s]*Pq_i[t]
+                Om[ij,kq] += pre*Ia
+                    
                 if ij == kq:
                     Om[ij,kq] += kss[ij].GetEnergy()**2
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
-##        print ">> Om=\n",Om
+
+        print ">> Om=\n",Om
         return Om
 
     def diagonalize(self):
@@ -243,6 +375,15 @@ class OmegaMatrix:
         if info != 0:
             raise RuntimeError('Diagonalisation error in OmegaMatrix')
 
+    def __str__(self):
+        str='<OmegaMatrix> '
+        if hasattr(self,'eigenvalues'):
+            str += 'dimension '+ ('%d'%len(self.eigenvalues))
+            str += "\neigenvalues: "
+            for ev in self.eigenvalues:
+                str += ' ' + ('%f'%(sqrt(ev)*27.211))
+        return str
+    
 class LrTDDFTExcitation(Excitation):
     def __init__(self,Om=None,i=None):
         if Om is None:
@@ -264,97 +405,6 @@ class LrTDDFTExcitation(Excitation):
               (self.energy*27.211,self.me[0],self.me[1],self.me[2])
         return str
 
-class LrTDDFT(ExcitationList):
-    """Linear Response TDDFT excitation class
-    
-    Input parameters:
-
-    calculator:
-      the calculator object after a ground state calculation
-      
-    nspins:
-      number of spins considered in the calculation
-      Note: Valid only for unpolarised ground state calculation
-
-    eps:
-      Minimal occupation difference for a transition (default 0.001)
-
-    istart:
-      First occupied state to consider
-    jend:
-      Last unoccupied state to consider
-      
-    xc:
-      Exchange-Correlation approximation in the Kernel
-    derivativeLevel:
-      0: use Exc, 1: use vxc, 2: use fxc  if available
-    """
-    def __init__(self,
-                 calculator=None,
-                 nspins=None,
-                 eps=0.001,
-                 istart=0,
-                 jend=None,
-                 xc=None,
-                 derivativeLevel=None,
-                 numscale=0.001):
-        
-        ExcitationList.__init__(self,calculator)
-
-        self.calculator=None
-        self.nspins=None
-        self.eps=None
-        self.istart=None
-        self.jend=None
-        self.xc=None
-        self.derivativeLevel=None
-        self.numscale=numscale
-        self.update(calculator,nspins,eps,istart,jend,
-                    xc,derivativeLevel,numscale)
-
-    def update(self,
-               calculator=None,
-               nspins=None,
-               eps=0.001,
-               istart=0,
-               jend=None,
-               xc=None,
-               derivativeLevel=None,
-               numscale=0.001):
-
-        changed=False
-        if self.calculator!=calculator or \
-           self.nspins != nspins or \
-           self.eps != eps or \
-           self.istart != istart or \
-           self.jend != jend :
-            changed=True
-
-        if not changed: return
-
-        self.calculator = calculator
-        self.nspins = nspins
-        self.eps = eps
-        self.istart = istart
-        self.jend = jend
-        self.xc = xc
-        self.derivativeLevel=derivativeLevel
-        self.numscale=numscale
-        self.kss = KSSingles(calculator=calculator,
-                             nspins=nspins,
-                             eps=eps,
-                             istart=istart,
-                             jend=jend)
-        self.Om = OmegaMatrix(self.calculator,self.kss,
-                              self.xc,self.derivativeLevel,self.numscale)
-##         Om.diagonalize()
-
-##         for j in range(len(self.kss)):
-##             self.append(LrTDDFTExcitation(Om,j))
-        
-    def get_Om(self):
-        return self.Om
- 
 class LocalIntegrals:
     """Contains the local integrals needed for Linear response TDDFT"""
     def __init__(self,gen=None):
@@ -403,55 +453,4 @@ class LocalIntegrals:
 
 
 
-
-##     # diagonal +-1 elements in Hartree matrix
-##     a1_g  = 1.0 - 0.5 * (gen.d2gdr2 * gen.dr**2)[1:]
-##     a2_lg = -2.0 * num.ones((Lmax, gen.N - 1), num.Float)
-##     x_g   = ((gen.dr / gen.r)**2)[1:]
-##     for l in range(1, Lmax):
-##         a2_lg[l] -= l * (l + 1) * x_g
-##     a3_g = 1.0 + 0.5 * (gen.d2gdr2 * gen.dr**2)[1:]
-
-##     # initialize potential calculator (returns v*r^2*dr/dg)
-##     H = Hartree(a1_g, a2_lg, a3_g, gen.r, gen.dr).solve
-
-##     # initialize X_ii matrix
-##     X_ii = num.zeros((Nvi,Nvi), num.Float)
-
-##     # do actual calculation of exchange contribution
-##     Exx = 0.0
-##     for j1 in nstates:
-##         # angular momentum of first state
-##         l1 = atom.l_j[j1]
-
-##         for j2 in mstates:
-##             # angular momentum of second state
-##             l2 = atom.l_j[j2]
-
-##             # joint occupation number
-##             f12 = .5 * atom.f_j[j1]/(2. * l1 + 1) * \
-##                        atom.f_j[j2]/(2. * l2 + 1)
-
-##             # electron density
-##             n = atom.u_j[j1]*atom.u_j[j2]
-##             n[1:] /= atom.r[1:]**2
-
-##             # determine potential times r^2 times length element dr/dg
-##             vr2dr = num.zeros(atom.N, num.Float)
-
-##             # L summation
-##             for l in range(l1 + l2 + 1):
-##                 # get potential for current l-value
-##                 vr2drl = H(n, l)
-
-##                 # take all m1 m2 and m values of Gaunt matrix of the form
-##                 # G(L1,L2,L) where L = {l,m}
-##                 G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2,\
-##                            l**2:(l+1)**2]**2
-
-##                 # add to total potential
-##                 vr2dr += vr2drl * num.sum(G2.copy().flat)
-
-##             # add to total exchange the contribution from current two states
-##             Exx += -.5 * f12 * num.dot(n,vr2dr)
 
