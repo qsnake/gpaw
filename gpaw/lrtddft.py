@@ -1,6 +1,9 @@
 from math import sqrt
 import Numeric as num
 import _gpaw
+import gpaw.mpi as mpi
+MASTER = mpi.MASTER
+
 from gpaw import debug
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.excitation import Excitation,ExcitationList,KSSingles
@@ -34,6 +37,9 @@ class LrTDDFT(ExcitationList):
       Exchange-Correlation approximation in the Kernel
     derivativeLevel:
       0: use Exc, 1: use vxc, 2: use fxc  if available
+
+    filename:
+      read from a file
     """
     def __init__(self,
                  calculator=None,
@@ -43,21 +49,26 @@ class LrTDDFT(ExcitationList):
                  jend=None,
                  xc=None,
                  derivativeLevel=None,
-                 numscale=0.001):
-        
-        ExcitationList.__init__(self,calculator)
+                 numscale=0.001,
+                 filename=None):
 
-        self.calculator=None
-        self.nspins=None
-        self.eps=None
-        self.istart=None
-        self.jend=None
-        self.xc=None
-        self.derivativeLevel=None
-        self.numscale=numscale
-        self.update(calculator,nspins,eps,istart,jend,
-                    xc,derivativeLevel,numscale)
-        return self
+        if filename is None:
+
+            ExcitationList.__init__(self,calculator)
+
+            self.calculator=None
+            self.nspins=None
+            self.eps=None
+            self.istart=None
+            self.jend=None
+            self.xc=None
+            self.derivativeLevel=None
+            self.numscale=numscale
+            self.update(calculator,nspins,eps,istart,jend,
+                        xc,derivativeLevel,numscale)
+
+        else:
+            self.read(filename)
 
     def update(self,
                calculator=None,
@@ -95,13 +106,48 @@ class LrTDDFT(ExcitationList):
         self.Om = OmegaMatrix(self.calculator,self.kss,
                               self.xc,self.derivativeLevel,self.numscale)
         self.Om.diagonalize()
-        print "diagonal Om=",self.Om
+##      print "diagonal Om=",self.Om
 
         for j in range(len(self.kss)):
             self.append(LrTDDFTExcitation(self.Om,j))
         
     def get_Om(self):
         return self.Om
+
+    def read(self, filename=None, fh=None):
+        """Read myself from a file"""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'r')
+            else:
+                f = fh
+
+            f.readline()
+            self.xc = f.readline().replace('\n','')
+##            print '<read> xc=',self.xc
+            self.kss = KSSingles(filehandle=f)
+            self.Om = OmegaMatrix(filehandle=f)
+
+            if fh is None:
+                f.close()
+
+    def write(self, filename=None, fh=None):
+        """Write current state to a file."""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'w')
+            else:
+                f = fh
+
+            f.write('# LrTDDFT\n')
+            xc = self.xc
+            if xc is None: xc = 'RPA'
+            f.write(xc+'\n')
+            self.kss.write(fh=f)
+            self.Om.write(fh=f)
+
+            if fh is None:
+                f.close()
  
 def d2Excdnsdnt(dup,ddn):
     """Second derivative of Exc polarised"""
@@ -126,8 +172,14 @@ class OmegaMatrix:
                  kss=None,
                  xc=None,
                  derivativeLevel=None,
-                 numscale=0.001
+                 numscale=0.001,
+                 filehandle=None
                  ):
+        
+        if filehandle is not None:
+            self.read(fh=filehandle)
+            return None
+
         self.calculator = calculator
         self.kss = kss
         if xc is not None:
@@ -374,6 +426,47 @@ class OmegaMatrix:
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
             raise RuntimeError('Diagonalisation error in OmegaMatrix')
+
+    def read(self, filename=None, fh=None):
+        """Read myself from a file"""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'r')
+            else:
+                f = fh
+
+            f.readline()
+            nij = int(f.readline())
+            full = num.zeros((nij,nij),num.Float)
+            for ij in range(nij):
+                l = f.readline().split()
+                for kq in range(ij,nij):
+                    full[ij,kq] = float(l[kq-ij])
+                    full[kq,ij] = full[ij,kq]
+            self.full = full
+            
+            if fh is None:
+                f.close()
+
+    def write(self, filename=None, fh=None):
+        """Write current state to a file."""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'w')
+            else:
+                f = fh
+
+            f.write('# OmegaMatrix\n')
+            nij = len(self.kss)
+            f.write('%d\n' % len(self.kss))
+            for ij in range(nij):
+                for kq in range(ij,nij):
+                    f.write(' %g' % self.full[ij,kq])
+                f.write('\n')
+            
+            if fh is None:
+                f.close()
+
 
     def __str__(self):
         str='<OmegaMatrix> '
