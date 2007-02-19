@@ -1,6 +1,7 @@
 from math import pi, sqrt
 import Numeric as num
 import _gpaw
+import gpaw.mpi as mpi
 from gpaw import debug
 from gpaw.utilities import pack
 
@@ -82,7 +83,12 @@ class KSSingles(ExcitationList):
                  nspins=None,
                  eps=0.001,
                  istart=0,
-                 jend=None):
+                 jend=None,
+                 filehandle=None):
+
+        if filehandle is not None:
+            self.read(fh=filehandle)
+            return None
 
         ExcitationList.__init__(self,calculator)
         
@@ -126,18 +132,57 @@ class KSSingles(ExcitationList):
                         ks=KSSingle(i,j,ispin,vspin,paw)
                         self.append(ks)
 
+    def read(self, filename=None, fh=None):
+        """Read myself from a file"""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'r')
+            else:
+                f = fh
+
+            f.readline()
+            n = int(f.readline())
+            for i in range(n):
+                self.append(KSSingle(string=f.readline()))
+
+            if fh is None:
+                f.close()
+
+    def write(self, filename=None, fh=None):
+        """Write current state to a file."""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'w')
+            else:
+                f = fh
+
+            f.write('# KSSingles\n')
+            f.write('%d\n' % len(self))
+            for kss in self:
+                f.write(kss.outstring())
+            
+            if fh is None:
+                f.close()
+ 
 class KSSingle(Excitation):
     """Single Kohn-Sham transition containing all it's indicees
     pspin=physical spin
     vspin=virtual  spin, i.e. spin in the code
     """
     def __init__(self,iidx=None,jidx=None,pspin=None,vspin=None,
-                 paw=None):
+                 paw=None,string=None):
         
         self.i=iidx
         self.j=jidx
         self.pspin=pspin
         self.vspin=vspin
+
+        if string is not None: 
+            self.fromstring(string)
+            return None
+
+        # normal entry
+        
         self.paw=paw
 
         f=paw.kpt_u[vspin].f_n
@@ -155,23 +200,50 @@ class KSSingle(Excitation):
 ##        print '<KSSingle> pseudo mij=',me
         
         # augmentation contributions
-        for nucleus in paw.nuclei:
-            Ra = nucleus.spos_c*paw.domain.cell_c
-            Pi_i = nucleus.P_uni[self.vspin,self.i]
-            Pj_i = nucleus.P_uni[self.vspin,self.j]
-            D_ii = num.outerproduct(Pi_i, Pj_i)
-            D_p  = pack(D_ii, symmetric=False)
-            # L=0 term
-            me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
-##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
-            # L=1 terms
-            if nucleus.setup.lmax>=1:
-                for i in range(3):
-                    # XXXX check def of Ylm used in setups XXXX
-                    me[i] += sqrt(4*pi/3)*\
-                             num.dot(D_p, nucleus.setup.Delta_pL[:,i+1])
+##         for nucleus in paw.my_nuclei:
+##             Ra = nucleus.spos_c*paw.domain.cell_c
+##             ni = nucleus.get_number_of_partial_waves()
+##             Pi_i = nucleus.P_uni[self.vspin,self.i]
+##             Pj_i = nucleus.P_uni[self.vspin,self.j]
+##             D_ii = num.outerproduct(Pi_i, Pj_i)
+##             print "Pi_i=",Pi_i
+##             print "Pj_i=",Pj_i
+##             print "D_ii=",D_ii
+## ##            D_p  = pack(D_ii, symmetric=False) # XXXXX
+##             D_p  = pack(D_ii)
+##             # L=0 term
+##             me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
+## ##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
+##             # L=1 terms
+##             if nucleus.setup.lmax>=1:
+##                 for i in range(3):
+##                     # XXXX check def of Ylm used in setups XXXX
+##                     me[i] += sqrt(4*pi/3)*\
+##                              num.dot(D_p, nucleus.setup.Delta_pL[:,i+1])
         self.me=me
 ##         print '<KSSingle> mij,ma=',me,ma
+
+    def fromstring(self,string):
+        l = string.split()
+##        print "l=",l
+        self.i = int(l[0])
+        self.j = int(l[1])
+        self.pspin = int(l[2])
+        self.vspin = int(l[3])
+        self.energy = float(l[4])
+        self.me = num.array([float(l[5]),float(l[6]),float(l[7])])
+##        print "me=",self.me
+        
+        return None
+
+    def outstring(self):
+        str = '%d %d   %d %d   %g' % \
+               (self.i,self.j, self.pspin,self.vspin, self.energy)
+        str += '  '
+        for m in self.me:
+            str += ' %g' % m
+        str += '\n'
+        return str
         
     def __str__(self):
         str = "<KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
