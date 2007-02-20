@@ -14,13 +14,10 @@ class ExcitationList(list):
     """
     def __init__(self,calculator=None):
 
-        if calculator==None:
-            raise RuntimeError('You have to set a calculator for the ' +
-                               'Excitation list')
-        self.calculator = calculator
-
         # initialise empty list
         list.__init__(self)
+
+        self.calculator = calculator
 
     def GetEnergies(self):
         el = []
@@ -29,8 +26,8 @@ class ExcitationList(list):
         return el
     
     def __str__(self):
-        string= str(type(self))
-        string+=" %d excitations:\n" % len(self)
+        string= '# ' + str(type(self))
+        string+=', %d excitations:\n' % len(self)
         for ex in self:
             string += '  '+ex.__str__()+"\n"
         return string
@@ -92,9 +89,10 @@ class KSSingles(ExcitationList):
 
         ExcitationList.__init__(self,calculator)
         
-        if calculator != None:
-            self.calculator=calculator
-        
+        if calculator is None:
+            return # leave the list empty
+
+        self.calculator=calculator
         paw = self.calculator.paw
         self.kpt_u = paw.kpt_u
         
@@ -143,10 +141,21 @@ class KSSingles(ExcitationList):
             f.readline()
             n = int(f.readline())
             for i in range(n):
-                self.append(KSSingle(string=f.readline()))
-
+                kss = KSSingle(string=f.readline())
+                self.append(kss)
+            self.update()
+                
             if fh is None:
                 f.close()
+
+    def update(self):
+        istart = len(self)
+        jend = 0
+        for kss in self:
+            istart = min(kss.i,istart)
+            jend = max(kss.j,jend)
+        self.istart = istart
+        self.jend = jend
 
     def write(self, filename=None, fh=None):
         """Write current state to a file."""
@@ -231,14 +240,15 @@ class KSSingle(Excitation):
         self.pspin = int(l[2])
         self.vspin = int(l[3])
         self.energy = float(l[4])
-        self.me = num.array([float(l[5]),float(l[6]),float(l[7])])
+        self.fij = float(l[5])
+        self.me = num.array([float(l[6]),float(l[7]),float(l[8])])
 ##        print "me=",self.me
         
         return None
 
     def outstring(self):
-        str = '%d %d   %d %d   %g' % \
-               (self.i,self.j, self.pspin,self.vspin, self.energy)
+        str = '%d %d   %d %d   %g %g' % \
+               (self.i,self.j, self.pspin,self.vspin, self.energy, self.fij)
         str += '  '
         for m in self.me:
             str += ' %g' % m
@@ -246,7 +256,7 @@ class KSSingle(Excitation):
         return str
         
     def __str__(self):
-        str = "<KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
+        str = "# <KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
               (self.i, self.j, self.pspin, self.vspin,
                self.energy*27.211)
         return str
