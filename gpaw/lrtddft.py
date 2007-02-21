@@ -105,12 +105,14 @@ class LrTDDFT(ExcitationList):
                              jend=jend)
         self.Om = OmegaMatrix(self.calculator,self.kss,
                               self.xc,self.derivativeLevel,self.numscale)
-        self.Om.diagonalize()
-##      print "diagonal Om=",self.Om
+        self.diagonalize()
 
-        for j in range(len(self.kss)):
+    def diagonalize(self, istart=None, jend=None):
+        self.Om.diagonalize(istart,jend)
+
+        for j in range(len(self.Om.kss)):
             self.append(LrTDDFTExcitation(self.Om,j))
-        
+
     def get_Om(self):
         return self.Om
 
@@ -124,12 +126,19 @@ class LrTDDFT(ExcitationList):
 
             f.readline()
             self.xc = f.readline().replace('\n','')
-##            print '<read> xc=',self.xc
+            self.eps = float(f.readline())
             self.kss = KSSingles(filehandle=f)
             self.Om = OmegaMatrix(filehandle=f)
+            self.Om.Kss(self.kss)
 
             if fh is None:
                 f.close()
+
+    def __str__(self):
+        string = ExcitationList.__str__(self)
+        string += '# derived from:\n'
+        string += self.kss.__str__()
+        return string
 
     def write(self, filename=None, fh=None):
         """Write current state to a file."""
@@ -143,12 +152,13 @@ class LrTDDFT(ExcitationList):
             xc = self.xc
             if xc is None: xc = 'RPA'
             f.write(xc+'\n')
+            f.write('%g' % self.eps + '\n')
             self.kss.write(fh=f)
             self.Om.write(fh=f)
 
             if fh is None:
                 f.close()
- 
+
 def d2Excdnsdnt(dup,ddn):
     """Second derivative of Exc polarised"""
     res=[[0, 0], [0, 0]]
@@ -181,10 +191,10 @@ class OmegaMatrix:
             return None
 
         self.calculator = calculator
-        self.kss = kss
+        self.fullkss = kss
         if xc is not None:
             self.xc = XC3DGrid(xc,self.calculator.paw.finegd,
-                               self.kss.npspins)
+                               kss.npspins)
             # check derivativeLevel
             if derivativeLevel is None:
                 derivativeLevel=\
@@ -210,9 +220,6 @@ class OmegaMatrix:
         if self.xc is None:
             return Om
         
-##         print '>> kss=',self.kss
-##         print '>> self.xc=',self.xc
-##         print '>> self.numscale=',self.numscale
         xcf=self.xc.get_functional()
         print '<OmegaMatrix::get_full> xc=',xcf.get_name()
         print '<OmegaMatrix::get_full> derivative Level=',self.derivativeLevel
@@ -220,7 +227,7 @@ class OmegaMatrix:
 
         paw = self.calculator.paw
         gd = paw.finegd    
-        kss=self.kss
+        kss=self.fullkss
         nij = len(kss)
 
         if kss.nvspins==2: # spin polarised ground state calc.
@@ -359,25 +366,20 @@ class OmegaMatrix:
         paw = self.calculator.paw
         gd = paw.finegd
         poisson = PoissonSolver(gd, paw.hamiltonian.poisson_stencil)
-        kss=self.kss
-##      print "<get_rpa> self.kss=",self.kss
+        kss=self.fullkss
 
         # calculate omega matrix
         nij = len(kss)
-##      print "<get_rpa> nij=",nij
         
         n_g = gd.new_array()
         phi_g = gd.new_array()
         Om = num.zeros((nij,nij),num.Float)
-##        return Om
         for ij in range(nij):
             print ">> ij,energy=",ij,kss[ij].GetEnergy()
             paw.density.interpolate(kss[ij].GetPairDensity(),n_g)
-##            print ">> integral=",gd.integrate(n_g)
             poisson.solve(phi_g,n_g,charge=None)
             
             for kq in range(ij,nij):
-##              print ">> kq=",kq
                 paw.density.interpolate(kss[kq].GetPairDensity(),n_g)
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
@@ -420,13 +422,54 @@ class OmegaMatrix:
         print ">> Om=\n",Om
         return Om
 
-    def diagonalize(self):
-        self.eigenvectors = self.full.copy()
-        self.eigenvalues = num.zeros((len(self.kss)),num.Float)
+    def diagonalize(self, istart=None, jend=None):
+        if istart is None and jend is None:
+            # use the full matrix
+            kss = self.fullkss
+            evec = self.full.copy()
+        else:
+            # reduce the matrix
+            if istart is None: istart = self.kss.istart
+            if self.fullkss.istart > istart:
+                raise RuntimeError('istart=%d has to be >= %d' %
+                                   (istart,self.kss.istart))
+            if jend is None: jend = self.kss.jend
+            if self.fullkss.jend < jend:
+                raise RuntimeError('jend=%d has to be <= %d' %
+                                   (jend,self.kss.jend))
+            print '# diagonalize: %d transitions original' % len(self.fullkss)
+            map= []
+            kss = KSSingles()
+            for ij, k in zip(range(len(self.fullkss)),self.fullkss):
+                if k.i >= istart and k.j <= jend:
+                    kss.append(k)
+                    map.append(ij)
+            kss.update()
+            nij = len(kss)
+##            print 'map=',map
+            print '# diagonalize: %d transitions now' % nij
+
+            evec = num.zeros((nij,nij),num.Float)
+            for ij in range(nij):
+                for kq in range(nij):
+                    evec[ij,kq] = self.full[map[ij],map[kq]]
+
+        self.eigenvectors = evec        
+        self.eigenvalues = num.zeros((len(kss)),num.Float)
+        self.kss = kss
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
             raise RuntimeError('Diagonalisation error in OmegaMatrix')
 
+    def Kss(self,kss=None):
+        """Set and get own Kohn-Sham singles"""
+        if kss is not None:
+            self.fullkss = kss
+        if(hasattr(self,'fullkss')):
+            return self.fullkss
+        else:
+            return None
+ 
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
         if mpi.rank == mpi.MASTER:
@@ -486,12 +529,13 @@ class LrTDDFTExcitation(Excitation):
         
         self.energy=sqrt(Om.eigenvalues[i])
         f = Om.eigenvectors[i]
-        for j in range(len(Om.kss)):
-            weight = f[j]*sqrt(Om.kss[j].GetEnergy()*Om.kss[j].GetWeight())
+        kss = Om.kss
+        for j in range(len(kss)):
+            weight = f[j]*sqrt(kss[j].GetEnergy()*kss[j].GetWeight())
             if j==0:
-                self.me = Om.kss[j].GetDipolME()*weight
+                self.me = kss[j].GetDipolME()*weight
             else:
-                self.me += Om.kss[j].GetDipolME()*weight
+                self.me += kss[j].GetDipolME()*weight
 
     def __str__(self):
         str = "<LrTDDFTExcitation> om=%g[eV] me=(%g,%g,%g)" % \
