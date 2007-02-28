@@ -158,6 +158,7 @@ def get_system_config(define_macros, undef_macros,
         #
         
         extra_compile_args += ['-Wall', '-std=c99']
+        libraries += ['mkl','mkl_lapack64']
 
     elif machine == 'i686':
 
