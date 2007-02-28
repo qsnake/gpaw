@@ -2,7 +2,44 @@
 # Please see the accompanying LICENSE file for further information.
 
 """This module provides all the classes and functions associated with the
-evaluation of exact exchange."""
+evaluation of exact exchange.
+
+The eXact-eXchange energy functional is::
+
+                                         *  _       _     * _        _
+           __                /        phi  (r) phi (r) phi (r') phi (r')
+       -1 \                  |  _  _      n       m       m        n
+ E   = --  ) delta     f  f  | dr dr' ---------------------------------
+  xx    2 /__     s s   n  m |                    _   _
+           nm      n m       /                   |r - r'|
+         
+The action of the non-local exchange potential on an orbital is::
+
+               /                         __
+ ^             | _    _  _        _     \      _       _
+ V   phi (r) = |dr' V(r, r') phi (r') =  ) V  (r) phi (r)
+  xx    n      |                n       /__ nm       m
+               /                         m
+
+where::
+
+                          _     * _
+              __     psi (r) psi (r')
+   _  _      \          m       m
+ V(r, r') = - )  f   ----------------
+             /__  m       _   _
+              m          |r - r'|
+              
+and::
+
+                        * _       _
+                /    psi (r) psi (r')
+     _          | _     m       n
+ V  (r) = -  f  |dr' ----------------
+  nm          m |         _   _
+                /        |r - r'|
+
+"""
 
 import Numeric as num
 from Numeric import pi
@@ -19,17 +56,6 @@ class XXFunctional:
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         e_g[:] = 0.0    
-
-
-"""
-                              _       _
-             __     /    psi (r) psi (r')
- ^ _  _      \      | _     n       n
- V(r, r') = - )  f  |dr' ----------------
-             /__  n |         _   _
-              n     /        |r - r'|
-    
-"""
 
 class EXX:
     """EXact eXchange.
@@ -75,7 +101,7 @@ class EXX:
         u   = kpt.u               # local spin/kpoint index
         if not self.energy_only:
             for nucleus in self.my_nuclei:
-                nucleus.vxx_uni[:] = 0.0
+                nucleus.vxx_uni[u, :, :] = 0.0
 
         # Determine pseudo-exchange
         for n1, psit1_G in enumerate(psit_nG):
@@ -196,7 +222,8 @@ class EXX:
             self.Exx = self.Ekin = 0
         self.Exx += self.psum(Exx)
         self.Ekin += self.psum(Ekin)
-    
+
+
 class PerturbativeExx:
     """Class offering methods for non-selfconsistent evaluation of the
        exchange energy of a *gpaw* calculation.
@@ -379,27 +406,67 @@ class PerturbativeExx:
                         ExxVV += - fnm * num.dot(D_p, num.dot(C_pp, D_p)) * DC
 
         return ExxVV, ExxVC, ExxCC
-        #---------------------- TEST STUFF ------------------------
-        ExxVV_TEST = 0.0
-        for nucleus in self.paw.my_nuclei:
-            for s in range(self.paw.nspins):
-                D_p  = nucleus.D_sp[s]
-                D_ii = unpack2(D_p)
-                C_pp = nucleus.setup.M_pp
-                ni   = len(D_ii)
-                for i1 in range(ni):
-                    for i2 in range(ni):
-                        A = 0.0
-                        for i3 in range(ni):
-                            p13 = packed_index(i1, i3, ni)
-                            for i4 in range(ni):
-                                p24 = packed_index(i2, i4, ni)
-                                A += C_pp[p13, p24] * D_ii[i3, i4]
-                        ExxVV_TEST -= D_ii[i1, i2] * A * self.paw.nspins / 2.
-        print 'Test of D*C*D summation: %0.7f %0.7f %0.7f' % tuple(num.array(
-            [ExxVV, ExxVV_TEST, ExxVV - ExxVV_TEST]) * 27.211395655517311)
-        #---------------------- TEST STUFF ------------------------
-        return ExxVV, ExxVC, ExxCC
+    
+
+def valence_valence_corrections(paw):
+    """Determine the atomic corrections to the valence-valence interaction::
+
+               -- 
+        vv,a   \     a        a              a
+       E     = /    D      * C            * D
+        xx     --    i1,i3    i1,i2,i3,i4    i2,i4
+            i1,i2,i3,i4
+
+               -- 
+        vv,a   \             a      a      a      a      a
+       E     = /    f * f * P    * P    * P    * P    * C    
+        xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
+            n,m,i1,i2,i3,i4
+    """
+    ExxVV1 = ExxVV2 = 0.0
+    #---------------------- METHOD 1 ------------------------
+    for nucleus in paw.my_nuclei:
+        for u, kpt in enumerate(paw.kpt_u):
+            for n in range(paw.nbands):
+                for m in range(n, paw.nbands):
+                    # determine double count factor:
+                    DC = 2 - (n == m)
+
+                    # calculate joint occupation number
+                    fnm = (kpt.f_n[n] * kpt.f_n[m]) * paw.nspins / 2.
+
+                    # generate density matrix
+                    Pm_i = nucleus.P_uni[u, m]
+                    Pn_i = nucleus.P_uni[u, n]
+                    D_ii = num.outerproduct(Pm_i,Pn_i)
+                    D_p  = pack(D_ii, tolerance=1e3)
+
+                    # C_iiii from setup file
+                    C_pp  = nucleus.setup.M_pp
+
+                    # add atomic contribution to val-val interaction
+                    ExxVV1 += - fnm * num.dot(D_p, num.dot(C_pp, D_p)) * DC
+
+    #---------------------- METHOD 2 ------------------------
+    for nucleus in paw.my_nuclei:
+        for s in range(paw.nspins):
+            D_p  = nucleus.D_sp[s]
+            D_ii = unpack2(D_p)
+            C_pp = nucleus.setup.M_pp
+            ni   = len(D_ii)
+            for i1 in range(ni):
+                for i2 in range(ni):
+                    A = 0.0
+                    for i3 in range(ni):
+                        p13 = packed_index(i1, i3, ni)
+                        for i4 in range(ni):
+                            p24 = packed_index(i2, i4, ni)
+                            A += C_pp[p13, p24] * D_ii[i3, i4]
+                    ExxVV2 -= D_ii[i1, i2] * A * paw.nspins / 2.
+
+    # Return result of the two different methods
+    return ExxVV1, ExxVV2
+
 
 def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
@@ -466,6 +533,7 @@ def atomic_exact_exchange(atom, type = 'all'):
 
     # return exchange energy
     return Exx
+
 
 def constructX(gen):
     """Construct the X_p^a matrix for the given atom.

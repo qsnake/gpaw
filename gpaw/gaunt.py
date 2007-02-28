@@ -49,7 +49,10 @@ if __name__ == '__main__':
     # XXX
     # There are 9*9*25=2025 elements.
     # Of these, 162 are non-zero, and only 30 are distinct, i.e. only 1.5%.
-    # This should be stored more efficiently.
+    # This should be stored more efficiently. See e.g.
+    #   "Efficiente storage scheme for precalculated wigner 3J, 6J and Gaunt
+    #   coefficients", Rasch and Yu,
+    #   Siam J. Sci. Comput., Vol 25, No. 4, pp. 1416-1428, 2003
     # XXX
     print 'Constructing "Gaunt.py" ...'
     gaunt = make_gaunt(2)
