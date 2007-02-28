@@ -49,7 +49,13 @@ def get_mpi_command(debug=False):
             return "poe '%(job)s' -procs %(np)d -hfile %(hostfile)s &"
                 
     if mpi == 'mpich':
-        return 'mpiexec -n %(np)d %(job)s'
+        output = os.popen3('mpiexec')[1].read()
+        if output != '':
+            return 'mpiexec -n %(np)d %(job)s'
+        output = os.popen3('mpirun')[1].read()
+        if output != '':
+            return 'mpirun -n %(np)d %(job)s'
+        raise NotImplementedError
 
     if mpi == 'mvapich':
         raise NotImplementedError
