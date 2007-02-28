@@ -77,18 +77,6 @@ def create_paw_object(out, a0, Ha,
     domain = Domain(cell_c / a0, bc_c)
     h_c = domain.cell_c / N_c
 
-    print >> out, 'unitcell:'
-    print >> out, '         periodic  length  points   spacing'
-    print >> out, '  -----------------------------------------'
-    for c in range(3):
-        print >> out, '  %s-axis   %s   %8.4f   %3d    %8.4f' % \
-              ('xyz'[c],
-               ['no ', 'yes'][domain.periodic_c[c]],
-               a0 * domain.cell_c[c],
-               N_c[c],
-               a0 * h_c[c])
-    print >> out
-
     if isinstance(setup_types, str):
         setup_types = {None: setup_types}
 

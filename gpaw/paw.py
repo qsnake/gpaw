@@ -264,6 +264,8 @@ class Paw:
             nucleus.set_position(spos_c, domain, self.my_nuclei,
                                  self.nspins, self.nmyu, self.nbands)
 
+        output.plot_atoms(self)
+
         self.density.mixer.reset(self.my_nuclei)
             
         self.wave_functions_initialized = False
@@ -561,7 +563,6 @@ class Paw:
     def initialize_from_file(self, filename):
         """Read state from a file."""
         wf = gpaw.io.read(self, filename)
-        output.plot_atoms(self)
         return wf
 
     def warn(self, message):
