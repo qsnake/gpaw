@@ -98,14 +98,11 @@ class Eigensolver:
         hamiltonian.xc.xcfunc.calculate_non_local_energy(kpt, Htpsit_nG, H_nn)
 
         r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
-
-        # XXX Do EXX here XXX
+        
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
                                           cc(num.transpose(P_ni))))
-            if 0:#self.exx is not None:
-                self.exx.adjust_hamitonian_matrix(H_nn, P_ni, nucleus, kpt.s)
 
         self.comm.sum(H_nn, kpt.root)
 
@@ -130,5 +127,14 @@ class Eigensolver:
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             gemm(1.0, P_ni.copy(), H_nn, 0.0, P_ni)
+
+        if hamiltonian.xc.xcfunc.hybrid > 0.0:
+            vxxt_nG = hamiltonian.xc.xcfunc.exx.vt_snG[kpt.s]
+            gemm(1.0, vxxt_nG.copy(), H_nn, 0.0, vxxt_nG)
+            for nucleus in hamiltonian.my_nuclei:
+                v_ni = nucleus.vxx_uni[kpt.u]
+                gemm(1.0, v_ni.copy(), H_nn, 0.0, v_ni)
+                v_nii = nucleus.vxx_unii[kpt.u]
+                gemm(1.0, v_nii.copy(), H_nn, 0.0, v_nii)
 
         self.timer.stop()

@@ -80,7 +80,7 @@ class RMM_DIIS(Eigensolver):
                                          kpt.u, kpt.s, kpt.k, n)
             
             if hamiltonian.xc.xcfunc.hybrid > 0.0:
-                dR_G += hamiltonian.xc.xcfunc.exx.vt_nG[n] * pR_G
+                dR_G += hamiltonian.xc.xcfunc.exx.vt_snG[kpt.s, n] * pR_G
             
             if (dR_G.typecode() == num.Float):
                 RdR = self.comm.sum(utilities_vdot(R_G, dR_G))

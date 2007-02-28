@@ -19,7 +19,18 @@ class XXFunctional:
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         e_g[:] = 0.0    
-        
+
+
+"""
+                              _       _
+             __     /    psi (r) psi (r')
+ ^ _  _      \      | _     n       n
+ V(r, r') = - )  f  |dr' ----------------
+             /__  n |         _   _
+              n     /        |r - r'|
+    
+"""
+
 class EXX:
     """EXact eXchange.
 
@@ -49,7 +60,8 @@ class EXX:
         self.nt_g = finegd.empty()
         self.vt_g = finegd.empty()
         if not energy_only:
-            self.vt_nG = gd.empty(nbands)
+            nmyu = nspins # XXX only correct for serial calculation!
+            self.vt_snG = gd.empty((nmyu, nbands))  
 
     def calculate_energy(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
@@ -67,7 +79,9 @@ class EXX:
 
         # Determine pseudo-exchange
         for n1, psit1_G in enumerate(psit_nG):
+            f1 = f_n[n1]
             for n2, psit2_G in enumerate(psit_nG):
+                f2 = f_n[n2]
                 # Determine current exchange density ...
                 self.nt_G[:] = psit1_G * psit2_G 
 
@@ -103,14 +117,14 @@ class EXX:
                 int_fine = self.fineintegrate(self.vt_g * self.nt_g)
                 int_coarse = self.integrate(self.vt_G * self.nt_G)
                 if self.rank == 0: # Only add to energy on master CPU
-                    Exx += 0.5 * f_n[n1] * f_n[n2] * hybrid / deg * int_fine
-                    Ekin -= f_n[n1] * f_n[n2] * hybrid / deg * int_coarse
+                    Exx += 0.5 * f1 * f2 * hybrid / deg * int_fine
+                    Ekin -= f1 * f2 * hybrid / deg * int_coarse
 
                 if not self.energy_only:
-                    Htpsit_nG[n1] += f_n[n2] * hybrid / deg * \
+                    Htpsit_nG[n1] += f2 * hybrid / deg * \
                                      self.vt_G * psit2_G
                     if n1 == n2:
-                        self.vt_nG[n1] = f_n[n1] * hybrid / deg * self.vt_G
+                        self.vt_snG[u, n1] = f1 * hybrid / deg * self.vt_G
                     
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
@@ -122,12 +136,13 @@ class EXX:
                         if nucleus in self.my_nuclei:
                             v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
                             nucleus.vxx_uni[u, n1] += (
-                                f_n[n2] * hybrid / deg * num.dot(
+                                f2 * hybrid / deg * num.dot(
                                 v_ii, nucleus.P_uni[u, n2]))
 
                             if n1 == n2:
+                                # XXX Check this:
                                 nucleus.vxx_unii[u, n1] = (
-                                    f_n[n2] * hybrid / deg * v_ii)
+                                    f2 * hybrid / deg * v_ii)
         
         # Apply the atomic corrections to the energy and the Hamiltonian matrix
         for nucleus in self.my_nuclei:
@@ -137,7 +152,8 @@ class EXX:
 
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
-                H_nn += num.innerproduct(nucleus.vxx_uni[u], nucleus.P_uni[u])
+                h_nn = num.innerproduct(nucleus.P_uni[u], nucleus.vxx_uni[u])
+                H_nn += 0.5 * (num.transpose(h_nn) + h_nn)
 
             # Get atomic density and Hamiltonian matrices
             D_p  = nucleus.D_sp[s]
