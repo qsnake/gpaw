@@ -14,6 +14,9 @@ def get_mpi_implementation():
 
     if sys.platform == 'aix5':
         return 'poe'
+
+    if sys.platform == 'ia64':
+        return 'mpich'
                 
     output = os.popen3('mpicc --showme')[1].read()
     if output != '':
