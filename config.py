@@ -150,6 +150,14 @@ def get_system_config(define_macros, undef_macros,
             #extra_link_args += ['-Wl,-rpath=' + acml]
             msg += ['* Using ACML library']
 
+    elif machine =='ia64':
+
+        #  _  _
+        # |_ |  o
+        #  _||_||
+        #
+        
+        extra_compile_args += ['-Wall', '-std=c99']
 
     elif machine == 'i686':
 
