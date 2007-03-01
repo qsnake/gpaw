@@ -1,8 +1,9 @@
+#!/usr/bin/env python
 import pickle
 import sys
 from gpaw.utilities.molecule import Molecule
 from ASE.Units import Convert
-from atomization_data import atomization
+from atomization_data import atomization, ex_atomization, atomization_vasp
 
 def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
             forcesymm=False, calc_parameters={}):
@@ -111,3 +112,80 @@ def mean_error(eas, errors=[], exact=0):
         out += ' %5.1f'%mae
     return out               
 
+def reference_blaha(molecules):
+    eas = {}
+    for formula in molecules:
+        eas[formula] = atomization[formula][:4] + (ex_atomization[formula][0],)
+    xcs = ('Expt', 'LDA', 'PBE', 'RPBE', 'EXX')
+    return pretty_print(eas, xcs, molecules) + mean_error(eas)
+
+def reference_vasp(molecules):
+    eas = {}
+    errors = []
+    for formula in molecules:
+        if formula not in ['H2', 'Be2']:
+            eas[formula] = atomization_vasp[formula]
+        else:
+            errors.append(formula)
+            eas[formula] = 'Not in data set'
+    xcs = ('Expt', 'PBE_VASP', 'PBE_G03', 'PBE0_VASP', 'PBE0_G03')
+    return pretty_print(eas, xcs, molecules) + mean_error(eas, errors)
+
+if __name__ == '__main__'
+    ## a = 5.6
+    ## h = 0.2 # 5.6/.2 = 28
+    ## a = 7.2
+    ## h = 0.15 #7.2/.15 = 48
+    a = 8.16
+    h = 0.17 # 8.16 / 0.17 = 48
+    ## a = 12.8
+    ## h = 0.16 # 12.8/0.16 = 80
+    relax = False
+    parameters = {'xc': 'PBE0',
+                  'out': 'atomize.txt',
+                  'softgauss': False,
+                  'lmax': 2}
+    molecules = [
+        'H2',
+        'LiH',
+        'CH4',
+        'NH3',
+        'OH',
+        'H2O',
+        'HF',
+        'Li2',
+        'LiF',
+        'Be2',
+        'C2H2',
+        'C2H4',
+        'HCN',
+        'CO',
+        'N2',
+        'NO',
+        'O2',
+        'F2',
+        'P2',
+        'Cl2'
+        ]
+
+    non_self_xcs = ('LDA', 'revPBE', 'RPBE', 'PBE', 'EXX')
+    eas, errors = atomize(molecules, a, h,
+                          relax=relax,
+                          non_self_xcs=non_self_xcs,
+                          forcesymm=False,
+                          calc_parameters=parameters)
+    names = ('Expt', 'PBE0',) + non_self_xcs
+
+    print 'a =', a
+    print 'h =', h
+    print 'lmax =', parameters['lmax']
+    print 'relax =', relax
+    print ''
+    print 'GPAW'
+    print pretty_print(eas, names, molecules) + mean_error(eas, errors,exact=0)
+    print ''
+    print 'Reference Blaha et. al.'
+    print reference_blaha(molecules)
+    print ''
+    print 'Reference Kresse et. al.'
+    print reference_vasp(molecules)

@@ -38,7 +38,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         exx = False
         if xcname == 'EXX': # XXX EXX hack
             exx = True
-            xcname = 'LDA'
+            xcname = 'revPBE'
         elif xcname == 'PBE0': # XXX EXX hack
             exx = True
             xcname = 'PBE'
