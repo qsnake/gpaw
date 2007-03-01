@@ -101,7 +101,7 @@ class EXX:
         u   = kpt.u               # local spin/kpoint index
         if not self.energy_only:
             for nucleus in self.my_nuclei:
-                nucleus.vxx_uni[u, :, :] = 0.0
+                nucleus.vxx_uni[u] = 0.0
 
         # Determine pseudo-exchange
         for n1, psit1_G in enumerate(psit_nG):
@@ -180,6 +180,7 @@ class EXX:
             if not self.energy_only:
                 h_nn = num.innerproduct(nucleus.P_uni[u], nucleus.vxx_uni[u])
                 H_nn += 0.5 * (num.transpose(h_nn) + h_nn)
+                Ekin -= num.dot(f_n, num.sum(H_nn))
 
             # Get atomic density and Hamiltonian matrices
             D_p  = nucleus.D_sp[s]
