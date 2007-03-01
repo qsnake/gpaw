@@ -131,7 +131,7 @@ def reference_vasp(molecules):
     xcs = ('Expt', 'PBE_VASP', 'PBE_G03', 'PBE0_VASP', 'PBE0_G03')
     return pretty_print(eas, xcs, molecules) + mean_error(eas, errors)
 
-if __name__ == '__main__'
+if __name__ == '__main__':
     ## a = 5.6
     ## h = 0.2 # 5.6/.2 = 28
     ## a = 7.2
