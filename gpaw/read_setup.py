@@ -79,7 +79,6 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.e_kinetic = 0.0
             self.e_electrostatic = 0.0
             self.e_xc = 0.0
-            self.e_kinetic_core = 0.0
 
         if not hasattr(self, 'tauc_g'):
             self.tauc_g = self.tauct_g = None
