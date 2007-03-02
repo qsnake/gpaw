@@ -41,13 +41,17 @@ and::
 
 """
 
+from math import pi
+
 import Numeric as num
-from Numeric import pi
+from multiarray import innerproduct as inner # avoid the dotblas version!
+
 from gpaw.coulomb import Coulomb
 from gpaw.utilities.tools import core_states
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
+
 
 class XXFunctional:
     """Dummy EXX functional"""
@@ -93,7 +97,7 @@ class EXX:
         """Apply exact exchange operator."""
 
         # Initialize method-attributes
-        psit_nG = kpt.psit_nG[:]  # wave functions
+        psit_nG = kpt.psit_nG     # wave functions
         Exx = Ekin = 0.0          # Energy of eXact eXchange and kinetic energy
         deg = 2 / self.nspins     # spin degeneracy
         f_n = kpt.f_n             # occupation number
@@ -178,7 +182,7 @@ class EXX:
 
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
-                h_nn = num.innerproduct(nucleus.P_uni[u], nucleus.vxx_uni[u])
+                h_nn = inner(nucleus.P_uni[u], nucleus.vxx_uni[u])
                 H_nn += 0.5 * (num.transpose(h_nn) + h_nn)
                 Ekin -= num.dot(f_n, num.sum(H_nn))
 
