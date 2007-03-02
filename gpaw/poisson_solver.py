@@ -76,13 +76,13 @@ class PoissonSolver:
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
         
-    def solve(self, phi, rho, eps=2e-10, charge=0):
+    def solve(self, phi, rho, eps=2e-10, charge=0, maxcharge=1e-6):
         self.phis[0] = phi
 
         # handling of charged densities
         if charge == None:
             charge = self.gd.integrate(rho)
-        if abs(charge) > 1e-6:
+        if abs(charge) > maxcharge:
             # Load necessary attributes
             if not hasattr(self, 'rho_gauss'):
                 from gpaw.utilities.gauss import Gaussian
