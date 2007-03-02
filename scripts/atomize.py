@@ -3,7 +3,7 @@ import pickle
 import sys
 from gpaw.utilities.molecule import Molecule
 from ASE.Units import Convert
-from atomization_data import atomization, ex_atomization, atomization_vasp
+from gpaw.testing.atomization_data import atomization, ex_atomization, atomization_vasp
 
 def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
             forcesymm=False, calc_parameters={}):
