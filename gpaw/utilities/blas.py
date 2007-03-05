@@ -86,6 +86,3 @@ if __name__ == '__main__':
     for i in range(100):
         gemm(1.0, a, b, 0.0, c)
     print time.clock() - t
-
-
-                   

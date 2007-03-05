@@ -41,13 +41,11 @@ and::
 
 """
 
-from math import pi
-
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
 
 from gpaw.coulomb import Coulomb
-from gpaw.utilities.tools import core_states
+from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
@@ -182,9 +180,9 @@ class EXX:
 
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
-                h_nn = inner(nucleus.P_uni[u], nucleus.vxx_uni[u])
-                H_nn += 0.5 * (num.transpose(h_nn) + h_nn)
-                Ekin -= num.dot(f_n, num.sum(H_nn))
+                h_nn = symmetrize(inner(nucleus.P_uni[u], nucleus.vxx_uni[u]))
+                H_nn += h_nn
+                Ekin -= num.dot(f_n, num.diagonal(h_nn))
 
             # Get atomic density and Hamiltonian matrices
             D_p  = nucleus.D_sp[s]
@@ -199,7 +197,7 @@ class EXX:
             C_pp = setup.M_pp
             for i1 in range(ni):
                 for i2 in range(ni):
-                    A = 0.0
+                    A = 0.0 # = C * D
                     for i3 in range(ni):
                         p13 = packed_index(i1, i3, ni)
                         for i4 in range(ni):
@@ -208,6 +206,7 @@ class EXX:
                     if not self.energy_only and i1 > i2:
                         p12 = packed_index(i1, i2, ni)
                         H_p[p12] -= 2 * hybrid * A # XXX: No '/ deg' ???
+                        Ekin += 2 * hybrid * D_ii[i1, i2] * A
                     Exx -= hybrid / deg * D_ii[i1, i2] * A
             
             # Add valence-core exchange energy
@@ -217,6 +216,7 @@ class EXX:
             Exx -= hybrid * num.dot(D_p, setup.X_p)
             if not self.energy_only:
                 H_p -= hybrid * setup.X_p
+                Ekin += hybrid * num.dot(D_p, setup.X_p)
 
             # Add core-core exchange energy
             if s == 0:
@@ -229,204 +229,25 @@ class EXX:
         self.Ekin += self.psum(Ekin)
 
 
-class PerturbativeExx:
-    """Class offering methods for non-selfconsistent evaluation of the
-       exchange energy of a *gpaw* calculation.
-    """
-    def __init__(self, paw):
-        # store options in local varibles
-        self.paw = paw
-        self.method = None
-
-        # allocate space for fine grid density
-        self.n_g = paw.finegd.new_array()
-
-        # load single exchange calculator
-        self.coulomb = Coulomb(paw.finegd, paw.hamiltonian.poisson).coulomb
-
-        # load interpolator
-        self.interpolate = paw.density.interpolate
-
-        # ensure that calculation is a Gamma point calculation
-        if paw.typecode == num.Complex:
-            msg = 'k-point calculations with exact exchange has not yet\n'\
-                  'been implemented. Please use gamma point only.'
-            raise NotImplementedError(msg)
-
-        # ensure that softgauss option is false
-        if paw.nuclei[0].setup.softgauss:
-            msg = 'Exact exchange is currently not compatible with extra\n'\
-                  'soft compensation charges.\n'\
-                  'Please set keyword softgauss=False'
-            raise NotImplementedError(msg)
-            
-    def get_exact_exchange(self,
-                           decompose = False,
-                           method    = None
-                           ):
-        """Control method for the calculation of exact exchange energy.
-           Allowed method names are 'real', 'recip_gauss', and 'recip_ewald'
-        """
-        paw = self.paw
-
-        if method == None:
-            if paw.domain.comm.size == 1: # serial computation
-                method = 'recip_gauss'
-            else: # parallel computation
-                method = 'real'
-        self.method = method
-
-        # Get smooth pseudo exchange energy contribution
-        self.Exxt = self.get_pseudo_exchange()
-
-        # Get atomic corrections
-        self.ExxVV, self.ExxVC, self.ExxCC = self.atomic_corrections()
-        # sum contributions from all processors
-        ksum = paw.kpt_comm.sum
-        dsum = paw.domain.comm.sum
-        self.Exxt  = ksum(self.Exxt)
-        self.ExxVV = ksum(dsum(self.ExxVV))
-        self.ExxVC = ksum(dsum(self.ExxVC))
-        self.ExxCC = ksum(dsum(self.ExxCC))
-
-        # add all contributions, to get total exchange energy
-        Exx = num.array([self.Exxt, self.ExxVV, self.ExxVC, self.ExxCC])
-
-        # return result, decompose if desired
-        if decompose: return Exx
-        else: return sum(Exx)
-
-    def get_pseudo_exchange(self):
-        """Calculate smooth contribution to exact exchange energy"""
-        paw = self.paw
-        ghat_nuclei = paw.ghat_nuclei
-        finegd = paw.finegd
-
-        # calculate exact exchange of smooth wavefunctions
-        Exxt = 0.0
-        for u, kpt in enumerate(paw.kpt_u):
-            for n in range(paw.nbands):
-                for m in range(n, paw.nbands):
-                    # determine double count factor:
-                    DC = 2 - (n == m)
-
-                    # calculate joint occupation number
-                    fnm = (kpt.f_n[n] * kpt.f_n[m]) * paw.nspins / 2.
-
-                    # determine current exchange density
-                    n_G = kpt.psit_nG[m] * kpt.psit_nG[n] 
-
-                    # and interpolate to the fine grid
-                    self.interpolate(n_G, self.n_g)
-
-                    # determine the compensation charges for each nucleus
-                    for nucleus in ghat_nuclei:
-                        if nucleus.in_this_domain:
-                            # generate density matrix
-                            Pm_i = nucleus.P_uni[u, m]
-                            Pn_i = nucleus.P_uni[u, n]
-                            D_ii = num.outerproduct(Pm_i, Pn_i)
-                            D_p  = pack(D_ii, tolerance=1e3)
-                            
-                            # determine compensation charge coefficients
-                            Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-                        else:
-                            Q_L = None
-
-                        # add compensation charges to exchange density
-                        nucleus.ghat_L.add(self.n_g, Q_L, communicate=True)
-
-                    # determine total charge of exchange density
-                    Z = float(n == m)
-
-                    # add the nm contribution to exchange energy
-                    Exxt += -.5 * fnm * DC * self.coulomb(self.n_g, Z1=Z,
-                                                       method=self.method)
-        return Exxt
-    
-    def atomic_corrections(self):
-        """Determine the atomic corrections to the valence-valence exchange
-           interaction, the valence-core contribution, and the core-core
-           contributions.
-        """
-        ExxVV = ExxVC = ExxCC = 0.0
-        for nucleus in self.paw.my_nuclei:
-            # error handling for old setup files
-            if nucleus.setup.ExxC == None:
-                print 'Warning no exact exchange information in setup file'
-                print 'Value of exact exchange may be incorrect'
-                print 'Please regenerate setup file  with "-x" option,'
-                print 'to correct error'
-                break
-
-            for kpt in self.paw.kpt_u:
-                # Add core-core contribution:
-                s = kpt.s
-                if s == 0:
-                    ExxCC += nucleus.setup.ExxC
-
-                # Add val-core contribution:
-                #              __
-                #     vc,a    \     a    a
-                #    E     = - )   D  * X
-                #     xx      /__   p    p
-                #              p
-
-                D_p = nucleus.D_sp[s]
-                ExxVC += - num.dot(D_p, nucleus.setup.X_p)
-
-            """Determine the atomic corrections to the val-val interaction:
-                 
-                       -- 
-                vv,a   \     a        a              a
-               E     = /    D      * C            * D
-                xx     --    i1,i3    i1,i2,i3,i4    i2,i4
-                    i1,i2,i3,i4
-
-                       -- 
-                vv,a   \             a      a      a      a      a
-               E     = /    f * f * P    * P    * P    * P    * C    
-                xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
-                    n,m,i1,i2,i3,i4
-            """
-            for u, kpt in enumerate(self.paw.kpt_u):
-                for n in range(self.paw.nbands):
-                    for m in range(n, self.paw.nbands):
-                        # determine double count factor:
-                        DC = 2 - (n == m)
-
-                        # calculate joint occupation number
-                        fnm = (kpt.f_n[n] * kpt.f_n[m]) * self.paw.nspins / 2.
-
-                        # generate density matrix
-                        Pm_i = nucleus.P_uni[u, m]
-                        Pn_i = nucleus.P_uni[u, n]
-                        D_ii = num.outerproduct(Pm_i,Pn_i)
-                        D_p  = pack(D_ii, tolerance=1e3)
-
-                        # C_iiii from setup file
-                        C_pp  = nucleus.setup.M_pp
-
-                        # add atomic contribution to val-val interaction
-                        ExxVV += - fnm * num.dot(D_p, num.dot(C_pp, D_p)) * DC
-
-        return ExxVV, ExxVC, ExxCC
-    
-
 def valence_valence_corrections(paw):
-    """Determine the atomic corrections to the valence-valence interaction::
-
-               -- 
-        vv,a   \     a        a              a
-       E     = /    D      * C            * D
-        xx     --    i1,i3    i1,i2,i3,i4    i2,i4
-            i1,i2,i3,i4
+    """Determine the atomic corrections to the valence-valence interaction
+    using method 1::
 
                -- 
         vv,a   \             a      a      a      a      a
        E     = /    f * f * P    * P    * P    * P    * C    
         xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
             n,m,i1,i2,i3,i4
+
+    or method 2::
+    
+               -- 
+        vv,a   \     a        a              a
+       E     = /    D      * C            * D
+        xx     --    i1,i3    i1,i2,i3,i4    i2,i4
+            i1,i2,i3,i4
+
+    This should be the same. (This is not always the case, see e.g. He)
     """
     ExxVV1 = ExxVV2 = 0.0
     #---------------------- METHOD 1 ------------------------

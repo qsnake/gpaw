@@ -91,7 +91,6 @@ class XCFunctional:
             return self.xc.get_extra_kinetic_energy()
         else:
             return 0.0
-                                    
     
     def set_non_local_things(self, paw, energy_only=False):
         if self.orbital_dependent:

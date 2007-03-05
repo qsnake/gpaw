@@ -4,13 +4,14 @@ from tools import coordinates, erf3D
 
 # computer generated code:
 # use c/bmgs/sharmonic/construct_python_code(lmax) to generate more
-
 Y_L = ['0.282094791774', '0.488602511903 * y', '0.488602511903 * z', '0.488602511903 * x', '1.09254843059 * x*y', '1.09254843059 * y*z', '0.315391565253 * (3*z*z-r2)', '1.09254843059 * x*z', '0.546274215296 * (x*x-y*y)', ]
 gauss_L = ['sqrt(a0**3*4)/pi * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * y * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * z * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * x * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * x*y * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * y*z * exp(-a0*r2)', 'sqrt(a0**7*0.355555555556)/pi * (3*z*z-r2) * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * x*z * exp(-a0*r2)', 'sqrt(a0**7*1.06666666667)/pi * (x*x-y*y) * exp(-a0*r2)', ]
 gausspot_L = ['2*sqrt(pi)*erf3D(sqrt(a0)*r)/r', '', '', '', '', '', '', '', '', ]
 
 class Gaussian:
-    """Class offering several utilities related to the generalized gaussians ::
+    """Class offering several utilities related to the generalized gaussians.
+
+    Generalized gaussians are defined by::
     
                        _____                             2  
                       /  1       l!          l+3/2  -a0 r    l  m

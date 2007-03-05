@@ -704,14 +704,7 @@ class Paw:
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
     
-    def get_exact_exchange(self, decompose=False, method=None):
-        from gpaw.exx import PerturbativeExx
-        if not self.nuclei[0].ready:
-            self.set_positions(num.array([n.spos_c * self.domain.cell_c
-                                          for n in self.nuclei]))
-        return PerturbativeExx(self).get_exact_exchange(decompose, method)
-
-    def get_exact_exchange_new(self):
+    def get_exact_exchange(self):
         dExc = self.get_xc_difference('EXX') / self.Ha
         Exx = self.Exc + dExc
         for nucleus in self.nuclei:

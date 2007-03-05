@@ -1,22 +1,22 @@
 import Numeric as num
 
 def factorial(x):
-    """Return x!, where x is a non-negative integer"""
+    """Return x!, where x is a non-negative integer."""
     if x < 2: return 1
     else: return x * factorial(x - 1)
 
 def L_to_lm(L):
-    """convert L index to (l, m) index"""
+    """convert L index to (l, m) index."""
     l = int(num.sqrt(L))
     m = L - l**2 - l
     return l, m
 
 def lm_to_L(l,m):
-    """convert (l, m) index to L index"""
+    """convert (l, m) index to L index."""
     return l**2 + l + m
 
 def core_states(symbol):
-    """method returning the number of core states for given element"""
+    """method returning the number of core states for given element."""
     from gpaw.atom.configurations import configurations
     from gpaw.atom.generator import parameters
 
@@ -55,7 +55,7 @@ def get_kpoint_dimensions(kpts):
 
 def construct_reciprocal(gd):
     """Construct the reciprocal lattice vectors correspoding to the
-       grid defined in input grid-descriptor 'gd'
+       grid defined in input grid-descriptor 'gd'.
     """
     # calculate reciprocal lattice vectors
     dim = num.reshape(gd.n_c, (3, 1, 1, 1))
@@ -99,12 +99,20 @@ def dagger(matrix, copy=True):
        the input matrix will be changed (no new allocation of memory).
     """
     # First change the axis: (Does not allocate a new array)
-    matrix_conj = num.swapaxes(matrix, 0, 1)
+    dag = num.swapaxes(matrix, 0, 1)
+
     if copy: # Allocate space for new array
-        return num.conjugate(matrix_conj)
+        return num.conjugate(dag)
     else: # The input array is used for output
-        num.multiply(matrix_conj.imag, -1, matrix_conj.imag)
-        return matrix_conj
+        if dag.typecode() == num.Complex:
+            num.multiply(dag.imag, -1, dag.imag)
+        return dag
+
+def symmetrize(matrix):
+    """Symmetrize input matrix."""
+    num.add(dagger(matrix), matrix, matrix)
+    num.multiply(.5, matrix, matrix)
+    return matrix
 
 def erf3D(M):
     """Return matrix with the value of the error function evaluated for
@@ -128,8 +136,9 @@ def elementwise_apply(array, function, copy=True):
     return result
 
 def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
-    """Convert planewave energy cutoff to a real-space gridspacing
-       using the conversion formula::
+    """Convert planewave energy cutoff to a real-space gridspacing.
+
+       The method use the conversion formula::
        
                 pi
         h =   -----
@@ -144,8 +153,9 @@ def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     return h
     
 def gridspacing_to_energy_cutoff(h, h_unit='Ang', E_unit='Hartree'):
-    """Convert real-space gridspacing to planewave energy cutoff
-       using the conversion formula::
+    """Convert real-space gridspacing to planewave energy cutoff.
+
+       The method use the conversion formula::
        
              1   pi  2
         E  = - ( -- )

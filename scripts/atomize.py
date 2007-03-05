@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import pickle
 import sys
+sys.path.append('.')
 from gpaw.utilities.molecule import Molecule
 from ASE.Units import Convert
-from gpaw.testing.atomization_data import atomization, ex_atomization, atomization_vasp
+from gpaw.testing.atomization_data import \
+     atomization, ex_atomization, atomization_vasp
 
 def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
             forcesymm=False, calc_parameters={}):
@@ -132,14 +134,16 @@ def reference_vasp(molecules):
     return pretty_print(eas, xcs, molecules) + mean_error(eas, errors)
 
 if __name__ == '__main__':
-    ## a = 5.6
-    ## h = 0.2 # 5.6/.2 = 28
-    ## a = 7.2
-    ## h = 0.15 #7.2/.15 = 48
+##     a = 5.6
+##     h = 0.2 # 5.6 / 0.2 = 28
+##     a = 6.8
+##     h = 0.17 # 6.8 / 0.17 = 40
+##     a = 7.2
+##     h = 0.15 # 7.2 / 0.15 = 48
     a = 8.16
     h = 0.17 # 8.16 / 0.17 = 48
-    ## a = 12.8
-    ## h = 0.16 # 12.8/0.16 = 80
+##     a = 12.8
+##     h = 0.16 # 12.8 / 0.16 = 80
     relax = False
     parameters = {'xc': 'PBE0',
                   'out': 'atomize.txt',

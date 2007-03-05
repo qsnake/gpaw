@@ -1,5 +1,5 @@
 import Numeric as num
-from Numeric import pi
+from math import pi
 from FFT import fftnd
 import gpaw
 from gpaw.utilities.complex import real
@@ -12,7 +12,7 @@ class Coulomb:
     """Class used to evaluate coulomb integrals"""
     def __init__(self, gd, poisson=None):
         """Class should be initialized with a grid_descriptor 'gd' from
-           the gpaw module
+           the gpaw module.
         """        
         self.gd = gd
         self.poisson = poisson
@@ -57,7 +57,7 @@ class Coulomb:
     def get_single_exchange(self, n, Z=None, method='recip_gauss'):
         """Returns exchange energy of input density.
 
-        `n` defined as::
+        The exchange energy of a density `n` is::
         
                                               *
                               /    /      n(r)  n(r')
@@ -70,9 +70,9 @@ class Coulomb:
         return -0.5 * self.coulomb(n1=n, Z1=Z, method=method)
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):
-        """Evaluates the coulomb integral
+        """Evaluates the coulomb integral of n1 and n2
 
-        ::
+        The coulomb integral is defined by::
 
                                       *
                       /    /      n1(r)  n2(r')
