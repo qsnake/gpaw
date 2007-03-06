@@ -203,10 +203,10 @@ class EXX:
                         for i4 in range(ni):
                             p24 = packed_index(i2, i4, ni)
                             A += C_pp[p13, p24] * D_ii[i3, i4]
-                    if not self.energy_only and i1 > i2:
+                    if not self.energy_only and i1 >= i2:
                         p12 = packed_index(i1, i2, ni)
                         H_p[p12] -= 2 * hybrid * A # XXX: No '/ deg' ???
-                        Ekin += 2 * hybrid * D_ii[i1, i2] * A
+                        Ekin += 2 * hybrid / deg * D_ii[i1, i2] * A
                     Exx -= hybrid / deg * D_ii[i1, i2] * A
             
             # Add valence-core exchange energy

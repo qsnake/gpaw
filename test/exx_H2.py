@@ -35,34 +35,26 @@ calc = Calculator(nbands=2, h=h, xc='PBE', tolerance=1e-7,
 Hs.SetCalculator(calc)
 esH    = Hs.GetPotentialEnergy()
 esH   += calc.GetReferenceEnergy()
-esxxH  = calc.GetExactExchange(method='real')
+esxxH  = calc.GetExactExchange()
 
 # calculation for H2
 H2.SetCalculator(calc)
 eH2   = H2.GetPotentialEnergy()
 eH2  += calc.GetReferenceEnergy()
 excH2 = calc.GetXCEnergy()
-exxH2 = calc.GetExactExchange(method='real')
+exxH2 = calc.GetExactExchange()
 
 # spin polarized calculation for H
 H.SetCalculator(calc)
 eH    = H.GetPotentialEnergy()
 eH   += calc.GetReferenceEnergy()
 excH  = calc.GetXCEnergy()
-exxH  = calc.GetExactExchange(method='real')
+exxH  = calc.GetExactExchange()
 
 # spin compensated calculation for H with all-electron calculator
 atom     = AE('H'); atom.run()
 eTotAtom = (atom.Ekin + atom.Epot + atom.Exc)
 exxAtom  = aExx(atom)
-
-
-#Test numbers
-Test=[
-      calc.GetExactExchange(method='recip_ewald'),
-      calc.GetExactExchange(method='recip_gauss'),
-      calc.GetExactExchange(method='real'),
-      ]
 
 print '\n|-------------------------OUTPUT---------------------------|\n'
 print '          H atom  |  H2 molecule'
@@ -79,11 +71,6 @@ print ' '
 print 'ATOMIZATION ENERGIES (spin polarized):'
 print 'potential: %5.2f' %(eH2 - 2 * eH) 
 print 'exchange : %5.2f' %((eH2 - excH2 + exxH2) - 2 * (eH - excH + exxH)) 
-print ' '
-print 'METHOD TESTS:'
-print 'recip, ewald:', Test[0]
-print 'recip, gauss:', Test[1]
-print 'real        :', Test[2]
 print '\n|-------------------------OUTPUT---------------------------|\n'
 
 equal(eH,    -0.5,     1e-2)
@@ -92,7 +79,3 @@ equal(esH,   eTotAtom, 1e-2)
 equal(esxxH, exxAtom,  1e-2)
 equal(eH2,   -1.16417, 1e-3)
 equal(exxH2, -0.66378, 1e-3)
-
-for i in range(3):
-    equal(Test[i], -5 / 16., 1.5e-2)
-

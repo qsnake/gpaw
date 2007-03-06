@@ -15,7 +15,7 @@ for hosts in (1, 4, ):
 
     loa.SetCalculator(calc)
     p.append(loa.GetPotentialEnergy())
-    exx.append(calc.GetExactExchange(method='real'))
+    exx.append(calc.GetExactExchange())
 
     print 'number of CPUs   :', hosts
     print 'Potential energy :', p[i]
