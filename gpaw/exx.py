@@ -83,10 +83,10 @@ class EXX:
         self.fineintegrate = finegd.integrate
         
         # Allocate space for matrices
-        self.nt_G = gd.empty()
-        self.vt_G = gd.empty()
-        self.nt_g = finegd.empty()
-        self.vt_g = finegd.empty()
+        self.nt_G = gd.empty()    # Pseudo density on coarse grid
+        self.vt_G = gd.empty()    # Pot. of comp. pseudo density on coarse grid
+        self.nt_g = finegd.empty()# Comp. pseudo density on fine grid
+        self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
         if not energy_only:
             nmyu = nspins # XXX only correct for serial calculation!
             self.vt_snG = gd.empty((nmyu, nbands))  
@@ -95,12 +95,12 @@ class EXX:
         """Apply exact exchange operator."""
 
         # Initialize method-attributes
-        psit_nG = kpt.psit_nG     # wave functions
+        psit_nG = kpt.psit_nG     # Wave functions
         Exx = Ekin = 0.0          # Energy of eXact eXchange and kinetic energy
-        deg = 2 / self.nspins     # spin degeneracy
-        f_n = kpt.f_n             # occupation number
-        s   = kpt.s               # global spin index
-        u   = kpt.u               # local spin/kpoint index
+        deg = 2 / self.nspins     # Spin degeneracy
+        f_n = kpt.f_n             # Occupation number
+        s   = kpt.s               # Global spin index
+        u   = kpt.u               # Local spin/kpoint index
         if not self.energy_only:
             for nucleus in self.my_nuclei:
                 nucleus.vxx_uni[u] = 0.0
@@ -111,7 +111,7 @@ class EXX:
             for n2, psit2_G in enumerate(psit_nG):
                 f2 = f_n[n2]
                 # Determine current exchange density ...
-                self.nt_G[:] = psit1_G * psit2_G 
+                self.nt_G[:] = psit1_G * psit2_G
 
                 # and interpolate to the fine grid:
                 self.interpolate(self.nt_G, self.nt_g)
@@ -203,9 +203,9 @@ class EXX:
                         for i4 in range(ni):
                             p24 = packed_index(i2, i4, ni)
                             A += C_pp[p13, p24] * D_ii[i3, i4]
-                    if not self.energy_only and i1 >= i2:
+                    if not self.energy_only:
                         p12 = packed_index(i1, i2, ni)
-                        H_p[p12] -= 2 * hybrid * A # XXX: No '/ deg' ???
+                        H_p[p12] -= 2 * hybrid / deg * A / ((i1!=i2) + 1)
                         Ekin += 2 * hybrid / deg * D_ii[i1, i2] * A
                     Exx -= hybrid / deg * D_ii[i1, i2] * A
             
