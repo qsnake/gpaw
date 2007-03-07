@@ -178,6 +178,14 @@ class EXX:
             setup = nucleus.setup
             assert not setup.softgauss or isinstance(setup, AllElectronSetup)
 
+            # error handling for old setup files
+            if nucleus.setup.ExxC == None:
+                print 'Warning no exact exchange information in setup file'
+                print 'Value of exact exchange may be incorrect'
+                print 'Please regenerate setup file  with "-x" option,'
+                print 'to correct error'
+                break
+
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
                 h_nn = symmetrize(inner(nucleus.P_uni[u], nucleus.vxx_uni[u]))
