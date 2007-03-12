@@ -336,6 +336,7 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       // PBE0
       self->exchange = pbe_exchange;
       self->par.hybrid = 0.25;
+      self->par.kappa = 0.804;
     }
   else if (type == 5)
     {
