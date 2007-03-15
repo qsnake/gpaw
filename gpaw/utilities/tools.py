@@ -6,17 +6,17 @@ def factorial(x):
     else: return x * factorial(x - 1)
 
 def L_to_lm(L):
-    """convert L index to (l, m) index."""
+    """Convert L index to (l, m) index."""
     l = int(num.sqrt(L))
     m = L - l**2 - l
     return l, m
 
 def lm_to_L(l,m):
-    """convert (l, m) index to L index."""
+    """Convert (l, m) index to L index."""
     return l**2 + l + m
 
 def core_states(symbol):
-    """method returning the number of core states for given element."""
+    """Method returning the number of core states for given element."""
     from gpaw.atom.configurations import configurations
     from gpaw.atom.generator import parameters
 
@@ -73,6 +73,7 @@ def construct_reciprocal(gd):
 def coordinates(gd):
     """Constructs and returns matrices containing cartesian coordinates,
        and the square of the distance from the origin.
+
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
     """    
@@ -95,8 +96,10 @@ def coordinates(gd):
     return xyz, r2
 
 def dagger(matrix, copy=True):
-    """Return hermitian conjugate of input matrix. If copy is False,
-       the input matrix will be changed (no new allocation of memory).
+    """Return hermitian conjugate of input matrix.
+
+    If copy is False, the input matrix will be changed (no new allocation
+    of memory).
     """
     # First change the axis: (Does not allocate a new array)
     dag = num.swapaxes(matrix, 0, 1)

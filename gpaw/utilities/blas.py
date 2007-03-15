@@ -9,6 +9,20 @@ import _gpaw
 
 
 def gemm(alpha, a, b, beta, c):
+    """General Matrix Multiply.
+
+    Performs the operation::
+    
+      c <- alpha * b.a + beta * c
+
+    where `b.a` denotes the matrix multiplication defined by::
+    
+                      _
+                     \  
+      (b.a)        =  ) b  * a
+           ijkl...   /_  ip   pjkl...
+                      p
+    """
     assert ((is_contiguous(a, num.Float) and
              is_contiguous(b, num.Float) and
              is_contiguous(c, num.Float) and
@@ -23,6 +37,13 @@ def gemm(alpha, a, b, beta, c):
 
     
 def axpy(alpha, x, y):
+    """alpha x plus y.
+
+    Performs the operation::
+
+      y <- alpha * x + y
+      
+    """
     if isinstance(alpha, complex):
         assert is_contiguous(x, num.Complex) and is_contiguous(y, num.Complex)
     else:
