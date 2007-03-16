@@ -11,9 +11,9 @@ def diagonalize(a, w, b=None):
     """Diagonalize a symmetric/hermitian matrix.
 
     Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
-    `a`. The eigenvectors are returned in `a` and the eigenvalues
-    in `w` in ascending order. Only the lower triangle of `a` is
-    considered.
+    `a`. The eigenvectors are returned in the rows of `a`, and the
+    eigenvalues in `w` in ascending order. Only the lower triangle of
+    `a` is considered.
 
     If a symmetric/hermitian positive definite matrix b is given, then
     dsygvd/zhegvd is used to solve a generalized eigenvalue
