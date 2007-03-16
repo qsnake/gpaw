@@ -71,6 +71,7 @@ class EXX:
 
         # Initialize class-attributes
         self.nspins      = nspins
+        self.nbands      = nbands
         self.my_nuclei   = my_nuclei
         self.ghat_nuclei = ghat_nuclei
         self.interpolate = interpolate
@@ -106,10 +107,14 @@ class EXX:
                 nucleus.vxx_uni[u] = 0.0
 
         # Determine pseudo-exchange
-        for n1, psit1_G in enumerate(psit_nG):
+        for n1 in range(self.nbands):
+            psit1_G = psit_nG[n1]            
             f1 = f_n[n1]
-            for n2, psit2_G in enumerate(psit_nG):
+            for n2 in range(n1, self.nbands):
+                psit2_G = psit_nG[n2]
                 f2 = f_n[n2]
+                dc = 1 + (n1 != n2) # double count factor
+
                 # Determine current exchange density ...
                 self.nt_G[:] = psit1_G * psit2_G
 
@@ -123,7 +128,7 @@ class EXX:
                         P1_i = nucleus.P_uni[u, n1]
                         P2_i = nucleus.P_uni[u, n2]
                         D_ii = num.outerproduct(P1_i, P2_i)
-                        D_p  = pack(D_ii, tolerance=1e3)
+                        D_p  = pack(D_ii, tolerance=1e3)#python func! move to C
 
                         # Determine compensation charge coefficients:
                         Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
@@ -145,14 +150,17 @@ class EXX:
                 int_fine = self.fineintegrate(self.vt_g * self.nt_g)
                 int_coarse = self.integrate(self.vt_G * self.nt_G)
                 if self.rank == 0: # Only add to energy on master CPU
-                    Exx += 0.5 * f1 * f2 * hybrid / deg * int_fine
-                    Ekin -= f1 * f2 * hybrid / deg * int_coarse
+                    Exx += 0.5 * f1 * f2 * dc * hybrid / deg * int_fine
+                    Ekin -= f1 * f2 * dc * hybrid / deg * int_coarse
 
                 if not self.energy_only:
                     Htpsit_nG[n1] += f2 * hybrid / deg * \
                                      self.vt_G * psit2_G
-                    if n1 == n2:
-                        self.vt_snG[u, n1] = f1 * hybrid / deg * self.vt_G
+                    if n1 != n2:
+                        Htpsit_nG[n2] += f1 * hybrid / deg * \
+                                         self.vt_G * psit1_G
+                    else:
+                        self.vt_snG[u, n2] = f2 * hybrid / deg * self.vt_G
                     
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
@@ -166,8 +174,11 @@ class EXX:
                             nucleus.vxx_uni[u, n1] += (
                                 f2 * hybrid / deg * num.dot(
                                 v_ii, nucleus.P_uni[u, n2]))
-
-                            if n1 == n2:
+                            if n1 != n2:
+                                nucleus.vxx_uni[u, n2] += (
+                                    f1 * hybrid / deg * num.dot(
+                                    v_ii, nucleus.P_uni[u, n1]))
+                            else:
                                 # XXX Check this:
                                 nucleus.vxx_unii[u, n1] = (
                                     f2 * hybrid / deg * v_ii)
@@ -284,10 +295,21 @@ def valence_valence_corrections(paw):
     #---------------------- METHOD 2 ------------------------
     for nucleus in paw.my_nuclei:
         for s in range(paw.nspins):
-            D_p  = nucleus.D_sp[s]
-            D_ii = unpack2(D_p)
+            # make own D_ii (i.e. *not* Pulay mixed)
+            ni = len(nucleus.P_uni[s, 0])
+            D_ii = num.zeros((ni, ni), num.Float)
+            for n in range(paw.nbands):
+                f_n = paw.kpt_u[s].f_n[n]
+                D_ii += f_n * num.outerproduct(nucleus.P_uni[s, n],
+                                               nucleus.P_uni[s, n])
+
+##             # import stored D_ii (i.e. Pulay mixed)
+##             D_p  = nucleus.D_sp[s]
+##             D_ii = unpack2(D_p)
+##             ni   = len(D_ii)
+
+            # make the sum
             C_pp = nucleus.setup.M_pp
-            ni   = len(D_ii)
             for i1 in range(ni):
                 for i2 in range(ni):
                     A = 0.0
