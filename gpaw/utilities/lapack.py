@@ -1,6 +1,11 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""
+Python wrapper functions for the ``C`` package:
+Linear Algebra PACKage (LAPACK)
+"""
+
 import Numeric as num
 
 from gpaw import debug

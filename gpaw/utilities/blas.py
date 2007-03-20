@@ -1,6 +1,11 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+"""
+Python wrapper functions for the ``C`` package:
+Basic Linear Algebra Subroutines (BLAS)
+"""
+
 import Numeric as num
 
 from gpaw.utilities import is_contiguous
@@ -15,7 +20,7 @@ def gemm(alpha, a, b, beta, c):
     
       c <- alpha * b.a + beta * c
 
-    where `b.a` denotes the matrix multiplication defined by::
+    where ``b.a`` denotes the matrix multiplication defined by::
     
                       _
                      \  
@@ -56,6 +61,26 @@ def axpy(alpha, x, y):
 
 
 def rk(alpha, a, beta, c):
+    """Rank-k update of a matrix.
+
+    Performs the operation::
+    
+                        dag
+      c <- alpha * a . a    + beta * c
+
+    where ``a.b`` denotes the matrix multiplication defined by::
+
+                 _
+                \  
+      (a.b)   =  ) a         * b
+           ij   /_  ipklm...     pjklm...
+               pklm...
+
+    ``dag`` denotes the hermitian conjugate (complex conjugation plus a
+    swap of axis 0 and 1).
+    
+    Only the lower triangle of ``c`` will contain sensible numbers.
+    """
     assert (is_contiguous(a, num.Float) and is_contiguous(c, num.Float) or
             is_contiguous(a, num.Complex) and is_contiguous(c, num.Complex))
     assert num.rank(a) > 1
@@ -64,9 +89,31 @@ def rk(alpha, a, beta, c):
 
     
 def r2k(alpha, a, b, beta, c):
+    """Rank-2k update of a matrix.
+
+    Performs the operation::
+
+                        dag        cc       dag
+      c <- alpha * a . b    + alpha  * b . a    + beta * c
+
+    where ``a.b`` denotes the matrix multiplication defined by::
+
+                 _
+                \  
+      (a.b)   =  ) a         * b
+           ij   /_  ipklm...     pjklm...
+               pklm...
+
+    ``cc`` denotes complex conjugation.
+    
+    ``dag`` denotes the hermitian conjugate (complex conjugation plus a
+    swap of axis 0 and 1).
+
+    Only the lower triangle of ``c`` will contain sensible numbers.
+    """
     assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float) and
              is_contiguous(c, num.Float) and isinstance(alpha, float)) or
-            (is_contiguous(a, num.Complex) and is_contiguous(b, num.Complex) and
+            (is_contiguous(a, num.Complex) and is_contiguous(b,num.Complex) and
              is_contiguous(c, num.Complex)))
     assert num.rank(a) > 1
     assert a.shape == b.shape
