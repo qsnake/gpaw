@@ -86,12 +86,6 @@ class XCFunctional:
         xcname, parameters = state
         self.__init__(xcname, parameters)
 
-    def get_extra_kinetic_energy(self):
-        if (self.orbital_dependent):
-            return self.xc.get_extra_kinetic_energy()
-        else:
-            return 0.0
-    
     def set_non_local_things(self, paw, energy_only=False):
         if self.orbital_dependent:
             self.xc.pass_paw_object(paw)
@@ -106,22 +100,38 @@ class XCFunctional:
                            paw.kpt_comm, paw.domain.comm,
                            energy_only)
 
-    def calculate_non_local_energy(self, kpt, Htpsit_nG=None, H_nn=None):
+    def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
             self.xc.calculate_energy(kpt, Htpsit_nG, H_nn)
 
         if self.hybrid > 0.0:
-            self.exx.calculate_energy(kpt, Htpsit_nG, H_nn, self.hybrid)
+            self.exx.apply(kpt, Htpsit_nG, H_nn, self.hybrid)
 
     def get_non_local_energy(self):
+        Exc = 0.0
+        
         if self.orbital_dependent:
-            return self.xc.get_non_local_energy()
+            Exc += self.xc.get_non_local_energy()
 
         if self.hybrid > 0.0:
-            return self.exx.Exx
-        else:
-            return 0.0
+            Exc += self.exx.Exx
         
+        return Exc
+
+    def get_non_local_kinetic_corrections(self):
+        Ekin = 0.0
+        if self.orbital_dependent:
+            Ekin += self.xc.get_extra_kinetic_energy()
+            
+        if self.hybrid > 0.0:
+            Ekin += self.exx.Ekin
+
+        return Ekin
+    
+    def adjust_non_local_residual(self, pR_G, dR_G, eps, u, s, k, n):
+        if self.hybrid > 0.0:
+            self.exx.adjust_residual(pR_G, dR_G, s, n)
+                
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              tau_g=None):
         if self.mgga:

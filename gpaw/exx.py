@@ -92,7 +92,7 @@ class EXX:
             nmyu = nspins # XXX only correct for serial calculation!
             self.vt_snG = gd.empty((nmyu, nbands))  
 
-    def calculate_energy(self, kpt, Htpsit_nG, H_nn, hybrid):
+    def apply(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
 
         # Initialize method-attributes
@@ -247,6 +247,8 @@ class EXX:
         self.Exx += self.psum(Exx)
         self.Ekin += self.psum(Ekin)
 
+    def adjust_residual(self, pR_G, dR_G, s, n):
+        dR_G += self.vt_snG[s, n] * pR_G
 
 def valence_valence_corrections(paw):
     """Determine the atomic corrections to the valence-valence interaction
@@ -299,9 +301,9 @@ def valence_valence_corrections(paw):
             ni = len(nucleus.P_uni[s, 0])
             D_ii = num.zeros((ni, ni), num.Float)
             for n in range(paw.nbands):
-                f_n = paw.kpt_u[s].f_n[n]
-                D_ii += f_n * num.outerproduct(nucleus.P_uni[s, n],
-                                               nucleus.P_uni[s, n])
+                f = paw.kpt_u[s].f_n[n]
+                D_ii += f * num.outerproduct(nucleus.P_uni[s, n],
+                                             nucleus.P_uni[s, n])
 
 ##             # import stored D_ii (i.e. Pulay mixed)
 ##             D_p  = nucleus.D_sp[s]

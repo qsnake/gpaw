@@ -301,12 +301,9 @@ class Paw:
             self.error, self.converged = self.eigensolver.iterate(
                 self.hamiltonian, self.kpt_u)
 
+            # Make corrections due to non-local xc
             self.Exc += self.hamiltonian.xc.xcfunc.get_non_local_energy()
-            if self.hamiltonian.xc.xcfunc.hybrid > 0.0:
-                self.Ekin0 += self.hamiltonian.xc.xcfunc.exx.Ekin
-
-            if self.hamiltonian.xc.xcfunc.orbital_dependent:
-                self.Ekin0 += self.hamiltonian.xc.xcfunc.get_extra_kinetic_energy()
+            self.Ekin0 += self.hamiltonian.xc.xcfunc.get_non_local_kinetic_corrections()
                 
             # Calculate occupation numbers:
             self.nfermi, self.magmom, self.S, Eband = \

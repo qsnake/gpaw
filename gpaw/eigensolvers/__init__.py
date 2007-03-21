@@ -9,6 +9,7 @@ from gpaw.preconditioner import Preconditioner
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.complex import cc, real
+from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
 
 class Eigensolver:
@@ -95,7 +96,7 @@ class Eigensolver:
         Htpsit_nG += psit_nG * hamiltonian.vt_sG[kpt.s]
 
         H_nn[:] = 0.0  # r2k fails without this!
-        hamiltonian.xc.xcfunc.calculate_non_local_energy(kpt, Htpsit_nG, H_nn)
+        hamiltonian.xc.xcfunc.apply_non_local(kpt, Htpsit_nG, H_nn)
 
         r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
         
@@ -105,6 +106,10 @@ class Eigensolver:
                                           cc(num.transpose(P_ni))))
 
         self.comm.sum(H_nn, kpt.root)
+
+        # Uncouple occupied and unoccupied subspaces
+        if hamiltonian.xc.xcfunc.hybrid > 0.0:
+            apply_subspace_mask(H_nn, kpt.f_n)
 
         if self.comm.rank == kpt.root:
             info = diagonalize(H_nn, eps_n)
