@@ -689,7 +689,7 @@ class Paw:
         Exc = self.domain.comm.sum(Exc)
 
         for kpt in self.kpt_u:
-            newxcfunc.calculate_non_local_energy(kpt)
+            newxcfunc.apply_non_local(kpt)
         Exc += newxcfunc.get_non_local_energy()
         
         xc.set_functional(oldxcfunc)
