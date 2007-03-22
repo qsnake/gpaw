@@ -41,14 +41,14 @@ def get_kpoint_dimensions(kpts):
     tol = 1e-5
     Nk_c = num.zeros(3)
     for c in range(3):
-        # sort kpoints in ascending order along current axis
+        # Sort kpoints in ascending order along current axis
         slist = num.argsort(kpts[:, c])
         skpts = num.take(kpts, slist)
 
-        # determine increment between kpoints along current axis
+        # Determine increment between kpoints along current axis
         DeltaK = max([skpts[n + 1, c] - skpts[n, c] for n in range(nkpts - 1)])
 
-        #determine number of kpoints as inverse of distance between kpoints
+        # Determine number of kpoints as inverse of distance between kpoints
         if DeltaK > tol: Nk_c[c] = int(round(1. / DeltaK))
         else: Nk_c[c] = 1
     return Nk_c
@@ -57,7 +57,7 @@ def construct_reciprocal(gd):
     """Construct the reciprocal lattice vectors correspoding to the
        grid defined in input grid-descriptor 'gd'.
     """
-    # calculate reciprocal lattice vectors
+    # Calculate reciprocal lattice vectors
     dim = num.reshape(gd.n_c, (3, 1, 1, 1))
     dk = 2 * num.pi / gd.domain.cell_c
     dk.shape = (3, 1, 1, 1)
@@ -65,7 +65,7 @@ def construct_reciprocal(gd):
     k2 = sum(k**2)
     k2[0, 0, 0] = 1.0
 
-    # determine N^3
+    # Determine N^3
     N3 = gd.n_c[0] * gd.n_c[1] * gd.n_c[2]
 
     return k2, N3
@@ -84,15 +84,15 @@ def coordinates(gd):
     xyz = r0 + I * dr
     r2 = num.sum(xyz**2)
 
-    # remove singularity at origin and replace with small number
+    # Remove singularity at origin and replace with small number
     middle = gd.N_c / 2.
-    # check that middle is a gridpoint and that it is on this CPU
+    # Check that middle is a gridpoint and that it is on this CPU
     if num.alltrue(middle == num.floor(middle)) and \
            num.alltrue(gd.beg_c <= middle < gd.end_c):
         m = (middle - gd.beg_c).astype(int)
         r2[m[0], m[1], m[2]] = 1e-12
 
-    # return r^2 matrix
+    # Return r^2 matrix
     return xyz, r2
 
 def dagger(matrix, copy=True):

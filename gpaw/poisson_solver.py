@@ -175,12 +175,3 @@ class PoissonSolver:
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
                                                     residual.flat)) * self.dv
             return error
-
-    def load(self):
-        # Load necessary attributes
-        if not hasattr(self, 'rho_gauss'):
-            from gpaw.utilities.gauss import Gaussian
-            gauss = Gaussian(self.gd)
-            self.rho_gauss = gauss.get_gauss(0)
-            self.phi_gauss = gauss.get_gauss_pot(0)
-                

@@ -1,10 +1,9 @@
 import Numeric as num
 from math import pi
 from FFT import fftnd
-import gpaw
+#import gpaw
 from gpaw.utilities.complex import real
 from gpaw.poisson_solver import PoissonSolver
-from gpaw.utilities import DownTheDrain
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.tools import construct_reciprocal
 
@@ -45,13 +44,13 @@ class Coulomb:
                 gauss = Gaussian(self.gd)
                 self.ng = gauss.get_gauss(0)
                 self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
+        
         else: # method == 'real'
             if not hasattr(self, 'solve'):
                 if self.poisson is not None:
                     self.solve = self.poisson.solve
                 else:
-                    self.solve = PoissonSolver(self.gd, nn=1,
-                                               out=DownTheDrain(),
+                    self.solve = PoissonSolver(self.gd, nn=2,
                                                load_gauss=True).solve
 
     def get_single_exchange(self, n, Z=None, method='recip_gauss'):
@@ -141,42 +140,3 @@ class Coulomb:
                                            n2.typecode() == num.Float):
             return real(self.gd.integrate(I))
         return self.gd.integrate(I)
-
-def test(N=2**5, a=20):
-    from gpaw.domain import Domain
-    from gpaw.grid_descriptor import GridDescriptor
-    from gpaw.mpi import world, parallel
-    from gpaw.utilities.gauss import coordinates
-    import time
-
-    d  = Domain((a, a, a))    # domain object
-    Nc = (N, N, N)            # tuple with number of grid point along each axis
-    d.set_decomposition(world, N_c=Nc) # decompose domain on processors
-    gd = GridDescriptor(d, Nc)# grid-descriptor object
-    xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
-    r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
-    nH = num.exp(-2 * r) / pi # density of the hydrogen atom
-    C = Coulomb(gd)           # coulomb calculator
-    
-    if parallel:
-        C.load('real')
-        t0 = time.time()
-        print 'Processor %s of %s: %s in %s'%(
-            d.comm.rank + 1,
-            d.comm.size,
-            -.5 * C.coulomb(nH, method='real'),
-            time.time() - t0)
-        return
-    else:
-        C.load('recip_ewald')
-        C.load('recip_gauss')
-        C.load('real')
-        test = {}
-        t0 = time.time()
-        test['dual density'] = (-.5 * C.coulomb(nH, nH.copy()),
-                                time.time() - t0)
-        for method in ('real', 'recip_gauss', 'recip_ewald'):
-            t0 = time.time()
-            test[method] = (-.5 * C.coulomb(nH, method=method),
-                            time.time() - t0)
-        return test

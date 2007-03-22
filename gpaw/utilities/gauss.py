@@ -22,12 +22,12 @@ class Gaussian:
     spherical harmonic.
     The gaussians are centered in the middle of input grid-descriptor."""
     
-    def __init__(self, gd, a0=21.):
+    def __init__(self, gd, a0=19.):
         self.gd = gd
         self.xyz, self.r2 = coordinates(gd)
         self.set_width(a0)
 
-    def set_width(self, a0=21.):
+    def set_width(self, a0):
         """Set exponent of exp-function to a0 on the boundary."""
         self.a0 = 4 * a0 / min(self.gd.domain.cell_c)**2
         
@@ -52,56 +52,21 @@ class Gaussian:
         return self.gd.integrate(n * eval(Y_L[L]))
 
     def remove_moment(self, n, L, q=None):
-        # determine multipole moment
+        # Determine multipole moment
         if q == None:
-            q = self.get_moment(n, L)
+            q = self.get_moment(n, L) * 2 * sqrt(pi)
 
         # Don't do anything if moment is less than the tolerance
         if abs(q) < 1e-7:
             return 0.
 
-        # remove moment from input density
+        # Remove moment from input density
         n -= q * self.get_gauss(L)
 
-        # return correction
-        return q * self.get_gauss_pot(L)        
+        # Return correction
+        return q * self.get_gauss_pot(L)
 
     def plot_gauss(self, L):
         from ASE.Visualization.VTK import VTKPlotArray
         cell = num.identity(3, num.Float)
         VTKPlotArray(self.get_gauss(L), cell)
-
-if __name__ == '__main__':
-    from gpaw.domain import Domain
-    from gpaw.grid_descriptor import GridDescriptor
-
-    # plot gaussian
-    ## d  = Domain((2,2,2))   # domain object
-    ## N  = 2**5              # number of grid points
-    ## Nc = (N,N,N)           # tuple with number of grid point along each axis
-    ## gd = GridDescriptor(d,Nc) # grid-descriptor object
-    ## gauss = Gaussian(gd)
-    ## gauss.plot_gauss(1)
-
-    # test if multipole works
-    d  = Domain((14,15,16))   # domain object
-    N  = 2**5                 # number of grid points
-    Nc = (N,N,N)              # tuple with number of grid point along each axis
-    gd = GridDescriptor(d,Nc) # grid-descriptor object
-    xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
-    r  = num.sqrt(r2)         # matrix with the values of the radial coordinate
-    nH = num.exp(-2*r)/num.pi # density of the hydrogen atom
-    gauss = Gaussian(gd)
-    g = gauss.get_gauss(0)
-
-    # check that gaussians have the correct moment
-    print gd.integrate(g) / (2*sqrt(pi)), gauss.get_moment(g, 0), 1
-    v = gauss.remove_moment(g, 0)
-    print gd.integrate(g)/(2*sqrt(pi)), gauss.get_moment(g, 0), 0
-
-    # check the moments of the constructed 1s density
-    print ''
-    print gauss.get_moment(nH, 0), 1/(2*sqrt(pi)) 
-    print gauss.get_moment(nH, 1), 0 
-    print gauss.get_moment(nH, 2), 0
-    print gauss.get_moment(nH, 3), 0
