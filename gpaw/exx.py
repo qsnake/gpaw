@@ -44,7 +44,6 @@ and::
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
 
-from gpaw.coulomb import Coulomb
 from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
@@ -160,7 +159,7 @@ class EXX:
                         Htpsit_nG[n2] += f1 * hybrid / deg * \
                                          self.vt_G * psit1_G
                     else:
-                        self.vt_snG[u, n2] = f2 * hybrid / deg * self.vt_G
+                        self.vt_snG[s, n2] = f2 * hybrid / deg * self.vt_G
                     
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 

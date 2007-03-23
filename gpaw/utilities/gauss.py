@@ -1,50 +1,92 @@
 import Numeric as num
 from Numeric import sqrt, pi, exp
-from tools import coordinates, erf3D
+from gpaw.utilities.tools import coordinates, L_to_lm
+from gpaw.utilities.tools import erf3D as erf
 
 # computer generated code:
-# use c/bmgs/sharmonic/construct_python_code(lmax) to generate more
-Y_L = ['0.282094791774', '0.488602511903 * y', '0.488602511903 * z', '0.488602511903 * x', '1.09254843059 * x*y', '1.09254843059 * y*z', '0.315391565253 * (3*z*z-r2)', '1.09254843059 * x*z', '0.546274215296 * (x*x-y*y)', ]
-gauss_L = ['sqrt(a0**3*4)/pi * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * y * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * z * exp(-a0*r2)', 'sqrt(a0**5*5.33333333333)/pi * x * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * x*y * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * y*z * exp(-a0*r2)', 'sqrt(a0**7*0.355555555556)/pi * (3*z*z-r2) * exp(-a0*r2)', 'sqrt(a0**7*4.26666666667)/pi * x*z * exp(-a0*r2)', 'sqrt(a0**7*1.06666666667)/pi * (x*x-y*y) * exp(-a0*r2)', ]
-gausspot_L = ['2*sqrt(pi)*erf3D(sqrt(a0)*r)/r', '', '', '', '', '', '', '', '', ]
+# use c/bmgs/sharmonic.py::construct_gauss_code(lmax) to generate more
+Y_L = [
+  '0.28209479177387814',
+  '0.48860251190291992 * y',
+  '0.48860251190291992 * z',
+  '0.48860251190291992 * x',
+  '1.0925484305920792 * x*y',
+  '1.0925484305920792 * y*z',
+  '0.31539156525252005 * (3*z*z-r2)',
+  '1.0925484305920792 * x*z',
+  '0.54627421529603959 * (x*x-y*y)',
+  '0.59004358992664352 * (-y*y*y+3*x*x*y)',
+  '2.8906114426405538 * x*y*z',
+  '0.45704579946446577 * (-y*r2+5*y*z*z)',
+  '0.3731763325901154 * (5*z*z*z-3*z*r2)',
+  '0.45704579946446577 * (5*x*z*z-x*r2)',
+  '1.4453057213202769 * (x*x*z-y*y*z)',
+  '0.59004358992664352 * (x*x*x-3*x*y*y)',
+]
+
+gauss_L = [
+  'sqrt(a**3*4)/pi * exp(-a*r2)',
+  'sqrt(a**5*5.333333333333333)/pi * y * exp(-a*r2)',
+  'sqrt(a**5*5.333333333333333)/pi * z * exp(-a*r2)',
+  'sqrt(a**5*5.333333333333333)/pi * x * exp(-a*r2)',
+  'sqrt(a**7*4.2666666666666666)/pi * x*y * exp(-a*r2)',
+  'sqrt(a**7*4.2666666666666666)/pi * y*z * exp(-a*r2)',
+  'sqrt(a**7*0.35555555555555557)/pi * (3*z*z-r2) * exp(-a*r2)',
+  'sqrt(a**7*4.2666666666666666)/pi * x*z * exp(-a*r2)',
+  'sqrt(a**7*1.0666666666666667)/pi * (x*x-y*y) * exp(-a*r2)',
+  'sqrt(a**9*0.10158730158730159)/pi * (-y*y*y+3*x*x*y) * exp(-a*r2)',
+  'sqrt(a**9*2.4380952380952383)/pi * x*y*z * exp(-a*r2)',
+  'sqrt(a**9*0.060952380952380952)/pi * (-y*r2+5*y*z*z) * exp(-a*r2)',
+  'sqrt(a**9*0.040634920634920635)/pi * (5*z*z*z-3*z*r2) * exp(-a*r2)',
+  'sqrt(a**9*0.060952380952380952)/pi * (5*x*z*z-x*r2) * exp(-a*r2)',
+  'sqrt(a**9*0.60952380952380958)/pi * (x*x*z-y*y*z) * exp(-a*r2)',
+  'sqrt(a**9*0.10158730158730159)/pi * (x*x*x-3*x*y*y) * exp(-a*r2)',
+]
+
+gausspot_l = [
+  '4*pi*erf(sqrt(a)*r)/r',
+  '4*pi*erf(sqrt(a)*r)/(3*r2) - 8*sqrt(a*pi)*exp(-a*r2)/(3*r)',
+  '12*pi*erf(sqrt(a)*r)/(15*r*r2) - (16*sqrt(pi*a**3)/15 + 24*sqrt(pi*a)/(15*r2))*exp(-a*r2)',
+]
+# end of computer generated code
 
 class Gaussian:
     """Class offering several utilities related to the generalized gaussians.
 
     Generalized gaussians are defined by::
     
-                       _____                             2  
-                      /  1       l!          l+3/2  -a0 r    l  m
-       g (x,y,z) =   / ----- --------- (4 a0)      e        r  Y (x,y,z),
-        L          \/  4 pi  (2l + 1)!                          l
+                       _____                           2  
+                      /  1       l!         l+3/2  -a r   l  m
+       g (x,y,z) =   / ----- --------- (4 a)      e      r  Y (x,y,z),
+        L          \/  4 pi  (2l + 1)!                       l
 
     where a0 is the inverse width of the gaussian, and Y_l^m is a real
     spherical harmonic.
     The gaussians are centered in the middle of input grid-descriptor."""
     
-    def __init__(self, gd, a0=19.):
+    def __init__(self, gd, a=19.):
         self.gd = gd
         self.xyz, self.r2 = coordinates(gd)
-        self.set_width(a0)
+        self.set_width(a)
 
-    def set_width(self, a0):
-        """Set exponent of exp-function to a0 on the boundary."""
-        self.a0 = 4 * a0 / min(self.gd.domain.cell_c)**2
+    def set_width(self, a):
+        """Set exponent of exp-function to -a on the boundary."""
+        self.a = 4 * a / min(self.gd.domain.cell_c)**2
         
     def get_gauss(self, L):
-        a0 = self.a0
+        a = self.a
         x, y, z  = tuple(self.xyz)
         r2 = self.r2
-        return eval(gauss_L[L]+'*'+Y_L[L])
+        return eval(gauss_L[L])
 
     def get_gauss_pot(self, L):
-        a0 = self. a0
+        a = self. a
         r2 = self.r2
-        r  = num.sqrt(r2)
-        if L == 0:
-            return eval(gausspot_L[L])
-        else:
-            raise NotImplementedError
+        if not hasattr(self, 'r'):
+            self.r = num.sqrt(r2)
+        r = self.r
+        l, m = L_to_lm(L)
+        return eval(gausspot_l[l] + (l!=0)*('/r**%s'%l) + '*' +Y_L[L])
 
     def get_moment(self, n, L):
         r2 = self.r2
@@ -54,7 +96,7 @@ class Gaussian:
     def remove_moment(self, n, L, q=None):
         # Determine multipole moment
         if q == None:
-            q = self.get_moment(n, L) * 2 * sqrt(pi)
+            q = self.get_moment(n, L)
 
         # Don't do anything if moment is less than the tolerance
         if abs(q) < 1e-7:

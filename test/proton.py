@@ -10,4 +10,3 @@ calc = Calculator(nbands=1, h=0.2, charge=1)
 H.SetCalculator(calc)
 print H.GetPotentialEnergy() + calc.GetReferenceEnergy()
 assert abs(H.GetPotentialEnergy() + calc.GetReferenceEnergy()) < 0.014
-

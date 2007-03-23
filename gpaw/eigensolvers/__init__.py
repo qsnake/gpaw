@@ -96,7 +96,12 @@ class Eigensolver:
         Htpsit_nG += psit_nG * hamiltonian.vt_sG[kpt.s]
 
         H_nn[:] = 0.0  # r2k fails without this!
+        
+        self.timer.stop()
+        self.timer.start('Non-local xc')
         hamiltonian.xc.xcfunc.apply_non_local(kpt, Htpsit_nG, H_nn)
+        self.timer.stop()
+        self.timer.start('Subspace diag.')
 
         r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
         

@@ -1,7 +1,6 @@
 import Numeric as num
 from math import pi
 from FFT import fftnd
-#import gpaw
 from gpaw.utilities.complex import real
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.utilities.gauss import Gaussian
@@ -37,13 +36,13 @@ class Coulomb:
                 # ewald potential: 1 - cos(k rc)
                 self.ewald = num.ones(self.gd.n_c) - \
                              num.cos(num.sqrt(self.k2)* rc)
-                # lim k ->0 ewald / k2 
+                # lim k -> 0 ewald / k2 
                 self.ewald[0, 0, 0] = .5 * rc**2
 
             if method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)
-                self.ng = gauss.get_gauss(0)
-                self.vg = gauss.get_gauss_pot(0) / (2 * num.sqrt(pi))
+                self.ng = gauss.get_gauss(0) / num.sqrt(4 * pi)
+                self.vg = gauss.get_gauss_pot(0) / num.sqrt(4 * pi)
         
         else: # method == 'real'
             if not hasattr(self, 'solve'):
@@ -52,21 +51,6 @@ class Coulomb:
                 else:
                     self.solve = PoissonSolver(self.gd, nn=2,
                                                load_gauss=True).solve
-
-    def get_single_exchange(self, n, Z=None, method='recip_gauss'):
-        """Returns exchange energy of input density.
-
-        The exchange energy of a density `n` is::
-        
-                                              *
-                              /    /      n(r)  n(r')
-          -1/2 (n | n) = -1/2 | dr | dr'  ------------,
-	                      /    /        |r - r'|
-                              
-        where n could be complex."""
-        
-        # determine exchange energy of neutral density using specified method
-        return -0.5 * self.coulomb(n1=n, Z1=Z, method=method)
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):
         """Evaluates the coulomb integral of n1 and n2
@@ -115,7 +99,7 @@ class Coulomb:
             else: n2k = fftnd(n2)
             I = num.conjugate(n1k) * n2k * \
                 self.ewald * 4 * pi / (self.k2 * self.N3)
-        else: #method == 'recip_gauss':
+        elif method == 'recip_gauss':
             # Determine total charges
             if Z1 == None: Z1 = self.gd.integrate(n1)
             if Z2 == None and n2 != None: Z2 = self.gd.integrate(n2)
@@ -136,7 +120,11 @@ class Coulomb:
             else:
                 I += (num.conjugate(Z1) * n2 + Z2 * num.conjugate(n1) -
                       num.conjugate(Z1) * Z2 * self.ng) * self.vg
+        else:
+             raise RuntimeError, 'Method %s unknown' % method
+         
         if n1.typecode() == num.Float and (n2 == None or
                                            n2.typecode() == num.Float):
             return real(self.gd.integrate(I))
-        return self.gd.integrate(I)
+        else:
+            return self.gd.integrate(I)

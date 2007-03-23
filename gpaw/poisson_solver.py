@@ -9,6 +9,7 @@ import Numeric as num
 from gpaw.transformers import Transformer
 from gpaw.operators import Laplace, LaplaceA, LaplaceB
 from gpaw import ConvergenceError
+from gpaw.utilities.blas import axpy
 
 
 class PoissonSolver:
@@ -79,7 +80,7 @@ class PoissonSolver:
     def solve(self, phi, rho, eps=2e-10, charge=0, maxcharge=1e-6):
         self.phis[0] = phi
 
-        # handling of charged densities
+        # Handling of charged densities
         if charge == None:
             charge = self.gd.integrate(rho)
         if abs(charge) > maxcharge:
@@ -89,16 +90,19 @@ class PoissonSolver:
                 gauss = Gaussian(self.gd)
                 self.rho_gauss = gauss.get_gauss(0)
                 self.phi_gauss = gauss.get_gauss_pot(0)
-                
-            # remove monopole moment
-            rho_neutral = rho - self.rho_gauss * charge
 
-            # determine potential from neutralized density
-            phi -= self.phi_gauss * charge / (2 * num.sqrt(pi))
+            # Monopole moment
+            q = charge / num.sqrt(4 * pi)
+                
+            # Remove monopole moment
+            rho_neutral = rho - q * self.rho_gauss 
+
+            # Determine potential from neutralized density
+            axpy(-q, self.phi_gauss, phi) #phi -= q * self.phi_gauss
             niter = self.solve(phi, rho_neutral, eps=eps, charge=0)
 
             # correct error introduced by removing monopole
-            phi += self.phi_gauss * charge / (2 * num.sqrt(pi))
+            axpy(q, self.phi_gauss, phi) #phi += q * self.phi_gauss
 
             return niter
 
@@ -141,8 +145,7 @@ class PoissonSolver:
                 break
             
         return error
-
-
+    
     def iterate2(self, step, level=0):
         """Smooths the solution in every multigrid level"""
 

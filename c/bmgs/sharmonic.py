@@ -55,6 +55,9 @@ The z-polynomium has powers l-|m|, l-|m|-2, l-|m|-4, l-..., i.e. it is strictly 
 The combined power of x and y is |m| in all terms of Phi
 """
 
+Y_lp = [{}, {}] # Global list of dictionaries for storing calculated
+                # Legendre polynomials, and Phi functions
+
 #--------------------------- RELEVANT USER METHODS ---------------------------
 def L_to_lm(L):
     """convert L index to (l, m) index"""
@@ -67,7 +70,7 @@ def lm_to_L(l,m):
     return l**2 + l + m
 
 def Y_to_string(l, m, deriv=None, multiply=None, numeric=False):
-    # for L in range(25): print Y_to_string(*L_to_lm(L))
+    # for L in range(40): print L, Y_to_string(*L_to_lm(L))
     """                                                   l    m
        If deriv is None, return string representation of r  * Y (x, y, z)
                                                                l
@@ -78,8 +81,8 @@ def Y_to_string(l, m, deriv=None, multiply=None, numeric=False):
        multiply=q indicates that the entire expression should be multiplied by
        x, y or z if q is 0, 1 or 2 respectively.
 
-       numeric=True/False indicates wheter the normalization constant should be
-       written as a numeric or an algebraic expression.
+       numeric=True/False indicates whether the normalization constant should
+       be written as a numeric or an algebraic expression.
     """
     assert deriv == None or deriv in range(3)
     assert multiply == None or multiply in range(3)
@@ -99,17 +102,17 @@ def Y_to_string(l, m, deriv=None, multiply=None, numeric=False):
 def gauss_to_string(l, m, numeric=False):
     """Return string representation of the generalized gaussian::
     
-                       _____                             2  
-         m            /  1       l!          l+3/2  -a0 r    l  m
-        g (x,y,z) =  / ----- --------- (4 a0)      e        r  Y (x,y,z)
-         l         \/  4 pi  (2l + 1)!                          l
+                       _____                           2  
+         m            /  1       l!         l+3/2  -a r   l  m
+        g (x,y,z) =  / ----- --------- (4 a)      e      r  Y (x,y,z)
+         l         \/  4 pi  (2l + 1)!                       l
          
-       numeric=True/False indicates wheter the normalization constant should be
-       written as a number or an algebraic expression.
+       numeric=True/False indicates whether the normalization constant should 
+       be written as a number or an algebraic expression.
     """
     norm, xyzs = Y_collect(l, m)
 
-    ng = Q(2**(2*l+3) * factorial(l),2 * factorial(2 * l + 1))
+    ng = Q(2**(2*l+3) * factorial(l), 2 * factorial(2 * l + 1))
     norm.multiply(ng)
 
     string = to_string(l, xyzs)
@@ -118,10 +121,34 @@ def gauss_to_string(l, m, numeric=False):
         snorm = repr(eval(repr(norm.norm)))
     else:
         snorm = repr(norm.norm)
-    string = 'sqrt(a0**%s*'%(2*l+3) + snorm + ')/pi' + string
-    string += ' * exp(-a0*r2)'
+    string = 'sqrt(a**%s*%s)/pi'%(2*l+3, snorm) + string
+    string += ' * exp(-a*r2)'
 
     return string
+
+def gauss_potential_to_string(l):
+    """Return string representation of the potential of  a generalized
+       gaussian.
+
+       The potential is determined by::
+
+          m        m ^    _           m ^
+         v [g (r) Y (r) ](r) = v (r) Y (r)
+          l  l     l         l     l  l
+
+       where::
+               4 pi /  -l-1 /r    l+2         l /oo   1-l      \
+       v (r) = ---- | r     | dx x   g (r) + r  | dx x   g (r) |
+        l      2l+1 \       /0        l         /r        l    /
+    """
+
+    v_l = ['4*pi*erf(sqrt(a)*r)/r',
+           '4*pi*erf(sqrt(a)*r)/(3*r2) - 8*sqrt(a*pi)*exp(-a*r2)/(3*r)',
+           '12*pi*erf(sqrt(a)*r)/(15*r*r2) - (16*sqrt(pi*a**3)/15 + 24*sqrt(pi*a)/(15*r2))*exp(-a*r2)',
+           '4*pi*erf(sqrt(a)*r)/(7*r2*r2) - (32*sqrt(pi*a**5)*r/105 + 16*sqrt(pi*a**3)/(21*r) + 8*sqrt(pi*a)/(7*r*r2))*exp(-a*r2)',
+           ]
+    
+    return v_l[l]
 
 #----------------------------- TECHNICAL METHODS -----------------------------
 def to_string(l, xyzs, deriv=False, multiply=False):
@@ -193,6 +220,10 @@ def legendre(l, m):
        Returns vector, where the p'th element is the coefficient of
        z^p r^(l-|m|-p).
     """
+    # Check if requested has already been calculated
+    if (l, m) in Y_lp[0]:
+        return Y_lp[0][(l, m)]
+    
     m = abs(m)
     assert l >= 0 and 0 <= m <=l
     result = num.zeros(l - m + 1, 'O')
@@ -227,10 +258,12 @@ def legendre(l, m):
         result[1:] += num.multiply(legendre(l - 1, m), Q(2 * l - 1, l - m))
         result[:(l - 2) - m + 1] -= num.multiply(legendre(l - 2, m),
                                                  Q(l + m - 1, l - m))
+    # Store result in global dictionary
+    Y_lp[0][(l, m)] = result
     return result
 
 def Phi(m):
-    """ Determine the x and y dependence of the spherical harmonics from
+    """Determine the x and y dependence of the spherical harmonics from
                       |m|   |m|
                    / r   sin  (theta) cos(|m| phi), m >= 0
        Phi (phi) = |
@@ -239,9 +272,16 @@ def Phi(m):
        Returns dictionary of format {(i, j): c} where c is the coefficient
        of x^i y^j
     """
-    if   m ==  0: return {(0, 0): 1} # use that Phi_0  = 1
-    elif m ==  1: return {(1, 0): 1} # use that Phi_1  = x
-    elif m == -1: return {(0, 1): 1} # use that Phi_-1 = y
+    # Check if requested has already been calculated
+    if m in Y_lp[1]:
+        return Y_lp[1][m]
+    
+    if   m ==  0:
+        xys = {(0, 0): 1} # use that Phi_0  = 1
+    elif m ==  1:
+        xys = {(1, 0): 1} # use that Phi_1  = x
+    elif m == -1:
+        xys = {(0, 1): 1} # use that Phi_-1 = y
     else:
         """Use the recurrence formula
         
@@ -261,7 +301,10 @@ def Phi(m):
             new = (x + (m < 0), y + (m > 0))
             sign = 2 * (m < 0) - 1
             xys[new] = xys.get(new, 0) + sign * phi2[(x, y)]
-        return xys
+
+    # Store result in global dictionary
+    Y_lp[1][m] = xys
+    return xys
 
 def Y_collect(l, m):
     """Collect all necessary parts of spherical harmonic and return in
@@ -286,6 +329,34 @@ def Y_collect(l, m):
     norm.multiply(simplify(xyzs))
     
     return norm, xyzs
+
+def Y_collect2(l, m):
+    """Same as Y_collect, but collective power of x, y, and z are
+    adjusted, such the it is always equal to l (thus avoiding
+    multiplication by r)
+    """
+    norm, p = Y_collect(l, m)
+    done = False
+    while not done:
+        p2 = {}
+        done = True
+        for (nx, ny, nz), c in p.items():
+            n = nx + ny + nz
+            if n < l:
+                p2[(nx + 2, ny, nz)] = p2.get((nx + 2, ny, nz), 0) + c
+                p2[(nx, ny + 2, nz)] = p2.get((nx, ny + 2, nz), 0) + c
+                p2[(nx, ny, nz + 2)] = p2.get((nx, ny, nz + 2), 0) + c
+                if n + 2 < l:
+                    done = False
+            else:
+                assert n == l
+                p2[(nx, ny, nz)] = p2.get((nx, ny, nz), 0) + c
+        p = p2
+    p2 = p.copy()
+    for n, c in p.items():
+        if c == 0:
+            del p2[n]
+    return norm, p2
 
 def dYdq(l, m, q):
     """Returns a normalization constant, and a dictionary discribing
@@ -472,7 +543,8 @@ def symmetry2(l, display=True):
             print str(key) + ' = ' + str(value[0]) + ' * ' + str(value[1:])
     else: return diff
 
-def construct_c_code(file='temp.c', lmax=2):
+def construct_c_code(file='temp.c', lmax=3):
+    """Method for generating the code in c/spline.c"""
     txt = '//Computer generated code! Hands off!'
     start_func = """
     
@@ -578,41 +650,45 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
     print >>f, txt
     f.close()
     
-def construct_python_code(lmax=2):
-    out= 'Y_L = ['
+def construct_gauss_code(lmax=3):
+    """Method for generating the code in gpaw/utilities/gauss.py"""
+    out= 'Y_L = [\n'
     for L in range((lmax + 1)**2):
         l, m = L_to_lm(L)
-        out+= '\'' + Y_to_string(l, m, numeric=True) + '\', '
+        out+= '  \'' + Y_to_string(l, m, numeric=True) + '\',\n'
     out += ']'
 
-    out += '\ngauss_L = ['
+    out += '\ngauss_L = [\n'
     for L in range((lmax + 1)**2):
         l, m = L_to_lm(L)
-        out += '\'' + gauss_to_string(l, m, numeric=True) + '\', '
+        out += '  \'' + gauss_to_string(l, m, numeric=True) + '\',\n'
     out += ']'
     
-    out += '\ngausspot_L = ['
-    for L in range((lmax + 1)**2):
-        l, m = L_to_lm(L)
-        if L == 0:
-            out += '\'2*sqrt(pi)*erf3D(sqrt(a0)*r)/r\', '
-        else:
-            out += '\'' + '\', '
+    out += '\ngausspot_l = [\n'
+    for l in range(lmax):
+        out += '  \'%s\',\n' % gauss_potential_to_string(l)
     out += ']'
     
-    return out
+    print out
 
-def construct_python_code2(lmax=3):
+def construct_spherical_code(lmax=3):
+    """Method for generating the code in gpaw/spherical_harmonics.py"""
     YL = []
-    norm = 1.
-    xyzs = {}
     norms = []
     for L in range((lmax+1)**2):
-        l, m = L_to_lm(L)
-        norm, xyzs = Y_collect(l, m)
+        #norm, xyzs = Y_collect(*L_to_lm(L))
+        norm, xyzs = Y_collect2(*L_to_lm(L))
         norms.append(str(norm))
         YL.append(zip(xyzs.values(), xyzs.keys()))
-    return YL, norms
+
+    print 'Y_L = ['
+    for L, Y in enumerate(YL):
+        l = sqrt(L)
+        if l % 1 == 0:
+            print '  #' + 'spdfghijklmn'[int(l)] + ':'
+        print '  %s,' % Y
+    print ']'
+    print 'norms =', norms
     
 def plot_spherical(l, m):
     # for L in range(25): plot_spherical(*L_to_lm(L))
@@ -649,35 +725,3 @@ title(sprintf('|Y_l^m(x,y,z)|^2   l, m = %d, %d', l, m),...
 light('Position',[0.1,-1.2,.3]);
 saveas(fig, sprintf('Y_%d_%d.eps',l,m),'epsc2')
     """
-
-def Y(l, m):
-    norm, p = Y_collect(l, m)
-    done = False
-    while not done:
-        p2 = {}
-        done = True
-        for (nx, ny, nz), c in p.items():
-            n = nx + ny + nz
-            if n < l:
-                p2[(nx + 2, ny, nz)] = p2.get((nx + 2, ny, nz), 0) + c
-                p2[(nx, ny + 2, nz)] = p2.get((nx, ny + 2, nz), 0) + c
-                p2[(nx, ny, nz + 2)] = p2.get((nx, ny, nz + 2), 0) + c
-                if n + 2 < l:
-                    done = False
-            else:
-                assert n == l
-                p2[(nx, ny, nz)] = p2.get((nx, ny, nz), 0) + c
-        p = p2
-    p2 = p.copy()
-    for n, c in p.items():
-        if c == 0:
-            del p2[n]
-    return p2
-
-## for l in range(7):
-##     for m in range(-l, l + 1):
-##         print '%s,' % [(c, n) for n, c in Y(l, m).items()]
-
-## print Y(3, -1)
-## print Y_collect(6, -6)
-## construct_c_code(lmax=4)
