@@ -183,7 +183,8 @@ def create_paw_object(out, a0, Ha,
 
     # Get the local number of spins and k-points, and return a
     # domain_comm and kpt_comm for this processor:
-    domain_comm, kpt_comm = distribute_kpoints_and_spins(nspins, nkpts)
+    domain_comm, kpt_comm = distribute_kpoints_and_spins(nspins, nkpts,
+                                                         parsize_c)
 
     domain.set_decomposition(domain_comm, parsize_c, N_c)
 
@@ -238,12 +239,15 @@ def new_communicator(ranks):
         return mpi.world.new_communicator(num.array(ranks))
 
 
-def distribute_kpoints_and_spins(nspins, nkpts):
+def distribute_kpoints_and_spins(nspins, nkpts, parsize_c):
     ntot = nspins * nkpts
     size = mpi.size
     rank = mpi.rank
 
-    ndomains = size // gcd(ntot, size)
+    if parsize_c is None:
+        ndomains = size // gcd(ntot, size)
+    else:
+        ndomains = parsize_c[0] * parsize_c[1] * parsize_c[2]
 
     r0 = (rank // ndomains) * ndomains
     ranks = range(r0, r0 + ndomains)
