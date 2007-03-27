@@ -29,20 +29,25 @@ if 1:
     energy = atoms.GetPotentialEnergy()
     calc.Write('wire.gpw')
     
+try:
+    import Scientific.IO.NetCDF
+except ImportError:
+    print 'This test needs Scientific.IO.NetCDF'
+else:
+    nwannier = 1
+    atoms = Calculator.ReadAtoms('wire.gpw')
+    calc = atoms.GetCalculator()
+    wannier = Wannier(numberofwannier=nwannier, calculator=calc,
+                      occupationenergy=30.0)
 
-nwannier = 1
-atoms = Calculator.ReadAtoms('wire.gpw')
-calc = atoms.GetCalculator()
-wannier = Wannier(numberofwannier=nwannier,calculator=calc,occupationenergy=30.0)
+    wannier.SaveZIBlochMatrix('zibloch.pickle')
+    wannier.Localize()
+    wannier.TranslateAllWannierFunctionsToCell([10,0,0])
 
-wannier.SaveZIBlochMatrix('zibloch.pickle')
-wannier.Localize()
-wannier.TranslateAllWannierFunctionsToCell([10,0,0])
+    centers = wannier.GetCenters()
+    for center in centers: 
+       print center
 
-centers = wannier.GetCenters()
-for center in centers: 
-   print center
-
-for n in range(1): 
-   wannier.WriteCube(n,'test'+str(n)+'.cube')
+    for n in range(1): 
+       wannier.WriteCube(n,'test'+str(n)+'.cube')
 

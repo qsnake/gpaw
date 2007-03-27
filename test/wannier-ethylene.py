@@ -28,22 +28,27 @@ if 1:
     print ethylene.GetPotentialEnergy()
     calc.Write('ethylene.gpw')
 
-from ASE.Utilities.Wannier import Wannier
+try:
+    import Scientific.IO.NetCDF
+except ImportError:
+    print 'This test needs Scientific.IO.NetCDF'
+else:
+    from ASE.Utilities.Wannier import Wannier
 
-ethylene = Calculator.ReadAtoms('ethylene.gpw')
-print ethylene.GetPotentialEnergy()
-wannier = Wannier(numberofwannier=6, calculator=ethylene.GetCalculator())
-wannier.Localize()
+    ethylene = Calculator.ReadAtoms('ethylene.gpw')
+    print ethylene.GetPotentialEnergy()
+    wannier = Wannier(numberofwannier=6, calculator=ethylene.GetCalculator())
+    wannier.Localize()
 
-value = wannier.GetFunctionalValue() 
-equal(13.2806, value, 0.015)
+    value = wannier.GetFunctionalValue() 
+    equal(13.2806, value, 0.015)
 
-for w in wannier.GetCenters():
-    print w['radius'], w['pos']
+    for w in wannier.GetCenters():
+        print w['radius'], w['pos']
 
-ethylene.extend(wannier.GetCentersAsAtoms())
+    ethylene.extend(wannier.GetCentersAsAtoms())
 
-for n in range(1): 
-    wannier.WriteCube(n,"ethylene%d.cube"%n)
+    for n in range(1): 
+        wannier.WriteCube(n,"ethylene%d.cube"%n)
 
 
