@@ -253,7 +253,8 @@ def read(paw, filename):
         wf = True
         if mpi.parallel:
             # Slice of the global array for this domain:
-            i = [slice(b, e) for b, e in zip(paw.gd.beg_c, paw.gd.end_c)]
+            i = [slice(b - 1 + p, e - 1 + p) for b, e, p in
+                 zip(paw.gd.beg_c, paw.gd.end_c, paw.gd.domain.periodic_c)]
 
             for kpt in paw.kpt_u:
                 kpt.psit_nG = paw.gd.empty(paw.nbands, paw.typecode)
