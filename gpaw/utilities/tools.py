@@ -87,8 +87,9 @@ def coordinates(gd):
     # Remove singularity at origin and replace with small number
     middle = gd.N_c / 2.
     # Check that middle is a gridpoint and that it is on this CPU
-    if num.alltrue(middle == num.floor(middle)) and \
-           num.alltrue(gd.beg_c <= middle < gd.end_c):
+    if (num.alltrue(middle == num.floor(middle)) and
+        num.alltrue(gd.beg_c <= middle) and
+        num.alltrue(middle < gd.end_c)):
         m = (middle - gd.beg_c).astype(int)
         r2[m[0], m[1], m[2]] = 1e-12
 
