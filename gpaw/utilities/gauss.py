@@ -81,6 +81,7 @@ class Gaussian:
 
     def get_gauss_pot(self, L):
         a = self. a
+        x, y, z  = tuple(self.xyz)
         r2 = self.r2
         if not hasattr(self, 'r'):
             self.r = num.sqrt(r2)

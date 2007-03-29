@@ -9,8 +9,9 @@ from gpaw.utilities import equal
 import time
 
 def test_coulomb(N=2**6, a=20):
-    d  = Domain((a, a, a))    # domain object
-    Nc = (N, N, N)            # tuple with number of grid point along each axis
+    d  = Domain((a, a, a),
+            periodic=(0,0,0)) # domain object
+    Nc = (N, N, N)            # Number of grid point
     d.set_decomposition(world, N_c=Nc) # decompose domain on processors
     gd = GridDescriptor(d, Nc)# grid-descriptor object
     xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
@@ -21,7 +22,7 @@ def test_coulomb(N=2**6, a=20):
     if parallel:
         C.load('real')
         t0 = time.time()
-        print 'Processor %s of %s: %s in %s'%(
+        print 'Processor %s of %s: %s Ha in %s sec'%(
             d.comm.rank + 1,
             d.comm.size,
             -.5 * C.coulomb(nH, method='real'),
@@ -41,18 +42,19 @@ def test_coulomb(N=2**6, a=20):
                             time.time() - t0)
         return test
 
-if __name__ == '__main__':
-    analytic = -5 / 16.
-    res = test_coulomb(N=48, a=18)
-    if not parallel:
-        print 'Units: Bohr and Hartree'
-        print '%12s %8s %8s' % ('Method', 'Energy', 'Time')
-        print '%12s %2.6f %6s' % ('analytic', analytic, '--')
-        for method, et in res.items():
-            print '%12s %2.6f %1.7f' % ((method,) + et)
+analytic = -5 / 16.
+res = test_coulomb(N=48, a=20)
+if not parallel:
+    print 'Units: Bohr and Hartree'
+    print '%12s %8s %8s' % ('Method', 'Energy', 'Time')
+    print '%12s %2.6f %6s' % ('analytic', analytic, '--')
+    for method, et in res.items():
+        print '%12s %2.6f %1.7f' % ((method,) + et)
 
-        equal(res['real'][0],         analytic, 4e-3)
-        equal(res['recip_gauss'][0],  analytic, 4e-3)
-        equal(res['recip_ewald'][0],  analytic, 4e-3)
-        equal(res['dual density'][0], res['recip_gauss'][0], 1e-9)
+    equal(res['real'][0],         analytic, 4e-3)
+    equal(res['recip_gauss'][0],  analytic, 4e-3)
+    equal(res['recip_ewald'][0],  analytic, 4e-3)
+    equal(res['dual density'][0], res['recip_gauss'][0], 1e-9)
 
+
+# mpirun -np 2 python coulomb.py --gpaw-parallel --gpaw-debug

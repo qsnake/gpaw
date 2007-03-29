@@ -5,32 +5,45 @@ from gpaw.utilities.gauss import Gaussian
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.utilities import equal
+from gpaw.mpi import world
+from gpaw.poisson_solver import PoissonSolver
 
-# Test if multipole works
-d  = Domain((14, 15, 16))     # Domain object
-N  = 40                       # Number of grid points
-Nc = (N, N, N)                # Tuple with number of grid point along each axis
+def norm(a):
+    return num.sqrt(num.sum(a.flat**2)) / len(a.flat)
+
+# Initialize classes
+a = 20 # Size of cell
+N = 48 # Number of grid points
+Nc = (N, N, N)                # Number of grid points along each axis
+d  = Domain((a,a,a),
+            periodic=(0,0,0)) # Domain object
+d.set_decomposition(world,
+                    N_c=Nc)   # Decompose domain on processors
 gd = GridDescriptor(d, Nc)    # Grid-descriptor object
+solve = PoissonSolver(gd,
+                  nn=3).solve # Numerical poisson solver
 xyz, r2 = coordinates(gd)     # Matrix with the square of the radial coordinate
 r  = num.sqrt(r2)             # Matrix with the values of the radial coordinate
-nH = num.exp(-2 * r) / num.pi # Density of the hydrogen atom
+nH = num.exp(-2 * r) / pi     # Density of the hydrogen atom
 gauss = Gaussian(gd)          # An instance of Gaussian
 
-# Check if Gaussians are made correctly
+# /------------------------------------------------\
+# | Check if Gaussian densities are made correctly |
+# \------------------------------------------------/
 for gL in range(2, 8):
     g = gauss.get_gauss(gL) # a gaussian of gL'th order
     print '\nGaussian of order', gL
     for mL in range(16):
         m = gauss.get_moment(g, mL) # the mL'th moment of g
-        print '  %s\'th moment = %2.6f' %(mL, m)
+        print '  %s\'th moment = %2.6f' % (mL, m)
         equal(m, gL == mL, 1e-4)
 
 # Check the moments of the constructed 1s density
 print '\nDensity of Hydrogen atom'
 for L in range(4):
     m = gauss.get_moment(nH, L)
-    print '  %s\'th moment = %2.6f' %(L, m)
-    equal(m, (L == 0) / sqrt(4 * pi), 1e-3)
+    print '  %s\'th moment = %2.6f' % (L, m)
+    equal(m, (L == 0) / sqrt(4 * pi), 1.5e-3)
 
 # Check that it is removed correctly
 v = gauss.remove_moment(nH, 0)
@@ -38,3 +51,31 @@ m = gauss.get_moment(nH, 0)
 print '\nZero\'th moment of compensated Hydrogen density =', m
 equal(m, 0., 1e-7)
 
+
+# /-------------------------------------------------\
+# | Check if Gaussian potentials are made correctly |
+# \-------------------------------------------------/
+
+# Array for storing the potential
+pot = gd.new_array(typecode=num.Float, zero=True, global_array=False)
+for L in range(1): # Angular index of gaussian
+                   # Note that L != 0 does not work for some reason
+    # Get analytic functions
+    ng = gauss.get_gauss(L)
+    vg = gauss.get_gauss_pot(L)
+
+    # Solve potential numerically
+    niter = solve(pot, ng, charge=None, zero_initial_phi=True)
+
+    # Determine residual
+    residual = norm(pot - vg)
+
+    # print result
+    print 'Processor %s of %s: %s'%(
+        d.comm.rank + 1,
+        d.comm.size,
+        residual)
+
+    assert residual < 1e-10
+
+# mpirun -np 2 python gauss_func.py --gpaw-parallel --gpaw-debug
