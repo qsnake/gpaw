@@ -44,13 +44,15 @@ def test_coulomb(N=2**6, a=20):
 if __name__ == '__main__':
     analytic = -5 / 16.
     res = test_coulomb(N=48, a=18)
-    print 'Units: Bohr and Hartree'
-    print '%12s %8s %8s' % ('Method', 'Energy', 'Time')
-    print '%12s %2.6f %6s' % ('analytic', analytic, '--')
-    for method, et in res.items():
-        print '%12s %2.6f %1.7f' % ((method,) + et)
+    if not parallel:
+        print 'Units: Bohr and Hartree'
+        print '%12s %8s %8s' % ('Method', 'Energy', 'Time')
+        print '%12s %2.6f %6s' % ('analytic', analytic, '--')
+        for method, et in res.items():
+            print '%12s %2.6f %1.7f' % ((method,) + et)
 
-    equal(res['real'][0],         analytic, 1e-1)
-    equal(res['recip_gauss'][0],  analytic, 4e-3)
-    equal(res['recip_ewald'][0],  analytic, 4e-3)
-    equal(res['dual density'][0], res['recip_gauss'][0], 1e-9)
+        equal(res['real'][0],         analytic, 4e-3)
+        equal(res['recip_gauss'][0],  analytic, 4e-3)
+        equal(res['recip_ewald'][0],  analytic, 4e-3)
+        equal(res['dual density'][0], res['recip_gauss'][0], 1e-9)
+
