@@ -77,7 +77,8 @@ class PoissonSolver:
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
         
-    def solve(self, phi, rho, eps=2e-10, charge=0, maxcharge=1e-6):
+    def solve(self, phi, rho, eps=2e-10, charge=0, maxcharge=1e-6,
+              zero_initial_phi=False):
         self.phis[0] = phi
 
         # Handling of charged densities
@@ -95,10 +96,13 @@ class PoissonSolver:
             q = charge / num.sqrt(4 * pi)
                 
             # Remove monopole moment
-            rho_neutral = rho - q * self.rho_gauss 
+            rho_neutral = rho - q * self.rho_gauss
 
             # Determine potential from neutralized density
-            axpy(-q, self.phi_gauss, phi) #phi -= q * self.phi_gauss
+            if zero_initial_phi:
+                phi[:] = 0.0
+            else:
+                axpy(-q, self.phi_gauss, phi) #phi -= q * self.phi_gauss
             niter = self.solve(phi, rho_neutral, eps=eps, charge=0)
 
             # correct error introduced by removing monopole

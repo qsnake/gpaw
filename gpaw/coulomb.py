@@ -91,7 +91,7 @@ class Coulomb:
         if method == 'real':
             I = self.gd.new_array()
             if n2 == None: n2 = n1; Z2 = Z1
-            self.solve(I, n2, charge=Z2)
+            self.solve(I, n2, charge=Z2, zero_initial_phi=True)
             I *= num.conjugate(n1)           
         elif method == 'recip_ewald':
             n1k = fftnd(n1)

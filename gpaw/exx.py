@@ -141,8 +141,8 @@ class EXX:
                 Z = float(n1 == n2)
 
                 # Determine exchange potential:
-                self.vt_g[:] = 0.0
-                self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z)
+                self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z,
+                                   zero_initial_phi=True)
                 self.restrict(self.vt_g, self.vt_G)
 
                 # Integrate the potential on fine and coarse grids
