@@ -48,6 +48,7 @@ from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
+from gpaw.utilities.blas import gemm
 
 
 class XXFunctional:
@@ -65,7 +66,7 @@ class EXX:
     exchange energy."""
     
     def __init__(self, gd, finegd, interpolate, restrict, poisson,
-                 my_nuclei, ghat_nuclei, nspins, nbands, kcomm, dcomm,
+                 my_nuclei, ghat_nuclei, nspins, nmyu, nbands, kcomm, dcomm,
                  energy_only=False):
 
         # Initialize class-attributes
@@ -88,8 +89,7 @@ class EXX:
         self.nt_g = finegd.empty()# Comp. pseudo density on fine grid
         self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
         if not energy_only:
-            nmyu = nspins # XXX only correct for serial calculation!
-            self.vt_snG = gd.empty((nmyu, nbands))  
+            self.vt_unG = gd.empty((nmyu, nbands))# Diagonal pot. for residuals
 
     def apply(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
@@ -159,7 +159,7 @@ class EXX:
                         Htpsit_nG[n2] += f1 * hybrid / deg * \
                                          self.vt_G * psit1_G
                     else:
-                        self.vt_snG[s, n2] = f2 * hybrid / deg * self.vt_G
+                        self.vt_unG[u, n2] = f2 * hybrid / deg * self.vt_G
                     
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
@@ -168,7 +168,7 @@ class EXX:
                         v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
                         nucleus.ghat_L.integrate(self.vt_g, v_L)
 
-                        if nucleus in self.my_nuclei:
+                        if nucleus.in_this_domain:
                             v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
                             nucleus.vxx_uni[u, n1] += (
                                 f2 * hybrid / deg * num.dot(
@@ -246,83 +246,18 @@ class EXX:
         self.Exx += self.psum(Exx)
         self.Ekin += self.psum(Ekin)
 
-    def adjust_residual(self, pR_G, dR_G, s, n):
-        dR_G += self.vt_snG[s, n] * pR_G
+    def adjust_residual(self, pR_G, dR_G, u, n):
+        dR_G += self.vt_unG[u, n] * pR_G
 
-def valence_valence_corrections(paw):
-    """Determine the atomic corrections to the valence-valence interaction
-    using method 1::
-
-               -- 
-        vv,a   \             a      a      a      a      a
-       E     = /    f * f * P    * P    * P    * P    * C    
-        xx     --    n   m   n,i1   m,i2   n,i3   m,i4   i1,i2,i3,i4
-            n,m,i1,i2,i3,i4
-
-    or method 2::
-    
-               -- 
-        vv,a   \     a        a              a
-       E     = /    D      * C            * D
-        xx     --    i1,i3    i1,i2,i3,i4    i2,i4
-            i1,i2,i3,i4
-
-    This should be the same. (This is not always the case, see e.g. He)
-    """
-    ExxVV1 = ExxVV2 = 0.0
-    #---------------------- METHOD 1 ------------------------
-    for nucleus in paw.my_nuclei:
-        for u, kpt in enumerate(paw.kpt_u):
-            for n in range(paw.nbands):
-                for m in range(n, paw.nbands):
-                    # determine double count factor:
-                    DC = 2 - (n == m)
-
-                    # calculate joint occupation number
-                    fnm = (kpt.f_n[n] * kpt.f_n[m]) * paw.nspins / 2.
-
-                    # generate density matrix
-                    Pm_i = nucleus.P_uni[u, m]
-                    Pn_i = nucleus.P_uni[u, n]
-                    D_ii = num.outerproduct(Pm_i,Pn_i)
-                    D_p  = pack(D_ii, tolerance=1e3)
-
-                    # C_iiii from setup file
-                    C_pp  = nucleus.setup.M_pp
-
-                    # add atomic contribution to val-val interaction
-                    ExxVV1 += - fnm * num.dot(D_p, num.dot(C_pp, D_p)) * DC
-
-    #---------------------- METHOD 2 ------------------------
-    for nucleus in paw.my_nuclei:
-        for s in range(paw.nspins):
-            # make own D_ii (i.e. *not* Pulay mixed)
-            ni = len(nucleus.P_uni[s, 0])
-            D_ii = num.zeros((ni, ni), num.Float)
-            for n in range(paw.nbands):
-                f = paw.kpt_u[s].f_n[n]
-                D_ii += f * num.outerproduct(nucleus.P_uni[s, n],
-                                             nucleus.P_uni[s, n])
-
-##             # import stored D_ii (i.e. Pulay mixed)
-##             D_p  = nucleus.D_sp[s]
-##             D_ii = unpack2(D_p)
-##             ni   = len(D_ii)
-
-            # make the sum
-            C_pp = nucleus.setup.M_pp
-            for i1 in range(ni):
-                for i2 in range(ni):
-                    A = 0.0
-                    for i3 in range(ni):
-                        p13 = packed_index(i1, i3, ni)
-                        for i4 in range(ni):
-                            p24 = packed_index(i2, i4, ni)
-                            A += C_pp[p13, p24] * D_ii[i3, i4]
-                    ExxVV2 -= D_ii[i1, i2] * A * paw.nspins / 2.
-
-    # Return result of the two different methods
-    return ExxVV1, ExxVV2
+    def rotate(self, u, U_nn):
+        # Rotate EXX related stuff
+        vt_nG = self.vt_unG[u]
+        gemm(1.0, vt_nG.copy(), U_nn, 0.0, vt_nG)
+        for nucleus in self.my_nuclei:
+            v_ni = nucleus.vxx_uni[u]
+            gemm(1.0, v_ni.copy(), U_nn, 0.0, v_ni)
+            v_nii = nucleus.vxx_unii[u]
+            gemm(1.0, v_nii.copy(), U_nn, 0.0, v_nii)
 
 
 def atomic_exact_exchange(atom, type = 'all'):

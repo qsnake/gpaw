@@ -60,7 +60,7 @@ class Gaussian:
        g (x,y,z) =   / ----- --------- (4 a)      e      r  Y (x,y,z),
         L          \/  4 pi  (2l + 1)!                       l
 
-    where a0 is the inverse width of the gaussian, and Y_l^m is a real
+    where a is the inverse width of the gaussian, and Y_l^m is a real
     spherical harmonic.
     The gaussians are centered in the middle of input grid-descriptor."""
     

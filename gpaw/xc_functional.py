@@ -96,7 +96,7 @@ class XCFunctional:
             self.exx = EXX(paw.gd, paw.finegd, paw.density.interpolate,
                            paw.hamiltonian.restrict, paw.hamiltonian.poisson,
                            paw.my_nuclei, paw.ghat_nuclei,
-                           paw.nspins, paw.nbands,
+                           paw.nspins, paw.nmyu, paw.nbands,
                            paw.kpt_comm, paw.domain.comm,
                            energy_only)
 
@@ -130,7 +130,7 @@ class XCFunctional:
     
     def adjust_non_local_residual(self, pR_G, dR_G, eps, u, s, k, n):
         if self.hybrid > 0.0:
-            self.exx.adjust_residual(pR_G, dR_G, s, n)
+            self.exx.adjust_residual(pR_G, dR_G, u, n)
                 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              tau_g=None):

@@ -138,13 +138,8 @@ class Eigensolver:
             P_ni = nucleus.P_uni[kpt.u]
             gemm(1.0, P_ni.copy(), H_nn, 0.0, P_ni)
 
+        # Rotate EXX related stuff
         if hamiltonian.xc.xcfunc.hybrid > 0.0:
-            vxxt_nG = hamiltonian.xc.xcfunc.exx.vt_snG[kpt.s]
-            gemm(1.0, vxxt_nG.copy(), H_nn, 0.0, vxxt_nG)
-            for nucleus in hamiltonian.my_nuclei:
-                v_ni = nucleus.vxx_uni[kpt.u]
-                gemm(1.0, v_ni.copy(), H_nn, 0.0, v_ni)
-                v_nii = nucleus.vxx_unii[kpt.u]
-                gemm(1.0, v_nii.copy(), H_nn, 0.0, v_nii)
+            hamiltonian.xc.xcfunc.exx.rotate(kpt.u, H_nn)
 
         self.timer.stop()
