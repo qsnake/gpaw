@@ -466,10 +466,7 @@ class Paw:
         c = self.Ha / self.a0
         
         if self.forces_ok:
-            if mpi.rank == MASTER:
-                return c * self.F_ac
-            else:
-                return
+            return c * self.F_ac
 
         nt_g = self.density.nt_g
         vt_sG = self.hamiltonian.vt_sG
@@ -505,7 +502,10 @@ class Paw:
                 for nucleus in self.my_nuclei:
                     self.domain.comm.send(nucleus.F_c, MASTER, 7)
 
-        if self.symmetry is not None and mpi.rank == MASTER:
+        # Broadcast the forces to all processors
+        mpi.world.broadcast(self.F_ac, MASTER)
+
+        if self.symmetry is not None:
             # Symmetrize forces:
             F_ac = num.zeros((len(self.nuclei), 3), num.Float)
             for map_a, symmetry in zip(self.symmetry.maps,
@@ -522,15 +522,13 @@ class Paw:
 
         self.forces_ok = True
 
-        if mpi.rank == MASTER:
-            return c * self.F_ac
+        return c * self.F_ac
 
     def set_forces(self, F_ac):
         """Initialize atomic forces."""
         self.forces_ok = True
-        if mpi.rank == MASTER:
-            # Forces for all atoms:
-            self.F_ac = F_ac
+        # Forces for all atoms:
+        self.F_ac = F_ac
             
     def set_convergence_criteria(self, tol):
         """Set convergence criteria.
