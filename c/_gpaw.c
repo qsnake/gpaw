@@ -76,6 +76,15 @@ PyMODINIT_FUNC init_gpaw(void)
 }
 #endif
 
+#ifdef NO_SOCKET
+/*dummy socket module for systems which do not support sockets */
+PyMODINIT_FUNC initsocket(void)
+{
+  Py_InitModule("socket", NULL);
+  return;
+}
+#endif
+
 #ifdef GPAW_INTERPRETER
 extern DL_EXPORT(int) Py_Main(int, char **);
 
@@ -87,6 +96,22 @@ main(int argc, char **argv)
 
   MPI_Init(&argc, &argv);
   Py_Initialize();
+#ifdef STATIC_NUMERIC
+  init_numpy();
+  initarrayfns();
+  initranlib();
+  initmultiarray();
+  initumath();
+  initlapack_lite();
+  initfftpack();
+  // initRNG();
+  // initgn();
+#endif
+
+#ifdef NO_SOCKET
+  initsocket();
+#endif
+
   if (PyType_Ready(&MPIType) < 0)
     return -1;
 
