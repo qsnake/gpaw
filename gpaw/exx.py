@@ -142,7 +142,7 @@ class EXX:
 
                 # Determine exchange potential:
                 self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z,
-                                   zero_initial_phi=True)
+                                   eps=1e-12, zero_initial_phi=True)
                 self.restrict(self.vt_g, self.vt_G)
 
                 # Integrate the potential on fine and coarse grids
