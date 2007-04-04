@@ -202,7 +202,9 @@ class Density:
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
             
-        assert abs(self.finegd.integrate(self.rhot_g) + self.charge) < 1e-7
+        charge = self.finegd.integrate(self.rhot_g) + self.charge
+        if abs(charge) > 1e-7:
+            raise RuntimeError('Charge not conserved: excess=%f' % charge ) 
 
     def update(self, kpt_u, symmetry):
         """Calculate pseudo electron-density.
