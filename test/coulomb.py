@@ -43,7 +43,7 @@ def test_coulomb(N=2**6, a=20):
         return test
 
 analytic = -5 / 16.
-res = test_coulomb(N=60, a=15)
+res = test_coulomb(N=48, a=15)
 if not parallel:
     print 'Units: Bohr and Hartree'
     print '%12s %8s %8s' % ('Method', 'Energy', 'Time')

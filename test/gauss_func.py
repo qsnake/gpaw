@@ -1,5 +1,5 @@
 import Numeric as num
-from math import pi, sqrt
+from Numeric import pi, sqrt
 from gpaw.utilities.tools import coordinates
 from gpaw.utilities.gauss import Gaussian
 from gpaw.domain import Domain
@@ -30,10 +30,10 @@ gauss = Gaussian(gd)          # An instance of Gaussian
 # /------------------------------------------------\
 # | Check if Gaussian densities are made correctly |
 # \------------------------------------------------/
-for gL in range(2, 8):
+for gL in range(2, 9):
     g = gauss.get_gauss(gL) # a gaussian of gL'th order
     print '\nGaussian of order', gL
-    for mL in range(16):
+    for mL in range(9):
         m = gauss.get_moment(g, mL) # the mL'th moment of g
         print '  %s\'th moment = %2.6f' % (mL, m)
         equal(m, gL == mL, 1e-4)
@@ -58,8 +58,7 @@ equal(m, 0., 1e-7)
 
 # Array for storing the potential
 pot = gd.new_array(typecode=num.Float, zero=True, global_array=False)
-for L in range(1): # Angular index of gaussian
-                   # Note that L != 0 does not work for some reason
+for L in range(7): # Angular index of gaussian
     # Get analytic functions
     ng = gauss.get_gauss(L)
     vg = gauss.get_gauss_pot(L)
@@ -71,11 +70,12 @@ for L in range(1): # Angular index of gaussian
     residual = norm(pot - vg)
 
     # print result
-    print 'Processor %s of %s: %s'%(
+    print 'L=%s, processor %s of %s: %s'%(
+        L,
         d.comm.rank + 1,
         d.comm.size,
         residual)
 
-    assert residual < 1e-10
+    assert residual < 2.1e-5
 
 # mpirun -np 2 python gauss_func.py --gpaw-parallel --gpaw-debug

@@ -1,6 +1,6 @@
 import Numeric as num
 from Numeric import sqrt, pi, exp
-from gpaw.utilities.tools import coordinates, L_to_lm
+from gpaw.utilities.tools import coordinates
 from gpaw.utilities.tools import erf3D as erf
 
 # computer generated code:
@@ -43,10 +43,23 @@ gauss_L = [
   'sqrt(a**9*0.10158730158730159)/pi * (x*x*x-3*x*y*y) * exp(-a*r2)',
 ]
 
-gausspot_l = [
-  '4*pi*erf(sqrt(a)*r)/r',
-  '4*pi*erf(sqrt(a)*r)/(3*r2) - 8*sqrt(a*pi)*exp(-a*r2)/(3*r)',
-  '12*pi*erf(sqrt(a)*r)/(15*r*r2) - (16*sqrt(pi*a**3)/15 + 24*sqrt(pi*a)/(15*r2))*exp(-a*r2)',
+gausspot_L = [
+  '2.0*(1.7724538509055159*erf(sqrt(a)*r))/r*1',
+  '1.1547005383792515*(1.7724538509055159*erf(sqrt(a)*r)-(+2)*sqrt(a)*r*exp(-a*r2))/r/r2**1*y',
+  '1.1547005383792515*(1.7724538509055159*erf(sqrt(a)*r)-(+2)*sqrt(a)*r*exp(-a*r2))/r/r2**1*z',
+  '1.1547005383792515*(1.7724538509055159*erf(sqrt(a)*r)-(+2)*sqrt(a)*r*exp(-a*r2))/r/r2**1*x',
+  '0.5163977794943222*(5.3173615527165481*erf(sqrt(a)*r)-(+6+4*(sqrt(a)*r)**2)*sqrt(a)*r*exp(-a*r2))/r/r2**2*x*y',
+  '0.5163977794943222*(5.3173615527165481*erf(sqrt(a)*r)-(+6+4*(sqrt(a)*r)**2)*sqrt(a)*r*exp(-a*r2))/r/r2**2*y*z',
+  '0.14907119849998599*(5.3173615527165481*erf(sqrt(a)*r)-(+6+4*(sqrt(a)*r)**2)*sqrt(a)*r*exp(-a*r2))/r/r2**2*(3*z*z-r2)',
+  '0.5163977794943222*(5.3173615527165481*erf(sqrt(a)*r)-(+6+4*(sqrt(a)*r)**2)*sqrt(a)*r*exp(-a*r2))/r/r2**2*x*z',
+  '0.2581988897471611*(5.3173615527165481*erf(sqrt(a)*r)-(+6+4*(sqrt(a)*r)**2)*sqrt(a)*r*exp(-a*r2))/r/r2**2*(x*x-y*y)',
+  '0.039840953644479787*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*(-y*y*y+3*x*x*y)',
+  '0.19518001458970666*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*x*y*z',
+  '0.03086066999241838*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*(-y*r2+5*y*z*z)',
+  '0.025197631533948481*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*(5*z*z*z-3*z*r2)',
+  '0.03086066999241838*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*(5*x*z*z-x*r2)',
+  '0.097590007294853329*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*(x*x*z-y*y*z)',
+  '0.039840953644479787*(26.586807763582737*erf(sqrt(a)*r)-(+30+20*(sqrt(a)*r)**2+8*(sqrt(a)*r)**4)*sqrt(a)*r*exp(-a*r2))/r/r2**3*(x*x*x-3*x*y*y)',
 ]
 # end of computer generated code
 
@@ -78,7 +91,7 @@ class Gaussian:
         x, y, z  = tuple(self.xyz)
         r2 = self.r2
         return eval(gauss_L[L])
-
+    
     def get_gauss_pot(self, L):
         a = self. a
         x, y, z  = tuple(self.xyz)
@@ -86,8 +99,7 @@ class Gaussian:
         if not hasattr(self, 'r'):
             self.r = num.sqrt(r2)
         r = self.r
-        l, m = L_to_lm(L)
-        return eval(gausspot_l[l] + (l!=0)*('/r**%s'%l) + '*' +Y_L[L])
+        return eval(gausspot_L[L])
 
     def get_moment(self, n, L):
         r2 = self.r2

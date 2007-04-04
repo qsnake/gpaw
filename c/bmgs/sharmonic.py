@@ -126,7 +126,7 @@ def gauss_to_string(l, m, numeric=False):
 
     return string
 
-def gauss_potential_to_string(l):
+def gauss_potential_to_string(l, m, numeric=False):
     """Return string representation of the potential of  a generalized
        gaussian.
 
@@ -140,15 +140,36 @@ def gauss_potential_to_string(l):
                4 pi /  -l-1 /r    l+2         l /oo   1-l      \
        v (r) = ---- | r     | dx x   g (r) + r  | dx x   g (r) |
         l      2l+1 \       /0        l         /r        l    /
-    """
-
-    v_l = ['4*pi*erf(sqrt(a)*r)/r',
-           '4*pi*erf(sqrt(a)*r)/(3*r2) - 8*sqrt(a*pi)*exp(-a*r2)/(3*r)',
-           '12*pi*erf(sqrt(a)*r)/(15*r*r2) - (16*sqrt(pi*a**3)/15 + 24*sqrt(pi*a)/(15*r2))*exp(-a*r2)',
-           '4*pi*erf(sqrt(a)*r)/(7*r2*r2) - (32*sqrt(pi*a**5)*r/105 + 16*sqrt(pi*a**3)/(21*r) + 8*sqrt(pi*a)/(7*r*r2))*exp(-a*r2)',
+    """            
+    v_l = [[Q(4,1), 1],
+           [Q(4,3), 1, 2],
+           [Q(4,15), 3, 6, 4],
+           [Q(4,105), 15, 30, 20, 8],
+           [Q(4,945), 105, 210, 140, 56, 16],
+           [Q(4,10395), 945, 1890, 1260, 504, 144, 32],
            ]
-    
-    return v_l[l]
+
+    norm, xyzs = Y_collect(l, m)
+    norm.multiply(v_l[l][0])
+    print norm
+
+    string = txt_sqrt(norm.norm, numeric) + '*('
+    if numeric:
+        string += repr(v_l[l][1] * sqrt(pi))
+    else:
+        string += str(v_l[l][1]) + '*sqrt(pi)'
+    string += '*erf(sqrt(a)*r)'
+
+    if len(v_l[l]) > 2:
+        string += '-('
+        for n, coeff in enumerate(v_l[l][2:]):
+            string += sign(coeff) + str(abs(coeff)) \
+                      + (n!=0)*('*(sqrt(a)*r)**%d'%(2*n))
+        string += ')*sqrt(a)*r*exp(-a*r2)'
+
+    string += ')/r' + (l!=0)*('/r2**%d'%l) + '*' + to_string(l, xyzs)
+
+    return string
 
 #----------------------------- TECHNICAL METHODS -----------------------------
 def to_string(l, xyzs, deriv=False, multiply=False):
@@ -171,6 +192,16 @@ def sign(x):
     """Return string representation of the sign of x"""
     if x >= 0: return '+'
     else: return '-'
+
+def txt_sqrt(norm, numeric=False):
+    if numeric:
+        return repr(sqrt(norm))
+    else:
+        if sqrt(norm) % 1 == 0:
+            return str(sqrt(norm))
+        else:
+            return 'sqrt(' + str(norm.nom) + \
+                   ('./' + str(norm.denom)) * (norm.denom != 1) + ')'
 
 class Normalization:
     """Determine normalization factor of spherical harmonic
@@ -652,21 +683,23 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
     
 def construct_gauss_code(lmax=3):
     """Method for generating the code in gpaw/utilities/gauss.py"""
+    Lmax = (lmax + 1)**2
     out= 'Y_L = [\n'
-    for L in range((lmax + 1)**2):
+    for L in range(Lmax):
         l, m = L_to_lm(L)
         out+= '  \'' + Y_to_string(l, m, numeric=True) + '\',\n'
     out += ']'
 
     out += '\ngauss_L = [\n'
-    for L in range((lmax + 1)**2):
+    for L in range(Lmax):
         l, m = L_to_lm(L)
         out += '  \'' + gauss_to_string(l, m, numeric=True) + '\',\n'
     out += ']'
     
-    out += '\ngausspot_l = [\n'
-    for l in range(lmax):
-        out += '  \'%s\',\n' % gauss_potential_to_string(l)
+    out += '\ngausspot_L = [\n'
+    for L in range(Lmax):
+        l, m = L_to_lm(L)
+        out += '  \'' + gauss_potential_to_string(l, m, numeric=True) + '\',\n'
     out += ']'
     
     print out
