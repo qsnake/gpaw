@@ -151,9 +151,8 @@ def gauss_potential_to_string(l, m, numeric=False):
 
     norm, xyzs = Y_collect(l, m)
     norm.multiply(v_l[l][0])
-    print norm
 
-    string = txt_sqrt(norm.norm, numeric) + '*('
+    string = txt_sqrt(norm.norm, numeric) + '*' + (l!=0)*'('
     if numeric:
         string += repr(v_l[l][1] * sqrt(pi))
     else:
@@ -163,11 +162,18 @@ def gauss_potential_to_string(l, m, numeric=False):
     if len(v_l[l]) > 2:
         string += '-('
         for n, coeff in enumerate(v_l[l][2:]):
-            string += sign(coeff) + str(abs(coeff)) \
-                      + (n!=0)*('*(sqrt(a)*r)**%d'%(2*n))
+            if n == 0:
+                string += str(coeff)
+            else:
+                string += '+' + str(coeff) + '*(sqrt(a)*r)**%d'%(2*n)
         string += ')*sqrt(a)*r*exp(-a*r2)'
 
-    string += ')/r' + (l!=0)*('/r2**%d'%l) + '*' + to_string(l, xyzs)
+    if l == 0:
+        string += '/r'
+    elif l == 1:
+        string += ')/r/r2*' + to_string(l, xyzs)
+    else:
+        string += ')/r/r2**%d*'%l + to_string(l, xyzs)
 
     return string
 
@@ -681,7 +687,7 @@ void bmgs_radiald3(const bmgsspline* spline, int m, int c,
     print >>f, txt
     f.close()
     
-def construct_gauss_code(lmax=3):
+def construct_gauss_code(lmax=2):
     """Method for generating the code in gpaw/utilities/gauss.py"""
     Lmax = (lmax + 1)**2
     out= 'Y_L = [\n'
