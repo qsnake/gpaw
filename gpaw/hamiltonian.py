@@ -97,6 +97,7 @@ class Hamiltonian:
         the fine grid, and the sum is then restricted to the coarse
         grid."""
 
+        self.timer.start('Hamiltonian')
         vt_g = self.vt_sg[0]
         vt_g[:] = 0.0
 
@@ -137,6 +138,7 @@ class Hamiltonian:
             Ekin -= num.vdot(vt_G, nt_G - density.nct_G) * self.gd.dv
 
         # Calculate atomic hamiltonians:
+        self.timer.start('Atomic Hamiltonians')
         for nucleus in self.ghat_nuclei:
             k, p, b, x = nucleus.calculate_hamiltonian(density.nt_g,
                                                        self.vHt_g)
@@ -144,13 +146,15 @@ class Hamiltonian:
             Epot += p
             Ebar += b
             Exc += x
+        self.timer.stop()
 
         comm = self.gd.comm
         Ekin = comm.sum(Ekin)
         Epot = comm.sum(Epot)
         Ebar = comm.sum(Ebar)
         Exc = comm.sum(Exc)
-        
+
+        self.timer.stop()
         return Ekin, Epot, Ebar, Exc
 
         
