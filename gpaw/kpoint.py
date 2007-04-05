@@ -18,8 +18,6 @@ from gpaw.utilities import unpack
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
-from gpaw.utilities.timing import Timer
-
 
 class KPoint:
     """Class for a singel **k**-point.
@@ -63,11 +61,9 @@ class KPoint:
                        and direction ``d=0,1``.
          ``eps_n``     Eigenvalues.
          ``f_n``       Occupation numbers.
-         ``H_nn``      Hamiltonian matrix.
-         ``S_nn``      Overlap matrix.
+
          ``psit_nG``   Wave functions.
 
-         ``timer``     ``Timer`` object.
          ``nbands``    Number of bands.
          ============= =======================================================
 
@@ -106,17 +102,13 @@ class KPoint:
         
         self.psit_nG = None
 
-        self.timer = Timer()
-        
     def allocate(self, nbands):
         """Allocate arrays."""
         self.nbands = nbands
         self.eps_n = num.empty(nbands, num.Float)
         self.f_n = num.empty(nbands, num.Float)
-        self.S_nn = num.empty((nbands, nbands), self.typecode)
-        self.S_nn[:] = 0.0  # rk fails the first time without this!
         
-    def adjust_number_of_bands(self, nbands):
+    def adjust_number_of_bands(self, nbands, pt_nuclei, my_nuclei):
         """Adjust the number of states.
 
         If we are starting from atomic orbitals, then the desired
@@ -139,11 +131,6 @@ class KPoint:
         self.psit_nG = self.gd.empty(nbands, self.typecode)
         self.psit_nG[:nmin] = tmp_nG[:nmin]
 
-        tmp_nG = self.Htpsit_nG
-        self.Htpsit_nG = self.gd.empty(nbands, self.typecode)
-        self.Htpsit_nG[:nmin] = tmp_nG[:nmin]
-        del tmp_nG
-
         tmp_n = self.eps_n
         self.allocate(nbands)
         self.eps_n[:nmin] = tmp_n[:nmin]
@@ -152,34 +139,52 @@ class KPoint:
         if extra > 0:
             # Generate random wave functions:
             self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
-            gd1 = self.gd.coarsen()
-            gd2 = gd1.coarsen()
+            self.random_wave_functions(self.psit_nG[nao:])
 
-            psit_G1 = gd1.empty(typecode=self.typecode)
-            psit_G2 = gd2.empty(typecode=self.typecode)
-
-            interpolate2 = Transformer(gd2, gd1, 1, self.typecode).apply
-            interpolate1 = Transformer(gd1, self.gd, 1, self.typecode).apply
-
-            shape = tuple(gd2.n_c)
-
-            scale = sqrt(12 / num.product(gd2.domain.cell_c))
-
-            seed(1, 2 + mpi.rank)
-
-            for psit_G in self.psit_nG[nao:]:
-                if self.typecode == num.Float:
-                    psit_G2[:] = (random(shape) - 0.5) * scale
+            #Calculate projections
+            for nucleus in pt_nuclei:
+                if nucleus.in_this_domain:
+                    P_ni = nucleus.P_uni[self.u,nao:]
+                    P_ni[:] = 0.0
+                    nucleus.pt_i.integrate(self.psit_nG[nao:], P_ni, self.k)
                 else:
-                    psit_G2.real = (random(shape) - 0.5) * scale
-                    psit_G2.imag = (random(shape) - 0.5) * scale
+                    nucleus.pt_i.integrate(self.psit_nG[nao:], None, self.k)
+                    
+            #Orthonormalize
+            self.orthonormalize(my_nuclei)
 
-                interpolate2(psit_G2, psit_G1, self.phase_cd)
-                interpolate1(psit_G1, psit_G, self.phase_cd)
+    def random_wave_functions(self, psit_nG):
+        """Generate random wave functions"""
+
+        gd1 = self.gd.coarsen()
+        gd2 = gd1.coarsen()
+
+        psit_G1 = gd1.empty(typecode=self.typecode)
+        psit_G2 = gd2.empty(typecode=self.typecode)
+
+        interpolate2 = Transformer(gd2, gd1, 1, self.typecode).apply
+        interpolate1 = Transformer(gd1, self.gd, 1, self.typecode).apply
+
+        shape = tuple(gd2.n_c)
+
+        scale = sqrt(12 / num.product(gd2.domain.cell_c))
+
+        seed(1, 2 + mpi.rank)
+
+        for psit_G in psit_nG:
+            if self.typecode == num.Float:
+                psit_G2[:] = (random(shape) - 0.5) * scale
+            else:
+                psit_G2.real = (random(shape) - 0.5) * scale
+                psit_G2.imag = (random(shape) - 0.5) * scale
+
+            interpolate2(psit_G2, psit_G1, self.phase_cd)
+            interpolate1(psit_G1, psit_G, self.phase_cd)
+
     
     def orthonormalize(self, my_nuclei):
-        """Orthogonalize wave functions."""
-        S_nn = self.S_nn
+        """Orthonormalize wave functions."""
+        S_nn = num.zeros((self.nbands, self.nbands), self.typecode)
 
         # Fill in the lower triangle:
         rk(self.gd.dv, self.psit_nG, 0.0, S_nn)
@@ -200,9 +205,7 @@ class KPoint:
 
         self.comm.broadcast(S_nn, self.root)
         
-        # This step will overwrite the Htpsit_nG array!
-        gemm(1.0, self.psit_nG, S_nn, 0.0, self.Htpsit_nG)
-        self.psit_nG, self.Htpsit_nG = self.Htpsit_nG, self.psit_nG  # swap
+        gemm(1.0, self.psit_nG.copy(), S_nn, 0.0, self.psit_nG)
 
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
@@ -235,12 +238,11 @@ class KPoint:
         """Initialize the wave functions from atomic orbitals.
 
         Create ``nao`` atomic orbitals."""
-        
+
         # Allocate space for wave functions, occupation numbers,
         # eigenvalues and projections:
         self.allocate(nao)
         self.psit_nG = self.gd.zeros(nao, self.typecode)
-        self.Htpsit_nG = self.gd.empty(nao, self.typecode)
         
         # fill in the atomic orbitals:
         nao0 = 0
@@ -249,6 +251,13 @@ class KPoint:
             nucleus.create_atomic_orbitals(self.psit_nG[nao0:nao1], self.k)
             nao0 = nao1
         assert nao0 == nao
+
+    def create_random_orbitals(self, nbands):
+        """Initialize all the wave functions from random numbers"""
+
+        self.allocate(nbands)
+        self.psit_nG = self.gd.zeros(nbands, self.typecode)
+        self.random_wave_functions(self.psit_nG)        
 
     def apply_h(self, pt_nuclei, kin, vt_sG, psit, Htpsit):
         """Applies the Hamiltonian to the wave function psit"""

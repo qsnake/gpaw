@@ -131,7 +131,7 @@ class Paw:
     
     def __init__(self, a0, Ha,
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
-                 nvalence, charge, nbands, nspins,
+                 nvalence, charge, nbands, nspins, random,
                  typecode, bzk_kc, ibzk_kc, weights_k,
                  stencils, usesymm, mix, fixdensity, maxiter,
                  convergeall, eigensolver, relax, pos_ac, timer, kT,
@@ -150,6 +150,7 @@ class Paw:
          ``nvalence``    Number of valence electrons.
          ``nbands``      Number of bands.
          ``nspins``      Number of spins.
+         ``random``      Initialize wave functions with random numbers
          ``typecode``    Data type of wave functions (``Float`` or
                          ``Complex``).
          ``kT``          Temperature for Fermi-distribution.
@@ -191,6 +192,7 @@ class Paw:
         self.usesymm = usesymm
         self.maxiter = maxiter
         self.setups = setups
+        self.random_wf = random
         
         self.set_output(out)
         
@@ -374,22 +376,29 @@ class Paw:
         for nucleus in self.nuclei:
             nao += nucleus.get_number_of_atomic_orbitals()
 
+        if self.random_wf:
+            nao = 0
+
+        nrandom = max(0, self.nbands - nao)
+
         print >> self.out, self.nbands, 'band%s.' % 's'[:self.nbands != 1]
-        n = min(self.nbands, nao)
-        if n == 1:
+        if self.nbands == 1:
             string = 'Initializing one band from'
         else:
-            string = 'Initializing %d bands from' % n
+            string = 'Initializing %d bands from' % self.nbands
         if nao == 1:
-            string += ' one atomic orbital.'
-        else:
-            string += ' linear combination of %d atomic orbitals.' % nao
+            string += ' one atomic orbital'
+        elif nao > 0:
+            string += ' linear combination of %d atomic orbitals' % nao
+
+        if nrandom > 0 :
+            if nao > 0:
+                string += ' and'
+            string += ' %d random orbitals' % nrandom
+        string += '.'
+                
         print >> self.out, string
 
-        for nucleus in self.my_nuclei:
-            # XXX already allocated once, but with wrong size!!!
-            ni = nucleus.get_number_of_partial_waves()
-            nucleus.P_uni = num.empty((self.nmyu, nao, ni), self.typecode)
 
         xcfunc = self.hamiltonian.xc.xcfunc
         if xcfunc.hybrid > 0:
@@ -408,22 +417,46 @@ class Paw:
                             
         self.Ekin0, self.Epot, self.Ebar, self.Exc = \
                    self.hamiltonian.update(self.density)
-        
-        eig = Eigensolver(self.timer,self.kpt_comm,
-                       self.gd, self.hamiltonian.kin,
-                       self.typecode, nao)
+
+        if self.random_wf:
+            for kpt in self.kpt_u:
+                kpt.create_random_orbitals(self.nbands)
+                # Calculate projections and orthogonalize wave functions:
+                for nucleus in self.pt_nuclei:
+                    nucleus.calculate_projections(kpt)
+                kpt.orthonormalize(self.my_nuclei)
+            # Improve the random guess with conjugate gradients
+            eig = CG(self.timer,self.kpt_comm,
+                     self.gd, self.hamiltonian.kin,
+                     self.typecode, self.nbands)
+            eig.set_convergence_criteria(True, 1e-2, self.nvalence)
+            for nit in range(2):
+                eig.iterate(self.hamiltonian, self.kpt_u) 
+
+        else:
+            for nucleus in self.my_nuclei:
+                # XXX already allocated once, but with wrong size!!!
+                ni = nucleus.get_number_of_partial_waves()
+                nucleus.P_uni = num.empty((self.nmyu, nao, ni), self.typecode)
+
+            # Use the generic eigensolver for subspace diagonalization
+            eig = Eigensolver(self.timer,self.kpt_comm,
+                              self.gd, self.hamiltonian.kin,
+                              self.typecode, nao)
+            for kpt in self.kpt_u:
+                kpt.create_atomic_orbitals(nao, self.nuclei)
+                # Calculate projections and orthogonalize wave functions:
+                for nucleus in self.pt_nuclei:
+                    nucleus.calculate_projections(kpt)
+                kpt.orthonormalize(self.my_nuclei)
+                eig.diagonalize(self.hamiltonian, kpt)
+
+
+        for nucleus in self.my_nuclei:
+            nucleus.reallocate(self.nbands)
 
         for kpt in self.kpt_u:
-            kpt.create_atomic_orbitals(nao, self.nuclei)
-
-            # Calculate projections and orthogonalize wave functions:
-            for nucleus in self.pt_nuclei:
-                nucleus.calculate_projections(kpt)
-            kpt.orthonormalize(self.my_nuclei)
-
-            eig.diagonalize(self.hamiltonian, kpt)
-
-            kpt.adjust_number_of_bands(self.nbands)
+            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, self.my_nuclei)
 
         if xcfunc.hybrid > 0:
             # Switch back to the orbital dependent functional:
@@ -431,17 +464,6 @@ class Paw:
             for setup in self.setups:
                 setup.xc_correction.xc.set_functional(xcfunc)
 
-        for nucleus in self.my_nuclei:
-            nucleus.reallocate(self.nbands)
-
-        # If we added some random wave functions, they are not orthogonalized
-        # and their projections are zero...
-        # Should be done smarter way...
-        for kpt in self.kpt_u:
-            # Calculate projections and orthogonalize wave functions:
-            for nucleus in self.pt_nuclei:
-                nucleus.calculate_projections(kpt)
-            kpt.orthonormalize(self.my_nuclei)
 
         # Calculate occupation numbers:
         self.nfermi, self.magmom, self.S, Eband = \
@@ -567,8 +589,6 @@ class Paw:
 
     def __del__(self):
         """Destructor:  Write timing output before closing."""
-        for kpt in self.kpt_u:
-            self.timer.add(kpt.timer)
         self.timer.write(self.out)
 
     def get_fermi_level(self):
@@ -744,7 +764,9 @@ class Paw:
             # for wave functions and copy data from the file:
             for kpt in self.kpt_u:
                 kpt.psit_nG = kpt.psit_nG[:]
-                #kpt.Htpsit_nG = kpt.gd.empty(self.nbands, self.typecode)  # XXX
+
+        for kpt in self.kpt_u:
+            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, self.my_nuclei)
 
         if isinstance(self.eigensolver, tuple):
             eigensolver, convergeall, tolerance, nvalence = self.eigensolver

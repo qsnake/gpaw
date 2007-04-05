@@ -244,39 +244,24 @@ def read(paw, filename):
                       'with restart file.') %
                      (setup.symbol, setup.filename))
             
-    for kpt in paw.kpt_u:
-        kpt.allocate(paw.nbands)
-        
-    # Wave functions:
-    wf = False
-    if r.has_array('PseudoWaveFunctions'):
-        wf = True
-        if mpi.parallel:
-            # Slice of the global array for this domain:
-            i = [slice(b - 1 + p, e - 1 + p) for b, e, p in
-                 zip(paw.gd.beg_c, paw.gd.end_c, paw.gd.domain.periodic_c)]
+    # Read pseudoelectron density on the coarse grid and
+    # distribute out to nodes
+    for s in range(paw.nspins): 
+        paw.gd.distribute(r.get('PseudoElectronDensity', s),
+                          paw.density.nt_sG[s])
 
-            for kpt in paw.kpt_u:
-                kpt.psit_nG = paw.gd.empty(paw.nbands, paw.typecode)
-                #kpt.Htpsit_nG = paw.gd.empty(paw.nbands, paw.typecode)
-                # Read band by band to save memory
-                for n, psit_G in enumerate(kpt.psit_nG):
-                    psit_G[:] = r.get('PseudoWaveFunctions',
-                                      kpt.s, kpt.k, n)[i]
-        else:
-            # Serial calculation.  We may not be able to keep all the wave
-            # functions in memory - so psit_nG will be a special type of
-            # array that is really just a reference to a file:
-            for kpt in paw.kpt_u:
-                kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
-                                              kpt.s, kpt.k)
-    
-    # Eigenvalues and occupation numbers:
-    for kpt in paw.kpt_u:
-        k = kpt.k
-        s = kpt.s
-        kpt.eps_n[:] = r.get('Eigenvalues', s, k)
-        kpt.f_n[:] = r.get('OccupationNumbers', s, k)
+    # Transfer the density to the fine grid:
+    paw.density.interpolate_pseudo_density()
+
+    # Read atomic density matrices:
+    D_sp = r.get('AtomicDensityMatrices')
+    p1 = 0
+    for nucleus in paw.nuclei:
+        ni = nucleus.get_number_of_partial_waves()
+        p2 = p1 + ni * (ni + 1) / 2
+        if nucleus.in_this_domain:
+            nucleus.D_sp[:] = D_sp[:, p1:p2]
+        p1 = p2
 
     paw.Ekin = r['Ekin']
     try:
@@ -290,33 +275,50 @@ def read(paw, filename):
     paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
 
     paw.occupation.set_fermi_level(r['FermiLevel'])
+
+
+    # Wave functions and eigenvalues:
+    wf = False
+    nkpts = len(r.get('IBZKPoints'))
+    nbands = len(r.get('Eigenvalues', 0, 0))
+
+    if nkpts == paw.nkpts:
+        for kpt in paw.kpt_u:
+            kpt.allocate(nbands)
+            # Eigenvalues and occupation numbers:
+            k = kpt.k
+            s = kpt.s
+            kpt.eps_n[:] = r.get('Eigenvalues', s, k)
+            kpt.f_n[:] = r.get('OccupationNumbers', s, k)
+        
+        if r.has_array('PseudoWaveFunctions'):
+            wf = True
+            if mpi.parallel:
+                # Slice of the global array for this domain:
+                i = [slice(b - 1 + p, e - 1 + p) for b, e, p in
+                     zip(paw.gd.beg_c, paw.gd.end_c, paw.gd.domain.periodic_c)]
+
+                for kpt in paw.kpt_u:
+                    kpt.psit_nG = paw.gd.empty(nbands, paw.typecode)
+                    # Read band by band to save memory
+                    for n, psit_G in enumerate(kpt.psit_nG):
+                        psit_G[:] = r.get('PseudoWaveFunctions',
+                                          kpt.s, kpt.k, n)[i]
+            else:
+                # Serial calculation.  We may not be able to keep all the wave
+                # functions in memory - so psit_nG will be a special type of
+                # array that is really just a reference to a file:
+                for kpt in paw.kpt_u:
+                    kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
+                                                  kpt.s, kpt.k)
     
-    # Read pseudoelectron density on the coarse grid and
-    # distribute out to nodes
-    for s in range(paw.nspins): 
-        paw.gd.distribute(r.get('PseudoElectronDensity', s),
-                          paw.density.nt_sG[s])
-
-    # Transfer the density to the fine grid:
-    paw.density.interpolate_pseudo_density()
-
-    for u, kpt in enumerate(paw.kpt_u):
-        P_ni = r.get('Projections', kpt.s, kpt.k)
-        i1 = 0
-        for nucleus in paw.nuclei:
-            i2 = i1 + nucleus.get_number_of_partial_waves()
-            if nucleus.in_this_domain:
-                nucleus.P_uni[u] = P_ni[:, i1:i2]
-            i1 = i2
-
-    # Read atomic density matrices:
-    D_sp = r.get('AtomicDensityMatrices')
-    p1 = 0
-    for nucleus in paw.nuclei:
-        ni = nucleus.get_number_of_partial_waves()
-        p2 = p1 + ni * (ni + 1) / 2
-        if nucleus.in_this_domain:
-            nucleus.D_sp[:] = D_sp[:, p1:p2]
-        p1 = p2
+            for u, kpt in enumerate(paw.kpt_u):
+                P_ni = r.get('Projections', kpt.s, kpt.k)
+                i1 = 0
+                for nucleus in paw.nuclei:
+                    i2 = i1 + nucleus.get_number_of_partial_waves()
+                    if nucleus.in_this_domain:
+                        nucleus.P_uni[u,:nbands,:] = P_ni[:, i1:i2]
+                    i1 = i2
 
     return wf

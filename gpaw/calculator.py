@@ -42,6 +42,7 @@ class Calculator:
                   'gpts': None,
                   'h': None,
                   'charge': 0,
+                  'random': False, 
                   'usesymm': True,
                   'width': None,
                   'mix': (0.25, 3, 1.0),
@@ -89,6 +90,7 @@ class Calculator:
         self.t0 = time.time()
     
         self.paw = None
+        self.restart_file = None
 
         # Set default parameters and adjust with user parameters:
         self.Set(**Calculator.parameters)
@@ -164,7 +166,7 @@ class Calculator:
         if isinstance(bzk_kc[0], int):
             bzk_kc = MonkhorstPack(bzk_kc)
         self.bzk_kc = num.array(bzk_kc)
-        self.reset()
+        self.reset(self.restart_file)
 
     def set_h(self, h):
         self.gpts = None
@@ -189,7 +191,7 @@ class Calculator:
             atoms.GetUnitCell() != self.cell_cc or
             atoms.GetBoundaryConditions() != self.periodic_c):
             # Drastic changes:
-            self.reset()
+            self.reset(self.restart_file)
             self.initialize_paw_object()
             self.find_ground_state()
         else:
@@ -233,6 +235,7 @@ class Calculator:
                 self.h, self.gpts, self.xc,
                 self.nbands, self.spinpol, self.width,
                 self.charge,
+                self.random,
                 self.bzk_kc,
                 self.softgauss,
                 self.stencils,
