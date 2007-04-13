@@ -16,6 +16,39 @@ from gpaw.utilities import unpack, erf, fac, hartree
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
+def xas(paw):
+    nocc = paw.nvalence / 2
+    for nucleus in paw.nuclei:
+        if isinstance(nucleus.setup, CoreHoleSetup):
+            P_ni = nucleus.P_uni[0, nocc:]
+            A_ci = nucleus.setup.A_ci
+            ach = nucleus.a
+            break
+
+    print 'core hole atmom', ach
+    
+    eps_n = paw.kpt_u[0].eps_n[nocc:]
+    w_cn = num.dot(A_ci, num.transpose(P_ni))**2
+    return eps_n, w_cn
+
+def plot_xas(eps_n, w_cn, fwhm=0.5, N=100):
+    eps_n *= 27.2
+    emin = min(eps_n) - fwhm
+    emax = max(eps_n) + fwhm
+
+    e = emin + num.arange(N + 1) * ((emax - emin) / N)
+    a = num.zeros(N + 1, num.Float)
+
+    alpha = log(2) / fwhm**2
+    for n, eps in enumerate(eps_n):
+        x = -((e - eps) * alpha)**2
+        x = num.clip(x, -100.0, 100.0)
+        w = sum(w_cn[:, n])
+        a += w * num.exp(x)
+
+    return e, a
+
+
 class CoreHoleSetup:
     def __init__(self, symbol, xcfunc, nspins=1, softgauss=True, lmax=0,
                  fhole=0.5):
@@ -37,6 +70,7 @@ class CoreHoleSetup:
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
+        self.fhole = fhole
         nc_g *= 0.5 * (2.0 - fhole)
         nct_g *= 0.5 * (2.0 - fhole)
         e_kinetic_core *= 0.5 * (2.0 - fhole)
@@ -99,6 +133,8 @@ class CoreHoleSetup:
         np = ni * (ni + 1) // 2
         nq = nj * (nj + 1) // 2
 
+        self.oscillator_strengths(r_g, dr_g, nc_g, phi_jg)
+        
         lcut = max(l_j)
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
@@ -385,6 +421,26 @@ class CoreHoleSetup:
                 p += 1
             i1 += 1
 
+    def oscillator_strengths(self, r_g, dr_g, nc_g, phi_jg):
+        phich_g = (4 * pi)**.25 * (0.5  *nc_g / (0.5 * ( 2.0 - self.fhole )) )**0.5 
+        print num.dot(r_g**2 * dr_g, phich_g**2)
+
+        self.A_ci = num.zeros((3, self.ni), num.Float)
+        nj = len(phi_jg)
+        i = 0
+        for j in range(nj):
+            l = self.l_j[j]
+            if l == 1:
+                a = num.dot(r_g**3 * dr_g, phi_jg[j] * phich_g)
+                for m in range(3):
+                    c = (m + 1) % 3 
+                    self.A_ci[c, i] = a
+                    i += 1
+            else:
+                i += 2 * l + 1
+        assert i == self.ni
+        print self.A_ci
+        
     def print_info(self, out):
         print >> out, self.symbol + '-setup: (core hole)'
         print >> out, '  name   :', names[self.Z]
