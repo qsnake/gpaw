@@ -241,7 +241,8 @@ class Nucleus:
 
         # Yes.  Normalize smooth core density:
         if self.nct is not None:
-            Nct = -(self.setup.Delta0 * sqrt(4 * pi) + self.setup.Nv)
+            Nct = -(self.setup.Delta0 * sqrt(4 * pi)
+                    + self.setup.Z - self.setup.Nc)
             self.nct.normalize(Nct)
         else:
             self.comm.sum(0.0)
@@ -550,7 +551,8 @@ class Nucleus:
 
         # Normalize core densities:
         Nc = self.setup.Nc
-        Nct = -(self.setup.Delta0 * sqrt(4 * pi) + self.setup.Nv)
+        Nct = -(self.setup.Delta0 * sqrt(4 * pi)
+                + self.setup.Z - self.setup.Nc)
         if Nc != 0:
             nc.normalize(Nc)
             nct.normalize(Nct)

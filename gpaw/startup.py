@@ -157,6 +157,10 @@ def create_paw_object(out, a0, Ha,
         nvalence += nucleus.setup.Nv
         nao += nucleus.setup.niAO
     nvalence -= charge
+
+    for nucleus in nuclei:
+        charge += (nucleus.setup.Z - nucleus.setup.Nv - nucleus.setup.Nc)
+
     if nvalence < 0:
         raise ValueError(
             'Charge %f is not possible - not enough valence electrons' %

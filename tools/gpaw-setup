@@ -34,6 +34,10 @@ parser.add_option('-c', '--core', type='string', default=None,
                   metavar='<core>')
 parser.add_option('--normconserving', type='string',
                   help='Examples: s, sp')
+parser.add_option('--full-core-hole', metavar='state',
+                  help='Add a full core hole. Examples: "1s", "2p".')
+parser.add_option('--half-core-hole', metavar='state',
+                  help='Add half filled core hole. Examples: "1s", "2p".')
 
 opt, args = parser.parse_args()
 
@@ -48,12 +52,18 @@ else:
 for symbol in atoms:
     scalarrel = not opt.non_scalar_relativistic
 
+    corehole = None
+    if opt.full_core_hole is not None:
+        corehole = (opt.full_core_hole, 1.0)
+    if opt.half_core_hole is not None:
+        corehole = (opt.half_core_hole, 0.5)
+        
     if opt.all_electron_only:
-        a = AllElectron(symbol, opt.xcfunctional, scalarrel)
+        a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole)
         a.run()
         continue
     
-    g = Generator(symbol, opt.xcfunctional, scalarrel)
+    g = Generator(symbol, opt.xcfunctional, scalarrel, corehole)
 
     try:
         params = parameters[symbol]

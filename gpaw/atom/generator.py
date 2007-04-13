@@ -54,8 +54,9 @@ parameters = {
     }
 
 class Generator(AllElectron):
-    def __init__(self, symbol, xcname='LDA', scalarrel=False, nofiles=False):
-        AllElectron.__init__(self, symbol, xcname, scalarrel)
+    def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None,
+                 nofiles=False):
+        AllElectron.__init__(self, symbol, xcname, scalarrel, corehole)
         self.nofiles = nofiles
         
     def run(self, core, rcut, extra,
@@ -265,7 +266,7 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut]
 
-        Nc = Z - self.Nv
+        Nc = Z - self.Nv # corehole!!! XXXX
         Nctail = 4 * pi * num.dot(nc[gcut:], dv[gcut:])
         print 'Core states: %d (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
         assert Nctail < 1.1
@@ -380,7 +381,7 @@ class Generator(AllElectron):
 
         # Calculate neutral smooth charge density:
         Nt = num.dot(nt, dv)
-        rhot = nt - Nt * gt
+        rhot = nt - Nt * gt#;print 'XXXXXXXXX'*5
         print 'Pseudo-electron charge', 4 * pi * Nt
 
         vHt = num.zeros(N, num.Float)

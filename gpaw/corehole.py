@@ -17,7 +17,8 @@ from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
 class CoreHoleSetup:
-    def __init__(self, symbol, xcfunc, nspins=1, softgauss=True, n=0.5):
+    def __init__(self, symbol, xcfunc, nspins=1, softgauss=True, lmax=0,
+                 fhole=0.5):
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = softgauss
@@ -36,11 +37,14 @@ class CoreHoleSetup:
          self.fingerprint,
          filename) = PAWXMLParser().parse(symbol, xcname)
 
-        nc_g *= 0.5 * (2.0 - n)
-        
+        nc_g *= 0.5 * (2.0 - fhole)
+        nct_g *= 0.5 * (2.0 - fhole)
+        e_kinetic_core *= 0.5 * (2.0 - fhole)
+        Nc -= fhole
+        #f_j[1] += fhole
         self.filename = filename
 
-        assert Nv + Nc == Z
+        assert Nv + Nc + fhole == Z
         self.Nv = Nv
         self.Nc = Nc
         self.Z = Z
@@ -382,7 +386,7 @@ class CoreHoleSetup:
             i1 += 1
 
     def print_info(self, out):
-        print >> out, self.symbol + '-setup:'
+        print >> out, self.symbol + '-setup: (core hole)'
         print >> out, '  name   :', names[self.Z]
         print >> out, '  Z      :', self.Z
         print >> out, '  file   :', self.filename

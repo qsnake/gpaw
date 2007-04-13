@@ -26,7 +26,7 @@ alpha = 1 / 137.036
 class AllElectron:
     """Object for doing an atomic DFT calculation."""
 
-    def __init__(self, symbol, xcname='LDA', scalarrel=False):
+    def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None):
         """Do an atomic DFT calculation.
         
         Example:
@@ -57,6 +57,26 @@ class AllElectron:
             print 'Atomic',
         print '%s calculation for %s (%s, Z=%d)' % (
             xcname, symbol, names[self.Z], self.Z)
+
+        if corehole is not None:
+            coreholestate, fhole = corehole
+            
+            # Translate corestate string ('1s') to n and l:
+            nhole = int(coreholestate[0])
+            lhole = 'spd'.find(coreholestate[1])
+            
+            # Find j for core hole and adjust occupation:
+            for j in range(len(self.f_j)):
+                if self.n_j[j] == nhole and self.l_j[j] == lhole:
+                    assert self.f_j[j] == 2 * (2 * lhole + 1)
+                    self.f_j[j] -= fhole
+                    self.jcorehole = j
+                    break
+
+            print 'Core hole in %s state (%s occupation: %.1f)' % (
+                coreholestate, coreholestate, self.f_j[self.jcorehole])
+        else:
+            self.jcorehole = None
 
         self.nofiles = False
 
@@ -238,8 +258,8 @@ class AllElectron:
         self.ETotal = Ekin + Exc + Epot
         print
 
-        print 'state    eigenvalue         ekin         rmax'
-        print '---------------------------------------------'
+        print 'state      eigenvalue         ekin         rmax'
+        print '-----------------------------------------------'
         for m, l, f, e, u in zip(n_j, l_j, f_j, e_j, self.u_j):
             # Find kinetic energy:
             k = e - num.sum((num.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
@@ -257,8 +277,8 @@ class AllElectron:
             rmax = -0.5 * b / a
             
             t = 'spdf'[l]
-            print '%d%s^%-2d: %12.6f %12.6f %12.3f' % (m, t, f, e, k, rmax)
-        print '---------------------------------------------'
+            print '%d%s^%-4.1f: %12.6f %12.6f %12.3f' % (m, t, f, e, k, rmax)
+        print '-----------------------------------------------'
         print '(units: Bohr and Hartree)'
         
         for m, l, u in zip(n_j, l_j, self.u_j):

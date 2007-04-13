@@ -30,6 +30,14 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=True, type='paw'):
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins, semicore=True)
     
+    if type == 'hch':
+        from gpaw.corehole import CoreHoleSetup
+        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=0.5, lmax=lmax)
+    
+    if type == 'fch':
+        from gpaw.corehole import CoreHoleSetup
+        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=1, lmax=lmax)
+    
     return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
 
 
@@ -43,7 +51,7 @@ class Setup:
         if type != 'paw':
             symbol += '.' + type
         self.symbol = symbol
-        
+
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
          e_kinetic_core,
