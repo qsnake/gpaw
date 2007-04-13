@@ -59,7 +59,7 @@ class AllElectron:
             xcname, symbol, names[self.Z], self.Z)
 
         if corehole is not None:
-            coreholestate, fhole = corehole
+            coreholestate, self.fhole = corehole
             
             # Translate corestate string ('1s') to n and l:
             nhole = int(coreholestate[0])
@@ -69,7 +69,7 @@ class AllElectron:
             for j in range(len(self.f_j)):
                 if self.n_j[j] == nhole and self.l_j[j] == lhole:
                     assert self.f_j[j] == 2 * (2 * lhole + 1)
-                    self.f_j[j] -= fhole
+                    self.f_j[j] -= self.fhole
                     self.jcorehole = j
                     break
 
@@ -77,6 +77,7 @@ class AllElectron:
                 coreholestate, coreholestate, self.f_j[self.jcorehole])
         else:
             self.jcorehole = None
+            self.fhole = 0
 
         self.nofiles = False
 

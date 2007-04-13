@@ -266,7 +266,7 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut]
 
-        Nc = Z - self.Nv # corehole!!! XXXX
+        Nc = Z - self.Nv - self.fhole
         Nctail = 4 * pi * num.dot(nc[gcut:], dv[gcut:])
         print 'Core states: %d (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
         assert Nctail < 1.1
