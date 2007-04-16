@@ -59,15 +59,11 @@ class AllElectron:
             xcname, symbol, names[self.Z], self.Z)
 
         if corehole is not None:
-            coreholestate, self.fhole = corehole
-            
-            # Translate corestate string ('1s') to n and l:
-            nhole = int(coreholestate[0])
-            lhole = 'spd'.find(coreholestate[1])
+            ncorehole, lcorehole, self.fcorehole = corehole
             
             # Find j for core hole and adjust occupation:
             for j in range(len(self.f_j)):
-                if self.n_j[j] == nhole and self.l_j[j] == lhole:
+                if self.n_j[j] == ncorehole and self.l_j[j] == lcorehole:
                     assert self.f_j[j] == 2 * (2 * lhole + 1)
                     self.f_j[j] -= self.fhole
                     self.jcorehole = j

@@ -34,10 +34,8 @@ parser.add_option('-c', '--core', type='string', default=None,
                   metavar='<core>')
 parser.add_option('--normconserving', type='string',
                   help='Examples: s, sp')
-parser.add_option('--full-core-hole', metavar='state',
-                  help='Add a full core hole. Examples: "1s", "2p".')
-parser.add_option('--half-core-hole', metavar='state',
-                  help='Add half filled core hole. Examples: "1s", "2p".')
+parser.add_option('--core-hole', metavar='state,occ',
+                  help='Add core hole. Examples: "1s,0.5", "2p,1".')
 
 opt, args = parser.parse_args()
 
@@ -53,10 +51,13 @@ for symbol in atoms:
     scalarrel = not opt.non_scalar_relativistic
 
     corehole = None
-    if opt.full_core_hole is not None:
-        corehole = (opt.full_core_hole, 1.0)
-    if opt.half_core_hole is not None:
-        corehole = (opt.half_core_hole, 0.5)
+    if opt.core_hole is not None:
+        state, occ = opt.core_hole.split(',')
+        # Translate corestate string ('1s') to n and l:
+        ncorehole = int(state[0])
+        lcorehole = 'spd'.find(state[1])
+        fcorehole = float(occ)
+        corehole = (ncorehole, lcorehole, fcorehole)
         
     if opt.all_electron_only:
         a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole)
