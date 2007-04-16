@@ -135,7 +135,7 @@ class Paw:
                  typecode, bzk_kc, ibzk_kc, weights_k,
                  stencils, usesymm, mix, fixdensity, maxiter,
                  convergeall, eigensolver, relax, pos_ac, timer, kT,
-                 tolerance, kpt_comm, restart_file, hund, magmom_a,
+                 tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
                  out, vext_g):
         """Create the PAW-object.
         
@@ -223,8 +223,8 @@ class Paw:
         self.pt_nuclei = []
         self.ghat_nuclei = []
 
-        self.density = Density(self.gd, self.finegd, hund, magmom_a, charge,
-                               nspins,
+        self.density = Density(self.gd, self.finegd, hund, fixmom, magmom_a,
+                               charge, nspins,
                                stencils, mix, timer, fixdensity, kpt_comm,
                                kT,
                                self.my_nuclei, self.ghat_nuclei, self.nuclei,
@@ -246,10 +246,9 @@ class Paw:
 
         xcfunc.set_non_local_things(self)
 
-        if hund:
-            assert len(magmom_a) == 1
-            M = int(round(magmom_a[0]))
-            self.occupation = occupations.FixMom(nvalence, nspins, M)
+        if fixmom:
+            M = sum(magmom_a)
+            self.occupation.fix_moment(M)
 
         self.occupation.set_communicator(kpt_comm)
 

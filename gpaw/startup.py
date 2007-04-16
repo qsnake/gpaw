@@ -27,14 +27,14 @@ def create_paw_object(out, a0, Ha,
                       charge, random,
                       bzk_kc,
                       softgauss, stencils, usesymm, mix, fixdensity,
-                      hund, lmax, tolerance, maxiter,
+                      hund, fixmom, lmax, tolerance, maxiter,
                       convergeall, eigensolver, relax, setup_types,
                       parsize_c,
                       restart_file, vext_g):
 
     timer = Timer()
     timer.start('Init')
-    
+
     magmom_a = num.array(magmom_a)
     magnetic = num.sometrue(magmom_a)
 
@@ -44,8 +44,12 @@ def create_paw_object(out, a0, Ha,
     # Default values:
     if spinpol is None:
         spinpol = magnetic
-    if hund is True and (not spinpol or len(Z_a) != 1):
+    if hund and (not spinpol or len(Z_a) != 1):
         hund = False
+
+    fixmom = fixmom and spinpol
+    fixmom = hund or fixmom
+
     if kT is None:
         if gamma:
             kT = 0
@@ -200,7 +204,7 @@ def create_paw_object(out, a0, Ha,
               typecode, bzk_kc, ibzk_kc, weights_k,
               stencils, usesymm, mix, fixdensity, maxiter,
               convergeall, eigensolver, relax, pos_ac / a0, timer, kT / Ha,
-              tolerance, kpt_comm, restart_file, hund, magmom_a,
+              tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
               out, vext_g)
 
     return paw

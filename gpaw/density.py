@@ -39,7 +39,7 @@ class Density:
      ========== =========================================
     """
     
-    def __init__(self, gd, finegd, hund, magmom_a, charge, nspins,
+    def __init__(self, gd, finegd, hund, fixmom, magmom_a, charge, nspins,
                  stencils, mix, timer, fixdensity, kpt_comm, kT,
                  my_nuclei, ghat_nuclei, nuclei, nvalence):
         """Create the Density object."""
@@ -78,7 +78,7 @@ class Density:
         self.interpolate = Transformer(self.gd, self.finegd, nn).apply
         
         # Density mixer:
-        if nspins == 2 and kT != 0:
+        if nspins == 2 and (not fixmom or kT != 0):
             self.mixer = MixerSum(mix)
         else:
             self.mixer = Mixer(mix, self.gd, nspins)

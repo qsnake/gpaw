@@ -6,7 +6,7 @@ H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
                 periodic=False,
                 cell=(a, a, a))
 
-H.SetCalculator(Calculator(h=0.1, setups='ae'))
+H.SetCalculator(Calculator(h=0.1, setups='ae', fixmom=True))
 e1 = H.GetPotentialEnergy()
 
 c = a / 2.0
