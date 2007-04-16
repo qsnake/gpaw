@@ -268,9 +268,9 @@ class Generator(AllElectron):
 
         Nc = Z - self.Nv - self.fhole
         Nctail = 4 * pi * num.dot(nc[gcut:], dv[gcut:])
-        print 'Core states: %d (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
+        print 'Core electrons: %.1f (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
         assert Nctail < 1.1
-        print 'Valence states: %d' % self.Nv
+        print 'Valence electrons: %.1f' % self.Nv
 
         # Construct smooth wave functions:
         coefs = []
@@ -379,9 +379,9 @@ class Generator(AllElectron):
         gt /= norm
         
 
-        # Calculate neutral smooth charge density:
+        # Calculate smooth charge density:
         Nt = num.dot(nt, dv)
-        rhot = nt - Nt * gt#;print 'XXXXXXXXX'*5
+        rhot = nt - (Nt + self.fhole / 4 / pi) * gt
         print 'Pseudo-electron charge', 4 * pi * Nt
 
         vHt = num.zeros(N, num.Float)
