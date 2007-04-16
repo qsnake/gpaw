@@ -78,12 +78,12 @@ if debug:
 
         The following integral is calculated::
         
-                                      ^
-                             n (r')Y (r')
-                  ^    / _    l     lm
-          v (r)Y (r) = |dr --------------,
-           l    lm     /       _   _
-                              |r - r'|
+                                       ^
+                              n (r')Y (r')
+                  ^    / _     l     lm
+          v (r)Y (r) = |dr' --------------,
+           l    lm     /        _   _
+                               |r - r'|
 
         where input and output arrays `nrdr` and `vr`::
 
