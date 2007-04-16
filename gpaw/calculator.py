@@ -60,6 +60,7 @@ class Calculator:
                   'eigensolver': "rmm-diis",
                   'relax': 'GS',
                   'setups': 'paw',
+                  'external': None
                   }
 
     def __init__(self, **kwargs):
@@ -79,7 +80,7 @@ class Calculator:
         orbitals present in the setups. Only occupied bands are used
         in the convergence decision. The calculation will be
         spin-polarized if and only if one or more of the atoms have
-        non-zero magnetic moments.  Text output will be written to
+        non-zero magnetic moments. Text output will be written to
         standard output.
 
         For a non-gamma point calculation, the electronic temperature
@@ -228,7 +229,9 @@ class Calculator:
         if gpaw.parsize is not None:
             # Yes, it was:
             self.parsize = gpaw.parsize
-            
+
+        if self.external is not None:
+            self.external /= self.Ha
         args = [self.out,
                 self.a0, self.Ha,
                 pos_ac, Z_a, magmoms, cell_c, periodic_c,
@@ -252,6 +255,7 @@ class Calculator:
                 self.setups,
                 self.parsize,
                 self.restart_file,
+                self.external,
                 ]
 
         if gpaw.hosts is not None:
@@ -608,7 +612,7 @@ class Calculator:
     ReadAtoms = staticmethod(ReadAtoms)
 
     def GetListOfAtoms(self):
-        """Return attached "list of atoms" object."""
+        """Return attached 'list of atoms' object."""
         return self.atoms()
 
     def GetGridSpacings(self):

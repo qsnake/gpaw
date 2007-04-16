@@ -30,7 +30,7 @@ def create_paw_object(out, a0, Ha,
                       hund, lmax, tolerance, maxiter,
                       convergeall, eigensolver, relax, setup_types,
                       parsize_c,
-                      restart_file):
+                      restart_file, vext_g):
 
     timer = Timer()
     timer.start('Init')
@@ -201,7 +201,7 @@ def create_paw_object(out, a0, Ha,
               stencils, usesymm, mix, fixdensity, maxiter,
               convergeall, eigensolver, relax, pos_ac / a0, timer, kT / Ha,
               tolerance, kpt_comm, restart_file, hund, magmom_a,
-              out)
+              out, vext_g)
 
     return paw
 

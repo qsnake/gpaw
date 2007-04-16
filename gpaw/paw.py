@@ -136,7 +136,7 @@ class Paw:
                  stencils, usesymm, mix, fixdensity, maxiter,
                  convergeall, eigensolver, relax, pos_ac, timer, kT,
                  tolerance, kpt_comm, restart_file, hund, magmom_a,
-                 out):
+                 out, vext_g):
         """Create the PAW-object.
         
         Instantiating such an object by hand is *not* recommended!
@@ -236,7 +236,7 @@ class Paw:
                                        timer,
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
-                                       self.nuclei, setups)
+                                       self.nuclei, setups, vext_g)
             
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
@@ -289,7 +289,7 @@ class Paw:
 
         assert not self.converged
 
-        self.Ekin0, self.Epot, self.Ebar, self.Exc = \
+        self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc = \
                     self.hamiltonian.update(self.density)
 
         self.niter = 0
@@ -297,7 +297,7 @@ class Paw:
         while not self.converged:
             if self.niter > 2:
                 self.density.update(self.kpt_u, self.symmetry)
-                self.Ekin0, self.Epot, self.Ebar, self.Exc = \
+                self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc = \
                            self.hamiltonian.update(self.density)
 
             self.error, self.converged = self.eigensolver.iterate(
@@ -312,7 +312,8 @@ class Paw:
                          self.occupation.calculate(self.kpt_u)
 
             self.Ekin = self.Ekin0 + Eband
-            self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
+            self.Etot = (self.Ekin + self.Epot + self.Ebar + 
+                         self.Eext + self.Exc - self.S)
 
             output.iteration(self)
 
@@ -415,7 +416,7 @@ class Paw:
             for setup in self.setups:
                 setup.xc_correction.xc.set_functional(localxcfunc)
                             
-        self.Ekin0, self.Epot, self.Ebar, self.Exc = \
+        self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc = \
                    self.hamiltonian.update(self.density)
 
         if self.random_wf:

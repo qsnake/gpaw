@@ -36,6 +36,7 @@ def print_converged(paw):
 
     energies = [('kinetic:', paw.Ekin),
                 ('potential:', paw.Epot),
+                ('external:', paw.Eext),
                 ('XC:', paw.Exc),
                 ('entropy (-ST):', -paw.S),
                 ('local:', paw.Ebar)]

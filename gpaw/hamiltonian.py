@@ -43,7 +43,7 @@ class Hamiltonian:
     def __init__(self, gd, finegd, xcfunc, nspins,
                  typecode, stencils, relax,
                  timer, my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
-                 setups):
+                 setups, vext_g):
         """Create the Hamiltonian."""
 
         self.nspins = nspins
@@ -54,6 +54,11 @@ class Hamiltonian:
         self.ghat_nuclei = ghat_nuclei
         self.nuclei = nuclei
         self.timer = timer
+
+        # The external potential
+        self.vext_g = vext_g
+        if vext_g is not None:
+            assert num.alltrue(gd.N_c * 2 == vext_g.shape)        
 
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
@@ -112,6 +117,11 @@ class Hamiltonian:
             nucleus.add_hat_potential(vt_g)
 
         Epot = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar
+
+        Eext = 0.0
+        if self.vext_g is not None:
+            vt_g += self.vext_g
+            Eext = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
         
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
@@ -146,15 +156,23 @@ class Hamiltonian:
             Epot += p
             Ebar += b
             Exc += x
+
+            # Energy corections due to external potential.
+            # Potential is assumed to be constant inside augmentation spheres.
+            if self.vext_g is not None and nucleus.in_this_domain:
+                R_c = num.around(2 * self.gd.N_c * nucleus.spos_c).astype(int)
+                Eext += sqrt(4 * pi) * (nucleus.Q_L[0] +
+                                        nucleus.setup.Z) * self.vext_g[R_c]
         self.timer.stop()
 
         comm = self.gd.comm
         Ekin = comm.sum(Ekin)
         Epot = comm.sum(Epot)
         Ebar = comm.sum(Ebar)
+        Eext = comm.sum(Eext)
         Exc = comm.sum(Exc)
 
         self.timer.stop()
-        return Ekin, Epot, Ebar, Exc
+        return Ekin, Epot, Ebar, Eext, Exc
 
         
