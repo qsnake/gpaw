@@ -147,7 +147,7 @@ def get_system_config(define_macros, undef_macros,
         if len(acml) > 0:
             libraries += ['acml', 'g2c']
             library_dirs += [acml[-1]]
-            #extra_link_args += ['-Wl,-rpath=' + acml]
+            extra_link_args += ['-Wl,-rpath=' + acml[-1]]
             msg += ['* Using ACML library']
 
     elif machine =='ia64':
@@ -338,11 +338,8 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     cfgDict = get_config_vars()
     plat = get_platform() + '-' + sys.version[0:3]
 
-    parallel_sources = [ 'c/bc.c', 'c/localized_functions.c', 'c/mpi.c']
-    cfiles = glob('c/[a-zA-Z]*.c') + ['c/bmgs/bmgs.c']
-    for src in parallel_sources:
-        cfiles.remove(src)
-    sources = ' '.join(parallel_sources+['c/_gpaw.c'])
+    cfiles = glob('c/[a-zA-Z_]*.c') + ['c/bmgs/bmgs.c']
+    sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c']
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
                         for x in cfiles])
 
@@ -369,17 +366,30 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     else:
         extra_link_args.append(cfgDict['LINKFORSHARED'])
 
-    cmd = ('%s -o %s %s %s %s %s %s %s %s %s' ) % \
-           (mpicompiler,
-            exefile,
-            macros,
-            ' '.join(extra_compile_args),
-            includes,
-            sources,
-            objects,
-            lib_dirs,
-            libs,            
-            ' '.join(extra_link_args))
+    # Compile the parallel sources
+    for src in sources:        
+        obj = 'build/temp.%s/' % plat + src[:-1] + 'o'
+        cmd = ('%s %s %s %s -o %s -c %s ' ) % \
+              (mpicompiler,
+               macros,
+               ' '.join(extra_compile_args),
+               includes,
+               obj,
+               src)
+        print cmd
+        error=os.system(cmd)
+        if error != 0:
+            msg += ['* FAILED!  Only serial version of code will work.']
+            break
+
+    # Link the custom interpreter
+    cmd = ('%s -o %s %s %s %s %s' ) % \
+          (mpicompiler,
+           exefile,
+           objects,
+           lib_dirs,
+           libs,            
+           ' '.join(extra_link_args))
     
     msg = ['* Building a custom interpreter']
     print cmd
@@ -387,10 +397,6 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     if error != 0:
         msg += ['* FAILED!  Only serial version of code will work.']
 
-    #remove the few object files from this directory
-    for file in glob('*.o'):
-        os.remove(file)
-    
 
     return msg
         
