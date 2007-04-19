@@ -91,6 +91,7 @@ class LrTDDFT(ExcitationList):
         if not changed: return
 
         self.calculator = calculator
+        self.out = calculator.out
         self.nspins = nspins
         self.eps = eps
         self.istart = istart
@@ -183,7 +184,8 @@ class OmegaMatrix:
                  xc=None,
                  derivativeLevel=None,
                  numscale=0.001,
-                 filehandle=None
+                 filehandle=None,
+                 out=None,
                  ):
         
         if filehandle is not None:
@@ -191,6 +193,8 @@ class OmegaMatrix:
             return None
 
         self.calculator = calculator
+        if out is None: out = calculator.out
+        self.out = out
         self.fullkss = kss
         if xc is not None:
             self.xc = XC3DGrid(xc,self.calculator.paw.finegd,
@@ -370,25 +374,24 @@ class OmegaMatrix:
 
         # calculate omega matrix
         nij = len(kss)
+        print >> self.out,'RPA',nij,'transitions'
         
         n_g = gd.new_array()
         phi_g = gd.new_array()
         Om = num.zeros((nij,nij),num.Float)
         for ij in range(nij):
-            print ">> ij,energy=",ij,kss[ij].GetEnergy()
+            print >> self.out,'RPA ij=', kss[ij]
             paw.density.interpolate(kss[ij].GetPairDensity(),n_g)
-            poisson.solve(phi_g,n_g,charge=None)
+            poisson.solve(phi_g,n_g,charge=None,maxcharge=1e-12)
             
             for kq in range(ij,nij):
                 paw.density.interpolate(kss[kq].GetPairDensity(),n_g)
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
-                if self.singletsinglet: pre*=2.
                 
                 Om[ij,kq]= pre * gd.integrate(n_g*phi_g)
 
                 # Add atomic corrections
-                print ">> corrections"
                 Ia = 0
                 for nucleus in paw.my_nuclei:
                     ni = nucleus.get_number_of_partial_waves()
@@ -418,8 +421,6 @@ class OmegaMatrix:
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
-
-        print ">> Om=\n",Om
         return Om
 
     def diagonalize(self, istart=None, jend=None):
@@ -437,7 +438,8 @@ class OmegaMatrix:
             if self.fullkss.jend < jend:
                 raise RuntimeError('jend=%d has to be <= %d' %
                                    (jend,self.kss.jend))
-            print '# diagonalize: %d transitions original' % len(self.fullkss)
+            print >> self.out,'# diagonalize: %d transitions original'\
+                  % len(self.fullkss)
             map= []
             kss = KSSingles()
             for ij, k in zip(range(len(self.fullkss)),self.fullkss):
@@ -446,8 +448,7 @@ class OmegaMatrix:
                     map.append(ij)
             kss.update()
             nij = len(kss)
-##            print 'map=',map
-            print '# diagonalize: %d transitions now' % nij
+            print >> self.out,'# diagonalize: %d transitions now' % nij
 
             evec = num.zeros((nij,nij),num.Float)
             for ij in range(nij):
