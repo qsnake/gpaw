@@ -25,7 +25,7 @@ from gpaw.version import version
 import gpaw.utilities.timing as timing
 import gpaw
 import gpaw.io
-
+from gpaw import parallel
 
 class Calculator:
     """This is the ASE-calculator frontend for doing a PAW calculation.
@@ -299,7 +299,7 @@ class Calculator:
             # (self.tempfile is removed in Calculator.__del__)
 
         # What kind of calculation should we do?
-        if self.hosts is None:
+        if self.hosts is None or parallel:
             # Serial:
             self.paw = create_paw_object(*args)
         else:
