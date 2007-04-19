@@ -17,46 +17,56 @@ from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
 def xas(paw):
-    nocc = paw.nvalence / 2
+    nocc = paw.nvalence / 2 # restricted - for now
     for nucleus in paw.nuclei:
         if isinstance(nucleus.setup, CoreHoleSetup):
-            P_ni = nucleus.P_uni[0, nocc:]
+            P_ni = nucleus.P_uni[0, nocc:] 
             A_ci = nucleus.setup.A_ci
             ach = nucleus.a
             break
 
-    print 'core hole atmom', ach
+    print 'core hole atom', ach
     
     eps_n = paw.kpt_u[0].eps_n[nocc:]
     w_cn = num.dot(A_ci, num.transpose(P_ni))**2
     return eps_n, w_cn
 
-def plot_xas(eps_n, w_cn, fwhm=0.5, N=100):
-    eps_n *= 27.2
-    emin = min(eps_n) - fwhm
-    emax = max(eps_n) + fwhm
+def plot_xas(eps_n, w_cn, fwhm=0.5, N=1000):
+    # returns stick spectrum, e_stick and a_stick
+    # and broadened spectrum, e, a
+    eps_n_tmp = eps_n*27.2113845 
+    emin = min(eps_n_tmp) - 2 * fwhm
+    emax = max(eps_n_tmp) + 2 * fwhm
 
     e = emin + num.arange(N + 1) * ((emax - emin) / N)
     a = num.zeros(N + 1, num.Float)
 
-    alpha = log(2) / fwhm**2
-    for n, eps in enumerate(eps_n):
-        x = -((e - eps) * alpha)**2
+    e_stick = eps_n_tmp.copy()
+    a_stick = num.zeros(len(eps_n_tmp), num.Float)
+
+    alpha = 4*log(2) / fwhm**2
+    for n, eps in enumerate(eps_n_tmp):
+        x = -alpha * (e - eps)**2
         x = num.clip(x, -100.0, 100.0)
         w = sum(w_cn[:, n])
-        a += w * num.exp(x)
+        a += w * 2 * (alpha / pi)**0.5 * num.exp(x)
+        a_stick[n] = sum(w_cn[:, n])
+        print n, a_stick[n], sum(w_cn[:, n])   
+        
+    return e_stick, a_stick, e, a
 
-    return e, a
 
 
 class CoreHoleSetup:
     def __init__(self, symbol, xcfunc, nspins=1, softgauss=True, lmax=0,
-                 fhole=0.5):
+                 fhole=0.5, type='paw'):
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = softgauss
-
         self.symbol = symbol
+
+        if type != 'paw':
+            symbol += '.' + type
 
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
@@ -68,17 +78,23 @@ class CoreHoleSetup:
          e_kin_jj, X_p, ExxC,
          tauc_g, tauct_g,
          self.fingerprint,
-         filename) = PAWXMLParser().parse(symbol, xcname)
+         filename,
+         core_hole_state,
+         core_hole_e,
+         core_hole_e_kin) = PAWXMLParser().parse(symbol, xcname)
 
-        self.fhole = fhole
-        nc_g *= 0.5 * (2.0 - fhole)
-        nct_g *= 0.5 * (2.0 - fhole)
-        e_kinetic_core *= 0.5 * (2.0 - fhole)
-        Nc -= fhole
+        #self.fhole = fhole
+        #nc_g *= 0.5 * (2.0 - fhole)
+        #nct_g *= 0.5 * (2.0 - fhole)
+        #e_kinetic_core *= 0.5 * (2.0 - fhole)
+        #Nc -= fhole
         #f_j[1] += fhole
+
+        
         self.filename = filename
 
-        assert Nv + Nc + fhole == Z
+        #assert Nv + Nc + fhole == Z # 
+        assert Nv + Nc  == Z # these charges ignore the core hole
         self.Nv = Nv
         self.Nc = Nc
         self.Z = Z
@@ -92,7 +108,11 @@ class CoreHoleSetup:
         self.l_j = l_j
         self.f_j = f_j
         self.eps_j = eps_j
-
+    
+        self.core_hole_state = core_hole_state
+        #self.core_hole_e 
+        #core_hole_e_kin
+         
         rcut = max(rcut_j)
         rcut2 = 2 * rcut
         gcut = 1 + int(rcut * ng / (rcut + beta))
@@ -102,6 +122,7 @@ class CoreHoleSetup:
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
+
 
         # Find cutoff for core density:
         if Nc == 0:
@@ -422,16 +443,29 @@ class CoreHoleSetup:
             i1 += 1
 
     def oscillator_strengths(self, r_g, dr_g, nc_g, phi_jg):
-        phich_g = (4 * pi)**.25 * (0.5  *nc_g / (0.5 * ( 2.0 - self.fhole )) )**0.5 
-        print num.dot(r_g**2 * dr_g, phich_g**2)
+        # old stuff using scaled density
+        #phich_g = (4 * pi)**.25 * (0.5  *nc_g / (0.5 * ( 2.0 - self.fhole )) )**0.5 
+        #print num.dot(r_g**2 * dr_g, phich_g**2)
 
+        #normalisation
+        print 'normalized?', num.dot(dr_g, self.core_hole_state**2)
+        phich_g = self.core_hole_state.copy()
+        
         self.A_ci = num.zeros((3, self.ni), num.Float)
         nj = len(phi_jg)
         i = 0
         for j in range(nj):
             l = self.l_j[j]
             if l == 1:
-                a = num.dot(r_g**3 * dr_g, phi_jg[j] * phich_g)
+                #a = num.dot(r_g**3 * dr_g, phi_jg[j] * phich_g)
+                # p* doesn't have to be normalized
+                print 'normalized?', num.dot(r_g**2 * dr_g,  phi_jg[j]**2)
+
+                # Integral r**2 (phi_jg Y_lm)* x phi_1s Y_00 dr  
+                # phi_jg = u_j/r , x = r * Y_lx ,r**2 normalisation factor for phi_j
+                # ~   delta_l,1 delta_m,x Integral r**2 phi_jg phich_g dr
+                a = num.dot(r_g**2 * dr_g, phi_jg[j] * phich_g)
+                                
                 for m in range(3):
                     c = (m + 1) % 3 
                     self.A_ci[c, i] = a
@@ -486,7 +520,10 @@ class CoreHoleSetup:
          e_kin_jj, X_p, ExxC,
          tauc_g, tauct_g,
          self.fingerprint,
-         filename) = PAWXMLParser().parse(self.symbol, self.xcname)
+         filename,
+         core_hole_state,
+         core_hole_e,
+         core_hole_e_kin) = PAWXMLParser().parse(self.symbol, self.xcname)
 
         # cutoffs
         nj = len(l_j)

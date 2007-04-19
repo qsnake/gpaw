@@ -38,7 +38,8 @@ class AllElectron:
         self.symbol = symbol
         self.xcname = xcname
         self.scalarrel = scalarrel
-
+        #self.corehole = corehole
+        
         # Get reference state:
         self.Z, nlfe_j = configurations[symbol]
 
@@ -59,22 +60,28 @@ class AllElectron:
             xcname, symbol, names[self.Z], self.Z)
 
         if corehole is not None:
-            ncorehole, lcorehole, self.fcorehole = corehole
+            self.ncorehole, self.lcorehole, self.fcorehole = corehole
+            self.coreholename = '%d%s' % (self.ncorehole, 'spd'[self.lcorehole]) \
+                                + '%.1f' % self.fcorehole
             
             # Find j for core hole and adjust occupation:
             for j in range(len(self.f_j)):
-                if self.n_j[j] == ncorehole and self.l_j[j] == lcorehole:
-                    assert self.f_j[j] == 2 * (2 * lhole + 1)
-                    self.f_j[j] -= self.fhole
+                if self.n_j[j] == self.ncorehole and self.l_j[j] == self.lcorehole:
+                    assert self.f_j[j] == 2 * (2 * self.lcorehole + 1)
+                    self.f_j[j] -= self.fcorehole
                     self.jcorehole = j
                     break
 
+            coreholestate='%d%s' % (self.ncorehole, 'spd'[self.lcorehole])
             print 'Core hole in %s state (%s occupation: %.1f)' % (
                 coreholestate, coreholestate, self.f_j[self.jcorehole])
         else:
             self.jcorehole = None
-            self.fhole = 0
-
+            self.fcorehole = 0
+            self.coreholename = ""
+            
+        #self.f_j[2]=4
+    
         self.nofiles = False
 
     def intialize_wave_functions(self):
@@ -290,7 +297,12 @@ class AllElectron:
         self.Ekin = Ekin
         self.Epot = Epot
         self.Exc = Exc
+    
+#mathiasl
+       # for x in range(num.size(self.r)):
+       #     print self.r[x] , self.u_j[self.jcorehole,x]
 
+                
     def write(self, array, name=None, n=None, l=None):
         if self.nofiles:
             return

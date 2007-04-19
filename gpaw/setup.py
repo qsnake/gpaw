@@ -37,6 +37,10 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=True, type='paw'):
     if type == 'fch':
         from gpaw.corehole import CoreHoleSetup
         return CoreHoleSetup(symbol, xcfunc, nspins, fhole=1, lmax=lmax)
+
+    if type == '1s0.5':
+        from gpaw.corehole import CoreHoleSetup
+        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=0.5, lmax=lmax,type='1s0.5')
     
     return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
 
@@ -52,6 +56,18 @@ class Setup:
             symbol += '.' + type
         self.symbol = symbol
 
+#        (Z, Nc, Nv,
+#         e_total, e_kinetic, e_electrostatic, e_xc,
+#         e_kinetic_core,
+#         n_j, l_j, f_j, eps_j, rcut_j, id_j,
+#         ng, beta,
+#         nc_g, nct_g, vbar_g, rcgauss,
+#         phi_jg, phit_jg, pt_jg,
+#         e_kin_jj, X_p, ExxC,
+#         tauc_g, tauct_g,
+#         self.fingerprint,
+#         filename) = PAWXMLParser().parse(symbol, xcname)
+
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
          e_kinetic_core,
@@ -62,8 +78,11 @@ class Setup:
          e_kin_jj, X_p, ExxC,
          tauc_g, tauct_g,
          self.fingerprint,
-         filename) = PAWXMLParser().parse(symbol, xcname)
-
+         filename,
+         core_hole_state,
+         core_hole_e,
+         core_hole_e_kin) = PAWXMLParser().parse(symbol, xcname)
+        
         self.filename = filename
 
         assert Nv + Nc == Z
@@ -452,7 +471,10 @@ class Setup:
          e_kin_jj, X_p, ExxC,
          tauc_g, tauct_g,
          self.fingerprint,
-         filename) = PAWXMLParser().parse(self.symbol, self.xcname)
+         filename,
+         core_hole_state,
+         core_hole_e,
+         core_hole_e_kin) = PAWXMLParser().parse(self.symbol, self.xcname)
 
         # cutoffs
         nj = len(l_j)

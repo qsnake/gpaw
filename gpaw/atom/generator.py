@@ -135,9 +135,14 @@ class Generator(AllElectron):
 
         # Calculate the kinetic energy of the core states:
         Ekincore = 0.0
+        j = 0
         for f, e, u in zip(f_j[:njcore], e_j[:njcore], self.u_j[:njcore]):
             u = num.where(abs(u) < 1e-160, 0, u)  # XXX Numeric!
-            Ekincore += f * (e - num.sum((u**2 * self.vr * dr)[1:] / r[1:]))
+            k = e - num.sum((u**2 * self.vr * dr)[1:] / r[1:])
+            Ekincore += f * k
+            if j == self.jcorehole:
+                self.Ekincorehole = k
+            j += 1
 
         # Calculate core density:
         if njcore == 0:
@@ -266,7 +271,7 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut]
 
-        Nc = Z - self.Nv - self.fhole
+        Nc = Z - self.Nv - self.fcorehole
         Nctail = 4 * pi * num.dot(nc[gcut:], dv[gcut:])
         print 'Core electrons: %.1f (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
         assert Nctail < 1.1
@@ -381,7 +386,7 @@ class Generator(AllElectron):
 
         # Calculate smooth charge density:
         Nt = num.dot(nt, dv)
-        rhot = nt - (Nt + self.fhole / 4 / pi) * gt
+        rhot = nt - (Nt + self.fcorehole / 4 / pi) * gt
         print 'Pseudo-electron charge', 4 * pi * Nt
 
         vHt = num.zeros(N, num.Float)
@@ -572,6 +577,7 @@ class Generator(AllElectron):
                 self.write(s, 'ps', n=n, l=l)
                 self.write(q, 'proj', n=n, l=l)
 
+# test
         for h in [0.05]:
             self.diagonalize(h)
 
@@ -715,7 +721,7 @@ class Generator(AllElectron):
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar,
                   tauc, tauct):
-        xml = open(self.symbol + '.' + self.xcname, 'w')
+        xml = open(self.symbol + '.' + self.coreholename  + '.' + self.xcname , 'w')
 
         if self.ghost:
             raise SystemExit
@@ -757,6 +763,18 @@ class Generator(AllElectron):
 
         print >> xml, '  <core_energy kinetic="%f"/>' % Ekincore
 
+        if self.jcorehole != None:
+            print "self.jcorehole", self.jcorehole
+            print >> xml,\
+            '  <core_hole_state state="%d%s" removed="%.1f" eig="%.8f" ekin="%.8f">' % \
+                  (self.ncorehole, 'spd'[self.lcorehole], self.fcorehole,
+                   self.e_j[self.jcorehole],self.Ekincorehole)
+            print 'normalized?', num.dot(self.dr,
+                                         self.u_j[self.jcorehole]**2)
+            for x in self.u_j[self.jcorehole,:]:
+                print >> xml, '%16.12e' % x,            
+            print >> xml, '\n  </core_hole_state>'
+        
         print >> xml, '  <valence_states>'
         ids = []
         line1 = '    <state n="%d" l="%d" f=%s rc="%5.3f" e="%8.5f" id="%s"/>'

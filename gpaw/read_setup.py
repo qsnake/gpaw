@@ -33,7 +33,10 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.pt_jg = []
         self.X_p = []
         self.ExxC = None
-
+        self.core_hole_state = []
+        self.core_hole_e = None
+        self.core_hole_e_kin = None
+        
     def parse(self, symbol, xcname):
         exx = False
         if xcname == 'EXX': # XXX EXX hack
@@ -43,6 +46,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             exx = True
             xcname = 'PBE'
         name = symbol + '.' + xcname
+
         source = None
         for path in setup_paths:
             filename = os.path.join(path, name)
@@ -110,7 +114,10 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 self.tauc_g,
                 self.tauct_g,
                 fingerprint,
-                filename)
+                filename,
+                self.core_hole_state,
+                self.core_hole_e,
+                self.core_hole_e_kin)
     
     def startElement(self, name, attrs):
         if name == 'paw_setup':
@@ -171,6 +178,10 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.data = []
         elif name == 'exact_exchange':
             self.ExxC = float(attrs['core-core'])
+        elif name == 'core_hole_state':
+            self.core_hole_e = attrs['eig']
+            self.core_hole_e_kin = attrs['ekin']
+            self.data = []
         else:
             self.data = None
             
@@ -208,3 +219,7 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.pt_jg.append(x_g)
         elif name == 'exact_exchange_X_matrix':
             self.X_p = x_g
+        elif name == 'core_hole_state':
+            self.core_hole_state = x_g
+
+        
