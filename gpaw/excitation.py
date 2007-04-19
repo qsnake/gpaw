@@ -107,27 +107,27 @@ class KSSingles(ExcitationList):
         #       i.e. the spin of the excited states
         self.nvspins = paw.nspins
         self.npspins = paw.nspins
+        fijscale=1
         if self.nvspins < 2:
             if nspins>self.nvspins:
                 self.npspins = nspins
-
+                fijscale = 0.5
+                
         # get possible transitions
         for ispin in range(self.npspins):
             vspin=ispin
-##            print "vspin=",vspin,"ispin=",ispin
             if self.nvspins<2:
                 vspin=0
             f=self.kpt_u[vspin].f_n
             if self.jend==None: jend=len(f)
             else              : jend=min(self.jend+1,len(f))
-##             print "<KSSingles::build> occupation list f=",f
-##             print "<KSSingles::build> istart,jend=",istart,jend
+
             for i in range(istart,jend):
                 for j in range(istart,jend):
                     fij=f[i]-f[j]
                     if fij>eps:
                         # this is an accepted transition
-                        ks=KSSingle(i,j,ispin,vspin,paw)
+                        ks=KSSingle(i,j,ispin,vspin,paw,fijscale=fijscale)
                         self.append(ks)
 
     def read(self, filename=None, fh=None):
@@ -176,10 +176,11 @@ class KSSingles(ExcitationList):
 class KSSingle(Excitation):
     """Single Kohn-Sham transition containing all it's indicees
     pspin=physical spin
-    vspin=virtual  spin, i.e. spin in the code
+    vspin=virtual  spin, i.e. spin in the ground state calc.
+    fijscale=weight for the occupation difference
     """
     def __init__(self,iidx=None,jidx=None,pspin=None,vspin=None,
-                 paw=None,string=None):
+                 paw=None,string=None,fijscale=1):
         
         self.i=iidx
         self.j=jidx
@@ -195,7 +196,7 @@ class KSSingle(Excitation):
         self.paw=paw
 
         f=paw.kpt_u[vspin].f_n
-        self.fij=f[iidx]-f[jidx]
+        self.fij=(f[iidx]-f[jidx])*fijscale
         e=paw.kpt_u[vspin].eps_n
         self.energy=e[jidx]-e[iidx]
 
