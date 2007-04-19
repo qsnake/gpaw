@@ -3,7 +3,7 @@ import Numeric as num
 import _gpaw
 import gpaw.mpi as mpi
 from gpaw import debug
-from gpaw.utilities import pack
+from gpaw.utilities import packed_index
 
 # ..............................................................
 # general excitation classes
@@ -207,31 +207,32 @@ class KSSingle(Excitation):
         self.wfi = paw.kpt_u[vspin].psit_nG[iidx]
         self.wfj = paw.kpt_u[vspin].psit_nG[jidx]
         me = gd.calculate_dipole_moment(self.GetPairDensity())
-##        print '<KSSingle> pseudo mij=',me
+##        print '<KSSingle> pseudo mij=',self.i,self.j,me
         
         # augmentation contributions
-##         for nucleus in paw.my_nuclei:
-##             Ra = nucleus.spos_c*paw.domain.cell_c
-##             ni = nucleus.get_number_of_partial_waves()
-##             Pi_i = nucleus.P_uni[self.vspin,self.i]
-##             Pj_i = nucleus.P_uni[self.vspin,self.j]
-##             D_ii = num.outerproduct(Pi_i, Pj_i)
-##             print "Pi_i=",Pi_i
-##             print "Pj_i=",Pj_i
-##             print "D_ii=",D_ii
-## ##            D_p  = pack(D_ii, symmetric=False) # XXXXX
-##             D_p  = pack(D_ii)
-##             # L=0 term
-##             me += sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
-## ##             ma = sqrt(4*pi)*Ra*num.dot(D_p, nucleus.setup.Delta_pL[:,0])
-##             # L=1 terms
-##             if nucleus.setup.lmax>=1:
-##                 for i in range(3):
-##                     # XXXX check def of Ylm used in setups XXXX
-##                     me[i] += sqrt(4*pi/3)*\
-##                              num.dot(D_p, nucleus.setup.Delta_pL[:,i+1])
-        self.me=me
-##         print '<KSSingle> mij,ma=',me,ma
+        ma = num.zeros(me.shape,num.Float)
+        for nucleus in paw.my_nuclei:
+            Ra = nucleus.spos_c*paw.domain.cell_c
+            Pi_i = nucleus.P_uni[self.vspin,self.i]
+            Pj_i = nucleus.P_uni[self.vspin,self.j]
+            Delta_pL = nucleus.setup.Delta_pL
+            ni=len(Pi_i)
+            ma0 = 0
+            ma1 = num.zeros(me.shape,num.Float)
+            for i in range(ni):
+                for j in range(ni):
+                    pji = Pi_i[i]*Pj_i[i]
+                    ij = packed_index(i, j, ni)
+                    # L=0 term
+                    ma0 += Delta_pL[ij,0]*pji
+                    # L=1 terms
+                    if nucleus.setup.lmax>=1:
+                        ma1 += num.array([ Delta_pL[ij,1], Delta_pL[ij,2], \
+                                           Delta_pL[ij,2] ])
+            ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
+
+##       print '<KSSingle> me,ma=',me,ma
+        self.me = me + ma
 
     def fromstring(self,string):
         l = string.split()
