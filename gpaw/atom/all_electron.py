@@ -26,7 +26,8 @@ alpha = 1 / 137.036
 class AllElectron:
     """Object for doing an atomic DFT calculation."""
 
-    def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None):
+    def __init__(self, symbol, xcname='LDA', scalarrel=False,
+                 corehole=None, configuration=None):
         """Do an atomic DFT calculation.
         
         Example:
@@ -50,6 +51,27 @@ class AllElectron:
         self.l_j = [l for n, l, f, e in nlfe_j]
         self.f_j = [f for n, l, f, e in nlfe_j]
         self.e_j = [e for n, l, f, e in nlfe_j]
+
+        if configuration is not None:
+            j = 0
+            for conf in configuration.split(','):
+                if conf[0].isdigit():
+                    n = int(conf[0])
+                    l = 'spdf'.find(conf[1])
+                    if len(conf) == 2:
+                        f = 1.0
+                    else:
+                        f = float(conf[2:])
+                    assert n == self.n_j[j]
+                    assert l == self.l_j[j]
+                    self.f_j[j] = f
+                    j += 1
+                else:
+                    j += {'He': 1,
+                          'Ne': 3,
+                          'Ar': 5,
+                          'Kr': 8,
+                          'Xe': 11}[conf]
 
         print
         if scalarrel:

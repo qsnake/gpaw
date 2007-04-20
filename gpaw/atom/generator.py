@@ -55,8 +55,10 @@ parameters = {
 
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None,
+                 configuration=None,
                  nofiles=False):
-        AllElectron.__init__(self, symbol, xcname, scalarrel, corehole)
+        AllElectron.__init__(self, symbol, xcname, scalarrel, corehole,
+                             configuration)
         self.nofiles = nofiles
         
     def run(self, core, rcut, extra,
@@ -116,7 +118,7 @@ class Generator(AllElectron):
 
         # Highest occupied atomic orbital:
         self.emax = max(e_j)
-        
+
         N = self.N
         r = self.r
         dr = self.dr

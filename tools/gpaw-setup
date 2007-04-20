@@ -36,6 +36,9 @@ parser.add_option('--normconserving', type='string',
                   help='Examples: s, sp')
 parser.add_option('--core-hole', metavar='state,occ',
                   help='Add core hole. Examples: "1s,0.5", "2p,1".')
+parser.add_option('--configuration', metavar='config',
+                  help='Specify non-groundstate configuration. '
+                  'Na+ ion: "Ne,3s0", O2- ion: "1s2,2s2,2p6" or "He,2s2,2p6"')
 
 opt, args = parser.parse_args()
 
@@ -60,11 +63,13 @@ for symbol in atoms:
         corehole = (ncorehole, lcorehole, fcorehole)
         
     if opt.all_electron_only:
-        a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole)
+        a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole,
+                        opt.configuration)
         a.run()
         continue
     
-    g = Generator(symbol, opt.xcfunctional, scalarrel, corehole)
+    g = Generator(symbol, opt.xcfunctional, scalarrel, corehole,
+                  opt.configuration)
 
     try:
         params = parameters[symbol]
