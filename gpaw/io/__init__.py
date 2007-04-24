@@ -312,13 +312,13 @@ def read(paw, filename):
                     kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
                                                   kpt.s, kpt.k)
     
-            for u, kpt in enumerate(paw.kpt_u):
-                P_ni = r.get('Projections', kpt.s, kpt.k)
-                i1 = 0
-                for nucleus in paw.nuclei:
-                    i2 = i1 + nucleus.get_number_of_partial_waves()
-                    if nucleus.in_this_domain:
-                        nucleus.P_uni[u,:nbands,:] = P_ni[:, i1:i2]
-                    i1 = i2
+        for u, kpt in enumerate(paw.kpt_u):
+            P_ni = r.get('Projections', kpt.s, kpt.k)
+            i1 = 0
+            for nucleus in paw.nuclei:
+                i2 = i1 + nucleus.get_number_of_partial_waves()
+                if nucleus.in_this_domain:
+                    nucleus.P_uni[u, :nbands] = P_ni[:, i1:i2]
+                i1 = i2
 
     return wf
