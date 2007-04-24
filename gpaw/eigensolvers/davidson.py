@@ -114,8 +114,7 @@ class Davidson(Eigensolver):
                 P_ni = nucleus.P_uni[kpt.u]
                 P2_ni = nucleus.P2_ni
                 self.S_nn += num.dot(P2_ni,
-                                     cc(num.innerproduct(nucleus.setup.O_ii,
-                                                         P_ni)))
+                                     cc(inner(nucleus.setup.O_ii, P_ni)))
             S_2n2n[nbands:, :nbands] = self.S_nn
 
             # <psi2 | S | psi2>
@@ -123,8 +122,7 @@ class Davidson(Eigensolver):
             for nucleus in hamiltonian.my_nuclei:
                 P2_ni = nucleus.P2_ni
                 self.S_nn += num.dot(P2_ni,
-                                     cc(num.innerproduct(nucleus.setup.O_ii,
-                                                         P2_ni)))
+                                     cc(inner(nucleus.setup.O_ii, P2_ni)))
             S_2n2n[nbands:, nbands:] = self.S_nn
 
             self.comm.sum(S_2n2n, kpt.root)
