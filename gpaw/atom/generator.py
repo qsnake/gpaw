@@ -46,10 +46,10 @@ parameters = {
  'Kr': {'core': '[Ar]3d', 'rcut': 2.2},
  'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
  'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.3]},
- 'Ru': {'core': '[Kr]',   'rcut': [2.4, 2.4, 2.0]},
+ 'Ru': {'core': '[Kr]',   'rcut': 2.6},
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.0]},
  'Ag': {'core': '[Kr]',   'rcut': 2.5},
- 'Pt': {'core': '[Xe]4f', 'rcut': [2.3, 2.3, 2.0]},
+ 'Pt': {'core': '[Xe]4f', 'rcut': 2.5},
  'Au': {'core': '[Xe]4f', 'rcut': 2.5}
  }
 
@@ -865,3 +865,17 @@ class Generator(AllElectron):
             print >> xml, '  <exact_exchange core-core="%f"/>' % ExxC
 
         print >> xml, '</paw_setup>'
+
+
+if __name__ == '__main__':
+    import os
+    for symbol in 'Pt Au'.split():
+        g = Generator(symbol, 'LDA', scalarrel=False)
+        g.run(exx=True, **parameters[symbol])
+    for xcname in ['LDA', 'PBE']:
+        for symbol, par in parameters.items():
+            filename = symbol + '.' + xcname
+            if os.path.isfile(filename):
+                continue
+            g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
+            g.run(exx=True, logderiv=False, **par)
