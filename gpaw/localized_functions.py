@@ -175,9 +175,13 @@ class LocFuncs:
 
     def add_density2(self, n_G, D_p):
         """Add atomic electron density to extended density array.
+        
         Special method for adding the atomic electron density
-        calculated from atomic orbitals and density matrix
-        ``D_p``. Returns integral of correction."""
+        calculated from all cross products of atomic orbitals
+        weighted using the density matrix ``D_p``.
+
+        The method returns the integral of the atomic electron density
+        """
         I = 0.0
         for box in self.box_b:
             I += box.add_density2(n_G, D_p)
@@ -302,9 +306,13 @@ class LocalizedFunctionsWrapper:
 
     def add_density2(self, n_G, D_p):
         """Add atomic electron density to extended density array.
+        
         Special method for adding the atomic electron density
-        calculated from atomic orbitals and density matrix
-        ``D_p``."""
+        calculated from all cross products of atomic orbitals
+        weighted using the density matrix ``D_p``.
+
+        The method returns the integral of the atomic electron density
+        """
         
         assert is_contiguous(n_G, num.Float)
         assert is_contiguous(D_p, num.Float)
@@ -359,5 +367,3 @@ class LocFuncBroadcaster:
             for root, lf in enumerate(self.lfs):
                 lf.broadcast(self.comm, root % self.size)
         self.reset()
-
-

@@ -55,16 +55,16 @@ class Hamiltonian:
         self.nuclei = nuclei
         self.timer = timer
 
-        # The external potential
-        self.vext_g = vext_g
-        if vext_g is not None:
-            assert num.alltrue(gd.N_c * 2 == vext_g.shape)        
-
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
         self.vt_sG = gd.empty(nspins)
         self.vHt_g = finegd.zeros()        
         self.vt_sg = finegd.empty(nspins)
+
+        # The external potential
+        self.vext_g = vext_g
+        if vext_g is not None:
+            assert num.alltrue(self.vHt_g.shape == vext_g.shape)        
 
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Schrödinger equation (1, 2, ...):
