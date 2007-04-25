@@ -28,4 +28,4 @@ for k in [2, 4, 6]:
     restr = Transformer(gd, gd2, k // 2).apply
     restr(a, b)
     print k, num.sum(a.flat) - num.sum(b.flat) * 8
-    assert abs(num.sum(a.flat) - num.sum(b.flat) * 8) < 5e-12
+    assert abs(num.sum(a.flat) - num.sum(b.flat) * 8) < 5.1e-12
