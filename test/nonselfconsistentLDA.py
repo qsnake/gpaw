@@ -23,7 +23,7 @@ print e1ref + e1 + de12, e2ref + e2
 print e1ref + e1, e2ref + e2 + de21
 print de12, de21
 equal(e1ref + e1 + de12, e2ref + e2, 56e-5)
-equal(e1ref + e1, e2ref + e2 + de21, 92e-5)
+equal(e1ref + e1, e2ref + e2 + de21, 93e-5)
 
 calc.Write('PBE.gpw')
 

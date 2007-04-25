@@ -38,20 +38,18 @@ potential."""
 #
 
 class Filter:
-    """Mask function Fourier filter"""
+    """Mask-function Fourier filter"""
     
-    def __init__(self, r_g, dr_g, rcut, h):
+    def __init__(self, r_g, dr_g, gcut, h):
         """Construct filter.
 
         The radial grid is defined by r(g) and dr/dg(g) (`r_g` and
-        `dr_g`), `rcut` is the cutoff radius, and `h` is the target
+        `dr_g`), `gcut` is the cutoff grid point, and `h` is the target
         grid spacing used in the calculation."""
 
-        for g, r in enumerate(r_g):
-            if r > rcut:
-                self.gcut = gcut = g
-                break
-            
+        self.gcut = gcut
+        rcut = r_g[gcut]
+        
         N = 200
         self.r_g = r_g = r_g[:gcut].copy()  # will be modified later!
         self.dr_g = dr_g[:gcut]

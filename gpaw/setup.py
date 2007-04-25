@@ -100,26 +100,33 @@ class Setup:
         self.f_j = f_j
         self.eps_j = eps_j
 
-        rcut = max(rcut_j)
-        rcut2 = 2 * rcut
-        gcut = 1 + int(rcut * ng / (rcut + beta))
-        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
-
         g = num.arange(ng, typecode=num.Float)
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
 
+        # Find Fourier-filter cutoff radius:
+        g = ng - 1
+        while pt_jg[0][g] == 0.0:
+            g -= 1
+        gcutfilter = g + 1
+        self.rcutfilter = rcutfilter = r_g[gcutfilter]
+
+        rcutmax = max(rcut_j)
+        rcut2 = 2 * rcutmax
+        gcutmax = 1 + int(rcutmax * ng / (rcutmax + beta))
+        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
+
         # Find cutoff for core density:
         if Nc == 0:
-            rcore = 0.5
+            self.rcore = rcore = 0.5
         else:
             N = 0.0
             g = ng - 1
             while N < 1e-7:
                 N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
                 g -= 1
-            rcore = r_g[g]
+            self.rcore = rcore = r_g[g]
 
         ni = 0
         niAO = 0
@@ -146,23 +153,23 @@ class Setup:
 
         # Construct splines:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
-        self.vbar = Spline(0, rcut2, vbar_g, r_g=r_g, beta=beta)
+        self.vbar = Spline(0, rcutfilter, vbar_g, r_g=r_g, beta=beta)
 
         # Construct splines for core kinetic energy density:
         if tauct_g == None:
-##            print 'Warning: No kinetic energy density information in setup file'
-            tauct_g = num.zeros(nct_g.shape,num.Float)
+##          print 'Warning: No kinetic energy density information in setup'
+            tauct_g = num.zeros(ng, num.Float)
         self.tauct = Spline(0, rcore, tauct_g, r_g=r_g, beta=beta)
 
         # Step function:
-        stepf = sqrt(4 * pi) * num.ones(vbar_g.shape)
-        stepf[gcut:] = 0.0
+        stepf = sqrt(4 * pi) * num.ones(ng)
+        stepf[gcutmax:] = 0.0
         self.stepf = Spline(0, rcut2, stepf, r_g=r_g, beta=beta)
 
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
-            self.pt_j.append(Spline(l, rcut2, grr(pt_jg[j], l, r_g),
+            self.pt_j.append(Spline(l, rcutfilter, grr(pt_jg[j], l, r_g),
                                     r_g=r_g, beta=beta))
 
         # Cutoff for atomic orbitals used for initial guess:
@@ -331,7 +338,7 @@ class Setup:
             rgd, [(j, l_j[j]) for j in range(nj)],
             2 * lcut, e_xc)
 
-        self.rcut = rcut
+        #self.rcut = rcut
 
         if softgauss:
             rcutsoft = rcut2####### + 1.4
@@ -413,32 +420,29 @@ class Setup:
         self.ghat_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
                      for l in range(lmax + 1)]
 
-        # Construct atomic density matrix for the ground state (to be
-        # used for testing):
-        self.D_sp = num.zeros((1, np), num.Float)
-        p = 0
-        i1 = 0
-        for j1, l1, L1 in jlL_i:
-            occ = f_j[j1] / (2.0 * l1 + 1)
-            for j2, l2, L2 in jlL_i[i1:]:
-                if j1 == j2 and L1 == L2:
-                    self.D_sp[0, p] = occ
-                p += 1
-            i1 += 1
-
+        self.rcutcomp = sqrt(10) * rcgauss
+        self.rcut_j = rcut_j
+        
     def print_info(self, out):
         print >> out, self.symbol + '-setup:'
         print >> out, '  name   :', names[self.Z]
         print >> out, '  Z      :', self.Z
         print >> out, '  file   :', self.filename
-        print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' % (self.rcut, self.lmax)
+        print >> out, ('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
+                       ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
+                                     self.rcore, self.lmax))
         print >> out, '  valence states:'
+        j = 0
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if n > 0:
                 f = '(%d)' % f
-                print >> out, '    %d%s%-4s %7.3f Ha' % (n, 'spdf'[l], f, eps)
+                print >> out, '    %d%s%-4s %7.3f Ha   %4.2f Bohr' % (
+                    n, 'spdf'[l], f, eps, self.rcut_j[j])
             else:
-                print >> out, '    *%s     %7.3f Ha' % ('spdf'[l], eps)
+                print >> out, '    *%s     %7.3f Ha   %4.2f Bohr' % (
+                    'spdf'[l], eps, self.rcut_j[j])
+            j += 1
+            
         print >> out
 
     def calculate_rotations(self, R_slmm):

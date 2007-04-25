@@ -44,7 +44,7 @@ class Density:
                  my_nuclei, ghat_nuclei, nuclei, nvalence):
         """Create the Density object."""
 
-        self. hund = hund
+        self.hund = hund
         self.magmom_a = magmom_a
         self.charge = charge
         self.nspins = nspins

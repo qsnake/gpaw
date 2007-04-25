@@ -17,11 +17,16 @@ parser.add_option('-x', '--exact-exchange', action='store_true',
                   default=False,
                   help='Calculate exact exchange integrals.')
 parser.add_option('-r', '--radius', type='string', default=None,
-                  help='Cutoff radii',
+                  help='Cutoff radius or radii (comma separated).',
                   metavar='<rcut>')
-parser.add_option('-v', '--potential', type='float', default=None,
-                  help='Effective potential at r=0',
-                  metavar='<v0>')
+parser.add_option('-v', '--zero-potential', metavar='type,radius',
+                  help='Type of zero-potential - type must be either "poly" '
+                  'or "f".')
+parser.add_option('--filter', default='0.4,1.75', metavar='h,x',
+                  help='Parameters used for Fourier-filtering and '
+                  'projector functions and zero-potential. "h" is '
+                  'the cutoff grid-spacing and "x" is the ration '
+                  'between outer and inner radii.')
 parser.add_option('-l', '--logarithmic-derivatives', action='store_true',
                   help='Calculate of logarithmic derivatives.')
 parser.add_option('-a', '--all-electron-only', action='store_true',
@@ -33,12 +38,14 @@ parser.add_option('-c', '--core', type='string', default=None,
                   help='Frozen core.  Examples: "[Ne]", "[Ar]3d".',
                   metavar='<core>')
 parser.add_option('--normconserving', type='string',
-                  help='Examples: s, sp')
+                  help='Examples: s, sp.')
 parser.add_option('--core-hole', metavar='state,occ',
                   help='Add core hole. Examples: "1s,0.5", "2p,1".')
 parser.add_option('--configuration', metavar='config',
                   help='Specify non-groundstate configuration. '
-                  'Na+ ion: "Ne,3s0", O2- ion: "1s2,2s2,2p6" or "He,2s2,2p6"')
+                  'Na+ ion: "Ne,3s0", O2- ion: "1s2,2s2,2p6" or "He,2s2,2p6".')
+parser.add_option('--compensation-charge-radius', metavar='rcut', type='float',
+                  help='Cutoff radius for compensation charges.')
 
 opt, args = parser.parse_args()
 
@@ -71,31 +78,13 @@ for symbol in atoms:
     g = Generator(symbol, opt.xcfunctional, scalarrel, corehole,
                   opt.configuration)
 
-    try:
-        params = parameters[symbol]
-    except KeyError:
-        core = ''
-        rcut = 1.0
-        extra = None
-        normcons = ''
-    else:
-        if len(params) == 2:
-            core, rcut = parameters[symbol]
-            extra = None
-            normcons = ''
-        elif len(params) == 3:
-            core, rcut, extra = parameters[symbol]
-            normcons = ''
-        else:
-            core, rcut, extra, normcons = parameters[symbol]
+    p = parameters.get(symbol, {})
             
-    v0 = opt.potential
-
     if opt.core is not None:
-        core = opt.core
+        p['core'] = opt.core
 
     if opt.radius is not None:
-        rcut = [float(x) for x in opt.radius.split(',')]
+        p['rcut'] = [float(x) for x in opt.radius.split(',')]
 
     if opt.extra_projectors is not None:
         extra = {}
@@ -103,12 +92,20 @@ for symbol in atoms:
             for l, x in enumerate(opt.extra_projectors.split(';')):
                 if x != '':
                     extra[l] = [float(y) for y in x.split(',')]
+        p['extra'] = extra
 
     if opt.normconserving is not None:
-        normcons = opt.normconserving
+        p['normcons'] = opt.normconserving
 
-    g.run(core, rcut, extra,
-          logderiv=opt.logarithmic_derivatives, vt0=v0,
-          exx=opt.exact_exchange,
-          normconserving=normcons)
+    if opt.filter is not None:
+        p['filter'] = [float(x) for x in opt.filter.split(',')]
 
+    if opt.compensation_charge_radius is not None:
+        p['rcutcomp'] = opt.compensation_charge_radius
+
+    if opt.zero_potential is not None:
+        vbar = opt.zero_potential.split(',')
+        p['vbar'] = (vbar[0], float(vbar[1]))
+        
+    g.run(logderiv=opt.logarithmic_derivatives, exx=opt.exact_exchange, **p)
+ 

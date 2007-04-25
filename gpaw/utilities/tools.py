@@ -20,7 +20,7 @@ def core_states(symbol):
     from gpaw.atom.configurations import configurations
     from gpaw.atom.generator import parameters
 
-    core = parameters[symbol][0]
+    core = parameters[symbol].get('core', '')
     
     # Parse core string:
     j = 0

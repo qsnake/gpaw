@@ -265,8 +265,9 @@ class AllElectron:
 
         print
         print 'Converged in %d iteration%s.' % (niter, 's'[:niter != 1])
-        
-        pickle.dump(n, open(self.symbol + '.restart', 'w'))
+
+        if not self.nofiles:
+            pickle.dump(n, open(self.symbol + '.restart', 'w'))
 
         Epot = 2 * pi * num.dot(n * r * (vHr - Z), dr)
         Ekin = -4 * pi * num.dot(n * vr * r, dr)
