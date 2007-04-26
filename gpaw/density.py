@@ -34,7 +34,7 @@ class Density:
      ``nt_sG``  Electron density on the coarse grid.
      ``nt_sg``  Electron density on the fine grid.
      ``nt_g``   Electron density on the fine grid.
-     ``rhot_g`` Charge density on the coarse grid.
+     ``rhot_g`` Charge density on the fine grid.
      ``nct_G``  Core electron-density on the coarse grid.
      ========== =========================================
     """
