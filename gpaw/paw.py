@@ -580,6 +580,8 @@ class Paw:
     def initialize_from_file(self, filename):
         """Read state from a file."""
         wf = gpaw.io.read(self, filename)
+        self.set_positions(num.array([n.spos_c * self.domain.cell_c
+                                      for n in self.nuclei]))
         return wf
 
     def warn(self, message):
