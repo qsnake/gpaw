@@ -69,22 +69,26 @@ mpicompiler, custom_interpreter = get_parallel_config(mpi_libraries,
                                                       mpi_define_macros)
 
 
+compiler = None
 
 #User provided customizations
 if os.path.isfile('customize.py'):
     execfile('customize.py')
 
-if not custom_interpreter and mpicompiler:
-    msg += ['* Compiling gpaw with %s' % mpicompiler]
+if compiler is not None or (not custom_interpreter and mpicompiler):
+    if compiler is None:
+        compiler = mpicompiler
+    msg += ['* Compiling gpaw with %s' % compiler]
     # A hack to change the used compiler and linker:
     vars = get_config_vars()
     for key in ['CC', 'LDSHARED']:
         value = vars[key].split()
         # first argument is the compiler/linker.  Replace with mpicompiler:
-        value[0] = mpicompiler
+        value[0] = compiler
         vars[key] = ' '.join(value)
-        
-    define_macros.append(('PARALLEL', '1'))
+
+    if not custom_interpreter:
+        define_macros.append(('PARALLEL', '1'))
     
 ##     # A sort of hack to change the used compiler
 ##     cc = get_config_var('CC')

@@ -169,7 +169,10 @@ def get_system_config(define_macros, undef_macros,
     
         extra_compile_args += ['-Wall', '-std=c99']
 
-        mklbasedir = glob('/opt/intel/mkl*')
+        if 'MKL_ROOT' in os.environ:
+            mklbasedir = [os.environ['MKL_ROOT']]
+        else:
+            mklbasedir = glob('/opt/intel/mkl*')
         libs = ['libmkl_ia32.a']
         if mklbasedir != []:
             os.path.walk(mklbasedir[0],find_file, libs)
