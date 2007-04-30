@@ -174,8 +174,8 @@ class LrTDDFT(ExcitationList):
             self.kss.write(fh=f)
             self.Om.write(fh=f)
 
-            print "<write> ",self.istart,self.jend
-            print "<write> 2:",self.kss.istart,self.kss.jend
+##            print "<write> ",self.istart,self.jend
+##            print "<write> 2:",self.kss.istart,self.kss.jend
             if len(self):
                 f.write('# Eigenvalues\n')
                 istart = self.istart

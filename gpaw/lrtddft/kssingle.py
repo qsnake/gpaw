@@ -73,7 +73,7 @@ class KSSingles(ExcitationList):
             if self.nvspins<2:
                 vspin=0
             f=self.kpt_u[vspin].f_n
-            if jend==None: jend=len(f)
+            if jend==None: jend=len(f)-1
             else         : jend=min(jend,len(f)-1)
             
             for i in range(istart,jend+1):
@@ -196,17 +196,21 @@ class KSSingle(Excitation):
             ma1 = num.zeros(me.shape,num.Float)
             for i in range(ni):
                 for j in range(ni):
-                    pji = Pi_i[i]*Pj_i[i]
+                    pij = Pi_i[i]*Pj_i[j]
                     ij = packed_index(i, j, ni)
                     # L=0 term
-                    ma0 += Delta_pL[ij,0]*pji
+                    ma0 += Delta_pL[ij,0]*pij
                     # L=1 terms
                     if nucleus.setup.lmax>=1:
-                        ma1 += num.array([ Delta_pL[ij,1], Delta_pL[ij,2], \
-                                           Delta_pL[ij,2] ])
+                        # see spherical_harmonics.py for
+                        # L=1:y L=2:z; L=3:x
+                        ma1 += num.array([ Delta_pL[ij,3], Delta_pL[ij,1], \
+                                           Delta_pL[ij,2] ])*pij
+##                        print "<KSSingle> i,j,Delta_pL[ij]=",i,j,Delta_pL[ij]
             ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
+##            print "<KSSingle> ma1,ma0*Ra=",ma1,ma0*Ra
 
-##         print '<KSSingle> me,ma=',me,ma,sqrt(self.energy*self.fij)
+##        print '<KSSingle> me,ma=',me,ma,sqrt(self.energy*self.fij)
         self.me = sqrt(self.energy*self.fij) * ( me + ma )
 
     def fromstring(self,string):
@@ -228,7 +232,7 @@ class KSSingle(Excitation):
                (self.i,self.j, self.pspin,self.vspin, self.energy, self.fij)
         str += '  '
         for m in self.me:
-            str += ' %g' % m
+            str += '%12.4e' % m
         str += '\n'
         return str
         
@@ -280,6 +284,6 @@ class KSSingle(Excitation):
         return rhot_g 
 
     def GetOscillatorStrength(self):
-        # note: that me already contains sqrt(fij*eij)
+        # note: self.me already contains sqrt(fij*eij)
         m2 = 2. * self.me**2
         return num.sum(m2)/3., m2  

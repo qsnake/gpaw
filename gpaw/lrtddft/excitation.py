@@ -66,12 +66,13 @@ class Excitation:
         return self.energy
     
     def GetDipolME(self):
-        """return the excitations dipole matrix element"""
+        """return the excitations dipole matrix element
+        including the occupation factor"""
         return self.me / sqrt(self.energy)
     
     def GetOszillatorStrength(self):
         """return the excitations oszillator strength"""
-        me=self.GetDipolME()
+        me=self.me
         osz=[0.]
         for i in range(3):
             val=2.*me[i]**2

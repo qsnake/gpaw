@@ -189,6 +189,14 @@ class OmegaMatrix:
                     Om[ij,kq] += weight *\
                         gd.integrate(kss[kq].GetFineGridPairDensity()*vv_g)
 
+                    Exc = 0
+                    for nucleus in self.my_nuclei:
+                        D_sp = nucleus.D_sp
+                        H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
+                        xc_correction = nucleus.setup.xc_correction
+                        Exc += xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
+
+
                 elif self.derivativeLevel == 2:
                     # fxc is available
                     if kss.npspins==2: # spin polarised
