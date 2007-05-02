@@ -125,7 +125,7 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             assert self.version >= '0.4'
         if name == 'atom':
             self.Z = int(attrs['Z'])
-            self.Nc = int(attrs['core'])
+            self.Nc = float(attrs['core'])
             self.Nv = int(attrs['valence'])
         elif name == 'xc_functional':
             if attrs['type'] == 'LDA':
