@@ -791,3 +791,6 @@ class Paw:
             self.eigensolver.set_convergence_criteria(convergeall, tolerance,
                                                       nvalence)
 
+
+    def i2(self):
+        self.density.initialize2()
