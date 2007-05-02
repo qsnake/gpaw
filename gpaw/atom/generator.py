@@ -284,8 +284,15 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut_l[l]]
 
-        Nc = Z - self.Nv - self.fcorehole
+#        Nc = Z - self.Nv - self.fcorehole
+#<<<<<<< .mine
+        self.Nc = Nc
+        Nctail = 4 * pi * num.dot(nc[gcut:], dv[gcut:])
+        print 'Core electrons: %.1f (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
+        assert Nctail < 1.1
+#=======
         print 'Core electrons: %.1f' % Nc
+#>>>>>>> .r691
         print 'Valence electrons: %.1f' % self.Nv
 
         # Construct smooth wave functions:
@@ -757,8 +764,8 @@ class Generator(AllElectron):
         print >> xml, '  <!--', comment1, '-->'
         print >> xml, '  <!--', comment2, '-->'
 
-        print >> xml, '  <atom symbol="%s" Z="%d" core="%d" valence="%d"/>' % \
-              (self.symbol, self.Z, self.Z - self.Nv, self.Nv)
+        print >> xml, '  <atom symbol="%s" Z="%d" core="%.1f" valence="%d"/>' % \
+              (self.symbol, self.Z, self.Nc, self.Nv)
         if self.xcname == 'LDA':
             type = 'LDA'
             name = 'PW'
@@ -784,18 +791,6 @@ class Generator(AllElectron):
 
         print >> xml, '  <core_energy kinetic="%f"/>' % Ekincore
 
-        if self.jcorehole != None:
-            print "self.jcorehole", self.jcorehole
-            print >> xml,\
-            '  <core_hole_state state="%d%s" removed="%.1f" eig="%.8f" ekin="%.8f">' % \
-                  (self.ncorehole, 'spd'[self.lcorehole], self.fcorehole,
-                   self.e_j[self.jcorehole],self.Ekincorehole)
-            print 'normalized?', num.dot(self.dr,
-                                         self.u_j[self.jcorehole]**2)
-            for x in self.u_j[self.jcorehole,:]:
-                print >> xml, '%16.12e' % x,            
-            print >> xml, '\n  </core_hole_state>'
-        
         print >> xml, '  <valence_states>'
         ids = []
         line1 = '    <state n="%d" l="%d" f=%s rc="%5.3f" e="%8.5f" id="%s"/>'
@@ -819,6 +814,17 @@ class Generator(AllElectron):
         print >> xml, ('  <shape_function type="gauss" rc="%.12e"/>' %
                        rcgauss)
 
+        if self.jcorehole != None:
+            print "self.jcorehole", self.jcorehole
+            print >> xml,\
+                  '  <core_hole_state state="%d%s" removed="%.1f" eig="%.8f" ekin="%.8f">' % \
+                  (self.ncorehole, 'spd'[self.lcorehole], self.fcorehole,
+                   self.e_j[self.jcorehole],self.Ekincorehole)
+            #print 'normalized?', num.dot(self.dr, self.u_j[self.jcorehole]**2)
+            for x in self.u_j[self.jcorehole,:]:
+                print >> xml, '%16.12e' % x,            
+            print >> xml, '\n  </core_hole_state>'
+                                        
         for name, a in [('ae_core_density', nc),
                         ('pseudo_core_density', nct),
                         ('pseudo_valence_density', nt - nct),

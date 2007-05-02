@@ -15,8 +15,10 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
+import gpaw.mpi as mpi
 
 def xas(paw):
+    assert not mpi.parallel
     nocc = paw.nvalence / 2 # restricted - for now
     for nucleus in paw.nuclei:
         if isinstance(nucleus.setup, CoreHoleSetup):
@@ -25,16 +27,15 @@ def xas(paw):
             ach = nucleus.a
             break
 
-    print 'core hole atom', ach
-    
-    eps_n = paw.kpt_u[0].eps_n[nocc:]
+    #print 'core hole atom', ach
+    eps_n = paw.kpt_u[0].eps_n[nocc:] * paw.Ha
     w_cn = num.dot(A_ci, num.transpose(P_ni))**2
     return eps_n, w_cn
 
 def plot_xas(eps_n, w_cn, fwhm=0.5, N=1000):
     # returns stick spectrum, e_stick and a_stick
     # and broadened spectrum, e, a
-    eps_n_tmp = eps_n*27.2113845 
+    eps_n_tmp = eps_n.copy()
     emin = min(eps_n_tmp) - 2 * fwhm
     emax = max(eps_n_tmp) + 2 * fwhm
 
@@ -51,7 +52,7 @@ def plot_xas(eps_n, w_cn, fwhm=0.5, N=1000):
         w = sum(w_cn[:, n])
         a += w * 2 * (alpha / pi)**0.5 * num.exp(x)
         a_stick[n] = sum(w_cn[:, n])
-        print n, a_stick[n], sum(w_cn[:, n])   
+        #print n, a_stick[n], sum(w_cn[:, n])   
         
     return e_stick, a_stick, e, a
 
@@ -93,8 +94,9 @@ class CoreHoleSetup:
         
         self.filename = filename
 
-        #assert Nv + Nc + fhole == Z # 
-        assert Nv + Nc  == Z # these charges ignore the core hole
+        print Nv,Nc, fhole, Z
+        assert Nv + Nc + fhole == Z # 
+        #assert Nv + Nc  == Z # these charges ignore the core hole
         self.Nv = Nv
         self.Nc = Nc
         self.Z = Z
@@ -448,7 +450,7 @@ class CoreHoleSetup:
         #print num.dot(r_g**2 * dr_g, phich_g**2)
 
         #normalisation
-        print 'normalized?', num.dot(dr_g, self.core_hole_state**2)
+        #print 'normalized?', num.dot(dr_g, self.core_hole_state**2)
         phich_g = self.core_hole_state.copy()
         
         self.A_ci = num.zeros((3, self.ni), num.Float)
@@ -459,7 +461,7 @@ class CoreHoleSetup:
             if l == 1:
                 #a = num.dot(r_g**3 * dr_g, phi_jg[j] * phich_g)
                 # p* doesn't have to be normalized
-                print 'normalized?', num.dot(r_g**2 * dr_g,  phi_jg[j]**2)
+                #print 'normalized?', num.dot(r_g**2 * dr_g,  phi_jg[j]**2)
 
                 # Integral r**2 (phi_jg Y_lm)* x phi_1s Y_00 dr  
                 # phi_jg = u_j/r , x = r * Y_lx ,r**2 normalisation factor for phi_j
@@ -473,7 +475,7 @@ class CoreHoleSetup:
             else:
                 i += 2 * l + 1
         assert i == self.ni
-        print self.A_ci
+        #print self.A_ci
         
     def print_info(self, out):
         print >> out, self.symbol + '-setup: (core hole)'
