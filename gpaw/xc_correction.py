@@ -8,6 +8,8 @@ from multiarray import matrixproduct as dot3  # Avoid dotblas bug!
 
 from gpaw.gaunt import gaunt
 from gpaw.spherical_harmonics import YL
+
+# load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
 
 """
@@ -50,7 +52,16 @@ for R in points:
 
 
 class XCCorrection:
-    def __init__(self, xc, w_j, wt_j, nc, nct, rgd, jl, lmax, Exc0):
+    def __init__(self,
+                 xc,    # radial exchange-correlation object
+                 w_j,   #
+                 wt_j,  #
+                 nc,    # core density 
+                 nct,   # smooth core density
+                 rgd,   # radial grid edscriptor
+                 jl,    # ?
+                 lmax,  # maximal angular momentum to consider
+                 Exc0): # ?
         self.nc_g = nc
         self.nct_g = nct
         self.xc = xc
@@ -465,3 +476,22 @@ class XCCorrection:
                 y += 1
 
         return E - self.Exc0
+
+    def two_phi_integrals(self,
+                          D_sp # density matrix in packed form
+                          ):
+        """Evaluate the integral in the augmentation sphere
+                    /
+        I_{i1 i2} = | d r [ phi_i1(r) phi_i2(r) v_xc[n](r) -
+                    /       tphi_i1(r) tphi_i2(r) v_xc[tn](r) ]
+                    a
+        The result is given in packed form
+        """
+        pass
+
+    def four_phi_integrals(self,
+                           D_sp, # density matrix in packed form
+                           f_xc  # the fxc radial object
+                           ):
+        pass
+    
