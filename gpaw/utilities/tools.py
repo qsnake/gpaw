@@ -150,6 +150,18 @@ def apply_subspace_mask(H_nn, f_n):
     while occ < nbands and f_n[occ] > 1e-3: occ +=1
     H_nn[occ:, :occ] = H_nn[:occ, occ:] = 0
 
+def standard_deviation(a, axis=0):
+    """Returns the standard deviation of array ``a`` along specified axis.
+
+    The standard deviation is the square root of the average of the squared
+    deviations from the mean.
+    """
+    mean = num.average(a, axis=axis)
+    shape = list(a.shape)
+    shape[axis] = 1
+    mean.shape = tuple(shape)
+    return num.sqrt(num.average((a - mean)**2, axis=axis))
+
 def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     """Convert planewave energy cutoff to a real-space gridspacing.
 

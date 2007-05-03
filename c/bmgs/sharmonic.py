@@ -728,39 +728,3 @@ def construct_spherical_code(lmax=3):
         print '  %s,' % Y
     print ']'
     print 'norms =', norms
-    
-def plot_spherical(l, m):
-    # for L in range(25): plot_spherical(*L_to_lm(L))
-    Ntheta = 45
-    Nphi = 90
-    eps = 1e-7
-    f = open('Y_%s_%s.dat'%(l, m), 'w')
-    for theta in num.arange(0, num.pi+eps, num.pi/Ntheta):
-        phis = ''
-        for phi in num.arange(0, 2*num.pi+eps, 2*num.pi/Nphi):
-            x = num.cos(phi) * num.sin(theta)
-            y = num.sin(phi) * num.sin(theta)
-            z = num.cos(theta)
-            r2 = x*x + y*y + z*z
-            assert abs(r2 - 1) < eps
-            phis += repr(eval(Y_to_string(l, m))) + ' '
-        print >>f, phis
-    f.close()
-    """ For plotting in Matlab, write function:
-function plot_spherical(l, m)
-
-Ylm = load(sprintf('Y_%d_%d.dat',l,m));
-[Nt, Np] = size(Ylm);
-[PH, TH] = meshgrid(0:2*pi/(Np-1):2*pi, pi/2:-pi/(Nt-1):-pi/2);
-[X, Y, Z] = sph2cart(PH, TH, Ylm.^2);
-
-fig = figure(1);
-surf(X, Y, Z, Ylm, 'facecolor', 'interp', 'linestyle', 'none')
-axis tight, axis equal, caxis([-.5 .5])
-box on, grid off
-xlabel('x'), ylabel('y'), zlabel('z')
-title(sprintf('|Y_l^m(x,y,z)|^2   l, m = %d, %d', l, m),...
-    'fontweight', 'bold', 'fontsize', 14)
-light('Position',[0.1,-1.2,.3]);
-saveas(fig, sprintf('Y_%d_%d.eps',l,m),'epsc2')
-    """
