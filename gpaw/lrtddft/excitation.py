@@ -37,7 +37,7 @@ class ExcitationList(list):
         """Evaluate the Thonmas Reiche Kuhn sum rule"""
         trkm = num.zeros((3),num.Float)
         for ex in self:
-            trkm += ex.GetEnergy()*(ex.GetDipolME()**2)
+            trkm += ex.GetEnergy()*ex.GetDipolME()**2
         return 2.*trkm # scale to get the number of electrons
     
     def GetPolarizabilities(self,lmax=7):
@@ -70,8 +70,8 @@ class Excitation:
         including the occupation factor"""
         return self.me / sqrt(self.energy)
     
-    def GetOszillatorStrength(self):
-        """return the excitations oszillator strength"""
+    def GetOscillatorStrength(self):
+        """return the excitations oscillator strength"""
         me=self.me
         osz=[0.]
         for i in range(3):
