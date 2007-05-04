@@ -99,7 +99,11 @@ class KSSingles(ExcitationList):
         """Read myself from a file"""
         if mpi.rank == mpi.MASTER:
             if fh is None:
-                f = open(filename, 'r')
+                if filename.endswith('.gz'):
+                    import gzip
+                    f = gzip.open(filename)
+                else:
+                    f = open(filename, 'r')
             else:
                 f = fh
 
@@ -123,10 +127,21 @@ class KSSingles(ExcitationList):
         self.jend = jend
 
     def write(self, filename=None, fh=None):
-        """Write current state to a file."""
+        """Write current state to a file.
+
+        'filename' is the filename. If the filename ends in .gz,
+        the file is automatically saved in compressed gzip format.
+
+        'fh' is a filehandle. This can be used to write into already
+        opened files.
+        """
         if mpi.rank == mpi.MASTER:
             if fh is None:
-                f = open(filename, 'w')
+                if filename.endswith('.gz'):
+                    import gzip
+                    f = gzip.open(filename,'wb')
+                else:
+                    f = open(filename, 'w')
             else:
                 f = fh
 
@@ -149,7 +164,6 @@ class KSSingle(Excitation):
         
         self.i=iidx
         self.j=jidx
-##         print '<KSSingle> iidx,jidx=',iidx,jidx
         self.pspin=pspin
         self.vspin=vspin
 
@@ -168,21 +182,13 @@ class KSSingle(Excitation):
 
         # calculate matrix elements
 
-##        print 'paw.gd=',paw.gd.N_c,paw.gd.dv
-##        print 'paw.finegd=',paw.finegd.N_c,paw.finegd.dv
-        
         # course grid contribution
         gd = paw.kpt_u[vspin].gd
         self.wfi = paw.kpt_u[vspin].psit_nG[iidx]
-##        fname='wf'+'%d' % iidx + '.plt'
-##        print 'cell_c=',paw.domain.cell_c
-##        write_plt(paw.domain.cell_c,self.wfi,fname)
         self.wfj = paw.kpt_u[vspin].psit_nG[jidx]
-##        fname='wf'+'%d' % jidx + '.plt'
-##        write_plt(paw.domain.cell_c,self.wfj,fname)
-        me = gd.calculate_dipole_moment(self.GetPairDensity())
-##         print '<KSSingle> course pseudo mij=',me
-##         print '<KSSingle> integrated:',gd.integrate(self.GetPairDensity())
+        # <i|r|j> is the negative of the dipole moment (because of negative
+        # e- charge)
+        me = -gd.calculate_dipole_moment(self.GetPairDensity())
 
         # augmentation contributions
         ma = num.zeros(me.shape,num.Float)
@@ -206,16 +212,15 @@ class KSSingle(Excitation):
                         # L=1:y L=2:z; L=3:x
                         ma1 += num.array([ Delta_pL[ij,3], Delta_pL[ij,1], \
                                            Delta_pL[ij,2] ])*pij
-##                        print "<KSSingle> i,j,Delta_pL[ij]=",i,j,Delta_pL[ij]
             ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
-##            print "<KSSingle> ma1,ma0*Ra=",ma1,ma0*Ra
 
-##        print '<KSSingle> me,ma=',me,ma,sqrt(self.energy*self.fij)
+##         print '<KSSingle> me,ma=',me,ma
+##         print '<KSSingle> i,j,m,fac=',self.i,self.j,\
+##               me+ma,sqrt(self.energy*self.fij)
         self.me = sqrt(self.energy*self.fij) * ( me + ma )
 
     def fromstring(self,string):
         l = string.split()
-##        print "l=",l
         self.i = int(l[0])
         self.j = int(l[1])
         self.pspin = int(l[2])
@@ -223,8 +228,6 @@ class KSSingle(Excitation):
         self.energy = float(l[4])
         self.fij = float(l[5])
         self.me = num.array([float(l[6]),float(l[7]),float(l[8])])
-##        print "me=",self.me
-        
         return None
 
     def outstring(self):
