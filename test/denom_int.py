@@ -50,6 +50,15 @@ result = nom.integrate_with_denominator(denom, r, dr)
 print result
 assert abs(result-0.93000) <1e-2
 
+result = (H1s*H1s*H1s*H1s).integrate_with_denominator(H1s*H1s, r, dr)
+print "Norm of H1s with denominator...:"
+print result
+
+print "The hartree-energy of hydrogen 1s. Should be 5/16Ha: "
+result = 0.5*((H1s*H1s).solve_poisson(r, dr, beta, N) * H1s*H1s).integrateRY(r, dr)
+print result
+assert abs(result-0.3125) <1e-4
+
 """
 %Here is a simple Matlab code which tests for these same integrals
 %Note that N=300 consumes over 2Gb of memory

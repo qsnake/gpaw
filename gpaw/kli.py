@@ -250,7 +250,7 @@ class KLIFunctional:
 
         # First sum of [48]
         for i in range(0, total):
-            xc_potential += wavefunctions[i]*u_ix[i] * f_n[i];
+            xc_potential += wavefunctions[i]*u_ix[i] * f_n[i]
 
         xc_potential /= coarse_density    
 
@@ -286,9 +286,6 @@ class KLIFunctional:
         V_S = grid_allocator() # The Slater's averaged exchange potential
         vXC_G = grid_allocator() # The final potential
 
-        #print "Occupied orbitals", occupied
-        #print "Occupations ", f_j
-        
         # Calculate the |\Psi_i| times [13] to u_ix. Because of the numerical difficulties
         # we don't divide with \Psi_i here, since it cancels later. 
         for n1 in range(0, occupied):
@@ -300,7 +297,7 @@ class KLIFunctional:
                 
                 # Solve the poisson equation
                 poisson_solver(uXC_G, -nXC_G)
-                
+
                 # Restrict the solution back to coarse grid                    
                 restrict(uXC_G, uXC_g)
 
@@ -324,12 +321,6 @@ class KLIFunctional:
             # Calculate the single exchange potential [37]. Division with density is done later.
             V_S += scalar_mul(f_j[i], uXC_g)
         
-        #print "u_bar :", u_bar
-
-        #print "Density",n_g
-        #print "WF^2", u_j[0]*u_j[0]
-        #raise "TEst"
-            
         if (occupied > 1):
             # Calculate the A matrix [65]. This uses the M-matrix in [62].
             # That is 
@@ -373,7 +364,7 @@ class KLIFunctional:
         # Avoid division by zero with r this way. Suggestions to do this better are welcome. 
         r = r.copy()
         r[0] = r[1]
-        
+
         # Create some helper functios to carry out the 1d-calculation
         # in calculate_1d_kli_general function. Grid interpolation and
         # restriction wont do anything in 1d-calculation. Everything
@@ -402,7 +393,9 @@ class KLIFunctional:
             return u.integrateRY(r, dr)
 
         def scalar_mul(scalar, function):
-            return function.scalar_mul(scalar)
+            temp = Function1D()
+            temp.copyfrom(function)
+            return temp.scalar_mul(scalar)
 
         # Expand the m-degeneracy of the wavefunctions
         u_lm = []
@@ -420,17 +413,14 @@ class KLIFunctional:
         for n1, f in enumerate(f_lm):
             n += scalar_mul(f, u_lm[n1] * u_lm[n1])
 
-        # Average the density spherically. That is, operate with Y_00 int d\omega
-        
-        n = Function1D(0,0, n.integrateY())
-                
+        # Average the density spherically.
+        n = Function1D(0,0, 1/sqrt(4*pi)*n.integrateY())
+
         Exc, result = self.calculate_kli_general(grid_alloc, grid_alloc,
                                                  dummy, poisson_solver, dummy,
                                                  integrate, scalar_mul,
                                                  n, u_lm, f_lm)
 
         # The spherically averaged potential is returned to solver
-        # The potential is multiplied by r
-        vXC[:] = result.integrateY()
-
+        vXC[:] = result.integrateY() / (4*pi)
         return Exc*2

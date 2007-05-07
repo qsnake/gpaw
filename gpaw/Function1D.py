@@ -26,12 +26,13 @@ class Function1D:
         if len(args)==3:
             l,m,u = args
             # Store the function to dictionary
-            self.harmonics[l,m] = u * sqrt(4*pi)
+            self.harmonics[l,m] = u
         elif len(args)==1:
             self.harmonics = args[0]
 
     # Adds a constant to the spherical harmonics
     def add_constant(self, c):
+       c *= sqrt(4*pi) 
        if (self.harmonics.has_key(0,0)):
            self.harmonics[0,0] = self.harmonics[0,0] + c
        else:
@@ -54,7 +55,7 @@ class Function1D:
             assert l2 == 0
             assert m2 == 0
 
-        temp.divide_all(1/sqrt(4*pi)*x.harmonics[0,0])
+        temp.divide_all(x.harmonics[0,0]/sqrt(4*pi))
         return temp
 
     def copyfrom(self, x):
@@ -76,8 +77,11 @@ class Function1D:
     # Integrate over angle
     # Only spherical harmonics of s-type will survive.
     def integrateY(self):
+        # 4*pi comes from integration over angle
+        # and 1/sqrt(4*pi) is the spherical harmonic for s-type functions
+        # 4*pi/sqrt(4*pi) = sqrt(4*pi)
         if (self.harmonics.has_key((0,0))):
-            return 1.0/sqrt(4*pi)*self.harmonics[(0,0)]
+            return sqrt(4*pi)*self.harmonics[(0,0)]
         else:
             return 0
 
@@ -86,7 +90,7 @@ class Function1D:
         if (self.harmonics.has_key((0,0))):
             # 4*pi comes from integration over angle
             # and 1/sqrt(4*pi) is the spherical harmonic for s-type functions
-            return 1/sqrt(4*pi)*num.dot(r**2 * dr, self.harmonics[0,0])
+            return sqrt(4*pi)*num.dot(r**2 * dr, self.harmonics[0,0])
         else:
             return 0
 
@@ -113,7 +117,9 @@ class Function1D:
 
             I += weights[point] * num.dot(dr2, nom / den)
 
-        return I
+        # The weights sum up to one.
+        # Because \int d\Omega = 4\pi, we should multiply with 4\pi.
+        return 4*pi*I
     
     # Return the poisson solution of this series as charge density
     def solve_poisson(self, r,dr,beta, N):
@@ -129,7 +135,7 @@ class Function1D:
             #print N
             
             hartree(l1, u1 * r * dr, beta, N, V);   
-            temp_harmonics[l1,m1] = V/(4*pi) /r
+            temp_harmonics[l1,m1] = V / r
 
         return Function1D(temp_harmonics)
 

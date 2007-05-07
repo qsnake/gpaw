@@ -1,7 +1,5 @@
 from gpaw.atom.all_electron import AllElectron
 
-class struct:
-    pass
 
 def check(name, atomE, atomeig, total, HOMO):
 
@@ -10,10 +8,14 @@ def check(name, atomE, atomeig, total, HOMO):
     assert abs(atomE-total)<8e-3
     assert abs(atomeig-HOMO)<1e-3
 
+A = AllElectron('He', 'KLI', False)
+A.run()
+HeE = A.Ekin+A.Epot+A.Exc
+Heeig = A.e_j[0]
+
 A = AllElectron('Be', 'KLI', False)
 A.run()
 
-Be = struct()
 BeE = A.Ekin+A.Epot+A.Exc
 Beeig = A.e_j[1]
 
@@ -31,6 +33,7 @@ print "Checking calculated KLI-all-electron data..."
 print "---------------------------------------------------------------"
 print "| Atom |  Total(KLI)/Total(Ref)   | eig. homo.(KLI)/(Ref)     |"
 print "---------------------------------------------------------------"
+
 check('Be',BeE, Beeig,  (-29.1460+0.3e-3)/2, -0.6177/2)
 check('Ne',NeE, Neeig, (-257.0942+1.1e-3)/2, -1.6988/2)
 check('Mg',MgE, Mgeig, (-399.2292+1.8e-3)/2, -0.5048/2)
