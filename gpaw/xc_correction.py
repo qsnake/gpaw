@@ -480,11 +480,15 @@ class XCCorrection:
     def two_phi_integrals(self,
                           D_sp # density matrix in packed form
                           ):
-        """Evaluate the integral in the augmentation sphere
-                    /
-        I_{i1 i2} = | d r [ phi_i1(r) phi_i2(r) v_xc[n](r) -
-                    /       tphi_i1(r) tphi_i2(r) v_xc[tn](r) ]
-                    a
+        """Evaluate the integral in the augmentation sphere.
+
+        ::
+        
+                      /
+          I_{i1 i2} = | d r [ phi_i1(r) phi_i2(r) v_xc[n](r) -
+                      /       tphi_i1(r) tphi_i2(r) v_xc[tn](r) ]
+                      a
+
         The result is given in packed form.
         """
         I_sp = num.zeros(D_sp.shape,num.Float)

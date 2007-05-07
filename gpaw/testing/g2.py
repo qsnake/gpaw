@@ -1,9 +1,9 @@
 """
--------------------------------------------------------------------------------
-G2-1 neutral test set: 55 molecules
-G2-2 neutral test set: 93 molecules
-MP2(full)/6-31G(d) optimized geometries
--------------------------------------------------------------------------------
+G2 neutral test sets
+
+* G2-1 neutral test set: 55 molecules
+* G2-2 neutral test set: 93 molecules
+* MP2(full)/6-31G(d) optimized geometries
 
 The following contains the G2-1 and G2-2 neutral test sets in cartesian 
 coordinates.
