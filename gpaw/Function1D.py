@@ -3,6 +3,8 @@ from math import pi, sqrt
 from gpaw.utilities import hartree
 import LinearAlgebra as linalg
 import Numeric as num
+from gpaw.sphere import Y_nL, points, weights
+from gpaw.spherical_harmonics import YL
 
 # Small helper function to perform critical division with density
 # I'm sure this could be improved, how?
@@ -75,7 +77,7 @@ class Function1D:
     # Only spherical harmonics of s-type will survive.
     def integrateY(self):
         if (self.harmonics.has_key((0,0))):
-            return 1/sqrt(4*pi)*self.harmonics[(0,0)]
+            return 1.0/sqrt(4*pi)*self.harmonics[(0,0)]
         else:
             return 0
 
@@ -84,10 +86,35 @@ class Function1D:
         if (self.harmonics.has_key((0,0))):
             # 4*pi comes from integration over angle
             # and 1/sqrt(4*pi) is the spherical harmonic for s-type functions
-            return 1/sqrt(4*pi)*num.dot(r**2 * dr, self.harmonics[0,0]) 
+            return 1/sqrt(4*pi)*num.dot(r**2 * dr, self.harmonics[0,0])
         else:
             return 0
 
+    def integrate_with_denominator(self, denominator, r, dr):
+        # The integral is calculated to I
+        I = 0
+
+        dr2 = dr * r**2
+        # For every point on spheres surface
+        for point in range(0, 50):
+
+            nom = 0
+            den = 0
+
+            # Calculate the nominator
+            for lm1, u1 in self.harmonics.iteritems():
+                l1,m1 = lm1
+                nom = nom + u1 * Y_nL[point][l1**2 + m1 + l1]
+
+            # Calculate the denominator
+            for lm1, u1 in denominator.harmonics.iteritems():
+                l1,m1 = lm1
+                den = den + u1 * Y_nL[point][l1**2 + m1 + l1]
+
+            I += weights[point] * num.dot(dr2, nom / den)
+
+        return I
+    
     # Return the poisson solution of this series as charge density
     def solve_poisson(self, r,dr,beta, N):
 
