@@ -284,15 +284,9 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut_l[l]]
 
-#        Nc = Z - self.Nv - self.fcorehole
-#<<<<<<< .mine
+        Nc = Z - self.Nv - self.fcorehole
         self.Nc = Nc
-        Nctail = 4 * pi * num.dot(nc[gcut:], dv[gcut:])
-        print 'Core electrons: %.1f (r > %.3f: %.6f)' % (Nc, rcut, Nctail)
-        assert Nctail < 1.1
-#=======
         print 'Core electrons: %.1f' % Nc
-#>>>>>>> .r691
         print 'Valence electrons: %.1f' % self.Nv
 
         # Construct smooth wave functions:
