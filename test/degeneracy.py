@@ -15,7 +15,7 @@ atoms = ListOfAtoms([Atom('C', (0.0, 0.0, 0.0)),
                     periodic=False)
 
 atoms.SetCartesianPositions(atoms.GetCartesianPositions() + a / 2)
-atoms.SetCalculator(Calculator(h=0.25, nbands=4, tolerance=1e-11))
+atoms.SetCalculator(Calculator(h=0.2, nbands=4, tolerance=1e-11))
 energy = atoms.GetPotentialEnergy()
 
 # The three eigenvalues e[1], e[2], and e[3] must be degenerate:
