@@ -223,7 +223,7 @@ class LrTDDFTExcitation(Excitation):
             self.f = f
             kss = Om.kss
             for j in range(len(kss)):
-                # ?????? ist weight noch nötig ?????
+                # ?????? ist weight noch noetig ?????
                 weight = f[j]*sqrt(kss[j].GetEnergy()*kss[j].GetWeight())
                 if j==0:
                     self.me = kss[j].GetDipolME()*weight
