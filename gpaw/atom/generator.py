@@ -75,7 +75,8 @@ class Generator(AllElectron):
         self.rcut_l = rcut_l
 
         if rcutcomp is None:
-            self.rcutcomp = rcutcomp = rcutmin
+            rcutcomp = rcutmin
+        self.rcutcomp = rcutcomp
 
         hfilter, xfilter = filter
         
