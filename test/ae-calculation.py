@@ -1,5 +1,6 @@
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
+from gpaw.utilities import equal
 
 a = 5.0
 H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
@@ -20,4 +21,4 @@ H2 = ListOfAtoms([Atom('H', (c - s, c - s, c - s)),
 H2.SetCalculator(Calculator(h=0.1, setups='ae'))
 e2 = H2.GetPotentialEnergy()
 print e1, e2, 2 * e1 - e2
-assert abs(2 * e1 - e2 - 4.55354160381) < 1e-5
+equal(2 * e1 - e2, 4.55354160381, 1e-5)
