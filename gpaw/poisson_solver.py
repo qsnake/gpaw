@@ -76,15 +76,32 @@ class PoissonSolver:
             gauss = Gaussian(self.gd)
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
-        
+
     def solve(self, phi, rho, eps=2e-10, charge=0, maxcharge=1e-6,
               zero_initial_phi=False):
-        self.phis[0] = phi
 
-        # Handling of charged densities
+        # Determine charge (if set to None)
         if charge == None:
             charge = self.gd.integrate(rho)
-        if abs(charge) > maxcharge:
+
+        if abs(charge) < maxcharge:
+            # System is charge neutral. Use standard solver
+            return self.solve_neutral(phi, rho, eps=eps)
+        
+        elif abs(charge) > maxcharge and num.alltrue(
+            self.gd.domain.periodic_c):
+            # System is charged and periodic. Subtract a homogeneous
+            # background charge
+            background = charge / self.gd.dV
+            return self.solve_neutral(phi, rho - background, eps=eps)
+        
+        elif abs(charge) > maxcharge and num.alltrue(
+            self.gd.domain.periodic_c == num.zeros(3)):
+            # The system is charged and in a non-periodic unit cell.
+            # Determine the potential by 1) subtract a gaussian from the
+            # density, 2) determine potential from the neutralized density
+            # and 3) add the potential from the gaussian density.
+
             # Load necessary attributes
             if not hasattr(self, 'rho_gauss'):
                 from gpaw.utilities.gauss import Gaussian
@@ -92,23 +109,29 @@ class PoissonSolver:
                 self.rho_gauss = gauss.get_gauss(0)
                 self.phi_gauss = gauss.get_gauss_pot(0)
 
-            # Monopole moment
-            q = charge / num.sqrt(4 * pi)
-                
             # Remove monopole moment
-            rho_neutral = rho - q * self.rho_gauss
+            q = charge / num.sqrt(4 * pi) # Monopole moment
+            rho_neutral = rho - q * self.rho_gauss # neutralized density
 
-            # Determine potential from neutralized density
+            # Set initial guess for potential
             if zero_initial_phi:
                 phi[:] = 0.0
             else:
                 axpy(-q, self.phi_gauss, phi) #phi -= q * self.phi_gauss
-            niter = self.solve(phi, rho_neutral, eps=eps, charge=0)
+
+            # Determine potential from neutral density using standard solver
+            niter = self.solve_neutral(phi, rho_neutral, eps=eps)
 
             # correct error introduced by removing monopole
             axpy(q, self.phi_gauss, phi) #phi += q * self.phi_gauss
 
             return niter
+        else:
+            # System is charged with mixed boundaryconditions
+            raise NotImplementedError
+    
+    def solve_neutral(self, phi, rho, eps=2e-10):
+        self.phis[0] = phi
 
         if self.B is None:
             self.rhos[0][:] = rho
@@ -124,7 +147,7 @@ class PoissonSolver:
             raise ConvergenceError('Poisson solver did not converge!')
 
         return niter
-        
+    
     def iterate(self, step, level=0):
         residual = self.residuals[level]
         niter = 0
