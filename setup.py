@@ -47,6 +47,8 @@ packages = ['gpaw',
             'gpaw.io',
             'gpaw.mpi',
             'gpaw.atom',
+            'gpaw.testing',
+            'gpaw.lrtddft',
             'gpaw.utilities',
             'gpaw.eigensolvers']
 
