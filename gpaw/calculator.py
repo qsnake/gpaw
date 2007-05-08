@@ -48,7 +48,7 @@ class Calculator:
                   'mix': (0.25, 3, 1.0),
                   'hund': False,
                   'fixmom': False,
-                  'lmax': 0,
+                  'lmax': 2,
                   'fixdensity': False,
                   'tolerance': 1.0e-9,
                   'maxiter': 100000000,
