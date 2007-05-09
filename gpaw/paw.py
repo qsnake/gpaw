@@ -325,7 +325,7 @@ class Paw:
                 
         output.print_converged(self)
 
-    def set_positions(self, pos_ac):
+    def set_positions(self, pos_ac=None):
         """Update the positions of the atoms.
 
         Localized functions centered on atoms that have moved will
@@ -333,6 +333,11 @@ class Paw:
         array holding all the pseudo core densities is updated."""
         
         self.timer.start('Init pos.')
+        
+        if pos_ac is None:
+            pos_ac = num.array([nucleus.spos_c * self.domain.cell_c
+                                for nucleus in self.nuclei])
+
         movement = False
         for nucleus, pos_c in zip(self.nuclei, pos_ac):
             spos_c = self.domain.scale_position(pos_c)
@@ -580,8 +585,6 @@ class Paw:
     def initialize_from_file(self, filename):
         """Read state from a file."""
         wf = gpaw.io.read(self, filename)
-        self.set_positions(num.array([n.spos_c * self.domain.cell_c
-                                      for n in self.nuclei]))
         return wf
 
     def warn(self, message):
