@@ -92,7 +92,7 @@ class PoissonSolver:
             self.gd.domain.periodic_c):
             # System is charged and periodic. Subtract a homogeneous
             # background charge
-            background = charge / self.gd.dV
+            background = charge / num.product(self.gd.domain.cell_c)
             return self.solve_neutral(phi, rho - background, eps=eps)
         
         elif abs(charge) > maxcharge and num.alltrue(
