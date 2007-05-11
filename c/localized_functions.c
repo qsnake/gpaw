@@ -250,33 +250,62 @@ static PyObject * localized_functions_add_density2(LocalizedFunctionsObject*
 static PyObject * localized_functions_norm(LocalizedFunctionsObject* self,
 					   PyObject *args)
 {
-  if (!PyArg_ParseTuple(args, ""))
+  PyArrayObject* I_obj;
+  if (!PyArg_ParseTuple(args, "O", &I_obj))
     return NULL;
 
+  double *II = DOUBLEP(I_obj);
   const double* f = self->f;
-  double F = 0.0;
-  for (int n = 0; n < self->ng0; n++)
-    F += f[n];
-  
-  return Py_BuildValue("d", F * self->dv);
+  for (int i = 0; i < self->nf; i++)
+    {
+      double F = 0.0;
+      for (int n = 0; n < self->ng0; n++)
+	F += f[n];
+      II[i] += F * self->dv;
+      f += self->ng0;
+    }
+  Py_RETURN_NONE;
 }
 
-static PyObject * localized_functions_scale(LocalizedFunctionsObject* self,
-					    PyObject *args)
+static PyObject * localized_functions_normalize(LocalizedFunctionsObject* self,
+						PyObject *args)
 {
-  double s;
-  if (!PyArg_ParseTuple(args, "d", &s))
+  double I0;
+  PyArrayObject* I_obj;
+  if (!PyArg_ParseTuple(args, "dO", &I0, &I_obj))
     return NULL;
 
+  double *II = DOUBLEP(I_obj);
   double* f = self->f;
+  double s = I0 / II[0];
+  // Scale spherically symmetric function so that the intgral
+  // becomes exactly I0:
   for (int n = 0; n < self->ng0; n++)
     f[n] *= s;
 
+  // Adjust all other functions (l > 0) so that they integrate to zero:
+  for (int i = 1; i < self->nf; i++)
+    {
+      double *g = f + i * self->ng0;
+      double a = -II[i] / I0;
+      for (int n = 0; n < self->ng0; n++)
+	g[n] += a * f[n];
+    }
+
   if (self->nfd > 0)
     {
+      // Adjust derivatives:
       double* fd = self->fd;
       for (int n = 0; n < 3 * self->ng0; n++)
 	fd[n] *= s;
+
+      for (int i = 1; i < self->nf; i++)
+	{
+	  double *gd = fd + 3 * i * self->ng0;
+	  double a = -II[i] / I0;
+	  for (int n = 0; n < 3 * self->ng0; n++)
+	    gd[n] += a * fd[n];
+	}
     }
 
   Py_RETURN_NONE;
@@ -312,8 +341,8 @@ static PyMethodDef localized_functions_methods[] = {
      (PyCFunction)localized_functions_add_density2, METH_VARARGS, 0},
     {"norm",
      (PyCFunction)localized_functions_norm, METH_VARARGS, 0},
-    {"scale",
-     (PyCFunction)localized_functions_scale, METH_VARARGS, 0},
+    {"normalize",
+     (PyCFunction)localized_functions_normalize, METH_VARARGS, 0},
 #ifdef PARALLEL
     {"broadcast",
      (PyCFunction)localized_functions_broadcast, METH_VARARGS, 0},
