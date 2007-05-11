@@ -266,13 +266,20 @@ class KSSingle(Excitation):
         # interpolate the pair density to the fine grid
         self.paw.density.interpolate(self.GetPairDensity(),rhot_g)
 
+        return rhot_g
+
+    def GetPairDensityAndCompensationCharges(self):
+        """Get fine grid pair densisty including the compensation charges"""
+        rhot_g = self.GetFineGridPairDensity()
+        
         # Determine the compensation charges for each nucleus
         for nucleus in self.paw.ghat_nuclei:
             # Generate density matrix
             Pi_i = nucleus.P_uni[self.vspin,self.i]
             Pj_i = nucleus.P_uni[self.vspin,self.j]
             D_ii = num.outerproduct(Pi_i, Pj_i)
-            # allowed to pack as used in the scalar product
+            # allowed to pack as used in the scalar product with
+            # the symmetric array Delta_pL
             D_p  = pack(D_ii, tolerance=1e30)
                     
             # Determine compensation charge coefficients:
