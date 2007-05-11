@@ -80,3 +80,7 @@ class Excitation:
             osz[0]+=val/3.
         return osz
 
+    def SetEnergy(self,E):
+        """return the excitations energy relative to the ground state energy"""
+        self.energy = E
+    
