@@ -51,7 +51,7 @@ def write_plt(cell, grid, filename,
     
     cell is assumed to be in Angstroms and the grid in atomc units (Bohr)"""
 
-    if len(cell.shape) == 3:
+    if len(cell.shape) == 2:
         # Check that the cell is orthorhombic
         check_unit_cell(cell)
         xe, ye, ze = num.diagonal(cell)
