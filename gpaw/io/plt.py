@@ -50,10 +50,13 @@ def write_plt(cell, grid, filename,
     type = Type of surface (integer)
     
     cell is assumed to be in Angstroms and the grid in atomc units (Bohr)"""
-    
-    # Check that the cell is orthorhombic
-    check_unit_cell(cell)
-    xe, ye, ze = num.diagonal(cell)
+
+    if len(cell.shape) == 3:
+        # Check that the cell is orthorhombic
+        check_unit_cell(cell)
+        xe, ye, ze = num.diagonal(cell)
+    else:
+        xe, ye, ze = cell * 0.52918 # get Angstroms
 
     # Check, that the grid is 3D
     if len(grid.shape) != 3:
