@@ -272,7 +272,6 @@ class Nucleus:
     def add_atomic_density(self, nt_sG, magmom, hund):
         if self.phit_i is None:
             # Nothing to do in this domain:
-            print 'self.phitj is none'
             return
 
         ns = len(nt_sG)
