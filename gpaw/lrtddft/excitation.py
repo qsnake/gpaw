@@ -27,11 +27,16 @@ class ExcitationList(list):
         else:
             self.out = sys.stdout
 
-    def GetEnergies(self):
+    def get_energies(self):
+        """Get excitation energies in Hartrees"""
         el = []
         for ex in self:
-            el.append(ex.GetEnergy()*self.Ha)
-        return el
+            el.append(ex.get_energy())
+        return num.array(el)
+
+    def GetEnergies(self):
+        """Get excitation energies in units of the calculators energy unit"""
+        return self.get_energies()*self.Ha
 
     def GetTRK(self):
         """Evaluate the Thonmas Reiche Kuhn sum rule"""
@@ -61,8 +66,10 @@ class ExcitationList(list):
         return string
         
 class Excitation:
-    def GetEnergy(self):
-        """return the excitations energy relative to the ground state energy"""
+    def get_energy(self):
+        """Get the excitations energy relative to the ground state energy
+        in Hartrees.
+        """
         return self.energy
     
     def GetDipolME(self):
