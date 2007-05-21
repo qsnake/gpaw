@@ -33,7 +33,6 @@ def spectrum(exlist=None,
     func=Gauss(width)
     if folding == 'Lorentz':
         func=Lorentz(width)
-    func=Lorentz(width)
 
     # output
     out = sys.stdout
