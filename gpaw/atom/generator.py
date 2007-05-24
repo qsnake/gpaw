@@ -28,7 +28,7 @@ parameters = {
  'O' : {'core': '[He]',   'rcut': 1.2},
  'F' : {'core': '[He]',   'rcut': 1.2},
  'Ne': {'core': '[He]',   'rcut': 1.8},    
- 'Na': {'core': '[Ne]',   'rcut': 2.3},
+ 'Na': {'core': '[Ne]',   'rcut': 2.6},
  'Mg': {'core': '[Ne]',   'rcut': 2.0},
  'Al': {'core': '[Ne]',   'rcut': 2.0},
  'Si': {'core': '[Ne]',   'rcut': 2.0},
@@ -71,7 +71,7 @@ class Generator(AllElectron):
         else:
             rcut_l = rcut
         rcutmax = max(rcut_l)
-        rcutmin = max(rcut_l)
+        rcutmin = min(rcut_l)
         self.rcut_l = rcut_l
 
         if rcutcomp is None:
@@ -464,6 +464,7 @@ class Generator(AllElectron):
         self.dO_lnn = dO_lnn = []
         for l, (e_n, u_n, s_n, q_n) in enumerate(zip(e_ln, u_ln,
                                                      s_ln, q_ln)):
+            
             A_nn = inner(s_n, q_n * dr)
             # Do a LU decomposition of A:
             nn = len(e_n)
