@@ -21,6 +21,8 @@ t1 = lr[0]
 # with spin
 lr = LrTDDFT(calc,xc=None,nspins=2)
 lr.diagonalize()
-t2 = lr[1] # the triplet is lower
+# the triplet is lower, so that the second is the first singlet
+# excited state
+t2 = lr[1] 
 
-equal(t1.GetEnergy(), t2.GetEnergy(), 5.e-7)
+equal(t1.get_energy(), t2.get_energy(), 5.e-7)
