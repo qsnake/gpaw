@@ -19,7 +19,7 @@ class Spline:
         if beta is None:
             f_g = contiguous(f_g, num.Float)
         else:
-            r = rmax / points * num.arange(points + 1)
+            r = 1.0 * rmax / points * num.arange(points + 1)
             ng = len(f_g)
             g = (ng * r / (beta + r) + 0.5).astype(num.Int)
             g = num.clip(g, 1, ng - 2)

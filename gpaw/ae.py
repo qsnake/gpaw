@@ -115,7 +115,7 @@ class AllElectronSetup:
         self.ghat_l = [Spline(0, rcutsoft, d_0 * g)]
 
     # xc_correction methods:
-    def calculate_energy_and_derivatives(self, D_sp, H_sp):
+    def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         H_sp[:] = 0.0
         return 0.0
     def set_functional(self, xcfunc):

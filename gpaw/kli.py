@@ -1,10 +1,278 @@
 import Numeric as num
 import LinearAlgebra as linalg
-from gpaw.utilities import hartree, unpack, unpack2, pack, pack2
 from gpaw.Function1D import Function1D
 from math import sqrt, pi
 
+from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
+
+import pylab #XXX MK
+
+class Dummy:
+    pass
+
+class XCKLICorrection:
+    def __init__(self, xcfunc, rgd, nspins, M_pp, X_p, ExxC):
+        self.xcfunc = xcfunc
+        self.nspins = nspins
+        self.M_pp = M_pp
+        self.X_p  = X_p
+        self.ExxC = ExxC
+        self.xc = Dummy()
+        self.xc.xcfunc = Dummy()
+        self.xc.xcfunc.hybrid = 1
+      
+    def calculate_energy_and_derivatives(self, D_sp, H_sp, a):
+        deg = 2 / self.nspins     # Spin degeneracy
+
+        E = 0.0
+        hybrid = 1.
+        for s in range(self.nspins):
+            # Get atomic density and Hamiltonian matrices
+            D_p  = D_sp[s]
+            D_ii = unpack2(D_p)
+            H_p  = H_sp[s]
+            ni = len(D_ii)
+
+            # Add atomic corrections to the valence-valence exchange energy
+            # --
+            # >  D   C     D
+            # --  ii  iiii  ii
+            C_pp = self.M_pp
+            for i1 in range(ni):
+                for i2 in range(ni):
+                    A = 0.0 # = C * D
+                    for i3 in range(ni):
+                        p13 = packed_index(i1, i3, ni)
+                        for i4 in range(ni):
+                            p24 = packed_index(i2, i4, ni)
+                            A += C_pp[p13, p24] * D_ii[i3, i4]
+                    p12 = packed_index(i1, i2, ni)
+                    H_p[p12] -= 2 * hybrid / deg * A / ((i1!=i2) + 1)
+                    E -= hybrid / deg * D_ii[i1, i2] * A
+
+            # Add valence-core exchange energy
+            # --
+            # >  X   D
+            # --  ii  ii
+            E -= hybrid * num.dot(D_p, self.X_p)
+            H_p -= hybrid * self.X_p
+
+        # Add core-core exchange energy
+        E += hybrid * self.ExxC
+
+        # XXX Update H_sp due to KLI, using self.xcfunc
+        
+        return E
+
+    
 class KLIFunctional:
+    def pass_stuff(self,
+                   kpt_u, gd, finegd, interpolate,
+                   restrict, poisson,
+                   my_nuclei, ghat_nuclei,
+                   nspins, nmyu, nbands,
+                   kpt_comm, comm, nt_sg):
+        self.kpt_u      = kpt_u      
+        self.gd         = gd         
+        self.finegd     = finegd     
+        self.interpolate= interpolate
+        self.restrict   = restrict   
+        self.poisson    = poisson    
+        self.my_nuclei  = my_nuclei  
+        self.ghat_nuclei= ghat_nuclei
+        self.nspins     = nspins     
+        self.nmyu       = nmyu       
+        self.nbands     = nbands    
+        self.kpt_comm   = kpt_comm
+        self.comm       = comm
+        self.nt_sg      = nt_sg
+
+        self.fineintegrate = finegd.integrate
+
+        self.rho_g      = finegd.zeros()
+        self.rho_G      = gd.zeros()
+        
+        self.vsn_g      = finegd.zeros()
+        self.vklin_g     = finegd.zeros()
+
+        self.oldkli = finegd.zeros()
+        self.first_iteration = True
+        
+        self.nt_G       = gd.zeros()
+        self.nt_g       = finegd.zeros()
+        self.vt_g       = finegd.zeros()
+
+        print "Initializing KLI! PASS STUFF"
+
+    def calculate_one_spin(self, v_g, s):
+        print "CALCULATING ONE SPIN" 
+
+        small_number = 1e-200
+        
+        # Initialize method-attributes
+        kpt = self.kpt_u[s]
+        psit_nG = kpt.psit_nG     # Wave functions
+        E = 0.0                   # Energy of eXact eXchange and kinetic energy
+        f_n  = kpt.f_n.copy()      # Occupation number
+
+        f_n *= self.nspins / 2.0
+        occupied = int(sum(f_n))
+        print "Occupied orbitals", f_n
+        if occupied < 1e-3:
+            return 0
+
+
+        self.ubar_n     = num.zeros( occupied-1, num.Float)
+        self.c_n        = num.zeros( occupied-1, num.Float)
+        
+        u   = kpt.u               # Local spin/kpoint index
+        hybrid = 1.
+
+        self.vsn_g[:] = 0.0
+        self.rho_G[:] = 0.0
+
+        if (occupied > 1):
+            A = num.zeros( (occupied-1, occupied-1), num.Float)
+
+        # Calculate the density
+        for n1 in range(self.nbands):
+            f1 = f_n[n1]
+            psit1_G = psit_nG[n1]    
+            self.rho_G += f1 * psit1_G*psit1_G
+
+        # Interpolate it to fine grid
+        self.interpolate(self.rho_G, self.rho_g)
+        
+        # Determine pseudo-exchange
+        for n1 in range(self.nbands):
+            psit1_G = psit_nG[n1]      
+            f1 = f_n[n1]
+            if f1 > 1e-3:
+                for n2 in range(n1, self.nbands):
+                    psit2_G = psit_nG[n2]
+                    f2 = f_n[n2]
+                    if f2 > 1e-3:
+                        dc = 1 + (n1 != n2) # double count factor
+
+                        # Determine current exchange density ...
+                        self.nt_G[:] = psit1_G * psit2_G
+
+                        # and interpolate to the fine grid:
+                        self.interpolate(self.nt_G, self.nt_g)
+
+                        if (n1 < occupied-1):
+                            if (n2 < occupied-1):
+                                A[n1, n2] = -self.finegd.integrate(self.nt_g **2 / (self.rho_g + small_number))
+                                A[n2, n1] = A[n1, n2]
+                                if (n1 == n2):
+                                    A[n1,n1] += 1
+
+                        # Determine the compensation charges for each nucleus:
+                        for nucleus in self.ghat_nuclei:
+                            if nucleus.in_this_domain:
+                                # Generate density matrix
+                                P1_i = nucleus.P_uni[u, n1]
+                                P2_i = nucleus.P_uni[u, n2]
+                                D_ii = num.outerproduct(P1_i, P2_i)
+                                D_p  = pack(D_ii, tolerance=1e3)#python func! move to C
+
+                                # Determine compensation charge coefficients:
+                                Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                            else:
+                                Q_L = None
+
+                            # Add compensation charges to exchange density:
+                            nucleus.ghat_L.add(self.nt_g, Q_L, communicate=True)
+
+                        # Determine total charge of exchange density:
+                        Z = float(n1 == n2)
+
+                        # Determine exchange potential:
+                        print "Statring poisson..."
+                        npoisson = self.poisson.solve(self.vt_g, -self.nt_g, eps = 1e-12, charge=-Z) # Removed zero initial
+                        print "Poisson iterations", npoisson
+                        print "Ending poisson..."
+                        
+                        self.vsn_g += self.vt_g * self.nt_g 
+
+                        # Integrate the potential on fine and coarse grids
+                        int_fine = self.fineintegrate(self.vt_g * self.nt_g)
+
+                        if (n1 < occupied-1):
+                            self.ubar_n[n1] = - dc * int_fine
+                        
+                        E += 0.5 * f1 * f2 * dc * hybrid * int_fine
+
+        # Calculate the slater potential
+        self.vsn_g /= self.rho_g + small_number
+
+        #print "A-matrix", A
+        
+        # Calculate the coefficients over slater potential
+        for n1 in range(occupied-1):
+            psit1_G = psit_nG[n1]      
+            f1 = f_n[n1]
+    
+            # Determine current exchange density ...
+            self.nt_G[:] = psit1_G * psit2_G
+
+            # and interpolate to the fine grid:
+            self.interpolate(self.nt_G, self.nt_g)
+
+            self.ubar_n[n1] += self.finegd.integrate(self.vsn_g * self.nt_g)
+
+
+        self.vklin_g[:] = 0.0
+
+        # Solve the linear equation [64] determinating the KLI-potential
+        if occupied > 1:
+            print A.shape
+            print self.ubar_n.shape
+            x = linalg.solve_linear_equations(A,self.ubar_n)
+
+
+            for n1 in range(0, occupied-1):
+                psit1_G = psit_nG[n1]      
+                f1 = f_n[n1]
+    
+                # Determine current exchange density ...
+                self.nt_G[:] = psit1_G * psit2_G
+
+                # and interpolate to the fine grid:
+                self.interpolate(self.nt_G, self.nt_g)
+                self.vklin_g += f1 * x[n1] * self.nt_g
+
+            print x
+            self.vklin_g[:]  /= self.rho_g + small_number
+
+        self.vklin_g     += self.vsn_g
+        
+        if self.first_iteration:
+            v_g[:] += self.vklin_g
+            self.first_iteration = False
+        else:
+            v_g[:] += self.vklin_g # (0.05 * self.vklin_g) + (0.95 * self.oldkli)
+            
+        #self.oldkli[:] = (0.05 * self.vklin_g) + (0.95 * self.oldkli)
+        
+        pylab.plot(self.vklin_g[40,40,:])
+        pylab.show()
+       
+        return E
+
+    def calculate_spinpaired(self, e_g, n_g, v_g):
+        E = 2*self.calculate_one_spin(v_g, 0)
+        e_g[:] = E / len(e_g) / self.finegd.dv
+
+    def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
+        E = 0.0
+        E += self.calculate_one_spin(va_g,0)
+        E += self.calculate_one_spin(vb_g,1)
+        e_g[:] = E / len(e_g) / self.finegd.dv
+
+
+    
+class KLIFunctionalOLD:
     """KLI functional.
     
     Based on article:
@@ -66,11 +334,10 @@ class KLIFunctional:
         return -2*self.E_x
 
     def calculate_spinpaired(self, e_g, n_g, v_g):
-        e_g[:] = 0.0    
+        e_g[:] = 0.0
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
-        e_g[:] = 0.0    
-
+        e_g[:] = 0.0
 
     def calculate_energy(self, kpt, Htpsit_nG, H_nn):
 
@@ -141,7 +408,6 @@ class KLIFunctional:
                 # Interpolate the exchange density to fine grid
                 self.paw.density.interpolate(u1 * u2, fine_density)
                     
-
                 # Determine the compensation charges for each nucleus:
                 for nucleus in self.paw.ghat_nuclei:
                     if nucleus.in_this_domain:
@@ -345,6 +611,7 @@ class KLIFunctional:
             # Solve the linear equation [64] determinating the KLI-potential
             x = linalg.solve_linear_equations(A,b)
 
+        #print "Ci:s ", x
         # Primed sum of [48]
         for i in range(0, occupied-1):
             vXC_G += scalar_mul(f_j[i]*x[i], u_j[i] * u_j[i])

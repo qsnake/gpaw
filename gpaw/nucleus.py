@@ -373,7 +373,7 @@ class Nucleus:
                     num.dot(s.Delta_pL, W_L))
 
             Exc = s.xc_correction.calculate_energy_and_derivatives(
-                self.D_sp, self.H_sp)
+                self.D_sp, self.H_sp, self.a)
 
             Ekin = num.dot(s.K_p, D_p) + s.Kc
 

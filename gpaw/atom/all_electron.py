@@ -19,7 +19,7 @@ from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree
 
 # KLI functional is handled separately at least for now
-from gpaw.kli import KLIFunctional
+from gpaw.kli import KLIFunctionalOLD as KLIFunctional
 # fine-structure constant
 alpha = 1 / 137.036
 

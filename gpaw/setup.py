@@ -15,6 +15,7 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
+from gpaw.kli import XCKLICorrection
 
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=True, type='paw'):
@@ -86,7 +87,7 @@ class Setup:
          core_hole_state,
          core_hole_e,
          core_hole_e_kin) = PAWXMLParser().parse(symbol, xcname)
-        
+
         self.filename = filename
 
         assert Nv + Nc == Z
@@ -332,15 +333,21 @@ class Setup:
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
-        xc = XCRadialGrid(xcfunc, rgd, nspins)
+        if xcfunc.xcname == 'KLI':
+            self.xc_correction = XCKLICorrection(xcfunc, rgd, nspins,
+                                                 self.M_pp, self.X_p,
+                                                 self.ExxC)
 
-        self.xc_correction = XCCorrection(
-            xc,
-            [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
-            [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
-            nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-            rgd, [(j, l_j[j]) for j in range(nj)],
-            2 * lcut, e_xc)
+        else:
+            xc = XCRadialGrid(xcfunc, rgd, nspins)
+
+            self.xc_correction = XCCorrection(
+                xc,
+                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
+                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
+                rgd, [(j, l_j[j]) for j in range(nj)],
+                2 * lcut, e_xc)
 
         #self.rcut = rcut
 

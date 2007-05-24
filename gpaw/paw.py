@@ -237,7 +237,7 @@ class Paw:
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
                                        self.nuclei, setups, vext_g)
-            
+        
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
             self.occupation = occupations.ZeroKelvin(nvalence, nspins)
@@ -406,6 +406,14 @@ class Paw:
 
 
         xcfunc = self.hamiltonian.xc.xcfunc
+
+        ## XXXX MK
+        # At the first iteration we use LDA in KLI also
+        if (xcfunc.xcname == 'KLI'):
+            localxcfunc = XCFunctional('LDAx')
+            self.hamiltonian.xc.set_functional(localxcfunc)
+
+            
         if xcfunc.hybrid > 0:
             # At this point, we can't use orbital dependent
             # functionals, because we don't have the right orbitals
@@ -463,6 +471,11 @@ class Paw:
         for kpt in self.kpt_u:
             kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, self.my_nuclei)
 
+        # XXXX MK
+        # Switch back to KLI from Lda
+        if xcfunc.xcname == 'KLI':
+            self.hamiltonian.xc.set_functional(xcfunc)
+                
         if xcfunc.hybrid > 0:
             # Switch back to the orbital dependent functional:
             self.hamiltonian.xc.set_functional(xcfunc)

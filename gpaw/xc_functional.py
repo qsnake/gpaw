@@ -35,6 +35,7 @@ class XCFunctional:
         elif xcname == 'EXX':
             code = 6
             self.hybrid = 1.0
+            self.orbital_dependent = True
         else:
             self.gga = True
             self.maxDerivativeLevel=1
@@ -87,8 +88,16 @@ class XCFunctional:
         self.__init__(xcname, parameters)
 
     def set_non_local_things(self, paw, energy_only=False):
-        if self.orbital_dependent:
-            self.xc.pass_paw_object(paw)
+        if not self.orbital_dependent:
+            return
+
+        if self.xcname == 'KLI':
+            self.xc.pass_stuff(
+                paw.kpt_u, paw.gd, paw.finegd, paw.density.interpolate,
+                paw.hamiltonian.restrict, paw.hamiltonian.poisson,
+                paw.my_nuclei, paw.ghat_nuclei,
+                paw.nspins, paw.nmyu, paw.nbands,
+                paw.kpt_comm, paw.domain.comm, paw.density.nt_sg)
 
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:
@@ -102,29 +111,23 @@ class XCFunctional:
 
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
-            self.xc.calculate_energy(kpt, Htpsit_nG, H_nn)
-
-        if self.hybrid > 0.0:
-            self.exx.apply(kpt, Htpsit_nG, H_nn, self.hybrid)
+            if self.hybrid > 0.0:
+                self.exx.apply(kpt, Htpsit_nG, H_nn, self.hybrid)
 
     def get_non_local_energy(self):
         Exc = 0.0
         
         if self.orbital_dependent:
-            Exc += self.xc.get_non_local_energy()
-
-        if self.hybrid > 0.0:
-            Exc += self.exx.Exx
+            if self.hybrid > 0.0:
+                Exc += self.exx.Exx
         
         return Exc
 
     def get_non_local_kinetic_corrections(self):
         Ekin = 0.0
         if self.orbital_dependent:
-            Ekin += self.xc.get_extra_kinetic_energy()
-            
-        if self.hybrid > 0.0:
-            Ekin += self.exx.Ekin
+            if self.hybrid > 0.0:
+                Ekin += self.exx.Ekin
 
         return Ekin
     
