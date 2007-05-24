@@ -15,11 +15,15 @@ def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
     atom_energies = {}
     eas = {}
     errors = []
+    if hasattr(cellsize, '__iter__'):
+        a, b, c = cellsize
+    else:
+        a, b, c = cellsize, None, None
     kcal = Convert(1, 'eV', 'kcal/mol/Nav')
     for formula in formulas:
         if not load(formula, eas, errors):
             file = open(formula + '.pickle','w')
-            mol = Molecule(formula, a=cellsize, h=gridspacing,
+            mol = Molecule(formula, a=a, b=b, c=c, h=gridspacing,
                            parameters=calc_parameters, forcesymm=forcesymm)
             check_atom_list(atom_energies)
             try:
@@ -134,21 +138,6 @@ def reference_vasp(molecules):
     return pretty_print(eas, xcs, molecules) + mean_error(eas, errors)
 
 if __name__ == '__main__':
-##     a = 5.6
-##     h = 0.2 # 5.6 / 0.2 = 28
-##     a = 6.8
-##     h = 0.17 # 6.8 / 0.17 = 40
-##     a = 7.2
-##     h = 0.15 # 7.2 / 0.15 = 48
-    a = 8.16
-    h = 0.17 # 8.16 / 0.17 = 48
-##     a = 12.8
-##     h = 0.16 # 12.8 / 0.16 = 80
-    relax = False
-    parameters = {'xc': 'PBE0',
-                  'out': 'atomize.txt',
-                  'softgauss': False,
-                  'lmax': 2}
     molecules = [
         'H2',
         'LiH',
@@ -171,17 +160,25 @@ if __name__ == '__main__':
         'P2',
         'Cl2'
         ]
-
-    non_self_xcs = ('LDA', 'revPBE', 'RPBE', 'PBE', 'EXX')
-    eas, errors = atomize(molecules, a, h,
+    cellsize = (6.5, 6.2, 6.0)
+    gridspacing = .18
+    relax = False
+    parameters = {'xc': 'EXX',
+                  'out': 'atomize.txt',
+                  'softgauss': False,
+                  'setups': {'Li': 'nocore'},
+                  'lmax': 2}
+    non_self_xcs = ['LDA', 'revPBE', 'RPBE', 'PBE', 'PBE0', 'EXX']
+    non_self_xcs.remove(parameters['xc'])
+    eas, errors = atomize(molecules, cellsize, gridspacing,
                           relax=relax,
                           non_self_xcs=non_self_xcs,
                           forcesymm=False,
                           calc_parameters=parameters)
-    names = ('Expt', 'PBE0',) + non_self_xcs
+    names = ['Expt', parameters['xc']] + non_self_xcs
 
-    print 'a =', a
-    print 'h =', h
+    print 'cellsize =', cellsize
+    print 'grid spacing =', gridspacing
     print 'lmax =', parameters['lmax']
     print 'relax =', relax
     print ''

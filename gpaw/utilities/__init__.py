@@ -30,10 +30,9 @@ def gcd(a, b):
     """Return greatest common divisor of a and b, using the
        euclidian algorithm.
     """
-    if b == 0:
-        return a
-    else:
-        return gcd(b, a % b)
+    while b != 0:
+        a, b = b, a % b
+    return a
 
 
 def contiguous(array, typecode):
@@ -281,7 +280,7 @@ def fix(formula):
 
 
 def fix2(formula):
-    """Convert chemical formula to reStructureText"""
+    """Convert chemical formula to reStructuredText"""
     s = ''
     j = 0
     for i in range(len(formula)):

@@ -84,6 +84,7 @@ class Paw:
      ``Epot``    Potential energy.
      ``Etot``    Total energy.
      ``Exc``     Exchange-Correlation energy.
+     ``Eext``    Energy of external potential
      ``Eref``    Reference energy for all-electron atoms.
      ``S``       Entropy.
      ``Ebar``    Should be close to zero!
