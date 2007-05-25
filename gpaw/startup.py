@@ -104,7 +104,7 @@ def create_paw_object(out, a0, Ha,
     for a, type in setup_types.items():
         if isinstance(a, int):
             type_a[a] = type
-    
+
     # Construct necessary PAW-setup objects:
     setups = {}
     for a, (Z, type) in enumerate(zip(Z_a, type_a)):
@@ -161,9 +161,6 @@ def create_paw_object(out, a0, Ha,
         nvalence += nucleus.setup.Nv
         nao += nucleus.setup.niAO
     nvalence -= charge
-
-    for nucleus in nuclei:
-        charge += (nucleus.setup.Z - nucleus.setup.Nv - nucleus.setup.Nc)
 
     if nvalence < 0:
         raise ValueError(

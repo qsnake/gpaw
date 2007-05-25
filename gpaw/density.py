@@ -46,7 +46,6 @@ class Density:
 
         self.hund = hund
         self.magmom_a = magmom_a
-        self.charge = charge
         self.nspins = nspins
         self.gd = gd
         self.finegd = finegd
@@ -58,6 +57,13 @@ class Density:
         self.kpt_comm = kpt_comm
 
         self.comm = gd.comm
+
+        self.nvalence = nvalence
+        self.nvalence0 = nvalence + charge
+
+        for nucleus in nuclei:
+            charge += (nucleus.setup.Z - nucleus.setup.Nv - nucleus.setup.Nc)
+        self.charge = charge
         
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
@@ -83,8 +89,6 @@ class Density:
         else:
             self.mixer = Mixer(mix, self.gd, nspins)
 
-        self.nvalence = nvalence
-
     def initialize(self):
         """Initialize density.
 
@@ -100,8 +104,8 @@ class Density:
 
         # The nucleus.add_atomic_density() method should be improved
         # so that we don't have to do this scaling: XXX
-        if self.charge != 0.0:
-            x = float(self.nvalence) / (self.nvalence + self.charge)
+        if self.nvalence != self.nvalence0:
+            x = float(self.nvalence) / self.nvalence0
             for nucleus in self.my_nuclei:
                 nucleus.D_sp *= x
             self.nt_sG *= x
@@ -115,7 +119,6 @@ class Density:
             nucleus.calculate_multipole_moments()
             
         if self.nspins == 1:
-
             Q = 0.0
             Q0 = 0.0
             for nucleus in self.my_nuclei:
@@ -124,7 +127,6 @@ class Density:
             Q = sqrt(4 * pi) * self.comm.sum(Q)
             Q0 = sqrt(4 * pi) * self.comm.sum(Q0)
             Nt = self.gd.integrate(self.nt_sG)
-
             # Nt + Q must be equal to minus the total charge:
             if Q0 - Q != 0:
                 x = (Nt + Q0 + self.charge) / (Q0 - Q)
@@ -136,6 +138,7 @@ class Density:
             else:
                 x = -(self.charge + Q) / Nt
                 self.nt_sG *= x
+
         else:
             Q_s = array([0.0, 0.0])
             for nucleus in self.my_nuclei:
@@ -279,13 +282,13 @@ class Density:
             
         charge = self.finegd.integrate(self.rhot_g) + self.charge
         if abs(charge) > 1e-7:
-            raise RuntimeError('Charge not conserved: excess=%f' % charge ) 
+            raise RuntimeError('Charge not conserved: excess=%.7f' % charge ) 
 
     def update(self, kpt_u, symmetry):
         """Calculate pseudo electron-density.
 
         The pseudo electron-density ``nt_sG`` is calculated from the
-        wave functions, the occupation numbers, and the smoot core
+        wave functions, the occupation numbers, and the smooth core
         density ``nct_G``, and finally symmetrized and mixed."""
 
         if self.fixdensity:
