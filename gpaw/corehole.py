@@ -64,10 +64,10 @@ class CoreHoleSetup:
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = softgauss
-        self.symbol = symbol
 
         if type != 'paw':
             symbol += '.' + type
+        self.symbol = symbol
 
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
