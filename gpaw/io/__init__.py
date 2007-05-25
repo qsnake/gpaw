@@ -109,7 +109,10 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
 
         # Write fingerprint (md5-digest) for all setups:
         for setup in paw.setups:
-            w[names[setup.Z] + 'Fingerprint'] = setup.fingerprint
+            key = names[setup.Z] + 'Fingerprint'
+            if setup.type != 'paw':
+                key += '(%s)' % setup.type
+            w[key] = setup.fingerprint
 
         if isinstance(setup_types, str):
             setup_types = {None: setup_types}
@@ -236,12 +239,14 @@ def read(paw, filename):
     
     for setup in paw.setups:
         try:
-            fp = r[names[setup.Z] + 'Fingerprint']
+            key = names[setup.Z] + 'Fingerprint'
+            if setup.type != 'paw':
+                key += '(%s)' % setup.type
+            fp = r[key]
         except AttributeError, KeyError:
             break
         if setup.fingerprint != fp:
-            paw.warn(('Setup for %s (%s) not compatible ' +
-                      'with restart file.') %
+            paw.warn('Setup for %s (%s) not compatible with restart file.' %
                      (setup.symbol, setup.filename))
             
     # Read pseudoelectron density on the coarse grid and

@@ -57,6 +57,7 @@ class Setup:
         self.xcname = xcname
         self.softgauss = softgauss
 
+        self.type = type
         if type != 'paw':
             symbol += '.' + type
         self.symbol = symbol
