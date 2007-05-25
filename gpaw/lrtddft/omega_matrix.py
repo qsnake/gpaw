@@ -9,7 +9,7 @@ from gpaw import debug
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
-from gpaw.utilities import packed_index
+from gpaw.utilities import pack,pack2,packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.xc_functional import XC3DGrid, XCFunctional
 
@@ -34,18 +34,24 @@ class OmegaMatrix:
             self.out = out
             return None
 
-        self.calculator = calculator
+        self.paw = calculator.paw
         if out is None: out = calculator.out
         self.out = out
         self.fullkss = kss
         if xc is not None:
-            self.xc = XC3DGrid(xc,self.calculator.paw.finegd,
+            self.xc = XC3DGrid(xc,self.paw.finegd,
                                kss.npspins)
             # check derivativeLevel
             if derivativeLevel is None:
                 derivativeLevel=\
                     self.xc.get_functional().get_max_derivative_level()
             self.derivativeLevel=derivativeLevel
+            # change the setup xc functional if needed
+            # the ground state calculation may have used another xc
+            for setup in self.paw.setups:
+                sxc = setup.xc_correction.xc
+                if sxc.xcfunc.xcname != xc:
+                    sxc.set_functional(XCFunctional(xc))
         else:
             self.xc = None
 
@@ -71,10 +77,12 @@ class OmegaMatrix:
         print '<OmegaMatrix::get_full> derivative Level=',self.derivativeLevel
         print '<OmegaMatrix::get_full> numscale=',self.numscale
 
-        paw = self.calculator.paw
-        gd = paw.finegd    
+        paw = self.paw
+        fgd = paw.finegd    
         kss=self.fullkss
         nij = len(kss)
+
+        # initialize densities
 
         if kss.nvspins==2: # spin polarised ground state calc.
             n_g = paw.density.nt_sg
@@ -110,8 +118,10 @@ class OmegaMatrix:
         ns=self.numscale
         xc=self.xc
         for ij in range(nij):
-            
+
             if self.derivativeLevel == 1:
+                # vxc is available
+                
                 if kss.npspins==2: # spin polarised
                     nv_g=n_g.copy()
                     nv_g[kss[ij].pspin] += ns*kss[ij].GetFineGridPairDensity()
@@ -129,6 +139,26 @@ class OmegaMatrix:
                     xc.get_energy_and_potential(nv_g,vm_g)
                     vv_g = .5*(vp_g-vm_g)/ns
 
+                # initialize the correction matrices
+                for nucleus in self.paw.my_nuclei:
+                    # create the modified density matrix
+                    Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
+                    Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
+                    P_ii = num.outerproduct(Pi_i,Pj_i)
+                    # we need the symmetric form, hence we can pack
+                    P_p = pack(P_ii,tolerance=1e30)
+                    D_sp = nucleus.D_sp.copy()
+                    D_sp[kss[ij].vspin] += ns*P_p
+                    nucleus.I_sp = \
+                                 nucleus.setup.xc_correction.\
+                                 two_phi_integrals(D_sp)
+                    D_sp = nucleus.D_sp.copy()
+                    D_sp[kss[ij].vspin] -= ns*P_p
+                    nucleus.I_sp -= \
+                                 nucleus.setup.xc_correction.\
+                                 two_phi_integrals(D_sp)
+                    nucleus.I_sp /= 2.*ns
+                    
             for kq in range(ij,nij):
                 
                 weight=2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
@@ -186,16 +216,21 @@ class OmegaMatrix:
                               
                 elif self.derivativeLevel == 1:
                     # vxc is available
+                    
                     Om[ij,kq] += weight *\
-                        gd.integrate(kss[kq].GetFineGridPairDensity()*vv_g)
+                        fgd.integrate(kss[kq].GetFineGridPairDensity()*vv_g)
 
                     Exc = 0
-                    for nucleus in self.my_nuclei:
-                        D_sp = nucleus.D_sp
-                        H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
-                        xc_correction = nucleus.setup.xc_correction
-                        Exc += xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
-
+                    for nucleus in self.paw.my_nuclei:
+                        # create the modified density matrix
+                        Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
+                        Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
+                        P_ii = num.outerproduct(Pk_i,Pq_i)
+                        # we need the symmetric form, hence we can pack
+			# use pack2 as I_sp used pack ?????correct????
+                        P_p = pack2(P_ii,tolerance=1e30)
+                        Exc += num.dot(nucleus.I_sp[kss[kq].vspin],P_p)
+                    Om[ij,kq] += weight * Exc
 
                 elif self.derivativeLevel == 2:
                     # fxc is available
@@ -217,7 +252,7 @@ class OmegaMatrix:
 
     def get_rpa(self):
         """calculate RPA part of the omega matrix"""
-        paw = self.calculator.paw
+        paw = self.paw
         gd = paw.finegd
         poisson = PoissonSolver(gd, paw.hamiltonian.poisson_stencil)
         kss=self.fullkss
@@ -232,7 +267,7 @@ class OmegaMatrix:
             print >> self.out,'RPA kss['+'%d'%ij+']=', kss[ij]
 
             # smooth density including compensation charges
-            rhot_g = kss[ij].GetFineGridPairDensity()
+            rhot_g = kss[ij].GetPairDensityAndCompensationCharges()
 
             # integrate with 1/|r_1-r_2|
             poisson.solve(phit_g,rhot_g,charge=None,maxcharge=1e-12)
@@ -240,7 +275,7 @@ class OmegaMatrix:
             for kq in range(ij,nij):
                 if kq != ij:
                     # smooth density including compensation charges
-                    rhot_g = kss[kq].GetFineGridPairDensity()
+                    rhot_g = kss[kq].GetPairDensityAndCompensationCharges()
 
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())

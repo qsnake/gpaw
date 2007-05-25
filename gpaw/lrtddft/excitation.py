@@ -42,7 +42,7 @@ class ExcitationList(list):
         """Evaluate the Thonmas Reiche Kuhn sum rule"""
         trkm = num.zeros((3),num.Float)
         for ex in self:
-            trkm += ex.GetEnergy()*ex.GetDipolME()**2
+            trkm += ex.get_energy()*ex.GetDipolME()**2
         return 2.*trkm # scale to get the number of electrons
     
     def GetPolarizabilities(self,lmax=7):
