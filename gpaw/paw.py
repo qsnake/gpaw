@@ -418,7 +418,7 @@ class Paw:
         if xcfunc.hybrid > 0:
             # At this point, we can't use orbital dependent
             # functionals, because we don't have the right orbitals
-            # yet.  So we use a simple density functional to setup the
+            # yet.  So we use a simple density functional to set up the
             # initial hamiltonian:
             if xcfunc.xcname == 'EXX':
                 localxcfunc = XCFunctional('LDAx')
@@ -470,7 +470,8 @@ class Paw:
             nucleus.reallocate(self.nbands)
 
         for kpt in self.kpt_u:
-            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, self.my_nuclei)
+            kpt.adjust_number_of_bands(self.nbands,
+                                       self.pt_nuclei, self.my_nuclei)
 
         # XXXX MK
         # Switch back to KLI from Lda
@@ -773,7 +774,7 @@ class Paw:
                 del setup.phit_j
             for nucleus in self.nuclei:
                 try:
-                    del nucleus.phit_j
+                    del nucleus.phit_i
                 except AttributeError:
                     pass
 
