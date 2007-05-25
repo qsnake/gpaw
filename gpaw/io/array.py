@@ -1,3 +1,5 @@
+import Numeric as num
+
 def save_array(array, fname, fmt='%.18e', delimiter=' ', header=None):
     """Save array to ascii file.
 
@@ -27,12 +29,12 @@ def save_array(array, fname, fmt='%.18e', delimiter=' ', header=None):
     for row in array:
         print >>fhandle, delimiter.join([fmt % col for col in row]) + '\n'
 
-def load_array(fname, comments='#', delimiter=None, converters={},
-         skiprows=[], usecols=None):
+def load_array(file, comments='#', delimiter=None, converters={},
+         skiprows=[], skipcols=[]):
     """Load array from ascii file.
 
-       'fname' is the filename. Support for gzipped files is automatic,
-       if the filename ends in .gz.
+       'file' is a filehandle, or the filename (string).
+       Support for gzipped files is automatic, if the filename ends in .gz.
 
        'comments' - the character used to indicate the start of a comment
        in the file.
@@ -49,15 +51,19 @@ def load_array(fname, comments='#', delimiter=None, converters={},
        'skiprows' is a sequence of integer row indices to skip,
        where 0 is the first row.
 
-       'usecols', if not None, is a sequence of integer column indices to
-       use, where 0 is the first column.
+       'skipcols', is a sequence of integer column indices to skip,
+       where 0 is the first column.
     """
     # Open file using gzip if necessary
-    if fname.endswith('.gz'):
-        import gzip
-        fhandle = gzip.open(fname)
+    if hasattr(file, 'read'):
+        fhandle = file
     else:
-        fhandle = file(fname)
+        assert type(file) == str, 'file must be either filehandle or a string'
+        if file.endswith('.gz'):
+            import gzip
+            fhandle = gzip.open(file, 'r')
+        else:
+            fhandle = open(file)
         
     array = []
     for i, row in enumerate(fhandle):
@@ -80,6 +86,11 @@ def load_array(fname, comments='#', delimiter=None, converters={},
             
             # Apply converters
             cols.append(converters.get(i, float)(col))            
-        array.append(row)
+        array.append(cols)
 
+    # Convert to Numeric array if possible
+    try:
+        array = num.array(array)
+    except TypeError:
+        print 'Data matrix not square, unable to make Numeric array'
     return array
