@@ -5,7 +5,6 @@ from math import sqrt, pi
 
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 
-import pylab #XXX MK
 
 class Dummy:
     pass
@@ -255,8 +254,9 @@ class KLIFunctional:
             
         #self.oldkli[:] = (0.05 * self.vklin_g) + (0.95 * self.oldkli)
         
-        pylab.plot(self.vklin_g[40,40,:])
-        pylab.show()
+        #import pylab #XXX MK
+        #pylab.plot(self.vklin_g[40,40,:])
+        #pylab.show()
        
         return E
 
