@@ -177,15 +177,6 @@ def create_paw_object(out, a0, Ha,
     if nvalence > 2 * nbands:
         raise ValueError('Too few bands!')
 
-
-
-    if (dry_run):
-        # Estimate the amount of memory needed
-        estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c, out)
-        out.flush()
-        timer.stop()
-        sys.exit()
-
     # Get the local number of spins and k-points, and return a
     # domain_comm and kpt_comm for this processor:
     domain_comm, kpt_comm = distribute_kpoints_and_spins(nspins, nkpts,
@@ -203,6 +194,12 @@ def create_paw_object(out, a0, Ha,
               convergeall, eigensolver, relax, pos_ac / a0, timer, kT / Ha,
               tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
               out, vext_g)
+
+    if dry_run:
+        # Estimate the amount of memory needed
+        estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c, out)
+        out.flush()
+        sys.exit()
 
     return paw
 
