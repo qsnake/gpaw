@@ -27,6 +27,7 @@ class PairPotential:
         self.interactions = {}
         for setup1 in setups:
             for setup2 in setups:
+                assert setup1 is setup2 or setup1.symbol != setup2.symbol
                 interaction = GInteraction(setup1, setup2)
                 self.interactions[(setup1.symbol, setup2.symbol)] = interaction
 
