@@ -597,7 +597,7 @@ class Generator(AllElectron):
                 self.write(s, 'ps', n=n, l=l)
                 self.write(q, 'proj', n=n, l=l)
 
-# test
+        # Test for ghost states:
         for h in [0.05]:
             self.diagonalize(h)
 
@@ -655,7 +655,7 @@ class Generator(AllElectron):
                            tauc, tauct)
 
     def diagonalize(self, h):
-        ng = 300
+        ng = 350
         print
         print 'Diagonalizing with gridspacing h=%.3f' % h
         R = h * num.arange(1, ng + 1)
