@@ -18,6 +18,18 @@ class Cluster(ListOfAtoms):
         if filename is not None:
             self.Read(filename,filetype)
 
+    def Center(self):
+        """Center the structure to unit cell"""
+        extr = self.extreme_positions()
+        cntr = 0.5 * (extr[0] + extr[1])
+        cell = num.diagonal(self.GetUnitCell())
+        Translate(self,tuple(.5*cell-cntr),'cartesian')
+
+    def extreme_positions(self):
+        """get the extreme positions of the structure"""
+        pos = self.GetCartesianPositions()
+        return num.array([num.minimum.reduce(pos),num.maximum.reduce(pos)])
+
     def MinimalBox(self,border=0):
         """The box needed to fit the structure in.
         The structure is moved to fit into the box [(0,x),(0,y),(0,z)]
@@ -29,17 +41,8 @@ class Cluster(ListOfAtoms):
         if len(self) == 0:
             return None
 
-        # find extreme positions
-        x,y,z = self[0].GetCartesianPosition()
-        extr = [[x,y,z],[x,y,z]]
-        for a in self:
-            pos = a.GetCartesianPosition()
-            for i in range(3):
-                if pos[i]<extr[0][i]: extr[0][i]=pos[i]
-                if pos[i]>extr[1][i]: extr[1][i]=pos[i]
-
-##        print "<Cluster::MinimalBox> extr=",extr
-                
+        extr = self.extreme_positions()
+ 
         # add borders
         if type(border)==type([]):
             b=border
@@ -49,8 +52,6 @@ class Cluster(ListOfAtoms):
             extr[0][i]-=b[i]
             extr[1][i]+=b[i]-extr[0][i] # shifted already
             
-##        print "<Cluster::MinimalBox> border,extr=",border,extr
-
         # move lower corner to (0,0,0)
         Translate(self,tuple(-1.*num.array(extr[0])),'cartesian')
         self.SetUnitCell(tuple(extr[1]),fix=True)
@@ -64,8 +65,6 @@ class Cluster(ListOfAtoms):
         if filetype is None:
             # estimate file type from name ending
             filetype = filename.split('.')[-1]
-
-##        print '<Cluster::Read> 1 type=',filetype
 
         if filetype == 'xyz' or  filetype == 'XYZ':
             loa = ReadXYZ(filename)
