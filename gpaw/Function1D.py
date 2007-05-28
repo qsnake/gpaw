@@ -81,7 +81,7 @@ class Function1D:
         # and 1/sqrt(4*pi) is the spherical harmonic for s-type functions
         # 4*pi/sqrt(4*pi) = sqrt(4*pi)
         if (self.harmonics.has_key((0,0))):
-            return sqrt(4*pi)*self.harmonics[(0,0)]
+            return sqrt(4*pi)*self.harmonics[(0,0)].copy()
         else:
             return 0
 
@@ -115,7 +115,7 @@ class Function1D:
                 l1,m1 = lm1
                 den = den + u1 * Y_nL[point][l1**2 + m1 + l1]
 
-            I += weights[point] * num.dot(dr2, nom / den)
+            I += weights[point] * num.dot(dr2, nom / (den +1e-20))
 
         # The weights sum up to one.
         # Because \int d\Omega = 4\pi, we should multiply with 4\pi.
@@ -129,12 +129,13 @@ class Function1D:
         for lm1, u1 in self.harmonics.iteritems():
             l1,m1 = lm1
             V = u1.copy()
+            V[:] = 0.0
             #print "lm",l1,m1
             #print u1
             #print beta
             #print N
             
-            hartree(l1, u1 * r * dr, beta, N, V);   
+            hartree(l1, u1 * r * dr, beta, N, V)
             temp_harmonics[l1,m1] = V / r
 
         return Function1D(temp_harmonics)

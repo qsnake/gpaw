@@ -2,29 +2,46 @@ import Numeric as num
 import LinearAlgebra as linalg
 from gpaw.Function1D import Function1D
 from math import sqrt, pi
-
-from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
-
+from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2, fac
+from LinearAlgebra import inverse
 
 class Dummy:
     pass
 
 class XCKLICorrection:
-    def __init__(self, xcfunc, rgd, nspins, M_pp, X_p, ExxC):
+    def __init__(self, xcfunc, r, dr, beta, N, nspins, M_pp, X_p, ExxC, phi, phit, jl, lda_xc):
         self.xcfunc = xcfunc
         self.nspins = nspins
         self.M_pp = M_pp
         self.X_p  = X_p
         self.ExxC = ExxC
+        self.phi = phi
+        self.r = r.copy()
+        self.r[0] = self.r[1]
+        self.dr = dr
+        self.beta = beta
+        self.N = N
+        self.phit = phit
+        self.jl = jl
+
         self.xc = Dummy()
         self.xc.xcfunc = Dummy()
-        self.xc.xcfunc.hybrid = 1
+        self.xc.xcfunc.hybrid = 0.0
+        self.lda_xc = lda_xc
+        jlm = []
+        for j, l in jl:
+            for m in range(-l, l+1):
+                jlm.append((j, l, m))
+                
+        self.jlm = jlm
       
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a):
         deg = 2 / self.nspins     # Spin degeneracy
 
         E = 0.0
         hybrid = 1.
+        #print "Density matrix", D_sp
+        
         for s in range(self.nspins):
             # Get atomic density and Hamiltonian matrices
             D_p  = D_sp[s]
@@ -46,21 +63,107 @@ class XCKLICorrection:
                             p24 = packed_index(i2, i4, ni)
                             A += C_pp[p13, p24] * D_ii[i3, i4]
                     p12 = packed_index(i1, i2, ni)
-                    H_p[p12] -= 2 * hybrid / deg * A / ((i1!=i2) + 1)
+                    # Calculate energy only!
+                    #H_p[p12] -= 2 * hybrid / deg * A / ((i1!=i2) + 1)
                     E -= hybrid / deg * D_ii[i1, i2] * A
 
             # Add valence-core exchange energy
             # --
             # >  X   D
             # --  ii  ii
-            E -= hybrid * num.dot(D_p, self.X_p)
-            H_p -= hybrid * self.X_p
+            #E -= hybrid * num.dot(D_p, self.X_p)
+            #H_p -= hybrid * self.X_p
 
         # Add core-core exchange energy
-        E += hybrid * self.ExxC
+        #E += hybrid * self.ExxC
 
-        # XXX Update H_sp due to KLI, using self.xcfunc
+        nspins  = self.xcfunc.nspins
+        nbands  = self.xcfunc.nbands
         
+        print "WONT PARALELLRIZE!"
+        nucleus = self.xcfunc.ghat_nuclei[a]
+
+        def create_cross_density(nucleus, partial_waves, n1, n2):
+            density = Function1D()
+
+            # What an index mess...
+            for i1, (j1, l1, m1) in enumerate(self.jlm):
+                for i2, (j2, l2, m2) in enumerate(self.jlm):
+                    density += Function1D(l1, m1, nucleus.P_uni[spin, n1, i1] * partial_waves[j1]) * Function1D(l2, m2, nucleus.P_uni[spin, n2, i2] * partial_waves[j2])
+
+            return density
+
+        tempKLI = H_sp.copy()
+        tempKLI[:] = 0
+        
+        for spin in range(0, nspins):
+            vkli = Function1D()
+            vtkli = Function1D()
+            vn = Function1D()
+            vnt = Function1D()
+            for n1 in range(0, nbands):
+                for n2 in range(n1, nbands):
+                    n_nn  = create_cross_density(nucleus, self.phi, n1, n2)
+                    nt_nn = create_cross_density(nucleus, self.phit, n1, n2)
+                    if n1 == n2:
+                        vn = vn + n_nn
+                        vnt = vnt + nt_nn
+                        
+                    # Generate density matrix
+                    P1_i = nucleus.P_uni[spin, n1]
+                    P2_i = nucleus.P_uni[spin, n2]
+                    D_ii = num.outerproduct(P1_i, P2_i)
+                    D_p  = pack(D_ii, tolerance=1e3)#python func! move to C
+
+                    # Determine compensation charge coefficients:
+                    Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+
+                    d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
+                           for l in range(nucleus.setup.lmax + 1)]
+                    g = nucleus.setup.alpha2**1.5 * num.exp(-nucleus.setup.alpha2 * self.r**2)
+                    g[-1] = 0.0
+                    #print "Compensation charges:", Q_L
+
+                    index = 0
+                    for l in range(nucleus.setup.lmax + 1):
+                        radial = d_l[l] * nucleus.setup.alpha2**l * g * self.r**l
+                        for m in range(-l, l+1):
+                            #nt_nn = nt_nn + Function1D(l, m, Q_L[index]*radial)
+                            index += 1
+
+                    v_nn = n_nn.solve_poisson(self.r, self.dr, self.beta, self.N)
+                    vt_nn = nt_nn.solve_poisson(self.r, self.dr, self.beta, self.N)
+
+                    #pylab.plot(self.r, n_nn.integrateY())
+                    #pylab.plot(self.r, nt_nn.integrateY())
+                    #pylab.plot(self.r, v_nn.integrateY())
+                    #pylab.show()
+                    vkli = vkli + v_nn * n_nn
+                    vtkli = vtkli + vt_nn * nt_nn
+                    #print "IN KLICORRECTION: Vx_nnnlm for ",n1,n2, nucleus.Vx_nnnlm[n1,n2]
+                    
+            for i1, (j1, l1, m1) in enumerate(self.jlm):
+                for i2, (j2, l2, m2) in enumerate(self.jlm):
+                    if i1 == j2:
+                        dc = 1
+                    else:
+                        dc = 0.5
+                        
+                    coeff = (vkli * Function1D(l1, m1, self.phi[j1]) * Function1D(l2, m2, self.phi[j2])).integrate_with_denominator(vn, self.r, self.dr)
+                    coeff -= (vtkli * Function1D(l1, m1, self.phit[j1]) * Function1D(l2, m2, self.phit[j2])).integrate_with_denominator(vnt, self.r, self.dr)
+
+                    tempKLI[spin, packed_index(i1,i2, nucleus.setup.ni)] += coeff * dc
+                    
+        tempLDA = H_sp.copy()
+        self.lda_xc.calculate_energy_and_derivatives(D_sp, tempLDA)
+        print "LDA d H_sp", tempLDA
+        print "KLI d H_sp", tempKLI
+        print "ratio of LDA/KLI ", tempLDA/(tempKLI +1e-20)
+
+        # Currently just use LDA for atomic centered corrections
+        # NOTE! H_sp seems to contain some data which
+        # must be overrided by XCCorrections class
+        H_sp[:] = tempLDA
         return E
 
     
@@ -79,7 +182,7 @@ class KLIFunctional:
         self.poisson    = poisson    
         self.my_nuclei  = my_nuclei  
         self.ghat_nuclei= ghat_nuclei
-        self.nspins     = nspins     
+        self.nspins     = nspins
         self.nmyu       = nmyu       
         self.nbands     = nbands    
         self.kpt_comm   = kpt_comm
@@ -94,7 +197,7 @@ class KLIFunctional:
         self.vsn_g      = finegd.zeros()
         self.vklin_g     = finegd.zeros()
 
-        self.oldkli = finegd.zeros()
+        self.oldkli = finegd.zeros(2)
         self.first_iteration = True
         
         self.nt_G       = gd.zeros()
@@ -117,6 +220,7 @@ class KLIFunctional:
         f_n *= self.nspins / 2.0
         occupied = int(sum(f_n))
         print "Occupied orbitals", f_n
+        
         if occupied < 1e-3:
             return 0
 
@@ -124,7 +228,7 @@ class KLIFunctional:
         self.ubar_n     = num.zeros( occupied-1, num.Float)
         self.c_n        = num.zeros( occupied-1, num.Float)
         
-        u   = kpt.u               # Local spin/kpoint index
+        u = kpt.u               # Local spin/kpoint index
         hybrid = 1.
 
         self.vsn_g[:] = 0.0
@@ -177,6 +281,7 @@ class KLIFunctional:
 
                                 # Determine compensation charge coefficients:
                                 Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                                print "At kli:", Q_L
                             else:
                                 Q_L = None
 
@@ -187,11 +292,18 @@ class KLIFunctional:
                         Z = float(n1 == n2)
 
                         # Determine exchange potential:
-                        print "Statring poisson..."
+                        print "Statring poisson... this is slooooow"
                         npoisson = self.poisson.solve(self.vt_g, -self.nt_g, eps = 1e-12, charge=-Z) # Removed zero initial
                         print "Poisson iterations", npoisson
                         print "Ending poisson..."
-                        
+
+                        # Determine the projection within each nucleus
+                        for nucleus in self.ghat_nuclei:
+                            if nucleus.in_this_domain:
+                                coeff = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
+                                nucleus.ghat_L.integrate(self.vt_g, coeff)
+                                #nucleus.Vx_nnnlm[n1,n2] = coeff
+
                         self.vsn_g += self.vt_g * self.nt_g 
 
                         # Integrate the potential on fine and coarse grids
@@ -229,7 +341,6 @@ class KLIFunctional:
             print self.ubar_n.shape
             x = linalg.solve_linear_equations(A,self.ubar_n)
 
-
             for n1 in range(0, occupied-1):
                 psit1_G = psit_nG[n1]      
                 f1 = f_n[n1]
@@ -245,26 +356,31 @@ class KLIFunctional:
             self.vklin_g[:]  /= self.rho_g + small_number
 
         self.vklin_g     += self.vsn_g
-        
+
+        #pylab.plot(self.vklin_g[23,
+
         if self.first_iteration:
             v_g[:] += self.vklin_g
             self.first_iteration = False
         else:
             v_g[:] += self.vklin_g # (0.05 * self.vklin_g) + (0.95 * self.oldkli)
-            
-        #self.oldkli[:] = (0.05 * self.vklin_g) + (0.95 * self.oldkli)
+
+
+        self.oldkli[s, :] = self.vklin_g[:] 
+
         
-        #import pylab #XXX MK
-        #pylab.plot(self.vklin_g[40,40,:])
-        #pylab.show()
-       
         return E
 
     def calculate_spinpaired(self, e_g, n_g, v_g):
+        #from gpaw.xc_functional import XCFunctional
+        #my_xc = XCFunctional('LDA')
+        #my_xc.calculate_spinpaired(e_g, n_g, v_g)
+
         E = 2*self.calculate_one_spin(v_g, 0)
         e_g[:] = E / len(e_g) / self.finegd.dv
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
+        print "NOT HERE"
         E = 0.0
         E += self.calculate_one_spin(va_g,0)
         E += self.calculate_one_spin(vb_g,1)
