@@ -335,9 +335,27 @@ class Setup:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
         if xcfunc.xcname == 'KLI':
-            self.xc_correction = XCKLICorrection(xcfunc, rgd, nspins,
+            # For debugging purposes, pass a LDA XCCorrection
+            # to XCKLICorrection class
+            from gpaw.xc_functional import XCFunctional
+            xc = XCRadialGrid(XCFunctional('LDA'), rgd, nspins)
+            xc_lda_correction = XCCorrection(
+                xc,
+                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
+                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
+                rgd, [(j, l_j[j]) for j in range(nj)],
+                2 * lcut, e_xc)
+
+            # Create XCKLICorrection with necessary parameters
+            self.xc_correction = XCKLICorrection(xcfunc.xc, rgd.r_g, rgd.dr_g,
+                                                 beta, ng, nspins,
                                                  self.M_pp, self.X_p,
-                                                 self.ExxC)
+                                                 self.ExxC,
+                                                 [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
+                                                 [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                                                 [(j, l_j[j]) for j in range(nj)],
+                                                 xc_LDA_correction)
 
         else:
             xc = XCRadialGrid(xcfunc, rgd, nspins)
