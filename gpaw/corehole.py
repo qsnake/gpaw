@@ -32,9 +32,11 @@ def xas(paw):
     w_cn = num.dot(A_ci, num.transpose(P_ni))**2
     return eps_n, w_cn
 
-def plot_xas(eps_n, w_cn, fwhm=0.5, N=1000):
+
+def plot_xas(eps_n, w_cn, fwhm=0.5, linbroad=None, N=1000):
     # returns stick spectrum, e_stick and a_stick
     # and broadened spectrum, e, a
+    # linbroad = [0.5, 540, 550]
     eps_n_tmp = eps_n.copy()
     emin = min(eps_n_tmp) - 2 * fwhm
     emax = max(eps_n_tmp) + 2 * fwhm
@@ -45,16 +47,70 @@ def plot_xas(eps_n, w_cn, fwhm=0.5, N=1000):
     e_stick = eps_n_tmp.copy()
     a_stick = num.zeros(len(eps_n_tmp), num.Float)
 
-    alpha = 4*log(2) / fwhm**2
-    for n, eps in enumerate(eps_n_tmp):
-        x = -alpha * (e - eps)**2
-        x = num.clip(x, -100.0, 100.0)
-        w = sum(w_cn[:, n])
-        a += w * 2 * (alpha / pi)**0.5 * num.exp(x)
-        a_stick[n] = sum(w_cn[:, n])
-        #print n, a_stick[n], sum(w_cn[:, n])   
+    if linbroad == None:
+        #constant broadening fwhm
+        alpha = 4*log(2) / fwhm**2
+        for n, eps in enumerate(eps_n_tmp):
+            x = -alpha * (e - eps)**2
+            x = num.clip(x, -100.0, 100.0)
+            w = sum(w_cn[:, n])
+            a += w * (alpha / pi)**0.5 * num.exp(x)
+            a_stick[n] = sum(w_cn[:, n])
+    else:
+        # constant broadening fwhm until linbroad[1] and a constant broadening
+        # over linbroad[2] with fwhm2= linbroad[0]
+        fwhm2 = linbroad[0]
+        lin_e1 = linbroad[1]
+        lin_e2 = linbroad[2]
+        for n, eps in enumerate(eps_n_tmp):
+            if eps < lin_e1:
+                alpha = 4*log(2) / fwhm**2
+            elif eps <=  lin_e2:
+                fwhm_lin = fwhm + (eps - lin_e1) * (fwhm2 - fwhm) / (lin_e2 - lin_e1)
+                alpha = 4*log(2) / fwhm_lin**2
+            elif eps >= lin_e2:
+                alpha =  4*log(2) / fwhm2**2
+
+            x = -alpha * (e - eps)**2
+            x = num.clip(x, -100.0, 100.0)
+            w = sum(w_cn[:, n])
+            a += w * (alpha / pi)**0.5 * num.exp(x)
+            a_stick[n] = sum(w_cn[:, n])
         
     return e_stick, a_stick, e, a
+
+
+
+
+
+
+
+
+
+
+#def plot_xas(eps_n, w_cn, fwhm=0.5, N=1000):
+    # returns stick spectrum, e_stick and a_stick
+    # and broadened spectrum, e, a
+#    eps_n_tmp = eps_n.copy()
+#    emin = min(eps_n_tmp) - 2 * fwhm
+#    emax = max(eps_n_tmp) + 2 * fwhm
+
+#    e = emin + num.arange(N + 1) * ((emax - emin) / N)
+#    a = num.zeros(N + 1, num.Float)
+
+#    e_stick = eps_n_tmp.copy()
+#    a_stick = num.zeros(len(eps_n_tmp), num.Float)#
+
+#    alpha = 4*log(2) / fwhm**2
+#    for n, eps in enumerate(eps_n_tmp):
+#        x = -alpha * (e - eps)**2
+#        x = num.clip(x, -100.0, 100.0)
+#        w = sum(w_cn[:, n])
+#        a += w * (alpha / pi)**0.5 * num.exp(x)
+#        a_stick[n] = sum(w_cn[:, n])
+        #print n, a_stick[n], sum(w_cn[:, n])   
+        
+#    return e_stick, a_stick, e, a
 
 
 
@@ -116,15 +172,28 @@ class CoreHoleSetup:
         #self.core_hole_e 
         #core_hole_e_kin
          
-        rcut = max(rcut_j)
-        rcut2 = 2 * rcut
-        gcut = 1 + int(rcut * ng / (rcut + beta))
-        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
+        #rcut = max(rcut_j)
+        #rcut2 = 2 * rcut
+        #gcut = 1 + int(rcut * ng / (rcut + beta))
+        #gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
 
         g = num.arange(ng, typecode=num.Float)
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
+
+
+        # Find Fourier-filter cutoff radius:
+        g = ng - 1
+        while pt_jg[0][g] == 0.0:
+            g -= 1
+        gcutfilter = g + 1
+        self.rcutfilter = rcutfilter = r_g[gcutfilter]
+
+        rcutmax = max(rcut_j)
+        rcut2 = 2 * rcutmax
+        gcutmax = 1 + int(rcutmax * ng / (rcutmax + beta))
+        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
 
 
         # Find cutoff for core density:
@@ -138,6 +207,8 @@ class CoreHoleSetup:
                 g -= 1
             rcore = r_g[g]
 
+        self.rcore = rcore
+            
         ni = 0
         niAO = 0
         i = 0
@@ -175,7 +246,7 @@ class CoreHoleSetup:
 
         # Step function:
         stepf = sqrt(4 * pi) * num.ones(vbar_g.shape)
-        stepf[gcut:] = 0.0
+        stepf[gcutmax:] = 0.0
         self.stepf = Spline(0, rcut2, stepf, r_g=r_g, beta=beta)
 
         self.pt_j = []
@@ -350,7 +421,7 @@ class CoreHoleSetup:
             rgd, [(j, l_j[j]) for j in range(nj)],
             2 * lcut, e_xc)
 
-        self.rcut = rcut
+        #self.rcut = rcut
 
         if softgauss:
             rcutsoft = rcut2####### + 1.4
@@ -432,6 +503,9 @@ class CoreHoleSetup:
         self.ghat_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
                      for l in range(lmax + 1)]
 
+        self.rcutcomp = sqrt(10) * rcgauss
+        self.rcut_j = rcut_j
+
         # Construct atomic density matrix for the ground state (to be
         # used for testing):
         self.D_sp = num.zeros((1, np), num.Float)
@@ -483,15 +557,33 @@ class CoreHoleSetup:
         print >> out, '  name   :', names[self.Z]
         print >> out, '  Z      :', self.Z
         print >> out, '  file   :', self.filename
-        print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' % (self.rcut, self.lmax)
+        #print >> out, '  cutoffs: %4.2f Bohr, lmax=%d' % (self.rcut, self.lmax)
+        print >> out, ('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
+                       ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
+                                     self.rcore, self.lmax))
         print >> out, '  valence states:'
+        j = 0
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if n > 0:
                 f = '(%d)' % f
-                print >> out, '    %d%s%-4s %7.3f Ha' % (n, 'spdf'[l], f, eps)
+                print >> out, '    %d%s%-4s %7.3f Ha   %4.2f Bohr' % (
+                    n, 'spdf'[l], f, eps, self.rcut_j[j])
             else:
-                print >> out, '    *%s     %7.3f Ha' % ('spdf'[l], eps)
+                print >> out, '    *%s     %7.3f Ha   %4.2f Bohr' % (
+                    'spdf'[l], eps, self.rcut_j[j])
+            j += 1
+            
         print >> out
+        
+        #for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
+        #    if n > 0:
+        #        f = '(%d)' % f
+        #        print >> out, '    %d%s%-4s %7.3f Ha' % (n, 'spdf'[l], f, eps)
+        #    else:
+        #        print >> out, '    *%s     %7.3f Ha' % ('spdf'[l], eps)
+        #print >> out
+
+
 
     def calculate_rotations(self, R_slmm):
         nsym = len(R_slmm)
