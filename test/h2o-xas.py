@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+import os
 from math import pi, cos, sin
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
@@ -43,3 +43,4 @@ assert abs(de - 2.053) < 0.001
 assert abs(w[1] / w[0] - 2.19) < 0.01
 
 os.remove('h2o-xas.gpw')
+os.remove('O.1s0.5.LDA')
