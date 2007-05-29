@@ -479,7 +479,7 @@ class XCCorrection:
         return E - self.Exc0
 
     def two_phi_integrals(self,
-                          D_sp # density matrix in packed form
+                          D_sp # density matrix in packed(pack) form
                           ):
         """Evaluate the integral in the augmentation sphere.
 
@@ -490,7 +490,7 @@ class XCCorrection:
                       /       tphi_i1(r) tphi_i2(r) v_xc[tn](r) ]
                       a
 
-        The result is given in packed form.
+        The result is given in packed(pack2) form.
         """
         I_sp = num.zeros(D_sp.shape, num.Float)
         self.calculate_energy_and_derivatives(D_sp, I_sp)
@@ -499,7 +499,7 @@ class XCCorrection:
     def four_phi_integrals(self, D_sp, fxc):
         """Calculate four-phi integrals.
 
-        The density is given by the density matrix ``D_sp`` in packed
+        The density is given by the density matrix ``D_sp`` in packed(pack)
         form, and the resulting rank-four tensor is also returned in
         packed format. ``fxc`` is a radial object???
         """
