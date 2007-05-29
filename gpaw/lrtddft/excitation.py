@@ -24,6 +24,9 @@ class ExcitationList(list):
         if calculator is not None:
             self.out = calculator.out
             self.Ha = calculator.Ha
+            # initialize the nuclei if not ready
+            if not calculator.paw.nuclei[0].ready:
+                calculator.paw.set_positions()
         else:
             self.out = sys.stdout
 
