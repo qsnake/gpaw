@@ -16,11 +16,9 @@ import gpaw.mpi as mpi
 from gpaw.utilities.timing import Timer
 from gpaw.utilities.memory import estimate_memory
 from gpaw.setup import create_setup
+            
 
 from gpaw import dry_run
-
-MASTER = 0
-           
 
 def create_paw_object(out, a0, Ha,
                       pos_ac, Z_a, magmom_a, cell_c, bc_c,
@@ -113,7 +111,7 @@ def create_paw_object(out, a0, Ha,
         if (Z, type) not in setups:
             symbol = symbols[Z]
             setup = create_setup(symbol, xcfunc, lmax, nspins, softgauss, type)
-            if mpi.rank == MASTER: setup.print_info(out)
+            setup.print_info(out)
             setups[(Z, type)] = setup
 
     # Brillouin-zone stuff:
@@ -123,7 +121,7 @@ def create_paw_object(out, a0, Ha,
         weights_k = [1.0]
         ibzk_kc = num.zeros((1, 3), num.Float)
         nkpts = 1
-        if mpi.rank == MASTER: print >> out, 'Gamma-point calculation'
+        print >> out, 'Gamma-point calculation'
     else:
         typecode = num.Complex
         # Reduce the the k-points to those in the irreducible part of

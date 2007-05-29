@@ -28,7 +28,9 @@ import gpaw.io
 import gpaw.mpi as mpi
 from gpaw import parallel
 
+
 MASTER = 0
+
 
 class Calculator:
     """This is the ASE-calculator frontend for doing a PAW calculation.
@@ -102,29 +104,26 @@ class Calculator:
         self.Set(**kwargs)
         
         out = self.out
-        if mpi.rank == MASTER:
-            print >> out
-            print >> out, '  ___ ___ ___ _ _ _  '
-            print >> out, ' |   |   |_  | | | | '
-            print >> out, ' | | | | | . | | | | '
-            print >> out, ' |__ |  _|___|_____| ', version
-            print >> out, ' |___|_|             '
-            print >> out
+        print >> out
+        print >> out, '  ___ ___ ___ _ _ _  '
+        print >> out, ' |   |   |_  | | | | '
+        print >> out, ' | | | | | . | | | | '
+        print >> out, ' |__ |  _|___|_____| ', version
+        print >> out, ' |___|_|             '
+        print >> out
 
-            uname = os.uname()
-            print >> out, 'User:', os.getenv('USER') + '@' + uname[1]
-            print >> out, 'Date:', time.asctime()
-            print >> out, 'Arch:', uname[4]
+        uname = os.uname()
+        print >> out, 'User:', os.getenv('USER') + '@' + uname[1]
+        print >> out, 'Date:', time.asctime()
+        print >> out, 'Arch:', uname[4]
         print >> out, 'Pid: ', os.getpid()
-        if mpi.rank == MASTER:
-            print >> out, 'Dir: ', os.path.dirname(gpaw.__file__)
-            print >> out, 'ASE: ', os.path.dirname(ASE.__file__)
-            print >> out
+        print >> out, 'Dir: ', os.path.dirname(gpaw.__file__)
+        print >> out, 'ASE: ', os.path.dirname(ASE.__file__)
+        print >> out
 
         lengthunit = units.GetLengthUnit()
         energyunit = units.GetEnergyUnit()
-        if mpi.rank == MASTER:
-            print >> out, 'units:', lengthunit, 'and', energyunit
+        print >> out, 'units:', lengthunit, 'and', energyunit
         self.a0 = Convert(1, 'Bohr', lengthunit)
         self.Ha = Convert(1, 'Hartree', energyunit)
 
@@ -156,7 +155,7 @@ class Calculator:
           open a new file.
         """
         
-        if out is None:
+        if out is None or mpi.rank != MASTER:
             out = DownTheDrain()
         elif out == '-':
             out = sys.stdout
