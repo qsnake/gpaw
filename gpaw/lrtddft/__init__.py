@@ -4,6 +4,7 @@ import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 
+from ASE.Units import Convert
 from gpaw import debug
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
@@ -127,8 +128,14 @@ class LrTDDFT(ExcitationList):
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
         if mpi.rank == mpi.MASTER:
+            self.Ha = Convert(1., 'Hartree', 'eV')
+            
             if fh is None:
-                f = open(filename, 'r')
+                if filename.endswith('.gz'):
+                    import gzip
+                    f = gzip.open(filename)
+                else:
+                    f = open(filename, 'r')
             else:
                 f = fh
 
@@ -136,7 +143,7 @@ class LrTDDFT(ExcitationList):
             self.xc = f.readline().replace('\n','')
             self.eps = float(f.readline())
             self.kss = KSSingles(filehandle=f)
-            self.Om = OmegaMatrix(filehandle=f)
+            self.Om = OmegaMatrix(kss=self.kss,filehandle=f)
             self.Om.Kss(self.kss)
 
             # check if already diagonalized
@@ -146,11 +153,32 @@ class LrTDDFT(ExcitationList):
                 # go back to previous position
                 f.seek(p)
             else:
-                # load the eigenvalues/vectors
+                # load the eigenvalues
+                n = int(f.readline().split()[0])
+                for i in range(n):
+                    l = f.readline().split()
+                    E = float(l[0])
+                    me = [float(l[1]),float(l[2]),float(l[3])]
+                    print E,me
+                    self.append(LrTDDFTExcitation(e=E,m=me))
+                    
+                # load the eigenvectors
                 pass
 
             if fh is None:
                 f.close()
+
+    def SPA(self):
+        """Return the excitation list according to the
+        single pole approximation. See e.g.:
+        Grabo et al, Theochem 501 (2000) 353-367
+        """
+        spa = self.kss
+        for i in range(len(spa)):
+            E = sqrt(self.Om.full[i][i])
+            print "<SPA> E was",spa[i].GetEnergy()*27.211," and is ",E*27.211
+            spa[i].SetEnergy(sqrt(self.Om.full[i][i]))
+        return spa
 
     def __str__(self):
         string = ExcitationList.__str__(self)
@@ -159,10 +187,21 @@ class LrTDDFT(ExcitationList):
         return string
 
     def write(self, filename=None, fh=None):
-        """Write current state to a file."""
+        """Write current state to a file.
+
+        'filename' is the filename. If the filename ends in .gz,
+        the file is automatically saved in compressed gzip format.
+
+        'fh' is a filehandle. This can be used to write into already
+        opened files. 
+        """
         if mpi.rank == mpi.MASTER:
             if fh is None:
-                f = open(filename, 'w')
+                if filename.endswith('.gz'):
+                    import gzip
+                    f = gzip.open(filename,'wb')
+                else:
+                    f = open(filename, 'w')
             else:
                 f = fh
 
@@ -174,8 +213,6 @@ class LrTDDFT(ExcitationList):
             self.kss.write(fh=f)
             self.Om.write(fh=f)
 
-##            print "<write> ",self.istart,self.jend
-##            print "<write> 2:",self.kss.istart,self.kss.jend
             if len(self):
                 f.write('# Eigenvalues\n')
                 istart = self.istart
@@ -235,7 +272,7 @@ class LrTDDFTExcitation(Excitation):
         if e is not None:
             if m is None:
                 raise RuntimeError
-            self.enegy = e
+            self.energy = e
             self.me = m
             return
 

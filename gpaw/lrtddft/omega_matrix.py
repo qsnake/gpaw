@@ -29,6 +29,7 @@ class OmegaMatrix:
                  ):
         
         if filehandle is not None:
+            self.kss = kss
             self.read(fh=filehandle)
             if out is None: out = sys.stdout
             self.out = out
@@ -38,6 +39,8 @@ class OmegaMatrix:
         if out is None: out = calculator.out
         self.out = out
         self.fullkss = kss
+
+        if xc == 'RPA': xc=None # enable RPA as keyword
         if xc is not None:
             self.xc = XC3DGrid(xc,self.paw.finegd,
                                kss.npspins)
@@ -66,78 +69,87 @@ class OmegaMatrix:
 
     def get_full(self,rpa=None):
         if rpa is None:
+            self.paw.timer.start('Omega RPA')
             rpa = self.get_rpa()
+            self.paw.timer.stop()
         Om = rpa
+##        print ">> Om from rpa=\n",Om
 
         if self.xc is None:
             return Om
-        
-        xcf=self.xc.get_functional()
-        print '<OmegaMatrix::get_full> xc=',xcf.get_name()
-        print '<OmegaMatrix::get_full> derivative Level=',self.derivativeLevel
-        print '<OmegaMatrix::get_full> numscale=',self.numscale
 
+        self.paw.timer.start('Omega XC')
+        xcf=self.xc.get_functional()
         paw = self.paw
         fgd = paw.finegd    
-        kss=self.fullkss
+        kss = self.fullkss
         nij = len(kss)
 
         # initialize densities
+        # nt_sg is the smooth density on the fine grid with spin index
 
-        if kss.nvspins==2: # spin polarised ground state calc.
-            n_g = paw.density.nt_sg
-            v_g=n_g[0].copy()
+        if kss.nvspins==2:
+            # spin polarised ground state calc.
+            nt_sg = paw.density.nt_sg
         else:
+            # spin unpolarised ground state calc.
             if kss.npspins==2:
-                n_g[0] = .5*paw.density.nt_sg[0]
-                n_g[1] = n_g[0]
+                # construct spin polarised densities
+                nt_sg = num.array([.5*paw.density.nt_sg[0],
+                                 .5*paw.density.nt_sg[0]])
             else:
-                n_g = paw.density.nt_sg[0]
+                nt_sg = paw.density.nt_sg
+
+        # initialize vxc or fxc
 
         if self.derivativeLevel==0:
+            raise NotImplementedError
             if kss.npspins==2:
-                v_g=n_g[0].copy()
+                v_g=nt_sg[0].copy()
             else:
-                v_g=n_g.copy()
+                v_g=nt_sg.copy()
         elif self.derivativeLevel==1:
-            if kss.npspins==2:
-                vp_g=n_g.copy()
-                vm_g=n_g.copy()
-            else:
-                vp_g=n_g.copy()
-                vm_g=n_g.copy()
+            pass
         elif self.derivativeLevel==2:
-            print "Om(RPA)=\n",Om
+            raise NotImplementedError
+##            print "Om(RPA)=\n",Om
             if kss.npspins==2:
-                fxc=d2Excdnsdnt(n_g[0],n_g[1])
+                fxc=d2Excdnsdnt(nt_sg[0],nt_sg[1])
             else:
-                fxc=d2Excdn2(n_g)
+                fxc=d2Excdn2(nt_sg)
         else:
             raise ValueError('derivativeLevel can only be 0,1,2')
             
         ns=self.numscale
         xc=self.xc
+        print >> self.out, 'XC',nij,'transitions'
         for ij in range(nij):
+            print >> self.out,'XC kss['+'%d'%ij+']' 
 
             if self.derivativeLevel == 1:
                 # vxc is available
-                
+                # We use the numerical two point formula for calculating
+                # the integral over fxc*n_ij. The results are
+                # vvt_sg       smooth integral
+                # nucleus.I_sp atom based correction matrices (pack2)
+                #              stored on each nucleus
+                vp_sg=num.zeros(nt_sg.shape,nt_sg.typecode())
+                vm_sg=num.zeros(nt_sg.shape,nt_sg.typecode())
                 if kss.npspins==2: # spin polarised
-                    nv_g=n_g.copy()
-                    nv_g[kss[ij].pspin] += ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_g[0],vp_g[0],
-                                                nv_g[1],vp_g[1])
-                    nv_g=n_g.copy()
-                    nv_g[kss[ij].pspin] -= ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_g[0],vp_g[0],
-                                                nv_g[1],vp_g[1])
-                    vv_g = .5*(vp_g[kss[ij].pspin]-vm_g[kss[ij].pspin])/ns
+                    nv_sg=nt_sg.copy()
+                    nv_sg[kss[ij].pspin] += ns*kss[ij].GetFineGridPairDensity()
+                    xc.get_energy_and_potential(nv_sg[0],vp_sg[0],
+                                                nv_sg[1],vp_sg[1])
+                    nv_sg=nt_sg.copy()
+                    nv_sg[kss[ij].pspin] -= ns*kss[ij].GetFineGridPairDensity()
+                    xc.get_energy_and_potential(nv_sg[0],vm_sg[0],
+                                                nv_sg[1],vm_sg[1])
                 else: # spin unpolarised
-                    nv_g=n_g + ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_g,vp_g)
-                    nv_g=n_g - ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_g,vm_g)
-                    vv_g = .5*(vp_g-vm_g)/ns
+                    nv_g=nt_sg[0] + ns*kss[ij].GetFineGridPairDensity()
+                    xc.get_energy_and_potential(nv_g,vp_sg[0])
+                    nv_g=nt_sg[0] - ns*kss[ij].GetFineGridPairDensity()
+                    xc.get_energy_and_potential(nv_g,vm_sg[0])
+                vvt_sg = (.5/ns)*(vp_sg-vm_sg)
 
                 # initialize the correction matrices
                 for nucleus in self.paw.my_nuclei:
@@ -160,37 +172,35 @@ class OmegaMatrix:
                     nucleus.I_sp /= 2.*ns
                     
             for kq in range(ij,nij):
-                
                 weight=2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                kss[ij].GetWeight()*kss[kq].GetWeight())
-
 
                 if self.derivativeLevel == 0:
                     # only Exc is available
                     
                     if kss.npspins==2: # spin polarised
-                        nv_g = n_g.copy()
+                        nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] +=\
                                         kss[ij].GetFineGridPairDensity()
                         nv_g[kss[kq].pspin] +=\
                                         kss[kq].GetFineGridPairDensity()
                         Excpp = xc.get_energy_and_potential(\
                                         nv_g[0],v_g,nv_g[1],v_g)
-                        nv_g = n_g.copy()
+                        nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] +=\
                                         kss[ij].GetFineGridPairDensity()
                         nv_g[kss[kq].pspin] -= \
                                         kss[kq].GetFineGridPairDensity()
                         Excpm = xc.get_energy_and_potential(\
                                             nv_g[0],v_g,nv_g[1],v_g)
-                        nv_g = n_g.copy()
+                        nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] -=\
                                         kss[ij].GetFineGridPairDensity()
                         nv_g[kss[kq].pspin] +=\
                                         kss[kq].GetFineGridPairDensity()
                         Excmp = xc.get_energy_and_potential(\
                                             nv_g[0],v_g,nv_g[1],v_g)
-                        nv_g = n_g.copy()
+                        nv_g = nt_sg.copy()
                         nv_g[kss[ij].pspin] -= \
                                         kss[ij].GetFineGridPairDensity()
                         nv_g[kss[kq].pspin] -=\
@@ -198,16 +208,16 @@ class OmegaMatrix:
                         Excpp = xc.get_energy_and_potential(\
                                             nv_g[0],v_g,nv_g[1],v_g)
                     else: # spin unpolarised
-                        nv_g=n_g + ns*kss[ij].GetFineGridPairDensity()\
+                        nv_g=nt_sg + ns*kss[ij].GetFineGridPairDensity()\
                               + ns*kss[kq].GetFineGridPairDensity()
                         Excpp = xc.get_energy_and_potential(nv_g,v_g)
-                        nv_g=n_g + ns*kss[ij].GetFineGridPairDensity()\
+                        nv_g=nt_sg + ns*kss[ij].GetFineGridPairDensity()\
                               - ns*kss[kq].GetFineGridPairDensity()
                         Excpm = xc.get_energy_and_potential(nv_g,v_g)
-                        nv_g=n_g - ns*kss[ij].GetFineGridPairDensity()\
+                        nv_g=nt_sg - ns*kss[ij].GetFineGridPairDensity()\
                               + ns*kss[kq].GetFineGridPairDensity()
                         Excmp = xc.get_energy_and_potential(nv_g,v_g)
-                        nv_g=n_g - ns*kss[ij].GetFineGridPairDensity()\
+                        nv_g=nt_sg - ns*kss[ij].GetFineGridPairDensity()\
                               - ns*kss[kq].GetFineGridPairDensity()
                         Excmm = xc.get_energy_and_potential(nv_g,v_g)
 
@@ -218,7 +228,8 @@ class OmegaMatrix:
                     # vxc is available
                     
                     Om[ij,kq] += weight *\
-                        fgd.integrate(kss[kq].GetFineGridPairDensity()*vv_g)
+                        fgd.integrate(kss[kq].GetFineGridPairDensity()*
+                                      vvt_sg[kss[kq].pspin])
 
                     Exc = 0
                     for nucleus in self.paw.my_nuclei:
@@ -227,8 +238,8 @@ class OmegaMatrix:
                         Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
                         P_ii = num.outerproduct(Pk_i,Pq_i)
                         # we need the symmetric form, hence we can pack
-			# use pack2 as I_sp used pack ?????correct????
-                        P_p = pack2(P_ii,tolerance=1e30)
+			# use pack as I_sp used pack2
+                        P_p = pack(P_ii,tolerance=1e30)
                         Exc += num.dot(nucleus.I_sp[kss[kq].vspin],P_p)
                     Om[ij,kq] += weight * Exc
 
@@ -247,22 +258,23 @@ class OmegaMatrix:
                 if ij != kq:
                     Om[kq,ij] = Om[ij,kq]
 
-        print ">> Om=\n",Om
+##        print ">> full Om=\n",Om
+        self.paw.timer.stop()
         return Om
 
     def get_rpa(self):
         """calculate RPA part of the omega matrix"""
         paw = self.paw
-        gd = paw.finegd
-        poisson = PoissonSolver(gd, paw.hamiltonian.poisson_stencil)
+        finegd = paw.finegd
+        poisson = PoissonSolver(finegd, paw.hamiltonian.poisson_stencil)
         kss=self.fullkss
 
         # calculate omega matrix
         nij = len(kss)
         print >> self.out,'RPA',nij,'transitions'
         
-        phit_g = gd.new_array()
         Om = num.zeros((nij,nij),num.Float)
+
         for ij in range(nij):
             print >> self.out,'RPA kss['+'%d'%ij+']=', kss[ij]
 
@@ -270,7 +282,8 @@ class OmegaMatrix:
             rhot_g = kss[ij].GetPairDensityAndCompensationCharges()
 
             # integrate with 1/|r_1-r_2|
-            poisson.solve(phit_g,rhot_g,charge=None,maxcharge=1e-12)
+            phit_g = num.zeros(rhot_g.shape,rhot_g.typecode())
+            poisson.solve(phit_g,rhot_g,charge=None)
             
             for kq in range(ij,nij):
                 if kq != ij:
@@ -280,7 +293,7 @@ class OmegaMatrix:
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
                 
-                Om[ij,kq]= pre * gd.integrate(rhot_g*phit_g)
+                Om[ij,kq]= pre * finegd.integrate(rhot_g*phit_g)
 
                 # Add atomic corrections
                 Ia = 0
@@ -302,6 +315,7 @@ class OmegaMatrix:
                             for s in range(ni):
                                 for t in range(ni):
                                     st = packed_index(s, t, ni)
+                                    # do we need the 2 here ???????
                                     Ia += Pi_i[p]*Pj_i[r]*\
                                           2*C_pp[pr, st]*\
                                           Pk_i[s]*Pq_i[t]
