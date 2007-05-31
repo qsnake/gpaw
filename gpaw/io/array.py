@@ -89,8 +89,18 @@ def load_array(file, comments='#', delimiter=None, converters={},
         array.append(cols)
 
     # Convert to Numeric array if possible
+    array = num.array(array)
     try:
         array = num.array(array)
+
+        # If single row or single column, correct shape of array
+        shape = list(array.shape)
+        try:
+            shape.remove(1)
+            array.shape = tuple(shape)
+        except ValueError:
+            pass
     except TypeError:
         print 'Data matrix not square, unable to make Numeric array'
+    
     return array
