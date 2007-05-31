@@ -132,16 +132,27 @@ f.close()
 lines = open('/home/camp/jensj/.gpaw/cron/stat.dat').readlines()
 date, code, docstring, comment, c = zip(*[[float(x) for x in line.split()]
                                           for line in lines[1:]])
-#pylab.ioff()
-#pylab.figure(figsize=(4.0, 4.0 / (5**0.5 / 2 + 0.5)))
-lines = [pylab.plot(code, 'r-'),
-        pylab.plot(docstring, 'k-'),
-        pylab.plot(comment, 'g-'),
-        pylab.plot(c, 'y-'),
-        pylab.plot([0] * len(date), 'b-')]
-pylab.legend(lines, ['Python-code', 'Python-docstring',
-                            'Python-comment', 'C-code', 'Fortran-code'],
-             loc='best')
+fig = pylab.figure()
+ax = fig.add_subplot(111)
+pylab.plot(date, code, 'r-',
+           date, docstring, 'k-',
+           date, comment, 'g-',
+           date, c, 'y-',
+           date, [0] * len(date), 'b-')
+
+months = pylab.dates.MonthLocator()
+months3 = pylab.dates.MonthLocator(interval=3)
+month_year_fmt = pylab.dates.DateFormatter("%b '%y")
+
+ax.xaxis.set_major_locator(months3)
+ax.xaxis.set_minor_locator(months)
+ax.xaxis.set_major_formatter(month_year_fmt)
+labels = ax.get_xticklabels()
+pylab.setp(labels, rotation=30)
+ax.autoscale_view()
+pylab.axis('tight')
+pylab.legend(('Python-code', 'Python-docstring', 'Python-comment',
+              'C-code', 'Fortran-code'), loc='best')
 pylab.title('Number of lines')
 pylab.savefig('/home/camp/jensj/.gpaw/cron/stat.png')
 
