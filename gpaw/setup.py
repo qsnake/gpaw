@@ -170,7 +170,7 @@ class Setup:
         # Step function:
         stepf = sqrt(4 * pi) * num.ones(ng)
         stepf[gcutmax:] = 0.0
-        self.stepf = Spline(0, rcut2, stepf, r_g=r_g, beta=beta)
+        self.stepf = Spline(0, rcutfilter, stepf, r_g=r_g, beta=beta)
 
         self.pt_j = []
         for j in range(nj):
