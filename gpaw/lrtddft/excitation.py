@@ -3,10 +3,11 @@ from math import pi, sqrt
 import Numeric as num
 import _gpaw
 import gpaw.mpi as mpi
+MASTER = mpi.MASTER
 from gpaw import debug
 from gpaw.utilities import pack,packed_index
 
-from gpaw.io.plt import write_plt
+#from gpaw.io.plt import write_plt
 
 # ..............................................................
 # general excitation classes
@@ -28,7 +29,8 @@ class ExcitationList(list):
             if not calculator.paw.nuclei[0].ready:
                 calculator.paw.set_positions()
         else:
-            self.out = sys.stdout
+            if mpi.rank != MASTER: self.out = DownTheDrain()
+            else: self.out = sys.stdout
 
     def get_energies(self):
         """Get excitation energies in Hartrees"""

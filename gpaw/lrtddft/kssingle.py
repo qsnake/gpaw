@@ -273,23 +273,25 @@ class KSSingle(Excitation):
         rhot_g = self.GetFineGridPairDensity()
         
         # Determine the compensation charges for each nucleus
+##        print "ghat=",mpi.rank, self.paw.ghat_nuclei
         for nucleus in self.paw.ghat_nuclei:
-            # Generate density matrix
-            Pi_i = nucleus.P_uni[self.vspin,self.i]
-            Pj_i = nucleus.P_uni[self.vspin,self.j]
-            D_ii = num.outerproduct(Pi_i, Pj_i)
-            # allowed to pack as used in the scalar product with
-            # the symmetric array Delta_pL
-            D_p  = pack(D_ii, tolerance=1e30)
+##            print "nucleus=",mpi.rank,dir(nucleus) 
+            if nucleus.in_this_domain:
+                # Generate density matrix
+                Pi_i = nucleus.P_uni[self.vspin,self.i]
+                Pj_i = nucleus.P_uni[self.vspin,self.j]
+                D_ii = num.outerproduct(Pi_i, Pj_i)
+                # allowed to pack as used in the scalar product with
+                # the symmetric array Delta_pL
+                D_p  = pack(D_ii, tolerance=1e30)
                     
-            # Determine compensation charge coefficients:
-            Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-       
-            # Add compensation charges
-            if nucleus.ghat_L is not None:
-                nucleus.ghat_L.add(rhot_g, Q_L, communicate=True)
+                # Determine compensation charge coefficients:
+                Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
             else:
-                print "<GetFineGridPairDensity> no compensation charge for nucleus",nucleus
+                Q_L = None
+                
+            # Add compensation charges
+            nucleus.ghat_L.add(rhot_g, Q_L, communicate=True)
             
         return rhot_g 
 

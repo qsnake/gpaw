@@ -6,6 +6,7 @@ import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 
 from gpaw import debug
+import gpaw.mpi as mpi
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
@@ -31,7 +32,9 @@ class OmegaMatrix:
         if filehandle is not None:
             self.kss = kss
             self.read(fh=filehandle)
-            if out is None: out = sys.stdout
+            if out is None:
+                if mpi.rank != MASTER: out = DownTheDrain()
+                else: out = sys.stdout
             self.out = out
             return None
 
@@ -81,7 +84,8 @@ class OmegaMatrix:
         self.paw.timer.start('Omega XC')
         xcf=self.xc.get_functional()
         paw = self.paw
-        fgd = paw.finegd    
+        fgd = paw.finegd
+        comm = fgd.comm
         kss = self.fullkss
         nij = len(kss)
 
@@ -228,10 +232,10 @@ class OmegaMatrix:
                     # vxc is available
                     
                     Om[ij,kq] += weight *\
-                        fgd.integrate(kss[kq].GetFineGridPairDensity()*
-                                      vvt_sg[kss[kq].pspin])
+                         fgd.integrate(kss[kq].GetFineGridPairDensity()*
+                                       vvt_sg[kss[kq].pspin])
 
-                    Exc = 0
+                    Exc = 0.
                     for nucleus in self.paw.my_nuclei:
                         # create the modified density matrix
                         Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
@@ -241,7 +245,7 @@ class OmegaMatrix:
 			# use pack as I_sp used pack2
                         P_p = pack(P_ii,tolerance=1e30)
                         Exc += num.dot(nucleus.I_sp[kss[kq].vspin],P_p)
-                    Om[ij,kq] += weight * Exc
+                    Om[ij,kq] += weight * comm.sum(Exc)
 
                 elif self.derivativeLevel == 2:
                     # fxc is available
@@ -266,6 +270,7 @@ class OmegaMatrix:
         """calculate RPA part of the omega matrix"""
         paw = self.paw
         finegd = paw.finegd
+        comm = finegd.comm
         poisson = PoissonSolver(finegd, paw.hamiltonian.poisson_stencil)
         kss=self.fullkss
 
@@ -292,11 +297,10 @@ class OmegaMatrix:
 
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
-                
                 Om[ij,kq]= pre * finegd.integrate(rhot_g*phit_g)
 
                 # Add atomic corrections
-                Ia = 0
+                Ia = 0.
                 for nucleus in paw.my_nuclei:
                     ni = nucleus.get_number_of_partial_waves()
                     Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
@@ -319,13 +323,14 @@ class OmegaMatrix:
                                     Ia += Pi_i[p]*Pj_i[r]*\
                                           2*C_pp[pr, st]*\
                                           Pk_i[s]*Pq_i[t]
-                Om[ij,kq] += pre*Ia
+                Om[ij,kq] += pre * comm.sum(Ia)
                     
                 if ij == kq:
                     Om[ij,kq] += kss[ij].GetEnergy()**2
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
+##        print ">> rpa=\n",Om
         return Om
 
     def diagonalize(self, istart=None, jend=None):
