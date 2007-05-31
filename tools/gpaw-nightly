@@ -1,0 +1,226 @@
+#!/usr/bin/python
+
+# Emacs: treat this as -*- python -*-
+
+import os
+import sys
+import time
+import glob
+import trace
+import tempfile
+
+home = os.environ['HOME']
+
+os.environ['DISPLAY'] = ':0.0'
+import matplotlib
+matplotlib.use('Agg')
+import pylab
+
+import docutils
+
+
+def send_email(subject, filename='/dev/null'):
+    #assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+                     (subject, filename)) == 0
+
+
+def fail(msg, filename='/dev/null'):
+    send_email(msg, filename)
+    raise SystemExit
+
+
+tests = ''
+# For a quick test - uncomment this line:
+#tests = 'gradient.py hydrogen.py'
+#tests = 'PBE.py Gauss.py parallel-restart.py parmigrate.py wannier-hwire.py'
+#tests = 'parmigrate.py'
+
+dir = tempfile.mkdtemp(prefix='gpaw-')
+os.chdir(dir)
+
+# Checkout a fresh version and install:
+if os.system('svn export ' +
+             'https://svn.berlios.de/svnroot/repos/gridpaw/trunk gpaw') != 0:
+    fail('Checkout of gpaw failed!')
+if os.system('cvs -d :pserver:jensj@cvs.fysik.dtu.dk:/home/camp/CVSROOT ' +
+             'export -r HEAD CamposASE2') != 0:
+    fail('Checkout of ASE failed!')
+os.chdir('gpaw')
+if os.system('python setup.py install --home=%s' % dir) != 0:
+    fail('Installation failed!')
+
+os.system('mv ../CamposASE2/ASE ../lib/python')
+
+os.system('wget --no-check-certificate ' +
+          'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
+
+os.system('tar xvzf gpaw-setups-latest.tar.gz')
+
+setups = dir + '/gpaw/' + glob.glob('gpaw-setups-*/setups')[0]
+export = ('export PYTHONPATH=/scratch/jensj/lib/python:%s/lib/python:%s/lib/python; ' % (dir, home) +
+          'export PATH=%s/bin:$PATH; ' +
+          'export GPAW_SETUP_PATH=%s; ' % setups)
+
+# Run test-suite:
+os.chdir('test')
+##if os.system(export + 'python test.py -p %s >& test.out' % tests) != 0:
+if os.system(export + 'python test.py %s >& test.out' % tests) != 0:
+    fail('Testsuite failed!')
+lines = open('test.out').readlines()
+ok = ('All tests passed!\n' in lines)
+
+if not ok:
+    # Send mail:
+    subject = [line for line in lines if 'failed' in line][-1]
+    send_email(subject, 'test.out')
+    
+out = open('/home/camp/jensj/.gpaw/cron/test-results.txt', 'w')
+print >> out, """\
+.. contents::
+
+Test results from last night
+============================
+
+::
+
+"""
+for line in lines:
+    print >> out, '  ', line,
+print >> out
+
+# PyLint:
+os.chdir('../../lib/python')
+if os.system(export + '/scratch/jensj/bin/pylint -f html gpaw; ' +
+             'cp pylint_global.html /home/camp/jensj/.gpaw/cron') != 0:
+    fail('PyLint failed!')
+
+# Generate tar-file:
+os.chdir('../../gpaw')
+if False:#ok:
+    assert os.system('python setup.py sdist;' +
+                     'cp dist/*.tar.gz /home/camp/jensj/.gpaw/cron') == 0
+
+# Count number of lines:
+f = open('/home/camp/jensj/.gpaw/cron/pylint_global.html')
+code = 0
+docstring = 0
+comment = 0
+while True:
+    line = f.readline()
+    if line == '<td>code</td>\n':
+        code += int(f.readline()[4:].split('<')[0])
+    elif line == '<td>docstring</td>\n':
+        docstring += int(f.readline()[4:].split('<')[0])
+    elif line == '<td>comment</td>\n':
+        comment += int(f.readline()[4:].split('<')[0])
+        break
+    
+c = 0
+for name in (glob.glob('c/*.c') +
+             glob.glob('c/*.h') +
+             glob.glob('c/bmgs/*.c') +
+             glob.glob('c/bmgs/*.h')):
+        c += len(open(name).readlines())
+
+# Update the stat.dat file:
+f = open('/home/camp/jensj/.gpaw/cron/stat.dat', 'a')
+print >> f, pylab.epoch2num(time.time()), code, docstring, comment, c
+f.close()
+
+# Construct the stat.png file:
+lines = open('/home/camp/jensj/.gpaw/cron/stat.dat').readlines()
+date, code, docstring, comment, c = zip(*[[float(x) for x in line.split()]
+                                          for line in lines[1:]])
+#pylab.ioff()
+#pylab.figure(figsize=(4.0, 4.0 / (5**0.5 / 2 + 0.5)))
+lines = [pylab.plot(code, 'r-'),
+        pylab.plot(docstring, 'k-'),
+        pylab.plot(comment, 'g-'),
+        pylab.plot(c, 'y-'),
+        pylab.plot([0] * len(date), 'b-')]
+pylab.legend(lines, ['Python-code', 'Python-docstring',
+                            'Python-comment', 'C-code', 'Fortran-code'],
+             loc='best')
+pylab.title('Number of lines')
+pylab.savefig('/home/camp/jensj/.gpaw/cron/stat.png')
+
+f = open('/home/camp/jensj/.gpaw/cron/stat.txt', 'w')
+print >> f, """\
+
+.. image:: stat.png
+
+
+"""
+
+# Coverage test:
+os.chdir('test')
+day = time.localtime()[6]
+if ok and day == 6:  # only Sunday
+    if os.system(export +
+                 'rm /home/camp/jensj/.gpaw/cron/*.cover; ' +
+                 'python %s/trace.py' % os.path.dirname(trace.__file__) +
+                 ' --count --coverdir coverage --missing' +
+                 ' --ignore-dir /usr:%s test.py %s' % (home, tests)) != 0:
+        fail('Coverage failed!')
+    
+    filenames = glob.glob('coverage/gpaw.*.cover')
+else:
+    filenames = glob.glob('/home/camp/jensj/.gpaw/cron/*.cover')
+    
+names = []
+for filename in filenames:
+    missing = 0
+    for line in open(filename):
+        if line.startswith('>>>>>>'):
+            missing += 1
+    if missing > 0:
+        if filename.startswith('coverage/gpaw.'):
+            name = filename[14:-6]
+            if os.system('cp %s /home/camp/jensj/.gpaw/cron/%s.cover' %
+                         (filename, name)) != 0:
+                fail('????')
+        else:
+            name = filename[28:-6]
+        names.append((-missing, name))
+
+print >> out, """\
+
+Coverage
+========
+
+"""
+if len(names) > 0:
+    m = 3 + max([len(name) for n, name in names])
+    sep = ' ' + m * '=' + '  ====='
+    print >> out, 'Test-suite does not cover all of the code!'
+    print >> out, 'Number of missing lines:'
+    print >> out
+    print >> out, sep
+    print >> out, ' %-*s  Lines' % (m, 'Module')
+    print >> out, sep
+    names.sort()
+    for n, name in names:
+        print >> out, ' %-*s  %d' % (m, '`' + name + '`_', -n)
+    print >> out, sep
+    print >> out
+    url = 'http://wiki.fysik.dtu.dk/stuff'
+    for n, name in names:
+        print >> out, '.. _%s: %s/%s.cover' % (name, url, name)
+else:
+    print >> out, 'Congratulations - the tests covers all of the code!'
+print >> out
+print >> out, '(coverage-test is performed Sunday nights only)'
+
+os.system(export + 'cd ..; epydoc --docformat restructuredtext ' +
+          '--name GPAW --url http://wiki.fysik.dtu.dk/gpaw ' +
+          '--show-imports --no-frames -v gpaw ' +
+          '>& warnings; ' +
+          'rm -rf /home/camp/jensj/.gpaw/cron/html; ' +
+          'cp -rp html /home/camp/jensj/.gpaw/cron')
+
+if ' Warning:' in open('../warnings').read():
+    send_email('Warning(s) from epydoc!', '../warnings')
+
+os.system('cd; rm -r ' + dir)
+
