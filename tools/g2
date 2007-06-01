@@ -53,8 +53,6 @@ parser.add_option('--read-pickled-data-from-file',
 
 opt, args = parser.parse_args()
 
-import sys
-sys.path.insert(0, '/home/camp/jensj/g2')
 from gpaw.gui.atoms import Atoms
 atoms = Atoms()
 
@@ -62,7 +60,8 @@ if opt.aneb:
     opt.image_number = '-1'
 
 if opt.read_pickled_data_from_file is not None:
-    import sys, pickle
+    import sys
+    import pickle
     data = pickle.load(open(opt.read_pickled_data_from_file))
     atoms.pckl(data)
 else:    

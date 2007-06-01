@@ -184,17 +184,22 @@ def read_gpaw_text(lines):
             e = None
         else:
             e = float(lines[i + 8].split()[-1])
-        if i + 14 < len(lines) and lines[i + 14].startswith('forces'):
+        if i + 15 < len(lines) and lines[i + 15].startswith('forces'):
             f = []
-            for i in range(i + 14, i + 14 + len(atoms)):
+            for i in range(i + 15, i + 15 + len(atoms)):
                 x, y, z = lines[i].split('[')[1][:-2].split()
                 f.append((float(x), float(y), float(z)))
         else:
             f = None
+
+        if len(images) > 0 and e is None:
+            break
+
         images.append(atoms)
         energies.append(e)
         forces.append(f)
         lines = lines[i + 14:]
+        
     return images, energies, forces, {}
 
 def read_dacapo_text(lines):
