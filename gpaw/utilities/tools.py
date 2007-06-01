@@ -15,6 +15,22 @@ def lm_to_L(l,m):
     """Convert (l, m) index to L index."""
     return l**2 + l + m
 
+def sort_xyz(loa, axes=[0, 1, 2]):
+    """Sort ListOfAtoms according to cartesian coordinates.
+
+    'axes' is a list of axis indices according to which the atoms should
+    be sorted.
+    """
+    def compare_atoms(a, b):
+        for axis in axes:
+            x = cmp(a.GetCartesianPosition()[axis],
+                    b.GetCartesianPosition()[axis])
+            if x != 0:
+                return x
+        return x
+    
+    loa.sort(compare_atoms)
+
 def core_states(symbol):
     """Method returning the number of core states for given element."""
     from gpaw.atom.configurations import configurations
