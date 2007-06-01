@@ -12,7 +12,10 @@ from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.utilities import pack,pack2,packed_index
 from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XC3DGrid, XCFunctional
+
+import time
 
 """This module defines a Omega Matrix class."""
 
@@ -130,6 +133,9 @@ class OmegaMatrix:
         for ij in range(nij):
             print >> self.out,'XC kss['+'%d'%ij+']' 
 
+            timer = Timer()
+            timer.start('init')
+                      
             if self.derivativeLevel == 1:
                 # vxc is available
                 # We use the numerical two point formula for calculating
@@ -175,6 +181,10 @@ class OmegaMatrix:
                                  two_phi_integrals(D_sp)
                     nucleus.I_sp /= 2.*ns
                     
+            timer.stop()
+            t0 = timer.gettime('init')
+            timer.start(ij)
+            
             for kq in range(ij,nij):
                 weight=2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                kss[ij].GetWeight()*kss[kq].GetWeight())
@@ -262,12 +272,20 @@ class OmegaMatrix:
                 if ij != kq:
                     Om[kq,ij] = Om[ij,kq]
 
+            timer.stop()
+            if ij < (nij-1):
+                t = timer.gettime(ij) # time for nij-ij calculations
+                t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
+                print >> self.out,'XC estimated time left',\
+                      self.timestring(t0*(nij-ij-1)+t)
+
 ##        print ">> full Om=\n",Om
         self.paw.timer.stop()
         return Om
 
     def get_rpa(self):
         """calculate RPA part of the omega matrix"""
+
         paw = self.paw
         finegd = paw.finegd
         comm = finegd.comm
@@ -283,12 +301,19 @@ class OmegaMatrix:
         for ij in range(nij):
             print >> self.out,'RPA kss['+'%d'%ij+']=', kss[ij]
 
+            timer = Timer()
+            timer.start('init')
+                      
             # smooth density including compensation charges
             rhot_g = kss[ij].GetPairDensityAndCompensationCharges()
 
             # integrate with 1/|r_1-r_2|
             phit_g = num.zeros(rhot_g.shape,rhot_g.typecode())
             poisson.solve(phit_g,rhot_g,charge=None)
+
+            timer.stop()
+            t0 = timer.gettime('init')
+            timer.start(ij)
             
             for kq in range(ij,nij):
                 if kq != ij:
@@ -330,8 +355,33 @@ class OmegaMatrix:
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
+            timer.stop()
+            if ij < (nij-1):
+                t = timer.gettime(ij) # time for nij-ij calculations
+                t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
+                print >> self.out,'RPA estimated time left',\
+                      self.timestring(t0*(nij-ij-1)+t)
+
 ##        print ">> rpa=\n",Om
         return Om
+
+    def timestring(self,t):
+        ti = int(t+.5)
+        td = int(ti/86400)
+        st=''
+        if td>0:
+            st+='%d'%td+'d'
+            ti-=td*86400
+        th = int(ti/3600)
+        if th>0:
+            st+='%d'%th+'h'
+            ti-=th*3600
+        tm = int(ti/60)
+        if tm>0:
+            st+='%d'%tm+'m'
+            ti-=tm*60
+        st+='%d'%ti+'s'
+        return st
 
     def diagonalize(self, istart=None, jend=None):
         self.istart = istart
