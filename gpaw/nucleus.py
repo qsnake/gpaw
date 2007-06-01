@@ -179,10 +179,12 @@ class Nucleus:
             
         # Potential:
         vhat_l = self.setup.vhat_l
-        vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc)
-
-        # ghat and vhat have the same size:
-        assert (ghat_L is None) == (vhat_L is None)
+        if vhat_l is None:
+            vhat_L = None
+        else:
+            vhat_L = create(vhat_l, finegd, spos_c, lfbc=lfbc)
+            # ghat and vhat have the same size:
+            assert (ghat_L is None) == (vhat_L is None)
 
         # Update ghat_nuclei:
         if ghat_L is not None and self.ghat_L is None:
@@ -330,7 +332,8 @@ class Nucleus:
         self.ghat_L.add(nt2, self.Q_L)
         
     def add_hat_potential(self, vt2):
-        self.vhat_L.add(vt2, self.Q_L)
+        if self.vhat_L is not None:
+            self.vhat_L.add(vt2, self.Q_L)
 
     def add_localized_potential(self, vt2):
         if self.vbar is not None:
@@ -365,7 +368,8 @@ class Nucleus:
                 W_L += num.dot(neighbor.v_LL, neighbor.nucleus().Q_L)
             U = 0.5 * num.dot(self.Q_L, W_L)
 
-            self.vhat_L.integrate(nt_g, W_L)
+            if self.vhat_L is not None:
+                self.vhat_L.integrate(nt_g, W_L)
             self.ghat_L.integrate(vHt_g, W_L)
 
             D_p = num.sum(self.D_sp)
@@ -390,7 +394,8 @@ class Nucleus:
             return Ekin, Epot, Ebar, Exc
         
         else:
-            self.vhat_L.integrate(nt_g, None)
+            if self.vhat_L is not None:
+                self.vhat_L.integrate(nt_g, None)
             self.ghat_L.integrate(vHt_g, None)
             return 0.0, 0.0, 0.0, 0.0
 
@@ -500,7 +505,8 @@ class Nucleus:
             # ???? Optimization: do the sum over L before the sum over g and G.
             F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
             self.ghat_L.derivative(vHt_g, F_Lc)
-            self.vhat_L.derivative(nt_g, F_Lc) 
+            if self.vhat_L is not None:
+                self.vhat_L.derivative(nt_g, F_Lc) 
             
             Q_L = self.Q_L
             F = self.F_c
@@ -522,7 +528,8 @@ class Nucleus:
         else:
             if self.ghat_L is not None:
                 self.ghat_L.derivative(vHt_g, None)
-                self.vhat_L.derivative(nt_g, None)
+                if self.vhat_L is not None:
+                    self.vhat_L.derivative(nt_g, None)
                 
             if self.nct is None:
                 self.comm.sum(num.zeros(3, num.Float), self.rank)

@@ -18,7 +18,8 @@ from gpaw.xc_functional import XCRadialGrid
 from gpaw.kli import XCKLICorrection
 
 
-def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=True, type='paw'):
+def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
+                 type='paw'):
     if type == 'ae':
         from gpaw.ae import AllElectronSetup
         return AllElectronSetup(symbol, xcfunc, nspins)
@@ -51,12 +52,14 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=True, type='paw'):
 
 
 class Setup:
-    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=True,
+    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
                  type='paw'):
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = softgauss
 
+        assert not softgauss
+        
         self.type = type
         if type != 'paw':
             symbol += '.' + type
@@ -438,8 +441,9 @@ class Setup:
 
         else:
             alpha2 = alpha
-            self.vhat_l = [Spline(l, rcutsoft, 0 * r)
-                             for l in range(lmax + 1)]
+            self.vhat_l = None
+            #self.vhat_l = [Spline(l, rcutsoft, 0 * r)
+            #                 for l in range(lmax + 1)]
 
         self.alpha2 = alpha2
 

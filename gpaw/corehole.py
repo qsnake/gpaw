@@ -115,12 +115,14 @@ def plot_xas(eps_n, w_cn, fwhm=0.5, linbroad=None, N=1000):
 
 
 class CoreHoleSetup:
-    def __init__(self, symbol, xcfunc, nspins=1, softgauss=True, lmax=0,
+    def __init__(self, symbol, xcfunc, nspins=1, softgauss=False, lmax=0,
                  fhole=0.5, type='paw'):
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = softgauss
 
+        assert not softgauss
+        
         self.type = type
         if type != 'paw':
             symbol += '.' + type
@@ -491,8 +493,7 @@ class CoreHoleSetup:
 
         else:
             alpha2 = alpha
-            self.vhat_l = [Spline(l, rcutsoft, 0 * r)
-                             for l in range(lmax + 1)]
+            self.vhat_l = None
 
         self.alpha2 = alpha2
 

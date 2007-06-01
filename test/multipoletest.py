@@ -14,7 +14,7 @@ gd = GridDescriptor(domain, (n, n, n))
 c_LL = num.identity(9, num.Float)
 a_Lg = gd.new_array(9)
 xcfunc = XCFunctional('LDA')
-for soft in [False, True]:
+for soft in [False]:
     s = Setup('Cu', xcfunc, lmax=2, softgauss=soft)
     ghat_l = s.ghat_l
     ghat_Lg = create_localized_functions(ghat_l, gd, (0.54321, 0.5432, 0.543))
