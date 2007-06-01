@@ -45,10 +45,11 @@ mpi_define_macros = []
 
 packages = ['gpaw',
             'gpaw.io',
+            'gpaw.gui',
             'gpaw.mpi',
             'gpaw.atom',
-            'gpaw.testing',
             'gpaw.lrtddft',
+            'gpaw.testing',
             'gpaw.utilities',
             'gpaw.eigensolvers']
 
@@ -144,7 +145,8 @@ extension = Extension('_gpaw',
                       runtime_library_dirs=runtime_library_dirs,
                       extra_objects=extra_objects)
 
-scripts = glob(join('tools', 'gpa*[a-z]')) 
+scripts = [join('tools', script)
+           for script in ('gpaw-setup', 'gpaw', 'g2')]
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,
