@@ -172,9 +172,9 @@ class Nucleus:
         ghat_l = self.setup.ghat_l
         ghat_L = create(ghat_l, finegd, spos_c, lfbc=lfbc)
 
-        #Step function
+        # Step function:
         stepf = self.setup.stepf
-        stepf = create([stepf], finegd, spos_c, lfbc=lfbc)
+        stepf = create([stepf], finegd, spos_c, lfbc=lfbc, forces=False)
         self.stepf = stepf
             
         # Potential:
