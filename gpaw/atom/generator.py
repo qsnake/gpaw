@@ -350,9 +350,9 @@ class Generator(AllElectron):
                 coefs.append(a)
                 if nodeless:
                     if not num.alltrue(s[1:gc] > 0.0):
-                        print ('Error: The %d%s pseudo wave has a node!' %
-                               (n_ln[l][0], 'spdf'[l]))
-                        raise SystemExit
+                        raise RuntimeError(
+                            'Error: The %d%s pseudo wave has a node!' %
+                            (n_ln[l][0], 'spdf'[l]))
                     # Only the first state for each l must be nodeless:
                     nodeless = False
 
@@ -748,7 +748,7 @@ class Generator(AllElectron):
                        self.coreholename  + '.' + self.xcname , 'w')
 
         if self.ghost:
-            raise SystemExit
+            raise RuntimeError('Ghost!')
 
         print >> xml, '<?xml version="1.0"?>'
         print >> xml, '<paw_setup version="0.6">'

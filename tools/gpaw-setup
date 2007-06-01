@@ -106,6 +106,9 @@ for symbol in atoms:
     if opt.zero_potential is not None:
         vbar = opt.zero_potential.split(',')
         p['vbar'] = (vbar[0], float(vbar[1]))
-        
-    g.run(logderiv=opt.logarithmic_derivatives, exx=opt.exact_exchange, **p)
- 
+
+    try:
+        g.run(logderiv=opt.logarithmic_derivatives,
+              exx=opt.exact_exchange, **p)
+    except RuntimeError, m:
+        print m
