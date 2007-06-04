@@ -42,12 +42,12 @@ class ZeroKelvin(Dummy):
 
     def calculate(self, kpts):
         if self.nspins == 1:
-            b = self.ne // 2
+            b = int( self.ne // 2 )
             f_n = kpts[0].f_n
             f_n[:b] = 2.0
             f_n[b:] = 0.0
             if 2 * b < self.ne:
-                f_n[b] = 1.0
+                f_n[b] = self.ne - 2*b
             magmom = 0.0
         elif self.fixmom:
             M = int(round(self.M))
