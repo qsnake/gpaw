@@ -183,7 +183,9 @@ def read_gpaw_text(lines):
         except ValueError:
             e = None
         else:
-            e = float(lines[i + 8].split()[-1])
+            line = lines[i + 9]
+            assert line.startswith('zero Kelvin:')
+            e = float(line.split()[-1])
         if i + 15 < len(lines) and lines[i + 15].startswith('forces'):
             f = []
             for i in range(i + 15, i + 15 + len(atoms)):
@@ -198,7 +200,7 @@ def read_gpaw_text(lines):
         images.append(atoms)
         energies.append(e)
         forces.append(f)
-        lines = lines[i + 14:]
+        lines = lines[i:]
         
     return images, energies, forces, {}
 

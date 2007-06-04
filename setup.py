@@ -51,7 +51,8 @@ packages = ['gpaw',
             'gpaw.lrtddft',
             'gpaw.testing',
             'gpaw.utilities',
-            'gpaw.eigensolvers']
+            'gpaw.eigensolvers',
+            'gpaw.gui.languages']
 
 force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:
