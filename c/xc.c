@@ -4,6 +4,21 @@
 #include "xc.h"
 #include "extensions.h"
 
+//
+//          __  2
+// a2    = |\/n|
+//
+//         dE
+// dedrs = ---
+//         dr
+//           s
+//
+//            dE
+// deda2 = ---------
+//            __  2
+//         d(|\/n| )
+//
+
 double pbe_exchange(const xc_parameters* par,
 		    double n, double rs, double a2,
 		    double* dedrs, double* deda2);
