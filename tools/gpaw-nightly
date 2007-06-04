@@ -132,13 +132,29 @@ f.close()
 lines = open('/home/camp/jensj/.gpaw/cron/stat.dat').readlines()
 date, code, docstring, comment, c = zip(*[[float(x) for x in line.split()]
                                           for line in lines[1:]])
+date = pylab.array(date)
+code = pylab.array(code)
+docstring = pylab.array(docstring)
+comment = pylab.array(comment)
+c = pylab.array(c)
+
+def polygon(x, y1, y2, *args, **kwargs):
+    x = pylab.concatenate((x, x[::-1]))
+    y = pylab.concatenate((y1, y2[::-1]))
+    pylab.fill(x, y, *args, **kwargs)
+
 fig = pylab.figure()
 ax = fig.add_subplot(111)
-pylab.plot(date, code, 'r-',
-           date, docstring, 'k-',
-           date, comment, 'g-',
-           date, c, 'y-',
-           date, [0] * len(date), 'b-')
+polygon(date, [0] * len(date), [0] * len(date),
+        facecolor='b', label='Fortran-code')
+polygon(date, [0] * len(date), comment,
+        facecolor='y', label='Python-comment')
+polygon(date, comment, comment + docstring,
+        facecolor='m', label='Python-docstring')
+polygon(date, comment + docstring, comment + docstring + code,
+        facecolor='g', label='Python-code')
+polygon(date, comment + docstring + code, comment + docstring + code +c,
+        facecolor='r', label='C-code')
 
 months = pylab.dates.MonthLocator()
 months3 = pylab.dates.MonthLocator(interval=3)
@@ -149,10 +165,8 @@ ax.xaxis.set_minor_locator(months)
 ax.xaxis.set_major_formatter(month_year_fmt)
 labels = ax.get_xticklabels()
 pylab.setp(labels, rotation=30)
-ax.autoscale_view()
 pylab.axis('tight')
-pylab.legend(('Python-code', 'Python-docstring', 'Python-comment',
-              'C-code', 'Fortran-code'), loc='best')
+pylab.legend(loc='upper left')
 pylab.title('Number of lines')
 pylab.savefig('/home/camp/jensj/.gpaw/cron/stat.png')
 
