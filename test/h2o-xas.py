@@ -41,7 +41,7 @@ print de, de2
 print e, w
 
 assert de == de2
-assert abs(de - 2.054) < 0.001
+assert abs(de - 2.052) < 0.001
 assert abs(w[1] / w[0] - 2.19) < 0.01
 
 os.remove('h2o-xas.gpw')
