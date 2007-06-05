@@ -60,14 +60,16 @@ class GLLBFunctional:
         return 0 
             
     def calculate_spinpaired(self, e_g, n_g, v_g):
-        Raise NotImplemented
-        self.slater_part.calculate_spinpaired(energy_density, n_g, dummy_potential)
-        v_g += 2*energy_density / (n_g + 1e-20)
-        e_g[:] = 0.0
+        pass
+        #Raise NotImplemented
+        #self.slater_part.calculate_spinpaired(energy_density, n_g, dummy_potential)
+        #v_g += 2*energy_density / (n_g + 1e-20)
+        #e_g[:] = 0.0
         
     
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
-        Raise NotImplemented
+        pass
+        #Raise NotImplemented
         #self.slater_part.calculate_spinpaired(energy_density, na_g / 2, dummy_potential)
         #va_g += 2*energy_density / (na_g + 1e-20)
         #self.slater_part.calculate_spinpaired(energy_density, nb_g / 2, dummy_potential)
