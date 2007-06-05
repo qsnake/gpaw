@@ -17,9 +17,8 @@ from gpaw.atom.configurations import configurations
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree
+from gpaw.exx import atomic_exact_exchange
 
-# KLI functional is handled separately at least for now
-from gpaw.kli import KLIFunctionalOLD as KLIFunctional
 # fine-structure constant
 alpha = 1 / 137.036
 
@@ -157,12 +156,7 @@ class AllElectron:
         # Electron density:
         self.n = num.zeros(N, num.Float)
 
-        do_kli = (self.xcname == 'KLI')
-
-        if not do_kli:
-            self.xc = XCRadialGrid(XCFunctional(self.xcname), self.rgd)
-        else:
-            self.xc = KLIFunctional()
+        self.xc = XCRadialGrid(XCFunctional(self.xcname), self.rgd)
 
         n_j = self.n_j
         l_j = self.l_j
@@ -176,7 +170,7 @@ class AllElectron:
         vr = self.vr  # effective potential multiplied by r
 
         vHr = num.zeros(self.N, num.Float)
-        vXC = num.zeros(self.N, num.Float)
+        self.vXC = num.zeros(self.N, num.Float)
 
         try:
             f = open(self.symbol + '.restart', 'r')
@@ -184,12 +178,13 @@ class AllElectron:
             self.intialize_wave_functions()
             n[:] = self.calculate_density()
         else:
-            if not do_kli:
+            if not self.xc.is_non_local():
                 print 'Using old density for initial guess.'
                 n[:] = pickle.load(f)
                 n *= Z / (num.dot(n * r**2, dr) * 4 * pi)
             else:
-                # Do not start from initial guess when doing KLI!
+                # Do not start from initial guess when doing
+                # non local XC!
                 # This is because we need wavefunctions as well
                 # on the first iteration.
                 self.intialize_wave_functions()
@@ -207,20 +202,19 @@ class AllElectron:
             vHr -= Z
 
             # calculated exchange correlation potential and energy
-            vXC[:] = 0.0
+            self.vXC[:] = 0.0
 
-            if not do_kli:
+            if self.xc.is_non_local():
+                Exc = self.xc.get_non_local_energy_and_potential(self.u_j, self.f_j, self.e_j, self.l_j, self.vXC)
+            else:
                 tau = None
                 if self.xc.xcfunc.mgga:
                     tau = self.calculate_kinetic_energy_density()
-                Exc = self.xc.get_energy_and_potential(n, vXC, taua_g=tau )
-            else:
-                Exc = self.xc.calculate_1d_kli_potential(r, dr, self.beta, self.N,
-                                                   self.u_j, self.f_j, self.l_j, vXC)
+                Exc = self.xc.get_energy_and_potential(n, self.vXC, taua_g=tau )
 
             # calculate new total Kohn-Sham effective potential and
             # admix with old version
-            vr[:] = vHr + vXC * r
+            vr[:] = vHr + self.vXC * r
             if niter > 0:
                 vr[:] = 0.4 * vr + 0.6 * vrold
             vrold = vr.copy()
@@ -263,6 +257,10 @@ class AllElectron:
 ##         self.write(tau-tau2,'tau12')
 ##         print "Ekin(tau2)=",num.dot(tau2 *r**2 , dr) * 4*pi
 
+        # When iterations are over calculate the correct exchange energy
+        if self.xc.is_non_local():
+            Exc = atomic_exact_exchange(self)
+
         print
         print 'Converged in %d iteration%s.' % (niter, 's'[:niter != 1])
 
@@ -273,6 +271,7 @@ class AllElectron:
         Ekin = -4 * pi * num.dot(n * vr * r, dr)
         for f, e in zip(f_j, e_j):
             Ekin += f * e
+
 
         print
         print 'Energy contributions:'
@@ -314,7 +313,7 @@ class AllElectron:
         self.write(n, 'n')
         self.write(vr, 'vr')
         self.write(vHr, 'vHr')
-        self.write(vXC, 'vXC')
+        self.write(self.vXC, 'vXC')
         self.write(tau, 'tau')
         
         self.Ekin = Ekin
