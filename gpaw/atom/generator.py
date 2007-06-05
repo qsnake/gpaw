@@ -411,7 +411,10 @@ class Generator(AllElectron):
         vHt[0] = vHt[1]
 
         vXCt = num.zeros(N, num.Float)
-        Exct = self.xc.get_energy_and_potential(nt, vXCt)
+        if not self.xc.is_non_local():
+            Exct = self.xc.get_energy_and_potential(nt, vXCt)
+        else:
+            Exct = self.xc.get_non_local_energy_and_potential(self.u_j, self.f_j, self.e_j, self.l_j, vXCt)
         vt = vHt + vXCt
 
         # Construct zero potential:
