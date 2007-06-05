@@ -9,8 +9,22 @@ from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.exx import EXX, XXFunctional
 from gpaw.kli import KLIFunctional
-
+from gpaw.kli import GLLBFunctional
 import _gpaw
+
+"""
+     A Short Description for 'xc':s
+
+     paw.hamilton object has a member called xc which is of class XC3DGrid.
+     There is also a class named XCRadialGrid. These classes calculate
+     the derivatives for gga in these different coordinates. Both have the
+     same superclass XCGrid which ensures that the arrays are contiguos.
+
+     XC3DGrid has a member called xcfunc which is of class XCFunctional.
+     This XCFunctional is a wrapper for real functional which initializes its
+     member called xc, for the correct functional instance. So the actual
+     xc-functional can be found at hamilton.xc.xcfunc.xc
+"""
 
 class XCFunctional:
     def __init__(self, xcname, parameters=None):
@@ -20,7 +34,7 @@ class XCFunctional:
         self.mgga = False
         self.gga = False 
         self.orbital_dependent = False
-        
+
         if xcname == 'LDA':
             self.maxDerivativeLevel=2
             code = 117 # not used!
@@ -36,6 +50,9 @@ class XCFunctional:
             code = 6
             self.hybrid = 1.0
             self.orbital_dependent = True
+        elif xcname == 'GLLB':
+            self.orbital_dependent = True
+            code = 16
         else:
             self.gga = True
             self.maxDerivativeLevel=1
@@ -76,7 +93,9 @@ class XCFunctional:
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code)
         elif code == 15:
-            self.xc = KLIFunctional() 
+            self.xc = KLIFunctional()
+        elif code == 16:
+            self.xc = GLLBFunctional()
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga)
 
@@ -87,9 +106,16 @@ class XCFunctional:
         xcname, parameters = state
         self.__init__(xcname, parameters)
 
+    # Returns true, if the orbital is orbital dependent.
+    def is_non_local(self):
+        return self.orbital_dependent
+
     def set_non_local_things(self, paw, energy_only=False):
         if not self.orbital_dependent:
             return
+
+        if self.xcname == 'GLLB':
+            self.xc.pass_stuff(paw.finegd.zeros)
 
         if self.xcname == 'KLI':
             self.xc.pass_stuff(
@@ -134,7 +160,14 @@ class XCFunctional:
     def adjust_non_local_residual(self, pR_G, dR_G, eps, u, s, k, n):
         if self.hybrid > 0.0:
             self.exx.adjust_residual(pR_G, dR_G, u, n)
-                
+
+    # For non-local functional, this function does the calculation for special
+    # case of setup-generator. The processes for non-local in radial and 3D-grid
+    # deviate so greatly that this is special treatment is needed.
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc):
+        # Send the command one .xc up
+        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc)
+        
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              tau_g=None):
         if self.mgga:
@@ -310,6 +343,9 @@ class XCRadialGrid(XCGrid):
         self.shape = (len(gd.r_g),)
         assert self.shape[0] >= 4
         self.dv_g = gd.dv_g
+        if xcfunc.xcname == 'GLLB':
+            xcfunc.xc.pass_stuff(num.zeros)
+            
         if xcfunc.gga:
             self.rgd = gd
             self.dndr_g = num.empty(self.shape, num.Float)
@@ -328,6 +364,50 @@ class XCRadialGrid(XCGrid):
                 self.taub_g = num.empty(self.shape, num.Float)
         
         self.e_g = num.empty(self.shape, num.Float) 
+
+    # True, if this xc-potential depends on more than just density
+    def is_non_local(self):
+        return self.xcfunc.is_non_local()
+
+    # This is called from all_electron.py
+    # Special function for just 1D-case
+    def get_non_local_energy_and_potential(self, u_j, f_j, e_j, l_j, v_xc):
+        # Send the command one .xc up. Include also the grid descriptor.
+        return self.xcfunc.get_non_local_energy_and_potential1D(self.gd, u_j, f_j, e_j, l_j, v_xc)
+
+    # For some functionals, we need the energy density explicitly
+    # This is copy of get_energy_and_potential_spinpaired, but has
+    # the energy density also as an argument
+    def get_energy_density_spinpaired(self, n_g, v_g, e_g):
+        
+        if self.xcfunc.mgga:
+            self.rgd.derivative(n_g, self.dndr_g)
+            self.a2_g[:] = self.dndr_g**2
+            
+            print "<get_energy_and_potential_spinpaired> type=",type(v_g)
+            
+            self.xcfunc.calculate_spinpaired(self.e_g,
+                                             n_g, v_g,
+                                             self.a2_g,
+                                             self.deda2_g,
+                                             tau_g)
+            
+        elif self.xcfunc.gga:
+            self.rgd.derivative(n_g, self.dndr_g)
+            self.a2_g[:] = self.dndr_g**2
+            
+            self.xcfunc.calculate_spinpaired(e_g,
+                                             n_g, v_g,
+                                             self.a2_g,
+                                             self.deda2_g)
+            tmp_g = self.dndr_g
+            self.rgd.derivative2(self.dv_g * self.deda2_g *
+                                 self.dndr_g, tmp_g)
+            tmp_g[1:] /= self.dv_g[1:]
+            tmp_g[0] = tmp_g[1]
+            v_g -= 2.0 * tmp_g
+        else:
+            self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None):
         if self.xcfunc.mgga:
