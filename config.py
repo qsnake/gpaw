@@ -355,6 +355,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     macros = ' '.join(['-D%s=%s' % x for x in define_macros])
 
     include_dirs.append(cfgDict['INCLUDEPY'])
+    include_dirs.append(cfgDict['CONFINCLUDEPY'])
     includes = ' '.join(['-I' + incdir for incdir in include_dirs])
 
     library_dirs.append(cfgDict['LIBPL'])
