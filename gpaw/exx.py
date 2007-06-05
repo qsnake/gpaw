@@ -268,18 +268,23 @@ def atomic_exact_exchange(atom, type = 'all'):
     # make gaunt coeff. list
     gaunt = make_gaunt(lmax=max(atom.l_j))
 
-    # number of valence, Nj, and core, Njcore, orbitals
+    # The number of orbitals
     Nj     = len(atom.n_j)
-    Njcore = core_states(atom.symbol)
+
 
     # determine relevant states for chosen type of exchange contribution
-    if type == 'all': nstates = mstates = range(Nj)
-    elif type == 'val-val': nstates = mstates = range(Njcore,Nj)
-    elif type == 'core-core': nstates = mstates = range(Njcore)
-    elif type == 'val-core':
-        nstates = range(Njcore,Nj)
-        mstates = range(Njcore)
-    else: raise RuntimeError('Unknown type of exchange: ', type)
+    if type == 'all':
+        nstates = mstates = range(Nj)
+    else:
+        # The number of core (Njcore) orbitals
+        Njcore = core_states(atom.symbol)
+        if type == 'val-val': nstates = mstates = range(Njcore,Nj)
+        elif type == 'core-core': nstates = mstates = range(Njcore)
+        elif type == 'val-core':
+            nstates = range(Njcore,Nj)
+            mstates = range(Njcore)
+        else:
+            raise RuntimeError('Unknown type of exchange: ', type)
 
     vr = num.zeros(atom.N, num.Float)
     vrl = num.zeros(atom.N, num.Float)
