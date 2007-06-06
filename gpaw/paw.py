@@ -409,14 +409,7 @@ class Paw:
 
         xcfunc = self.hamiltonian.xc.xcfunc
 
-        ## XXXX MK
-        # At the first iteration we use LDA in KLI also
-        if (xcfunc.xcname == 'KLI'):
-            localxcfunc = XCFunctional('LDAx')
-            self.hamiltonian.xc.set_functional(localxcfunc)
-
-            
-        if xcfunc.hybrid > 0:
+        if xcfunc.hybrid > 0.0:
             # At this point, we can't use orbital dependent
             # functionals, because we don't have the right orbitals
             # yet.  So we use a simple density functional to set up the
@@ -474,11 +467,6 @@ class Paw:
             kpt.adjust_number_of_bands(self.nbands,
                                        self.pt_nuclei, self.my_nuclei)
 
-        # XXXX MK
-        # Switch back to KLI from Lda
-        if xcfunc.xcname == 'KLI':
-            self.hamiltonian.xc.set_functional(xcfunc)
-                
         if xcfunc.hybrid > 0:
             # Switch back to the orbital dependent functional:
             self.hamiltonian.xc.set_functional(xcfunc)

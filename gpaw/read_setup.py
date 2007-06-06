@@ -36,6 +36,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.core_hole_state = []
         self.core_hole_e = None
         self.core_hole_e_kin = None
+        self.core_response = []
         
     def parse(self, symbol, xcname):
         exx = False
@@ -117,7 +118,8 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 filename,
                 self.core_hole_state,
                 self.core_hole_e,
-                self.core_hole_e_kin)
+                self.core_hole_e_kin,
+                self.core_response)
     
     def startElement(self, name, attrs):
         if name == 'paw_setup':
@@ -168,7 +170,7 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                       'localized_potential', 'zero_potential',  # XXX
                       'kinetic_energy_differences', 'exact_exchange_X_matrix',
                       'ae_core_kinetic_energy_density',
-                      'pseudo_core_kinetic_energy_density']:
+                      'pseudo_core_kinetic_energy_density', 'core_response']:
             self.data = []
         elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
             self.data = []
@@ -205,6 +207,9 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.tauct_g = x_g
         elif name in ['localized_potential', 'zero_potential']: # XXX
             self.vbar_g = x_g
+        elif name == 'core_response':
+            print "core_response", x_g
+            self.core_response = x_g
         elif name == 'ae_partial_wave':
             j = len(self.phi_jg)
             assert self.id == self.id_j[j]

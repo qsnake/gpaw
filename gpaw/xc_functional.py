@@ -115,7 +115,8 @@ class XCFunctional:
             return
 
         if self.xcname == 'GLLB':
-            self.xc.pass_stuff(paw.finegd.zeros)
+            self.xc.pass_stuff(paw.kpt_u, paw.finegd, paw.density.interpolate,
+                               paw.nspins, paw.my_nuclei)
 
         if self.xcname == 'KLI':
             self.xc.pass_stuff(
@@ -267,7 +268,13 @@ class XC3DGrid(XCGrid):
                 self.taub_g = gd.empty()
         self.e_g = gd.empty()
 
-    def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None):
+    # Calculates exchange energy and potential.
+    # The energy density will be returned on reference e_g if it is specified.
+    # Otherwise the method will use self.e_g
+    def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None, e_g=None):
+        if e_g == None:
+            e_g = self.e_g
+            
         if self.xcfunc.mgga:
             # derivatives of the density
             for c in range(3):
@@ -275,7 +282,7 @@ class XC3DGrid(XCGrid):
             self.a2_g[:] = num.sum(self.dndr_cg**2)
             # derivatives of the tau
             
-            self.xcfunc.calculate_spinpaired(self.e_g,
+            self.xcfunc.calculate_spinpaired(e_g,
                                              n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g)
@@ -285,7 +292,7 @@ class XC3DGrid(XCGrid):
                 self.ddr[c](n_g, self.dndr_cg[c])
             self.a2_g[:] = num.sum(self.dndr_cg**2)
 
-            self.xcfunc.calculate_spinpaired(self.e_g,
+            self.xcfunc.calculate_spinpaired(e_g,
                                              n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g)
@@ -294,7 +301,7 @@ class XC3DGrid(XCGrid):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
                 v_g -= 2.0 * tmp_g
         else:
-            self.xcfunc.calculate_spinpaired(self.e_g, n_g, v_g)
+            self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
             
         return num.sum(self.e_g.flat) * self.dv
 
@@ -343,8 +350,6 @@ class XCRadialGrid(XCGrid):
         self.shape = (len(gd.r_g),)
         assert self.shape[0] >= 4
         self.dv_g = gd.dv_g
-        if xcfunc.xcname == 'GLLB':
-            xcfunc.xc.pass_stuff(num.zeros)
             
         if xcfunc.gga:
             self.rgd = gd
@@ -375,18 +380,18 @@ class XCRadialGrid(XCGrid):
         # Send the command one .xc up. Include also the grid descriptor.
         return self.xcfunc.get_non_local_energy_and_potential1D(self.gd, u_j, f_j, e_j, l_j, v_xc)
 
-    # For some functionals, we need the energy density explicitly
-    # This is copy of get_energy_and_potential_spinpaired, but has
-    # the energy density also as an argument
-    def get_energy_density_spinpaired(self, n_g, v_g, e_g):
-        
+    def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None, e_g = None):
+
+        if e_g == None:
+            e_g = self.e_g
+            
         if self.xcfunc.mgga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
-            
+
             print "<get_energy_and_potential_spinpaired> type=",type(v_g)
             
-            self.xcfunc.calculate_spinpaired(self.e_g,
+            self.xcfunc.calculate_spinpaired(e_g,
                                              n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
@@ -395,7 +400,7 @@ class XCRadialGrid(XCGrid):
         elif self.xcfunc.gga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
-            
+
             self.xcfunc.calculate_spinpaired(e_g,
                                              n_g, v_g,
                                              self.a2_g,
@@ -408,36 +413,6 @@ class XCRadialGrid(XCGrid):
             v_g -= 2.0 * tmp_g
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
-
-    def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None):
-        if self.xcfunc.mgga:
-            self.rgd.derivative(n_g, self.dndr_g)
-            self.a2_g[:] = self.dndr_g**2
-
-            print "<get_energy_and_potential_spinpaired> type=",type(v_g)
-            
-            self.xcfunc.calculate_spinpaired(self.e_g,
-                                             n_g, v_g,
-                                             self.a2_g,
-                                             self.deda2_g,
-                                             tau_g)
-            
-        elif self.xcfunc.gga:
-            self.rgd.derivative(n_g, self.dndr_g)
-            self.a2_g[:] = self.dndr_g**2
-
-            self.xcfunc.calculate_spinpaired(self.e_g,
-                                             n_g, v_g,
-                                             self.a2_g,
-                                             self.deda2_g)
-            tmp_g = self.dndr_g
-            self.rgd.derivative2(self.dv_g * self.deda2_g *
-                                 self.dndr_g, tmp_g)
-            tmp_g[1:] /= self.dv_g[1:]
-            tmp_g[0] = tmp_g[1]
-            v_g -= 2.0 * tmp_g
-        else:
-            self.xcfunc.calculate_spinpaired(self.e_g, n_g, v_g)
 
         return num.dot(self.e_g, self.dv_g)
 

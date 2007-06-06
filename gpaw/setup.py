@@ -15,7 +15,7 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
-from gpaw.kli import XCKLICorrection
+from gpaw.kli import XCKLICorrection, XCGLLBCorrection
 
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
@@ -90,7 +90,8 @@ class Setup:
          filename,
          core_hole_state,
          core_hole_e,
-         core_hole_e_kin) = PAWXMLParser().parse(symbol, xcname)
+         core_hole_e_kin,
+         core_response) = PAWXMLParser().parse(symbol, xcname)
 
         self.filename = filename
 
@@ -226,6 +227,9 @@ class Setup:
         nct_g = nct_g[:gcut2].copy()
         vbar_g = vbar_g[:gcut2].copy()
 
+        if xcname == 'GLLB':
+            core_response = core_response[:gcut2].copy()
+
         Lcut = (2 * lcut + 1)**2
         T_Lqp = num.zeros((Lcut, nq, np), num.Float)
         p = 0
@@ -360,6 +364,14 @@ class Setup:
                                                  [(j, l_j[j]) for j in range(nj)],
                                                  xc_lda_correction)
 
+        elif xcfunc.xcname == "GLLB":
+            self.xc_correction = XCGLLBCorrection(
+                xcfunc.xc,
+                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
+                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
+                rgd, [(j, l_j[j]) for j in range(nj)],
+                2 * lcut, e_xc, core_response)
         else:
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 
