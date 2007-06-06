@@ -20,7 +20,7 @@ def gemm(alpha, a, b, beta, c, transa='n'):
     
       c <- alpha * b.a + beta * c
 
-    If transa is 'n', ``b.a`` denotes the matrix multiplication defined by::
+    If transa is "n", ``b.a`` denotes the matrix multiplication defined by::
     
                       _
                      \  
@@ -28,7 +28,7 @@ def gemm(alpha, a, b, beta, c, transa='n'):
            ijkl...   /_  ip   pjkl...
                       p
     
-    If transa is 't' or 'c', ``b.a`` denotes the matrix multiplication defined by::
+    If transa is "t" or "c", ``b.a`` denotes the matrix multiplication defined by::
     
                       _
                      \  
@@ -36,7 +36,7 @@ def gemm(alpha, a, b, beta, c, transa='n'):
            ij        /_  iklm...   jklm...
                      klm... 
 
-     where in case of 'c' also complex conjugate of a is taken.
+     where in case of "c" also complex conjugate of a is taken.
     """
     assert ((is_contiguous(a, num.Float) and
              is_contiguous(b, num.Float) and
@@ -45,13 +45,13 @@ def gemm(alpha, a, b, beta, c, transa='n'):
             (is_contiguous(a, num.Complex) and
              is_contiguous(b, num.Complex) and
              is_contiguous(c, num.Complex)))
-    if transa == 'n':   
+    if transa == "n":   
         assert num.rank(b) == 2
         assert a.shape[0] == b.shape[1]
         assert c.shape == b.shape[0:1] + a.shape[1:]
     else:
         assert a.shape[1:] == b.shape[1:]
-        assert c.shape == b.shape[0] + a.shape[0]
+        assert c.shape == b.shape[0:1] + a.shape[0:1]
     _gpaw.gemm(alpha, a, b, beta, c, transa)
 
     

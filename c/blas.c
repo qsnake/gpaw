@@ -40,11 +40,11 @@ PyObject* gemm(PyObject *self, PyObject *args)
   PyArrayObject* b;
   Py_complex beta;
   PyArrayObject* c;
-  char* transa = "n";
-  if (!PyArg_ParseTuple(args, "DOODO|s", &alpha, &a, &b, &beta, &c, &transa)) 
+  char transa = 'n';
+  if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &b, &beta, &c, &transa)) 
     return NULL;
   int m, n, k, lda, ldb;
-  if (transa == "n")
+  if (transa == 'n')
     {
       m = a->dimensions[1];
       for (int i = 2; i < a->nd; i++)
@@ -64,14 +64,14 @@ PyObject* gemm(PyObject *self, PyObject *args)
     } 
   n = b->dimensions[0];
   if (a->descr->type_num == PyArray_DOUBLE)
-    dgemm_(transa, "n", &m, &n, &k, 
+    dgemm_(&transa, "n", &m, &n, &k, 
            &(alpha.real),
            DOUBLEP(a), &lda, 
            DOUBLEP(b), &ldb,
            &(beta.real), 
            DOUBLEP(c), &m);
   else
-    zgemm_(transa, "n", &m, &n, &k, 
+    zgemm_(&transa, "n", &m, &n, &k, 
            &alpha,
            (void*)COMPLEXP(a), &lda, 
            (void*)COMPLEXP(b), &ldb,
