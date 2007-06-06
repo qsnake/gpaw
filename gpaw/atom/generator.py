@@ -481,14 +481,12 @@ class Generator(AllElectron):
             A_nn = inner(s_n, q_n * dr)
             # Do a LU decomposition of A:
             nn = len(e_n)
-            if nn == 1:
-                L_nn = num.array([[1.0]])
-                U_nn = num.array([[A_nn[0, 0]]])
-            else:
-                L_nn = num.array([[1.0, 0.0],
-                                  [A_nn[1, 0] / A_nn[0, 0], 1.0]])
-                U_nn = num.array([[A_nn[0, 0], A_nn[0, 1]],
-                                  [0.0, A_nn[1, 1] - L_nn[1, 0] * A_nn[0, 1]]])
+            L_nn = num.identity(nn, num.Float)
+            U_nn = A_nn.copy()
+            for i in range(nn):
+                for j in range(i+1,nn):
+                    L_nn[j,i] = 1.0 * U_nn[j,i] / U_nn[i,i]
+                    U_nn[j,:] -= U_nn[i,:] * L_nn[j,i]
 
             dO_nn = (inner(u_n, u_n * dr) -
                      inner(s_n, s_n * dr))
