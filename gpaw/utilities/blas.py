@@ -51,7 +51,7 @@ def gemm(alpha, a, b, beta, c, transa='n'):
         assert c.shape == b.shape[0:1] + a.shape[1:]
     else:
         assert a.shape[1:] == b.shape[1:]
-        assert c.shape = b.shape[0] + a.shape[0]
+        assert c.shape == b.shape[0] + a.shape[0]
     _gpaw.gemm(alpha, a, b, beta, c, transa)
 
     
