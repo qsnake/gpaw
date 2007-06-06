@@ -5,6 +5,18 @@ from math import sqrt, pi
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2, fac
 from LinearAlgebra import inverse
 
+# For XCCorrections
+from multiarray import matrixproduct as dot3
+from multiarray import innerproduct as inner # avoid the dotblas version!
+from gpaw.gaunt import gaunt
+from gpaw.spherical_harmonics import YL
+
+from gpaw.utilities.complex import cc, real
+
+
+# load points and weights for the angular integration
+from gpaw.sphere import Y_nL, points, weights
+
 # GLLB-Functional
 # Gritsenko, Leeuwen, Lenthe, Baerends: Self-consistent approximation to the Kohn-Shan exchange potential
 # Physical Review A, vol. 51, p. 1944, March 1995.
@@ -16,13 +28,48 @@ class GLLBFunctional:
     def __init__(self):
         self.slater_part = None
 
+    # Called from xc_functional::set_non_local_things method
+    # All the necessary classes and methods are passed through this method
+    # Not used in 1D-calculations
+    def pass_stuff(self, kpt_u, finegd, interpolate, nspins, nuclei):
         
-    def pass_stuff(self, new_grid_method):
-        pass
-        #energy_density = new_grid_method()
-        #dummy_potential = new_grid_metod()
+        self.kpt_u = kpt_u
+        self.finegd = finegd
+        self.interpolate = interpolate
+        self.nspins = nspins
+        self.nuclei = nuclei
         
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc):
+        self.tempvxc_g = finegd.empty()
+        self.tempe_g = finegd.empty()
+        self.nn_g = finegd.empty()
+
+    # input:  ae : AllElectron object.
+    # output: extra_xc_data : dictionary. A Dictionary with pair ('name', radial grid)
+    def calculate_extra_setup_data(self, extra_xc_data, ae):
+        print "Calculating response part for core-electrons"
+        N = len(ae.rgd.r_g)
+        v_xc = num.zeros(N, num.Float)
+        # Calculate the response part using wavefunctions, eigenvalues etc. from AllElectron calculator
+        self.get_non_local_energy_and_potential1D(ae.rgd,
+                                                  ae.u_j,
+                                                  ae.f_j,
+                                                  ae.e_j,
+                                                  ae.l_j,
+                                                  v_xc,
+                                                  njcore = ae.njcore)
+
+        print "CALCULATED CORE RESPONSE OF", v_xc
+        extra_xc_data['core_response'] = v_xc
+        
+        
+    # Input  gd  : RadialGridDescriptor
+    #        u_j : array of wavefunctions
+    #        f_j : array of occupation numbers
+    #        e_j : array of eigenvalues
+    #        l_j : array of angular momenta
+    #     njcore : integer. If specified, outputs only the response part for 'njcore' lowest orbitals.
+    # Output v_xc: The GLLB-exchange potential in radial grid
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, njcore=None):
 
         if self.slater_part == None:
             from gpaw.xc_functional import XCFunctional, XCRadialGrid
@@ -35,37 +82,88 @@ class GLLBFunctional:
         n_g[1:] /= gd.r_g[1:]**2
         n_g[0] = n_g[1]
 
-        #print n_g
+        # Create arrays for energy-density and potential
         e_g = num.zeros(N, num.Float)
         v_g = num.zeros(N, num.Float)
+
+        # Calculate gga-energy density
+        self.slater_part.get_energy_and_potential_spinpaired(n_g, v_g, e_g=e_g)
         
-        self.slater_part.get_energy_density_spinpaired(n_g, v_g, e_g)
-        #print "e_g", e_g
-        v_xc[:] += 2 * e_g / (n_g + 1e-5)
+        if njcore == None:
+            # Approximate the numerator of slater potential with 2*e_g
+            v_xc[:] += 2 * e_g / (n_g + 1e-10)
 
         # Find fermi-level
+        print "f_j", f_j
+        # Grr!!! sum(num.where(f_j>1e-3, 1, 0))-1 doesn't work
+        
         homo = len(f_j)-1
         mu = e_j[homo]
+        print "Fermi level:" , mu
 
-        for i in range(0, homo+1):
-            # Construct the orbital-density
+        if njcore == None:
+            imax = homo+1
+        else:
+            # Add the potential only from core orbitals
+            imax = njcore
+            
+        for i in range(0, imax):
+            # Construct the orbital-density of ith orbital
             nn_g = f_j[i] * num.where(abs(u_j[i]) < 1e-160, 0, u_j[i])**2 / (4 * pi) #grr.. Hack for numeric
             nn_g[1:] /= gd.r_g[1:]**2
             nn_g[0] = n_g[1]
-            #print e_j[i]
-            #print mu
+            
             sqrt(mu-e_j[i])
             v_xc[:] += 0.382 * sqrt( mu - e_j[i]) * (nn_g / (n_g + 1e-20))
 
         return 0 
             
     def calculate_spinpaired(self, e_g, n_g, v_g):
-        pass
-        #Raise NotImplemented
-        #self.slater_part.calculate_spinpaired(energy_density, n_g, dummy_potential)
-        #v_g += 2*energy_density / (n_g + 1e-20)
-        #e_g[:] = 0.0
+        print "In calculate spinpaired"
+        # Create the revPBEx functional for Slater part (only once per calculation)
+        if self.slater_part == None:
+            from gpaw.xc_functional import XCFunctional, XC3DGrid
+            self.slater_part = XC3DGrid(XCFunctional('revPBEx'), self.finegd, self.nspins)
+
+        # Calculate the approximative Slater-potential
+        self.slater_part.get_energy_and_potential_spinpaired(n_g, self.tempvxc_g, e_g=self.tempe_g)
+        # Add it to the total potential
+        v_g += 2*self.tempe_g / (n_g + 1e-7)
         
+        # Just for one spin calculation for now
+        s = 0
+        
+        # Initialize method-attributes
+        kpt = self.kpt_u[s]
+        psit_nG = kpt.psit_nG     # Wave functions
+        E = 0.0                   # Energy of eXact eXchange and kinetic energy
+        try:
+            f_n  = kpt.f_n        # Occupation number
+            e_n = kpt.eps_n       # Eigenvalues
+        except AttributeError:
+            # Eigenvalues and occupations are not yet set
+            # Do just the GGA-part
+            return 0
+        
+        # Find fermi-level
+        #print f_n
+        homo = sum(num.where(f_n>1e-3, 1, 0)) -1
+        #print "HOMO ORBITAL", homo
+        mu = e_n[homo]
+        #print "Fermi level", mu
+        self.mu = mu
+        
+        for i in range(0, homo+1):
+            def step(x):
+                if x<0: return 0
+                return x
+            # Construct the orbital-density
+            self.interpolate(f_n[i] * psit_nG[i]**2, self.nn_g)
+            v_g[:] += 0.382 * sqrt( step(mu - e_n[i])) * (self.nn_g / (n_g + 1e-20))
+
+        e_g[:] = self.tempe_g.flat
+        #e_g[:] = 0.0
+        #return 0
     
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         pass
@@ -76,8 +174,295 @@ class GLLBFunctional:
         #vb_g += 2*energy_density / (nb_g + 1e-20)
         #e_g[:] = 0.0
 
-class Dummy:
+class DummyXC:
     pass
+
+A_Liy = num.zeros((25, 3, len(points)), num.Float)
+
+y = 0
+for R in points:
+    for l in range(5):
+        for m in range(2 * l + 1):
+            L = l**2 + m
+            for c, n in YL[L]:
+                for i in range(3):
+                    ni = n[i]
+                    if ni > 0:
+                        a = ni * c * R[i]**(ni - 1)
+                        for ii in range(3):
+                            if ii != i:
+                                a *= R[ii]**n[ii]
+                        A_Liy[L, i, y] += a
+            A_Liy[L, :, y] -= l * R * Y_nL[y, L]
+    y += 1
+
+
+class XCGLLBCorrection:
+    def __init__(self,
+                 xcfunc, # radial exchange-correlation object
+                 w_j,    #
+                 wt_j,   #
+                 nc,     # core density 
+                 nct,    # smooth core density
+                 rgd,    # radial grid edscriptor
+                 jl,     # ?
+                 lmax,   # maximal angular momentum to consider
+                 Exc0,   # ? 
+                 core_response): # The response-part of core-orbitals 
+
+        self.xc = DummyXC()
+        self.xc.xcfunc = DummyXC()
+        self.xc.xcfunc.hybrid = 0.0
+
+        self.core_response = core_response
+        
+        self.nc_g = nc
+        self.nct_g = nct
+
+        from xc_functional import XCRadialGrid, XCFunctional
+        self.slater_part = XCFunctional('revPBEx')
+
+        self.motherxc = xcfunc
+
+        self.Exc0 = Exc0
+        self.Lmax = (lmax + 1)**2
+        if lmax == 0:
+            self.weights = [1.0]
+            self.Y_yL = num.array([[1.0 / sqrt(4.0 * pi)]])
+        else:
+            self.weights = weights
+            self.Y_yL = Y_nL[:, :self.Lmax].copy()
+        jlL = []
+        for j, l in jl:
+            for m in range(2 * l + 1):
+                jlL.append((j, l, l**2 + m))
+
+        ng = len(nc)
+        self.ng = ng
+        ni = len(jlL)
+        nj = len(jl)
+        np = ni * (ni + 1) // 2
+        nq = nj * (nj + 1) // 2
+        self.B_Lqp = num.zeros((self.Lmax, nq, np), num.Float)
+        p = 0
+        i1 = 0
+        for j1, l1, L1 in jlL:
+            for j2, l2, L2 in jlL[i1:]:
+                if j1 < j2:
+                    q = j2 + j1 * nj - j1 * (j1 + 1) // 2
+                else:
+                    q = j1 + j2 * nj - j2 * (j2 + 1) // 2
+                self.B_Lqp[:, q, p] = gaunt[L1, L2, :self.Lmax]
+                p += 1
+            i1 += 1
+        self.B_pqL = num.transpose(self.B_Lqp).copy()
+        self.dv_g = rgd.dv_g
+        self.n_qg = num.zeros((nq, ng), num.Float)
+        self.nt_qg = num.zeros((nq, ng), num.Float)
+        q = 0
+        for j1, l1 in jl:
+            for j2, l2 in jl[j1:]:
+                rl1l2 = rgd.r_g**(l1 + l2)
+                self.n_qg[q] = rl1l2 * w_j[j1] * w_j[j2]
+                self.nt_qg[q] = rl1l2 * wt_j[j1] * wt_j[j2]
+                q += 1
+        self.rgd = rgd
+       
+    def calculate_energy_and_derivatives(self, D_sp, H_sp, a):
+        # This is the code from GGA-method of XCCorrections, but
+        # it has lines involving GLLB. All lines which contain
+        # comments are NOT from xc_corrections.py file:)
+
+        self.nspins = 1 # XXXX SPINHAC
+        kpt = self.motherxc.kpt_u[0] ### KPT HACK
+        
+        # This method is called before initialization of motherxc in pass_stuff
+        if self.motherxc.slater_part == None:
+            print "Grr...!!!!!!!!!"
+            return 0 #Grr....
+
+        #print "D_sp", D_sp
+
+        nucleus = self.motherxc.nuclei[a] # Get the nucleus with index
+        ni = nucleus.get_number_of_partial_waves() # Get the number of partial waves from nucleus
+        P_ni = nucleus.P_uni[0] # We need P_ni to reprocdure the orbitals
+        Dn_ii = num.zeros((ni, ni), num.Float) # Allocate space for unpacked atomic density matrix
+        np = ni * (ni + 1) // 2 # Number of items in packed density matrix
+        Dn_p = num.zeros((np, np), num.Float) # Allocate space for packed atomic density matrix
+        
+        r_g = self.rgd.r_g
+        xcfunc = self.slater_part #get_functional()
+        E = 0.0
+        if not len(D_sp) == 1:
+            raise "Spin polarized calculation not implemented yet"
+        D_p = D_sp[0]
+        D_Lq = dot3(self.B_Lqp, D_p)
+        n_Lg = num.dot(D_Lq, self.n_qg)
+        n_Lg[0] += self.nc_g * sqrt(4 * pi)
+        nt_Lg = num.dot(D_Lq, self.nt_qg)
+        nt_Lg[0] += self.nct_g * sqrt(4 * pi)
+        dndr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
+        dntdr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
+        for L in range(self.Lmax):
+            self.rgd.derivative(n_Lg[L], dndr_Lg[L])
+            self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
+        dEdD_p = H_sp[0][:]
+        dEdD_p[:] = 0.0
+        y = 0
+        for w, Y_L in zip(self.weights, self.Y_yL):
+            A_Li = A_Liy[:self.Lmax, :, y]
+            n_g = num.dot(Y_L, n_Lg)
+            a1x_g = num.dot(A_Li[:, 0], n_Lg)
+            a1y_g = num.dot(A_Li[:, 1], n_Lg)
+            a1z_g = num.dot(A_Li[:, 2], n_Lg)
+            a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
+            a2_g[1:] /= r_g[1:]**2
+            a2_g[0] = a2_g[1]
+            a1_g = num.dot(Y_L, dndr_Lg)
+            a2_g += a1_g**2
+            v_g = num.zeros(self.ng, num.Float) 
+            e_g = num.zeros(self.ng, num.Float) 
+            deda2_g = num.zeros(self.ng, num.Float)
+            xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+
+            E += w * num.dot(e_g, self.dv_g)
+            # This line is left as it is. In final iteration
+            # the Exchance-energy is calculated properly anyway, this is to get more reasonable
+            # energies before scf-convergence.
+
+            # ---begin--- copypasted from density.py...
+            # XXXX Should the spins be treated separately?
+            P_ni = nucleus.P_uni[kpt.u]
+            try:
+                just_slater = False
+                etemp = -kpt.eps_n.copy()
+                etemp += self.motherxc.mu
+                def step(x):
+                    if x<0:
+                        return 0
+                    return x
+                #print etemp
+                for i in range(len(etemp)):
+                    etemp[i] = num.sqrt(step(etemp[i]))
+                #print etemp
+                w_n = 0.382 * etemp[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
+                #print "w_n", w_n
+                Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
+                                 P_ni * w_n))
+                #print "Dn_ii", Dn_ii
+                Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
+
+                Dnn_Lq = dot3(self.B_Lqp, Dn_p) #Contract one nmln'm'l'
+                nn_Lg = num.dot(Dnn_Lq, self.n_qg) # Contract nln'l'
+                nn = num.dot(Y_L, nn_Lg) ### Contract L
+                slater_only = False
+            except AttributeError:
+                nn = 0.0
+                slater_only = True
+                print "Eigenvalues not yet set. Using only slater-exchange."
+            
+
+            # ---end-----
+
+            # 1. We want to calculate the following
+            # \sum_{ii'} D_{ii'} \phi_i \phi_i'
+            # 2. Separate the partial waves to radial and angular parts
+            # \sum_{ii'L} D_{ii'} |L><L| L(i) L(i')> R_i R_i',
+            #        where L(i) is the spherical harmonic part of ith partial wave L =(l,m)
+            # 3. Expand the i index to (n, l, m), Expand the i index to (n', l', m').
+            # The radial part depends only on nl, since it's the setup-generator is spherically symmetric.
+            # 
+            # \sun_{nlm n'l'm' L} D_{nlm n'l'm'} |L><L|lm l'm' > R_nl R_n'l'
+            #
+            # !!!! R_nl R_n'l' as n_qg in this code, where q =(n, l, n', l') index
+            #
+            # Let's write the gaunt's coeffient <L|lml'm'> as G_Llml'm'
+            # \sum_{nlm n'l'm' L} D_{nlm n'l'm'} |L> G_Llml'm' R_nl R_n'l'
+            # We can take the radial part out of m and m' and L sums
+            # \sum_{nln'l'} R_nl R_n'l' \sum_{L} |L> \sum_{mm'} D_{nlm n'l'm'} G_Llml'm' 
+            # While integrating we want a slice of certain direction, thus we take a dot
+            # product of <w| where w=(theta, phi)
+            # We call the <w|L> = Y_L
+            # \sum_L Y_L \sum_{nln'l'} R_nl R_n'l' \sum_{mm'} D_{nlm n'l'm'} G_Llml'm'
+            # We may expand the tabulated coefficient table to include also n indices, and
+            # add dummy indices n''l''m''n'''l'''m''', and a Kronecker delta for them.
+            # G_Lnlmn'l'mn''l''m''n'''l'''m''' = G_Llml'm' d_n''n' d_l''l' d_m''m' d_n'''n d_l'''l d_m'''m
+            # Because of the Kronecker, we may add a summation \sum n''l''m'' without changing the result
+            # \sum_L Y_L \sum_{nln'l'} R_nl R_n'l' \sum_{n'' l'' m'' n''' l''' m'''} D_{n'''l'''m''' n''l''m''} G_Lnlmn'l'm'n''l''n'''m'''l'''
+            # Lets remove m and m' from G, since m''' and m'' are allways they same due to kronecker.
+            # G_Lnln'l'n''l''n'''m'''l''' to
+            # Now we have an expression which is used in the code. We transform to the index names used in
+            # the code. (Let's just forget the packing, this is complicated enough)
+            # p is (packed) index (nlm), q is (packed) index (nl)
+            # \sum_L Y_L \sum_{qq' } R_q R_q' \sum_{p'' p'''} D_{p''p'''} G_{Lpp' qq'}
+                
+
+            #print "nn", nn
+            #x_g = -2.0 * deda2_g * self.dv_g * a1_g
+            #self.rgd.derivative2(x_g, x_g)
+                
+            x_g = (2*e_g + nn) / (n_g + 1e-20) * self.dv_g
+            # Add the core-response part here
+            #print x_g.shape
+            #print self.core_response.shape
+            x_g += self.core_response * self.dv_g
+
+            #B_Lqp = self.B_Lqp
+            dEdD_p += w * num.dot(dot3(self.B_pqL, Y_L),
+                                  num.dot(self.n_qg, x_g))
+            #x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
+            #dEdD_p += w * num.dot(dot3(self.B_pqL,
+            #                              A_Li[:, 0]),
+            #                      num.dot(self.n_qg, x_g * a1x_g))
+            #dEdD_p += w * num.dot(dot3(self.B_pqL,
+            #                              A_Li[:, 1]),
+            #                      num.dot(self.n_qg, x_g * a1y_g))
+            #dEdD_p += w * num.dot(dot3(self.B_pqL,
+            #                              A_Li[:, 2]),
+            #                      num.dot(self.n_qg, x_g * a1z_g))
+
+            n_g = num.dot(Y_L, nt_Lg)
+            a1x_g = num.dot(A_Li[:, 0], nt_Lg)
+            a1y_g = num.dot(A_Li[:, 1], nt_Lg)
+            a1z_g = num.dot(A_Li[:, 2], nt_Lg)
+            a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
+            a2_g[1:] /= r_g[1:]**2
+            a2_g[0] = a2_g[1]
+            a1_g = num.dot(Y_L, dntdr_Lg)
+            a2_g += a1_g**2
+            v_g = num.zeros(self.ng, num.Float) 
+            e_g = num.zeros(self.ng, num.Float) 
+            deda2_g = num.zeros(self.ng, num.Float)
+            xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+            E -= w * num.dot(e_g, self.dv_g)
+            #x_g = -2.0 * deda2_g * self.dv_g * a1_g
+            #self.rgd.derivative2(x_g, x_g)
+
+            if not slater_only:
+                #Dnn_Lq = dot3(self.B_Lqp, Dn_sp) #Contract one nmln'm'l'
+                nn_Lg = num.dot(Dnn_Lq, self.nt_qg) # Contract nln'l'
+                nn = num.dot(Y_L, nn_Lg) ### Contract L
+            else:
+                nn = 0.0
+            x_g = (2*e_g + nn) / (n_g +1e-10) * self.dv_g 
+            #B_Lqp = self.B_Lqp
+            dEdD_p -= w * num.dot(dot3(self.B_pqL, Y_L),
+                                  num.dot(self.nt_qg, x_g))
+            #x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
+            #dEdD_p -= w * num.dot(dot3(self.B_pqL,
+            #                              A_Li[:, 0]),
+            #                      num.dot(self.nt_qg, x_g * a1x_g))
+            #dEdD_p -= w * num.dot(dot3(self.B_pqL,
+            #                              A_Li[:, 1]),
+            #                      num.dot(self.nt_qg, x_g * a1y_g))
+            #dEdD_p -= w * num.dot(dot3(self.B_pqL,
+            #                              A_Li[:, 2]),
+            #                      num.dot(self.nt_qg, x_g * a1z_g))
+
+            y += 1
+
+        return E - self.Exc0
+
 
 class XCKLICorrection:
     def __init__(self, xcfunc, r, dr, beta, N, nspins, M_pp, X_p, ExxC, phi, phit, jl, lda_xc):
@@ -95,8 +480,8 @@ class XCKLICorrection:
         self.phit = phit
         self.jl = jl
 
-        self.xc = Dummy()
-        self.xc.xcfunc = Dummy()
+        self.xc = DummyXC()
+        self.xc.xcfunc = DummyXC()
         self.xc.xcfunc.hybrid = 0.0
         self.lda_xc = lda_xc
         jlm = []
@@ -277,6 +662,10 @@ class KLIFunctional:
 
         print "Initializing KLI! PASS STUFF"
 
+    def calculate_extra_setup_data(self, extra_xc_data, ae):
+        print "NOT IMPLEMENTED"
+        pass
+
     def calculate_kli_general(self, grid_allocator, fine_grid_allocator, interpolate, poisson_solver, restrict, integrate, scalar_mul, n_g, u_j, f_j):
 
         # Calculate total number of occupied states
@@ -368,8 +757,6 @@ class KLIFunctional:
         #print "vXC_G/n_g", vXC_G/n_g
         #Return the exchange energy
         return (num.vdot(u_bar[0:occupied],f_j[0:occupied])/2, vXC_G/n_g)
-
-
 
     def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, vXC):
 
