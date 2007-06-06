@@ -85,15 +85,16 @@ class Davidson(Eigensolver):
             # <psi2 | H | psi>
             hamiltonian.kin.apply(psit2_nG, self.Htpsit_nG, kpt.phase_cd)
             self.Htpsit_nG += psit2_nG * hamiltonian.vt_sG[kpt.s]
-            self.H_nn[:] = self.gd.dv * num.dot(
-                num.reshape(self.Htpsit_nG, (nbands, -1)),
-                cc(num.transpose(num.reshape(kpt.psit_nG, (nbands, -1)))))
+            gemm(self.gd.dv, kpt.psit_nG, self.Htpsit_nG, 0.0, self.H_nn,
+"c")
 
             for nucleus in hamiltonian.my_nuclei:
                 P_ni = nucleus.P_uni[kpt.u]
                 P2_ni = nucleus.P2_ni
                 self.H_nn += num.dot(P2_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
                                                     cc(num.transpose(P_ni))))
+
+            self.comm.sum(self.H_nn, kpt.root)
             H_2n2n[nbands:, :nbands] = self.H_nn
 
             # <psi2 | H | psi2>
@@ -102,19 +103,21 @@ class Davidson(Eigensolver):
                 P2_ni = nucleus.P2_ni
                 self.H_nn += num.dot(P2_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
                                                     cc(num.transpose(P2_ni))))
+
+            self.comm.sum(self.H_nn, kpt.root)
             H_2n2n[nbands:, nbands:] = self.H_nn
 
             # Overlap matrix
             # <psi2 | S | psi>
-            self.S_nn[:] = self.gd.dv * num.dot(
-                num.reshape(psit2_nG, (nbands, -1)),
-                cc(num.transpose(num.reshape(kpt.psit_nG, (nbands, -1)))))
+            gemm(self.gd.dv, kpt.psit_nG, psit2_nG, 0.0, self.S_nn, "c")
         
             for nucleus in hamiltonian.my_nuclei:
                 P_ni = nucleus.P_uni[kpt.u]
                 P2_ni = nucleus.P2_ni
                 self.S_nn += num.dot(P2_ni,
                                      cc(inner(nucleus.setup.O_ii, P_ni)))
+
+            self.comm.sum(self.S_nn, kpt.root)
             S_2n2n[nbands:, :nbands] = self.S_nn
 
             # <psi2 | S | psi2>
@@ -123,16 +126,17 @@ class Davidson(Eigensolver):
                 P2_ni = nucleus.P2_ni
                 self.S_nn += num.dot(P2_ni,
                                      cc(inner(nucleus.setup.O_ii, P2_ni)))
-            S_2n2n[nbands:, nbands:] = self.S_nn
 
-            self.comm.sum(S_2n2n, kpt.root)
-            self.comm.sum(H_2n2n, kpt.root)
+            self.comm.sum(self.S_nn, kpt.root)
+            S_2n2n[nbands:, nbands:] = self.S_nn
 
             if self.comm.rank == kpt.root:
                 info = diagonalize(H_2n2n, eps_2n, S_2n2n)
                 if info != 0:
                     raise RuntimeError, 'Very Bad!!'
+
             self.comm.broadcast(H_2n2n, kpt.root)
+            self.comm.broadcast(eps_2n, kpt.root)
 
             kpt.eps_n[:] = eps_2n[:nbands]
 
