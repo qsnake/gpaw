@@ -62,9 +62,12 @@ class Hamiltonian:
         self.vt_sg = finegd.empty(nspins)
 
         # The external potential
-        self.vext_g = vext_g
-        if vext_g is not None:
-            assert num.alltrue(self.vHt_g.shape == vext_g.shape)        
+        if vext_g:
+            assert num.alltrue(vext_g.shape==finegd.get_size_of_global_array())
+            self.vext_g = finegd.zeros()
+            finegd.distribute(vext_g, self.vext_g)
+        else:
+            self.vext_g = vext_g
 
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Schrödinger equation (1, 2, ...):
@@ -119,7 +122,7 @@ class Hamiltonian:
         Epot = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar
 
         Eext = 0.0
-        if self.vext_g is not None:
+        if self.vext_g:
             vt_g += self.vext_g
             Eext = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
         
@@ -159,8 +162,9 @@ class Hamiltonian:
 
             # Energy corections due to external potential.
             # Potential is assumed to be constant inside augmentation spheres.
-            if self.vext_g is not None and nucleus.in_this_domain:
-                R_c = num.around(2 * self.gd.N_c * nucleus.spos_c).astype(int)
+            if self.vext_g and nucleus.in_this_domain:
+                R_c = num.around(density.finegd.N_c * nucleus.spos_c
+                                 - density.finegd.beg_c).astype(int)
                 Eext += sqrt(4 * pi) * (nucleus.Q_L[0] +
                                         nucleus.setup.Z) * self.vext_g[R_c]
         self.timer.stop()
