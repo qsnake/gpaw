@@ -259,13 +259,10 @@ class LrTDDFTExcitation(Excitation):
             f = Om.eigenvectors[i]
             self.f = f
             kss = Om.kss
+            self.me = 0.
             for j in range(len(kss)):
-                # ?????? ist weight noch noetig ?????
-                weight = f[j]*sqrt(kss[j].GetEnergy()*kss[j].GetWeight())
-                if j==0:
-                    self.me = kss[j].GetDipolME()*weight
-                else:
-                    self.me += kss[j].GetDipolME()*weight
+                self.me += f[j] * kss[j].me
+
             return
 
         # define from energy and matrix element
@@ -287,8 +284,12 @@ class LrTDDFTExcitation(Excitation):
         return str
         
     def __str__(self):
-        str = "<LrTDDFTExcitation> om=%g[eV] me=(%g,%g,%g)" % \
-              (self.energy*27.211,self.me[0],self.me[1],self.me[2])
+        m2 = num.sum(self.me*self.me)
+        m = sqrt(m2)
+        if m>0: me = self.me/m
+        else:   me = self.me
+        str = "<LrTDDFTExcitation> om=%g[eV] |me|=%g (%.2f,%.2f,%.2f)" % \
+              (self.energy*27.211,m,me[0],me[1],me[2])
         return str
 
 

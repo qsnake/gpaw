@@ -158,6 +158,8 @@ class KSSingle(Excitation):
     pspin=physical spin
     vspin=virtual  spin, i.e. spin in the ground state calc.
     fijscale=weight for the occupation difference
+
+    me = sqrt(fij*epsij) * <i|r|j> 
     """
     def __init__(self,iidx=None,jidx=None,pspin=None,vspin=None,
                  paw=None,string=None,fijscale=1):

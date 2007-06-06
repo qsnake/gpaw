@@ -83,7 +83,12 @@ class Excitation:
         return self.me / sqrt(self.energy)
     
     def GetOscillatorStrength(self):
-        """return the excitations oscillator strength"""
+        """Return the excitations dipole oscillator strength.
+        self.me is assumed to be sqrt(f*E) * <I|r|J> for
+        f = multiplicity
+        E = transition energy
+        |I>,|J> = initial and final states
+        """
         me=self.me
         osz=[0.]
         for i in range(3):

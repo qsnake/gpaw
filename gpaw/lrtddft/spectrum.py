@@ -13,7 +13,16 @@ def spectrum(exlist=None,
              folding='Gauss',
              width=0.08 # Gauss/Lorentz width
              ):
-    """Print the optical spectrum of an excitation list
+    """spectrum(exlist=None,
+             filename=None,
+             emin=None,
+             emax=None,
+             de=None,
+             energyunit='eV',
+             folding='Gauss',
+             width=0.08 # Gauss/Lorentz width
+             )
+    Print the optical spectrum of an excitation list
 
     Parameters:
     =============== ===================================================
