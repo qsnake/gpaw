@@ -170,6 +170,12 @@ class Generator(AllElectron):
             nc[1:] /= r[1:]**2
             nc[0] = nc[1]
 
+        # Calculate extra-stuff for non-local functionals
+        extra_xc_data = {}
+        if self.xc.is_non_local():
+            self.xc.xcfunc.xc.calculate_extra_setup_data(extra_xc_data, self)
+        
+
         # Calculate core kinetic energy density
         if njcore == 0:
             tauc = num.zeros(N, num.Float)
@@ -655,11 +661,11 @@ class Generator(AllElectron):
         else:
             X_p = None
             ExxC = None
-            
+
         if 1:#not self.nofiles:
             self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                            nc, nct, nt, Ekincore, X_p, ExxC, vbar,
-                           tauc, tauct)
+                           tauc, tauct, extra_xc_data)
 
     def diagonalize(self, h):
         ng = 350
@@ -747,7 +753,7 @@ class Generator(AllElectron):
 
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar,
-                  tauc, tauct):
+                  tauc, tauct, extra_xc_data):
         if self.coreholename == '':
             xml = open(self.symbol + '.' + self.xcname , 'w')
         else:
@@ -836,6 +842,15 @@ class Generator(AllElectron):
                         ('pseudo_core_kinetic_energy_density',tauct)]:
             print >> xml, '  <%s grid="g1">\n    ' % name,
             for x in a * sqrt(4 * pi):
+                print >> xml, '%16.12e' % x,
+            print >> xml, '\n  </%s>' % name
+
+        # Print xc-specific data to setup file (used so for KLI and GLLB)
+        for name, a in extra_xc_data.iteritems():
+            print >> xml, '  <%s grid="g1">\n    ' % name,
+            print "A:", a
+            print "Name:", name
+            for x in a:
                 print >> xml, '%16.12e' % x,
             print >> xml, '\n  </%s>' % name
 
