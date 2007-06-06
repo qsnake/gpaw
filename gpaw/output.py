@@ -101,8 +101,8 @@ def iteration(paw):
     else:        
         if paw.niter == 0:
             print >> out, """\
-                          log10     total     iterations:
-                 time     error     energy    fermi  poisson  magmom"""
+                      log10     total     iterations:
+             time     error     energy    fermi  poisson  magmom"""
     
         t = time.localtime()
     
