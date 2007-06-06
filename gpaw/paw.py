@@ -137,7 +137,7 @@ class Paw:
                  stencils, usesymm, mix, fixdensity, maxiter,
                  convergeall, eigensolver, relax, pos_ac, timer, kT,
                  tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
-                 out, vext_g):
+                 out, verbosity, vext_g):
         """Create the PAW-object.
         
         Instantiating such an object by hand is *not* recommended!
@@ -196,7 +196,8 @@ class Paw:
         self.random_wf = random
         
         self.set_output(out)
-        
+        self.verbosity = verbosity
+ 
         # Construct grid descriptors for coarse grids (wave functions) and
         # fine grids (densities and potentials):
         self.gd = GridDescriptor(domain, N_c)
