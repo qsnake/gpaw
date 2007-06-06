@@ -141,7 +141,8 @@ class CoreHoleSetup:
          filename,
          core_hole_state,
          core_hole_e,
-         core_hole_e_kin) = PAWXMLParser().parse(symbol, xcname)
+         core_hole_e_kin,
+         core_response) = PAWXMLParser().parse(symbol, xcname)
 
         #self.fhole = fhole
         #nc_g *= 0.5 * (2.0 - fhole)
