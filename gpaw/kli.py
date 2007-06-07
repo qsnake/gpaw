@@ -10,7 +10,7 @@ from multiarray import matrixproduct as dot3
 from multiarray import innerproduct as inner # avoid the dotblas version!
 from gpaw.gaunt import gaunt
 from gpaw.spherical_harmonics import YL
-
+from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.complex import cc, real
 
 
@@ -24,24 +24,37 @@ from gpaw.sphere import Y_nL, points, weights
 # 1) approximates the numerator part of Slater-potential from 2*GGA-energy density
 # 2) approximates the response part coefficients from eigenvalues.
 
+SLATER_FUNCTIONAL = "revPBEx"
+SMALL_NUMBER = 1e-11
+K_G = 0.382
+
 class GLLBFunctional:
     def __init__(self):
         self.slater_part = None
-
+        self.initialization_ready = False
+        
     # Called from xc_functional::set_non_local_things method
     # All the necessary classes and methods are passed through this method
     # Not used in 1D-calculations
-    def pass_stuff(self, kpt_u, finegd, interpolate, nspins, nuclei):
+    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation):
         
         self.kpt_u = kpt_u
         self.finegd = finegd
         self.interpolate = interpolate
         self.nspins = nspins
         self.nuclei = nuclei
+        self.occupation = occupation
         
-        self.tempvxc_g = finegd.empty()
-        self.tempe_g = finegd.empty()
-        self.nn_g = finegd.empty()
+        self.tempvxc_g = finegd.zeros()
+        self.tempe_g = finegd.zeros()
+        
+        self.vt_G = gd.zeros()
+        self.vt_g = finegd.zeros()
+        
+    def get_gllb_weight(self, epsilon, fermi_level):
+        if epsilon > fermi_level:
+            return 0
+        return K_G * sqrt(fermi_level - epsilon)
 
     # input:  ae : AllElectron object.
     # output: extra_xc_data : dictionary. A Dictionary with pair ('name', radial grid)
@@ -58,7 +71,7 @@ class GLLBFunctional:
                                                   v_xc,
                                                   njcore = ae.njcore)
 
-        print "CALCULATED CORE RESPONSE OF", v_xc
+        #print "CALCULATED CORE RESPONSE OF", v_xc
         extra_xc_data['core_response'] = v_xc
         
         
@@ -73,7 +86,7 @@ class GLLBFunctional:
 
         if self.slater_part == None:
             from gpaw.xc_functional import XCFunctional, XCRadialGrid
-            self.slater_part = XCRadialGrid(XCFunctional('revPBEx'), gd)
+            self.slater_part = XCRadialGrid(XCFunctional(SLATER_FUNCTIONAL), gd)
         
         N = len(gd.r_g)
         
@@ -88,19 +101,18 @@ class GLLBFunctional:
 
         # Calculate gga-energy density
         self.slater_part.get_energy_and_potential_spinpaired(n_g, v_g, e_g=e_g)
-        
+
+        Exc = num.dot(e_g, gd.dv_g)
+    
         if njcore == None:
             # Approximate the numerator of slater potential with 2*e_g
-            v_xc[:] += 2 * e_g / (n_g + 1e-10)
+            v_xc[:] += 2 * e_g / (n_g + SMALL_NUMBER)
 
         # Find fermi-level
-        print "f_j", f_j
         # Grr!!! sum(num.where(f_j>1e-3, 1, 0))-1 doesn't work
-        
         homo = len(f_j)-1
-        mu = e_j[homo]
-        print "Fermi level:" , mu
-
+        fermi_level = e_j[homo]
+        
         if njcore == None:
             imax = homo+1
         else:
@@ -113,66 +125,64 @@ class GLLBFunctional:
             nn_g[1:] /= gd.r_g[1:]**2
             nn_g[0] = n_g[1]
             
-            sqrt(mu-e_j[i])
-            v_xc[:] += 0.382 * sqrt( mu - e_j[i]) * (nn_g / (n_g + 1e-20))
+            v_xc[:] += self.get_gllb_weight(e_j[i], fermi_level) *  (nn_g / (n_g + SMALL_NUMBER))
 
-        return 0 
+        return Exc
+
+    def add_response_part(self, kpt, vt_G, fermi_level):
+        """Add contribution of response part to pseudo electron-density."""
+        if kpt.typecode is num.Float:
+            #print "Adding response part FLOAT"
+            for psit_G, f, e in zip(kpt.psit_nG, kpt.f_n, kpt.eps_n):
+                axpy(f*self.get_gllb_weight(e, fermi_level), psit_G**2, vt_G)  # nt_G += f * psit_G**2
+            else:
+                #print "Adding response part COMPLEX"
+                for psit_G, f,e  in zip(kpt.psit_nG, kpt.f_n, kpt.eps_n):
+                    vt_G += f * self.get_gllb_weight(e, fermi_level) * (psit_G * num.conjugate(psit_G)).real
+                                                                
             
     def calculate_spinpaired(self, e_g, n_g, v_g):
-        print "In calculate spinpaired"
+        #print "In calculate spinpaired"
         # Create the revPBEx functional for Slater part (only once per calculation)
         if self.slater_part == None:
             from gpaw.xc_functional import XCFunctional, XC3DGrid
-            self.slater_part = XC3DGrid(XCFunctional('revPBEx'), self.finegd, self.nspins)
+            self.slater_part = XC3DGrid(XCFunctional(SLATER_FUNCTIONAL), self.finegd, self.nspins)
 
         # Calculate the approximative Slater-potential
         self.slater_part.get_energy_and_potential_spinpaired(n_g, self.tempvxc_g, e_g=self.tempe_g)
         # Add it to the total potential
-        v_g += 2*self.tempe_g / (n_g + 1e-7)
-        
-        # Just for one spin calculation for now
-        s = 0
-        
-        # Initialize method-attributes
-        kpt = self.kpt_u[s]
-        psit_nG = kpt.psit_nG     # Wave functions
-        E = 0.0                   # Energy of eXact eXchange and kinetic energy
-        try:
-            f_n  = kpt.f_n        # Occupation number
-            e_n = kpt.eps_n       # Eigenvalues
-        except AttributeError:
-            # Eigenvalues and occupations are not yet set
-            # Do just the GGA-part
-            return 0
-        
-        # Find fermi-level
-        #print f_n
-        homo = sum(num.where(f_n>1e-3, 1, 0)) -1
-        #print "HOMO ORBITAL", homo
-        mu = e_n[homo]
-        #print "Fermi level", mu
-        self.mu = mu
-        
-        for i in range(0, homo+1):
-            def step(x):
-                if x<0: return 0
-                return x
-            # Construct the orbital-density
-            self.interpolate(f_n[i] * psit_nG[i]**2, self.nn_g)
-            v_g[:] += 0.382 * sqrt( step(mu - e_n[i])) * (self.nn_g / (n_g + 1e-20))
+        v_g += 2*self.tempe_g / (n_g + SMALL_NUMBER)
 
+        # Return the xc-energy
         e_g[:] = self.tempe_g.flat
-        #e_g[:] = 0.0
-        #return 0
-    
+
+        # Get the fermi-level from occupations
+        fermi_level = self.occupation.get_fermi_level()
+
+        # Coarse grid for response part
+        self.vt_G[:] = 0.0
+
+        # For each k-point
+        for kpt in self.kpt_u:
+            # Check if we already have eigenvalues
+            self.initialization_ready = True
+            try:
+                e_n = kpt.eps_n
+            except AttributeError:
+                print "INITIALIZATION NOT YET READY" #XXXXX
+                self.initialization_ready = False #GRRR
+
+            if self.initialization_ready:
+                self.add_response_part(kpt, self.vt_G, fermi_level)
+
+        # It's faster to add wavefunctions in coarse-grid and interpolate afterwards
+        self.interpolate(self.vt_G, self.vt_g)
+        # Add the fine-grid response part to total potential
+        v_g[:] += self.vt_g
+        
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
+        print "GLLB calculate_spinpolarized not implemented"
         pass
-        #Raise NotImplemented
-        #self.slater_part.calculate_spinpaired(energy_density, na_g / 2, dummy_potential)
-        #va_g += 2*energy_density / (na_g + 1e-20)
-        #self.slater_part.calculate_spinpaired(energy_density, nb_g / 2, dummy_potential)
-        #vb_g += 2*energy_density / (nb_g + 1e-20)
-        #e_g[:] = 0.0
 
 class DummyXC:
     pass
@@ -220,7 +230,7 @@ class XCGLLBCorrection:
         self.nct_g = nct
 
         from xc_functional import XCRadialGrid, XCFunctional
-        self.slater_part = XCFunctional('revPBEx')
+        self.slater_part = XCFunctional(SLATER_FUNCTIONAL)
 
         self.motherxc = xcfunc
 
@@ -273,8 +283,7 @@ class XCGLLBCorrection:
         # it has lines involving GLLB. All lines which contain
         # comments are NOT from xc_corrections.py file:)
 
-        self.nspins = 1 # XXXX SPINHAC
-        kpt = self.motherxc.kpt_u[0] ### KPT HACK
+        self.nspins = 1 # XXXX SPINHACK
         
         # This method is called before initialization of motherxc in pass_stuff
         if self.motherxc.slater_part == None:
@@ -285,14 +294,20 @@ class XCGLLBCorrection:
 
         nucleus = self.motherxc.nuclei[a] # Get the nucleus with index
         ni = nucleus.get_number_of_partial_waves() # Get the number of partial waves from nucleus
-        P_ni = nucleus.P_uni[0] # We need P_ni to reprocdure the orbitals
-        Dn_ii = num.zeros((ni, ni), num.Float) # Allocate space for unpacked atomic density matrix
         np = ni * (ni + 1) // 2 # Number of items in packed density matrix
+        
+        Dn_ii = num.zeros((ni, ni), num.Float) # Allocate space for unpacked atomic density matrix
         Dn_p = num.zeros((np, np), num.Float) # Allocate space for packed atomic density matrix
+ 
         
         r_g = self.rgd.r_g
         xcfunc = self.slater_part #get_functional()
+
+        # The total exchange integral
         E = 0.0
+        # The total pseudo-exchange integral
+        Et = 0.0
+
         if not len(D_sp) == 1:
             raise "Spin polarized calculation not implemented yet"
         D_p = D_sp[0]
@@ -326,44 +341,40 @@ class XCGLLBCorrection:
             xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
 
             E += w * num.dot(e_g, self.dv_g)
-            # This line is left as it is. In final iteration
-            # the Exchance-energy is calculated properly anyway, this is to get more reasonable
-            # energies before scf-convergence.
 
-            # ---begin--- copypasted from density.py...
-            # XXXX Should the spins be treated separately?
-            P_ni = nucleus.P_uni[kpt.u]
-            try:
-                just_slater = False
-                etemp = -kpt.eps_n.copy()
-                etemp += self.motherxc.mu
-                def step(x):
-                    if x<0:
-                        return 0
-                    return x
-                #print etemp
-                for i in range(len(etemp)):
-                    etemp[i] = num.sqrt(step(etemp[i]))
-                #print etemp
-                w_n = 0.382 * etemp[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
-                #print "w_n", w_n
-                Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
-                                 P_ni * w_n))
-                #print "Dn_ii", Dn_ii
-                Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
+            if self.motherxc.initialization_ready:
+                # For each k-point
+                for kpt in self.motherxc.kpt_u:
+                    # Get the projection coefficients
+                    P_ni = nucleus.P_uni[kpt.u]
+                    # Create the coefficients
+                    w_i = num.zeros(kpt.eps_n.shape, num.Float)
+                    for i in range(len(w_i)):
+                        w_i[i] = self.motherxc.get_gllb_weight(kpt.eps_n[i], self.motherxc.occupation.get_fermi_level())
 
-                Dnn_Lq = dot3(self.B_Lqp, Dn_p) #Contract one nmln'm'l'
-                nn_Lg = num.dot(Dnn_Lq, self.n_qg) # Contract nln'l'
-                nn = num.dot(Y_L, nn_Lg) ### Contract L
-                slater_only = False
-            except AttributeError:
+                    w_i = K_G * w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
+
+                    # Calculate the 'density matrix' for numerator part of potential
+                    Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
+                                         P_ni * w_i))
+                
+                    Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
+
+                    Dnn_Lq = dot3(self.B_Lqp, Dn_p) #Contract one nmln'm'l'
+                    nn_Lg = num.dot(Dnn_Lq, self.n_qg) # Contract nln'l'
+                    nn = num.dot(Y_L, nn_Lg) ### Contract L
+            else:
                 nn = 0.0
-                slater_only = True
-                print "Eigenvalues not yet set. Using only slater-exchange."
+
+            # Add the Slater-part
+            x_g = (2*e_g + nn) / (n_g + SMALL_NUMBER) * self.dv_g
+            # Add the response from core
+            x_g += self.core_response * self.dv_g
+
+            # Calculate the slice
+            dEdD_p += w * num.dot(dot3(self.B_pqL, Y_L),
+                                  num.dot(self.n_qg, x_g))
             
-
-            # ---end-----
-
             # 1. We want to calculate the following
             # \sum_{ii'} D_{ii'} \phi_i \phi_i'
             # 2. Separate the partial waves to radial and angular parts
@@ -401,15 +412,14 @@ class XCGLLBCorrection:
             #x_g = -2.0 * deda2_g * self.dv_g * a1_g
             #self.rgd.derivative2(x_g, x_g)
                 
-            x_g = (2*e_g + nn) / (n_g + 1e-20) * self.dv_g
+
             # Add the core-response part here
             #print x_g.shape
             #print self.core_response.shape
-            x_g += self.core_response * self.dv_g
+
 
             #B_Lqp = self.B_Lqp
-            dEdD_p += w * num.dot(dot3(self.B_pqL, Y_L),
-                                  num.dot(self.n_qg, x_g))
+
             #x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
             #dEdD_p += w * num.dot(dot3(self.B_pqL,
             #                              A_Li[:, 0]),
@@ -434,18 +444,18 @@ class XCGLLBCorrection:
             e_g = num.zeros(self.ng, num.Float) 
             deda2_g = num.zeros(self.ng, num.Float)
             xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-            E -= w * num.dot(e_g, self.dv_g)
+            Et += w * num.dot(e_g, self.dv_g)
             #x_g = -2.0 * deda2_g * self.dv_g * a1_g
             #self.rgd.derivative2(x_g, x_g)
 
-            if not slater_only:
+            if self.motherxc.initialization_ready:
                 #Dnn_Lq = dot3(self.B_Lqp, Dn_sp) #Contract one nmln'm'l'
                 nn_Lg = num.dot(Dnn_Lq, self.nt_qg) # Contract nln'l'
                 nn = num.dot(Y_L, nn_Lg) ### Contract L
             else:
                 nn = 0.0
-            x_g = (2*e_g + nn) / (n_g +1e-10) * self.dv_g 
-            #B_Lqp = self.B_Lqp
+                
+            x_g = (2*e_g + nn) / (n_g + SMALL_NUMBER) * self.dv_g 
             dEdD_p -= w * num.dot(dot3(self.B_pqL, Y_L),
                                   num.dot(self.nt_qg, x_g))
             #x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
@@ -461,7 +471,8 @@ class XCGLLBCorrection:
 
             y += 1
 
-        return E - self.Exc0
+        print "GLLB_CORRECTION E:", E, "Et", Et, "Exc0", self.Exc0, "(E-Et)", (E-Et), "(E-Et)-Exc0", (E-Et)-self.Exc0
+        return (E-Et) - self.Exc0
 
 
 class XCKLICorrection:

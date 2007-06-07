@@ -115,8 +115,8 @@ class XCFunctional:
             return
 
         if self.xcname == 'GLLB':
-            self.xc.pass_stuff(paw.kpt_u, paw.finegd, paw.density.interpolate,
-                               paw.nspins, paw.my_nuclei)
+            self.xc.pass_stuff(paw.kpt_u, paw.gd, paw.finegd, paw.density.interpolate,
+                               paw.nspins, paw.my_nuclei, paw.occupation)
 
         if self.xcname == 'KLI':
             self.xc.pass_stuff(
@@ -303,9 +303,12 @@ class XC3DGrid(XCGrid):
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
             
-        return num.sum(self.e_g.flat) * self.dv
+        return num.sum(e_g.flat) * self.dv
 
-    def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g):
+    def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g, e_g=None):
+        if e_g == None:
+            e_g = self.e_g
+
         if self.xcfunc.gga:
             for c in range(3):
                 self.ddr[c](na_g, self.dnadr_cg[c])
@@ -315,7 +318,7 @@ class XC3DGrid(XCGrid):
             self.aa2_g[:] = num.sum(self.dnadr_cg**2)
             self.ab2_g[:] = num.sum(self.dnbdr_cg**2)
 
-            self.xcfunc.calculate_spinpolarized(self.e_g,
+            self.xcfunc.calculate_spinpolarized(e_g,
                                                 na_g, va_g,
                                                 nb_g, vb_g,
                                                 self.a2_g,
@@ -332,10 +335,10 @@ class XC3DGrid(XCGrid):
                 self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
                 vb_g -= 4.0 * tmp_g
         else:
-            self.xcfunc.calculate_spinpolarized(self.e_g,
+            self.xcfunc.calculate_spinpolarized(e_g,
                                                 na_g, va_g,
                                                 nb_g, vb_g)
-        return num.sum(self.e_g.flat) * self.dv
+        return num.sum(e_g.flat) * self.dv
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):
@@ -414,7 +417,7 @@ class XCRadialGrid(XCGrid):
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
 
-        return num.dot(self.e_g, self.dv_g)
+        return num.dot(self.e_g.flat, self.dv_g)
 
     def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g):
         if self.xcfunc.gga:
