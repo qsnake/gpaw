@@ -1,12 +1,49 @@
 import Numeric as num
 
-def save_array(array, fname, fmt='%.18e', delimiter=' ', header=None):
+def get_handle(file, mode='r'):
+    """Return filehandle correspoding to 'file'.
+
+       'file' can be a filehandle, or a filename (string).
+       Support for gzipped files is automatic, if the filename ends in .gz.
+    """
+    if hasattr(file, 'read'):
+        fhandle = file
+    else:
+        assert type(file) == str, 'file must be either filehandle or a string'
+        if file.endswith('.gz'):
+            import gzip
+            mode += 'b'
+            fhandle = gzip.open(file, mode)
+        else:
+            fhandle = open(file, mode)
+    
+    return fhandle
+
+def count_lines(file):
+    """Count the number of lines in 'file'
+
+       'file' can be a filehandle, or a filename (string).
+       Support for gzipped files is automatic, if the filename ends in .gz.
+    """
+    if hasattr(file, 'read'):
+        fname = file.name
+    else:
+        assert type(file) == str, 'file must be either filehandle or a string'
+        fname = file
+    
+    fh = get_handle(fname, 'r')
+    lines = 0
+    for line in fh:
+        lines += 1
+    return lines
+
+def save_array(array, file, fmt='%.18e', delimiter=' ', header=None):
     """Save array to ascii file.
 
        'array' is the array to be saved.
 
-       'fname' is the filename. If the filename ends in .gz,
-       the file is automatically saved in compressed gzip format.
+       'file' can be a filehandle, or a filename (string).
+       Support for gzipped files is automatic, if the filename ends in .gz.
 
        'fmt' is the format string to convert the array values to strings.
 
@@ -15,11 +52,7 @@ def save_array(array, fname, fmt='%.18e', delimiter=' ', header=None):
        'header' if not None, is a string to be put in the top of the file.
     """
     # Open file using gzip if necessary
-    if fname.endswith('.gz'):
-        import gzip
-        fhandle = gzip.open(fname,'wb')
-    else:
-        fhandle = file(fname,'w')
+    fhandle = get_handle(file, 'w')
 
     # Attach header
     if header is not None:
@@ -33,10 +66,10 @@ def load_array(file, comments='#', delimiter=None, converters={},
          skiprows=[], skipcols=[]):
     """Load array from ascii file.
 
-       'file' is a filehandle, or the filename (string).
+       'file' can be a filehandle, or a filename (string).
        Support for gzipped files is automatic, if the filename ends in .gz.
 
-       'comments' - the character used to indicate the start of a comment
+       'comments' is the character used to indicate the start of a comment
        in the file.
 
        'delimiter' is the character used to separate values in the
@@ -49,22 +82,22 @@ def load_array(file, comments='#', delimiter=None, converters={},
        converters={0:numbers.get}.
 
        'skiprows' is a sequence of integer row indices to skip,
-       where 0 is the first row.
+       where 0 is the first row. Negative indices are allowed.
 
        'skipcols', is a sequence of integer column indices to skip,
        where 0 is the first column.
     """
     # Open file using gzip if necessary
-    if hasattr(file, 'read'):
-        fhandle = file
-    else:
-        assert type(file) == str, 'file must be either filehandle or a string'
-        if file.endswith('.gz'):
-            import gzip
-            fhandle = gzip.open(file, 'r')
-        else:
-            fhandle = open(file)
-        
+    fhandle = get_handle(file, 'r')
+
+    # Convert negative indices in skiprows
+    skiprows = num.array(skiprows)
+    if num.sometrue(skiprows < 0):
+        lines = count_lines(fhandle)
+        for i, val in enumerate(skiprows):
+            if val < 0:
+                skiprows[i] += lines
+
     array = []
     for i, row in enumerate(fhandle):
         # Skip the desired rows
