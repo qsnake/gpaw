@@ -67,6 +67,13 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
     }
 }
  
+static PyObject * mpi_barrier(MPIObject *self)
+{
+  MPI_Barrier(self->comm);
+  Py_RETURN_NONE;
+}
+
+
 static PyObject * mpi_wait(MPIObject *self, PyObject *args)
 {
   char* s;
@@ -180,6 +187,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args);
 static PyMethodDef mpi_methods[] = {
     {"receive",      (PyCFunction)mpi_receive,     METH_VARARGS, 0},
     {"send",         (PyCFunction)mpi_send,        METH_VARARGS, 0},
+    {"barrier",         (PyCFunction)mpi_barrier,        METH_VARARGS, 0},
     {"wait",         (PyCFunction)mpi_wait,        METH_VARARGS, 0},
     {"sum",          (PyCFunction)mpi_sum,         METH_VARARGS, 0},
     {"gather",       (PyCFunction)mpi_gather,      METH_VARARGS, 0},
