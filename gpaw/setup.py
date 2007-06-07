@@ -520,11 +520,12 @@ class Setup:
          phi_jg, phit_jg, pt_jg,
          e_kin_jj, X_p, ExxC,
          tauc_g, tauct_g,
-         self.fingerprint,
+         fingerprint,
          filename,
          core_hole_state,
          core_hole_e,
-         core_hole_e_kin) = PAWXMLParser().parse(self.symbol, self.xcname)
+         core_hole_e_kin,
+         core_response) = PAWXMLParser().parse(self.symbol, self.xcname)
 
         # cutoffs
         nj = len(l_j)
