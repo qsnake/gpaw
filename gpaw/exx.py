@@ -264,28 +264,25 @@ def atomic_exact_exchange(atom, type = 'all'):
     """Returns the exact exchange energy of the atom defined by the
        instantiated AllElectron object 'atom'
     """
-
-    # make gaunt coeff. list
-    gaunt = make_gaunt(lmax=max(atom.l_j))
-
-    # The number of orbitals
-    Nj     = len(atom.n_j)
-
+    gaunt = make_gaunt(lmax=max(atom.l_j)) # Make gaunt coeff. list
+    Nj = len(atom.n_j)                     # The total number of orbitals
 
     # determine relevant states for chosen type of exchange contribution
     if type == 'all':
         nstates = mstates = range(Nj)
     else:
-        # The number of core (Njcore) orbitals
-        Njcore = core_states(atom.symbol)
-        if type == 'val-val': nstates = mstates = range(Njcore,Nj)
-        elif type == 'core-core': nstates = mstates = range(Njcore)
+        Njcore = core_states(atom.symbol) # The number of core orbitals
+        if type == 'val-val':
+            nstates = mstates = range(Njcore, Nj)
+        elif type == 'core-core':
+            nstates = mstates = range(Njcore)
         elif type == 'val-core':
             nstates = range(Njcore,Nj)
             mstates = range(Njcore)
         else:
             raise RuntimeError('Unknown type of exchange: ', type)
 
+    # Arrays for storing the potential (times radius)
     vr = num.zeros(atom.N, num.Float)
     vrl = num.zeros(atom.N, num.Float)
     

@@ -122,7 +122,6 @@ def load_array(file, comments='#', delimiter=None, converters={},
         array.append(cols)
 
     # Convert to Numeric array if possible
-    array = num.array(array)
     try:
         array = num.array(array)
 

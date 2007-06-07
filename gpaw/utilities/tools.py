@@ -1,4 +1,11 @@
 import Numeric as num
+from time import time
+
+def function_timer(func, *args, **kwargs):
+    t1 = time()
+    r = func(*args, **kwargs)
+    t2 = time()
+    return tuple(r) + (t2-t1,)
 
 def factorial(x):
     """Return x!, where x is a non-negative integer."""
