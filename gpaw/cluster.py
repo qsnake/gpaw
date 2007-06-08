@@ -3,7 +3,8 @@ import Numeric as num
 
 from ASE import Atom, ListOfAtoms
 from ASE.Utilities.GeometricTransforms import Translate
-from ASE.IO.xyz import ReadXYZ
+from ASE.IO.xyz import ReadXYZ, WriteXYZ
+from ASE.IO.PDB import WritePDB
 
 class Cluster(ListOfAtoms):
     """A class for cluster structures
@@ -65,8 +66,9 @@ class Cluster(ListOfAtoms):
         if filetype is None:
             # estimate file type from name ending
             filetype = filename.split('.')[-1]
+        filetype.capitalize()
 
-        if filetype == 'xyz' or  filetype == 'XYZ':
+        if filetype == 'Xyz':
             loa = ReadXYZ(filename)
             self.__init__(loa)
         
@@ -74,3 +76,21 @@ class Cluster(ListOfAtoms):
             raise NotImplementedError('unknown file type "'+filetype+'"')
                 
         return len(self)
+
+    def Write(self,filename,filetype=None):
+        """Write the strcuture to file. The type can be given
+        or it will be guessed from the filename."""
+
+        if filetype is None:
+            # estimate file type from name ending
+            filetype = filename.split('.')[-1]
+        filetype.capitalize()
+
+        if filetype == 'Xyz':
+            WriteXYZ(filename,self)
+        elif filetype == 'Pdb':
+            WritePDB(filename,self)
+        else:
+            raise NotImplementedError('unknown file type "'+filetype+'"')
+                
+       
