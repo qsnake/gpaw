@@ -91,7 +91,7 @@ class Atoms:
         for i in range(n):
             R = self.RR[i]
             F = self.FF[i]
-            f = sqrt(((F * D)**2).sum(1))
+            f = ((F * D)**2).sum(1)**.5
             fmax = max(f)
             fave = f.mean()
             e = E[i]
