@@ -73,6 +73,15 @@ class LrTDDFT(ExcitationList):
         else:
             self.read(filename)
 
+    def analyse(self,what=None):
+        if what is None:
+            what = range(len(self))
+        elif type(what)==type(1):
+            what=[what]
+            
+        for i in what:
+            print self[i].analyse()
+            
     def update(self,
                calculator=None,
                nspins=None,
@@ -125,6 +134,9 @@ class LrTDDFT(ExcitationList):
     def get_Om(self):
         return self.Om
 
+    def Read(self, filename=None, fh=None):
+        return self.read(filename,fh)
+        
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
         if mpi.rank == mpi.MASTER:
@@ -186,6 +198,9 @@ class LrTDDFT(ExcitationList):
         string += self.kss.__str__()
         return string
 
+    def Write(self, filename=None, fh=None):
+        return self.write(filename,fh)
+    
     def write(self, filename=None, fh=None):
         """Write current state to a file.
 
@@ -256,12 +271,11 @@ class LrTDDFTExcitation(Excitation):
                 raise RuntimeError
         
             self.energy=sqrt(Om.eigenvalues[i])
-            f = Om.eigenvectors[i]
-            self.f = f
-            kss = Om.kss
+            self.f = Om.eigenvectors[i]
+            self.kss = Om.kss
             self.me = 0.
-            for j in range(len(kss)):
-                self.me += f[j] * kss[j].me
+            for f,k in zip(self.f,self.kss):
+                self.me += f * k.me
 
             return
 
@@ -292,7 +306,23 @@ class LrTDDFTExcitation(Excitation):
               (self.energy*27.211,m,me[0],me[1],me[2])
         return str
 
+    def analyse(self,min=.1):
+        """Return an analysis string of the excitation"""
+        s='E=%.3f'%(self.energy*27.211)+' eV, f=%.3g'\
+           %(self.GetOscillatorStrength()[0])+'\n'
 
+        def sqr(x): return x*x
+        spin = ['u','d'] 
+        min2 = sqr(min)
+        rest = num.sum(self.f**2)
+        for f,k in zip(self.f,self.kss):
+            f2 = sqr(f)
+            if f2>min2:
+                s += '  %d->%d ' % (k.i,k.j) + spin[k.pspin] + ' ' 
+                s += '%.3g \n'%f2
+                rest -= f2
+        s+='  rest=%.3g'%rest
+        return s
         
 
 
