@@ -124,30 +124,43 @@ def iteration(paw):
 def print_eigenvalues(paw):
     """Print eigenvalues and occupation numbers."""
     out = paw.out
+    print >> out, eigenvalue_string(paw)
+
+def eigenvalue_string(paw,comment=None):
+    """
+    Write eigenvalues and occupation numbers into a string.
+    The parameter comment can be used to comment out non-numers,
+    for example to escape it for gnuplot.
+    """
+
+    if not comment: comment=''
+
     Ha = paw.Ha
 
     if paw.nkpts > 1 or paw.kpt_comm.size > 1:
         # not implemented yet:
-        return
+        return ''
 
+    s = ''
     if paw.nspins == 1:
-        print >> out, ' band     eps        occ'
+        s += comment + ' band     eps        occ\n'
         kpt = paw.kpt_u[0]
         for n in range(paw.nbands):
-            print >> out, ('%4d %10.5f %10.5f' %
-                           (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
+            s += ('%4d %10.5f %10.5f\n' %
+                  (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
     else:
-        print >> out, '                up                   down'
-        print >> out, ' band     eps        occ        eps        occ'
+        s += comment + '                up                   down\n'
+        s += comment + ' band     eps        occ        eps        occ\n'
         epsa_n = paw.kpt_u[0].eps_n
         epsb_n = paw.kpt_u[1].eps_n
         fa_n = paw.kpt_u[0].f_n
         fb_n = paw.kpt_u[1].f_n
         for n in range(paw.nbands):
-            print >> out, ('%4d %10.5f %10.5f %10.5f %10.5f' %
-                           (n,
-                            Ha * epsa_n[n], fa_n[n],
-                            Ha * epsb_n[n], fb_n[n]))
+            s += ('%4d %10.5f %10.5f %10.5f %10.5f\n' %
+                  (n,
+                   Ha * epsa_n[n], fa_n[n],
+                   Ha * epsb_n[n], fb_n[n]))
+    return s
 
 def plot_atoms(paw):
     domain = paw.domain
