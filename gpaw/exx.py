@@ -66,8 +66,8 @@ class EXX:
     exchange energy."""
     
     def __init__(self, gd, finegd, interpolate, restrict, poisson,
-                 my_nuclei, ghat_nuclei, nspins, nmyu, nbands, kcomm, dcomm,
-                 energy_only=False):
+                 my_nuclei, ghat_nuclei, nspins, nmyu, nbands, Na,
+                 kcomm, dcomm, energy_only=False):
 
         # Initialize class-attributes
         self.nspins      = nspins
@@ -82,6 +82,7 @@ class EXX:
         self.energy_only = energy_only
         self.integrate   = gd.integrate
         self.fineintegrate = finegd.integrate
+        self.Na = Na
         
         # Allocate space for matrices
         self.nt_G = gd.empty()    # Pseudo density on coarse grid
@@ -91,7 +92,7 @@ class EXX:
         if not energy_only:
             self.vt_unG = gd.empty((nmyu, nbands))# Diagonal pot. for residuals
 
-    def apply(self, kpt, Htpsit_nG, H_nn, hybrid):
+    def apply(self, kpt, Htpsit_nG, H_nn, hybrid, force=False):
         """Apply exact exchange operator."""
 
         # Initialize method-attributes
@@ -104,6 +105,11 @@ class EXX:
         if not self.energy_only:
             for nucleus in self.my_nuclei:
                 nucleus.vxx_uni[u] = 0.0
+        if force:
+            if not hasattr(self, F_ac):
+                self.F_ac = num.zeros((self.Na, 3), num.Float)
+            else:
+                self.F_ac[:] = 0.0
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
@@ -131,6 +137,9 @@ class EXX:
 
                         # Determine compensation charge coefficients:
                         Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+
+                        if force:
+                            self.Q_aL[nucleus.a] = Q_L
                     else:
                         Q_L = None
 
@@ -144,6 +153,21 @@ class EXX:
                 self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z,
                                    eps=1e-12, zero_initial_phi=True)
                 self.restrict(self.vt_g, self.vt_G)
+
+                # Add force contribution
+                if force:
+                    for nucleus in ghat_nuclei:
+                        if nucleus.in_this_domain:
+                            lmax = nucleus.setup.lmax
+                            F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
+                            self.ghat_L.derivative(vt_g, F_Lc)
+                            
+                            self.F_ac[nucleus.a] -= (
+                                f1 * f2 * dc * hybrid / deg * num.dot(
+                                self.Q_aL[nucleus.a], F_Lc))
+                        else:
+                            self.ghat_L.derivative(self.vt_g, None)
+                            
 
                 # Integrate the potential on fine and coarse grids
                 int_fine = self.fineintegrate(self.vt_g * self.nt_g)
@@ -170,6 +194,27 @@ class EXX:
 
                         if nucleus.in_this_domain:
                             v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
+                            
+                            if force:
+                                ni = self.setup.ni
+                                F_ic = num.zeros((ni, 3), num.Float)
+                                self.pt_i.derivative(psit1_G, F_ic)
+                                F_ic.shape = (ni * 3,)
+                                F_iic = num.dot(v_ii, num.outerproduct(
+                                    nucleus.P_uni[u, n2], F_ic))
+                                
+                                F_ic[:] = 0.0
+                                F_ic.shape =(ni, 3)
+                                self.pt_i.derivative(psit2_G, F_ic)
+                                F_ic.shape = (ni * 3,)
+                                F_iic += num.dot(v_ii, num.outerproduct(
+                                    nucleus.P_uni[u, n1], F_ic))
+                                
+                                #F_iic *= 2.0
+                                F_iic.shape = (ni, ni, 3)
+                                for i in range(ni):
+                                    self.F_ac[nucleus.a] -= real(F_iic[i, i])
+                                
                             nucleus.vxx_uni[u, n1] += (
                                 f2 * hybrid / deg * num.dot(
                                 v_ii, nucleus.P_uni[u, n2]))
@@ -181,7 +226,11 @@ class EXX:
                                 # XXX Check this:
                                 nucleus.vxx_unii[u, n1] = (
                                     f2 * hybrid / deg * v_ii)
-        
+                        else:
+                            if force:
+                                self.pt_i.derivative(psit1_G, None)
+                                self.pt_i.derivative(psit2_G, None)
+
         # Apply the atomic corrections to the energy and the Hamiltonian matrix
         for nucleus in self.my_nuclei:
             # Ensure that calculation does not use extra soft comp. charges
@@ -245,6 +294,9 @@ class EXX:
             self.Exx = self.Ekin = 0
         self.Exx += self.psum(Exx)
         self.Ekin += self.psum(Ekin)
+
+    def get_non_local_force(self):
+        return self.F_ac
 
     def adjust_residual(self, pR_G, dR_G, u, n):
         dR_G += self.vt_unG[u, n] * pR_G
