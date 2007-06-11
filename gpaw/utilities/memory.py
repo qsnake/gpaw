@@ -116,12 +116,12 @@ def estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c, out):
         nl = 0
         for ghat in nucleus.setup.ghat_l:
             l = ghat.get_angular_momentum_number()
-            nl += 2 * l +1
-        mem_nuclei += 2 * 4 * nl * box[0] * box[1] * box[2] * float_size
-        mem_nuclei += 2 * box[0] * box[1] * box[2] * float_size
+            nl += 2 * l + 1
+        mem_nuclei += 4 * nl * box[0] * box[1] * box[2] * float_size
+        mem_nuclei += box[0] * box[1] * box[2] * float_size
         # nct
         box = 2 * nucleus.setup.nct.get_cutoff() / h_c
-        mem_nuclei += box[0] * box[1] * box[2] * float_size
+        mem_nuclei += 5 * box[0] * box[1] * box[2] * float_size
 
     print >> out, "Localized functions: %.3f" % (mem_nuclei/scale)
     mem += mem_nuclei
