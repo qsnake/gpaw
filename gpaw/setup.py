@@ -565,3 +565,13 @@ def grr(phi_g, l, r_g):
         r0, r1, r2 = r_g[0:3]
         w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2) 
     return w_g
+
+
+if __name__ == '__main__':
+    print """\
+You are using the wrong setup.py script!  This setup.py defines a
+Setup class used to hold the atomic data needed for a specific atom.
+For building the GPAW code you must use the setup.py distutils script
+at the root of the code tree.  Just do "cd .." and you will be at the
+right place."""
+    
