@@ -3,6 +3,13 @@ from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
 from gpaw.utilities import center, equal
 from gpaw.atom.all_electron import AllElectron as AE
+from gpaw.atom.generator import Generator, parameters
+from gpaw import setup_paths
+
+# Generate non-scalar-relativistic setup for Cu:
+g = Generator('Mg', 'GLLB', scalarrel=False, nofiles=True)
+g.run(**parameters['Mg'])
+setup_paths.insert(0, '.')
 
 a = 8
 
