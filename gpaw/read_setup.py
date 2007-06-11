@@ -135,8 +135,6 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             else:
                 assert attrs['type'] == 'GGA'
                 self.xcname = attrs['name']
-        elif name == 'generator':
-            assert attrs['type'] != 'non-relativistic'
         elif name == 'ae_energy':
             self.e_total = float(attrs['total'])
             self.e_kinetic = float(attrs['kinetic'])
