@@ -73,14 +73,14 @@ class LrTDDFT(ExcitationList):
         else:
             self.read(filename)
 
-    def analyse(self,what=None):
+    def analyse(self,what=None,min=.1):
         if what is None:
             what = range(len(self))
         elif type(what)==type(1):
             what=[what]
             
         for i in what:
-            print self[i].analyse()
+            print self[i].analyse(min=min)
             
     def update(self,
                calculator=None,
