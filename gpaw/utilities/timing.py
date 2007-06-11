@@ -106,3 +106,19 @@ class Timer:
         for name, t in timer.timers.items():
             self.timers[name] = self.timers.get(name, 0.0) + t
 
+class StepTimer(Timer):
+    def __init__(self,out=sys.stdout,name=None):
+        Timer.__init__(self)
+        if name is None:
+            name = '<'+sys._getframe(1).f_code.co_name+'>'
+        self.name = name
+        self.out = out
+        self.now = 'temporary now'
+        self.start(self.now)
+
+    def write_now(self,mark=''):
+        self.stop()
+        print >> self.out, self.name, mark, self.gettime(self.now)
+        self.out.flush()
+        del self.timers[self.now]
+        self.start(self.now)
