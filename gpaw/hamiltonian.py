@@ -163,8 +163,9 @@ class Hamiltonian:
             # Energy corections due to external potential.
             # Potential is assumed to be constant inside augmentation spheres.
             if self.vext_g and nucleus.in_this_domain:
-                R_c = num.floor(density.finegd.N_c * nucleus.spos_c
+                R_c = num.around(density.finegd.N_c * nucleus.spos_c
                                  - density.finegd.beg_c).astype(int)
+                R_c -= (R_c == density.finegd.n_c)
                 Eext += sqrt(4 * pi) * (nucleus.Q_L[0] +
                                         nucleus.setup.Z) * self.vext_g[R_c]
         self.timer.stop()
