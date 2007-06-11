@@ -34,11 +34,9 @@ class MPIPaw:
 
         s.listen(1)
 
-        # The environment variable GPAW_PYTHON can be set to a
-        # special Python interpreter with MPI built in.  The deafault
-        # is to use the standard Python interpreter and load in the
-        # MPI library dynamically at run time.
-        python = os.environ.get('GPAW_PYTHON', sys.executable)
+        # Use the custom interpreter given by the environment variable
+        # GPAW_PYTHON or gpaw-python which should be in the PATH
+        gpaw_python = os.environ.get('GPAW_PYTHON', 'gpaw-python')
 
         # This is the Python command that all processors wil run:
         # line = 'from gpaw.mpi.run import run; run("%s", %d)' % (host, port)
@@ -48,7 +46,7 @@ class MPIPaw:
         f.close()
         
         #job = python + " -c '" + line + "' --gpaw-parallel"
-        job = python + ' par_run.py' + ' --gpaw-parallel'
+        job = gpaw_python + ' par_run.py'
 
         if debug:
             job += ' --gpaw-debug'

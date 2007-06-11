@@ -84,7 +84,6 @@ def get_system_config(define_macros, undef_macros,
         #  _||_|| \|
         #
 
-        include_dirs += ['/opt/SUNWhpc/include']
         extra_compile_args += ['-KPIC', '-fast']
 
         # Suppress warning from -fast (-xarch=native):
@@ -96,14 +95,7 @@ def get_system_config(define_macros, undef_macros,
         os.remove('cc-test.c')
         if len(arch) > 0:
             extra_compile_args += ['-xarch=%s' % arch[-1]]
-            
-        library_dirs += ['/opt/SUNWspro/lib',
-                         '/opt/SUNWhpc/lib']
-        runtime_library_dirs += ['/opt/SUNWspro/lib',
-                                '/opt/SUNWhpc/lib']
-        extra_objects += ['/opt/SUNWhpc/lib/shmpm.so.2',
-                         '/opt/SUNWhpc/lib/rsmpm.so.2',
-                         '/opt/SUNWhpc/lib/tcppm.so.2']
+
 
         # We need the -Bstatic before the -lsunperf and -lfsu:
         extra_link_args += ['-Bstatic', '-lsunperf', '-lfsu']
@@ -113,8 +105,6 @@ def get_system_config(define_macros, undef_macros,
         else:
             extra_link_args.append('-lmtsk')
             define_macros.append(('NO_C99_COMPLEX', '1'))
-
-        
 
         msg += ['* Using SUN high performance library']
 
@@ -130,8 +120,6 @@ def get_system_config(define_macros, undef_macros,
 
         libraries += ['f', 'essl', 'lapack']
         define_macros.append(('GPAW_AIX', '1'))
-        #    mpicompiler = 'mpcc_r'
-        #    custom_interpreter = True
 
     elif machine == 'x86_64':
 
@@ -233,34 +221,22 @@ def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
     
     if mpi == '':
         mpicompiler = None
-        custom_interpreter = False
 
     elif mpi == 'sun':
+        mpi_include_dirs += ['/opt/SUNWhpc/include']
         mpi_libraries += ['mpi']
-        mpi_define_macros.append(('PARALLEL', '1'))
-        mpicompiler = None
-        custom_interpreter = False
+        mpi_library_dirs += ['/opt/SUNWhpc/lib']
+        mpi_runtime_library_dirs += ['/opt/SUNWhpc/lib']
+        mpicompiler = get_config_var('CC')
 
     elif mpi == 'poe':
-        #On IBM we need a custom interpreter
         mpicompiler = 'mpcc_r'
-        custom_interpreter = True
-
-    elif mpi in ['mpich', 'mvapich']:
-        #With mpich, a custom compiler is needed
-        #Do not know with mvapich, but cannot test with shared libraries
-        #at the moment...
-        mpicompiler = 'mpicc'   
-        custom_interpreter = True            
-        mpi_define_macros.append(('PARALLEL', '1'))
 
     else:
-        #Try to build the shared library with mpicc
+        #Try to use mpicc
         mpicompiler = 'mpicc'   
-        custom_interpreter = False
-        mpi_define_macros.append(('PARALLEL', '1'))
 
-    return mpicompiler, custom_interpreter
+    return mpicompiler
 
 def mtime(path, name, mtimes):
     """Return modification time.
@@ -310,7 +286,9 @@ def test_configuration():
 
 def write_configuration(define_macros, include_dirs, libraries, library_dirs,
                         extra_link_args, extra_compile_args,
-                        runtime_library_dirs,extra_objects):    
+                        runtime_library_dirs, extra_objects, mpicompiler,
+                    mpi_libraries, mpi_library_dirs, mpi_include_dirs,
+                    mpi_runtime_library_dirs, mpi_define_macros):    
 
     # Write the compilation configuration into a file
     try:
@@ -327,16 +305,26 @@ def write_configuration(define_macros, include_dirs, libraries, library_dirs,
     print >> out, "extra_compile_args", extra_compile_args
     print >> out, "runtime_library_dirs", runtime_library_dirs
     print >> out, "extra_objects", extra_objects
+    if mpicompiler is not None:
+        print >> out
+        print >> out, "Parallel configuration"
+        print >> out,  "mpicompiler", mpicompiler
+        print >> out,  "mpi_libraries", mpi_libraries
+        print >> out, "mpi_library_dirs", mpi_library_dirs
+        print >> out, "mpi_include_dirs", mpi_include_dirs
+        print >> out, "mpi_define_macros", mpi_define_macros
+        print >> out, "mpi_runtime_library_dirs", mpi_runtime_library_dirs
     out.close()
 
 
 def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
-                      extra_link_args, extra_compile_args,mpicompiler):
+                      extra_link_args, extra_compile_args,
+                      runtime_library_dirs, extra_objects, 
+                      mpicompiler, mpi_libraries, mpi_library_dirs,
+                      mpi_include_dirs, mpi_runtime_library_dirs,
+                      mpi_define_macros):
 
-    #Build custom interpreter which is needed for parallel calculations on
-    #IBM and with mpich mpi library. Also, when shared mpi-libraries are
-    #not available, a custom interpreter is needed
-        
+    #Build custom interpreter which is used for parallel calculations
 
     cfgDict = get_config_vars()
     plat = get_platform() + '-' + sys.version[0:3]
@@ -349,6 +337,12 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     if not os.path.isdir('build/bin.%s/' % plat):
         os.makedirs('build/bin.%s/' % plat)    
     exefile = 'build/bin.%s/' % plat + '/gpaw-python'
+
+    libraries += mpi_libraries
+    library_dirs += mpi_library_dirs
+    define_macros += mpi_define_macros
+    include_dirs += mpi_include_dirs
+    runtime_library_dirs += mpi_runtime_library_dirs
 
     define_macros.append(('PARALLEL', '1'))
     define_macros.append(('GPAW_INTERPRETER', '1'))
@@ -365,6 +359,21 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     libs += ' -lpython%s' % cfgDict['VERSION']
     libs = ' '.join([libs, cfgDict['LIBS'], cfgDict['LIBM']])
                    
+    #Hack taken from distutils to determine option for runtime_libary_dirs
+    if sys.platform[:6] == "darwin":
+        # MacOSX's linker doesn't understand the -R flag at all
+        runtime_lib_option = '-L'
+    elif sys.platform[:5] == "hp-ux":
+        runtime_lib_option = '+s -L'
+    elif os.popen3('mpicc --showme')[1].read()[:3] == "gcc":
+        runtime_lib_option = '-Wl,-R'
+    elif os.popen3('mpicc -show')[1].read()[:3] == "gcc":
+        runtime_lib_option = '-Wl,-R'
+    else:
+        runtime_lib_option = '-R'
+            
+    runtime_libs = ' '.join([ runtime_lib_option + lib for lib in runtime_library_dirs])
+            
     if sys.platform == 'aix5':
         extra_link_args.append(cfgDict['LINKFORSHARED'].replace('Modules', cfgDict['LIBPL']))
     else:
@@ -381,26 +390,30 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                obj,
                src)
         print cmd
-        error=os.system(cmd)
-        if error != 0:
-            msg += ['* FAILED!  Only serial version of code will work.']
-            break
+        if "--dry-run" not in sys.argv:
+            error=os.system(cmd)
+            if error != 0:
+                msg += ['* FAILED!  Only serial version of code will work.']
+                break
 
     # Link the custom interpreter
-    cmd = ('%s -o %s %s %s %s %s' ) % \
+    cmd = ('%s -o %s %s %s %s %s %s %s' ) % \
           (mpicompiler,
            exefile,
            objects,
+           ' '.join(extra_objects),
            lib_dirs,
-           libs,            
+           libs,
+           runtime_libs,
            ' '.join(extra_link_args))
     
     msg = ['* Building a custom interpreter']
     print cmd
-    error=os.system(cmd)
-    if error != 0:
-        msg += ['* FAILED!  Only serial version of code will work.']
+    if "--dry-run" not in sys.argv:
+        error=os.system(cmd)
+        if error != 0:
+            msg += ['* FAILED!  Only serial version of code will work.']
 
 
-    return msg
+    return error, msg
         

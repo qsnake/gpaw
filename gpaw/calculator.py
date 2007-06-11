@@ -278,9 +278,12 @@ class Calculator:
                 # the hosts from the PBS_NODEFILE environment variable:
                 self.hosts = os.environ['PBS_NODEFILE']
                 
-                if len(open(self.hosts).readlines()) == 1:
-                    # Only one node - don't do a parallel calculation:
-                    self.hosts = None
+                try:
+                    nodes = len(open(self.hosts).readlines())
+                    if nodes == 1:
+                        self.hosts = None
+                except:
+                    pass
             elif os.environ.has_key('NSLOTS'):
                 # This job was submitted to the Grid Engine queing system:
                 self.hosts = int(os.environ['NSLOTS'])
@@ -305,13 +308,16 @@ class Calculator:
             self.hosts = self.tempfile
             # (self.tempfile is removed in Calculator.__del__)
 
-        # What kind of calculation should we do?
-        if self.hosts is None or parallel:
-            # Serial:
-            self.paw = create_paw_object(*args)
+        if self.hosts is not None and mpi.size == 1:
+            parallel_with_sockets = True
         else:
-            # Parallel:
+            parallel_with_sockets = False
+
+        # What kind of calculation should we do?
+        if parallel_with_sockets:
             self.paw = MPIPaw(self.hosts, *args)
+        else:
+            self.paw = create_paw_object(*args)
             
     def find_ground_state(self):
         """Tell PAW-object to start iterating ..."""

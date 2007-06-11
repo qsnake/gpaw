@@ -8,6 +8,7 @@
 #     libraries += ['somelib',otherlib']
 
 
+#compiler = 'mpcc'
 #libraries = []
 #libraries += []
 
@@ -32,5 +33,18 @@
 #define_macros = []
 #define_macros += []
 
-#mpicompiler = 'mpicc'
-#custom_interpreter = True
+#mpicompiler = None
+#mpi_libraries = []
+#mpi_libraries += []
+
+#mpi_library_dirs = []
+#mpi_library_dirs += []
+
+#mpi_include_dirs = []
+#mpi_include_dirs += []
+
+#mpi_runtime_library_dirs = []
+#mpi_runtime_library_dirs += []
+
+#mpi_define_macros = []
+#mpi_define_macros += []

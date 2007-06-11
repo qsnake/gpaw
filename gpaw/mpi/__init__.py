@@ -27,14 +27,16 @@ class SerialCommunicator:
     def send(self, buff, root, tag=123, block=True):
         pass
 
+    def barrier(self):
+        pass
+    
 serial_comm = SerialCommunicator()
 if debug:
     serial_comm.comm = serial_comm # cycle? XXX
 
-if os.environ.has_key('GRIDPAW_PARALLEL') or parallel:
-    # This will call MPI_Init:
+try:
     world = _gpaw.Communicator()
-else:
+except:
     world = serial_comm
 
 size = world.size
