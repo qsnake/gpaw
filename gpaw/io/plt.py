@@ -87,3 +87,28 @@ def write_plt(cell, grid, filename,
 
     f.close()
 
+def wf2plt(paw,i,spin=0,fname=None):
+    """Write a specific wavefunction as plt file"""
+    kpt = paw.kpt_u[spin]
+    wf = kpt.psit_nG[i]
+    gd = kpt.gd
+    cell = num.zeros((3,3),num.Float)
+    for j in range(3):
+        cell[j][j] = gd.h_c[j]*gd.N_c[j]
+
+    if fname is None:
+        fname = 'wf'+str(i)+'_'+str(spin)+'.plt'
+    write_plt(cell, wf, fname)
+    
+def pot2plt(paw,spin=0,fname=None):
+    """Write the potential as plt file"""
+    kpt = paw.kpt_u[spin]
+    gd = kpt.gd
+    vt = paw.hamiltonian.vt_sG[spin]
+    cell = num.zeros((3,3),num.Float)
+    for j in range(3):
+        cell[j][j] = gd.h_c[j]*gd.N_c[j]
+
+    if fname is None:
+        fname = 'vt_'+str(spin)+'.plt'
+    write_plt(cell, vt, fname)
