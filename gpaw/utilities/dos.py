@@ -40,5 +40,5 @@ class LDOS(DOS):
         for w, P_ni, e_n in zip(self.w_k, P_kni, self.e_skn[spin]):
             for P_i, e in zip(P_ni, e_n):
                 for i, P in enumerate(P_i):
-                    dos_ie[i] += w * P**2 * self.Delta(e)
+                    dos_ie[i] += w * abs(P)**2 * self.Delta(e)
         return dos_ie
