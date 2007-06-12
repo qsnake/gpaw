@@ -84,11 +84,11 @@ class Cluster(ListOfAtoms):
         if filetype is None:
             # estimate file type from name ending
             filetype = filename.split('.')[-1]
-        filetype.capitalize()
+        filetype.lower()
 
-        if filetype == 'Xyz':
+        if filetype == 'xyz':
             WriteXYZ(filename,self)
-        elif filetype == 'Pdb':
+        elif filetype == 'pdb':
             WritePDB(filename,self)
         else:
             raise NotImplementedError('unknown file type "'+filetype+'"')
