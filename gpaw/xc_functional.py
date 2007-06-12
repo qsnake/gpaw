@@ -78,6 +78,8 @@ class XCFunctional:
                 self.mgga = True
             elif xcname == 'PW91':
                 code = 14
+            elif xcname == 'LB94':
+                code = 17
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 
