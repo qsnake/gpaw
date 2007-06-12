@@ -538,6 +538,10 @@ class Calculator:
         """Return the Fermi-level."""
         return self.paw.get_fermi_level()
 
+    def GetElectronicTemperature(self):
+        """Return the electronic temperature in energy units."""
+        return self.paw.occupation.kT * self.Ha
+        
     def GetElectronicStates(self):
         """Return electronic-state object."""
         from ASE.Utilities.ElectronicStates import ElectronicStates
