@@ -32,6 +32,7 @@ class GLLBFunctional:
     def __init__(self):
         self.slater_part = None
         self.initialization_ready = False
+        self.fermi_level = -1000
         
     # Called from xc_functional::set_non_local_things method
     # All the necessary classes and methods are passed through this method
@@ -111,7 +112,7 @@ class GLLBFunctional:
         # Find fermi-level
         # Grr!!! sum(num.where(f_j>1e-3, 1, 0))-1 doesn't work
         homo = len(f_j)-1
-        fermi_level = e_j[homo]
+        self.fermi_level = e_j[homo]
         
         if njcore == None:
             imax = homo+1
@@ -125,7 +126,7 @@ class GLLBFunctional:
             nn_g[1:] /= gd.r_g[1:]**2
             nn_g[0] = n_g[1]
             
-            v_xc[:] += self.get_gllb_weight(e_j[i], fermi_level) *  (nn_g / (n_g + SMALL_NUMBER))
+            v_xc[:] += self.get_gllb_weight(e_j[i], self.fermi_level) *  (nn_g / (n_g + SMALL_NUMBER))
 
         return Exc
 
@@ -157,8 +158,23 @@ class GLLBFunctional:
         e_g[:] = self.tempe_g.flat
 
         # Get the fermi-level from occupations
-        fermi_level = self.occupation.get_fermi_level()
-
+        try:
+            self.fermi_level_old = self.fermi_level
+            self.fermi_level = -1000
+            for kpt in self.kpt_u:
+                for e, f in zip(kpt.eps_n, kpt.f_n):
+                    if f > 1e-2:
+                        if self.fermi_level < e:
+                            self.fermi_level = e
+                            
+            if not self.fermi_level_old == -1000:
+                self.fermi_level = self.fermi_level*0.4 + self.fermi_level_old*0.6
+            print "Using fermilevel: ", self.fermi_level
+        except AttributeError:
+            #print "Using occupation.get_fermi_level()"
+            self.fermi_level = -1000
+            #self.occupation.get_fermi_level()
+            #print "SELF:", self.fermi_level
         # Coarse grid for response part
         self.vt_G[:] = 0.0
 
@@ -173,7 +189,7 @@ class GLLBFunctional:
                 self.initialization_ready = False #GRRR
 
             if self.initialization_ready:
-                self.add_response_part(kpt, self.vt_G, fermi_level)
+                self.add_response_part(kpt, self.vt_G, self.fermi_level)
 
         # It's faster to add wavefunctions in coarse-grid and interpolate afterwards
         self.interpolate(self.vt_G, self.vt_g)
@@ -350,7 +366,7 @@ class XCGLLBCorrection:
                     # Create the coefficients
                     w_i = num.zeros(kpt.eps_n.shape, num.Float)
                     for i in range(len(w_i)):
-                        w_i[i] = self.motherxc.get_gllb_weight(kpt.eps_n[i], self.motherxc.occupation.get_fermi_level())
+                        w_i[i] = self.motherxc.get_gllb_weight(kpt.eps_n[i], self.motherxc.fermi_level)
 
                     w_i = K_G * w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
 
@@ -455,7 +471,7 @@ class XCGLLBCorrection:
             else:
                 nn = 0.0
                 
-            x_g = (2*e_g + nn) / (n_g + SMALL_NUMBER) * self.dv_g 
+            x_g = (2*e_g + nn) / (n_g + SMALL_NUMBER) * self.dv_g
             dEdD_p -= w * num.dot(dot3(self.B_pqL, Y_L),
                                   num.dot(self.nt_qg, x_g))
             #x_g = 8.0 * pi * deda2_g * self.rgd.dr_g
