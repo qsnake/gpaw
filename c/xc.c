@@ -40,6 +40,9 @@ double ensemble_exchange(const xc_parameters* par,
 double pade_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2);
+double lb94_correction(const xc_parameters* par,
+		       double n, double rs, double a2,
+		       double* dedrs, double* deda2);
 
 double zero_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
@@ -72,6 +75,9 @@ typedef struct
   double (*correlation)(double n, double rs, double zeta, double a2, 
 			bool gga, bool spinpol,
 			double* dedrs, double* dedzeta, double* deda2);
+  double (*correction)(const xc_parameters* par,
+		       double n, double rs, double a2,
+		       double* dedrs, double* deda2);
   xc_parameters par;
 } XCFunctionalObject;
 
@@ -134,6 +140,14 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
       double h1 = 1.0 - par->hybrid;
       e_g[g] = n * (h1 * ex + ec);
       v_g[g] += h1 * ex + ec - rs * (h1 * dexdrs + decdrs) / 3.0;
+      if(self->correction) {
+	if(!par->gga) { /* we need to load the GGA arrays */
+	  a2_g = DOUBLEP(a2_array);
+	  deda2_g = DOUBLEP(deda2_array);
+	}
+	v_g[g] += self->correction(par, n, rs, a2_g[g], &dexdrs, &dexda2);
+	deda2_g[g] = 0.0; /* avoid correction used in python gga code */
+      }
     }
   Py_RETURN_NONE;
 }
@@ -334,6 +348,7 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
   self->par.hybrid = 0.0;
 
   self->correlation = pbe_correlation;
+  self->correction = NULL;
 
   if (type == 2)
     {
@@ -391,6 +406,13 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       // LDAx
       self->exchange = pbe_exchange;
       self->correlation = zero_correlation;
+    }
+  else if (type == 17)
+    {
+      // LB94
+      self->par.gga = 0; /* hide gga */
+      self->exchange = pbe_exchange;
+      self->correction = lb94_correction;
     }
   else
     {
