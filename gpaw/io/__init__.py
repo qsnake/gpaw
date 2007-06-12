@@ -100,6 +100,7 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
         w['Ekin0'] = paw.Ekin0
         w['Epot'] = paw.Epot
         w['Ebar'] = paw.Ebar
+        w['Eext'] = paw.Eext        
         w['Exc'] = paw.Exc
         w['S'] = paw.S
         epsF = paw.occupation.get_fermi_level()
@@ -243,7 +244,7 @@ def read(paw, filename):
             if setup.type != 'paw':
                 key += '(%s)' % setup.type
             fp = r[key]
-        except AttributeError, KeyError:
+        except (AttributeError, KeyError):
             break
         if setup.fingerprint != fp:
             paw.warn('Setup for %s (%s) not compatible with restart file.' %
@@ -271,10 +272,14 @@ def read(paw, filename):
     paw.Ekin = r['Ekin']
     try:
         paw.Ekin0 = r['Ekin0']
-    except AttributeError, KeyError:
+    except (AttributeError, KeyError):
         paw.Ekin0 = 0.0
     paw.Epot = r['Epot']
     paw.Ebar = r['Ebar']
+    try:
+        paw.Eext = r['Eext']
+    except (AttributeError, KeyError):
+        paw.Eext = 0.0        
     paw.Exc = r['Exc']
     paw.S = r['S']
     paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
