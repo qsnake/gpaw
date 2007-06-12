@@ -17,6 +17,8 @@ from gpaw.utilities.complex import cc, real
 # load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
 
+#import pylab
+
 # GLLB-Functional
 # Gritsenko, Leeuwen, Lenthe, Baerends: Self-consistent approximation to the Kohn-Shan exchange potential
 # Physical Review A, vol. 51, p. 1944, March 1995.
@@ -25,7 +27,7 @@ from gpaw.sphere import Y_nL, points, weights
 # 2) approximates the response part coefficients from eigenvalues.
 
 SLATER_FUNCTIONAL = "revPBEx"
-SMALL_NUMBER = 1e-11
+SMALL_NUMBER = 1e-8
 K_G = 0.382
 
 class GLLBFunctional:
@@ -53,7 +55,8 @@ class GLLBFunctional:
         self.vt_g = finegd.zeros()
         
     def get_gllb_weight(self, epsilon, fermi_level):
-        if epsilon > fermi_level:
+        # Without this systems with degenerate homo-orbitals have convergence problems
+        if (epsilon+1e-3) > fermi_level:
             return 0
         return K_G * sqrt(fermi_level - epsilon)
 
@@ -133,8 +136,9 @@ class GLLBFunctional:
     def add_response_part(self, kpt, vt_G, fermi_level):
         """Add contribution of response part to pseudo electron-density."""
         if kpt.typecode is num.Float:
-            #print "Adding response part FLOAT"
+            print "Adding response part FLOAT"
             for psit_G, f, e in zip(kpt.psit_nG, kpt.f_n, kpt.eps_n):
+                print self.get_gllb_weight(e, fermi_level)
                 axpy(f*self.get_gllb_weight(e, fermi_level), psit_G**2, vt_G)  # nt_G += f * psit_G**2
             else:
                 #print "Adding response part COMPLEX"
@@ -167,8 +171,8 @@ class GLLBFunctional:
                         if self.fermi_level < e:
                             self.fermi_level = e
                             
-            if not self.fermi_level_old == -1000:
-                self.fermi_level = self.fermi_level*0.4 + self.fermi_level_old*0.6
+            #if not self.fermi_level_old == -1000:
+            #    self.fermi_level = self.fermi_level*0.4 + self.fermi_level_old*0.6
             print "Using fermilevel: ", self.fermi_level
         except AttributeError:
             #print "Using occupation.get_fermi_level()"
@@ -368,7 +372,7 @@ class XCGLLBCorrection:
                     for i in range(len(w_i)):
                         w_i[i] = self.motherxc.get_gllb_weight(kpt.eps_n[i], self.motherxc.fermi_level)
 
-                    w_i = K_G * w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
+                    w_i = w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
 
                     # Calculate the 'density matrix' for numerator part of potential
                     Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
@@ -379,6 +383,7 @@ class XCGLLBCorrection:
                     Dnn_Lq = dot3(self.B_Lqp, Dn_p) #Contract one nmln'm'l'
                     nn_Lg = num.dot(Dnn_Lq, self.n_qg) # Contract nln'l'
                     nn = num.dot(Y_L, nn_Lg) ### Contract L
+                    plot_this = (2*e_g + nn) / (n_g + SMALL_NUMBER) + self.core_response
             else:
                 nn = 0.0
 
@@ -468,6 +473,7 @@ class XCGLLBCorrection:
                 #Dnn_Lq = dot3(self.B_Lqp, Dn_sp) #Contract one nmln'm'l'
                 nn_Lg = num.dot(Dnn_Lq, self.nt_qg) # Contract nln'l'
                 nn = num.dot(Y_L, nn_Lg) ### Contract L
+                plot_this_t = (2*e_g +nn) / (n_g + SMALL_NUMBER) 
             else:
                 nn = 0.0
                 
@@ -488,8 +494,16 @@ class XCGLLBCorrection:
             y += 1
 
         print "GLLB_CORRECTION E:", E, "Et", Et, "Exc0", self.Exc0, "(E-Et)", (E-Et), "(E-Et)-Exc0", (E-Et)-self.Exc0
+        #if self.motherxc.initialization_ready:
+        #    pylab.clf()
+        #    pylab.plot(r_g, plot_this)
+        #    pylab.plot(r_g, plot_this_t)
+        #    pylab.xlim( (0, 4.0) )
+        #    pylab.ylim( (-3, 0.5) )
+        #    pass
+            
         return (E-Et) - self.Exc0
-
+        
 
 class XCKLICorrection:
     def __init__(self, xcfunc, r, dr, beta, N, nspins, M_pp, X_p, ExxC, phi, phit, jl, lda_xc):
