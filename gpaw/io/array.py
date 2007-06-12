@@ -37,7 +37,8 @@ def count_lines(file):
         lines += 1
     return lines
 
-def save_array(array, file, fmt='%.18e', delimiter=' ', header=None):
+def save_array(array, file, delimiter=' ', converters={},
+               default_convert='%.18e', header=None):
     """Save array to ascii file.
 
        'array' is the array to be saved.
@@ -45,9 +46,12 @@ def save_array(array, file, fmt='%.18e', delimiter=' ', header=None):
        'file' can be a filehandle, or a filename (string).
        Support for gzipped files is automatic, if the filename ends in .gz.
 
-       'fmt' is the format string to convert the array values to strings.
-
        'delimiter' is used to separate the fields.
+
+       'converters' is a dictionary mapping column number to
+       a string formatter.
+
+       'default_convert' is the default string formatter.
 
        'header' if not None, is a string to be put in the top of the file.
     """
@@ -60,10 +64,12 @@ def save_array(array, file, fmt='%.18e', delimiter=' ', header=None):
         
     # Print array to file
     for row in array:
-        print >>fhandle, delimiter.join([fmt % col for col in row]) + '\n'
+        print >>fhandle, delimiter.join(
+            [converters.get(i, default_convert) % col
+             for i, col in enumerate(row)])
 
 def load_array(file, comments='#', delimiter=None, converters={},
-         skiprows=[], skipcols=[]):
+               default_convert=float, skiprows=[], skipcols=[], numeric=True):
     """Load array from ascii file.
 
        'file' can be a filehandle, or a filename (string).
@@ -76,16 +82,25 @@ def load_array(file, comments='#', delimiter=None, converters={},
        file. None (default) implies any number of whitespaces.
 
        'converters' is a dictionary mapping column number to
-       a function that will convert that column to a float.
+       a function that will convert that column string to the desired
+       type of the output array (e.g. a float).
        Eg, if column 0 is a chemical symbol, use:
-       from ASE.ChemicalElements import numbers
-       converters={0:numbers.get}.
+       >>> from ASE.ChemicalElements import numbers
+       >>> converters={0:numbers.get}
+       to convert the symbol names to integer values.
+
+       'default_convert' is the default function used to convert the
+       string repr. of a cell to the desired output type.
 
        'skiprows' is a sequence of integer row indices to skip,
        where 0 is the first row. Negative indices are allowed.
 
-       'skipcols', is a sequence of integer column indices to skip,
+       'skipcols' is a sequence of integer column indices to skip,
        where 0 is the first column.
+
+       'numeric' is a boolean indicating if the output should be returned
+       as a Numeric array. If True, the data in 'file' must be square, and
+       all elements must be converted to numbers.
     """
     # Open file using gzip if necessary
     fhandle = get_handle(file, 'r')
@@ -118,21 +133,19 @@ def load_array(file, comments='#', delimiter=None, converters={},
                 continue
             
             # Apply converters
-            cols.append(converters.get(i, float)(col))            
+            cols.append(converters.get(i, default_convert)(col))            
         array.append(cols)
 
-    # Convert to Numeric array if possible
-    try:
+    # Convert to Numeric array
+    if numeric:
         array = num.array(array)
 
-        # If single row or single column, correct shape of array
+        # If single column, correct shape of array
         shape = list(array.shape)
         try:
             shape.remove(1)
             array.shape = tuple(shape)
         except ValueError:
             pass
-    except TypeError:
-        print 'Data matrix not square, unable to make Numeric array'
     
     return array
