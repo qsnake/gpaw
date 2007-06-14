@@ -32,6 +32,7 @@ import _gpaw
 
 MASTER = 0
 
+
 class Paw:
     """This is the main calculation object for doing a PAW calculation.
 
@@ -44,51 +45,51 @@ class Paw:
     Example: For a spin-polarized calculation on an isolated molecule,
     the **k**-point list will have length two (assuming the
     calculation is not parallelized over **k**-points/spin).
-    
+
     These are the most important attributes of a ``Paw`` object:
-     =============== =====================================================
-     ``domain``      Domain object.
-     ``setups``      List of setup objects.
-     ``symmetry``    Symmetry object.
-     ``timer``       Timer object.
-     ``nuclei``      List of ``Nucleus`` objects.
-     ``out``         Output stream for text.
-     ``gd``          Grid descriptor for coarse grids.
-     ``finegd``      Grid descriptor for fine grids.
-     ``kpt_u``       List of **k**-point objects.
-     ``occupation``  Occupation-number object.
-     ``nkpts``       Number of irreducible **k**-points.
-     ``nmyu``        Number of irreducible spin/**k**-points pairs on
-                     *this* CPU.
-     ``nvalence``    Number of valence electrons.
-     ``nbands``      Number of bands.
-     ``nspins``      Number of spins.
-     ``typecode``    Data type of wave functions (``Float`` or
-                     ``Complex``).
-     ``bzk_kc``      Scaled **k**-points used for sampling the whole
-                     Brillouin zone - values scaled to [-0.5, 0.5).  
-     ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
-                     Brillouin zone.
-     ``weights_k``   Weights of the **k**-points in the irreducible part
-                     of the Brillouin zone (summing up to 1).
-     ``myibzk_kc``   Scaled **k**-points in the irreducible part of the
-                     Brillouin zone for this CPU.
-     ``kpt_comm``    MPI-communicator for parallelization over
-                     **k**-points.
-     =============== =====================================================
+    =============== =====================================================
+    ``domain``      Domain object.
+    ``setups``      List of setup objects.
+    ``symmetry``    Symmetry object.
+    ``timer``       Timer object.
+    ``nuclei``      List of ``Nucleus`` objects.
+    ``out``         Output stream for text.
+    ``gd``          Grid descriptor for coarse grids.
+    ``finegd``      Grid descriptor for fine grids.
+    ``kpt_u``       List of **k**-point objects.
+    ``occupation``  Occupation-number object.
+    ``nkpts``       Number of irreducible **k**-points.
+    ``nmyu``        Number of irreducible spin/**k**-points pairs on
+                    *this* CPU.
+    ``nvalence``    Number of valence electrons.
+    ``nbands``      Number of bands.
+    ``nspins``      Number of spins.
+    ``typecode``    Data type of wave functions (``Float`` or
+                    ``Complex``).
+    ``bzk_kc``      Scaled **k**-points used for sampling the whole
+                    Brillouin zone - values scaled to [-0.5, 0.5).  
+    ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
+                    Brillouin zone.
+    ``weights_k``   Weights of the **k**-points in the irreducible part
+                    of the Brillouin zone (summing up to 1).
+    ``myibzk_kc``   Scaled **k**-points in the irreducible part of the
+                    Brillouin zone for this CPU.
+    ``kpt_comm``    MPI-communicator for parallelization over
+                    **k**-points.
+    =============== =====================================================
 
     Energy contributions and forces:
-     =========== ================================
-     ``Ekin``    Kinetic energy.
-     ``Epot``    Potential energy.
-     ``Etot``    Total energy.
-     ``Exc``     Exchange-Correlation energy.
-     ``Eext``    Energy of external potential
-     ``Eref``    Reference energy for all-electron atoms.
-     ``S``       Entropy.
-     ``Ebar``    Should be close to zero!
-     ``F_ac``    Forces.
-     =========== ================================
+    =========== ================================
+    ``Ekin``    Kinetic energy.
+    ``Epot``    Potential energy.
+    ``Etot``    Total energy.
+    ``Exc``     Exchange-Correlation energy.
+    ``Eext``    Energy of external potential
+    ``Eref``    Reference energy for all-electron atoms.
+    ``S``       Entropy.
+    ``Ebar``    Should be close to zero!
+    ``F_ac``    Forces.
+    =========== ================================
 
     The attribute ``usesymm`` has the same meaning as the
     corresponding ``Calculator`` keyword (see the Manual_).  Internal
@@ -98,32 +99,32 @@ class Paw:
     for a converged calculation.
 
     Booleans describing the current state:
-     ============= ======================================
-     ``forces_ok`` Have the forces bee calculated yet?
-     ``converged`` Do we have a self-consistent solution?
-     ============= ======================================
+    ============= ======================================
+    ``forces_ok`` Have the forces bee calculated yet?
+    ``converged`` Do we have a self-consistent solution?
+    ============= ======================================
 
     Number of iterations for:
-     ============ ===============================
-     ``nfermi``   finding the Fermi-level
-     ``niter``    solving the Kohn-Sham equations
-     ``npoisson`` Solving the Poisson equation
-     ============ ===============================
+    ============ ===============================
+    ``nfermi``   finding the Fermi-level
+    ``niter``    solving the Kohn-Sham equations
+    ``npoisson`` Solving the Poisson equation
+    ============ ===============================
 
     Only attribute not mentioned now is ``nspins`` (number of spins) and
     those used for parallelization:
 
-     ================== =================================================== 
-     ``my_nuclei``      List of nuclei that have their
-                        center in this domain.
-     ``pt_nuclei``      List of nuclei with projector functions
-                        overlapping this domain.
-     ``ghat_nuclei``    List of nuclei with compensation charges
-                        overlapping this domain.
-     ``locfuncbcaster`` ``LocFuncBroadcaster`` object for parallelizing 
-                        evaluation of localized functions (used when
-                        parallelizing over **k**-points).
-     ================== ===================================================
+    ================== =================================================== 
+    ``my_nuclei``      List of nuclei that have their 
+                       center in this domain.
+    ``pt_nuclei``      List of nuclei with projector functions
+                       overlapping this domain.
+    ``ghat_nuclei``    List of nuclei with compensation charges
+                       overlapping this domain.
+    ``locfuncbcaster`` ``LocFuncBroadcaster`` object for parallelizing 
+                       evaluation of localized functions (used when
+                       parallelizing over **k**-points).
+    ================== ===================================================
 
     .. _Manual: https://wiki.fysik.dtu.dk/gridcode/Manual
     .. _ASE units: https://wiki.fysik.dtu.dk/ase/Units
@@ -146,27 +147,27 @@ class Paw:
         """Construct wave-function object.
 
         Parameters:
-         =============== ===================================================
-         ``nvalence``    Number of valence electrons.
-         ``nbands``      Number of bands.
-         ``nspins``      Number of spins.
-         ``random``      Initialize wave functions with random numbers
-         ``typecode``    Data type of wave functions (``Float`` or
-                         ``Complex``).
-         ``kT``          Temperature for Fermi-distribution.
-         ``bzk_kc``      Scaled **k**-points used for sampling the whole
-                         Brillouin zone - values scaled to [-0.5, 0.5).  
-         ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
-                         Brillouin zone.
-         ``myspins``     List of spin-indices for this CPU.
-         ``weights_k``   Weights of the **k**-points in the irreducible part
-                         of the Brillouin zone (summing up to 1).
-         ``myibzk_kc``   Scaled **k**-points in the irreducible part of the
-                         Brillouin zone for this CPU.
-         ``myweights_k`` Weights of the **k**-points on this CPU.
-         ``kpt_comm``    MPI-communicator for parallelization over
-                         **k**-points.
-         =============== ===================================================
+        =============== ===================================================
+        ``nvalence``    Number of valence electrons.
+        ``nbands``      Number of bands.
+        ``nspins``      Number of spins.
+        ``random``      Initialize wave functions with random numbers
+        ``typecode``    Data type of wave functions (``Float`` or
+                        ``Complex``).
+        ``kT``          Temperature for Fermi-distribution.
+        ``bzk_kc``      Scaled **k**-points used for sampling the whole
+                        Brillouin zone - values scaled to [-0.5, 0.5).  
+        ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
+                        Brillouin zone.
+        ``myspins``     List of spin-indices for this CPU.
+        ``weights_k``   Weights of the **k**-points in the irreducible part
+                        of the Brillouin zone (summing up to 1).
+        ``myibzk_kc``   Scaled **k**-points in the irreducible part of the
+                        Brillouin zone for this CPU.
+        ``myweights_k`` Weights of the **k**-points on this CPU.
+        ``kpt_comm``    MPI-communicator for parallelization over
+                        **k**-points.
+        =============== ===================================================
         """
 
         self.timer = timer
@@ -179,6 +180,7 @@ class Paw:
         self.bzk_kc = bzk_kc
         self.ibzk_kc = ibzk_kc
         self.weights_k = weights_k
+        self.stencils = stencils
         self.kpt_comm = kpt_comm
 
         self.nkpts = len(ibzk_kc)
@@ -193,10 +195,10 @@ class Paw:
         self.maxiter = maxiter
         self.setups = setups
         self.random_wf = random
-        
+
         self.set_output(out)
         self.verbosity = verbosity
- 
+
         # Construct grid descriptors for coarse grids (wave functions) and
         # fine grids (densities and potentials):
         self.gd = GridDescriptor(domain, N_c)
@@ -207,7 +209,7 @@ class Paw:
 
         # Total number of k-point/spin combinations:
         nu = self.nkpts * nspins
-        
+
         # Number of k-point/spin combinations on this cpu:
         self.nmyu = nu // kpt_comm.size
 
@@ -219,7 +221,7 @@ class Paw:
             self.kpt_u.append(KPoint(self.gd, weight, s, k, u, k_c, typecode))
 
         self.locfuncbcaster = LocFuncBroadcaster(kpt_comm)
-        
+
         self.my_nuclei = []
         self.pt_nuclei = []
         self.ghat_nuclei = []
@@ -230,7 +232,7 @@ class Paw:
                                kT,
                                self.my_nuclei, self.ghat_nuclei, self.nuclei,
                                nvalence)
-        
+
         self.hamiltonian = Hamiltonian(self.gd, self.finegd, xcfunc,
                                        nspins,
                                        typecode, stencils, relax,
@@ -238,7 +240,7 @@ class Paw:
                                        self.my_nuclei, self.pt_nuclei,
                                        self.ghat_nuclei,
                                        self.nuclei, setups, vext_g)
-        
+
         # Create object for occupation numbers:
         if kT == 0 or 2 * nbands == nvalence:
             self.occupation = occupations.ZeroKelvin(nvalence, nspins)
@@ -269,7 +271,7 @@ class Paw:
         output.plot_atoms(self)
 
         self.density.mixer.reset(self.my_nuclei)
-            
+
         self.wave_functions_initialized = False
         self.density_initialized = False
         if restart_file is not None:
@@ -290,7 +292,7 @@ class Paw:
         assert not self.converged
 
         self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc = \
-                    self.hamiltonian.update(self.density)
+            self.hamiltonian.update(self.density)
 
         self.niter = 0
         # Self-consistency loop:
@@ -298,23 +300,24 @@ class Paw:
             if self.niter > 2:
                 self.density.update(self.kpt_u, self.symmetry)
                 self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc = \
-                           self.hamiltonian.update(self.density)
+                    self.hamiltonian.update(self.density)
 
             self.error, self.converged = self.eigensolver.iterate(
                 self.hamiltonian, self.kpt_u)
 
             # Make corrections due to non-local xc
             self.Exc += self.hamiltonian.xc.xcfunc.get_non_local_energy()
-            self.Ekin0 += self.hamiltonian.xc.xcfunc.get_non_local_kinetic_corrections()
-                
+            self.Ekin0 += \
+                self.hamiltonian.xc.xcfunc.get_non_local_kinetic_corrections()
+
             # Calculate occupation numbers:
             self.nfermi, self.magmom, self.S, Eband = \
-                         self.occupation.calculate(self.kpt_u)
+                self.occupation.calculate(self.kpt_u)
 
             self.Ekin = self.Ekin0 + Eband
             self.Etot = (self.Ekin + self.Epot + self.Ebar + 
                          self.Eext + self.Exc - self.S)
-            
+
             output.iteration(self)
 
             self.niter += 1
@@ -323,7 +326,7 @@ class Paw:
 
             if self.niter > self.maxiter - 1:
                 self.converged = True
-                
+
         output.print_converged(self)
 
     def set_positions(self, pos_ac=None):
@@ -332,9 +335,9 @@ class Paw:
         Localized functions centered on atoms that have moved will
         have to be computed again.  Neighbor list is updated and the
         array holding all the pseudo core densities is updated."""
-        
+
         self.timer.start('Init pos.')
-        
+
         if pos_ac is None:
             pos_ac = num.array([nucleus.spos_c * self.domain.cell_c
                                 for nucleus in self.nuclei])
@@ -350,7 +353,7 @@ class Paw:
                              self.ibzk_kc, self.locfuncbcaster,
                              self.domain,
                              self.pt_nuclei, self.ghat_nuclei)
-        
+
         if movement:
             self.converged = False
             self.forces_ok = False
@@ -359,10 +362,10 @@ class Paw:
 
             for nucleus in self.nuclei:
                 nucleus.normalize_shape_function_and_pseudo_core_density()
-                
+
             if self.symmetry:
                 self.symmetry.check(pos_ac)
-                
+
             self.hamiltonian.pairpot.update(pos_ac, self.nuclei, self.domain)
 
             self.density.move()
@@ -371,7 +374,7 @@ class Paw:
             for a, pos_c in enumerate(pos_ac):
                 symbol = self.nuclei[a].setup.symbol
                 print >> self.out, '%3d %2s %8.4f%8.4f%8.4f' % \
-                      ((a, symbol) + tuple(self.a0 * pos_c))
+                    ((a, symbol) + tuple(self.a0 * pos_c))
 
         self.timer.stop()
 
@@ -401,7 +404,7 @@ class Paw:
                 string += ' and'
             string += ' %d random orbitals' % nrandom
         string += '.'
-                
+
         print >> self.out, string
 
 
@@ -420,9 +423,9 @@ class Paw:
             self.hamiltonian.xc.set_functional(localxcfunc)
             for setup in self.setups:
                 setup.xc_correction.xc.set_functional(localxcfunc)
-                            
+
         self.Ekin0, self.Epot, self.Ebar, self.Eext, self.Exc = \
-                   self.hamiltonian.update(self.density)
+            self.hamiltonian.update(self.density)
 
         if self.random_wf:
             for kpt in self.kpt_u:
@@ -474,7 +477,7 @@ class Paw:
 
         # Calculate occupation numbers:
         self.nfermi, self.magmom, self.S, Eband = \
-                     self.occupation.calculate(self.kpt_u)
+            self.occupation.calculate(self.kpt_u)
 
     def get_total_energy(self, force_consistent):
         """Return total energy.
@@ -482,7 +485,7 @@ class Paw:
         Both the energy extrapolated to zero Kelvin and the energy
         consistent with the forces (the free energy) can be
         returned."""
-        
+
         if force_consistent:
             # Free energy:
             return self.Ha * self.Etot
@@ -493,14 +496,14 @@ class Paw:
     def get_cartesian_forces(self):
         """Return the atomic forces."""
         c = self.Ha / self.a0
-        
+
         if self.forces_ok:
             return c * self.F_ac
 
         nt_g = self.density.nt_g
         vt_sG = self.hamiltonian.vt_sG
         vHt_g = self.hamiltonian.vHt_g
-        
+
         if self.nspins == 2:
             vt_G = 0.5 * (vt_sG[0] + vt_sG[1])
         else:
@@ -515,7 +518,7 @@ class Paw:
                 nucleus.calculate_force_kpoint(kpt)
         for nucleus in self.my_nuclei:
             self.kpt_comm.sum(nucleus.F_c)
-            
+
         for nucleus in self.nuclei:
             nucleus.calculate_force(vHt_g, nt_g, vt_G)
 
@@ -547,7 +550,7 @@ class Paw:
         if mpi.rank == MASTER:
             for a, nucleus in enumerate(self.nuclei):
                 print >> self.out, 'forces ', \
-                      a, nucleus.setup.symbol, self.F_ac[a] * c
+                    a, nucleus.setup.symbol, self.F_ac[a] * c
 
         self.forces_ok = True
 
@@ -558,20 +561,20 @@ class Paw:
         self.forces_ok = True
         # Forces for all atoms:
         self.F_ac = F_ac
-            
+
     def set_convergence_criteria(self, tol):
         """Set convergence criteria.
 
         Stop iterating when the size of the residuals are below
         ``tol``."""
-        
+
         if tol < self.eigensolver.tolerance:
             self.converged = False
         self.eigensolver.tolerance = tol
-        
+
     def set_output(self, out):
         """Set the output stream for text output."""
-        if mpi.rank != MASTER:                
+        if mpi.rank != MASTER:
             if debug:
                 out = sys.stderr
             else:
@@ -582,8 +585,8 @@ class Paw:
                             setup_types):
         """Write current state to a file."""
         gpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a,
-                         mode, setup_types)
-        
+                      mode, setup_types)
+
     def initialize_from_file(self, filename):
         """Read state from a file."""
         wf = gpaw.io.read(self, filename)
@@ -615,7 +618,7 @@ class Paw:
         the (k,s) pair, for this rank, collect on the corresponding
         domain a full array on the domain master and send this to the
         global master.""" 
-        
+
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
 
         if not mpi.parallel:
@@ -645,12 +648,12 @@ class Paw:
         the (k,s) pair, for this rank, collect on the corresponding
         domain a full array on the domain master and send this to the
         global master.""" 
-        
+
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
 
         if kpt_rank == MASTER:
             return self.kpt_u[u].eps_n
-        
+
         if self.kpt_comm.rank == kpt_rank:
             # Domain master send this to the global master
             if self.domain.comm.rank == MASTER:
@@ -659,7 +662,7 @@ class Paw:
             eps_n = num.zeros(self.nbands, num.Float)
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
             return eps_n
-        
+
 
     def get_wannier_integrals(self, i, s, k, k1, G_I):
         """Calculate integrals for maximally localized Wannier functions."""
@@ -677,7 +680,7 @@ class Paw:
                                       self.kpt_u[u1].psit_nG,
                                       i,
                                       k,k1,G)
-    
+
     def get_xc_difference(self, xcname):
         """Calculate non-selfconsistent XC-energy difference."""
         xc = self.hamiltonian.xc
@@ -697,7 +700,7 @@ class Paw:
         if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready:
             self.set_positions(num.array([n.spos_c * self.domain.cell_c
                                           for n in self.nuclei]))
-            
+
         vt_g = self.finegd.empty()  # not used for anything!
         nt_sg = self.density.nt_sg
         if self.nspins == 2:
@@ -710,13 +713,13 @@ class Paw:
             H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
             xc_correction = nucleus.setup.xc_correction
             Exc += xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
-            
+
         Exc = self.domain.comm.sum(Exc)
 
         for kpt in self.kpt_u:
             newxcfunc.apply_non_local(kpt)
         Exc += newxcfunc.get_non_local_energy()
-        
+
         xc.set_functional(oldxcfunc)
         for setup in self.setups:
             setup.xc_correction.xc.set_functional(oldxcfunc)
@@ -725,20 +728,20 @@ class Paw:
 
     def get_grid_spacings(self):
         return self.a0 * self.gd.h_c
-    
+
     def get_exact_exchange(self):
         dExc = self.get_xc_difference('EXX') / self.Ha
         Exx = self.Exc + dExc
         for nucleus in self.nuclei:
             Exx += nucleus.setup.xc_correction.Exc0
         return Exx
-    
+
     def get_weights(self):
         return self.weights_k
 
     def load_wave_functions(self, pos_ac):
         self.set_positions(pos_ac)
-            
+
         if not self.wave_functions_initialized: 
             # Initialize wave functions and perhaps also the density
             # from atomic orbitals:
@@ -750,10 +753,10 @@ class Paw:
             if not self.density_initialized:
                 self.density.initialize()
                 self.density_initialized = True
-                
+
             self.initialize_wave_functions()
             self.wave_functions_initialized = True
-                
+
             self.converged = False
 
             # Free allocated space for radial grids:
@@ -773,7 +776,8 @@ class Paw:
                 kpt.psit_nG = kpt.psit_nG[:]
 
         for kpt in self.kpt_u:
-            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, self.my_nuclei)
+            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, 
+                                       self.my_nuclei)
 
         if isinstance(self.eigensolver, tuple):
             eigensolver, convergeall, tolerance, nvalence = self.eigensolver
@@ -788,8 +792,8 @@ class Paw:
                                       self.typecode, self.nbands)
             elif eigensolver == 'dav':
                 self.eigensolver = Davidson(self.timer, self.kpt_comm, 
-                                      self.gd, self.hamiltonian.kin,
-                                      self.typecode, self.nbands)
+                                            self.gd, self.hamiltonian.kin,
+                                            self.typecode, self.nbands)
             else:
                 raise NotImplementedError('Eigensolver %s' % eigensolver)
 
@@ -799,3 +803,36 @@ class Paw:
 
     def i2(self):
         self.density.initialize2()
+
+
+    def totype(self, typecode):
+        """Converts all the typecode dependent quantities of Paw
+        (Laplacian, wavefunctions etc.) to typecode"""
+        
+        from gpaw.operators import Laplace
+        
+        if typecode not in [num.Float, num.Complex]:
+            raise RuntimeError('PAW can be converted only to Float or Complex')
+        
+        self.typecode = typecode
+        
+        # Hamiltonian
+        nn = self.stencils[0]
+        self.hamiltonian.kin = Laplace(self.gd, -0.5, nn, typecode)
+	
+        # Nuclei
+        for nucleus in self.nuclei:
+            nucleus.typecode = typecode
+            nucleus.reallocate(self.nbands)
+            nucleus.ready = False
+	    
+        self.set_positions()
+	
+        # Wave functions
+        for kpt in self.kpt_u:
+            kpt.typecode = typecode
+            kpt.psit_nG = num.array(kpt.psit_nG,typecode)
+	    
+        # Eigensolver
+        # !!! FIX ME !!!
+        # not implemented yet...
