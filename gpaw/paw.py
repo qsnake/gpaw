@@ -198,6 +198,7 @@ class Paw:
 
         self.set_output(out)
         self.verbosity = verbosity
+        self.iterwrite = 0
 
         # Construct grid descriptors for coarse grids (wave functions) and
         # fine grids (densities and potentials):
@@ -319,6 +320,10 @@ class Paw:
                          self.Eext + self.Exc - self.S)
 
             output.iteration(self)
+            if self.iterwrite:
+                if not self.niter % self.iterwrite:
+##                    print "writing to file"
+                    self.write_state_to_file('gpaw-restart.nc')
 
             self.niter += 1
             if self.niter > 120:
@@ -493,7 +498,7 @@ class Paw:
             # Energy extrapolated to zero Kelvin:
             return self.Ha * (self.Etot + 0.5 * self.S)
 
-    def get_cartesian_forces(self):
+    def get_cartesian_forces(self,silent=False):
         """Return the atomic forces."""
         c = self.Ha / self.a0
 
@@ -547,7 +552,7 @@ class Paw:
                     F_ac[a2] += num.take(self.F_ac[a1] * mirror, swap)
             self.F_ac[:] = F_ac / len(self.symmetry.symmetries)
 
-        if mpi.rank == MASTER:
+        if mpi.rank == MASTER and not silent:
             for a, nucleus in enumerate(self.nuclei):
                 print >> self.out, 'forces ', \
                     a, nucleus.setup.symbol, self.F_ac[a] * c
@@ -581,9 +586,22 @@ class Paw:
                 out = DownTheDrain()
         self.out = out
 
-    def write_state_to_file(self, filename, pos_ac, magmom_a, tag_a, mode,
-                            setup_types):
+    def write_state_to_file(self, filename,
+                            pos_ac=None,
+                            magmom_a=None,
+                            tag_a=None,
+                            mode='all',
+                            setup_types=None):
         """Write current state to a file."""
+        if pos_ac is None:
+            cell_c = self.domain.cell_c
+            pos_ac = cell_c * [nucleus.spos_c for nucleus in self.nuclei]
+        if magmom_a is None:
+            magmom_a = self.density.magmom_a
+        if tag_a is None:
+            tag_a = num.array([0]) # XXXXXXX where can I get this ????
+        if setup_types is None:
+            setup_types = self.setups
         gpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a,
                       mode, setup_types)
 
