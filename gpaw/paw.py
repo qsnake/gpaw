@@ -32,8 +32,6 @@ import _gpaw
 
 MASTER = 0
 
-from gpaw.io.plt import write_plt,wf2plt,pot2plt
-
 class Paw:
     """This is the main calculation object for doing a PAW calculation.
 
@@ -317,19 +315,7 @@ class Paw:
             self.Etot = (self.Ekin + self.Epot + self.Ebar + 
                          self.Eext + self.Exc - self.S)
             
-            a2_g = self.hamiltonian.xc.a2_g
-            g_g = a2_g**(1./2.)
-            n_g = self.density.nt_g
-            write_plt(self.hamiltonian.xc.gd,n_g,'nt.plt')
-            h_g = num.where(n_g>0.,n_g,1e100)**(-4./3.)
-            h_g = num.where(h_g>1e-100,h_g,0.)
-            x_g = g_g*h_g
-            write_plt(self.hamiltonian.xc.gd,x_g,'x.plt')
-            
             output.iteration(self)
-##            wf2plt(self,0)
-            pot2plt(self,0)
-##            sys.exit()
 
             self.niter += 1
             if self.niter > 120:
