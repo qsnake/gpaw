@@ -6,6 +6,7 @@ import Numeric as num
 from gpaw.tddft import TDDFT
 import math
 import sys
+import os
 
 a = 5.0
 atoms = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
@@ -37,5 +38,7 @@ for i in range(50):
     print '%8lf  %16.6le  %16.6le' % (time, abs(c) - 1., err)
     sys.stdout.flush()
     td_atoms.propagate(time_step)
+
+os.remove('hydrogen.nc')
 
 assert(err < 1e-5)
