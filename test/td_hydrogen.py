@@ -15,8 +15,8 @@ calc = Calculator(nbands=1, h=0.2, tolerance=1e-14)
 atoms.SetCalculator(calc);
 e = atoms.GetPotentialEnergy()
 
-calc.Write('H2.nc')
-atoms = Calculator.ReadAtoms('H2.nc')
+calc.Write('hydrogen.nc')
+atoms = Calculator.ReadAtoms('hydrogen.nc')
 calc = atoms.GetCalculator()
 
 paw = calc.paw
