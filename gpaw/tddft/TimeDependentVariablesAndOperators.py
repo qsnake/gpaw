@@ -1,0 +1,176 @@
+# Copyright (c) 2007 Lauri Lehtovaara
+
+"""This module implements classes for time-dependent variables and 
+operators."""
+
+# Hamiltonian
+class TimeDependentHamiltonian:
+    """ Time-dependent Hamiltonian, H(t)
+    
+    This class contains information required to apply time-dependent
+    Hamiltonian to a wavefunction.
+    """
+    
+    def __init__(self, pt_nuclei, hamiltonian, td_potential):
+        """ Create the TimeDependentHamiltonian-object.
+        
+        TimeDependentHamiltonian(pt_nuclei, hamiltonian, td_potential)
+        
+        The time-dependent potential object must (be None or) have a member
+        function get_potential(self,time), which provides the
+        time-dependent external potential on a fine grid at the given time.
+        
+        Parameters:
+        =====================================================================
+        pt_nuclei = projector functions (paw.pt_nuclei)
+        hamiltonian = time-independent Hamiltonian (paw.hamiltonian)
+        td_potential = time-dependent potential
+        =====================================================================
+        """
+        
+        self.pt_nuclei = pt_nuclei
+        self.hamiltonian = hamiltonian
+        self.td_potential = td_potential
+        self.time = 0
+        if ( hamiltonian.vext_g ):
+            self.ti_vext_g = hamiltonian.vext_g
+        else:
+            self.ti_vext_g = hamiltonian.finegd.zeros()
+        self.td_vext_g = hamiltonian.finegd.zeros()
+        self.vext_g = hamiltonian.finegd.zeros()
+        
+        
+    def update(self, density, time):
+        """update(density,time)
+        
+        Updates the time-dependent Hamiltonian.
+        
+        Parameters:
+        =====================================================================
+        density = the density at the given time 
+                  (paw.density or TimeDependentDensity.get_density())
+        time = the current time
+        =====================================================================
+        """
+        
+        self.time = time
+        if ( self.td_potential != None ):
+            self.td_vext_g = self.td_potential.get_potential(self.time)
+        self.vext_g = self.ti_vext_g + self.td_vext_g
+        self.hamiltonian.vext_g = self.vext_g
+        self.hamiltonian.update(density)
+        
+        
+    def apply(self, kpt, psit, hpsit):
+        """apply(kpt, psit, hpsit)
+        
+        Applies the time-dependent Hamiltonian to the wavefunction psit of
+        the k-point kpt.
+        
+        Parameters:
+        =====================================================================
+        kpt = the current k-point (paw.kpt_u[index_of_k-pointt])
+        psit = the wavefuntion (on a coarse grid) 
+               (paw.kpt_u[index_of_k-pointt].psit_nG[index_of_wavefunction])
+        hpsit = the resulting "operated wavefunction" (H psit)
+        =====================================================================
+        """
+        kpt.apply_h( self.pt_nuclei, self.hamiltonian.kin, \
+                         self.hamiltonian.vt_sG, psit, hpsit )
+
+
+
+# Overlap
+class TimeDependentOverlap:    
+    """Time-dependent overlap operator S(t)
+    
+    This class contains information required to apply time-dependent
+    overlap operator to a wavefunction.
+    """
+    
+    def __init__(self, pt_nuclei):
+        """ Create the TimeDependentOverlap-object.
+        
+        TimeDependentOverlap(pt_nuclei)
+        
+        Parameters:
+        =====================================================================
+        pt_nuclei = projector functions (paw.pt_nuclei)
+        =====================================================================
+        """
+        self.pt_nuclei = pt_nuclei
+    
+    def update(self):
+        """update()
+        
+        Updates the time-dependent overlap operator. !Currently does nothing!
+        
+        Parameters:
+        =====================================================================
+        None
+        =====================================================================
+        """
+        # !!! FIX ME !!! update overlap operator/projectors/...
+        pass
+    
+    def apply(self, kpt, psit, spsit):        
+        """apply(kpt, psit, hpsit)
+        
+        Applies the time-dependent overlap operator to the wavefunction 
+        psit of the k-point kpt.
+        
+        Parameters:
+        =====================================================================
+        kpt = the current k-point (paw.kpt_u[index_of_k-pointt])
+        psit = the wavefuntion (on a coarse grid) 
+               (paw.kpt_u[index_of_k-pointt].psit_nG[index_of_wavefunction])
+        spsit = the resulting "operated wavefunction" (S psit)
+        =====================================================================
+        """
+        kpt.apply_s( self.pt_nuclei, psit, spsit )
+        
+
+
+# Density
+class TimeDependentDensity:
+    """Time-dependent density rho(t)
+    
+    This class contains information required to get the time-dependent
+    density.
+    """
+    
+    def __init__(self, paw):
+        """ Create the TimeDependentDensity-object.
+        
+        TimeDependentDensity(paw)
+        
+        Parameters:
+        =====================================================================
+        paw = the PAW-object
+        =====================================================================
+        """
+        self.paw = paw
+        
+    def update(self):
+        """update()
+        
+        Updates the time-dependent density. !Currently does nothing!
+        
+        Parameters:
+        =====================================================================
+        None
+        =====================================================================
+        """
+        self.paw.density.update(self.paw.kpt_u, self.paw.symmetry)
+        
+    def get_density(self):
+        """get_density(density)
+        
+        Returns the current density.
+        
+        Parameters:
+        =====================================================================
+        None
+        =====================================================================
+        """
+        return self.paw.density
