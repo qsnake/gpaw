@@ -134,13 +134,30 @@ def r2k(alpha, a, b, beta, c):
     assert c.shape == (a.shape[0], a.shape[0])
     _gpaw.r2k(alpha, a, b, beta, c)
 
+def dotc(a, b):
+    """Dot product, conjugating the first vector with complex arguments.
 
+    Returns the value of the operation::
+
+        _
+       \   cc   
+        ) a       * b
+       /_  ijk...    ijk...       
+       ijk...
+
+    ``cc`` denotes complex conjugation.
+    """
+    assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float)) or
+            (is_contiguous(a, num.Complex) and is_contiguous(b,num.Complex)))
+    assert a.shape == b.shape
+    return _gpaw.dotc(a, b)
+    
 if not debug:
     gemm = _gpaw.gemm
     axpy = _gpaw.axpy
     rk = _gpaw.rk
     r2k = _gpaw.r2k
-
+    dotc = _gpaw.dotc;
 
 if __name__ == '__main__':
     a = num.array(((1.0, 3.0, 0.0),
