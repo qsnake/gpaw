@@ -28,7 +28,7 @@ time_step = .05
 psi0 = num.array( paw.kpt_u[0].psit_nG[0] )
 print '%8s  %16s  %16s' \
         % ('time  ', 'Error of norm', 'Error of phase')
-for i in range(100):
+for i in range(50):
     time = i*time_step
     c = num.sum(num.sum(num.sum( num.conjugate(psi0) * paw.kpt_u[0].psit_nG[0]))) / abs(num.sum(num.sum(num.sum( num.conjugate(psi0) * psi0))))
     err = math.sqrt( (c.real - math.cos(eps*time)) * (c.real - math.cos(eps*time)) \
@@ -38,4 +38,4 @@ for i in range(100):
     sys.stdout.flush()
     td_atoms.propagate(time_step)
 
-err < 1e-5
+assert(err < 1e-5)
