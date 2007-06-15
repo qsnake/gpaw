@@ -48,9 +48,11 @@ def write_plt(cell,
               origin=(0.0,0.0,0.0), # ASE uses (0,0,0) as origin
               typ=4):
     """Input:
-    cell = unit cell object as given from ListOfAtoms.GetUnitCell()
-           or grid decriptor
+    cell = unit cell object as given from ListOfAtoms.GetUnitCell() or
+    grid decriptor
+
     grid = the grid to write
+
     typ  = type of surface (integer)
     
     cell is assumed to be in Angstroms and the grid in atomc units (Bohr)"""
