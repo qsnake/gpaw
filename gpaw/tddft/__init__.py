@@ -23,20 +23,18 @@ class TDDFT:
                      propagator='EXCN', solver='BiCGStab', tolerance=1e-10):
         """Create TDDFT-object.
         
-        TDDFT(paw, td_potential = None, propagator='EXCN', 
-              solver='BiCGStab, tolerance=1e-10)
-              
+        ============ =========================================================
         Parameters:
-        =====================================================================
-        paw          = the PAW-object from a time-independent (the ground state)
-                       calculation
-        td_potential = the time-dependent potential
-        kpt_up       = spin up k-point   (if None, paw.kpt_u[0])
-        kpt_dn       = spin down k-point (if None, paw.kpt_u[1])
-        propagator   = the name of the time propagator
-        solver       = the name of the iterative linear equations solver 
-        tolerance    = tolerance for the solver
-        =====================================================================
+        ============ =========================================================
+        paw          the PAW-object from a time-independent (the ground state)
+                     calculation
+        td_potential the time-dependent potential
+        kpt_up       spin up k-point   (if None, paw.kpt_u[0])
+        kpt_dn       spin down k-point (if None, paw.kpt_u[1])
+        propagator   the name of the time propagator
+        solver       the name of the iterative linear equations solver 
+        tolerance    tolerance for the solver
+        ============ =========================================================
         
         Note: Use about ???10^-3 - 10^-4??? tighter tolerance for PAW.
         """
@@ -89,13 +87,13 @@ class TDDFT:
     def propagate(self, time_step, iterations=1):
         """Propagates wavefunctions.
         
-        propagate(time_step, iterations=1)
-        
+        ============ =========================================================
         Parameters:
-        =====================================================================
-        time_step = time step
-        iterations = iterations
-        =====================================================================
+        ============ =========================================================
+        time_step    time step
+        iterations   iterations
+        ============ =========================================================
+
         """
         for i in range(iterations):
             self.propagator.propagate(self.kpt_up,self.kpt_dn, self.wf_up,self.wf_dn, self.time, time_step)

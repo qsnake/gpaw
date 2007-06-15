@@ -22,8 +22,6 @@ class BiCGStab:
     def __init__(self, tolerance = 1e-15, max_iterations = 100, eps=1e-15):
         """Create the BiCGStab-object.
         
-        BiCGStab(tolerance = 1e-15, max_iterations = 1000, eps=1e-15)
-        
         Tolerance should not be smaller than attainable accuracy, which is 
         order of kappa(A) * eps, where kappa(A) is the (spectral) condition 
         number of the matrix. The maximum number of iterations should be 
@@ -31,13 +29,15 @@ class BiCGStab:
         .5 sqrt(kappa) ln(2/tolerance). A small number is treated as zero
         if it's magnitude is smaller than argument eps.
         
+        ================ =====================================================
         Parameters:
-        =====================================================================
-        tolerance =      tolerance for the norm of the residual ||b - A.x||^2
-        max_iterations = maximum number of iterations
-        eps =            if |rho| or |omega| < eps, it's regarded as zero 
+        ================ =====================================================
+        tolerance        tolerance for the norm of the residual ||b - A.x||^2
+        max_iterations   maximum number of iterations
+        eps              if abs(rho) or (omega) < eps, it's regarded as zero 
                          and the method breaks down
-        =====================================================================
+        ================ =====================================================
+
         """
         
         self.tol = tolerance
@@ -52,18 +52,14 @@ class BiCGStab:
     def solve(self, A, x, b, debug=0):
         """Solve a set of linear equations A.x = b.
         
-        x = solve(A, x, b)
-        
+        =========== ==========================================================
         Parameters:
-        =====================================================================
-        A = matrix A
-        x = initial guess x_0
-        b = right-hand side vector
-        =====================================================================
-        Return value:
-        =====================================================================
-        x = the solution vector x
-        =====================================================================
+        =========== ==========================================================
+        A           matrix A
+        x           initial guess x_0 (on entry) and the result (on exit)
+        b           right-hand side vector
+        =========== ==========================================================
+
         """
         blas = BasicLinearAlgebra.BLAS()
         

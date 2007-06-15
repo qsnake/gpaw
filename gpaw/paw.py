@@ -47,6 +47,9 @@ class Paw:
     calculation is not parallelized over **k**-points/spin).
 
     These are the most important attributes of a ``Paw`` object:
+
+    =============== =====================================================
+    Name            Description
     =============== =====================================================
     ``domain``      Domain object.
     ``setups``      List of setup objects.
@@ -79,7 +82,10 @@ class Paw:
     =============== =====================================================
 
     Energy contributions and forces:
-    =========== ================================
+
+    =========== ==========================================
+                Description
+    =========== ==========================================
     ``Ekin``    Kinetic energy.
     ``Epot``    Potential energy.
     ``Etot``    Total energy.
@@ -89,7 +95,7 @@ class Paw:
     ``S``       Entropy.
     ``Ebar``    Should be close to zero!
     ``F_ac``    Forces.
-    =========== ================================
+    =========== ==========================================
 
     The attribute ``usesymm`` has the same meaning as the
     corresponding ``Calculator`` keyword (see the Manual_).  Internal
@@ -99,12 +105,18 @@ class Paw:
     for a converged calculation.
 
     Booleans describing the current state:
+
+    ============= ======================================
+    Boolean       Description
     ============= ======================================
     ``forces_ok`` Have the forces bee calculated yet?
     ``converged`` Do we have a self-consistent solution?
     ============= ======================================
 
     Number of iterations for:
+
+    ============ ===============================
+                 Description
     ============ ===============================
     ``nfermi``   finding the Fermi-level
     ``niter``    solving the Kohn-Sham equations
