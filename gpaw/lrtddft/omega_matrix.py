@@ -252,7 +252,7 @@ class OmegaMatrix:
                         Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
                         P_ii = num.outerproduct(Pk_i,Pq_i)
                         # we need the symmetric form, hence we can pack
-			# use pack as I_sp used pack2
+                        # use pack as I_sp used pack2
                         P_p = pack(P_ii,tolerance=1e30)
                         Exc += num.dot(nucleus.I_sp[kss[kq].vspin],P_p)
                     Om[ij,kq] += weight * comm.sum(Exc)

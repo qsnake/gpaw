@@ -60,7 +60,7 @@ class Coulomb:
                                       *
                       /    /      n1(r)  n2(r')
           (n1 | n2) = | dr | dr'  -------------,
-	              /    /         |r - r'|
+                      /    /         |r - r'|
                       
         where n1 and n2 could be complex.
 
@@ -85,7 +85,7 @@ class Coulomb:
 
            The evaluation of the integral (n1 - Z1 ng|n2 - Z2 ng) is done in
            k-space using FFT techniques.
-	"""
+        """
         self.load(method)
         # determine integrand using specified method
         if method == 'real':

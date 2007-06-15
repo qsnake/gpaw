@@ -221,7 +221,7 @@ class Calculator:
         Z_a = atoms.GetAtomicNumbers()
         cell_cc = num.array(atoms.GetUnitCell())
         periodic_c = atoms.GetBoundaryConditions()
-	
+        
         # Check that the cell is orthorhombic:
         check_unit_cell(cell_cc)
         # Get the diagonal:
@@ -328,7 +328,7 @@ class Calculator:
         Z_a = atoms.GetAtomicNumbers()
         cell_cc = atoms.GetUnitCell()
         periodic_c = atoms.GetBoundaryConditions()
-	
+        
         # Check that the cell is orthorhombic:
         check_unit_cell(cell_cc)
 

@@ -852,20 +852,20 @@ class Paw:
         # Hamiltonian
         nn = self.stencils[0]
         self.hamiltonian.kin = Laplace(self.gd, -0.5, nn, typecode)
-	
+        
         # Nuclei
         for nucleus in self.nuclei:
             nucleus.typecode = typecode
             nucleus.reallocate(self.nbands)
             nucleus.ready = False
-	    
+            
         self.set_positions()
-	
+        
         # Wave functions
         for kpt in self.kpt_u:
             kpt.typecode = typecode
             kpt.psit_nG = num.array(kpt.psit_nG,typecode)
-	    
+            
         # Eigensolver
         # !!! FIX ME !!!
         # not implemented yet...

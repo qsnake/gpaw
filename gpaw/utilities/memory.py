@@ -22,7 +22,7 @@ def _VmB(VmKey):
         v = t.read()
         t.close()
         # get VmKey line e.g. 'VmRSS:  9999  kB\n ...'
-        i = v.index(VmKey)	
+        i = v.index(VmKey)
     except:
         return 0.0  # non-Linux?
 
