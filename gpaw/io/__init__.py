@@ -25,7 +25,7 @@ def open(filename, mode='r'):
 
 
 def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
-    paw.get_cartesian_forces()
+    paw.get_cartesian_forces(silent=True)
     
     if mpi.rank == MASTER:
         w = open(filename, 'w')

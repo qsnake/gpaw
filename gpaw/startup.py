@@ -20,7 +20,7 @@ from gpaw.setup import create_setup
 
 from gpaw import dry_run
 
-def create_paw_object(out, verbosity, a0, Ha,
+def create_paw_object(out, verbosity, iterwrite, a0, Ha,
                       pos_ac, Z_a, magmom_a, cell_c, bc_c,
                       h, N_c, xcname,
                       nbands, spinpol, kT,
@@ -193,7 +193,7 @@ def create_paw_object(out, verbosity, a0, Ha,
               stencils, usesymm, mix, fixdensity, maxiter,
               convergeall, eigensolver, relax, pos_ac / a0, timer, kT / Ha,
               tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
-              out, verbosity, vext_g)
+              out, verbosity, iterwrite, vext_g)
 
     if dry_run:
         # Estimate the amount of memory needed

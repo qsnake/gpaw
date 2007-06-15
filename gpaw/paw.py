@@ -137,7 +137,7 @@ class Paw:
                  stencils, usesymm, mix, fixdensity, maxiter,
                  convergeall, eigensolver, relax, pos_ac, timer, kT,
                  tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
-                 out, verbosity, vext_g):
+                 out, verbosity, iterwrite, vext_g):
         """Create the PAW-object.
         
         Instantiating such an object by hand is *not* recommended!
@@ -198,7 +198,8 @@ class Paw:
 
         self.set_output(out)
         self.verbosity = verbosity
-        self.iterwrite = 0
+        self.iterwrite = iterwrite
+        self.iterwfile = 'gpaw-restart.nc' # XXXX input ? XXXXX
 
         # Construct grid descriptors for coarse grids (wave functions) and
         # fine grids (densities and potentials):
@@ -322,8 +323,10 @@ class Paw:
             output.iteration(self)
             if self.iterwrite:
                 if not self.niter % self.iterwrite:
-##                    print "writing to file"
-                    self.write_state_to_file('gpaw-restart.nc')
+                    if mpi.rank == MASTER:
+                        print >> self.out, "writing to restart file",\
+                              self.iterwfile
+                    self.write_state_to_file(self.iterwfile)
 
             self.niter += 1
             if self.niter > 120:
@@ -332,6 +335,14 @@ class Paw:
             if self.niter > self.maxiter - 1:
                 self.converged = True
 
+        if self.iterwrite:
+            # make shure, that the converged result is written also
+            if (self.niter-1) % self.iterwrite:
+                if mpi.rank == MASTER:
+                    print >> self.out, "writing to restart file",\
+                          self.iterwfile
+                    self.write_state_to_file(self.iterwfile)
+                    
         output.print_converged(self)
 
     def set_positions(self, pos_ac=None):

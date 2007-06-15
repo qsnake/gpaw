@@ -59,6 +59,7 @@ class Calculator:
                   'maxiter': 100000000,
                   'out': '-',
                   'verbosity': 0,
+                  'iterwrite' : 0,
                   'hosts': None,
                   'parsize': None,
                   'softgauss': False,
@@ -241,6 +242,7 @@ class Calculator:
             self.external /= self.Ha
         args = [self.out,
                 self.verbosity,
+                self.iterwrite,
                 self.a0, self.Ha,
                 pos_ac, Z_a, magmoms, cell_c, periodic_c,
                 self.h, self.gpts, self.xc,
