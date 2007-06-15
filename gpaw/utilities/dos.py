@@ -8,7 +8,7 @@ class LDOS(DOS):
     def __init__(self, calc, width=None, window=None, npts=201):
         """Electronic Local Density Of States object.
 
-        'calc' is an ASE calculator instance.
+        'calc' is a gpaw calculator instance.
         'width' is the width of the "delta-functions". Defaults to the electronic temperature of the calculation.
         'window' is the energy window. Default is from the lowest to the highest eigenvalue.
         'npts' is the number of energy points.

@@ -145,16 +145,16 @@ def polygon(x, y1, y2, *args, **kwargs):
 
 fig = pylab.figure()
 ax = fig.add_subplot(111)
-polygon(date, [0] * len(date), [0] * len(date),
-        facecolor='b', label='Fortran-code')
-polygon(date, [0] * len(date), comment,
-        facecolor='y', label='Python-comment')
-polygon(date, comment, comment + docstring,
-        facecolor='m', label='Python-docstring')
-polygon(date, comment + docstring, comment + docstring + code,
-        facecolor='g', label='Python-code')
 polygon(date, comment + docstring + code, comment + docstring + code +c,
         facecolor='r', label='C-code')
+polygon(date, comment + docstring, comment + docstring + code,
+        facecolor='g', label='Python-code')
+polygon(date, comment, comment + docstring,
+        facecolor='m', label='Python-docstring')
+polygon(date, [0] * len(date), comment,
+        facecolor='y', label='Python-comment')
+polygon(date, [0] * len(date), [0] * len(date),
+        facecolor='b', label='Fortran-code')
 
 months = pylab.dates.MonthLocator()
 months3 = pylab.dates.MonthLocator(interval=3)
