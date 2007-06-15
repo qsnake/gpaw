@@ -7,6 +7,7 @@ PyObject* d2Excdnsdnt(PyObject *self, PyObject *args);
 PyObject* d2Excdn2(PyObject *self, PyObject *args);
 PyObject* rk(PyObject *self, PyObject *args);
 PyObject* r2k(PyObject *self, PyObject *args);
+PyObject* dotc(PyObject *self, PyObject *args);
 PyObject* diagonalize(PyObject *self, PyObject *args);
 PyObject* NewLocalizedFunctionsObject(PyObject *self, PyObject *args);
 PyObject* NewOperatorObject(PyObject *self, PyObject *args);
@@ -31,6 +32,7 @@ static PyMethodDef functions[] = {
   {"d2Excdn2", d2Excdn2, METH_VARARGS, 0},
   {"rk",  rk,  METH_VARARGS, 0},
   {"r2k", r2k, METH_VARARGS, 0},
+  {"dotc", dotc, METH_VARARGS, 0},
   {"diagonalize", diagonalize, METH_VARARGS, 0},
   {"LocalizedFunctions", NewLocalizedFunctionsObject, METH_VARARGS, 0},
   {"Operator", NewOperatorObject, METH_VARARGS, 0},
