@@ -3,6 +3,8 @@
 
 import os
 import sys
+from os.path import dirname, isfile, join
+from distutils.util import get_platform
 import cPickle as pickle
 import socket
 
@@ -34,10 +36,26 @@ class MPIPaw:
 
         s.listen(1)
 
-        # Use the custom interpreter given by the environment variable
-        # GPAW_PYTHON or gpaw-python which should be in the PATH
-        gpaw_python = os.environ.get('GPAW_PYTHON', 'gpaw-python')
+        # Check if we are running in source directory and
+        # have custom interpreter in the build directory:
+        dir = dirname(__file__)
+        gpaw_python = join(dir, '../..', 'build',
+                           'bin.%s-%s/gpaw-python' % (get_platform(), sys.version[0:3]))
+        if not isfile(gpaw_python):
+            gpaw_python = None
+            # Look in the PATH
+            paths = os.environ.get('PATH')
+            paths = paths.split(os.pathsep)
+            for path in paths:
+                if isfile(join(path, 'gpaw-python')):
+                    gpaw_python = join(path, 'gpaw-python')
+                    break
 
+        # If the environment variable GPAW_PYTHON is set, use that:
+        gpaw_python = os.environ.get('GPAW_PYTHON', gpaw_python)
+        if gpaw_python is None:
+            raise RuntimeError('Custom interpreter is not found')
+        
         # This is the Python command that all processors wil run:
         # line = 'from gpaw.mpi.run import run; run("%s", %d)' % (host, port)
         f=open('par_run.py','w')
