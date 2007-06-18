@@ -150,14 +150,14 @@ def dotc(a, b):
     assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float)) or
             (is_contiguous(a, num.Complex) and is_contiguous(b,num.Complex)))
     assert a.shape == b.shape
-#    return _gpaw.dotc(a, b)
+    return _gpaw.dotc(a, b)
     
 if not debug:
     gemm = _gpaw.gemm
     axpy = _gpaw.axpy
     rk = _gpaw.rk
     r2k = _gpaw.r2k
-#    dotc = _gpaw.dotc;
+    dotc = _gpaw.dotc;
 
 if __name__ == '__main__':
     a = num.array(((1.0, 3.0, 0.0),
