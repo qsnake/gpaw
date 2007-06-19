@@ -64,11 +64,12 @@ def get_mpi_command(debug=False):
         raise NotImplementedError
 
     if mpi == 'lam':
-        if debug:
-            return 'lamboot -v %(hostfile)s; mpirun -v -np %(np)d %(job)s &'
-        else:
-            return 'lamboot -H %(hostfile)s; mpirun -np %(np)d %(job)s &'
-
+        return ('lamnodes; '
+                'if [ $? != 0 ]; then '
+                '  lamboot -H %(hostfile)s; '
+                'fi; '
+                'mpirun -np %(np)d %(job)s &')
+    
     if mpi == 'openmpi':
         return 'mpirun -np %(np)d --hostfile %(hostfile)s %(job)s &'
 
