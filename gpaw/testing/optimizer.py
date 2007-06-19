@@ -40,6 +40,7 @@ def get_random_simplex(center=[0,0], size=.1, seed=0):
 def get_simplex(center=[0,0], size=.1):
 
     points = [None]*(len(center)+1)
+    print center
     #initialize all points to center
     points = [map(float,list(center)) for p in points]
     
@@ -55,8 +56,9 @@ separator = '='*72
 
 class Optimizer:
 
-    def __init__(self, symbol='N', name='test', generator=None,
-                 parametercount=None, out=None, quick=False,
+    def __init__(self, symbol='N', name='test',
+                 generator=setupgenerator.SetupGenerator,
+                 out=None, quick=False,
                  test=None, simplex=None):
         """
         Creates an optimizer for the specified element which generates
@@ -71,7 +73,6 @@ class Optimizer:
         a callable which returns a SetupGenerator given an element
         symbol string and a name (as per the documentation of
         SetupGenerator).
-        
         """
 
         self.element = atomization.elements[symbol]
@@ -80,19 +81,12 @@ class Optimizer:
             test = MoleculeTest()
         self.test = test
 
-        if generator is None:
-            self.generator = setupgenerator.SetupGenerator(self.element.letter,
-                                                           'opt.'+name)
-        else:
-            self.generator = generator(self.element.letter, 'opt.'+name)
+        self.generator = generator(self.element.letter, 'opt.'+name)
 
-        #simplex = None #perhaps we should generate a better simplex
         if simplex is None:
-            params = self.generator.standard_parameters()[:parametercount]
+            params = self.generator.get_standard_parameters()
             simplex = get_simplex(params)
-            simplex[0] = list(params) #We'll want the starting point to be
-            #used directly, so we'll just overwrite the first of the
-            #random vertices
+
         self.simplex = simplex
         self.quick = quick
 
@@ -102,7 +96,7 @@ class Optimizer:
             self.output = open(name+'.opt.'+symbol+'.log', 'w')
             #Note: perhaps also make it possible to not write output
         elif out == '-':
-            self.output = sys.stdout#open('/dev/null')
+            self.output = sys.stdout
         else:
             self.output = open(output, 'w')
 
@@ -127,7 +121,7 @@ class Optimizer:
         print >> out
         print >> out, 'Evaluating simplex point badness values'
         out.flush()
-            
+
         values = [self.badness(point) for point in simplex]
         
         print >> out, 'Simplex point evaluation complete.'
@@ -171,10 +165,7 @@ class Optimizer:
     """
     def badness(self, args):
 
-        #ref_dist = self.element.d
         badness = 10000 #will be overwritten unless bad things happen
-        #timer = self #change when gpaw.utilities.Timer works
-
         out = self.output
 
         try:
@@ -185,12 +176,6 @@ class Optimizer:
             badness = self.test.badness(out, self.element.letter,
                                         self.setup_name)
 
-
-            #energybadness = self.energytest.badness(self)
-
-            #overallbadness = (energybadness + distancebadness +
-            #noisebadness + convergencebadness)*iterationbadness
-
         except KeyboardInterrupt:
             raise KeyboardInterrupt #Don't ignore keyboard interrupts
         except:
@@ -199,11 +184,16 @@ class Optimizer:
                 ex_args = ex.__dict__['args']
             else:
                 ex_args = '<none>'
+
+            errstring = ''.join(traceback.format_tb(stacktrace))
             
             print >> out, '=== EXCEPTION ==='
-            print >> out, ''.join(traceback.format_tb(stacktrace))
+            print >> out, ex.message
+            print >> out, errstring
             print >> out, '================='
-            #    overallbadness = 10000.
+
+            print ex.message
+            print errstring
         
         print >> out, 'Badness: ', badness
         print >> out
@@ -382,7 +372,6 @@ class DistanceTest(Test):
 
         return X, calc.GetNumberOfIterations()
 
-
 class NoiseTest(Test):
 
     def __init__(self, unit_badness=.005, points=[(0.,0.,0.),(.35,.35,.35),
@@ -479,7 +468,6 @@ class ConvergenceTest(Test):
 
         return max(E) - min(E)
 
-
 class IterationTest(Test):
 
     def __init__(self, tests, names, weights):
@@ -517,9 +505,9 @@ def main(name='test',symbol='N', argcount=2, tolerance=0.01, quick=False,
     global optimizer #make sure optimizer is accessible from
     #interactive interpreter even if something goes wrong
 
-    optimizer = Optimizer(symbol, name, parametercount=argcount,quick=quick,
+    optimizer = Optimizer(symbol, name, quick=quick,
                           simplex=simplex)
-    
+
     if tolerance != None:
         optimizer.optimize(tolerance)
     return optimizer
@@ -538,6 +526,4 @@ def make_and_test_single_setup(setup_parameters, test=None,
     gen.generate_setup(setup_parameters)
     if test is None:
         test = MoleculeTest()
-    #fulltest = MoleculeTest()
-    out = out #open('checkfile', 'w')
     return test.badness(out, symbol, name)

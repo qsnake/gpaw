@@ -37,71 +37,13 @@ class SetupGenerator:
         self.symbol = symbol
         self.name = name
 
-
-    #def new_nitrogen_setup(self, r=1.1, rvbar=None, rcomp=None, 
-    #                       rfilter=None, hfilter=0.4):
-        """Generate new nitrogen setup.
-
-        The new setup depends on five parameters (Bohr units):
-
-        * 0.6 < r < 1.9: cutoff radius for projector functions
-        * 0.6 < rvbar < 1.9: cutoff radius zero potential (vbar)
-        * 0.6 < rcomp < 1.9: cutoff radius for compensation charges
-        * 0.6 < rfilter < 1.9: cutoff radius for Fourier-filtered
-          projector functions
-        * 0.2 < hfilter < 0.6: target grid spacing
-
-        Use the setup like this::
-
-          calc = Calculator(setups={'N': name}, ...)
-
-        where name is the name of this SetupGenerator
-        """
-
-        #if rvbar is None:
-        #    rvbar = r
-        #if rcomp is None:
-        #    rcomp = r
-        #if rfilter is None:
-        #    rfilter = 2 * r
-
-        #g = Generator(self.symbol, 'PBE', scalarrel=True, nofiles=True)
-        #g.run(core='[He]',
-        #      rcut=r,
-        #      vbar=('poly', rvbar),
-        #      filter=(hfilter, rfilter / r),
-        #      rcutcomp=rcomp,
-        #      logderiv=False)
-        #path = os.environ['GPAW_SETUP_PATH'].split(':')[0]
-        #os.rename(symbol+'.PBE', path + '/'+symbol+'.'+self.name+'.PBE')
-        #return # Without return here the editor can't figure out the correct indentation
-
-    def standard_parameters(self, r=None, rvbar=None, rcomp=None,
-                           rfilter=None, hfilter=0.4):
-        """
-        Given up to five argument variables, selects any remaining parameters
-        and returns them in a quintuple.
-
-        The rcut-parameter is selected per default from the dictionary
-        gpaw.atom.generator.parameters. Any remaining unspecified parameters
-        are set set in terms of rcut except hfilter which deafults to 0.4.
-        """
-
-        param = generator.parameters[self.symbol]
-        if r is None:
-            r = param['rcut']
-        if rvbar is None:
-            rvbar = r
-        if rcomp is None:
-            rcomp = r
-        if rfilter is None:
-            rfilter = 2 * r
-
-        return (r, rvbar, rcomp, rfilter, hfilter)
-
+    def get_standard_parameters(self, r=None, rvbar=None, rcomp=None,
+                                rfilter=None, hfilter=None):
+        return standard_setup_parameters(self.symbol, r, rvbar, rcomp,
+                                         rfilter, hfilter)
         
-    def new_setup(self, r=None, rvbar=None, rcomp=None, 
-                           rfilter=None, hfilter=0.4):
+    def new_setup(self, r=None, rvbar=None, rcomp=None, rfilter=None,
+                  hfilter=None):
 
         """Generate new molecule setup.
 
@@ -121,8 +63,10 @@ class SetupGenerator:
         """
 
         (r, rvbar, rcomp, rfilter,hfilter) = \
-            self.standard_parameters(r, rvbar, rcomp, rfilter, hfilter)
-                                                                       
+            standard_setup_parameters(self.symbol, r, rvbar, rcomp,
+                                      rfilter, hfilter)
+
+        print 'all values', (r,rvbar, rcomp, rfilter, hfilter)
 
         param = generator.parameters[self.symbol]
 
@@ -143,7 +87,33 @@ class SetupGenerator:
 
     def generate_setup(self, par):
       """
-      Calls new_setup with after unpacking a parameter list. This is a
-      convenience method which is invoked directly by the Optimizer.
+      Calls new_setup with after unpacking a parameter list. This method
+      can be overridden to change the parameters that should be
+      optimized.
       """
       self.new_setup(*par)
+
+def standard_setup_parameters(symbol, r=None, rvbar=None, rcomp=None,
+                              rfilter=None, hfilter=None):
+    """
+    Given up to five argument variables, selects any remaining parameters
+    and returns them in a quintuple.
+    
+    The rcut-parameter is selected per default from the dictionary
+    gpaw.atom.generator.parameters. Any remaining unspecified parameters
+    are set set in terms of rcut except hfilter which deafults to 0.4.
+    """
+    
+    param = generator.parameters[symbol]
+    if r is None:
+        r = param['rcut']
+    if rvbar is None:
+        rvbar = r
+    if rcomp is None:
+        rcomp = r
+    if rfilter is None:
+        rfilter = 2 * r
+    if hfilter is None:
+        hfilter = .4
+
+    return (r, rvbar, rcomp, rfilter, hfilter)
