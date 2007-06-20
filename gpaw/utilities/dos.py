@@ -7,7 +7,7 @@ import Numeric as num
 class LDOS(DOS):
     def __init__(self, calc, width=None, window=None, npts=201):
         """Electronic Local Density Of States object.
-
+        
         'calc' is a gpaw calculator instance.
         'width' is the width of the "delta-functions". Defaults to the electronic temperature of the calculation.
         'window' is the energy window. Default is from the lowest to the highest eigenvalue.
@@ -24,7 +24,7 @@ class LDOS(DOS):
 
     def GetLDOS(self, a, spin=None):
         """Get the DOS projected onto the projector functions of atom a."""
-        
+
         if spin is None:
             if self.nspins == 2:
                 # Spin-polarized calculation, but no spin specified -
@@ -32,6 +32,14 @@ class LDOS(DOS):
                 return self.GetLDOS(a, spin=0) + self.GetLDOS(a, spin=1)
             else:
                 spin = 0
+        
+        if hasattr(a, '__iter__'):
+            # a is a list of atom indicies -
+            # sum all angular chanels and add indicated atoms:
+            dos_e = num.zeros(self.npts, num.Float)
+            for i in a:
+                dos_e += num.sum(self.GetLDOS(i, spin))
+            return dos_e
 
         nk = len(self.w_k)
         P_kni = self.P_auni[a][spin * nk : (spin + 1) * nk]
