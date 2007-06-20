@@ -650,7 +650,8 @@ class Paw:
         """Return the Fermi-level."""
         e = self.occupation.get_fermi_level()
         if e is None:
-            e = 100.0
+            # Zero temperature calculation - return vacuum level:
+            e = 0.0
         return e * self.Ha
 
     def get_ibz_kpoints(self):
