@@ -65,6 +65,7 @@ class XCFunctional:
             elif xcname.startswith('XC'):
                 code = 3
             elif xcname == 'PBE0':
+                self.orbital_dependent = True
                 self.hybrid = 0.25
                 code = 4
             elif xcname == 'PADE':
