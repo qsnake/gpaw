@@ -68,9 +68,14 @@ class XCCorrection:
                  Nv=None):         # number of valence electrons
                  
 
-        #allocate arrays for core densities
+        #for restricted calculation
+        self.nc_res_g = nc
+        self.nct_res_g = nct
+        
+        #allocate arrays for core densities, unrestricted calculation
         self.nc_g = num.zeros((2,len(nc)), num.Float)
         self.nct_g = num.zeros((2,len(nct)), num.Float)
+        
         
         #different core densities for different spins, 
         if fcorehole is not None:
@@ -140,9 +145,9 @@ class XCCorrection:
             D_p = D_sp[0]
             D_Lq = dot3(self.B_Lqp, D_p)
             n_Lg = num.dot(D_Lq, self.n_qg)
-            n_Lg[0] += self.nc_g[0] * sqrt(4 * pi)
+            n_Lg[0] += self.nc_res_g * sqrt(4 * pi)
             nt_Lg = num.dot(D_Lq, self.nt_qg)
-            nt_Lg[0] += self.nct_g[0] * sqrt(4 * pi)
+            nt_Lg[0] += self.nct_res_g * sqrt(4 * pi)
             dEdD_p = H_sp[0][:]
             dEdD_p[:] = 0.0
             for w, Y_L in zip(self.weights, self.Y_yL):
@@ -209,9 +214,9 @@ class XCCorrection:
             D_p = D_sp[0]
             D_Lq = dot3(self.B_Lqp, D_p)
             n_Lg = num.dot(D_Lq, self.n_qg)
-            n_Lg[0] += self.nc_g[0] * sqrt(4 * pi)
+            n_Lg[0] += self.nc_res_g * sqrt(4 * pi)
             nt_Lg = num.dot(D_Lq, self.nt_qg)
-            nt_Lg[0] += self.nct_g[0] * sqrt(4 * pi)
+            nt_Lg[0] += self.nct_res_g * sqrt(4 * pi)
             dndr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
             dntdr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
             for L in range(self.Lmax):
