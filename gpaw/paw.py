@@ -357,7 +357,7 @@ class Paw:
                 if mpi.rank == MASTER:
                     print >> self.out, "writing to restart file",\
                           self.iterwfile
-                    self.write_state_to_file(self.iterwfile)
+                self.write_state_to_file(self.iterwfile)
                     
         output.print_converged(self)
 
