@@ -66,9 +66,9 @@ class Cluster(ListOfAtoms):
         if filetype is None:
             # estimate file type from name ending
             filetype = filename.split('.')[-1]
-        filetype.capitalize()
+        filetype.lower()
 
-        if filetype == 'Xyz':
+        if filetype == 'xyz':
             loa = ReadXYZ(filename)
             self.__init__(loa)
         
