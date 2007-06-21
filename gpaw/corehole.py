@@ -13,7 +13,7 @@ from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree
-from gpaw.xc_correction import XCCorrection
+from gpaw.xc_xas_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 import gpaw.mpi as mpi
 
@@ -46,6 +46,7 @@ def plot_xas(eps_n, w_cn, fwhm=0.5, linbroad=None, N=1000):
 
     e_stick = eps_n_tmp.copy()
     a_stick = num.zeros(len(eps_n_tmp), num.Float)
+
 
     if linbroad == None:
         #constant broadening fwhm
@@ -116,7 +117,7 @@ def plot_xas(eps_n, w_cn, fwhm=0.5, linbroad=None, N=1000):
 
 class CoreHoleSetup:
     def __init__(self, symbol, xcfunc, nspins=1, softgauss=False, lmax=0,
-                 fhole=0.5, type='paw'):
+                 fcorehole=0.5, type='paw'):
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = softgauss
@@ -144,18 +145,18 @@ class CoreHoleSetup:
          core_hole_e_kin,
          core_response) = PAWXMLParser().parse(symbol, xcname)
 
-        #self.fhole = fhole
-        #nc_g *= 0.5 * (2.0 - fhole)
-        #nct_g *= 0.5 * (2.0 - fhole)
-        #e_kinetic_core *= 0.5 * (2.0 - fhole)
-        #Nc -= fhole
-        #f_j[1] += fhole
+        #self.fcorehole = fcorehole
+        #nc_g *= 0.5 * (2.0 - fcorehole)
+        #nct_g *= 0.5 * (2.0 - fcorehole)
+        #e_kinetic_core *= 0.5 * (2.0 - fcorehole)
+        #Nc -= fcorehole
+        #f_j[1] += fcorehole
 
         
         self.filename = filename
 
-        print Nv,Nc, fhole, Z
-        assert Nv + Nc + fhole == Z # 
+        print Nv,Nc, fcorehole, Z
+        assert Nv + Nc + fcorehole == Z # 
         #assert Nv + Nc  == Z # these charges ignore the core hole
         self.Nv = Nv
         self.Nc = Nc
@@ -422,7 +423,10 @@ class CoreHoleSetup:
             [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
             nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
             rgd, [(j, l_j[j]) for j in range(nj)],
-            2 * lcut, e_xc)
+            2 * lcut, e_xc,
+            fcorehole,
+            self.Z,
+            self.Nv)
 
         #self.rcut = rcut
 
@@ -523,7 +527,7 @@ class CoreHoleSetup:
 
     def oscillator_strengths(self, r_g, dr_g, nc_g, phi_jg):
         # old stuff using scaled density
-        #phich_g = (4 * pi)**.25 * (0.5  *nc_g / (0.5 * ( 2.0 - self.fhole )) )**0.5 
+        #phich_g = (4 * pi)**.25 * (0.5  *nc_g / (0.5 * ( 2.0 - self.fcorehole )) )**0.5 
         #print num.dot(r_g**2 * dr_g, phich_g**2)
 
         #normalisation

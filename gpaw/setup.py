@@ -34,19 +34,19 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
     
     if type == 'hch':
         from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=0.5, lmax=lmax)
+        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=0.5, lmax=lmax)
     
     if type == 'fch':
         from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=1, lmax=lmax)
+        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=1, lmax=lmax)
 
     if type == '1s0.5':
         from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=0.5, lmax=lmax,type='1s0.5')
+        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=0.5, lmax=lmax,type='1s0.5')
 
     if type == '1s1.0':
         from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fhole=1.0, lmax=lmax,type='1s1.0')
+        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=1.0, lmax=lmax,type='1s1.0')
     
     return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
 
