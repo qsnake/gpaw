@@ -60,7 +60,7 @@ def save_array(array, file, delimiter=' ', converters={},
 
     # Attach header
     if header is not None:
-        print >>fhandle, header + '\n'
+        print >>fhandle, header
         
     # Print array to file
     for row in array:

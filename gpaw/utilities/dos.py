@@ -3,6 +3,25 @@ from ASE.Utilities.DOS import DOS
 
 import Numeric as num
 
+def print_projectors(nucleus):
+    n_j = nucleus.setup.n_j
+    l_j = nucleus.setup.l_j
+    angular = [['1'],
+               ['y', 'z', 'x'],
+               ['xy', 'yz', '3z^2-r^2', 'xz', 'x^2-y^2'],
+               ['3x^2y-y^3', 'xyz', '5yz^2-yr^2', '5z^3-3zr^2',
+                '5xz^2-xr^2', 'x^2z-y^2z', 'x^3-3xy^2'],
+               ]
+    print ' i n l m'
+    print '--------'
+    i = 0
+    for n, l in zip(n_j, l_j):
+        for m in range(2*l+1):
+            if n == -1:
+                n = '*'
+            print '%2s %s %s_%s' % (i, n, 'spdf'[l], angular[l][m])
+            i += 1
+
 
 class LDOS(DOS):
     def __init__(self, calc, width=None, window=None, npts=201):
