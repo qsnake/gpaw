@@ -153,21 +153,24 @@ class Hamiltonian:
         # Calculate atomic hamiltonians:
         self.timer.start('Atomic Hamiltonians')
         for nucleus in self.ghat_nuclei:
-            k, p, b, x = nucleus.calculate_hamiltonian(density.nt_g,
-                                                       self.vHt_g)
-            Ekin += k
-            Epot += p
-            Ebar += b
-            Exc += x
-
             # Energy corections due to external potential.
             # Potential is assumed to be constant inside augmentation spheres.
             if self.vext_g and nucleus.in_this_domain:
                 R_c = num.around(density.finegd.N_c * nucleus.spos_c
                                  - density.finegd.beg_c).astype(int)
                 R_c -= (R_c == density.finegd.n_c)
-                Eext += sqrt(4 * pi) * (nucleus.Q_L[0] +
-                                        nucleus.setup.Z) * self.vext_g[R_c]
+                vext = self.vext_g[R_c]
+            else:
+                vext = None
+
+            k, p, b, v, x = nucleus.calculate_hamiltonian(density.nt_g,
+                                                          self.vHt_g, vext)
+            Ekin += k
+            Epot += p
+            Ebar += b
+            Eext += v
+            Exc += x
+
         self.timer.stop()
 
         comm = self.gd.comm

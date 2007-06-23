@@ -360,7 +360,7 @@ class Nucleus:
                                  num.dot(dif, self.setup.Delta_pL[:,0]))
         self.comm.broadcast(self.mom, self.rank)
         
-    def calculate_hamiltonian(self, nt_g, vHt_g):
+    def calculate_hamiltonian(self, nt_g, vHt_g, vext=None):
         if self.in_this_domain:
             s = self.setup
             W_L = num.zeros((s.lmax + 1)**2, num.Float)
@@ -383,6 +383,15 @@ class Nucleus:
 
             Ebar = s.MB + num.dot(s.MB_p, D_p)
             Epot = U + s.M + num.dot(D_p, (s.M_p + num.dot(s.M_pp, D_p)))
+
+            # Note that the external potential is assumed to be
+            # constant inside the augmentation spheres.
+            Eext = 0.0
+            if vext:
+                Eext += vext * sqrt(4 * pi) * (nucleus.Q_L[0] +
+                                               nucleus.setup.Z)
+                dH_p += vext * sqrt(4 * pi) * s.Delta_pL[:, 0]
+                
             for H_p in self.H_sp:
                 H_p += dH_p
 
@@ -391,7 +400,7 @@ class Nucleus:
             if len(self.D_sp) == 2:
                 Ekin -= num.dot(self.D_sp[1], self.H_sp[1])
 
-            return Ekin, Epot, Ebar, Exc
+            return Ekin, Epot, Ebar, Eext, Exc
         
         else:
             if self.vhat_L is not None:
