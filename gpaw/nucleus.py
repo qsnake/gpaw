@@ -406,7 +406,7 @@ class Nucleus:
             if self.vhat_L is not None:
                 self.vhat_L.integrate(nt_g, None)
             self.ghat_L.integrate(vHt_g, None)
-            return 0.0, 0.0, 0.0, 0.0
+            return 0.0, 0.0, 0.0, 0.0, 0.0
 
     def adjust_residual(self, R_nG, eps_n, s, u, k):
         if self.in_this_domain:
