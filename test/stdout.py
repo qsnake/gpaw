@@ -1,3 +1,4 @@
+# This test takes approximately 4.4 seconds
 import sys
 import StringIO
 stdout, sys.stdout = sys.stdout, StringIO.StringIO()

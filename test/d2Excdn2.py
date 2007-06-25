@@ -1,3 +1,4 @@
+# This test takes approximately 0.2 seconds
 from gpaw.lrtddft import d2Excdnsdnt,d2Excdn2
 import Numeric as num
 

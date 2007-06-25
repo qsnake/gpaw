@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 from gpaw.transformers import Transformer
 import Numeric as num
 import RandomArray as ra

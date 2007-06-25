@@ -1,3 +1,4 @@
+# This test takes approximately 3.3 seconds
 import os
 from ASE import Crystal, Atom
 from ASE.Units import units

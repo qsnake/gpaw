@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 from gpaw.operators import Gradient
 import Numeric as num
 from gpaw.grid_descriptor import GridDescriptor

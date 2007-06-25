@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 import Numeric as num
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import equal

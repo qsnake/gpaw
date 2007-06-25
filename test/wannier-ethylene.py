@@ -1,3 +1,4 @@
+# This test takes approximately 12.0 seconds
 """ gpaw wannier example for ethylene, 
     corresponding to the ASE Wannier tutorial. 
 """

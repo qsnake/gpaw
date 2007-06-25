@@ -1,3 +1,4 @@
+# This test takes approximately 13.8 seconds
 import os
 from math import pi, cos, sin
 from ASE import Atom, ListOfAtoms

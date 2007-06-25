@@ -1,3 +1,4 @@
+# This test takes approximately 3.9 seconds
 import Numeric as num
 from Numeric import pi, sqrt
 from gpaw.utilities.tools import coordinates

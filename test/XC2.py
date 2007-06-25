@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 from math import pi
 from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
 from gpaw.domain import Domain

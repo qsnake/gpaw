@@ -1,3 +1,4 @@
+# This test takes approximately 90.7 seconds
 from gpaw.atom.generator import Generator, parameters
 
 """Test generation of setups

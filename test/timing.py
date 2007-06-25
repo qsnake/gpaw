@@ -1,3 +1,4 @@
+# This test takes approximately 1.6 seconds
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 

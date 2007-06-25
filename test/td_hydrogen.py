@@ -1,3 +1,4 @@
+# This test takes approximately 12.0 seconds
 #!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
@@ -16,8 +17,8 @@ calc = Calculator(nbands=1, h=0.2, tolerance=1e-14)
 atoms.SetCalculator(calc);
 e = atoms.GetPotentialEnergy()
 
-calc.Write('hydrogen.nc')
-atoms = Calculator.ReadAtoms('hydrogen.nc')
+calc.Write('hydrogen.gpw')
+atoms = Calculator.ReadAtoms('hydrogen.gpw')
 calc = atoms.GetCalculator()
 
 paw = calc.paw
@@ -39,6 +40,6 @@ for i in range(50):
     sys.stdout.flush()
     td_atoms.propagate(time_step)
 
-os.remove('hydrogen.nc')
+os.remove('hydrogen.gpw')
 
 assert(err < 1e-5)

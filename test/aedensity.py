@@ -1,3 +1,4 @@
+# This test takes approximately 50.4 seconds
 #!/usr/bin/env python
 import Numeric as num
 

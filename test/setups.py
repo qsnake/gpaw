@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 import glob
 
 import Numeric as num

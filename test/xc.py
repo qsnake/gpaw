@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 from gpaw.xc_functional import XCFunctional
 
 for name in ['PBE', 'LDA', 'RPBE', 'revPBE', 'LDAc', 'LDAx', 'RPBEx', 'revPBEx',

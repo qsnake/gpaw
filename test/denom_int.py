@@ -1,3 +1,4 @@
+# This test takes approximately 0.0 seconds
 """
 Here is a simple test program, which tests for radial integration
 of Function1D class.

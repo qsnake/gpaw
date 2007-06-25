@@ -1,23 +1,25 @@
 """
 A simple test script.
 
-Runs and times all scripts named ``*.py``.  The tests that execute
+Runs all scripts named ``*.py``.  The tests that execute
 the fastest will be run first.
 """
-import glob
-import time
-import pickle
-import sys
-import os
-import gc
-import StringIO
-from optparse import OptionParser
 
-from ASE.Units import units
+import os
+import sys
+import unittest
+from glob import glob
+import time
+import gc
+from optparse import OptionParser
 
 
 parser = OptionParser(usage='%prog [options] [tests]',
                       version='%prog 0.1')
+
+parser.add_option('-v', '--verbosity',
+                  type='int', default=2,
+                  help='Verbocity level.')
 
 parser.add_option('-x', '--exclude',
                   type='string', default=None,
@@ -36,139 +38,105 @@ parser.add_option('-p', '--parallel',
                   action='store_true',
                   help='Add parallel tests.')
 
-options, tests = parser.parse_args()
+parser.add_option('--adjust-timings',
+                  action='store_true',
+                  help='Adjust timing information in scripts.')
 
-path = ''
+opt, tests = parser.parse_args()
 
 if len(tests) == 0:
-    tests = glob.glob(path + '*.py')
+    tests = glob('*.py')
 
-if options.debug:
+if opt.run_failed_tests_only:
+    tests = [line.strip() for line in open('failed-tests.txt')]
+
+if opt.debug:
     sys.argv.append('--gpaw-debug')
 
-exclude = ['__init__.py', 'test.py', 'grr.py', 'C-force.py']
-if options.exclude is not None:
-    exclude += options.exclude.split(',')
+exclude = ['__init__.py', 'test.py', 'C-force.py', 'grr.py']
+if opt.exclude is not None:
+    exclude += opt.exclude.split(',')
 
-# exclude parallel tests if options.parallel is not set
-if not options.parallel: 
+# exclude parallel tests if opt.parallel is not set
+if not opt.parallel: 
     exclude.extend(['parallel-restart.py', 'parmigrate.py',
                     'par8.py', 'par6.py', 'exx_parallel.py']) 
 
 for test in exclude:
-    if path + test in tests:
-        tests.remove(path + test)
+    if test in tests:
+        tests.remove(test)
     
-gc.set_debug(gc.DEBUG_SAVEALL)
-
-# Read old timings if they are present:
-machine=os.uname()[4]
-host=os.uname()[1]
-timings_file='timings.pickle_' + machine
-try:
-    timings = pickle.loads(file(timings_file).read())
-except IOError:
-    timings = {}
-
-# Make a list of tests to do, and sort it with the fastest/new
-# tests first:
-tests = [(timings.get(test, 0.0), test) for test in tests]
-tests.sort()
-
-if options.run_failed_tests_only:
-    tests = [(t, test) for t, test in tests if t == 0.0]
-
-L = max([len(test) for told, test in tests])
-print '-----------------------------------------------------------------'
-print ' Running tests on %s. Architecture: %s' % (host, machine)
-print ' test', ' ' * (L - 4), 'result      time (old)'
-print '-----------------------------------------------------------------'
-
-garbage = []
-failed = []
-# Do tests:
-for told, test in tests:
-    units.length_used = False 
-    units.energy_used = False
-    units.SetUnits('Ang', 'eV')
-    
-    sys.stdout = StringIO.StringIO()
-    sys.stderr = StringIO.StringIO()
-
-    print >> sys.__stdout__, '%-*s' % (L + 2, test),
-    sys.__stdout__.flush()
-
-    ok = False
-    
-    module = test[:-3]
-    if options.parallel:
-        module = module.replace('/', '.')
-        
-    t = time.time()
-    try:
-        module = __import__(module, globals(), locals(), [])
-        del module
-    except KeyboardInterrupt:
-        failed.append(test)
-        print >> sys.__stdout__, 'STOPPED!'
-        print >> sys.__stdout__, ('Hit [enter] to continue with next test, ' +
-                                  '[ctrl-C] to stop.')
-        try:
-            raw_input()
-        except KeyboardInterrupt:
-            break
-        continue
-    except AssertionError, msg:
-        print >> sys.__stdout__, 'FAILED!'
-        print >> sys.__stdout__, msg
-    except:
-        print >> sys.__stdout__, 'CRASHED!'
-        type, value = sys.exc_info()[:2]
-        print >> sys.__stdout__, str(type) + ":", value
+ttests = []
+for test in tests:
+    line = open(test).readline()
+    if line.startswith('# This test takes approximately'):
+        t = float(line.split()[-2])
     else:
-        ok = True
-        
-    t = time.time() - t
+        t = 10.0
+    ttests.append((t, test))
 
-    gc.collect()
-    n = len(gc.garbage)
-    if n > 0:
-        print >> sys.__stdout__, ' LEAK!'
-        print >> sys.__stdout__, ('Uncollectable garbage (%d object%s)' %
-                                  (n, 's'[:n > 1]))
-        garbage += gc.garbage
+ttests.sort()
+tests = [test for t, test in ttests]
+
+#gc.set_debug(gc.DEBUG_SAVEALL)
+
+from ASE.Units import units
+
+class ScriptTestCase(unittest.TestCase):
+    garbage = []
+    def __init__(self, filename, adjust_timing):
+        unittest.TestCase.__init__(self, 'testfile')
+        self.filename = filename
+        self.adjust_timing = adjust_timing
+
+    def setUp(self):
+        self.t = time.time()
+        units.length_used = False 
+        units.energy_used = False
+        units.SetUnits('Ang', 'eV')
+
+    def testfile(self):
+        execfile(self.filename, {})
+
+    def tearDown(self):
+        t = time.time() - self.t
+        gc.collect()
+        n = len(gc.garbage)
+        ScriptTestCase.garbage += gc.garbage
         del gc.garbage[:]
-        ok = False
+        assert n == 0, ('Leak: Uncollectable garbage (%d object%s)' %
+                        (n, 's'[:n > 1]))
+        if self.adjust_timing:
+            lines = open(self.filename).readlines()
+            if lines[0].startswith('# This test takes approximately'):
+                del lines[0]
+            lines[:0] = ['# This test takes approximately %.1f seconds\n' % t]
+            os.rename(self.filename, self.filename + '.old')
+            open(self.filename, 'w').write(''.join(lines))
         
-    if ok:
-        print >> sys.__stdout__, '  OK     %7.3f (%.3f)' % (t, told)
-    else:
-        failed.append(test)
-        out = sys.stdout.getvalue()
-        if len(out) > 0:
-            open(test + '.output', 'w').write(out)
-        err = sys.stderr.getvalue()
-        if len(err) > 0:
-            open(test + '.error', 'w').write(err)
-        t = 0
-    timings[test] = t
-        
+    def id(self):
+        return self.filename
+
+    def __str__(self):
+        return '%s' % self.filename
+
+    def __repr__(self):
+        return "ScriptTestCase('%s', %r)" % (self.filename, self.adjust_timing)
+
+
+ts = unittest.TestSuite()
+for test in tests:
+    ts.addTest(ScriptTestCase(filename=test,
+                              adjust_timing=opt.adjust_timings))
+
+from gpaw.utilities import DownTheDrain
+sys.stdout = DownTheDrain()
+    
+ttr = unittest.TextTestRunner(verbosity=opt.verbosity)
+result = ttr.run(ts)
+failed = [test.filename for test, msg in result.failures + result.errors]
+
 sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
 
-print '-----------------------------------------------------------------'
-
-if len(tests) > 1:
-    print
-    if len(failed) == 0:
-        print 'All tests passed!'
-    elif len(failed) == 1:
-        print 'One test out of %d failed: %s' % (len(tests), failed[0])
-    else:
-        print '%d tests out of %d failed:'% (len(failed), len(tests))
-        for test in failed:
-            print ' ', test
-    print
-
-# Save new timings:
-file(timings_file, 'w').write(pickle.dumps(timings))
+if len(failed) > 0:
+    open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')
