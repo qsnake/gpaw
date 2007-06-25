@@ -57,9 +57,7 @@ separator = '='*72
 class Optimizer:
 
     def __init__(self, symbol='N', name='test',
-                 generator=setupgenerator.SetupGenerator,
-                 out=None, quick=False,
-                 test=None, simplex=None):
+                 generator=None, out=None, test=None, simplex=None):
         """
         Creates an optimizer for the specified element which generates
         setups with the name [symbol].opt.[name].PBE
@@ -81,14 +79,22 @@ class Optimizer:
             test = MoleculeTest()
         self.test = test
 
-        self.generator = generator(self.element.letter, 'opt.'+name)
+        generatorname = 'opt.'+name
+        if generator is None:
+            generator = setupgenerator.SetupGenerator(self.element.letter,
+                                                      generatorname)
+        else:
+            # Override generator defaults
+            generator.set_name(generatorname)
+            generator.set_symbol(symbol)
+
+        self.generator = generator
 
         if simplex is None:
             params = self.generator.get_standard_parameters()
             simplex = get_simplex(params)
 
         self.simplex = simplex
-        self.quick = quick
 
         self.setup_name = 'opt.'+name
 
@@ -111,8 +117,6 @@ class Optimizer:
         #print >> out, 'Tolerance:',fTolerance
         print >> out, separator
         #Remember  to write initData header
-        if quick:
-            print >> out, '>>> This is a quick test! <<<'
         print >> out
         print >> out, 'Simplex points'
         for point in simplex:
@@ -169,8 +173,8 @@ class Optimizer:
         out = self.output
 
         try:
-            if not self.quick:
-                self.generator.generate_setup(args) #new setup
+            #if not self.quick:
+            self.generator.generate_setup(args) #new setup
 
             print >> out, 'Point: ',args
             badness = self.test.badness(out, self.element.letter,
@@ -500,20 +504,15 @@ class IterationTest(Test):
         out.flush()
         return iterationbadness
 
-def main(name='test',symbol='N', argcount=2, tolerance=0.01, quick=False,
-         simplex=None):
+def main(name='test',symbol='N', tolerance=0.01, simplex=None):
     global optimizer #make sure optimizer is accessible from
     #interactive interpreter even if something goes wrong
 
-    optimizer = Optimizer(symbol, name, quick=quick,
-                          simplex=simplex)
+    optimizer = Optimizer(symbol, name, simplex=simplex)
 
     if tolerance != None:
         optimizer.optimize(tolerance)
     return optimizer
-
-def quick(name='quick'):
-    return main(name, quick=True, tolerance=-1)
 
 def test_single_setup(test=None, symbol='N', name='paw', out=sys.stdout):
     if test is None:

@@ -22,7 +22,8 @@ class SetupGenerator:
     some number of parameters in a way compatible with the
     standard_parameters() method.
     """
-    def __init__(self, symbol, name):
+
+    def __init__(self, symbol='H', name='test'):
         """
         Creates a SetupOptimizer for the element with the given symbol
         (string), where setup files will be generated with the name
@@ -37,14 +38,23 @@ class SetupGenerator:
         self.symbol = symbol
         self.name = name
 
-    def get_standard_parameters(self, r=None, rvbar=None, rcomp=None,
-                                rfilter=None, hfilter=None):
-        return standard_setup_parameters(self.symbol, r, rvbar, rcomp,
-                                         rfilter, hfilter)
+    def get_name(self):
+        return self.name
+
+    def get_symbol(self):
+        return self.symbol
+
+    def set_name(self, name):
+        self.name = name
+
+    def set_symbol(self, symbol):
+        self.symbol = symbol
+
+    def get_standard_parameters(self):
+        return standard_setup_parameters(self.symbol)
         
     def new_setup(self, r=None, rvbar=None, rcomp=None, rfilter=None,
                   hfilter=None):
-
         """Generate new molecule setup.
 
         The new setup depends on five parameters (Bohr units):
@@ -58,15 +68,13 @@ class SetupGenerator:
 
         Use the setup like this::
 
-          calc = Calculator(setups={'N': 'opt'}, ...)
+          calc = Calculator(setups={symbol: name}, ...)
 
         """
 
-        (r, rvbar, rcomp, rfilter,hfilter) = \
-            standard_setup_parameters(self.symbol, r, rvbar, rcomp,
-                                      rfilter, hfilter)
-
-        print 'all values', (r,rvbar, rcomp, rfilter, hfilter)
+        (r, rvbar, rcomp, rfilter, hfilter) = \
+            standard_setup_parameters(self.symbol, r, rvbar, rcomp, rfilter,
+                                      hfilter)
 
         param = generator.parameters[self.symbol]
 
@@ -103,7 +111,7 @@ def standard_setup_parameters(symbol, r=None, rvbar=None, rcomp=None,
     gpaw.atom.generator.parameters. Any remaining unspecified parameters
     are set set in terms of rcut except hfilter which deafults to 0.4.
     """
-    
+
     param = generator.parameters[symbol]
     if r is None:
         r = param['rcut']

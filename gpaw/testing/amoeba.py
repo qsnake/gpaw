@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import optimizer
+import Numeric as N
+import LinearAlgebra as LA
 
 #N_MAX = 100
 reflect = -1.
@@ -20,16 +22,31 @@ def standardfunction(x):
 
 class Logger:
     
-    def __init__(self, function):
+    def __init__(self, function, amoeba):
         self.innerfunction = function
+        self.amoeba = amoeba
         self.x = []
         self.y = []
+        self.dx = []
+        self.dev = []
+        self.vol = []
+        self.center = 0
 
     def function(self, args):
         y = self.innerfunction(args)
         self.x.append(tuple(args))
         self.y.append(y)
+        currentcenter = center(self.amoeba.simplex)
+        dcenter = currentcenter - self.center
+        self.dx.append(N.sqrt(N.dot(dcenter, dcenter)))        
+        #self.c.append(center(self.amoeba.simplex))
+        self.dev.append(self.amoeba.relativedeviation)
+        self.vol.append(volume(self.amoeba.simplex))
+        self.center = currentcenter
         return y
+
+    def unzip(self):
+        return [[x[i] for x in self.x] for i in range(len(self.x[0]))]
 
 """
 Performs the 'amoeba'-like downhill simplex method in dimcount dimensions.
@@ -58,12 +75,18 @@ a function, not a class!
 class Amoeba:
 
     def __init__(self, simplex, values=None, function=standardfunction,
-                 tolerance=0.001):
+                 tolerance=0.001, savedata=False):
         y = values
         self.vertexcount = len(simplex)
         self.dimcount = self.vertexcount - 1
 
         self.simplex = simplex
+
+        self.relativedeviation=0.
+
+        if savedata:
+            self.logger = Logger(function, self)
+            function = self.logger.function
 
         if y is None:
             y = map(function, simplex)
@@ -79,7 +102,6 @@ class Amoeba:
         self.coord_sums = [None]*self.dimcount
         self.calc_coord_sums()
         self.analyzepoints()
-        
 
     def optimize(self):
         while self.step() > self.tolerance:
@@ -203,16 +225,24 @@ class Amoeba:
         
         return ytrial
 
+def center(simplex):
+    vertices = [N.array(point) for point in simplex]
+    return sum(vertices)/len(simplex)
+
+def volume(simplex):
+    vertices = [N.array(point) for point in simplex]
+    differences = [vertices[i]-vertices[i+1] for i in range(len(vertices)-1)]
+    return LA.determinant(N.array(differences))
+
 def main():
-    simplex = optimizer.get_random_simplex([4,2,1,5,2,1,5,3,1,3])
-    logger = Logger(standardfunction)
+    simplex = optimizer.get_random_simplex([4,2,1,5,2])
     
-    amoeba = Amoeba(simplex, function=logger.function, tolerance=0.000001)
+    amoeba = Amoeba(simplex, tolerance=0.000001, savedata=True)
     
     amoeba.optimize()
     #print amoeba.simplex
     #print amoeba.y
-    return amoeba, logger
+    return amoeba
 
 if __name__ == '__main__':
      main()
