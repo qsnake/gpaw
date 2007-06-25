@@ -7,7 +7,7 @@ from gpaw import Calculator
 from gpaw.utilities import center, equal
 
 h = 0.17 # gridspacing
-a = [6.5, 6.5, 7.5] # unit cell
+a = [6.5, 6.5, 7.7] # unit cell
 d = 2.3608 # experimental bond length
 gridrefinement = 2 # grid-refinement-factor for all-electron density
 
