@@ -5,6 +5,7 @@
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/286222
 
 import os
+import resource
 import Numeric as num
 
 _proc_status = '/proc/%d/status' % os.getpid()
@@ -43,12 +44,25 @@ def resident(since=0.0):
     '''
     return _VmB('VmRSS:') - since
 
-
 def stacksize(since=0.0):
     '''Return stack size in bytes.
     '''
     return _VmB('VmStk:') - since
 
+def maxrss():
+    '''Return maximal resident memory size in bytes.
+    '''
+    # try to get it from rusage
+    mm = resource.getrusage(resource.RUSAGE_SELF)[2]*resource.getpagesize()
+    if mm > 0: return mm
+
+    # try to get it from /proc/id/status
+    mm = _VmB('VmPeak:')
+    if mm > 0: return mm
+
+    # no more idea
+    return 0.0
+ 
 def estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c, out):
     float_size = num.array([1], num.Float).itemsize()
     type_size = num.array([1],typecode).itemsize()

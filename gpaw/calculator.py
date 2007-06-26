@@ -19,6 +19,7 @@ from ASE.Utilities.MonkhorstPack import MonkhorstPack
 import ASE
 
 from gpaw.utilities import DownTheDrain, check_unit_cell
+from gpaw.utilities.memory import maxrss
 from gpaw.mpi.paw import MPIPaw
 from gpaw.startup import create_paw_object
 from gpaw.version import version
@@ -27,7 +28,6 @@ import gpaw
 import gpaw.io
 import gpaw.mpi as mpi
 from gpaw import parallel
-
 
 MASTER = 0
 
@@ -367,6 +367,10 @@ class Calculator:
             print >> self.out, 'cputime : %f' % c
 
         print >> self.out, 'walltime: %f' % (time.time() - self.t0)
+        mr = maxrss()
+        if mr > 0:
+            def round(x): return int(100*x/1024.**2+.5)/100.
+            print >> self.out, 'memory  : '+str(round(maxrss()))+' MB'
         print >> self.out, 'date    :', time.asctime()
 
     #####################
