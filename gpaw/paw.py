@@ -878,7 +878,7 @@ class Paw:
         # Wave functions
         for kpt in self.kpt_u:
             kpt.typecode = typecode
-            kpt.psit_nG = num.array(kpt.psit_nG,typecode)
+            kpt.psit_nG = num.array(kpt.psit_nG[:], typecode)
             
         # Eigensolver
         # !!! FIX ME !!!
