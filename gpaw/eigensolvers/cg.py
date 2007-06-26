@@ -67,7 +67,7 @@ class CG(Eigensolver):
             Htpsit_G = self.Htpsit_nG[n]
             gamma_old = 1.0
             phi_old_G[:] = 0.0
-            error = real(num.vdot(R_G, R_G))
+            error = self.comm.sum(real(num.vdot(R_G, R_G)))
             for nit in range(niter):
                 if error < self.tolerance:
                     # print >> self.f, "cg:iters", n, nit
@@ -99,7 +99,7 @@ class CG(Eigensolver):
                         P2_i = nucleus.P2_i
                         P_i = nucleus.P_uni[kpt.u, nn]
                         overlap += num.vdot(P_i, inner(nucleus.setup.O_ii, P2_i))
-                    self.comm.sum(overlap)
+                    overlap = self.comm.sum(overlap)
                     # phi_G -= overlap * kpt.psit_nG[nn]
                     axpy(-overlap, kpt.psit_nG[nn], phi_G)
                     for nucleus in hamiltonian.my_nuclei:
@@ -108,7 +108,7 @@ class CG(Eigensolver):
                 norm = num.vdot(phi_G, phi_G) * self.gd.dv
                 for nucleus in hamiltonian.my_nuclei:
                     norm += num.vdot(nucleus.P2_i, inner(nucleus.setup.O_ii, nucleus.P2_i))
-                self.comm.sum(norm)
+                norm = self.comm.sum(norm)
                 phi_G /= sqrt(real(norm))
                 for nucleus in hamiltonian.my_nuclei:
                     nucleus.P2_i /= sqrt(real(norm))
@@ -128,8 +128,8 @@ class CG(Eigensolver):
                                                 cc(P_i)))
                     c += num.dot(P2_i, num.dot(unpack(nucleus.H_sp[kpt.s]),
                                                 cc(P2_i)))
-                self.comm.sum(b)
-                self.comm.sum(c)
+                b = self.comm.sum(b)
+                c = self.comm.sum(c)
 
                 theta = 0.5*atan2(real(2*b), real(a-c))
                 enew = real(a*cos(theta)**2 + c*sin(theta)**2 + b*sin(2.0*theta))
@@ -161,7 +161,7 @@ class CG(Eigensolver):
                             nucleus.pt_i.add(R_G, coefs_i, kpt.k, communicate=True)
                         else:
                             nucleus.pt_i.add(R_G, None, kpt.k, communicate=True)
-                    error_new = real(num.vdot(R_G, R_G))
+                    error_new = self.comm.sum(real(num.vdot(R_G, R_G)))
                     if error_new / error < 0.30:
                         # print >> self.f, "cg:iters", n, nit+1
                         break
