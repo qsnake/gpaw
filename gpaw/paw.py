@@ -621,14 +621,15 @@ class Paw:
                             setup_types=None):
         """Write current state to a file."""
         if pos_ac is None:
-            cell_c = self.domain.cell_c
+            cell_c = self.domain.cell_c * self.a0
             pos_ac = cell_c * [nucleus.spos_c for nucleus in self.nuclei]
         if magmom_a is None:
             magmom_a = self.density.magmom_a
         if tag_a is None:
             tag_a = num.array([0]) # XXXXXXX where can I get this ????
         if setup_types is None:
-            setup_types = self.setups
+##            setup_types = self.setups
+            setup_types='paw'     # XXXXXXX is this correct ????
         gpaw.io.write(self, filename, pos_ac / self.a0, magmom_a, tag_a,
                       mode, setup_types)
 
