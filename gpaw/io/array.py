@@ -3,8 +3,8 @@ import Numeric as num
 def get_handle(file, mode='r'):
     """Return filehandle correspoding to 'file'.
 
-       'file' can be a filehandle, or a filename (string).
-       Support for gzipped files is automatic, if the filename ends in .gz.
+    'file' can be a filehandle, or a filename (string).
+    Support for gzipped files is automatic, if the filename ends in .gz.
     """
     if hasattr(file, 'read'):
         fhandle = file
@@ -22,8 +22,8 @@ def get_handle(file, mode='r'):
 def count_lines(file):
     """Count the number of lines in 'file'
 
-       'file' can be a filehandle, or a filename (string).
-       Support for gzipped files is automatic, if the filename ends in .gz.
+    'file' can be a filehandle, or a filename (string).
+    Support for gzipped files is automatic, if the filename ends in .gz.
     """
     if hasattr(file, 'read'):
         fname = file.name
@@ -37,26 +37,36 @@ def count_lines(file):
         lines += 1
     return lines
 
-def save_array(array, file, delimiter=' ', converters={},
-               default_convert='%.18e', header=None):
+def save_array(array, file, delimiter=' ', converters={}, header=None):
     """Save array to ascii file.
 
-       'array' is the array to be saved.
+    ============== =========================================================
+    Argument       Description
+    ============== =========================================================
+    ``array``      The array to be stored. Can be any iterable object with
+                   iterable elements.
+                   
+    ``file``       Filehandle, or filename (string).
+                   Support for gzipped files is automatic, if the filename
+                   ends in .gz.
 
-       'file' can be a filehandle, or a filename (string).
-       Support for gzipped files is automatic, if the filename ends in .gz.
+    ``comments``   The character used to indicate the start of a comment.
 
-       'delimiter' is used to separate the fields.
-
-       'converters' is a dictionary mapping column number to
-       a string formatter.
-
-       'default_convert' is the default string formatter.
-
-       'header' if not None, is a string to be put in the top of the file.
+    ``delimiter``  The character used to separate fields.
+    
+    ``converters`` A dictionary mapping column number to a string formatter.
+                   The default converter is '%.18e', but can be changed
+                   by setting converters['default'] appropriately.
+    
+    ``header``     If not None, a string to be put in the top of the file.
+    ============== ========================================================
+    
     """
     # Open file using gzip if necessary
     fhandle = get_handle(file, 'w')
+
+    # Determine default converter
+    default_convert = converters.get('default', '%.18e')
 
     # Attach header
     if header is not None:
@@ -69,43 +79,58 @@ def save_array(array, file, delimiter=' ', converters={},
              for i, col in enumerate(row)])
 
 def load_array(file, comments='#', delimiter=None, converters={},
-               default_convert=float, skiprows=[], skipcols=[], numeric=True):
+               skiprows=[], skipcols=[], typecode='O', transpose=False):
     """Load array from ascii file.
 
-       'file' can be a filehandle, or a filename (string).
-       Support for gzipped files is automatic, if the filename ends in .gz.
+    ============== =========================================================
+    Argument       Description
+    ============== =========================================================
+    ``file``       Filehandle, or filename (string).
+                   Support for gzipped files is automatic, if the filename
+                   ends in .gz.
 
-       'comments' is the character used to indicate the start of a comment
-       in the file.
+    ``comments``   The character used to indicate the start of a comment.
 
-       'delimiter' is the character used to separate values in the
-       file. None (default) implies any number of whitespaces.
+    ``delimiter``  The character used to separate values.
+                   None (default) implies any number of whitespaces.
+    
+    ``converters`` A dictionary mapping column number to
+                   a function that will convert that column string to the
+                   desired type of the output array (e.g. a float).
+                   Eg., if column 0 is a chemical symbol, use::
 
-       'converters' is a dictionary mapping column number to
-       a function that will convert that column string to the desired
-       type of the output array (e.g. a float).
-       Eg, if column 0 is a chemical symbol, use:
-       >>> from ASE.ChemicalElements import numbers
-       >>> converters={0:numbers.get}
-       to convert the symbol names to integer values.
+                    >>> from ASE.ChemicalElements import numbers
+                    >>> converters={0:numbers.get}
 
-       'default_convert' is the default function used to convert the
-       string repr. of a cell to the desired output type.
+                   to convert the symbol names to integer values.
+                   The default converter is ``float``, but can be changed
+                   by setting converters['default'] appropriately.
+    
+    ``skiprows``   A sequence of integer row indices to skip, where 0 is
+                   the first row. Negative indices are allowed.
+    
+    ``skipcols``   A sequence of integer column indices to skip, where 0 is
+                   the first column.
+    
+    ``typecode``   The typecode of the output array. Use 'list' if you do
+                   not want the data array to be converted to a Numeric array.
+                   The typecode 'O' (for object), should be used if not all
+                   of the elements are numbers.
+    
+    ``transpose``  If True, will transpose output matrix, so columns can be
+                   assigned to different variables. Eg.::
 
-       'skiprows' is a sequence of integer row indices to skip,
-       where 0 is the first row. Negative indices are allowed.
+                    >>> col1, col2 = load('data.txt', transpose=True)
+    ============== =========================================================
 
-       'skipcols' is a sequence of integer column indices to skip,
-       where 0 is the first column.
-
-       'numeric' is a boolean indicating if the output should be returned
-       as a Numeric array. If True, the data in 'file' must be square, and
-       all elements must be converted to numbers.
     """
     # Open file using gzip if necessary
     fhandle = get_handle(file, 'r')
 
-    # Convert negative indices in skiprows
+    # Determine default converter
+    default_convert = converters.get('default', float)
+
+   # Convert negative indices in skiprows
     skiprows = num.array(skiprows)
     if num.sometrue(skiprows < 0):
         lines = count_lines(fhandle)
@@ -114,8 +139,9 @@ def load_array(file, comments='#', delimiter=None, converters={},
                 skiprows[i] += lines
 
     array = []
+    ncols = None # The number of columns in each row
+    square = True # Is the data matrix square?
     for i, row in enumerate(fhandle):
-        # Skip the desired rows
         if i in skiprows:
             continue
 
@@ -128,24 +154,67 @@ def load_array(file, comments='#', delimiter=None, converters={},
 
         cols = []
         for i, col in enumerate(row.split(delimiter)):
-            # Skip the desired columns
             if i in skipcols:
                 continue
             
-            # Apply converters
-            cols.append(converters.get(i, default_convert)(col))            
+            # Apply converters and append column
+            cols.append(converters.get(i, default_convert)(col))
+
+        # Test if data matrix is square
+        if not ncols: ncols = len(cols)
+        elif len(cols) != ncols: square = False
+
         array.append(cols)
 
-    # Convert to Numeric array
-    if numeric:
-        array = num.array(array)
+    if not square or typecode == 'list':
+        print 'Data matrix not square or typecode == list.'
+        print 'Output not converted to Numeric array.'
+        return array
 
-        # If single column, correct shape of array
-        shape = list(array.shape)
-        try:
-            shape.remove(1)
-            array.shape = tuple(shape)
-        except ValueError:
-            pass
+    # Convert to Numeric array
+    array = num.array(array, typecode=typecode)
+
+    # If single column, correct shape of array
+    shape = list(array.shape)
+    try:
+        shape.remove(1)
+    except ValueError:
+        pass
+    else:
+        array.shape = tuple(shape)
+    
+    if transpose:
+        array = num.transpose(array)
     
     return array
+
+if __name__ == '__main__':
+    def print_file(name):
+        for line in open(name):
+            print line[:-1]
+        
+    square_array = [['hallo', 1],
+                    ['world', 2]]
+
+    non_square = [[5,4,3],
+                  [4,3],
+                  [6,4,1, 'hey']]
+
+    # test save of square array
+    save_array(square_array, 'test.dat', header='#String number',
+               converters={'default': '%7s', 1: '%6.1f'})
+    print_file('test.dat')
+
+    # test load of square array
+    names, values = load_array('test.dat', converters={'default': str},
+                               transpose=True)
+    print zip(names, values)
+
+    # test save of non-square array
+    save_array(non_square, 'test.dat', converters={3: '%s'})
+    print_file('test.dat')
+
+    # test load of non-square array
+    print load_array('test.dat', skipcols=[0], skiprows=[-2],
+                     converters={3:str})
+    
