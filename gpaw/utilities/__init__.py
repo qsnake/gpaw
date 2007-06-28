@@ -221,6 +221,7 @@ class OutputFilter:
 
 """
 
+
 def warning(msg):
     r"""Put string in a box.
 
@@ -233,14 +234,17 @@ def warning(msg):
      \/\/\/\/\/\/\/\/\/\/\/
     """
     
-    n = len(msg)
-    if n % 2 == 1:
-        n += 1
-        msg += ' '
+    lines = ['', 'WARNING:'] + msg.split('\n')
+    n = max([len(line) for line in lines])
+    n += n % 2
     bar = (n / 2 + 3) * '/\\'
-    space = (n / 2 + 2) * '  '
-    format = ' %s\n \\%s/\n /  WARNING:%s\\\n \\  %s  /\n /%s\\\n %s/'
-    return format % (bar, space, space[10:], msg, space, bar[1:])
+    start, end = ' \\ ', ' / '
+    msg = ' %s\n' % bar
+    for line in lines + (len(lines) % 2) * ['']:
+        msg += '%s %s %s%s\n' % (start, line, (n - len(line)) * ' ', end)
+        start, end = end, start
+    msg += ' %s/' % bar[1:]
+    return msg
 
 
 def center(atoms):
