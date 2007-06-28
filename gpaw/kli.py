@@ -797,7 +797,7 @@ class KLIFunctional:
         #print "n_g", n_g
         #print "vXC_G/n_g", vXC_G/n_g
         #Return the exchange energy
-        return (num.vdot(u_bar[0:occupied],f_j[0:occupied])/2, vXC_G/n_g)
+        return (num.dot(u_bar[0:occupied],f_j[0:occupied])/2, vXC_G/n_g)
 
     def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, vXC):
 

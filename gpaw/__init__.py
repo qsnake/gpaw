@@ -20,7 +20,6 @@ from os.path import join
 class ConvergenceError(Exception):
     pass
 
-
 home = os.environ['HOME']
 
 # Check for special command line arguments:
@@ -82,6 +81,9 @@ if debug:
 sys.path.insert(0, join(__path__[0], '..', 'build',
                         'lib.%s-%s' % (get_platform(), sys.version[0:3])))
 
+import Numeric
+from gpaw.utilities.blas import dotc
+Numeric.vdot = dotc
 
 # Install call-back handler for USR1 signal:
 # (use "kill -s USR1 <pid>" to stop a calculation)
