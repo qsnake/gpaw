@@ -1,4 +1,3 @@
-# This test takes approximately 63.0 seconds
 from gpaw import Calculator
 from ASE import Crystal, Atom
 from ASE.Calculators.CheckForce import CheckForce

@@ -1,4 +1,3 @@
-# This test takes approximately 3.0 seconds
 from ASE import Crystal, Atom
 from ASE.Units import units
 from gpaw.utilities import equal

@@ -1,4 +1,3 @@
-# This test takes approximately 2.1 seconds
 import Numeric as num
 import RandomArray as ra
 from gpaw.setup import Setup

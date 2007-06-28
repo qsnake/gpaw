@@ -1,4 +1,3 @@
-# This test takes approximately 20.6 seconds
 from gpaw import Calculator
 from gpaw.utilities import equal
 from ASE import ListOfAtoms, Atom, Crystal

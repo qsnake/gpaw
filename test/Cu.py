@@ -1,4 +1,3 @@
-# This test takes approximately 54.2 seconds
 import os
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator

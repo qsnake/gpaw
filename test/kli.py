@@ -1,4 +1,3 @@
-# This test takes approximately 3.0 seconds
 from gpaw.atom.all_electron import AllElectron
 
 

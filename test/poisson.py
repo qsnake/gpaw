@@ -1,4 +1,3 @@
-# This test takes approximately 0.1 seconds
 from math import sqrt
 from gpaw.poisson_solver import PoissonSolver
 import Numeric as num

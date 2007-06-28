@@ -1,4 +1,3 @@
-# This test takes approximately 31.6 seconds
 from gpaw import Calculator
 from ASE import Atom,ListOfAtoms
 from ASE.Utilities.Wannier.Wannier import Wannier

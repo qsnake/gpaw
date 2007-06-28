@@ -1,4 +1,3 @@
-# This test takes approximately 0.5 seconds
 from math import sqrt, pi
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!

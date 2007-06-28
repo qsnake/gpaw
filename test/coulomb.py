@@ -1,4 +1,3 @@
-# This test takes approximately 1.8 seconds
 import Numeric as num
 from math import pi
 from gpaw.coulomb import Coulomb

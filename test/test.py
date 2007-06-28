@@ -9,7 +9,6 @@ import os
 import sys
 import unittest
 from glob import glob
-import time
 import gc
 from optparse import OptionParser
 
@@ -38,14 +37,24 @@ parser.add_option('-p', '--parallel',
                   action='store_true',
                   help='Add parallel tests.')
 
-parser.add_option('--adjust-timings',
-                  action='store_true',
-                  help='Adjust timing information in scripts.')
-
 opt, tests = parser.parse_args()
 
 if len(tests) == 0:
-    tests = glob('*.py')
+    tests = ['setups.py',  'pbe-pw91.py',  'xcfunc.py',  'gradient.py',
+             'xc.py',  'gp2.py',  'Gauss.py',  'non-periodic.py',  'lf.py',
+             'denom_int.py',  'transformations.py',  'XC2.py',  'poisson.py',
+             'XC2Spin.py',  'integral4.py',  'd2Excdn2.py',
+             'multipoletest.py',  'proton.py',  'restart.py',  'timing.py',
+             'xcatom.py',  'coulomb.py',  'nonselfconsistentLDA.py',
+             'test_kli.py',  'units.py',  'revPBE.py',  'nonselfconsistent.py',
+             'hydrogen.py',  'spinpol.py',  'stdout.py',  'gga-atom.py',
+             'gauss_func.py',  'H-force.py',  'degeneracy.py',  'cg.py',
+             'h2o-xas.py',  'davidson.py',  'wannier-ethylene.py',
+             'restart2.py',  'CH4.py',  'gllb2.py',  'lrtddft.py',
+             'fixmom.py',  'wannier-hwire.py',  'exx_H2.py',  'revPBE_Li.py',
+             'td_hydrogen.py',  'aedensity.py',  'IP-oxygen.py',  '2Al.py',
+             '8Si.py',  'Cu.py',  'ltt.py',  'generatesetups.py',
+             'ae-calculation.py',  'H2Al110.py']
 
 if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
@@ -66,31 +75,17 @@ for test in exclude:
     if test in tests:
         tests.remove(test)
     
-ttests = []
-for test in tests:
-    line = open(test).readline()
-    if line.startswith('# This test takes approximately'):
-        t = float(line.split()[-2])
-    else:
-        t = 10.0
-    ttests.append((t, test))
-
-ttests.sort()
-tests = [test for t, test in ttests]
-
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
 from ASE.Units import units
 
 class ScriptTestCase(unittest.TestCase):
     garbage = []
-    def __init__(self, filename, adjust_timing):
+    def __init__(self, filename):
         unittest.TestCase.__init__(self, 'testfile')
         self.filename = filename
-        self.adjust_timing = adjust_timing
 
     def setUp(self):
-        self.t = time.time()
         units.length_used = False 
         units.energy_used = False
         units.SetUnits('Ang', 'eV')
@@ -99,20 +94,12 @@ class ScriptTestCase(unittest.TestCase):
         execfile(self.filename, {})
 
     def tearDown(self):
-        t = time.time() - self.t
         gc.collect()
         n = len(gc.garbage)
         ScriptTestCase.garbage += gc.garbage
         del gc.garbage[:]
         assert n == 0, ('Leak: Uncollectable garbage (%d object%s)' %
                         (n, 's'[:n > 1]))
-        if self.adjust_timing:
-            lines = open(self.filename).readlines()
-            if lines[0].startswith('# This test takes approximately'):
-                del lines[0]
-            lines[:0] = ['# This test takes approximately %.1f seconds\n' % t]
-            os.rename(self.filename, self.filename + '.old')
-            open(self.filename, 'w').write(''.join(lines))
         
     def id(self):
         return self.filename
@@ -121,13 +108,12 @@ class ScriptTestCase(unittest.TestCase):
         return '%s' % self.filename
 
     def __repr__(self):
-        return "ScriptTestCase('%s', %r)" % (self.filename, self.adjust_timing)
+        return "ScriptTestCase('%s')" % self.filename
 
 
 ts = unittest.TestSuite()
 for test in tests:
-    ts.addTest(ScriptTestCase(filename=test,
-                              adjust_timing=opt.adjust_timings))
+    ts.addTest(ScriptTestCase(filename=test))
 
 from gpaw.utilities import DownTheDrain
 sys.stdout = DownTheDrain()

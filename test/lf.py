@@ -1,4 +1,3 @@
-# This test takes approximately 0.0 seconds
 import Numeric as num
 from gpaw.utilities import equal
 from gpaw.domain import Domain

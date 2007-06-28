@@ -1,4 +1,3 @@
-# This test takes approximately 5.7 seconds
 from ASE import Atom, ListOfAtoms
 from ASE.Calculators.CheckForce import CheckForce
 from gpaw.utilities import equal

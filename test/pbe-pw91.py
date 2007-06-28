@@ -1,4 +1,3 @@
-# This test takes approximately 0.0 seconds
 from math import pi, sqrt
 from gpaw.xc_functional import XCFunctional
 

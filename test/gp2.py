@@ -1,4 +1,3 @@
-# This test takes approximately 0.0 seconds
 import Numeric as num
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor

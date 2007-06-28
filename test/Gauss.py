@@ -1,4 +1,3 @@
-# This test takes approximately 0.0 seconds
 from gpaw.utilities import equal
 from gpaw.gauss import test_derivatives
 
