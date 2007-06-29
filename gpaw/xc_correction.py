@@ -62,7 +62,8 @@ class XCCorrection:
                  rgd,   # radial grid edscriptor
                  jl,    # ?
                  lmax,  # maximal angular momentum to consider
-                 Exc0): # ?
+                 Exc0,
+                 phicorehole_g, fcorehole, nspins): # ?
         self.nc_g = nc
         self.nct_g = nct
         self.xc = xc
@@ -109,6 +110,18 @@ class XCCorrection:
                 self.nt_qg[q] = rl1l2 * wt_j[j1] * wt_j[j2]
                 q += 1
         self.rgd = rgd
+
+        if nspins == 1:
+            self.nc_g = nc
+        else:
+            if fcorehole == 0.0:
+                self.nca_g = self.ncb_g = 0.5 * nc
+            else:
+                ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
+                ncorehole_g[1:] /= rgd.r_g[1:]**2
+                ncorehole_g[0] = ncorehole_g[0]
+                self.nca_g = 0.5 * (nc - ncorehole_g)
+                self.ncb_g = 0.5 * (nc + ncorehole_g)
        
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().gga:
@@ -138,7 +151,7 @@ class XCCorrection:
             Da_p = D_sp[0]
             Da_Lq = dot3(self.B_Lqp, Da_p)
             na_Lg = num.dot(Da_Lq, self.n_qg)
-            na_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
+            na_Lg[0] += self.nca_g * sqrt(4 * pi)
             nta_Lg = num.dot(Da_Lq, self.nt_qg)
             nta_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
             dEdDa_p = H_sp[0][:]
@@ -146,7 +159,7 @@ class XCCorrection:
             Db_p = D_sp[1]
             Db_Lq = dot3(self.B_Lqp, Db_p)
             nb_Lg = num.dot(Db_Lq, self.n_qg)
-            nb_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
+            nb_Lg[0] += self.ncb_g * sqrt(4 * pi)
             ntb_Lg = num.dot(Db_Lq, self.nt_qg)
             ntb_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
             dEdDb_p = H_sp[1][:]
@@ -263,7 +276,7 @@ class XCCorrection:
             Da_p = D_sp[0]
             Da_Lq = dot3(self.B_Lqp, Da_p)
             na_Lg = num.dot(Da_Lq, self.n_qg)
-            na_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
+            na_Lg[0] += self.nca_g * sqrt(4 * pi)
             nat_Lg = num.dot(Da_Lq, self.nt_qg)
             nat_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
             dnadr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
@@ -277,7 +290,7 @@ class XCCorrection:
             Db_p = D_sp[1]
             Db_Lq = dot3(self.B_Lqp, Db_p)
             nb_Lg = num.dot(Db_Lq, self.n_qg)
-            nb_Lg[0] += 0.5 * self.nc_g * sqrt(4 * pi)
+            nb_Lg[0] += self.ncb_g * sqrt(4 * pi)
             nbt_Lg = num.dot(Db_Lq, self.nt_qg)
             nbt_Lg[0] += 0.5 * self.nct_g * sqrt(4 * pi)
             dnbdr_Lg = num.zeros((self.Lmax, self.ng), num.Float)

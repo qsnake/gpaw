@@ -130,6 +130,7 @@ class Generator(AllElectron):
         nj = len(n_j)
                     
         self.Nv = sum(f_j[njcore:])
+        self.Nc = sum(f_j[:njcore])
 
         # Do all-electron calculation:
         AllElectron.run(self)
@@ -299,9 +300,9 @@ class Generator(AllElectron):
                           self.scalarrel, gmax=gmax)
                     u *= 1.0 / u[gcut_l[l]]
 
-        Nc = Z - self.Nv - self.fcorehole
-        self.Nc = Nc
-        print 'Core electrons: %.1f' % Nc
+        charge = Z - self.Nv - self.Nc
+        print 'Charge: %.1f' % charge
+        print 'Core electrons: %.1f' % self.Nc
         print 'Valence electrons: %.1f' % self.Nv
 
         # Construct smooth wave functions:
@@ -412,7 +413,7 @@ class Generator(AllElectron):
 
         # Calculate smooth charge density:
         Nt = num.dot(nt, dv)
-        rhot = nt - (Nt + self.fcorehole / 4 / pi) * gt
+        rhot = nt - (Nt + charge / 4 / pi) * gt
         print 'Pseudo-electron charge', 4 * pi * Nt
 
         vHt = num.zeros(N, num.Float)

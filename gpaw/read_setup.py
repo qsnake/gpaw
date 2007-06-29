@@ -33,7 +33,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.pt_jg = []
         self.X_p = []
         self.ExxC = None
-        self.core_hole_state = []
+        self.core_hole_state = None
+        self.fcorehole = 0.0
         self.core_hole_e = None
         self.core_hole_e_kin = None
         self.core_response = []
@@ -117,6 +118,7 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 fingerprint,
                 filename,
                 self.core_hole_state,
+                self.fcorehole,
                 self.core_hole_e,
                 self.core_hole_e_kin,
                 self.core_response)
@@ -179,8 +181,9 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
         elif name == 'exact_exchange':
             self.ExxC = float(attrs['core-core'])
         elif name == 'core_hole_state':
-            self.core_hole_e = attrs['eig']
-            self.core_hole_e_kin = attrs['ekin']
+            self.fcorehole = float(attrs['removed'])
+            self.core_hole_e = float(attrs['eig'])
+            self.core_hole_e_kin = float(attrs['ekin'])
             self.data = []
         else:
             self.data = None

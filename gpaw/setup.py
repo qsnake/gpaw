@@ -32,22 +32,6 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins, semicore=True)
     
-    if type == 'hch':
-        from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=0.5, lmax=lmax)
-    
-    if type == 'fch':
-        from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=1, lmax=lmax)
-
-    if type == '1s0.5':
-        from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=0.5, lmax=lmax,type='1s0.5')
-
-    if type == '1s1.0':
-        from gpaw.corehole import CoreHoleSetup
-        return CoreHoleSetup(symbol, xcfunc, nspins, fcorehole=1.0, lmax=lmax,type='1s1.0')
-    
     return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
 
 
@@ -65,18 +49,6 @@ class Setup:
             symbol += '.' + type
         self.symbol = symbol
 
-#        (Z, Nc, Nv,
-#         e_total, e_kinetic, e_electrostatic, e_xc,
-#         e_kinetic_core,
-#         n_j, l_j, f_j, eps_j, rcut_j, id_j,
-#         ng, beta,
-#         nc_g, nct_g, vbar_g, rcgauss,
-#         phi_jg, phit_jg, pt_jg,
-#         e_kin_jj, X_p, ExxC,
-#         tauc_g, tauct_g,
-#         self.fingerprint,
-#         filename) = PAWXMLParser().parse(symbol, xcname)
-
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
          e_kinetic_core,
@@ -88,14 +60,14 @@ class Setup:
          tauc_g, tauct_g,
          self.fingerprint,
          filename,
-         core_hole_state,
-         core_hole_e,
-         core_hole_e_kin,
+         self.phicorehole_g,
+         self.fcorehole,
+         eigcorehole,
+         ekincorehole,
          core_response) = PAWXMLParser().parse(symbol, xcname)
 
         self.filename = filename
-
-        assert Nv + Nc == Z
+        
         self.Nv = Nv
         self.Nc = Nc
         self.Z = Z
@@ -161,13 +133,15 @@ class Setup:
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
 
+        if self.fcorehole > 0.0:
+            self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
+
         # Construct splines:
         self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
         self.vbar = Spline(0, rcutfilter, vbar_g, r_g=r_g, beta=beta)
 
         # Construct splines for core kinetic energy density:
-        if tauct_g == None:
-##          print 'Warning: No kinetic energy density information in setup'
+        if tauct_g is None:
             tauct_g = num.zeros(ng, num.Float)
         self.tauct = Spline(0, rcore, tauct_g, r_g=r_g, beta=beta)
 
@@ -230,6 +204,9 @@ class Setup:
         if xcname == 'GLLB':
             core_response = core_response[:gcut2].copy()
 
+        if self.phicorehole_g is not None:
+            self.phicorehole_g = self.phicorehole_g[:gcut2].copy()
+            
         Lcut = (2 * lcut + 1)**2
         T_Lqp = num.zeros((Lcut, nq, np), num.Float)
         p = 0
@@ -381,17 +358,13 @@ class Setup:
                 [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc)
-
-        #self.rcut = rcut
+                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins)
 
         if softgauss:
             rcutsoft = rcut2####### + 1.4
         else:
             rcutsoft = rcut2
 
-##        rcutsoft += 1.0
-        
         self.rcutsoft = rcutsoft
         
         if xcname != self.xcname:
@@ -470,9 +443,17 @@ class Setup:
         self.rcut_j = rcut_j
         
     def print_info(self, out):
-        print >> out, self.symbol + '-setup:'
+        if self.fcorehole == 0.0:
+            print >> out, self.symbol + '-setup:'
+        else:
+            print >> out, '%s-setup (%.1f core hole):' % (self.symbol,
+                                                          self.fcorehole)
         print >> out, '  name   :', names[self.Z]
         print >> out, '  Z      :', self.Z
+        if self.fcorehole == 0.0:
+            print >> out, '  core   : %d' % self.Nc
+        else:
+            print >> out, '  core   : %.1f' % self.Nc
         print >> out, '  file   :', self.filename
         print >> out, ('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
                        ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
@@ -510,7 +491,8 @@ class Setup:
 
     def get_partial_waves(self):
         """Return spline representation of partial waves and densities."""
-        # load setup data from XML file
+
+        # Load setup data from XML file:
         (Z, Nc, Nv,
          e_total, e_kinetic, e_electrostatic, e_xc,
          e_kinetic_core,
@@ -556,6 +538,23 @@ class Setup:
                                  beta=beta, points=100))
         return phi_j, phit_j, nc, nct, tauc, tauct
 
+    def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
+        self.A_ci = num.zeros((3, self.ni), num.Float)
+        nj = len(phi_jg)
+        i = 0
+        for j in range(nj):
+            l = self.l_j[j]
+            if l == 1:
+                a = num.dot(r_g**2 * dr_g, phi_jg[j] * self.phicorehole_g)
+                                
+                for m in range(3):
+                    c = (m + 1) % 3 
+                    self.A_ci[c, i] = a
+                    i += 1
+            else:
+                i += 2 * l + 1
+        assert i == self.ni
+            
 
 def grr(phi_g, l, r_g):
     w_g = phi_g.copy()
