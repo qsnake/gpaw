@@ -82,8 +82,6 @@ class AllElectron:
 
         if corehole is not None:
             self.ncorehole, self.lcorehole, self.fcorehole = corehole
-            self.coreholename = '%d%s%.1f' % (self.ncorehole, 'spd'[self.lcorehole],
-                                self.fcorehole)
             
             # Find j for core hole and adjust occupation:
             for j in range(len(self.f_j)):
@@ -99,7 +97,6 @@ class AllElectron:
         else:
             self.jcorehole = None
             self.fcorehole = 0
-            self.coreholename = ""
             
         #self.f_j[2]=4
     

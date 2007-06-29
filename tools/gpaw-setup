@@ -46,6 +46,9 @@ parser.add_option('--configuration', metavar='config',
                   'Na+ ion: "Ne,3s0", O2- ion: "1s2,2s2,2p6" or "He,2s2,2p6".')
 parser.add_option('--compensation-charge-radius', metavar='rcut', type='float',
                   help='Cutoff radius for compensation charges.')
+parser.add_option('--name', type='string', metavar='<id>',
+                  help='Name to use for setup file: <symbol>.<id>.<xc>.  '
+                  'Default name is <symbol>.<xc>.')
 
 opt, args = parser.parse_args()
 
@@ -109,6 +112,6 @@ for symbol in atoms:
 
     try:
         g.run(logderiv=opt.logarithmic_derivatives,
-              exx=opt.exact_exchange, **p)
+              exx=opt.exact_exchange, name=opt.name, **p)
     except RuntimeError, m:
         print m

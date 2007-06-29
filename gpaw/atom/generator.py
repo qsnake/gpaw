@@ -68,9 +68,11 @@ class Generator(AllElectron):
         self.nofiles = nofiles
         
     def run(self, core='', rcut=1.0, extra=None,
-            logderiv=True, vbar=None, exx=False,
+            logderiv=True, vbar=None, exx=False, name=None,
             normconserving='', filter=(0.4, 1.75), rcutcomp=None):
 
+        self.name = name
+        
         self.core = core
         if type(rcut) is float:
             rcut_l = [rcut]
@@ -754,11 +756,10 @@ class Generator(AllElectron):
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar,
                   tauc, tauct, extra_xc_data):
-        if self.coreholename == '':
-            xml = open(self.symbol + '.' + self.xcname , 'w')
+        if self.name is None:
+            xml = open('%s.%s' % (self.symbol, self.xcname), 'w')
         else:
-            xml = open(self.symbol + '.' +
-                       self.coreholename  + '.' + self.xcname , 'w')
+            xml = open('%s.%s.%s' % (self.symbol, self.name, self.xcname), 'w')
 
         if self.ghost:
             raise RuntimeError('Ghost!')
