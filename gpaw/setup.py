@@ -505,6 +505,7 @@ class Setup:
          fingerprint,
          filename,
          core_hole_state,
+         fcorehole,
          core_hole_e,
          core_hole_e_kin,
          core_response) = PAWXMLParser().parse(self.symbol, self.xcname)
