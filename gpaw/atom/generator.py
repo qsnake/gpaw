@@ -62,10 +62,9 @@ parameters = {
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None,
                  configuration=None,
-                 nofiles=False):
+                 nofiles=True):
         AllElectron.__init__(self, symbol, xcname, scalarrel, corehole,
-                             configuration)
-        self.nofiles = nofiles
+                             configuration, nofiles)
         
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=True, vbar=None, exx=False, name=None,
@@ -547,10 +546,6 @@ class Generator(AllElectron):
             print 'Calculating logarithmic derivatives at r=%.3f' % r[gld]
             print '(skip with [Ctrl-C])'
 
-            if self.nofiles:
-                from gpaw.utilities import DownTheDrain
-                fae = fps = DownTheDrain()
-                
             try:
                 u = num.zeros(N, num.Float)
                 for l in range(3):
@@ -559,9 +554,8 @@ class Generator(AllElectron):
                         dH_nn = dH_lnn[l]
                         q_n = q_ln[l]
 
-                    if not self.nofiles:
-                        fae = open(self.symbol + '.ae.ld.' + 'spdf'[l], 'w')
-                        fps = open(self.symbol + '.ps.ld.' + 'spdf'[l], 'w')
+                    fae = open(self.symbol + '.ae.ld.' + 'spdf'[l], 'w')
+                    fps = open(self.symbol + '.ps.ld.' + 'spdf'[l], 'w')
 
                     ni = 300
                     e1 = -5.0
@@ -665,10 +659,9 @@ class Generator(AllElectron):
             X_p = None
             ExxC = None
 
-        if 1:#not self.nofiles:
-            self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                           nc, nct, nt, Ekincore, X_p, ExxC, vbar,
-                           tauc, tauct, extra_xc_data)
+        self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
+                       nc, nct, nt, Ekincore, X_p, ExxC, vbar,
+                       tauc, tauct, extra_xc_data)
 
     def diagonalize(self, h):
         ng = 350
@@ -901,5 +894,5 @@ if __name__ == '__main__':
             filename = symbol + '.' + xcname
             if os.path.isfile(filename):
                 continue
-            g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
+            g = Generator(symbol, xcname, scalarrel=True)
             g.run(exx=True, logderiv=False, **par)

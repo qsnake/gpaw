@@ -49,6 +49,8 @@ parser.add_option('--compensation-charge-radius', metavar='rcut', type='float',
 parser.add_option('--name', type='string', metavar='<id>',
                   help='Name to use for setup file: <symbol>.<id>.<xc>.  '
                   'Default name is <symbol>.<xc>.')
+parser.add_option('-w', '--write-files', action='store_true',
+                  help='Write wave functions and other things to files.')
 
 opt, args = parser.parse_args()
 
@@ -74,12 +76,12 @@ for symbol in atoms:
         
     if opt.all_electron_only:
         a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole,
-                        opt.configuration)
+                        opt.configuration, not opt.write_files)
         a.run()
         continue
     
     g = Generator(symbol, opt.xcfunctional, scalarrel, corehole,
-                  opt.configuration)
+                  opt.configuration, not opt.write_files)
 
     p = parameters.get(symbol, {})
             

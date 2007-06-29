@@ -26,7 +26,7 @@ class AllElectron:
     """Object for doing an atomic DFT calculation."""
 
     def __init__(self, symbol, xcname='LDA', scalarrel=False,
-                 corehole=None, configuration=None):
+                 corehole=None, configuration=None, nofiles=True):
         """Do an atomic DFT calculation.
         
         Example:
@@ -38,7 +38,7 @@ class AllElectron:
         self.symbol = symbol
         self.xcname = xcname
         self.scalarrel = scalarrel
-        #self.corehole = corehole
+        self.nofiles = nofiles
         
         # Get reference state:
         self.Z, nlfe_j = configurations[symbol]
@@ -98,10 +98,6 @@ class AllElectron:
             self.jcorehole = None
             self.fcorehole = 0
             
-        #self.f_j[2]=4
-    
-        self.nofiles = False
-
     def intialize_wave_functions(self):
         r = self.r
         dr = self.dr
