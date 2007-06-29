@@ -450,10 +450,12 @@ class Setup:
                                                           self.fcorehole)
         print >> out, '  name   :', names[self.Z]
         print >> out, '  Z      :', self.Z
+        print >> out, '  valence:', self.Nv
         if self.fcorehole == 0.0:
             print >> out, '  core   : %d' % self.Nc
         else:
             print >> out, '  core   : %.1f' % self.Nc
+        print >> out, '  charge :', self.Z - self.Nv - self.Nc
         print >> out, '  file   :', self.filename
         print >> out, ('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
                        ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
@@ -546,7 +548,7 @@ class Setup:
         for j in range(nj):
             l = self.l_j[j]
             if l == 1:
-                a = num.dot(r_g**2 * dr_g, phi_jg[j] * self.phicorehole_g)
+                a = num.dot(r_g**3 * dr_g, phi_jg[j] * self.phicorehole_g)
                                 
                 for m in range(3):
                     c = (m + 1) % 3 

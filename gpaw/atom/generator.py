@@ -818,6 +818,8 @@ class Generator(AllElectron):
         print >> xml, ('  <shape_function type="gauss" rc="%.12e"/>' %
                        rcgauss)
 
+        r = self.r
+
         if self.jcorehole != None:
             print "self.jcorehole", self.jcorehole
             print >> xml,\
@@ -825,8 +827,13 @@ class Generator(AllElectron):
                   (self.ncorehole, 'spd'[self.lcorehole], self.fcorehole,
                    self.e_j[self.jcorehole],self.Ekincorehole)
             #print 'normalized?', num.dot(self.dr, self.u_j[self.jcorehole]**2)
-            for x in self.u_j[self.jcorehole,:]:
-                print >> xml, '%16.12e' % x,            
+            p = self.u_j[self.jcorehole].copy()
+            p[1:] /= r[1:]
+            if self.l_j[self.jcorehole] == 0:
+                p[0] = (p[2] +
+                        (p[1] - p[2]) * (r[0] - r[2]) / (r[1] - r[2]))
+            for x in p:
+                print >> xml, '%16.12e' % x,
             print >> xml, '\n  </core_hole_state>'
                                         
         for name, a in [('ae_core_density', nc),
@@ -847,7 +854,6 @@ class Generator(AllElectron):
                 print >> xml, '%16.12e' % x,
             print >> xml, '\n  </%s>' % name
 
-        r = self.r
         for l, u, s, q, in zip(vl_j, vu_j, vs_j, vq_j):
             id = ids.pop(0)
             for name, a in [('ae_partial_wave', u),

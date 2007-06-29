@@ -55,17 +55,17 @@ for R in points:
 class XCCorrection:
     def __init__(self,
                  xc,    # radial exchange-correlation object
-                 w_j,   #
-                 wt_j,  #
-                 nc,    # core density 
-                 nct,   # smooth core density
+                 w_jg,  # all-lectron partial waves
+                 wt_jg, # pseudo partial waves
+                 nc_g,  # core density 
+                 nct_g, # smooth core density
                  rgd,   # radial grid edscriptor
                  jl,    # ?
                  lmax,  # maximal angular momentum to consider
                  Exc0,
                  phicorehole_g, fcorehole, nspins): # ?
-        self.nc_g = nc
-        self.nct_g = nct
+        self.nc_g = nc_g
+        self.nct_g = nct_g
         self.xc = xc
         self.Exc0 = Exc0
         self.Lmax = (lmax + 1)**2
@@ -80,7 +80,7 @@ class XCCorrection:
             for m in range(2 * l + 1):
                 jlL.append((j, l, l**2 + m))
 
-        ng = len(nc)
+        ng = len(nc_g)
         self.ng = ng
         ni = len(jlL)
         nj = len(jl)
@@ -106,23 +106,21 @@ class XCCorrection:
         for j1, l1 in jl:
             for j2, l2 in jl[j1:]:
                 rl1l2 = rgd.r_g**(l1 + l2)
-                self.n_qg[q] = rl1l2 * w_j[j1] * w_j[j2]
-                self.nt_qg[q] = rl1l2 * wt_j[j1] * wt_j[j2]
+                self.n_qg[q] = rl1l2 * w_jg[j1] * w_jg[j2]
+                self.nt_qg[q] = rl1l2 * wt_jg[j1] * wt_jg[j2]
                 q += 1
         self.rgd = rgd
 
         if nspins == 1:
-            self.nc_g = nc
+            self.nc_g = nc_g
         else:
             if fcorehole == 0.0:
-                self.nca_g = self.ncb_g = 0.5 * nc
+                self.nca_g = self.ncb_g = 0.5 * nc_g
             else:
                 ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
-                ncorehole_g[1:] /= rgd.r_g[1:]**2
-                ncorehole_g[0] = ncorehole_g[0]
-                self.nca_g = 0.5 * (nc - ncorehole_g)
-                self.ncb_g = 0.5 * (nc + ncorehole_g)
-       
+                self.nca_g = 0.5 * (nc_g - ncorehole_g)
+                self.ncb_g = 0.5 * (nc_g + ncorehole_g)
+
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().gga:
             return self.GGA(D_sp, H_sp)
