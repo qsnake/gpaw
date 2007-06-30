@@ -9,7 +9,7 @@ from gpaw.corehole import xas, plot_xas
 
 # Generate setup for oxygen with half a core-hole:
 g = Generator('O', scalarrel=True, corehole=(1, 0, 0.5), nofiles=True)
-g.run(**parameters['O'])
+g.run(name='hch1s', **parameters['O'])
 setup_paths.insert(0, '.')
 
 a = 5.0
@@ -20,7 +20,7 @@ H2O = ListOfAtoms([Atom('O', (0, 0, 0)),
                    Atom('H', (d * cos(t), d * sin(t), 0))],
                   cell=(a, a, a), periodic=False)
 center(H2O)
-calc = Calculator(nbands=10, h=0.2, setups={'O': '1s0.5'})
+calc = Calculator(nbands=10, h=0.2, setups={'O': 'hch1s'})
 H2O.SetCalculator(calc)
 e = H2O.GetPotentialEnergy()
 
@@ -41,8 +41,11 @@ print de, de2
 print e, w
 
 assert de == de2
-assert abs(de - 2.052) < 0.001
+assert abs(de - 2.051) < 0.001
 assert abs(w[1] / w[0] - 2.19) < 0.01
 
 os.remove('h2o-xas.gpw')
-os.remove('O.1s0.5.LDA')
+os.remove('O.hch1s.LDA')
+print setup_paths
+del setup_paths[0]
+print setup_paths
