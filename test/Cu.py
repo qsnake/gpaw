@@ -31,3 +31,4 @@ print e_4s_major - e_3d_minor, -0.184013 - -0.197109
 assert abs(e_4s_major - e_3d_minor - (-0.184013 - -0.197109)) < 0.001
 
 os.remove('Cu.LDA')
+del setup_paths[0]

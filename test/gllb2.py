@@ -33,3 +33,4 @@ print "Eigenvalue difference", diff
 # Assure that 3D-GPAW wont change the 1D Result more than 0.1eV
 assert (abs(diff)<0.10)
 
+del setup_paths[0]

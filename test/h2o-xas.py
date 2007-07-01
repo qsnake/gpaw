@@ -41,11 +41,9 @@ print de, de2
 print e, w
 
 assert de == de2
-assert abs(de - 2.051) < 0.001
+assert abs(de - 2.052) < 0.001
 assert abs(w[1] / w[0] - 2.19) < 0.01
 
 os.remove('h2o-xas.gpw')
 os.remove('O.hch1s.LDA')
-print setup_paths
 del setup_paths[0]
-print setup_paths
