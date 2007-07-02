@@ -33,6 +33,8 @@ class SingleAtom:
         pos = (a / 2, b / 2, c / 2)
 
         parameters = parameters.copy()
+        if 'spinpol' in parameters:
+            spinpaired = not parameters['spinpol']
         
         if spinpaired:
             magmom = 0

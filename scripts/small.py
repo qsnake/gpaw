@@ -9,15 +9,14 @@ kwargs = {'a': 5.5,  # size of unit cell along x-axis
           'c': 5.7,  # size of unit cell along z-axis
           'h': 0.19, # grid spacing
           'forcesymm': False,
-          'spinpaired': True,
-          'parameters': {'xc'         : 'EXX',
+          'parameters': {'xc'         : 'PBE',
                          'out'        : '-',
                          'mix'        : (0.25, 3, 1.0),
                          'lmax'       : 2,
                          'hosts'      : 1,
-                         'nbands'     : 4,
+                         'nbands'     : 2,
                          'setups'     : {'Li': 'nocore'},
-#                         'spinpol'    : True,
+                         'spinpol'    : False,
                          'stencils'   : (2, 'M', 3),
                          'softgauss'  : False,
                          'tolerance'  : 1e-9,
