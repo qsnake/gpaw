@@ -32,7 +32,7 @@ def fail(msg, filename='/dev/null'):
 
 tests = ''
 # For a quick test - uncomment this line:
-#tests = 'gradient.py hydrogen.py'
+#tests = 'gradient.py hydrogen.py h2o-xas.py'
 #tests = 'PBE.py Gauss.py parallel-restart.py parmigrate.py wannier-hwire.py'
 #tests = 'parmigrate.py'
 
@@ -67,12 +67,20 @@ os.chdir('test')
 ##if os.system(export + 'python test.py -p %s >& test.out' % tests) != 0:
 if os.system(export + 'python test.py %s >& test.out' % tests) != 0:
     fail('Testsuite failed!')
-lines = open('test.out').readlines()
-ok = ('All tests passed!\n' in lines)
-
-if not ok:
+try:
+    failed = open('failed-tests.txt').readlines()
+except IOError:
+    ok = True
+else:
     # Send mail:
-    subject = [line for line in lines if 'failed' in line][-1]
+    n = len(failed)
+    if n == 1:
+        subject = 'One failed test: ' + failed[0][:-1]
+    else:
+        subject = '%d failed tests: %s, %s' % (n,
+                                               failed[0][:-1], failed[1][:-1])
+        if n > 2:
+            subject += ', ...'
     send_email(subject, 'test.out')
     
 out = open('/home/camp/jensj/.gpaw/cron/test-results.txt', 'w')
@@ -85,12 +93,13 @@ Test results from last night
 ::
 
 """
-for line in lines:
+for line in open('test.out'):
     print >> out, '  ', line,
 print >> out
 
 # PyLint:
 os.chdir('../../lib/python')
+os.system('rm -rf gpaw/gui')
 if os.system(export + '/scratch/jensj/bin/pylint -f html gpaw; ' +
              'cp pylint_global.html /home/camp/jensj/.gpaw/cron') != 0:
     fail('PyLint failed!')
@@ -237,7 +246,8 @@ else:
 print >> out
 print >> out, '(coverage-test is performed Sunday nights only)'
 
-os.system(export + 'cd ..; epydoc --docformat restructuredtext ' +
+os.system(export + 'cd ..; rm -rf gpaw/gui; '+
+          'epydoc --docformat restructuredtext --parse-only ' +
           '--name GPAW --url http://wiki.fysik.dtu.dk/gpaw ' +
           '--show-imports --no-frames -v gpaw ' +
           '>& warnings; ' +
