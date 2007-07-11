@@ -39,7 +39,7 @@ class Hamiltonian:
      ``vt_sg``  Effective potential on the fine grid.
      ========== =========================================
     """
-    
+
     def __init__(self, gd, finegd, xcfunc, nspins,
                  typecode, stencils, relax,
                  timer, my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
@@ -58,7 +58,7 @@ class Hamiltonian:
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
         self.vt_sG = gd.empty(nspins)
-        self.vHt_g = finegd.zeros()        
+        self.vHt_g = finegd.zeros()
         self.vt_sg = finegd.empty(nspins)
 
         # The external potential
@@ -89,14 +89,14 @@ class Hamiltonian:
 
         # Solver for the Poisson equation:
         self.poisson = PoissonSolver(finegd, nn, relax)
-   
+
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(setups)
 
         self.npoisson = 0
 
         # Exchange-correlation functional object:
-        self.xc = XC3DGrid(xcfunc, finegd, nspins)
+        self.xc = XC3DGrid(xcfunc, finegd, self.nspins)
 
     def update(self, density):
         """Calculate effective potential.
@@ -110,11 +110,11 @@ class Hamiltonian:
         vt_g[:] = 0.0
 
         density.update_pseudo_charge()
-        
+
         for nucleus in self.ghat_nuclei:
             nucleus.add_localized_potential(vt_g)
 
-        Ebar = num.vdot(vt_g, density.nt_g) * self.finegd.dv 
+        Ebar = num.vdot(vt_g, density.nt_g) * self.finegd.dv
 
         for nucleus in self.ghat_nuclei:
             nucleus.add_hat_potential(vt_g)
@@ -125,7 +125,7 @@ class Hamiltonian:
         if self.vext_g:
             vt_g += self.vext_g
             Eext = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
-        
+
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
 
@@ -142,7 +142,7 @@ class Hamiltonian:
         self.npoisson = self.poisson.solve(self.vHt_g, density.rhot_g,
                                            charge=-density.charge)
         self.timer.stop()
-        
+
         Epot += 0.5 * num.vdot(self.vHt_g, density.rhot_g) * self.finegd.dv
         Ekin = 0.0
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, density.nt_sG):
@@ -182,5 +182,3 @@ class Hamiltonian:
 
         self.timer.stop()
         return Ekin, Epot, Ebar, Eext, Exc
-
-        

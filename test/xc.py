@@ -1,8 +1,9 @@
 from gpaw.xc_functional import XCFunctional
 
+nspins = 2
 for name in ['PBE', 'LDA', 'RPBE', 'revPBE', 'LDAc', 'LDAx', 'RPBEx', 'revPBEx',
              'PW91']:
-    xc = XCFunctional(name)
+    xc = XCFunctional(name, nspins)
     x = xc.exchange
     c = xc.correlation
     c0 = xc.xc.correlation0
@@ -46,5 +47,3 @@ for name in ['PBE', 'LDA', 'RPBE', 'revPBE', 'LDAc', 'LDAx', 'RPBEx', 'revPBEx',
                 error = de
     assert error < 3.5e-9
     print name, error
-
-

@@ -28,7 +28,7 @@ parameters = {
  'N' : {'core': '[He]',   'rcut': 1.1},
  'O' : {'core': '[He]',   'rcut': 1.2},
  'F' : {'core': '[He]',   'rcut': 1.2},
- 'Ne': {'core': '[He]',   'rcut': 1.8},    
+ 'Ne': {'core': '[He]',   'rcut': 1.8},
  'Na': {'core': '[Ne]',   'rcut': 2.6},
  'Mg': {'core': '[Ne]',   'rcut': 2.0},
  'Al': {'core': '[Ne]',   'rcut': 2.0},
@@ -37,6 +37,7 @@ parameters = {
  'S' : {'core': '[Ne]',   'rcut': 1.87},
  'Cl': {'core': '[Ne]',   'rcut': 1.5},
  'Ar': {'core': '[Ne]',   'rcut': 1.6},
+ 'K' : {'core': '[Ar]',   'rcut': 3.3},
  'Ca': {'core': '[Ar]',   'rcut': 2.8},
  'Ti': {'core': '[Ar]',   'rcut': [2.5, 2.6, 2.3]},
  'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.2]},
@@ -48,13 +49,20 @@ parameters = {
  'Ga': {'core': '[Ar]3d', 'rcut': 2.2},
  'As': {'core': '[Ar]',   'rcut': 2.0},
  'Kr': {'core': '[Ar]3d', 'rcut': 2.2},
- 'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
+ 'Rb': {'core': '[Kr]',   'rcut': 4.0},
  'Sr': {'core': '[Kr]',   'rcut': 3.4},
+ 'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
+ 'Nb': {'core': '[Kr]',   'rcut': 3.0},
  'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.3]},
  'Ru': {'core': '[Kr]',   'rcut': 2.6},
+ 'Rh': {'core': '[Kr]',   'rcut': 2.5},
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.0]},
  'Ag': {'core': '[Kr]',   'rcut': 2.5},
  'Cd': {'core': '[Kr]',   'rcut': 2.5},
+ 'Ba': {'core': '[Xe]',   'rcut': 4.0},
+ 'Ta': {'core': '[Xe]',   'rcut': 2.5},
+ 'W':  {'core': '[Xe]',   'rcut': 2.5},
+ 'Ir': {'core': '[Xe]4f', 'rcut': [2.5, 2.5, 2.3]},
  'Pt': {'core': '[Xe]4f', 'rcut': 2.5},
  'Au': {'core': '[Xe]4f', 'rcut': 2.5}
  }
@@ -65,13 +73,13 @@ class Generator(AllElectron):
                  nofiles=True):
         AllElectron.__init__(self, symbol, xcname, scalarrel, corehole,
                              configuration, nofiles)
-        
+
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=True, vbar=None, exx=False, name=None,
             normconserving='', filter=(0.4, 1.75), rcutcomp=None):
 
         self.name = name
-        
+
         self.core = core
         if type(rcut) is float:
             rcut_l = [rcut]
@@ -86,7 +94,7 @@ class Generator(AllElectron):
         self.rcutcomp = rcutcomp
 
         hfilter, xfilter = filter
-        
+
         Z = self.Z
 
         n_j = self.n_j
@@ -97,9 +105,9 @@ class Generator(AllElectron):
         if vbar is None:
             vbar = ('poly', rcutmin * 0.9)
         vbar_type, rcutvbar = vbar
-        
+
         normconserving_l = [x in normconserving for x in 'spdf']
-                
+
         # Parse core string:
         j = 0
         if core.startswith('['):
@@ -127,7 +135,7 @@ class Generator(AllElectron):
                     e_j.append(-0.01)
 
         nj = len(n_j)
-                    
+
         self.Nv = sum(f_j[njcore:])
         self.Nc = sum(f_j[:njcore])
 
@@ -144,12 +152,12 @@ class Generator(AllElectron):
         beta = self.beta
 
         dv = r**2 * dr
-        
+
         print
         print 'Generating PAW setup'
         if core != '':
             print 'Frozen core:', core
-            
+
         # So far - no ghost-states:
         self.ghost = False
 
@@ -178,7 +186,7 @@ class Generator(AllElectron):
         extra_xc_data = {}
         if self.xc.is_non_local():
             self.xc.xcfunc.xc.calculate_extra_setup_data(extra_xc_data, self)
-        
+
 
         # Calculate core kinetic energy density
         if njcore == 0:
@@ -269,7 +277,7 @@ class Generator(AllElectron):
             u_ln.append(num.zeros((nn, N), num.Float))
             s_ln.append(num.zeros((nn, N), num.Float))
             q_ln.append(num.zeros((nn, N), num.Float))
-            
+
         # Fill in all-electron wave functions:
         for l in range(lmax + 1):
             # Collect all-electron wave functions:
@@ -287,7 +295,7 @@ class Generator(AllElectron):
         # Outward integration of unbound states stops at 3 * rcut:
         gmax = int(3 * rcutmax * N / (3 * rcutmax + beta))
         assert gmax > gcutfilter
-        
+
         # Calculate unbound extra states:
         c2 = -(r / dr)**2
         c10 = -d2gdr2 * r**2
@@ -342,7 +350,7 @@ class Generator(AllElectron):
                         if abs(f1) < abs(f2):
                             x2, f2 = x1, f1
                         x1, f1 = x0, f0
-                        
+
                 else:
                     A = num.ones((4, 4), num.Float)
                     A[:, 0] = 1.0
@@ -383,13 +391,13 @@ class Generator(AllElectron):
         r2 = r[:gcutnc]**2
         nct[:gcutnc] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
         print 'Pseudo-core charge: %.6f' % (4 * pi * num.dot(nct, dv))
-        
+
         # ... and the pseudo core kinetic energy density:
         tauct = tauc.copy()
         a = tauc[gcutnc - 2:gcutnc + 2]
         a = solve_linear_equations(num.transpose(A), a)
         tauct[:gcutnc] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
-        
+
         # ... and the soft valence density:
         nt = num.zeros(N, num.Float)
         for f_n, s_n in zip(f_ln, s_ln):
@@ -408,7 +416,7 @@ class Generator(AllElectron):
 ##        print norm, norm-1
         assert abs(norm - 1) < 1e-2
         gt /= norm
-        
+
 
         # Calculate smooth charge density:
         Nt = num.dot(nt, dv)
@@ -474,14 +482,14 @@ class Generator(AllElectron):
         filter = Filter(r, dr, gcutfilter, hfilter).filter
 
         vbar = filter(vbar * r)
-        
+
         # Calculate matrix elements:
         self.dK_lnn = dK_lnn = []
         self.dH_lnn = dH_lnn = []
         self.dO_lnn = dO_lnn = []
         for l, (e_n, u_n, s_n, q_n) in enumerate(zip(e_ln, u_ln,
                                                      s_ln, q_ln)):
-            
+
             A_nn = inner(s_n, q_n * dr)
             # Do a LU decomposition of A:
             nn = len(e_n)
@@ -508,7 +516,7 @@ class Generator(AllElectron):
             dH_nn = num.dot(num.dot(inverse(L_nn), dH_nn),
                             inverse(num.transpose(L_nn)))
 
-            ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]  
+            ku_n = [self.kin(l, u, e) for u, e in zip(u_n, e_n)]
             ks_n = [self.kin(l, s) for s in s_n]
             dK_nn = 0.5 * (inner(u_n, ku_n * dr) -
                            inner(s_n, ks_n * dr))
@@ -523,7 +531,7 @@ class Generator(AllElectron):
 
             A_nn = inner(s_n, q_n * dr)
             q_n[:] = num.dot(inverse(num.transpose(A_nn)), q_n)
-            
+
         self.vt = vt
 
         print 'state    eigenvalue         norm'
@@ -651,7 +659,7 @@ class Generator(AllElectron):
             for n1, j1 in enumerate(j_n):
                 for n2, j2 in enumerate(j_n):
                     self.dK_jj[j1, j2] = self.dK_lnn[l][n1, n2]
-        
+
         if exx:
             X_p = constructX(self)
             ExxC = atomic_exact_exchange(self, 'core-core')
@@ -726,11 +734,11 @@ class Generator(AllElectron):
         r = self.r[1:]
         dr = self.dr[1:]
         s = num.zeros(self.N, num.Float)
-        
+
         c0 = 0.5 * l * (l + 1) / r**2
         c1 = -0.5 * self.d2gdr2[1:]
         c2 = -0.5 * dr**-2
-        
+
         fp = c2 + 0.5 * c1
         fm = c2 - 0.5 * c1
         f0 = c0 - 2 * c2
@@ -764,7 +772,7 @@ class Generator(AllElectron):
         name = names[self.Z].title()
         comment1 = name + ' setup for the Projector Augmented Wave method.'
         comment2 = 'Units: Hartree and Bohr radii.'
-        comment2 += ' ' * (len(comment1) - len(comment2)) 
+        comment2 += ' ' * (len(comment1) - len(comment2))
         print >> xml, '  <!--', comment1, '-->'
         print >> xml, '  <!--', comment2, '-->'
 
@@ -835,7 +843,7 @@ class Generator(AllElectron):
             for x in p:
                 print >> xml, '%16.12e' % x,
             print >> xml, '\n  </core_hole_state>'
-                                        
+
         for name, a in [('ae_core_density', nc),
                         ('pseudo_core_density', nct),
                         ('pseudo_valence_density', nt - nct),

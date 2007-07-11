@@ -2,10 +2,10 @@ import Numeric as num
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import equal
 
-
-for xc in [XCFunctional('PBE'),
-           XCFunctional('LDA'),
-           XCFunctional('XC-2-1.0')]:
+nspins = 2
+for xc in [XCFunctional('PBE', nspins),
+           XCFunctional('LDA', nspins),
+           XCFunctional('XC-2-1.0', nspins)]:
     naa = 0.1 * num.ones(1, num.Float)
     nb = 0.12 * num.ones(1, num.Float)
     e = num.zeros(1, num.Float)

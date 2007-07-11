@@ -6,7 +6,8 @@ from gpaw.xc_functional import XCFunctional
 
 x = 0.000001
 ra.seed(1, 2)
-xcfunc = XCFunctional('LDA')
+nspins = 1
+xcfunc = XCFunctional('LDA', nspins)
 s = Setup('H', xcfunc)
 ni = s.ni
 np = ni * (ni + 1) / 2

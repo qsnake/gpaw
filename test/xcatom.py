@@ -7,8 +7,10 @@ from gpaw.utilities import equal
 
 x = 0.000001
 ra.seed(1, 2)
+nspins_1 = 1
+nspins_2 = 2
 for xc in ['LDA', 'PBE']:
-    xcfunc = XCFunctional(xc)
+    xcfunc = XCFunctional(xc, nspins_1)
     s = Setup('N', xcfunc)
     ni = s.ni
     np = ni * (ni + 1) / 2
@@ -22,6 +24,7 @@ for xc in ['LDA', 'PBE']:
     E2 = s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p])
     equal(dE, (E2 - E1) / x, 0.003)
 
+    xcfunc = XCFunctional(xc, nspins_2)
     d = Setup('N', xcfunc, nspins=2)
     E2s = d.xc_correction.calculate_energy_and_derivatives([0.5 * D_p,
                                                             0.5 * D_p],

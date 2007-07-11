@@ -1,3 +1,6 @@
+#ifndef _XC_GPAW_H
+#define _XC_GPAW_H
+
 /*
 BETA = 0.066725
 MU = BETA * pi * pi / 3
@@ -27,7 +30,7 @@ C0 = 4 * pi / 3
 
 typedef int bool;
 
-typedef struct 
+typedef struct
 {
   bool gga;
   double kappa;
@@ -36,3 +39,5 @@ typedef struct
   double s0;
   double pade[10];
 } xc_parameters;
+
+#endif /* _XC_GPAW_H */

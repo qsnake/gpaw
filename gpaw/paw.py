@@ -70,7 +70,7 @@ class Paw:
     ``typecode``    Data type of wave functions (``Float`` or
                     ``Complex``).
     ``bzk_kc``      Scaled **k**-points used for sampling the whole
-                    Brillouin zone - values scaled to [-0.5, 0.5).  
+                    Brillouin zone - values scaled to [-0.5, 0.5).
     ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
                     Brillouin zone.
     ``weights_k``   Weights of the **k**-points in the irreducible part
@@ -126,14 +126,14 @@ class Paw:
     Only attribute not mentioned now is ``nspins`` (number of spins) and
     those used for parallelization:
 
-    ================== =================================================== 
-    ``my_nuclei``      List of nuclei that have their 
+    ================== ===================================================
+    ``my_nuclei``      List of nuclei that have their
                        center in this domain.
     ``pt_nuclei``      List of nuclei with projector functions
                        overlapping this domain.
     ``ghat_nuclei``    List of nuclei with compensation charges
                        overlapping this domain.
-    ``locfuncbcaster`` ``LocFuncBroadcaster`` object for parallelizing 
+    ``locfuncbcaster`` ``LocFuncBroadcaster`` object for parallelizing
                        evaluation of localized functions (used when
                        parallelizing over **k**-points).
     ================== ===================================================
@@ -141,7 +141,7 @@ class Paw:
     .. _Manual: https://wiki.fysik.dtu.dk/gridcode/Manual
     .. _ASE units: https://wiki.fysik.dtu.dk/ase/Units
     """
-    
+
     def __init__(self, a0, Ha,
                  setups, nuclei, domain, N_c, symmetry, xcfunc,
                  nvalence, charge, nbands, nspins, random,
@@ -151,7 +151,7 @@ class Paw:
                  tolerance, kpt_comm, restart_file, hund, fixmom, magmom_a,
                  out, verbosity, write, vext_g):
         """Create the PAW-object.
-        
+
         Instantiating such an object by hand is *not* recommended!
         Use the ``create_paw_object()`` helper-function instead (it
         will supply many default values).  The helper-function is used
@@ -168,7 +168,7 @@ class Paw:
                         ``Complex``).
         ``kT``          Temperature for Fermi-distribution.
         ``bzk_kc``      Scaled **k**-points used for sampling the whole
-                        Brillouin zone - values scaled to [-0.5, 0.5).  
+                        Brillouin zone - values scaled to [-0.5, 0.5).
         ``ibzk_kc``     Scaled **k**-points in the irreducible part of the
                         Brillouin zone.
         ``myspins``     List of spin-indices for this CPU.
@@ -212,7 +212,7 @@ class Paw:
         self.verbosity = verbosity
         if type(write) == type(1):
             self.iterwrite = write
-            self.iterwfile = 'gpaw-restart.gpw' 
+            self.iterwfile = 'gpaw-restart.gpw'
         else:
             self.iterwfile, self.iterwrite = write
 
@@ -332,7 +332,7 @@ class Paw:
                 self.occupation.calculate(self.kpt_u)
 
             self.Ekin = self.Ekin0 + Eband
-            self.Etot = (self.Ekin + self.Epot + self.Ebar + 
+            self.Etot = (self.Ekin + self.Epot + self.Ebar +
                          self.Eext + self.Exc - self.S)
 
             output.iteration(self)
@@ -358,7 +358,7 @@ class Paw:
                     print >> self.out, "writing to restart file",\
                           self.iterwfile
                 self.write_state_to_file(self.iterwfile)
-                    
+
         output.print_converged(self)
 
     def set_positions(self, pos_ac=None):
@@ -448,10 +448,10 @@ class Paw:
             # yet.  So we use a simple density functional to set up the
             # initial hamiltonian:
             if xcfunc.xcname == 'EXX':
-                localxcfunc = XCFunctional('LDAx')
+                localxcfunc = XCFunctional('LDAx', self.nspins)
             else:
                 assert xcfunc.xcname == 'PBE0'
-                localxcfunc = XCFunctional('PBE')
+                localxcfunc = XCFunctional('PBE', self.nspins)
             self.hamiltonian.xc.set_functional(localxcfunc)
             for setup in self.setups:
                 setup.xc_correction.xc.set_functional(localxcfunc)
@@ -472,7 +472,7 @@ class Paw:
                      self.typecode, self.nbands)
             eig.set_convergence_criteria(True, 1e-2, self.nvalence)
             for nit in range(2):
-                eig.iterate(self.hamiltonian, self.kpt_u) 
+                eig.iterate(self.hamiltonian, self.kpt_u)
 
         else:
             for nucleus in self.my_nuclei:
@@ -562,7 +562,7 @@ class Paw:
                 else:
                     self.domain.comm.receive(self.F_ac[a], nucleus.rank, 7)
         else:
-            if self.kpt_comm.rank == 0: 
+            if self.kpt_comm.rank == 0:
                 for nucleus in self.my_nuclei:
                     self.domain.comm.send(nucleus.F_c, MASTER, 7)
 
@@ -664,7 +664,7 @@ class Paw:
         For the parallel case find the rank in kpt_comm that contains
         the (k,s) pair, for this rank, collect on the corresponding
         domain a full array on the domain master and send this to the
-        global master.""" 
+        global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
 
@@ -683,18 +683,18 @@ class Paw:
                 self.kpt_comm.send(psit_G, MASTER, 1398)
 
         if mpi.rank == MASTER:
-            # allocate full wavefunction and receive 
+            # allocate full wavefunction and receive
             psit_G = self.gd.empty(typecode=self.typecode, global_array=True)
             self.kpt_comm.receive(psit_G, kpt_rank, 1398)
             return psit_G
 
     def get_eigenvalues(self, k, s):
         """Return eigenvalue array.
-        
+
         For the parallel case find the rank in kpt_comm that contains
         the (k,s) pair, for this rank, collect on the corresponding
         domain a full array on the domain master and send this to the
-        global master.""" 
+        global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
 
@@ -734,7 +734,7 @@ class Paw:
         oldxcfunc = xc.xcfunc
 
         if isinstance(xcname, str):
-            newxcfunc = XCFunctional(xcname)
+            newxcfunc = XCFunctional(xcname, self.nspins)
         else:
             newxcfunc = xcname
 
@@ -789,7 +789,7 @@ class Paw:
     def load_wave_functions(self, pos_ac):
         self.set_positions(pos_ac)
 
-        if not self.wave_functions_initialized: 
+        if not self.wave_functions_initialized:
             # Initialize wave functions and perhaps also the density
             # from atomic orbitals:
             for nucleus in self.nuclei:
@@ -823,7 +823,7 @@ class Paw:
                 kpt.psit_nG = kpt.psit_nG[:]
 
         for kpt in self.kpt_u:
-            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei, 
+            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei,
                                        self.my_nuclei)
 
         if isinstance(self.eigensolver, tuple):
@@ -834,11 +834,11 @@ class Paw:
                                             self.gd, self.hamiltonian.kin,
                                             self.typecode, self.nbands)
             elif eigensolver == 'cg':
-                self.eigensolver = CG(self.timer, self.kpt_comm, 
+                self.eigensolver = CG(self.timer, self.kpt_comm,
                                       self.gd, self.hamiltonian.kin,
                                       self.typecode, self.nbands)
             elif eigensolver == 'dav':
-                self.eigensolver = Davidson(self.timer, self.kpt_comm, 
+                self.eigensolver = Davidson(self.timer, self.kpt_comm,
                                             self.gd, self.hamiltonian.kin,
                                             self.typecode, self.nbands)
             else:
@@ -855,31 +855,31 @@ class Paw:
     def totype(self, typecode):
         """Converts all the typecode dependent quantities of Paw
         (Laplacian, wavefunctions etc.) to typecode"""
-        
+
         from gpaw.operators import Laplace
-        
+
         if typecode not in [num.Float, num.Complex]:
             raise RuntimeError('PAW can be converted only to Float or Complex')
-        
+
         self.typecode = typecode
-        
+
         # Hamiltonian
         nn = self.stencils[0]
         self.hamiltonian.kin = Laplace(self.gd, -0.5, nn, typecode)
-        
+
         # Nuclei
         for nucleus in self.nuclei:
             nucleus.typecode = typecode
             nucleus.reallocate(self.nbands)
             nucleus.ready = False
-            
+
         self.set_positions()
-        
+
         # Wave functions
         for kpt in self.kpt_u:
             kpt.typecode = typecode
             kpt.psit_nG = num.array(kpt.psit_nG[:], typecode)
-            
+
         # Eigensolver
         # !!! FIX ME !!!
         # not implemented yet...

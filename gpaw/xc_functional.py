@@ -10,6 +10,7 @@ from gpaw.utilities import is_contiguous
 from gpaw.exx import EXX, XXFunctional
 from gpaw.kli import KLIFunctional
 from gpaw.kli import GLLBFunctional
+from gpaw.libxc import Libxc
 import _gpaw
 
 """
@@ -27,15 +28,20 @@ import _gpaw
 """
 
 class XCFunctional:
-    def __init__(self, xcname, parameters=None):
+    def __init__(self, xcname, nspins, parameters=None):
         self.xcname = xcname
         self.hybrid = 0.0
         self.parameters = parameters
         self.mgga = False
-        self.gga = False 
+        self.gga = False
         self.orbital_dependent = False
+        self.uses_libxc = False
 
-        if xcname == 'LDA':
+        if xcname.startswith('lxc'):
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+        elif xcname == 'LDA':
             self.maxDerivativeLevel=2
             code = 117 # not used!
         elif xcname == 'LDAc':
@@ -43,8 +49,8 @@ class XCFunctional:
             code = 7
         elif xcname == 'LDAx':
             code = 11
-        elif xcname == 'KLI':  
-            code = 15               
+        elif xcname == 'KLI':
+            code = 15
             self.orbital_dependent = True
         elif xcname == 'EXX':
             code = 6
@@ -99,6 +105,22 @@ class XCFunctional:
             self.xc = KLIFunctional()
         elif code == 16:
             self.xc = GLLBFunctional()
+        elif code == 'lxc':
+            lxc_functional = Libxc.get_lxc_functional(
+                Libxc(), Libxc.lxc_split_xcname(
+                Libxc(), xcname[3:]))
+##             print 'lxc_functional ', Libxc.lxc_split_xcname(
+##                 Libxc(), xcname[3:]), lxc_functional
+            self.xc = _gpaw.lxcXCFunctional(
+                lxc_functional[0], # exchange-correlation
+                lxc_functional[1], # exchange
+                lxc_functional[2], # correlation
+                nspins,
+                self.hybrid
+                )
+            self.mgga = bool(self.xc.is_mgga())
+            self.gga = bool(self.xc.is_gga())
+            #self.maxDerivativeLevel = self.xc.get_max_derivative_level() # MDTMP - cannot get this info before init
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga)
 
@@ -145,11 +167,11 @@ class XCFunctional:
 
     def get_non_local_energy(self):
         Exc = 0.0
-        
+
         if self.orbital_dependent:
             if self.hybrid > 0.0:
                 Exc += self.exx.Exx
-        
+
         return Exc
 
     def get_non_local_kinetic_corrections(self):
@@ -159,7 +181,7 @@ class XCFunctional:
                 Ekin += self.exx.Ekin
 
         return Ekin
-    
+
     def adjust_non_local_residual(self, pR_G, dR_G, eps, u, s, k, n):
         if self.hybrid > 0.0:
             self.exx.adjust_residual(pR_G, dR_G, u, n)
@@ -170,7 +192,7 @@ class XCFunctional:
     def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc):
         # Send the command one .xc up
         return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc)
-        
+
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              tau_g=None):
         if self.mgga:
@@ -186,7 +208,7 @@ class XCFunctional:
             self.xc.calculate_spinpaired(e_g.flat, n_g, v_g, a2_g, deda2_g)
         else:
             self.xc.calculate_spinpaired(e_g.flat, n_g, v_g)
-         
+
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                a2_g=None, aa2_g=None, ab2_g=None,
                                deda2_g=None, dedaa2_g=None, dedab2_g=None):
@@ -198,9 +220,9 @@ class XCFunctional:
             self.xc.calculate_spinpolarized(e_g.flat, na_g, va_g, nb_g, vb_g)
 
     def get_max_derivative_level(self):
-        """maximal derivative level of Exc available""" 
+        """maximal derivative level of Exc available"""
         return self.maxDerivativeLevel
-            
+
     def get_name(self):
         return self.xcname
 
@@ -216,17 +238,21 @@ class XCGrid:
 
         self.gd = gd
         self.nspins = nspins
-        
+
         if isinstance(xcfunc, str):
-            xcfunc = XCFunctional(xcfunc)
+            xcfunc = XCFunctional(xcfunc, self.nspins)
         self.set_functional(xcfunc)
+
+        # flag is true if functional comes from libxc,
+        # it is used in calculate_spinpolarized GGA's
+        self.uses_libxc = self.get_functional().uses_libxc
 
     def set_functional(self, xcfunc):
         self.xcfunc = xcfunc
 
     def get_functional(self):
         return self.xcfunc
-    
+
     def get_energy_and_potential(self, na_g, va_g, nb_g=None, vb_g=None,
                                  taua_g=None, taub_g=None):
         assert is_contiguous(na_g, num.Float)
@@ -276,19 +302,19 @@ class XC3DGrid(XCGrid):
     def get_energy_and_potential_spinpaired(self, n_g, v_g, tau_g=None, e_g=None):
         if e_g == None:
             e_g = self.e_g
-            
+
         if self.xcfunc.mgga:
             # derivatives of the density
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
             self.a2_g[:] = num.sum(self.dndr_cg**2)
             # derivatives of the tau
-            
+
             self.xcfunc.calculate_spinpaired(e_g,
                                              n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g)
-            
+
         elif self.xcfunc.gga:
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
@@ -304,7 +330,7 @@ class XC3DGrid(XCGrid):
                 v_g -= 2.0 * tmp_g
         else:
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g)
-            
+
         return num.sum(e_g.flat) * self.dv
 
     def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g, e_g=None):
@@ -329,13 +355,25 @@ class XC3DGrid(XCGrid):
                                                 self.dedaa2_g, self.dedab2_g)
             tmp_g = self.a2_g
             for c in range(3):
-                self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
-                va_g -= 2.0 * tmp_g
-                vb_g -= 2.0 * tmp_g
-                self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
-                va_g -= 4.0 * tmp_g
-                self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
-                vb_g -= 4.0 * tmp_g
+                if not self.uses_libxc:
+                    self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
+                    va_g -= 2.0 * tmp_g
+                    vb_g -= 2.0 * tmp_g
+                    self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
+                    va_g -= 4.0 * tmp_g
+                    self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
+                    vb_g -= 4.0 * tmp_g
+                else: # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
+                    # see also:
+                    # http://www.cse.scitech.ac.uk/ccg/dft/design.html
+                    self.ddr[c](self.deda2_g * self.dnadr_cg[c], tmp_g)
+                    vb_g -= tmp_g
+                    self.ddr[c](self.deda2_g * self.dnbdr_cg[c], tmp_g)
+                    va_g -= tmp_g
+                    self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
+                    va_g -= 2.0 * tmp_g
+                    self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
+                    vb_g -= 2.0 * tmp_g
         else:
             self.xcfunc.calculate_spinpolarized(e_g,
                                                 na_g, va_g,
@@ -351,11 +389,11 @@ class XCRadialGrid(XCGrid):
         XCGrid.set_functional(self, xcfunc)
 
         gd = self.gd
-        
+
         self.shape = (len(gd.r_g),)
         assert self.shape[0] >= 4
         self.dv_g = gd.dv_g
-            
+
         if xcfunc.gga:
             self.rgd = gd
             self.dndr_g = num.empty(self.shape, num.Float)
@@ -372,8 +410,8 @@ class XCRadialGrid(XCGrid):
             self.taua_g = num.empty(self.shape, num.Float)
             if self.nspins == 2:
                 self.taub_g = num.empty(self.shape, num.Float)
-        
-        self.e_g = num.empty(self.shape, num.Float) 
+
+        self.e_g = num.empty(self.shape, num.Float)
 
     # True, if this xc-potential depends on more than just density
     def is_non_local(self):
@@ -389,19 +427,19 @@ class XCRadialGrid(XCGrid):
 
         if e_g == None:
             e_g = self.e_g
-            
+
         if self.xcfunc.mgga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
 
             print "<get_energy_and_potential_spinpaired> type=",type(v_g)
-            
+
             self.xcfunc.calculate_spinpaired(e_g,
                                              n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
                                              tau_g)
-            
+
         elif self.xcfunc.gga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
@@ -438,22 +476,46 @@ class XCRadialGrid(XCGrid):
                                                 self.deda2_g,
                                                 self.dedaa2_g, self.dedab2_g)
             tmp_g = self.a2_g
-            self.rgd.derivative2(self.dv_g * self.deda2_g *
-                                 self.dndr_g, tmp_g)
-            tmp_g[1:] /= self.dv_g[1:]
-            tmp_g[0] = tmp_g[1]
-            va_g -= 2.0 * tmp_g
-            vb_g -= 2.0 * tmp_g
-            self.rgd.derivative2(self.dv_g * self.dedaa2_g *
-                                 self.dnadr_g, tmp_g)
-            tmp_g[1:] /= self.dv_g[1:]
-            tmp_g[0] = tmp_g[1]
-            va_g -= 4.0 * tmp_g
-            self.rgd.derivative2(self.dv_g * self.dedab2_g *
-                                 self.dnbdr_g, tmp_g)
-            tmp_g[1:] /= self.dv_g[1:]
-            tmp_g[0] = tmp_g[1]
-            vb_g -= 4.0 * tmp_g
+            if not self.uses_libxc:
+                self.rgd.derivative2(self.dv_g * self.deda2_g *
+                                     self.dndr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                va_g -= 2.0 * tmp_g
+                vb_g -= 2.0 * tmp_g
+                self.rgd.derivative2(self.dv_g * self.dedaa2_g *
+                                     self.dnadr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                va_g -= 4.0 * tmp_g
+                self.rgd.derivative2(self.dv_g * self.dedab2_g *
+                                     self.dnbdr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                vb_g -= 4.0 * tmp_g
+            else: # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
+                # see also:
+                # http://www.cse.scitech.ac.uk/ccg/dft/design.html
+                self.rgd.derivative2(self.dv_g * self.deda2_g *
+                                     self.dnadr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                vb_g -= tmp_g
+                self.rgd.derivative2(self.dv_g * self.deda2_g *
+                                     self.dnbdr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                va_g -= tmp_g
+                self.rgd.derivative2(self.dv_g * self.dedaa2_g *
+                                     self.dnadr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                va_g -= 2.0 * tmp_g
+                self.rgd.derivative2(self.dv_g * self.dedab2_g *
+                                     self.dnbdr_g, tmp_g)
+                tmp_g[1:] /= self.dv_g[1:]
+                tmp_g[0] = tmp_g[1]
+                vb_g -= 2.0 * tmp_g
         else:
             self.xcfunc.calculate_spinpolarized(self.e_g,
                                                 na_g, va_g,
@@ -469,4 +531,3 @@ class vxcOperator(list):
         # init the local part
         list.__init__(self,v)
         # lists for the operator part
-        

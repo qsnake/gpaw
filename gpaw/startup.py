@@ -16,7 +16,7 @@ import gpaw.mpi as mpi
 from gpaw.utilities.timing import Timer
 from gpaw.utilities.memory import estimate_memory
 from gpaw.setup import create_setup
-            
+
 
 from gpaw import dry_run
 
@@ -60,12 +60,12 @@ def create_paw_object(out, verbosity, write, a0, Ha,
         raise ValueError('Non-zero initial magnetic moment for a ' +
                          'spin-paired calculation!')
 
-    xcfunc = XCFunctional(xcname)
-
     if spinpol:
         nspins = 2
     else:
         nspins = 1
+
+    xcfunc = XCFunctional(xcname, nspins)
 
     # Default value for grid spacing:
     if N_c is None:
@@ -89,7 +89,7 @@ def create_paw_object(out, verbosity, write, a0, Ha,
 
     # If present, None will map to the default type:
     default = setup_types.get(None, 'paw')
-    
+
     type_a = [default] * len(Z_a)
 
     # First symbols ...
@@ -143,9 +143,9 @@ def create_paw_object(out, verbosity, write, a0, Ha,
     nuclei = []
     for a, (Z, type) in enumerate(zip(Z_a, type_a)):
         nuclei.append(Nucleus(setups[(Z, type)], a, typecode))
-        
+
     setups = setups.values()
-    
+
     if usesymm and symmetry is not None:
         # Find rotation matrices for spherical harmonics:
         R_slmm = [[rotation(l, symm) for l in range(3)]
@@ -173,7 +173,7 @@ def create_paw_object(out, verbosity, write, a0, Ha,
         nbands = nao
     elif nbands <= 0:
         nbands = (nvalence + 1) // 2 + (-nbands)
-        
+
     if nvalence > 2 * nbands:
         raise ValueError('Too few bands!')
 
@@ -188,7 +188,7 @@ def create_paw_object(out, verbosity, write, a0, Ha,
     # We now have all the parameters needed to construct a PAW object:
     paw = Paw(a0, Ha,
               setups, nuclei, domain, N_c, symmetry, xcfunc,
-              nvalence, charge, nbands, nspins, random, 
+              nvalence, charge, nbands, nspins, random,
               typecode, bzk_kc, ibzk_kc, weights_k,
               stencils, usesymm, mix, fixdensity, maxiter,
               convergeall, eigensolver, relax, pos_ac / a0, timer, kT / Ha,
@@ -203,7 +203,7 @@ def create_paw_object(out, verbosity, write, a0, Ha,
 
     return paw
 
-    
+
 def reduce_kpoints(bzk_kc, pos_ac, Z_a, type_a, magmom_a, domain, usesymm):
     """Reduce the number of k-points using symmetry.
 

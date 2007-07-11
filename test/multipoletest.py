@@ -13,7 +13,8 @@ domain = Domain((a, a, a))
 gd = GridDescriptor(domain, (n, n, n))
 c_LL = num.identity(9, num.Float)
 a_Lg = gd.new_array(9)
-xcfunc = XCFunctional('LDA')
+nspins = 2
+xcfunc = XCFunctional('LDA', nspins)
 for soft in [False]:
     s = Setup('Cu', xcfunc, lmax=2, softgauss=soft)
     ghat_l = s.ghat_l

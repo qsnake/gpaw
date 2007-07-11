@@ -59,7 +59,7 @@ force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:
     force_inclusion_of_ase = True
     sys.argv.remove('--force-inclusion-of-ase')
-    
+
 check_packages(packages, msg, force_inclusion_of_ase)
 
 get_system_config(define_macros, undef_macros,
@@ -89,9 +89,9 @@ if compiler is not None:
         # first argument is the compiler/linker.  Replace with mpicompiler:
         value[0] = compiler
         vars[key] = ' '.join(value)
-    
+
 custom_interpreter = False
-# Check the command line so that custom interpreter is build only with 
+# Check the command line so that custom interpreter is build only with
 # "build", "build_ext", or "install":
 if mpicompiler is not None:
     for cmd in ['build', 'build_ext', 'install']:
@@ -115,6 +115,11 @@ if "clean" in sys.argv:
 include_dirs += [os.environ['HOME'] + '/include/python']
 
 sources = glob('c/*.c') + ['c/bmgs/bmgs.c']
+# libxc sources
+sources = sources + glob('c/libxc/src/*.c')
+sources.remove('c/libxc/src/test.c')
+sources.remove('c/libxc/src/xc_f.c')
+
 check_dependencies(sources)
 
 extension = Extension('_gpaw',

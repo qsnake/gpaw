@@ -17,10 +17,10 @@ def check_packages(packages, msg, force_inclusion_of_ase):
 
     If ASE is not installed, the `packages` list is extended with the
     ASE modules if they are found."""
-    
+
     if sys.version_info < (2, 3, 0, 'final', 0):
         raise SystemExit('Python 2.3.1 or later is required!')
-    
+
     try:
         import Numeric
     except ImportError:
@@ -46,7 +46,7 @@ def check_packages(packages, msg, force_inclusion_of_ase):
             include_ase = True
         else:
             include_ase = False
-            
+
     if force_inclusion_of_ase or include_ase:
         # Find ASE directories:
         ase = []
@@ -68,14 +68,14 @@ def find_file(arg, dir, files):
     if arg[0] in files:
         arg.append(dir)
 
-    
+
 def get_system_config(define_macros, undef_macros,
                       include_dirs, libraries, library_dirs, extra_link_args,
                       extra_compile_args, runtime_library_dirs, extra_objects,
                       msg):
-    
+
     undef_macros += ['NDEBUG']
-    
+
     machine = os.uname()[4]
     if machine == 'sun4u':
 
@@ -123,11 +123,11 @@ def get_system_config(define_macros, undef_macros,
 
     elif machine == 'x86_64':
 
-        #    _ 
+        #    _
         # \/|_||_    |_ |_|
         # /\|_||_| _ |_|  |
         #
-    
+
         extra_compile_args += ['-Wall', '-std=c99']
 
         # Look for ACML libraries:
@@ -144,7 +144,7 @@ def get_system_config(define_macros, undef_macros,
         # |_ |  o
         #  _||_||
         #
-        
+
         extra_compile_args += ['-Wall', '-std=c99']
         libraries += ['mkl','mkl_lapack64']
 
@@ -154,7 +154,7 @@ def get_system_config(define_macros, undef_macros,
         # o|_ |_||_
         # ||_||_||_|
         #
-    
+
         extra_compile_args += ['-Wall', '-std=c99']
 
         if 'MKL_ROOT' in os.environ:
@@ -185,7 +185,7 @@ def get_system_config(define_macros, undef_macros,
             else:
                 libraries += ['blas', 'lapack']
                 msg +=  ['* Using standard lapack']
-                
+
             # add libg2c if available
             g2c=False
             for dir in ['/usr/lib', 'usr/local/lib']:
@@ -201,7 +201,7 @@ def get_system_config(define_macros, undef_macros,
 
         extra_compile_args += ['-Wall', '-std=c99']
         include_dirs += ['/usr/include/malloc']
-        
+
         if glob('/System/Library/Frameworks/vecLib.framework') != []:
             extra_link_args += ['-framework vecLib']
             msg += ['* Using vecLib']
@@ -218,7 +218,7 @@ def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
     globals = {}
     execfile('gpaw/mpi/config.py', globals)
     mpi = globals['get_mpi_implementation']()
-    
+
     if mpi == '':
         mpicompiler = None
 
@@ -234,7 +234,7 @@ def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
 
     else:
         #Try to use mpicc
-        mpicompiler = 'mpicc'   
+        mpicompiler = 'mpicc'
 
     return mpicompiler
 
@@ -288,7 +288,7 @@ def write_configuration(define_macros, include_dirs, libraries, library_dirs,
                         extra_link_args, extra_compile_args,
                         runtime_library_dirs, extra_objects, mpicompiler,
                     mpi_libraries, mpi_library_dirs, mpi_include_dirs,
-                    mpi_runtime_library_dirs, mpi_define_macros):    
+                    mpi_runtime_library_dirs, mpi_define_macros):
 
     # Write the compilation configuration into a file
     try:
@@ -319,7 +319,7 @@ def write_configuration(define_macros, include_dirs, libraries, library_dirs,
 
 def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                       extra_link_args, extra_compile_args,
-                      runtime_library_dirs, extra_objects, 
+                      runtime_library_dirs, extra_objects,
                       mpicompiler, mpi_libraries, mpi_library_dirs,
                       mpi_include_dirs, mpi_runtime_library_dirs,
                       mpi_define_macros):
@@ -336,7 +336,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                         for x in cfiles])
 
     if not os.path.isdir('build/bin.%s/' % plat):
-        os.makedirs('build/bin.%s/' % plat)    
+        os.makedirs('build/bin.%s/' % plat)
     exefile = 'build/bin.%s/' % plat + '/gpaw-python'
 
     libraries += mpi_libraries
@@ -359,7 +359,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     libs = ' '.join(['-l' + lib for lib in libraries])
     libs += ' -lpython%s' % cfgDict['VERSION']
     libs = ' '.join([libs, cfgDict['LIBS'], cfgDict['LIBM']])
-                   
+
     #Hack taken from distutils to determine option for runtime_libary_dirs
     if sys.platform[:6] == "darwin":
         # MacOSX's linker doesn't understand the -R flag at all
@@ -372,16 +372,16 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
         runtime_lib_option = '-Wl,-R'
     else:
         runtime_lib_option = '-R'
-            
+
     runtime_libs = ' '.join([ runtime_lib_option + lib for lib in runtime_library_dirs])
-            
+
     if sys.platform == 'aix5':
         extra_link_args.append(cfgDict['LINKFORSHARED'].replace('Modules', cfgDict['LIBPL']))
     else:
         extra_link_args.append(cfgDict['LINKFORSHARED'])
 
     # Compile the parallel sources
-    for src in sources:        
+    for src in sources:
         obj = 'build/temp.%s/' % plat + src[:-1] + 'o'
         cmd = ('%s %s %s %s -o %s -c %s ' ) % \
               (mpicompiler,
@@ -407,7 +407,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
            libs,
            runtime_libs,
            ' '.join(extra_link_args))
-    
+
     msg = ['* Building a custom interpreter']
     print cmd
     if "--dry-run" not in sys.argv:
@@ -417,4 +417,3 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
 
     return error, msg
-        

@@ -11,8 +11,9 @@ from gpaw.utilities import pack
 
 
 ra.seed(1, 2)
+nspins=1
 for name in ['LDA', 'PBE']:
-    xcfunc = XCFunctional(name)
+    xcfunc = XCFunctional(name, nspins)
     s = Setup('N', xcfunc)
     ni = s.ni
     niAO = s.niAO

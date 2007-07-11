@@ -55,6 +55,11 @@ if len(tests) == 0:
              'td_hydrogen.py',  'aedensity.py',  'IP-oxygen.py',  '2Al.py',
              '8Si.py',  'Cu.py',  'ltt.py',  'generatesetups.py',
              'ae-calculation.py',  'H2Al110.py']
+    tests_lxc = [
+        'lxc_spinpol_Li.py', 'lxc_xcatom.py'
+        ]
+    tests = tests + tests_lxc
+
 
 if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
@@ -67,14 +72,14 @@ if opt.exclude is not None:
     exclude += opt.exclude.split(',')
 
 # exclude parallel tests if opt.parallel is not set
-if not opt.parallel: 
+if not opt.parallel:
     exclude.extend(['parallel-restart.py', 'parmigrate.py',
-                    'par8.py', 'par6.py', 'exx_parallel.py']) 
+                    'par8.py', 'par6.py', 'exx_parallel.py'])
 
 for test in exclude:
     if test in tests:
         tests.remove(test)
-    
+
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
 from ASE.Units import units
@@ -86,7 +91,7 @@ class ScriptTestCase(unittest.TestCase):
         self.filename = filename
 
     def setUp(self):
-        units.length_used = False 
+        units.length_used = False
         units.energy_used = False
         units.SetUnits('Ang', 'eV')
 
@@ -100,7 +105,7 @@ class ScriptTestCase(unittest.TestCase):
         del gc.garbage[:]
         assert n == 0, ('Leak: Uncollectable garbage (%d object%s)' %
                         (n, 's'[:n > 1]))
-        
+
     def id(self):
         return self.filename
 
@@ -117,7 +122,7 @@ for test in tests:
 
 from gpaw.utilities import DownTheDrain
 sys.stdout = DownTheDrain()
-    
+
 ttr = unittest.TextTestRunner(verbosity=opt.verbosity)
 result = ttr.run(ts)
 failed = [test.filename for test, msg in result.failures + result.errors]

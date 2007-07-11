@@ -28,7 +28,7 @@ class AllElectron:
     def __init__(self, symbol, xcname='LDA', scalarrel=False,
                  corehole=None, configuration=None, nofiles=True):
         """Do an atomic DFT calculation.
-        
+
         Example:
 
         a = AllElectron('Fe')
@@ -39,13 +39,13 @@ class AllElectron:
         self.xcname = xcname
         self.scalarrel = scalarrel
         self.nofiles = nofiles
-        
+
         # Get reference state:
         self.Z, nlfe_j = configurations[symbol]
 
         # Collect principal quantum numbers, angular momentum quantum
         # numbers, occupation numbers and eigenvalues (j is a combined
-        # index for n and l):        
+        # index for n and l):
         self.n_j = [n for n, l, f, e in nlfe_j]
         self.l_j = [l for n, l, f, e in nlfe_j]
         self.f_j = [f for n, l, f, e in nlfe_j]
@@ -82,7 +82,7 @@ class AllElectron:
 
         if corehole is not None:
             self.ncorehole, self.lcorehole, self.fcorehole = corehole
-            
+
             # Find j for core hole and adjust occupation:
             for j in range(len(self.f_j)):
                 if self.n_j[j] == self.ncorehole and self.l_j[j] == self.lcorehole:
@@ -97,7 +97,7 @@ class AllElectron:
         else:
             self.jcorehole = None
             self.fcorehole = 0
-            
+
     def intialize_wave_functions(self):
         r = self.r
         dr = self.dr
@@ -115,7 +115,7 @@ class AllElectron:
 
             norm = num.dot(u**2, dr)
             u *= 1.0 / sqrt(norm)
-        
+
     def run(self):
         #     beta g
         # r = ------, g = 0, 1, ..., N - 1
@@ -139,7 +139,7 @@ class AllElectron:
 
         # Number of orbitals:
         nj = len(self.n_j)
-        
+
         # Radial wave functions multiplied by radius:
         self.u_j = num.zeros((nj, self.N), num.Float)
 
@@ -149,7 +149,8 @@ class AllElectron:
         # Electron density:
         self.n = num.zeros(N, num.Float)
 
-        self.xc = XCRadialGrid(XCFunctional(self.xcname), self.rgd)
+        # Always spinpaired nspins=1
+        self.xc = XCRadialGrid(XCFunctional(self.xcname, 1), self.rgd)
 
         n_j = self.n_j
         l_j = self.l_j
@@ -236,7 +237,7 @@ class AllElectron:
                 sys.stdout.write(bar[b0:])
                 sys.stdout.flush()
                 break
-            
+
             niter += 1
             if niter > 117:
                 raise RuntimeError, 'Did not converge!'
@@ -283,7 +284,7 @@ class AllElectron:
             # Find kinetic energy:
             k = e - num.sum((num.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
                              vr * dr)[1:] / r[1:])
-            
+
             # Find outermost maximum:
             g = self.N - 4
             while u[g - 1] > u[g]:
@@ -294,39 +295,39 @@ class AllElectron:
             c, b, a = linalg.solve_linear_equations(A, y)
             assert a < 0.0
             rmax = -0.5 * b / a
-            
+
             t = 'spdf'[l]
             print '%d%s^%-4.1f: %12.6f %12.6f %12.3f' % (m, t, f, e, k, rmax)
         print '-----------------------------------------------'
         print '(units: Bohr and Hartree)'
-        
+
         for m, l, u in zip(n_j, l_j, self.u_j):
             self.write(u, 'ae', n=m, l=l)
-            
+
         self.write(n, 'n')
         self.write(vr, 'vr')
         self.write(vHr, 'vHr')
         self.write(self.vXC, 'vXC')
         self.write(tau, 'tau')
-        
+
         self.Ekin = Ekin
         self.Epot = Epot
         self.Exc = Exc
-    
+
 #mathiasl
        # for x in range(num.size(self.r)):
        #     print self.r[x] , self.u_j[self.jcorehole,x]
 
-                
+
     def write(self, array, name=None, n=None, l=None):
         if self.nofiles:
             return
-        
+
         if name:
             name = self.symbol + '.' + name
         else:
             name = self.symbol
-            
+
         if l is not None:
             assert n is not None
             if n > 0:
@@ -334,11 +335,11 @@ class AllElectron:
                 name += '.%d%s' % (n, 'spdf'[l])
             else:
                 name += '.x%d%s' % (-n, 'spdf'[l])
-                
+
         f = open(name, 'w')
         for r, a in zip(self.r, array):
             print >> f, r, a
-    
+
     def calculate_density(self):
         """Return the electron charge density divided by 4 pi"""
         n = num.dot(self.f_j,
@@ -347,7 +348,7 @@ class AllElectron:
         n[1:] /= self.r[1:]**2
         n[0] = n[1]
         return n
-    
+
     def calculate_kinetic_energy_density(self):
         """Return the kinetic energy density"""
         return self.radial_kinetic_energy_density(self.f_j,self.l_j,
@@ -369,9 +370,9 @@ class AllElectron:
             tau += f * num.where(abs(dudr) < 1e-160, 0, dudr)**2
         tau[1:] /= self.r[1:]**4
         tau[0] = tau[1]
-            
+
         return 0.5 * tau / (4 * pi)
-        
+
     def calculate_kinetic_energy_density2(self):
         """Return the kinetic energy density
         calculation over R(r)=u(r)/r
@@ -400,28 +401,28 @@ class AllElectron:
                 if l==1: R[0] = R[1]
                 else:    R[0] = 0
                 tau += f * l*(l+1) * num.where(abs(R) < 1e-160, 0, R)**2
-            
+
         return 0.5 * tau / (4 * pi)
-        
+
     def solve(self):
         """Solve the Schrodinger equation
 
         ::
-        
-             2 
+
+             2
             d u     1  dv  du   u     l(l + 1)
           - --- - ---- -- (-- - -) + [-------- + 2M(v - e)] u = 0,
               2      2 dr  dr   r         2
             dr    2Mc                    r
 
-        
+
         where the relativistic mass::
 
                    1
           M = 1 - --- (v - e)
                     2
                   2c
-        
+
         and the fine-structure constant alpha = 1/c = 1/137.036
         is set to zero for non-scalar-relativistic calculations.
 
@@ -434,11 +435,11 @@ class AllElectron:
                  rN
           g = --------, r = [0; oo[
               beta + r
-  
+
         the Schrodinger equation becomes::
-        
-           2 
-          d u      du  
+
+           2
+          d u      du
           --- c  + -- c  + u c  = 0
             2  2   dg  1      0
           dg
@@ -448,13 +449,13 @@ class AllElectron:
                  2 dg 2
           c  = -r (--)
            2       dr
-        
+
                   2         2
                  d g  2    r   dg dv
           c  = - --- r  - ---- -- --
            1       2         2 dr dr
                  dr       2Mc
-          
+
                                     2    r   dv
           c  = l(l + 1) + 2M(v - e)r  + ---- --
            0                               2 dr
@@ -463,10 +464,10 @@ class AllElectron:
         r = self.r
         dr = self.dr
         vr = self.vr
-        
+
         c2 = -(r / dr)**2
         c10 = -self.d2gdr2 * r**2 # first part of c1 vector
-        
+
         if self.scalarrel:
             self.r2dvdr = num.zeros(self.N, num.Float)
             self.rgd.derivative(vr, self.r2dvdr)
@@ -474,7 +475,7 @@ class AllElectron:
             self.r2dvdr -= vr
         else:
             self.r2dvdr = None
-            
+
         # solve for each quantum state separately
         for j, (n, l, e, u) in enumerate(zip(self.n_j, self.l_j,
                                              self.e_j, self.u_j)):
@@ -510,11 +511,11 @@ class AllElectron:
     def kin(self, l, u, e=None): # XXX move to Generator
         r = self.r[1:]
         dr = self.dr[1:]
-        
+
         c0 = 0.5 * l * (l + 1) / r**2
         c1 = -0.5 * self.d2gdr2[1:]
         c2 = -0.5 * dr**-2
-        
+
         if e is not None and self.scalarrel:
             x = 0.5 * alpha**2
             Mr = r * (1.0 + x * e) - x * self.vr[1:]
@@ -529,42 +530,42 @@ class AllElectron:
         kr[1:] = f0 * u[1:] + fm * u[:-1]
         kr[1:-1] += fp[:-1] * u[2:]
         kr[0] = 0.0
-        return kr    
+        return kr
 
 def shoot(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     """n, A = shoot(u, l, vr, e, ...)
-    
+
     For guessed trial eigenenergy e, integrate the radial Schrodinger
     equation::
 
-          2 
-         d u      du  
+          2
+         d u      du
          --- c  + -- c  + u c  = 0
            2  2   dg  1      0
          dg
-        
+
                2 dg 2
         c  = -r (--)
          2       dr
-        
+
                 2         2
                d g  2    r   dg dv
         c  = - --- r  - ---- -- --
          1       2         2 dr dr
                dr       2Mc
-        
+
                                   2    r   dv
         c  = l(l + 1) + 2M(v - e)r  + ---- --
          0                               2 dr
                                       2Mc
-                                      
+
     The resulting wavefunction is returned in input vector u.
     The number of nodes of u is returned in attribute n.
     Returned attribute A, is a measure of the size of the derivative
     discontinuity at the classical turning point.
     The trial energy e is correct if A is zero and n is the correct number
     of nodes."""
-    
+
     if scalarrel:
         x = 0.5 * alpha**2 # x = 1 / (2c^2)
         Mr = r * (1.0 + x * e) - x * vr
@@ -588,11 +589,11 @@ guess for the density).
     fm = 0.5 * c1 - c2
     fp = 0.5 * c1 + c2
     f0 = c0 - 2 * c2
-    
+
     if gmax is None:
         # set boundary conditions at r -> oo (u(oo) = 0 is implicit)
         u[-1] = 1.0
-        
+
         # perform backwards integration from infinity to the turning point
         g = len(u) - 2
         u[-2] = u[-1] * f0[-1] / fm[-1]
@@ -609,7 +610,7 @@ guess for the density).
 
         # stored values of the wavefunction and the first derivative
         # at the turning point
-        gtp = g + 1 
+        gtp = g + 1
         utp = u[gtp]
         dudrplus = 0.5 * (u[gtp + 1] - u[gtp - 1]) / dr[gtp]
     else:
@@ -618,7 +619,7 @@ guess for the density).
     # set boundary conditions at r -> 0
     u[0] = 0.0
     u[1] = 1.0
-    
+
     # perform forward integration from zero to the turning point
     g = 1
     nodes = 0
@@ -637,9 +638,9 @@ guess for the density).
     # determine size of the derivative discontinuity at gtp
     dudrminus = 0.5 * (u[gtp + 1] - u[gtp - 1]) / dr[gtp]
     A = (dudrplus - dudrminus) * utp
-    
+
     return nodes, A
-            
+
 if __name__ == '__main__':
     a = AllElectron('Cu', scalarrel=True)
     a.run()

@@ -23,15 +23,15 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
     if type == 'ae':
         from gpaw.ae import AllElectronSetup
         return AllElectronSetup(symbol, xcfunc, nspins)
-    
+
     if type == 'hgh':
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins)
-    
+
     if type == 'hgh.sc':
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins, semicore=True)
-    
+
     return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
 
 
@@ -43,7 +43,7 @@ class Setup:
         self.softgauss = softgauss
 
         assert not softgauss
-        
+
         self.type = type
         if type != 'paw':
             symbol += '.' + type
@@ -67,7 +67,7 @@ class Setup:
          core_response) = PAWXMLParser().parse(symbol, xcname)
 
         self.filename = filename
-        
+
         self.Nv = Nv
         self.Nc = Nc
         self.Z = Z
@@ -125,7 +125,7 @@ class Setup:
         ni = i
         self.ni = ni
         self.niAO = niAO
-        
+
         np = ni * (ni + 1) // 2
         nq = nj * (nj + 1) // 2
 
@@ -179,7 +179,7 @@ class Setup:
         x = (r_g[gcut2:gcut3] - rcut2) / (rcut3 - rcut2)
         a_g = 4 * x**3 * (1 - 0.75 * x)
         b_g = x**3 * (x - 1) * (rcut3 - rcut2)
-        
+
         self.phit_j = []
         for j, phit_g in enumerate(phit_jg):
             if n_j[j] > 0:
@@ -206,7 +206,7 @@ class Setup:
 
         if self.phicorehole_g is not None:
             self.phicorehole_g = self.phicorehole_g[:gcut2].copy()
-            
+
         Lcut = (2 * lcut + 1)**2
         T_Lqp = num.zeros((Lcut, nq, np), num.Float)
         p = 0
@@ -225,7 +225,7 @@ class Setup:
         g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * num.exp(-(r_g / rcgauss)**2)
         for l in range(1, lmax + 1):
             g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
-                
+
         for l in range(lmax + 1):
             g_lg[l] /= num.dot(r_g**(l + 2) * dr_g, g_lg[l])
 
@@ -259,10 +259,10 @@ class Setup:
             hartree(l, nrdr_g, beta, ng, yrrdr_g)
             yrrdr_g *= r_g * dr_g
             return yrrdr_g
-        
+
         wnc_g = H(nc_g, l=0)
         wnct_g = H(nct_g, l=0)
-        
+
         wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
 
         wn_lqg = [num.array([H(n_qg[q], l) for q in range(nq)])
@@ -280,7 +280,7 @@ class Setup:
         self.M = A
         AB = -num.dot(dv_g * nct_g, vbar_g)
         self.MB = AB
-        
+
         A_q = 0.5 * (num.dot(wn_lqg[0], nc_g)
                      + num.dot(n_qg, wnc_g))
         A_q -= sqrt(4 * pi) * Z * num.dot(n_qg, rdr_g)
@@ -290,10 +290,10 @@ class Setup:
         A_q -= 0.5 * (num.dot(mct_g, wg_lg[0])
                       + num.dot(g_lg[0], wmct_g)) * Delta_lq[0]
         self.M_p = num.dot(A_q, T_Lqp[0])
-        
+
         AB_q = -num.dot(nt_qg, dv_g * vbar_g)
         self.MB_p = num.dot(AB_q, T_Lqp[0])
-        
+
         A_lqq = []
         for l in range(2 * lcut + 1):
             A_qq = 0.5 * num.dot(n_qg, num.transpose(wn_lqg[l]))
@@ -306,7 +306,7 @@ class Setup:
                 A_qq -= 0.5 * num.dot(g_lg[l], wg_lg[l]) * \
                         num.outerproduct(Delta_lq[l], Delta_lq[l])
             A_lqq.append(A_qq)
-        
+
         self.M_pp = num.zeros((np, np), num.Float)
         L = 0
         for l in range(2 * lcut + 1):
@@ -314,7 +314,7 @@ class Setup:
                 self.M_pp += num.dot(num.transpose(T_Lqp[L]),
                                      num.dot(A_lqq[l], T_Lqp[L]))
                 L += 1
-        
+
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
@@ -322,7 +322,7 @@ class Setup:
             # For debugging purposes, pass a LDA XCCorrection
             # to XCKLICorrection class
             from gpaw.xc_functional import XCFunctional
-            xc = XCRadialGrid(XCFunctional('LDAx'), rgd, nspins)
+            xc = XCRadialGrid(XCFunctional('LDAx', nspins), rgd, nspins)
             xc_lda_correction = XCCorrection(
                 xc,
                 [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
@@ -366,10 +366,10 @@ class Setup:
             rcutsoft = rcut2
 
         self.rcutsoft = rcutsoft
-        
+
         if xcname != self.xcname:
             raise RuntimeError('Not the correct XC-functional!')
-        
+
         # Use atomic all-electron energies as reference:
         self.Kc = e_kinetic_core - e_kinetic
         self.M -= e_electrostatic
@@ -382,7 +382,7 @@ class Setup:
             for j2 in range(j1, nj):
                 K_q.append(e_kin_jj[j1, j2])
         self.K_p = sqrt(4 * pi) * num.dot(K_q, T_Lqp[0])
-        
+
         self.lmax = lmax
 
         r = 0.02 * rcutsoft * num.arange(51, typecode=num.Float)
@@ -441,7 +441,7 @@ class Setup:
 
         self.rcutcomp = sqrt(10) * rcgauss
         self.rcut_j = rcut_j
-        
+
     def print_info(self, out):
         if self.fcorehole == 0.0:
             print >> out, self.symbol + '-setup:'
@@ -471,7 +471,7 @@ class Setup:
                 print >> out, '    *%s     %7.3f Ha   %4.2f Bohr' % (
                     'spdf'[l], eps, self.rcut_j[j])
             j += 1
-            
+
         print >> out
 
     def calculate_rotations(self, R_slmm):
@@ -549,15 +549,15 @@ class Setup:
             l = self.l_j[j]
             if l == 1:
                 a = num.dot(r_g**3 * dr_g, phi_jg[j] * self.phicorehole_g)
-                                
+
                 for m in range(3):
-                    c = (m + 1) % 3 
+                    c = (m + 1) % 3
                     self.A_ci[c, i] = a
                     i += 1
             else:
                 i += 2 * l + 1
         assert i == self.ni
-            
+
 
 def grr(phi_g, l, r_g):
     w_g = phi_g.copy()
@@ -565,7 +565,7 @@ def grr(phi_g, l, r_g):
         w_g[1:] /= r_g[1:]**l
         w1, w2 = w_g[1:3]
         r0, r1, r2 = r_g[0:3]
-        w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2) 
+        w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2)
     return w_g
 
 
@@ -576,4 +576,3 @@ Setup class used to hold the atomic data needed for a specific atom.
 For building the GPAW code you must use the setup.py distutils script
 at the root of the code tree.  Just do "cd .." and you will be at the
 right place."""
-    
