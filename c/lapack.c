@@ -5,8 +5,9 @@
 
 #ifdef GPAW_AIX
 #  define dsyev_ dsyev
-#  define zhegv_ zhegv
 #  define zheev_ zheev
+#  define dsygv_ dsygv
+#  define zhegv_ zhegv
 #endif
 
 int dsyev_(char *jobz, char *uplo, int *n, double *
