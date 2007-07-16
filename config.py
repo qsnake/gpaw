@@ -330,6 +330,9 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     plat = get_platform() + '-' + sys.version[0:3]
 
     cfiles = glob('c/[a-zA-Z_]*.c') + ['c/bmgs/bmgs.c']
+    cfiles += glob('c/libxc/src/*.c')
+    cfiles.remove('c/libxc/src/test.c')
+    cfiles.remove('c/libxc/src/xc_f.c')
     sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c',
                'c/operators.c', 'c/transformers.c']
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
