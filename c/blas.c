@@ -34,9 +34,11 @@ int zgemm_(char *transa, char *transb, int *m, int * n,
 	   void *c, int *ldc);
 
 double ddot_(int *n, void *dx, int *incx, void *dy, int *incy);
-
-void* zdotc_(void* result, int *n, void *zx, int *incx, void *zy, int *incy);
-
+#ifdef GPAW_AIX
+ double complex zdotc_(int *n, void *zx, int *incx, void *zy, int *incy);
+#else
+ void* zdotc_(void* result, int *n, void *zx, int *incx, void *zy, int *incy);
+#endif
 
 PyObject* gemm(PyObject *self, PyObject *args)
 {
@@ -186,11 +188,16 @@ PyObject* dotc(PyObject *self, PyObject *args)
     }
   else
     {
+#ifdef GPAW_AIX
+      double complex z = zdotc_(&n, (void*)COMPLEXP(a), 
+				&incx, (void*)COMPLEXP(b), &incy);
+      double* result = (double*)(&z);
+#else
       double result[2];
       // Fortran returns complex variables in the first argument
       zdotc_((void*)result, &n, (void*)COMPLEXP(a), 
 	     &incx, (void*)COMPLEXP(b), &incy);
-
+#endif      
       return PyComplex_FromDoubles(result[0], result[1]);
     }
 }
