@@ -102,7 +102,7 @@ class Eigensolver:
         hamiltonian.xc.xcfunc.apply_non_local(kpt, Htpsit_nG, H_nn)
         self.timer.stop()
         self.timer.start('Subspace diag.')
-
+        
         r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
         
         for nucleus in hamiltonian.my_nuclei:
@@ -116,13 +116,19 @@ class Eigensolver:
         if hamiltonian.xc.xcfunc.hybrid > 0.0:
             apply_subspace_mask(H_nn, kpt.f_n)
 
+        self.timer.start('dsyev/zheev')
         if self.comm.rank == kpt.root:
             info = diagonalize(H_nn, eps_n)
             if info != 0:
                 raise RuntimeError, 'Very Bad!!'
+        self.timer.stop()
 
+        self.timer.start('bcast H')
         self.comm.broadcast(H_nn, kpt.root)
+        self.timer.stop()
+        self.timer.start('bcast eps')
         self.comm.broadcast(eps_n, kpt.root)
+        self.timer.stop()
 
         # Rotate psit_nG:
         gemm(1.0, psit_nG, H_nn, 0.0, self.work)
