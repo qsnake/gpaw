@@ -164,7 +164,7 @@ class Reader(xml.sax.handler.ContentHandler):
 class TarFileReference:
     def __init__(self, fileobj, shape, typecode, byteswap):
         self.fileobj = fileobj
-        self.shape = shape
+        self.shape = tuple(shape)
         self.typecode = typecode
         self.itemsize = itemsizes[{num.Int32: 'int',
                                    num.Float: 'float',
