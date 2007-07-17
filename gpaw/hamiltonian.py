@@ -152,6 +152,7 @@ class Hamiltonian:
 
         # Calculate atomic hamiltonians:
         self.timer.start('Atomic Hamiltonians')
+        iters = []
         for nucleus in self.ghat_nuclei:
             # Energy corections due to external potential.
             # Potential is assumed to be constant inside augmentation spheres.
@@ -163,8 +164,10 @@ class Hamiltonian:
             else:
                 vext = None
 
-            k, p, b, v, x = nucleus.calculate_hamiltonian(density.nt_g,
-                                                          self.vHt_g, vext)
+            iters.append(nucleus.calculate_hamiltonian(density.nt_g,
+                                                       self.vHt_g, vext))
+        if len(iters) != 0:
+            k, p, b, v, x = num.sum(zip(*iters)[-1])
             Ekin += k
             Epot += p
             Ebar += b

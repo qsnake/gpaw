@@ -43,8 +43,9 @@ class RMM_DIIS(Eigensolver):
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
-        for nucleus in hamiltonian.pt_nuclei:
-            nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+        zip(*[nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+              for nucleus in hamiltonian.pt_nuclei])
+
         self.timer.stop()
 
         self.timer.start('RMM-DIIS')
@@ -71,9 +72,9 @@ class RMM_DIIS(Eigensolver):
             
             axpy(-kpt.eps_n[n], pR_G, dR_G)  # dR_G -= kpt.eps_n[n] * pR_G
 
-            for nucleus in hamiltonian.pt_nuclei:
-                nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
-                                         kpt.u, kpt.s, kpt.k, n)
+            zip(*[nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
+                                           kpt.u, kpt.s, kpt.k, n)
+                  for nucleus in hamiltonian.pt_nuclei])
 
             hamiltonian.xc.xcfunc.adjust_non_local_residual(
                 pR_G, dR_G, kpt.eps_n[n], kpt.u, kpt.s, kpt.k, n)
@@ -94,8 +95,8 @@ class RMM_DIIS(Eigensolver):
         self.timer.stop()
 
         self.timer.start('Orthogonalize')
-        for nucleus in hamiltonian.pt_nuclei:
-            nucleus.calculate_projections(kpt)
+        zip(*[nucleus.calculate_projections(kpt)
+              for nucleus in hamiltonian.pt_nuclei])
 
         S_nn = self.S_nn
 

@@ -54,7 +54,7 @@ class LocFuncs:
         """Create `LocFuncs` object.
 
         Use `create_localized_functions()` to create this object."""
-        
+
         # We assume that all functions have the same cut-off:
         rcut = functions[0].get_cutoff()
 
@@ -90,10 +90,14 @@ class LocFuncs:
         self.phase_kb = num.exp(2j * pi * inner(k_kc, self.sdisp_bc))
         
     def add(self, a_xg, coef_xi, k=None, communicate=False):
+        for i in self.iadd(a_xg, coef_xi, k, communicate):
+            pass
+        
+    def iadd(self, a_xg, coef_xi, k=None, communicate=False):
         """Add localized functions to extended arrays.
 
         Add the product of ``coef_xi`` and the localized functions to
-        ``a_xg``.  With Block boundary-condtions, ``k`` is used to
+        ``a_xg``.  With Bloch boundary-condtions, ``k`` is used to
         index the phase-factors.  If ``communicate`` is false,
         ``coef_xi`` will be broadcasted from the root-CPU."""
         
@@ -103,6 +107,8 @@ class LocFuncs:
                 coef_xi = num.zeros(shape, self.typecode)
             self.comm.broadcast(coef_xi, self.root)
 
+        yield None
+        
         if k is None or self.phase_kb is None:
             # No k-points:
             for box in self.box_b:
@@ -112,14 +118,20 @@ class LocFuncs:
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.add(coef_xi / phase, a_xg)
                                                 
+        yield None
+        
     def integrate(self, a_xg, result_xi, k=None):
+        for i in self.iintegrate(a_xg, result_xi, k):
+            pass
+        
+    def iintegrate(self, a_xg, result_xi, k=None):
         """Calculate integrals of arrays times localized functions.
 
         Return the integral of extended arrays times localized
         functions in ``result_xi``.  Correct phase-factors are used if
-        the **k**-point index ``k`` is not ``None`` (Block
+        the **k**-point index ``k`` is not ``None`` (Bloch
         boundary-condtions)."""
-        
+
         shape = a_xg.shape[:-3] + (self.ni,)
         tmp_xi = num.zeros(shape, self.typecode)
         if result_xi is None:
@@ -136,8 +148,12 @@ class LocFuncs:
                 box.integrate(a_xg, tmp_xi)
                 result_xi += phase * tmp_xi
                
+        yield None
+        
         self.comm.sum(result_xi, self.root)
 
+        yield None
+        
     def derivative(self, a_xg, result_xic, k=None):
         """Calculate derivatives of localized integrals.
 

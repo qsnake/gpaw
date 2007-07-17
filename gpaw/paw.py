@@ -463,8 +463,8 @@ class Paw:
             for kpt in self.kpt_u:
                 kpt.create_random_orbitals(self.nbands)
                 # Calculate projections and orthogonalize wave functions:
-                for nucleus in self.pt_nuclei:
-                    nucleus.calculate_projections(kpt)
+                zip(*[nucleus.calculate_projections(kpt)
+                      for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
             # Improve the random guess with conjugate gradients
             eig = CG(self.timer,self.kpt_comm,
@@ -487,8 +487,8 @@ class Paw:
             for kpt in self.kpt_u:
                 kpt.create_atomic_orbitals(nao, self.nuclei)
                 # Calculate projections and orthogonalize wave functions:
-                for nucleus in self.pt_nuclei:
-                    nucleus.calculate_projections(kpt)
+                zip(*[nucleus.calculate_projections(kpt)
+                      for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
                 eig.diagonalize(self.hamiltonian, kpt)
 

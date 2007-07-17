@@ -54,8 +54,8 @@ class CG(Eigensolver):
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
-        for nucleus in hamiltonian.pt_nuclei:
-            nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+        zip(*[nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+              for nucleus in hamiltonian.pt_nuclei])
         self.timer.stop()
 
         self.timer.start('CG')

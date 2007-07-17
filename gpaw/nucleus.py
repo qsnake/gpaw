@@ -343,10 +343,12 @@ class Nucleus:
         if self.in_this_domain:
             P_ni = self.P_uni[kpt.u]
             P_ni[:] = 0.0
-            self.pt_i.integrate(kpt.psit_nG, P_ni, kpt.k)
+            for x in self.pt_i.iintegrate(kpt.psit_nG, P_ni, kpt.k):
+                yield None
         else:
-            self.pt_i.integrate(kpt.psit_nG, None, kpt.k)
-
+            for x in self.pt_i.iintegrate(kpt.psit_nG, None, kpt.k):
+                yield None
+            
     def calculate_multipole_moments(self):
         if self.in_this_domain:
             self.Q_L[:] = num.dot(num.sum(self.D_sp), self.setup.Delta_pL)
@@ -369,8 +371,10 @@ class Nucleus:
             U = 0.5 * num.dot(self.Q_L, W_L)
 
             if self.vhat_L is not None:
-                self.vhat_L.integrate(nt_g, W_L)
-            self.ghat_L.integrate(vHt_g, W_L)
+                for x in self.vhat_L.iintegrate(nt_g, W_L):
+                    yield None
+            for x in self.ghat_L.iintegrate(vHt_g, W_L):
+                yield None
 
             D_p = num.sum(self.D_sp)
             dH_p = (s.K_p + s.M_p + s.MB_p + 2.0 * num.dot(s.M_pp, D_p) +
@@ -399,13 +403,15 @@ class Nucleus:
             if len(self.D_sp) == 2:
                 Ekin -= num.dot(self.D_sp[1], self.H_sp[1])
 
-            return Ekin, Epot, Ebar, Eext, Exc
+            yield Ekin, Epot, Ebar, Eext, Exc
         
         else:
             if self.vhat_L is not None:
-                self.vhat_L.integrate(nt_g, None)
-            self.ghat_L.integrate(vHt_g, None)
-            return 0.0, 0.0, 0.0, 0.0, 0.0
+                for x in self.vhat_L.iintegrate(nt_g, None):
+                    yield None
+            for x in self.ghat_L.iintegrate(vHt_g, None):
+                yield None
+            yield 0.0, 0.0, 0.0, 0.0, 0.0
 
     def adjust_residual(self, R_nG, eps_n, s, u, k):
         if self.in_this_domain:
@@ -417,17 +423,21 @@ class Nucleus:
             if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
                 coefs_ni += self.vxx_uni[u]
                 
-            self.pt_i.add(R_nG, coefs_ni, k, communicate=True)
+            for x in self.pt_i.iadd(R_nG, coefs_ni, k, communicate=True):
+                yield None
         else:
-            self.pt_i.add(R_nG, None, k, communicate=True)
+            for x in self.pt_i.iadd(R_nG, None, k, communicate=True):
+                yield None
             
     def adjust_residual2(self, pR_G, dR_G, eps, u, s, k, n):
         if self.in_this_domain:
             ni = self.get_number_of_partial_waves()
             dP_i = num.zeros(ni, self.typecode)
-            self.pt_i.integrate(pR_G, dP_i, k)
+            for x in self.pt_i.iintegrate(pR_G, dP_i, k):
+                yield None
         else:
-            self.pt_i.integrate(pR_G, None, k)
+            for x in self.pt_i.iintegrate(pR_G, None, k):
+                yield None
 
         if self.in_this_domain:
             H_ii = unpack(self.H_sp[s])
@@ -437,9 +447,11 @@ class Nucleus:
             if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
                 coefs_i += num.dot(self.vxx_unii[u, n], dP_i)
                 
-            self.pt_i.add(dR_G, coefs_i, k, communicate=True)
+            for x in self.pt_i.iadd(dR_G, coefs_i, k, communicate=True):
+                yield None
         else:
-            self.pt_i.add(dR_G, None, k, communicate=True)
+            for x in self.pt_i.iadd(dR_G, None, k, communicate=True):
+                yield None
 
     def apply_hamiltonian(self, psit_G, Htpsit_G, s, k):
         """Applies the non-local part of the Hamiltonian to the
