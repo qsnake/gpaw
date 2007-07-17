@@ -1,5 +1,5 @@
-#ifdef PARALLEL
 #include <Python.h>
+#ifdef PARALLEL
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
 #include <mpi.h>

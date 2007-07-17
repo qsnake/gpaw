@@ -42,7 +42,7 @@ double pade_exchange(const xc_parameters* par,
   double c = C2 * rs / n;
   c *= c;
   double s2 = a2 * c;
-  double* p = par->pade;
+  const double* p = par->pade;
   double Fx = p[0] + p[1] * s2;
   double dFxds2 = p[1];
   double ds2drs = 8.0 * c * a2 / rs;
