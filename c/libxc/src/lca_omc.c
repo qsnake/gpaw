@@ -5,7 +5,7 @@
 #include "util.h"
 
 
-const xc_func_info_type func_info_lca_omc = {
+static xc_func_info_type func_info_lca_omc = {
   XC_LCA_OMC,
   XC_EXCHANGE_CORRELATION,
   "Orestes, Marcasso & Capelle parametrization",

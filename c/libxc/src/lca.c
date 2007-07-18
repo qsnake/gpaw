@@ -4,16 +4,6 @@
 
 #include "util.h"
 
-extern xc_func_info_type /* these are the LCA functionals that I know */
-  func_info_lca_omc,
-  func_info_lca_lch;
-
-xc_func_info_type *lca_known_funct[] = {
-  &func_info_lca_omc,
-  &func_info_lca_lch,
-  NULL
-};
-
 /* initialization */
 void xc_lca_init(xc_lca_type *p, int functional, int nspin)
 {

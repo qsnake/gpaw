@@ -3,16 +3,6 @@
 
 #include "util.h"
 
-extern xc_func_info_type /* these are the MGGA functionals that I know */
-  func_info_mgga_x_tpss,
-  func_info_mgga_c_tpss;
-
-xc_func_info_type *mgga_known_funct[] = {
-  &func_info_mgga_x_tpss,
-  &func_info_mgga_c_tpss,
-  NULL
-};
-
 /* initialization */
 void xc_mgga_init(xc_mgga_type *p, int functional, int nspin)
 {

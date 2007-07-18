@@ -104,7 +104,7 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->x_functional.family)
     {
     case XC_FAMILY_LDA:
-      xc_lda_end(&(self->x_functional.lda_func));
+/*       xc_lda_end(&(self->x_functional.lda_func)); */
       break;
     case XC_FAMILY_GGA:
       xc_gga_end(&(self->x_functional.gga_func));
@@ -151,10 +151,11 @@ lxcXCFunctional_is_mgga(lxcXCFunctionalObject *self, PyObject *args)
 {
   int success = 0; /* assume functional is not MGGA */
 
+  /* not implemented yet */
   /* any of xc x c can be mgga */
-  if (self->xc_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA;
-  if (self->x_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA;
-  if (self->c_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA;
+/*   if (self->xc_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA; */
+/*   if (self->x_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA; */
+/*   if (self->c_functional.family == XC_FAMILY_MGGA) success = XC_FAMILY_MGGA; */
 
   return Py_BuildValue("i", success);
 }

@@ -5,7 +5,7 @@
 #include "util.h"
 
 
-const xc_func_info_type func_info_lca_lch = {
+static xc_func_info_type func_info_lca_lch = {
   XC_LCA_LCH,
   XC_EXCHANGE_CORRELATION,
   "Lee, Colwell & Handy parametrization",

@@ -1,5 +1,5 @@
 # Computer generated code! Hands off!
-# libxc: svn version 3071 (modified)
+# libxc: svn version 3071
 # http://www.tddft.org/programs/octopus/wiki/index.php/Libxc
 libxc_functionals = {
 'XC_LDA_X': 1,
@@ -35,9 +35,5 @@ libxc_functionals = {
 'XC_GGA_C_PBE': 130,
 'XC_GGA_C_LYP': 131,
 'XC_GGA_C_P86': 132,
-'XC_GGA_XC_LB': 160,
-'XC_MGGA_X_TPSS': 201,
-'XC_MGGA_C_TPSS': 202,
-'XC_LCA_OMC': 301,
-'XC_LCA_LCH': 302
+'XC_GGA_XC_LB': 160
 }

@@ -88,16 +88,20 @@ class Libxc:
         return value
 
     def lxc_define_filter(self, s):
-        return (s.startswith('#define XC_LDA') or
-                s.startswith('#define XC_GGA') or
-                s.startswith('#define XC_MGGA') or
-                s.startswith('#define XC_LCA'))
+        return (
+            s.startswith('#define XC_LDA') or
+            s.startswith('#define XC_GGA')
+            ## XC_MGGA and XC_LCA not impelemented yet # MDTMP
+            ##            s.startswith('#define XC_MGGA') or  # MDTMP
+            ##            s.startswith('#define XC_LCA')  # MDTMP
+            ## End of: XC_MGGA and XC_LCA not impelemented yet  # MDTMP
+            )
 
     def construct_libxc_functionals_dict(self, file='../c/libxc/src/xc.h'):
         """Method for generating the dictionary libxc_functionals.
         Should be used only at 'python setup.py'"""
         txt = '# Computer generated code! Hands off!\n'
-        txt += '# libxc: svn version ' + str(self.version) + ' (modified)\n'
+        txt += '# libxc: svn version ' + str(self.version) + '\n'
         txt += '# http://www.tddft.org/programs/octopus/wiki/index.php/Libxc\n'
         from os.path import abspath
         # Find the full path to file

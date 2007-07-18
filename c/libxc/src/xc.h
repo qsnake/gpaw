@@ -80,7 +80,6 @@ typedef struct struct_lda_type {
 int  xc_lda_init(xc_lda_type *p, int functional, int nspin);
 void xc_lda_x_init(xc_lda_type *p, int nspin, int dim, int irel);
 void xc_lda_c_xalpha_init(xc_lda_type *p, int nspin, int dim, double alpha);
-void xc_lda_end(xc_lda_type *p);
 
 void xc_lda(xc_lda_type *p, double *rho, double *exc, double *vxc, double *fxc, double *kxc);
 void xc_lda_exc(xc_lda_type *p, double *rho, double *exc);

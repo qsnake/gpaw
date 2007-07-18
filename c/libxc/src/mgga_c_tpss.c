@@ -18,7 +18,7 @@
   Correlation part
 ************************************************************************/
 
-const xc_func_info_type func_info_mgga_c_tpss = {
+static xc_func_info_type func_info_mgga_c_tpss = {
   XC_MGGA_C_TPSS,
   XC_CORRELATION,
   "Perdew, Tao, Staroverov & Scuseria",

@@ -11,7 +11,7 @@
   Exchange part
 ************************************************************************/
 
-const xc_func_info_type func_info_mgga_x_tpss = {
+static xc_func_info_type func_info_mgga_x_tpss = {
   XC_MGGA_X_TPSS,
   XC_EXCHANGE,
   "Perdew, Tao, Staroverov & Scuseria",
