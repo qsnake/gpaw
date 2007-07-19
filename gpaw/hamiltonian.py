@@ -16,6 +16,7 @@ from gpaw.pair_potential import PairPotential
 from gpaw.poisson_solver import PoissonSolver
 from gpaw.transformers import Transformer
 from gpaw.xc_functional import XC3DGrid
+from gpaw.mpi import run
 
 
 class Hamiltonian:
@@ -167,7 +168,7 @@ class Hamiltonian:
             iters.append(nucleus.calculate_hamiltonian(density.nt_g,
                                                        self.vHt_g, vext))
         if len(iters) != 0:
-            k, p, b, v, x = num.sum(zip(*iters)[-1])
+            k, p, b, v, x = num.sum(run(iters))
             Ekin += k
             Epot += p
             Ebar += b

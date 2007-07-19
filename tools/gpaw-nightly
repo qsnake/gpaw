@@ -24,7 +24,6 @@ def send_email(subject, filename='/dev/null'):
     assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
                      (subject, filename)) == 0
 
-
 def fail(msg, filename='/dev/null'):
     send_email(msg, filename)
     raise SystemExit

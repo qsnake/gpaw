@@ -28,6 +28,7 @@ from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.utilities import DownTheDrain, warning
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
+from gpaw.mpi import run
 import _gpaw
 
 MASTER = 0
@@ -463,8 +464,8 @@ class Paw:
             for kpt in self.kpt_u:
                 kpt.create_random_orbitals(self.nbands)
                 # Calculate projections and orthogonalize wave functions:
-                zip(*[nucleus.calculate_projections(kpt)
-                      for nucleus in self.pt_nuclei])
+                run([nucleus.calculate_projections(kpt)
+                     for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
             # Improve the random guess with conjugate gradients
             eig = CG(self.timer,self.kpt_comm,
@@ -487,8 +488,8 @@ class Paw:
             for kpt in self.kpt_u:
                 kpt.create_atomic_orbitals(nao, self.nuclei)
                 # Calculate projections and orthogonalize wave functions:
-                zip(*[nucleus.calculate_projections(kpt)
-                      for nucleus in self.pt_nuclei])
+                run([nucleus.calculate_projections(kpt)
+                     for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
                 eig.diagonalize(self.hamiltonian, kpt)
 

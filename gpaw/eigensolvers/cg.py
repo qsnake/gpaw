@@ -1,16 +1,17 @@
 """Module defining  ``Eigensolver`` classes."""
 
+from math import pi, sqrt, sin, cos, atan2
+
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
-
 import LinearAlgebra as linalg
+
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import unpack
-from math import pi, sqrt, sin, cos, atan2
-
 from gpaw.eigensolvers import Eigensolver
+from gpaw.mpi import run
 
 
 class CG(Eigensolver):
@@ -54,8 +55,8 @@ class CG(Eigensolver):
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
-        zip(*[nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
-              for nucleus in hamiltonian.pt_nuclei])
+        run([nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+             for nucleus in hamiltonian.pt_nuclei])
         self.timer.stop()
 
         self.timer.start('CG')

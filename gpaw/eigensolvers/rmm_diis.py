@@ -2,13 +2,13 @@
 
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
-
 import LinearAlgebra as linalg
+
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities import elementwise_multiply_add, utilities_vdot, utilities_vdot_self
 from gpaw.utilities.complex import cc, real
-
 from gpaw.eigensolvers import Eigensolver
+from gpaw.mpi import run
 
 
 class RMM_DIIS(Eigensolver):
@@ -43,8 +43,8 @@ class RMM_DIIS(Eigensolver):
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
-        zip(*[nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
-              for nucleus in hamiltonian.pt_nuclei])
+        run([nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+             for nucleus in hamiltonian.pt_nuclei])
 
         self.timer.stop()
 
@@ -72,9 +72,9 @@ class RMM_DIIS(Eigensolver):
             
             axpy(-kpt.eps_n[n], pR_G, dR_G)  # dR_G -= kpt.eps_n[n] * pR_G
 
-            zip(*[nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
-                                           kpt.u, kpt.s, kpt.k, n)
-                  for nucleus in hamiltonian.pt_nuclei])
+            run([nucleus.adjust_residual2(pR_G, dR_G, kpt.eps_n[n],
+                                          kpt.u, kpt.s, kpt.k, n)
+                 for nucleus in hamiltonian.pt_nuclei])
 
             hamiltonian.xc.xcfunc.adjust_non_local_residual(
                 pR_G, dR_G, kpt.eps_n[n], kpt.u, kpt.s, kpt.k, n)
@@ -95,8 +95,8 @@ class RMM_DIIS(Eigensolver):
         self.timer.stop()
 
         self.timer.start('Orthogonalize')
-        zip(*[nucleus.calculate_projections(kpt)
-              for nucleus in hamiltonian.pt_nuclei])
+        run([nucleus.calculate_projections(kpt)
+             for nucleus in hamiltonian.pt_nuclei])
 
         S_nn = self.S_nn
 

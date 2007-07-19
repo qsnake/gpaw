@@ -144,3 +144,14 @@ def all_gather_array(comm, a):
     all = num.zeros(shape, num.Float)
     comm.all_gather(a, all)
     return all.flat
+
+
+def run(iterators):
+    """Run through list of iterators one step at a time."""
+    if len(iterators) == 0:
+        return
+    while True:
+        try:
+            results = [iter.next() for iter in iterators]
+        except StopIteration:
+            return results
