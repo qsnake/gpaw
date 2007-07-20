@@ -8,7 +8,9 @@ bmgsspline bmgs_spline(int l, double dr, int nbins, double* f)
 {
   double c = 3.0 / (dr * dr);
   double* f2 = (double*)malloc((nbins + 1) * sizeof(double));
+  assert(f2 != NULL);
   double* u = (double*)malloc(nbins * sizeof(double));
+  assert(u != NULL);
   f2[0] = -0.5;
   u[0] = (f[1] - f[0]) * c;
   for (int b = 1; b < nbins; b++)
@@ -22,6 +24,7 @@ bmgsspline bmgs_spline(int l, double dr, int nbins, double* f)
   for (int b = nbins - 1; b >= 0; b--)
     f2[b] = f2[b] * f2[b + 1] + u[b];
   double* data = (double*)malloc(4 * (nbins + 1) * sizeof(double));
+  assert(data != NULL);
   bmgsspline spline = {l, dr, nbins, data};
   for (int b = 0; b < nbins; b++)
     {

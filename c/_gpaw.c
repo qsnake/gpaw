@@ -1,6 +1,13 @@
 #include <Python.h>
 #include <Numeric/arrayobject.h>
 
+inline void* gpaw_malloc(int n)
+{
+  void* p = malloc(n);
+  assert(p != NULL);
+  return p;
+}
+
 PyObject* gemm(PyObject *self, PyObject *args);
 PyObject* axpy(PyObject *self, PyObject *args);
 PyObject* d2Excdnsdnt(PyObject *self, PyObject *args);

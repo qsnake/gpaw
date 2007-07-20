@@ -189,9 +189,9 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   self->bc = bc_init(LONGP(size), padding, padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
-  self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 
-			      self->bc->ndouble * sizeof(double));
-  self->sendbuf = (double*)malloc(self->bc->maxsend * sizeof(double));
-  self->recvbuf = (double*)malloc(self->bc->maxrecv * sizeof(double));
+  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] * 
+			  self->bc->ndouble);
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
   return (PyObject*)self;
 }

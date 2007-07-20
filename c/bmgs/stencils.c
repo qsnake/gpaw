@@ -16,6 +16,7 @@ bmgsstencil bmgs_stencil(int ncoefs, const double* coefs, const long* offsets,
      {2 * r * (n[2] + 2 * r) * (n[1] + 2 * r),
      2 * r * (n[2] + 2 * r),
      2 * r}};
+  assert((stencil.coefs != NULL) && (stencil.offsets != NULL));
   memcpy(stencil.coefs, coefs, ncoefs * sizeof(double));
   memcpy(stencil.offsets, offsets, ncoefs * sizeof(long));
   return stencil;
@@ -36,6 +37,7 @@ bmgsstencil bmgs_laplace(int k, double scale,
   int ncoefs = 3 * k - 2;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
   long* offsets = (long*)malloc(ncoefs * sizeof(long));
+  assert((coefs != NULL) && (offsets != NULL));
   double f1 = 1.0 / (h[0] * h[0]);
   double f2 = 1.0 / (h[1] * h[1]);
   double f3 = 1.0 / (h[2] * h[2]);
@@ -71,6 +73,7 @@ bmgsstencil bmgs_mslaplaceA(double scale,
   int ncoefs = 19;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
   long* offsets = (long*)malloc(ncoefs * sizeof(long));
+  assert((coefs != NULL) && (offsets != NULL));
   double e[3]  = {-scale / (12.0 * h[0] * h[0]),
 		  -scale / (12.0 * h[1] * h[1]),
 		  -scale / (12.0 * h[2] * h[2])};
@@ -114,6 +117,7 @@ bmgsstencil bmgs_mslaplaceB(const long n[3])
   int ncoefs = 7;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
   long* offsets = (long*)malloc(ncoefs * sizeof(long));
+  assert((coefs != NULL) && (offsets != NULL));
   double s[3] = {(n[2] + 2) * (n[1] + 2), n[2] + 2, 1};
   int k = 0;
   coefs[k] = 0.5;
@@ -141,6 +145,7 @@ bmgsstencil bmgs_gradient(int k, int i, double h,
   int ncoefs = k - 1;
   double* coefs = (double*)malloc(ncoefs * sizeof(double));
   long* offsets = (long*)malloc(ncoefs * sizeof(long));
+  assert((coefs != NULL) && (offsets != NULL));
   int r = 1;
   double s[3] = {(n[2] + 2 * r) * (n[1] + 2 * r), n[2] + 2 * r, 1};
   double c = 0.5 / h;

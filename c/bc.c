@@ -4,9 +4,9 @@
 #include <string.h>
 #include <assert.h>
 #include "bc.h"
+#include "extensions.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 
 boundary_conditions* bc_init(const long size1[3],
 			     const long padding[3][2], 
@@ -14,8 +14,7 @@ boundary_conditions* bc_init(const long size1[3],
 			     const long neighbors[3][2],
 			     MPI_Comm comm, bool real, bool cfd)
 {
-  boundary_conditions* bc = 
-    (boundary_conditions*)malloc(sizeof(boundary_conditions));
+  boundary_conditions* bc = GPAW_MALLOC(boundary_conditions, 1);
 
   for (int i = 0; i < 3; i++)
     {

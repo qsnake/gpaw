@@ -110,7 +110,7 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
         n *= a->dimensions[d];
       if (root == -1)
         {
-          double* b = (double*)malloc(n * sizeof(double));
+          double* b = GPAW_MALLOC(double, n);
           // XXX Use MPI_IN_PLACE!!
           MPI_Allreduce(LONGP(a), b, n, MPI_DOUBLE, MPI_SUM, self->comm);
           memcpy(LONGP(a), b, n * sizeof(double));
@@ -122,7 +122,7 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
           int rank;
           MPI_Comm_rank(self->comm, &rank);
           if (rank == root)
-            b = (double*)malloc(n * sizeof(double));
+            b = GPAW_MALLOC(double, n);
           // XXX Use MPI_IN_PLACE!!
           MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_SUM, root, self->comm);
           if (rank == root)
@@ -286,7 +286,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   // Stupid hack; MPI_Group_incl wants a int argument;
   // Numeric arrays are long (might be different from ints)
   // More clever ways are welcomed...
-  int* ranks_int = (int*) malloc(n*sizeof(int));
+  int* ranks_int = GPAW_MALLOC(int, n);
   long* ranks_long = LONGP(ranks);
   for (int i=0; i < n ; i++ )
     ranks_int[i]=ranks_long[i];

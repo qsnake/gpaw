@@ -140,19 +140,19 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
     for (int d = 0; d < 2; d++)
       self->skip[c][d] = (int)skp[c][d];
 
-  self->buf = (double*)malloc(size2[0] * size2[1] * size2[2] * 
-			      self->bc->ndouble * sizeof(double));
+  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] * 
+			  self->bc->ndouble);
   if (interpolate)
     // Much larger than necessary!  I don't have the energy right now to
     // estimate the minimum size of buf2!
-    self->buf2 = (double*)malloc(16 * size2[0] * size2[1] * size2[2] * 
-				 self->bc->ndouble * sizeof(double));
+    self->buf2 = GPAW_MALLOC(double, 16 * size2[0] * size2[1] * size2[2] * 
+			     self->bc->ndouble);
   else
-    self->buf2 = (double*)malloc(size2[0] * size2[1] *
-				 //size1[2] / 2 * 
-				 (size2[2] - 2 * k + 3) / 2 * 
-				 self->bc->ndouble * sizeof(double));
-  self->sendbuf = (double*)malloc(self->bc->maxsend * sizeof(double));
-  self->recvbuf = (double*)malloc(self->bc->maxrecv * sizeof(double));
+    self->buf2 = GPAW_MALLOC(double, size2[0] * size2[1] *
+			     //size1[2] / 2 * 
+			     (size2[2] - 2 * k + 3) / 2 * 
+			     self->bc->ndouble);
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
   return (PyObject*)self;
 }

@@ -1,6 +1,7 @@
 #include <Python.h>
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
+#include <malloc.h>
 
 #ifndef DOUBLECOMPLEXDEFINED
 #  define DOUBLECOMPLEXDEFINED 1
@@ -16,6 +17,9 @@
 #  define Py_RETURN_NONE return Py_INCREF(Py_None), Py_None
 #endif
 
+void* gpaw_malloc(int n);
+
+#define GPAW_MALLOC(T, n) ((T*)gpaw_malloc((n) * sizeof(T)))
 #define LONGP(a) ((long*)((a)->data))
 #define DOUBLEP(a) ((double*)((a)->data))
 #define COMPLEXP(a) ((double_complex*)((a)->data))

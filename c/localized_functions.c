@@ -1,5 +1,4 @@
 #include "spline.h"
-#include <malloc.h>
 #include <stdlib.h>
 #ifdef PARALLEL
 #  include <mpi.h>
@@ -430,23 +429,23 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
     }
   self->nf = nf;
   self->nfd = nfd;
-  self->f = (double*)malloc((nf + nfd) * ng0 * sizeof(double));
+  self->f = GPAW_MALLOC(double, (nf + nfd) * ng0);
   if (forces)
     self->fd = self->f + nf * ng0;
   else
     self->fd = 0;
 
   int ndouble = (real ? 1 : 2);
-  self->w = (double*)malloc(ng0 * ndouble * sizeof(double));
+  self->w = GPAW_MALLOC(double, ng0 * ndouble);
 
   if (compute)
     {
-      int* bin = (int*)malloc(ng0 * sizeof(int));
-      double* d = (double*)malloc(ng0 * sizeof(double));
-      double* f0 = (double*)malloc(ng0 * sizeof(double));
+      int* bin = GPAW_MALLOC(int, ng0);
+      double* d = GPAW_MALLOC(double, ng0);
+      double* f0 = GPAW_MALLOC(double, ng0);
       double* fd0 = 0;
       if (forces)
-	fd0 = (double*)malloc(ng0 * sizeof(double));
+	fd0 = GPAW_MALLOC(double, ng0);
 	  
       double* a = self->f;
       double* ad = self->fd;
