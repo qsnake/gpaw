@@ -5,6 +5,9 @@ from gpaw.atom import generator
 #from generator import Generator
 Generator = generator.Generator
 
+maxparcount = 5 # This is the maximum number of parameters supported
+# by the generator function
+
 class SetupGenerator:
     """
     A SetupGenerator generates setups for a particular element during a
@@ -22,21 +25,35 @@ class SetupGenerator:
     some number of parameters in a way compatible with the
     standard_parameters() method.
     """
-
-    def __init__(self, symbol='H', name='test'):
+    
+    def __init__(self, symbol='H', name='test',
+                 whichparms=range(maxparcount),
+                 std_parm_values=None):
         """
         Creates a SetupOptimizer for the element with the given symbol
         (string), where setup files will be generated with the name
         <symbol>.<name>.PBE . The name parameter should be a non-empty
         string.
+
+        This documentation is incomplete. See the gpaw wiki for further
+        details.
         """
-        #We don't want anything to mess up with existing files
-        #so make sure a proper name is entered with a couple of chars
-        #(it should be enough to test for len==0, but what the heck)
+
+        # We don't want anything to mess up with existing files
+        # so make sure a proper name is entered with a couple of chars
+        # (it should be enough to test for len==0, but what the heck)
         if len(name) < 1:
             raise Exception('Please supply a non-empty name.')
         self.symbol = symbol
         self.name = name
+
+        if callable(whichparms):
+            self.parmfilter = whichparms
+            self.stdparms = std_parm_values
+        else:
+            parmfilter = DefaultParmFilter(symbol, whichparms, std_parm_values)
+            self.parmfilter = parmfilter.filter
+            self.get_standard_parameters = parmfilter.get_standard_parameters
 
     def get_name(self):
         return self.name
@@ -51,7 +68,10 @@ class SetupGenerator:
         self.symbol = symbol
 
     def get_standard_parameters(self):
-        return standard_setup_parameters(self.symbol)
+        if self.stdparms is None:
+            raise Exception('Standard parameters not defined!')
+        else:
+            return self.stdparms
         
     def new_setup(self, r=None, rvbar=None, rcomp=None, rfilter=None,
                   hfilter=None):
@@ -93,13 +113,14 @@ class SetupGenerator:
         os.rename(self.symbol+'.PBE', path + '/'+self.symbol+'.'+self.name+
                   '.PBE')
 
-    def generate_setup(self, par):
+    def generate_setup(self, parms):
       """
       Calls new_setup with after unpacking a parameter list. This method
       can be overridden to change the parameters that should be
       optimized.
       """
-      self.new_setup(*par)
+      newparms = self.parmfilter(parms)
+      self.new_setup(*newparms)
 
 def standard_setup_parameters(symbol, r=None, rvbar=None, rcomp=None,
                               rfilter=None, hfilter=None):
@@ -125,3 +146,33 @@ def standard_setup_parameters(symbol, r=None, rvbar=None, rcomp=None,
         hfilter = .4
 
     return (r, rvbar, rcomp, rfilter, hfilter)
+
+class DefaultParmFilter:
+    def __init__(self, symbol, whichparms, std_parm_values):
+        self.whichparms = whichparms
+        parcount = len(whichparms)
+        self.parfilter = [False]*maxparcount
+        self.symbol = symbol
+
+        for par in whichparms:
+            self.parfilter[par] = True
+
+        self.stdparms = std_parm_values
+
+    def get_standard_parameters(self):
+        if self.stdparms is None:
+            all_std_parms = standard_setup_parameters(self.symbol)
+
+            return [par for (filter, par) in zip(self.parfilter, all_std_parms)
+                    if filter]
+        else:
+            return self.stdparms
+
+    def filter(self, parms):
+        allparms = [None]*maxparcount
+
+        for i,parindex in enumerate(self.whichparms):
+            allparms[parindex] = parms[i]
+
+        return allparms
+
