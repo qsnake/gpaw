@@ -8,6 +8,7 @@ from math import pi
 from ReadArray1DFromTxtFile import ReadArray1DFromTxtFile
 from gpaw.utilities import  check_unit_cell
 from ASE.Units import Convert
+import os
 
 class VanDerWaals:
     # 
@@ -78,9 +79,10 @@ class VanDerWaals:
         return q_0
     
     def get_phitab_from_1darrays(self,filename='phi_delta'):
-        path=PhiKernelPath='/home/camp/moses/Phi/phi_a256_m1024_D60/'
+        path=os.environ['VDW']
         #function that constucts phimat from files containing phi_delta(D)
         #The filename must be given as something+delta
+        #
         file = open(path+'grid.dat')
         phigrid = {}
         line = file.readline()
