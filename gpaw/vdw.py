@@ -309,29 +309,29 @@ class VanDerWaals:
 
 ######minimum image convention development
 #run vdw.py test script
-n=24
-nx, ny, nz = d[::n,::n,::n].shape
-vdw=VanDerWaals(d, unitcell=uc,xcname='revPBE')
-h_c=vdw.h_c
-R = num.zeros((nx, ny, nz, 3), num.Float)
-for x in range(nx):
-    for y in range(ny):
-        for z in range(nz):
-            R[x, y, z] = [x, y, z]*h_c*n
-
-N = nx * ny * nz
-R.shape = (N,3)
-m=6
-Rm = R[-1]
-t = R - Rm
+#n=24
+#nx, ny, nz = d[::n,::n,::n].shape
+#vdw=VanDerWaals(d, unitcell=uc,xcname='revPBE')
+#h_c=vdw.h_c
+#R = num.zeros((nx, ny, nz, 3), num.Float)
+#for x in range(nx):
+#    for y in range(ny):
+#        for z in range(nz):
+#            R[x, y, z] = [x, y, z]*h_c*n
+#
+#N = nx * ny * nz
+#R.shape = (N,3)
+#m=6
+#Rm = R[-1]
+#t = R - Rm
 #MIC
-tmic=(t+(3./2.)*uc.flat[::4])%uc.flat[::4]-uc.flat[::4]/2.0
-
-Rm = R[0]
-t = R - Rm
+#tmic=(t+(3./2.)*uc.flat[::4])%uc.flat[::4]-uc.flat[::4]/2.0
+#
+#Rm = R[0]
+#t = R - Rm
 #MIC
-tmic=(t+(3./2.)*uc.flat[::4])%uc.flat[::4]-uc.flat[::4]/2.0
-
-t[:,0]
-tmic[:,0]
+#tmic=(t+(3./2.)*uc.flat[::4])%uc.flat[::4]-uc.flat[::4]/2.0
+#
+#t[:,0]
+#tmic[:,0]
 
