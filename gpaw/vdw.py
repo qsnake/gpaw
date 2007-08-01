@@ -77,12 +77,12 @@ class VanDerWaals:
         q_0 = e_xc_0/self.get_e_x_LDA()*self.k_f
         return q_0
     
-    def get_phitab_from_1darrays(self,filename='phi_delta'):
-        path=os.environ['VDW']
+    def get_phitab_from_1darrays(self, filename='phi_delta'):
+        path = os.environ['VDW']
         #function that constucts phimat from files containing phi_delta(D)
         #The filename must be given as something+delta
         #
-        file = open(path+'grid.dat')
+        file = open(path + '/grid.dat')
         phigrid = {}
         line = file.readline()
         while line:
