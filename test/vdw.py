@@ -19,4 +19,10 @@ uc = num.array([(2 * a, 0, 0),
 e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE').GetEnergy(n=4)
 d += d[::-1].copy()
 e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE').GetEnergy(n=4)
-print e1, e2, 2 * e1 - e2
+print  'revPBE',e1, e2, 2 * e1 - e2
+#RPBE
+e1 = VanDerWaals(d, unitcell=uc,xcname='RPBE').GetEnergy(n=4)
+d += d[::-1].copy()
+e2 = VanDerWaals(d, unitcell=uc,xcname='RPBE').GetEnergy(n=4)
+print 'RPBE',e1, e2, 2 * e1 - e2
+
