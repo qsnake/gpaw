@@ -252,7 +252,8 @@ class VanDerWaals:
             E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut()+self.LDA_c_energy+self.GGA_x_energy
             return Convert(E_nl,'Hartree','eV')
         if self.periodic is 'mic':
-            E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic()+self.LDA_c_energy+self.GGA_x_energy        
+            E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic()+self.LDA_c_energy+self.GGA_x_energy
+            return Convert(E_nl,'Hartree','eV')
 ##         else:
 ##             E_nl = -self.Get_xc_energy()+self.int_6Dper_n_D2_cut()+self.LDA_c_energy()+self.GGA_x_energy()
 ##             return Convert(E_nl,'Hartree','eV')
