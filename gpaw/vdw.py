@@ -187,12 +187,72 @@ class VanDerWaals:
         #print denstab.shape
         self.E_cl = E_cl
         return E_cl
+    def int_6D_n_D2_cut_periodic_mic(self):
+        ###################################################
+        #introduces periodic boundary conditions using
+        #the minimum image convention
+        ###################################################
+        ###imports arrays used by GetPhi
+        Dtab = num.arange(0,self.Dmax+self.deltaD,self.deltaD)
+        deltatab = num.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
+        deltaD = self.deltaD
+        deltadelta = self.deltadelta
+        phitab_N = self.phimat.copy()
+        phitab_N.shape = [self.phimat.shape[0]*self.phimat.shape[1]]
+        #import parameters used local
+        n = self.n
+        ncut = self.ncut
+        h_c = self.h_c
+        denstab = self.density
+        nx, ny, nz = self.density[::n,::n,::n].shape
+        R = num.zeros((nx, ny, nz, 3), num.Float)
+        for x in range(nx):
+            for y in range(ny):
+                for z in range(nz):
+                    R[x, y, z] = [x, y, z]*h_c*n
+
+
+        N = nx * ny * nz
+        R.shape = (N,3)
+        qtab_N = self.q0[::n,::n,::n].copy()
+        #print qtab_N.shape
+        qtab_N.shape = [N]
+        denstab_N = denstab[::n,::n,::n].copy()
+        denstab_N.shape = [N]
+        qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
+        R=num.compress(num.greater_equal(denstab_N,ncut),R,axis=0)
+        denstab_N=num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
+        #for analysis
+        self.denstab_N=denstab_N
+        print 'denstab_N.shape', denstab_N.shape[0]
+        E_cl = 0.0
+        self.trackEnl = []
+        uc = self.h_c*self.gd.N_c
+        for m in range(denstab_N.shape[0]):
+            Rm = R[m]
+            t = R - Rm
+            tmic=(t+(3./2.)*uc)%uc-uc/2.0
+            r = num.sqrt(num.sum(tmic**2.0,axis=1))
+            D = (qtab_N[m]+qtab_N)*r/2.0
+            #The next line is a work around singularities for D=0
+            Dmult = num.choose(num.equal(D,0),(D,10.0**8))
+            #I have set delta to be positive, is this a definition?
+            delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
+            E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
+            self.trackEnl.append(E_tmp)
+            E_cl = E_cl+E_tmp
+        E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
+        #print denstab.shape
+        self.E_cl = E_cl
+        return E_cl
     def GetEnergy(self,n=1,ncut=0.0005):
         self.n = n
         self.ncut = 0.0005
         if self.periodic is None:
             E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut()+self.LDA_c_energy+self.GGA_x_energy
             return Convert(E_nl,'Hartree','eV')
+        if self.periodic is 'mic':
+            E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic()+self.LDA_c_energy+self.GGA_x_energy        
 ##         else:
 ##             E_nl = -self.Get_xc_energy()+self.int_6Dper_n_D2_cut()+self.LDA_c_energy()+self.GGA_x_energy()
 ##             return Convert(E_nl,'Hartree','eV')
@@ -245,33 +305,32 @@ class VanDerWaals:
         
 
 
-######hertil
 
+######minimum image convention development
+#run vdw.py test script
+n=24
+nx, ny, nz = d[::n,::n,::n].shape
+vdw=VanDerWaals(d, unitcell=uc,xcname='revPBE')
+h_c=vdw.h_c
+R = num.zeros((nx, ny, nz, 3), num.Float)
+for x in range(nx):
+    for y in range(ny):
+        for z in range(nz):
+            R[x, y, z] = [x, y, z]*h_c*n
 
+N = nx * ny * nz
+R.shape = (N,3)
+m=6
+Rm = R[-1]
+t = R - Rm
+#MIC
+tmic=(t+(3./2.)*uc.flat[::4])%uc.flat[::4]-uc.flat[::4]/2.0
 
+Rm = R[0]
+t = R - Rm
+#MIC
+tmic=(t+(3./2.)*uc.flat[::4])%uc.flat[::4]-uc.flat[::4]/2.0
 
-
-
-
-
-
-
-
-
-
-## from gpaw.grid_descriptor import GridDescriptor
-## from gpaw.domain import Domain
-## from gpaw.xc_functional import XC3DGrid
-
-## N = 24
-## a = 5.0
-## domain  = Domain((a, a, a))
-## gd = GridDescriptor(domain, (N, N, N))
-## xc = XC3DGrid('PBE', gd)
-## n = gd.new_array()
-## v = gd.new_array()
-## n[:] = 0.1
-## print gd.integrate(n)
-## E = xc.get_energy_and_potential(n, v)
-## a2 = xc.a2_g
+t[:,0]
+tmic[:,0]
 
