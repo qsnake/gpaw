@@ -5,7 +5,6 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
 from gpaw.xc_functional import XC3DGrid
 from math import pi
-from ReadArray1DFromTxtFile import ReadArray1DFromTxtFile
 from gpaw.utilities import  check_unit_cell
 from ASE.Units import Convert
 import os
@@ -121,7 +120,7 @@ class VanDerWaals:
         #D is set to max int phitab, to make the interpolation possible
         D = num.choose(mask,(D,Dtab[-1]-deltaD/100.0))
         #dette er aendre her phi(D=0, delta=x)=0 per definition
-        n_D = (D/deltaD).astype(num.Int) #-1 fordi Dtab starter på h og ikke 0
+        n_D = (D/deltaD).astype(num.Int) #-1 because Dtab starts at h and not 0
         #delta above the upper limit of delta in phitab is set to just below the upper limit
         delta = num.choose(num.greater_equal(delta,deltatab[len(deltatab)-1]),(delta,deltatab[len(deltatab)-1]-deltadelta/100.00))
         n_delta = (delta/deltadelta).astype(num.Int)

@@ -13,7 +13,9 @@ for x in range(2 * n):
             d[x, y, z] = exp(-2 * r) / pi
 
 print num.sum(d.flat) * h**3
-uc = num.array([(2 * a,0,0),(0,a,0),(0,0,a)])
+uc = num.array([(2 * a, 0, 0),
+                (0,     a, 0),
+                (0,     0, a)])
 e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE').GetEnergy(n=4)
 d += d[::-1].copy()
 e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE').GetEnergy(n=4)
