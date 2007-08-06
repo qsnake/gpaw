@@ -530,7 +530,7 @@ class Calculator:
         return self.paw.get_eigenvalues(kpt, spin) * self.Ha
 
     def GetWannierLocalizationMatrix(self, G_I, kpoint, nextkpoint, spin,
-                                     dirG, **args):
+                                     dirG, **kwargs):
         """Calculate integrals for maximally localized Wannier functions."""
 
         c = dirG.index(1)

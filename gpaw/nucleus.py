@@ -49,7 +49,9 @@ class Nucleus:
      ``P_uni`` Integral of products of all wave functions and the projector
                functions of this atom (``P_{\sigma\vec{k}ni}^a``).
      ``D_sp``  Atomic density matrix (``D_{\sigma i_1i_2}^a``).
+               Packed with pack 1.
      ``dH_sp`` Atomic Hamiltonian correction (``\Delta H_{\sigma i_1i_2}^a``).
+               Packed with pack 2.
      ``Q_L``   Multipole moments  (``Q_{\ell m}^a``).
      ``F_c``   Force.
      ========= ===============================================================
@@ -394,7 +396,7 @@ class Nucleus:
             if vext:
                 Eext += vext * sqrt(4 * pi) * (self.Q_L[0] + s.Z)
                 dH_p += vext * sqrt(4 * pi) * s.Delta_pL[:, 0]
-                
+            
             for H_p in self.H_sp:
                 H_p += dH_p
 

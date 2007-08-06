@@ -398,7 +398,7 @@ class GridDescriptor:
             G_a =  ---
                     La
                     
-        ref1: Thygesen et al, PRB (2005)
+        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
 
         """
 

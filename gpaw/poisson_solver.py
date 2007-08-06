@@ -10,6 +10,7 @@ from gpaw.transformers import Transformer
 from gpaw.operators import Laplace, LaplaceA, LaplaceB
 from gpaw import ConvergenceError
 from gpaw.utilities.blas import axpy
+from gpaw.utilities.gauss import Gaussian
 
 
 class PoissonSolver:
@@ -72,7 +73,6 @@ class PoissonSolver:
         self.postsmooths[level] = 8
 
         if load_gauss:
-            from gpaw.utilities.gauss import Gaussian
             gauss = Gaussian(self.gd)
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
@@ -205,3 +205,4 @@ class PoissonSolver:
             error = self.gd.domain.comm.sum(num.dot(residual.flat,
                                                     residual.flat)) * self.dv
             return error
+

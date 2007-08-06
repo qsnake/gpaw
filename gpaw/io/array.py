@@ -60,7 +60,6 @@ def save_array(array, file, delimiter=' ', converters={}, header=None):
     
     ``header``     If not None, a string to be put in the top of the file.
     ============== =========================================================
-    
     """
     # Open file using gzip if necessary
     fhandle = get_handle(file, 'w')
