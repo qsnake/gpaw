@@ -60,7 +60,7 @@ class OmegaMatrix:
             for setup in self.paw.setups:
                 sxc = setup.xc_correction.xc
                 if sxc.xcfunc.xcname != xc:
-                    sxc.set_functional(XCFunctional(xc))
+                    sxc.set_functional(XCFunctional(xc,kss.nvspins))
         else:
             self.xc = None
 
@@ -273,6 +273,7 @@ class OmegaMatrix:
                     Om[kq,ij] = Om[ij,kq]
 
             timer.stop()
+            timer.write()
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
@@ -303,13 +304,18 @@ class OmegaMatrix:
 
             timer = Timer()
             timer.start('init')
+            timer2 = Timer()
                       
             # smooth density including compensation charges
+            timer2.start('GetPairDensityAndCompensationCharges')
             rhot_g = kss[ij].GetPairDensityAndCompensationCharges()
-
+            timer2.stop()
+            
             # integrate with 1/|r_1-r_2|
+            timer2.start('poisson')
             phit_g = num.zeros(rhot_g.shape,rhot_g.typecode())
             poisson.solve(phit_g,rhot_g,charge=None)
+            timer2.stop()
 
             timer.stop()
             t0 = timer.gettime('init')
@@ -318,36 +324,67 @@ class OmegaMatrix:
             for kq in range(ij,nij):
                 if kq != ij:
                     # smooth density including compensation charges
+                    timer2.start('kq GetPairDensityAndCompensationCharges')
                     rhot_g = kss[kq].GetPairDensityAndCompensationCharges()
+                    timer2.stop()
+##                     timer2.start('kq GetPairDensityAndCompensationCharges2')
+##                     rhot_G = kss[kq].GetPairDensityAndCompensationCharges2()
+##                     timer2.stop()
 
+                timer2.start('integrate')
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
                 Om[ij,kq]= pre * finegd.integrate(rhot_g*phit_g)
+                timer2.stop()
 
+##                 # Add atomic corrections
+##                 timer2.start('integrate corrections')
+##                 Ia = 0.
+##                 for nucleus in paw.my_nuclei:
+##                     ni = nucleus.get_number_of_partial_waves()
+##                     Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
+##                     Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
+##                     Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
+##                     Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
+##                     C_pp = nucleus.setup.M_pp
+
+##                     #   ----
+##                     # 2 >      P   P  C    P  P
+##                     #   ----    ip  jr prst ks qt
+##                     #   prst
+##                     for p in range(ni):
+##                         for r in range(ni):
+##                             pr = packed_index(p, r, ni)
+##                             for s in range(ni):
+##                                 for t in range(ni):
+##                                     st = packed_index(s, t, ni)
+##                                     # do we need the 2 here ???????
+##                                     Ia += Pi_i[p]*Pj_i[r]*\
+##                                           2*C_pp[pr, st]*\
+##                                           Pk_i[s]*Pq_i[t]
+##                 timer2.stop()
+                timer2.start('integrate corrections 2')
                 # Add atomic corrections
                 Ia = 0.
                 for nucleus in paw.my_nuclei:
                     ni = nucleus.get_number_of_partial_waves()
                     Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
                     Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
+                    Dij_ii = num.outerproduct(Pi_i, Pj_i)
+                    Dij_p = pack(Dij_ii, tolerance=1e3)
                     Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
                     Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
+                    Dkq_ii = num.outerproduct(Pk_i, Pq_i)
+                    Dkq_p = pack(Dkq_ii, tolerance=1e3)
                     C_pp = nucleus.setup.M_pp
-
                     #   ----
                     # 2 >      P   P  C    P  P
                     #   ----    ip  jr prst ks qt
                     #   prst
-                    for p in range(ni):
-                        for r in range(ni):
-                            pr = packed_index(p, r, ni)
-                            for s in range(ni):
-                                for t in range(ni):
-                                    st = packed_index(s, t, ni)
-                                    # do we need the 2 here ???????
-                                    Ia += Pi_i[p]*Pj_i[r]*\
-                                          2*C_pp[pr, st]*\
-                                          Pk_i[s]*Pq_i[t]
+                    Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
+##                print "Ia,Ia2,diff=",Ia,Ia2,Ia-Ia2
+                timer2.stop()
+                
                 Om[ij,kq] += pre * comm.sum(Ia)
                     
                 if ij == kq:
@@ -356,6 +393,7 @@ class OmegaMatrix:
                     Om[kq,ij]=Om[ij,kq]
 
             timer.stop()
+##            timer2.write()
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
