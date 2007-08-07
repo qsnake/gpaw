@@ -3,11 +3,13 @@
 from struct import calcsize,pack,unpack
 import Numeric as num
 from gpaw.utilities import check_unit_cell
-from gpaw.grid_descriptor import GridDescriptor
 
 def read_plt(filename):
     """Read plt files
-    returns the cell(3x3 matrix), the grid and the origin
+    returns the cell(3x3 matrix), the grid and the origin,
+    use it like:
+
+    cell, grid, origin = read_plt('file.plt')
     """
     f = open(filename)
     fmt='ii'
@@ -47,16 +49,16 @@ def write_plt(cell,
               filename,
               origin=(0.0,0.0,0.0), # ASE uses (0,0,0) as origin
               typ=4):
-    """Input:
-    cell = unit cell object as given from ListOfAtoms.GetUnitCell() or
-    grid decriptor
+    """All parameters are Input.
 
-    grid = the grid to write
+    cell unit cell object as given from ListOfAtoms.GetUnitCell() or grid decriptor
 
-    typ  = type of surface (integer)
-    
-    cell is assumed to be in Angstroms and the grid in atomc units (Bohr)"""
+    grid the grid to write
 
+    typ  type of surface (integer)
+
+    The cell is assumed to be in Angstroms and the grid in atomc units (Bohr)
+    """
     if hasattr(cell,'new_array'): # this is a GridDescriptor
         xe, ye, ze = cell.h_c*cell.N_c * 0.52918 # get Angstroms
     elif len(cell.shape) == 2:
@@ -85,7 +87,8 @@ def write_plt(cell,
     f.write(pack('ff', x0, xe ))
 
     # we need a float array
-    if grid.typecode() == 'f':
+    # Future: numpy has no 'typecode'
+    if hasattr(grid,'typecode') and grid.typecode() == 'f':
         fgrid = num.transpose(grid)
     else:
         fgrid = num.array(num.transpose(grid).tolist(),'f')
