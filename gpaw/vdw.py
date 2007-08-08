@@ -177,12 +177,14 @@ class VanDerWaals:
             r = num.sqrt(num.sum(t**2.0,axis=1))
             D = (qtab_N[m]+qtab_N)*r/2.0
             #The next line is a work around singularities for D=0
-            Dmult = num.choose(num.equal(D,0),(D,10.0**8))
+            Dmult = num.choose(num.less(D,1e-4),(D,10.0**8))
             #I have set delta to be positive, is this a definition?
             delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
             E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
             #self.trackEnl.append(E_tmp)
             E_cl = E_cl+E_tmp
+            #print E_tmp
+            #print D
         E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         #print denstab.shape
         self.E_cl = E_cl
@@ -235,19 +237,21 @@ class VanDerWaals:
             r = num.sqrt(num.sum(tmic**2.0,axis=1))
             D = (qtab_N[m]+qtab_N)*r/2.0
             #The next line is a work around singularities for D=0
-            Dmult = num.choose(num.equal(D,0),(D,10.0**8))
+            Dmult = num.choose(num.less(D,1e-4),(D,10.0**8))
             #I have set delta to be positive, is this a definition?
             delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
             E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
             #self.trackEnl.append(E_tmp)
             E_cl = E_cl+E_tmp
+            #print E_tmp
+            #print D
         E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         #print denstab.shape
         self.E_cl = E_cl
         return E_cl
     def GetEnergy(self,n=1,ncut=0.0005):
         self.n = n
-        self.ncut = 0.0005
+        self.ncut = ncut
         if self.periodic is None:
             E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut()+self.LDA_c_energy+self.GGA_x_energy
             return Convert(E_nl,'Hartree','eV')
@@ -372,7 +376,7 @@ class VanDerWaals:
 ## ######
 ## vdW=VanDerWaals(density,unitcell=unitcell,xcname='RPBE',pbc='mic')
 ## ncut = 0.0005
-## n=4
+## n=8
 ## nx, ny, nz = density[::n,::n,::n].shape
 ## N = nx * ny * nz
 
@@ -395,13 +399,17 @@ class VanDerWaals:
 
 ## R.shape = (N,3)
 ## R=num.compress(num.greater_equal(denstab_N,ncut),R,axis=0)
-## m=10
+## m=100
 ## Rm = R[m]
 ## t = R - Rm
 ## r=num.sqrt(num.sum(t**2.0,axis=1))
+## r
            
 ## tmic=(t+(3./2.)*uc)%uc-uc/2.0
 ## rmic = num.sqrt(num.sum(tmic**2.0,axis=1))
+## rmic
+
+
 ## D = (qtab_N[m]+qtab_N)*r/2.0
 ## Dmic = (qtab_N[m]+qtab_N)*rmic/2.0
 
