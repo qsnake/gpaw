@@ -170,7 +170,7 @@ class VanDerWaals:
         self.denstab_N=denstab_N
         print 'denstab_N.shape', denstab_N.shape[0]
         E_cl = 0.0
-        self.trackEnl = []
+        #self.trackEnl = []
         for m in range(denstab_N.shape[0]):
             Rm = R[m]
             t = R - Rm
@@ -181,7 +181,7 @@ class VanDerWaals:
             #I have set delta to be positive, is this a definition?
             delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
             E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
-            self.trackEnl.append(E_tmp)
+            #self.trackEnl.append(E_tmp)
             E_cl = E_cl+E_tmp
         E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         #print denstab.shape
@@ -226,7 +226,7 @@ class VanDerWaals:
         self.denstab_N=denstab_N
         print 'denstab_N.shape', denstab_N.shape[0]
         E_cl = 0.0
-        self.trackEnl = []
+        #self.trackEnl = []
         uc = self.h_c*self.gd.N_c
         for m in range(denstab_N.shape[0]):
             Rm = R[m]
@@ -239,7 +239,7 @@ class VanDerWaals:
             #I have set delta to be positive, is this a definition?
             delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
             E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
-            self.trackEnl.append(E_tmp)
+            #self.trackEnl.append(E_tmp)
             E_cl = E_cl+E_tmp
         E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         #print denstab.shape
@@ -334,4 +334,77 @@ class VanDerWaals:
 #
 #t[:,0]
 #tmic[:,0]
+#
+#test mic
+#read in density and unitcell from somewhere
+## import pylab
+## from gpaw.vdw import VanDerWaals
 
+## n=16
+## nx, ny, nz = density[::n,::n,::n].shape
+## R = num.zeros((nx, ny, nz, 3), num.Float)
+## uc=unitcell.flat[::4]
+## h_c=uc/density.shape
+## for x in range(nx):
+##             for y in range(ny):
+##                 for z in range(nz):
+##                     R[x, y, z] = [x, y, z]*h_c*n
+
+## N = nx * ny * nz
+## R.shape = (N,3)
+## m=0
+## Rm = R[m]
+## t = R - Rm
+## r=num.sqrt(num.sum(t**2.0,axis=1))
+           
+## tmic=(t+(3./2.)*uc)%uc-uc/2.0
+## rmic = num.sqrt(num.sum(tmic**2.0,axis=1))
+
+## pylab.plot(rmic)
+## pylab.plot(r)
+## pylab.show()
+
+## plotting xrange
+## pylab.plot(t[:,0])
+## pylab.plot(tmic[:,0])
+## pylab.show()
+
+## ######
+## vdW=VanDerWaals(density,unitcell=unitcell,xcname='RPBE',pbc='mic')
+## ncut = 0.0005
+## n=4
+## nx, ny, nz = density[::n,::n,::n].shape
+## N = nx * ny * nz
+
+## qtab_N = vdW.q0[::n,::n,::n].copy()
+## qtab_N.shape = [N]
+## denstab_N = density[::n,::n,::n].copy()
+## denstab_N.shape = [N]
+## qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
+
+## #nx, ny, nz = density[::n,::n,::n].shape
+## R = num.zeros((nx, ny, nz, 3), num.Float)
+
+## h_c=uc/density.shape
+## for x in range(nx):
+##             for y in range(ny):
+##                 for z in range(nz):
+##                     R[x, y, z] = [x, y, z]*h_c*n
+
+
+
+## R.shape = (N,3)
+## R=num.compress(num.greater_equal(denstab_N,ncut),R,axis=0)
+## m=10
+## Rm = R[m]
+## t = R - Rm
+## r=num.sqrt(num.sum(t**2.0,axis=1))
+           
+## tmic=(t+(3./2.)*uc)%uc-uc/2.0
+## rmic = num.sqrt(num.sum(tmic**2.0,axis=1))
+## D = (qtab_N[m]+qtab_N)*r/2.0
+## Dmic = (qtab_N[m]+qtab_N)*rmic/2.0
+
+## pylab.plot(D)
+## pylab.plot(Dmic)
+## pylab.show()
