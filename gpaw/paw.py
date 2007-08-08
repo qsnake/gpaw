@@ -627,7 +627,8 @@ class Paw:
         if magmom_a is None:
             magmom_a = self.density.magmom_a
         if tag_a is None:
-            tag_a = num.array([0]) # XXXXXXX where can I get this ????
+            # we can not get the tags, so set them to be empty
+            tag_a = num.zeros((len(self.nuclei)),num.Int)
         if setup_types is None:
 ##            setup_types = self.setups
             setup_types='paw'     # XXXXXXX is this correct ????
