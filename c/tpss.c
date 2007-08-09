@@ -13,7 +13,8 @@ void tpssfc(double *nu, double *nd, double *guu, double *gdd, double *gud,
 
 
 /* Local part of tpss */
-/* for testing self-concistency called with local tau variable */
+/* for testing self-concistency and convergence called with local
+/* local  tau variable */
 /* tau = tf + 1/3 tW */
 /* other existing functionals proposed are 1, 1/5 and 1/9 */ 
 /* use with PBE setups and do not apply to atom H alone */
