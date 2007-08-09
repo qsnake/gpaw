@@ -82,7 +82,7 @@ class XCFunctional:
                 code = 12
             elif xcname == 'TPSS':
                 code = 9
-                self.mgga = True
+                self.mgga = False ##only local part implemented (=gga)
             elif xcname == 'PW91':
                 code = 14
             elif xcname == 'LB94':
