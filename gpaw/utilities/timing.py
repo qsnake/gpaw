@@ -112,16 +112,18 @@ class Timer:
 
 class StepTimer(Timer):
     """Step timer to print out timing used in computation steps.
-    Use it like this:
+    
+    Use it like this::
 
-    from gpaw.utilities.timing import StepTimer
-
-    st = StepTimer()
-    ...
-    st.write_now('step 1')
-    ...
-    st.write_now('step 2')
+      from gpaw.utilities.timing import StepTimer
+      st = StepTimer()
+      ...
+      st.write_now('step 1')
+      ...
+      st.write_now('step 2')
+      
     """
+    
     def __init__(self,out=sys.stdout,name=None):
         Timer.__init__(self)
         if name is None:
