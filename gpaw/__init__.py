@@ -13,7 +13,7 @@ import os
 import sys
 from distutils.util import get_platform
 from glob import glob
-from os.path import join
+from os.path import join, isfile
 
 
 class ConvergenceError(Exception):
