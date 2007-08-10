@@ -259,22 +259,32 @@ class KPoint:
         self.psit_nG = self.gd.zeros(nbands, self.typecode)
         self.random_wave_functions(self.psit_nG)        
 
-    def apply_h(self, pt_nuclei, kin, vt_sG, psit, Htpsit):
-        """Applies the Hamiltonian to the wave function psit"""
+    def apply_hamiltonian(self, hamiltonian, a_nG, b_nG):
+        """Apply Hamiltonian to wave functions."""
 
-        Htpsit[:] = 0.0
-        kin.apply(psit, Htpsit, self.phase_cd)
-        Htpsit += psit * vt_sG[self.s]
+        b_nG[:] = 0.0
+        hamiltonian.kin.apply(a_nG, b_nG, self.phase_cd)
+        b_nG += a_nG * hamiltonian.vt_sG[self.s]
+        
+        for nucleus in hamiltonian.pt_nuclei:
+            # Apply the non-local part:
+            nucleus.apply_hamiltonian(a_nG, b_nG, self.s, self.k)
+
+    def apply_overlap(self, pt_nuclei, a_nG, b_nG):
+        """Apply overlap operator to wave functions."""
+
+        b_nG[:] = a_nG
         
         for nucleus in pt_nuclei:
-            #apply the non-local part
-            nucleus.apply_hamiltonian(psit, Htpsit, self.s, self.k)
+            # Apply the non-local part:
+            nucleus.apply_overlap(a_nG, b_nG, self.k)
 
-    def apply_s(self, pt_nuclei, psit, Spsit):
-        """Applies the overlap operator to the wave function psit"""
-
-        Spsit[:] = psit[:]
-        for nucleus in pt_nuclei:
-            #apply the non-local part
-            nucleus.apply_overlap(psit, Spsit, self.k)
             
+    def apply_inverse_overlap(self, pt_nuclei, a_nG, b_nG):
+        """Apply overlap operator to wave functions."""
+
+        b_nG[:] = a_nG
+        
+        for nucleus in pt_nuclei:
+            # Apply the non-local part:
+            nucleus.apply_inverse_overlap(a_nG, b_nG, self.k)

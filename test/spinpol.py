@@ -9,7 +9,7 @@ hydrogen = Crystal([Atom('H', (0.0, 0.0, 0.0))], cell=(a, a, a))
 calc = Calculator(gpts=(n, n, n), nbands=1, tolerance=1e-10)
 hydrogen.SetCalculator(calc)
 e1 = hydrogen.GetPotentialEnergy()
-calc.Set(spinpol=True)
+calc.set(spinpol=True)
 hydrogen[0].SetMagneticMoment(1.0)
 e2 = hydrogen.GetPotentialEnergy()
 de = e1 - e2

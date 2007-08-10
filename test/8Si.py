@@ -18,7 +18,6 @@ calc = Calculator(gpts=(n, n, n),
                   nbands=8*3,
                   width=0.01,
                   kpts=(2, 2, 2))
-#                  out=None)
 bulk.SetCalculator(calc)
 f1, f2 = CheckForce(bulk, 0, 2, 0.001)
 equal(f1, f2, 0.012)

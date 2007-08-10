@@ -25,18 +25,18 @@ li = Crystal([Atom('Li', (0.0, 0.0, 0.0), magmom=1.0)], cell=(a, a, a))
 
 calc = Calculator(gpts=(n, n, n), nbands=1, xc='lxcX_PBE-C_PBE')
 li.SetCalculator(calc)
-e = li.GetPotentialEnergy() + calc.GetReferenceEnergy()
+e = li.GetPotentialEnergy() + calc.get_reference_energy()
 equal(e, -7.462, 0.056)
 equal(e, reference_886['lxcX_PBE-C_PBE'], tolerance)
 
-calc.Set(xc='lxcX_PBE_R-C_PBE')
-erev = li.GetPotentialEnergy() + calc.GetReferenceEnergy()
+calc.set(xc='lxcX_PBE_R-C_PBE')
+erev = li.GetPotentialEnergy() + calc.get_reference_energy()
 equal(erev, -7.487, 0.057)
 equal(erev, reference_886['lxcX_PBE_R-C_PBE'], tolerance)
 equal(e - erev, 0.025, 0.002)
 
-calc.Set(xc='lxcX-C_PW')
-elda = li.GetPotentialEnergy() + calc.GetReferenceEnergy()
+calc.set(xc='lxcX-C_PW')
+elda = li.GetPotentialEnergy() + calc.get_reference_energy()
 equal(elda, reference_886['lxcX-C_PW'], tolerance)
 
 setups.clean()

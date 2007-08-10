@@ -12,7 +12,7 @@ kwargs = {'a': 5.9,  # size of unit cell along x-axis
           'h': 0.21, # grid spacing
           'forcesymm': False,
           'parameters': {'xc'       : 'EXX',
-                         'out'      : '-',
+                         'txt'      : '-',
                          'mix'      : (0.25, 3, 1.0),
                          'lmax'     : 1,
                          'nbands'   : 3,

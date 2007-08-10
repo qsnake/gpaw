@@ -12,7 +12,7 @@ def f(length, energy):
     a = Convert(8.0, 'Bohr', length)
     n = 16
     atom = Crystal([Atom('H', (0.0, 0.0, 0.0))], cell=(a, a, a))
-    atom.SetCalculator(Calculator(gpts=(n, n, n), nbands=1, out=None))
+    atom.SetCalculator(Calculator(gpts=(n, n, n), nbands=1, txt=None))
     return Convert(atom.GetPotentialEnergy(), energy, 'Hartree')
 
 e1 = f('Bohr', 'Hartree')

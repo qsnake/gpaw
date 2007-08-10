@@ -74,16 +74,13 @@ class PairPotential:
                                  nucleus1))
 
     def print_info(self, out):
-        pass
-    """
-
         print >> out, 'pair potential:'
         print >> out, '  cutoffs:'
-            print >> out, '   ', setup.symbol, setup.rcutsoft * a0
+        print >> out, '   ', setup.symbol, setup.rcutsoft * a0
         npairs = self.neighborlist.number_of_pairs() - len(pos_ac)
         if npairs == 0:
             print >> out, '  There are no pair interactions.'
         elif npairs == 1:
             print >> out, '  There is one pair interaction.'
         else:
-            print >> out, '  There are %d pair interactions.' % npairs"""
+            print >> out, '  There are %d pair interactions.' % npairs

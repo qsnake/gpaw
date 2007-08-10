@@ -1,24 +1,29 @@
 import sys
-import StringIO
-stdout, sys.stdout = sys.stdout, StringIO.StringIO()
-stderr, sys.stderr = sys.stderr, StringIO.StringIO()
-from gpaw import Calculator
-from ASE import ListOfAtoms, Atom
+class Out:
+    def write(self, x):
+        sys.__stdout__.write(x)
+        raise RuntimeError('not silent')
 
-a = 5.0
-h = 0.2
-hydrogen = ListOfAtoms([Atom('H', (a / 2, a / 2, a / 2), magmom=1)],
-                       cell=(a, a, a))
+out, err = sys.stdout, sys.stderr
+sys.stdout = sys.stderr = Out()
 
-calc = Calculator(h=h, nbands=1, kpts=(1, 1, 1), width=1e-9, spinpol=True,
-                  out=None)
-hydrogen.SetCalculator(calc)
-f = hydrogen.GetCartesianForces()
+try:
+    from gpaw import Calculator
+    from ASE import ListOfAtoms, Atom
 
-stdout, sys.stdout = sys.stdout, stdout
-sys.stdout.write(stdout.getvalue())
-assert len(stdout.getvalue()) == 0, 'stdout is not silent!'
+    a = 5.0
+    h = 0.2
+    hydrogen = ListOfAtoms([Atom('H', (a / 2, a / 2, a / 2), magmom=1)],
+                           cell=(a, a, a))
 
-stderr, sys.stderr = sys.stderr, stderr
-sys.stderr.write(stderr.getvalue())
-assert len(stderr.getvalue()) == 0, 'stderr is not silent!'
+    calc = Calculator(h=h, nbands=1, kpts=(1, 1, 1), width=1e-9, spinpol=True,
+                      txt=None)
+    hydrogen.SetCalculator(calc)
+    f = hydrogen.GetCartesianForces()
+except RuntimeError:
+    sys.stdout = out
+    sys.stderr = err
+    raise
+
+sys.stdout = out
+sys.stderr = err

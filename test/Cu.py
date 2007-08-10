@@ -18,8 +18,8 @@ calc = Calculator(h=0.2, lmax=0)
 Cu.SetCalculator(calc)
 Cu.GetPotentialEnergy()
 
-e_4s_major = calc.paw.kpt_u[0].eps_n[5]
-e_3d_minor = calc.paw.kpt_u[1].eps_n[4]
+e_4s_major = calc.kpt_u[0].eps_n[5]
+e_3d_minor = calc.kpt_u[1].eps_n[4]
 
 #
 # The reference values are from:

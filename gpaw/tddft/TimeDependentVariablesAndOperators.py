@@ -75,8 +75,8 @@ class TimeDependentHamiltonian:
         =========== ==========================================================
 
         """
-        kpt.apply_h( self.pt_nuclei, self.hamiltonian.kin, \
-                         self.hamiltonian.vt_sG, psit, hpsit )
+        kpt.apply_hamiltonian(self.hamiltonian,
+                              psit[None, ...], hpsit[None, ...])
 
 
 
@@ -126,7 +126,7 @@ class TimeDependentOverlap:
         =========== ==========================================================
 
         """
-        kpt.apply_s( self.pt_nuclei, psit, spsit )
+        kpt.apply_overlap(self.pt_nuclei, psit[None, ...], spsit[None, ...])
         
 
 

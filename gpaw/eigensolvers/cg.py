@@ -10,7 +10,7 @@ from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import unpack
-from gpaw.eigensolvers import Eigensolver
+from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.mpi import run
 
 
@@ -28,13 +28,15 @@ class CG(Eigensolver):
     * Conjugate gradient steps
     """
 
-    def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
+    def __init__(self, paw):
 
-        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode, nbands)
+        Eigensolver.__init__(self, paw)
 
+        self.tolerance = paw.tolerance
+        
         # Allocate arrays
-        self.phi_G = gd.empty(typecode=typecode)
-        self.phi_old_G = gd.empty(typecode=typecode)
+        self.phi_G = self.gd.empty(typecode=self.typecode)
+        self.phi_old_G = self.gd.empty(typecode=self.typecode)
 
         # self.f = open('CG_debug','w')
 
@@ -57,7 +59,7 @@ class CG(Eigensolver):
 
         run([nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
              for nucleus in hamiltonian.pt_nuclei])
-        self.timer.stop()
+        self.timer.stop('Residuals')        
 
         self.timer.start('CG')
         vt_G = hamiltonian.vt_sG[kpt.s]
@@ -68,7 +70,7 @@ class CG(Eigensolver):
             Htpsit_G = self.Htpsit_nG[n]
             gamma_old = 1.0
             phi_old_G[:] = 0.0
-            error = self.comm.sum(real(num.vdot(R_G, R_G)))
+            error = real(num.vdot(R_G, R_G))
             for nit in range(niter):
                 if error < self.tolerance:
                     # print >> self.f, "cg:iters", n, nit
@@ -100,7 +102,7 @@ class CG(Eigensolver):
                         P2_i = nucleus.P2_i
                         P_i = nucleus.P_uni[kpt.u, nn]
                         overlap += num.vdot(P_i, inner(nucleus.setup.O_ii, P2_i))
-                    overlap = self.comm.sum(overlap)
+                    self.comm.sum(overlap)
                     # phi_G -= overlap * kpt.psit_nG[nn]
                     axpy(-overlap, kpt.psit_nG[nn], phi_G)
                     for nucleus in hamiltonian.my_nuclei:
@@ -109,11 +111,11 @@ class CG(Eigensolver):
                 norm = num.vdot(phi_G, phi_G) * self.gd.dv
                 for nucleus in hamiltonian.my_nuclei:
                     norm += num.vdot(nucleus.P2_i, inner(nucleus.setup.O_ii, nucleus.P2_i))
-                norm = self.comm.sum(norm)
+                self.comm.sum(norm)
                 phi_G /= sqrt(real(norm))
                 for nucleus in hamiltonian.my_nuclei:
                     nucleus.P2_i /= sqrt(real(norm))
-                self.timer.stop()
+                self.timer.stop('CG: orthonormalize')
                     
                 #find optimum linear combination of psit_G and phi_G
                 a = kpt.eps_n[n]
@@ -129,8 +131,8 @@ class CG(Eigensolver):
                                                 cc(P_i)))
                     c += num.dot(P2_i, num.dot(unpack(nucleus.H_sp[kpt.s]),
                                                 cc(P2_i)))
-                b = self.comm.sum(b)
-                c = self.comm.sum(c)
+                self.comm.sum(b)
+                self.comm.sum(c)
 
                 theta = 0.5*atan2(real(2*b), real(a-c))
                 enew = real(a*cos(theta)**2 + c*sin(theta)**2 + b*sin(2.0*theta))
@@ -162,7 +164,7 @@ class CG(Eigensolver):
                             nucleus.pt_i.add(R_G, coefs_i, kpt.k, communicate=True)
                         else:
                             nucleus.pt_i.add(R_G, None, kpt.k, communicate=True)
-                    error_new = self.comm.sum(real(num.vdot(R_G, R_G)))
+                    error_new = real(num.vdot(R_G, R_G))
                     if error_new / error < 0.30:
                         # print >> self.f, "cg:iters", n, nit+1
                         break
@@ -177,6 +179,6 @@ class CG(Eigensolver):
             # if nit == 3:
             #   print >> self.f, "cg:iters", n, nit+1
                 
-        self.timer.stop()
+        self.timer.stop('CG')
         return total_error
         

@@ -12,13 +12,12 @@ calc = Calculator(gpts=(2*n, 2*n, 1*n),
                   nbands=1*8,
                   kpts=(1, 1, 4),
                   tolerance=1e-11)
-##                  out=None)
 bulk.SetCalculator(calc)
 e2 = bulk.GetPotentialEnergy()
 
 bulk = bulk.Repeat((1, 1, 2))
 bulk.SetCalculator(calc)
-calc.Set(nbands=16, kpts=(1, 1, 2), gpts=(2*n, 2*n, 2*n))
+calc.set(nbands=16, kpts=(1, 1, 2), gpts=(2*n, 2*n, 2*n))
 e4 = bulk.GetPotentialEnergy()
 
 equal(e4 / 2, e2, 48e-6)

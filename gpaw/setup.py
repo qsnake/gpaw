@@ -16,10 +16,9 @@ from gpaw.utilities import unpack, erf, fac, hartree
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.kli import XCKLICorrection, XCGLLBCorrection
+from LinearAlgebra import inverse as inv
 
-
-def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
-                 type='paw'):
+def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw'):
     if type == 'ae':
         from gpaw.ae import AllElectronSetup
         return AllElectronSetup(symbol, xcfunc, nspins)
@@ -32,17 +31,14 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins, semicore=True)
 
-    return Setup(symbol, xcfunc, lmax, nspins, softgauss, type)
+    return Setup(symbol, xcfunc, lmax, nspins, type)
 
 
 class Setup:
-    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, softgauss=False,
-                 type='paw'):
+    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, type='paw'):
         xcname = xcfunc.get_name()
         self.xcname = xcname
-        self.softgauss = softgauss
-
-        assert not softgauss
+        self.softgauss = False
 
         self.type = type
         if type != 'paw':
@@ -87,6 +83,34 @@ class Setup:
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
 
+        # compute inverse overlap coefficients B_ii
+        B_jj = num.zeros((len(l_j),len(l_j)), num.Float)
+        for i1 in range(len(l_j)):
+            for i2 in range(len(l_j)):
+                B_jj[i1][i2] = num.dot( r_g**2 * dr_g, pt_jg[i1] * pt_jg[i2] )
+
+        def delta(i,j):
+            #assert type(i) == int
+            #assert type(j) == int
+            if i == j: return 1
+            else: return 0
+
+        size=0
+        for l1 in l_j:
+            for m1 in range(2 * l1 + 1):
+                    size +=1
+        self.B_ii = num.zeros((size,size), num.Float)
+            
+        i1=0
+        for n1, l1 in enumerate(l_j):
+            for m1 in range(2 * l1 + 1):
+                i2=0
+                for n2, l2 in enumerate(l_j):
+                    for m2 in range(2 * l2 + 1):
+                        self.B_ii[i1][i2] = delta(l1,l2)*delta(m1,m2)*B_jj[n1][n2]
+                        i2 +=1
+                i1 +=1
+        
         # Find Fourier-filter cutoff radius:
         g = ng - 1
         while pt_jg[0][g] == 0.0:
@@ -200,6 +224,10 @@ class Setup:
         nc_g = nc_g[:gcut2].copy()
         nct_g = nct_g[:gcut2].copy()
         vbar_g = vbar_g[:gcut2].copy()
+
+
+
+
 
         if xcname == 'GLLB':
             core_response = core_response[:gcut2].copy()
@@ -360,7 +388,7 @@ class Setup:
                 rgd, [(j, l_j[j]) for j in range(nj)],
                 2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins)
 
-        if softgauss:
+        if self.softgauss:
             rcutsoft = rcut2####### + 1.4
         else:
             rcutsoft = rcut2
@@ -389,7 +417,7 @@ class Setup:
 ##        r = 0.04 * rcutsoft * num.arange(26, typecode=num.Float)
         alpha = rcgauss**-2
         self.alpha = alpha
-        if softgauss:
+        if self.softgauss:
             assert lmax <= 2
             alpha2 = 22.0 / rcutsoft**2
             alpha2 = 15.0 / rcutsoft**2
@@ -442,37 +470,40 @@ class Setup:
         self.rcutcomp = sqrt(10) * rcgauss
         self.rcut_j = rcut_j
 
-    def print_info(self, out):
+
+        # compute inverse overlap coefficients C_ii
+        self.C_ii = -num.dot(self.O_ii, inv(num.identity(size) + num.dot(self.B_ii, self.O_ii)))
+
+    def print_info(self, text):
         if self.fcorehole == 0.0:
-            print >> out, self.symbol + '-setup:'
+            text(self.symbol + '-setup:')
         else:
-            print >> out, '%s-setup (%.1f core hole):' % (self.symbol,
-                                                          self.fcorehole)
-        print >> out, '  name   :', names[self.Z]
-        print >> out, '  Z      :', self.Z
-        print >> out, '  valence:', self.Nv
+            text('%s-setup (%.1f core hole):' % (self.symbol, self.fcorehole))
+        text('  name   :', names[self.Z])
+        text('  Z      :', self.Z)
+        text('  valence:', self.Nv)
         if self.fcorehole == 0.0:
-            print >> out, '  core   : %d' % self.Nc
+            text('  core   : %d' % self.Nc)
         else:
-            print >> out, '  core   : %.1f' % self.Nc
-        print >> out, '  charge :', self.Z - self.Nv - self.Nc
-        print >> out, '  file   :', self.filename
-        print >> out, ('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
-                       ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
-                                     self.rcore, self.lmax))
-        print >> out, '  valence states:'
+            text('  core   : %.1f' % self.Nc)
+        text('  charge :', self.Z - self.Nv - self.Nc)
+        text('  file   :', self.filename)
+        text(('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
+              ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
+                            self.rcore, self.lmax)))
+        text('  valence states:')
         j = 0
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if n > 0:
                 f = '(%d)' % f
-                print >> out, '    %d%s%-4s %7.3f Ha   %4.2f Bohr' % (
-                    n, 'spdf'[l], f, eps, self.rcut_j[j])
+                text('    %d%s%-4s %7.3f Ha   %4.2f Bohr' % (
+                    n, 'spdf'[l], f, eps, self.rcut_j[j]))
             else:
-                print >> out, '    *%s     %7.3f Ha   %4.2f Bohr' % (
-                    'spdf'[l], eps, self.rcut_j[j])
+                text('    *%s     %7.3f Ha   %4.2f Bohr' % (
+                    'spdf'[l], eps, self.rcut_j[j]))
             j += 1
 
-        print >> out
+        text()
 
     def calculate_rotations(self, R_slmm):
         nsym = len(R_slmm)

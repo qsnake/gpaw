@@ -200,7 +200,7 @@ def check_unit_cell(cell):
         raise RuntimeError('Unit cell not orthorhombic')
     
 
-class DownTheDrain:
+class _DownTheDrain:
     """Definition of a stream that throws away all output."""
     
     def write(self, string):
@@ -209,6 +209,7 @@ class DownTheDrain:
     def flush(self):
         pass
 
+devnull = _DownTheDrain()
 
 """
 class OutputFilter:

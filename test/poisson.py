@@ -1,5 +1,5 @@
 from math import sqrt
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 import Numeric as num
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain

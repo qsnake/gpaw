@@ -6,7 +6,7 @@ from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.utilities import equal
 from gpaw.mpi import world
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 
 def norm(a):
     return num.sqrt(num.sum(a.flat**2)) / len(a.flat)

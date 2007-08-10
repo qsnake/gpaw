@@ -40,7 +40,8 @@ parser.add_option('-p', '--parallel',
 opt, tests = parser.parse_args()
 
 if len(tests) == 0:
-    tests = ['setups.py',  'pbe-pw91.py',  'xcfunc.py',  'gradient.py',
+    tests = ['cg2.py',
+             'setups.py',  'pbe-pw91.py',  'xcfunc.py',  'gradient.py',
              'xc.py',  'gp2.py',  'Gauss.py',  'non-periodic.py',  'lf.py',
              'denom_int.py',  'transformations.py',  'XC2.py',  'poisson.py',
              'XC2Spin.py',  'integral4.py',  'd2Excdn2.py',
@@ -120,8 +121,8 @@ ts = unittest.TestSuite()
 for test in tests:
     ts.addTest(ScriptTestCase(filename=test))
 
-from gpaw.utilities import DownTheDrain
-sys.stdout = DownTheDrain()
+from gpaw.utilities import devnull
+sys.stdout = devnull
 
 ttr = unittest.TextTestRunner(verbosity=opt.verbosity)
 result = ttr.run(ts)

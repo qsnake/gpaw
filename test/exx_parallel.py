@@ -9,9 +9,9 @@ loa = ListOfAtoms([Atom('C', [a / 2 + .3, a / 2 -.1, a / 2], magmom=2)],
 p = []
 exx = []
 i = 0
-for hosts in (1, 4, ):
+for hosts in [1, 4]:
     calc = Calculator(tolerance=1e-6, hosts=hosts,
-                      out='exx_parallel.txt', softgauss=False)
+                      txt='exx_parallel.txt')
 
     loa.SetCalculator(calc)
     p.append(loa.GetPotentialEnergy())

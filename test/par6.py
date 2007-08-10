@@ -2,6 +2,7 @@
 import sys
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
+from gpaw.mpi import rank
 
 a = 4.0
 
@@ -11,11 +12,11 @@ def f(n, magmom, periodic, dd):
                     cell=(a, a, a))
     
     H.SetCalculator(Calculator(nbands=1, gpts=(n, n, n),
-                               out=None, maxiter=1,
-                               parsize=dd, hosts=6))
+                               txt=None, tolerance=0.001,
+                               parsize=dd))
     e = H.GetPotentialEnergy()
-    H.GetCalculator().Write('H-par.gpw')
-    H = Calculator.ReadAtoms('H-par.gpw', out=None)
+    H.GetCalculator().write('H-par.gpw')
+    H = Calculator('H-par.gpw', txt=None).get_atoms()
     assert e == H.GetPotentialEnergy()
     return e
     
@@ -30,14 +31,18 @@ for n in [24]:
             else:
                 d = [(1,1,3),(1,3,1),(3,1,1)]
             for dd in d:
-                print n, magmom, periodic, dd, np,
-                sys.stdout.flush()
+                if rank == 0:
+                    print n, magmom, periodic, dd, np,
+                    sys.stdout.flush()
                 e0 = f(n, magmom, periodic, dd)
-                print e0,
+                if rank == 0:
+                    print e0,
                 if e[np] is not None:
                     de = e0 - e[np]
-                    print de
+                    if rank == 0:
+                        print de
                     assert abs(de) < 0.0008
                 else:
-                    print
+                    if rank == 0:
+                        print
                 e[np] = e0

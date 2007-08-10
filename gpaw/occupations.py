@@ -12,12 +12,15 @@ class Dummy:
         self.set_fermi_level(None)
         self.kT = 0
         self.fixmom = False
+        self.magmom = 0.0
+        self.niter = -1
+        self.S = 0.0
         
     def set_communicator(self, kpt_comm):
         self.kpt_comm = kpt_comm
         
     def calculate(self, nspins, kpts):
-        return 0, 0.0, 0.0, 0.0
+        return
 
     def set_fermi_level(self, epsF):
         self.epsF = epsF
@@ -29,12 +32,12 @@ class Dummy:
         self.fixmom = True
         self.M = M
 
-    def get_band_energy(self, kpt_u):
+    def calculate_band_energy(self, kpt_u):
         # Sum up all eigenvalues weighted with occupation numbers:
         Eband = 0.0
         for kpt in kpt_u:
             Eband += num.dot(kpt.f_n, kpt.eps_n)    
-        return self.kpt_comm.sum(Eband)
+        self.Eband = self.kpt_comm.sum(Eband)
 
 
 class ZeroKelvin(Dummy):
@@ -48,7 +51,7 @@ class ZeroKelvin(Dummy):
             f_n[b:] = 0.0
             if 2 * b < self.ne:
                 f_n[b] = self.ne - 2*b
-            magmom = 0.0
+            self.magmom = 0.0
         elif self.fixmom:
             M = int(round(self.M))
             ne_s = [(self.ne + M) / 2, (self.ne - M) / 2]
@@ -56,7 +59,7 @@ class ZeroKelvin(Dummy):
                 b = ne_s[kpt.s]
                 kpt.f_n[:b] = 1.0
                 kpt.f_n[b:] = 0.0
-            magmom = M
+            self.magmom = M
         else:
             nb = len(kpts[0].eps_n)
             if self.kpt_comm.size>1: 
@@ -85,12 +88,12 @@ class ZeroKelvin(Dummy):
             fb_n[:mb] = 1.0
             fa_n[ma:] = 0.0
             fb_n[mb:] = 0.0
-            magmom = ma - mb
+            self.magmom = ma - mb
             # copy back information
             if self.kpt_comm.size>1: 
                 kpts[0].f_n = f_n[self.kpt_comm.rank]
 
-        return -1, magmom, 0.0, self.get_band_energy(kpts)
+        self.calculate_band_energy(kpts)
 
 
 class FermiDirac(Dummy):
@@ -103,11 +106,11 @@ class FermiDirac(Dummy):
     def calculate(self, kpts):
         
         if self.epsF is None:
-            # Fermi level not set! Make a good guess:
+            # Fermi level not set.  Make a good guess:
             self.guess_fermi_level(kpts)
             
         # Now find the correct Fermi level:
-        niter, magmom = self.find_fermi_level(kpts)
+        self.find_fermi_level(kpts)
 
         S = 0.0
         for kpt in kpts:
@@ -122,12 +125,8 @@ class FermiDirac(Dummy):
             y -= num.log(z)
             S -= kpt.weight * num.sum(y)
 
-        S = self.kpt_comm.sum(S)
-
-        if self.nspins == 1:
-            magmom = 0.0
-
-        return niter, magmom, S * self.kT, self.get_band_energy(kpts)
+        self.S = self.kpt_comm.sum(S) * self.kT
+        self.calculate_band_energy(kpts)
 
     def guess_fermi_level(self, kpts):
         nu = len(kpts) * self.kpt_comm.size
@@ -147,7 +146,6 @@ class FermiDirac(Dummy):
         self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
         if self.fixmom:
             self.epsF = num.array([self.epsF, self.epsF])
-
 
     def find_fermi_level(self, kpts):
         """Find the Fermi level by integrating in energy until
@@ -218,7 +216,11 @@ class FermiDirac(Dummy):
             self.epsF += de
             niter += 1
 
-        return niter, magmom
+        if self.nspins == 1:
+            magmom = 0.0
+
+        self.niter = niter
+        self.magmom = magmom
 
 
 

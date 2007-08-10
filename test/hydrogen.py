@@ -1,6 +1,7 @@
+from math import log
+from ASE import ListOfAtoms, Atom
 from gpaw import Calculator
 from gpaw.utilities import equal
-from ASE import ListOfAtoms, Atom
 
 a = 4.0
 h = 0.2
@@ -11,11 +12,12 @@ calc = Calculator(h=h, nbands=1)
 hydrogen.SetCalculator(calc)
 e1 = hydrogen.GetPotentialEnergy()
 
-calc.Set(kpts=(1, 1, 1))
+calc.set(kpts=(1, 1, 1))
 e2 = hydrogen.GetPotentialEnergy()
 print e1 - e2
-equal(e1, e2, 3e-14)
+equal(e1, e2, 2e-13)
 
-calc.Set(width=0.00001)
+kT = 0.0001
+calc.set(width=kT)
 e3 = hydrogen.GetPotentialEnergy()
-equal(e1, e3, 1e-4)
+equal(e1, e3 + log(2) * kT, 2.0e-13)

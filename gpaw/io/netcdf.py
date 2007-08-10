@@ -82,6 +82,10 @@ class Reader:
     def __getitem__(self, name):
         value = getattr(self.nc, name)
         if isinstance(value, str):
+            try:
+                value = eval(value)
+            except (SyntaxError, NameError):
+                pass
             return value
         else:
             return value[0]

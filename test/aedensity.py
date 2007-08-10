@@ -8,7 +8,6 @@ from gpaw.utilities import center, equal
 h = 0.17 # gridspacing
 a = [6.5, 6.5, 7.7] # unit cell
 d = 2.3608 # experimental bond length
-gridrefinement = 2 # grid-refinement-factor for all-electron density
 
 NaCl = ListOfAtoms([Atom('Na', [0, 0, 0]),
                     Atom('Cl', [0, 0, d])],
@@ -20,10 +19,12 @@ NaCl.SetCalculator(calc)
 NaCl.GetPotentialEnergy()
 
 nt = calc.GetDensityArray()
-n = calc.GetAllElectronDensity(gridrefinement)
+gridrefinement = 2 # grid-refinement-factor for all-electron density
+n = calc.density.get_all_electron_density(gridrefinement) / calc.a0**3
 
-Zt = num.sum(nt.flat) * num.product(calc.GetGridSpacings())
-Z = num.sum(n.flat) * num.product(calc.GetGridSpacings() / gridrefinement)
+dv = num.product(calc.get_grid_spacings())
+Zt = num.sum(nt.flat) * dv
+Z = num.sum(n.flat) * dv / gridrefinement**3
 
 print 'Integral of pseudo density:', Zt
 print 'Integral of all-electron density:', Z

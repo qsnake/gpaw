@@ -50,7 +50,7 @@ class KSSingles(ExcitationList):
             return # leave the list empty
 
         self.calculator=calculator
-        paw = self.calculator.paw
+        paw = self.calculator
         self.kpt_u = paw.kpt_u
         
         # here, we need to take care of the spins also for

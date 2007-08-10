@@ -121,5 +121,5 @@ class AllElectronSetup:
     def set_functional(self, xcfunc):
         self.xcfunc = xcfunc
     
-    def print_info(self, out):
-        print >> out, 'All-electron calculation.'
+    def print_info(self, text):
+        text('All-electron calculation.')

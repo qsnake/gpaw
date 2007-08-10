@@ -10,7 +10,7 @@ from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import unpack
-from gpaw.eigensolvers import Eigensolver
+from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.mpi import run
 
 
@@ -28,15 +28,17 @@ class Davidson(Eigensolver):
     * Add preconditioned residuals to the subspace and diagonalize 
     """
 
-    def __init__(self, timer, kpt_comm, gd, kin, typecode, nbands):
+    def __init__(self, paw):
 
-        Eigensolver.__init__(self, timer, kpt_comm, gd, kin, typecode, nbands)
+        Eigensolver.__init__(self, paw)
 
         # Allocate arrays
-        self.S_nn = num.zeros((nbands, nbands), typecode)
-        self.H_2n2n = num.empty((2*nbands, 2*nbands), typecode)
-        self.S_2n2n = num.empty((2*nbands, 2*nbands), typecode)        
-        self.eps_2n = num.empty(2*nbands, num.Float)        
+        self.S_nn = num.zeros((self.nbands, self.nbands), self.typecode)
+        self.H_2n2n = num.empty((2 * self.nbands, 2 * self.nbands),
+                                self.typecode)
+        self.S_2n2n = num.empty((2 * self.nbands, 2 * self.nbands),
+                                self.typecode)        
+        self.eps_2n = num.empty(2 * self.nbands, num.Float)        
 
     def iterate_one_k_point(self, hamiltonian, kpt, niter=2):
         """Do Davidson iterations for the kpoint"""
@@ -166,7 +168,7 @@ class Davidson(Eigensolver):
                 run([nucleus.adjust_residual(R_nG, kpt.eps_n,
                                              kpt.s, kpt.u, kpt.k)
                      for nucleus in hamiltonian.pt_nuclei])
-        self.timer.stop()
+        self.timer.stop('Davidson')
         return error
 
     

@@ -6,7 +6,7 @@ import sys
 
 import Numeric as num
 
-from gpaw import debug, parallel
+from gpaw import debug
 from gpaw.utilities import is_contiguous
 import _gpaw
 
@@ -119,6 +119,9 @@ if parallel and debug:
         def wait(self, request):
             self.comm.wait(request)
 
+        def barrier(self):
+            self.comm.barrier()
+
     world = _Communicator(world)
 
 
@@ -138,7 +141,7 @@ def broadcast_string(string=None, root=MASTER, comm=world):
     return string.tostring()
 
 
-def all_gather_array(comm, a):
+def all_gather_array(comm, a): #???
     # Gather array into flat array
     shape = (comm.size,) + num.shape(a)
     all = num.zeros(shape, num.Float)
@@ -155,3 +158,13 @@ def run(iterators):
             results = [iter.next() for iter in iterators]
         except StopIteration:
             return results
+
+
+def new_communicator(ranks):
+    if len(ranks) == 1:
+        return serial_comm
+    elif len(ranks) == size:
+        return world
+    else:
+        return world.new_communicator(num.array(ranks))
+

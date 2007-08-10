@@ -26,7 +26,7 @@ if 1:
     calc = Calculator(nbands=8, h=0.20, tolerance=0.001)
     ethylene.SetCalculator(calc)
     print ethylene.GetPotentialEnergy()
-    calc.Write('ethylene.gpw')
+    calc.write('ethylene.gpw', 'all')
 
 try:
     import Scientific.IO.NetCDF
@@ -35,7 +35,7 @@ except ImportError:
 else:
     from ASE.Utilities.Wannier import Wannier
 
-    ethylene = Calculator.ReadAtoms('ethylene.gpw')
+    ethylene = Calculator('ethylene.gpw').get_atoms()
     print ethylene.GetPotentialEnergy()
     wannier = Wannier(numberofwannier=6, calculator=ethylene.GetCalculator())
     wannier.Localize()

@@ -270,8 +270,8 @@ class Nucleus:
             # Nothing to do in this domain:
             return
 
-        coefs = num.identity(len(psit_iG), psit_iG.typecode())
-        self.phit_i.add(psit_iG, coefs, k)
+        coefs_ii = num.identity(len(psit_iG), psit_iG.typecode())
+        self.phit_i.add(psit_iG, coefs_ii, k)
 
     def add_atomic_density(self, nt_sG, magmom, hund):
         if self.phit_i is None:
@@ -455,38 +455,58 @@ class Nucleus:
             for x in self.pt_i.iadd(dR_G, None, k, communicate=True):
                 yield None
 
-    def apply_hamiltonian(self, psit_G, Htpsit_G, s, k):
-        """Applies the non-local part of the Hamiltonian to the
-           wave function psit_G and adds the result to Htpsit_G"""
-        if self.in_this_domain:
-            ni = self.get_number_of_partial_waves()
-            P_i = num.zeros(ni, self.typecode)
-            self.pt_i.integrate(psit_G, P_i, k)
-        else:
-            self.pt_i.integrate(psit_G, None, k)
+    def apply_hamiltonian(self, a_nG, b_nG, s, k):
+        """Apply non-local part of Hamiltonian.
 
+        Non-local part of the Hamiltonian is applied to ``a_nG``
+        and added to ``b_nG``."""
+        
         if self.in_this_domain:
+            n = len(a_nG)
+            ni = self.get_number_of_partial_waves()
+            P_ni = num.zeros((n, ni), self.typecode)
+            self.pt_i.integrate(a_nG, P_ni, k)
             H_ii = unpack(self.H_sp[s])
-            coefs_i = (num.dot(P_i, H_ii))
-            self.pt_i.add(Htpsit_G, coefs_i, k, communicate=True)
+            coefs_ni = num.dot(P_ni, H_ii)
+            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
         else:
-            self.pt_i.add(Htpsit_G, None, k, communicate=True)
+            self.pt_i.integrate(a_nG, None, k)
+            self.pt_i.add(b_nG, None, k, communicate=True)
 
-    def apply_overlap(self, psit_G, Spsit_G, k):
-        """Applies the non-local part of the overlap operator to the
-           wave function psit_G and adds the result to Spsit_G"""
+    def apply_overlap(self, a_nG, b_nG, k):
+        """Apply non-local part of the overlap operator.
+
+        Non-local part of the overlap operator is applied to ``a_nG``
+        and added to ``b_nG``."""
+        
         if self.in_this_domain:
+            n = len(a_nG)
             ni = self.get_number_of_partial_waves()
-            P_i = num.zeros(ni, self.typecode)
-            self.pt_i.integrate(psit_G, P_i, k)
+            P_ni = num.zeros((n, ni), self.typecode)
+            self.pt_i.integrate(a_nG, P_ni, k)
+            coefs_ni = num.dot(P_ni, self.setup.O_ii)
+            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
         else:
-            self.pt_i.integrate(psit_G, None, k)
+            self.pt_i.integrate(a_nG, None, k)
+            self.pt_i.add(b_nG, None, k, communicate=True)
+
+    def apply_inverse_overlap(self, a_nG, b_nG, k):
+        """Apply non-local part of the approximative inverse overlap operator.
+
+        Non-local part of the overlap operator is applied to ``a_nG``
+        and added to ``b_nG``."""
 
         if self.in_this_domain:
-            coefs_i = (num.dot(P_i, self.setup.O_ii))
-            self.pt_i.add(Spsit_G, coefs_i, k, communicate=True)
+            n = len(a_nG)
+            ni = self.get_number_of_partial_waves()
+            P_ni = num.zeros((n, ni), self.typecode)
+            self.pt_i.integrate(a_nG, P_ni, k)
+            coefs_ni = num.dot(P_ni, self.setup.C_ii)
+            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
         else:
-            self.pt_i.add(Spsit_G, None, k, communicate=True)
+            self.pt_i.integrate(a_nG, None, k)
+            self.pt_i.add(b_nG, None, k, communicate=True)
+
 
     def symmetrize(self, D_aii, map_sa, s):
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)

@@ -13,7 +13,7 @@ import Numeric as num
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.operators import Laplace
 from gpaw.pair_potential import PairPotential
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 from gpaw.transformers import Transformer
 from gpaw.xc_functional import XC3DGrid
 from gpaw.mpi import run
@@ -41,68 +41,68 @@ class Hamiltonian:
      ========== =========================================
     """
 
-    def __init__(self, gd, finegd, xcfunc, nspins,
-                 typecode, stencils, relax,
-                 timer, my_nuclei, pt_nuclei, ghat_nuclei, nuclei,
-                 setups, vext_g):
+    def __init__(self, paw):
         """Create the Hamiltonian."""
 
-        self.nspins = nspins
-        self.gd = gd
-        self.finegd = finegd
-        self.my_nuclei = my_nuclei
-        self.pt_nuclei = pt_nuclei
-        self.ghat_nuclei = ghat_nuclei
-        self.nuclei = nuclei
-        self.timer = timer
+        self.nspins = paw.nspins
+        self.gd = paw.gd
+        self.finegd = paw.finegd
+        self.my_nuclei = paw.my_nuclei
+        self.pt_nuclei = paw.pt_nuclei
+        self.ghat_nuclei = paw.ghat_nuclei
+        self.nuclei = paw.nuclei
+        self.timer = paw.timer
 
         # Allocate arrays for potentials and densities on coarse and
         # fine grids:
-        self.vt_sG = gd.empty(nspins)
-        self.vHt_g = finegd.zeros()
-        self.vt_sg = finegd.empty(nspins)
+        self.vt_sG = self.gd.empty(self.nspins)
+        self.vHt_g = self.finegd.zeros()
+        self.vt_sg = self.finegd.empty(self.nspins)
 
         # The external potential
-        if vext_g:
+        if 0:#???vext_g:
             assert num.alltrue(vext_g.shape==finegd.get_size_of_global_array())
             self.vext_g = finegd.zeros()
             finegd.distribute(vext_g, self.vext_g)
         else:
-            self.vext_g = vext_g
+            self.vext_g = 0#???vext_g
 
+        p = paw.input_parameters
+        stencils = p['stencils']
+        
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Schrödinger equation (1, 2, ...):
         nn = stencils[0]
 
         # Kinetic energy operator:
-        self.kin = Laplace(gd, -0.5, nn, typecode)
+        self.kin = Laplace(self.gd, -0.5, nn, paw.typecode)
 
         # Number of neighbor grid points used for interpolation (1, 2,
         # or 3):
         nn = stencils[2]
 
         # Restrictor function for the potential:
-        self.restrict = Transformer(finegd, gd, nn).apply
+        self.restrict = Transformer(self.finegd, self.gd, nn).apply
 
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Poisson equation (1, 2, ...):
         self.poisson_stencil = nn = stencils[1]
 
         # Solver for the Poisson equation:
-        self.poisson = PoissonSolver(finegd, nn, relax)
+        self.poisson = PoissonSolver(self.finegd, nn, p['poissonsolver'])
 
         # Pair potential for electrostatic interacitons:
-        self.pairpot = PairPotential(setups)
+        self.pairpot = PairPotential(paw.setups)
 
-        self.npoisson = 0
+        self.npoisson = 0 #???
 
         # Exchange-correlation functional object:
-        self.xc = XC3DGrid(xcfunc, finegd, self.nspins)
+        self.xc = XC3DGrid(paw.xcfunc, self.finegd, self.nspins)
 
     def update(self, density):
         """Calculate effective potential.
 
-        The XC-potential and the Hartree potentials are evaluated on
+        The XC-potential and the Hartree potential are evaluated on
         the fine grid, and the sum is then restricted to the coarse
         grid."""
 
@@ -142,7 +142,7 @@ class Hamiltonian:
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, density.rhot_g,
                                            charge=-density.charge)
-        self.timer.stop()
+        self.timer.stop('Poisson')
 
         Epot += 0.5 * num.vdot(self.vHt_g, density.rhot_g) * self.finegd.dv
         Ekin = 0.0
@@ -175,14 +175,13 @@ class Hamiltonian:
             Eext += v
             Exc += x
 
-        self.timer.stop()
+        self.timer.stop('Atomic Hamiltonians')
 
         comm = self.gd.comm
-        Ekin = comm.sum(Ekin)
-        Epot = comm.sum(Epot)
-        Ebar = comm.sum(Ebar)
-        Eext = comm.sum(Eext)
-        Exc = comm.sum(Exc)
+        self.Ekin = comm.sum(Ekin)
+        self.Epot = comm.sum(Epot)
+        self.Ebar = comm.sum(Ebar)
+        self.Eext = comm.sum(Eext)
+        self.Exc = comm.sum(Exc)
 
-        self.timer.stop()
-        return Ekin, Epot, Ebar, Eext, Exc
+        self.timer.stop('Hamiltonian')

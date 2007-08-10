@@ -6,7 +6,7 @@ MASTER = mpi.MASTER
 
 from ASE.Units import Convert
 from gpaw import debug
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
@@ -103,7 +103,7 @@ class LrTDDFT(ExcitationList):
         if not changed: return
 
         self.calculator = calculator
-        self.out = calculator.out
+        self.out = calculator.txt
         self.nspins = nspins
         self.eps = eps
         self.istart = istart

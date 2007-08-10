@@ -2,7 +2,7 @@ import Numeric as num
 from math import pi
 from FFT import fftnd
 from gpaw.utilities.complex import real
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.tools import construct_reciprocal
 
@@ -24,7 +24,7 @@ class Coulomb:
             'use either real, recip_gauss, or recip_ewald'
 
         if method.startswith('recip'):
-            if self.gd.domain.comm.size > 1:
+            if self.gd.comm.size > 1:
                 raise RuntimeError('Cannot do parallel FFT, ' +\
                                    'use method=\'real\'')
             if not hasattr(self, 'k2'):

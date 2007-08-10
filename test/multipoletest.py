@@ -16,7 +16,7 @@ a_Lg = gd.new_array(9)
 nspins = 2
 xcfunc = XCFunctional('LDA', nspins)
 for soft in [False]:
-    s = Setup('Cu', xcfunc, lmax=2, softgauss=soft)
+    s = Setup('Cu', xcfunc, lmax=2)
     ghat_l = s.ghat_l
     ghat_Lg = create_localized_functions(ghat_l, gd, (0.54321, 0.5432, 0.543))
     a_Lg[:] = 0.0

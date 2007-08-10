@@ -23,11 +23,11 @@ class ExcitationList(list):
 
         self.calculator = calculator
         if calculator is not None:
-            self.out = calculator.out
+            self.out = calculator.txt
             self.Ha = calculator.Ha
             # initialize the nuclei if not ready
-            if not calculator.paw.nuclei[0].ready:
-                calculator.paw.set_positions()
+            if not calculator.nuclei[0].ready:
+                calculator.set_positions()
         else:
             if mpi.rank != MASTER: self.out = DownTheDrain()
             else: self.out = sys.stdout

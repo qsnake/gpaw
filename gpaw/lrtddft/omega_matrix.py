@@ -7,7 +7,7 @@ MASTER = mpi.MASTER
 
 from gpaw import debug
 import gpaw.mpi as mpi
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.utilities import pack,pack2,packed_index
@@ -41,8 +41,8 @@ class OmegaMatrix:
             self.out = out
             return None
 
-        self.paw = calculator.paw
-        if out is None: out = calculator.out
+        self.paw = calculator
+        if out is None: out = calculator.txt
         self.out = out
         self.fullkss = kss
 
@@ -77,7 +77,7 @@ class OmegaMatrix:
         if rpa is None:
             self.paw.timer.start('Omega RPA')
             rpa = self.get_rpa()
-            self.paw.timer.stop()
+            self.paw.timer.stop('Omega RPA')
         Om = rpa
 ##        print ">> Om from rpa=\n",Om
 
@@ -181,7 +181,7 @@ class OmegaMatrix:
                                  two_phi_integrals(D_sp)
                     nucleus.I_sp /= 2.*ns
                     
-            timer.stop()
+            timer.stop('init')
             t0 = timer.gettime('init')
             timer.start(ij)
             
@@ -272,7 +272,7 @@ class OmegaMatrix:
                 if ij != kq:
                     Om[kq,ij] = Om[ij,kq]
 
-            timer.stop()
+            timer.stop(ij)
             timer.write()
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
@@ -281,7 +281,7 @@ class OmegaMatrix:
                       self.timestring(t0*(nij-ij-1)+t)
 
 ##        print ">> full Om=\n",Om
-        self.paw.timer.stop()
+        self.paw.timer.stop('Omega XC')
         return Om
 
     def get_rpa(self):
@@ -309,15 +309,15 @@ class OmegaMatrix:
             # smooth density including compensation charges
             timer2.start('GetPairDensityAndCompensationCharges')
             rhot_g = kss[ij].GetPairDensityAndCompensationCharges()
-            timer2.stop()
+            timer2.stop('GetPairDensityAndCompensationCharges')
             
             # integrate with 1/|r_1-r_2|
-            timer2.start('poisson')
+            timer2.start('poisson') 
             phit_g = num.zeros(rhot_g.shape,rhot_g.typecode())
             poisson.solve(phit_g,rhot_g,charge=None)
-            timer2.stop()
+            timer2.stop('poisson')
 
-            timer.stop()
+            timer.stop('init')
             t0 = timer.gettime('init')
             timer.start(ij)
             
@@ -326,7 +326,7 @@ class OmegaMatrix:
                     # smooth density including compensation charges
                     timer2.start('kq GetPairDensityAndCompensationCharges')
                     rhot_g = kss[kq].GetPairDensityAndCompensationCharges()
-                    timer2.stop()
+                    timer2.stop('kq GetPairDensityAndCompensationCharges')
 ##                     timer2.start('kq GetPairDensityAndCompensationCharges2')
 ##                     rhot_G = kss[kq].GetPairDensityAndCompensationCharges2()
 ##                     timer2.stop()
@@ -335,7 +335,7 @@ class OmegaMatrix:
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
                 Om[ij,kq]= pre * finegd.integrate(rhot_g*phit_g)
-                timer2.stop()
+                timer2.stop('integrate')
 
 ##                 # Add atomic corrections
 ##                 timer2.start('integrate corrections')
@@ -383,7 +383,7 @@ class OmegaMatrix:
                     #   prst
                     Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
 ##                print "Ia,Ia2,diff=",Ia,Ia2,Ia-Ia2
-                timer2.stop()
+                timer2.stop('integrate corrections 2')
                 
                 Om[ij,kq] += pre * comm.sum(Ia)
                     
@@ -392,7 +392,7 @@ class OmegaMatrix:
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
-            timer.stop()
+            timer.stop(ij)
 ##            timer2.write()
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations

@@ -24,42 +24,39 @@ def open(filename, mode='r'):
         raise ValueError("Illegal mode!  Use 'r' or 'w'.")
 
 
-def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
-    paw.get_cartesian_forces(silent=True)
-    
+def write(paw, filename, mode):
     if mpi.rank == MASTER:
         w = open(filename, 'w')
 
         w['history'] = 'GPAW restart file'
-        w['version'] = '0.3'
+        w['version'] = '0.4'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
+
+        pos_ac, Z_a, cell_cc, pbc_c = paw.last_atomic_configuration
+        tag_a, magmom_a = paw.extra_list_of_atoms_stuff
         
-        w.dimension('natoms', len(paw.nuclei))
+        w.dimension('natoms', paw.natoms)
         w.dimension('3', 3)
 
-        w.add('AtomicNumbers', ('natoms',),
-              [nucleus.setup.Z for nucleus in paw.nuclei], units=(0, 0))
-        w.add('CartesianPositions', ('natoms', '3'), pos_ac,
-              units=(1, 0))
+        w.add('AtomicNumbers', ('natoms',), Z_a, units=(0, 0))
+        w.add('CartesianPositions', ('natoms', '3'), pos_ac, units=(1, 0))
         w.add('MagneticMoments', ('natoms',), magmom_a, units=(0, 0))
         w.add('Tags', ('natoms',), tag_a, units=(0, 0))
-        w.add('BoundaryConditions', ('3',), paw.domain.periodic_c,
-              units=(0, 0))
-        cell_cc = num.zeros((3, 3), num.Float)
-        cell_cc.flat[::4] = paw.domain.cell_c  # fill in the diagonal
+        w.add('BoundaryConditions', ('3',), pbc_c, units=(0, 0))
         w.add('UnitCell', ('3', '3'), cell_cc, units=(1, 0))
 
         w.add('PotentialEnergy', (), paw.Etot + 0.5 * paw.S,
               units=(0, 1))
-        w.add('CartesianForces', ('natoms', '3'), paw.F_ac, units=(-1, 1))
+        if paw.F_ac is not None:
+            w.add('CartesianForces', ('natoms', '3'), paw.F_ac, units=(-1, 1))
         
         # Write the k-points:
         w.dimension('nbzkpts', len(paw.bzk_kc))
         w.dimension('nibzkpts', paw.nkpts)
         w.add('BZKPoints', ('nbzkpts', '3'), paw.bzk_kc)
         w.add('IBZKPoints', ('nibzkpts', '3'), paw.ibzk_kc)
-        w.add('IBZKPointWeights', ('nibzkpts',), paw.weights_k)
+        w.add('IBZKPointWeights', ('nibzkpts',), paw.weight_k)
 
         # Create dimensions for varioius netCDF variables:
         ng = paw.gd.get_size_of_global_array()
@@ -82,22 +79,26 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
         w.dimension('nproj', nproj)
         w.dimension('nadm', nadm)
 
+        p = paw.input_parameters
         # Write various parameters:
+        (w['KohnShamStencil'],
+         w['PoissonStencil'],
+         w['InterpolationStencil']) = p['stencils']
         w['XCFunctional'] = paw.hamiltonian.xc.xcfunc.get_name()
-        w['UseSymmetry'] = paw.usesymm
+        w['Charge'] = p['charge']
+        w['FixMagneticMoment'] = paw.fixmom
+        w['UseSymmetry'] = p['usesymm']
+        w['ConvergeEmptyStates'] = p['convergeall']
+        w['Converged'] = paw.converged
         w['FermiWidth'] = paw.occupation.kT
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
         w['MixMetric'] = paw.density.mixer.x
         w['MaximumAngularMomentum'] = paw.nuclei[0].setup.lmax
         w['SoftGauss'] = paw.nuclei[0].setup.softgauss
-        w['FixDensity'] = paw.density.fixdensity
-        try:
-            w['Tolerance'] = paw.eigensolver.tolerance
-        except AttributeError:
-            w['Tolerance'] = paw.eigensolver[2]
+        w['FixDensity'] = paw.fixdensity
+        w['Tolerance'] = paw.tolerance
         w['Ekin'] = paw.Ekin
-        w['Ekin0'] = paw.Ekin0
         w['Epot'] = paw.Epot
         w['Ebar'] = paw.Ebar
         w['Eext'] = paw.Eext        
@@ -115,6 +116,7 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
                 key += '(%s)' % setup.type
             w[key] = setup.fingerprint
 
+        setup_types = p['setups']
         if isinstance(setup_types, str):
             setup_types = {None: setup_types}
         w['SetupTypes'] = repr(setup_types)
@@ -146,27 +148,34 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
         for nucleus in paw.my_nuclei:
             mpi.world.send(nucleus.P_uni, MASTER, 300)
 
-    # Write atomic density matrices:
+    # Write atomic density matrices and non-local part of hamiltonian:
     if mpi.rank == MASTER:
         all_D_sp = num.empty((paw.nspins, nadm), num.Float)
+        all_H_sp = num.empty((paw.nspins, nadm), num.Float)
         q1 = 0
         for nucleus in paw.nuclei:
             ni = nucleus.get_number_of_partial_waves()
             np = ni * (ni + 1) / 2
             if nucleus.in_this_domain:
                 D_sp = nucleus.D_sp
+                H_sp = nucleus.H_sp
             else:
                 D_sp = num.empty((paw.nspins, np), num.Float)
                 paw.domain.comm.receive(D_sp, nucleus.rank, 207)
+                H_sp = num.empty((paw.nspins, np), num.Float)
+                paw.domain.comm.receive(H_sp, nucleus.rank, 2071)
             q2 = q1 + np
             all_D_sp[:, q1:q1+np] = D_sp
+            all_H_sp[:, q1:q1+np] = H_sp
             q1 = q2
         assert q2 == nadm
         w.add('AtomicDensityMatrices', ('nspins', 'nadm'), all_D_sp)
+        w.add('NonLocalPartOfHamiltonian', ('nspins', 'nadm'), all_H_sp)
         
     elif paw.kpt_comm.rank == MASTER:
         for nucleus in paw.my_nuclei:
             paw.domain.comm.send(nucleus.D_sp, MASTER, 207)
+            paw.domain.comm.send(nucleus.H_sp, MASTER, 2071)
 
     # Write the eigenvalues:
     if mpi.rank == MASTER:
@@ -201,16 +210,25 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
         for kpt in paw.kpt_u:
             paw.kpt_comm.send(kpt.f_n, MASTER, 4300)
 
-    # Write the pseudodensity on the coarse grid
+    # Write the pseudodensity on the coarse grid:
     if mpi.rank == MASTER:
         w.add('PseudoElectronDensity',
               ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
-
     if paw.kpt_comm.rank == MASTER:
         for s in range(paw.nspins):
             nt_sG = paw.gd.collect(paw.density.nt_sG[s])
             if mpi.rank == MASTER:
                 w.fill(nt_sG)
+
+    # Write the pseudpotential on the coarse grid:
+    if mpi.rank == MASTER:
+        w.add('PseudoPotential',
+              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
+    if paw.kpt_comm.rank == MASTER:
+        for s in range(paw.nspins):
+            vt_sG = paw.gd.collect(paw.hamiltonian.vt_sG[s])
+            if mpi.rank == MASTER:
+                w.fill(vt_sG)
 
     if mode == 'all':
         # Write the wave functions:
@@ -231,9 +249,13 @@ def write(paw, filename, pos_ac, magmom_a, tag_a, mode, setup_types):
         # written to disk:
         w.close()
 
+    # We don't want the slaves to start reading before the master has
+    # finished writing:
+    mpi.world.barrier()
 
-def read(paw, filename):
-    r = open(filename, 'r')
+
+def read(paw, reader):
+    r = reader
 
     version = r['version']
     assert version >= 0.3
@@ -250,23 +272,28 @@ def read(paw, filename):
             paw.warn('Setup for %s (%s) not compatible with restart file.' %
                      (setup.symbol, setup.filename))
             
-    # Read pseudoelectron density on the coarse grid and
-    # distribute out to nodes
+    # Read pseudoelectron density pseudo potential on the coarse grid
+    # and distribute out to nodes:
     for s in range(paw.nspins): 
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
                           paw.density.nt_sG[s])
+    for s in range(paw.nspins): 
+        paw.gd.distribute(r.get('PseudoPotential', s),
+                          paw.hamiltonian.vt_sG[s])
 
     # Transfer the density to the fine grid:
     paw.density.interpolate_pseudo_density()
 
-    # Read atomic density matrices:
+    # Read atomic density matrices and non-local part of hamiltonian:
     D_sp = r.get('AtomicDensityMatrices')
+    H_sp = r.get('NonLocalPartOfHamiltonian')
     p1 = 0
     for nucleus in paw.nuclei:
         ni = nucleus.get_number_of_partial_waves()
         p2 = p1 + ni * (ni + 1) / 2
         if nucleus.in_this_domain:
             nucleus.D_sp[:] = D_sp[:, p1:p2]
+            nucleus.H_sp[:] = H_sp[:, p1:p2]
         p1 = p2
 
     paw.Ekin = r['Ekin']
@@ -288,7 +315,6 @@ def read(paw, filename):
 
 
     # Wave functions and eigenvalues:
-    wf = False
     nkpts = len(r.get('IBZKPoints'))
     nbands = len(r.get('Eigenvalues', 0, 0))
 
@@ -302,8 +328,8 @@ def read(paw, filename):
             kpt.f_n[:] = r.get('OccupationNumbers', s, k)
         
         if r.has_array('PseudoWaveFunctions'):
-            wf = True
             if mpi.parallel:
+                wait
                 # Slice of the global array for this domain:
                 i = [slice(b - 1 + p, e - 1 + p) for b, e, p in
                      zip(paw.gd.beg_c, paw.gd.end_c, paw.gd.domain.periodic_c)]
@@ -331,4 +357,8 @@ def read(paw, filename):
                     nucleus.P_uni[u, :nbands] = P_ni[:, i1:i2]
                 i1 = i2
 
-    return wf
+    # Get the forces from the old calculation:
+    if r.has_array('CartesianForces'):
+        paw.F_ac = r.get('CartesianForces')
+
+    #r.close()

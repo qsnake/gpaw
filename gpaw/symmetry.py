@@ -172,10 +172,10 @@ class Symmetry:
             a += gd.swap_axes(d, swap)
         a /= len(self.symmetries)
 
-    def print_symmetries(self, out):
+    def print_symmetries(self, text):
         n = len(self.symmetries)
         if n == 48:
-            print >> out, 'symmetries: all'
+            text('symmetries: all')
             return
         line1 = []
         line2 = []
@@ -186,8 +186,8 @@ class Symmetry:
         line2 = ''.join(line2)
         n1 = 0
         n2 = 64
-        print >> out, 'symmetries:'
+        text('symmetries:')
         while n1 < 4 * n:
-            out.write('%s\n%s\n' % (line1[n1:n2], line2[n1:n2]))
+            text('%s\n%s\n' % (line1[n1:n2], line2[n1:n2]), end='')
             n1 = n2
             n2 += 64
