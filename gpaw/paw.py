@@ -182,6 +182,7 @@ class PAW(PAWExtra, Output):
     .. _ASE units: https://wiki.fysik.dtu.dk/ase/Units
 
     Parameters:
+
     =============== ===================================================
     ``nvalence``    Number of valence electrons.
     ``nbands``      Number of bands.
