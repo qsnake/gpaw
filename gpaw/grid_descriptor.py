@@ -395,7 +395,7 @@ class GridDescriptor:
             Z = Int exp[i (k'-k-Ga) r] u_nk(r) u_mk'(r) dr 
 
         A gamma-point calculation correspond to the case (k=k').
-        If k<>k1 then k'-k-Ga=0. 
+        If k != k1 then k'-k-Ga=0. 
 
         **Ga** is given by::
         

@@ -60,10 +60,20 @@ if debug:
         return a
     Numeric.empty = empty
 
+build_path = join(__path__[0], '..', 'build')
+arch = '%s-%s' % (get_platform(), sys.version[0:3])
+
 # If we are running the code from the source directory, then we will
 # want to use the extension from the distutils build directory:
-sys.path.insert(0, join(__path__[0], '..', 'build',
-                        'lib.%s-%s' % (get_platform(), sys.version[0:3])))
+sys.path.insert(0, join(build_path, 'lib.' + arch))
+
+def get_gpaw_python_path():
+    paths = os.environ['PATH'].split(os.pathsep)
+    paths.insert(0, join(build_path, 'bin.' + arch))
+    for path in paths:
+        if isfile(join(path, 'gpaw-python')):
+            return path
+    raise RuntimeError('Could not find gpaw-python!')
 
 import Numeric
 from gpaw.utilities.blas import dotc
