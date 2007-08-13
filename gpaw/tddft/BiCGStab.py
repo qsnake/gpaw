@@ -67,7 +67,7 @@ class BiCGStab:
         r = num.zeros(x.shape, num.Complex)
         A.dot(-x,r)
         r += b
-
+        
         q = num.array(r, num.Complex)
         p = num.zeros(r.shape, num.Complex)
         v = num.zeros(r.shape, num.Complex)
@@ -100,9 +100,9 @@ class BiCGStab:
             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
             
             if (debug): print 'beta = ', beta
-            if (debug): print 'p = ', p
+            if (debug==2): print 'p = ', p
             
-            # v_i = A.(M^-1.p), M = 1          
+            # v_i = A.(M^-1.p), M = 1
             A.dot(p,v)
             # alpha_i = rho_i-1 / (q^H v_i)
             alpha = rho / blas.zdotc(q,v)
@@ -111,13 +111,13 @@ class BiCGStab:
             # s is denoted by r
             
             if (debug): print 'alpha = ', alpha
-            if (debug): print 'v = ', v
-            if (debug): print 's = ', r
+            if (debug==2): print 'v = ', v
+            if (debug==2): print 's = ', r
             
             if (debug): print '|s|^2 = ', blas.zdotc(r,r)
             
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
-            # next line is x_i = x_i-1 + alpha (M^-1.p_i)                
+            # next line is x_i = x_i-1 + alpha (M^-1.p_i)
             blas.zaxpy(alpha, p, x)
             
             # if ( |s|^2 < tol^2 ) done
@@ -129,7 +129,7 @@ class BiCGStab:
             # omega_i = t^H s / (t^H t) 
             omega = blas.zdotc(t,r) / blas.zdotc(t,t)
             
-            if (debug): print 't = ', t
+            if (debug==2): print 't = ', t
             if (debug): print 'omega = ', omega
             
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
@@ -139,8 +139,8 @@ class BiCGStab:
             blas.zaxpy( -omega, t, r )
             # s is no longer denoted by r
             
-            if (debug): print 'x = ', x
-            if (debug): print 'r = ', r
+            if (debug==2): print 'x = ', x
+            if (debug==2): print 'r = ', r
             
             # if ( |r|^2 < tol^2 ) done
             if ( abs(blas.zdotc(r,r)) < self.tol*self.tol ):
