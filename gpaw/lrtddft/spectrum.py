@@ -39,10 +39,15 @@ def spectrum(exlist=None,
     """
 
     # initialise the folding function
-    func=Gauss(width)
-    if folding == 'Lorentz':
+    if folding == 'Gauss':
+        func=Gauss(width)
+    elif folding == 'Lorentz':
         func=Lorentz(width)
-
+    elif folding is None:
+        func=None
+    else:
+        raise RuntimeError('unknown folding "'+folding+'"')
+    
     # output
     out = sys.stdout
     if filename != None:
@@ -54,34 +59,45 @@ def spectrum(exlist=None,
     # minimal and maximal energies
     if emin == None:
         emin=exlist.get_energies()[0]*Ha
-        emax=emin
-    for e in exlist.get_energies():
-        e*=Ha
-        if e<emin: emin=e
-        if e>emax: emax=e
-    emin -= 4*width
-    emax += 4*width
+        emin -= 4*width
+    if emax == None:
+        emax=exlist.get_energies()[-1]*Ha
+        emax += 4*width
 
     # set de to sample 4 points in the width
     if de == None:
         de = width/4.
 
-    print >> out, '# %s folded, width=%g [%s]' % (folding,width,energyunit)
-    print >> out, '# om [%s]     osz          osz x       osz y       osz z'\
-          % energyunit
+    if func is not None: # fold the spectrum
+        
+        print >> out, '# %s folded, width=%g [%s]' % (folding,width,energyunit)
+        print >> out,\
+              '# om [%s]     osz          osz x       osz y       osz z'\
+              % energyunit
 
-    # loop over energies
-    emax=emax+.5*de
-    e=emin
-    while e<emax:
-        val=num.zeros((4),num.Float)
+        # loop over energies
+        emax=emax+.5*de
+        e=emin
+        while e<emax:
+            val=num.zeros((4),num.Float)
+            for ex in exlist:
+                wght=func.Get(ex.get_energy()*Ha-e)
+                osz=num.array(ex.GetOscillatorStrength())
+                val += wght*osz
+            print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
+                  (e,val[0],val[1],val[2],val[3])
+            e+=de
+
+    else: # just list energies and oszillator strengths
+
+        print >> out,\
+              '# om [%s]     osz          osz x       osz y       osz z'\
+              % energyunit
         for ex in exlist:
-            wght=func.Get(ex.get_energy()*Ha-e)
-            osz=num.array(ex.GetOscillatorStrength())
-            val += wght*osz
-        print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
-              (e,val[0],val[1],val[2],val[3])
-        e+=de
+            e=ex.get_energy()*Ha
+            val=ex.GetOscillatorStrength()
+            print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
+                  (e,val[0],val[1],val[2],val[3])
         
     if filename != None: out.close()
 
