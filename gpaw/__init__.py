@@ -22,34 +22,33 @@ class ConvergenceError(Exception):
 # Check for special command line arguments:
 debug = False
 trace = False
-hosts = None
 dry_run = False
+parsize = None
 arg = None
 setup_paths = []
 i = 1
 while len(sys.argv) > i:
     arg = sys.argv[i]
     if arg.startswith('--gpaw-'):
-        # We have found a gpaw command line argument:
-        if arg == '--gpaw-trace':
-            trace = True
-        elif arg == '--gpaw-debug':
-            debug = True
-            print >> sys.stderr, 'gpaw-DEBUG mode'
-        elif arg.startswith('--gpaw-setups='):
-            setup_paths = arg.split('=')[1].split(':')
-        elif arg == '--gpaw-dry-run':
-            dry_run = True
-        elif arg.startswith('--gpaw-hosts='):
-            hosts = arg.split('=')[1].split(',')
-            if len(hosts) == 1 and hosts[0].isdigit():
-                hosts = int(hosts[0])
-        else:
-            raise RuntimeError, 'Unknown command line argument: ' + arg
-        # Delete used command line argument:
-        del sys.argv[i]
+        # Found old-style gpaw command line argument:
+        arg = '--' + arg[7:]
+        print 'Warning: %s is prefered instead of %s' % (arg, sys.argv[i])
+    if arg == '--trace':
+        trace = True
+    elif arg == '--debug':
+        debug = True
+        print >> sys.stderr, 'gpaw-DEBUG mode'
+    elif arg == '--dry-run':
+        dry_run = True
+    elif arg.startswith('--setups='):
+        setup_paths = arg.split('=')[1].split(':')
+    elif arg.startswith('--domain-decomposition='):
+        parsize = [int(n) for n in arg.split('=')[1].split(',')]
     else:
         i += 1
+        continue
+    # Delete used command line argument:
+    del sys.argv[i]
 
 if debug:
     import Numeric

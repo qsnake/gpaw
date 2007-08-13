@@ -15,7 +15,7 @@ from ASE import Atom, ListOfAtoms
 import gpaw.io
 import gpaw.mpi as mpi
 import gpaw.occupations as occupations
-from gpaw import debug
+from gpaw import parsize, dry_run
 from gpaw import ConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers import eigensolver
@@ -68,7 +68,6 @@ from gpaw.utilities.memory import estimate_memory
 from gpaw.setup import create_setup
 from gpaw.pawextra import PAWExtra
 from gpaw.output import Output
-from gpaw import dry_run
 
 
 MASTER = 0
@@ -211,7 +210,7 @@ class PAW(PAWExtra, Output):
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
         `hund`, `lmax`, `fixdensity`, `tolerance`, `txt`,
-        `hosts`, `parsize`, `softgauss`, `stencils`, and
+        `parsize`, `softgauss`, `stencils`, and
         `convergeall`.
 
         If you don't specify any parameters, you will get:
@@ -909,7 +908,9 @@ class PAW(PAWExtra, Output):
         
                 for setup in self.setups:
                     setup.calculate_rotations(R_slmm)
-        
+
+        if parsize is not None:
+            p['parsize'] = parsize
         self.distribute_kpoints_and_spins(p['parsize'], N_c)
         
         # Sum up the number of valence electrons:
