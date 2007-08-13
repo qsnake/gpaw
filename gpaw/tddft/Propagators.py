@@ -170,7 +170,7 @@ class SemiImplicitCrankNicolson(Propagator):
     
     (S(t) + .5 dt H(t) / hbar) psi_t(t+dt) = (S(t) - .5 dt H(t) / hbar) psi(t)
     (S(t) + .5 dt H(t+dt/2) / hbar) psi(t+dt) 
-          = (S(t) - .5 dt H(t+dt/2) / hbar) psi(t)
+    = (S(t) - .5 dt H(t+dt/2) / hbar) psi(t)
     
     """
     
