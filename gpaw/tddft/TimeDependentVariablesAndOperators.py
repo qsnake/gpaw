@@ -3,6 +3,8 @@
 """This module implements classes for time-dependent variables and 
 operators."""
 
+import Numeric as num
+
 # Hamiltonian
 class TimeDependentHamiltonian:
     """ Time-dependent Hamiltonian, H(t)
@@ -32,12 +34,20 @@ class TimeDependentHamiltonian:
         self.hamiltonian = hamiltonian
         self.td_potential = td_potential
         self.time = 0
+        
+        if ( td_potential != None ) :
+            self.td_vext_g = hamiltonian.finegd.zeros()
+        else:
+            self.td_vext_g = None
+            
         if ( hamiltonian.vext_g ):
             self.ti_vext_g = hamiltonian.vext_g
         else:
-            self.ti_vext_g = hamiltonian.finegd.zeros()
-        self.td_vext_g = hamiltonian.finegd.zeros()
+            self.ti_vext_g = None
+            
         self.vext_g = hamiltonian.finegd.zeros()
+        
+        self.vt_sG = num.zeros(hamiltonian.vt_sG.shape, num.Float)
         
         
     def update(self, density, time):
@@ -54,11 +64,55 @@ class TimeDependentHamiltonian:
         """
         
         self.time = time
-        if ( self.td_potential != None ):
+        # if time-dependent and independent external potentials
+        if ( (self.td_potential != None) and (self.ti_vext_g != None) ):
             self.td_vext_g = self.td_potential.get_potential(self.time)
-        self.vext_g = self.ti_vext_g + self.td_vext_g
+            self.vext_g = self.ti_vext_g + self.td_vext_g
+        # if only time-dependent external potential
+        elif ( self.td_potential != None ):
+            self.td_vext_g = self.td_potential.get_potential(self.time)
+            self.vext_g = self.td_vext_g
+        # if only time-independent external potential
+        else:
+            self.vext_g = self.ti_vext_g
+            
         self.hamiltonian.vext_g = self.vext_g
         self.hamiltonian.update(density)
+        
+        
+    def half_update(self, density, time):
+        """Updates the time-dependent Hamiltonian, in such a way, that a
+        half of the old Hamiltonian is kept and the other half is updated.
+        
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        density     the density at the given time 
+                    (paw.density or TimeDependentDensity.get_density())
+        time        the current time
+        =========== ==========================================================
+
+        """
+        
+        self.time = time
+        # if time-dependent and independent external potentials
+        if ( (self.td_potential != None) and (self.ti_vext_g != None) ):
+            self.td_vext_g = self.td_potential.get_potential(self.time)
+            self.vext_g = self.ti_vext_g + self.td_vext_g
+        # if only time-dependent external potential
+        elif ( self.td_potential != None ):
+            self.td_vext_g = self.td_potential.get_potential(self.time)
+            self.vext_g = self.td_vext_g
+        # if only time-independent external potential
+        else:
+            self.vext_g = self.ti_vext_g
+            
+        self.hamiltonian.vext_g = self.vext_g
+        
+        self.vt_sG[:] = self.hamiltonian.vt_sG
+        self.hamiltonian.update(density)
+        self.hamiltonian.vt_sG += self.vt_sG
+        self.hamiltonian.vt_sG *= .5
         
         
     def apply(self, kpt, psit, hpsit):
@@ -80,8 +134,9 @@ class TimeDependentHamiltonian:
 
 
 
+
 # Overlap
-class TimeDependentOverlap:    
+class TimeDependentOverlap:
     """Time-dependent overlap operator S(t)
     
     This class contains information required to apply time-dependent
@@ -112,7 +167,21 @@ class TimeDependentOverlap:
         # !!! FIX ME !!! update overlap operator/projectors/...
         pass
     
-    def apply(self, kpt, psit, spsit):        
+    def half_update(self):
+        """Updates the time-dependent overlap operator, in such a way, 
+        that a half of the old overlap operator is kept and the other half 
+        is updated. !Currently does nothing!
+        
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        None
+        =========== ==========================================================
+        """
+        # !!! FIX ME !!! update overlap operator/projectors/...
+        pass
+    
+    def apply(self, kpt, psit, spsit):
         """Applies the time-dependent overlap operator to the wavefunction 
         psit of the k-point kpt.
         
@@ -127,7 +196,7 @@ class TimeDependentOverlap:
 
         """
         kpt.apply_overlap(self.pt_nuclei, psit[None, ...], spsit[None, ...])
-        
+
 
 
 # Density
@@ -151,7 +220,7 @@ class TimeDependentDensity:
         self.paw = paw
         
     def update(self):
-        """Updates the time-dependent density. !Currently does nothing!
+        """Updates the time-dependent density.
         
         =========== ==========================================================
         Parameters:
@@ -161,7 +230,7 @@ class TimeDependentDensity:
 
         """
         self.paw.density.update(self.paw.kpt_u, self.paw.symmetry)
-        
+       
     def get_density(self):
         """Returns the current density.
         
