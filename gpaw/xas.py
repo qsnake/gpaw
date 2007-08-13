@@ -240,4 +240,5 @@ class RecursionMethod:
         """ Analytic formula to terminate the continued fraction from
         [R Haydock, V Heine, and M J Kelly, J Phys. C: Solid State Physics, Vol 8, (1975), 2591-2605]
         """
-        return 0.5 * (e - a - num.sqrt((e - a)**2 - 4 * b**2) / b**2)
+
+        return 0.5 * (e - a - ((e - a)**2 - 4 * b**2)**0.5 / b**2)

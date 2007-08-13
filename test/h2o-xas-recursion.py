@@ -42,7 +42,7 @@ else:
 
 from pylab import *
 
-x = linspace(-30, 10, 300)
+x = -30 + 40 * num.arange(300) / 300.0
 
 for n in range(50, 401, 50):
     y = r.get_spectra(x, imax=n)
