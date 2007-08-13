@@ -100,7 +100,7 @@ for symbol in atoms:
         p['extra'] = extra
 
     if opt.normconserving is not None:
-        p['normcons'] = opt.normconserving
+        p['normconserving'] = opt.normconserving
 
     if opt.filter is not None:
         p['filter'] = [float(x) for x in opt.filter.split(',')]
