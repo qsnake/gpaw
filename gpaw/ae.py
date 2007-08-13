@@ -22,6 +22,7 @@ from gpaw.utilities import erf
 class AllElectronSetup:
     def __init__(self, symbol, xcfunc, nspins):
         assert symbol == 'H'
+        self.type = 'ae'
         self.symbol = symbol + '.ae'
         self.xcname = xcfunc.get_name()
         self.softgauss = True
