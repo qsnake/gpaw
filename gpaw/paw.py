@@ -912,13 +912,6 @@ class PAW(PAWExtra, Output):
         
         self.distribute_kpoints_and_spins(p['parsize'], N_c)
         
-        if dry_run:
-            # Estimate the amount of memory needed:
-            estimate_memory(N_c, nbands, nkpts, nspins, typecode, nuclei, h_c,
-                            text)
-            self.txt.flush()
-            sys.exit()
-
         # Sum up the number of valence electrons:
         self.nvalence = 0
         nao = 0
@@ -960,6 +953,14 @@ class PAW(PAWExtra, Output):
         self.finegd = GridDescriptor(self.domain, 2 * N_c)
 
         self.F_ac = None
+
+        if dry_run:
+            # Estimate the amount of memory needed:
+            estimate_memory(N_c, self.nbands, self.nkpts, self.nspins,
+                            self.typecode, self.nuclei, self.gd.h_c,
+                            self.txt)
+            self.txt.flush()
+            sys.exit()
 
         # Total number of k-point/spin combinations:
         nu = self.nkpts * self.nspins
