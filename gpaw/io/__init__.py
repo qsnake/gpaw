@@ -90,6 +90,7 @@ def write(paw, filename, mode):
         w['UseSymmetry'] = p['usesymm']
         w['ConvergeEmptyStates'] = p['convergeall']
         w['Converged'] = paw.converged
+        w['ConvergenceError'] = paw.error
         w['FermiWidth'] = paw.occupation.kT
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
