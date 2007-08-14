@@ -732,6 +732,7 @@ class PAW(PAWExtra, Output):
         self.lastcount = self.atoms.GetCount()
 
         self.converged = r['Converged']
+        self.error = r['ConvergenceError']
 
         return r
     
