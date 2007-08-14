@@ -8,11 +8,13 @@ from ASE.ChemicalElements.symbol import symbols
 
 from gpaw.utilities import devnull
 from gpaw.mpi import rank, MASTER
+from gpaw.version import version
+import gpaw
+
 
 class Output:
-    """
-    ``txt``         Output stream for text.
-    """
+    """Class for handling all text output."""
+
     def __init__(self):
         """Set the stream for text output.
 
@@ -37,6 +39,8 @@ class Output:
         self.txt = txt
         self.verbose = p['verbose']
 
+        self.print_logo()
+
     def text(self, *args, **kwargs):
         self.txt.write(kwargs.get('sep', ' ').join([str(arg)
                                                     for arg in args]) +
@@ -60,31 +64,59 @@ class Output:
                   
     def print_init(self, pos_ac):
         t = self.text
+        p = self.input_parameters
+
+        if self.spinpol:
+            t('Spin-polarized calculation.')
+            t('Magnetic moment: %.6f' % sum(self.density.magmom_a), end='')
+            if self.fixmom:
+                t('(fixed)')
+            else:
+                t()
+        else:
+            t('Spin-paired calculation.')
+
+        t('Total charge: %.6d' % p['charge'])
+        t('Fermi temperature: %.6f' % (self.kT * self.Ha))
+        t('Eigensolver: %s (%s)' % (p['eigensolver'], fd(p['stencils'][0])))
+        t('Poisson solver: %s (%s)' % (p['poissonsolver'],
+                                       fd(p['stencils'][1])))
+        t('Interpolation: %d. order' % (2 * p['stencils'][2]))
+          
         if self.gamma:
             t('Gamma-point calculation')
         t('Reference energy:', self.Eref * self.Ha)
 
         if self.kpt_comm.size > 1:
-            if self.nspins == 2:
-                t(
-                    'Parallelization over k-points and spin with %d processors' %
-            self.kpt_comm.size)
+            if self.nspins == 2 and self.nkpts == 1:
+                t('Parallelization over spin')
+            elif self.nspins == 2:
+                t('Parallelization over k-points and spin on %d processors' %
+                  self.kpt_comm.size)
             else:
-                t('Parallelization over k-points with %d processors'
-                  % self.kpt_comm.size)
+                t('Parallelization over k-points on %d processors' %
+                  self.kpt_comm.size)
 
         domain = self.domain
         if domain.comm.size > 1:
-            t(('Using domain decomposition: %d x %d x %d' %
-                           tuple(domain.parsize_c)))
+            t('Using domain decomposition: %d x %d x %d' %
+              tuple(domain.parsize_c))
 
         if self.symmetry is not None:
             self.symmetry.print_symmetries(t)
         
-        t((('%d k-point%s in the irreducible part of the ' +
-            'Brillouin zone (total: %d)') %
-           (self.nkpts, ' s'[1:self.nkpts], len(self.bzk_kc))))
-        
+        t(('%d k-point%s in the irreducible part of the ' +
+           'Brillouin zone (total: %d)') %
+          (self.nkpts, ' s'[1:self.nkpts], len(self.bzk_kc)))
+
+        if self.fixdensity:
+            t('Fixing the initial density')
+        else:
+            mixer = self.density.mixer
+            t('Linear mixing parameter: %.6f' % mixer.beta)
+            t('Pulay mixing with %d old densities' % mixer.nmaxold)
+            t('Experimental mixing parameter: %.6f' % mixer.x)
+
         t()
         t('unitcell:')
         t('         periodic  length  points   spacing')
@@ -340,3 +372,10 @@ class Grid:
             self.grid[i, j] = ord(c)
             self.depth[i, j] = depth
 
+
+def fd(n):
+    if n == 'M':
+        return 'Mehrstellen finite-difference stencil'
+    if n == 1:
+        return 'Nearest neighbor central finite-difference stencil'
+    return '%d nearest neighbor central finite-difference stencil' % n

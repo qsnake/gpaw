@@ -7,7 +7,7 @@ MASTER = mpi.MASTER
 
 from gpaw import debug
 import gpaw.mpi as mpi
-from gpaw.poisson_solver import PoissonSolver
+from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.transformers import Transformer

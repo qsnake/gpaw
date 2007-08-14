@@ -26,18 +26,9 @@ from gpaw.kpoint import KPoint
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
-from gpaw.mpi import run, new_communicator
+from gpaw.mpi import run, new_communicator, MASTER
 from gpaw.brillouin import reduce_kpoints
 import _gpaw
-
-MASTER = 0
-
-
-# Copyright (C) 2003  CAMP
-# Please see the accompanying LICENSE file for further information.
-
-
-"""ASE-calculator interface."""
 
 
 import os
@@ -54,9 +45,7 @@ import ASE
 
 from gpaw.utilities import check_unit_cell
 from gpaw.utilities.memory import maxrss
-from gpaw.version import version
 import gpaw.utilities.timing as timing
-import gpaw
 import gpaw.io
 import gpaw.mpi as mpi
 from gpaw.nucleus import Nucleus
@@ -68,9 +57,6 @@ from gpaw.utilities.memory import estimate_memory
 from gpaw.setup import create_setup
 from gpaw.pawextra import PAWExtra
 from gpaw.output import Output
-
-
-MASTER = 0
 
 
 class PAW(PAWExtra, Output):
@@ -285,7 +271,7 @@ class PAW(PAWExtra, Output):
                 raise RuntimeError('Unknown keyword: ' + name)
 
         Output.__init__(self)
-        
+
         if filename is not None:
             self.initialize()
             gpaw.io.read(self, reader)
@@ -956,14 +942,6 @@ class PAW(PAWExtra, Output):
 
         self.F_ac = None
 
-        if dry_run:
-            # Estimate the amount of memory needed:
-            estimate_memory(N_c, self.nbands, self.nkpts, self.nspins,
-                            self.typecode, self.nuclei, self.gd.h_c,
-                            self.txt)
-            self.txt.flush()
-            sys.exit()
-
         # Total number of k-point/spin combinations:
         nu = self.nkpts * self.nspins
 
@@ -1016,3 +994,12 @@ class PAW(PAWExtra, Output):
         self.eigensolver = eigensolver(p['eigensolver'], self)
         self.initialized = True
         self.timer.stop('Init')
+
+        if dry_run:
+            # Estimate the amount of memory needed:
+            estimate_memory(N_c, self.nbands, self.nkpts, self.nspins,
+                            self.typecode, self.nuclei, self.gd.h_c,
+                            self.txt)
+            self.txt.flush()
+            sys.exit()
+

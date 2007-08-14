@@ -281,7 +281,7 @@ class KPoint:
 
             
     def apply_inverse_overlap(self, pt_nuclei, a_nG, b_nG):
-        """Apply overlap operator to wave functions."""
+        """Apply approximative inverse overlap operator to wave functions."""
 
         b_nG[:] = a_nG
         
