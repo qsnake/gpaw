@@ -1,4 +1,5 @@
 from math import sqrt
+import sys
 import Numeric as num
 import _gpaw
 import gpaw.mpi as mpi
@@ -6,7 +7,7 @@ MASTER = mpi.MASTER
 
 from ASE.Units import Convert
 from gpaw import debug
-from gpaw.poisson import PoissonSolver
+from gpaw.poisson_solver import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
@@ -22,27 +23,27 @@ class LrTDDFT(ExcitationList):
     Input parameters:
 
     calculator:
-      the calculator object after a ground state calculation
+    the calculator object after a ground state calculation
       
     nspins:
-      number of spins considered in the calculation
-      Note: Valid only for unpolarised ground state calculation
+    number of spins considered in the calculation
+    Note: Valid only for unpolarised ground state calculation
 
     eps:
-      Minimal occupation difference for a transition (default 0.001)
+    Minimal occupation difference for a transition (default 0.001)
 
     istart:
-      First occupied state to consider
+    First occupied state to consider
     jend:
-      Last unoccupied state to consider
+    Last unoccupied state to consider
       
     xc:
-      Exchange-Correlation approximation in the Kernel
+    Exchange-Correlation approximation in the Kernel
     derivativeLevel:
-      0: use Exc, 1: use vxc, 2: use fxc  if available
+    0: use Exc, 1: use vxc, 2: use fxc  if available
 
     filename:
-      read from a file
+    read from a file
     """
     def __init__(self,
                  calculator=None,
@@ -51,9 +52,10 @@ class LrTDDFT(ExcitationList):
                  istart=0,
                  jend=None,
                  xc=None,
-                 derivativeLevel=None,
+                 derivativeLevel=1,
                  numscale=0.001,
-                 filename=None):
+                 filename=None,
+                 finegrid=2):
 
         if filename is None:
 
@@ -67,20 +69,31 @@ class LrTDDFT(ExcitationList):
             self.xc=None
             self.derivativeLevel=None
             self.numscale=numscale
+            self.finegrid=finegrid
             self.update(calculator,nspins,eps,istart,jend,
                         xc,derivativeLevel,numscale)
 
         else:
             self.read(filename)
 
-    def analyse(self,what=None,min=.1):
+    def analyse(self,what=None,out=None,min=.1):
+        """Print info about the transitions.
+        
+        Parameters:
+          1. what: I list of excitation indicees, None means all
+          2. out : I where to send the output, None means sys.stdout
+          3. min : I minimal contribution to list (0<min<1)
+        """
         if what is None:
             what = range(len(self))
         elif type(what)==type(1):
             what=[what]
+
+        if out is None:
+            out=sys.stdout
             
         for i in what:
-            print self[i].analyse(min=min)
+            print >> out, str(i)+':',self[i].analyse(min=min)
             
     def update(self,
                calculator=None,
@@ -117,7 +130,8 @@ class LrTDDFT(ExcitationList):
                              istart=istart,
                              jend=jend)
         self.Om = OmegaMatrix(self.calculator,self.kss,
-                              self.xc,self.derivativeLevel,self.numscale)
+                              self.xc,self.derivativeLevel,self.numscale,
+                              finegrid=self.finegrid)
 ##        self.diagonalize()
 
     def diagonalize(self, istart=None, jend=None):

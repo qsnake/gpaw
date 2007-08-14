@@ -7,9 +7,10 @@ MASTER = mpi.MASTER
 
 from gpaw import debug
 import gpaw.mpi as mpi
-from gpaw.poisson import PoissonSolver
+from gpaw.poisson_solver import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
+from gpaw.transformers import Transformer
 from gpaw.utilities import pack,pack2,packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.timing import Timer
@@ -20,7 +21,19 @@ import time
 """This module defines a Omega Matrix class."""
 
 class OmegaMatrix:
-    """Omega matrix in Casidas linear response formalism
+    """
+    Omega matrix in Casidas linear response formalism
+
+    :Parameters:
+      - calculator: the calculator object the ground state calculation
+      - kss: the Kohn-Sham singles object
+      - xc: the exchange correlation approx. to use
+      - derivativeLevel: which level i of d^i Exc/dn^i to use
+      - numscale: numeric epsilon for derivativeLevel=0,1
+      - filehandle: the oject can be read from a filehandle
+      - out: output stream
+      - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
+      2 everything on the fine grid
     """
     def __init__(self,
                  calculator=None,
@@ -30,6 +43,7 @@ class OmegaMatrix:
                  numscale=0.001,
                  filehandle=None,
                  out=None,
+                 finegrid=2
                  ):
         
         if filehandle is not None:
@@ -45,10 +59,26 @@ class OmegaMatrix:
         if out is None: out = calculator.txt
         self.out = out
         self.fullkss = kss
+        
+        # handle different grid possibilities
+        self.finegrid=finegrid
+        self.restrict=None
+        if finegrid:
+            self.poisson = PoissonSolver(self.paw.finegd,
+                                         self.paw.hamiltonian.poisson_stencil)
+            self.gd = self.paw.finegd
+            if finegrid==1:
+                self.gd = self.paw.gd
+        else:
+            self.poisson = PoissonSolver(self.paw.gd,
+                                         self.paw.hamiltonian.poisson_stencil)
+            self.gd = self.paw.gd
+        self.restrict = Transformer(self.paw.finegd, self.paw.gd,
+                                    self.paw.stencils[0]).apply
 
         if xc == 'RPA': xc=None # enable RPA as keyword
         if xc is not None:
-            self.xc = XC3DGrid(xc,self.paw.finegd,
+            self.xc = XC3DGrid(xc,self.gd,
                                kss.npspins)
             # check derivativeLevel
             if derivativeLevel is None:
@@ -60,7 +90,7 @@ class OmegaMatrix:
             for setup in self.paw.setups:
                 sxc = setup.xc_correction.xc
                 if sxc.xcfunc.xcname != xc:
-                    sxc.set_functional(XCFunctional(xc,kss.nvspins))
+                    sxc.set_functional(XCFunctional(xc,kss.npspins))
         else:
             self.xc = None
 
@@ -73,13 +103,11 @@ class OmegaMatrix:
 
         self.full = self.get_full()
 
-    def get_full(self,rpa=None):
-        if rpa is None:
-            self.paw.timer.start('Omega RPA')
-            rpa = self.get_rpa()
-            self.paw.timer.stop('Omega RPA')
-        Om = rpa
-##        print ">> Om from rpa=\n",Om
+    def get_full(self):
+
+        self.paw.timer.start('Omega RPA')
+        Om = self.get_rpa()
+        self.paw.timer.stop()
 
         if self.xc is None:
             return Om
@@ -89,8 +117,12 @@ class OmegaMatrix:
         paw = self.paw
         fgd = paw.finegd
         comm = fgd.comm
+
+        # shorthands
+        fg = self.finegrid is 2
         kss = self.fullkss
         nij = len(kss)
+        
 
         # initialize densities
         # nt_sg is the smooth density on the fine grid with spin index
@@ -106,7 +138,14 @@ class OmegaMatrix:
                                  .5*paw.density.nt_sg[0]])
             else:
                 nt_sg = paw.density.nt_sg
-
+        # restrict the density if needed
+        if fg:
+            nt_s = nt_sg
+        else:
+            nt_s = self.gd.new_array(nt_sg.shape[0])
+            for s in range(nt_sg.shape[0]):
+                self.restrict(nt_sg[s],nt_s[s])
+                
         # initialize vxc or fxc
 
         if self.derivativeLevel==0:
@@ -119,7 +158,6 @@ class OmegaMatrix:
             pass
         elif self.derivativeLevel==2:
             raise NotImplementedError
-##            print "Om(RPA)=\n",Om
             if kss.npspins==2:
                 fxc=d2Excdnsdnt(nt_sg[0],nt_sg[1])
             else:
@@ -135,33 +173,37 @@ class OmegaMatrix:
 
             timer = Timer()
             timer.start('init')
+            timer2 = Timer()
                       
             if self.derivativeLevel == 1:
                 # vxc is available
                 # We use the numerical two point formula for calculating
                 # the integral over fxc*n_ij. The results are
-                # vvt_sg       smooth integral
+                # vvt_s        smooth integral
                 # nucleus.I_sp atom based correction matrices (pack2)
                 #              stored on each nucleus
-                vp_sg=num.zeros(nt_sg.shape,nt_sg.typecode())
-                vm_sg=num.zeros(nt_sg.shape,nt_sg.typecode())
+                timer2.start('init v grids')
+                vp_s=num.zeros(nt_s.shape,nt_s.typecode())
+                vm_s=num.zeros(nt_s.shape,nt_s.typecode())
                 if kss.npspins==2: # spin polarised
-                    nv_sg=nt_sg.copy()
-                    nv_sg[kss[ij].pspin] += ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_sg[0],vp_sg[0],
-                                                nv_sg[1],vp_sg[1])
-                    nv_sg=nt_sg.copy()
-                    nv_sg[kss[ij].pspin] -= ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_sg[0],vm_sg[0],
-                                                nv_sg[1],vm_sg[1])
+                    nv_s=nt_s.copy()
+                    nv_s[kss[ij].pspin] += ns*kss[ij].GetPairDensity(fg)
+                    xc.get_energy_and_potential(nv_s[0],vp_s[0],
+                                                nv_s[1],vp_s[1])
+                    nv_s=nt_s.copy()
+                    nv_s[kss[ij].pspin] -= ns*kss[ij].GetPairDensity(fg)
+                    xc.get_energy_and_potential(nv_s[0],vm_s[0],
+                                                nv_s[1],vm_s[1])
                 else: # spin unpolarised
-                    nv_g=nt_sg[0] + ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_g,vp_sg[0])
-                    nv_g=nt_sg[0] - ns*kss[ij].GetFineGridPairDensity()
-                    xc.get_energy_and_potential(nv_g,vm_sg[0])
-                vvt_sg = (.5/ns)*(vp_sg-vm_sg)
+                    nv=nt_s[0] + ns*kss[ij].GetPairDensity(fg)
+                    xc.get_energy_and_potential(nv,vp_s[0])
+                    nv=nt_s[0] - ns*kss[ij].GetPairDensity(fg)
+                    xc.get_energy_and_potential(nv,vm_s[0])
+                vvt_s = (.5/ns)*(vp_s-vm_s)
+                timer2.stop()
 
                 # initialize the correction matrices
+                timer2.start('init v corrections')
                 for nucleus in self.paw.my_nuclei:
                     # create the modified density matrix
                     Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
@@ -180,8 +222,9 @@ class OmegaMatrix:
                                  nucleus.setup.xc_correction.\
                                  two_phi_integrals(D_sp)
                     nucleus.I_sp /= 2.*ns
+                timer2.stop()
                     
-            timer.stop('init')
+            timer.stop()
             t0 = timer.gettime('init')
             timer.start(ij)
             
@@ -240,11 +283,14 @@ class OmegaMatrix:
                               
                 elif self.derivativeLevel == 1:
                     # vxc is available
-                    
-                    Om[ij,kq] += weight *\
-                         fgd.integrate(kss[kq].GetFineGridPairDensity()*
-                                       vvt_sg[kss[kq].pspin])
 
+                    timer2.start('integrate')
+                    Om[ij,kq] += weight*\
+                                 self.gd.integrate(kss[kq].GetPairDensity(fg)*
+                                                   vvt_s[kss[kq].pspin])
+                    timer2.stop()
+
+                    timer2.start('integrate corrections')
                     Exc = 0.
                     for nucleus in self.paw.my_nuclei:
                         # create the modified density matrix
@@ -255,7 +301,8 @@ class OmegaMatrix:
                         # use pack as I_sp used pack2
                         P_p = pack(P_ii,tolerance=1e30)
                         Exc += num.dot(nucleus.I_sp[kss[kq].vspin],P_p)
-                    Om[ij,kq] += weight * comm.sum(Exc)
+                    Om[ij,kq] += weight * self.gd.comm.sum(Exc)
+                    timer2.stop()
 
                 elif self.derivativeLevel == 2:
                     # fxc is available
@@ -272,33 +319,30 @@ class OmegaMatrix:
                 if ij != kq:
                     Om[kq,ij] = Om[ij,kq]
 
-            timer.stop(ij)
-            timer.write()
+            timer.stop()
+##            timer2.write()
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
                 print >> self.out,'XC estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
-##        print ">> full Om=\n",Om
-        self.paw.timer.stop('Omega XC')
+        self.paw.timer.stop()
         return Om
 
     def get_rpa(self):
         """calculate RPA part of the omega matrix"""
 
-        paw = self.paw
-        finegd = paw.finegd
-        comm = finegd.comm
-        poisson = PoissonSolver(finegd, paw.hamiltonian.poisson_stencil)
+        # shorthands
         kss=self.fullkss
+        finegrid=self.finegrid
 
         # calculate omega matrix
         nij = len(kss)
         print >> self.out,'RPA',nij,'transitions'
         
         Om = num.zeros((nij,nij),num.Float)
-
+        
         for ij in range(nij):
             print >> self.out,'RPA kss['+'%d'%ij+']=', kss[ij]
 
@@ -307,66 +351,49 @@ class OmegaMatrix:
             timer2 = Timer()
                       
             # smooth density including compensation charges
-            timer2.start('GetPairDensityAndCompensationCharges')
-            rhot_g = kss[ij].GetPairDensityAndCompensationCharges()
-            timer2.stop('GetPairDensityAndCompensationCharges')
+            timer2.start('GetPairDensityAndCompensationCharges 0')
+            rhot_p = kss[ij].GetPairDensityAndCompensationCharges(
+                finegrid is not 0)
+            timer2.stop()
             
             # integrate with 1/|r_1-r_2|
-            timer2.start('poisson') 
-            phit_g = num.zeros(rhot_g.shape,rhot_g.typecode())
-            poisson.solve(phit_g,rhot_g,charge=None)
-            timer2.stop('poisson')
+            timer2.start('poisson')
+            phit_p = num.zeros(rhot_p.shape,rhot_p.typecode())
+            self.poisson.solve(phit_p,rhot_p,charge=None)
+            timer2.stop()
 
-            timer.stop('init')
+            timer.stop()
             t0 = timer.gettime('init')
             timer.start(ij)
-            
+
+            if finegrid == 1:
+                rhot = kss[ij].GetPairDensityAndCompensationCharges()
+                phit = self.gd.new_array()
+##                print "shapes 0=",phit.shape,rhot.shape
+                self.restrict(phit_p,phit)
+            else:
+                phit = phit_p
+                rhot = rhot_p
+
             for kq in range(ij,nij):
                 if kq != ij:
                     # smooth density including compensation charges
                     timer2.start('kq GetPairDensityAndCompensationCharges')
-                    rhot_g = kss[kq].GetPairDensityAndCompensationCharges()
-                    timer2.stop('kq GetPairDensityAndCompensationCharges')
-##                     timer2.start('kq GetPairDensityAndCompensationCharges2')
-##                     rhot_G = kss[kq].GetPairDensityAndCompensationCharges2()
-##                     timer2.stop()
+                    rhot = kss[kq].GetPairDensityAndCompensationCharges(
+                        finegrid is 2)
+                    timer2.stop()
 
                 timer2.start('integrate')
                 pre = 2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
                                   kss[ij].GetWeight()*kss[kq].GetWeight())
-                Om[ij,kq]= pre * finegd.integrate(rhot_g*phit_g)
-                timer2.stop('integrate')
+                Om[ij,kq]= pre * self.gd.integrate(rhot*phit)
+##                print "int=",Om[ij,kq]
+                timer2.stop()
 
-##                 # Add atomic corrections
-##                 timer2.start('integrate corrections')
-##                 Ia = 0.
-##                 for nucleus in paw.my_nuclei:
-##                     ni = nucleus.get_number_of_partial_waves()
-##                     Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
-##                     Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
-##                     Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
-##                     Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
-##                     C_pp = nucleus.setup.M_pp
-
-##                     #   ----
-##                     # 2 >      P   P  C    P  P
-##                     #   ----    ip  jr prst ks qt
-##                     #   prst
-##                     for p in range(ni):
-##                         for r in range(ni):
-##                             pr = packed_index(p, r, ni)
-##                             for s in range(ni):
-##                                 for t in range(ni):
-##                                     st = packed_index(s, t, ni)
-##                                     # do we need the 2 here ???????
-##                                     Ia += Pi_i[p]*Pj_i[r]*\
-##                                           2*C_pp[pr, st]*\
-##                                           Pk_i[s]*Pq_i[t]
-##                 timer2.stop()
-                timer2.start('integrate corrections 2')
                 # Add atomic corrections
+                timer2.start('integrate corrections 2')
                 Ia = 0.
-                for nucleus in paw.my_nuclei:
+                for nucleus in self.paw.my_nuclei:
                     ni = nucleus.get_number_of_partial_waves()
                     Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
                     Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
@@ -382,17 +409,16 @@ class OmegaMatrix:
                     #   ----    ip  jr prst ks qt
                     #   prst
                     Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
-##                print "Ia,Ia2,diff=",Ia,Ia2,Ia-Ia2
-                timer2.stop('integrate corrections 2')
+                timer2.stop()
                 
-                Om[ij,kq] += pre * comm.sum(Ia)
+                Om[ij,kq] += pre * self.gd.comm.sum(Ia)
                     
                 if ij == kq:
                     Om[ij,kq] += kss[ij].GetEnergy()**2
                 else:
                     Om[kq,ij]=Om[ij,kq]
 
-            timer.stop(ij)
+            timer.stop()
 ##            timer2.write()
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
@@ -400,7 +426,6 @@ class OmegaMatrix:
                 print >> self.out,'RPA estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
-##        print ">> rpa=\n",Om
         return Om
 
     def timestring(self,t):

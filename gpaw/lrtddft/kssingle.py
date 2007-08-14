@@ -5,6 +5,7 @@ import gpaw.mpi as mpi
 from gpaw import debug
 from gpaw.utilities import pack,packed_index
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
+from gpaw.localized_functions import create_localized_functions
 
 from gpaw.io.plt import write_plt
 
@@ -49,7 +50,6 @@ class KSSingles(ExcitationList):
         if calculator is None:
             return # leave the list empty
 
-        self.calculator=calculator
         paw = self.calculator
         self.kpt_u = paw.kpt_u
         
@@ -159,7 +159,13 @@ class KSSingle(Excitation):
     vspin=virtual  spin, i.e. spin in the ground state calc.
     fijscale=weight for the occupation difference
 
-    me = sqrt(fij*epsij) * <i|r|j> 
+    me = sqrt(fij*epsij) * <i|r|j>
+
+    mur = - <i|r|a>
+    
+    muv = - <i|\nabla|a>/omega_ia with omega_ia>0
+    
+    m   = <i|[r x \nabla]|a> / (2c)
     """
     def __init__(self,iidx=None,jidx=None,pspin=None,vspin=None,
                  paw=None,string=None,fijscale=1):
@@ -182,12 +188,16 @@ class KSSingle(Excitation):
         e=paw.kpt_u[vspin].eps_n
         self.energy=e[jidx]-e[iidx]
 
-        # calculate matrix elements
+        # calculate matrix elements -----------
 
-        # course grid contribution
         gd = paw.kpt_u[vspin].gd
+        self.gd = gd
         self.wfi = paw.kpt_u[vspin].psit_nG[iidx]
         self.wfj = paw.kpt_u[vspin].psit_nG[jidx]
+
+        # length form ..........................
+
+        # course grid contribution
         # <i|r|j> is the negative of the dipole moment (because of negative
         # e- charge)
         me = -gd.calculate_dipole_moment(self.GetPairDensity())
@@ -220,6 +230,30 @@ class KSSingle(Excitation):
 ##         print '<KSSingle> i,j,m,fac=',self.i,self.j,\
 ##               me+ma,sqrt(self.energy*self.fij)
         self.me = sqrt(self.energy*self.fij) * ( me + ma )
+
+        self.mur = - self.fij * ( me + ma )
+
+        # velocity form .............................
+
+        # course grid contribution
+#        dwfdr_cg = gd.empty(3)
+#        gd.derivative(self.wfj, dwfdr_cg)
+#        for i in range(3):
+#            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])
+
+        self.muv = self.fij * me
+
+        # magnetic transition dipole ................
+        
+        # m depends on how the origin is set, so we need th centre of mass
+        # of the structure
+#        cm = paw
+
+#        for i in range(3):
+#            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])
+        
+         
+         
 
     def fromstring(self,string):
         l = string.split()
@@ -258,26 +292,24 @@ class KSSingle(Excitation):
     def GetWeight(self):
         return self.fij
 
-    def GetPairDensity(self):
-        return self.wfi*self.wfj
-    
-    def GetFineGridPairDensity(self):
-        """Get fine grid pair densisty including the compensation charges"""
-        rhot_g = self.paw.finegd.new_array()
-        
+    def GetPairDensity(self,finegrid=False):
+        """Get pair density"""
+        nijt = self.wfi*self.wfj
+        if not finegrid:
+            return nijt 
+
         # interpolate the pair density to the fine grid
-        self.paw.density.interpolate(self.GetPairDensity(),rhot_g)
+        nijt_g = self.paw.finegd.new_array()
+        self.paw.density.interpolate(nijt,nijt_g)
 
-        return rhot_g
+        return nijt_g
 
-    def GetPairDensityAndCompensationCharges(self):
-        """Get fine grid pair densisty including the compensation charges"""
-        rhot_g = self.GetFineGridPairDensity()
+    def GetPairDensityAndCompensationCharges(self,finegrid=False):
+        """Get pair densisty including the compensation charges"""
+        rhot = self.GetPairDensity(finegrid)
         
         # Determine the compensation charges for each nucleus
-##        print "ghat=",mpi.rank, self.paw.ghat_nuclei
         for nucleus in self.paw.ghat_nuclei:
-##            print "nucleus=",mpi.rank,dir(nucleus) 
             if nucleus.in_this_domain:
                 # Generate density matrix
                 Pi_i = nucleus.P_uni[self.vspin,self.i]
@@ -293,11 +325,16 @@ class KSSingle(Excitation):
                 Q_L = None
                 
             # Add compensation charges
-            nucleus.ghat_L.add(rhot_g, Q_L, communicate=True)
-            
-        return rhot_g 
+            if finegrid:
+                nucleus.ghat_L.add(rhot, Q_L, communicate=True)
+            else:
+                if not hasattr(nucleus, 'Ghat_L'):
+                    # add course grid splines to this nucleus
+                    create = create_localized_functions
+                    nucleus.Ghat_L = create(nucleus.setup.ghat_l,
+                                            self.gd, nucleus.spos_c,
+                                            lfbc=self.paw.locfuncbcaster)
+                nucleus.Ghat_L.add(rhot, Q_L, communicate=True)
+                
+        return rhot 
 
-    def GetOscillatorStrength(self):
-        # note: self.me already contains sqrt(fij*eij)
-        m2 = 2. * self.me**2
-        return num.sum(m2)/3., m2  
