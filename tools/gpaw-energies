@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import socket
+import re
+from optparse import OptionParser
+
+from ASE.Units import units
+
+def fatalerror(msg=None):
+    if msg:
+        print 'gpaw-energies error:',msg
+    parser.print_help()
+    sys.exit()
+
+parser = OptionParser(usage='%prog [options] [file]')
+parser.add_option("-H", "--Hartree", action='count', default=None,
+                  help='use Hartree energy units (def: eV)')
+opt, args = parser.parse_args()
+##print "opt=",opt
+##print "args=",args
+
+if opt.Hartree is not None:
+    units.SetEnergyUnit('Hartree')
+
+fname = 'gpaw-restart.gpw'
+if len(args):
+    fname = args[0]
+
+from gpaw import Calculator
+paw = Calculator(fname,txt=None)
+Ha = paw.Ha
+
+out = sys.stdout
+
+print >> out, "# file=",fname
+print >> out, "#",
+if not paw.converged: print >> out,'not',
+from math import log
+print >> out, 'converged, Log10 error=',log(paw.error)/log(10.)
+print >> out, "# energy unit:",units.GetEnergyUnit()
+print >> out, "# total energy = ",paw.Etot*Ha,\
+      "("+str((paw.Eref+paw.Etot)*Ha)+")"
+print >> out, '# kin.    "    = ',paw.Ekin*Ha
+print >> out, '# pot.    "    = ',paw.Epot*Ha
+print >> out, '# xc      "    = ',paw.Exc*Ha
+from gpaw.output import eigenvalue_string
+print >> out, eigenvalue_string(paw,"# ")
