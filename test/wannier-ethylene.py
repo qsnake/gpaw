@@ -18,7 +18,7 @@ if 1:
                        cell=(a,a,a), periodic=True)
 
 
-    # display to the center of the cell
+    # displace to the center of the cell
     pos = ethylene.GetCartesianPositions() 
     pos += a/2. 
     ethylene.SetCartesianPositions(pos)
@@ -41,8 +41,12 @@ else:
     wannier.Localize()
 
     value = wannier.GetFunctionalValue() 
-    equal(13.2806, value, 0.015)
+    equal(13.7969, value, 0.015)
 
+    print '\nATOMS'
+    print ethylene.GetCartesianPositions()
+
+    print '\nCENTERS'
     for w in wannier.GetCenters():
         print w['radius'], w['pos']
 
@@ -50,5 +54,3 @@ else:
 
     for n in range(1): 
         wannier.WriteCube(n,"ethylene%d.cube"%n)
-
-

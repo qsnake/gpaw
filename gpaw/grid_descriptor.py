@@ -408,7 +408,7 @@ class GridDescriptor:
         nbands = len(psit_nG)
         Z_nn = num.zeros((nbands, nbands), num.Complex)
         psit_nG = psit_nG[:]
-        if same_wave:
+        if not same_wave:
             psit_nG1 = psit_nG1[:]
             
         def get_slice(c, g, psit_nG):
