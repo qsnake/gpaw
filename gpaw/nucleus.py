@@ -7,6 +7,7 @@ A Paw object has a list of nuclei. Each nucleus is described by a
 ``Setup`` object and a scaled position plus some extra stuff..."""
 
 from math import pi, sqrt
+from cmath import exp
 
 import Numeric as num
 
@@ -622,3 +623,31 @@ class Nucleus:
             Core_c = num.around(gd.N_c * self.spos_c).astype(num.Int) % gd.N_c
             n_sg[s][Core_c] += (Ianal - Inum) / gd.dv
         
+    def wannier_correction(self, G, c, u, u1):
+        """
+        Calculate the correction to the wannier integrals Z,
+        given by (Eq. 27 ref1)::
+
+                          -i G.r    
+            Z   = <psi | e      |psi >
+             nm       n             m
+                            
+                           __                __
+                   ~      \              a  \     a  a    a  *
+            Z    = Z    +  ) exp[-i G . R ]  )   P  O   (P  )
+             nmx    nmx   /__            x  /__   ni ii'  mi'
+
+                           a                 ii'
+
+        Note that this correction is an approximation assuming that the
+        exponential varies slowly over the extent of the augmentation sphere.
+
+        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
+        """
+        P_ni = self.P_uni[u]
+        P1_ni = self.P_uni[u1]
+        O_ii = self.setup.O_ii
+        e = exp(-2j * pi * G * self.spos_c[c])
+        Z_nn = e * num.dot(num.dot(P_ni, O_ii), cc(num.transpose(P1_ni)))
+
+        return Z_nn

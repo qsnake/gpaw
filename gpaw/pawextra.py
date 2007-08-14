@@ -88,8 +88,7 @@ class PAWExtra:
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
             return eps_n
 
-
-    def get_wannier_integrals(self, i, s, k, k1, G_I):
+    def get_wannier_integrals(self, c, s, k, k1, G_I):
         """Calculate integrals for maximally localized Wannier functions."""
 
         assert s <= self.nspins
@@ -99,12 +98,19 @@ class PAWExtra:
 
         # XXX not for the kpoint/spin parallel case
         assert self.kpt_comm.size==1
+        
+        # Due to orthorhombic cells, only 'c' component of G is non-zero.
+        G = G_I[c]
 
-        G = G_I[i]
-        return self.gd.wannier_matrix(self.kpt_u[u].psit_nG,
-                                      self.kpt_u[u1].psit_nG,
-                                      i,
-                                      k,k1,G)
+        # Get pseudo part
+        Z_nn = self.gd.wannier_matrix(self.kpt_u[u].psit_nG,
+                                      self.kpt_u[u1].psit_nG, c, G)
+
+        # Add corrections
+        for nucleus in self.nuclei:
+            Z_nn += nucleus.wannier_correction(G, c, u, u1)
+                
+        return Z_nn
 
     def get_xc_difference(self, xcname):
         """Calculate non-selfconsistent XC-energy difference."""

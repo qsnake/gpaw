@@ -385,73 +385,56 @@ class GridDescriptor:
         self.comm.sum(d_c)
         return d_c
 
-    def wannier_matrix(self, psit_nG, psit_nG1, c, k, k1, G):
+    def wannier_matrix(self, psit_nG, psit_nG1, c, G):
         """Wannier localization integrals
 
-        For a given **k**,**k'** and **Ga** the soft part of Z is
-        given by (Eq. 28 ref1)::
+        The soft part of Z is given by (Eq. 27 ref1)::
 
-            ~                                 *
-            Z = Int exp[i (k'-k-Ga) r] u_nk(r) u_mk'(r) dr 
-
-        A gamma-point calculation correspond to the case (k=k').
-        If k != k1 then k'-k-Ga=0. 
-
-        **Ga** is given by::
-        
-                    __
-                   2||
-            G_a =  ---
-                    La
+            ~       ~     -i G.r   ~
+            Z   = <psi | e      |psi >
+             nm       n             m
                     
-        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
+        c is the coordinate index of G, G is a reciprocial laticce vector in
+        that direction, psit_nG and psit_nG1 are the set of wave functions
+        for the two different spin/kpoints in question.
+        G is in the range 0 .. 1.
 
+        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
         """
+        same_wave = False
+        if psit_nG is psit_nG1:
+            same_wave = True
 
         nbands = len(psit_nG)
         Z_nn = num.zeros((nbands, nbands), num.Complex)
-        shape = (nbands, -1)
-
         psit_nG = psit_nG[:]
-        psit_nG1 = psit_nG1[:]
-        for g in range(self.n_c[c]):
-
+        if same_wave:
+            psit_nG1 = psit_nG1[:]
+            
+        def get_slice(c, g, psit_nG):
             if c == 0:
-                A_nG = psit_nG[:, g].copy()
+                slice_nG = psit_nG[:, g].copy()
             elif c == 1:
-                A_nG = psit_nG[:, :, g].copy()
+                slice_nG = psit_nG[:, :, g].copy()
             else:
-                A_nG = psit_nG[:, :, :, g].copy()
+                slice_nG = psit_nG[:, :, :, g].copy()
+            slice_nG.shape = (nbands, -1)
+            return slice_nG
+
+        for g in range(self.n_c[c]):
+            A_nG = get_slice(c, g, psit_nG)
                 
-            if k != k1:
-                if c == 0:
-                    B_nG = psit_nG1[:, g].copy()
-                elif c == 1:
-                    B_nG = psit_nG1[:, :, g].copy()
-                else:
-                    B_nG = psit_nG1[:, :, :, g].copy()
-
-
-            if k == k1: 
-                e = exp(2j * pi / self.N_c[c] * (g + self.beg_c[c]))
+            if same_wave:
                 B_nG = A_nG
             else:
-                e = 1.0
+                B_nG = get_slice(c, g, psit_nG1)
 
-            A_nG.shape = shape
-            B_nG.shape = shape
-            Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG))
+            e = exp(-2j * pi * G * (g + self.beg_c[c]) / self.N_c[c])
+            Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG)) * self.dv
             
         self.comm.sum(Z_nn, MASTER)
-        #                __        __      __
-        #        ~      \         2||  a  \     a  a    a  *
-        # Z    = Z    +  )  exp[i --- R ]  )   P  O   (P  )
-        #  nmx    nmx   /__        L   x  /__   ni ii'  mi'
-        #
-        #                a                 ii'
-        
-        return Z_nn * self.dv
 
+        return Z_nn
 
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
