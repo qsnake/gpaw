@@ -211,31 +211,7 @@ class Output:
 
     def print_eigenvalues(self):
         """Print eigenvalues and occupation numbers."""
-
-        Ha = self.Ha
-
-        if self.nkpts > 1 or self.kpt_comm.size > 1:
-            # not implemented yet:
-            return
-
-        if self.nspins == 1:
-            self.text(' band     eps        occ')
-            kpt = self.kpt_u[0]
-            for n in range(self.nbands):
-                self.text('%4d %10.5f %10.5f' %
-                          (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
-        else:
-            self.text('                up                   down')
-            self.text(' band     eps        occ        eps        occ')
-            epsa_n = self.kpt_u[0].eps_n
-            epsb_n = self.kpt_u[1].eps_n
-            fa_n = self.kpt_u[0].f_n
-            fb_n = self.kpt_u[1].f_n
-            for n in range(self.nbands):
-                self.text('%4d %10.5f %10.5f %10.5f %10.5f\n' %
-                          (n,
-                           Ha * epsa_n[n], fa_n[n],
-                           Ha * epsb_n[n], fb_n[n]))
+        print >> self.txt, eigenvalue_string(self)
 
     def plot_atoms(self):
         atoms = self.atoms
@@ -244,6 +220,42 @@ class Output:
         Z_a = atoms.GetAtomicNumbers()
         pbc_c = atoms.GetBoundaryConditions()
         self.text(plot(pos_ac, Z_a, cell_c))
+
+def eigenvalue_string(paw,comment=None):
+    """
+    Write eigenvalues and occupation numbers into a string.
+    The parameter comment can be used to comment out non-numers,
+    for example to escape it for gnuplot.
+    """
+
+    if not comment: comment=''
+
+    Ha = paw.Ha
+
+    if paw.nkpts > 1 or paw.kpt_comm.size > 1:
+        # not implemented yet:
+        return ''
+
+    s = ''
+    if paw.nspins == 1:
+        s += comment + ' band     eps        occ\n'
+        kpt = paw.kpt_u[0]
+        for n in range(paw.nbands):
+            s += ('%4d %10.5f %10.5f\n' %
+                  (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
+    else:
+        s += comment + '                up                   down\n'
+        s += comment + ' band     eps        occ        eps        occ\n'
+        epsa_n = paw.kpt_u[0].eps_n
+        epsb_n = paw.kpt_u[1].eps_n
+        fa_n = paw.kpt_u[0].f_n
+        fb_n = paw.kpt_u[1].f_n
+        for n in range(paw.nbands):
+            s += ('%4d %10.5f %10.5f %10.5f %10.5f\n' %
+                  (n,
+                   Ha * epsa_n[n], fa_n[n],
+                   Ha * epsb_n[n], fb_n[n]))
+    return s
 
 def plot(positions, numbers, cell):
     """Ascii-art plot of the atoms.
