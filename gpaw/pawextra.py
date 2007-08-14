@@ -27,6 +27,7 @@ class PAWExtra:
         return e * self.Ha
 
     def write(self, filename, mode=''):
+        """use mode='all' to write the wave functions"""
         gpaw.io.write(self, filename, mode)
         
     def get_reference_energy(self):
