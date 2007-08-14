@@ -69,7 +69,8 @@ class Timer:
         self.timers[name] = self.timers.get(name, 0.0) - time.time()
         self.running.append(name)
         
-    def stop(self, name):
+    def stop(self, name=None):
+        if name is None: name = self.running[-1]
         if name != self.running.pop():
             raise RuntimeError
         self.timers[name] += time.time()
