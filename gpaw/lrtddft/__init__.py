@@ -11,6 +11,7 @@ from gpaw.poisson_solver import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
+##from gpaw.lrtddft.transition_density import TransitionDensity
 from gpaw.utilities import packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.xc_functional import XC3DGrid, XCFunctional
@@ -302,6 +303,10 @@ class LrTDDFTExcitation(Excitation):
             return
 
         raise RuntimeError
+
+    def density_change(self,paw):
+        """get the density change associated with this transition"""
+        raise NotImplementedError
 
     def outstring(self):
         str = '%g ' % self.energy

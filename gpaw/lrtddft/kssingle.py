@@ -6,6 +6,7 @@ from gpaw import debug
 from gpaw.utilities import pack,packed_index
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.localized_functions import create_localized_functions
+from gpaw.pair_density import PairDensity
 
 from gpaw.io.plt import write_plt
 
@@ -153,10 +154,10 @@ class KSSingles(ExcitationList):
             if fh is None:
                 f.close()
  
-class KSSingle(Excitation):
+class KSSingle(Excitation,PairDensity):
     """Single Kohn-Sham transition containing all it's indicees
     pspin=physical spin
-    vspin=virtual  spin, i.e. spin in the ground state calc.
+    spin=virtual  spin, i.e. spin in the ground state calc.
     fijscale=weight for the occupation difference
 
     me = sqrt(fij*epsij) * <i|r|j>
@@ -167,33 +168,27 @@ class KSSingle(Excitation):
     
     m   = <i|[r x \nabla]|a> / (2c)
     """
-    def __init__(self,iidx=None,jidx=None,pspin=None,vspin=None,
+    def __init__(self,iidx=None,jidx=None,pspin=None,spin=None,
                  paw=None,string=None,fijscale=1):
         
-        self.i=iidx
-        self.j=jidx
-        self.pspin=pspin
-        self.vspin=vspin
-
         if string is not None: 
             self.fromstring(string)
             return None
 
         # normal entry
         
-        self.paw=paw
-
-        f=paw.kpt_u[vspin].f_n
+        PairDensity.__init__(self,paw,iidx,jidx,spin)
+        self.pspin=pspin
+        
+        f=paw.kpt_u[spin].f_n
         self.fij=(f[iidx]-f[jidx])*fijscale
-        e=paw.kpt_u[vspin].eps_n
+        e=paw.kpt_u[spin].eps_n
         self.energy=e[jidx]-e[iidx]
 
         # calculate matrix elements -----------
 
-        gd = paw.kpt_u[vspin].gd
+        gd = paw.kpt_u[spin].gd
         self.gd = gd
-        self.wfi = paw.kpt_u[vspin].psit_nG[iidx]
-        self.wfj = paw.kpt_u[vspin].psit_nG[jidx]
 
         # length form ..........................
 
@@ -206,8 +201,8 @@ class KSSingle(Excitation):
         ma = num.zeros(me.shape,num.Float)
         for nucleus in paw.my_nuclei:
             Ra = nucleus.spos_c*paw.domain.cell_c
-            Pi_i = nucleus.P_uni[self.vspin,self.i]
-            Pj_i = nucleus.P_uni[self.vspin,self.j]
+            Pi_i = nucleus.P_uni[self.spin,self.i]
+            Pj_i = nucleus.P_uni[self.spin,self.j]
             Delta_pL = nucleus.setup.Delta_pL
             ni=len(Pi_i)
             ma0 = 0
@@ -260,7 +255,7 @@ class KSSingle(Excitation):
         self.i = int(l[0])
         self.j = int(l[1])
         self.pspin = int(l[2])
-        self.vspin = int(l[3])
+        self.spin = int(l[3])
         self.energy = float(l[4])
         self.fij = float(l[5])
         self.me = num.array([float(l[6]),float(l[7]),float(l[8])])
@@ -268,7 +263,7 @@ class KSSingle(Excitation):
 
     def outstring(self):
         str = '%d %d   %d %d   %g %g' % \
-               (self.i,self.j, self.pspin,self.vspin, self.energy, self.fij)
+               (self.i,self.j, self.pspin,self.spin, self.energy, self.fij)
         str += '  '
         for m in self.me:
             str += '%12.4e' % m
@@ -277,7 +272,7 @@ class KSSingle(Excitation):
         
     def __str__(self):
         str = "# <KSSingle> %d->%d %d(%d) eji=%g[eV]" % \
-              (self.i, self.j, self.pspin, self.vspin,
+              (self.i, self.j, self.pspin, self.spin,
                self.energy*27.211)
         str += " (%g,%g,%g)" % (self.me[0],self.me[1],self.me[2])
         return str
@@ -294,47 +289,10 @@ class KSSingle(Excitation):
 
     def GetPairDensity(self,finegrid=False):
         """Get pair density"""
-        nijt = self.wfi*self.wfj
-        if not finegrid:
-            return nijt 
-
-        # interpolate the pair density to the fine grid
-        nijt_g = self.paw.finegd.new_array()
-        self.paw.density.interpolate(nijt,nijt_g)
-
-        return nijt_g
+        return self.get(finegrid) # inherited from PairDensity
 
     def GetPairDensityAndCompensationCharges(self,finegrid=False):
         """Get pair densisty including the compensation charges"""
-        rhot = self.GetPairDensity(finegrid)
-        
-        # Determine the compensation charges for each nucleus
-        for nucleus in self.paw.ghat_nuclei:
-            if nucleus.in_this_domain:
-                # Generate density matrix
-                Pi_i = nucleus.P_uni[self.vspin,self.i]
-                Pj_i = nucleus.P_uni[self.vspin,self.j]
-                D_ii = num.outerproduct(Pi_i, Pj_i)
-                # allowed to pack as used in the scalar product with
-                # the symmetric array Delta_pL
-                D_p  = pack(D_ii, tolerance=1e30)
-                    
-                # Determine compensation charge coefficients:
-                Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-            else:
-                Q_L = None
-                
-            # Add compensation charges
-            if finegrid:
-                nucleus.ghat_L.add(rhot, Q_L, communicate=True)
-            else:
-                if not hasattr(nucleus, 'Ghat_L'):
-                    # add course grid splines to this nucleus
-                    create = create_localized_functions
-                    nucleus.Ghat_L = create(nucleus.setup.ghat_l,
-                                            self.gd, nucleus.spos_c,
-                                            lfbc=self.paw.locfuncbcaster)
-                nucleus.Ghat_L.add(rhot, Q_L, communicate=True)
-                
-        return rhot 
+        # inherited from PairDensity
+        return self.width_compensation_charges(finegrid)
 

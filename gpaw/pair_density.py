@@ -1,3 +1,7 @@
+import Numeric as num
+from gpaw.utilities import pack
+from gpaw.localized_functions import create_localized_functions
+
 class PairDensity:
     def __init__(self,paw,i,j,spin=0):
         self.i=i
@@ -22,14 +26,14 @@ class PairDensity:
 
     def width_compensation_charges(self,finegrid=False):
         """Get pair densisty including the compensation charges"""
-        rhot = self.GetPairDensity(finegrid)
+        rhot = self.get(finegrid)
         
         # Determine the compensation charges for each nucleus
         for nucleus in self.paw.ghat_nuclei:
             if nucleus.in_this_domain:
                 # Generate density matrix
-                Pi_i = nucleus.P_uni[self.vspin,self.i]
-                Pj_i = nucleus.P_uni[self.vspin,self.j]
+                Pi_i = nucleus.P_uni[self.spin,self.i]
+                Pj_i = nucleus.P_uni[self.spin,self.j]
                 D_ii = num.outerproduct(Pi_i, Pj_i)
                 # allowed to pack as used in the scalar product with
                 # the symmetric array Delta_pL

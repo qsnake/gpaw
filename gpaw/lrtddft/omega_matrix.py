@@ -206,18 +206,18 @@ class OmegaMatrix:
                 timer2.start('init v corrections')
                 for nucleus in self.paw.my_nuclei:
                     # create the modified density matrix
-                    Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
-                    Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
+                    Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
+                    Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
                     P_ii = num.outerproduct(Pi_i,Pj_i)
                     # we need the symmetric form, hence we can pack
                     P_p = pack(P_ii,tolerance=1e30)
                     D_sp = nucleus.D_sp.copy()
-                    D_sp[kss[ij].vspin] += ns*P_p
+                    D_sp[kss[ij].spin] += ns*P_p
                     nucleus.I_sp = \
                                  nucleus.setup.xc_correction.\
                                  two_phi_integrals(D_sp)
                     D_sp = nucleus.D_sp.copy()
-                    D_sp[kss[ij].vspin] -= ns*P_p
+                    D_sp[kss[ij].spin] -= ns*P_p
                     nucleus.I_sp -= \
                                  nucleus.setup.xc_correction.\
                                  two_phi_integrals(D_sp)
@@ -294,13 +294,13 @@ class OmegaMatrix:
                     Exc = 0.
                     for nucleus in self.paw.my_nuclei:
                         # create the modified density matrix
-                        Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
-                        Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
+                        Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
+                        Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
                         P_ii = num.outerproduct(Pk_i,Pq_i)
                         # we need the symmetric form, hence we can pack
                         # use pack as I_sp used pack2
                         P_p = pack(P_ii,tolerance=1e30)
-                        Exc += num.dot(nucleus.I_sp[kss[kq].vspin],P_p)
+                        Exc += num.dot(nucleus.I_sp[kss[kq].spin],P_p)
                     Om[ij,kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
 
@@ -395,12 +395,12 @@ class OmegaMatrix:
                 Ia = 0.
                 for nucleus in self.paw.my_nuclei:
                     ni = nucleus.get_number_of_partial_waves()
-                    Pi_i = nucleus.P_uni[kss[ij].vspin,kss[ij].i]
-                    Pj_i = nucleus.P_uni[kss[ij].vspin,kss[ij].j]
+                    Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
+                    Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
                     Dij_ii = num.outerproduct(Pi_i, Pj_i)
                     Dij_p = pack(Dij_ii, tolerance=1e3)
-                    Pk_i = nucleus.P_uni[kss[kq].vspin,kss[kq].i]
-                    Pq_i = nucleus.P_uni[kss[kq].vspin,kss[kq].j]
+                    Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
+                    Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
                     Dkq_ii = num.outerproduct(Pk_i, Pq_i)
                     Dkq_p = pack(Dkq_ii, tolerance=1e3)
                     C_pp = nucleus.setup.M_pp
