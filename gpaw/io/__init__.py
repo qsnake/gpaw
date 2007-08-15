@@ -330,7 +330,6 @@ def read(paw, reader):
         
         if r.has_array('PseudoWaveFunctions'):
             if mpi.parallel:
-                wait
                 # Slice of the global array for this domain:
                 i = [slice(b - 1 + p, e - 1 + p) for b, e, p in
                      zip(paw.gd.beg_c, paw.gd.end_c, paw.gd.domain.periodic_c)]
