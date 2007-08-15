@@ -9,7 +9,7 @@ The eXact-eXchange energy functional is::
                                          *  _       _     * _        _
            __                /        phi  (r) phi (r) phi (r') phi (r')
        -1 \                  |  _  _      n       m       m        n
- E   = --  ) delta     f  f  | dr dr' ---------------------------------
+ E   = --  ) delta     f  f  | dr dr' ---------------------------------  (5.1)
   xx    2 /__     s s   n  m |                    _   _
            nm      n m       /                   |r - r'|
          
@@ -17,7 +17,7 @@ The action of the non-local exchange potential on an orbital is::
 
                /                         __
  ^             | _    _  _        _     \      _       _
- V   phi (r) = |dr' V(r, r') phi (r') =  ) V  (r) phi (r)
+ V   phi (r) = |dr' V(r, r') phi (r') =  ) V  (r) phi (r)               (5.3)
   xx    n      |                n       /__ nm       m
                /                         m
 
@@ -26,7 +26,7 @@ where::
                           _     * _
               __     psi (r) psi (r')
    _  _      \          m       m
- V(r, r') = - )  f   ----------------
+ V(r, r') = - )  f   ----------------                                   (5.4a)
              /__  m       _   _
               m          |r - r'|
               
@@ -35,10 +35,13 @@ and::
                         * _       _
                 /    psi (r) psi (r')
      _          | _     m       n
- V  (r) = -  f  |dr' ----------------
+ V  (r) = -  f  |dr' ----------------                                   (5.4b)
   nm          m |         _   _
                 /        |r - r'|
 
+Equation numbers as in
+'Exact Exchange in Density Functional Calculations'
+Masters Thesis by Carsten Rostgaard, CAMP 2006
 """
 
 import Numeric as num
