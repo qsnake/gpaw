@@ -3,14 +3,14 @@ from gpaw.utilities import pack
 from gpaw.localized_functions import create_localized_functions
 
 class PairDensity:
-    def __init__(self,paw,i,j,spin=0):
+    def __init__(self,paw,kpt,i,j):
         self.i=i
         self.j=j
-        self.spin=spin
+        self.spin=kpt.s
         self.paw=paw
         
-        self.wfi = paw.kpt_u[spin].psit_nG[i]
-        self.wfj = paw.kpt_u[spin].psit_nG[j]
+        self.wfi = kpt.psit_nG[i]
+        self.wfj = kpt.psit_nG[j]
 
     def get(self,finegrid=False):
         """Get pair density"""
@@ -52,7 +52,7 @@ class PairDensity:
                     # add course grid splines to this nucleus
                     create = create_localized_functions
                     nucleus.Ghat_L = create(nucleus.setup.ghat_l,
-                                            self.gd, nucleus.spos_c,
+                                            self.paw.gd, nucleus.spos_c,
                                             lfbc=self.paw.locfuncbcaster)
                 nucleus.Ghat_L.add(rhot, Q_L, communicate=True)
                 

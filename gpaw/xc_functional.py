@@ -7,6 +7,7 @@ import Numeric as num
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
+from gpaw.utilities.timing import Timer
 from gpaw.exx import EXX, XXFunctional
 from gpaw.kli import KLIFunctional
 from gpaw.kli import GLLBFunctional
@@ -154,11 +155,13 @@ class XCFunctional:
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:
                 raise NotImplementedError, 'k-point calculation with EXX'
-            self.exx = EXX(paw.gd, paw.finegd, paw.density.interpolate,
+            self.exx = EXX(paw,
+                           paw.gd, paw.finegd, paw.density.interpolate,
                            paw.hamiltonian.restrict, paw.hamiltonian.poisson,
                            paw.my_nuclei, paw.ghat_nuclei,
                            paw.nspins, paw.nmyu, paw.nbands, len(paw.nuclei),
-                           paw.kpt_comm, paw.domain.comm, energy_only)
+                           paw.kpt_comm, paw.domain.comm, energy_only,
+                           use_finegrid=True)
 
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
