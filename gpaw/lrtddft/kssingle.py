@@ -177,7 +177,7 @@ class KSSingle(Excitation,PairDensity):
 
         # normal entry
         
-        PairDensity.__init__(self,paw,iidx,jidx,spin)
+        PairDensity.__init__(self,paw,paw.kpt_u[spin],iidx,jidx)
         self.pspin=pspin
         
         f=paw.kpt_u[spin].f_n
