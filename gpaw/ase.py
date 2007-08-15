@@ -89,7 +89,7 @@ class Calculator(PAW):
  
     def GetBZKPoints(self):
         """Return the k-points."""
-        return self.k_kc
+        return self.bzk_kc
  
     def GetSpinPolarized(self):
         """Is it a spin-polarized calculation?"""
@@ -135,7 +135,7 @@ class Calculator(PAW):
 
     def GetFermiLevel(self):
         """Return the Fermi-level."""
-        return self.occ.get_fermi_level()
+        return self.occupation.get_fermi_level()
 
     def GetElectronicStates(self):
         """Return electronic-state object."""
