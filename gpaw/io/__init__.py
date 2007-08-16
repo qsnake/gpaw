@@ -259,8 +259,7 @@ def read(paw, reader):
     r = reader
 
     version = r['version']
-    assert version >= 0.3
-    
+
     for setup in paw.setups:
         try:
             key = names[setup.Z] + 'Fingerprint'
@@ -278,23 +277,26 @@ def read(paw, reader):
     for s in range(paw.nspins): 
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
                           paw.density.nt_sG[s])
-    for s in range(paw.nspins): 
-        paw.gd.distribute(r.get('PseudoPotential', s),
-                          paw.hamiltonian.vt_sG[s])
+    if version > 0.3:
+        for s in range(paw.nspins): 
+            paw.gd.distribute(r.get('PseudoPotential', s),
+                              paw.hamiltonian.vt_sG[s])
 
     # Transfer the density to the fine grid:
     paw.density.interpolate_pseudo_density()
 
     # Read atomic density matrices and non-local part of hamiltonian:
     D_sp = r.get('AtomicDensityMatrices')
-    H_sp = r.get('NonLocalPartOfHamiltonian')
+    if version > 0.3:
+        H_sp = r.get('NonLocalPartOfHamiltonian')
     p1 = 0
     for nucleus in paw.nuclei:
         ni = nucleus.get_number_of_partial_waves()
         p2 = p1 + ni * (ni + 1) / 2
         if nucleus.in_this_domain:
             nucleus.D_sp[:] = D_sp[:, p1:p2]
-            nucleus.H_sp[:] = H_sp[:, p1:p2]
+            if version > 0.3:
+                nucleus.H_sp[:] = H_sp[:, p1:p2]
         p1 = p2
 
     paw.Ekin = r['Ekin']

@@ -680,6 +680,10 @@ class PAW(PAWExtra, Output):
         r = gpaw.io.open(filename, 'r')
         p = self.input_parameters
 
+        version = r['version']
+        
+        assert version >= 0.3
+    
         p['xc'] = r['XCFunctional']
         p['nbands'] = r.dimension('nbands')
         p['spinpol'] = (r.dimension('nspins') == 2)
@@ -690,14 +694,28 @@ class PAW(PAWExtra, Output):
                      (r.dimension('ngptsz') + 1) // 2 * 2)
         p['lmax'] = r['MaximumAngularMomentum']
         p['setups'] = r['SetupTypes']
-        p['stencils'] = (r['KohnShamStencil'],
-                         r['PoissonStencil'],
-                         r['InterpolationStencil'])
-        p['charge'] = r['Charge']
-        p['fixmom'] = r['FixMagneticMoment']
         p['fixdensity'] = r['FixDensity']
         p['tolerance'] = r['Tolerance']
-        p['convergeall'] = r['ConvergeEmptyStates']
+        if version == 0.3:
+            # Old version: XXX
+            print ('Warning: Reading old version 0.3 restart files is ' +
+                   'dangerous and will be disabled some day in the future!')
+            p['stencils'] = (2, 'M', 3)
+            p['charge'] = 0.0
+            p['fixmom'] = False
+            p['convergeall'] = False
+            self.converged = True
+            self.error = 1.0e-20
+        else:
+            p['stencils'] = (r['KohnShamStencil'],
+                             r['PoissonStencil'],
+                             r['InterpolationStencil'])
+            p['charge'] = r['Charge']
+            p['fixmom'] = r['FixMagneticMoment']
+            p['convergeall'] = r['ConvergeEmptyStates']
+            self.converged = r['Converged']
+            self.error = r['ConvergenceError']
+
         p['width'] = r['FermiWidth'] 
 
         pos_ac = r.get('CartesianPositions')
@@ -716,9 +734,6 @@ class PAW(PAWExtra, Output):
                                   zip(pos_ac, Z_a, tag_a, magmom_a)],
                                  cell=cell_cc * self.a0, periodic=pbc_c)
         self.lastcount = self.atoms.GetCount()
-
-        self.converged = r['Converged']
-        self.error = r['ConvergenceError']
 
         return r
     
