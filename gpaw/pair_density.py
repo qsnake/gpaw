@@ -1,35 +1,37 @@
 import Numeric as num
+
 from gpaw.utilities import pack
 from gpaw.localized_functions import create_localized_functions
 
+
 class PairDensity:
-    def __init__(self,paw,kpt,i,j):
-        self.i=i
-        self.j=j
-        self.spin=kpt.s
-        self.paw=paw
+    def __init__(self, density, kpt, i, j):
+        self.i = i
+        self.j = j
+        self.spin = kpt.s
+        self.density = density
         
         self.wfi = kpt.psit_nG[i]
         self.wfj = kpt.psit_nG[j]
 
-    def get(self,finegrid=False):
+    def get(self, finegrid=False):
         """Get pair density"""
-        nijt = self.wfi*self.wfj
+        nijt = self.wfi * self.wfj
         if not finegrid:
             return nijt 
 
         # interpolate the pair density to the fine grid
-        nijt_g = self.paw.finegd.new_array()
-        self.paw.density.interpolate(nijt,nijt_g)
+        nijt_g = self.density.finegd.new_array()
+        self.density.interpolate(nijt, nijt_g)
 
         return nijt_g
 
-    def width_compensation_charges(self,finegrid=False):
+    def width_compensation_charges(self, finegrid=False):
         """Get pair densisty including the compensation charges"""
         rhot = self.get(finegrid)
         
         # Determine the compensation charges for each nucleus
-        for nucleus in self.paw.ghat_nuclei:
+        for nucleus in self.density.ghat_nuclei:
             if nucleus.in_this_domain:
                 # Generate density matrix
                 Pi_i = nucleus.P_uni[self.spin,self.i]
@@ -52,8 +54,7 @@ class PairDensity:
                     # add course grid splines to this nucleus
                     create = create_localized_functions
                     nucleus.Ghat_L = create(nucleus.setup.ghat_l,
-                                            self.paw.gd, nucleus.spos_c,
-                                            lfbc=self.paw.locfuncbcaster)
+                                            self.density.gd, nucleus.spos_c)
                 nucleus.Ghat_L.add(rhot, Q_L, communicate=True)
                 
         return rhot 

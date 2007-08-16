@@ -55,6 +55,7 @@ from gpaw.utilities.blas import gemm
 from gpaw.pair_density import PairDensity
 from gpaw.poisson import PoissonSolver
 
+
 class XXFunctional:
     """Dummy EXX functional"""
     def calculate_spinpaired(self, e_g, n_g, v_g):
@@ -74,7 +75,7 @@ class EXX:
                  kcomm, dcomm, energy_only=False, use_finegrid=True):
 
         # Initialize class-attributes
-        self.paw         = paw
+        self.density     = paw.density
         self.nspins      = nspins
         self.nbands      = nbands
         self.my_nuclei   = my_nuclei
@@ -339,7 +340,7 @@ class EXX:
                 dc = 1 + (n1 != n2) # double count factor
 
                 # Determine current exchange density ...
-                pd = PairDensity(self.paw,kpt,n1,n2)
+                pd = PairDensity(self.density, kpt, n1, n2)
                 self.nt_G = pd.get(finegrid=False)
 
                 # and interpolate to the fine grid:
