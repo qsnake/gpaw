@@ -108,209 +108,6 @@ class EXX:
                                          paw.hamiltonian.poisson_stencil)
             self.fineintegrate = gd.integrate
 
-    def apply_org(self, kpt, Htpsit_nG, H_nn, hybrid, force=False):
-        """Apply exact exchange operator."""
-
-        # Initialize method-attributes
-        psit_nG = kpt.psit_nG     # Wave functions
-        Exx = Ekin = 0.0          # Energy of eXact eXchange and kinetic energy
-        deg = 2 / self.nspins     # Spin degeneracy
-        f_n = kpt.f_n             # Occupation number
-        s   = kpt.s               # Global spin index
-        u   = kpt.u               # Local spin/kpoint index
-        if not self.energy_only:
-            for nucleus in self.my_nuclei:
-                nucleus.vxx_uni[u] = 0.0
-        if force:
-            if not hasattr(self, F_ac):
-                self.F_ac = num.zeros((self.Na, 3), num.Float)
-            else:
-                self.F_ac[:] = 0.0
-
-        # Determine pseudo-exchange
-        for n1 in range(self.nbands):
-            psit1_G = psit_nG[n1]            
-            f1 = f_n[n1]
-            for n2 in range(n1, self.nbands):
-                psit2_G = psit_nG[n2]
-                f2 = f_n[n2]
-                dc = 1 + (n1 != n2) # double count factor
-
-                # Determine current exchange density ...
-                self.nt_G[:] = psit1_G * psit2_G
-
-                # and interpolate to the fine grid:
-                self.interpolate(self.nt_G, self.nt_g)
-
-                # Determine the compensation charges for each nucleus:
-                for nucleus in self.ghat_nuclei:
-                    if nucleus.in_this_domain:
-                        # Generate density matrix
-                        P1_i = nucleus.P_uni[u, n1]
-                        P2_i = nucleus.P_uni[u, n2]
-                        D_ii = num.outerproduct(P1_i, P2_i)
-                        D_p  = pack(D_ii, tolerance=1e3)#python func! move to C
-
-                        # Determine compensation charge coefficients:
-                        Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
-
-                        if force:
-                            self.Q_aL[nucleus.a] = Q_L
-                    else:
-                        Q_L = None
-
-                    # Add compensation charges to exchange density:
-                    nucleus.ghat_L.add(self.nt_g, Q_L, communicate=True)
-
-                # Determine total charge of exchange density:
-                Z = float(n1 == n2)
-
-                # Determine exchange potential:
-                self.poisson.solve(self.vt_g, -self.nt_g, charge=-Z,
-                                   eps=1e-12, zero_initial_phi=True)
-                self.restrict(self.vt_g, self.vt_G)
-
-                # Add force contribution
-                if force:
-                    for nucleus in ghat_nuclei:
-                        if nucleus.in_this_domain:
-                            lmax = nucleus.setup.lmax
-                            F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
-                            self.ghat_L.derivative(vt_g, F_Lc)
-                            
-                            self.F_ac[nucleus.a] -= (
-                                f1 * f2 * dc * hybrid / deg * num.dot(
-                                self.Q_aL[nucleus.a], F_Lc))
-                        else:
-                            self.ghat_L.derivative(self.vt_g, None)
-
-                # Integrate the potential on fine and coarse grids
-                int_fine = self.fineintegrate(self.vt_g * self.nt_g)
-                int_coarse = self.integrate(self.vt_G * self.nt_G)
-                if self.rank == 0: # Only add to energy on master CPU
-                    Exx += 0.5 * f1 * f2 * dc * hybrid / deg * int_fine
-                    Ekin -= f1 * f2 * dc * hybrid / deg * int_coarse
-
-                if not self.energy_only:
-                    Htpsit_nG[n1] += f2 * hybrid / deg * \
-                                     self.vt_G * psit2_G
-                    if n1 != n2:
-                        Htpsit_nG[n2] += f1 * hybrid / deg * \
-                                         self.vt_G * psit1_G
-                    else:
-                        self.vt_unG[u, n2] = f2 * hybrid / deg * self.vt_G
-                    
-                    # Update the vxx_uni and vxx_unii vectors of the nuclei,
-                    # used to determine the atomic hamiltonian, and the 
-                    # residuals
-                    for nucleus in self.ghat_nuclei:
-                        v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
-                        nucleus.ghat_L.integrate(self.vt_g, v_L)
-
-                        if nucleus.in_this_domain:
-                            v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
-                            
-                            if force:
-                                ni = self.setup.ni
-                                F_ic = num.zeros((ni, 3), num.Float)
-                                self.pt_i.derivative(psit1_G, F_ic)
-                                F_ic.shape = (ni * 3,)
-                                F_iic = num.dot(v_ii, num.outerproduct(
-                                    nucleus.P_uni[u, n2], F_ic))
-                                
-                                F_ic[:] = 0.0
-                                F_ic.shape =(ni, 3)
-                                self.pt_i.derivative(psit2_G, F_ic)
-                                F_ic.shape = (ni * 3,)
-                                F_iic += num.dot(v_ii, num.outerproduct(
-                                    nucleus.P_uni[u, n1], F_ic))
-                                
-                                #F_iic *= 2.0
-                                F_iic.shape = (ni, ni, 3)
-                                for i in range(ni):
-                                    self.F_ac[nucleus.a] -= real(F_iic[i, i])
-                                
-                            nucleus.vxx_uni[u, n1] += (
-                                f2 * hybrid / deg * num.dot(
-                                v_ii, nucleus.P_uni[u, n2]))
-                            if n1 != n2:
-                                nucleus.vxx_uni[u, n2] += (
-                                    f1 * hybrid / deg * num.dot(
-                                    v_ii, nucleus.P_uni[u, n1]))
-                            else:
-                                # XXX Check this:
-                                nucleus.vxx_unii[u, n1] = (
-                                    f2 * hybrid / deg * v_ii)
-                        else:
-                            if force:
-                                self.pt_i.derivative(psit1_G, None)
-                                self.pt_i.derivative(psit2_G, None)
-
-        # Apply the atomic corrections to the energy and the Hamiltonian matrix
-        for nucleus in self.my_nuclei:
-            # Ensure that calculation does not use extra soft comp. charges
-            setup = nucleus.setup
-            assert not setup.softgauss or isinstance(setup, AllElectronSetup)
-
-            # error handling for old setup files
-            if nucleus.setup.ExxC == None:
-                print 'Warning no exact exchange information in setup file'
-                print 'Value of exact exchange may be incorrect'
-                print 'Please regenerate setup file  with "-x" option,'
-                print 'to correct error'
-                break
-
-            # Add non-trivial corrections the Hamiltonian matrix
-            if not self.energy_only:
-                h_nn = symmetrize(inner(nucleus.P_uni[u], nucleus.vxx_uni[u]))
-                H_nn += h_nn
-                Ekin -= num.dot(f_n, num.diagonal(h_nn))
-
-            # Get atomic density and Hamiltonian matrices
-            D_p  = nucleus.D_sp[s]
-            D_ii = unpack2(D_p)
-            H_p  = nucleus.H_sp[s]
-            ni = len(D_ii)
-            
-            # Add atomic corrections to the valence-valence exchange energy
-            # --
-            # >  D   C     D
-            # --  ii  iiii  ii
-            C_pp = setup.M_pp
-            for i1 in range(ni):
-                for i2 in range(ni):
-                    A = 0.0 # = C * D
-                    for i3 in range(ni):
-                        p13 = packed_index(i1, i3, ni)
-                        for i4 in range(ni):
-                            p24 = packed_index(i2, i4, ni)
-                            A += C_pp[p13, p24] * D_ii[i3, i4]
-                    if not self.energy_only:
-                        p12 = packed_index(i1, i2, ni)
-                        H_p[p12] -= 2 * hybrid / deg * A / ((i1!=i2) + 1)
-                        Ekin += 2 * hybrid / deg * D_ii[i1, i2] * A
-                    Exx -= hybrid / deg * D_ii[i1, i2] * A
-            
-            # Add valence-core exchange energy
-            # --
-            # >  X   D
-            # --  ii  ii
-            Exx -= hybrid * num.dot(D_p, setup.X_p)
-            if not self.energy_only:
-                H_p -= hybrid * setup.X_p
-                Ekin += hybrid * num.dot(D_p, setup.X_p)
-
-            # Add core-core exchange energy
-            if s == 0:
-                Exx += hybrid * nucleus.setup.ExxC
-
-        # Update the class attributes
-        print "org Exx,Ekin=",Exx,Ekin
-        if u == 0:
-            self.Exx = self.Ekin = 0
-        self.Exx += self.psum(Exx)
-        self.Ekin += self.psum(Ekin)
-
     def apply(self, kpt, Htpsit_nG, H_nn, hybrid, force=False):
         """Apply exact exchange operator."""
 
@@ -330,117 +127,127 @@ class EXX:
             else:
                 self.F_ac[:] = 0.0
 
+        fmin=1.e-10
+
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
             psit1_G = psit_nG[n1]            
             f1 = f_n[n1]
             for n2 in range(n1, self.nbands):
-                psit2_G = psit_nG[n2]
                 f2 = f_n[n2]
-                dc = 1 + (n1 != n2) # double count factor
-
-                # Determine current exchange density ...
-                pd = PairDensity(self.density, kpt, n1, n2)
-                self.nt_G = pd.get(finegrid=False)
-
-                # and interpolate to the fine grid:
-                self.rhot = pd.width_compensation_charges(self.use_finegrid)
                 
-                # Determine total charge of exchange density:
-                Z = float(n1 == n2)
-
-                # Determine exchange potential:
-                self.poisson.solve(self.vt, -self.rhot, charge=-Z,
-                                   eps=1e-12, zero_initial_phi=True)
-                if self.use_finegrid:
-                    self.restrict(self.vt, self.vt_G)
-                else:
-                    self.vt_G = self.vt
-
-                # Add force contribution
-                if force:
-                    for nucleus in ghat_nuclei:
-                        if nucleus.in_this_domain:
-                            lmax = nucleus.setup.lmax
-                            F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
-                            if self.use_finegrid:
-                                self.ghat_L.derivative(vt, F_Lc)
-                            else:
-                                self.Ghat_L.derivative(vt, F_Lc)
-                                
-                            self.F_ac[nucleus.a] -= (
-                                f1 * f2 * dc * hybrid / deg * num.dot(
-                                self.Q_aL[nucleus.a], F_Lc))
-                        else:
-                            if self.use_finegrid:
-                                self.ghat_L.derivative(self.vt, None)
-                            else:
-                                self.Ghat_L.derivative(self.vt, None)
-
-                # Integrate the potential on fine and coarse grids
-                int_fine = self.fineintegrate(self.vt * self.rhot)
-                int_coarse = self.integrate(self.vt_G * self.nt_G)
-                if self.rank == 0: # Only add to energy on master CPU
-                    Exx += 0.5 * f1 * f2 * dc * hybrid / deg * int_fine
-                    Ekin -= f1 * f2 * dc * hybrid / deg * int_coarse
-
-                if not self.energy_only:
-                    Htpsit_nG[n1] += f2 * hybrid / deg * \
-                                     self.vt_G * psit2_G
-                    if n1 != n2:
-                        Htpsit_nG[n2] += f1 * hybrid / deg * \
-                                         self.vt_G * psit1_G
-                    else:
-                        self.vt_unG[u, n2] = f2 * hybrid / deg * self.vt_G
+                if f1>fmin or f2>fmin:
                     
-                    # Update the vxx_uni and vxx_unii vectors of the nuclei,
-                    # used to determine the atomic hamiltonian, and the 
-                    # residuals
-                    for nucleus in self.ghat_nuclei:
-                        v_L = num.zeros((nucleus.setup.lmax + 1)**2, num.Float)
-                        if self.use_finegrid:
-                            nucleus.ghat_L.integrate(self.vt, v_L)
-                        else:
-                            nucleus.Ghat_L.integrate(self.vt, v_L)
+                    psit2_G = psit_nG[n2]
+                    dc = 1 + (n1 != n2) # double count factor
 
-                        if nucleus.in_this_domain:
-                            v_ii = unpack(num.dot(nucleus.setup.Delta_pL, v_L))
-                            
-                            if force:
-                                ni = self.setup.ni
-                                F_ic = num.zeros((ni, 3), num.Float)
-                                self.pt_i.derivative(psit1_G, F_ic)
-                                F_ic.shape = (ni * 3,)
-                                F_iic = num.dot(v_ii, num.outerproduct(
-                                    nucleus.P_uni[u, n2], F_ic))
-                                
-                                F_ic[:] = 0.0
-                                F_ic.shape =(ni, 3)
-                                self.pt_i.derivative(psit2_G, F_ic)
-                                F_ic.shape = (ni * 3,)
-                                F_iic += num.dot(v_ii, num.outerproduct(
-                                    nucleus.P_uni[u, n1], F_ic))
-                                
-                                #F_iic *= 2.0
-                                F_iic.shape = (ni, ni, 3)
-                                for i in range(ni):
-                                    self.F_ac[nucleus.a] -= real(F_iic[i, i])
-                                
-                            nucleus.vxx_uni[u, n1] += (
-                                f2 * hybrid / deg * num.dot(
-                                v_ii, nucleus.P_uni[u, n2]))
-                            if n1 != n2:
-                                nucleus.vxx_uni[u, n2] += (
-                                    f1 * hybrid / deg * num.dot(
-                                    v_ii, nucleus.P_uni[u, n1]))
+                    # Determine current exchange density ...
+                    pd = PairDensity(self.density, kpt, n1, n2)
+                    self.nt_G = pd.get(finegrid=False)
+
+                    # and interpolate to the fine grid:
+                    self.rhot = \
+                              pd.width_compensation_charges(self.use_finegrid)
+                
+                    # Determine total charge of exchange density:
+                    Z = float(n1 == n2)
+
+                    # Determine exchange potential:
+                    self.poisson.solve(self.vt, -self.rhot, charge=-Z,
+                                       eps=1e-12, zero_initial_phi=True)
+                    if self.use_finegrid:
+                        self.restrict(self.vt, self.vt_G)
+                    else:
+                        self.vt_G = self.vt
+
+                        # Add force contribution
+                    if force:
+                        for nucleus in ghat_nuclei:
+                            if nucleus.in_this_domain:
+                                lmax = nucleus.setup.lmax
+                                F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
+                                if self.use_finegrid:
+                                    self.ghat_L.derivative(vt, F_Lc)
+                                else:
+                                    self.Ghat_L.derivative(vt, F_Lc)
+
+                                self.F_ac[nucleus.a] -= (
+                                    f1 * f2 * dc * hybrid / deg * num.dot(
+                                    self.Q_aL[nucleus.a], F_Lc))
                             else:
-                                # XXX Check this:
-                                nucleus.vxx_unii[u, n1] = (
-                                    f2 * hybrid / deg * v_ii)
+                                if self.use_finegrid:
+                                    self.ghat_L.derivative(self.vt, None)
+                                else:
+                                    self.Ghat_L.derivative(self.vt, None)
+
+                    # Integrate the potential on fine and coarse grids
+                    int_fine = self.fineintegrate(self.vt * self.rhot)
+                    int_coarse = self.integrate(self.vt_G * self.nt_G)
+                    if self.rank == 0: # Only add to energy on master CPU
+                        Exx += 0.5 * f1 * f2 * dc * hybrid / deg * int_fine
+                        Ekin -= f1 * f2 * dc * hybrid / deg * int_coarse
+
+                    if not self.energy_only:
+                        Htpsit_nG[n1] += f2 * hybrid / deg * \
+                                         self.vt_G * psit2_G
+                        if n1 != n2:
+                            Htpsit_nG[n2] += f1 * hybrid / deg * \
+                                             self.vt_G * psit1_G
                         else:
-                            if force:
-                                self.pt_i.derivative(psit1_G, None)
-                                self.pt_i.derivative(psit2_G, None)
+                            self.vt_unG[u, n2] = f2 * hybrid / deg * self.vt_G
+
+                        # Update the vxx_uni and vxx_unii vectors
+                        # of the nuclei,
+                        # used to determine the atomic hamiltonian, and the 
+                        # residuals
+                        for nucleus in self.ghat_nuclei:
+                            v_L = num.zeros((nucleus.setup.lmax + 1)**2,
+                                            num.Float)
+                            if self.use_finegrid:
+                                nucleus.ghat_L.integrate(self.vt, v_L)
+                            else:
+                                nucleus.Ghat_L.integrate(self.vt, v_L)
+
+                            if nucleus.in_this_domain:
+                                v_ii = unpack(num.dot(nucleus.setup.Delta_pL,
+                                                      v_L))
+
+                                if force:
+                                    ni = self.setup.ni
+                                    F_ic = num.zeros((ni, 3), num.Float)
+                                    self.pt_i.derivative(psit1_G, F_ic)
+                                    F_ic.shape = (ni * 3,)
+                                    F_iic = num.dot(v_ii, num.outerproduct(
+                                        nucleus.P_uni[u, n2], F_ic))
+
+                                    F_ic[:] = 0.0
+                                    F_ic.shape =(ni, 3)
+                                    self.pt_i.derivative(psit2_G, F_ic)
+                                    F_ic.shape = (ni * 3,)
+                                    F_iic += num.dot(v_ii, num.outerproduct(
+                                        nucleus.P_uni[u, n1], F_ic))
+
+                                    #F_iic *= 2.0
+                                    F_iic.shape = (ni, ni, 3)
+                                    for i in range(ni):
+                                        self.F_ac[nucleus.a] -= \
+                                                             real(F_iic[i, i])
+
+                                nucleus.vxx_uni[u, n1] += (
+                                    f2 * hybrid / deg * num.dot(
+                                    v_ii, nucleus.P_uni[u, n2]))
+                                if n1 != n2:
+                                    nucleus.vxx_uni[u, n2] += (
+                                        f1 * hybrid / deg * num.dot(
+                                        v_ii, nucleus.P_uni[u, n1]))
+                                else:
+                                    # XXX Check this:
+                                    nucleus.vxx_unii[u, n1] = (
+                                        f2 * hybrid / deg * v_ii)
+                            else:
+                                if force:
+                                    self.pt_i.derivative(psit1_G, None)
+                                    self.pt_i.derivative(psit2_G, None)
 
         # Apply the atomic corrections to the energy and the Hamiltonian matrix
         for nucleus in self.my_nuclei:
