@@ -115,7 +115,7 @@ class Output:
             mixer = self.density.mixer
             t('Linear mixing parameter: %.6f' % mixer.beta)
             t('Pulay mixing with %d old densities' % mixer.nmaxold)
-            t('Damping of rapid oscillations: %.6f' % mixer.x)
+            t('Damping of long wave oscillations: %.6f' % mixer.x)
 
         t(('Converge occupied states only.',
            'Converge all states.')[p['convergeall']])
