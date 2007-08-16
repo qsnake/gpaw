@@ -87,7 +87,6 @@ class EXX:
         self.psum        = lambda x: kcomm.sum(dcomm.sum(x))
         self.energy_only = energy_only
         self.integrate   = gd.integrate
-        self.fineintegrate = finegd.integrate
         self.Na = Na
         
         # Allocate space for matrices
@@ -102,10 +101,12 @@ class EXX:
         if self.use_finegrid:
             self.vt      = finegd.empty()
             self.poisson = poisson
+            self.fineintegrate = finegd.integrate
         else:
             self.vt      = gd.empty()
             self.poisson = PoissonSolver(gd,
                                          paw.hamiltonian.poisson_stencil)
+            self.fineintegrate = gd.integrate
 
     def apply_org(self, kpt, Htpsit_nG, H_nn, hybrid, force=False):
         """Apply exact exchange operator."""
@@ -182,7 +183,6 @@ class EXX:
                                 self.Q_aL[nucleus.a], F_Lc))
                         else:
                             self.ghat_L.derivative(self.vt_g, None)
-                            
 
                 # Integrate the potential on fine and coarse grids
                 int_fine = self.fineintegrate(self.vt_g * self.nt_g)
