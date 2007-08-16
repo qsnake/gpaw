@@ -159,7 +159,8 @@ class Symmetry:
         kw.sort()
 ##        print groups
 ##        print kw
-        return ([bzkpts[k] for k, w in kw], [w for k, w in kw])
+        return (num.array([bzkpts[k] for k, w in kw]),
+                num.array([w for k, w in kw]))
 
     def symmetrize(self, a, gd):
         b = a.copy()

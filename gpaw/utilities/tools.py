@@ -191,7 +191,7 @@ def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
        The method use the conversion formula::
        
                 pi
-        h =   -----
+        h =   =====
             \/ 2 E
        
        in atomic units (Hartree and Bohr)
