@@ -74,9 +74,9 @@ class Output:
             else:
                 t()
         else:
-            t('Spin-paired calculation.')
+            t('Spin-paired calculation')
 
-        t('Total charge: %.6d' % p['charge'])
+        t('Total charge: %.6f' % p['charge'])
         t('Fermi temperature: %.6f' % (self.kT * self.Ha))
         t('Eigensolver: %s (%s)' % (p['eigensolver'], fd(p['stencils'][0])))
         t('Poisson solver: %s (%s)' % (p['poissonsolver'],
@@ -378,4 +378,4 @@ def fd(n):
         return 'Mehrstellen finite-difference stencil'
     if n == 1:
         return 'Nearest neighbor central finite-difference stencil'
-    return '%d nearest neighbor central finite-difference stencil' % n
+    return '%d nearest neighbors central finite-difference stencil' % n
