@@ -161,7 +161,7 @@ class XCFunctional:
                            paw.my_nuclei, paw.ghat_nuclei,
                            paw.nspins, paw.nmyu, paw.nbands, len(paw.nuclei),
                            paw.kpt_comm, paw.domain.comm, energy_only,
-                           use_finegrid=True)
+                           use_finegrid=paw.input_parameters['exxfinegrid'])
 
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:

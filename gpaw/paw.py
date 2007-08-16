@@ -242,7 +242,9 @@ class PAW(PAWExtra, Output):
             'decompose':     None,
             'verbose':       0,
             'eigensolver':   'rmm-diis',
-            'poissonsolver': 'GS'}
+            'poissonsolver': 'GS',
+            'exxfinegrid'  : True
+            }
 
         self.converged = False
         self.initialized = False
@@ -259,7 +261,7 @@ class PAW(PAWExtra, Output):
             if name in ['parsize',
                         'random', 'hund', 'mix', 'txt', 'maxiter', 'verbose',
                         'decompose', 'eigensolver', 'poissonsolver',
-                        'external']:
+                        'external','exxfinegrid']:
                 self.input_parameters[name] = value
             elif name in ['xc', 'nbands', 'spinpol', 'kpts', 'usesymm',
                           'gpts', 'h', 'width', 'lmax', 'setups', 'stencils',
