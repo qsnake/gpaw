@@ -3,6 +3,7 @@ import Numeric as num
 from math import exp, pi, sqrt
 
 from ASE.Units import Convert
+from gpaw.gauss import Gauss, Lorentz
 
 def spectrum(exlist=None,
              filename=None,
@@ -58,10 +59,16 @@ def spectrum(exlist=None,
 
     # minimal and maximal energies
     if emin == None:
-        emin=exlist.get_energies()[0]*Ha
+        emin=exlist.get_energies()[0]
+        for e in exlist.get_energies():
+            if e<emin: emin=e
+        emin *= Ha
         emin -= 4*width
     if emax == None:
-        emax=exlist.get_energies()[-1]*Ha
+        emax=exlist.get_energies()[-1]
+        for e in exlist.get_energies():
+            if e>emax: emax=e
+        emin *= Ha
         emax += 4*width
 
     # set de to sample 4 points in the width
@@ -101,28 +108,4 @@ def spectrum(exlist=None,
         
     if filename != None: out.close()
 
-class Gauss:
-    """Normalised Gauss distribution"""
-    def __init__(self,width=0.08):
-        self.SetWidth(width)
-        
-    def Get(self,x):
-        return self.norm*exp(-(x*self.wm1)**2)
-    
-    def SetWidth(self,width=0.08):
-        self.norm=1./width/sqrt(pi)
-        self.wm1=sqrt(.5)/width
-    
-
-class Lorentz:
-    """Normalised Lorentz distribution"""
-    def __init__(self,width=0.08):
-        self.SetWidth(width)
-        
-    def Get(self,x):
-        return self.norm/(x**2+self.width2)
-    
-    def SetWidth(self,width=0.08):
-        self.norm=width/pi
-        self.width2=width**2
 
