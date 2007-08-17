@@ -107,7 +107,8 @@ def write(paw, filename, mode):
         w['S'] = paw.S
         epsF = paw.occupation.get_fermi_level()
         if epsF is None:
-            epsF = 100.0
+            # Zero temperature calculation - ase vacuum level:
+            epsF = 0.0
         w['FermiLevel'] = epsF
 
         # Write fingerprint (md5-digest) for all setups:
