@@ -429,11 +429,9 @@ class GridDescriptor:
             else:
                 B_nG = get_slice(c, g, psit_nG1)
 
-            e = exp(-2j * pi * G * (g + self.beg_c[c]) / self.N_c[c])
+            e = exp(-2.j * pi * G * (g + self.beg_c[c]) / self.N_c[c])
             Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG)) * self.dv
             
-        self.comm.sum(Z_nn, MASTER)
-
         return Z_nn
 
 class RadialGridDescriptor:

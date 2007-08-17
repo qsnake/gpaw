@@ -3,54 +3,51 @@
 """
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
-from gpaw.utilities import equal
+from gpaw.utilities import equal, center
+from gpaw.wannier import Wannier
+import Numeric as num
 
 if 1:
     a = 6.0  # Size of unit cell (Angstrom)
 
     ethylene = ListOfAtoms([
-                       Atom('H', (-1.235, 0.936 , 0 ),tag=0),
-                       Atom('H', ( 1.235,-0.936 , 0 ),tag=1),
-                       Atom('H', ( 1.235, 0.936 , 0 ),tag=1),
-                       Atom('H', (-1.235,-0.936 , 0 ),tag=1),
-                       Atom('C', ( 0.660, 0.000 , 0 ),tag=1),
-                       Atom('C', (-0.660, 0.000 , 0 ),tag=1)],
-                       cell=(a,a,a), periodic=True)
-
-
-    # displace to the center of the cell
-    pos = ethylene.GetCartesianPositions() 
-    pos += a/2. 
-    ethylene.SetCartesianPositions(pos)
-
-    calc = Calculator(nbands=8, h=0.20, tolerance=0.001)
+                       Atom('H', (-1.235,-0.936 , 0 )),
+                       Atom('H', (-1.235, 0.936 , 0 )),
+                       Atom('C', (-0.660, 0.000 , 0 )),
+                       Atom('C', ( 0.660, 0.000 , 0 )),
+                       Atom('H', ( 1.235,-0.936 , 0 )),
+                       Atom('H', ( 1.235, 0.936 , 0 ))],
+                       cell=(a, a, a), periodic=True)
+    center(ethylene)
+    calc = Calculator(nbands=8, h=0.20, tolerance=1e-6)
     ethylene.SetCalculator(calc)
-    print ethylene.GetPotentialEnergy()
+    ethylene.GetPotentialEnergy()
     calc.write('ethylene.gpw', 'all')
-
-try:
-    import Scientific.IO.NetCDF
-except ImportError:
-    print 'This test needs Scientific.IO.NetCDF'
 else:
-    from ASE.Utilities.Wannier import Wannier
+    calc = Calculator('ethylene.gpw')
 
-    ethylene = Calculator('ethylene.gpw').get_atoms()
-    print ethylene.GetPotentialEnergy()
-    wannier = Wannier(numberofwannier=6, calculator=ethylene.GetCalculator())
-    wannier.Localize()
+wannier = Wannier(numberofwannier=6,
+                  calculator=calc,
+                  numberoffixedstates=[6])
+wannier.Localize(tolerance=1e-5)
 
-    value = wannier.GetFunctionalValue() 
-    equal(13.7969, value, 0.015)
+value = wannier.GetFunctionalValue() 
+equal(13.7995, value, 0.015)
 
-    print '\nATOMS'
-    print ethylene.GetCartesianPositions()
+centers = wannier.GetCenters()
+expected = [[1.950, 2.376, 3.000],
+            [1.950, 3.624, 3.000],
+            [3.000, 3.000, 2.671],
+            [3.000, 3.000, 3.329],
+            [4.050, 2.376, 3.000],
+            [4.050, 3.624, 3.000]]
+for xi, wi in enumerate(wannier.GetSortedIndices()):
+    assert abs(num.sum(expected[xi] - centers[wi]['pos'])) < 0.01
 
-    print '\nCENTERS'
-    for w in wannier.GetCenters():
-        print w['radius'], w['pos']
-
-    ethylene.extend(wannier.GetCentersAsAtoms())
-
-    for n in range(1): 
-        wannier.WriteCube(n,"ethylene%d.cube"%n)
+## from ASE.Visualization.PrimiPlotter import PrimiPlotter, X11Window
+## ethylene.extend(wannier.GetCentersAsAtoms())
+## plot = PrimiPlotter(ethylene)
+## plot.SetOutput(X11Window())
+## plot.SetRadii(.2)
+## plot.SetRotation([15, 0, 0])
+## plot.Plot()

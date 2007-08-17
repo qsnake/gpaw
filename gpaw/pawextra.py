@@ -97,7 +97,7 @@ class PAWExtra:
         kpt_rank1, u1 = divmod(k1 + self.nkpts * s, self.nmyu)
 
         # XXX not for the kpoint/spin parallel case
-        assert self.kpt_comm.size==1
+        assert self.kpt_comm.size == 1
         
         # Due to orthorhombic cells, only 'c' component of G is non-zero.
         G = G_I[c]
@@ -107,9 +107,11 @@ class PAWExtra:
                                       self.kpt_u[u1].psit_nG, c, G)
 
         # Add corrections
-        for nucleus in self.nuclei:
+        for nucleus in self.my_nuclei:
             Z_nn += nucleus.wannier_correction(G, c, u, u1)
-                
+
+        self.gd.comm.sum(Z_nn, MASTER)
+
         return Z_nn
 
     def get_xc_difference(self, xcname):
