@@ -93,7 +93,7 @@ class Calculator(PAW):
  
     def GetSpinPolarized(self):
         """Is it a spin-polarized calculation?"""
-        return self.paw.nspins == 2
+        return self.nspins == 2
     
     def GetIBZKPoints(self):
         """Return k-points in the irreducible part of the Brillouin zone."""
@@ -115,8 +115,7 @@ class Calculator(PAW):
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""
-        c =  1.0 / self.a0**1.5
-        return self.get_wave_function_array(band, kpt, spin) * c
+        return self.get_wave_function_array(band, kpt, spin) / self.a0**1.5
 
     def GetEigenvalues(self, kpt=0, spin=0):
         """Return eigenvalue array."""
@@ -135,7 +134,11 @@ class Calculator(PAW):
 
     def GetFermiLevel(self):
         """Return the Fermi-level."""
-        return self.occupation.get_fermi_level()
+        e = self.occupation.get_fermi_level()
+        if e is None:
+            # Zero temperature calculation - return vacuum level:
+            e = 0.0
+        return e * self.Ha
 
     def GetElectronicStates(self):
         """Return electronic-state object."""
@@ -143,3 +146,8 @@ class Calculator(PAW):
         self.write('tmp27.nc', 'all')
         return ElectronicStates('tmp27.nc')
     
+    def GetGridSpacings(self):
+        return self.a0 * self.gd.h_c
+
+    def GetNumberOfGridPoints(self):
+        return self.gd.N_c
