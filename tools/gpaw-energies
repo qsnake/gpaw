@@ -5,10 +5,12 @@ import sys
 import socket
 import re
 from optparse import OptionParser
-from math import sqrt
+from math import log,sqrt
 import Numeric as num
 
 from ASE.Units import units
+from gpaw.output import eigenvalue_string
+from gpaw.utilities.fold import fold
 
 def fatalerror(msg=None):
     if msg:
@@ -45,7 +47,6 @@ out = sys.stdout
 print >> out, "# file=",fname
 print >> out, "#",
 if not paw.converged: print >> out,'not',
-from math import log
 print >> out, 'converged, Log10 error=',log(paw.error)/log(10.)
 print >> out, "# energy unit:",units.GetEnergyUnit()
 print >> out, "# total energy = ",paw.Etot*Ha,\
@@ -56,11 +57,28 @@ print >> out, '# xc      "    = ',paw.Exc*Ha
 
 # dos
 if opt.gauss is None:
-    from gpaw.output import eigenvalue_string
     print >> out, eigenvalue_string(paw,"# ")
 else:
-    print >> out,"fold"
-
+    width = float(opt.gauss)
+    print >> out,"# folding with", width
+    eo = num.empty((paw.nspins*2,2,paw.nbands),num.Float)
+    for s in range(paw.nspins):
+        eo[2*s][0][:] = paw.kpt_u[s].eps_n*Ha
+        eo[2*s][1][:] = paw.kpt_u[s].f_n
+        eo[2*s+1][0][:] = paw.kpt_u[s].eps_n*Ha
+        eo[2*s+1][1][:] = (3.-paw.nspins)-paw.kpt_u[s].f_n
+    eo = fold(eo, width)
+    if paw.nspins == 1:
+        print >> out,"# eps    occ   unocc"
+        for e,o,u in zip(eo[0],eo[1],eo[2]):
+            print >> out,e,o,u
+    else:
+        print >> out,"# eps    occ(a)   unocc(a)   occ(b)   unocc(b)"
+        for e,oa,ua,ob,ub in zip(eo[0],eo[1],eo[2],eo[3],eo[4]):
+            print >> out,e,o,u,ob,ub
+    
+        
+        
 # forces
 if opt.Forces:
     if paw.F_ac is None:
