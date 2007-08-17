@@ -107,7 +107,7 @@ def write(paw, filename, mode):
         w['S'] = paw.S
         epsF = paw.occupation.get_fermi_level()
         if epsF is None:
-            # Zero temperature calculation - ase vacuum level:
+            # Zero temperature calculation - use vacuum level:
             epsF = 0.0
         w['FermiLevel'] = epsF
 

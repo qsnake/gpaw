@@ -47,7 +47,7 @@ class Wannier(ASEWannier):
             self.SetOccupationEnergy(occupationenergy)
             self.InitOccupationParameters()
 
-        if initialwannier is not None:	
+        if initialwannier is not None:  
             self.SetInitialWannierFunctions(initialwannier)
 
         if calculator.typecode == num.Float:
@@ -77,32 +77,32 @@ class Wannier(ASEWannier):
             self.UpdateZIMatrix()
 
     def GetWannierFunctionOnGrid(self, wannierindex, repeat=None):
-	"""wannierindex can be either a single WF or a coordinate vector
+        """wannierindex can be either a single WF or a coordinate vector
         in terms of the WFs."""
 
         # The coordinate vector of wannier functions
-	if type(wannierindex) == int:
+        if type(wannierindex) == int:
             coords_w = num.zeros(self.GetNumberOfWannierFunctions(),
                                  num.Complex)
             coords_w[wannierindex] = 1.0
-	else:	
+        else:   
             coords_w = wannierindex
 
         # Default size of plotting cell is the one corresponding to k-points.
-	if repeat is None:
+        if repeat is None:
             repeat = self.GetKPointGrid()
         else:
             repeat = num.array(repeat) # Ensure that repeat is an array
         N1, N2, N3 = repeat
 
-	dim = self.calculator.GetNumberOfGridPoints()
-	largedim = dim * repeat
+        dim = self.calculator.GetNumberOfGridPoints()
+        largedim = dim * repeat
         
-	bzk_kc = self.GetBZKPoints()
-        Nkpts = len(bzk_kc)        
+        bzk_kc = self.GetBZKPoints()
+        Nkpts = len(bzk_kc)
         kpt_u = self.calculator.kpt_u
         wanniergrid = num.zeros(largedim, typecode=num.Complex)
-	for k, kpt_c in enumerate(bzk_kc):
+        for k, kpt_c in enumerate(bzk_kc):
             u = (k + Nkpts * self.spin) % len(kpt_u)
             U_nw = self.GetListOfLargeRotationMatrices()[k]
             vec_n = num.matrixmultiply(U_nw, coords_w)
@@ -121,14 +121,14 @@ class Wannier(ASEWannier):
                                          n2 * dim[1]:(n2 + 1) * dim[1],
                                          n3 * dim[2]:(n3 + 1) * dim[2]])
 
-	# Normalization
-	wanniergrid /= num.sqrt(Nkpts)
-	return wanniergrid
+        # Normalization
+        wanniergrid /= num.sqrt(Nkpts)
+        return wanniergrid
 
     def WriteCube(self, wannierindex, filename, repeat=None, real=False):
         from ASE.IO.Cube import WriteCube
-	if repeat is None:
+        if repeat is None:
             repeat = self.GetKPointGrid()
-	wanniergrid = self.GetWannierFunctionOnGrid(wannierindex, repeat)
+        wanniergrid = self.GetWannierFunctionOnGrid(wannierindex, repeat)
         WriteCube(self.calculator.GetListOfAtoms().Repeat(repeat),
                   wanniergrid, filename, real=real)
