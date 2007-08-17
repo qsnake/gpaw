@@ -5,6 +5,8 @@ import sys
 import socket
 import re
 from optparse import OptionParser
+from math import sqrt
+import Numeric as num
 
 from ASE.Units import units
 
@@ -15,14 +17,19 @@ def fatalerror(msg=None):
     sys.exit()
 
 parser = OptionParser(usage='%prog [options] [file]')
+parser.add_option("-F", "--Forces", action='count', default=None,
+                  help='print forces also')
+parser.add_option("-G", "--Gauss", dest='gauss', default=None,
+                  help=' Gauss fold by width in the chosen energy unit')
 parser.add_option("-H", "--Hartree", action='count', default=None,
                   help='use Hartree energy units (def: eV)')
 opt, args = parser.parse_args()
-##print "opt=",opt
+#print "opt=",opt
 ##print "args=",args
 
 if opt.Hartree is not None:
     units.SetEnergyUnit('Hartree')
+    units.SetLengthUnit('Bohr')
 
 fname = 'gpaw-restart.gpw'
 if len(args):
@@ -31,6 +38,7 @@ if len(args):
 from gpaw import Calculator
 paw = Calculator(fname,txt=None)
 Ha = paw.Ha
+a0 = paw.a0
 
 out = sys.stdout
 
@@ -45,5 +53,25 @@ print >> out, "# total energy = ",paw.Etot*Ha,\
 print >> out, '# kin.    "    = ',paw.Ekin*Ha
 print >> out, '# pot.    "    = ',paw.Epot*Ha
 print >> out, '# xc      "    = ',paw.Exc*Ha
-from gpaw.output import eigenvalue_string
-print >> out, eigenvalue_string(paw,"# ")
+
+# dos
+if opt.gauss is None:
+    from gpaw.output import eigenvalue_string
+    print >> out, eigenvalue_string(paw,"# ")
+else:
+    print >> out,"fold"
+
+# forces
+if opt.Forces:
+    if paw.F_ac is None:
+        print >> out, '# sorry, no forces'
+    else:
+        print >> out, '# Forces ['+units.GetEnergyUnit()+\
+              '/'+units.GetLengthUnit()+']:'
+        fmax = 0.
+        scale = Ha/a0
+        for a,f in zip(paw.get_atoms(),paw.F_ac):
+            norm = sqrt(num.dot(f,f))*scale
+            if norm>fmax: fmax=norm
+            print >> out, a.symbol, norm, f*scale
+        print >> out, '# max. force',fmax 
