@@ -31,7 +31,7 @@ void bmgs_cutmz(const double_complex* a, const int sizea[3],
 #if defined(NO_C99_COMPLEX)
 	    {
 	      b[i2].r = p.r * a[i2].r - p.i * a[i2].i;
-	      b[i2].r = p.r * a[i2].i + p.i * a[i2].r;
+	      b[i2].i = p.r * a[i2].i + p.i * a[i2].r;
 	    }
 #else
 	    b[i2] = p * a[i2];

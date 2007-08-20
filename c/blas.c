@@ -182,11 +182,21 @@ PyObject* dotc(PyObject *self, PyObject *args)
     }
   else
     {
-      complex double* ap = COMPLEXP(a);
-      complex double* bp = COMPLEXP(b);
-      complex double z = 0.0;
+      double_complex* ap = COMPLEXP(a);
+      double_complex* bp = COMPLEXP(b);
+#ifndef NO_C99_COMPLEX
+      double_complex z = 0.0;
       for (int i = 0; i < n; i++)
 	z += conj(ap[i]) * bp[i];
       return PyComplex_FromDoubles(creal(z), cimag(z));
+#else
+      double_complex z = {0.0, 0.0};
+      for (int i = 0; i < n; i++)
+        {
+          z.r += ap[i].r * bp[i].r + ap[i].i * bp[i].i;
+          z.i += ap[i].r * bp[i].i - ap[i].i * bp[i].r;
+        }
+      return PyComplex_FromDoubles(z.r, z.i);
+#endif
     }
 }
