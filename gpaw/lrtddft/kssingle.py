@@ -155,20 +155,20 @@ class KSSingles(ExcitationList):
             
             if fh is None:
                 f.close()
+
  
 class KSSingle(Excitation,PairDensity):
     """Single Kohn-Sham transition containing all it's indicees
-    pspin=physical spin
-    spin=virtual  spin, i.e. spin in the ground state calc.
-    fijscale=weight for the occupation difference
 
-    me = sqrt(fij*epsij) * <i|r|j>
+    ::
 
-    mur = - <i|r|a>
-    
-    muv = - <i|\nabla|a>/omega_ia with omega_ia>0
-    
-    m   = <i|[r x \nabla]|a> / (2c)
+      pspin=physical spin
+      spin=virtual  spin, i.e. spin in the ground state calc.
+      fijscale=weight for the occupation difference::
+      me  = sqrt(fij*epsij) * <i|r|j>
+      mur = - <i|r|a>
+      muv = - <i|nabla|a>/omega_ia with omega_ia>0
+      m   = <i|[r x nabla]|a> / (2c)
     """
     def __init__(self,iidx=None,jidx=None,pspin=None,spin=None,
                  paw=None,string=None,fijscale=1):

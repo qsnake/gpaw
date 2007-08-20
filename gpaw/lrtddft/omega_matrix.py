@@ -24,7 +24,7 @@ class OmegaMatrix:
     """
     Omega matrix in Casidas linear response formalism
 
-    :Parameters:
+    Parameters
       - calculator: the calculator object the ground state calculation
       - kss: the Kohn-Sham singles object
       - xc: the exchange correlation approx. to use
@@ -33,7 +33,7 @@ class OmegaMatrix:
       - filehandle: the oject can be read from a filehandle
       - out: output stream
       - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
-      2 everything on the fine grid
+        2 everything on the fine grid
     """
     def __init__(self,
                  calculator=None,
