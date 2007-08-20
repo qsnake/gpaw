@@ -208,7 +208,7 @@ class RecursionMethod:
         z_cG *= I_c
         w_cG *= I_c
         
-        if i is not 0:
+        if i != 0:
             b_c =  1./I_c 
         else:
             b_c = num.reshape(num.zeros(3),(3,1,1,1))
@@ -216,8 +216,6 @@ class RecursionMethod:
         self.paw.kpt_u[k].apply_hamiltonian(self.paw.hamiltonian, 
                                             z_cG, y_cG)
         a_c = num.reshape(integrate(num.conjugate(z_cG) * y_cG), (3, 1, 1, 1))
-        b_c = b_c
-        print "a_c", a_c
         wnew_cG = (y_cG - a_c * w_cG - b_c * wold_cG)
         wold_cG[:] = w_cG
         w_cG[:] = wnew_cG
