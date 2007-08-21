@@ -16,7 +16,8 @@ class XAS:
 
         nocc = int(paw.nvalence / 2)
         for nucleus in paw.nuclei:
-            if nucleus.setup.fcorehole != 0.0:  # here an xes setup could be used instead
+            print "i"
+            if nucleus.setup.phicorehole_g is not None:  # here an xes setup could be used instead
                 break
 
         A_ci = nucleus.setup.A_ci
@@ -34,6 +35,9 @@ class XAS:
             n_start = 0
             n_end = paw.nbands 
             n = paw.nbands
+        else:
+            print "wrong keyword for 'mode', use 'xas', 'xes' or 'all'"
+            exit
             
         self.n = n
 
@@ -125,6 +129,7 @@ class RecursionMethod:
             assert not paw.spinpol # restricted - for now
 
             self.paw = paw
+            self.weight_k = paw.weight_k
             self.tmp1_cG = paw.gd.zeros(3, paw.typecode)
             self.tmp2_cG = paw.gd.zeros(3, paw.typecode)
             self.tmp3_cG = paw.gd.zeros(3, paw.typecode)
@@ -148,6 +153,7 @@ class RecursionMethod:
         self.a_kci, self.b_kci = data['ab']
         self.nkpts = data['nkpts']
         self.swaps = data['swaps']
+        self.weight_k = data['weight_k']
         if 'arrays' in data:
             (self.w_kcG,
              self.wold_kcG,
@@ -156,7 +162,8 @@ class RecursionMethod:
     def write(self, filename, mode=''):
         data = {'ab': (self.a_kci, self.b_kci),
                 'nkpts': self.nkpts,
-                'swaps': self.swaps}
+                'swaps': self.swaps,
+                'weight_k':self.weight_k}
         if mode == 'all':
             data['arrays'] = (self.w_kcG,
                               self.wold_kcG,
@@ -169,7 +176,7 @@ class RecursionMethod:
         print nkpts
         self.w_kcG = self.paw.gd.zeros((nkpts, 3), self.paw.typecode)
         for nucleus in self.paw.nuclei:
-            if nucleus.setup.fcorehole != 0.0:
+            if nucleus.setup.phicorehole_g is not None:
                 break
         A_ci = nucleus.setup.A_ci
         if nucleus.pt_i is not None: # not all CPU's will have a contribution
@@ -250,7 +257,7 @@ class RecursionMethod:
                                                        0, imax).imag
         else:
             for k in range(self.nkpts):
-                weight = self.paw.weight_k[k]
+                weight = self.weight_k[k]
                 for c in range(3):
                     sigma_cn[c] += weight*self.continued_fraction(eps_n, k, c,
                                                                0, imax).imag

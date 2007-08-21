@@ -157,7 +157,9 @@ class Setup:
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
 
-        if self.fcorehole > 0.0:
+        print self.phicorehole_g
+        if self.phicorehole_g is not None:
+            print "ok"
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
         # Construct splines:
@@ -475,14 +477,14 @@ class Setup:
         self.C_ii = -num.dot(self.O_ii, inv(num.identity(size) + num.dot(self.B_ii, self.O_ii)))
 
     def print_info(self, text):
-        if self.fcorehole == 0.0:
+        if self.phicorehole_g is None:
             text(self.symbol + '-setup:')
         else:
             text('%s-setup (%.1f core hole):' % (self.symbol, self.fcorehole))
         text('  name   :', names[self.Z])
         text('  Z      :', self.Z)
         text('  valence:', self.Nv)
-        if self.fcorehole == 0.0:
+        if self.phicorehole_g is None:
             text('  core   : %d' % self.Nc)
         else:
             text('  core   : %.1f' % self.Nc)
