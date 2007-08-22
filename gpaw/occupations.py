@@ -15,6 +15,7 @@ class Dummy:
         self.magmom = 0.0
         self.niter = -1
         self.S = 0.0
+        self.kpt_comm = mpi.serial_comm
         
     def set_communicator(self, kpt_comm):
         self.kpt_comm = kpt_comm
