@@ -157,7 +157,6 @@ class Setup:
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
 
-        print self.phicorehole_g
         if self.phicorehole_g is not None:
             print "ok"
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
