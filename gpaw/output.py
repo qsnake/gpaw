@@ -118,7 +118,7 @@ class Output:
             t('Damping of long wave oscillations: %.6f' % mixer.x)
 
         t(('Converge occupied states only.',
-           'Converge all states.')[p['convergeall']])
+           'Converge all states.')[int(p['convergeall'])])
 
         t()
         t('unitcell:')

@@ -104,7 +104,8 @@ def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
     """Central finite diference Laplacian.
 
     Uses 6*n neighbors."""
-    
+
+    n = int(n)
     h = gd.h_c
     h2 = h**2
     offsets = [(0, 0, 0)]

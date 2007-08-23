@@ -55,7 +55,7 @@ class Density:
         self.timer = paw.timer
         self.kpt_comm = paw.kpt_comm
         self.nvalence = paw.nvalence
-        self.charge = p['charge']
+        self.charge = float(p['charge'])
         
         self.nvalence0 = self.nvalence + self.charge
         for nucleus in self.nuclei:
