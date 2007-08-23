@@ -173,7 +173,7 @@ class Density:
 
         self.interpolate_pseudo_density()
 
-        self.initialized = False
+        self.initialized = True
 
     def interpolate_pseudo_density(self):
         """Transfer the density from the coarse to the fine grid."""

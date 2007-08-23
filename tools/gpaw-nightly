@@ -57,9 +57,10 @@ os.system('wget --no-check-certificate ' +
 os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
 setups = dir + '/gpaw/' + glob.glob('gpaw-setups-*/setups')[0]
-export = ('export PYTHONPATH=/scratch/jensj/lib/python:%s/lib/python:%s/lib/python; ' % (dir, home) +
-          'export PATH=%s/bin:$PATH; ' +
+export = ('export PYTHONPATH=%s/lib/python; ' % dir +
           'export GPAW_SETUP_PATH=%s; ' % setups)
+print export
+
 
 # Run test-suite:
 os.chdir('test')
@@ -99,7 +100,7 @@ print >> out
 # PyLint:
 os.chdir('../../lib/python')
 os.system('rm -rf gpaw/gui')
-if os.system(export + '/scratch/jensj/bin/pylint -f html gpaw; ' +
+if os.system(export + 'pylint -f html gpaw; ' +
              'cp pylint_global.html /home/camp/jensj/.gpaw/cron') != 0:
     fail('PyLint failed!')
 

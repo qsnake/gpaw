@@ -280,7 +280,7 @@ class PAW(PAWExtra, Output):
             self.plot_atoms()
 
     def set(self, **kwargs):
-        self.convert_units(kwargs)
+        self.convert_units(kwargs)  # ASE???
         self.initialized = False
         self.wave_functions_initialized = False
         self.input_parameters.update(kwargs)
@@ -292,7 +292,11 @@ class PAW(PAWExtra, Output):
             self.initialize()
             self.find_ground_state()
             return
-        
+
+        if not self.converged:
+            self.find_ground_state()
+            return
+            
         atoms = self.atoms
         if self.lastcount == atoms.GetCount():
             # Nothing to do:
@@ -819,7 +823,7 @@ class PAW(PAWExtra, Output):
         self.timer = Timer()
         self.timer.start('Init')
 
-        self.kpt_u = None
+        #########oooself.kpt_u = None
         
         atoms = self.atoms
         self.natoms = len(atoms)
@@ -913,7 +917,7 @@ class PAW(PAWExtra, Output):
                 for setup in self.setups:
                     setup.calculate_rotations(R_slmm)
 
-        if parsize is not None:
+        if parsize is not None:  # command-line option
             p['parsize'] = parsize
         self.distribute_kpoints_and_spins(p['parsize'], N_c)
         

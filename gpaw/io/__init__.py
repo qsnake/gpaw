@@ -278,13 +278,15 @@ def read(paw, reader):
     for s in range(paw.nspins): 
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
                           paw.density.nt_sG[s])
+
+    # Transfer the density to the fine grid:
+    paw.density.interpolate_pseudo_density()  # Do this later??????
+    paw.density.initialized = True
+    
     if version > 0.3:
         for s in range(paw.nspins): 
             paw.gd.distribute(r.get('PseudoPotential', s),
                               paw.hamiltonian.vt_sG[s])
-
-    # Transfer the density to the fine grid:
-    paw.density.interpolate_pseudo_density()
 
     # Read atomic density matrices and non-local part of hamiltonian:
     D_sp = r.get('AtomicDensityMatrices')
