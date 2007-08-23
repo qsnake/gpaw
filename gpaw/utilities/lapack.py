@@ -40,6 +40,25 @@ def diagonalize(a, w, b=None):
         info = _gpaw.diagonalize(a, w)
     return info
 
+def right_eigenvectors(a, w, v):
+    """Get right eigenvectors and eigenvalues from a square matrix
+    using LAPACK dgeev.
+
+    The right eigenvector corresponding to eigenvalue w[i] is v[i]."""
+
+    assert a.iscontiguous()
+    assert w.iscontiguous()
+    assert v.iscontiguous()
+    assert a.typecode() == num.Float
+    assert w.typecode() == num.Float
+    assert v.typecode() == num.Float
+    n = len(a)
+    assert a.shape == (n, n)
+    assert w.shape == (n,)
+    assert w.shape == (n,n)
+    return _gpaw.right_eigenvectors(a, w, v)
 
 if not debug:
     diagonalize = _gpaw.diagonalize
+    right_eigenvectors = _gpaw.right_eigenvectors
+    

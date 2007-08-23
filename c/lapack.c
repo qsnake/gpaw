@@ -32,6 +32,11 @@ int zpotrf_(char *uplo, int *n, void *a,
 	    int *lda, int *info);
 int zpotri_(char *uplo, int *n, void *a, 
 	    int *lda, int *info);
+int dgeev_(char *jovl, char *jobvr, int *n, double *a, int *lda,
+	   double *wr, double *wl, 
+	   double *vl, int *ldvl, double *vr, int *ldvr,
+	   double *work, int *lwork, int *info);
+			        
 
 PyObject* diagonalize(PyObject *self, PyObject *args)
 {
@@ -75,6 +80,81 @@ PyObject* diagonalize(PyObject *self, PyObject *args)
                 work, &lwork, rwork, &lrwork, &info);
       free(work);
       free(rwork);
+    }
+  return Py_BuildValue("i", info);
+}
+
+void swap(double *a, double *b) {
+  double tmp=*b;
+  *b = *a;
+  *a = tmp;
+}
+void transpose(double *A, int n) {
+  int i, j;
+  int in=0;
+  for(i=0;i<n-1;i++) {
+    for(j=i+1;j<n;j++)
+      swap(A+in+j,A+j*n+i);
+    in+=n;
+  }
+}
+void print(double *A, int n) {
+  int i,j;
+  for(i=0;i<n;i++) {
+    if(i) printf(" (");
+    else printf("((");
+    for(j=0;j<n;j++) {
+      printf(" %g",A[n*i+j]);
+    }
+    if(i==n-1) printf("))\n");
+    else printf(")\n");
+  }
+}
+PyObject* right_eigenvectors(PyObject *self, PyObject *args)
+/* Return eigenvalues and right eigenvectors of a
+ * nonsymmetric eigenvalue problem
+ */
+{
+  PyArrayObject* A;
+  PyArrayObject* v; /* eigenvectors */
+  PyArrayObject* w; /* eigenvalues */
+  if (!PyArg_ParseTuple(args, "OOO", &A, &w, &v)) 
+    return NULL;
+  int n = A->dimensions[0];
+  int lda = n;
+  int info = 0;
+  if (A->descr->type_num == PyArray_DOUBLE)
+    {
+      int lwork = -1;
+      double* work = GPAW_MALLOC(double, 1);
+      double* wr = GPAW_MALLOC(double, n);
+      double* wi = GPAW_MALLOC(double, n);
+      int ldvl = 1;
+      int ldvr = n;
+      double* vl = 0;
+      int i;
+      /* get size of work needed */
+      dgeev_("No eigenvectors left", "Vectors right", 
+	     &n, DOUBLEP(A), &lda, wr, wi, 
+	     vl, &ldvl, DOUBLEP(v), &ldvr, work, &lwork, &info);
+      lwork = (int) work[0];
+      free(work);
+      work = GPAW_MALLOC(double, lwork);
+
+      transpose(DOUBLEP(A),n); /* transform to Fortran form */
+      dgeev_("No eigenvectors left", "Vectors right", 
+	     &n, DOUBLEP(A), &lda, wr, wi, 
+	     vl, &ldvl, DOUBLEP(v), &ldvr, work, &lwork, &info);
+
+      for(i=0;i<n;i++) {
+	if(wi[i]!=0.)
+	  printf("<diagonalize_nonsymmetric> dgeev i=%d,wi[i]=%g\n",
+		 i,wi[i]);
+	DOUBLEP(w)[i]=wr[i];
+      }
+      free(wr);
+      free(wi);
+      free(work);
     }
   return Py_BuildValue("i", info);
 }
