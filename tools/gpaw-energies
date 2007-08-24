@@ -45,9 +45,15 @@ a0 = paw.a0
 out = sys.stdout
 
 print >> out, "# file=",fname
-print >> out, "#",
-if not paw.converged: print >> out,'not',
-print >> out, 'converged, Log10 error=',log(paw.error)/log(10.)
+additional_info=True
+if additional_info:
+    p = paw.input_parameters
+    print >> out, '# xc:',paw.hamiltonian.xc.xcfunc.get_name()
+    if  p['charge']:
+        print >> out, '# charge:',p['charge']
+    print >> out, "#",
+    if not paw.converged: print >> out,'not',
+    print >> out, 'converged, Log10 error=',log(paw.error)/log(10.)
 print >> out, "# energy unit:",units.GetEnergyUnit()
 print >> out, "# total energy = ",paw.Etot*Ha,\
       "("+str((paw.Eref+paw.Etot)*Ha)+")"
