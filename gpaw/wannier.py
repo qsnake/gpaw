@@ -16,25 +16,23 @@ class Wannier(ASEWannier):
                  seed=None):
 
         self.CheckNumeric()
-        self.nowannier = numberofwannier
-        self.calculator = calc = calculator
+        self.SetNumberOfWannierFunctions(numberofwannier)
+        self.SetCalculator(calculator)
         if numberofbands is not None:
             self.SetNumberOfBands(numberofbands)
         else:
-            self.SetNumberOfBands(calc.GetNumberOfBands())
-        self.spin = spin
+            self.SetNumberOfBands(calculator.GetNumberOfBands())
+        self.SetSpin(spin)
         self.seed = seed
-
-        # set kpoints
-        self.SetIBZKPoints(calc.GetIBZKPoints())
-        self.SetBZKPoints(calc.GetBZKPoints())
+        self.SetIBZKPoints(calculator.GetIBZKPoints())
+        self.SetBZKPoints(calculator.GetBZKPoints())
         assert len(self.GetBZKPoints()) == len(self.GetIBZKPoints()),\
                'k-points must not be symmetry reduced'
 
         # Set eigenvalues relative to the Fermi level
-        efermi = calc.GetFermiLevel()
-        self.SetEigenValues([calc.GetEigenvalues(kpt, spin) - efermi
-                             for  kpt in range(len(self.GetBZKPoints()))])
+        efermi = calculator.GetFermiLevel()
+        self.SetEigenValues([calculator.GetEigenvalues(kpt, spin) - efermi
+                             for kpt in range(len(self.GetBZKPoints()))])
 
         if numberoffixedstates is not None:
             self.SetNumberOfFixedStates(numberoffixedstates)
@@ -56,12 +54,13 @@ class Wannier(ASEWannier):
             self.SetType(complex)
     
         # Set unitcell and determine reciprocal weights
-        self.SetUnitCell(calc.GetListOfAtoms().GetUnitCell())
+        self.SetUnitCell(calculator.GetListOfAtoms().GetUnitCell())
         self.CalculateWeightsFromUnitCell()
 
-    def SetInitialWannierFunctions(self,initialwannier):
+    def SetInitialWannierFunctions(self, initialwannier):
         # get the initial Wannier function from the calculator
-        pass # XXX
+        self.initialwannier = initialwannier
+        raise NotImplementedError
 
     def InitializeRotationAndCoefficientMatrices(self):
         # Set ZIMatrix and ZIkMatrix to zero.
@@ -95,12 +94,12 @@ class Wannier(ASEWannier):
             repeat = num.array(repeat) # Ensure that repeat is an array
         N1, N2, N3 = repeat
 
-        dim = self.calculator.GetNumberOfGridPoints()
+        dim = self.GetCalculator().GetNumberOfGridPoints()
         largedim = dim * repeat
         
         bzk_kc = self.GetBZKPoints()
         Nkpts = len(bzk_kc)
-        kpt_u = self.calculator.kpt_u
+        kpt_u = self.GetCalculator().kpt_u
         wanniergrid = num.zeros(largedim, typecode=num.Complex)
         for k, kpt_c in enumerate(bzk_kc):
             u = (k + Nkpts * self.spin) % len(kpt_u)

@@ -113,6 +113,11 @@ class Calculator(PAW):
         """Return pseudo-density array."""
         return self.density.get_density_array() / self.a0**3
 
+    def GetAllElectronDensity(self, gridrefinement=2):
+        """Return reconstructed all-electron density array."""
+        return self.paw.density.get_all_electron_density(gridrefinement)\
+               / self.a0**3
+
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""
         return self.get_wave_function_array(band, kpt, spin) / self.a0**1.5
@@ -121,12 +126,16 @@ class Calculator(PAW):
         """Return eigenvalue array."""
         return self.get_eigenvalues(kpt, spin) * self.Ha
 
-    def GetWannierLocalizationMatrix(self, G_I, kpoint, nextkpoint, spin,
-                                     dirG, **args):
+    def GetWannierLocalizationMatrix(self, nbands, dirG, kpoint,
+                                     nextkpoint, G_I, spin):
         """Calculate integrals for maximally localized Wannier functions."""
 
+        # Due to orthorhombic cells, only one component of dirG is non-zero.
         c = dirG.index(1)
-        return self.get_wannier_integrals(c, spin, kpoint, nextkpoint, G_I)
+        kpts = self.GetBZKPoints()
+        G = kpts[nextkpoint, c] - kpts[kpoint, c] + G_I[c]
+
+        return self.get_wannier_integrals(c, spin, kpoint, nextkpoint, G)
 
     def GetMagneticMoment(self):
         """Return the magnetic moment."""
@@ -151,3 +160,24 @@ class Calculator(PAW):
 
     def GetNumberOfGridPoints(self):
         return self.gd.N_c
+
+    def GetEnsembleCoefficients(self):
+        """Get BEE ensemble coefficients.
+
+        See The ASE manual_ for details.
+
+        .. _manual: https://wiki.fysik.dtu.dk/ase/Utilities
+                    #bayesian-error-estimate-bee
+        """
+
+        E = self.GetPotentialEnergy()
+        E0 = self.get_xc_difference('XC-9-1.0')
+        coefs = (E + E0,
+                 self.get_xc_difference('XC-0-1.0') - E0,
+                 self.get_xc_difference('XC-1-1.0') - E0,
+                 self.get_xc_difference('XC-2-1.0') - E0)
+        print >> self.out, 'BEE: (%.9f, %.9f, %.9f, %.9f)' % coefs
+        return num.array(coefs)
+
+    def GetExactExchange(self):
+        return self.get_exact_exchange()

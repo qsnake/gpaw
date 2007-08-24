@@ -24,23 +24,22 @@ if 1:
     ethylene.GetPotentialEnergy()
     calc.write('ethylene.gpw', 'all')
 else:
-    calc = Calculator('ethylene.gpw')
+    calc = Calculator('ethylene.gpw', txt=None)
 
 wannier = Wannier(numberofwannier=6,
                   calculator=calc,
                   numberoffixedstates=[6])
 wannier.Localize(tolerance=1e-5)
 
-value = wannier.GetFunctionalValue() 
-equal(13.7995, value, 0.015)
-
 centers = wannier.GetCenters()
+print centers
 expected = [[1.950, 2.376, 3.000],
             [1.950, 3.624, 3.000],
             [3.000, 3.000, 2.671],
             [3.000, 3.000, 3.329],
             [4.050, 2.376, 3.000],
             [4.050, 3.624, 3.000]]
+equal(13.7995, wannier.GetFunctionalValue(), 0.016)
 for xi, wi in enumerate(wannier.GetSortedIndices()):
     assert abs(num.sum(expected[xi] - centers[wi]['pos'])) < 0.01
 

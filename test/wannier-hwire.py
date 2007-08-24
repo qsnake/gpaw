@@ -2,37 +2,47 @@ from gpaw import Calculator
 from ASE import Atom, ListOfAtoms
 from gpaw.wannier import Wannier
 from ASE.Utilities.MonkhorstPack import MonkhorstPack
+from gpaw.utilities import equal
 
 natoms = 1
 hhbondlength = 0.9
-atoms1 = ListOfAtoms([Atom('H', (0, 4.0, 4.0))],
-                    cell=(hhbondlength, 8., 8.), periodic=True)
-atomsN = atoms1.Repeat((natoms, 1, 1))
+atoms = ListOfAtoms([Atom('H', (0, 4.0, 4.0))],
+                    cell=(hhbondlength, 8., 8.),
+                    periodic=True).Repeat((natoms, 1, 1))
 
 # Displace kpoints sligthly, so that the symmetry program does
 # not use inversion symmetry to reduce kpoints.
-kpts = MonkhorstPack((21, 1, 1)) + 2e-5
+kpts = [21, 11, 7][natoms - 1]
+occupationenergy = [30., 0., 0.][natoms - 1]
+kpts = MonkhorstPack((kpts, 1, 1)) + 2e-5
 
 if 1:
     # GPAW calculator:
     calc = Calculator(nbands=natoms // 2 + 4,
                       kpts=kpts,
-                      width=.08,
-                      tolerance=1e-6)
-    atomsN.SetCalculator(calc)
-    atomsN.GetPotentialEnergy()
-    calc.write('wire.gpw', 'all')
+                      width=.1,
+                      spinpol=False,
+                      tolerance=1e-7)
+    atoms.SetCalculator(calc)
+    atoms.GetPotentialEnergy()
+    calc.write('hwire.gpw', 'all')
+else:
+    calc = Calculator('hwire.gpw', txt=None)
 
-calc = Calculator('wire.gpw')
-wannier = Wannier(numberofwannier=natoms,
+wannier = Wannier(numberofwannier=natoms, 
                   calculator=calc,
-                  numberoffixedstates=[natoms] * len(kpts))
+                  occupationenergy=occupationenergy)
 
 wannier.Localize()
-wannier.TranslateAllWannierFunctionsToCell([10,0,0])
+wannier.TranslateAllWannierFunctionsToCell([1, 0, 0])
 
 centers = wannier.GetCenters()
 for i in wannier.GetSortedIndices():
-   print centers[i]
+    center = centers[i]['pos']
+    print center
+    equal(center[0] % hhbondlength, 0., 2e-3)
+    equal(center[1], 4., 2e-3)
+    equal(center[2], 4., 2e-3)
 
-wannier.WriteCube(0, 'hwire.cube')
+for i in range(natoms):
+    wannier.WriteCube(i, 'hwire%s.cube' % i)

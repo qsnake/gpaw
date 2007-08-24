@@ -394,10 +394,9 @@ class GridDescriptor:
             Z   = <psi | e      |psi >
              nm       n             m
                     
-        c is the coordinate index of G, G is a reciprocial laticce vector in
-        that direction, psit_nG and psit_nG1 are the set of wave functions
-        for the two different spin/kpoints in question.
-        G is in the range 0 .. 1.
+        G is 1/N_c, where N_c is the number of k-points along axis c, psit_nG
+        and psit_nG1 are the set of wave functions for the two different
+        spin/kpoints in question.
 
         ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
         """
@@ -428,7 +427,7 @@ class GridDescriptor:
                 B_nG = A_nG
             else:
                 B_nG = get_slice(c, g, psit_nG1)
-
+                
             e = exp(-2.j * pi * G * (g + self.beg_c[c]) / self.N_c[c])
             Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG)) * self.dv
             

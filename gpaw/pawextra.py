@@ -88,7 +88,7 @@ class PAWExtra:
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
             return eps_n
 
-    def get_wannier_integrals(self, c, s, k, k1, G_I):
+    def get_wannier_integrals(self, c, s, k, k1, G):
         """Calculate integrals for maximally localized Wannier functions."""
 
         assert s <= self.nspins
@@ -99,9 +99,6 @@ class PAWExtra:
         # XXX not for the kpoint/spin parallel case
         assert self.kpt_comm.size == 1
         
-        # Due to orthorhombic cells, only 'c' component of G is non-zero.
-        G = G_I[c]
-
         # Get pseudo part
         Z_nn = self.gd.wannier_matrix(self.kpt_u[u].psit_nG,
                                       self.kpt_u[u1].psit_nG, c, G)
@@ -111,7 +108,7 @@ class PAWExtra:
             Z_nn += nucleus.wannier_correction(G, c, u, u1)
 
         self.gd.comm.sum(Z_nn, MASTER)
-
+            
         return Z_nn
 
     def get_xc_difference(self, xcname):
@@ -203,3 +200,7 @@ class PAWExtra:
         # Eigensolver
         # !!! FIX ME !!!
         # not implemented yet...
+
+    def get_number_of_iterations(self):
+        """Return the number of SCF iterations."""
+        return self.paw.niter
