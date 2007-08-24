@@ -169,10 +169,10 @@ class RecursionMethod:
         if self.paw is not None and 'arrays' in data:
             print 'reading arrays'
             w_kcG, wold_kcG, y_kcG = data['arrays']
-            i = self.paw.gd.get_slice()
-            self.w_ucG = w_kcG[k1:k2, :, i]
-            self.wold_ucG = wold_kcG[k1:k2, :, i]
-            self.y_ucG = y_kcG[k1:k2, :, i]
+            i = [slice(k1, k2), slice(0, 3)] + self.paw.gd.get_slice()
+            self.w_ucG = w_kcG[i].copy()
+            self.wold_ucG = wold_kcG[i].copy()
+            self.y_ucG = y_kcG[i].copy()
 
     def write(self, filename, mode=''):
         assert self.paw is not None
@@ -200,9 +200,12 @@ class RecursionMethod:
             y0_ucG = gd.collect(self.y_ucG)
             if gd.comm.rank == MASTER:
                 if kpt_comm.rank == MASTER:
-                    w_kcG = gd.empty((self.nkpts, 3), self.paw.typecode)
-                    wold_kcG = gd.empty((self.nkpts, 3), self.paw.typecode)
-                    y_kcG = gd.empty((self.nkpts, 3), self.paw.typecode)
+                    w_kcG = gd.empty((self.nkpts, 3), self.paw.typecode,
+                                     global_array=True)
+                    wold_kcG = gd.empty((self.nkpts, 3), self.paw.typecode,
+                                        global_array=True)
+                    y_kcG = gd.empty((self.nkpts, 3), self.paw.typecode,
+                                     global_array=True)
                     kpt_comm.gather(w0_ucG, MASTER, w_kcG)
                     kpt_comm.gather(wold0_ucG, MASTER, wold_kcG)
                     kpt_comm.gather(y0_ucG, MASTER, y_kcG)
@@ -358,10 +361,14 @@ class RecursionMethod:
         self.paw.kpt_u[u].apply_inverse_overlap(self.paw.pt_nuclei,
                                                 w_cG, self.tmp1_cG)
         self.u = u
-        CG(self.A, z_cG, self.tmp1_cG,
+        CG(self, z_cG, self.tmp1_cG,
            tolerance=self.tol, maxiter=self.maxiter)
-        
-    def A(self, in_cG, out_cG):
+
+    def sum(self, a):
+        self.paw.gd.comm.sum(a)
+        return a
+    
+    def __call__(self, in_cG, out_cG):
         """Function that is called by CG. It returns S~-1Sx_in in x_out
         """
 
