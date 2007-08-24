@@ -121,6 +121,10 @@ class GridDescriptor:
     def get_size_of_global_array(self):
         return self.N_c - 1 + self.domain.periodic_c
 
+    def get_slice(self):
+        return [slice(b - 1 + p, e - 1 + p) for b, e, p in
+                zip(self.beg_c, self.end_c, self.domain.periodic_c)]
+
     def zeros(self, n=(), typecode=num.Float, global_array=False):
         return self.new_array(n, typecode, True, global_array)
     

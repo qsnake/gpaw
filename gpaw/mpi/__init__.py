@@ -29,7 +29,10 @@ class SerialCommunicator:
 
     def barrier(self):
         pass
-    
+
+    def gather(self, a, root, b):
+        b[:] = a
+
 serial_comm = SerialCommunicator()
 if debug:
     serial_comm.comm = serial_comm # cycle? XXX

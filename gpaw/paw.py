@@ -786,6 +786,9 @@ class PAW(PAWExtra, Output):
     
     def __del__(self):
         """Destructor:  Write timing output before closing."""
+        if not hasattr(self, 'txt'):
+            return
+        
         if hasattr(self, 'timer'):
             self.timer.write(self.txt)
 

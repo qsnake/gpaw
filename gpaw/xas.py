@@ -7,6 +7,7 @@ from ASE.Units import units, Convert
 
 from gpaw.utilities.cg import CG
 import gpaw.mpi as mpi
+from gpaw.mpi import MASTER
 
 
 class XAS:
@@ -125,20 +126,26 @@ class RecursionMethod:
     def __init__(self, paw=None, filename=None,
                  tol=1e-10, maxiter=100):
 
+        self.paw = paw
         if paw is not None:
             assert not paw.spinpol # restricted - for now
 
-            self.paw = paw
             self.weight_k = paw.weight_k
             self.tmp1_cG = paw.gd.zeros(3, paw.typecode)
             self.tmp2_cG = paw.gd.zeros(3, paw.typecode)
             self.tmp3_cG = paw.gd.zeros(3, paw.typecode)
             self.z_cG = paw.gd.zeros(3, paw.typecode)
-            self.nkpts = self.paw.nmyu
+            self.nkpts = paw.nkpts
+            self.nmykpts = paw.nmyu
+            self.k1 = paw.kpt_comm.rank * self.nmykpts
+            self.k2 = self.k1 + self.nmykpts
             self.swaps = {}  # Python 2.4: use a set
             if paw.symmetry is not None:
                 for swap, mirror in paw.symmetry.symmetries:
                     self.swaps[swap] = None
+        else:
+            self.k1 = 0
+            self.k2 = None
 
         self.tol = tol
         self.maxiter = maxiter
@@ -150,89 +157,127 @@ class RecursionMethod:
 
     def read(self, filename):
         data = pickle.load(open(filename))
-        self.a_kci, self.b_kci = data['ab']
         self.nkpts = data['nkpts']
         self.swaps = data['swaps']
         self.weight_k = data['weight_k']
-        if 'arrays' in data:
-            (self.w_kcG,
-             self.wold_kcG,
-             self.y_kcG) = data['arrays']
-            print "reading arrays"
+        k1, k2 = self.k1, self.k2
+        if k2 is None:
+            k2 = self.nkpts
+        a_kci, b_kci = data['ab']
+        self.a_uci = a_kci[k1:k2].copy()
+        self.b_uci = b_kci[k1:k2].copy()
+        if self.paw is not None and 'arrays' in data:
+            print 'reading arrays'
+            w_kcG, wold_kcG, y_kcG = data['arrays']
+            i = self.paw.gd.get_slice()
+            self.w_ucG = w_kcG[k1:k2, :, i]
+            self.wold_ucG = wold_kcG[k1:k2, :, i]
+            self.y_ucG = y_kcG[k1:k2, :, i]
+
     def write(self, filename, mode=''):
-        data = {'ab': (self.a_kci, self.b_kci),
-                'nkpts': self.nkpts,
-                'swaps': self.swaps,
-                'weight_k':self.weight_k}
+        assert self.paw is not None
+        kpt_comm = self.paw.kpt_comm
+        gd = self.paw.gd
+
+        if gd.comm.rank == MASTER:
+            if kpt_comm.rank == MASTER:
+                ni = self.a_uci.shape[2]
+                a_kci = num.empty((self.nkpts, 3, ni), self.paw.typecode)
+                b_kci = num.empty((self.nkpts, 3, ni), self.paw.typecode)
+                kpt_comm.gather(self.a_uci, MASTER, a_kci)
+                kpt_comm.gather(self.b_uci, MASTER, b_kci)
+                data = {'ab': (a_kci, b_kci),
+                        'nkpts': self.nkpts,
+                        'swaps': self.swaps,
+                        'weight_k':self.weight_k}
+            else:
+                kpt_comm.gather(self.a_uci, MASTER)
+                kpt_comm.gather(self.b_uci, MASTER)
+            
         if mode == 'all':
-            data['arrays'] = (self.w_kcG,
-                              self.wold_kcG,
-                              self.y_kcG)
-        pickle.dump(data, open(filename, 'w'))
+            w0_ucG = gd.collect(self.w_ucG)
+            wold0_ucG = gd.collect(self.wold_ucG)
+            y0_ucG = gd.collect(self.y_ucG)
+            if gd.comm.rank == MASTER:
+                if kpt_comm.rank == MASTER:
+                    w_kcG = gd.empty((self.nkpts, 3), self.paw.typecode)
+                    wold_kcG = gd.empty((self.nkpts, 3), self.paw.typecode)
+                    y_kcG = gd.empty((self.nkpts, 3), self.paw.typecode)
+                    kpt_comm.gather(w0_ucG, MASTER, w_kcG)
+                    kpt_comm.gather(wold0_ucG, MASTER, wold_kcG)
+                    kpt_comm.gather(y0_ucG, MASTER, y_kcG)
+                    data['arrays'] = (w_kcG, wold_kcG, y_kcG)
+                else:
+                    kpt_comm.gather(w0_ucG, MASTER)
+                    kpt_comm.gather(wold0_ucG, MASTER)
+                    kpt_comm.gather(y0_ucG, MASTER)
+
+        if mpi.rank == MASTER:
+            pickle.dump(data, open(filename, 'w'))
         
     def initialize_start_vector(self):
         # Create initial wave function:
-        nkpts = self.nkpts
-        print nkpts
-        self.w_kcG = self.paw.gd.zeros((nkpts, 3), self.paw.typecode)
+        nmykpts = self.nmykpts
+        self.w_ucG = self.paw.gd.zeros((nmykpts, 3), self.paw.typecode)
         for nucleus in self.paw.nuclei:
             if nucleus.setup.phicorehole_g is not None:
                 break
         A_ci = nucleus.setup.A_ci
         if nucleus.pt_i is not None: # not all CPU's will have a contribution
-            for k in range(nkpts):
-                nucleus.pt_i.add(self.w_kcG[k], A_ci, k)
+            for u in range(nmykpts):
+                nucleus.pt_i.add(self.w_ucG[u], A_ci, self.k1 + u)
 
-        self.wold_kcG = self.paw.gd.zeros((nkpts, 3), self.paw.typecode)
-        self.y_kcG = self.paw.gd.zeros((nkpts, 3), self.paw.typecode)
+        self.wold_ucG = self.paw.gd.zeros((nmykpts, 3), self.paw.typecode)
+        self.y_ucG = self.paw.gd.zeros((nmykpts, 3), self.paw.typecode)
             
-        self.a_kci = num.zeros((nkpts, 3, 0), self.paw.typecode)
-        self.b_kci = num.zeros((nkpts, 3, 0), self.paw.typecode)
+        self.a_uci = num.zeros((nmykpts, 3, 0), self.paw.typecode)
+        self.b_uci = num.zeros((nmykpts, 3, 0), self.paw.typecode)
         
     def run(self, nsteps):
-        ni = self.a_kci.shape[2]
-        a_kci = num.empty((self.nkpts, 3, ni + nsteps), self.paw.typecode)
-        b_kci = num.empty((self.nkpts, 3, ni + nsteps), self.paw.typecode)
-        a_kci[:, :, :ni]  = self.a_kci
-        b_kci[:, :, :ni]  = self.b_kci
-        self.a_kci = a_kci
-        self.b_kci = b_kci
+        ni = self.a_uci.shape[2]
+        a_uci = num.empty((self.nmykpts, 3, ni + nsteps), self.paw.typecode)
+        b_uci = num.empty((self.nmykpts, 3, ni + nsteps), self.paw.typecode)
+        a_uci[:, :, :ni]  = self.a_uci
+        b_uci[:, :, :ni]  = self.b_uci
+        self.a_uci = a_uci
+        self.b_uci = b_uci
 
-        for k in range(self.paw.nmyu):
+        for u in range(self.paw.nmyu):
             for i in range(nsteps):
-                self.step(k, ni + i)
+                self.step(u, ni + i)
 
-    def step(self, k, i):
-        print k, i
+    def step(self, u, i):
+        print u, i
         integrate = self.paw.gd.integrate
-        w_cG = self.w_kcG[k]
-        y_cG = self.y_kcG[k]
-        wold_cG = self.wold_kcG[k]
+        w_cG = self.w_ucG[u]
+        y_cG = self.y_ucG[u]
+        wold_cG = self.wold_ucG[u]
         z_cG = self.z_cG
         
-        self.solve(w_cG, self.z_cG, k)
-        I_c = num.reshape(integrate(num.conjugate(z_cG) * w_cG)**-0.5, (3, 1, 1, 1))
+        self.solve(w_cG, self.z_cG, u)
+        I_c = num.reshape(integrate(num.conjugate(z_cG) * w_cG)**-0.5,
+                          (3, 1, 1, 1))
         z_cG *= I_c
         w_cG *= I_c
         
         if i != 0:
-            b_c =  1./I_c 
+            b_c =  1.0 / I_c 
         else:
-            b_c = num.reshape(num.zeros(3),(3,1,1,1))
+            b_c = num.reshape(num.zeros(3), (3, 1, 1, 1))
     
-        self.paw.kpt_u[k].apply_hamiltonian(self.paw.hamiltonian, 
+        self.paw.kpt_u[u].apply_hamiltonian(self.paw.hamiltonian, 
                                             z_cG, y_cG)
         a_c = num.reshape(integrate(num.conjugate(z_cG) * y_cG), (3, 1, 1, 1))
         wnew_cG = (y_cG - a_c * w_cG - b_c * wold_cG)
         wold_cG[:] = w_cG
         w_cG[:] = wnew_cG
-        self.a_kci[k, :, i] = a_c[:, 0, 0, 0]
-        self.b_kci[k, :, i] = b_c[:, 0, 0, 0]
+        self.a_uci[u, :, i] = a_c[:, 0, 0, 0]
+        self.b_uci[u, :, i] = b_c[:, 0, 0, 0]
 
 
     def continued_fraction(self, e, k, c, i, imax):
-        a_i = self.a_kci[k, c]
-        b_i = self.b_kci[k, c]
+        a_i = self.a_uci[k, c]
+        b_i = self.b_uci[k, c]
         if i == imax - 2:
             return self.terminator(a_i[i], b_i[i], e)
         return 1.0 / (a_i[i] - e -
@@ -245,7 +290,7 @@ class RecursionMethod:
                 
         sigma_cn = num.zeros((3, n), num.Float)
         if imax is None:
-            imax = self.a_kci.shape[2]
+            imax = self.a_uci.shape[2]
         energyunit = units.GetEnergyUnit()
         Ha = Convert(1, 'Hartree', energyunit)
         eps_n = (eps_s + delta * 1.0j) / Ha
@@ -309,10 +354,10 @@ class RecursionMethod:
 
         return sigma_cn
     
-    def solve(self, w_cG, z_cG, k):
-        self.paw.kpt_u[k].apply_inverse_overlap(self.paw.pt_nuclei,
+    def solve(self, w_cG, z_cG, u):
+        self.paw.kpt_u[u].apply_inverse_overlap(self.paw.pt_nuclei,
                                                 w_cG, self.tmp1_cG)
-        self.k = k
+        self.u = u
         CG(self.A, z_cG, self.tmp1_cG,
            tolerance=self.tol, maxiter=self.maxiter)
         
@@ -320,7 +365,7 @@ class RecursionMethod:
         """Function that is called by CG. It returns S~-1Sx_in in x_out
         """
 
-        kpt = self.paw.kpt_u[self.k]
+        kpt = self.paw.kpt_u[self.u]
         kpt.apply_overlap(self.paw.pt_nuclei, in_cG, self.tmp2_cG)
         kpt.apply_inverse_overlap(self.paw.pt_nuclei, self.tmp2_cG, out_cG)
 
