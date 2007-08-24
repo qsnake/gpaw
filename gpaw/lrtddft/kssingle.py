@@ -7,6 +7,7 @@ from gpaw.utilities import pack,packed_index
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
+from gpaw.operators import Gradient
 
 from gpaw.io.plt import write_plt
 
@@ -223,22 +224,25 @@ class KSSingle(Excitation,PairDensity):
                                            Delta_pL[ij,2] ])*pij
             ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
 
-##         print '<KSSingle> me,ma=',me,ma
 ##         print '<KSSingle> i,j,m,fac=',self.i,self.j,\
 ##               me+ma,sqrt(self.energy*self.fij)
         self.me = sqrt(self.energy*self.fij) * ( me + ma )
 
         self.mur = - self.fij * ( me + ma )
+##        print '<KSSingle> mur=',self.mur,-self.fij *me
 
         # velocity form .............................
 
-        # course grid contribution
-#        dwfdr_cg = gd.empty(3)
-#        gd.derivative(self.wfj, dwfdr_cg)
-#        for i in range(3):
-#            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])
-
-        self.muv = self.fij * me
+        # smooth contribution
+        dwfdr_G = gd.empty()
+        if not hasattr(gd,'ddr'):
+            gd.ddr = [Gradient(gd, c).apply for c in range(3)]
+        for c in range(3):
+            gd.ddr[c](self.wfj, dwfdr_G)
+            me[c] = gd.integrate(self.wfi*dwfdr_G)
+            
+        self.muv = self.fij * me / self.energy
+##        print '<KSSingle> muv=',self.muv
 
         # magnetic transition dipole ................
         
