@@ -67,6 +67,15 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
     }
 }
  
+static PyObject * mpi_abort(MPIObject *self, PyObject *args)
+{
+  int errcode;
+  if (!PyArg_ParseTuple(args, "i", &errcode))
+    return NULL;
+  MPI_Abort(self->comm, errcode);
+  Py_RETURN_NONE;
+}
+
 static PyObject * mpi_barrier(MPIObject *self)
 {
   MPI_Barrier(self->comm);
@@ -187,11 +196,12 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args);
 static PyMethodDef mpi_methods[] = {
     {"receive",      (PyCFunction)mpi_receive,     METH_VARARGS, 0},
     {"send",         (PyCFunction)mpi_send,        METH_VARARGS, 0},
-    {"barrier",         (PyCFunction)mpi_barrier,        METH_VARARGS, 0},
+    {"abort",        (PyCFunction)mpi_abort,       METH_VARARGS, 0},
+    {"barrier",      (PyCFunction)mpi_barrier,     METH_VARARGS, 0},
     {"wait",         (PyCFunction)mpi_wait,        METH_VARARGS, 0},
     {"sum",          (PyCFunction)mpi_sum,         METH_VARARGS, 0},
     {"gather",       (PyCFunction)mpi_gather,      METH_VARARGS, 0},
-    {"all_gather",    (PyCFunction)mpi_allgather,   METH_VARARGS, 0},
+    {"all_gather",   (PyCFunction)mpi_allgather,   METH_VARARGS, 0},
     {"broadcast",    (PyCFunction)mpi_broadcast,   METH_VARARGS, 0},
     {"new_communicator", (PyCFunction)MPICommunicator, METH_VARARGS, 0},
     {0, 0, 0, 0}

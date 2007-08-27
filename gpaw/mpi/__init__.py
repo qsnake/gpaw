@@ -122,6 +122,9 @@ if parallel and debug:
         def wait(self, request):
             self.comm.wait(request)
 
+        def abort(self, errcode):
+            self.comm.abort(errcode)
+
         def barrier(self):
             self.comm.barrier()
 
