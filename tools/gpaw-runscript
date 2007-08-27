@@ -1,0 +1,219 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import socket
+import re
+from optparse import OptionParser
+
+defaults = { 'err'   : None,
+             'mail'  : None,
+             'mem'   : None,
+             'nodes' : 2,
+             'out'   : None,
+             'qsys'  : 'pbs',
+             'script': 'run.py',
+             'time'  : 86400, # one day in seconds
+             'wd'    : None
+             }
+
+hosts = { 'batman'             : 'pbs',
+          'louhi'              : 'louhi',
+          'opaali.phys.jyu.fi' : 'sge',
+          'sepeli.csc.fi'      : 'sepeli'
+          }
+         
+set = defaults
+
+# ............................................................
+# handle command line options
+
+parser = OptionParser(usage='%prog [options] [script nnodes]')
+parser.add_option("-m", "--mail", dest='mail',
+                  help='Where to send an email about starting/ending of the job (def: read from environment variable GPAW_MAIL)')
+parser.add_option("-o", "--outfile", dest='outfile',
+                  help='Name of the output file (def: script.out)')
+parser.add_option("-q", "--qsys", dest='qsys',
+                  help='queue system (def: try to guess)')
+parser.add_option("-t", "--time", dest='time',
+                  help='Time in seconds (def: 86400=one day)')
+opt, args = parser.parse_args()
+##print "opt=",opt
+##print "args=",args
+
+if opt.mail:
+    set['mail'] = str(opt.mail)
+
+if opt.outfile:
+    set['out'] = str(opt.outfile)
+
+if len(args):
+    set['script'] = args[0]
+    if len(args) > 1:
+        set['nodes'] = int(args[1])
+
+# try to determine the system
+if opt.qsys:
+    set['qsys']=opt.qsys
+else:
+    host = socket.gethostname().split('-')[0]
+    if hosts.has_key(host):
+        set['qsys']=hosts[host]
+    else:
+        print "Host "+str(host)+" unknown, try -q option"
+        sys.exit()
+
+# ............................................................
+
+if set['mail'] is None and os.environ.has_key('GPAW_MAIL'):
+    set['mail'] = str(os.environ['GPAW_MAIL'])
+
+# set output files
+if set['out'] is None:
+    set['out'] = set['script']+".out"
+if set['err'] is None:
+    set['err'] = set['script']+".err"
+
+# get the name from current working directory
+if set['wd'] is None:
+    set['wd'] = os.getcwd()
+name = os.getcwd().split('/')[-1]
+set['name']=name
+
+class RunScript:
+    def __init__(self,set,name=None):
+        if not hasattr(self,set['qsys']):
+            raise RuntimeError, "unkown system >"+set['qsys']+"<"
+        if name is None:
+            name = 'run.'+set['qsys']
+        f = open(name,'w')
+        call = "self."+set['qsys']+"(f,set)"
+        eval(call)
+        f.close()
+        print name,"written"
+
+    def louhi(self,f,set):
+        size=int((set['nodes']+1)/2)
+        print >> f,"#!/bin/csh"
+        print >> f,"#PBS -N",set['name']
+        print >> f,"#PBS -l size=%d" % size
+        print >> f,"#PBS -l walltime=" + str(set['time'])
+        print >> f,"#PBS -o",set['out']
+        print >> f,"#PBS -e",set['err']
+        print >> f,"""
+module load gpaw
+echo $GPAW_SETUP_PATH
+echo $GPAW_PYTHON
+
+setenv MPICH_PTL_UNEX_EVENTS 60000
+setenv MPICH_UNEX_BUFFER_SIZE 400M
+"""
+        print >> f,"cd",set['wd']
+        print >> f,"yod $GPAW_PYTHON",set['script']
+        
+    def pbs(self,f,set):
+        print >> f,"#PBS -N "+set['name']
+        print >> f,"#PBS -l ncpus="+str(set['nodes'])
+        print >> f,"#PBS -l walltime="""+str(set['time'])
+        print >> f,"#PBS -m bea"
+        if set['mail'] is not None:
+            print >> f,"#PBS -M""",set['mail']
+##        print >> f,"#PBS -o",set['out']
+        print >> f,"#PBS -e",set['err']
+        print >> f,"""
+# change to the directory where you submitted the job
+cd""",set['wd']
+        print >> f,'export OUT="'+set['out']+'"'
+        print >> f,"echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\" >> $OUT"
+        print >> f,"echo \"Current working directory is `pwd`\" >> $OUT"
+        print >> f,"echo \"Running on `hostname`\" >> $OUT"
+        print >> f,"""
+#include the full path to the name of your MPI program
+. /usr/share/modules/init/bash
+module add mpt
+module add mkl
+unset CC CFLAGS LDFLAGS
+
+# With the upgrade of the queue system, one problem arised and this
+# requires everyone to add one line in the run scripts:
+unset PBS_NODEFILE
+
+"""
+        print >> f,"date >> $OUT"
+        print >> f,"export GPAW_PYTHON=~/gridpaw/build/bin.linux-ia64-2.4/gpaw-python"
+        print >> f,"mpirun -np",set['nodes'],"$GPAW_PYTHON",set['script'],\
+              ">> $OUT"
+        print >> f,"date >> $OUT"
+        print >> f,'echo "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" >> $OUT'
+        print >> f,"exit 0"
+
+    def sepeli(self,f,set):
+        print >> f,"#$ -N",set['name']
+        print >> f,"#$ -cwd"
+        print >> f,"#$ -j y"
+        print >> f,"#$ -pe mvapich-gnu64",set['nodes']
+        print >> f,"#$ -S /bin/csh"
+        print >> f,"#$ -R y"
+        print >> f,"#$ -V"
+        print >> f,"#$ -l h_rt=23:48:00"
+        print >> f,"#$ -l s_rt=23:45:00"
+        print >> f,"#$ -l h_stack=1024M"
+        print >> f,"#$ -e",set['err']
+        print >> f,"setenv out",'"'+set['out']+'"'
+        print >> f,"""
+cat $TMPDIR/machines > $out
+use ASE
+setenv GPAW_SETUP_PATH \"/mnt/nas2/wrk/walter/gridpaw/setups/generate:/mnt/nas2/wrk/walter/gridpaw/setups/gpaw-setups-0.3\"
+setenv PYTHONPATH \"/mnt/nas2/wrk/walter/gridpaw/trunk:/home/u2/univ2/jyy/walter/gridpaw/trunk:${PYTHONPATH}\"
+setenv GPAW_MPI_COMMAND \"mpirun -np 4 %(job)s &\"
+setenv GPAW_PYTHON /mnt/nas2/wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4/gpaw-python
+"""
+        print >> f,"mpirun -np",set['nodes'],"$GPAW_PYTHON",set['script'],\
+              ">> $out"
+        
+    def sge(self,f,set):
+        print >> f,"#!/bin/bash"
+        print >> f,"#$ -S /bin/bash"
+        print >> f,"#$ -N",set['name']
+        print >> f,"#$ -cwd"
+        print >> f,"#$ -o",set['out']
+        print >> f,"#$ -e",set['err']
+        if set['mail'] is not None:
+            print >> f,"#$ -M",set['mail']
+        print >> f,"#$ -m be"
+        print >> f,"#$ -pe mpich",set['nodes']
+        print >> f,"cd",set['wd']
+        print >> f,"""
+echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
+echo \"We've got $NSLOTS processor(s) on compute nodes: \";
+echo "MPICH machines file: ${TMPDIR}/machines";
+echo; cat  $TMPDIR/machines; echo
+
+# initialize environment
+. /opt/ASE/ASE.sh
+source /opt/openmpi/openmpi-path64.sh
+GPAW_HOME=$HOME/gridpaw
+export GPAW_SETUP_PATH=$GPAW_HOME/setups/generate:$GPAW_HOME/setups/gpaw-setups-0.3/setups
+if [ ${PYTHONPATH:-unknown} != unknown ]
+then
+    export PYTHONPATH=$GPAW_HOME:$PYTHONPATH
+else
+    export PYTHONPATH=$GPAW_HOME
+fi
+export PATH=$PATH:$GPAW_HOME/tools/
+export GPAW_PYTHON=$GPAW_HOME/build/bin.linux-x86_64-2.3/gpaw-python
+
+date"""
+        print >> f,"mpirun -np",set['nodes'],\
+              "~/gridpaw/build/bin.linux-x86_64-2.3/gpaw-python",\
+              set['script']
+        print >> f,"""date
+echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
+"""        
+        
+        
+
+RunScript(set)
+
+
+
