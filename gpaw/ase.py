@@ -13,7 +13,15 @@ import ASE
 
 from gpaw.paw import PAW
 
-        
+
+try:
+    from ASE.Utilities.Parallel import register_parallel_cleanup_function
+except ImportError:
+    pass
+else:
+    register_parallel_cleanup_function()
+
+
 class Calculator(PAW):
     """This is the ASE-calculator frontend for doing a PAW calculation.
     """
