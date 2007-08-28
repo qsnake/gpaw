@@ -1,5 +1,4 @@
 from ASE.Utilities.Wannier import Wannier as ASEWannier
-from gpaw.utilities.blas import gemm, axpy
 import Numeric as num
 from math import pi
 from cmath import exp
@@ -57,6 +56,15 @@ class Wannier(ASEWannier):
         self.SetUnitCell(calculator.GetListOfAtoms().GetUnitCell())
         self.CalculateWeightsFromUnitCell()
 
+        Nb, M_k, L_k = self.GetMatrixDimensions()
+        Nw = self.GetNumberOfWannierFunctions()
+        print 'Number of bands:', Nb
+        print 'Number of Wannier functions:', Nw
+        print 'kpt | Fixed | EDF'
+        for k in range(len(M_k)):
+            print str(k).center(3), '|', str(M_k[k]).center(5), '|', str(L_k[k]).center(3)
+
+
     def SetInitialWannierFunctions(self, initialwannier):
         # get the initial Wannier function from the calculator
         self.initialwannier = initialwannier
@@ -105,20 +113,19 @@ class Wannier(ASEWannier):
             u = (k + Nkpts * self.spin) % len(kpt_u)
             U_nw = self.GetListOfLargeRotationMatrices()[k]
             vec_n = num.matrixmultiply(U_nw, coords_w)
-            vec_n.shape = (1, -1)
-            wave_G = num.zeros((1,) + tuple(dim), num.Complex)
-            gemm(1., kpt_u[u].psit_nG[:], vec_n, 0., wave_G)
-            wave_G.shape = tuple(dim)
+
+            psi_nG = num.reshape(kpt_u[u].psit_nG[:], (len(vec_n), -1))
+            wan_G = num.dot(vec_n, psi_nG)
+            wan_G.shape = tuple(dim)
 
             # Distribute the small wavefunction over large cell:
             for n1 in range(N1):
                 for n2 in range(N2):
                     for n3 in range(N3):
-                        axpy(exp(-2.j * pi * num.dot([n1, n2, n3], kpt_c)),
-                             wave_G,
-                             wanniergrid[n1 * dim[0]:(n1 + 1) * dim[0],
-                                         n2 * dim[1]:(n2 + 1) * dim[1],
-                                         n3 * dim[2]:(n3 + 1) * dim[2]])
+                        e = exp(-2.j * pi * num.dot([n1, n2, n3], kpt_c))
+                        wanniergrid[n1 * dim[0]:(n1 + 1) * dim[0],
+                                    n2 * dim[1]:(n2 + 1) * dim[1],
+                                    n3 * dim[2]:(n3 + 1) * dim[2]] += e * wan_G
 
         # Normalization
         wanniergrid /= num.sqrt(Nkpts)

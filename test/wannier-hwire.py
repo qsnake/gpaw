@@ -45,4 +45,4 @@ for i in wannier.GetSortedIndices():
     equal(center[2], 4., 2e-3)
 
 for i in range(natoms):
-    wannier.WriteCube(i, 'hwire%s.cube' % i)
+    wannier.WriteCube(i, 'hwire%s.cube' % i, real=True)
