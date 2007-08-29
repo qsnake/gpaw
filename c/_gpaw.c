@@ -118,17 +118,6 @@ main(int argc, char **argv)
 
   MPI_Init(&argc, &argv);
   Py_Initialize();
-#ifdef STATIC_NUMERIC
-  init_numpy();
-  initarrayfns();
-  initranlib();
-  initmultiarray();
-  initumath();
-  initlapack_lite();
-  initfftpack();
-  // initRNG();
-  // initgn();
-#endif
 
 #ifdef NO_SOCKET
   initsocket();
