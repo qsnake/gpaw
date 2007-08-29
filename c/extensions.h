@@ -17,7 +17,18 @@
 #  define Py_RETURN_NONE return Py_INCREF(Py_None), Py_None
 #endif
 
-void* gpaw_malloc(int n);
+#ifndef NO_C99_COMPLEX
+#define INLINE inline
+#else
+#define INLINE 
+#endif
+
+static INLINE void* gpaw_malloc(int n)
+{
+  void* p = malloc(n);
+  assert(p != NULL);
+  return p;
+}
 
 #define GPAW_MALLOC(T, n) ((T*)gpaw_malloc((n) * sizeof(T)))
 #define LONGP(a) ((long*)((a)->data))
