@@ -68,7 +68,6 @@ class Density:
         self.nt_sG = self.gd.empty(self.nspins)
         self.rhot_g = self.finegd.empty()
         self.nt_sg = self.finegd.empty(self.nspins)
-
         if self.nspins == 1:
             self.nt_g = self.nt_sg[0]
         else:
@@ -329,3 +328,32 @@ class Density:
         else:
             return n_sg[0]
 
+    def initialize_kinetic(self):
+        """Initial pseudo electron kinetic density."""
+        """flag to use local variable in tpss.c"""
+
+        self.taut_sG = self.gd.empty(self.nspins)
+        self.taut_sg = self.finegd.empty(self.nspins)
+        for s in range(self.nspins):
+            self.taut_sg[s][:] = -1.0
+
+    def update_kinetic(self, kpt_u):
+        """Calculate pseudo electron kinetic density.
+        The pseudo electron-density ``taut_sG`` is calculated from the
+        wave functions, the occupation numbers,
+        the peusdo core density ``tauct_G``, is not included"""
+
+        ## Add contribution from all k-points:
+        for kpt in kpt_u:
+            kpt.add_to_kinetic_density(self.taut_sG[kpt.s])
+            self.kpt_comm.sum(self.taut_sG)
+
+        """Transfer the density from the coarse to the fine grid."""
+        for s in range(self.nspins):
+            self.interpolate(self.taut_sG[s], self.taut_sg[s])
+
+ ##       for s in range(self.nspins):
+ ##           self.taut_sg[s][:] = -1.0
+
+
+        return 
