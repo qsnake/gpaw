@@ -43,11 +43,11 @@ class Symmetry:
             if ok:
                 swaps.append(swap)
 
-        mirrors = [[1], [1], [1]]
+        mirrors = [[1.0], [1.0], [1.0]]
         for c in range(3):
             if self.periodic_c[c]:
-                mirrors[c].append(-1)
-        mirrors = [(m0, m1, m2)
+                mirrors[c].append(-1.0)
+        mirrors = [num.array((m0, m1, m2))
                    for m0 in mirrors[0]
                    for m1 in mirrors[1]
                    for m2 in mirrors[2]]
@@ -120,47 +120,37 @@ class Symmetry:
         if len(self.symmetries) < nsymold:
             raise RuntimeError('Broken symmetry!')
 
-    def reduce(self, bzkpts):
+    def reduce(self, bzk_kc):
         # Add inversion symmetry if it's not there:
-        inversion = ((0, 1, 2), (-1, -1, -1))
+        inversion = ((0, 1, 2), num.array((-1.0, -1.0, -1.0)))
+        nsym = len(self.symmetries)
         if inversion not in self.symmetries:
-            nsym = len(self.symmetries)
-            for swap, mirror in self.symmetries[:nsym]:
-                self.symmetries.append((swap,
-                                        (-mirror[0], -mirror[1], -mirror[2])))
-            inversionadded = True
-        else:
-            inversionadded = False
-
-        groups = []
-        # k1 < k2:
-        for k2, kpt2 in enumerate(bzkpts):
+            for swap_c, mirror_c in self.symmetries[:nsym]:
+                self.symmetries.append((swap_c, -mirror_c))
+        
+        nbzkpts = len(bzk_kc)
+        ibzk0_kc = num.empty((nbzkpts, 3), num.Float)
+        ibzk_kc = ibzk0_kc[:0]
+        weight_k = num.ones(nbzkpts, num.Float)
+        nibzkpts = 0
+        for k_c in bzk_kc[::-1]:
             found = False
-            for group in groups:
-                k1 = group[0]
-                kpt1 = bzkpts[k1]
-                found = False
-                for swap, mirror in self.symmetries:
-                    diff = num.take(kpt1 * mirror, swap) - kpt2
-                    if num.dot(diff, diff) < self.tol:
-                        group.append(k2)
-                        found = True
-                        break
-                if found:
+            for swap_c, mirror_c in self.symmetries:
+                d_kc = num.take(ibzk_kc * mirror_c, swap_c, 1) - k_c
+                d_kc *= d_kc
+                d_k = num.sum(d_kc, 1) < self.tol
+                if num.sometrue(d_k):
+                    found = True
+                    weight_k[:nibzkpts] += d_k
                     break
             if not found:
-                groups.append([k2])
+                nibzkpts += 1
+                ibzk_kc = ibzk0_kc[:nibzkpts]
+                ibzk_kc[-1] = k_c
 
-        if inversionadded:
-            del self.symmetries[nsym:]
+        del self.symmetries[nsym:]
 
-        weight = 1.0 / len(bzkpts)
-        kw = [(group[-1], len(group) * weight) for group in groups]
-        kw.sort()
-##        print groups
-##        print kw
-        return (num.array([bzkpts[k] for k, w in kw]),
-                num.array([w for k, w in kw]))
+        return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
 
     def symmetrize(self, a, gd):
         b = a.copy()
@@ -181,7 +171,7 @@ class Symmetry:
         line1 = []
         line2 = []
         for swap, mirror in self.symmetries:
-            line1.extend(['_  '[s + 1] for s in mirror] + [' '])
+            line1.extend(['_  '[int(s) + 1] for s in mirror] + [' '])
             line2.extend(['XYZ'[c] for c in swap] + [' '])
         line1 = ''.join(line1)
         line2 = ''.join(line2)
