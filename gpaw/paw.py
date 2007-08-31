@@ -534,8 +534,8 @@ class PAW(PAWExtra, Output):
             self.converged = False
 
             # Free allocated space for radial grids:
-            for setup in self.setups:
-                del setup.phit_j
+##             for setup in self.setups:
+##                 del setup.phit_j
             for nucleus in self.nuclei:
                 try:
                     del nucleus.phit_i

@@ -14,7 +14,6 @@ from multiarray import innerproduct as inner # avoid the dotblas version!
 from gpaw import mpi
 from gpaw.operators import Gradient
 from gpaw.transformers import Transformer
-from gpaw.utilities import unpack
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities.lapack import diagonalize
