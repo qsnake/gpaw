@@ -330,12 +330,11 @@ class PAW(PAWExtra, Output):
 
     def find_ground_state(self):
         """Start iterating towards the ground state."""
-
+        
         self.set_positions()
-
+        self.initialize_kinetic()
         if not self.wave_functions_initialized:
             self.initialize_wave_functions()
-
         self.hamiltonian.update(self.density)
 
         # Self-consistency loop:
@@ -355,6 +354,7 @@ class PAW(PAWExtra, Output):
     def step(self):
         if not self.fixdensity and self.niter > 2:
             self.density.update(self.kpt_u, self.symmetry)
+            self.update_kinetic()
             self.hamiltonian.update(self.density)
 
         self.eigensolver.iterate(self.hamiltonian, self.kpt_u)
@@ -1027,3 +1027,20 @@ class PAW(PAWExtra, Output):
             self.txt.flush()
             sys.exit()
 
+    def initialize_kinetic(self):
+        if not self.hamiltonian.xc.xcfunc.mgga:
+            return
+        else:
+            #pseudo kinetic energy array on 3D grid
+            self.density.initialize_kinetic()
+            #pseudo and ae kinetic energy array on radial grid
+            self.hamiltonian.xc.set_kinetic(self.density.taut_sg)
+    def update_kinetic(self):
+        if not self.hamiltonian.xc.xcfunc.mgga:
+            return
+        else:
+            #pseudo kinetic energy array on 3D grid
+            self.density.update_kinetic(self.kpt_u)
+            #pseudo and ae kinetic energy array on radial grid
+            self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
+        
