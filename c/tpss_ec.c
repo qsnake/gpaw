@@ -49,7 +49,7 @@ void tpssfc(double *nu, double *nd,    // I: density
   double drtaudgud;
   double dectermdectildeup,drtaudgdd,dectermdectildedn;
   double dcsdguu,dcsdgdd,dcsdgud;
-  double dEcUdzeta,dEcUdg1,dEcUdg2,dEcUdg3,dEcUdfz;
+  double dEcUdzeta,dEcUdg2,dEcUdg3,dEcUdfz;
   double dzetadnu,dzetadnd,dg1dn,dg2dn,dg3dn,dfzdz;
   
   double in,in1,in2,in3,in4, in5,in6,in7,sqrtin;

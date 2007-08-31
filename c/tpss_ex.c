@@ -13,7 +13,7 @@ void tpssfx(double *n,    // I: density
 	      int iexc        //I:exchange functional, if 7 then alpha=1-z
 	      ) 
 {
-  double exunif,p,z,alpha,q,x,Fx,fxunp;
+  double exunif,p,z,alpha,q,x,Fx;
   double dfxunpdn,dfxunpdexunif,dfxunpdFx,dexunifdn,dFxdx; 
   double dxdp,dxdz,dxdq;
   double dqdp,dqdalpha,dalphadn,dalphadg,dalphadt;

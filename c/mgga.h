@@ -7,7 +7,7 @@ typedef int bool;
 
 typedef struct
 {
-  bool gga;
+  bool mgga;
 } xc_parameters;
 
 #endif /* _MGGA_GPAW_H */
