@@ -122,12 +122,16 @@ class Symmetry:
 
     def reduce(self, bzk_kc):
         # Add inversion symmetry if it's not there:
-        inversion = ((0, 1, 2), num.array((-1.0, -1.0, -1.0)))
+        have_inversion_symmetry = False
+        for swap_c, mirror_c in self.symmetries:
+            if swap_c == (0, 1, 2) and not num.sometrue(mirror_c + 1):
+                have_inversion_symmetry = True
+                break
         nsym = len(self.symmetries)
-        if inversion not in self.symmetries:
+        if not have_inversion_symmetry:
             for swap_c, mirror_c in self.symmetries[:nsym]:
                 self.symmetries.append((swap_c, -mirror_c))
-        
+
         nbzkpts = len(bzk_kc)
         ibzk0_kc = num.empty((nbzkpts, 3), num.Float)
         ibzk_kc = ibzk0_kc[:0]
