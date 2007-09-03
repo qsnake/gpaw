@@ -346,7 +346,7 @@ class Density:
         ## Add contribution from all k-points:
         for kpt in kpt_u:
             kpt.add_to_kinetic_density(self.taut_sG[kpt.s])
-            self.kpt_comm.sum(self.taut_sG)
+        self.kpt_comm.sum(self.taut_sG)
 
         """Transfer the density from the coarse to the fine grid."""
         for s in range(self.nspins):
