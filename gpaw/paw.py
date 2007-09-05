@@ -1015,17 +1015,19 @@ class PAW(PAWExtra, Output):
                                  self.nspins, self.nmyu, self.nbands)
             
         self.print_init(pos_ac)
-        self.eigensolver = eigensolver(p['eigensolver'], self)
-        self.initialized = True
-        self.timer.stop('Init')
 
         if dry_run:
             # Estimate the amount of memory needed:
             estimate_memory(N_c, self.nbands, self.nkpts, self.nspins,
                             self.typecode, self.nuclei, self.gd.h_c,
                             self.txt)
+            self.timer.stop('Init')
             self.txt.flush()
             sys.exit()
+
+        self.eigensolver = eigensolver(p['eigensolver'], self)
+        self.initialized = True
+        self.timer.stop('Init')
 
     def initialize_kinetic(self):
         if not self.hamiltonian.xc.xcfunc.mgga:
