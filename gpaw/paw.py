@@ -250,6 +250,7 @@ class PAW(PAWExtra, Output):
         self.initialized = False
         self.wave_functions_initialized = False
         self.callback_functions = []
+        self.niter = 0
         
         if filename is not None:
             reader = self.read_parameters(filename)

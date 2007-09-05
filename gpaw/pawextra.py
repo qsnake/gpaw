@@ -2,9 +2,9 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-"""This module defines a PAW-class.
-
-The central object that glues everything together!"""
+"""This module will go away some dat in the future.  The few methods
+in the PAWExtra class should be moved to the PAW class or other
+modules."""
 
 import sys
 
@@ -39,6 +39,7 @@ class PAWExtra:
 
     def get_wave_function_array(self, n, k, s):
         """Return pseudo-wave-function array.
+        
         For the parallel case find the rank in kpt_comm that contains
         the (k,s) pair, for this rank, collect on the corresponding
         domain a full array on the domain master and send this to the
@@ -200,7 +201,3 @@ class PAWExtra:
         # Eigensolver
         # !!! FIX ME !!!
         # not implemented yet...
-
-    def get_number_of_iterations(self):
-        """Return the number of SCF iterations."""
-        return self.paw.niter

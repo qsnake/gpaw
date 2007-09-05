@@ -172,7 +172,7 @@ if custom_interpreter:
         setup(name = 'gpaw',
               version=version,
               description='A grid-based real-space PAW method DFT code',
-              author='J. J. Mortensen',
+              author='J. J. Mortensen, et.al.',
               author_email='jensj@fysik.dtu.dk',
               url='http://www.fysik.dtu.dk',
               license='GPL',
@@ -184,7 +184,7 @@ if custom_interpreter:
               )
 
 else:
-    msg += ['* Only a serial version of gpaw was build!']
+    msg += ['* Only a serial version of gpaw was built!']
 
 # Messages make sense only when building
 if "build" in sys.argv or "build_ext" in sys.argv:
