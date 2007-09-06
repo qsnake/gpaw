@@ -298,7 +298,7 @@ class PAW(PAWExtra, Output):
         if not self.converged:
             self.find_ground_state()
             return
-            
+
         atoms = self.atoms
         if self.lastcount == atoms.GetCount():
             # Nothing to do:
