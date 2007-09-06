@@ -523,7 +523,8 @@ class PAW(PAWExtra, Output):
 
 
     def initialize_wave_functions(self):
-        if not self.wave_functions_initialized:
+        #if not self.wave_functions_initialized:
+        if self.kpt_u[0].psit_nG is None:
             # Initialize wave functions from atomic orbitals:
             for nucleus in self.nuclei:
                 nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc,

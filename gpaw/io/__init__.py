@@ -345,6 +345,7 @@ def read(paw, reader):
                     for n, psit_G in enumerate(kpt.psit_nG):
                         psit_G[:] = r.get('PseudoWaveFunctions',
                                           kpt.s, kpt.k, n)[i]
+                paw.wave_functions_initialized = True
             else:
                 # Serial calculation.  We may not be able to keep all the wave
                 # functions in memory - so psit_nG will be a special type of
