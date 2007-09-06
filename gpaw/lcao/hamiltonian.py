@@ -1,14 +1,13 @@
 import Numeric as num
+from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.blas import rk, r2k
 from gpaw.utilities import unpack
 
-class AtomicBasisSolver:
-    def __init__(self, paw):
-        self.gd = paw.gd
-        self.nuclei = paw.nuclei
-        self.initialized = False
 
-    def initialize(self, hamiltonian):
+class LCAOHamiltonian(Hamiltonian):
+    
+          
+    def initialize(self):
         self.nao = 0
         for nucleus in self.nuclei:
             self.nao += nucleus.get_number_of_atomic_orbitals()
@@ -30,6 +29,9 @@ class AtomicBasisSolver:
 
         self.S_mm = num.zeros((self.nao, self.nao), num.Float)
         rk(self.gd.dv, self.phi_mG, 0.0, self.S_mm)
+        
+        for m in range(self.nao - 1):
+            self.S_mm[m, m:] = self.S_mm[m:, m]
 
         for nucleus in self.nuclei:
             self.S_mm += num.dot(num.dot(nucleus.P_mi, nucleus.setup.O_ii),
@@ -37,29 +39,11 @@ class AtomicBasisSolver:
 
         self.T_mm = num.zeros((self.nao, self.nao), num.Float)
         Tphi_mG = self.gd.zeros(self.nao)
-        hamiltonian.kin.apply(self.phi_mG, Tphi_mG)
+        self.kin.apply(self.phi_mG, Tphi_mG)
         r2k(0.5 * self.gd.dv, self.phi_mG, Tphi_mG, 0.0, self.T_mm)
         
         print self.S_mm
         print self.T_mm
 
         
-        self.error = 1.0e-12
-        self.initialized = True
     
-    def iterate(self, hamiltonian, kpt_u):
-        if not self.initialized:
-            self.initialize(hamiltonian)
-
-        vt_G = hamiltonian.vt_sG[0]
-        H_mm = num.zeros((self.nao, self.nao), num.Float)
-        r2k(0.5 * self.gd.dv, self.phi_mG, vt_G * self.phi_mG, 0.0, H_mm)
-        
-        for nucleus in self.nuclei:
-            dH_ii = unpack(nucleus.H_sp[0])
-            H_mm += num.dot(num.dot(nucleus.P_mi, dH_ii),
-                            num.transpose(nucleus.P_mi))
-
-        H_mm += self.T_mm
-
-        print H_mm

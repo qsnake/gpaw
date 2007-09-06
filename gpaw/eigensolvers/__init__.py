@@ -3,7 +3,7 @@
 from gpaw.eigensolvers.rmm_diis import RMM_DIIS
 from gpaw.eigensolvers.cg import CG
 from gpaw.eigensolvers.davidson import Davidson
-from gpaw.ao import AtomicBasisSolver
+from gpaw.lcao.eigensolver import LCAO
 
 
 def eigensolver(name, paw):
@@ -11,4 +11,4 @@ def eigensolver(name, paw):
     return {'rmm-diis': RMM_DIIS,
             'cg': CG,
             'dav': Davidson,
-            'ao': AtomicBasisSolver}[name](paw)
+            'lcao': LCAO}[name](paw)

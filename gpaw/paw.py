@@ -22,6 +22,7 @@ from gpaw.eigensolvers import eigensolver
 from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
+from gpaw.lcao.hamiltonian import LCAOHamiltonian
 from gpaw.kpoint import KPoint
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.utilities.timing import Timer
@@ -987,8 +988,13 @@ class PAW(PAWExtra, Output):
         self.pt_nuclei = []
         self.ghat_nuclei = []
 
+        self.lcao = (p['eigensolver'] == 'lcao')
+
         self.density = Density(self, magmom_a)#???
-        self.hamiltonian = Hamiltonian(self)
+        if self.lcao:
+            self.hamiltonian = LCAOHamiltonian(self)
+        else:
+            self.hamiltonian = Hamiltonian(self)
 
         # Create object for occupation numbers:
         if self.kT == 0 or 2 * self.nbands == self.nvalence:
