@@ -252,6 +252,8 @@ class PAW(PAWExtra, Output):
         self.wave_functions_initialized = False
         self.callback_functions = []
         self.niter = 0
+        self.F_ac = None
+
         
         if filename is not None:
             reader = self.read_parameters(filename)
@@ -965,8 +967,6 @@ class PAW(PAWExtra, Output):
         # fine grids (densities and potentials):
         self.gd = GridDescriptor(self.domain, N_c)
         self.finegd = GridDescriptor(self.domain, 2 * N_c)
-
-        self.F_ac = None
 
         # Total number of k-point/spin combinations:
         nu = self.nkpts * self.nspins

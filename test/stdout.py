@@ -20,7 +20,7 @@ try:
                       txt=None)
     hydrogen.SetCalculator(calc)
     f = hydrogen.GetCartesianForces()
-except RuntimeError:
+except:
     sys.stdout = out
     sys.stderr = err
     raise
