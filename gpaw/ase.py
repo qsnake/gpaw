@@ -15,6 +15,9 @@ from gpaw.paw import PAW
 
 
 try:
+    # Deal with old ASE version 2.3.5 and earlier:
+    if 'PBS_NODEFILE' not in os.environ:
+        os.environ['PBS_NODEFILE'] = '/dev/null'
     from ASE.Utilities.Parallel import register_parallel_cleanup_function
 except ImportError:
     pass
