@@ -1,8 +1,10 @@
+import math
 import re
 import Numeric as num
 
 from ASE import Atom, ListOfAtoms
-from ASE.Utilities.GeometricTransforms import Translate
+from ASE.Utilities.GeometricTransforms import Translate as GTTranslate
+from ASE.Utilities.GeometricTransforms import RotateAboutAxis
 from ASE.IO.xyz import ReadXYZ, WriteXYZ
 from ASE.IO.PDB import WritePDB
 
@@ -10,21 +12,25 @@ class Cluster(ListOfAtoms):
     """A class for cluster structures
     to enable simplified manipulation"""
 
-    def __init__(self, atoms=None, filename=None, filetype=None):
+    def __init__(self, atoms=None, cell=None,
+                 filename=None, filetype=None,
+                 timestep=0.0):
         if atoms is None:
-            ListOfAtoms.__init__(self,[])
+            ListOfAtoms.__init__(self,[],cell=cell)
         else:
-            ListOfAtoms.__init__(self,atoms, periodic=False)
+            ListOfAtoms.__init__(self,atoms, cell=cell,periodic=False)
 
         if filename is not None:
             self.Read(filename,filetype)
 
+        self.Timestep(timestep)
+        
     def Center(self):
         """Center the structure to unit cell"""
         extr = self.extreme_positions()
         cntr = 0.5 * (extr[0] + extr[1])
         cell = num.diagonal(self.GetUnitCell())
-        Translate(self,tuple(.5*cell-cntr),'cartesian')
+        GTTranslate(self,tuple(.5*cell-cntr),'cartesian')
 
     def extreme_positions(self):
         """get the extreme positions of the structure"""
@@ -54,7 +60,7 @@ class Cluster(ListOfAtoms):
             extr[1][i]+=b[i]-extr[0][i] # shifted already
             
         # move lower corner to (0,0,0)
-        Translate(self,tuple(-1.*num.array(extr[0])),'cartesian')
+        GTTranslate(self,tuple(-1.*num.array(extr[0])),'cartesian')
         self.SetUnitCell(tuple(extr[1]),fix=True)
 
         return self.GetUnitCell()
@@ -77,6 +83,24 @@ class Cluster(ListOfAtoms):
                 
         return len(self)
 
+    def Rotate(self,axis,angle=None,unit='rad'):
+        if angle is None:
+            angle = axis.length()
+        axis.length(1.)
+        if unit == 'rad':
+            angle *= 180. / math.pi
+        RotateAboutAxis(self,axis,angle)
+
+    def Timestep(self,timestep=None):
+        """Set and/or get the timestep label of this structure"""
+        if timestep is not None:
+            self.timestep = float(timestep)
+        return self.timestep
+
+    def Translate(self,trans_vector):
+        """Translate the whole structure"""
+        GTTranslate(self,tuple(trans_vector),'cartesian')
+
     def Write(self,filename,filetype=None):
         """Write the strcuture to file. The type can be given
         or it will be guessed from the filename."""
@@ -87,7 +111,12 @@ class Cluster(ListOfAtoms):
         filetype.lower()
 
         if filetype == 'xyz':
-            WriteXYZ(filename,self)
+            uc = self.GetUnitCell()
+            if uc:
+                id=' unit cell'
+                for v in uc:
+                    id+=' (%g,%g,%g)' % (v[0],v[1],v[2])
+            WriteXYZ(filename,self,id=id)
         elif filetype == 'pdb':
             WritePDB(filename,self)
         else:
