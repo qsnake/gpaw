@@ -257,7 +257,7 @@ class KPoint:
 
         self.allocate(nbands)
         self.psit_nG = self.gd.zeros(nbands, self.typecode)
-        self.random_wave_functions(self.psit_nG)        
+        self.random_wave_functions(self.psit_nG)
 
     def apply_hamiltonian(self, hamiltonian, a_nG, b_nG):
         """Apply Hamiltonian to wave functions."""
@@ -278,7 +278,7 @@ class KPoint:
         for nucleus in pt_nuclei:
             # Apply the non-local part:
             nucleus.apply_overlap(a_nG, b_nG, self.k)
-
+            
             
     def apply_inverse_overlap(self, pt_nuclei, a_nG, b_nG):
         """Apply approximative inverse overlap operator to wave functions."""
@@ -288,3 +288,70 @@ class KPoint:
         for nucleus in pt_nuclei:
             # Apply the non-local part:
             nucleus.apply_inverse_overlap(a_nG, b_nG, self.k)
+
+    def apply_scalar_function(self, pt_nuclei, a_nG, b_nG, func):
+        """Apply scalar function f(x,y,z) to wavefunctions.
+
+        The function is approximated by a low-order polynomial near nuclei.
+
+        Currently supports only quadratic:
+        p(x,y,z) = a + b_x x + b_y y + b_z z 
+        .              + c_x^2 x^2 + c_xy x y
+        .              + c_y^2 y^2 + c_yz y z
+        .              + c_z^2 z^2 + c_zx z x 
+
+
+        The polynomial is constructed by making a least-squares fit to
+        points (0,0,0), 3/8 (r_cut,0,0), 3/4 (r_cut,r_cut,r_cut), and to
+        points symmetric in cubic symmetry. (Points are given relative to 
+        the nucleus).
+        """
+
+        for i in range(self.gd.beg_c[0],self.gd.end_c[0]):
+            x = i * gd.h_c[0]
+            for j in range(self.gd.beg_c[1],self.gd.end_c[1]):
+                y = j * gd.h_c[1]
+                for k in range(self.gd.beg_c[2],self.gd.end_c[2]):
+                    z = k * gd.h_c[2]
+                    b_nG[:,i,j,k] = func.value(x,y,z) * a_nG[:,i,j,k]
+
+        # apply the non-local part for each nucleus
+        for nucleus in pt_nuclei:
+            # position
+            x_c = nucleus.spos_c[0] * self.gd.domain.cell_c[0]
+            y_c = nucleus.spos_c[1] * self.gd.domain.cell_c[1]
+            z_c = nucleus.spos_c[2] * self.gd.domain.cell_c[2]
+            # Delta r = max(r_cut) / 2
+            # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
+            a = max(nucleus.setup.rcut_j) * 3/8
+            b = 2.0 * a / num.sqrt(3.0)
+
+            # evaluate function at (0,0,0), 3/8 (r_cut,0,0),
+            # 3/4 (r_cut,r_cut,rcut), and at symmetric points 
+            # in cubic symmetry
+            #
+            # coordinates
+            coords = [ [x_c,y_c,z_c], \
+                       [x_c+a, y_c,   z_c] \
+                       [x_c-a, y_c,   z_c] \
+                       [x_c,   y_c+a, z_c] \
+                       [x_c,   y_c-a, z_c] \
+                       [x_c,   y_c,   z_c+a] \
+                       [x_c,   y_c,   z_c-a] \
+                       [x_c+b, y_c+b, z_c+b] \
+                       [x_c+b, y_c+b, z_c-b] \
+                       [x_c+b, y_c-b, z_c+b] \
+                       [x_c+b, y_c-b, z_c-b] \
+                       [x_c-b, y_c+b, z_c+b] \
+                       [x_c-b, y_c+b, z_c-b] \
+                       [x_c-b, y_c-b, z_c+b] \
+                       [x_c-b, y_c-b, z_c-b] ]
+            # values
+            for i in range(len(coords)):
+                value[i] = func.value(coords[i][0], coords[i][1], coords[i][2])
+                
+            # fit polynomial
+            nuc_poly = Polynomial(value, coords, order=2)
+            
+            # apply polynomial operator
+            nucleus.apply_polynomial(a_nG, b_nG, self.k, nuc_poly)

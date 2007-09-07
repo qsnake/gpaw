@@ -509,6 +509,132 @@ class Nucleus:
             self.pt_i.add(b_nG, None, k, communicate=True)
 
 
+    def apply_polynomial(self, a_nG, b_nG, k, poly):
+        """Apply non-local part of the polynomial operator.
+
+        Currently supports only quadratic:
+        p(x,y,z) = a + b_x x + b_y y + b_z z 
+        .              + c_x^2 x^2 + c_xy x y
+        .              + c_y^2 y^2 + c_yz y z
+        .              + c_z^2 z^2 + c_zx z x 
+
+        Non-local part of the polynomial operator is applied to ``a_nG``
+        and added to ``b_nG``. K-point wavevector is given by ``k`` and 
+        polynomial by ``poly``."""
+        
+        if self.in_this_domain:
+            # number of wavefunctions, psit_nG
+            n = len(a_nG)
+            # number of partial waves, pt_nG
+            ni = self.get_number_of_partial_waves()
+            # allocate memory and calculate coefficients P_ni = <pt_i|psit_nG>
+            P_ni = num.zeros((n, ni), self.typecode)
+            self.pt_i.integrate(a_nG, P_ni, k)
+            
+            # indexes of Delta_L,i_1,i_2
+            l00 = 0
+            l1m1 = (0+1)**2 
+            l10  = (0+1)**2 + 1
+            l1p1 = (0+1)**2 + 2
+            l2m2 = (1+1)**2 
+            l2m1 = (1+1)**2 + 1
+            l20  = (1+1)**2 + 2
+            l2p1 = (1+1)**2 + 3
+            l2p2 = (1+1)**2 + 4
+
+            # calculate coefficient 
+            # ---------------------
+            #
+            # coeffs_ni =
+            #   sum_i,j ( P_nj * c0 * 1_ij
+            #             + P_nj * cx * x_ij
+            #             + P_nj * cy * y_ij
+            #             + P_nj * cz * z_ij
+            #             + ...
+            # where
+            #   1_ij = sqrt(4pi) Delta_(0,0),i,j
+            #   x_ij = - sqrt(4pi/6) [ Delta_(1,1),i,j - Delta_(1,-1),i,j ]
+            #   y_ij = i sqrt(4pi/6) [ Delta_(1,1),i,j + Delta_(1,-1),i,j ]
+            #   z_ij = sqrt(4pi/3)  Delta_(1,0),i,j
+            #   x^2_ij = sqrt(4pi/3) [ sqrt(1/3)( Delta_(0,0),i,j
+            #                                     - sqrt(1/5) Delta_(1,-1),i,j )
+            #                           + sqrt(1/10)( Delta_(2,2),i,j
+            #                                         + Delta_(2,2),i,j ) ]
+            #   y^2_ij = sqrt(4pi/3) [ sqrt(1/3)( Delta_(0,0),i,j
+            #                                     - sqrt(1/5) Delta_(1,-1),i,j )
+            #                           - sqrt(1/10)( Delta_(2,2),i,j
+            #                                         + Delta_(2,2),i,j ) ]
+            #   z^2_ij =  sqrt(4pi/3) sqrt(1/3) ( Delta_(0,0),i,j
+            #                                     - 2/sqrt(5) Delta_(1,-1),i,j )
+            #   xy_ij = -i sqrt(4pi/3) [ sqrt(1/10) ( Delta_(2,2),i,j
+            #                                         - Delta_(2,2),i,j ) ]
+            #   xz_ij = -  sqrt(4pi/3) [ sqrt(1/10) ( Delta_(2,1),i,j
+            #                                         - Delta_(2,-1),i,j ) ]
+            #   yz_ij =  i sqrt(4pi/3) [ sqrt(1/10) ( Delta_(2,1),i,j
+            #                                         + Delta_(2,-1),i,j ) ]
+            oneij = num.sqrt(4.*num.pi) \
+                * num.dot(P_ni, self.setup.Delta_pL[:,l0m0])
+            xij = - num.sqrt(4.*num.pi / 6.) \
+                * ( num.dot(P_ni, self.setup.Delta_pL[:,l1p1]) - \
+                    num.dot(P_ni, self.setup.Delta_pL[:,l1m1]) )
+            yij = 1j * num.sqrt(4.*num.pi / 6.) \
+                * ( num.dot(P_ni, self.setup.Delta_pL[:,l1p1]) + \
+                    num.dot(P_ni, self.setup.Delta_pL[:,l1m1]) )
+            zij = num.sqrt(4.*num.pi / 3.) \
+                * num.dot(P_ni, self.setup.Delta_pL[:,l10]) 
+            x2ij = num.sqrt(4.*num.pi / 3.) \
+                * ( num.sqrt(1/3.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l00]) \
+                      - num.sqrt(1/5.) * num.dot(P_ni, self.setup.Delta_pL[:,l20]) ) \
+                    + num.sqrt(1/10.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l2p2]) \
+                      + num.dot(P_ni, self.setup.Delta_pL[:,l2m2]) ) )
+            y2ij = num.sqrt(4.*num.pi / 3.) \
+                * ( num.sqrt(1/3.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l00]) \
+                      - num.sqrt(1/5.) * num.dot(P_ni, self.setup.Delta_pL[:,l20]) ) \
+                    - num.sqrt(1/10.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l2p2]) \
+                      + num.dot(P_ni, self.setup.Delta_pL[:,l2m2]) ) )
+            z2ij = num.sqrt(4.*num.pi / 3.) \
+                * ( num.sqrt(1/3.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l00]) \
+                      + 2 / num.sqrt(5.) * num.dot(P_ni, self.setup.Delta_pL[:,l20]) ) )
+            xyij = -1j * num.sqrt(4.*num.pi / 3.) \
+                * ( num.sqrt(1/10.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l2p2]) \
+                      - num.dot(P_ni, self.setup.Delta_pL[:,l2m2]) ) )
+            xzij = - num.sqrt(4.*num.pi / 3.) \
+                * ( num.sqrt(1/10.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l2p1]) \
+                      - num.dot(P_ni, self.setup.Delta_pL[:,l2m1]) ) )
+            yzij = 1j * num.sqrt(4.*num.pi / 3.) \
+                * ( num.sqrt(1/10.) * \
+                    ( num.dot(P_ni, self.setup.Delta_pL[:,l2p1]) \
+                      + num.dot(P_ni, self.setup.Delta_pL[:,l2m1]) ) )
+
+            # coefficients
+            # coefs_ni = sum_j ( <phi_i| f(x,y,z) | phi_j>
+            #                    - <phit_i| f(x,y,z) | phit_j> ) P_nj
+            coefs_ni = \
+                poly.coeff(0,0,0) * oneij \
+                + poly.coeff(1,0,0) * xij \
+                + poly.coeff(0,1,0) * yij \
+                + poly.coeff(0,0,1) * zij \
+                + poly.coeff(2,0,0) * x2ij \
+                + poly.coeff(1,1,0) * xyij \
+                + poly.coeff(0,2,0) * y2ij \
+                + poly.coeff(0,1,1) * yzij \
+                + poly.coeff(0,0,2) * z2ij \
+                + poly.coeff(1,0,1) * xzij
+
+            # add partial wave pt_nG to psit_nG with proper coefficient
+            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
+        else:
+            self.pt_i.integrate(a_nG, None, k)
+            self.pt_i.add(b_nG, None, k, communicate=True)
+
+
     def symmetrize(self, D_aii, map_sa, s):
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
         self.D_sp[s] = pack(D_ii)
