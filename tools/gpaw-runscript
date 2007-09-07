@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Emacs: treat this as -*- python -*-
 
 import os
 import sys
@@ -9,6 +10,7 @@ from optparse import OptionParser
 defaults = { 'err'   : None,
              'mail'  : None,
              'mem'   : None,
+             'name'  : None,
              'nodes' : 2,
              'out'   : None,
              'qsys'  : 'pbs',
@@ -18,67 +20,33 @@ defaults = { 'err'   : None,
              }
 
 hosts = { 'batman'             : 'pbs',
+          'c551'               : 'murska',
+          'c552'               : 'murska',
+          'c553'               : 'murska',
+          'c554'               : 'murska',
           'louhi'              : 'louhi',
           'opaali.phys.jyu.fi' : 'sge',
           'sepeli.csc.fi'      : 'sepeli'
           }
-         
+
+env = {'PYTHONPATH'      : None,
+       'GPAW_PYTHON'     : None, 
+       'GPAW_SETUP_PATH' : None
+       }
+
 set = defaults
 
-# ............................................................
-# handle command line options
-
-parser = OptionParser(usage='%prog [options] [script nnodes]')
-parser.add_option("-m", "--mail", dest='mail',
-                  help='Where to send an email about starting/ending of the job (def: read from environment variable GPAW_MAIL)')
-parser.add_option("-o", "--outfile", dest='outfile',
-                  help='Name of the output file (def: script.out)')
-parser.add_option("-q", "--qsys", dest='qsys',
-                  help='queue system (def: try to guess)')
-parser.add_option("-t", "--time", dest='time',
-                  help='Time in seconds (def: 86400=one day)')
-opt, args = parser.parse_args()
-##print "opt=",opt
-##print "args=",args
-
-if opt.mail:
-    set['mail'] = str(opt.mail)
-
-if opt.outfile:
-    set['out'] = str(opt.outfile)
-
-if len(args):
-    set['script'] = args[0]
-    if len(args) > 1:
-        set['nodes'] = int(args[1])
-
-# try to determine the system
-if opt.qsys:
-    set['qsys']=opt.qsys
-else:
-    host = socket.gethostname().split('-')[0]
-    if hosts.has_key(host):
-        set['qsys']=hosts[host]
-    else:
-        print "Host "+str(host)+" unknown, try -q option"
-        sys.exit()
-
-# ............................................................
-
-if set['mail'] is None and os.environ.has_key('GPAW_MAIL'):
-    set['mail'] = str(os.environ['GPAW_MAIL'])
-
-# set output files
-if set['out'] is None:
-    set['out'] = set['script']+".out"
-if set['err'] is None:
-    set['err'] = set['script']+".err"
-
-# get the name from current working directory
-if set['wd'] is None:
-    set['wd'] = os.getcwd()
-name = os.getcwd().split('/')[-1]
-set['name']=name
+def dhms(secs):
+    """return days,hours,minutes and seconds"""
+    dhms = [0,0,0,0]
+    dhms[0] = int(secs // 86400)
+    s = secs % 86400
+    dhms[1] = int(s // 3600)
+    s = secs % 3600
+    dhms[2] = int(s // 60)
+    s = secs % 60
+    dhms[3] = int(s+.5)
+    return dhms
 
 class RunScript:
     def __init__(self,set,name=None):
@@ -111,13 +79,30 @@ setenv MPICH_UNEX_BUFFER_SIZE 400M
         print >> f,"cd",set['wd']
         print >> f,"yod $GPAW_PYTHON",set['script']
         
+    def murska(self,f,set):
+        print >> f,"#!/bin/csh"
+        print >> f,"#BSUB -n%d" % set['nodes']
+        hs = dhms(set['time'])
+        print >> f,"#BSUB -W %d:%d" % (hs[0]*24+hs[1],hs[2])
+        print >> f,"#BSUB -J",set['name']
+        if set['mail'] is not None:
+            print >> f,"#BSUB -u",set['mail']
+        print >> f,"#BSUB -e ",set['err']+'_%J'
+        print >> f,"#BSUB -o ",set['out']+'_%J'
+        print >> f,"""
+module load ASE
+setenv GPAW_SETUP_PATH /v/linux26_x86_64/appl/nano/gpaw/setups
+setenv PYTHONPATH ${PYTHONPATH}:/wrk/walter/gridpaw/trunk
+setenv GPAW_PYTHON /wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4/gpaw-python"""
+        print >> f,"mpirun -srun $GPAW_PYTHON",set['script']
+      
     def pbs(self,f,set):
         print >> f,"#PBS -N "+set['name']
         print >> f,"#PBS -l ncpus="+str(set['nodes'])
         print >> f,"#PBS -l walltime="""+str(set['time'])
         print >> f,"#PBS -m bea"
         if set['mail'] is not None:
-            print >> f,"#PBS -M""",set['mail']
+            print >> f,"#PBS -M",set['mail']
 ##        print >> f,"#PBS -o",set['out']
         print >> f,"#PBS -e",set['err']
         print >> f,"""
@@ -210,8 +195,82 @@ date"""
         print >> f,"""date
 echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
 """        
-        
-        
+
+# ............................................................
+# handle command line options
+
+parser = OptionParser(usage='%prog [options] [script nnodes]')
+parser.add_option("-m", "--mail", dest='mail',
+                  help='Where to send an email about starting/ending of the job (def: read from environment variable GPAW_MAIL)')
+parser.add_option("-n", "--name", dest='name',
+                  help='Name of the job (def: name of parent directory)')
+parser.add_option("-o", "--outfile", dest='outfile',
+                  help='Name of the output file (def: script.out)')
+parser.add_option("-q", "--qsys", dest='qsys',
+                  help='queue system (def: try to guess)')
+parser.add_option("-t", "--time", dest='time',
+                  help='Time in seconds (def: 86400=one day)')
+opt, args = parser.parse_args()
+##print "opt=",opt
+##print "args=",args
+
+if opt.mail:
+    set['mail'] = str(opt.mail)
+
+if opt.name:
+    set['name'] = str(opt.name)
+
+if opt.outfile:
+    set['out'] = str(opt.outfile)
+
+if opt.time:
+    set['time'] = int(opt.time)
+
+if len(args):
+    set['script'] = args[0]
+    if len(args) > 1:
+        set['nodes'] = int(args[1])
+
+# ............................................................
+
+# try to determine the system
+if opt.qsys:
+    set['qsys']=opt.qsys
+else:
+    host = socket.gethostname().split('-')[0]
+    if hosts.has_key(host):
+        set['qsys']=hosts[host]
+        print 'hostname',host,'found,',
+    else:
+        print "Host "+str(host)+" unknown, try -q option. Allowed names are:"
+        p = re.compile('__')
+        for host in dir(RunScript):
+            if not p.match(host):
+                print '',host
+        sys.exit()
+print 'using',set['qsys']
+
+# ............................................................
+# get environment variables
+
+
+# ............................................................
+
+if set['mail'] is None and os.environ.has_key('GPAW_MAIL'):
+    set['mail'] = str(os.environ['GPAW_MAIL'])
+
+# set output files
+if set['out'] is None:
+    set['out'] = set['script']+".out"
+if set['err'] is None:
+    set['err'] = set['script']+".err"
+
+# get the name from current working directory
+if set['wd'] is None:
+    set['wd'] = os.getcwd()
+if set['name'] is None:
+    name = os.getcwd().split('/')[-1]
+    set['name']=name
 
 RunScript(set)
 
