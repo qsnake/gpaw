@@ -228,7 +228,7 @@ class KSSingle(Excitation,PairDensity):
 ##               me+ma,sqrt(self.energy*self.fij)
         self.me = sqrt(self.energy*self.fij) * ( me + ma )
 
-        self.mur = - self.fij * ( me + ma )
+        self.mur = - ( me + ma )
 ##        print '<KSSingle> mur=',self.mur,-self.fij *me
 
         # velocity form .............................
@@ -241,7 +241,7 @@ class KSSingle(Excitation,PairDensity):
             gd.ddr[c](self.wfj, dwfdr_G)
             me[c] = gd.integrate(self.wfi*dwfdr_G)
             
-        self.muv = self.fij * me / self.energy
+        self.muv = me / self.energy
 ##        print '<KSSingle> muv=',self.muv
 
         # magnetic transition dipole ................
@@ -258,21 +258,27 @@ class KSSingle(Excitation,PairDensity):
 
     def fromstring(self,string):
         l = string.split()
-        self.i = int(l[0])
-        self.j = int(l[1])
-        self.pspin = int(l[2])
-        self.spin = int(l[3])
-        self.energy = float(l[4])
-        self.fij = float(l[5])
-        self.me = num.array([float(l[6]),float(l[7]),float(l[8])])
+        self.i = int(l.pop(0))
+        self.j = int(l.pop(0))
+        self.pspin = int(l.pop(0))
+        self.spin = int(l.pop(0))
+        self.energy = float(l.pop(0))
+        self.fij = float(l.pop(0))
+        if len(l) == 3: # old writing style
+            self.me = num.array([float(l.pop(0)) for i in range(3)])
+        else:
+            self.mur = num.array([float(l.pop(0)) for i in range(3)])
+            self.me = - self.mur * sqrt(self.energy*self.fij)
+            self.muv = num.array([float(l.pop(0)) for i in range(3)])
         return None
 
     def outstring(self):
         str = '%d %d   %d %d   %g %g' % \
                (self.i,self.j, self.pspin,self.spin, self.energy, self.fij)
         str += '  '
-        for m in self.me:
-            str += '%12.4e' % m
+        for m in self.mur: str += '%12.4e' % m
+        str += '  '
+        for m in self.muv: str += '%12.4e' % m
         str += '\n'
         return str
         
