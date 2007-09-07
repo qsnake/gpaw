@@ -302,11 +302,12 @@ class KPoint:
 
 
         The polynomial is constructed by making a least-squares fit to
-        points (0,0,0), 3/8 (r_cut,0,0), 3/4 (r_cut,r_cut,r_cut), and to
-        points symmetric in cubic symmetry. (Points are given relative to 
+        points (0,0,0), 3/8 (r_cut,0,0), sqrt(3)/4 (r_cut,r_cut,r_cut), and 
+        to points symmetric in cubic symmetry. (Points are given relative to 
         the nucleus).
         """
 
+        # apply local part to smooth wavefunctions psit_n
         for i in range(self.gd.beg_c[0],self.gd.end_c[0]):
             x = i * gd.h_c[0]
             for j in range(self.gd.beg_c[1],self.gd.end_c[1]):
@@ -323,11 +324,11 @@ class KPoint:
             z_c = nucleus.spos_c[2] * self.gd.domain.cell_c[2]
             # Delta r = max(r_cut) / 2
             # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
-            a = max(nucleus.setup.rcut_j) * 3/8
+            a = max(nucleus.setup.rcut_j) * 3.0 / 8.0
             b = 2.0 * a / num.sqrt(3.0)
 
             # evaluate function at (0,0,0), 3/8 (r_cut,0,0),
-            # 3/4 (r_cut,r_cut,rcut), and at symmetric points 
+            # sqrt(3)/4 (r_cut,r_cut,rcut), and at symmetric points 
             # in cubic symmetry
             #
             # coordinates
