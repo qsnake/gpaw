@@ -23,6 +23,7 @@ from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.lcao.hamiltonian import LCAOHamiltonian
+from gpaw.lcao.lcao import LCAOKPoint
 from gpaw.kpoint import KPoint
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.utilities.timing import Timer
@@ -969,6 +970,8 @@ class PAW(PAWExtra, Output):
         self.gd = GridDescriptor(self.domain, N_c)
         self.finegd = GridDescriptor(self.domain, 2 * N_c)
 
+        self.lcao = (p['eigensolver'] == 'lcao')
+
         # Total number of k-point/spin combinations:
         nu = self.nkpts * self.nspins
 
@@ -980,16 +983,19 @@ class PAW(PAWExtra, Output):
             s, k = divmod(self.kpt_comm.rank * self.nmyu + u, self.nkpts)
             weight = self.weight_k[k] * 2 / self.nspins
             k_c = self.ibzk_kc[k]
-            self.kpt_u.append(KPoint(self.gd, weight, s, k, u, k_c,
-                                     self.typecode))
+            if self.lcao:
+                self.kpt_u.append(LCAOKPoint(self.nuclei,
+                                             self.gd, weight, s, k, u, k_c,
+                                             self.typecode))
+            else:
+                self.kpt_u.append(KPoint(self.gd, weight, s, k, u, k_c,
+                                         self.typecode))
 
         self.locfuncbcaster = LocFuncBroadcaster(self.kpt_comm)
 
         self.my_nuclei = []
         self.pt_nuclei = []
         self.ghat_nuclei = []
-
-        self.lcao = (p['eigensolver'] == 'lcao')
 
         self.density = Density(self, magmom_a)#???
         if self.lcao:
