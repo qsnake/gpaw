@@ -5,8 +5,8 @@ from gpaw.utilities import unpack
 
 
 class LCAOHamiltonian(Hamiltonian):
+    """Hamiltonian class for LCAO-basis calculations"""
     
-          
     def initialize(self):
         self.nao = 0
         for nucleus in self.nuclei:
@@ -30,6 +30,7 @@ class LCAOHamiltonian(Hamiltonian):
         self.S_mm = num.zeros((self.nao, self.nao), num.Float)
         rk(self.gd.dv, self.phi_mG, 0.0, self.S_mm)
         
+        # Filling up the upper triangle:
         for m in range(self.nao - 1):
             self.S_mm[m, m:] = self.S_mm[m:, m]
 
@@ -41,9 +42,3 @@ class LCAOHamiltonian(Hamiltonian):
         Tphi_mG = self.gd.zeros(self.nao)
         self.kin.apply(self.phi_mG, Tphi_mG)
         r2k(0.5 * self.gd.dv, self.phi_mG, Tphi_mG, 0.0, self.T_mm)
-        
-        print self.S_mm
-        print self.T_mm
-
-        
-    

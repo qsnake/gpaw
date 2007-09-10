@@ -5,19 +5,26 @@ from gpaw.utilities.lapack import diagonalize
 
 
 class LCAO:
+    """Eigensolver for LCAO-basis calculation"""
+
     def __init__(self, paw):
         self.gd = paw.gd
         self.nuclei = paw.nuclei
         self.initialized = False
+        self.iter = 0
 
     
     def iterate(self, hamiltonian, kpt_u):
         if not self.initialized:
             hamiltonian.initialize()
 
+        kpt = kpt_u[0]
+        
         vt_G = hamiltonian.vt_sG[0]
-        nao = hamiltonian.nao
         phi_mG = hamiltonian.phi_mG
+
+        nao = hamiltonian.nao
+        nbands = kpt.nbands
         H_mm = num.zeros((nao, nao), num.Float)
         r2k(0.5 * self.gd.dv, phi_mG, vt_G * phi_mG, 0.0, H_mm)
         
@@ -28,10 +35,13 @@ class LCAO:
 
         H_mm += hamiltonian.T_mm
         eps_n = num.zeros(nao, num.Float)
-        diagonalize(H_mm, eps_n, hamiltonian.S_mm.copy())
+        diagonalize(H_mm, eps_n, hamiltonian.S_mm)
+        kpt.C_nm = H_mm[0:nbands].copy()
 
-        print H_mm
-        print eps_n
-        print ('Identity check: ',
-               num.dot(H_mm, num.dot(hamiltonian.S_mm, num.transpose(H_mm))))
-        self.error = 1e-20
+        for nucleus in self.nuclei:
+            nucleus.P_uni[0] = num.dot(kpt.C_nm, nucleus.P_mi)
+
+        self.error = 100.0
+        self.iter += 1
+        if self.iter == 15:
+            self.error = 1e-13
