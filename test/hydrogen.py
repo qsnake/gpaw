@@ -20,4 +20,4 @@ equal(e1, e2, 2e-13)
 kT = 0.0001
 calc.set(width=kT)
 e3 = hydrogen.GetPotentialEnergy()
-equal(e1, e3 + log(2) * kT, 2.0e-13)
+equal(e1, e3 + log(2) * kT, 2.0e-11)
