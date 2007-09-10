@@ -225,7 +225,7 @@ class Setup:
         nc_g = nc_g[:gcut2].copy()
         nct_g = nct_g[:gcut2].copy()
         vbar_g = vbar_g[:gcut2].copy()
-
+        tauc_g = tauc_g[:gcut2].copy()
 
 
 
@@ -378,6 +378,16 @@ class Setup:
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
                 2 * lcut, e_xc, core_response)
+        elif xcfunc.xcname == "TPSS":
+            xc = XCRadialGrid(xcfunc, rgd, nspins)
+
+            self.xc_correction = XCCorrection(
+                xc,
+                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
+                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
+                rgd, [(j, l_j[j]) for j in range(nj)],
+                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,tauc_g)
         else:
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 
