@@ -283,11 +283,29 @@ class PAW(PAWExtra, Output):
             self.initialize()
             gpaw.io.read(self, reader)
             self.plot_atoms()
-
+            
     def set(self, **kwargs):
         self.convert_units(kwargs)  # ASE???
-        self.initialized = False
-        self.wave_functions_initialized = False
+        p = self.input_parameters
+        for name, value in kwargs.items():
+            if name in ['h','charge','kpts','spinpol','width','xc']:
+                if p[name] != kwargs[name]:
+                    # theses are severe changes, we need new densities and
+                    # wave functions
+                    self.initialized = False
+                    self.wave_functions_initialized = False
+                    self.converged = False
+            elif name in ['gpts','kpts','nbands']:
+                if p[name] != kwargs[name]:
+                    # we should have new wave functions
+                    self.wave_functions_initialized = False
+                    self.converged = False
+            elif name == 'tolerance':
+                if kwargs[name] < self.tolerance:
+                    self.converged = False
+                self.tolerance = kwargs[name]
+##             elif name in ['convergeall']:
+##                 self.converged = False
         self.input_parameters.update(kwargs)
                 
     def calculate(self):
@@ -524,6 +542,12 @@ class PAW(PAWExtra, Output):
 
 
     def initialize_wave_functions(self):
+
+        # we know, that we have enough memory to
+        # initialize the eigensolver here
+        p = self.input_parameters
+        self.eigensolver = eigensolver(p['eigensolver'], self)
+        
         #if not self.wave_functions_initialized:
         if self.kpt_u[0].psit_nG is None:
             # Initialize wave functions from atomic orbitals:
@@ -551,8 +575,18 @@ class PAW(PAWExtra, Output):
         elif not isinstance(self.kpt_u[0].psit_nG, num.ArrayType):
             # Calculation started from a restart file.  Copy data
             # from the file to memory:
-            for kpt in self.kpt_u:
-                kpt.psit_nG = kpt.psit_nG[:]
+            if mpi.parallel:
+                i = self.gd.get_slice()
+                for kpt in self.kpt_u:
+                    refs = kpt.psit_nG
+                    kpt.psit_nG = self.gd.empty(self.nbands, self.typecode)
+                    # Read band by band to save memory
+                    for n, psit_G in enumerate(kpt.psit_nG):
+                        full = refs[n][:]
+                        psit_G[:] = full[i]
+            else:
+                for kpt in self.kpt_u:
+                    kpt.psit_nG = kpt.psit_nG[:]
 
         for kpt in self.kpt_u:
             kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei,
@@ -1039,7 +1073,6 @@ class PAW(PAWExtra, Output):
             self.txt.flush()
             sys.exit()
 
-        self.eigensolver = eigensolver(p['eigensolver'], self)
         self.initialized = True
         self.timer.stop('Init')
 
