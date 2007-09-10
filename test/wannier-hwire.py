@@ -1,3 +1,4 @@
+import os
 from gpaw import Calculator
 from ASE import Atom, ListOfAtoms
 from gpaw.wannier import Wannier
@@ -46,3 +47,5 @@ for i in wannier.GetSortedIndices():
 
 for i in range(natoms):
     wannier.WriteCube(i, 'hwire%s.cube' % i, real=True)
+
+os.system('rm hwire.gpw hwire*.cube')

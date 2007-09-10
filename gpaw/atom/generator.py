@@ -75,7 +75,7 @@ class Generator(AllElectron):
                              configuration, nofiles)
 
     def run(self, core='', rcut=1.0, extra=None,
-            logderiv=True, vbar=None, exx=False, name=None,
+            logderiv=False, vbar=None, exx=False, name=None,
             normconserving='', filter=(0.4, 1.75), rcutcomp=None):
 
         self.name = name

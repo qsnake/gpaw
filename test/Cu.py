@@ -6,7 +6,7 @@ from gpaw import setup_paths
 
 # Generate non-scalar-relativistic setup for Cu:
 g = Generator('Cu', scalarrel=False, nofiles=True)
-g.run(**parameters['Cu'])
+g.run(logderiv=True, **parameters['Cu'])
 setup_paths.insert(0, '.')
 
 a = 8.0
@@ -30,5 +30,5 @@ e_3d_minor = calc.kpt_u[1].eps_n[4]
 print e_4s_major - e_3d_minor, -0.184013 - -0.197109
 assert abs(e_4s_major - e_3d_minor - (-0.184013 - -0.197109)) < 0.001
 
-os.remove('Cu.LDA')
+os.system('rm Cu.LDA Cu.??.ld.?')
 del setup_paths[0]

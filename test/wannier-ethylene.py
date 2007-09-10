@@ -1,11 +1,12 @@
-""" gpaw wannier example for ethylene, 
-    corresponding to the ASE Wannier tutorial. 
-"""
+import os
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
 from gpaw.utilities import equal, center
 from gpaw.wannier import Wannier
 import Numeric as num
+
+# GPAW wannier example for ethylene corresponding to the ASE Wannier
+# tutorial.
 
 if 1:
     a = 6.0  # Size of unit cell (Angstrom)
@@ -43,6 +44,7 @@ equal(13.7995, wannier.GetFunctionalValue(), 0.016)
 for xi, wi in enumerate(wannier.GetSortedIndices()):
     assert abs(num.sum(expected[xi] - centers[wi]['pos'])) < 0.01
 
+os.remove('ethylene.gpw')
 ## from ASE.Visualization.PrimiPlotter import PrimiPlotter, X11Window
 ## ethylene.extend(wannier.GetCentersAsAtoms())
 ## plot = PrimiPlotter(ethylene)

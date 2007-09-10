@@ -34,3 +34,4 @@ if netcdf:
 os.remove('tmp.gpw')
 if netcdf:
     os.remove('tmp.nc')
+    os.remove('tmp27.nc')

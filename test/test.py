@@ -50,7 +50,8 @@ if len(tests) == 0:
              'kli.py',  'units.py',  'revPBE.py',  'nonselfconsistent.py',
              'hydrogen.py',  'spinpol.py',  'stdout.py',  'gga-atom.py',
              'gauss_func.py',  'H-force.py',  'degeneracy.py',  'cg.py',
-             'h2o-xas.py',  'davidson.py',  'wannier-ethylene.py',
+             'h2o-xas.py',  'h2o-xas-recursion.py', 'si-xas.py',
+             'davidson.py',  'wannier-ethylene.py',
              'restart2.py',  'CH4.py',  'gllb2.py',  'lrtddft.py',
              'fixmom.py',  'wannier-hwire.py',  'exx.py',  'revPBE_Li.py',
              'td_hydrogen.py',  'aedensity.py',  'IP-oxygen.py',  '2Al.py',
@@ -61,14 +62,13 @@ if len(tests) == 0:
         ]
     tests = tests + tests_lxc
 
-
 if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
 
 if opt.debug:
     sys.argv.append('--gpaw-debug')
 
-exclude = ['__init__.py', 'test.py', 'C-force.py', 'grr.py']
+exclude = []
 if opt.exclude is not None:
     exclude += opt.exclude.split(',')
 

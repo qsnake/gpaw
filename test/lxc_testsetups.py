@@ -54,7 +54,7 @@ def gen(symbol, xcname):
         s = Setup(symbol, xcfunc)
     except (IOError, RuntimeError):
         g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
-        g.run(exx=True, logderiv=False, **parameters[symbol])
+        g.run(exx=True, **parameters[symbol])
         # list generated setups only - tests can handle setups on their own:
         # gen returns None if setup is read - see self.clean
         value = '%s.%s' % (symbol, xcname)

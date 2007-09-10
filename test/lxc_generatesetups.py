@@ -10,7 +10,7 @@ files = []
 
 def gen(symbol, xcname):
     g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
-    g.run(exx=True, logderiv=False, **parameters[symbol])
+    g.run(exx=True, **parameters[symbol])
     files.append('%s.%s' % (symbol, xcname))
 
 for symbol in ['H', 'He', 'C', 'N', 'O', 'Cl', 'Al', 'Si', 'Na', 'Fe', 'Cu']:
