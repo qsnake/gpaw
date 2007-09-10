@@ -335,24 +335,21 @@ def read(paw, reader):
             kpt.f_n[:] = r.get('OccupationNumbers', s, k)
         
         if r.has_array('PseudoWaveFunctions'):
-            if mpi.parallel:
-                # Slice of the global array for this domain:
-                i = paw.gd.get_slice()
-
-                for kpt in paw.kpt_u:
-                    kpt.psit_nG = paw.gd.empty(nbands, paw.typecode)
-                    # Read band by band to save memory
-                    for n, psit_G in enumerate(kpt.psit_nG):
-                        psit_G[:] = r.get('PseudoWaveFunctions',
-                                          kpt.s, kpt.k, n)[i]
-                paw.wave_functions_initialized = True
-            else:
-                # Serial calculation.  We may not be able to keep all the wave
-                # functions in memory - so psit_nG will be a special type of
-                # array that is really just a reference to a file:
-                for kpt in paw.kpt_u:
-                    kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
-                                                  kpt.s, kpt.k)
+            # We may not be able to keep all the wave
+            # functions in memory - so psit_nG will be a special type of
+            # array that is really just a reference to a file:
+             if mpi.parallel:
+                 for kpt in paw.kpt_u:
+                     # Read band by band to save memory
+                     kpt.psit_nG = []
+                     for n in range(nbands):
+                         kpt.psit_nG.append(
+                             r.get_reference('PseudoWaveFunctions',
+                                             kpt.s, kpt.k, n) )
+             else:
+                 for kpt in paw.kpt_u:
+                     kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
+                                                   kpt.s, kpt.k)
     
         for u, kpt in enumerate(paw.kpt_u):
             P_ni = r.get('Projections', kpt.s, kpt.k)
