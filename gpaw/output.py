@@ -66,6 +66,31 @@ class Output:
         t = self.text
         p = self.input_parameters
 
+        self.print_parameters()
+        
+        t()
+        t('unitcell:')
+        t('         periodic  length  points   spacing')
+        t('  -----------------------------------------')
+        for c in range(3):
+            t('  %s-axis   %s   %8.4f   %3d    %8.4f' % 
+              ('xyz'[c],
+               ['no ', 'yes'][self.domain.periodic_c[c]],
+               self.a0 * self.domain.cell_c[c],
+               self.gd.N_c[c],
+               self.a0 * self.gd.h_c[c]))
+        t()
+
+        t('Positions:')
+        for a, pos_c in enumerate(pos_ac):
+            symbol = self.nuclei[a].setup.symbol
+            t('%3d %2s %8.4f%8.4f%8.4f' % 
+              ((a, symbol) + tuple(self.a0 * pos_c)))
+
+    def print_parameters(self):
+        t = self.text
+        p = self.input_parameters
+        
         if self.spinpol:
             t('Spin-polarized calculation.')
             t('Magnetic moment: %.6f' % sum(self.density.magmom_a), end='')
@@ -119,25 +144,6 @@ class Output:
 
         t(('Converge occupied states only.',
            'Converge all states.')[int(p['convergeall'])])
-
-        t()
-        t('unitcell:')
-        t('         periodic  length  points   spacing')
-        t('  -----------------------------------------')
-        for c in range(3):
-            t('  %s-axis   %s   %8.4f   %3d    %8.4f' % 
-              ('xyz'[c],
-               ['no ', 'yes'][self.domain.periodic_c[c]],
-               self.a0 * self.domain.cell_c[c],
-               self.gd.N_c[c],
-               self.a0 * self.gd.h_c[c]))
-        t()
-
-        t('Positions:')
-        for a, pos_c in enumerate(pos_ac):
-            symbol = self.nuclei[a].setup.symbol
-            t('%3d %2s %8.4f%8.4f%8.4f' % 
-              ((a, symbol) + tuple(self.a0 * pos_c)))
 
     def print_converged(self):
         t = self.text

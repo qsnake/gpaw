@@ -304,6 +304,12 @@ class PAW(PAWExtra, Output):
                 if kwargs[name] < self.tolerance:
                     self.converged = False
                 self.tolerance = kwargs[name]
+            elif name == 'mix':
+                # try to change the mixer
+                try:
+                    self.density.set_mixer(self,kwargs[name])
+                except:
+                    pass
 ##             elif name in ['convergeall']:
 ##                 self.converged = False
         self.input_parameters.update(kwargs)
@@ -354,6 +360,7 @@ class PAW(PAWExtra, Output):
     def find_ground_state(self):
         """Start iterating towards the ground state."""
         
+        self.print_parameters()
         self.set_positions()
         self.initialize_kinetic()
         if not self.wave_functions_initialized:
