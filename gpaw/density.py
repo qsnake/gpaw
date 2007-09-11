@@ -79,12 +79,9 @@ class Density:
         # Interpolation function for the density:
         self.interpolate = Transformer(self.gd, self.finegd, nn).apply
         
-        # Density mixer:
-        if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
-            self.mixer = MixerSum(p['mix'])
-        else:
-            self.mixer = Mixer(p['mix'], self.gd, self.nspins)
-
+        # Density mixer
+        self.set_mixer(paw,p['mix'])
+        
         self.initialized = False
 
     def initialize(self):
@@ -189,6 +186,13 @@ class Density:
                 Nt = self.finegd.integrate(self.nt_sg[s])
                 if Nt != 0.0:
                     self.nt_sg[s] *= Nt0 / Nt
+
+    def set_mixer(self, paw, mix):
+        # Density mixer:
+        if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
+            self.mixer = MixerSum(mix)
+        else:
+            self.mixer = Mixer(mix, self.gd, self.nspins)
 
     def update_pseudo_charge(self):
         if self.nspins == 2:
