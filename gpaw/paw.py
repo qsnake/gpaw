@@ -227,6 +227,7 @@ class PAW(PAWExtra, Output):
             'fixmom':        False,
             'nbands':        None,
             'setups':        'paw',
+            'basis':         {},
             'width':         None,
             'spinpol':       None,
             'usesymm':       True,
@@ -269,7 +270,8 @@ class PAW(PAWExtra, Output):
                         'external','exxfinegrid']:
                 self.input_parameters[name] = value
             elif name in ['xc', 'nbands', 'spinpol', 'kpts', 'usesymm',
-                          'gpts', 'h', 'width', 'lmax', 'setups', 'stencils',
+                          'gpts', 'h', 'width', 'lmax', 'setups', 'basis',
+                          'stencils',
                           'charge', 'fixmom', 'fixdensity', 'tolerance',
                           'convergeall']:
                 self.converged = False
@@ -685,11 +687,12 @@ class PAW(PAWExtra, Output):
 
     def create_nuclei_and_setups(self, Z_a):
         p = self.input_parameters
+
         setup_types = p['setups']
         if isinstance(setup_types, str):
             setup_types = {None: setup_types}
         
-        # setup_types is a dictionary mapping chemical symbols and atom
+        # setup_types is a dictionary mapping chemical symbols and/or atom
         # numbers to setup types.
         
         # If present, None will map to the default type:
@@ -710,22 +713,47 @@ class PAW(PAWExtra, Output):
             if isinstance(a, int):
                 type_a[a] = type
         
+        basis_sets = p['basis']
+        if isinstance(basis_sets, str):
+            basis_sets = {None: basis_sets}
+        
+        # basis_sets is a dictionary mapping chemical symbols and/or atom
+        # numbers to basis sets.
+        
+        # If present, None will map to the default type:
+        default = basis_sets.get(None, None)
+        
+        basis_a = [default] * self.natoms
+        
+        # First symbols ...
+        for symbol, basis in basis_sets.items():
+            if isinstance(symbol, str):
+                number = numbers[symbol]
+                for a, Z in enumerate(Z_a):
+                    if Z == number:
+                        basis_a[a] = basis
+        
+        # and then atom numbers:
+        for a, basis in basis_sets.items():
+            if isinstance(a, int):
+                basis_a[a] = basis
+        
         # Build list of nuclei and construct necessary PAW-setup objects:
         self.nuclei = []
         setups = {}
-        for a, (Z, type) in enumerate(zip(Z_a, type_a)):
-            if (Z, type) in setups:
-                setup = setups[(Z, type)]
+        for a, (Z, type, basis) in enumerate(zip(Z_a, type_a, basis_a)):
+            if (Z, type, basis) in setups:
+                setup = setups[(Z, type, basis)]
             else:
                 symbol = symbols[Z]
                 setup = create_setup(symbol, self.xcfunc, p['lmax'],
-                                     self.nspins, type)
+                                     self.nspins, type, basis)
                 setup.print_info(self.text)
-                setups[(Z, type)] = setup
+                setups[(Z, type, basis)] = setup
             self.nuclei.append(Nucleus(setup, a, self.typecode))
 
         self.setups = setups.values()
-        return type_a
+        return type_a, basis_a
 
     def read_parameters(self, filename):
         """Read state from file."""
@@ -943,7 +971,11 @@ class PAW(PAWExtra, Output):
         else:
             self.typecode = num.Complex
             
-        type_a = self.create_nuclei_and_setups(Z_a)
+        # Is this a "linear combination of atomic orbitals" type of
+        # calculation?
+        self.lcao = (p['eigensolver'] == 'lcao')
+
+        type_a, basis_a = self.create_nuclei_and_setups(Z_a)
 
         # Brillouin zone stuff:
         if self.gamma:
@@ -952,11 +984,17 @@ class PAW(PAWExtra, Output):
             self.ibzk_kc = num.zeros((1, 3), num.Float)
             self.nkpts = 1
         else:
+            if not self.lcao:
+                # The atomic basis sets are only used for the initial
+                # wave function guess, and therefore not important for
+                # the symmetry analysis:
+                basis_a = [None] * self.natoms
+
             # Reduce the the k-points to those in the irreducible part of
             # the Brillouin zone:
             self.symmetry, self.weight_k, self.ibzk_kc = reduce_kpoints(
-                self.bzk_kc, pos_ac, Z_a, type_a, magmom_a, self.domain,
-                p['usesymm'])
+                self.bzk_kc, pos_ac, Z_a, type_a, magmom_a, basis_a,
+                self.domain, p['usesymm'])
             self.nkpts = len(self.ibzk_kc)
         
             if p['usesymm'] and self.symmetry is not None:
@@ -1010,8 +1048,6 @@ class PAW(PAWExtra, Output):
         # fine grids (densities and potentials):
         self.gd = GridDescriptor(self.domain, N_c)
         self.finegd = GridDescriptor(self.domain, 2 * N_c)
-
-        self.lcao = (p['eigensolver'] == 'lcao')
 
         # Total number of k-point/spin combinations:
         nu = self.nkpts * self.nspins

@@ -7,8 +7,16 @@ from gpaw import debug
 
 
 class Symmetry:
-    def __init__(self, Z_a, type_a, magmom_a, domain, tolerance=1e-9):
-        self.ZTM_a = zip(Z_a, type_a, magmom_a)
+    def __init__(self, Z_a, type_a, magmom_a, basis_a,
+                 domain, tolerance=1e-9):
+        """Symmetry object.
+
+        Two atoms can only be identical if they have the same atomic
+        numbers, setup types and magnetic moments.  If it is an LCAO
+        type of calculation, they must have the same atomic basis
+        set also."""
+        
+        self.ZTMB_a = zip(Z_a, type_a, magmom_a, basis_a)
         self.cell_c = domain.cell_c
         self.periodic_c = domain.periodic_c
         self.scale_position = domain.scale_position  # XXX ref to domain!
@@ -62,15 +70,16 @@ class Symmetry:
 
         Remove symmetries that are not satisfied."""
 
-        # Build lists of (atom number, scaled position) tuples.  One list for
-        # each (atomic number, magnetic moment) combination:
+        # Build lists of (atom number, scaled position) tuples.  One
+        # list for each combination of atomic number, setup type,
+        # magnetic moment and basis set:
         species = {}
-        for a, ZTM in enumerate(self.ZTM_a):
+        for a, ZTMB in enumerate(self.ZTMB_a):
             spos_c = self.scale_position(pos_ac[a])
-            if species.has_key(ZTM):
-                species[ZTM].append((a, spos_c))
+            if species.has_key(ZTMB):
+                species[ZTMB].append((a, spos_c))
             else:
-                species[ZTM] = [(a, spos_c)]
+                species[ZTMB] = [(a, spos_c)]
 
         symmok = []
         maps = []
@@ -98,9 +107,9 @@ class Symmetry:
         if debug:
             for symmetry, map in zip(symmok, maps):
                 swap, mirror = symmetry
-                for a1, ZTM1 in enumerate(self.ZTM_a):
+                for a1, ZTMB1 in enumerate(self.ZTMB_a):
                     a2 = map[a1]
-                    assert ZTM1 == self.ZTM_a[a2]
+                    assert ZTMB1 == self.ZTMB_a[a2]
                     spos1_c = self.scale_position(pos_ac[a1])
                     spos2_c = self.scale_position(pos_ac[a2])
                     sdiff = num.take(spos1_c * mirror, swap) - spos2_c

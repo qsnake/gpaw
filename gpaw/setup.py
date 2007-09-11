@@ -9,6 +9,7 @@ import Numeric as num
 from ASE.ChemicalElements.name import names
 
 from gpaw.read_setup import PAWXMLParser
+from gpaw.read_basis import BasisSetXMLParser
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
@@ -18,7 +19,7 @@ from gpaw.xc_functional import XCRadialGrid
 from gpaw.kli import XCKLICorrection, XCGLLBCorrection
 from LinearAlgebra import inverse as inv
 
-def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw'):
+def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
     if type == 'ae':
         from gpaw.ae import AllElectronSetup
         return AllElectronSetup(symbol, xcfunc, nspins)
@@ -31,11 +32,12 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw'):
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins, semicore=True)
 
-    return Setup(symbol, xcfunc, lmax, nspins, type)
+    return Setup(symbol, xcfunc, lmax, nspins, type, basis)
 
 
 class Setup:
-    def __init__(self, symbol, xcfunc, lmax=0, nspins=1, type='paw'):
+    def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
+                 type='paw', basis=None):
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = False
@@ -181,43 +183,11 @@ class Setup:
             self.pt_j.append(Spline(l, rcutfilter, grr(pt_jg[j], l, r_g),
                                     r_g=r_g, beta=beta))
 
-        # Cutoff for atomic orbitals used for initial guess:
-        rcut3 = 8.0  # XXXXX Should depend on the size of the atom!
-        gcut3 = 1 + int(rcut3 * ng / (rcut3 + beta))
-
-        # We cut off the wave functions smoothly at rcut3 by the
-        # following replacement:
-        #
-        #            /
-        #           | f(r),                                   r < rcut2
-        #  f(r) <- <  f(r) - a(r) f(rcut3) - b(r) f'(rcut3),  rcut2 < r < rcut3
-        #           | 0,                                      r > rcut3
-        #            \
-        #
-        # where a(r) and b(r) are 4. order polynomials:
-        #
-        #  a(rcut2) = 0,  a'(rcut2) = 0,  a''(rcut2) = 0,
-        #  a(rcut3) = 1, a'(rcut3) = 0
-        #  b(rcut2) = 0, b'(rcut2) = 0, b''(rcut2) = 0,
-        #  b(rcut3) = 0, b'(rcut3) = 1
-        #
-        x = (r_g[gcut2:gcut3] - rcut2) / (rcut3 - rcut2)
-        a_g = 4 * x**3 * (1 - 0.75 * x)
-        b_g = x**3 * (x - 1) * (rcut3 - rcut2)
-
-        self.phit_j = []
-        for j, phit_g in enumerate(phit_jg):
-            if n_j[j] > 0:
-                l = l_j[j]
-                phit = phit_g[gcut3]
-                dphitdr = ((phit - phit_g[gcut3 - 1]) /
-                           (r_g[gcut3] - r_g[gcut3 - 1]))
-                phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
-                phit_g[gcut3:] = 0.0
-                self.phit_j.append(Spline(l, rcut3,
-                                          grr(phit_g, l, r_g),
-                                          r_g=r_g, beta=beta))
-
+        if basis is None:
+            self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
+        else:
+            self.read_basis_functions(basis)
+            
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()
         phi_jg = num.array([phi_g[:gcut2] for phi_g in phi_jg])
@@ -485,6 +455,52 @@ class Setup:
         # compute inverse overlap coefficients C_ii
         self.C_ii = -num.dot(self.O_ii, inv(num.identity(size) + num.dot(self.B_ii, self.O_ii)))
 
+    def create_basis_functions(self, phit_jg, beta, ng, rcut2, gcut2, r_g):
+        # Cutoff for atomic orbitals used for initial guess:
+        rcut3 = 8.0  # XXXXX Should depend on the size of the atom!
+        gcut3 = 1 + int(rcut3 * ng / (rcut3 + beta))
+
+        # We cut off the wave functions smoothly at rcut3 by the
+        # following replacement:
+        #
+        #            /
+        #           | f(r),                                   r < rcut2
+        #  f(r) <- <  f(r) - a(r) f(rcut3) - b(r) f'(rcut3),  rcut2 < r < rcut3
+        #           | 0,                                      r > rcut3
+        #            \
+        #
+        # where a(r) and b(r) are 4. order polynomials:
+        #
+        #  a(rcut2) = 0,  a'(rcut2) = 0,  a''(rcut2) = 0,
+        #  a(rcut3) = 1, a'(rcut3) = 0
+        #  b(rcut2) = 0, b'(rcut2) = 0, b''(rcut2) = 0,
+        #  b(rcut3) = 0, b'(rcut3) = 1
+        #
+        x = (r_g[gcut2:gcut3] - rcut2) / (rcut3 - rcut2)
+        a_g = 4 * x**3 * (1 - 0.75 * x)
+        b_g = x**3 * (x - 1) * (rcut3 - rcut2)
+
+        self.phit_j = []
+        for j, phit_g in enumerate(phit_jg):
+            if self.n_j[j] > 0:
+                l = self.l_j[j]
+                phit = phit_g[gcut3]
+                dphitdr = ((phit - phit_g[gcut3 - 1]) /
+                           (r_g[gcut3] - r_g[gcut3 - 1]))
+                phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
+                phit_g[gcut3:] = 0.0
+                self.phit_j.append(Spline(l, rcut3,
+                                          grr(phit_g, l, r_g),
+                                          r_g=r_g, beta=beta))
+
+    def read_basis_functions(self, basis_name):
+        parser = BasisSetXMLParser()
+        (l_j, rc, phit_jg, filename) = parser.parse(self.symbol, basis_name)
+        
+        self.phit_j = []
+        for l, phit_g in zip(l_j, phit_jg):
+            self.phit_j.append(Spline(l, rc, phit_g))
+                                   
     def print_info(self, text):
         if self.phicorehole_g is None:
             text(self.symbol + '-setup:')

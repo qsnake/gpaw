@@ -3,7 +3,8 @@ import Numeric as num
 from gpaw.symmetry import Symmetry
 
 
-def reduce_kpoints(bzk_kc, pos_ac, Z_a, type_a, magmom_a, domain, usesymm):
+def reduce_kpoints(bzk_kc, pos_ac, Z_a, type_a, magmom_a, basis_a,
+                   domain, usesymm):
     """Reduce the number of k-points using symmetry.
 
     Returns symmetry object, weights and k-points in the irreducible
@@ -15,7 +16,7 @@ def reduce_kpoints(bzk_kc, pos_ac, Z_a, type_a, magmom_a, domain, usesymm):
 
     # Construct a Symmetry instance containing the identity
     # operation only:
-    symmetry = Symmetry(Z_a, type_a, magmom_a, domain)
+    symmetry = Symmetry(Z_a, type_a, magmom_a, basis_a, domain)
 
     if usesymm:
         # Find symmetry operations of atoms:

@@ -29,7 +29,7 @@ import _gpaw
 """
 
 class XCFunctional:
-    def __init__(self, xcname, nspins, parameters=None):
+    def __init__(self, xcname, nspins=1, parameters=None):
         self.xcname = xcname
         self.hybrid = 0.0
         self.parameters = parameters
