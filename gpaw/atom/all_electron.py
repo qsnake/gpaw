@@ -204,7 +204,7 @@ class AllElectron:
                 tau = None
                 if self.xc.xcfunc.mgga:
                     tau = self.calculate_kinetic_energy_density()
-                Exc = self.xc.get_energy_and_potential(n, self.vXC, taua_g=tau )
+                Exc = self.xc.get_energy_and_potential(n, self.vXC)
 
             # calculate new total Kohn-Sham effective potential and
             # admix with old version
