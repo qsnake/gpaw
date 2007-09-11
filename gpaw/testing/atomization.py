@@ -16,6 +16,7 @@ helper functions and some molecule data.
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
 
+
 """
 A dictionary which associates element symbols with MoleculeInfo-objects
 pertaining to those elements.
