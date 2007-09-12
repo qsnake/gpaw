@@ -60,13 +60,18 @@ class Hamiltonian:
         self.vt_sg = self.finegd.empty(self.nspins)
 
         # The external potential
-        assert num.alltrue(vext_g.shape==finegd.get_size_of_global_array())
-        self.vext_g = finegd.zeros()
-        finegd.distribute(vext_g, self.vext_g)
+        vext_g = paw.input_parameters['external']
+        if vext_g is not None:
+            assert num.alltrue(vext_g.shape ==
+                               finegd.get_size_of_global_array())
+            self.vext_g = finegd.zeros()
+            finegd.distribute(vext_g, self.vext_g)
+        else:
+            self.vext_g = None
 
         p = paw.input_parameters
         stencils = p['stencils']
-        
+
         # Number of neighbor grid points used for finite difference
         # Laplacian in the Schrödinger equation (1, 2, ...):
         nn = stencils[0]
