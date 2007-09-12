@@ -72,13 +72,13 @@ def write_plt(cell,
     if len(grid.shape) != 3:
         raise RuntimeError("grid must be 3D")
     nx, ny, nz = grid.shape
-    dx, dy, dz = [ xe/nx, ye/ny, ze/nz ]
-
+    dx, dy, dz = [ xe/(nx+1), ye/(ny+1), ze/(nz+1) ]
+    
     f = open(filename, 'w')
     f.write(pack('ii', 3, typ))
     f.write(pack('iii', nz, ny, nx))
 
-    x0, y0, z0 = origin
+    x0, y0, z0 = origin + num.array([dx,dy,dz])
     xe = x0 +(nx-1)*dx
     ye = y0 +(ny-1)*dy
     ze = z0 +(nz-1)*dz
