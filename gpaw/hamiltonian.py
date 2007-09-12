@@ -60,12 +60,9 @@ class Hamiltonian:
         self.vt_sg = self.finegd.empty(self.nspins)
 
         # The external potential
-        if 0:#???vext_g:
-            assert num.alltrue(vext_g.shape==finegd.get_size_of_global_array())
-            self.vext_g = finegd.zeros()
-            finegd.distribute(vext_g, self.vext_g)
-        else:
-            self.vext_g = 0#???vext_g
+        assert num.alltrue(vext_g.shape==finegd.get_size_of_global_array())
+        self.vext_g = finegd.zeros()
+        finegd.distribute(vext_g, self.vext_g)
 
         p = paw.input_parameters
         stencils = p['stencils']
@@ -123,7 +120,7 @@ class Hamiltonian:
         Epot = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar
 
         Eext = 0.0
-        if self.vext_g:
+        if self.vext_g is not None:
             vt_g += self.vext_g
             Eext = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
 
@@ -157,10 +154,9 @@ class Hamiltonian:
         for nucleus in self.ghat_nuclei:
             # Energy corections due to external potential.
             # Potential is assumed to be constant inside augmentation spheres.
-            if self.vext_g and nucleus.in_this_domain:
-                R_c = num.around(density.finegd.N_c * nucleus.spos_c
-                                 - density.finegd.beg_c).astype(int)
-                R_c -= (R_c == density.finegd.n_c)
+            if self.vext_g is not None and nucleus.in_this_domain:
+                g_c = nucleus.get_nearest_grid_point(density.finegd)
+                g_c -= (g_c == density.finegd.n_c) # force point to this domain
                 vext = self.vext_g[R_c]
             else:
                 vext = None

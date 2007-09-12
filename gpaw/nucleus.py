@@ -708,6 +708,14 @@ class Nucleus:
             if self.vbar is not None:
                 self.vbar.derivative(nt_g, None)
 
+    def get_nearest_grid_point(self, gd):
+        """Return index of nearest grid point.
+        
+        The nearest grid point can be on a different CPU than the one the
+        nucleus belongs to, in which case something clever should be done.
+        """
+        return num.around(gd.N_c * self.spos_c).astype(int) - gd.beg_c
+
     def add_density_correction(self, n_sg, nspins, gd, splines={}):
         # Load splines
         symbol = self.setup.symbol
@@ -749,7 +757,7 @@ class Nucleus:
                 nct.add(n_sg[s], -num.ones(1, num.Float) / nspins)
 
             # Correct density, such that correction is norm-conserving
-            g_c = num.around(gd.N_c * self.spos_c).astype(num.Int) % gd.N_c
+            g_c = self.get_nearest_grid_point(gd) % gd.N_c
             n_sg[s][g_c - gd.beg_c] += (Iana - Inum) / gd.dv
         
     def wannier_correction(self, G, c, u, u1):
@@ -776,7 +784,7 @@ class Nucleus:
         P_ni = self.P_uni[u]
         P1_ni = self.P_uni[u1]
         O_ii = self.setup.O_ii
-        e = exp(-2j * pi * G * self.spos_c[c])
+        e = exp(-2.j * pi * G * self.spos_c[c])
         Z_nn = e * num.dot(num.dot(P_ni, O_ii), cc(num.transpose(P1_ni)))
 
         return Z_nn
