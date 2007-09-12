@@ -201,3 +201,14 @@ class PAWExtra:
         # Eigensolver
         # !!! FIX ME !!!
         # not implemented yet...
+
+    def read_wave_functions(self,mode='gpw'):
+        """Read wave functions one by one from seperate files"""
+        
+        for k, kpt in enumerate(self.kpt_u):
+            kpt.psit_nG = self.gd.empty(self.nbands, self.typecode)
+            # Read band by band to save memory
+            for n, psit_G in enumerate(kpt.psit_nG):
+                psit_G[:] = gpaw.io.read_wave_function(self, kpt.s, k, n, mode)
+                
+                

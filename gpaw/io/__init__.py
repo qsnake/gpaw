@@ -24,6 +24,13 @@ def open(filename, mode='r'):
     else:
         raise ValueError("Illegal mode!  Use 'r' or 'w'.")
 
+def wave_function_name_template(mode):
+    try:
+        ftype, template = mode.split(':')
+    except:
+        ftype = mode
+        template = 'psit_Gs%dk%dn%d'
+    return ftype, template
 
 def write(paw, filename, mode):
     if mpi.rank == MASTER:
@@ -248,21 +255,22 @@ def write(paw, filename, mode):
                         w.fill(psit_G)
     elif mode != '':
         # Write the wave functions as seperate files
-        ftype, template = mode.split(':')
-        if not template: template = 'psit_Gs%dk%dn%d'
 
         # check if we need subdirs and have to create them
+        ftype, template = wave_function_name_template(mode)
         dirname = os.path.dirname(template)
         if dirname:
-            if not os.path.isdir(dirname):
+            if mpi.rank == MASTER and not os.path.isdir(dirname):
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 else:
                     raise RuntimeError('Can\'t create subdir '+dirname)
         else:
             dirname = '.'
+        # the slaves have to wait until the directory is created
+        mpi.world.barrier()
         print >> paw.txt, 'Writing wave functions to', dirname,\
-              'using the template', template
+              'using mode=', mode
         
         ngd = paw.gd.get_size_of_global_array()
         for s in range(paw.nspins):
@@ -401,3 +409,17 @@ def read(paw, reader):
         paw.F_ac = r.get('CartesianForces')
 
     #r.close()
+
+def read_wave_function(paw, s, k, n, mode):
+    """Read the wave function for spin s, kpoint k and index n
+    from a sperate file"""
+
+    ftype, template = wave_function_name_template(mode)
+    fname = template % (s,k,n) + '.'+ftype
+    print "reading",fname
+
+    i = paw.gd.get_slice()
+##    print "i=",i
+    r = open(fname, 'r')
+    return r.get('PseudoWaveFunction',0)[i]
+    
