@@ -712,7 +712,7 @@ class Nucleus:
         # Load splines
         symbol = self.setup.symbol
         if not symbol in splines:
-            phi_j, phit_j, nc, nct, tauc, tauct= self.setup.get_partial_waves()
+            phi_j, phit_j, nc, nct = self.setup.get_partial_waves()[:4]
             splines[symbol] = (phi_j, phit_j, nc, nct)
         else:
             phi_j, phit_j, nc, nct = splines[symbol]
@@ -721,22 +721,25 @@ class Nucleus:
         create = create_localized_functions
         phi_i = create(phi_j, gd, self.spos_c)
         phit_i = create(phit_j, gd, self.spos_c)
+
         nc = create([nc], gd, self.spos_c)
         nct = create([nct], gd, self.spos_c)
 
-        # Normalize core densities:
+        # The correct normalizations are:
         Nc = self.setup.Nc
         Nct = -(self.setup.Delta0 * sqrt(4 * pi)
                 + self.setup.Z - self.setup.Nc)
-        if Nc != 0:
-            nc.normalize(Nc)
-            nct.normalize(Nct)
+
+        # Actual normalizations:
+        Nc0 = nc.norm()[0]
+        Nct0 = nct.norm()[0]
         
         for s in range(nspins):
-            # Numeric and analytic integrations of density corrections
-            Inum = 0.0
-            Ianal = sqrt(4 * pi) * num.dot(self.D_sp[s],
-                                           self.setup.Delta_pL[:,0])
+            # Numeric and analytic integrations of density corrections:
+            Inum = (Nc0 - Nct0) / nspins
+            Iana = ((Nc - Nct) / nspins +
+                    sqrt(4 * pi) * num.dot(self.D_sp[s],
+                                           self.setup.Delta_pL[:,0]))
 
             # Add density corrections to input array n_G
             Inum += phi_i.add_density2(n_sg[s], self.D_sp[s])
@@ -746,8 +749,8 @@ class Nucleus:
                 nct.add(n_sg[s], -num.ones(1, num.Float) / nspins)
 
             # Correct density, such that correction is norm-conserving
-            Core_c = num.around(gd.N_c * self.spos_c).astype(num.Int) % gd.N_c
-            n_sg[s][Core_c] += (Ianal - Inum) / gd.dv
+            g_c = num.around(gd.N_c * self.spos_c).astype(num.Int) % gd.N_c
+            n_sg[s][g_c - gd.beg_c] += (Iana - Inum) / gd.dv
         
     def wannier_correction(self, G, c, u, u1):
         """

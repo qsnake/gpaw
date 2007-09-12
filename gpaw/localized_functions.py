@@ -203,6 +203,15 @@ class LocFuncs:
             I += box.add_density2(n_G, D_p)
         return I
 
+    def norm(self):
+        """Calculate norm of localized functions."""
+
+        I_i = num.zeros(self.ni, num.Float)
+        for box in self.box_b:
+            box.norm(I_i)
+        self.comm.sum(I_i)
+        return I_i
+        
     def normalize(self, I0):
         """Normalize localized functions.
         
@@ -211,12 +220,10 @@ class LocFuncs:
         functions (l > 0) are adjusted so that they integrate to
         zero."""
 
-        I_i = num.zeros(self.ni, num.Float)
-        for box in self.box_b:
-            box.norm(I_i)
-        self.comm.sum(I_i)
+        I_i = self.norm()
         for box in self.box_b:
             box.normalize(I0, I_i)
+
         
 class LocalizedFunctionsWrapper:
     """Python wrapper class for C-extension: ``LocalizedFunctions``.

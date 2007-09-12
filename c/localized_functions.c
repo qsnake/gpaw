@@ -277,7 +277,7 @@ static PyObject * localized_functions_normalize(LocalizedFunctionsObject* self,
   double *II = DOUBLEP(I_obj);
   double* f = self->f;
   double s = I0 / II[0];
-  // Scale spherically symmetric function so that the intgral
+  // Scale spherically symmetric function so that the integral
   // becomes exactly I0:
   for (int n = 0; n < self->ng0; n++)
     f[n] *= s;
