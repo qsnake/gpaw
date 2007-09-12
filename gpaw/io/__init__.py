@@ -1,4 +1,5 @@
 import os
+import os.path
 
 from ASE.ChemicalElements.name import names
 import Numeric as num
@@ -245,6 +246,41 @@ def write(paw, filename, mode):
                     psit_G = paw.get_wave_function_array(n, k, s)
                     if mpi.rank == MASTER: 
                         w.fill(psit_G)
+    elif mode != '':
+        # Write the wave functions as seperate files
+        ftype, template = mode.split(':')
+        if not template: template = 'psit_Gs%dk%dn%d'
+
+        # check if we need subdirs and have to create them
+        dirname = os.path.dirname(template)
+        if dirname:
+            if not os.path.isdir(dirname):
+                if not os.path.exists(dirname):
+                    os.makedirs(dirname)
+                else:
+                    raise RuntimeError('Can\'t create subdir '+dirname)
+        else:
+            dirname = '.'
+        print >> paw.txt, 'Writing wave functions to', dirname,\
+              'using the template', template
+        
+        ngd = paw.gd.get_size_of_global_array()
+        for s in range(paw.nspins):
+            for k in range(paw.nkpts):
+                for n in range(paw.nbands):
+                    psit_G = paw.get_wave_function_array(n, k, s)
+                    if mpi.rank == MASTER:
+                        fname = template % (s,k,n) + '.'+ftype
+                        wpsi = open(fname,'w')
+                        wpsi.dimension('1', 1)
+                        wpsi.dimension('ngptsx', ngd[0])
+                        wpsi.dimension('ngptsy', ngd[1])
+                        wpsi.dimension('ngptsz', ngd[2])
+                        wpsi.add('PseudoWaveFunction',
+                                 ('1','ngptsx', 'ngptsy', 'ngptsz'),
+                                 typecode=typecode)
+                        wpsi.fill(psit_G)
+                        wpsi.close()
                     
     if mpi.rank == MASTER:
         # Close the file here to ensure that the last wave function is
