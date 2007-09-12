@@ -758,7 +758,7 @@ class Nucleus:
 
             # Correct density, such that correction is norm-conserving
             g_c = self.get_nearest_grid_point(gd) % gd.N_c
-            n_sg[s][g_c - gd.beg_c] += (Iana - Inum) / gd.dv
+            n_sg[s][g_c] += (Iana - Inum) / gd.dv
         
     def wannier_correction(self, G, c, u, u1):
         """
