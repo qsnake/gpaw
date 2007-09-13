@@ -33,6 +33,19 @@ def wave_function_name_template(mode):
     return ftype, template
 
 def write(paw, filename, mode):
+    """
+    mode::
+     '' : don't write the wave functions (wfs)
+     'all' : write wfs to the file
+     'nc','gpw': write wfs as seperate files
+                the default filename is
+                'psit_Gs%dk%dn%d.nc' % (s,k,n) for 'nc'
+                where s=spin, k=k-point and n=band
+     'nc:mywfs/psit_Gs%dk%dn%d' defines the filenames to be
+                'mywfs/psit_Gs%dk%dn%d' % (s,k,n).
+                The directory 'mywfs' is created if not
+                present.
+    """
     if mpi.rank == MASTER:
         w = open(filename, 'w')
 
@@ -412,14 +425,13 @@ def read(paw, reader):
 
 def read_wave_function(paw, s, k, n, mode):
     """Read the wave function for spin s, kpoint k and index n
-    from a sperate file"""
+    from a sperate file. The filename is determined from the mode
+    in the same way as in write() (see above)"""
 
     ftype, template = wave_function_name_template(mode)
     fname = template % (s,k,n) + '.'+ftype
-    print "reading",fname
 
     i = paw.gd.get_slice()
-##    print "i=",i
     r = open(fname, 'r')
     return r.get('PseudoWaveFunction',0)[i]
     
