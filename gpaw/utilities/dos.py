@@ -69,3 +69,68 @@ class LDOS(DOS):
                 for i, P in enumerate(P_i):
                     dos_ie[i] += w * abs(P)**2 * self.Delta(e)
         return dos_ie
+    
+class RawLDOS:
+    """Class to get the unfolded LDOS"""
+    def __init__(self, calc):
+        self.paw = calc
+        for nucleus in calc.nuclei:
+            if not hasattr(nucleus.setup,'l_i'):
+                # get the mapping
+                l_i = []
+                for l in nucleus.setup.l_j:
+                    for i in range(2*l+1):
+                        l_i.append(l)
+                nucleus.setup.l_i = l_i
+
+    def get(self,atom):
+        """Return the s,p,d weights for each state"""
+        spd = num.zeros((self.paw.nspins,self.paw.nbands,3),num.Float)
+
+        if hasattr(atom, '__iter__'):
+            # atom is a list of atom indicies 
+            for a in atom:
+                spd += self.get(a)
+            return spd
+        
+        nucleus = self.paw.nuclei[atom]
+        for s in range(self.paw.nspins):
+            for n in range(self.paw.nbands):
+                for i,P in enumerate(nucleus.P_uni[s,n]):
+                     spd[s,n,nucleus.setup.l_i[i]] += abs(P)**2
+        return spd
+
+    def by_element(self):
+        # get element indicees
+        elemi = {}
+        for i,a in enumerate(self.paw.atoms):
+            symbol = a.GetChemicalSymbol()
+            if elemi.has_key(symbol):
+                elemi[symbol].append(i)
+            else:
+                elemi[symbol] = [i]
+        for key in elemi.keys():
+            print "key=",key, elemi[key]
+            elemi[key] = self.get(elemi[key])
+        return elemi
+
+    def by_element_to_file(self,filename='ldos_by_element.dat'):
+        """Write the LDOS by element to a file"""
+        ldbe = self.by_element()
+        f = open(filename,'w')
+        print >> f, "# spin n ",
+        for key in ldbe:
+            if len(key) == 1: key=' '+key
+            print  >> f, ' '+key+':s     p        d      ',
+        print  >> f,' sum'
+        for s in range(self.paw.nspins):
+            for n in range(self.paw.nbands):
+                sum = 0.
+                print >> f, s, '%6d' % n,
+                for key in ldbe:
+                    spd = ldbe[key][s,n]
+                    for l in range(3):
+                        sum += spd[l]
+                        print >> f, '%8.4f' % spd[l],
+                print >> f, '%8.4f' % sum
+        f.close()
