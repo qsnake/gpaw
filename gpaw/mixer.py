@@ -39,6 +39,16 @@ class Mixer:
         for s, mixer in enumerate(self.mixers):
             mixer.reset(my_nuclei, s)
 
+    def get_charge_sloshing(self):
+        """Return number of electrons moving around.
+
+        Calculated as the integral of the absolute value of the change
+        of the density from input to output."""
+        
+        if self.mixers[0].dNt is None:
+            return None
+        return sum([mixer.dNt for mixer in self.mixers])
+    
     def mix(self, nt_sG, comm):
         """Mix pseudo electron densities."""
 
@@ -61,15 +71,17 @@ class Mixer1:
                                 (0, 0, -1), (0, 0, 1)],
                                gd, True, num.Float).apply
         self.mR_G = gd.empty()
+        self.gd = gd
+        self.dNt = None
         
     def reset(self, my_nuclei, s):
         # History for Pulay mixing of densities:
         self.nt_iG = [] # Pseudo-electron densities
         self.R_iG = []  # Residuals
         self.A_ii = num.zeros((0, 0), num.Float)
-
+        self.dNt = None
+        
         # Collect atomic density matrices:
-        # XXX ref to nucleus!n
         self.D_a = [(nucleus.D_sp[s], [], []) for nucleus in my_nuclei]
 
     def mix(self, nt_G, comm):
@@ -87,6 +99,7 @@ class Mixer1:
             # Calculate new residual (difference between input and
             # output density):
             R_G = nt_G - self.nt_iG[-1]
+            self.dNt = self.gd.integrate(num.fabs(R_G))
             self.R_iG.append(R_G)
             for D_p, D_ip, dD_ip in self.D_a:
                 dD_ip.append(D_p - D_ip[-1])
@@ -140,7 +153,7 @@ class Mixer1:
 class MixerSum:
     """Pulay density mixer."""
     
-    def __init__(self, mix):
+    def __init__(self, mix, gd):
         """Mixer(beta, nold) -> mixer object.
 
         beta:  Mixing parameter between zero and one (one is most
@@ -152,7 +165,9 @@ class MixerSum:
         self.beta = mix[0]
         self.nmaxold = mix[1]
         self.x = mix[2]
-
+        self.dNt = None
+        self.gd = gd
+        
     def reset(self, my_nuclei):
         """Reset Density-history.
 
@@ -165,10 +180,19 @@ class MixerSum:
         self.nt_iG = [] # Pseudo-electron densities
         self.R_iG = []  # Residuals
         self.A_ii = num.zeros((0, 0), num.Float)
-
+        self.dNt = None
+        
         # Collect atomic density matrices:
         self.D_a = [(nucleus.D_sp, [], []) for nucleus in my_nuclei]
 
+    def get_charge_sloshing(self):
+        """Return number of electrons moving around.
+
+        Calculated as the integral of the absolute value of the change
+        of the density from input to output."""
+        
+        return self.dNt
+    
     def mix(self, nt_sG, comm):
         """Mix pseudo electron densities."""
 
@@ -186,8 +210,9 @@ class MixerSum:
                 iold = self.nmaxold
 
             # Calculate new residual (difference between input and
-            # output density):
+            # output density): 
             R_G = nt_G - self.nt_iG[-1]
+            self.dNt = self.gd.integrate(num.fabs(R_G))
             self.R_iG.append(R_G)
             for D_sp, D_isp, dD_isp in self.D_a:
                 dD_isp.append(D_sp - D_isp[-1])

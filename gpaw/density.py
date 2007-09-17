@@ -80,7 +80,7 @@ class Density:
         self.interpolate = Transformer(self.gd, self.finegd, nn).apply
         
         # Density mixer
-        self.set_mixer(paw,p['mix'])
+        self.set_mixer(paw, p['mix'])
         
         self.initialized = False
 
@@ -190,7 +190,7 @@ class Density:
     def set_mixer(self, paw, mix):
         # Density mixer:
         if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
-            self.mixer = MixerSum(mix)
+            self.mixer = MixerSum(mix, self.gd)
         else:
             self.mixer = Mixer(mix, self.gd, self.nspins)
 

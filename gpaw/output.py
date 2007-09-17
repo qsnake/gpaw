@@ -224,24 +224,43 @@ class Output:
 
         else:        
             if self.niter == 0:
-                t("""\
-                          log10     total     iterations:
-                 time     error     energy    fermi  poisson  magmom""")
+                header = """\
+                     log10-error:    total        iterations:
+           time      wfs    density  energy       fermi  poisson"""
+                if self.spinpol:
+                    header += '  magmom'
+                t(header)
 
             T = time.localtime()
 
-            t('iter: %4d %3d:%02d:%02d %6.1f %13.7f %4d %7d' %
+            dNt = self.density.mixer.get_charge_sloshing()
+            if dNt is None:
+                dNt = ''
+            else:
+                dNt = '%+.1f' % (log(dNt / self.natoms) / log(10))
+
+            niterocc = self.occupation.niter
+            if niterocc == -1:
+                niterocc = ''
+            else:
+                niterocc = '%d' % niterocc
+
+            niterpoisson = '%d' % self.hamiltonian.npoisson
+            
+            t("""\
+iter: %3d  %02d:%02d:%02d  %-+5.1f  %-5s    %-12.5f %-5s  %-7s""" %
               (self.niter,
                T[3], T[4], T[5],
                log(self.error) / log(10),
+               dNt,
                self.Ha * (self.Etot + 0.5 * self.S),
-               self.occupation.niter,
-               self.hamiltonian.npoisson), end='')
+               niterocc,
+               niterpoisson), end='')
             
-            if self.nspins == 2:
-                t('%11.4f' % self.occupation.magmom)
+            if self.spinpol:
+                t('  %+.4f' % self.occupation.magmom)
             else:
-                t('       --')
+                t()
 
         self.txt.flush()
 
