@@ -42,3 +42,15 @@ class LCAOHamiltonian(Hamiltonian):
         Tphi_mG = self.gd.zeros(self.nao)
         self.kin.apply(self.phi_mG, Tphi_mG)
         r2k(0.5 * self.gd.dv, self.phi_mG, Tphi_mG, 0.0, self.T_mm)
+
+    def calculate_effective_potential_matrix(self, V_mm):
+        box_b = []
+        for nucleus in self.nuclei:
+            box_b.extend(nucleus.phit_i.box_b)
+        assert len(box_b) == len(self.nuclei)
+        from _gpaw import overlap
+        from time import time as t
+        t0 = t()
+        overlap(box_b, self.vt_sG[0], V_mm)
+        t1 = t()
+        print t1 - t0

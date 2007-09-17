@@ -27,7 +27,13 @@ class LCAO:
         nbands = kpt.nbands
         H_mm = num.zeros((nao, nao), num.Float)
         r2k(0.5 * self.gd.dv, phi_mG, vt_G * phi_mG, 0.0, H_mm)
-        
+
+        if 0:
+            print H_mm
+            H_mm[:] = 0
+            hamiltonian.calculate_effective_potential_matrix(H_mm)
+            print H_mm
+            
         for nucleus in self.nuclei:
             dH_ii = unpack(nucleus.H_sp[0])
             H_mm += num.dot(num.dot(nucleus.P_mi, dH_ii),

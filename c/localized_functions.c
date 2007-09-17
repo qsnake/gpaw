@@ -11,6 +11,7 @@
 #endif
 
 #include "mympi.h"
+#include "localized_functions.h"
 
 int dgemm_(char *transa, char *transb, int *m, int * n,
 	   int *k, double *alpha, double *a, int *lda, 
@@ -21,22 +22,6 @@ int dgemv_(char *trans, int *m, int * n,
 	   double *x, int *incx, double *beta, 
 	   double *y, int *incy);
 
-typedef struct 
-{
-  PyObject_HEAD
-  double dv;
-  int size[3];
-  int start[3];
-  int size0[3];
-  int ng;
-  int ng0;
-  int nf;
-  int nfd;
-  double* f;
-  double* fd;
-  double* w;
-} LocalizedFunctionsObject;
-
 static void localized_functions_dealloc(LocalizedFunctionsObject *self)
 {
   free(self->f);
@@ -45,7 +30,7 @@ static void localized_functions_dealloc(LocalizedFunctionsObject *self)
 }
 
 static PyObject * localized_functions_integrate(LocalizedFunctionsObject *self,
-                                              PyObject *args)
+						PyObject *args)
 {
   const PyArrayObject* aa;
   PyArrayObject* bb;
@@ -326,6 +311,7 @@ static PyObject * localized_functions_broadcast(LocalizedFunctionsObject*
   Py_RETURN_NONE;
 }
 #endif
+
 
 static PyMethodDef localized_functions_methods[] = {
     {"integrate",

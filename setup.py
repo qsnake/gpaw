@@ -169,8 +169,8 @@ if custom_interpreter:
                              mpi_runtime_library_dirs, mpi_define_macros)
     msg += par_msg
     # install also gpaw-python
-    if "install" in sys.argv and error == 0:
-        setup(name = 'gpaw',
+    if 'install' in sys.argv and error == 0:
+        setup(name='gpaw',
               version=version,
               description='A grid-based real-space PAW method DFT code',
               author='J. J. Mortensen, et.al.',
