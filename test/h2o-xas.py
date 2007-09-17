@@ -28,7 +28,7 @@ xas = XAS(calc)
 x, y = xas.get_spectra()
 e1_n = xas.eps_n
 
-calc.write('h2o-xas.gpw', mode='No wave functions, please!')
+calc.write('h2o-xas.gpw')
 
 calc = Calculator('h2o-xas.gpw', txt=None)
 xas = XAS(calc)
