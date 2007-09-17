@@ -44,7 +44,7 @@ def write(paw, filename, mode):
     ``'nc'`` or ``'gpw'``:
       Write wave functions as seperate files (the default filenames
       are ``'psit_Gs%dk%dn%d.nc' % (s, k, n)`` for ``'nc'``, where
-      ``s``, ``k`` and ``n`` are spin, **k**-point and band indices. XXX
+      ``s``, ``k`` and ``n`` are spin, **k**-point and band indices). XXX
     ``'nc:mywfs/psit_Gs%dk%dn%d'``:
       Defines the filenames to be ``'mywfs/psit_Gs%dk%dn%d' % (s, k, n)``.
       The directory ``mywfs`` is created if not present. XXX
@@ -411,7 +411,7 @@ def read(paw, reader):
                  for kpt in paw.kpt_u:
                      kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
                                                    kpt.s, kpt.k)
-    
+
         for u, kpt in enumerate(paw.kpt_u):
             P_ni = r.get('Projections', kpt.s, kpt.k)
             i1 = 0
@@ -425,7 +425,6 @@ def read(paw, reader):
     if r.has_array('CartesianForces'):
         paw.F_ac = r.get('CartesianForces')
 
-    #r.close()
 
 def read_wave_function(paw, s, k, n, mode):
     """Read the wave function for spin s, kpoint k and index n
@@ -437,5 +436,6 @@ def read_wave_function(paw, s, k, n, mode):
 
     i = paw.gd.get_slice()
     r = open(fname, 'r')
-    return r.get('PseudoWaveFunction',0)[i]
-    
+    psit_G = r.get('PseudoWaveFunction', 0)[i]
+    r.close()
+    return psit_G
