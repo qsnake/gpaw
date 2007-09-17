@@ -33,19 +33,23 @@ def wave_function_name_template(mode):
     return ftype, template
 
 def write(paw, filename, mode):
+    """Write state to file.
+    
+    The `mode` argument should be one of:
+
+    ``''``:
+      Don't write the wave functions.
+    ``'all'``:
+      Write also the wave functions to the file.
+    ``'nc'`` or ``'gpw'``:
+      Write wave functions as seperate files (the default filenames
+      are ``'psit_Gs%dk%dn%d.nc' % (s, k, n)`` for ``'nc'``, where
+      ``s``, ``k`` and ``n`` are spin, **k**-point and band indices. XXX
+    ``'nc:mywfs/psit_Gs%dk%dn%d'``:
+      Defines the filenames to be ``'mywfs/psit_Gs%dk%dn%d' % (s, k, n)``.
+      The directory ``mywfs`` is created if not present. XXX
     """
-    mode::
-     '' : don't write the wave functions (wfs)
-     'all' : write wfs to the file
-     'nc','gpw': write wfs as seperate files
-                the default filename is
-                'psit_Gs%dk%dn%d.nc' % (s,k,n) for 'nc'
-                where s=spin, k=k-point and n=band
-     'nc:mywfs/psit_Gs%dk%dn%d' defines the filenames to be
-                'mywfs/psit_Gs%dk%dn%d' % (s,k,n).
-                The directory 'mywfs' is created if not
-                present.
-    """
+    
     if mpi.rank == MASTER:
         w = open(filename, 'w')
 
