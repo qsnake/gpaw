@@ -43,7 +43,8 @@ class LCAO:
         eps_n = num.zeros(nao, num.Float)
         diagonalize(H_mm, eps_n, hamiltonian.S_mm)
         kpt.C_nm = H_mm[0:nbands].copy()
-
+        kpt.eps_n[:] = eps_n[0:nbands]
+        
         for nucleus in self.nuclei:
             nucleus.P_uni[0] = num.dot(kpt.C_nm, nucleus.P_mi)
 
