@@ -6,10 +6,16 @@ functional theory calculations."""
 import Numeric as num
 
 import BiCGStab
-import Propagators
+from Propagators import \
+    ExplicitCrankNicolson, \
+    SemiImplicitCrankNicolson, \
+    SelfConsistentCrankNicolson, \
+    AbsorptionKick
 from TimeDependentVariablesAndOperators import \
-    TimeDependentHamiltonian, TimeDependentOverlap, \
-    TimeDependentDensity
+    TimeDependentHamiltonian, \
+    TimeDependentOverlap, \
+    TimeDependentDensity, \
+    AbsorptionKickHamiltonian
 
 
 class TDDFT:
@@ -63,11 +69,23 @@ class TDDFT:
         
         # Time propagator
         if ( propagator == 'ECN' ):
-            self.propagator = Propagators.ExplicitCrankNicolson(self.td_density,self.td_hamiltonian,self.td_overlap,self.solver)
+            self.propagator = \
+                ExplicitCrankNicolson( self.td_density, \
+                                       self.td_hamiltonian, \
+                                       self.td_overlap, \
+                                       self.solver )
         elif ( propagator == 'SICN' ):
-            self.propagator = Propagators.SemiImplicitCrankNicolson(self.td_density,self.td_hamiltonian,self.td_overlap,self.solver)
+            self.propagator = \
+                SemiImplicitCrankNicolson( self.td_density, \
+                                           self.td_hamiltonian, \
+                                           self.td_overlap, \
+                                           self.solver)
         elif ( propagator == 'SCCN' ):
-            self.propagator = Propagators.SelfConsistentCrankNicolson(self.td_density,self.td_hamiltonian,self.td_overlap,self.solver)
+            self.propagator = \
+                SelfConsistentCrankNicolson( self.td_density, \
+                                             self.td_hamiltonian, \
+                                             self.td_overlap, \
+                                             self.solver)
         else:
             raise( 'Error in TDDFT: Time propagator %s not supported. '\
                    % (propagator) )
@@ -80,15 +98,22 @@ class TDDFT:
             
         if ( kpt_dn != None ):
             self.kpt_dn = kpt_dn
-        else:
+        elif ( len(paw.kpt_u) > 1 ):
             self.kpt_dn = paw.kpt_u[1]
+        else:
+            self.kpt_dn = None
             
         self.wf_up = self.kpt_up.psit_nG
-        self.wf_dn = self.kpt_dn.psit_nG
+        if ( self.kpt_dn != None ):
+            self.wf_dn = self.kpt_dn.psit_nG
+        else:
+            self.wf_dn = []
         
         # grid descriptor
         self.gd = paw.hamiltonian.gd
-        
+        # projectors
+        self.pt_nuclei = paw.pt_nuclei
+
         
     def propagate(self, time_step, iterations=1):
         """Propagates wavefunctions.
@@ -105,21 +130,13 @@ class TDDFT:
             self.propagator.propagate(self.kpt_up,self.kpt_dn, self.wf_up,self.wf_dn, self.time, time_step)
             self.time += time_step
             
-            
-    def absorption_kick(self, strength = 1e-2, direction = [1.0,0.0,0.0]):
-        # FIXME??? why N_c - 1 !!!
-        # FIXME operator is not in "PAW-space", should be T exp(ik.r) T^H
-        #       causes problems with norm conservation
-        for i in range(self.gd.N_c[0]-1):
-            for j in range(self.gd.N_c[1]-1):
-                for k in range(self.gd.N_c[2]-1):
-                    x = (i+1) * self.gd.h_c[0] * strength * direction[0]
-                    y = (j+1) * self.gd.h_c[1] * strength * direction[1]
-                    z = (k+1) * self.gd.h_c[2] * strength * direction[2]
-                    
-                    for wf in self.wf_up:
-                        wf[i,j,k] *= num.exp( 1.0J * (x + y + z) )
-                        
-                    for wf in self.wf_dn:
-                        wf[i,j,k] *= num.exp( 1.0J * (x + y + z) )
+
+    # exp(ip.r) psi
+    def absorption_kick(self, strength = 1e-2, direction = [0.0,0.0,1.0]):
+        abs_kick = \
+            AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei, \
+                                                       strength, \
+                                                       direction ),
+                            self.td_overlap, self.solver )
         
+        abs_kick.kick(self.kpt_up, self.kpt_dn, self.wf_up, self.wf_dn)

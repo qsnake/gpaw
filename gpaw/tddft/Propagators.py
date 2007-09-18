@@ -5,7 +5,7 @@ functional theory calculations."""
 
 import Numeric as num
 import BasicLinearAlgebra
-
+import sys
 
 ###############################################################################
 # Propagator
@@ -50,7 +50,6 @@ class Propagator:
         
         """ 
         raise "Error in Propagator: Member function propagate is virtual."
-
 
 
 ###############################################################################
@@ -107,7 +106,7 @@ class ExplicitCrankNicolson(Propagator):
         """
         self.time_step = time_step
         self.td_density.update()
-        self.td_hamiltonian.update(self.td_density.get_density(),time)
+        self.td_hamiltonian.update(self.td_density.get_density(), time)
         self.td_overlap.update()
         if ( self.hpsit == None ):
             self.hpsit = num.zeros(wf_up[0].shape, num.Complex)
@@ -156,6 +155,66 @@ class ExplicitCrankNicolson(Propagator):
         self.blas.zaxpy(.5j * self.time_step, self.hpsit, psin)
 
 
+
+###############################################################################
+# DummyDensity
+###############################################################################
+class DummyDensity:
+    """Implements dummy (= does nothing) density for AbsorptionKick."""
+    def update(self):
+        pass
+        
+    def get_density(self):
+        return None
+
+###############################################################################
+# AbsorptionKick
+###############################################################################
+class AbsorptionKick(ExplicitCrankNicolson):
+    """Absorption kick propagator
+    
+    Absorption kick propagator
+
+    (S(t) + .5 dt p.r / hbar) psi(0+) = (S(t) - .5 dt p.r / hbar) psi(0-)
+
+    where |p| = (eps e / hbar), and eps is field strength, e is elementary 
+    charge.
+    
+    """
+    
+    def __init__( self, abs_kick_hamiltonian, td_overlap, solver ):
+        """Create AbsorptionKick-object.
+        
+        ===================== =================================================
+        Parameters:
+        ===================== =================================================
+        abs_kick_hamiltonian  the absorption kick hamiltonian
+        td_overlap            the time-dependent overlap operator
+        solver                solver for linear equations
+        ===================== =================================================
+        
+        """
+        self.td_density = DummyDensity()
+        self.td_hamiltonian = abs_kick_hamiltonian
+        self.td_overlap = td_overlap
+        self.solver = solver
+        self.blas = BasicLinearAlgebra.BLAS()
+        
+        self.hpsit = None
+        self.spsit = None
+
+
+    def kick(self, kpt_up, kpt_dn, wf_up, wf_dn):
+        """Excite all possible frequencies.""" 
+        #print "Absorption kick iterations = ", self.td_hamiltonian.iterations,
+        #print " (. = 10 iterations)"
+        for l in range(self.td_hamiltonian.iterations):
+            self.propagate(kpt_up, kpt_dn, wf_up, wf_dn, 0, 1.0)
+        #    if ( ((l+1) % 10) == 0 ): 
+        #        print ".",
+        #        sys.stdout.flush()
+        #print ""
+        
 
 ###############################################################################
 # SemiImpicitCrankNicolson

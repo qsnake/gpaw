@@ -386,6 +386,10 @@ class Setup:
 
         self.O_ii = sqrt(4.0 * pi) * unpack(self.Delta_pL[:, 0].copy())
 
+        self.Delta_Lii = num.zeros((ni, ni, Lmax), num.Float)
+        for L in range(Lmax):
+            self.Delta_Lii[:,:,L] = unpack(self.Delta_pL[:, L].copy())        
+
         K_q = []
         for j1 in range(nj):
             for j2 in range(j1, nj):

@@ -4,6 +4,7 @@
 operators."""
 
 import Numeric as num
+from gpaw.polynomial import Polynomial
 
 # Hamiltonian
 class TimeDependentHamiltonian:
@@ -131,6 +132,93 @@ class TimeDependentHamiltonian:
         """
         kpt.apply_hamiltonian(self.hamiltonian,
                               psit[None, ...], hpsit[None, ...])
+
+
+# AbsorptionKickHamiltonian
+class AbsorptionKickHamiltonian:
+    """ Absorption kick Hamiltonian, p.r
+    
+    This class contains information required to apply absorption kick 
+    Hamiltonian to a wavefunction.
+    """
+    
+    def __init__(self, pt_nuclei, strength = 1e-2, direction = [0.0, 0.0, 1.0]):
+        """ Create the AbsorptionKickHamiltonian-object.
+                
+        ============= ========================================================
+        Parameters:
+        ============= ========================================================
+        pt_nuclei     projector functions (paw.pt_nuclei)
+        strength      strength of the field
+        direction     (unnormalized) direction of the field
+        ============= ========================================================
+
+        """
+        
+        self.pt_nuclei = pt_nuclei        
+
+        # normalized direction
+        dir = num.array(direction, num.Float)
+        p = strength * dir / num.sqrt(num.vdot(dir,dir))
+        # iterations
+        self.iterations = int(round(strength / 1.0e-3))
+        if ( self.iterations == 0 ): self.iterations = 1
+        # delta p
+        self.dp = p / self.iterations
+
+        # hamiltonian
+        # FIXME: slow! Should use special class instead of Polynomial
+        coords = [ [0.0, 0.0, 0.0], \
+                   [1.0, 0.0, 0.0], \
+                   [0.0, 1.0, 0.0], \
+                   [0.0, 0.0, 1.0] ]
+        values = [ 0.0, self.dp[0], self.dp[1], self.dp[2] ]
+        self.hamiltonian = Polynomial(values, coords, order=1)
+
+        
+    def update(self, density, time):
+        """Dummy function = does nothing. Required to have correct interface.
+        
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        density     the density at the given time or None (ignored)
+        time        the current time (ignored)
+        =========== ==========================================================
+
+        """
+        pass
+        
+    def half_update(self, density, time):
+        """Dummy function = does nothing. Required to have correct interface.
+        
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        density     the density at the given time or None (ignored)
+        time        the current time (ignored)
+        =========== ==========================================================
+
+        """
+        pass
+        
+    def apply(self, kpt, psit, hpsit):
+        """Applies the absorption kick Hamiltonian to the wavefunction psit of
+        the k-point kpt.
+        
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        kpt         the current k-point (paw.kpt_u[index_of_k-pointt])
+        psit        the wavefuntion (on a coarse grid) 
+                    (paw.kpt_u[index_of_k-point].psit_nG[index_of_wavefunc])
+        hpsit       the resulting "operated wavefunction" (H psit)
+        =========== ==========================================================
+
+        """
+        kpt.apply_scalar_function( self.pt_nuclei,
+                                   psit[None, ...], hpsit[None, ...], 
+                                   self.hamiltonian )
 
 
 

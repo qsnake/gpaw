@@ -56,6 +56,7 @@ class Density:
         self.kpt_comm = paw.kpt_comm
         self.nvalence = paw.nvalence
         self.charge = float(p['charge'])
+        self.charge_eps = 1e-7
         
         self.nvalence0 = self.nvalence + self.charge
         for nucleus in self.nuclei:
@@ -208,7 +209,7 @@ class Density:
             nucleus.add_compensation_charge(self.rhot_g)
             
         charge = self.finegd.integrate(self.rhot_g) + self.charge
-        if abs(charge) > 1e-7:
+        if abs(charge) > self.charge_eps:
             raise RuntimeError('Charge not conserved: excess=%.7f' % charge ) 
 
     def update(self, kpt_u, symmetry):
