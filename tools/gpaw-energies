@@ -11,6 +11,7 @@ import Numeric as num
 from ASE.Units import units
 from gpaw.output import eigenvalue_string
 from gpaw.utilities.fold import fold
+from gpaw.cluster import Cluster
 
 def fatalerror(msg=None):
     if msg:
@@ -25,9 +26,13 @@ parser.add_option("-G", "--Gauss", dest='gauss', default=None,
                   help=' Gauss fold by width in the chosen energy unit')
 parser.add_option("-H", "--Hartree", action='count', default=None,
                   help='use Hartree energy units (def: eV)')
+parser.add_option("-s", "--structure", dest='structure_file', default=None,
+                  help=' Write the atomic structure to the given file')
 opt, args = parser.parse_args()
 #print "opt=",opt
 ##print "args=",args
+
+
 
 if opt.Hartree is not None:
     units.SetEnergyUnit('Hartree')
@@ -41,6 +46,12 @@ from gpaw import Calculator
 paw = Calculator(fname,txt=None)
 Ha = paw.Ha
 a0 = paw.a0
+
+# write the structure out only
+if opt.structure_file:
+    s = Cluster(paw.atoms)
+    s.Write(opt.structure_file)
+    sys.exit()
 
 out = sys.stdout
 
