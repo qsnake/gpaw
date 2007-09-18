@@ -314,17 +314,15 @@ class PAW(PAWExtra, Output):
                     pass
             elif name == 'width':
                 if p[name] != kwargs[name]:
-                    if p[name] == 0 or kwargs[name] == 0:
-                        # we have to change the occupation calculation
-                        self.kT = kwargs[name]
-                        if self.kT == 0 or 2 * self.nbands == self.nvalence:
-                            self.occupation = occupations.ZeroKelvin(
-                                self.nvalence,
-                                self.nspins)
-                        else:
-                            self.occupation = occupations.FermiDirac(
-                                self.nvalence,
-                                self.nspins, self.kT)
+                    self.kT = kwargs[name]
+                    if self.kT == 0 or 2 * self.nbands == self.nvalence:
+                        self.occupation = occupations.ZeroKelvin(
+                            self.nvalence,
+                            self.nspins)
+                    else:
+                        self.occupation = occupations.FermiDirac(
+                            self.nvalence,
+                            self.nspins, self.kT)
 ##             elif name in ['convergeall']:
 ##                 self.converged = False
         self.input_parameters.update(kwargs)
