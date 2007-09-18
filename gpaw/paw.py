@@ -290,7 +290,7 @@ class PAW(PAWExtra, Output):
         self.convert_units(kwargs)  # ASE???
         p = self.input_parameters
         for name, value in kwargs.items():
-            if name in ['h','charge','kpts','spinpol','width','xc']:
+            if name in ['h','charge','kpts','spinpol','xc']:
                 if p[name] != kwargs[name]:
                     # theses are severe changes, we need new densities and
                     # wave functions
@@ -312,6 +312,19 @@ class PAW(PAWExtra, Output):
                     self.density.set_mixer(self,kwargs[name])
                 except:
                     pass
+            elif name == 'width':
+                if p[name] != kwargs[name]:
+                    if p[name] == 0 or kwargs[name] == 0:
+                        # we have to change the occupation calculation
+                        self.kT = kwargs[name]
+                        if self.kT == 0 or 2 * self.nbands == self.nvalence:
+                            self.occupation = occupations.ZeroKelvin(
+                                self.nvalence,
+                                self.nspins)
+                        else:
+                            self.occupation = occupations.FermiDirac(
+                                self.nvalence,
+                                self.nspins, self.kT)
 ##             elif name in ['convergeall']:
 ##                 self.converged = False
         self.input_parameters.update(kwargs)
