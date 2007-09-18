@@ -128,7 +128,7 @@ class Calculator(PAW):
 
     def GetAllElectronDensity(self, gridrefinement=2):
         """Return reconstructed all-electron density array."""
-        return self.paw.density.get_all_electron_density(gridrefinement)\
+        return self.density.get_all_electron_density(gridrefinement)\
                / self.a0**3
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
