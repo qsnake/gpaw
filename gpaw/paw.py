@@ -395,7 +395,7 @@ class PAW(PAWExtra, Output):
         self.print_converged()
 
     def step(self):
-        if not self.fixdensity and self.niter > 2:
+        if self.niter > self.fixdensity:
             self.density.update(self.kpt_u, self.symmetry)
             self.update_kinetic()
             self.hamiltonian.update(self.density)
@@ -559,7 +559,7 @@ class PAW(PAWExtra, Output):
         self.occupation.calculate(self.kpt_u)
 
         self.wave_functions_initialized = True
-
+        self.fixdensity = 2 # do the first 3 iterations in fixed density
 
     def initialize_wave_functions(self):
 
@@ -1052,7 +1052,8 @@ class PAW(PAWExtra, Output):
         self.stencils = p['stencils']
         self.maxiter = p['maxiter']
         self.tolerance = p['tolerance']
-        self.fixdensity = p['fixdensity']
+        if p['fixdensity']: self.fixdensity = self.maxiter + 1000000
+        else:               self.fixdensity = 0
         self.random_wf = p['random']
 
         # Construct grid descriptors for coarse grids (wave functions) and

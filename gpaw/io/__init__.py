@@ -122,7 +122,7 @@ def write(paw, filename, mode):
         w['MixMetric'] = paw.density.mixer.x
         w['MaximumAngularMomentum'] = paw.nuclei[0].setup.lmax
         w['SoftGauss'] = paw.nuclei[0].setup.softgauss
-        w['FixDensity'] = paw.fixdensity
+        w['FixDensity'] = paw.fixdensity > paw.maxiter
         w['Tolerance'] = paw.tolerance
         w['Ekin'] = paw.Ekin
         w['Epot'] = paw.Epot

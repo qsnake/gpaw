@@ -134,7 +134,7 @@ class Output:
            'Brillouin zone (total: %d)') %
           (self.nkpts, ' s'[1:self.nkpts], len(self.bzk_kc)))
 
-        if self.fixdensity:
+        if self.fixdensity > self.maxiter:
             t('Fixing the initial density')
         else:
             mixer = self.density.mixer
@@ -238,6 +238,7 @@ class Output:
                 dNt = ''
             else:
                 dNt = '%+.1f' % (log(dNt / self.natoms) / log(10))
+#                dNt = '%+.1f' % (log(dNt / self.nvalence) / log(10))
 
             niterocc = self.occupation.niter
             if niterocc == -1:
