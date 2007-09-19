@@ -41,7 +41,7 @@ for ending in endings:
     E2 = calc.GetPotentialEnergy()
 
     print E1, E2
-    equal(E1,E2)
+    equal(E1, E2, 1e-12)
 
     os.remove(restart_wf)
     os.remove(restart)
