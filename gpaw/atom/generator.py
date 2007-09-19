@@ -53,16 +53,16 @@ parameters = {
  'Sr': {'core': '[Kr]',   'rcut': 3.4},
  'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
  'Nb': {'core': '[Kr]',   'rcut': 3.0},
- 'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.3]},
+ 'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.5]},
  'Ru': {'core': '[Kr]',   'rcut': 2.6},
  'Rh': {'core': '[Kr]',   'rcut': 2.5},
- 'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.0]},
+ 'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
  'Ag': {'core': '[Kr]',   'rcut': 2.5},
  'Cd': {'core': '[Kr]',   'rcut': 2.5},
  'Ba': {'core': '[Xe]',   'rcut': 4.0},
- 'Ta': {'core': '[Xe]',   'rcut': 2.5},
- 'W':  {'core': '[Xe]',   'rcut': 2.5},
- 'Ir': {'core': '[Xe]4f', 'rcut': [2.5, 2.5, 2.3]},
+# 'Ta': {'core': '[Xe]',   'rcut': 2.5},
+# 'W':  {'core': '[Xe]',   'rcut': 2.5},
+# 'Ir': {'core': '[Xe]4f', 'rcut': [2.5, 2.5, 2.3]},
  'Pt': {'core': '[Xe]4f', 'rcut': 2.5},
  'Au': {'core': '[Xe]4f', 'rcut': 2.5}
  }
@@ -901,12 +901,12 @@ class Generator(AllElectron):
 if __name__ == '__main__':
     import os
     for symbol in 'Pt Au'.split():
-        g = Generator(symbol, 'LDA', scalarrel=False)
+        g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
         g.run(exx=True, **parameters[symbol])
     for xcname in ['LDA', 'PBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + xcname
             if os.path.isfile(filename):
                 continue
-            g = Generator(symbol, xcname, scalarrel=True)
+            g = Generator(symbol, xcname, scalarrel=True, nofiles=False)
             g.run(exx=True, logderiv=False, **par)
