@@ -99,7 +99,7 @@ setenv MPICH_UNEX_BUFFER_SIZE 400M
         print >> f,"#BSUB -o ",set['out']+'_%J'
         print >> f,"module load ASE"
         print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
-        print >> f,"setenv PYTHONPATH",env['PYTHONPATH']
+        print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
         print >> f,"setenv GPAW_PYTHON",env['GPAW_PYTHON']
         print >> f,"mpirun -srun $GPAW_PYTHON",set['script']
       
