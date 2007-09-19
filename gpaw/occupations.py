@@ -46,7 +46,8 @@ class ZeroKelvin(Dummy):
 
     def calculate(self, kpts):
         if self.nspins == 1:
-            b = int( self.ne // 2 )
+            assert len(kpts) == 1
+            b = int(self.ne // 2)
             f_n = kpts[0].f_n
             f_n[:b] = 2.0
             f_n[b:] = 0.0
