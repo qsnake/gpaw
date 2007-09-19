@@ -28,7 +28,7 @@ from gpaw.kpoint import KPoint
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XCFunctional
-from gpaw.mpi import run, new_communicator, MASTER
+from gpaw.mpi import run, MASTER
 from gpaw.brillouin import reduce_kpoints
 import _gpaw
 
@@ -187,6 +187,7 @@ class PAW(PAWExtra, Output):
                     of the Brillouin zone (summing up to 1).
     ``myibzk_kc``   Scaled **k**-points in the irreducible part of the
                     Brillouin zone for this CPU.
+    ``world``       MPI-communicator for any parallelized operations
     ``kpt_comm``    MPI-communicator for parallelization over
                     **k**-points.
     =============== ===================================================
@@ -246,7 +247,8 @@ class PAW(PAWExtra, Output):
             'verbose':       0,
             'eigensolver':   'rmm-diis',
             'poissonsolver': 'GS',
-            'exxfinegrid'  : True
+            'exxfinegrid'  : True,
+            'communicator' : None
             }
 
         self.converged = False
@@ -267,7 +269,7 @@ class PAW(PAWExtra, Output):
             if name in ['parsize',
                         'random', 'hund', 'mix', 'txt', 'maxiter', 'verbose',
                         'decompose', 'eigensolver', 'poissonsolver',
-                        'external','exxfinegrid']:
+                        'external','exxfinegrid', 'communicator']:
                 self.input_parameters[name] = value
             elif name in ['xc', 'nbands', 'spinpol', 'kpts', 'usesymm',
                           'gpts', 'h', 'width', 'lmax', 'setups', 'basis',
@@ -278,6 +280,18 @@ class PAW(PAWExtra, Output):
                 self.input_parameters[name] = value
             else:
                 raise RuntimeError('Unknown keyword: ' + name)
+
+        world = self.input_parameters['communicator']
+
+        if world is None:
+            world = mpi.world
+        elif isinstance(world, mpi._Communicator):
+            pass # Ok then
+        else:
+            # world should be a list of ranks
+            world = mpi.world.new_communicator(num.asarray(world))
+        self.world = world
+        self.master = (world.rank == 0)
 
         Output.__init__(self)
 
@@ -595,7 +609,7 @@ class PAW(PAWExtra, Output):
         elif not isinstance(self.kpt_u[0].psit_nG, num.ArrayType):
             # Calculation started from a restart file.  Copy data
             # from the file to memory:
-            if mpi.parallel:
+            if self.world.size > 1:
                 i = self.gd.get_slice()
                 for kpt in self.kpt_u:
                     refs = kpt.psit_nG
@@ -644,7 +658,7 @@ class PAW(PAWExtra, Output):
             nucleus.calculate_force(vHt_g, nt_g, vt_G)
 
         # Global master collects forces from nuclei into self.F_ac:
-        if mpi.rank == MASTER:
+        if self.master:
             for a, nucleus in enumerate(self.nuclei):
                 if nucleus.in_this_domain:
                     self.F_ac[a] = nucleus.F_c
@@ -656,7 +670,7 @@ class PAW(PAWExtra, Output):
                     self.domain.comm.send(nucleus.F_c, MASTER, 7)
 
         # Broadcast the forces to all processors
-        mpi.world.broadcast(self.F_ac, MASTER)
+        self.world.broadcast(self.F_ac, MASTER)
 
         if self.symmetry is not None:
             # Symmetrize forces:
@@ -890,8 +904,8 @@ class PAW(PAWExtra, Output):
         decomposition."""
         
         ntot = self.nspins * self.nkpts
-        size = mpi.size
-        rank = mpi.rank
+        size = self.world.size
+        rank = self.world.rank
 
         if parsize_c is None:
             ndomains = size // gcd(ntot, size)
@@ -900,12 +914,12 @@ class PAW(PAWExtra, Output):
 
         r0 = (rank // ndomains) * ndomains
         ranks = range(r0, r0 + ndomains)
-        domain_comm = new_communicator(ranks)
+        domain_comm = self.world.new_communicator(num.array(ranks))
         self.domain.set_decomposition(domain_comm, parsize_c, N_c)
 
         r0 = rank % ndomains
         ranks = range(r0, r0 + size, ndomains)
-        self.kpt_comm = new_communicator(ranks)
+        self.kpt_comm = self.world.new_communicator(num.array(ranks))
 
     def initialize(self):
         """Inexpensive initialization."""

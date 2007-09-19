@@ -47,21 +47,21 @@ class PAWExtra:
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
 
-        if not mpi.parallel:
+        if self.world.size == 1:
             return self.kpt_u[u].psit_nG[n]
 
         if self.kpt_comm.rank == kpt_rank:
             psit_G = self.gd.collect(self.kpt_u[u].psit_nG[n])
 
             if kpt_rank == MASTER:
-                if mpi.rank == MASTER:
+                if self.master:
                     return psit_G
 
             # Domain master send this to the global master
             if self.domain.comm.rank == MASTER:
                 self.kpt_comm.send(psit_G, MASTER, 1398)
 
-        if mpi.rank == MASTER:
+        if self.master:
             # allocate full wavefunction and receive
             psit_G = self.gd.empty(typecode=self.typecode, global_array=True)
             self.kpt_comm.receive(psit_G, kpt_rank, 1398)
@@ -84,7 +84,7 @@ class PAWExtra:
             # Domain master send this to the global master
             if self.domain.comm.rank == MASTER:
                 self.kpt_comm.send(self.kpy_u[u].eps_n, MASTER, 1301)
-        elif mpi.rank == MASTER:
+        elif self.master:
             eps_n = num.zeros(self.nbands, num.Float)
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
             return eps_n

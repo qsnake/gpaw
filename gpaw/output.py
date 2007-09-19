@@ -7,7 +7,7 @@ import Numeric as num
 from ASE.ChemicalElements.symbol import symbols
 
 from gpaw.utilities import devnull
-from gpaw.mpi import rank, MASTER
+from gpaw.mpi import MASTER
 from gpaw.version import version
 import gpaw
 
@@ -30,7 +30,7 @@ class Output:
 
         p = self.input_parameters
         txt = p['txt']
-        if txt is None or rank != MASTER:
+        if txt is None or (not self.master):
             txt = devnull
         elif txt == '-':
             txt = sys.stdout

@@ -12,7 +12,7 @@ from gpaw.mpi import MASTER
 
 class XAS:
     def __init__(self, paw, mode="xas"):
-        assert not mpi.parallel
+        assert paw.world.size == 1 #assert not mpi.parallel
         assert not paw.spinpol # restricted - for now
 
         nocc = int(paw.nvalence / 2)
@@ -215,7 +215,7 @@ class RecursionMethod:
                     kpt_comm.gather(wold0_ucG, MASTER)
                     kpt_comm.gather(y0_ucG, MASTER)
 
-        if mpi.rank == MASTER:
+        if self.paw.master:
             pickle.dump(data, open(filename, 'w'))
         
     def initialize_start_vector(self):
@@ -289,6 +289,7 @@ class RecursionMethod:
 
     def get_spectra(self, eps_s, delta=0.1, imax=None, kpoint=None, fwhm=None, linbroad=None):
         assert not mpi.parallel
+        
         n = len(eps_s)
                 
         sigma_cn = num.zeros((3, n), num.Float)

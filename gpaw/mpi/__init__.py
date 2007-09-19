@@ -33,6 +33,9 @@ class SerialCommunicator:
     def gather(self, a, root, b):
         b[:] = a
 
+    def new_communicator(self, ranks):
+        return self
+
 serial_comm = SerialCommunicator()
 if debug:
     serial_comm.comm = serial_comm # cycle? XXX
@@ -53,7 +56,7 @@ if parallel and debug:
             self.size = comm.size
             self.rank = comm.rank
 
-        def new_communicator(self, ranks):
+        def new_communicator(self, ranks):            
             assert is_contiguous(ranks, num.Int)
             sranks = num.sort(ranks)
             # Are all ranks in range?
@@ -129,7 +132,10 @@ if parallel and debug:
             self.comm.barrier()
 
     world = _Communicator(world)
-
+elif parallel:
+    _Communicator = _gpaw.Communicator
+else:
+    _Communicator = SerialCommunicator
 
 def broadcast_string(string=None, root=MASTER, comm=world):
     if rank == root:
@@ -164,13 +170,4 @@ def run(iterators):
             results = [iter.next() for iter in iterators]
         except StopIteration:
             return results
-
-
-def new_communicator(ranks):
-    if len(ranks) == 1:
-        return serial_comm
-    elif len(ranks) == size:
-        return world
-    else:
-        return world.new_communicator(num.array(ranks))
 

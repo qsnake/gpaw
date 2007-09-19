@@ -50,7 +50,7 @@ def write(paw, filename, mode):
       The directory ``mywfs`` is created if not present. XXX
     """
     
-    if mpi.rank == MASTER:
+    if paw.master:
         w = open(filename, 'w')
 
         w['history'] = 'GPAW restart file'
@@ -163,7 +163,7 @@ def write(paw, filename, mode):
                 else:
                     P_uni = num.empty((paw.nmyu, paw.nbands, ni), paw.typecode)
                     world_rank = nucleus.rank + kpt_rank * paw.domain.comm.size
-                    mpi.world.receive(P_uni, world_rank, 300)
+                    paw.world.receive(P_uni, world_rank, 300)
 
                 all_P_uni[:, :, i:i + ni] = P_uni
                 i += ni
@@ -173,10 +173,10 @@ def write(paw, filename, mode):
         assert i == nproj
     else:
         for nucleus in paw.my_nuclei:
-            mpi.world.send(nucleus.P_uni, MASTER, 300)
+            paw.world.send(nucleus.P_uni, MASTER, 300)
 
     # Write atomic density matrices and non-local part of hamiltonian:
-    if mpi.rank == MASTER:
+    if paw.master:
         all_D_sp = num.empty((paw.nspins, nadm), num.Float)
         all_H_sp = num.empty((paw.nspins, nadm), num.Float)
         q1 = 0
@@ -205,7 +205,7 @@ def write(paw, filename, mode):
             paw.domain.comm.send(nucleus.H_sp, MASTER, 2071)
 
     # Write the eigenvalues:
-    if mpi.rank == MASTER:
+    if paw.master:
         w.add('Eigenvalues', ('nspins', 'nibzkpts', 'nbands'), typecode=float)
         for kpt_rank in range(paw.kpt_comm.size):
             for u in range(paw.nmyu):
@@ -221,7 +221,7 @@ def write(paw, filename, mode):
             paw.kpt_comm.send(kpt.eps_n, MASTER, 4300)
 
     # Write the occupation numbers:
-    if mpi.rank == MASTER:
+    if paw.master:
         w.add('OccupationNumbers', ('nspins', 'nibzkpts', 'nbands'),
               typecode=float)
         for kpt_rank in range(paw.kpt_comm.size):
@@ -238,28 +238,28 @@ def write(paw, filename, mode):
             paw.kpt_comm.send(kpt.f_n, MASTER, 4300)
 
     # Write the pseudodensity on the coarse grid:
-    if mpi.rank == MASTER:
+    if paw.master:
         w.add('PseudoElectronDensity',
               ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
     if paw.kpt_comm.rank == MASTER:
         for s in range(paw.nspins):
             nt_sG = paw.gd.collect(paw.density.nt_sG[s])
-            if mpi.rank == MASTER:
+            if paw.master:
                 w.fill(nt_sG)
 
     # Write the pseudpotential on the coarse grid:
-    if mpi.rank == MASTER:
+    if paw.master:
         w.add('PseudoPotential',
               ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
     if paw.kpt_comm.rank == MASTER:
         for s in range(paw.nspins):
             vt_sG = paw.gd.collect(paw.hamiltonian.vt_sG[s])
-            if mpi.rank == MASTER:
+            if paw.master:
                 w.fill(vt_sG)
 
     if mode == 'all':
         # Write the wave functions:
-        if mpi.rank == MASTER:
+        if paw.master:
             w.add('PseudoWaveFunctions', ('nspins', 'nibzkpts', 'nbands',
                                           'ngptsx', 'ngptsy', 'ngptsz'),
                   typecode=typecode)
@@ -268,7 +268,7 @@ def write(paw, filename, mode):
             for k in range(paw.nkpts):
                 for n in range(paw.nbands):
                     psit_G = paw.get_wave_function_array(n, k, s)
-                    if mpi.rank == MASTER: 
+                    if paw.master: 
                         w.fill(psit_G)
     elif mode != '':
         # Write the wave functions as seperate files
@@ -277,7 +277,7 @@ def write(paw, filename, mode):
         ftype, template = wave_function_name_template(mode)
         dirname = os.path.dirname(template)
         if dirname:
-            if mpi.rank == MASTER and not os.path.isdir(dirname):
+            if paw.master and not os.path.isdir(dirname):
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 else:
@@ -285,7 +285,7 @@ def write(paw, filename, mode):
         else:
             dirname = '.'
         # the slaves have to wait until the directory is created
-        mpi.world.barrier()
+        paw.world.barrier()
         print >> paw.txt, 'Writing wave functions to', dirname,\
               'using mode=', mode
         
@@ -294,7 +294,7 @@ def write(paw, filename, mode):
             for k in range(paw.nkpts):
                 for n in range(paw.nbands):
                     psit_G = paw.get_wave_function_array(n, k, s)
-                    if mpi.rank == MASTER:
+                    if paw.master:
                         fname = template % (s,k,n) + '.'+ftype
                         wpsi = open(fname,'w')
                         wpsi.dimension('1', 1)
@@ -307,14 +307,14 @@ def write(paw, filename, mode):
                         wpsi.fill(psit_G)
                         wpsi.close()
                     
-    if mpi.rank == MASTER:
+    if paw.master:
         # Close the file here to ensure that the last wave function is
         # written to disk:
         w.close()
 
     # We don't want the slaves to start reading before the master has
     # finished writing:
-    mpi.world.barrier()
+    paw.world.barrier()
 
 
 def read(paw, reader):
@@ -399,7 +399,7 @@ def read(paw, reader):
             # We may not be able to keep all the wave
             # functions in memory - so psit_nG will be a special type of
             # array that is really just a reference to a file:
-             if mpi.parallel:
+             if paw.world.size > 1: # if parallel
                  for kpt in paw.kpt_u:
                      # Read band by band to save memory
                      kpt.psit_nG = []
