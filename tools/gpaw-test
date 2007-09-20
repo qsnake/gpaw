@@ -54,7 +54,7 @@ from ASE.ChemicalElements import numbers
 from ASE.ChemicalElements.covalent_radius import covalent_radii
 from ASE.ChemicalElements.name import names
 
-from gpaw.utilities import fix, fix2, DownTheDrain
+from gpaw.utilities import fix, fix2, devnull
 from gpaw.atom.generator import parameters as symbols
 from gpaw.atom.generator import Generator
 from gpaw import Calculator
@@ -293,7 +293,7 @@ class TestAtom:
             
         for i in range(5):
             print i,
-            parameters['out'] = '%s/bulkatom-%d.txt' % (self.symbol, i)
+            parameters['txt'] = '%s/bulkatom-%d.txt' % (self.symbol, i)
             s = self.scale[i]
             a = abc[0] * s
             b = abc[1] * s
@@ -311,7 +311,7 @@ class TestAtom:
         parameters['nbands'] = -4 * len(bulk.atoms)
         for i in range(5):
             print i,
-            parameters['out'] = '%s/bulk-%d.txt' % (self.symbol, i)
+            parameters['txt'] = '%s/bulk-%d.txt' % (self.symbol, i)
             bulk.atoms.SetUnitCell(cell * self.scale[i])
             e, m = bulk.energy(gpts=self.gpts, kpts=self.kpts,
                                parameters=parameters)
@@ -336,7 +336,7 @@ class TestAtom:
             h = self.h[i]
             print h
             calc = Calculator(h=h, width=0.1,
-                              out='%s/eggbox-%.3f.txt' % (self.symbol, h))
+                              txt='%s/eggbox-%.3f.txt' % (self.symbol, h))
             atom.SetCalculator(calc)
             for j in range(negg):
                 x = h * j / (2 * negg - 2)
@@ -373,7 +373,7 @@ class TestAtom:
             h = self.h[i]
             print h
             calc = Calculator(h=h, width=0.1,
-                              out='%s/atom-%.3f.txt' % (self.symbol, h))
+                              txt='%s/atom-%.3f.txt' % (self.symbol, h))
             atom.SetCalculator(calc)
 
             try:
@@ -382,7 +382,7 @@ class TestAtom:
                 continue
 
             calc = Calculator(h=h, width=0.1, tolerance=tolerance,
-                              out='%s/dimer-%.3f.txt' % (self.symbol, h))
+                              txt='%s/dimer-%.3f.txt' % (self.symbol, h))
             dimer.SetCalculator(calc)
             y = []
             for j in range(-3, 4):
@@ -690,7 +690,7 @@ Back to `periodic table`_.
     def setup_summary(self, o):
         import pylab
 
-        sys.stdout = DownTheDrain()
+        sys.stdout = devnull
         G = Generator(self.symbol, 'LDA', scalarrel=True, nofiles=True)
         params = symbols[symbol]
         if len(params) == 2:
