@@ -109,6 +109,18 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
         MPI_Reduce(&din, &dout, 1, MPI_DOUBLE, MPI_SUM, root, self->comm);
       return Py_BuildValue("d", dout);
     }
+  else if (PyComplex_Check(obj))
+    {
+      double din[2]; 
+      double dout[2];
+      din[0] = PyComplex_RealAsDouble(obj);
+      din[1] = PyComplex_ImagAsDouble(obj);
+      if (root == -1)
+        MPI_Allreduce(&din, &dout, 2, MPI_DOUBLE, MPI_SUM, self->comm);
+      else
+        MPI_Reduce(&din, &dout, 2, MPI_DOUBLE, MPI_SUM, root, self->comm);
+      return PyComplex_FromDoubles(dout[0], dout[1]);
+    }
   else
     {
       PyArrayObject* a = (PyArrayObject*)obj;
