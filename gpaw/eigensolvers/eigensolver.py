@@ -26,6 +26,8 @@ class Eigensolver:
             self.nbands = nbands
         self.convergeall = paw.input_parameters['convergeall']
 
+        self.tolerance = paw.tolerance
+
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(self.gd, paw.hamiltonian.kin,
                                              self.typecode)
@@ -38,6 +40,11 @@ class Eigensolver:
 
         # Hamiltonian matrix
         self.H_nn = num.empty((self.nbands, self.nbands), self.typecode)
+
+    def set_tolerance(self, tolerance):
+        """Sets the tolerance for the eigensolver"""
+
+        self.tolerance = tolerance
 
     def iterate(self, hamiltonian, kpt_u):
         """Solves eigenvalue problem iteratively

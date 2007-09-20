@@ -320,6 +320,9 @@ class PAW(PAWExtra, Output):
                 if kwargs[name] < self.tolerance:
                     self.converged = False
                 self.tolerance = kwargs[name]
+                if self.eigensolver is not None:
+                    self.eigensolver.set_tolerance(self.tolerance)
+               
             elif name == 'mix':
                 # try to change the mixer
                 try:

@@ -32,8 +32,6 @@ class CG(Eigensolver):
 
         Eigensolver.__init__(self, paw)
 
-        self.tolerance = paw.tolerance
-        
         # Allocate arrays
         self.phi_G = self.gd.empty(typecode=self.typecode)
         self.phi_old_G = self.gd.empty(typecode=self.typecode)
