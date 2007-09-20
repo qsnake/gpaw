@@ -337,7 +337,12 @@ class PAW(PAWExtra, Output):
                         self.occupation = occupations.FermiDirac(
                             self.nvalence,
                             self.nspins, self.kT)
-##             elif name in ['convergeall']:
+            elif name == 'eigensolver':
+                if p[name] != kwargs[name]:
+                    self.eigensolver = eigensolver(kwargs[name], self)
+            elif name in ['txt','verbose']:
+                self.input_parameters.update(kwargs)
+                Output.__init__(self)
 ##                 self.converged = False
         self.input_parameters.update(kwargs)
                 
