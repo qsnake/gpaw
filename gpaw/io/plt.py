@@ -2,6 +2,7 @@
 
 from struct import calcsize,pack,unpack
 import Numeric as num
+from ASE.Units import Convert
 from gpaw.utilities import check_unit_cell
 
 def read_plt(filename):
@@ -31,9 +32,9 @@ def read_plt(filename):
     dy = (ye-y0)/(ny-1)
     dx = (xe-x0)/(nx-1)
     cell = num.zeros((3,3),num.Float)
-    cell[0,0] = nx*dx 
-    cell[1,1] = ny*dy 
-    cell[2,2] = nz*dz 
+    cell[0,0] = (nx+1)*dx 
+    cell[1,1] = (ny+1)*dy 
+    cell[2,2] = (nz+1)*dz 
     
     fmt='f'
     if byteswap: fmt='>f'
@@ -59,14 +60,15 @@ def write_plt(cell,
 
     The cell is assumed to be in Angstroms and the grid in atomc units (Bohr)
     """
+    a0_A = Convert(1, 'Bohr','Ang') 
     if hasattr(cell,'new_array'): # this is a GridDescriptor
-        xe, ye, ze = cell.h_c*cell.N_c * 0.52918 # get Angstroms
+        xe, ye, ze = cell.h_c*cell.N_c * a0_A # get Angstroms
     elif len(cell.shape) == 2:
         # Check that the cell is orthorhombic
         check_unit_cell(cell)
         xe, ye, ze = num.diagonal(cell)
     else:
-        xe, ye, ze = cell * 0.52918 # get Angstroms
+        xe, ye, ze = cell * a0_A # get Angstroms
 
     # Check, that the grid is 3D
     if len(grid.shape) != 3:
@@ -78,7 +80,7 @@ def write_plt(cell,
     f.write(pack('ii', 3, typ))
     f.write(pack('iii', nz, ny, nx))
 
-    x0, y0, z0 = origin + num.array([dx,dy,dz])
+    x0, y0, z0 = num.array(origin) + num.array([dx,dy,dz])
     xe = x0 +(nx-1)*dx
     ye = y0 +(ny-1)*dy
     ze = z0 +(nz-1)*dz
