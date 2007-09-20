@@ -14,6 +14,11 @@ calc = Calculator(h=h,
                   tolerance=1e-10)
 bulk.SetCalculator(calc)
 e0 = bulk.GetPotentialEnergy()
-calc.set(eigensolver='dav')
+calc = Calculator(h=h,
+                  nbands=2*8,
+                  kpts=(2, 2, 2),
+                  tolerance=1e-10,
+                  eigensolver='dav')
+bulk.SetCalculator(calc)
 e1 = bulk.GetPotentialEnergy()
 equal(e0, e1, 2.0e-5)
