@@ -13,7 +13,8 @@ NaCl = ListOfAtoms([Atom('Na', [0, 0, 0]),
                     Atom('Cl', [0, 0, d])],
                    periodic=False, cell=a)
 center(NaCl)
-calc = Calculator(h=h, xc='LDA', nbands=5, lmax=0, tolerance=1e-6, spinpol=1)
+calc = Calculator(h=h, xc='LDA', nbands=5, lmax=0,
+                  convergence={'eigenstates': 1e-6}, spinpol=1)
 
 NaCl.SetCalculator(calc)
 NaCl.GetPotentialEnergy()

@@ -56,8 +56,8 @@ class RMM_DIIS(Eigensolver):
             R_G = R_nG[n]
 
             weight = kpt.f_n[n]
-            if self.convergeall:
-                weight = 1.0
+            if self.nbands_converge != 'occupied':
+                weight = kpt.weight * float(n < self.nbands_converge)
             error += weight * real(num.vdot(R_G, R_G))
 
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n],

@@ -67,8 +67,8 @@ class Davidson(Eigensolver):
             error = 0.0
             for n in range(nbands):
                 weight = kpt.f_n[n]
-                if self.convergeall:
-                    weight = 1.0
+                if self.nbands_converge != 'occupied':
+                    weight = kpt.weight * float(n < self.nbands_converge)
                 error += weight * real(num.vdot(R_nG[n], R_nG[n]))
 
                 H_2n2n[n,n] = kpt.eps_n[n]

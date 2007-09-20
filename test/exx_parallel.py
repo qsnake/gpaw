@@ -10,7 +10,7 @@ p = []
 exx = []
 i = 0
 for hosts in [1, 4]:
-    calc = Calculator(tolerance=1e-6, hosts=hosts,
+    calc = Calculator(convergence={'eigenstates': 1e-6}, hosts=hosts,
                       txt='exx_parallel.txt')
 
     loa.SetCalculator(calc)

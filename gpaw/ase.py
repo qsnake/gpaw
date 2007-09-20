@@ -43,12 +43,15 @@ class Calculator(PAW):
         self.text('units:', lengthunit, 'and', energyunit)
 
     def convert_units(self, parameters):
-        if parameters.get('h') is not None:
+        if 'h' in parameters:
             parameters['h'] /= self.a0
-        if parameters.get('width') is not None:
+        if 'width' in parameters:
             parameters['width'] /= self.Ha
-        if parameters.get('external') is not None:
+        if 'external' in parameters:
             parameters['external'] = parameter['external'] / self.Ha
+        if ('convergence' in parameters and
+            'energy' in  parameters['convergence']):
+            parameters['convergence']['energy'] /= self.Ha
         
     def GetPotentialEnergy(self, force_consistent=False):
         """Return total energy.

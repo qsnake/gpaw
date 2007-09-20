@@ -8,7 +8,8 @@ bulk = Crystal([Atom('Fe', (0, 0, 0), magmom=2.20),
 bulk.SetUnitCell((a, a, a))
 mom0 = sum(bulk.GetMagneticMoments())
 h = 0.20
-calc = Calculator(h=h, nbands=11, kpts=(3, 3, 3), tolerance=0.02, fixmom=True)
+calc = Calculator(h=h, nbands=11, kpts=(3, 3, 3),
+                  convergence={'eigenstates': 0.02}, fixmom=True)
 bulk.SetCalculator(calc)
 e = bulk.GetPotentialEnergy()
 mom = calc.GetMagneticMoment()

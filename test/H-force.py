@@ -8,7 +8,7 @@ n = 16
 atoms = ListOfAtoms([Atom('H', [1.234, 2.345, 3.456])],
                     cell=(a, a, a), periodic=True)
 calc = Calculator(nbands=1, gpts=(n, n, n), txt=None,
-                  tolerance=1e-13)
+                  convergence={'eigenstates': 1e-13})
 atoms.SetCalculator(calc)
 for i in range(3):
     f1, f2 = CheckForce(atoms, 0, i, 0.001)

@@ -20,7 +20,7 @@ center(SS)
 
 h = 0.25
 calc = Calculator(h=h, verbose=True, mix=(0.4, 3, 1), xc='GLLB',
-                  eigensolver='rmm-diis', tolerance=1e-10)
+                  eigensolver='rmm-diis', convergence={'eigenstates': 1e-10})
 
 # Setup-generator eigenvalue -0.247637
 

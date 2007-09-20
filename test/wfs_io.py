@@ -16,27 +16,28 @@ endings = ['nc']
 ##     pass
 
 for ending in endings:
-    restart = 'gpaw-restart.'+ending
-    restart_wf = 'gpaw-restart-wf.'+ending
+    restart = 'gpaw-restart.' + ending
+    restart_wf = 'gpaw-restart-wf.' + ending
     # H2
-    H = Cluster([Atom('H', (0,0,0)),Atom('H', (0,0,1))])
+    H = Cluster([Atom('H', (0,0,0)), Atom('H', (0,0,1))])
     H.MinimalBox(2.)
 
     wfdir = 'wfs_tmp'
-    mode = ending+':'+wfdir+'/psit_s%dk%dn%d'
+    mode = ending+':' + wfdir + '/psit_s%dk%dn%d'
 
     if 1:
-        calc = Calculator(nbands=2,tolerance=1e-3)
+        calc = Calculator(nbands=2, convergence={'eigenstates': 1e-3})
         H.SetCalculator(calc)
         H.GetPotentialEnergy()
-        calc.write(restart_wf,'all')
-        calc.write(restart,mode)
+        calc.write(restart_wf, 'all')
+        calc.write(restart, mode)
 
     # refine the restart file containing the wfs 
-    E1 = Calculator(restart_wf,tolerance=1.e-5).GetPotentialEnergy()
+    E1 = Calculator(restart_wf,
+                    convergence={'eigenstates': 1.e-5}).GetPotentialEnergy()
         
     # refine the restart file and seperate wfs 
-    calc = Calculator(restart,tolerance=1.e-5)
+    calc = Calculator(restart, convergence={'eigenstates': 1.e-5})
     calc.read_wave_functions(mode)
     E2 = calc.GetPotentialEnergy()
 
@@ -46,5 +47,5 @@ for ending in endings:
     os.remove(restart_wf)
     os.remove(restart)
     for f in os.listdir(wfdir):
-        os.remove(wfdir+'/'+f)
+        os.remove(wfdir + '/' + f)
     os.rmdir(wfdir)

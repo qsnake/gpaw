@@ -23,7 +23,7 @@ if 1:
                       kpts=kpts,
                       width=.1,
                       spinpol=False,
-                      tolerance=1e-7)
+                      convergence={'eigenstates': 1e-7})
     atoms.SetCalculator(calc)
     atoms.GetPotentialEnergy()
     calc.write('hwire.gpw', 'all')

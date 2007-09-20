@@ -24,9 +24,9 @@ class Eigensolver:
             self.nbands = paw.nbands
         else:
             self.nbands = nbands
-        self.convergeall = paw.input_parameters['convergeall']
-
-        self.tolerance = paw.tolerance
+            
+        self.nbands_converge = paw.input_parameters['convergence']['bands']
+        self.set_tolerance(paw.input_parameters['convergence']['eigenstates'])
 
         # Preconditioner for the electronic gradients:
         self.preconditioner = Preconditioner(self.gd, paw.hamiltonian.kin,

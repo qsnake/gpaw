@@ -15,24 +15,28 @@ endings = ['gpw']
 ##     pass
 
 for ending in endings:
-    restart_wf = 'gpaw-restart-wf.'+ending
+    restart_wf = 'gpaw-restart-wf.' + ending
     # H2
-    H = Cluster([Atom('H', (0,0,0)),Atom('H', (0,0,1))])
-    H.MinimalBox(2.)
+    H = Cluster([Atom('H', (0,0,0)), Atom('H', (0,0,1))])
+    H.MinimalBox(2.0)
 
     if 1:
-        calc = Calculator(nbands=2,tolerance=1e-3)
+        calc = Calculator(nbands=2,
+                          convergence={'eigenstates': 0.001,
+                                       'energy': 0.1,
+                                       'density': 0.1})
         H.SetCalculator(calc)
         H.GetPotentialEnergy()
-        calc.write(restart_wf,'all')
+        calc.write(restart_wf, 'all')
 
         # refine the result directly
-        calc.set(tolerance=1.e-9)
+        calc.set(convergence={'energy': 0.00001})
         Edirect = H.GetPotentialEnergy()
 
     # refine the result after reading from a file
-    calc = Calculator(restart_wf)
-    calc.set(tolerance=1.e-9)
+    #calc = Calculator(restart_wf)
+    #calc.set(convergence={'energy': 0.00001})
+    calc = Calculator(restart_wf, convergence={'energy': 0.00001})
     H = calc.GetListOfAtoms()
     H.SetCalculator(calc)
     Erestart = H.GetPotentialEnergy()

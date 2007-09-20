@@ -11,13 +11,13 @@ h = 0.25
 calc = Calculator(h=h,
                   nbands=2*8,
                   kpts=(2, 2, 2),
-                  tolerance=1e-10)
+                  convergence={'eigenstates': 1e-10})
 bulk.SetCalculator(calc)
 e0 = bulk.GetPotentialEnergy()
 calc = Calculator(h=h,
                   nbands=2*8,
                   kpts=(2, 2, 2),
-                  tolerance=1e-10,
+                  convergence={'eigenstates': 1e-10},
                   eigensolver='cg')
 bulk.SetCalculator(calc)
 e1 = bulk.GetPotentialEnergy()

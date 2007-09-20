@@ -142,8 +142,15 @@ class Output:
             t('Pulay mixing with %d old densities' % mixer.nmaxold)
             t('Damping of long wave oscillations: %.6f' % mixer.x)
 
-        t(('Converge occupied states only.',
-           'Converge all states.')[int(p['convergeall'])])
+        cc = p['convergence']
+        t('Convergence criteria:')
+        t('* Energy: %f / atom' % (cc['energy'] * self.Ha))
+        t('* Density: %f electrons' % cc['density'])
+        t('* Eigenstates: %f' % cc['eigenstates'])
+        if cc['bands'] == 'occupied':
+            t('Converge occupied states only.')
+        else:
+            t('Converge %d bands.' % cc['bands'])
 
     def print_converged(self):
         t = self.text
@@ -217,8 +224,7 @@ class Output:
             t('Poisson solver converged in %d iterations' %
                       self.hamiltonian.npoisson)
             t('Fermi level found  in %d iterations' % self.occupation.niter)
-            t('Log10 error in wave functions: %4.1f' %
-                      (log(self.error) / log(10)))
+            t('Error in wave functions: %.13f' % self.eigenstates_error)
             t()
             self.print_all_information()
 
@@ -233,12 +239,16 @@ class Output:
 
             T = time.localtime()
 
+            if self.eigenstates_error == 0.0:
+                eigerror = ''
+            else:
+                eigerror = '%-+5.1f' % (log(self.eigenstates_error) / log(10))
+                
             dNt = self.density.mixer.get_charge_sloshing()
-            if dNt is None:
+            if dNt is None or self.nvalence == 0:
                 dNt = ''
             else:
-                dNt = '%+.1f' % (log(dNt / self.natoms) / log(10))
-#                dNt = '%+.1f' % (log(dNt / self.nvalence) / log(10))
+                dNt = '%+.1f' % (log(dNt / self.nvalence) / log(10))
 
             niterocc = self.occupation.niter
             if niterocc == -1:
@@ -249,10 +259,10 @@ class Output:
             niterpoisson = '%d' % self.hamiltonian.npoisson
             
             t("""\
-iter: %3d  %02d:%02d:%02d  %-+5.1f  %-5s    %-12.5f %-5s  %-7s""" %
+iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %-12.5f %-5s  %-7s""" %
               (self.niter,
                T[3], T[4], T[5],
-               log(self.error) / log(10),
+               eigerror,
                dNt,
                self.Ha * (self.Etot + 0.5 * self.S),
                niterocc,

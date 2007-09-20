@@ -54,7 +54,7 @@ def write(paw, filename, mode):
         w = open(filename, 'w')
 
         w['history'] = 'GPAW restart file'
-        w['version'] = '0.4'
+        w['version'] = '0.5'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
 
@@ -113,9 +113,7 @@ def write(paw, filename, mode):
         w['Charge'] = p['charge']
         w['FixMagneticMoment'] = paw.fixmom
         w['UseSymmetry'] = p['usesymm']
-        w['ConvergeEmptyStates'] = p['convergeall']
         w['Converged'] = paw.converged
-        w['ConvergenceError'] = paw.error
         w['FermiWidth'] = paw.occupation.kT
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
@@ -123,7 +121,10 @@ def write(paw, filename, mode):
         w['MaximumAngularMomentum'] = paw.nuclei[0].setup.lmax
         w['SoftGauss'] = paw.nuclei[0].setup.softgauss
         w['FixDensity'] = paw.fixdensity > paw.maxiter
-        w['Tolerance'] = paw.tolerance
+        w['DensityConvergenceCriterion'] = p['convergence']['density']
+        w['EnergyConvergenceCriterion'] = p['convergence']['energy']
+        w['EigenstatesConvergenceCriterion'] = p['convergence']['eigenstates']
+        w['NumberOfBandsToConverge'] = p['convergence']['bands']
         w['Ekin'] = paw.Ekin
         w['Epot'] = paw.Epot
         w['Ebar'] = paw.Ebar

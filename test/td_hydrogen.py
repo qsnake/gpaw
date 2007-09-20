@@ -10,7 +10,7 @@ a = 5.0
 atoms = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
                     periodic=False,
                     cell=(a, a, a))
-calc = Calculator(nbands=1, h=0.2, tolerance=1e-14)
+calc = Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-14})
 atoms.SetCalculator(calc);
 e = atoms.GetPotentialEnergy()
 

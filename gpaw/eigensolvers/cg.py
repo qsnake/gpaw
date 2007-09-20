@@ -166,13 +166,15 @@ class CG(Eigensolver):
                     if error_new / error < 0.30:
                         # print >> self.f, "cg:iters", n, nit+1
                         break
-                    if not self.convergeall and kpt.f_n[n] == 0.0:
+                    if (self.nbands_converge == 'occupied' and
+                        kpt.f_n[n] == 0.0):
                         # print >> self.f, "cg:iters", n, nit+1
                         break
                     error = error_new
 
             weight = kpt.f_n[n]
-            if self.convergeall: weight = 1.
+            if self.nbands_converge != 'occupied':
+                weight = kpt.weight * float(n < self.nbands_converge)
             total_error += weight * error
             # if nit == 3:
             #   print >> self.f, "cg:iters", n, nit+1

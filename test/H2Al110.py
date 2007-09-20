@@ -20,7 +20,7 @@ slab = ListOfAtoms([Atom('Al', (0, 0, 0)),
                     Atom('H', (a/2+b/2, 0, z))],
                    cell=(2*a, d, 5*d), periodic=(1, 1, 1))
 calc = Calculator(h=0.25, nbands=28, kpts=(2, 6, 1),
-                  tolerance=1e+5)
+                  convergence={'eigenstates': 1e-5})
 slab.SetCalculator(calc)
 e = slab.GetPotentialEnergy()
 assert calc.nkpts == 3

@@ -6,7 +6,7 @@ from gpaw.utilities import equal
 a = 4.0
 n = 16
 hydrogen = Crystal([Atom('H', (0.0, 0.0, 0.0))], cell=(a, a, a))
-calc = Calculator(gpts=(n, n, n), nbands=1, tolerance=1e-10)
+calc = Calculator(gpts=(n, n, n), nbands=1, convergence={'eigenstates': 1e-10})
 hydrogen.SetCalculator(calc)
 e1 = hydrogen.GetPotentialEnergy()
 calc.set(spinpol=True)

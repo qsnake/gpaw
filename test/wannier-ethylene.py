@@ -20,7 +20,7 @@ if 1:
                        Atom('H', ( 1.235, 0.936 , 0 ))],
                        cell=(a, a, a), periodic=True)
     center(ethylene)
-    calc = Calculator(nbands=8, h=0.20, tolerance=1e-6)
+    calc = Calculator(nbands=8, h=0.20, convergence={'eigenstates': 1e-6})
     ethylene.SetCalculator(calc)
     ethylene.GetPotentialEnergy()
     calc.write('ethylene.gpw', 'all')

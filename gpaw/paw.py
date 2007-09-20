@@ -11,6 +11,7 @@ import weakref
 
 import Numeric as num
 from ASE import Atom, ListOfAtoms
+from ASE.Units import Convert
 
 import gpaw.io
 import gpaw.mpi as mpi
@@ -198,9 +199,8 @@ class PAW(PAWExtra, Output):
 
         The following parameters can be used: `nbands`, `xc`, `kpts`,
         `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
-        `hund`, `lmax`, `fixdensity`, `tolerance`, `txt`,
-        `parsize`, `softgauss`, `stencils`, and
-        `convergeall`.
+        `hund`, `lmax`, `fixdensity`, `convergence`, `txt`,
+        `parsize`, `softgauss` and `stencils`.
 
         If you don't specify any parameters, you will get:
 
@@ -233,9 +233,11 @@ class PAW(PAWExtra, Output):
             'spinpol':       None,
             'usesymm':       True,
             'stencils':      (2, 'M', 3),
-            'tolerance':     1.0e-9,
+            'convergence':   {'energy': Convert(0.001, 'eV', 'Hartree'),
+                              'density': 1.0e-3,
+                              'eigenstates': 1.0e-9,
+                              'bands': 'occupied'},
             'fixdensity':    False,
-            'convergeall':   False,
             'mix':           (0.25, 3, 1.0),
             'txt':           '-',
             'hund':          False,
@@ -274,10 +276,12 @@ class PAW(PAWExtra, Output):
             elif name in ['xc', 'nbands', 'spinpol', 'kpts', 'usesymm',
                           'gpts', 'h', 'width', 'lmax', 'setups', 'basis',
                           'stencils',
-                          'charge', 'fixmom', 'fixdensity', 'tolerance',
-                          'convergeall']:
+                          'charge', 'fixmom', 'fixdensity']:
                 self.converged = False
                 self.input_parameters[name] = value
+            elif name == 'convergence':
+                self.converged = False
+                self.input_parameters['convergence'].update(value)
             else:
                 raise RuntimeError('Unknown keyword: ' + name)
 
@@ -316,12 +320,13 @@ class PAW(PAWExtra, Output):
                     # we should have new wave functions
                     self.wave_functions_initialized = False
                     self.converged = False
-            elif name == 'tolerance':
-                if kwargs[name] < self.tolerance:
-                    self.converged = False
-                self.tolerance = kwargs[name]
+            elif name == 'convergence':
+                self.converged = False
+                p['convergence'].update(value)
+                kwargs[name] = p['convergence']
                 if self.eigensolver is not None:
-                    self.eigensolver.set_tolerance(self.tolerance)
+                    tol = p['convergence']['eigenstates']
+                    self.eigensolver.set_tolerance(tol)
                
             elif name == 'mix':
                 # try to change the mixer
@@ -340,13 +345,14 @@ class PAW(PAWExtra, Output):
                         self.occupation = occupations.FermiDirac(
                             self.nvalence,
                             self.nspins, self.kT)
+                    self.converged = False
             elif name == 'eigensolver':
                 if p[name] != kwargs[name]:
                     self.eigensolver = eigensolver(kwargs[name], self)
             elif name in ['txt','verbose']:
                 self.input_parameters.update(kwargs)
                 Output.__init__(self)
-##                 self.converged = False
+
         self.input_parameters.update(kwargs)
                 
     def calculate(self):
@@ -442,6 +448,10 @@ class PAW(PAWExtra, Output):
         self.S = self.occupation.S
         self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
 
+        if len(self.old_energies) == 3:
+            self.old_energies.pop(0)
+        self.old_energies.append(self.Etot)
+        
     def set_positions(self):
         """Update the positions of the atoms.
 
@@ -475,7 +485,8 @@ class PAW(PAWExtra, Output):
             self.niter = 0
             self.converged = False
             self.F_ac = None
-
+            self.old_energies = []
+            
             self.locfuncbcaster.broadcast()
 
             for nucleus in self.nuclei:
@@ -809,26 +820,32 @@ class PAW(PAWExtra, Output):
         p['lmax'] = r['MaximumAngularMomentum']
         p['setups'] = r['SetupTypes']
         p['fixdensity'] = r['FixDensity']
-        p['tolerance'] = r['Tolerance']
+        if version <= 0.4:
+            # Old version: XXX
+            print('Warning: Reading old version 0.3/0.4 restart files ' +
+                  'will be disabled some day in the future!')
+            p['convergence']['eigenstates'] = r['Tolerance']
+        else:
+            p['convergence'] = {'density': r['DensityConvergenceCriterion'],
+                                'energy': r['EnergyConvergenceCriterion'],
+                                'eigenstates':
+                                r['EigenstatesConvergenceCriterion'],
+                                'bands': r['NumberOfBandsToConverge']}
         if version == 0.3:
             # Old version: XXX
-            print ('Warning: Reading old version 0.3 restart files is ' +
-                   'dangerous and will be disabled some day in the future!')
+            print('Warning: Reading old version 0.3 restart files is ' +
+                  'dangerous and will be disabled some day in the future!')
             p['stencils'] = (2, 'M', 3)
             p['charge'] = 0.0
             p['fixmom'] = False
-            p['convergeall'] = False
             self.converged = True
-            self.error = 1.0e-20
         else:
             p['stencils'] = (r['KohnShamStencil'],
                              r['PoissonStencil'],
                              r['InterpolationStencil'])
             p['charge'] = r['Charge']
             p['fixmom'] = r['FixMagneticMoment']
-            p['convergeall'] = r['ConvergeEmptyStates']
             self.converged = r['Converged']
-            self.error = r['ConvergenceError']
 
         p['width'] = r['FermiWidth'] 
 
@@ -870,26 +887,41 @@ class PAW(PAWExtra, Output):
         self.gpts = gpts
         self.reset()
      
-    
-    def set_convergence_criteria(self, tol):
-        """Set convergence criteria.
-
-        Stop iterating when the size of the residuals are below
-        ``tol``."""
-
-        self.tolerance = tol
-
     def check_convergence(self):
-        self.error = self.eigensolver.error
-        if self.input_parameters['convergeall']:
-            self.error /= 2 * self.nbands
-        else:
-            if self.nvalence == 0:
-                self.error = self.tolerance
-            else:
-                self.error /= self.nvalence
+        """Check convergence of eigenstates, energy and density."""
         
-        self.converged = (self.error <= self.tolerance)
+        # Get convergence criteria:
+        cc = self.input_parameters['convergence']
+
+        # Eigenstates:
+        if cc['bands'] == 'occupied':
+            n = self.nvalence
+        else:
+            n = 2 * cc['bands']
+        if n > 0:
+            self.eigenstates_error = self.eigensolver.error / n
+        else:
+            self.eigenstates_error = 0.0
+
+        # Energy:
+        if len(self.old_energies) < 3:
+            energy_change = 10000.0
+        else:
+            energy_change = (max(self.old_energies) -
+                             min(self.old_energies)) / self.natoms
+
+        # Density:
+        dNt = self.density.mixer.get_charge_sloshing()
+        if dNt is None:
+            dNt = 10000.0
+        elif self.nvalence == 0:
+            dNt = 0.0
+        else:
+            dNt /= self.nvalence
+
+        self.converged = ((self.eigenstates_error <= cc['eigenstates']) and
+                          (energy_change < cc['energy']) and
+                          (dNt < cc['density']))
         return self.converged
     
     def __del__(self):
@@ -1073,9 +1105,15 @@ class PAW(PAWExtra, Output):
         
         self.stencils = p['stencils']
         self.maxiter = p['maxiter']
-        self.tolerance = p['tolerance']
-        if p['fixdensity']: self.fixdensity = self.maxiter + 1000000
-        else:               self.fixdensity = 0
+
+        if p['convergence'].get('bands') == 'all':
+            p['convergence']['bands'] = self.nbands
+            
+        if p['fixdensity']:
+            self.fixdensity = self.maxiter + 1000000
+        else:
+            self.fixdensity = 0
+
         self.random_wf = p['random']
 
         # Construct grid descriptors for coarse grids (wave functions) and

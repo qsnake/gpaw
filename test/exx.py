@@ -11,12 +11,12 @@ kwargs = {'a': 5.9,  # size of unit cell along x-axis
           'c': 5.0,  # size of unit cell along z-axis
           'h': 0.21, # grid spacing
           'forcesymm': False,
-          'parameters': {'xc'       : 'EXX',
-                         'txt'      : '-',
-                         'mix'      : (0.25, 3, 1.0),
-                         'lmax'     : 1,
-                         'nbands'   : 3,
-                         'tolerance': 1e-6}}
+          'parameters': {'xc'         : 'EXX',
+                         'txt'        : '-',
+                         'mix'        : (0.25, 3, 1.0),
+                         'lmax'       : 1,
+                         'nbands'     : 3,
+                         'convergence': {'eigenstates': 1e-6}}}
 if formula in molecules:
     mol = Molecule(formula, **kwargs)
     E = mol.energy()

@@ -24,6 +24,10 @@ def send_email(subject, filename='/dev/null'):
     assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
                      (subject, filename)) == 0
 
+def send_jj_email(subject, filename='/dev/null'):
+    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+                     (subject, filename)) == 0
+
 def fail(msg, filename='/dev/null'):
     send_email(msg, filename)
     raise SystemExit
@@ -40,6 +44,7 @@ os.chdir(dir)
 
 # Checkout a fresh version and install:
 if os.system('svn export ' +
+#if os.system('svn export -r 1020 ' +
              'https://svn.berlios.de/svnroot/repos/gridpaw/trunk gpaw') != 0:
     fail('Checkout of gpaw failed!')
 if os.system('cvs -d :pserver:jensj@cvs.fysik.dtu.dk:/home/camp/CVSROOT ' +
@@ -255,7 +260,7 @@ os.system(export + 'cd ..; rm -rf gpaw/gui; '+
           'cp -rp html /home/camp/jensj/.gpaw/cron')
 
 if ' Warning:' in open('../warnings').read():
-    send_email('Warning(s) from epydoc!', '../warnings')
+    send_jj_email('Warning(s) from epydoc!', '../warnings')
 
 os.system('cd; rm -r ' + dir)
 
