@@ -95,7 +95,7 @@ for formula in molecules:
             x['d0'] = pos[1, 0] - pos[0, 0]
     elif not locked(filename):
         file = open(filename, 'w')
-        parameters['out'] = formula + '.txt'
+        parameters['txt'] = formula + '.txt'
         try:
             molecule = Molecule(formula, a=a + 4 * h, b=a, c=a - 4 * h, h=h,
                                 parameters=parameters)
@@ -125,7 +125,7 @@ for symbol in atoms:
         Ea[symbol] = e0
     elif not locked(filename):
         file = open(filename, 'w')
-        parameters['out'] = symbol + '.txt'
+        parameters['txt'] = symbol + '.txt'
         try:
             e0 = SingleAtom(symbol, a=a + 4 * h, b=a, c=a - 4 * h,
                             spinpaired=False,
