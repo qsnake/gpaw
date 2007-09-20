@@ -51,7 +51,7 @@ class Eigensolver:
         for kpt in kpt_u:
             error += self.iterate_one_k_point(hamiltonian, kpt)
             
-        self.error = self.comm.sum(self.kpt_comm.sum(error))
+        self.error = self.kpt_comm.sum(error)
 
     def iterate_one_k_point(self, hamiltonian, kpt):
         """Implemented in subclasses."""

@@ -169,6 +169,7 @@ class Davidson(Eigensolver):
                                              kpt.s, kpt.u, kpt.k)
                      for nucleus in hamiltonian.pt_nuclei])
         self.timer.stop('Davidson')
+        error = self.comm.sum(error)
         return error
 
     

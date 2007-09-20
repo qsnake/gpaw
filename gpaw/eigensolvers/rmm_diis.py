@@ -125,6 +125,7 @@ class RMM_DIIS(Eigensolver):
             P_ni = nucleus.P_uni[kpt.u]
             gemm(1.0, P_ni.copy(), S_nn, 0.0, P_ni)
         self.timer.stop('Orthogonalize')
-
+     
+        error = self.comm.sum(error)
         return error
     
