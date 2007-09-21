@@ -11,8 +11,7 @@ class LCAO:
         self.gd = paw.gd
         self.nuclei = paw.nuclei
         self.initialized = False
-        self.iter = 0
-
+        self.error = 0.0
     
     def iterate(self, hamiltonian, kpt_u):
         if not self.initialized:
@@ -47,8 +46,3 @@ class LCAO:
         
         for nucleus in self.nuclei:
             nucleus.P_uni[0] = num.dot(kpt.C_nm, nucleus.P_mi)
-
-        self.error = 100.0
-        self.iter += 1
-        if self.iter == 15:
-            self.error = 1e-13
