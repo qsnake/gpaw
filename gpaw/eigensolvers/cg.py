@@ -4,6 +4,8 @@ from math import pi, sqrt, sin, cos, atan2
 
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
+from multiarray import matrixproduct as dot # avoid the dotblas bug!
+
 import LinearAlgebra as linalg
 
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
@@ -125,10 +127,8 @@ class CG(Eigensolver):
                 for nucleus in hamiltonian.my_nuclei:
                     P_i = nucleus.P_uni[kpt.u, n]
                     P2_i = nucleus.P2_i
-                    b += num.dot(P2_i, num.dot(unpack(nucleus.H_sp[kpt.s]),
-                                                cc(P_i)))
-                    c += num.dot(P2_i, num.dot(unpack(nucleus.H_sp[kpt.s]),
-                                                cc(P2_i)))
+                    b += dot(P2_i, dot(unpack(nucleus.H_sp[kpt.s]), cc(P_i)))
+                    c += dot(P2_i, dot(unpack(nucleus.H_sp[kpt.s]), cc(P2_i)))
                 b = self.comm.sum(b)
                 c = self.comm.sum(c)
 
@@ -157,8 +157,9 @@ class CG(Eigensolver):
                         if nucleus.in_this_domain:
                             H_ii = unpack(nucleus.H_sp[kpt.s])
                             P_i = nucleus.P_uni[kpt.u, n]
-                            coefs_i =  (num.dot(P_i, H_ii) -
-                                        num.dot(P_i * kpt.eps_n[n], nucleus.setup.O_ii))
+                            coefs_i = (dot(P_i, H_ii) -
+                                       dot(P_i * kpt.eps_n[n],
+                                           nucleus.setup.O_ii))
                             nucleus.pt_i.add(R_G, coefs_i, kpt.k, communicate=True)
                         else:
                             nucleus.pt_i.add(R_G, None, kpt.k, communicate=True)
