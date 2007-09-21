@@ -173,11 +173,11 @@ class DummyDensity:
 class AbsorptionKick(ExplicitCrankNicolson):
     """Absorption kick propagator
     
-    Absorption kick propagator
+    Absorption kick propagator::
 
-    (S(t) + .5 dt p.r / hbar) psi(0+) = (S(t) - .5 dt p.r / hbar) psi(0-)
+      (S(t) + .5 dt p.r / hbar) psi(0+) = (S(t) - .5 dt p.r / hbar) psi(0-)
 
-    where |p| = (eps e / hbar), and eps is field strength, e is elementary 
+    where ``|p| = (eps e / hbar)``, and eps is field strength, e is elementary 
     charge.
     
     """
