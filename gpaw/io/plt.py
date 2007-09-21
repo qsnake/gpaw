@@ -43,7 +43,7 @@ def read_plt(filename):
     if byteswap: arr = arr.byteswapped()
     f.close()
 
-    return cell, num.transpose(num.resize(arr,(nz,ny,nx))), (x0,y0,z0)
+    return cell, num.transpose(num.resize(arr,(nz,ny,nx))), (x0-dx,y0-dy,z0-dz)
 
 def write_plt(cell,
               grid,
