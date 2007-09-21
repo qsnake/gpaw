@@ -43,7 +43,7 @@ class Calculator(PAW):
         self.text('units:', lengthunit, 'and', energyunit)
 
     def convert_units(self, parameters):
-        if 'h' in parameters:
+        if parameters.get('h') is not None:
             parameters['h'] /= self.a0
         if 'width' in parameters:
             parameters['width'] /= self.Ha

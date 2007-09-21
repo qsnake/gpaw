@@ -264,7 +264,8 @@ class PAW(PAWExtra, Output):
         if filename is not None:
             reader = self.read_parameters(filename)
 
-        if 'h' in kwargs and 'gpts' in kwargs:
+        if (('h' in kwargs) and (kwargs['h'] is not None) and
+            ('gpts' in kwargs) and (kwargs['gpts'] is not None)):
             raise TypeError("""You can't use both "gpts" and "h"!""")
             
         for name, value in kwargs.items():
