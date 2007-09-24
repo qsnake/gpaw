@@ -32,6 +32,16 @@ class Cluster(ListOfAtoms):
         cell = num.diagonal(self.GetUnitCell())
         GTTranslate(self,tuple(.5*cell-cntr),'cartesian')
 
+    def CenterOfMass(self):
+        """Return the structures center of mass"""
+        cm = num.zeros((3,),num.Float)
+        M = 0.
+        for atom in self:
+            m = atom.GetMass()
+            M += m
+            cm += m * atom.GetCartesianPosition()
+        return cm/M
+    
     def extreme_positions(self):
         """get the extreme positions of the structure"""
         pos = self.GetCartesianPositions()
