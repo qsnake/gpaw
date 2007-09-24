@@ -1,5 +1,6 @@
 from math import pi, sqrt
 from ASE.Utilities.DOS import DOS
+from ASE.Units import units, Convert
 
 import Numeric as num
 
@@ -33,7 +34,7 @@ class LDOS(DOS):
         'npts' is the number of energy points.
         """
         DOS.__init__(self, calc, width, window, npts)
-        self.P_auni = [nucleus.P_uni for nucleus in calc.paw.nuclei]
+        self.P_auni = [nucleus.P_uni for nucleus in calc.nuclei]
 
     def Delta(self, energy):
         """Return a delta-function centered at 'energy'."""
@@ -110,7 +111,6 @@ class RawLDOS:
             else:
                 elemi[symbol] = [i]
         for key in elemi.keys():
-            print "key=",key, elemi[key]
             elemi[key] = self.get(elemi[key])
         return elemi
 
@@ -118,15 +118,17 @@ class RawLDOS:
         """Write the LDOS by element to a file"""
         ldbe = self.by_element()
         f = open(filename,'w')
-        print >> f, "# spin n ",
+        eu = '['+units.GetEnergyUnit()+']'
+        print >> f, '# e_i'+eu+'  spin   n ',
         for key in ldbe:
             if len(key) == 1: key=' '+key
             print  >> f, ' '+key+':s     p        d      ',
         print  >> f,' sum'
         for s in range(self.paw.nspins):
+            e_n = self.paw.GetEigenvalues(spin=s)
             for n in range(self.paw.nbands):
                 sum = 0.
-                print >> f, s, '%6d' % n,
+                print >> f, '%10.5f' % e_n[n], s, '%6d' % n,
                 for key in ldbe:
                     spd = ldbe[key][s,n]
                     for l in range(3):
