@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-
+"""
+Contains an implementation of the downhill simplex optimization method.
+"""
 import optimizer
-import Numeric as N
+import Numeric as num
 import LinearAlgebra as LA
 
 #N_MAX = 100
@@ -9,19 +11,23 @@ reflect = -1.
 halfway = .5
 extrapolate = 2.
 
-"""
-Default test function with one minimum at (1,2,3, ...).
-The minimum is exactly 42. Takes a list of coordinates as an argument
-and returns a number.
-"""
 def standardfunction(x):
+    """
+    Default test function with one minimum at (1,2,3, ...).
+    The minimum is exactly 42. Takes a list of coordinates as an argument
+    and returns a number.
+    """
     y = 42
     for i in range(len(x)):
         y += (x[i]-(i+1))**2
     return y
 
 class Logger:
-    
+    """
+    This class can be used to encapsulate a function which is to be optimized.
+    Invocations of that function will then be logged by this object during
+    optimization.
+    """
     def __init__(self, function, amoeba):
         self.innerfunction = function
         self.amoeba = amoeba
@@ -38,7 +44,7 @@ class Logger:
         self.y.append(y)
         currentcenter = center(self.amoeba.simplex)
         dcenter = currentcenter - self.center
-        self.dx.append(N.sqrt(N.dot(dcenter, dcenter)))        
+        self.dx.append(num.sqrt(num.dot(dcenter, dcenter)))        
         #self.c.append(center(self.amoeba.simplex))
         self.dev.append(self.amoeba.relativedeviation)
         self.vol.append(volume(self.amoeba.simplex))
@@ -48,31 +54,38 @@ class Logger:
     def unzip(self):
         return [[x[i] for x in self.x] for i in range(len(self.x[0]))]
 
-"""
-Performs the 'amoeba'-like downhill simplex method in dimcount dimensions.
+    def numarray(self, transpose = False):
+        arr = num.array(self.x)
+        if transpose:
+            arr = num.transpose(arr)
+        return arr
 
-simplex: a list of (dimcount+1) vectors each with dimcount coordinates,
-corresponding to the vertices of the simplex.
-
-y: a list of function values evaluated at the vertices, ordered
-consistently with the vertices. y thus must have length
-(dimcount+1) as well
-
-tolerance: fractional tolerance used to evaluate convergence criterion.
-This parameter will actually be overwritten once you run the algorithm,
-which probably makes it unimportant
-
-function: the function to be minimized. The function must take exactly
-dimcount parameters, each parameter being one number
-
-After invocation the argument lists p and y will have been modified to contain
-the simplex vertices and associated function values at termination of the
-procedure.
-
-Also note that the above documentation was written while this was still
-a function, not a class!
-"""
 class Amoeba:
+    """
+    Performs the 'amoeba'-like downhill simplex method
+    in dimcount dimensions.
+    
+    simplex: a list of (dimcount+1) vectors each with dimcount
+    coordinates, corresponding to the vertices of the simplex.
+    
+    y: a list of function values evaluated at the vertices, ordered
+    consistently with the vertices. y thus must have length
+    (dimcount+1) as well
+    
+    tolerance: fractional tolerance used to evaluate convergence
+    criterion.  This parameter will actually be overwritten once you
+    run the algorithm, which probably makes it unimportant
+    
+    function: the function to be minimized. The function must take
+    exactly dimcount parameters, each parameter being one number
+    
+    After invocation the argument lists p and y will have been
+    modified to contain conthe simplex vertices and associated
+    function values at termination of the procedure.
+    
+    Also note that the above documentation was written while this was
+    still a function, not a class!
+    """
 
     def __init__(self, simplex, values=None, function=standardfunction,
                  tolerance=0.001, savedata=False):
@@ -172,17 +185,17 @@ class Amoeba:
         i2ndhigh = self.i2ndhigh
         ilow = self.ilow
         
-        yTry = self.grope(reflect)
+        ytest = self.grope(reflect)
         #self.evaluationcount += 1
 
-        if yTry <= y[ilow]:
-            yTry = self.grope(extrapolate)
+        if ytest <= y[ilow]:
+            ytest = self.grope(extrapolate)
             #self.evaluationcount += 1
-        elif yTry >= y[i2ndhigh]:
-            ySave = y[ihigh]
-            yTry = self.grope(halfway)
+        elif ytest >= y[i2ndhigh]:
+            ysave = y[ihigh]
+            ytest = self.grope(halfway)
             #self.evaluationcount += 1
-            if yTry >= ySave:
+            if ytest >= ysave:
                 for i in range(vertexcount):
                     if i != ilow:
                         for j in range(dimcount):
@@ -196,12 +209,12 @@ class Amoeba:
         return self.analyzepoints()
         
                             
-    """
-    Extrapolates through or partway to simplex face, possibly finding a better
-    vertex
-    """
     def grope(self, factor):
-        #Wonder what these 'factors' do exactly
+        """
+        Extrapolates through or partway to simplex face, possibly
+        finding a better vertex
+        """
+
         y = self.y
         ihigh = self.ihigh
         dimcount = self.dimcount
@@ -210,29 +223,29 @@ class Amoeba:
         factor1 = (1. - factor)/dimcount
         factor2 = factor1 - factor
 
-        ptrial = [coord_sums[j]*factor1 - simplex[ihigh][j]*factor2
+        ptest = [coord_sums[j]*factor1 - simplex[ihigh][j]*factor2
                   for j in range(dimcount)]
 
-        ytrial = self.function(ptrial)
+        ytest = self.function(ptest)
 
-        if ytrial < y[ihigh]:
-            y[ihigh] = ytrial
+        if ytest < y[ihigh]:
+            y[ihigh] = ytest
             for j in range(dimcount):
-                coord_sums[j] += ptrial[j] - simplex[ihigh][j]
-                simplex[ihigh][j] = ptrial[j]
+                coord_sums[j] += ptest[j] - simplex[ihigh][j]
+                simplex[ihigh][j] = ptest[j]
 
         self.evaluationcount += 1
         
-        return ytrial
+        return ytest
 
 def center(simplex):
-    vertices = [N.array(point) for point in simplex]
+    vertices = [num.array(point) for point in simplex]
     return sum(vertices)/len(simplex)
 
 def volume(simplex):
-    vertices = [N.array(point) for point in simplex]
+    vertices = [num.array(point) for point in simplex]
     differences = [vertices[i]-vertices[i+1] for i in range(len(vertices)-1)]
-    return LA.determinant(N.array(differences))
+    return LA.determinant(num.array(differences))
 
 def main():
     simplex = optimizer.get_random_simplex([4,2,1,5,2])
@@ -245,4 +258,4 @@ def main():
     return amoeba
 
 if __name__ == '__main__':
-     main()
+    main()

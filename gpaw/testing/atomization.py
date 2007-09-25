@@ -15,7 +15,8 @@ helper functions and some molecule data.
 
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
-
+from gpaw.utilities import molecule, singleatom
+import atomization_data
 
 """
 A dictionary which associates element symbols with MoleculeInfo-objects
@@ -30,96 +31,120 @@ class MoleculeInfo:
     calculations, respectively
     """
     
-    def __init__(self, letter, d, magmom1, magmom2, nbands1, nbands2,
-                 Ea_PBE=None):
-        self.d = d
-        self.letter = letter
-        self.magmom1 = magmom1
-        self.magmom2 = magmom2
-        # Figure out how the magnetic moment is modified under
-        # hybridization and forming of molecules
+    def __init__(self, symbol, nbands1, nbands2):
+        self.symbol = symbol
+        formula = symbol + str(2)
+        
+        atom = singleatom.SingleAtom(symbol, parameters={'txt':None})
+        diatomic = molecule.molecules[formula]
+
+        self.magmom1 = sum(atom.atom.GetMagneticMoments())
+        self.magmom2 = sum(diatomic.GetMagneticMoments())
+        
         self.nbands1 = nbands1
         self.nbands2 = nbands2
-        self.Ea_PBE = Ea_PBE
-        elements[letter] = self
 
-#Also test H2 (4.5 eV). magmom=1, nbands=1 in Calculator for H as well as H2
+        energy_kcal_mol = atomization_data.atomization[formula][2]
+        self.energy_pbe = - energy_kcal_mol * 43.364e-3
+
+        # This is obviously going to break hard if someone ever
+        # changes molecule.py.  The file contains lists of atoms where
+        # the first one is at (0,0,0) and the second, in a diatomic
+        # molecule, at (d, 0, 0)
+        self.d = diatomic[1].GetCartesianPosition()[0]
+        
+        elements[symbol] = self
 
 """
 Reference values are taken from the GPAW molecule tests page, reference 2.
 """
-molN = MoleculeInfo('N', 1.103, 3, 0, 4, 5, -10.546)
-molH = MoleculeInfo('H', 0.751, 1, 0, 1, 1, -4.535)
-molO = MoleculeInfo('O', 1.218, 2, 2, 6, 6, -6.231)
+for arg in [('H', 1, 1),
+            ('Li', 1, 1),
+            ('Be', 2, 2),
+            ('N', 4, 5),
+            ('O', 4, None),
+            ('F', None, None),
+            ('Cl', None, None)]:
+    MoleculeInfo(*arg)
 
-"""
-Creates an atom. If a separation greater than 0 is specified, creates
-two atoms correspondingly spaced along the x axis.
 
-Returns a ListOfAtoms containing whatever was created in this way
-"""
-def getListOfAtoms(molecule=molN, separation=0, a=5., dislocation=(0.,0.,0.),
-                   periodic=False):
+
+def get_list_of_atoms(symbol='N', separation=0, a=6.,
+                      dislocation=(0.,0.,0.),
+                      periodic=False):
+    """
+    Creates an atom. If a separation greater than 0 is specified, creates
+    two atoms correspondingly spaced along the x axis.
+    
+    Returns a ListOfAtoms containing whatever was created in this way
+    """
+    molecule = elements[symbol]
+    
     atoms = None
     (dx, dy, dz) = dislocation
     (cx, cy, cz) = (a/2. + dx, a/2. + dy, a/2. + dz)
     d = separation/2.
     if separation==0:
         #One atom only
-        atoms = ListOfAtoms([Atom(molecule.letter, (cx, cy, cz),
+        atoms = ListOfAtoms([Atom(symbol, (cx, cy, cz),
                                   magmom=molecule.magmom1)],
                             periodic=periodic,
-                            cell=(a,a,a))
+                            cell=(a*0.9,a,a*1.2))
     else:
         #Create two atoms separated along x axis
-        #No magnetic moment then! At least not for the molecules we are
-        #considering presently
-
-        atoms = ListOfAtoms([Atom(molecule.letter, (cx+d,cy,cz)),
-                             Atom(molecule.letter, (cx-d,cy,cz))],
+        mag = molecule.magmom2/2. # magmom per atom
+        atoms = ListOfAtoms([Atom(symbol, (cx+d,cy,cz), magmom=mag),
+                             Atom(symbol, (cx-d,cy,cz), magmom=mag)],
                             periodic=periodic,                            
                             cell=(a,a,a))
     return atoms
 
-"""
-Calculates the atomization energy, i.e. E[molecule] - 2*E[single atom].
-"""
-def calcEnergy(calc1=None, calc2=None, a=4., molecule=molN,
+def calc_energy(calc1=None, calc2=None, a=6., symbol = 'N',
                dislocation=(0,0,0), periodic=False, setup='paw'):
+    """
+    Calculates the atomization energy, i.e. E[molecule] - 2*E[single atom].
+    """
 
-    oneAtom = getListOfAtoms(molecule, a=a, dislocation=dislocation,
-                          periodic=periodic)
+    molecule = elements[symbol]
+
+    one_atom = get_list_of_atoms(symbol, a=a, dislocation=dislocation,
+                                 periodic=periodic)
 
     if calc1 == None:
-        calc1 = MakeCalculator(nbands=molecule.nbands1, setup=setup)
+        calc1 = makecalculator(nbands=molecule.nbands1, setup=setup)
     if calc2 == None:
-        calc2 = MakeCalculator(nbands=molecule.nbands2, setup=setup)
+        calc2 = makecalculator(nbands=molecule.nbands2, setup=setup)
 
     #bands: 2s and 2p yield a total of 4 bands; 1s is ignored
     #setups='A1' => will search for /home/ask/progs/gpaw/setups/N.A1.PBE.gz
-    oneAtom.SetCalculator(calc1)
-    e1 = oneAtom.GetPotentialEnergy()
+
+    one_atom.SetCalculator(calc1)
+    e1 = one_atom.GetPotentialEnergy()
 
 
     #gpts=(n,n,n) - to be varied in multiples of 4
     d = molecule.d
 
-    twoAtoms = getListOfAtoms(molecule, a=a, dislocation=dislocation,
-                              periodic=periodic, separation=molecule.d)
+    two_atoms = get_list_of_atoms(symbol, a=a, dislocation=dislocation,
+                                  periodic=periodic, separation=molecule.d)
 
     #10 electrons in total from 2s and 2p.
     #Thus it is necessary only to include 5 bands
-    twoAtoms.SetCalculator(calc2)
-    e2 = twoAtoms.GetPotentialEnergy()
+    two_atoms.SetCalculator(calc2)
+    e2 = two_atoms.GetPotentialEnergy()
 
     return e2-2*e1
 
-"""
-Using a particular resolution h, test whether energies deviate considerably
-if the system is translated in intervals smaller than h.
-"""
-def displacementTest(a=5., molecule=molN, h=.2):
-    print 'Displacement test:', molecule
+def displacement_test(a=5., symbol='N', h=.2):
+    """
+    Using a particular resolution h, test whether energies deviate considerably
+    if the system is translated in intervals smaller than h.
+
+    This function is deprecated.
+    """
+    print 'Displacement test:', symbol
+
+    molecule = elements[symbol]
 
     h += 0. #floating point
 
@@ -146,54 +171,58 @@ def displacementTest(a=5., molecule=molN, h=.2):
     print 'Min',min(energies)
     print 'Diff',max(energies) - min(energies)
 
-"""
-Creates two calculators for the given molecule with appropriate band counts
-"""
-def atomizationCalculators(molecule=molN, out='-', h=.2, lmax=2, setup='paw'):
-    calc1 = MakeCalculator(molecule.nbands1, out, h, lmax, setup=setup)
-    calc2 = MakeCalculator(molecule.nbands2, out, h, lmax, setup=setup)
-    return (calc1, calc2)
+def atomization_calculators(symbol='N', out='-', h=.2, setup='paw'):
+    """
+    Creates two calculators for the given molecule with appropriate band counts
+    """
+    molecule = elements[symbol]
+    calc1 = makecalculator(molecule.nbands1, out, h, setup=setup)
+    calc2 = makecalculator(molecule.nbands2, out, h, setup=setup)
+    return calc1, calc2
 
 
-"""
-Default calculator setup, however complicated it might become someday
-This method allows you to forget about lmax and PBE and such
-"""
-def MakeCalculator(nbands, out='-', h=.2, lmax=2, setup='paw'):
-    return Calculator(nbands=nbands, out=out, h=h, lmax=lmax, xc='PBE',
+def makecalculator(nbands=None, out='-', h=.2, setup='paw'):
+    """
+    Default calculator setup, however complicated it might become someday
+    This method allows you to forget about lmax and PBE and such
+    """
+    return Calculator(nbands=nbands, txt=out, h=h, xc='PBE',
                       setups=setup)
 
-"""
-Calculates the ground-state energy of the given molecule when the atoms
-are spaced by the given distance
-"""
-def energyAtDistance(distance, calc=None, dislocation=(0,0,0),
-                     molecule=molN, a=5., periodic=False):
+def energy_at_distance(distance, calc=None, dislocation=(0,0,0),
+                       symbol='N', a=5., periodic=False):
+    """
+    Calculates the ground-state energy of the given molecule when the atoms
+    are spaced by the given distance
+    """
+
+    molecule = elements[symbol]
+
     c = a/2.
     (dx, dy, dz) = dislocation
 
     coord1 = (c-distance/2. + dx, c + dy, c + dz)
     coord2 = (c+distance/2. + dx, c + dy, c + dz)
 
-    twoAtoms = getListOfAtoms(molecule, distance, a, dislocation,
-                              periodic)
+    two_atoms = get_list_of_atoms(symbol, distance, a, dislocation,
+                                  periodic)
 
     if calc == None:
-        calc = MakeCalculator(nbands=molecule.nbands2)
+        calc = makecalculator(nbands=molecule.nbands2)
 
-    twoAtoms.SetCalculator(calc)
+    two_atoms.SetCalculator(calc)
 
-    energy = twoAtoms.GetPotentialEnergy()
+    energy = two_atoms.GetPotentialEnergy()
     return energy
 
-"""
-Write lists x and y to specified file
-"""
-def writeResults(x, y, fileName, header=[]):
+def writeresults(x, y, filename, header=[]):
+    """
+    Write lists x and y to specified file
+    """
     if len(x) != len(y):
-            raise Exception('Result list length mismatch')
+        raise Exception('Result list length mismatch')
     length = len(x)
-    f = open(fileName, 'w')
+    f = open(filename, 'w')
     lines = [''.join([str(x[i]),'\t',str(y[i]),'\n']) for i in range(length)]
 
     for line in header:
@@ -204,27 +233,27 @@ def writeResults(x, y, fileName, header=[]):
     f.writelines(lines)
     f.close()
 
-"""
-Read list of (x,y) entries from datafiles, return as two lists
-"""
-def readResults(fileName):
-    f = open(fileName, 'r')
-    lines = filter(stringFilter, f.readlines())
+def readresults(filename):
+    """
+    Read list of (x,y) entries from datafiles, return as two lists
+    """
+    f = open(filename, 'r')
+    lines = filter(stringfilter, f.readlines())
     length = len(lines)
     pairs = [s.split() for s in lines]
     x = [float(pair[0]) for pair in pairs]
     y = [float(pair[1]) for pair in pairs]
     return (x,y)
 
-"""
-Allow comments and empty lines in data files
-"""
-def stringFilter(s):
+def stringfilter(s):
+    """
+    Allow comments and empty lines in data files
+    """
     return not (s.startswith('#') or s.isspace())
 
-"""
-The gbar doesn't have pylab so use this function
-"""
 def linspace(start, end, count):
+    """
+    The gbar doesn't have pylab so use this function
+    """
     return [start + float(i)/(count-1)*(end-start) for i in range(count)]
 

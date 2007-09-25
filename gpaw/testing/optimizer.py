@@ -6,16 +6,11 @@ optimize GPAW setups. The GPAW setup optimizer uses the downhill
 simplex algorithm to search a parameter space of any dimension.
 """
 
-import atomization, setupgenerator
-import amoeba
-import sys, traceback, pickle, random
-from LinearAlgebra import inverse
-#import numpy as N
-import Numeric as N
-#from gpaw.utilities.timing import Timer
-import time
 
-#from datetime import datetime, timedelta
+import sys, traceback, pickle, random
+import atomization, setupgenerator, amoeba
+from badness import MoleculeTest
+from gpaw.utilities import devnull
 
 """
 Returns a list of vertex coordinates forming a regular simplex around
@@ -56,8 +51,8 @@ separator = '='*72
 
 class Optimizer:
 
-    def __init__(self, symbol='N', name='test',
-                 generator=None, out=None, test=None, simplex=None):
+    def __init__(self, symbol='N', name='test', generator=None, test=None,
+                 simplex=None, out=None, dumplog=None):
         """
         Creates an optimizer for the specified element which generates
         setups with the name [symbol].opt.[name].PBE
@@ -80,13 +75,22 @@ class Optimizer:
         self.test = test
 
         generatorname = 'opt.'+name
+
         if generator is None:
-            generator = setupgenerator.SetupGenerator(self.element.letter,
+            generator = setupgenerator.SetupGenerator(self.element.symbol,
                                                       generatorname)
-        else:
+        elif isinstance(generator, setupgenerator.SetupGenerator):
             # Override generator defaults
             generator.set_name(generatorname)
             generator.set_symbol(symbol)
+        else:
+            try: # Test whether generator is specified as a parameter list
+                parms = list(generator)
+                generator = setupgenerator.SetupGenerator(self.element.symbol,
+                                                          generatorname,
+                                                          whichparms=parms)
+            except:
+                raise Exception('Bad generator: '+str(generator))
 
         self.generator = generator
 
@@ -98,8 +102,9 @@ class Optimizer:
 
         self.setup_name = 'opt.'+name
 
+        outname = name+'.opt.'+symbol
         if out is None:
-            self.output = open(name+'.opt.'+symbol+'.log', 'w')
+            self.output = open(outname+'.log', 'w')
             #Note: perhaps also make it possible to not write output
         elif out == '-':
             self.output = sys.stdout
@@ -108,23 +113,42 @@ class Optimizer:
 
         out = self.output
 
+        dumpname = outname + '.dump.pckl'
+        if dumplog is None:
+            dumplog = pickle.Pickler(open(dumpname, 'w'))
+        self.dumplog = pickle.Pickler(dumplog)
+
+        dimension = len(simplex)-1
+        self.stepcount = 0
+
         print >> out, 'Optimization run commencing'
         print >> out, separator
         print >> out, 'Name:',name
         print >> out, 'Element:',symbol
-        #print >> out, 'Dump file:',dumpFile
-        print >> out, 'Parameter space dimension:',(len(simplex)-1)
+        print >> out, 'Dump file:',dumpname
+        print >> out, 'Parameter space dimension:',dimension
         #print >> out, 'Tolerance:',fTolerance
         print >> out, separator
-        #Remember  to write initData header
         print >> out
         print >> out, 'Simplex points'
         for point in simplex:
-            print >> out, '\t',point
+            print >> out, '  ',point
         out.flush()
         print >> out
         print >> out, 'Evaluating simplex point badness values'
         out.flush()
+
+        dumpdict = {'type'      : 'header',
+                    'name'      : name,
+                    'symbol'    : symbol,
+                    'dimension' : dimension,
+                    'simplex'   : simplex,
+                    'testname'  : str(test.__class__),
+                    'test'      : dict(test.dumplog),
+                    'generator' : generator.descriptor
+                    }
+
+        dumplog.dump(dumpdict)
 
         values = [self.badness(point) for point in simplex]
         
@@ -135,16 +159,6 @@ class Optimizer:
         #If resuming from file, remember to make it possible to reuse badness
         #values
         self.amoeba = amoeba.Amoeba(simplex, values, self.badness)
-        self.stepcount = 0
-
-    """
-    Placeholder until gpaw.utilities.Timer can be used
-    """
-    """def clock(self):
-        return time.clock()
-
-    def time(self):
-        return time.time()"""
 
     def optimize(self, tolerance=0.001):
         self.amoeba.tolerance = tolerance
@@ -164,351 +178,80 @@ class Optimizer:
             print >> out
             out.flush()
 
-    """
-    Runs a full test of a given GPAW setup
-    """
-    def badness(self, args):
+            data = {'type'      : 'status',
+                    'simplex'   : self.simplex,
+                    'deviation' : self.amoeba.relativedeviation,
+                    'step'      : self.stepcount
+                    }
 
-        badness = 10000 #will be overwritten unless bad things happen
+            self.dumplog.dump(data)
+
+    def badness(self, args):
+        """
+        Runs a full test of a given GPAW setup
+        """
+        
         out = self.output
 
         try:
-            #if not self.quick:
             self.generator.generate_setup(args) #new setup
-
-            print >> out, 'Point: ',args
-            badness = self.test.badness(out, self.element.letter,
-                                        self.setup_name)
-
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt #Don't ignore keyboard interrupts
-        except:
-            (cl, ex, stacktrace) = sys.exc_info()
-            if ex.__dict__.has_key('args'):
-                ex_args = ex.__dict__['args']
-            else:
-                ex_args = '<none>'
-
-            errstring = ''.join(traceback.format_tb(stacktrace))
-            
-            print >> out, '=== EXCEPTION ==='
-            print >> out, ex.message
-            print >> out, errstring
-            print >> out, '================='
-
-            print ex.message
-            print errstring
         
+            print >> out, 'Point: ',args
+            badness = self.test.badness(self.element.symbol,
+                                        self.setup_name, out)
+        
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt # Don't ignore keyboard interrupts
+        except:
+            badness = 10000
+            header = '=== Exception ==='
+            print >> out, header
+            traceback.print_exc(file=out)
+            print >> out, '='*len(header)
+
         print >> out, 'Badness: ', badness
         print >> out
         out.flush()
+
+        
+
+        data = {'type'      : 'eval',
+                'point'     : args,
+                'badness'   : badness,
+                'log'       : self.test.dumplog,
+                'stepcount' : self.stepcount
+                }
+
+        self.dumplog.dump(data)
+        
         return badness
 
 
 optimizer = None
 
-"""
-Base class of setup badness tests. An actual test should override the
-badness method. Presently a test needs not be a subclass of Test, it needs
-only implement a badness method with appropriate signature.
-"""
-class Test:
-    def __init__(self):
-        pass
+def main(symbol='H', name='test', generator=[3,4], tolerance=0.01,
+         simplex=None, test=None):
+    global optimizer # Make sure optimizer is accessible from
+    # interactive interpreter even if something goes wrong
 
-    """
-    This method should be overridden by subclasses.  The method will
-    be invoked automatically by an Optimizer using this Test and
-    should return the badness of the given setup.
+    if test is None:
+        test = MoleculeTest()
 
-    Parameters:
-    
-      out : a file-like object which may be used to write output.
-      
-      symbol : the chemical symbol of the element being tested.
-      
-      setup : the name of the setup which is currently being
-      optimized.  This variable can be suppleid to the constructor of
-      a Calculator object.
+    if generator is None:
+        generator = setupgenerator.SetupGenerator(symbol, name)
+    elif isinstance(generator, setupgenerator.SetupGenerator):
+        generator.set_name(name)
+        generator.set_symbol(symbol)
+    else:
+        try:
+            whichparms = list(generator)
+            generator = setupgenerator.SetupGenerator(symbol, name,
+                                                      whichparms=whichparms)
+        except:
+            raise Exception('Bad generator spec')
 
-
-    Returns:
-
-      The badness of the setup in question. The default implementation
-      returns 10000.
-      
-    """
-    def badness(self, out, symbol, setup):
-        print >> out, 'Badness function not implemented!'
-        return 10000.
-
-class MoleculeTest(Test):
-    def __init__(self):
-        Test.__init__(self)
-        e = EnergyTest()
-        d = DistanceTest()
-        self.tests = [e, d, NoiseTest(),
-                      ConvergenceTest()]
-        self.iterationtest = IterationTest([e, d], ['Ea','d '], [1, 3])
-
-    def badness(self, out, symbol, setup):
-        starttime = time.clock()
-        startwalltime = time.time()
-        badnessvalues = [test.badness(out, symbol, setup)
-                         for test in self.tests]
-        (b_energy, b_dist, b_noise, b_conv) = tuple(badnessvalues)
-        b_iter = self.iterationtest.badness(out, symbol, setup,
-                                            starttime, startwalltime)
-        badness = (b_energy + b_dist + b_noise + b_conv) * b_iter
-        return badness
-
-class EnergyTest(Test):
-        
-    def __init__(self, cellsize=6., unit_badness=.05):
-        Test.__init__(self)
-        self.cellsize = cellsize
-        
-        #self.element = atomization.elements[symbol]
-        #self.ref_energy = self.element.Ea_PBE
-        self.unit_badness = unit_badness
-        self.iterationcount = None
-
-    def badness(self, out, symbol, setup):
-        #energy_badness_ = 1/.05**2 #badness == 1 for deviation == .05 eV
-        
-        molecule = atomization.elements[symbol]
-        (c1,c2) = atomization.atomizationCalculators(out=None,setup=setup,
-                                                     molecule=molecule)
-        print >> out, '\tEnergy'
-        out.flush()
-        subtesttime1 = time.clock()
-        #if self.quick:
-        #    Ea = 42.
-        #else:
-        Ea = atomization.calcEnergy(c1,c2,a=self.cellsize,molecule=molecule)
-
-        subtesttime2 = time.clock()
-
-        #if self.quick:
-        #    iterationcount_Ea = 42
-        #else:
-        self.iterationcount = (c1.GetNumberOfIterations()+
-                               c2.GetNumberOfIterations())
-
-        ref_energy = atomization.elements[symbol].Ea_PBE
-        energybadness = ((Ea - ref_energy)/self.unit_badness)**2
-
-        print >> out, '\t\tEa         : ', Ea
-        print >> out, '\t\tTime       : ', (subtesttime2-subtesttime1)
-        print >> out, '\t\tBadness    : ', energybadness
-        print >> out, '\t\tIterations : ', self.iterationcount
-        out.flush()
-        return energybadness
-
-    def get_last_iteration_count(self):
-        return self.iterationcount
-        
-class DistanceTest(Test):
-    
-    def __init__(self, cellsize=5.5, unit_badness=.005):
-        Test.__init__(self)
-        #self.ref_dist = self.element.d
-        self.unit_badness = unit_badness
-        self.cellsize = cellsize
-    
-    def badness(self, out, symbol, setup):
-        print >> out, '\tDistance'
-        ref_dist = atomization.elements[symbol].d
-        out.flush()
-        subtesttime1 = time.clock()
-        #if self.quick:
-        #    (d,iterationcount_d) = (42., 42)
-        #else:
-        (d, self.iterationcount) = self.bondLength(symbol, setup)
-
-        distancebadness = ((d - ref_dist)/self.unit_badness)**2
-        subtesttime2 = time.clock()
-        print >> out, '\t\tDistance   : ', d
-        print >> out, '\t\tTime       : ', (subtesttime2-subtesttime1)
-        print >> out, '\t\tBadness    : ', distancebadness
-        print >> out, '\t\tIterations : ', self.iterationcount
-        out.flush()
-
-        return distancebadness
-
-    def get_last_iteration_count(self):
-        return self.iterationcount
-
-    """
-    Returns the bond length. Calculates energy at three locations
-    around the reference bond length, interpolates with a 2nd degree
-    polynomial and returns the minimum of this polynomial which would
-    be roughly equal to the bond length without engaging in a large
-    whole relaxation test
-    """
-    def bondLength(self, symbol, setup):
-        element = atomization.elements[symbol]
-        d0 = element.d
-        #REMEMBER: find out what unit badness should be for other elements!
-        dd = ( .2 / 140. )**.5 #around .04 A. Bond properties correspond to
-        #an energy of E = .5 k x**2 with k = 140 eV/A**2
-        #If we want .1 eV deviation then the above dd should be used
-        calc = atomization.MakeCalculator(element.nbands2,
-                                          out=None, setup=setup)
-
-        D = [d0-dd, d0, d0+dd]
-        #Calculate energies at the three points
-        
-        E = [atomization.energyAtDistance(d, calc=calc, a=self.cellsize,
-                                          molecule=element) for d in D]
-        #Now find parabola and determine minimum
-
-        x = N.array(D)
-        y = N.array(E)
-
-        A = N.transpose(N.array([x**0, x**1, x**2]))
-        c = N.dot(inverse(A), y)
-        #c = N.dot(N.linalg.inv(A), y)
-        #print 'Coordinates',c
-
-        X = - c[1] / (2.*c[2]) # "-b/(2a)"
-        #print 'Bond length',X
-
-        return X, calc.GetNumberOfIterations()
-
-class NoiseTest(Test):
-
-    def __init__(self, unit_badness=.005, points=[(0.,0.,0.),(.35,.35,.35),
-                                                  (.5,.5,.5)]):
-        Test.__init__(self)
-        self.unit_badness=unit_badness
-        self.points = tuple(points)
-
-    def badness(self, out, symbol, setup):
-        print >> out, '\tFluctuation'
-        out.flush()
-        subtesttime1 = time.clock()
-
-        #if self.quick:
-        #    noise = 42
-        #else:
-        energies = self.energyFluctuationTest(symbol, setup)
-        noise = max(energies) - min(energies)
-        
-        noisebadness = (noise/self.unit_badness)**2
-        subtesttime2 = time.clock()
-        print >> out, '\t\tFluctuation:', noise
-        print >> out, '\t\tAll points :', energies
-        print >> out, '\t\tTime       :', (subtesttime2-subtesttime1)
-        print >> out, '\t\tBadness    :', noisebadness
-
-        return noisebadness
-
-
-    """
-    Returns the difference between the energy of a nitrogen molecule
-    at the center of the unit cell and the energy of one translated by
-    h/2 along the z axis.
-    """
-    def energyFluctuationTest(self, symbol, setup):
-        A = atomization
-        element = A.elements[symbol]
-        h = .2
-        a = 4.
-        #if self.quick:
-        #    h = .3
-        calc = A.MakeCalculator(element.nbands2, out=None, setup=setup,
-                                h=h)
-        d = element.d
-        #E1 = A.energyAtDistance(d, calc=calc, a=a, molecule=element,
-        #                        periodic=True)
-        energies = [A.energyAtDistance(d, calc=calc, a=a,
-                                       dislocation=(dx,dy,dz),
-                                       molecule=element, periodic=True)
-                    for (dx,dy,dz) in self.points]
-
-        return energies
-
-
-class ConvergenceTest(Test):
-
-    def __init__(self, unit_badness=.05):
-        #Formerly standard value was .2
-        #change default unit badness to .005 someday
-        Test.__init__(self)
-        self.unit_badness = unit_badness
-
-    def badness(self, out, symbol, setup):
-        print >> out, '\tConvergence'
-        out.flush()
-        subtesttime1 = time.clock()
-        #if self.quick:
-        #    convergencevalue = 42.
-        #else:
-        convergencevalue = self.convergenceTest(symbol, setup)
-        convergencebadness = (convergencevalue/self.unit_badness)**2
-        subtesttime2 = time.clock()
-        print >> out, '\t\tConvergence: ', convergencevalue
-        print >> out, '\t\tTime       : ', (subtesttime2-subtesttime1)
-        print >> out, '\t\tBadness    : ', convergencebadness
-        return convergencebadness
-
-    """
-    Plots the energy of a N2 moleculeas a function of different resolutions
-    (h-values) and returns the maximal difference
-    """
-    def convergenceTest(self, symbol, setup):
-        A = atomization
-        element = A.elements[symbol]
-        h = [.15, .17, .20]
-        a = 4.
-        #if self.quick:
-        #    h = [.20, .22, .25]
-        calc = [A.MakeCalculator(element.nbands2, out=None, h=h0,
-                                 setup=setup) for h0 in h]
-        element = atomization.elements[symbol]
-        E = [A.energyAtDistance(element.d, calc=c, a=a,
-                                molecule=element) for c in calc]
-
-        return max(E) - min(E)
-
-class IterationTest(Test):
-
-    def __init__(self, tests, names, weights):
-        Test.__init__(self)
-        self.tests = tests
-        self.names = names
-        self.weights = weights
-
-    def badness(self, out, symbol, setup, starttime=None, startwalltime=None):
-        print >> out, '\tTime/Iterations'
-        dt = time.clock() - starttime
-        iterationbadness = sum([test.get_last_iteration_count() * weight
-                                for (test, weight)
-                                in zip(self.tests, self.weights)])/128.
-        #In order to make the number more "edible", let's divide by
-        #some large number such as 128
-        
-        #iterationbadness = (iterationcount_Ea + 3*iterationcount_d)/128.
-        #if self.quick:
-        #    iterationbadness = 42.
-        if starttime != None:
-            print >> out, '\t\tCpu Time   :', (time.clock() - starttime)
-        if startwalltime != None:
-            print >> out, '\t\tWall time  :', (time.time() - startwalltime)
-        for test,name in zip(self.tests, self.names):
-            print >> out, '\t\tIter.',name,':',test.get_last_iteration_count()
-        #print >> out, '\t\tIter. (Ea) : ', iterationcount_Ea
-        #print >> out, '\t\tIter. (d)  : ', iterationcount_d
-        print >> out, '\t\tIter.Badn. : ', iterationbadness
-        out.flush()
-        return iterationbadness
-
-def main(name='test',symbol='N', tolerance=0.01, simplex=None):
-    global optimizer #make sure optimizer is accessible from
-    #interactive interpreter even if something goes wrong
-
-    optimizer = Optimizer(symbol, name, simplex=simplex)
+    optimizer = Optimizer(symbol, name, generator=generator, test=test,
+                          simplex=simplex)
 
     if tolerance != None:
         optimizer.optimize(tolerance)
@@ -517,12 +260,43 @@ def main(name='test',symbol='N', tolerance=0.01, simplex=None):
 def test_single_setup(test=None, symbol='N', name='paw', out=sys.stdout):
     if test is None:
         test = MoleculeTest()
-    return test.badness(out, symbol, name)
+    return test.badness(symbol, name, out)
 
-def make_and_test_single_setup(setup_parameters, test=None,
+def make_and_test_single_setup(generator, setup_parameters, test=None,
                                symbol='N', name='check', out=sys.stdout):
-    gen = setupgenerator.SetupGenerator(symbol, name)
-    gen.generate_setup(setup_parameters)
+    if not isinstance(generator, setupgenerator.SetupGenerator):
+        gen = setupgenerator.SetupGenerator(symbol, name,
+                                            whichparms=generator)
+    else:
+        gen.set_name(name)
+        gen.set_symbol(symbol)
+
+    generator.generate_setup(setup_parameters)
     if test is None:
         test = MoleculeTest()
-    return test.badness(out, symbol, name)
+    return test.badness(symbol, name, out)
+
+def parseargs():
+    # Args should contain:
+    #
+    # * symbol
+    # * name
+    # * parameter list (optional; if specified, this will be
+    # appended to the name)
+    if 'opt' in sys.argv:
+        index = sys.argv.index('opt') + 1
+        args = sys.argv[index].split(',')
+
+        name = args[1]
+        if len(args) > 2:
+            parameters = map(int, args[2])
+            name = args[1] + str(parameters)
+        else:
+            parameters = range(5)
+    else:
+        return []
+    return tuple([args[0], name, parameters, 1e-5, None,
+                  None])
+
+if __name__ == '__main__':
+    main(*parseargs())

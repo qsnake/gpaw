@@ -2,11 +2,14 @@
 
 import os
 from gpaw.atom import generator
+from gpaw import mpi
 #from generator import Generator
 Generator = generator.Generator
 
 maxparcount = 5 # This is the maximum number of parameters supported
 # by the generator function
+
+comm = mpi.world
 
 class SetupGenerator:
     """
@@ -50,8 +53,10 @@ class SetupGenerator:
         if callable(whichparms):
             self.parmfilter = whichparms
             self.stdparms = std_parm_values
+            self.descriptor = str(whichparms)
         else:
             parmfilter = DefaultParmFilter(symbol, whichparms, std_parm_values)
+            self.descriptor = 'custom parameter spec'
             self.parmfilter = parmfilter.filter
             self.get_standard_parameters = parmfilter.get_standard_parameters
 
@@ -89,7 +94,6 @@ class SetupGenerator:
         Use the setup like this::
 
           calc = Calculator(setups={symbol: name}, ...)
-
         """
 
         (r, rvbar, rcomp, rfilter, hfilter) = \
@@ -114,13 +118,15 @@ class SetupGenerator:
                   '.PBE')
 
     def generate_setup(self, parms):
-      """
-      Calls new_setup with after unpacking a parameter list. This method
-      can be overridden to change the parameters that should be
-      optimized.
-      """
-      newparms = self.parmfilter(parms)
-      self.new_setup(*newparms)
+        """
+        Calls new_setup with after unpacking a parameter list. This method
+        can be overridden to change the parameters that should be
+        optimized.
+        """
+        if comm.rank == 0:
+            newparms = self.parmfilter(parms)
+            self.new_setup(*newparms)
+        comm.barrier()
 
 def standard_setup_parameters(symbol, r=None, rvbar=None, rcomp=None,
                               rfilter=None, hfilter=None):
