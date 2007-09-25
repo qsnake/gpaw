@@ -142,7 +142,7 @@ class OmegaMatrix:
         if fg:
             nt_s = nt_sg
         else:
-            nt_s = self.gd.new_array(nt_sg.shape[0])
+            nt_s = self.gd.zeros(nt_sg.shape[0])
             for s in range(nt_sg.shape[0]):
                 self.restrict(nt_sg[s],nt_s[s])
                 
@@ -368,7 +368,7 @@ class OmegaMatrix:
 
             if finegrid == 1:
                 rhot = kss[ij].GetPairDensityAndCompensationCharges()
-                phit = self.gd.new_array()
+                phit = self.gd.zeros()
 ##                print "shapes 0=",phit.shape,rhot.shape
                 self.restrict(phit_p,phit)
             else:

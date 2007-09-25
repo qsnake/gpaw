@@ -12,7 +12,7 @@ a = 10.0
 domain = Domain((a, a, a))
 gd = GridDescriptor(domain, (n, n, n))
 c_LL = num.identity(9, num.Float)
-a_Lg = gd.new_array(9)
+a_Lg = gd.zeros(9)
 nspins = 2
 xcfunc = XCFunctional('LDA', nspins)
 for soft in [False]:

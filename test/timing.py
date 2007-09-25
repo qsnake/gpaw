@@ -13,9 +13,9 @@ n = 6
 gda = GridDescriptor(Domain((1,1,1)), (n,n,n))
 gdb = gda.refine()
 gdc = gdb.refine()
-a = gda.new_array()
-b = gdb.new_array()
-c = gdc.new_array()
+a = gda.zeros()
+b = gdb.zeros()
+c = gdc.zeros()
 
 inter = Transformer(gdb, gdc, 2).apply
 restr = Transformer(gdb, gda, 2).apply

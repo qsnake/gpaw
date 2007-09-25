@@ -21,7 +21,7 @@ class PairDensity:
             return nijt 
 
         # interpolate the pair density to the fine grid
-        nijt_g = self.density.finegd.new_array()
+        nijt_g = self.density.finegd.empty()
         self.density.interpolate(nijt, nijt_g)
 
         return nijt_g

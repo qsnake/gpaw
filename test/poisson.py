@@ -9,7 +9,7 @@ def f(n):
     N = 2 * n
     domain = Domain((L, L, L))
     gd = GridDescriptor(domain, (N, N, N))
-    a = gd.new_array()
+    a = gd.zeros()
     p = PoissonSolver(gd, 1, 'J')
     cut = N / 2.0 * 0.9
     C = N // 2
@@ -31,7 +31,7 @@ def f(n):
     a -= gd.integrate(a) / L**3
 
     I = gd.integrate(a)
-    b = gd.new_array()
+    b = gd.zeros()
     np = p.solve(b, a)#, eps=1e-20)
     return b[0,0,0]-b[C,C,C]
 

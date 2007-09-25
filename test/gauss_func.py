@@ -57,7 +57,7 @@ equal(m, 0., 1e-7)
 # \-------------------------------------------------/
 
 # Array for storing the potential
-pot = gd.new_array(typecode=num.Float, zero=True, global_array=False)
+pot = gd.zeros(typecode=num.Float, global_array=False)
 for L in range(7): # Angular index of gaussian
     # Get analytic functions
     ng = gauss.get_gauss(L)

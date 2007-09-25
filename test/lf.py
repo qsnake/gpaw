@@ -19,7 +19,7 @@ p = [create_localized_functions([s], gd, (0.5, 0.5, 0.25 + 0.25 * i),
      for i in [0, 1, 2]]
 lfbc.broadcast()
 c = num.ones(1, num.Float)
-a = gd.new_array()
+a = gd.zeros()
 for q in p:
     q.add(a, c)
 x = num.sum(a.flat)

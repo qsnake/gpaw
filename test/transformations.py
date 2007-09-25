@@ -15,7 +15,7 @@ ra.seed(7, 8)
 a = ra.random((n, n, n))
 
 gd2 = gd.refine()
-b = gd2.new_array()
+b = gd2.zeros()
 for k in [2, 4, 6]:
     inter = Transformer(gd, gd2, k // 2).apply
     inter(a, b)
@@ -23,7 +23,7 @@ for k in [2, 4, 6]:
     assert abs(num.sum(a.flat) - num.sum(b.flat) / 8) < 3e-11
 
 gd2 = gd.coarsen()
-b = gd2.new_array()
+b = gd2.zeros()
 for k in [2, 4, 6]:
     restr = Transformer(gd, gd2, k // 2).apply
     restr(a, b)

@@ -17,9 +17,9 @@ class Preconditioner:
         self.kin0 = kin0
         self.kin1 = Laplace(gd1, -0.5, 1, typecode)
         self.kin2 = Laplace(gd2, -0.5, 1, typecode)
-        self.scratch0 = gd0.new_array(2, typecode, False)
-        self.scratch1 = gd1.new_array(3, typecode, False)
-        self.scratch2 = gd2.new_array(3, typecode, False)
+        self.scratch0 = gd0.zeros(2, typecode, False)
+        self.scratch1 = gd1.zeros(3, typecode, False)
+        self.scratch2 = gd2.zeros(3, typecode, False)
         self.step = 0.66666666 / kin0.get_diagonal_element()
         self.restrictor0 = Transformer(gd0, gd1, 1, typecode).apply
         self.restrictor1 = Transformer(gd1, gd2, 1, typecode).apply

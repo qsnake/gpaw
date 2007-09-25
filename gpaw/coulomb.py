@@ -89,7 +89,7 @@ class Coulomb:
         self.load(method)
         # determine integrand using specified method
         if method == 'real':
-            I = self.gd.new_array()
+            I = self.gd.zeros()
             if n2 == None: n2 = n1; Z2 = Z1
             self.solve(I, n2, charge=Z2, eps=1e-12, zero_initial_phi=True)
             I *= num.conjugate(n1)           

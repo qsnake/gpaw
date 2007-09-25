@@ -79,13 +79,13 @@ class TwoCenterIntegrals:
         domain = Domain((4 * rc, 2 * rc, 2 * rc), (False, False, False))
         gd = GridDescriptor(domain, (2 * n, n, n))
         f = create_localized_functions([phit], gd, (0.25, 0.5, 0.5))
-        a = gd.new_array()
+        a = gd.zeros()
         c = num.ones(1, num.Float)
         f.add(a, c)
         for i in range(21):
             x = 0.25 + 0.5 * i / 20
             g = create_localized_functions([phit], gd, (x, 0.5, 0.5))
-            b = gd.new_array()
+            b = gd.zeros()
             g.add(b, c)
             s = gd.integrate(a * b)
             d = (x - 0.25) * 4 * rc
@@ -106,13 +106,13 @@ class TwoCenterIntegrals:
         domain = Domain((4 * rc, 2 * rc, 2 * rc), (False, False, False))
         gd = GridDescriptor(domain, (2 * n, n, n))
         f = create_localized_functions([phit], gd, (0.25, 0.5, 0.5))
-        a = gd.new_array()
+        a = gd.zeros()
         c = num.ones(1, num.Float)
         f.add(a, c)
         for i in range(21):
             x = 0.25 + 0.5 * i / 20
             g = create_localized_functions([phitb], gd, (x, 0.5, 0.5))
-            b = gd.new_array()
+            b = gd.zeros()
             g.add(b, c)
             s = gd.integrate(a * b)
             d = (x - 0.25) * 4 * rc
@@ -132,15 +132,15 @@ class TwoCenterIntegrals:
         gd = GridDescriptor(domain, (2 * n, n, n))
         kin = Laplace(gd, -0.5)
         f = create_localized_functions([phit], gd, (0.25, 0.5, 0.5))
-        a = gd.new_array()
-        kina = gd.new_array()
+        a = gd.zeros()
+        kina = gd.zeros()
         c = num.ones(1, num.Float)
         f.add(a, c)
         kin.apply(a, kina)
         for i in range(21):
             x = 0.25 + 0.5 * i / 20
             g = create_localized_functions([phit], gd, (x, 0.5, 0.5))
-            b = gd.new_array()
+            b = gd.zeros()
             g.add(b, c)
             s = gd.integrate(kina * b)
             d = (x - 0.25) * 4 * rc

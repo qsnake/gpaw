@@ -126,21 +126,27 @@ class GridDescriptor:
                 zip(self.beg_c, self.end_c, self.domain.periodic_c)]
 
     def zeros(self, n=(), typecode=num.Float, global_array=False):
-        return self.new_array(n, typecode, True, global_array)
-    
-    def empty(self, n=(), typecode=num.Float, global_array=False):
-        return self.new_array(n, typecode, False, global_array)
-        
-    def new_array(self, n=(), typecode=num.Float, zero=True,
-                  global_array=False):
-        """Return new 3D array for this domain.
+        """Return new zeroed 3D array for this domain.
 
-        The array will be zeroed unless ``zero=False`` is used.  The
-        type can be set with the ``typecode`` keyword (default:
-        ``float``).  Extra dimensions can be added with ``n=dim``.
-        A global array spanning all domains can be allocated with
+        The type can be set with the ``typecode`` keyword (default:
+        ``float``).  Extra dimensions can be added with ``n=dim``.  A
+        global array spanning all domains can be allocated with
         ``global_array=True``."""
 
+        return self._new_array(n, typecode, True, global_array)
+    
+    def empty(self, n=(), typecode=num.Float, global_array=False):
+        """Return new uninitialized 3D array for this domain.
+
+        The type can be set with the ``typecode`` keyword (default:
+        ``float``).  Extra dimensions can be added with ``n=dim``.  A
+        global array spanning all domains can be allocated with
+        ``global_array=True``."""
+
+        return self._new_array(n, typecode, False, global_array)
+        
+    def _new_array(self, n=(), typecode=num.Float, zero=True,
+                  global_array=False):
         if global_array:
             shape = self.get_size_of_global_array()
         else:
@@ -306,7 +312,7 @@ class GridDescriptor:
         if self.rank == MASTER:
             A_g = num.transpose(A_g, axes).copy()
 
-        b_g = self.new_array()
+        b_g = self.empty()
         self.distribute(A_g, b_g)
         return b_g
 
@@ -323,7 +329,7 @@ class GridDescriptor:
         # Put the subdomains from the slaves into the big array
         # for the whole domain:
         xshape = a_xg.shape[:-3]
-        A_xg = self.new_array(xshape, a_xg.typecode(), global_array=True)
+        A_xg = self.empty(xshape, a_xg.typecode(), global_array=True)
         parsize_c = self.domain.parsize_c
         r = 0
         for n0 in range(parsize_c[0]):

@@ -60,9 +60,9 @@ def write_plt(cell,
 
     The cell is assumed to be in Angstroms and the grid in atomc units (Bohr)
     """
-    a0_A = Convert(1, 'Bohr','Ang') 
-    if hasattr(cell,'new_array'): # this is a GridDescriptor
-        xe, ye, ze = cell.h_c*cell.N_c * a0_A # get Angstroms
+    a0_A = Convert(1, 'Bohr', 'Ang') 
+    if hasattr(cell, '_new_array'): # this is a GridDescriptor
+        xe, ye, ze = cell.h_c * cell.N_c * a0_A # get Angstroms
     elif len(cell.shape) == 2:
         # Check that the cell is orthorhombic
         check_unit_cell(cell)
