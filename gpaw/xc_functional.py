@@ -8,7 +8,7 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.utilities.timing import Timer
-from gpaw.exx import EXX, XXFunctional
+from gpaw.exx import EXX
 from gpaw.kli import KLIFunctional
 from gpaw.kli import GLLBFunctional
 from gpaw.libxc import Libxc
@@ -20,13 +20,23 @@ import _gpaw
      paw.hamilton object has a member called xc which is of class XC3DGrid.
      There is also a class named XCRadialGrid. These classes calculate
      the derivatives for gga in these different coordinates. Both have the
-     same superclass XCGrid which ensures that the arrays are contiguos.
+     same superclass XCGrid which ensures that the arrays are contiguous.
 
      XC3DGrid has a member called xcfunc which is of class XCFunctional.
      This XCFunctional is a wrapper for real functional which initializes its
      member called xc, for the correct functional instance. So the actual
      xc-functional can be found at hamilton.xc.xcfunc.xc
 """
+                
+
+class ZeroFunctional:
+    """Dummy XC functional"""
+    def calculate_spinpaired(self, e_g, n_g, v_g):
+        e_g[:] = 0.0    
+        
+    def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
+        e_g[:] = 0.0
+
 
 class XCFunctional:
     def __init__(self, xcname, nspins=1, parameters=None):
@@ -100,7 +110,7 @@ class XCFunctional:
             self.xc = _gpaw.XCFunctional(code, self.gga,
                                          0.0, 0, num.array(parameters))
         elif code == 6:
-            self.xc = XXFunctional()
+            self.xc = ZeroFunctional()
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code,self.mgga)
         elif code == 15:

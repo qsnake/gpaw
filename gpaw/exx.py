@@ -55,15 +55,6 @@ from gpaw.utilities.blas import gemm
 from gpaw.pair_density import PairDensity
 from gpaw.poisson import PoissonSolver
 
-
-class XXFunctional:
-    """Dummy EXX functional"""
-    def calculate_spinpaired(self, e_g, n_g, v_g):
-        e_g[:] = 0.0    
-
-    def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
-        e_g[:] = 0.0    
-
 class EXX:
     """EXact eXchange.
 
@@ -73,7 +64,7 @@ class EXX:
     def __init__(self, paw, gd, finegd, interpolate, restrict, poisson,
                  my_nuclei, ghat_nuclei, nspins, nmyu, nbands, Na,
                  kcomm, dcomm, energy_only=False, use_finegrid=True):
-
+        
         # Initialize class-attributes
         self.density     = paw.density
         self.nspins      = nspins

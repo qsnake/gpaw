@@ -45,6 +45,10 @@ for xi, wi in enumerate(wannier.GetSortedIndices()):
     assert abs(num.sum(expected[xi] - centers[wi]['pos'])) < 0.01
 
 os.remove('ethylene.gpw')
+
+## for i in range(6):
+##     wannier.WriteCube(i, 'ethylene%s.cube' % i, real=True)
+
 ## from ASE.Visualization.PrimiPlotter import PrimiPlotter, X11Window
 ## ethylene.extend(wannier.GetCentersAsAtoms())
 ## plot = PrimiPlotter(ethylene)
