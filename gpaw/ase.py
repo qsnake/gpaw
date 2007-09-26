@@ -165,12 +165,6 @@ class Calculator(PAW):
             e = 0.0
         return e * self.Ha
 
-    def GetElectronicStates(self):
-        """Return electronic-state object."""
-        from ASE.Utilities.ElectronicStates import ElectronicStates
-        self.write('tmp27.nc', 'all')
-        return ElectronicStates('tmp27.nc')
-    
     def GetGridSpacings(self):
         return self.a0 * self.gd.h_c
 

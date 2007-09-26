@@ -26,12 +26,6 @@ if netcdf:
     h = Calculator('tmp.nc', txt=None)
     equal(e, h.GetPotentialEnergy(), 3e-5)
 
-if netcdf:
-    calc = h
-    elec_states = calc.GetElectronicStates()
-    equal(len(elec_states),1,0)
-
 os.remove('tmp.gpw')
 if netcdf:
     os.remove('tmp.nc')
-    os.remove('tmp27.nc')
