@@ -379,6 +379,7 @@ class PAW(PAWExtra, Output):
             atoms.GetUnitCell() / self.a0 != cell_cc or
             atoms.GetBoundaryConditions() != pbc_c):
             # Drastic changes:
+            self.wave_functions_initialized = False
             self.initialize()
             self.find_ground_state()
             return
