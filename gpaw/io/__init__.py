@@ -29,7 +29,7 @@ def wave_function_name_template(mode):
         ftype, template = mode.split(':')
     except:
         ftype = mode
-        template = 'psit_Gs%dk%dn%d'
+        template = 'wfs/psit_Gs%dk%dn%d'
     return ftype, template
 
 def write(paw, filename, mode):
@@ -434,6 +434,7 @@ def read_wave_function(paw, s, k, n, mode):
 
     ftype, template = wave_function_name_template(mode)
     fname = template % (s,k,n) + '.'+ftype
+##    print "fname=",fname
 
     i = paw.gd.get_slice()
     r = open(fname, 'r')
