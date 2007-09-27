@@ -54,7 +54,7 @@ def write(paw, filename, mode):
         w = open(filename, 'w')
 
         w['history'] = 'GPAW restart file'
-        w['version'] = '0.5'
+        w['version'] = '0.6'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
 
@@ -136,6 +136,11 @@ def write(paw, filename, mode):
             # Zero temperature calculation - use vacuum level:
             epsF = 0.0
         w['FermiLevel'] = epsF
+
+        # write errors
+        w['DensityError'] = paw.error['density']
+        w['EnergyError'] = paw.error['energy']
+        w['EigenstateError'] = paw.error['eigenstates']
 
         # Write fingerprint (md5-digest) for all setups:
         for setup in paw.setups:
@@ -382,6 +387,12 @@ def read(paw, reader):
 
     paw.occupation.set_fermi_level(r['FermiLevel'])
 
+    try:
+        paw.error = { 'density' : r['DensityError'] }
+        paw.error['energy'] = r['EnergyError']
+        paw.error['eigenstates'] = r['EigenstateError'] 
+    except (AttributeError, KeyError):
+        pass
 
     # Wave functions and eigenvalues:
     nkpts = len(r.get('IBZKPoints'))

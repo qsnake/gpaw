@@ -905,6 +905,7 @@ class PAW(PAWExtra, Output):
             self.eigenstates_error = self.eigensolver.error / n
         else:
             self.eigenstates_error = 0.0
+        self.error = { 'eigenstates' : self.eigenstates_error }
 
         # Energy:
         if len(self.old_energies) < 3:
@@ -912,6 +913,7 @@ class PAW(PAWExtra, Output):
         else:
             energy_change = (max(self.old_energies) -
                              min(self.old_energies)) / self.natoms
+        self.error['energy'] = energy_change
 
         # Density:
         dNt = self.density.mixer.get_charge_sloshing()
@@ -921,6 +923,7 @@ class PAW(PAWExtra, Output):
             dNt = 0.0
         else:
             dNt /= self.nvalence
+        self.error['density'] = dNt
 
         self.converged = ((self.eigenstates_error <= cc['eigenstates']) and
                           (energy_change < cc['energy']) and
