@@ -13,7 +13,7 @@ from gpaw.read_basis import BasisSetXMLParser
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.utilities import unpack, erf, fac, hartree
+from gpaw.utilities import unpack, erf, fac, hartree, pack2
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.kli import XCKLICorrection, XCGLLBCorrection
@@ -36,6 +36,17 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
 
 
 class Setup:
+    """Attributes:
+
+    ========== ============================================
+    Name       Description
+    ========== ============================================
+    ``Z``      Charge
+    ``l_j``    List of angular momentum l values
+    ``I4_iip`` Integrals over 4 all electron wave functions
+    ========== ============================================
+
+    """
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
                  type='paw', basis=None):
         xcname = xcfunc.get_name()
@@ -620,6 +631,93 @@ class Setup:
                 i += 2 * l + 1
         assert i == self.ni
 
+
+    def four_phi_integrals(self):
+        """Calculate the integral over the product of four all electron
+        functions in the augmentation sphere, i.e.
+
+        /
+        | d vr  ( phi_i1 phi_i2 phi_i3 phi_i4
+        /         - phit_i1 phit_i2 phit_i3 phit_i4 )
+        
+        where phi_i1 is a all electron function and phit_i1 is its
+        smooth partner.
+        """
+
+        if hasattr(self, 'I4_iip'):
+##            print "already done"
+            return # job already done
+
+        # Load setup data from XML file:
+        (Z, Nc, Nv,
+         e_total, e_kinetic, e_electrostatic, e_xc,
+         e_kinetic_core,
+         n_j, l_j, f_j, eps_j, rcut_j, id_j,
+         ng, beta,
+         nc_g, nct_g, vbar_g, rcgauss,
+         phi_jg, phit_jg, pt_jg,
+         e_kin_jj, X_p, ExxC,
+         tauc_g, tauct_g,
+         fingerprint,
+         filename,
+         core_hole_state,
+         fcorehole,
+         core_hole_e,
+         core_hole_e_kin,
+         core_response) = PAWXMLParser().parse(self.symbol, self.xcname)
+
+        # radial grid
+        g = num.arange(ng, typecode=num.Float)
+        r_g = beta * g / (ng - g)
+        dr_g = beta * ng / (ng - g)**2
+
+        # compute radial parts
+        nj = len(self.l_j)
+        R_llll = num.zeros((nj,nj,nj,nj), num.Float)
+        for i1 in range(nj):
+            for i2 in range(nj):
+                for i3 in range(nj):
+                    for i4 in range(nj):
+                        R_llll[i1,i2,i3,i4] = num.dot( r_g**2 * dr_g,
+                                                       phi_jg[i1]*phi_jg[i2]*
+                                                       phi_jg[i3]*phi_jg[i4] -
+                                                       phit_jg[i1]*phit_jg[i2]*
+                                                       phit_jg[i3]*phit_jg[i4])
+
+        # prepare for angular parts
+        L_i = []
+        j_i = []
+        for j,l1 in enumerate(self.l_j):
+            for m1 in range(2 * l1 + 1):
+                L_i.append(l1**2 + m1)
+                j_i.append(j)
+        ni = len(L_i)
+        np = ni * (ni + 1) // 2 # length for packing
+        # j_i is the list of j values
+        # L_i is the list of L (=l**2+m for 0<=m<l) values
+        # https://wiki.fysik.dtu.dk/gpaw/Overview#naming-convention-for-arrays
+
+        # calculate the integrals
+        I4_iip = num.empty((ni,ni,np),num.Float)
+        I = num.empty((ni,ni),num.Float)
+        for i1 in range(ni):
+            L1 = L_i[i1]
+            j1 = j_i[i1]
+            for i2 in range(ni):
+                L2 = L_i[i2]
+                j2 = j_i[i2]
+                for i3 in range(ni):
+                    L3 = L_i[i3]
+                    j3 = j_i[i3]
+                    for i4 in range(ni):
+                        L4 = L_i[i4]
+                        j4 = j_i[i4]
+                        I[i3,i4] = num.dot( G_LLL[L1,L2],
+                                            G_LLL[L3,L4] ) *\
+                                    R_llll[j1,j2,j3,j4]
+                I4_iip[i1,i2,:] = pack2(I)
+
+        self.I4_iip = I4_iip
 
 def grr(phi_g, l, r_g):
     w_g = phi_g.copy()
