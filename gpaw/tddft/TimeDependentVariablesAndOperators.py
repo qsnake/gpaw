@@ -5,6 +5,7 @@ operators."""
 
 import Numeric as num
 from gpaw.polynomial import Polynomial
+from gpaw.mpi import run
 
 # Hamiltonian
 class TimeDependentHamiltonian:
@@ -317,6 +318,9 @@ class TimeDependentDensity:
         =========== ==========================================================
 
         """
+        for kpt in self.paw.kpt_u:
+            run([nucleus.calculate_projections(kpt)
+                 for nucleus in self.paw.pt_nuclei])
         self.paw.density.update(self.paw.kpt_u, self.paw.symmetry)
        
     def get_density(self):
