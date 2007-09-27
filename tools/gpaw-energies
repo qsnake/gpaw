@@ -63,8 +63,16 @@ if additional_info:
     if  p['charge']:
         print >> out, '# charge:',p['charge']
     print >> out, "#",
-    if not paw.converged: print >> out,'not',
-    print >> out, 'converged, Log10 error=',log(paw.error)/log(10.)
+    if not paw.converged:
+        print >> out,'not',
+    print >> out, 'converged'
+    try:
+        for error in ['density','energy','eigenstates']:
+            print >> out, '# Log10 error('+error+')=%8.3f' %\
+                  (log(paw.error[error])/log(10.))
+    except:
+        pass
+
 print >> out, "# energy unit:",units.GetEnergyUnit()
 print >> out, "# total energy = ",paw.Etot*Ha,\
       "("+str((paw.Eref+paw.Etot)*Ha)+")"
