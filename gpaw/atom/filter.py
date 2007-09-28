@@ -69,7 +69,9 @@ class Filter:
         beta = 5 * log(10) / (alpha - 1.0)**2
         self.cut_i = num.ones(N, num.Float)
         self.cut_i[icut:] = num.exp(
-            -num.clip(0, 400, beta * (q_i[icut:] / qcut - 1.0)**2))
+            -num.clip(beta * (q_i[icut:] / qcut - 1.0)**2, 0, 400))
+        # self.cut_i[icut:] = num.exp(
+        #     -num.clip(0, 400, beta * (q_i[icut:] / qcut - 1.0)**2))
 
         # Mask function:
         gamma = 3 * log(10) / rcut**2
