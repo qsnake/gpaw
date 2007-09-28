@@ -50,6 +50,10 @@ class TimeDependentHamiltonian:
         self.vext_g = hamiltonian.finegd.zeros()
         
         self.vt_sG = num.zeros(hamiltonian.vt_sG.shape, num.Float)
+        self.H_sp = [
+            num.zeros( nucleus.H_sp.shape, num.Float )
+            for nucleus in hamiltonian.ghat_nuclei 
+            ]
         
         
     def update(self, density, time):
@@ -112,10 +116,14 @@ class TimeDependentHamiltonian:
         self.hamiltonian.vext_g = self.vext_g
         
         self.vt_sG[:] = self.hamiltonian.vt_sG
+        for i in range(len(self.hamiltonian.ghat_nuclei)):
+            self.H_sp[i][:] = self.hamiltonian.ghat_nuclei[i].H_sp
         self.hamiltonian.update(density)
         self.hamiltonian.vt_sG += self.vt_sG
         self.hamiltonian.vt_sG *= .5
-        
+        for i in range(len(self.hamiltonian.ghat_nuclei)):
+            self.hamiltonian.ghat_nuclei[i].H_sp += self.H_sp[i] 
+            self.hamiltonian.ghat_nuclei[i].H_sp *= .5        
         
     def apply(self, kpt, psit, hpsit):
         """Applies the time-dependent Hamiltonian to the wavefunction psit of
