@@ -38,7 +38,7 @@ parameters = {
  'Cl': {'core': '[Ne]',   'rcut': 1.5},
  'Ar': {'core': '[Ne]',   'rcut': 1.6},
  'K' : {'core': '[Ar]',   'rcut': 3.3},
- 'Ca': {'core': '[Ar]',   'rcut': 2.8},
+ 'Ca': {'core': '[Ar]',   'rcut': 2.9},
  'Ti': {'core': '[Ar]',   'rcut': [2.5, 2.6, 2.3]},
  'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.2]},
  'Cr': {'core': '[Ar]',   'rcut': [2.4, 2.4, 2.2]},
@@ -124,6 +124,8 @@ class Generator(AllElectron):
         njcore = j
         self.njcore = njcore
 
+        lmaxocc = max(l_j[njcore:])
+
         if 2 in l_j[njcore:]:
             # We have a bound valence d-state.  Add bound s- and
             # p-states if not already there:
@@ -133,6 +135,14 @@ class Generator(AllElectron):
                     l_j.append(l)
                     f_j.append(0.0)
                     e_j.append(-0.01)
+
+        if l_j[njcore:] == [0] and Z > 2:
+            # We have only a bound valence s-state and we are not
+            # hydrogen and not helium.  Add bound p-state:
+            n_j.append(n_j[njcore])
+            l_j.append(1)
+            f_j.append(0.0)
+            e_j.append(-0.01)
 
         nj = len(n_j)
 
@@ -241,7 +251,7 @@ class Generator(AllElectron):
             # Automatic:
 
             # Make sure we have two projectors for each occupied channel:
-            for l in range(lmax + 1):
+            for l in range(lmaxocc + 1):
                 if len(n_ln[l]) < 2 and not normconserving_l[l]:
                     # Only one - add one more:
                     assert len(n_ln[l]) == 1
@@ -249,7 +259,7 @@ class Generator(AllElectron):
                     f_ln[l].append(0.0)
                     e_ln[l].append(1.0 + e_ln[l][0])
 
-            if lmax < 2:
+            if lmaxocc < 2 and lmaxocc == lmax:
                 # Add extra projector for l = lmax + 1:
                 n_ln.append([-1])
                 f_ln.append([0.0])
