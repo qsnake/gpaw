@@ -18,6 +18,11 @@ from TimeDependentVariablesAndOperators import \
     AbsorptionKickHamiltonian
 
 
+class DummyMixer:
+    def mix(self, nt_sG, comm):
+        pass
+
+
 class TDDFT:
     """ Time-dependent density functional theory
     
@@ -47,16 +52,19 @@ class TDDFT:
         
         # Convert PAW-object to complex
         paw.totype(num.Complex);
-        
-        # Set initial time 
+
+        # No density mixing
+        paw.density.mixer = DummyMixer()
+
+        # Set initial time
         self.time = 0.
         
         # Time-dependent variables and operators
         self.td_potential = td_potential
         self.td_hamiltonian = \
             TimeDependentHamiltonian( paw.pt_nuclei, \
-                                          paw.hamiltonian, \
-                                          td_potential )
+                                      paw.hamiltonian, \
+                                      td_potential )
         self.td_overlap = TimeDependentOverlap(paw.pt_nuclei)
         self.td_density = TimeDependentDensity(paw)
         
