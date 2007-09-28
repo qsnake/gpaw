@@ -633,12 +633,14 @@ class Setup:
 
 
     def four_phi_integrals(self):
-        """Calculate the integral over the product of four all electron
-        functions in the augmentation sphere, i.e.
+        """Calculate four-phi integral.
+        
+        Calculate the integral over the product of four all electron
+        functions in the augmentation sphere, i.e.::
 
-        /
-        | d vr  ( phi_i1 phi_i2 phi_i3 phi_i4
-        /         - phit_i1 phit_i2 phit_i3 phit_i4 )
+          /
+          | d vr  ( phi_i1 phi_i2 phi_i3 phi_i4
+          /         - phit_i1 phit_i2 phit_i3 phit_i4 ),
         
         where phi_i1 is a all electron function and phit_i1 is its
         smooth partner.
