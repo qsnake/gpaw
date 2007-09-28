@@ -172,6 +172,19 @@ class PAWExtra:
     def get_weights(self):
         return self.weight_k #???
 
+    def initialize_from_wave_functions(self):
+        """Initialize density and Hamiltonian from wave functions"""
+        
+        self.set_positions()
+        self.density.move()
+        self.density.update(self.kpt_u, self.symmetry)
+##         if self.wave_functions_initialized:
+##             self.density.move()
+##             self.density.update(self.kpt_u, self.symmetry)
+##         else:
+##             # no wave-functions: restart from LCAO
+##             self.initialize_wave_functions()
+
     def totype(self, typecode):
         """Converts all the typecode dependent quantities of Paw
         (Laplacian, wavefunctions etc.) to typecode"""

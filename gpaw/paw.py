@@ -309,7 +309,7 @@ class PAW(PAWExtra, Output):
         self.convert_units(kwargs)  # ASE???
         p = self.input_parameters
         for name, value in kwargs.items():
-            if name in ['h','charge','kpts','spinpol','xc']:
+            if name in ['h','kpts','spinpol','xc']:
                 if p[name] != kwargs[name]:
                     # theses are severe changes, we need new densities and
                     # wave functions
@@ -321,6 +321,17 @@ class PAW(PAWExtra, Output):
                     # we should have new wave functions
                     self.wave_functions_initialized = False
                     self.converged = False
+            elif name == 'charge':
+                if p[name] != kwargs[name]:
+                    self.converged = False
+                    # we use the old wave functions to initialize
+                    # the density and Hamiltonian
+                    self.initialize_occupation(kwargs['charge'], self.nbands,
+                                               self.kT, p['fixmom'])
+                    self.occupation.calculate(self.kpt_u)
+                    self.initialize_from_wave_functions()
+                    self.density.charge = kwargs['charge'] # ugly, change XXXXX
+
             elif name == 'convergence':
                 self.converged = False
                 p['convergence'].update(value)
@@ -1080,28 +1091,6 @@ class PAW(PAWExtra, Output):
             p['parsize'] = parsize
         self.distribute_kpoints_and_spins(p['parsize'], N_c)
         
-        # Sum up the number of valence electrons:
-        self.nvalence = 0
-        nao = 0
-        for nucleus in self.nuclei:
-            self.nvalence += nucleus.setup.Nv
-            nao += nucleus.setup.niAO
-        self.nvalence -= p['charge']
-        
-        if self.nvalence < 0:
-            raise ValueError(
-                'Charge %f is not possible - not enough valence electrons' %
-                p['charge'])
-        
-        self.nbands = p['nbands']
-        if self.nbands is None:
-            self.nbands = nao
-        elif self.nbands <= 0:
-            self.nbands = (self.nvalence + 1) // 2 + (-self.nbands)
-            
-        if self.nvalence > 2 * self.nbands:
-            raise ValueError('Too few bands!')
-
         self.kT = p['width']
         if self.kT is None:
             if self.gamma:
@@ -1109,6 +1098,13 @@ class PAW(PAWExtra, Output):
             else:
                 self.kT = Convert(0.1, 'eV', 'Hartree')
         
+        self.nbands = p['nbands']
+        if self.nbands is None:
+            self.nbands = nao
+
+        self.initialize_occupation(p['charge'], self.nbands,
+                                   self.kT, p['fixmom'])
+
         self.stencils = p['stencils']
         self.maxiter = p['maxiter']
 
@@ -1158,20 +1154,6 @@ class PAW(PAWExtra, Output):
         else:
             self.hamiltonian = Hamiltonian(self)
 
-        # Create object for occupation numbers:
-        if self.kT == 0 or 2 * self.nbands == self.nvalence:
-            self.occupation = occupations.ZeroKelvin(self.nvalence,
-                                                     self.nspins)
-        else:
-            self.occupation = occupations.FermiDirac(self.nvalence,
-                                                     self.nspins, self.kT)
-
-        if p['fixmom']:
-            M = sum(magmom_a)
-            self.occupation.fix_moment(M)
-
-        self.occupation.set_communicator(self.kpt_comm)
-
         self.xcfunc.set_non_local_things(self)
 
         self.Eref = 0.0
@@ -1196,6 +1178,46 @@ class PAW(PAWExtra, Output):
 
         self.initialized = True
         self.timer.stop('Init')
+
+    def initialize_occupation(self, charge, nbands, kT, fixmom):
+        """Sets number of valence orbitals and initializes
+        occupation"""
+
+        # Sum up the number of valence electrons:
+        self.nvalence = 0
+        nao = 0
+        for nucleus in self.nuclei:
+            self.nvalence += nucleus.setup.Nv
+            nao += nucleus.setup.niAO
+        self.nvalence -= charge
+        
+        if self.nvalence < 0:
+            raise ValueError(
+                'Charge %f is not possible - not enough valence electrons' %
+                charge)
+
+        # check number of bands ?
+        
+        if self.nbands <= 0:
+            self.nbands = (self.nvalence + 1) // 2 + (-self.nbands)
+        
+        if self.nvalence > 2 * self.nbands:
+            raise ValueError('Too few bands!')
+
+        # Create object for occupation numbers:
+        if kT == 0 or 2 * self.nbands == self.nvalence:
+            self.occupation = occupations.ZeroKelvin(self.nvalence,
+                                                     self.nspins)
+        else:
+            self.occupation = occupations.FermiDirac(self.nvalence,
+                                                     self.nspins, kT)
+
+        if fixmom:
+            M = sum(self.atoms.GetMagneticMoments())
+            self.occupation.fix_moment(M)
+
+        self.occupation.set_communicator(self.kpt_comm)
+        
 
     def initialize_kinetic(self):
         if not self.hamiltonian.xc.xcfunc.mgga:
