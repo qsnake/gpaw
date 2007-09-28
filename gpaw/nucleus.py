@@ -282,6 +282,24 @@ class Nucleus:
         ns = len(nt_sG)
         ni = self.get_number_of_partial_waves()
         niao = self.get_number_of_atomic_orbitals()
+
+        if hasattr(self, 'f_si'):
+            f_si = num.asarray(self.f_si)
+        else:
+            f_si = self.calculate_initial_occupation_numbers(ns, niao,
+                                                             magmom, hund)
+            
+        if self.in_this_domain:
+            D_sii = num.zeros((ns, ni, ni), num.Float)
+            for i in range(niao):
+                D_sii[:, i, i] = f_si[:, i]
+            for s in range(ns):
+                self.D_sp[s] = pack(D_sii[s])
+
+        for s in range(ns):
+            self.phit_i.add_density(nt_sG[s], f_si[s])
+
+    def calculate_initial_occupation_numbers(self, ns, niao, magmom, hund):
         f_si = num.zeros((ns, niao), num.Float)
 
         i = 0
@@ -312,17 +330,8 @@ class Nucleus:
                 
             i += degeneracy
         assert i == niao
-
-        if self.in_this_domain:
-            D_sii = num.zeros((ns, ni, ni), num.Float)
-            for i in range(niao):
-                D_sii[:, i, i] = f_si[:, i]
-            for s in range(ns):
-                self.D_sp[s] = pack(D_sii[s])
-
-        for s in range(ns):
-            self.phit_i.add_density(nt_sG[s], f_si[s])
-
+        return f_si
+    
     def add_smooth_core_density(self, nct_G, nspins):
         if self.nct is not None:
             self.nct.add(nct_G, num.array([1.0 / nspins]))
