@@ -113,7 +113,7 @@ for symbol in atoms:
         p['vbar'] = (vbar[0], float(vbar[1]))
 
     try:
-        g.run(logderiv=not opt.logarithmic_derivatives,
+        g.run(logderiv=opt.logarithmic_derivatives,
               exx=opt.exact_exchange, name=opt.name, **p)
     except RuntimeError, m:
         print m
