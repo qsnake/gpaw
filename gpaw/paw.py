@@ -1098,11 +1098,7 @@ class PAW(PAWExtra, Output):
             else:
                 self.kT = Convert(0.1, 'eV', 'Hartree')
         
-        self.nbands = p['nbands']
-        if self.nbands is None:
-            self.nbands = nao
-
-        self.initialize_occupation(p['charge'], self.nbands,
+        self.initialize_occupation(p['charge'], p['nbands'],
                                    self.kT, p['fixmom'])
 
         self.stencils = p['stencils']
@@ -1191,6 +1187,10 @@ class PAW(PAWExtra, Output):
             nao += nucleus.setup.niAO
         self.nvalence -= charge
         
+        self.nbands = nbands
+        if self.nbands is None:
+            self.nbands = nao
+
         if self.nvalence < 0:
             raise ValueError(
                 'Charge %f is not possible - not enough valence electrons' %
