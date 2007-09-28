@@ -902,10 +902,10 @@ class PAW(PAWExtra, Output):
         else:
             n = 2 * cc['bands']
         if n > 0:
-            self.eigenstates_error = self.eigensolver.error / n
+            eigenstates_error = self.eigensolver.error / n
         else:
-            self.eigenstates_error = 0.0
-        self.error = { 'eigenstates' : self.eigenstates_error }
+            eigenstates_error = 0.0
+        self.error = { 'eigenstates' : eigenstates_error }
 
         # Energy:
         if len(self.old_energies) < 3:
@@ -925,7 +925,7 @@ class PAW(PAWExtra, Output):
             dNt /= self.nvalence
         self.error['density'] = dNt
 
-        self.converged = ((self.eigenstates_error <= cc['eigenstates']) and
+        self.converged = ((self.error['eigenstates'] <= cc['eigenstates']) and
                           (energy_change < cc['energy']) and
                           (dNt < cc['density']))
         return self.converged

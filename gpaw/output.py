@@ -224,7 +224,7 @@ class Output:
             t('Poisson solver converged in %d iterations' %
                       self.hamiltonian.npoisson)
             t('Fermi level found  in %d iterations' % self.occupation.niter)
-            t('Error in wave functions: %.13f' % self.eigenstates_error)
+            t('Error in wave functions: %.13f' % self.error['eigenstates'])
             t()
             self.print_all_information()
 
@@ -239,10 +239,11 @@ class Output:
 
             T = time.localtime()
 
-            if self.eigenstates_error == 0.0:
+            if self.error['eigenstates'] == 0.0:
                 eigerror = ''
             else:
-                eigerror = '%-+5.1f' % (log(self.eigenstates_error) / log(10))
+                eigerror = '%-+5.1f' % (log(self.error['eigenstates']) /
+                                        log(10))
                 
             dNt = self.density.mixer.get_charge_sloshing()
             if dNt is None or self.nvalence == 0:
