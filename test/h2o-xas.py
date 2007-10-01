@@ -40,7 +40,8 @@ de1 = e1_n[1] - e1_n[0]
 de2 = e2_n[1] - e2_n[0]
 
 assert de1 == de2
-assert abs(de1 - 2.052) < 0.001
+print de1
+assert abs(de1 - 2.0506) < 0.001
 assert abs(w_n[1] / w_n[0] - 2.19) < 0.01
 
 if 0:
