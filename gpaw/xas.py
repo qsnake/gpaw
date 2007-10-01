@@ -1,5 +1,5 @@
 import pickle
-from math import log, pi, sqrt
+from math import log, pi
 
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
@@ -39,27 +39,28 @@ class XAS:
         else:
             print "wrong keyword for 'mode', use 'xas', 'xes' or 'all'"
             exit
+
             
         self.n = n
 
         nkpts =paw.nkpts
             
         self.eps_n = num.empty(nkpts * n, num.Float)
-        self.sigma_cn = num.empty((3, nkpts * n), num.Complex)
+        self.sigma_cn = num.empty((3, nkpts * n), num.Float)
         n1 = 0
         for k in range(nkpts):
             n2 = n1 + n
             self.eps_n[n1:n2] = paw.kpt_u[k].eps_n[n_start:n_end] * paw.Ha
             P_ni = nucleus.P_uni[k, n_start:n_end]
             a_cn = inner(A_ci, P_ni)
-            #a_cn *= num.conjugate(a_cn)
+            a_cn *= num.conjugate(a_cn)
             print paw.weight_k[k]
-            self.sigma_cn[:, n1:n2] = paw.weight_k[k] ** 0.5 * a_cn #.real
+            self.sigma_cn[:, n1:n2] = paw.weight_k[k] * a_cn.real
             n1 = n2
 
         if paw.symmetry is not None:
             sigma0_cn = self.sigma_cn
-            self.sigma_cn = num.zeros((3, nkpts * n), num.Complex)
+            self.sigma_cn = num.zeros((3, nkpts * n), num.Float)
             swaps = {}  # Python 2.4: use a set
             for swap, mirror in paw.symmetry.symmetries:
                 swaps[swap] = None
@@ -72,7 +73,6 @@ class XAS:
         # and broadened spectrum, e, a
         # linbroad = [0.5, 540, 550]
         # eps_n = self.eps_n[k_in*self.n: (k_in+1)*self.n -1]
-        # now returns complex non-squared transition moments 
         eps_n = self.eps_n[:]
         if kpoint is not None:
             eps_start = kpoint*self.n
@@ -85,7 +85,7 @@ class XAS:
         emax = max(eps_n) + 2 * fwhm
 
         e = emin + num.arange(N + 1) * ((emax - emin) / N)
-        a_c = num.zeros((3, N + 1), num.Complex)
+        a_c = num.zeros((3, N + 1), num.Float)
 
 
         if linbroad is None:
@@ -119,9 +119,6 @@ class XAS:
                 x = num.clip(x, -100.0, 100.0)
                 a_c += num.outerproduct(self.sigma_cn[:, n],
                                         (alpha / pi)**0.5 * num.exp(x))
-        #test
-        #x_tmp= num.arange(0,50,0.001) -25
-        #print "gaussian normalized?", (alpha / pi)**0.5*sum(num.exp(-alpha*x_tmp**2))*(x_tmp[1]-x_tmp[0])
 
         return e, a_c
 
