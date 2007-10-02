@@ -256,6 +256,7 @@ class PAW(PAWExtra, Output):
         self.converged = False
         self.initialized = False
         self.wave_functions_initialized = False
+        self.wave_functions_orthonormalized = False
         self.callback_functions = []
         self.niter = 0
         self.F_ac = None
@@ -398,6 +399,8 @@ class PAW(PAWExtra, Output):
         # Something else has changed:
         if atoms.GetCartesianPositions() / self.a0 != pos_ac:
             # It was the positions:
+            # Wave functions are no longer orthonormal!
+            self.wave_functions_orthonormalized = False
             self.find_ground_state()
         else:
             # It was something that we don't care about - like
@@ -419,6 +422,8 @@ class PAW(PAWExtra, Output):
         self.initialize_kinetic()
         if not self.wave_functions_initialized:
             self.initialize_wave_functions()
+        if not self.wave_functions_orthonormalized:
+            self.orthonormalize_wave_functions()
         self.hamiltonian.update(self.density)
 
         # Self-consistency loop:
@@ -566,7 +571,7 @@ class PAW(PAWExtra, Output):
             eig.nbands_converge = self.nbands
             for kpt in self.kpt_u:
                 kpt.create_random_orbitals(self.nbands)
-                # Calculate projections and orthogonalize wave functions:
+                # Calculate projections and orthonormalize wave functions:
                 run([nucleus.calculate_projections(kpt)
                      for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
@@ -582,7 +587,7 @@ class PAW(PAWExtra, Output):
             eig = Eigensolver(self, nao)
             for kpt in self.kpt_u:
                 kpt.create_atomic_orbitals(nao, self.nuclei)
-                # Calculate projections and orthogonalize wave functions:
+                # Calculate projections and orthonormalize wave functions:
                 run([nucleus.calculate_projections(kpt)
                      for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
@@ -606,6 +611,7 @@ class PAW(PAWExtra, Output):
         self.occupation.calculate(self.kpt_u)
 
         self.wave_functions_initialized = True
+        self.wave_functions_orthonormalized = True
         self.fixdensity = 2 # do the first 3 iterations in fixed density
 
     def initialize_wave_functions(self):
@@ -659,6 +665,14 @@ class PAW(PAWExtra, Output):
             kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei,
                                        self.my_nuclei)
 
+
+    def orthonormalize_wave_functions(self):
+       
+        for kpt in self.kpt_u:
+            run([nucleus.calculate_projections(kpt)
+                for nucleus in self.pt_nuclei])
+            kpt.orthonormalize(self.my_nuclei)
+        self.wave_functions_orthonormalized = True
 
     def calculate_forces(self):
         """Return the atomic forces."""
