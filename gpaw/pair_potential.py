@@ -33,7 +33,7 @@ class PairPotential:
 
         self.neighborlist = None
         
-    def update(self, pos_ac, nuclei, domain):
+    def update(self, pos_ac, nuclei, domain, text):
         if self.neighborlist is None:
             # Make a neighbor list object:
             symbol_a = [nucleus.setup.symbol for nucleus in nuclei]
@@ -42,7 +42,7 @@ class PairPotential:
         else:
             updated = self.neighborlist.update_list(pos_ac)
             if updated:
-                print 'Neighbor list has been updated!' # XXXXX
+                text('Neighbor list has been updated!')
 
         # Reset all pairs:
         for nucleus in nuclei:

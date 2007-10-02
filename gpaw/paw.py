@@ -513,7 +513,8 @@ class PAW(PAWExtra, Output):
             if self.symmetry:
                 self.symmetry.check(pos_ac)
 
-            self.hamiltonian.pairpot.update(pos_ac, self.nuclei, self.domain)
+            self.hamiltonian.pairpot.update(pos_ac, self.nuclei, self.domain,
+                                            self.text)
 
             self.density.move()
 
