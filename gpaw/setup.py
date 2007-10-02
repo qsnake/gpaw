@@ -49,6 +49,7 @@ class Setup:
     """
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
                  type='paw', basis=None):
+        self.xcfunc = xcfunc
         xcname = xcfunc.get_name()
         self.xcname = xcname
         self.softgauss = False
@@ -73,7 +74,7 @@ class Setup:
          self.fcorehole,
          eigcorehole,
          ekincorehole,
-         core_response) = PAWXMLParser().parse(symbol, xcname)
+         core_response) = PAWXMLParser().parse(self.symbol, self.xcfunc)
 
         self.filename = filename
 
@@ -113,7 +114,7 @@ class Setup:
             for m1 in range(2 * l1 + 1):
                     size +=1
         self.B_ii = num.zeros((size,size), num.Float)
-            
+
         i1=0
         for n1, l1 in enumerate(l_j):
             for m1 in range(2 * l1 + 1):
@@ -123,7 +124,7 @@ class Setup:
                         self.B_ii[i1][i2] = delta(l1,l2)*delta(m1,m2)*B_jj[n1][n2]
                         i2 +=1
                 i1 +=1
-        
+
         # Find Fourier-filter cutoff radius:
         g = ng - 1
         while pt_jg[0][g] == 0.0:
@@ -198,7 +199,7 @@ class Setup:
             self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
         else:
             self.read_basis_functions(basis)
-            
+
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()
         phi_jg = num.array([phi_g[:gcut2] for phi_g in phi_jg])
@@ -399,7 +400,7 @@ class Setup:
 
         self.Delta_Lii = num.zeros((ni, ni, Lmax), num.Float)
         for L in range(Lmax):
-            self.Delta_Lii[:,:,L] = unpack(self.Delta_pL[:, L].copy())        
+            self.Delta_Lii[:,:,L] = unpack(self.Delta_pL[:, L].copy())
 
         K_q = []
         for j1 in range(nj):
@@ -511,11 +512,11 @@ class Setup:
     def read_basis_functions(self, basis_name):
         parser = BasisSetXMLParser()
         (l_j, rc, phit_jg, filename) = parser.parse(self.symbol, basis_name)
-        
+
         self.phit_j = []
         for l, phit_g in zip(l_j, phit_jg):
             self.phit_j.append(Spline(l, rc, phit_g))
-                                   
+
     def print_info(self, text):
         if self.phicorehole_g is None:
             text(self.symbol + '-setup:')
@@ -583,7 +584,7 @@ class Setup:
          fcorehole,
          core_hole_e,
          core_hole_e_kin,
-         core_response) = PAWXMLParser().parse(self.symbol, self.xcname)
+         core_response) = PAWXMLParser().parse(self.symbol, self.xcfunc)
 
         # cutoffs
         nj = len(l_j)
@@ -634,14 +635,14 @@ class Setup:
 
     def four_phi_integrals(self):
         """Calculate four-phi integral.
-        
+
         Calculate the integral over the product of four all electron
         functions in the augmentation sphere, i.e.::
 
           /
           | d vr  ( phi_i1 phi_i2 phi_i3 phi_i4
           /         - phit_i1 phit_i2 phit_i3 phit_i4 ),
-        
+
         where phi_i1 is a all electron function and phit_i1 is its
         smooth partner.
         """

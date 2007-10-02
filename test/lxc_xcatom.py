@@ -14,29 +14,29 @@ setups.create()
 tolerance = 0.000005 # libxc must reproduce old gpaw energies
 # zero Kelvin: in Hartree
 reference_886 = { # version 886
-    'lxcX-C_PW': 2.3306776296, # 'LDA'
-    'lxcX_PBE-C_PBE': 2.36833876588, # 'PBE'
-    'lxcX_PBE_R-C_PBE': 2.37142515318 # 'revPBE'
+    'X-C_PW': 2.3306776296, # 'LDA'
+    'X_PBE-C_PBE': 2.36833876588, # 'PBE'
+    'X_PBE_R-C_PBE': 2.37142515318 # 'revPBE'
     }
 
-tolerance_libxc = 0.000001 # libxc must reproduce old libxc energies
+tolerance_libxc = 0.000001 # libxc must reproduce reference libxc energies
 reference_libxc_886 = { # version 886
-    'lxcX-None': 2.04220165015,
-    'lxcX-C_PW': 2.3306776296,
-    'lxcX-C_VWN': 2.33175973998,
-    'lxcX-C_PZ': 2.33011279593,
-    'lxcX_PBE-C_PBE': 2.36833735076,
-    'lxcX_PBE_R-C_PBE': 2.37142425035,
-    'lxcX_B88-C_P86': 2.38801013406,
-    'lxcX_B88-C_LYP': 2.3719969122,
-    'lxcX_FT97_A-C_LYP': 2.34666425237
+    'X-None': 2.04220165015,
+    'X-C_PW': 2.3306776296,
+    'X-C_VWN': 2.33175973998,
+    'X-C_PZ': 2.33011279593,
+    'X_PBE-C_PBE': 2.36833735076,
+    'X_PBE_R-C_PBE': 2.37142425035,
+    'X_B88-C_P86': 2.38801013406,
+    'X_B88-C_LYP': 2.3719969122,
+    'X_FT97_A-C_LYP': 2.34666425237
     }
 
 libxc_set = [
-    'lxcX-None', 'lxcX-C_PW', 'lxcX-C_VWN', 'lxcX-C_PZ',
-    'lxcX_PBE-C_PBE', 'lxcX_PBE_R-C_PBE',
-    'lxcX_B88-C_P86', 'lxcX_B88-C_LYP',
-    'lxcX_FT97_A-C_LYP'
+    'X-None', 'X-C_PW', 'X-C_VWN', 'X-C_PZ',
+    'X_PBE-C_PBE', 'X_PBE_R-C_PBE',
+    'X_B88-C_P86', 'X_B88-C_LYP',
+    'X_FT97_A-C_LYP'
     ]
 
 x = 0.000001
@@ -66,7 +66,7 @@ for xc in libxc_set:
     if reference_886.has_key(xc): # compare with old gpaw
         equal(E2, reference_886[xc], tolerance)
 
-    if reference_libxc_886.has_key(xc): # compare with old libxc
+    if reference_libxc_886.has_key(xc): # compare with reference libxc
         equal(E2, reference_libxc_886[xc], tolerance)
 
     D_sp = 0.1 * ra.random((2, np)) + 0.2

@@ -51,5 +51,6 @@ if 0:
     p.show()
 
 os.remove('h2o-xas.gpw')
-os.remove('O.hch1s.LDA')
+# remove O.hch1s.* setup
+os.remove(calc.setups[0].filename)
 del setup_paths[0]

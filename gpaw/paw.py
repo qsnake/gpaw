@@ -558,7 +558,7 @@ class PAW(PAWExtra, Output):
             if xcfunc.xcname == 'EXX':
                 localxcfunc = XCFunctional('LDAx', self.nspins)
             else:
-                assert xcfunc.xcname == 'PBE0'
+                assert xcfunc.xcname == XCFunctional('PBE0').get_name()
                 localxcfunc = XCFunctional('PBE', self.nspins)
             self.hamiltonian.xc.set_functional(localxcfunc)
             for setup in self.setups:

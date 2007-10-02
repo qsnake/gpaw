@@ -51,7 +51,7 @@ class Libxc:
     def get_lxc_identifier_from_py_file(self, identifier, file):
         """Extract the value of #define from the libxc_functionals.py file."""
         assert file is not None
-        from gpaw.libxc_functionals import libxc_functionals # MDTMP hard setting!
+        from gpaw.libxc_functionals import libxc_functionals # MDTMP hard fix!
         value = -1 # assume no corresponding define found
         for key in libxc_functionals.keys():
             # compare with the identifier after second underline

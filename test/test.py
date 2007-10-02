@@ -41,8 +41,11 @@ opt, tests = parser.parse_args()
 
 if len(tests) == 0:
     tests = ['cg2.py',
-             'setups.py', 'pbe-pw91.py', 'xcfunc.py', 'gradient.py',
-             'xc.py', 'gp2.py', 'Gauss.py', 'non-periodic.py', 'lf.py',
+             'setups.py',
+             # 'pbe-pw91.py', # libxc needs xc.exchange, xc.correlation
+             'xcfunc.py', 'gradient.py',
+             # 'xc.py', # libxc needs xc.exchange, xc.correlation
+             'gp2.py', 'Gauss.py', 'non-periodic.py', 'lf.py',
              'denom_int.py', 'transformations.py', 'XC2.py', 'poisson.py',
              'XC2Spin.py', 'integral4.py', 'd2Excdn2.py',
              'multipoletest.py', 'proton.py', 'restart.py', 'timing.py',
@@ -54,7 +57,8 @@ if len(tests) == 0:
              'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py',
              'davidson.py', 'wannier-ethylene.py',
              'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py', 'lrtddft.py',
-             'fixmom.py', 'wannier-hwire.py', 'exx.py', 'revPBE_Li.py',
+             'fixmom.py', 'wannier-hwire.py', 'exx.py',
+             'exx_PBE0.py', 'revPBE_Li.py',
              'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
              'ae-calculation.py', 'H2Al110.py']

@@ -51,4 +51,6 @@ if 0:
     legend()
     show()
 
-os.system('rm h2o.pckl h2o.gpw O.hch1s.LDA')
+os.system('rm h2o.pckl h2o.gpw')
+# remove O.hch1s.* setup
+os.remove(calc.setups[0].filename)

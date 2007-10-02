@@ -48,10 +48,43 @@ class XCFunctional:
         self.orbital_dependent = False
         self.uses_libxc = False
 
-        if xcname.startswith('lxc'):
+        # Special cases of functionals from libxc
+        if xcname == 'XC_LB':
             assert (nspins is not None)
             code = 'lxc' # libxc
             self.uses_libxc = True
+        elif xcname.startswith('XC'): # MDTMP - case to be removed one day
+            code = 3
+            self.gga = True
+            self.maxDerivativeLevel=1
+        elif '-' in xcname: # functionals from libxc
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+        # Abbreviations for common functionals from libxc
+        elif xcname == 'LDA':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X-C_PW'
+        elif xcname == 'PBE':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_PBE-C_PBE'
+        elif xcname == 'revPBE':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_PBE_R-C_PBE'
+        elif xcname == 'PBE0':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_PBE-C_PBE'
+            self.orbital_dependent = True
+            self.hybrid = 0.25
+        # End of: Abbreviations for common functionals from libxc
         elif xcname == 'LDA':
             self.maxDerivativeLevel=2
             code = 117 # not used!
@@ -79,8 +112,6 @@ class XCFunctional:
                 code = 1
             elif xcname == 'RPBE':
                 code = 2
-            elif xcname.startswith('XC'):
-                code = 3
             elif xcname == 'PBE0':
                 self.orbital_dependent = True
                 self.hybrid = 0.25
@@ -118,11 +149,11 @@ class XCFunctional:
         elif code == 16:
             self.xc = GLLBFunctional()
         elif code == 'lxc':
+            self.xcname = xcname # MDTMP: to get the lxc setup
+            # find numeric identifiers of libxc functional based on xcname
             lxc_functional = Libxc.get_lxc_functional(
                 Libxc(), Libxc.lxc_split_xcname(
-                Libxc(), xcname[3:]))
-##             print 'lxc_functional ', Libxc.lxc_split_xcname(
-##                 Libxc(), xcname[3:]), lxc_functional
+                Libxc(), xcname))
             self.xc = _gpaw.lxcXCFunctional(
                 lxc_functional[0], # exchange-correlation
                 lxc_functional[1], # exchange
@@ -132,7 +163,8 @@ class XCFunctional:
                 )
             self.mgga = bool(self.xc.is_mgga())
             self.gga = bool(self.xc.is_gga())
-            #self.maxDerivativeLevel = self.xc.get_max_derivative_level() # MDTMP - cannot get this info before init
+            if self.gga:
+                self.maxDerivativeLevel=1
         else:
             self.xc = _gpaw.XCFunctional(code, self.gga)
 

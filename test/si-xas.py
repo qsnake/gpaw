@@ -53,4 +53,6 @@ if 0:
     p.plot(x, r.get_spectra(x)[0])
     p.show()
 
-os.system('rm si.gpw Si.hch1s.LDA')
+os.system('rm si.gpw')
+# remove Si.hch1s.* setup
+os.remove(calc.setups[0].filename)

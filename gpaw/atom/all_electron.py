@@ -166,7 +166,8 @@ class AllElectron:
         self.n = num.zeros(N, num.Float)
 
         # Always spinpaired nspins=1
-        self.xc = XCRadialGrid(XCFunctional(self.xcname, 1), self.rgd)
+        self.xcfunc = XCFunctional(self.xcname, 1)
+        self.xc = XCRadialGrid(self.xcfunc, self.rgd)
 
         n_j = self.n_j
         l_j = self.l_j

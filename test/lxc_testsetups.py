@@ -29,20 +29,21 @@ def generate():
     files = []
     for symbol in ['Be']: # needed by lxc_exx.py
         for functional in [
-            'lxcX-C_PW'
+            'X-C_PW'
             ]:
             files.append(gen(symbol, functional))
     for symbol in ['Li']: # needed by lxc_spinpol_Li.py
         for functional in [
-            'lxcX-C_PW', 'lxcX_PBE-C_PBE', 'lxcX_PBE_R-C_PBE',
+            'X-C_PW', 'X_PBE-C_PBE', 'X_PBE_R-C_PBE',
+            'RPBE', 'PW91'
             ]:
             files.append(gen(symbol, functional))
     for symbol in ['N']: # needed by lxc_xcatom.py
         for functional in [
-            'lxcX-None', 'lxcX-C_PW', 'lxcX-C_VWN', 'lxcX-C_PZ',
-            'lxcX_PBE-C_PBE', 'lxcX_PBE_R-C_PBE',
-            'lxcX_B88-C_P86', 'lxcX_B88-C_LYP',
-            'lxcX_FT97_A-C_LYP'
+            'X-None', 'X-C_PW', 'X-C_VWN', 'X-C_PZ',
+            'X_PBE-C_PBE', 'X_PBE_R-C_PBE',
+            'X_B88-C_P86', 'X_B88-C_LYP',
+            'X_FT97_A-C_LYP'
             ]:
             files.append(gen(symbol, functional))
     return files
@@ -57,5 +58,5 @@ def gen(symbol, xcname):
         g.run(exx=True, **parameters[symbol])
         # list generated setups only - tests can handle setups on their own:
         # gen returns None if setup is read - see self.clean
-        value = '%s.%s' % (symbol, xcname)
+        value = '%s.%s' % (symbol, XCFunctional(xcname).get_name())
     return value

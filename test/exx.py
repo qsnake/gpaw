@@ -23,5 +23,6 @@ if formula in molecules:
 else:
     atom = SingleAtom(formula, **kwargs)
     E = atom.energy()
+
 print E
 equal(E, -787.5476, 1e-4)

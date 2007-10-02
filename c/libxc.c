@@ -177,7 +177,7 @@ lxcXCFunctional_CalculateSpinPaired(lxcXCFunctionalObject *self, PyObject *args)
 
   assert(nspin == XC_UNPOLARIZED); /* we are spinpaired */
 
-  assert (self->hybrid == 0.0); /* MDTMP - not implemented yet */
+  /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
 
   int ng = e_array->dimensions[0]; /* number of grid points */
 
@@ -312,7 +312,7 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
 
   assert(nspin == XC_POLARIZED); /* we are spinpolarized */
 
-  assert (self->hybrid == 0.0); /* MDTMP - not implemented yet */
+  /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
 
   int ng = e->dimensions[0];  /* number of grid points */
 
@@ -647,7 +647,7 @@ PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
   assert(nspin==XC_UNPOLARIZED || nspin==XC_POLARIZED);
   self->nspin = nspin; /* must be common to x and c, so declared redundantly */
 
-  assert(hybrid==0.0);  /* MDTMP - not implemented yet */
+  /* assert(hybrid==0.0) */;  /* MDTMP - not implemented yet */
   self->hybrid = hybrid;
 
   /* initialize xc functional */

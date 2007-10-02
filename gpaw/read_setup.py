@@ -9,6 +9,7 @@ from cStringIO import StringIO
 
 import Numeric as num
 
+from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
 
 try:
@@ -39,14 +40,16 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.core_hole_e_kin = None
         self.core_response = []
 
-    def parse(self, symbol, xcname):
+    def parse(self, symbol, xcfunc):
         exx = False
-        if xcname == 'EXX': # XXX EXX hack
-            exx = True
-            xcname = 'LDA'
-        elif xcname == 'PBE0': # XXX EXX hack
-            exx = True
-            xcname = 'PBE'
+        xcname = xcfunc.get_name()
+        if xcfunc.hybrid > 0:
+            if xcname == 'EXX': # XXX EXX hack
+                exx = True
+                xcname = XCFunctional('LDA').get_name()
+            elif xcname == XCFunctional('PBE').get_name(): # XXX EXX hack
+                exx = True
+
         name = symbol + '.' + xcname
 
         source = None

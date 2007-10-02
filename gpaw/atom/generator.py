@@ -60,7 +60,7 @@ parameters = {
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
  'Ag': {'core': '[Kr]',   'rcut': 2.5},
  'Cd': {'core': '[Kr]',   'rcut': 2.5},
- 'Ba': {'core': '[Xe]',   'rcut': 4.0},
+ 'Ba': {'core': '[Xe]',   'rcut': 4.2},
 # 'Ta': {'core': '[Xe]',   'rcut': 2.5},
 # 'W':  {'core': '[Xe]',   'rcut': 2.5},
 # 'Ir': {'core': '[Xe]4f', 'rcut': [2.5, 2.5, 2.3]},
@@ -772,10 +772,11 @@ class Generator(AllElectron):
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar,
                   tauc, tauct, extra_xc_data):
+        xcname = self.xcfunc.get_name()
         if self.name is None:
-            xml = open('%s.%s' % (self.symbol, self.xcname), 'w')
+            xml = open('%s.%s' % (self.symbol, xcname), 'w')
         else:
-            xml = open('%s.%s.%s' % (self.symbol, self.name, self.xcname), 'w')
+            xml = open('%s.%s.%s' % (self.symbol, self.name, xcname), 'w')
 
         if self.ghost:
             raise RuntimeError('Ghost!')
@@ -915,12 +916,13 @@ class Generator(AllElectron):
 
 if __name__ == '__main__':
     import os
+    from gpaw.xc_functional import XCFunctional
     for symbol in 'Pt Au'.split():
         g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
         g.run(exx=True, **parameters[symbol])
     for xcname in ['LDA', 'PBE']:
         for symbol, par in parameters.items():
-            filename = symbol + '.' + xcname
+            filename = symbol + '.' + XCFunctional(xcname).get_name()
             if os.path.isfile(filename):
                 continue
             g = Generator(symbol, xcname, scalarrel=True, nofiles=False)

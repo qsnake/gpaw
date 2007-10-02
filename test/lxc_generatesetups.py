@@ -1,4 +1,5 @@
 from gpaw.atom.generator import Generator, parameters
+from gpaw.xc_functional import XCFunctional
 
 """Test generation of setups
 
@@ -11,14 +12,14 @@ files = []
 def gen(symbol, xcname):
     g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
     g.run(exx=True, **parameters[symbol])
-    files.append('%s.%s' % (symbol, xcname))
+    files.append('%s.%s' % (symbol, XCFunctional(xcname).get_name()))
 
 for symbol in ['H', 'He', 'C', 'N', 'O', 'Cl', 'Al', 'Si', 'Na', 'Fe', 'Cu']:
-    gen(symbol, 'lxcX-C_PW')
+    gen(symbol, 'X-C_PW')
 for symbol in ['H', 'He', 'Li', 'N']:
-    gen(symbol, 'lxcX_PBE-C_PBE')
+    gen(symbol, 'X_PBE-C_PBE')
 for symbol in ['He', 'Li']:
-    gen(symbol, 'lxcX_PBE_R-C_PBE')
+    gen(symbol, 'X_PBE_R-C_PBE')
 ##for symbol in ['Mg']:
 ##    gen(symbol, 'GLLB')
 

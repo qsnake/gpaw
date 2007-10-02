@@ -40,4 +40,4 @@ for soft in [False]:
     S_LL = inner(b_Lg, b_Lg)
     S_LL.flat[::10] = 0.0
     print max(abs(S_LL).flat)
-    assert num.alltrue(abs(S_LL) < 1e-4)
+    assert max(abs(S_LL).flat) < 3e-4
