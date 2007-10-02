@@ -145,7 +145,10 @@ class FermiDirac(Dummy):
         # Sort them:
         eps_n = num.sort(eps_n)
         n = int(self.ne * nu)
-        self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
+        if n // 2 == len(eps_n):
+            self.epsF = 1000.0
+        else:
+            self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
         if self.fixmom:
             self.epsF = num.array([self.epsF, self.epsF])
 
