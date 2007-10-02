@@ -70,9 +70,9 @@ parameters = {
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None,
                  configuration=None,
-                 nofiles=True):
+                 nofiles=True, txt='-'):
         AllElectron.__init__(self, symbol, xcname, scalarrel, corehole,
-                             configuration, nofiles)
+                             configuration, nofiles, txt)
 
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=False, vbar=None, exx=False, name=None,
@@ -163,10 +163,11 @@ class Generator(AllElectron):
 
         dv = r**2 * dr
 
-        print
-        print 'Generating PAW setup'
+        t = self.text
+        t()
+        t('Generating PAW setup')
         if core != '':
-            print 'Frozen core:', core
+            t('Frozen core:', core)
 
         # So far - no ghost-states:
         self.ghost = False
@@ -205,8 +206,8 @@ class Generator(AllElectron):
             tauc = self.radial_kinetic_energy_density(f_j[:njcore],
                                                       l_j[:njcore],
                                                       self.u_j[:njcore])
-            print "Kinetic energy of the core from tauc=",num.dot(tauc *r*r,
-                                                                  dr) * 4*pi
+            t('Kinetic energy of the core from tauc =',
+              num.dot(tauc * r * r, dr) * 4 * pi)
 
         lmax = max(l_j[njcore:])
 
@@ -270,13 +271,13 @@ class Generator(AllElectron):
 
         rcut_l.extend([rcutmin] * (lmax + 1 - len(rcut_l)))
 
-        print 'Cutoffs:',
+        t('Cutoffs:')
         for rc, s in zip(rcut_l, 'spdf'):
-            print 'rc(%s)=%.3f' % (s, rc)
-        print 'rc(vbar)=%.3f' % rcutvbar
-        print 'rc(comp)=%.3f' % rcutcomp
-        print
-        print 'Kinetic energy of the core states: %.6f' % Ekincore
+            t('rc(%s)=%.3f' % (s, rc))
+        t('rc(vbar)=%.3f' % rcutvbar)
+        t('rc(comp)=%.3f' % rcutcomp)
+        t()
+        t('Kinetic energy of the core states: %.6f' % Ekincore)
 
         # Allocate arrays:
         self.u_ln = u_ln = []  # phi * r
@@ -318,9 +319,9 @@ class Generator(AllElectron):
                     u *= 1.0 / u[gcut_l[l]]
 
         charge = Z - self.Nv - self.Nc
-        print 'Charge: %.1f' % charge
-        print 'Core electrons: %.1f' % self.Nc
-        print 'Valence electrons: %.1f' % self.Nv
+        t('Charge: %.1f' % charge)
+        t('Core electrons: %.1f' % self.Nc)
+        t('Valence electrons: %.1f' % self.Nv)
 
         # Construct smooth wave functions:
         coefs = []
@@ -400,7 +401,7 @@ class Generator(AllElectron):
         a = solve_linear_equations(num.transpose(A), a)
         r2 = r[:gcutnc]**2
         nct[:gcutnc] = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * a[3]))
-        print 'Pseudo-core charge: %.6f' % (4 * pi * num.dot(nct, dv))
+        t('Pseudo-core charge: %.6f' % (4 * pi * num.dot(nct, dv)))
 
         # ... and the pseudo core kinetic energy density:
         tauct = tauc.copy()
@@ -431,7 +432,7 @@ class Generator(AllElectron):
         # Calculate smooth charge density:
         Nt = num.dot(nt, dv)
         rhot = nt - (Nt + charge / 4 / pi) * gt
-        print 'Pseudo-electron charge', 4 * pi * Nt
+        t('Pseudo-electron charge', 4 * pi * Nt)
 
         vHt = num.zeros(N, num.Float)
         hartree(0, rhot * r * dr, self.beta, self.N, vHt)
@@ -544,25 +545,25 @@ class Generator(AllElectron):
 
         self.vt = vt
 
-        print 'state    eigenvalue         norm'
-        print '--------------------------------'
+        t('state    eigenvalue         norm')
+        t('--------------------------------')
         for l, (n_n, f_n, e_n) in enumerate(zip(n_ln, f_ln, e_ln)):
             for n in range(len(e_n)):
                 if n_n[n] > 0:
                     f = '(%d)' % f_n[n]
-                    print '%d%s%-4s: %12.6f %12.6f' % (
+                    t('%d%s%-4s: %12.6f %12.6f' % (
                         n_n[n], 'spdf'[l], f, e_n[n],
-                        num.dot(s_ln[l][n]**2, dr))
+                        num.dot(s_ln[l][n]**2, dr)))
                 else:
-                    print '*%s    : %12.6f' % ('spdf'[l], e_n[n])
-        print '--------------------------------'
+                    t('*%s    : %12.6f' % ('spdf'[l], e_n[n]))
+        t('--------------------------------')
 
         if logderiv:
             # Calculate logarithmic derivatives:
             gld = gcutmax + 10
             assert gld < gmax
-            print 'Calculating logarithmic derivatives at r=%.3f' % r[gld]
-            print '(skip with [Ctrl-C])'
+            t('Calculating logarithmic derivatives at r=%.3f' % r[gld])
+            t('(skip with [Ctrl-C])')
 
             try:
                 u = num.zeros(N, num.Float)
@@ -683,8 +684,9 @@ class Generator(AllElectron):
 
     def diagonalize(self, h):
         ng = 350
-        print
-        print 'Diagonalizing with gridspacing h=%.3f' % h
+        t = self.text
+        t()
+        t('Diagonalizing with gridspacing h=%.3f' % h)
         R = h * num.arange(1, ng + 1)
         G = (self.N * R / (self.beta + R) + 0.5).astype(num.Int)
         G = num.clip(G, 1, self.N - 2)
@@ -700,9 +702,9 @@ class Generator(AllElectron):
             f3 = num.take(f, G + 1)
             return f1 * x1 + f2 * x2 + f3 * x3
         vt = interpolate(self.vt)
-        print
-        print 'state   all-electron     PAW'
-        print '-------------------------------'
+        t()
+        t('state   all-electron     PAW')
+        t('-------------------------------')
         for l in range(3):
             if l <= self.lmax:
                 q_n = num.array([interpolate(q) for q in self.q_ln[l]])
@@ -724,21 +726,21 @@ class Generator(AllElectron):
             ePAW = e_n[0]
             if l <= self.lmax and self.n_ln[l][0] > 0:
                 eAE = self.e_ln[l][0]
-                print '%d%s:   %12.6f %12.6f' % (self.n_ln[l][0],
-                                                 'spdf'[l], eAE, ePAW),
+                t('%d%s:   %12.6f %12.6f' % (self.n_ln[l][0],
+                                             'spdf'[l], eAE, ePAW), end='')
                 if abs(eAE - ePAW) > 0.014:
-                    print '  GHOST-STATE!'
+                    t('  GHOST-STATE!')
                     self.ghost = True
                 else:
-                    print
+                    t()
             else:
-                print '*%s:                %12.6f' % ('spdf'[l], ePAW),
+                t('*%s:                %12.6f' % ('spdf'[l], ePAW), end='')
                 if ePAW < self.emax:
-                    print '  GHOST-STATE!'
+                    t('  GHOST-STATE!')
                     self.ghost = True
                 else:
-                    print
-        print '-------------------------------'
+                    t()
+        t('-------------------------------')
 
     def integrate(self, l, vt, e, gld, q=None):
         r = self.r[1:]

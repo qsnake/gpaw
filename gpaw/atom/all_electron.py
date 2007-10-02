@@ -16,7 +16,7 @@ from ASE.ChemicalElements.name import names
 from gpaw.atom.configurations import configurations
 from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.xc_functional import XCRadialGrid, XCFunctional
-from gpaw.utilities import hartree
+from gpaw.utilities import hartree, devnull
 from gpaw.exx import atomic_exact_exchange
 
 # fine-structure constant
@@ -26,14 +26,23 @@ class AllElectron:
     """Object for doing an atomic DFT calculation."""
 
     def __init__(self, symbol, xcname='LDA', scalarrel=False,
-                 corehole=None, configuration=None, nofiles=True):
+                 corehole=None, configuration=None, nofiles=True,
+                 txt='-'):
         """Do an atomic DFT calculation.
 
-        Example:
+        Example::
 
-        a = AllElectron('Fe')
-        a.run()
+          a = AllElectron('Fe')
+          a.run()
         """
+        
+        if txt is None:
+            txt = devnull
+        elif txt == '-':
+            txt = sys.stdout
+        elif isinstance(txt, str):
+            txt = open(txt, 'w')
+        self.txt = txt
 
         self.symbol = symbol
         self.xcname = xcname
@@ -72,13 +81,14 @@ class AllElectron:
                           'Kr': 8,
                           'Xe': 11}[conf]
 
-        print
+        t = self.text
+        t()
         if scalarrel:
-            print 'Scalar-relativistic atomic',
+            t('Scalar-relativistic atomic', end='')
         else:
-            print 'Atomic',
-        print '%s calculation for %s (%s, Z=%d)' % (
-            xcname, symbol, names[self.Z], self.Z)
+            t('Atomic', end='')
+        t('%s calculation for %s (%s, Z=%d)' % (xcname, symbol,
+                                                names[self.Z], self.Z))
 
         if corehole is not None:
             self.ncorehole, self.lcorehole, self.fcorehole = corehole
@@ -92,11 +102,16 @@ class AllElectron:
                     break
 
             coreholestate='%d%s' % (self.ncorehole, 'spd'[self.lcorehole])
-            print 'Core hole in %s state (%s occupation: %.1f)' % (
-                coreholestate, coreholestate, self.f_j[self.jcorehole])
+            t('Core hole in %s state (%s occupation: %.1f)' % (
+                coreholestate, coreholestate, self.f_j[self.jcorehole]))
         else:
             self.jcorehole = None
             self.fcorehole = 0
+
+    def text(self, *args, **kwargs):
+        self.txt.write(kwargs.get('sep', ' ').join([str(arg)
+                                                    for arg in args]) +
+                       kwargs.get('end', '\n'))
 
     def intialize_wave_functions(self):
         r = self.r
@@ -125,9 +140,10 @@ class AllElectron:
         # g = --------
         #     beta + r
 
+        t = self.text
         maxnodes = max([n - l - 1 for n, l in zip(self.n_j, self.l_j)])
         N = (maxnodes + 1) * 150
-        print N, 'radial gridpoints.'
+        t(N, 'radial gridpoints.')
         beta = 0.4
         g = num.arange(N, typecode=num.Float)
         self.r = beta * g / (N - g)
@@ -173,7 +189,7 @@ class AllElectron:
             n[:] = self.calculate_density()
         else:
             if not self.xc.is_non_local():
-                print 'Using old density for initial guess.'
+                t('Using old density for initial guess.')
                 n[:] = pickle.load(f)
                 n *= Z / (num.dot(n * r**2, dr) * 4 * pi)
             else:
@@ -185,7 +201,7 @@ class AllElectron:
                 n[:] = self.calculate_density()
 
         bar = '|------------------------------------------------|'
-        print bar
+        t(bar)
         niter = 0
         qOK = log(1e-10)
         while True:
@@ -228,14 +244,14 @@ class AllElectron:
             else:
                 b = int((q0 - q) / (q0 - qOK) * 50)
                 if b > b0:
-                    sys.stdout.write(bar[b0:min(b, 50)])
-                    sys.stdout.flush()
+                    self.txt.write(bar[b0:min(b, 50)])
+                    self.txt.flush()
                     b0 = b
 
             # check if converged and break loop if so
             if q < qOK:
-                sys.stdout.write(bar[b0:])
-                sys.stdout.flush()
+                self.txt.write(bar[b0:])
+                self.txt.flush()
                 break
 
             niter += 1
@@ -255,8 +271,8 @@ class AllElectron:
         if self.xc.is_non_local():
             Exc = atomic_exact_exchange(self)
 
-        print
-        print 'Converged in %d iteration%s.' % (niter, 's'[:niter != 1])
+        t()
+        t('Converged in %d iteration%s.' % (niter, 's'[:niter != 1]))
 
         if not self.nofiles:
             pickle.dump(n, open(self.symbol + '.restart', 'w'))
@@ -267,19 +283,19 @@ class AllElectron:
             Ekin += f * e
 
 
-        print
-        print 'Energy contributions:'
-        print '-------------------------'
-        print 'Kinetic:   %+13.6f' % Ekin
-        print 'XC:        %+13.6f' % Exc
-        print 'Potential: %+13.6f' % Epot
-        print '-------------------------'
-        print 'Total:     %+13.6f' % (Ekin + Exc + Epot)
+        t()
+        t('Energy contributions:')
+        t('-------------------------')
+        t('Kinetic:   %+13.6f' % Ekin)
+        t('XC:        %+13.6f' % Exc)
+        t('Potential: %+13.6f' % Epot)
+        t('-------------------------')
+        t('Total:     %+13.6f' % (Ekin + Exc + Epot))
         self.ETotal = Ekin + Exc + Epot
-        print
+        t()
 
-        print 'state      eigenvalue         ekin         rmax'
-        print '-----------------------------------------------'
+        t('state      eigenvalue         ekin         rmax')
+        t('-----------------------------------------------')
         for m, l, f, e, u in zip(n_j, l_j, f_j, e_j, self.u_j):
             # Find kinetic energy:
             k = e - num.sum((num.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
@@ -296,10 +312,10 @@ class AllElectron:
             assert a < 0.0
             rmax = -0.5 * b / a
 
-            t = 'spdf'[l]
-            print '%d%s^%-4.1f: %12.6f %12.6f %12.3f' % (m, t, f, e, k, rmax)
-        print '-----------------------------------------------'
-        print '(units: Bohr and Hartree)'
+            s = 'spdf'[l]
+            t('%d%s^%-4.1f: %12.6f %12.6f %12.3f' % (m, s, f, e, k, rmax))
+        t('-----------------------------------------------')
+        t('(units: Bohr and Hartree)')
 
         for m, l, u in zip(n_j, l_j, self.u_j):
             self.write(u, 'ae', n=m, l=l)
