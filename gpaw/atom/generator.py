@@ -40,7 +40,8 @@ parameters = {
  'K' : {'core': '[Ar]',   'rcut': 3.3},
  'Ca': {'core': '[Ar]',   'rcut': 2.9},
  'Ti': {'core': '[Ar]',   'rcut': [2.5, 2.6, 2.3]},
- 'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.2]},
+ 'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.2],
+        'vbar': ('poly', 2.2), 'rcutcomp': 2.5},
  'Cr': {'core': '[Ar]',   'rcut': [2.4, 2.4, 2.2]},
  'Fe': {'core': '[Ar]',   'rcut': 2.3},
  'Ni': {'core': '[Ar]',   'rcut': 2.3},
@@ -390,7 +391,7 @@ class Generator(AllElectron):
                     nodeless = False
 
         # Calculate pseudo core density:
-        gcutnc = 1 + int(rcutmin * N / (rcutmin + beta))
+        gcutnc = 1 + int(rcutmax * N / (rcutmax + beta))
         nct = nc.copy()
         A = num.ones((4, 4), num.Float)
         A[0] = 1.0
@@ -424,7 +425,7 @@ class Generator(AllElectron):
         gaussian[:gmax] = num.exp(-gamma * x[:gmax]**2)
         gt = 4 * (gamma / rcutcomp**2)**1.5 / sqrt(pi) * gaussian
         norm = num.dot(gt, dv)
-##        print norm, norm-1
+        #print norm, norm-1
         assert abs(norm - 1) < 1e-2
         gt /= norm
 
@@ -443,7 +444,8 @@ class Generator(AllElectron):
         if not self.xc.is_non_local():
             Exct = self.xc.get_energy_and_potential(nt, vXCt)
         else:
-            Exct = self.xc.get_non_local_energy_and_potential(self.u_j, self.f_j, self.e_j, self.l_j, vXCt)
+            Exct = self.xc.get_non_local_energy_and_potential(
+                self.u_j, self.f_j, self.e_j, self.l_j, vXCt)
         vt = vHt + vXCt
 
         # Construct zero potential:
@@ -788,8 +790,8 @@ class Generator(AllElectron):
         print >> xml, '  <!--', comment1, '-->'
         print >> xml, '  <!--', comment2, '-->'
 
-        print >> xml, '  <atom symbol="%s" Z="%d" core="%.1f" valence="%d"/>' % \
-              (self.symbol, self.Z, self.Nc, self.Nv)
+        print >> xml, ('  <atom symbol="%s" Z="%d" core="%.1f" valence="%d"/>'
+                       % (self.symbol, self.Z, self.Nc, self.Nv))
         if self.xcname == 'LDA':
             type = 'LDA'
             name = 'PW'
@@ -842,10 +844,11 @@ class Generator(AllElectron):
 
         if self.jcorehole != None:
             print "self.jcorehole", self.jcorehole
-            print >> xml,\
-                  '  <core_hole_state state="%d%s" removed="%.1f" eig="%.8f" ekin="%.8f">' % \
-                  (self.ncorehole, 'spd'[self.lcorehole], self.fcorehole,
-                   self.e_j[self.jcorehole],self.Ekincorehole)
+            print >> xml, (('  <core_hole_state state="%d%s" ' +
+                           'removed="%.1f" eig="%.8f" ekin="%.8f">') %
+                           (self.ncorehole, 'spd'[self.lcorehole],
+                            self.fcorehole,
+                            self.e_j[self.jcorehole],self.Ekincorehole))
             #print 'normalized?', num.dot(self.dr, self.u_j[self.jcorehole]**2)
             p = self.u_j[self.jcorehole].copy()
             p[1:] /= r[1:]
