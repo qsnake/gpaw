@@ -53,4 +53,4 @@ if 0:
 
 os.system('rm h2o.pckl h2o.gpw')
 # remove O.hch1s.* setup
-os.remove(calc.setups[0].filename)
+os.remove(calc.nuclei[0].setup.filename)

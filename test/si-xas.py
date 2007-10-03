@@ -55,4 +55,4 @@ if 0:
 
 os.system('rm si.gpw')
 # remove Si.hch1s.* setup
-os.remove(calc.setups[0].filename)
+os.remove(calc.nuclei[0].setup.filename)

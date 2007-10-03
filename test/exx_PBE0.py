@@ -38,12 +38,12 @@ if formula in molecules:
     mol = Molecule(formula, **kwargs)
     E = mol.energy()
     bands = mol.atoms.GetCalculator().GetEigenvalues()
-    setupfile = mol.atoms.GetCalculator().setups[0].filename
+    setupfile = mol.atoms.GetCalculator().nuclei[0].setup.filename
 else:
     atom = SingleAtom(formula, **kwargs)
     E = atom.energy()
     bands = atom.atom.GetCalculator().GetEigenvalues()
-    setupfile = atom.atom.GetCalculator().setups[0].filename
+    setupfile = atom.atom.GetCalculator().nuclei[0].setup.filename
 
 # Remove setup
 os.remove(setupfile)

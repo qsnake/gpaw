@@ -52,5 +52,5 @@ if 0:
 
 os.remove('h2o-xas.gpw')
 # remove O.hch1s.* setup
-os.remove(calc.setups[0].filename)
+os.remove(calc.nuclei[0].setup.filename)
 del setup_paths[0]
