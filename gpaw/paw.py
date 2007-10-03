@@ -1038,7 +1038,10 @@ class PAW(PAWExtra, Output):
         self.fixmom = p['fixmom']
         if p['hund']:
             self.fixmom = True
-            assert self.spinpol and self.natoms == 1
+            assert self.natoms == 1
+            if not self.spinpol:
+                p['hund'] = False
+                self.fixmom = False
 
         if self.fixmom:
             assert self.spinpol
