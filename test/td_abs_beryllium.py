@@ -10,35 +10,37 @@ import os
 import gpaw.io.array as ioarray
 
 if 1:
-    a = 7.0
+    a = 9.0
     atoms = ListOfAtoms([Atom('Be',(a/2, a/2, a/2), magmom=0)],
                         periodic=False,
                         cell=(a, a, a))
-    calc = Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-16},
-                      setups='paw')
+    calc = Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-14}, setups='paw')
     atoms.SetCalculator(calc)
     e = atoms.GetPotentialEnergy()
     calc.write('Be.gpw', 'all')
 else:
     calc = Calculator('Be.gpw')
-    
+
 paw = calc
-td_atoms = TDDFT(paw, propagator='SICN', tolerance=1e-8)
-td_atoms.absorption_kick(strength=1.0e-4)
-calc.density.charge_eps = 1e-3
-
-print 'eps = ', paw.kpt_u[0].eps_n[0]
-eps = paw.kpt_u[0].eps_n[0]
-time_step = 0.05
-
 rhot0 = calc.density.rhot_g.copy()
 dm0 = calc.finegd.calculate_dipole_moment(rhot0)
 norm0 = calc.finegd.integrate(rhot0)
 
+td_atoms = TDDFT(paw, propagator='SICN', tolerance=1e-8)
+td_atoms.absorption_kick(strength=1.0e-4)
+calc.density.charge_eps = 1e-6
+
+time_step = 0.05
+
+print ('%16.6le  %16.6le %16.6le %16.6le' %
+       (norm0, dm0[0], dm0[1], dm0[2]))
+
 print '%8s  %16s  %16s' \
         % ('time  ', 'Error of norm', 'Dipole moment')
-for i in range(200):
+
+for i in range(10000):
     time = i*time_step
+
     rhot = calc.density.rhot_g
     dm = calc.finegd.calculate_dipole_moment(rhot) - dm0
     norm = calc.finegd.integrate(rhot) - norm0
