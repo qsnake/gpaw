@@ -27,13 +27,13 @@ import _gpaw
      member called xc, for the correct functional instance. So the actual
      xc-functional can be found at hamilton.xc.xcfunc.xc
 """
-                
+
 
 class ZeroFunctional:
     """Dummy XC functional"""
     def calculate_spinpaired(self, e_g, n_g, v_g):
-        e_g[:] = 0.0    
-        
+        e_g[:] = 0.0
+
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         e_g[:] = 0.0
 
@@ -67,6 +67,11 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X-C_PW'
+        elif xcname == 'LDAx':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X-None'
         elif xcname == 'PBE':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -77,6 +82,11 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X_PBE_R-C_PBE'
+        elif xcname == 'revPBEx':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_PBE_R-None'
         elif xcname == 'PBE0':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -85,14 +95,17 @@ class XCFunctional:
             self.orbital_dependent = True
             self.hybrid = 0.25
         # End of: Abbreviations for common functionals from libxc
-        elif xcname == 'LDA':
+        elif xcname == 'oldLDA':
             self.maxDerivativeLevel=2
             code = 117 # not used!
-        elif xcname == 'LDAc':
+            xcname = 'LDA'
+        elif xcname == 'oldLDAc':
             self.maxDerivativeLevel=2
             code = 7
-        elif xcname == 'LDAx':
+            xcname = 'LDAc'
+        elif xcname == 'oldLDAx':
             code = 11
+            xcname = 'LDAx'
         elif xcname == 'KLI':
             code = 15
             self.orbital_dependent = True
@@ -106,20 +119,24 @@ class XCFunctional:
         else:
             self.gga = True
             self.maxDerivativeLevel=1
-            if xcname == 'PBE':
+            if xcname == 'oldPBE':
                 code = 0
-            elif xcname == 'revPBE':
+                xcname = 'PBE'
+            elif xcname == 'oldrevPBE':
                 code = 1
+                xcname = 'revPBE'
             elif xcname == 'RPBE':
                 code = 2
-            elif xcname == 'PBE0':
+            elif xcname == 'oldPBE0':
                 self.orbital_dependent = True
                 self.hybrid = 0.25
                 code = 4
+                xcname = 'PBE0'
             elif xcname == 'PADE':
                 code = 5
-            elif xcname == 'revPBEx':
+            elif xcname == 'oldrevPBEx':
                 code = 8
+                xcname = 'revPBEx'
             elif xcname == 'RPBEx':
                 code = 12
             elif xcname == 'TPSS':
@@ -166,6 +183,7 @@ class XCFunctional:
             if self.gga:
                 self.maxDerivativeLevel=1
         else:
+            self.xcname = xcname # MDTMP: to get the old setup
             self.xc = _gpaw.XCFunctional(code, self.gga)
 
     def __getstate__(self):
@@ -355,7 +373,7 @@ class XC3DGrid(XCGrid):
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
             self.a2_g[:] = num.sum(self.dndr_cg**2)
-            
+
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
@@ -364,7 +382,7 @@ class XC3DGrid(XCGrid):
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
                 v_g -= 2.0 * tmp_g
-            
+
         elif self.xcfunc.gga:
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
@@ -416,7 +434,7 @@ class XC3DGrid(XCGrid):
                     va_g -= 4.0 * tmp_g
                     self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
                     vb_g -= 4.0 * tmp_g
-                    
+
         elif self.xcfunc.gga:
             for c in range(3):
                 self.ddr[c](na_g, self.dnadr_cg[c])
@@ -464,7 +482,7 @@ class XC3DGrid(XCGrid):
         self.taua_g[:] = taut_sg[0][:]
         if self.nspins == 2:
             self.taub_g[:] = taut_sg[1][:]
-    
+
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):
         """XC-functional object for radial grids."""
@@ -513,7 +531,7 @@ class XCRadialGrid(XCGrid):
     def get_energy_and_potential_spinpaired(self, n_g, v_g, e_g = None):
         if e_g == None:
             e_g = self.e_g
-            
+
         if self.xcfunc.mgga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
@@ -525,7 +543,7 @@ class XCRadialGrid(XCGrid):
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
             v_g -= 2.0 * tmp_g
-            
+
         elif self.xcfunc.gga:
             self.rgd.derivative(n_g, self.dndr_g)
             self.a2_g[:] = self.dndr_g**2
@@ -553,7 +571,7 @@ class XCRadialGrid(XCGrid):
             self.a2_g[:] = self.dndr_g**2
             self.aa2_g[:] = self.dnadr_g**2
             self.ab2_g[:] = self.dnbdr_g**2
-            
+
             self.xcfunc.calculate_spinpolarized(self.e_g,
                                                 na_g, va_g,
                                                 nb_g, vb_g,
@@ -579,7 +597,7 @@ class XCRadialGrid(XCGrid):
             tmp_g[1:] /= self.dv_g[1:]
             tmp_g[0] = tmp_g[1]
             vb_g -= 4.0 * tmp_g
-                
+
         if self.xcfunc.gga:
             self.rgd.derivative(na_g, self.dnadr_g)
             self.rgd.derivative(nb_g, self.dnbdr_g)
@@ -587,7 +605,7 @@ class XCRadialGrid(XCGrid):
             self.a2_g[:] = self.dndr_g**2
             self.aa2_g[:] = self.dnadr_g**2
             self.ab2_g[:] = self.dnbdr_g**2
-            
+
             self.xcfunc.calculate_spinpolarized(self.e_g,
                                                 na_g, va_g,
                                                 nb_g, vb_g,
@@ -597,7 +615,7 @@ class XCRadialGrid(XCGrid):
                                                 self.dedaa2_g,
                                                 self.dedab2_g)
             tmp_g = self.a2_g
-            
+
             if not self.uses_libxc:
                 self.rgd.derivative2(self.dv_g * self.deda2_g *
                                      self.dndr_g, tmp_g)

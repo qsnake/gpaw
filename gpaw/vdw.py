@@ -11,7 +11,7 @@ import os
 
 class VanDerWaals:
     # 
-    def __init__(self,density,gd=None,unitcell=None,xcname='revPBE',pbc=None):
+    def __init__(self,density,gd=None,unitcell=None,xcname='oldrevPBE',pbc=None):
         #self.Nunit=periodic_number_unitcells
         self.periodic=pbc 
         self.xcname=xcname
