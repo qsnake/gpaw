@@ -21,9 +21,9 @@ class Cluster(ListOfAtoms):
             ListOfAtoms.__init__(self,atoms, cell=cell,periodic=False)
 
         if filename is not None:
-            self.Read(filename,filetype)
+            self.read(filename,filetype)
 
-        self.Timestep(timestep)
+        self.timestep(timestep)
         
     def Center(self):
         """Center the structure to unit cell"""
@@ -32,7 +32,7 @@ class Cluster(ListOfAtoms):
         cell = num.diagonal(self.GetUnitCell())
         GTTranslate(self,tuple(.5*cell-cntr),'cartesian')
 
-    def CenterOfMass(self):
+    def center_of_mass(self):
         """Return the structures center of mass"""
         cm = num.zeros((3,),num.Float)
         M = 0.
@@ -48,6 +48,9 @@ class Cluster(ListOfAtoms):
         return num.array([num.minimum.reduce(pos),num.maximum.reduce(pos)])
 
     def MinimalBox(self,border=0):
+        return self.minimal_box(border)
+    
+    def minimal_box(self,border=0):
         """The box needed to fit the structure in.
         The structure is moved to fit into the box [(0,x),(0,y),(0,z)]
         with x,y,z > 0 (fitting the ASE constriction).
@@ -75,7 +78,7 @@ class Cluster(ListOfAtoms):
 
         return self.GetUnitCell()
 
-    def Read(self,filename,filetype=None):
+    def read(self,filename,filetype=None):
         """Read the strcuture from some file. The type can be given
         or it will be guessed from the filename."""
 
@@ -93,7 +96,7 @@ class Cluster(ListOfAtoms):
                 
         return len(self)
 
-    def Rotate(self,axis,angle=None,unit='rad'):
+    def rotate(self,axis,angle=None,unit='rad'):
         if angle is None:
             angle = axis.length()
         axis.length(1.)
@@ -101,17 +104,17 @@ class Cluster(ListOfAtoms):
             angle *= 180. / math.pi
         RotateAboutAxis(self,axis,angle)
 
-    def Timestep(self,timestep=None):
+    def timestep(self,timestep=None):
         """Set and/or get the timestep label of this structure"""
         if timestep is not None:
-            self.timestep = float(timestep)
-        return self.timestep
+            self.ts = float(timestep)
+        return self.ts
 
-    def Translate(self,trans_vector):
+    def translate(self,trans_vector):
         """Translate the whole structure"""
         GTTranslate(self,tuple(trans_vector),'cartesian')
 
-    def Write(self,filename,filetype=None):
+    def write(self,filename,filetype=None):
         """Write the strcuture to file. The type can be given
         or it will be guessed from the filename."""
 
