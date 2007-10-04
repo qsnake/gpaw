@@ -6,10 +6,19 @@ class Vector3d(list):
         if vector is None or vector == []:
             vector = [0,0,0]
         list.__init__(self)
-##        print "init: vector=",vector
+##      print "init: vector=",vector
         for c in range(3):
             self.append(float(vector[c]))
         self.l = False
+
+    def __add__(self, other):
+        result = self.copy()
+        for c in range(3):
+            result[c] += other[c]
+        return result
+
+    def __div__(self,other):
+        return Vector3d(num.array(self) / other)
 
     def __mul__(self, x):
 ##        print "mul: x,self.v=",x,self
@@ -18,13 +27,30 @@ class Vector3d(list):
             return num.dot( self, x )
         else:
 ##            print "=> res=", Vector3d( x*num.array(self) )
-            return Vector3d( x*num.array(self) )
+            return Vector3d(x * num.array(self))
         
     def __rmul__(self, x):
         return self.__mul__(x)
         
     def __str__(self):
         return "(%g,%g,%g)" % tuple(self)
+
+    def __sub__(self, other):
+        result = self.copy()
+        for c in range(3):
+            result[c] -= other[c]
+        return result
+
+    def copy(self):
+        return Vector3d(self)
+
+    def distance(self,vector):
+        if type(vector) is not type(self):
+            vector=Vector3d(vector)
+##         print "<dist> self,vector=",self,id(self),vector
+        dv = self - vector
+##         print "<dist> dv=",dv, dv.length()
+        return (self - vector).length()
 
     def length(self,value=None):
         if value:
