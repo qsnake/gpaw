@@ -50,7 +50,7 @@ class LCAOHamiltonian(Hamiltonian):
         self.kin.apply(self.phi_mG, Tphi_mG)
         r2k(0.5 * self.gd.dv, self.phi_mG, Tphi_mG, 0.0, self.T_mm)
 
-        if 0:
+        if 1:
             self.test()
 
     def test(self):
@@ -59,7 +59,6 @@ class LCAOHamiltonian(Hamiltonian):
         S_mm = num.zeros((self.nao, self.nao), num.Float)
         i1 = 0
         for nucleus1 in self.nuclei:
-            niao = nucleus1.get_number_of_atomic_orbitals()
             setup1 = nucleus1.setup
             for j1, phit1 in enumerate(setup1.phit_j):
                 id1 = (setup1.symbol, j1)
@@ -69,23 +68,23 @@ class LCAOHamiltonian(Hamiltonian):
                     for nucleus2 in self.nuclei:
                         pos1 = nucleus1.spos_c
                         pos2 = nucleus2.spos_c
-                        d = (pos1 - pos2) * self.gd.domain.cell_c
-                        d = sqrt(num.dot(d, d))
-                        niao = nucleus2.get_number_of_atomic_orbitals()
+                        R = (pos1 - pos2) * self.gd.domain.cell_c
+                        d = sqrt(num.dot(R, R))
                         setup2 = nucleus2.setup
                         for j2, phit2 in enumerate(setup2.phit_j):
                             id2 = (setup2.symbol, j2)
                             l2 = phit2.get_angular_momentum_number()
-                            s, t = tci.splines[(id1, id2)]
+                            ss = tci.splines[(id1, id2)]
                             for m2 in range(2 * l2 + 1):
-                                S_mm[i1, i2] = s(d)
-                                T_mm[i1, i2] = t(d)
+                                S = tci.overlap(id1, id2, l1, l2, m1, m2, R)
+                                S_mm[i1, i2] = S
+                                #T_mm[i1, i2] = t(d)
                                 i2 += 1
                     i1 += 1
         print S_mm
         print self.S_mm
         print self.S_mm - S_mm
-        raise SystemExit
+#        raise SystemExit
     
     def calculate_effective_potential_matrix(self, V_mm):
         box_b = []
