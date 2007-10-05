@@ -29,7 +29,7 @@ class TwoCenterIntegrals:
                 if rc > self.rcmax:
                     self.rcmax = rc
         print self.rcmax
-        ng = 2**7
+        ng = 2**9
         nq = ng / 2 + 1
         self.a = 2
         self.ngp = self.a * ng 
@@ -44,34 +44,44 @@ class TwoCenterIntegrals:
         self.dk = 2 * pi / self.rcmax
         k_q = num.arange(nq) * self.dk
         self.k_qp = num.arange(self.nqp) * self.dk
-        phit_q = num.zeros(self.nqp, num.Complex)
+        phit_q = num.zeros(self.nqp, num.Float)
+        #import pylab
         for setup in setups:
             for j, phit in enumerate(setup.phit_j):
                 l = phit.get_angular_momentum_number()
                 id = (setup.symbol, j)
                 phit_g[0:ng] = [phit(r) for r in r_g]
+                phit_g[0:ng] = [exp(-2*r**2) for r in r_g]
+                #pylab.plot(r_g, phit_g[:ng], label=setup.symbol + str(l))
+                #phit_q = (-sqrt(2 / pi) *
+                #              real_fft(phit_g * self.r_gp).imag * drp)
                 phit_q[:] = 0.0
-                if 1:
-                    for i in range(l+1):
-                        phit_q += (-sqrt(2 / pi) * (-1j)**l *  self.k_qp**i *
-                                   (c[l][i] * real_fft(self.r_gp**(1 + i) *
-                                                       phit_g)).real * drp)
-                        phit_q[1:] /= self.k_qp[1:]**(l + 1 - i)
-                else:
-                    phit_q = (-sqrt(2 / pi) *
-                              real_fft(phit_g * self.r_gp).imag * drp)
-                if l == 0:
-                    phit_q[0] = -(sqrt(2 / pi) / 2 *
-                                  2**l * fac[l] / fac[2 * l + 1] *
-                                  num.dot(self.r_gp**(2 + l), phit_g) * drp)
-                else:
-                    phit_q[0] = 0.0
+                for i in range(l + 1):
+                    print c[l]
+                    if 0:#setup.symbol == 'O':
+                        f = real_fft(self.r_gp**(1 + i) * phit_g) * drp
+                        pylab.plot(f.real,label='r')
+                        pylab.plot(f.imag,label='i')
+                        pylab.legend()
+                        pylab.show()
+                    a_q = (sqrt(2 / pi) * self.k_qp**i *
+                           (c[l][i] * real_fft(self.r_gp**(1 + i) *
+                                               phit_g)).real * drp)
+                    a_q[1:] /= self.k_qp[1:]**(2 * l + 1)
+                    a_q[0] = (sqrt(2 / pi) / 2 *
+                              2.0**l * fac[l] / fac[2 * l + 1] *
+                              num.dot(self.r_gp**(2 + 2 * l), phit_g) * drp)
+                    #pylab.plot(self.k_qp, a_q, label=setup.symbol + str(l) + str(i))
+                    phit_q += a_q
+                #pylab.plot(self.k_qp, phit_q, label=setup.symbol + str(l))
                 phit_jq[id] = (l, phit_q.copy())
                 #print l, phit_q[:4]
-
+        #pylab.legend()
+        #pylab.show()
         self.splines = {}
         for id1, (l1, phit1_q) in phit_jq.items():
             for id2, (l2, phit2_q) in phit_jq.items():
+                print id1, id2
                 st = self.calculate_spline(phit1_q, phit2_q, l1, l2)
                 self.splines[(id1, id2)] = st
         self.setups = setups
@@ -94,31 +104,30 @@ class TwoCenterIntegrals:
         #a_q = num.zeros(self.ngp, num.Complex)
         self.lmax = l1 + l2
         Ssplines = []
+        #import pylab
         for l in range(self.lmax % 2, self.lmax + 1, 2):
+            print 'L:', l
             S_g[:] = 0.0
             for i in range(l + 1):
-                a_q = (num.conjugate(phit1) * phit2 * self.ngp *
-                       1j**(l2 - l1) * self.dk * self.a**3 / 2)
-                a_q[1:] /= self.k_qp[1:]**(l - 1 -i)
-                a_q[0] = 0
-                a_g = -inverse_real_fft(c[l][i] * a_q).real
-                a_g[1:] /= self.r_gp[1:]**(l + 1 - i)
+                print 'I:', i
+                a_q = (phit1 * phit2 * self.ngp *
+                       self.dk * self.a**3 / 2)
+                a_q[1:] *= self.k_qp[1:]**(i + 1 + l1 + l2 - l)
+                a_g = -inverse_real_fft(c[l][i] * a_q)
+                a_g[1:] /= self.r_gp[1:]**(1 - i)
                 if l == 0:
                     a_g[0] = (num.dot(self.k_qp**2, abs(phit1) * abs(phit2)) *
                               self.dk * self.a**3 / 2)
                 else:
                     a_g[0] = 0.0
-                a_g *= 4 * pi
+                #pylab.plot(r_g, a_g)
+                a_g *= 4 * pi * (-1)**((l1 + l2 - l) / 2)
                 S_g += a_g
-            #print S_g[:4], l
-            S_g[1:] /= r_g[1:]**l 
-            S_g[0] = (4 * pi * 2**l * fac[l] / fac[2 * l + 1] *
-                      num.dot(self.k_qp**(2 + l),
-                              abs(phit1) * abs(phit2)) *
-                      self.dk * self.a**3 / 2)
-            print S_g[:5], l
+            #pylab.plot(r_g, S_g)
             s = Spline(l, self.a * self.rcmax, S_g[:self.nqp])
             Ssplines.append(s)
+        #pylab.legend()
+        #pylab.show()
         return Ssplines
 
     def overlap(self, id1, id2, l1, l2, m1, m2, R):

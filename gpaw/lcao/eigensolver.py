@@ -16,7 +16,8 @@ class LCAO:
     def iterate(self, hamiltonian, kpt_u):
         if not self.initialized:
             hamiltonian.initialize()
-
+            #self.initialized = True
+            
         kpt = kpt_u[0]
         
         vt_G = hamiltonian.vt_sG[0]

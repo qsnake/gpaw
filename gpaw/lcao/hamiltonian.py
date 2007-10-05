@@ -50,7 +50,7 @@ class LCAOHamiltonian(Hamiltonian):
         self.kin.apply(self.phi_mG, Tphi_mG)
         r2k(0.5 * self.gd.dv, self.phi_mG, Tphi_mG, 0.0, self.T_mm)
 
-        if 1:
+        if 0:
             self.test()
 
     def test(self):
