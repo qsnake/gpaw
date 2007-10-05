@@ -557,6 +557,8 @@ class PAW(PAWExtra, Output):
             # initial hamiltonian:
             if xcfunc.xcname == 'EXX':
                 localxcfunc = XCFunctional('LDAx', self.nspins)
+            elif xcfunc.xcname == XCFunctional('oldPBE0').get_name():
+                localxcfunc = XCFunctional('oldPBE', self.nspins)
             else:
                 assert xcfunc.xcname == XCFunctional('PBE0').get_name()
                 localxcfunc = XCFunctional('PBE', self.nspins)

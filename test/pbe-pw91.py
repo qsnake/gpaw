@@ -4,7 +4,7 @@ from gpaw.xc_functional import XCFunctional
 nspin_1 = 1
 nspin_2 = 2
 
-x0 = XCFunctional('LDAx', nspin_1)
+x0 = XCFunctional('oldLDAx', nspin_1)
 
 def f0(xc, rs, s):
     n = 3 / (4 * pi * rs**3)
@@ -28,8 +28,8 @@ def f1(xc, rs, s):
     ex0 = n * x0.exchange(rs)[0]
     return exc / ex0
 
-pbe_1 = XCFunctional('PBE', nspin_1)
-pbe_2 = XCFunctional('PBE', nspin_2)
+pbe_1 = XCFunctional('oldPBE', nspin_1)
+pbe_2 = XCFunctional('oldPBE', nspin_2)
 pw91_1 = XCFunctional('PW91', nspin_1)
 pw91_2 = XCFunctional('PW91', nspin_2)
 assert abs(f0(pbe_1, 2, 3) - 1.58) < 0.01

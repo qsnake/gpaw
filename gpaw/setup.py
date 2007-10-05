@@ -333,7 +333,7 @@ class Setup:
             # For debugging purposes, pass a LDA XCCorrection
             # to XCKLICorrection class
             from gpaw.xc_functional import XCFunctional
-            xc = XCRadialGrid(XCFunctional('oldLDAx', nspins), rgd, nspins)
+            xc = XCRadialGrid(XCFunctional('LDAx', nspins), rgd, nspins)
             xc_lda_correction = XCCorrection(
                 xc,
                 [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],

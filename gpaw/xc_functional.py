@@ -109,7 +109,7 @@ class XCFunctional:
         elif xcname == 'KLI':
             code = 15
             self.orbital_dependent = True
-        elif xcname == 'EXX':
+        elif (xcname == 'EXX'):
             code = 6
             self.hybrid = 1.0
             self.orbital_dependent = True
@@ -166,7 +166,7 @@ class XCFunctional:
         elif code == 16:
             self.xc = GLLBFunctional()
         elif code == 'lxc':
-            self.xcname = xcname # MDTMP: to get the lxc setup
+###            self.xcname = xcname # MDTMP: to get the lxc name for setup
             # find numeric identifiers of libxc functional based on xcname
             lxc_functional = Libxc.get_lxc_functional(
                 Libxc(), Libxc.lxc_split_xcname(
@@ -183,7 +183,7 @@ class XCFunctional:
             if self.gga:
                 self.maxDerivativeLevel=1
         else:
-            self.xcname = xcname # MDTMP: to get the old setup
+###            self.xcname = xcname # MDTMP: to get the xcname name for setup
             self.xc = _gpaw.XCFunctional(code, self.gga)
 
     def __getstate__(self):

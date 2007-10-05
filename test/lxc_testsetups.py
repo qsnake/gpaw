@@ -35,7 +35,7 @@ def generate():
     for symbol in ['Li']: # needed by lxc_spinpol_Li.py
         for functional in [
             'X-C_PW', 'X_PBE-C_PBE', 'X_PBE_R-C_PBE',
-            'RPBE', 'PW91'
+            'RPBE', 'PW91', 'oldLDA'
             ]:
             files.append(gen(symbol, functional))
     for symbol in ['N']: # needed by lxc_xcatom.py

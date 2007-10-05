@@ -920,10 +920,10 @@ if __name__ == '__main__':
     for symbol in 'Pt Au'.split():
         g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
         g.run(exx=True, **parameters[symbol])
-    for xcname in ['LDA', 'PBE']:
+    for xcname in ['LDA', 'PBE', 'X-C_PW', 'X_PBE-C_PBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + XCFunctional(xcname).get_name()
             if os.path.isfile(filename):
                 continue
-            g = Generator(symbol, xcname, scalarrel=True, nofiles=False)
+            g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
             g.run(exx=True, logderiv=False, **par)

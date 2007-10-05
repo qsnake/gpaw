@@ -20,6 +20,8 @@ for symbol in ['H', 'He', 'Li', 'N']:
     gen(symbol, 'X_PBE-C_PBE')
 for symbol in ['He', 'Li']:
     gen(symbol, 'X_PBE_R-C_PBE')
+for symbol in ['Li']:
+    gen(symbol, 'oldLDA')
 ##for symbol in ['Mg']:
 ##    gen(symbol, 'GLLB')
 

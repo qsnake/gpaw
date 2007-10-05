@@ -26,7 +26,7 @@ from gpaw.sphere import Y_nL, points, weights
 # 1) approximates the numerator part of Slater-potential from 2*GGA-energy density
 # 2) approximates the response part coefficients from eigenvalues.
 
-SLATER_FUNCTIONAL = "oldrevPBEx"
+SLATER_FUNCTIONAL = "revPBEx"
 SMALL_NUMBER = 1e-8
 K_G = 0.382
 

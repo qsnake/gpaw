@@ -47,8 +47,12 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             if xcname == 'EXX': # XXX EXX hack
                 exx = True
                 xcname = XCFunctional('LDA').get_name()
-            elif xcname == XCFunctional('PBE').get_name(): # XXX EXX hack
+            elif xcname == XCFunctional('oldPBE0').get_name(): # XXX EXX hack
                 exx = True
+                xcname = XCFunctional('oldPBE').get_name()
+            elif xcname == XCFunctional('PBE0').get_name(): # XXX EXX hack
+                exx = True
+                xcname = XCFunctional('PBE').get_name()
 
         name = symbol + '.' + xcname
 

@@ -18,7 +18,8 @@ reference_886 = { # version 886
     'X_PBE_R-C_PBE': -7.5341232518, # 'revPBE'
     'RPBE': -7.53943687939, # 'RPBE'
     'PW91': -7.52300459704, # 'PW91'
-    'oldLDA': -7.3970905596 # 'oldLDA'
+    'oldLDA': -7.3970905596, # 'oldLDA'
+    'LDA': -7.3970905596 # 'LDA'
     }
 
 units.SetEnergyUnit('Hartree')
@@ -53,5 +54,9 @@ equal(epw91, reference_886['PW91'], tolerance)
 calc.set(xc='oldLDA')
 eoldlda = li.GetPotentialEnergy() + calc.get_reference_energy()
 equal(eoldlda, reference_886['oldLDA'], tolerance)
+
+calc.set(xc='LDA')
+eldapw = li.GetPotentialEnergy() + calc.get_reference_energy()
+equal(eldapw, reference_886['LDA'], tolerance)
 
 setups.clean()

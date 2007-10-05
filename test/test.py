@@ -42,9 +42,9 @@ opt, tests = parser.parse_args()
 if len(tests) == 0:
     tests = ['cg2.py',
              'setups.py',
-             # 'pbe-pw91.py', # libxc needs xc.exchange, xc.correlation
+             'pbe-pw91.py', # needs xc.exchange, xc.correlation
              'xcfunc.py', 'gradient.py',
-             # 'xc.py', # libxc needs xc.exchange, xc.correlation
+             'xc.py', # needs xc.exchange, xc.correlation
              'gp2.py', 'Gauss.py', 'non-periodic.py', 'lf.py',
              'denom_int.py', 'transformations.py', 'XC2.py', 'poisson.py',
              'XC2Spin.py', 'integral4.py', 'd2Excdn2.py',
