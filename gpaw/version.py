@@ -41,25 +41,31 @@ def svnversion(version):
         from gpaw.svnrevision import svnrevision
         # gpaw is installed, here:
         from gpaw import __file__ as f
-        # try to get the last svn revision number from svnversion gpaw/gpaw dir
+        # get the last svn revision number from svnversion gpaw/gpaw dir
         gpawdir = path.abspath(path.dirname(f))
+        if path.split(
+            path.abspath(path.join(gpawdir, path.pardir)))[1] == 'gpaw':
+            # or from svnversion gpaw dir
+            gpawdir = path.join(gpawdir, path.pardir)
         # version.py can be called from any place so we need to specify gpawdir
         output = get_svnversion(gpawdir)
-        if (output is not '') and (output != svnrevision):
+        if (output != '') and (output != svnrevision):
             # output the current svn revision number into gpaw/svnrevision.py
             svnrevision = output
+        version = version+'.'+svnrevision
     except:
         # gpaw is not installed:
         # try to get the last svn revision number from svnversion
         output = get_svnversion()
-        if (output is not ''):
+        if (output != ''):
             # svnversion exists:
             # we are sure to have the write access as what we are doing
             # is running setup.py now (even during rpmbuild)!
             # so save the current svn revision number into gpaw/svnrevision.py
             write_svnrevision(output)
             svnrevision = output
+            version = version+'.'+svnrevision
     ##
-    return version+'.'+svnrevision
+    return version
 
 version = svnversion(version)
