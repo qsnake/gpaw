@@ -13,6 +13,7 @@ atoms = ListOfAtoms([Atom('H', (0, 4.0, 4.0))],
 
 # Displace kpoints sligthly, so that the symmetry program does
 # not use inversion symmetry to reduce kpoints.
+assert (natoms < 4)
 kpts = [21, 11, 7][natoms - 1]
 occupationenergy = [30., 0., 0.][natoms - 1]
 kpts = MonkhorstPack((kpts, 1, 1)) + 2e-5
@@ -30,7 +31,7 @@ if 1:
 else:
     calc = Calculator('hwire.gpw', txt=None)
 
-wannier = Wannier(numberofwannier=natoms, 
+wannier = Wannier(numberofwannier=natoms,
                   calculator=calc,
                   occupationenergy=occupationenergy)
 
@@ -41,7 +42,8 @@ centers = wannier.GetCenters()
 for i in wannier.GetSortedIndices():
     center = centers[i]['pos']
     print center
-    equal(center[0] % hhbondlength, 0., 2e-3)
+    quotient = round(center[0] / hhbondlength)
+    equal(hhbondlength*quotient - center[0], 0., 2e-3)
     equal(center[1], 4., 2e-3)
     equal(center[2], 4., 2e-3)
 
