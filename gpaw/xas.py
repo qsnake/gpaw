@@ -1,5 +1,5 @@
 import pickle
-from math import log, pi
+from math import log, pi, sqrt
 
 import Numeric as num
 from multiarray import innerproduct as inner # avoid the dotblas version!
@@ -40,87 +40,137 @@ class XAS:
             print "wrong keyword for 'mode', use 'xas', 'xes' or 'all'"
             exit
 
-            
         self.n = n
 
         nkpts =paw.nkpts
             
         self.eps_n = num.empty(nkpts * n, num.Float)
-        self.sigma_cn = num.empty((3, nkpts * n), num.Float)
+        self.sigma_cn = num.empty((3, nkpts * n), num.Complex)
         n1 = 0
         for k in range(nkpts):
             n2 = n1 + n
             self.eps_n[n1:n2] = paw.kpt_u[k].eps_n[n_start:n_end] * paw.Ha
             P_ni = nucleus.P_uni[k, n_start:n_end]
             a_cn = inner(A_ci, P_ni)
-            a_cn *= num.conjugate(a_cn)
+            #a_cn *= num.conjugate(a_cn)
             print paw.weight_k[k]
-            self.sigma_cn[:, n1:n2] = paw.weight_k[k] * a_cn.real
+            self.sigma_cn[:, n1:n2] = paw.weight_k[k] ** 0.5 * a_cn #.real
             n1 = n2
 
-        if paw.symmetry is not None:
-            sigma0_cn = self.sigma_cn
-            self.sigma_cn = num.zeros((3, nkpts * n), num.Float)
-            swaps = {}  # Python 2.4: use a set
-            for swap, mirror in paw.symmetry.symmetries:
-                swaps[swap] = None
-            for swap in swaps:
-                self.sigma_cn += num.take(sigma0_cn, swap)
-            self.sigma_cn /= len(swaps)
+        self.symmetry = paw.symmetry
 
-    def get_spectra(self, fwhm=0.5, linbroad=None, N=1000, kpoint=None):
-        # returns stick spectrum, e_stick and a_stick
-        # and broadened spectrum, e, a
-        # linbroad = [0.5, 540, 550]
+    def get_spectra(self, fwhm=0.5, linbroad=None, N=1000, kpoint=None, proj=None,
+                    stick=False):
+        """ parameters:
+            fwhm -     the full width half maximum in eV for gaussian broadening 
+            linbroad - a list of three numbers, the first fwhm2, the second the value
+                       where the linear increase starts and the third the value where
+                       the broadening has reached fwhm2. example [0.5, 540, 550]
+            N -        the number of bins in the broadened spectrum
+            kpoint -   select a specific k-point to calculate spectrum for
+            proj -     a list of vectors to project the transition dipole on. Default
+                       is None then only x,y,z components are calculated.  a_stick and
+                       a_c will have 3 + len(proj) dimensions and are squares of the
+                       transition moments in resp. direction
+            stick -    if False return broadened spectrum, if True return stick spectrum
+
+            symmtrization has been moved inside get_spectra because we want to symmtrize
+            squares of transition dipoles """
+        
         # eps_n = self.eps_n[k_in*self.n: (k_in+1)*self.n -1]
+
+         
+
+        # proj keyword, check normalization of incoming vectors
+        if proj is not None:
+            proj_2 = num.array(proj,num.Float)
+            for i,p in enumerate(proj_2):
+                if sum(p ** 2) ** 0.5 != 1.0:
+                    print "proj_2 %s not normalized" %i
+                    proj_2[i] /=  sum(p ** 2) ** 0.5
+        
+            # make vector of projections
+            sigma1_cn = num.empty( (3 + len(proj_2), len(self.sigma_cn[0])), num.Complex)
+            sigma1_cn[0:3,:] = self.sigma_cn
+            for i,p in enumerate(proj_2):
+                sigma1_cn[3 +i,:] = num.dot(p,self.sigma_cn) 
+        
+            sigma2_cn = num.empty((len(sigma1_cn),len(sigma1_cn[0])),num.Float)
+            sigma2_cn = (sigma1_cn*num.conjugate(sigma1_cn)).real
+
+        else:
+           sigma2_cn = (self.sigma_cn * num.conjugate(self.sigma_cn)).real
+
+        #print sigma2_cn
+
+        # now symmetrize
+        if kpoint is not None:
+            if self.symmetry is not None:
+                sigma0_cn = sigma2_cn.copy()
+                sigma2_cn = num.zeros((len(sigma0_cn),len(sigma0_cn[0])),num.Float)
+                swaps = {}  # Python 2.4: use a set
+                for swap, mirror in self.symmetry.symmetries:
+                    swaps[swap] = None
+                for swap in swaps:
+                    sigma2_cn += num.take(sigma0_cn, swap)
+                sigma2_cn /= len(swaps)
+        
         eps_n = self.eps_n[:]
         if kpoint is not None:
             eps_start = kpoint*self.n
             eps_end = (kpoint+1)*self.n
-        else:
+        else: 
             eps_start = 0
             eps_end = len(self.eps_n)
             
-        emin = min(eps_n) - 2 * fwhm
-        emax = max(eps_n) + 2 * fwhm
+       
+        # return stick spectrum if stick=True
+        if stick:
+            e_stick = eps_n[eps_start:eps_end]
+            a_stick = sigma2_cn[:,eps_start:eps_end]
 
-        e = emin + num.arange(N + 1) * ((emax - emin) / N)
-        a_c = num.zeros((3, N + 1), num.Float)
+            return e_stick, a_stick
 
-
-        if linbroad is None:
-            #constant broadening fwhm
-            alpha = 4 * log(2) / fwhm**2
-            
-            for n, eps in enumerate(eps_n[eps_start:eps_end]):
-                x = -alpha * (e - eps)**2
-                x = num.clip(x, -100.0, 100.0)
-                a_c += num.outerproduct(self.sigma_cn[:, n + eps_start],
-                                        (alpha / pi)**0.5 * num.exp(x))
+        # else return broadened spectrum
         else:
-
-            # constant broadening fwhm until linbroad[1] and a
-            # constant broadening over linbroad[2] with fwhm2=
-            # linbroad[0]
-            fwhm2 = linbroad[0]
-            lin_e1 = linbroad[1]
-            lin_e2 = linbroad[2]
-            for n, eps in enumerate(eps_n):
-                if eps < lin_e1:
-                    alpha = 4*log(2) / fwhm**2
-                elif eps <=  lin_e2:
-                    fwhm_lin = (fwhm + (eps - lin_e1) *
-                                (fwhm2 - fwhm) / (lin_e2 - lin_e1))
-                    alpha = 4*log(2) / fwhm_lin**2
-                elif eps >= lin_e2:
-                    alpha =  4*log(2) / fwhm2**2
-
-                x = -alpha * (e - eps)**2
-                x = num.clip(x, -100.0, 100.0)
-                a_c += num.outerproduct(self.sigma_cn[:, n],
+            emin = min(eps_n) - 2 * fwhm
+            emax = max(eps_n) + 2 * fwhm
+            e = emin + num.arange(N + 1) * ((emax - emin) / N)
+            a_c = num.zeros((len(sigma2_cn), N + 1), num.Float)
+            
+            if linbroad is None:
+                #constant broadening fwhm
+                alpha = 4 * log(2) / fwhm**2
+            
+                for n, eps in enumerate(eps_n[eps_start:eps_end]):
+                    x = -alpha * (e - eps)**2
+                    x = num.clip(x, -100.0, 100.0)
+                    a_c += num.outerproduct(sigma2_cn[:, n + eps_start],
                                         (alpha / pi)**0.5 * num.exp(x))
+            else:
 
-        return e, a_c
+                # constant broadening fwhm until linbroad[1] and a
+                # constant broadening over linbroad[2] with fwhm2=
+                # linbroad[0]
+                fwhm2 = linbroad[0]
+                lin_e1 = linbroad[1]
+                lin_e2 = linbroad[2]
+                for n, eps in enumerate(eps_n):
+                    if eps < lin_e1:
+                        alpha = 4*log(2) / fwhm**2
+                    elif eps <=  lin_e2:
+                        fwhm_lin = (fwhm + (eps - lin_e1) *
+                                    (fwhm2 - fwhm) / (lin_e2 - lin_e1))
+                        alpha = 4*log(2) / fwhm_lin**2
+                    elif eps >= lin_e2:
+                        alpha =  4*log(2) / fwhm2**2
+                        
+                        x = -alpha * (e - eps)**2
+                        x = num.clip(x, -100.0, 100.0)
+                        a_c += num.outerproduct(sigma2_cn[:, n],
+                                        (alpha / pi)**0.5 * num.exp(x))
+                
+            return  e, a_c
 
 
 class RecursionMethod:
