@@ -6,7 +6,7 @@ version = '0.3'
 from os import popen3, path
 
 def write_svnrevision(output):
-    f = open('gpaw/svnrevision.py','w')
+    f = open(path.join('gpaw', 'svnrevision.py'),'w')
     f.write('svnrevision = "%s"\n' % output)
     f.close()
     print 'svnrevision = ' +output+' written to gpaw/svnrevision.py'
@@ -26,12 +26,14 @@ def read_svnrevision(filename):
 
 def get_svnversion(dir='gpaw'):
     # try to get the last svn revision number from svnversion
-    cmd = popen3('svnversion -n '+dir)[1]
+    cmd = popen3('svnversion -n '+dir)[1] # assert that we are in gpaw project
     output = cmd.read()
     cmd.close()
-    if output == 'exported': # we build from exported source (e.g. rpmbuild)
+    svnrevisionfile = path.join(dir, 'svnrevision.py')
+    # we build from exported source (e.g. rpmbuild)
+    if output == 'exported' and path.isfile(svnrevisionfile):
         # read the last svn revision number
-        output = read_svnrevision(path.join(dir, 'svnrevision.py'))
+        output = read_svnrevision(svnrevisionfile)
     return output
 
 def svnversion(version):
@@ -43,6 +45,10 @@ def svnversion(version):
         from gpaw import __file__ as f
         # get the last svn revision number from svnversion gpaw/gpaw dir
         gpawdir = path.abspath(path.dirname(f))
+        # assert we have gpaw/svnrevision.py file
+        svnrevisionfile = path.join(gpawdir, 'svnrevision.py')
+        # we build from exported source (e.g. rpmbuild)
+        assert path.isfile(svnrevisionfile)
         if path.split(
             path.abspath(path.join(gpawdir, path.pardir)))[1] == 'gpaw':
             # or from svnversion gpaw dir
@@ -57,11 +63,11 @@ def svnversion(version):
         # gpaw is not installed:
         # try to get the last svn revision number from svnversion
         output = get_svnversion()
-        if (output != ''):
+        if (output != '') and (output != 'exported'):
             # svnversion exists:
             # we are sure to have the write access as what we are doing
             # is running setup.py now (even during rpmbuild)!
-            # so save the current svn revision number into gpaw/svnrevision.py
+            # save the current svn revision number into gpaw/svnrevision.py
             write_svnrevision(output)
             svnrevision = output
             version = version+'.'+svnrevision
