@@ -58,7 +58,7 @@ if len(tests) == 0:
              'davidson.py', 'wannier-ethylene.py',
              'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py', 'lrtddft.py',
              'fixmom.py', 'wannier-hwire.py', 'exx.py',
-             'exx_PBE0.py', 'revPBE_Li.py',
+             'revPBE_Li.py',
              'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
              'ae-calculation.py', 'H2Al110.py']
