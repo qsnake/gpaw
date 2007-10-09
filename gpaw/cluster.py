@@ -7,6 +7,7 @@ from ASE.Utilities.GeometricTransforms import Translate as GTTranslate
 from ASE.Utilities.GeometricTransforms import RotateAboutAxis
 from ASE.IO.xyz import ReadXYZ, WriteXYZ
 from ASE.IO.PDB import WritePDB
+from gpaw.io.Cube import ReadListOfAtomsFromCube
 
 class Cluster(ListOfAtoms):
     """A class for cluster structures
@@ -87,10 +88,12 @@ class Cluster(ListOfAtoms):
             filetype = filename.split('.')[-1]
         filetype.lower()
 
-        if filetype == 'xyz':
+        if filetype == 'cube':
+            loa = ReadListOfAtomsFromCube(filename)
+            self.__init__(loa)
+        elif filetype == 'xyz':
             loa = ReadXYZ(filename)
             self.__init__(loa)
-        
         else:
             raise NotImplementedError('unknown file type "'+filetype+'"')
                 
@@ -123,7 +126,9 @@ class Cluster(ListOfAtoms):
             filetype = filename.split('.')[-1]
         filetype.lower()
 
-        if filetype == 'xyz':
+        if filetype == 'pdb':
+            WritePDB(filename,self)
+        elif filetype == 'xyz':
             uc = self.GetUnitCell()
             if uc:
                 id=' unit cell'
