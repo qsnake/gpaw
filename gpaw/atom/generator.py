@@ -444,6 +444,16 @@ class Generator(AllElectron):
         if not self.xc.is_non_local():
             Exct = self.xc.get_energy_and_potential(nt, vXCt)
         else:
+            # The difference between local and non-loacl functionals
+            # is that non-local ones need all the pseudo wave-functions,
+            # not just the valence ones
+            s_j = self.u_j.copy()
+            # Construct all pseudo wave-functions
+            for j, (l, u) in enumerate(zip(self.l_j, self.u_j)):
+                construct_smooth_wavefunction(u, l, gcutnc, r, s_j[j])
+            Exct = self.xc.get_non_local_energy_and_potential(
+                s_j, self.f_j, self.e_j, self.l_j, vXCt)
+
             Exct = self.xc.get_non_local_energy_and_potential(
                 self.u_j, self.f_j, self.e_j, self.l_j, vXCt)
         vt = vHt + vXCt
@@ -912,6 +922,23 @@ class Generator(AllElectron):
             print >> xml, '  <exact_exchange core-core="%f"/>' % ExxC
 
         print >> xml, '</paw_setup>'
+
+def construct_smooth_wavefunction(u, l, gc, r, s):
+    # Do a linear regression to a wave function
+    # s = a + br^2 + cr^4 + dr^6, such that
+    # the fitting is as good as possible in region gc-2:gc+2
+    A = num.ones((4, 4), num.Float)
+    A[:, 0] = 1.0
+    A[:, 1] = r[gc - 2:gc + 2]**2
+    A[:, 2] = A[:, 1]**2
+    A[:, 3] = A[:, 1] * A[:, 2]
+    a = u[gc - 2:gc + 2] / r[gc - 2:gc + 2]**(l + 1)
+    a = solve_linear_equations(A, a)
+    r1 = r[:gc]
+    r2 = r1**2
+    rl1 = r1**(l + 1)
+    y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))
+    s[:gc] = rl1 * y
 
 
 if __name__ == '__main__':
