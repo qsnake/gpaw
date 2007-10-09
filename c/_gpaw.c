@@ -27,6 +27,7 @@ PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewlxcXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* elf(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
+PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
@@ -55,6 +56,7 @@ static PyMethodDef functions[] = {
   {"lxcXCFunctional",    NewlxcXCFunctionalObject,    METH_VARARGS, 0},
   {"elf",    elf,    METH_VARARGS, 0},
   {"overlap",       overlap,        METH_VARARGS, 0},
+  {"wigner_seitz_grid", wigner_seitz_grid, METH_VARARGS, 0},
  {0, 0, 0, 0}
 };
 
