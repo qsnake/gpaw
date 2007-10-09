@@ -34,13 +34,11 @@ calc = Calculator('h2o-xas.gpw', txt=None)
 xas = XAS(calc)
 x, y = xas.get_spectra()
 e2_n = xas.eps_n
-w_n = sum(xas.sigma_cn)
-
+w_n = sum(xas.sigma_cn.real**2)
 de1 = e1_n[1] - e1_n[0]
 de2 = e2_n[1] - e2_n[0]
 
 assert de1 == de2
-print de1
 assert abs(de1 - 2.0506) < 0.001
 assert abs(w_n[1] / w_n[0] - 2.19) < 0.01
 
