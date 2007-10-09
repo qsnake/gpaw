@@ -454,8 +454,6 @@ class Generator(AllElectron):
             Exct = self.xc.get_non_local_energy_and_potential(
                 s_j, self.f_j, self.e_j, self.l_j, vXCt)
 
-            Exct = self.xc.get_non_local_energy_and_potential(
-                self.u_j, self.f_j, self.e_j, self.l_j, vXCt)
         vt = vHt + vXCt
 
         # Construct zero potential:
