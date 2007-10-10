@@ -34,12 +34,8 @@ for ending in endings:
         Edirect = H.GetPotentialEnergy()
 
     # refine the result after reading from a file
-    #calc = Calculator(restart_wf)
-    #calc.set(convergence={'energy': 0.00001})
     calc = Calculator(restart_wf, convergence={'energy': 0.00001})
-    H = calc.GetListOfAtoms()
-    H.SetCalculator(calc)
-    Erestart = H.GetPotentialEnergy()
+    Erestart = calc.GetPotentialEnergy()
 
     print Edirect, Erestart
     # Note: the different density mixing introduces small differences 

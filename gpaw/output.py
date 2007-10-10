@@ -151,6 +151,7 @@ class Output:
             t('Converge occupied states only.')
         else:
             t('Converge %d bands.' % cc['bands'])
+        t('Number of valence electrons: %s' % self.nvalence)
 
     def print_converged(self):
         t = self.text

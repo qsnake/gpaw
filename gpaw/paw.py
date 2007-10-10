@@ -1126,6 +1126,10 @@ class PAW(PAWExtra, Output):
 
         if p['convergence'].get('bands') == 'all':
             p['convergence']['bands'] = self.nbands
+
+        cbands = p['convergence']['bands']
+        if isinstance(cbands, int) and cbands < 0:
+            p['convergence']['bands'] += self.nbands
             
         if p['fixdensity']:
             self.fixdensity = self.maxiter + 1000000
