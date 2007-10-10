@@ -5,6 +5,7 @@ from multiarray import innerproduct as inner # avoid the dotblas version!
 import LinearAlgebra as linalg
 
 from gpaw.utilities.blas import axpy, rk, gemm
+from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.utilities import elementwise_multiply_add, utilities_vdot, utilities_vdot_self
 from gpaw.utilities.complex import cc, real
 from gpaw.eigensolvers.eigensolver import Eigensolver
@@ -110,11 +111,7 @@ class RMM_DIIS(Eigensolver):
         self.comm.sum(S_nn, kpt.root)
 
         if self.comm.rank == kpt.root:
-            # inverse returns a non-contigous matrix - grrrr!  That is
-            # why there is a copy.  Should be optimized with a
-            # different lapack call to invert a triangular matrix XXXXX
-            S_nn[:] = linalg.inverse(
-                linalg.cholesky_decomposition(S_nn)).copy()
+            inverse_cholesky(S_nn)
 
         self.comm.broadcast(S_nn, kpt.root)
         

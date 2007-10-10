@@ -40,6 +40,21 @@ def diagonalize(a, w, b=None):
         info = _gpaw.diagonalize(a, w)
     return info
 
+def inverse_cholesky(a):
+    """Calculate the inverse of the Cholesky decomposition of
+    a symmetric/hermitian positive definete matrix `a`.
+
+    Uses dpotrf/zpotrf to calculate the decomposition and then
+    dtrtri/ztrtri for the inversion"""
+
+    assert a.iscontiguous()
+    assert a.typecode() in [num.Float, num.Complex]
+    n = len(a)
+    assert a.shape == (n, n)
+    info = _gpaw.inverse_cholesky(a)
+    return info
+
+
 def right_eigenvectors(a, w, v):
     """Get right eigenvectors and eigenvalues from a square matrix
     using LAPACK dgeev.
@@ -61,4 +76,4 @@ def right_eigenvectors(a, w, v):
 if not debug:
     diagonalize = _gpaw.diagonalize
     right_eigenvectors = _gpaw.right_eigenvectors
-    
+    inverse_cholesky = _gpaw.inverse_cholesky
