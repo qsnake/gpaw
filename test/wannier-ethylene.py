@@ -8,7 +8,7 @@ import Numeric as num
 # GPAW wannier example for ethylene corresponding to the ASE Wannier
 # tutorial.
 
-if 1:
+if not os.path.isfile('ethylene.gpw'):
     a = 6.0  # Size of unit cell (Angstrom)
 
     ethylene = ListOfAtoms([
@@ -41,8 +41,13 @@ expected = [[1.950, 2.376, 3.000],
             [4.050, 2.376, 3.000],
             [4.050, 3.624, 3.000]]
 equal(13.7995, wannier.GetFunctionalValue(), 0.016)
-for xi, wi in enumerate(wannier.GetSortedIndices()):
-    assert abs(num.sum(expected[xi] - centers[wi]['pos'])) < 0.01
+for center in centers:
+    i = 0
+    while num.sum((expected[i] - center['pos'])**2) > 0.01:
+        i += 1
+        if i == len(expected):
+            raise RuntimeError, 'Correct center not found'
+    expected.pop(i)    
 
 os.remove('ethylene.gpw')
 
