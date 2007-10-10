@@ -59,23 +59,32 @@ class XAS:
 
         self.symmetry = paw.symmetry
 
-    def get_spectra(self, fwhm=0.5, linbroad=None, N=1000, kpoint=None, proj=None,
-                    stick=False):
-        """ parameters:
-            fwhm -     the full width half maximum in eV for gaussian broadening 
-            linbroad - a list of three numbers, the first fwhm2, the second the value
-                       where the linear increase starts and the third the value where
-                       the broadening has reached fwhm2. example [0.5, 540, 550]
-            N -        the number of bins in the broadened spectrum
-            kpoint -   select a specific k-point to calculate spectrum for
-            proj -     a list of vectors to project the transition dipole on. Default
-                       is None then only x,y,z components are calculated.  a_stick and
-                       a_c will have 3 + len(proj) dimensions and are squares of the
-                       transition moments in resp. direction
-            stick -    if False return broadened spectrum, if True return stick spectrum
+    def get_spectra(self, fwhm=0.5, linbroad=None, N=1000, kpoint=None,
+                    proj=None, stick=False):
+        """Calculate spectra.
 
-            symmtrization has been moved inside get_spectra because we want to symmtrize
-            squares of transition dipoles """
+        Parameters:
+        
+        fwhm:
+          the full width half maximum in eV for gaussian broadening
+        linbroad:
+          a list of three numbers, the first fwhm2, the second the value
+          where the linear increase starts and the third the value where
+          the broadening has reached fwhm2. example [0.5, 540, 550]
+        N:
+          the number of bins in the broadened spectrum
+        kpoint:
+          select a specific k-point to calculate spectrum for
+        proj:
+          a list of vectors to project the transition dipole on. Default
+          is None then only x,y,z components are calculated.  a_stick and
+          a_c will have 3 + len(proj) dimensions and are squares of the
+          transition moments in resp. direction
+        stick:
+          if False return broadened spectrum, if True return stick spectrum
+          
+        Symmtrization has been moved inside get_spectra because we want to
+        symmtrice squares of transition dipoles."""
         
         # eps_n = self.eps_n[k_in*self.n: (k_in+1)*self.n -1]
 
