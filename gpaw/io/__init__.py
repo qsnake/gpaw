@@ -438,7 +438,7 @@ def read(paw, reader):
         paw.F_ac = r.get('CartesianForces')
 
 
-def read_wave_function(paw, s, k, n, mode):
+def read_wave_function(gd, s, k, n, mode):
     """Read the wave function for spin s, kpoint k and index n
     from a sperate file. The filename is determined from the mode
     in the same way as in write() (see above)"""
@@ -447,7 +447,7 @@ def read_wave_function(paw, s, k, n, mode):
     fname = template % (s,k,n) + '.'+ftype
 ##    print "fname=",fname
 
-    i = paw.gd.get_slice()
+    i = gd.get_slice()
     r = open(fname, 'r')
     psit_G = r.get('PseudoWaveFunction', 0)[i]
     r.close()

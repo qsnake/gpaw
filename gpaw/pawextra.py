@@ -227,7 +227,7 @@ class PAWExtra:
             s = kpt.s
             k = kpt.k
             for n, psit_G in enumerate(kpt.psit_nG):
-                psit_G[:] = gpaw.io.read_wave_function(self, s, k, n, mode)
+                psit_G[:] = gpaw.io.read_wave_function(self.gd, s, k, n, mode)
                 
                 
     def wave_function_volumes(self):
