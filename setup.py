@@ -44,17 +44,19 @@ mpi_define_macros = []
 
 
 packages = ['gpaw',
-            'gpaw.io',
-            'gpaw.gui',
-            'gpaw.mpi',
+            'gpaw.analyse',
             'gpaw.atom',
+            'gpaw.eigensolvers',
+            'gpaw.gui',
+            'gpaw.gui.languages',
+            'gpaw.io',
             'gpaw.lcao',
             'gpaw.lrtddft',
+            'gpaw.mpi',
             'gpaw.tddft',
             'gpaw.testing',
-            'gpaw.utilities',
-            'gpaw.eigensolvers',
-            'gpaw.gui.languages']
+            'gpaw.utilities'
+            ]
 
 force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:
