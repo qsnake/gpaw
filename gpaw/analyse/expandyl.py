@@ -9,7 +9,19 @@ from gpaw.utilities.timing import StepTimer
 
 class ExpandYl:
     """Expand the smooth wave functions in spherical harmonics
-    relative to a given center."""
+    relative to a given center.
+
+    center:
+      the center for the expansion (units.GetLengthUnit())
+    gd:
+      grid_descriptor of the grids to expand
+    lmax:
+      maximal angular momentum in the expansion (lmax<7)
+    Rmax:
+      maximal radius of the expansion (units.GetLengthUnit())
+    dR:
+      grid spacing in the radius (units.GetLengthUnit())
+    """
     def __init__(self,center,gd,lmax=6,Rmax=None,dR=None):
 
         a0 = Convert(1, 'Bohr', units.GetLengthUnit())
@@ -36,6 +48,7 @@ class ExpandYl:
                            self.center.distance(num.array(corner) * extreme) )
         else:
             Rmax /= a0 
+
         if not dR:
             dR = min(gd.h_c)
         else:
