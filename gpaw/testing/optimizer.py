@@ -96,7 +96,7 @@ class Optimizer:
 
         if simplex is None:
             params = self.generator.get_standard_parameters()
-            simplex = get_simplex(params)
+            simplex = get_simplex(params, 0.03)
 
         self.simplex = simplex
 
@@ -109,7 +109,7 @@ class Optimizer:
         elif out == '-':
             self.output = sys.stdout
         else:
-            self.output = open(output, 'w')
+            self.output = open(out, 'w')
 
         out = self.output
 

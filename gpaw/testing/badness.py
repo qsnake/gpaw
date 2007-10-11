@@ -96,7 +96,7 @@ class EnergyTest(Test):
     This test compares the energy of a diatomic molecule of the
     relevant element to a reference PBE value.
     """
-    def __init__(self, cellsize=8.5, unit_badness=.05):
+    def __init__(self, cellsize=8., unit_badness=.05):
         Test.__init__(self)
         self.cellsize = cellsize
         
@@ -150,7 +150,7 @@ class DistanceTest(Test):
     """
     This test compares the bond length to some reference value.
     """
-    def __init__(self, cellsize=7.5, unit_badness=.005):
+    def __init__(self, cellsize=7., unit_badness=.005):
         Test.__init__(self)
         self.unit_badness = unit_badness
         self.cellsize = cellsize
@@ -240,9 +240,13 @@ class NoiseTest(Test):
     proportional to the square of the maximum deviation of these
     energies, which should obviously be identical ideally.
     """
-    def __init__(self, unit_badness=.005, points=[(0.,0.,0.),(.35,.35,.35),
-                                                  (.5,.5,.5)]):
+    def __init__(self, unit_badness=.005, points=None):
         Test.__init__(self)
+        self.h = .2
+        self.a = 5.
+        if points is None:
+            d = num.arrayrange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
+            points = [(x,x,x) for x in d]
         self.unit_badness=unit_badness
         self.points = tuple(points)
         self.dumplog['unit']=unit_badness
@@ -278,10 +282,8 @@ class NoiseTest(Test):
         at the center of the unit cell and the energy of one translated by
         h/2 along the z axis.
         """
-
+        a, h = (self.a, self.h)
         element = atomization.elements[symbol]
-        h = .2
-        a = 6.5
         calc = atomization.makecalculator(element.nbands2, out=None,
                                           setup=setup,h=h)
         d = element.d
@@ -304,10 +306,11 @@ class ConvergenceTest(Test):
     resolution.  Badness is proportional to the square of the maximal
     deviation of calculated energies.
     """
-    def __init__(self, unit_badness=.05):
+    def __init__(self, unit_badness=.35):
         #Formerly standard value was .2
         #change default unit badness to .005 someday
         Test.__init__(self)
+        self.a = 5.
         self.unit_badness = unit_badness
         self.dumplog['unit'] = unit_badness
 
@@ -337,7 +340,7 @@ class ConvergenceTest(Test):
 
         element = atomization.elements[symbol]
         h = [.15, .17, .20]
-        a = 6.5
+        a = self.a
         calc = [atomization.makecalculator(element.nbands2, out=None, h=h0,
                                            setup=setup) for h0 in h]
         element = atomization.elements[symbol]

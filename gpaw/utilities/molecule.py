@@ -92,8 +92,8 @@ C2 = ListOfAtoms([Atom('C', (0, 0, 0)),
                   Atom('C', (1.0977, 0, 0))])
 N2 = ListOfAtoms([Atom('N', (0, 0, 0)),
                   Atom('N', (1.0977, 0, 0))])
-NO = ListOfAtoms([Atom('N', (0, 0, 0), magmom=0.5),
-                  Atom('O', (1.1506, 0, 0), magmom=0.5)])
+NO = ListOfAtoms([Atom('N', (0, 0, 0), magmom=0.6),
+                  Atom('O', (1.1506, 0, 0), magmom=0.4)])
 O2 = ListOfAtoms([Atom('O', (0, 0, 0), magmom=1),
                   Atom('O', (1.2074, 0, 0), magmom=1)])
 F2 = ListOfAtoms([Atom('F', (0, 0, 0)),

@@ -64,9 +64,9 @@ for arg in [('H', 1, 1),
             ('N', 4, 5),
             ('O', 4, None),
             ('F', None, None),
-            ('Cl', None, None)]:
+            ('Cl', None, None),
+            ('P', None, None)]:
     MoleculeInfo(*arg)
-
 
 
 def get_list_of_atoms(symbol='N', separation=0, a=6.,
@@ -89,7 +89,7 @@ def get_list_of_atoms(symbol='N', separation=0, a=6.,
         atoms = ListOfAtoms([Atom(symbol, (cx, cy, cz),
                                   magmom=molecule.magmom1)],
                             periodic=periodic,
-                            cell=(a*0.9,a,a*1.2))
+                            cell=(a,a,a))
     else:
         #Create two atoms separated along x axis
         mag = molecule.magmom2/2. # magmom per atom
@@ -134,42 +134,6 @@ def calc_energy(calc1=None, calc2=None, a=6., symbol = 'N',
     e2 = two_atoms.GetPotentialEnergy()
 
     return e2-2*e1
-
-def displacement_test(a=5., symbol='N', h=.2):
-    """
-    Using a particular resolution h, test whether energies deviate considerably
-    if the system is translated in intervals smaller than h.
-
-    This function is deprecated.
-    """
-    print 'Displacement test:', symbol
-
-    molecule = elements[symbol]
-
-    h += 0. #floating point
-
-    testcount = 3
-    dislocations = []
-    
-    #Initialise test coordinates
-    for value in range(testcount):
-        coordinate = h * value/testcount #linear distribution
-        dislocations.append((coordinate, 0., 0.))
-
-    print dislocations
-
-    energies = []
-    for dislocation in dislocations:
-        #e = calcEnergy(a, molecule, dislocation, h)
-        e = energyAtDistance(molecule.d, dislocation, h)
-        energies.append(e)
-
-    print 'Energies:'
-    print energies
-
-    print 'Max',max(energies)
-    print 'Min',min(energies)
-    print 'Diff',max(energies) - min(energies)
 
 def atomization_calculators(symbol='N', out='-', h=.2, setup='paw'):
     """

@@ -20,7 +20,7 @@ def getfilename(formula, name, setups):
     if setups == 'paw':
         return '%s.%s' % (formula, name)
     else:
-        return '%s.%s.%s' (setups, formula, name)
+        return '%s.%s.%s' % (setups, formula, name)
 
 def loadfromfile(filename):
     unpickler = pickle.Unpickler(open(filename))
@@ -74,7 +74,7 @@ def test(function, formula, setups='paw', quick=False, clean=False,
 
     dumpfile = open(dumpfilename, 'w')
     log = open(logname, 'w')
-    print 'Calculating...',
+    print 'Calculating ...',
     sys.stdout.flush()
     try:
         results = tests[function](formula, setups=setups, quick=quick, txt=log)
@@ -97,9 +97,11 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
     symbollist = [] # Obtain the atomic symbols of all constituents
     if 'a' in testfunctions:
         for formula in formulae:
-            symbollist.extend(atom.symbol for atom
-                              in molecule.molecules[formula])
-    symbols = set(symbollist)
+            symbollist.extend([atom.symbol for atom
+                              in molecule.molecules[formula]])
+    # The 'set' builtin is not included in some python versions. Using hack
+    symbols = dict(zip(symbollist, symbollist)).keys()
+    #symbols = set(symbollist)
 
     # Make sure that the single-atom test is not performed on molecules
     moleculetests = testfunctions.replace('a','')
@@ -115,22 +117,21 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
             task_args.append(('a', symbol, setups, quick, clean, retrieve))
 
     results = {}
+    results['setups'] = setups
+    for testname in 'acme':
+        results[testname] = {}
+    
     for args in task_args:
         try:
-            print 'Running test \'%s\' for %s ...' % (args[0],args[1]),
+            testname, formula = args[0], args[1]
+            print 'Running test \'%s\' for %s ...' % (testname,formula),
             sys.stdout.flush()
             result = test(*args)
-            notable_args = (args[1], args[0])
-            results[notable_args] = result
-            #if result is None:
-            #    print 'Cache exists but is empty.'
-            #else:
-            #    print 'Done.'
+            results[testname][formula] = result
         except KeyboardInterrupt:
             raise KeyboardInterrupt # Don't ignore keyboard interrupts
         except: #(RuntimeError, ConvergenceError, AssertionError):
             pass
-            #print 'Failed.'
     return results
 
 def data2restructured(results):

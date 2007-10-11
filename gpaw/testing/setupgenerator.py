@@ -112,10 +112,11 @@ class SetupGenerator:
               vbar=('poly', rvbar),
               filter=(hfilter, rfilter / r),
               rcutcomp=rcomp,
-              logderiv=False)
+              logderiv=False,
+              name=self.name)
         path = os.environ['GPAW_SETUP_PATH'].split(':')[0]
-        os.rename(self.symbol+'.PBE', path + '/'+self.symbol+'.'+self.name+
-                  '.PBE')
+        name = self.symbol+'.'+self.name+'.PBE'
+        os.rename(name, path + '/'+name)
 
     def generate_setup(self, parms):
         """

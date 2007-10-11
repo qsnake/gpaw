@@ -58,28 +58,33 @@ def molecular_energy(formula, a=12., h=.16, sep=None, dislocation=None,
     return energy, calc.niter
 
 def molecular_energies(formula, a=12., h=.16, displacements=None,
-                            setups='paw', quick=False, txt='-'):
+                       setups='paw', quick=False, txt='-'):
     """Calculates the energy of the specified molecule using a range
     of different bond lengths."""
     if quick:
         (a, h) = (6., .3)
     if displacements is None:
         displacements = [(i - 2) * 0.015 for i in range(5)]
+
+    system, calc = setup_molecule(formula, a, h, setups=setups, txt=txt)
+
+    if len(system) != 2:
+        displacement = 0.
+        energy = system.GetPotentialEnergy()
+        niter = calc.niter
+        return [displacement], [energy], [niter]
+
     energies = []
     niters = []
-    system, calc = setup_molecule(formula, a, h, setups=setups, txt=txt)
-    originalpositions = system.GetCartesianPositions()
+    originalpositions = system.GetCartesianPositions()    
     for displ in displacements:
-        try:
-            system.SetCartesianPositions(originalpositions +
-                                         [[-displ/2., 0., 0.],
-                                          [+displ/2., 0., 0.]])
-            energy = system.GetPotentialEnergy()
-            niters.append(calc.niter)
-        except: # Find out relevant errors
-            energy = None
-            niters.append(None)
+        system.SetCartesianPositions(originalpositions +
+                                     [[-displ/2., 0., 0.],
+                                      [+displ/2., 0., 0.]])
+        energy = system.GetPotentialEnergy()
+        niter = calc.niter
         energies.append(energy)
+        niters.append(niter)
         
     return displacements, energies, niters
 
@@ -116,7 +121,8 @@ def grid_convergence_energies(formula, a=10., gpts=None, setups='paw',
         hvalues = [.16, .25]
         gptmax, gptmin = [int(a/h)/4*4 for h in hvalues]
         gpts = range(gptmin, gptmax+1, 4)
-    system, calc = setup_molecule(formula, a, gpts=gpts[0], txt=txt)
+    system, calc = setup_molecule(formula, a, gpts=gpts[0], txt=txt,
+                                  periodic=True)
     energies = []
     niters = []
     for gptcount in gpts:
