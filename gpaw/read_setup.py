@@ -216,7 +216,6 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
         elif name in ['localized_potential', 'zero_potential']: # XXX
             self.vbar_g = x_g
         elif name == 'core_response':
-            print "core_response", x_g
             self.core_response = x_g
         elif name == 'ae_partial_wave':
             j = len(self.phi_jg)

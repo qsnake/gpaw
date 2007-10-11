@@ -253,9 +253,9 @@ class XCFunctional:
     # For non-local functional, this function does the calculation for special
     # case of setup-generator. The processes for non-local in radial and 3D-grid
     # deviate so greatly that this is special treatment is needed.
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc):
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, density=None):
         # Send the command one .xc up
-        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc)
+        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc, density=density)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              taua_g=None):
@@ -524,9 +524,9 @@ class XCRadialGrid(XCGrid):
 
     # This is called from all_electron.py
     # Special function for just 1D-case
-    def get_non_local_energy_and_potential(self, u_j, f_j, e_j, l_j, v_xc):
+    def get_non_local_energy_and_potential(self, u_j, f_j, e_j, l_j, v_xc, density=None):
         # Send the command one .xc up. Include also the grid descriptor.
-        return self.xcfunc.get_non_local_energy_and_potential1D(self.gd, u_j, f_j, e_j, l_j, v_xc)
+        return self.xcfunc.get_non_local_energy_and_potential1D(self.gd, u_j, f_j, e_j, l_j, v_xc, density=density)
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g, e_g = None):
         if e_g == None:

@@ -194,12 +194,6 @@ class Generator(AllElectron):
             nc[1:] /= r[1:]**2
             nc[0] = nc[1]
 
-        # Calculate extra-stuff for non-local functionals
-        extra_xc_data = {}
-        if self.xc.is_non_local():
-            self.xc.xcfunc.xc.calculate_extra_setup_data(extra_xc_data, self)
-
-
         # Calculate core kinetic energy density
         if njcore == 0:
             tauc = num.zeros(N, num.Float)
@@ -441,18 +435,30 @@ class Generator(AllElectron):
         vHt[0] = vHt[1]
 
         vXCt = num.zeros(N, num.Float)
+
+        extra_xc_data = {}
+
         if not self.xc.is_non_local():
             Exct = self.xc.get_energy_and_potential(nt, vXCt)
         else:
-            # The difference between local and non-loacl functionals
+            # The difference between local and non-local functionals
             # is that non-local ones need all the pseudo wave-functions,
-            # not just the valence ones
-            s_j = self.u_j.copy()
+            # not just the valence ones.
+	
+            self.s_j = self.u_j.copy()
             # Construct all pseudo wave-functions
             for j, (l, u) in enumerate(zip(self.l_j, self.u_j)):
-                construct_smooth_wavefunction(u, l, gcutnc, r, s_j[j])
+                construct_smooth_wavefunction(u, l, gcutnc, r, self.s_j[j])
+                if (j < njcore):
+                     self.s_j[j][:] = 0.0
+
+            # Calculate the response part using smooth orbitals, but
+            # the GGA-energy density part using the smooth core density.
             Exct = self.xc.get_non_local_energy_and_potential(
-                s_j, self.f_j, self.e_j, self.l_j, vXCt)
+                self.s_j, self.f_j, self.e_j, self.l_j, vXCt, density = nt)
+
+            # Calculate extra-stuff for non-local functionals
+            self.xc.xcfunc.xc.calculate_extra_setup_data(extra_xc_data, self)
 
         vt = vHt + vXCt
 
