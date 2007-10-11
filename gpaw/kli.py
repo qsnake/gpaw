@@ -26,9 +26,9 @@ from gpaw.sphere import Y_nL, points, weights
 # 1) approximates the numerator part of Slater-potential from 2*GGA-energy density
 # 2) approximates the response part coefficients from eigenvalues.
 
-SLATER_FUNCTIONAL = "revPBEx"
+SLATER_FUNCTIONAL = "X_B88-None"
 SMALL_NUMBER = 1e-8
-K_G = 0.382
+K_G = 0.382106112167171
 
 class GLLBFunctional:
     def __init__(self):
@@ -114,11 +114,14 @@ class GLLBFunctional:
 
         # Find fermi-level
         # Grr!!! sum(num.where(f_j>1e-3, 1, 0))-1 doesn't work
-        homo = len(f_j)-1
-        self.fermi_level = e_j[homo]
-        
+        self.fermi_level = -1000
+        for i, (f,e) in enumerate(zip(f_j, e_j)):
+            if f > 1e-7:
+                if self.fermi_level < e:
+                    self.fermi_level = e
+
         if njcore == None:
-            imax = homo+1
+            imax = len(f_j)
         else:
             # Add the potential only from core orbitals
             imax = njcore

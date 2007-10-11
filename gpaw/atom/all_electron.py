@@ -269,8 +269,8 @@ class AllElectron:
 ##         print "Ekin(tau2)=",num.dot(tau2 *r**2 , dr) * 4*pi
 
         # When iterations are over calculate the correct exchange energy
-        if self.xc.is_non_local():
-            Exc = atomic_exact_exchange(self)
+        #if self.xc.is_non_local():
+        #    Exc = atomic_exact_exchange(self)
 
         t()
         t('Converged in %d iteration%s.' % (niter, 's'[:niter != 1]))
