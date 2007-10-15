@@ -279,8 +279,9 @@ def fix(formula):
         if c.isdigit():
             s += r'\rm{' + formula[j:i] + '}_' + c
             j = i + 1
-    if s == '$':
-        return s + r'\rm{' + formula + '}$'
+    remainder = formula[j:]
+    if remainder:
+        s += r'\rm{' + remainder + '}'
     return s + '$'
 
 

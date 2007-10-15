@@ -1,4 +1,6 @@
-import time, sys, pickle
+import time
+import sys
+import pickle
 import atomization
 import Numeric as num
 from gpaw.utilities import devnull
@@ -88,15 +90,15 @@ class MoleculeTest(Test):
 
         for name, test in zip(self.names, self.tests):
             log[name] = dict(test.dumplog)
-        log['iterations'] = dict(self.iterationtest.dumplog)
-        
+        log['iterations'] = dict(self.iterationtest.dumplog)        
+
 
 class EnergyTest(Test):
     """
     This test compares the energy of a diatomic molecule of the
     relevant element to a reference PBE value.
     """
-    def __init__(self, cellsize=8., unit_badness=.05):
+    def __init__(self, cellsize=7.5, unit_badness=.05):
         Test.__init__(self)
         self.cellsize = cellsize
         
@@ -150,7 +152,7 @@ class DistanceTest(Test):
     """
     This test compares the bond length to some reference value.
     """
-    def __init__(self, cellsize=7., unit_badness=.005):
+    def __init__(self, cellsize=7.5, unit_badness=.005):
         Test.__init__(self)
         self.unit_badness = unit_badness
         self.cellsize = cellsize
@@ -240,10 +242,10 @@ class NoiseTest(Test):
     proportional to the square of the maximum deviation of these
     energies, which should obviously be identical ideally.
     """
-    def __init__(self, unit_badness=.005, points=None):
+    def __init__(self, unit_badness=.05, points=None):
         Test.__init__(self)
         self.h = .2
-        self.a = 5.
+        self.a = 4.5
         if points is None:
             d = num.arrayrange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
             points = [(x,x,x) for x in d]
@@ -289,8 +291,7 @@ class NoiseTest(Test):
         d = element.d
 
         energies = [atomization.energy_at_distance(d, calc=calc, a=a,
-                                                   dislocation=(h*dx,h*dy,
-                                                                h*dz),
+                                                   dislocation=(dx,dy,dz),
                                                    symbol=symbol,
                                                    periodic=True)
                     for (dx,dy,dz) in self.points]
@@ -310,7 +311,7 @@ class ConvergenceTest(Test):
         #Formerly standard value was .2
         #change default unit badness to .005 someday
         Test.__init__(self)
-        self.a = 5.
+        self.a = 4.5
         self.unit_badness = unit_badness
         self.dumplog['unit'] = unit_badness
 
@@ -399,14 +400,17 @@ class IterationTest(Test):
         return iterationbadness
 
 def test():
-    elements = ['H', 'Li', 'Be', 'N', 'O', 'F', 'Cl']
+    setups = 'paw'
+    if len(sys.argv) > 1:
+        setups = sys.argv[-1]
+    elements = ['H', 'Li', 'Be', 'N', 'O', 'F', 'P', 'Cl']
     test = MoleculeTest()
     results = []
-    outputfile = open('test_badness.txt', 'w')
+    outputfile = open('test.%s.txt' % setups, 'w')
     for element in elements:
         try:
-            result = test.badness(element, 'paw', sys.stdout)
-        except:
+            result = test.badness(element, setups, sys.stdout)
+        except Exception:
             result = 'FAIL'
         results.append(result)
         print >> outputfile, element, result

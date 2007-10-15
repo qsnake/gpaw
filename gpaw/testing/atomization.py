@@ -111,9 +111,10 @@ def calc_energy(calc1=None, calc2=None, a=6., symbol = 'N',
                                  periodic=periodic)
 
     if calc1 == None:
-        calc1 = makecalculator(nbands=molecule.nbands1, setup=setup)
+        calc1 = makecalculator(nbands=molecule.nbands1, setup=setup, hund=True)
     if calc2 == None:
-        calc2 = makecalculator(nbands=molecule.nbands2, setup=setup)
+        calc2 = makecalculator(nbands=molecule.nbands2, setup=setup,
+                               hund=False)
 
     #bands: 2s and 2p yield a total of 4 bands; 1s is ignored
     #setups='A1' => will search for /home/ask/progs/gpaw/setups/N.A1.PBE.gz
@@ -140,18 +141,18 @@ def atomization_calculators(symbol='N', out='-', h=.2, setup='paw'):
     Creates two calculators for the given molecule with appropriate band counts
     """
     molecule = elements[symbol]
-    calc1 = makecalculator(molecule.nbands1, out, h, setup=setup)
-    calc2 = makecalculator(molecule.nbands2, out, h, setup=setup)
+    calc1 = makecalculator(molecule.nbands1, out, h, setup=setup, hund=True)
+    calc2 = makecalculator(molecule.nbands2, out, h, setup=setup, hund=False)
     return calc1, calc2
 
 
-def makecalculator(nbands=None, out='-', h=.2, setup='paw'):
+def makecalculator(nbands=None, out='-', h=.2, setup='paw', hund=False):
     """
     Default calculator setup, however complicated it might become someday
     This method allows you to forget about lmax and PBE and such
     """
     return Calculator(nbands=nbands, txt=out, h=h, xc='PBE',
-                      setups=setup)
+                      setups=setup, hund=hund)
 
 def energy_at_distance(distance, calc=None, dislocation=(0,0,0),
                        symbol='N', a=5., periodic=False):

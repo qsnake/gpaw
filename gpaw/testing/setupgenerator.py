@@ -46,7 +46,7 @@ class SetupGenerator:
         # so make sure a proper name is entered with a couple of chars
         # (it should be enough to test for len==0, but what the heck)
         if len(name) < 1:
-            raise Exception('Please supply a non-empty name.')
+            raise ValueError('Please supply a non-empty name.')
         self.symbol = symbol
         self.name = name
 
@@ -74,7 +74,7 @@ class SetupGenerator:
 
     def get_standard_parameters(self):
         if self.stdparms is None:
-            raise Exception('Standard parameters not defined!')
+            raise ValueError('Standard parameters not defined!')
         else:
             return self.stdparms
         

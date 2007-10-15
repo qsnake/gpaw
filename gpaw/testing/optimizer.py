@@ -89,7 +89,7 @@ class Optimizer:
                 generator = setupgenerator.SetupGenerator(self.element.symbol,
                                                           generatorname,
                                                           whichparms=parms)
-            except:
+            except Exception:
                 raise Exception('Bad generator: '+str(generator))
 
         self.generator = generator
@@ -145,8 +145,7 @@ class Optimizer:
                     'simplex'   : simplex,
                     'testname'  : str(test.__class__),
                     'test'      : dict(test.dumplog),
-                    'generator' : generator.descriptor
-                    }
+                    'generator' : generator.descriptor}
 
         dumplog.dump(dumpdict)
 
@@ -181,8 +180,7 @@ class Optimizer:
             data = {'type'      : 'status',
                     'simplex'   : self.simplex,
                     'deviation' : self.amoeba.relativedeviation,
-                    'step'      : self.stepcount
-                    }
+                    'step'      : self.stepcount}
 
             self.dumplog.dump(data)
 
@@ -199,10 +197,9 @@ class Optimizer:
             print >> out, 'Point: ',args
             badness = self.test.badness(self.element.symbol,
                                         self.setup_name, out)
-        
         except KeyboardInterrupt:
-            raise KeyboardInterrupt # Don't ignore keyboard interrupts
-        except:
+            raise sys.exc_info()[0]
+        except Exception:
             badness = 10000
             header = '=== Exception ==='
             print >> out, header
@@ -213,19 +210,18 @@ class Optimizer:
         print >> out
         out.flush()
 
-        
-
         data = {'type'      : 'eval',
                 'point'     : args,
                 'badness'   : badness,
-                'log'       : self.test.dumplog,
-                'stepcount' : self.stepcount
-                }
+                'log'       : dict(self.test.dumplog),
+                'stepcount' : self.stepcount}
+        # NOTE: It is IMPORTANT to create a NEW dict identical to
+        # self.test.dumplog, since otherwise pickle will apparently become
+        # CONFUSED and dump the SAME values over and over!
 
         self.dumplog.dump(data)
         
         return badness
-
 
 optimizer = None
 
@@ -247,7 +243,7 @@ def main(symbol='H', name='test', generator=[3,4], tolerance=0.01,
             whichparms = list(generator)
             generator = setupgenerator.SetupGenerator(symbol, name,
                                                       whichparms=whichparms)
-        except:
+        except Exception:
             raise Exception('Bad generator spec')
 
     optimizer = Optimizer(symbol, name, generator=generator, test=test,

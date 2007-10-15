@@ -129,7 +129,7 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
             result = test(*args)
             results[testname][formula] = result
         except KeyboardInterrupt:
-            raise KeyboardInterrupt # Don't ignore keyboard interrupts
+            raise sys.exc_info()[0] # Don't ignore keyboard interrupts
         except: #(RuntimeError, ConvergenceError, AssertionError):
             pass
     return results

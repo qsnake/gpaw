@@ -8,7 +8,7 @@ from ASE.Units import Convert
 from ASE import ListOfAtoms, Atom
 
 from gpaw.utilities.molecule import molecules
-from gpaw.utilities import locked, center
+from gpaw.utilities import center
 from gpaw.paw import ConvergenceError
 from gpaw import Calculator
 import data
@@ -147,9 +147,9 @@ def grid_convergence_energies(formula, a=10., gpts=None, setups='paw',
         niters.append(calc.niter)
     return gpts, energies, niters
 
-def test_atomization_energy(symbol='H', a=10., h=.18):
-    e_atom, niter = calc_atomic_energy(symbol, a, h)
-    e_molecule, niter2 = calc_molecular_energy(symbol+'2', a, h)
+def test_atomization_energy(symbol='H', a=10., h=.18, setups='paw'):
+    e_atom, niter = calc_atomic_energy(symbol, a, h, setups=setups)
+    e_molecule, niter2 = calc_molecular_energy(symbol+'2', a, h, setups=setups)
     energy = e_molecule - 2*e_atom
     print energy, niter, niter2
     return energy
