@@ -55,6 +55,7 @@ class GLLBFunctional:
         self.vt_g = finegd.zeros()
         self.nt_G = gd.zeros()
         self.vt_g = finegd.zeros()
+        self.old_vt_g = finegd.zeros()
         
     def get_gllb_weight(self, epsilon, fermi_level):
         # Without this systems with degenerate homo-orbitals have convergence problems
@@ -202,12 +203,19 @@ class GLLBFunctional:
                 self.add_response_part(kpt, self.vt_G, self.nt_G, self.fermi_level)
 
         self.vt_g[:] = 0.0
+
         self.vt_G[:] /= self.nt_G[:] + SMALL_NUMBER
 
         # It's faster to add wavefunctions in coarse-grid and interpolate afterwards
         self.interpolate(self.vt_G, self.vt_g)
         # Add the fine-grid response part to total potential
         v_g[:] += self.vt_g 
+
+        if self.old_vt_g == None:
+            self.old_vt_g = v_g.copy()
+
+        v_g[:] = 0.5 * v_g[:] + 0.5 * self.old_vt_g
+        self.old_vt_g[:] = v_g[:]
         
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         print "GLLB calculate_spinpolarized not implemented"
