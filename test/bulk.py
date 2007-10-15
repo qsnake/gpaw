@@ -12,11 +12,8 @@ for a in A:
     e.append(bulk.GetPotentialEnergy())
 print e
 
-try:
+if 0:
     import numpy as npy
-except ImportError:
-    pass
-else:
     a = npy.roots(npy.polyder(npy.polyfit(A, e, 2), 1))[0]
     print 'a =', a
     assert abs(a - 2.6493) < 0.0001
