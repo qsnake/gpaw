@@ -47,6 +47,16 @@ class XCFunctional:
         self.gga = False
         self.orbital_dependent = False
         self.uses_libxc = False
+        self.nspins = nspins
+
+        # Check if setup name has been set manually
+        index = xcname.rfind('-setup')
+        if index == -1:
+            self.setupname = None
+        else:
+            self.setupname = xcname[index + len('-setup'):]
+            xcname = xcname[:index]
+            self.xcname = xcname
 
         # Special cases of functionals from libxc
         if xcname == 'XC_LB':
@@ -94,6 +104,8 @@ class XCFunctional:
             xcname = 'X_PBE-C_PBE'
             self.orbital_dependent = True
             self.hybrid = 0.25
+            if self.setupname is None:
+                self.setupname = 'PBE'
         # End of: Abbreviations for common functionals from libxc
         elif xcname == 'oldLDA':
             self.maxDerivativeLevel=2
@@ -109,10 +121,12 @@ class XCFunctional:
         elif xcname == 'KLI':
             code = 15
             self.orbital_dependent = True
-        elif (xcname == 'EXX'):
+        elif xcname == 'EXX':
             code = 6
             self.hybrid = 1.0
             self.orbital_dependent = True
+            if self.setupname is None:
+                self.setupname = 'LDA'
         elif xcname == 'GLLB':
             self.orbital_dependent = True
             code = 16
@@ -132,6 +146,8 @@ class XCFunctional:
                 self.hybrid = 0.25
                 code = 4
                 xcname = 'PBE0'
+                if self.setupname is None:
+                    self.setupname = 'oldPBE'
             elif xcname == 'PADE':
                 code = 5
             elif xcname == 'oldrevPBEx':
@@ -290,6 +306,26 @@ class XCFunctional:
 
     def get_name(self):
         return self.xcname
+
+    def get_setup_name(self):
+        if self.setupname is None:
+            return self.get_name()
+        else:
+            return self.setupname
+
+    def get_local_xc(self):
+        if not self.orbital_dependent:
+            return self
+        
+        if self.get_name() == 'EXX':
+            return XCFunctional('LDAx', self.nspins)
+        elif self.get_name() == 'oldPBE0':
+            return XCFunctional('oldPBE', self.nspins)
+        elif self.get_name() == 'PBE0':
+            return XCFunctional('PBE', self.nspins)
+        else:
+            raise RuntimeError('Orbital dependent xc-functional, but no local '
+                               'functional set.')
 
     def exchange(self, rs, a2=0):
         return self.xc.exchange(rs, a2)

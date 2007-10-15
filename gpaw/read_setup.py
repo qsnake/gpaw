@@ -40,21 +40,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.core_hole_e_kin = None
         self.core_response = []
 
-    def parse(self, symbol, xcfunc):
-        exx = False
-        xcname = xcfunc.get_name()
-        if xcfunc.hybrid > 0:
-            if xcname == 'EXX': # XXX EXX hack
-                exx = True
-                xcname = XCFunctional('LDA').get_name()
-            elif xcname == XCFunctional('oldPBE0').get_name(): # XXX EXX hack
-                exx = True
-                xcname = XCFunctional('oldPBE').get_name()
-            elif xcname == XCFunctional('PBE0').get_name(): # XXX EXX hack
-                exx = True
-                xcname = XCFunctional('PBE').get_name()
-
-        name = symbol + '.' + xcname
+    def parse(self, symbol, setupname, zero_reference=False):
+        name = symbol + '.' + setupname
 
         source = None
         for path in setup_paths:
@@ -77,7 +64,7 @@ the directory where the setup files are stored.  See
 http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
 
             raise RuntimeError('Could not find %s-setup for "%s".' %
-                               (xcname, symbol))
+                               (setupname, symbol))
 
         fingerprint = md5.new(source).hexdigest()
 
@@ -87,7 +74,7 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
         xml.sax.parse(StringIO(source), self) # XXX There is a special parse
                                               # function that takes a string
 
-        if exx:
+        if zero_reference:
             self.e_total = 0.0
             self.e_kinetic = 0.0
             self.e_electrostatic = 0.0

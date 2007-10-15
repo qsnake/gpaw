@@ -50,9 +50,11 @@ class Setup:
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
                  type='paw', basis=None):
         self.xcfunc = xcfunc
-        xcname = xcfunc.get_name()
-        self.xcname = xcname
+        self.xcname = xcfunc.get_name()
+        self.setupname = xcfunc.get_setup_name()
         self.softgauss = False
+        xcname = self.xcname
+        zero_reference = xcfunc.hybrid > 0
 
         self.type = type
         if type != 'paw':
@@ -74,7 +76,8 @@ class Setup:
          self.fcorehole,
          eigcorehole,
          ekincorehole,
-         core_response) = PAWXMLParser().parse(self.symbol, self.xcfunc)
+         core_response) = PAWXMLParser().parse(self.symbol, self.setupname,
+                                               zero_reference)
 
         self.filename = filename
 
@@ -584,7 +587,7 @@ class Setup:
          fcorehole,
          core_hole_e,
          core_hole_e_kin,
-         core_response) = PAWXMLParser().parse(self.symbol, self.xcfunc)
+         core_response) = PAWXMLParser().parse(self.symbol, self.setupname)
 
         # cutoffs
         nj = len(l_j)
@@ -667,7 +670,7 @@ class Setup:
          fcorehole,
          core_hole_e,
          core_hole_e_kin,
-         core_response) = PAWXMLParser().parse(self.symbol, self.xcname)
+         core_response) = PAWXMLParser().parse(self.symbol, self.setupname)
 
         # radial grid
         g = num.arange(ng, typecode=num.Float)
