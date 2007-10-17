@@ -4,7 +4,8 @@
 functional theory calculations."""
 
 import Numeric as num
-import gpaw.tddft.BasicLinearAlgebra
+
+from gpaw.utilities.blas import axpy
 
 ###############################################################################
 # Propagator
@@ -62,7 +63,7 @@ class ExplicitCrankNicolson(Propagator):
     
     """
     
-    def __init__(self, td_density, td_hamiltonian, td_overlap, solver, blas):
+    def __init__(self, td_density, td_hamiltonian, td_overlap, solver, gd):
         """Create ExplicitCrankNicolson-object.
         
         ================ =====================================================
@@ -72,7 +73,7 @@ class ExplicitCrankNicolson(Propagator):
         td_hamiltonian   the time-dependent hamiltonian
         td_overlap       the time-dependent overlap operator
         solver           solver for linear equations
-        blas             basic linear algebra subroutines
+        gd               coarse (wavefunction) grid descriptor
         ================ =====================================================
         
         """
@@ -80,7 +81,7 @@ class ExplicitCrankNicolson(Propagator):
         self.td_hamiltonian = td_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
-        self.blas = blas
+        self.gd = gd
         
         self.hpsit = None
         self.spsit = None
@@ -104,9 +105,9 @@ class ExplicitCrankNicolson(Propagator):
         self.td_hamiltonian.update(self.td_density.get_density(), time)
         self.td_overlap.update()
         if self.hpsit is None:
-            self.hpsit = self.blas.zeros(kpt_u[0].psit_nG[0].shape, num.Complex)
+            self.hpsit = self.gd.zeros(typecode=num.Complex)
         if self.spsit is None:
-            self.spsit = self.blas.zeros(kpt_u[0].psit_nG[0].shape, num.Complex)
+            self.spsit = self.gd.zeros(typecode=num.Complex)
         
         # loop over k-points (spins)
         for kpt in kpt_u:
@@ -118,7 +119,7 @@ class ExplicitCrankNicolson(Propagator):
             
                 #psit[:] = self.spsit - .5J * self.hpsit * time_step
                 psit[:] = self.spsit
-                self.blas.zaxpy(-.5j * self.time_step, self.hpsit, psit)
+                axpy(-.5j * self.time_step, self.hpsit, psit)
             
                 # A x = b
                 psit[:] = self.solver.solve(self,psit,psit)
@@ -140,7 +141,7 @@ class ExplicitCrankNicolson(Propagator):
         self.td_overlap.apply(self.kpt, psi, self.spsit)
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit 
         psin[:] = self.spsit
-        self.blas.zaxpy(.5j * self.time_step, self.hpsit, psin)
+        axpy(.5j * self.time_step, self.hpsit, psin)
 
 
 
@@ -170,7 +171,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
     
     """
     
-    def __init__(self, abs_kick_hamiltonian, td_overlap, solver, blas):
+    def __init__(self, abs_kick_hamiltonian, td_overlap, solver, gd):
         """Create AbsorptionKick-object.
         
         ===================== =================================================
@@ -179,7 +180,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         abs_kick_hamiltonian  the absorption kick hamiltonian
         td_overlap            the time-dependent overlap operator
         solver                solver for linear equations
-        blas                  basic linear algebra subroutines
+        gd                    coarse (wavefunction) grid descriptor
         ===================== =================================================
         
         """
@@ -187,7 +188,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         self.td_hamiltonian = abs_kick_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
-        self.blas = blas
+        self.gd = gd
         
         self.hpsit = None
         self.spsit = None
@@ -222,7 +223,7 @@ class SemiImplicitCrankNicolson(Propagator):
     
     """
     
-    def __init__(self, td_density, td_hamiltonian, td_overlap, solver, blas):
+    def __init__(self, td_density, td_hamiltonian, td_overlap, solver, gd):
         """Create SemiImplicitCrankNicolson-object.
         
         ================ =====================================================
@@ -232,7 +233,7 @@ class SemiImplicitCrankNicolson(Propagator):
         td_hamiltonian   the time-dependent hamiltonian
         td_overlap       the time-dependent overlap operator
         solver           a solver for linear equations
-        blas             basic linear algebra subroutines
+        gd               coarse (wavefunction) grid descriptor
         ================ =====================================================
         
         """
@@ -240,7 +241,7 @@ class SemiImplicitCrankNicolson(Propagator):
         self.td_hamiltonian = td_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
-        self.blas = blas
+        self.gd = gd
         
         self.twf = None        
         self.hpsit = None
@@ -262,20 +263,18 @@ class SemiImplicitCrankNicolson(Propagator):
         # temporary wavefunctions
         if self.twf is None:
             self.twf = []
-            for kpt in kpt_u:
-                twf = [
-                    self.blas.array(psit, num.Complex)
-                    for psit in kpt.psit_nG
-                    ]
-                self.twf.append(twf)
-        else:
-            for u in range(len(kpt_u)):
-                self.twf[u][:] = kpt_u[u].psit_nG
+            for kpt in kpt_u:                
+                self.twf.append( self.gd.empty( len(kpt.psit_nG),
+                                                typecode=num.Complex ) )
+
+        # copy current wavefunctions to temporary variable
+        for u in range(len(kpt_u)):
+            self.twf[u][:] = kpt_u[u].psit_nG
         
         if self.hpsit is None:
-            self.hpsit = self.blas.zeros(kpt_u[0].psit_nG[0].shape, num.Complex)
+            self.hpsit = self.gd.zeros(typecode=num.Complex)
         if self.spsit is None:
-            self.spsit = self.blas.zeros(kpt_u[0].psit_nG[0].shape, num.Complex)
+            self.spsit = self.gd.zeros(typecode=num.Complex)
         
         self.time_step = time_step
         
@@ -316,7 +315,7 @@ class SemiImplicitCrankNicolson(Propagator):
 
                 #psit[:] = self.spsit - .5J * self.hpsit * time_step
                 psit[:] = self.spsit
-                self.blas.zaxpy(-.5j * self.time_step, self.hpsit, psit)
+                axpy(-.5j * self.time_step, self.hpsit, psit)
             
                 # A x = b
                 psit[:] = self.solver.solve(self,psit,psit)
@@ -338,7 +337,7 @@ class SemiImplicitCrankNicolson(Propagator):
         self.td_overlap.apply(self.kpt, psi, self.spsit)
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit
         psin[:] = self.spsit
-        self.blas.zaxpy(.5j * self.time_step, self.hpsit, psin)
+        axpy(.5j * self.time_step, self.hpsit, psin)
 
 
 

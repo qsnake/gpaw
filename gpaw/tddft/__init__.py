@@ -7,18 +7,16 @@ import sys
 
 import Numeric as num
 
-import gpaw.tddft.BiCGStab
-import gpaw.tddft.BasicLinearAlgebra
-from gpaw.tddft.Propagators import \
+from gpaw.tddft.bicgstab import BiCGStab
+from gpaw.tddft.propagators import \
     ExplicitCrankNicolson, \
     SemiImplicitCrankNicolson, \
     AbsorptionKick
-from gpaw.tddft.TimeDependentVariablesAndOperators import \
+from gpaw.tddft.tdopers import \
     TimeDependentHamiltonian, \
     TimeDependentOverlap, \
     TimeDependentDensity, \
     AbsorptionKickHamiltonian
-
 
 class DummyMixer:
     def mix(self, nt_sG, comm):
@@ -69,13 +67,12 @@ class TDDFT:
         self.td_overlap = TimeDependentOverlap(paw.pt_nuclei)
         self.td_density = TimeDependentDensity(paw)
         
-        # Blas
-        self.blas = BasicLinearAlgebra.GpawBlas(paw.gd)
-        #self.blas = BasicLinearAlgebra.DefaultBlas()
+        # Grid descriptor
+        self.gd = paw.gd
 
         # Solver for linear equations
         if solver is 'BiCGStab':
-            self.solver = BiCGStab.BiCGStab(tolerance=tolerance, blas=self.blas)
+            self.solver = BiCGStab(gd=self.gd, tolerance=tolerance)
         else:
             raise RuntimeError( 'Error in TDDFT: Solver %s not supported. '
                                 'Only BiCGStab is currently supported.' 
@@ -88,14 +85,14 @@ class TDDFT:
                                        self.td_hamiltonian,
                                        self.td_overlap,
                                        self.solver,
-                                       self.blas )
+                                       self.gd )
         elif propagator is 'SICN':
             self.propagator = \
                 SemiImplicitCrankNicolson( self.td_density, 
                                            self.td_hamiltonian, 
                                            self.td_overlap, 
                                            self.solver,
-                                           self.blas )
+                                           self.gd )
         else:
             raise RuntimeError( 'Error in TDDFT:' + 
                                 'Time propagator %s not supported. '
@@ -130,10 +127,10 @@ class TDDFT:
             
 
     # exp(ip.r) psi
-    def absorption_kick(self, strength = 1e-2, direction = [0.0,0.0,1.0]):
+    def absorption_kick(self, strength = 1e-3, direction = [0.0,0.0,1.0]):
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
                                                        strength,
                                                        direction ),
-                            self.td_overlap, self.solver, self.blas )
+                            self.td_overlap, self.solver, self.gd )
         abs_kick.kick(self.kpt)

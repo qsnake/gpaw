@@ -205,6 +205,7 @@ class PAWExtra:
             nucleus.typecode = typecode
             nucleus.ready = False
 
+        # reallocate only my_nuclei (as the others are not allocated at all)
         for nucleus in self.my_nuclei:
             nucleus.reallocate(self.nbands)
 

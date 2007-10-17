@@ -4,7 +4,10 @@
 gradient stabilized method. Requires Numeric and BLAS."""
 
 import Numeric as num
-from gpaw.tddft.BasicLinearAlgebra import DefaultBlas
+
+from gpaw.utilities.blas import axpy
+from gpaw.utilities.blas import dotc
+
 
 class BiCGStab:
     """ Biconjugate gradient stabilized method
@@ -19,7 +22,7 @@ class BiCGStab:
     b is the result.
     """ 
     
-    def __init__(self, tolerance = 1e-15, max_iterations = 100, eps=1e-15, blas = None):
+    def __init__(self, gd, tolerance = 1e-15, max_iterations = 100, eps=1e-15):
         """Create the BiCGStab-object.
         
         Tolerance should not be smaller than attainable accuracy, which is 
@@ -36,6 +39,7 @@ class BiCGStab:
         max_iterations   maximum number of iterations
         eps              if abs(rho) or (omega) < eps, it's regarded as zero 
                          and the method breaks down
+        gd               coarse (wavefunction) grid descriptor
         ================ =====================================================
 
         """
@@ -48,12 +52,10 @@ class BiCGStab:
             self.eps = tolerance
         self.iterations = -1
         
-        self.blas = blas
-        if self.blas is None:
-            self.blas = DefaultBLAS()
-
+        self.gd = gd
         
-    def solve(self, A, x, b, debug=0):
+
+    def solve(self, A, x, b):
         """Solve a set of linear equations A.x = b.
         
         =========== ==========================================================
@@ -66,31 +68,33 @@ class BiCGStab:
 
         """        
         # r_0 = b - A x_0
-        r = self.blas.zeros(x.shape, num.Complex)
+        r = self.gd.zeros(typecode=num.Complex)
         A.dot(-x,r)
         r += b
         
-        q = self.blas.array(r, num.Complex)
-        p = self.blas.zeros(r.shape, num.Complex)
-        v = self.blas.zeros(r.shape, num.Complex)
-        t = self.blas.zeros(r.shape, num.Complex)
+        q = self.gd.empty(typecode=num.Complex)
+        q[:] = r
+        p = self.gd.zeros(typecode=num.Complex)
+        v = self.gd.zeros(typecode=num.Complex)
+        t = self.gd.zeros(typecode=num.Complex)
         alpha = 0.
         rhop  = 1.
         omega = 1.
 
-        zdotc = self.blas.zdotc
-        zaxpy = self.blas.zaxpy
+        # Vector dot product, a^H b, where ^H is conjugate transpose
+        def zdotc(x,y):
+            return self.gd.comm.sum(dotc(x,y))
+        # a x + y => y
+        def zaxpy(a,x,y):
+            axpy(a*(1+0J), x, y)
 
-        for i in range(self.max_iter):
-            if (debug): print '--- iteration ', i+1, ' ---' 
-            
+        for i in range(self.max_iter):            
             # rho_i-1 = q^H r_i-1
             rho = zdotc(q,r)
-            if (debug): print 'rho = ', rho
 
             # if abs(rho) < eps, then BiCGStab breaks down
             if ( abs(rho) < self.eps ):
-                raise Exception("Biconjugate gradient stabilized method failed (abs(rho)=%le < eps = %le)." % (abs(rho),self.eps))
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(rho)=%le < eps = %le)." % (abs(rho),self.eps))
             
             # if i=1, p_i = r_i-1
             # else beta = (rho_i-1 / rho_i-2) (alpha_i-1 / omega_i-1)
@@ -103,10 +107,7 @@ class BiCGStab:
             p *= beta
             p += r
             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            
-            if (debug): print 'beta = ', beta
-            if (debug==2): print 'p = ', p
-            
+                        
             # v_i = A.(M^-1.p), M = 1
             A.dot(p,v)
             # alpha_i = rho_i-1 / (q^H v_i)
@@ -114,13 +115,7 @@ class BiCGStab:
             # s = r_i-1 - alpha_i v_i
             zaxpy(-alpha, v, r)
             # s is denoted by r
-            
-            if (debug): print 'alpha = ', alpha
-            if (debug==2): print 'v = ', v
-            if (debug==2): print 's = ', r
-            
-            if (debug): print '|s|^2 = ', zdotc(r,r)
-            
+                        
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = x_i-1 + alpha (M^-1.p_i)
             zaxpy(alpha, p, x)
@@ -134,9 +129,6 @@ class BiCGStab:
             # omega_i = t^H s / (t^H t) 
             omega = zdotc(t,r) / zdotc(t,t)
             
-            if (debug==2): print 't = ', t
-            if (debug): print 'omega = ', omega
-            
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = ... + omega_i (M^-1.s)
             zaxpy( omega, r, x )
@@ -144,16 +136,13 @@ class BiCGStab:
             zaxpy( -omega, t, r )
             # s is no longer denoted by r
             
-            if (debug==2): print 'x = ', x
-            if (debug==2): print 'r = ', r
-            
             # if ( |r|^2 < tol^2 ) done
             if ( abs(zdotc(r,r)) < self.tol*self.tol ):
                 break
             
             # if abs(omega) < eps, then BiCGStab breaks down
             if ( abs(omega) < self.eps ):
-                raise Exception("Biconjugate gradient stabilized method failed (abs(omega)=%le < eps = %le)." % (abs(omega),self.eps))
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)=%le < eps = %le)." % (abs(omega),self.eps))
             
             rhop = rho
             

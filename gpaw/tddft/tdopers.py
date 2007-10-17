@@ -4,6 +4,7 @@
 operators."""
 
 import Numeric as num
+
 from gpaw.polynomial import Polynomial
 from gpaw.mpi import run
 

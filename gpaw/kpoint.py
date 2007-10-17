@@ -360,7 +360,8 @@ class KPoint:
                                             coords[i][2] )
                 
                 # fit polynomial
-                # !!! FIX ME !!! order should be 2
+                # !!! FIX ME !!! order should be changed to 2 as soon as
+                # nucleus.apply_polynomial supports it
                 nuc_poly = Polynomial(values, coords, order=1)
                 #print nuc_poly.c
                 
