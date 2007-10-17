@@ -37,24 +37,38 @@ class TimeDependentHamiltonian:
         self.td_potential = td_potential
         self.time = 0
         
-        if ( td_potential != None ) :
+        if td_potential is not None:
             self.td_vext_g = hamiltonian.finegd.zeros()
         else:
             self.td_vext_g = None
             
-        if ( hamiltonian.vext_g ):
+        if hamiltonian.vext_g is not None:
             self.ti_vext_g = hamiltonian.vext_g
         else:
             self.ti_vext_g = None
             
         self.vext_g = hamiltonian.finegd.zeros()
         
-        self.vt_sG = num.zeros(hamiltonian.vt_sG.shape, num.Float)
-        self.H_sp = [
-            num.zeros( nucleus.H_sp.shape, num.Float )
-            for nucleus in hamiltonian.ghat_nuclei 
+        self.vt_sG = hamiltonian.gd.zeros(hamiltonian.nspins, num.Float)
+        self.H_asp = [
+            num.zeros(nucleus.H_sp.shape, num.Float)
+            for nucleus in hamiltonian.my_nuclei
             ]
-        
+
+
+    def set_vext_g(self):
+        # if time-dependent and independent external potentials
+        if (self.td_potential is not None) and (self.ti_vext_g is not None):
+            self.td_vext_g = self.td_potential.get_potential(self.time)
+            self.vext_g = self.ti_vext_g + self.td_vext_g
+        # if only time-dependent external potential
+        elif self.td_potential is not None:
+            self.td_vext_g = self.td_potential.get_potential(self.time)
+            self.vext_g = self.td_vext_g
+        # if only time-independent external potential
+        else:
+            self.vext_g = self.ti_vext_g
+
         
     def update(self, density, time):
         """Updates the time-dependent Hamiltonian.
@@ -70,18 +84,7 @@ class TimeDependentHamiltonian:
         """
         
         self.time = time
-        # if time-dependent and independent external potentials
-        if ( (self.td_potential != None) and (self.ti_vext_g != None) ):
-            self.td_vext_g = self.td_potential.get_potential(self.time)
-            self.vext_g = self.ti_vext_g + self.td_vext_g
-        # if only time-dependent external potential
-        elif ( self.td_potential != None ):
-            self.td_vext_g = self.td_potential.get_potential(self.time)
-            self.vext_g = self.td_vext_g
-        # if only time-independent external potential
-        else:
-            self.vext_g = self.ti_vext_g
-            
+        self.set_vext_g()
         self.hamiltonian.vext_g = self.vext_g
         self.hamiltonian.update(density)
         
@@ -101,29 +104,22 @@ class TimeDependentHamiltonian:
         """
         
         self.time = time
-        # if time-dependent and independent external potentials
-        if ( (self.td_potential != None) and (self.ti_vext_g != None) ):
-            self.td_vext_g = self.td_potential.get_potential(self.time)
-            self.vext_g = self.ti_vext_g + self.td_vext_g
-        # if only time-dependent external potential
-        elif ( self.td_potential != None ):
-            self.td_vext_g = self.td_potential.get_potential(self.time)
-            self.vext_g = self.td_vext_g
-        # if only time-independent external potential
-        else:
-            self.vext_g = self.ti_vext_g
-            
+        self.set_vext_g()
         self.hamiltonian.vext_g = self.vext_g
-        
+
+        # copy old        
         self.vt_sG[:] = self.hamiltonian.vt_sG
-        for i in range(len(self.hamiltonian.ghat_nuclei)):
-            self.H_sp[i][:] = self.hamiltonian.ghat_nuclei[i].H_sp
+        for a in range(len(self.hamiltonian.my_nuclei)):
+            self.H_asp[a][:] = self.hamiltonian.my_nuclei[a].H_sp
+        # update
         self.hamiltonian.update(density)
+        # average
         self.hamiltonian.vt_sG += self.vt_sG
         self.hamiltonian.vt_sG *= .5
-        for i in range(len(self.hamiltonian.ghat_nuclei)):
-            self.hamiltonian.ghat_nuclei[i].H_sp += self.H_sp[i] 
-            self.hamiltonian.ghat_nuclei[i].H_sp *= .5        
+        for a in range(len(self.hamiltonian.my_nuclei)):
+            self.hamiltonian.my_nuclei[a].H_sp += self.H_asp[a] 
+            self.hamiltonian.my_nuclei[a].H_sp *= .5        
+
         
     def apply(self, kpt, psit, hpsit):
         """Applies the time-dependent Hamiltonian to the wavefunction psit of
@@ -171,15 +167,16 @@ class AbsorptionKickHamiltonian:
         p = strength * dir / num.sqrt(num.vdot(dir,dir))
         # iterations
         self.iterations = int(round(strength / 1.0e-3))
-        if ( self.iterations == 0 ): self.iterations = 1
+        if self.iterations == 0: 
+            self.iterations = 1
         # delta p
         self.dp = p / self.iterations
 
         # hamiltonian
         # FIXME: slow! Should use special class instead of Polynomial
-        coords = [ [0.0, 0.0, 0.0], \
-                   [1.0, 0.0, 0.0], \
-                   [0.0, 1.0, 0.0], \
+        coords = [ [0.0, 0.0, 0.0],
+                   [1.0, 0.0, 0.0],
+                   [0.0, 1.0, 0.0],
                    [0.0, 0.0, 1.0] ]
         values = [ 0.0, self.dp[0], self.dp[1], self.dp[2] ]
         self.hamiltonian = Polynomial(values, coords, order=1)

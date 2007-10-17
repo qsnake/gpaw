@@ -4,7 +4,7 @@
 gradient stabilized method. Requires Numeric and BLAS."""
 
 import Numeric as num
-import BasicLinearAlgebra
+from gpaw.tddft.BasicLinearAlgebra import DefaultBlas
 
 class BiCGStab:
     """ Biconjugate gradient stabilized method
@@ -19,7 +19,7 @@ class BiCGStab:
     b is the result.
     """ 
     
-    def __init__(self, tolerance = 1e-15, max_iterations = 100, eps=1e-15):
+    def __init__(self, tolerance = 1e-15, max_iterations = 100, eps=1e-15, blas = None):
         """Create the BiCGStab-object.
         
         Tolerance should not be smaller than attainable accuracy, which is 
@@ -48,6 +48,10 @@ class BiCGStab:
             self.eps = tolerance
         self.iterations = -1
         
+        self.blas = blas
+        if self.blas is None:
+            self.blas = DefaultBLAS()
+
         
     def solve(self, A, x, b, debug=0):
         """Solve a set of linear equations A.x = b.
@@ -60,27 +64,28 @@ class BiCGStab:
         b           right-hand side vector
         =========== ==========================================================
 
-        """
-        blas = BasicLinearAlgebra.BLAS()
-        
+        """        
         # r_0 = b - A x_0
-        r = num.zeros(x.shape, num.Complex)
+        r = self.blas.zeros(x.shape, num.Complex)
         A.dot(-x,r)
         r += b
         
-        q = num.array(r, num.Complex)
-        p = num.zeros(r.shape, num.Complex)
-        v = num.zeros(r.shape, num.Complex)
-        t = num.zeros(r.shape, num.Complex)
+        q = self.blas.array(r, num.Complex)
+        p = self.blas.zeros(r.shape, num.Complex)
+        v = self.blas.zeros(r.shape, num.Complex)
+        t = self.blas.zeros(r.shape, num.Complex)
         alpha = 0.
         rhop  = 1.
         omega = 1.
-        
+
+        zdotc = self.blas.zdotc
+        zaxpy = self.blas.zaxpy
+
         for i in range(self.max_iter):
             if (debug): print '--- iteration ', i+1, ' ---' 
             
             # rho_i-1 = q^H r_i-1
-            rho = blas.zdotc(q,r)
+            rho = zdotc(q,r)
             if (debug): print 'rho = ', rho
 
             # if abs(rho) < eps, then BiCGStab breaks down
@@ -94,7 +99,7 @@ class BiCGStab:
             
             # p = r + beta * (p - omega * v)
             # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-            blas.zaxpy(-omega, v, p)
+            zaxpy(-omega, v, p)
             p *= beta
             p += r
             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,45 +110,45 @@ class BiCGStab:
             # v_i = A.(M^-1.p), M = 1
             A.dot(p,v)
             # alpha_i = rho_i-1 / (q^H v_i)
-            alpha = rho / blas.zdotc(q,v)
+            alpha = rho / zdotc(q,v)
             # s = r_i-1 - alpha_i v_i
-            blas.zaxpy(-alpha, v, r)
+            zaxpy(-alpha, v, r)
             # s is denoted by r
             
             if (debug): print 'alpha = ', alpha
             if (debug==2): print 'v = ', v
             if (debug==2): print 's = ', r
             
-            if (debug): print '|s|^2 = ', blas.zdotc(r,r)
+            if (debug): print '|s|^2 = ', zdotc(r,r)
             
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = x_i-1 + alpha (M^-1.p_i)
-            blas.zaxpy(alpha, p, x)
+            zaxpy(alpha, p, x)
             
             # if ( |s|^2 < tol^2 ) done
-            if ( abs(blas.zdotc(r,r)) < self.tol*self.tol ):
+            if ( abs(zdotc(r,r)) < self.tol*self.tol ):
                 break
             
             # t = A.(M^-1.s), M = 1
             A.dot(r,t)
             # omega_i = t^H s / (t^H t) 
-            omega = blas.zdotc(t,r) / blas.zdotc(t,t)
+            omega = zdotc(t,r) / zdotc(t,t)
             
             if (debug==2): print 't = ', t
             if (debug): print 'omega = ', omega
             
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = ... + omega_i (M^-1.s)
-            blas.zaxpy( omega, r, x )
+            zaxpy( omega, r, x )
             # r_i = s - omega_i * t
-            blas.zaxpy( -omega, t, r )
+            zaxpy( -omega, t, r )
             # s is no longer denoted by r
             
             if (debug==2): print 'x = ', x
             if (debug==2): print 'r = ', r
             
             # if ( |r|^2 < tol^2 ) done
-            if ( abs(blas.zdotc(r,r)) < self.tol*self.tol ):
+            if ( abs(zdotc(r,r)) < self.tol*self.tol ):
                 break
             
             # if abs(omega) < eps, then BiCGStab breaks down

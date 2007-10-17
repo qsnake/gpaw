@@ -311,54 +311,62 @@ class KPoint:
         """
 
         # apply local part to smooth wavefunctions psit_n
-        for i in range(self.gd.beg_c[0],self.gd.end_c[0]-1):
-            x = i * self.gd.h_c[0]
-            for j in range(self.gd.beg_c[1],self.gd.end_c[1]-1):
-                y = j * self.gd.h_c[1]
-                for k in range(self.gd.beg_c[2],self.gd.end_c[2]-1):
-                    z = k * self.gd.h_c[2]
+        for i in range(self.gd.n_c[0]):
+            x = (i + self.gd.beg_c[0]) * self.gd.h_c[0]
+            for j in range(self.gd.n_c[1]):
+                y = (j + self.gd.beg_c[1]) * self.gd.h_c[1]
+                for k in range(self.gd.n_c[2]):
+                    z = (k + self.gd.beg_c[2]) * self.gd.h_c[2]
                     b_nG[:,i,j,k] = func.value(x,y,z) * a_nG[:,i,j,k]
 
         # apply the non-local part for each nucleus
         for nucleus in pt_nuclei:
-            # position
-            x_c = nucleus.spos_c[0] * self.gd.domain.cell_c[0]
-            y_c = nucleus.spos_c[1] * self.gd.domain.cell_c[1]
-            z_c = nucleus.spos_c[2] * self.gd.domain.cell_c[2]
-            # Delta r = max(r_cut) / 2
-            # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
-            rcut = max(nucleus.setup.rcut_j)
-            a = rcut * 3.0 / 8.0
-            b = 2.0 * a / num.sqrt(3.0)
-
-            # evaluate function at (0,0,0), 3/8 (r_cut,0,0),
-            # sqrt(3)/4 (r_cut,r_cut,rcut), and at symmetric points 
-            # in cubic symmetry
-            #
-            # coordinates
-            coords = [ [x_c,y_c,z_c], \
-                       [x_c+a, y_c,   z_c], \
-                       [x_c-a, y_c,   z_c], \
-                       [x_c,   y_c+a, z_c], \
-                       [x_c,   y_c-a, z_c], \
-                       [x_c,   y_c,   z_c+a], \
-                       [x_c,   y_c,   z_c-a], \
-                       [x_c+b, y_c+b, z_c+b], \
-                       [x_c+b, y_c+b, z_c-b], \
-                       [x_c+b, y_c-b, z_c+b], \
-                       [x_c+b, y_c-b, z_c-b], \
-                       [x_c-b, y_c+b, z_c+b], \
-                       [x_c-b, y_c+b, z_c-b], \
-                       [x_c-b, y_c-b, z_c+b], \
-                       [x_c-b, y_c-b, z_c-b] ]
-            # values
-            values = num.zeros(len(coords),num.Float)
-            for i in range(len(coords)):
-                values[i] = func.value(coords[i][0], coords[i][1], coords[i][2])
+            if nucleus.in_this_domain:
+                # position
+                x_c = nucleus.spos_c[0] * self.gd.domain.cell_c[0]
+                y_c = nucleus.spos_c[1] * self.gd.domain.cell_c[1]
+                z_c = nucleus.spos_c[2] * self.gd.domain.cell_c[2]
+                # Delta r = max(r_cut) / 2
+                # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
+                rcut = max(nucleus.setup.rcut_j)
+                a = rcut * 3.0 / 8.0
+                b = 2.0 * a / num.sqrt(3.0)
                 
-            # fit polynomial
-            nuc_poly = Polynomial(values, coords, order=2)
-            #print nuc_poly.c
-            
-            # apply polynomial operator
-            nucleus.apply_polynomial(a_nG, b_nG, self.k, nuc_poly)
+                # evaluate function at (0,0,0), 3/8 (r_cut,0,0),
+                # sqrt(3)/4 (r_cut,r_cut,rcut), and at symmetric points 
+                # in cubic symmetry
+                #
+                # coordinates
+                coords = [ [x_c,y_c,z_c], \
+                           [x_c+a, y_c,   z_c], \
+                           [x_c-a, y_c,   z_c], \
+                           [x_c,   y_c+a, z_c], \
+                           [x_c,   y_c-a, z_c], \
+                           [x_c,   y_c,   z_c+a], \
+                           [x_c,   y_c,   z_c-a], \
+                           [x_c+b, y_c+b, z_c+b], \
+                           [x_c+b, y_c+b, z_c-b], \
+                           [x_c+b, y_c-b, z_c+b], \
+                           [x_c+b, y_c-b, z_c-b], \
+                           [x_c-b, y_c+b, z_c+b], \
+                           [x_c-b, y_c+b, z_c-b], \
+                           [x_c-b, y_c-b, z_c+b], \
+                           [x_c-b, y_c-b, z_c-b] ]
+                # values
+                values = num.zeros(len(coords),num.Float)
+                for i in range(len(coords)):
+                    values[i] = func.value( coords[i][0],
+                                            coords[i][1],
+                                            coords[i][2] )
+                
+                # fit polynomial
+                # !!! FIX ME !!! order should be 2
+                nuc_poly = Polynomial(values, coords, order=1)
+                #print nuc_poly.c
+                
+                # apply polynomial operator
+                nucleus.apply_polynomial(a_nG, b_nG, self.k, nuc_poly)
+                
+            # if not in this domain
+            else:
+                nucleus.apply_polynomial(a_nG, b_nG, self.k, None)

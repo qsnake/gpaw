@@ -203,8 +203,10 @@ class PAWExtra:
         # Nuclei
         for nucleus in self.nuclei:
             nucleus.typecode = typecode
-            nucleus.reallocate(self.nbands)
             nucleus.ready = False
+
+        for nucleus in self.my_nuclei:
+            nucleus.reallocate(self.nbands)
 
         self.set_positions()
 
