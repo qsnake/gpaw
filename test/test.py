@@ -52,7 +52,7 @@ if len(tests) == 0:
              'xcatom.py', 'coulomb.py', 'nonselfconsistentLDA.py',
              'kli.py', 'units.py', 'revPBE.py', 'nonselfconsistent.py',
              'hydrogen.py', 'spinpol.py', 'wfs_io.py', 'bulk.py',
-             'stdout.py', 'gga-atom.py',
+             'stdout.py', 'gga-atom.py', 'atomize.py',
              'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
              'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py',
              'davidson.py', 'wannier-ethylene.py',

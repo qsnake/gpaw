@@ -33,7 +33,7 @@ potential."""
 #                  /
 #   ~        __ l |  2
 #   f (q) = 4||i  | r dr j (qr) f (r)
-#    l            |           l      l
+#    l            |       l      l
 #                /
 #
 

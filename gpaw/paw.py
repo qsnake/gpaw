@@ -387,8 +387,9 @@ class PAW(PAWExtra, Output):
 
         pos_ac, Z_a, cell_cc, pbc_c = self.last_atomic_configuration
 
-        if (atoms.GetAtomicNumbers() != Z_a or
-            atoms.GetUnitCell() / self.a0 != cell_cc or
+        if (len(atoms) != self.natoms or
+            num.sometrue(atoms.GetAtomicNumbers() != Z_a) or
+            num.sometrue((atoms.GetUnitCell() / self.a0 != cell_cc).flat) or
             atoms.GetBoundaryConditions() != pbc_c):
             # Drastic changes:
             self.wave_functions_initialized = False
