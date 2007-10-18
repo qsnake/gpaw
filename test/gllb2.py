@@ -6,7 +6,6 @@ from gpaw.atom.all_electron import AllElectron
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 
-print "Quanity   Method     Atom      Reference      GPAW   Units"
 
 data = []
 def out(a,b,c,d,e,f):

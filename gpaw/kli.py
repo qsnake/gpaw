@@ -4,6 +4,7 @@ from gpaw.Function1D import Function1D
 from math import sqrt, pi
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2, fac
 from LinearAlgebra import inverse
+from gpaw.operators import Gradient
 
 # For XCCorrections
 from multiarray import matrixproduct as dot3
@@ -13,33 +14,58 @@ from gpaw.spherical_harmonics import YL
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.complex import cc, real
 
-
 # load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
-
-#import pylab
-
-# GLLB-Functional
-# Gritsenko, Leeuwen, Lenthe, Baerends: Self-consistent approximation to the Kohn-Shan exchange potential
-# Physical Review A, vol. 51, p. 1944, March 1995.
-# GLLB-Functional is of the same form than KLI-Functional, but it 
-# 1) approximates the numerator part of Slater-potential from 2*GGA-energy density
-# 2) approximates the response part coefficients from eigenvalues.
 
 SLATER_FUNCTIONAL = "X_B88-None"
 SMALL_NUMBER = 1e-8
 K_G = 0.382106112167171
 
-class GLLBFunctional:
+class NonLocalFunctionalDesc:
+    def __init__(self, rho, grad, wfs, eigs):
+        self.rho = rho
+        self.grad = grad
+        self.wfs = wfs
+        self.eigs = eigs
+
+    def needs_density(self):
+        return self.rho
+
+    def needs_gradient(self):
+        return self.grad
+
+    def needs_wavefunctions(self):
+        return self.wfs
+
+    def needs_eigenvalues(self):
+        return self.eigs
+
+class NonLocalFunctional:
+    """
+     Non-local functional is a superclass for many different types of functionals. It will give
+     it 's subclasses ability to use quanities such as density, gradient, wavefunctions and eigenvalues.
+
+     Subclasses will have to override methods get_functional_desc(), which will return
+     a NonLocalFunctionalDesc object corresponding to needs of the functional, and
+     method calculate_non_local which will do the actual calculation of KS-potential
+     using the optional density, gradient, wavefunctions, eigenvalues supplied in info-dictionary.
+
+     NonLocalFunctional handles only 3D-case, so 1D-setup generation must be handled by subclasses.
+     
+    """
+
     def __init__(self):
-        self.slater_part = None
         self.initialization_ready = False
-        self.fermi_level = -1000
-        
-    # Called from xc_functional::set_non_local_things method
-    # All the necessary classes and methods are passed through this method
-    # Not used in 1D-calculations
+        self.mixing = 0.3
+
     def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation):
+        """
+        Important quanities is supplied to non-local functional using this method.
+    
+        Called from xc_functional::set_non_local_things method
+        All the necessary classes and methods are passed through this method
+        Not used in 1D-calculations.
+        """
         
         self.kpt_u = kpt_u
         self.finegd = finegd
@@ -47,183 +73,466 @@ class GLLBFunctional:
         self.nspins = nspins
         self.nuclei = nuclei
         self.occupation = occupation
+        self.gd = gd
+        self.finegd = finegd
+
+        # Get the description for this functional
+        self.desc = self.get_functional_desc()
         
+        # Temporary array for density mixing
+        self.old_vt_g = None
+        self.new_v_g = finegd.zeros()
+        
+
+        if self.desc.needs_gradient():
+            # Allocate stuff needed for gradient
+            self.ddr = [Gradient(finegd, c).apply for c in range(3)]
+            self.dndr_cg = finegd.empty(3)
+            self.a2_g = finegd.empty()
+    
+    def get_functional_desc(self):
+        """Returns a NonLocalFunctionalDesc instance specifiying the dependence of this functional.
+           on different parameters.
+
+           Currently, there is 4 possibilities:
+              - density, gradient, wavefunctions and eigenvalues
+              
+           To be implemented in subclasses of ResponseFunctional
+           =========== ==========================================================
+           Parameters:
+           =========== ==========================================================
+           none
+           =========== ==========================================================
+
+        """
+       
+        raise "ResponseFunctional::get_functional_info must be overrided"
+
+    def calculate_non_local(self, info, v_g, e_g):
+        """Add the KS-Exchange potential to v_g and supply energy density using data
+           supplied in dictionary info.
+
+           To be implemented in subclasses of ResponseFunctional
+
+           =========== ==========================================================
+           Parameters:
+           =========== ==========================================================
+           info        A dictiorany, see below
+           v_g         The Kohn-Sham potential.
+           e_g         The energy density
+           =========== ==========================================================
+           
+           info is a dictiorary with following content:
+           =========== ==========================================================
+           Key:        Value:
+           =========== ==========================================================
+           typecode    For example num.Float, if the orbitals are real
+           gd          The grid descriptor object for coarse grid
+           finegd      The grid descriptor object for fine grid
+           n_g         Numeric array for density, supplied if needs_density() true
+           psit_nG     A _python_ list containing the wavefunctions,
+                       if needs_wavefunctions() true
+           f_n         A _python_ list containing the occupations,
+                       if needs_wavefunctions() true
+           a2_g        Numeric array for gradient, if needs_gradient() true
+           eps_n       A _python_ list of eigenvalues, if needs_eigenvalues() true
+           =========== ==========================================================
+           """
+        raise "ResponseFunctional::calculate must be overrided"
+
+
+    def calculate_spinpaired(self, e_g, n_g, v_g):
+        """Calculates the KS-exchange potential and adds it to v_g. Supplies also
+           the energy density. This methods cCollects the required info
+           (see comments for calculate_non_local) and calls calculate_non_local with this info.
+
+           =========== ==========================================================
+           Parameters:
+           =========== ==========================================================
+           e_g         The energy density
+           n_g         The electron density
+           v_g         The Kohn-Sham potential.
+           =========== ==========================================================
+
+        """
+
+        info = {}
+        # Supply parameters for calculate non-local
+        info['gd'] = self.gd
+        info['finegd'] = self.finegd
+
+        # Supply density if it is required
+        if self.desc.needs_density():
+            info['n_g'] = n_g
+
+        if self.desc.needs_gradient():
+            # Calculate the gradient
+            for c in range(3):
+                self.ddr[c](n_g, self.dndr_cg[c])
+            self.a2_g[:] = num.sum(self.dndr_cg**2)
+
+            info['a2_g'] = self.a2_g
+
+        # Supply the eigenvalues if required
+        if self.desc.needs_eigenvalues():
+            info['eps_n'] = []
+            for kpt in self.kpt_u:
+                for e in kpt.eps_n:
+                    info['eps_n'].append(e)
+
+        # Supply the wavefunctions if required
+        if self.desc.needs_wavefunctions():
+            psit_nG = []
+            f_n = []
+            for kpt in self.kpt_u:
+                for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
+                    psit_nG.append(psit_G)
+                    f_n.append(f)
+                    
+            info['psit_nG'] = psit_nG
+            info['f_n'] = f_n
+            info['typecode'] = self.kpt_u[0].typecode
+
+        # Calculate the exchange potential to temporary array
+        self.calculate_non_local(info, v_g, e_g)
+
+        #Perform the potential mixing and add the resulting potential to v_g
+        if self.old_vt_g == None:
+            self.old_vt_g = v_g.copy()
+        v_g[:] = self.mixing * v_g[:] + (1.0 - self.mixing) * self.old_vt_g
+        self.old_vt_g[:] = v_g[:]
+
+class GLLBFunctional(NonLocalFunctional):
+    """
+        This class calculates the energy and potential determined by GLLB-Functional [1]. This functional:
+           1) approximates the numerator part of Slater-potential from 2*GGA-energy density. This implementation
+           follows the orginal authors and uses the Becke88-functional.
+           2) approximates the response part coefficients from eigenvalues, given correct result for non-interacting
+           electron gas.
+
+        [1] Gritsenko, Leeuwen, Lenthe, Baerends: Self-consistent approximation to the Kohn-Shan exchange potential
+        Physical Review A, vol. 51, p. 1944, March 1995.
+        GLLB-Functional is of the same form than KLI-Functional, but it 
+        
+    """
+
+    def __init__(self):
+        """
+        Initialize the GLLBFunctional. Some variables are initialized with none. All of these
+        variables are not needed, and therefore they are only initilized when they are needed.
+        """
+        
+        NonLocalFunctional.__init__(self)
+    
+        self.slater_part = None
+        self.initialization_ready = False
+        self.fermi_level = -1000
+        self.v_g1D = None
+        self.e_g1D = None
+        self.slater_part1D = None
+        self.slater_part = None
+
+    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation):
+        NonLocalFunctional.pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation)
+
+        # Temporary arrays needed for GLLB
         self.tempvxc_g = finegd.zeros()
         self.tempe_g = finegd.zeros()
+        self.vt_G = gd.zeros()         # Temporary array for coarse potential
+        self.vt_g = finegd.zeros()     # Temporary array for fine potential
+        self.nt_G = gd.zeros()         # Temporary array for coarse density
+
+
+    def get_functional_desc(self):
+        """
+        Retruns info for GLLBFunctional. The GLLB-functional needs density, gradient, wavefunctions
+        and eigenvalues.
         
-        self.vt_G = gd.zeros()
-        self.vt_g = finegd.zeros()
-        self.nt_G = gd.zeros()
-        self.vt_g = finegd.zeros()
-        self.old_vt_g = finegd.zeros()
+        """
+        return NonLocalFunctionalDesc(True, True, True, True)
+
+#################################################################################
+#                                                                               #
+# Implementation of 1D-GLLB begins                                              #
+#                                                                               #
+################################################################################# 
         
-    def get_gllb_weight(self, epsilon, fermi_level):
-        # Without this systems with degenerate homo-orbitals have convergence problems
-        if (epsilon+1e-3) > fermi_level:
-            return 0
-        return K_G * sqrt(fermi_level - epsilon)
+    def construct_density1D(self, gd, u_j, f_j):
+        """
+        Creates one dimensional density from specified wave functions and occupations.
 
-    # input:  ae : AllElectron object.
-    # output: extra_xc_data : dictionary. A Dictionary with pair ('name', radial grid)
-    def calculate_extra_setup_data(self, extra_xc_data, ae):
-        print "Calculating response part for core-electrons..."
-        N = len(ae.rgd.r_g)
-        v_xc = num.zeros(N, num.Float)
-        # Calculate the response part using wavefunctions, eigenvalues etc. from AllElectron calculator
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        gd          Radial grid descriptor
+        u_j         The wave functions
+        f_j         The occupation numbers
+        =========== ==========================================================
+        """
 
-        self.get_non_local_energy_and_potential1D(ae.rgd,
-                                                  ae.u_j,
-                                                  ae.f_j,
-                                                  ae.e_j,
-                                                  ae.l_j,
-                                                  v_xc,
-                                                  njcore = ae.njcore)
+        n_g = num.dot(f_j, num.where(abs(u_j) < 1e-160, 0, u_j)**2)
+        n_g[1:] /=  4 * pi * gd.r_g[1:]**2
+        n_g[0] = n_g[1]
+        return n_g
 
-        extra_xc_data['core_response'] = v_xc
-        
-    # Input  gd  : RadialGridDescriptor
-    #        u_j : array of wavefunctions
-    #        f_j : array of occupation numbers
-    #        e_j : array of eigenvalues
-    #        l_j : array of angular momenta
-    #     njcore : integer. If specified, outputs only the response part for 'njcore' lowest orbitals.
-    # Output v_xc: The GLLB-exchange potential in radial grid
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, njcore=None, density=None):
+    def get_slater1D(self, gd, n_g, vrho_xc):
+        """
+          Used by get_non_local_energy_and_potential1D to calculate an approximation to 1D-Slater
+          potential. Returns the exchange energy.
+          
+          =========== ==========================================================
+           Parameters:
+           =========== ==========================================================
+           gd          Radial grid descriptor
+           n_g         The density
+           vrho_xc     The slater part multiplied by density is stored here.
+           =========== ==========================================================
+        """
+        # Create temporary arrays only once
+        if self.v_g1D == None:
+            v_g = n_g.copy()
+            v_g[:] = 0.0
 
-        if self.slater_part == None:
+        if self.e_g1D == None:
+            e_g = n_g.copy()
+            e_g[:] = 0.0
+
+        # Do we have already XCRadialGrid object, if not, create one
+        if self.slater_part1D == None:
             from gpaw.xc_functional import XCFunctional, XCRadialGrid
-            self.slater_part = XCRadialGrid(XCFunctional(SLATER_FUNCTIONAL, 1), gd)
-        
-        N = len(gd.r_g)
-        
-	if density == None:
-             # Construct the density from supplied orbitals
-             n_g = num.dot(f_j, num.where(abs(u_j) < 1e-160, 0, u_j)**2) / (4 * pi)
-             n_g[1:] /= gd.r_g[1:]**2
-             n_g[0] = n_g[1]
-        else:
-             # The density is already supplied
-             n_g = density.copy()
-
-        # Create arrays for energy-density and potential
-        e_g = num.zeros(N, num.Float)
-        v_g = num.zeros(N, num.Float)
-
-        # Calculate gga-energy density
-        self.slater_part.get_energy_and_potential_spinpaired(n_g, v_g, e_g=e_g)
+            self.slater_part1D = XCRadialGrid(XCFunctional(SLATER_FUNCTIONAL, 1), gd)
+       
+        # Calculate B88-energy density
+        self.slater_part1D.get_energy_and_potential_spinpaired(n_g, v_g, e_g=e_g)
 
         Exc = num.dot(e_g, gd.dv_g)
+
+        # The Slater potential is approximated by 2*epsilon / rho
+        vrho_xc[:] += 2 * e_g
+
+        return Exc
+
+    def gllb_weight(self, epsilon, fermi_level):
+        """
+        Calculates the weight for GLLB functional.
+        The parameter K_G is adjusted such that the correct result is obtained for
+        non-interacting electron gas.
+
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        epsilon     The eigenvalue of current orbital
+        fermi_level The fermi-level of the system
+        =========== ==========================================================
+        """
+        
+        if (epsilon +1e-3 > fermi_level):
+            return 0
+        return K_G * sqrt(fermi_level-epsilon)
+
+
+    def find_fermi_level(self, f_j, e_j):
+        """
+            Finds the fermilevel from occupations and eigenvalue energies.
+            Uses tolerance 1e-5 for occupied orbital.
+            =========== ==========================================================
+            Parameters:
+            =========== ==========================================================
+            f_j         The occupations list
+            e_j         The eigenvalues list
+            =========== ==========================================================
+
+        """
+        
+        fermi_level = -1000
+        for f,e in zip(f_j, e_j):
+            if f > 1e-5:
+                if fermi_level < e:
+                    fermi_level = e
+        return fermi_level
     
-        if njcore == None:
-            # Approximate the numerator of slater potential with 2*e_g
-            v_xc[:] += 2 * e_g / (n_g + SMALL_NUMBER)
+    def get_response_weights1D(self,  u_j, f_j, e_j):
+        """
+          Calculates the weights for response part of GLLB functional.
+          
+          =========== ==========================================================
+          Parameters:
+          =========== ==========================================================
+          u_j         The 1D-wave functions
+          f_j         The occupation numbers
+          e_j         Eigenvalues
+          =========== ==========================================================
+        """
+        fermi_level = self.find_fermi_level(f_j, e_j)
+        w_j = [ self.gllb_weight(e, fermi_level) for e in e_j ]
+        return w_j
 
-        # Find fermi-level
-        # Grr!!! sum(num.where(f_j>1e-3, 1, 0))-1 doesn't work
-        self.fermi_level = -1000
-        for i, (f,e) in enumerate(zip(f_j, e_j)):
-            if f > 1e-7:
-                if self.fermi_level < e:
-                    self.fermi_level = e
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, njcore=None, density=None):
+        """
+          Used by setup generator to calculate the one dimensional potential
+        
+          =========== ==========================================================
+          Parameters:
+          =========== ==========================================================
+          gd          Radial grid descriptor
+          u_j         The wave functions
+          f_j         The occupation numbers
+          e_j         The eigenvalues
+          l_j         The angular momentum quantum numbers
+          v_xc        V_{xc} is stored here.
+          nj_core     If njcore is set, only response part will be returned for wave functions u_j[:nj_core]
+          density     If density is supplied, it overrides the density calculated from orbitals.
+                      This is used is setup-generation.
+          =========== ==========================================================
+        """
 
+        # Construct the density if required
+        if density == None:
+            n_g = self.construct_density1D(gd, u_j, f_j)
+        else:
+            n_g = density
+
+        # Construct the slater potential if required
         if njcore == None:
+            # Get the slater potential multiplied by density
+            Exc = self.get_slater1D(gd, n_g, v_xc)
+            # Add response from all the orbitals
             imax = len(f_j)
         else:
+            # Only response part of core orbitals is desired
+            v_xc[:] = 0.0
             # Add the potential only from core orbitals
             imax = njcore
+            Exc = 0
             
-        for i in range(0, imax):
-            # Construct the orbital-density of ith orbital
-            nn_g = f_j[i] * num.where(abs(u_j[i]) < 1e-160, 0, u_j[i])**2 / (4 * pi) #grr.. Hack for numeric
-            nn_g[1:] /= gd.r_g[1:]**2
-            nn_g[0] = n_g[1]
-            
-            v_xc[:] += self.get_gllb_weight(e_j[i], self.fermi_level) *  (nn_g / (n_g + SMALL_NUMBER))
+        # Get the response weigths
+        w_j = self.get_response_weights1D(u_j, f_j, e_j)
 
-        # There is a serious error in v_xc[0], replace it with v_xc[1]
+        # Add the response multiplied with density to potential
+        v_xc[:] += self.construct_density1D(gd, u_j[:imax], [f*w for f,w in zip(f_j[:imax] , w_j[:imax])])
+
+        # Divide with the density, beware division by zero
+        v_xc[1:] /= n_g[1:] + SMALL_NUMBER
+
+        # Fix the r=0 value
         v_xc[0] = v_xc[1]
 
         return Exc
 
-    def add_response_part(self, kpt, vt_G, nt_G, fermi_level):
-        """Add contribution of response part to pseudo electron-density."""
-        if kpt.typecode is num.Float:
-            for psit_G, f, e in zip(kpt.psit_nG, kpt.f_n, kpt.eps_n):
-                axpy(f*self.get_gllb_weight(e, fermi_level), psit_G**2, vt_G)  # nt_G += f * psit_G**2
-                axpy(f, psit_G**2, nt_G)
-        else:
-            print "Adding response part COMPLEX. NOT TESTED!"
-            for psit_G, f,e  in zip(kpt.psit_nG, kpt.f_n, kpt.eps_n):
-                vt_G += f * self.get_gllb_weight(e, fermi_level) * (psit_G * num.conjugate(psit_G)).real
-                nt_G += f * (psit_G * num.conjugate(psit_G)).real
-                                                                
-            
-    def calculate_spinpaired(self, e_g, n_g, v_g):
-        # Create the revPBEx functional for Slater part (only once per calculation)
+    # input:  ae : AllElectron object.
+    # output: extra_xc_data : dictionary. A Dictionary with pair ('name', radial grid)
+    def calculate_extra_setup_data(self, extra_xc_data, ae):
+        """
+        For GLLB-functional one needs the response part of core orbitals to be stored in setup file,
+        which is calculated in this section.
+
+        ============= ==========================================================
+        Parameters:
+        ============= ==========================================================
+        extra_xc_data Input: an empty dictionary
+                      Output: dictionary with core_response-keyword containing data
+        ae            All electron object containing all important data for calculating the core response.
+        ============= ==========================================================
+        
+        """
+
+        # Allocate new array for core_response
+        N = len(ae.rgd.r_g)
+        v_xc = num.zeros(N, num.Float)
+
+        # Calculate the response part using wavefunctions, eigenvalues etc. from AllElectron calculator
+        self.get_non_local_energy_and_potential1D(ae.rgd, ae.u_j, ae.f_j, ae.e_j, ae.l_j, v_xc,
+                                                  njcore = ae.njcore)
+
+        extra_xc_data['core_response'] = v_xc
+        
+#################################################################################
+#                                                                               #
+# Implementation of 3D-GLLB begins                                              #
+#                                                                               #
+################################################################################# 
+
+    def calculate_non_local(self, info, v_g, e_g):
+        """
+        Calculate the GLLB-energy and potentail. The GLLB-energy is taken from B88-exchange energy,
+        and the potential is combined from approximative Slater part calculated B88-exchange energy
+        density, and the response part involving the wave functions and the orbital eigenvalues.
+        
+        
+        ============= ==========================================================
+        Parameters:
+        ============= ==========================================================
+        v_g           The GLLB-potential is added to this supplied potential
+        e_g           The GLLB-energy density (is the same as e_g)
+        ============= ==========================================================
+        
+        """
+
+        # Create the B88 functional for Slater part (only once per calculation)
+
         if self.slater_part == None:
             from gpaw.xc_functional import XCFunctional, XC3DGrid
-            self.slater_part = XC3DGrid(XCFunctional(SLATER_FUNCTIONAL, self.nspins), self.finegd, self.nspins)
+            self.slater_part = XCFunctional(SLATER_FUNCTIONAL, self.nspins)
+            self.initialization_ready = True
 
-        # Calculate the approximative Slater-potential
-        self.slater_part.get_energy_and_potential_spinpaired(n_g, self.tempvxc_g, e_g=self.tempe_g)
+
+        # Calculate the slater potential. self.tempvxc_g and self.vt_g are used just for dummy
+        # arrays and they are not used after calculation. Fix?
+        self.slater_part.calculate_spinpaired(self.tempe_g,  info['n_g'], self.tempvxc_g,
+                                              a2_g = info['a2_g'], deda2_g = self.vt_g)
+
         # Add it to the total potential
-        v_g += 2*self.tempe_g / (n_g + SMALL_NUMBER)
+        v_g += 2*self.tempe_g / (info['n_g'] + SMALL_NUMBER)
 
-        # Return the xc-energy
+        # Return the xc-energy correctly
         e_g[:] = self.tempe_g.flat
 
-        # Get the fermi-level from occupations
-        try:
-            self.fermi_level_old = self.fermi_level
-            self.fermi_level = -1000
-            for kpt in self.kpt_u:
-                for e, f in zip(kpt.eps_n, kpt.f_n):
-                    if f > 1e-2:
-                        if self.fermi_level < e:
-                            self.fermi_level = e
-                            
-        except AttributeError:
-            self.fermi_level = -1000
-            print "FERMILEVEL-1000 FIXME!"
-
-        # Coarse grid for response part
+        # Find the fermi-level
+        self.fermi_level = self.find_fermi_level(info['f_n'], info['eps_n'])
+        # Use the coarse grid for response part
+        # Calculate the coarse response multiplied with density and the coarse density
+        # and to the division at the end of the loop.
         self.vt_G[:] = 0.0
         self.nt_G[:] = 0.0
-        # For each k-point
-        for kpt in self.kpt_u:
-            # Check if we already have eigenvalues
-            self.initialization_ready = True
-            try:
-                e_n = kpt.eps_n
-            except AttributeError:
-                print "INITIALIZATION NOT YET READY" #XXXXX
-                self.initialization_ready = False #GRRR
+        
+        # For each orbital, add the response part
+        for f, e, psit_G in zip(info['f_n'], info['eps_n'], info['psit_nG']):
+            w = self.gllb_weight(e, self.fermi_level)
+            if info['typecode'] is num.Float:
+                psit_G2 = psit_G**2
+                axpy(f*w, psit_G2, self.vt_G) 
+                axpy(f, psit_G2, self.nt_G)
+            else:
+                self.vt_G += f * w * (psit_G * num.conjugate(psit_G)).real
+                self.nt_G += f * (psit_G * num.conjugate(psit_G)).real
+            
 
-            if self.initialization_ready:
-                self.add_response_part(kpt, self.vt_G, self.nt_G, self.fermi_level)
-
-        self.vt_g[:] = 0.0
-
+        # After the coarse density (w/o compensation charges) and the numerator is calculated, do the division
         self.vt_G[:] /= self.nt_G[:] + SMALL_NUMBER
 
-        # It's faster to add wavefunctions in coarse-grid and interpolate afterwards
+        self.vt_g[:] = 0.0 # Is this needed for interpolate?
         self.interpolate(self.vt_G, self.vt_g)
+        
         # Add the fine-grid response part to total potential
         v_g[:] += self.vt_g 
 
-        if self.old_vt_g == None:
-            self.old_vt_g = v_g.copy()
-
-        v_g[:] = 0.5 * v_g[:] + 0.5 * self.old_vt_g
-        self.old_vt_g[:] = v_g[:]
-        
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g):
         print "GLLB calculate_spinpolarized not implemented"
         pass
 
-class DummyXC:
-    pass
 
+        
+#################################################################################
+#                                                                               #
+# Implementation of XCCorrections begins                                        #
+# -This part is needs more attention                                            #
+################################################################################# 
+
+
+class DummyXC:
+    def set_functional(self, xc):
+        print "GLLB: DummyXC::set_functional(xc) with ", xc.xcname
+        
 A_Liy = num.zeros((25, 3, len(points)), num.Float)
 
 y = 0
@@ -257,7 +566,6 @@ class XCGLLBCorrection:
                  Exc0,   # ? 
                  core_response): # The response parts of core orbitals
                 
-
         self.xc = DummyXC()
         self.xc.xcfunc = DummyXC()
         self.xc.xcfunc.hybrid = 0.0
@@ -315,7 +623,7 @@ class XCGLLBCorrection:
                 self.nt_qg[q] = rl1l2 * wt_j[j1] * wt_j[j2]
                 q += 1
         self.rgd = rgd
-       
+
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a):
         # This is the code from GGA-method of XCCorrections, but
         # it has lines involving GLLB. All lines which contain
@@ -325,7 +633,7 @@ class XCGLLBCorrection:
         
         # This method is called before initialization of motherxc in pass_stuff
         if self.motherxc.slater_part == None:
-            print "Grr...!!!!!!!!!"
+            print "GLLB: Not applying the PAW-corrections!"
             return 0 #Grr....
 
         #print "D_sp", D_sp
@@ -387,10 +695,9 @@ class XCGLLBCorrection:
                     # Create the coefficients
                     w_i = num.zeros(kpt.eps_n.shape, num.Float)
                     for i in range(len(w_i)):
-                        w_i[i] = self.motherxc.get_gllb_weight(kpt.eps_n[i], self.motherxc.fermi_level)
+                        w_i[i] = self.motherxc.gllb_weight(kpt.eps_n[i], self.motherxc.fermi_level)
 
                     w_i = w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] # Calculate the weights
-
                     # Calculate the 'density matrix' for numerator part of potential
                     Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
                                          P_ni * w_i))

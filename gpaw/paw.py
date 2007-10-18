@@ -551,7 +551,7 @@ class PAW(PAWExtra, Output):
 
         xcfunc = self.hamiltonian.xc.xcfunc
 
-        if xcfunc.orbital_dependent and xcfunc.xcname is not 'GLLB':
+        if xcfunc.orbital_dependent:
             # At this point, we can't use orbital dependent
             # functionals, because we don't have the right orbitals
             # yet.  So we use a simple density functional to set up the
@@ -599,7 +599,7 @@ class PAW(PAWExtra, Output):
             kpt.adjust_number_of_bands(self.nbands,
                                        self.pt_nuclei, self.my_nuclei)
 
-        if xcfunc.orbital_dependent and xcfunc.xcname is not 'GLLB':
+        if xcfunc.orbital_dependent:
             # Switch back to the orbital dependent functional:
             self.hamiltonian.xc.set_functional(xcfunc)
             for setup in self.setups:

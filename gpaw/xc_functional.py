@@ -323,6 +323,8 @@ class XCFunctional:
             return XCFunctional('oldPBE', self.nspins)
         elif self.get_name() == 'PBE0':
             return XCFunctional('PBE', self.nspins)
+        elif self.get_name() == 'GLLB':
+            return XCFunctional('LDAx', self.nspins)
         else:
             raise RuntimeError('Orbital dependent xc-functional, but no local '
                                'functional set.')
