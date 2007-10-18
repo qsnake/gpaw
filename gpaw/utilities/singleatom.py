@@ -52,8 +52,8 @@ class SingleAtom:
                     else:
                         pos = (0.1, 0, 0)
                 else:
-                    tol = parameters.get('tolerance', 1e-99)
-                    parameters['tolerance'] = max(1e-6, tol)
+                    tol = parameters.get('convergence').get('eigenstates',1e-99)
+                    parameters['convergence']['eigenstates'] = max(1e-9, tol)
 
             # Is this a special case?
             magmom = magmoms.get(symbol)
@@ -74,7 +74,7 @@ class SingleAtom:
         return self.atom.GetPotentialEnergy()
 
     def non_self_xc(self, xcs=[]):
-        return [self.atom.GetCalculator().GetXCDifference(xc) for xc in xcs]
+        return [self.atom.GetCalculator().get_xc_difference(xc) for xc in xcs]
 
     def eggboxtest(self, N=30, verbose=False):
         X = num.zeros(N + 1, num.Float)

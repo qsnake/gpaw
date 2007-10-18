@@ -5,6 +5,7 @@ from ASE import  ListOfAtoms, Atom
 from gpaw import Calculator
 from gpaw.utilities import center
 from gpaw.utilities.singleatom import SingleAtom
+from gpaw.testing import g2
 
 class Molecule:
     def __init__(self, formula, a=None, b=None, c=None, h=None,
@@ -24,16 +25,15 @@ class Molecule:
         
         self.atoms = molecules[formula].Copy()
         self.atoms.SetUnitCell([a, b, c], fix=True)
-        
+        center(self.atoms)        
         calc = Calculator(h=h, **parameters)
         self.atoms.SetCalculator(calc)
-        center(self.atoms)
-
+    
     def energy(self):
         return self.atoms.GetPotentialEnergy()
         
     def non_self_xc(self, xcs=[]):
-        return [self.atoms.GetCalculator().GetXCDifference(xc) for xc in xcs]
+        return [self.atoms.GetCalculator().get_xc_difference(xc) for xc in xcs]
 
     def relax(self, fmax=0.05, verbose=False):
         from ASE.Dynamics.QuasiNewton import QuasiNewton
@@ -78,7 +78,7 @@ class Molecule:
                 ea[i] += atom_energies[symbol][i]
         if xcs == []: return ea[0]
         else: return ea
-                
+
 # Diatomic molecules: (Angstrom units)
 H2 = ListOfAtoms([Atom('H', (0, 0, 0)),
                   Atom('H', (0.7414, 0, 0))])
@@ -170,5 +170,4 @@ for m in ['H2', 'LiH', 'CH4', 'NH3', 'OH',
           'C2H2', 'C2H4', 'HCN', 'CO', 'N2',
           'NO', 'O2', 'F2', 'P2', 'Cl2']:
     molecules[m] = eval(m)
-
 

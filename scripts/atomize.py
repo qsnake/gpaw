@@ -4,6 +4,7 @@ import sys
 sys.path.append('.')
 from gpaw.utilities.molecule import Molecule
 from ASE.Units import Convert
+from ASE.Utilities.Parallel import paropen
 from gpaw.testing.atomization_data import \
      atomization, ex_atomization, atomization_vasp
 
@@ -15,15 +16,12 @@ def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
     atom_energies = {}
     eas = {}
     errors = []
-    if hasattr(cellsize, '__iter__'):
-        a, b, c = cellsize
-    else:
-        a, b, c = cellsize, None, None
     kcal = Convert(1, 'eV', 'kcal/mol/Nav')
     for formula in formulas:
+        print 'formula', formula
         if not load(formula, eas, errors):
-            file = open(formula + '.pickle','w')
-            mol = Molecule(formula, a=a, b=b, c=c, h=gridspacing,
+            file = paropen(formula + '.pickle','w')
+            mol = Molecule(formula, a=cellsize, h=gridspacing,
                            parameters=calc_parameters, forcesymm=forcesymm)
             check_atom_list(atom_energies)
             try:
@@ -47,7 +45,7 @@ def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
 
 def load(formula, eas, errors):
     try:
-        f = open(formula + '.pickle', 'r')
+        f = paropen(formula + '.pickle', 'r')
         eas[formula] = pickle.load(f)
         f.close()
         if type(eas[formula]) == str:
@@ -61,7 +59,7 @@ def load(formula, eas, errors):
 
 def check_atom_list(atom_energies):
     try:
-        file = open('atom_energies.pickle', 'r')
+        file = paropen('atom_energies.pickle', 'r')
         stored = pickle.load(file)
         for sym in stored:
             if sym not in atom_energies:
@@ -73,15 +71,15 @@ def check_atom_list(atom_energies):
                 update = True
                 stored[sym] = atom_energies[sym]
         if update:
-            file = open('atom_energies.pickle', 'w')
+            file = paropen('atom_energies.pickle', 'w')
             pickle.dump(atom_energies, file)
             file.close()                
     except IOError:
-        file = open('atom_energies.pickle', 'w')
+        file = paropen('atom_energies.pickle', 'w')
         pickle.dump(atom_energies, file)
         file.close()
     except EOFError:
-        file = open('atom_energies.pickle', 'w')
+        file = paropen('atom_energies.pickle', 'w')
         pickle.dump(atom_energies, file)
         file.close()
 
@@ -138,51 +136,55 @@ def reference_vasp(molecules):
     return pretty_print(eas, xcs, molecules) + mean_error(eas, errors)
 
 if __name__ == '__main__':
-    molecules = [
-        'H2',
-        'LiH',
-        'CH4',
-        'NH3',
-        'OH',
-        'H2O',
-        'HF',
-        'Li2',
-        'LiF',
-        'Be2',
-        'C2H2',
-        'C2H4',
-        'HCN',
-        'CO',
-        'N2',
-        'NO',
-        'O2',
-        'F2',
-        'P2',
-        'Cl2'
-        ]
-    cellsize = (6.5, 6.2, 6.0)
-    gridspacing = .18
+    a = 8.0
+    h = 0.2
     relax = False
-    parameters = {'xc': 'EXX',
-                  'out': 'atomize.txt',
-                  'softgauss': False,
-                  'setups': {'Li': 'nocore'},
-                  'lmax': 2}
-    non_self_xcs = ['LDA', 'revPBE', 'RPBE', 'PBE', 'PBE0', 'EXX']
-    non_self_xcs.remove(parameters['xc'])
-    eas, errors = atomize(molecules, cellsize, gridspacing,
+    parameters = {'xc': 'PBE',
+                  'txt': 'atomize.txt',
+                  'convergence':{'energy': 0.001, # eV
+                                 'density': 1.0e-3,
+                                 'eigenstates': 1.0e-9,
+                                 'bands': 'occupied'},
+                  'lmax': 2,
+                  'spinpol':True}
+    
+    molecules = ['HF',
+                 'LiH',
+                 'CH4',
+                 'NH3',
+                 'OH',
+                 'H2O',
+                 'HF',
+                 'Li2',
+                 'LiF',
+                 'Be2',
+                 'C2H2',
+                 'C2H4',
+                 'HCN',
+                 'CO',
+                 'N2',
+                 'NO',
+                 'O2',
+                 'F2',
+                 'P2',
+                 'Cl2'
+                 ]
+
+    non_self_xcs = ('LDA', 'revPBE', 'RPBE', 'PBE0', 'EXX')
+    eas, errors = atomize(molecules, a, h,
                           relax=relax,
                           non_self_xcs=non_self_xcs,
                           forcesymm=False,
                           calc_parameters=parameters)
-    names = ['Expt', parameters['xc']] + non_self_xcs
+    names = ('Expt', 'PBE',) + non_self_xcs
 
-    print 'cellsize =', cellsize
-    print 'grid spacing =', gridspacing
+    print 'a =', a
+    print 'h =', h
     print 'lmax =', parameters['lmax']
     print 'relax =', relax
     print ''
     print 'GPAW'
+    print ''
     print pretty_print(eas, names, molecules) + mean_error(eas, errors,exact=0)
     print ''
     print 'Reference Blaha et. al.'

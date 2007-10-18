@@ -259,8 +259,8 @@ H3N = ListOfAtoms([
 # MP2 energy = -75.5232063 Hartree
 # Charge = 0, multiplicity = 2
 OH = ListOfAtoms([
-    Atom('O', [.000000, .000000, .108786]),
-    Atom('H', [.000000, .000000, -.870284]),
+    Atom('O', [.000000, .000000, .108786], magmom=0.5),
+    Atom('H', [.000000, .000000, -.870284], magmom=0.5),
     ])
 
 # Water (H2O), C2v symm.
@@ -487,16 +487,16 @@ H4N2 = ListOfAtoms([
 # MP2 energy = -129.564464 Hartree
 # Charge = 0, multiplicity = 2
 ON = ListOfAtoms([
-    Atom('N', [.000000, .000000, -.609442]),
-    Atom('O', [.000000, .000000, .533261]),
+    Atom('N', [.000000, .000000, -.609442], magmom=0.6),
+    Atom('O', [.000000, .000000, .533261], magmom=0.4),
     ])
 
 # O2 molecule, D*h symm, Triplet.
 # MP2 energy = -149.9543197 Hartree
 # Charge = 0, multiplicity = 3
 O2 = ListOfAtoms([
-    Atom('O', [.000000, .000000, .622978]),
-    Atom('O', [.000000, .000000, -.622978]),
+    Atom('O', [.000000, .000000, .622978], magmom=1.),
+    Atom('O', [.000000, .000000, -.622978], magmom=1.),
     ])
 
 # Hydrogen peroxide (HO-OH), C2 symm.
