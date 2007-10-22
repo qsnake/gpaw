@@ -45,7 +45,7 @@ os.chdir(dir)
 # Checkout a fresh version and install:
 if os.system('svn export ' +
 #if os.system('svn export -r 1020 ' +
-             'https://svn.berlios.de/svnroot/repos/gridpaw/trunk gpaw') != 0:
+             'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
     fail('Checkout of gpaw failed!')
 if os.system('cvs -d :pserver:jensj@cvs.fysik.dtu.dk:/home/camp/CVSROOT ' +
              'export -r HEAD CamposASE2') != 0:
