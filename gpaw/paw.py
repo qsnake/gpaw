@@ -1217,8 +1217,10 @@ class PAW(PAWExtra, Output):
 
         # check number of bands ?
         
+        M = sum(self.atoms.GetMagneticMoments())
+
         if self.nbands <= 0:
-            self.nbands = (self.nvalence + 1) // 2 + (-self.nbands)
+            self.nbands = (self.nvalence + M) // 2 + (-self.nbands)
         
         if self.nvalence > 2 * self.nbands:
             raise ValueError('Too few bands!')
@@ -1232,7 +1234,6 @@ class PAW(PAWExtra, Output):
                                                      self.nspins, kT)
 
         if fixmom:
-            M = sum(self.atoms.GetMagneticMoments())
             self.occupation.fix_moment(M)
 
         self.occupation.set_communicator(self.kpt_comm)
