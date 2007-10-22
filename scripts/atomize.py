@@ -2,11 +2,15 @@
 import pickle
 import sys
 sys.path.append('.')
-from gpaw.utilities.molecule import Molecule
+
 from ASE.Units import Convert
 from ASE.Utilities.Parallel import paropen
+
+from gpaw.utilities.molecule import Molecule
 from gpaw.testing.atomization_data import \
      atomization, ex_atomization, atomization_vasp
+from gpaw.mpi import world
+
 
 def atomize(formulas, cellsize, gridspacing, relax=False, non_self_xcs=[],
             forcesymm=False, calc_parameters={}):
@@ -51,11 +55,14 @@ def load(formula, eas, errors):
         if type(eas[formula]) == str:
             errors.append(formula)
     except IOError:
-        return False
+        ok = False
     except EOFError:
-        return True
+        ok = True
     else:
-        return True
+        ok = True
+
+    world.barrier()
+    return ok
 
 def check_atom_list(atom_energies):
     try:
