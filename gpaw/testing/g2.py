@@ -40,11 +40,11 @@ formulas = {
       'OH3C': "H2COH radical, C1 symm.",
     'O2H2C2': "Glyoxal (O=CH-CH=O). Trans, C2h symm.",
        'O2C': "Carbon dioxide (CO2), D*h symm.",
-       'OH2': "Water (H2O), C2v symm.",
+       'H2O': "Water (H2O), C2v symm.",
      'H5C5N': "Pyridine (cyclic C5H5N), C2v symm.",
-        'ON': "NO radical, C*v symm, 2-Pi.",
+        'NO': "NO radical, C*v symm, 2-Pi.",
       'H4C3': "Propyne (C3H4), C3v symm.",
-      'H4C2': "Ethylene (H2C=CH2), D2h symm.",
+      'C2H4': "Ethylene (H2C=CH2), D2h symm.",
         'OH': "OH radical, C*v symm.",
     'Cl2CH2': "Dichloromethane (H2CCl2), C2v symm.",
       'H6C6': "Benzene (C6H6), D6h symm.",
@@ -56,7 +56,7 @@ formulas = {
      'HCCl3': "Chloroform (HCCl3), C3v symm.",
         'OS': "Sulfur monoxide (SO), C*v symm, triplet.",
        'H3C': "Methyl radical (CH3), D3h symm.",
-        'OC': "Carbon monoxide (CO), C*v symm.",
+        'CO': "Carbon monoxide (CO), C*v symm.",
       'F3Al': "AlF3, Planar D3h symm.",
        'OSi': "Silicon monoxide (SiO), C*v symm.",
         'HN': "NH, triplet, C*v symm.",
@@ -77,7 +77,7 @@ formulas = {
         'P2': "P2 molecule, D*h symm.",
      'O2H2C': "Formic Acid (HCOOH), HOCO cis, Cs symm.",
      'H4C3x': "Allene (C3H4), D2d symm.",
-       'HLi': "Lithium hydride (LiH), C*v symm.",
+       'LiH': "Lithium hydride (LiH), C*v symm.",
      'OH8C3': "Isopropyl alcohol, (CH3)2CH-OH, Gauche isomer, C1 symm.",
        'HCN': "Hydrogen cyanide (HCN), C*v symm.",
       'H9C4': "t-Butyl radical, (CH3)3C, C3v symm.",
@@ -91,7 +91,7 @@ formulas = {
      'H6Si2': "Disilane (H3Si-SiH3), D3d symm.",
      'F2CH2': "Difluoromethane (H2CF2), C2v symm.",
      'H9C3N': "Trimethyl Amine, (CH3)3N, C3v symm.",
-        'FH': "Hydrogen fluoride (HF), C*v symm.",
+        'HF': "Hydrogen fluoride (HF), C*v symm.",
        'FCl': "ClF molecule, C*v symm, 1-SG.",
       'OF2C': "COF2, C2v symm.",
        'F3P': "PF3, C3v symm.",
@@ -125,9 +125,9 @@ formulas = {
         'SC': "Carbon monosulfide (CS), C*v symm.",
        'H2C': "Triplet methylene (CH2), C2v symm, 3-B1.",
     'OH6C2x': "DimethylEther (CH3-O-CH3), C2v symm.",
-      'H2C2': "Acetylene (C2H2), D*h symm.",
+      'C2H2': "Acetylene (C2H2), D*h symm.",
    'O2H4C2x': "Acetic Acid (CH3COOH), Single bonds trans, Cs symm.",
-       'H4C': "Methane (CH4), Td symm.",
+       'CH4': "Methane (CH4), Td symm.",
       'H5CN': "Methylamine (H3C-NH2), Cs symm.",
      'H3C2N': "Acetonitrile (CH3-CN), C3v symm.",
       'ClF3': "ClF3, C2v symm.",
@@ -147,7 +147,7 @@ formulas = {
       'ClNa': "Sodium Chloride (NaCl), C*v symm.",
       'H7C3': "(CH3)2CH radical, Cs symm, 2-A'.",
       'H2Cx': "Singlet methylene (CH2), C2v symm, 1-A1.",
-       'H3N': "Ammonia (NH3), C3v symm.",
+       'NH3': "Ammonia (NH3), C3v symm.",
        'Na2': "Disodium (Na2), D*h symm.",
        'H3P': "Phosphine (PH3), C3v symm.",
        'SO2': "Sulfur dioxide (SO2), C2v symm.",
@@ -168,7 +168,7 @@ formulas = {
 # Lithium hydride (LiH), C*v symm.
 # MP2 energy = -7.9965108 Hartree
 # Charge = 0, multiplicity = 1
-HLi = ListOfAtoms([
+LiH = ListOfAtoms([
     Atom('Li', [.000000, .000000, .410000]),
     Atom('H', [.000000, .000000, -1.230000]),
     ])
@@ -220,7 +220,7 @@ H3C = ListOfAtoms([
 # Methane (CH4), Td symm.
 # MP2 energy = -40.3370426 Hartree
 # Charge = 0, multiplicity = 1
-H4C = ListOfAtoms([
+CH4 = ListOfAtoms([
     Atom('C', [.000000, .000000, .000000]),
     Atom('H', [.629118, .629118, .629118]),
     Atom('H', [-.629118, -.629118, .629118]),
@@ -248,7 +248,7 @@ H2N = ListOfAtoms([
 # Ammonia (NH3), C3v symm.
 # MP2 energy = -56.3573777 Hartree
 # Charge = 0, multiplicity = 1
-H3N = ListOfAtoms([
+NH3 = ListOfAtoms([
     Atom('N', [.000000, .000000, .116489]),
     Atom('H', [.000000, .939731, -.271808]),
     Atom('H', [.813831, -.469865, -.271808]),
@@ -266,7 +266,7 @@ OH = ListOfAtoms([
 # Water (H2O), C2v symm.
 # MP2 energy = -76.1992442 Hartree
 # Charge = 0, multiplicity = 1
-OH2 = ListOfAtoms([
+H2O = ListOfAtoms([
     Atom('O', [.000000, .000000, .119262]),
     Atom('H', [.000000, .763239, -.477047]),
     Atom('H', [.000000, -.763239, -.477047]),
@@ -275,7 +275,7 @@ OH2 = ListOfAtoms([
 # Hydrogen fluoride (HF), C*v symm.
 # MP2 energy = -100.1841614 Hartree
 # Charge = 0, multiplicity = 1
-FH = ListOfAtoms([
+HF = ListOfAtoms([
     Atom('F', [.000000, .000000, .093389]),
     Atom('H', [.000000, .000000, -.840502]),
     ])
@@ -374,7 +374,7 @@ FLi = ListOfAtoms([
 # Acetylene (C2H2), D*h symm.
 # MP2 energy = -77.0762154 Hartree
 # Charge = 0, multiplicity = 1
-H2C2 = ListOfAtoms([
+C2H2 = ListOfAtoms([
     Atom('C', [.000000, .000000, .608080]),
     Atom('C', [.000000, .000000, -.608080]),
     Atom('H', [.000000, .000000, -1.673990]),
@@ -384,7 +384,7 @@ H2C2 = ListOfAtoms([
 # Ethylene (H2C=CH2), D2h symm.
 # MP2 energy = -78.2942862 Hartree
 # Charge = 0, multiplicity = 1
-H4C2 = ListOfAtoms([
+C2H4 = ListOfAtoms([
     Atom('C', [.000000, .000000, .667480]),
     Atom('C', [.000000, .000000, -.667480]),
     Atom('H', [.000000, .922832, 1.237695]),
@@ -427,7 +427,7 @@ HCN = ListOfAtoms([
 # Carbon monoxide (CO), C*v symm.
 # MP2 energy = -113.0281795 Hartree
 # Charge = 0, multiplicity = 1
-OC = ListOfAtoms([
+CO = ListOfAtoms([
     Atom('O', [.000000, .000000, .493003]),
     Atom('C', [.000000, .000000, -.657337]),
     ])
@@ -486,7 +486,7 @@ H4N2 = ListOfAtoms([
 # NO radical, C*v symm, 2-Pi.
 # MP2 energy = -129.564464 Hartree
 # Charge = 0, multiplicity = 2
-ON = ListOfAtoms([
+NO = ListOfAtoms([
     Atom('N', [.000000, .000000, -.609442], magmom=0.6),
     Atom('O', [.000000, .000000, .533261], magmom=0.4),
     ])
