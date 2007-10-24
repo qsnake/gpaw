@@ -237,7 +237,7 @@ class PAW(PAWExtra, Output):
                               'density': 1.0e-3,
                               'eigenstates': 1.0e-9,
                               'bands': 'occupied'},
-            'fixdensity':    False,
+            'fixdensity':    0,
             'mix':           (0.25, 3, 1.0),
             'txt':           '-',
             'hund':          False,
@@ -610,7 +610,8 @@ class PAW(PAWExtra, Output):
 
         self.wave_functions_initialized = True
         self.wave_functions_orthonormalized = True
-        self.fixdensity = 2 # do the first 3 iterations in fixed density
+        # do at least the first 3 iterations with fixed density
+        self.fixdensity = max(2, self.fixdensity)
 
     def initialize_wave_functions(self):
 
@@ -1126,10 +1127,12 @@ class PAW(PAWExtra, Output):
         if isinstance(cbands, int) and cbands < 0:
             p['convergence']['bands'] += self.nbands
             
-        if p['fixdensity']:
+        if p['fixdensity'] == True:
             self.fixdensity = self.maxiter + 1000000
+            # Density won't converge
+            p['convergence']['density'] = 1e8
         else:
-            self.fixdensity = 0
+            self.fixdensity = p['fixdensity']
 
         self.random_wf = p['random']
 
