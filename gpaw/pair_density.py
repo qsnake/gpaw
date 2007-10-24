@@ -26,7 +26,7 @@ class PairDensity:
 
         return nijt_g
 
-    def width_compensation_charges(self, finegrid=False):
+    def with_compensation_charges(self, finegrid=False):
         """Get pair densisty including the compensation charges"""
         rhot = self.get(finegrid)
         

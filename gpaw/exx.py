@@ -53,7 +53,9 @@ from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
 from gpaw.utilities.blas import gemm
 from gpaw.pair_density import PairDensity
-from gpaw.poisson import PoissonSolver
+from gpaw.poisson import PoissonSolver, PoissonFFTSolver
+
+usefft = False
 
 class EXX:
     """EXact eXchange.
@@ -73,31 +75,35 @@ class EXX:
         self.ghat_nuclei = ghat_nuclei
         self.interpolate = interpolate
         self.restrict    = restrict
-##        self.poisson     = poisson
         self.rank        = dcomm.rank
         self.psum        = lambda x: kcomm.sum(dcomm.sum(x))
         self.energy_only = energy_only
         self.integrate   = gd.integrate
         self.Na = Na
+        self.use_finegrid = use_finegrid
         
         # Allocate space for matrices
         self.nt_G = gd.empty()    # Pseudo density on coarse grid
         self.vt_G = gd.empty()    # Pot. of comp. pseudo density on coarse grid
-        self.nt_g = finegd.empty()# Comp. pseudo density on fine grid
-        self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
-        if not energy_only:
-            self.vt_unG = gd.empty((nmyu, nbands))# Diagonal pot. for residuals
-
-        self.use_finegrid = use_finegrid
         if self.use_finegrid:
-            self.vt      = finegd.empty()
-            self.poisson = poisson
+            self.rhot_g = finegd.empty()# Comp. pseudo density on fine grid
+            self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
+            if usefft:
+                self.poisson_solve = PoissonFFTSolver(finegd).solve
+            else:
+                self.poisson_solve = poisson.solve
             self.fineintegrate = finegd.integrate
         else:
-            self.vt      = gd.empty()
-            self.poisson = PoissonSolver(gd,
-                                         paw.hamiltonian.poisson_stencil)
+            self.rhot_g = gd.empty()# Comp. pseudo density on fine grid
+            self.vt_g = self.vt_G   # Pot. of comp. pseudo density on fine grid
+            if usefft:
+                self.poisson_solve = PoissonFFTSolver(gd).solve
+            else:
+                self.poisson = PoissonSolver(
+                    gd, paw.hamiltonian.poisson_stencil).solve
             self.fineintegrate = gd.integrate
+        if not energy_only:
+            self.vt_unG = gd.empty((nmyu, nbands))# Diagonal pot. for residuals
 
     def apply(self, kpt, Htpsit_nG, H_nn, hybrid, force=False):
         """Apply exact exchange operator."""
@@ -118,7 +124,7 @@ class EXX:
             else:
                 self.F_ac[:] = 0.0
 
-        fmin=1.e-10
+        fmin = 1.e-10
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
@@ -126,119 +132,121 @@ class EXX:
             f1 = f_n[n1]
             for n2 in range(n1, self.nbands):
                 f2 = f_n[n2]
+
+                # Don't do anything if both occupations are small
+                if f1 < fmin and f2 < fmin:
+                    continue
                 
-                if f1>fmin or f2>fmin:
-                    
-                    psit2_G = psit_nG[n2]
-                    dc = 1 + (n1 != n2) # double count factor
+                psit2_G = psit_nG[n2]
+                dc = 1 + (n1 != n2) # double count factor
 
-                    # Determine current exchange density ...
-                    pd = PairDensity(self.density, kpt, n1, n2)
-                    self.nt_G = pd.get(finegrid=False)
+                # Determine current exchange density ...
+                pd = PairDensity(self.density, kpt, n1, n2)
+                self.nt_G[:] = pd.get(finegrid=False)
 
-                    # and interpolate to the fine grid:
-                    self.rhot = \
-                              pd.width_compensation_charges(self.use_finegrid)
-                
-                    # Determine total charge of exchange density:
-                    Z = float(n1 == n2)
+                # and interpolate to the fine grid:
+                self.rhot_g[:] =pd.with_compensation_charges(self.use_finegrid)
 
-                    # Determine exchange potential:
-                    self.poisson.solve(self.vt, -self.rhot, charge=-Z,
-                                       eps=1e-12, zero_initial_phi=True)
-                    if self.use_finegrid:
-                        self.restrict(self.vt, self.vt_G)
-                    else:
-                        self.vt_G = self.vt
+                # Determine total charge of exchange density:
+                Z = float(n1 == n2)
 
-                        # Add force contribution
-                    if force:
-                        for nucleus in ghat_nuclei:
-                            if nucleus.in_this_domain:
-                                lmax = nucleus.setup.lmax
-                                F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
-                                if self.use_finegrid:
-                                    self.ghat_L.derivative(vt, F_Lc)
-                                else:
-                                    self.Ghat_L.derivative(vt, F_Lc)
+                # Determine exchange potential:
+                self.poisson_solve(self.vt_g, -self.rhot_g, charge=-Z,
+                                   eps=1e-12, zero_initial_phi=True)
 
-                                self.F_ac[nucleus.a] -= (
-                                    f1 * f2 * dc * hybrid / deg * num.dot(
-                                    self.Q_aL[nucleus.a], F_Lc))
-                            else:
-                                if self.use_finegrid:
-                                    self.ghat_L.derivative(self.vt, None)
-                                else:
-                                    self.Ghat_L.derivative(self.vt, None)
+                if self.use_finegrid:
+                    self.restrict(self.vt_g, self.vt_G)
+                else:
+                    assert self.vt_G is self.vt_g
 
-                    # Integrate the potential on fine and coarse grids
-                    int_fine = self.fineintegrate(self.vt * self.rhot)
-                    int_coarse = self.integrate(self.vt_G * self.nt_G)
-                    if self.rank == 0: # Only add to energy on master CPU
-                        Exx += 0.5 * f1 * f2 * dc * hybrid / deg * int_fine
-                        Ekin -= f1 * f2 * dc * hybrid / deg * int_coarse
-
-                    if not self.energy_only:
-                        Htpsit_nG[n1] += f2 * hybrid / deg * \
-                                         self.vt_G * psit2_G
-                        if n1 != n2:
-                            Htpsit_nG[n2] += f1 * hybrid / deg * \
-                                             self.vt_G * psit1_G
-                        else:
-                            self.vt_unG[u, n2] = f2 * hybrid / deg * self.vt_G
-
-                        # Update the vxx_uni and vxx_unii vectors
-                        # of the nuclei,
-                        # used to determine the atomic hamiltonian, and the 
-                        # residuals
-                        for nucleus in self.ghat_nuclei:
-                            v_L = num.zeros((nucleus.setup.lmax + 1)**2,
-                                            num.Float)
+                    # Add force contribution
+                if force:
+                    for nucleus in ghat_nuclei:
+                        if nucleus.in_this_domain:
+                            lmax = nucleus.setup.lmax
+                            F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
                             if self.use_finegrid:
-                                nucleus.ghat_L.integrate(self.vt, v_L)
+                                self.ghat_L.derivative(vt, F_Lc)
                             else:
-                                nucleus.Ghat_L.integrate(self.vt, v_L)
+                                self.Ghat_L.derivative(vt, F_Lc)
 
-                            if nucleus.in_this_domain:
-                                v_ii = unpack(num.dot(nucleus.setup.Delta_pL,
-                                                      v_L))
-
-                                if force:
-                                    ni = self.setup.ni
-                                    F_ic = num.zeros((ni, 3), num.Float)
-                                    self.pt_i.derivative(psit1_G, F_ic)
-                                    F_ic.shape = (ni * 3,)
-                                    F_iic = num.dot(v_ii, num.outerproduct(
-                                        nucleus.P_uni[u, n2], F_ic))
-
-                                    F_ic[:] = 0.0
-                                    F_ic.shape =(ni, 3)
-                                    self.pt_i.derivative(psit2_G, F_ic)
-                                    F_ic.shape = (ni * 3,)
-                                    F_iic += num.dot(v_ii, num.outerproduct(
-                                        nucleus.P_uni[u, n1], F_ic))
-
-                                    #F_iic *= 2.0
-                                    F_iic.shape = (ni, ni, 3)
-                                    for i in range(ni):
-                                        self.F_ac[nucleus.a] -= \
-                                                             real(F_iic[i, i])
-
-                                nucleus.vxx_uni[u, n1] += (
-                                    f2 * hybrid / deg * num.dot(
-                                    v_ii, nucleus.P_uni[u, n2]))
-                                if n1 != n2:
-                                    nucleus.vxx_uni[u, n2] += (
-                                        f1 * hybrid / deg * num.dot(
-                                        v_ii, nucleus.P_uni[u, n1]))
-                                else:
-                                    # XXX Check this:
-                                    nucleus.vxx_unii[u, n1] = (
-                                        f2 * hybrid / deg * v_ii)
+                            self.F_ac[nucleus.a] -= (
+                                f1 * f2 * dc * hybrid / deg * num.dot(
+                                self.Q_aL[nucleus.a], F_Lc))
+                        else:
+                            if self.use_finegrid:
+                                self.ghat_L.derivative(self.vt, None)
                             else:
-                                if force:
-                                    self.pt_i.derivative(psit1_G, None)
-                                    self.pt_i.derivative(psit2_G, None)
+                                self.Ghat_L.derivative(self.vt, None)
+
+                # Integrate the potential on fine and coarse grids
+                int_fine = self.fineintegrate(self.vt_g * self.rhot_g)
+                int_coarse = self.integrate(self.vt_G * self.nt_G)
+                if self.rank == 0: # Only add to energy on master CPU
+                    Exx += 0.5 * f1 * f2 * dc * hybrid / deg * int_fine
+                    Ekin -= f1 * f2 * dc * hybrid / deg * int_coarse
+
+                if not self.energy_only:
+                    Htpsit_nG[n1] += f2 * hybrid / deg * \
+                                     self.vt_G * psit2_G
+                    if n1 != n2:
+                        Htpsit_nG[n2] += f1 * hybrid / deg * \
+                                         self.vt_G * psit1_G
+                    else:
+                        self.vt_unG[u, n2] = f2 * hybrid / deg * self.vt_G
+
+                    # Update the vxx_uni and vxx_unii vectors
+                    # of the nuclei,
+                    # used to determine the atomic hamiltonian, and the 
+                    # residuals
+                    for nucleus in self.ghat_nuclei:
+                        v_L = num.zeros((nucleus.setup.lmax + 1)**2,
+                                        num.Float)
+                        if self.use_finegrid:
+                            nucleus.ghat_L.integrate(self.vt_g, v_L)
+                        else:
+                            nucleus.Ghat_L.integrate(self.vt_G, v_L)
+
+                        if nucleus.in_this_domain:
+                            v_ii = unpack(num.dot(nucleus.setup.Delta_pL,
+                                                  v_L))
+
+                            if force:
+                                ni = self.setup.ni
+                                F_ic = num.zeros((ni, 3), num.Float)
+                                self.pt_i.derivative(psit1_G, F_ic)
+                                F_ic.shape = (ni * 3,)
+                                F_iic = num.dot(v_ii, num.outerproduct(
+                                    nucleus.P_uni[u, n2], F_ic))
+
+                                F_ic[:] = 0.0
+                                F_ic.shape =(ni, 3)
+                                self.pt_i.derivative(psit2_G, F_ic)
+                                F_ic.shape = (ni * 3,)
+                                F_iic += num.dot(v_ii, num.outerproduct(
+                                    nucleus.P_uni[u, n1], F_ic))
+
+                                #F_iic *= 2.0
+                                F_iic.shape = (ni, ni, 3)
+                                for i in range(ni):
+                                    self.F_ac[nucleus.a] -= \
+                                                         real(F_iic[i, i])
+
+                            nucleus.vxx_uni[u, n1] += (
+                                f2 * hybrid / deg * num.dot(
+                                v_ii, nucleus.P_uni[u, n2]))
+                            if n1 != n2:
+                                nucleus.vxx_uni[u, n2] += (
+                                    f1 * hybrid / deg * num.dot(
+                                    v_ii, nucleus.P_uni[u, n1]))
+                            else:
+                                # XXX Check this:
+                                nucleus.vxx_unii[u, n1] = (
+                                    f2 * hybrid / deg * v_ii)
+                        else:
+                            if force:
+                                self.pt_i.derivative(psit1_G, None)
+                                self.pt_i.derivative(psit2_G, None)
 
         # Apply the atomic corrections to the energy and the Hamiltonian matrix
         for nucleus in self.my_nuclei:

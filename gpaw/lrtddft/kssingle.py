@@ -306,5 +306,5 @@ class KSSingle(Excitation,PairDensity):
     def GetPairDensityAndCompensationCharges(self,finegrid=False):
         """Get pair densisty including the compensation charges"""
         # inherited from PairDensity
-        return self.width_compensation_charges(finegrid)
+        return self.with_compensation_charges(finegrid)
 

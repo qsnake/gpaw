@@ -10,6 +10,7 @@ from gpaw.transformers import Transformer
 from gpaw.operators import Laplace, LaplaceA, LaplaceB
 from gpaw import ConvergenceError
 from gpaw.utilities.blas import axpy
+from gpaw.utilities.gauss import Gaussian
 
 
 class PoissonSolver:
@@ -72,7 +73,6 @@ class PoissonSolver:
         self.postsmooths[level] = 8
 
         if load_gauss:
-            from gpaw.utilities.gauss import Gaussian
             gauss = Gaussian(self.gd)
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
@@ -205,3 +205,39 @@ class PoissonSolver:
             error = self.gd.comm.sum(num.dot(residual.flat,
                                              residual.flat)) * self.dv
             return error
+
+
+from FFT import fftnd, inverse_fftnd
+from gpaw.utilities.complex import real
+from gpaw.utilities.tools import construct_reciprocal
+
+class PoissonFFTSolver(PoissonSolver):
+    """FFT implementation of the poisson solver"""
+    def __init__(self, gd, nn=None, relax=None, load_gauss=False):
+        self.gd = gd
+        if self.gd.domain.comm.size > 1:
+            raise RuntimeError, 'Cannot do parallel FFT.'
+        self.k2, self.N3 = construct_reciprocal(self.gd)
+        if load_gauss:
+            gauss = Gaussian(self.gd)
+            self.rho_gauss = gauss.get_gauss(0)
+            self.phi_gauss = gauss.get_gauss_pot(0)
+
+    def solve_neutral(self, phi, rho, eps=None):
+        phi[:] = real(inverse_fftnd(fftnd(rho) * 4 * pi / self.k2))
+        return 1
+
+    def solve_screened(self, phi, rho, screening=0):
+        phi[:] = real(inverse_fftnd(fftnd(rho) * 4 * pi /
+                                    (self.k2 + screening**2)))
+        return 1        
+
+    def iterate(*args, **kwargs):
+        pass
+    
+    def iterate2(*args, **kwargs):
+        pass
+        
+## from gpaw import fft_poisson
+## if fft_poisson:
+##     PoissonSolver = PoissonFFTSolver
