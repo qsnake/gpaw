@@ -36,6 +36,15 @@ class SerialCommunicator:
     def new_communicator(self, ranks):
         return self
 
+
+class DummyCommunicator(SerialCommunicator):
+
+    def new_communicator(self, ranks):
+        new_comm = DummyCommunicator()
+        new_comm.size = len(ranks)
+        return new_comm
+
+
 serial_comm = SerialCommunicator()
 if debug:
     serial_comm.comm = serial_comm # cycle? XXX
