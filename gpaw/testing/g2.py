@@ -13,14 +13,17 @@ J. Chem. Phys. Vol. 106, 1063 (1997).
 """
 from ASE import  ListOfAtoms, Atom
 
-# The 148 molecules given here are
-formulas = {
+# The magnetic moments of the 14 atoms involved in the g2 molecules:
+atoms = {'H': 1, 'Li': 1, 'Be': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 2, 'F': 1,
+         'Na': 1, 'Al': 1, 'Si': 2, 'P': 3, 'S': 2,'Cl': 1}
+
+# The 148 molecules of the test set
+molecules = {
      'Cl4C2': "C2Cl4 (Cl2C=CCl2), D2h symm.",
       'O2H2': "Hydrogen peroxide (HO-OH), C2 symm.",
     'ClC2H3': "Vinyl chloride, H2C=CHCl, Cs symm.",
     'ClC2H5': "Ethyl chloride (CH3-CH2-Cl), Cs symm.",
       'OH2C': "Formaldehyde (H2C=O), C2v symm.",
-  'H6C4xxxx': "Cyclobutene (C4H6), C2v symm.",
         'O3': "O3 (Ozone), C2v symm.",
         'O2': "O2 molecule, D*h symm, Triplet.",
        'F3B': "BF3, Planar D3h symm.",
@@ -50,6 +53,10 @@ formulas = {
       'H6C6': "Benzene (C6H6), D6h symm.",
      'Cl4Si': "SiCl4, Td symm.",
       'H6C4': "Trans-1,3-butadiene (C4H6), C2h symm.",
+     'H6C4x': "Dimethylacetylene (2-butyne, C4H6), D3h symm (eclipsed).",
+    'H6C4xx': "Methylenecyclopropane (C4H6), C2v symm.",
+   'H6C4xxx': "Bicyclo[1.1.0]butane (C4H6), C2v symm.",
+  'H6C4xxxx': "Cyclobutene (C4H6), C2v symm.",
       'H6C3': "Propene (C3H6), Cs symm.",
       'H6C2': "Ethane (H3C-CH3), D3d symm.",
       'HCF3': "Trifluoromethane (HCF3), C3v symm.",
@@ -68,7 +75,7 @@ formulas = {
        'OCl': "ClO radical, C*v symm, 2-PI.",
     'H7C2Nx': "Trans-Ethylamine (CH3-CH2-NH2), Cs symm.",
     'OH4C2x': "Acetaldehyde (CH3CHO), Cs symm.",
-       'FLi': "Lithium Fluoride (LiF), C*v symm.",
+       'LiF': "Lithium Fluoride (LiF), C*v symm.",
      'SH6C2': "ThioEthanol (CH3-CH2-SH), Cs symm.",
     'OH5C2N': "Acetamide (CH3CONH2), C1 symm.",
      'OH3Cx': "CH3O radical, Cs symm, 2-A'.",
@@ -86,7 +93,6 @@ formulas = {
      'OH4C2': "Oxirane (cyclic CH2-O-CH2 ring), C2v symm.",
      'OH4C4': "Furan (cyclic C4H4O), C2v symm.",
         'S2': "S2 molecule, D*h symm, triplet.",
-   'H6C4xxx': "Bicyclo[1.1.0]butane (C4H6), C2v symm.",
      'OH2C2': "Ketene (H2C=C=O), C2v symm.",
      'H6Si2': "Disilane (H3Si-SiH3), D3d symm.",
      'F2CH2': "Difluoromethane (H2CF2), C2v symm.",
@@ -119,7 +125,6 @@ formulas = {
      'OH5C2': "CH3CH2O radical, Cs symm, 2-A''.",
         'F2': "F2 molecule, D*h symm.",
        'H2P': "PH2 radical, C2v symm.",
-     'H6C4x': "Dimethylacetylene (2-butyne, C4H6), D3h symm (eclipsed).",
         'H2': "H2. D*h symm.",
        'H2N': "NH2 radical, C2v symm, 2-B1.",
         'SC': "Carbon monosulfide (CS), C*v symm.",
@@ -154,7 +159,6 @@ formulas = {
        'Li2': "Dilithium (Li2), D*h symm.",
        'ON2': "N2O, Cs symm.",
     'OH8C3x': "Methyl ethyl ether (CH3-CH2-O-CH3), Trans, Cs symm.",
-    'H6C4xx': "Methylenecyclopropane (C4H6), C2v symm.",
       'H2Si': "Singlet silylene (SiH2), C2v symm, 1-A1.",
       'OHCl': "HOCl molecule, Cs symm.",
       'Cl3B': "BCl3, Planar D3h symm.",
@@ -366,7 +370,7 @@ Li2 = ListOfAtoms([
 # Lithium Fluoride (LiF), C*v symm.
 # MP2 energy = -107.1294652 Hartree
 # Charge = 0, multiplicity = 1
-FLi = ListOfAtoms([
+LiF = ListOfAtoms([
     Atom('Li', [.000000, .000000, -1.174965]),
     Atom('F', [.000000, .000000, .391655]),
     ])
@@ -1899,69 +1903,10 @@ O2N = ListOfAtoms([
     Atom('O', [.000000, -1.118122, -.145370]),
     ])
 
-def get_data(filename):
-    f = open(filename, 'r')
-    data = []
-    line = f.readline()
-    while line != '':
-        if line.strip().startswith('# mp2(full)/6-31g*'):
-            f.readline()
-            line = f.readline().strip()
-            tmp = f.readline().strip()
-            if tmp != '':
-                line += tmp
-                f.readline()
-
-            name, energy = tuple(line.strip().split(' MP2(full)/6-31'))
-            energy = energy[13:]
-
-            cm = f.readline().strip().split()
-            coord = []
-            tmp =  f.readline().split()
-            while tmp != []:
-                coord.append(tmp)
-                tmp = f.readline().split()
-
-            data.append((name, energy, cm, coord))
-        line = f.readline()
-    f.close()
-    return data
-
-def write_py(filename, data):
-    from ASE.ChemicalElements.symbol import symbols
-    formulas = {}
-    f = open(filename, 'w')
-    print >>f, 'from ASE import  ListOfAtoms, Atom'
-    for name, energy, cm, coords in data:
-        elements = {}
-        for row in coords:
-            Z = int(row[0])
-            elements[Z] = elements.get(Z, 0) + 1
-        formula = ''
-        for Z, n in elements.items():
-            formula += symbols[Z] + str(n) * (n != 1)
-        while formula in formulas:
-            formula += 'x'
-        formulas[formula] = name
-        print >>f, ''
-        print >>f, '# ' + name
-        print >>f, '# MP2 energy = ' + energy + ' Hartree'
-        print >>f, '# Charge = %s, multiplicity = %s' % (cm[0], cm[1])
-        print >>f, formula + ' = ListOfAtoms(['
-        for row in coords:
-            element = symbols[int(row[0])]
-            x = row[1]
-            y = row[2]
-            z = row[3]
-            print >>f, '    Atom(\'%s\', [%s, %s, %s]),' % (element, x, y, z)
-        print >>f, '    ])'
-    print >>f, 'formulas = {'
-    for k, v in formulas.items():
-        print >>f, '%11s\': \"%s\",' % ('\''+k, v)
-    print >>f, '}'
-    f.close()
-
-if __name__ == '__main__':
-    #from gpaw.testing.g2 import get_data
-    data = get_data('g2-97_cartesian_neutral.txt')
-    write_py('g2-atoms.py', data)
+def get_g2(name):
+    if name in atoms:
+        return ListOfAtoms([Atom(name, magmom=atoms[name])])
+    elif name in molecules:
+        return eval(name)
+    else:
+        raise NotImplementedError, 'System not in database.'
