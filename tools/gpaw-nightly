@@ -47,8 +47,8 @@ if os.system('svn export ' +
 #if os.system('svn export -r 1020 ' +
              'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
     fail('Checkout of gpaw failed!')
-if os.system('cvs -d :pserver:jensj@cvs.fysik.dtu.dk:/home/camp/CVSROOT ' +
-             'export -r HEAD CamposASE2') != 0:
+if os.system('svn export ' +
+             'https://svn.fysik.dtu.dk/projects/CamposASE2/trunk CamposASE2') != 0:
     fail('Checkout of ASE failed!')
 os.chdir('gpaw')
 if os.system('python setup.py install --home=%s' % dir) != 0:
