@@ -565,7 +565,7 @@ class PAW(PAWExtra, Output):
 
         if self.random_wf:
             # Improve the random guess with conjugate gradient
-            eig = eigensolver('cg', self)
+            eig = eigensolver('dav', self)
             eig.nbands_converge = self.nbands
             for kpt in self.kpt_u:
                 kpt.create_random_orbitals(self.nbands)
