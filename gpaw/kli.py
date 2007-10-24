@@ -98,11 +98,6 @@ class NonLocalFunctional:
               - density, gradient, wavefunctions and eigenvalues
               
            To be implemented in subclasses of ResponseFunctional
-           =========== ==========================================================
-           Parameters:
-           =========== ==========================================================
-           none
-           =========== ==========================================================
 
         """
        
@@ -114,29 +109,33 @@ class NonLocalFunctional:
 
            To be implemented in subclasses of ResponseFunctional
 
-           =========== ==========================================================
+           =========== ========================
            Parameters:
-           =========== ==========================================================
+           =========== ========================
            info        A dictiorany, see below
            v_g         The Kohn-Sham potential.
            e_g         The energy density
-           =========== ==========================================================
+           =========== ========================
            
            info is a dictiorary with following content:
-           =========== ==========================================================
+
+           =========== =================================================
            Key:        Value:
-           =========== ==========================================================
+           =========== =================================================
            typecode    For example num.Float, if the orbitals are real
            gd          The grid descriptor object for coarse grid
            finegd      The grid descriptor object for fine grid
-           n_g         Numeric array for density, supplied if needs_density() true
+           n_g         Numeric array for density, supplied if
+                       needs_density() true
            psit_nG     A _python_ list containing the wavefunctions,
                        if needs_wavefunctions() true
            f_n         A _python_ list containing the occupations,
                        if needs_wavefunctions() true
-           a2_g        Numeric array for gradient, if needs_gradient() true
-           eps_n       A _python_ list of eigenvalues, if needs_eigenvalues() true
-           =========== ==========================================================
+           a2_g        Numeric array for gradient, if needs_gradient()
+                       true
+           eps_n       A _python_ list of eigenvalues, if
+                       needs_eigenvalues() true
+           =========== =================================================
            """
         raise "ResponseFunctional::calculate must be overrided"
 
@@ -146,13 +145,13 @@ class NonLocalFunctional:
            the energy density. This methods cCollects the required info
            (see comments for calculate_non_local) and calls calculate_non_local with this info.
 
-           =========== ==========================================================
+           =========== =========================
            Parameters:
-           =========== ==========================================================
+           =========== =========================
            e_g         The energy density
            n_g         The electron density
            v_g         The Kohn-Sham potential.
-           =========== ==========================================================
+           =========== =========================
 
         """
 
@@ -276,17 +275,19 @@ class GLLBFunctional(NonLocalFunctional):
         return n_g
 
     def get_slater1D(self, gd, n_g, vrho_xc):
-        """
-          Used by get_non_local_energy_and_potential1D to calculate an approximation to 1D-Slater
-          potential. Returns the exchange energy.
+        """Headline ...
+        
+        Used by get_non_local_energy_and_potential1D to calculate an
+        approximation to 1D-Slater potential. Returns the exchange
+        energy.
           
-          =========== ==========================================================
-           Parameters:
-           =========== ==========================================================
-           gd          Radial grid descriptor
-           n_g         The density
-           vrho_xc     The slater part multiplied by density is stored here.
-           =========== ==========================================================
+        =========== =======================================================
+        Parameters:
+        =========== =======================================================
+        gd          Radial grid descriptor
+        n_g         The density
+        vrho_xc     The slater part multiplied by density is stored here.
+        =========== =======================================================
         """
         # Create temporary arrays only once
         if self.v_g1D == None:
