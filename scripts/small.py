@@ -15,9 +15,6 @@ calc_parameters = {'h'          : 0.2,
                    'convergence': {'eigenstates': 1e-9},
                    'eigensolver': 'rmm-diis'}
 
-loa = get_g2(formula)
-loa.SetUnitCell(cell, fix=True)
-center(loa)
-loa.SetBoundaryConditions(periodic=False)
+loa = get_g2(formula, cell)
 loa.SetCalculator(Calculator(**calc_parameters))
 loa.GetPotentialEnergy()

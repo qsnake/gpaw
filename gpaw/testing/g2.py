@@ -1903,10 +1903,16 @@ O2N = ListOfAtoms([
     Atom('O', [.000000, -1.118122, -.145370]),
     ])
 
-def get_g2(name):
+def get_g2(name, cell):
     if name in atoms:
-        return ListOfAtoms([Atom(name, magmom=atoms[name])])
+        return ListOfAtoms([Atom(name, magmom=atoms[name])],
+                           cell=cell, periodic=False)
     elif name in molecules:
-        return eval(name)
+        from gpaw.utilities import center
+        loa = eval(name)
+        loa.SetUnitCell(cell, fix=True)
+        center(loa)
+        loa.SetBoundaryConditions(periodic=False)
+        return loa
     else:
         raise NotImplementedError, 'System not in database.'
