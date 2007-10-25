@@ -76,4 +76,4 @@ def right_eigenvectors(a, w, v):
 if not debug:
     diagonalize = _gpaw.diagonalize
     right_eigenvectors = _gpaw.right_eigenvectors
-   # inverse_cholesky = _gpaw.inverse_cholesky
+    inverse_cholesky = _gpaw.inverse_cholesky
