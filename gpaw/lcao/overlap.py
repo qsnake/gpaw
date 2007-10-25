@@ -120,7 +120,7 @@ class TwoCenterIntegrals:
         return s, t '''
 
     # Testing
-     def testb(self, h):
+    def testb(self, h):
         from gpaw.domain import Domain
         from gpaw.grid_descriptor import GridDescriptor
         from gpaw.localized_functions import create_localized_functions, \
