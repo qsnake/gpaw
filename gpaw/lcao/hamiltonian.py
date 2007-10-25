@@ -81,10 +81,15 @@ class LCAOHamiltonian(Hamiltonian):
                                 #T_mm[i1, i2] = t(d)
                                 i2 += 1
                     i1 += 1
+
+        for nucleus in self.nuclei:
+            S_mm += num.dot(num.dot(nucleus.P_mi, nucleus.setup.O_ii),
+                            num.transpose(nucleus.P_mi))
+
         print S_mm
         print self.S_mm
         print self.S_mm - S_mm
-#        raise SystemExit
+        raise SystemExit
     
     def calculate_effective_potential_matrix(self, V_mm):
         box_b = []
