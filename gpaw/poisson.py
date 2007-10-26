@@ -146,6 +146,13 @@ class PoissonSolver:
             print 'CHARGE:', charge
             raise ConvergenceError('Poisson solver did not converge!')
 
+        # Set the average potential to zero in periodic systems
+        if num.alltrue(self.gd.domain.periodic_c):
+            phi_ave = self.gd.comm.sum(num.sum(phi.flat))
+            N_c = self.gd.get_size_of_global_array()
+            phi_ave /= num.product(N_c)
+            phi -= phi_ave
+
         return niter
     
     def iterate(self, step, level=0):
