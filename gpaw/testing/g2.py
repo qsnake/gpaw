@@ -12,6 +12,7 @@ Krishnan Raghavachari, Paul Redfern, and John A. Pople,
 J. Chem. Phys. Vol. 106, 1063 (1997).
 """
 from ASE import  ListOfAtoms, Atom
+from gpaw.utilities import center
 
 # The magnetic moments of the 14 atoms involved in the g2 molecules:
 atoms = {'H': 1, 'Li': 1, 'Be': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 2, 'F': 1,
@@ -1905,14 +1906,13 @@ O2N = ListOfAtoms([
 
 def get_g2(name, cell):
     if name in atoms:
-        return ListOfAtoms([Atom(name, magmom=atoms[name])],
-                           cell=cell, periodic=False)
+        loa =  ListOfAtoms([Atom(name, magmom=atoms[name])], cell, False)
     elif name in molecules:
-        from gpaw.utilities import center
         loa = eval(name)
         loa.SetUnitCell(cell, fix=True)
-        center(loa)
         loa.SetBoundaryConditions(periodic=False)
-        return loa
     else:
         raise NotImplementedError, 'System not in database.'
+
+    center(loa)
+    return loa

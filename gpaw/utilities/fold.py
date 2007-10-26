@@ -36,7 +36,7 @@ def fold(arrays,width,xmin=None,xmax=None,folding='Gauss'):
         if xma is None: xma = a[0][0]
         if xmin is None: xmi = min(xmi,min(a[0]))
         if xmax is None: xma = max(xma,max(a[0]))
-    # make shure, that the lowest and highest peaks are in
+    # make sure, that the lowest and highest peaks are in
     if xmin is None: xmi-=5*dx
     if xmax is None: xma+=5*dx
 
