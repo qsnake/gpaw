@@ -7,6 +7,5 @@ H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
                 periodic=False,
                 cell=(a, a, a))
 
-H.SetCalculator(Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-3},
-                           eigensolver='lcao'))
+H.SetCalculator(Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-3}))
 e = H.GetPotentialEnergy()
