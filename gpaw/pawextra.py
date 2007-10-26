@@ -201,7 +201,7 @@ class PAWExtra:
         self.hamiltonian.kin = Laplace(self.gd, -0.5, nn, typecode)
 
         # Nuclei
-        for nucleus in self.nuclei:
+        for nucleus in self.my_nuclei:
             nucleus.typecode = typecode
             nucleus.ready = False
 
