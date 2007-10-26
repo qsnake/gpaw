@@ -5,7 +5,6 @@ from gpaw.spline import Spline
 from gpaw.spherical_harmonics import Y
 from gpaw.gaunt import gaunt
 from gpaw.utilities import fac
-import pylab
 
 C = [num.array([-1.0j]),
      num.array([-1.0, -1.0j]),
