@@ -8,7 +8,7 @@ class PairDensity:
     def __init__(self, density, kpt, i, j):
         self.i = i
         self.j = j
-        self.spin = kpt.s
+        self.u = kpt.u
         self.density = density
         
         self.wfi = kpt.psit_nG[i]
@@ -34,8 +34,8 @@ class PairDensity:
         for nucleus in self.density.ghat_nuclei:
             if nucleus.in_this_domain:
                 # Generate density matrix
-                Pi_i = nucleus.P_uni[self.spin,self.i]
-                Pj_i = nucleus.P_uni[self.spin,self.j]
+                Pi_i = nucleus.P_uni[self.u, self.i]
+                Pj_i = nucleus.P_uni[self.u, self.j]
                 D_ii = num.outerproduct(Pi_i, Pj_i)
                 # allowed to pack as used in the scalar product with
                 # the symmetric array Delta_pL
