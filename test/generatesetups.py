@@ -14,7 +14,8 @@ def gen(symbol, xcname):
     g.run(exx=True, **parameters[symbol])
     files.append('%s.%s' % (symbol, XCFunctional(xcname).get_name()))
 
-for symbol in ['H', 'He', 'C', 'N', 'O', 'Cl', 'Al', 'Si', 'Na', 'Fe', 'Cu']:
+for symbol in ['H', 'He', 'Li', 'C', 'N', 'O', 'Cl', 'Al', 'Si',
+               'Na', 'Fe', 'Cu']:
     gen(symbol, 'LDA')
 for symbol in ['H', 'He', 'Li', 'N']:
     gen(symbol, 'PBE')
