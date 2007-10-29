@@ -7,13 +7,12 @@ from ASE import Atom, ListOfAtoms
 from gpaw.utilities import equal
 from gpaw.cluster import Cluster
 
-endings = ['nc']
-##endings = ['gpw']
-## try:
-##     import Scientific.IO.NetCDF
-##     endings.append('nc')
-## except ImportError:
-##     pass
+endings = ['gpw']
+try:
+    import Scientific.IO.NetCDF
+    endings.append('nc')
+except ImportError:
+    pass
 
 for ending in endings:
     restart = 'gpaw-restart.' + ending
