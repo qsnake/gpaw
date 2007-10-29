@@ -103,15 +103,17 @@ class RMM_DIIS(Eigensolver):
 
         # Fill in the lower triangle:
         rk(self.gd.dv, kpt.psit_nG, 0.0, S_nn)
-        
+
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             S_nn += num.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
-        
+
         self.comm.sum(S_nn, kpt.root)
 
         if self.comm.rank == kpt.root:
-            inverse_cholesky(S_nn)
+            info = inverse_cholesky(S_nn)
+            if info != 0:
+                raise RuntimeError('Orthogonalization failed!')
 
         self.comm.broadcast(S_nn, kpt.root)
         
