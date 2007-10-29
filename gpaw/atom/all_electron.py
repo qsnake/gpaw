@@ -84,9 +84,9 @@ class AllElectron:
         t = self.text
         t()
         if scalarrel:
-            t('Scalar-relativistic atomic', end='')
+            t('Scalar-relativistic atomic ', end='')
         else:
-            t('Atomic', end='')
+            t('Atomic ', end='')
         t('%s calculation for %s (%s, Z=%d)' % (xcname, symbol,
                                                 names[self.Z], self.Z))
 
