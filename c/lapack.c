@@ -97,34 +97,44 @@ PyObject* inverse_cholesky(PyObject *self, PyObject *args)
   int lda = n;
   int info = 0;
 
-  int i, j;
-  int in = 0;
-
   if (a->descr->type_num == PyArray_DOUBLE)
     {
       dpotrf_("U", &n, (void*)DOUBLEP(a), &lda, &info);
-      dtrtri_("U", "N", &n, (void*)DOUBLEP(a), &lda, &info);
-      /* Make sure that the other diagonal is zero */
-      double* ap = DOUBLEP(a);
-      ap++;
-      for(i=0;i<n-1;i++) {
-	memset(ap, 0, (n-1-i) * sizeof(double));
-	ap += n + 1;
+      if (info == 0)
+	{
+	  dtrtri_("U", "N", &n, (void*)DOUBLEP(a), &lda, &info);
+	  if (info == 0)
+	    {
+	      /* Make sure that the other diagonal is zero */
+	      double* ap = DOUBLEP(a);
+	      ap++;
+	      for (int i = 0; i < n - 1; i++)
+		{
+		  memset(ap, 0, (n-1-i) * sizeof(double));
+		  ap += n + 1;
+		}
+	    }
 	}
     }
   else
     {
       zpotrf_("U", &n, (void*)COMPLEXP(a), &lda, &info);
-      ztrtri_("U", "N", &n, (void*)DOUBLEP(a), &lda, &info);
-      /* Make sure that lower diagonal is zero */
-      double_complex* ap = COMPLEXP(a);
-      ap++;
-      for(i=0;i<n-1;i++) {
-	memset(ap, 0, (n-1-i) * sizeof(double_complex));
-	ap += n + 1;
+      if (info == 0)
+	{
+	  ztrtri_("U", "N", &n, (void*)DOUBLEP(a), &lda, &info);
+	  if (info == 0)
+	    {
+	      /* Make sure that lower diagonal is zero */
+	      double_complex* ap = COMPLEXP(a);
+	      ap++;
+	      for (int i = 0; i < n - 1; i++)
+		{
+		  memset(ap, 0, (n-1-i) * sizeof(double_complex));
+		  ap += n + 1;
+		}
+	    }
 	}
     }
-
   return Py_BuildValue("i", info);
 }
 
