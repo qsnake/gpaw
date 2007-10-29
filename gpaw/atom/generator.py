@@ -60,7 +60,7 @@ parameters = {
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
  'Ag': {'core': '[Kr]',   'rcut': 2.5},
  'Cd': {'core': '[Kr]',   'rcut': 2.5},
- 'Ba': {'core': '[Xe]',   'rcut': 4.2},
+ 'Ba': {'core': '[Kr]4d',   'rcut': 3.0},
 # 'Ta': {'core': '[Xe]',   'rcut': 2.5},
 # 'W':  {'core': '[Xe]',   'rcut': 2.5},
 # 'Ir': {'core': '[Xe]4f', 'rcut': [2.5, 2.5, 2.3]},
