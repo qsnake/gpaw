@@ -9,6 +9,7 @@ class PairDensity:
         self.i = i
         self.j = j
         self.u = kpt.u
+        self.spin = kpt.u
         self.density = density
         
         self.wfi = kpt.psit_nG[i]

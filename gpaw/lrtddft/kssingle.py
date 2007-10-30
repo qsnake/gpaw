@@ -204,8 +204,8 @@ class KSSingle(Excitation,PairDensity):
         ma = num.zeros(me.shape,num.Float)
         for nucleus in paw.my_nuclei:
             Ra = nucleus.spos_c*paw.domain.cell_c
-            Pi_i = nucleus.P_uni[self.spin,self.i]
-            Pj_i = nucleus.P_uni[self.spin,self.j]
+            Pi_i = nucleus.P_uni[self.u,self.i]
+            Pj_i = nucleus.P_uni[self.u,self.j]
             Delta_pL = nucleus.setup.Delta_pL
             ni=len(Pi_i)
             ma0 = 0
