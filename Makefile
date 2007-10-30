@@ -7,7 +7,6 @@
 # The example flags correspond to the Cray Catamount operating system
 #
 
-
 CC=cc -target=catamount -c9x -fast
 CFLAGS=-I/wrk/jenkovaa/include/python2.4 -DGPAW_INTERPRETER -DPARALLEL -DSTATIC_NUMERIC -DNO_SOCKET
 LIBDIR=${HOME}/lib
