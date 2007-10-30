@@ -91,10 +91,10 @@ class Libxc:
         return (
             s.startswith('#define XC_LDA') or
             s.startswith('#define XC_GGA')
-            ## XC_MGGA and XC_LCA not impelemented yet # MDTMP
+            ## XC_MGGA and XC_LCA not implemented yet # MDTMP
             ##            s.startswith('#define XC_MGGA') or  # MDTMP
             ##            s.startswith('#define XC_LCA')  # MDTMP
-            ## End of: XC_MGGA and XC_LCA not impelemented yet  # MDTMP
+            ## End of: XC_MGGA and XC_LCA not implemented yet  # MDTMP
             )
 
     def construct_libxc_functionals_dict(self, file='../c/libxc/src/xc.h'):
