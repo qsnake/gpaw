@@ -29,7 +29,7 @@ README.txt       This file
 LICENSE          GPL-license
 setup.py         distutils script
 config.py        Configuration stuff
-customize.py     Help distutils fin libraries
+customize.py     Help distutils find libraries
 MANIFIST.in      distutils MANIFEST.in file
 ---------------  -------------------------------
 
