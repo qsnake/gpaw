@@ -13,11 +13,36 @@ from gpaw.mpi import MASTER
 class XAS:
     def __init__(self, paw, mode="xas"):
         assert paw.world.size == 1 #assert not mpi.parallel
-        assert not paw.spinpol # restricted - for now
 
-        nocc = int(paw.nvalence / 2)
+        #
+        # to allow spin polarized calclulation
+        #
+        nkpts = paw.nkpts
+        if not paw.spinpol:
+            nocc = int(paw.nvalence / 2)
+            self.list_kpts = range(nkpts)
+        else:
+            self.list_kpts=[]
+
+            #find kpoints with up spin 
+            for i,kpt in  enumerate(paw.kpt_u):
+                if kpt.s ==0:
+                    self.list_kpts.append(i)
+                print self.list_kpts
+            assert len(self.list_kpts) == nkpts
+                        
+            #find number of occupied orbitals, if no fermi smearing
+            nocc = 0.
+            for i in self.list_kpts:
+                nocc += sum(paw.kpt_u[i].f_n)
+            nocc = int(nocc + 0.5)
+            print "nocc", nocc
+
+
+
+                 
         for nucleus in paw.nuclei:
-            print "i"
+            #print "i"
             if nucleus.setup.phicorehole_g is not None:  
                 break
 
@@ -42,25 +67,24 @@ class XAS:
 
         self.n = n
 
-        nkpts =paw.nkpts
+        
             
         self.eps_n = num.empty(nkpts * n, num.Float)
         self.sigma_cn = num.empty((3, nkpts * n), num.Complex)
         n1 = 0
-        for k in range(nkpts):
+        for k in self.list_kpts:
             n2 = n1 + n
             self.eps_n[n1:n2] = paw.kpt_u[k].eps_n[n_start:n_end] * paw.Ha
             P_ni = nucleus.P_uni[k, n_start:n_end]
             a_cn = inner(A_ci, P_ni)
-            #a_cn *= num.conjugate(a_cn)
-            print paw.weight_k[k]
+            print "weight", paw.weight_k[k]
             self.sigma_cn[:, n1:n2] = paw.weight_k[k] ** 0.5 * a_cn #.real
             n1 = n2
 
         self.symmetry = paw.symmetry
 
     def get_spectra(self, fwhm=0.5, linbroad=None, N=1000, kpoint=None,
-                    proj=None, stick=False):
+                    proj=None,  proj_xyz=True, stick=False):
         """Calculate spectra.
 
         Parameters:
@@ -78,8 +102,11 @@ class XAS:
         proj:
           a list of vectors to project the transition dipole on. Default
           is None then only x,y,z components are calculated.  a_stick and
-          a_c will have 3 + len(proj) dimensions and are squares of the
-          transition moments in resp. direction
+          a_c squares of the transition moments in resp. direction
+        proj_xyz:
+          if True keep projections in x, y and z. a_stck and a_c will have
+          length 3 + len(proj). if False only those projections
+          defined by proj keyword, a_stick and a_c will have length len(proj)
         stick:
           if False return broadened spectrum, if True return stick spectrum
           
@@ -87,24 +114,33 @@ class XAS:
         symmtrice squares of transition dipoles."""
         
         # eps_n = self.eps_n[k_in*self.n: (k_in+1)*self.n -1]
-
          
 
         # proj keyword, check normalization of incoming vectors
         if proj is not None:
             proj_2 = num.array(proj,num.Float)
+            if len(proj_2.shape) == 1:
+                proj_2 = num.array([proj],num.Float)
+
             for i,p in enumerate(proj_2):
                 if sum(p ** 2) ** 0.5 != 1.0:
                     print "proj_2 %s not normalized" %i
                     proj_2[i] /=  sum(p ** 2) ** 0.5
         
             # make vector of projections
-            sigma1_cn = num.empty( (3 + len(proj_2), len(self.sigma_cn[0])), num.Complex)
-            sigma1_cn[0:3,:] = self.sigma_cn
-            for i,p in enumerate(proj_2):
-                sigma1_cn[3 +i,:] = num.dot(p,self.sigma_cn) 
-        
-            sigma2_cn = num.empty((len(sigma1_cn),len(sigma1_cn[0])),num.Float)
+            if proj_xyz:
+                sigma1_cn = num.empty( (3 + proj_2.shape[0], self.sigma_cn.shape[1]),
+                                       num.Complex)
+                sigma1_cn[0:3,:] = self.sigma_cn
+                for i,p in enumerate(proj_2):
+                    sigma1_cn[3 +i,:] = num.dot(p,self.sigma_cn) 
+            else:
+                sigma1_cn = num.empty((proj_2.shape[0], self.sigma_cn.shape[1]) ,
+                                       num.Complex)
+                for i,p in enumerate(proj_2):
+                    sigma1_cn[i,:] = num.dot(p, self.sigma_cn)
+                                                
+            sigma2_cn = num.empty(sigma1_cn.shape, num.Float)
             sigma2_cn = (sigma1_cn*num.conjugate(sigma1_cn)).real
 
         else:
@@ -186,17 +222,13 @@ class RecursionMethod:
     """This class implements the Haydock recursion method. """
 
     def __init__(self, paw=None, filename=None,
-                 tol=1e-10, maxiter=100):
+                 tol=1e-10, maxiter=100, proj=None, proj_xyz=True):
 
         self.paw = paw
         if paw is not None:
             assert not paw.spinpol # restricted - for now
 
             self.weight_k = paw.weight_k
-            self.tmp1_cG = paw.gd.zeros(3, paw.typecode)
-            self.tmp2_cG = paw.gd.zeros(3, paw.typecode)
-            self.tmp3_cG = paw.gd.zeros(3, paw.typecode)
-            self.z_cG = paw.gd.zeros(3, paw.typecode)
             self.nkpts = paw.nkpts
             self.nmykpts = paw.nmyu
             self.k1 = paw.kpt_comm.rank * self.nmykpts
@@ -215,13 +247,14 @@ class RecursionMethod:
         if filename is not None:
             self.read(filename)
         else:
-            self.initialize_start_vector()
+            self.initialize_start_vector(proj=proj,proj_xyz=proj_xyz)
 
     def read(self, filename):
         data = pickle.load(open(filename))
         self.nkpts = data['nkpts']
         self.swaps = data['swaps']
         self.weight_k = data['weight_k']
+        self.dim = data['dim']
         k1, k2 = self.k1, self.k2
         if k2 is None:
             k2 = self.nkpts
@@ -231,7 +264,7 @@ class RecursionMethod:
         if self.paw is not None and 'arrays' in data:
             print 'reading arrays'
             w_kcG, wold_kcG, y_kcG = data['arrays']
-            i = [slice(k1, k2), slice(0, 3)] + self.paw.gd.get_slice()
+            i = [slice(k1, k2), slice(0, self.dim)] + self.paw.gd.get_slice()
             self.w_ucG = w_kcG[i].copy()
             self.wold_ucG = wold_kcG[i].copy()
             self.y_ucG = y_kcG[i].copy()
@@ -244,14 +277,15 @@ class RecursionMethod:
         if gd.comm.rank == MASTER:
             if kpt_comm.rank == MASTER:
                 ni = self.a_uci.shape[2]
-                a_kci = num.empty((self.nkpts, 3, ni), self.paw.typecode)
-                b_kci = num.empty((self.nkpts, 3, ni), self.paw.typecode)
+                a_kci = num.empty((self.nkpts, self.dim, ni), self.paw.typecode)
+                b_kci = num.empty((self.nkpts, self.dim, ni), self.paw.typecode)
                 kpt_comm.gather(self.a_uci, MASTER, a_kci)
                 kpt_comm.gather(self.b_uci, MASTER, b_kci)
                 data = {'ab': (a_kci, b_kci),
                         'nkpts': self.nkpts,
                         'swaps': self.swaps,
-                        'weight_k':self.weight_k}
+                        'weight_k':self.weight_k,
+                        'dim':self.dim}
             else:
                 kpt_comm.gather(self.a_uci, MASTER)
                 kpt_comm.gather(self.b_uci, MASTER)
@@ -262,11 +296,11 @@ class RecursionMethod:
             y0_ucG = gd.collect(self.y_ucG)
             if gd.comm.rank == MASTER:
                 if kpt_comm.rank == MASTER:
-                    w_kcG = gd.empty((self.nkpts, 3), self.paw.typecode,
+                    w_kcG = gd.empty((self.nkpts, self.dim), self.paw.typecode,
                                      global_array=True)
-                    wold_kcG = gd.empty((self.nkpts, 3), self.paw.typecode,
+                    wold_kcG = gd.empty((self.nkpts, self.dim), self.paw.typecode,
                                         global_array=True)
-                    y_kcG = gd.empty((self.nkpts, 3), self.paw.typecode,
+                    y_kcG = gd.empty((self.nkpts, self.dim), self.paw.typecode,
                                      global_array=True)
                     kpt_comm.gather(w0_ucG, MASTER, w_kcG)
                     kpt_comm.gather(wold0_ucG, MASTER, wold_kcG)
@@ -280,28 +314,77 @@ class RecursionMethod:
         if self.paw.master:
             pickle.dump(data, open(filename, 'w'))
         
-    def initialize_start_vector(self):
+    def initialize_start_vector(self, proj=None, proj_xyz=True):
+        # proj is one list of vectors [[e1_x,e1_y,e1_z],[e2_x,e2_y,e2_z]]
+        #( or [ex,ey,ez] if only one projection )
+        # that the spectrum will be projected on 
+        # default is to only calculate the averaged spectrum
+        # if proj_xyz is True, keep projection in x,y,z, if False
+        # only calculate the projections in proj
+        
         # Create initial wave function:
         nmykpts = self.nmykpts
-        self.w_ucG = self.paw.gd.zeros((nmykpts, 3), self.paw.typecode)
+        
         for nucleus in self.paw.nuclei:
             if nucleus.setup.phicorehole_g is not None:
                 break
         A_ci = nucleus.setup.A_ci
+
+        #
+        # proj keyword
+        #
+
+        #check normalization of incoming vectors
+        if proj is not None:
+            proj_2 = num.array(proj,num.Float)
+            if len(proj_2.shape) == 1:
+                proj_2 = num.array([proj],num.Float)
+            
+            for i,p in enumerate(proj_2):
+                if sum(p ** 2) ** 0.5 != 1.0:
+                    print "proj_2 %s not normalized" %i
+                    proj_2[i] /=  sum(p ** 2) ** 0.5
+
+            proj_tmp = []
+            for p in proj_2:
+               proj_tmp.append(num.dot(p, A_ci))
+            proj_tmp = num.array(proj_tmp, num.Float)   
+
+            # if proj_xyz is True, append projections to A_ci
+            if proj_xyz:
+                A_ci_tmp = num.zeros((3 + proj_2.shape[0], A_ci.shape[1]), num.Float)
+                A_ci_tmp[0:3,:] = A_ci 
+                A_ci_tmp[3:,:]= proj_tmp
+
+            # otherwise, replace A_ci by projections
+            else:
+                A_ci_tmp = num.zeros((proj_2.shape[0], A_ci.shape[1]), num.Float)
+                A_ci_tmp = proj_tmp
+            A_ci = A_ci_tmp
+
+        self.dim = len(A_ci)
+        self.tmp1_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+        self.tmp2_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+        self.z_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+        self.w_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
+            
         if nucleus.pt_i is not None: # not all CPU's will have a contribution
             for u in range(nmykpts):
-                nucleus.pt_i.add(self.w_ucG[u], A_ci, self.k1 + u)
+                nucleus.pt_i.add(self.w_ucG[u], A_ci, self.k1 + u) 
 
-        self.wold_ucG = self.paw.gd.zeros((nmykpts, 3), self.paw.typecode)
-        self.y_ucG = self.paw.gd.zeros((nmykpts, 3), self.paw.typecode)
+        print self.w_ucG.shape
+        
+        
+        self.wold_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
+        self.y_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
             
-        self.a_uci = num.zeros((nmykpts, 3, 0), self.paw.typecode)
-        self.b_uci = num.zeros((nmykpts, 3, 0), self.paw.typecode)
+        self.a_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
+        self.b_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
         
     def run(self, nsteps):
         ni = self.a_uci.shape[2]
-        a_uci = num.empty((self.nmykpts, 3, ni + nsteps), self.paw.typecode)
-        b_uci = num.empty((self.nmykpts, 3, ni + nsteps), self.paw.typecode)
+        a_uci = num.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.typecode)
+        b_uci = num.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.typecode)
         a_uci[:, :, :ni]  = self.a_uci
         b_uci[:, :, :ni]  = self.b_uci
         self.a_uci = a_uci
@@ -321,18 +404,18 @@ class RecursionMethod:
         
         self.solve(w_cG, self.z_cG, u)
         I_c = num.reshape(integrate(num.conjugate(z_cG) * w_cG)**-0.5,
-                          (3, 1, 1, 1))
+                          (self.dim, 1, 1, 1))
         z_cG *= I_c
         w_cG *= I_c
         
         if i != 0:
             b_c =  1.0 / I_c 
         else:
-            b_c = num.reshape(num.zeros(3), (3, 1, 1, 1))
+            b_c = num.reshape(num.zeros(self.dim), (self.dim, 1, 1, 1))
     
         self.paw.kpt_u[u].apply_hamiltonian(self.paw.hamiltonian, 
                                             z_cG, y_cG)
-        a_c = num.reshape(integrate(num.conjugate(z_cG) * y_cG), (3, 1, 1, 1))
+        a_c = num.reshape(integrate(num.conjugate(z_cG) * y_cG), (self.dim, 1, 1, 1))
         wnew_cG = (y_cG - a_c * w_cG - b_c * wold_cG)
         wold_cG[:] = w_cG
         w_cG[:] = wnew_cG
@@ -349,12 +432,13 @@ class RecursionMethod:
                       b_i[i + 1]**2 *
                       self.continued_fraction(e, k, c, i + 1, imax))
 
-    def get_spectra(self, eps_s, delta=0.1, imax=None, kpoint=None, fwhm=None, linbroad=None):
+    def get_spectra(self, eps_s, delta=0.1, imax=None, kpoint=None, fwhm=None,
+                    linbroad=None):
         assert not mpi.parallel
         
         n = len(eps_s)
                 
-        sigma_cn = num.zeros((3, n), num.Float)
+        sigma_cn = num.zeros((self.dim, n), num.Float)
         if imax is None:
             imax = self.a_uci.shape[2]
         energyunit = units.GetEnergyUnit()
@@ -363,19 +447,19 @@ class RecursionMethod:
                 
         # if a certain k-point is chosen
         if kpoint is not None:
-             for c in range(3):
+             for c in range(self.dim):
                 sigma_cn[c] += self.continued_fraction(eps_n, kpoint, c,
                                                        0, imax).imag
         else:
             for k in range(self.nkpts):
                 weight = self.weight_k[k]
-                for c in range(3):
+                for c in range(self.dim):
                     sigma_cn[c] += weight*self.continued_fraction(eps_n, k, c,
                                                                0, imax).imag
 
         if len(self.swaps) > 0:
             sigma0_cn = sigma_cn
-            sigma_cn = num.zeros((3, n), num.Float)
+            sigma_cn = num.zeros((self.dim, n), num.Float)
             for swap in self.swaps:
                 sigma_cn += num.take(sigma0_cn, swap)
             sigma_cn /= len(self.swaps)
