@@ -66,9 +66,7 @@ class Wannier(ASEWannier):
 
 
     def SetInitialWannierFunctions(self, initialwannier):
-        # get the initial Wannier function from the calculator
         self.initialwannier = initialwannier
-        raise NotImplementedError
 
     def InitializeRotationAndCoefficientMatrices(self):
         # Set ZIMatrix and ZIkMatrix to zero.
@@ -76,10 +74,22 @@ class Wannier(ASEWannier):
         if not hasattr(self, 'initialwannier'):
             self.RandomizeMatrices(seed=self.seed)
         else:
-            raise NotImplementedError
-            #c , U = self.initialwannier. ...  # XXX
-            self.SetListOfRotationMatrices(U)
-            self.SetListOfCoefficientMatrices(c)
+            initialwannier = self.initialwannier
+            Nb, M_k, L_k = self.GetMatrixDimensions()
+            Nk = self.GetNumberOfKPoints()
+            spin = self.GetSpin()
+            nuclei = self.GetCalculator().nuclei
+
+            V_knj = num.zeros((Nk, Nb, len(initialwannier)), num.Complex)
+            for k in range(Nk):
+                for j in range(len(initialwannier)):
+                    a, i = initialwannier[j]
+                    u = k + spin * Nk
+                    V_knj[k, :, j] = nuclei[a].P_uni[u, :, i]
+
+            c_k, U_k = get_c_k_and_U_k(V_knj, (Nb, M_k, L_k))
+            self.SetListOfRotationMatrices(U_k)
+            self.SetListOfCoefficientMatrices(c_k)
             self.UpdateListOfLargeRotationMatrices()
             self.UpdateZIMatrix()
 
@@ -138,3 +148,58 @@ class Wannier(ASEWannier):
         wanniergrid = self.GetWannierFunctionOnGrid(wannierindex, repeat)
         WriteCube(self.calculator.GetListOfAtoms().Repeat(repeat),
                   wanniergrid, filename, real=real)
+
+
+#Mikkel Strange (2007) 
+#See Thygesen et al. PRB
+from random import random
+from gpaw.utilities.tools import dagger, project, normalize, gram_schmidt_orthonormalize
+
+def get_c_k_and_U_k(V_kni, NML):
+    """V_kni = <psi_kn|f_i>, where f_i is an initial function """
+    nbands, M_k, L_k = NML
+    U_k = []
+    c_k = []
+    for M,L, V_ni in zip(M_k, L_k, V_kni):
+        V_ni = normalize(V_ni)
+        T = V_ni[M:].copy()
+        nbf = T.shape[1] #number of initial functions
+#        print "number of initial functions",nbf
+        c = num.zeros([nbands - M, L], num.Complex)
+        U = num.zeros([M + L, M + L], num.Complex)
+        #Calculate the EDF
+        w = abs(num.sum(T * num.conjugate(T)))                
+        for i in xrange(min(L, nbf)):
+            t = w.tolist().index(max(w))
+            c[:, i] = T[:, t]
+            for j in xrange(i):
+                c[:, i] -= project(c[:, j], T[:, t])
+            c[:,i] /= num.sqrt(num.vdot(c[:, i], c[:, i]))
+            w -= abs(num.dot(num.conjugate(c[:, i]), T))**2
+        if nbf < L:
+            print "augmenting with random vectors"
+            for i in xrange(nbf, L):
+                for j in xrange(nbands - M):
+                    c[i, j] = random()
+            c = gram_schmidt_orthonormalize(c)
+        if L > 0:
+            if GetOrthonormalityFactor(c) > 1.0e-3:
+                print 'ERROR: Columns of c are not orthogonal'
+        U[:M, :nbf] = V_ni[:M]
+        U[M:, :nbf] = num.dot(dagger(c), V_ni[M:])
+        U[:, :nbf] = gram_schmidt_orthonormalize(U[:, :nbf])
+        if nbf < M + L:
+            for i in xrange(nbf, M + L):
+                for j in xrange(M + L):
+                    U[j, i] = random()
+            U = gram_schmidt_orthonormalize(U)
+        if GetOrthonormalityFactor(U) > 1.0e-3:
+            print 'ERROR: Columns of U are not orthogonal'
+        c_k.append(c)
+        U_k.append(U)
+    return c_k, U_k
+    
+def GetOrthonormalityFactor(U):
+    nb = U.shape[1]
+    diff = num.dot(dagger(U),U) - num.identity(nb, num.Float)
+    return max(num.absolute(diff).flat)

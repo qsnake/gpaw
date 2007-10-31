@@ -135,6 +135,53 @@ def dagger(matrix, copy=True):
             num.multiply(dag.imag, -1, dag.imag)
         return dag
 
+def project(a, b):
+    """Returns the projection of b onto a."""
+    return a * (num.dot(num.conjugate(a), b) / num.dot(num.conjugate(a), a))
+
+def normalize(vec):
+    """Normalize NxM matrix vec containing M vectors as its columns."""
+    newvec = num.zeros(vec.shape, num.Complex)
+    M = vec.shape[1]
+    for m in range(M):
+	newvec[:, m] = vec[:,m] / num.sqrt(num.dot(num.conjugate(vec[:, m]),
+                                                   vec[:, m]))
+    return newvec
+	    
+def gram_schmidt_orthonormalize(vec, order=None):
+    """vec is a NxM matrix containing M vectors as its columns.
+    These will be orthogonalized by Gram-Schmidt using the order
+    specified in the list 'order'"""
+    newvec = num.zeros(vec.shape, num.Complex)
+    N, M = vec.shape[0], vec.shape[1]
+    if order is None:
+        order = range(M)
+    for m in range(M):
+	temp = vec[:, order[m]]
+	for i in range(m):
+	    temp -= project(newvec[:, order[i]], vec[:, order[m]])
+	# Normalize before saving
+	newvec[:, order[m]] = temp / num.sqrt(num.dot(num.conjugate(temp),
+                                                      temp))
+    return newvec
+
+def lowdin_orthonormalize(vec, S=None):
+    """vec is a NxM matrix containing M vectors as its columns.
+        These will be orthogonalized by Lowdin procedure"""
+    from LinearAlgebra import Heigenvectors
+
+    if S is None:
+        S = num.matrixmultiply(dagger(vec), vec)
+    epsilon, U = Heigenvectors(num.conjugate(S))
+
+    # Now, U contains the eigenvectors as ROWS and epsilon the eigenvalues
+    D = num.identity(S.shape[0], num.Complex) / num.sqrt(epsilon)
+
+    # T = S^(-1/2)
+    T = num.matrixmultiply(num.transpose(U),
+                               num.matrixmultiply(D, num.conjugate(U)))
+    return num.matrixmultiply(vec, T)
+
 def symmetrize(matrix):
     """Symmetrize input matrix."""
     num.add(dagger(matrix), matrix, matrix)
@@ -188,12 +235,12 @@ def standard_deviation(a, axis=0):
 def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     """Convert planewave energy cutoff to a real-space gridspacing.
 
-       The method use the conversion formula::
+       The method uses the conversion formula::
        
                 pi
         h =   =====
             \/ 2 E
-       
+              
        in atomic units (Hartree and Bohr)
     """
     from ASE.Units import Convert
@@ -205,7 +252,7 @@ def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
 def gridspacing_to_energy_cutoff(h, h_unit='Ang', E_unit='Hartree'):
     """Convert real-space gridspacing to planewave energy cutoff.
 
-       The method use the conversion formula::
+       The method uses the conversion formula::
        
              1   pi  2
         E  = - ( -- )

@@ -362,6 +362,11 @@ def plot(positions, numbers, cell):
        |/           /
        *-----------*
     """
+##   y
+##   |
+##   .-- x
+##  /
+## z
 
     s = 1.3
     nx, ny, nz = n = (s * cell * (1.0, 0.25, 0.5) + 0.5).astype(num.Int)
