@@ -1222,7 +1222,7 @@ class PAW(PAWExtra, Output):
         M = sum(self.atoms.GetMagneticMoments())
 
         if self.nbands <= 0:
-            self.nbands = (self.nvalence + M) // 2 + (-self.nbands)
+            self.nbands = int(self.nvalence + M + 0.5) // 2 + (-self.nbands)
         
         if self.nvalence > 2 * self.nbands:
             raise ValueError('Too few bands!')
