@@ -362,9 +362,11 @@ class PAW(PAWExtra, Output):
             elif name == 'eigensolver':
                 if p[name] != kwargs[name]:
                     self.eigensolver = eigensolver(kwargs[name], self)
-            elif name in ['txt','verbose']:
+            elif name in ['txt', 'verbose']:
                 self.input_parameters.update(kwargs)
                 Output.__init__(self)
+            elif name not in p:
+                raise RuntimeError('Unknown keyword: %s' % name)
 
         self.input_parameters.update(kwargs)
                 
