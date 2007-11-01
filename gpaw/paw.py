@@ -860,6 +860,8 @@ class PAW(PAWExtra, Output):
                                 'eigenstates':
                                 r['EigenstatesConvergenceCriterion'],
                                 'bands': r['NumberOfBandsToConverge']}
+            p['mix'] = (r['MixBeta'], r['MixOld'], r['MixMetric'])
+            
         if version == 0.3:
             # Old version: XXX
             print('Warning: Reading old version 0.3 restart files is ' +
