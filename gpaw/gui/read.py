@@ -70,7 +70,7 @@ def read_from_file(filename, slice):
         
     if type == 'gpaw':
         from gpaw import Calculator
-        atoms = Calculator.ReadAtoms(filename, out=None)
+        atoms = Calculator(filename, txt=None).get_atoms()
         e = atoms.GetPotentialEnergy()
         f = atoms.GetCartesianForces()
         return [atoms], [e], [f], {'calc': atoms.GetCalculator()}

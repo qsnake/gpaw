@@ -191,3 +191,6 @@ class Calculator(PAW):
 
     def GetExactExchange(self):
         return self.get_exact_exchange()
+
+    def GetElectronicTemperature(self):
+        return self.kT * self.Ha

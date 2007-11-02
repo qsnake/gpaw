@@ -50,8 +50,6 @@ def save_array(array, file, delimiter=' ', converters={}, header=None):
                    Support for gzipped files is automatic, if the filename
                    ends in .gz.
 
-    ``comments``   The character used to indicate the start of a comment.
-
     ``delimiter``  The character used to separate fields.
     
     ``converters`` A dictionary mapping column number to a string formatter.

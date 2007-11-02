@@ -12,8 +12,7 @@ center(loa)
 calc = Calculator(h = .21, nbands=3, convergence={'eigenstates': 1e-6})
 loa.SetCalculator(calc)
 
-symbol = 'Be'
-setup_paths.insert(0, '.')
+setup_paths.insert(0, '.') # Use setups from this directory
 tolerance = 0.0003 # must reproduce old gpaw results
 
 # zero Kelvin: in eV
@@ -40,7 +39,7 @@ setup2xc = {'PBE': 'PBE0',
 
 for setup in ['PBE', 'oldPBE', 'LDA']:
     # Generate setup
-    g = Generator(symbol, setup, scalarrel=True, nofiles=True)
+    g = Generator('Be', setup, scalarrel=True, nofiles=True)
     g.run(exx=True, **parameters[symbol])
 
     # setup gpaw calculation
