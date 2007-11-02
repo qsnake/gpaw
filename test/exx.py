@@ -40,7 +40,7 @@ setup2xc = {'PBE': 'PBE0',
 for setup in ['PBE', 'oldPBE', 'LDA']:
     # Generate setup
     g = Generator('Be', setup, scalarrel=True, nofiles=True)
-    g.run(exx=True, **parameters[symbol])
+    g.run(exx=True, **parameters['Be'])
 
     # setup gpaw calculation
     calc.set(xc=setup2xc[setup])
