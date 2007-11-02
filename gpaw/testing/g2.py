@@ -1915,4 +1915,4 @@ def get_g2(name, cell):
         raise NotImplementedError, 'System not in database.'
 
     center(loa)
-    return loa
+    return loa.Copy()
