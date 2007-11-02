@@ -75,7 +75,7 @@ class Output:
         for c in range(3):
             t('  %s-axis   %s   %8.4f   %3d    %8.4f' % 
               ('xyz'[c],
-               ['no ', 'yes'][self.domain.periodic_c[c]],
+               ['no ', 'yes'][int(self.domain.periodic_c[c])],
                self.a0 * self.domain.cell_c[c],
                self.gd.N_c[c],
                self.a0 * self.gd.h_c[c]))
