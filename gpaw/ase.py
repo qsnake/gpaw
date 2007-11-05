@@ -10,6 +10,7 @@ import weakref
 
 from ASE.Units import units, Convert
 import ASE
+import Numeric as num
 
 from gpaw.paw import PAW
 
@@ -186,7 +187,7 @@ class Calculator(PAW):
                  self.get_xc_difference('XC-0-1.0') - E0,
                  self.get_xc_difference('XC-1-1.0') - E0,
                  self.get_xc_difference('XC-2-1.0') - E0)
-        print >> self.out, 'BEE: (%.9f, %.9f, %.9f, %.9f)' % coefs
+        self.text('BEE: (%.9f, %.9f, %.9f, %.9f)' % coefs)
         return num.array(coefs)
 
     def GetExactExchange(self):
