@@ -4,8 +4,8 @@ from ASE import ListOfAtoms, Atom, Crystal
 from gpaw.lrtddft import LrTDDFT
 
 R=0.7 # approx. experimental bond length
-a = 6
-c = 8
+a = 2
+c = 3
 H2 = ListOfAtoms([Atom('H', (a/2,a/2,(c-R)/2)),
                   Atom('H', (a/2,a/2,(c+R)/2))],
                  cell=(a,a,c))
