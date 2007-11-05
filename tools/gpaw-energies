@@ -50,7 +50,7 @@ a0 = paw.a0
 # write the structure out only
 if opt.structure_file:
     s = Cluster(paw.atoms)
-    s.Write(opt.structure_file)
+    s.write(opt.structure_file)
     sys.exit()
 
 out = sys.stdout
@@ -102,8 +102,6 @@ else:
         for e,oa,ua,ob,ub in zip(eo[0],eo[1],eo[2],eo[3],eo[4]):
             print >> out,e,o,u,ob,ub
     
-        
-        
 # forces
 if opt.Forces:
     if paw.F_ac is None:
