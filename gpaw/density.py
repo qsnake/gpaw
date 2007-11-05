@@ -57,6 +57,7 @@ class Density:
         self.nvalence = paw.nvalence
         self.charge = float(p['charge'])
         self.charge_eps = 1e-7
+        self.lcao = paw.lcao
         
         self.nvalence0 = self.nvalence + self.charge
         for nucleus in self.nuclei:
@@ -200,11 +201,17 @@ class Density:
             self.nt_g[:] = self.nt_sg[0]
             self.nt_g += self.nt_sg[1]
 
-        self.rhot_g[:] = self.nt_g
-        
+        Q = 0.0
         for nucleus in self.nuclei:
             nucleus.calculate_multipole_moments()
+            Q += nucleus.Q_L[0] * sqrt(4 * pi)
 
+        if self.lcao:
+            Nt = self.finegd.integrate(self.nt_g)
+            self.nt_g *= -Q / Nt
+            
+        self.rhot_g[:] = self.nt_g
+        
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
             

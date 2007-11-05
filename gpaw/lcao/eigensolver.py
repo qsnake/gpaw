@@ -16,23 +16,22 @@ class LCAO:
     def iterate(self, hamiltonian, kpt_u):
         if not self.initialized:
             hamiltonian.initialize()
-            #self.initialized = True
+            self.initialized = True
             
         kpt = kpt_u[0]
         
         vt_G = hamiltonian.vt_sG[0]
-        phi_mG = hamiltonian.phi_mG
 
         nao = hamiltonian.nao
         nbands = kpt.nbands
         H_mm = num.zeros((nao, nao), num.Float)
-        r2k(0.5 * self.gd.dv, phi_mG, vt_G * phi_mG, 0.0, H_mm)
 
-        if 0:
-            print H_mm
-            H_mm[:] = 0
+        #phi_mG = hamiltonian.phi_mG
+        #r2k(0.5 * self.gd.dv, phi_mG, vt_G * phi_mG, 0.0, H_mm)
+
+        if 1:
+            #print H_mm
             hamiltonian.calculate_effective_potential_matrix(H_mm)
-            print H_mm
             
         for nucleus in self.nuclei:
             dH_ii = unpack(nucleus.H_sp[0])
@@ -41,7 +40,7 @@ class LCAO:
 
         H_mm += hamiltonian.T_mm
         eps_n = num.zeros(nao, num.Float)
-        diagonalize(H_mm, eps_n, hamiltonian.S_mm)
+        diagonalize(H_mm, eps_n, hamiltonian.S_mm.copy())
         kpt.C_nm = H_mm[0:nbands].copy()
         kpt.eps_n[:] = eps_n[0:nbands]
         

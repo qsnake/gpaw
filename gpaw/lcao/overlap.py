@@ -1,6 +1,6 @@
 from math import sqrt, pi
 import Numeric as num
-from FFT import inverse_real_fft, real_fft, inverse_fft
+from FFT import inverse_fft
 from gpaw.spline import Spline
 from gpaw.spherical_harmonics import Y
 from gpaw.gaunt import gaunt
@@ -8,7 +8,9 @@ from gpaw.utilities import fac
 
 C = [num.array([-1.0j]),
      num.array([-1.0, -1.0j]),
-     num.array([1.0j, -3.0, -3.0j])]
+     num.array([1.0j, -3.0, -3.0j]),
+     num.array([1.0, 6.0j, -15.0, -15.0j]),
+     num.array([1.0j, -6.0, -30.0j, 105.0, 105.0j])]
 
 def fbt(l, f, r, k):
     """Fast Bessel transform.
@@ -36,47 +38,73 @@ class TwoCenterIntegrals:
     """ Two-center integrals class.
 
     This class implements a Fourier-space calculation of two-center
-    integrals. """
+    integrals.
+    """
 
     def __init__(self, setups):
         self.rcmax = 0.0
         for setup in setups:
             for phit in setup.phit_j:
-                l = phit.get_angular_momentum_number()
                 rc = phit.get_cutoff()
                 if rc > self.rcmax:
                     self.rcmax = rc
         print self.rcmax
+
+        for setup in setups:
+            for pt in setup.pt_j:
+                rc = pt.get_cutoff()
+                assert rc < self.rcmax
+
         self.ng = 2**9
-        phit_g = num.zeros(self.ng, num.Float) 
-        phit_jq = {}
         self.dr = self.rcmax / self.ng
         self.r_g = num.arange(self.ng) * self.dr
-        self.P = 4 * 2**9
-        self.dk = 2 * pi / self.P / self.dr
-        self.k = num.arange(self.P // 2) * self.dk
-        phit_q = num.zeros(self.P // 2, num.Float)
+        self.Q = 4 * 2**9
+        self.dk = 2 * pi / self.Q / self.dr
+        self.k = num.arange(self.Q // 2) * self.dk
+
+        phit_g = num.zeros(self.ng, num.Float) 
+        phit_jq = {}
         for setup in setups:
             for j, phit in enumerate(setup.phit_j):
                 l = phit.get_angular_momentum_number()
                 id = (setup.symbol, j)
                 phit_g[0:self.ng] = [phit(r) for r in self.r_g[0:self.ng]]
-                phit_q[:] = 0.0
-                a_q = fbt(l, phit_g, self.r_g, self.k)
-                phit_q += a_q
-                phit_jq[id] = (l, phit_q.copy())
-        self.splines = {}
+                phit_q = fbt(l, phit_g, self.r_g, self.k)
+                phit_jq[id] = (l, phit_q)
+                
+        pt_g = num.zeros(self.ng, num.Float) 
+        pt_jq = {}
+        for setup in setups:
+            for j, pt in enumerate(setup.pt_j):
+                l = pt.get_angular_momentum_number()
+                id = (setup.symbol, j)
+                pt_g[0:self.ng] = [pt(r) for r in self.r_g[0:self.ng]]
+                pt_q = fbt(l, pt_g, self.r_g, self.k)
+                pt_jq[id] = (l, pt_q)
+                
+        self.S = {}
+        self.T = {}
         for id1, (l1, phit1_q) in phit_jq.items():
             for id2, (l2, phit2_q) in phit_jq.items():
-                st = self.calculate_spline(phit1_q, phit2_q, l1, l2)
-                self.splines[(id1, id2)] = st
-        self.setups = setups
+                s = self.calculate_spline(phit1_q, phit2_q, l1, l2)
+                self.S[(id1, id2)] = s
+                t = self.calculate_spline(0.5 * phit1_q * self.k**2, phit2_q,
+                                          l1, l2, kinetic_energy=True)
+                self.T[(id1, id2)] = t
+                
+        self.P = {}
+        for id1, (l1, pt1_q) in pt_jq.items():
+            for id2, (l2, phit2_q) in phit_jq.items():
+                p = self.calculate_spline(pt1_q, phit2_q, l1, l2)
+                self.P[(id1, id2)] = p
+                
+        self.setups = setups # XXX
 
-    def calculate_spline(self, phit1, phit2, l1, l2):
+    def calculate_spline(self, phit1, phit2, l1, l2, kinetic_energy=False):
         S_g = num.zeros(2 * self.ng, num.Float)
         self.lmax = l1 + l2
-        Ssplines = []
-        R = num.arange(self.P // 2) * self.dr
+        splines = []
+        R = num.arange(self.Q // 2) * self.dr
         R1 = R.copy()
         R1[0] = 1.0
         k1 = self.k.copy()
@@ -88,36 +116,50 @@ class TwoCenterIntegrals:
                    R1**(2 * l + 1))           
             if l==0:
                 a_g[0] = 8 * num.sum(a_q * k1**(-l1 - l2)) * self.dk
-            a_g *= (-1)**((l1 - l2 - l) / 2)
+            else:    
+                a_g[0] = a_g[1]  # XXXX
+            a_g *= (-1)**((-l1 + l2 - l) / 2)
             S_g += a_g
-            s = Spline(l, self.P // self.ng / 2 * self.rcmax, S_g)
-            Ssplines.append(s)
-        return Ssplines
+            s = Spline(l, self.Q // self.ng / 2 * self.rcmax, S_g)
+            splines.append(s)
+        return splines
 
-    def overlap(self, id1, id2, l1, l2, m1, m2, R):
+    def st_overlap(self, id1, id2, l1, l2, m1, m2, R):
+        """ Returns the overlap and kinetic energy matrices. """
+        
         l = (l1 + l2) % 2
         S = 0.0
+        T = 0.0
         r = sqrt(num.dot(R, R))
         L1 = l1**2 + m1
         L2 = l2**2 + m2
-        for s in self.splines[(id1, id2)]:
+        ssplines = self.S[(id1, id2)]
+        tsplines = self.T[(id1, id2)]
+        for s, t in zip(ssplines, tsplines):
             for m in range(2 * l + 1):
                 L = l**2 + m
-                S += s(r) * Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
+                c = Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
+                S += s(r) * c
+                T += t(r) * c
             l += 2
-        return S    
+        return S, T
     
-        '''
-        # Kinetic Energy spline:
-        T_g = -inverse_real_fft(1j * self.k_qp**3 * phit1 * phit2) \
-             * self.ngp * self.dk / self.a**3       
-        T_g[1:] /= self.r_gp[1:]
-        T_g[0] =  num.dot(self.k_qp**4, phit1 * phit2) * self.dk / self.a**3
-        T_g *= G * 4 * pi * Y
-        t = Spline(0, self.a * self.rcmax, T_g[:self.nqp])
-        print s(0.2)
-        return s, t '''
+    def p_overlap(self, id1, id2, l1, l2, m1, m2, R):
+        """ Returns the overlap between basis functions and projector
+        functions. """
 
+        l = (l1 + l2) % 2
+        P = 0.0
+        r = sqrt(num.dot(R, R))
+        L1 = l1**2 + m1
+        L2 = l2**2 + m2
+        for p in self.P[(id1, id2)]:
+            for m in range(2 * l + 1):
+                L = l**2 + m
+                P += p(r) * Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
+            l += 2
+        return P
+ 
     # Testing
     def testb(self, h):
         from gpaw.domain import Domain
@@ -126,7 +168,7 @@ class TwoCenterIntegrals:
              LocFuncBroadcaster
 
         print self.splines
-        sspline = self.splines[(('H', 0), ('Li', 0))]
+        sspline = selfs.plines[(('H', 0), ('Li', 0))]
         phit = self.setups[0].phit_j[0]
         phitb = self.setups[1].phit_j[0]
         rc = phit.get_cutoff() + 1.0

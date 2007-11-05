@@ -2,7 +2,7 @@
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
 
-a = 5
+a = 10
 b = a / 2
 mol = ListOfAtoms([Atom('O',(b, b, 0.1219 + b)),
                   Atom('H',(b, 0.7633 + b, -0.4876 + b)),
