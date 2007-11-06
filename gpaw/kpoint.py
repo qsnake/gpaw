@@ -26,7 +26,7 @@ class KPoint:
     The ``KPoint`` class takes care of all wave functions for a
     certain **k**-point and a certain spin."""
     
-    def __init__(self, gd, weight, s, k, u, k_c, typecode):
+    def __init__(self, gd, weight, s, k, u, k_c, typecode, timer = None):
         """Construct **k**-point object.
 
         Parameters:
@@ -39,6 +39,7 @@ class KPoint:
          ``k_c``      scaled **k**-point vector (coordinates scaled to
                       [-0.5:0.5] interval).
          ``typecode`` Data type of wave functions (``Float`` or ``Complex``).
+         ``timer``    Timer (optional)
          ============ =======================================================
 
         Note that ``s`` and ``k`` are global spin/**k**-point indices,
@@ -79,6 +80,7 @@ class KPoint:
         self.gd = gd
         self.weight = weight
         self.typecode = typecode
+        self.timer = timer
         
         self.phase_cd = num.ones((3, 2), num.Complex)
         if typecode == num.Float:
@@ -265,12 +267,20 @@ class KPoint:
         """Apply Hamiltonian to wave functions."""
 
         b_nG[:] = 0.0
+        if self.timer is not None:
+            self.timer.start('Apply pseudo-hamiltonian');
         hamiltonian.kin.apply(a_nG, b_nG, self.phase_cd)
         b_nG += a_nG * hamiltonian.vt_sG[self.s]
+        if self.timer is not None:
+            self.timer.stop('Apply pseudo-hamiltonian');
         
+        if self.timer is not None:
+            self.timer.start('Apply atomic hamiltonian');
         for nucleus in hamiltonian.pt_nuclei:
             # Apply the non-local part:
             nucleus.apply_hamiltonian(a_nG, b_nG, self.s, self.k)
+        if self.timer is not None:
+            self.timer.stop('Apply atomic hamiltonian');
 
     def apply_overlap(self, pt_nuclei, a_nG, b_nG):
         """Apply overlap operator to wave functions."""

@@ -1162,7 +1162,7 @@ class PAW(PAWExtra, Output):
                                              self.typecode))
             else:
                 self.kpt_u.append(KPoint(self.gd, weight, s, k, u, k_c,
-                                         self.typecode))
+                                         self.typecode,self.timer))
 
         self.locfuncbcaster = LocFuncBroadcaster(self.kpt_comm)
 

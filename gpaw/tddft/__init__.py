@@ -7,6 +7,8 @@ import sys
 
 import Numeric as num
 
+from gpaw.preconditioner import Preconditioner
+
 from gpaw.tddft.bicgstab import BiCGStab
 from gpaw.tddft.propagators import \
     ExplicitCrankNicolson, \
@@ -18,9 +20,18 @@ from gpaw.tddft.tdopers import \
     TimeDependentDensity, \
     AbsorptionKickHamiltonian
 
+
 class DummyMixer:
     def mix(self, nt_sG, comm):
         pass
+
+class KineticEnergyPreconditioner:
+    def __init__(self, gd, kin, typecode):
+        self.preconditioner = Preconditioner(gd, kin, typecode)
+
+    def solve(self, kpt, psi, psin):
+        psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
+
 
 
 class TDDFT:
@@ -31,7 +42,7 @@ class TDDFT:
     """
     
     def __init__( self, paw, td_potential = None, kpt = None,
-                  propagator='ECN', solver='BiCGStab', tolerance=1e-10 ):
+                  propagator='ECN', solver='BiCGStab', tolerance=1e-15 ):
         """Create TDDFT-object.
         
         ============ =========================================================
@@ -69,14 +80,25 @@ class TDDFT:
         
         # Grid descriptor
         self.gd = paw.gd
+        
+        # Timer
+        self.timer = paw.timer
 
         # Solver for linear equations
         if solver is 'BiCGStab':
-            self.solver = BiCGStab(gd=self.gd, tolerance=tolerance)
+            self.solver = BiCGStab( gd=self.gd, timer=self.timer, 
+                                    tolerance=tolerance )
         else:
             raise RuntimeError( 'Error in TDDFT: Solver %s not supported. '
                                 'Only BiCGStab is currently supported.' 
                                 % (solver) )
+
+        # Preconditioner
+        # DO NOT USE, BAD PRECONDITIONER!
+        #self.preconditioner = KineticEnergyPreconditioner( paw.gd,
+        #                                                   paw.hamiltonian.kin,
+        #                                                   num.Complex )
+        self.preconditioner = None
 
         # Time propagator
         if propagator is 'ECN':
@@ -85,20 +107,24 @@ class TDDFT:
                                        self.td_hamiltonian,
                                        self.td_overlap,
                                        self.solver,
-                                       self.gd )
+                                       self.preconditioner,
+                                       self.gd,
+                                       self.timer )
         elif propagator is 'SICN':
             self.propagator = \
                 SemiImplicitCrankNicolson( self.td_density, 
                                            self.td_hamiltonian, 
                                            self.td_overlap, 
                                            self.solver,
-                                           self.gd )
+                                           self.preconditioner,
+                                           self.gd,
+                                           self.timer )
         else:
             raise RuntimeError( 'Error in TDDFT:' + 
                                 'Time propagator %s not supported. '
                                 % (propagator) )
         
-        # K-points        
+        # K-points
         if kpt is not None:
             self.kpt = kpt
         else:
@@ -132,5 +158,5 @@ class TDDFT:
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
                                                        strength,
                                                        direction ),
-                            self.td_overlap, self.solver, self.gd )
+                            self.td_overlap, self.solver, self.gd, self.timer )
         abs_kick.kick(self.kpt)

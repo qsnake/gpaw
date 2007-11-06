@@ -63,7 +63,8 @@ class ExplicitCrankNicolson(Propagator):
     
     """
     
-    def __init__(self, td_density, td_hamiltonian, td_overlap, solver, gd):
+    def __init__( self, td_density, td_hamiltonian, td_overlap, 
+                  solver, preconditioner, gd, timer):
         """Create ExplicitCrankNicolson-object.
         
         ================ =====================================================
@@ -73,7 +74,9 @@ class ExplicitCrankNicolson(Propagator):
         td_hamiltonian   the time-dependent hamiltonian
         td_overlap       the time-dependent overlap operator
         solver           solver for linear equations
+        preconditioner   a preconditioner for linear equations
         gd               coarse (wavefunction) grid descriptor
+        timer            timer
         ================ =====================================================
         
         """
@@ -81,7 +84,9 @@ class ExplicitCrankNicolson(Propagator):
         self.td_hamiltonian = td_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
+        self.preconditioner = preconditioner
         self.gd = gd
+        self.timer = timer
         
         self.hpsit = None
         self.spsit = None
@@ -100,6 +105,8 @@ class ExplicitCrankNicolson(Propagator):
         =========== =========================================================
         
         """
+        self.timer.start('Update time-dependent operators')
+
         self.time_step = time_step
         self.td_density.update()
         self.td_hamiltonian.update(self.td_density.get_density(), time)
@@ -108,15 +115,19 @@ class ExplicitCrankNicolson(Propagator):
             self.hpsit = self.gd.zeros(typecode=num.Complex)
         if self.spsit is None:
             self.spsit = self.gd.zeros(typecode=num.Complex)
+
+        self.timer.stop('Update time-dependent operators')
         
         # loop over k-points (spins)
         for kpt in kpt_u:
             self.kpt = kpt
             # loop over wavefunctions of this k-point (spin)
             for psit in kpt.psit_nG:
+                self.timer.start('Apply time-dependent operators')
                 self.td_hamiltonian.apply(self.kpt, psit, self.hpsit)
                 self.td_overlap.apply(self.kpt, psit, self.spsit)
-            
+                self.timer.stop('Apply time-dependent operators')
+
                 #psit[:] = self.spsit - .5J * self.hpsit * time_step
                 psit[:] = self.spsit
                 axpy(-.5j * self.time_step, self.hpsit, psit)
@@ -137,12 +148,33 @@ class ExplicitCrankNicolson(Propagator):
         =========== ===================================
         
         """
+        self.timer.start('Apply time-dependent operators')
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
         self.td_overlap.apply(self.kpt, psi, self.spsit)
+        self.timer.stop('Apply time-dependent operators')
+
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit 
         psin[:] = self.spsit
         axpy(.5j * self.time_step, self.hpsit, psin)
 
+    #  M psin = psi, where M = T (kinetic energy operator)
+    def solve_preconditioner(self, psi, psin):
+        """Solves preconditioner equation.
+        
+        =========== ===================================
+        Parameters:
+        =========== ===================================
+        psi         the known wavefunction
+        psin        the result
+        =========== ===================================
+        
+        """
+        self.timer.start('Solve TDDFT preconditioner')
+        if self.preconditioner is not None:
+            self.preconditioner.solve(self.kpt, psi, psin)
+        else:
+            psin[:] = psi
+        self.timer.stop('Solve TDDFT preconditioner')
 
 
 ###############################################################################
@@ -171,7 +203,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
     
     """
     
-    def __init__(self, abs_kick_hamiltonian, td_overlap, solver, gd):
+    def __init__(self, abs_kick_hamiltonian, td_overlap, solver, gd, timer):
         """Create AbsorptionKick-object.
         
         ===================== =================================================
@@ -181,6 +213,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         td_overlap            the time-dependent overlap operator
         solver                solver for linear equations
         gd                    coarse (wavefunction) grid descriptor
+        timer                 timer
         ===================== =================================================
         
         """
@@ -188,7 +221,9 @@ class AbsorptionKick(ExplicitCrankNicolson):
         self.td_hamiltonian = abs_kick_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
+        self.preconditioner = None
         self.gd = gd
+        self.timer = timer
         
         self.hpsit = None
         self.spsit = None
@@ -223,7 +258,8 @@ class SemiImplicitCrankNicolson(Propagator):
     
     """
     
-    def __init__(self, td_density, td_hamiltonian, td_overlap, solver, gd):
+    def __init__( self, td_density, td_hamiltonian, td_overlap, 
+                  solver, preconditioner, gd, timer ):
         """Create SemiImplicitCrankNicolson-object.
         
         ================ =====================================================
@@ -233,7 +269,9 @@ class SemiImplicitCrankNicolson(Propagator):
         td_hamiltonian   the time-dependent hamiltonian
         td_overlap       the time-dependent overlap operator
         solver           a solver for linear equations
+        preconditioner   a preconditioner for linear equations
         gd               coarse (wavefunction) grid descriptor
+        timer            timer
         ================ =====================================================
         
         """
@@ -241,7 +279,9 @@ class SemiImplicitCrankNicolson(Propagator):
         self.td_hamiltonian = td_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
+        self.preconditioner = preconditioner
         self.gd = gd
+        self.timer = timer
         
         self.twf = None        
         self.hpsit = None
@@ -263,7 +303,7 @@ class SemiImplicitCrankNicolson(Propagator):
         # temporary wavefunctions
         if self.twf is None:
             self.twf = []
-            for kpt in kpt_u:                
+            for kpt in kpt_u:
                 self.twf.append( self.gd.empty( len(kpt.psit_nG),
                                                 typecode=num.Complex ) )
 
@@ -277,17 +317,24 @@ class SemiImplicitCrankNicolson(Propagator):
             self.spsit = self.gd.zeros(typecode=num.Complex)
         
         self.time_step = time_step
-        
+
+
+        self.timer.start('Update time-dependent operators')
+
         # rho(t)
         self.td_density.update()
         # H(t)
         self.td_hamiltonian.update(self.td_density.get_density(), time)
         # S(t)
         self.td_overlap.update()
-        
+
+        self.timer.stop('Update time-dependent operators')
+
         # predict
         self.solve_propagation_equation(kpt_u, time_step)
-        
+
+        self.timer.start('Update time-dependent operators')
+
         # rho(t+dt)
         self.td_density.update()
         # H(t+dt/2)
@@ -295,6 +342,8 @@ class SemiImplicitCrankNicolson(Propagator):
                                          time + time_step )
         # S(t+dt/2)
         self.td_overlap.half_update()
+
+        self.timer.stop('Update time-dependent operators')
 
         # propagate psit(t), not psit(t+dt), in correct
         for u in range(len(kpt_u)):
@@ -310,8 +359,10 @@ class SemiImplicitCrankNicolson(Propagator):
         for kpt in kpt_u:
             self.kpt = kpt
             for psit in kpt.psit_nG:
+                self.timer.start('Apply time-dependent operators')
                 self.td_hamiltonian.apply(self.kpt, psit, self.hpsit)
                 self.td_overlap.apply(self.kpt, psit, self.spsit)
+                self.timer.stop('Apply time-dependent operators')
 
                 #psit[:] = self.spsit - .5J * self.hpsit * time_step
                 psit[:] = self.spsit
@@ -333,11 +384,31 @@ class SemiImplicitCrankNicolson(Propagator):
         =========== ===================================
         
         """
+        self.timer.start('Apply time-dependent operators')
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
         self.td_overlap.apply(self.kpt, psi, self.spsit)
+        self.timer.stop('Apply time-dependent operators')
+
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit
         psin[:] = self.spsit
         axpy(.5j * self.time_step, self.hpsit, psin)
 
 
-
+    #  M psin = psi, where M = T (kinetic energy operator)
+    def solve_preconditioner(self, psi, psin):
+        """Solves preconditioner equation.
+        
+        =========== ===================================
+        Parameters:
+        =========== ===================================
+        psi         the known wavefunction
+        psin        the result
+        =========== ===================================
+        
+        """
+        self.timer.start('Solve TDDFT preconditioner')
+        if self.preconditioner is not None:
+            self.preconditioner.solve(self.kpt, psi, psin)
+        else:
+            psin[:] = psi
+        self.timer.stop('Solve TDDFT preconditioner')
