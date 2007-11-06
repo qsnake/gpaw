@@ -9,8 +9,7 @@ from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.utilities.timing import Timer
 from gpaw.exx import EXX
-from gpaw.kli import KLIFunctional
-from gpaw.kli import GLLBFunctional
+from gpaw.gllb.nonlocalfunctionalfactory import NonLocalFunctionalFactory
 from gpaw.libxc import Libxc
 import _gpaw
 
@@ -118,18 +117,17 @@ class XCFunctional:
         elif xcname == 'oldLDAx':
             code = 11
             xcname = 'LDAx'
-        elif xcname == 'KLI':
-            code = 15
-            self.orbital_dependent = True
         elif xcname == 'EXX':
             code = 6
             self.hybrid = 1.0
             self.orbital_dependent = True
             if self.setupname is None:
                 self.setupname = 'LDA'
-        elif xcname == 'GLLB':
+        elif xcname.startswith('GLLB') or xcname=='KLI':
+            # GLLB type of functionals which use orbitals, require special treatment at first iterations,
+            # where there is no orbitals available. Therefore orbital_dependent = True!
             self.orbital_dependent = True
-            code = 16
+            code = 'gllb'
         else:
             self.gga = True
             self.maxDerivativeLevel=1
@@ -177,10 +175,9 @@ class XCFunctional:
             self.xc = ZeroFunctional()
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code,self.mgga)
-        elif code == 15:
-            self.xc = KLIFunctional()
-        elif code == 16:
-            self.xc = GLLBFunctional()
+        elif code == 'gllb':
+            # Get the correct functional from NonLocalFunctionalFactory
+            self.xc = NonLocalFunctionalFactory().get_functional_by_name(xcname)
         elif code == 'lxc':
 ###            self.xcname = xcname # MDTMP: to get the lxc name for setup
             # find numeric identifiers of libxc functional based on xcname
@@ -217,17 +214,9 @@ class XCFunctional:
         if not self.orbital_dependent:
             return
 
-        if self.xcname == 'GLLB':
+        if self.xcname.startswith('GLLB') or self.xcname == 'KLI':
             self.xc.pass_stuff(paw.kpt_u, paw.gd, paw.finegd, paw.density.interpolate,
                                paw.nspins, paw.my_nuclei, paw.occupation)
-
-        if self.xcname == 'KLI':
-            self.xc.pass_stuff(
-                paw.kpt_u, paw.gd, paw.finegd, paw.density.interpolate,
-                paw.hamiltonian.restrict, paw.hamiltonian.poisson,
-                paw.my_nuclei, paw.ghat_nuclei,
-                paw.nspins, paw.nmyu, paw.nbands,
-                paw.kpt_comm, paw.domain.comm, paw.density.nt_sg)
 
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:
@@ -269,9 +258,10 @@ class XCFunctional:
     # For non-local functional, this function does the calculation for special
     # case of setup-generator. The processes for non-local in radial and 3D-grid
     # deviate so greatly that this is special treatment is needed.
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, density=None):
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, density=None, vbar= False):
         # Send the command one .xc up
-        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc, density=density)
+        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc, 
+                                                            density=density, vbar=vbar)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              taua_g=None):
@@ -323,7 +313,7 @@ class XCFunctional:
             return XCFunctional('oldPBE', self.nspins)
         elif self.get_name() == 'PBE0':
             return XCFunctional('PBE', self.nspins)
-        elif self.get_name() == 'GLLB':
+        elif self.get_name().startswith('GLLB'):
             return XCFunctional('LDAx', self.nspins)
         else:
             raise RuntimeError('Orbital dependent xc-functional, but no local '

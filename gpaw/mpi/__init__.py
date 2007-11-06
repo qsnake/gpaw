@@ -20,6 +20,9 @@ class SerialCommunicator:
     def sum(self, array, root=-1):
         if isinstance(array, (float, complex)):
             return array
+
+    def max(self, value, root=-1):
+        return value
         
     def broadcast(self, buf, root):
         pass
@@ -90,6 +93,17 @@ if parallel and debug:
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
                 self.comm.sum(array, root)
+
+        def max(self, array, root=-1):
+            if isinstance(array, (float, complex)):
+                assert isinstance(array, float)
+                return self.comm.max(array, root)
+            else:
+                tc = array.typecode()
+                assert tc == num.Float or tc == num.Complex
+                assert is_contiguous(array, tc)
+                assert root == -1 or 0 <= root < self.size
+                self.comm.max(array, root)
 
         def all_gather(self, a, b):
             tc = a.typecode()

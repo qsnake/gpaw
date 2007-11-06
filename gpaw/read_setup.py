@@ -38,7 +38,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
         self.fcorehole = 0.0
         self.core_hole_e = None
         self.core_hole_e_kin = None
-        self.core_response = []
+        self.extra_xc_data = {}
 
     def parse(self, symbol, setupname, zero_reference=False):
         name = symbol + '.' + setupname
@@ -115,7 +115,7 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 self.fcorehole,
                 self.core_hole_e,
                 self.core_hole_e_kin,
-                self.core_response)
+                self.extra_xc_data)
 
     def startElement(self, name, attrs):
         if name == 'paw_setup':
@@ -164,7 +164,9 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                       'localized_potential', 'zero_potential',  # XXX
                       'kinetic_energy_differences', 'exact_exchange_X_matrix',
                       'ae_core_kinetic_energy_density',
-                      'pseudo_core_kinetic_energy_density', 'core_response']:
+                      'pseudo_core_kinetic_energy_density']:
+            self.data = []
+        elif name.startswith('GLLB_'):
             self.data = []
         elif name in ['ae_partial_wave', 'pseudo_partial_wave']:
             self.data = []
@@ -202,8 +204,9 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
             self.tauct_g = x_g
         elif name in ['localized_potential', 'zero_potential']: # XXX
             self.vbar_g = x_g
-        elif name == 'core_response':
-            self.core_response = x_g
+        elif name.startswith('GLLB_'):
+            # Add setup tags starting with GLLB_ to extra_xc_data. Remove GLLB_ from front of string.
+            self.extra_xc_data[name[5:]] = x_g
         elif name == 'ae_partial_wave':
             j = len(self.phi_jg)
             assert self.id == self.id_j[j]

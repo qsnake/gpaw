@@ -16,7 +16,7 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree, pack2
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
-from gpaw.kli import XCKLICorrection, XCGLLBCorrection
+from gpaw.gllb.xcnonlocalcorrection import XCNonLocalCorrection
 from LinearAlgebra import inverse as inv
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
@@ -76,7 +76,7 @@ class Setup:
          self.fcorehole,
          eigcorehole,
          ekincorehole,
-         core_response) = PAWXMLParser().parse(self.symbol, self.setupname,
+         extra_xc_data) = PAWXMLParser().parse(self.symbol, self.setupname,
                                                zero_reference)
 
         self.filename = filename
@@ -212,11 +212,9 @@ class Setup:
         vbar_g = vbar_g[:gcut2].copy()
         tauc_g = tauc_g[:gcut2].copy()
 
-
-
-
-        if xcname == 'GLLB':
-            core_response = core_response[:gcut2].copy()
+        for key, item in extra_xc_data.iteritems():
+            if len(item)>1:
+                extra_xc_data[key] = item[:gcut2].copy()
 
         if self.phicorehole_g is not None:
             self.phicorehole_g = self.phicorehole_g[:gcut2].copy()
@@ -332,37 +330,14 @@ class Setup:
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
-        if xcfunc.xcname == 'KLI':
-            # For debugging purposes, pass a LDA XCCorrection
-            # to XCKLICorrection class
-            from gpaw.xc_functional import XCFunctional
-            xc = XCRadialGrid(XCFunctional('LDAx', nspins), rgd, nspins)
-            xc_lda_correction = XCCorrection(
-                xc,
-                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
-                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
-                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-                rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc)
-
-            # Create XCKLICorrection with necessary parameters
-            self.xc_correction = XCKLICorrection(xcfunc.xc, rgd.r_g, rgd.dr_g,
-                                                 beta, ng, nspins,
-                                                 self.M_pp, self.X_p,
-                                                 self.ExxC,
-                                                 [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
-                                                 [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
-                                                 [(j, l_j[j]) for j in range(nj)],
-                                                 xc_lda_correction)
-
-        elif xcfunc.xcname == "GLLB":
-            self.xc_correction = XCGLLBCorrection(
+        if xcfunc.xcname.startswith("GLLB"):
+            self.xc_correction = XCNonLocalCorrection(
                 xcfunc.xc,
                 [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
                 [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, core_response)
+                2 * lcut, e_xc, extra_xc_data)
         elif xcfunc.xcname == "TPSS":
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 

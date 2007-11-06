@@ -155,6 +155,70 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
       Py_RETURN_NONE;
     }
 }
+
+static PyObject * mpi_max(MPIObject *self, PyObject *args)
+{
+  PyObject* obj;
+  int root = -1;
+  if (!PyArg_ParseTuple(args, "O|i", &obj, &root))
+    return NULL;
+  if (PyFloat_Check(obj))
+    {
+      double din = ((PyFloatObject*)obj)->ob_fval;
+      double dout;
+      if (root == -1)
+        MPI_Allreduce(&din, &dout, 1, MPI_DOUBLE, MPI_MAX, self->comm);
+      else
+        MPI_Reduce(&din, &dout, 1, MPI_DOUBLE, MPI_MAX, root, self->comm);
+      return Py_BuildValue("d", dout);
+    }
+  else if (PyComplex_Check(obj))
+    {
+      double din[2]; 
+      double dout[2];
+      din[0] = PyComplex_RealAsDouble(obj);
+      din[1] = PyComplex_ImagAsDouble(obj);
+      if (root == -1)
+        MPI_Allreduce(&din, &dout, 2, MPI_DOUBLE, MPI_MAX, self->comm);
+      else
+        MPI_Reduce(&din, &dout, 2, MPI_DOUBLE, MPI_MAX, root, self->comm);
+      return PyComplex_FromDoubles(dout[0], dout[1]);
+    }
+  else
+    {
+      PyArrayObject* a = (PyArrayObject*)obj;
+      int n = 1;
+      if (a->descr->type_num == PyArray_CDOUBLE)
+        n = 2;
+      for (int d = 0; d < a->nd; d++)
+        n *= a->dimensions[d];
+      if (root == -1)
+        {
+          double* b = GPAW_MALLOC(double, n);
+          // XXX Use MPI_IN_PLACE!!
+          MPI_Allreduce(LONGP(a), b, n, MPI_DOUBLE, MPI_MAX, self->comm);
+          memcpy(LONGP(a), b, n * sizeof(double));
+          free(b);
+        }
+      else
+        {
+          double* b = 0;
+          int rank;
+          MPI_Comm_rank(self->comm, &rank);
+          if (rank == root)
+            b = GPAW_MALLOC(double, n);
+          // XXX Use MPI_IN_PLACE!!
+          MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_MAX, root, self->comm);
+          if (rank == root)
+            {
+              memcpy(LONGP(a), b, n * sizeof(double));
+              free(b);
+            }
+        }
+      Py_RETURN_NONE;
+    }
+}
+
  
 static PyObject * mpi_allgather(MPIObject *self, PyObject *args)
 {
@@ -212,6 +276,7 @@ static PyMethodDef mpi_methods[] = {
     {"barrier",      (PyCFunction)mpi_barrier,     METH_VARARGS, 0},
     {"wait",         (PyCFunction)mpi_wait,        METH_VARARGS, 0},
     {"sum",          (PyCFunction)mpi_sum,         METH_VARARGS, 0},
+    {"max",          (PyCFunction)mpi_max,         METH_VARARGS, 0},
     {"gather",       (PyCFunction)mpi_gather,      METH_VARARGS, 0},
     {"all_gather",   (PyCFunction)mpi_allgather,   METH_VARARGS, 0},
     {"broadcast",    (PyCFunction)mpi_broadcast,   METH_VARARGS, 0},

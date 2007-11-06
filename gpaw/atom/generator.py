@@ -889,10 +889,11 @@ class Generator(AllElectron):
 
         # Print xc-specific data to setup file (used so for KLI and GLLB)
         for name, a in extra_xc_data.iteritems():
-            print >> xml, '  <%s grid="g1">\n    ' % name,
+            newname = 'GLLB_'+name
+            print >> xml, '  <%s grid="g1">\n    ' % newname,
             for x in a:
                 print >> xml, '%16.12e' % x,
-            print >> xml, '\n  </%s>' % name
+            print >> xml, '\n  </%s>' % newname
 
         for l, u, s, q, in zip(vl_j, vu_j, vs_j, vq_j):
             id = ids.pop(0)
