@@ -3,6 +3,7 @@ from math import pi
 import Numeric as num
 from ASE.Units import units, Convert
 
+import gpaw.mpi as mpi
 from gpaw.spherical_harmonics import Y
 from gpaw.utilities.vector import Vector3d
 from gpaw.utilities.timing import StepTimer
@@ -27,6 +28,7 @@ class ExpandYl:
         a0 = Convert(1, 'Bohr', units.GetLengthUnit())
         center = Vector3d(center) / a0
 
+        self.a0 = a0
         self.center = center
         self.lmax=lmax
         self.gd = gd
@@ -47,7 +49,8 @@ class ExpandYl:
                 Rmax = max(Rmax,
                            self.center.distance(num.array(corner) * extreme) )
         else:
-            Rmax /= a0 
+            Rmax /= a0
+        self.Rmax = Rmax
 
         if not dR:
             dR = min(gd.h_c)
@@ -105,3 +108,62 @@ class ExpandYl:
                     gamma_l[L_l[L]] += 4*pi / dV * psit_LR**2
                 
         return gamma_l
+
+    def to_file(self,calculator,
+                filename='expandyl.dat',
+                spins=None,
+                kpoints=None,
+                bands=None
+                ):
+        """Expand a range of wave functions and write the result
+        to a file"""
+        if mpi.rank == 0:
+            f = open(filename, 'w')
+        else:
+            f = open('/dev/null', 'w')
+
+        if not spins:
+            srange = range(calculator.nspins)
+        else:
+            srange = spins
+        if not kpoints:
+            krange = range(calculator.nkpts)
+        else:
+            krange = kpoints
+        if not bands:
+            nrange = range(calculator.nbands)
+        else:
+            nrange = bands
+
+        print >> f, '# Yl expansion','of smooth wave functions'
+        lu = units.GetLengthUnit()
+        print >> f, '# center =',self.center * self.a0, lu
+        print >> f, '# Rmax =', self.Rmax * self.a0, lu
+        print >> f, '# dR =', self.dR * self.a0, lu
+        print >> f, '# lmax =', self.lmax 
+        print >> f, '# s    k     n',
+        print >> f, '    norm      sum',
+        spdfghi = 's p d h f g h i'.split()
+        for l in range(self.lmax+1):
+            print >> f, '      %'+spdfghi[l],
+        print >> f
+
+        for s in srange:
+            for k in krange:
+                u = k*calculator.nspins + s
+                for n in nrange:
+                    psit_G = calculator.kpt_u[u].psit_nG[n]
+                    norm = self.gd.integrate(psit_G**2)
+
+                    gl = self.expand(psit_G)
+                    gsum = num.sum(gl)
+                    gl = 100 * gl / gsum
+
+                    print >> f, '%2d %5d %5d' % (s,k,n),
+                    print >> f, "%8.4f %8.4f" % (norm,gsum),
+                
+                    for g in gl:
+                        print >> f, "%8.2f" %g,
+                    print >> f
+                    f.flush()
+        f.close()
