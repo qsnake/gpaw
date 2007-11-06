@@ -174,22 +174,20 @@ static PyObject * mpi_max(MPIObject *self, PyObject *args)
     }
   else if (PyComplex_Check(obj))
     {
-      double din[2]; 
-      double dout[2];
-      din[0] = PyComplex_RealAsDouble(obj);
-      din[1] = PyComplex_ImagAsDouble(obj);
-      if (root == -1)
-        MPI_Allreduce(&din, &dout, 2, MPI_DOUBLE, MPI_MAX, self->comm);
-      else
-        MPI_Reduce(&din, &dout, 2, MPI_DOUBLE, MPI_MAX, root, self->comm);
-      return PyComplex_FromDoubles(dout[0], dout[1]);
+      printf("mpi_max does not work with complex numbers \n");
+      MPI_Abort(MPI_COMM_WORLD, 1);
+      Py_RETURN_NONE;
     }
   else
     {
       PyArrayObject* a = (PyArrayObject*)obj;
       int n = 1;
       if (a->descr->type_num == PyArray_CDOUBLE)
-        n = 2;
+	{
+	  printf("mpi_max does not work with complex numbers \n");
+	  MPI_Abort(MPI_COMM_WORLD, 1);
+	  Py_RETURN_NONE;
+	}
       for (int d = 0; d < a->nd; d++)
         n *= a->dimensions[d];
       if (root == -1)
