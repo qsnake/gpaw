@@ -1219,7 +1219,7 @@ class PAW(PAWExtra, Output):
                 'Charge %f is not possible - not enough valence electrons' %
                 charge)
 
-        # check number of bands ?
+        # check number of bands ?  XXX
         
         M = sum(self.atoms.GetMagneticMoments())
 

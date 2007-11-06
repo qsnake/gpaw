@@ -7,6 +7,7 @@ import LinearAlgebra as linalg
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.utilities import elementwise_multiply_add, utilities_vdot, utilities_vdot_self
+from gpaw.utilities import unpack
 from gpaw.utilities.complex import cc, real
 from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.mpi import run
@@ -26,26 +27,50 @@ class RMM_DIIS(Eigensolver):
     * Improvement of wave functions:  psi' = psi + lambda PR + lambda PR'
     * Orthonormalization"""
 
-    def __init__(self, paw):
+    def __init__(self, paw, rotate=True):
 
         Eigensolver.__init__(self, paw)
 
         self.S_nn = num.empty((self.nbands, self.nbands), self.typecode)
         self.S_nn[:] = 0.0  # rk fails the first time without this!
-
+        self.rotate = rotate
+        
     def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a single RMM-DIIS iteration for the kpoint"""
 
-        self.diagonalize(hamiltonian, kpt)
+        self.diagonalize(hamiltonian, kpt, self.rotate)
 
         self.timer.start('Residuals')
         R_nG = self.Htpsit_nG
-        # optimize XXX 
-        for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
-            axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
 
-        run([nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
-             for nucleus in hamiltonian.pt_nuclei])
+        if self.rotate:
+            for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
+                # R_G -= eps * psit_G
+                axpy(-eps, psit_G, R_G)
+                
+            run([nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
+                 for nucleus in hamiltonian.pt_nuclei])
+        else:
+            H_nn = self.H_nn
+            # Filling up the upper triangle:
+            for n in range(self.nbands - 1):
+                H_nn[n, n:] = H_nn[n:, n]
+
+            kpt.eps_n = num.diagonal(H_nn)
+
+            gemm(-1.0, kpt.psit_nG, H_nn, 1.0, R_nG)
+
+            for nucleus in hamiltonian.pt_nuclei:
+                if nucleus.in_this_domain:
+                    H_ii = unpack(nucleus.H_sp[kpt.s])
+                    P_ni = nucleus.P_uni[kpt.u]
+                    coefs_ni =  (num.dot(P_ni, H_ii) -
+                                 num.dot(num.dot(H_nn, P_ni),
+                                         nucleus.setup.O_ii))
+
+                    nucleus.pt_i.add(R_nG, coefs_ni, kpt.k, communicate=True)
+                else:
+                    nucleus.pt_i.add(R_nG, None, kpt.k, communicate=True)
 
         self.timer.stop('Residuals')
 

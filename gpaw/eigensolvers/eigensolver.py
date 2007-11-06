@@ -64,7 +64,7 @@ class Eigensolver:
         """Implemented in subclasses."""
         return 0.0
     
-    def diagonalize(self, hamiltonian, kpt):
+    def diagonalize(self, hamiltonian, kpt, rotate=True):
         """Diagonalize the Hamiltonian in the subspace of kpt.psit_nG
 
         ``Htpsit_nG`` is working array of same size as psit_nG which contains
@@ -114,6 +114,10 @@ class Eigensolver:
         if hamiltonian.xc.xcfunc.hybrid > 0.0:
             apply_subspace_mask(H_nn, kpt.f_n)
 
+        if not rotate:
+            self.timer.stop('Subspace diag.')
+            return
+        
         self.timer.start('dsyev/zheev')
         if self.comm.rank == kpt.root:
             info = diagonalize(H_nn, eps_n)
@@ -147,3 +151,4 @@ class Eigensolver:
             hamiltonian.xc.xcfunc.exx.rotate(kpt.u, H_nn)
 
         self.timer.stop('Subspace diag.')
+
