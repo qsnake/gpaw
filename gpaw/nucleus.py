@@ -284,7 +284,7 @@ class Nucleus:
         niao = self.get_number_of_atomic_orbitals()
 
         if hasattr(self, 'f_si'):
-            f_si = num.asarray(self.f_si)
+            f_si = num.asarray(self.f_si, num.Float)
         else:
             f_si = self.calculate_initial_occupation_numbers(ns, niao,
                                                              magmom, hund)
