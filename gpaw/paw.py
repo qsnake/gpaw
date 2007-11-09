@@ -636,7 +636,7 @@ class PAW(PAWExtra, Output):
             self.initialize_wave_functions_from_atomic_orbitals()
 
             self.converged = False
-
+            self.F_ac = None
             # Free allocated space for radial grids:
 ##             for setup in self.setups:
 ##                 del setup.phit_j
