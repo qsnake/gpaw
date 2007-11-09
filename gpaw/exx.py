@@ -99,7 +99,7 @@ class EXX:
             if usefft:
                 self.poisson_solve = PoissonFFTSolver(gd).solve
             else:
-                self.poisson = PoissonSolver(
+                self.poisson_solve = PoissonSolver(
                     gd, paw.hamiltonian.poisson_stencil).solve
             self.fineintegrate = gd.integrate
         if not energy_only:
