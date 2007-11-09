@@ -115,6 +115,7 @@ class Eigensolver:
             apply_subspace_mask(H_nn, kpt.f_n)
 
         if not rotate:
+            self.comm.broadcast(H_nn, kpt.root)
             self.timer.stop('Subspace diag.')
             return
         
