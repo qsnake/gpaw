@@ -87,5 +87,6 @@ class WignerSeitzLDOS(LDOSbyBand):
             for k in range(paw.nkpts):
                 for s in range(paw.nspins):
                     u = s*paw.nkpts + k
-                    for n in range(paw.nbands):
-                        
+                    for n in range(paw.nbands): 
+                        # avery: Added dummy loop body to make compiling work.
+                        1
