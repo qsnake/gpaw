@@ -101,27 +101,27 @@ class Gauss:
     gs = Gauss(width)
 
     for i in range(4):
-        print 'Gauss(i)=',gs.Get(i)
+        print 'Gauss(i)=',gs.get(i)
     """
-    def __init__(self,width=0.08):
-        self.SetWidth(width)
+    def __init__(self, width=0.08):
+        self.set_width(width)
         
-    def Get(self,x):
-        return self.norm*exp(-(x*self.wm1)**2)
+    def get(self,x):
+        return self.norm * exp(-(x * self.wm1)**2)
     
-    def SetWidth(self,width=0.08):
-        self.norm=1./width/sqrt(pi)
-        self.wm1=sqrt(.5)/width
+    def set_width(self, width=0.08):
+        self.norm = 1. / width / sqrt(2 * pi)
+        self.wm1 = sqrt(.5) / width
 
 class Lorentz:
     """Normalised Lorentz distribution"""
-    def __init__(self,width=0.08):
-        self.SetWidth(width)
+    def __init__(self, width=0.08):
+        self.set_width(width)
         
-    def Get(self,x):
-        return self.norm/(x**2+self.width2)
+    def get(self,x):
+        return self.norm / (x**2 + self.width2)
     
-    def SetWidth(self,width=0.08):
-        self.norm=width/pi
-        self.width2=width**2
+    def set_width(self, width=0.08):
+        self.norm = width / pi
+        self.width2 = width**2
 
