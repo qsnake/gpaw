@@ -1,12 +1,13 @@
 class NonLocalFunctionalFactory:
-    """NonLocalFunctionalFactory is used by xc_functional.py, when the functional starts with words
-       NL.
+    """Factory class.
+
+    NonLocalFunctionalFactory is used by xc_functional.py, when the
+    functional starts with words NL.
     
-       It contains a method called get_functional_by_name, which takes the xc-name for non-local functional
-       and returns the corresponding XCNonLocalFunctional object. Currently there are 3 keywords available:
-          GLLB
-          GLLBSlaterCore
-          GLLBKLI
+    It contains a method called get_functional_by_name, which takes
+    the xc-name for non-local functional and returns the corresponding
+    XCNonLocalFunctional object. Currently there are 3 keywords
+    available: GLLB GLLBSlaterCore GLLBKLI
 
     """
 
@@ -21,5 +22,5 @@ class NonLocalFunctionalFactory:
             from gpaw.gllb.kli import KLIFunctional
             return KLIFunctional()
         else:
-            raise "Unkown NonLocal density functional: "+name
+            raise RuntimeError('Unkown NonLocal density functional: ' + name)
 

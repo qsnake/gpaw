@@ -134,36 +134,42 @@ class NonLocalFunctional:
         raise "NonLocalFunctional::calculate_non_local_paw_correction not implemented"
 
     def calculate_non_local(self, info, v_g, e_g):
-        """Add the KS-Exchange potential to v_g and supply energy density using data
-           supplied in dictionary info. This dictionary info will contain the necessary
-           information to calculate any type of (exchange) potential. 
+        """ADD HEADLINE HERE!!!!!!
 
-           To be implemented in subclasses of NonLocalFunctional.
+        Add the KS-Exchange potential to v_g and supply energy density
+        using data supplied in dictionary info. This dictionary info
+        will contain the necessary information to calculate any type
+        of (exchange) potential.
 
-           =========== ==========================================================
-           Parameters:
-           =========== ==========================================================
-           info        A dictiorany, see below
-           v_g         The Kohn-Sham potential.
-           e_g         The energy density
-           =========== ==========================================================
+        To be implemented in subclasses of NonLocalFunctional.
 
-           info is a dictiorary with following content:
-           =========== ==========================================================
-           Key:        Value:
-           =========== ==========================================================
-           typecode    For example num.Float, if the orbitals are real
-           gd          The grid descriptor object for coarse grid
-           finegd      The grid descriptor object for fine grid
-           n_g         Numeric array for density, supplied if needs_density() true
-           psit_nG     A _python_ list containing the wavefunctions,
-                       if needs_wavefunctions() true
-           f_n         A _python_ list containing the occupations,
-                       if needs_wavefunctions() true
-           a2_g        Numeric array for gradient, if needs_gradient() true
-           eps_n       A _python_ list of eigenvalues, if needs_eigenvalues() true
-           =========== ==========================================================
-           """
+        =========== ======================================================
+        Parameters:
+        =========== ======================================================
+        info        A dictiorany, see below
+        v_g         The Kohn-Sham potential.
+        e_g         The energy density
+        =========== ======================================================
+
+        info is a dictiorary with following content:
+
+        =========== ======================================================
+        Key:        Value:
+        =========== ======================================================
+        typecode    For example num.Float, if the orbitals are real
+        gd          The grid descriptor object for coarse grid
+        finegd      The grid descriptor object for fine grid
+        n_g         Numeric array for density, supplied if needs_density()
+                    true
+        psit_nG     A _python_ list containing the wavefunctions,
+                    if needs_wavefunctions() true
+        f_n         A _python_ list containing the occupations,
+                    if needs_wavefunctions() true
+        a2_g        Numeric array for gradient, if needs_gradient() true
+        eps_n       A _python_ list of eigenvalues, if needs_eigenvalues()
+                    true
+        =========== ======================================================
+        """
 
         raise "NonLocalFunctional::calculate_non_local must be overrided"
 
@@ -197,9 +203,9 @@ class NonLocalFunctional:
         Parameters:
         =========== ==========================================================
         n_gs        A python list of densities for each spin
-        =========== ==========================================================
-        RETURNS     info object, a python list containing an info dictionary for each spin.
-                    see calculate_non_local for more info about this dictionary.
+        RETURNS     info object, a python list containing an info dictionary
+                    for each spin.  See calculate_non_local for more info
+                    about this dictionary.
         =========== ==========================================================
 
         """

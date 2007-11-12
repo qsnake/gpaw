@@ -38,17 +38,19 @@ class GLLB1DFunctional:
         pass
 
     def get_slater1D(self, gd, n_g, u_j, f_j, l_j, vrho_xc, vbar=False):
-        """
-          Used by get_non_local_energy_and_potential1D to calculate an approximation to 1D-Slater
-          potential. Returns the exchange energy.
+        """Return approximate exchange energy.
 
-          =========== ==========================================================
-           Parameters:
-           =========== ==========================================================
-           gd          Radial grid descriptor
-           n_g         The density
-           vrho_xc     The slater part multiplied by density is stored here.
-           =========== ==========================================================
+        Used by get_non_local_energy_and_potential1D to calculate an
+        approximation to 1D-Slater potential. Returns the exchange
+        energy.
+
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        gd          Radial grid descriptor
+        n_g         The density
+        vrho_xc     The slater part multiplied by density is stored here.
+        =========== ==========================================================
         """
         # Create temporary arrays only once
         if self.v_g1D == None:

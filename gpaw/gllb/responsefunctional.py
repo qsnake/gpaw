@@ -8,22 +8,23 @@ from gpaw.utilities.complex import cc, real
 from gpaw.utilities import pack
 
 class ResponseFunctional(NonLocalFunctional):
+    """Response-part, for example for KLI and GLLB functionals.
+    
+    This class implements a functional which contains a
+    "response"-part, for example for KLI and GLLB functionals.
+
+    In general any functional containing following term will be a
+    response functional::
+    
+      V_x = V_s + \sum_i w_i frac{|psi_i(r)|^2}{rho(r)}
+    
+    The subclasses must override the function
+    ``get_slater_part_and_weights(self, info_s, v_sg)``.
+
+    For more information, see description of function
+    ResponseFunctional.get_slater_part_and_weights, and for example,
+    see GLLBFunctional.get_slater_part_and_weights.
     """
-        This class implements a functional which contains a "response"-part, for example
-        for KLI and GLLB functionals.
-
-        In general any functional containing following term will be a response functional
-
-        V_x = V_s + \sum_i w_i \frac{|\psi_i(r)|^2}{\rho(r)}
-
-        The subclasses must override the function
-        -def get_slater_part_and_weights(self, info_s, v_sg),
-
-        For more information, see description of function
-        ResponseFunctional.get_slater_part_and_weights,
-        and for example, see GLLBFunctional.get_slater_part_and_weights
-
-        """
 
     def __init__(self):
         """

@@ -108,15 +108,16 @@ def construct_density1D(gd, u_j, f_j):
     return n_g
 
 def find_fermi_level1D(f_j, e_j):
-    """
-       Finds the fermilevel from occupations and eigenvalue energies.
-       Uses tolerance 1e-5 for occupied orbital.
-       =========== ==========================================================
-        Parameters:
-       =========== ==========================================================
-        f_j         The occupations list
-        e_j         The eigenvalues list
-       =========== ==========================================================
+    """Finds the fermilevel from occupations and eigenvalue energies.
+    
+    Uses tolerance 1e-5 for occupied orbital.
+
+    =========== ==========================================================
+    Parameters:
+    =========== ==========================================================
+    f_j         The occupations list
+    e_j         The eigenvalues list
+    =========== ==========================================================
     """
 
     fermi_level = -1000
