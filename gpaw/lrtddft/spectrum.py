@@ -59,16 +59,10 @@ def spectrum(exlist=None,
 
     # minimal and maximal energies
     if emin == None:
-        emin=exlist.get_energies()[0]
-        for e in exlist.get_energies():
-            if e<emin: emin=e
-        emin *= Ha
+        emin = min(exlist.get_energies().tolist()) *  Ha
         emin -= 4*width
     if emax == None:
-        emax=exlist.get_energies()[-1]
-        for e in exlist.get_energies():
-            if e>emax: emax=e
-        emin *= Ha
+        emax = max(exlist.get_energies().tolist()) *  Ha
         emax += 4*width
 
     # set de to sample 4 points in the width
@@ -88,7 +82,7 @@ def spectrum(exlist=None,
         while e<emax:
             val=num.zeros((4),num.Float)
             for ex in exlist:
-                wght=func.Get(ex.get_energy()*Ha-e)
+                wght=func.get(ex.get_energy()*Ha-e)
                 osz=num.array(ex.GetOscillatorStrength())
                 val += wght*osz
             print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
