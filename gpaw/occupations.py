@@ -20,8 +20,8 @@ class Dummy:
     def set_communicator(self, kpt_comm):
         self.kpt_comm = kpt_comm
         
-    def calculate(self, nspins, kpts):
-        return
+    def calculate(self, kpts):
+        self.calculate_band_energy(kpts)
 
     def set_fermi_level(self, epsF):
         self.epsF = epsF

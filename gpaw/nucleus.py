@@ -284,20 +284,20 @@ class Nucleus:
         niao = self.get_number_of_atomic_orbitals()
 
         if hasattr(self, 'f_si'):
-            f_si = num.asarray(self.f_si, num.Float)
+            # Convert to ndarray:
+            self.f_si = num.asarray(self.f_si, num.Float)
         else:
-            f_si = self.calculate_initial_occupation_numbers(ns, niao,
-                                                             magmom, hund)
-            
+            self.f_si = self.calculate_initial_occupation_numbers(ns, niao,
+                                                                  magmom, hund)
         if self.in_this_domain:
             D_sii = num.zeros((ns, ni, ni), num.Float)
             for i in range(niao):
-                D_sii[:, i, i] = f_si[:, i]
+                D_sii[:, i, i] = self.f_si[:, i]
             for s in range(ns):
                 self.D_sp[s] = pack(D_sii[s])
 
         for s in range(ns):
-            self.phit_i.add_density(nt_sG[s], f_si[s])
+            self.phit_i.add_density(nt_sG[s], self.f_si[s])
 
     def calculate_initial_occupation_numbers(self, ns, niao, magmom, hund):
         f_si = num.zeros((ns, niao), num.Float)

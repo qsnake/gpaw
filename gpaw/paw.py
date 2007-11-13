@@ -591,8 +591,11 @@ class PAW(PAWExtra, Output):
                 run([nucleus.calculate_projections(kpt)
                      for nucleus in self.pt_nuclei])
                 kpt.orthonormalize(self.my_nuclei)
-                eig.diagonalize(self.hamiltonian, kpt)
-
+                if self.input_parameters['hund']:
+                    assert self.natoms == 1
+                    kpt.f_n[:] = self.nuclei[0].f_si[kpt.s, : self.nbands]
+                else:
+                    eig.diagonalize(self.hamiltonian, kpt)
 
         for nucleus in self.my_nuclei:
             nucleus.reallocate(self.nbands)
