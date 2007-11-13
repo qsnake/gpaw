@@ -2,9 +2,9 @@
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
 #include <assert.h>
-#include "libxc/src/xc.h"
 #include "xc_gpaw.h"
 #include "extensions.h"
+#include "libxc/src/xc.h"
 
 //
 // This module uses http://www.tddft.org/programs/octopus/wiki/index.php/Libxc
