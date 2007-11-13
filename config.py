@@ -242,15 +242,21 @@ def mtime(path, name, mtimes):
     """Return modification time.
 
     The modification time of a source file is returned.  If one of its
-    dependencies is newer, the mtime of that file is returned."""
+    dependencies is newer, the mtime of that file is returned.
+    This function fails if two include files with the same name
+    are present in different directories."""
 
 #    global mtimes
     include = re.compile('^#\s*include "(\S+)"', re.MULTILINE)
 
     if mtimes.has_key(name):
         return mtimes[name]
-    t = os.stat(path + name)[ST_MTIME]
-    for name2 in include.findall(open(path + name).read()):
+    t = os.stat(os.path.join(path,name))[ST_MTIME]
+    for name2 in include.findall(open(os.path.join(path,name)).read()):
+        path2, name22 = os.path.split(name2)
+        if (path2 != ''):
+            name2 = name22
+            path = os.path.join(path, path2)
         if name2 != name:
             t = max(t, mtime(path, name2,mtimes))
     mtimes[name] = t
@@ -331,8 +337,11 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     cfiles = glob('c/[a-zA-Z_]*.c') + ['c/bmgs/bmgs.c']
     cfiles += glob('c/libxc/src/*.c')
-    cfiles.remove('c/libxc/src/test.c')
-    cfiles.remove('c/libxc/src/xc_f.c')
+    cfiles2remove = ['c/libxc/src/test.c',
+                     'c/libxc/src/xc_f.c',
+                     'c/libxc/src/work_gga_x.c']
+    for c2r in glob('c/libxc/src/funcs_*.c'): cfiles2remove.append(c2r)
+    for c2r in cfiles2remove: cfiles.remove(c2r)
     sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c',
                'c/operators.c', 'c/transformers.c']
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
