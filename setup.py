@@ -122,8 +122,8 @@ sources = glob('c/*.c') + ['c/bmgs/bmgs.c']
 # libxc sources
 sources = sources + glob('c/libxc/src/*.c')
 sources2remove = ['c/libxc/src/test.c',
-                  'c/libxc/src/xc_f.c']#,
-#                  'c/libxc/src/work_gga_x.c']
+                  'c/libxc/src/xc_f.c',
+                  'c/libxc/src/work_gga_x.c']
 for s2r in glob('c/libxc/src/funcs_*.c'): sources2remove.append(s2r)
 for s2r in sources2remove: sources.remove(s2r)
 

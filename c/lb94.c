@@ -1,5 +1,5 @@
 #include <math.h>
-#include "xc.h"
+#include "xc_gpaw.h"
 #include <stdio.h>
 
 /* Correction to LDA to resemble asymptotic -1/r potential               */

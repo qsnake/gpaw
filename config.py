@@ -338,8 +338,8 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     cfiles = glob('c/[a-zA-Z_]*.c') + ['c/bmgs/bmgs.c']
     cfiles += glob('c/libxc/src/*.c')
     cfiles2remove = ['c/libxc/src/test.c',
-                     'c/libxc/src/xc_f.c']#,
-#                     'c/libxc/src/work_gga_x.c']
+                     'c/libxc/src/xc_f.c',
+                     'c/libxc/src/work_gga_x.c']
     for c2r in glob('c/libxc/src/funcs_*.c'): cfiles2remove.append(c2r)
     for c2r in cfiles2remove: cfiles.remove(c2r)
     sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c',

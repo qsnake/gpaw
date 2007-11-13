@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -14,6 +32,10 @@ Note that the PW modified, corresponds to the version of PW used in the
 original PBE routine. This amounts to adding some more digits in some of
 the constants of PW.
 ************************************************************************/
+
+#define XC_LDA_C_PW     12   /* Perdew & Wang                */
+#define XC_LDA_C_PW_MOD 13   /* Perdew & Wang (Modified)     */
+#define XC_LDA_C_OB_PW  14   /* Ortiz & Ballone (PW)         */
 
 
 /* Function g defined by Eq. 10 of the original paper,
@@ -77,7 +99,7 @@ static void g(int func, int k, double *rs, double *f, double *dfdrs, double *d2f
 
 
 /* the functional */
-void lda_c_pw(void *p_, double *rho, double *ec, double *vc, double *fc)
+void lda_c_pw(const void *p_, const double *rho, double *ec, double *vc, double *fc)
 {
   xc_lda_type *p = (xc_lda_type *)p_;
 

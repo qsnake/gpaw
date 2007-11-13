@@ -1,7 +1,7 @@
 #include <Python.h>
 #define NO_IMPORT_ARRAY
 #include <Numeric/arrayobject.h>
-#include "xc.h"
+#include "xc_gpaw.h"
 #include "extensions.h"
 
 //

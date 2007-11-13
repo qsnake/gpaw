@@ -1,51 +1,26 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdlib.h>
 #include <assert.h>
 
 #include "util.h"
-
-extern xc_func_info_type /* these are the GGA functionals that I know */
-  func_info_gga_x_pbe,
-  func_info_gga_x_pbe_r,
-  func_info_gga_x_b86,
-  func_info_gga_x_b86_r,
-  func_info_gga_x_b86_mgc,
-  func_info_gga_x_b88,
-  func_info_gga_x_g96,
-  func_info_gga_x_pw86,
-  func_info_gga_x_pw91,
-  func_info_gga_x_optx,
-  func_info_gga_x_dk87_r1,
-  func_info_gga_x_dk87_r2,
-  func_info_gga_x_lg93,
-  func_info_gga_x_ft97_a,
-  func_info_gga_x_ft97_b,
-  func_info_gga_c_pbe,
-  func_info_gga_c_lyp,
-  func_info_gga_c_p86,
-  func_info_gga_lb;
-
-xc_func_info_type *gga_known_funct[] = {
-  &func_info_gga_x_pbe,
-  &func_info_gga_x_pbe_r,
-  &func_info_gga_x_b86,
-  &func_info_gga_x_b86_r,
-  &func_info_gga_x_b86_mgc,
-  &func_info_gga_x_b88,
-  &func_info_gga_x_g96,
-  &func_info_gga_x_pw86,
-  &func_info_gga_x_pw91,
-  &func_info_gga_x_optx,
-  &func_info_gga_x_dk87_r1,
-  &func_info_gga_x_dk87_r2,
-  &func_info_gga_x_lg93,
-  &func_info_gga_x_ft97_a,
-  &func_info_gga_x_ft97_b,
-  &func_info_gga_c_pbe,
-  &func_info_gga_c_lyp,
-  &func_info_gga_c_p86,
-  &func_info_gga_lb,
-  NULL
-};
+#include "funcs_gga.c"
 
 
 /* initialization */
@@ -63,11 +38,12 @@ int xc_gga_init(xc_gga_type *p, int functional, int nspin)
   if(gga_known_funct[i] == NULL) return -1; /* functional not found */
 
   /* initialize structure */
+  p->params = NULL;
   p->info = gga_known_funct[i];
 
   assert(nspin==XC_UNPOLARIZED || nspin==XC_POLARIZED);
   p->nspin = nspin;
-  
+
   /* see if we need to initialize the functional */
   if(p->info->init != NULL)
     p->info->init(p);
@@ -99,25 +75,40 @@ void xc_gga(xc_gga_type *p, double *rho, double *sigma,
 	    double *e, double *vrho, double *vsigma)
 {
   double dens;
+  int i;
 
   assert(p!=NULL);
   
+  *e = 0.0;
+  for(i=0; i<p->nspin; i++) vrho [i] = 0.0;
+
+  vsigma[0] = 0.0;
+  if(p->nspin == XC_POLARIZED){
+    vsigma[1] = 0.0; vsigma[2] = 0.0;
+  }
+
   dens = rho[0];
   if(p->nspin == XC_POLARIZED) dens += rho[1];
-  
-  if(dens <= MIN_DENS){
-    int i;
-
-    *e = 0.0;
-    for(i=0; i<p->nspin; i++) vrho [i] = 0.0;
-
-    vsigma[0] = 0.0;
-    if(p->nspin == XC_POLARIZED){
-      vsigma[1] = 0.0; vsigma[2] = 0.0;
-    }
-    return;
-  }
+  if(dens <= MIN_DENS) return;
 
   assert(p->info!=NULL && p->info->gga!=NULL);
   p->info->gga(p, rho, sigma, e, vrho, vsigma);
+}
+
+void xc_gga_sp(xc_gga_type *p, float *rho, float *sigma,
+	       float *e, float *vrho, float *vsigma)
+{
+  double drho[2], dsigma[6];
+  double de[1], dvrho[2], dvsigma[6];
+  int ii;
+
+  for(ii=0; ii < p->nspin; ii++) drho[ii] = rho[ii];
+  for(ii=0; ii < 3*p->nspin; ii++) dsigma[ii] = sigma[ii];
+
+  xc_gga(p, drho, dsigma, de, dvrho, dvsigma);
+  
+  e[0] = de[0];
+  for(ii=0; ii < p->nspin; ii++) vrho[ii] = dvrho[ii];
+  for(ii=0; ii < 3*p->nspin; ii++) vsigma[ii] = dvsigma[ii];
+
 }

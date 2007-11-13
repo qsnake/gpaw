@@ -1,7 +1,7 @@
 class Libxc:
     """Class provides methods to retrieve functionals from libxc library."""
     def __init__(self):
-        self.version = 3071 # svn version of libxc
+        self.version = 3496 # svn version of libxc
         # this below is used both as dictionary name, and python module name
         self.libxc_functionals_file = 'libxc_functionals'
 
@@ -10,7 +10,7 @@ class Libxc:
         The format of xcname and resulting functional symbols are:
         XC (xc, None, None) (for example XC_LB)
         X-C (None, X, C) (for example X_PBE-C_LYP).
-        See libxc/src/xc.h (or libxc_functionals.py) for valid symbols -
+        See libxc/src/xc_funcs.h (or libxc_functionals.py) for valid symbols -
         the part after second underline is used from the #define.
         """
         xc, x, c = None, None, None
@@ -89,15 +89,15 @@ class Libxc:
 
     def lxc_define_filter(self, s):
         return (
-            s.startswith('#define XC_LDA') or
-            s.startswith('#define XC_GGA')
+            s.startswith('#define  XC_LDA') or
+            s.startswith('#define  XC_GGA')
             ## XC_MGGA and XC_LCA not implemented yet # MDTMP
-            ##            s.startswith('#define XC_MGGA') or  # MDTMP
-            ##            s.startswith('#define XC_LCA')  # MDTMP
+            ##            s.startswith('#define  XC_MGGA') or  # MDTMP
+            ##            s.startswith('#define  XC_LCA')  # MDTMP
             ## End of: XC_MGGA and XC_LCA not implemented yet  # MDTMP
             )
 
-    def construct_libxc_functionals_dict(self, file='../c/libxc/src/xc.h'):
+    def construct_libxc_functionals_dict(self, file='../c/libxc/src/xc_funcs.h'):
         """Method for generating the dictionary libxc_functionals.
         Should be used only at 'python setup.py'"""
         txt = '# Computer generated code! Hands off!\n'
@@ -127,7 +127,6 @@ class Libxc:
         f.close()
 
 if __name__ == '__main__':
-    # This is to be called at 'python setup.py' # MDTMP ?
     from libxc import Libxc
 #    Libxc.construct_libxc_functionals_dict(Libxc())
-    Libxc.construct_libxc_functionals_dict(Libxc(), 'c/libxc/src/xc.h')
+    Libxc.construct_libxc_functionals_dict(Libxc(), 'c/libxc/src/xc_funcs.h')

@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdlib.h>
 #include <assert.h>
 
@@ -9,6 +27,10 @@
    Perdew & Zunger
    Ortiz & Ballone
 ************************************************************************/
+
+#define XC_LDA_C_PZ       9   /* Perdew & Zunger              */
+#define XC_LDA_C_PZ_MOD  10   /* Perdew & Zunger (Modified)   */
+#define XC_LDA_C_OB_PZ   11   /* Ortiz & Ballone (PZ)         */
 
 typedef struct {
   double gamma[2];
@@ -74,7 +96,7 @@ static void ec_pot_high(pz_consts_type *X, int i, double *rs, double *ec, double
 
 
 /* the functional */
-void lda_c_pz(void *p_, double *rho, double *ec, double *vc, double *fc)
+void lda_c_pz(const void *p_, const double *rho, double *ec, double *vc, double *fc)
 {
   xc_lda_type *p = (xc_lda_type *)p_;
 

@@ -1,5 +1,5 @@
 #include <math.h>
-#include "xc.h"
+#include "xc_gpaw.h"
 #define cons  2.87123400019 /* 3*(3*Pi^2)^(2/3)/10 = Cf*/
 #define p 1.66666666667     /* 5/3 */
 #define cons2 24.  /* 8 *3 constant in 1/3 Tw */

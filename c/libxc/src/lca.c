@@ -1,8 +1,29 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
 #include "util.h"
+
+#define XC_LCA_OMC       301   /* Orestes, Marcasso & Capelle  */
+#define XC_LCA_LCH       302   /* Lee, Colwell & Handy         */
 
 /* initialization */
 void xc_lca_init(xc_lca_type *p, int functional, int nspin)
@@ -76,4 +97,21 @@ void xc_lca(xc_lca_type *p, double *rho, double *v, double *e, double *dedd, dou
     for(j=0; j<3; j++) dedv _(i, j) = 2.0*kf/f*(s - 1.0)*v _(i, j);
   }
   
+}
+
+void xc_lca_sp(xc_lca_type *p, float *rho, float *v, 
+	       float *e, float *dedd, float *dedv)
+{
+  double drho[2], dv[6];
+  double de[1], ddedd[2], ddedv[6];
+  int ii;
+
+  for(ii=0; ii < p->nspin; ii++) drho[ii] = rho[ii];
+  for(ii=0; ii < 3*p->nspin; ii++) dv[ii] = v[ii];
+  
+  xc_lca(p, drho, dv, de, ddedd, ddedv);
+
+  e[0] = de[0];
+  for(ii=0; ii < p->nspin; ii++) dedd[ii] = ddedd[ii];
+  for(ii=0; ii < 3*p->nspin; ii++) dedv[ii] = ddedv[ii];
 }

@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #ifndef _LDA_H
 #define _LDA_H
 
@@ -6,7 +24,7 @@
 
 #if defined(__STRICT_ANSI__)
 # define M_PI           3.14159265358979323846  /* pi */
-# define M_SQRT2	1.41421356237309504880	/* sqrt(2) */
+# define M_SQRT2        1.41421356237309504880  /* sqrt(2) */
 double asinh(double x);
 #endif
 
@@ -23,11 +41,26 @@ double asinh(double x);
 #define MIN_GRAD             1.0e-20
 #define MIN_TAU              1.0e-20
 
-void rho2dzeta(int nspin, double *rho, double *d, double *zeta);
+void rho2dzeta(int nspin, const double *rho, double *d, double *zeta);
 
 /* LDAs */
-void xc_lda_fxc_fd(xc_lda_type *p, double *rho, double *fxc);
-void xc_lda_kxc_fd(xc_lda_type *p, double *rho, double *kxc);
+void xc_lda_fxc_fd(const xc_lda_type *p, const double *rho, double *fxc);
+void xc_lda_kxc_fd(const xc_lda_type *p, const double *rho, double *kxc);
+
+/* GGAs */
+typedef struct perdew_t {
+  int    nspin;
+  double dens, zeta, gdmt;
+  double ecunif, vcunif[2];
+
+  double  rs,  kf,  ks,  phi, t;
+  double drs, dkf, dks, dphi, dt, decunif;
+} perdew_t;
+
+void perdew_params(xc_gga_type *gga_p, double *rho, double *sigma, perdew_t *pp);
+void perdew_potentials(perdew_t *pt, double *rho, double e_gga, double *vrho, double *vsigma);
+void gga_x_b88_set_params(xc_gga_type *p, double beta);
+void gga_c_lyp_set_params(xc_gga_type *p, double A, double B, double c, double d);
 
 /* meta-GGAs */
 void mgga_x_tpss_init(xc_mgga_type *p);

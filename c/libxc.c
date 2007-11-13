@@ -3,7 +3,7 @@
 #include <Numeric/arrayobject.h>
 #include <assert.h>
 #include "libxc/src/xc.h"
-#include "xc.h"
+#include "xc_gpaw.h"
 #include "extensions.h"
 
 //

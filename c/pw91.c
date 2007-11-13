@@ -1,5 +1,5 @@
 #include <math.h>
-#include "xc.h"
+#include "xc_gpaw.h"
 
 double G(double rtrs, double A, double alpha1,
 	 double beta1, double beta2, double beta3, double beta4,

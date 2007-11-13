@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #ifndef _XC_H
 #define _XC_H
 
@@ -39,33 +57,17 @@ typedef struct{
 
   void (*init)(void *p);
   void (*end) (void *p);
-  void (*lda) (void *p, double *rho, double *exc, double *vxc, double *fxc);
+  void (*lda) (const void *p, const double *rho, double *exc, double *vxc, double *fxc);
   void (*gga) (void *p, double *rho, double *sigma, double *exc, double *vrho, double *vsigma);
 } xc_func_info_type;
 
 
 /* functionals */
 int xc_family_from_id(int functional);
+#include "xc_funcs.h"
 
 
 /* the LDAs */
-
-#define XC_LDA_X                1   /* Exchange                     */
-#define XC_LDA_C_WIGNER         2   /* Wigner parametrization       */
-#define XC_LDA_C_RPA            3   /* Random Phase Approximation   */
-#define XC_LDA_C_HL             4   /* Hedin & Lundqvist            */
-#define XC_LDA_C_GL             5   /* Gunnarson & Lundqvist        */
-#define XC_LDA_C_XALPHA         6   /* Slater's Xalpha              */
-#define XC_LDA_C_VWN            7   /* Vosko, Wilk, & Nussair       */
-#define XC_LDA_C_VWN_RPA        8   /* Vosko, Wilk, & Nussair (RPA) */
-#define XC_LDA_C_PZ             9   /* Perdew & Zunger              */
-#define XC_LDA_C_PZ_MOD        10   /* Perdew & Zunger (Modified)   */
-#define XC_LDA_C_OB_PZ         11   /* Ortiz & Ballone (PZ)         */
-#define XC_LDA_C_PW            12   /* Perdew & Wang                */
-#define XC_LDA_C_PW_MOD        13   /* Perdew & Wang (Modified)     */
-#define XC_LDA_C_OB_PW         14   /* Ortiz & Ballone (PW)         */
-#define XC_LDA_C_AMGB          15   /* Attacalite et al             */
-
 typedef struct struct_lda_type {
   const xc_func_info_type *info;    /* which functional did we chose   */
   int nspin;                        /* XC_UNPOLARIZED or XC_POLARIZED  */
@@ -81,55 +83,42 @@ int  xc_lda_init(xc_lda_type *p, int functional, int nspin);
 void xc_lda_x_init(xc_lda_type *p, int nspin, int dim, int irel);
 void xc_lda_c_xalpha_init(xc_lda_type *p, int nspin, int dim, double alpha);
 
-void xc_lda(xc_lda_type *p, double *rho, double *exc, double *vxc, double *fxc, double *kxc);
-void xc_lda_exc(xc_lda_type *p, double *rho, double *exc);
-void xc_lda_vxc(xc_lda_type *p, double *rho, double *exc, double *vxc);
-void xc_lda_fxc(xc_lda_type *p, double *rho, double *fxc);
-void xc_lda_kxc(xc_lda_type *p, double *rho, double *kxc);
+void xc_lda(const xc_lda_type *p, const double *rho, double *exc, double *vxc, double *fxc, double *kxc);
+void xc_lda_exc(const xc_lda_type *p, const double *rho, double *exc);
+void xc_lda_vxc(const xc_lda_type *p, const double *rho, double *exc, double *vxc);
+void xc_lda_fxc(const xc_lda_type *p, const double *rho, double *fxc);
+void xc_lda_kxc(const xc_lda_type *p, const double *rho, double *kxc);
+
+void xc_lda_sp(const xc_lda_type *p, const float *rho, float *exc, float *vxc, float *fxc, float *kxc);
+void xc_lda_exc_sp(const xc_lda_type *p, const float *rho, float *exc);
+void xc_lda_vxc_sp(const xc_lda_type *p, const float *rho, float *exc, float *vxc);
+void xc_lda_fxc_sp(const xc_lda_type *p, const float *rho, float *fxc);
+void xc_lda_kxc_sp(const xc_lda_type *p, const float *rho, float *kxc);
 
 
 /* the GGAs */
-
-#define XC_GGA_X_PBE          101 /* Perdew, Burke & Ernzerhof exchange             */
-#define XC_GGA_X_PBE_R        102 /* Perdew, Burke & Ernzerhof exchange (revised)   */
-#define XC_GGA_X_B86          103 /* Becke 86 Xalfa,beta,gamma                      */
-#define XC_GGA_X_B86_R        104 /* Becke 86 Xalfa,beta,gamma (reoptimized)        */
-#define XC_GGA_X_B86_MGC      105 /* Becke 86 Xalfa,beta,gamma (with mod. grad. correction) */
-#define XC_GGA_X_B88          106 /* Becke 88                                       */
-#define XC_GGA_X_G96          107 /* Gill 96                                        */
-#define XC_GGA_X_PW86         108 /* Perdew & Wang 86                               */
-#define XC_GGA_X_PW91         109 /* Perdew & Wang 91                               */
-#define XC_GGA_X_OPTX         110 /* Handy & Cohen OPTX 01                          */
-#define XC_GGA_X_DK87_R1      111 /* dePristo & Kress 87 (version R1)               */
-#define XC_GGA_X_DK87_R2      112 /* dePristo & Kress 87 (version R2)               */
-#define XC_GGA_X_LG93         113 /* Lacks & Gordon 93                              */
-#define XC_GGA_X_FT97_A       114 /* Filatov & Thiel 97 (version A)                 */
-#define XC_GGA_X_FT97_B       115 /* Filatov & Thiel 97 (version B)                 */
-
-#define XC_GGA_C_PBE          130 /* Perdew, Burke & Ernzerhof correlation          */
-#define XC_GGA_C_LYP          131 /* Lee, Yang & Parr                               */
-#define XC_GGA_C_P86          132 /* Perdew 86                                      */
-
-#define XC_GGA_XC_LB          160 /* van Leeuwen & Baerends                         */
-
-typedef struct{
+typedef struct xc_gga_type{
   const xc_func_info_type *info;  /* which functional did we chose   */
-  int nspin;                /* XC_UNPOLARIZED or XC_POLARIZED  */
+  int nspin;                      /* XC_UNPOLARIZED or XC_POLARIZED  */
   
-  xc_lda_type *lda_aux;     /* most GGAs are based on a LDA    */
+  xc_lda_type *lda_aux;           /* most GGAs are based on a LDA    */
+  struct xc_gga_type **gga_aux;   /* and sometimes other GGAs */
 
-  int modified;             /* parameters necessary to the lb functional */
-  double threshold;
+  void *params;                   /* this allows to fix parameters in the functional */
 } xc_gga_type;
 
 int  xc_gga_init(xc_gga_type *p, int functional, int nspin);
 void xc_gga_end (xc_gga_type *p);
 void xc_gga     (xc_gga_type *p, double *rho, double *grho,
 		 double *e, double *dedd, double *dedgd);
+void xc_gga_sp  (xc_gga_type *p, float *rho, float *grho,
+		 float *e, float *dedd, float *dedgd);
 
 void xc_gga_lb_init(xc_gga_type *p, int nspin, int modified, double threshold);
 void xc_gga_lb     (xc_gga_type *p, double *rho, double *grho, double r, double ip, double qtot,
-		 double *dedd);
+		    double *dedd);
+void xc_gga_lb_sp  (xc_gga_type *p, float *rho, float *grho, float r, float ip, float qtot,
+		    float *dedd);
 
 /* the meta-GGAs */
 
@@ -150,6 +139,8 @@ void xc_mgga_init(xc_mgga_type *p, int functional, int nspin);
 void xc_mgga_end (xc_mgga_type *p);
 void xc_mgga     (xc_mgga_type *p, double *rho, double *grho, double *tau,
 		  double *e, double *dedd, double *dedgd, double *dedtau);
+void xc_mgga_sp  (xc_mgga_type *p, float *rho, float *grho, float *tau,
+		  float *e, float *dedd, float *dedgd, float *dedtau);
 
 /* the LCAs */
 
@@ -165,6 +156,7 @@ typedef struct{
 
 void xc_lca_init(xc_lca_type *p, int functional, int nspin);
 void xc_lca     (xc_lca_type *p, double *rho, double *v, double *e, double *dedd, double *dedv);
+void xc_lca_sp  (xc_lca_type *p, float *rho, float *v, float *e, float *dedd, float *dedv);
 
 #ifdef __cplusplus
 }

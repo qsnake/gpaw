@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdlib.h>
 #include <assert.h>
 
@@ -6,6 +24,9 @@
 /************************************************************************
  LDA parametrization of Vosko, Wilk & Nusair
 ************************************************************************/
+
+#define XC_LDA_C_VWN      7   /* Vosko, Wilk, & Nussair       */
+#define XC_LDA_C_VWN_RPA  8   /* Vosko, Wilk, & Nussair (RPA) */
 
 /* some constants         e_c^P      e_c^F      alpha_c */
 typedef struct {
@@ -83,9 +104,9 @@ void ec_i(vwn_consts_type *X, int i, double x, double *ec, double *decdrs)
 }
 
 /* the functional */
-void lda_c_vwn(void *p_, double *rho, double *ec, double *vc, double *fc)
+void lda_c_vwn(const void *p_, const double *rho, double *ec, double *vc, double *fc)
 {
-  xc_lda_type *p = (xc_lda_type *)p_;
+  const xc_lda_type *p = (xc_lda_type *)p_;
 
   double dens, zeta;
   double rs[2], ec_1, dec_1;

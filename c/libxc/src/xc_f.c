@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -69,6 +87,7 @@ CC_FORTRAN_INT  FC_FUNC_(xc_f90_family_from_id, XC_F90_FAMILY_FROM_ID)
 
 /* LDAs */
 
+/* Standard initialization */
 void FC_FUNC_(xc_f90_lda_init_, XC_F90_LDA_INIT_)
      (void **p, void **info, CC_FORTRAN_INT *functional, CC_FORTRAN_INT *nspin)
 {
@@ -85,28 +104,56 @@ void FC_FUNC_(xc_f90_lda_end, XC_F90_LDA_END)
 {
 }
 
-void FC_FUNC_(xc_f90_lda, XC_F90_LDA)
+/* Double precision interfaces */
+
+void FC_FUNC_(xc_f90_lda_dp, XC_F90_LDA_DP)
   (void **p, double *rho, double *exc, double *vxc, double *fxc, double *kxc)
 {
   xc_lda((xc_lda_type *)(*p), rho, exc, vxc, fxc, kxc);
 }
 
-void FC_FUNC_(xc_f90_lda_vxc, XC_F90_LDA_VXC)
+void FC_FUNC_(xc_f90_lda_vxc_dp, XC_F90_LDA_VXC_DP)
      (void **p, double *rho, double *e, double *v)
 {
   xc_lda_vxc((xc_lda_type *)(*p), rho, e, v);
 }
 
-void FC_FUNC_(xc_f90_lda_fxc, XC_F90_LDA_FXC)
+void FC_FUNC_(xc_f90_lda_fxc_dp, XC_F90_LDA_FXC_DP)
      (void **p, double *rho, double *fxc)
 {
   xc_lda_fxc((xc_lda_type *)(*p), rho, fxc);
 }
 
-void FC_FUNC_(xc_f90_lda_kxc, XC_F90_LDA_KXC)
+void FC_FUNC_(xc_f90_lda_kxc_dp, XC_F90_LDA_KXC_DP)
      (void **p, double *rho, double *kxc)
 {
   xc_lda_kxc((xc_lda_type *)(*p), rho, kxc);
+}
+
+/* Single precision interfaces */
+
+void FC_FUNC_(xc_f90_lda_sp, XC_F90_LDA_SP)
+  (void **p, float *rho, float *exc, float *vxc, float *fxc, float *kxc)
+{
+  xc_lda_sp((xc_lda_type *)(*p), rho, exc, vxc, fxc, kxc);
+}
+
+void FC_FUNC_(xc_f90_lda_vxc_sp, XC_F90_LDA_VXC_SP)
+     (void **p, float *rho, float *e, float *v)
+{
+  xc_lda_vxc_sp((xc_lda_type *)(*p), rho, e, v);
+}
+
+void FC_FUNC_(xc_f90_lda_fxc_sp, XC_F90_LDA_FXC_SP)
+     (void **p, float *rho, float *fxc)
+{
+  xc_lda_fxc_sp((xc_lda_type *)(*p), rho, fxc);
+}
+
+void FC_FUNC_(xc_f90_lda_kxc_sp, XC_F90_LDA_KXC_SP)
+     (void **p, float *rho, float *kxc)
+{
+  xc_lda_kxc_sp((xc_lda_type *)(*p), rho, kxc);
 }
 
 
@@ -142,6 +189,17 @@ void FC_FUNC_(xc_f90_lda_c_xalpha_init, XC_F90_LDA_C_XALPHA_INIT)
   *info = (void *)(lda_p->info);
 }
 
+/* single precision version of the previous */
+void FC_FUNC_(xc_f90_lda_c_xalpha_init_sp, XC_F90_LDA_C_XALPHA_INIT_SP)
+     (void **p, void **info, CC_FORTRAN_INT *functional, 
+      CC_FORTRAN_INT *nspin, CC_FORTRAN_INT *dim, float *alpha)
+{
+  double dalpha;
+  dalpha = alpha[0];
+  FC_FUNC_(xc_f90_lda_c_xalpha_init, XC_F90_LDA_C_XALPHA_INIT)
+    (p, info, functional, nspin, dim, &dalpha);
+}
+
 
 /* GGAs */
 
@@ -163,11 +221,18 @@ void FC_FUNC_(xc_f90_gga_end, XC_F90_GGA_END)
   free(*p);
 }
 
-void FC_FUNC_(xc_f90_gga, XC_F90_GGA)
+void FC_FUNC_(xc_f90_gga_dp, XC_F90_GGA_DP)
      (void **p, double *rho, double *grho, 
       double *e, double *dedd, double *dedgd)
 {
   xc_gga((xc_gga_type *)(*p), rho, grho, e, dedd, dedgd);
+}
+
+void FC_FUNC_(xc_f90_gga_sp, XC_F90_GGA_SP)
+     (void **p, float *rho, float *grho, 
+      float *e, float *dedd, float *dedgd)
+{
+  xc_gga_sp((xc_gga_type *)(*p), rho, grho, e, dedd, dedgd);
 }
 
 
@@ -186,11 +251,27 @@ void FC_FUNC_(xc_f90_gga_lb_init, XC_F90_GGA_LB_INIT)
   *info = (void *)(gga_p->info);
 }
 
-void FC_FUNC_(xc_f90_gga_lb, XC_F90_GGA_LB)
+void FC_FUNC_(xc_f90_gga_lb_init_sp, XC_F90_GGA_LB_INIT_SP)
+     (void **p, void **info, CC_FORTRAN_INT *functional, 
+      CC_FORTRAN_INT *nspin, CC_FORTRAN_INT *modified, float *threshold)
+{
+  double dthreshold = threshold[0];
+  FC_FUNC_(xc_f90_gga_lb_init, XC_F90_GGA_LB_INIT)
+    (p, info, functional, nspin, modified, &dthreshold);
+}
+
+void FC_FUNC_(xc_f90_gga_lb_dp, XC_F90_GGA_LB_DP)
      (void **p, double *rho, double *grho, double *r, double *ip, double *qtot,
       double *dedd)
 {
   xc_gga_lb((xc_gga_type *)(*p), rho, grho, *r, *ip, *qtot, dedd);
+}
+
+void FC_FUNC_(xc_f90_gga_lb_sp, XC_F90_GGA_LB_SP)
+     (void **p, float *rho, float *grho, float *r, float *ip, float *qtot,
+      float *dedd)
+{
+  xc_gga_lb_sp((xc_gga_type *)(*p), rho, grho, *r, *ip, *qtot, dedd);
 }
 
 
@@ -214,11 +295,18 @@ void FC_FUNC_(xc_f90_mgga_end, XC_F90_MGGA_END)
   free(*p);
 }
 
-void FC_FUNC_(xc_f90_mgga, XC_F90_MGGA)
+void FC_FUNC_(xc_f90_mgga_dp, XC_F90_MGGA_DP)
   (void **p, double *rho, double *grho, double *tau,
    double *e, double *dedd, double *dedgd, double *dedtau)
 {
   xc_mgga((xc_mgga_type *)(*p), rho, grho, tau, e, dedd, dedgd, dedtau);
+}
+
+void FC_FUNC_(xc_f90_mgga_sp, XC_F90_MGGA_SP)
+  (void **p, float *rho, float *grho, float *tau,
+   float *e, float *dedd, float *dedgd, float *dedtau)
+{
+  xc_mgga_sp((xc_mgga_type *)(*p), rho, grho, tau, e, dedd, dedgd, dedtau);
 }
 
 
@@ -241,11 +329,18 @@ void FC_FUNC_(xc_f90_lca_end, XC_F90_LCA_END)
   free(*p);
 }
 
-void FC_FUNC_(xc_f90_lca, XC_F90_LCA)
+void FC_FUNC_(xc_f90_lca_dp, XC_F90_LCA_DP)
      (void **p, double *rho, double *v, 
       double *e, double *dedd, double *dedv)
 {
   xc_lca((xc_lca_type *)(*p), rho, v, e, dedd, dedv);
+}
+
+void FC_FUNC_(xc_f90_lca_sp, XC_F90_LCA_SP)
+  (void **p, float *rho, float *v, 
+   float *e, float *dedd, float *dedv)
+{
+  xc_lca_sp((xc_lca_type *)(*p), rho, v, e, dedd, dedv);
 }
 
 #endif

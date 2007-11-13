@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -27,7 +45,9 @@
  This factor can only be aplied in 3D and for the spin-unpolarized case.
 ************************************************************************/
 
-void lda_x(void *p_, double *rho, double *ex, double *vx, double *fx)
+#define XC_LDA_X  1   /* Exchange                     */
+
+void lda_x(const void *p_, const double *rho, double *ex, double *vx, double *fx)
 {
   xc_lda_type *p = (xc_lda_type *)p_;
 

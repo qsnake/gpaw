@@ -1,5 +1,5 @@
 #include <math.h>
-#include "xc.h"
+#include "xc_gpaw.h"
 
 double pbe_exchange(const xc_parameters* par,
 		    double n, double rs, double a2,

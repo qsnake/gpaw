@@ -1,3 +1,21 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdlib.h>
 #include <assert.h>
 
@@ -7,6 +25,9 @@
  Correlation energy per particle and potentials for a homogeneous electron
  gas in 2D, as parametrized by Attacalite et al.
 ************************************************************************/
+
+#define XC_LDA_C_AMGB  15   /* Attacalite et al             */
+
 
 /* parameters necessary to the calculation */
 static double a[3] = { -0.1925,     0.117331,    0.0234188 };
@@ -52,7 +73,7 @@ static double dalphadrs(int i, double *rs)
 }
 
 
-void lda_c_amgb(void *p_, double *rho, double *ec, double *vc, double *fc)
+void lda_c_amgb(const void *p_, const double *rho, double *ec, double *vc, double *fc)
 {
   xc_lda_type *p = (xc_lda_type *)p_;
   

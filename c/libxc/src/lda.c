@@ -1,44 +1,27 @@
+/*
+ Copyright (C) 2006-2007 M.A.L. Marques
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+  
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+  
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
 #include "util.h"
-
-extern xc_func_info_type /* these are the LDA functionals that I know */
-  func_info_lda_x,
-  func_info_lda_c_wigner, 
-  func_info_lda_c_rpa,
-  func_info_lda_c_hl,
-  func_info_lda_c_gl,
-  func_info_lda_c_xalpha,
-  func_info_lda_c_vwn,
-  func_info_lda_c_vwn_rpa,
-  func_info_lda_c_pz,
-  func_info_lda_c_pz_mod,
-  func_info_lda_c_ob_pz,
-  func_info_lda_c_pw,
-  func_info_lda_c_pw_mod,
-  func_info_lda_c_ob_pw,
-  func_info_lda_c_amgb;
-
-const xc_func_info_type *lda_known_funct[] = {
-  &func_info_lda_x,
-  &func_info_lda_c_wigner,
-  &func_info_lda_c_rpa,
-  &func_info_lda_c_hl,
-  &func_info_lda_c_gl,
-  &func_info_lda_c_xalpha,
-  &func_info_lda_c_vwn,
-  &func_info_lda_c_vwn_rpa,
-  &func_info_lda_c_pz,
-  &func_info_lda_c_pz_mod,
-  &func_info_lda_c_ob_pz,
-  &func_info_lda_c_pw,
-  &func_info_lda_c_pw_mod,
-  &func_info_lda_c_ob_pw,
-  &func_info_lda_c_amgb,
-  NULL
-};
+#include "funcs_lda.c"
 
 
 /* initialization */
@@ -78,7 +61,7 @@ void xc_lda_end(xc_lda_type *p)
 }
 
 /* get the lda functional */
-void xc_lda(xc_lda_type *p, double *rho, double *exc, double *vxc, double *fxc, double *kxc)
+void xc_lda(const xc_lda_type *p, const double *rho, double *exc, double *vxc, double *fxc, double *kxc)
 {
   double dens;
 
@@ -125,32 +108,98 @@ void xc_lda(xc_lda_type *p, double *rho, double *exc, double *vxc, double *fxc, 
     xc_lda_kxc_fd(p, rho, kxc);
 }
 
+/* get the lda functional */
+void xc_lda_sp(const xc_lda_type *p, const float *rho, float *exc, float *vxc, float *fxc, float *kxc)
+{
+  double drho[2];
+  double dexc;
+
+  double * pexc = NULL;
+  double * pvxc = NULL;
+  double * pfxc = NULL;
+  double * pkxc = NULL;
+
+  int ii;
+  const int nspin = p->nspin;
+
+  drho[0] = rho[0];
+  if(nspin > 1) drho[1] = rho[1];
+  
+  /* Allocate space for return values in double precision */
+  if(exc) pexc = &dexc;
+  if(vxc) pvxc = (double *) malloc(nspin * sizeof(double));
+  if(fxc) pfxc = (double *) malloc(nspin * nspin * sizeof(double));
+  if(kxc) pkxc = (double *) malloc(nspin * nspin * nspin * sizeof(double));
+
+  /* Call the double precision version */
+  xc_lda(p, drho, pexc, pvxc, pfxc, pkxc);
+
+  /* Copy the result to the single precision return values */
+  if(exc) exc[0] = dexc;
+
+  if(vxc) {
+    for(ii = 0; ii < nspin; ii++) vxc[ii] = pvxc[ii];
+    free(pvxc);
+  }
+
+  if(fxc) {
+    for(ii = 0; ii < nspin*nspin; ii++) fxc[ii] = pfxc[ii];
+    free(pfxc);
+  }
+
+  if(kxc) {
+    for(ii = 0; ii < nspin*nspin*nspin; ii++) kxc[ii] = pkxc[ii];
+    free(pkxc);
+  }
+
+}
+
 
 /* especializations */
-void xc_lda_exc(xc_lda_type *p, double *rho, double *exc)
+void xc_lda_exc(const xc_lda_type *p, const double *rho, double *exc)
 {
   xc_lda(p, rho, exc, NULL, NULL, NULL);
 }
 
-void xc_lda_vxc(xc_lda_type *p, double *rho, double *exc, double *vxc)
+void xc_lda_vxc(const xc_lda_type *p, const double *rho, double *exc, double *vxc)
 {
   xc_lda(p, rho, exc, vxc, NULL, NULL);
 }
 
-void xc_lda_fxc(xc_lda_type *p, double *rho, double *fxc)
+void xc_lda_fxc(const xc_lda_type *p, const double *rho, double *fxc)
 {
   xc_lda(p, rho, NULL, NULL, fxc, NULL);
 }
 
-void xc_lda_kxc(xc_lda_type *p, double *rho, double *kxc)
+void xc_lda_kxc(const xc_lda_type *p, const double *rho, double *kxc)
 {
   xc_lda(p, rho, NULL, NULL, NULL, kxc);
 }
 
+/* especialization in single precision */
+void xc_lda_exc_sp(const xc_lda_type *p, const float *rho, float *exc)
+{
+  xc_lda_sp(p, rho, exc, NULL, NULL, NULL);
+}
+
+void xc_lda_vxc_sp(const xc_lda_type *p, const float *rho, float *exc, float *vxc)
+{
+  xc_lda_sp(p, rho, exc, vxc, NULL, NULL);
+}
+
+void xc_lda_fxc_sp(const xc_lda_type *p, const float *rho, float *fxc)
+{
+  xc_lda_sp(p, rho, NULL, NULL, fxc, NULL);
+}
+
+void xc_lda_kxc_sp(const xc_lda_type *p, const float *rho, float *kxc)
+{
+  xc_lda_sp(p, rho, NULL, NULL, NULL, kxc);
+}
+
 
 /* get the xc kernel through finite differences */
-/* maybe I should write down a higher derivative... */
-void xc_lda_fxc_fd(xc_lda_type *p, double *rho, double *fxc)
+void xc_lda_fxc_fd(const xc_lda_type *p, const double *rho, double *fxc)
 {
   static const double delta_rho = 1e-8;
   int i;
@@ -189,7 +238,7 @@ void xc_lda_fxc_fd(xc_lda_type *p, double *rho, double *fxc)
 /* WANRNING - get rid of this by using new definition of output variable kxc */
 #define ___(i, j, k) [2*(2*i + j) + k] 
 
-void xc_lda_kxc_fd(xc_lda_type *p, double *rho, double *kxc)
+void xc_lda_kxc_fd(const xc_lda_type *p, const double *rho, double *kxc)
 {
   /* Kxc, this is a third order tensor with respect to the densities */
 

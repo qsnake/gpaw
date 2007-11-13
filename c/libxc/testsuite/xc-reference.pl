@@ -1,6 +1,20 @@
 #!/usr/bin/perl
+
+# Copyright (C) 2006-2007 M.A.L. Marques
 #
-# $Id: oct-run_regression_test.pl 2423 2006-09-24 21:25:52Z acastro $
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#  
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#  
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 use Getopt::Std;
 
@@ -105,7 +119,7 @@ EndOfUsage
 sub read_xc_h {
   my $c = shift;
 
-  open FILE, "<$ENV{srcdir}/../src/xc.h";
+  open FILE, "<$data_dir/../src/xc_funcs.h";
   while($_ = <FILE>){
     if(/^#define +(\S*) +(\S*)/){
       my $name = $1;
