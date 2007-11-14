@@ -63,9 +63,9 @@ class Hamiltonian:
         vext_g = paw.input_parameters['external']
         if vext_g is not None:
             assert num.alltrue(vext_g.shape ==
-                               finegd.get_size_of_global_array())
-            self.vext_g = finegd.zeros()
-            finegd.distribute(vext_g, self.vext_g)
+                               self.finegd.get_size_of_global_array())
+            self.vext_g = self.finegd.zeros()
+            self.finegd.distribute(vext_g, self.vext_g)
         else:
             self.vext_g = None
 

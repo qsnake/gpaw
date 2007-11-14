@@ -81,6 +81,8 @@ class Wannier(ASEWannier):
             nuclei = self.GetCalculator().nuclei
 
             V_knj = num.zeros((Nk, Nb, len(initialwannier)), num.Complex)
+            # The 5 lines below should be changed to something where
+            # localized functions are put on the grid at the desired pos
             for k in range(Nk):
                 for j in range(len(initialwannier)):
                     a, i = initialwannier[j]

@@ -49,7 +49,7 @@ class Calculator(PAW):
         if 'width' in parameters:
             parameters['width'] /= self.Ha
         if 'external' in parameters:
-            parameters['external'] = parameter['external'] / self.Ha
+            parameters['external'] = parameters['external'] / self.Ha
         if ('convergence' in parameters and
             'energy' in  parameters['convergence']):
             parameters['convergence']['energy'] /= self.Ha

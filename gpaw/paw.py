@@ -1253,6 +1253,7 @@ class PAW(PAWExtra, Output):
             #pseudo kinetic energy array on 3D grid
             self.density.initialize_kinetic()
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)
+
     def update_kinetic(self):
         if not self.hamiltonian.xc.xcfunc.mgga:
             return
@@ -1260,4 +1261,3 @@ class PAW(PAWExtra, Output):
             #pseudo kinetic energy array on 3D grid
             self.density.update_kinetic(self.kpt_u)
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
-        
