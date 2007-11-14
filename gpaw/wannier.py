@@ -164,7 +164,6 @@ def get_c_k_and_U_k(V_kni, NML):
         V_ni = normalize(V_ni)
         T = V_ni[M:].copy()
         nbf = T.shape[1] #number of initial functions
-#        print "number of initial functions",nbf
         c = num.zeros([nbands - M, L], num.Complex)
         U = num.zeros([M + L, M + L], num.Complex)
         #Calculate the EDF
@@ -183,8 +182,7 @@ def get_c_k_and_U_k(V_kni, NML):
                     c[i, j] = random()
             c = gram_schmidt_orthonormalize(c)
         if L > 0:
-            if GetOrthonormalityFactor(c) > 1.0e-3:
-                print 'ERROR: Columns of c are not orthogonal'
+            check_ortho(c)
         U[:M, :nbf] = V_ni[:M]
         U[M:, :nbf] = num.dot(dagger(c), V_ni[M:])
         U[:, :nbf] = gram_schmidt_orthonormalize(U[:, :nbf])
@@ -193,12 +191,16 @@ def get_c_k_and_U_k(V_kni, NML):
                 for j in xrange(M + L):
                     U[j, i] = random()
             U = gram_schmidt_orthonormalize(U)
-        if GetOrthonormalityFactor(U) > 1.0e-3:
-            print 'ERROR: Columns of U are not orthogonal'
+        check_ortho(U)
         c_k.append(c)
         U_k.append(U)
     return c_k, U_k
-    
+
+def check_ortho(U):
+    f = GetOrthonormalityFactor(U)
+    if f > 1e-3:
+        print 'ERROR: Columns of c are not orthogonal by', f
+        
 def GetOrthonormalityFactor(U):
     nb = U.shape[1]
     diff = num.dot(dagger(U),U) - num.identity(nb, num.Float)
