@@ -36,6 +36,14 @@ class LDOS(DOS):
         DOS.__init__(self, calc, width, window, npts)
         self.P_auni = [nucleus.P_uni for nucleus in calc.nuclei]
 
+        self.occ_a = []
+        for nucleus in calc.nuclei:
+            ni = j = 0
+            while nucleus.setup.n_j[j] != -1:
+                ni += 2 * nucleus.setup.l_j[j] + 1
+                j += 1
+            self.occ_a.append(ni)
+
     def Delta(self, energy):
         """Return a delta-function centered at 'energy'."""
         x = -((self.energies - energy) / self.width)**2
@@ -55,10 +63,12 @@ class LDOS(DOS):
         
         if hasattr(a, '__iter__'):
             # a is a list of atom indicies -
-            # sum all angular chanels and add indicated atoms:
+            # sum all bound-state angular chanels and add indicated atoms:
             dos_e = num.zeros(self.npts, num.Float)
-            for i in a:
-                dos_e += num.sum(self.GetLDOS(i, spin))
+            for atom in a:
+                dos_ie = self.GetLDOS(atom, spin)
+                for i in range(self.occ_a[atom]):
+                    dos_e += dos_ie[i]
             return dos_e
 
         nk = len(self.w_k)
