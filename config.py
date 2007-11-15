@@ -389,6 +389,8 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     if sys.platform == 'aix5':
         extra_link_args.append(cfgDict['LINKFORSHARED'].replace('Modules', cfgDict['LIBPL']))
+    elif sys.platform == 'darwin':
+        pass
     else:
         extra_link_args.append(cfgDict['LINKFORSHARED'])
 
