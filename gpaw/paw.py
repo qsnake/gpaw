@@ -424,7 +424,7 @@ class PAW(PAWExtra, Output):
     def find_ground_state(self):
         """Start iterating towards the ground state."""
         
-        self.print_parameters()
+        #self.print_parameters()
         self.set_positions()
         self.initialize_kinetic()
         if not self.wave_functions_initialized:
@@ -524,6 +524,9 @@ class PAW(PAWExtra, Output):
                                             self.text)
 
             self.density.move()
+
+            # Output the updated position of the atoms
+            self.print_positions(pos_ac)
 
     def initialize_wave_functions_from_atomic_orbitals(self):
         """Initialize wave function from atomic orbitals."""  # surprise!

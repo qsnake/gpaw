@@ -69,8 +69,8 @@ class Output:
         self.print_parameters()
         
         t()
-        t('unitcell:')
-        t('         periodic  length  points   spacing')
+        t('Unit Ccell:')
+        t('         Periodic  Length  Points   Spacing')
         t('  -----------------------------------------')
         for c in range(3):
             t('  %s-axis   %s   %8.4f   %3d    %8.4f' % 
@@ -81,82 +81,96 @@ class Output:
                self.a0 * self.gd.h_c[c]))
         t()
 
-        t('Positions:')
+    def print_positions(self, pos_ac):
+        t = self.text
+        t()
+        t('Positions in Ang:')
         for a, pos_c in enumerate(pos_ac):
             symbol = self.nuclei[a].setup.symbol
-            t('%3d %2s %8.4f%8.4f%8.4f' % 
+            t('%3d %-2s %8.4f%8.4f%8.4f' % 
               ((a, symbol) + tuple(self.a0 * pos_c)))
+        t()
 
     def print_parameters(self):
         t = self.text
         p = self.input_parameters
         
         if self.spinpol:
-            t('Spin-polarized calculation.')
-            t('Magnetic moment: %.6f' % sum(self.density.magmom_a), end='')
+            t('Spin-Polarized Calculation.')
+            t('Magnetic Moment: %.6f' % sum(self.density.magmom_a), end='')
             if self.fixmom:
                 t('(fixed)')
             else:
                 t()
         else:
-            t('Spin-paired calculation')
+            t('Spin-Paired Calculation')
 
-        t('Total charge: %.6f' % p['charge'])
-        t('Fermi temperature: %.6f' % (self.kT * self.Ha))
-        t('Eigensolver: %s (%s)' % (p['eigensolver'], fd(p['stencils'][0])))
-        t('Poisson solver: %s (%s)' % (p['poissonsolver'],
-                                       fd(p['stencils'][1])))
-        t('Interpolation: %d. order' % (2 * p['stencils'][2]))
-          
+        t('Total Charge:        %.6f' % p['charge'])
+        t('Fermi Temperature:   %.6f' % (self.kT * self.Ha))
+        t('Eigen Solver:        %s \n                     (%s)' % (p['eigensolver'], fd(p['stencils'][0])))
+        t('Poisson Solver:      %s \n                     (%s)' % (p['poissonsolver'],fd(p['stencils'][1])))
+        order = str((2 * p['stencils'][2]))
+        if order[-1] == '1':
+            order = order+'st'
+        elif order[-1] == '2':
+            order = order+'nd'
+        elif order[-1] == '3':
+            order = order+'rd'
+        else:
+            order = order+'th'
+        
+        t('Interpolation:       '+order+' Order')
+        t('Reference Energy: %10.6f' % (self.Eref * self.Ha))
+        t()          
         if self.gamma:
-            t('Gamma-point calculation')
-        t('Reference energy:', self.Eref * self.Ha)
+            t('Gamma Point Calculation')
 
         if self.kpt_comm.size > 1:
             if self.nspins == 2 and self.nkpts == 1:
-                t('Parallelization over spin')
+                t('Parallelization Over Spin')
             elif self.nspins == 2:
-                t('Parallelization over k-points and spin on %d processors' %
+                t('Parallelization Over k-points and Spin on %d Processors' %
                   self.kpt_comm.size)
             else:
-                t('Parallelization over k-points on %d processors' %
+                t('Parallelization Over k-points on %d Processors' %
                   self.kpt_comm.size)
 
         domain = self.domain
         if domain.comm.size > 1:
-            t('Using domain decomposition: %d x %d x %d' %
+            t('Using Domain Decomposition: %d x %d x %d' %
               tuple(domain.parsize_c))
 
         if self.symmetry is not None:
             self.symmetry.print_symmetries(t)
         
-        t(('%d k-point%s in the irreducible part of the ' +
-           'Brillouin zone (total: %d)') %
+        t(('%d k-point%s in the Irreducible Part of the ' +
+           'Brillouin Zone (total: %d)') %
           (self.nkpts, ' s'[1:self.nkpts], len(self.bzk_kc)))
 
         if self.fixdensity > self.maxiter:
             t('Fixing the initial density')
         else:
             mixer = self.density.mixer
-            t('Linear mixing parameter: %.6f' % mixer.beta)
-            t('Pulay mixing with %d old densities' % mixer.nmaxold)
-            t('Damping of long wave oscillations: %.6f' % mixer.x)
+            t('Linear Mixing Parameter:           %.6f' % mixer.beta)
+            t('Pulay Mixing with %d Old Densities' % mixer.nmaxold)
+            t('Damping of Long Wave Oscillations: %.6f' % mixer.x)
 
         cc = p['convergence']
-        t('Convergence criteria:')
-        t('* Energy: %f / atom' % (cc['energy'] * self.Ha))
-        t('* Density: %f electrons' % cc['density'])
-        t('* Eigenstates: %f' % cc['eigenstates'])
+        t()
+        t('Convergence Criteria:')
+        t('Total Energy Change per Atom:           %.10f eV / atom' % (cc['energy'] * self.Ha))
+        t('Integral of Absolute Density Change:    %.10f electrons' % cc['density'])
+        t('Integral of Absolute Eigenstate Change: %.10f' % cc['eigenstates'])
         if cc['bands'] == 'occupied':
-            t('Converge occupied states only.')
+            t('Converge Occupied States Only.')
         else:
-            t('Converge %d bands.' % cc['bands'])
-        t('Number of valence electrons: %s' % self.nvalence)
+            t('Converge %d Bands.' % cc['bands'])
+        t('Number of Valence Electrons: %s' % self.nvalence)
 
     def print_converged(self):
         t = self.text
         t('------------------------------------')
-        t('Converged after %d iterations.' % self.niter)
+        t('Converged After %d Iterations.' % self.niter)
 
         t()
         self.print_all_information()
@@ -164,49 +178,49 @@ class Output:
     def print_all_information(self):
         t = self.text    
         if len(self.nuclei) == 1:
-            t('energy contributions relative to reference atom:', end='')
+            t('Energy Contributions Relative to Reference Atom:', end='')
         else:
-            t('energy contributions relative to reference atoms:', end='')
+            t('Energy Contributions Relative to Reference Atoms:', end='')
         t('(reference = %.5f)' % (self.Eref * self.Ha))
 
         t('-------------------------')
 
-        energies = [('kinetic:', self.Ekin),
-                    ('potential:', self.Epot),
-                    ('external:', self.Eext),
-                    ('XC:', self.Exc),
-                    ('entropy (-ST):', -self.S),
-                    ('local:', self.Ebar)]
+        energies = [('Kinetic:      ', self.Ekin),
+                    ('Potential:    ', self.Epot),
+                    ('External:     ', self.Eext),
+                    ('XC:           ', self.Exc),
+                    ('Entropy (-ST):', -self.S),
+                    ('Local:        ', self.Ebar)]
 
         for name, e in energies:
             t('%-14s %+10.5f' % (name, self.Ha * e))
 
         t('-------------------------')
-        t('free energy:   %+10.5f' % (self.Ha * self.Etot))
-        t('zero Kelvin:   %+10.5f' % (self.Ha * (self.Etot + 0.5 * self.S)))
+        t('Free Energy:   %+10.5f' % (self.Ha * self.Etot))
+        t('Zero Kelvin:   %+10.5f' % (self.Ha * (self.Etot + 0.5 * self.S)))
         t()
         epsF = self.occupation.get_fermi_level()
         if epsF is not None:
-            t('Fermi level:', self.Ha * epsF)
+            t('Fermi Level:', self.Ha * epsF)
 
         self.print_eigenvalues()
 
         t()
         charge = self.finegd.integrate(self.density.rhot_g)
-        t('total charge: %f electrons' % charge)
+        t('Total Charge:  %f electrons' % charge)
 
         dipole = self.finegd.calculate_dipole_moment(self.density.rhot_g)
         if self.density.charge == 0:
-            t('dipole moment: %s' % (dipole * self.a0))
+            t('Dipole Moment: %s' % (dipole * self.a0))
         else:
-            t('center of charge: %s' % (dipole * self.a0))
+            t('Center of Charge: %s' % (dipole * self.a0))
 
         if self.nspins == 2:
             self.density.calculate_local_magnetic_moments()
 
             t()
-            t('total magnetic moment: %f' % self.occupation.magmom)
-            t('local magnetic moments:')
+            t('Total Magnetic Moment: %f' % self.occupation.magmom)
+            t('Local Magnetic Moments:')
             for nucleus in self.nuclei:
                 t(nucleus.a, nucleus.mom)
             t()
@@ -222,20 +236,20 @@ class Output:
             t('------------------------------------')
             t('iter: %d %d:%02d:%02d' % (self.niter, T[3], T[4], T[5]))
             t()
-            t('Poisson solver converged in %d iterations' %
+            t('Poisson Solver Converged in %d Iterations' %
                       self.hamiltonian.npoisson)
-            t('Fermi level found  in %d iterations' % self.occupation.niter)
-            t('Error in wave functions: %.13f' % self.error['eigenstates'])
+            t('Fermi Level Found  in %d Iterations' % self.occupation.niter)
+            t('Error in Wave Functions: %.13f' % self.error['eigenstates'])
             t()
             self.print_all_information()
 
         else:        
             if self.niter == 0:
                 header = """\
-                     log10-error:    total        iterations:
-           time      wfs    density  energy       fermi  poisson"""
+                     log10-error:    Total        Iterations:
+           Time      WFS    Density  Energy       Fermi  Poisson"""
                 if self.spinpol:
-                    header += '  magmom'
+                    header += '  MagMom'
                 t(header)
 
             T = time.localtime()
@@ -278,9 +292,14 @@ iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %-12.5f %-5s  %-7s""" %
         self.txt.flush()
 
     def print_forces(self):
-        c = self.Ha / self.a0
+        t = self.text
+        t()
+        t('Forces in eV/Ang:')
+        c = self.Ha / self.a0        
         for a, nucleus in enumerate(self.nuclei):
-            self.text('forces ', a, nucleus.setup.symbol, self.F_ac[a] * c)
+            symbol = nucleus.setup.symbol
+            t('%3d %-2s %8.4f%8.4f%8.4f' % 
+              ((a, symbol) + tuple(self.F_ac[a] * c)))
 
     def print_eigenvalues(self):
         """Print eigenvalues and occupation numbers."""
@@ -311,14 +330,14 @@ def eigenvalue_string(paw,comment=None):
 
     s = ''
     if paw.nspins == 1:
-        s += comment + ' band     eps        occ\n'
+        s += comment + ' Band   Eigenvalues  Occupancy\n'        
         kpt = paw.kpt_u[0]
         for n in range(paw.nbands):
-            s += ('%4d %10.5f %10.5f\n' %
+            s += ('%4d   %10.5f  %10.5f\n' %
                   (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
     else:
-        s += comment + '                up                   down\n'
-        s += comment + ' band     eps        occ        eps        occ\n'
+        s += comment + '                Up                   Down\n'
+        s += comment + ' Band   Eigenvalues  Occupancy  Eigenvalues   Occupancy\n'
         epsa_n = paw.kpt_u[0].eps_n
         epsb_n = paw.kpt_u[1].eps_n
         fa_n = paw.kpt_u[0].f_n
