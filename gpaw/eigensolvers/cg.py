@@ -31,9 +31,10 @@ class CG(Eigensolver):
     """
 
     def __init__(self, paw):
-
         Eigensolver.__init__(self, paw)
 
+    def initialize(self, paw):
+        Eigensolver.initialize(self, paw)
         # Allocate arrays
         self.phi_G = self.gd.empty(typecode=self.typecode)
         self.phi_old_G = self.gd.empty(typecode=self.typecode)

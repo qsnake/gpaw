@@ -32,6 +32,8 @@ class Davidson(Eigensolver):
 
         Eigensolver.__init__(self, paw)
 
+    def initialize(self, paw):
+        Eigensolver.initialize(self, paw)
         # Allocate arrays
         self.S_nn = num.zeros((self.nbands, self.nbands), self.typecode)
         self.H_2n2n = num.empty((2 * self.nbands, 2 * self.nbands),

@@ -28,12 +28,15 @@ class RMM_DIIS(Eigensolver):
     * Orthonormalization"""
 
     def __init__(self, paw, rotate=True):
-
         Eigensolver.__init__(self, paw)
+        self.rotate = rotate
+        self.nbands = None
+
+    def initialize(self, paw):
+        Eigensolver.initialize(self, paw)
 
         self.S_nn = num.empty((self.nbands, self.nbands), self.typecode)
         self.S_nn[:] = 0.0  # rk fails the first time without this!
-        self.rotate = rotate
         
     def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a single RMM-DIIS iteration for the kpoint"""

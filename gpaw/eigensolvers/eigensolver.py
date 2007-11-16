@@ -14,8 +14,13 @@ from gpaw.utilities import unpack
 
 
 class Eigensolver:
-    def __init__(self, paw, nbands=None):
+    def __init__(self, paw):
+        self.initialized = False
         self.timer = paw.timer
+
+    def initialize(self, paw, nbands=None):
+        if self.initialized:
+            return
         self.kpt_comm = paw.kpt_comm
         self.typecode = paw.typecode
         self.gd = paw.gd
@@ -40,6 +45,7 @@ class Eigensolver:
 
         # Hamiltonian matrix
         self.H_nn = num.empty((self.nbands, self.nbands), self.typecode)
+        self.initialized = True
 
     def set_tolerance(self, tolerance):
         """Sets the tolerance for the eigensolver"""

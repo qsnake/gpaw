@@ -365,6 +365,7 @@ class PAW(PAWExtra, Output):
             elif name == 'eigensolver':
                 if p[name] != kwargs[name]:
                     self.eigensolver = eigensolver(kwargs[name], self)
+                    self.eigensolver.initialize(self)
             elif name in ['txt', 'verbose']:
                 self.input_parameters.update(kwargs)
                 Output.__init__(self)
@@ -571,6 +572,7 @@ class PAW(PAWExtra, Output):
         if self.random_wf:
             # Improve the random guess with conjugate gradient
             eig = eigensolver('dav', self)
+            eig.initialize(self)
             eig.nbands_converge = self.nbands
             for kpt in self.kpt_u:
                 kpt.create_random_orbitals(self.nbands)
@@ -587,7 +589,8 @@ class PAW(PAWExtra, Output):
                 nucleus.P_uni = num.empty((self.nmyu, nao, ni), self.typecode)
 
             # Use the generic eigensolver for subspace diagonalization
-            eig = Eigensolver(self, nao)
+            eig = Eigensolver(self)
+            eig.initialize(self, nao)
             for kpt in self.kpt_u:
                 kpt.create_atomic_orbitals(nao, self.nuclei)
                 # Calculate projections and orthonormalize wave functions:
@@ -627,6 +630,7 @@ class PAW(PAWExtra, Output):
         # initialize the eigensolver here
         p = self.input_parameters
         self.eigensolver = eigensolver(p['eigensolver'], self)
+        self.eigensolver.initialize(self)
         
         #if not self.wave_functions_initialized:
         if self.kpt_u[0].psit_nG is None:
