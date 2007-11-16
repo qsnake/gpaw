@@ -25,6 +25,7 @@ class DummyMixer:
     def mix(self, nt_sG, comm):
         pass
 
+# T^-1
 class KineticEnergyPreconditioner:
     def __init__(self, gd, kin, typecode):
         self.preconditioner = Preconditioner(gd, kin, typecode)
@@ -32,6 +33,13 @@ class KineticEnergyPreconditioner:
     def solve(self, kpt, psi, psin):
         psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
 
+# S^-1
+class InverseOverlapPreconditioner:
+    def __init__(self, pt_nuclei):
+        self.pt_nuclei = pt_nuclei
+
+    def solve(self, kpt, psi, psin):
+        kpt.apply_inverse_overlap(self.pt_nuclei, psi, psin)
 
 
 class TDDFT:
@@ -71,19 +79,19 @@ class TDDFT:
 
         # Set initial time
         self.time = 0.
-        
+
         # Time-dependent variables and operators
         self.td_potential = td_potential
         self.td_hamiltonian = \
-            TimeDependentHamiltonian( paw.pt_nuclei, 
-                                      paw.hamiltonian, 
+            TimeDependentHamiltonian( paw.pt_nuclei,
+                                      paw.hamiltonian,
                                       td_potential )
         self.td_overlap = TimeDependentOverlap(paw.pt_nuclei)
         self.td_density = TimeDependentDensity(paw)
-        
+
         # Grid descriptor
         self.gd = paw.gd
-        
+
         # Timer
         self.timer = paw.timer
 
@@ -101,6 +109,7 @@ class TDDFT:
         #self.preconditioner = KineticEnergyPreconditioner( paw.gd,
         #                                                   paw.hamiltonian.kin,
         #                                                   num.Complex )
+        #self.preconditioner = InverseOverlapPreconditioner( paw.pt_nuclei )
         self.preconditioner = None
 
         # Time propagator

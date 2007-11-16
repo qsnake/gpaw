@@ -131,22 +131,22 @@ class ExplicitCrankNicolson(Propagator):
                 #psit[:] = self.spsit - .5J * self.hpsit * time_step
                 psit[:] = self.spsit
                 axpy(-.5j * self.time_step, self.hpsit, psit)
-            
+
                 # A x = b
                 psit[:] = self.solver.solve(self,psit,psit)
 
-        
+
     # ( S + i H dt/2 ) psi
     def dot(self, psi, psin):
         """Applies the propagator matrix to the given wavefunction.
-        
+
         =========== ===================================
         Parameters:
         =========== ===================================
         psi         the known wavefunction
         psin        the result
         =========== ===================================
-        
+
         """
         self.timer.start('Apply time-dependent operators')
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
@@ -160,7 +160,7 @@ class ExplicitCrankNicolson(Propagator):
     #  M psin = psi, where M = T (kinetic energy operator)
     def solve_preconditioner(self, psi, psin):
         """Solves preconditioner equation.
-        
+
         =========== ===================================
         Parameters:
         =========== ===================================
@@ -215,7 +215,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         gd                    coarse (wavefunction) grid descriptor
         timer                 timer
         ===================== =================================================
-        
+
         """
         self.td_density = DummyDensity()
         self.td_hamiltonian = abs_kick_hamiltonian
@@ -224,7 +224,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         self.preconditioner = None
         self.gd = gd
         self.timer = timer
-        
+
         self.hpsit = None
         self.spsit = None
 

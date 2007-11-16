@@ -42,14 +42,14 @@ class TimeDependentHamiltonian:
             self.td_vext_g = hamiltonian.finegd.zeros()
         else:
             self.td_vext_g = None
-            
+
         if hamiltonian.vext_g is not None:
             self.ti_vext_g = hamiltonian.vext_g
         else:
             self.ti_vext_g = None
-            
+
         self.vext_g = hamiltonian.finegd.zeros()
-        
+
         self.vt_sG = hamiltonian.gd.zeros(hamiltonian.nspins, num.Float)
         self.H_asp = [
             num.zeros(nucleus.H_sp.shape, num.Float)
@@ -70,10 +70,10 @@ class TimeDependentHamiltonian:
         else:
             self.vext_g = self.ti_vext_g
 
-        
+
     def update(self, density, time):
         """Updates the time-dependent Hamiltonian.
-        
+    
         =========== ==========================================================
         Parameters:
         =========== ==========================================================
@@ -136,8 +136,9 @@ class TimeDependentHamiltonian:
         =========== ==========================================================
 
         """
-        kpt.apply_hamiltonian(self.hamiltonian,
-                              psit[None, ...], hpsit[None, ...])
+        p = num.reshape(psit, (1,) + psit.shape)
+        hp = num.reshape(hpsit, (1,) + hpsit.shape)
+        kpt.apply_hamiltonian(self.hamiltonian, p, hp)
 
 
 # AbsorptionKickHamiltonian
@@ -150,7 +151,7 @@ class AbsorptionKickHamiltonian:
     
     def __init__(self, pt_nuclei, strength = 1e-2, direction = [0.0, 0.0, 1.0]):
         """ Create the AbsorptionKickHamiltonian-object.
-                
+
         ============= ========================================================
         Parameters:
         ============= ========================================================
@@ -160,15 +161,15 @@ class AbsorptionKickHamiltonian:
         ============= ========================================================
 
         """
-        
-        self.pt_nuclei = pt_nuclei        
+
+        self.pt_nuclei = pt_nuclei
 
         # normalized direction
         dir = num.array(direction, num.Float)
         p = strength * dir / num.sqrt(num.vdot(dir,dir))
         # iterations
         self.iterations = int(round(strength / 1.0e-3))
-        if self.iterations == 0: 
+        if self.iterations == 0:
             self.iterations = 1
         # delta p
         self.dp = p / self.iterations
@@ -180,7 +181,7 @@ class AbsorptionKickHamiltonian:
                    [0.0, 1.0, 0.0],
                    [0.0, 0.0, 1.0] ]
         values = [ 0.0, self.dp[0], self.dp[1], self.dp[2] ]
-        self.hamiltonian = Polynomial(values, coords, order=1)
+        self.abs_hamiltonian = Polynomial(values, coords, order=1)
 
         
     def update(self, density, time):
@@ -223,10 +224,12 @@ class AbsorptionKickHamiltonian:
         =========== ==========================================================
 
         """
+        p = num.reshape(psit, (1,) + psit.shape)
+        hp = num.reshape(hpsit, (1,) + hpsit.shape)
         kpt.apply_scalar_function( self.pt_nuclei,
-                                   psit[None, ...], hpsit[None, ...], 
-                                   self.hamiltonian )
-
+                                   #psit[None, ...], hpsit[None, ...], 
+                                   p, hp,
+                                   self.abs_hamiltonian )
 
 
 
@@ -290,7 +293,11 @@ class TimeDependentOverlap:
         =========== ==========================================================
 
         """
-        kpt.apply_overlap(self.pt_nuclei, psit[None, ...], spsit[None, ...])
+        p = num.reshape(psit, (1,) + psit.shape)
+        sp = num.reshape(spsit, (1,) + spsit.shape)
+        kpt.apply_overlap( self.pt_nuclei,
+                           #psit[None, ...], hpsit[None, ...], 
+                           p, sp )
 
 
 
