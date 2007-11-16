@@ -14,7 +14,10 @@ from gpaw.utilities.gauss import Gaussian
 
 
 class PoissonSolver:
-    def __init__(self, gd, nn, relax='GS', load_gauss=False):
+    def __init__(self):
+        pass
+
+    def initialize(self, gd, nn, relax='GS', load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         self.dv = gd.dv
@@ -219,8 +222,11 @@ from gpaw.utilities.complex import real
 from gpaw.utilities.tools import construct_reciprocal
 
 class PoissonFFTSolver(PoissonSolver):
+    def __init__(self):
+        PoissonSolver.__init__(self)
+
     """FFT implementation of the poisson solver"""
-    def __init__(self, gd, nn=None, relax=None, load_gauss=False):
+    def initialize(self, gd, nn=None, relax=None, load_gauss=False):
         self.gd = gd
         if self.gd.domain.comm.size > 1:
             raise RuntimeError, 'Cannot do parallel FFT.'

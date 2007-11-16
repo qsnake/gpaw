@@ -89,7 +89,9 @@ class EXX:
             self.rhot_g = finegd.empty()# Comp. pseudo density on fine grid
             self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
             if usefft:
-                self.poisson_solve = PoissonFFTSolver(finegd).solve
+                solver = PoissonFFTSolver()
+                solver.initialize(finegd)
+                self.poisson_solve = solver.solve
             else:
                 self.poisson_solve = poisson.solve
             self.fineintegrate = finegd.integrate
@@ -97,10 +99,14 @@ class EXX:
             self.rhot_g = gd.empty()# Comp. pseudo density on fine grid
             self.vt_g = self.vt_G   # Pot. of comp. pseudo density on fine grid
             if usefft:
-                self.poisson_solve = PoissonFFTSolver(gd).solve
+                solver = PoissonFFTSolver()
+                solver.initialize(gd)
+                self.poisson_solve = solver.solve
             else:
-                self.poisson_solve = PoissonSolver(
-                    gd, paw.hamiltonian.poisson_stencil).solve
+                solver = PoissonSolver()
+                solver.initialize(gd, paw.hamiltonian.poisson_stencil)
+                self.poisson_solve = solver.solve
+                    
             self.fineintegrate = gd.integrate
         if not energy_only:
             self.vt_unG = gd.empty((nmyu, nbands))# Diagonal pot. for residuals

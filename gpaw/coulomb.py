@@ -49,8 +49,9 @@ class Coulomb:
                 if self.poisson is not None:
                     self.solve = self.poisson.solve
                 else:
-                    self.solve = PoissonSolver(self.gd, nn=2,
-                                               load_gauss=True).solve
+                    solver = PoissonSolver()
+                    solver.initialize(self.gd, nn=2, load_gauss=True)
+                    self.solve = solver.solve
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):
         """Evaluates the coulomb integral of n1 and n2

@@ -63,15 +63,16 @@ class OmegaMatrix:
         # handle different grid possibilities
         self.finegrid=finegrid
         self.restrict=None
+        self.poisson = PoissonSolver()
         if finegrid:
-            self.poisson = PoissonSolver(self.paw.finegd,
-                                         self.paw.hamiltonian.poisson_stencil)
+            self.poisson.initialize(self.paw.finegd,
+                                    self.paw.hamiltonian.poisson_stencil)
             self.gd = self.paw.finegd
             if finegrid==1:
                 self.gd = self.paw.gd
         else:
-            self.poisson = PoissonSolver(self.paw.gd,
-                                         self.paw.hamiltonian.poisson_stencil)
+            self.poisson.initialize(self.paw.gd,
+                                    self.paw.hamiltonian.poisson_stencil)
             self.gd = self.paw.gd
         self.restrict = Transformer(self.paw.finegd, self.paw.gd,
                                     self.paw.stencils[0]).apply

@@ -8,6 +8,9 @@ class LCAO:
     """Eigensolver for LCAO-basis calculation"""
 
     def __init__(self, paw):
+        pass
+
+    def initialize(self, paw):
         self.gd = paw.gd
         self.nuclei = paw.nuclei
         self.initialized = False
