@@ -5,7 +5,9 @@ from ASE import  ListOfAtoms, Atom
 from gpaw import Calculator
 from gpaw.utilities import center
 from gpaw.utilities.singleatom import SingleAtom
-from gpaw.testing import g2
+
+raise DeprecationWarning, ('Molecule class is outdated. '
+                           'Use gpaw.testing.g2 instead')
 
 class Molecule:
     def __init__(self, formula, a=None, b=None, c=None, h=None,
