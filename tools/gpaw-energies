@@ -43,7 +43,7 @@ if len(args):
     fname = args[0]
 
 from gpaw import Calculator
-paw = Calculator(fname,txt=None)
+paw = Calculator(fname, txt=None, idiotproof=False)
 Ha = paw.Ha
 a0 = paw.a0
 
