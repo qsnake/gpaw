@@ -162,11 +162,22 @@ class MixerSum:
         nold:  Maximum number of old densities.
         """
 
+        
         self.beta = mix[0]
         self.nmaxold = mix[1]
         self.x = mix[2]
+        b = 0.25 * (self.x - 1)
+        a = 1.0 - 2.0 * b
+        self.metric = Operator([a,
+                                b, b, b, b, b, b],
+                               [(0, 0, 0),
+                                (-1, 0, 0), (1, 0, 0),
+                                (0, -1, 0), (0, 1, 0),
+                                (0, 0, -1), (0, 0, 1)],
+                               gd, True, num.Float).apply
         self.dNt = None
         self.gd = gd
+        self.mR_G = gd.empty()
         
     def reset(self, my_nuclei):
         """Reset Density-history.
@@ -221,6 +232,7 @@ class MixerSum:
             A_ii = num.zeros((iold, iold), num.Float)
             i1 = 0
             i2 = iold - 1
+            self.metric(R_G, self.mR_G)
             for R_1G in self.R_iG:
                 a = comm.sum(num.vdot(R_1G, R_G))
                 A_ii[i1, i2] = a
