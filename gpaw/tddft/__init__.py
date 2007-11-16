@@ -56,10 +56,13 @@ class TDDFT:
         solver       the name of the iterative linear equations solver 
         tolerance    tolerance for the solver
         ============ =========================================================
-        
+
         Note: Use about ???10^-3 - 10^-4??? tighter tolerance for PAW.
         """
-        
+
+        # Initialize wavefunctions (necessary for restarting from file)
+        paw.initialize_wave_functions()
+
         # Convert PAW-object to complex
         paw.totype(num.Complex);
 
@@ -112,15 +115,15 @@ class TDDFT:
                                        self.timer )
         elif propagator is 'SICN':
             self.propagator = \
-                SemiImplicitCrankNicolson( self.td_density, 
-                                           self.td_hamiltonian, 
-                                           self.td_overlap, 
+                SemiImplicitCrankNicolson( self.td_density,
+                                           self.td_hamiltonian,
+                                           self.td_overlap,
                                            self.solver,
                                            self.preconditioner,
                                            self.gd,
                                            self.timer )
         else:
-            raise RuntimeError( 'Error in TDDFT:' + 
+            raise RuntimeError( 'Error in TDDFT:' +
                                 'Time propagator %s not supported. '
                                 % (propagator) )
         
