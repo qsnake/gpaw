@@ -1059,6 +1059,7 @@ class PAW(PAWExtra, Output):
             assert self.spinpol
 
         self.xcfunc = XCFunctional(p['xc'], self.nspins)
+        self.xcfunc.set_timer(self.timer)
         
         if p['gpts'] is not None and p['h'] is None:
             N_c = num.array(p['gpts'])

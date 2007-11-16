@@ -198,6 +198,10 @@ class XCFunctional:
         else:
 ###            self.xcname = xcname # MDTMP: to get the xcname name for setup
             self.xc = _gpaw.XCFunctional(code, self.gga)
+        self.timer = None
+
+    def set_timer(self, timer):
+        self.timer = timer
 
     def __getstate__(self):
         return self.xcname, self.parameters
@@ -260,11 +264,13 @@ class XCFunctional:
     # deviate so greatly that this is special treatment is needed.
     def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, density=None, vbar= False):
         # Send the command one .xc up
-        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc, 
+        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc,
                                                             density=density, vbar=vbar)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              taua_g=None):
+        if self.timer is not None:
+            self.timer.start('Local xc')
         if self.mgga:
             self.xc.calculate_spinpaired(e_g.flat, n_g, v_g, a2_g, deda2_g,
                                          taua_g)
@@ -273,11 +279,15 @@ class XCFunctional:
             self.xc.calculate_spinpaired(e_g.flat, n_g, v_g, a2_g, deda2_g)
         else:
             self.xc.calculate_spinpaired(e_g.flat, n_g, v_g)
+        if self.timer is not None:
+            self.timer.stop('Local xc')
 
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                a2_g=None, aa2_g=None, ab2_g=None,
                                deda2_g=None, dedaa2_g=None, dedab2_g=None,
                                 taua_g=None,taub_g=None):
+        if self.timer is not None:
+            self.timer.start('Local xc')
         if self.mgga:
               self.xc.calculate_spinpolarized(e_g.flat, na_g, va_g, nb_g, vb_g,
                                            a2_g, aa2_g, ab2_g,
@@ -289,6 +299,8 @@ class XCFunctional:
                                            deda2_g, dedaa2_g, dedab2_g)
         else:
             self.xc.calculate_spinpolarized(e_g.flat, na_g, va_g, nb_g, vb_g)
+        if self.timer is not None:
+            self.timer.stop('Local xc')
 
     def get_max_derivative_level(self):
         """maximal derivative level of Exc available"""
@@ -306,7 +318,7 @@ class XCFunctional:
     def get_local_xc(self):
         if not self.orbital_dependent:
             return self
-        
+
         if self.get_name() == 'EXX':
             return XCFunctional('LDAx', self.nspins)
         elif self.get_name() == 'oldPBE0':

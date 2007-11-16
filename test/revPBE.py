@@ -17,7 +17,7 @@ setup_paths.insert(0, '.')
 units.SetUnits('Bohr', 'Hartree')
 
 a = 7.5
-n = 16
+n = 44
 atoms = Crystal([Atom('He', (0.0, 0.0, 0.0))], cell=(a, a, a))
 calc = Calculator(gpts=(n, n, n), nbands=1, xc='PBE')
 atoms.SetCalculator(calc)
