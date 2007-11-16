@@ -220,7 +220,7 @@ class PAWExtra:
         # !!! FIX ME !!!
         # not implemented yet...
 
-    def read_wave_functions(self,mode='gpw'):
+    def read_wave_functions(self, mode='gpw'):
         """Read wave functions one by one from seperate files"""
 
         for u in range(self.nmyu):
@@ -232,6 +232,12 @@ class PAWExtra:
             for n, psit_G in enumerate(kpt.psit_nG):
                 psit_G[:] = gpaw.io.read_wave_function(self.gd, s, k, n, mode)
                 
+    def warn(self, string=None):
+        if not string:
+            string = "somethings wrong"
+        print >> self.txt, "WARNING >>"
+        print >> self.txt, string
+        print >> self.txt, "WARNING <<"
                 
     def wave_function_volumes(self):
         """Return the volume needed by the wave functions"""

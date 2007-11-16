@@ -337,9 +337,12 @@ def read(paw, reader):
         except (AttributeError, KeyError):
             break
         if setup.fingerprint != fp:
-            raise RuntimeError(
-                'Setup for %s (%s) not compatible with restart file.' %
-                (setup.symbol, setup.filename))
+            str = 'Setup for %s (%s) not compatible with restart file.' % \
+                  (setup.symbol, setup.filename)
+            if paw.idiotproof:
+                raise RuntimeError(str)
+            else:
+                paw.warn(str)
             
     # Read pseudoelectron density pseudo potential on the coarse grid
     # and distribute out to nodes:

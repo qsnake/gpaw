@@ -250,7 +250,8 @@ class PAW(PAWExtra, Output):
             'eigensolver':   'rmm-diis',
             'poissonsolver': 'GS',
             'exxfinegrid'  : True,
-            'communicator' : None
+            'communicator' : None,
+            'idiotproof'   : True
             }
 
         self.converged = False
@@ -260,8 +261,7 @@ class PAW(PAWExtra, Output):
         self.callback_functions = []
         self.niter = 0
         self.F_ac = None
-
-        
+         
         if filename is not None:
             reader = self.read_parameters(filename)
 
@@ -273,7 +273,8 @@ class PAW(PAWExtra, Output):
             if name in ['parsize',
                         'random', 'hund', 'mix', 'txt', 'maxiter', 'verbose',
                         'decompose', 'eigensolver', 'poissonsolver',
-                        'external','exxfinegrid', 'communicator']:
+                        'external','exxfinegrid', 'communicator',
+                        'idiotproof']:
                 self.input_parameters[name] = value
             elif name in ['xc', 'nbands', 'spinpol', 'kpts', 'usesymm',
                           'gpts', 'h', 'width', 'lmax', 'setups', 'basis',
@@ -300,6 +301,8 @@ class PAW(PAWExtra, Output):
         self.master = (world.rank == 0)
 
         Output.__init__(self)
+
+        self.idiotproof = self.input_parameters['idiotproof']
 
         if filename is not None:
             self.initialize()
