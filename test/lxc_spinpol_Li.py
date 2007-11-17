@@ -16,7 +16,7 @@ reference_886 = { # version 886
     'X-C_PW': -7.3970905596, # 'LDA'
     'X_PBE-C_PBE': -7.51091709464, # 'PBE'
     'X_PBE_R-C_PBE': -7.5341232518, # 'revPBE'
-    'RPBE': -7.53943687939, # 'RPBE'
+    'oldRPBE': -7.53943687939, # 'oldRPBE'
     'PW91': -7.52300459704, # 'PW91'
     'oldLDA': -7.3970905596, # 'oldLDA'
     'LDA': -7.3970905596 # 'LDA'
@@ -45,7 +45,7 @@ equal(elda, reference_886['X-C_PW'], tolerance)
 
 calc.set(xc='RPBE')
 erpbe = li.GetPotentialEnergy() + calc.get_reference_energy()
-equal(erpbe, reference_886['RPBE'], tolerance)
+equal(erpbe, reference_886['oldRPBE'], tolerance)
 
 calc.set(xc='PW91')
 epw91 = li.GetPotentialEnergy() + calc.get_reference_energy()

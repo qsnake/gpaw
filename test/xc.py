@@ -1,8 +1,8 @@
 from gpaw.xc_functional import XCFunctional
 
 nspins = 2
-for name in ['oldPBE', 'oldLDA', 'RPBE', 'oldrevPBE',
-             'oldLDAc', 'oldLDAx', 'RPBEx', 'oldrevPBEx', 'PW91']:
+for name in ['oldPBE', 'oldLDA', 'oldRPBE', 'oldrevPBE',
+             'oldLDAc', 'oldLDAx', 'oldRPBEx', 'oldrevPBEx', 'PW91']:
     xc = XCFunctional(name, nspins)
     x = xc.exchange
     c = xc.correlation

@@ -96,6 +96,16 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X_PBE_R-None'
+        elif xcname == 'RPBE':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_RPBE-C_PBE'
+        elif xcname == 'RPBEx':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_RPBE-None'
         elif xcname == 'PBE0':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -137,8 +147,9 @@ class XCFunctional:
             elif xcname == 'oldrevPBE':
                 code = 1
                 xcname = 'revPBE'
-            elif xcname == 'RPBE':
+            elif xcname == 'oldRPBE':
                 code = 2
+                xcname = 'RPBE'
             elif xcname == 'oldPBE0':
                 self.orbital_dependent = True
                 self.hybrid = 0.25
@@ -151,8 +162,9 @@ class XCFunctional:
             elif xcname == 'oldrevPBEx':
                 code = 8
                 xcname = 'revPBEx'
-            elif xcname == 'RPBEx':
+            elif xcname == 'oldRPBEx':
                 code = 12
+                xcname = 'oldRPBEx'
             elif xcname == 'TPSS':
                 code = 9
                 ##self.mgga = True ## use real tau and local potential
