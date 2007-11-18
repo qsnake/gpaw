@@ -46,5 +46,5 @@ lr = LrTDDFT(filename=fname)
 os.remove(fname)
 t4 = lr[0]
 
-equal(t3.get_energy(), t4.get_energy(), 1.e-7)
+equal(t3.get_energy(), t4.get_energy(), 1.e-6)
 
