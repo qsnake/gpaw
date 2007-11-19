@@ -170,16 +170,13 @@ class XCNonLocalCorrection:
         self.deg = deg
 
         y = 0
-        for w, Y_L in zip(self.weights, self.Y_yL):
+        for slice, (w, Y_L) in enumerate(zip(self.weights, self.Y_yL)):
             A_Li = A_Liy[:self.Lmax, :, y]
 
             self.Y_L = Y_L
 
             # Calculate the true density
             self.n_g = num.dot(Y_L, n_Lg)
-
-
-            #print "TRUE DENSITY", self.n_g[0:127]
 
             # Calculate gradients for ae-density
             self.a1x_g = num.dot(A_Li[:, 0], n_Lg)
@@ -212,7 +209,7 @@ class XCNonLocalCorrection:
             self.at2_g*= deg**2
 
             self.D_p = D_p
-            E += w / deg * self.motherxc.calculate_non_local_paw_correction(a, s, self, v_g, vt_g)
+            E += w / deg * self.motherxc.calculate_non_local_paw_correction(a, s, self, slice, v_g, vt_g)
 
             # Integrate the slice with respect to orbitals
             dEdD_p += w * num.dot(dot3(self.B_pqL, Y_L),

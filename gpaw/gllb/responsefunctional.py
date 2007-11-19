@@ -110,7 +110,7 @@ class ResponseFunctional(NonLocalFunctional):
         # TODO: This method needs more arguments to support arbitary slater part
         raise "ResponseFunctional::get_slater_part_paw_correction must be overrided by sub-class"
 
-    def calculate_non_local_paw_correction(self, a, s, xccorr, v_g, vt_g):
+    def calculate_non_local_paw_correction(self, a, s, xccorr, slice, v_g, vt_g):
         nucleus = find_nucleus(self.nuclei, a)
         N = len(xccorr.n_g)
 
@@ -119,41 +119,46 @@ class ResponseFunctional(NonLocalFunctional):
         e_g = num.zeros(N, num.Float)
         deda2_g = num.zeros(N, num.Float)
 
-        Dnn_Lq = 0
-        # Calculate nn_Lq
-        # For each k-point
+        # Calculate the density matrix only at first slice
+        if slice == 0:
+            Dnn_Lq = 0
+            # Calculate nn_Lq
+            # For each k-point
 
-        # Variable i is result of poor indexing of my w_sn,
-        # I need to figure out better storage format (Mikael)
-        i = 0
+            # Variable i is result of poor indexing of my w_sn,
+            # I need to figure out better storage format (Mikael)
+            i = 0
 
-        for kpt in self.kpt_u:
-            # Include only k-points with same spin
-            if kpt.s == s:
-                # Get the projection coefficients
-                P_ni = nucleus.P_uni[kpt.u]
+            for kpt in self.kpt_u:
+                # Include only k-points with same spin
+                if kpt.s == s:
+                    # Get the projection coefficients
+                    P_ni = nucleus.P_uni[kpt.u]
 
-                # Create the coefficients
-                # TODO: Better conversion from python array to num.array"
-                w_i = num.zeros(kpt.eps_n.shape, num.Float)
-                for j in range(len(w_i)):
-                    w_i[j] = self.w_sn[s][i]
-                    i = i + 1
+                    # Create the coefficients
+                    # TODO: Better conversion from python array to num.array"
+                    w_i = num.zeros(kpt.eps_n.shape, num.Float)
+                    for j in range(len(w_i)):
+                        w_i[j] = self.w_sn[s][i]
+                        i = i + 1
 
-                w_i = w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] * xccorr.deg
+                    w_i = w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] * xccorr.deg
 
-                # Very serious optimization case here: The "weight density" matrix 
-                # is now calculated here in inner loop when it could be done only once!!
+                    # Calculate the 'density matrix' for numerator part of potential
+                    Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
+                                         P_ni * w_i))
 
-                # Calculate the 'density matrix' for numerator part of potential
-                Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
-                                     P_ni * w_i))
+                    Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
+                    Dnn_Lq += dot3(xccorr.B_Lqp, Dn_p)
 
-                Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
-                Dnn_Lq += dot3(xccorr.B_Lqp, Dn_p)
+            # Communicate over K-points
+            self.kpt_comm.sum(Dnn_Lq)
 
-        # Communicate over K-points
-        self.kpt_comm.sum(Dnn_Lq)
+            # Store the Dnn_Lq matrix for later slices
+            self.Dnn_Lq = Dnn_Lq
+        else:
+            # Get the Dnn_Lq matrix calculated in first slice
+            Dnn_Lq = self.Dnn_Lq
 
         # Calculate the real response part of valence electrons multiplied with density
         nn_Lg = num.dot(Dnn_Lq, xccorr.n_qg)
