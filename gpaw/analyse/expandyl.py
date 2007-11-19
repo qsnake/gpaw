@@ -63,11 +63,13 @@ class ExpandYl:
         # self.R_V will contain the volume of the R shell
         # self.R_g will contain the radial indicees corresponding to
         #     each grid point
+        # self.ball_g will contain the mask of the ball of radius Rmax
         # self.y_Lg will contain the YL values corresponding to
         #     each grid point
         R_V = num.zeros((int(Rmax/dR+1),),num.Float)
         y_Lg = gd.zeros((nL,),num.Float)
         R_g = num.zeros(y_Lg[0].shape,num.Int)-1
+        ball_g = num.zeros(y_Lg[0].shape,num.Int)
         for i in range(gd.beg_c[0],gd.end_c[0]):
             ii = i - gd.beg_c[0]
             for j in range(gd.beg_c[1],gd.end_c[1]):
@@ -84,10 +86,12 @@ class ExpandYl:
                             y_Lg[L,ii,jj,kk] = Y(L, rhat[0], rhat[1], rhat[2])
                         iR = int(r/dR)
                         R_g[ii,jj,kk] = iR
+                        ball_g[ii,jj,kk] = 1
                         R_V[iR] += 1
         gd.comm.sum(R_V)
 
         self.R_g = R_g
+        self.ball_g = ball_g
         self.R_V = R_V * gd.dv
         self.y_Lg = y_Lg
 
@@ -106,8 +110,10 @@ class ExpandYl:
                 for L in range(nL):
                     psit_LR = self.gd.integrate(psit_g * R_g * self.y_Lg[L])
                     gamma_l[L_l[L]] += 4*pi / dV * psit_LR**2
-                
-        return gamma_l
+        # weight of the wave function inside the ball
+        weight =  self.gd.integrate(psit_g**2 * self.ball_g)
+        
+        return gamma_l, weight
 
     def to_file(self,calculator,
                 filename='expandyl.dat',
@@ -142,7 +148,7 @@ class ExpandYl:
         print >> f, '# dR =', self.dR * self.a0, lu
         print >> f, '# lmax =', self.lmax 
         print >> f, '# s    k     n',
-        print >> f, '    norm      sum',
+        print >> f, '    norm      sum   weight',
         spdfghi = 's p d h f g h i'.split()
         for l in range(self.lmax+1):
             print >> f, '      %'+spdfghi[l],
@@ -155,12 +161,12 @@ class ExpandYl:
                     psit_G = calculator.kpt_u[u].psit_nG[n]
                     norm = self.gd.integrate(psit_G**2)
 
-                    gl = self.expand(psit_G)
+                    gl, weight = self.expand(psit_G)
                     gsum = num.sum(gl)
                     gl = 100 * gl / gsum
 
-                    print >> f, '%2d %5d %5d' % (s,k,n),
-                    print >> f, "%8.4f %8.4f" % (norm,gsum),
+                    print >> f, '%2d %5d %5d' % (s, k, n),
+                    print >> f, "%8.4f %8.4f %8.4f" % (norm, gsum, weight),
                 
                     for g in gl:
                         print >> f, "%8.2f" %g,
