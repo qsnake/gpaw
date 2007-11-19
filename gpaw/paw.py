@@ -313,14 +313,14 @@ class PAW(PAWExtra, Output):
         self.convert_units(kwargs)  # ASE???
         p = self.input_parameters
         for name, value in kwargs.items():
-            if name in ['h','kpts','spinpol','xc']:
+            if name in ['gpts', 'h', 'kpts', 'spinpol', 'xc']:
                 if p[name] != kwargs[name]:
                     # theses are severe changes, we need new densities and
                     # wave functions
                     self.initialized = False
                     self.wave_functions_initialized = False
                     self.converged = False
-            elif name in ['gpts','kpts','nbands']:
+            elif name == 'nbands':
                 if p[name] != kwargs[name]:
                     # we should have new wave functions
                     self.wave_functions_initialized = False
