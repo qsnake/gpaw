@@ -151,16 +151,16 @@ class Output:
             t('Fixing the initial density')
         else:
             mixer = self.density.mixer
-            t('Linear Mixing Parameter:           %.6f' % mixer.beta)
+            t('Linear Mixing Parameter:           %8g' % mixer.beta)
             t('Pulay Mixing with %d Old Densities' % mixer.nmaxold)
-            t('Damping of Long Wave Oscillations: %.6f' % mixer.x)
+            t('Damping of Long Wave Oscillations: %8g' % mixer.x)
 
         cc = p['convergence']
         t()
         t('Convergence Criteria:')
-        t('Total Energy Change per Atom:           %.10f eV / atom' % (cc['energy'] * self.Ha))
-        t('Integral of Absolute Density Change:    %.10f electrons' % cc['density'])
-        t('Integral of Absolute Eigenstate Change: %.10f' % cc['eigenstates'])
+        t('Total Energy Change per Atom:           %8g eV / atom' % (cc['energy'] * self.Ha))
+        t('Integral of Absolute Density Change:    %8g electrons' % cc['density'])
+        t('Integral of Absolute Eigenstate Change: %8g' % cc['eigenstates'])
         if cc['bands'] == 'occupied':
             t('Converge Occupied States Only.')
         else:
