@@ -35,14 +35,14 @@ class ResponseFunctional(NonLocalFunctional):
         NonLocalFunctional.__init__(self)
         self.initialization_ready = False
 
-    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation):
+    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm):
         """Called from xc_corrections to get the important items required in non local calculation
          of vxc. In this method, also some temporary arrays are allocated which are needed
          for calculation of the response part.
         """
 
         # Pass the arguments forward to superclass.
-        NonLocalFunctional.pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation)
+        NonLocalFunctional.pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm)
 
         # These arrays are needed while calculating response-part
         self.vt_G = gd.zeros()         # Temporary array for coarse potential
@@ -80,15 +80,13 @@ class ResponseFunctional(NonLocalFunctional):
                 if info['typecode'] is num.Float:
                     psit_G2 = psit_G**2
                     axpy(f*w, psit_G2, self.vt_G)
-                    ####axpy(f, psit_G2, self.nt_G)
                 else:
                     psit_G2 = (psit_G * num.conjugate(psit_G)).real
                     self.vt_G += f * w * psit_G2
-                    ####self.nt_G += f * psit_G2
 
-            # After the coarse density (w/o compensation charges) and the numerator is calculated, do the division
-            #### self.vt_G[:] /= self.nt_G[:] + SMALL_NUMBER
-            
+            # Communicate the coarse-response part
+            self.kpt_comm.sum(self.vt_G)
+
             self.vt_g[:] = 0.0 # TODO: Is this needed for interpolate?
             self.interpolate(self.vt_G, self.vt_g)
 
@@ -97,7 +95,6 @@ class ResponseFunctional(NonLocalFunctional):
             # Add the fine-grid response part to total potential
             v_g[:] += self.vt_g
 
-           
 
     def get_slater_part_and_weights(self, info_s, v_sg, e_g):
         """The Slater potential (or V_s) is to be calculated using this method. 
@@ -154,6 +151,9 @@ class ResponseFunctional(NonLocalFunctional):
 
                 Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
                 Dnn_Lq += dot3(xccorr.B_Lqp, Dn_p)
+
+        # Communicate over K-points
+        self.kpt_comm.sum(Dnn_Lq)
 
         # Calculate the real response part of valence electrons multiplied with density
         nn_Lg = num.dot(Dnn_Lq, xccorr.n_qg)

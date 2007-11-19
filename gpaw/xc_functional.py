@@ -232,7 +232,7 @@ class XCFunctional:
 
         if self.xcname.startswith('GLLB') or self.xcname == 'KLI':
             self.xc.pass_stuff(paw.kpt_u, paw.gd, paw.finegd, paw.density.interpolate,
-                               paw.nspins, paw.my_nuclei, paw.occupation)
+                               paw.nspins, paw.my_nuclei, paw.occupation, paw.kpt_comm)
 
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:

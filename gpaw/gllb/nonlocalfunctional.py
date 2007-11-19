@@ -75,7 +75,7 @@ class NonLocalFunctional:
         self.initialization_ready = False
         self.mixing = 0.3
 
-    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation):
+    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm):
         """
         Important quanities is supplied to non-local functional using this method.
 
@@ -90,8 +90,10 @@ class NonLocalFunctional:
         self.nspins = nspins
         self.nuclei = nuclei
         self.occupation = occupation
+        self.kpt_comm = kpt_comm
         self.gd = gd
         self.finegd = finegd
+      
 
         # Get the description for this functional
         self.desc = self.get_functional_desc()

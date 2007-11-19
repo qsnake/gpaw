@@ -7,7 +7,10 @@ class NonLocalFunctionalFactory:
     It contains a method called get_functional_by_name, which takes
     the xc-name for non-local functional and returns the corresponding
     XCNonLocalFunctional object. Currently there are 3 keywords
-    available: GLLB GLLBSlaterCore GLLBKLI
+    available: 
+       GLLB (The fermi-level reference set to HOMO)
+       GLLBSlaterCore (Currently disabled)
+       KLI (Currently disabled)
 
     """
 
@@ -15,12 +18,12 @@ class NonLocalFunctionalFactory:
         if name == 'GLLB':
             from gpaw.gllb.gllb import GLLBFunctional
             return GLLBFunctional()
-        elif name == 'GLLBSlaterCore':
-            from gpaw.gllb.gllbsc import GLLBSlaterCoreFunctional
-            return GLLBSlaterCoreFunctional()
-        elif name == 'KLI':
-            from gpaw.gllb.kli import KLIFunctional
-            return KLIFunctional()
+        #elif name == 'GLLBSlaterCore':
+        #    from gpaw.gllb.gllbsc import GLLBSlaterCoreFunctional
+        #    return GLLBSlaterCoreFunctional()
+        #elif name == 'KLI':
+        #    from gpaw.gllb.kli import KLIFunctional
+        #    return KLIFunctional()
         else:
             raise RuntimeError('Unkown NonLocal density functional: ' + name)
 

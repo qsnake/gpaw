@@ -149,7 +149,6 @@ class XCNonLocalCorrection:
 
         D_Lq = dot3(self.B_Lqp, D_p)
         n_Lg = num.dot(D_Lq, self.n_qg)
-        print self.motherxc.xcname
         n_Lg[0] += self.nc_g * num.sqrt(4 * num.pi) / deg
 
         nt_Lg = num.dot(D_Lq, self.nt_qg)
@@ -168,7 +167,6 @@ class XCNonLocalCorrection:
 
         dEdD_p = H_p
         dEdD_p[:] = 0.0
-        print "deg", deg
         self.deg = deg
 
         y = 0
@@ -224,6 +222,5 @@ class XCNonLocalCorrection:
                                   num.dot(self.nt_qg, vt_g * self.dv_g))
             y += 1
 
-        print "Exc0", self.Exc0
         return (E) - self.Exc0 / deg
 

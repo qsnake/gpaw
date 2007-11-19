@@ -204,8 +204,8 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
         self.old_fermi_level = None
         self.xcname = 'GLLB'
 
-    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation):
-        ResponseFunctional.pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation)
+    def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm):
+        ResponseFunctional.pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm)
 
         # Temporary arrays needed for evaluating the Slater part of GLLB
         self.tempvxc_g = finegd.zeros()
@@ -220,17 +220,10 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
         return NonLocalFunctionalDesc(True, True, True, True)
 
     def find_fermi_level(self, info_s):
-        # Find the fermi-level of all spins separately, and choose the largest value
-        # to be the true fermi-level
-        fermi_level = -1000
-        for info in info_s:
-            test_level = find_fermi_level1D(info['f_n'], info['eps_n'])
-            if test_level > fermi_level:
-                fermi_level = test_level
-            print "Eigenvalues", info['eps_n']
-        print "Call to find_fermi_level!!! Fermi_level", fermi_level, " in processor ", world.rank, "/", world.size
-        fermi_level = world.max(fermi_level)
-        print "Communicated fermi-level! It is ", fermi_level, " in processor ", world.rank, "/", world.size
+        # Maximun level over spin
+        fermi_level = max( [ find_fermi_level1D(info['f_n'], info['eps_n']) for info in info_s ] )
+        # And over k-points
+        fermi_level = self.kpt_comm.max(fermi_level)
         return fermi_level
 
     def ensure_B88(self):
