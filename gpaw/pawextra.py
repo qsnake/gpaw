@@ -85,7 +85,7 @@ class PAWExtra:
         if self.kpt_comm.rank == kpt_rank:
             # Domain master send this to the global master
             if self.domain.comm.rank == MASTER:
-                self.kpt_comm.send(self.kpy_u[u].eps_n, MASTER, 1301)
+                self.kpt_comm.send(self.kpt_u[u].eps_n, MASTER, 1301)
         elif self.master:
             eps_n = num.zeros(self.nbands, num.Float)
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
