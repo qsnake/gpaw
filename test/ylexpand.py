@@ -30,7 +30,7 @@ def max_index(l):
 
 # check numbers
 for n in [0,1]:
-    gl = yl.expand(calc.kpt_u[0].psit_nG[n])
+    gl, w = yl.expand(calc.kpt_u[0].psit_nG[n])
     print 'max_index(gl), n=', max_index(gl), n
     assert(max_index(gl) == n)
 
