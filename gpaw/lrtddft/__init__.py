@@ -283,8 +283,13 @@ class LrTDDFTExcitation(Excitation):
         if Om is not None:
             if i is None:
                 raise RuntimeError
-        
-            self.energy=sqrt(Om.eigenvalues[i])
+
+            ev = Om.eigenvalues[i]
+            if ev < 0:
+                # we reached an instability, mark it with a negative value
+                self.energy = -sqrt(-ev)
+            else:
+                self.energy = sqrt(ev)
             self.f = Om.eigenvectors[i]
             self.kss = Om.kss
             self.me = 0.
