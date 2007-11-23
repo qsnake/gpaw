@@ -44,7 +44,7 @@ class Wannier(ASEWannier):
             self.SetOccupationEnergy(occupationenergy)
             self.InitOccupationParameters()
 
-        if initialwannier is not None:  
+        if initialwannier is not None:
             self.SetInitialWannierFunctions(initialwannier)
 
         if calculator.typecode == num.Float:
@@ -83,11 +83,13 @@ class Wannier(ASEWannier):
             V_knj = num.zeros((Nk, Nb, len(initialwannier)), num.Complex)
             # The 5 lines below should be changed to something where
             # localized functions are put on the grid at the desired pos
-            for k in range(Nk):
-                for j in range(len(initialwannier)):
-                    a, i = initialwannier[j]
-                    u = k + spin * Nk
-                    V_knj[k, :, j] = nuclei[a].P_uni[u, :, i]
+            ##for k in range(Nk):
+            ##    for j in range(len(initialwannier)):
+            ##        a, i = initialwannier[j]
+            ##        print "%i %i" % (a,i)
+            ##        u = k + spin * Nk
+            ##        V_knj[k, :, j] = nuclei[a].P_uni[u, :, i]
+            V_knj = get_projections(initialwannier,self.GetCalculator())
 
             c_k, U_k = get_c_k_and_U_k(V_knj, (Nb, M_k, L_k))
             self.SetListOfRotationMatrices(U_k)
@@ -156,6 +158,39 @@ class Wannier(ASEWannier):
 #See Thygesen et al. PRB
 from random import random
 from gpaw.utilities.tools import dagger, project, normalize, gram_schmidt_orthonormalize
+from gpaw.localized_functions import create_localized_functions
+from gpaw.spline import Spline
+
+def get_projections(initialwannier,calc):
+    #initialwannier = [[spos_c,ls,a]]
+    
+    nbf = 0
+    for spos_c,ls,a in initialwannier:
+        nbf += num.sum([2 * l + 1 for l in ls])
+    
+    f_kni = num.zeros((len(calc.ibzk_kc),calc.nbands,nbf),num.Complex)
+    
+    nbf = 0
+    for spos_c,ls,a in initialwannier:
+        a /= calc.a0
+        cutoff = 4 * a
+        x = num.arange(0.0,cutoff,cutoff / 500.0)
+        rad_g = num.exp(-x*x/a**2)
+        rad_g[-1:] = 0.0
+        functions = [Spline(l,cutoff,rad_g) for l in ls]
+        lf = create_localized_functions(functions,calc.gd,spos_c,
+                                        typecode=calc.typecode)
+        lf.set_phase_factors(calc.ibzk_kc)
+        nlf = num.sum([2 * l + 1 for l in ls])
+        nbands = calc.nbands
+        nkpts = len(calc.ibzk_kc)
+        for k in range(nkpts):
+            lf.integrate(calc.kpt_u[k].psit_nG[:],f_kni[k,:,nbf:nbf+nlf],k=k)
+        nbf += nlf
+   
+    return f_kni
+   # f_kni = num.conjugate(f_kni)
+ 
 
 def get_c_k_and_U_k(V_kni, NML):
     """V_kni = <psi_kn|f_i>, where f_i is an initial function """
@@ -169,14 +204,15 @@ def get_c_k_and_U_k(V_kni, NML):
         c = num.zeros([nbands - M, L], num.Complex)
         U = num.zeros([M + L, M + L], num.Complex)
         #Calculate the EDF
-        w = abs(num.sum(T * num.conjugate(T)))                
+        w = abs(num.sum(T * num.conjugate(T)))
         for i in xrange(min(L, nbf)):
             t = w.tolist().index(max(w))
             c[:, i] = T[:, t]
             for j in xrange(i):
-                c[:, i] -= project(c[:, j], T[:, t])
-            c[:,i] /= num.sqrt(num.vdot(c[:, i], c[:, i]))
-            w -= abs(num.dot(num.conjugate(c[:, i]), T))**2
+                c[:,i] = c[:,i] - project(c[:, j], T[:, t])
+            c[:,i] /= num.sqrt(num.dot(num.conjugate(c[:, i]), c[:, i]))
+            w = w - abs(num.dot(num.conjugate(c[:, i]), T)) #**2 !?
+            #print abs(num.dot(num.conjugate(c[:, i]), T))
         if nbf < L:
             print "augmenting with random vectors"
             for i in xrange(nbf, L):
