@@ -149,7 +149,7 @@ class ExpandYl:
         print >> f, '# lmax =', self.lmax 
         print >> f, '# s    k     n',
         print >> f, '    norm      sum   weight',
-        spdfghi = 's p d h f g h i'.split()
+        spdfghi = 's p d f g h i'.split()
         for l in range(self.lmax+1):
             print >> f, '      %'+spdfghi[l],
         print >> f
