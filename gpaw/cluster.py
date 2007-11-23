@@ -26,6 +26,13 @@ class Cluster(ListOfAtoms):
 
         self.timestep(timestep)
         
+    def __add__(self, other):
+        assert(type(other) == type(self))
+        result = Cluster(self.Copy())
+        for a in other:
+            result.append(a.Copy())
+        return result
+        
     def Center(self):
         """Center the structure to unit cell"""
         extr = self.extreme_positions()
