@@ -251,7 +251,6 @@ class LrTDDFT(ExcitationList):
                 if jend is None: jend = self.kss.jend
                 f.write('%d %d %d'%(len(self),istart,jend)+'\n')
                 for ex in self:
-                    print 'ex=',ex
                     f.write(ex.outstring())
                 f.write('# Eigenvectors\n')
                 for ex in self:
