@@ -5,12 +5,37 @@ from gpaw.localized_functions import create_localized_functions
 
 
 class PairDensity:
-    def __init__(self, density, kpt, i, j):
+    def  __init__(self, paw):
+        """basic initialisation knowing"""
+
+        self.density = paw.density
+
+        self.ghat_nuclei = paw.ghat_nuclei
+        
+        # we need to set Ghat_nuclei and Ghat_L
+        # on the course grid if not initialized already
+        if not hasattr(paw, 'Ghat_nuclei'):
+            Ghat_nuclei = []
+            create = create_localized_functions
+            for nucleus in paw.nuclei:
+                # Shape functions:
+                ghat_l = nucleus.setup.ghat_l
+                Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
+                                lfbc=paw.locfuncbcaster)
+                nucleus.Ghat_L = Ghat_L
+                if Ghat_L is not None:
+                    Ghat_nuclei.append(nucleus)
+                Ghat_nuclei.sort()
+            paw.Ghat_nuclei = Ghat_nuclei
+
+        self.Ghat_nuclei = paw.Ghat_nuclei
+
+    def initialize(self, kpt, i, j):
+        """initialize yourself with the wavefunctions"""
         self.i = i
         self.j = j
         self.u = kpt.u
         self.spin = kpt.s
-        self.density = density
         
         self.wfi = kpt.psit_nG[i]
         self.wfj = kpt.psit_nG[j]
@@ -30,9 +55,14 @@ class PairDensity:
     def with_compensation_charges(self, finegrid=False):
         """Get pair densisty including the compensation charges"""
         rhot = self.get(finegrid)
+
+        if finegrid:
+            ghat_nuclei = self.ghat_nuclei
+        else:
+            ghat_nuclei = self.Ghat_nuclei
         
         # Determine the compensation charges for each nucleus
-        for nucleus in self.density.ghat_nuclei:
+        for nucleus in ghat_nuclei:
             if nucleus.in_this_domain:
                 # Generate density matrix
                 Pi_i = nucleus.P_uni[self.u, self.i]
@@ -51,11 +81,6 @@ class PairDensity:
             if finegrid:
                 nucleus.ghat_L.add(rhot, Q_L, communicate=True)
             else:
-                if not hasattr(nucleus, 'Ghat_L'):
-                    # add course grid splines to this nucleus
-                    create = create_localized_functions
-                    nucleus.Ghat_L = create(nucleus.setup.ghat_l,
-                                            self.density.gd, nucleus.spos_c)
                 nucleus.Ghat_L.add(rhot, Q_L, communicate=True)
                 
         return rhot 

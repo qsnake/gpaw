@@ -180,7 +180,9 @@ class KSSingle(Excitation,PairDensity):
 
         # normal entry
         
-        PairDensity.__init__(self,paw.density,paw.kpt_u[spin],iidx,jidx)
+        PairDensity.__init__(self, paw)
+        PairDensity.initialize(self, paw.kpt_u[spin], iidx, jidx)
+
         self.pspin=pspin
         
         f=paw.kpt_u[spin].f_n
