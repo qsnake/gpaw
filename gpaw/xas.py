@@ -62,8 +62,7 @@ class XAS:
             n_end = paw.nbands 
             n = paw.nbands
         else:
-            print "wrong keyword for 'mode', use 'xas', 'xes' or 'all'"
-            exit
+            raise RuntimeError("wrong keyword for 'mode', use 'xas', 'xes' or 'all'")
 
         self.n = n
 
@@ -222,7 +221,8 @@ class RecursionMethod:
     """This class implements the Haydock recursion method. """
 
     def __init__(self, paw=None, filename=None,
-                 tol=1e-10, maxiter=100, proj=None, proj_xyz=True):
+                 tol=1e-10, maxiter=100, proj=None,
+                 proj_xyz=True, inverse_overlap="exact"):
 
         self.paw = paw
         if paw is not None:
@@ -243,9 +243,21 @@ class RecursionMethod:
 
         self.tol = tol
         self.maxiter = maxiter
-        
+
+        if inverse_overlap == "exact":
+            self.solver = self.solve
+        elif inverse_overlap == "approximate":
+            self.solver = self.solve2
+        elif inverse_overlap == "noinverse":
+            self.solver = self.solve3
+        else:
+            raise RuntimeError("""Error, inverse_solver must be either 'exact',
+            'approximate' or 'noinverse' """)
+            
         if filename is not None:
             self.read(filename)
+            if paw is not None:
+                self.allocate_tmp_arrays()
         else:
             self.initialize_start_vector(proj=proj,proj_xyz=proj_xyz)
 
@@ -313,6 +325,12 @@ class RecursionMethod:
 
         if self.paw.master:
             pickle.dump(data, open(filename, 'w'))
+
+    def allocate_tmp_arrays(self):
+        
+        self.tmp1_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+        self.tmp2_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+        self.z_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
         
     def initialize_start_vector(self, proj=None, proj_xyz=True):
         # proj is one list of vectors [[e1_x,e1_y,e1_z],[e2_x,e2_y,e2_z]]
@@ -363,10 +381,16 @@ class RecursionMethod:
             A_ci = A_ci_tmp
 
         self.dim = len(A_ci)
-        self.tmp1_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
-        self.tmp2_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
-        self.z_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+
+        self.allocate_tmp_arrays()
+
         self.w_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
+        self.wold_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
+        self.y_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
+            
+        self.a_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
+        self.b_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
+        
             
         if nucleus.pt_i is not None: # not all CPU's will have a contribution
             for u in range(nmykpts):
@@ -374,12 +398,8 @@ class RecursionMethod:
 
         print self.w_ucG.shape
         
-        
-        self.wold_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
-        self.y_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
-            
-        self.a_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
-        self.b_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
+
+
         
     def run(self, nsteps):
         ni = self.a_uci.shape[2]
@@ -402,7 +422,7 @@ class RecursionMethod:
         wold_cG = self.wold_ucG[u]
         z_cG = self.z_cG
         
-        self.solve(w_cG, self.z_cG, u)
+        self.solver(w_cG, self.z_cG, u)
         I_c = num.reshape(integrate(num.conjugate(z_cG) * w_cG)**-0.5,
                           (self.dim, 1, 1, 1))
         z_cG *= I_c
@@ -505,11 +525,25 @@ class RecursionMethod:
         return sigma_cn
     
     def solve(self, w_cG, z_cG, u):
+        # exact inverse overlap
         self.paw.kpt_u[u].apply_inverse_overlap(self.paw.pt_nuclei,
                                                 w_cG, self.tmp1_cG)
         self.u = u
         CG(self, z_cG, self.tmp1_cG,
            tolerance=self.tol, maxiter=self.maxiter)
+
+    def solve2(self, w_cG, z_cG, u):
+        # approximate inverse overlap
+        self.paw.kpt_u[u].apply_inverse_overlap(self.paw.pt_nuclei,
+                                                w_cG, z_cG)
+        self.u = u
+
+    def solve3(self, w_cG, z_cG, u):
+        # no inverse overlap
+        z_cG[:] =  w_cG
+        self.u = u
+
+    
 
     def sum(self, a):
         self.paw.gd.comm.sum(a)
