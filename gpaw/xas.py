@@ -222,7 +222,7 @@ class RecursionMethod:
 
     def __init__(self, paw=None, filename=None,
                  tol=1e-10, maxiter=100, proj=None,
-                 proj_xyz=True, inverse_overlap="exact"):
+                 proj_xyz=True):
 
         self.paw = paw
         if paw is not None:
@@ -244,16 +244,7 @@ class RecursionMethod:
         self.tol = tol
         self.maxiter = maxiter
 
-        if inverse_overlap == "exact":
-            self.solver = self.solve
-        elif inverse_overlap == "approximate":
-            self.solver = self.solve2
-        elif inverse_overlap == "noinverse":
-            self.solver = self.solve3
-        else:
-            raise RuntimeError("""Error, inverse_solver must be either 'exact',
-            'approximate' or 'noinverse' """)
-            
+     
         if filename is not None:
             self.read(filename)
             if paw is not None:
@@ -399,9 +390,19 @@ class RecursionMethod:
         print self.w_ucG.shape
         
 
+    def run(self, nsteps, inverse_overlap="exact"):
 
-        
-    def run(self, nsteps):
+        if inverse_overlap == "exact":
+            self.solver = self.solve
+        elif inverse_overlap == "approximate":
+            self.solver = self.solve2
+        elif inverse_overlap == "noinverse":
+            self.solver = self.solve3
+        else:
+            raise RuntimeError("""Error, inverse_solver must be either 'exact',
+            'approximate' or 'noinverse' """)
+            
+
         ni = self.a_uci.shape[2]
         a_uci = num.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.typecode)
         b_uci = num.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.typecode)
