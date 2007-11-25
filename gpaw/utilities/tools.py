@@ -55,6 +55,17 @@ def core_states(symbol):
     Njcore = j + len(core) / 2
     return Njcore
 
+def split_formula(formula):
+    res = []
+    for c in formula:
+        if c.isupper():
+            res.append(c)
+        elif c.islower():
+            res[-1] += c
+        else:
+            res.extend([res[-1],] * (eval(c) - 1))
+    return res
+
 def get_kpoint_dimensions(kpts):
     """Returns number of k-points along each axis of input Monkhorst pack.
        The set of k-points must not have been symmetry reduced.

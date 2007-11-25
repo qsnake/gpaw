@@ -237,8 +237,8 @@ CH4 = ListOfAtoms([
 # MP2 energy = -55.0614242 Hartree
 # Charge = 0, multiplicity = 3
 NH = ListOfAtoms([
-    Atom('N', [.000000, .000000, .129929]),
-    Atom('H', [.000000, .000000, -.909501]),
+    Atom('N', [.000000, .000000, .129929], magmom=0.883),
+    Atom('H', [.000000, .000000, -.909501], magmom=-0.010),
     ])
 
 # NH2 radical, C2v symm, 2-B1.
@@ -559,8 +559,8 @@ P2 = ListOfAtoms([
 # MP2 energy = -795.2628131 Hartree
 # Charge = 0, multiplicity = 3
 S2 = ListOfAtoms([
-    Atom('S', [.000000, .000000, .960113]),
-    Atom('S', [.000000, .000000, -.960113]),
+    Atom('S', [.000000, .000000, .960113], magmom=0.558),
+    Atom('S', [.000000, .000000, -.960113], magmom=0.558),
     ])
 
 # Cl2 molecule, D*h symm.
@@ -599,16 +599,16 @@ CS = ListOfAtoms([
 # MP2 energy = -472.6266876 Hartree
 # Charge = 0, multiplicity = 3
 SO = ListOfAtoms([
-    Atom('O', [.000000, .000000, -1.015992]),
-    Atom('S', [.000000, .000000, .507996]),
+    Atom('O', [.000000, .000000, -1.015992], magmom=.491),
+    Atom('S', [.000000, .000000, .507996], magmom=.709),
     ])
 
 # ClO radical, C*v symm, 2-PI.
 # MP2 energy = -534.5186484 Hartree
 # Charge = 0, multiplicity = 2
 ClO = ListOfAtoms([
-    Atom('Cl', [.000000, .000000, .514172]),
-    Atom('O', [.000000, .000000, -1.092615]),
+    Atom('Cl', [.000000, .000000, .514172], magmom=1.), # XXXX ??
+    Atom('O', [.000000, .000000, -1.092615], magmom=0), # XXXX ??
     ])
 
 # ClF molecule, C*v symm, 1-SG.
