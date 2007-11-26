@@ -152,24 +152,20 @@ class Setup:
             self.rcore = rcore = r_g[g]
 
         ni = 0
-        niAO = 0
         i = 0
         j = 0
         jlL_i = []
         for l, n in zip(l_j, n_j):
-            if n > 0:
-                niAO += 2 * l + 1
             for m in range(2 * l + 1):
                 jlL_i.append((j, l, l**2 + m))
                 i += 1
             j += 1
         ni = i
         self.ni = ni
-        self.niAO = niAO
 
         np = ni * (ni + 1) // 2
         nq = nj * (nj + 1) // 2
-
+ 
         lcut = max(l_j)
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
@@ -202,6 +198,11 @@ class Setup:
             self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
         else:
             self.read_basis_functions(basis)
+
+        self.niAO = 0
+        for phit in self.phit_j:
+            l = phit.get_angular_momentum_number()
+            self.niAO += 2 * l + 1
 
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()

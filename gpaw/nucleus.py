@@ -303,11 +303,15 @@ class Nucleus:
         f_si = num.zeros((ns, niao), num.Float)
 
         i = 0
-        for n, l, f in zip(self.setup.n_j, self.setup.l_j, self.setup.f_j):
+        nj = len(self.setup.n_j)
+        for j, phit in enumerate(self.setup.phit_j):
+            l = phit.get_angular_momentum_number()
+            if j < nj and self.setup.n_j[j] >= 0:
+                f = self.setup.f_j[j]
+            else:
+                f = 0
             degeneracy = 2 * l + 1
             f = int(f)
-            if n < 0:
-                break
             if hund:
                 # Use Hunds rules:
                 f_si[0, i:i + min(f, degeneracy)] = 1.0      # spin up
@@ -329,6 +333,7 @@ class Nucleus:
                     magmom -= mag
                 
             i += degeneracy
+        print f_si
         assert i == niao
         return f_si
     
