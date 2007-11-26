@@ -81,6 +81,9 @@ class EXX:
         self.integrate   = gd.integrate
         self.Na = Na
         self.use_finegrid = use_finegrid
+
+        paw.set_positions() # this should not be needed here XXXXX
+        self.pair_density = PairDensity(paw)
         
         # Allocate space for matrices
         self.nt_G = gd.empty()    # Pseudo density on coarse grid
@@ -147,7 +150,8 @@ class EXX:
                 dc = 1 + (n1 != n2) # double count factor
 
                 # Determine current exchange density ...
-                pd = PairDensity(self.density, kpt, n1, n2)
+                pd = self.pair_density
+                pd.initialize(kpt, n1, n2)
                 self.nt_G[:] = pd.get(finegrid=False)
 
                 # and interpolate to the fine grid:
