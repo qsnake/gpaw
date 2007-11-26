@@ -333,7 +333,7 @@ class Nucleus:
                     magmom -= mag
                 
             i += degeneracy
-        print f_si
+
         assert i == niao
         return f_si
     
