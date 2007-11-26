@@ -5,6 +5,9 @@ import Numeric as num
 from ASE.Units import Convert
 from gpaw.utilities import check_unit_cell
 
+import gpaw.mpi as mpi
+from gpaw.mpi import MASTER
+
 def read_plt(filename):
     """Read plt files
     returns the cell(3x3 matrix), the grid and the origin,
@@ -44,6 +47,15 @@ def read_plt(filename):
     f.close()
 
     return cell, num.transpose(num.resize(arr,(nz,ny,nx))), (x0-dx,y0-dy,z0-dz)
+
+def write_collected_plt(gd,
+                        grid,
+                        filename,
+                        origin=(0.0,0.0,0.0), # ASE uses (0,0,0) as origin
+                        typ=4):
+    collected_grid = gd.collect(grid)
+    if mpi.rank == MASTER:
+        write_plt(gd, collected_grid, filename, origin, typ)
 
 def write_plt(cell,
               grid,
@@ -110,14 +122,14 @@ def wf2plt(paw,i,spin=0,fname=None):
         fname = 'wf'+str(i)+'_'+str(spin)+'.plt'
     write_plt(gd, wf, fname)
     
-def pot2plt(paw,spin=0,fname=None):
+def pot2plt(paw, spin=0, fname=None):
     """Write the potential as plt file"""
     kpt = paw.kpt_u[spin]
     gd = kpt.gd
     vt = paw.hamiltonian.vt_sG[spin]
 
     if fname is None:
-        fname = 'vt_'+str(spin)+'.plt'
-    write_plt(gd, vt, fname)
+        fname = 'vt_Gs'+str(spin)+'.plt'
+    write_collected_plt(gd, vt, fname)
 
   
