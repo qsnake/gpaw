@@ -39,7 +39,7 @@ class Output:
         self.txt = txt
         self.verbose = p['verbose']
 
-        self.print_logo()
+        #self.print_logo()
 
     def text(self, *args, **kwargs):
         self.txt.write(kwargs.get('sep', ' ').join([str(arg)

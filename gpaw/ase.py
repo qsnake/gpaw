@@ -37,7 +37,6 @@ class Calculator(PAW):
         self.a0 = Convert(1, 'Bohr', lengthunit)
         self.Ha = Convert(1, 'Hartree', energyunit)
 
-        self.convert_units(kwargs)
         PAW.__init__(self, filename, **kwargs)
 
         self.text('ASE: ', os.path.dirname(ASE.__file__))
@@ -46,9 +45,9 @@ class Calculator(PAW):
     def convert_units(self, parameters):
         if parameters.get('h') is not None:
             parameters['h'] /= self.a0
-        if 'width' in parameters:
+        if parameters.get('width') is not None:
             parameters['width'] /= self.Ha
-        if 'external' in parameters:
+        if parameters.get('external') is not None:
             parameters['external'] = parameters['external'] / self.Ha
         if ('convergence' in parameters and
             'energy' in  parameters['convergence']):

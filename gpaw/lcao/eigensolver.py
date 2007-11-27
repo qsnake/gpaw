@@ -7,7 +7,7 @@ from gpaw.utilities.lapack import diagonalize
 class LCAO:
     """Eigensolver for LCAO-basis calculation"""
 
-    def __init__(self, paw):
+    def __init__(self):
         pass
 
     def initialize(self, paw):

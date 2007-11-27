@@ -30,8 +30,8 @@ class CG(Eigensolver):
     * Conjugate gradient steps
     """
 
-    def __init__(self, paw):
-        Eigensolver.__init__(self, paw)
+    def __init__(self):
+        Eigensolver.__init__(self)
 
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)

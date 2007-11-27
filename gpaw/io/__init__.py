@@ -346,7 +346,7 @@ def read(paw, reader):
             
     # Read pseudoelectron density pseudo potential on the coarse grid
     # and distribute out to nodes:
-    for s in range(paw.nspins): 
+    for s in range(paw.nspins):
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
                           paw.density.nt_sG[s])
 
