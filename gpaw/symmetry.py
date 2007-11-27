@@ -22,7 +22,7 @@ class Symmetry:
         self.scale_position = domain.scale_position  # XXX ref to domain!
         self.tol = tolerance
         # The identity:
-        self.symmetries = [((0, 1, 2), (1, 1, 1))]
+        self.symmetries = [((0, 1, 2), num.array((1, 1, 1)))]
 
     def analyze(self, pos_ac):
         """Analyse(atoms)
