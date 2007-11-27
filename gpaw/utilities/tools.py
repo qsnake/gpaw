@@ -168,11 +168,11 @@ def gram_schmidt_orthonormalize(vec, order=None):
     if order is None:
         order = range(M)
     for m in range(M):
-	temp = vec[:, order[m]]
-	for i in range(m):
-	    temp -= project(newvec[:, order[i]], vec[:, order[m]])
-	# Normalize before saving
-	newvec[:, order[m]] = temp / num.sqrt(num.dot(num.conjugate(temp),
+        temp = vec[:, order[m]]
+        for i in range(m):
+            temp -= project(newvec[:, order[i]], vec[:, order[m]])
+        # Normalize before saving
+        newvec[:, order[m]] = temp / num.sqrt(num.dot(num.conjugate(temp),
                                                       temp))
     return newvec
 
