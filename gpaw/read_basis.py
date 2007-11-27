@@ -61,13 +61,12 @@ for details."""
         if name == 'paw_basis':
             self.version = attrs['version']
         elif name == 'radial_grid':
-            assert attrs['eq'] == 'r=rc*i/n'
             self.ng = int(attrs['n'])
-            self.rc = float(attrs['rc'])
             assert int(attrs['istart']) == 0
             assert int(attrs['iend']) == self.ng - 1
         elif name == 'basis_function':
             self.l_j.append(int(attrs['l']))
+            self.rc = float(attrs['rc'])
             self.data = []
 
     def characters(self, data):

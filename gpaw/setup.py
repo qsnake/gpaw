@@ -197,7 +197,7 @@ class Setup:
         if basis is None:
             self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
         else:
-            self.read_basis_functions(basis)
+            self.read_basis_functions(basis, r_g, beta)
 
         self.niAO = 0
         for phit in self.phit_j:
@@ -488,13 +488,14 @@ class Setup:
                                           grr(phit_g, l, r_g),
                                           r_g=r_g, beta=beta))
 
-    def read_basis_functions(self, basis_name):
+    def read_basis_functions(self, basis_name, r_g, beta):
         parser = BasisSetXMLParser()
         (l_j, rc, phit_jg, filename) = parser.parse(self.symbol, basis_name)
 
         self.phit_j = []
         for l, phit_g in zip(l_j, phit_jg):
-            self.phit_j.append(Spline(l, rc, phit_g))
+            self.phit_j.append(Spline(l, rc, phit_g, r_g=r_g,
+                                      beta=beta))
 
     def print_info(self, text):
         if self.phicorehole_g is None:
