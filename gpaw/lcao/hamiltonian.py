@@ -5,6 +5,7 @@ from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.blas import rk, r2k
 from gpaw.utilities import unpack
 from gpaw.lcao.overlap import TwoCenterIntegrals
+from gpaw import debug
 
 
 class LCAOHamiltonian(Hamiltonian):
@@ -42,16 +43,9 @@ class LCAOHamiltonian(Hamiltonian):
                             l2 = phit2.get_angular_momentum_number()
                             for m2 in range(2 * l2 + 1):
                                 P = tci.p_overlap(id1, id2, l1, l2, m1, m2, R)
-                                #print i2, i1, P
-                                #print nucleus1.P_mi[i2, i1]
                                 nucleus1.P_mi[i2, i1] = P
                                 i2 += 1
                     i1 += 1
-
-            if 0:        
-                print P_mi
-                print nucleus1.P_mi
-                print P_mi - nucleus1.P_mi
 
         T_mm = num.zeros((self.nao, self.nao), num.Float)
         S_mm = num.zeros((self.nao, self.nao), num.Float)
@@ -86,27 +80,18 @@ class LCAOHamiltonian(Hamiltonian):
         self.S_mm = S_mm
         self.T_mm = T_mm
 
-        if 0:
-            print S_mm
-            print self.S_mm
-            print self.S_mm - S_mm
-
-        if 0:
-            print T_mm
-            print self.T_mm
-            print self.T_mm - T_mm
-
+        #self.old_initialize()
+        
     def calculate_effective_potential_matrix(self, V_mm):
         box_b = []
         for nucleus in self.nuclei:
-            box_b.extend(nucleus.phit_i.box_b)
+            if debug:
+                box_b.append(nucleus.phit_i.box_b[0].lfs)
+            else:
+                box_b.extend(nucleus.phit_i.box_b)
         assert len(box_b) == len(self.nuclei)
         from _gpaw import overlap
-        from time import time as t
-        t0 = t()
         overlap(box_b, self.vt_sG[0], V_mm)
-        t1 = t()
-        #print t1 - t0
 
     def old_initialize(self):
         self.nao = 0
@@ -123,6 +108,14 @@ class LCAOHamiltonian(Hamiltonian):
             m1 = m2
         assert m2 == self.nao
 
+        phi_mG = self.phi_mG
+        H_mm = num.zeros((self.nao, self.nao), num.Float)
+        r2k(0.5 * self.gd.dv, phi_mG, self.vt_sG[0] * phi_mG, 0.0, H_mm)
+        print H_mm
+        H0_mm = num.zeros((self.nao, self.nao), num.Float)
+        self.calculate_effective_potential_matrix(H0_mm)
+        print H0_mm
+        sdfkgh
         for nucleus in self.nuclei:
             ni = nucleus.get_number_of_partial_waves()
             nucleus.P_mi = num.zeros((self.nao, ni), num.Float)
@@ -138,7 +131,6 @@ class LCAOHamiltonian(Hamiltonian):
         for nucleus in self.nuclei:
             self.S_mm += num.dot(num.dot(nucleus.P_mi, nucleus.setup.O_ii),
                             num.transpose(nucleus.P_mi))
-
         self.T_mm = num.zeros((self.nao, self.nao), num.Float)
         Tphi_mG = self.gd.zeros(self.nao)
         self.kin.apply(self.phi_mG, Tphi_mG)

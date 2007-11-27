@@ -71,7 +71,7 @@ class TwoCenterIntegrals:
                 phit_g[0:self.ng] = [phit(r) for r in self.r_g[0:self.ng]]
                 phit_q = fbt(l, phit_g, self.r_g, self.k)
                 phit_jq[id] = (l, phit_q)
-                
+
         pt_g = num.zeros(self.ng, num.Float) 
         pt_jq = {}
         for setup in setups:

@@ -75,6 +75,7 @@ PyObject * overlap(PyObject* self, PyObject *args)
 	  int size[3];
 	  int beg1[3];
 	  int beg2[3];
+	  bool overlap = true;
 	  for (int c = 0; c < 3; c++)
 	    {
 	      beg[c] = MAX(lf1->start[c], lf2->start[c]);
@@ -82,48 +83,53 @@ PyObject * overlap(PyObject* self, PyObject *args)
 			     lf2->start[c] + lf2->size0[c]);
 	      size[c] = end[c] - beg[c];
 	      if (size[c] <= 0)
-		continue;
+		{
+		  overlap = false;
+		  continue;
+		}
 	      beg1[c] = beg[c] - lf1->start[c];
 	      beg2[c] = beg[c] - lf2->start[c];
 	    }
 	  int nao2 = lf2->nf;
-	  int ng = size[0] * size[1] * size[2];
-	  int n = ng * (nao1 + nao2) + nao1 * nao2;
-	  if (n > nmem)
+	  if (overlap)
 	    {
-	      if (nmem != 0)
-		free(a1);
-	      nmem = n;
-	      a1 = GPAW_MALLOC(double, nmem);
-	    }
-	  double* a2 = a1 + ng * nao1;
-	  double* H = a2 + ng * nao2;
-	  double* f2 = lf2->f;
-	  double* vt2 = lf2->w;
-	  if (b2 > b1)
-	    {
-	      bmgs_cut(vt1, lf1->size0, beg1, vt2, size);
-	      for (int i = 0; i < nao1; i++)
-		cut(f1 + i * lf1->ng0, lf1->size0, beg1, vt2,
-		    a1 + i * ng, size);
-	      for (int i = 0; i < nao2; i++)
-		bmgs_cut(f2 + i * lf2->ng0, lf2->size0, beg2,
-			 a2 + i * ng, size);
-	    }
-	  else
-	    {
+	      int ng = size[0] * size[1] * size[2];
+	      int n = ng * (nao1 + nao2) + nao1 * nao2;
+	      if (n > nmem)
+		{
+		  if (nmem != 0)
+		    free(a1);
+		  nmem = n;
+		  a1 = GPAW_MALLOC(double, nmem);
+		}
+	      double* a2 = a1 + ng * nao1;
+	      double* H = a2 + ng * nao2;
+	      double* f2 = lf2->f;
+	      double* vt2 = lf2->w;
+	      if (b2 > b1)
+		{
+		  bmgs_cut(vt1, lf1->size0, beg1, vt2, size);
+		  for (int i = 0; i < nao1; i++)
+		    cut(f1 + i * lf1->ng0, lf1->size0, beg1, vt2,
+			a1 + i * ng, size);
+		  for (int i = 0; i < nao2; i++)
+		    bmgs_cut(f2 + i * lf2->ng0, lf2->size0, beg2,
+			     a2 + i * ng, size);
+		}
+	      else
+		{
+		  for (int i1 = 0; i1 < nao1; i1++)
+		    for (int g = 0; g < ng; g++)
+		      a1[i1 * ng + g] = vt1[g] * f1[i1 * ng + g];
+		  a2 = f2;
+		}
+	      double zero = 0.0;
+	      dgemm_("t", "n", &nao2, &nao1, &ng, &(lf1->dv),
+		     a2, &ng, a1, &ng, &zero, H, &nao2);
 	      for (int i1 = 0; i1 < nao1; i1++)
-		for (int g = 0; g < ng; g++)
-		  a1[i1 * ng + g] = vt1[g] * f1[i1 * ng + g];
-	      a2 = f2;
+		for (int i2 = 0; i2 < nao2; i2++)
+		  Vt[m1 + i1 + (m2 + i2) * nao] = *H++;
 	    }
-	  double zero = 0.0;
-	  dgemm_("t", "n", &nao1, &nao2, &ng, &(lf1->dv),
-		 a1, &ng, a2, &ng,
-		 &zero, H, &nao1);
-	  for (int i1 = 0; i1 < nao1; i1++)
-	    for (int i2 = 0; i2 < nao2; i2++)
-	      Vt[m1 + i1 + (m2 + i2) * nao] = *H++;
 	  m2 += nao2;
 	}
       m1 += nao1;
