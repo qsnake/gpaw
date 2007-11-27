@@ -494,8 +494,7 @@ class Setup:
 
         self.phit_j = []
         for l, phit_g in zip(l_j, phit_jg):
-            self.phit_j.append(Spline(l, rc, phit_g, r_g=r_g,
-                                      beta=beta))
+            self.phit_j.append(Spline(l, rc, grr(phit_g, l, r_g), r_g, beta))
 
     def print_info(self, text):
         if self.phicorehole_g is None:
