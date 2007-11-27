@@ -20,155 +20,159 @@ atoms = {'H': 1, 'Li': 1, 'Be': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 2, 'F': 1,
 
 # The 148 molecules of the test set
 molecules = {
-     'Cl4C2': "C2Cl4 (Cl2C=CCl2), D2h symm.",
-      'H2O2': "Hydrogen peroxide (HO-OH), C2 symm.",
-    'ClC2H3': "Vinyl chloride, H2C=CHCl, Cs symm.",
-    'ClC2H5': "Ethyl chloride (CH3-CH2-Cl), Cs symm.",
-      'H2CO': "Formaldehyde (H2C=O), C2v symm.",
-        'O3': "O3 (Ozone), C2v symm.",
-        'O2': "O2 molecule, D*h symm, Triplet.",
-       'F3B': "BF3, Planar D3h symm.",
-      'F4C2': "C2F4 (F2C=CF2), D2H symm.",
+    # The G2-1 set
+       'LiH': "Lithium hydride (LiH), C*v symm.",
        'BeH': "Beryllium hydride (BeH), D*h symm.",
-       'F3N': "NF3, C3v symm.",
-       'HCO': "HCO radical, Bent Cs symm.",
-       'OF2': "F2O, C2v symm.",
-       'Cl2': "Cl2 molecule, D*h symm.",
-    'OFC2H3': "Acetyl fluoride (CH3COF), HCCO cis, Cs symm.",
-    'SOC2H6': "Dimethylsulfoxide (CH3)2SO, Cs symm.",
-        'SH': "SH radical, C*v symm.",
-    'H10C4x': "Isobutane (C4H10), C3v symm.",
-      'C2N2': "Cyanogen (NCCN). D*h symm.",
-       'O2N': "NO2 radical, C2v symm, 2-A1.",
-    'O2H4C2': "Methyl formate (HCOOCH3), Cs symm.",
-      'OH3C': "H2COH radical, C1 symm.",
-    'O2H2C2': "Glyoxal (O=CH-CH=O). Trans, C2h symm.",
-       'CO2': "Carbon dioxide (CO2), D*h symm.",
-       'H2O': "Water (H2O), C2v symm.",
-     'H5C5N': "Pyridine (cyclic C5H5N), C2v symm.",
-        'NO': "NO radical, C*v symm, 2-Pi.",
-      'H4C3': "Propyne (C3H4), C3v symm.",
-      'C2H4': "Ethylene (H2C=CH2), D2h symm.",
+        'CH': "CH radical. Doublet, C*v symm.",
+ 'CH2_s3B1d': "Triplet methylene (CH2), C2v symm, 3-B1.",
+ 'CH2_s1A1d': "Singlet methylene (CH2), C2v symm, 1-A1.",
+       'CH3': "Methyl radical (CH3), D3h symm.",
+       'CH4': "Methane (CH4), Td symm.",
+        'NH': "NH, triplet, C*v symm.",
+       'NH2': "NH2 radical, C2v symm, 2-B1.",
+       'NH3': "Ammonia (NH3), C3v symm.",
         'OH': "OH radical, C*v symm.",
-    'Cl2CH2': "Dichloromethane (H2CCl2), C2v symm.",
-      'H6C6': "Benzene (C6H6), D6h symm.",
+       'H2O': "Water (H2O), C2v symm.",
+        'HF': "Hydrogen fluoride (HF), C*v symm.",
+'SiH2_s1A1d': "Singlet silylene (SiH2), C2v symm, 1-A1.",
+'SiH2_s3B1d': "Triplet silylene (SiH2), C2v symm, 3-B1.",
+      'SiH3': "Silyl radical (SiH3), C3v symm.",
+      'SiH4': "Silane (SiH4), Td symm.",
+       'PH2': "PH2 radical, C2v symm.",
+       'PH3': "Phosphine (PH3), C3v symm.",
+       'SH2': "Hydrogen sulfide (H2S), C2v symm.",
+       'HCl': "Hydrogen chloride (HCl), C*v symm.",
+       'Li2': "Dilithium (Li2), D*h symm.",
+       'LiF': "Lithium Fluoride (LiF), C*v symm.",
+      'C2H2': "Acetylene (C2H2), D*h symm.",
+      'C2H4': "Ethylene (H2C=CH2), D2h symm.",
+      'C2H6': "Ethane (H3C-CH3), D3d symm.",
+        'CN': "Cyano radical (CN), C*v symm, 2-Sigma+.",
+       'HCN': "Hydrogen cyanide (HCN), C*v symm.",
+        'CO': "Carbon monoxide (CO), C*v symm.",
+       'HCO': "HCO radical, Bent Cs symm.",
+      'H2CO': "Formaldehyde (H2C=O), C2v symm.",
+     'CH3OH': "Methanol (CH3-OH), Cs symm.",
+        'N2': "N2 molecule, D*h symm.",
+      'N2H4': "Hydrazine (H2N-NH2), C2 symm.",
+        'NO': "NO radical, C*v symm, 2-Pi.",
+        'O2': "O2 molecule, D*h symm, Triplet.",
+      'H2O2': "Hydrogen peroxide (HO-OH), C2 symm.",
+        'F2': "F2 molecule, D*h symm.",
+       'CO2': "Carbon dioxide (CO2), D*h symm.",
+       'Na2': "Disodium (Na2), D*h symm.",
+       'Si2': "Si2 molecule, D*h symm, Triplet (3-Sigma-G-).",
+        'P2': "P2 molecule, D*h symm.",
+        'S2': "S2 molecule, D*h symm, triplet.",
+       'Cl2': "Cl2 molecule, D*h symm.",
+      'NaCl': "Sodium Chloride (NaCl), C*v symm.",
+       'SiO': "Silicon monoxide (SiO), C*v symm.",
+        'CS': "Carbon monosulfide (CS), C*v symm.",
+        'SO': "Sulfur monoxide (SO), C*v symm, triplet.",
+       'ClO': "ClO radical, C*v symm, 2-PI.",
+       'ClF': "ClF molecule, C*v symm, 1-SG.",
+     'Si2H6': "Disilane (H3Si-SiH3), D3d symm.",
+     'CH3Cl': "Methyl chloride (CH3Cl), C3v symm.",
+     'CH3SH': "Methanethiol (H3C-SH), Staggered, Cs symm.",
+      'HOCl': "HOCl molecule, Cs symm.",
+       'SO2': "Sulfur dioxide (SO2), C2v symm.",
+       # The G2-2 set:
+       'F3B': "BF3, Planar D3h symm.",
+      'Cl3B': "BCl3, Planar D3h symm.",
+      'F3Al': "AlF3, Planar D3h symm.",
+     'Cl3Al': "AlCl3, Planar D3h symm.",
+       'F4C': "CF4, Td symm.",
+      'Cl4C': "CCl4, Td symm.",
+       'OSC': "O=C=S, Linear, C*v symm.",
+       'S2C': "CS2, Linear, D*h symm.",
+      'OF2C': "COF2, C2v symm.",
+      'F4Si': "SiF4, Td symm.",
      'Cl4Si': "SiCl4, Td symm.",
+       'ON2': "N2O, Cs symm.",
+      'OClN': "ClNO, Cs symm.",
+       'F3N': "NF3, C3v symm.",
+       'F3P': "PF3, C3v symm.",
+        'O3': "O3 (Ozone), C2v symm.",
+       'OF2': "F2O, C2v symm.",
+      'ClF3': "ClF3, C2v symm.",
+      'F4C2': "C2F4 (F2C=CF2), D2H symm.",
+     'Cl4C2': "C2Cl4 (Cl2C=CCl2), D2h symm.",
+     'F3C2N': "CF3CN, C3v symm.",
+      'H4C3': "Propyne (C3H4), C3v symm.",
+     'H4C3x': "Allene (C3H4), D2d symm.",
+    'H4C3xx': "Cyclopropene (C3H4), C2v symm.",
+      'H6C3': "Propene (C3H6), Cs symm.",
+     'H6C3x': "Cyclopropane (C3H6), D3h symm.",
+      'H8C3': "Propane (C3H8), C2v symm.",
       'H6C4': "Trans-1,3-butadiene (C4H6), C2h symm.",
      'H6C4x': "Dimethylacetylene (2-butyne, C4H6), D3h symm (eclipsed).",
     'H6C4xx': "Methylenecyclopropane (C4H6), C2v symm.",
    'H6C4xxx': "Bicyclo[1.1.0]butane (C4H6), C2v symm.",
   'H6C4xxxx': "Cyclobutene (C4H6), C2v symm.",
-      'H6C3': "Propene (C3H6), Cs symm.",
-      'C2H6': "Ethane (H3C-CH3), D3d symm.",
-      'HCF3': "Trifluoromethane (HCF3), C3v symm.",
-     'HCCl3': "Chloroform (HCCl3), C3v symm.",
-        'SO': "Sulfur monoxide (SO), C*v symm, triplet.",
-       'CH3': "Methyl radical (CH3), D3h symm.",
-        'CO': "Carbon monoxide (CO), C*v symm.",
-      'F3Al': "AlF3, Planar D3h symm.",
-       'SiO': "Silicon monoxide (SiO), C*v symm.",
-        'NH': "NH, triplet, C*v symm.",
-      'Cl4C': "CCl4, Td symm.",
-     'H10C4': "Trans-butane (C4H10), C2h symm.",
-        'CH': "CH radical. Doublet, C*v symm.",
-    'H4C3xx': "Cyclopropene (C3H4), C2v symm.",
-       'SH2': "Hydrogen sulfide (H2S), C2v symm.",
-       'ClO': "ClO radical, C*v symm, 2-PI.",
-    'H7C2Nx': "Trans-Ethylamine (CH3-CH2-NH2), Cs symm.",
-    'OH4C2x': "Acetaldehyde (CH3CHO), Cs symm.",
-       'LiF': "Lithium Fluoride (LiF), C*v symm.",
-     'SH6C2': "ThioEthanol (CH3-CH2-SH), Cs symm.",
-    'OH5C2N': "Acetamide (CH3CONH2), C1 symm.",
-     'OH3Cx': "CH3O radical, Cs symm, 2-A'.",
-     'OH3C2': "CH3CO radical, HCCO cis, Cs symm, 2-A'.",
-       'OSC': "O=C=S, Linear, C*v symm.",
-        'P2': "P2 molecule, D*h symm.",
-     'O2H2C': "Formic Acid (HCOOH), HOCO cis, Cs symm.",
-     'H4C3x': "Allene (C3H4), D2d symm.",
-       'LiH': "Lithium hydride (LiH), C*v symm.",
-     'OH8C3': "Isopropyl alcohol, (CH3)2CH-OH, Gauche isomer, C1 symm.",
-       'HCN': "Hydrogen cyanide (HCN), C*v symm.",
-      'H9C4': "t-Butyl radical, (CH3)3C, C3v symm.",
-      'SiH4': "Silane (SiH4), Td symm.",
-    'H7C3Cl': "Propyl chloride (CH3CH2CH2Cl), Cs symm.",
-     'OH4C2': "Oxirane (cyclic CH2-O-CH2 ring), C2v symm.",
-     'OH4C4': "Furan (cyclic C4H4O), C2v symm.",
-        'S2': "S2 molecule, D*h symm, triplet.",
-     'OH2C2': "Ketene (H2C=C=O), C2v symm.",
-     'Si2H6': "Disilane (H3Si-SiH3), D3d symm.",
-     'F2CH2': "Difluoromethane (H2CF2), C2v symm.",
-     'H9C3N': "Trimethyl Amine, (CH3)3N, C3v symm.",
-        'HF': "Hydrogen fluoride (HF), C*v symm.",
-       'ClF': "ClF molecule, C*v symm, 1-SG.",
-      'OF2C': "COF2, C2v symm.",
-       'F3P': "PF3, C3v symm.",
-       'HCl': "Hydrogen chloride (HCl), C*v symm.",
-      'N2H4': "Hydrazine (H2N-NH2), C2 symm.",
-     'H8C4x': "Isobutene (C4H8), Single bonds trans, C2v symm.",
-     'OH6C3': "Acetone (CH3-CO-CH3), C2v symm.",
-     'OH6C2': "Ethanol (trans, CH3CH2OH), Cs symm.",
-     'H5C2N': "Aziridine (cyclic CH2-NH-CH2 ring), C2v symm.",
-'SiH2_s1A1d': "Singlet silylene (SiH2), C2v symm, 1-A1.",
-'SiH2_s3B1d': "Triplet silylene (SiH2), C2v symm, 3-B1.",
-      'OClN': "ClNO, Cs symm.",
-     'F3C2N': "CF3CN, C3v symm.",
-     'H6C3x': "Cyclopropane (C3H6), D3h symm.",
-       'HC2': "CCH radical, C*v symm.",
-     'CH3Cl': "Methyl chloride (CH3Cl), C3v symm.",
-     'SH4C4': "Thiophene (cyclic C4H4S), C2v symm.",
-     'H3C3N': "CyanoEthylene (H2C=CHCN), Cs symm.",
-   'O2H3CNx': "Methylnitrite (CH3-O-N=O), NOCH trans, ONOC cis, Cs symm.",
-     'Cl3Al': "AlCl3, Planar D3h symm.",
-      'H8C5': "Spiropentane (C5H8), D2d symm.",
       'H8C4': "Cyclobutane (C4H8), D2d symm.",
-        'N2': "N2 molecule, D*h symm.",
-      'H8C3': "Propane (C3H8), C2v symm.",
-     'H6SiC': "Methylsilane (CH3-SiH3), C3v symm.",
-     'OH5C2': "CH3CH2O radical, Cs symm, 2-A''.",
-        'F2': "F2 molecule, D*h symm.",
-       'PH2': "PH2 radical, C2v symm.",
-        'H2': "H2. D*h symm.",
-       'NH2': "NH2 radical, C2v symm, 2-B1.",
-        'CS': "Carbon monosulfide (CS), C*v symm.",
- 'CH2_s1A1d': "Singlet methylene (CH2), C2v symm, 1-A1.",
- 'CH2_s3B1d': "Triplet methylene (CH2), C2v symm, 3-B1.",
-    'OH6C2x': "DimethylEther (CH3-O-CH3), C2v symm.",
-      'C2H2': "Acetylene (C2H2), D*h symm.",
-   'O2H4C2x': "Acetic Acid (CH3COOH), Single bonds trans, Cs symm.",
-       'CH4': "Methane (CH4), Td symm.",
+     'H8C4x': "Isobutene (C4H8), Single bonds trans, C2v symm.",
+     'H10C4': "Trans-butane (C4H10), C2h symm.",
+    'H10C4x': "Isobutane (C4H10), C3v symm.",
+      'H8C5': "Spiropentane (C5H8), D2d symm.",
+      'H6C6': "Benzene (C6H6), D6h symm.",
+     'F2CH2': "Difluoromethane (H2CF2), C2v symm.",
+      'HCF3': "Trifluoromethane (HCF3), C3v symm.",
+    'Cl2CH2': "Dichloromethane (H2CCl2), C2v symm.",
+     'HCCl3': "Chloroform (HCCl3), C3v symm.",
       'H5CN': "Methylamine (H3C-NH2), Cs symm.",
      'H3C2N': "Acetonitrile (CH3-CN), C3v symm.",
-      'ClF3': "ClF3, C2v symm.",
-      'F4Si': "SiF4, Td symm.",
-     'CH3OH': "Methanol (CH3-OH), Cs symm.",
-     'FC2H3': "Vinyl fluoride (H2C=CHF), Cs symm.",
-      'SiH3': "Silyl radical (SiH3), C3v symm.",
-    'SH6C2x': "Dimethyl ThioEther (CH3-S-CH3), C2v symm.",
-        'CN': "Cyano radical (CN), C*v symm, 2-Sigma+.",
-       'S2C': "CS2, Linear, D*h symm.",
-     'H5C4N': "Pyrrole (Planar cyclic C4H4NH), C2v symm.",
-      'SH3C': "CH3S radical, Cs symm, 2-A'.",
-     'CH3SH': "Methanethiol (H3C-SH), Staggered, Cs symm.",
     'O2H3CN': "Nitromethane (CH3-NO2), Cs symm.",
-       'Si2': "Si2 molecule, D*h symm, Triplet (3-Sigma-G-).",
+   'O2H3CNx': "Methylnitrite (CH3-O-N=O), NOCH trans, ONOC cis, Cs symm.",
+     'H6SiC': "Methylsilane (CH3-SiH3), C3v symm.",
+     'O2H2C': "Formic Acid (HCOOH), HOCO cis, Cs symm.",
+    'O2H4C2': "Methyl formate (HCOOCH3), Cs symm.",
+    'OH5C2N': "Acetamide (CH3CONH2), C1 symm.",
+     'H5C2N': "Aziridine (cyclic CH2-NH-CH2 ring), C2v symm.",
+      'C2N2': "Cyanogen (NCCN). D*h symm.",
      'H7C2N': "Dimethylamine, (CH3)2NH, Cs symm.",
-      'NaCl': "Sodium Chloride (NaCl), C*v symm.",
-      'H7C3': "(CH3)2CH radical, Cs symm, 2-A'.",
-       'NH3': "Ammonia (NH3), C3v symm.",
-       'Na2': "Disodium (Na2), D*h symm.",
-       'PH3': "Phosphine (PH3), C3v symm.",
-       'SO2': "Sulfur dioxide (SO2), C2v symm.",
-       'Li2': "Dilithium (Li2), D*h symm.",
-       'ON2': "N2O, Cs symm.",
-    'OH8C3x': "Methyl ethyl ether (CH3-CH2-O-CH3), Trans, Cs symm.",
-      'HOCl': "HOCl molecule, Cs symm.",
-      'Cl3B': "BCl3, Planar D3h symm.",
-      'H3C2': "C2H3 radical, Cs symm, 2-A'.",
-       'F4C': "CF4, Td symm.",
-   'OClC2H3': "Acetyl,Chloride (CH3COCl), HCCO cis, Cs symm.",
-      'H5C2': "C2H5 radical, Staggered, Cs symm, 2-A'.",
+    'H7C2Nx': "Trans-Ethylamine (CH3-CH2-NH2), Cs symm.",
+     'OH2C2': "Ketene (H2C=C=O), C2v symm.",
+     'OH4C2': "Oxirane (cyclic CH2-O-CH2 ring), C2v symm.",
+    'OH4C2x': "Acetaldehyde (CH3CHO), Cs symm.",
+    'O2H2C2': "Glyoxal (O=CH-CH=O). Trans, C2h symm.",
+     'OH6C2': "Ethanol (trans, CH3CH2OH), Cs symm.",
+    'OH6C2x': "DimethylEther (CH3-O-CH3), C2v symm.",
      'SH4C2': "Thiooxirane (cyclic CH2-S-CH2 ring), C2v symm.",
+    'SOC2H6': "Dimethylsulfoxide (CH3)2SO, Cs symm.",
+     'SH6C2': "ThioEthanol (CH3-CH2-SH), Cs symm.",
+    'SH6C2x': "Dimethyl ThioEther (CH3-S-CH3), C2v symm.",
+     'FC2H3': "Vinyl fluoride (H2C=CHF), Cs symm.",
+    'ClC2H5': "Ethyl chloride (CH3-CH2-Cl), Cs symm.",
+    'ClC2H3': "Vinyl chloride, H2C=CHCl, Cs symm.",
+     'H3C3N': "CyanoEthylene (H2C=CHCN), Cs symm.",
+     'OH6C3': "Acetone (CH3-CO-CH3), C2v symm.",
+   'O2H4C2x': "Acetic Acid (CH3COOH), Single bonds trans, Cs symm.",
+    'OFC2H3': "Acetyl fluoride (CH3COF), HCCO cis, Cs symm.",
+   'OClC2H3': "Acetyl,Chloride (CH3COCl), HCCO cis, Cs symm.",
+    'H7C3Cl': "Propyl chloride (CH3CH2CH2Cl), Cs symm.",
+     'OH8C3': "Isopropyl alcohol, (CH3)2CH-OH, Gauche isomer, C1 symm.",
+    'OH8C3x': "Methyl ethyl ether (CH3-CH2-O-CH3), Trans, Cs symm.",
+     'H9C3N': "Trimethyl Amine, (CH3)3N, C3v symm.",
+     'OH4C4': "Furan (cyclic C4H4O), C2v symm.",
+     'SH4C4': "Thiophene (cyclic C4H4S), C2v symm.",
+     'H5C4N': "Pyrrole (Planar cyclic C4H4NH), C2v symm.",
+     'H5C5N': "Pyridine (cyclic C5H5N), C2v symm.",
+        'H2': "H2. D*h symm.",
+        'SH': "SH radical, C*v symm.",
+       'HC2': "CCH radical, C*v symm.",
+      'H3C2': "C2H3 radical, Cs symm, 2-A'.",
+     'OH3C2': "CH3CO radical, HCCO cis, Cs symm, 2-A'.",
+      'OH3C': "H2COH radical, C1 symm.",
+     'OH3Cx': "CH3O radical, Cs symm, 2-A'.",
+     'OH5C2': "CH3CH2O radical, Cs symm, 2-A''.",
+      'SH3C': "CH3S radical, Cs symm, 2-A'.",
+      'H5C2': "C2H5 radical, Staggered, Cs symm, 2-A'.",
+      'H7C3': "(CH3)2CH radical, Cs symm, 2-A'.",
+      'H9C4': "t-Butyl radical, (CH3)3C, C3v symm.",
+       'O2N': "NO2 radical, C2v symm, 2-A1.",
 }
+
+## Start of G2-1 test set
 
 # Lithium hydride (LiH), C*v symm.
 # MP2 energy = -7.9965108 Hartree
@@ -182,25 +186,25 @@ LiH = ListOfAtoms([
 # MP2 energy = -15.171409 Hartree
 # Charge = 0, multiplicity = 2
 BeH = ListOfAtoms([
-    Atom('Be', [.000000, .000000, .269654]),
-    Atom('H', [.000000, .000000, -1.078616]),
+    Atom('Be', [.000000, .000000, .269654], magmom=1.),
+    Atom('H', [.000000, .000000, -1.078616], magmom=0.),
     ])
 
 # CH radical. Doublet, C*v symm.
 # MP2 energy = -38.3423986 Hartree
 # Charge = 0, multiplicity = 2
 CH = ListOfAtoms([
-    Atom('C', [.000000, .000000, .160074]),
-    Atom('H', [.000000, .000000, -.960446]),
+    Atom('C', [.000000, .000000, .160074], magmom=1.),
+    Atom('H', [.000000, .000000, -.960446], magmom=0.),
     ])
 
 # Triplet methylene (CH2), C2v symm, 3-B1.
 # MP2 energy = -39.0074352 Hartree
 # Charge = 0, multiplicity = 3
 CH2_s3B1d = ListOfAtoms([
-    Atom('C', [.000000, .000000, .110381]),
-    Atom('H', [.000000, .982622, -.331142]),
-    Atom('H', [.000000, -.982622, -.331142]),
+    Atom('C', [.000000, .000000, .110381], magmom=2.),
+    Atom('H', [.000000, .982622, -.331142], magmom=0.),
+    Atom('H', [.000000, -.982622, -.331142], magmom=0.),
     ])
 
 # Singlet methylene (CH2), C2v symm, 1-A1.
@@ -216,10 +220,10 @@ CH2_s1A1d = ListOfAtoms([
 # MP2 energy = -39.6730312 Hartree
 # Charge = 0, multiplicity = 2
 CH3 = ListOfAtoms([
-    Atom('C', [.000000, .000000, .000000]),
-    Atom('H', [.000000, 1.078410, .000000]),
-    Atom('H', [.933930, -.539205, .000000]),
-    Atom('H', [-.933930, -.539205, .000000]),
+    Atom('C', [.000000, .000000, .000000], magmom=1.),
+    Atom('H', [.000000, 1.078410, .000000], magmom=0.),
+    Atom('H', [.933930, -.539205, .000000], magmom=0.),
+    Atom('H', [-.933930, -.539205, .000000], magmom=0.),
     ])
 
 # Methane (CH4), Td symm.
@@ -237,17 +241,17 @@ CH4 = ListOfAtoms([
 # MP2 energy = -55.0614242 Hartree
 # Charge = 0, multiplicity = 3
 NH = ListOfAtoms([
-    Atom('N', [.000000, .000000, .129929], magmom=0.883),
-    Atom('H', [.000000, .000000, -.909501], magmom=-0.010),
+    Atom('N', [.000000, .000000, .129929], magmom=2.),
+    Atom('H', [.000000, .000000, -.909501], magmom=0.),
     ])
 
 # NH2 radical, C2v symm, 2-B1.
 # MP2 energy = -55.6937452 Hartree
 # Charge = 0, multiplicity = 2
 NH2 = ListOfAtoms([
-    Atom('N', [.000000, .000000, .141690]),
-    Atom('H', [.000000, .806442, -.495913]),
-    Atom('H', [.000000, -.806442, -.495913]),
+    Atom('N', [.000000, .000000, .141690], magmom=1.),
+    Atom('H', [.000000, .806442, -.495913], magmom=0.),
+    Atom('H', [.000000, -.806442, -.495913], magmom=0.),
     ])
 
 # Ammonia (NH3), C3v symm.
@@ -298,19 +302,19 @@ SiH2_s1A1d = ListOfAtoms([
 # MP2 energy = -290.0561783 Hartree
 # Charge = 0, multiplicity = 3
 SiH2_s3B1d = ListOfAtoms([
-    Atom('Si', [.000000, .000000, .094869]),
-    Atom('H', [.000000, 1.271862, -.664083]),
-    Atom('H', [.000000, -1.271862, -.664083]),
+    Atom('Si', [.000000, .000000, .094869], magmom=2.),
+    Atom('H', [.000000, 1.271862, -.664083], magmom=0.),
+    Atom('H', [.000000, -1.271862, -.664083], magmom=0.),
     ])
 
 # Silyl radical (SiH3), C3v symm.
 # MP2 energy = -290.6841563 Hartree
 # Charge = 0, multiplicity = 2
 SiH3 = ListOfAtoms([
-    Atom('Si', [.000000, .000000, .079299]),
-    Atom('H', [.000000, 1.413280, -.370061]),
-    Atom('H', [1.223937, -.706640, -.370061]),
-    Atom('H', [-1.223937, -.706640, -.370061]),
+    Atom('Si', [.000000, .000000, .079299], magmom=1.),
+    Atom('H', [.000000, 1.413280, -.370061], magmom=0.),
+    Atom('H', [1.223937, -.706640, -.370061], magmom=0.),
+    Atom('H', [-1.223937, -.706640, -.370061], magmom=0.),
     ])
 
 # Silane (SiH4), Td symm.
@@ -328,9 +332,9 @@ SiH4 = ListOfAtoms([
 # MP2 energy = -341.9457892 Hartree
 # Charge = 0, multiplicity = 2
 PH2 = ListOfAtoms([
-    Atom('P', [.000000, .000000, .115396]),
-    Atom('H', [.000000, 1.025642, -.865468]),
-    Atom('H', [.000000, -1.025642, -.865468]),
+    Atom('P', [.000000, .000000, .115396], magmom=1.),
+    Atom('H', [.000000, 1.025642, -.865468], magmom=0.),
+    Atom('H', [.000000, -1.025642, -.865468], magmom=0.),
     ])
 
 # Phosphine (PH3), C3v symm.
@@ -416,8 +420,8 @@ C2H6 = ListOfAtoms([
 # MP2 energy = -92.441963 Hartree
 # Charge = 0, multiplicity = 2
 CN = ListOfAtoms([
-    Atom('C', [.000000, .000000, -.611046]),
-    Atom('N', [.000000, .000000, .523753]),
+    Atom('C', [.000000, .000000, -.611046], magmom=1.),
+    Atom('N', [.000000, .000000, .523753], magmom=0.),
     ])
 
 # Hydrogen cyanide (HCN), C*v symm.
@@ -441,9 +445,9 @@ CO = ListOfAtoms([
 # MP2 energy = -113.540332 Hartree
 # Charge = 0, multiplicity = 2
 HCO = ListOfAtoms([
-    Atom('C', [.062560, .593926, .000000]),
-    Atom('O', [.062560, -.596914, .000000]),
-    Atom('H', [-.875835, 1.211755, .000000]),
+    Atom('C', [.062560, .593926, .000000], magmom=1.),
+    Atom('O', [.062560, -.596914, .000000], magmom=0.),
+    Atom('H', [-.875835, 1.211755, .000000], magmom=0.),
     ])
 
 # Formaldehyde (H2C=O), C2v symm.
@@ -543,8 +547,8 @@ Na2 = ListOfAtoms([
 # MP2 energy = -577.8606556 Hartree
 # Charge = 0, multiplicity = 3
 Si2 = ListOfAtoms([
-    Atom('Si', [.000000, .000000, 1.130054]),
-    Atom('Si', [.000000, .000000, -1.130054]),
+    Atom('Si', [.000000, .000000, 1.130054], magmom=1.),
+    Atom('Si', [.000000, .000000, -1.130054], magmom=1.),
     ])
 
 # P2 molecule, D*h symm.
@@ -559,8 +563,8 @@ P2 = ListOfAtoms([
 # MP2 energy = -795.2628131 Hartree
 # Charge = 0, multiplicity = 3
 S2 = ListOfAtoms([
-    Atom('S', [.000000, .000000, .960113], magmom=0.558),
-    Atom('S', [.000000, .000000, -.960113], magmom=0.558),
+    Atom('S', [.000000, .000000, .960113], magmom=1.),
+    Atom('S', [.000000, .000000, -.960113], magmom=1.),
     ])
 
 # Cl2 molecule, D*h symm.
@@ -599,16 +603,16 @@ CS = ListOfAtoms([
 # MP2 energy = -472.6266876 Hartree
 # Charge = 0, multiplicity = 3
 SO = ListOfAtoms([
-    Atom('O', [.000000, .000000, -1.015992], magmom=.491),
-    Atom('S', [.000000, .000000, .507996], magmom=.709),
+    Atom('O', [.000000, .000000, -1.015992], magmom=1.),
+    Atom('S', [.000000, .000000, .507996], magmom=1.),
     ])
 
 # ClO radical, C*v symm, 2-PI.
 # MP2 energy = -534.5186484 Hartree
 # Charge = 0, multiplicity = 2
 ClO = ListOfAtoms([
-    Atom('Cl', [.000000, .000000, .514172], magmom=1.), # XXXX ??
-    Atom('O', [.000000, .000000, -1.092615], magmom=0), # XXXX ??
+    Atom('Cl', [.000000, .000000, .514172], magmom=1.),
+    Atom('O', [.000000, .000000, -1.092615], magmom=0.),
     ])
 
 # ClF molecule, C*v symm, 1-SG.
@@ -673,6 +677,8 @@ SO2 = ListOfAtoms([
     Atom('O', [.000000, 1.277617, -.370268]),
     Atom('O', [.000000, -1.277617, -.370268]),
     ])
+
+## End of G2-1, start of G2-2
 
 # BF3, Planar D3h symm.
 # MP2 energy = -323.7915374. Hartree
