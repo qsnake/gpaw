@@ -62,6 +62,7 @@ for details."""
             self.version = attrs['version']
         elif name == 'radial_grid':
             self.ng = int(attrs['n'])
+            assert attrs['eq'] == 'r=a*i/(n-i)'
             assert int(attrs['istart']) == 0
             assert int(attrs['iend']) == self.ng - 1
         elif name == 'basis_function':
