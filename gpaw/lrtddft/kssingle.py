@@ -122,7 +122,7 @@ class KSSingles(ExcitationList):
                 f.close()
 
     def update(self):
-        istart = len(self)
+        istart = self[0].i
         jend = 0
         for kss in self:
             istart = min(kss.i,istart)
