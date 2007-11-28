@@ -13,7 +13,7 @@ from gpaw.read_basis import BasisSetXMLParser
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.utilities import unpack, erf, fac, hartree, pack2
+from gpaw.utilities import unpack, erf, fac, hartree, pack2, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.gllb.xcnonlocalcorrection import XCNonLocalCorrection
@@ -175,24 +175,23 @@ class Setup:
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
         # Construct splines:
-        self.nct = Spline(0, rcore, nct_g, r_g=r_g, beta=beta)
-        self.vbar = Spline(0, rcutfilter, vbar_g, r_g=r_g, beta=beta)
+        self.nct = Spline(0, rcore, nct_g, r_g, beta)
+        self.vbar = Spline(0, rcutfilter, vbar_g, r_g, beta)
 
         # Construct splines for core kinetic energy density:
         if tauct_g is None:
             tauct_g = num.zeros(ng, num.Float)
-        self.tauct = Spline(0, rcore, tauct_g, r_g=r_g, beta=beta)
+        self.tauct = Spline(0, rcore, tauct_g, r_g, beta)
 
         # Step function:
         stepf = sqrt(4 * pi) * num.ones(ng)
         stepf[gcutmax:] = 0.0
-        self.stepf = Spline(0, rcutfilter, stepf, r_g=r_g, beta=beta)
+        self.stepf = Spline(0, rcutfilter, stepf, r_g, beta)
 
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
-            self.pt_j.append(Spline(l, rcutfilter, grr(pt_jg[j], l, r_g),
-                                    r_g=r_g, beta=beta))
+            self.pt_j.append(Spline(l, rcutfilter, pt_jg[j], r_g, beta))
 
         if basis is None:
             self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
@@ -334,8 +333,8 @@ class Setup:
         if xcfunc.xcname.startswith("GLLB"):
             self.xc_correction = XCNonLocalCorrection(
                 xcfunc.xc,
-                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
-                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
+                [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
                 2 * lcut, e_xc, extra_xc_data)
@@ -344,18 +343,19 @@ class Setup:
 
             self.xc_correction = XCCorrection(
                 xc,
-                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
-                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
+                [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,tauc_g)
+                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,
+                tauc_g)
         else:
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 
             self.xc_correction = XCCorrection(
                 xc,
-                [grr(phi_g, l_j[j], r_g) for j, phi_g in enumerate(phi_jg)],
-                [grr(phit_g, l_j[j], r_g) for j, phit_g in enumerate(phit_jg)],
+                [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
+                [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
                 2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins)
@@ -441,7 +441,7 @@ class Setup:
         g = alpha2**1.5 * num.exp(-alpha2 * r**2)
         g[-1] = 0.0
         self.ghat_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
-                     for l in range(lmax + 1)]
+                       for l in range(lmax + 1)]
 
         self.rcutcomp = sqrt(10) * rcgauss
         self.rcut_j = rcut_j
@@ -484,9 +484,7 @@ class Setup:
                            (r_g[gcut3] - r_g[gcut3 - 1]))
                 phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
                 phit_g[gcut3:] = 0.0
-                self.phit_j.append(Spline(l, rcut3,
-                                          grr(phit_g, l, r_g),
-                                          r_g=r_g, beta=beta))
+                self.phit_j.append(Spline(l, rcut3, phit_g, r_g, beta))
 
     def read_basis_functions(self, basis_name, r_g, beta):
         parser = BasisSetXMLParser()
@@ -494,7 +492,7 @@ class Setup:
 
         self.phit_j = []
         for l, phit_g in zip(l_j, phit_jg):
-            self.phit_j.append(Spline(l, rc, grr(phit_g, l, r_g), r_g, beta))
+            self.phit_j.append(Spline(l, rc, phit_g, r_g, beta, points=25))
 
     def print_info(self, text):
         if self.phicorehole_g is None:
@@ -576,22 +574,20 @@ class Setup:
 
         # Construct splines:
         nc_g[gcut2:] = nc_g[gcut2:] = 0.0
-        nc = Spline(0, rcut2, nc_g, r_g=r_g, beta=beta, points=1000)
-        nct = Spline(0, rcut2, nct_g, r_g=r_g, beta=beta, points=1000)
+        nc = Spline(0, rcut2, nc_g, r_g, beta, points=1000)
+        nct = Spline(0, rcut2, nct_g, r_g, beta, points=1000)
         if tauc_g is None:
             tauc_g = num.zeros(nct_g.shape,num.Float)
             tauct_g = tauc_g
-        tauc = Spline(0, rcut2, tauc_g, r_g=r_g, beta=beta, points=1000)
-        tauct = Spline(0, rcut2, tauct_g, r_g=r_g, beta=beta, points=1000)
+        tauc = Spline(0, rcut2, tauc_g, r_g, beta, points=1000)
+        tauct = Spline(0, rcut2, tauct_g, r_g, beta, points=1000)
         phi_j = []
         phit_j = []
         for j, (phi_g, phit_g) in enumerate(zip(phi_jg, phit_jg)):
             l = l_j[j]
             phi_g[gcut2:] = phit_g[gcut2:] = 0.0
-            phi_j.append(Spline(l, rcut2, grr(phi_g, l, r_g), r_g=r_g,
-                                 beta=beta, points=100))
-            phit_j.append(Spline(l, rcut2, grr(phit_g, l, r_g), r_g=r_g,
-                                 beta=beta, points=100))
+            phi_j.append(Spline(l, rcut2, phi_g, r_g, beta, points=100))
+            phit_j.append(Spline(l, rcut2, phit_g, r_g, beta, points=100))
         return phi_j, phit_j, nc, nct, tauc, tauct
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
@@ -700,15 +696,6 @@ class Setup:
                 I4_iip[i1,i2,:] = pack2(I)
 
         self.I4_iip = I4_iip
-
-def grr(phi_g, l, r_g):
-    w_g = phi_g.copy()
-    if l > 0:
-        w_g[1:] /= r_g[1:]**l
-        w1, w2 = w_g[1:3]
-        r0, r1, r2 = r_g[0:3]
-        w_g[0] = w2 + (w1 - w2) * (r0 - r2) / (r1 - r2)
-    return w_g
 
 
 if __name__ == '__main__':

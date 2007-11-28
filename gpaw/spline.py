@@ -3,7 +3,7 @@
 
 import Numeric as num
 
-from gpaw.utilities import contiguous
+from gpaw.utilities import contiguous, divrl
 import _gpaw
 
 
@@ -19,6 +19,7 @@ class Spline:
         if beta is None:
             f_g = contiguous(f_g, num.Float)
         else:
+            f_g = divrl(f_g, l, r_g)
             r = 1.0 * rmax / points * num.arange(points + 1)
             ng = len(f_g)
             g = (ng * r / (beta + r) + 0.5).astype(num.Int)

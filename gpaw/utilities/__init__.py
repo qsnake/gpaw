@@ -256,6 +256,17 @@ def center(atoms):
     atoms.SetCartesianPositions(pos - cntr + 0.5 * cell)
 
 
+def divrl(a_g, l, r_g):
+    """Return array divided by r to the l'th power."""
+    b_g = a_g.copy()
+    if l > 0:
+        b_g[1:] /= r_g[1:]**l
+        b1, b2 = b_g[1:3]
+        r0, r1, r2 = r_g[0:3]
+        b_g[0] = b2 + (b1 - b2) * (r0 - r2) / (r1 - r2)
+    return b_g
+
+
 # Function used by test-suite:
 def equal(a, b, e=0):
     assert abs(a - b) <= e, '%g != %g (error: %g > %g)' % (a, b, abs(a - b), e)
