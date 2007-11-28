@@ -8,9 +8,10 @@ class NonLocalFunctionalFactory:
     the xc-name for non-local functional and returns the corresponding
     XCNonLocalFunctional object. Currently there are 3 keywords
     available: 
-       GLLB (The fermi-level reference set to HOMO)
-       GLLBSlaterCore (Currently disabled)
-       KLI (Currently disabled)
+
+    * GLLB (The fermi-level reference set to HOMO)
+    * GLLBSlaterCore (Currently disabled)
+    * KLI (Currently disabled)
 
     """
 
