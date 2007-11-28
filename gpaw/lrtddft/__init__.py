@@ -168,7 +168,16 @@ class LrTDDFT(ExcitationList):
 
             f.readline()
             self.xc = f.readline().replace('\n','')
-            self.eps = float(f.readline())
+            values = f.readline().split()
+            self.eps = float(values[0])
+            if len(values) > 1:
+                self.derivativeLevel = int(values[1])
+                self.numscale = float(values[2])
+                self.finegrid = int(values[3])
+            else:
+                # old writing style, use defaults
+                pass
+                
             self.kss = KSSingles(filehandle=f)
             self.Om = OmegaMatrix(kss=self.kss,filehandle=f)
             self.Om.Kss(self.kss)
@@ -239,7 +248,8 @@ class LrTDDFT(ExcitationList):
             xc = self.xc
             if xc is None: xc = 'RPA'
             f.write(xc+'\n')
-            f.write('%g' % self.eps + '\n')
+            f.write('%g %d %g %d' % (self.eps, int(self.derivativeLevel),
+                                     self.numscale, int(self.finegrid)) + '\n')
             self.kss.write(fh=f)
             self.Om.write(fh=f)
 
