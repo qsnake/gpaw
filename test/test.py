@@ -58,7 +58,8 @@ if len(tests) == 0:
              'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py',
              'davidson.py', 'wannier-ethylene.py',
              'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py', 'lrtddft.py',
-             'fixmom.py', 'wannier-hwire.py', 'exx.py',
+             'fixmom.py', 'wannier-hwire.py',
+             'exx.py', 'exx_coarse_grid.py',
              'revPBE_Li.py','ylexpand.py',
              'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
@@ -66,6 +67,9 @@ if len(tests) == 0:
     tests_lxc = [
         'lxc_spinpol_Li.py', 'lxc_xcatom.py'
         ]
+    tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
+                      'parallel/par8.py', 'parallel/par6.py',
+                      'parallel/exx.py']
     tests = tests + tests_lxc
 
 if opt.run_failed_tests_only:
@@ -80,8 +84,7 @@ if opt.exclude is not None:
 
 # exclude parallel tests if opt.parallel is not set
 if not opt.parallel:
-    exclude.extend(['parallel-restart.py', 'parmigrate.py',
-                    'par8.py', 'par6.py', 'exx_parallel.py'])
+    exclude.extend(tests_parallel)
 
 for test in exclude:
     if test in tests:
