@@ -14,4 +14,5 @@ hydrogen[0].SetMagneticMoment(1.0)
 e2 = hydrogen.GetPotentialEnergy()
 de = e1 - e2
 print de
-equal(de, 0.7929, 1.5e-3)
+# equal(de, 0.7929, 1.5e-3)
+equal(de, 0.7949, 1.e-4)
