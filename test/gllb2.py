@@ -56,3 +56,6 @@ print """References:
 Gritsenko, Oleg; Leeuwen, Robert van; Lenthe, Erik van; Baerends, Evert Jan
 Phys. Rev. A Vol. 51 p. 1944"""
 
+import os
+os.remove('Be.GLLB')
+os.remove('Ne.GLLB')
