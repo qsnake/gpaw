@@ -69,7 +69,7 @@ class Output:
         self.print_parameters()
         
         t()
-        t('Unit Ccell:')
+        t('Unit Cell:')
         t('         Periodic  Length  Points   Spacing')
         t('  -----------------------------------------')
         for c in range(3):
