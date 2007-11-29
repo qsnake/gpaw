@@ -1,5 +1,4 @@
 from math import sqrt, pi
-
 import Numeric as num
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.blas import rk, r2k
@@ -28,16 +27,14 @@ class LCAOHamiltonian(Hamiltonian):
         
         nkpts = len(self.ibzk_kc)
 
-        #i1 = 0
         for nucleus1 in self.nuclei:
-            #i1 = 0
             pos1 = nucleus1.spos_c
             setup1 = nucleus1.setup
             ni1 = nucleus1.get_number_of_partial_waves()
             nucleus1.P_kmi = num.zeros((nkpts, self.nao, ni1), num.Complex)
             P_mi = num.zeros((self.nao, ni1), num.Float)
             for R in R_dc:
-                i1 = 0  # XXX Moved here!
+                i1 = 0 
                 for j1, pt1 in enumerate(setup1.pt_j):
                     id1 = (setup1.symbol, j1)
                     l1 = pt1.get_angular_momentum_number()
@@ -54,7 +51,6 @@ class LCAOHamiltonian(Hamiltonian):
         self.S_kmm = num.zeros((nkpts, self.nao, self.nao), num.Complex)
         S_mm = num.zeros((self.nao, self.nao), num.Float)
 
-        #i1 = 0
         for R in R_dc:
             i1 = 0
             for nucleus1 in self.nuclei:
@@ -82,7 +78,6 @@ class LCAOHamiltonian(Hamiltonian):
     def p_overlap(self, R, i1, pos1, id1, l1, m1, P_mi, tci):
         i2 = 0
         for nucleus2 in self.nuclei:
-            #i2 = 0
             pos2 = nucleus2.spos_c
             d = (R + pos1 - pos2) * self.gd.domain.cell_c
             setup2 = nucleus2.setup

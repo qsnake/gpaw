@@ -20,11 +20,16 @@ class LCAO:
         if not self.initialized:
             hamiltonian.initialize(self.gd.domain.cell_c)
             self.initialized = True
-            
-        kpt = kpt_u[0]
-        k = 0
+
+        for kpt in kpt_u:
+            self.iterate_one_k_point(hamiltonian, kpt)
+
+    def iterate_one_k_point(self, hamiltonian, kpt):
+        k = kpt.k
+        s = kpt.s
+        u = kpt.u
         
-        vt_G = hamiltonian.vt_sG[0]
+        vt_G = hamiltonian.vt_sG[s]
 
         nao = hamiltonian.nao
         nbands = kpt.nbands
@@ -35,7 +40,7 @@ class LCAO:
         H_mm += V_mm
 
         for nucleus in self.nuclei:
-            dH_ii = unpack(nucleus.H_sp[0])
+            dH_ii = unpack(nucleus.H_sp[s])
             H_mm += num.dot(num.dot(nucleus.P_kmi[k], dH_ii),
                             num.transpose(nucleus.P_kmi[k]))
 
@@ -43,9 +48,9 @@ class LCAO:
         eps_n = num.zeros(nao, num.Float)
         diagonalize(H_mm, eps_n, hamiltonian.S_kmm[k].copy())
         kpt.C_nm = H_mm[0:nbands].copy()
-        print kpt.C_nm
+        #print kpt.C_nm
         kpt.eps_n[:] = eps_n[0:nbands]
         
         for nucleus in self.nuclei:
-            nucleus.P_uni[0] = num.dot(kpt.C_nm, nucleus.P_kmi[k]).real # XXX
+            nucleus.P_uni[u] = num.dot(kpt.C_nm, nucleus.P_kmi[k]).real # XXX
  
