@@ -2,7 +2,7 @@ from math import sqrt, pi
 import Numeric as num
 
 import _gpaw
-from gpaw.utilities import pack,pack2
+from gpaw.utilities import pack, pack2
 from gpaw.mpi import MASTER
 
 class WignerSeitz:
@@ -13,7 +13,7 @@ class WignerSeitz:
         self.gd = gd
 
         n = len(self.nuclei)
-        atom_c = num.empty((n,3),num.Float)
+        atom_c = num.empty((n, 3), num.Float)
         for a, nucleus in enumerate(nuclei):
             atom_c[a] = nucleus.spos_c * gd.N_c
 
@@ -27,10 +27,21 @@ class WignerSeitz:
         n = len(self.nuclei)
         weights = num.empty((n,),num.Float)
         for a in range(n):
-            mask = num.where(self.atom_index == a, 1.0, 0.0)
-            weights[a] = self.gd.integrate(density * mask)
+            mask = num.where(self.atom_index == a, density, 0.0)
+            # XXX Optimize! No need to integrate in zero-region
+            weights[a] = self.gd.integrate(mask)
 
         return weights
+
+    def expand_density(self, nt_G, s, nspins):
+        """Get the weights of spin-density in Wigner-Seitz cells
+        around the atoms. The spin index and number of spins are
+        needed for the augmentation sphere corrections."""
+        weights_a = self.expand(nt_G)
+        for w, n in zip(weights_a, self.nuclei):
+            w += sqrt(4 * pi) * (num.dot(n.D_sp[s], n.setup.Delta_pL[:, 0])
+                                 + n.setup.Delta0 / nspins)
+        return weights_a
     
     def expand_wave_function(self, psit_G, u, n):
         """Get the weights of wave function in Wigner-Seitz cells
@@ -41,9 +52,9 @@ class WignerSeitz:
 
         # add augmentation sphere corrections
         for a, nucleus in enumerate(self.nuclei):
-            P_i = nucleus.P_uni[u,n]
-            P_p = pack(num.outerproduct(P_i,P_i))
-            Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:,0]
+            P_i = nucleus.P_uni[u, n]
+            P_p = pack(num.outerproduct(P_i, P_i))
+            Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
             weigths[a] += num.dot(Delta_p, P_p) 
 
         return weigths
