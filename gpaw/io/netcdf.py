@@ -14,6 +14,8 @@ class Writer:
         self.nc.createDimension(name, value)
 
     def __setitem__(self, name, value):
+        if value is None:
+            value = 'None'
         setattr(self.nc, name, value)
 
     def add(self, name, shape, array=None, typecode=None, units=None):

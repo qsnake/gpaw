@@ -22,7 +22,7 @@ from gpaw.tddft.tdopers import \
 
 
 class DummyMixer:
-    def mix(self, nt_sG, comm):
+    def mix(self, nt_sG):
         pass
 
 # T^-1

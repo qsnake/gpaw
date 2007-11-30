@@ -15,6 +15,10 @@ class _Operator:
         """Operator(coefs, offsets, gd, typecode) -> Operator object.
         """
 
+        if cfd:
+            for offset_c in offset_pc:
+                assert sum([offset == 0 for offset in offset_c]) >= 2
+            
         maxoffset_c = [max([offset_c[c] for offset_c in offset_pc])
                        for c in range(3)]
         mp = maxoffset_c[0]

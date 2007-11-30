@@ -82,7 +82,7 @@ class Density:
         self.interpolate = Transformer(self.gd, self.finegd, nn).apply
         
         # Density mixer
-        self.set_mixer(paw, p['mix'])
+        self.set_mixer(paw, p['mixer'])
         
         self.initialized = False
 
@@ -167,7 +167,7 @@ class Density:
             self.nt_sG[0] *= x
             self.nt_sG[1] *= y
 
-        self.mixer.mix(self.nt_sG, comm)
+        self.mixer.mix(self.nt_sG)
 
         self.interpolate_pseudo_density()
 
@@ -189,13 +189,17 @@ class Density:
                 if Nt != 0.0:
                     self.nt_sg[s] *= Nt0 / Nt
 
-    def set_mixer(self, paw, mix):
-        # Density mixer:
-        if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
-            self.mixer = MixerSum(mix, self.gd)
+    def set_mixer(self, paw, mixer):
+        if mixer is not None:
+            self.mixer = mixer
         else:
-            self.mixer = Mixer(mix, self.gd, self.nspins)
+            if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
+                self.mixer = MixerSum()#mix, self.gd)
+            else:
+                self.mixer = Mixer()#mix, self.gd, self.nspins)
 
+        self.mixer.initialize(self.gd, self.nspins)
+        
     def update_pseudo_charge(self):
         if self.nspins == 2:
             self.nt_g[:] = self.nt_sg[0]
@@ -271,7 +275,7 @@ class Density:
                 for nucleus in self.my_nuclei:
                     nucleus.symmetrize(D_aii, symmetry.maps, s)
 
-        self.mixer.mix(self.nt_sG, comm)
+        self.mixer.mix(self.nt_sG)
 
         self.interpolate_pseudo_density()
 

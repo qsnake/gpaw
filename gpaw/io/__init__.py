@@ -54,7 +54,7 @@ def write(paw, filename, mode):
         w = open(filename, 'w')
 
         w['history'] = 'GPAW restart file'
-        w['version'] = '0.6'
+        w['version'] = '0.7'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
 
@@ -115,9 +115,11 @@ def write(paw, filename, mode):
         w['UseSymmetry'] = p['usesymm']
         w['Converged'] = paw.converged
         w['FermiWidth'] = paw.occupation.kT
+        w['MixClass'] = paw.density.mixer.__class__.__name__
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
-        w['MixMetric'] = paw.density.mixer.x
+        w['MixMetric'] = paw.density.mixer.metric_type
+        w['MixWeight'] = paw.density.mixer.weight
         w['MaximumAngularMomentum'] = paw.nuclei[0].setup.lmax
         w['SoftGauss'] = paw.nuclei[0].setup.softgauss
         w['FixDensity'] = paw.fixdensity > paw.maxiter

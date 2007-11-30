@@ -198,7 +198,7 @@ class PAW(PAWExtra, Output):
         """ASE-calculator interface.
 
         The following parameters can be used: `nbands`, `xc`, `kpts`,
-        `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mix`,
+        `spinpol`, `gpts`, `h`, `charge`, `usesymm`, `width`, `mixer`,
         `hund`, `lmax`, `fixdensity`, `convergence`, `txt`,
         `parsize`, `softgauss` and `stencils`.
 
@@ -238,7 +238,7 @@ class PAW(PAWExtra, Output):
                               'eigenstates': 1.0e-9,
                               'bands': 'occupied'},
             'fixdensity':    0,
-            'mix':           (0.25, 3, 1.0),
+            'mixer':         None,
             'txt':           '-',
             'hund':          False,
             'random':        False,
@@ -269,6 +269,7 @@ class PAW(PAWExtra, Output):
         self.F_ac = None
 
         self.eigensolver = None
+        self.density = None
         self.nbands = None
 
         self.set(**input_parameters)
@@ -357,12 +358,11 @@ class PAW(PAWExtra, Output):
                     tol = p['convergence']['eigenstates']
                     self.eigensolver.set_tolerance(tol)
                
-            elif name == 'mix':
-                # try to change the mixer
-                try:
-                    self.density.set_mixer(self,kwargs[name])
-                except:
-                    pass
+            elif name == 'mixer':
+                # Try to change the mixer:
+                if self.density is not None:
+                    self.density.set_mixer(self, value)
+                    
             elif name == 'width':
                 if p[name] != kwargs[name]:
                     self.kT = kwargs[name]
@@ -899,7 +899,29 @@ class PAW(PAWExtra, Output):
                                 'eigenstates':
                                 r['EigenstatesConvergenceCriterion'],
                                 'bands': r['NumberOfBandsToConverge']}
-            p['mix'] = (r['MixBeta'], r['MixOld'], r['MixMetric'])
+            if version <= 0.6:
+                mixer = 'Mixer'
+                weight = r['MixMetric']
+                if weight == 1.0:
+                    metric = None
+                else:
+                    metric = 'old'
+            else:
+                mixer = r['MixClass']
+                weight = r['MixWeight']
+                metric = r['MixMetric']
+
+            if mixer == 'Mixer':
+                from gpaw.mixer import Mixer
+            elif mixer == 'MixerSum':
+                from gpaw.mixer import MixerSum as Mixer
+            else:
+                Mixer = None
+
+            if Mixer is None:
+                p['mixer'] = None
+            else:
+                p['mixer'] = Mixer(r['MixBeta'], r['MixOld'], metric, weight)
             
         if version == 0.3:
             # Old version: XXX
