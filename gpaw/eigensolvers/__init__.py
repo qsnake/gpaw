@@ -6,7 +6,7 @@ from gpaw.eigensolvers.davidson import Davidson
 from gpaw.lcao.eigensolver import LCAO
 
 
-def eigensolver(name, **kwargs):
+def get_eigensolver(name, **kwargs):
     """Create eigensolver object."""
     return {'rmm-diis': RMM_DIIS,
             'cg': CG,

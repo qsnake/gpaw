@@ -19,7 +19,7 @@ import gpaw.occupations as occupations
 from gpaw import parsize, dry_run
 from gpaw import ConvergenceError
 from gpaw.density import Density
-from gpaw.eigensolvers import eigensolver
+from gpaw.eigensolvers import get_eigensolver
 from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
@@ -357,12 +357,12 @@ class PAW(PAWExtra, Output):
                 if self.eigensolver is not None:
                     tol = p['convergence']['eigenstates']
                     self.eigensolver.set_tolerance(tol)
-               
+                    
             elif name == 'mixer':
                 # Try to change the mixer:
                 if self.density is not None:
                     self.density.set_mixer(self, value)
-                    
+            
             elif name == 'width':
                 if p[name] != kwargs[name]:
                     self.kT = kwargs[name]
@@ -380,7 +380,7 @@ class PAW(PAWExtra, Output):
                 if p[name] != kwargs[name]:
                     eig = kwargs[name]
                     if isinstance(eig, str):
-                        self.eigensolver = eigensolver(eig)
+                        self.eigensolver = get_eigensolver(eig)
                     else:
                         self.eigensolver = eig
                     if self.wave_functions_initialized:
@@ -597,7 +597,7 @@ class PAW(PAWExtra, Output):
 
         if self.random_wf:
             # Improve the random guess with conjugate gradient
-            eig = eigensolver('dav')
+            eig = get_eigensolver('dav')
             eig.initialize(self)
             eig.nbands_converge = self.nbands
             for kpt in self.kpt_u:
@@ -652,13 +652,10 @@ class PAW(PAWExtra, Output):
 
     def initialize_wave_functions(self):
 
-        # we know, that we have enough memory to
+        # we know that we have enough memory to
         # initialize the eigensolver here
         p = self.input_parameters
 
-        #print self.eigensolver
-
-        #self.eigensolver = eigensolver(p['eigensolver'])
         self.eigensolver.initialize(self)
         
         #if not self.wave_functions_initialized:
@@ -1134,7 +1131,8 @@ class PAW(PAWExtra, Output):
             
         # Is this a "linear combination of atomic orbitals" type of
         # calculation?
-        self.lcao = (p['eigensolver'] == 'lcao')
+        #self.lcao = (p['eigensolver'] == 'lcao')
+        # use eigensolver.lcao ?
 
         type_a, basis_a = self.create_nuclei_and_setups(Z_a)
 
@@ -1145,7 +1143,7 @@ class PAW(PAWExtra, Output):
             self.ibzk_kc = num.zeros((1, 3), num.Float)
             self.nkpts = 1
         else:
-            if not self.lcao:
+            if not self.eigensolver.lcao:
                 # The atomic basis sets are only used for the initial
                 # wave function guess, and therefore not important for
                 # the symmetry analysis:
@@ -1215,7 +1213,7 @@ class PAW(PAWExtra, Output):
             s, k = divmod(self.kpt_comm.rank * self.nmyu + u, self.nkpts)
             weight = self.weight_k[k] * 2 / self.nspins
             k_c = self.ibzk_kc[k]
-            if self.lcao:
+            if self.eigensolver.lcao:
                 self.kpt_u.append(LCAOKPoint(self.nuclei,
                                              self.gd, weight, s, k, u, k_c,
                                              self.typecode))
@@ -1230,7 +1228,7 @@ class PAW(PAWExtra, Output):
         self.ghat_nuclei = []
 
         self.density = Density(self, magmom_a)#???
-        if self.lcao:
+        if self.eigensolver.lcao:
             self.hamiltonian = LCAOHamiltonian(self)
         else:
             self.hamiltonian = Hamiltonian(self)

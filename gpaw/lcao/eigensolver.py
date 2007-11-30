@@ -6,10 +6,10 @@ from gpaw.utilities.lapack import diagonalize
 
 class LCAO:
     """Eigensolver for LCAO-basis calculation"""
-	
-    def __init__(self):		
-    	pass	
-    
+
+    def __init__(self):
+        self.lcao = True # paw object wants to know this
+
     def initialize(self, paw):
         self.gd = paw.gd
         self.nuclei = paw.nuclei

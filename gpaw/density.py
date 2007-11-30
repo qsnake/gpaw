@@ -57,7 +57,7 @@ class Density:
         self.nvalence = paw.nvalence
         self.charge = float(p['charge'])
         self.charge_eps = 1e-7
-        self.lcao = paw.lcao
+        self.lcao = paw.eigensolver.lcao
         
         self.nvalence0 = self.nvalence + self.charge
         for nucleus in self.nuclei:

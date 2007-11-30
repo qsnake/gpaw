@@ -91,8 +91,12 @@ class Hamiltonian:
         self.poisson_stencil = nn = stencils[1]
 
         # Solver for the Poisson equation:
-        self.poisson = PoissonSolver()
-        self.poisson.initialize(self.finegd, nn, p['poissonsolver'])
+        psolver = p['poissonsolver']
+        if isinstance(psolver, str):
+            self.poisson = PoissonSolver(psolver)
+        else:
+            self.poisson = psolver
+        self.poisson.initialize(self.finegd, nn)
 
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(paw.setups)

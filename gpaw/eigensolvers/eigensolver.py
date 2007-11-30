@@ -16,10 +16,9 @@ from gpaw.utilities import unpack
 class Eigensolver:
     def __init__(self):
         self.initialized = False
+        self.lcao = False
 
     def initialize(self, paw, nbands=None):
-        #if self.initialized:
-        #    return
         self.timer = paw.timer
         self.kpt_comm = paw.kpt_comm
         self.typecode = paw.typecode

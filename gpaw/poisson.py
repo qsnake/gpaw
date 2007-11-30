@@ -14,10 +14,18 @@ from gpaw.utilities.gauss import Gaussian
 
 
 class PoissonSolver:
-    def __init__(self):
-        pass
+    def __init__(self, relax='GS'):
+        # Relaxation method
+        if relax == 'GS':
+            # Gauss-Seidel
+            self.relax_method = 1
+        elif relax == 'J':
+            # Jacobi
+            self.relax_method = 2
+        else:
+            raise NotImplementedError('Relaxation method %s' % relax)
 
-    def initialize(self, gd, nn, relax='GS', load_gauss=False):
+    def initialize(self, gd, nn, load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         self.dv = gd.dv
@@ -28,16 +36,6 @@ class PoissonSolver:
         else:
             self.operators = [Laplace(gd, scale, nn)]
             self.B = None
-
-        # Relaxation method
-        if relax == 'GS':
-            # Gauss-Seidel
-            self.relax_method = 1
-        elif relax == 'J':
-            # Jacobi
-            self.relax_method = 2
-        else:
-            raise NotImplementedError('Relaxation method %s' % relax)
 
         self.rhos = [gd.empty()]
         self.phis = [None]
@@ -222,11 +220,12 @@ from gpaw.utilities.complex import real
 from gpaw.utilities.tools import construct_reciprocal
 
 class PoissonFFTSolver(PoissonSolver):
-    def __init__(self):
-        PoissonSolver.__init__(self)
+    def __init__(self, relax=None):
+        pass
+        #PoissonSolver.__init__(self)
 
     """FFT implementation of the poisson solver"""
-    def initialize(self, gd, nn=None, relax=None, load_gauss=False):
+    def initialize(self, gd, nn=None, load_gauss=False):
         self.gd = gd
         if self.gd.domain.comm.size > 1:
             raise RuntimeError, 'Cannot do parallel FFT.'
@@ -243,7 +242,7 @@ class PoissonFFTSolver(PoissonSolver):
     def solve_screened(self, phi, rho, screening=0):
         phi[:] = real(inverse_fftnd(fftnd(rho) * 4 * pi /
                                     (self.k2 + screening**2)))
-        return 1        
+        return 1
 
     def iterate(*args, **kwargs):
         pass
