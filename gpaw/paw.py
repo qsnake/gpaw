@@ -1106,9 +1106,6 @@ class PAW(PAWExtra, Output):
                 p['hund'] = False
                 self.fixmom = False
 
-        if self.fixmom:
-            assert self.spinpol
-
         self.xcfunc = XCFunctional(p['xc'], self.nspins)
         self.xcfunc.set_timer(self.timer)
         
