@@ -58,4 +58,4 @@ if not io_only:
 
 lr = LrTDDFT(filename='lr_old.dat.gz')
 t5 = lr[0]
-equal(t4.get_energy(), t5.get_energy(), 1.e-12)
+equal(t4.get_energy(), t5.get_energy(), 1.e-04)
