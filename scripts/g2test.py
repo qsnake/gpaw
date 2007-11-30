@@ -1,7 +1,11 @@
+import traceback
+
 from gpaw import Calculator
+from gpaw.mpi import rank, MASTER
 from gpaw.testing.g2 import get_g2, atoms
 from gpaw.testing.atomization_data import atomization_vasp
 from ASE.Utilities.Parallel import paropen
+from sys import stderr
 
 cell = [12., 13., 14.]
 data = paropen('g2data.txt', 'w')
@@ -21,6 +25,9 @@ for formula in systems:
         energy = loa.GetPotentialEnergy()
     except:
         print >>data, formula, 'Error'
+        if rank == MASTER:
+            print >>sys.stderr, 'Error in', formula
+            traceback.print_exc(file=stderr)
     else:
         print >>data, formula, repr(energy)
         calc.write(formula + '.gpw', mode='all')
