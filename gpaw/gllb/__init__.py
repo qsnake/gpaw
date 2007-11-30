@@ -107,25 +107,34 @@ def construct_density1D(gd, u_j, f_j):
     n_g[0] = n_g[1]
     return n_g
 
-def find_fermi_level1D(f_j, e_j):
-    """Finds the fermilevel from occupations and eigenvalue energies.
+def find_reference_level1D(f_j, e_j, lumo=False):
+    """Finds the reference level from occupations and eigenvalue energies.
     
-    Uses tolerance 1e-5 for occupied orbital.
+    Uses tolerance 1e-3 for occupied orbital.
 
     =========== ==========================================================
     Parameters:
     =========== ==========================================================
     f_j         The occupations list
     e_j         The eigenvalues list
+    lumo        If lumo==True, find LUMO energy instead of HOMO energy.
     =========== ==========================================================
     """
+    
+    if lumo:
+        lumo_level = 1000
+        for f,e in zip(f_j, e_j):
+            if f < 1e-3:
+                if lumo_level > e:
+                    lumo_level = e
+        return lumo_level
 
-    fermi_level = -1000
+    homo_level = -1000
     for f,e in zip(f_j, e_j):
-        if f > 1e-5:
-            if fermi_level < e:
-                fermi_level = e
-    return fermi_level
+        if f > 1e-3:
+            if homo_level < e:
+                homo_level = e
+    return homo_level
 
 def find_nucleus(nuclei, a):
     nucleus = None

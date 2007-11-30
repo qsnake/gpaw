@@ -1,37 +1,41 @@
 import Numeric as num
-from gpaw.gllb import construct_density1D, find_fermi_level1D, SMALL_NUMBER
+from gpaw.gllb import construct_density1D, find_reference_level1D, SMALL_NUMBER
 from gpaw.gllb.responsefunctional import ResponseFunctional
 from gpaw.gllb.nonlocalfunctional import NonLocalFunctionalDesc
+
 from gpaw.mpi import world
 
 SLATER_FUNCTIONAL = "X_B88-None"
 K_G = 0.382106112167171
 
-
-def gllb_weight(epsilon, fermi_level):
+def gllb_weight(epsilon, reference_level):
     """
     Calculates the weight for GLLB functional.
     The parameter K_G is adjusted such that the correct result is obtained for
-    non-interacting electron gas.
+    exchange energy of non-interacting electron gas.
 
-    All orbitals closer than 1e-3 to fermi level are consider the give
+    All orbitals closer than 1e-5 Ha to fermi level are consider the give
     zero response. This is to improve convergence of systems with degenerate orbitals.
 
     =========== ==========================================================
     Parameters:
     =========== ==========================================================
     epsilon     The eigenvalue of current orbital
-    fermi_level The fermi-level of the system
+    reference_level The fermi-level of the system
     =========== ==========================================================
     """
 
-    if (epsilon +1e-3 > fermi_level):
+    if (epsilon +1e-5 > reference_level):
         return 0
-    return K_G * num.sqrt(fermi_level-epsilon)
+
+    return K_G * num.sqrt(reference_level-epsilon)
 
 
 class GLLB1DFunctional:
     """For simplicity, the 1D-GLLB and 1D-KLI have moved to separate classes.
+       1D-codes are so simple, that there is not much trouble creating
+       own class for each of them. Besides, it is a good idea
+       to start implementing functionals from 1D-generator.
     """
 
     def pass_stuff1D(self, ae):
@@ -42,37 +46,43 @@ class GLLB1DFunctional:
 
         Used by get_non_local_energy_and_potential1D to calculate an
         approximation to 1D-Slater potential. Returns the exchange
-        energy.
+        energy. 
 
         =========== ==========================================================
         Parameters:
         =========== ==========================================================
         gd          Radial grid descriptor
         n_g         The density
-        vrho_xc     The slater part multiplied by density is stored here.
+        u_j         The 1D-wavefunctions
+        f_j         Occupation numbers
+        l_j         The angular momentum numbers
+        vrho_xc     The slater part multiplied by density is added to this array.
+        v_bar       ???
         =========== ==========================================================
         """
         # Create temporary arrays only once
         if self.v_g1D == None:
-            v_g = n_g.copy()
-            v_g[:] = 0.0
+            self.v_g = n_g.copy()
 
         if self.e_g1D == None:
-            e_g = n_g.copy()
-            e_g[:] = 0.0
+            self.e_g = n_g.copy()
 
         # Do we have already XCRadialGrid object, if not, create one
         if self.slater_part1D == None:
             from gpaw.xc_functional import XCFunctional, XCRadialGrid
             self.slater_part1D = XCRadialGrid(XCFunctional(SLATER_FUNCTIONAL, 1), gd)
 
+        self.v_g[:] = 0.0
+        self.e_g[:] = 0.0
+        
         # Calculate B88-energy density
-        self.slater_part1D.get_energy_and_potential_spinpaired(n_g, v_g, e_g=e_g)
+        self.slater_part1D.get_energy_and_potential_spinpaired(n_g, self.v_g, e_g=self.e_g)
 
-        Exc = num.dot(e_g, gd.dv_g)
+        # Calculate the exchange energy
+        Exc = num.dot(self.e_g, gd.dv_g)
 
         # The Slater potential is approximated by 2*epsilon / rho
-        vrho_xc[:] += 2 * e_g
+        vrho_xc[:] += 2 * self.e_g
 
         return Exc
 
@@ -88,8 +98,8 @@ class GLLB1DFunctional:
           e_j         Eigenvalues
           =========== ==========================================================
         """
-        fermi_level = find_fermi_level1D(f_j, e_j)
-        w_j = [ gllb_weight(e, fermi_level) for e in e_j ]
+        reference_level = find_reference_level1D(f_j, e_j)
+        w_j = [ gllb_weight(e, reference_level) for e in e_j ]
         return w_j
 
     def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, 
@@ -105,10 +115,11 @@ class GLLB1DFunctional:
           f_j         The occupation numbers
           e_j         The eigenvalues
           l_j         The angular momentum quantum numbers
-          v_xc        V_{xc} is stored here.
+          v_xc        V_{xc} is added to this array.
           nj_core     If njcore is set, only response part will be returned for wave functions u_j[:nj_core]
           density     If density is supplied, it overrides the density calculated from orbitals.
                       This is used is setup-generation.
+          vbar        ???
           =========== ==========================================================
         """
 
@@ -172,6 +183,18 @@ class GLLB1DFunctional:
 
         extra_xc_data['core_response'] = v_xc.copy()
 
+        if self.relaxed_core_response:
+
+            for nc in range(0, ae.njcore):
+                # Add the response multiplied with density to potential
+                orbital_density = construct_density1D(ae.rgd, ae.u_j[nc], ae.f_j[nc])
+                extra_xc_data['core_orbital_density_'+str(nc)] = orbital_density
+                extra_xc_data['core_eigenvalue_'+str(nc)] = [ ae.e_j[nc] ]
+
+            extra_xc_data['njcore'] = [ ae.njcore ]
+        
+
+
 
 #################################################################################
 #                                                                               #
@@ -193,16 +216,33 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
 
     """
 
-    def __init__(self):
-        ResponseFunctional.__init__(self)
+    def __init__(self, relaxed_core_response=False, lumo=False):
+        """Initialize GLLB Functional class
 
-        self.fermi_level = -1000
+           About relax_core_resonse flag:
+       
+           Normally, core response is calculated using reference-level of setup-generator.
+           If relax_core_response is true, the GLLB-coefficients for core response are recalculated 
+           using current reference-level. That is
+           v^{resp,core} = \sum_i^{core} K_G \sqrt{\epsilon_i - \epsilon_f} |\psi_i|^2 / \rho.
+
+           As usually in frozen core approximation, the core orbital \psi_i, and core energy
+           \epsilon_i are kept fixed.
+
+           About lumo flag:
+
+           Normally, the reference energy (\epsilon_f in the article [1]) is set to HOMO of the system. 
+           However, if lumo==True, the reference energy is set to LUMO of the system.
+         
+        """
+        ResponseFunctional.__init__(self, relaxed_core_response)
+
         self.v_g1D = None
         self.e_g1D = None
         self.slater_part1D = None
         self.slater_part = None
-        self.old_fermi_level = None
         self.xcname = 'GLLB'
+        self.lumo = lumo
 
     def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm):
         ResponseFunctional.pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm)
@@ -219,12 +259,19 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
         """
         return NonLocalFunctionalDesc(True, True, True, True)
 
-    def find_fermi_level(self, info_s):
-        # Maximun level over spin
-        fermi_level = max( [ find_fermi_level1D(info['f_n'], info['eps_n']) for info in info_s ] )
-        # And over k-points
-        fermi_level = self.kpt_comm.max(fermi_level)
-        return fermi_level
+    def find_reference_level(self, info_s):
+        if self.lumo:
+            c = -1
+        else:
+            c = 1
+
+        # In previous version there was a maximum taken over spin.
+        # This was wrong, since exchange interaction does not affect different spins.
+        # Now the problem is fixed.
+
+        # Find the reference level for each spin
+        # First over own eigenvalues of this processor, then over all k-points.
+        return [ c*self.kpt_comm.max(c*find_reference_level1D(info['f_n'], info['eps_n'], lumo=self.lumo)) for info in info_s ]
 
     def ensure_B88(self):
         # Create the B88 functional for Slater part (only once per calculation)
@@ -256,7 +303,6 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
         return num.sum(etemp_g * rgd.dv_g)
 
     def get_slater_part(self, info_s, v_sg, e_g):
-        print "Using e_gga for slater part"
 
         self.ensure_B88()
 
@@ -283,11 +329,10 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
 
         # Find out the coefficients
 
-        # First, locate the fermi-level
-        self.fermi_level = self.find_fermi_level(info_s)
-
-        # Then calculate weights for each spin using the calcualted fermi-level and eigenvalues
-        w_sn =  [ [ gllb_weight(e, self.fermi_level) for e in info['eps_n'] ] for info in info_s ]
+        # First, locate the reference-levels (of each spins)
+        self.reference_levels = self.find_reference_level(info_s) 
+        print [ i*27.211 for i in self.reference_levels ]
+        w_sn =  [ [ gllb_weight(e, reference_level) for e in info['eps_n'] ] for info, reference_level in zip(info_s, self.reference_levels) ]
 
         return w_sn
 

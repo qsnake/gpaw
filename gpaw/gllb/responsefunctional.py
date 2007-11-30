@@ -7,6 +7,29 @@ from multiarray import matrixproduct as dot3
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities import pack
 
+#REMOVE ME
+K_G = 0.382106112167171
+def gllb_weight(epsilon, reference_level):
+    """
+    Calculates the weight for GLLB functional.
+    The parameter K_G is adjusted such that the correct result is obtained for
+    non-interacting electron gas.
+
+    All orbitals closer than 1e-3 to reference level are consider the give
+    zero response. This is to improve convergence of systems with degenerate orbitals.
+
+    =========== ==========================================================
+    Parameters:
+    =========== ==========================================================
+    epsilon     The eigenvalue of current orbital
+    reference_level The reference level of the system. (Usually HOMO-orbital)
+    =========== ==========================================================
+    """
+
+    if (epsilon +1e-5 > reference_level):
+        return 0
+    return K_G * num.sqrt(reference_level-epsilon)
+
 class ResponseFunctional(NonLocalFunctional):
     """Response-part, for example for KLI and GLLB functionals.
     
@@ -26,13 +49,15 @@ class ResponseFunctional(NonLocalFunctional):
     see GLLBFunctional.get_slater_part_and_weights.
     """
 
-    def __init__(self):
+    def __init__(self, relaxed_core_response):
         """
         Initialize the ResponseFunctional. 
 
         """
 
         NonLocalFunctional.__init__(self)
+        self.relaxed_core_response = relaxed_core_response
+
         self.initialization_ready = False
 
     def pass_stuff(self, kpt_u, gd, finegd, interpolate, nspins, nuclei, occupation, kpt_comm):
@@ -51,15 +76,16 @@ class ResponseFunctional(NonLocalFunctional):
 
     def calculate_non_local(self, info_s, v_sg, e_g):
         """
-        Calculate the non-local response part. Also icludes the energy calculation and slater potential
+        Calculate the non-local response part. Also includes the energy calculation and slater potential
         which are obtained by a call to a virtual method get_slater_part_and_weigts.
         This method is to be overridden in subclasses.
 
         ============= ==========================================================
         Parameters:
         ============= ==========================================================
-        v_g           The GLLB-potential is added to this supplied potential
-        e_g           The GLLB-energy density (is the same as e_g)
+        info_s        The data needed for calculating v_sg
+        v_sg          The GLLB-potential is added to this supplied potential array.
+        e_g           The GLLB-energy density
         ============= ==========================================================
 
         """
@@ -73,16 +99,13 @@ class ResponseFunctional(NonLocalFunctional):
             # Calculate the coarse response multiplied with density and the coarse density
             # and to the division at the end of the loop.
             self.vt_G[:] = 0.0
-            ####self.nt_G[:] = 0.0
 
             # For each orbital, add the response part
             for f, e, psit_G, w in zip(info['f_n'], info['eps_n'], info['psit_nG'], w_n):
                 if info['typecode'] is num.Float:
-                    psit_G2 = psit_G**2
-                    axpy(f*w, psit_G2, self.vt_G)
+                    axpy(f*w, psit_G**2, self.vt_G)
                 else:
-                    psit_G2 = (psit_G * num.conjugate(psit_G)).real
-                    self.vt_G += f * w * psit_G2
+                    self.vt_G += f * w * (psit_G * num.conjugate(psit_G)).real
 
             # Communicate the coarse-response part
             self.kpt_comm.sum(self.vt_G)
@@ -118,17 +141,23 @@ class ResponseFunctional(NonLocalFunctional):
         vtemp_g = num.zeros(N, num.Float)
         e_g = num.zeros(N, num.Float)
         deda2_g = num.zeros(N, num.Float)
-
         # Calculate the density matrix only at first slice
+        # Calculate also the core-response in self.relaxed_core_response is True
         if slice == 0:
+            if self.relaxed_core_response:
+                self.core_response = num.zeros(N, num.Float)
+                njcore = xccorr.extra_xc_data['njcore']
+                for nc in range(0, njcore):
+                    psi2_g = xccorr.extra_xc_data['core_orbital_density_'+str(nc)]
+                    epsilon = xccorr.extra_xc_data['core_eigenvalue_'+str(nc)]
+
+                    self.core_response[:] += psi2_g * gllb_weight(epsilon, self.reference_levels[s])
             Dnn_Lq = 0
             # Calculate nn_Lq
             # For each k-point
-
             # Variable i is result of poor indexing of my w_sn,
             # I need to figure out better storage format (Mikael)
             i = 0
-
             for kpt in self.kpt_u:
                 # Include only k-points with same spin
                 if kpt.s == s:
@@ -141,13 +170,11 @@ class ResponseFunctional(NonLocalFunctional):
                     for j in range(len(w_i)):
                         w_i[j] = self.w_sn[s][i]
                         i = i + 1
-
                     w_i = w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] * xccorr.deg
 
                     # Calculate the 'density matrix' for numerator part of potential
                     Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
                                          P_ni * w_i))
-
                     Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
                     Dnn_Lq += dot3(xccorr.B_Lqp, Dn_p)
 
@@ -169,7 +196,12 @@ class ResponseFunctional(NonLocalFunctional):
         Exc-= self.get_slater_part_paw_correction(xccorr.rgd, xccorr.nt_g, xccorr.at2_g, vt_g, pseudo=True)
 
         # Put the response-part of valence electrons and of core electrons to hard potential
-        v_g[:] += nn / (xccorr.n_g + SMALL_NUMBER) + xccorr.extra_xc_data['core_response']
+        v_g[:] += nn / (xccorr.n_g + SMALL_NUMBER) 
+     
+        if self.relaxed_core_response:
+            v_g[:] += self.core_response / (xccorr.n_g + SMALL_NUMBER)
+        else:
+            v_g[:] += xccorr.extra_xc_data['core_response']
 
         # Calculate the pseudo response part of valence electrons multiplied with density
         nn_Lg = num.dot(Dnn_Lq, xccorr.nt_qg)
