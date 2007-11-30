@@ -21,11 +21,11 @@ class PairDensity:
                 # Shape functions:
                 ghat_l = nucleus.setup.ghat_l
                 Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
-                                lfbc=paw.locfuncbcaster)
+                                forces=False)
                 nucleus.Ghat_L = Ghat_L
                 if Ghat_L is not None:
                     Ghat_nuclei.append(nucleus)
-                Ghat_nuclei.sort()
+                    Ghat_L.set_communicator(paw.gd.comm, nucleus.rank)
             paw.Ghat_nuclei = Ghat_nuclei
 
         self.Ghat_nuclei = paw.Ghat_nuclei
@@ -76,7 +76,7 @@ class PairDensity:
                 Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
             else:
                 Q_L = None
-                
+
             # Add compensation charges
             if finegrid:
                 nucleus.ghat_L.add(rhot, Q_L, communicate=True)
