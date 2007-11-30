@@ -11,14 +11,16 @@ from gpaw.utilities import contiguous, is_contiguous
 import _gpaw
     
 class _Operator:
-    def __init__(self, coef_p, offset_pc, gd, cfd, typecode=num.Float):
+    def __init__(self, coef_p, offset_pc, gd, typecode=num.Float):
         """Operator(coefs, offsets, gd, typecode) -> Operator object.
         """
 
-        if cfd:
-            for offset_c in offset_pc:
-                assert sum([offset == 0 for offset in offset_c]) >= 2
-            
+        # Is this a central finite-difference type of stencil?
+        cfd = True
+        for offset_c in offset_pc:
+            if sum([offset != 0 for offset in offset_c]) >= 2:
+                cfd = False
+
         maxoffset_c = [max([offset_c[c] for offset_c in offset_pc])
                        for c in range(3)]
         mp = maxoffset_c[0]
@@ -74,8 +76,8 @@ class _Operator:
 if debug:
     Operator = _Operator
 else:
-    def Operator(coef_p, offset_pc, gd, cfd, typecode=num.Float):
-        return _Operator(coef_p, offset_pc, gd, cfd, typecode).operator
+    def Operator(coef_p, offset_pc, gd, typecode=num.Float):
+        return _Operator(coef_p, offset_pc, gd, typecode).operator
 
 
 def Gradient(gd, c, scale=1.0, typecode=num.Float):
@@ -85,7 +87,7 @@ def Gradient(gd, c, scale=1.0, typecode=num.Float):
     offset_pc = num.zeros((2, 3))
     offset_pc[0, c] = -1
     offset_pc[1, c] = 1
-    return Operator(coef_p, offset_pc, gd, True, typecode)
+    return Operator(coef_p, offset_pc, gd, typecode)
 
 
 # Expansion coefficients for finite difference Laplacian.  The numbers are
@@ -122,7 +124,7 @@ def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
         coefs.extend([c[0], c[0],
                       c[1], c[1],
                       c[2], c[2]])
-    return Operator(coefs, offsets, gd, True, typecode)
+    return Operator(coefs, offsets, gd, typecode)
 
 
 def LaplaceA(gd, scale, typecode=num.Float):
@@ -146,7 +148,7 @@ def LaplaceA(gd, scale, typecode=num.Float):
                      (0, -1, -1), (0, -1, 1), (0, 1, -1), (0, 1, 1),
                      (-1, 0, -1), (-1, 0, 1), (1, 0, -1), (1, 0, 1),
                      (-1, -1, 0), (-1, 1, 0), (1, -1, 0), (1, 1, 0)],
-                    gd, False, typecode)
+                    gd, typecode)
 
 def LaplaceB(gd, typecode=num.Float):
     a = 0.5
@@ -157,4 +159,4 @@ def LaplaceB(gd, typecode=num.Float):
                      (-1, 0, 0), (1, 0, 0),
                      (0, -1, 0), (0, 1, 0),
                      (0, 0, -1), (0, 0, 1)],
-                    gd, True, typecode)
+                    gd, typecode)

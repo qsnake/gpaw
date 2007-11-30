@@ -45,7 +45,7 @@ class BaseMixer:
                                     (-1, 0, 0), (1, 0, 0),
                                     (0, -1, 0), (0, 1, 0),
                                     (0, 0, -1), (0, 0, 1)],
-                                   gd, True, num.Float).apply
+                                   gd, num.Float).apply
             self.mR_G = gd.empty()
 
         elif self.metric_type == 'new':
@@ -69,7 +69,7 @@ class BaseMixer:
                                     (-1, 1, 1), (1, -1, -1), (-1, -1, 1),  #d
                                     (-1, 1, -1), (-1, -1, -1)              #d
                                     ],
-                                   gd, False, num.Float).apply
+                                   gd, num.Float).apply
             self.mR_G = gd.empty()
 
         else:
