@@ -26,7 +26,7 @@ for formula in systems:
     except:
         print >>data, formula, 'Error'
         if rank == MASTER:
-            print >>sys.stderr, 'Error in', formula
+            print >>stderr, 'Error in', formula
             traceback.print_exc(file=stderr)
     else:
         print >>data, formula, repr(energy)
