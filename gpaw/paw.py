@@ -21,6 +21,7 @@ from gpaw import ConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.eigensolvers.eigensolver import Eigensolver
+from gpaw.poisson import PoissonSolver
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.lcao.hamiltonian import LCAOHamiltonian
@@ -232,7 +233,7 @@ class PAW(PAWExtra, Output):
             'width':         None,
             'spinpol':       None,
             'usesymm':       True,
-            'stencils':      (2, 'M', 3),
+            'stencils':      (2, 3),
             'convergence':   {'energy': 0.001,
                               'density': 1.0e-3,
                               'eigenstates': 1.0e-9,
@@ -248,7 +249,7 @@ class PAW(PAWExtra, Output):
             'decompose':     None,
             'verbose':       0,
             'eigensolver':   'rmm-diis',
-            'poissonsolver': 'GS',
+            'poissonsolver': None,
             'exxfinegrid'  : True,
             'communicator' : None,
             'idiotproof'   : True
@@ -924,14 +925,14 @@ class PAW(PAWExtra, Output):
             # Old version: XXX
             print('Warning: Reading old version 0.3 restart files is ' +
                   'dangerous and will be disabled some day in the future!')
-            p['stencils'] = (2, 'M', 3)
+            p['stencils'] = (2, 3)
             p['charge'] = 0.0
             p['fixmom'] = False
             self.converged = True
         else:
             p['stencils'] = (r['KohnShamStencil'],
-                             r['PoissonStencil'],
                              r['InterpolationStencil'])
+            p['poissonsolver'] = PoissonSolver(nn=r['PoissonStencil'])
             p['charge'] = r['Charge']
             p['fixmom'] = r['FixMagneticMoment']
             self.converged = r['Converged']

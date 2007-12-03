@@ -20,8 +20,8 @@ d  = Domain((a,a,a),
 d.set_decomposition(world,
                     N_c=Nc)   # Decompose domain on processors
 gd = GridDescriptor(d, Nc)    # Grid-descriptor object
-solver = PoissonSolver()      # Numerical poisson solver
-solver.initialize(gd, nn=3)
+solver = PoissonSolver(nn=3)  # Numerical poisson solver
+solver.initialize(gd)
 solve = solver.solve
 xyz, r2 = coordinates(gd)     # Matrix with the square of the radial coordinate
 r  = num.sqrt(r2)             # Matrix with the values of the radial coordinate

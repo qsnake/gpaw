@@ -107,8 +107,8 @@ def write(paw, filename, mode):
         p = paw.input_parameters
         # Write various parameters:
         (w['KohnShamStencil'],
-         w['PoissonStencil'],
          w['InterpolationStencil']) = p['stencils']
+        w['PoissonStencil'] = paw.hamiltonian.poisson.nn
         w['XCFunctional'] = paw.hamiltonian.xc.xcfunc.get_name()
         w['Charge'] = p['charge']
         w['FixMagneticMoment'] = paw.fixmom

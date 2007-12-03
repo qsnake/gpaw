@@ -15,7 +15,7 @@ from distutils.util import get_platform
 from glob import glob
 from os.path import join, isfile
 
-__all__ = ['Calculator', 'Mixer', 'MixerSum']
+__all__ = ['Calculator', 'Mixer', 'MixerSum', 'PoissonSolver']
 
 
 class ConvergenceError(Exception):
@@ -88,6 +88,7 @@ if paths != '':
 
 from gpaw.ase import Calculator
 from gpaw.mixer import Mixer, MixerSum
+from gpaw.poisson import PoissonSolver
 
 if trace:
     indent = '    '

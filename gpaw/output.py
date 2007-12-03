@@ -107,9 +107,12 @@ class Output:
 
         t('Total Charge:        %.6f' % p['charge'])
         t('Fermi Temperature:   %.6f' % (self.kT * self.Ha))
-        t('Eigen Solver:        %s \n                     (%s)' % (p['eigensolver'], fd(p['stencils'][0])))
-        t('Poisson Solver:      %s \n                     (%s)' % (p['poissonsolver'],fd(p['stencils'][1])))
-        order = str((2 * p['stencils'][2]))
+        t('Eigen Solver:        %s \n                     (%s)' %
+          (p['eigensolver'], fd(p['stencils'][0])))
+        t('Poisson Solver:      %s \n                     (%s)' %
+          ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
+           fd(self.hamiltonian.poisson.nn)))
+        order = str((2 * p['stencils'][1]))
         if order[-1] == '1':
             order = order+'st'
         elif order[-1] == '2':

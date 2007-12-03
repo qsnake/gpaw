@@ -10,8 +10,8 @@ def f(n):
     domain = Domain((L, L, L))
     gd = GridDescriptor(domain, (N, N, N))
     a = gd.zeros()
-    p = PoissonSolver()
-    p.initialize(gd, 1, 'J')
+    p = PoissonSolver(nn=1, relax='J')
+    p.initialize(gd)
     cut = N / 2.0 * 0.9
     C = N // 2
     for x in range(N):

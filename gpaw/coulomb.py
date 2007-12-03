@@ -49,8 +49,8 @@ class Coulomb:
                 if self.poisson is not None:
                     self.solve = self.poisson.solve
                 else:
-                    solver = PoissonSolver()
-                    solver.initialize(self.gd, nn=2, load_gauss=True)
+                    solver = PoissonSolver(nn=2)
+                    solver.initialize(self.gd, load_gauss=True)
                     self.solve = solver.solve
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):

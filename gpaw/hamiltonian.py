@@ -81,22 +81,17 @@ class Hamiltonian:
 
         # Number of neighbor grid points used for interpolation (1, 2,
         # or 3):
-        nn = stencils[2]
+        nn = stencils[1]
 
         # Restrictor function for the potential:
         self.restrict = Transformer(self.finegd, self.gd, nn).apply
 
-        # Number of neighbor grid points used for finite difference
-        # Laplacian in the Poisson equation (1, 2, ...):
-        self.poisson_stencil = nn = stencils[1]
-
         # Solver for the Poisson equation:
         psolver = p['poissonsolver']
-        if isinstance(psolver, str):
-            self.poisson = PoissonSolver(psolver)
-        else:
-            self.poisson = psolver
-        self.poisson.initialize(self.finegd, nn)
+        if psolver is None:
+            psolver = PoissonSolver(nn='M', relax='GS')
+        self.poisson = psolver
+        self.poisson.initialize(self.finegd)
 
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(paw.setups)

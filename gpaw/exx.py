@@ -106,8 +106,8 @@ class EXX:
                 solver.initialize(gd)
                 self.poisson_solve = solver.solve
             else:
-                solver = PoissonSolver()
-                solver.initialize(gd, paw.hamiltonian.poisson_stencil)
+                solver = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
+                solver.initialize(gd)
                 self.poisson_solve = solver.solve
                     
             self.fineintegrate = gd.integrate

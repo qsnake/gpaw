@@ -14,7 +14,9 @@ from gpaw.utilities.gauss import Gaussian
 
 
 class PoissonSolver:
-    def __init__(self, relax='GS'):
+    def __init__(self, nn='M', relax='GS'):
+        self.nn = nn
+        
         # Relaxation method
         if relax == 'GS':
             # Gauss-Seidel
@@ -25,16 +27,16 @@ class PoissonSolver:
         else:
             raise NotImplementedError('Relaxation method %s' % relax)
 
-    def initialize(self, gd, nn, load_gauss=False):
+    def initialize(self, gd, load_gauss=False):
         self.gd = gd
         scale = -0.25 / pi 
         self.dv = gd.dv
 
-        if nn == 'M':
+        if self.nn == 'M':
             self.operators = [LaplaceA(gd, -scale)]
             self.B = LaplaceB(gd)
         else:
-            self.operators = [Laplace(gd, scale, nn)]
+            self.operators = [Laplace(gd, scale, self.nn)]
             self.B = None
 
         self.rhos = [gd.empty()]
@@ -220,15 +222,14 @@ from gpaw.utilities.complex import real
 from gpaw.utilities.tools import construct_reciprocal
 
 class PoissonFFTSolver(PoissonSolver):
-    def __init__(self, relax=None):
+    def __init__(self):
         pass
-        #PoissonSolver.__init__(self)
 
     """FFT implementation of the poisson solver"""
-    def initialize(self, gd, nn=None, load_gauss=False):
+    def initialize(self, gd, load_gauss=False):
         self.gd = gd
         if self.gd.domain.comm.size > 1:
-            raise RuntimeError, 'Cannot do parallel FFT.'
+            raise RuntimeError('Cannot do parallel FFT.')
         self.k2, self.N3 = construct_reciprocal(self.gd)
         if load_gauss:
             gauss = Gaussian(self.gd)
@@ -243,13 +244,3 @@ class PoissonFFTSolver(PoissonSolver):
         phi[:] = real(inverse_fftnd(fftnd(rho) * 4 * pi /
                                     (self.k2 + screening**2)))
         return 1
-
-    def iterate(*args, **kwargs):
-        pass
-    
-    def iterate2(*args, **kwargs):
-        pass
-        
-## from gpaw import fft_poisson
-## if fft_poisson:
-##     PoissonSolver = PoissonFFTSolver

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
-from gpaw import Calculator
+from gpaw import Calculator, PoissonSolver
 import gpaw
 import Numeric as num
 from gpaw.tddft import TDDFT
@@ -16,7 +16,10 @@ if 0:
     atoms = ListOfAtoms([Atom('Be',(a/2, a/2, a/2), magmom=0)],
                         periodic=False,
                         cell=(a, a, a))
-    calc = Calculator(nbands=1, h=0.3, convergence={'eigenstates': 1e-15},xc='X-C_PW',poissonsolver='J')
+    calc = Calculator(nbands=1, h=0.3,
+                      convergence={'eigenstates': 1e-15},
+                      xc='X-C_PW',
+                      poissonsolver=PoisonSolver(relax='J'))
     atoms.SetCalculator(calc)
     e = atoms.GetPotentialEnergy()
     calc.write('Be.nc', 'all')

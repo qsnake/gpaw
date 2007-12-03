@@ -76,7 +76,7 @@ class Density:
             self.nt_g = self.finegd.empty()
 
         # Number of neighbor grid points used for interpolation (1, 2, or 3):
-        nn = p['stencils'][2]
+        nn = p['stencils'][1]
 
         # Interpolation function for the density:
         self.interpolate = Transformer(self.gd, self.finegd, nn).apply
