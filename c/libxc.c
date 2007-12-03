@@ -464,132 +464,142 @@ lxcXCFunctional_CalculateSpinPolarized(lxcXCFunctionalObject *self, PyObject *ar
 }
 
 static PyObject*
-lxcXCFunctional_exchange(lxcXCFunctionalObject *self, PyObject *args)
+lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
 {
-  printf("lxcXCFunctional_exchange: not implemented yet\n");
-  exit(1);
-  double rs;
-  double a2;
-  if (!PyArg_ParseTuple(args, "dd", &rs, &a2))
-    return NULL;
+     double na = 0.0;
+     double nb = 0.0;
+     double sigma0 = 0.0;
+     double sigma1 = 0.0;
+     double sigma2 = 0.0;
+     if (!PyArg_ParseTuple(args, "ddddd", &na, &nb,
+                           &sigma0, &sigma1, &sigma2))
+          return NULL;
 
-  /* find nspin */
-  int nspin = self->nspin;
+     /* find nspin */
+     // int nspin = self->nspin;
 
-  assert(nspin==XC_UNPOLARIZED); /* we are spinpaired */
+     /* assert (self->hybrid == 0.0); */ /* MDTMP - not implemented yet */
 
-  double dedrs = 0.0; /* output */
-  double deda2 = 0.0; /* output */
-  double n = 1.0 / (C0 * rs * rs * rs);
-  if (n < NMIN)
-    n = NMIN;
-  double ex = 0.0; /* output */
+     assert (self->xc_functional.family == XC_FAMILY_UNKNOWN); /* MDTMP not implemented */
 
-  double dndrs = -3.0*n/rs; /* \frac{d n}{d r_{s}]}*/
+     double exc = 0.0; /* output */
+     double ex = 0.0; /* output */
+     double ec = 0.0; /* output */
 
-  /* find x functional */
-  switch(self->x_functional.family)
-    {
-    case XC_FAMILY_LDA:
-      self->get_point_x = get_point_lda;
-      break;
-    case XC_FAMILY_GGA:
-      self->get_point_x = get_point_gga;
-      break;
-    case XC_FAMILY_MGGA:
-      self->get_point_x = get_point_mgga;
-      break;
-    }
+     /* find x functional */
+     switch(self->x_functional.family)
+     {
+     case XC_FAMILY_LDA:
+          self->get_point_x = get_point_lda;
+          break;
+     case XC_FAMILY_GGA:
+          self->get_point_x = get_point_gga;
+          break;
+     case XC_FAMILY_MGGA:
+          self->get_point_x = get_point_mgga;
+          break;
+/*     default: */
+/*       printf("lxcXCFunctional_CalculateSpinPolarized: exchange functional '%d' not found\n", */
+/*	     self->x_functional.family); */
+     }
+     /* find c functional */
+     switch(self->c_functional.family)
+     {
+     case XC_FAMILY_LDA:
+          self->get_point_c = get_point_lda;
+          break;
+     case XC_FAMILY_GGA:
+          self->get_point_c = get_point_gga;
+          break;
+     case XC_FAMILY_MGGA:
+          self->get_point_c = get_point_mgga;
+          break;
+/*     default: */
+/*       printf("lxcXCFunctional_CalculateSpinPolarized: correlation functional '%d' not found\n", */
+/*	     self->c_functional.family); */
+     }
+     /* ################################################################ */
 
-  double point[5]; /* generalized point */
-  // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
-  // rhoa rhob sigmaaa sigmaab sigmabb
-  // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
-  // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
-  // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
-  double derivative_x[5]; /* generalized potential */
-  // vrhoa vrhob vsigmaaa vsigmaab vsigmabb
-  // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
-  // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
-  double derivative_c[5]; /* generalized potential */
-  for(int j=0; j<5; j++) {
-    point[j] = derivative_x[j] = derivative_c[j] = 0.0;
-  }
-  point[0] = n;
-  point[2] = a2;
+     if (na < NMIN)
+          na = NMIN;
+     if (nb < NMIN)
+          nb = NMIN;
 
-  /* calculate exchange */
-  if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
-    self->get_point_x(&(self->x_functional), point, &ex, derivative_x);
-    dedrs = (derivative_x[0] - ex)/n*dndrs;
-    deda2 = derivative_x[2]/n;
-  }
-  return Py_BuildValue("ddd", ex, dedrs, deda2);
-}
+     double n = na + nb;
 
-static PyObject*
-lxcXCFunctional_correlation0(lxcXCFunctionalObject *self, PyObject *args)
-{
-  printf("lxcXCFunctional_correlation0: not implemented yet\n");
-  exit(1);
-  double rs;
-  double a2;
-  if (!PyArg_ParseTuple(args, "dd", &rs, &a2))
-    return NULL;
+     double dExcdna = 0.0;
+     double dExcdsigma0 = 0.0;
+     double dExcdnb = 0.0;
+     double dExcdsigma2 = 0.0;
+     double dExcdsigma1 = 0.0;
 
-  /* find nspin */
-  int nspin = self->nspin;
+     double dExdna = 0.0;
+     double dExdsigma0 = 0.0;
+     double dExdnb = 0.0;
+     double dExdsigma2 = 0.0;
+     double dExdsigma1 = 0.0;
 
-  assert(nspin==XC_UNPOLARIZED); /* we are spinpaired */
+     double dEcdna = 0.0;
+     double dEcdsigma0 = 0.0;
+     double dEcdnb = 0.0;
+     double dEcdsigma2 = 0.0;
+     double dEcdsigma1 = 0.0;
 
-  double dedrs = 0.0; /* output */
-  double dedzeta = 0.0; /* output */
-  double deda2 = 0.0; /* output */
-  double n = 1.0 / (C0 * rs * rs * rs);
-  if (n < NMIN)
-    n = NMIN;
-  double ec = 0.0; /* output */
+     double point[5]; /* generalized point */
+     // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
+     // rhoa rhob sigmaaa sigmaab sigmabb
+     // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
+     // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
+     // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
+     double derivative_xc[5]; /* generalized potential */
+     double derivative_x[5]; /* generalized potential */
+     // vrhoa vrhob vsigmaaa vsigmaab vsigmabb
+     // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
+     // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
+     double derivative_c[5]; /* generalized potential */
+     for(int j=0; j<5; j++) {
+          point[j] =
+               derivative_xc[j] = derivative_x[j] = derivative_c[j] = 0.0;
+     }
 
-  double dndrs = -3.0*n/rs; /* \frac{d n}{d r_{s}]}*/
+     point[0] = na;
+     point[1] = nb;
+     point[2] = sigma0;
+     point[3] = sigma1;
+     point[4] = sigma2;
 
-  /* find c functional */
-  switch(self->c_functional.family)
-    {
-    case XC_FAMILY_LDA:
-      self->get_point_c = get_point_lda;
-      break;
-    case XC_FAMILY_GGA:
-      self->get_point_c = get_point_gga;
-      break;
-    case XC_FAMILY_MGGA:
-      self->get_point_c = get_point_mgga;
-      break;
-    }
+     /* calculate exchange */
+     if (self->x_functional.family != XC_FAMILY_UNKNOWN) {
+          self->get_point_x(&(self->x_functional), point, &ex, derivative_x);
+          dExdna = derivative_x[0];
+          dExdnb = derivative_x[1];
+          dExdsigma0 = derivative_x[2];
+          dExdsigma1 = derivative_x[3];
+          dExdsigma2 = derivative_x[4];
+     }
+     /* calculate correlation */
+     if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
+          self->get_point_c(&(self->c_functional), point, &ec, derivative_c);
+          dEcdna = derivative_c[0];
+          dEcdnb = derivative_c[1];
+          dEcdsigma0 = derivative_c[2];
+          dEcdsigma1 = derivative_c[3];
+          dEcdsigma2 = derivative_c[4];
+     }
 
-  double point[5]; /* generalized point */
-  // from http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:manual
-  // rhoa rhob sigmaaa sigmaab sigmabb
-  // \sigma[0] = \nabla n_\uparrow \cdot \nabla n_\uparrow \qquad
-  // \sigma[1] = \nabla n_\uparrow \cdot \nabla n_\downarrow \qquad
-  // \sigma[2] = \nabla n_\downarrow \cdot \nabla n_\downarrow \qquad
-  double derivative_x[5]; /* generalized potential */
-  // vrhoa vrhob vsigmaaa vsigmaab vsigmabb
-  // {\rm vrho}_{\alpha} = \frac{\partial E}{\partial n_\alpha} \qquad
-  // {\rm vsigma}_{\alpha} = \frac{\partial E}{\partial \sigma_\alpha}
-  double derivative_c[5]; /* generalized potential */
-  for(int j=0; j<5; j++) {
-    point[j] = derivative_x[j] = derivative_c[j] = 0.0;
-  }
-  point[0] = n;
-  point[2] = a2;
+     // MDTMP: temporary for xc functional
+     exc = ex + ec;
+     for(int j=0; j<5; j++) {
+          derivative_xc[j] = derivative_x[j] + derivative_c[j];
+     }
 
-  /* calculate correlation */
-  if (self->c_functional.family != XC_FAMILY_UNKNOWN) {
-    self->get_point_c(&(self->c_functional), point, &ec, derivative_c);
-    dedrs = (derivative_c[0] - ec)/n*dndrs;
-    deda2 = 0.5*derivative_c[2]/n;
-  }
-  return Py_BuildValue("dddd", ec, dedrs, dedzeta, deda2);
+     return Py_BuildValue("dddddddddddddddddd", n*exc, n*ex, n*ec,
+                          derivative_xc[0], derivative_xc[1],
+                          derivative_xc[2], derivative_xc[3], derivative_xc[4],
+                          derivative_x[0], derivative_x[1],
+                          derivative_x[2], derivative_x[3], derivative_x[4],
+                          derivative_c[0], derivative_c[1],
+                          derivative_c[2], derivative_c[3], derivative_c[4]);
 }
 
 static PyMethodDef lxcXCFunctional_Methods[] = {
@@ -601,11 +611,8 @@ static PyMethodDef lxcXCFunctional_Methods[] = {
       (PyCFunction)lxcXCFunctional_CalculateSpinPaired, METH_VARARGS, 0},
      {"calculate_spinpolarized",
       (PyCFunction)lxcXCFunctional_CalculateSpinPolarized, METH_VARARGS, 0},
-     /* MDTMP - below: not implemented yet */
-     /* {"exchange", (PyCFunction)lxcXCFunctional_exchange, METH_VARARGS, 0}, */
-     /* {"correlation", (PyCFunction)lxcXCFunctional_correlation, METH_VARARGS, 0}, */
-     /* {"correlation0", (PyCFunction)lxcXCFunctional_correlation0, METH_VARARGS, 0}, */
-     /* MDTMP - end: not implemented yet */
+     {"calculate_xcenergy",
+      (PyCFunction)lxcXCFunctional_XCEnergy, METH_VARARGS, 0},
      {NULL, NULL, 0, NULL}
 };
 

@@ -349,6 +349,24 @@ class XCFunctional:
     def correlation(self, rs, zeta=0, a2=0):
         return self.xc.correlation(rs, zeta, a2)
 
+    def calculate_xcenergy(self, na, nb,
+                           sigma0=None, sigma1=None, sigma2=None,
+                           taua=None,taub=None):
+        # see c/libxc.c for the input and output values
+        d_exc = num.zeros(5, num.Float)
+        d_ex = num.zeros(5, num.Float)
+        d_ec = num.zeros(5, num.Float)
+        (exc, ex, ec,
+         d_exc[0], d_exc[1],
+         d_exc[2], d_exc[3], d_exc[4],
+         d_ex[0], d_ex[1],
+         d_ex[2], d_ex[3], d_ex[4],
+         d_ec[0], d_ec[1],
+         d_ec[2], d_ec[3], d_ec[4]
+         ) = self.xc.calculate_xcenergy(na, nb,
+                                        sigma0, sigma1, sigma2)
+        return exc, ex, ec, d_exc, d_ex, d_ec
+
 class XCGrid:
     def __init__(self, xcfunc, gd, nspins):
         """Base class for XC3DGrid and XCRadialGrid."""

@@ -44,7 +44,7 @@ if len(tests) == 0:
              'setups.py',
              'pbe-pw91.py', # needs xc.exchange, xc.correlation
              'xcfunc.py', 'gradient.py',
-             'xc.py', # needs xc.exchange, xc.correlation
+             'xc.py', 'lxc_xc.py', # need xc.exchange, xc.correlation
              'gp2.py', 'Gauss.py', 'non-periodic.py', 'lf.py',
              'denom_int.py', 'transformations.py', 'XC2.py', 'poisson.py',
              'XC2Spin.py', 'integral4.py', 'd2Excdn2.py',
