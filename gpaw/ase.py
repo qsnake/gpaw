@@ -132,6 +132,20 @@ class Calculator(PAW):
         return self.density.get_all_electron_density(gridrefinement)\
                / self.a0**3
 
+    def GetWignerSeitzDensities(self, spin=None):
+        if spin is None and self.nspins == 1:
+            return self.GetWignerSeitzDensities(spin=0)
+        elif spin is None and self.nspins == 2:
+            return (self.GetWignerSeitzDensities(spin=0) +
+                    self.GetWignerSeitzDensities(spin=1))
+
+        if not hasattr(self, 'wignerseitz'):
+            from gpaw.analyse.wignerseitz import WignerSeitz
+            self.wignerseitz = WignerSeitz(self.gd, self.nuclei)
+        
+        return self.wignerseitz.expand_density(self.density.nt_sG[spin], spin,
+                                               self.nspins)
+
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""
         return self.get_wave_function_array(band, kpt, spin) / self.a0**1.5

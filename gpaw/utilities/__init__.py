@@ -71,38 +71,50 @@ def is_contiguous(array, typecode=None):
 #   r = max(r, r')
 #    >
 #
-if debug:
-    def hartree(l, nrdr, beta, N, vr):
-        """Calculates radial Coulomb integral.
+def hartree(l, nrdr, beta, N, vr):
+    """Calculates radial Coulomb integral.
 
-        The following integral is calculated::
-        
-                                       ^
-                              n (r')Y (r')
-                  ^    / _     l     lm
-          v (r)Y (r) = |dr' --------------,
-           l    lm     /        _   _
-                               |r - r'|
+    The following integral is calculated::
 
-        where input and output arrays `nrdr` and `vr`::
+                                   ^
+                          n (r')Y (r')
+              ^    / _     l     lm
+      v (r)Y (r) = |dr' --------------,
+       l    lm     /        _   _
+                           |r - r'|
 
-                  dr
-          n (r) r --  and  v (r) r,
-           l      dg        l
+    where input and output arrays `nrdr` and `vr`::
 
-        are defined on radial grids as::
+              dr
+      n (r) r --  and  v (r) r,
+       l      dg        l
 
-              beta g
-          r = ------,  g = 0, 1, ..., N - 1.
-              N - g
+    are defined on radial grids as::
 
-        """
-        assert is_contiguous(nrdr, num.Float)
-        assert is_contiguous(vr, num.Float)
-        assert nrdr.shape == vr.shape and len(vr.shape) == 1
-        return _gpaw.hartree(l, nrdr, beta, N, vr)
-else:
-    hartree = _gpaw.hartree
+          beta g
+      r = ------,  g = 0, 1, ..., N - 1.
+          N - g
+
+    """
+    assert is_contiguous(nrdr, num.Float)
+    assert is_contiguous(vr, num.Float)
+    assert nrdr.shape == vr.shape and len(vr.shape) == 1
+    return _gpaw.hartree(l, nrdr, beta, N, vr)
+
+
+def wignerseitz(index_G, atom_ac, beg_c, end_c):
+    """Determine which atom is closest to each grid point.
+
+    For a uniform grid defined by the first and last grid point indices
+    beg_c and end_c, determine for each grid point, which atom, specified
+    by the atomic coordinates in atom_ac, is the closest. Return result as
+    atomic indices on the grid index_G.
+    """
+    assert is_contiguous(index_G, num.Int)
+    assert is_contiguous(atom_ac, num.Float)
+    assert atom_ac.shape[1] == len(beg_c) == len(end_c) == 3
+    assert index_G.shape == tuple(end_c - beg_c)
+    return _gpaw.wigner_seitz_grid(index_G, atom_ac, beg_c, end_c)
 
 
 def packed_index(i1, i2, ni):
@@ -307,3 +319,8 @@ def fix2(formula):
         else:
             s += c
     return s
+
+
+if not debug:
+    hartree = _gpaw.hartree
+    wignerseitz = _gpaw.wigner_seitz_grid

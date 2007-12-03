@@ -1,8 +1,7 @@
 from math import sqrt, pi
 import Numeric as num
 
-import _gpaw
-from gpaw.utilities import pack, pack2
+from gpaw.utilities import pack, pack2, wignerseitz
 from gpaw.mpi import MASTER
 
 class WignerSeitz:
@@ -19,7 +18,7 @@ class WignerSeitz:
 
         # define the atom index for each grid point 
         atom_index = gd.empty(typecode=num.Int)
-        _gpaw.wigner_seitz_grid(atom_index, atom_c, gd.beg_c, gd.end_c)
+        wignerseitz(atom_index, atom_c, gd.beg_c, gd.end_c)
         self.atom_index = atom_index
 
     def expand(self, density):
