@@ -27,7 +27,15 @@ for ending in endings:
     calc.write(result)
 
     # the two files should be equal
-    assert os.system('diff ' + restart + ' ' + result + ' > /dev/null') == 0
+    if ending == 'nc':
+        assert os.system('diff %s %s > /dev/null' % (restart, result)) == 0
+    else:
+        for f in ['gpaw-restart', 'gpaw-result']:
+            os.system('rm -rf %s; mkdir %s; cd %s; tar xf ../%s.gpw' %
+                      (f, f, f, f))
+        assert os.system('diff -r gpaw-restart gpaw-result > /dev/null') == 0
+        os.system('rm -rf gpaw-restart gpaw-result')
+        
 
     os.remove(restart)
     os.remove(result)
