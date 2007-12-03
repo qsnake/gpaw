@@ -185,9 +185,9 @@ LiH = ListOfAtoms([
 # Beryllium hydride (BeH), D*h symm.
 # MP2 energy = -15.171409 Hartree
 # Charge = 0, multiplicity = 2
-BeH = ListOfAtoms([#Silly initial magmom,but this makes initializer *not* crash
-    Atom('Be', [.000000, .000000, .269654], magmom=0.4), # converges to 1
-    Atom('H', [.000000, .000000, -1.078616], magmom=0.6),# converges to 0
+BeH = ListOfAtoms([
+    Atom('Be', [.000000, .000000, .269654], magmom=1.),
+    Atom('H', [.000000, .000000, -1.078616], magmom=0.),
     ])
 
 # CH radical. Doublet, C*v symm.
