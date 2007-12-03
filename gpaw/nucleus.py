@@ -301,7 +301,6 @@ class Nucleus:
 
     def calculate_initial_occupation_numbers(self, ns, niao, magmom, hund):
         f_si = num.zeros((ns, niao), num.Float)
-
         i = 0
         nj = len(self.setup.n_j)
         for j, phit in enumerate(self.setup.phit_j):
@@ -334,6 +333,9 @@ class Nucleus:
                 
             i += degeneracy
 
+        if magmom != 0:
+            raise RuntimeError('Bad megnetic moment for %s atom!' %
+                               self.setup.symbol)
         assert i == niao
         return f_si
     
