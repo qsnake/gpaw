@@ -62,6 +62,7 @@ class LrTDDFT(ExcitationList):
 
             ExcitationList.__init__(self,calculator)
 
+            self.filename=None
             self.calculator=None
             self.nspins=None
             self.eps=None
@@ -163,8 +164,10 @@ class LrTDDFT(ExcitationList):
                     f = gzip.open(filename)
                 else:
                     f = open(filename, 'r')
+                self.filename = filename
             else:
                 f = fh
+                self.filename = None
 
             f.readline()
             self.xc = f.readline().replace('\n','')
