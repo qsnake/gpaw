@@ -1,3 +1,4 @@
+import os
 from ASE import Atom, ListOfAtoms
 from ASE.Dynamics.ConjugateGradient import ConjugateGradient
 from gpaw import Calculator

@@ -72,7 +72,7 @@ class Calculator(PAW):
     def GetCartesianForces(self):
         """Return the forces for the current state of the ListOfAtoms."""
         if self.F_ac is None:
-            if not self.nuclei[0].ready:
+            if hasattr(self, 'nuclei') and not self.nuclei[0].ready:
                 self.converged = False
             self.calculate()
             self.calculate_forces()
