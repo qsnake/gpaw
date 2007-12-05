@@ -7,7 +7,7 @@ import pickle
 from optparse import OptionParser
 
 from gpaw.utilities import locked
-from gpaw.utilities import molecule
+from gpaw.testing import data
 from gpaw.paw import ConvergenceError
 import calc
 
@@ -15,6 +15,8 @@ tests = {'a' : calc.atomic_energy,
          'c' : calc.grid_convergence_energies,
          'm' : calc.molecular_energies,
          'e' : calc.eggbox_energies}
+
+elements_requiring_lattice_test = ['C']
 
 def getfilename(formula, name, setups):
     if setups == 'paw':
@@ -77,7 +79,8 @@ def test(function, formula, setups='paw', quick=False, clean=False,
     print 'Calculating ...',
     sys.stdout.flush()
     try:
-        results = tests[function](formula, setups=setups, quick=quick, txt=log)
+        results = tests[function](formula, setups=setups, quick=quick,
+                                  txt=log)
         print 'Done'
     except: # It is quite difficult to know which exceptions are relevant
         traceback.print_exc(file=log)
@@ -98,7 +101,7 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
     if 'a' in testfunctions:
         for formula in formulae:
             symbollist.extend([atom.symbol for atom
-                              in molecule.molecules[formula]])
+                              in data.molecules[formula]])
     # The 'set' builtin is not included in some python versions. Using hack
     symbols = dict(zip(symbollist, symbollist)).keys()
     #symbols = set(symbollist)
@@ -106,7 +109,6 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
     # Make sure that the single-atom test is not performed on molecules
     moleculetests = testfunctions.replace('a','')
     task_args = []
-    results = []
     for formula in formulae:
         for function in moleculetests:
             task_args.append((function, formula, setups, quick, clean,
@@ -134,14 +136,6 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
             pass
     return results
 
-def data2restructured(results):
-    print 'convert data to restructured. This will be implemented later...'
-    print 'Data:'
-    print
-    print '='*78
-    print results
-    print '='*78
-
 def main():
     parser = OptionParser(usage='%prog [options [file]] [formulae ... ]')
     parser.add_option('-t', '--tests', action='store', default='acme',
@@ -154,17 +148,15 @@ def main():
                       help='Remove bad or empty cache files and exit.')
     parser.add_option('-a', '--assemble', action='store_true', default=False,
                       help='Collect all cached results in the specified file.')
-    parser.add_option('-g', '--generate', action='store_true', default=False,
-                      help='Generate tables from the specified file.')
 
     filename = None
     opt, formulae = parser.parse_args()
-    if opt.assemble or opt.generate:
-        filename = formulae[0]
+    if opt.assemble:
+        filename = formulae[0] # This is not entirely logical, find better way
         formulae = formulae[1:]
     
     if not formulae:
-        formulae = molecule.molecules.keys()
+        formulae = data.molecules.keys()
 
     print '+---------------------------+'
     print '| Molecule tests commencing |'
@@ -178,20 +170,14 @@ def main():
     if opt.clean:
         print 'This will remove bad cache files and exit'
     if opt.assemble:
-        print 'This will only dump caches to a single file'
-    if opt.generate:
-        print 'This will generate graphs and tables only'
+        print 'This will dump existing cached results to a single file.'
+        print 'No calculations will be performed.'
 
-    if (not opt.generate) or opt.assemble:
-        results = testmultiple(opt.tests, formulae, setups=opt.setups,
-                               quick=opt.quick, clean=opt.clean,
-                               retrieve=opt.assemble)
+    results = testmultiple(opt.tests, formulae, setups=opt.setups,
+                           quick=opt.quick, clean=opt.clean,
+                           retrieve=opt.assemble)
     if opt.assemble:
         pickle.dump(results, open(filename, 'w'))
-    if opt.generate:
-        if not opt.assemble:
-            results = pickle.load(open(filename))
-        data2restructured(results)
 
 if __name__ == '__main__':
     main()

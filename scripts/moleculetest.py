@@ -15,7 +15,7 @@ from gpaw.utilities.molecule import molecules, Molecule
 from gpaw.utilities import locked
 from gpaw.paw import ConvergenceError
 
-from data import moleculedata
+from gpaw.testing.data import moleculedata
 
 parser = OptionParser(usage='%prog options',
                       version='%prog 0.1')

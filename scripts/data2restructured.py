@@ -7,7 +7,7 @@ from gpaw.testing.atomization_data import atomization_vasp
 from gpaw.utilities import fix, fix2
 
 from moleculetest import dd
-from data import Ea12
+from gpaw.testing.data import Ea12
 
 def main(molecules, moleculedata, results, Ea):
     for formula, molecule in molecules.items():
