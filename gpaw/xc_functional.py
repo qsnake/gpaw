@@ -39,6 +39,11 @@ class ZeroFunctional:
 
 class XCFunctional:
     def __init__(self, xcname, nspins=1, parameters=None):
+
+        if type(xcname) == type({}):
+            parameters = xcname
+            xcname = parameters.pop('name')
+
         self.xcname = xcname
         self.hybrid = 0.0
         self.parameters = parameters
@@ -237,13 +242,17 @@ class XCFunctional:
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:
                 raise NotImplementedError, 'k-point calculation with EXX'
+            if self.parameters.has_key('finegrid'):
+                use_finegrid=self.parameters['finegrid']
+            else:
+                use_finegrid=True
             self.exx = EXX(paw,
                            paw.gd, paw.finegd, paw.density.interpolate,
                            paw.hamiltonian.restrict, paw.hamiltonian.poisson,
                            paw.my_nuclei, paw.ghat_nuclei,
                            paw.nspins, paw.nmyu, paw.nbands, len(paw.nuclei),
                            paw.kpt_comm, paw.domain.comm, energy_only,
-                           use_finegrid=paw.input_parameters['exxfinegrid'])
+                           use_finegrid=use_finegrid)
 
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:

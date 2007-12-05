@@ -250,7 +250,6 @@ class PAW(PAWExtra, Output):
             'verbose':       0,
             'eigensolver':   'rmm-diis',
             'poissonsolver': None,
-            'exxfinegrid'  : True,
             'communicator' : None,
             'idiotproof'   : True
             }
