@@ -20,6 +20,8 @@ atoms = {'H': 1, 'Li': 1, 'Be': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 2, 'F': 1,
 
 # The 148 molecules of the test set
 molecules = {
+    # Extra systems
+       'Be2': "Diatomic Beryllium",
     # The G2-1 set
        'LiH': "Lithium hydride (LiH), C*v symm.",
        'BeH': "Beryllium hydride (BeH), D*h symm.",
@@ -171,6 +173,16 @@ molecules = {
       'H9C4': "t-Butyl radical, (CH3)3C, C3v symm.",
        'O2N': "NO2 radical, C2v symm, 2-A1.",
 }
+
+## Start of extra systems
+
+# Diatomic Beryllium (Be2), D*h symm.
+# MP2 energy = -29.204047 Hartree
+# Charge = 0, multiplicity = 1
+Be2 = ListOfAtoms([
+    Atom('Be', [.000000, .000000, 1.010600]),
+    Atom('Be', [.000000, .000000, 1.010600]),
+    ])
 
 ## Start of G2-1 test set
 
