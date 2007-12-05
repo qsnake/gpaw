@@ -101,22 +101,39 @@ def molecular_energies(formula, a=12., h=.16, displacements=None,
         
     return displacements, energies, niters
 
-def eggbox_test(system, calculator, direction=(1.,1.,1.), length=None,
-                count=6):
-    system = system.copy()
-    system.SetBoundaryConditions(True)
-    dirlength = num.dot(direction, direction)
-    direction = num.asarray(direction) / dirlength
-    
-    
+def eggbox_energies(formula, a=10., gpts=48, direction=(1.,1.,1.), periods=.5,
+                    count=12, setups='paw', quick=False, txt='-'):
+    if quick:
+        a, gpts, count = (6., 16, 4)
 
-def eggbox_energies(formula, a=10., gpts=48, count=12, displacements=None,
-                    setups='paw', quick=False, txt='-'):
+    direction = num.asarray(direction)
+    direction = direction / num.dot(direction, direction) # normalize
+    system, calc = setup_molecule(formula, a, gpts=gpts, periodic=True,
+                                  setups=setups, txt=txt)
+    originalpositions = system.GetCartesianPositions()
+    h = float(a)/gpts
+    displacements = [i*h*periods/(count-1.) for i in range(count)]
+    energies = []
+    niters = []
+
+    for amount in displacements:
+        # Displace all components by 'amount' along 'direction'
+        displacement_vector = direction * amount
+        system.SetCartesianPositions(originalpositions + displacement_vector)
+        energy = system.GetPotentialEnergy()
+        energies.append(energy)
+        niters.append(calc.niter)
+        
+    return displacements, energies, niters
+
+
+def eggbox_energies_old(formula, a=10., gpts=48, count=12, displacements=None,
+                        setups='paw', quick=False, txt='-'):
     """Calculates the energy of the specified molecule at 'count'
     different and equally spaced displacements from (0,0,0) to
     (1,1,1)(h/2)"""
     if quick:
-        a, gpts, count = (6., 16, 6)
+        a, gpts, count = (6., 16, 4)
     system, calc = setup_molecule(formula, a, gpts=gpts, periodic=True,
                                   setups=setups, txt=txt)
     originalpositions = system.GetCartesianPositions()
@@ -140,7 +157,7 @@ def grid_convergence_energies(formula, a=10., gpts=None, setups='paw',
     if quick:
         a, gpts = (6., [20, 24])
     if gpts is None:
-        hvalues = [.16, .25]
+        hvalues = [.15, .2]
         gptmax, gptmin = [int(a/h)/4*4 for h in hvalues]
         gpts = range(gptmin, gptmax+1, 4)
     system, calc = setup_molecule(formula, a, gpts=gpts[0], txt=txt,
