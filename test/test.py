@@ -55,7 +55,7 @@ if len(tests) == 0:
              'hydrogen.py', 'spinpol.py', 'wfs_io.py', 'bulk.py',
              'stdout.py', 'gga-atom.py', 'atomize.py', 'lcao-h2o.py',
              'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
-             'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py',
+             'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py', 'relax.py',
              'davidson.py', 'wannier-ethylene.py',
              'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py', 'lrtddft.py',
              'fixmom.py', 'wannier-hwire.py',
