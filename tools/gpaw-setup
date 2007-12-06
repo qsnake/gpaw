@@ -28,7 +28,7 @@ parser.add_option('--filter', default='0.4,1.75', metavar='h,x',
                   'the cutoff grid-spacing and "x" is the ration '
                   'between outer and inner radii.')
 parser.add_option('-l', '--logarithmic-derivatives', action='store_true',
-                  help='Calculate of logarithmic derivatives.')
+                  help='Calculate logarithmic derivatives.')
 parser.add_option('-a', '--all-electron-only', action='store_true',
                   help='Skip generation of PAW setup.')
 parser.add_option('-e', '--extra-projectors', type='string', default=None,
