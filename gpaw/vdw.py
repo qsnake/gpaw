@@ -314,10 +314,11 @@ class VanDerWaals:
         self.n = n
         self.ncut = ncut
         print self.periodic
-        E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic()+self.LDA_c_energy+self.GGA_x_energy
+        #E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic()+self.LDA_c_energy+self.GGA_x_energy
         #test coarsen
         E_nl_c = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic_coarsen()+self.LDA_c_energy+self.GGA_x_energy
-        return Convert(E_nl,'Hartree','eV'),Convert(E_nl_c,'Hartree','eV')
+        #return Convert(E_nl,'Hartree','eV'),Convert(E_nl_c,'Hartree','eV')
+        return Convert(E_nl_c,'Hartree','eV')
     def plotphi(self):
         import pylab as pylab
         Dtab = num.arange(0,self.Dmax+self.deltaD,self.deltaD)
