@@ -242,7 +242,7 @@ class XCFunctional:
         if self.hybrid > 0.0:
             if paw.typecode == num.Complex:
                 raise NotImplementedError, 'k-point calculation with EXX'
-            if self.parameters.has_key('finegrid'):
+            if self.parameters and self.parameters.has_key('finegrid'):
                 use_finegrid=self.parameters['finegrid']
             else:
                 use_finegrid=True
