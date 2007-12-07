@@ -374,7 +374,7 @@ class AllElectron:
     def radial_kinetic_energy_density(self,f_j,l_j,u_j):
         """Kinetic energy density from a restricted set of wf's
         """
-        shape = u_j.shape[1]
+        shape = num.shape(u_j[0])
         dudr = num.zeros(shape,num.Float)
         tau = num.zeros(shape,num.Float)
         for f, l, u in zip(f_j,l_j,u_j):
