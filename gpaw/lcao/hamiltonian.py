@@ -120,7 +120,7 @@ class LCAOHamiltonian(Hamiltonian):
         return R_dc
 
         
-    def calculate_effective_potential_matrix(self, V_mm):
+    def calculate_effective_potential_matrix(self, V_mm, s):
         box_b = []
         for nucleus in self.nuclei:
             if debug:	
@@ -131,7 +131,7 @@ class LCAOHamiltonian(Hamiltonian):
         from _gpaw import overlap
         from time import time as t
         t0 = t()
-        overlap(box_b, self.vt_sG[0], V_mm)
+        overlap(box_b, self.vt_sG[s], V_mm)
         t1 = t()
 
     def old_initialize(self):

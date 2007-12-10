@@ -623,7 +623,8 @@ class PAW(PAWExtra, Output):
                 kpt.orthonormalize(self.my_nuclei)
                 if self.input_parameters['hund']:
                     assert self.natoms == 1
-                    kpt.f_n[:] = self.nuclei[0].f_si[kpt.s, : self.nbands]
+                    kpt.f_n[:self.nbands] = self.nuclei[0].f_si[kpt.s,
+                                                                :self.nbands]
                 else:
                     eig.diagonalize(self.hamiltonian, kpt)
 

@@ -36,7 +36,7 @@ class LCAO:
         H_mm = num.zeros((nao, nao), num.Complex)   #Changed to complex!
         
         V_mm = num.zeros((nao, nao), num.Float)
-        hamiltonian.calculate_effective_potential_matrix(V_mm)
+        hamiltonian.calculate_effective_potential_matrix(V_mm, s)
         H_mm += V_mm
 
         for nucleus in self.nuclei:
