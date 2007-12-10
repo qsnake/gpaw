@@ -82,7 +82,7 @@ print >> out, '# xc      "    = ',paw.Exc*Ha
 
 # dos
 if opt.gauss is None:
-    print >> out, eigenvalue_string(paw,"# ")
+    print >> out, eigenvalue_string(paw, '# '),
 else:
     width = float(opt.gauss)
     print >> out,"# folding with", width
@@ -101,7 +101,7 @@ else:
         print >> out,"# eps    occ(a)   unocc(a)   occ(b)   unocc(b)"
         for e,oa,ua,ob,ub in zip(eo[0],eo[1],eo[2],eo[3],eo[4]):
             print >> out,e,o,u,ob,ub
-    
+
 # forces
 if opt.Forces:
     if paw.F_ac is None:

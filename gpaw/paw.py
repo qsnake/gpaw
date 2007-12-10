@@ -885,7 +885,7 @@ class PAW(PAWExtra, Output):
         p['fixdensity'] = r['FixDensity']
         if version <= 0.4:
             # Old version: XXX
-            print('Warning: Reading old version 0.3/0.4 restart files ' +
+            print('# Warning: Reading old version 0.3/0.4 restart files ' +
                   'will be disabled some day in the future!')
             p['convergence']['eigenstates'] = r['Tolerance']
         else:
@@ -920,7 +920,7 @@ class PAW(PAWExtra, Output):
             
         if version == 0.3:
             # Old version: XXX
-            print('Warning: Reading old version 0.3 restart files is ' +
+            print('# Warning: Reading old version 0.3 restart files is ' +
                   'dangerous and will be disabled some day in the future!')
             p['stencils'] = (2, 3)
             p['charge'] = 0.0

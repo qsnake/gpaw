@@ -323,7 +323,7 @@ def eigenvalue_string(paw,comment=None):
     for example to escape it for gnuplot.
     """
 
-    if not comment: comment=''
+    if not comment: comment=' '
 
     Ha = paw.Ha
 
@@ -333,14 +333,14 @@ def eigenvalue_string(paw,comment=None):
 
     s = ''
     if paw.nspins == 1:
-        s += comment + ' Band   Eigenvalues  Occupancy\n'        
+        s += comment + 'Band   Eigenvalues  Occupancy\n'        
         kpt = paw.kpt_u[0]
         for n in range(paw.nbands):
             s += ('%4d   %10.5f  %10.5f\n' %
                   (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
     else:
-        s += comment + '                Up                   Down\n'
-        s += comment + ' Band   Eigenvalues  Occupancy  Eigenvalues   Occupancy\n'
+        s += comment + '               Up                   Down\n'
+        s += comment + 'Band   Eigenvalues  Occupancy  Eigenvalues   Occupancy\n'
         epsa_n = paw.kpt_u[0].eps_n
         epsb_n = paw.kpt_u[1].eps_n
         fa_n = paw.kpt_u[0].f_n
