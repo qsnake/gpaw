@@ -389,8 +389,6 @@ class PAW(PAWExtra, Output):
             elif name not in p:
                 raise RuntimeError('Unknown keyword: %s' % name)
 
-        self.idiotproof = self.input_parameters['idiotproof']
-
         self.input_parameters.update(kwargs)
         Output.__init__(self)
                 

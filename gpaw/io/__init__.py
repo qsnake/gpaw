@@ -341,7 +341,7 @@ def read(paw, reader):
         if setup.fingerprint != fp:
             str = 'Setup for %s (%s) not compatible with restart file.' % \
                   (setup.symbol, setup.filename)
-            if paw.idiotproof:
+            if paw.input_parameters['idiotproof']:
                 raise RuntimeError(str)
             else:
                 paw.warn(str)
