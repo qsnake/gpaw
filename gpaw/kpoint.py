@@ -381,3 +381,34 @@ class KPoint:
             # if not in this domain
             else:
                 nucleus.apply_polynomial(a_nG, b_nG, self.k, None)
+
+
+    def add_linear_xfield(self, pt_nuclei, a_nG, b_nG, strength):
+        """Adds linear x-field f(x,y,z) = str * x to wavefunctions.
+        """
+
+        # apply local part to smooth wavefunctions psit_n
+        for i in range(self.gd.n_c[0]):
+            x = (i + self.gd.beg_c[0]) * self.gd.h_c[0]
+            b_nG[:,i,:,:] += (strength * x) * a_nG[:,i,:,:]
+#            for j in range(self.gd.n_c[1]):
+#                y = (j + self.gd.beg_c[1]) * self.gd.h_c[1]
+#                for k in range(self.gd.n_c[2]):
+#                    z = (k + self.gd.beg_c[2]) * self.gd.h_c[2]
+#                    b_nG[:,i,j,k] = strength * x * a_nG[:,i,j,k]
+
+        # apply the non-local part for each nucleus
+        for nucleus in pt_nuclei:
+            if nucleus.in_this_domain:
+                # position
+                x_c = nucleus.spos_c[0] * self.gd.domain.cell_c[0]
+                #y_c = nucleus.spos_c[1] * self.gd.domain.cell_c[1]
+                #z_c = nucleus.spos_c[2] * self.gd.domain.cell_c[2]
+                
+                # apply linear x operator
+                nucleus.apply_linear_xfield( a_nG, b_nG, self.k,
+                                             strength * x_c, strength )
+
+            # if not in this domain
+            else:
+                nucleus.apply_linear_xfield(a_nG, b_nG, self.k, None, None)

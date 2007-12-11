@@ -8,6 +8,7 @@ import Numeric as num
 from gpaw.polynomial import Polynomial
 from gpaw.mpi import run
 
+
 # Hamiltonian
 class TimeDependentHamiltonian:
     """ Time-dependent Hamiltonian, H(t)
@@ -20,8 +21,8 @@ class TimeDependentHamiltonian:
         """ Create the TimeDependentHamiltonian-object.
         
         The time-dependent potential object must (be None or) have a member
-        function get_potential(self,time), which provides the
-        time-dependent external potential on a fine grid at the given time.
+        function strength(self,time), which provides the strength of the
+        time-dependent external potential to x-direction at the given time.
         
         ============= ========================================================
         Parameters:
@@ -36,19 +37,19 @@ class TimeDependentHamiltonian:
         self.pt_nuclei = pt_nuclei
         self.hamiltonian = hamiltonian
         self.td_potential = td_potential
-        self.time = 0
+        self.time = self.old_time = 0
         
-        if td_potential is not None:
-            self.td_vext_g = hamiltonian.finegd.zeros()
-        else:
-            self.td_vext_g = None
-
-        if hamiltonian.vext_g is not None:
-            self.ti_vext_g = hamiltonian.vext_g
-        else:
-            self.ti_vext_g = None
-
-        self.vext_g = hamiltonian.finegd.zeros()
+#        if td_potential is not None:
+#            self.td_vext_g = hamiltonian.finegd.zeros()
+#        else:
+#            self.td_vext_g = None
+#
+#        if hamiltonian.vext_g is not None:
+#            self.ti_vext_g = hamiltonian.vext_g
+#        else:
+#            self.ti_vext_g = None
+#
+#        self.vext_g = hamiltonian.finegd.zeros()
 
         self.vt_sG = hamiltonian.gd.zeros(hamiltonian.nspins, num.Float)
         self.H_asp = [
@@ -57,18 +58,18 @@ class TimeDependentHamiltonian:
             ]
 
 
-    def set_vext_g(self):
-        # if time-dependent and independent external potentials
-        if (self.td_potential is not None) and (self.ti_vext_g is not None):
-            self.td_vext_g = self.td_potential.get_potential(self.time)
-            self.vext_g = self.ti_vext_g + self.td_vext_g
-        # if only time-dependent external potential
-        elif self.td_potential is not None:
-            self.td_vext_g = self.td_potential.get_potential(self.time)
-            self.vext_g = self.td_vext_g
-        # if only time-independent external potential
-        else:
-            self.vext_g = self.ti_vext_g
+#    def set_vext_g(self):
+#        # if time-dependent and independent external potentials
+#        if (self.td_potential is not None) and (self.ti_vext_g is not None):
+#            self.td_vext_g = self.td_potential.get_potential(self.time)
+#            self.vext_g = self.ti_vext_g + self.td_vext_g
+#        # if only time-dependent external potential
+#        elif self.td_potential is not None:
+#            self.td_vext_g = self.td_potential.get_potential(self.time)
+#            self.vext_g = self.td_vext_g
+#        # if only time-independent external potential
+#        else:
+#            self.vext_g = self.ti_vext_g
 
 
     def update(self, density, time):
@@ -84,9 +85,9 @@ class TimeDependentHamiltonian:
 
         """
         
-        self.time = time
-        self.set_vext_g()
-        self.hamiltonian.vext_g = self.vext_g
+        self.old_time = self.time = time
+#        self.set_vext_g()
+#        self.hamiltonian.vext_g = self.vext_g
         self.hamiltonian.update(density)
         
         
@@ -104,9 +105,10 @@ class TimeDependentHamiltonian:
 
         """
         
+        self.old_time = time
         self.time = time
-        self.set_vext_g()
-        self.hamiltonian.vext_g = self.vext_g
+#        self.set_vext_g()
+#        self.hamiltonian.vext_g = self.vext_g
 
         # copy old        
         self.vt_sG[:] = self.hamiltonian.vt_sG
@@ -119,7 +121,7 @@ class TimeDependentHamiltonian:
         self.hamiltonian.vt_sG *= .5
         for a in range(len(self.hamiltonian.my_nuclei)):
             self.hamiltonian.my_nuclei[a].H_sp += self.H_asp[a] 
-            self.hamiltonian.my_nuclei[a].H_sp *= .5        
+            self.hamiltonian.my_nuclei[a].H_sp *= .5
 
         
     def apply(self, kpt, psit, hpsit):
@@ -139,7 +141,27 @@ class TimeDependentHamiltonian:
         p = num.reshape(psit, (1,) + psit.shape)
         hp = num.reshape(hpsit, (1,) + hpsit.shape)
         kpt.apply_hamiltonian(self.hamiltonian, p, hp)
+        if self.td_potential is not None:
+            strength = self.td_potential.strength
+            kpt.add_linear_xfield( self.pt_nuclei, p, hp,
+                                   .5 * strength(self.time)
+                                   + .5 * strength(self.old_time) )
 
+        # FIX ME: VERY BAD = SLOW, MODIFY HAMILTONIAN INSTEAD
+#        class TDPotentialAverage:
+#            def __init__(self, value, t0, t1):
+#                self.pot = value
+#                self.t0 = t0
+#                self.t1 = t1
+#
+#            def value(self, x,y,z):
+#                return .5 * self.pot(x,y,z,self.t0) \
+#                    + .5 * self.pot(x,y,z,self.t1)
+#
+#        kpt.apply_scalar_function( self.pt_nuclei, hp, hp, 
+#                                   TDPotentialAverage( self.td_potential.value, 
+#                                                       self.old_time, 
+#                                                       self.time ) )
 
 # AbsorptionKickHamiltonian
 class AbsorptionKickHamiltonian:

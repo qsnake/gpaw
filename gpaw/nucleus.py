@@ -613,6 +613,58 @@ class Nucleus:
             self.pt_i.add(b_nG, None, k, communicate=True)
 
 
+    def apply_linear_xfield(self, a_nG, b_nG, k, c0, cx):
+        """Apply non-local part of the polynomial operator."""
+        
+        if self.in_this_domain:
+            # number of wavefunctions, psit_nG
+            n = len(a_nG)
+            # number of partial waves, pt_nG
+            ni = self.get_number_of_partial_waves()
+            # allocate memory and calculate coefficients P_ni = <pt_i|psit_nG>
+            P_ni = num.zeros((n, ni), self.typecode)
+            self.pt_i.integrate(a_nG, P_ni, k)
+            
+            # indexes of Delta_L,i_1,i_2
+            l0 = 0
+            ly = 1
+            lz = 2
+            lx = 3
+
+            # calculate coefficient 
+            # ---------------------
+            #
+            # coeffs_ni =
+            #   P_nj * c0 * 1_ij
+            #   + P_nj * cx * x_ij
+            #
+            # where (see spherical_harmonics.py)
+            #
+            #   1_ij = sqrt(4pi) Delta_0ij
+            #   x_ij = sqrt(4pi/3) Delta_3ij
+            # ...
+
+            Delta_Lii = self.setup.Delta_Lii
+
+            #   1_ij = sqrt(4pi) Delta_0ij
+            #   x_ij = sqrt(4pi/3) Delta_3ij
+            oneij = num.sqrt(4.*num.pi) \
+                * num.dot(P_ni, Delta_Lii[:,:,0])
+            xij = num.sqrt(4.*num.pi / 3.) \
+                * num.dot(P_ni, Delta_Lii[:,:,3])
+
+            # coefficients
+            # coefs_ni = sum_j ( <phi_i| f(x,y,z) | phi_j>
+            #                    - <phit_i| f(x,y,z) | phit_j> ) P_nj
+            coefs_ni = c0 * oneij + cx * xij
+
+            # add partial wave pt_nG to psit_nG with proper coefficient
+            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
+        else:
+            self.pt_i.integrate(a_nG, None, k)
+            self.pt_i.add(b_nG, None, k, communicate=True)
+
+
     def symmetrize(self, D_aii, map_sa, s):
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
         self.D_sp[s] = pack(D_ii)
