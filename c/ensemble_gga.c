@@ -21,7 +21,7 @@ double bee1_exchange(const xc_parameters* par,
       double x4 = exp(x3);
       double x5 = 1.0 / (1.0 + x2 * x4);
       Fx -= kappa * x5;
-      dFxds2 = x5 * x5 * (1.0 + x3) * x1 * ;
+      dFxds2 = x5 * x5 * (1.0 + x3) * x1 * x4;
     }
   double ds2drs = 8.0 * c * a2 / rs;
   *dedrs = *dedrs * Fx + e * dFxds2 * ds2drs;
