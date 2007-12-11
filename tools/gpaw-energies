@@ -62,14 +62,23 @@ if additional_info:
     print >> out, '# xc:',paw.hamiltonian.xc.xcfunc.get_name()
     if  p['charge']:
         print >> out, '# charge:',p['charge']
+    pos_ac, Z_a, cell_cc, pbc_c = paw.last_atomic_configuration
+    cell = num.diagonal(cell_cc) * a0
+    h = cell / p['gpts']
+    print >> out, '# unit cell=', cell
+    print >> out, '# h=', h
+    print >> out, '# periodic=', pbc_c
     print >> out, "#",
     if not paw.converged:
         print >> out,'not',
     print >> out, 'converged'
     try:
-        for error in ['density','energy','eigenstates']:
+        for error in ['density','energy']:
             print >> out, '# Log10 error('+error+')=%8.3f' %\
                   (log(paw.error[error])/log(10.))
+        bands = paw.input_parameters['convergence']['bands']
+        print >> out, '# Log10 error for', str(bands),'bands=%8.3f' %\
+               (log(paw.error['eigenstates'])/log(10.))
     except:
         pass
 
