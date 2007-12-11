@@ -178,6 +178,8 @@ class XCFunctional:
                 code = 14
             elif xcname == 'LB94':
                 code = 17
+            elif xcname == 'BEE1':
+                code = 18
             else:
                 raise TypeError('Unknown exchange-correlation functional')
 
@@ -185,7 +187,7 @@ class XCFunctional:
             i = int(xcname[3])
             s0 = float(xcname[5:])
             self.xc = _gpaw.XCFunctional(code, self.gga, s0, i)
-        elif code == 5:
+        elif code in [5, 18]:
             self.xc = _gpaw.XCFunctional(code, self.gga,
                                          0.0, 0, num.array(parameters))
         elif code == 6:

@@ -40,6 +40,9 @@ double ensemble_exchange(const xc_parameters* par,
 double pade_exchange(const xc_parameters* par,
 		     double n, double rs, double a2,
 		     double* dedrs, double* deda2);
+double bee1_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2);
 double lb94_correction(const xc_parameters* par,
 		       double n, double rs, double a2,
 		       double* dedrs, double* deda2);
@@ -413,6 +416,16 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       self->par.gga = 0; /* hide gga */
       self->exchange = pbe_exchange;
       self->correction = lb94_correction;
+    }
+  else if (type == 18)
+    {
+      // BEE1
+      self->exchange = bee1_exchange;
+      int n = padearray->dimensions[0];
+      assert(n == 1);
+      double* p = DOUBLEP(padearray);
+      for (int i = 0; i < n; i++)
+	self->par.pade[i] = p[i];
     }
   else
     {

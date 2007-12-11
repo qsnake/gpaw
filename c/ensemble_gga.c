@@ -1,6 +1,36 @@
 #include <math.h>
 #include "xc_gpaw.h"
 
+double bee1_exchange(const xc_parameters* par,
+		     double n, double rs, double a2,
+		     double* dedrs, double* deda2)
+{
+  double e = C1 / rs;
+  *dedrs = -e / rs;
+  double c = C2 * rs / n;
+  c *= c;
+  double s2 = a2 * c;
+  double kappa = 0.804;
+  double x1 = MU / kappa;
+  double x2 = x1 * s2;
+  double x3 = x2 * par->pade[0];
+  double Fx = 1.0 + kappa;
+  double dFxds2 = 0.0;
+  if (x3 < 100.0)
+    {
+      double x4 = exp(x3);
+      double x5 = 1.0 / (1.0 + x2 * x4);
+      Fx -= kappa * x5;
+      dFxds2 = x5 * x5 * (1.0 + x3) * x1 * ;
+    }
+  double ds2drs = 8.0 * c * a2 / rs;
+  *dedrs = *dedrs * Fx + e * dFxds2 * ds2drs;
+  *deda2 = e * dFxds2 * c;
+  e *= Fx;
+  return e;
+}
+
+
 double ensemble_exchange(const xc_parameters* par,
 			 double n, double rs, double a2,
 			 double* dedrs, double* deda2)
