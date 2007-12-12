@@ -8,6 +8,7 @@ from ASE.Utilities.GeometricTransforms import RotateAboutAxis
 from ASE.IO.xyz import ReadXYZ, WriteXYZ
 from ASE.IO.PDB import WritePDB
 from gpaw.io.Cube import ReadListOfAtomsFromCube
+from gpaw.utilities.vector import Vector3d
 
 class Cluster(ListOfAtoms):
     """A class for cluster structures
@@ -32,6 +33,14 @@ class Cluster(ListOfAtoms):
         for a in other:
             result.append(a.Copy())
         return result
+
+    def __ladd__(self, other):
+        print "__ladd__"
+        return self.add(other)
+        
+    def __radd__(self, other):
+        print "__radd__"
+        return self.add(other)
         
     def Center(self):
         """Center the structure to unit cell"""
@@ -106,13 +115,25 @@ class Cluster(ListOfAtoms):
                 
         return len(self)
 
-    def rotate(self,axis,angle=None,unit='rad'):
+    def rotate(self, axis, angle=None, unit='rad'):
+        """Rotate the structure about the given axis with the given angle.
+        Note, that the right hand rule applies: If your right thumb points
+        into the direction of the axis, the other fingers show the rotation
+        direction."""
         if angle is None:
             angle = axis.length()
         axis.length(1.)
-        if unit == 'rad':
-            angle *= 180. / math.pi
-        RotateAboutAxis(self,axis,angle)
+        use_RAA=True
+        use_RAA=False
+        if use_RAA:
+            if unit == 'rad':
+                angle *= 180. / math.pi
+            RotateAboutAxis(self, axis, -angle)
+        else:
+            for a in self:
+                v=Vector3d(a.GetCartesianPosition())
+                v.rotate(axis, angle)
+                a.SetCartesianPosition(v)
 
     def timestep(self,timestep=None):
         """Set and/or get the timestep label of this structure"""
