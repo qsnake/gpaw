@@ -13,7 +13,7 @@ import ASE
 import Numeric as num
 
 from gpaw.paw import PAW
-
+from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, fold_ldos
 
 try:
     # Deal with old ASE version 2.3.5 and earlier:
@@ -135,19 +135,36 @@ class Calculator(PAW):
         return self.density.get_all_electron_density(gridrefinement)\
                / self.a0**3
 
-    def GetWignerSeitzDensities(self, spin=None):
-        if spin is None and self.nspins == 1:
-            return self.GetWignerSeitzDensities(spin=0)
-        elif spin is None and self.nspins == 2:
-            return (self.GetWignerSeitzDensities(spin=0) +
-                    self.GetWignerSeitzDensities(spin=1))
-
+    def GetWignerSeitzDensities(self, spin):
         if not hasattr(self, 'wignerseitz'):
             from gpaw.analyse.wignerseitz import WignerSeitz
             self.wignerseitz = WignerSeitz(self.gd, self.nuclei)
         
-        return self.wignerseitz.expand_density(self.density.nt_sG[spin], spin,
-                                               self.nspins)
+        return self.wignerseitz.expand_density(self.density.nt_sG[spin],
+                                               spin, self.nspins)
+
+    def GetWignerSeitzLDOS(self, a, spin, npts=201, width=None):
+        if not hasattr(self, 'wignerseitz'):
+            from gpaw.analyse.wignerseitz import WignerSeitz
+            self.wignerseitz = WignerSeitz(self.gd, self.nuclei)
+
+        if width is None:
+            width = self.GetElectronicTemperature()
+        if width == 0:
+            width = 0.1
+
+        energies, weights = raw_wignerzeitz_LDOS(
+            self, self.wignerseitz.atom_index, a, spin)
+        return fold_ldos(energies * self.Ha, weights, npts, width)        
+    
+    def GetOrbitalLDOS(self, a, angular, spin, npts=201, width=None):
+        if width is None:
+            width = self.GetElectronicTemperature()
+        if width == 0.0:
+            width = 0.1
+
+        energies, weights = raw_orbital_LDOS(self, a, angular, spin)
+        return fold_ldos(energies * self.Ha, weights, npts, width)
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""

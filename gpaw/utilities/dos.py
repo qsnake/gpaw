@@ -1,10 +1,10 @@
 from math import pi, sqrt
-from ASE.Utilities.DOS import DOS
-from ASE.Units import units, Convert
-
 import Numeric as num
+from gpaw.utilities import pack
+from ASE.Units import units
 
 def print_projectors(nucleus):
+    """Print information on the projectors of input nucleus object"""
     n_j = nucleus.setup.n_j
     l_j = nucleus.setup.l_j
     angular = [['1'],
@@ -23,64 +23,102 @@ def print_projectors(nucleus):
             print '%2s %s %s_%s' % (i, n, 'spdf'[l], angular[l][m])
             i += 1
 
+def get_angular_projectors(nucleus, angular, type='bound'):
+    """Determine the projector indices which have specified angula
+    quantum number.
 
-class LDOS(DOS):
-    def __init__(self, calc, width=None, window=None, npts=201):
-        """Electronic Local Density Of States object.
-        
-        'calc' is a gpaw calculator instance.
-        'width' is the width of the "delta-functions". Defaults to the electronic temperature of the calculation.
-        'window' is the energy window. Default is from the lowest to the highest eigenvalue.
-        'npts' is the number of energy points.
-        """
-        DOS.__init__(self, calc, width, window, npts)
-        self.P_auni = [nucleus.P_uni for nucleus in calc.nuclei]
+    angular can be s, p, d, f, or a list of these.
+    If type is 'bound', only bound state projectors are considered, otherwize
+    all projectors are included.
+    """
+    # Get the number of relevant j values
+    if type == 'bound':
+        nj = 0
+        while nucleus.setup.n_j[nj] != -1: nj += 1
+    else:
+        nj = len(nucleus.setup.n_j)
+            
 
-        self.occ_a = []
-        for nucleus in calc.nuclei:
-            ni = j = 0
-            while nucleus.setup.n_j[j] != -1:
-                ni += 2 * nucleus.setup.l_j[j] + 1
-                j += 1
-            self.occ_a.append(ni)
+    # Choose the relevant projectors
+    projectors = []
+    i = j = 0
+    for j in range(nj):
+        m = 2 * nucleus.setup.l_j[j] + 1
+        if nucleus.setup.l_j[j]['spdf'] in angular:
+            projectors.extend(range(i, i + m))
+        j += 1
+        i += m
 
-    def Delta(self, energy):
-        """Return a delta-function centered at 'energy'."""
-        x = -((self.energies - energy) / self.width)**2
-        x = num.clip(x, -100.0, 100.0)
-        return num.exp(x) / (sqrt(pi) * self.width)
+    return projectors
 
-    def GetLDOS(self, a, spin=None):
-        """Get the DOS projected onto the projector functions of atom a."""
+def delta(x, x0, width):
+    """Return a gaussian of given width centered at x0."""
+    return num.exp(num.clip(-((x - x0) / width)**2,
+                            -100.0, 100.0)) / (sqrt(pi) * width)
 
-        if spin is None:
-            if self.nspins == 2:
-                # Spin-polarized calculation, but no spin specified -
-                # return the total DOS:
-                return self.GetLDOS(a, spin=0) + self.GetLDOS(a, spin=1)
-            else:
-                spin = 0
-        
-        if hasattr(a, '__iter__'):
-            # a is a list of atom indicies -
-            # sum all bound-state angular chanels and add indicated atoms:
-            dos_e = num.zeros(self.npts, num.Float)
-            for atom in a:
-                dos_ie = self.GetLDOS(atom, spin)
-                for i in range(self.occ_a[atom]):
-                    dos_e += dos_ie[i]
-            return dos_e
+def fold_ldos(energies, weights, npts, width):
+    """Take a list of energies and weights, and sum a delta function
+    for each."""
+    emin = min(energies) - 5 * width
+    emax = max(energies) + 5 * width
+    step = (emax - emin) / npts
+    e = num.arange(emin, emax, step, typecode=num.Float)
+    ldos_e = num.zeros(npts, typecode=num.Float)
+    for e0, w in zip(energies, weights):
+        ldos_e += w * delta(e, e0, width)
+    return e, ldos_e
 
-        nk = len(self.w_k)
-        P_kni = self.P_auni[a][spin * nk : (spin + 1) * nk]
-        ni = len(P_kni[0, 0])
-        dos_ie = num.zeros((ni, self.npts), num.Float)
-        for w, P_ni, e_n in zip(self.w_k, P_kni, self.e_skn[spin]):
-            for P_i, e in zip(P_ni, e_n):
-                for i, P in enumerate(P_i):
-                    dos_ie[i] += w * abs(P)**2 * self.Delta(e)
-        return dos_ie
-    
+def raw_orbital_LDOS(calc, a, spin, angular='spdf'):
+    """Return a list of eigenvalues, and their weight on the specified atom.
+
+    angular can be s, p, d, f, or a list of these.
+    If angular is None, the raw weight for each projector is returned"""
+    w_k = calc.GetIBZKPointWeights()
+    nk = len(self.w_k)
+    nb = calc.GetNumberOfBands()
+    nucleus = calc.nuclei[a]
+
+    energies = num.empty(nb * nk, num.Float)
+    weights_xi = num.empty((nb * nk, len(P_kni[0, 0])), num.Float)
+    x = 0
+    for k, w in enumerate(w_k):
+        u = spin * nk + k
+        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=s)
+        weights_xi[x:x + nb, :] = w * num.absolute(nucleus.P_uni[u])**2
+        x += nb
+
+    if angular is None:
+        return energies, weights_xi
+    else:
+        projectors = get_angular_projectors(nucleus, angular)
+        energies, weights_xi = raw_orbital_LDOS(calc, a, spin)
+        weights = num.sum(num.take(weights_xi,
+                                   indices=projectors, axis=1), axis=1)
+        return energies, weights
+
+def raw_wignerseitz_LDOS(calc, atom_index, a, spin):
+    """Return a list of eigenvalues, and their weight on the specified atom"""
+    w_k = calc.GetIBZKPointWeights()
+    nk = len(self.w_k)
+    nb = calc.GetNumberOfBands()
+    nucleus = calc.nuclei[a]
+
+    energies = num.empty(nb * nk, num.Float)
+    weights = num.empty(nb * nk, num.Float)
+    x = 0
+    for k, w in enumerate(w_k):
+        u = spin * nk + k
+        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=s)
+        for n, psit_G in enumerate(calc.kpt_u[u].psit_nG):
+            P_i = nucleus.P_uni[u, n]
+            P_p = pack(num.outerproduct(P_i, P_i))
+            Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
+            weights[x + n] = w * (calc.gd.integrate(num.absolute(
+                num.where(atom_index == a, psit_G, 0.0))**2)
+            + num.dot(Delta_p, P_p))
+        x += nb
+    return energies, weights
+
 class RawLDOS:
     """Class to get the unfolded LDOS"""
     def __init__(self, calc):
