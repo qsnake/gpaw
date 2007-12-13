@@ -58,6 +58,12 @@ class Cluster(ListOfAtoms):
             M += m
             cm += m * atom.GetCartesianPosition()
         return cm/M
+
+    def Copy(self):
+        return self.copy()
+
+    def copy(self):
+        return Cluster(ListOfAtoms.Copy(self))
     
     def extreme_positions(self):
         """get the extreme positions of the structure"""
@@ -120,6 +126,7 @@ class Cluster(ListOfAtoms):
         Note, that the right hand rule applies: If your right thumb points
         into the direction of the axis, the other fingers show the rotation
         direction."""
+        axis=Vector3d(axis)
         if angle is None:
             angle = axis.length()
         axis.length(1.)
