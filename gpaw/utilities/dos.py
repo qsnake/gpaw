@@ -1,6 +1,6 @@
 from math import pi, sqrt
 import Numeric as num
-from gpaw.utilities import pack
+from gpaw.utilities import pack, wignerseitz
 from ASE.Units import units
 
 def print_projectors(nucleus):
@@ -44,7 +44,7 @@ def get_angular_projectors(nucleus, angular, type='bound'):
     i = j = 0
     for j in range(nj):
         m = 2 * nucleus.setup.l_j[j] + 1
-        if nucleus.setup.l_j[j]['spdf'] in angular:
+        if 'spdf'[nucleus.setup.l_j[j]] in angular:
             projectors.extend(range(i, i + m))
         j += 1
         i += m
@@ -61,8 +61,8 @@ def fold_ldos(energies, weights, npts, width):
     for each."""
     emin = min(energies) - 5 * width
     emax = max(energies) + 5 * width
-    step = (emax - emin) / npts
-    e = num.arange(emin, emax, step, typecode=num.Float)
+    step = (emax - emin) / (npts - 1)
+    e = num.arange(emin, emax + 1e-7, step, typecode=num.Float)
     ldos_e = num.zeros(npts, typecode=num.Float)
     for e0, w in zip(energies, weights):
         ldos_e += w * delta(e, e0, width)
@@ -74,16 +74,16 @@ def raw_orbital_LDOS(calc, a, spin, angular='spdf'):
     angular can be s, p, d, f, or a list of these.
     If angular is None, the raw weight for each projector is returned"""
     w_k = calc.GetIBZKPointWeights()
-    nk = len(self.w_k)
+    nk = len(w_k)
     nb = calc.GetNumberOfBands()
     nucleus = calc.nuclei[a]
 
     energies = num.empty(nb * nk, num.Float)
-    weights_xi = num.empty((nb * nk, len(P_kni[0, 0])), num.Float)
+    weights_xi = num.empty((nb * nk, nucleus.setup.ni), num.Float)
     x = 0
     for k, w in enumerate(w_k):
+        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=spin)
         u = spin * nk + k
-        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=s)
         weights_xi[x:x + nb, :] = w * num.absolute(nucleus.P_uni[u])**2
         x += nb
 
@@ -91,15 +91,18 @@ def raw_orbital_LDOS(calc, a, spin, angular='spdf'):
         return energies, weights_xi
     else:
         projectors = get_angular_projectors(nucleus, angular)
-        energies, weights_xi = raw_orbital_LDOS(calc, a, spin)
         weights = num.sum(num.take(weights_xi,
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
 
-def raw_wignerseitz_LDOS(calc, atom_index, a, spin):
+def raw_wignerseitz_LDOS(calc, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
+    atom_index = calc.gd.empty(typecode=num.Int)
+    atom_c = num.array([n.spos_c * calc.gd.N_c for n in calc.nuclei])
+    wignerseitz(atom_index, atom_c, calc.gd.beg_c, calc.gd.end_c)
+
     w_k = calc.GetIBZKPointWeights()
-    nk = len(self.w_k)
+    nk = len(w_k)
     nb = calc.GetNumberOfBands()
     nucleus = calc.nuclei[a]
 
@@ -108,14 +111,14 @@ def raw_wignerseitz_LDOS(calc, atom_index, a, spin):
     x = 0
     for k, w in enumerate(w_k):
         u = spin * nk + k
-        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=s)
+        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=spin)
         for n, psit_G in enumerate(calc.kpt_u[u].psit_nG):
             P_i = nucleus.P_uni[u, n]
             P_p = pack(num.outerproduct(P_i, P_i))
             Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
             weights[x + n] = w * (calc.gd.integrate(num.absolute(
                 num.where(atom_index == a, psit_G, 0.0))**2)
-            + num.dot(Delta_p, P_p))
+                                  + num.dot(Delta_p, P_p))
         x += nb
     return energies, weights
 

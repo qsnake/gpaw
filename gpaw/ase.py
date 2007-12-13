@@ -144,27 +144,22 @@ class Calculator(PAW):
                                                spin, self.nspins)
 
     def GetWignerSeitzLDOS(self, a, spin, npts=201, width=None):
-        if not hasattr(self, 'wignerseitz'):
-            from gpaw.analyse.wignerseitz import WignerSeitz
-            self.wignerseitz = WignerSeitz(self.gd, self.nuclei)
-
         if width is None:
             width = self.GetElectronicTemperature()
         if width == 0:
             width = 0.1
 
-        energies, weights = raw_wignerzeitz_LDOS(
-            self, self.wignerseitz.atom_index, a, spin)
-        return fold_ldos(energies * self.Ha, weights, npts, width)        
+        energies, weights = raw_wignerseitz_LDOS(self, a, spin)
+        return fold_ldos(energies, weights, npts, width)        
     
-    def GetOrbitalLDOS(self, a, angular, spin, npts=201, width=None):
+    def GetOrbitalLDOS(self, a, spin, angular, npts=201, width=None):
         if width is None:
             width = self.GetElectronicTemperature()
         if width == 0.0:
             width = 0.1
 
-        energies, weights = raw_orbital_LDOS(self, a, angular, spin)
-        return fold_ldos(energies * self.Ha, weights, npts, width)
+        energies, weights = raw_orbital_LDOS(self, a, spin, angular)
+        return fold_ldos(energies, weights, npts, width)
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""
