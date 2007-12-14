@@ -6,11 +6,18 @@ from gpaw.spherical_harmonics import Y
 from gpaw.gaunt import gaunt
 from gpaw.utilities import fac
 
-C = [num.array([-1.0j]),
-     num.array([-1.0, -1.0j]),
-     num.array([1.0j, -3.0, -3.0j]),
-     num.array([1.0, 6.0j, -15.0, -15.0j]),
-     num.array([1.0j, -6.0, -30.0j, 105.0, 105.0j])]
+
+# Generate the coefficients for the Fourier-Bessel transform
+C = []
+a = 0.0
+n = 5
+for n in range(n):
+    c = num.zeros(n+1, num.Complex)
+    for s in range(n + 1):
+        a = (1.0j)**s * fac[n + s] / (fac[s] * 2**s * fac[n - s])
+        a *= (-1.0j)**(n + 1)
+        c[s] = a
+    C.append(c)
 
 def fbt(l, f, r, k):
     """Fast Bessel transform.
@@ -48,7 +55,6 @@ class TwoCenterIntegrals:
                 rc = phit.get_cutoff()
                 if rc > self.rcmax:
                     self.rcmax = rc
-        print self.rcmax
 
         for setup in setups:
             for pt in setup.pt_j:
@@ -161,57 +167,87 @@ class TwoCenterIntegrals:
         return P
  
     # Testing
-    def testb(self, h):
-        from gpaw.domain import Domain
-        from gpaw.grid_descriptor import GridDescriptor
-        from gpaw.localized_functions import create_localized_functions, \
-             LocFuncBroadcaster
-
-        print self.splines
-        sspline = selfs.plines[(('H', 0), ('Li', 0))]
-        phit = self.setups[0].phit_j[0]
-        phitb = self.setups[1].phit_j[0]
-        rc = phit.get_cutoff() + 1.0
-        n = int(2 * rc / h / 4) * 4 + 8
-        domain = Domain((4 * rc, 2 * rc, 2 * rc), (False, False, False))
-        gd = GridDescriptor(domain, (2 * n, n, n))
-        f = create_localized_functions([phit], gd, (0.25, 0.5, 0.5))
-        a = gd.zeros()
-        c = num.ones(1, num.Float)
-        f.add(a, c)
-        for i in range(21):
-            x = 0.25 + 0.5 * i / 20
-            g = create_localized_functions([phitb], gd, (x, 0.5, 0.5))
-            b = gd.zeros()
-            g.add(b, c)
-            s = gd.integrate(a * b)
-            d = (x - 0.25) * 4 * rc
-            print d, s, sspline[0](d)
-
-    def test2(self, h):
+    def test(self, h, id1, id2, m1=0, m2=0, out=False):
         from gpaw.domain import Domain
         from gpaw.grid_descriptor import GridDescriptor
         from gpaw.localized_functions import create_localized_functions, \
              LocFuncBroadcaster
         from gpaw.operators import Laplace
         
-        phit = self.setup.phit_j[0]
-        rc = phit.get_cutoff() + 1.0
-        n = int(2 * rc / h / 4) * 4 + 8
-        domain = Domain((4 * rc, 2 * rc, 2 * rc), (False, False, False))
-        gd = GridDescriptor(domain, (2 * n, n, n))
-        kin = Laplace(gd, -0.5)
-        f = create_localized_functions([phit], gd, (0.25, 0.5, 0.5))
-        a = gd.new_array()
-        kina = gd.new_array()
-        c = num.ones(1, num.Float)
-        f.add(a, c)
-        kin.apply(a, kina)
+        phit1 = self.setups[0].phit_j[id1[1]]
+        phit2 = self.setups[1].phit_j[id2[1]]
+        l1 = phit1.get_angular_momentum_number()
+        l2 = phit2.get_angular_momentum_number()
+        rc = self.rcmax + 1.0
+        n = int(2 * rc / h / 4) * 4 +8
+        domain = Domain((4 * rc, 4 * rc, 4 * rc), (False, False, False))
+        gd = GridDescriptor(domain, (2 * n, 2 * n, 2 * n))
+        f = create_localized_functions([phit1], gd, (0.25, 0.25, 0.25))
+        a = gd.zeros()
+        c1 = num.zeros(2 * l1 + 1, num.Float)
+        c1[m1] = 1
+        c2 = num.zeros(2 * l2 + 1, num.Float)
+        c2[m2] = 1
+        f.add(a, c1)
+        kina = gd.zeros() 
+        kin = Laplace(gd, -0.5) 
+        kin.apply(a, kina) 
         for i in range(21):
             x = 0.25 + 0.5 * i / 20
-            g = create_localized_functions([phit], gd, (x, 0.5, 0.5))
-            b = gd.new_array()
-            g.add(b, c)
-            s = gd.integrate(kina * b)
-            d = (x - 0.25) * 4 * rc
-            print d, s, self.tt(d)
+            y = 0.25 + 0.4 * 1 / 20
+            z = 0.25 + 0.3 * i / 20
+            g = create_localized_functions([phit2], gd, (x, y, z))
+            b = gd.zeros()
+            g.add(b, c2)
+            s = gd.integrate(a * b)
+            t = gd.integrate(kina * b)
+            d = [-(x - 0.25) * 4 * rc, -(y - 0.25) * 4 * rc,
+                 -(z - 0.25) * 4 * rc]
+            S, T = self.st_overlap(id1, id2, l1, l2, m1, m2, d)
+            r = sqrt(num.dot(d, d))
+            if out:
+                print 'S:',r, s, S
+                print 'T:',r, t, T
+
+
+    def test_fixed_distance(self, h, id1, id2, r, m1=0, m2=0, out=False):
+        from gpaw.domain import Domain
+        from gpaw.grid_descriptor import GridDescriptor
+        from gpaw.localized_functions import create_localized_functions, \
+             LocFuncBroadcaster
+        from gpaw.operators import Laplace
+        
+        phit1 = self.setups[0].phit_j[id1[1]]
+        phit2 = self.setups[1].phit_j[id2[1]]
+        l1 = phit1.get_angular_momentum_number()
+        l2 = phit2.get_angular_momentum_number()
+        rc = self.rcmax + 1.0
+        n = int(2 * rc / h / 4) * 4 +8
+        domain = Domain((4 * rc, 4 * rc, 4 * rc), (False, False, False))
+        gd = GridDescriptor(domain, (2 * n, 2 * n, 2 * n))
+        f = create_localized_functions([phit1], gd, (0.25, 0.25, 0.25))
+        a = gd.zeros()
+        c1 = num.zeros(2 * l1 + 1, num.Float)
+        c1[m1] = 1
+        c2 = num.zeros(2 * l2 + 1, num.Float)
+        c2[m2] = 1
+        f.add(a, c1)
+        kina = gd.zeros() 
+        kin = Laplace(gd, -0.5) 
+        kin.apply(a, kina) 
+        rx = r[0] + 0.25
+        ry = r[1] + 0.25
+        rz = r[2] + 0.25
+        d = [-(rx - 0.25) * 4 * rc, -(ry - 0.25) * 4 * rc,
+             -(rz - 0.25) * 4 * rc]
+        g = create_localized_functions([phit2], gd, [rx, ry, rz])
+        b = gd.zeros()
+        g.add(b, c2)
+        s = gd.integrate(a * b)
+        t = gd.integrate(kina * b)
+        S, T = self.st_overlap(id1, id2, l1, l2, m1, m2, d)
+        r = sqrt(num.dot(d, d))
+        if out:
+            print 'S:',r, s, S
+            print 'T:',r, t, T
+        return s, S, t, T
