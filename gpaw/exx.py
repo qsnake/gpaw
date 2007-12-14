@@ -57,6 +57,9 @@ from gpaw.poisson import PoissonSolver, PoissonFFTSolver
 
 usefft = False
 
+## for debug
+## from gpaw.mpi.mpiprint import mpiprint
+
 class EXX:
     """EXact eXchange.
 
@@ -72,7 +75,6 @@ class EXX:
         self.nspins      = nspins
         self.nbands      = nbands
         self.my_nuclei   = my_nuclei
-        self.ghat_nuclei = ghat_nuclei
         self.interpolate = interpolate
         self.restrict    = restrict
         self.rank        = dcomm.rank
@@ -91,6 +93,7 @@ class EXX:
         if self.use_finegrid:
             self.rhot_g = finegd.empty()# Comp. pseudo density on fine grid
             self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
+            self.ghat_nuclei = ghat_nuclei
             if usefft:
                 solver = PoissonFFTSolver()
                 solver.initialize(finegd)
@@ -99,8 +102,9 @@ class EXX:
                 self.poisson_solve = poisson.solve
             self.fineintegrate = finegd.integrate
         else:
-            self.rhot_g = gd.empty()# Comp. pseudo density on fine grid
-            self.vt_g = self.vt_G   # Pot. of comp. pseudo density on fine grid
+            self.rhot_g = gd.empty()# Comp. pseudo density on coarse grid
+            self.vt_g = self.vt_G   # Pot. of comp. pseudo dens. on coarse grid
+            self.ghat_nuclei = paw.Ghat_nuclei
             if usefft:
                 solver = PoissonFFTSolver()
                 solver.initialize(gd)
