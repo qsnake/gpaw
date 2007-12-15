@@ -17,12 +17,12 @@ for formula in systems:
                       nbands=-5,
                       xc='PBE',
                       fixmom=True,
-                      #setups={'C': 'new', 'S': 'new'},
+                     #setups={'C': 'new', 'S': 'new', 'Li': 'new', 'P': 'new'},
                       txt=formula + '.txt')
     if len(loa) == 1:
         calc.set(hund=True)
     loa.SetCalculator(calc)
-    if loa == 'BeH':
+    if formula == 'BeH':
         calc.initialize()
         calc.nuclei[0].f_si = [(1, 0, 0.5, 0),
                                (0.5, 0, 0, 0)]

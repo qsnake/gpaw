@@ -18,7 +18,7 @@ from gpaw.utilities import center
 atoms = {'H': 1, 'Li': 1, 'Be': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 2, 'F': 1,
          'Na': 1, 'Al': 1, 'Si': 2, 'P': 3, 'S': 2,'Cl': 1}
 
-# The 148 molecules of the test set
+# The 149 molecules of the test set
 molecules = {
     # Extra systems
        'Be2': "Diatomic Beryllium",
@@ -79,87 +79,88 @@ molecules = {
       'HOCl': "HOCl molecule, Cs symm.",
        'SO2': "Sulfur dioxide (SO2), C2v symm.",
        # The G2-2 set:
-       'F3B': "BF3, Planar D3h symm.",
-      'Cl3B': "BCl3, Planar D3h symm.",
-      'F3Al': "AlF3, Planar D3h symm.",
-     'Cl3Al': "AlCl3, Planar D3h symm.",
-       'F4C': "CF4, Td symm.",
-      'Cl4C': "CCl4, Td symm.",
-       'OSC': "O=C=S, Linear, C*v symm.",
-       'S2C': "CS2, Linear, D*h symm.",
-      'OF2C': "COF2, C2v symm.",
-      'F4Si': "SiF4, Td symm.",
-     'Cl4Si': "SiCl4, Td symm.",
-       'ON2': "N2O, Cs symm.",
-      'OClN': "ClNO, Cs symm.",
-       'F3N': "NF3, C3v symm.",
-       'F3P': "PF3, C3v symm.",
+       'BF3': "BF3, Planar D3h symm.",
+      'BCl3': "BCl3, Planar D3h symm.",
+      'AlF3': "AlF3, Planar D3h symm.",
+     'AlCl3': "AlCl3, Planar D3h symm.",
+       'CF4': "CF4, Td symm.",
+      'CCl4': "CCl4, Td symm.",
+       'OCS': "O=C=S, Linear, C*v symm.",
+       'CS2': "CS2, Linear, D*h symm.",
+      'COF2': "COF2, C2v symm.",
+      'SiF4': "SiF4, Td symm.",
+     'SiCl4': "SiCl4, Td symm.",
+       'N2O': "N2O, Cs symm.",
+      'ClNO': "ClNO, Cs symm.",
+       'NF3': "NF3, C3v symm.",
+       'PF3': "PF3, C3v symm.",
         'O3': "O3 (Ozone), C2v symm.",
-       'OF2': "F2O, C2v symm.",
+       'F2O': "F2O, C2v symm.",
       'ClF3': "ClF3, C2v symm.",
-      'F4C2': "C2F4 (F2C=CF2), D2H symm.",
-     'Cl4C2': "C2Cl4 (Cl2C=CCl2), D2h symm.",
-     'F3C2N': "CF3CN, C3v symm.",
-      'H4C3': "Propyne (C3H4), C3v symm.",
-     'H4C3x': "Allene (C3H4), D2d symm.",
-    'H4C3xx': "Cyclopropene (C3H4), C2v symm.",
-      'H6C3': "Propene (C3H6), Cs symm.",
-     'H6C3x': "Cyclopropane (C3H6), D3h symm.",
-      'H8C3': "Propane (C3H8), C2v symm.",
-      'H6C4': "Trans-1,3-butadiene (C4H6), C2h symm.",
-     'H6C4x': "Dimethylacetylene (2-butyne, C4H6), D3h symm (eclipsed).",
-    'H6C4xx': "Methylenecyclopropane (C4H6), C2v symm.",
-   'H6C4xxx': "Bicyclo[1.1.0]butane (C4H6), C2v symm.",
-  'H6C4xxxx': "Cyclobutene (C4H6), C2v symm.",
-      'H8C4': "Cyclobutane (C4H8), D2d symm.",
-     'H8C4x': "Isobutene (C4H8), Single bonds trans, C2v symm.",
-     'H10C4': "Trans-butane (C4H10), C2h symm.",
-    'H10C4x': "Isobutane (C4H10), C3v symm.",
-      'H8C5': "Spiropentane (C5H8), D2d symm.",
-      'H6C6': "Benzene (C6H6), D6h symm.",
-     'F2CH2': "Difluoromethane (H2CF2), C2v symm.",
+      'C2F4': "C2F4 (F2C=CF2), D2H symm.",
+     'C2Cl4': "C2Cl4 (Cl2C=CCl2), D2h symm.",
+     'CF3CN': "CF3CN, C3v symm.",
+  'C3H4_C3v': "Propyne (C3H4), C3v symm.",
+  'C3H4_D2d': "Allene (C3H4), D2d symm.",
+  'C3H4_C2v': "Cyclopropene (C3H4), C2v symm.",
+   'C3H6_Cs': "Propene (C3H6), Cs symm.",
+  'C3H6_D3h': "Cyclopropane (C3H6), D3h symm.",
+      'C3H8': "Propane (C3H8), C2v symm.",
+     'C4H6x': "Trans-1,3-butadiene (C4H6), C2h symm.",
+    'C4H6xx': "Dimethylacetylene (2-butyne, C4H6), D3h symm (eclipsed).",
+   'C4H6xxx': "Methylenecyclopropane (C4H6), C2v symm.",
+  'C4H6xxxx': "Bicyclo[1.1.0]butane (C4H6), C2v symm.",
+ 'C4H6xxxxx': "Cyclobutene (C4H6), C2v symm.",
+     'C4H8x': "Cyclobutane (C4H8), D2d symm.",
+    'C4H8xx': "Isobutene (C4H8), Single bonds trans, C2v symm.",
+    'C4H10x': "Trans-butane (C4H10), C2h symm.",
+   'C4H10xx': "Isobutane (C4H10), C3v symm.",
+      'C5H8': "Spiropentane (C5H8), D2d symm.",
+      'C6H6': "Benzene (C6H6), D6h symm.",
+     'H2CF2': "Difluoromethane (H2CF2), C2v symm.",
       'HCF3': "Trifluoromethane (HCF3), C3v symm.",
-    'Cl2CH2': "Dichloromethane (H2CCl2), C2v symm.",
+    'H2CCl2': "Dichloromethane (H2CCl2), C2v symm.",
      'HCCl3': "Chloroform (HCCl3), C3v symm.",
-      'H5CN': "Methylamine (H3C-NH2), Cs symm.",
-     'H3C2N': "Acetonitrile (CH3-CN), C3v symm.",
-    'O2H3CN': "Nitromethane (CH3-NO2), Cs symm.",
-   'O2H3CNx': "Methylnitrite (CH3-O-N=O), NOCH trans, ONOC cis, Cs symm.",
-     'H6SiC': "Methylsilane (CH3-SiH3), C3v symm.",
-     'O2H2C': "Formic Acid (HCOOH), HOCO cis, Cs symm.",
-    'O2H4C2': "Methyl formate (HCOOCH3), Cs symm.",
-    'OH5C2N': "Acetamide (CH3CONH2), C1 symm.",
-     'H5C2N': "Aziridine (cyclic CH2-NH-CH2 ring), C2v symm.",
-      'C2N2': "Cyanogen (NCCN). D*h symm.",
-     'H7C2N': "Dimethylamine, (CH3)2NH, Cs symm.",
-    'H7C2Nx': "Trans-Ethylamine (CH3-CH2-NH2), Cs symm.",
-     'OH2C2': "Ketene (H2C=C=O), C2v symm.",
-     'OH4C2': "Oxirane (cyclic CH2-O-CH2 ring), C2v symm.",
-    'OH4C2x': "Acetaldehyde (CH3CHO), Cs symm.",
-    'O2H2C2': "Glyoxal (O=CH-CH=O). Trans, C2h symm.",
-     'OH6C2': "Ethanol (trans, CH3CH2OH), Cs symm.",
-    'OH6C2x': "DimethylEther (CH3-O-CH3), C2v symm.",
-     'SH4C2': "Thiooxirane (cyclic CH2-S-CH2 ring), C2v symm.",
-    'SOC2H6': "Dimethylsulfoxide (CH3)2SO, Cs symm.",
-     'SH6C2': "ThioEthanol (CH3-CH2-SH), Cs symm.",
-    'SH6C2x': "Dimethyl ThioEther (CH3-S-CH3), C2v symm.",
-     'FC2H3': "Vinyl fluoride (H2C=CHF), Cs symm.",
-    'ClC2H5': "Ethyl chloride (CH3-CH2-Cl), Cs symm.",
-    'ClC2H3': "Vinyl chloride, H2C=CHCl, Cs symm.",
-     'H3C3N': "CyanoEthylene (H2C=CHCN), Cs symm.",
-     'OH6C3': "Acetone (CH3-CO-CH3), C2v symm.",
-   'O2H4C2x': "Acetic Acid (CH3COOH), Single bonds trans, Cs symm.",
-    'OFC2H3': "Acetyl fluoride (CH3COF), HCCO cis, Cs symm.",
-   'OClC2H3': "Acetyl,Chloride (CH3COCl), HCCO cis, Cs symm.",
-    'H7C3Cl': "Propyl chloride (CH3CH2CH2Cl), Cs symm.",
-     'OH8C3': "Isopropyl alcohol, (CH3)2CH-OH, Gauche isomer, C1 symm.",
-    'OH8C3x': "Methyl ethyl ether (CH3-CH2-O-CH3), Trans, Cs symm.",
-     'H9C3N': "Trimethyl Amine, (CH3)3N, C3v symm.",
-     'OH4C4': "Furan (cyclic C4H4O), C2v symm.",
-     'SH4C4': "Thiophene (cyclic C4H4S), C2v symm.",
-     'H5C4N': "Pyrrole (Planar cyclic C4H4NH), C2v symm.",
-     'H5C5N': "Pyridine (cyclic C5H5N), C2v symm.",
+    'H3CNH2': "Methylamine (H3C-NH2), Cs symm.",
+     'CH3CN': "Acetonitrile (CH3-CN), C3v symm.",
+    'CH3NO2': "Nitromethane (CH3-NO2), Cs symm.",
+    'CH3ONO': "Methylnitrite (CH3-O-N=O), NOCH trans, ONOC cis, Cs symm.",
+   'CH3SiH3': "Methylsilane (CH3-SiH3), C3v symm.",
+     'HCOOH': "Formic Acid (HCOOH), HOCO cis, Cs symm.",
+   'HCOOCH3': "Methyl formate (HCOOCH3), Cs symm.",
+  'CH3CONH2': "Acetamide (CH3CONH2), C1 symm.",
+  'CH2NHCH2': "Aziridine (cyclic CH2-NH-CH2 ring), C2v symm.",
+      'NCCN': "Cyanogen (NCCN). D*h symm.",
+    'C2H6NH': "Dimethylamine, (CH3)2NH, Cs symm.",
+ 'CH3CH2NH2': "Trans-Ethylamine (CH3-CH2-NH2), Cs symm.",
+     'H2CCO': "Ketene (H2C=C=O), C2v symm.",
+   'CH2OCH2': "Oxirane (cyclic CH2-O-CH2 ring), C2v symm.",
+    'CH3CHO': "Acetaldehyde (CH3CHO), Cs symm.",
+    'OCHCHO': "Glyoxal (O=CH-CH=O). Trans, C2h symm.",
+  'CH3CH2OH': "Ethanol (trans, CH3CH2OH), Cs symm.",
+   'CH3OCH3': "DimethylEther (CH3-O-CH3), C2v symm.",
+   'CH2SCH2': "Thiooxirane (cyclic CH2-S-CH2 ring), C2v symm.",
+    'C2H6SO': "Dimethylsulfoxide (CH3)2SO, Cs symm.",
+  'CH3CH2SH': "ThioEthanol (CH3-CH2-SH), Cs symm.",
+   'CH3SCH3': "Dimethyl ThioEther (CH3-S-CH3), C2v symm.",
+    'H2CCHF': "Vinyl fluoride (H2C=CHF), Cs symm.",
+  'CH3CH2Cl': "Ethyl chloride (CH3-CH2-Cl), Cs symm.",
+   'H2CCHCl': "Vinyl chloride, H2C=CHCl, Cs symm.",
+   'H2CCHCN': "CyanoEthylene (H2C=CHCN), Cs symm.",
+  'CH3COCH3': "Acetone (CH3-CO-CH3), C2v symm.",
+   'CH3COOH': "Acetic Acid (CH3COOH), Single bonds trans, Cs symm.",
+    'CH3COF': "Acetyl fluoride (CH3COF), HCCO cis, Cs symm.",
+   'CH3COCl': "Acetyl,Chloride (CH3COCl), HCCO cis, Cs symm.",
+    'C3H7Cl': "Propyl chloride (CH3CH2CH2Cl), Cs symm.",
+  'C2H6CHOH': "Isopropyl alcohol, (CH3)2CH-OH, Gauche isomer, C1 symm.",
+'CH3CH2OCH3': "Methyl ethyl ether (CH3-CH2-O-CH3), Trans, Cs symm.",
+     'C3H9N': "Trimethyl Amine, (CH3)3N, C3v symm.",
+     'C4H4O': "Furan (cyclic C4H4O), C2v symm.",
+     'C4H4S': "Thiophene (cyclic C4H4S), C2v symm.",
+    'C4H4NH': "Pyrrole (Planar cyclic C4H4NH), C2v symm.",
+     'C5H5N': "Pyridine (cyclic C5H5N), C2v symm.",
         'H2': "H2. D*h symm.",
+      # Check stops here, those below are magnetic, but magmom has not been set
         'SH': "SH radical, C*v symm.",
        'HC2': "CCH radical, C*v symm.",
       'H3C2': "C2H3 radical, Cs symm, 2-A'.",
@@ -170,8 +171,9 @@ molecules = {
       'SH3C': "CH3S radical, Cs symm, 2-A'.",
       'H5C2': "C2H5 radical, Staggered, Cs symm, 2-A'.",
       'H7C3': "(CH3)2CH radical, Cs symm, 2-A'.",
-      'H9C4': "t-Butyl radical, (CH3)3C, C3v symm.",
-       'O2N': "NO2 radical, C2v symm, 2-A1.",
+     'C3H9C': "t-Butyl radical, (CH3)3C, C3v symm.",
+       'NO2': "NO2 radical, C2v symm, 2-A1.",
+       'NO2': "NO2 radical, C2v symm, 2-A1.",
 }
 
 ## Start of extra systems
@@ -690,12 +692,12 @@ SO2 = ListOfAtoms([
     Atom('O', [.000000, -1.277617, -.370268]),
     ])
 
-## End of G2-1, start of G2-2
+## Start of G2-2 test set
 
 # BF3, Planar D3h symm.
 # MP2 energy = -323.7915374. Hartree
 # Charge = 0, multiplicity = 1
-F3B = ListOfAtoms([
+BF3 = ListOfAtoms([
     Atom('B', [.000000, .000000, .000000]),
     Atom('F', [.000000, 1.321760, .000000]),
     Atom('F', [1.144678, -.660880, .000000]),
@@ -705,7 +707,7 @@ F3B = ListOfAtoms([
 # BCl3, Planar D3h symm.
 # MP2 energy = -1403.7595806 Hartree
 # Charge = 0, multiplicity = 1
-Cl3B = ListOfAtoms([
+BCl3 = ListOfAtoms([
     Atom('B', [.000000, .000000, .000000]),
     Atom('Cl', [.000000, 1.735352, .000000]),
     Atom('Cl', [1.502859, -.867676, .000000]),
@@ -715,7 +717,7 @@ Cl3B = ListOfAtoms([
 # AlF3, Planar D3h symm.
 # MP2 energy = -541.0397296 Hartree
 # Charge = 0, multiplicity = 1
-F3Al = ListOfAtoms([
+AlF3 = ListOfAtoms([
     Atom('Al', [.000000, .000000, .000000]),
     Atom('F', [.000000, 1.644720, .000000]),
     Atom('F', [1.424369, -.822360, .000000]),
@@ -725,7 +727,7 @@ F3Al = ListOfAtoms([
 # AlCl3, Planar D3h symm.
 # MP2 energy = -1621.0484142 Hartree
 # Charge = 0, multiplicity = 1
-Cl3Al = ListOfAtoms([
+AlCl3 = ListOfAtoms([
     Atom('Al', [.000000, .000000, .000000]),
     Atom('Cl', [.000000, 2.069041, .000000]),
     Atom('Cl', [1.791842, -1.034520, .000000]),
@@ -735,7 +737,7 @@ Cl3Al = ListOfAtoms([
 # CF4, Td symm.
 # MP2 energy = -436.4622308 Hartree
 # Charge = 0, multiplicity = 1
-F4C = ListOfAtoms([
+CF4 = ListOfAtoms([
     Atom('C', [.000000, .000000, .000000]),
     Atom('F', [.767436, .767436, .767436]),
     Atom('F', [-.767436, -.767436, .767436]),
@@ -746,7 +748,7 @@ F4C = ListOfAtoms([
 # CCl4, Td symm.
 # MP2 energy = -1876.4528012 Hartree
 # Charge = 0, multiplicity = 1
-Cl4C = ListOfAtoms([
+CCl4 = ListOfAtoms([
     Atom('C', [.000000, .000000, .000000]),
     Atom('Cl', [1.021340, 1.021340, 1.021340]),
     Atom('Cl', [-1.021340, -1.021340, 1.021340]),
@@ -757,7 +759,7 @@ Cl4C = ListOfAtoms([
 # O=C=S, Linear, C*v symm.
 # MP2 energy = -510.704382 Hartree
 # Charge = 0, multiplicity = 1
-OSC = ListOfAtoms([
+OCS = ListOfAtoms([
     Atom('O', [.000000, .000000, -1.699243]),
     Atom('C', [.000000, .000000, -.520492]),
     Atom('S', [.000000, .000000, 1.044806]),
@@ -766,7 +768,7 @@ OSC = ListOfAtoms([
 # CS2, Linear, D*h symm.
 # MP2 energy = -833.2916974 Hartree
 # Charge = 0, multiplicity = 1
-S2C = ListOfAtoms([
+CS2 = ListOfAtoms([
     Atom('S', [.000000, .000000, 1.561117]),
     Atom('C', [.000000, .000000, .000000]),
     Atom('S', [.000000, .000000, -1.561117]),
@@ -775,7 +777,7 @@ S2C = ListOfAtoms([
 # COF2, C2v symm.
 # MP2 energy = -312.2651646 Hartree
 # Charge = 0, multiplicity = 1
-OF2C = ListOfAtoms([
+COF2 = ListOfAtoms([
     Atom('O', [.000000, .000000, 1.330715]),
     Atom('C', [.000000, .000000, .144358]),
     Atom('F', [.000000, 1.069490, -.639548]),
@@ -785,7 +787,7 @@ OF2C = ListOfAtoms([
 # SiF4, Td symm.
 # MP2 energy = -687.7406597 Hartree
 # Charge = 0, multiplicity = 1
-F4Si = ListOfAtoms([
+SiF4 = ListOfAtoms([
     Atom('Si', [.000000, .000000, .000000]),
     Atom('F', [.912806, .912806, .912806]),
     Atom('F', [-.912806, -.912806, .912806]),
@@ -796,7 +798,7 @@ F4Si = ListOfAtoms([
 # SiCl4, Td symm.
 # MP2 energy = -2127.6916411 Hartree
 # Charge = 0, multiplicity = 1
-Cl4Si = ListOfAtoms([
+SiCl4 = ListOfAtoms([
     Atom('Si', [.000000, .000000, .000000]),
     Atom('Cl', [1.169349, 1.169349, 1.169349]),
     Atom('Cl', [-1.169349, -1.169349, 1.169349]),
@@ -807,7 +809,7 @@ Cl4Si = ListOfAtoms([
 # N2O, Cs symm.
 # MP2 energy = -184.2136838 Hartree
 # Charge = 0, multiplicity = 1
-ON2 = ListOfAtoms([
+N2O = ListOfAtoms([
     Atom('N', [.000000, .000000, -1.231969]),
     Atom('N', [.000000, .000000, -.060851]),
     Atom('O', [.000000, .000000, 1.131218]),
@@ -816,7 +818,7 @@ ON2 = ListOfAtoms([
 # ClNO, Cs symm.
 # MP2 energy = -589.1833856 Hartree
 # Charge = 0, multiplicity = 1
-OClN = ListOfAtoms([
+ClNO = ListOfAtoms([
     Atom('Cl', [-.537724, -.961291, .000000]),
     Atom('N', [.000000, .997037, .000000]),
     Atom('O', [1.142664, 1.170335, .000000]),
@@ -825,7 +827,7 @@ OClN = ListOfAtoms([
 # NF3, C3v symm.
 # MP2 energy = -353.2366115 Hartree
 # Charge = 0, multiplicity = 1
-F3N = ListOfAtoms([
+NF3 = ListOfAtoms([
     Atom('N', [.000000, .000000, .489672]),
     Atom('F', [.000000, 1.238218, -.126952]),
     Atom('F', [1.072328, -.619109, -.126952]),
@@ -835,7 +837,7 @@ F3N = ListOfAtoms([
 # PF3, C3v symm.
 # MP2 energy = -639.7725739 Hartree
 # Charge = 0, multiplicity = 1
-F3P = ListOfAtoms([
+PF3 = ListOfAtoms([
     Atom('P', [.000000, .000000, .506767]),
     Atom('F', [.000000, 1.383861, -.281537]),
     Atom('F', [1.198459, -.691931, -.281537]),
@@ -854,7 +856,7 @@ O3 = ListOfAtoms([
 # F2O, C2v symm.
 # MP2 energy = -273.9997434 Hartree
 # Charge = 0, multiplicity = 1
-OF2 = ListOfAtoms([
+F2O = ListOfAtoms([
     Atom('F', [.000000, 1.110576, -.273729]),
     Atom('O', [.000000, .000000, .615890]),
     Atom('F', [.000000, -1.110576, -.273729]),
@@ -873,7 +875,7 @@ ClF3 = ListOfAtoms([
 # C2F4 (F2C=CF2), D2H symm.
 # MP2 energy = -474.3606919 Hartree
 # Charge = 0, multiplicity = 1
-F4C2 = ListOfAtoms([
+C2F4 = ListOfAtoms([
     Atom('C', [.000000, .000000, .663230]),
     Atom('C', [.000000, .000000, -.663230]),
     Atom('F', [.000000, 1.112665, 1.385652]),
@@ -885,7 +887,7 @@ F4C2 = ListOfAtoms([
 # C2Cl4 (Cl2C=CCl2), D2h symm.
 # MP2 energy = -1914.4397862 Hartree
 # Charge = 0, multiplicity = 1
-Cl4C2 = ListOfAtoms([
+C2Cl4 = ListOfAtoms([
     Atom('C', [.000000, .000000, .675402]),
     Atom('C', [.000000, .000000, -.675402]),
     Atom('Cl', [.000000, 1.448939, 1.589701]),
@@ -897,7 +899,7 @@ Cl4C2 = ListOfAtoms([
 # CF3CN, C3v symm.
 # MP2 energy = -429.4170926 Hartree
 # Charge = 0, multiplicity = 1
-F3C2N = ListOfAtoms([
+CF3CN = ListOfAtoms([
     Atom('C', [.000000, .000000, -.326350]),
     Atom('C', [.000000, .000000, 1.150830]),
     Atom('F', [.000000, 1.257579, -.787225]),
@@ -909,7 +911,7 @@ F3C2N = ListOfAtoms([
 # Propyne (C3H4), C3v symm.
 # MP2 energy = -116.2562366 Hartree
 # Charge = 0, multiplicity = 1
-H4C3 = ListOfAtoms([
+C3H4_C3v = ListOfAtoms([
     Atom('C', [.000000, .000000, .214947]),
     Atom('C', [.000000, .000000, 1.433130]),
     Atom('C', [.000000, .000000, -1.246476]),
@@ -922,7 +924,7 @@ H4C3 = ListOfAtoms([
 # Allene (C3H4), D2d symm.
 # MP2 energy = -116.2485221 Hartree
 # Charge = 0, multiplicity = 1
-H4C3x = ListOfAtoms([
+C3H4_D2d = ListOfAtoms([
     Atom('C', [.000000, .000000, .000000]),
     Atom('C', [.000000, .000000, 1.311190]),
     Atom('C', [.000000, .000000, -1.311190]),
@@ -935,7 +937,7 @@ H4C3x = ListOfAtoms([
 # Cyclopropene (C3H4), C2v symm.
 # MP2 energy = -116.2195708 Hartree
 # Charge = 0, multiplicity = 1
-H4C3xx = ListOfAtoms([
+C3H4_C2v = ListOfAtoms([
     Atom('C', [.000000, .000000, .858299]),
     Atom('C', [.000000, -.650545, -.498802]),
     Atom('C', [.000000, .650545, -.498802]),
@@ -948,7 +950,7 @@ H4C3xx = ListOfAtoms([
 # Propene (C3H6), Cs symm.
 # MP2 energy = -117.4696582 Hartree
 # Charge = 0, multiplicity = 1
-H6C3 = ListOfAtoms([
+C3H6_Cs = ListOfAtoms([
     Atom('C', [1.291290, .133682, .000000]),
     Atom('C', [.000000, .479159, .000000]),
     Atom('H', [1.601160, -.907420, .000000]),
@@ -963,7 +965,7 @@ H6C3 = ListOfAtoms([
 # Cyclopropane (C3H6), D3h symm.
 # MP2 energy = -117.4628345 Hartree
 # Charge = 0, multiplicity = 1
-H6C3x = ListOfAtoms([
+C3H6_D3h = ListOfAtoms([
     Atom('C', [.000000, .866998, .000000]),
     Atom('C', [.750842, -.433499, .000000]),
     Atom('C', [-.750842, -.433499, .000000]),
@@ -978,7 +980,7 @@ H6C3x = ListOfAtoms([
 # Propane (C3H8), C2v symm.
 # MP2 energy = -118.6744132 Hartree
 # Charge = 0, multiplicity = 1
-H8C3 = ListOfAtoms([
+C3H8 = ListOfAtoms([
     Atom('C', [.000000, .000000, .587716]),
     Atom('C', [.000000, 1.266857, -.260186]),
     Atom('C', [.000000, -1.266857, -.260186]),
@@ -995,7 +997,7 @@ H8C3 = ListOfAtoms([
 # Trans-1,3-butadiene (C4H6), C2h symm.
 # MP2 energy = -155.4417118 Hartree
 # Charge = 0, multiplicity = 1
-H6C4 = ListOfAtoms([
+C4H6x = ListOfAtoms([
     Atom('C', [.605711, 1.746550, .000000]),
     Atom('C', [.605711, .404083, .000000]),
     Atom('C', [-.605711, -.404083, .000000]),
@@ -1011,7 +1013,7 @@ H6C4 = ListOfAtoms([
 # Dimethylacetylene (2-butyne, C4H6), D3h symm (eclipsed).
 # MP2 energy =  -155.435151. Hartree
 # Charge = 0, multiplicity = 1
-H6C4x = ListOfAtoms([
+C4H6xx = ListOfAtoms([
     Atom('C', [.000000, .000000, 2.071955]),
     Atom('C', [.000000, .000000, .609970]),
     Atom('C', [.000000, .000000, -.609970]),
@@ -1027,7 +1029,7 @@ H6C4x = ListOfAtoms([
 # Methylenecyclopropane (C4H6), C2v symm.
 # MP2 energy = -155.4160189 Hartree
 # Charge = 0, multiplicity = 1
-H6C4xx = ListOfAtoms([
+C4H6xxx = ListOfAtoms([
     Atom('C', [.000000, .000000, .315026]),
     Atom('C', [.000000, -.767920, -.932032]),
     Atom('C', [.000000, .767920, -.932032]),
@@ -1043,7 +1045,7 @@ H6C4xx = ListOfAtoms([
 # Bicyclo[1.1.0]butane (C4H6), C2v symm.
 # MP2 energy = -155.4094811 Hartree
 # Charge = 0, multiplicity = 1
-H6C4xxx = ListOfAtoms([
+C4H6xxxx = ListOfAtoms([
     Atom('C', [.000000, 1.131343, .310424]),
     Atom('C', [.000000, -1.131343, .310424]),
     Atom('C', [.747952, .000000, -.311812]),
@@ -1059,7 +1061,7 @@ H6C4xxx = ListOfAtoms([
 # Cyclobutene (C4H6), C2v symm.
 # MP2 energy = -155.4293322 Hartree
 # Charge = 0, multiplicity = 1
-H6C4xxxx = ListOfAtoms([
+C4H6xxxxx = ListOfAtoms([
     Atom('C', [.000000, -.672762, .811217]),
     Atom('C', [.000000, .672762, .811217]),
     Atom('C', [.000000, -.781980, -.696648]),
@@ -1075,7 +1077,7 @@ H6C4xxxx = ListOfAtoms([
 # Cyclobutane (C4H8), D2d symm.
 # MP2 energy = -156.6370628 Hartree
 # Charge = 0, multiplicity = 1
-H8C4 = ListOfAtoms([
+C4H8x = ListOfAtoms([
     Atom('C', [.000000, 1.071142, .147626]),
     Atom('C', [.000000, -1.071142, .147626]),
     Atom('C', [-1.071142, .000000, -.147626]),
@@ -1093,7 +1095,7 @@ H8C4 = ListOfAtoms([
 # Isobutene (C4H8), Single bonds trans, C2v symm.
 # MP2 energy = 156.646397 Hartree
 # Charge = 0, multiplicity = 1
-H8C4x = ListOfAtoms([
+C4H8xx = ListOfAtoms([
     Atom('C', [.000000, .000000, 1.458807]),
     Atom('C', [.000000, .000000, .119588]),
     Atom('H', [.000000, .924302, 2.028409]),
@@ -1111,7 +1113,7 @@ H8C4x = ListOfAtoms([
 # Trans-butane (C4H10), C2h symm.
 # MP2 energy = -157.8449716 Hartree
 # Charge = 0, multiplicity = 1
-H10C4 = ListOfAtoms([
+C4H10x = ListOfAtoms([
     Atom('C', [.702581, 1.820873, .000000]),
     Atom('C', [.702581, .296325, .000000]),
     Atom('C', [-.702581, -.296325, .000000]),
@@ -1131,7 +1133,7 @@ H10C4 = ListOfAtoms([
 # Isobutane (C4H10), C3v symm.
 # MP2 energy = -157.8477683 Hartree
 # Charge = 0, multiplicity = 1
-H10C4x = ListOfAtoms([
+C4H10xx = ListOfAtoms([
     Atom('C', [.000000, .000000, .376949]),
     Atom('H', [.000000, .000000, 1.475269]),
     Atom('C', [.000000, 1.450290, -.096234]),
@@ -1151,7 +1153,7 @@ H10C4x = ListOfAtoms([
 # Spiropentane (C5H8), D2d symm.
 # MP2 energy = -194.5892415 Hartree
 # Charge = 0, multiplicity = 1
-H8C5 = ListOfAtoms([
+C5H8 = ListOfAtoms([
     Atom('C', [.000000, .000000, .000000]),
     Atom('C', [.000000, .762014, 1.265752]),
     Atom('C', [.000000, -.762014, 1.265752]),
@@ -1170,7 +1172,7 @@ H8C5 = ListOfAtoms([
 # Benzene (C6H6), D6h symm.
 # MP2 energy = -231.4871881 Hartree
 # Charge = 0, multiplicity = 1
-H6C6 = ListOfAtoms([
+C6H6 = ListOfAtoms([
     Atom('C', [.000000, 1.395248, .000000]),
     Atom('C', [1.208320, .697624, .000000]),
     Atom('C', [1.208320, -.697624, .000000]),
@@ -1188,7 +1190,7 @@ H6C6 = ListOfAtoms([
 # Difluoromethane (H2CF2), C2v symm.
 # MP2 energy = -238.3733057 Hartree
 # Charge = 0, multiplicity = 1
-F2CH2 = ListOfAtoms([
+H2CF2 = ListOfAtoms([
     Atom('C', [.000000, .000000, .502903]),
     Atom('F', [.000000, 1.109716, -.290601]),
     Atom('F', [.000000, -1.109716, -.290601]),
@@ -1210,7 +1212,7 @@ HCF3 = ListOfAtoms([
 # Dichloromethane (H2CCl2), C2v symm.
 # MP2 energy = -958.4007187 Hartree
 # Charge = 0, multiplicity = 1
-Cl2CH2 = ListOfAtoms([
+H2CCl2 = ListOfAtoms([
     Atom('C', [.000000, .000000, .759945]),
     Atom('Cl', [.000000, 1.474200, -.215115]),
     Atom('Cl', [.000000, -1.474200, -.215115]),
@@ -1232,7 +1234,7 @@ HCCl3 = ListOfAtoms([
 # Methylamine (H3C-NH2), Cs symm.
 # MP2 energy = -95.5144387 Hartree
 # Charge = 0, multiplicity = 1
-H5CN = ListOfAtoms([
+H3CNH2 = ListOfAtoms([
     Atom('C', [.051736, .704422, .000000]),
     Atom('N', [.051736, -.759616, .000000]),
     Atom('H', [-.941735, 1.176192, .000000]),
@@ -1245,7 +1247,7 @@ H5CN = ListOfAtoms([
 # Acetonitrile (CH3-CN), C3v symm.
 # MP2 energy = -132.3513069 Hartree
 # Charge = 0, multiplicity = 1
-H3C2N = ListOfAtoms([
+CH3CN = ListOfAtoms([
     Atom('C', [.000000, .000000, -1.186930]),
     Atom('C', [.000000, .000000, .273874]),
     Atom('N', [.000000, .000000, 1.452206]),
@@ -1257,7 +1259,7 @@ H3C2N = ListOfAtoms([
 # Nitromethane (CH3-NO2), Cs symm.
 # MP2 energy = -244.3453346 Hartree
 # Charge = 0, multiplicity = 1
-O2H3CN = ListOfAtoms([
+CH3NO2 = ListOfAtoms([
     Atom('C', [-.114282, -1.314565, .000000]),
     Atom('N', [.000000, .166480, .000000]),
     Atom('H', [.899565, -1.715256, .000000]),
@@ -1270,7 +1272,7 @@ O2H3CN = ListOfAtoms([
 # Methylnitrite (CH3-O-N=O), NOCH trans, ONOC cis, Cs symm.
 # MP2 energy = -244.3391134 Hartree
 # Charge = 0, multiplicity = 1
-O2H3CNx = ListOfAtoms([
+CH3ONO = ListOfAtoms([
     Atom('C', [-1.316208, .309247, .000000]),
     Atom('O', [.000000, .896852, .000000]),
     Atom('H', [-1.985538, 1.166013, .000000]),
@@ -1283,7 +1285,7 @@ O2H3CNx = ListOfAtoms([
 # Methylsilane (CH3-SiH3), C3v symm.
 # MP2 energy = -330.5003988 Hartree
 # Charge = 0, multiplicity = 1
-H6SiC = ListOfAtoms([
+CH3SiH3 = ListOfAtoms([
     Atom('C', [.000000, .000000, -1.244466]),
     Atom('Si', [.000000, .000000, .635703]),
     Atom('H', [.000000, -1.019762, -1.636363]),
@@ -1297,7 +1299,7 @@ H6SiC = ListOfAtoms([
 # Formic Acid (HCOOH), HOCO cis, Cs symm.
 # MP2 energy = -189.2518734 Hartree
 # Charge = 0, multiplicity = 1
-O2H2C = ListOfAtoms([
+HCOOH = ListOfAtoms([
     Atom('O', [-1.040945, -.436432, .000000]),
     Atom('C', [.000000, .423949, .000000]),
     Atom('O', [1.169372, .103741, .000000]),
@@ -1308,7 +1310,7 @@ O2H2C = ListOfAtoms([
 # Methyl formate (HCOOCH3), Cs symm.
 # MP2 energy = -228.4116599 Hartree
 # Charge = 0, multiplicity = 1
-O2H4C2 = ListOfAtoms([
+HCOOCH3 = ListOfAtoms([
     Atom('C', [-.931209, -.083866, .000000]),
     Atom('O', [-.711019, -1.278209, .000000]),
     Atom('O', [.000000, .886841, .000000]),
@@ -1322,7 +1324,7 @@ O2H4C2 = ListOfAtoms([
 # Acetamide (CH3CONH2), C1 symm.
 # MP2 energy = -208.5849862 Hartree
 # Charge = 0, multiplicity = 1
-OH5C2N = ListOfAtoms([
+CH3CONH2 = ListOfAtoms([
     Atom('O', [.424546, 1.327024, .008034]),
     Atom('C', [.077158, .149789, -.004249]),
     Atom('N', [.985518, -.878537, -.048910]),
@@ -1337,7 +1339,7 @@ OH5C2N = ListOfAtoms([
 # Aziridine (cyclic CH2-NH-CH2 ring), C2v symm.
 # MP2 energy = -133.4730917 Hartree
 # Charge = 0, multiplicity = 1
-H5C2N = ListOfAtoms([
+CH2NHCH2 = ListOfAtoms([
     Atom('C', [-.038450, -.397326, .739421]),
     Atom('N', [-.038450, .875189, .000000]),
     Atom('C', [-.038450, -.397326, -.739421]),
@@ -1351,7 +1353,7 @@ H5C2N = ListOfAtoms([
 # Cyanogen (NCCN). D*h symm.
 # MP2 energy = -185.1746395 Hartree
 # Charge = 0, multiplicity = 1
-C2N2 = ListOfAtoms([
+NCCN = ListOfAtoms([
     Atom('N', [.000000, .000000, 1.875875]),
     Atom('C', [.000000, .000000, .690573]),
     Atom('C', [.000000, .000000, -.690573]),
@@ -1361,7 +1363,7 @@ C2N2 = ListOfAtoms([
 # Dimethylamine, (CH3)2NH, Cs symm.
 # MP2 energy = -134.6781011 Hartree
 # Charge = 0, multiplicity = 1
-H7C2N = ListOfAtoms([
+C2H6NH = ListOfAtoms([
     Atom('C', [-.027530, -.224702, 1.204880]),
     Atom('N', [-.027530, .592470, .000000]),
     Atom('C', [-.027530, -.224702, -1.204880]),
@@ -1377,7 +1379,7 @@ H7C2N = ListOfAtoms([
 # Trans-Ethylamine (CH3-CH2-NH2), Cs symm.
 # MP2 energy = -134.6882447 Hartree
 # Charge = 0, multiplicity = 1
-H7C2Nx = ListOfAtoms([
+CH3CH2NH2 = ListOfAtoms([
     Atom('C', [1.210014, -.353598, .000000]),
     Atom('C', [.000000, .575951, .000000]),
     Atom('N', [-1.305351, -.087478, .000000]),
@@ -1393,7 +1395,7 @@ H7C2Nx = ListOfAtoms([
 # Ketene (H2C=C=O), C2v symm.
 # MP2 energy = -152.1600778 Hartree
 # Charge = 0, multiplicity = 1
-OH2C2 = ListOfAtoms([
+H2CCO = ListOfAtoms([
     Atom('C', [.000000, .000000, -1.219340]),
     Atom('C', [.000000, .000000, .098920]),
     Atom('H', [.000000, .938847, -1.753224]),
@@ -1404,7 +1406,7 @@ OH2C2 = ListOfAtoms([
 # Oxirane (cyclic CH2-O-CH2 ring), C2v symm.
 # MP2 energy = -153.3156907 Hartree
 # Charge = 0, multiplicity = 1
-OH4C2 = ListOfAtoms([
+CH2OCH2 = ListOfAtoms([
     Atom('C', [.000000, .731580, -.375674]),
     Atom('O', [.000000, .000000, .860950]),
     Atom('C', [.000000, -.731580, -.375674]),
@@ -1417,7 +1419,7 @@ OH4C2 = ListOfAtoms([
 # Acetaldehyde (CH3CHO), Cs symm.
 # MP2 energy = -153.3589689 Hartree
 # Charge = 0, multiplicity = 1
-OH4C2x = ListOfAtoms([
+CH3CHO = ListOfAtoms([
     Atom('O', [1.218055, .361240, .000000]),
     Atom('C', [.000000, .464133, .000000]),
     Atom('H', [-.477241, 1.465295, .000000]),
@@ -1430,7 +1432,7 @@ OH4C2x = ListOfAtoms([
 # Glyoxal (O=CH-CH=O). Trans, C2h symm.
 # MP2 energy = -227.2037251 Hartree
 # Charge = 0, multiplicity = 1
-O2H2C2 = ListOfAtoms([
+OCHCHO = ListOfAtoms([
     Atom('C', [.000000, .756430, .000000]),
     Atom('C', [.000000, -.756430, .000000]),
     Atom('O', [1.046090, 1.389916, .000000]),
@@ -1442,7 +1444,7 @@ O2H2C2 = ListOfAtoms([
 # Ethanol (trans, CH3CH2OH), Cs symm.
 # MP2 energy = -154.5289541 Hartree
 # Charge = 0, multiplicity = 1
-OH6C2 = ListOfAtoms([
+CH3CH2OH = ListOfAtoms([
     Atom('C', [1.168181, -.400382, .000000]),
     Atom('C', [.000000, .559462, .000000]),
     Atom('O', [-1.190083, -.227669, .000000]),
@@ -1457,7 +1459,7 @@ OH6C2 = ListOfAtoms([
 # DimethylEther (CH3-O-CH3), C2v symm.
 # MP2 energy = -154.5155453 Hartree
 # Charge = 0, multiplicity = 1
-OH6C2x = ListOfAtoms([
+CH3OCH3 = ListOfAtoms([
     Atom('C', [.000000, 1.165725, -.199950]),
     Atom('O', [.000000, .000000, .600110]),
     Atom('C', [.000000, -1.165725, -.199950]),
@@ -1472,7 +1474,7 @@ OH6C2x = ListOfAtoms([
 # Thiooxirane (cyclic CH2-S-CH2 ring), C2v symm.
 # MP2 energy = 475.9496155 Hartree
 # Charge = 0, multiplicity = 1
-SH4C2 = ListOfAtoms([
+CH2SCH2 = ListOfAtoms([
     Atom('C', [.000000, -.739719, -.792334]),
     Atom('S', [.000000, .000000, .863474]),
     Atom('C', [.000000, .739719, -.792334]),
@@ -1485,7 +1487,7 @@ SH4C2 = ListOfAtoms([
 # Dimethylsulfoxide (CH3)2SO, Cs symm.
 # MP2 energy = -552.1363114 Hartree
 # Charge = 0, multiplicity = 1
-SOC2H6 = ListOfAtoms([
+C2H6SO = ListOfAtoms([
     Atom('S', [.000002, .231838, -.438643]),
     Atom('O', [.000020, 1.500742, .379819]),
     Atom('C', [1.339528, -.809022, .180717]),
@@ -1501,7 +1503,7 @@ SOC2H6 = ListOfAtoms([
 # ThioEthanol (CH3-CH2-SH), Cs symm.
 # MP2 energy = -477.139659 Hartree
 # Charge = 0, multiplicity = 1
-SH6C2 = ListOfAtoms([
+CH3CH2SH = ListOfAtoms([
     Atom('C', [1.514343, .679412, .000000]),
     Atom('C', [.000000, .826412, .000000]),
     Atom('S', [-.756068, -.831284, .000000]),
@@ -1516,7 +1518,7 @@ SH6C2 = ListOfAtoms([
 # Dimethyl ThioEther (CH3-S-CH3), C2v symm.
 # MP2 energy = -477.1413207 Hartree
 # Charge = 0, multiplicity = 1
-SH6C2x = ListOfAtoms([
+CH3SCH3 = ListOfAtoms([
     Atom('C', [.000000, 1.366668, -.513713]),
     Atom('S', [.000000, .000000, .664273]),
     Atom('C', [.000000, -1.366668, -.513713]),
@@ -1531,7 +1533,7 @@ SH6C2x = ListOfAtoms([
 # Vinyl fluoride (H2C=CHF), Cs symm.
 # MP2 energy = -177.3151594 Hartree
 # Charge = 0, multiplicity = 1
-FC2H3 = ListOfAtoms([
+H2CCHF = ListOfAtoms([
     Atom('C', [.000000, .437714, .000000]),
     Atom('C', [1.191923, -.145087, .000000]),
     Atom('F', [-1.148929, -.278332, .000000]),
@@ -1543,7 +1545,7 @@ FC2H3 = ListOfAtoms([
 # Ethyl chloride (CH3-CH2-Cl), Cs symm.
 # MP2 energy = -538.5434131 Hartree
 # Charge = 0, multiplicity = 1
-ClC2H5 = ListOfAtoms([
+CH3CH2Cl = ListOfAtoms([
     Atom('C', [.000000, .807636, .000000]),
     Atom('C', [1.505827, .647832, .000000]),
     Atom('Cl', [-.823553, -.779970, .000000]),
@@ -1557,7 +1559,7 @@ ClC2H5 = ListOfAtoms([
 # Vinyl chloride, H2C=CHCl, Cs symm.
 # MP2 energy = -537.3360622 Hartree
 # Charge = 0, multiplicity = 1
-ClC2H3 = ListOfAtoms([
+H2CCHCl = ListOfAtoms([
     Atom('C', [.000000, .756016, .000000]),
     Atom('C', [1.303223, 1.028507, .000000]),
     Atom('Cl', [-.631555, -.854980, .000000]),
@@ -1569,7 +1571,7 @@ ClC2H3 = ListOfAtoms([
 # CyanoEthylene (H2C=CHCN), Cs symm.
 # MP2 energy = -170.3161069 Hartree
 # Charge = 0, multiplicity = 1
-H3C3N = ListOfAtoms([
+H2CCHCN = ListOfAtoms([
     Atom('C', [-.161594, -1.638625, .000000]),
     Atom('C', [.584957, -.524961, .000000]),
     Atom('C', [.000000, .782253, .000000]),
@@ -1582,7 +1584,7 @@ H3C3N = ListOfAtoms([
 # Acetone (CH3-CO-CH3), C2v symm.
 # MP2 energy = -192.5408724 Hartree
 # Charge = 0, multiplicity = 1
-OH6C3 = ListOfAtoms([
+CH3COCH3 = ListOfAtoms([
     Atom('O', [.000000, .000000, 1.405591]),
     Atom('C', [.000000, .000000, .179060]),
     Atom('C', [.000000, 1.285490, -.616342]),
@@ -1598,7 +1600,7 @@ OH6C3 = ListOfAtoms([
 # Acetic Acid (CH3COOH), Single bonds trans, Cs symm.
 # MP2 energy = -228.4339789 Hartree
 # Charge = 0, multiplicity = 1
-O2H4C2x = ListOfAtoms([
+CH3COOH = ListOfAtoms([
     Atom('C', [.000000, .154560, .000000]),
     Atom('O', [.166384, 1.360084, .000000]),
     Atom('O', [-1.236449, -.415036, .000000]),
@@ -1612,7 +1614,7 @@ O2H4C2x = ListOfAtoms([
 # Acetyl fluoride (CH3COF), HCCO cis, Cs symm.
 # MP2 energy = -252.4133329 Hartree
 # Charge = 0, multiplicity = 1
-OFC2H3 = ListOfAtoms([
+CH3COF = ListOfAtoms([
     Atom('C', [.000000, .186396, .000000]),
     Atom('O', [.126651, 1.377199, .000000]),
     Atom('F', [-1.243950, -.382745, .000000]),
@@ -1625,7 +1627,7 @@ OFC2H3 = ListOfAtoms([
 # Acetyl,Chloride (CH3COCl), HCCO cis, Cs symm.
 # MP2 energy = -612.4186269 Hartree
 # Charge = 0, multiplicity = 1
-OClC2H3 = ListOfAtoms([
+CH3COCl = ListOfAtoms([
     Atom('C', [.000000, .523878, .000000]),
     Atom('C', [1.486075, .716377, .000000]),
     Atom('Cl', [-.452286, -1.217999, .000000]),
@@ -1638,7 +1640,7 @@ OClC2H3 = ListOfAtoms([
 # Propyl chloride (CH3CH2CH2Cl), Cs symm.
 # MP2 energy = -577.7144239 Hartree
 # Charge = 0, multiplicity = 1
-H7C3Cl = ListOfAtoms([
+C3H7Cl = ListOfAtoms([
     Atom('C', [.892629, -.642344, .000000]),
     Atom('C', [2.365587, -.245168, .000000]),
     Atom('C', [.000000, .582921, .000000]),
@@ -1655,7 +1657,7 @@ H7C3Cl = ListOfAtoms([
 # Isopropyl alcohol, (CH3)2CH-OH, Gauche isomer, C1 symm.
 # MP2 energy = -193.706552 Hartree
 # Charge = 0, multiplicity = 1
-OH8C3 = ListOfAtoms([
+C2H6CHOH = ListOfAtoms([
     Atom('O', [.027191, 1.363691, -.167516]),
     Atom('C', [-.000926, .036459, .370128]),
     Atom('H', [.859465, 1.775647, .121307]),
@@ -1673,7 +1675,7 @@ OH8C3 = ListOfAtoms([
 # Methyl ethyl ether (CH3-CH2-O-CH3), Trans, Cs symm.
 # MP2 energy = -193.6914772 Hartree
 # Charge = 0, multiplicity = 1
-OH8C3x = ListOfAtoms([
+CH3CH2OCH3 = ListOfAtoms([
     Atom('O', [.006429, -.712741, .000000]),
     Atom('C', [.000000, .705845, .000000]),
     Atom('C', [1.324518, -1.226029, .000000]),
@@ -1691,7 +1693,7 @@ OH8C3x = ListOfAtoms([
 # Trimethyl Amine, (CH3)3N, C3v symm.
 # MP2 energy = -173.8464634 Hartree
 # Charge = 0, multiplicity = 1
-H9C3N = ListOfAtoms([
+C3H9N = ListOfAtoms([
     Atom('N', [.000000, .000000, .395846]),
     Atom('C', [.000000, 1.378021, -.065175]),
     Atom('C', [1.193401, -.689011, -.065175]),
@@ -1710,7 +1712,7 @@ H9C3N = ListOfAtoms([
 # Furan (cyclic C4H4O), C2v symm.
 # MP2 energy = -229.3327814 Hartree
 # Charge = 0, multiplicity = 1
-OH4C4 = ListOfAtoms([
+C4H4O = ListOfAtoms([
     Atom('O', [.000000, .000000, 1.163339]),
     Atom('C', [.000000, 1.094700, .348039]),
     Atom('C', [.000000, -1.094700, .348039]),
@@ -1725,7 +1727,7 @@ OH4C4 = ListOfAtoms([
 # Thiophene (cyclic C4H4S), C2v symm.
 # MP2 energy = -551.9559715 Hartree
 # Charge = 0, multiplicity = 1
-SH4C4 = ListOfAtoms([
+C4H4S = ListOfAtoms([
     Atom('S', [.000000, .000000, 1.189753]),
     Atom('C', [.000000, 1.233876, -.001474]),
     Atom('C', [.000000, -1.233876, -.001474]),
@@ -1740,7 +1742,7 @@ SH4C4 = ListOfAtoms([
 # Pyrrole (Planar cyclic C4H4NH), C2v symm.
 # MP2 energy = -209.5041766 Hartree
 # Charge = 0, multiplicity = 1
-H5C4N = ListOfAtoms([
+C4H4NH = ListOfAtoms([
     Atom('H', [.000000, .000000, 2.129296]),
     Atom('N', [.000000, .000000, 1.118684]),
     Atom('C', [.000000, 1.124516, .333565]),
@@ -1756,7 +1758,7 @@ H5C4N = ListOfAtoms([
 # Pyridine (cyclic C5H5N), C2v symm.
 # MP2 energy = -247.5106791 Hartree
 # Charge = 0, multiplicity = 1
-H5C5N = ListOfAtoms([
+C5H5N = ListOfAtoms([
     Atom('N', [.000000, .000000, 1.424672]),
     Atom('C', [.000000, .000000, -1.386178]),
     Atom('C', [.000000, 1.144277, .720306]),
@@ -1777,6 +1779,8 @@ H2 = ListOfAtoms([
     Atom('H', [.000000, .000000, .368583]),
     Atom('H', [.000000, .000000, -.368583]),
     ])
+
+## Check stops here, those below are magnetic, but magmom has not been set
 
 # SH radical, C*v symm.
 # MP2 energy = -398.1720853 Hartree
@@ -1897,7 +1901,7 @@ H7C3 = ListOfAtoms([
 # t-Butyl radical, (CH3)3C, C3v symm.
 # MP2 energy = -157.1957937 Hartree
 # Charge = 0, multiplicity = 2
-H9C4 = ListOfAtoms([
+C3H9C = ListOfAtoms([
     Atom('C', [.000000, .000000, .191929]),
     Atom('C', [.000000, 1.478187, -.020866]),
     Atom('C', [1.280147, -.739093, -.020866]),
@@ -1916,7 +1920,7 @@ H9C4 = ListOfAtoms([
 # NO2 radical, C2v symm, 2-A1.
 # MP2 energy = -204.5685941 Hartree
 # Charge = 0, multiplicity = 2
-O2N = ListOfAtoms([
+NO2 = ListOfAtoms([
     Atom('N', [.000000, .000000, .332273]),
     Atom('O', [.000000, 1.118122, -.145370]),
     Atom('O', [.000000, -1.118122, -.145370]),
