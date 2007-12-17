@@ -54,8 +54,7 @@ t4 = lr[0]
 if not io_only:
     equal(t3.get_energy(), t4.get_energy(), 1.e-6)
 
-# io of old output
-
-lr = LrTDDFT(filename='lr_old.dat.gz')
-t5 = lr[0]
-equal(t4.get_energy(), t5.get_energy(), 1.e-04)
+e4 = t4.get_energy()
+e4OK = 0.869884
+print e4, e4OK
+equal(e4, e4OK, 1.e-04)
