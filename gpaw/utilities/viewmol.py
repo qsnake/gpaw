@@ -8,6 +8,8 @@ class ViewmolTrajectory:
 
     You can attach the writing to the Calculator:
 
+    from gpaw.utilities.viewmol import ViewmolTrajectory
+
     c = Calculator()
     H2 = Cluster([Atom('H',(0,0,-.9)),Atom('H',(0,0,.9))])
     H2.SetCalculator(c)
@@ -41,6 +43,7 @@ class ViewmolTrajectory:
         self.write_atoms()
         for atom in self.list_of_atoms:
             print >> self.file, '0. 0. 0.'
+        self.file.flush()
        
     def write_atoms(self):
         for atom in self.list_of_atoms:
