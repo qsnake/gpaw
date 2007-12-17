@@ -282,7 +282,7 @@ class Nucleus:
         ns = len(nt_sG)
         ni = self.get_number_of_partial_waves()
         niao = self.get_number_of_atomic_orbitals()
-
+        
         if hasattr(self, 'f_si'):
             # Convert to ndarray:
             self.f_si = num.asarray(self.f_si, num.Float)
@@ -291,7 +291,7 @@ class Nucleus:
                                                                   magmom, hund)
         if self.in_this_domain:
             D_sii = num.zeros((ns, ni, ni), num.Float)
-            for i in range(niao):
+            for i in range(min(ni, niao)):
                 D_sii[:, i, i] = self.f_si[:, i]
             for s in range(ns):
                 self.D_sp[s] = pack(D_sii[s])
