@@ -8,13 +8,14 @@ class NonLocalFunctionalFactory:
     the xc-name for non-local functional and returns the corresponding
     XCNonLocalFunctional object. Currently there are 5 keywords
     available: 
-       GLLB (The fermi-level reference set to HOMO)
-       GLLBLUMO (The fermi-level reference set to LUMO)
-       GLLBRC (GLLB with relaxed core response weights)
-       GLLBplusC (GLLB with P86 correlation potential)
-       GLLBplusCLUMO (GLLBplusC + fermi-level reference at LUMO)
-       GLLBSlaterCore (Currently disabled)
-       KLI (Currently disabled)
+
+    * GLLB (The fermi-level reference set to HOMO)
+    * GLLBLUMO (The fermi-level reference set to LUMO)
+    * GLLBRC (GLLB with relaxed core response weights)
+    * GLLBplusC (GLLB with P86 correlation potential)
+    * GLLBplusCLUMO (GLLBplusC + fermi-level reference at LUMO)
+    * GLLBSlaterCore (Currently disabled)
+    * KLI (Currently disabled)
     """
 
     def get_functional_by_name(self, name):

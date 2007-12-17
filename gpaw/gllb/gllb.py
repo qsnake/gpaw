@@ -14,15 +14,16 @@ def gllb_weight(epsilon, reference_level):
     The parameter K_G is adjusted such that the correct result is obtained for
     exchange energy of non-interacting electron gas.
 
-    All orbitals closer than 1e-5 Ha to fermi level are consider the give
-    zero response. This is to improve convergence of systems with degenerate orbitals.
+    All orbitals closer than 1e-5 Ha to fermi level are consider the
+    give zero response. This is to improve convergence of systems with
+    degenerate orbitals.
 
-    =========== ==========================================================
+    =============== ==========================================================
     Parameters:
-    =========== ==========================================================
-    epsilon     The eigenvalue of current orbital
+    =============== ==========================================================
+    epsilon         The eigenvalue of current orbital
     reference_level The fermi-level of the system
-    =========== ==========================================================
+    =============== ==========================================================
     """
 
     if (epsilon +1e-5 > reference_level):
@@ -32,11 +33,12 @@ def gllb_weight(epsilon, reference_level):
 
 
 class GLLB1DFunctional:
-    """For simplicity, the 1D-GLLB and 1D-KLI have moved to separate classes.
-       1D-codes are so simple, that there is not much trouble creating
-       own class for each of them. Besides, it is a good idea
-       to start implementing functionals from 1D-generator.
-    """
+    """GLLB1DFunctional.
+
+    For simplicity, the 1D-GLLB and 1D-KLI have moved to separate
+    classes.  1D-codes are so simple, that there is not much trouble
+    creating own class for each of them. Besides, it is a good idea to
+    start implementing functionals from 1D-generator.  """
 
     def pass_stuff1D(self, ae):
         pass
@@ -56,7 +58,8 @@ class GLLB1DFunctional:
         u_j         The 1D-wavefunctions
         f_j         Occupation numbers
         l_j         The angular momentum numbers
-        vrho_xc     The slater part multiplied by density is added to this array.
+        vrho_xc     The slater part multiplied by density is added to this
+                    array.
         v_bar       ???
         =========== ==========================================================
         """
@@ -102,25 +105,27 @@ class GLLB1DFunctional:
         w_j = [ gllb_weight(e, reference_level) for e in e_j ]
         return w_j
 
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, 
-                                             njcore=None, density=None, vbar=False):
-        """
-          Used by setup generator to calculate the one dimensional potential
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j,
+                                             v_xc, njcore=None, density=None,
+                                             vbar=False):
+        """Used by setup generator to calculate the one dimensional potential
 
-          =========== ==========================================================
-          Parameters:
-          =========== ==========================================================
-          gd          Radial grid descriptor
-          u_j         The wave functions
-          f_j         The occupation numbers
-          e_j         The eigenvalues
-          l_j         The angular momentum quantum numbers
-          v_xc        V_{xc} is added to this array.
-          nj_core     If njcore is set, only response part will be returned for wave functions u_j[:nj_core]
-          density     If density is supplied, it overrides the density calculated from orbitals.
-                      This is used is setup-generation.
-          vbar        ???
-          =========== ==========================================================
+        =========== ==========================================================
+        Parameters:
+        =========== ==========================================================
+        gd          Radial grid descriptor
+        u_j         The wave functions
+        f_j         The occupation numbers
+        e_j         The eigenvalues
+        l_j         The angular momentum quantum numbers
+        v_xc        V_{xc} is added to this array.
+        nj_core     If njcore is set, only response part will be returned for
+                    wave functions u_j[:nj_core]
+        density     If density is supplied, it overrides the density
+                    calculated from orbitals.
+                    This is used is setup-generation.
+        vbar        ???
+        =========== ==========================================================
         """
 
         # Construct the density if required
@@ -203,38 +208,48 @@ class GLLB1DFunctional:
 #################################################################################
 
 class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
-    """
-        calculates the energy and potential determined by GLLB-Functional [1]. This functional:
-           1) approximates the numerator part of Slater-potential from 2*GGA-energy density. This implementation
-           follows the orginal authors and uses the Becke88-functional.
-           2) approximates the response part coefficients from eigenvalues, given correct result for non-interacting
-           electron gas.
+    """GLLB Functional.
+    
+    Calculates the energy and potential determined by GLLB-Functional
+    [1]_. This functional:
+    
+    1) approximates the numerator part of Slater-potential from
+       2*GGA-energy density. This implementation follows the orginal
+       authors and uses the Becke88-functional.
 
-        [1] Gritsenko, Leeuwen, Lenthe, Baerends: Self-consistent approximation to the Kohn-Shan exchange potential
-        Physical Review A, vol. 51, p. 1944, March 1995.
-        GLLB-Functional is of the same form than KLI-Functional, but it
+    2) approximates the response part coefficients from eigenvalues,
+       given correct result for non-interacting electron gas.
+
+    .. [1] Gritsenko, Leeuwen, Lenthe, Baerends: Self-consistent
+       approximation to the Kohn-Shan exchange potential Physical
+       Review A, vol. 51, p. 1944, March 1995.
+
+    GLLB-Functional is of the same form than KLI-Functional, but it ...
 
     """
 
     def __init__(self, relaxed_core_response=False, lumo=False):
-        """Initialize GLLB Functional class
+        """Initialize GLLB Functional class.
 
-           About relax_core_resonse flag:
+        About relax_core_resonse flag:
        
-           Normally, core response is calculated using reference-level of setup-generator.
-           If relax_core_response is true, the GLLB-coefficients for core response are recalculated 
-           using current reference-level. That is
-           v^{resp,core} = \sum_i^{core} K_G \sqrt{\epsilon_i - \epsilon_f} |\psi_i|^2 / \rho.
+        Normally, core response is calculated using reference-level of
+        setup-generator.  If relax_core_response is true, the
+        GLLB-coefficients for core response are recalculated using
+        current reference-level. That is::
 
-           As usually in frozen core approximation, the core orbital \psi_i, and core energy
-           \epsilon_i are kept fixed.
+          v^{resp,core} = \sum_i^{core} K_G \sqrt{\epsilon_i - \epsilon_f} |\psi_i|^2 / \rho.
 
-           About lumo flag:
+        As usually in frozen core approximation, the core orbital
+        psi_i, and core energy epsilon_i are kept fixed.
 
-           Normally, the reference energy (\epsilon_f in the article [1]) is set to HOMO of the system. 
-           However, if lumo==True, the reference energy is set to LUMO of the system.
-         
+        About lumo flag:
+
+        Normally, the reference energy (epsilon_f in the article [1]_)
+        is set to HOMO of the system.  However, if lumo==True, the
+        reference energy is set to LUMO of the system.
         """
+
         ResponseFunctional.__init__(self, relaxed_core_response)
 
         self.v_g1D = None

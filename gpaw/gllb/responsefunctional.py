@@ -10,20 +10,21 @@ from gpaw.utilities import pack
 #REMOVE ME
 K_G = 0.382106112167171
 def gllb_weight(epsilon, reference_level):
-    """
-    Calculates the weight for GLLB functional.
+    """Calculates the weight for GLLB functional.
+    
     The parameter K_G is adjusted such that the correct result is obtained for
     non-interacting electron gas.
 
-    All orbitals closer than 1e-3 to reference level are consider the give
-    zero response. This is to improve convergence of systems with degenerate orbitals.
+    All orbitals closer than 1e-3 to reference level are consider the
+    give zero response. This is to improve convergence of systems with
+    degenerate orbitals.
 
-    =========== ==========================================================
+    =============== ==========================================================
     Parameters:
-    =========== ==========================================================
-    epsilon     The eigenvalue of current orbital
+    =============== ==========================================================
+    epsilon         The eigenvalue of current orbital
     reference_level The reference level of the system. (Usually HOMO-orbital)
-    =========== ==========================================================
+    =============== ==========================================================
     """
 
     if (epsilon +1e-5 > reference_level):
