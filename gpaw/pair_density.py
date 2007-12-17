@@ -1,3 +1,4 @@
+from math import sqrt, pi
 import Numeric as num
 
 from gpaw.utilities import pack
@@ -23,10 +24,19 @@ class PairDensity:
                 Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
                                 forces=False)
                 nucleus.Ghat_L = Ghat_L
+
+                if (nucleus.Ghat_L is None) != (nucleus.ghat_L is None):
+                    raise AssertionError(
+                        'Ghat and ghat can not share communicator!')
+
                 if Ghat_L is not None:
                     Ghat_nuclei.append(nucleus)
-                    Ghat_L.set_communicator(paw.gd.comm, nucleus.rank)
+                    Ghat_L.set_communicator(nucleus.ghat_L.comm,
+                                            nucleus.ghat_L.root)
             paw.Ghat_nuclei = Ghat_nuclei
+
+            for nucleus in Ghat_nuclei:
+                nucleus.Ghat_L.normalize(sqrt(4 * pi))
 
         self.Ghat_nuclei = paw.Ghat_nuclei
 
