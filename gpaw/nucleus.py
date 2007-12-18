@@ -98,7 +98,7 @@ class Nucleus:
         self.F_c = num.zeros(3, num.Float)
         if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
             self.vxx_uni = num.empty((nmyu, nbands, ni), self.typecode)
-            self.vxx_unii = num.empty((nmyu, nbands, ni, ni), self.typecode)
+            self.vxx_unii = num.zeros((nmyu, nbands, ni, ni), self.typecode)
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape

@@ -116,7 +116,7 @@ class EXX:
                     
             self.fineintegrate = gd.integrate
         if not energy_only:
-            self.vt_unG = gd.empty((nmyu, nbands))# Diagonal pot. for residuals
+            self.vt_unG = gd.zeros((nmyu, nbands))# Diagonal pot. for residuals
 
     def apply(self, kpt, Htpsit_nG, H_nn, hybrid, force=False):
         """Apply exact exchange operator."""
