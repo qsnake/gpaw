@@ -57,7 +57,10 @@ if debug:
     oldempty = Numeric.empty
     def empty(*args, **kwargs):
         a = oldempty(*args, **kwargs)
-        a[:] = 117
+        if a.typecode() == Numeric.Int:
+            a[:] = -100000000
+        else:
+            a[:] = 1e400
         return a
     Numeric.empty = empty
 
