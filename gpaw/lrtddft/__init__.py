@@ -54,7 +54,7 @@ class LrTDDFT(ExcitationList):
                  jend=None,
                  xc=None,
                  derivativeLevel=1,
-                 numscale=0.001,
+                 numscale=0.00001,
                  filename=None,
                  finegrid=2):
 
@@ -178,7 +178,8 @@ class LrTDDFT(ExcitationList):
                 self.numscale = float(values[2])
                 self.finegrid = int(values[3])
             else:
-                # old writing style, use defaults
+                # old writing style, use old defaults
+                self.numscale = 0.001
                 pass
                 
             self.kss = KSSingles(filehandle=f)
@@ -198,7 +199,6 @@ class LrTDDFT(ExcitationList):
                     l = f.readline().split()
                     E = float(l[0])
                     me = [float(l[1]),float(l[2]),float(l[3])]
-                    print E,me
                     self.append(LrTDDFTExcitation(e=E,m=me))
                     
                 # load the eigenvectors
