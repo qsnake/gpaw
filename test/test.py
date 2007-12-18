@@ -77,7 +77,7 @@ if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
 
 if opt.debug:
-    sys.argv.append('--gpaw-debug')
+    sys.argv.append('--debug')
 
 exclude = []
 if opt.exclude is not None:
