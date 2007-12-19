@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-version = '0.3'
+version = '0.4'
 
 from os import popen3, path
 
