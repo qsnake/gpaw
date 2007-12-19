@@ -60,7 +60,7 @@ class GLLB1DFunctional:
         l_j         The angular momentum numbers
         vrho_xc     The slater part multiplied by density is added to this
                     array.
-        v_bar       ???
+        v_bar       hmmm
         =========== ==========================================================
         """
         # Create temporary arrays only once
@@ -124,7 +124,7 @@ class GLLB1DFunctional:
         density     If density is supplied, it overrides the density
                     calculated from orbitals.
                     This is used is setup-generation.
-        vbar        ???
+        vbar        hmmm
         =========== ==========================================================
         """
 
@@ -238,14 +238,14 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
         GLLB-coefficients for core response are recalculated using
         current reference-level. That is::
 
-          v^{resp,core} = \sum_i^{core} K_G \sqrt{\epsilon_i - \epsilon_f} |\psi_i|^2 / \rho.
-
+          v^{resp,core} = sum_i^{core} K_G sqrt{epsilon_i - epsilon_f} |psi_i|^2 / rho.
+        
         As usually in frozen core approximation, the core orbital
         psi_i, and core energy epsilon_i are kept fixed.
 
         About lumo flag:
 
-        Normally, the reference energy (epsilon_f in the article [1]_)
+        Normally, the reference energy (epsilon_f in the article [1])
         is set to HOMO of the system.  However, if lumo==True, the
         reference energy is set to LUMO of the system.
         """
