@@ -346,7 +346,6 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
 
         # First, locate the reference-levels (of each spins)
         self.reference_levels = self.find_reference_level(info_s) 
-        print [ i*27.211 for i in self.reference_levels ]
         w_sn =  [ [ gllb_weight(e, reference_level) for e in info['eps_n'] ] for info, reference_level in zip(info_s, self.reference_levels) ]
 
         return w_sn

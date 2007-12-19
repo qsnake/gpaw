@@ -11,7 +11,8 @@ from multiarray import matrixproduct as dot3
 
 class DummyXC:
     def set_functional(self, xc):
-        print "GLLB: DummyXC::set_functional(xc) with ", xc.xcname
+        pass
+        #print "GLLB: DummyXC::set_functional(xc) with ", xc.xcname
 
 A_Liy = num.zeros((25, 3, len(points)), num.Float)
 
@@ -47,7 +48,7 @@ class XCNonLocalCorrection:
                  extra_xc_data): # The response parts of core orbitals
 
 
-        print "Initializing XCNonLocalCorrection"
+        #print "Initializing XCNonLocalCorrection"
         # Some part's of code access xc.xcfunc.hydrid, this is to ensure
         # that is does not cause error
         self.xc = DummyXC()
@@ -114,11 +115,11 @@ class XCNonLocalCorrection:
 
         # This method is called before initialization of motherxc in pass_stuff
         if self.motherxc.slater_part == None:
-            print "GLLB: Not applying the PAW-corrections!"
+            #print "GLLB: Not applying the PAW-corrections!"
             return 0 #Grr....
 
         if not self.motherxc.initialization_ready:
-            print "GLLB: Initialization not ready."
+            #print "GLLB: Initialization not ready."
             return 0 #Grr...
 
         deg = len(D_sp)
