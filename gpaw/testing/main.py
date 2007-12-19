@@ -9,7 +9,7 @@ from optparse import OptionParser
 from gpaw.utilities import locked
 from gpaw.testing import data
 from gpaw.paw import ConvergenceError
-import calc
+from gpaw.testing import calc
 
 tests = {'a' : calc.atomic_energy,
          'c' : calc.grid_convergence_energies,
@@ -17,12 +17,6 @@ tests = {'a' : calc.atomic_energy,
          'e' : calc.eggbox_energies}
 
 elements_requiring_lattice_test = ['C']
-
-def getfilename(formula, name, setups):
-    if setups == 'paw':
-        return '%s.%s' % (formula, name)
-    else:
-        return '%s.%s.%s' % (setups, formula, name)
 
 def loadfromfile(filename):
     unpickler = pickle.Unpickler(open(filename))
@@ -100,7 +94,7 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
     symbollist = [] # Obtain the atomic symbols of all constituents
     if 'a' in testfunctions:
         for formula in formulae:
-            symbollist.extend([atom.symbol for atom
+            symbollist.extend([atom.GetChemicalSymbol() for atom
                               in data.molecules[formula]])
     # The 'set' builtin is not included in some python versions. Using hack
     symbols = dict(zip(symbollist, symbollist)).keys()
@@ -146,15 +140,12 @@ def main():
                       help='Run very quick tests.')
     parser.add_option('-c', '--clean', action='store_true', default=False,
                       help='Remove bad or empty cache files and exit.')
-    parser.add_option('-a', '--assemble', action='store_true', default=False,
+    parser.add_option('-a', '--assemble', action='store',
+                      dest='filename',
                       help='Collect all cached results in the specified file.')
 
-    filename = None
     opt, formulae = parser.parse_args()
-    if opt.assemble:
-        filename = formulae[0] # This is not entirely logical, find better way
-        formulae = formulae[1:]
-    
+
     if not formulae:
         formulae = data.molecules.keys()
 
@@ -163,21 +154,21 @@ def main():
     print '+---------------------------+'
     print 'Setups:', opt.setups
     print 'Tests:', opt.tests
-    print 'Formulae:',formulae
+    print 'Formulae:', formulae
     print
     if opt.quick:
         print 'This is only a trial run!'
     if opt.clean:
         print 'This will remove bad cache files and exit'
-    if opt.assemble:
+    if opt.filename is not None:
         print 'This will dump existing cached results to a single file.'
         print 'No calculations will be performed.'
 
     results = testmultiple(opt.tests, formulae, setups=opt.setups,
                            quick=opt.quick, clean=opt.clean,
-                           retrieve=opt.assemble)
-    if opt.assemble:
-        pickle.dump(results, open(filename, 'w'))
+                           retrieve=(opt.filename is not None))
+    if opt.filename is not None:
+        pickle.dump(results, open(opt.filename, 'w'))
 
 if __name__ == '__main__':
     main()

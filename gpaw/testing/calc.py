@@ -1,6 +1,7 @@
 import os
 import sys
 import pickle
+from math import sqrt
 from optparse import OptionParser
 
 import Numeric as num
@@ -25,7 +26,7 @@ def setup_molecule(formula, a=12., h=None, gpts=None, sep=None, periodic=False,
     system.SetBoundaryConditions(periodic)
     system.SetUnitCell([a,a,a], fix=True)
     if sep is not None:
-        if len(system.atoms) != 2:
+        if len(system) != 2:
             raise ValueError('Separation ambiguous for non-diatomic molecule')
         system.atoms[1].SetCartesianPosition([sep,0,0])
     center(system)
@@ -40,7 +41,7 @@ def setup_molecule(formula, a=12., h=None, gpts=None, sep=None, periodic=False,
     system.SetCalculator(calc)
     return system, calc
 
-def atomic_energy(symbol, a=12., h=.16, displacement = None,
+def atomic_energy(symbol, a=12., h=.16, displacement=None,
                   setups='paw', quick=False, txt='-'):
     """Places an atom of the specified type in the center of a unit cell
     and returns a tuple with the energy and iteration count."""
@@ -110,7 +111,7 @@ def eggbox_energies(formula, a=10., gpts=48, direction=(1.,1.,1.), periods=.5,
             a, gpts, count = (6., 16, 4)
 
         direction = num.asarray(direction)
-        direction = direction / num.dot(direction, direction) # normalize
+        direction = direction / sqrt(num.dot(direction, direction))
         system, calc = setup_molecule(formula, a, gpts=gpts, periodic=True,
                                       setups=setups, txt=txt)
         originalpositions = system.GetCartesianPositions()
