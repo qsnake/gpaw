@@ -304,7 +304,7 @@ class AllElectron:
 
             # Find outermost maximum:
             g = self.N - 4
-            while u[g - 1] > u[g]:
+            while u[g - 1] >= u[g]:
                 g -= 1
             x = r[g - 1:g + 2]
             y = u[g - 1:g + 2]
