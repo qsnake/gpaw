@@ -742,7 +742,8 @@ class Nucleus:
         """Return index of nearest grid point.
         
         The nearest grid point can be on a different CPU than the one the
-        nucleus belongs to, in which case something clever should be done.
+        nucleus belongs to (i.e. return can be negative, or larger than
+        gd.end_c), in which case something clever should be done.
         """
         return num.around(gd.N_c * self.spos_c).astype(int) - gd.beg_c
 

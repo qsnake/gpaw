@@ -34,27 +34,27 @@ energies, Li_wzweight = raw_wignerseitz_LDOS(calc, a=0, spin=0)
 energies, H_wzweight = raw_wignerseitz_LDOS(calc, a=1, spin=0)
 n_a = calc.GetWignerSeitzDensities(spin=0)
 
-print sweight, pdfweight
-print sweight_spin
-
-print Li_orbitalweight
-print Li_wzweight
-print H_wzweight
-print n_a
+## print sweight, pdfweight
+## print sweight_spin
+## print Li_orbitalweight
+## print Li_wzweight
+## print H_wzweight
+## print n_a
 
 equal(sweight[0], 1., .06) 
 equal(pdfweight[0], 0., .0001) 
 equal(sweight_spin[0], 1.14, .06) 
 assert num.alltrue(num.around(Li_wzweight - [.12, .94], 2) == 0)
 assert num.alltrue(num.around(H_wzweight  - [.88, .06], 2) == 0)
+assert num.alltrue(num.around(Li_wzweight + H_wzweight, 5) == 1)
 equal(num.sum(n_a), 0., 1e-5)
 equal(n_a[1], .766, .001)
 
-#               HOMO    s   px  pz  py  *s
+#               HOMO    s   py  pz  px  *s
 Li_orbitalweight[0] -= [.4, .0, .6, .0, .0]
 H_orbitalweight[0]  -= [.7, .0, .0, .0, .0]
 
-#              LUMO       s  px   pz  py  *s
+#              LUMO       s  py   pz  px  *s
 Li_orbitalweight[1] -= [1.6, .0, 1.1, .0, .0]
 H_orbitalweight[1]  -= [0.1, .0, 0.0, .0, .0]
 

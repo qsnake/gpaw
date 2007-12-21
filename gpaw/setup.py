@@ -607,7 +607,6 @@ class Setup:
                 i += 2 * l + 1
         assert i == self.ni
 
-
     def four_phi_integrals(self):
         """Calculate four-phi integral.
 
