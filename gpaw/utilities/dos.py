@@ -56,7 +56,7 @@ def delta(x, x0, width):
     return num.exp(num.clip(-((x - x0) / width)**2,
                             -100.0, 100.0)) / (sqrt(pi) * width)
 
-def fold_ldos(energies, weights, npts, width):
+def fold(energies, weights, npts, width):
     """Take a list of energies and weights, and sum a delta function
     for each."""
     emin = min(energies) - 5 * width
@@ -68,21 +68,21 @@ def fold_ldos(energies, weights, npts, width):
         ldos_e += w * delta(e, e0, width)
     return e, ldos_e
 
-def raw_orbital_LDOS(calc, a, spin, angular='spdf'):
+def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     """Return a list of eigenvalues, and their weight on the specified atom.
 
     angular can be s, p, d, f, or a list of these.
     If angular is None, the raw weight for each projector is returned"""
-    w_k = calc.GetIBZKPointWeights()
+    w_k = paw.weight_k
     nk = len(w_k)
-    nb = calc.GetNumberOfBands()
-    nucleus = calc.nuclei[a]
+    nb = paw.nbands
+    nucleus = paw.nuclei[a]
 
     energies = num.empty(nb * nk, num.Float)
     weights_xi = num.empty((nb * nk, nucleus.setup.ni), num.Float)
     x = 0
     for k, w in enumerate(w_k):
-        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=spin)
+        energies[x:x + nb] = paw.get_eigenvalues(k=k, s=spin)
         u = spin * nk + k
         weights_xi[x:x + nb, :] = w * num.absolute(nucleus.P_uni[u])**2
         x += nb
@@ -90,37 +90,39 @@ def raw_orbital_LDOS(calc, a, spin, angular='spdf'):
     if angular is None:
         return energies, weights_xi
     else:
-        projectors = get_angular_projectors(nucleus, angular)
+        projectors = get_angular_projectors(nucleus, angular, type='bound')
         weights = num.sum(num.take(weights_xi,
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
 
-def raw_wignerseitz_LDOS(calc, a, spin):
+def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
-    atom_index = calc.gd.empty(typecode=num.Int)
-    atom_c = num.array([n.spos_c * calc.gd.N_c for n in calc.nuclei])
-    wignerseitz(atom_index, atom_c, calc.gd.beg_c, calc.gd.end_c)
+    gd = paw.gd
+    atom_index = gd.empty(typecode=num.Int)
+    atom_ac = num.array([n.spos_c * gd.N_c for n in paw.nuclei])
+    wignerseitz(atom_index, atom_ac, gd.beg_c, gd.end_c)
 
-    w_k = calc.GetIBZKPointWeights()
+    w_k = paw.weight_k
     nk = len(w_k)
-    nb = calc.GetNumberOfBands()
-    nucleus = calc.nuclei[a]
+    nb = paw.nbands
+    nucleus = paw.nuclei[a]
 
     energies = num.empty(nb * nk, num.Float)
     weights = num.empty(nb * nk, num.Float)
     x = 0
     for k, w in enumerate(w_k):
         u = spin * nk + k
-        energies[x:x + nb] = calc.GetEigenvalues(kpt=k, spin=spin)
-        for n, psit_G in enumerate(calc.kpt_u[u].psit_nG):
+        energies[x:x + nb] = paw.get_eigenvalues(k=k, s=spin)
+        for n, psit_G in enumerate(paw.kpt_u[u].psit_nG):
             P_i = nucleus.P_uni[u, n]
             P_p = pack(num.outerproduct(P_i, P_i))
             Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
-            weights[x + n] = w * (calc.gd.integrate(num.absolute(
+            weights[x + n] = w * (gd.integrate(num.absolute(
                 num.where(atom_index == a, psit_G, 0.0))**2)
                                   + num.dot(Delta_p, P_p))
         x += nb
     return energies, weights
+
 
 class RawLDOS:
     """Class to get the unfolded LDOS"""

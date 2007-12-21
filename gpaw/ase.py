@@ -13,7 +13,8 @@ import ASE
 import Numeric as num
 
 from gpaw.paw import PAW
-from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, fold_ldos
+from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, fold
+from gpaw.utilities import wignerseitz
 
 try:
     # Deal with old ASE version 2.3.5 and earlier:
@@ -136,30 +137,77 @@ class Calculator(PAW):
                / self.a0**3
 
     def GetWignerSeitzDensities(self, spin):
-        if not hasattr(self, 'wignerseitz'):
-            from gpaw.analyse.wignerseitz import WignerSeitz
-            self.wignerseitz = WignerSeitz(self.gd, self.nuclei)
-        
-        return self.wignerseitz.expand_density(self.density.nt_sG[spin],
-                                               spin, self.nspins)
+        """Get the weight of the spin-density in Wigner-Seitz cells
+        around each atom.
+
+        The density assigned to each atom is relative to the neutral atom,
+        i.e. the density sums to zero.
+        """
+        atom_index = self.gd.empty(typecode=num.Int)
+        atom_ac = num.array([n.spos_c * self.gd.N_c for n in self.nuclei])
+        wignerseitz(atom_index, atom_ac, self.gd.beg_c, self.gd.end_c)
+
+        nt_G = self.density.nt_sG[spin]
+        weight_a = num.empty(len(self.nuclei), num.Float)
+        for a, nucleus in enumerate(self.nuclei):
+            # XXX Optimize! No need to integrate in zero-region
+            smooth = self.gd.integrate(num.where(atom_index == a, nt_G, .0))
+            correction = num.sqrt(4 * num.pi) * (
+                num.dot(nucleus.D_sp[spin], nucleus.setup.Delta_pL[:, 0])
+                + nucleus.setup.Delta0 / self.nspins)
+            weight_a[a] = smooth + correction
+            
+        return weight_a
+
+    def GetDOS(self, spin, npts=201, width=None):
+        """The total DOS.
+
+        Fold eigenvalues with Gaussians, and put on an energy grid."""
+        if width is None:
+            width = self.GetElectronicTemperature()
+        if width == 0:
+            width = 0.1
+
+        w_k = self.GetIBZKPointWeights()
+        Nb = self.GetNumberOfBands()
+        energies = num.empty(len(w_k) * Nb, num.Float)
+        weights  = num.empty(len(w_k) * Nb, num.Float)
+        x = 0
+        for k, w in enumerate(w_k):
+            energies[x:x + Nb] = self.GetEigenvalues(k, spin)
+            weights[x:x + Nb] = w
+            x += Nb
+            
+        return fold(energies, weights, npts, width)        
 
     def GetWignerSeitzLDOS(self, a, spin, npts=201, width=None):
+        """The Local Density of States, using a Wigner-Seitz basis function.
+
+        Project wave functions onto a Wigner-Seitz box at atom ``a``, and
+        use this as weight when summing the eigenvalues."""
         if width is None:
             width = self.GetElectronicTemperature()
         if width == 0:
             width = 0.1
 
         energies, weights = raw_wignerseitz_LDOS(self, a, spin)
-        return fold_ldos(energies, weights, npts, width)        
+        return fold(energies * self.Ha, weights, npts, width)        
     
     def GetOrbitalLDOS(self, a, spin, angular, npts=201, width=None):
+        """The Local Density of States, using atomic orbital basis functions.
+
+        Project wave functions onto an atom orbital at atom ``a``, and
+        use this as weight when summing the eigenvalues.
+
+        The atomic orbital has angular momentum ``angular``, which can be
+        's', 'p', 'd', 'f', or any combination (e.g. 'sdf')."""
         if width is None:
             width = self.GetElectronicTemperature()
         if width == 0.0:
             width = 0.1
 
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
-        return fold_ldos(energies, weights, npts, width)
+        return fold(energies * self.Ha, weights, npts, width)
 
     def GetWaveFunctionArray(self, band=0, kpt=0, spin=0):
         """Return pseudo-wave-function array."""
