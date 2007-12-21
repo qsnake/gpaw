@@ -81,15 +81,13 @@ class Wannier(ASEWannier):
             nuclei = self.GetCalculator().nuclei
 
             V_knj = num.zeros((Nk, Nb, len(initialwannier)), num.Complex)
-            # The 5 lines below should be changed to something where
-            # localized functions are put on the grid at the desired pos
             ##for k in range(Nk):
             ##    for j in range(len(initialwannier)):
             ##        a, i = initialwannier[j]
             ##        print "%i %i" % (a,i)
             ##        u = k + spin * Nk
             ##        V_knj[k, :, j] = nuclei[a].P_uni[u, :, i]
-            V_knj = get_projections(initialwannier,self.GetCalculator())
+            V_knj = get_projections(initialwannier, self.GetCalculator())
 
             c_k, U_k = get_c_k_and_U_k(V_knj, (Nb, M_k, L_k))
             self.SetListOfRotationMatrices(U_k)
@@ -161,8 +159,8 @@ from gpaw.utilities.tools import dagger, project, normalize, gram_schmidt_orthon
 from gpaw.localized_functions import create_localized_functions
 from gpaw.spline import Spline
 
-def get_projections(initialwannier,calc):
-    #initialwannier = [[spos_c,ls,a]]
+def get_projections(initialwannier, calc):
+    #initialwannier = [[spos_c, ls, a]]
     
     nbf = 0
     for spos_c,ls,a in initialwannier:
@@ -211,8 +209,7 @@ def get_c_k_and_U_k(V_kni, NML):
             for j in xrange(i):
                 c[:,i] = c[:,i] - project(c[:, j], T[:, t])
             c[:,i] /= num.sqrt(num.dot(num.conjugate(c[:, i]), c[:, i]))
-            w = w - abs(num.dot(num.conjugate(c[:, i]), T)) #**2 !?
-            #print abs(num.dot(num.conjugate(c[:, i]), T))
+            w -= abs(num.dot(num.conjugate(c[:, i]), T))#**2 !?
         if nbf < L:
             print "augmenting with random vectors"
             for i in xrange(nbf, L):
@@ -235,11 +232,8 @@ def get_c_k_and_U_k(V_kni, NML):
     return c_k, U_k
 
 def check_ortho(U):
-    f = GetOrthonormalityFactor(U)
-    if f > 1e-3:
-        print 'ERROR: Columns of c are not orthogonal by', f
-        
-def GetOrthonormalityFactor(U):
     nb = U.shape[1]
     diff = num.dot(dagger(U),U) - num.identity(nb, num.Float)
-    return max(num.absolute(diff).flat)
+    max_diff = max(num.absolute(diff).flat)
+    if  max_diff> 1e-3:
+        print 'ERROR: Columns of c are not orthogonal by', max_diff
