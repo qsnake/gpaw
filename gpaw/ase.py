@@ -75,8 +75,8 @@ class Calculator(PAW):
         if self.F_ac is None:
             if hasattr(self, 'nuclei') and not self.nuclei[0].ready:
                 self.converged = False
-            self.calculate()
-            self.calculate_forces()
+        self.calculate()
+        self.calculate_forces()
         return self.F_ac * (self.Ha / self.a0)
       
     def GetStress(self):
