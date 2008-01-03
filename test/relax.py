@@ -72,4 +72,15 @@ print 'PBE energy minimum:'
 print 'hydrogen molecule energy: %7.3f eV' % e2
 print 'bondlength              : %7.3f Ang' % d0
 
+
+from ASE.Dynamics.QuasiNewton import QuasiNewton
+molecule = Calculator('H2fa.gpw', txt=None).get_atoms()
+relax = QuasiNewton(molecule, fmax=0.05)
+relax.Converge()
+e2q = molecule.GetPotentialEnergy()
+positions = molecule.GetCartesianPositions()
+d0q = positions[1, 0] - positions[0, 0]
+assert abs(e2 - e2q) < 2e-6
+assert abs(d0q - d0) < 4e-4
+
 os.system('rm H2.gpw H2a.gpw H2f.gpw H2fa.gpw')
