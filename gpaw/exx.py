@@ -52,7 +52,7 @@ from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
 from gpaw.utilities.blas import gemm
-from gpaw.pair_density import PairDensity
+from gpaw.pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver, PoissonFFTSolver
 
 usefft = False
@@ -83,9 +83,8 @@ class EXX:
         self.integrate   = gd.integrate
         self.Na = Na
         self.use_finegrid = use_finegrid
-
         paw.set_positions() # this should not be needed here XXXXX
-        self.pair_density = PairDensity(paw)
+        self.pair_density = PairDensity(paw, use_finegrid)
         
         # Allocate space for matrices
         self.nt_G = gd.empty()    # Pseudo density on coarse grid
@@ -141,7 +140,7 @@ class EXX:
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
-            psit1_G = psit_nG[n1]            
+            psit1_G = psit_nG[n1]
             f1 = f_n[n1]
             for n2 in range(n1, self.nbands):
                 f2 = f_n[n2]
@@ -152,14 +151,15 @@ class EXX:
                 
                 psit2_G = psit_nG[n2]
                 dc = 1 + (n1 != n2) # double count factor
-
-                # Determine current exchange density ...
                 pd = self.pair_density
                 pd.initialize(kpt, n1, n2)
-                self.nt_G[:] = pd.get(finegrid=False)
 
-                # and interpolate to the fine grid:
-                self.rhot_g[:] =pd.with_compensation_charges(self.use_finegrid)
+                # Determine current exchange density
+                pd.get_coarse(self.nt_G)
+
+                # Add compensation charges, and interpolate to the fine
+                # grid if needed:
+                pd.add_compensation_charges(self.nt_G, self.rhot_g)
 
                 # Determine total charge of exchange density:
                 Z = float(n1 == n2)
@@ -175,23 +175,21 @@ class EXX:
 
                     # Add force contribution
                 if force:
-                    for nucleus in ghat_nuclei:
+                    for nucleus in self.ghat_nuclei:
+                        if self.use_finegrid:
+                            ghat_L = nucleus.ghat_L
+                        else:
+                            ghat_L = nucleus.Ghat_L
                         if nucleus.in_this_domain:
                             lmax = nucleus.setup.lmax
                             F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
-                            if self.use_finegrid:
-                                self.ghat_L.derivative(vt, F_Lc)
-                            else:
-                                self.Ghat_L.derivative(vt, F_Lc)
+                            ghat_L.derivative(vt, F_Lc)
 
                             self.F_ac[nucleus.a] -= (
                                 f1 * f2 * dc * hybrid / deg * num.dot(
                                 self.Q_aL[nucleus.a], F_Lc))
                         else:
-                            if self.use_finegrid:
-                                self.ghat_L.derivative(self.vt, None)
-                            else:
-                                self.Ghat_L.derivative(self.vt, None)
+                            ghat_L.derivative(self.vt, None)
 
                 # Integrate the potential on fine and coarse grids
                 int_fine = self.fineintegrate(self.vt_g * self.rhot_g)
