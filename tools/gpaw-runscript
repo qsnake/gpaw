@@ -36,6 +36,9 @@ env = {'PYTHONPATH'      : None,
 
 set = defaults
 
+#......................................................
+# functions
+
 def dhms(secs):
     """return days,hours,minutes and seconds"""
     dhms = [0,0,0,0]
@@ -48,6 +51,27 @@ def dhms(secs):
     dhms[3] = int(s+.5)
     return dhms
 
+def s_from_dhms(time):
+    """return seconds from dhms"""
+    dhms_s = { 's' : 1, 'm' : 60, 'h' : 3600, 'd' : 86400 }
+    time = time.lower()
+    word_list = re.findall('\d*[^\d]*',time)
+    seconds=0 
+    for word in word_list:
+        if word != '':
+            sec = 1
+            for t in dhms_s.keys():
+                nw = word.replace(t,'')
+                if nw != word:
+                    sec = dhms_s[t]
+                    word = nw
+                    break
+            try:
+                seconds += int(word) * sec
+            except:
+                raise RuntimeError, 'unknown format in timestring ' + time
+    return seconds
+    
 class RunScript:
     def __init__(self, set, env, name=None):
         if not hasattr(self,set['qsys']):
@@ -115,6 +139,8 @@ setenv MPICH_UNEX_BUFFER_SIZE 400M
             print >> f,"#BSUB -u",set['mail']
         print >> f,"#BSUB -e ",set['err']+'_%J'
         print >> f,"#BSUB -o ",set['out']+'_%J'
+        if set['mem']:
+            print >> f, '#BSUB -ext "SLURM[constraint=mediummem|bigmem]"'
         print >> f,"module load ASE"
         print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
         print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
@@ -167,9 +193,8 @@ unset PBS_NODEFILE
         print >> f,"#$ -V"
         print >> f,"#$ -l h_rt=23:48:00"
         print >> f,"#$ -l s_rt=23:45:00"
-        print >> f,"#$ -l h_stack=1024M"
-        print >> f,"#$ -e",set['err']
-        print >> f,"setenv out",'"'+set['out']+'"'
+        print >> f,"#$ -e",set['err']+'_$JOB_ID'
+        print >> f,"setenv out",'"'+set['out']+'_$JOB_ID"'
         print >> f,"""
 cat $TMPDIR/machines > $out
 use ASE
@@ -226,11 +251,15 @@ echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
 """        
 
 # ............................................................
+# program
+
 # handle command line options
 
 parser = OptionParser(usage='%prog [options] [script nnodes]')
 parser.add_option("-m", "--mail", dest='mail',
                   help='Where to send an email about starting/ending of the job (def: read from environment variable GPAW_MAIL)')
+parser.add_option("-M", "--Memory", action='count', default=None,
+                  help='request large memory nodes (host specific)')
 parser.add_option("-n", "--name", dest='name',
                   help='Name of the job (def: name of parent directory)')
 parser.add_option("-o", "--outfile", dest='outfile',
@@ -238,13 +267,16 @@ parser.add_option("-o", "--outfile", dest='outfile',
 parser.add_option("-q", "--qsys", dest='qsys',
                   help='queue system (def: try to guess)')
 parser.add_option("-t", "--time", dest='time',
-                  help='Time in seconds (def: 86400=one day)')
+                  help='Time (def: 86400=1140m=24h=1d=one day)')
 opt, args = parser.parse_args()
 ##print "opt=",opt
 ##print "args=",args
 
 if opt.mail:
     set['mail'] = str(opt.mail)
+
+if opt.Memory is not None:
+    set['mem'] = True
 
 if opt.name:
     set['name'] = str(opt.name)
@@ -253,7 +285,7 @@ if opt.outfile:
     set['out'] = str(opt.outfile)
 
 if opt.time:
-    set['time'] = int(opt.time)
+    set['time'] = s_from_dhms(opt.time)
 
 if len(args):
     set['script'] = args[0]
