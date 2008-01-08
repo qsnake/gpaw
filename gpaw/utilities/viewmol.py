@@ -3,10 +3,87 @@ import Numeric as num
 
 from ASE import Atom
 from ASE.Units import units, Convert
+from ASE.IO.xyz import ReadXYZ, WriteXYZ
 
 from gpaw.cluster import Cluster
 import gpaw.mpi as mpi
 MASTER = 0
+
+class Trajectory(list):
+    """Basic trajectory class"""
+    pass
+
+class ViewmolTrajectory2(list):
+    def __add__(self, other):
+        for loa in other:
+            self.append(loa)
+    
+    def __init__(self, filename=None):
+        if filename:
+            self.read(filename)
+    
+    def read(self, filename='trajectory.vmol'):
+        
+        f = open(filename)
+
+        # read the definition first 
+        definition=False
+        for line in f:
+            w = line.split()
+            if not definition:
+                if w[0] == '$coord':
+                    definition=True
+                    self.scale = float(w[1])
+                    loa = Cluster([])
+            else:
+                if w[0] == '$grad':
+                    # definition ends here
+                    self.definition = loa
+                    break
+                else:
+                    # we assume this is a coordinate entry
+                    coo = (float(w[0]),  float(w[1]), float(w[2]))
+                    loa.append(Atom(w[3], coo))
+##        print "<read> loa=", len(loa)
+
+        # get the iterations            
+        cycle = False
+        for line in f:
+            w = line.split()
+            if not cycle:
+                # search for the cycle keyword
+                if w[0] == 'cycle=':
+                    cycle=True
+                    n_coo=0
+                    n_F=0
+                    self.append(Cluster([]))
+            else:
+                if n_coo < len(self.definition):
+                    n_coo += 1
+                    coo = (float(w[0]),  float(w[1]), float(w[2]))
+                    self[-1].append(Atom(w[3], coo))
+                elif n_F < len(self.definition):
+                    F = (float(w[0]),  float(w[1]), float(w[2]))
+                    self[-1][n_F].F = F
+                    n_F += 1
+                    if n_F == len(self.definition):
+                        cycle=False
+        
+    # ASE interface
+    def GetListOfAtoms(self, frame):
+#        return self.definition
+        return self[frame]
+
+    def write(self, filename='trajectory.vmol', filetype=None):
+        if filetype is None:
+            # estimate file type from name ending
+            filetype = filename.split('.')[-1]
+        filetype.lower()
+        
+        if filetype == 'xyz':
+             WriteXYZ(filename, trajectory=self)
+        else:
+            raise NotImplementedError('unknown file type "'+filetype+'"')
 
 class ViewmolTrajectory:
     """Write a trajectory for viewmol (http://viewmol.sourceforge.net)
@@ -63,7 +140,7 @@ class ViewmolTrajectory:
                       atom.GetChemicalSymbol()
 
     def read(self, filename='trajectory.vmol', position=0):
-        """Read atom configuration of step position"""
+        """Read atom configurations of step position"""
         self.file = None
         f = open(filename)
         # find coordinates
