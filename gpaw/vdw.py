@@ -19,8 +19,8 @@ class VanDerWaals:
         #hardcoded the density min is set to 1*10^-7
         #the density must be given with the shape spin,gridpoint_x,gridpoint_y,gridpoint_z,
         #this class only works for non spin polarized calculations
-        ncut_dens=0.0000001
-        self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))
+
+        self.density = density
         if gd is None:
             unitcell = num.array(unitcell)
             check_unit_cell(unitcell)
@@ -45,6 +45,9 @@ class VanDerWaals:
         #x = XC3DGrid(self.xcname+'x', gd)
         x = XC3DGrid(exchange, gd)
         self.GGA_x_energy = x.get_energy_and_potential(self.density, v)
+        #self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))
+        ncut_dens=0.0000001
+        self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))        
         self.k_f=(3.0*pi**2*self.density)**(1.0/3.0)
         self.q0=self.getqzero()
         self.phimat = self.get_phitab_from_1darrays()
@@ -332,30 +335,35 @@ class VanDerWaals:
         h_c = self.h_c
         denstab=self.density
         nx, ny, nz = denstab[::n,::n,::n].shape
-        #print denstab.shape
+        print 'denstab.shape' ,denstab.shape
         N = nx * ny * nz
-        print N
+        print 'N' , N
         qtab_N = self.q0[::n,::n,::n].copy()
-        #print qtab_N.shape
+        print 'qtab_N.shape',qtab_N.shape
         qtab_N.shape = [N]
 
         denstab_N = denstab[::n,::n,::n].copy()
         denstab_N.shape = [N]
+        print 'denstab_N.shape', denstab_N.shape
         qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
         denstab_N = num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
         #print denstab_N
         #print 'B:h_c[0]',h_c[0]
         #print denstab.shape
-        #print 'denstab_N[0].shape', denstab_N[0].shape
+        print 'denstab_N.shape[0]', denstab_N.shape[0]
         C6 = 0.0
+        C=(-12.*(4.*num.pi/9.)**3)
         for m in range(denstab_N.shape[0]):
-            C6 = C6+num.sum(denstab_N[m]*denstab_N[:]*-(12.*(4.*num.pi/9.)**3)/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
+            #print C6
+            C6 = C6+num.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
         #print 'C:h_c[0]',h_c[:], 'n=', n
         #print 'udenfor loop C6=',C6
         #print 'norm', n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        C6 = -0.5*C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
+        C6 = -C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         #print denstab.shape
         Ry = 13.6058
+        self.mik = qtab_N
+        self.mikd = denstab_N
         return C6 ,'Ha*a0**6'
 
     def GetC6_coarse(self,n=1,ncut=0.0005):
@@ -376,7 +384,9 @@ class VanDerWaals:
         denstab_N = denstab.copy()
         denstab_N.shape = [N]
         qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
+        #self.mik = qtab_N
         denstab_N = num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
+        #self.mikd = denstab_N
         #print denstab_N
         #print 'B:h_c[0]',h_c[0]
         #print denstab.shape
