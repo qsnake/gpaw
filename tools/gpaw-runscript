@@ -335,6 +335,9 @@ if set['wd'] is None:
     set['wd'] = os.getcwd()
 if set['name'] is None:
     name = os.getcwd().split('/')[-1]
+    # avoid binning with a number
+    if name[0].isdigit():
+        name = 'j' + name
     set['name']=name
 
 RunScript(set,env)
