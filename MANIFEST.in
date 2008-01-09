@@ -2,6 +2,6 @@ include LICENSE config.py customize.py
 include c/*.h
 include c/bmgs/*.h
 include c/bmgs/*.c
-include test/*.py
-include demo/*.py
+recursive-include examples *
+recursive-include test *
 recursive-include c/libxc *

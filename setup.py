@@ -59,6 +59,28 @@ packages = ['gpaw',
             'gpaw.utilities'
             ]
 
+examples_files = glob('examples/*')
+# subdirectories must not be referenced directly
+#examples_files.remove('examples/exercises') # empty dirs are not included
+examples_files.remove('examples/tutorials')
+#examples_exercises_files = glob('examples/exercises/*')
+examples_tutorials_files = glob('examples/tutorials/*')
+test_files = glob('test/*')
+# subdirectories must not be referenced directly
+test_files.remove('test/analyse')
+test_files.remove('test/parallel')
+test_analyse_files = glob('test/analyse/*')
+test_parallel_files = glob('test/parallel/*')
+
+data_files=[
+    ('share/gpaw/examples', examples_files),
+    #('share/gpaw/examples/exercises', examples_exercises_files),
+    ('share/gpaw/examples/tutorials', examples_tutorials_files),
+    ('share/gpaw/test', test_files),
+    ('share/gpaw/test/analyse', test_analyse_files),
+    ('share/gpaw/test/parallel', test_parallel_files)
+    ]
+
 force_inclusion_of_ase = False
 if '--force-inclusion-of-ase' in sys.argv:
     force_inclusion_of_ase = True
@@ -160,6 +182,7 @@ setup(name = 'gpaw',
       platforms=['unix'],
       packages=packages,
       ext_modules=[extension],
+      data_files=data_files,
       scripts=scripts,
       long_description=long_description,
       )
@@ -186,6 +209,7 @@ if custom_interpreter:
               platforms=['unix'],
               packages=packages,
               ext_modules=[extension],
+              data_files=data_files,
               scripts=scripts,
               long_description=long_description,
               )
