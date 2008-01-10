@@ -61,20 +61,22 @@ packages = ['gpaw',
 
 examples_files = glob('examples/*')
 # subdirectories must not be referenced directly
-#examples_files.remove('examples/exercises') # empty dirs are not included
-examples_files.remove('examples/tutorials')
-#examples_exercises_files = glob('examples/exercises/*')
+for dir_to_remove in ['examples/exercises', 'examples/tutorials']:
+    if dir_to_remove in examples_files:
+        examples_files.remove(dir_to_remove)
+examples_exercises_files = glob('examples/exercises/*')
 examples_tutorials_files = glob('examples/tutorials/*')
 test_files = glob('test/*')
 # subdirectories must not be referenced directly
-test_files.remove('test/analyse')
-test_files.remove('test/parallel')
+for dir_to_remove in ['test/analyse', 'test/parallel']:
+    if dir_to_remove in test_files:
+        test_files.remove(dir_to_remove)
 test_analyse_files = glob('test/analyse/*')
 test_parallel_files = glob('test/parallel/*')
 
 data_files=[
     ('share/gpaw/examples', examples_files),
-    #('share/gpaw/examples/exercises', examples_exercises_files),
+    ('share/gpaw/examples/exercises', examples_exercises_files),
     ('share/gpaw/examples/tutorials', examples_tutorials_files),
     ('share/gpaw/test', test_files),
     ('share/gpaw/test/analyse', test_analyse_files),
