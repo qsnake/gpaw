@@ -66,7 +66,7 @@ class Output:
         t = self.text
         p = self.input_parameters
 
-        self.print_parameters()
+##        self.print_parameters()
         
         t()
         t('Unit Cell:')
