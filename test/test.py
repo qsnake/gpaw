@@ -40,7 +40,8 @@ parser.add_option('-p', '--parallel',
 opt, tests = parser.parse_args()
 
 if len(tests) == 0:
-    tests = ['cg2.py',
+    tests = ['lapack.py',
+             'cg2.py',
              'cluster.py',
              'setups.py',
              'pbe-pw91.py', # needs xc.exchange, xc.correlation
