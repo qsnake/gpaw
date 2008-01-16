@@ -172,8 +172,8 @@ class XCFunctional:
                 xcname = 'oldRPBEx'
             elif xcname == 'TPSS':
                 code = 9
-                ##self.mgga = True ## use real tau and local potential
-                self.mgga = False ## use local tau and local potential
+                self.mgga = True ## use real tau and local potential
+                ##self.mgga = False ## use local tau and local potential
             elif xcname == 'PW91':
                 code = 14
             elif xcname == 'LB94':
@@ -255,7 +255,7 @@ class XCFunctional:
                            paw.nspins, paw.nmyu, paw.nbands, len(paw.nuclei),
                            paw.kpt_comm, paw.domain.comm, energy_only,
                            use_finegrid=use_finegrid)
-
+        
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
             if self.hybrid > 0.0:

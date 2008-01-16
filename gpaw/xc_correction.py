@@ -122,11 +122,14 @@ class XCCorrection:
                 ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
                 self.nca_g = 0.5 * (nc_g - ncorehole_g)
                 self.ncb_g = 0.5 * (nc_g + ncorehole_g)
-
+        
         if self.xc.get_functional().mgga:
-            self.taut_ypg = self.create_kinetic(jlL,jl,len(points),np,wt_jg)
-            self.tau_ypg = self.create_kinetic(jlL,jl,len(points),np,w_jg)            
-            
+            ny = len(points)
+            self.tau_ypg = num.zeros((ny, np, ng), num.Float)
+            self.taut_ypg = num.zeros((ny, np, ng), num.Float)
+            self.create_kinetic(jlL,jl,ny,np,wt_jg,self.taut_ypg)
+            self.create_kinetic(jlL,jl,len(points),np,w_jg,self.tau_ypg)            
+            self.tauc_g = tauc_g
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().mgga:
             return self.MGGA(D_sp, H_sp)
@@ -859,7 +862,7 @@ class XCCorrection:
                 taut_g = num.dot(D_p,taut_pg)
                 tau_pg = self.tau_ypg[y]
                 tau_g = num.dot(D_p,tau_pg)
-                
+                tau_g += self.tauc_g / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]
                 
                 n_g = num.dot(Y_L, n_Lg)
@@ -963,7 +966,8 @@ class XCCorrection:
                 tau_pg = self.tau_ypg[y]
                 taua_g = num.dot(Da_p,tau_pg)
                 taub_g = num.dot(Db_p,tau_pg)
-
+                taua_g += self.tauc_g * 0.5 / sqrt(4. * pi)
+                taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]                
 
                 na_g = num.dot(Y_L, na_Lg)
@@ -1152,7 +1156,7 @@ class XCCorrection:
                                        num.dot(self.nt_qg, x_g * ab1z_g))
                 
                 y += 1
-
+#        return 0.0
         return E - self.Exc0
 
     def two_phi_integrals(self,
@@ -1218,14 +1222,14 @@ class XCCorrection:
         return J_pp
 
 
-    def create_kinetic(self,jlL,jl,ny,np,w_jg):
+    def create_kinetic(self,jlL,jl,ny,np,w_jg,tau_ypg):
         #no core kinetic energy added
-        ng = self.ng 
-        dphitdr_jlg = num.zeros(num.shape(jl)+(ng,), num.Float)
+        ng = self.ng
+        jlmax = (jl[-1][0]+1,jl[-1][1]+1)
+        dphitdr_jlg = num.zeros(jlmax+(ng,), num.Float)
         for j1,l1 in jl:
             phit_jlg = self.rgd.r_g**l1 * w_jg[j1]                
             self.rgd.derivative(phit_jlg, dphitdr_jlg[j1][l1])
-        tau_ypg = num.zeros((ny, np, ng), num.Float)
 
         Y_L = num.zeros((self.Lmax), num.Float)
         taut = num.zeros((ng), num.Float)
@@ -1250,5 +1254,5 @@ class XCCorrection:
                     tau_ypg[y,p] = tau
                     p +=1
                 i1 += 1
-        return tau_ypg
+        return 
         

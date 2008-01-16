@@ -358,7 +358,8 @@ class Setup:
                 [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins)
+                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,
+                tauc_g)
 
         if self.softgauss:
             rcutsoft = rcut2####### + 1.4
