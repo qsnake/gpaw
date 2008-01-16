@@ -16,9 +16,10 @@ class VanDerWaals:
         #self.Nunit=periodic_number_unitcells
         self.periodic=pbc 
         self.xcname=xcname
-        #hardcoded the density min is set to 1*10^-7
         #the density must be given with the shape spin,gridpoint_x,gridpoint_y,gridpoint_z,
-        #this class only works for non spin polarized calculations
+        #This class only works for non spin polarized calculations. In case of spinpolarized 
+        #calcultions, one should ad the spin up and spin down  densities and use that as input.  
+        #
 
         self.density = density
         if gd is None:
@@ -46,6 +47,7 @@ class VanDerWaals:
         x = XC3DGrid(exchange, gd)
         self.GGA_x_energy = x.get_energy_and_potential(self.density, v)
         #self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))
+        #hardcoded the density min is set to 1*10^-7
         ncut_dens=0.0000001
         self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))        
         self.k_f=(3.0*pi**2*self.density)**(1.0/3.0)
@@ -147,6 +149,7 @@ class VanDerWaals:
         ##################################################
         #function for coarsening the grid
         ##################################################
+        if n == 1: return oldgrid
         coarsegd = self.gd.coarsen()
         t = Transformer(self.gd,coarsegd)
         a=coarsegd.empty()
@@ -164,7 +167,7 @@ class VanDerWaals:
         c=veryverycoarsegd.empty()
         t.apply(b,c)
         print '3'
-        return c    
+        if n==8: return c    
 
     def int_6D_n_D2_cut_periodic_mic(self):
         ###################################################
@@ -322,13 +325,19 @@ class VanDerWaals:
         E_nl_c = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic_coarsen()+self.LDA_c_energy+self.GGA_x_energy
         #return Convert(E_nl,'Hartree','eV'),Convert(E_nl_c,'Hartree','eV')
         return Convert(E_nl_c,'Hartree','eV')
-    def plotphi(self):
+    def plotphi(self,ymax=8):
         import pylab as pylab
         Dtab = num.arange(0,self.Dmax+self.deltaD,self.deltaD)
         pylab.ion()
-        for n in range(self.phimat.shape[0]):
-            pylab.figure(n)
-            pylab.plot(Dtab,phimat[n,:])
+        pylab.figure(55)
+        ymax=int(ymax/self.deltaD)
+        for n in [0,10,18]:
+            pylab.plot(Dtab[:ymax],self.phimat[n,:ymax],label='delta='+str(n*0.05))
+        pylab.legend(loc='upper right')
+        pylab.ylabel(r'$\phi *4\pi D^2$')
+        pylab.xlabel(r'$D$')
+        pylab.plot(Dtab[:ymax],num.zeros(len(self.phimat[0,:ymax]),num.Float))
+        pylab.show()
     def GetC6(self,n=1,ncut=0.0005):
         #Returns C6 in units of Hartree
         ncut=ncut
@@ -371,34 +380,22 @@ class VanDerWaals:
         ncut=ncut
         h_c = self.h_c
         denstab =self.coarsen(self.density,n)
-#        denstab=self.density
+        print 'denstab.shape' ,denstab.shape
         nx, ny, nz = denstab.shape
-        #print denstab.shape
         N = nx * ny * nz
-        print N
+        print 'N',N
         qtab_N = self.coarsen(self.q0.copy(),n)
-        #qtab_N = self.q0[::n,::n,::n].copy()
-        #print qtab_N.shape
         qtab_N.shape = [N]
-
         denstab_N = denstab.copy()
         denstab_N.shape = [N]
+        print 'denstab_N.shape', denstab_N.shape
         qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
-        #self.mik = qtab_N
         denstab_N = num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
-        #self.mikd = denstab_N
-        #print denstab_N
-        #print 'B:h_c[0]',h_c[0]
-        #print denstab.shape
-        #print 'denstab_N[0].shape', denstab_N[0].shape
         C6 = 0.0
+        C=(-12.*(4.*num.pi/9.)**3)
         for m in range(denstab_N.shape[0]):
-            C6 = C6+num.sum(denstab_N[m]*denstab_N[:]*-(12.*(4.*num.pi/9.)**3)/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
-        #print 'C:h_c[0]',h_c[:], 'n=', n
-        #print 'udenfor loop C6=',C6
-        #print 'norm', n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        C6 = -0.5*C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        #print denstab.shape
+            C6 = C6+num.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
+        C6 = -C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         Ry = 13.6058
         return C6 ,'Ha*a0**6'
 
