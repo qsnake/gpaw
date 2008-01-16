@@ -87,10 +87,17 @@ class OmegaMatrix:
             self.derivativeLevel=derivativeLevel
             # change the setup xc functional if needed
             # the ground state calculation may have used another xc
+            if kss.npspins > kss.nvspins:
+                spin_increased = True
+            else:
+                spin_increased = False
             for setup in self.paw.setups:
-                sxc = setup.xc_correction.xc
-                if sxc.xcfunc.xcname != xc:
-                    sxc.set_functional(XCFunctional(xc,kss.npspins))
+                sxc = setup.xc_correction
+                if spin_increased or sxc.xc.xcfunc.xcname != xc:
+                    sxc.xc.set_functional(XCFunctional(xc, kss.npspins))
+                if spin_increased:
+                    # hack: add nca_g, ncb_g by hand XXXXXX
+                    sxc.nca_g = sxc.ncb_g = 0.5 * sxc.nc_g
         else:
             self.xc = None
 
@@ -112,8 +119,18 @@ class OmegaMatrix:
         if self.xc is None:
             return Om
 
+##        Om = Om * 0.
         self.paw.timer.start('Omega XC')
         xcf=self.xc.get_functional()
+        Om = self.get_xc(Om)
+        self.paw.timer.stop()
+##        print "Om_XC=", Om
+
+        return Om
+
+    def get_xc(self, Om):
+        """Add xc part of the coupling matrix"""
+
         paw = self.paw
         fgd = paw.finegd
         comm = fgd.comm
@@ -135,7 +152,12 @@ class OmegaMatrix:
             if kss.npspins==2:
                 # construct spin polarised densities
                 nt_sg = num.array([.5*paw.density.nt_sg[0],
-                                 .5*paw.density.nt_sg[0]])
+                                   .5*paw.density.nt_sg[0]])
+                # construct spin polarised density matrices
+                for nucleus in self.paw.my_nuclei:
+                    D_sp = num.array([.5*nucleus.D_sp[0],
+                                      .5*nucleus.D_sp[0] ])
+                    nucleus.D_sp = D_sp
             else:
                 nt_sg = paw.density.nt_sg
         # restrict the density if needed
@@ -212,12 +234,12 @@ class OmegaMatrix:
                     # we need the symmetric form, hence we can pack
                     P_p = pack(P_ii,tolerance=1e30)
                     D_sp = nucleus.D_sp.copy()
-                    D_sp[kss[ij].spin] += ns*P_p
+                    D_sp[kss[ij].pspin] += ns*P_p
                     nucleus.I_sp = \
                                  nucleus.setup.xc_correction.\
                                  two_phi_integrals(D_sp)
                     D_sp = nucleus.D_sp.copy()
-                    D_sp[kss[ij].spin] -= ns*P_p
+                    D_sp[kss[ij].pspin] -= ns*P_p
                     nucleus.I_sp -= \
                                  nucleus.setup.xc_correction.\
                                  two_phi_integrals(D_sp)
@@ -300,7 +322,7 @@ class OmegaMatrix:
                         # we need the symmetric form, hence we can pack
                         # use pack as I_sp used pack2
                         P_p = pack(P_ii,tolerance=1e30)
-                        Exc += num.dot(nucleus.I_sp[kss[kq].spin],P_p)
+                        Exc += num.dot(nucleus.I_sp[kss[kq].pspin],P_p)
                     Om[ij,kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
 
@@ -327,7 +349,6 @@ class OmegaMatrix:
                 print >> self.out,'XC estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
-        self.paw.timer.stop()
         return Om
 
     def get_rpa(self):
