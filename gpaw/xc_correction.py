@@ -127,8 +127,8 @@ class XCCorrection:
             ny = len(points)
             self.tau_ypg = num.zeros((ny, np, ng), num.Float)
             self.taut_ypg = num.zeros((ny, np, ng), num.Float)
-            self.create_kinetic(jlL,jl,ny,np,wt_jg,self.taut_ypg)
-            self.create_kinetic(jlL,jl,len(points),np,w_jg,self.tau_ypg)            
+            self.create_kinetic(lmax,jlL,jl,ny,np,wt_jg,self.taut_ypg)
+            self.create_kinetic(lmax,jlL,jl,len(points),np,w_jg,self.tau_ypg)            
             self.tauc_g = tauc_g
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().mgga:
@@ -1222,10 +1222,10 @@ class XCCorrection:
         return J_pp
 
 
-    def create_kinetic(self,jlL,jl,ny,np,w_jg,tau_ypg):
+    def create_kinetic(self,lmax,jlL,jl,ny,np,w_jg,tau_ypg):
         #no core kinetic energy added
         ng = self.ng
-        jlmax = (jl[-1][0]+1,jl[-1][1]+1)
+        jlmax = (jl[-1][0]+1,lmax+1)
         dphitdr_jlg = num.zeros(jlmax+(ng,), num.Float)
         for j1,l1 in jl:
             phit_jlg = self.rgd.r_g**l1 * w_jg[j1]                
