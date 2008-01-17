@@ -1,0 +1,299 @@
+import sys
+from math import sqrt
+import Numeric as num
+from LinearAlgebra import inverse
+
+import _gpaw
+import gpaw.mpi as mpi
+MASTER = mpi.MASTER
+
+from gpaw import debug
+import gpaw.mpi as mpi
+from gpaw.poisson import PoissonSolver
+from gpaw.lrtddft.excitation import Excitation,ExcitationList
+from gpaw.lrtddft.omega_matrix import OmegaMatrix
+from gpaw.lrtddft.kssingle import KSSingles
+from gpaw.transformers import Transformer
+from gpaw.utilities import pack,pack2,packed_index
+from gpaw.utilities.lapack import diagonalize, gemm, sqrt_matrix
+from gpaw.utilities.timing import Timer
+from gpaw.xc_functional import XC3DGrid, XCFunctional
+
+import time
+
+class ApmB(OmegaMatrix):
+    """
+    
+    Omega matrix in Casidas linear response formalism
+
+    Parameters
+      - calculator: the calculator object the ground state calculation
+      - kss: the Kohn-Sham singles object
+      - xc: the exchange correlation approx. to use
+      - derivativeLevel: which level i of d^i Exc/dn^i to use
+      - numscale: numeric epsilon for derivativeLevel=0,1
+      - filehandle: the oject can be read from a filehandle
+      - out: output stream
+      - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
+        2 everything on the fine grid
+    """
+
+    def get_full(self):
+
+        self.paw.timer.start('ApmB RPA')
+        self.ApB, self.AmB = self.get_rpa()
+        self.paw.timer.stop()
+
+        if self.xc is not None:
+            self.paw.timer.start('ApmB XC')
+            self.ApB = self.get_xc(self.ApB) # inherited from OmegaMatrix
+            self.paw.timer.stop()
+        
+    def get_rpa(self):
+        """calculate RPA and Hartree-fock part of the A+-B matrices"""
+
+        # shorthands
+        kss=self.fullkss
+        finegrid=self.finegrid
+
+        # calculate omega matrix
+        nij = len(kss)
+        print >> self.out, 'RPAhyb', nij, 'transitions'
+        
+        AmB = num.zeros((nij,nij),num.Float)
+        ApB = num.zeros((nij,nij),num.Float)
+        
+        for ij in range(nij):
+            print >> self.out,'RPAhyb kss['+'%d'%ij+']=', kss[ij]
+
+            timer = Timer()
+            timer.start('init')
+            timer2 = Timer()
+                      
+            # smooth density including compensation charges
+            timer2.start('GetPairDensityAndCompensationCharges 0')
+            rhot_p = kss[ij].GetPairDensityAndCompensationCharges(
+                finegrid is not 0)
+            timer2.stop()
+            
+            # integrate with 1/|r_1-r_2|
+            timer2.start('poisson')
+            phit_p = num.zeros(rhot_p.shape,rhot_p.typecode())
+            self.poisson.solve(phit_p,rhot_p,charge=None)
+            timer2.stop()
+
+            timer.stop()
+            t0 = timer.gettime('init')
+            timer.start(ij)
+
+            if finegrid == 1:
+                rhot = kss[ij].GetPairDensityAndCompensationCharges()
+                phit = self.gd.zeros()
+                self.restrict(phit_p,phit)
+            else:
+                phit = phit_p
+                rhot = rhot_p
+
+            for kq in range(ij,nij):
+                if kq != ij:
+                    # smooth density including compensation charges
+                    timer2.start('kq GetPairDensityAndCompensationCharges')
+                    rhot = kss[kq].GetPairDensityAndCompensationCharges(
+                        finegrid is 2)
+                    timer2.stop()
+                pre = self.weight_Kijkq(ij, kq)
+
+                timer2.start('integrate')
+                ApB[ij,kq]= pre * self.gd.integrate(rhot*phit)
+                timer2.stop()
+
+                # Add atomic corrections
+                timer2.start('integrate corrections 2')
+                Ia = 0.
+                for nucleus in self.paw.my_nuclei:
+                    ni = nucleus.get_number_of_partial_waves()
+                    Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
+                    Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
+                    Dij_ii = num.outerproduct(Pi_i, Pj_i)
+                    Dij_p = pack(Dij_ii, tolerance=1e3)
+                    Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
+                    Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
+                    Dkq_ii = num.outerproduct(Pk_i, Pq_i)
+                    Dkq_p = pack(Dkq_ii, tolerance=1e3)
+                    C_pp = nucleus.setup.M_pp
+                    #   ----
+                    # 2 >      P   P  C    P  P
+                    #   ----    ip  jr prst ks qt
+                    #   prst
+                    Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
+                timer2.stop()
+                
+                ApB[ij,kq] += pre * self.gd.comm.sum(Ia)
+                    
+                if ij == kq:
+                    epsij =  kss[ij].GetEnergy() / kss[ij].GetWeight()
+                    AmB[ij,kq] += epsij
+                    ApB[ij,kq] += epsij
+                else:
+                    ApB[kq,ij]=ApB[ij,kq]
+                    AmB[kq,ij]=AmB[ij,kq]
+
+            timer.stop()
+##            timer2.write()
+            if ij < (nij-1):
+                t = timer.gettime(ij) # time for nij-ij calculations
+                t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
+                print >> self.out,'RPAhyb estimated time left',\
+                      self.timestring(t0*(nij-ij-1)+t)
+
+        return ApB, AmB
+
+    def timestring(self,t):
+        ti = int(t+.5)
+        td = int(ti/86400)
+        st=''
+        if td>0:
+            st+='%d'%td+'d'
+            ti-=td*86400
+        th = int(ti/3600)
+        if th>0:
+            st+='%d'%th+'h'
+            ti-=th*3600
+        tm = int(ti/60)
+        if tm>0:
+            st+='%d'%tm+'m'
+            ti-=tm*60
+        st+='%d'%ti+'s'
+        return st
+
+    def diagonalize(self, istart=None, jend=None):
+        self.istart = istart
+        self.jend = jend
+        if istart is None and jend is None:
+            # use the full matrix
+            kss = self.fullkss
+            ApB = self.ApB.copy()
+            AmB = self.AmB.copy()
+            nij = len(kss)
+        else:
+            # reduce the matrix
+            if istart is None: istart = self.kss.istart
+            if self.fullkss.istart > istart:
+                raise RuntimeError('istart=%d has to be >= %d' %
+                                   (istart,self.kss.istart))
+            if jend is None: jend = self.kss.jend
+            if self.fullkss.jend < jend:
+                raise RuntimeError('jend=%d has to be <= %d' %
+                                   (jend,self.kss.jend))
+            print >> self.out,'# diagonalize: %d transitions original'\
+                  % len(self.fullkss)
+            map= []
+            kss = KSSingles()
+            for ij, k in zip(range(len(self.fullkss)),self.fullkss):
+                if k.i >= istart and k.j <= jend:
+                    kss.append(k)
+                    map.append(ij)
+            kss.update()
+            nij = len(kss)
+            print >> self.out,'# diagonalize: %d transitions now' % nij
+
+            ApB = num.empty((nij,nij), num.Float)
+            AmB = num.empty((nij,nij), num.Float)
+            for ij in range(nij):
+                for kq in range(nij):
+                    ApB[ij,kq] = self.ApB[map[ij],map[kq]]
+                    AmB[ij,kq] = self.AmB[map[ij],map[kq]]
+
+        # the occupation matrix
+        C = num.empty((nij,), num.Float)
+        for ij in range(nij):
+            C[ij] = 1. / kss[ij].fij
+
+        S = C * inverse(AmB) * C
+        S = sqrt_matrix(inverse(S))
+
+        # get Omega matrix
+        M = num.empty(ApB.shape, num.Float)
+        gemm(1., ApB, S, 0., M)
+        self.eigenvectors = num.empty(ApB.shape, num.Float)
+        gemm(1., S, M, 0., self.eigenvectors)
+        
+        self.eigenvalues = num.zeros((len(kss)),num.Float)
+        self.kss = kss
+        info = diagonalize(self.eigenvectors, self.eigenvalues)
+        if info != 0:
+            raise RuntimeError('Diagonalisation error in ApmB')
+
+    def read(self, filename=None, fh=None):
+        """Read myself from a file"""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'r')
+            else:
+                f = fh
+
+            f.readline()
+            nij = int(f.readline())
+            ApB = num.zeros((nij,nij),num.Float)
+            for ij in range(nij):
+                l = f.readline().split()
+                for kq in range(ij,nij):
+                    ApB[ij,kq] = float(l[kq-ij])
+                    ApB[kq,ij] = ApB[ij,kq]
+            self.ApB = ApB
+
+            f.readline()
+            nij = int(f.readline())
+            AmB = num.zeros((nij,nij),num.Float)
+            for ij in range(nij):
+                l = f.readline().split()
+                for kq in range(ij,nij):
+                    AmB[ij,kq] = float(l[kq-ij])
+                    AmB[kq,ij] = AmB[ij,kq]
+            self.AmB = AmB
+
+            if fh is None:
+                f.close()
+
+    def weight_Kijkq(self, ij, kq):
+        """weight for the coupling matrix terms"""
+        return 2.
+    
+    def write(self, filename=None, fh=None):
+        """Write current state to a file."""
+        if mpi.rank == mpi.MASTER:
+            if fh is None:
+                f = open(filename, 'w')
+            else:
+                f = fh
+
+            f.write('# A+B\n')
+            nij = len(self.fullkss)
+            f.write('%d\n' % nij)
+            for ij in range(nij):
+                for kq in range(ij,nij):
+                    f.write(' %g' % self.ApB[ij,kq])
+                f.write('\n')
+            
+            f.write('# A-B\n')
+            nij = len(self.fullkss)
+            f.write('%d\n' % nij)
+            for ij in range(nij):
+                for kq in range(ij,nij):
+                    f.write(' %g' % self.AmB[ij,kq])
+                f.write('\n')
+            
+            if fh is None:
+                f.close()
+
+    def __str__(self):
+        str='<ApmB> '
+        if hasattr(self,'eigenvalues'):
+            str += 'dimension '+ ('%d'%len(self.eigenvalues))
+            str += "\neigenvalues: "
+            for ev in self.eigenvalues:
+                str += ' ' + ('%f'%(sqrt(ev)*27.211))
+        return str
+    
+
+

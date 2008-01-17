@@ -113,6 +113,7 @@ class XCCorrection:
                 q += 1
         self.rgd = rgd
 
+        self.nspins = nspins
         if nspins == 1:
             self.nc_g = nc_g
         else:
@@ -130,6 +131,7 @@ class XCCorrection:
             self.create_kinetic(lmax,jlL,jl,ny,np,wt_jg,self.taut_ypg)
             self.create_kinetic(lmax,jlL,jl,len(points),np,w_jg,self.tau_ypg)            
             self.tauc_g = tauc_g
+
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().mgga:
             return self.MGGA(D_sp, H_sp)
@@ -1256,3 +1258,11 @@ class XCCorrection:
                 i1 += 1
         return 
         
+    def set_nspins(self, nspins):
+        """change number of spins"""
+        if nspins != self.nspins:
+            self.nspins = nspins
+            if nspins == 1:
+                self.nc_g = self.nca_g + self.ncb_g
+            else:
+                self.nca_g = self.ncb_g = 0.5 * self.nc_g

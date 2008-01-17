@@ -11,6 +11,7 @@ from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
+from gpaw.lrtddft.apmb import ApmB
 ##from gpaw.lrtddft.transition_density import TransitionDensity
 from gpaw.utilities import packed_index
 from gpaw.utilities.lapack import diagonalize
@@ -56,7 +57,9 @@ class LrTDDFT(ExcitationList):
                  derivativeLevel=1,
                  numscale=0.00001,
                  filename=None,
-                 finegrid=2):
+                 finegrid=2,
+                 force_ApmB=False # for tests
+                 ):
 
         if filename is None:
 
@@ -72,6 +75,8 @@ class LrTDDFT(ExcitationList):
             self.derivativeLevel=None
             self.numscale=numscale
             self.finegrid=finegrid
+            self.force_ApmB=force_ApmB
+            
             self.update(calculator,nspins,eps,istart,jend,
                         xc,derivativeLevel,numscale)
 
@@ -131,9 +136,17 @@ class LrTDDFT(ExcitationList):
                              eps=eps,
                              istart=istart,
                              jend=jend)
-        self.Om = OmegaMatrix(self.calculator,self.kss,
-                              self.xc,self.derivativeLevel,self.numscale,
-                              finegrid=self.finegrid)
+        if not self.force_ApmB:
+            Om = OmegaMatrix
+            if self.xc:
+                xc = XCFunctional(self.xc)
+                if xc.hybrid > 0.0:
+                    Om = ApmB
+        else:
+            Om = ApmB
+        self.Om = Om(self.calculator, self.kss,
+                     self.xc, self.derivativeLevel, self.numscale,
+                     finegrid=self.finegrid)
 ##        self.diagonalize()
 
     def diagonalize(self, istart=None, jend=None):

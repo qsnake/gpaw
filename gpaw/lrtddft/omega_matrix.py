@@ -96,8 +96,7 @@ class OmegaMatrix:
                 if spin_increased or sxc.xc.xcfunc.xcname != xc:
                     sxc.xc.set_functional(XCFunctional(xc, kss.npspins))
                 if spin_increased:
-                    # hack: add nca_g, ncb_g by hand XXXXXX
-                    sxc.nca_g = sxc.ncb_g = 0.5 * sxc.nc_g
+                    sxc.set_nspins(2)
         else:
             self.xc = None
 
@@ -108,25 +107,19 @@ class OmegaMatrix:
              # this will be a singlet to singlet calculation only
              self.singletsinglet=True
 
-        self.full = self.get_full()
+        self.get_full()
 
     def get_full(self):
 
         self.paw.timer.start('Omega RPA')
-        Om = self.get_rpa()
+        self.full = self.get_rpa()
         self.paw.timer.stop()
 
-        if self.xc is None:
-            return Om
-
-##        Om = Om * 0.
-        self.paw.timer.start('Omega XC')
-        xcf=self.xc.get_functional()
-        Om = self.get_xc(Om)
-        self.paw.timer.stop()
-##        print "Om_XC=", Om
-
-        return Om
+        if self.xc is not None:
+            self.paw.timer.start('Omega XC')
+            xcf=self.xc.get_functional()
+            self.full = self.get_xc(self.full)
+            self.paw.timer.stop()
 
     def get_xc(self, Om):
         """Add xc part of the coupling matrix"""
@@ -151,13 +144,15 @@ class OmegaMatrix:
             # spin unpolarised ground state calc.
             if kss.npspins==2:
                 # construct spin polarised densities
+                
                 nt_sg = num.array([.5*paw.density.nt_sg[0],
                                    .5*paw.density.nt_sg[0]])
                 # construct spin polarised density matrices
                 for nucleus in self.paw.my_nuclei:
-                    D_sp = num.array([.5*nucleus.D_sp[0],
-                                      .5*nucleus.D_sp[0] ])
-                    nucleus.D_sp = D_sp
+                    if len(nucleus.D_sp) == 1:
+                        D_sp = num.array([.5*nucleus.D_sp[0],
+                                          .5*nucleus.D_sp[0] ])
+                        nucleus.D_sp = D_sp
             else:
                 nt_sg = paw.density.nt_sg
         # restrict the density if needed
@@ -186,7 +181,7 @@ class OmegaMatrix:
                 fxc=d2Excdn2(nt_sg)
         else:
             raise ValueError('derivativeLevel can only be 0,1,2')
-            
+
         ns=self.numscale
         xc=self.xc
         print >> self.out, 'XC',nij,'transitions'
@@ -251,8 +246,7 @@ class OmegaMatrix:
             timer.start(ij)
             
             for kq in range(ij,nij):
-                weight=2.*sqrt(kss[ij].GetEnergy()*kss[kq].GetEnergy()*
-                               kss[ij].GetWeight()*kss[kq].GetWeight())
+                weight = self.weight_Kijkq(ij, kq)
 
                 if self.derivativeLevel == 0:
                     # only Exc is available
@@ -557,6 +551,11 @@ class OmegaMatrix:
             if fh is None:
                 f.close()
 
+    def weight_Kijkq(self, ij, kq):
+        """weight for the coupling matrix terms"""
+        kss = self.fullkss
+        return 2.*sqrt( kss[ij].GetEnergy() * kss[kq].GetEnergy() *
+                        kss[ij].GetWeight() * kss[kq].GetWeight()   )
 
     def __str__(self):
         str='<OmegaMatrix> '
