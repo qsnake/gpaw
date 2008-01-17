@@ -59,7 +59,8 @@ if len(tests) == 0:
              'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
              'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py', 'relax.py',
              'davidson.py', 'wannier-ethylene.py',
-             'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py', 'lrtddft.py',
+             'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py',
+             'lrtddft.py', 'apmb.py',
              'fixmom.py', 'wannier-hwire.py',
              'exx.py', 'ldos.py',
              'revPBE_Li.py','ylexpand.py',
@@ -69,10 +70,10 @@ if len(tests) == 0:
     tests_lxc = [
         'lxc_spinpol_Li.py', 'lxc_xcatom.py'
         ]
-    tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
-                      'parallel/par8.py', 'parallel/par6.py',
-                      'parallel/exx.py']
     tests = tests + tests_lxc
+tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
+                  'parallel/par8.py', 'parallel/par6.py',
+                  'parallel/exx.py']
 
 if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]

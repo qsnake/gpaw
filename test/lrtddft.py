@@ -1,10 +1,13 @@
 import os
+import sys
 
 from gpaw import Calculator
 from gpaw.utilities import equal
 from ASE import ListOfAtoms, Atom, Crystal
 from gpaw.lrtddft import LrTDDFT
 
+txt='-'
+txt='/dev/null'
 io_only=False
 if not io_only:
     load = False
@@ -16,17 +19,17 @@ if not io_only:
         H2 = ListOfAtoms([Atom('H', (a/2,a/2,(c-R)/2)),
                           Atom('H', (a/2,a/2,(c+R)/2))],
                          cell=(a,a,c))
-        calc = Calculator(xc='PBE',nbands=2,spinpol=False)
+        calc = Calculator(xc='PBE', nbands=2, spinpol=False, txt=txt)
         H2.SetCalculator(calc)
         H2.GetPotentialEnergy()
 ##    calc.write('H2.gpw', 'all')
     else:
-        calc = Calculator('H2.gpw')
+        calc = Calculator('H2.gpw', txt=txt)
         
     xc='LDA'
 
     # without spin
-    lr = LrTDDFT(calc,xc=xc)
+    lr = LrTDDFT(calc, xc=xc)
     lr.diagonalize()
     t1 = lr[0]
 
@@ -35,7 +38,7 @@ if not io_only:
         lr = LrTDDFT(calc, xc=xc, finegrid=finegrid)
         lr.diagonalize()
         t3 = lr[0]
-        print 'finegrid, t1, t3=', finegrid, t1.get_energy(),t3.get_energy()
+        print 'finegrid, t1, t3=', finegrid, t1 ,t3
         equal(t1.get_energy(), t3.get_energy(), 5.e-4)
 
     # with spin
@@ -50,12 +53,12 @@ if not io_only:
     equal(t1.get_energy(), t2.get_energy(), 5.e-7)
 
     if not load:
-        c_spin = Calculator(xc='PBE', nbands=2, spinpol=True)
+        c_spin = Calculator(xc='PBE', nbands=2, spinpol=True, txt=txt)
         H2.SetCalculator(c_spin)
         c_spin.calculate()
         c_spin.write('H2spin.gpw', 'all')
     else:
-        c_spin = Calculator('H2spin.gpw')
+        c_spin = Calculator('H2spin.gpw', txt=txt)
     lr_spin = LrTDDFT(c_spin, xc=xc)
     lr_spin.diagonalize()
     for i in range(2):
