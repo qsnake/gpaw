@@ -12,7 +12,7 @@ import gpaw.mpi as mpi
 from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
-from gpaw.lrtddft.kssingle import KSSingles
+from gpaw.lrtddft.kssingle import KSSingle 
 from gpaw.transformers import Transformer
 from gpaw.utilities import pack,pack2,packed_index
 from gpaw.utilities.lapack import diagonalize, gemm, sqrt_matrix
@@ -62,6 +62,9 @@ class ApmB(OmegaMatrix):
         
         AmB = num.zeros((nij,nij),num.Float)
         ApB = num.zeros((nij,nij),num.Float)
+
+        # storage place for Coulomb integrals
+        integrals = {}
         
         for ij in range(nij):
             print >> self.out,'RPAhyb kss['+'%d'%ij+']=', kss[ij]
@@ -104,39 +107,19 @@ class ApmB(OmegaMatrix):
                 pre = self.weight_Kijkq(ij, kq)
 
                 timer2.start('integrate')
-                ApB[ij,kq]= pre * self.gd.integrate(rhot*phit)
-                timer2.stop()
-
-                # Add atomic corrections
-                timer2.start('integrate corrections 2')
-                Ia = 0.
-                for nucleus in self.paw.my_nuclei:
-                    ni = nucleus.get_number_of_partial_waves()
-                    Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
-                    Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
-                    Dij_ii = num.outerproduct(Pi_i, Pj_i)
-                    Dij_p = pack(Dij_ii, tolerance=1e3)
-                    Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
-                    Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
-                    Dkq_ii = num.outerproduct(Pk_i, Pq_i)
-                    Dkq_p = pack(Dkq_ii, tolerance=1e3)
-                    C_pp = nucleus.setup.M_pp
-                    #   ----
-                    # 2 >      P   P  C    P  P
-                    #   ----    ip  jr prst ks qt
-                    #   prst
-                    Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
+                I = self.Coulomb_integral_kss(kss[ij], kss[kq], phit, rhot)
+                if kss[ij].spin == kss[kq].spin:
+                    name = self.Coulomb_integral_name(kss[ij].i, kss[ij].j,
+                                                      kss[kq].i, kss[kq].j,
+                                                      kss[ij].spin         )
+                    integrals[name] = I
+                ApB[ij,kq]= pre * I
                 timer2.stop()
                 
-                ApB[ij,kq] += pre * self.gd.comm.sum(Ia)
-                    
                 if ij == kq:
                     epsij =  kss[ij].GetEnergy() / kss[ij].GetWeight()
                     AmB[ij,kq] += epsij
                     ApB[ij,kq] += epsij
-                else:
-                    ApB[kq,ij]=ApB[ij,kq]
-                    AmB[kq,ij]=AmB[ij,kq]
 
             timer.stop()
 ##            timer2.write()
@@ -146,7 +129,92 @@ class ApmB(OmegaMatrix):
                 print >> self.out,'RPAhyb estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
+        # add HF parts and apply symmetry
+        timer.start('RPA hyb HF part')
+        weight = self.xc.xcfunc.hybrid
+        for ij in range(nij):
+            i = kss[ij].i
+            j = kss[ij].j
+            for kq in range(ij,nij):
+                if kss[ij].pspin == kss[kq].pspin:
+                    s = kss[ij].spin
+                    k = kss[kq].i
+                    q = kss[kq].j
+                    ikjq = self.Coulomb_integral_ijkq(i, k, j, q, s, integrals)
+                    iqkj = self.Coulomb_integral_ijkq(i, q, k, j, s, integrals)
+                    ApB[ij,kq] -= weight * ( ikjq + iqkj )
+                    AmB[ij,kq] -= weight * ( ikjq - iqkj )
+                
+                ApB[kq,ij] = ApB[ij,kq]
+                AmB[kq,ij] = AmB[ij,kq]
+        timer.stop()
+        
         return ApB, AmB
+    
+    def Coulomb_integral_name(self, i, j, k, l, spin):
+        """return a unique name considering the Coulomb integral
+        symmetry"""
+        def ij_name(i, j):
+            return str(max(i, j)) + ' ' + str(min(i, j))
+        
+        # maximal gives the first
+        if max(i, j) >= max(k, l):
+            base = ij_name(i, j) + ' ' + ij_name(k, l) 
+        else:
+            base = ij_name(k, l) + ' ' + ij_name(i, j)
+        return base + ' ' + str(spin)
+
+    def Coulomb_integral_ijkq(self, i, j, k, q, spin, integrals):
+        name = self.Coulomb_integral_name(i, j, k, q, spin)
+        if integrals.has_key(name):
+            return integrals[name]
+        # create the Kohn-Sham singles
+        kss_ij = KSSingle(i, j, spin, spin, self.paw)
+        kss_kq = KSSingle(k, q, spin, spin, self.paw)
+
+        rhot_p = kss_ij.GetPairDensityAndCompensationCharges(
+            self.finegrid is not 0)
+        phit_p = num.zeros(rhot_p.shape, rhot_p.typecode())
+        self.poisson.solve(phit_p, rhot_p, charge=None)
+
+        if self.finegrid == 1:
+            phit = self.gd.zeros()
+            self.restrict(phit_p, phit)
+        else:
+            phit = phit_p
+            
+        rhot = kss_kq.GetPairDensityAndCompensationCharges(
+            self.finegrid is 2)
+
+        integrals[name] = self.Coulomb_integral_kss(kss_ij, kss_kq,
+                                                    phit, rhot)
+        return integrals[name]
+    
+    def Coulomb_integral_kss(self, kss_ij, kss_kq, phit, rhot):
+        # smooth part
+        I = self.gd.integrate(rhot * phit)
+        
+        # Add atomic corrections
+        Ia = 0.
+        for nucleus in self.paw.my_nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            Pi_i = nucleus.P_uni[kss_ij.spin,kss_ij.i]
+            Pj_i = nucleus.P_uni[kss_ij.spin,kss_ij.j]
+            Dij_ii = num.outerproduct(Pi_i, Pj_i)
+            Dij_p = pack(Dij_ii, tolerance=1e3)
+            Pk_i = nucleus.P_uni[kss_kq.spin,kss_kq.i]
+            Pq_i = nucleus.P_uni[kss_kq.spin,kss_kq.j]
+            Dkq_ii = num.outerproduct(Pk_i, Pq_i)
+            Dkq_p = pack(Dkq_ii, tolerance=1e3)
+            C_pp = nucleus.setup.M_pp
+            #   ----
+            # 2 >      P   P  C    P  P
+            #   ----    ip  jr prst ks qt
+            #   prst
+            Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
+        I += self.gd.comm.sum(Ia)
+
+        return I
 
     def timestring(self,t):
         ti = int(t+.5)
