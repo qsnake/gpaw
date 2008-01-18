@@ -135,9 +135,9 @@ class ApmB(OmegaMatrix):
         for ij in range(nij):
             i = kss[ij].i
             j = kss[ij].j
+            s = kss[ij].spin
             for kq in range(ij,nij):
                 if kss[ij].pspin == kss[kq].pspin:
-                    s = kss[ij].spin
                     k = kss[kq].i
                     q = kss[kq].j
                     ikjq = self.Coulomb_integral_ijkq(i, k, j, q, s, integrals)

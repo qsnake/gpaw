@@ -124,16 +124,15 @@ class OmegaMatrix:
     def get_xc(self, Om):
         """Add xc part of the coupling matrix"""
 
+        # shorthands
         paw = self.paw
         fgd = paw.finegd
         comm = fgd.comm
 
-        # shorthands
         fg = self.finegrid is 2
         kss = self.fullkss
         nij = len(kss)
         
-
         # initialize densities
         # nt_sg is the smooth density on the fine grid with spin index
 
@@ -147,14 +146,18 @@ class OmegaMatrix:
                 
                 nt_sg = num.array([.5*paw.density.nt_sg[0],
                                    .5*paw.density.nt_sg[0]])
-                # construct spin polarised density matrices
-                for nucleus in self.paw.my_nuclei:
-                    if len(nucleus.D_sp) == 1:
-                        D_sp = num.array([.5*nucleus.D_sp[0],
-                                          .5*nucleus.D_sp[0] ])
-                        nucleus.D_sp = D_sp
             else:
                 nt_sg = paw.density.nt_sg
+        # check if D_sp have been changed before
+        for nucleus in self.paw.my_nuclei:
+            if len(nucleus.D_sp) != kss.npspins:
+                if len(nucleus.D_sp) == 1:
+                    D_sp = num.array([.5*nucleus.D_sp[0],
+                                      .5*nucleus.D_sp[0] ])
+                else:
+                    D_sp = num.array([nucleus.D_sp[0] + nucleus.D_sp[1]])
+                nucleus.D_sp = D_sp
+                
         # restrict the density if needed
         if fg:
             nt_s = nt_sg
@@ -181,6 +184,8 @@ class OmegaMatrix:
                 fxc=d2Excdn2(nt_sg)
         else:
             raise ValueError('derivativeLevel can only be 0,1,2')
+
+##        self.paw.my_nuclei = []
 
         ns=self.numscale
         xc=self.xc
@@ -247,7 +252,7 @@ class OmegaMatrix:
             
             for kq in range(ij,nij):
                 weight = self.weight_Kijkq(ij, kq)
-
+                
                 if self.derivativeLevel == 0:
                     # only Exc is available
                     

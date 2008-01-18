@@ -138,15 +138,19 @@ class LrTDDFT(ExcitationList):
                              jend=jend)
         if not self.force_ApmB:
             Om = OmegaMatrix
+            name = 'LrTDDFT'
             if self.xc:
                 xc = XCFunctional(self.xc)
                 if xc.hybrid > 0.0:
                     Om = ApmB
+                    name = 'LrTDDFThyb'
         else:
             Om = ApmB
+            name = 'LrTDDFThyb'
         self.Om = Om(self.calculator, self.kss,
                      self.xc, self.derivativeLevel, self.numscale,
                      finegrid=self.finegrid)
+        self.name = name
 ##        self.diagonalize()
 
     def diagonalize(self, istart=None, jend=None):
@@ -182,7 +186,10 @@ class LrTDDFT(ExcitationList):
                 f = fh
                 self.filename = None
 
-            f.readline()
+            # get my name
+            s = f.readline().replace('\n','')
+            hash, self.name = s.split()
+            
             self.xc = f.readline().replace('\n','')
             values = f.readline().split()
             self.eps = float(values[0])
@@ -196,7 +203,10 @@ class LrTDDFT(ExcitationList):
                 pass
                 
             self.kss = KSSingles(filehandle=f)
-            self.Om = OmegaMatrix(kss=self.kss,filehandle=f)
+            if self.name == 'LrTDDFT':
+                self.Om = OmegaMatrix(kss=self.kss, filehandle=f)
+            else:
+                self.Om = ApmB(kss=self.kss, filehandle=f)
             self.Om.Kss(self.kss)
 
             # check if already diagonalized
@@ -260,7 +270,7 @@ class LrTDDFT(ExcitationList):
             else:
                 f = fh
 
-            f.write('# LrTDDFT\n')
+            f.write('# ' + self.name + '\n')
             xc = self.xc
             if xc is None: xc = 'RPA'
             f.write(xc+'\n')

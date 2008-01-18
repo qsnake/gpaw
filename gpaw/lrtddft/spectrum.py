@@ -12,7 +12,8 @@ def spectrum(exlist=None,
              de=None,
              energyunit='eV',
              folding='Gauss',
-             width=0.08 # Gauss/Lorentz width
+             width=0.08, # Gauss/Lorentz width
+             comment=None
              ):
     """spectrum(exlist=None,
              filename=None,
@@ -53,6 +54,8 @@ def spectrum(exlist=None,
     out = sys.stdout
     if filename != None:
         out = open( filename, 'w' )
+    if comment:
+        print >> out, '#', comment
 
     # energy unit
     Ha = Convert(1., 'Hartree', energyunit)
