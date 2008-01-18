@@ -63,7 +63,7 @@ if not io_only:
     lr_spin.diagonalize()
     for i in range(2):
         print 'i, real, virtual spin: ', i, lr_vspin[i], lr_spin[i]
-        equal(lr_vspin[i].get_energy(), lr_spin[i].get_energy(), 5.e-7)
+        equal(lr_vspin[i].get_energy(), lr_spin[i].get_energy(), 5.e-6)
 
 
 # io

@@ -8,7 +8,7 @@ txt='-'
 txt='/dev/null'
 
 load = False
-##    load = True
+#load = True
     
 if not load:
     R=0.7 # approx. experimental bond length
@@ -24,6 +24,9 @@ if not load:
 else:
     calc = Calculator('H2.gpw', txt=txt)
 calc.initialize_wave_functions()
+
+#-----------------------------------------------------------
+# DFT only
 
 xc='LDA'
 
@@ -69,6 +72,22 @@ lr_ApmB = LrTDDFT(calc, xc=xc, nspins=2)
 lr_ApmB.diagonalize()
 print 'lr=', lr
 print 'ApmB=', lr_ApmB
-equal(lr[0].get_energy(), lr_ApmB[0].get_energy(), 5.e-24)
-equal(lr[1].get_energy(), lr_ApmB[1].get_energy(), 5.e-24)
+equal(lr[0].get_energy(), lr_ApmB[0].get_energy(), 5.e-10)
+equal(lr[1].get_energy(), lr_ApmB[1].get_energy(), 5.e-10)
     
+#-------------------------------------------------------
+# with HF exchange
+
+xc='PBE0'
+
+print '------ with spin xc=', xc
+lr_spin = LrTDDFT(c_spin, xc=xc)
+lr_spin.diagonalize()
+print 'lr=', lr_spin
+
+print '------ with virtual spin xc=', xc
+lr = LrTDDFT(calc, xc=xc, nspins=2)
+lr.diagonalize()
+print 'lr=', lr
+equal(lr[0].get_energy(), lr_spin[0].get_energy(), 1.e-6)
+equal(lr[1].get_energy(), lr_spin[1].get_energy(), 1.e-6)
