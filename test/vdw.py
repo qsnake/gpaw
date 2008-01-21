@@ -1,6 +1,6 @@
 from math import sqrt, exp, pi
 from gpaw.vdw import VanDerWaals
-import Numeric as num
+import numpy as npy
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
 import pylab
@@ -18,12 +18,12 @@ tolerance =0.000001
 
 
 n = 48
-d = num.ones((2 * n, n, n))
+d = npy.ones((2 * n, n, n))
 a = 16.0
 c = a / 2
 h = a / n
             
-uc = num.array([(2 * a, 0, 0),
+uc = npy.array([(2 * a, 0, 0),
                 (0,     a, 0),
                 (0,     0, a)])
 
@@ -57,7 +57,7 @@ E_RPBE = vdw_RPBE.GetEnergy(n=1)
 ##################################################
 
 def interpolation(ymax=8):
-    Dtab = num.arange(0,vdw_revPBE.Dmax+vdw_revPBE.deltaD,vdw_revPBE.deltaD)
+    Dtab = npy.arange(0,vdw_revPBE.Dmax+vdw_revPBE.deltaD,vdw_revPBE.deltaD)
     nfig=60
     pylab.figure(nfig)
     nfig +=1
@@ -67,17 +67,17 @@ def interpolation(ymax=8):
     ##########
     #plot interpolated 
     ##########
-    deltatab = num.arange(0,vdw_revPBE.deltamax+vdw_revPBE.deltadelta,vdw_revPBE.deltadelta)
+    deltatab = npy.arange(0,vdw_revPBE.deltamax+vdw_revPBE.deltadelta,vdw_revPBE.deltadelta)
     deltaD = vdw_revPBE.deltaD
     deltadelta = vdw_revPBE.deltadelta
     phitab_N = vdw_revPBE.phimat.copy()
     phitab_N.shape = [vdw_revPBE.phimat.shape[0]*vdw_revPBE.phimat.shape[1]]
     for n in [0,10,18]:
-        pylab.plot(num.arange(0,ymax,0.001),vdw_revPBE.getphi(num.arange(0,ymax,0.001),(num.ones(len(num.arange(0,ymax,0.001)),num.Float)*(n*0.05)),Dtab,deltatab,deltaD,deltadelta,phitab_N),label='interpolated'+str(n*0.05))
+        pylab.plot(npy.arange(0,ymax,0.001),vdw_revPBE.getphi(npy.arange(0,ymax,0.001),(npy.ones(len(npy.arange(0,ymax,0.001)))*(n*0.05)),Dtab,deltatab,deltaD,deltadelta,phitab_N),label='interpolated'+str(n*0.05))
     pylab.legend(loc='upper right')
     pylab.ylabel(r'$\phi *4\pi D^2$')
     pylab.xlabel(r'$D$')
-    pylab.plot(Dtab[:int(ymax/vdw_revPBE.deltaD)],num.zeros(len(vdw_revPBE.phimat[0,:int(ymax/vdw_revPBE.deltaD)]),num.Float))
+    pylab.plot(Dtab[:int(ymax/vdw_revPBE.deltaD)],npy.zeros(len(vdw_revPBE.phimat[0,:int(ymax/vdw_revPBE.deltaD)])))
     pylab.show()
 
 
@@ -90,10 +90,10 @@ def interpolation(ymax=8):
 # 
 ##########
 ref_label = ['min', 'max', 'average']
-reference = num.array([0.024754860873480139,7.512329131951498,0.87798411512677765])
+reference = npy.array([0.024754860873480139,7.512329131951498,0.87798411512677765])
 
 q0=vdw_RPBE.q0
-q0test = num.array([min(min(min(q0))),max(max(max(q0))),num.sum(num.sum(num.sum(q0)))/(q0.shape[0]*q0.shape[1]*q0.shape[2])])-reference
+q0test = npy.array([min(min(min(q0))),max(max(max(q0))),npy.sum(npy.sum(npy.sum(q0)))/(q0.shape[0]*q0.shape[1]*q0.shape[2])])-reference
 
 for n in range(len(q0test)):
     if q0test[n] < tolerance:
@@ -171,12 +171,12 @@ for n in [1,2,4,8]:
 ##################################################
 
 n = 48
-d = num.ones((2 * n, n, n))
+d = npy.ones((2 * n, n, n))
 a = 16.0
 c = a / 2
 h = a / n
         
-uc = num.array([(2 * a, 0, 0),
+uc = npy.array([(2 * a, 0, 0),
                 (0,     a, 0),
                 (0,     0, a)])
 
@@ -201,7 +201,7 @@ E_RPBE = vdw_RPBE.GetEnergy(n=1)
 # 
 ##########
 ref_label = ['E_revPBE', 'E_RPBE']
-reference = num.array([-0.69792719721511098,-0.6979223118689889])
+reference = npy.array([-0.69792719721511098,-0.6979223118689889])
 
 
 test=[E_revPBE,E_RPBE]
@@ -268,7 +268,7 @@ pylab.show()
 
 
 ## n = 48
-## d = num.ones((2 * n, n, n), num.Float)
+## d = npy.ones((2 * n, n, n), npy.Float)
 ## a = 16.0
 ## c = a / 2
 ## h = a / n
@@ -278,8 +278,8 @@ pylab.show()
 ##             r = sqrt((x * h - c)**2 + (y * h - c)**2 + (z * h - c)**2)
 ##             d[x, y, z] = exp(-2 * r) / pi
 
-## print num.sum(d.flat) * h**3
-## uc = num.array([(2 * a, 0, 0),
+## print npy.sum(d.flat) * h**3
+## uc = npy.array([(2 * a, 0, 0),
 ##                 (0,     a, 0),
 ##                 (0,     0, a)])
 
@@ -318,7 +318,14 @@ pylab.show()
 ##             r = sqrt((x * h - c)**2 + (y * h - c)**2 + (z * h - c)**2)
 ##             d[x, y, z] = exp(-2 * r) / pi
                                     
+<<<<<<< .working
 ## e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc=(True,True,True)).GetEnergy(n=4)
 ## d += d[::-1].copy()
 ## e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc=(True,True,True)).GetEnergy(n=4)
 ## print  'revPBE mic',e1, e2, 2 * e1 - e2
+=======
+e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
+d += d[::-1].copy()
+e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
+print  'revPBE mic',e1, e2, 2 * e1 - e2
+>>>>>>> .merge-right.r1518

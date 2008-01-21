@@ -1,8 +1,8 @@
 """IO routines for gOpenMol binary plt format"""
 
 from struct import calcsize,pack,unpack
-import Numeric as num
-from ASE.Units import Convert
+import numpy as npy
+from ase.units import Bohr
 from gpaw.utilities import check_unit_cell
 
 import gpaw.mpi as mpi
@@ -34,7 +34,7 @@ def read_plt(filename):
     dz = (ze-z0)/(nz-1)
     dy = (ye-y0)/(ny-1)
     dx = (xe-x0)/(nx-1)
-    cell = num.zeros((3,3),num.Float)
+    cell = npy.zeros((3,3))
     cell[0,0] = (nx+1)*dx 
     cell[1,1] = (ny+1)*dy 
     cell[2,2] = (nz+1)*dz 
@@ -42,11 +42,11 @@ def read_plt(filename):
     fmt='f'
     if byteswap: fmt='>f'
     size = nx*ny*nz * calcsize(fmt)
-    arr = num.fromstring(f.read(size),num.Float32)
-    if byteswap: arr = arr.byteswapped()
+    arr = npy.fromstring(f.read(size),float32)
+    if byteswap: arr = arr.byteswap()
     f.close()
 
-    return cell, num.transpose(num.resize(arr,(nz,ny,nx))), (x0-dx,y0-dy,z0-dz)
+    return cell, npy.transpose(npy.resize(arr,(nz,ny,nx))), (x0-dx,y0-dy,z0-dz)
 
 def write_collected_plt(gd,
                         grid,
@@ -72,13 +72,13 @@ def write_plt(cell,
 
     The cell is assumed to be in Angstroms and the grid in atomc units (Bohr)
     """
-    a0_A = Convert(1, 'Bohr', 'Ang') 
+    a0_A = Bohr
     if hasattr(cell, '_new_array'): # this is a GridDescriptor
         xe, ye, ze = cell.h_c * cell.N_c * a0_A # get Angstroms
     elif len(cell.shape) == 2:
         # Check that the cell is orthorhombic
         check_unit_cell(cell)
-        xe, ye, ze = num.diagonal(cell)
+        xe, ye, ze = npy.diagonal(cell)
     else:
         xe, ye, ze = cell * a0_A # get Angstroms
 
@@ -92,7 +92,7 @@ def write_plt(cell,
     f.write(pack('ii', 3, typ))
     f.write(pack('iii', nz, ny, nx))
 
-    x0, y0, z0 = num.array(origin) + num.array([dx,dy,dz])
+    x0, y0, z0 = npy.array(origin) + npy.array([dx,dy,dz])
     xe = x0 +(nx-1)*dx
     ye = y0 +(ny-1)*dy
     ze = z0 +(nz-1)*dz
@@ -101,13 +101,13 @@ def write_plt(cell,
     f.write(pack('ff', x0, xe ))
 
     # we need a float array
-    # Future: numpy has no 'typecode'
-    if hasattr(grid,'typecode') and grid.typecode() == 'f':
-        fgrid = num.transpose(grid)
+    # Future: numpy has no 'dtype'
+    if hasattr(grid,'dtype') and grid.dtype.char == 'f':
+        fgrid = npy.transpose(grid)
     else:
-        fgrid = num.array(num.transpose(grid).tolist(),'f')
-        #    num.asarray does not work here !
-        #    fgrid = num.asarray(num.transpose(grid), num.Float32)
+        fgrid = npy.array(npy.transpose(grid).tolist(),'f')
+        #    npy.asarray does not work here !
+        #    fgrid = npy.asarray(npy.transpose(grid), float32)
     f.write(fgrid.tostring())
 
     f.close()

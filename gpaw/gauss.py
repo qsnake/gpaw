@@ -3,16 +3,16 @@
 
 from math import sqrt, pi, exp
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.utilities import erf
 
 
 def I(R, a, b, alpha, beta):
-    result = num.zeros(4, num.Float)
-    R = num.array(R)
+    result = npy.zeros(4)
+    R = npy.array(R)
     result[0] = I1(R, a, b, alpha, beta)
-    a = num.array(a)
+    a = npy.array(a)
     for i in range(3):
         a[i] += 1
         result[1 + i] = 2 * alpha * I1(R, tuple(a), b, alpha, beta)
@@ -29,8 +29,8 @@ def I1(R, ap1, b, alpha, beta, m=0):
             return I1(-R, b, ap1, beta, alpha, m)
         else:
             f = 2 * sqrt(pi**5 / (alpha + beta)) / (alpha * beta)
-            if num.sometrue(R):
-                T = alpha * beta / (alpha + beta) * num.dot(R, R)
+            if npy.sometrue(R):
+                T = alpha * beta / (alpha + beta) * npy.dot(R, R)
                 f1 = f * erf(T**0.5) * (pi / T)**0.5
                 if m == 0:
                     return 0.5 * f1
@@ -75,8 +75,8 @@ def I1(R, ap1, b, alpha, beta, m=0):
 
 
 def test_derivatives(R, a, b, alpha, beta, i):
-    R = num.array(R)
-    a = num.array(a)
+    R = npy.array(R)
+    a = npy.array(a)
     a[i] += 1
     dIdRi = 2 * alpha * I1(R, tuple(a), b, alpha, beta)
     a[i] -= 2

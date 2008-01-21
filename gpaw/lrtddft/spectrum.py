@@ -1,5 +1,5 @@
 import sys
-import Numeric as num
+import numpy as npy
 from math import exp, pi, sqrt
 
 from ASE.Units import Convert
@@ -83,10 +83,10 @@ def spectrum(exlist=None,
         emax=emax+.5*de
         e=emin
         while e<emax:
-            val=num.zeros((4),num.Float)
+            val=npy.zeros((4))
             for ex in exlist:
                 wght=func.get(ex.get_energy()*Ha-e)
-                osz=num.array(ex.GetOscillatorStrength())
+                osz=npy.array(ex.GetOscillatorStrength())
                 val += wght*osz
             print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
                   (e,val[0],val[1],val[2],val[3])

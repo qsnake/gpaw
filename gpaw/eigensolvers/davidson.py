@@ -2,9 +2,7 @@
 
 from math import pi, sqrt, sin, cos, atan2
 
-import Numeric as num
-from multiarray import innerproduct as inner # avoid the dotblas version!
-import LinearAlgebra as linalg
+import numpy as npy
 
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
@@ -34,12 +32,12 @@ class Davidson(Eigensolver):
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
         # Allocate arrays
-        self.S_nn = num.zeros((self.nbands, self.nbands), self.typecode)
-        self.H_2n2n = num.empty((2 * self.nbands, 2 * self.nbands),
-                                self.typecode)
-        self.S_2n2n = num.empty((2 * self.nbands, 2 * self.nbands),
-                                self.typecode)        
-        self.eps_2n = num.empty(2 * self.nbands, num.Float)        
+        self.S_nn = npy.zeros((self.nbands, self.nbands), self.dtype)
+        self.H_2n2n = npy.empty((2 * self.nbands, 2 * self.nbands),
+                                self.dtype)
+        self.S_2n2n = npy.empty((2 * self.nbands, 2 * self.nbands),
+                                self.dtype)        
+        self.eps_2n = npy.empty(2 * self.nbands)        
 
     def iterate_one_k_point(self, hamiltonian, kpt, niter=2):
         """Do Davidson iterations for the kpoint"""
@@ -70,7 +68,7 @@ class Davidson(Eigensolver):
                 weight = kpt.f_n[n]
                 if self.nbands_converge != 'occupied':
                     weight = kpt.weight * float(n < self.nbands_converge)
-                error += weight * real(num.vdot(R_nG[n], R_nG[n]))
+                error += weight * real(npy.vdot(R_nG[n], R_nG[n]))
 
                 H_2n2n[n,n] = kpt.eps_n[n]
                 S_2n2n[n,n] = 1.0
@@ -79,7 +77,7 @@ class Davidson(Eigensolver):
             # Calculate projections
             for nucleus in hamiltonian.pt_nuclei:
                 ni = nucleus.get_number_of_partial_waves()
-                nucleus.P2_ni = num.zeros((nbands, ni), self.typecode)
+                nucleus.P2_ni = npy.zeros((nbands, ni), self.dtype)
                 if nucleus.in_this_domain:
                     nucleus.pt_i.integrate(psit2_nG, nucleus.P2_ni, kpt.k)
                 else:
@@ -95,8 +93,8 @@ class Davidson(Eigensolver):
             for nucleus in hamiltonian.my_nuclei:
                 P_ni = nucleus.P_uni[kpt.u]
                 P2_ni = nucleus.P2_ni
-                self.H_nn += num.dot(P2_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
-                                                    cc(num.transpose(P_ni))))
+                self.H_nn += npy.dot(P2_ni, npy.dot(unpack(nucleus.H_sp[kpt.s]),
+                                                    cc(npy.transpose(P_ni))))
 
             self.comm.sum(self.H_nn, kpt.root)
             H_2n2n[nbands:, :nbands] = self.H_nn
@@ -105,8 +103,8 @@ class Davidson(Eigensolver):
             r2k(0.5 * self.gd.dv, psit2_nG, self.Htpsit_nG, 0.0, self.H_nn)
             for nucleus in hamiltonian.my_nuclei:
                 P2_ni = nucleus.P2_ni
-                self.H_nn += num.dot(P2_ni, num.dot(unpack(nucleus.H_sp[kpt.s]),
-                                                    cc(num.transpose(P2_ni))))
+                self.H_nn += npy.dot(P2_ni, npy.dot(unpack(nucleus.H_sp[kpt.s]),
+                                                    cc(npy.transpose(P2_ni))))
 
             self.comm.sum(self.H_nn, kpt.root)
             H_2n2n[nbands:, nbands:] = self.H_nn
@@ -118,8 +116,8 @@ class Davidson(Eigensolver):
             for nucleus in hamiltonian.my_nuclei:
                 P_ni = nucleus.P_uni[kpt.u]
                 P2_ni = nucleus.P2_ni
-                self.S_nn += num.dot(P2_ni,
-                                     cc(inner(nucleus.setup.O_ii, P_ni)))
+                self.S_nn += npy.dot(P2_ni,
+                                     cc(npy.inner(nucleus.setup.O_ii, P_ni)))
 
             self.comm.sum(self.S_nn, kpt.root)
             S_2n2n[nbands:, :nbands] = self.S_nn
@@ -128,8 +126,8 @@ class Davidson(Eigensolver):
             rk(self.gd.dv, psit2_nG, 0.0, self.S_nn)
             for nucleus in hamiltonian.my_nuclei:
                 P2_ni = nucleus.P2_ni
-                self.S_nn += num.dot(P2_ni,
-                                     cc(inner(nucleus.setup.O_ii, P2_ni)))
+                self.S_nn += npy.dot(P2_ni,
+                                     cc(npy.inner(nucleus.setup.O_ii, P2_ni)))
 
             self.comm.sum(self.S_nn, kpt.root)
             S_2n2n[nbands:, nbands:] = self.S_nn

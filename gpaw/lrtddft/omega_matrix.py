@@ -1,6 +1,6 @@
 import sys
 from math import sqrt
-import Numeric as num
+import numpy as npy
 import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
@@ -143,8 +143,7 @@ class OmegaMatrix:
             # spin unpolarised ground state calc.
             if kss.npspins==2:
                 # construct spin polarised densities
-                
-                nt_sg = num.array([.5*paw.density.nt_sg[0],
+                nt_sg = npy.array([.5*paw.density.nt_sg[0],
                                    .5*paw.density.nt_sg[0]])
             else:
                 nt_sg = paw.density.nt_sg
@@ -152,10 +151,10 @@ class OmegaMatrix:
         for nucleus in self.paw.my_nuclei:
             if len(nucleus.D_sp) != kss.npspins:
                 if len(nucleus.D_sp) == 1:
-                    D_sp = num.array([.5*nucleus.D_sp[0],
+                    D_sp = npy.array([.5*nucleus.D_sp[0],
                                       .5*nucleus.D_sp[0] ])
                 else:
-                    D_sp = num.array([nucleus.D_sp[0] + nucleus.D_sp[1]])
+                    D_sp = npy.array([nucleus.D_sp[0] + nucleus.D_sp[1]])
                 nucleus.D_sp = D_sp
                 
         # restrict the density if needed
@@ -205,8 +204,8 @@ class OmegaMatrix:
                 # nucleus.I_sp atom based correction matrices (pack2)
                 #              stored on each nucleus
                 timer2.start('init v grids')
-                vp_s=num.zeros(nt_s.shape,nt_s.typecode())
-                vm_s=num.zeros(nt_s.shape,nt_s.typecode())
+                vp_s=npy.zeros(nt_s.shape,nt_s.dtype.char)
+                vm_s=npy.zeros(nt_s.shape,nt_s.dtype.char)
                 if kss.npspins==2: # spin polarised
                     nv_s=nt_s.copy()
                     nv_s[kss[ij].pspin] += ns*kss[ij].GetPairDensity(fg)
@@ -230,7 +229,7 @@ class OmegaMatrix:
                     # create the modified density matrix
                     Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
                     Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
-                    P_ii = num.outerproduct(Pi_i,Pj_i)
+                    P_ii = npy.outer(Pi_i,Pj_i)
                     # we need the symmetric form, hence we can pack
                     P_p = pack(P_ii,tolerance=1e30)
                     D_sp = nucleus.D_sp.copy()
@@ -315,14 +314,14 @@ class OmegaMatrix:
                     Exc = 0.
                     for nucleus in self.paw.my_nuclei:
                         # create the modified density matrix
-                        Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
-                        Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
-                        P_ii = num.outerproduct(Pk_i,Pq_i)
+                        Pk_i = nucleus.P_uni[kss[kq].spin, kss[kq].i]
+                        Pq_i = nucleus.P_uni[kss[kq].spin, kss[kq].j]
+                        P_ii = npy.outer(Pk_i, Pq_i)
                         # we need the symmetric form, hence we can pack
                         # use pack as I_sp used pack2
-                        P_p = pack(P_ii,tolerance=1e30)
-                        Exc += num.dot(nucleus.I_sp[kss[kq].pspin],P_p)
-                    Om[ij,kq] += weight * self.gd.comm.sum(Exc)
+                        P_p = pack(P_ii, tolerance=1e30)
+                        Exc += npy.dot(nucleus.I_sp[kss[kq].pspin], P_p)
+                    Om[ij, kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
 
                 elif self.derivativeLevel == 2:
@@ -361,7 +360,7 @@ class OmegaMatrix:
         nij = len(kss)
         print >> self.out,'RPA',nij,'transitions'
         
-        Om = num.zeros((nij,nij),num.Float)
+        Om = npy.zeros((nij,nij))
         
         for ij in range(nij):
             print >> self.out,'RPA kss['+'%d'%ij+']=', kss[ij]
@@ -378,7 +377,7 @@ class OmegaMatrix:
             
             # integrate with 1/|r_1-r_2|
             timer2.start('poisson')
-            phit_p = num.zeros(rhot_p.shape, rhot_p.typecode())
+            phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype.char)
             self.poisson.solve(phit_p, rhot_p, charge=None)
             timer2.stop()
 
@@ -417,18 +416,18 @@ class OmegaMatrix:
                     ni = nucleus.get_number_of_partial_waves()
                     Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
                     Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
-                    Dij_ii = num.outerproduct(Pi_i, Pj_i)
+                    Dij_ii = npy.outer(Pi_i, Pj_i)
                     Dij_p = pack(Dij_ii, tolerance=1e3)
                     Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
                     Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
-                    Dkq_ii = num.outerproduct(Pk_i, Pq_i)
+                    Dkq_ii = npy.outer(Pk_i, Pq_i)
                     Dkq_p = pack(Dkq_ii, tolerance=1e3)
                     C_pp = nucleus.setup.M_pp
                     #   ----
                     # 2 >      P   P  C    P  P
                     #   ----    ip  jr prst ks qt
                     #   prst
-                    Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
+                    Ia += 2.0*npy.dot(Dkq_p,npy.dot(C_pp,Dij_p))
                 timer2.stop()
                 
                 Om[ij,kq] += pre * self.gd.comm.sum(Ia)
@@ -495,13 +494,13 @@ class OmegaMatrix:
             nij = len(kss)
             print >> self.out,'# diagonalize: %d transitions now' % nij
 
-            evec = num.zeros((nij,nij),num.Float)
+            evec = npy.zeros((nij,nij))
             for ij in range(nij):
                 for kq in range(nij):
                     evec[ij,kq] = self.full[map[ij],map[kq]]
 
         self.eigenvectors = evec        
-        self.eigenvalues = num.zeros((len(kss)),num.Float)
+        self.eigenvalues = npy.zeros((len(kss)))
         self.kss = kss
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
@@ -526,7 +525,7 @@ class OmegaMatrix:
 
             f.readline()
             nij = int(f.readline())
-            full = num.zeros((nij,nij),num.Float)
+            full = npy.zeros((nij,nij))
             for ij in range(nij):
                 l = f.readline().split()
                 for kq in range(ij,nij):

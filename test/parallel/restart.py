@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
-import Numeric as num
+import numpy as npy
 from gpaw.utilities import equal
 from gpaw.mpi import rank, world
 import time
@@ -71,7 +71,7 @@ if 1:
     O2.SetCalculator(calc)
     e0 = O2.GetPotentialEnergy()
     f  = O2.GetCartesianForces()
-    #equal(2.1062, sum(abs(f.flat)), 1e-2)
+    #equal(2.1062, sum(abs(f.ravel())), 1e-2)
     calc.write('O2.gpw')
     print e0, f
     O2[1].SetCartesianPosition((1.21+d,d,d))
@@ -92,10 +92,10 @@ if 1:
 
     print e1,e2
     print niter1,niter2
-    print sum(abs(f1.flat-f2.flat))
+    print sum(abs(f1.ravel()-f2.ravel()))
     print f1,f2, f1-f2
     equal(e1,e2,3e-5)
     equal(niter1,niter2,0)
-    equal(sum(abs(f1.flat-f2.flat)),0.0,0.002)
+    equal(sum(abs(f1.ravel()-f2.ravel())),0.0,0.002)
 
 

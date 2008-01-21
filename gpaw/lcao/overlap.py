@@ -1,6 +1,8 @@
 from math import sqrt, pi
-import Numeric as num
-from FFT import inverse_fft
+
+import numpy as npy
+from numpy.fft import ifft
+
 from gpaw.spline import Spline
 from gpaw.spherical_harmonics import Y
 from gpaw.gaunt import gaunt
@@ -12,7 +14,7 @@ C = []
 a = 0.0
 n = 5
 for n in range(n):
-    c = num.zeros(n+1, num.Complex)
+    c = npy.zeros(n+1, complex)
     for s in range(n + 1):
         a = (1.0j)**s * fac[n + s] / (fac[s] * 2**s * fac[n - s])
         a *= (-1.0j)**(n + 1)
@@ -35,10 +37,10 @@ def fbt(l, f, r, k):
 
     dr = r[1]
     m = len(k)
-    g = num.zeros(m, num.Float)
+    g = npy.zeros(m)
     for n in range(l + 1):
         g += (dr * 2 * m * k**(l - n) *
-              inverse_fft(C[l][n] * f * r**(1 + l - n), 2 * m)[:m].real)
+              ifft(C[l][n] * f * r**(1 + l - n), 2 * m)[:m].real)
     return g
 
 class TwoCenterIntegrals:
@@ -63,12 +65,12 @@ class TwoCenterIntegrals:
 
         self.ng = 2**9
         self.dr = self.rcmax / self.ng
-        self.r_g = num.arange(self.ng) * self.dr
+        self.r_g = npy.arange(self.ng) * self.dr
         self.Q = 4 * 2**9
         self.dk = 2 * pi / self.Q / self.dr
-        self.k = num.arange(self.Q // 2) * self.dk
+        self.k = npy.arange(self.Q // 2) * self.dk
 
-        phit_g = num.zeros(self.ng, num.Float) 
+        phit_g = npy.zeros(self.ng) 
         phit_jq = {}
         for setup in setups:
             for j, phit in enumerate(setup.phit_j):
@@ -78,7 +80,7 @@ class TwoCenterIntegrals:
                 phit_q = fbt(l, phit_g, self.r_g, self.k)
                 phit_jq[id] = (l, phit_q)
 
-        pt_g = num.zeros(self.ng, num.Float) 
+        pt_g = npy.zeros(self.ng) 
         pt_jq = {}
         for setup in setups:
             for j, pt in enumerate(setup.pt_j):
@@ -107,10 +109,10 @@ class TwoCenterIntegrals:
         self.setups = setups # XXX
 
     def calculate_spline(self, phit1, phit2, l1, l2, kinetic_energy=False):
-        S_g = num.zeros(2 * self.ng, num.Float)
+        S_g = npy.zeros(2 * self.ng)
         self.lmax = l1 + l2
         splines = []
-        R = num.arange(self.Q // 2) * self.dr
+        R = npy.arange(self.Q // 2) * self.dr
         R1 = R.copy()
         R1[0] = 1.0
         k1 = self.k.copy()
@@ -121,7 +123,7 @@ class TwoCenterIntegrals:
             a_g = (8 * fbt(l, a_q * k1**(-2 - l1 - l2 - l), self.k, R) /
                    R1**(2 * l + 1))           
             if l==0:
-                a_g[0] = 8 * num.sum(a_q * k1**(-l1 - l2)) * self.dk
+                a_g[0] = 8 * npy.sum(a_q * k1**(-l1 - l2)) * self.dk
             else:    
                 a_g[0] = a_g[1]  # XXXX
             a_g *= (-1)**((-l1 + l2 - l) / 2)
@@ -136,7 +138,7 @@ class TwoCenterIntegrals:
         l = (l1 + l2) % 2
         S = 0.0
         T = 0.0
-        r = sqrt(num.dot(R, R))
+        r = sqrt(npy.dot(R, R))
         L1 = l1**2 + m1
         L2 = l2**2 + m2
         ssplines = self.S[(id1, id2)]
@@ -156,7 +158,7 @@ class TwoCenterIntegrals:
 
         l = (l1 + l2) % 2
         P = 0.0
-        r = sqrt(num.dot(R, R))
+        r = sqrt(npy.dot(R, R))
         L1 = l1**2 + m1
         L2 = l2**2 + m2
         for p in self.P[(id1, id2)]:
@@ -184,9 +186,9 @@ class TwoCenterIntegrals:
         gd = GridDescriptor(domain, (2 * n, 2 * n, 2 * n))
         f = create_localized_functions([phit1], gd, (0.25, 0.25, 0.25))
         a = gd.zeros()
-        c1 = num.zeros(2 * l1 + 1, num.Float)
+        c1 = npy.zeros(2 * l1 + 1)
         c1[m1] = 1
-        c2 = num.zeros(2 * l2 + 1, num.Float)
+        c2 = npy.zeros(2 * l2 + 1)
         c2[m2] = 1
         f.add(a, c1)
         kina = gd.zeros() 
@@ -204,7 +206,7 @@ class TwoCenterIntegrals:
             d = [-(x - 0.25) * 4 * rc, -(y - 0.25) * 4 * rc,
                  -(z - 0.25) * 4 * rc]
             S, T = self.st_overlap(id1, id2, l1, l2, m1, m2, d)
-            r = sqrt(num.dot(d, d))
+            r = sqrt(npy.dot(d, d))
             if out:
                 print 'S:',r, s, S
                 print 'T:',r, t, T
@@ -227,9 +229,9 @@ class TwoCenterIntegrals:
         gd = GridDescriptor(domain, (2 * n, 2 * n, 2 * n))
         f = create_localized_functions([phit1], gd, (0.25, 0.25, 0.25))
         a = gd.zeros()
-        c1 = num.zeros(2 * l1 + 1, num.Float)
+        c1 = npy.zeros(2 * l1 + 1)
         c1[m1] = 1
-        c2 = num.zeros(2 * l2 + 1, num.Float)
+        c2 = npy.zeros(2 * l2 + 1)
         c2[m2] = 1
         f.add(a, c1)
         kina = gd.zeros() 
@@ -246,7 +248,7 @@ class TwoCenterIntegrals:
         s = gd.integrate(a * b)
         t = gd.integrate(kina * b)
         S, T = self.st_overlap(id1, id2, l1, l2, m1, m2, d)
-        r = sqrt(num.dot(d, d))
+        r = sqrt(npy.dot(d, d))
         if out:
             print 'S:',r, s, S
             print 'T:',r, t, T

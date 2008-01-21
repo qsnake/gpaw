@@ -1,5 +1,7 @@
 from math import pi, sqrt
-import Numeric as num
+
+import numpy as npy
+
 import _gpaw
 import gpaw.mpi as mpi
 from gpaw import debug
@@ -9,9 +11,7 @@ from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
 from gpaw.operators import Gradient
 
-from gpaw.io.plt import write_plt
 
-# ..............................................................
 # KS excitation classes
 
 class KSSingles(ExcitationList):
@@ -54,8 +54,8 @@ class KSSingles(ExcitationList):
 
         paw = self.calculator
         self.kpt_u = paw.kpt_u
-        if not self.kpt_u[0].psit_nG:
-            raise RuntimeError('No wave functions in calculator')
+        if self.kpt_u[0].psit_nG is None:
+            raise RuntimeError('No wave functions in calculator!')
 
         # here, we need to take care of the spins also for
         # closed shell systems (Sz=0)
@@ -93,7 +93,7 @@ class KSSingles(ExcitationList):
 
         trkm = self.GetTRK()
         print >> self.out, 'KSS TRK sum %g (%g,%g,%g)' % \
-              (num.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
+              (npy.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
         pol = self.GetPolarizabilities(lmax=3)
         print >> self.out, \
               'KSS polarisabilities(l=0-3) %g, %g, %g, %g' % \
@@ -203,7 +203,7 @@ class KSSingle(Excitation,PairDensity):
         me = -gd.calculate_dipole_moment(self.GetPairDensity())
 
         # augmentation contributions
-        ma = num.zeros(me.shape,num.Float)
+        ma = npy.zeros(me.shape)
         for nucleus in paw.my_nuclei:
             Ra = nucleus.spos_c*paw.domain.cell_c
             Pi_i = nucleus.P_uni[self.u,self.i]
@@ -211,7 +211,7 @@ class KSSingle(Excitation,PairDensity):
             Delta_pL = nucleus.setup.Delta_pL
             ni=len(Pi_i)
             ma0 = 0
-            ma1 = num.zeros(me.shape,num.Float)
+            ma1 = npy.zeros(me.shape)
             for i in range(ni):
                 for j in range(ni):
                     pij = Pi_i[i]*Pj_i[j]
@@ -222,7 +222,7 @@ class KSSingle(Excitation,PairDensity):
                     if nucleus.setup.lmax>=1:
                         # see spherical_harmonics.py for
                         # L=1:y L=2:z; L=3:x
-                        ma1 += num.array([ Delta_pL[ij,3], Delta_pL[ij,1], \
+                        ma1 += npy.array([ Delta_pL[ij,3], Delta_pL[ij,1], \
                                            Delta_pL[ij,2] ])*pij
             ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
 
@@ -267,11 +267,11 @@ class KSSingle(Excitation,PairDensity):
         self.energy = float(l.pop(0))
         self.fij = float(l.pop(0))
         if len(l) == 3: # old writing style
-            self.me = num.array([float(l.pop(0)) for i in range(3)])
+            self.me = npy.array([float(l.pop(0)) for i in range(3)])
         else:
-            self.mur = num.array([float(l.pop(0)) for i in range(3)])
+            self.mur = npy.array([float(l.pop(0)) for i in range(3)])
             self.me = - self.mur * sqrt(self.energy*self.fij)
-            self.muv = num.array([float(l.pop(0)) for i in range(3)])
+            self.muv = npy.array([float(l.pop(0)) for i in range(3)])
         return None
 
     def outstring(self):

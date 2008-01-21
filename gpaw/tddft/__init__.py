@@ -5,7 +5,7 @@ functional theory calculations."""
 
 import sys
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.preconditioner import Preconditioner
 
@@ -27,8 +27,8 @@ class DummyMixer:
 
 # T^-1
 class KineticEnergyPreconditioner:
-    def __init__(self, gd, kin, typecode):
-        self.preconditioner = Preconditioner(gd, kin, typecode)
+    def __init__(self, gd, kin, dtype):
+        self.preconditioner = Preconditioner(gd, kin, dtype)
 
     def solve(self, kpt, psi, psin):
         psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
@@ -72,7 +72,7 @@ class TDDFT:
         paw.initialize_wave_functions()
 
         # Convert PAW-object to complex
-        paw.totype(num.Complex);
+        paw.totype(complex);
 
         # No density mixing
         paw.density.mixer = DummyMixer()
@@ -108,7 +108,7 @@ class TDDFT:
         # DO NOT USE, BAD PRECONDITIONER!
         #self.preconditioner = KineticEnergyPreconditioner( paw.gd,
         #                                                   paw.hamiltonian.kin,
-        #                                                   num.Complex )
+        #                                                   complex )
         #self.preconditioner = InverseOverlapPreconditioner( paw.pt_nuclei )
         self.preconditioner = None
 

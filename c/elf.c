@@ -1,6 +1,6 @@
 #include <Python.h>
 #define NO_IMPORT_ARRAY
-#include <Numeric/arrayobject.h>
+#include <numpy/arrayobject.h>
 #include "extensions.h"
 
 /* pseudo electron localisation function (ELF) as defined in

@@ -1,23 +1,22 @@
 import os
 
-from ASE import Atom
+from ase import *
 from gpaw import Calculator
 from gpaw.utilities import equal
-from gpaw.cluster import Cluster
 from gpaw.analyse.expandyl import ExpandYl
 
 R=0.7 # approx. experimental bond length
 a = 2
 c = 3
-H2 = Cluster([Atom('H', (a/2,a/2,(c-R)/2)),
-              Atom('H', (a/2,a/2,(c+R)/2))],
-             cell=(a,a,c))
-calc = Calculator(xc='LDA',nbands=2,spinpol=False,
+H2 = Atoms([Atom('H', (a/2, a/2, (c-R)/2)),
+            Atom('H', (a/2, a/2, (c+R)/2))],
+           cell=(a,a,c), pbc=True)
+calc = Calculator(nbands=2,
                   convergence={'eigenstates':1.e-6})
-H2.SetCalculator(calc)
-H2.GetPotentialEnergy()
+H2.set_calculator(calc)
+H2.get_potential_energy()
 
-yl = ExpandYl(H2.center_of_mass(), calc.gd, Rmax=1.5)
+yl = ExpandYl(H2.positions.mean(0), calc.gd, Rmax=1.5)
 
 def max_index(l):
     mi = 0

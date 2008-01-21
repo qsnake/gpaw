@@ -1,33 +1,23 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-import Numeric as num
+import numpy as npy
 
 
 def cc(x):
     """Complex conjugate."""
-    tp = type(x)
-    if tp is float:
+    if isinstance(x, float):
         return x
-    if tp is complex:
+    if isinstance(x, complex):
         return x.conjugate()
-    if x.typecode() == num.Float:
-        return x
-    else:
-        return num.conjugate(x)
+    return x.conj()
 
     
 def real(x):
     """Real part."""
-    tp = type(x)
-    if tp is float:
+    if isinstance(x, float):
         return x
-    if tp is complex:
-        return x.real
-    if x.typecode() == num.Float:
-        return x
-    else:
-        return x.real
+    return x.real
 
 
 if __name__ == '__main__':

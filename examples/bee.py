@@ -1,4 +1,4 @@
-import Numeric as na
+import numpy as npy
 from ASE.Utilities.BEE import GetEnsembleEnergies
 from ASE import Atom, ListOfAtoms
 from gpaw import Calculator
@@ -42,8 +42,8 @@ for xc in ['PBE', 'RPBE']:
     eai = 2 * e1i - e2i
 
     n = len(eai)
-    ea0 = na.sum(eai) / n
-    sigma = (na.sum((eai - ea0)**2) / n)**0.5
+    ea0 = npy.sum(eai) / n
+    sigma = (npy.sum((eai - ea0)**2) / n)**0.5
     print 'Best fit:', ea0, '+-', sigma, 'eV'
 
 """

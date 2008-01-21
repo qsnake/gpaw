@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from ASE.Units import units, Convert
 from ASE import ListOfAtoms, Atom 
 
@@ -46,8 +46,8 @@ def WriteCubeFloat(atoms,grid,filename):
 
     natoms = len(atoms)
     unitcell = atoms.GetUnitCell()
-    n_c = num.array(num.shape(grid))
-    corner = num.zeros((3,),num.Float)
+    n_c = npy.array(npy.shape(grid))
+    corner = npy.zeros((3,))
     d = unitcell.copy()
     for c in range(3):
         d[c] /= (n_c[c]+1)*bohr
@@ -80,12 +80,12 @@ def WriteCubeFloat(atoms,grid,filename):
 
 def WriteCube(atoms,grid,filename,real=False):
     import string
-    if grid.typecode()=='D':
+    if grid.dtype.char=='D':
 
         if real:
            print 'Converting complex array into real'
-           s = num.argsort(abs(grid.flat))
-           maxval = grid.flat[s[-1]]
+           s = npy.argsort(abs(grid.ravel()))
+           maxval = grid.ravel()[s[-1]]
            phase = maxval/abs(maxval)
            grid1 = grid/phase
            WriteCubeFloat(atoms,grid1.real,filename)
@@ -94,7 +94,7 @@ def WriteCube(atoms,grid,filename,real=False):
             filename_phase = basename[0] + '_phase.cube'
             print 'Using absolute value of complex array then writing Cube file.'
             print 'Writing phase information to file: ',filename_phase
-            phase_grid = num.log(copy.copy(grid)+0.0000001).imag
+            phase_grid = npy.log(copy.copy(grid)+0.0000001).imag
             WriteCubeFloat(atoms,phase_grid,filename_phase)
             WriteCube(atoms,abs(grid),filename)
             

@@ -1,11 +1,12 @@
 from math import sqrt
 import sys
-import Numeric as num
+
+import numpy as npy
+from ase.units import Hartree
+
 import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
-
-from ASE.Units import Convert
 from gpaw import debug
 from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
@@ -83,7 +84,7 @@ class LrTDDFT(ExcitationList):
         else:
             self.read(filename)
 
-    def analyse(self,what=None,out=None,min=.1):
+    def analyse(self, what=None, out=None, min=0.1):
         """Print info about the transitions.
         
         Parameters:
@@ -93,14 +94,14 @@ class LrTDDFT(ExcitationList):
         """
         if what is None:
             what = range(len(self))
-        elif type(what)==type(1):
-            what=[what]
+        elif isinstance(what, int):
+            what = [what]
 
         if out is None:
-            out=sys.stdout
+            out = sys.stdout
             
         for i in what:
-            print >> out, str(i)+':',self[i].analyse(min=min)
+            print >> out, str(i) + ':', self[i].analyse(min=min)
             
     def update(self,
                calculator=None,
@@ -173,7 +174,7 @@ class LrTDDFT(ExcitationList):
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
         if mpi.rank == mpi.MASTER:
-            self.Ha = Convert(1., 'Hartree', 'eV')
+            self.Ha = Hartree
             
             if fh is None:
                 if filename.endswith('.gz'):
@@ -302,13 +303,13 @@ def d2Excdnsdnt(dup,ddn):
     res=[[0, 0], [0, 0]]
     for ispin in range(2):
         for jspin in range(2):
-            res[ispin][jspin]=num.zeros(dup.shape,num.Float)
+            res[ispin][jspin]=npy.zeros(dup.shape)
             _gpaw.d2Excdnsdnt(dup, ddn, ispin, jspin, res[ispin][jspin])
     return res
 
 def d2Excdn2(den):
     """Second derivative of Exc unpolarised"""
-    res=num.zeros(den.shape,num.Float)
+    res=npy.zeros(den.shape)
     _gpaw.d2Excdn2(den, res)
     return res
 
@@ -357,7 +358,7 @@ class LrTDDFTExcitation(Excitation):
         return str
         
     def __str__(self):
-        m2 = num.sum(self.me*self.me)
+        m2 = npy.sum(self.me*self.me)
         m = sqrt(m2)
         if m>0: me = self.me/m
         else:   me = self.me
@@ -373,7 +374,7 @@ class LrTDDFTExcitation(Excitation):
         def sqr(x): return x*x
         spin = ['u','d'] 
         min2 = sqr(min)
-        rest = num.sum(self.f**2)
+        rest = npy.sum(self.f**2)
         for f,k in zip(self.f,self.kss):
             f2 = sqr(f)
             if f2>min2:

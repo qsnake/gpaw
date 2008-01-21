@@ -1,6 +1,6 @@
 import os
 import pylab
-import Numeric as num
+import numpy as npy
 from math import sqrt
 from LinearAlgebra import solve_linear_equations as solve
 from gpaw.testing.atomization_data import atomization_vasp
@@ -27,16 +27,16 @@ def main(molecules, moleculedata, results, Ea):
             result['Ea'] = E0 - result['Em0']
         if len(molecule) == 2:
             d = result['d0'] + dd
-            M = num.zeros((4, 5), num.Float)
+            M = npy.zeros((4, 5))
             for n in range(4):
                 M[n] = d**-n
-            a = solve(num.innerproduct(M, M), num.dot(M, result['Em'] - E0))
+            a = solve(npy.innerproduct(M, M), npy.dot(M, result['Em'] - E0))
 
             dmin = 1 / ((-2 * a[2] +
                          sqrt(4 * a[2]**2 - 12 * a[1] * a[3])) / (6 * a[3]))
             #B = xmin**2 / 9 / vmin * (2 * a[2] + 6 * a[3] * xmin)
 
-            dfit = num.arange(d[0] * 0.95, d[4] * 1.05, d[2] * 0.005)
+            dfit = npy.arange(d[0] * 0.95, d[4] * 1.05, d[2] * 0.005)
 
             emin = a[0]
             efit = a[0]

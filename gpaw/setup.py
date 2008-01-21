@@ -5,8 +5,9 @@ import os
 from math import log, pi, sqrt
 import sys
 
-import Numeric as num
-from ASE.ChemicalElements.name import names
+import numpy as npy
+from numpy.linalg import inv
+from ase.data import atomic_names
 
 from gpaw.read_setup import PAWXMLParser
 from gpaw.read_basis import BasisSetXMLParser
@@ -17,7 +18,6 @@ from gpaw.utilities import unpack, erf, fac, hartree, pack2, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.gllb.xcnonlocalcorrection import XCNonLocalCorrection
-from LinearAlgebra import inverse as inv
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
     if type == 'ae':
@@ -95,16 +95,16 @@ class Setup:
         self.f_j = f_j
         self.eps_j = eps_j
 
-        g = num.arange(ng, typecode=num.Float)
+        g = npy.arange(ng, dtype=float)
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
 
         # compute inverse overlap coefficients B_ii
-        B_jj = num.zeros((len(l_j),len(l_j)), num.Float)
+        B_jj = npy.zeros((len(l_j),len(l_j)))
         for i1 in range(len(l_j)):
             for i2 in range(len(l_j)):
-                B_jj[i1][i2] = num.dot( r_g**2 * dr_g, pt_jg[i1] * pt_jg[i2] )
+                B_jj[i1][i2] = npy.dot( r_g**2 * dr_g, pt_jg[i1] * pt_jg[i2] )
 
         def delta(i,j):
             #assert type(i) == int
@@ -116,7 +116,7 @@ class Setup:
         for l1 in l_j:
             for m1 in range(2 * l1 + 1):
                     size +=1
-        self.B_ii = num.zeros((size,size), num.Float)
+        self.B_ii = npy.zeros((size,size))
 
         i1=0
         for n1, l1 in enumerate(l_j):
@@ -180,11 +180,11 @@ class Setup:
 
         # Construct splines for core kinetic energy density:
         if tauct_g is None:
-            tauct_g = num.zeros(ng, num.Float)
+            tauct_g = npy.zeros(ng)
         self.tauct = Spline(0, rcore, tauct_g, r_g, beta)
 
         # Step function:
-        stepf = sqrt(4 * pi) * num.ones(ng)
+        stepf = sqrt(4 * pi) * npy.ones(ng)
         stepf[gcutmax:] = 0.0
         self.stepf = Spline(0, rcutfilter, stepf, r_g, beta)
 
@@ -205,8 +205,8 @@ class Setup:
 
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()
-        phi_jg = num.array([phi_g[:gcut2] for phi_g in phi_jg])
-        phit_jg = num.array([phit_g[:gcut2] for phit_g in phit_jg])
+        phi_jg = npy.array([phi_g[:gcut2] for phi_g in phi_jg])
+        phit_jg = npy.array([phit_g[:gcut2] for phit_g in phit_jg])
         nc_g = nc_g[:gcut2].copy()
         nct_g = nct_g[:gcut2].copy()
         vbar_g = vbar_g[:gcut2].copy()
@@ -220,7 +220,7 @@ class Setup:
             self.phicorehole_g = self.phicorehole_g[:gcut2].copy()
 
         Lcut = (2 * lcut + 1)**2
-        T_Lqp = num.zeros((Lcut, nq, np), num.Float)
+        T_Lqp = npy.zeros((Lcut, nq, np))
         p = 0
         i1 = 0
         for j1, l1, L1 in jlL_i:
@@ -233,16 +233,16 @@ class Setup:
                 p += 1
             i1 += 1
 
-        g_lg = num.zeros((lmax + 1, gcut2), num.Float)
-        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * num.exp(-(r_g / rcgauss)**2)
+        g_lg = npy.zeros((lmax + 1, gcut2))
+        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * npy.exp(-(r_g / rcgauss)**2)
         for l in range(1, lmax + 1):
             g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
 
         for l in range(lmax + 1):
-            g_lg[l] /= num.dot(r_g**(l + 2) * dr_g, g_lg[l])
+            g_lg[l] /= npy.dot(r_g**(l + 2) * dr_g, g_lg[l])
 
-        n_qg = num.zeros((nq, gcut2), num.Float)
-        nt_qg = num.zeros((nq, gcut2), num.Float)
+        n_qg = npy.zeros((nq, gcut2))
+        nt_qg = npy.zeros((nq, gcut2))
         q = 0
         for j1 in range(nj):
             for j2 in range(j1, nj):
@@ -250,23 +250,23 @@ class Setup:
                 nt_qg[q] = phit_jg[j1] * phit_jg[j2]
                 q += 1
 
-        Delta_lq = num.zeros((lmax + 1, nq), num.Float)
+        Delta_lq = npy.zeros((lmax + 1, nq))
         for l in range(lmax + 1):
-            Delta_lq[l] = num.dot(n_qg - nt_qg, r_g**(2 + l) * dr_g)
+            Delta_lq[l] = npy.dot(n_qg - nt_qg, r_g**(2 + l) * dr_g)
 
         Lmax = (lmax + 1)**2
-        self.Delta_pL = num.zeros((np, Lmax), num.Float)
+        self.Delta_pL = npy.zeros((np, Lmax))
         for l in range(lmax + 1):
             L = l**2
             for m in range(2 * l + 1):
-                delta_p = num.dot(Delta_lq[l], T_Lqp[L + m])
+                delta_p = npy.dot(Delta_lq[l], T_Lqp[L + m])
                 self.Delta_pL[:, L + m] = delta_p
 
-        Delta = num.dot(nc_g - nct_g, r_g**2 * dr_g) - Z / sqrt(4 * pi)
+        Delta = npy.dot(nc_g - nct_g, r_g**2 * dr_g) - Z / sqrt(4 * pi)
         self.Delta0 = Delta
 
         def H(n_g, l):
-            yrrdr_g = num.zeros(gcut2, num.Float)
+            yrrdr_g = npy.zeros(gcut2)
             nrdr_g = n_g * r_g * dr_g
             hartree(l, nrdr_g, beta, ng, yrrdr_g)
             yrrdr_g *= r_g * dr_g
@@ -277,54 +277,54 @@ class Setup:
 
         wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
 
-        wn_lqg = [num.array([H(n_qg[q], l) for q in range(nq)])
+        wn_lqg = [npy.array([H(n_qg[q], l) for q in range(nq)])
                   for l in range(2 * lcut + 1)]
-        wnt_lqg = [num.array([H(nt_qg[q], l) for q in range(nq)])
+        wnt_lqg = [npy.array([H(nt_qg[q], l) for q in range(nq)])
                    for l in range(2 * lcut + 1)]
 
         rdr_g = r_g * dr_g
         dv_g = r_g * rdr_g
-        A = 0.5 * num.dot(nc_g, wnc_g)
-        A -= sqrt(4 * pi) * Z * num.dot(rdr_g, nc_g)
+        A = 0.5 * npy.dot(nc_g, wnc_g)
+        A -= sqrt(4 * pi) * Z * npy.dot(rdr_g, nc_g)
         mct_g = nct_g + Delta * g_lg[0]
         wmct_g = wnct_g + Delta * wg_lg[0]
-        A -= 0.5 * num.dot(mct_g, wmct_g)
+        A -= 0.5 * npy.dot(mct_g, wmct_g)
         self.M = A
-        AB = -num.dot(dv_g * nct_g, vbar_g)
+        AB = -npy.dot(dv_g * nct_g, vbar_g)
         self.MB = AB
 
-        A_q = 0.5 * (num.dot(wn_lqg[0], nc_g)
-                     + num.dot(n_qg, wnc_g))
-        A_q -= sqrt(4 * pi) * Z * num.dot(n_qg, rdr_g)
+        A_q = 0.5 * (npy.dot(wn_lqg[0], nc_g)
+                     + npy.dot(n_qg, wnc_g))
+        A_q -= sqrt(4 * pi) * Z * npy.dot(n_qg, rdr_g)
 
-        A_q -= 0.5 * (num.dot(wnt_lqg[0], mct_g)
-                     + num.dot(nt_qg, wmct_g))
-        A_q -= 0.5 * (num.dot(mct_g, wg_lg[0])
-                      + num.dot(g_lg[0], wmct_g)) * Delta_lq[0]
-        self.M_p = num.dot(A_q, T_Lqp[0])
+        A_q -= 0.5 * (npy.dot(wnt_lqg[0], mct_g)
+                     + npy.dot(nt_qg, wmct_g))
+        A_q -= 0.5 * (npy.dot(mct_g, wg_lg[0])
+                      + npy.dot(g_lg[0], wmct_g)) * Delta_lq[0]
+        self.M_p = npy.dot(A_q, T_Lqp[0])
 
-        AB_q = -num.dot(nt_qg, dv_g * vbar_g)
-        self.MB_p = num.dot(AB_q, T_Lqp[0])
+        AB_q = -npy.dot(nt_qg, dv_g * vbar_g)
+        self.MB_p = npy.dot(AB_q, T_Lqp[0])
 
         A_lqq = []
         for l in range(2 * lcut + 1):
-            A_qq = 0.5 * num.dot(n_qg, num.transpose(wn_lqg[l]))
-            A_qq -= 0.5 * num.dot(nt_qg, num.transpose(wnt_lqg[l]))
+            A_qq = 0.5 * npy.dot(n_qg, npy.transpose(wn_lqg[l]))
+            A_qq -= 0.5 * npy.dot(nt_qg, npy.transpose(wnt_lqg[l]))
             if l <= lmax:
-                A_qq -= 0.5 * num.outerproduct(Delta_lq[l],
-                                               num.dot(wnt_lqg[l], g_lg[l]))
-                A_qq -= 0.5 * num.outerproduct(num.dot(nt_qg, wg_lg[l]),
+                A_qq -= 0.5 * npy.outer(Delta_lq[l],
+                                               npy.dot(wnt_lqg[l], g_lg[l]))
+                A_qq -= 0.5 * npy.outer(npy.dot(nt_qg, wg_lg[l]),
                                                Delta_lq[l])
-                A_qq -= 0.5 * num.dot(g_lg[l], wg_lg[l]) * \
-                        num.outerproduct(Delta_lq[l], Delta_lq[l])
+                A_qq -= 0.5 * npy.dot(g_lg[l], wg_lg[l]) * \
+                        npy.outer(Delta_lq[l], Delta_lq[l])
             A_lqq.append(A_qq)
 
-        self.M_pp = num.zeros((np, np), num.Float)
+        self.M_pp = npy.zeros((np, np))
         L = 0
         for l in range(2 * lcut + 1):
             for m in range(2 * l + 1):
-                self.M_pp += num.dot(num.transpose(T_Lqp[L]),
-                                     num.dot(A_lqq[l], T_Lqp[L]))
+                self.M_pp += npy.dot(npy.transpose(T_Lqp[L]),
+                                     npy.dot(A_lqq[l], T_Lqp[L]))
                 L += 1
 
         # Make a radial grid descriptor:
@@ -378,7 +378,7 @@ class Setup:
 
         self.O_ii = sqrt(4.0 * pi) * unpack(self.Delta_pL[:, 0].copy())
 
-        self.Delta_Lii = num.zeros((ni, ni, Lmax), num.Float)
+        self.Delta_Lii = npy.zeros((ni, ni, Lmax))
         for L in range(Lmax):
             self.Delta_Lii[:,:,L] = unpack(self.Delta_pL[:, L].copy())
 
@@ -386,12 +386,12 @@ class Setup:
         for j1 in range(nj):
             for j2 in range(j1, nj):
                 K_q.append(e_kin_jj[j1, j2])
-        self.K_p = sqrt(4 * pi) * num.dot(K_q, T_Lqp[0])
+        self.K_p = sqrt(4 * pi) * npy.dot(K_q, T_Lqp[0])
 
         self.lmax = lmax
 
-        r = 0.02 * rcutsoft * num.arange(51, typecode=num.Float)
-##        r = 0.04 * rcutsoft * num.arange(26, typecode=num.Float)
+        r = 0.02 * rcutsoft * npy.arange(51, dtype=float)
+##        r = 0.04 * rcutsoft * npy.arange(26, dtype=float)
         alpha = rcgauss**-2
         self.alpha = alpha
         if self.softgauss:
@@ -399,16 +399,16 @@ class Setup:
             alpha2 = 22.0 / rcutsoft**2
             alpha2 = 15.0 / rcutsoft**2
 
-            vt0 = 4 * pi * (num.array([erf(x) for x in sqrt(alpha) * r]) -
-                            num.array([erf(x) for x in sqrt(alpha2) * r]))
+            vt0 = 4 * pi * (npy.array([erf(x) for x in sqrt(alpha) * r]) -
+                            npy.array([erf(x) for x in sqrt(alpha2) * r]))
             vt0[0] = 8 * sqrt(pi) * (sqrt(alpha) - sqrt(alpha2))
             vt0[1:] /= r[1:]
             vt_l = [vt0]
             if lmax >= 1:
-                arg = num.clip(alpha2 * r**2, 0.0, 700.0)
-                e2 = num.exp(-arg)
-                arg = num.clip(alpha * r**2, 0.0, 700.0)
-                e = num.exp(-arg)
+                arg = npy.clip(alpha2 * r**2, 0.0, 700.0)
+                e2 = npy.exp(-arg)
+                arg = npy.clip(alpha * r**2, 0.0, 700.0)
+                e = npy.exp(-arg)
                 vt1 = vt0 / 3 - 8 * sqrt(pi) / 3 * (sqrt(alpha) * e -
                                                     sqrt(alpha2) * e2)
                 vt1[0] = 16 * sqrt(pi) / 9 * (alpha**1.5 - alpha2**1.5)
@@ -439,7 +439,7 @@ class Setup:
 
         d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
                for l in range(lmax + 1)]
-        g = alpha2**1.5 * num.exp(-alpha2 * r**2)
+        g = alpha2**1.5 * npy.exp(-alpha2 * r**2)
         g[-1] = 0.0
         self.ghat_l = [Spline(l, rcutsoft, d_l[l] * alpha2**l * g)
                        for l in range(lmax + 1)]
@@ -449,7 +449,7 @@ class Setup:
 
 
         # compute inverse overlap coefficients C_ii
-        self.C_ii = -num.dot(self.O_ii, inv(num.identity(size) + num.dot(self.B_ii, self.O_ii)))
+        self.C_ii = -npy.dot(self.O_ii, inv(npy.identity(size) + npy.dot(self.B_ii, self.O_ii)))
 
     def create_basis_functions(self, phit_jg, beta, ng, rcut2, gcut2, r_g):
         # Cutoff for atomic orbitals used for initial guess:
@@ -500,7 +500,7 @@ class Setup:
             text(self.symbol + '-setup:')
         else:
             text('%s-setup (%.1f core hole):' % (self.symbol, self.fcorehole))
-        text('  name   :', names[self.Z])
+        text('  name   :', atomic_names[self.Z])
         text('  Z      :', self.Z)
         text('  valence:', self.Nv)
         if self.phicorehole_g is None:
@@ -528,7 +528,7 @@ class Setup:
 
     def calculate_rotations(self, R_slmm):
         nsym = len(R_slmm)
-        self.R_sii = num.zeros((nsym, self.ni, self.ni), num.Float)
+        self.R_sii = npy.zeros((nsym, self.ni, self.ni))
         i1 = 0
         for l in self.l_j:
             i2 = i1 + 2 * l + 1
@@ -537,10 +537,10 @@ class Setup:
             i1 = i2
 
     def symmetrize(self, a, D_aii, map_sa):
-        D_ii = num.zeros((self.ni, self.ni), num.Float)
+        D_ii = npy.zeros((self.ni, self.ni))
         for s, R_ii in enumerate(self.R_sii):
-            D_ii += num.dot(R_ii, num.dot(D_aii[map_sa[s][a]],
-                                              num.transpose(R_ii)))
+            D_ii += npy.dot(R_ii, npy.dot(D_aii[map_sa[s][a]],
+                                              npy.transpose(R_ii)))
         return D_ii / len(map_sa)
 
     def get_partial_waves(self):
@@ -570,7 +570,7 @@ class Setup:
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
 
         # radial grid
-        g = num.arange(ng, typecode=num.Float)
+        g = npy.arange(ng, dtype=float)
         r_g = beta * g / (ng - g)
 
         # Construct splines:
@@ -578,7 +578,7 @@ class Setup:
         nc = Spline(0, rcut2, nc_g, r_g, beta, points=1000)
         nct = Spline(0, rcut2, nct_g, r_g, beta, points=1000)
         if tauc_g is None:
-            tauc_g = num.zeros(nct_g.shape,num.Float)
+            tauc_g = npy.zeros(nct_g.shape)
             tauct_g = tauc_g
         tauc = Spline(0, rcut2, tauc_g, r_g, beta, points=1000)
         tauct = Spline(0, rcut2, tauct_g, r_g, beta, points=1000)
@@ -592,13 +592,13 @@ class Setup:
         return phi_j, phit_j, nc, nct, tauc, tauct
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
-        self.A_ci = num.zeros((3, self.ni), num.Float)
+        self.A_ci = npy.zeros((3, self.ni))
         nj = len(phi_jg)
         i = 0
         for j in range(nj):
             l = self.l_j[j]
             if l == 1:
-                a = num.dot(r_g**3 * dr_g, phi_jg[j] * self.phicorehole_g)
+                a = npy.dot(r_g**3 * dr_g, phi_jg[j] * self.phicorehole_g)
 
                 for m in range(3):
                     c = (m + 1) % 3
@@ -645,18 +645,18 @@ class Setup:
          core_response) = PAWXMLParser().parse(self.symbol, self.setupname)
 
         # radial grid
-        g = num.arange(ng, typecode=num.Float)
+        g = npy.arange(ng, dtype=float)
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
 
         # compute radial parts
         nj = len(self.l_j)
-        R_llll = num.zeros((nj,nj,nj,nj), num.Float)
+        R_llll = npy.zeros((nj,nj,nj,nj))
         for i1 in range(nj):
             for i2 in range(nj):
                 for i3 in range(nj):
                     for i4 in range(nj):
-                        R_llll[i1,i2,i3,i4] = num.dot( r_g**2 * dr_g,
+                        R_llll[i1,i2,i3,i4] = npy.dot( r_g**2 * dr_g,
                                                        phi_jg[i1]*phi_jg[i2]*
                                                        phi_jg[i3]*phi_jg[i4] -
                                                        phit_jg[i1]*phit_jg[i2]*
@@ -676,8 +676,8 @@ class Setup:
         # https://wiki.fysik.dtu.dk/gpaw/Overview#naming-convention-for-arrays
 
         # calculate the integrals
-        I4_iip = num.empty((ni,ni,np),num.Float)
-        I = num.empty((ni,ni),num.Float)
+        I4_iip = npy.empty((ni,ni,np))
+        I = npy.empty((ni,ni))
         for i1 in range(ni):
             L1 = L_i[i1]
             j1 = j_i[i1]
@@ -690,7 +690,7 @@ class Setup:
                     for i4 in range(ni):
                         L4 = L_i[i4]
                         j4 = j_i[i4]
-                        I[i3,i4] = num.dot( G_LLL[L1,L2],
+                        I[i3,i4] = npy.dot( G_LLL[L1,L2],
                                             G_LLL[L3,L4] ) *\
                                     R_llll[j1,j2,j3,j4]
                 I4_iip[i1,i2,:] = pack2(I)

@@ -1,5 +1,5 @@
 from math import acos, cos, sin, sqrt
-import Numeric as num
+import numpy as npy
 
 class Vector3d(list):
     def __init__(self,vector=None):
@@ -17,13 +17,13 @@ class Vector3d(list):
         return result
 
     def __div__(self,other):
-        return Vector3d(num.array(self) / other)
+        return Vector3d(npy.array(self) / other)
 
     def __mul__(self, x):
         if type(x) == type(self):
-            return num.dot( self, x )
+            return npy.dot( self, x )
         else:
-            return Vector3d(x * num.array(self))
+            return Vector3d(x * npy.array(self))
         
     def __rmul__(self, x):
         return self.__mul__(x)
@@ -72,7 +72,8 @@ class Vector3d(list):
         return self.l
 
     def norm(self):
-        return num.sum( self*self )
+        #return npy.sum( self*self )
+        return self*self  #  XXX drop this class and use numpy arrays ...
 
     def rotation_axis(self, other):
         """Return the rotation axis to rotate yourself to the direction

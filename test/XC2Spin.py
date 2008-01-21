@@ -2,19 +2,19 @@ from math import pi
 from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
 from gpaw.domain import Domain
 from gpaw.xc_functional import XC3DGrid, XCRadialGrid
-import Numeric as num
+import numpy as npy
 from gpaw.utilities import equal
 
 
 for name in ['LDA', 'PBE']:
-    r = 0.01 * num.arange(100)
-    dr = 0.01 * num.ones(100, num.Float)
+    r = 0.01 * npy.arange(100)
+    dr = 0.01 * npy.ones(100)
     rgd = RadialGridDescriptor(r, dr)
     xc = XCRadialGrid(name, rgd, nspins=2)
-    naa = num.exp(-r**2)
-    nb = 0.5 * num.exp(-0.5 * r**2)
-    va = num.zeros(100, num.Float)
-    vb = num.zeros(100, num.Float)
+    naa = npy.exp(-r**2)
+    nb = 0.5 * npy.exp(-0.5 * r**2)
+    va = npy.zeros(100)
+    vb = npy.zeros(100)
     E = xc.get_energy_and_potential(naa, va, nb, vb)
 
     n2 = 1.0 * nb
@@ -29,10 +29,10 @@ for name in ['LDA', 'PBE']:
     a = 1.0
     gd = GridDescriptor(Domain((a, a, a)), (N, N, N))
     xc = XC3DGrid(name, gd, nspins=2)
-    naa = 0.02 * num.ones((N, N, N), num.Float)
-    nb = 0.03 * num.ones((N, N, N), num.Float)
-    naa += 0.01 * num.cos(num.arange(N) * 2 * pi / N)
-    nb += 0.01 * num.sin(num.arange(N) * 2 * pi / N)
+    naa = 0.02 * npy.ones((N, N, N))
+    nb = 0.03 * npy.ones((N, N, N))
+    naa += 0.01 * npy.cos(npy.arange(N) * 2 * pi / N)
+    nb += 0.01 * npy.sin(npy.arange(N) * 2 * pi / N)
     va = 0.0 * naa
     vb = 0.0 * nb
     E = xc.get_energy_and_potential(naa, va, nb, vb)

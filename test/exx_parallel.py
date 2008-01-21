@@ -1,10 +1,10 @@
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
 from gpaw.utilities import equal
 
 a = 4.8 # => N = 4.8 / 0.2 = 24
-loa = ListOfAtoms([Atom('C', [a / 2 + .3, a / 2 -.1, a / 2], magmom=2)],
-                  periodic=False,
+loa = Atoms([Atom('C', [a / 2 + .3, a / 2 -.1, a / 2], magmom=2)],
+                  pbc=False,
                   cell=(a, a, a))
 p = []
 exx = []
@@ -13,9 +13,9 @@ for hosts in [1, 4]:
     calc = Calculator(convergence={'eigenstates': 1e-6}, hosts=hosts,
                       txt='exx_parallel.txt')
 
-    loa.SetCalculator(calc)
-    p.append(loa.GetPotentialEnergy())
-    exx.append(calc.GetExactExchange())
+    loa.set_calculator(calc)
+    p.append(loa.get_potential_energy())
+    exx.append(calc.get_exact_exchange())
 
     print 'number of CPUs   :', hosts
     print 'Potential energy :', p[i]

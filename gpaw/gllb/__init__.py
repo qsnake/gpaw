@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.utilities import hartree
 SMALL_NUMBER = 1e-8
 
@@ -24,7 +24,7 @@ def wigner3j_0(l1,l2,l):
     if J % 2 == 1:
         return 0
     g = J / 2
-    return (-1)**g * num.sqrt( factorial(2*g-2*l1) * factorial(2*g- 2*l2) * factorial(2*g - 2*l) /
+    return (-1)**g * npy.sqrt( factorial(2*g-2*l1) * factorial(2*g- 2*l2) * factorial(2*g - 2*l) /
            factorial(2*g+1)) * factorial(g) / (factorial(g-l1)*factorial(g-l2)*factorial(g-l))
 
 def calculate_slater_energy_density(rgd, u_j, f_j, l_j, V_s, exp_j=None, exclude=None, method='and'):
@@ -35,7 +35,7 @@ def calculate_slater_energy_density(rgd, u_j, f_j, l_j, V_s, exp_j=None, exclude
     """
 
     if exp_j == None:
-        exp_j = num.zeros(len(f_j), num.Float)
+        exp_j = npy.zeros(len(f_j))
     else:
         exp_j[:] = 0.0
 
@@ -45,14 +45,14 @@ def calculate_slater_energy_density(rgd, u_j, f_j, l_j, V_s, exp_j=None, exclude
     V_s[:] = 0.0
 
     # The exchange energy density multiplied with r
-    Vr_x = num.zeros(N, num.Float)
+    Vr_x = npy.zeros(N)
 
     for i, (u1, f1, l1) in enumerate(zip(u_j, f_j, l_j)):
          for j, (u2, f2, l2) in enumerate(zip(u_j, f_j, l_j)):
              for L in range(abs(l1-l2),l1+l2+1):
                  # Calculate the exchange density
-                 nnr = num.where(abs(u1) < 1e-160, 0, u1) * num.where(abs(u2) < 1e-160, 0, u2)
-                 nnr[1:] /= rgd.r_g[1:]**2 * 4 * num.pi
+                 nnr = npy.where(abs(u1) < 1e-160, 0, u1) * npy.where(abs(u2) < 1e-160, 0, u2)
+                 nnr[1:] /= rgd.r_g[1:]**2 * 4 * npy.pi
                  nnr[0] = nnr[1]
 
                  # Solve the poisson equation
@@ -71,7 +71,7 @@ def calculate_slater_energy_density(rgd, u_j, f_j, l_j, V_s, exp_j=None, exclude
                              add_V_s = False
                  if add_V_s:
                      V_s -= (2*L+1) * (f1 / 2) * (f2 / 2) * w * integrand
-                 exp_j[i] += w * (f2 / 2) * (2*L+1) * num.sum(integrand * rgd.r_g * rgd.dr_g) * (4 * num.pi)
+                 exp_j[i] += w * (f2 / 2) * (2*L+1) * npy.sum(integrand * rgd.r_g * rgd.dr_g) * (4 * npy.pi)
 
     # Divide the extra r out
     V_s[1:] /= rgd.r_g[1:]
@@ -83,10 +83,10 @@ def calculate_slater_energy_density(rgd, u_j, f_j, l_j, V_s, exp_j=None, exclude
     #print "plot(V_S,'r'); hold on;"
 
     # The exchange energy will be integral over V_s
-    return num.dot(V_s, rgd.dr_g * rgd.r_g **2) * 4 * num.pi
+    return npy.dot(V_s, rgd.dr_g * rgd.r_g **2) * 4 * npy.pi
 
 def safe_sqr(u_j):
-    return num.where(abs(u_j) < 1e-160, 0, u_j)**2
+    return npy.where(abs(u_j) < 1e-160, 0, u_j)**2
 
 def construct_density1D(gd, u_j, f_j):
     """
@@ -102,8 +102,8 @@ def construct_density1D(gd, u_j, f_j):
     """
 
 
-    n_g = num.dot(f_j, safe_sqr(u_j))
-    n_g[1:] /=  4 * num.pi * gd.r_g[1:]**2
+    n_g = npy.dot(f_j, safe_sqr(u_j))
+    n_g[1:] /=  4 * npy.pi * gd.r_g[1:]**2
     n_g[0] = n_g[1]
     return n_g
 

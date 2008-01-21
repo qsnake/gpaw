@@ -22,9 +22,9 @@ def check_packages(packages, msg, force_inclusion_of_ase):
         raise SystemExit('Python 2.3.1 or later is required!')
 
     try:
-        import Numeric
+        import numpy
     except ImportError:
-        raise SystemExit('Numeric is not installed!')
+        raise SystemExit('numpy is not installed!')
 
     try:
         import Scientific.IO.NetCDF
@@ -75,6 +75,8 @@ def get_system_config(define_macros, undef_macros,
                       msg):
 
     undef_macros += ['NDEBUG']
+    import numpy
+    include_dirs += [numpy.get_include()]
 
     machine = os.uname()[4]
     if machine == 'sun4u':

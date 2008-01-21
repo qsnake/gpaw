@@ -1,12 +1,11 @@
 from gpaw.gllb import find_nucleus
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.gaunt import gaunt
 from gpaw.sphere import Y_nL, points, weights
 from gpaw.spherical_harmonics import YL
 
-from multiarray import matrixproduct as dot3
 
 
 class DummyXC:
@@ -14,7 +13,7 @@ class DummyXC:
         pass
         #print "GLLB: DummyXC::set_functional(xc) with ", xc.xcname
 
-A_Liy = num.zeros((25, 3, len(points)), num.Float)
+A_Liy = npy.zeros((25, 3, len(points)))
 
 y = 0
 for R in points:
@@ -69,7 +68,7 @@ class XCNonLocalCorrection:
         self.Lmax = (lmax + 1)**2
         if lmax == 0:
             self.weights = [1.0]
-            self.Y_yL = num.array([[1.0 / num.sqrt(4.0 * num.pi)]])
+            self.Y_yL = npy.array([[1.0 / npy.sqrt(4.0 * npy.pi)]])
         else:
             self.weights = weights
             self.Y_yL = Y_nL[:, :self.Lmax].copy()
@@ -85,7 +84,7 @@ class XCNonLocalCorrection:
         np = ni * (ni + 1) // 2
         self.np = np
         nq = nj * (nj + 1) // 2
-        self.B_Lqp = num.zeros((self.Lmax, nq, np), num.Float)
+        self.B_Lqp = npy.zeros((self.Lmax, nq, np))
         p = 0
         i1 = 0
         for j1, l1, L1 in jlL:
@@ -97,10 +96,10 @@ class XCNonLocalCorrection:
                 self.B_Lqp[:, q, p] = gaunt[L1, L2, :self.Lmax]
                 p += 1
             i1 += 1
-        self.B_pqL = num.transpose(self.B_Lqp).copy()
+        self.B_pqL = npy.transpose(self.B_Lqp).copy()
         self.dv_g = rgd.dv_g
-        self.n_qg = num.zeros((nq, ng), num.Float)
-        self.nt_qg = num.zeros((nq, ng), num.Float)
+        self.n_qg = npy.zeros((nq, ng))
+        self.nt_qg = npy.zeros((nq, ng))
         q = 0
         for j1, l1 in jl:
             for j2, l2 in jl[j1:]:
@@ -139,8 +138,8 @@ class XCNonLocalCorrection:
         ni = nucleus.get_number_of_partial_waves() # Get the number of partial waves from nucleus
         np = ni * (ni + 1) // 2 # Number of items in packed density matrix
 
-        Dn_ii = num.zeros((ni, ni), num.Float) # Allocate space for unpacked atomic density matrix
-        Dn_p = num.zeros((np, np), num.Float) # Allocate space for packed atomic density matrix
+        Dn_ii = npy.zeros((ni, ni)) # Allocate space for unpacked atomic density matrix
+        Dn_p = npy.zeros((np, np)) # Allocate space for packed atomic density matrix
 
         r_g = self.rgd.r_g
         #xcfunc = self.slater_part
@@ -148,19 +147,19 @@ class XCNonLocalCorrection:
         # The total exchange integral
         E = 0.0
 
-        D_Lq = dot3(self.B_Lqp, D_p)
-        n_Lg = num.dot(D_Lq, self.n_qg)
-        n_Lg[0] += self.nc_g * num.sqrt(4 * num.pi) / deg
+        D_Lq = npy.dot(self.B_Lqp, D_p)
+        n_Lg = npy.dot(D_Lq, self.n_qg)
+        n_Lg[0] += self.nc_g * npy.sqrt(4 * npy.pi) / deg
 
-        nt_Lg = num.dot(D_Lq, self.nt_qg)
-        nt_Lg[0] += self.nct_g * num.sqrt(4 * num.pi) / deg
-        dndr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
-        dntdr_Lg = num.zeros((self.Lmax, self.ng), num.Float)
+        nt_Lg = npy.dot(D_Lq, self.nt_qg)
+        nt_Lg[0] += self.nct_g * npy.sqrt(4 * npy.pi) / deg
+        dndr_Lg = npy.zeros((self.Lmax, self.ng))
+        dntdr_Lg = npy.zeros((self.Lmax, self.ng))
 
         # Array for exchange potential
-        v_g = num.zeros(len(r_g), num.Float)
+        v_g = npy.zeros(len(r_g))
         # Array for smooth exchange potential
-        vt_g = num.zeros(len(r_g), num.Float)
+        vt_g = npy.zeros(len(r_g))
 
         for L in range(self.Lmax):
             self.rgd.derivative(n_Lg[L], dndr_Lg[L])
@@ -177,28 +176,28 @@ class XCNonLocalCorrection:
             self.Y_L = Y_L
 
             # Calculate the true density
-            self.n_g = num.dot(Y_L, n_Lg)
+            self.n_g = npy.dot(Y_L, n_Lg)
 
             # Calculate gradients for ae-density
-            self.a1x_g = num.dot(A_Li[:, 0], n_Lg)
-            self.a1y_g = num.dot(A_Li[:, 1], n_Lg)
-            self.a1z_g = num.dot(A_Li[:, 2], n_Lg)
+            self.a1x_g = npy.dot(A_Li[:, 0], n_Lg)
+            self.a1y_g = npy.dot(A_Li[:, 1], n_Lg)
+            self.a1z_g = npy.dot(A_Li[:, 2], n_Lg)
             self.a2_g = self.a1x_g**2 + self.a1y_g**2 + self.a1z_g**2
             self.a2_g[1:] /= r_g[1:]**2
             self.a2_g[0] = self.a2_g[1]
-            self.a1_g = num.dot(Y_L, dndr_Lg)
+            self.a1_g = npy.dot(Y_L, dndr_Lg)
             self.a2_g += self.a1_g**2
 
             # Calculate the pseudo density
-            self.nt_g = num.dot(Y_L, nt_Lg)
+            self.nt_g = npy.dot(Y_L, nt_Lg)
             # Calculate the gradients for pseudo density
-            self.a1x_g = num.dot(A_Li[:, 0], nt_Lg)
-            self.a1y_g = num.dot(A_Li[:, 1], nt_Lg)
-            self.a1z_g = num.dot(A_Li[:, 2], nt_Lg)
+            self.a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
+            self.a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
+            self.a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
             self.at2_g = self.a1x_g**2 + self.a1y_g**2 + self.a1z_g**2
             self.at2_g[1:] /= r_g[1:]**2
             self.at2_g[0] = self.at2_g[1]
-            self.a1_g = num.dot(Y_L, dntdr_Lg)
+            self.a1_g = npy.dot(Y_L, dntdr_Lg)
             self.at2_g += self.a1_g**2
 
             # Adjust the densities and gradients for spin-count
@@ -213,11 +212,11 @@ class XCNonLocalCorrection:
             E += w / deg * self.motherxc.calculate_non_local_paw_correction(a, s, self, slice, v_g, vt_g)
 
             # Integrate the slice with respect to orbitals
-            dEdD_p += w * num.dot(dot3(self.B_pqL, Y_L),
-                                  num.dot(self.n_qg, v_g * self.dv_g))
+            dEdD_p += w * npy.dot(npy.dot(self.B_pqL, Y_L),
+                                  npy.dot(self.n_qg, v_g * self.dv_g))
 
-            dEdD_p -= w * num.dot(dot3(self.B_pqL, Y_L),
-                                  num.dot(self.nt_qg, vt_g * self.dv_g))
+            dEdD_p -= w * npy.dot(npy.dot(self.B_pqL, Y_L),
+                                  npy.dot(self.nt_qg, vt_g * self.dv_g))
             y += 1
 
         return (E) - self.Exc0 / deg

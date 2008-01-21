@@ -48,8 +48,6 @@ packages = ['gpaw',
             'gpaw.atom',
             'gpaw.eigensolvers',
             'gpaw.gllb',
-            'gpaw.gui',
-            'gpaw.gui.languages',
             'gpaw.io',
             'gpaw.lcao',
             'gpaw.lrtddft',
@@ -140,8 +138,6 @@ if "clean" in sys.argv:
         print 'removing ', gpawbin
         os.remove(gpawbin)
 
-include_dirs += [os.environ['HOME'] + '/include/python']
-
 sources = glob('c/*.c') + ['c/bmgs/bmgs.c']
 # libxc sources
 sources = sources + glob('c/libxc/src/*.c')
@@ -166,7 +162,7 @@ extension = Extension('_gpaw',
                       extra_objects=extra_objects)
 
 scripts = [join('tools', script)
-           for script in ('gpaw-setup', 'gpaw', 'g2')]
+           for script in ('gpaw-setup', 'gpaw')]
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,

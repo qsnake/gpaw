@@ -7,7 +7,7 @@ import os
 import sys
 import pickle
 
-import Numeric as num
+import numpy as npy
 from ASE.Units import Convert
 
 from gpaw.utilities.singleatom import SingleAtom
@@ -40,7 +40,7 @@ if setup is not None:
 
 # This is a set of distances which is considered during calculation of
 # bond lengths
-dd = num.array([(i - 2) * 0.015 for i in range(5)])
+dd = npy.array([(i - 2) * 0.015 for i in range(5)])
 a = 12.0
 n = 76
 h = a / n
@@ -59,7 +59,7 @@ def calc_molecule_energy(formula):
         except (EOFError, IOError, ValueError):
             e0 = e_i = None
         result['Em0'] = e0
-        result['Em'] = num.array(e_i)
+        result['Em'] = npy.array(e_i)
         if len(molecules[formula]) == 2:
             pos = molecules[formula].GetCartesianPositions()
             result['d0'] = pos[1, 0] - pos[0, 0]

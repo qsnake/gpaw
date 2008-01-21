@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.xc_functional import XCFunctional
 #these are used for calculating the gradient
 from gpaw.grid_descriptor import GridDescriptor
@@ -23,9 +23,9 @@ class VanDerWaals:
 
         self.density = density
         if gd is None:
-            unitcell = num.array(unitcell)
+            unitcell = npy.array(unitcell)
             check_unit_cell(unitcell)
-            unitcell=unitcell.flat[::4]
+            unitcell=unitcell.ravel()[::4]
             gd = GridDescriptor(Domain(unitcell,periodic=self.periodic), self.density.shape)
         self.gd = gd
         self.h_c = gd.h_c
@@ -46,10 +46,10 @@ class VanDerWaals:
         #x = XC3DGrid(self.xcname+'x', gd)
         x = XC3DGrid(exchange, gd)
         self.GGA_x_energy = x.get_energy_and_potential(self.density, v)
-        #self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))
+        #self.density=npy.choose(npy.less_equal(density,ncut_dens),(density,ncut_dens))
         #hardcoded the density min is set to 1*10^-7
         ncut_dens=0.0000001
-        self.density=num.choose(num.less_equal(density,ncut_dens),(density,ncut_dens))        
+        self.density=npy.choose(npy.less_equal(density,ncut_dens),(density,ncut_dens))        
         self.k_f=(3.0*pi**2*self.density)**(1.0/3.0)
         self.q0=self.getqzero()
         self.phimat = self.get_phitab_from_1darrays()
@@ -66,8 +66,8 @@ class VanDerWaals:
         n_down=self.density/2.0
         #nt=abs(n_up+n_down)
         n=self.density
-        #num.choose(num.less_equal(nt,0.00001),(nt,0.00001))
-        r=(3./(4.*num.pi*n))**(1./3.)
+        #npy.choose(npy.less_equal(nt,0.00001),(nt,0.00001))
+        r=(3./(4.*npy.pi*n))**(1./3.)
         zeta=(n_up-n_down)/n
         wz=((1.+zeta)**(4./3.)+(1.-zeta)**(4./3.)-2.)/(2.**(4./3.)-2.)
         res=self.e_PW92_LDA(r,0.031091,0.21370,7.5957,3.5876,1.6382,0.49294,1.)*(1.-wz*zeta**4.)
@@ -76,10 +76,10 @@ class VanDerWaals:
         return(res)
 #function used by def eps_c_PW92_LDA (n_up,n_down):
     def e_PW92_LDA (self,r,t,u,v,w,x,y,p):
-        return(-2.*t*(1.+u*r)*num.log(1.+1./(2.*t*(v*num.sqrt(r)+w*r+x*r**(3./2.)+y*r**(p+1.)))))
+        return(-2.*t*(1.+u*r)*npy.log(1.+1./(2.*t*(v*npy.sqrt(r)+w*r+x*r**(3./2.)+y*r**(p+1.)))))
     
     def get_e_x_LDA(self):
-        result = (-3./(4.*num.pi)*(3.*num.pi*num.pi*self.density)**(1./3.))
+        result = (-3./(4.*npy.pi)*(3.*npy.pi*npy.pi*self.density)**(1./3.))
         return result
     
     def getqzero(self):
@@ -108,12 +108,12 @@ class VanDerWaals:
         x = {}
         #filename='eta_2_phi_delta'
         faktor = 2.0*4.0*pi/pi**2.0
-        for n in num.arange(0.0,1.0,self.deltadelta):
+        for n in npy.arange(0.0,1.0,self.deltadelta):
             f = path+filename+str(n)+'.dat'
             data = self.read_array1d_from_txt_file(f)
-            x[n] = num.array(data[:])*faktor 
+            x[n] = npy.array(data[:])*faktor 
         #h=0.05 for D og delta 
-        phimat = num.zeros((len(x),len(x[0.0])),num.Float)
+        phimat = npy.zeros((len(x),len(x[0.0])))
         for n in range(0,phimat.shape[0]):
             for m in range(phimat.shape[1]):
                 phimat[n,m] = x[n*0.05][m]
@@ -126,24 +126,24 @@ class VanDerWaals:
         ddot2 = (D*(1-delta))**2.0
         d2 = (D*(1+delta))**2.0
         phi_asym = -C/(d2*ddot2*(d2+ddot2))
-        mask = num.where(D>=Dtab[-1],1,0)
+        mask = npy.where(D>=Dtab[-1],1,0)
         #phi(D=0, delta=x)=0 per definition
         #D is set to max int phitab, to make the interpolation possible
-        D = num.choose(mask,(D,Dtab[-1]-deltaD/100.0))
+        D = npy.choose(mask,(D,Dtab[-1]-deltaD/100.0))
         #dette er aendre her phi(D=0, delta=x)=0 per definition
-        n_D = (D/deltaD).astype(num.Int) #-1 because Dtab starts at h and not 0
+        n_D = (D/deltaD).astype(int) #-1 because Dtab starts at h and not 0
         #delta above the upper limit of delta in phitab is set to just below the upper limit
-        delta = num.choose(num.greater_equal(delta,deltatab[len(deltatab)-1]),(delta,deltatab[len(deltatab)-1]-deltadelta/100.00))
-        n_delta = (delta/deltadelta).astype(num.Int)
+        delta = npy.choose(npy.greater_equal(delta,deltatab[len(deltatab)-1]),(delta,deltatab[len(deltatab)-1]-deltadelta/100.00))
+        n_delta = (delta/deltadelta).astype(int)
         #
         t = (D-(n_D)*deltaD)/deltaD  
         u = (delta-n_delta*deltadelta)/deltadelta
-        hack1 = num.take(phitab_N,(n_D+n_delta*len(Dtab)))
-        hack2 = num.take(phitab_N,(n_D+1+n_delta*len(Dtab)))
-        hack3 = num.take(phitab_N,(n_D+1+(n_delta+1)*len(Dtab)))
-        hack4 = num.take(phitab_N,(n_D+(n_delta+1)*len(Dtab)))
+        hack1 = npy.take(phitab_N,(n_D+n_delta*len(Dtab)))
+        hack2 = npy.take(phitab_N,(n_D+1+n_delta*len(Dtab)))
+        hack3 = npy.take(phitab_N,(n_D+1+(n_delta+1)*len(Dtab)))
+        hack4 = npy.take(phitab_N,(n_D+(n_delta+1)*len(Dtab)))
         Phi = (1-t)*(1-u)*hack1+t*(1-u)*hack2+t*u*hack3+(1-t)*u*hack4
-        num.putmask(Phi,mask,phi_asym)
+        npy.putmask(Phi,mask,phi_asym)
         return Phi
     def coarsen(self,oldgrid,n):
         ##################################################
@@ -175,8 +175,8 @@ class VanDerWaals:
         #the minimum image convention
         ###################################################
         ###imports arrays used by GetPhi
-        Dtab = num.arange(0,self.Dmax+self.deltaD,self.deltaD)
-        deltatab = num.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
+        Dtab = npy.arange(0,self.Dmax+self.deltaD,self.deltaD)
+        deltatab = npy.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
         deltaD = self.deltaD
         deltadelta = self.deltadelta
         phitab_N = self.phimat.copy()
@@ -188,7 +188,7 @@ class VanDerWaals:
         self.test=denstab =self.coarsen(self.density,n)
         denstab = self.density
         nx, ny, nz = self.density[::n,::n,::n].shape
-        R = num.zeros((nx, ny, nz, 3), num.Float)
+        R = npy.zeros((nx, ny, nz, 3))
         for x in range(nx):
             for y in range(ny):
                 for z in range(nz):
@@ -202,9 +202,9 @@ class VanDerWaals:
         qtab_N.shape = [N]
         denstab_N = denstab[::n,::n,::n].copy()
         denstab_N.shape = [N]
-        qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
-        R=num.compress(num.greater_equal(denstab_N,ncut),R,axis=0)
-        denstab_N=num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
+        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
+        R=npy.compress(npy.greater_equal(denstab_N,ncut),R,axis=0)
+        denstab_N=npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
         #for analysis
         self.denstab_N=denstab_N
         print 'denstab_N.shape', denstab_N.shape[0]
@@ -221,16 +221,16 @@ class VanDerWaals:
                 if self.periodic[mm]:
                     t[:,mm]=(t[:,mm]+(3./2.)*uc[mm])%uc[mm]-uc[mm]/2.0
             #tmic=(t+(3./2.)*uc)%uc-uc/2.0
-            #r = num.sqrt(num.sum(tmic**2.0,axis=1))
+            #r = npy.sqrt(npy.sum(tmic**2.0,axis=1))
             #print r
-            r = num.sqrt(num.sum(t**2.0,axis=1))
+            r = npy.sqrt(npy.sum(t**2.0,axis=1))
             #self.r=r
             D = (qtab_N[m]+qtab_N)*r/2.0
             #The next line is a work around singularities for D=0
-            Dmult = num.choose(num.less(D,1e-4),(D,10.0**8))
+            Dmult = npy.choose(npy.less(D,1e-4),(D,10.0**8))
             #I have set delta to be positive, is this a definition?
-            delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
-            E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
+            delta = npy.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
+            E_tmp = npy.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(npy.pi*4.0*Dmult**2))
             #self.trackEnl.append(E_tmp)
             E_cl = E_cl+E_tmp
             #print E_tmp
@@ -246,8 +246,8 @@ class VanDerWaals:
         #the minimum image convention
         ###################################################
         ###imports arrays used by GetPhi
-        Dtab = num.arange(0,self.Dmax+self.deltaD,self.deltaD)
-        deltatab = num.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
+        Dtab = npy.arange(0,self.Dmax+self.deltaD,self.deltaD)
+        deltatab = npy.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
         deltaD = self.deltaD
         deltadelta = self.deltadelta
         phitab_N = self.phimat.copy()
@@ -262,7 +262,7 @@ class VanDerWaals:
         print 'denstab.shape', denstab.shape
         nx, ny, nz = denstab.shape
         #self.density[::n,::n,::n].shape
-        R = num.zeros((nx, ny, nz, 3), num.Float)
+        R = npy.zeros((nx, ny, nz, 3))
         for x in range(nx):
             for y in range(ny):
                 for z in range(nz):
@@ -278,9 +278,9 @@ class VanDerWaals:
         #denstab_N = denstab[::n,::n,::n].copy()
         denstab_N = denstab.copy()
         denstab_N.shape = [N]
-        qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
-        R=num.compress(num.greater_equal(denstab_N,ncut),R,axis=0)
-        denstab_N=num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
+        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
+        R=npy.compress(npy.greater_equal(denstab_N,ncut),R,axis=0)
+        denstab_N=npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
         #for analysis
         self.denstab_N=denstab_N
         print 'denstab_N.shape', denstab_N.shape[0]
@@ -297,16 +297,16 @@ class VanDerWaals:
                 if self.periodic[mm]:
                     t[:,mm]=(t[:,mm]+(3./2.)*uc[mm])%uc[mm]-uc[mm]/2.0
             #tmic=(t+(3./2.)*uc)%uc-uc/2.0
-            #r = num.sqrt(num.sum(tmic**2.0,axis=1))
+            #r = npy.sqrt(npy.sum(tmic**2.0,axis=1))
             #print r
-            r = num.sqrt(num.sum(t**2.0,axis=1))
+            r = npy.sqrt(npy.sum(t**2.0,axis=1))
             #self.r=r
             D = (qtab_N[m]+qtab_N)*r/2.0
             #The next line is a work around singularities for D=0
-            Dmult = num.choose(num.less(D,1e-4),(D,10.0**8))
+            Dmult = npy.choose(npy.less(D,1e-4),(D,10.0**8))
             #I have set delta to be positive, is this a definition?
-            delta = num.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
-            E_tmp = num.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(num.pi*4.0*Dmult**2))
+            delta = npy.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
+            E_tmp = npy.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(npy.pi*4.0*Dmult**2))
             #self.trackEnl.append(E_tmp)
             E_cl = E_cl+E_tmp
             #print E_tmp
@@ -327,7 +327,7 @@ class VanDerWaals:
         return Convert(E_nl_c,'Hartree','eV')
     def plotphi(self,ymax=8):
         import pylab as pylab
-        Dtab = num.arange(0,self.Dmax+self.deltaD,self.deltaD)
+        Dtab = npy.arange(0,self.Dmax+self.deltaD,self.deltaD)
         pylab.ion()
         pylab.figure(55)
         ymax=int(ymax/self.deltaD)
@@ -336,7 +336,7 @@ class VanDerWaals:
         pylab.legend(loc='upper right')
         pylab.ylabel(r'$\phi *4\pi D^2$')
         pylab.xlabel(r'$D$')
-        pylab.plot(Dtab[:ymax],num.zeros(len(self.phimat[0,:ymax]),num.Float))
+        pylab.plot(Dtab[:ymax],npy.zeros(len(self.phimat[0,:ymax])))
         pylab.show()
     def GetC6(self,n=1,ncut=0.0005):
         #Returns C6 in units of Hartree
@@ -354,17 +354,17 @@ class VanDerWaals:
         denstab_N = denstab[::n,::n,::n].copy()
         denstab_N.shape = [N]
         print 'denstab_N.shape', denstab_N.shape
-        qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
-        denstab_N = num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
+        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
+        denstab_N = npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
         #print denstab_N
         #print 'B:h_c[0]',h_c[0]
         #print denstab.shape
         print 'denstab_N.shape[0]', denstab_N.shape[0]
         C6 = 0.0
-        C=(-12.*(4.*num.pi/9.)**3)
+        C=(-12.*(4.*npy.pi/9.)**3)
         for m in range(denstab_N.shape[0]):
             #print C6
-            C6 = C6+num.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
+            C6 = C6+npy.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
         #print 'C:h_c[0]',h_c[:], 'n=', n
         #print 'udenfor loop C6=',C6
         #print 'norm', n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
@@ -389,12 +389,12 @@ class VanDerWaals:
         denstab_N = denstab.copy()
         denstab_N.shape = [N]
         print 'denstab_N.shape', denstab_N.shape
-        qtab_N = num.compress(num.greater_equal(denstab_N,ncut),qtab_N)
-        denstab_N = num.compress(num.greater_equal(denstab_N,ncut),denstab_N)
+        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
+        denstab_N = npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
         C6 = 0.0
-        C=(-12.*(4.*num.pi/9.)**3)
+        C=(-12.*(4.*npy.pi/9.)**3)
         for m in range(denstab_N.shape[0]):
-            C6 = C6+num.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
+            C6 = C6+npy.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
         C6 = -C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         Ry = 13.6058
         return C6 ,'Ha*a0**6'

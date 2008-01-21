@@ -107,11 +107,11 @@ def pretty_print(eas, xcs, formulas=None):
     return out
 
 def mean_error(eas, errors=[], exact=0):
-    import Numeric as num
+    import numpy as npy
     d = eas.copy()
     for error in errors:
         d.pop(error)
-    a = num.array(d.values())
+    a = npy.array(d.values())
     out = '\nMAE :'
     if len(a.shape) == 1:
         a.shape = (a.shape[0], 1)
@@ -119,7 +119,7 @@ def mean_error(eas, errors=[], exact=0):
         if i == exact:
             mae = 0.0
         else:
-            mae = num.sum(num.absolute(a[:,i] - a[:,exact])) / len(a)
+            mae = npy.sum(npy.absolute(a[:,i] - a[:,exact])) / len(a)
         out += ' %5.1f'%mae
     return out               
 

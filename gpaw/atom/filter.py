@@ -3,8 +3,7 @@
 
 from math import pi, log, sqrt
 
-import Numeric as num
-from FFT import real_fft, inverse_real_fft
+import numpy as npy
 
 from gpaw.utilities import fac
 
@@ -37,6 +36,8 @@ potential."""
 #                /
 #
 
+# XXX use fast bessel transform !!!
+
 class Filter:
     """Mask-function Fourier filter"""
     
@@ -56,10 +57,10 @@ class Filter:
 
         # Matrices for Bessel transform:
         q1 = 5 * pi / h / N
-        self.q_i = q_i = q1 * num.arange(N)
+        self.q_i = q_i = q1 * npy.arange(N)
         self.c = sqrt(2 * q1 / pi) 
-        self.sinqr_ig = num.sin(q_i[:, None] * r_g) * self.c
-        self.cosqr_ig = num.cos(q_i[:, None] * r_g) * self.c
+        self.sinqr_ig = npy.sin(q_i[:, None] * r_g) * self.c
+        self.cosqr_ig = npy.cos(q_i[:, None] * r_g) * self.c
 
         # Cutoff function:
         qmax = pi / h
@@ -67,15 +68,15 @@ class Filter:
         qcut = qmax / alpha
         icut = 1 + int(qcut / q1)
         beta = 5 * log(10) / (alpha - 1.0)**2
-        self.cut_i = num.ones(N, num.Float)
-        self.cut_i[icut:] = num.exp(
-            -num.clip(beta * (q_i[icut:] / qcut - 1.0)**2, 0, 400))
-        # self.cut_i[icut:] = num.exp(
-        #     -num.clip(0, 400, beta * (q_i[icut:] / qcut - 1.0)**2))
+        self.cut_i = npy.ones(N)
+        self.cut_i[icut:] = npy.exp(
+            -npy.clip(beta * (q_i[icut:] / qcut - 1.0)**2, 0, 400))
+        # self.cut_i[icut:] = npy.exp(
+        #     -npy.clip(0, 400, beta * (q_i[icut:] / qcut - 1.0)**2))
 
         # Mask function:
         gamma = 3 * log(10) / rcut**2
-        self.m_g = num.exp(-gamma * r_g**2)
+        self.m_g = npy.exp(-gamma * r_g**2)
         
         # We will need to divide by these two!  Remove zeros:
         q_i[0] = 1.0
@@ -118,28 +119,28 @@ class Filter:
         #           x                 x
 
         if l == 0:
-            fq_i = num.dot(self.sinqr_ig, fdrim_g * r_g) * self.cut_i
-            fr_g = num.dot(fq_i, self.sinqr_ig)
+            fq_i = npy.dot(self.sinqr_ig, fdrim_g * r_g) * self.cut_i
+            fr_g = npy.dot(fq_i, self.sinqr_ig)
         elif l == 1:
-            fq_i = num.dot(self.sinqr_ig, fdrim_g) / q_i
-            fq_i -= num.dot(self.cosqr_ig, r_g * fdrim_g)
+            fq_i = npy.dot(self.sinqr_ig, fdrim_g) / q_i
+            fq_i -= npy.dot(self.cosqr_ig, r_g * fdrim_g)
             fq_i[0] = 0.0
             fq_i *= self.cut_i
-            fr_g = num.dot(fq_i / q_i, self.sinqr_ig) / r_g
-            fr_g -= num.dot(fq_i, self.cosqr_ig)
+            fr_g = npy.dot(fq_i / q_i, self.sinqr_ig) / r_g
+            fr_g -= npy.dot(fq_i, self.cosqr_ig)
         elif l == 2:
-            fq_i = 3 * num.dot(self.sinqr_ig, fdrim_g / r_g) / q_i**2
-            fq_i -= num.dot(self.sinqr_ig, fdrim_g * r_g)
-            fq_i -= 3 * num.dot(self.cosqr_ig, fdrim_g) / q_i
+            fq_i = 3 * npy.dot(self.sinqr_ig, fdrim_g / r_g) / q_i**2
+            fq_i -= npy.dot(self.sinqr_ig, fdrim_g * r_g)
+            fq_i -= 3 * npy.dot(self.cosqr_ig, fdrim_g) / q_i
             fq_i[0] = 0.0
             fq_i *= self.cut_i
-            fr_g = 3 * num.dot(fq_i / q_i**2, self.sinqr_ig) / r_g**2
-            fr_g -= num.dot(fq_i, self.sinqr_ig)
-            fr_g -= 3 * num.dot(fq_i / q_i, self.cosqr_ig) / r_g
+            fr_g = 3 * npy.dot(fq_i / q_i**2, self.sinqr_ig) / r_g**2
+            fr_g -= npy.dot(fq_i, self.sinqr_ig)
+            fr_g -= 3 * npy.dot(fq_i / q_i, self.cosqr_ig) / r_g
         else:
             raise NotImplementedError
     
-        a_g = num.zeros(len(f_g), num.Float)
+        a_g = npy.zeros(len(f_g))
         a_g[:self.gcut] = fr_g * self.m_g / r_g**(l + 1)
         
         #            n 
@@ -153,7 +154,7 @@ class Filter:
         # f(r) r    for r -> 0
         #
         c = 2.0**l * fac[l] / fac[2 * l + 1] * self.c
-        a_g[0] = num.dot(fq_i, q_i**(l + 1)) * c
+        a_g[0] = npy.dot(fq_i, q_i**(l + 1)) * c
 
         return a_g
 
@@ -164,14 +165,14 @@ if __name__ == '__main__':
     M = 300
     beta = 0.3
     gcut = 1 + int(M * rc / (beta + rc))
-    g_g = num.arange(M)
+    g_g = npy.arange(M)
     r_g = beta * g_g / (M - g_g)
     drdg_g = beta * M / (M - g_g)**2
 
     x_g = r_g / rc
     p_g = 1 - x_g**2 * (3 - 2 * x_g)
     p_g[gcut:] = 0.0
-    #p_g = num.exp(-num.clip(5.0 * r_g**2, 0, 400))
+    #p_g = npy.exp(-npy.clip(5.0 * r_g**2, 0, 400))
 
     h = 0.4
     f = Filter(r_g, drdg_g, rc2, h)

@@ -410,9 +410,11 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
 	  assert(spline->dr == dr);
 	}
       nf += (2 * l + 1); 
-      if (forces)
-        nfd += 3 * (2 * l + 1); 
     }
+
+  if (forces)
+    nfd = 3 * nf;
+
   self->nf = nf;
   self->nfd = nfd;
   self->f = GPAW_MALLOC(double, (nf + nfd) * ng0);

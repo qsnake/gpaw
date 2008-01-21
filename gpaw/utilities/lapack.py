@@ -6,7 +6,7 @@ Python wrapper functions for the ``C`` package:
 Linear Algebra PACKage (LAPACK)
 """
 
-import Numeric as num
+import numpy as npy
 
 from gpaw import debug
 import _gpaw
@@ -25,16 +25,16 @@ def diagonalize(a, w, b=None):
     dsygvd/zhegvd is used to solve a generalized eigenvalue
     problem: a*v=b*v*w."""
 
-    assert a.iscontiguous()
-    assert w.iscontiguous()
-    assert a.typecode() in [num.Float, num.Complex]
-    assert w.typecode() == num.Float
+    assert a.flags.contiguous
+    assert w.flags.contiguous
+    assert a.dtype in [float, complex]
+    assert w.dtype == float
     n = len(a)
     assert a.shape == (n, n)
     assert w.shape == (n,)
-    if b:
-        assert b.iscontiguous()
-        assert b.typecode() == a.typecode()
+    if b is not None:
+        assert b.flags.contiguous
+        assert b.dtype == a.dtype
         assert b.shape == a.shape
         info = _gpaw.diagonalize(a, w, b)
     else:
@@ -48,8 +48,8 @@ def inverse_cholesky(a):
     Uses dpotrf/zpotrf to calculate the decomposition and then
     dtrtri/ztrtri for the inversion"""
 
-    assert a.iscontiguous()
-    assert a.typecode() in [num.Float, num.Complex]
+    assert a.flags.contiguous
+    assert a.dtype in [float, complex]
     n = len(a)
     assert a.shape == (n, n)
     info = _gpaw.inverse_cholesky(a)
@@ -62,12 +62,12 @@ def right_eigenvectors(a, w, v):
 
     The right eigenvector corresponding to eigenvalue w[i] is v[i]."""
 
-    assert a.iscontiguous()
-    assert w.iscontiguous()
-    assert v.iscontiguous()
-    assert a.typecode() == num.Float
-    assert w.typecode() == num.Float
-    assert v.typecode() == num.Float
+    assert a.flags.contiguous
+    assert w.flags.contiguous
+    assert v.flags.contiguous
+    assert a.dtype == float
+    assert w.dtype == float
+    assert v.dtype == float
     n = len(a)
     assert a.shape == (n, n)
     assert w.shape == (n,)
@@ -109,8 +109,8 @@ def sqrt_matrix(a, preserve=False):
     The matrix is kept if preserve=True, a=sqrt(a) otherwise."""
     n = len(a)
     if debug:
-         assert a.iscontiguous()
-         assert a.typecode() == num.Float
+         assert a.flags.contiguous
+         assert a.dtype == float
          assert a.shape == (n, n)
     if preserve:
         b = a.copy()
@@ -119,13 +119,13 @@ def sqrt_matrix(a, preserve=False):
 
     # diagonalize to get the form b = Z * D * Z^T
     # where D is diagonal
-    D = num.empty((n,), num.Float)
+    D = npy.empty((n,))
     diagonalize(b, D)
     ZT = b.copy()
-    Z = num.transpose(b)
+    Z = npy.transpose(b)
 
     # c = Z * sqrt(D)
-    c = Z * num.sqrt(D)
+    c = Z * npy.sqrt(D)
 
     # sqrt(b) = c * Z^T
     gemm(1., ZT, c, 0., b)

@@ -1,10 +1,13 @@
 from math import sqrt, pi
-import Numeric as num
+
+import numpy as npy
+
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.blas import rk, r2k
 from gpaw.utilities import unpack
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw import debug
+from _gpaw import overlap
 
 
 class LCAOHamiltonian(Hamiltonian):
@@ -14,16 +17,18 @@ class LCAOHamiltonian(Hamiltonian):
         Hamiltonian.__init__(self, paw)
         self.setups = paw.setups
         self.ibzk_kc = paw.ibzk_kc
-        
-    def initialize(self, cell_c):
+        self.gamma = paw.gamma
+        self.dtype = paw.dtype
+
+    def initialize(self):
         self.nao = 0
         for nucleus in self.nuclei:
-            nucleus.initialize_atomic_orbitals(self.gd, 42, None)
+            nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc, lfbc=None)
             self.nao += nucleus.get_number_of_atomic_orbitals()
 
         tci = TwoCenterIntegrals(self.setups)
 
-        R_dc = self.calculate_displacements(tci.rcmax, cell_c)
+        R_dc = self.calculate_displacements(tci.rcmax)
         
         nkpts = len(self.ibzk_kc)
 
@@ -31,27 +36,29 @@ class LCAOHamiltonian(Hamiltonian):
             pos1 = nucleus1.spos_c
             setup1 = nucleus1.setup
             ni1 = nucleus1.get_number_of_partial_waves()
-            nucleus1.P_kmi = num.zeros((nkpts, self.nao, ni1), num.Complex)
-            P_mi = num.zeros((self.nao, ni1), num.Float)
-            for R in R_dc:
+            nucleus1.P_kmi = npy.zeros((nkpts, self.nao, ni1), self.dtype)
+            P_mi = npy.zeros((self.nao, ni1), self.dtype)
+            for R_c in R_dc:
                 i1 = 0 
                 for j1, pt1 in enumerate(setup1.pt_j):
                     id1 = (setup1.symbol, j1)
                     l1 = pt1.get_angular_momentum_number()
                     for m1 in range(2 * l1 + 1):
-                        self.p_overlap(R, i1, pos1, id1, l1, m1, P_mi, tci)
+                        self.p_overlap(R_c, i1, pos1, id1, l1, m1, P_mi, tci)
                         i1 += 1
-                for k in range(nkpts):
-                    nucleus1.P_kmi[k] += (P_mi *
-                                          num.exp(2j * pi *
-                                                  num.dot(self.ibzk_kc[k], R)))
+                if self.gamma:
+                    nucleus1.P_kmi[0] += P_mi
+                else:
+                    phase_k = npy.exp(2j * pi * npy.dot(self.ibzk_kc, R_c))
+                    for k in range(nkpts):
+                        nucleus1.P_kmi[k] += P_mi * phase_k[k]
                     
-        self.T_kmm = num.zeros((nkpts, self.nao, self.nao), num.Complex)
-        T_mm = num.zeros((self.nao, self.nao), num.Float)
-        self.S_kmm = num.zeros((nkpts, self.nao, self.nao), num.Complex)
-        S_mm = num.zeros((self.nao, self.nao), num.Float)
+        self.S_kmm = npy.zeros((nkpts, self.nao, self.nao), self.dtype)
+        self.T_kmm = npy.zeros((nkpts, self.nao, self.nao), self.dtype)
+        S_mm = npy.zeros((self.nao, self.nao), self.dtype)
+        T_mm = npy.zeros((self.nao, self.nao), self.dtype)
 
-        for R in R_dc:
+        for R_c in R_dc:
             i1 = 0
             for nucleus1 in self.nuclei:
                 pos1 = nucleus1.spos_c
@@ -60,26 +67,31 @@ class LCAOHamiltonian(Hamiltonian):
                     id1 = (setup1.symbol, j1)
                     l1 = phit1.get_angular_momentum_number()
                     for m1 in range(2 * l1 + 1):
-                        self.st_overlap(R, i1, pos1, id1,
+                        self.st_overlap(R_c, i1, pos1, id1,
                                         l1, m1, S_mm, T_mm, tci)
                         i1 += 1
-            for k in range(nkpts):            
-                self.S_kmm[k] +=  S_mm * num.exp(2j * pi *
-                                                 num.dot(self.ibzk_kc[k], R))
-                self.T_kmm[k] +=  T_mm * num.exp(2j * pi *
-                                                 num.dot(self.ibzk_kc[k], R))
+            if self.gamma:
+                self.S_kmm[0] += S_mm
+                self.T_kmm[0] += T_mm
+            else:
+                phase_k = npy.exp(2j * pi * npy.dot(self.ibzk_kc, R_c))
+                for k in range(nkpts):            
+                    self.S_kmm[k] += S_mm * phase_k[k]
+                    self.T_kmm[k] += T_mm * phase_k[k]
                 
         for nucleus in self.nuclei:
-            for k in range(nkpts):
-                self.S_kmm[k] += num.dot(num.dot(nucleus.P_kmi[k],
-                                            nucleus.setup.O_ii),
-                                    num.transpose(nucleus.P_kmi[k]))
+            dO_ii = nucleus.setup.O_ii
+            for S_mm, P_mi in zip(self.S_kmm, nucleus.P_kmi):
+                S_mm += npy.dot(P_mi, npy.inner(dO_ii, P_mi).conj())
 
-    def p_overlap(self, R, i1, pos1, id1, l1, m1, P_mi, tci):
+        print self.S_kmm
+        print self.T_kmm
+
+    def p_overlap(self, R_c, i1, pos1, id1, l1, m1, P_mi, tci):
         i2 = 0
         for nucleus2 in self.nuclei:
             pos2 = nucleus2.spos_c
-            d = (R + pos1 - pos2) * self.gd.domain.cell_c
+            d = (R_c + pos1 - pos2) * self.gd.domain.cell_c
             setup2 = nucleus2.setup
             for j2, phit2 in enumerate(setup2.phit_j):
                 id2 = (setup2.symbol, j2)
@@ -89,11 +101,11 @@ class LCAOHamiltonian(Hamiltonian):
                     P_mi[i2, i1] = P
                     i2 += 1
 
-    def st_overlap(self, R, i1, pos1, id1, l1, m1, S_mm, T_mm, tci):
+    def st_overlap(self, R_c, i1, pos1, id1, l1, m1, S_mm, T_mm, tci):
        i2 = 0
        for nucleus2 in self.nuclei:
            pos2 = nucleus2.spos_c
-           d = (pos1 - pos2 + R) * self.gd.domain.cell_c
+           d = (pos1 - pos2 + R_c) * self.gd.domain.cell_c
            setup2 = nucleus2.setup
            for j2, phit2 in enumerate(setup2.phit_j):
                id2 = (setup2.symbol, j2)
@@ -105,34 +117,60 @@ class LCAOHamiltonian(Hamiltonian):
                    T_mm[i1, i2] = T
                    i2 += 1
 
-    def calculate_displacements(self, rmax, cell_c):
-        n = [1 + int(2 * rmax / a) for a in cell_c ]
-        n = [0, 0, 0]
-        # XXXXX BC's !!!!!
-        nd = (1 + 2 * n[0]) * (1 + 2 * n[1]) * (1 + 2 * n[2])
-        R_dc = num.empty((nd, 3), num.Float)
+    def calculate_displacements(self, rmax):
+        # Number of neighbor cells:
+        nn_c = npy.zeros(3, int)
+        for c in range(3):
+            if self.gd.domain.pbc_c[c]:
+                nn_c[c] = 1 + int(2 * rmax / self.gd.domain.cell_c[c])
+
+        nd = (1 + 2 * nn_c).prod()
+        R_dc = npy.empty((nd, 3))
         d = 0
-        for d1 in range(-n[0], n[0] + 1):
-            for d2 in range(-n[0], n[0] + 1):
-                for d3 in range(-n[0], n[0] + 1):
+        for d1 in range(-nn_c[0], nn_c[0] + 1):
+            for d2 in range(-nn_c[1], nn_c[1] + 1):
+                for d3 in range(-nn_c[2], nn_c[2] + 1):
                     R_dc[d, :] = d1, d2, d3
                     d += 1
         return R_dc
-
         
-    def calculate_effective_potential_matrix(self, V_mm, s):
-        box_b = []
+    def calculate_effective_potential_matrix(self, Vt_skmm):
+        Vt_skmm[:] = 0.0
+        
+        # Count number of boxes:
+        nb = 0
         for nucleus in self.nuclei:
+            nb += len(nucleus.phit_i.box_b)
+        
+        # Array to hold basis set index:
+        m_b = npy.empty(nb, int)
+
+        nkpts = len(self.ibzk_kc)
+
+        if self.gamma:
+            phase_bk = npy.empty((0, 0), complex)
+        else:
+            phase_bk = npy.empty((nb, nkpts), complex) # XXX
+
+        m = 0
+        b1 = 0
+        lfs_b = []
+        for nucleus in self.nuclei:
+            phit_i = nucleus.phit_i
             if debug:	
-                box_b.append(nucleus.phit_i.box_b[0].lfs)
+                box_b = [box.lfs for box in phit_i.box_b]
             else:	
-                box_b.extend(nucleus.phit_i.box_b)	
-        assert len(box_b) == len(self.nuclei)
-        from _gpaw import overlap
-        from time import time as t
-        t0 = t()
-        overlap(box_b, self.vt_sG[s], V_mm)
-        t1 = t()
+                box_b = phit_i.box_b
+            b2 = b1 + len(box_b)
+            m_b[b1:b2] = m
+            lfs_b.extend(box_b)
+            if not self.gamma:
+                phase_bk[b1:b2] = phit_i.phase_kb.T
+            m += phit_i.ni
+            b1 = b2
+
+        overlap(lfs_b, m_b, phase_bk, self.vt_sG, Vt_skmm)
+        print Vt_skmm
 
     def old_initialize(self):
         self.nao = 0
@@ -151,10 +189,10 @@ class LCAOHamiltonian(Hamiltonian):
 
         for nucleus in self.nuclei:
             ni = nucleus.get_number_of_partial_waves()
-            nucleus.P_mi = num.zeros((self.nao, ni), num.Float)
+            nucleus.P_mi = npy.zeros((self.nao, ni))
             nucleus.pt_i.integrate(self.phi_mG, nucleus.P_mi)
 
-        self.S_mm = num.zeros((self.nao, self.nao), num.Float)
+        self.S_mm = npy.zeros((self.nao, self.nao))
         rk(self.gd.dv, self.phi_mG, 0.0, self.S_mm)
         
         # Filling up the upper triangle:
@@ -162,10 +200,10 @@ class LCAOHamiltonian(Hamiltonian):
             self.S_mm[m, m:] = self.S_mm[m:, m]
 
         for nucleus in self.nuclei:
-            self.S_mm += num.dot(num.dot(nucleus.P_mi, nucleus.setup.O_ii),
-                            num.transpose(nucleus.P_mi))
+            self.S_mm += npy.dot(npy.dot(nucleus.P_mi, nucleus.setup.O_ii),
+                            npy.transpose(nucleus.P_mi))
 
-        self.T_mm = num.zeros((self.nao, self.nao), num.Float)
+        self.T_mm = npy.zeros((self.nao, self.nao))
         Tphi_mG = self.gd.zeros(self.nao)
         self.kin.apply(self.phi_mG, Tphi_mG)
         r2k(0.5 * self.gd.dv, self.phi_mG, Tphi_mG, 0.0, self.T_mm)

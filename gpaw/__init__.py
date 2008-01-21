@@ -1,6 +1,14 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+
+
+# XXX
+# XXX
+# XXX Use random number generator objects
+# XXX
+# XXX
+
 """Main gpaw module.
 
 Use like this::
@@ -52,17 +60,27 @@ while len(sys.argv) > i:
     # Delete used command line argument:
     del sys.argv[i]
 
+if 0:
+    import numpy
+    oldsum = numpy.sum
+    def zum(*args, **kwargs):
+        a = oldsum(*args, **kwargs)
+        if numpy.asarray(args[0]).ndim != 1 and 'axis' not in kwargs:
+            raise RuntimeError
+        return a
+    numpy.sum = zum
+
 if debug:
-    import Numeric
-    oldempty = Numeric.empty
+    import numpy
+    oldempty = numpy.empty
     def empty(*args, **kwargs):
         a = oldempty(*args, **kwargs)
-        if a.typecode() == Numeric.Int:
+        if a.dtype == int:
             a[:] = -100000000
         else:
             a[:] = 1e400
         return a
-    Numeric.empty = empty
+    numpy.empty = empty
 
 build_path = join(__path__[0], '..', 'build')
 arch = '%s-%s' % (get_platform(), sys.version[0:3])
@@ -79,9 +97,9 @@ def get_gpaw_python_path():
             return path
     raise RuntimeError('Could not find gpaw-python!')
 
-import Numeric
-from gpaw.utilities.blas import dotc
-Numeric.vdot = dotc
+#import Numeric
+#from gpaw.utilities.blas import dotc
+#Numeric.vdot = dotc
 
 
 
@@ -89,7 +107,7 @@ paths = os.environ.get('GPAW_SETUP_PATH', '')
 if paths != '':
     setup_paths += paths.split(':')
 
-from gpaw.ase import Calculator
+from gpaw.aseinterface import Calculator
 from gpaw.mixer import Mixer, MixerSum
 from gpaw.poisson import PoissonSolver
 

@@ -6,7 +6,7 @@
 import os
 from math import sqrt
 
-import Numeric as num
+import numpy as npy
 
 import _gpaw
 from gpaw import debug
@@ -35,21 +35,21 @@ def gcd(a, b):
     return a
 
 
-def contiguous(array, typecode):
+def contiguous(array, dtype):
     """Convert a sequence to a contiguous Numeric array."""
-    array = num.asarray(array, typecode)
-    if array.iscontiguous():
+    array = npy.asarray(array, dtype)
+    if array.flags.contiguous:
         return array
     else:
-        return num.array(array)
+        return npy.array(array)
 
 
-def is_contiguous(array, typecode=None):
+def is_contiguous(array, dtype=None):
     """Check for contiguity and type."""
-    if typecode is None:
-        return array.iscontiguous()
+    if dtype is None:
+        return array.flags.contiguous
     else:
-        return array.iscontiguous() and array.typecode() == typecode
+        return array.flags.contiguous and array.dtype == dtype
 
 
 # Radial-grid Hartree solver:
@@ -96,8 +96,8 @@ def hartree(l, nrdr, beta, N, vr):
           N - g
 
     """
-    assert is_contiguous(nrdr, num.Float)
-    assert is_contiguous(vr, num.Float)
+    assert is_contiguous(nrdr, float)
+    assert is_contiguous(vr, float)
     assert nrdr.shape == vr.shape and len(vr.shape) == 1
     return _gpaw.hartree(l, nrdr, beta, N, vr)
 
@@ -110,8 +110,8 @@ def wignerseitz(index_G, atom_ac, beg_c, end_c):
     by the atomic coordinates in atom_ac, is the closest. Return result as
     atomic indices on the grid index_G.
     """
-    assert is_contiguous(index_G, num.Int)
-    assert is_contiguous(atom_ac, num.Float)
+    assert is_contiguous(index_G, int)
+    assert is_contiguous(atom_ac, float)
     assert atom_ac.shape[1] == len(beg_c) == len(end_c) == 3
     assert index_G.shape == tuple(end_c - beg_c)
     return _gpaw.wigner_seitz_grid(index_G, atom_ac, beg_c, end_c)
@@ -129,8 +129,8 @@ def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
     assert is_contiguous(M)
     n = int(sqrt(0.25 + 2.0 * len(M)))
-    M2 = num.zeros((n, n), M.typecode())
-    if M.typecode() == num.Complex:
+    M2 = npy.zeros((n, n), M.dtype.char)
+    if M.dtype.char == complex:
         _gpaw.unpack_complex(M, M2)
     else:
         _gpaw.unpack(M, M2)
@@ -141,7 +141,7 @@ def unpack2(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack``."""
     M2 = unpack(M)
     M2 *= 0.5 # divide all by 2
-    M2.flat[0::len(M2) + 1] *= 2 # rescale diagonal to original size
+    M2.ravel()[0::len(M2) + 1] *= 2 # rescale diagonal to original size
     return M2
 
     
@@ -159,14 +159,14 @@ def pack(M2, tolerance=1e-10):
       M = (a00, a01 + a10*, a02 + a20*, a11, a12 + a21*, a22)
     """
     n = len(M2)
-    M = num.zeros(n * (n + 1) // 2, M2.typecode())
+    M = npy.zeros(n * (n + 1) // 2, M2.dtype.char)
     p = 0
     for r in range(n):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] = M2[r, c] + num.conjugate(M2[c, r])
-            error = abs(M2[r, c] - num.conjugate(M2[c, r]))
+            M[p] = M2[r, c] + npy.conjugate(M2[c, r])
+            error = abs(M2[r, c] - npy.conjugate(M2[c, r]))
             assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
             p += 1
     assert p == len(M)
@@ -176,14 +176,14 @@ def pack(M2, tolerance=1e-10):
 def pack2(M2, tolerance=1e-10):
     """Pack a 2D array to 1D, averaging offdiagonal terms."""
     n = len(M2)
-    M = num.zeros(n * (n + 1) // 2, M2.typecode())
+    M = npy.zeros(n * (n + 1) // 2, M2.dtype.char)
     p = 0
     for r in range(n):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] = (M2[r, c] + num.conjugate(M2[c, r])) / 2. # note / 2.
-            error = abs(M2[r, c] - num.conjugate(M2[c, r]))
+            M[p] = (M2[r, c] + npy.conjugate(M2[c, r])) / 2. # note / 2.
+            error = abs(M2[r, c] - npy.conjugate(M2[c, r]))
             assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
             p += 1
     assert p == len(M)
@@ -200,15 +200,15 @@ def element_from_packed(M, i, j):
     elif i > j:
         return .5 * M[p]
     else:
-        return .5 * num.conjugate(M[p])
+        return .5 * npy.conjugate(M[p])
 
 
 def check_unit_cell(cell):
     """Check that the unit cell (3*3 matrix) is orthorhombic (diagonal)."""
     c = cell.copy()
     # Zero the diagonal:
-    c.flat[::4] = 0.0
-    if num.sometrue(c.flat):
+    c.ravel()[::4] = 0.0
+    if npy.sometrue(c.ravel()):
         raise RuntimeError('Unit cell not orthorhombic')
     
 
@@ -258,14 +258,6 @@ def warning(msg):
         start, end = end, start
     msg += ' %s/' % bar[1:]
     return msg
-
-
-def center(atoms):
-    """Method for centering atoms in input ListOfAtoms"""
-    pos = atoms.GetCartesianPositions()
-    cntr = 0.5 * (num.minimum.reduce(pos) + num.maximum.reduce(pos))
-    cell = num.diagonal(atoms.GetUnitCell())
-    atoms.SetCartesianPositions(pos - cntr + 0.5 * cell)
 
 
 def divrl(a_g, l, r_g):

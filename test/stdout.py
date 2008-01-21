@@ -9,17 +9,18 @@ sys.stdout = sys.stderr = Out()
 
 try:
     from gpaw import Calculator
-    from ASE import ListOfAtoms, Atom
+    from ase import *
 
     a = 5.0
     h = 0.2
-    hydrogen = ListOfAtoms([Atom('H', (a / 2, a / 2, a / 2), magmom=1)],
-                           cell=(a, a, a))
-
-    calc = Calculator(h=h, nbands=1, kpts=(1, 1, 1), width=1e-9, spinpol=True,
+    calc = Calculator(h=h, nbands=1, kpts=(1, 1, 1),
+                      width=1e-9,
+                      xc='PBE',
                       txt=None)
-    hydrogen.SetCalculator(calc)
-    f = hydrogen.GetCartesianForces()
+    hydrogen = Atoms([Atom('H', (a / 2, a / 2, a / 2), magmom=0)],
+                     cell=(a, a, a),
+                     calculator=calc)
+    f = hydrogen.get_forces()
 except:
     sys.stdout = out
     sys.stderr = err

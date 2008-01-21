@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from time import time
 
 def function_timer(func, *args, **kwargs):
@@ -14,7 +14,7 @@ def factorial(x):
 
 def L_to_lm(L):
     """Convert L index to (l, m) index."""
-    l = int(num.sqrt(L))
+    l = int(npy.sqrt(L))
     m = L - l**2 - l
     return l, m
 
@@ -71,13 +71,15 @@ def get_kpoint_dimensions(kpts):
        The set of k-points must not have been symmetry reduced.
     """
     nkpts = len(kpts)
-    if nkpts == 1: return num.ones(3)
+    if nkpts == 1:
+        return npy.ones(3, int)
+    
     tol = 1e-5
-    Nk_c = num.zeros(3)
+    Nk_c = npy.zeros(3)
     for c in range(3):
         # Sort kpoints in ascending order along current axis
-        slist = num.argsort(kpts[:, c])
-        skpts = num.take(kpts, slist)
+        slist = npy.argsort(kpts[:, c])
+        skpts = npy.take(kpts, slist)
 
         # Determine increment between kpoints along current axis
         DeltaK = max([skpts[n + 1, c] - skpts[n, c] for n in range(nkpts - 1)])
@@ -92,10 +94,10 @@ def construct_reciprocal(gd):
        grid defined in input grid-descriptor 'gd'.
     """
     # Calculate reciprocal lattice vectors
-    dim = num.reshape(gd.n_c, (3, 1, 1, 1))
-    dk = 2 * num.pi / gd.domain.cell_c
+    dim = npy.reshape(gd.n_c, (3, 1, 1, 1))
+    dk = 2 * npy.pi / gd.domain.cell_c
     dk.shape = (3, 1, 1, 1)
-    k = ((num.indices(gd.n_c) + dim / 2) % dim - dim / 2) * dk
+    k = ((npy.indices(gd.n_c) + dim / 2) % dim - dim / 2) * dk
     k2 = sum(k**2)
     k2[0, 0, 0] = 1.0
 
@@ -111,19 +113,19 @@ def coordinates(gd):
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
     """    
-    I  = num.indices(gd.n_c)
-    dr = num.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = num.reshape(gd.h_c * gd.beg_c - .5 * gd.domain.cell_c, (3, 1, 1, 1))
-    r0 = num.ones(I.shape) * r0
+    I  = npy.indices(gd.n_c)
+    dr = npy.reshape(gd.h_c, (3, 1, 1, 1))
+    r0 = npy.reshape(gd.h_c * gd.beg_c - .5 * gd.domain.cell_c, (3, 1, 1, 1))
+    r0 = npy.ones(I.shape) * r0
     xyz = r0 + I * dr
-    r2 = num.sum(xyz**2)
+    r2 = npy.sum(xyz**2, axis=0)
 
     # Remove singularity at origin and replace with small number
     middle = gd.N_c / 2.
     # Check that middle is a gridpoint and that it is on this CPU
-    if (num.alltrue(middle == num.floor(middle)) and
-        num.alltrue(gd.beg_c <= middle) and
-        num.alltrue(middle < gd.end_c)):
+    if (npy.alltrue(middle == npy.floor(middle)) and
+        npy.alltrue(gd.beg_c <= middle) and
+        npy.alltrue(middle < gd.end_c)):
         m = (middle - gd.beg_c).astype(int)
         r2[m[0], m[1], m[2]] = 1e-12
 
@@ -137,25 +139,25 @@ def dagger(matrix, copy=True):
     of memory).
     """
     # First change the axis: (Does not allocate a new array)
-    dag = num.swapaxes(matrix, 0, 1)
+    dag = npy.swapaxes(matrix, 0, 1)
 
     if copy: # Allocate space for new array
-        return num.conjugate(dag)
+        return npy.conjugate(dag)
     else: # The input array is used for output
-        if dag.typecode() == num.Complex:
-            num.multiply(dag.imag, -1, dag.imag)
+        if dag.dtype.char == complex:
+            npy.multiply(dag.imag, -1, dag.imag)
         return dag
 
 def project(a, b):
     """Returns the projection of b onto a."""
-    return a * (num.dot(num.conjugate(a), b) / num.dot(num.conjugate(a), a))
+    return a * (npy.dot(npy.conjugate(a), b) / npy.dot(npy.conjugate(a), a))
 
 def normalize(vec):
     """Normalize NxM matrix vec containing M vectors as its columns."""
-    newvec = num.zeros(vec.shape, num.Complex)
+    newvec = npy.zeros(vec.shape, complex)
     M = vec.shape[1]
     for m in range(M):
-	newvec[:, m] = vec[:,m] / num.sqrt(num.dot(num.conjugate(vec[:, m]),
+	newvec[:, m] = vec[:,m] / npy.sqrt(npy.dot(npy.conjugate(vec[:, m]),
                                                    vec[:, m]))
     return newvec
 	    
@@ -163,7 +165,7 @@ def gram_schmidt_orthonormalize(vec, order=None):
     """vec is a NxM matrix containing M vectors as its columns.
     These will be orthogonalized by Gram-Schmidt using the order
     specified in the list 'order'"""
-    newvec = num.zeros(vec.shape, num.Complex)
+    newvec = npy.zeros(vec.shape, complex)
     N, M = vec.shape[0], vec.shape[1]
     if order is None:
         order = range(M)
@@ -172,31 +174,30 @@ def gram_schmidt_orthonormalize(vec, order=None):
         for i in range(m):
             temp -= project(newvec[:, order[i]], vec[:, order[m]])
         # Normalize before saving
-        newvec[:, order[m]] = temp / num.sqrt(num.dot(num.conjugate(temp),
+        newvec[:, order[m]] = temp / npy.sqrt(npy.dot(npy.conjugate(temp),
                                                       temp))
     return newvec
 
 def lowdin_orthonormalize(vec, S=None):
     """vec is a NxM matrix containing M vectors as its columns.
         These will be orthogonalized by Lowdin procedure"""
-    from LinearAlgebra import Heigenvectors
 
     if S is None:
-        S = num.matrixmultiply(dagger(vec), vec)
-    epsilon, U = Heigenvectors(num.conjugate(S))
+        S = npy.dot(dagger(vec), vec)
+    epsilon, U = npy.linalg.eigh(npy.conjugate(S))
 
     # Now, U contains the eigenvectors as ROWS and epsilon the eigenvalues
-    D = num.identity(S.shape[0], num.Complex) / num.sqrt(epsilon)
+    D = npy.identity(S.shape[0], complex) / npy.sqrt(epsilon)
 
     # T = S^(-1/2)
-    T = num.matrixmultiply(num.transpose(U),
-                               num.matrixmultiply(D, num.conjugate(U)))
-    return num.matrixmultiply(vec, T)
+    T = npy.dot(npy.transpose(U),
+                               npy.dot(D, npy.conjugate(U)))
+    return npy.dot(vec, T)
 
 def symmetrize(matrix):
     """Symmetrize input matrix."""
-    num.add(dagger(matrix), matrix, matrix)
-    num.multiply(.5, matrix, matrix)
+    npy.add(dagger(matrix), matrix, matrix)
+    npy.multiply(.5, matrix, matrix)
     return matrix
 
 def erf3D(M):
@@ -215,8 +216,8 @@ def elementwise_apply(array, function, copy=True):
     else: # The input array is used for output
         result = array
     
-    for n in range(len(array.flat)):
-        result.flat[n] = function(array.flat[n])
+    for n in range(len(array.ravel())):
+        result.ravel()[n] = function(array.ravel()[n])
 
     return result
 
@@ -237,11 +238,11 @@ def standard_deviation(a, axis=0):
     The standard deviation is the square root of the average of the squared
     deviations from the mean.
     """
-    mean = num.average(a, axis=axis)
+    mean = npy.average(a, axis=axis)
     shape = list(a.shape)
     shape[axis] = 1
     mean.shape = tuple(shape)
-    return num.sqrt(num.average((a - mean)**2, axis=axis))
+    return npy.sqrt(npy.average((a - mean)**2, axis=axis))
 
 def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     """Convert planewave energy cutoff to a real-space gridspacing.
@@ -256,7 +257,7 @@ def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
     """
     from ASE.Units import Convert
     E = Convert(E, E_unit, 'Hartree')
-    h = num.pi / num.sqrt(2 * E)
+    h = npy.pi / npy.sqrt(2 * E)
     h = Convert(h, 'Bohr', h_unit)
     return h
     
@@ -273,7 +274,7 @@ def gridspacing_to_energy_cutoff(h, h_unit='Ang', E_unit='Hartree'):
     """
     from ASE.Units import Convert
     h = Convert(h, h_unit, 'Bohr')
-    E = .5 * (num.pi / h)**2
+    E = .5 * (npy.pi / h)**2
     E = Convert(E, 'Hartree', E_unit)
     return E
 
@@ -304,7 +305,7 @@ def get_HS_matrices(atoms, nt_sg, D_asp, psit_unG):
     """
     nspins = len(nt_sg)
     nbands = len(psit_unG[0])
-    gpts = num.array(psit_unG[0][0].shape)
+    gpts = npy.array(psit_unG[0][0].shape)
     paw = atoms.GetCalculator()
     
     # Ensure that a paw object is initialized
@@ -314,7 +315,7 @@ def get_HS_matrices(atoms, nt_sg, D_asp, psit_unG):
     # Sanity checks
     assert len(atoms) == len(D_asp)
     assert len(psit_unG) == nspins * len(calc.GetIBZKPoints())
-    assert num.alltrue(gpts * 2 == nt_sg[0].shape)
+    assert npy.alltrue(gpts * 2 == nt_sg[0].shape)
     assert (nspins - 1) == calc.GetSpinPolarized()
 
     # Set density on paw-object
@@ -331,9 +332,9 @@ def get_HS_matrices(atoms, nt_sg, D_asp, psit_unG):
     paw.hamiltonian.update(paw.density) # solve poisson
 
     # Determine Hamiltonian and overlap
-    Htpsit_nG = num.zeros( (nbands,) + tuple(gpts), paw.typecode) # temp array
-    H_unn = num.zeros((len(psit_unG), nbands, nbands), paw.typecode)
-    S_unn = num.zeros((len(psit_unG), nbands, nbands), paw.typecode)
+    Htpsit_nG = npy.zeros( (nbands,) + tuple(gpts), paw.dtype) # temp array
+    H_unn = npy.zeros((len(psit_unG), nbands, nbands), paw.dtype)
+    S_unn = npy.zeros((len(psit_unG), nbands, nbands), paw.dtype)
     for H_nn, S_nn, kpt in zip(H_unn, S_unn, paw.kpt_u):
         Htpsit_nG[:] = 0.0
         psit_nG = kpt.psit_nG
@@ -347,15 +348,15 @@ def get_HS_matrices(atoms, nt_sg, D_asp, psit_unG):
         r2k(0.5 * paw.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
         for nucleus in paw.hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[u]
-            H_nn += num.dot(P_ni, num.dot(unpack(nucleus.H_sp[s]),
-                                          cc(num.transpose(P_ni))))
+            H_nn += npy.dot(P_ni, npy.dot(unpack(nucleus.H_sp[s]),
+                                          cc(npy.transpose(P_ni))))
         comm.sum(H_nn, root)
 
         # Fill in the lower triangle of the overlap matrix:
         rk(paw.gd.dv, psit_nG, 0.0, S_nn)
         for nucleus in paw.my_nuclei:
             P_ni = nucleus.P_uni[u]
-            S_nn += num.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
+            S_nn += npy.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
         comm.sum(S_nn, root)
 
     return H_unn, S_unn

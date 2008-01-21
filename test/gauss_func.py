@@ -1,5 +1,5 @@
-import Numeric as num
-from Numeric import pi, sqrt
+from math import pi, sqrt
+import numpy as npy
 from gpaw.utilities.tools import coordinates
 from gpaw.utilities.gauss import Gaussian
 from gpaw.domain import Domain
@@ -9,14 +9,14 @@ from gpaw.mpi import world
 from gpaw.poisson import PoissonSolver
 
 def norm(a):
-    return num.sqrt(num.sum(a.flat**2)) / len(a.flat)
+    return npy.sqrt(npy.sum(a.ravel()**2)) / len(a.ravel())
 
 # Initialize classes
 a = 20 # Size of cell
 N = 48 # Number of grid points
 Nc = (N, N, N)                # Number of grid points along each axis
 d  = Domain((a,a,a),
-            periodic=(0,0,0)) # Domain object
+            pbc=(0,0,0)) # Domain object
 d.set_decomposition(world,
                     N_c=Nc)   # Decompose domain on processors
 gd = GridDescriptor(d, Nc)    # Grid-descriptor object
@@ -24,8 +24,8 @@ solver = PoissonSolver(nn=3)  # Numerical poisson solver
 solver.initialize(gd)
 solve = solver.solve
 xyz, r2 = coordinates(gd)     # Matrix with the square of the radial coordinate
-r  = num.sqrt(r2)             # Matrix with the values of the radial coordinate
-nH = num.exp(-2 * r) / pi     # Density of the hydrogen atom
+r  = npy.sqrt(r2)             # Matrix with the values of the radial coordinate
+nH = npy.exp(-2 * r) / pi     # Density of the hydrogen atom
 gauss = Gaussian(gd)          # An instance of Gaussian
 
 # /------------------------------------------------\
@@ -58,7 +58,7 @@ equal(m, 0., 1e-7)
 # \-------------------------------------------------/
 
 # Array for storing the potential
-pot = gd.zeros(typecode=num.Float, global_array=False)
+pot = gd.zeros(dtype=float, global_array=False)
 for L in range(7): # Angular index of gaussian
     # Get analytic functions
     ng = gauss.get_gauss(L)

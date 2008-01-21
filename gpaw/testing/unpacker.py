@@ -4,8 +4,7 @@ import sys
 import pickle
 from math import sqrt
 
-import Numeric as num
-from LinearAlgebra import solve_linear_equations as solve
+import numpy as npy
 
 import data
 from data import molecules
@@ -79,18 +78,18 @@ class DataUnentangler:
     def get_relaxed_energy(self, formula):
         dists = self.dist_range.get(formula)
         energies = self.molecular_energies.get(formula)
-        M = num.zeros((4, 5), num.Float)
+        M = npy.zeros((4, 5))
 
         rel_d = self.dist_range.get(formula)
         if rel_d is None:
             return
-        dists = self.refdist[formula]+ num.array(rel_d)
+        dists = self.refdist[formula]+ npy.array(rel_d)
         for n in range(4):
             M[n] = dists**(-n)
-        energies = num.array(self.molecular_energies[formula])
+        energies = npy.array(self.molecular_energies[formula])
         atomic_energy = self.atomic_energy_sum[formula]
-        a = solve(num.innerproduct(M, M),
-                  num.dot(M, energies - atomic_energy))
+        a = npy.linalg.solve(npy.inner(M, M),
+                             npy.dot(M, energies - atomic_energy))
 
         disc = 4 * a[2]**2 - 12 * a[1] * a[3]
         if disc < 0:
@@ -99,7 +98,7 @@ class DataUnentangler:
         
         dmin = 1 / ((-2 * a[2] + sqrt(disc)) / (6 * a[3]))
 
-        dfit = num.arange(dists[0] * 0.95, dists[4] * 1.05,
+        dfit = npy.arange(dists[0] * 0.95, dists[4] * 1.05,
                           dists[2] * 0.005)
 
         efit = sum([a[n] * dfit**(-n) for n in range(4)])

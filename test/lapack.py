@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 
 from gpaw.utilities import equal
 from gpaw.utilities.lapack import sqrt_matrix
@@ -7,9 +7,9 @@ from gpaw.utilities.lapack import sqrt_matrix
 
 A = [[20, 4], [4, 1]]
 a = [[4.4, .8], [.8, .6]]
-A = num.array(A, num.Float)
+A = npy.array(A, float)
 print 'A=', A
-a = num.array(a, num.Float)
+a = npy.array(a)
 b = sqrt_matrix(A)
 print 'sqrt(A)=', b
-equal(num.sum((a-b).flat), 0, 1.e-12)
+equal(((a-b)**2).sum(), 0, 1.e-12)

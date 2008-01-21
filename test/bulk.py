@@ -1,19 +1,18 @@
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
-bulk = ListOfAtoms([Atom('Li')], periodic=True)
+bulk = Atoms([Atom('Li')], pbc=True)
 k = 4
 g = 8
 calc = Calculator(gpts=(g, g, g), kpts=(k, k, k), nbands=2)
-bulk.SetCalculator(calc)
+bulk.set_calculator(calc)
 e = []
 A = [2.6, 2.65, 2.7, 2.75, 2.8]
 for a in A:
-    bulk.SetUnitCell((a, a, a))
-    e.append(bulk.GetPotentialEnergy())
+    bulk.set_cell((a, a, a))
+    e.append(bulk.get_potential_energy())
 print e
 
-if 0:
-    import numpy as npy
-    a = npy.roots(npy.polyder(npy.polyfit(A, e, 2), 1))[0]
-    print 'a =', a
-    assert abs(a - 2.6493) < 0.0001
+import numpy as npy
+a = npy.roots(npy.polyder(npy.polyfit(A, e, 2), 1))[0]
+print 'a =', a
+assert abs(a - 2.6492) < 0.0001

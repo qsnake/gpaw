@@ -1,5 +1,5 @@
 #include <Python.h>
-#include <Numeric/arrayobject.h>
+#include <numpy/arrayobject.h>
 
 PyObject* gemm(PyObject *self, PyObject *args);
 PyObject* axpy(PyObject *self, PyObject *args);

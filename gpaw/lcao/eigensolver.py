@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.utilities.blas import rk, r2k
 from gpaw.utilities import unpack
 from gpaw.utilities.lapack import diagonalize
@@ -15,12 +15,22 @@ class LCAO:
         self.nuclei = paw.nuclei
         self.initialized = False
         self.error = 0.0
-        
+        self.nspins = paw.nspins
+        self.nkpts = paw.nkpts
+        self.nbands = paw.nbands
+        self.dtype = paw.dtype
+
     def iterate(self, hamiltonian, kpt_u):
         if not self.initialized:
-            hamiltonian.initialize(self.gd.domain.cell_c)
+            hamiltonian.initialize()
+            nao = hamiltonian.nao
+            self.eps_m = npy.empty(nao)
+            self.S_mm = npy.empty((nao, nao), self.dtype)
+            self.Vt_skmm = npy.empty((self.nspins, self.nkpts, nao, nao),
+                                     self.dtype)
             self.initialized = True
 
+        hamiltonian.calculate_effective_potential_matrix(self.Vt_skmm)
         for kpt in kpt_u:
             self.iterate_one_k_point(hamiltonian, kpt)
 
@@ -29,28 +39,20 @@ class LCAO:
         s = kpt.s
         u = kpt.u
         
-        vt_G = hamiltonian.vt_sG[s]
-
-        nao = hamiltonian.nao
-        nbands = kpt.nbands
-        H_mm = num.zeros((nao, nao), num.Complex)   #Changed to complex!
-        
-        V_mm = num.zeros((nao, nao), num.Float)
-        hamiltonian.calculate_effective_potential_matrix(V_mm, s)
-        H_mm += V_mm
+        H_mm = self.Vt_skmm[s, k]
 
         for nucleus in self.nuclei:
             dH_ii = unpack(nucleus.H_sp[s])
-            H_mm += num.dot(num.dot(nucleus.P_kmi[k], dH_ii),
-                            num.transpose(nucleus.P_kmi[k]))
+            P_mi = nucleus.P_kmi[k]
+            H_mm += npy.dot(P_mi, npy.inner(dH_ii, P_mi).conj())
 
         H_mm += hamiltonian.T_kmm[k]
-        eps_n = num.zeros(nao, num.Float)
-        diagonalize(H_mm, eps_n, hamiltonian.S_kmm[k].copy())
-        kpt.C_nm = H_mm[0:nbands].copy()
-        #print kpt.C_nm
-        kpt.eps_n[:] = eps_n[0:nbands]
+
+        self.S_mm[:] = hamiltonian.S_kmm[k]
+        diagonalize(H_mm, self.eps_m, self.S_mm)
+        kpt.C_nm = H_mm[0:self.nbands].copy()  # XXX
+        kpt.eps_n[:] = self.eps_m[0:self.nbands]
         
         for nucleus in self.nuclei:
-            nucleus.P_uni[u] = num.dot(kpt.C_nm, nucleus.P_kmi[k]).real # XXX
+            nucleus.P_uni[u] = npy.dot(kpt.C_nm, nucleus.P_kmi[k])
  

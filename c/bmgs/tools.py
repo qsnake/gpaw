@@ -14,13 +14,13 @@ class Rational:
     """Class used to represent rational numbers as fractions, such that
        no precision is lost during calculation operations.
        Example usage with Numeric:
-       import Numeric as num
+       import numpy as npy
        from tools import Rational as Q
 
-       n = num.zeros(4, 'O')                   array([0 , 0 , 0 , 0 ],'O')
+       n = npy.zeros(4, 'O')                   array([0 , 0 , 0 , 0 ],'O')
        n[2:4] = [Q(35,12), Q(36,12)]           array([0 , 0 , 35./12 , 3 ],'O')
        24 * n                                  array([0 , 0 , 70 , 72 ],'O')
-       num.multiply(n, Q(3,9))                 array([0 , 0 , 35./36 , 1 ],'O')
+       npy.multiply(n, Q(3,9))                 array([0 , 0 , 35./36 , 1 ],'O')
        
     """
     def __init__(self, nom=0, denom=1):

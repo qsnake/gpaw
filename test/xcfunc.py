@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import equal
 
@@ -6,17 +6,17 @@ nspins = 2
 for xc in [XCFunctional('PBE', nspins),
            XCFunctional('LDA', nspins),
            XCFunctional('XC-2-1.0', nspins)]:
-    naa = 0.1 * num.ones(1, num.Float)
-    nb = 0.12 * num.ones(1, num.Float)
-    e = num.zeros(1, num.Float)
-    va = num.zeros(1, num.Float)
-    vb = num.zeros(1, num.Float)
-    a2 = 1.2 * num.ones(1, num.Float)
-    aa2 = 0.2 * num.ones(1, num.Float)
-    ab2 = 0.4 * num.ones(1, num.Float)
-    deda2 = num.zeros(1, num.Float)
-    dedaa2 = num.zeros(1, num.Float)
-    dedab2 = num.zeros(1, num.Float)
+    naa = 0.1 * npy.ones(1)
+    nb = 0.12 * npy.ones(1)
+    e = npy.zeros(1)
+    va = npy.zeros(1)
+    vb = npy.zeros(1)
+    a2 = 1.2 * npy.ones(1)
+    aa2 = 0.2 * npy.ones(1)
+    ab2 = 0.4 * npy.ones(1)
+    deda2 = npy.zeros(1)
+    dedaa2 = npy.zeros(1)
+    dedab2 = npy.zeros(1)
     xc.calculate_spinpolarized(e, naa, va, nb, vb,
                               a2, aa2, ab2,
                               deda2, dedaa2, dedab2)

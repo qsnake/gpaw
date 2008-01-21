@@ -4,15 +4,15 @@
 from __future__ import division
 from math import pi
 
-import Numeric as num
+import numpy as npy
 
 from gpaw import debug
 from gpaw.utilities import contiguous, is_contiguous
 import _gpaw
     
 class _Operator:
-    def __init__(self, coef_p, offset_pc, gd, typecode=num.Float):
-        """Operator(coefs, offsets, gd, typecode) -> Operator object.
+    def __init__(self, coef_p, offset_pc, gd, dtype=float):
+        """Operator(coefs, offsets, gd, dtype) -> Operator object.
         """
 
         # Is this a central finite-difference type of stencil?
@@ -23,20 +23,21 @@ class _Operator:
 
         maxoffset_c = [max([offset_c[c] for offset_c in offset_pc])
                        for c in range(3)]
+
         mp = maxoffset_c[0]
         if maxoffset_c[1] != mp or maxoffset_c[2] != mp:
 ##            print 'Warning: this should be optimized XXXX', maxoffsets, mp
             mp = max(maxoffset_c)
         n_c = gd.n_c
         M_c = n_c + 2 * mp
-        stride_c = num.array([M_c[1] * M_c[2], M_c[2], 1])
-        offset_p = num.dot(offset_pc, stride_c)
-        coef_p = contiguous(coef_p, num.Float)
+        stride_c = npy.array([M_c[1] * M_c[2], M_c[2], 1])
+        offset_p = npy.dot(offset_pc, stride_c)
+        coef_p = contiguous(coef_p, float)
         neighbor_cd = gd.domain.neighbor_cd
-        assert num.rank(coef_p) == 1
+        assert npy.rank(coef_p) == 1
         assert coef_p.shape == offset_p.shape
-        assert typecode in [num.Float, num.Complex]
-        self.typecode = typecode
+        assert dtype in [float, complex]
+        self.dtype = dtype
         self.shape = tuple(n_c)
         
         if gd.comm.size > 1:
@@ -48,25 +49,25 @@ class _Operator:
             comm = None
 
         self.operator = _gpaw.Operator(coef_p, offset_p, n_c, mp,
-                                          neighbor_cd, typecode == num.Float,
+                                          neighbor_cd, dtype == float,
                                           comm, cfd)
 
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape
         assert in_xg.shape[-3:] == self.shape
-        assert is_contiguous(in_xg, self.typecode)
-        assert is_contiguous(out_xg, self.typecode)
-        assert (self.typecode is num.Float or
-                (phase_cd.typecode() == num.Complex and
+        assert is_contiguous(in_xg, self.dtype)
+        assert is_contiguous(out_xg, self.dtype)
+        assert (self.dtype == float or
+                (phase_cd.dtype == complex and
                  phase_cd.shape == (3, 2)))
         self.operator.apply(in_xg, out_xg, phase_cd)
 
     def relax(self, relax_method, f_g, s_g, n, w=None):
         assert f_g.shape == self.shape
         assert s_g.shape == self.shape
-        assert is_contiguous(f_g, num.Float)
-        assert is_contiguous(s_g, num.Float)
-        assert self.typecode is num.Float
+        assert is_contiguous(f_g, float)
+        assert is_contiguous(s_g, float)
+        assert self.dtype == float
         self.operator.relax(relax_method, f_g, s_g, n, w)
         
     def get_diagonal_element(self):
@@ -76,18 +77,18 @@ class _Operator:
 if debug:
     Operator = _Operator
 else:
-    def Operator(coef_p, offset_pc, gd, typecode=num.Float):
-        return _Operator(coef_p, offset_pc, gd, typecode).operator
+    def Operator(coef_p, offset_pc, gd, dtype=float):
+        return _Operator(coef_p, offset_pc, gd, dtype).operator
 
 
-def Gradient(gd, c, scale=1.0, typecode=num.Float):
+def Gradient(gd, c, scale=1.0, dtype=float):
     h = gd.h_c[c]
     a = 0.5 / h * scale
     coef_p = [-a, a]
-    offset_pc = num.zeros((2, 3))
+    offset_pc = npy.zeros((2, 3), int)
     offset_pc[0, c] = -1
     offset_pc[1, c] = 1
-    return Operator(coef_p, offset_pc, gd, typecode)
+    return Operator(coef_p, offset_pc, gd, dtype)
 
 
 # Expansion coefficients for finite difference Laplacian.  The numbers are
@@ -106,7 +107,7 @@ if debug:
         assert abs(coefs[0] + 2 * sum(coefs[1:])) < 1e-11
 
 
-def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
+def Laplace(gd, scale=1.0, n=1, dtype=float):
     """Central finite diference Laplacian.
 
     Uses 6*n neighbors."""
@@ -115,24 +116,24 @@ def Laplace(gd, scale=1.0, n=1, typecode=num.Float):
     h = gd.h_c
     h2 = h**2
     offsets = [(0, 0, 0)]
-    coefs = [scale * num.sum(num.divide(laplace[n][0], h2))]
+    coefs = [scale * npy.sum(npy.divide(laplace[n][0], h2))]
     for d in range(1, n + 1):
         offsets.extend([(-d, 0, 0), (d, 0, 0),
                         (0, -d, 0), (0, d, 0),
                         (0, 0, -d), (0, 0, d)])
-        c = scale * num.divide(laplace[n][d], h2)
+        c = scale * npy.divide(laplace[n][d], h2)
         coefs.extend([c[0], c[0],
                       c[1], c[1],
                       c[2], c[2]])
-    return Operator(coefs, offsets, gd, typecode)
+    return Operator(coefs, offsets, gd, dtype)
 
 
-def LaplaceA(gd, scale, typecode=num.Float):
-    c = num.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
+def LaplaceA(gd, scale, dtype=float):
+    c = npy.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
     c0 = c[1] + c[2]
     c1 = c[0] + c[2]
     c2 = c[1] + c[0]
-    a = -16.0 * num.sum(c)
+    a = -16.0 * npy.sum(c)
     b = 10.0 * c + 0.125 * a
     return Operator([a,
                      b[0], b[0],
@@ -148,9 +149,9 @@ def LaplaceA(gd, scale, typecode=num.Float):
                      (0, -1, -1), (0, -1, 1), (0, 1, -1), (0, 1, 1),
                      (-1, 0, -1), (-1, 0, 1), (1, 0, -1), (1, 0, 1),
                      (-1, -1, 0), (-1, 1, 0), (1, -1, 0), (1, 1, 0)],
-                    gd, typecode)
+                    gd, dtype)
 
-def LaplaceB(gd, typecode=num.Float):
+def LaplaceB(gd, dtype=float):
     a = 0.5
     b = 1.0 / 12.0
     return Operator([a,
@@ -159,4 +160,4 @@ def LaplaceB(gd, typecode=num.Float):
                      (-1, 0, 0), (1, 0, 0),
                      (0, -1, 0), (0, 1, 0),
                      (0, 0, -1), (0, 0, 1)],
-                    gd, typecode)
+                    gd, dtype)

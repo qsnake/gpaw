@@ -3,7 +3,7 @@
 
 from math import pi, sqrt
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.gauss import I
 from gpaw.spherical_harmonics import YL
@@ -25,12 +25,10 @@ class GInteraction2:
         self.beta2 = setupb.alpha2
         self.lmaxa = setupa.lmax
         self.lmaxb = setupb.lmax
-        self.v_LL = num.zeros(((self.lmaxa + 1)**2, (self.lmaxb + 1)**2),
-                              num.Float)
-        self.dvdr_LLc = num.zeros(((self.lmaxa + 1)**2,
+        self.v_LL = npy.zeros(((self.lmaxa + 1)**2, (self.lmaxb + 1)**2))
+        self.dvdr_LLc = npy.zeros(((self.lmaxa + 1)**2,
                                   (self.lmaxb + 1)**2,
-                                  3),
-                                  num.Float)
+                                  3))
 
     def __call__(self, R):
         if not self.softgauss:
@@ -41,8 +39,8 @@ class GInteraction2:
                 for lb in range(self.lmaxb + 1):
                     for mb in range(2 * lb + 1):
                         Lb = lb**2 + mb
-                        f = num.zeros(4, num.Float)
-                        f2 = num.zeros(4, num.Float)
+                        f = npy.zeros(4)
+                        f2 = npy.zeros(4)
                         for ca, xa in YL[La]:
                             for cb, xb in YL[Lb]:
                                 f += ca * cb * I(R, xa, xb,
@@ -54,8 +52,8 @@ class GInteraction2:
                                  self.beta**(1.5 + lb)
                         f2 *= x * self.alpha2**(1.5 + la) * \
                                   self.beta2**(1.5 + lb)
-##                         if num.sometrue(R):
-##                             assert num.dot(R, R) > 0.1
+##                         if npy.sometrue(R):
+##                             assert npy.dot(R, R) > 0.1
 ##                         else:
 ##                             f[:] = 0.0
 ##                             if La == Lb:

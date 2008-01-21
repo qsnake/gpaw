@@ -1,7 +1,7 @@
 from math import pi
 
-import Numeric as num
-from ASE.Units import units, Convert
+import numpy as npy
+from ase.units import Bohr
 
 import gpaw.mpi as mpi
 from gpaw.spherical_harmonics import Y
@@ -13,19 +13,19 @@ class ExpandYl:
     relative to a given center.
 
     center:
-      the center for the expansion (units.GetLengthUnit())
+      the center for the expansion (Ang)
     gd:
       grid_descriptor of the grids to expand
     lmax:
       maximal angular momentum in the expansion (lmax<7)
     Rmax:
-      maximal radius of the expansion (units.GetLengthUnit())
+      maximal radius of the expansion (Ang)
     dR:
-      grid spacing in the radius (units.GetLengthUnit())
+      grid spacing in the radius (Ang)
     """
     def __init__(self,center,gd,lmax=6,Rmax=None,dR=None):
 
-        a0 = Convert(1, 'Bohr', units.GetLengthUnit())
+        a0 = Bohr
         center = Vector3d(center) / a0
 
         self.a0 = a0
@@ -47,7 +47,7 @@ class ExpandYl:
             for corner in ([0,0,0],[1,0,0],[0,1,0],[1,1,0],
                            [0,0,1],[1,0,1],[0,1,1],[1,1,1]):
                 Rmax = max(Rmax,
-                           self.center.distance(num.array(corner) * extreme) )
+                           self.center.distance(npy.array(corner) * extreme) )
         else:
             Rmax /= a0
         self.Rmax = Rmax
@@ -66,10 +66,10 @@ class ExpandYl:
         # self.ball_g will contain the mask of the ball of radius Rmax
         # self.y_Lg will contain the YL values corresponding to
         #     each grid point
-        R_V = num.zeros((int(Rmax/dR+1),),num.Float)
-        y_Lg = gd.zeros((nL,),num.Float)
-        R_g = num.zeros(y_Lg[0].shape,num.Int)-1
-        ball_g = num.zeros(y_Lg[0].shape,num.Int)
+        R_V = npy.zeros((int(Rmax / dR + 1),))
+        y_Lg = gd.zeros((nL,))
+        R_g = npy.zeros(y_Lg[0].shape, int) - 1
+        ball_g = npy.zeros(y_Lg[0].shape, int)
         for i in range(gd.beg_c[0],gd.end_c[0]):
             ii = i - gd.beg_c[0]
             for j in range(gd.beg_c[1],gd.end_c[1]):
@@ -98,14 +98,14 @@ class ExpandYl:
     def expand(self,psit_g):
         """Expand a wave function"""
       
-        gamma_l = num.zeros((self.lmax+1),num.Float)
+        gamma_l = npy.zeros((self.lmax+1))
         nL = len(self.L_l)
         L_l = self.L_l
         dR = self.dR
         
         for i,dV in enumerate(self.R_V):
             # get the R shell and it's Volume
-            R_g = num.where(self.R_g == i, 1, 0)
+            R_g = npy.where(self.R_g == i, 1, 0)
             if dV > 0:
                 for L in range(nL):
                     psit_LR = self.gd.integrate(psit_g * R_g * self.y_Lg[L])
@@ -142,7 +142,7 @@ class ExpandYl:
             nrange = bands
 
         print >> f, '# Yl expansion','of smooth wave functions'
-        lu = units.GetLengthUnit()
+        lu = 'Angstrom'
         print >> f, '# center =',self.center * self.a0, lu
         print >> f, '# Rmax =', self.Rmax * self.a0, lu
         print >> f, '# dR =', self.dR * self.a0, lu
@@ -162,7 +162,7 @@ class ExpandYl:
                     norm = self.gd.integrate(psit_G**2)
 
                     gl, weight = self.expand(psit_G)
-                    gsum = num.sum(gl)
+                    gsum = npy.sum(gl)
                     gl = 100 * gl / gsum
 
                     print >> f, '%2d %5d %5d' % (s, k, n),

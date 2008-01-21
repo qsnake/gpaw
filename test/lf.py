@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.utilities import equal
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
@@ -18,15 +18,15 @@ p = [create_localized_functions([s], gd, (0.5, 0.5, 0.25 + 0.25 * i),
                                 lfbc=lfbc)
      for i in [0, 1, 2]]
 lfbc.broadcast()
-c = num.ones(1, num.Float)
+c = npy.ones(1)
 a = gd.zeros()
 for q in p:
     q.add(a, c)
-x = num.sum(a.flat)
+x = npy.sum(a.ravel())
 
 p = [create_localized_functions([s], gd, (0.75, 0.25, 0.25 * i))
      for i in [0, 1, 2]]
 a[:] = 0.0
 for q in p:
     q.add(a, c)
-equal(x, num.sum(a.flat), 1e-13)
+equal(x, npy.sum(a.ravel()), 1e-13)

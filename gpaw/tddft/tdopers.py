@@ -3,7 +3,7 @@
 """This module implements classes for time-dependent variables and 
 operators."""
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.polynomial import Polynomial
 from gpaw.mpi import run
@@ -51,9 +51,9 @@ class TimeDependentHamiltonian:
 #
 #        self.vext_g = hamiltonian.finegd.zeros()
 
-        self.vt_sG = hamiltonian.gd.zeros(hamiltonian.nspins, num.Float)
+        self.vt_sG = hamiltonian.gd.zeros(hamiltonian.nspins)
         self.H_asp = [
-            num.zeros(nucleus.H_sp.shape, num.Float)
+            npy.zeros(nucleus.H_sp.shape)
             for nucleus in hamiltonian.my_nuclei
             ]
 
@@ -138,8 +138,8 @@ class TimeDependentHamiltonian:
         =========== ==========================================================
 
         """
-        p = num.reshape(psit, (1,) + psit.shape)
-        hp = num.reshape(hpsit, (1,) + hpsit.shape)
+        p = npy.reshape(psit, (1,) + psit.shape)
+        hp = npy.reshape(hpsit, (1,) + hpsit.shape)
         kpt.apply_hamiltonian(self.hamiltonian, p, hp)
         if self.td_potential is not None:
             strength = self.td_potential.strength
@@ -187,8 +187,8 @@ class AbsorptionKickHamiltonian:
         self.pt_nuclei = pt_nuclei
 
         # normalized direction
-        dir = num.array(direction, num.Float)
-        p = strength * dir / num.sqrt(num.vdot(dir,dir))
+        dir = npy.array(direction, float)
+        p = strength * dir / npy.sqrt(npy.vdot(dir,dir))
         # iterations
         self.iterations = int(round(strength / 1.0e-3))
         if self.iterations == 0:
@@ -246,8 +246,8 @@ class AbsorptionKickHamiltonian:
         =========== ==========================================================
 
         """
-        p = num.reshape(psit, (1,) + psit.shape)
-        hp = num.reshape(hpsit, (1,) + hpsit.shape)
+        p = npy.reshape(psit, (1,) + psit.shape)
+        hp = npy.reshape(hpsit, (1,) + hpsit.shape)
         kpt.apply_scalar_function( self.pt_nuclei,
                                    #psit[None, ...], hpsit[None, ...], 
                                    p, hp,
@@ -315,8 +315,8 @@ class TimeDependentOverlap:
         =========== ==========================================================
 
         """
-        p = num.reshape(psit, (1,) + psit.shape)
-        sp = num.reshape(spsit, (1,) + spsit.shape)
+        p = npy.reshape(psit, (1,) + psit.shape)
+        sp = npy.reshape(spsit, (1,) + spsit.shape)
         kpt.apply_overlap( self.pt_nuclei,
                            #psit[None, ...], hpsit[None, ...], 
                            p, sp )

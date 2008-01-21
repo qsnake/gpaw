@@ -4,10 +4,10 @@ import pickle
 from math import sqrt
 from optparse import OptionParser
 
-import Numeric as num
+import numpy as npy
 from ASE.Units import Convert
 from ASE import ListOfAtoms, Atom
-from LinearAlgebra import inverse
+from numpy.linalg import inv
 
 from gpaw.testing import g2, data
 from gpaw.utilities.bulk import Bulk
@@ -110,8 +110,8 @@ def eggbox_energies(formula, a=10., gpts=48, direction=(1.,1.,1.), periods=.5,
         if quick:
             a, gpts, count = (6., 16, 4)
 
-        direction = num.asarray(direction)
-        direction = direction / sqrt(num.dot(direction, direction))
+        direction = npy.asarray(direction)
+        direction = direction / sqrt(npy.dot(direction, direction))
         system, calc = setup_molecule(formula, a, gpts=gpts, periodic=True,
                                       setups=setups, txt=txt)
         originalpositions = system.GetCartesianPositions()
@@ -203,9 +203,9 @@ def lattice_energies(symbol='C', gpts=(24,16,16), kpts=(6,8,8),
         # .035 angstroms is probably okay.  This is about equivalent to the
         # number used in the molecule distance test
         if displacements is None:
-            lattice_constants = num.array([aref + i*.035 for i in (-1,0,1)])
+            lattice_constants = npy.array([aref + i*.035 for i in (-1,0,1)])
         else:
-            lattice_constants = num.array([aref + d for d in displacements])
+            lattice_constants = npy.array([aref + d for d in displacements])
 
         for a in lattice_constants:
             atoms.SetUnitCell(a/base_cell_size * base_cell)
@@ -219,10 +219,10 @@ def lattice_energies(symbol='C', gpts=(24,16,16), kpts=(6,8,8),
 def interpolate(xvalues, yvalues):
     """Utility function for returning a 2nd order polynomial interpolating
     three points. TODO: generalize... """
-    x = num.asarray(xvalues)
-    y = num.asarray(yvalues)
-    xmatrix = num.transpose(num.array([x**0, x**1, x**2]))
-    coeffs = num.dot(inverse(xmatrix), y)
+    x = npy.asarray(xvalues)
+    y = npy.asarray(yvalues)
+    xmatrix = npy.transpose(npy.array([x**0, x**1, x**2]))
+    coeffs = npy.dot(inv(xmatrix), y)
     xmin = - coeffs[1] / (2. * coeffs[2]) # "-b/(2a)"
     ymin = coeffs[0] + xmin * (coeffs[1] + xmin * coeffs[2])
     return xmin, ymin, coeffs

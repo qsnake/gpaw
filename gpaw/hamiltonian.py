@@ -8,7 +8,7 @@ import sys
 import time
 from math import pi, sqrt, log
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.localized_functions import LocFuncBroadcaster
 from gpaw.operators import Laplace
@@ -62,7 +62,7 @@ class Hamiltonian:
         # The external potential
         vext_g = paw.input_parameters['external']
         if vext_g is not None:
-            assert num.alltrue(vext_g.shape ==
+            assert npy.alltrue(vext_g.shape ==
                                self.finegd.get_size_of_global_array())
             self.vext_g = self.finegd.zeros()
             self.finegd.distribute(vext_g, self.vext_g)
@@ -77,7 +77,7 @@ class Hamiltonian:
         nn = stencils[0]
 
         # Kinetic energy operator:
-        self.kin = Laplace(self.gd, -0.5, nn, paw.typecode)
+        self.kin = Laplace(self.gd, -0.5, nn, paw.dtype)
 
         # Number of neighbor grid points used for interpolation (1, 2,
         # or 3):
@@ -117,17 +117,17 @@ class Hamiltonian:
         for nucleus in self.ghat_nuclei:
             nucleus.add_localized_potential(vt_g)
 
-        Ebar = num.vdot(vt_g, density.nt_g) * self.finegd.dv
+        Ebar = npy.vdot(vt_g, density.nt_g) * self.finegd.dv
 
         for nucleus in self.ghat_nuclei:
             nucleus.add_hat_potential(vt_g)
 
-        Epot = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar
+        Epot = npy.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar
 
         Eext = 0.0
         if self.vext_g is not None:
             vt_g += self.vext_g
-            Eext = num.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
+            Eext = npy.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
 
         if self.nspins == 2:
             self.vt_sg[1] = vt_g
@@ -146,12 +146,12 @@ class Hamiltonian:
                                            charge=-density.charge)
         self.timer.stop('Poisson')
 
-        Epot += 0.5 * num.vdot(self.vHt_g, density.rhot_g) * self.finegd.dv
+        Epot += 0.5 * npy.vdot(self.vHt_g, density.rhot_g) * self.finegd.dv
         Ekin = 0.0
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, density.nt_sG):
             vt_g += self.vHt_g
             self.restrict(vt_g, vt_G)
-            Ekin -= num.vdot(vt_G, nt_G - density.nct_G) * self.gd.dv
+            Ekin -= npy.vdot(vt_G, nt_G - density.nct_G) * self.gd.dv
 
         # Calculate atomic hamiltonians:
         self.timer.start('Atomic Hamiltonians')
@@ -169,7 +169,7 @@ class Hamiltonian:
             iters.append(nucleus.calculate_hamiltonian(density.nt_g,
                                                        self.vHt_g, vext))
         if len(iters) != 0:
-            k, p, b, v, x = num.sum(run(iters))
+            k, p, b, v, x = npy.sum(run(iters), axis=0)
             Ekin += k
             Epot += p
             Ebar += b

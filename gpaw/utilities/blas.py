@@ -6,7 +6,7 @@ Python wrapper functions for the ``C`` package:
 Basic Linear Algebra Subroutines (BLAS)
 """
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.utilities import is_contiguous
 from gpaw import debug
@@ -38,15 +38,15 @@ def gemm(alpha, a, b, beta, c, transa='n'):
 
      where in case of "c" also complex conjugate of a is taken.
     """
-    assert ((is_contiguous(a, num.Float) and
-             is_contiguous(b, num.Float) and
-             is_contiguous(c, num.Float) and
+    assert ((is_contiguous(a, float) and
+             is_contiguous(b, float) and
+             is_contiguous(c, float) and
              isinstance(alpha, float) and isinstance(beta, float)) or
-            (is_contiguous(a, num.Complex) and
-             is_contiguous(b, num.Complex) and
-             is_contiguous(c, num.Complex)))
+            (is_contiguous(a, complex) and
+             is_contiguous(b, complex) and
+             is_contiguous(c, complex)))
     if transa == "n":   
-        assert num.rank(b) == 2
+        assert npy.rank(b) == 2
         assert a.shape[0] == b.shape[1]
         assert c.shape == b.shape[0:1] + a.shape[1:]
     else:
@@ -64,12 +64,12 @@ def axpy(alpha, x, y):
       
     """
     if isinstance(alpha, complex):
-        assert is_contiguous(x, num.Complex) and is_contiguous(y, num.Complex)
+        assert is_contiguous(x, complex) and is_contiguous(y, complex)
     else:
         assert isinstance(alpha, float)
-        assert x.typecode() in [num.Float, num.Complex]
-        assert x.typecode() == y.typecode()
-        assert x.iscontiguous() and y.iscontiguous()
+        assert x.dtype in [float, complex]
+        assert x.dtype == y.dtype
+        assert x.flags.contiguous and y.flags.contiguous
     assert x.shape == y.shape
     _gpaw.axpy(alpha, x, y)
 
@@ -95,9 +95,9 @@ def rk(alpha, a, beta, c):
     
     Only the lower triangle of ``c`` will contain sensible numbers.
     """
-    assert (is_contiguous(a, num.Float) and is_contiguous(c, num.Float) or
-            is_contiguous(a, num.Complex) and is_contiguous(c, num.Complex))
-    assert num.rank(a) > 1
+    assert (is_contiguous(a, float) and is_contiguous(c, float) or
+            is_contiguous(a, complex) and is_contiguous(c, complex))
+    assert npy.rank(a) > 1
     assert c.shape == (a.shape[0], a.shape[0])
     _gpaw.rk(alpha, a, beta, c)
 
@@ -125,11 +125,11 @@ def r2k(alpha, a, b, beta, c):
 
     Only the lower triangle of ``c`` will contain sensible numbers.
     """
-    assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float) and
-             is_contiguous(c, num.Float) and isinstance(alpha, float)) or
-            (is_contiguous(a, num.Complex) and is_contiguous(b,num.Complex) and
-             is_contiguous(c, num.Complex)))
-    assert num.rank(a) > 1
+    assert ((is_contiguous(a, float) and is_contiguous(b, float) and
+             is_contiguous(c, float) and isinstance(alpha, float)) or
+            (is_contiguous(a, complex) and is_contiguous(b,complex) and
+             is_contiguous(c, complex)))
+    assert npy.rank(a) > 1
     assert a.shape == b.shape
     assert c.shape == (a.shape[0], a.shape[0])
     _gpaw.r2k(alpha, a, b, beta, c)
@@ -147,8 +147,8 @@ def dotc(a, b):
 
     ``cc`` denotes complex conjugation.
     """
-    assert ((is_contiguous(a, num.Float) and is_contiguous(b, num.Float)) or
-            (is_contiguous(a, num.Complex) and is_contiguous(b,num.Complex)))
+    assert ((is_contiguous(a, float) and is_contiguous(b, float)) or
+            (is_contiguous(a, complex) and is_contiguous(b,complex)))
     assert a.shape == b.shape
     return _gpaw.dotc(a, b)
     
@@ -158,30 +158,3 @@ if not debug:
     rk = _gpaw.rk
     r2k = _gpaw.r2k
     dotc = _gpaw.dotc;
-
-if __name__ == '__main__':
-    a = num.array(((1.0, 3.0, 0.0),
-                   (0.0, -0.5, 0.0)))
-    b = num.array(((0, 1),(2.0, 0)))
-    c = num.zeros((2, 3), num.Float)
-    gemm(2.0, a, b, 1.0, c)
-    print c
-    a = num.array(((1.0, 3.0 + 2j, 0.0),
-                   (0.0, -0.5j, 0.0)))
-    b = num.array(((0, 1),(2.0+1j, 0)))
-    c = num.zeros((2, 3), num.Complex)
-    gemm(2.0, a, b, 1.0, c)
-    print c
-    a = num.array(((1.0, 3.0 +2j, 0.0),
-                   (0.0, -0.5j, 0.0)))
-    c = num.ones((2, 2), num.Complex)
-    rk(2.0, a, 0.0, c)
-    print c
-    import time, RandomArray
-    a = RandomArray.random((30, 23**3))
-    b = RandomArray.random((30, 30))
-    c = num.zeros((30, 23**3), num.Float)
-    t = time.clock()
-    for i in range(100):
-        gemm(1.0, a, b, 0.0, c)
-    print time.clock() - t

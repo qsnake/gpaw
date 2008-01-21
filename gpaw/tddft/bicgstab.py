@@ -3,7 +3,7 @@
 """This module defines BiCGStab-class, which implements biconjugate
 gradient stabilized method. Requires Numeric and BLAS."""
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotc
@@ -18,7 +18,7 @@ class BiCGStab:
     indefinite. The method requires only access to matrix-vector product 
     A.x = b, which is called A.dot(x). Thus A must provide the member 
     function dot(self,x,b), where x and b are complex arrays 
-    (Numeric.array([],Numeric.Complex), and x is the known vector, and 
+    (numpy.array([], complex), and x is the known vector, and 
     b is the result.
     """ 
     
@@ -75,16 +75,16 @@ class BiCGStab:
             self.timer.start('BiCGStab')
 
         # r_0 = b - A x_0
-        r = self.gd.zeros(typecode=num.Complex)
+        r = self.gd.zeros(dtype=complex)
         A.dot(-x,r)
         r += b
         
-        q = self.gd.empty(typecode=num.Complex)
+        q = self.gd.empty(dtype=complex)
         q[:] = r
-        p = self.gd.zeros(typecode=num.Complex)
-        v = self.gd.zeros(typecode=num.Complex)
-        t = self.gd.zeros(typecode=num.Complex)
-        m = self.gd.zeros(typecode=num.Complex)
+        p = self.gd.zeros(dtype=complex)
+        v = self.gd.zeros(dtype=complex)
+        t = self.gd.zeros(dtype=complex)
+        m = self.gd.zeros(dtype=complex)
         alpha = 0.
         rhop  = 1.
         omega = 1.

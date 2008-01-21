@@ -1,7 +1,6 @@
 from math import pi, sqrt
-import Numeric as num
+import numpy as npy
 from gpaw.utilities import pack, wignerseitz
-from ASE.Units import units
 
 def print_projectors(nucleus):
     """Print information on the projectors of input nucleus object"""
@@ -53,7 +52,7 @@ def get_angular_projectors(nucleus, angular, type='bound'):
 
 def delta(x, x0, width):
     """Return a gaussian of given width centered at x0."""
-    return num.exp(num.clip(-((x - x0) / width)**2,
+    return npy.exp(npy.clip(-((x - x0) / width)**2,
                             -100.0, 100.0)) / (sqrt(pi) * width)
 
 def fold(energies, weights, npts, width):
@@ -62,8 +61,8 @@ def fold(energies, weights, npts, width):
     emin = min(energies) - 5 * width
     emax = max(energies) + 5 * width
     step = (emax - emin) / (npts - 1)
-    e = num.arange(emin, emax + 1e-7, step, typecode=num.Float)
-    ldos_e = num.zeros(npts, typecode=num.Float)
+    e = npy.arange(emin, emax + 1e-7, step, dtype=float)
+    ldos_e = npy.zeros(npts, dtype=float)
     for e0, w in zip(energies, weights):
         ldos_e += w * delta(e, e0, width)
     return e, ldos_e
@@ -78,28 +77,28 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     nb = paw.nbands
     nucleus = paw.nuclei[a]
 
-    energies = num.empty(nb * nk, num.Float)
-    weights_xi = num.empty((nb * nk, nucleus.setup.ni), num.Float)
+    energies = npy.empty(nb * nk)
+    weights_xi = npy.empty((nb * nk, nucleus.setup.ni))
     x = 0
     for k, w in enumerate(w_k):
-        energies[x:x + nb] = paw.get_eigenvalues(k=k, s=spin)
+        energies[x:x + nb] = paw.collect_eigenvalues(k=k, s=spin)
         u = spin * nk + k
-        weights_xi[x:x + nb, :] = w * num.absolute(nucleus.P_uni[u])**2
+        weights_xi[x:x + nb, :] = w * npy.absolute(nucleus.P_uni[u])**2
         x += nb
 
     if angular is None:
         return energies, weights_xi
     else:
         projectors = get_angular_projectors(nucleus, angular, type='bound')
-        weights = num.sum(num.take(weights_xi,
+        weights = npy.sum(npy.take(weights_xi,
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
 
 def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
     gd = paw.gd
-    atom_index = gd.empty(typecode=num.Int)
-    atom_ac = num.array([n.spos_c * gd.N_c for n in paw.nuclei])
+    atom_index = gd.empty(dtype=int)
+    atom_ac = npy.array([n.spos_c * gd.N_c for n in paw.nuclei])
     wignerseitz(atom_index, atom_ac, gd.beg_c, gd.end_c)
 
     w_k = paw.weight_k
@@ -107,19 +106,19 @@ def raw_wignerseitz_LDOS(paw, a, spin):
     nb = paw.nbands
     nucleus = paw.nuclei[a]
 
-    energies = num.empty(nb * nk, num.Float)
-    weights = num.empty(nb * nk, num.Float)
+    energies = npy.empty(nb * nk)
+    weights = npy.empty(nb * nk)
     x = 0
     for k, w in enumerate(w_k):
         u = spin * nk + k
-        energies[x:x + nb] = paw.get_eigenvalues(k=k, s=spin)
+        energies[x:x + nb] = paw.collect_eigenvalues(k=k, s=spin)
         for n, psit_G in enumerate(paw.kpt_u[u].psit_nG):
             P_i = nucleus.P_uni[u, n]
-            P_p = pack(num.outerproduct(P_i, P_i))
+            P_p = pack(npy.outer(P_i, P_i))
             Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
-            weights[x + n] = w * (gd.integrate(num.absolute(
-                num.where(atom_index == a, psit_G, 0.0))**2)
-                                  + num.dot(Delta_p, P_p))
+            weights[x + n] = w * (gd.integrate(npy.absolute(
+                npy.where(atom_index == a, psit_G, 0.0))**2)
+                                  + npy.dot(Delta_p, P_p))
         x += nb
     return energies, weights
 
@@ -139,7 +138,7 @@ class RawLDOS:
 
     def get(self,atom):
         """Return the s,p,d weights for each state"""
-        spd = num.zeros((self.paw.nspins,self.paw.nbands,3),num.Float)
+        spd = npy.zeros((self.paw.nspins, self.paw.nbands, 3))
 
         if hasattr(atom, '__iter__'):
             # atom is a list of atom indicies 
@@ -150,8 +149,8 @@ class RawLDOS:
         nucleus = self.paw.nuclei[atom]
         for s in range(self.paw.nspins):
             for n in range(self.paw.nbands):
-                for i,P in enumerate(nucleus.P_uni[s,n]):
-                     spd[s,n,nucleus.setup.l_i[i]] += abs(P)**2
+                for i,P in enumerate(nucleus.P_uni[s, n]):
+                     spd[s, n, nucleus.setup.l_i[i]] += abs(P)**2
         return spd
 
     def by_element(self):

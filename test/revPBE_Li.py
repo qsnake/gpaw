@@ -1,6 +1,5 @@
 import os
-from ASE import Crystal, Atom
-from ASE.Units import units
+from ase import *
 from gpaw.utilities import equal
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
@@ -13,23 +12,21 @@ g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
 g.run(exx=True, **parameters[symbol])
 setup_paths.insert(0, '.')
 
-
-units.SetEnergyUnit('Hartree')
 a = 5.0
 n = 24
-li = Crystal([Atom('Li', (0.0, 0.0, 0.0), magmom=1.0)], cell=(a, a, a))
+li = Atoms([Atom('Li', (0.0, 0.0, 0.0), magmom=1.0)], cell=(a, a, a), pbc=True)
 
 calc = Calculator(gpts=(n, n, n), nbands=1, xc='PBE')
-li.SetCalculator(calc)
-e = li.GetPotentialEnergy() + calc.get_reference_energy()
-equal(e, -7.462, 0.056)
+li.set_calculator(calc)
+e = li.get_potential_energy() + calc.get_reference_energy()
+equal(e, -7.462 * Hartree, 1.4)
 
 calc.set(xc='revPBE')
-erev = li.GetPotentialEnergy() + calc.get_reference_energy()
+erev = li.get_potential_energy() + calc.get_reference_energy()
 
 # Remove setup
-os.remove(symbol+'.'+XCFunctional('revPBE').get_name())
+os.remove(symbol + '.' + XCFunctional('revPBE').get_name())
 del setup_paths[0]
 
-equal(erev, -7.487, 0.057)
-equal(e - erev, 0.025, 0.002)
+equal(erev, -7.487 * Hartree, 1.3)
+equal(e - erev, 0.025 * Hartree, 0.002 * Hartree)

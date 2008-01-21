@@ -1,8 +1,7 @@
 from gaunt import gaunt
 from math import pi, sqrt
 from gpaw.utilities import hartree
-import LinearAlgebra as linalg
-import Numeric as num
+import numpy as npy
 from gpaw.sphere import Y_nL, points, weights
 from gpaw.spherical_harmonics import YL
 
@@ -90,7 +89,7 @@ class Function1D:
         if (self.harmonics.has_key((0,0))):
             # 4*pi comes from integration over angle
             # and 1/sqrt(4*pi) is the spherical harmonic for s-type functions
-            return sqrt(4*pi)*num.dot(r**2 * dr, self.harmonics[0,0])
+            return sqrt(4*pi)*npy.dot(r**2 * dr, self.harmonics[0,0])
         else:
             return 0
 
@@ -115,7 +114,7 @@ class Function1D:
                 l1,m1 = lm1
                 den = den + u1 * Y_nL[point][l1**2 + m1 + l1]
 
-            I += weights[point] * num.dot(dr2, nom / (den +1e-20))
+            I += weights[point] * npy.dot(dr2, nom / (den +1e-20))
 
         # The weights sum up to one.
         # Because \int d\Omega = 4\pi, we should multiply with 4\pi.

@@ -1,5 +1,5 @@
 from gpaw.operators import Gradient
-import Numeric as num
+import numpy as npy
 	
 #################################################################################
 #                                                                               #
@@ -158,7 +158,7 @@ class NonLocalFunctional:
         =========== ======================================================
         Key:        Value:
         =========== ======================================================
-        typecode    For example num.Float, if the orbitals are real
+        dtype    For example float, if the orbitals are real
         gd          The grid descriptor object for coarse grid
         finegd      The grid descriptor object for fine grid
         n_g         Numeric array for density, supplied if needs_density()
@@ -230,7 +230,7 @@ class NonLocalFunctional:
                 # Calculate the gradient
                 for c in range(3):
                     self.ddr[c](n_g, self.dndr_cg[c])
-                self.a2_g[s][:] = num.sum(self.dndr_cg**2)
+                self.a2_g[s][:] = npy.sum(self.dndr_cg**2, axis=0)
 
                 info['a2_g'] = self.a2_g[s]
 
@@ -256,7 +256,7 @@ class NonLocalFunctional:
 
                 info['psit_nG'] = psit_nG
                 info['f_n'] = f_n
-                info['typecode'] = self.kpt_u[0].typecode
+                info['dtype'] = self.kpt_u[0].dtype
 
             info_s.append(info);
 

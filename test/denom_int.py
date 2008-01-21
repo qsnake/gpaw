@@ -4,7 +4,7 @@ of Function1D class.
 """
 
 from gpaw.Function1D import Function1D
-import Numeric as num
+import numpy as npy
 
 # Use 150 radial points to integrate
 N = 150
@@ -12,7 +12,7 @@ N = 150
 # Create the radial grid    
 # Copy-pasted from all_electron.py
 beta = 0.4
-g = num.arange(N, typecode=num.Float)
+g = npy.arange(N, dtype=float)
 r = beta * g / (N - g)
 dr = beta * N / (N - g)**2
 
@@ -22,13 +22,13 @@ r[0] = r[1]
 """ The radial parts are from Gasiorowicz, Quantum Physics, 2nd edition, p. 208 """
 
 print "Checking that norm of Hydrogen atom 1s-state is 1:"
-H1s = Function1D(0, 0, 2 * num.exp(-r))
+H1s = Function1D(0, 0, 2 * npy.exp(-r))
 result = (H1s * H1s).integrateRY(r, dr)
 print result
 assert abs(result-1.0) <1e-6
 
 print "Checking that norm of Hydrogen atom 2p-state is 1:"
-H2p = Function1D(1,0, ( 1.0 / num.sqrt(3) * (1.0/2.0)**(3.0/2.0) * r * num.exp(-r/2)))
+H2p = Function1D(1,0, ( 1.0 / npy.sqrt(3) * (1.0/2.0)**(3.0/2.0) * r * npy.exp(-r/2)))
 result = (H2p * H2p).integrateRY(r, dr)
 print result
 assert abs(result-1.0) <1e-6

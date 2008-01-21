@@ -3,7 +3,7 @@
 
 """This module defines a neighbor-list class."""
 
-import Numeric as num
+import numpy as npy
 
 
 class NeighborList:
@@ -29,9 +29,9 @@ class NeighborList:
         for symbol1, rcut1 in cutoffs:
             for symbol2, rcut2 in cutoffs[n:]:
                 rcut = rcut1 + rcut2 + 2 * drift
-                ncells = (rcut / self.cell_c + 0.5).astype(num.Int)
+                ncells = (rcut / self.cell_c + 0.5).astype(int)
                 for i in (0, 1, 2):
-                    if not domain.periodic_c[i]:
+                    if not domain.pbc_c[i]:
                         ncells[i] = 0
                 self.stuff[(symbol1, symbol2)] = (rcut, ncells)
                 if symbol1 != symbol2:
@@ -69,7 +69,7 @@ class NeighborList:
         drift2 = self.drift**2
         for a, pos_c in enumerate(pos_ac):
             diff_c = pos_c - self.oldpos_ac[a]
-            if num.dot(diff_c, diff_c) > drift2:
+            if npy.dot(diff_c, diff_c) > drift2:
                 # Update list:
                 self.make_list(pos_ac)
                 return True
@@ -87,7 +87,7 @@ class NeighborList:
             for a2, pos2_c in enumerate(pos_ac[:a1 + 1]):
                 symbol2 = self.symbol_a[a2]
                 diff_c = pos2_c - pos1_c
-                offset0 = num.floor(diff_c / cell_c + 0.5) * cell_c
+                offset0 = npy.floor(diff_c / cell_c + 0.5) * cell_c
                 diff_c -= offset0  # XXX only for periodic BC's!!!!
                 offsets = []
                 rcut, ncells = self.stuff[(symbol1, symbol2)]
@@ -96,9 +96,9 @@ class NeighborList:
                         for n2 in range(-ncells[2], ncells[2] + 1):
                             offset = cell_c * (n0, n1, n2)
                             d_c = diff_c + offset
-                            if num.dot(d_c, d_c) < rcut**2:
+                            if npy.dot(d_c, d_c) < rcut**2:
                                 offsets.append(offset)
                 if offsets:
-                    neighbors1.append((a2, num.array(offsets) - offset0))
+                    neighbors1.append((a2, npy.array(offsets) - offset0))
             self.list.append(neighbors1)
         self.oldpos_ac = pos_ac.copy()

@@ -12,13 +12,13 @@ This module contains classes defining two kinds of grids:
 from math import pi, cos, sin
 from cmath import exp
 
-import Numeric as num
+import numpy as npy
 
 from gpaw.utilities.complex import cc
 
-# Be careful!  Python integers and arrays of integers behave differently:
+# Remove this:  XXX
 assert (-1) % 3 == 2
-assert (num.array([-1]) % 3)[0] == -1 # Grrrr...!!!!
+assert (npy.array([-1]) % 3)[0] == 2
 
 
 MASTER = 0
@@ -50,8 +50,8 @@ class GridDescriptor:
 
     Example:
 
-     >>> a = num.zeros((2, 2, 2))
-     >>> a.flat[:] = range(8)
+     >>> a = npy.zeros((2, 2, 2))
+     >>> a.ravel()[:] = range(8)
      >>> a
      array([[[0, 1],
              [2, 3]],
@@ -83,26 +83,26 @@ class GridDescriptor:
         self.comm = domain.comm
         self.rank = self.comm.rank
 
-        self.N_c = num.array(N_c, num.Int)
+        self.N_c = npy.array(N_c, int)
 
-        #if num.sometrue(self.N_c % domain.parsize_c):
+        #if npy.sometrue(self.N_c % domain.parsize_c):
         #    raise ValueError('Bad number of CPUs!')
 
         parsize_c = domain.parsize_c
         n_c, remainder_c = divmod(N_c, parsize_c)
 
-        self.beg_c = num.empty(3, num.Int)
-        self.end_c = num.empty(3, num.Int)
+        self.beg_c = npy.empty(3, int)
+        self.end_c = npy.empty(3, int)
 
         self.n_cp = []
         for c in range(3):
-            n_p = num.arange(parsize_c[c] + 1) * float(N_c[c]) / parsize_c[c]
-            n_p = num.around(n_p + 0.4999).astype(num.Int)
+            n_p = npy.arange(parsize_c[c] + 1) * float(N_c[c]) / parsize_c[c]
+            n_p = npy.around(n_p + 0.4999).astype(int)
             
-            if not domain.periodic_c[c]:
+            if not domain.pbc_c[c]:
                 n_p[0] = 1
 
-            if not num.alltrue(n_p[1:] - n_p[:-1]):
+            if not npy.alltrue(n_p[1:] - n_p[:-1]):
                 raise ValueError('Grid too small!')
                     
             self.beg_c[c] = n_p[domain.parpos_c[c]]
@@ -119,33 +119,33 @@ class GridDescriptor:
             raise ValueError('Very anisotropic grid spacings: %s' % self.h_c)
 
     def get_size_of_global_array(self):
-        return self.N_c - 1 + self.domain.periodic_c
+        return self.N_c - 1 + self.domain.pbc_c
 
     def get_slice(self):
         return [slice(b - 1 + p, e - 1 + p) for b, e, p in
-                zip(self.beg_c, self.end_c, self.domain.periodic_c)]
+                zip(self.beg_c, self.end_c, self.domain.pbc_c)]
 
-    def zeros(self, n=(), typecode=num.Float, global_array=False):
+    def zeros(self, n=(), dtype=float, global_array=False):
         """Return new zeroed 3D array for this domain.
 
-        The type can be set with the ``typecode`` keyword (default:
+        The type can be set with the ``dtype`` keyword (default:
         ``float``).  Extra dimensions can be added with ``n=dim``.  A
         global array spanning all domains can be allocated with
         ``global_array=True``."""
 
-        return self._new_array(n, typecode, True, global_array)
+        return self._new_array(n, dtype, True, global_array)
     
-    def empty(self, n=(), typecode=num.Float, global_array=False):
+    def empty(self, n=(), dtype=float, global_array=False):
         """Return new uninitialized 3D array for this domain.
 
-        The type can be set with the ``typecode`` keyword (default:
+        The type can be set with the ``dtype`` keyword (default:
         ``float``).  Extra dimensions can be added with ``n=dim``.  A
         global array spanning all domains can be allocated with
         ``global_array=True``."""
 
-        return self._new_array(n, typecode, False, global_array)
+        return self._new_array(n, dtype, False, global_array)
         
-    def _new_array(self, n=(), typecode=num.Float, zero=True,
+    def _new_array(self, n=(), dtype=float, zero=True,
                   global_array=False):
         if global_array:
             shape = self.get_size_of_global_array()
@@ -158,16 +158,16 @@ class GridDescriptor:
         shape = n + tuple(shape)
 
         if zero:
-            return num.zeros(shape, typecode)
+            return npy.zeros(shape, dtype)
         else:
-            return num.empty(shape, typecode)
+            return npy.empty(shape, dtype)
         
     def integrate(self, a_xg):
         """Integrate function in array over domain."""
         shape = a_xg.shape
         if len(shape) == 3:
-            return self.comm.sum(num.sum(a_xg.flat)) * self.dv
-        A_x = num.sum(num.reshape(a_xg, shape[:-3] + (-1,)), -1)
+            return self.comm.sum(a_xg.sum()) * self.dv
+        A_x = npy.sum(npy.reshape(a_xg, shape[:-3] + (-1,)), axis=-1)
         self.comm.sum(A_x)
         return A_x * self.dv
     
@@ -176,7 +176,7 @@ class GridDescriptor:
 
         Reurned descriptor has 2x2x2 fewer grid points."""
         
-        if num.sometrue(self.N_c % 2):
+        if npy.sometrue(self.N_c % 2):
             raise ValueError('Grid %s not divisable by 2!' % self.N_c)
 
         return GridDescriptor(self.domain, self.N_c // 2)
@@ -192,19 +192,19 @@ class GridDescriptor:
         N_c = self.N_c
         ncut = rcut / self.h_c
         npos_c = spos_c * N_c
-        beg_c = num.ceil(npos_c - ncut).astype(num.Int)
-        end_c   = num.ceil(npos_c + ncut).astype(num.Int)
+        beg_c = npy.ceil(npos_c - ncut).astype(int)
+        end_c   = npy.ceil(npos_c + ncut).astype(int)
 
         if cut:
             for c in range(3):
-                if not self.domain.periodic_c[c]:
+                if not self.domain.pbc_c[c]:
                     if beg_c[c] < 0:
                         beg_c[c] = 0
                     if end_c[c] > N_c[c]:
                         end_c[c] = N_c[c]
         else:
             for c in range(3):
-                if (not self.domain.periodic_c[c] and
+                if (not self.domain.pbc_c[c] and
                     (beg_c[c] < 0 or end_c[c] > N_c[c])):
                     raise RuntimeError(('Atom at %.3f %.3f %.3f ' +
                                         'too close to boundary ' +
@@ -242,13 +242,13 @@ class GridDescriptor:
         for b0, e0 in range_c[0]:
             for b1, e1 in range_c[1]:
                 for b2, e2 in range_c[2]:
-                    b = num.array((b0, b1, b2))
-                    e = num.array((e0, e1, e2))
-                    beg_c = num.array((b0 % N_c[0], b1 % N_c[1], b2 % N_c[2]))
+                    b = npy.array((b0, b1, b2))
+                    e = npy.array((e0, e1, e2))
+                    beg_c = npy.array((b0 % N_c[0], b1 % N_c[1], b2 % N_c[2]))
                     end_c = beg_c + e - b
                     disp = (b - beg_c) / N_c
-                    beg_c = num.maximum(beg_c, self.beg_c)
-                    end_c = num.minimum(end_c, self.end_c)
+                    beg_c = npy.maximum(beg_c, self.beg_c)
+                    end_c = npy.minimum(end_c, self.end_c)
                     if (beg_c[0] < end_c[0] and
                         beg_c[1] < end_c[1] and
                         beg_c[2] < end_c[2]):
@@ -269,7 +269,7 @@ class GridDescriptor:
             axes = [0, 1, 2]
             axes[c] = 0
             axes[0] = c
-            b_g = num.transpose(a_g, axes).copy()
+            b_g = npy.transpose(a_g, axes).copy()
         n = self.domain.parpos_c[c]
         m = (-n) % N
         if n != m:
@@ -290,7 +290,7 @@ class GridDescriptor:
         if c == 0:
             return b_g
         else:
-            return num.transpose(b_g, axes).copy()
+            return npy.transpose(b_g, axes).copy()
                 
     def swap_axes(self, a_g, axes):
         """Swap axes of array.
@@ -299,18 +299,18 @@ class GridDescriptor:
         Example: With ``axes=(0, 2, 1)`` the *y*, *z* axes will be
         swapped."""
         
-        assert num.alltrue(self.N_c == num.take(self.N_c, axes)), \
+        assert npy.alltrue(self.N_c == npy.take(self.N_c, axes)), \
                'Can only swap axes with same length!'
 
         if self.comm.size == 1:
-            return num.transpose(a_g, axes).copy()
+            return npy.transpose(a_g, axes).copy()
 
         # Collect all arrays on the master, do the swapping, and
         # redistribute the result:
         A_g = self.collect(a_g)
 
         if self.rank == MASTER:
-            A_g = num.transpose(A_g, axes).copy()
+            A_g = npy.transpose(A_g, axes).copy()
 
         b_g = self.empty()
         self.distribute(A_g, b_g)
@@ -329,7 +329,7 @@ class GridDescriptor:
         # Put the subdomains from the slaves into the big array
         # for the whole domain:
         xshape = a_xg.shape[:-3]
-        A_xg = self.empty(xshape, a_xg.typecode(), global_array=True)
+        A_xg = self.empty(xshape, a_xg.dtype.char, global_array=True)
         parsize_c = self.domain.parsize_c
         r = 0
         for n0 in range(parsize_c[0]):
@@ -339,9 +339,9 @@ class GridDescriptor:
                 for n2 in range(parsize_c[2]):
                     b2, e2 = self.n_cp[2][n2:n2 + 2] - self.beg_c[2]
                     if r != MASTER:
-                        a_xg = num.empty(xshape + 
+                        a_xg = npy.empty(xshape + 
                                          ((e0 - b0), (e1 - b1), (e2 - b2)),
-                                         a_xg.typecode())
+                                         a_xg.dtype.char)
                         self.comm.receive(a_xg, r, 301)
                     A_xg[..., b0:e0, b1:e1, b2:e2] = a_xg
                     r += 1
@@ -384,14 +384,16 @@ class GridDescriptor:
         
     def calculate_dipole_moment(self, rho_xyz):
         """Calculate dipole moment of density."""
-        rho_xy = num.sum(rho_xyz, 2)
-        rho_xz = num.sum(rho_xyz, 1)
-        rho_cg = [num.sum(rho_xy, 1), num.sum(rho_xy, 0), num.sum(rho_xz, 0)]
-        d_c = num.zeros(3, num.Float)
+        rho_xy = npy.sum(rho_xyz, axis=2)
+        rho_xz = npy.sum(rho_xyz, axis=1)
+        rho_cg = [npy.sum(rho_xy, axis=1),
+                  npy.sum(rho_xy, axis=0),
+                  npy.sum(rho_xz, axis=0)]
+        d_c = npy.zeros(3)
         for c in range(3):
-            r_g = (num.arange(self.n_c[c], typecode=num.Float) +
+            r_g = (npy.arange(self.n_c[c], dtype=float) +
                    self.beg_c[c]) * self.h_c[c]
-            d_c[c] = -num.dot(r_g, rho_cg[c]) * self.dv
+            d_c[c] = -npy.dot(r_g, rho_cg[c]) * self.dv
         self.comm.sum(d_c)
         return d_c
 
@@ -415,7 +417,7 @@ class GridDescriptor:
             same_wave = True
 
         nbands = len(psit_nG)
-        Z_nn = num.zeros((nbands, nbands), num.Complex)
+        Z_nn = npy.zeros((nbands, nbands), complex)
         psit_nG = psit_nG[:]
         if not same_wave:
             psit_nG1 = psit_nG1[:]
@@ -439,7 +441,7 @@ class GridDescriptor:
                 B_nG = get_slice(c, g, psit_nG1)
                 
             e = exp(-2.j * pi * G * (g + self.beg_c[c]) / self.N_c[c])
-            Z_nn += e * num.dot(cc(A_nG), num.transpose(B_nG)) * self.dv
+            Z_nn += e * npy.dot(cc(A_nG), npy.transpose(B_nG)) * self.dv
             
         return Z_nn
 

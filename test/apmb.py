@@ -1,9 +1,9 @@
-from ASE import ListOfAtoms, Atom, Crystal
-
+from ase import *
 from gpaw.utilities import equal
 from gpaw import Calculator
 from gpaw.lrtddft import LrTDDFT
-
+import numpy
+#numpy.seterr(all='raise')
 txt='-'
 txt='/dev/null'
 
@@ -14,12 +14,12 @@ if not load:
     R=0.7 # approx. experimental bond length
     a = 3
     c = 4
-    H2 = ListOfAtoms([Atom('H', (a/2,a/2,(c-R)/2)),
-                      Atom('H', (a/2,a/2,(c+R)/2))],
-                     cell=(a,a,c))
+    H2 = Atoms([Atom('H', (a/2,a/2,(c-R)/2)),
+                Atom('H', (a/2,a/2,(c+R)/2))],
+               cell=(a,a,c))
     calc = Calculator(xc='PBE', nbands=2, spinpol=False, txt=txt)
-    H2.SetCalculator(calc)
-    H2.GetPotentialEnergy()
+    H2.set_calculator(calc)
+    H2.get_potential_energy()
 ##    calc.write('H2.gpw', 'all')
 else:
     calc = Calculator('H2.gpw', txt=txt)
@@ -46,8 +46,8 @@ print '------ with spin'
 
 if not load:
     c_spin = Calculator(xc='PBE', nbands=2, spinpol=True, txt=txt)
-    H2.SetCalculator(c_spin)
-    c_spin.calculate()
+    H2.set_calculator(c_spin)
+    c_spin.calculate(H2)
     c_spin.write('H2spin.gpw', 'all')
 else:
     c_spin = Calculator('H2spin.gpw', txt=txt)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
-from gpaw.utilities import center, equal
+from gpaw.utilities import equal
 from gpaw.atom.all_electron import AllElectron
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
@@ -36,16 +36,14 @@ for atom in atoms:
 
        # TODO: Do a 3D calculation and check that the eigenvalues and total energy
        # do not change much. 
-       SS = ListOfAtoms([Atom(atom,[ 0, 0, 0 ] ) ],
-                         cell=(8,8,8), periodic=False)
-
-       center(SS)
+       SS = Atoms([Atom(atom)], cell=(8, 8, 8), pbc=False)
+       SS.center()
 
        h = 0.25
        calc = Calculator(h=h, xc='GLLB')
-       SS.SetCalculator(calc)
-       out("Total energy diff.", "3D", atom, 0.0, SS.GetPotentialEnergy()/calc.Ha, "Ha")
-       eigs = calc.GetEigenvalues()
+       SS.set_calculator(calc)
+       out("Total energy diff.", "3D", atom, 0.0, SS.get_potential_energy()/calc.Ha, "Ha")
+       eigs = calc.get_eigenvalues()
        out("Homo eigenvalue", "3D", atom, EHOMO[atom], eigs[eignum[atom]]/calc.Ha, "Ha")
 
 print "             Quanity        Method    Symbol     Ref[1]         GPAW      Unit  "

@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.gllb import construct_density1D, find_reference_level1D, SMALL_NUMBER
 from gpaw.gllb.responsefunctional import ResponseFunctional
 from gpaw.gllb.nonlocalfunctional import NonLocalFunctionalDesc
@@ -29,7 +29,7 @@ def gllb_weight(epsilon, reference_level):
     if (epsilon +1e-5 > reference_level):
         return 0
 
-    return K_G * num.sqrt(reference_level-epsilon)
+    return K_G * npy.sqrt(reference_level-epsilon)
 
 
 class GLLB1DFunctional:
@@ -82,7 +82,7 @@ class GLLB1DFunctional:
         self.slater_part1D.get_energy_and_potential_spinpaired(n_g, self.v_g, e_g=self.e_g)
 
         # Calculate the exchange energy
-        Exc = num.dot(self.e_g, gd.dv_g)
+        Exc = npy.dot(self.e_g, gd.dv_g)
 
         # The Slater potential is approximated by 2*epsilon / rho
         vrho_xc[:] += 2 * self.e_g
@@ -180,7 +180,7 @@ class GLLB1DFunctional:
 
         # Allocate new array for core_response
         N = len(ae.rgd.r_g)
-        v_xc = num.zeros(N, num.Float)
+        v_xc = npy.zeros(N)
 
         # Calculate the response part using wavefunctions, eigenvalues etc. from AllElectron calculator
         self.get_non_local_energy_and_potential1D(ae.rgd, ae.u_j, ae.f_j, ae.e_j, ae.l_j, v_xc,
@@ -304,18 +304,18 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
         self.ensure_B88()
         N = len(n_g)
         # TODO: Allocate these only once
-        vtemp_g = num.zeros(N, num.Float)
-        etemp_g = num.zeros(N, num.Float)
-        deda2temp_g = num.zeros(N, num.Float)
+        vtemp_g = npy.zeros(N)
+        etemp_g = npy.zeros(N)
+        deda2temp_g = npy.zeros(N)
 
         self.slater_part.calculate_spinpaired(etemp_g, n_g, vtemp_g, a2_g, deda2temp_g)
 
         # Grr... When n_g = 0, B88 returns -0.03 for e_g!!!!!!!!!!!!!!!!!
-        etemp_g[:] = num.where(abs(n_g) < SMALL_NUMBER, 0, etemp_g)
+        etemp_g[:] = npy.where(abs(n_g) < SMALL_NUMBER, 0, etemp_g)
 
         v_g[:] = 2 * etemp_g / (ndenom_g + SMALL_NUMBER)
 
-        return num.sum(etemp_g * rgd.dv_g)
+        return npy.sum(etemp_g * rgd.dv_g)
 
     def get_slater_part(self, info_s, v_sg, e_g):
 
@@ -336,7 +336,7 @@ class GLLBFunctional(ResponseFunctional, GLLB1DFunctional):
             v_g[:] += 2*self.tempe_g / (deg * (info['n_g']) + SMALL_NUMBER)
 
             # Add the contribution of this spin to energy density
-            e_g[:] += self.tempe_g.flat / deg
+            e_g[:] += self.tempe_g.ravel() / deg
 
     def get_slater_part_and_weights(self, info_s, v_sg, e_g):
 

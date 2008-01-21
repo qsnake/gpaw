@@ -2,11 +2,8 @@
 
 from math import pi, sqrt, sin, cos, atan2
 
-import Numeric as num
-from multiarray import innerproduct as inner # avoid the dotblas version!
-from multiarray import matrixproduct as dot # avoid the dotblas bug!
-
-import LinearAlgebra as linalg
+import numpy as npy
+from numpy import dot # avoid the dotblas bug!
 
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
@@ -36,8 +33,8 @@ class CG(Eigensolver):
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
         # Allocate arrays
-        self.phi_G = self.gd.empty(typecode=self.typecode)
-        self.phi_old_G = self.gd.empty(typecode=self.typecode)
+        self.phi_G = self.gd.empty(dtype=self.dtype)
+        self.phi_old_G = self.gd.empty(dtype=self.dtype)
 
         # self.f = open('CG_debug','w')
 
@@ -71,7 +68,7 @@ class CG(Eigensolver):
             Htpsit_G = self.Htpsit_nG[n]
             gamma_old = 1.0
             phi_old_G[:] = 0.0
-            error = self.comm.sum(real(num.vdot(R_G, R_G)))
+            error = self.comm.sum(real(npy.vdot(R_G, R_G)))
             for nit in range(niter):
                 if error < self.tolerance/self.nbands:
                     # print >> self.f, "cg:iters", n, nit
@@ -81,7 +78,7 @@ class CG(Eigensolver):
                                            kpt.k_c)
 
                 # New search direction
-                gamma = self.comm.sum(real(num.vdot(pR_G, R_G)))
+                gamma = self.comm.sum(real(npy.vdot(pR_G, R_G)))
                 phi_G[:] = -pR_G - gamma/gamma_old * phi_old_G
                 gamma_old = gamma
                 phi_old_G[:] = phi_G[:]
@@ -89,7 +86,7 @@ class CG(Eigensolver):
                 # Calculate projections
                 for nucleus in hamiltonian.pt_nuclei:
                     ni = nucleus.get_number_of_partial_waves()
-                    nucleus.P2_i = num.zeros(ni, self.typecode)
+                    nucleus.P2_i = npy.zeros(ni, self.dtype)
                     if nucleus.in_this_domain:
                         nucleus.pt_i.integrate(phi_G, nucleus.P2_i, kpt.k)
                     else:
@@ -98,20 +95,22 @@ class CG(Eigensolver):
                 # Orthonormalize phi_G to all bands
                 self.timer.start('CG: orthonormalize')
                 for nn in range(kpt.nbands):
-                    overlap = num.vdot(kpt.psit_nG[nn], phi_G) * self.gd.dv
+                    overlap = npy.vdot(kpt.psit_nG[nn], phi_G) * self.gd.dv
                     for nucleus in hamiltonian.my_nuclei:
                         P2_i = nucleus.P2_i
                         P_i = nucleus.P_uni[kpt.u, nn]
-                        overlap += num.vdot(P_i, inner(nucleus.setup.O_ii, P2_i))
+                        overlap += npy.vdot(P_i, npy.inner(nucleus.setup.O_ii,
+                                                           P2_i))
                     overlap = self.comm.sum(overlap)
                     # phi_G -= overlap * kpt.psit_nG[nn]
                     axpy(-overlap, kpt.psit_nG[nn], phi_G)
                     for nucleus in hamiltonian.my_nuclei:
                         nucleus.P2_i -= nucleus.P_uni[kpt.u, nn] * overlap
 
-                norm = num.vdot(phi_G, phi_G) * self.gd.dv
+                norm = npy.vdot(phi_G, phi_G) * self.gd.dv
                 for nucleus in hamiltonian.my_nuclei:
-                    norm += num.vdot(nucleus.P2_i, inner(nucleus.setup.O_ii, nucleus.P2_i))
+                    norm += npy.vdot(nucleus.P2_i, npy.inner(
+                        nucleus.setup.O_ii, nucleus.P2_i))
                 norm = self.comm.sum(norm)
                 phi_G /= sqrt(real(norm))
                 for nucleus in hamiltonian.my_nuclei:
@@ -123,8 +122,8 @@ class CG(Eigensolver):
 
                 hamiltonian.kin.apply(phi_G, Htphi_G, kpt.phase_cd)
                 Htphi_G += phi_G * vt_G
-                b = num.vdot(phi_G, Htpsit_G) * self.gd.dv
-                c = num.vdot(phi_G, Htphi_G) * self.gd.dv
+                b = npy.vdot(phi_G, Htpsit_G) * self.gd.dv
+                c = npy.vdot(phi_G, Htphi_G) * self.gd.dv
                 for nucleus in hamiltonian.my_nuclei:
                     P_i = nucleus.P_uni[kpt.u, n]
                     P2_i = nucleus.P2_i
@@ -164,7 +163,7 @@ class CG(Eigensolver):
                             nucleus.pt_i.add(R_G, coefs_i, kpt.k, communicate=True)
                         else:
                             nucleus.pt_i.add(R_G, None, kpt.k, communicate=True)
-                    error_new = self.comm.sum(real(num.vdot(R_G, R_G)))
+                    error_new = self.comm.sum(real(npy.vdot(R_G, R_G)))
                     if error_new / error < 0.30:
                         # print >> self.f, "cg:iters", n, nit+1
                         break

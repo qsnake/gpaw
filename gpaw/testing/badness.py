@@ -1,10 +1,12 @@
 import time
 import sys
 import pickle
-import atomization
-import Numeric as num
+
+import numpy as npy
+from numpy.linalg import inv
+
+import atomization # XXXXX
 from gpaw.utilities import devnull
-from LinearAlgebra import inverse
 
 """
 Contains various Test classes to be used by the gpaw setup optimizer
@@ -225,11 +227,11 @@ class DistanceTest(Test):
             niter.append(calc.niter)
 
         #Now find parabola and determine minimum
-        x = num.array(dists)
-        y = num.array(energies)
+        x = npy.array(dists)
+        y = npy.array(energies)
 
-        coeffmatrix = num.transpose(num.array([x**0, x**1, x**2]))
-        c = num.dot(inverse(coeffmatrix), y)
+        coeffmatrix = npy.transpose(npy.array([x**0, x**1, x**2]))
+        c = npy.dot(inv(coeffmatrix), y)
         bond_length = - c[1] / (2.*c[2]) # "-b/(2a)"
 
         self.iterationcounts = tuple(niter)
@@ -247,7 +249,7 @@ class NoiseTest(Test):
         self.h = .2
         self.a = 4.5
         if points is None:
-            d = num.arrayrange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
+            d = npy.arrayrange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
             points = [(x,x,x) for x in d]
         self.unit_badness=unit_badness
         self.points = tuple(points)

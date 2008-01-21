@@ -53,7 +53,7 @@ if len(tests) == 0:
              'multipoletest.py', 'proton.py', 'restart.py', 'timing.py',
              'xcatom.py', 'coulomb.py', 'nonselfconsistentLDA.py', 'bee1.py',
              #'kli.py',
-             'units.py', 'revPBE.py', 'nonselfconsistent.py', 'mixer.py',
+             'revPBE.py', 'nonselfconsistent.py', 'mixer.py',
              'hydrogen.py', 'spinpol.py', 'wfs_io.py', 'bulk.py',
              'stdout.py', 'gga-atom.py', 'atomize.py', 'lcao-h2o.py',
              'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
@@ -61,16 +61,22 @@ if len(tests) == 0:
              'davidson.py', 'wannier-ethylene.py',
              'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py',
              'lrtddft.py', 'apmb.py',
-             'fixmom.py', 'wannier-hwire.py',
+             'fixmom.py',
+             #'wannier-hwire.py',
              'exx.py', 'ldos.py',
              'revPBE_Li.py','ylexpand.py',
              'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
              'ae-calculation.py', 'H2Al110.py']
     tests_lxc = [
-        'lxc_spinpol_Li.py', 'lxc_xcatom.py'
+        #'lxc_spinpol_Li.py',
+        'lxc_xcatom.py'
         ]
     tests = tests + tests_lxc
+tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
+                  'parallel/par8.py', 'parallel/par6.py',
+                  'parallel/exx.py']
+
 tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
                   'parallel/par8.py', 'parallel/par6.py',
                   'parallel/exx.py']
@@ -95,8 +101,6 @@ for test in exclude:
 
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
-from ASE.Units import units
-
 class ScriptTestCase(unittest.TestCase):
     garbage = []
     def __init__(self, filename):
@@ -104,13 +108,14 @@ class ScriptTestCase(unittest.TestCase):
         self.filename = filename
 
     def setUp(self):
-        units.length_used = False
-        units.energy_used = False
-        units.SetUnits('Ang', 'eV')
+        pass
 
     def testfile(self):
-        execfile(self.filename, {})
-
+        try:
+            execfile(self.filename, {})
+        except KeyboardInterrupt:
+            raise RuntimeError('Keyboard interrupt')
+        
     def tearDown(self):
         gc.collect()
         n = len(gc.garbage)

@@ -1,8 +1,8 @@
 from gpaw.lrtddft import d2Excdnsdnt,d2Excdn2
-import Numeric as num
+import numpy as npy
 
-dup=num.array([.1,.3])
-ddn=num.array([.2,.005])
+dup=npy.array([.1,.3])
+ddn=npy.array([.2,.005])
 
 def equiv(xl,yl):
     for x,y in zip(xl,yl):

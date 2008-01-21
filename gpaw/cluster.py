@@ -1,6 +1,6 @@
 import math
 import re
-import Numeric as num
+import numpy as npy
 
 from ASE import Atom, ListOfAtoms
 from ASE.Utilities.GeometricTransforms import Translate as GTTranslate
@@ -17,6 +17,7 @@ class Cluster(ListOfAtoms):
     def __init__(self, atoms=None, cell=None,
                  filename=None, filetype=None,
                  timestep=0.0):
+        print 'Please use standard Atoms class from ase package!'
         if atoms is None:
             ListOfAtoms.__init__(self,[],cell=cell)
         else:
@@ -46,12 +47,12 @@ class Cluster(ListOfAtoms):
         """Center the structure to unit cell"""
         extr = self.extreme_positions()
         cntr = 0.5 * (extr[0] + extr[1])
-        cell = num.diagonal(self.GetUnitCell())
+        cell = npy.diagonal(self.GetUnitCell())
         GTTranslate(self,tuple(.5*cell-cntr),'cartesian')
 
     def center_of_mass(self):
         """Return the structures center of mass"""
-        cm = num.zeros((3,),num.Float)
+        cm = npy.zeros((3,))
         M = 0.
         for atom in self:
             m = atom.GetMass()
@@ -68,7 +69,7 @@ class Cluster(ListOfAtoms):
     def extreme_positions(self):
         """get the extreme positions of the structure"""
         pos = self.GetCartesianPositions()
-        return num.array([num.minimum.reduce(pos),num.maximum.reduce(pos)])
+        return npy.array([npy.minimum.reduce(pos),npy.maximum.reduce(pos)])
 
     def MinimalBox(self,border=0):
         return self.minimal_box(border)
@@ -96,7 +97,7 @@ class Cluster(ListOfAtoms):
             extr[1][i]+=b[i]-extr[0][i] # shifted already
             
         # move lower corner to (0,0,0)
-        GTTranslate(self,tuple(-1.*num.array(extr[0])),'cartesian')
+        GTTranslate(self,tuple(-1.*npy.array(extr[0])),'cartesian')
         self.SetUnitCell(tuple(extr[1]),fix=True)
 
         return self.GetUnitCell()

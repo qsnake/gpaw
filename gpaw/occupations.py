@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-import Numeric as num
+import numpy as npy
 import gpaw.mpi as mpi
 
 
@@ -37,7 +37,7 @@ class Dummy:
         # Sum up all eigenvalues weighted with occupation numbers:
         Eband = 0.0
         for kpt in kpt_u:
-            Eband += num.dot(kpt.f_n, kpt.eps_n)    
+            Eband += npy.dot(kpt.f_n, kpt.eps_n)    
         self.Eband = self.kpt_comm.sum(Eband)
 
 
@@ -65,7 +65,7 @@ class ZeroKelvin(Dummy):
         else:
             nb = len(kpts[0].eps_n)
             if self.kpt_comm.size>1: 
-                all_eps_n = num.zeros((self.kpt_comm.size, nb), num.Float)
+                all_eps_n = npy.zeros((self.kpt_comm.size, nb))
                 self.kpt_comm.all_gather(kpts[0].eps_n, all_eps_n)
                 eps_n = all_eps_n
             else:
@@ -81,7 +81,7 @@ class ZeroKelvin(Dummy):
                     mb += 1
 
             if self.kpt_comm.size>1: 
-                f_n = num.zeros((self.kpt_comm.size, nb), num.Float)
+                f_n = npy.zeros((self.kpt_comm.size, nb))
             else:
                 f_n = [kpt.f_n for kpt in kpts]
  
@@ -117,15 +117,15 @@ class FermiDirac(Dummy):
         S = 0.0
         for kpt in kpts:
             if self.fixmom:
-                x = num.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
+                x = npy.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
             else:
-                x = num.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
-            y = num.exp(x)
+                x = npy.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
+            y = npy.exp(x)
             z = y + 1.0
             y *= x
             y /= z
-            y -= num.log(z)
-            S -= kpt.weight * num.sum(y)
+            y -= npy.log(z)
+            S -= kpt.weight * npy.sum(y)
 
         self.S = self.kpt_comm.sum(S) * self.kT
         self.calculate_band_energy(kpts)
@@ -135,22 +135,22 @@ class FermiDirac(Dummy):
         nb = len(kpts[0].eps_n)
 
         # Make a long array for all the eigenvalues:
-        list_eps_n =  num.array([kpt.eps_n for kpt in kpts])
+        list_eps_n =  npy.array([kpt.eps_n for kpt in kpts])
 
         if self.kpt_comm.size > 1:
             eps_n = mpi.all_gather_array(self.kpt_comm, list_eps_n)
         else:
-            eps_n = list_eps_n.flat
+            eps_n = list_eps_n.ravel()
  
         # Sort them:
-        eps_n = num.sort(eps_n)
+        eps_n = npy.sort(eps_n)
         n = int(self.ne * nu)
         if n // 2 == len(eps_n):
             self.epsF = 1000.0
         else:
             self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
         if self.fixmom:
-            self.epsF = num.array([self.epsF, self.epsF])
+            self.epsF = npy.array([self.epsF, self.epsF])
 
     def find_fermi_level(self, kpts):
         """Find the Fermi level by integrating in energy until
@@ -161,8 +161,8 @@ class FermiDirac(Dummy):
         niter = 0
         while True:
             if self.fixmom:
-                n = num.zeros(2, num.Float)
-                dnde = num.zeros(2, num.Float)
+                n = npy.zeros(2)
+                dnde = npy.zeros(2)
             else:
                 n = 0.0
                 dnde = 0.0
@@ -170,19 +170,19 @@ class FermiDirac(Dummy):
             for kpt in kpts:
                 sign = 1.0 - 2 * kpt.s
                 if self.fixmom:
-                    x = num.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
-                    x = num.exp(x)
+                    x = npy.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
+                    x = npy.exp(x)
                     kpt.f_n[:] = kpt.weight / (x + 1.0)
-                    dn = num.sum(kpt.f_n)
+                    dn = npy.sum(kpt.f_n)
                     n[kpt.s] += dn
-                    dnde[kpt.s] += (dn - num.sum(kpt.f_n**2) / kpt.weight) / self.kT
+                    dnde[kpt.s] += (dn - npy.sum(kpt.f_n**2) / kpt.weight) / self.kT
                 else:
-                    x = num.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
-                    x = num.exp(x)
+                    x = npy.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
+                    x = npy.exp(x)
                     kpt.f_n[:] = kpt.weight / (x + 1.0)
-                    dn = num.sum(kpt.f_n)
+                    dn = npy.sum(kpt.f_n)
                     n += dn
-                    dnde += (dn - num.sum(kpt.f_n**2) / kpt.weight) / self.kT
+                    dnde += (dn - npy.sum(kpt.f_n**2) / kpt.weight) / self.kT
 
                 magmom += sign * dn
 
@@ -197,13 +197,13 @@ class FermiDirac(Dummy):
             magmom = self.kpt_comm.sum(magmom)
 
             if self.fixmom:
-                ne = num.array([(self.ne + self.M) / 2, (self.ne - self.M) / 2])
+                ne = npy.array([(self.ne + self.M) / 2, (self.ne - self.M) / 2])
                 dn = ne - n
-                if num.alltrue(abs(dn) < 1.0e-9):
+                if npy.alltrue(abs(dn) < 1.0e-9):
                     if abs(magmom - self.M) > 1.0e-8:
-                        raise RuntimeError, 'Magnetic moment not fixed'
+                        raise RuntimeError('Magnetic moment not fixed')
                     break
-                if num.sometrue(abs(dnde) <  1.0e-9):
+                if npy.sometrue(abs(dnde) <  1.0e-9):
                     self.guess_fermi_level(kpts)
                     continue
             else:
@@ -212,11 +212,17 @@ class FermiDirac(Dummy):
                     break
                 if abs(dnde) <  1.0e-9:
                     self.guess_fermi_level(kpts)
+                    niter += 1
+                    if niter > 1000:
+                        raise RuntimeError('Could not locate the Fermi level!'
+                                           + '  See ticket #27.')
                     continue
             if niter > 1000:
-                raise RuntimeError, 'Could not locate the Fermi level!'
+                raise RuntimeError('Could not locate the Fermi level!')
             de = dn / dnde
-            if abs(de) > self.kT:
+            if self.fixmom:
+                de.clip(-self.kT, self.kT, de)
+            elif abs(de) > self.kT:
                 de *= self.kT / abs(de)
             self.epsF += de
             niter += 1

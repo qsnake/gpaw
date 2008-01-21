@@ -1,5 +1,5 @@
 from math import sqrt, pi
-import Numeric as num
+import numpy as npy
 
 from gpaw.utilities import pack
 from gpaw.localized_functions import create_localized_functions
@@ -25,7 +25,7 @@ def set_coarse_ghat(paw):
         Ghat_L = nucleus.Ghat_L
         if Ghat_L is None:
             ghat_L = nucleus.ghat_L
-            I_i = num.zeros(ghat_L.ni, num.Float)
+            I_i = npy.zeros(ghat_L.ni)
             ghat_L.comm.sum(I_i)
         else:
             Ghat_L.normalize(sqrt(4 * pi))
@@ -57,7 +57,7 @@ class PairDensity2:
 
     def get_coarse(self, nt_G):
         """Get pair density"""
-        num.multiply(self.psit1_G, self.psit2_G, nt_G)
+        npy.multiply(self.psit1_G, self.psit2_G, nt_G)
 
     def add_compensation_charges(self, nt_G, rhot_g):
         """Add compensation charghes to input pair density, which
@@ -76,13 +76,13 @@ class PairDensity2:
                 # Generate density matrix
                 P1_i = nucleus.P_uni[self.u, self.n1]
                 P2_i = nucleus.P_uni[self.u, self.n2]
-                D_ii = num.outerproduct(P1_i, P2_i)
+                D_ii = npy.outer(P1_i, P2_i)
                 # allowed to pack as used in the scalar product with
                 # the symmetric array Delta_pL
                 D_p  = pack(D_ii, tolerance=1e30)
                     
                 # Determine compensation charge coefficients:
-                Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                Q_L = npy.dot(D_p, nucleus.setup.Delta_pL)
             else:
                 Q_L = None
 
@@ -93,7 +93,7 @@ class PairDensity2:
                 Ghat_L = nucleus.Ghat_L
                 if Ghat_L is None:
                     ghat_L = nucleus.ghat_L
-                    Q_L = num.empty(ghat_L.ni, num.Float)
+                    Q_L = npy.empty(ghat_L.ni)
                     ghat_L.comm.broadcast(Q_L, ghat_L.root)
                 else:
                     Ghat_L.add(rhot_g, Q_L, communicate=True)
@@ -107,6 +107,7 @@ class PairDensity:
         self.density = paw.density
 
         self.ghat_nuclei = paw.ghat_nuclei
+        self.nuclei = paw.nuclei
         
         # we need to set Ghat_nuclei and Ghat_L
         # on the course grid if not initialized already
@@ -147,13 +148,13 @@ class PairDensity:
                 # Generate density matrix
                 Pi_i = nucleus.P_uni[self.u, self.i]
                 Pj_i = nucleus.P_uni[self.u, self.j]
-                D_ii = num.outerproduct(Pi_i, Pj_i)
+                D_ii = npy.outer(Pi_i, Pj_i)
                 # allowed to pack as used in the scalar product with
                 # the symmetric array Delta_pL
                 D_p  = pack(D_ii, tolerance=1e30)
                     
                 # Determine compensation charge coefficients:
-                Q_L = num.dot(D_p, nucleus.setup.Delta_pL)
+                Q_L = npy.dot(D_p, nucleus.setup.Delta_pL)
             else:
                 Q_L = None
 
@@ -164,7 +165,7 @@ class PairDensity:
                 Ghat_L = nucleus.Ghat_L
                 if Ghat_L is None:
                     ghat_L = nucleus.ghat_L
-                    Q_L = num.empty(ghat_L.ni, num.Float)
+                    Q_L = npy.empty(ghat_L.ni)
                     ghat_L.comm.broadcast(Q_L, ghat_L.root)
                 else:
                     Ghat_L.add(rhot, Q_L, communicate=True)

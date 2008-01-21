@@ -1,8 +1,8 @@
 import os
 import os.path
 
-from ASE.ChemicalElements.name import names
-import Numeric as num
+from ase.data import atomic_names
+import numpy as npy
 
 import gpaw.mpi as mpi
 
@@ -59,7 +59,7 @@ def write(paw, filename, mode):
         w['energyunit'] = 'Hartree'
 
         pos_ac, Z_a, cell_cc, pbc_c = paw.last_atomic_configuration
-        tag_a, magmom_a = paw.extra_list_of_atoms_stuff
+        magmom_a, tag_a = paw.extra_list_of_atoms_stuff
         
         w.dimension('natoms', paw.natoms)
         w.dimension('3', 3)
@@ -146,7 +146,7 @@ def write(paw, filename, mode):
 
         # Write fingerprint (md5-digest) for all setups:
         for setup in paw.setups:
-            key = names[setup.Z] + 'Fingerprint'
+            key = atomic_names[setup.Z] + 'Fingerprint'
             if setup.type != 'paw':
                 key += '(%s)' % setup.type
             w[key] = setup.fingerprint
@@ -156,12 +156,12 @@ def write(paw, filename, mode):
             setup_types = {None: setup_types}
         w['SetupTypes'] = repr(setup_types)
               
-        typecode = {num.Float: float, num.Complex: complex}[paw.typecode]
+        dtype = {float: float, complex: complex}[paw.dtype]
         # write projections
         w.add('Projections', ('nspins', 'nibzkpts', 'nbands', 'nproj'),
-              typecode=typecode)
+              dtype=dtype)
 
-        all_P_uni = num.empty((paw.nmyu, paw.nbands, nproj), paw.typecode)
+        all_P_uni = npy.empty((paw.nmyu, paw.nbands, nproj), paw.dtype)
         for kpt_rank in range(paw.kpt_comm.size):
             i = 0
             for nucleus in paw.nuclei:
@@ -169,7 +169,7 @@ def write(paw, filename, mode):
                 if kpt_rank == MASTER and nucleus.in_this_domain:
                     P_uni = nucleus.P_uni
                 else:
-                    P_uni = num.empty((paw.nmyu, paw.nbands, ni), paw.typecode)
+                    P_uni = npy.empty((paw.nmyu, paw.nbands, ni), paw.dtype)
                     world_rank = nucleus.rank + kpt_rank * paw.domain.comm.size
                     paw.world.receive(P_uni, world_rank, 300)
 
@@ -185,8 +185,8 @@ def write(paw, filename, mode):
 
     # Write atomic density matrices and non-local part of hamiltonian:
     if paw.master:
-        all_D_sp = num.empty((paw.nspins, nadm), num.Float)
-        all_H_sp = num.empty((paw.nspins, nadm), num.Float)
+        all_D_sp = npy.empty((paw.nspins, nadm))
+        all_H_sp = npy.empty((paw.nspins, nadm))
         q1 = 0
         for nucleus in paw.nuclei:
             ni = nucleus.get_number_of_partial_waves()
@@ -195,9 +195,9 @@ def write(paw, filename, mode):
                 D_sp = nucleus.D_sp
                 H_sp = nucleus.H_sp
             else:
-                D_sp = num.empty((paw.nspins, np), num.Float)
+                D_sp = npy.empty((paw.nspins, np))
                 paw.domain.comm.receive(D_sp, nucleus.rank, 207)
-                H_sp = num.empty((paw.nspins, np), num.Float)
+                H_sp = npy.empty((paw.nspins, np))
                 paw.domain.comm.receive(H_sp, nucleus.rank, 2071)
             q2 = q1 + np
             all_D_sp[:, q1:q1+np] = D_sp
@@ -214,14 +214,14 @@ def write(paw, filename, mode):
 
     # Write the eigenvalues:
     if paw.master:
-        w.add('Eigenvalues', ('nspins', 'nibzkpts', 'nbands'), typecode=float)
+        w.add('Eigenvalues', ('nspins', 'nibzkpts', 'nbands'), dtype=float)
         for kpt_rank in range(paw.kpt_comm.size):
             for u in range(paw.nmyu):
                 s, k = divmod(u + kpt_rank * paw.nmyu, paw.nkpts)
                 if kpt_rank == MASTER:
                     eps_n = paw.kpt_u[u].eps_n
                 else:
-                    eps_n = num.empty(paw.nbands, num.Float)
+                    eps_n = npy.empty(paw.nbands)
                     paw.kpt_comm.receive(eps_n, kpt_rank, 4300)
                 w.fill(eps_n)
     elif paw.domain.comm.rank == MASTER:
@@ -231,14 +231,14 @@ def write(paw, filename, mode):
     # Write the occupation numbers:
     if paw.master:
         w.add('OccupationNumbers', ('nspins', 'nibzkpts', 'nbands'),
-              typecode=float)
+              dtype=float)
         for kpt_rank in range(paw.kpt_comm.size):
             for u in range(paw.nmyu):
                 s, k = divmod(u + kpt_rank * paw.nmyu, paw.nkpts)
                 if kpt_rank == MASTER:
                     f_n = paw.kpt_u[u].f_n
                 else:
-                    f_n = num.empty(paw.nbands, num.Float)
+                    f_n = npy.empty(paw.nbands)
                     paw.kpt_comm.receive(f_n, kpt_rank, 4300)
                 w.fill(f_n)
     elif paw.domain.comm.rank == MASTER:
@@ -248,7 +248,7 @@ def write(paw, filename, mode):
     # Write the pseudodensity on the coarse grid:
     if paw.master:
         w.add('PseudoElectronDensity',
-              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
+              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
     if paw.kpt_comm.rank == MASTER:
         for s in range(paw.nspins):
             nt_sG = paw.gd.collect(paw.density.nt_sG[s])
@@ -258,7 +258,7 @@ def write(paw, filename, mode):
     # Write the pseudpotential on the coarse grid:
     if paw.master:
         w.add('PseudoPotential',
-              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), typecode=float)
+              ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
     if paw.kpt_comm.rank == MASTER:
         for s in range(paw.nspins):
             vt_sG = paw.gd.collect(paw.hamiltonian.vt_sG[s])
@@ -270,7 +270,7 @@ def write(paw, filename, mode):
         if paw.master:
             w.add('PseudoWaveFunctions', ('nspins', 'nibzkpts', 'nbands',
                                           'ngptsx', 'ngptsy', 'ngptsz'),
-                  typecode=typecode)
+                  dtype=dtype)
 
         for s in range(paw.nspins):
             for k in range(paw.nkpts):
@@ -311,7 +311,7 @@ def write(paw, filename, mode):
                         wpsi.dimension('ngptsz', ngd[2])
                         wpsi.add('PseudoWaveFunction',
                                  ('1','ngptsx', 'ngptsy', 'ngptsz'),
-                                 typecode=typecode)
+                                 dtype=dtype)
                         wpsi.fill(psit_G)
                         wpsi.close()
                     
@@ -332,7 +332,7 @@ def read(paw, reader):
 
     for setup in paw.setups:
         try:
-            key = names[setup.Z] + 'Fingerprint'
+            key = atomic_names[setup.Z] + 'Fingerprint'
             if setup.type != 'paw':
                 key += '(%s)' % setup.type
             fp = r[key]
@@ -393,7 +393,7 @@ def read(paw, reader):
     paw.occupation.set_fermi_level(r['FermiLevel'])
 
     try:
-        paw.error = { 'density' : r['DensityError'] }
+        paw.error = {'density': r['DensityError']}
         paw.error['energy'] = r['EnergyError']
         paw.error['eigenstates'] = r['EigenstateError'] 
     except (AttributeError, KeyError):

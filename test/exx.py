@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 import os
+from ase import *
 from gpaw import Calculator
-from gpaw.utilities import equal, center
+from gpaw.utilities import equal
 from gpaw.atom.generator import Generator, parameters
-from ASE import ListOfAtoms, Atom
 from gpaw import setup_paths
 
-loa = ListOfAtoms([Atom('Be', (0, 0, 0)), Atom('Be', (2.45, 0, 0))],
-                  cell= [5.9, 4.8, 5.0], periodic=False)
-center(loa)
+loa = Atoms([Atom('Be', (0, 0, 0)), Atom('Be', (2.45, 0, 0))],
+            cell=[5.9, 4.8, 5.0], pbc=False)
+loa.center()
 calc = Calculator(h = .21, nbands=3, convergence={'eigenstates': 1e-6})
-loa.SetCalculator(calc)
+loa.set_calculator(calc)
 
 setup_paths.insert(0, '.') # Use setups from this directory
 tolerance = 0.0003 # must reproduce old gpaw results
@@ -44,8 +44,8 @@ for setup in ['PBE', 'oldPBE', 'LDA']:
 
     # setup gpaw calculation
     calc.set(xc=setup2xc[setup])
-    E = calc.GetPotentialEnergy()
-    bands = calc.GetEigenvalues()
+    E = loa.get_potential_energy()
+    bands = calc.get_eigenvalues()
     setupfile = calc.nuclei[0].setup.filename
 
     # Remove setup

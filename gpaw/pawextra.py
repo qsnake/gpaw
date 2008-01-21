@@ -8,7 +8,7 @@ modules."""
 
 import sys
 
-import Numeric as num
+import numpy as npy
 
 import gpaw.io
 import gpaw.mpi as mpi
@@ -49,11 +49,15 @@ class PAWExtra:
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
 
+        psit_nG = self.kpt_u[u].psit_nG
+        if psit_nG is None:
+            raise RuntimeError('This calculator has no wave functions!')
+
         if self.world.size == 1:
-            return self.kpt_u[u].psit_nG[n]
+            return psit_nG[n]
 
         if self.kpt_comm.rank == kpt_rank:
-            psit_G = self.gd.collect(self.kpt_u[u].psit_nG[n])
+            psit_G = self.gd.collect(psit_nG[n])
 
             if kpt_rank == MASTER:
                 if self.master:
@@ -65,11 +69,11 @@ class PAWExtra:
 
         if self.master:
             # allocate full wavefunction and receive
-            psit_G = self.gd.empty(typecode=self.typecode, global_array=True)
+            psit_G = self.gd.empty(dtype=self.dtype, global_array=True)
             self.kpt_comm.receive(psit_G, kpt_rank, 1398)
             return psit_G
 
-    def get_eigenvalues(self, k=0, s=0):
+    def collect_eigenvalues(self, k=0, s=0):
         """Return eigenvalue array.
 
         For the parallel case find the rank in kpt_comm that contains
@@ -87,7 +91,7 @@ class PAWExtra:
             if self.domain.comm.rank == MASTER:
                 self.kpt_comm.send(self.kpt_u[u].eps_n, MASTER, 1301)
         elif self.master:
-            eps_n = num.zeros(self.nbands, num.Float)
+            eps_n = npy.zeros(self.nbands)
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
             return eps_n
 
@@ -131,7 +135,7 @@ class PAWExtra:
             setup.xc_correction.xc.set_functional(newxcfunc)
 
         if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready:
-            self.set_positions(num.array([n.spos_c * self.domain.cell_c
+            self.set_positions(npy.array([n.spos_c * self.domain.cell_c
                                           for n in self.nuclei]))
 
         vt_g = self.finegd.empty()  # not used for anything!
@@ -143,7 +147,7 @@ class PAWExtra:
 
         for nucleus in self.my_nuclei:
             D_sp = nucleus.D_sp
-            H_sp = num.zeros(D_sp.shape, num.Float) # not used for anything!
+            H_sp = npy.zeros(D_sp.shape) # not used for anything!
             xc_correction = nucleus.setup.xc_correction
             Exc += xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
 
@@ -185,24 +189,24 @@ class PAWExtra:
 ##             # no wave-functions: restart from LCAO
 ##             self.initialize_wave_functions()
 
-    def totype(self, typecode):
-        """Converts all the typecode dependent quantities of Paw
-        (Laplacian, wavefunctions etc.) to typecode"""
+    def totype(self, dtype):
+        """Converts all the dtype dependent quantities of Paw
+        (Laplacian, wavefunctions etc.) to dtype"""
 
         from gpaw.operators import Laplace
 
-        if typecode not in [num.Float, num.Complex]:
+        if dtype not in [float, complex]:
             raise RuntimeError('PAW can be converted only to Float or Complex')
 
-        self.typecode = typecode
+        self.dtype = dtype
 
         # Hamiltonian
         nn = self.stencils[0]
-        self.hamiltonian.kin = Laplace(self.gd, -0.5, nn, typecode)
+        self.hamiltonian.kin = Laplace(self.gd, -0.5, nn, dtype)
 
         # Nuclei
         for nucleus in self.nuclei:
-            nucleus.typecode = typecode
+            nucleus.dtype = dtype
             nucleus.ready = False
 
         # reallocate only my_nuclei (as the others are not allocated at all)
@@ -213,8 +217,8 @@ class PAWExtra:
 
         # Wave functions
         for kpt in self.kpt_u:
-            kpt.typecode = typecode
-            kpt.psit_nG = num.array(kpt.psit_nG[:], typecode)
+            kpt.dtype = dtype
+            kpt.psit_nG = npy.array(kpt.psit_nG[:], dtype)
 
         # Eigensolver
         # !!! FIX ME !!!
@@ -225,7 +229,7 @@ class PAWExtra:
 
         for u in range(self.nmyu):
             kpt = self.kpt_u[u]
-            kpt.psit_nG = self.gd.empty(self.nbands, self.typecode)
+            kpt.psit_nG = self.gd.empty(self.nbands, self.dtype)
             # Read band by band to save memory
             s = kpt.s
             k = kpt.k
@@ -242,7 +246,7 @@ class PAWExtra:
     def wave_function_volumes(self):
         """Return the volume needed by the wave functions"""
         nu = self.nkpts * self.nspins
-        volumes = num.empty((nu,self.nbands),num.Float)
+        volumes = npy.empty((nu,self.nbands))
 
         for k in range(nu):
             for n, psit_G in enumerate(self.kpt_u[k].psit_nG):
@@ -254,12 +258,12 @@ class PAWExtra:
                     nucleus.setup.four_phi_integrals()
                     P_i = nucleus.P_uni[k, n]
                     ni = len(P_i)
-                    P_ii = num.outerproduct(P_i, P_i)
+                    P_ii = npy.outer(P_i, P_i)
                     P_p = pack(P_ii)
                     I = 0
                     for i1 in range(ni):
                         for i2 in range(ni):
-                            I += P_ii[i1, i2] * num.dot(P_p,
+                            I += P_ii[i1, i2] * npy.dot(P_p,
                                              nucleus.setup.I4_iip[i1, i2])
                 volumes[k,n] += I
                 

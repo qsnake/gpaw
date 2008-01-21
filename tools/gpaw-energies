@@ -6,9 +6,8 @@ import socket
 import re
 from optparse import OptionParser
 from math import log,sqrt
-import Numeric as num
+import numpy as npy
 
-from ASE.Units import units
 from gpaw.output import eigenvalue_string
 from gpaw.utilities.fold import fold
 from gpaw.cluster import Cluster
@@ -34,10 +33,6 @@ opt, args = parser.parse_args()
 
 
 
-if opt.Hartree is not None:
-    units.SetEnergyUnit('Hartree')
-    units.SetLengthUnit('Bohr')
-
 fname = 'gpaw-restart.gpw'
 if len(args):
     fname = args[0]
@@ -46,6 +41,14 @@ from gpaw import Calculator
 paw = Calculator(fname, txt=None, idiotproof=False)
 Ha = paw.Ha
 a0 = paw.a0
+
+lengthunit = 'Ang'
+energyunit = 'eV'
+if opt.Hartree is not None:
+    Ha = 1.0
+    a0 = 1.0
+    lengthunit = 'Bohr'
+    energyunit = 'Hartree'
 
 # write the structure out only
 if opt.structure_file:
@@ -63,7 +66,7 @@ if additional_info:
     if  p['charge']:
         print >> out, '# charge:',p['charge']
     pos_ac, Z_a, cell_cc, pbc_c = paw.last_atomic_configuration
-    cell = num.diagonal(cell_cc) * a0
+    cell = cell_cc.diagonal() * a0
     h = cell / p['gpts']
     print >> out, '# unit cell=', cell
     print >> out, '# h=', h
@@ -82,7 +85,7 @@ if additional_info:
     except:
         pass
 
-print >> out, "# energy unit:",units.GetEnergyUnit()
+print >> out, "# energy unit:", energyunit
 print >> out, "# total energy = ",paw.Etot*Ha,\
       "("+str((paw.Eref+paw.Etot)*Ha)+")"
 print >> out, '# kin.    "    = ',paw.Ekin*Ha
@@ -95,7 +98,7 @@ if opt.gauss is None:
 else:
     width = float(opt.gauss)
     print >> out,"# folding with", width
-    eo = num.empty((paw.nspins*2,2,paw.nbands),num.Float)
+    eo = npy.empty((paw.nspins*2, 2, paw.nbands))
     for s in range(paw.nspins):
         eo[2*s][0][:] = paw.kpt_u[s].eps_n*Ha
         eo[2*s][1][:] = paw.kpt_u[s].f_n
@@ -116,12 +119,12 @@ if opt.Forces:
     if paw.F_ac is None:
         print >> out, '# sorry, no forces'
     else:
-        print >> out, '# Forces ['+units.GetEnergyUnit()+\
-              '/'+units.GetLengthUnit()+']:'
+        print >> out, '# Forces [' + energyunit + '/' lengthunit + ']:'
         fmax = 0.
         scale = Ha/a0
-        for a,f in zip(paw.get_atoms(),paw.F_ac):
-            norm = sqrt(num.dot(f,f))*scale
-            if norm>fmax: fmax=norm
-            print >> out, a.symbol, norm, f*scale
-        print >> out, '# max. force',fmax 
+        for s, f in zip(paw.get_atoms().get_chemical_symbols(), paw.F_ac):
+            norm = sqrt(npy.dot(f, f)) * scale
+            if norm > fmax:
+                fmax = norm
+            print >> out, s, norm, f * scale
+        print >> out, '# max. force', fmax 

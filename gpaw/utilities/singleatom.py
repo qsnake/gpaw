@@ -1,6 +1,6 @@
 import sys
 
-import Numeric as num
+import numpy as npy
 from ASE.Units import units
 from ASE import Atom, ListOfAtoms
 
@@ -77,9 +77,9 @@ class SingleAtom:
         return [self.atom.GetCalculator().get_xc_difference(xc) for xc in xcs]
 
     def eggboxtest(self, N=30, verbose=False):
-        X = num.zeros(N + 1, num.Float)
-        e = num.zeros(N + 1, num.Float)
-        dedx = num.zeros(N + 1, num.Float)
+        X = npy.zeros(N + 1)
+        e = npy.zeros(N + 1)
+        dedx = npy.zeros(N + 1)
         self.atom[0].SetCartesianPosition([0, 0, 0])
         self.energy()
         h = self.atom.GetCalculator().GetGridSpacings()[0]

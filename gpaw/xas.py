@@ -1,9 +1,8 @@
 import pickle
 from math import log, pi, sqrt
 
-import Numeric as num
-from multiarray import innerproduct as inner # avoid the dotblas version!
-from ASE.Units import units, Convert
+import numpy as npy
+from ase.units import Hartree
 
 from gpaw.utilities.cg import CG
 import gpaw.mpi as mpi
@@ -68,14 +67,14 @@ class XAS:
 
         
             
-        self.eps_n = num.empty(nkpts * n, num.Float)
-        self.sigma_cn = num.empty((3, nkpts * n), num.Complex)
+        self.eps_n = npy.empty(nkpts * n)
+        self.sigma_cn = npy.empty((3, nkpts * n), complex)
         n1 = 0
         for k in self.list_kpts:
             n2 = n1 + n
             self.eps_n[n1:n2] = paw.kpt_u[k].eps_n[n_start:n_end] * paw.Ha
             P_ni = nucleus.P_uni[k, n_start:n_end]
-            a_cn = inner(A_ci, P_ni)
+            a_cn = npy.inner(A_ci, P_ni)
             print "weight", paw.weight_k[k]
             self.sigma_cn[:, n1:n2] = paw.weight_k[k] ** 0.5 * a_cn #.real
             n1 = n2
@@ -117,9 +116,9 @@ class XAS:
 
         # proj keyword, check normalization of incoming vectors
         if proj is not None:
-            proj_2 = num.array(proj,num.Float)
+            proj_2 = npy.array(proj,float)
             if len(proj_2.shape) == 1:
-                proj_2 = num.array([proj],num.Float)
+                proj_2 = npy.array([proj],float)
 
             for i,p in enumerate(proj_2):
                 if sum(p ** 2) ** 0.5 != 1.0:
@@ -128,22 +127,22 @@ class XAS:
         
             # make vector of projections
             if proj_xyz:
-                sigma1_cn = num.empty( (3 + proj_2.shape[0], self.sigma_cn.shape[1]),
-                                       num.Complex)
+                sigma1_cn = npy.empty( (3 + proj_2.shape[0], self.sigma_cn.shape[1]),
+                                       complex)
                 sigma1_cn[0:3,:] = self.sigma_cn
                 for i,p in enumerate(proj_2):
-                    sigma1_cn[3 +i,:] = num.dot(p,self.sigma_cn) 
+                    sigma1_cn[3 +i,:] = npy.dot(p,self.sigma_cn) 
             else:
-                sigma1_cn = num.empty((proj_2.shape[0], self.sigma_cn.shape[1]) ,
-                                       num.Complex)
+                sigma1_cn = npy.empty((proj_2.shape[0], self.sigma_cn.shape[1]) ,
+                                       complex)
                 for i,p in enumerate(proj_2):
-                    sigma1_cn[i,:] = num.dot(p, self.sigma_cn)
+                    sigma1_cn[i,:] = npy.dot(p, self.sigma_cn)
                                                 
-            sigma2_cn = num.empty(sigma1_cn.shape, num.Float)
-            sigma2_cn = (sigma1_cn*num.conjugate(sigma1_cn)).real
+            sigma2_cn = npy.empty(sigma1_cn.shape)
+            sigma2_cn = (sigma1_cn*npy.conjugate(sigma1_cn)).real
 
         else:
-           sigma2_cn = (self.sigma_cn * num.conjugate(self.sigma_cn)).real
+           sigma2_cn = (self.sigma_cn * npy.conjugate(self.sigma_cn)).real
 
         #print sigma2_cn
 
@@ -151,12 +150,12 @@ class XAS:
         if kpoint is not None:
             if self.symmetry is not None:
                 sigma0_cn = sigma2_cn.copy()
-                sigma2_cn = num.zeros((len(sigma0_cn),len(sigma0_cn[0])),num.Float)
+                sigma2_cn = npy.zeros((len(sigma0_cn), len(sigma0_cn[0])))
                 swaps = {}  # Python 2.4: use a set
                 for swap, mirror in self.symmetry.symmetries:
                     swaps[swap] = None
                 for swap in swaps:
-                    sigma2_cn += num.take(sigma0_cn, swap)
+                    sigma2_cn += npy.take(sigma0_cn, swap)
                 sigma2_cn /= len(swaps)
         
         eps_n = self.eps_n[:]
@@ -179,8 +178,8 @@ class XAS:
         else:
             emin = min(eps_n) - 2 * fwhm
             emax = max(eps_n) + 2 * fwhm
-            e = emin + num.arange(N + 1) * ((emax - emin) / N)
-            a_c = num.zeros((len(sigma2_cn), N + 1), num.Float)
+            e = emin + npy.arange(N + 1) * ((emax - emin) / N)
+            a_c = npy.zeros((len(sigma2_cn), N + 1))
             
             if linbroad is None:
                 #constant broadening fwhm
@@ -188,9 +187,9 @@ class XAS:
             
                 for n, eps in enumerate(eps_n[eps_start:eps_end]):
                     x = -alpha * (e - eps)**2
-                    x = num.clip(x, -100.0, 100.0)
-                    a_c += num.outerproduct(sigma2_cn[:, n + eps_start],
-                                        (alpha / pi)**0.5 * num.exp(x))
+                    x = npy.clip(x, -100.0, 100.0)
+                    a_c += npy.outer(sigma2_cn[:, n + eps_start],
+                                        (alpha / pi)**0.5 * npy.exp(x))
             else:
 
                 # constant broadening fwhm until linbroad[1] and a
@@ -210,9 +209,9 @@ class XAS:
                         alpha =  4*log(2) / fwhm2**2
                         
                         x = -alpha * (e - eps)**2
-                        x = num.clip(x, -100.0, 100.0)
-                        a_c += num.outerproduct(sigma2_cn[:, n],
-                                        (alpha / pi)**0.5 * num.exp(x))
+                        x = npy.clip(x, -100.0, 100.0)
+                        a_c += npy.outer(sigma2_cn[:, n],
+                                        (alpha / pi)**0.5 * npy.exp(x))
                 
             return  e, a_c
 
@@ -280,8 +279,8 @@ class RecursionMethod:
         if gd.comm.rank == MASTER:
             if kpt_comm.rank == MASTER:
                 ni = self.a_uci.shape[2]
-                a_kci = num.empty((self.nkpts, self.dim, ni), self.paw.typecode)
-                b_kci = num.empty((self.nkpts, self.dim, ni), self.paw.typecode)
+                a_kci = npy.empty((self.nkpts, self.dim, ni), self.paw.dtype)
+                b_kci = npy.empty((self.nkpts, self.dim, ni), self.paw.dtype)
                 kpt_comm.gather(self.a_uci, MASTER, a_kci)
                 kpt_comm.gather(self.b_uci, MASTER, b_kci)
                 data = {'ab': (a_kci, b_kci),
@@ -299,11 +298,11 @@ class RecursionMethod:
             y0_ucG = gd.collect(self.y_ucG)
             if gd.comm.rank == MASTER:
                 if kpt_comm.rank == MASTER:
-                    w_kcG = gd.empty((self.nkpts, self.dim), self.paw.typecode,
+                    w_kcG = gd.empty((self.nkpts, self.dim), self.paw.dtype,
                                      global_array=True)
-                    wold_kcG = gd.empty((self.nkpts, self.dim), self.paw.typecode,
+                    wold_kcG = gd.empty((self.nkpts, self.dim), self.paw.dtype,
                                         global_array=True)
-                    y_kcG = gd.empty((self.nkpts, self.dim), self.paw.typecode,
+                    y_kcG = gd.empty((self.nkpts, self.dim), self.paw.dtype,
                                      global_array=True)
                     kpt_comm.gather(w0_ucG, MASTER, w_kcG)
                     kpt_comm.gather(wold0_ucG, MASTER, wold_kcG)
@@ -319,9 +318,9 @@ class RecursionMethod:
 
     def allocate_tmp_arrays(self):
         
-        self.tmp1_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
-        self.tmp2_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
-        self.z_cG = self.paw.gd.zeros(self.dim, self.paw.typecode)
+        self.tmp1_cG = self.paw.gd.zeros(self.dim, self.paw.dtype)
+        self.tmp2_cG = self.paw.gd.zeros(self.dim, self.paw.dtype)
+        self.z_cG = self.paw.gd.zeros(self.dim, self.paw.dtype)
         
     def initialize_start_vector(self, proj=None, proj_xyz=True):
         # proj is one list of vectors [[e1_x,e1_y,e1_z],[e2_x,e2_y,e2_z]]
@@ -345,9 +344,9 @@ class RecursionMethod:
 
         #check normalization of incoming vectors
         if proj is not None:
-            proj_2 = num.array(proj,num.Float)
+            proj_2 = npy.array(proj,float)
             if len(proj_2.shape) == 1:
-                proj_2 = num.array([proj],num.Float)
+                proj_2 = npy.array([proj],float)
             
             for i,p in enumerate(proj_2):
                 if sum(p ** 2) ** 0.5 != 1.0:
@@ -356,18 +355,18 @@ class RecursionMethod:
 
             proj_tmp = []
             for p in proj_2:
-               proj_tmp.append(num.dot(p, A_ci))
-            proj_tmp = num.array(proj_tmp, num.Float)   
+               proj_tmp.append(npy.dot(p, A_ci))
+            proj_tmp = npy.array(proj_tmp, float)   
 
             # if proj_xyz is True, append projections to A_ci
             if proj_xyz:
-                A_ci_tmp = num.zeros((3 + proj_2.shape[0], A_ci.shape[1]), num.Float)
+                A_ci_tmp = npy.zeros((3 + proj_2.shape[0], A_ci.shape[1]))
                 A_ci_tmp[0:3,:] = A_ci 
                 A_ci_tmp[3:,:]= proj_tmp
 
             # otherwise, replace A_ci by projections
             else:
-                A_ci_tmp = num.zeros((proj_2.shape[0], A_ci.shape[1]), num.Float)
+                A_ci_tmp = npy.zeros((proj_2.shape[0], A_ci.shape[1]))
                 A_ci_tmp = proj_tmp
             A_ci = A_ci_tmp
 
@@ -375,12 +374,12 @@ class RecursionMethod:
 
         self.allocate_tmp_arrays()
 
-        self.w_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
-        self.wold_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
-        self.y_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.typecode)
+        self.w_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.dtype)
+        self.wold_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.dtype)
+        self.y_ucG = self.paw.gd.zeros((nmykpts, self.dim), self.paw.dtype)
             
-        self.a_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
-        self.b_uci = num.zeros((nmykpts, self.dim, 0), self.paw.typecode)
+        self.a_uci = npy.zeros((nmykpts, self.dim, 0), self.paw.dtype)
+        self.b_uci = npy.zeros((nmykpts, self.dim, 0), self.paw.dtype)
         
             
         if nucleus.pt_i is not None: # not all CPU's will have a contribution
@@ -404,8 +403,8 @@ class RecursionMethod:
             
 
         ni = self.a_uci.shape[2]
-        a_uci = num.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.typecode)
-        b_uci = num.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.typecode)
+        a_uci = npy.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.dtype)
+        b_uci = npy.empty((self.nmykpts, self.dim, ni + nsteps), self.paw.dtype)
         a_uci[:, :, :ni]  = self.a_uci
         b_uci[:, :, :ni]  = self.b_uci
         self.a_uci = a_uci
@@ -424,7 +423,7 @@ class RecursionMethod:
         z_cG = self.z_cG
         
         self.solver(w_cG, self.z_cG, u)
-        I_c = num.reshape(integrate(num.conjugate(z_cG) * w_cG)**-0.5,
+        I_c = npy.reshape(integrate(npy.conjugate(z_cG) * w_cG)**-0.5,
                           (self.dim, 1, 1, 1))
         z_cG *= I_c
         w_cG *= I_c
@@ -432,11 +431,11 @@ class RecursionMethod:
         if i != 0:
             b_c =  1.0 / I_c 
         else:
-            b_c = num.reshape(num.zeros(self.dim), (self.dim, 1, 1, 1))
+            b_c = npy.reshape(npy.zeros(self.dim), (self.dim, 1, 1, 1))
     
         self.paw.kpt_u[u].apply_hamiltonian(self.paw.hamiltonian, 
                                             z_cG, y_cG)
-        a_c = num.reshape(integrate(num.conjugate(z_cG) * y_cG), (self.dim, 1, 1, 1))
+        a_c = npy.reshape(integrate(npy.conjugate(z_cG) * y_cG), (self.dim, 1, 1, 1))
         wnew_cG = (y_cG - a_c * w_cG - b_c * wold_cG)
         wold_cG[:] = w_cG
         w_cG[:] = wnew_cG
@@ -459,12 +458,10 @@ class RecursionMethod:
         
         n = len(eps_s)
                 
-        sigma_cn = num.zeros((self.dim, n), num.Float)
+        sigma_cn = npy.zeros((self.dim, n))
         if imax is None:
             imax = self.a_uci.shape[2]
-        energyunit = units.GetEnergyUnit()
-        Ha = Convert(1, 'Hartree', energyunit)
-        eps_n = (eps_s + delta * 1.0j) / Ha
+        eps_n = (eps_s + delta * 1.0j) / Hartree
                 
         # if a certain k-point is chosen
         if kpoint is not None:
@@ -480,24 +477,24 @@ class RecursionMethod:
 
         if len(self.swaps) > 0:
             sigma0_cn = sigma_cn
-            sigma_cn = num.zeros((self.dim, n), num.Float)
+            sigma_cn = npy.zeros((self.dim, n))
             for swap in self.swaps:
-                sigma_cn += num.take(sigma0_cn, swap)
+                sigma_cn += npy.take(sigma0_cn, swap)
             sigma_cn /= len(self.swaps)
 
 
         # gaussian broadening 
         if fwhm is not None:
-            sigma_tmp = num.zeros(sigma_cn.shape, num.Float)
+            sigma_tmp = npy.zeros(sigma_cn.shape)
 
             #constant broadening fwhm
             if linbroad is None:
                 alpha = 4 * log(2) / fwhm**2
                 for n, eps in enumerate(eps_s):
                     x = -alpha * (eps_s - eps)**2
-                    x = num.clip(x, -100.0, 100.0)
-                    sigma_tmp += num.outerproduct(sigma_cn[:,n],
-                                        (alpha / pi)**0.5 * num.exp(x))
+                    x = npy.clip(x, -100.0, 100.0)
+                    sigma_tmp += npy.outer(sigma_cn[:,n],
+                                        (alpha / pi)**0.5 * npy.exp(x))
 
             else:
                 # constant broadening fwhm until linbroad[1] and a
@@ -517,9 +514,9 @@ class RecursionMethod:
                         alpha =  4*log(2) / fwhm2**2
 
                     x = -alpha * (eps_s - eps)**2
-                    x = num.clip(x, -100.0, 100.0)
-                    sigma_tmp += num.outerproduct(sigma_cn[:, n],
-                                        (alpha / pi)**0.5 * num.exp(x))
+                    x = npy.clip(x, -100.0, 100.0)
+                    sigma_tmp += npy.outer(sigma_cn[:, n],
+                                        (alpha / pi)**0.5 * npy.exp(x))
             sigma_cn = sigma_tmp
                     
 

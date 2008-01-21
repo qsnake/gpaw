@@ -1,8 +1,6 @@
 """Module defining  ``Eigensolver`` classes."""
 
-import Numeric as num
-from multiarray import innerproduct as inner # avoid the dotblas version!
-import LinearAlgebra as linalg
+import numpy as npy
 
 from gpaw.utilities.blas import axpy, rk, gemm
 from gpaw.utilities.lapack import inverse_cholesky
@@ -35,7 +33,7 @@ class RMM_DIIS(Eigensolver):
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
 
-        self.S_nn = num.empty((self.nbands, self.nbands), self.typecode)
+        self.S_nn = npy.empty((self.nbands, self.nbands), self.dtype)
         self.S_nn[:] = 0.0  # rk fails the first time without this!
         
     def iterate_one_k_point(self, hamiltonian, kpt):      
@@ -59,7 +57,7 @@ class RMM_DIIS(Eigensolver):
             for n in range(self.nbands - 1):
                 H_nn[n, n:] = H_nn[n:, n]
 
-            kpt.eps_n = num.diagonal(H_nn)
+            kpt.eps_n = npy.diagonal(H_nn)
 
             gemm(-1.0, kpt.psit_nG, H_nn, 1.0, R_nG)
 
@@ -67,8 +65,8 @@ class RMM_DIIS(Eigensolver):
                 if nucleus.in_this_domain:
                     H_ii = unpack(nucleus.H_sp[kpt.s])
                     P_ni = nucleus.P_uni[kpt.u]
-                    coefs_ni =  (num.dot(P_ni, H_ii) -
-                                 num.dot(num.dot(H_nn, P_ni),
+                    coefs_ni =  (npy.dot(P_ni, H_ii) -
+                                 npy.dot(npy.dot(H_nn, P_ni),
                                          nucleus.setup.O_ii))
 
                     nucleus.pt_i.add(R_nG, coefs_ni, kpt.k, communicate=True)
@@ -87,14 +85,14 @@ class RMM_DIIS(Eigensolver):
             weight = kpt.f_n[n]
             if self.nbands_converge != 'occupied':
                 weight = kpt.weight * float(n < self.nbands_converge)
-            error += weight * real(num.vdot(R_G, R_G))
+            error += weight * real(npy.vdot(R_G, R_G))
 
             pR_G = self.preconditioner(R_G, kpt.phase_cd, kpt.psit_nG[n],
                                   kpt.k_c)
 
             hamiltonian.kin.apply(pR_G, dR_G, kpt.phase_cd)
                 
-            if (dR_G.typecode() == num.Float):
+            if (dR_G.dtype.char == float):
                 elementwise_multiply_add(vt_G, pR_G, dR_G)
             else:
                 dR_G += vt_G * pR_G
@@ -108,12 +106,12 @@ class RMM_DIIS(Eigensolver):
             hamiltonian.xc.xcfunc.adjust_non_local_residual(
                 pR_G, dR_G, kpt.eps_n[n], kpt.u, kpt.s, kpt.k, n)
             
-            if (dR_G.typecode() == num.Float):
+            if (dR_G.dtype.char == float):
                 RdR = self.comm.sum(utilities_vdot(R_G, dR_G))
                 dRdR = self.comm.sum(utilities_vdot_self(dR_G))
             else:
-                RdR = self.comm.sum(real(num.vdot(R_G, dR_G)))
-                dRdR = self.comm.sum(real(num.vdot(dR_G, dR_G)))
+                RdR = self.comm.sum(real(npy.vdot(R_G, dR_G)))
+                dRdR = self.comm.sum(real(npy.vdot(dR_G, dR_G)))
             lam = -RdR / dRdR
 
             R_G *= 2.0 * lam
@@ -134,7 +132,7 @@ class RMM_DIIS(Eigensolver):
 
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
-            S_nn += num.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
+            S_nn += npy.dot(P_ni, cc(npy.inner(nucleus.setup.O_ii, P_ni)))
 
         self.comm.sum(S_nn, kpt.root)
 

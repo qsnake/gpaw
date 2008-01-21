@@ -1,7 +1,7 @@
 #include <Python.h>
 #ifdef PARALLEL
 #define NO_IMPORT_ARRAY
-#include <Numeric/arrayobject.h>
+#include <numpy/arrayobject.h>
 #include <mpi.h>
 #include "extensions.h"
 #include <structmember.h>
@@ -369,7 +369,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   int n = ranks->dimensions[0];
   MPI_Group newgroup;
   // Stupid hack; MPI_Group_incl wants a int argument;
-  // Numeric arrays are long (might be different from ints)
+  // numpy arrays are long (might be different from ints)
   // More clever ways are welcomed...
   int* ranks_int = GPAW_MALLOC(int, n);
   long* ranks_long = LONGP(ranks);

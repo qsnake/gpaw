@@ -5,7 +5,7 @@ import os
 import xml.sax
 import md5
 
-import Numeric as num
+import numpy as npy
 
 from gpaw import setup_paths
 
@@ -77,6 +77,6 @@ for details."""
     def endElement(self, name):
         if self.data is None:
             return
-        phit_g = num.array([float(x) for x in ''.join(self.data).split()])
+        phit_g = npy.array([float(x) for x in ''.join(self.data).split()])
         assert len(phit_g) == self.ng
         self.phit_jg.append(phit_g)

@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-import Numeric as num
+import numpy as npy
 import copy
 import gpaw.mpi as mpi
 from gpaw.occupations import Dummy
@@ -32,15 +32,15 @@ class ControlOccupation(Dummy):
         S = 0.0
         for kpt in kpts:
             if self.fixmom:
-                x = num.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
+                x = npy.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
             else:
-                x = num.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
-            y = num.exp(x)
+                x = npy.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
+            y = npy.exp(x)
             z = y + 1.0
             y *= x
             y /= z
-            y -= num.log(z)
-            S -= kpt.weight * num.sum(y)
+            y -= npy.log(z)
+            S -= kpt.weight * npy.sum(y)
 
         self.S = self.kpt_comm.sum(S) * self.kT
         self.calculate_band_energy(kpts)
@@ -73,17 +73,17 @@ class ControlOccupation(Dummy):
                 del temp_eps_n[rem]
             list_eps_n += temp_eps_n
 
-        list_eps_n = num.array(list_eps_n)
+        list_eps_n = npy.array(list_eps_n)
 
         if self.kpt_comm.size > 1:
             eps_n = mpi.all_gather_array(self.kpt_comm, list_eps_n)
         else:
-            eps_n = list_eps_n.flat
+            eps_n = list_eps_n.ravel()
 
         n_rem = self.kpt_comm.sum(n_rem)
  
         # Sort them:
-        eps_n = num.sort(eps_n)
+        eps_n = npy.sort(eps_n)
         n = int(n - n_rem + 0.5)
         try:
             self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
@@ -92,7 +92,7 @@ class ControlOccupation(Dummy):
             raise
 
         if self.fixmom:
-            self.epsF = num.array([self.epsF, self.epsF])
+            self.epsF = npy.array([self.epsF, self.epsF])
 
 
     def find_fermi_level(self, kpts):
@@ -106,8 +106,8 @@ class ControlOccupation(Dummy):
         niter = 0
         while True:
             if self.fixmom:
-                n = num.zeros(2, num.Float)
-                dnde = num.zeros(2, num.Float)
+                n = npy.zeros(2)
+                dnde = npy.zeros(2)
             else:
                 n = 0.0
                 dnde = 0.0
@@ -115,9 +115,9 @@ class ControlOccupation(Dummy):
             for kpt in kpts:
                 sign = 1.0 - 2 * kpt.s
                 if self.fixmom:
-                    x = num.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT,
+                    x = npy.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT,
                                  -100.0, 100.0)
-                    x = num.exp(x)
+                    x = npy.exp(x)
                     kpt.f_n[:] = kpt.weight / (x + 1.0)
 
                     dn_corr = 0.
@@ -127,15 +127,15 @@ class ControlOccupation(Dummy):
                         dn_corr += kpt.f_n[so[0]]
                         dnde_corr += kpt.f_n[so[0]]**2
                     
-                    dn = num.sum(kpt.f_n)
+                    dn = npy.sum(kpt.f_n)
                     n[kpt.s] += dn
-                    dnde[kpt.s] += (((dn - dn_corr) - (num.sum(kpt.f_n**2)
+                    dnde[kpt.s] += (((dn - dn_corr) - (npy.sum(kpt.f_n**2)
                                                  - dnde_corr) / kpt.weight)
                                     / self.kT)
                 else:
-                    x = num.clip((kpt.eps_n - self.epsF) / self.kT,
+                    x = npy.clip((kpt.eps_n - self.epsF) / self.kT,
                                  -100.0, 100.0)
-                    x = num.exp(x)
+                    x = npy.exp(x)
                     kpt.f_n[:] = kpt.weight / (x + 1.0)
 
                     dn_corr = 0.
@@ -145,10 +145,10 @@ class ControlOccupation(Dummy):
                         dn_corr += kpt.f_n[so[0]]
                         dnde_corr += kpt.f_n[so[0]]**2
                     
-                    dn = num.sum(kpt.f_n)
+                    dn = npy.sum(kpt.f_n)
                     n += dn
                     dnde += (((dn - dn_corr) -
-                              (num.sum(kpt.f_n**2) - dnde_corr) / kpt.weight)
+                              (npy.sum(kpt.f_n**2) - dnde_corr) / kpt.weight)
                              / self.kT)
 
                 magmom += sign * dn
@@ -164,14 +164,14 @@ class ControlOccupation(Dummy):
             magmom = self.kpt_comm.sum(magmom)
 
             if self.fixmom:
-                ne = num.array([(self.ne + self.M) / 2,
+                ne = npy.array([(self.ne + self.M) / 2,
                                 (self.ne - self.M) / 2])
                 dn = ne - n
-                if num.alltrue(abs(dn) < 1.0e-9):
+                if npy.alltrue(abs(dn) < 1.0e-9):
                     if abs(magmom - self.M) > 1.0e-8:
                         raise RuntimeError, 'Magnetic moment not fixed'
                     break
-                if num.sometrue(abs(dnde) <  1.0e-9):
+                if npy.sometrue(abs(dnde) <  1.0e-9):
                     self.guess_fermi_level(kpts)
                     continue
             else:
@@ -211,7 +211,7 @@ class SimpleControl:
         self.paw = paw
         sao = states_and_occupations
         self.stat_occs = []
-        if len(sao) == 0 or type(sao[0][0]) == type(int):
+        if len(sao) == 0 or isinstance(sao[0][0], int):
             for kpt in paw.kpt_u:
                 self.stat_occs.append(sao)
         elif len(paw.kpt_u) == len(sao):
@@ -277,7 +277,7 @@ class ControlMO:
     def __init__(self, molecular_orbital, dist, paw):
 
         self.MO = molecular_orbital
-        if type(dist) == type([1]) or type(dist) == type(num.array([1])):
+        if isinstance(dist, (list, npy.ndarray)):
             self.distributor = SimpleDistribution(dist, paw)
         else:
             self.distributor = dist
@@ -366,11 +366,11 @@ class Projections:
         P_auni = []
         data_types = ['D', 'd']
         for nucleus in paw.nuclei:
-            info = num.array([2, 0], num.Int)
+            info = npy.array([2, 0], int)
             if nucleus.in_this_domain:
-                if type(nucleus.P_uni[0][0][0]) == type(complex()):
+                if nucleus.P_uni.dtype == complex:
                     info[0] = 0
-                elif type(nucleus.P_uni[0][0][0]) == type(float()):
+                else:
                     info[0] = 1
                 info[1] = nucleus.get_number_of_partial_waves()
             paw.domain.comm.broadcast(info, nucleus.rank)
@@ -379,7 +379,7 @@ class Projections:
                 P_uni = nucleus.P_uni
             else:
                 shape = (paw.nmyu, paw.nbands, info[1])
-                P_uni = num.zeros(shape, data_types[info[0]])
+                P_uni = npy.zeros(shape, data_types[info[0]])
             paw.domain.comm.broadcast(P_uni, nucleus.rank)
 
             P_auni.append(P_uni)
@@ -478,7 +478,7 @@ class SimpleDistribution:
 
         self.paw = paw
         self.dist = []
-        if type(dist[0][0]) == type(0):
+        if isinstance(dist[0][0], int):
             for kpt in paw.kpt_u:
                 self.dist.append(dist)
         else:

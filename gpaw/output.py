@@ -3,8 +3,8 @@ import sys
 import time
 from math import log
 
-import Numeric as num
-from ASE.ChemicalElements.symbol import symbols
+import numpy as npy
+from ase.data import chemical_symbols
 
 from gpaw.utilities import devnull
 from gpaw.mpi import MASTER
@@ -29,7 +29,9 @@ class Output:
         """
 
         p = self.input_parameters
-        txt = p['txt']
+        self.verbose = p['verbose']
+
+    def set_txt(self, txt):
         if txt is None or (not self.master):
             txt = devnull
         elif txt == '-':
@@ -37,10 +39,9 @@ class Output:
         elif isinstance(txt, str):
             txt = open(txt, 'w')
         self.txt = txt
-        self.verbose = p['verbose']
 
         #self.print_logo()
-
+        
     def text(self, *args, **kwargs):
         self.txt.write(kwargs.get('sep', ' ').join([str(arg)
                                                     for arg in args]) +
@@ -75,7 +76,7 @@ class Output:
         for c in range(3):
             t('  %s-axis   %s   %8.4f   %3d    %8.4f' % 
               ('xyz'[c],
-               ['no ', 'yes'][int(self.domain.periodic_c[c])],
+               ['no ', 'yes'][int(self.domain.pbc_c[c])],
                self.a0 * self.domain.cell_c[c],
                self.gd.N_c[c],
                self.a0 * self.gd.h_c[c]))
@@ -84,7 +85,7 @@ class Output:
     def print_positions(self, pos_ac):
         t = self.text
         t()
-        t('Positions in Ang:')
+        t('Positions:')
         for a, pos_c in enumerate(pos_ac):
             symbol = self.nuclei[a].setup.symbol
             t('%3d %-2s %8.4f%8.4f%8.4f' % 
@@ -308,12 +309,11 @@ iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %-12.5f %-5s  %-7s""" %
         """Print eigenvalues and occupation numbers."""
         print >> self.txt, eigenvalue_string(self)
 
-    def plot_atoms(self):
-        atoms = self.atoms
-        cell_c = num.diagonal(atoms.GetUnitCell()) / self.a0
-        pos_ac = atoms.GetCartesianPositions() / self.a0
-        Z_a = atoms.GetAtomicNumbers()
-        pbc_c = atoms.GetBoundaryConditions()
+    def plot_atoms(self, atoms):
+        cell_c = npy.diagonal(atoms.get_cell()) / self.a0
+        pos_ac = atoms.get_positions() / self.a0
+        Z_a = atoms.get_atomic_numbers()
+        pbc_c = atoms.get_pbc()
         self.text(plot(pos_ac, Z_a, cell_c))
 
 def eigenvalue_string(paw,comment=None):
@@ -357,20 +357,21 @@ def plot(positions, numbers, cell):
 
     Example::
 
-      from ASE import ListOfAtoms, Atom
+      from ase import *
       a = 4.0
       n = 20
       d = 1.0
       x = d / 3**0.5
-      atoms = ListOfAtoms([Atom('C', (0.0, 0.0, 0.0)),
-                           Atom('H', (x, x, x)),
-                           Atom('H', (-x, -x, x)),
-                           Atom('H', (x, -x, -x)),
-                           Atom('H', (-x, x, -x))],
-                          cell=(a, a, a), periodic=True)
+      atoms = ListOfAtoms(symbols='CH4',
+                          positions=[(0, 0, 0),
+                                     (x, x, x),
+                                     (-x, -x, x),
+                                     (x, -x, -x),
+                                     (-x, x, -x)],
+                          cell=(a, a, a), pbc=True)
       for line in plot(2*atoms.GetCartesianPositions() + (a,a,a),
                        atoms.GetAtomicNumbers(),
-                       2*num.array(atoms.GetUnitCell().flat[::4])):
+                       2*npy.array(atoms.GetUnitCell().ravel()[::4])):
           print line
 
           .-----------.
@@ -391,14 +392,14 @@ def plot(positions, numbers, cell):
 ## z
 
     s = 1.3
-    nx, ny, nz = n = (s * cell * (1.0, 0.25, 0.5) + 0.5).astype(num.Int)
+    nx, ny, nz = n = (s * cell * (1.0, 0.25, 0.5) + 0.5).astype(int)
     sx, sy, sz = n / cell
     grid = Grid(nx + ny + 4, nz + ny + 1)
     positions = (positions % cell + cell) % cell
-    ij = num.dot(positions, [(sx, 0), (sy, sy), (0, sz)])
-    ij = num.around(ij).astype(num.Int)
+    ij = npy.dot(positions, [(sx, 0), (sy, sy), (0, sz)])
+    ij = npy.around(ij).astype(int)
     for a, Z in enumerate(numbers):
-        symbol = symbols[Z]
+        symbol = chemical_symbols[Z]
         i, j = ij[a]
         depth = positions[a, 1]
         for n, c in enumerate(symbol):
@@ -426,13 +427,13 @@ def plot(positions, numbers, cell):
             grid.put('-', i + x + ny, j + ny)
         k = 0
     return '\n'.join([''.join([chr(x) for x in line])
-                      for line in num.transpose(grid.grid)[::-1]])
+                      for line in npy.transpose(grid.grid)[::-1]])
 
 class Grid:
     def __init__(self, i, j):
-        self.grid = num.zeros((i, j), num.Int8)
+        self.grid = npy.zeros((i, j), npy.int8)
         self.grid[:] = ord(' ')
-        self.depth = num.zeros((i, j), num.Float)
+        self.depth = npy.zeros((i, j))
         self.depth[:] = 1e10
 
     def put(self, c, i, j, depth=1e9):

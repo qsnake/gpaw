@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
 
 a = 5.0
-H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
-                periodic=False,
+H = Atoms([Atom('H',(a/2, a/2, a/2), magmom=1)],
+                pbc=False,
                 cell=(a, a, a))
 
-H.SetCalculator(Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-3}))
-e = H.GetPotentialEnergy()
+H.set_calculator(Calculator(nbands=1, h=0.2, convergence={'eigenstates': 1e-3}))
+e = H.get_potential_energy()

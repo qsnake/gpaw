@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 
 from ASE import Atom
 
@@ -21,7 +21,7 @@ for n in range(calc.nbands):
     psit_G = calc.kpt_u[0].psit_nG[n]
     norm = calc.gd.integrate(psit_G**2)
     g = yl.expand(psit_G)
-    gsum = num.sum(g)
+    gsum = npy.sum(g)
 
     # allow for 10 % inaccuracy in the norm
     print "norm, sum=", norm, gsum

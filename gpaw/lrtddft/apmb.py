@@ -1,7 +1,8 @@
 import sys
 from math import sqrt
-import Numeric as num
-from LinearAlgebra import inverse
+
+import numpy as npy
+from numpy.linalg import inv
 
 import _gpaw
 import gpaw.mpi as mpi
@@ -60,8 +61,8 @@ class ApmB(OmegaMatrix):
         nij = len(kss)
         print >> self.out, 'RPAhyb', nij, 'transitions'
         
-        AmB = num.zeros((nij,nij),num.Float)
-        ApB = num.zeros((nij,nij),num.Float)
+        AmB = npy.zeros((nij,nij))
+        ApB = npy.zeros((nij,nij))
 
         # storage place for Coulomb integrals
         integrals = {}
@@ -81,8 +82,8 @@ class ApmB(OmegaMatrix):
             
             # integrate with 1/|r_1-r_2|
             timer2.start('poisson')
-            phit_p = num.zeros(rhot_p.shape,rhot_p.typecode())
-            self.poisson.solve(phit_p,rhot_p,charge=None)
+            phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype)
+            self.poisson.solve(phit_p,rhot_p, charge=None)
             timer2.stop()
 
             timer.stop()
@@ -174,7 +175,7 @@ class ApmB(OmegaMatrix):
 
         rhot_p = kss_ij.GetPairDensityAndCompensationCharges(
             self.finegrid is not 0)
-        phit_p = num.zeros(rhot_p.shape, rhot_p.typecode())
+        phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype)
         self.poisson.solve(phit_p, rhot_p, charge=None)
 
         if self.finegrid == 1:
@@ -200,18 +201,18 @@ class ApmB(OmegaMatrix):
             ni = nucleus.get_number_of_partial_waves()
             Pi_i = nucleus.P_uni[kss_ij.spin,kss_ij.i]
             Pj_i = nucleus.P_uni[kss_ij.spin,kss_ij.j]
-            Dij_ii = num.outerproduct(Pi_i, Pj_i)
+            Dij_ii = npy.outer(Pi_i, Pj_i)
             Dij_p = pack(Dij_ii, tolerance=1e3)
             Pk_i = nucleus.P_uni[kss_kq.spin,kss_kq.i]
             Pq_i = nucleus.P_uni[kss_kq.spin,kss_kq.j]
-            Dkq_ii = num.outerproduct(Pk_i, Pq_i)
+            Dkq_ii = npy.outer(Pk_i, Pq_i)
             Dkq_p = pack(Dkq_ii, tolerance=1e3)
             C_pp = nucleus.setup.M_pp
             #   ----
             # 2 >      P   P  C    P  P
             #   ----    ip  jr prst ks qt
             #   prst
-            Ia += 2.0*num.dot(Dkq_p,num.dot(C_pp,Dij_p))
+            Ia += 2.0*npy.dot(Dkq_p,npy.dot(C_pp,Dij_p))
         I += self.gd.comm.sum(Ia)
 
         return I
@@ -265,28 +266,28 @@ class ApmB(OmegaMatrix):
             nij = len(kss)
             print >> self.out,'# diagonalize: %d transitions now' % nij
 
-            ApB = num.empty((nij,nij), num.Float)
-            AmB = num.empty((nij,nij), num.Float)
+            ApB = npy.empty((nij,nij))
+            AmB = npy.empty((nij,nij))
             for ij in range(nij):
                 for kq in range(nij):
                     ApB[ij,kq] = self.ApB[map[ij],map[kq]]
                     AmB[ij,kq] = self.AmB[map[ij],map[kq]]
 
         # the occupation matrix
-        C = num.empty((nij,), num.Float)
+        C = npy.empty((nij,))
         for ij in range(nij):
             C[ij] = 1. / kss[ij].fij
 
-        S = C * inverse(AmB) * C
-        S = sqrt_matrix(inverse(S))
+        S = C * inv(AmB) * C
+        S = sqrt_matrix(inv(S).copy())
 
         # get Omega matrix
-        M = num.empty(ApB.shape, num.Float)
+        M = npy.empty(ApB.shape)
         gemm(1., ApB, S, 0., M)
-        self.eigenvectors = num.empty(ApB.shape, num.Float)
+        self.eigenvectors = npy.empty(ApB.shape)
         gemm(1., S, M, 0., self.eigenvectors)
         
-        self.eigenvalues = num.zeros((len(kss)),num.Float)
+        self.eigenvalues = npy.zeros((len(kss)))
         self.kss = kss
         info = diagonalize(self.eigenvectors, self.eigenvalues)
         if info != 0:
@@ -302,7 +303,7 @@ class ApmB(OmegaMatrix):
 
             f.readline()
             nij = int(f.readline())
-            ApB = num.zeros((nij,nij),num.Float)
+            ApB = npy.zeros((nij,nij))
             for ij in range(nij):
                 l = f.readline().split()
                 for kq in range(ij,nij):
@@ -312,7 +313,7 @@ class ApmB(OmegaMatrix):
 
             f.readline()
             nij = int(f.readline())
-            AmB = num.zeros((nij,nij),num.Float)
+            AmB = npy.zeros((nij,nij))
             for ij in range(nij):
                 l = f.readline().split()
                 for kq in range(ij,nij):

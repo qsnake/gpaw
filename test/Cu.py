@@ -1,5 +1,5 @@
 import os
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
@@ -11,12 +11,12 @@ setup_paths.insert(0, '.')
 
 a = 8.0
 c = a / 2
-Cu = ListOfAtoms([Atom('Cu', (c, c, c), magmom=1)],
+Cu = Atoms([Atom('Cu', (c, c, c), magmom=1)],
                  cell=(a, a, a))
 
 calc = Calculator(h=0.2, lmax=0)
-Cu.SetCalculator(calc)
-Cu.GetPotentialEnergy()
+Cu.set_calculator(calc)
+Cu.get_potential_energy()
 
 e_4s_major = calc.kpt_u[0].eps_n[5]
 e_3d_minor = calc.kpt_u[1].eps_n[4]

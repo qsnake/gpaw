@@ -1,31 +1,23 @@
 import os
-import sys
-
+from ase import *
 from gpaw import Calculator
 from gpaw.utilities import equal
-from ASE import ListOfAtoms, Atom, Crystal
 from gpaw.lrtddft import LrTDDFT
 
 txt='-'
 txt='/dev/null'
 io_only=False
 if not io_only:
-    load = False
-##    load = True
-    if not load:
-        R=0.7 # approx. experimental bond length
-        a = 3
-        c = 4
-        H2 = ListOfAtoms([Atom('H', (a/2,a/2,(c-R)/2)),
-                          Atom('H', (a/2,a/2,(c+R)/2))],
-                         cell=(a,a,c))
-        calc = Calculator(xc='PBE', nbands=2, spinpol=False, txt=txt)
-        H2.SetCalculator(calc)
-        H2.GetPotentialEnergy()
-##    calc.write('H2.gpw', 'all')
-    else:
-        calc = Calculator('H2.gpw', txt=txt)
-        
+    R=0.7 # approx. experimental bond length
+    a = 3.0
+    c = 4.0
+    H2 = Atoms([Atom('H', (a / 2, a / 2, (c - R) / 2)),
+                Atom('H', (a / 2, a / 2, (c + R) / 2))],
+               cell=(a, a, c))
+    calc = Calculator(xc='PBE', nbands=2, spinpol=False, txt=txt)
+    H2.set_calculator(calc)
+    H2.get_potential_energy()
+
     xc='LDA'
 
     # without spin

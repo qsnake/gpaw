@@ -1,6 +1,6 @@
 from gpaw.gllb.gllb import GLLBFunctional
 from gpaw.gllb import construct_density1D, SMALL_NUMBER
-import Numeric as num
+import numpy as npy
 
 
 class GLLBCFunctional(GLLBFunctional):
@@ -50,7 +50,7 @@ class GLLBCFunctional(GLLBFunctional):
 
             # Add it to the total potential
             v_g[:] += self.tempvxc_g
-            e_g[:] += self.tempe_g.flat
+            e_g[:] += self.tempe_g.ravel()
 
     def get_slater_part_paw_correction(self, rgd, n_g, a2_g, v_g, pseudo = True, ndenom_g=None):
 
@@ -64,18 +64,18 @@ class GLLBCFunctional(GLLBFunctional):
 
         N = len(n_g)
         # TODO: Allocate these only once
-        vtemp_g = num.zeros(N, num.Float)
-        etemp_g = num.zeros(N, num.Float)
-        deda2temp_g = num.zeros(N, num.Float)
+        vtemp_g = npy.zeros(N)
+        etemp_g = npy.zeros(N)
+        deda2temp_g = npy.zeros(N)
 
         self.correlation_part.calculate_spinpaired(etemp_g, n_g, vtemp_g, a2_g, deda2temp_g)
 
         # Grr...
-        etemp_g[:] = num.where(abs(n_g) < SMALL_NUMBER, 0, etemp_g)
+        etemp_g[:] = npy.where(abs(n_g) < SMALL_NUMBER, 0, etemp_g)
 
         v_g[:] += vtemp_g
 
-        Exc +=num.sum(etemp_g * rgd.dv_g)
+        Exc +=npy.sum(etemp_g * rgd.dv_g)
 
         return Exc
 
@@ -109,7 +109,7 @@ class GLLBCFunctional(GLLBFunctional):
         # Add the correlation potential
         v_xc[:] += v_g
 
-        Exc += num.dot(e_g, gd.dv_g)
+        Exc += npy.dot(e_g, gd.dv_g)
 
         return Exc
 

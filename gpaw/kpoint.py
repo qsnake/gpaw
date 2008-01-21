@@ -6,10 +6,8 @@
 from math import pi, sqrt
 from cmath import exp
 
-import Numeric as num
-import LinearAlgebra as linalg
-from RandomArray import random, seed
-from multiarray import innerproduct as inner # avoid the dotblas version!
+import numpy as npy
+from numpy.random import random, seed
 
 from gpaw import mpi
 from gpaw.operators import Gradient
@@ -26,7 +24,7 @@ class KPoint:
     The ``KPoint`` class takes care of all wave functions for a
     certain **k**-point and a certain spin."""
     
-    def __init__(self, gd, weight, s, k, u, k_c, typecode, timer = None):
+    def __init__(self, gd, weight, s, k, u, k_c, dtype, timer = None):
         """Construct **k**-point object.
 
         Parameters:
@@ -38,7 +36,7 @@ class KPoint:
          ``u``        Combined spin and **k**-point index.
          ``k_c``      scaled **k**-point vector (coordinates scaled to
                       [-0.5:0.5] interval).
-         ``typecode`` Data type of wave functions (``Float`` or ``Complex``).
+         ``dtype`` Data type of wave functions (``Float`` or ``Complex``).
          ``timer``    Timer (optional)
          ============ =======================================================
 
@@ -79,11 +77,11 @@ class KPoint:
 
         self.gd = gd
         self.weight = weight
-        self.typecode = typecode
+        self.dtype = dtype
         self.timer = timer
         
-        self.phase_cd = num.ones((3, 2), num.Complex)
-        if typecode == num.Float:
+        self.phase_cd = npy.ones((3, 2), complex)
+        if dtype == float:
             # Gamma-point calculation:
             self.k_c = None
         else:
@@ -108,8 +106,8 @@ class KPoint:
     def allocate(self, nbands):
         """Allocate arrays."""
         self.nbands = nbands
-        self.eps_n = num.empty(nbands, num.Float)
-        self.f_n = num.empty(nbands, num.Float)
+        self.eps_n = npy.empty(nbands)
+        self.f_n = npy.empty(nbands)
         
     def adjust_number_of_bands(self, nbands, pt_nuclei, my_nuclei):
         """Adjust the number of states.
@@ -131,7 +129,7 @@ class KPoint:
         nmin = min(nao, nbands)
 
         tmp_nG = self.psit_nG
-        self.psit_nG = self.gd.empty(nbands, self.typecode)
+        self.psit_nG = self.gd.empty(nbands, self.dtype)
         self.psit_nG[:nmin] = tmp_nG[:nmin]
 
         tmp_n = self.eps_n
@@ -162,20 +160,20 @@ class KPoint:
         gd1 = self.gd.coarsen()
         gd2 = gd1.coarsen()
 
-        psit_G1 = gd1.empty(typecode=self.typecode)
-        psit_G2 = gd2.empty(typecode=self.typecode)
+        psit_G1 = gd1.empty(dtype=self.dtype)
+        psit_G2 = gd2.empty(dtype=self.dtype)
 
-        interpolate2 = Transformer(gd2, gd1, 1, self.typecode).apply
-        interpolate1 = Transformer(gd1, self.gd, 1, self.typecode).apply
+        interpolate2 = Transformer(gd2, gd1, 1, self.dtype).apply
+        interpolate1 = Transformer(gd1, self.gd, 1, self.dtype).apply
 
         shape = tuple(gd2.n_c)
 
-        scale = sqrt(12 / num.product(gd2.domain.cell_c))
+        scale = sqrt(12 / npy.product(gd2.domain.cell_c))
 
-        seed(1, 2 + mpi.rank)
+        seed(4 + mpi.rank)
 
         for psit_G in psit_nG:
-            if self.typecode == num.Float:
+            if self.dtype == float:
                 psit_G2[:] = (random(shape) - 0.5) * scale
             else:
                 psit_G2.real = (random(shape) - 0.5) * scale
@@ -187,7 +185,7 @@ class KPoint:
     
     def orthonormalize(self, my_nuclei):
         """Orthonormalize wave functions."""
-        S_nn = num.zeros((self.nbands, self.nbands), self.typecode)
+        S_nn = npy.zeros((self.nbands, self.nbands), self.dtype)
 
         # Fill in the lower triangle:
         rk(self.gd.dv, self.psit_nG, 0.0, S_nn)
@@ -195,7 +193,7 @@ class KPoint:
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
 
-            S_nn += num.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
+            S_nn += npy.dot(P_ni, cc(npy.inner(nucleus.setup.O_ii, P_ni)))
         
         self.comm.sum(S_nn, self.root)
 
@@ -203,8 +201,7 @@ class KPoint:
             # inverse returns a non-contigous matrix - grrrr!  That is
             # why there is a copy.  Should be optimized with a
             # different lapack call to invert a triangular matrix XXXXX
-            S_nn[:] = linalg.inverse(
-                linalg.cholesky_decomposition(S_nn)).copy()
+            S_nn[:] = npy.linalg.inv(npy.linalg.cholesky(S_nn)).copy()
 
         self.comm.broadcast(S_nn, self.root)
         
@@ -217,12 +214,12 @@ class KPoint:
 
     def add_to_density(self, nt_G):
         """Add contribution to pseudo electron-density."""
-        if self.typecode is num.Float:
+        if self.dtype == float:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 axpy(f, psit_G**2, nt_G)  # nt_G += f * psit_G**2
         else:
             for psit_G, f in zip(self.psit_nG, self.f_n):
-                nt_G += f * (psit_G * num.conjugate(psit_G)).real
+                nt_G += f * (psit_G * npy.conjugate(psit_G)).real
                 
     def add_to_kinetic_density(self, taut_G):
         """Add contribution to pseudo kinetic energy density."""
@@ -233,10 +230,10 @@ class KPoint:
             d_G = self.gd.empty()
             for c in range(3):
                 ddr[c](psit_G,d_G)
-                if self.typecode is num.Float:
+                if self.dtype == float:
                     taut_G += f * d_G[c]**2
                 else:
-                    taut_G += f * (d_G * num.conjugate(d_G)).real
+                    taut_G += f * (d_G * npy.conjugate(d_G)).real
                 
     def create_atomic_orbitals(self, nao, nuclei):
         """Initialize the wave functions from atomic orbitals.
@@ -246,7 +243,7 @@ class KPoint:
         # Allocate space for wave functions, occupation numbers,
         # eigenvalues and projections:
         self.allocate(nao)
-        self.psit_nG = self.gd.zeros(nao, self.typecode)
+        self.psit_nG = self.gd.zeros(nao, self.dtype)
         
         # fill in the atomic orbitals:
         nao0 = 0
@@ -260,7 +257,7 @@ class KPoint:
         """Initialize all the wave functions from random numbers"""
 
         self.allocate(nbands)
-        self.psit_nG = self.gd.zeros(nbands, self.typecode)
+        self.psit_nG = self.gd.zeros(nbands, self.dtype)
         self.random_wave_functions(self.psit_nG)
 
     def apply_hamiltonian(self, hamiltonian, a_nG, b_nG):
@@ -340,7 +337,7 @@ class KPoint:
                 # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
                 rcut = max(nucleus.setup.rcut_j)
                 a = rcut * 3.0 / 8.0
-                b = 2.0 * a / num.sqrt(3.0)
+                b = 2.0 * a / npy.sqrt(3.0)
                 
                 # evaluate function at (0,0,0), 3/8 (r_cut,0,0),
                 # sqrt(3)/4 (r_cut,r_cut,rcut), and at symmetric points 
@@ -363,7 +360,7 @@ class KPoint:
                            [x_c-b, y_c-b, z_c+b], \
                            [x_c-b, y_c-b, z_c-b] ]
                 # values
-                values = num.zeros(len(coords),num.Float)
+                values = npy.zeros(len(coords))
                 for i in range(len(coords)):
                     values[i] = func.value( coords[i][0],
                                             coords[i][1],

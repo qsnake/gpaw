@@ -8,8 +8,8 @@ import sys
 from math import pi, sqrt, log
 import time
 
-from Numeric import array, Float, dot, NewAxis, zeros, transpose
-from LinearAlgebra import solve_linear_equations as solve
+from numpy import array, dot, newaxis, zeros, transpose
+from numpy.linalg import solve
 
 from gpaw.mixer import Mixer, MixerSum
 from gpaw.transformers import Transformer
@@ -180,7 +180,7 @@ class Density:
 
         # With periodic boundary conditions, the interpolation will
         # conserve the number of electrons.
-        if False in self.gd.domain.periodic_c:
+        if False in self.gd.domain.pbc_c:
             # With zero-boundary conditions in one or more directions,
             # this is not the case.
             for s in range(self.nspins):
@@ -244,11 +244,11 @@ class Density:
         # Compute atomic density matrices:
         for nucleus in self.my_nuclei:
             ni = nucleus.get_number_of_partial_waves()
-            D_sii = zeros((self.nspins, ni, ni), Float)
+            D_sii = zeros((self.nspins, ni, ni))
             for kpt in kpt_u:
                 P_ni = nucleus.P_uni[kpt.u]
                 D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
-                                             P_ni * kpt.f_n[:, NewAxis]))
+                                             P_ni * kpt.f_n[:, newaxis]))
             nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
             self.kpt_comm.sum(nucleus.D_sp)
 
@@ -266,7 +266,7 @@ class Density:
                 else:
                     ni = nucleus.get_number_of_partial_waves()
                     np = ni * (ni + 1) / 2
-                    D_sp = zeros((self.nspins, np), Float)
+                    D_sp = zeros((self.nspins, np))
                     comm.broadcast(D_sp, nucleus.rank)
                 D_asp.append(D_sp)
 
@@ -288,14 +288,15 @@ class Density:
             nucleus.add_smooth_core_density(self.nct_G, self.nspins)
 
     def calculate_local_magnetic_moments(self):
+        # XXX remove this?
         spindensity = self.nt_sg[0] - self.nt_sg[1]
 
         for nucleus in self.nuclei:
             nucleus.calculate_magnetic_moments()
             
-        locmom = 0.0
+        #locmom = 0.0
         for nucleus in self.nuclei:
-            locmom += nucleus.mom[0]
+            #locmom += nucleus.mom[0]
             mom = array([0.0])
             if nucleus.stepf is not None:
                 nucleus.stepf.integrate(spindensity, mom)

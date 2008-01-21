@@ -44,8 +44,7 @@ Equation numbers as in
 Masters Thesis by Carsten Rostgaard, CAMP 2006
 """
 
-import Numeric as num
-from multiarray import innerproduct as inner # avoid the dotblas version!
+import numpy as npy
 
 from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
@@ -83,7 +82,7 @@ class EXX:
         self.integrate   = gd.integrate
         self.Na = Na
         self.use_finegrid = use_finegrid
-        paw.set_positions() # this should not be needed here XXXXX
+        #paw.set_positions() # this should not be needed here XXXXX
         self.pair_density = PairDensity(paw, use_finegrid)
         
         # Allocate space for matrices
@@ -131,11 +130,18 @@ class EXX:
                 nucleus.vxx_uni[u] = 0.0
         if force:
             if not hasattr(self, F_ac):
-                self.F_ac = num.zeros((self.Na, 3), num.Float)
+                self.F_ac = npy.zeros((self.Na, 3))
             else:
                 self.F_ac[:] = 0.0
 
         fmin = 1.e-10
+
+        pd = self.pair_density
+
+        if self.use_finegrid:
+            ghat_nuclei = pd.ghat_nuclei
+        else:
+            ghat_nuclei = pd.Ghat_nuclei
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
@@ -150,7 +156,6 @@ class EXX:
                 
                 psit2_G = psit_nG[n2]
                 dc = 1 + (n1 != n2) # double count factor
-                pd = self.pair_density
                 pd.initialize(kpt, n1, n2)
 
                 # Determine current exchange density
@@ -181,11 +186,11 @@ class EXX:
                             ghat_L = nucleus.Ghat_L
                         if nucleus.in_this_domain:
                             lmax = nucleus.setup.lmax
-                            F_Lc = num.zeros(((lmax + 1)**2, 3), num.Float)
+                            F_Lc = npy.zeros(((lmax + 1)**2, 3))
                             ghat_L.derivative(vt, F_Lc)
 
                             self.F_ac[nucleus.a] -= (
-                                f1 * f2 * dc * hybrid / deg * num.dot(
+                                f1 * f2 * dc * hybrid / deg * npy.dot(
                                 self.Q_aL[nucleus.a], F_Lc))
                         else:
                             ghat_L.derivative(self.vt, None)
@@ -210,9 +215,8 @@ class EXX:
                     # of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
                     # residuals
-                    for nucleus in self.ghat_nuclei:
-                        v_L = num.zeros((nucleus.setup.lmax + 1)**2,
-                                        num.Float)
+                    for nucleus in ghat_nuclei:
+                        v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
                         if self.use_finegrid:
                             nucleus.ghat_L.integrate(self.vt_g, v_L)
                         else:
@@ -224,22 +228,22 @@ class EXX:
                                 Ghat_L.integrate(self.vt_G, v_L)
 
                         if nucleus.in_this_domain:
-                            v_ii = unpack(num.dot(nucleus.setup.Delta_pL,
+                            v_ii = unpack(npy.dot(nucleus.setup.Delta_pL,
                                                   v_L))
 
                             if force:
                                 ni = self.setup.ni
-                                F_ic = num.zeros((ni, 3), num.Float)
+                                F_ic = npy.zeros((ni, 3))
                                 self.pt_i.derivative(psit1_G, F_ic)
                                 F_ic.shape = (ni * 3,)
-                                F_iic = num.dot(v_ii, num.outerproduct(
+                                F_iic = npy.dot(v_ii, npy.outer(
                                     nucleus.P_uni[u, n2], F_ic))
 
                                 F_ic[:] = 0.0
                                 F_ic.shape =(ni, 3)
                                 self.pt_i.derivative(psit2_G, F_ic)
                                 F_ic.shape = (ni * 3,)
-                                F_iic += num.dot(v_ii, num.outerproduct(
+                                F_iic += npy.dot(v_ii, npy.outer(
                                     nucleus.P_uni[u, n1], F_ic))
 
                                 #F_iic *= 2.0
@@ -249,11 +253,11 @@ class EXX:
                                                          real(F_iic[i, i])
 
                             nucleus.vxx_uni[u, n1] += (
-                                f2 * hybrid / deg * num.dot(
+                                f2 * hybrid / deg * npy.dot(
                                 v_ii, nucleus.P_uni[u, n2]))
                             if n1 != n2:
                                 nucleus.vxx_uni[u, n2] += (
-                                    f1 * hybrid / deg * num.dot(
+                                    f1 * hybrid / deg * npy.dot(
                                     v_ii, nucleus.P_uni[u, n1]))
                             else:
                                 # XXX Check this:
@@ -280,9 +284,10 @@ class EXX:
 
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
-                h_nn = symmetrize(inner(nucleus.P_uni[u], nucleus.vxx_uni[u]))
+                h_nn = symmetrize(npy.inner(nucleus.P_uni[u],
+                                            nucleus.vxx_uni[u]))
                 H_nn += h_nn
-                Ekin -= num.dot(f_n, num.diagonal(h_nn))
+                Ekin -= npy.dot(f_n, npy.diagonal(h_nn))
 
             # Get atomic density and Hamiltonian matrices
             D_p  = nucleus.D_sp[s]
@@ -313,10 +318,10 @@ class EXX:
             # --
             # >  X   D
             # --  ii  ii
-            Exx -= hybrid * num.dot(D_p, setup.X_p)
+            Exx -= hybrid * npy.dot(D_p, setup.X_p)
             if not self.energy_only:
                 H_p -= hybrid * setup.X_p
-                Ekin += hybrid * num.dot(D_p, setup.X_p)
+                Ekin += hybrid * npy.dot(D_p, setup.X_p)
 
             # Add core-core exchange energy
             if s == 0:
@@ -368,8 +373,8 @@ def atomic_exact_exchange(atom, type = 'all'):
             raise RuntimeError('Unknown type of exchange: ', type)
 
     # Arrays for storing the potential (times radius)
-    vr = num.zeros(atom.N, num.Float)
-    vrl = num.zeros(atom.N, num.Float)
+    vr = npy.zeros(atom.N)
+    vrl = npy.zeros(atom.N)
     
     # do actual calculation of exchange contribution
     Exx = 0.0
@@ -402,10 +407,10 @@ def atomic_exact_exchange(atom, type = 'all'):
                 G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2, l**2:(l+1)**2]**2
 
                 # add to total potential
-                vr += vrl * num.sum(G2.copy().flat)
+                vr += vrl * npy.sum(G2.copy().ravel())
 
             # add to total exchange the contribution from current two states
-            Exx += -.5 * f12 * num.dot(vr, nrdr)
+            Exx += -.5 * f12 * npy.dot(vr, nrdr)
 
     # double energy if mixed contribution
     if type == 'val-core': Exx *= 2.
@@ -436,10 +441,10 @@ def constructX(gen):
     r, dr, N, beta = gen.r, gen.dr, gen.N, gen.beta
 
     # potential times radius
-    vr = num.zeros(N, num.Float)
+    vr = npy.zeros(N)
         
     # initialize X_ii matrix
-    X_ii = num.zeros((Nvi, Nvi), num.Float)
+    X_ii = npy.zeros((Nvi, Nvi))
 
     # make gaunt coeff. list
     lmax = max(gen.l_j[:Njcore] + gen.vl_j)
@@ -471,7 +476,7 @@ def constructX(gen):
                 for l in range(min(lv1, lv2) + lc + 1):
                     # Int density * potential * r^2 * dr:
                     hartree(l, n2c, beta, N, vr)
-                    nv = num.dot(n1c, vr)
+                    nv = npy.dot(n1c, vr)
                     
                     # expansion coefficients
                     A_mm = X_ii[i1:i1 + 2 * lv1 + 1, i2:i2 + 2 * lv2 + 1]
@@ -481,7 +486,7 @@ def constructX(gen):
                                         lc**2 + mc, l**2 + m]
                             G2c = gaunt[lv2**2:(lv2 + 1)**2,
                                         lc**2 + mc, l**2 + m]
-                            A_mm += nv * num.outerproduct(G1c, G2c)
+                            A_mm += nv * npy.outer(G1c, G2c)
                 i2 += 2 * lv2 + 1
             i1 += 2 * lv1 + 1
 

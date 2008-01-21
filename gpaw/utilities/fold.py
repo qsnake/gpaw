@@ -1,4 +1,4 @@
-import Numeric as num
+import numpy as npy
 from gpaw.gauss import Gauss, Lorentz
 
 def fold(arrays,width,xmin=None,xmax=None,folding='Gauss'):
@@ -42,7 +42,7 @@ def fold(arrays,width,xmin=None,xmax=None,folding='Gauss'):
 
     n = int((xma-xmi)/dx)
 
-    res = num.zeros((a.shape[0]+1,n+1),num.Float)
+    res = npy.zeros((a.shape[0]+1,n+1))
 
     x = xmi
     for i in range(n+1):

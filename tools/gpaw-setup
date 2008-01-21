@@ -22,10 +22,11 @@ parser.add_option('-r', '--radius', type='string', default=None,
 parser.add_option('-v', '--zero-potential', metavar='type,radius',
                   help='Type of zero-potential - type must be either "poly" '
                   'or "f".')
-parser.add_option('--filter', default='0.4,1.75', metavar='h,x',
+parser.add_option('--filter', #default='0.4,1.75',
+                  metavar='h,x',
                   help='Parameters used for Fourier-filtering and '
                   'projector functions and zero-potential. "h" is '
-                  'the cutoff grid-spacing and "x" is the ration '
+                  'the cutoff grid-spacing and "x" is the ratio '
                   'between outer and inner radii.')
 parser.add_option('-l', '--logarithmic-derivatives', action='store_true',
                   help='Calculate logarithmic derivatives.')

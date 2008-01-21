@@ -6,7 +6,7 @@
 
 import os
 import resource
-import Numeric as num
+import numpy as npy
 
 _proc_status = '/proc/%d/status' % os.getpid()
 
@@ -79,8 +79,8 @@ def estimate_memory(paw):
     nuclei = paw.nuclei
     out = paw.txt
 
-    float_size = num.array([1], num.Float).itemsize()
-    type_size = num.array([1],paw.typecode).itemsize()
+    float_size = npy.array([1], float).itemsize
+    type_size = npy.array([1],paw.dtype).itemsize
 
 
     print >> out
@@ -127,7 +127,7 @@ def estimate_memory(paw):
 
     # Localized functions. Normally 1 value + 3 derivatives + 1 work array
     # are stored
-    mem_nuclei = num.zeros(paw.domain.comm.size, num.Float)
+    mem_nuclei = npy.zeros(paw.domain.comm.size)
     for nucleus in nuclei:
         ni = nucleus.get_number_of_partial_waves()
         np = ni * (ni + 1) // 2
@@ -180,7 +180,7 @@ def estimate_memory(paw):
 
     # temporary data in initialization
     nao_tot = 0
-    mem_temp = num.zeros(paw.domain.comm.size, num.Float)
+    mem_temp = npy.zeros(paw.domain.comm.size)
     for nucleus in nuclei:
         box = 2 * nucleus.setup.phit_j[0].get_cutoff() / h_c
         box_size = box[0] * box[1] * box[2]

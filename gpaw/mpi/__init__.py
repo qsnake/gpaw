@@ -4,7 +4,7 @@
 import os
 import sys
 
-import Numeric as num
+import numpy as npy
 
 from gpaw import debug
 from gpaw.utilities import is_contiguous
@@ -69,8 +69,8 @@ if parallel and debug:
             self.rank = comm.rank
 
         def new_communicator(self, ranks):            
-            assert is_contiguous(ranks, num.Int)
-            sranks = num.sort(ranks)
+            assert is_contiguous(ranks, int)
+            sranks = npy.sort(ranks)
             # Are all ranks in range?
             assert 0 <= sranks[0] and sranks[-1] < self.size
             # No duplicates:
@@ -88,8 +88,8 @@ if parallel and debug:
                 assert isinstance(array, float)
                 return self.comm.sum(array, root)
             else:
-                tc = array.typecode()
-                assert tc == num.Float or tc == num.Complex
+                tc = array.dtype.char
+                assert tc == float or tc == complex
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
                 self.comm.sum(array, root)
@@ -99,14 +99,14 @@ if parallel and debug:
                 assert isinstance(array, float)
                 return self.comm.max(array, root)
             else:
-                tc = array.typecode()
-                assert tc == num.Float or tc == num.Complex
+                tc = array.dtype.char
+                assert tc == float or tc == complex
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
                 self.comm.max(array, root)
 
         def all_gather(self, a, b):
-            tc = a.typecode()
+            tc = a.dtype.char
             assert is_contiguous(a, tc)
             assert is_contiguous(b, tc)
             assert b.shape[0] == self.size
@@ -114,7 +114,7 @@ if parallel and debug:
             self.comm.all_gather(a, b)
 
         def gather(self, a, root, b=None):
-            tc = a.typecode()
+            tc = a.dtype.char
             assert is_contiguous(a, tc)
             assert 0 <= root < self.size
             if root == self.rank:
@@ -163,25 +163,25 @@ else:
 def broadcast_string(string=None, root=MASTER, comm=world):
     if rank == root:
         assert isinstance(string, str)
-        n = num.array(len(string), num.Int)
+        n = npy.array(len(string), int)
     else:
         assert string is None
-        n = num.zeros(1, num.Int)
+        n = npy.zeros(1, int)
     comm.broadcast(n, root)
     if rank == root:
-        string = num.fromstring(string, num.Int8)
+        string = npy.fromstring(string, int8)
     else:
-        string = num.zeros(n, num.Int8)
+        string = npy.zeros(n, int8)
     comm.broadcast(string, root)
     return string.tostring()
 
 
 def all_gather_array(comm, a): #???
     # Gather array into flat array
-    shape = (comm.size,) + num.shape(a)
-    all = num.zeros(shape, num.Float)
+    shape = (comm.size,) + npy.shape(a)
+    all = npy.zeros(shape)
     comm.all_gather(a, all)
-    return all.flat
+    return all.ravel()
 
 
 def run(iterators):

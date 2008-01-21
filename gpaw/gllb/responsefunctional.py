@@ -1,9 +1,9 @@
+import numpy as npy
+
 from gpaw.gllb.nonlocalfunctional import NonLocalFunctional
 from gpaw.gllb import find_nucleus, SMALL_NUMBER
 
-import Numeric as num
 from gpaw.utilities.blas import axpy
-from multiarray import matrixproduct as dot3
 from gpaw.utilities.complex import cc, real
 from gpaw.utilities import pack
 
@@ -29,7 +29,7 @@ def gllb_weight(epsilon, reference_level):
 
     if (epsilon +1e-5 > reference_level):
         return 0
-    return K_G * num.sqrt(reference_level-epsilon)
+    return K_G * npy.sqrt(reference_level-epsilon)
 
 class ResponseFunctional(NonLocalFunctional):
     """Response-part, for example for KLI and GLLB functionals.
@@ -103,10 +103,10 @@ class ResponseFunctional(NonLocalFunctional):
 
             # For each orbital, add the response part
             for f, e, psit_G, w in zip(info['f_n'], info['eps_n'], info['psit_nG'], w_n):
-                if info['typecode'] is num.Float:
+                if info['dtype'] is float:
                     axpy(f*w, psit_G**2, self.vt_G)
                 else:
-                    self.vt_G += f * w * (psit_G * num.conjugate(psit_G)).real
+                    self.vt_G += f * w * (psit_G * npy.conjugate(psit_G)).real
 
             # Communicate the coarse-response part
             self.kpt_comm.sum(self.vt_G)
@@ -139,14 +139,14 @@ class ResponseFunctional(NonLocalFunctional):
         N = len(xccorr.n_g)
 
         # TODO: Allocate these only once
-        vtemp_g = num.zeros(N, num.Float)
-        e_g = num.zeros(N, num.Float)
-        deda2_g = num.zeros(N, num.Float)
+        vtemp_g = npy.zeros(N)
+        e_g = npy.zeros(N)
+        deda2_g = npy.zeros(N)
         # Calculate the density matrix only at first slice
         # Calculate also the core-response in self.relaxed_core_response is True
         if slice == 0:
             if self.relaxed_core_response:
-                self.core_response = num.zeros(N, num.Float)
+                self.core_response = npy.zeros(N)
                 njcore = xccorr.extra_xc_data['njcore']
                 for nc in range(0, njcore):
                     psi2_g = xccorr.extra_xc_data['core_orbital_density_'+str(nc)]
@@ -166,18 +166,18 @@ class ResponseFunctional(NonLocalFunctional):
                     P_ni = nucleus.P_uni[kpt.u]
 
                     # Create the coefficients
-                    # TODO: Better conversion from python array to num.array"
-                    w_i = num.zeros(kpt.eps_n.shape, num.Float)
+                    # TODO: Better conversion from python array to npy.array"
+                    w_i = npy.zeros(kpt.eps_n.shape)
                     for j in range(len(w_i)):
                         w_i[j] = self.w_sn[s][i]
                         i = i + 1
-                    w_i = w_i[:, num.NewAxis] * kpt.f_n[:, num.NewAxis] * xccorr.deg
+                    w_i = w_i[:, npy.newaxis] * kpt.f_n[:, npy.newaxis] * xccorr.deg
 
                     # Calculate the 'density matrix' for numerator part of potential
-                    Dn_ii = real(num.dot(cc(num.transpose(P_ni)),
+                    Dn_ii = real(npy.dot(cc(npy.transpose(P_ni)),
                                          P_ni * w_i))
                     Dn_p = pack(Dn_ii) # Pack the unpacked densitymatrix
-                    Dnn_Lq += dot3(xccorr.B_Lqp, Dn_p)
+                    Dnn_Lq += npy.dot(xccorr.B_Lqp, Dn_p)
 
             # Communicate over K-points
             self.kpt_comm.sum(Dnn_Lq)
@@ -189,8 +189,8 @@ class ResponseFunctional(NonLocalFunctional):
             Dnn_Lq = self.Dnn_Lq
 
         # Calculate the real response part of valence electrons multiplied with density
-        nn_Lg = num.dot(Dnn_Lq, xccorr.n_qg)
-        nn = num.dot(xccorr.Y_L, nn_Lg)
+        nn_Lg = npy.dot(Dnn_Lq, xccorr.n_qg)
+        nn = npy.dot(xccorr.Y_L, nn_Lg)
 
         # Calculate the Slater-parts from both, true and smooth densities
         Exc = self.get_slater_part_paw_correction(xccorr.rgd, xccorr.n_g, xccorr.a2_g, v_g, pseudo=False)
@@ -205,8 +205,8 @@ class ResponseFunctional(NonLocalFunctional):
             v_g[:] += xccorr.extra_xc_data['core_response']
 
         # Calculate the pseudo response part of valence electrons multiplied with density
-        nn_Lg = num.dot(Dnn_Lq, xccorr.nt_qg)
-        nn = num.dot(xccorr.Y_L, nn_Lg)
+        nn_Lg = npy.dot(Dnn_Lq, xccorr.nt_qg)
+        nn = npy.dot(xccorr.Y_L, nn_Lg)
 
         # Put this response-part to smooth potential
         vt_g[:] += nn / (xccorr.nt_g + SMALL_NUMBER)
