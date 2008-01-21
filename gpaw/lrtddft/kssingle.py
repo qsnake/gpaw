@@ -200,7 +200,7 @@ class KSSingle(Excitation,PairDensity):
         # course grid contribution
         # <i|r|j> is the negative of the dipole moment (because of negative
         # e- charge)
-        me = -gd.calculate_dipole_moment(self.GetPairDensity())
+        me = -gd.calculate_dipole_moment(self.get())
 
         # augmentation contributions
         ma = npy.zeros(me.shape)
@@ -300,13 +300,4 @@ class KSSingle(Excitation,PairDensity):
 
     def GetWeight(self):
         return self.fij
-
-    def GetPairDensity(self,finegrid=False):
-        """Get pair density"""
-        return self.get(finegrid) # inherited from PairDensity
-
-    def GetPairDensityAndCompensationCharges(self,finegrid=False):
-        """Get pair densisty including the compensation charges"""
-        # inherited from PairDensity
-        return self.with_compensation_charges(finegrid)
 

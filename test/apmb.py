@@ -3,7 +3,7 @@ from gpaw.utilities import equal
 from gpaw import Calculator
 from gpaw.lrtddft import LrTDDFT
 import numpy
-#numpy.seterr(all='raise')
+numpy.seterr(all='raise')
 txt='-'
 txt='/dev/null'
 
@@ -39,7 +39,7 @@ lr_ApmB = LrTDDFT(calc, xc=xc, force_ApmB=True)
 lr_ApmB.diagonalize()
 print 'lr=', lr
 print 'ApmB=', lr_ApmB
-equal(lr[0].get_energy(), lr_ApmB[0].get_energy(), 5.e-24)
+equal(lr[0].get_energy(), lr_ApmB[0].get_energy(), 5.e-10)
 
 # with spin
 print '------ with spin'
@@ -48,7 +48,7 @@ if not load:
     c_spin = Calculator(xc='PBE', nbands=2, spinpol=True, txt=txt)
     H2.set_calculator(c_spin)
     c_spin.calculate(H2)
-    c_spin.write('H2spin.gpw', 'all')
+##    c_spin.write('H2spin.gpw', 'all')
 else:
     c_spin = Calculator('H2spin.gpw', txt=txt)
 lr = LrTDDFT(c_spin, xc=xc)

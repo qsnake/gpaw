@@ -208,17 +208,17 @@ class OmegaMatrix:
                 vm_s=npy.zeros(nt_s.shape,nt_s.dtype.char)
                 if kss.npspins==2: # spin polarised
                     nv_s=nt_s.copy()
-                    nv_s[kss[ij].pspin] += ns*kss[ij].GetPairDensity(fg)
+                    nv_s[kss[ij].pspin] += ns*kss[ij].get(fg)
                     xc.get_energy_and_potential(nv_s[0],vp_s[0],
                                                 nv_s[1],vp_s[1])
                     nv_s=nt_s.copy()
-                    nv_s[kss[ij].pspin] -= ns*kss[ij].GetPairDensity(fg)
+                    nv_s[kss[ij].pspin] -= ns*kss[ij].get(fg)
                     xc.get_energy_and_potential(nv_s[0],vm_s[0],
                                                 nv_s[1],vm_s[1])
                 else: # spin unpolarised
-                    nv=nt_s[0] + ns*kss[ij].GetPairDensity(fg)
+                    nv=nt_s[0] + ns*kss[ij].get(fg)
                     xc.get_energy_and_potential(nv,vp_s[0])
-                    nv=nt_s[0] - ns*kss[ij].GetPairDensity(fg)
+                    nv=nt_s[0] - ns*kss[ij].get(fg)
                     xc.get_energy_and_potential(nv,vm_s[0])
                 vvt_s = (.5/ns)*(vp_s-vm_s)
                 timer2.stop()
@@ -306,7 +306,7 @@ class OmegaMatrix:
 
                     timer2.start('integrate')
                     Om[ij,kq] += weight*\
-                                 self.gd.integrate(kss[kq].GetPairDensity(fg)*
+                                 self.gd.integrate(kss[kq].get(fg)*
                                                    vvt_s[kss[kq].pspin])
                     timer2.stop()
 
@@ -370,8 +370,8 @@ class OmegaMatrix:
             timer2 = Timer()
                       
             # smooth density including compensation charges
-            timer2.start('GetPairDensityAndCompensationCharges 0')
-            rhot_p = kss[ij].GetPairDensityAndCompensationCharges(
+            timer2.start('with_compensation_charges 0')
+            rhot_p = kss[ij].with_compensation_charges(
                 finegrid is not 0)
             timer2.stop()
             
@@ -386,7 +386,7 @@ class OmegaMatrix:
             timer.start(ij)
 
             if finegrid == 1:
-                rhot = kss[ij].GetPairDensityAndCompensationCharges()
+                rhot = kss[ij].with_compensation_charges()
                 phit = self.gd.zeros()
 ##                print "shapes 0=",phit.shape,rhot.shape
                 self.restrict(phit_p,phit)
@@ -397,8 +397,8 @@ class OmegaMatrix:
             for kq in range(ij,nij):
                 if kq != ij:
                     # smooth density including compensation charges
-                    timer2.start('kq GetPairDensityAndCompensationCharges')
-                    rhot = kss[kq].GetPairDensityAndCompensationCharges(
+                    timer2.start('kq with_compensation_charges')
+                    rhot = kss[kq].with_compensation_charges(
                         finegrid is 2)
                     timer2.stop()
 

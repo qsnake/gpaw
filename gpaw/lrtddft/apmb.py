@@ -13,7 +13,8 @@ import gpaw.mpi as mpi
 from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
-from gpaw.lrtddft.kssingle import KSSingle 
+#from gpaw.lrtddft.kssingle import KSSingle 
+from gpaw.pair_density import PairDensity
 from gpaw.transformers import Transformer
 from gpaw.utilities import pack,pack2,packed_index
 from gpaw.utilities.lapack import diagonalize, gemm, sqrt_matrix
@@ -75,8 +76,8 @@ class ApmB(OmegaMatrix):
             timer2 = Timer()
                       
             # smooth density including compensation charges
-            timer2.start('GetPairDensityAndCompensationCharges 0')
-            rhot_p = kss[ij].GetPairDensityAndCompensationCharges(
+            timer2.start('with_compensation_charges 0')
+            rhot_p = kss[ij].with_compensation_charges(
                 finegrid is not 0)
             timer2.stop()
             
@@ -91,7 +92,7 @@ class ApmB(OmegaMatrix):
             timer.start(ij)
 
             if finegrid == 1:
-                rhot = kss[ij].GetPairDensityAndCompensationCharges()
+                rhot = kss[ij].with_compensation_charges()
                 phit = self.gd.zeros()
                 self.restrict(phit_p,phit)
             else:
@@ -101,8 +102,8 @@ class ApmB(OmegaMatrix):
             for kq in range(ij,nij):
                 if kq != ij:
                     # smooth density including compensation charges
-                    timer2.start('kq GetPairDensityAndCompensationCharges')
-                    rhot = kss[kq].GetPairDensityAndCompensationCharges(
+                    timer2.start('kq with_compensation_charges')
+                    rhot = kss[kq].with_compensation_charges(
                         finegrid is 2)
                     timer2.stop()
                 pre = self.weight_Kijkq(ij, kq)
@@ -170,10 +171,14 @@ class ApmB(OmegaMatrix):
         if integrals.has_key(name):
             return integrals[name]
         # create the Kohn-Sham singles
-        kss_ij = KSSingle(i, j, spin, spin, self.paw)
-        kss_kq = KSSingle(k, q, spin, spin, self.paw)
+        kss_ij = PairDensity(self.paw)
+        kss_ij.initialize(self.paw.kpt_u[spin], i, j)
+        kss_kq = PairDensity(self.paw)
+        kss_kq.initialize(self.paw.kpt_u[spin], k, q)
+##         kss_ij = KSSingle(i, j, spin, spin, self.paw)
+##         kss_kq = KSSingle(k, q, spin, spin, self.paw)
 
-        rhot_p = kss_ij.GetPairDensityAndCompensationCharges(
+        rhot_p = kss_ij.with_compensation_charges(
             self.finegrid is not 0)
         phit_p = npy.zeros(rhot_p.shape, rhot_p.dtype)
         self.poisson.solve(phit_p, rhot_p, charge=None)
@@ -184,7 +189,7 @@ class ApmB(OmegaMatrix):
         else:
             phit = phit_p
             
-        rhot = kss_kq.GetPairDensityAndCompensationCharges(
+        rhot = kss_kq.with_compensation_charges(
             self.finegrid is 2)
 
         integrals[name] = self.Coulomb_integral_kss(kss_ij, kss_kq,
