@@ -182,7 +182,7 @@ molecules = {
 # Charge = 0, multiplicity = 1
 Be2 = Atoms([
     Atom('Be', [.000000, .000000, 1.010600]),
-    Atom('Be', [.000000, .000000, 1.010600]),
+    Atom('Be', [.000000, .000000, -1.010600]),
     ])
 
 ## Start of G2-1 test set
