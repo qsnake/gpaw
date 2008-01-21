@@ -88,7 +88,7 @@ if parallel and debug:
                 assert isinstance(array, float)
                 return self.comm.sum(array, root)
             else:
-                tc = array.dtype.char
+                tc = array.dtype
                 assert tc == float or tc == complex
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
@@ -99,14 +99,14 @@ if parallel and debug:
                 assert isinstance(array, float)
                 return self.comm.max(array, root)
             else:
-                tc = array.dtype.char
+                tc = array.dtype
                 assert tc == float or tc == complex
                 assert is_contiguous(array, tc)
                 assert root == -1 or 0 <= root < self.size
                 self.comm.max(array, root)
 
         def all_gather(self, a, b):
-            tc = a.dtype.char
+            tc = a.dtype
             assert is_contiguous(a, tc)
             assert is_contiguous(b, tc)
             assert b.shape[0] == self.size
@@ -114,7 +114,7 @@ if parallel and debug:
             self.comm.all_gather(a, b)
 
         def gather(self, a, root, b=None):
-            tc = a.dtype.char
+            tc = a.dtype
             assert is_contiguous(a, tc)
             assert 0 <= root < self.size
             if root == self.rank:
