@@ -89,10 +89,10 @@ class EXX:
         # Allocate space for matrices
         self.nt_G = gd.empty()    # Pseudo density on coarse grid
         self.vt_G = gd.empty()    # Pot. of comp. pseudo density on coarse grid
+        self.ghat_nuclei = ghat_nuclei
         if self.use_finegrid:
             self.rhot_g = finegd.empty()# Comp. pseudo density on fine grid
             self.vt_g = finegd.empty()# Pot. of comp. pseudo density on fine grid
-            self.ghat_nuclei = ghat_nuclei
             if usefft:
                 solver = PoissonFFTSolver()
                 solver.initialize(finegd)
@@ -103,7 +103,6 @@ class EXX:
         else:
             self.rhot_g = gd.empty()# Comp. pseudo density on coarse grid
             self.vt_g = self.vt_G   # Pot. of comp. pseudo dens. on coarse grid
-            self.ghat_nuclei = paw.Ghat_nuclei
             if usefft:
                 solver = PoissonFFTSolver()
                 solver.initialize(gd)
@@ -217,7 +216,12 @@ class EXX:
                         if self.use_finegrid:
                             nucleus.ghat_L.integrate(self.vt_g, v_L)
                         else:
-                            nucleus.Ghat_L.integrate(self.vt_G, v_L)
+                            Ghat_L = nucleus.Ghat_L
+                            if Ghat_L is None:
+                                ghat_L = nucleus.ghat_L
+                                ghat_L.comm.sum(v_L, ghat_L.root)
+                            else:
+                                Ghat_L.integrate(self.vt_G, v_L)
 
                         if nucleus.in_this_domain:
                             v_ii = unpack(num.dot(nucleus.setup.Delta_pL,

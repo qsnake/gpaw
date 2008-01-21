@@ -6,7 +6,6 @@ from gpaw.localized_functions import create_localized_functions
 
 
 def set_coarse_ghat(paw):
-    Ghat_nuclei = []
     create = create_localized_functions
     for nucleus in paw.nuclei:
         # Shape functions:
@@ -15,18 +14,21 @@ def set_coarse_ghat(paw):
                         forces=False)
         nucleus.Ghat_L = Ghat_L
 
-        if (nucleus.Ghat_L is None) != (nucleus.ghat_L is None):
-            raise AssertionError(
-                'Ghat and ghat can not share communicator!')
-
         if Ghat_L is not None:
-            Ghat_nuclei.append(nucleus)
+            assert nucleus.ghat_L is not None
             Ghat_L.set_communicator(nucleus.ghat_L.comm,
                                     nucleus.ghat_L.root)
-    paw.Ghat_nuclei = Ghat_nuclei
 
-    for nucleus in Ghat_nuclei:
-        nucleus.Ghat_L.normalize(sqrt(4 * pi))
+    paw.yes_I_have_done_the_Ghat_L = True
+
+    for nucleus in paw.ghat_nuclei:
+        Ghat_L = nucleus.Ghat_L
+        if Ghat_L is None:
+            ghat_L = nucleus.ghat_L
+            I_i = num.zeros(ghat_L.ni, num.Float)
+            ghat_L.comm.sum(I_i)
+        else:
+            Ghat_L.normalize(sqrt(4 * pi))
 
 
 class PairDensity2:
@@ -37,13 +39,11 @@ class PairDensity2:
         self.interpolate = paw.density.interpolate
         self.finegrid = finegrid
 
-        if finegrid:
-            self.ghat_nuclei = paw.ghat_nuclei
-        else:
-            if not hasattr(paw, 'Ghat_nuclei'):
-                # we need to set Ghat_nuclei and Ghat_L on the coarse grid
-                set_coarse_ghat(paw)
-            self.ghat_nuclei = paw.Ghat_nuclei
+        self.ghat_nuclei = paw.ghat_nuclei
+
+        if not finegrid and not paw.yes_I_have_done_the_Ghat_L:
+            # we need to set Ghat_L on the coarse grid
+            set_coarse_ghat(paw)
 
     def initialize(self, kpt, n1, n2):
         """Set wave function indices."""
@@ -90,7 +90,14 @@ class PairDensity2:
             if self.finegrid:
                 nucleus.ghat_L.add(rhot_g, Q_L, communicate=True)
             else:
-                nucleus.Ghat_L.add(rhot_g, Q_L, communicate=True)
+                Ghat_L = nucleus.Ghat_L
+                if Ghat_L is None:
+                    ghat_L = nucleus.ghat_L
+                    Q_L = num.empty(ghat_L.ni, num.Float)
+                    ghat_L.comm.broadcast(Q_L, ghat_L.root)
+                else:
+                    Ghat_L.add(rhot_g, Q_L, communicate=True)
+                                        
 
 
 class PairDensity:
@@ -103,9 +110,8 @@ class PairDensity:
         
         # we need to set Ghat_nuclei and Ghat_L
         # on the course grid if not initialized already
-        if not hasattr(paw, 'Ghat_nuclei'):
+        if not paw.yes_I_have_done_the_Ghat_L:
             set_coarse_ghat(paw)
-        self.Ghat_nuclei = paw.Ghat_nuclei
 
     def initialize(self, kpt, i, j):
         """initialize yourself with the wavefunctions"""
@@ -133,10 +139,7 @@ class PairDensity:
         """Get pair densisty including the compensation charges"""
         rhot = self.get(finegrid)
 
-        if finegrid:
-            ghat_nuclei = self.ghat_nuclei
-        else:
-            ghat_nuclei = self.Ghat_nuclei
+        ghat_nuclei = self.ghat_nuclei
         
         # Determine the compensation charges for each nucleus
         for nucleus in ghat_nuclei:
@@ -158,6 +161,12 @@ class PairDensity:
             if finegrid:
                 nucleus.ghat_L.add(rhot, Q_L, communicate=True)
             else:
-                nucleus.Ghat_L.add(rhot, Q_L, communicate=True)
+                Ghat_L = nucleus.Ghat_L
+                if Ghat_L is None:
+                    ghat_L = nucleus.ghat_L
+                    Q_L = num.empty(ghat_L.ni, num.Float)
+                    ghat_L.comm.broadcast(Q_L, ghat_L.root)
+                else:
+                    Ghat_L.add(rhot, Q_L, communicate=True)
                 
         return rhot 

@@ -267,6 +267,7 @@ class PAW(PAWExtra, Output):
         self.callback_functions = []
         self.niter = 0
         self.F_ac = None
+        self.yes_I_have_done_the_Ghat_L = False
 
         self.eigensolver = None
         self.density = None
@@ -534,9 +535,9 @@ class PAW(PAWExtra, Output):
 
             for nucleus in self.nuclei:
                 nucleus.normalize_shape_function_and_pseudo_core_density()
-            # the Ghat_nuclei list has to be updated in case it is needed
-            if hasattr(self, 'Ghat_nuclei'):
-                del(self.Ghat_nuclei)
+
+            # The Ghat_L's has to be updated in case it's needed:
+            self.yes_I_have_done_the_Ghat_L = False
             
             if self.symmetry:
                 self.symmetry.check(pos_ac)
