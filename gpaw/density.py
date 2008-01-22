@@ -44,6 +44,7 @@ class Density:
 
         p = paw.input_parameters
         self.hund = p['hund']
+        self.idiotproof = p['idiotproof']
         
         self.magmom_a = magmom_a
         self.nspins = paw.nspins
@@ -161,8 +162,13 @@ class Density:
                                         -Q_s[0] + Q_s[1] + M]))
 
             if self.charge == 0:
-                assert 0.83 < x < 1.17, 'x=%f' % x
-                assert 0.83 < y < 1.17, 'x=%f' % y
+                if abs(x - 1.0) > 0.17 or abs(y - 1.0) > 0.17:
+                    warning = ('Bad initial density.  Scaling factors: %f, %f'
+                               % (x, y))
+                    if self.idiotproof:
+                        raise RuntimeError(warning)
+                    else:
+                        print(warning)
 
             self.nt_sG[0] *= x
             self.nt_sG[1] *= y
