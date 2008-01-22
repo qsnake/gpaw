@@ -4,7 +4,7 @@ from gpaw import Calculator
 from gpaw.mpi import rank, MASTER
 from gpaw.testing.g2 import get_g2, atoms
 from gpaw.testing.atomization_data import atomization_vasp
-from ASE.Utilities.Parallel import paropen
+from ase.parallel import paropen
 from sys import stderr
 
 cell = [12., 13., 14.]
@@ -36,3 +36,4 @@ for formula in systems:
     else:
         print >>data, formula, repr(energy)
         calc.write(formula + '.gpw', mode='all')
+        data.flush()
