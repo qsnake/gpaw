@@ -1929,11 +1929,11 @@ def get_g2(name, cell=(1.0, 1.0, 1.0)):
     if name in atoms:
         loa =  Atoms([Atom(name, magmom=atoms[name])], cell=cell, pbc=False)
     elif name in molecules:
-        loa = eval(name)
+        loa = eval(name).copy()
         loa.set_cell(cell, fix=True)
-        #loa.set_pbc(False)
+        loa.set_pbc(False)
     else:
         raise NotImplementedError('System %s not in database.' % name)
 
     loa.center()
-    return loa.Copy()
+    return loa
