@@ -217,6 +217,8 @@ setenv GPAW_PYTHON /mnt/nas2/wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4
             print >> f,"#$ -M",set['mail']
         print >> f,"#$ -m be"
         print >> f,"#$ -pe mpich",set['nodes']
+        if set['mem']:
+            print >> f, '#$ -q new8G'
         print >> f,"cd",set['wd']
         print >> f,"""
 echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
@@ -241,8 +243,9 @@ else
 fi
 export PATH=$PATH:$GPAW_HOME/tools/
 export GPAW_PYTHON=$GPAW_HOME/build/bin.linux-x86_64-2.3/gpaw-python
-
-date"""
+"""
+        print >> f, 'PYTHONPATH=$PYTHONPATH:'+env['PYTHONPATH']
+        print >> f, 'date'
         print >> f,"mpirun -np",set['nodes'],\
               "~/gridpaw/build/bin.linux-x86_64-2.3/gpaw-python",\
               set['script']
