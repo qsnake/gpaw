@@ -3,7 +3,9 @@ from gpaw.utilities import equal
 from gpaw import Calculator
 from gpaw.lrtddft import LrTDDFT
 import numpy
-numpy.seterr(all='raise')
+
+#numpy.seterr(all='raise')
+
 txt='-'
 txt='/dev/null'
 
