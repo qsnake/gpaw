@@ -316,11 +316,8 @@ class PAW(PAWExtra, Output):
                         world = value
                         if world is None:
                             world = mpi.world
-                        elif isinstance(world, mpi._Communicator):
-                            pass # correct type already
-                        else: # world should be a list of ranks
-                            arr = npy.asarray(world)
-                            world = mpi.world.new_communicator(arr)
+                        else:
+                            assert isinstance(world, mpi._Communicator)
                         self.world = world
                         self.master = (world.rank == 0)
             elif name in ['usesymm', 'lmax', 'setups', 'basis',
