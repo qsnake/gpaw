@@ -91,5 +91,5 @@ print '------ with virtual spin xc=', xc
 lr = LrTDDFT(calc, xc=xc, nspins=2)
 lr.diagonalize()
 print 'lr=', lr
-equal(lr[0].get_energy(), lr_spin[0].get_energy(), 1.e-6)
-equal(lr[1].get_energy(), lr_spin[1].get_energy(), 1.e-6)
+equal(lr[0].get_energy(), lr_spin[0].get_energy(), 2.3e-6)
+equal(lr[1].get_energy(), lr_spin[1].get_energy(), 2.9e-6)
