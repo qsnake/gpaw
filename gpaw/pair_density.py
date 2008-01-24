@@ -5,32 +5,6 @@ from gpaw.utilities import pack
 from gpaw.localized_functions import create_localized_functions
 
 
-def set_coarse_ghat(paw):
-    create = create_localized_functions
-    for nucleus in paw.nuclei:
-        # Shape functions:
-        ghat_l = nucleus.setup.ghat_l
-        Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
-                        forces=False)
-        nucleus.Ghat_L = Ghat_L
-
-        if Ghat_L is not None:
-            assert nucleus.ghat_L is not None
-            Ghat_L.set_communicator(nucleus.ghat_L.comm,
-                                    nucleus.ghat_L.root)
-
-    paw.yes_I_have_done_the_Ghat_L = True
-
-    for nucleus in paw.ghat_nuclei:
-        Ghat_L = nucleus.Ghat_L
-        if Ghat_L is None:
-            ghat_L = nucleus.ghat_L
-            I_i = npy.zeros(ghat_L.ni)
-            ghat_L.comm.sum(I_i)
-        else:
-            Ghat_L.normalize(sqrt(4 * pi))
-
-
 class PairDensity2:
     def  __init__(self, paw, finegrid):
         """Initialization needs a paw instance, and whether the compensated
@@ -40,13 +14,41 @@ class PairDensity2:
         self.finegrid = finegrid
 
         self.ghat_nuclei = paw.ghat_nuclei
+        self.gd = paw.gd
 
-        if not finegrid and not paw.yes_I_have_done_the_Ghat_L:
-            # we need to set Ghat_L on the coarse grid
-            set_coarse_ghat(paw)
+        self.yes_I_have_done_the_Ghat_L = False
+
+    def set_coarse_ghat(self):
+        create = create_localized_functions
+        for nucleus in self.ghat_nuclei:
+            # Shape functions:
+            ghat_l = nucleus.setup.ghat_l
+            Ghat_L = create(ghat_l, self.gd, nucleus.spos_c,
+                            forces=False)
+            nucleus.Ghat_L = Ghat_L
+    
+            if Ghat_L is not None:
+                assert nucleus.ghat_L is not None
+                Ghat_L.set_communicator(nucleus.ghat_L.comm,
+                                        nucleus.ghat_L.root)
+    
+        self.yes_I_have_done_the_Ghat_L = True
+    
+        for nucleus in self.ghat_nuclei:
+            Ghat_L = nucleus.Ghat_L
+            if Ghat_L is None:
+                ghat_L = nucleus.ghat_L
+                I_i = npy.zeros(ghat_L.ni)
+                ghat_L.comm.sum(I_i)
+            else:
+                Ghat_L.normalize(sqrt(4 * pi))
 
     def initialize(self, kpt, n1, n2):
         """Set wave function indices."""
+        if not self.finegrid and not self.yes_I_have_done_the_Ghat_L:
+            # we need to set Ghat_L on the coarse grid
+            self.set_coarse_ghat()
+
         self.n1 = n1
         self.n2 = n2
         self.u = kpt.u

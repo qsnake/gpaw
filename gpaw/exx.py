@@ -138,10 +138,7 @@ class EXX:
 
         pd = self.pair_density
 
-        if self.use_finegrid:
-            ghat_nuclei = pd.ghat_nuclei
-        else:
-            ghat_nuclei = pd.Ghat_nuclei
+        ghat_nuclei = pd.ghat_nuclei
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
