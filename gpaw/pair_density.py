@@ -113,8 +113,33 @@ class PairDensity:
         
         # we need to set Ghat_nuclei and Ghat_L
         # on the course grid if not initialized already
-        if not paw.yes_I_have_done_the_Ghat_L:
-            set_coarse_ghat(paw)
+        if not hasattr(paw, 'yes_I_have_done_the_Ghat_L'):
+            self.set_coarse_ghat(paw)
+
+    def set_coarse_ghat(self, paw):
+        create = create_localized_functions
+        for nucleus in self.ghat_nuclei:
+            # Shape functions:
+            ghat_l = nucleus.setup.ghat_l
+            Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
+                            forces=False)
+            nucleus.Ghat_L = Ghat_L
+    
+            if Ghat_L is not None:
+                assert nucleus.ghat_L is not None
+                Ghat_L.set_communicator(nucleus.ghat_L.comm,
+                                        nucleus.ghat_L.root)
+    
+        paw.yes_I_have_done_the_Ghat_L = True
+    
+        for nucleus in self.ghat_nuclei:
+            Ghat_L = nucleus.Ghat_L
+            if Ghat_L is None:
+                ghat_L = nucleus.ghat_L
+                I_i = npy.zeros(ghat_L.ni)
+                ghat_L.comm.sum(I_i)
+            else:
+                Ghat_L.normalize(sqrt(4 * pi))
 
     def initialize(self, kpt, i, j):
         """initialize yourself with the wavefunctions"""
