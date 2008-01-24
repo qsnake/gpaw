@@ -138,8 +138,6 @@ class EXX:
 
         pd = self.pair_density
 
-        ghat_nuclei = pd.ghat_nuclei
-
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
             psit1_G = psit_nG[n1]
@@ -212,7 +210,7 @@ class EXX:
                     # of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
                     # residuals
-                    for nucleus in ghat_nuclei:
+                    for nucleus in self.ghat_nuclei:
                         v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
                         if self.use_finegrid:
                             nucleus.ghat_L.integrate(self.vt_g, v_L)

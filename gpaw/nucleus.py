@@ -198,7 +198,7 @@ class Nucleus:
 
         self.ghat_L = ghat_L
         self.vhat_L = vhat_L
-        
+
         # Smooth core density:
         nct = self.setup.nct
         self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
@@ -230,6 +230,10 @@ class Nucleus:
                         lf.set_communicator(comm, root)
 
         self.ready = True
+
+        # Moving the atoms in a course grid EXX calculation doesn't
+        # work.  Make sure it fails:
+        self.Ghat_L = None
 
     def normalize_shape_function_and_pseudo_core_density(self):
         """Normalize shape function and pseudo core density.
