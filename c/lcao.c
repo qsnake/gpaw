@@ -164,15 +164,26 @@ PyObject * overlap(PyObject* self, PyObject *args)
 		  else
 		    for (int k = 0; k < nk; k++)
 		      {
-			double complex phase = (phase_bk[b1 * nk + k] *
-						conj(phase_bk[b2 * nk + k]));
 			double complex* Vt_mm = (Vt_skmm +
 						 (s * nk + k) * nm * nm +
 						 m1 + m2 * nm);
-			int ii = 0;
-			for (int i1 = 0; i1 < nao1; i1++)
-			  for (int i2 = 0; i2 < nao2; i2++)
-			    Vt_mm[i1 + i2 * nm] += phase * H[ii++];
+			if (m1 == m2)
+			  {
+			    int ii = 0;
+			    for (int i1 = 0; i1 < nao1; i1++)
+			      for (int i2 = 0; i2 < nao2; i2++)
+				Vt_mm[i1 + i2 * nm] += H[ii++];
+			  }
+			else
+			  {
+			    double complex phase = \
+			      (phase_bk[b1 * nk + k] *
+			       conj(phase_bk[b2 * nk + k]));
+			    int ii = 0;
+			    for (int i1 = 0; i1 < nao1; i1++)
+			      for (int i2 = 0; i2 < nao2; i2++)
+				Vt_mm[i1 + i2 * nm] += phase * H[ii++];
+			  }
 		      }
 		}
 	    }
