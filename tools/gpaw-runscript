@@ -232,17 +232,8 @@ echo; cat  $TMPDIR/machines; echo
 export MPIHOME=/opt/openmpi/path64
 export PATH=$MPIHOME/bin/:$PATH
 export LD_LIBRARY_PATH=$MPIHOME/lib64:$MPIHOME/lib:$LD_LIBRARY_PATH
-
-GPAW_HOME=$HOME/gridpaw
-export GPAW_SETUP_PATH=$GPAW_HOME/setups/generate:$GPAW_HOME/setups/gpaw-setups-0.3/setups
-if [ ${PYTHONPATH:-unknown} != unknown ]
-then
-    export PYTHONPATH=$GPAW_HOME:$PYTHONPATH
-else
-    export PYTHONPATH=$GPAW_HOME
-fi
-export PATH=$PATH:$GPAW_HOME/tools/
 """
+        print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:'+env['PYTHONPATH']
         print >> f, 'date'
