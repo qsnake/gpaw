@@ -524,6 +524,62 @@ class AllElectron:
             self.e_j[j] = e
             u *= 1.0 / sqrt(npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr))
 
+
+    def solve_confined(self, j, rc, vconf=None):
+        """
+        Solves the Schroedinger equation like the solve method, but with a
+        number of differences.  Before invoking this method, run solve() to
+        get initial guesses.
+
+        Parameters:
+            j: solves only for the state given by j
+            rc: solution cutoff. Solution will be zero outside this.
+            vconf: added to the potential (use this as confinement potential)
+
+        Returns: a tuple containing the solution u and its energy e. 
+
+        Unlike the solve method, this method will not alter any attributes of
+        this object.
+        """
+        r = self.r
+        dr = self.dr
+        vr = self.vr.copy()
+        if vconf is not None:
+            vr += vconf
+
+        c2 = -(r / dr)**2
+        c10 = -self.d2gdr2 * r**2 # first part of c1 vector
+
+        if j is None:
+            n,l,e,u=3,2,-0.15,self.u_j[-1].copy()
+        else:
+            n = self.n_j[j]
+            l = self.l_j[j]
+            e = self.e_j[j]
+            u = self.u_j[j].copy()
+            
+        nodes = n - l - 1 # analytically expected number of nodes
+        delta = -0.2 * e
+        nn, A = shoot_confined(u, l, vr, e, self.r2dvdr, r, dr, c10, c2,
+                       self.scalarrel, rc=rc, beta=self.beta)
+        
+        # adjust eigenenergy until u is smooth at the turning point
+        de = 1.0
+        while abs(de) > 1e-9:
+            norm = npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr)
+            u *= 1.0 / sqrt(norm)
+            de = 0.5 * A / norm
+            x = abs(de / e)
+            if x > 0.1:
+                de *= 0.1 / x
+            e -= de
+            assert e < 0.0
+
+            nn, A = shoot_confined(u, l, vr, e, self.r2dvdr, r, dr, c10, c2,
+                                   self.scalarrel, rc=rc, beta=self.beta)
+        u *= 1.0 / sqrt(npy.dot(npy.where(abs(u) < 1e-160, 0, u)**2, dr))
+        return u, e
+
     def kin(self, l, u, e=None): # XXX move to Generator
         r = self.r[1:]
         dr = self.dr[1:]
@@ -547,6 +603,39 @@ class AllElectron:
         kr[1:-1] += fp[:-1] * u[2:]
         kr[0] = 0.0
         return kr
+
+    def r2g(self, r):
+        """Convert radii to indices of the radial grid"""
+        return int(r * self.N / (self.beta + r))
+
+    def get_confinement_potential(self, alpha, ri, rc):
+        """
+        Returns a (potential) function which is zero inside the radius ri
+        and goes to infinity smoothly at rc, after which point it is nan.
+        The potential is given by
+
+
+                 alpha         /   rc - ri \
+        V(r) = --------   exp ( - --------- )   for   ri < r < rc
+                rc - r         \    r - ri /
+
+        """
+        i_ri = self.r2g(ri)
+        i_rc = self.r2g(rc)
+        if self.r[i_rc] == rc:
+            # Avoid division by zero in the odd case that rc coincides
+            # exactly with a grid point (which actually happens sometimes)
+            i_rc -= 1
+
+        potential = npy.zeros(npy.shape(self.r))
+        r = self.r[i_ri+1:i_rc+1]
+        exponent = - (rc - ri) / (r - ri)
+        denom = rc - r
+        value = npy.exp(exponent) / denom
+        potential[i_ri+1:i_rc+1] = value
+        potential[i_rc+1:] = float('nan')
+
+        return alpha * potential
 
 def shoot(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
     """n, A = shoot(u, l, vr, e, ...)
@@ -614,6 +703,90 @@ generate a good initial guess for the density).
         # perform backwards integration from infinity to the turning point
         g = len(u) - 2
         u[-2] = u[-1] * f0[-1] / fm[-1]
+        while c0[g] > 0.0: # this defines the classical turning point
+            u[g - 1] = (f0[g] * u[g] + fp[g] * u[g + 1]) / fm[g]
+            if u[g - 1] < 0.0:
+                # There should't be a node here!  Use a more negative
+                # eigenvalue:
+                print '!!!!!!',
+                return 100, None
+            if u[g - 1] > 1e100:
+                u *= 1e-100
+            g -= 1
+
+        # stored values of the wavefunction and the first derivative
+        # at the turning point
+        gtp = g + 1
+        utp = u[gtp]
+        dudrplus = 0.5 * (u[gtp + 1] - u[gtp - 1]) / dr[gtp]
+    else:
+        gtp = gmax
+
+    # set boundary conditions at r -> 0
+    u[0] = 0.0
+    u[1] = 1.0
+
+    # perform forward integration from zero to the turning point
+    g = 1
+    nodes = 0
+    while g <= gtp: # integrate one step further than gtp
+                    # (such that dudr is defined in gtp)
+        u[g + 1] = (fm[g] * u[g - 1] - f0[g] * u[g]) / fp[g]
+        if u[g + 1] * u[g] < 0:
+            nodes += 1
+        g += 1
+    if gmax is not None:
+        return
+
+    # scale first part of wavefunction, such that it is continuous at gtp
+    u[:gtp + 2] *= utp / u[gtp]
+
+    # determine size of the derivative discontinuity at gtp
+    dudrminus = 0.5 * (u[gtp + 1] - u[gtp - 1]) / dr[gtp]
+    A = (dudrplus - dudrminus) * utp
+
+    return nodes, A
+
+def shoot_confined(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False,
+                   gmax=None, rc=10., beta=7.):
+    """
+    This method is used by the solve_confined method.
+    """
+
+    if scalarrel:
+        x = 0.5 * alpha**2 # x = 1 / (2c^2)
+        Mr = r * (1.0 + x * e) - x * vr
+    else:
+        Mr = r
+    c0 = l * (l + 1) + 2 * Mr * (vr - e * r)
+    if gmax is None and npy.alltrue(c0 > 0):
+        print """
+Problem with initial electron density guess!  Try to run the program
+with the '-n' option (non-scalar-relativistic calculation) and then
+try again without the '-n' option (this will generate a good initial
+guess for the density).
+"""
+        raise SystemExit
+    c1 = c10
+    if scalarrel:
+        c0 += x * r2dvdr / Mr
+        c1 = c10 - x * r * r2dvdr / (Mr * dr)
+
+    # vectors needed for numeric integration of diff. equation
+    fm = 0.5 * c1 - c2
+    fp = 0.5 * c1 + c2
+    f0 = c0 - 2 * c2
+
+    if gmax is None:
+        gcut = int(round(rc * len(r) / (beta + rc)))
+        # set boundary conditions at r -> oo (u(oo) = 0 is implicit)
+        u[gcut-1] = 1.
+        u[gcut:] = 0.
+
+        # perform backwards integration from infinity to the turning point
+        g = gcut-2
+        u[g] = u[g+1] * f0[g+1] / fm[g+1]
+        
         while c0[g] > 0.0: # this defines the classical turning point
             u[g - 1] = (f0[g] * u[g] + fp[g] * u[g + 1]) / fm[g]
             if u[g - 1] < 0.0:
