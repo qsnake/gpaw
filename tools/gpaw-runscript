@@ -242,12 +242,11 @@ else
     export PYTHONPATH=$GPAW_HOME
 fi
 export PATH=$PATH:$GPAW_HOME/tools/
-export GPAW_PYTHON=$GPAW_HOME/build/bin.linux-x86_64-2.3/gpaw-python
 """
+        print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:'+env['PYTHONPATH']
         print >> f, 'date'
-        print >> f,"mpirun -np",set['nodes'],\
-              "~/gridpaw/build/bin.linux-x86_64-2.3/gpaw-python",\
+        print >> f,"mpirun -np",set['nodes'], '$GPAW_PYTHON',\
               set['script']
         print >> f,"""date
 echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
