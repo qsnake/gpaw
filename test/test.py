@@ -63,7 +63,7 @@ if len(tests) == 0:
              'lrtddft.py', 'apmb.py',
              'fixmom.py',
              #'wannier-hwire.py',
-             'exx.py', 'ldos.py',
+             'exx.py', 'exx_coarse.py', 'ldos.py',
              'revPBE_Li.py','ylexpand.py',
              'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
@@ -73,9 +73,6 @@ if len(tests) == 0:
         'lxc_xcatom.py'
         ]
     tests = tests + tests_lxc
-tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
-                  'parallel/par8.py', 'parallel/par6.py',
-                  'parallel/exx.py']
 
 tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
                   'parallel/par8.py', 'parallel/par6.py',
