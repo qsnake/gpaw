@@ -6,7 +6,7 @@ from gpaw.utilities import equal
 a = 4.0
 h = 0.2
 hydrogen = Atoms([Atom('H', (a / 2, a / 2, a / 2))],
-                       cell=(a, a, a))
+                 cell=(a, a, a))
 
 calc = Calculator(h=h, nbands=1, convergence={'energy': 1e-6})
 hydrogen.set_calculator(calc)

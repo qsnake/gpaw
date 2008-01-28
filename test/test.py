@@ -51,6 +51,7 @@ if len(tests) == 0:
              'denom_int.py', 'transformations.py', 'XC2.py', 'poisson.py',
              'XC2Spin.py', 'integral4.py', 'd2Excdn2.py',
              'multipoletest.py', 'proton.py', 'restart.py', 'timing.py',
+             'ase3k.py',
              'xcatom.py', 'coulomb.py', 'nonselfconsistentLDA.py', 'bee1.py',
              #'kli.py',
              'revPBE.py', 'nonselfconsistent.py', 'mixer.py',
