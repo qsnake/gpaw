@@ -123,7 +123,7 @@ main(int argc, char **argv)
 
   Py_INCREF(&MPIType);
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
-  import_array();
+  import_array1(-1);
   return Py_Main(argc, argv);
 }
 #endif
