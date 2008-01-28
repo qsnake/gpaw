@@ -913,7 +913,7 @@ class PAW(PAWExtra, Output):
     
     def __del__(self):
         """Destructor:  Write timing output before closing."""
-        if not hasattr(self, 'txt'):
+        if not hasattr(self, 'txt') or self.txt is None:
             return
         
         if hasattr(self, 'timer'):
@@ -1044,8 +1044,11 @@ class PAW(PAWExtra, Output):
         if self.reuse_old_density:
             nt_sG = self.density.nt_sG
             D_asp = {}
+            P_auni = {}
             for nucleus in self.my_nuclei:
                 D_asp[nucleus.a] = nucleus.D_sp
+                if self.kpt_u is not None:
+                    P_auni[nucleus.a] = nucleus.P_uni
                 
         type_a, basis_a = self.create_nuclei_and_setups(Z_a)
 
@@ -1183,6 +1186,8 @@ class PAW(PAWExtra, Output):
             self.density.initialized = True
             for a, D_sp in D_asp.items():
                 self.nuclei[a].D_sp[:] = D_sp
+            for a, P_uni in P_auni.items():
+                self.nuclei[a].P_uni[:] = P_uni
 
         self.print_init(pos_ac)
 
