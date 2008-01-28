@@ -115,10 +115,12 @@ class XCNonLocalCorrection:
         # This method is called before initialization of motherxc in pass_stuff
         if self.motherxc.slater_part == None:
             #print "GLLB: Not applying the PAW-corrections!"
+            H_sp[:] = 0.0
             return 0 #Grr....
 
         if not self.motherxc.initialization_ready:
             #print "GLLB: Initialization not ready."
+            H_sp[:] = 0.0
             return 0 #Grr...
 
         deg = len(D_sp)
