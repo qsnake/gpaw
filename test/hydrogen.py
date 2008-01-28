@@ -15,7 +15,7 @@ e1 = hydrogen.get_potential_energy()
 calc.set(kpts=(1, 1, 1))
 e2 = hydrogen.get_potential_energy()
 print e1 - e2
-equal(e1, e2, 2e-13)
+equal(e1, e2, 3e-7)
 
 kT = 0.001
 calc.set(width=kT)

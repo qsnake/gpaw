@@ -1,6 +1,8 @@
 import os
 import os.path
 
+
+from ase.units import Bohr, Hartree
 from ase.data import atomic_names
 import numpy as npy
 
@@ -58,18 +60,26 @@ def write(paw, filename, mode):
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
 
-        pos_ac, Z_a, cell_cc, pbc_c = paw.last_atomic_configuration
-        magmom_a, tag_a = paw.extra_list_of_atoms_stuff
+        atoms = paw.atoms
+        
+        magmom_a = atoms.get_magnetic_moments()
+        tag_a = atoms.get_tags()
+        if magmom_a is None:
+            magmom_a = npy.zeros(paw.natoms)
+        if tag_a is None:
+            tag_a = npy.zeros(paw.natoms, int)
         
         w.dimension('natoms', paw.natoms)
         w.dimension('3', 3)
 
-        w.add('AtomicNumbers', ('natoms',), Z_a, units=(0, 0))
-        w.add('CartesianPositions', ('natoms', '3'), pos_ac, units=(1, 0))
+        w.add('AtomicNumbers', ('natoms',),
+              atoms.get_atomic_numbers(), units=(0, 0))
+        w.add('CartesianPositions', ('natoms', '3'),
+              atoms.get_positions() / Bohr, units=(1, 0))
         w.add('MagneticMoments', ('natoms',), magmom_a, units=(0, 0))
         w.add('Tags', ('natoms',), tag_a, units=(0, 0))
-        w.add('BoundaryConditions', ('3',), pbc_c, units=(0, 0))
-        w.add('UnitCell', ('3', '3'), cell_cc, units=(1, 0))
+        w.add('BoundaryConditions', ('3',), atoms.get_pbc(), units=(0, 0))
+        w.add('UnitCell', ('3', '3'), atoms.get_cell() / Bohr, units=(1, 0))
 
         w.add('PotentialEnergy', (), paw.Etot + 0.5 * paw.S,
               units=(0, 1))
@@ -124,7 +134,7 @@ def write(paw, filename, mode):
         w['SoftGauss'] = paw.nuclei[0].setup.softgauss
         w['FixDensity'] = paw.fixdensity > paw.maxiter
         w['DensityConvergenceCriterion'] = p['convergence']['density']
-        w['EnergyConvergenceCriterion'] = p['convergence']['energy']
+        w['EnergyConvergenceCriterion'] = p['convergence']['energy'] / Hartree
         w['EigenstatesConvergenceCriterion'] = p['convergence']['eigenstates']
         w['NumberOfBandsToConverge'] = p['convergence']['bands']
         w['Ekin'] = paw.Ekin
@@ -391,13 +401,6 @@ def read(paw, reader):
     paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
 
     paw.occupation.set_fermi_level(r['FermiLevel'])
-
-    try:
-        paw.error = {'density': r['DensityError']}
-        paw.error['energy'] = r['EnergyError']
-        paw.error['eigenstates'] = r['EigenstateError'] 
-    except (AttributeError, KeyError):
-        pass
 
     # Wave functions and eigenvalues:
     nkpts = len(r.get('IBZKPoints'))

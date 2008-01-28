@@ -30,21 +30,6 @@ class Calculator(PAW):
 
         PAW.__init__(self, filename, **kwargs)
 
-        self.text('ase:  ', os.path.dirname(ase.__file__))
-        self.text('numpy:', os.path.dirname(npy.__file__))
-        self.text('units: Angstrom and eV')
-
-    def convert_units(self, parameters):
-        if parameters.get('h') is not None:
-            parameters['h'] /= self.a0
-        if parameters.get('width') is not None:
-            parameters['width'] /= self.Ha
-        if parameters.get('external') is not None:
-            parameters['external'] = parameters['external'] / self.Ha
-        if ('convergence' in parameters and
-            'energy' in  parameters['convergence']):
-            parameters['convergence']['energy'] /= self.Ha
-        
     def get_potential_energy(self, atoms=None, force_consistent=False):
         """Return total energy.
 
@@ -53,7 +38,7 @@ class Calculator(PAW):
         returned."""
         
         if atoms is None:
-            atoms = self.atoms_from_file
+            atoms = self.atoms
 
         self.calculate(atoms)
 
@@ -77,16 +62,6 @@ class Calculator(PAW):
         """Return the stress for the current state of the ListOfAtoms."""
         raise NotImplementedError
 
-    """
-    def _SetListOfAtoms(self, atoms):
-        ""Make a weak reference to the ListOfAtoms.""
-        self.lastcount = -1
-        self.atoms = weakref.proxy(atoms)
-        self.extra_list_of_atoms_stuff = (atoms.GetTags(),
-                                          atoms.GetMagneticMoments())
-        self.plot_atoms()
-    """
-    
     def get_number_of_bands(self):
         """Return the number of bands."""
         return self.nbands 

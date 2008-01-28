@@ -24,7 +24,7 @@ class KPoint:
     The ``KPoint`` class takes care of all wave functions for a
     certain **k**-point and a certain spin."""
     
-    def __init__(self, gd, weight, s, k, u, k_c, dtype, timer = None):
+    def __init__(self, gd, weight, s, k, u, k_c, dtype, timer=None):
         """Construct **k**-point object.
 
         Parameters:
@@ -75,7 +75,6 @@ class KPoint:
          ======== =======================================================
         """
 
-        self.gd = gd
         self.weight = weight
         self.dtype = dtype
         self.timer = timer
@@ -85,7 +84,7 @@ class KPoint:
             # Gamma-point calculation:
             self.k_c = None
         else:
-            sdisp_cd = self.gd.domain.sdisp_cd
+            sdisp_cd = gd.domain.sdisp_cd
             for c in range(3):
                 for d in range(2):
                     self.phase_cd[c, d] = exp(2j * pi *
@@ -96,12 +95,16 @@ class KPoint:
         self.k = k  # k-point index
         self.u = u  # combined spin and k-point index
 
+        self.set_grid_descriptor(gd)
+        
+        self.psit_nG = None
+
+    def set_grid_descriptor(self, gd):
+        self.gd = gd
         # Which CPU does overlap-matrix Cholesky-decomposition and
         # Hamiltonian-matrix diagonalization?
         self.comm = self.gd.comm
-        self.root = u % self.comm.size
-        
-        self.psit_nG = None
+        self.root = self.u % self.comm.size
 
     def allocate(self, nbands):
         """Allocate arrays."""
@@ -192,9 +195,8 @@ class KPoint:
         
         for nucleus in my_nuclei:
             P_ni = nucleus.P_uni[self.u]
-
             S_nn += npy.dot(P_ni, cc(npy.inner(nucleus.setup.O_ii, P_ni)))
-        
+
         self.comm.sum(S_nn, self.root)
 
         if self.comm.rank == self.root:

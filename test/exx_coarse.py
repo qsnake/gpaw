@@ -33,7 +33,7 @@ for fg in fgl:
     E[fg] = loa.get_potential_energy()
     timer.stop(tstr)
 
-timer.write()
+timer.write(sys.stdout)
 
 print 'Total energy on the fine grid   =', E[True]
 print 'Total energy on the coarse grid =', E[False]

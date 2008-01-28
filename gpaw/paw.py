@@ -214,8 +214,10 @@ class PAW(PAWExtra, Output):
         all symmetries will be used to reduce the number of
         **k**-points."""
 
-        input_parameters = {
-            'h':             None,
+        self.timer = Timer()
+
+        self.input_parameters = {
+            'h':             None,  # Angstrom
             'xc':            'LDA',
             'gpts':          None,
             'kpts':          None,
@@ -225,11 +227,11 @@ class PAW(PAWExtra, Output):
             'nbands':        None,
             'setups':        'paw',
             'basis':         {},
-            'width':         None,
+            'width':         None,  # eV
             'spinpol':       None,
             'usesymm':       True,
             'stencils':      (2, 3),
-            'convergence':   {'energy': 0.001,
+            'convergence':   {'energy': 0.001,  # eV
                               'density': 1.0e-3,
                               'eigenstates': 1.0e-9,
                               'bands': 'occupied'},
@@ -240,8 +242,7 @@ class PAW(PAWExtra, Output):
             'random':        False,
             'maxiter':       120,
             'parsize':       None,
-            'external':      None,
-            'decompose':     None,
+            'external':      None,  # eV
             'verbose':       0,
             'eigensolver':   'rmm-diis',
             'poissonsolver': None,
@@ -249,14 +250,9 @@ class PAW(PAWExtra, Output):
             'idiotproof'   : True
             }
 
-        # Initialize as dummy dictionary - the set-method will load each
-        # entry properly. The dummy dict is filled with an instance of object,
-        # since values of None would be improperly handled
-        self.input_parameters = {}.fromkeys(input_parameters, object())
-        self.input_parameters['convergence'] = {}
-
-        self.converged = False
         self.initialized = False
+        self.converged = False
+        self.error = {}
         self.wave_functions_initialized = False
         self.wave_functions_orthonormalized = False
         self.callback_functions = []
@@ -265,140 +261,79 @@ class PAW(PAWExtra, Output):
 
         self.eigensolver = None
         self.density = None
+        self.kpt_u = None
         self.nbands = None
+        self.atoms = None
 
-        self.set(**input_parameters)
         if filename is not None:
             reader = self.read_parameters(filename)
 
-        if 0:#'convergence' in kwargs:
-            self.input_parameters['convergence'].update(kwargs['convergence'])
-            del kwargs['convergence']
-
-        #self.input_parameters.update(kwargs)
-        #self.set(**self.input_parameters)
         self.set(**kwargs)
-        # One could also do input_parameters.update(kwargs), but that may
-        # overwrite some entries in the more complex items such as
-        # 'convergence'
-
-        if filename is not None:
-            self.initialize(self.atoms_from_file)
-            gpaw.io.read(self, reader)
-            self.plot_atoms(self.atoms_from_file)
 
         Output.__init__(self)
 
-        self.print_logo()
+        if filename is not None:
+            self.initialize()
+            gpaw.io.read(self, reader)
+            self.plot_atoms(self.atoms)
 
     def set(self, **kwargs):
         p = self.input_parameters
+        
         if (kwargs.get('h') is not None) and (kwargs.get('gpts') is not None):
             raise TypeError("""You can't use both "gpts" and "h"!""")
+        if 'h' in kwargs:
+            p['gpts'] = None
+        if 'gpts' in kwargs:
+            p['h'] = None
+
+        # Special treatment for convergence criteria dictionary:
+        if kwargs.get('convergence') is not None:
+            cc = p['convergence']
+            cc.update(kwargs['convergence'])
+            kwargs['convergence'] = cc
+
+        p.update(kwargs)
+
+        self.initialized = False
+        self.reuse_old_density = True
+        
+        for key in kwargs:
+            if key in ['fixmom', 'mixer', 'convergence', 'fixdensity',
+                       'verbose', 'txt', 'hund', 'random', 'maxiter',
+                       'eigensolver', 'poissonsolver', 'idiotproof']:
+                continue
+
+            # More drastic changes:
+            self.converged = False
+            self.error = {}
+            self.wave_functions_orthonormalized = False
+            if key in ['lmax', 'width', 'stencils', 'external']:
+                pass
+            elif key in ['charge', 'xc']:
+                self.reuse_old_density = False
+            elif key in ['kpts', 'nbands']:
+                self.kpt_u = None
+            elif key in ['h', 'gpts', 'setups', 'basis', 'spinpol',
+                         'usesymm', 'parsize', 'communicator']:
+                self.reuse_old_density = False
+                self.kpt_u = None
             
-        self.convert_units(kwargs)  # ASE???
-
-        names = kwargs.keys()
-        names.sort()
-        #for name, value in kwargs.items():
-        for name in names:
-            value = kwargs[name]
-            if name in ['gpts', 'h', 'kpts', 'spinpol', 'xc', 'communicator']:
-                if p[name] != value:
-                    # theses are severe changes, we need new densities and
-                    # wave functions
-                    self.initialized = False
-                    self.wave_functions_initialized = False
-                    self.converged = False
-                    if name == 'communicator':
-                        self.input_parameters[name] = value
-                        world = value
-                        if world is None:
-                            world = mpi.world
-                        else:
-                            assert isinstance(world, mpi._Communicator)
-                        self.world = world
-                        self.master = (world.rank == 0)
-            elif name in ['usesymm', 'lmax', 'setups', 'basis',
-                          'stencils', 'fixmom', 'fixdensity']:
-                self.converged = False
-                self.input_parameters[name] = value
-            elif name == 'nbands':
-                if p[name] != value:
-                    # we should have new wave functions
-                    self.wave_functions_initialized = False
-                    self.converged = False
-            elif name == 'charge':
-                if p[name] != value:
-                    self.converged = False
-                    # we use the old wave functions to initialize
-                    # the density and Hamiltonian
-                    if 'fixmom' in kwargs:
-                        fixmom = kwargs['fixmom']
-                    else:
-                        fixmom = p['fixmom']
-                    if self.initialized:
-                        # note: this might cause trouble if other arguments,
-                        # processed either before or later, have special
-                        # dependencies on self.initialized
-                        self.initialize_occupation(kwargs['charge'], 
-                                                   self.nbands,
-                                                   self.kT, fixmom)
-                        self.occupation.calculate(self.kpt_u)
-                        self.initialize_from_wave_functions()
-                        self.density.charge = kwargs['charge'] 
-                        # ugly, change XXXXX
-
-            elif name == 'convergence':
-                self.converged = False
-                p['convergence'].update(value)
-                kwargs[name] = p['convergence']
-                # We want to run p.update(kwargs) later. kwargs must then
-                # contain the full p['convergence'], or else p['convergence']
-                # will be overwritten by kwargs['convergence']
-                # which may lack some entries
-                
-                if self.eigensolver is not None:
-                    tol = p['convergence']['eigenstates']
-                    self.eigensolver.set_tolerance(tol)
-                    
-            elif name == 'mixer':
-                # Try to change the mixer:
-                if self.density is not None:
-                    self.density.set_mixer(self, value)
-            
-            elif name == 'width':
-                if p[name] != value:
-                    self.kT = value
-                    if self.initialized:
-                        if self.kT == 0 or 2 * self.nbands == self.nvalence:
-                            self.occupation = occupations.ZeroKelvin(
-                                self.nvalence,
-                                self.nspins)
-                        else:
-                            self.occupation = occupations.FermiDirac(
-                                self.nvalence,
-                                self.nspins, self.kT)
-                    self.converged = False
-            elif name == 'eigensolver':
-                if p[name] != value:
-                    eig = value
-                    if isinstance(eig, str):
-                        self.eigensolver = get_eigensolver(eig)
-                    else:
-                        self.eigensolver = eig
-                    if self.wave_functions_initialized:
-                        self.eigensolver.initialize(self)
-                self.converged = False
-            elif name == 'txt':
-                self.set_txt(value)
-            elif name not in p:
-                raise RuntimeError('Unknown keyword: %s' % name)
-
-        self.input_parameters.update(kwargs)
-                
     def calculate(self, atoms):
         """Update PAW calculaton if needed."""
+
+        if (self.atoms is not None and
+            ((len(atoms) != len(self.atoms) or
+              (atoms.get_atomic_numbers() !=
+               self.atoms.get_atomic_numbers()).any() or
+              (atoms.get_cell() != self.atoms.get_cell()).any() or
+              (atoms.get_pbc() != self.atoms.get_pbc()).any()))):
+            # Drastic changes:
+            self.kpt_u = None
+            self.reuse_old_density = False
+            self.initialize(atoms)
+            self.find_ground_state(atoms)
+            return
 
         if not self.initialized:
             self.initialize(atoms)
@@ -409,32 +344,14 @@ class PAW(PAWExtra, Output):
             self.find_ground_state(atoms)
             return
 
-        pos_ac, Z_a, cell_cc, pbc_c = self.last_atomic_configuration
-
-        if (len(atoms) != self.natoms or
-            npy.sometrue(atoms.get_atomic_numbers() != Z_a) or
-            npy.sometrue((atoms.get_cell() / self.a0 != cell_cc).ravel()) or
-            (atoms.get_pbc() != pbc_c).any()):
-            # Drastic changes:
-            self.wave_functions_initialized = False
-            self.initialize(atoms)
-            self.find_ground_state(atoms)
-            return
-
-        # Something else has changed:
-        if (atoms.get_positions() / self.a0 != pos_ac).any():
-            # It was the positions:
-            # Wave functions are no longer orthonormal!
+        if (atoms.get_positions() != self.atoms.get_positions()).any():
+            # The positions have changed.  Wave functions are no
+            # longer orthonormal!
             self.wave_functions_orthonormalized = False
             self.find_ground_state(atoms)
-        else:
-            # It was something that we don't care about - like
-            # velocities, masses, ...
-            pass
         
     def get_atoms(self):
-        atoms = self.atoms_from_file
-        self.atoms_from_file = None
+        atoms = self.atoms.copy()
         atoms.set_calculator(self)
         return atoms
 
@@ -444,10 +361,16 @@ class PAW(PAWExtra, Output):
         self.print_parameters()
         self.set_positions(atoms)
         self.initialize_kinetic()
+        if not self.eigensolver.initialized:
+            # We know that we have enough memory to initialize the
+            # eigensolver here:
+            self.eigensolver.initialize(self)
         if not self.wave_functions_initialized:
             self.initialize_wave_functions()
         if not self.wave_functions_orthonormalized:
             self.orthonormalize_wave_functions()
+        if not self.density.initialized:
+            self.density.update(self.kpt_u, self.symmetry)
         self.hamiltonian.update(self.density)
 
         # Self-consistency loop:
@@ -502,15 +425,12 @@ class PAW(PAWExtra, Output):
         array holding all the pseudo core densities is updated."""
 
         if atoms is None:
-            pos_ac = self.last_atomic_configuration[0]
+            atoms = self.atoms
         else:
             # Save the state of the atoms:
-            pos_ac = atoms.get_positions() / self.a0
-            self.last_atomic_configuration = (
-                pos_ac,
-                atoms.get_atomic_numbers(),
-                atoms.get_cell() / self.a0,
-                atoms.get_pbc())
+            self.atoms = atoms.copy()
+            
+        pos_ac = atoms.get_positions() / Bohr
 
         movement = False
         for nucleus, pos_c in zip(self.nuclei, pos_ac):
@@ -647,13 +567,8 @@ class PAW(PAWExtra, Output):
         self.fixdensity = max(2, self.fixdensity)
 
     def initialize_wave_functions(self):
-
-        # we know that we have enough memory to
-        # initialize the eigensolver here
         p = self.input_parameters
 
-        self.eigensolver.initialize(self)
-        
         #if not self.wave_functions_initialized:
         if self.kpt_u[0].psit_nG is None:
             # Initialize wave functions from atomic orbitals:
@@ -698,9 +613,7 @@ class PAW(PAWExtra, Output):
             kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei,
                                        self.my_nuclei)
 
-
     def orthonormalize_wave_functions(self):
-       
         for kpt in self.kpt_u:
             run([nucleus.calculate_projections(kpt)
                 for nucleus in self.pt_nuclei])
@@ -888,7 +801,8 @@ class PAW(PAWExtra, Output):
             p['convergence']['eigenstates'] = r['Tolerance']
         else:
             p['convergence'] = {'density': r['DensityConvergenceCriterion'],
-                                'energy': r['EnergyConvergenceCriterion'],
+                                'energy':
+                                r['EnergyConvergenceCriterion'] * Hartree,
                                 'eigenstates':
                                 r['EigenstatesConvergenceCriterion'],
                                 'bands': r['NumberOfBandsToConverge']}
@@ -932,7 +846,14 @@ class PAW(PAWExtra, Output):
             p['fixmom'] = r['FixMagneticMoment']
             self.converged = r['Converged']
 
-        p['width'] = r['FermiWidth'] 
+        p['width'] = r['FermiWidth'] * Hartree
+
+        try:
+            self.error['density'] = r['DensityError']
+            self.error['energy'] = r['EnergyError']
+            self.error['eigenstates'] = r['EigenstateError'] 
+        except (AttributeError, KeyError):
+            pass
 
         pos_ac = r.get('CartesianPositions')
         Z_a = npy.asarray(r.get('AtomicNumbers'), int)
@@ -941,42 +862,20 @@ class PAW(PAWExtra, Output):
         tag_a = r.get('Tags')
         magmom_a = r.get('MagneticMoments')
 
-        self.last_atomic_configuration = (pos_ac, Z_a, cell_cc, pbc_c)
-        self.extra_list_of_atoms_stuff = (magmom_a, tag_a)
-        #elf.extra_       _atoms_stuff = (magmom_a, tag_a) XXXX
-
-        self.atoms_from_file = Atoms(positions=pos_ac * self.a0,
-                                     numbers=Z_a,
-                                     tags=tag_a,
-                                     magmoms=magmom_a,
-                                     cell=cell_cc * self.a0,
-                                     pbc=pbc_c)
+        self.atoms = Atoms(positions=pos_ac * Bohr,
+                           numbers=Z_a,
+                           tags=tag_a,
+                           magmoms=magmom_a,
+                           cell=cell_cc * Bohr,
+                           pbc=pbc_c)
         return r
     
-    #def reset(self, restart_file=None):
-    #    """Delete PAW-object."""
-    #    self.stop_paw()
-    #    self.restart_file = restart_file
-    #    self.pos_ac = None
-    #    self.cell_cc = None
-    #    self.pbc_c = None
-    #    self.Z_a = None
-
-    #def set_h(self, h):
-    #    self.gpts = None
-    #    self.h = h
-    #    self.reset()
-     
-    #def set_gpts(self, gpts):
-    #    self.h = None
-    #    self.gpts = gpts
-    #    self.reset()
-     
     def check_convergence(self):
         """Check convergence of eigenstates, energy and density."""
         
-        # Get convergence criteria:
+        # Get convergence criteria and error dictionaries:
         cc = self.input_parameters['convergence']
+        er = self.error
 
         # Eigenstates:
         if cc['bands'] == 'occupied':
@@ -987,7 +886,7 @@ class PAW(PAWExtra, Output):
             eigenstates_error = self.eigensolver.error / n
         else:
             eigenstates_error = 0.0
-        self.error = { 'eigenstates' : eigenstates_error }
+        er['eigenstates'] = eigenstates_error
 
         # Energy:
         if len(self.old_energies) < 3:
@@ -995,7 +894,7 @@ class PAW(PAWExtra, Output):
         else:
             energy_change = (max(self.old_energies) -
                              min(self.old_energies)) / self.natoms
-        self.error['energy'] = energy_change
+        er['energy'] = energy_change
 
         # Density:
         dNt = self.density.mixer.get_charge_sloshing()
@@ -1005,11 +904,11 @@ class PAW(PAWExtra, Output):
             dNt = 0.0
         else:
             dNt /= self.nvalence
-        self.error['density'] = dNt
+        er['density'] = dNt
 
-        self.converged = ((self.error['eigenstates'] <= cc['eigenstates']) and
-                          (energy_change < cc['energy']) and
-                          (dNt < cc['density']))
+        self.converged = ((er['eigenstates'] < cc['eigenstates']) and
+                          (er['energy'] * Hartree < cc['energy']) and
+                          (er['density'] < cc['density']))
         return self.converged
     
     def __del__(self):
@@ -1049,17 +948,28 @@ class PAW(PAWExtra, Output):
         ranks = range(r0, r0 + size, ndomains)
         self.kpt_comm = self.world.new_communicator(npy.array(ranks))
 
-    def initialize(self, atoms):
+    def initialize(self, atoms=None):
         """Inexpensive initialization."""
-        self.timer = Timer()
-        self.timer.start('Init')
 
+        if atoms is None:
+            atoms = self.atoms
+            
+        p = self.input_parameters
+        
+        self.world = p.get('communicator')
+        if self.world is None:
+            self.world = mpi.world
+        else:
+            assert isinstance(self.world, mpi._Communicator)
+        self.master = (self.world.rank == 0)
+        
+        self.set_text(p['txt'], p['verbose'])
         self.plot_atoms(atoms)
-        #########oooself.kpt_u = None
         
         self.natoms = len(atoms)
-        pos_ac = atoms.get_positions() / self.a0
-        cell_cc = atoms.get_cell() / self.a0
+
+        pos_ac = atoms.get_positions() / Bohr
+        cell_cc = atoms.get_cell() / Bohr
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
         magmom_a = atoms.get_magnetic_moments()
@@ -1069,15 +979,10 @@ class PAW(PAWExtra, Output):
         if tag_a is None:
             tag_a = npy.zeros(self.natoms, int)
 
-        self.extra_list_of_atoms_stuff = (magmom_a, tag_a)
-
-        
         # Check that the cell is orthorhombic:
         check_unit_cell(cell_cc)
         # Get the diagonal:
         cell_c = npy.diagonal(cell_cc)
-        
-        p = self.input_parameters
         
         # Set the scaled k-points:
         kpts = p['kpts']
@@ -1117,7 +1022,7 @@ class PAW(PAWExtra, Output):
                 self.text('Using default value for grid spacing.')
                 h = 0.2 / Bohr
             else:
-                h = p['h']
+                h = p['h'] / Bohr
             # N_c should be a multiplum of 4:
             N_c = npy.array([max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c])
         
@@ -1132,13 +1037,21 @@ class PAW(PAWExtra, Output):
             self.dtype = float
         else:
             self.dtype = complex
-            
-        # Is this a "linear combination of atomic orbitals" type of
-        # calculation?
-        #self.lcao = (p['eigensolver'] == 'lcao')
-        # use eigensolver.lcao ?
 
+        if self.density is None:
+            self.reuse_old_density = False
+            
+        if self.reuse_old_density:
+            nt_sG = self.density.nt_sG
+            D_asp = {}
+            for nucleus in self.my_nuclei:
+                D_asp[nucleus.a] = nucleus.D_sp
+                
         type_a, basis_a = self.create_nuclei_and_setups(Z_a)
+
+        self.eigensolver = p['eigensolver']
+        if isinstance(self.eigensolver, str):
+            self.eigensolver = get_eigensolver(self.eigensolver)
 
         # Brillouin zone stuff:
         if self.gamma:
@@ -1178,9 +1091,11 @@ class PAW(PAWExtra, Output):
                 self.kT = 0
             else:
                 self.kT = 0.1 / Hartree
-        
+        else:
+            self.kT /= Hartree
+            
         self.initialize_occupation(p['charge'], p['nbands'],
-                                   self.kT, p['fixmom'])
+                                   self.kT, p['fixmom'], magmom_a)
 
         self.stencils = p['stencils']
         self.maxiter = p['maxiter']
@@ -1212,19 +1127,33 @@ class PAW(PAWExtra, Output):
         # Number of k-point/spin combinations on this cpu:
         self.nmyu = nu // self.kpt_comm.size
 
-        self.kpt_u = []
-        for u in range(self.nmyu):
-            s, k = divmod(self.kpt_comm.rank * self.nmyu + u, self.nkpts)
-            weight = self.weight_k[k] * 2 / self.nspins
-            k_c = self.ibzk_kc[k]
-            if self.eigensolver.lcao:
-                self.kpt_u.append(LCAOKPoint(self.nuclei,
-                                             self.gd, weight, s, k, u, k_c,
-                                             self.dtype))
-            else:
-                self.kpt_u.append(KPoint(self.gd, weight, s, k, u, k_c,
-                                         self.dtype,self.timer))
+        if self.kpt_u is None:
+            self.wave_functions_initialized = False
+            self.wave_functions_orthonormalized = False
+            self.kpt_u = []
+            for u in range(self.nmyu):
+                s, k = divmod(self.kpt_comm.rank * self.nmyu + u, self.nkpts)
+                weight = self.weight_k[k] * 2 / self.nspins
+                k_c = self.ibzk_kc[k]
+                if self.eigensolver.lcao:
+                    self.kpt_u.append(LCAOKPoint(self.nuclei,
+                                                 self.gd, weight, s, k, u, k_c,
+                                                 self.dtype))
+                else:
+                    self.kpt_u.append(KPoint(self.gd, weight, s, k, u, k_c,
+                                             self.dtype, self.timer))
+        else:
+            for kpt in self.kpt_u:
+                kpt.set_grid_descriptor(self.gd)
 
+        cc = p['convergence']  # convergence criteria
+        er = self.error        # errors
+
+        if len(er) != 0:
+            self.converged = ((er['eigenstates'] < cc['eigenstates']) and
+                              (er['energy'] * Hartree < cc['energy']) and
+                              (er['density'] < cc['density']))
+        
         self.locfuncbcaster = LocFuncBroadcaster(self.kpt_comm)
 
         self.my_nuclei = []
@@ -1248,18 +1177,23 @@ class PAW(PAWExtra, Output):
             nucleus.set_position(spos_c, self.domain, self.my_nuclei,
                                  self.nspins, self.nmyu, self.nbands)
             
+        if self.reuse_old_density:
+            self.density.nt_sG[:] = nt_sG
+            self.density.interpolate_pseudo_density()
+            self.density.initialized = True
+            for a, D_sp in D_asp.items():
+                self.nuclei[a].D_sp[:] = D_sp
+
         self.print_init(pos_ac)
 
         if dry_run:
             estimate_memory(self)
-            self.timer.stop('Init')
             self.txt.flush()
             sys.exit()
 
         self.initialized = True
-        self.timer.stop('Init')
 
-    def initialize_occupation(self, charge, nbands, kT, fixmom):
+    def initialize_occupation(self, charge, nbands, kT, fixmom, magmom_a):
         """Sets number of valence orbitals and initializes
         occupation"""
 
@@ -1282,7 +1216,7 @@ class PAW(PAWExtra, Output):
 
         # check number of bands ?  XXX
         
-        M = sum(self.extra_list_of_atoms_stuff[0])
+        M = magmom_a.sum()
 
         if self.nbands <= 0:
             self.nbands = int(self.nvalence + M + 0.5) // 2 + (-self.nbands)

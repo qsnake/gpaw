@@ -95,7 +95,7 @@ class Eigensolver:
         H_nn = self.H_nn
 
         hamiltonian.kin.apply(psit_nG, Htpsit_nG, kpt.phase_cd)
-            
+        
         Htpsit_nG += psit_nG * hamiltonian.vt_sG[kpt.s]
 
         H_nn[:] = 0.0  # r2k fails without this!
@@ -105,11 +105,10 @@ class Eigensolver:
         self.timer.stop('Non-local xc')
         
         r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
-        
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
-            H_nn += npy.dot(P_ni, npy.dot(unpack(nucleus.H_sp[kpt.s]),
-                                          cc(npy.transpose(P_ni))))
+            dH_ii = unpack(nucleus.H_sp[kpt.s])
+            H_nn += npy.dot(P_ni, npy.inner(dH_ii, P_ni).conj())
 
         self.comm.sum(H_nn, kpt.root)
 

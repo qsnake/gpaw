@@ -4,6 +4,7 @@ import time
 from math import log
 
 import numpy as npy
+import ase
 from ase.data import chemical_symbols
 
 from gpaw.utilities import devnull
@@ -16,31 +17,38 @@ class Output:
     """Class for handling all text output."""
 
     def __init__(self):
+        self.txt = None
+
+    def set_text(self, txt, verbose=True):
         """Set the stream for text output.
 
         If `txt` is not a stream-object, then it must be one of:
 
-        ``None``:
-          Throw output away.
-        ``'-'``:
-          Use standard-output (``sys.stdout``).
-        A filename:
-          open a new file.
+        * None:  Throw output away.
+        * '-':  Use standard-output (``sys.stdout``).
+        * A filename:  Open a new file.
         """
 
-        p = self.input_parameters
-        self.verbose = p['verbose']
+        self.verbose = verbose
 
-    def set_txt(self, txt):
+        firsttime = (self.txt is None)
+        
         if txt is None or (not self.master):
-            txt = devnull
+            self.txt = devnull
         elif txt == '-':
-            txt = sys.stdout
+            self.txt = sys.stdout
         elif isinstance(txt, str):
-            txt = open(txt, 'w')
-        self.txt = txt
-
-        #self.print_logo()
+            if isinstance(self.txt, file) and self.txt.name == txt:
+                pass
+            else:
+                if not firsttime:
+                    # We want every file to start with the logo, so
+                    # that the ase.io.read() function will recognize
+                    # it as a GPAW text file.
+                    firsttime = True 
+                self.txt = open(txt, 'w')
+        if firsttime:
+            self.print_logo()
         
     def text(self, *args, **kwargs):
         self.txt.write(kwargs.get('sep', ' ').join([str(arg)
@@ -57,11 +65,15 @@ class Output:
         self.text()
 
         uname = os.uname()
-        self.text('User:', os.getenv('USER') + '@' + uname[1])
+        self.text('User:', os.getenv('USER', '???') + '@' + uname[1])
         self.text('Date:', time.asctime())
         self.text('Arch:', uname[4])
         self.text('Pid: ', os.getpid())
         self.text('Dir: ', os.path.dirname(gpaw.__file__))
+        self.text('ase:  ', os.path.dirname(ase.__file__))
+        self.text('numpy:', os.path.dirname(npy.__file__))
+        self.text('units: Angstrom and eV')
+
                   
     def print_init(self, pos_ac):
         t = self.text
@@ -162,8 +174,10 @@ class Output:
         cc = p['convergence']
         t()
         t('Convergence Criteria:')
-        t('Total Energy Change per Atom:           %8g eV / atom' % (cc['energy'] * self.Ha))
-        t('Integral of Absolute Density Change:    %8g electrons' % cc['density'])
+        t('Total Energy Change per Atom:           %8g eV / atom' %
+          (cc['energy']))
+        t('Integral of Absolute Density Change:    %8g electrons' %
+          cc['density'])
         t('Integral of Absolute Eigenstate Change: %8g' % cc['eigenstates'])
         if cc['bands'] == 'occupied':
             t('Converge Occupied States Only.')

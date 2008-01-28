@@ -65,7 +65,7 @@ class Nucleus:
         self.a = a
         self.dtype = dtype
         lmax = setup.lmax
-        self.Q_L = npy.zeros((lmax + 1)**2)
+        self.Q_L = npy.empty((lmax + 1)**2)
         self.neighbors = []
         self.spos_c = npy.array([-1.0, -1.0, -1.0])
 
@@ -92,9 +92,9 @@ class Nucleus:
     def allocate(self, nspins, nmyu, nbands):
         ni = self.get_number_of_partial_waves()
         np = ni * (ni + 1) // 2
-        self.D_sp = npy.zeros((nspins, np))
-        self.H_sp = npy.zeros((nspins, np))
-        self.P_uni = npy.zeros((nmyu, nbands, ni), self.dtype)
+        self.D_sp = npy.empty((nspins, np))
+        self.H_sp = npy.empty((nspins, np))
+        self.P_uni = npy.empty((nmyu, nbands, ni), self.dtype)
         self.F_c = npy.zeros(3)
         if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
             self.vxx_uni = npy.empty((nmyu, nbands, ni), self.dtype)
