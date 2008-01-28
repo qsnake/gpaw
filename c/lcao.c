@@ -96,7 +96,7 @@ PyObject * overlap(PyObject* self, PyObject *args)
 	    {
 	      beg[c] = MAX(lf1->start[c], lf2->start[c]);
 	      end[c] = MIN(lf1->start[c] + lf1->size0[c],
-			     lf2->start[c] + lf2->size0[c]);
+			   lf2->start[c] + lf2->size0[c]);
 	      size[c] = end[c] - beg[c];
 	      if (size[c] <= 0)
 		{
@@ -125,13 +125,9 @@ PyObject * overlap(PyObject* self, PyObject *args)
 	      double dv = lf1->dv; 
 	      int m2 = m_b[b2];
 	      if (b2 > b1)
-		{
-		  for (int i = 0; i < nao2; i++)
-		    bmgs_cut(f2 + i * lf2->ng0, lf2->size0, beg2,
-			     a2 + i * ng, size);
-		  if (m1 == m2)
-		    dv *= 2;
-		}
+		for (int i = 0; i < nao2; i++)
+		  bmgs_cut(f2 + i * lf2->ng0, lf2->size0, beg2,
+			   a2 + i * ng, size);
 	      else
 		  a2 = f2;
 	      for (int s = 0; s < nspins; s++)
@@ -156,10 +152,19 @@ PyObject * overlap(PyObject* self, PyObject *args)
 		  if (nk == 0)
 		    {
 		      double* Vt_mm = (Vt_smm + s * nm * nm + m1 + m2 * nm);
-		      int ii = 0;
-		      for (int i1 = 0; i1 < nao1; i1++)
-			for (int i2 = 0; i2 < nao2; i2++)
-			  Vt_mm[i1 + i2 * nm] += H[ii++];
+		      if (b2 == b1)
+			for (int i1 = 0; i1 < nao1; i1++)
+			  for (int i2 = i1; i2 < nao2; i2++)
+			    Vt_mm[i1 + i2 * nm] += H[i2 + i1 * nao2];
+		      else if (m1 == m2)
+			for (int i1 = 0; i1 < nao1; i1++)
+			  for (int i2 = i1; i2 < nao2; i2++)
+			    Vt_mm[i1 + i2 * nm] += (H[i2 + i1 * nao2] +
+						    H[i1 + i2 * nao2]);
+		      else
+			for (int ii = 0, i1 = 0; i1 < nao1; i1++)
+			  for (int i2 = 0; i2 < nao2; i2++, ii++)
+			    Vt_mm[i1 + i2 * nm] += H[ii];
 		    }
 		  else
 		    for (int k = 0; k < nk; k++)
@@ -167,22 +172,25 @@ PyObject * overlap(PyObject* self, PyObject *args)
 			double complex* Vt_mm = (Vt_skmm +
 						 (s * nk + k) * nm * nm +
 						 m1 + m2 * nm);
-			if (m1 == m2)
-			  {
-			    int ii = 0;
-			    for (int i1 = 0; i1 < nao1; i1++)
-			      for (int i2 = 0; i2 < nao2; i2++)
-				Vt_mm[i1 + i2 * nm] += H[ii++];
-			  }
-			else
+			if (b2 == b1)
+			  for (int i1 = 0; i1 < nao1; i1++)
+			    for (int i2 = i1; i2 < nao2; i2++)
+			      Vt_mm[i1 + i2 * nm] += H[i2 + i1 * nao2];
+			else 			  
 			  {
 			    double complex phase = \
 			      (phase_bk[b1 * nk + k] *
 			       conj(phase_bk[b2 * nk + k]));
-			    int ii = 0;
-			    for (int i1 = 0; i1 < nao1; i1++)
-			      for (int i2 = 0; i2 < nao2; i2++)
-				Vt_mm[i1 + i2 * nm] += phase * H[ii++];
+			    if (m1 == m2)
+			      for (int i1 = 0; i1 < nao1; i1++)
+				for (int i2 = i1; i2 < nao2; i2++)
+				  Vt_mm[i1 + i2 * nm] += \
+				    (phase * H[i2 + i1 * nao2] +
+				     conj(phase) * H[i1 + i2 * nao2]);
+			    else
+			      for (int ii = 0, i1 = 0; i1 < nao1; i1++)
+				for (int i2 = 0; i2 < nao2; i2++, ii++)
+				  Vt_mm[i1 + i2 * nm] += phase * H[ii];
 			  }
 		      }
 		}

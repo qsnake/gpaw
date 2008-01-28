@@ -17,8 +17,7 @@ class LCAOKPoint(KPoint):
             for nucleus in self.nuclei:
                 niao = nucleus.get_number_of_atomic_orbitals()
                 m2 = m1 + niao
-                nucleus.phit_i.add(psit_G, self.C_nm[n, m1:m2])
+                nucleus.phit_i.add(psit_G, self.C_nm[n, m1:m2], self.k)
                 m1 = m2
             nt_G += self.f_n[n] * (psit_G * psit_G.conj()).real
-
         

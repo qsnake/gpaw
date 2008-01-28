@@ -9,26 +9,26 @@ class LCAO:
 
     def __init__(self):
         self.lcao = True # paw object wants to know this
+        self.initialized = False
 
     def initialize(self, paw):
         self.gd = paw.gd
         self.nuclei = paw.nuclei
-        self.initialized = False
         self.error = 0.0
         self.nspins = paw.nspins
         self.nkpts = paw.nkpts
         self.nbands = paw.nbands
         self.dtype = paw.dtype
+        self.initialized = True
 
     def iterate(self, hamiltonian, kpt_u):
-        if not self.initialized:
+        if not hamiltonian.initialized:
             hamiltonian.initialize()
             nao = hamiltonian.nao
             self.eps_m = npy.empty(nao)
             self.S_mm = npy.empty((nao, nao), self.dtype)
             self.Vt_skmm = npy.empty((self.nspins, self.nkpts, nao, nao),
                                      self.dtype)
-            self.initialized = True
 
         hamiltonian.calculate_effective_potential_matrix(self.Vt_skmm)
         for kpt in kpt_u:
@@ -40,7 +40,6 @@ class LCAO:
         u = kpt.u
         
         H_mm = self.Vt_skmm[s, k]
-
         for nucleus in self.nuclei:
             dH_ii = unpack(nucleus.H_sp[s])
             P_mi = nucleus.P_kmi[k]
@@ -49,7 +48,11 @@ class LCAO:
         H_mm += hamiltonian.T_kmm[k]
 
         self.S_mm[:] = hamiltonian.S_kmm[k]
-        diagonalize(H_mm, self.eps_m, self.S_mm)
+        #error = diagonalize(self.S_mm, self.eps_m)
+        #print self.eps_m, error
+        error = diagonalize(H_mm, self.eps_m, self.S_mm)
+        if error != 0:
+            raise RuntimeError('Error code from dsyevd/zheevd: %d.' % error)
         kpt.C_nm = H_mm[0:self.nbands].copy()  # XXX
         kpt.eps_n[:] = self.eps_m[0:self.nbands]
         

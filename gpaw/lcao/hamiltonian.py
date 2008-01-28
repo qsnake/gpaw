@@ -19,6 +19,7 @@ class LCAOHamiltonian(Hamiltonian):
         self.ibzk_kc = paw.ibzk_kc
         self.gamma = paw.gamma
         self.dtype = paw.dtype
+        self.initialized = False
 
     def initialize(self):
         self.nao = 0
@@ -49,7 +50,7 @@ class LCAOHamiltonian(Hamiltonian):
                 if self.gamma:
                     nucleus1.P_kmi[0] += P_mi
                 else:
-                    phase_k = npy.exp(2j * pi * npy.dot(self.ibzk_kc, R_c))
+                    phase_k = npy.exp(-2j * pi * npy.dot(self.ibzk_kc, R_c))
                     for k in range(nkpts):
                         nucleus1.P_kmi[k] += P_mi * phase_k[k]
                     
@@ -78,14 +79,13 @@ class LCAOHamiltonian(Hamiltonian):
                 for k in range(nkpts):            
                     self.S_kmm[k] += S_mm * phase_k[k]
                     self.T_kmm[k] += T_mm * phase_k[k]
-                
+
         for nucleus in self.nuclei:
             dO_ii = nucleus.setup.O_ii
             for S_mm, P_mi in zip(self.S_kmm, nucleus.P_kmi):
                 S_mm += npy.dot(P_mi, npy.inner(dO_ii, P_mi).conj())
 
-        print self.S_kmm
-        print self.T_kmm
+        self.initialized = True
 
     def p_overlap(self, R_c, i1, pos1, id1, l1, m1, P_mi, tci):
         i2 = 0
@@ -170,7 +170,6 @@ class LCAOHamiltonian(Hamiltonian):
             b1 = b2
 
         overlap(lfs_b, m_b, phase_bk, self.vt_sG, Vt_skmm)
-        print Vt_skmm
 
     def old_initialize(self):
         self.nao = 0
