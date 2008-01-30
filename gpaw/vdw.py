@@ -1,58 +1,147 @@
+import os
+from math import pi, sqrt
+
 import numpy as npy
+from ase.units import Hartree
+
 from gpaw.xc_functional import XCFunctional
 #these are used for calculating the gradient
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
 from gpaw.xc_functional import XC3DGrid
-from math import pi
 from gpaw.transformers import Transformer
 from gpaw.utilities import  check_unit_cell
-from ASE.Units import Convert
-import os
+import gpaw.mpi as mpi
+import _gpaw
+
 
 class VanDerWaals:
-    # 
-    def __init__(self,density,gd=None,unitcell=None,xcname='revPBE',pbc=(True,True,True)):
-        #self.Nunit=periodic_number_unitcells
-        self.periodic=pbc 
-        self.xcname=xcname
-        #the density must be given with the shape spin,gridpoint_x,gridpoint_y,gridpoint_z,
-        #This class only works for non spin polarized calculations. In case of spinpolarized 
-        #calcultions, one should ad the spin up and spin down  densities and use that as input.  
-        #
+    def __init__(self, n_g, gd, xcname='revPBE', ncoarsen=0):
+        """Van der Waals object.
 
-        self.density = density
-        if gd is None:
-            unitcell = npy.array(unitcell)
-            check_unit_cell(unitcell)
-            unitcell=unitcell.ravel()[::4]
-            gd = GridDescriptor(Domain(unitcell,periodic=self.periodic), self.density.shape)
+        Bla-bla-bla, ref to paper, ...
+
+        ... the density must be given with the shape
+        spin,gridpoint_x,gridpoint_y,gridpoint_z, This class only
+        works for non spin polarized calculations. In case of
+        spinpolarized calcultions, one should ad the spin up and spin
+        down densities and use that as input.
+
+        Parameters
+        ----------
+        n_g : 3D ndarray of floats
+            Electron density.
+        gd : GridDescriptor
+            Grid-descriptor object.
+        xcname : string
+            Name of the XC functional used.  Default value: revPBE.
+        """
+        
         self.gd = gd
-        self.h_c = gd.h_c
-        #GGA Exchange og Correlation
-        v = self.gd.zeros()
-        xc = XC3DGrid(self.xcname, gd)
-        self.GGA_xc_energy = xc.get_energy_and_potential(self.density, v)
-        #Set self.a2_g
+
+        v_g = gd.empty()
+
+        # GGA exchange and correlation:
+        xc = XC3DGrid(xcname, gd)
+        self.GGA_xc_energy = xc.get_energy_and_potential(n_g, v_g)
         self.a2_g = xc.a2_g
-        #LDA correlation energy
+
+        # LDA correlation energy:
         c = XC3DGrid('None-C_PW', gd)
-        self.LDA_c_energy = c.get_energy_and_potential(self.density, v)
-        #GGA exchangee energy
-        if self.xcname == 'revPBE':
-            exchange = 'X_PBE_R-None'
-        if self.xcname == 'RPBE':
-            exchange = 'X_RPBE-None'
-        #x = XC3DGrid(self.xcname+'x', gd)
-        x = XC3DGrid(exchange, gd)
-        self.GGA_x_energy = x.get_energy_and_potential(self.density, v)
-        #self.density=npy.choose(npy.less_equal(density,ncut_dens),(density,ncut_dens))
-        #hardcoded the density min is set to 1*10^-7
-        ncut_dens=0.0000001
-        self.density=npy.choose(npy.less_equal(density,ncut_dens),(density,ncut_dens))        
-        self.k_f=(3.0*pi**2*self.density)**(1.0/3.0)
-        self.q0=self.getqzero()
-        self.phimat = self.get_phitab_from_1darrays()
+        self.LDA_c_energy = c.get_energy_and_potential(n_g, v_g)
+        
+        # GGA exchange energy:
+        xname = {'revPBE': 'X_PBE_R-None','RPBE': 'X_RPBE-None'}[xcname]
+        x = XC3DGrid(xname, gd)
+        self.GGA_x_energy = x.get_energy_and_potential(n_g, v_g)
+
+        ncut = 1.0e-7
+        n_g.clip(ncut, npy.inf, out=n_g)
+
+        kF_g = (3.0 * pi**2 * n_g)**(1.0 / 3.0)
+        self.n_g = n_g
+        self.q0_g = self.get_q0(kF_g)
+
+        for n in range(ncoarsen):
+            coarsegd = self.gd.coarsen()
+            t = Transformer(self.gd, coarsegd)
+            self.n_g, n_g = coarsegd.empty(), self.n_g
+            self.q0_g, q0_g = coarsegd.empty(), self.q0_g
+            t.apply(n_g, self.n_g)
+            t.apply(q0_g, self.q0_g)
+            self.gd = coarsegd
+            
+        self.phi_jk = self.get_phitab_from_1darrays()
+
+    def get_prl_plot(self):
+        ndelta, nD = self.phi_jk.shape
+        nD8 = int(8.0 / self.deltaD)
+        D = npy.linspace(0, nD8 * self.deltaD, nD8, endpoint=False)
+        import pylab as p
+        for delta, c in [(0, 'r'), (0.5, 'g'), (0.9, 'b')]:
+            jdelta = int(delta / self.deltadelta + 0.5)
+            p.plot(D, self.phimat[jdelta, :nD8], c + '-',
+                   label=r'$\delta=%.1f$' % delta)
+        p.plot(D, 0, 'k-')
+        p.legend(loc='best')
+        p.xlabel('D')
+        p.ylabel(r'$4\pi D^2 \phi(\rm{Hartree})$')
+        p.show()
+        
+    def get_energy(self, ncut=0.0005):
+        """
+        ###################################################
+        #introduces periodic boundary conditions using
+        #the minimum image convention
+        ###################################################
+        """
+
+        gd = self.gd
+        n_g = gd.collect(self.n_g)
+        q0_g = gd.collect(self.q0_g)
+        if mpi.rank != 0:
+            n_g = gd.empty(global_array=True)
+            q0_g = gd.empty(global_array=True)
+        mpi.world.broadcast(n_g, 0)
+        mpi.world.broadcast(q0_g, 0)
+
+        n_c = self.n_g.shape
+        R_gc = npy.empty(n_c + (3,))
+        R_gc[..., 0] = (npy.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
+        R_gc[..., 1] = (npy.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
+        R_gc[..., 2] = npy.arange(0, n_c[2]) * gd.h_c[2]
+
+        mask_g = (self.n_g.ravel() > ncut)
+        R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
+        n_i = self.n_g.ravel().compress(mask_g)
+        q0_i = self.q0_g.ravel().compress(mask_g)
+
+        # Number of grid points:
+        ni = len(n_i)
+
+        # Number of pairs per processor:
+        np = ni * (ni - 1) // 2 // mpi.size
+        
+        iA = 0
+        for r in range(mpi.size):
+            iB = iA + int(0.5 - iA + sqrt((iA - 0.5)**2 + 2 * np))
+            if r == mpi.rank:
+                break
+            iA = iB
+
+        assert iA <= iB
+        
+        if mpi.rank == mpi.size - 1:
+            iB = ni
+            
+        E_cl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
+                         self.phi_jk, self.deltaD, self.deltadelta,
+                         iA, iB)
+        E_cl = mpi.world.sum(E_cl * gd.h_c.prod()**2)
+        E_nl_c = (-self.GGA_xc_energy + E_cl + self.LDA_c_energy +
+                  self.GGA_x_energy)
+        return E_nl_c * Hartree
+    
 
     def get_e_xc_LDA(self):
         e_xc_LDA=self.get_e_xc_LDA_c()+self.get_e_x_LDA()
@@ -62,10 +151,10 @@ class VanDerWaals:
         #this is for one spin only
         #PW91 LDA correlation
         c=1.7099210
-        n_up=self.density/2.0
-        n_down=self.density/2.0
+        n_up=self.n_g/2.0
+        n_down=self.n_g/2.0
         #nt=abs(n_up+n_down)
-        n=self.density
+        n=self.n_g
         #npy.choose(npy.less_equal(nt,0.00001),(nt,0.00001))
         r=(3./(4.*npy.pi*n))**(1./3.)
         zeta=(n_up-n_down)/n
@@ -79,13 +168,13 @@ class VanDerWaals:
         return(-2.*t*(1.+u*r)*npy.log(1.+1./(2.*t*(v*npy.sqrt(r)+w*r+x*r**(3./2.)+y*r**(p+1.)))))
     
     def get_e_x_LDA(self):
-        result = (-3./(4.*npy.pi)*(3.*npy.pi*npy.pi*self.density)**(1./3.))
+        result = (-3./(4.*npy.pi)*(3.*npy.pi*npy.pi*self.n_g)**(1./3.))
         return result
-    
-    def getqzero(self):
+
+    def get_q0(self, kF_g):
         #implementet as in PRL92(2004)246401-1
-        e_xc_0 = self.get_e_xc_LDA()-self.get_e_x_LDA()*(-0.8491/9.0*self.a2_g/(2.0*self.k_f*self.density)**2.0)
-        q_0 = e_xc_0/self.get_e_x_LDA()*self.k_f
+        e_xc_0 = self.get_e_xc_LDA()-self.get_e_x_LDA()*(-0.8491/9.0*self.a2_g/(2.0*kF_g*self.n_g)**2.0)
+        q_0 = e_xc_0/self.get_e_x_LDA()*kF_g
         return q_0
     
     def get_phitab_from_1darrays(self, filename='phi_delta'):
@@ -118,231 +207,12 @@ class VanDerWaals:
             for m in range(phimat.shape[1]):
                 phimat[n,m] = x[n*0.05][m]
         return phimat
-    
-    def getphi(self,D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N):
-        #a linear interpolation scheme
-        #Asymtotisk graense
-        C = 12.0*(4.0*pi/9.0)**3.0
-        ddot2 = (D*(1-delta))**2.0
-        d2 = (D*(1+delta))**2.0
-        phi_asym = -C/(d2*ddot2*(d2+ddot2))
-        mask = npy.where(D>=Dtab[-1],1,0)
-        #phi(D=0, delta=x)=0 per definition
-        #D is set to max int phitab, to make the interpolation possible
-        D = npy.choose(mask,(D,Dtab[-1]-deltaD/100.0))
-        #dette er aendre her phi(D=0, delta=x)=0 per definition
-        n_D = (D/deltaD).astype(int) #-1 because Dtab starts at h and not 0
-        #delta above the upper limit of delta in phitab is set to just below the upper limit
-        delta = npy.choose(npy.greater_equal(delta,deltatab[len(deltatab)-1]),(delta,deltatab[len(deltatab)-1]-deltadelta/100.00))
-        n_delta = (delta/deltadelta).astype(int)
-        #
-        t = (D-(n_D)*deltaD)/deltaD  
-        u = (delta-n_delta*deltadelta)/deltadelta
-        hack1 = npy.take(phitab_N,(n_D+n_delta*len(Dtab)))
-        hack2 = npy.take(phitab_N,(n_D+1+n_delta*len(Dtab)))
-        hack3 = npy.take(phitab_N,(n_D+1+(n_delta+1)*len(Dtab)))
-        hack4 = npy.take(phitab_N,(n_D+(n_delta+1)*len(Dtab)))
-        Phi = (1-t)*(1-u)*hack1+t*(1-u)*hack2+t*u*hack3+(1-t)*u*hack4
-        npy.putmask(Phi,mask,phi_asym)
-        return Phi
-    def coarsen(self,oldgrid,n):
-        ##################################################
-        #function for coarsening the grid
-        ##################################################
-        if n == 1: return oldgrid
-        coarsegd = self.gd.coarsen()
-        t = Transformer(self.gd,coarsegd)
-        a=coarsegd.empty()
-        t.apply(oldgrid,a)
-        print '1'
-        if n == 2: return a
-        verycoarsegd = coarsegd.coarsen()
-        t = Transformer(coarsegd,verycoarsegd)
-        b=verycoarsegd.empty()
-        t.apply(a,b)
-        print '2'
-        if n==4: return b
-        veryverycoarsegd = verycoarsegd.coarsen()
-        t = Transformer(verycoarsegd,veryverycoarsegd)
-        c=veryverycoarsegd.empty()
-        t.apply(b,c)
-        print '3'
-        if n==8: return c    
 
-    def int_6D_n_D2_cut_periodic_mic(self):
-        ###################################################
-        #introduces periodic boundary conditions using
-        #the minimum image convention
-        ###################################################
-        ###imports arrays used by GetPhi
-        Dtab = npy.arange(0,self.Dmax+self.deltaD,self.deltaD)
-        deltatab = npy.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
-        deltaD = self.deltaD
-        deltadelta = self.deltadelta
-        phitab_N = self.phimat.copy()
-        phitab_N.shape = [self.phimat.shape[0]*self.phimat.shape[1]]
-        #import parameters used local
-        n = self.n
-        ncut = self.ncut
-        h_c = self.h_c
-        self.test=denstab =self.coarsen(self.density,n)
-        denstab = self.density
-        nx, ny, nz = self.density[::n,::n,::n].shape
-        R = npy.zeros((nx, ny, nz, 3))
-        for x in range(nx):
-            for y in range(ny):
-                for z in range(nz):
-                    R[x, y, z] = [x, y, z]*h_c*n
-
-
-        N = nx * ny * nz
-        R.shape = (N,3)
-        qtab_N = self.q0[::n,::n,::n].copy()
-        #print qtab_N.shape
-        qtab_N.shape = [N]
-        denstab_N = denstab[::n,::n,::n].copy()
-        denstab_N.shape = [N]
-        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
-        R=npy.compress(npy.greater_equal(denstab_N,ncut),R,axis=0)
-        denstab_N=npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
-        #for analysis
-        self.denstab_N=denstab_N
-        print 'denstab_N.shape', denstab_N.shape[0]
-        E_cl = 0.0
-        #self.trackEnl = []
-        uc = self.h_c*self.gd.N_c
-        #for nn in range(len(self.periodic)):
-        #    if self.periodic == False:
-        #         uc[nn] = uc[nn]*4.
-        for m in range(denstab_N.shape[0]):
-            Rm = R[m]
-            t = R - Rm
-            for mm in range(len(self.periodic)):
-                if self.periodic[mm]:
-                    t[:,mm]=(t[:,mm]+(3./2.)*uc[mm])%uc[mm]-uc[mm]/2.0
-            #tmic=(t+(3./2.)*uc)%uc-uc/2.0
-            #r = npy.sqrt(npy.sum(tmic**2.0,axis=1))
-            #print r
-            r = npy.sqrt(npy.sum(t**2.0,axis=1))
-            #self.r=r
-            D = (qtab_N[m]+qtab_N)*r/2.0
-            #The next line is a work around singularities for D=0
-            Dmult = npy.choose(npy.less(D,1e-4),(D,10.0**8))
-            #I have set delta to be positive, is this a definition?
-            delta = npy.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
-            E_tmp = npy.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(npy.pi*4.0*Dmult**2))
-            #self.trackEnl.append(E_tmp)
-            E_cl = E_cl+E_tmp
-            #print E_tmp
-            #print D
-        E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        #print denstab.shape
-        self.E_cl = E_cl
-        return E_cl
-
-    def int_6D_n_D2_cut_periodic_mic_coarsen(self):
-        ###################################################
-        #introduces periodic boundary conditions using
-        #the minimum image convention
-        ###################################################
-        ###imports arrays used by GetPhi
-        Dtab = npy.arange(0,self.Dmax+self.deltaD,self.deltaD)
-        deltatab = npy.arange(0,self.deltamax+self.deltadelta,self.deltadelta)
-        deltaD = self.deltaD
-        deltadelta = self.deltadelta
-        phitab_N = self.phimat.copy()
-        phitab_N.shape = [self.phimat.shape[0]*self.phimat.shape[1]]
-        #import parameters used local
-        n = self.n
-        ncut = self.ncut
-        h_c = self.h_c
-        denstab =self.coarsen(self.density,n)
-        
-        #denstab = self.density
-        print 'denstab.shape', denstab.shape
-        nx, ny, nz = denstab.shape
-        #self.density[::n,::n,::n].shape
-        R = npy.zeros((nx, ny, nz, 3))
-        for x in range(nx):
-            for y in range(ny):
-                for z in range(nz):
-                    R[x, y, z] = [x, y, z]*h_c*n
-
-
-        N = nx * ny * nz
-        print N
-        R.shape = (N,3)
-        qtab_N = self.coarsen(self.q0.copy(),n)
-        print 'qtab_N.shape',qtab_N.shape
-        qtab_N.shape = [N]
-        #denstab_N = denstab[::n,::n,::n].copy()
-        denstab_N = denstab.copy()
-        denstab_N.shape = [N]
-        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
-        R=npy.compress(npy.greater_equal(denstab_N,ncut),R,axis=0)
-        denstab_N=npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
-        #for analysis
-        self.denstab_N=denstab_N
-        print 'denstab_N.shape', denstab_N.shape[0]
-        E_cl = 0.0
-        #self.trackEnl = []
-        uc = self.h_c*self.gd.N_c
-        #for nn in range(len(self.periodic)):
-        #    if self.periodic == False:
-        #         uc[nn] = uc[nn]*4.
-        for m in range(denstab_N.shape[0]):
-            Rm = R[m]
-            t = R - Rm
-            for mm in range(len(self.periodic)):
-                if self.periodic[mm]:
-                    t[:,mm]=(t[:,mm]+(3./2.)*uc[mm])%uc[mm]-uc[mm]/2.0
-            #tmic=(t+(3./2.)*uc)%uc-uc/2.0
-            #r = npy.sqrt(npy.sum(tmic**2.0,axis=1))
-            #print r
-            r = npy.sqrt(npy.sum(t**2.0,axis=1))
-            #self.r=r
-            D = (qtab_N[m]+qtab_N)*r/2.0
-            #The next line is a work around singularities for D=0
-            Dmult = npy.choose(npy.less(D,1e-4),(D,10.0**8))
-            #I have set delta to be positive, is this a definition?
-            delta = npy.absolute(qtab_N[m]-qtab_N)/(qtab_N[m]+qtab_N)
-            E_tmp = npy.sum(denstab_N[m]*denstab_N[:]*self.getphi(D,delta,Dtab,deltatab,deltaD,deltadelta,phitab_N)/(npy.pi*4.0*Dmult**2))
-            #self.trackEnl.append(E_tmp)
-            E_cl = E_cl+E_tmp
-            #print E_tmp
-            #print D
-        E_cl = 0.5*E_cl*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        #print denstab.shape
-        self.E_cl = E_cl
-        return E_cl
-
-    def GetEnergy(self,n=1,ncut=0.0005):
-        self.n = n
-        self.ncut = ncut
-        print self.periodic
-        #E_nl = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic()+self.LDA_c_energy+self.GGA_x_energy
-        #test coarsen
-        E_nl_c = -self.GGA_xc_energy+self.int_6D_n_D2_cut_periodic_mic_coarsen()+self.LDA_c_energy+self.GGA_x_energy
-        #return Convert(E_nl,'Hartree','eV'),Convert(E_nl_c,'Hartree','eV')
-        return Convert(E_nl_c,'Hartree','eV')
-    def plotphi(self,ymax=8):
-        import pylab as pylab
-        Dtab = npy.arange(0,self.Dmax+self.deltaD,self.deltaD)
-        pylab.ion()
-        pylab.figure(55)
-        ymax=int(ymax/self.deltaD)
-        for n in [0,10,18]:
-            pylab.plot(Dtab[:ymax],self.phimat[n,:ymax],label='delta='+str(n*0.05))
-        pylab.legend(loc='upper right')
-        pylab.ylabel(r'$\phi *4\pi D^2$')
-        pylab.xlabel(r'$D$')
-        pylab.plot(Dtab[:ymax],npy.zeros(len(self.phimat[0,:ymax])))
-        pylab.show()
-    def GetC6(self,n=1,ncut=0.0005):
+    def get_c6(self,n=1,ncut=0.0005):
         #Returns C6 in units of Hartree
         ncut=ncut
         h_c = self.h_c
-        denstab=self.density
+        denstab=self.n_g
         nx, ny, nz = denstab[::n,::n,::n].shape
         print 'denstab.shape' ,denstab.shape
         N = nx * ny * nz
@@ -375,11 +245,11 @@ class VanDerWaals:
         self.mikd = denstab_N
         return C6 ,'Ha*a0**6'
 
-    def GetC6_coarse(self,n=1,ncut=0.0005):
+    def get_c6_coarse(self,n=1,ncut=0.0005):
         #Returns C6 in units of Hartree
         ncut=ncut
         h_c = self.h_c
-        denstab =self.coarsen(self.density,n)
+        denstab =self.coarsen(self.n_g,n)
         print 'denstab.shape' ,denstab.shape
         nx, ny, nz = denstab.shape
         N = nx * ny * nz
