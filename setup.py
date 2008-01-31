@@ -164,7 +164,7 @@ extension = Extension('_gpaw',
                       extra_objects=extra_objects)
 
 scripts = [join('tools', script)
-           for script in ('gpaw-setup', 'gpaw')]
+           for script in ('gpaw-setup', 'gpaw-basis', 'gpaw')]
 
 write_configuration(define_macros, include_dirs, libraries, library_dirs,
                     extra_link_args, extra_compile_args,
