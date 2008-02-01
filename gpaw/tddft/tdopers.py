@@ -140,7 +140,7 @@ class TimeDependentHamiltonian:
         """
         p = npy.reshape(psit, (1,) + psit.shape)
         hp = npy.reshape(hpsit, (1,) + hpsit.shape)
-        kpt.apply_hamiltonian(self.hamiltonian, p, hp)
+        self.hamiltonian.apply(p, hp, kpt)
         if self.td_potential is not None:
             strength = self.td_potential.strength
             kpt.add_linear_xfield( self.pt_nuclei, p, hp,
@@ -263,7 +263,7 @@ class TimeDependentOverlap:
     overlap operator to a wavefunction.
     """
     
-    def __init__(self, pt_nuclei):
+    def __init__(self, overlap):
         """Creates the TimeDependentOverlap-object.
         
         =========== ==========================================================
@@ -273,7 +273,7 @@ class TimeDependentOverlap:
         =========== ==========================================================
 
         """
-        self.pt_nuclei = pt_nuclei
+        self.overlap = overlap
     
     def update(self):
         """Updates the time-dependent overlap operator. !Currently does nothing!
@@ -317,9 +317,9 @@ class TimeDependentOverlap:
         """
         p = npy.reshape(psit, (1,) + psit.shape)
         sp = npy.reshape(spsit, (1,) + spsit.shape)
-        kpt.apply_overlap( self.pt_nuclei,
-                           #psit[None, ...], hpsit[None, ...], 
-                           p, sp )
+        self.overlap.apply(p, sp, kpt)
+        # self.overlap.apply(psit[None, ...], hpsit[None, ...], kpt)
+
 
 
 

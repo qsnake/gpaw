@@ -186,3 +186,40 @@ class Hamiltonian:
         self.Exc = comm.sum(Exc)
 
         self.timer.stop('Hamiltonian')
+
+    def apply(self, a_nG, b_nG, kpt, calculate_P_uni=True):
+        """Apply the Hamiltonian operator to a set of vectors.
+
+        Parameters
+        ..........
+        a_nG           : ndarray, input
+            Set of vectors to which the overlap operator is applied.
+        b_nG           : ndarray, output
+            Resulting S times a_nG vectors.
+        kpt            : KPoint object (kpoint.py), input
+
+        calculate_P_uni: boolean, input
+            When True, the integrals of projector times vectors
+            P_ni = <p_i | a_nG> are calculated.
+            When false, existing P_uni are used
+        
+        """
+
+        b_nG[:] = 0.0
+        if self.timer is not None:
+            self.timer.start('Apply pseudo-hamiltonian');
+        self.kin.apply(a_nG, b_nG, kpt.phase_cd)
+        b_nG += a_nG * self.vt_sG[kpt.s]
+        if self.timer is not None:
+            self.timer.stop('Apply pseudo-hamiltonian');
+        
+        # Apply the non-local part:
+        if self.timer is not None:
+            self.timer.start('Apply atomic hamiltonian');
+        run([nucleus.apply_hamiltonian(a_nG, b_nG, kpt, calculate_P_uni)
+             for nucleus in self.pt_nuclei])
+
+        if self.timer is not None:
+            self.timer.stop('Apply atomic hamiltonian');
+
+        

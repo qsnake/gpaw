@@ -476,41 +476,75 @@ class Nucleus:
             for x in self.pt_i.iadd(dR_G, None, k, communicate=True):
                 yield None
 
-    def apply_hamiltonian(self, a_nG, b_nG, s, k):
+    def apply_hamiltonian(self, a_nG, b_nG, kpt, calculate_P_uni=True):
         """Apply non-local part of Hamiltonian.
 
         Non-local part of the Hamiltonian is applied to ``a_nG``
-        and added to ``b_nG``."""
-        
+        and added to ``b_nG``.If calcualte_P_uni == False, existing
+        P_uni's are used.
+
+        """
+
+        k, u, s = kpt.k, kpt.u, kpt.s
         if self.in_this_domain:
-            n = len(a_nG)
-            ni = self.get_number_of_partial_waves()
-            P_ni = npy.zeros((n, ni), self.dtype)
-            self.pt_i.integrate(a_nG, P_ni, k)
+            if calculate_P_uni:
+                n = len(a_nG)
+                ni = self.get_number_of_partial_waves()
+                P_ni = npy.zeros((n, ni), self.dtype)
+                for x in self.pt_i.iintegrate(a_nG, P_ni, k):
+                    yield None
+            else:
+                P_ni = self.P_uni[u]
             H_ii = unpack(self.H_sp[s])
             coefs_ni = npy.dot(P_ni, H_ii)
-            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
+            for x in self.pt_i.iadd(b_nG, coefs_ni, k, communicate=True):
+                yield None
         else:
-            self.pt_i.integrate(a_nG, None, k)
-            self.pt_i.add(b_nG, None, k, communicate=True)
+            if calculate_P_uni:
+                for x in self.pt_i.iintegrate(a_nG, None, k):
+                    yield None
+            for x in self.pt_i.iadd(b_nG, None, k, communicate=True):
+                yield None
 
-    def apply_overlap(self, a_nG, b_nG, k):
+    def apply_overlap(self, a_nG, b_nG, kpt, calculate_P_uni=True):
         """Apply non-local part of the overlap operator.
 
-        Non-local part of the overlap operator is applied to ``a_nG``
-        and added to ``b_nG``."""
+        Non-local part of the Overlap is applied to ``a_nG``
+        and added to ``b_nG``. If calcualte_P_uni == False, existing
+        P_uni's are used.
         
-        if self.in_this_domain:
-            n = len(a_nG)
-            ni = self.get_number_of_partial_waves()
-            P_ni = npy.zeros((n, ni), self.dtype)
-            self.pt_i.integrate(a_nG, P_ni, k)
-            coefs_ni = npy.dot(P_ni, self.setup.O_ii)
-            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
-        else:
-            self.pt_i.integrate(a_nG, None, k)
-            self.pt_i.add(b_nG, None, k, communicate=True)
+        """
 
+        k, u = kpt.k, kpt.u
+        if self.in_this_domain:
+            if calculate_P_uni:
+                n = len(a_nG)
+                ni = self.get_number_of_partial_waves()
+                P_ni = npy.zeros((n, ni), self.dtype)
+                for x in self.pt_i.iintegrate(a_nG, P_ni, k):
+                    yield None
+            else:
+                P_ni = self.P_uni[u]
+            coefs_ni = npy.dot(P_ni, self.setup.O_ii)
+            for x in self.pt_i.iadd(b_nG, coefs_ni, k, communicate=True):
+                yield None
+        else:
+            if calculate_P_uni:
+                for x in self.pt_i.iintegrate(a_nG, None, k):
+                    yield None
+            for x in self.pt_i.iadd(b_nG, None, k, communicate=True):
+                yield None
+#         if self.in_this_domain:
+#             n = len(a_nG)
+#             ni = self.get_number_of_partial_waves()
+#             P_ni = npy.zeros((n, ni), self.dtype)
+#             self.pt_i.integrate(a_nG, P_ni, k)
+#             coefs_ni = npy.dot(P_ni, self.setup.O_ii)
+#             self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
+#         else:
+#             self.pt_i.integrate(a_nG, None, k)
+#             self.pt_i.add(b_nG, None, k, communicate=True)
+            
     def apply_inverse_overlap(self, a_nG, b_nG, k):
         """Apply non-local part of the approximative inverse overlap operator.
 

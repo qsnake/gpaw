@@ -26,6 +26,7 @@ from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.poisson import PoissonSolver
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
+from gpaw.overlap import Overlap
 from gpaw.lcao.hamiltonian import LCAOHamiltonian
 from gpaw.lcao.lcao import LCAOKPoint
 from gpaw.kpoint import KPoint
@@ -520,7 +521,7 @@ class PAW(PAWExtra, Output):
                 # Calculate projections and orthonormalize wave functions:
                 run([nucleus.calculate_projections(kpt)
                      for nucleus in self.pt_nuclei])
-                kpt.orthonormalize(self.my_nuclei)
+                self.overlap.orthonormalize(kpt.psit_nG, kpt)
             for nit in range(2):
                 eig.iterate(self.hamiltonian, self.kpt_u)
         else:
@@ -537,7 +538,7 @@ class PAW(PAWExtra, Output):
                 # Calculate projections and orthonormalize wave functions:
                 run([nucleus.calculate_projections(kpt)
                      for nucleus in self.pt_nuclei])
-                kpt.orthonormalize(self.my_nuclei)
+                self.overlap.orthonormalize(kpt.psit_nG, kpt)
                 if self.input_parameters['hund']:
                     assert self.natoms == 1
                     kpt.f_n[:self.nbands] = self.nuclei[0].f_si[kpt.s,
@@ -617,7 +618,7 @@ class PAW(PAWExtra, Output):
         for kpt in self.kpt_u:
             run([nucleus.calculate_projections(kpt)
                 for nucleus in self.pt_nuclei])
-            kpt.orthonormalize(self.my_nuclei)
+            self.overlap.orthonormalize(kpt.psit_nG, kpt)
         self.wave_functions_orthonormalized = True
 
     def calculate_forces(self):
@@ -1168,6 +1169,8 @@ class PAW(PAWExtra, Output):
             self.hamiltonian = LCAOHamiltonian(self)
         else:
             self.hamiltonian = Hamiltonian(self)
+
+        self.overlap = Overlap(self)
 
         self.xcfunc.set_non_local_things(self)
 

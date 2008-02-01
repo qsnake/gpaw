@@ -35,11 +35,11 @@ class KineticEnergyPreconditioner:
 
 # S^-1
 class InverseOverlapPreconditioner:
-    def __init__(self, pt_nuclei):
-        self.pt_nuclei = pt_nuclei
+    def __init__(self, overlap):
+        self.overlap = overlap
 
     def solve(self, kpt, psi, psin):
-        kpt.apply_inverse_overlap(self.pt_nuclei, psi, psin)
+        self.overlap.apply_inverse(psi, psin, kpt)
 
 
 class TDDFT:
@@ -86,7 +86,7 @@ class TDDFT:
             TimeDependentHamiltonian( paw.pt_nuclei,
                                       paw.hamiltonian,
                                       td_potential )
-        self.td_overlap = TimeDependentOverlap(paw.pt_nuclei)
+        self.td_overlap = TimeDependentOverlap(paw.overlap)
         self.td_density = TimeDependentDensity(paw)
 
         # Grid descriptor
@@ -109,7 +109,7 @@ class TDDFT:
         #self.preconditioner = KineticEnergyPreconditioner( paw.gd,
         #                                                   paw.hamiltonian.kin,
         #                                                   complex )
-        #self.preconditioner = InverseOverlapPreconditioner( paw.pt_nuclei )
+        #self.preconditioner = InverseOverlapPreconditioner( paw.overlap )
         self.preconditioner = None
 
         # Time propagator

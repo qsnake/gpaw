@@ -433,8 +433,7 @@ class RecursionMethod:
         else:
             b_c = npy.reshape(npy.zeros(self.dim), (self.dim, 1, 1, 1))
     
-        self.paw.kpt_u[u].apply_hamiltonian(self.paw.hamiltonian, 
-                                            z_cG, y_cG)
+        self.paw.hamiltonian.apply(z_cG, y_cG, self.paw.kpt_u[u])
         a_c = npy.reshape(integrate(npy.conjugate(z_cG) * y_cG), (self.dim, 1, 1, 1))
         wnew_cG = (y_cG - a_c * w_cG - b_c * wold_cG)
         wold_cG[:] = w_cG
@@ -524,16 +523,15 @@ class RecursionMethod:
     
     def solve(self, w_cG, z_cG, u):
         # exact inverse overlap
-        self.paw.kpt_u[u].apply_inverse_overlap(self.paw.pt_nuclei,
-                                                w_cG, self.tmp1_cG)
+        self.paw.overlap.apply_inverse(w_cG, self.tmp1_cG, self.paw.kpt_u[u])
         self.u = u
         CG(self, z_cG, self.tmp1_cG,
            tolerance=self.tol, maxiter=self.maxiter)
 
     def solve2(self, w_cG, z_cG, u):
         # approximate inverse overlap
-        self.paw.kpt_u[u].apply_inverse_overlap(self.paw.pt_nuclei,
-                                                w_cG, z_cG)
+        self.paw.overlap.apply_inverse(w_cG, z_cG, self.paw.kpt_u[u])
+
         self.u = u
 
     def solve3(self, w_cG, z_cG, u):
@@ -552,8 +550,8 @@ class RecursionMethod:
         """
 
         kpt = self.paw.kpt_u[self.u]
-        kpt.apply_overlap(self.paw.pt_nuclei, in_cG, self.tmp2_cG)
-        kpt.apply_inverse_overlap(self.paw.pt_nuclei, self.tmp2_cG, out_cG)
+        self.paw.overlap.apply(in_cG, self.tmp2_cG, kpt)
+        self.paw.overlap.apply_inverse(self.tmp2_cG, out_cG, kpt)
 
     def terminator(self, a, b, e):
         """ Analytic formula to terminate the continued fraction from

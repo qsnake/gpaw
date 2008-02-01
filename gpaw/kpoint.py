@@ -155,7 +155,8 @@ class KPoint:
                     nucleus.pt_i.integrate(self.psit_nG[nao:], None, self.k)
                     
             #Orthonormalize
-            self.orthonormalize(my_nuclei)
+            # CHECK! Is this needed !?!
+            # self.orthonormalize(my_nuclei)
 
     def random_wave_functions(self, psit_nG):
         """Generate random wave functions"""
@@ -185,35 +186,6 @@ class KPoint:
             interpolate2(psit_G2, psit_G1, self.phase_cd)
             interpolate1(psit_G1, psit_G, self.phase_cd)
 
-    
-    def orthonormalize(self, my_nuclei):
-        """Orthonormalize wave functions."""
-        S_nn = npy.zeros((self.nbands, self.nbands), self.dtype)
-
-        # Fill in the lower triangle:
-        rk(self.gd.dv, self.psit_nG, 0.0, S_nn)
-        
-        for nucleus in my_nuclei:
-            P_ni = nucleus.P_uni[self.u]
-            S_nn += npy.dot(P_ni, cc(npy.inner(nucleus.setup.O_ii, P_ni)))
-
-        self.comm.sum(S_nn, self.root)
-
-        if self.comm.rank == self.root:
-            # inverse returns a non-contigous matrix - grrrr!  That is
-            # why there is a copy.  Should be optimized with a
-            # different lapack call to invert a triangular matrix XXXXX
-            S_nn[:] = npy.linalg.inv(npy.linalg.cholesky(S_nn)).copy()
-
-        self.comm.broadcast(S_nn, self.root)
-        
-        gemm(1.0, self.psit_nG.copy(), S_nn, 0.0, self.psit_nG)
-
-        for nucleus in my_nuclei:
-            P_ni = nucleus.P_uni[self.u]
-            gemm(1.0, P_ni.copy(), S_nn, 0.0, P_ni)
-
-
     def add_to_density(self, nt_G):
         """Add contribution to pseudo electron-density."""
         if self.dtype == float:
@@ -222,12 +194,12 @@ class KPoint:
         else:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 nt_G += f * (psit_G * npy.conjugate(psit_G)).real
-                
+
     def add_to_kinetic_density(self, taut_G):
         """Add contribution to pseudo kinetic energy density."""
 
         ddr = [Gradient(self.gd, c).apply for c in range(3)]
-        
+
         for psit_G, f in zip(self.psit_nG, self.f_n):
             d_G = self.gd.empty()
             for c in range(3):
@@ -236,7 +208,7 @@ class KPoint:
                     taut_G += f * d_G[c]**2
                 else:
                     taut_G += f * (d_G * npy.conjugate(d_G)).real
-                
+
     def create_atomic_orbitals(self, nao, nuclei):
         """Initialize the wave functions from atomic orbitals.
 
@@ -246,7 +218,7 @@ class KPoint:
         # eigenvalues and projections:
         self.allocate(nao)
         self.psit_nG = self.gd.zeros(nao, self.dtype)
-        
+
         # fill in the atomic orbitals:
         nao0 = 0
         for nucleus in nuclei:
@@ -260,46 +232,8 @@ class KPoint:
 
         self.allocate(nbands)
         self.psit_nG = self.gd.zeros(nbands, self.dtype)
-        self.random_wave_functions(self.psit_nG)
-
-    def apply_hamiltonian(self, hamiltonian, a_nG, b_nG):
-        """Apply Hamiltonian to wave functions."""
-
-        b_nG[:] = 0.0
-        if self.timer is not None:
-            self.timer.start('Apply pseudo-hamiltonian');
-        hamiltonian.kin.apply(a_nG, b_nG, self.phase_cd)
-        b_nG += a_nG * hamiltonian.vt_sG[self.s]
-        if self.timer is not None:
-            self.timer.stop('Apply pseudo-hamiltonian');
-        
-        if self.timer is not None:
-            self.timer.start('Apply atomic hamiltonian');
-        for nucleus in hamiltonian.pt_nuclei:
-            # Apply the non-local part:
-            nucleus.apply_hamiltonian(a_nG, b_nG, self.s, self.k)
-        if self.timer is not None:
-            self.timer.stop('Apply atomic hamiltonian');
-
-    def apply_overlap(self, pt_nuclei, a_nG, b_nG):
-        """Apply overlap operator to wave functions."""
-
-        b_nG[:] = a_nG
-        
-        for nucleus in pt_nuclei:
-            # Apply the non-local part:
-            nucleus.apply_overlap(a_nG, b_nG, self.k)
+        self.random_wave_functions(self.psit_nG)                   
             
-            
-    def apply_inverse_overlap(self, pt_nuclei, a_nG, b_nG):
-        """Apply approximative inverse overlap operator to wave functions."""
-
-        b_nG[:] = a_nG
-        
-        for nucleus in pt_nuclei:
-            # Apply the non-local part:
-            nucleus.apply_inverse_overlap(a_nG, b_nG, self.k)
-
     def apply_scalar_function(self, pt_nuclei, a_nG, b_nG, func):
         """Apply scalar function f(x,y,z) to wavefunctions.
 
