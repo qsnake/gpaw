@@ -1,10 +1,8 @@
 import numpy as npy
-from ASE.Units import units, Convert
-from ASE import ListOfAtoms, Atom 
+from ase.units import Bohr
+from ase import Atoms, Atom 
 
 def ReadListOfAtomsFromCube(file):
-    a0_A = Convert(1, 'Bohr', 'Ang')
-
     f=open(file)
     # first two lines are comments
     f.readline()
@@ -17,12 +15,12 @@ def ReadListOfAtomsFromCube(file):
     f.readline()
     f.readline()
 
-    loa = ListOfAtoms([])
+    loa = Atoms([])
     for i in range(natoms):
         Z, dummy, x, y, z = f.readline().split()
-        x = float(x) * a0_A
-        y = float(y) * a0_A
-        z = float(z) * a0_A
+        x = float(x) * Bohr
+        y = float(y) * Bohr
+        z = float(z) * Bohr
         loa.append(Atom(Z=int(Z),position=(x,y,z)))
 
     return loa
@@ -34,7 +32,7 @@ def WriteCubeFloat(atoms,grid,filename):
     """
     import copy
 
-    bohr = Convert(1, 'Bohr', units.GetLengthUnit())
+    bohr = Bohr
 
     cubefile = file(filename,'w')
 

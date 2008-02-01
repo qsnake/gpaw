@@ -4,7 +4,7 @@ import numpy as npy
 
 from ase import Atom, Atoms
 from ase.io.xyz import read_xyz, write_xyz
-from ASE.IO.PDB import WritePDB
+from ase.io.pdb import write_pdb
 from gpaw.io.Cube import ReadListOfAtomsFromCube
 from gpaw.utilities.vector import Vector3d
 
@@ -84,7 +84,7 @@ class Cluster(Atoms):
         filetype.lower()
 
         if filetype == 'pdb':
-            WritePDB(filename,self)
+            write_pdb(filename,self)
         elif filetype == 'xyz':
             write_xyz(filename, self)
         else:
