@@ -246,3 +246,17 @@ PyObject* localize(PyObject *self, PyObject *args)
   return Py_BuildValue("d", value);
 #endif
 }
+
+PyObject* swap_arrays(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  PyArrayObject* b;
+  if (!PyArg_ParseTuple(args, "OO", &a, &b)) 
+    return NULL;
+
+  void *tmp = (void*) a->data;
+  a->data = b->data;
+  b->data = tmp;
+    
+  Py_RETURN_NONE;
+}

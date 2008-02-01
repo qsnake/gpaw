@@ -30,6 +30,7 @@ PyObject* elf(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
 PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
 PyObject* vdw(PyObject *self, PyObject *args);
+PyObject* swap_arrays(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
@@ -61,6 +62,7 @@ static PyMethodDef functions[] = {
   {"overlap",       overlap,        METH_VARARGS, 0},
   {"wigner_seitz_grid", wigner_seitz_grid, METH_VARARGS, 0},
   {"vdw", vdw, METH_VARARGS, 0},
+  {"swap", swap_arrays, METH_VARARGS, 0},
  {0, 0, 0, 0}
 };
 

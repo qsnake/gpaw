@@ -25,6 +25,15 @@ erf = _gpaw.erf
 fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
        362880, 3628800, 39916800, 479001600]
 
+def swap(a, b):
+    """Swap the references of a and b.
+    """
+
+    assert isinstance(a, npy.ndarray)
+    assert isinstance(b, npy.ndarray)
+    assert a.shape == b.shape
+    _gpaw.swap(a,b)
+    
 
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the
@@ -316,3 +325,4 @@ def fix2(formula):
 if not debug:
     hartree = _gpaw.hartree
     wignerseitz = _gpaw.wigner_seitz_grid
+    swap = _gpaw.swap
