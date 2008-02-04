@@ -3,12 +3,12 @@
 
 from math import pi, sqrt
 
+import sys
 import numpy as npy
 
 from gpaw.gauss import I
 from gpaw.spherical_harmonics import YL
-from gpaw.utilities import fac
-
+from gpaw.utilities import fac, warning
 
 GAUSS = False
 
@@ -30,7 +30,21 @@ class GInteraction2:
                                   (self.lmaxb + 1)**2,
                                   3))
 
+        rcutcomp = setupa.rcutcomp + setupb.rcutcomp
+        rcutfilter = setupa.rcutfilter + setupb.rcutfilter
+        rcutproj = max(setupa.rcut_j) + max(setupb.rcut_j)
+        rcore = setupa.rcore + setupb.rcore
+        self.cutoffs = ('Summed cutoffs: %4.2f(comp), %4.2f(filt), '
+                        '%4.2f(core), %4.2f(proj) Bohr' % (
+            rcutcomp, rcutfilter, rcore, rcutproj))
+        self.mindist = rcutproj - .3
+
     def __call__(self, R):
+        dist = sqrt(npy.sum(R**2))
+        if dist > 0 and dist < self.mindist:
+            print >> sys.stderr, warning('Atomic distance: %4.2f Bohr.\n%s' % (
+                dist, self.cutoffs))
+
         if not self.softgauss:
             return (self.v_LL, -self.dvdr_LLc)
         for la in range(self.lmaxa + 1):
