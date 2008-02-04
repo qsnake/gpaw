@@ -66,8 +66,7 @@ if additional_info:
     print >> out, '# xc:',paw.hamiltonian.xc.xcfunc.get_name()
     if  p['charge']:
         print >> out, '# charge:',p['charge']
-    pos_ac, Z_a, cell_cc, pbc_c = paw.last_atomic_configuration
-    cell = cell_cc.diagonal() * a0
+    cell = paw.get_atoms().get_cell().diagonal()
     h = cell / p['gpts']
     print >> out, '# unit cell=', cell
     print >> out, '# h=', h
