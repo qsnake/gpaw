@@ -2,14 +2,13 @@ import traceback
 
 from gpaw import Calculator
 from gpaw.mpi import rank, MASTER
-from gpaw.testing.g2 import get_g2, atoms
-from gpaw.testing.atomization_data import atomization_vasp
+from gpaw.testing.g2 import get_g2, atoms, g1
 from ase.parallel import paropen
 from sys import stderr
 
 cell = [12., 13., 14.]
 data = paropen('g2data.txt', 'w')
-systems = atoms.keys() + atomization_vasp.keys()
+systems = atoms.keys() + g1
 
 for formula in systems:
     loa = get_g2(formula, cell)
@@ -17,7 +16,6 @@ for formula in systems:
                       nbands=-5,
                       xc='PBE',
                       fixmom=True,
-                     #setups={'C': 'new', 'S': 'new', 'Li': 'new', 'P': 'new'},
                       txt=formula + '.txt')
     if len(loa) == 1:
         calc.set(hund=True)
