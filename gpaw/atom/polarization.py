@@ -1,10 +1,14 @@
+"""Used to generate polarization functions for atomic basis sets."""
+
 import sys
 import math
 
 import numpy as npy
-import pylab
 from ase import Atom, Atoms
-from ase.data import chemical_symbols
+try:
+    import pylab
+except:
+    print 'Pylab not found'
 
 from gpaw import Calculator
 from gpaw.domain import Domain
@@ -12,16 +16,17 @@ from gpaw.grid_descriptor import GridDescriptor
 from gpaw.spline import Spline
 from gpaw.localized_functions import create_localized_functions
 from gpaw.atom.all_electron import AllElectron
-from gpaw.atom.generator import Generator
 from gpaw.atom.configurations import configurations
 from gpaw.testing import g2
 from gpaw.testing.amoeba import Amoeba
 
 class QuasiGaussian:
-    """Implements f(r) = A [G(r) - P(r)] where:
+    """Gaussian-like functions for expansion of orbitals.
 
-    G(r) = exp{- alpha r^2}
-    P(r) = a - b r^2
+    Implements f(r) = A [G(r) - P(r)] where::
+
+      G(r) = exp{- alpha r^2}
+      P(r) = a - b r^2
 
     with (a, b) such that f(rcut) == f'(rcut) == 0.
     """
@@ -34,7 +39,7 @@ class QuasiGaussian:
         self.A = A
         
     def __call__(self, r):
-        """Evaluate function values at r, which is a numpy array"""
+        """Evaluate function values at r, which is a numpy array."""
         condition = (r < self.rcut) & (self.alpha * r**2 < 700.)
         r2 = npy.where(condition, r**2., 0.) # prevent overflow
         g = npy.exp(-self.alpha * r2)
@@ -43,23 +48,28 @@ class QuasiGaussian:
         return self.A * y
 
     def renormalize(self, norm):
+        """Divide function by norm."""
         self.A /= norm
 
 class LinearCombination:
+    """Represents a linear combination of 1D functions."""
     def __init__(self, coefs, functions):
         self.coefs = coefs
         self.functions = functions
 
     def __call__(self, r):
-        """Evaluate function values at r, which is a numpy array"""
+        """Evaluate function values at r, which is a numpy array."""
         return sum([coef * function(r) for coef, function
                     in zip(self.coefs, self.functions)])
 
     def renormalize(self, norm):
+        """Divide coefficients by norm."""
         self.coefs = [coef/norm for coef in self.coefs]
 
 def get_polynomial_coefficients(alpha, rcut):
-    """Returns the coefficients (a, b) of the polynomial p(r) = a - b r^2,
+    """Determine polynomial used to truncate Gaussians.
+
+    Returns the coefficients (a, b) of the polynomial p(r) = a - b r^2,
     such that the polynomial joins exp(-alpha r**2) differentiably at r=rcut.
     """
     expmar2 = math.exp(-alpha * rcut**2)
@@ -68,7 +78,9 @@ def get_polynomial_coefficients(alpha, rcut):
     return a, b
 
 def gramschmidt(gd, psit_k):
-    """Modifies the elements of psit_k such that each scalar product
+    """Orthonormalize functions on grid using the Gram-Schmidt method.
+
+    Modifies the elements of psit_k such that each scalar product
     < psit_k[i] | psit_k[j] > = delta[ij], where psit_k are on the grid gd"""
     for k in range(len(psit_k)):
         psi = psit_k[k]
@@ -79,7 +91,7 @@ def gramschmidt(gd, psit_k):
         psit_k[k] = psi / gd.integrate(psi*psi)**.5
 
 def make_dimer_reference_calculation(formula, a):
-    # this function not migrated to npy
+    # this function has not been tested since npy migration
     system = g2.get_g2(formula, (a, a, a,))
     calc = Calculator(h=.25)
     system.set_calculator(calc)
@@ -88,31 +100,45 @@ def make_dimer_reference_calculation(formula, a):
     return calc.gd, psit, (system.positions/system.get_cell().diagonal())[0]
 
 def rotation_test():
-    molecule = 'N2'
-    a = 8.
-    rcut = 6.
+    molecule = 'NH3'
+    a = 7.
+    rcut = 5.
     l = 1
 
+    from gpaw.output import plot
+
     rotationvector = npy.array([1.,1.,1.])
-    angle_increment = .4
+    angle_increment = .3
     
     system = g2.get_g2(molecule, (a,a,a))
-    calc = Calculator(h=.25, txt=None)
+    calc = Calculator(h=.27, txt=None)
     system.set_calculator(calc)
 
     pog = PolarizationOrbitalGenerator(rcut)
 
     r = npy.linspace(0., rcut, 300)
 
+    maxvalues = []
+
     for i in range(0, int(6.28/angle_increment)):
+        ascii = plot(system.positions,
+                     system.get_atomic_numbers(),
+                     system.get_cell().diagonal())
+
+        print ascii
+        
         print 'angle=%.03f' % (angle_increment * i)
         energy = system.get_potential_energy()
         center = (system.positions / system.get_cell().diagonal())[0]
         orbital = pog.generate(l, calc.gd, calc.kpt_u[0].psit_nG, center)
-        pylab.plot(r, orbital(r), label='%.02f' % (i * angle_increment))
+        y = orbital(r)
+        pylab.plot(r, y, label='%.02f' % (i * angle_increment))
+        maxvalues.append(max(y))
         print 'Quality by orbital', pretty(pog.optimizer.lastterms)
         system.rotate(rotationvector, angle_increment)
         system.center()
+
+    print max(maxvalues) - min(maxvalues)
 
     pylab.legend()
     pylab.show()
@@ -144,28 +170,33 @@ def rotation_test():
     #orbital = pog.generate(l, calc.gd, calc.kpt_u[0].psit_nG, center)
     #print 'Quality by orbital', pretty(pog.optimizer.lastterms)
 
-def make_dummy_calculation(l, rcut, alpha):
-    print 'Dummy reference: l=%d, rcut=%.02f, alpha=%.02f' % (l, rcut, alpha)
-    g = QuasiGaussian(alpha, rcut)
+def make_dummy_calculation(l, function=None, rcut=6., a=12., n=60):
+    """Make a mock reference wave function using a made-up radial function
+    as reference"""
+    #print 'Dummy reference: l=%d, rcut=%.02f, alpha=%.02f' % (l, rcut, alpha)
+    if function is None:
+        function = QuasiGaussian(4., rcut)
+        function.renormalize(norm)
+    #g = QuasiGaussian(alpha, rcut)
     r = npy.arange(0., rcut, .01)
-    norm = get_norm(r, g(r), l)
-    g.renormalize(norm)
+    norm = get_norm(r, function(r), l)
+    
     mcount = 2*l + 1
     fcount = 1
-    a = 12.
-    n = 60
     domain = Domain((a, a, a), (False, False, False))
     gd = GridDescriptor(domain, (n, n, n))
-    spline = Spline(l, r[-1], g(r))
+    spline = Spline(l, r[-1], function(r))
     center = (.5, .5, .5)
     lf = create_localized_functions([spline], gd, center)
     psit_k = gd.zeros(mcount)
     coef_xi = npy.identity(mcount * fcount)
     lf.add(psit_k, coef_xi)
-    return gd, psit_k, center, g
+    return gd, psit_k, center, function
 
 class CoefficientOptimizer:
-    """Given matrices of scalar products s and S as returned by get_matrices,
+    """Class for optimizing Gaussian/reference overlap.
+
+    Given matrices of scalar products s and S as returned by get_matrices,
     finds the optimal set of coefficients resulting in the largest overlap.
 
     ccount is the number of coefficients.
@@ -213,7 +244,7 @@ class CoefficientOptimizer:
         return badness
 
 def pretty(floatlist):
-    return ' '.join(['%.03f' % f for f in floatlist])
+    return ' '.join(['%.02f' % f for f in floatlist])
 
 def norm_squared(r, f, l):
     dr = r[1]
@@ -227,6 +258,7 @@ def get_norm(r, f, l=0):
 class PolarizationOrbitalGenerator:
     def __init__(self, rcut):
         self.rcut = rcut
+        #amount = 6 # experiment with these things
         amount = int(rcut/.3) # lots!
         r_alphas = npy.linspace(1., rcut, amount)
         self.alphas = 1. / r_alphas**2
@@ -262,17 +294,19 @@ class PolarizationOrbitalGenerator:
         return orbital
 
 def get_matrices(l, gd, splines, psit_k, center=(.5, .5, .5)):
-    """Returns the triple-indexed matrices s and S, where
-    
-      s    = < phi   | phi   > ,
-       mij        mi      mj
-    
-            -----
-             \     /        |  ~   \   /  ~   |        \
-      S    =  )   (  phi    | psi   ) (  psi  | phi     )
-       mij   /     \    mi  |    k /   \    k |     mj /
-            -----
-              k
+    """Get scalar products of basis functions and references
+
+    Returns the triple-indexed matrices s and S, where::
+
+        s    = < phi   | phi   > ,
+         mij        mi      mj
+
+              -----
+               \     /        |  ~   \   /  ~   |        \
+        S    =  )   (  phi    | psi   ) (  psi  | phi     )
+         mij   /     \    mi  |    k /   \    k |     mj /
+              -----
+                k
 
     The functions phi are taken from the given splines, whereas psit
     must be on the grid represented by the GridDescriptor gd.
@@ -292,19 +326,19 @@ def get_matrices(l, gd, splines, psit_k, center=(.5, .5, .5)):
     phi_lf.integrate(phi_mi, integrals)
     """Integral matrix contents (assuming l==1 so there are three m-values)
 
-            --phi1--  --phi2--  --phi3-- ...
-            m1 m2 m3  m1 m2 m3  m1 m2 m3 ...
-           +---------------------------------
-           |
-     |   m1| x 0 0     x 0 0
-    phi1 m2| 0 x 0     0 x 0   ...
-     |   m3| 0 0 x     0 0 x 
-           |
-     |   m1|   .
-    phi2 m2|   .
-     |   m3|   .
-         . |
-         .
+                --phi1--  --phi2--  --phi3-- ...
+                m1 m2 m3  m1 m2 m3  m1 m2 m3 ...
+               +---------------------------------
+               |
+         |   m1| x 0 0     x 0 0
+        phi1 m2| 0 x 0     0 x 0   ...
+         |   m3| 0 0 x     0 0 x 
+               |
+         |   m1|   .
+        phi2 m2|   .
+         |   m3|   .
+             . |
+             .
 
     We want < phi_mi | phi_mj >, and thus only the diagonal elements of
     each submatrix!  For l=1 the diagonal elements are all equal, but this
@@ -378,15 +412,21 @@ def main():
     pylab.legend()
     pylab.show()
 
-def dummy_test(lmax=4, rcut=6.):
-    generator = PolarizationOrbitalGenerator(rcut)
+def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
+    """Run a test using a Gaussian reference function."""
+    generator = PolarizationOrbitalGenerator(rcut/2)
     r = npy.arange(0., rcut, .01)
     alpha = 1. / (rcut/2.) ** 2.
-    for l in range(lmax + 1):
-        gd, psit_k, center, ref = make_dummy_calculation(l, rcut, alpha)
+    for l in range(lmin, lmax + 1):
+        g = QuasiGaussian(alpha, rcut)
+        norm = get_norm(r, g(r), l)
+        g.renormalize(norm)
+        gd, psit_k, center, ref = make_dummy_calculation(l, g, rcut)
         phi = generator.generate(l, gd, psit_k, center)
+        
         pylab.figure(l)
         pylab.plot(r, ref(r)*r**l, 'g', label='ref')
+        pylab.plot(r, g(r)*r**l, 'b', label='g')
         pylab.plot(r, phi(r)*r**l, 'r', label='pol')
         pylab.title('l=%d' % l)
         pylab.legend()
@@ -429,12 +469,13 @@ special_systems = {'H' : ('HCl', 1), # Better results with more states
 def check_magmoms():
     systems = get_systems()
     for formula, index in systems:
-        atoms = g2.get_g2(formula, (0,0,0))
+        atoms = g2.get_g2(formula, (0, 0, 0))
         magmom = atoms.get_magnetic_moments()
         if magmom is not None:
             print formula,'has nonzero magnetic moment!!'
     
 def get_system(symbol):
+    """Get default reference formula or atomic index."""
     system = special_systems.get(symbol)
     if system is None:
         system = (symbol + '2', 0)
@@ -462,10 +503,10 @@ def multiple_calculations(systems=None, a=None, h=None):
         try:
             print formula,
             
-            if h is None:
-                h = special_parameters.get((formula, 'h'), .17)
-            if a is None:
-                a = special_parameters.get((formula, 'a'), 14.)
+            #if h is None:
+            #    h = special_parameters.get((formula, 'h'), .17)
+            #if a is None:
+            #    a = special_parameters.get((formula, 'a'), 14.)
 
             print '[a=%.03f, h=%.03f] ... ' % (a, h),
 
@@ -481,13 +522,14 @@ def multiple_calculations(systems=None, a=None, h=None):
 
 def make_reference_calculation(formula, a, h):
     calc = Calculator(h=h, xc='PBE', txt=output_filename % formula)
-    system = g2.get_g2(formula, (a,a,a))
+    system = g2.get_g2(formula, (a, a, a))
     assert system.get_magnetic_moments() is None
     system.set_calculator(calc)
     energy = system.get_potential_energy()
     calc.write(restart_filename % formula, mode='all')
 
 class Reference:
+    """Represents a reference function loaded from a file."""
     def __init__(self, symbol, filename=None, index=None, txt=None):
         if filename is None:
             formula, index = get_system(symbol)
@@ -502,7 +544,6 @@ class Reference:
                 raise ValueError(('Atom (%s) at specified index (%d) not of '+
                                   'requested type (%s)') % (symbols[index],
                                                             index, symbol))
-
         self.calc = calc
         self.filename = filename
         self.atoms = atoms
@@ -510,6 +551,11 @@ class Reference:
         self.symbols = symbols
         self.index = index
         self.center = atoms.positions[index]
+
+        # OUTRAGEOUS HACK
+        #pbc = npy.array([True, True, True])
+        #calc.gd.domain.pbc_c = pbc # *cough*
+
         self.cell = atoms.get_cell().diagonal() # cubic cell
         self.gpts = calc.gd.N_c
         # NOTE: for spin-polarized calculations, BAD THINGS HAPPEN
@@ -522,6 +568,10 @@ class Reference:
     def get_reference_data(self):
         c = self.calc
         return c.gd, c.kpt_u[0].psit_nG[:], self.center / self.cell
+
+if __name__ == '__main__':
+    dummy_test(lmin=1, lmax=1)
+    #rotation_test()
 
 #def load_reference(symbol, filename=None, index=None, txt=None):
     #print 'Loading reference for %s from disk.' % symbol

@@ -33,6 +33,10 @@ parser.add_option('-P', '--plot', action='store_true',
                   help='plot basis functions')
 parser.add_option('-N', '--no-files', action='store_true',
                   help='Do not write basis function files')
+parser.add_option('--rcut-max', type='float', default=16., metavar='rcut',
+                  help='Max cutoff for confined atomic orbitals.  This '+
+                  'option has no effect on orbitals with smaller cutoff '+
+                  '[default: %default]')
 parser.add_option('--rcut-pol-rel', type='float', default=1.0, metavar='rcut',
                   help='polarization function cutoff relative to largest'+
                   ' single-zeta cutoff [default: %default]')
@@ -129,6 +133,7 @@ def main():
                             referencefile=referencefile,
                             referenceindex=referenceindex,
                             rcutpol_rel=opts.rcut_pol_rel,
+                            rcutmax=opts.rcut_max,
                             txt=txt)
         if opts.plot:
             bm.plot(basis, title=referencefile)

@@ -1,20 +1,20 @@
+"""This module is used to generate atomic orbital basis sets."""
+
 import os
 import sys
 
 from math import pi, cos, sin
 import numpy as npy
 from numpy.linalg import solve
+from ase.units import Hartree
 from gpaw.atom.generator import Generator, parameters
 from gpaw.atom import polarization
 from gpaw.utilities import devnull
 
 AMPLITUDE = 100. # default confinement potential modifier
 
-hartree = 27.2113845
-
 class BasisFunction:
-    """Wrapper for the information one usually wants to accompany
-    a basis function"""
+    """Encapsulates various basis function data."""
     def __init__(self, psi, rc, n, l, j, zeta=0, pol=0):
         self.psi = psi
         self.rc = rc
@@ -25,10 +25,7 @@ class BasisFunction:
         self.pol = pol
 
 class BasisMaker:
-    """
-    This class is meant for generating basis vectors that can be used to
-    represent an element in LCAO-calculations.
-    """
+    """Class for creating atomic basis functions."""
     def __init__(self, generator, run=True):
         if isinstance(generator, str): # treat 'generator' as symbol
             generator = Generator(generator, scalarrel=True)
@@ -37,21 +34,22 @@ class BasisMaker:
             generator.run(**parameters[generator.symbol])
 
     def get_unsmoothed_projector_coefficients(self, psi, l):
-        """
-        Returns a matrix with (i,j)'th element equal to
+        """Calculates scalar products of psi with non-smoothed projectors.
 
-        < p  | psi  > ,
-           i      j
+        Returns a matrix with (i,j)'th element equal to::
+
+            < p  | psi  > ,
+               i      j
 
         where the argument psi is the coefficient matrix for a system of
-        vectors, and where p_i are determined by
+        vectors, and where p_i are determined by::
 
-                        -----
-           ~             \      ~
-         < p  | psi  > =  )   < p  | phi  > < p  | psi  > ,
-            i      j     /       i      k      k      j
-                        -----
-                          k
+                            -----
+               ~             \      ~
+             < p  | psi  > =  )   < p  | phi  > < p  | psi  > ,
+                i      j     /       i      k      k      j
+                            -----
+                              k
 
         where p_i-tilde are the projectors and phi_k the AE partial waves.
         """
@@ -81,16 +79,17 @@ class BasisMaker:
         return p
 
     def unsmoothify(self, psi_t, l):
-        """
+        """Given smooth functions psi_t, return non-smooth ones.
+        
         Converts each column of psi_tilde, interpreted as a pseudo wave
-        function, to original wave functions using the formula
+        function, to original wave functions using the formula::
 
-                              -----
-                      ~        \    /             ~    \    ~     ~
-        | psi  > = | psi  > +   )  ( | phi > - | phi  > ) < p  | psi  >
-             i          i      /    \     j         j  /     j      i
-                              -----
-                                j
+                                  -----
+                          ~        \    /             ~    \    ~     ~
+            | psi  > = | psi  > +   )  ( | phi > - | phi  > ) < p  | psi  >
+                 i          i      /    \     j         j  /     j      i
+                                  -----
+                                    j
         """
         if npy.rank(psi_t) == 1:
             # vector/matrix polymorphism hack
@@ -104,16 +103,17 @@ class BasisMaker:
         return psi
 
     def smoothify(self, psi, l):
-        """
+        """Given non-smooth functions psi, return smooth ones.
+        
         Converts each column of psi_tilde, interpreted as a pseudo wave
-        function, to original wave functions using the formula
+        function, to original wave functions using the formula::
 
-                              -----
-           ~                   \    /   ~              \           
-        | psi  > = | psi  > +   )  ( | phi > - | phi  > ) < p  | psi  >
-             i          i      /    \     j         j  /     j      i
-                              -----
-                                j
+                                  -----
+               ~                   \    /   ~              \           
+            | psi  > = | psi  > +   )  ( | phi > - | phi  > ) < p  | psi  >
+                 i          i      /    \     j         j  /     j      i
+                                  -----
+                                    j
 
         """
         if npy.rank(psi) == 1:
@@ -130,14 +130,17 @@ class BasisMaker:
         return psi_tilde
 
     def make_orbital_vector(self, j, rcut, vconf=None):
+        """Returns a smooth basis vector given an all-electron one."""
         l = self.generator.l_j[j]
-        print 'j =',j,', l =',l, 'rc',rcut
+        #print 'j =',j,', l =',l, 'rc',rcut
         psi, e = self.generator.solve_confined(j, rcut, vconf)
         psi_t = self.smoothify(psi, l)
         return psi_t
 
     def make_split_valence_vector(self, psi, l, rcut):
-        """Returns an array of function values f(r) * r, where
+        """Get polynomial which joins psi smoothly at rcut.
+
+        Returns an array of function values f(r) * r, where
                 l           2
         f(r) = r  * (a - b r ),  r < rcut
         f(r) = psi(r),           r >= rcut
@@ -160,6 +163,7 @@ class BasisMaker:
 
     def make_polarization_function(self, rcut, l, referencefile=None, 
                                    index=None, txt=devnull):
+        """Generate polarization function using the polarization module."""
         symbol = self.generator.symbol
         ref = polarization.Reference(symbol, referencefile, index)
         gd, psit_k, center = ref.get_reference_data()
@@ -180,6 +184,7 @@ class BasisMaker:
         return psi * r # Recall that wave functions are represented as psi*r
 
     def make_mock_vector(self, rcut, l):
+        """Return orbital-like polynomial."""
         r = self.generator.r
         x = r / rcut
         y = (1 - 3 * x**2 + 2 * x**3) * x**l
@@ -188,7 +193,8 @@ class BasisMaker:
         return y * r # Recall that wave functions are represented as psi*r
 
     def writexml(self, basis, name=None):
-        """
+        """Write basis functions to file.
+        
         Writes all basis functions in the given list of basis functions
         to the file "<symbol>.<name>.basis".
         """
@@ -229,7 +235,9 @@ class BasisMaker:
         write('</paw_basis>\n')
 
     def find_cutoff_by_energy(self, j, esplit=.1, tolerance=.1, rguess=6.):
-        """Creates a confinement potential for the orbital given by j,
+        """Find confinement cutoff corresponding to given orbital energy shift.
+
+        Creates a confinement potential for the orbital given by j,
         such that the confined-orbital energy is (emin to emax) eV larger
         than the free-orbital energy."""
         g = self.generator
@@ -239,7 +247,7 @@ class BasisMaker:
         vconf = g.get_confinement_potential(AMPLITUDE, ri, rc)
 
         psi, e = g.solve_confined(j, rc, vconf)
-        de_min, de_max = esplit/hartree, (esplit+tolerance)/hartree
+        de_min, de_max = esplit/Hartree, (esplit+tolerance)/Hartree
 
         rmin = 0.
         rmax = g.r[-1]
@@ -263,14 +271,15 @@ class BasisMaker:
             vconf = g.get_confinement_potential(AMPLITUDE, ri, rc)
             psi, e = g.solve_confined(j, rc, vconf)
             de = e - e_base
-            #print 'rc = %.03f :: e = %.03f :: de = %.03f' % (rc, e*hartree,
-            #                                                 de*hartree)
+            #print 'rc = %.03f :: e = %.03f :: de = %.03f' % (rc, e*Hartree,
+            #                                                 de*Hartree)
         #print 'Done!'
         return psi, e, de, vconf, ri, rc
 
     def generate(self, zetacount=2, polarizationcount=1, tailnorm=.15, 
                  energysplit=.2, tolerance=1.0e-3, referencefile=None, 
-                 referenceindex=None, rcutpol_rel=1., txt='-'):
+                 referenceindex=None, rcutpol_rel=1., rcutmax=20., txt='-'):
+        """Generate an entire basis set."""
         if txt == '-':
             txt = sys.stdout
         elif txt is None:
@@ -289,12 +298,13 @@ class BasisMaker:
         lmax = max(g.l_j)
         lvalues = range(lmax + 1)
         
-        reversed_l_j = list(reversed(g.l_j))
-        j_l = []
+        j_l = [] # index j by l rather than the other way around
+        reversed_l_j = list(g.l_j)
+        reversed_l_j.reverse() # the values we want are stored last
         for l in lvalues:
             j = len(reversed_l_j) - reversed_l_j.index(l) - 1
-            j_l.append(j) # index j by l rather than the other way around
-        
+            j_l.append(j)
+
         singlezetas = []
         doublezetas = []
         other_multizetas = [[] for i in range(zetacount - 2)]
@@ -306,13 +316,22 @@ class BasisMaker:
             n = g.n_j[j]
             print >> txt
             msg = 'Basis functions for l=%d, n=%d' % (l, n)
-            print >> txt, msg + '\n', '-'*len(msg)
             print >> txt, 'Zeta 1: softly confined pseudo wave,',
-            print >> txt, 'fixed energy shift'
+            print >> txt, msg + '\n', '-'*len(msg)
             u, e, de, vconf, ri, rc = self.find_cutoff_by_energy(j,
                                                                  energysplit,
                                                                  tolerance)
-            print >> txt, 'DE=%.03f eV :: rc=%.02f Bohr' % (de * hartree, rc)
+            if rc > rcutmax:
+                ri = ri * rc / rcutmax # scale things down
+                rc = rcutmax
+                vconf = g.get_confinement_potential(AMPLITUDE, ri, rc)
+                u, e = g.solve_confined(j, rc, vconf)
+                print >> txt, 'using maximum cutoff'
+                print >> txt, 'rc=%.02f Bohr' % rc
+            else:
+                print >> txt, 'fixed energy shift'    
+                print >> txt, 'DE=%.03f eV :: rc=%.02f Bohr' % (de * Hartree,
+                                                                rc)
             s = self.smoothify(u, l)
             bf = BasisFunction(s, rc, n, l, j, 1, None)
             singlezetas.append(bf)
@@ -352,6 +371,7 @@ class BasisMaker:
             # Now make up some properties for the polarization orbital
             # We just use the cutoffs from the previous one times a factor
             rcut = singlezetas[-1].rc * rcutpol_rel
+            rcut = min(rcut, rcutmax)
             l_pol = lmax + 1
             msg = 'Polarization function: l=%d, rc=%.02f' % (l_pol, rcut)
             print >> txt, '\n' + msg
@@ -384,6 +404,7 @@ class BasisMaker:
         return basis
 
     def plot(self, basis, figure=None, show=False, title=None):
+        """Plot basis functions using pylab."""
         import pylab
         g = self.generator
         if figure is not None:

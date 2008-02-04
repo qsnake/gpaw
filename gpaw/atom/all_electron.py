@@ -526,7 +526,8 @@ class AllElectron:
 
 
     def solve_confined(self, j, rc, vconf=None):
-        """
+        """Solve the Schroedinger equation in a confinement potential.
+        
         Solves the Schroedinger equation like the solve method, but with a
         number of differences.  Before invoking this method, run solve() to
         get initial guesses.
@@ -558,10 +559,9 @@ class AllElectron:
             e = self.e_j[j]
             u = self.u_j[j].copy()
             
-        nodes = n - l - 1 # analytically expected number of nodes
-        delta = -0.2 * e
         nn, A = shoot_confined(u, l, vr, e, self.r2dvdr, r, dr, c10, c2,
                        self.scalarrel, rc=rc, beta=self.beta)
+        assert nn == n - l - 1 # run() should have been called already
         
         # adjust eigenenergy until u is smooth at the turning point
         de = 1.0
@@ -605,11 +605,12 @@ class AllElectron:
         return kr
 
     def r2g(self, r):
-        """Convert radii to indices of the radial grid"""
+        """Convert radius to index of the radial grid."""
         return int(r * self.N / (self.beta + r))
 
     def get_confinement_potential(self, alpha, ri, rc):
-        """
+        """Create a smooth confinement potential.
+        
         Returns a (potential) function which is zero inside the radius ri
         and goes to infinity smoothly at rc, after which point it is nan.
         The potential is given by
@@ -749,9 +750,7 @@ generate a good initial guess for the density).
 
 def shoot_confined(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False,
                    gmax=None, rc=10., beta=7.):
-    """
-    This method is used by the solve_confined method.
-    """
+    """This method is used by the solve_confined method."""
 
     if scalarrel:
         x = 0.5 * alpha**2 # x = 1 / (2c^2)
