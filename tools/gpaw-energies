@@ -66,11 +66,12 @@ if additional_info:
     print >> out, '# xc:',paw.hamiltonian.xc.xcfunc.get_name()
     if  p['charge']:
         print >> out, '# charge:',p['charge']
-    cell = paw.get_atoms().get_cell().diagonal()
+    atoms = paw.get_atoms()
+    cell = atoms.get_cell().diagonal()
     h = cell / p['gpts']
     print >> out, '# unit cell=', cell
     print >> out, '# h=', h
-    print >> out, '# periodic=', pbc_c
+    print >> out, '# periodic=', atoms.get_pbc()
     print >> out, "#",
     if not paw.converged:
         print >> out,'not',
