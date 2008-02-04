@@ -2,17 +2,15 @@
 """
 Contains an implementation of the downhill simplex optimization method.
 """
-import optimizer
 import numpy as npy
 
-#N_MAX = 100
 reflect = -1.0
 halfway = 0.5
 extrapolate = 2.0
 
 def standardfunction(x):
-    """
-    Default test function with one minimum at (1,2,3, ...).
+    """Default test function with one minimum at (1,2,3, ...).
+    
     The minimum is exactly 42. Takes a list of coordinates as an argument
     and returns a number.
     """
@@ -51,6 +49,7 @@ class Logger:
         return y
 
     def unzip(self):
+        # equivalent to zip(*...)?
         return [[x[i] for x in self.x] for i in range(len(self.x[0]))]
 
     def numarray(self, transpose = False):
@@ -60,31 +59,10 @@ class Logger:
         return arr
 
 class Amoeba:
-    """
-    Performs the 'amoeba'-like downhill simplex method
-    in dimcount dimensions.
-    
-    simplex: a list of (dimcount+1) vectors each with dimcount
-    coordinates, corresponding to the vertices of the simplex.
-    
-    y: a list of function values evaluated at the vertices, ordered
-    consistently with the vertices. y thus must have length
-    (dimcount+1) as well
-    
-    tolerance: fractional tolerance used to evaluate convergence
-    criterion.  This parameter will actually be overwritten once you
-    run the algorithm, which probably makes it unimportant
-    
-    function: the function to be minimized. The function must take
-    exactly dimcount parameters, each parameter being one number
-    
-    After invocation the argument lists p and y will have been
-    modified to contain conthe simplex vertices and associated
-    function values at termination of the procedure.
-    
-    Also note that the above documentation was written while this was
-    still a function, not a class!
-    """
+    """Implementation of the downhill simplex minimization method.
+
+    This works by evaluating function values on the vertices of a simplex,
+    moving worse points in the general direction of better ones."""
 
     def __init__(self, simplex, values=None, function=standardfunction,
                  tolerance=0.001, savedata=False):
@@ -124,16 +102,6 @@ class Amoeba:
         y = self.y
         vertexcount = self.vertexcount
         dimcount = self.dimcount
-        
-        #hostObject.callBackFunction(p,y,evaluationcount)
-        #print >> out, 'Points:', p
-        #print >> out, 'yValues:', y
-        #print >> out, 'EvalCount:',evaluationcount
-        #print >> out
-        #out.flush()
-
-        #Write current points to file for recovery if something goes wrong
-        #pickleDump((p,y),dump)        
         
         ilow = 0 #index of lowest value
         ihigh = None #index of highest value
@@ -185,15 +153,12 @@ class Amoeba:
         ilow = self.ilow
         
         ytest = self.grope(reflect)
-        #self.evaluationcount += 1
 
         if ytest <= y[ilow]:
             ytest = self.grope(extrapolate)
-            #self.evaluationcount += 1
         elif ytest >= y[i2ndhigh]:
             ysave = y[ihigh]
             ytest = self.grope(halfway)
-            #self.evaluationcount += 1
             if ytest >= ysave:
                 for i in range(vertexcount):
                     if i != ilow:
@@ -245,16 +210,3 @@ def volume(simplex):
     vertices = [npy.array(point) for point in simplex]
     differences = [vertices[i]-vertices[i+1] for i in range(len(vertices)-1)]
     return npy.linalg.det(npy.array(differences))
-
-def main():
-    simplex = optimizer.get_random_simplex([4,2,1,5,2])
-    
-    amoeba = Amoeba(simplex, tolerance=0.000001, savedata=True)
-    
-    amoeba.optimize()
-    #print amoeba.simplex
-    #print amoeba.y
-    return amoeba
-
-if __name__ == '__main__':
-    main()

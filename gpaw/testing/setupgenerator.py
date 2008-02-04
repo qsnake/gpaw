@@ -30,7 +30,7 @@ class SetupGenerator:
     """
     
     def __init__(self, symbol='H', name='test',
-                 whichparms=range(maxparcount),
+                 whichparms=tuple(range(maxparcount)),
                  std_parm_values=None):
         """
         Creates a SetupOptimizer for the element with the given symbol

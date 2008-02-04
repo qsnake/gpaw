@@ -6,11 +6,13 @@ optimize GPAW setups. The GPAW setup optimizer uses the downhill
 simplex algorithm to search a parameter space of any dimension.
 """
 
+import sys
+import traceback
+import pickle
+import random
 
-import sys, traceback, pickle, random
-import atomization, setupgenerator, amoeba
-from badness import MoleculeTest
-from gpaw.utilities import devnull
+from gpaw.testing import amoeba, setupgenerator
+from gpaw.testing.badness import MoleculeTest
 
 """
 Returns a list of vertex coordinates forming a regular simplex around
@@ -21,7 +23,7 @@ This method simply generates a random simplex, and may fail to do so
 at a very small probability (if randomly generated vectors are
 linearly dependent)
 """
-def get_random_simplex(center=[0,0], size=.1, seed=0):
+def get_random_simplex(center=(0,0), size=.1, seed=0):
     ndim = len(center)
     mpts = ndim + 1
     r = random.Random(seed)
@@ -32,12 +34,12 @@ def get_random_simplex(center=[0,0], size=.1, seed=0):
         
     return points
 
-def get_simplex(center=[0,0], size=.1):
+def get_simplex(center=(0,0), size=.1):
 
     points = [None]*(len(center)+1)
     print center
     #initialize all points to center
-    points = [map(float,list(center)) for p in points]
+    points = [map(float, list(center)) for p in points]
     
     for i in range(1,len(points)):
         points[i][i-1] += float(size)
@@ -68,8 +70,7 @@ class Optimizer:
         SetupGenerator).
         """
 
-        self.element = atomization.elements[symbol]
-
+        self.symbol = symbol
         if test is None:
             test = MoleculeTest()
         self.test = test
@@ -77,16 +78,16 @@ class Optimizer:
         generatorname = 'opt.'+name
 
         if generator is None:
-            generator = setupgenerator.SetupGenerator(self.element.symbol,
+            generator = setupgenerator.SetupGenerator(self.symbol,
                                                       generatorname)
         elif isinstance(generator, setupgenerator.SetupGenerator):
-            # Override generator defaults
+           # Override generator defaults
             generator.set_name(generatorname)
             generator.set_symbol(symbol)
         else:
             try: # Test whether generator is specified as a parameter list
                 parms = list(generator)
-                generator = setupgenerator.SetupGenerator(self.element.symbol,
+                generator = setupgenerator.SetupGenerator(self.symbol,
                                                           generatorname,
                                                           whichparms=parms)
             except Exception:
@@ -169,7 +170,7 @@ class Optimizer:
             print >> out
             print >> out, separator
             print >> out, 'Badness :: Simplex point'
-            for i,(p,y) in enumerate(zip(self.simplex, self.amoeba.y)):
+            for p,y in zip(self.simplex, self.amoeba.y):
                 print >> out, '\t',y,'\t',p
             print >> out, 'Relative deviation : ',self.amoeba.relativedeviation
             print >> out, '# Optimization run with tolerance',tolerance
@@ -195,7 +196,7 @@ class Optimizer:
             self.generator.generate_setup(args) #new setup
         
             print >> out, 'Point: ',args
-            badness = self.test.badness(self.element.symbol,
+            badness = self.test.badness(self.symbol,
                                         self.setup_name, out)
         except KeyboardInterrupt:
             raise sys.exc_info()[0]
@@ -225,7 +226,7 @@ class Optimizer:
 
 optimizer = None
 
-def main(symbol='H', name='test', generator=[3,4], tolerance=0.01,
+def main(symbol='H', name='test', generator=(3,4), tolerance=0.01,
          simplex=None, test=None):
     global optimizer # Make sure optimizer is accessible from
     # interactive interpreter even if something goes wrong

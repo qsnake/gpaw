@@ -11,7 +11,6 @@ from numpy.linalg import inv
 
 from gpaw.testing import g2, data
 from gpaw.utilities.bulk import Bulk
-from gpaw.utilities import center
 from gpaw.paw import ConvergenceError
 from gpaw import Calculator
 
@@ -29,7 +28,7 @@ def setup_molecule(formula, a=12., h=None, gpts=None, sep=None, periodic=False,
         if len(system) != 2:
             raise ValueError('Separation ambiguous for non-diatomic molecule')
         system.atoms[1].SetCartesianPosition([sep,0,0])
-    center(system)
+    system.center()
     if gpts is not None:
         gpts = [gpts]*3
     # Warning: bad hacks...

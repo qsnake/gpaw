@@ -4,8 +4,6 @@ import pickle
 
 import numpy as npy
 from numpy.linalg import inv
-
-import atomization # XXXXX
 from gpaw.utilities import devnull
 
 """
@@ -249,7 +247,7 @@ class NoiseTest(Test):
         self.h = .2
         self.a = 4.5
         if points is None:
-            d = npy.arrayrange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
+            d = npy.arange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
             points = [(x,x,x) for x in d]
         self.unit_badness=unit_badness
         self.points = tuple(points)
