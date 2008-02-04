@@ -12,14 +12,14 @@ class Cluster(Atoms):
     """A class for cluster structures
     to enable simplified manipulation"""
 
-    def __init__(self, atoms=None, cell=None,
-                 filename=None, filetype=None):
-        if atoms is None:
-            atoms = []
-        Atoms.__init__(self,atoms, cell=cell)
+    def __init__(self, *args, **kwargs):
 
-        if filename is not None:
-            self.read(filename, filetype)
+        if kwargs.get('filename') is not None:
+            filename = kwargs.pop('filename')
+            Atoms.__init__(self, *args, **kwargs)
+            self.read(filename, kwargs.get('filetype'))
+        else:
+            Atoms.__init__(self, *args, **kwargs)
     
     def extreme_positions(self):
         """get the extreme positions of the structure"""
@@ -55,7 +55,7 @@ class Cluster(Atoms):
         return self.get_cell()
 
     def read(self,filename,filetype=None):
-        """Read the strcuture from some file. The type can be given
+        """Read the structure from some file. The type can be given
         or it will be guessed from the filename."""
 
         if filetype is None:
@@ -75,7 +75,7 @@ class Cluster(Atoms):
         return len(self)
 
     def write(self, filename, filetype=None):
-        """Write the strcuture to file. The type can be given
+        """Write the structure to file. The type can be given
         or it will be guessed from the filename."""
 
         if filetype is None:
