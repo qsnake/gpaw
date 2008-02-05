@@ -1975,7 +1975,7 @@ def get_ae(name):
 
 def get_g2(name, cell=(1.0, 1.0, 1.0)):
     if name in atoms:
-        loa =  Atoms([Atom(name, magmom=atoms[name])], cell=cell, pbc=False)
+        loa =  Atoms([Atom(name, magmom=atoms[name][0])], cell=cell, pbc=False)
     elif name in extra or name in g2:
         loa = eval(name).copy()
         loa.set_cell(cell, fix=True)
