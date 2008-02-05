@@ -75,8 +75,7 @@ for details."""
             self.data.append(data)
 
     def endElement(self, name):
-        if self.data is None:
-            return
-        phit_g = npy.array([float(x) for x in ''.join(self.data).split()])
-        assert len(phit_g) == self.ng
-        self.phit_jg.append(phit_g)
+        if name == 'basis_function':
+            phit_g = npy.array([float(x) for x in ''.join(self.data).split()])
+            assert len(phit_g) == self.ng
+            self.phit_jg.append(phit_g)
