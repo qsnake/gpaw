@@ -56,6 +56,10 @@ def core_states(symbol):
     return Njcore
 
 def split_formula(formula):
+    """Count elements in a chemical formula.
+
+    E.g. split_formula('C2H3Mg') -> ['C', 'C', 'H', 'H', 'H', 'Mg']
+    """
     res = []
     for c in formula:
         if c.isupper():
