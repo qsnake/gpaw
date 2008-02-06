@@ -139,8 +139,9 @@ class XCFunctional:
             if self.setupname is None:
                 self.setupname = 'LDA'
         elif xcname.startswith('GLLB') or xcname=='KLI':
-            # GLLB type of functionals which use orbitals, require special treatment at first iterations,
-            # where there is no orbitals available. Therefore orbital_dependent = True!
+            # GLLB type of functionals which use orbitals, require special
+            # treatment at first iterations, where there is no orbitals
+            # available. Therefore orbital_dependent = True!
             self.orbital_dependent = True
             code = 'gllb'
         else:
@@ -238,16 +239,18 @@ class XCFunctional:
             return
 
         if self.xcname.startswith('GLLB') or self.xcname == 'KLI':
-            self.xc.pass_stuff(paw.kpt_u, paw.gd, paw.finegd, paw.density.interpolate,
-                               paw.nspins, paw.my_nuclei, paw.occupation, paw.kpt_comm)
+            self.xc.pass_stuff(paw.kpt_u, paw.gd, paw.finegd,
+                               paw.density.interpolate, paw.nspins,
+                               paw.my_nuclei, paw.occupation, paw.kpt_comm)
 
         if self.hybrid > 0.0:
             if paw.dtype == complex:
                 raise NotImplementedError, 'k-point calculation with EXX'
             if self.parameters and self.parameters.has_key('finegrid'):
-                use_finegrid=self.parameters['finegrid']
+                use_finegrid = self.parameters['finegrid']
             else:
-                use_finegrid=True
+                use_finegrid = True
+
             self.exx = EXX(paw,
                            paw.gd, paw.finegd, paw.density.interpolate,
                            paw.hamiltonian.restrict, paw.hamiltonian.poisson,
@@ -260,6 +263,13 @@ class XCFunctional:
         if self.orbital_dependent:
             if self.hybrid > 0.0:
                 self.exx.apply(kpt, Htpsit_nG, H_nn, self.hybrid)
+
+    def get_non_local_force(self, kpt):
+        F_ac = 0.0
+        if self.orbital_dependent:
+            if self.hybrid > 0.0:
+                F_ac = self.exx.force_kpoint(kpt, self.hybrid)
+        return F_ac
 
     def get_non_local_energy(self):
         Exc = 0.0
@@ -283,12 +293,13 @@ class XCFunctional:
             self.exx.adjust_residual(pR_G, dR_G, u, n)
 
     # For non-local functional, this function does the calculation for special
-    # case of setup-generator. The processes for non-local in radial and 3D-grid
-    # deviate so greatly that this is special treatment is needed.
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j, v_xc, density=None, vbar= False):
+    # case of setup-generator. The processes for non-local in radial and
+    # 3D-grid deviate so greatly that this is special treatment is needed.
+    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j,
+                                             v_xc, density=None, vbar= False):
         # Send the command one .xc up
-        return self.xc.get_non_local_energy_and_potential1D(gd, u_j, f_j, e_j, l_j, v_xc,
-                                                            density=density, vbar=vbar)
+        return self.xc.get_non_local_energy_and_potential1D(
+            gd, u_j, f_j, e_j, l_j, v_xc, density=density, vbar=vbar)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              taua_g=None):
@@ -715,7 +726,8 @@ class XCRadialGrid(XCGrid):
                 tmp_g[1:] /= self.dv_g[1:]
                 tmp_g[0] = tmp_g[1]
                 vb_g -= 4.0 * tmp_g
-            else: # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
+            else:
+                # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
                 # see also:
                 # http://www.cse.scitech.ac.uk/ccg/dft/design.html
                 self.rgd.derivative2(self.dv_g * self.deda2_g *
