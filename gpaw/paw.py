@@ -550,8 +550,8 @@ class PAW(PAWExtra, Output):
             nucleus.reallocate(self.nbands)
 
         for kpt in self.kpt_u:
-            kpt.adjust_number_of_bands(self.nbands,
-                                       self.pt_nuclei, self.my_nuclei)
+            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei)
+            self.overlap.orthonormalize(kpt.psit_nG, kpt)
 
         if xcfunc.orbital_dependent:
             # Switch back to the orbital dependent functional:
@@ -611,8 +611,9 @@ class PAW(PAWExtra, Output):
                     kpt.psit_nG = kpt.psit_nG[:]
 
         for kpt in self.kpt_u:
-            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei,
-                                       self.my_nuclei)
+            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei)
+            self.overlap.orthonormalize(kpt.psit_nG, kpt)
+                                       
 
     def orthonormalize_wave_functions(self):
         for kpt in self.kpt_u:

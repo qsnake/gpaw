@@ -112,7 +112,7 @@ class KPoint:
         self.eps_n = npy.empty(nbands)
         self.f_n = npy.empty(nbands)
         
-    def adjust_number_of_bands(self, nbands, pt_nuclei, my_nuclei):
+    def adjust_number_of_bands(self, nbands, pt_nuclei):
         """Adjust the number of states.
 
         If we are starting from atomic orbitals, then the desired
@@ -154,10 +154,6 @@ class KPoint:
                 else:
                     nucleus.pt_i.integrate(self.psit_nG[nao:], None, self.k)
                     
-            #Orthonormalize
-            # CHECK! Is this needed !?!
-            # self.orthonormalize(my_nuclei)
-
     def random_wave_functions(self, psit_nG):
         """Generate random wave functions"""
 
