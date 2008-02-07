@@ -89,7 +89,7 @@ class Hamiltonian:
         # Solver for the Poisson equation:
         psolver = p['poissonsolver']
         if psolver is None:
-            psolver = PoissonSolver(nn='M', relax='GS')
+            psolver = PoissonSolver(nn='M', relax='J')
         self.poisson = psolver
         self.poisson.initialize(self.finegd)
 
