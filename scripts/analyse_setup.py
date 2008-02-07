@@ -1,12 +1,11 @@
 import pylab as pl
-#import numpy as npy
-
+from sys import argv
 from ase.data import atomic_names as names
-#from ASE.ChemicalElements.name import names
 from gpaw.read_setup import PAWXMLParser
 
-symbol = 'C'
-setupname = 'PBE'
+input = argv[1].split('.')
+symbol = input[0]
+setupname = '.'.join(input[1:])
 
 # Load setup data from XML file:
 (Z, Nc, Nv,
