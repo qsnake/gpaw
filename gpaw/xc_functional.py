@@ -235,6 +235,14 @@ class XCFunctional:
         return self.orbital_dependent
 
     def set_non_local_things(self, paw, energy_only=False):
+        if self.xcname == 'TPSS':
+            paw.hamiltonian.xc.taua_g = paw.gd.empty()
+            if self.nspins == 2:
+                paw.hamiltonian.taub_g = paw.gd.empty()
+            paw.density.initialize_kinetic()
+            paw.density.update_kinetic(paw.kpt_u)
+            paw.hamiltonian.xc.set_kinetic(paw.density.taut_sg)
+
         if not self.orbital_dependent:
             return
 
@@ -447,10 +455,7 @@ class XC3DGrid(XCGrid):
                 self.ab2_g = gd.empty()
                 self.dedaa2_g = gd.empty()
                 self.dedab2_g = gd.empty()
-        if xcfunc.mgga:
-            self.taua_g = gd.empty()
-            if self.nspins == 2:
-                self.taub_g = gd.empty()
+
         self.e_g = gd.empty()
 
     # Calculates exchange energy and potential.
@@ -465,7 +470,6 @@ class XC3DGrid(XCGrid):
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
             npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
-
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
@@ -572,9 +576,11 @@ class XC3DGrid(XCGrid):
         return e_g.sum() * self.dv
 
     def set_kinetic(self,taut_sg):
-        self.taua_g[:] = taut_sg[0][:]
+        if self.nspins ==1:
+            self.taua_g = taut_sg[0]
         if self.nspins == 2:
-            self.taub_g[:] = taut_sg[1][:]
+            self.taua_g = taut_sg[0]
+            self.taub_g = taut_sg[1]
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):
@@ -602,12 +608,6 @@ class XCRadialGrid(XCGrid):
                 self.ab2_g = npy.empty(self.shape)
                 self.dedaa2_g = npy.empty(self.shape)
                 self.dedab2_g = npy.empty(self.shape)
-        if xcfunc.mgga:
-            self.taua_g = npy.empty(self.shape)
-            self.taua_g[:] = -1.0
-            if self.nspins == 2:
-                self.taub_g = npy.empty(self.shape)
-                self.taub_g[:] = -1.0
 
         self.e_g = npy.empty(self.shape)
 

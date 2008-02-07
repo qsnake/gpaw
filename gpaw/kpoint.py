@@ -195,13 +195,12 @@ class KPoint:
         """Add contribution to pseudo kinetic energy density."""
 
         ddr = [Gradient(self.gd, c).apply for c in range(3)]
-
-        for psit_G, f in zip(self.psit_nG, self.f_n):
-            d_G = self.gd.empty()
+        d_G = self.gd.empty()
+        for f,psit_G in zip(self.f_n,self.psit_nG):
             for c in range(3):
                 ddr[c](psit_G,d_G)
                 if self.dtype == float:
-                    taut_G += f * d_G[c]**2
+                    axpy(f, d_G[c]**2, taut_G) #taut_G += f * d_G[c]**2
                 else:
                     taut_G += f * (d_G * npy.conjugate(d_G)).real
 

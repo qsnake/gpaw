@@ -125,8 +125,8 @@ class XCCorrection:
         
         if self.xc.get_functional().mgga:
             ny = len(points)
-            self.tau_ypg = num.zeros((ny, np, ng), num.Float)
-            self.taut_ypg = num.zeros((ny, np, ng), num.Float)
+            self.tau_ypg = npy.zeros((ny, np, ng))
+            self.taut_ypg = npy.zeros((ny, np, ng))
             self.create_kinetic(lmax,jlL,jl,ny,np,wt_jg,self.taut_ypg)
             self.create_kinetic(lmax,jlL,jl,len(points),np,w_jg,self.tau_ypg)            
             self.tauc_g = tauc_g

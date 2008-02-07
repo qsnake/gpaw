@@ -359,8 +359,6 @@ class Density:
 
         self.taut_sG = self.gd.empty(self.nspins)
         self.taut_sg = self.finegd.empty(self.nspins)
-        for s in range(self.nspins):
-            self.taut_sg[s][:] = -1.0
 
     def update_kinetic(self, kpt_u):
         """Calculate pseudo electron kinetic density.
@@ -376,9 +374,5 @@ class Density:
         """Transfer the density from the coarse to the fine grid."""
         for s in range(self.nspins):
             self.interpolate(self.taut_sG[s], self.taut_sg[s])
-
- ##       for s in range(self.nspins):
- ##           self.taut_sg[s][:] = -1.0
-
 
         return 
