@@ -40,9 +40,13 @@ fpdb='CO.pdb'
 
 CO.write(fxyz)
 CO_b = Cluster(filename=fxyz)
+assert(len(CO) == len(CO_b)) 
  
-## CO.write(fpdb)
-## CO2=Cluster(filename=fpdb)
+CO.write(fxyz, repeat=[1,1,1])
+CO_b = Cluster(filename=fxyz)
+assert(8*len(CO) == len(CO_b)) 
+ 
+CO.write(fpdb)
 
-## os.remove(fpdb)
+os.remove(fpdb)
 os.remove(fxyz)

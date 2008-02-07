@@ -54,7 +54,7 @@ class Cluster(Atoms):
 
         return self.get_cell()
 
-    def read(self,filename,filetype=None):
+    def read(self, filename, filetype=None):
         """Read the structure from some file. The type can be given
         or it will be guessed from the filename."""
 
@@ -74,9 +74,29 @@ class Cluster(Atoms):
                 
         return len(self)
 
-    def write(self, filename, filetype=None):
-        """Write the structure to file. The type can be given
-        or it will be guessed from the filename."""
+    def write(self, filename, filetype=None, repeat=None):
+        """Write the structure to file.
+
+        Parameters
+        ----------
+        filetype: string
+          can be given or it will be guessed from the filename
+        repeat: array, eg.: [1,0,1]
+          can be used to repeat the structure
+        """
+
+        out = self
+        if repeat is None:
+            out = self
+        else:
+            out = Cluster([])
+            cell = self.get_cell().diagonal()
+            for i in range(repeat[0]+1):
+                for j in range(repeat[1]+1):
+                    for k in range(repeat[2]+1):
+                        copy = self.copy()
+                        copy.translate(npy.array([i,j,k]) * cell)
+                        out += copy
 
         if filetype is None:
             # estimate file type from name ending
@@ -84,9 +104,9 @@ class Cluster(Atoms):
         filetype.lower()
 
         if filetype == 'pdb':
-            write_pdb(filename,self)
+            write_pdb(filename, out)
         elif filetype == 'xyz':
-            write_xyz(filename, self)
+            write_xyz(filename, out)
         else:
             raise NotImplementedError('unknown file type "'+filetype+'"')
                 
