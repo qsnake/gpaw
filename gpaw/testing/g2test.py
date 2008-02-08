@@ -19,13 +19,13 @@ for formula in systems:
                       txt=formula + '.txt')
     if len(loa) == 1:
         calc.set(hund=True)
-    loa.SetCalculator(calc)
+    loa.set_calculator(calc)
     if formula == 'BeH':
         calc.initialize()
         calc.nuclei[0].f_si = [(1, 0, 0.5, 0),
                                (0.5, 0, 0, 0)]
     try:
-        energy = loa.GetPotentialEnergy()
+        energy = loa.get_potential_energy()
     except:
         print >>data, formula, 'Error'
         if rank == MASTER:
