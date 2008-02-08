@@ -40,10 +40,10 @@ class GInteraction2:
         self.mindist = rcutproj - .3
 
     def __call__(self, R):
-        dist = sqrt(npy.sum(R**2))
-        if dist > 0 and dist < self.mindist:
-            print >> sys.stderr, warning('Atomic distance: %4.2f Bohr.\n%s' % (
-                dist, self.cutoffs))
+##         dist = sqrt(npy.sum(R**2))
+##         if dist > 0 and dist < self.mindist:
+##             print >> sys.stderr, warning('Atomic distance: %4.2f Bohr.\n%s' % (
+##                 dist, self.cutoffs))
 
         if not self.softgauss:
             return (self.v_LL, -self.dvdr_LLc)
