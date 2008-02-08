@@ -88,7 +88,7 @@ class RunScript:
         size=int((set['nodes']+1)/2)
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
-        print >> f,"#PBS -l size=%d" % size
+        print >> f,"#PBS -l mppwidth=%d" % size
         print >> f,"#PBS -l walltime=" + str(set['time'])
         print >> f,"#PBS -o",set['out']
         print >> f,"#PBS -e",set['err']
@@ -108,18 +108,16 @@ class RunScript:
         print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l size=%d" % size
         print >> f,"#PBS -l walltime=" + str(set['time'])
+        if set['mem']:
+            print >> f, '#PBS -l mppmem=1900M'
         print >> f,"#PBS -o",set['out']
         print >> f,"#PBS -e",set['err']
-        print >> f,"""
-module load gpaw
-echo $GPAW_SETUP_PATH
-echo $GPAW_PYTHON
-
-setenv MPICH_PTL_UNEX_EVENTS 60000
-setenv MPICH_UNEX_BUFFER_SIZE 400M
-"""
-        print >> f,"cd",set['wd']
-        print >> f,"yod $GPAW_PYTHON",set['script']
+        print >> f, 'module load gpaw'
+        print >> f, 'cd', set['wd']
+        print >> f, 'aprun -n %d' % size,
+        if set['mem']:
+             print >> f, '-m 1900M',
+        print >> f, '$GPAW_PYTHON', set['script']
         
     def murska(self,f,set,env):
         # Michaels defaults
