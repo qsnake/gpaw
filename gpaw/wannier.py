@@ -8,26 +8,29 @@ from _gpaw import localize
 
 
 class Wannier:
-    def __init__(self, calc=None):
+    def __init__(self, calc=None, spin=0):
         if calc is not None:
-            self.cell = calc.domain.cell_c * Bohr
+            self.spin = spin
+            self.cell_c = calc.domain.cell_c * Bohr
             n = calc.get_number_of_bands()
-            self.Z = npy.empty((n, n, 3), complex)
+            self.Z_nnc = npy.empty((n, n, 3), complex)
             for c in range(3):
-                self.Z[:, :, c] = calc.get_wannier_integrals(c, 0, 0, 0, 1.0)
+                self.Z_nnc[:, :, c] = calc.get_wannier_integrals(c, spin,
+                                                                #k, k1, G
+                                                                 0, 0, 1.0)
             self.value = 0.0
-            self.U = npy.identity(n)
+            self.U_nn = npy.identity(n)
 
     def load(self, filename):
-        self.cell, self.Z, self.value, self.U = load(open(filename))
+        self.cell_c, self.Z_nnc, self.value, self.U_nn = load(open(filename))
 
     def dump(self, filename):
-        dump((self.cell, self.Z, self.value, self.U), filename)
+        dump((self.cell_c, self.Z_nnc, self.value, self.U_nn), filename)
         
     def localize(self, eps=1e-5, iterations=-1):
         i = 0
         while i != iterations:
-            value = localize(self.Z, self.U)
+            value = localize(self.Z_nnc, self.U_nn)
             print i, value
             if value - self.value < eps:
                 break
@@ -36,9 +39,9 @@ class Wannier:
         return value
 
     def get_centers(self):
-        scaled = -npy.angle(self.Z.diagonal()).T / (2 * pi)
-        return (scaled % 1.0) * self.cell
+        scaled_c = -npy.angle(self.Z_nnc.diagonal()).T / (2 * pi)
+        return (scaled_c % 1.0) * self.cell_c
 
     def get_function(self, calc, n):
-        psit_nG = calc.kpt_u[0].psit_nG[:].reshape((calc.nbands, -1))
+        psit_nG = calc.kpt_u[self.spin].psit_nG[:].reshape((calc.nbands, -1))
         return npy.dot(self.U[:, n],  psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
