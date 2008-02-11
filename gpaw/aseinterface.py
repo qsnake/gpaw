@@ -99,6 +99,20 @@ class Calculator(PAW):
         """Return pseudo-density array."""
         return self.density.get_density_array() / self.a0**3
 
+    def get_pseudo_density_corrections(self):
+        """Integrated density corrections.
+
+        Returns the integrated value of the difference between the pseudo-
+        and the all-electron densities at each atom.  These are the numbers
+        you should add to the result of doing e.g. Bader analysis on the
+        pseudo density."""
+        if self.nspins == 1:
+            return npy.array([n.get_density_correction(0, 1)
+                              for n in self.nuclei])
+        else:
+            return npy.array([[n.get_density_correction(spin, 2)
+                              for n in self.nuclei] for spin in range(2)])
+
     def get_all_electron_density(self, gridrefinement=2):
         """Return reconstructed all-electron density array."""
         return self.density.get_all_electron_density(gridrefinement)\
@@ -121,9 +135,7 @@ class Calculator(PAW):
         for a, nucleus in enumerate(self.nuclei):
             # XXX Optimize! No need to integrate in zero-region
             smooth = self.gd.integrate(npy.where(atom_index == a, nt_G, .0))
-            correction = sqrt(4 * pi) * (
-                npy.dot(nucleus.D_sp[spin], nucleus.setup.Delta_pL[:, 0])
-                + nucleus.setup.Delta0 / self.nspins)
+            correction = nucleus.get_density_correction(spin, self.nspins)
             weight_a[a] = smooth + correction
             
         return weight_a

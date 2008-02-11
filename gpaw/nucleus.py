@@ -30,7 +30,7 @@ class Nucleus:
      ``setup``     ``Setup`` object.
      ``spos_c``    Scaled position.
      ``a``         Index number for this nucleus.
-     ``dtype``  Data type of wave functions (``Float`` or ``Complex``).
+     ``dtype``     Data type of wave functions (``Float`` or ``Complex``).
      ``neighbors`` List of overlapping neighbor nuclei.
      ============= ========================================================
 
@@ -750,7 +750,7 @@ class Nucleus:
             F[:] += npy.dot(Q_L, F_Lc)
 
             # Force from smooth core charge:
-##            self.nct.derivative(vt_G, F[npy.NewAxis, :]) 
+##            self.nct.derivative(vt_G, F[npy.newaxis, :]) 
             self.nct.derivative(vt_G, npy.reshape(F, (1, 3)))  # numpy!
 
             # Force from zero potential:
@@ -785,7 +785,22 @@ class Nucleus:
         """
         return npy.around(gd.N_c * self.spos_c).astype(int) - gd.beg_c
 
+    def get_density_correction(self, spin, nspins):
+        """Integrated atomic density correction.
+
+        Get the integrated correction to the pseuso density relative to
+        the all-electron density.
+        """
+        return sqrt(4 * pi) * (
+            npy.dot(self.D_sp[spin], self.setup.Delta_pL[:, 0])
+            + self.setup.Delta0 / nspins)
+
     def add_density_correction(self, n_sg, nspins, gd, splines={}):
+        """Add atomic density correction function.
+
+        Add the function correcting the pseuso density to the all-electron
+        density, to the density array `n_sg`.
+        """
         # Load splines
         symbol = self.setup.symbol
         if not symbol in splines:

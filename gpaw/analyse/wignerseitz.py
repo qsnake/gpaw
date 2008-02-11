@@ -37,10 +37,8 @@ class WignerSeitz:
         around the atoms. The spin index and number of spins are
         needed for the augmentation sphere corrections."""
         weights_a = self.expand(nt_G)
-        for a, n in enumerate(self.nuclei):
-            weights_a[a] += sqrt(4 * pi) * (
-                npy.dot(n.D_sp[s], n.setup.Delta_pL[:, 0])
-                + n.setup.Delta0 / nspins)
+        for a, nucleus in enumerate(self.nuclei):
+            weights_a[a] += nucleus.get_density_correction(s, nspins)
         return weights_a
     
     def expand_wave_function(self, psit_G, u, n):
