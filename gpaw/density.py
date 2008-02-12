@@ -55,6 +55,7 @@ class Density:
         self.nuclei = paw.nuclei
         self.timer = paw.timer
         self.kpt_comm = paw.kpt_comm
+        self.band_comm = paw.band_comm
         self.nvalence = paw.nvalence
         self.charge = float(p['charge'])
         self.charge_eps = 1e-7
@@ -223,7 +224,7 @@ class Density:
             self.nt_g *= scale
             
         self.rhot_g[:] = self.nt_g
-        
+
         for nucleus in self.ghat_nuclei:
             nucleus.add_compensation_charge(self.rhot_g)
             
@@ -244,6 +245,7 @@ class Density:
         for kpt in kpt_u:
             kpt.add_to_density(self.nt_sG[kpt.s])
 
+        self.band_comm.sum(self.nt_sG)
         self.kpt_comm.sum(self.nt_sG)
 
         # add the smooth core density:
@@ -258,6 +260,7 @@ class Density:
                 D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
                                              P_ni * kpt.f_n[:, newaxis]))
             nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
+            self.band_comm.sum(nucleus.D_sp)
             self.kpt_comm.sum(nucleus.D_sp)
 
         comm = self.gd.comm
@@ -369,6 +372,7 @@ class Density:
         ## Add contribution from all k-points:
         for kpt in kpt_u:
             kpt.add_to_kinetic_density(self.taut_sG[kpt.s])
+        self.band_comm.sum(self.taut_sG)
         self.kpt_comm.sum(self.taut_sG)
 
         """Transfer the density from the coarse to the fine grid."""

@@ -406,14 +406,24 @@ def read(paw, reader):
     nkpts = len(r.get('IBZKPoints'))
     nbands = len(r.get('Eigenvalues', 0, 0))
 
+    if nbands != paw.band_comm.size * paw.nmybands:
+        raise RuntimeError("""Nbands of restart file incompatible
+                           for band parallelization %d != %d x %d"""
+                           % (nbands, paw.band_comm.size, paw.nmybands))
     if nkpts == paw.nkpts:
         for kpt in paw.kpt_u:
-            kpt.allocate(nbands)
+            kpt.allocate(paw.nmybands)
             # Eigenvalues and occupation numbers:
             k = kpt.k
             s = kpt.s
-            kpt.eps_n[:] = r.get('Eigenvalues', s, k)
-            kpt.f_n[:] = r.get('OccupationNumbers', s, k)
+            eps_n = npy.empty(nbands)
+            f_n = npy.empty(nbands)
+            eps_n[:] = r.get('Eigenvalues', s, k)
+            f_n[:] = r.get('OccupationNumbers', s, k)
+            n0 = paw.band_comm.rank
+            nstride = paw.band_comm.size
+            kpt.eps_n[:] = eps_n[n0::nstride]
+            kpt.f_n[:] = f_n[n0::nstride]
         
         if r.has_array('PseudoWaveFunctions'):
             # We may not be able to keep all the wave
@@ -423,7 +433,8 @@ def read(paw, reader):
                  for kpt in paw.kpt_u:
                      # Read band by band to save memory
                      kpt.psit_nG = []
-                     for n in range(nbands):
+                     for nb in range(paw.nmybands):
+                         n = paw.band_comm.rank + nb * paw.band_comm.size
                          kpt.psit_nG.append(
                              r.get_reference('PseudoWaveFunctions',
                                              kpt.s, kpt.k, n) )
@@ -435,10 +446,12 @@ def read(paw, reader):
         for u, kpt in enumerate(paw.kpt_u):
             P_ni = r.get('Projections', kpt.s, kpt.k)
             i1 = 0
+            n0 = paw.band_comm.rank
+            nstride = paw.band_comm.size
             for nucleus in paw.nuclei:
                 i2 = i1 + nucleus.get_number_of_partial_waves()
                 if nucleus.in_this_domain:
-                    nucleus.P_uni[u, :nbands] = P_ni[:, i1:i2]
+                    nucleus.P_uni[u, :paw.nmybands] = P_ni[n0::nstride, i1:i2]
                 i1 = i2
 
     # Get the forces from the old calculation:

@@ -18,7 +18,7 @@ from ase.dft import monkhorst_pack
 import gpaw.io
 import gpaw.mpi as mpi
 import gpaw.occupations as occupations
-from gpaw import parsize, dry_run
+from gpaw import parsize, parsize_bands, dry_run
 from gpaw import ConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
@@ -243,6 +243,7 @@ class PAW(PAWExtra, Output):
             'random':        False,
             'maxiter':       120,
             'parsize':       None,
+            'parsize_bands': None,
             'external':      None,  # eV
             'verbose':       0,
             'eigensolver':   'rmm-diis',
@@ -264,6 +265,7 @@ class PAW(PAWExtra, Output):
         self.density = None
         self.kpt_u = None
         self.nbands = None
+        self.nmybands = None
         self.atoms = None
 
         if filename is not None:
@@ -316,7 +318,8 @@ class PAW(PAWExtra, Output):
             elif key in ['kpts', 'nbands']:
                 self.kpt_u = None
             elif key in ['h', 'gpts', 'setups', 'basis', 'spinpol',
-                         'usesymm', 'parsize', 'communicator']:
+                         'usesymm', 'parsize', 'parsize_bands',
+                         'communicator']:
                 self.reuse_old_density = False
                 self.kpt_u = None
             
@@ -439,7 +442,7 @@ class PAW(PAWExtra, Output):
             if npy.sometrue(spos_c != nucleus.spos_c) or not nucleus.ready:
                 movement = True
                 nucleus.set_position(spos_c, self.domain, self.my_nuclei,
-                                     self.nspins, self.nmyu, self.nbands)
+                                     self.nspins, self.nmyu, self.nmybands)
                 nucleus.move(spos_c, self.gd, self.finegd,
                              self.ibzk_kc, self.locfuncbcaster,
                              self.domain,
@@ -601,7 +604,7 @@ class PAW(PAWExtra, Output):
                 i = self.gd.get_slice()
                 for kpt in self.kpt_u:
                     refs = kpt.psit_nG
-                    kpt.psit_nG = self.gd.empty(self.nbands, self.dtype)
+                    kpt.psit_nG = self.gd.empty(self.nmybands, self.dtype)
                     # Read band by band to save memory
                     for n, psit_G in enumerate(kpt.psit_nG):
                         full = refs[n][:]
@@ -613,7 +616,6 @@ class PAW(PAWExtra, Output):
         for kpt in self.kpt_u:
             kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei)
             self.overlap.orthonormalize(kpt.psit_nG, kpt)
-                                       
 
     def orthonormalize_wave_functions(self):
         for kpt in self.kpt_u:
@@ -925,17 +927,24 @@ class PAW(PAWExtra, Output):
         if mr > 0:
             self.text('memory  : %.2f MB' % (mr / 1024**2))
 
-    def distribute_kpoints_and_spins(self, parsize_c, N_c):
+    def distribute_cpus(self, parsize_c, parsize_bands, N_c):
         """Distribute k-points/spins to processors.
 
         Construct communicators for parallelization over
         k-points/spins and for parallelization using domain
         decomposition."""
         
-        ntot = self.nspins * self.nkpts
         size = self.world.size
         rank = self.world.rank
 
+        if parsize_bands is None:
+            parsize_bands = 1
+        self.nmybands = self.nbands // parsize_bands
+        if self.nbands != self.nmybands * parsize_bands:
+            raise RuntimeError('Cannot distribute %d bands to %d processors' %
+                               (self.nbands, parsize_bands))
+
+        ntot = self.nspins * self.nkpts * parsize_bands
         if parsize_c is None:
             ndomains = size // gcd(ntot, size)
         else:
@@ -946,9 +955,16 @@ class PAW(PAWExtra, Output):
         domain_comm = self.world.new_communicator(npy.array(ranks))
         self.domain.set_decomposition(domain_comm, parsize_c, N_c)
 
-        r0 = rank % ndomains
-        ranks = range(r0, r0 + size, ndomains)
+        r0 = rank % (ndomains * parsize_bands)
+        ranks = range(r0, r0 + size, ndomains * parsize_bands)
         self.kpt_comm = self.world.new_communicator(npy.array(ranks))
+
+        r0 = rank % ndomains + self.kpt_comm.rank * (ndomains * parsize_bands)
+        ranks = range(r0, r0 + (ndomains * parsize_bands), ndomains)
+        self.band_comm = self.world.new_communicator(npy.array(ranks))
+
+        assert(size == domain_comm.size * self.kpt_comm.size *
+               self.band_comm.size)
 
     def initialize(self, atoms=None):
         """Inexpensive initialization."""
@@ -1086,10 +1102,6 @@ class PAW(PAWExtra, Output):
                 for setup in self.setups:
                     setup.calculate_rotations(R_slmm)
 
-        if parsize is not None:  # command-line option
-            p['parsize'] = parsize
-        self.distribute_kpoints_and_spins(p['parsize'], N_c)
-        
         self.kT = p['width']
         if self.kT is None:
             if self.gamma:
@@ -1101,6 +1113,17 @@ class PAW(PAWExtra, Output):
             
         self.initialize_occupation(p['charge'], p['nbands'],
                                    self.kT, p['fixmom'], magmom_a)
+
+        if parsize is not None:  # command-line option
+            p['parsize'] = parsize
+
+        if parsize_bands is not None:  # command-line option
+            p['parsize_bands'] = parsize_bands
+
+        self.distribute_cpus(p['parsize'], p['parsize_bands'], N_c)
+        print "My bands", self.nmybands
+
+        self.occupation.set_communicator(self.kpt_comm)
 
         self.stencils = p['stencils']
         self.maxiter = p['maxiter']
@@ -1182,7 +1205,7 @@ class PAW(PAWExtra, Output):
         for nucleus, pos_c in zip(self.nuclei, pos_ac):
             spos_c = self.domain.scale_position(pos_c)
             nucleus.set_position(spos_c, self.domain, self.my_nuclei,
-                                 self.nspins, self.nmyu, self.nbands)
+                                 self.nspins, self.nmyu, self.nmybands)
             
         if self.reuse_old_density:
             self.density.nt_sG[:] = nt_sG
@@ -1244,7 +1267,7 @@ class PAW(PAWExtra, Output):
         if fixmom:
             self.occupation.fix_moment(M)
 
-        self.occupation.set_communicator(self.kpt_comm)
+        # self.occupation.set_communicator(self.kpt_comm)
         
 
     def initialize_kinetic(self):

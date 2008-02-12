@@ -30,7 +30,9 @@ class PAWExtra:
 
     def write(self, filename, mode=''):
         """use mode='all' to write the wave functions"""
+        self.timer.start('IO')
         gpaw.io.write(self, filename, mode)
+        self.timer.stop('IO')
         
     def get_reference_energy(self):
         return self.Eref * self.Ha
@@ -211,7 +213,7 @@ class PAWExtra:
 
         # reallocate only my_nuclei (as the others are not allocated at all)
         for nucleus in self.my_nuclei:
-            nucleus.reallocate(self.nbands)
+            nucleus.reallocate(self.nmybands)
 
         self.set_positions()
 

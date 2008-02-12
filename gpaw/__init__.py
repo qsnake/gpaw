@@ -34,6 +34,7 @@ debug = False
 trace = False
 dry_run = False
 parsize = None
+parsize_bands = None
 arg = None
 setup_paths = []
 i = 1
@@ -54,6 +55,8 @@ while len(sys.argv) > i:
         setup_paths = arg.split('=')[1].split(':')
     elif arg.startswith('--domain-decomposition='):
         parsize = [int(n) for n in arg.split('=')[1].split(',')]
+    elif arg.startswith('--state-parallelization='):
+        parsize_bands = int(arg.split('=')[1])
     else:
         i += 1
         continue
