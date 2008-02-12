@@ -97,6 +97,28 @@ class PAWExtra:
             self.kpt_comm.receive(eps_n, kpt_rank, 1301)
             return eps_n
 
+    def collect_occupations(self, k=0, s=0):
+        """Return occupation array.
+
+        For the parallel case find the rank in kpt_comm that contains
+        the (k,s) pair, for this rank, collect on the corresponding
+        domain a full array on the domain master and send this to the
+        global master."""
+
+        kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
+
+        if kpt_rank == MASTER:
+            return self.kpt_u[u].f_n
+
+        if self.kpt_comm.rank == kpt_rank:
+            # Domain master send this to the global master
+            if self.domain.comm.rank == MASTER:
+                self.kpt_comm.send(self.kpt_u[u].f_n, MASTER, 1313)
+        elif self.master:
+            f_n = npy.zeros(self.nbands)
+            self.kpt_comm.receive(f_n, kpt_rank, 1313)
+            return f_n
+
     def get_wannier_integrals(self, c, s, k, k1, G):
         """Calculate integrals for maximally localized Wannier functions."""
 
@@ -267,6 +289,6 @@ class PAWExtra:
                         for i2 in range(ni):
                             I += P_ii[i1, i2] * npy.dot(P_p,
                                              nucleus.setup.I4_iip[i1, i2])
-                volumes[k,n] += I
+                volumes[k, n] += I
                 
         return 1. / volumes
