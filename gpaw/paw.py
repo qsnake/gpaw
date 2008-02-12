@@ -249,7 +249,7 @@ class PAW(PAWExtra, Output):
             'eigensolver':   'rmm-diis',
             'poissonsolver': None,
             'communicator' : None,
-            'idiotproof'   : True
+            'idiotproof'   : True,
             }
 
         self.initialized = False
@@ -314,7 +314,7 @@ class PAW(PAWExtra, Output):
             if key in ['lmax', 'width', 'stencils', 'external']:
                 pass
             elif key in ['charge', 'xc']:
-                self.reuse_old_density = False
+                self.reuse_old_density = True
             elif key in ['kpts', 'nbands']:
                 self.kpt_u = None
             elif key in ['h', 'gpts', 'setups', 'basis', 'spinpol',
@@ -669,6 +669,10 @@ class PAW(PAWExtra, Output):
         # Broadcast the forces to all processors
         self.world.broadcast(self.F_ac, MASTER)
 
+        # Add non-local contributions
+        for kpt in self.kpt_u:
+            self.F_ac += self.xcfunc.get_non_local_force(kpt)
+            
         if self.symmetry is not None:
             # Symmetrize forces:
             F_ac = npy.zeros((self.natoms, 3))
@@ -678,7 +682,7 @@ class PAW(PAWExtra, Output):
                 for a1, a2 in enumerate(map_a):
                     F_ac[a2] += npy.take(self.F_ac[a1] * mirror, swap)
             self.F_ac[:] = F_ac / len(self.symmetry.symmetries)
-
+        
         self.print_forces()
 
     def attach(self, function, n, *args, **kwargs):
@@ -1041,7 +1045,7 @@ class PAW(PAWExtra, Output):
                 h = 0.2 / Bohr
             else:
                 h = p['h'] / Bohr
-            # N_c should be a multiplum of 4:
+            # N_c should be a multiple of 4:
             N_c = npy.array([max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c])
         
         # Create a Domain object:
@@ -1121,7 +1125,7 @@ class PAW(PAWExtra, Output):
             p['parsize_bands'] = parsize_bands
 
         self.distribute_cpus(p['parsize'], p['parsize_bands'], N_c)
-        print "My bands", self.nmybands
+        ## print "My bands", self.nmybands
 
         self.occupation.set_communicator(self.kpt_comm)
 
