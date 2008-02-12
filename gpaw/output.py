@@ -108,21 +108,22 @@ class Output:
         t = self.text
         p = self.input_parameters
         
+        t('Using the %s Exchange-Correlation Functional.' % self.xcfunc.xcname)
         if self.spinpol:
             t('Spin-Polarized Calculation.')
-            t('Magnetic Moment: %.6f' % sum(self.density.magmom_a), end='')
+            t('Magnetic Moment:   %.6f' % sum(self.density.magmom_a), end='')
             if self.fixmom:
                 t('(fixed)')
             else:
                 t()
         else:
             t('Spin-Paired Calculation')
-
-        t('Total Charge:        %.6f' % p['charge'])
-        t('Fermi Temperature:   %.6f' % (self.kT * self.Ha))
-        t('Eigen Solver:        %s \n                     (%s)' %
+        
+        t('Total Charge:      %.6f' % p['charge'])
+        t('Fermi Temperature: %.6f' % (self.kT * self.Ha))
+        t('Eigen Solver:      %s \n                   (%s)' %
           (p['eigensolver'], fd(p['stencils'][0])))
-        t('Poisson Solver:      %s \n                     (%s)' %
+        t('Poisson Solver:    %s \n                   (%s)' %
           ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
            fd(self.hamiltonian.poisson.nn)))
         order = str((2 * p['stencils'][1]))
@@ -135,8 +136,8 @@ class Output:
         else:
             order = order+'th'
         
-        t('Interpolation:       '+order+' Order')
-        t('Reference Energy: %10.6f' % (self.Eref * self.Ha))
+        t('Interpolation:     '+order+' Order')
+        t('Reference Energy:  %.6f' % (self.Eref * self.Ha))
         t()          
         if self.gamma:
             t('Gamma Point Calculation')
@@ -167,23 +168,25 @@ class Output:
             t('Fixing the initial density')
         else:
             mixer = self.density.mixer
-            t('Linear Mixing Parameter:           %8g' % mixer.beta)
+            t('Linear Mixing Parameter:           %g' % mixer.beta)
             t('Pulay Mixing with %d Old Densities' % mixer.nmaxold)
-            t('Damping of Long Wave Oscillations: %8g' % mixer.weight)
+            t('Damping of Long Wave Oscillations: %g' % mixer.weight)
 
         cc = p['convergence']
         t()
         t('Convergence Criteria:')
-        t('Total Energy Change per Atom:           %8g eV / atom' %
+        t('Total Energy Change per Atom:           %g eV / atom' %
           (cc['energy']))
-        t('Integral of Absolute Density Change:    %8g electrons' %
+        t('Integral of Absolute Density Change:    %g electrons' %
           cc['density'])
-        t('Integral of Absolute Eigenstate Change: %8g' % cc['eigenstates'])
+        t('Integral of Absolute Eigenstate Change: %g' % cc['eigenstates'])
+        t('Number of Bands in Calculation:         %i' % self.nbands)
+        t('Bands to Converge:                      ', end='')
         if cc['bands'] == 'occupied':
-            t('Converge Occupied States Only.')
+            t('Occupied States Only')
         else:
-            t('Converge %d Bands.' % cc['bands'])
-        t('Number of Valence Electrons: %s' % self.nvalence)
+            t('%d Lowest Bands' % cc['bands'])
+        t('Number of Valence Electrons:            %i' % self.nvalence)
 
     def print_converged(self):
         t = self.text
@@ -293,7 +296,7 @@ class Output:
             niterpoisson = '%d' % self.hamiltonian.npoisson
             
             t("""\
-iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %-12.5f %-5s  %-7s""" %
+iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %- 12.5f %-5s  %-7s""" %
               (self.niter,
                T[3], T[4], T[5],
                eigerror,
@@ -330,7 +333,7 @@ iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %-12.5f %-5s  %-7s""" %
         pbc_c = atoms.get_pbc()
         self.text(plot(pos_ac, Z_a, cell_c))
 
-def eigenvalue_string(paw,comment=None):
+def eigenvalue_string(paw, comment=None):
     """
     Write eigenvalues and occupation numbers into a string.
     The parameter comment can be used to comment out non-numers,
@@ -341,29 +344,29 @@ def eigenvalue_string(paw,comment=None):
 
     Ha = paw.Ha
 
-    if paw.nkpts > 1 or paw.kpt_comm.size > 1:
+    if paw.nkpts > 1:
         # not implemented yet:
         return ''
 
     s = ''
     if paw.nspins == 1:
         s += comment + 'Band   Eigenvalues  Occupancy\n'        
-        kpt = paw.kpt_u[0]
+        eps_n = paw.collect_eigenvalues(k=0, s=0)
+        f_n   = paw.collect_occupations(k=0, s=0)
         for n in range(paw.nbands):
             s += ('%4d   %10.5f  %10.5f\n' %
-                  (n, Ha * kpt.eps_n[n], kpt.f_n[n]))
+                  (n, Ha * eps_n[n], f_n[n]))
     else:
-        s += comment + '               Up                   Down\n'
-        s += comment + 'Band   Eigenvalues  Occupancy  Eigenvalues   Occupancy\n'
-        epsa_n = paw.kpt_u[0].eps_n
-        epsb_n = paw.kpt_u[1].eps_n
-        fa_n = paw.kpt_u[0].f_n
-        fb_n = paw.kpt_u[1].f_n
-        for n in range(paw.nbands):
-            s += ('%4d %10.5f %10.5f %10.5f %10.5f\n' %
-                  (n,
-                   Ha * epsa_n[n], fa_n[n],
-                   Ha * epsb_n[n], fb_n[n]))
+        s += comment + '                 Up                     Down\n'
+        s += comment + 'Band  Eigenvalues  Occupancy  Eigenvalues  Occupancy\n'
+        epsa_n = paw.collect_eigenvalues(k=0, s=0)
+        epsb_n = paw.collect_eigenvalues(k=0, s=1)
+        fa_n   = paw.collect_occupations(k=0, s=0)
+        fb_n   = paw.collect_occupations(k=0, s=1)
+        if paw.master:
+            for n in range(paw.nbands):
+                s += (' %4d  %11.5f  %9.5f  %11.5f  %9.5f\n' %
+                      (n, Ha * epsa_n[n], fa_n[n], Ha * epsb_n[n], fb_n[n]))
     return s
 
 def plot(positions, numbers, cell):
