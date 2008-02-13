@@ -217,7 +217,9 @@ class BasisMaker:
         # hack since elsewhere multiple rcs are not supported
 
         for basisfunction in basis:
-            psi = basisfunction.psi    
+            psi = basisfunction.psi
+            norm = npy.dot(self.generator.dr, psi*psi)
+            assert abs(1 - norm) < 1e-4, 'Basis not normalized!'
             l = basisfunction.l
             write('  <basis_function l="%d" rc="%f">\n' % (l, rc))
             write('   ')
@@ -380,6 +382,19 @@ class BasisMaker:
                                                       referencefile,
                                                       referenceindex,
                                                       txt)
+            
+            # We'll just make a hack here to make it go more smoothly to zero
+            #gc1 = g.r2g(.1*rcut)
+            #gc2 = g.r2g(.4*rcut) + 1
+            #ri = g.r[gc1]
+            #rc = g.r[gc2 - 1]
+
+            #R = (g.r[gc1:gc2]-ri) / (rc-ri)
+            #F = 1 - 3 * R**2 + 2 * R**3
+            #psi_pol[gc1:gc2] *= F
+            #psi_pol[gc2:] = 0
+            #print >> txt, 'Forced cutoff over %.03f to %.03f !!' % (ri, rc)
+            
             bf_pol = BasisFunction(psi_pol, rcut, None, l_pol, None, None, 1)
             polarization_functions.append(bf_pol)
             if polarizationcount > 1:
@@ -401,9 +416,14 @@ class BasisMaker:
         for multizetas in other_multizetas:
             basis.extend(multizetas)
         basis.extend(polarization_functions)
+
+        for bf in basis:
+            norm = npy.dot(self.generator.dr, bf.psi * bf.psi)**.5
+            bf.psi /= norm
+        
         return basis
 
-    def plot(self, basis, figure=None, show=False, title=None):
+    def plot(self, basis, figure=None, title=None, filename=None):
         """Plot basis functions using pylab."""
         import pylab
         g = self.generator
@@ -417,4 +437,11 @@ class BasisMaker:
         for bf in basis:
             label = 'n=%s, l=%s, rc=%.02f' % (str(bf.n), str(bf.l), bf.rc)
             pylab.plot(g.r, bf.psi, label=label)
+
+        rc = max([bf.rc for bf in basis])
+        axis = pylab.axis()
+        newaxis = [0., rc, axis[2], axis[3]]
+        pylab.axis(newaxis)
         pylab.legend()
+        if filename is not None:
+            pylab.savefig(filename)

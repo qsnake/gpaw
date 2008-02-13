@@ -485,7 +485,8 @@ class Setup:
                            (r_g[gcut3] - r_g[gcut3 - 1]))
                 phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
                 phit_g[gcut3:] = 0.0
-                self.phit_j.append(Spline(l, rcut3, phit_g, r_g, beta))
+                self.phit_j.append(Spline(l, rcut3, phit_g, r_g, beta,
+                                          points=100))
 
     def read_basis_functions(self, basis_name, r_g, beta):
         parser = BasisSetXMLParser()
@@ -493,7 +494,7 @@ class Setup:
 
         self.phit_j = []
         for l, phit_g in zip(l_j, phit_jg):
-            self.phit_j.append(Spline(l, rc, phit_g, r_g, beta, points=25))
+            self.phit_j.append(Spline(l, rc, phit_g, r_g, beta, points=100))
 
     def print_info(self, text):
         if self.phicorehole_g is None:

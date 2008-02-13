@@ -2,13 +2,14 @@
 
 import sys
 import math
+import traceback
 
 import numpy as npy
 from ase import Atom, Atoms
 try:
     import pylab
-except:
-    print 'Pylab not found'
+except ImportError:
+    print 'Pylab not imported'
 
 from gpaw import Calculator
 from gpaw.domain import Domain
@@ -174,18 +175,20 @@ def make_dummy_calculation(l, function=None, rcut=6., a=12., n=60):
     """Make a mock reference wave function using a made-up radial function
     as reference"""
     #print 'Dummy reference: l=%d, rcut=%.02f, alpha=%.02f' % (l, rcut, alpha)
+    r = npy.arange(0., rcut, .01)
+
     if function is None:
         function = QuasiGaussian(4., rcut)
-        function.renormalize(norm)
-    #g = QuasiGaussian(alpha, rcut)
-    r = npy.arange(0., rcut, .01)
+
     norm = get_norm(r, function(r), l)
+    function.renormalize(norm)
+    #g = QuasiGaussian(alpha, rcut)
     
     mcount = 2*l + 1
     fcount = 1
     domain = Domain((a, a, a), (False, False, False))
     gd = GridDescriptor(domain, (n, n, n))
-    spline = Spline(l, r[-1], function(r))
+    spline = Spline(l, r[-1], function(r), points=50)
     center = (.5, .5, .5)
     lf = create_localized_functions([spline], gd, center)
     psit_k = gd.zeros(mcount)
@@ -256,21 +259,20 @@ def get_norm(r, f, l=0):
     return norm_squared(r, f, l) ** .5
 
 class PolarizationOrbitalGenerator:
-    def __init__(self, rcut):
+    """Convenience class which generates polarization functions."""
+    def __init__(self, rcut, gaussians=None):
         self.rcut = rcut
-        #amount = 6 # experiment with these things
-        amount = int(rcut/.3) # lots!
-        r_alphas = npy.linspace(1., rcut, amount)
+        if gaussians is None:
+            gaussians = int(rcut / .3) # lots!
+        r_alphas = npy.linspace(1., .9 * rcut, gaussians)
         self.alphas = 1. / r_alphas**2
         self.s = None
         self.S = None
         self.optimizer = None
 
     def generate(self, l, gd, psit_k, center):
+        """Generate polarization orbital."""
         rcut = self.rcut
-        #print 'Generating polarization function'
-        #print 'l=%d, rcut=%.02f Bohr. Gaussians: %d.' % (l, rcut,
-        #                                                 len(self.alphas))
         phi_i = [QuasiGaussian(alpha, rcut) for alpha in self.alphas]
         r = npy.arange(0, rcut, .01)
         dr = r[1] # equidistant
@@ -279,16 +281,12 @@ class PolarizationOrbitalGenerator:
             y = phi(r)
             norm = (dr * sum(y * y * integration_multiplier))**.5
             phi.renormalize(norm)
-        splines = [Spline(l, r[-1], phi(r)) for phi in phi_i]
-        #print 'Calculating basis/reference overlap integrals'
+        splines = [Spline(l, r[-1], phi(r), points=50) for phi in phi_i]
         self.s, self.S = get_matrices(l, gd, splines, psit_k, center)
-        #print 'Optimizing expansion coefficients'
         self.optimizer = CoefficientOptimizer(self.s, self.S, len(phi_i))
         coefs = self.optimizer.find_coefficients()
         self.quality = - self.optimizer.amoeba.y[0]
         self.qualities = self.optimizer.lastterms
-        #print 'Quality: %.03f [%s]' % (self.quality,
-        #                               pretty(partial_qualities))
         orbital = LinearCombination(coefs, phi_i)
         orbital.renormalize(get_norm(r, orbital(r), l))
         return orbital
@@ -381,6 +379,7 @@ def get_matrices(l, gd, splines, psit_k, center=(.5, .5, .5)):
     return s, S
 
 def main():
+    """Testing."""
     args = sys.argv[1:]
     if len(args) == 0:
         args = g2.atoms.keys()
@@ -414,11 +413,11 @@ def main():
 
 def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
     """Run a test using a Gaussian reference function."""
-    generator = PolarizationOrbitalGenerator(rcut/2)
+    generator = PolarizationOrbitalGenerator(rcut/2.5, gaussians=20)
     r = npy.arange(0., rcut, .01)
-    alpha = 1. / (rcut/2.) ** 2.
+    alpha_ref = 1. / (rcut/2.) ** 2.
     for l in range(lmin, lmax + 1):
-        g = QuasiGaussian(alpha, rcut)
+        g = QuasiGaussian(alpha_ref, rcut/2)
         norm = get_norm(r, g(r), l)
         g.renormalize(norm)
         gd, psit_k, center, ref = make_dummy_calculation(l, g, rcut)

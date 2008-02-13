@@ -220,7 +220,7 @@ class Density:
         if self.lcao:
             Nt = self.finegd.integrate(self.nt_g)
             scale = -Q / Nt
-            assert abs(scale - 1.0) < 0.01
+            assert abs(scale - 1.0) < 0.01, 'Scale = %.03f' % scale
             self.nt_g *= scale
             
         self.rhot_g[:] = self.nt_g
