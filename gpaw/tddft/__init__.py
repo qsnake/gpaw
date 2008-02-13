@@ -68,8 +68,10 @@ class TDDFT:
         Note: Use about ???10^-3 - 10^-4??? tighter tolerance for PAW.
         """
 
-        # Initialize wavefunctions (necessary for restarting from file)
+        # Initialize wavefunctions and density 
+        # (necessary after restarting from file)
         paw.initialize_wave_functions()
+        paw.update_pseudo_charge()
 
         # Convert PAW-object to complex
         paw.totype(complex);

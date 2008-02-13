@@ -191,8 +191,8 @@ class AbsorptionKickHamiltonian:
         p = strength * dir / npy.sqrt(npy.vdot(dir,dir))
         # iterations
         self.iterations = int(round(strength / 1.0e-3))
-        if self.iterations == 0:
-            self.iterations = 1
+        if self.iterations < 10:
+            self.iterations = 10
         # delta p
         self.dp = p / self.iterations
 
