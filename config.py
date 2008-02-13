@@ -41,7 +41,7 @@ def check_packages(packages, msg, force_inclusion_of_ase):
 
     if not force_inclusion_of_ase:
         try:
-            import ASE
+            import ase
         except ImportError:
             include_ase = True
         else:
@@ -120,7 +120,7 @@ def get_system_config(define_macros, undef_macros,
         extra_compile_args += ['-qlanglvl=stdc99']
         extra_link_args += ['-bmaxdata:0x80000000', '-bmaxstack:0x80000000']
 
-        libraries += ['f', 'essl', 'lapack']
+        libraries += ['f', 'lapack', 'essl']
         define_macros.append(('GPAW_AIX', '1'))
 
     elif machine == 'x86_64':
@@ -345,7 +345,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     for c2r in glob('c/libxc/src/funcs_*.c'): cfiles2remove.append(c2r)
     for c2r in cfiles2remove: cfiles.remove(c2r)
     sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c',
-               'c/operators.c', 'c/transformers.c']
+               'c/operators.c', 'c/transformers.c'] 
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
                         for x in cfiles])
 
