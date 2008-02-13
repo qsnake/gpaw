@@ -1,17 +1,11 @@
 from math import sqrt
-import Numeric as num
+import numpy as npy
 
-from ASE import Atom
-from ASE.Units import units, Convert
-from ASE.IO.xyz import ReadXYZ, WriteXYZ
+from ase import Angstrom, Atom, Hartree, PickleTrajectory
 
 from gpaw.cluster import Cluster
 import gpaw.mpi as mpi
 MASTER = 0
-
-class Trajectory(list):
-    """Basic trajectory class"""
-    pass
 
 class ViewmolTrajectory2(list):
     def __add__(self, other):
@@ -99,45 +93,47 @@ class ViewmolTrajectory:
     vmt = ViewmolTrajectory(H2)
     c.attach(vmt.add,100000)
     """
-    def __init__(self, list_of_atoms, filename='trajectory.vmol',mode='w'):
-        self.Ha = Convert(1, units.GetEnergyUnit(), 'Hartree')
-        self.Ang = Convert(1, units.GetLengthUnit(), 'Ang')
+    def __init__(self, atoms, filename='trajectory.vmol',mode='w'):
+        self.Ha = Hartree
+        self.Ang = Angstrom
         
         self.n = 0
-        self.list_of_atoms = list_of_atoms
+        self.atoms = atoms
         if mpi.rank == MASTER:
             self.file = open(filename, mode)
         else:
             self.file = open('/dev/null', mode)
         print >> self.file, ' $coord', 1. / self.Ang
-        self.write_atoms()
+        self.write_atoms(self.atoms)
         print >> self.file, ' $grad'
     
     def __del__(self):
         print >> self.file, ' $end'
         self.file.close()
 
-    def add(self):
+    def add(self, atoms=None):
         """Write current atomic position to the output file"""
+        if atoms is None:
+            atoms = self.atoms
         self.n += 1
         print >> self.file, 'cycle=', self.n,
         print >> self.file, 'SCF energy=', \
-              self.list_of_atoms.GetPotentialEnergy() * self.Ha,
-        forces = self.list_of_atoms.GetCartesianForces() * (self.Ha / self.Ang)
+              atoms.get_potential_energy() * self.Ha,
+        forces = atoms.get_forces() * (self.Ha / self.Ang)
         max_force = 0
         for f in forces:
-            max_force = max(max_force, sqrt(num.sum(f * f)))
+            max_force = max(max_force, sqrt(npy.sum(f * f)))
         print >> self.file, '|max dE/dxyz|=', max_force
-        self.write_atoms()
-        for atom, f in zip(self.list_of_atoms, forces):
+        self.write_atoms(atoms)
+        for atom, f in zip(self.atoms, forces):
             print >> self.file, '%10.4g %10.4g %10.4g' % (f[0],f[1],f[2])
         self.file.flush()
        
-    def write_atoms(self):
-        for atom in self.list_of_atoms:
-            c = atom.GetCartesianPosition()
+    def write_atoms(self, atoms):
+        for atom in atoms:
+            c = atom.get_positions()[0]
             print  >> self.file, '%10.4f %10.4f %10.4f' % (c[0],c[1],c[2]),\
-                      atom.GetChemicalSymbol()
+                      atom.get_chemical_symbols()[0]
 
     def read(self, filename='trajectory.vmol', position=0):
         """Read atom configurations of step position"""
@@ -151,3 +147,12 @@ class ViewmolTrajectory:
                 w = l.split()
                 loa.append(Atom(w[3].replace ("\n", "" ),
                                 (float(w[0]), float(w[1]), float(w[2]))))
+                
+def write_viewmol(pt, filename, mode='w'):
+    """Write PickleTrajectory as viewmol file."""
+    atoms = pt[0]
+    vt = ViewmolTrajectory(atoms, filename, mode)
+    for atoms in pt:
+        vt.add(atoms)
+    del(vt)
+    

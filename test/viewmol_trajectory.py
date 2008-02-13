@@ -1,24 +1,34 @@
 import os
+import sys
 
-from ASE import Atom
-from ASE.Dynamics.ConjugateGradient import ConjugateGradient
+from ase import Atoms, Atom, QuasiNewton, PickleTrajectory
 
 from gpaw import *
 from gpaw.cluster import Cluster
-from gpaw.utilities.viewmol import ViewmolTrajectory
+from gpaw.utilities.viewmol import ViewmolTrajectory, write_viewmol
 
 s = Cluster([Atom('H'), Atom('H',(0,0,3))])
 s.minimal_box(2)
 c = Calculator(h=0.3, nbands=2)
-s.SetCalculator(c)
+s.set_calculator(c)
 
-fname='traj.vmol'
-vmt = ViewmolTrajectory(s, fname)
-c.attach(vmt.add,100000)
-c.calculate()
+vfname='traj.vmol'
+pfname='traj.pickle'
+vmt = ViewmolTrajectory(s, vfname)
+traj = PickleTrajectory(pfname, 'w', s)
+#c.attach(vmt.add, 100000)
+#sys.exit()
 
 # Find the theoretical bond length:
-relax = ConjugateGradient(s, fmax=0.05)
-relax.Converge()
+dyn = QuasiNewton(s)
+dyn.attach(traj.write)
+dyn.attach(vmt.add)
+dyn.run(fmax=0.05)
 
-os.remove(fname)
+traj = PickleTrajectory(pfname, 'r')
+vfname2='pickle.vmol'
+write_viewmol(traj, vfname2)
+    
+os.remove(vfname)
+os.remove(pfname)
+os.remove(vfname2)
