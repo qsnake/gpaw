@@ -162,9 +162,12 @@ cd""",set['wd']
         print >> f,"echo \"Current working directory is `pwd`\" >> $OUT"
         print >> f,"echo \"Running on `hostname`\" >> $OUT"
         print >> f,"""
+# we need to use openmpi instead of SGI's MPI library
+export LD_LIBRARY_PATH=/cxfs/sandbox/funano/openmpi/lib:$LD_LIBRARY_PATH
+export PATH=/cxfs/sandbox/funano/openmpi/bin:$PATH
+        
 #include the full path to the name of your MPI program
 . /usr/share/modules/init/bash
-module add mpt
 module add mkl
 unset CC CFLAGS LDFLAGS
 
