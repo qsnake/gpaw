@@ -5,7 +5,7 @@ import numpy as npy
 from ase import Atom, Atoms
 from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
-from gpaw.io.Cube import ReadListOfAtomsFromCube
+from ase.io.cube import read_cube
 from gpaw.utilities.vector import Vector3d
 
 class Cluster(Atoms):
@@ -64,13 +64,12 @@ class Cluster(Atoms):
         filetype.lower()
 
         if filetype == 'cube':
-            loa = ReadListOfAtomsFromCube(filename)
-            self.__init__(loa)
+            loa = read_cube(filename)
         elif filetype == 'xyz':
             loa = read_xyz(filename)
-            self.__init__(loa)
         else:
             raise NotImplementedError('unknown file type "'+filetype+'"')
+        self.__init__(loa)
                 
         return len(self)
 
