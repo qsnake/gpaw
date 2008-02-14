@@ -1,3 +1,4 @@
+#include <complex.h>
 #include "localized_functions.h"
 #include "extensions.h"
 #include "bmgs/bmgs.h"
