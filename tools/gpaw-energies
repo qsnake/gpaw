@@ -24,6 +24,8 @@ parser.add_option("-F", "--Forces", action='count', default=None,
                   help='print forces also')
 parser.add_option("-G", "--Gauss", dest='gauss', default=None,
                   help=' Gauss fold by width in the chosen energy unit')
+parser.add_option("-n", "--npoints", dest='npoints', default=201,
+                  help='# of base points for the sampling (dafult 201)')
 parser.add_option("-H", "--Hartree", action='count', default=None,
                   help='use Hartree energy units (def: eV)')
 parser.add_option("-s", "--structure", dest='structure_file', default=None,
@@ -65,6 +67,13 @@ if additional_info:
     print >> out, '# xc:',paw.hamiltonian.xc.xcfunc.get_name()
     if  p['charge']:
         print >> out, '# charge:',p['charge']
+    if paw.get_spin_polarized():
+        if paw.occupation.fixmom:
+            fixmom = '(fixed)'
+        else:
+            fixmom = ''
+        print >> out, '# magnetic moment:', \
+              paw.occupation.calculate_magnetic_moment(paw.kpt_u), fixmom
     atoms = paw.get_atoms()
     cell = atoms.get_cell().diagonal()
     h = cell / p['gpts']
@@ -98,7 +107,11 @@ if opt.gauss is None:
     print >> out, eigenvalue_string(paw, '# '),
 else:
     width = float(opt.gauss)
-    dos = DOS(paw, width=width, npts=201)
+    if opt.npoints is None:
+        npts = 201
+    else:
+        npts = int(opt.npoints)
+    dos = DOS(paw, width=width, npts=npts)
     print >> out, '# Fermi level shifted to 0'
     print >> out, '# folding with', width
     if paw.get_number_of_spins() == 1:

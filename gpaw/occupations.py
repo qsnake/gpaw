@@ -40,6 +40,16 @@ class Dummy:
             Eband += npy.dot(kpt.f_n, kpt.eps_n)    
         self.Eband = self.kpt_comm.sum(Eband)
 
+    def calculate_magnetic_moment(self, kpts):
+        """Recalculate the magnetic moment from occupations"""
+        if self.nspins == 1:
+            return 0.0
+            
+        M = 0.0
+        for kpt in kpts:
+            sign = 1. - 2. * kpt.s
+            M += sign * kpt.weight * kpt.f_n.sum()
+        return M
 
 class ZeroKelvin(Dummy):
     """Occupations for Gamma-point calculations without Fermi-smearing"""
