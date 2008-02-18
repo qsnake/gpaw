@@ -314,7 +314,7 @@ class PAW(PAWExtra, Output):
             if key in ['lmax', 'width', 'stencils', 'external']:
                 pass
             elif key in ['charge', 'xc']:
-                self.reuse_old_density = True
+                self.reuse_old_density = False
             elif key in ['kpts', 'nbands']:
                 self.kpt_u = None
             elif key in ['h', 'gpts', 'setups', 'basis', 'spinpol',
