@@ -55,7 +55,8 @@ class Setup:
         self.softgauss = False
         xcname = self.xcname
         zero_reference = xcfunc.hybrid > 0
-
+        self.HubU = None
+        
         self.type = type
         if type != 'paw':
             symbol += '.' + type
@@ -451,6 +452,20 @@ class Setup:
         # compute inverse overlap coefficients C_ii
         self.C_ii = -npy.dot(self.O_ii, inv(npy.identity(size) + npy.dot(self.B_ii, self.O_ii)))
 
+    def set_hubbard_u(self, U, l):
+        """Set Hubbard parameter.
+
+        U in atomic units
+        """
+        self.HubU = U;
+        self.Hubl = l;
+        self.Hubi = 0;
+        for ll in self.l_j:
+            if ll == self.Hubl:
+                break
+            self.Hubi = self.Hubi+2*ll+1
+        #print self.Hubi
+        
     def create_basis_functions(self, phit_jg, beta, ng, rcut2, gcut2, r_g):
         # Cutoff for atomic orbitals used for initial guess:
         rcut3 = 8.0  # XXXXX Should depend on the size of the atom!
