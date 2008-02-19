@@ -52,7 +52,7 @@ def line2cell(line):
     z = sqrt(c**2 - x**2 - y**2)
     cell[2] = (x, y, z)
     # handle rounding errors in cos, sin
-    cell = npy.where(cell < 1.e-15, 0.0, cell)
+    cell = npy.where(cell < 1.e-10, 0.0, cell)
     return cell
 
 def write_xyz(fileobj, images):
