@@ -73,7 +73,7 @@ class EXX:
     
     def __init__(self, paw, gd, finegd, interpolate, restrict, poisson,
                  my_nuclei, ghat_nuclei, nspins, nmyu, nbands, Na,
-                 kcomm, dcomm, energy_only=False, use_finegrid=True, vc=True):
+                 kcomm, dcomm, energy_only=False, use_finegrid=True):
         
         # Initialize class-attributes
         self.density      = paw.density
@@ -90,11 +90,6 @@ class EXX:
         self.use_finegrid = use_finegrid
         self.pair_density = PairDensity(paw, use_finegrid)
 
-        if vc is False:
-            print 'Deleting valence-core interaction'
-            for n in my_nuclei:
-                n.setup.X_p[:] = 0.0
-        
         # Allocate space for matrices
         self.nt_G = gd.empty() # Pseudo density on coarse grid
         self.vt_G = gd.empty() # Pot. of comp. pseudo density on coarse grid
@@ -534,3 +529,14 @@ def constructX(gen):
     # pack X_ii matrix
     X_p = pack2(X_ii, tolerance=1e-8)
     return X_p
+
+def get_valence_core_exx(paw, hybrid=None):
+    if hybrid is None:
+        hybrid = paw.xcfunc.hybrid
+
+    Exx_vc = 0.0
+    for nucleus in paw.my_nuclei:
+        D_p = npy.sum(nucleus.D_sp, axis=0)
+        Exx_vc -= hybrid * npy.dot(D_p, nucleus.setup.X_p)
+
+    return paw.gd.comm.sum(Exx_vc) * paw.Ha
