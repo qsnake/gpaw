@@ -1,3 +1,5 @@
+import numpy as npy
+
 from ase import *
 #from gpaw.utilities.vector import Vector3d
 from gpaw.cluster import Cluster
@@ -34,13 +36,24 @@ for c in range(3):
         width += R
     equal(cc[c, c], width, 1e-10)
 
+# conneted atoms
+assert(len(CO.find_connected(0, 1.1*R)) == 2)
+assert(len(CO.find_connected(0, 0.9*R)) == 1)
+
+# .............................................
 # I/O
 fxyz='CO.xyz'
 fpdb='CO.pdb'
 
+cell = [2.,3.,R+2.]
+CO.set_cell(cell)
 CO.write(fxyz)
 CO_b = Cluster(filename=fxyz)
-assert(len(CO) == len(CO_b)) 
+assert(len(CO) == len(CO_b))
+for a, b in zip(cell, CO_b.get_cell().diagonal()):
+    assert(a == b)
+offdiagonal = CO_b.get_cell().sum() - CO_b.get_cell().diagonal().sum()
+assert(offdiagonal == 0.0)
  
 CO.write(fxyz, repeat=[1,1,1])
 CO_b = Cluster(filename=fxyz)
@@ -48,5 +61,18 @@ assert(8*len(CO) == len(CO_b))
  
 CO.write(fpdb)
 
+# read xyz files with additional info
+read_with_additional=True
+if read_with_additional:
+    f = open(fxyz, 'w')
+    print >> f, """2
+
+C 0 0 0. 1 2 3
+O 0 0 1. 6. 7. 8."""
+    f.close()
+
+    CO = Cluster(filename=fxyz)
+
 os.remove(fpdb)
 os.remove(fxyz)
+

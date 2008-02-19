@@ -7,6 +7,7 @@ from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
 from ase.io.cube import read_cube
 from gpaw.utilities.vector import Vector3d
+from gpaw.io.xyz import read_xyz
 
 class Cluster(Atoms):
     """A class for cluster structures
@@ -25,6 +26,36 @@ class Cluster(Atoms):
         """get the extreme positions of the structure"""
         pos = self.get_positions()
         return npy.array([npy.minimum.reduce(pos),npy.maximum.reduce(pos)])
+
+    def find_connected(self, i, dmax):
+        """Find the atoms connected to self[i] and return them."""
+        
+        def add_if_new(atoms, atom):
+            new = False
+            va = Vector3d(atom.get_positions()[0])
+            dmin = 99999999999
+            for a in atoms:
+                dmin = min(dmin, va.distance(a.get_positions()[0]))
+            if dmin > 0.1:
+                atoms += atom
+                return True
+            return False
+
+        connected = Cluster(self[i])
+
+        isolated = False
+        while not isolated:
+            new = 0
+            for ca in connected:
+                # search atoms that are connected to you
+                vca = Vector3d(ca.get_positions()[0])
+                for oa in self:
+                    if vca.distance(oa.get_positions()[0]) < dmax:
+                        new += int(add_if_new(connected, oa))
+            if new == 0:
+                isolated = True
+
+        return connected
 
     def minimal_box(self,border=0):
         """The box needed to fit the structure in.
