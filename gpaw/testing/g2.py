@@ -40,7 +40,7 @@ atoms = {
 """
 Experimental enthalpies of formation at 298K, zero-point energies (ZPE), and
 thermal enthalpy corrections for molecules from
-Staroverov  et al. JCP 119, 12129 (2003)
+Staroverov et al. JCP 119, 12129 (2003)
 
 ZPE and thermal corrections are estimated from B3LYP geometries and vibrations.
 
@@ -201,6 +201,80 @@ molecules = {
      'C3H9C': ("t-Butyl radical, (CH3)3C, C3v symm."                      , r"$\rm{(CH}_3\rm{)}_3\rm{C}\ \rm{(t-butyl radical)}$"          ,   12.3,  71.7833, 4.6662),
        'NO2': ("NO2 radical, C2v symm, 2-A1."                             , r"$\rm{NO}_2$"                                                 ,    7.9,   5.4631, 2.4366),
 }
+
+"""
+Experimental ionization energies from CCCBDB at
+http://srdata.nist.gov/cccbdb/default.htm
+"""
+IP = {# System     IE    IE_vert
+    'H'         : (13.60,  None),
+    'Li'        : ( 5.39,  None),
+    'Be'        : ( 9.32,  None),
+    'B'         : ( 8.30,  None),
+    'C'         : (11.26,  None),
+    'N'         : (14.53,  None),
+    'O'         : (13.62,  None),
+    'F'         : (17.42,  None),
+    'Na'        : ( 5.14,  None),
+    'Mg'        : ( 7.65,  None),
+    'Al'        : ( 5.99,  None),
+    'Si'        : ( 8.15,  None),
+    'P'         : (10.49,  None),
+    'S'         : (10.36,  None),
+    'Cl'        : (12.97,  None),      
+    'LiH'       : ( 7.90,  None),
+    'BeH'       : ( 8.21,  None),
+    'CH'        : (10.64,  None),  
+    'CH2_s3B1d' : (10.40,  None),
+    'CH3'       : ( 9.84,  None),
+    'CH4'       : (12.61, 13.60),
+    'NH'        : (13.10, 13.49),
+    'NH2'       : (10.78, 12.00),
+    'NH3'       : (10.07, 10.82),
+    'OH'        : (13.02,  None),
+    'H2O'       : (12.62,  None),
+    'HF'        : (16.03, 16.12),
+    'SiH2_s1A1d': ( 8.92,  None),
+    'SiH3'      : ( 8.14,  8.74),
+    'SiH4'      : (11.00, 12.30),
+    'PH2'       : ( 9.82,  None),
+    'PH3'       : ( 9.87, 10.95),
+    'SH2'       : (10.46, 10.50),
+    'HCl'       : (12.74,  None),
+    'Li2'       : ( 5.11,  None),
+    'LiF'       : (11.30,  None),
+    'C2H2'      : (11.40, 11.49),
+    'C2H4'      : (10.51, 10.68),
+    'CN'        : (13.60,  None),
+    'HCN'       : (13.60, 13.61),
+    'CO'        : (14.01, 14.01),
+    'HCO'       : ( 8.12,  9.31),
+    'H2CO'      : (10.88, 10.88),
+    'CH3OH'     : (10.84, 10.96),
+    'N2'        : (15.58, 15.58),
+    'N2H4'      : ( 8.10,  8.98),
+    'NO'        : ( 9.26,  9.26),
+    'O2'        : (12.07, 12.30),
+    'H2O2'      : (10.58, 11.70),
+    'F2'        : (15.70, 15.70),
+    'CO2'       : (13.78, 13.78),
+    'Na2'       : ( 4.89,  None),
+    'Si2'       : ( 7.90,  None),
+    'P2'        : (10.53, 10.62),
+    'S2'        : ( 9.36,  9.55),
+    'Cl2'       : (11.48, 11.49),
+    'NaCl'      : ( 9.20,  9.80),
+    'SiO'       : (11.49,  None),
+    'CS'        : (11.33,  None),
+    'SO'        : (11.29,  None),
+    'ClO'       : (10.89, 11.01),
+    'ClF'       : (12.66, 12.77),
+    'Si2H6'     : ( 9.74, 10.53),
+    'CH3Cl'     : (11.26, 11.29),
+    'CH3SH'     : ( 9.44,  9.44),
+    'HOCl'      : (11.12,  None),
+    'SO2'       : (12.35, 12.50),
+    }  
 
 ## Start of extra systems
 
@@ -1952,6 +2026,7 @@ NO2 = Atoms([
 
 order = ['Be2','LiH','BeH','CH','CH2_s3B1d','CH2_s1A1d','CH3','CH4','NH','NH2','NH3','OH','H2O','HF','SiH2_s1A1d','SiH2_s3B1d','SiH3','SiH4','PH2','PH3','SH2','HCl','Li2','LiF','C2H2','C2H4','C2H6','CN','HCN','CO','HCO','H2CO','CH3OH','N2','N2H4','NO','O2','H2O2','F2','CO2','Na2','Si2','P2','S2','Cl2','NaCl','SiO','CS','SO','ClO','ClF','Si2H6','CH3Cl','CH3SH','HOCl','SO2','BF3','BCl3','AlF3','AlCl3','CF4','CCl4','OCS','CS2','COF2','SiF4','SiCl4','N2O','ClNO','NF3','PF3','O3','F2O','ClF3','C2F4','C2Cl4','CF3CN','C3H4_C3v','C3H4_D2d','C3H4_C2v','C3H6_Cs','C3H6_D3h','C3H8','C4H6x','C4H6xx','C4H6xxx','C4H6xxxx','C4H6xxxxx','C4H8x','C4H8xx','C4H10x','C4H10xx','C5H8','C6H6','H2CF2','HCF3','H2CCl2','HCCl3','H3CNH2','CH3CN','CH3NO2','CH3ONO','CH3SiH3','HCOOH','HCOOCH3','CH3CONH2','CH2NHCH2','NCCN','C2H6NH','CH3CH2NH2','H2CCO','CH2OCH2','CH3CHO','OCHCHO','CH3CH2OH','CH3OCH3','CH2SCH2','C2H6SO','CH3CH2SH','CH3SCH3','H2CCHF','CH3CH2Cl','H2CCHCl','H2CCHCN','CH3COCH3','CH3COOH','CH3COF','CH3COCl','C3H7Cl','C2H6CHOH','CH3CH2OCH3','C3H9N','C4H4O','C4H4S','C4H4NH','C5H5N','H2','SH','CCH','C2H3','CH3CO','H2COH','CH3O','CH3CH2O','CH3S','C2H5','C3H7','C3H9C','NO2','Butadiene_1_2','Isoprene','Cyclopentane','n_Pentane','Neopentane','Cyclohexadiene_1_3','Cyclohexadiene_1_4','Cyclohexane','n_Hexane','Methyl_pentane_3','Toluene','n_Heptane','Cyclooctatetraene','n_Octane','Naphthalene','Azulene','Methyl_acetate','t_Butanol','Aniline','Phenol','Divinyl_ether','Tetrahydrofuran','Cyclopentanone','Benzoquinone_1_4','Pyrimidine','Dimethyl_sulfone','Chlorobenzene','Succinonitrile','Pyrazine','Acetyl_acetylene','Crotonaldehyde','Acetic_anhydride','Dihydrothiophene_2_5','Methyl_propanenitrile_2','Methyl_ethyl_ketone','Isobutyraldehyde','dioxane_1_4','Tetrahydrothiophene','t_Butyl_chloride','n_Butyl_chloride','Tetrahydropyrrole','Nitrobutane_2','Diethyl_ether','Dimethoxy_ethane_1_1','t_Butanethiol','Diethyl_disulfide','t_Butylamine','Tetramethylsilane','Methyl_thiophene','N_methyl_pyrrole','Tetrahydropyran','Diethyl_ketone','Isopropyl_acetate','Tetrahydrothiopyran','Piperidine','t_Butyl_methyl_ether','Difluorobenzene_1_3','Difluorobenzene_1_4','Fluorobenzene','Diisopropyl_ether','PF5','SF6','P4_Td','SO3_D3h','SCl2','POCl3','PCl5','SO2Cl2','PCl3','S2Cl2','SiCl2_1A1','CF3Cl','C2F6','CF3_radical','Phenyl_radical']
 
+elements = ['H','Li','Be','B','C','N','O','F','Na','Mg','Al','Si','P','S','Cl']
 extra = order[:1] # The extra systems
 g1 = order[1:56]  # The g1 molecules
 g2 = order[1:149] # The g2 molecules

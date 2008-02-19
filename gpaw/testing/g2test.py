@@ -2,13 +2,13 @@ import traceback
 
 from gpaw import Calculator
 from gpaw.mpi import rank, MASTER
-from gpaw.testing.g2 import get_g2, atoms, g1
+from gpaw.testing.g2 import get_g2, elements, g1
 from ase.parallel import paropen
 from sys import stderr
 
 cell = [12., 13., 14.]
 data = paropen('g2data.txt', 'w')
-systems = atoms.keys() + g1
+systems = elements + g1
 
 for formula in systems:
     loa = get_g2(formula, cell)
