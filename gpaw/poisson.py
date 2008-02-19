@@ -141,11 +141,12 @@ class PoissonSolver:
             self.B.apply(rho, self.rhos[0])
         
         niter = 1
-        while self.iterate2(self.step) > eps and niter < 200:
+        maxiter = 500
+        while self.iterate2(self.step) > eps and niter < maxiter:
             niter += 1
-        if niter == 200:
+        if niter == maxiter:
             charge = npy.sum(rho.ravel()) * self.dv
-            print 'CHARGE:', charge
+            print 'CHARGE, eps:', charge, eps
             raise ConvergenceError('Poisson solver did not converge!')
 
         # Set the average potential to zero in periodic systems
