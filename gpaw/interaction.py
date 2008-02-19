@@ -30,14 +30,14 @@ class GInteraction2:
                                   (self.lmaxb + 1)**2,
                                   3))
 
-        rcutcomp = setupa.rcutcomp + setupb.rcutcomp
-        rcutfilter = setupa.rcutfilter + setupb.rcutfilter
-        rcutproj = max(setupa.rcut_j) + max(setupb.rcut_j)
-        rcore = setupa.rcore + setupb.rcore
-        self.cutoffs = ('Summed cutoffs: %4.2f(comp), %4.2f(filt), '
-                        '%4.2f(core), %4.2f(proj) Bohr' % (
-            rcutcomp, rcutfilter, rcore, rcutproj))
-        self.mindist = rcutproj - .3
+##         rcutcomp = setupa.rcutcomp + setupb.rcutcomp
+##         rcutfilter = setupa.rcutfilter + setupb.rcutfilter
+##         rcutproj = max(setupa.rcut_j) + max(setupb.rcut_j)
+##         rcore = setupa.rcore + setupb.rcore
+##         self.cutoffs = ('Summed cutoffs: %4.2f(comp), %4.2f(filt), '
+##                         '%4.2f(core), %4.2f(proj) Bohr' % (
+##             rcutcomp, rcutfilter, rcore, rcutproj))
+##         self.mindist = rcutproj - .3
 
     def __call__(self, R):
 ##         dist = sqrt(npy.sum(R**2))
