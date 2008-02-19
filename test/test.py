@@ -58,6 +58,9 @@ if len(tests) == 0:
              'hydrogen.py', 'spinpol.py', 'wfs_io.py', 'bulk.py',
              'stdout.py', 'gga-atom.py', 'atomize.py', 'lcao-h2o.py',
              'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
+             # 'C-force.py', 'apply.py', 'viewmol_trajectory.py', 'vdw.py',
+             # 'fixdensity.py', 'average_potential.py', 'lxc_testsetups.py',
+             # 'restart3.py', 'td_abs_beryllium.py', 'totype_test.py'
              'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py', 'relax.py',
              'davidson.py', 'wannier-ethylene.py',
              'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py',
@@ -70,7 +73,7 @@ if len(tests) == 0:
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
              'ae-calculation.py', 'H2Al110.py']
     tests_lxc = [
-        #'lxc_spinpol_Li.py',
+        #'lxc_spinpol_Li.py', 'lxc_testsetups.py', 'lxc_generatesetups.py'
         'lxc_xcatom.py'
         ]
     tests = tests + tests_lxc
