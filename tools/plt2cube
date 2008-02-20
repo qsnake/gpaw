@@ -5,11 +5,11 @@ import sys
 import re
 from optparse import OptionParser
 
-import Numeric as num
-from ASE.IO.xyz import ReadXYZ
-from ASE.Utilities.GeometricTransforms import Translate
+import numpy as npy
+
+from ase.io.cube import write_cube
+from gpaw.cluster import Cluster
 from gpaw.io.plt import read_plt
-from gpaw.io.Cube import WriteCubeFloat
 
 parser = OptionParser(usage='%prog plt structure',
                       version='%prog 0.1')
@@ -36,9 +36,11 @@ cell, grid, origin = read_plt(pltf)
 ##print "cell,shape,origin=", cell,grid.shape, origin
 
 print "# <plt2cube> reading structure file:",structf
-atoms = ReadXYZ(structf)
-Translate(atoms,tuple(-1.*num.array(origin)),'cartesian')
-atoms.SetUnitCell(cell,fix=True)
+atoms = Cluster(filename=structf)
+atoms.translate(-1. * npy.array(origin))
+atoms.set_cell(cell, fix=True)
+## Translate(atoms,tuple(-1.*num.array(origin)),'cartesian')
+## atoms.SetUnitCell(cell,fix=True)
 
 if opt.cubefile:
     ofname = opt.cubefile
@@ -46,5 +48,5 @@ else:
     ext, ofname = getext(pltf)
     ofname += "cube"
 print "# <plt2cube> writing cube file:", ofname
-WriteCubeFloat(atoms,grid,ofname)
+write_cube(ofname, atoms, grid)
 

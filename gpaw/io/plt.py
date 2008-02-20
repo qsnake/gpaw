@@ -2,6 +2,7 @@
 
 from struct import calcsize,pack,unpack
 import numpy as npy
+
 from ase.units import Bohr
 from gpaw.utilities import check_unit_cell
 
@@ -42,7 +43,7 @@ def read_plt(filename):
     fmt='f'
     if byteswap: fmt='>f'
     size = nx*ny*nz * calcsize(fmt)
-    arr = npy.fromstring(f.read(size),float32)
+    arr = npy.fromstring(f.read(size), npy.float32)
     if byteswap: arr = arr.byteswap()
     f.close()
 
