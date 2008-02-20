@@ -94,7 +94,7 @@ class ViewmolTrajectory:
     c.attach(vmt.add,100000)
     """
     def __init__(self, atoms, filename='trajectory.vmol',mode='w'):
-        self.Ha = Hartree
+        self.Ha = 1.0 / Hartree
         self.Ang = Angstrom
         
         self.n = 0
