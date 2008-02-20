@@ -55,7 +55,7 @@ def svnversion(version):
             gpawdir = path.join(gpawdir, path.pardir)
         # version.py can be called from any place so we need to specify gpawdir
         output = get_svnversion(gpawdir)
-        if (output != '') and (output != svnrevision):
+        if (output != '') and (output != svnrevision) and (output != 'exported'):
             # output the current svn revision number into gpaw/svnrevision.py
             svnrevision = output
         version = version+'.'+svnrevision
