@@ -13,6 +13,7 @@
 #define  XC_LDA_C_PW_MOD       13  /* Perdew & Wang (Modified)                                   */
 #define  XC_LDA_C_OB_PW        14  /* Ortiz & Ballone (PW)                                       */
 #define  XC_LDA_C_AMGB         15  /* Attacalite et al                                           */
+#define  XC_LDA_XC_TETER93     20  /* Teter 93 parametrization                                   */
 #define  XC_GGA_X_PBE         101  /* Perdew, Burke & Ernzerhof exchange                         */
 #define  XC_GGA_X_PBE_R       102  /* Perdew, Burke & Ernzerhof exchange (revised)               */
 #define  XC_GGA_X_B86         103  /* Becke 86 Xalfa,beta,gamma                                  */
@@ -31,6 +32,7 @@
 #define  XC_GGA_X_PBE_SOL     116  /* Perdew, Burke & Ernzerhof exchange (solids)                */
 #define  XC_GGA_X_RPBE        117  /* Hammer, Hansen & Norskov (PBE-like)                        */
 #define  XC_GGA_X_WC          118  /* Wu & Cohen                                                 */
+#define  XC_GGA_X_mPW91       119  /* Modified form of PW91 by Adamo & Barone                    */
 #define  XC_GGA_C_PBE         130  /* Perdew, Burke & Ernzerhof correlation                      */
 #define  XC_GGA_C_LYP         131  /* Lee, Yang & Parr                                           */
 #define  XC_GGA_C_P86         132  /* Perdew 86                                                  */
@@ -43,7 +45,13 @@
 #define  XC_GGA_XC_HCTH_407   164  /* HCTH functional fitted to 147 molecules                    */
 #define  XC_GGA_XC_EDF1       165  /* Empirical functionals from Adamson, Gill, and Pople        */
 #define  XC_GGA_XC_XLYP       166  /* XLYP functional                                            */
-#define  XC_LCA_OMC           301  /* Orestes, Marcasso & Capelle                                */
-#define  XC_LCA_LCH           302  /* Lee, Colwell & Handy                                       */
+#define  XC_HYB_GGA_XC_B3PW91 401  /* The original hybrid proposed by Becke                      */
+#define  XC_HYB_GGA_XC_B3LYP  402  /* The (in)famous B3LYP                                       */
+#define  XC_HYB_GGA_XC_B3P86  403  /* Perdew 86 hybrid similar to B3PW91                         */
+#define  XC_HYB_GGA_XC_O3LYP  404  /* hybrid using the optx functional                           */
+#define  XC_HYB_GGA_XC_PBEH   406  /* aka PBE0 or PBE1PBE                                        */
+#define  XC_HYB_GGA_XC_X3LYP  411  /* maybe the best hybrid                                      */
 #define  XC_MGGA_X_TPSS       201  /* Perdew, Tao, Staroverov & Scuseria exchange                */
 #define  XC_MGGA_C_TPSS       202  /* Perdew, Tao, Staroverov & Scuseria correlation             */
+#define  XC_LCA_OMC           301  /* Orestes, Marcasso & Capelle                                */
+#define  XC_LCA_LCH           302  /* Lee, Colwell & Handy                                       */

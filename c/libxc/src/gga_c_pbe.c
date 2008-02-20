@@ -58,6 +58,11 @@ static inline void pbe_eq8(int func, double ecunif, double phi,
 		    double *A, double *dec, double *dphi)
 {
   double phi3, f1, f2, f3, dx;
+  static const double beta[2]  = {
+    0.06672455060314922,  /* original PBE */
+    0.046                 /* PBE sol      */
+  };
+  static const double gamm  = 0.03109069086965489503494086371273; /* (1.0 - log(2.0))/(M_PI*M_PI) */
 
   phi3 = pow(phi, 3);
   f1   = ecunif/(gamm*phi3);
@@ -76,6 +81,11 @@ static inline void pbe_eq7(int func, double phi, double t, double A,
 		    double *H, double *dphi, double *dt, double *dA)
 {
   double t2, phi3, f1, f2, f3;
+  static const double beta[2]  = {
+    0.06672455060314922,  /* original PBE */
+    0.046                 /* PBE sol      */
+  };
+  static const double gamm  = 0.03109069086965489503494086371273; /* (1.0 - log(2.0))/(M_PI*M_PI) */
 
   t2   = t*t;
   phi3 = pow(phi, 3);
@@ -134,8 +144,8 @@ const xc_func_info_type func_info_gga_c_pbe = {
   XC_CORRELATION,
   "Perdew, Burke & Ernzerhof",
   XC_FAMILY_GGA,
-  "J.P.Perdew, K.Burke, and M.Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
-  "J.P.Perdew, K.Burke, and M.Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)",
+  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
+  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)",
   XC_PROVIDES_EXC | XC_PROVIDES_VXC,
   gga_c_pbe_init,
   gga_c_pbe_end,
@@ -148,9 +158,9 @@ const xc_func_info_type func_info_gga_c_pbe_sol = {
   XC_CORRELATION,
   "Perdew, Burke & Ernzerhof SOL",
   XC_FAMILY_GGA,
-  "J.P.Perdew, K.Burke, and M.Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
-  "J.P.Perdew, K.Burke, and M.Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)"
-  "J.P. Perdew, et al., arXiv:0707.2088v1",
+  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
+  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)"
+  "JP Perdew, et al, arXiv:0707.2088v1",
   XC_PROVIDES_EXC | XC_PROVIDES_VXC,
   gga_c_pbe_init,
   gga_c_pbe_end,

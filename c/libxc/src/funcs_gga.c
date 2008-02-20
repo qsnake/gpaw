@@ -18,6 +18,7 @@ extern xc_func_info_type func_info_gga_x_ft97_b;
 extern xc_func_info_type func_info_gga_x_pbe_sol;
 extern xc_func_info_type func_info_gga_x_rpbe;
 extern xc_func_info_type func_info_gga_x_wc;
+extern xc_func_info_type func_info_gga_x_mpw91;
 extern xc_func_info_type func_info_gga_c_pbe;
 extern xc_func_info_type func_info_gga_c_lyp;
 extern xc_func_info_type func_info_gga_c_p86;
@@ -51,6 +52,7 @@ const xc_func_info_type *gga_known_funct[] = {
   &func_info_gga_x_pbe_sol,
   &func_info_gga_x_rpbe,
   &func_info_gga_x_wc,
+  &func_info_gga_x_mpw91,
   &func_info_gga_c_pbe,
   &func_info_gga_c_lyp,
   &func_info_gga_c_p86,

@@ -15,6 +15,7 @@ extern xc_func_info_type func_info_lda_c_pw;
 extern xc_func_info_type func_info_lda_c_pw_mod;
 extern xc_func_info_type func_info_lda_c_ob_pw;
 extern xc_func_info_type func_info_lda_c_amgb;
+extern xc_func_info_type func_info_lda_xc_teter93;
 
 
 const xc_func_info_type *lda_known_funct[] = {
@@ -33,5 +34,6 @@ const xc_func_info_type *lda_known_funct[] = {
   &func_info_lda_c_pw_mod,
   &func_info_lda_c_ob_pw,
   &func_info_lda_c_amgb,
+  &func_info_lda_xc_teter93,
   NULL
 };

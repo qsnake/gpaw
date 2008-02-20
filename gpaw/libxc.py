@@ -1,7 +1,7 @@
 class Libxc:
     """Class provides methods to retrieve functionals from libxc library."""
     def __init__(self):
-        self.version = 3496 # svn version of libxc
+        self.version = 3728 # svn version of libxc
         # this below is used both as dictionary name, and python module name
         self.libxc_functionals_file = 'libxc_functionals'
 

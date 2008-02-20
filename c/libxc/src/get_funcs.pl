@@ -21,7 +21,7 @@ $top_builddir = shift;
 
 $builddir = "$top_builddir/src";
 
-my @funcs = ("lda", "gga", "lca", "mgga");
+my @funcs = ("lda", "gga", "hyb_gga", "mgga", "lca");
 
 $s0 = ""; $s3 = "";
 foreach $func (@funcs){
@@ -66,13 +66,13 @@ close OUT;
 
 open(OUT, ">$builddir/libxc_funcs.f90");
 print OUT <<EOF
-module libxc_funcs
+module libxc_funcs_m
   implicit none
 
   public
 
 $s3
-end module libxc_funcs
+end module libxc_funcs_m
 EOF
   ;
 close OUT;

@@ -34,7 +34,6 @@ int xc_gga_init(xc_gga_type *p, int functional, int nspin)
   for(i=0; gga_known_funct[i]!=NULL; i++){
     if(gga_known_funct[i]->number == functional) break;
   }
-  assert(gga_known_funct[i] != NULL);
   if(gga_known_funct[i] == NULL) return -1; /* functional not found */
 
   /* initialize structure */
@@ -100,15 +99,16 @@ void xc_gga_sp(xc_gga_type *p, float *rho, float *sigma,
 {
   double drho[2], dsigma[6];
   double de[1], dvrho[2], dvsigma[6];
-  int ii;
+  int ii, nsig;
 
-  for(ii=0; ii < p->nspin; ii++) drho[ii] = rho[ii];
-  for(ii=0; ii < 3*p->nspin; ii++) dsigma[ii] = sigma[ii];
+  nsig = (p->nspin == XC_POLARIZED) ? 1 : 3;
+  for(ii=0; ii < p->nspin; ii++) drho[ii]   = (double) rho[ii];
+  for(ii=0; ii < nsig;     ii++) dsigma[ii] = (double) sigma[ii];
 
   xc_gga(p, drho, dsigma, de, dvrho, dvsigma);
   
-  e[0] = de[0];
-  for(ii=0; ii < p->nspin; ii++) vrho[ii] = dvrho[ii];
-  for(ii=0; ii < 3*p->nspin; ii++) vsigma[ii] = dvsigma[ii];
+  e[0] = (float)de[0];
+  for(ii=0; ii < p->nspin; ii++) vrho[ii]   = (float)dvrho[ii];
+  for(ii=0; ii < nsig    ; ii++) vsigma[ii] = (float)dvsigma[ii];
 
 }
