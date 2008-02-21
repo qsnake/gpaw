@@ -178,8 +178,11 @@ class LrTDDFT(ExcitationList):
             
             if fh is None:
                 if filename.endswith('.gz'):
-                    import gzip
-                    f = gzip.open(filename)
+                    try:
+                        import gzip
+                        f = gzip.open(filename)
+                    except:
+                        f = open(filename, 'r')
                 else:
                     f = open(filename, 'r')
                 self.filename = filename
@@ -264,8 +267,11 @@ class LrTDDFT(ExcitationList):
         if mpi.rank == mpi.MASTER:
             if fh is None:
                 if filename.endswith('.gz'):
-                    import gzip
-                    f = gzip.open(filename,'wb')
+                    try:
+                        import gzip
+                        f = gzip.open(filename,'wb')
+                    except:
+                        f = open(filename, 'w')
                 else:
                     f = open(filename, 'w')
             else:
