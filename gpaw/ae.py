@@ -26,6 +26,7 @@ class AllElectronSetup:
         self.symbol = symbol + '.ae'
         self.xcname = xcfunc.get_name()
         self.softgauss = True
+        self.HubU = None
         
         self.fingerprint = ''
 

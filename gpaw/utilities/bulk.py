@@ -6,7 +6,6 @@ from ASE.ChemicalElements.crystal_structure import crystal_structures
 from ASE.ChemicalElements.covalent_radius import covalent_radii
 
 from gpaw import Calculator
-from gpaw.utilities import center
 from gpaw.utilities.singleatom import SingleAtom
 from gpaw.atom.generator import parameters as setup_parameters
 

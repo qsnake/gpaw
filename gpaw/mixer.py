@@ -15,12 +15,22 @@ class BaseMixer:
     """Pulay density mixer."""
     
     def __init__(self, beta=0.25, nmaxold=3, metric=None, weight=50.0):
-        """Mixer(beta, nold) -> mixer object.
+        """Construct density-mixer object.
 
-        beta:  Mixing parameter between zero and one (one is most
-               aggressive).
-               
-        nold:  Maximum number of old densities."""
+        Parameters
+        ----------
+        beta: float
+            Mixing parameter between zero and one (one is most
+            aggressive).
+        nmaxold: int
+            Maximum number of old densities.
+        metrix: None, 'old' or 'new'
+            Type of metric to use.
+        weight: float
+            Weight parameter for special metric (for long wave-length
+            changes).
+
+        """
 
         self.beta = beta
         self.nmaxold = nmaxold
