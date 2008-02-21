@@ -4,6 +4,9 @@ import numpy as npy
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
 import pylab
+#npy.seterr(all='raise')
+
+
 nfig=0
 
 tolerance =0.000001
@@ -27,7 +30,7 @@ uc = npy.array([(2 * a, 0, 0),
                 (0,     a, 0),
                 (0,     0, a)])
 
-dom=Domain(uc.flat[::4],periodic=(False,False,False))
+dom=Domain(uc.flat[::4],pbc=(False,False,False))
 gd=GridDescriptor(dom,d.shape)
 dnon = gd.zeros()
 nx,ny,nz=dnon.shape
@@ -38,9 +41,9 @@ for x in range(nx):
             dnon[x, y, z] = exp(-2 * r) / pi
 
 vdw_revPBE=VanDerWaals(dnon, gd=gd,xcname='revPBE',pbc=(False,False,False))
-E_revPBE = vdw_revPBE.GetEnergy(n=1)
+E_revPBE = vdw_revPBE.get_energy(n=1)
 vdw_RPBE=VanDerWaals(dnon, gd=gd,xcname='RPBE',pbc=(False,False,False))
-E_RPBE = vdw_RPBE.GetEnergy(n=1)
+E_RPBE = vdw_RPBE.get_energy(n=1)
 
 
 
@@ -93,7 +96,8 @@ ref_label = ['min', 'max', 'average']
 reference = npy.array([0.024754860873480139,7.512329131951498,0.87798411512677765])
 
 q0=vdw_RPBE.q0
-q0test = npy.array([min(min(min(q0))),max(max(max(q0))),npy.sum(npy.sum(npy.sum(q0)))/(q0.shape[0]*q0.shape[1]*q0.shape[2])])-reference
+q0test = npy.array([q0.min(), q0.max(), q0.mean()]) - reference
+print q0test
 
 for n in range(len(q0test)):
     if q0test[n] < tolerance:
@@ -146,8 +150,8 @@ C6 = []
 C6_c = []
 
 for n in [1,2,4,8]:
-    C6_c.append(vdw_revPBE.GetC6_coarse(n=n)[0])
-    C6.append(vdw_revPBE.GetC6(n=n)[0])
+    C6_c.append(vdw_revPBE.get_c6_coarse(n=n)[0])
+    C6.append(vdw_revPBE.get_c6(n=n)[0])
 
 
 
@@ -163,7 +167,7 @@ for n in [1,2,4,8]:
 
 
 ##################################################
-#Periodic test of H atom:
+#Pbc test of H atom:
 #q0
 #C6 coefficients
 #Energy'
@@ -180,7 +184,7 @@ uc = npy.array([(2 * a, 0, 0),
                 (0,     a, 0),
                 (0,     0, a)])
 
-dom=Domain(uc.flat[::4],periodic=(True,True,True))
+dom=Domain(uc.flat[::4],pbc=(True,True,True))
 gd=GridDescriptor(dom,d.shape)
 d = gd.zeros()
 nx,ny,nz=d.shape
@@ -191,9 +195,9 @@ for x in range(nx):
             d[x, y, z] = exp(-2 * r) / pi
 
 vdw_revPBE=VanDerWaals(d, gd=gd,xcname='revPBE',pbc=(True,True,True))
-E_revPBE = vdw_revPBE.GetEnergy(n=1)
+E_revPBE = vdw_revPBE.get_energy(n=1)
 vdw_RPBE=VanDerWaals(d, gd=gd,xcname='RPBE',pbc=(True,True,True))
-E_RPBE = vdw_RPBE.GetEnergy(n=1)
+E_RPBE = vdw_RPBE.get_energy(n=1)
 
 ##########
 #Energy Test
@@ -201,13 +205,12 @@ E_RPBE = vdw_RPBE.GetEnergy(n=1)
 # 
 ##########
 ref_label = ['E_revPBE', 'E_RPBE']
-reference = npy.array([-0.69792719721511098,-0.6979223118689889])
-
-
+reference = npy.array([-0.45965246445715274, -0.45965246445798807])
 test=[E_revPBE,E_RPBE]
+print test
 for n in range(len(reference)):
     if abs(reference[n]- test[n]) > tolerance:
-            print 'Energy test failed'+ref_label[n] 
+        print 'Energy test failed'+ref_label[n] 
 
 
 
@@ -250,14 +253,14 @@ pylab.show()
 
 
 ##################################################
-#Non periodic test of:
+#Non pbc test of:
 #Binding curve of H-H model molecule
 ##################################################
 
 
 
 ##################################################
-#Periodic test of chain of H atoms:
+#Pbc test of chain of H atoms:
 #Enegy
 ##################################################
 
@@ -283,7 +286,7 @@ pylab.show()
 ##                 (0,     a, 0),
 ##                 (0,     0, a)])
 
-## dom=Domain(uc.flat[::4],periodic=(True,True,True))
+## dom=Domain(uc.flat[::4],pbc=(True,True,True))
 ## gd=GridDescriptor(dom,d.shape)
 ## dnon = gd.zeros()
 ## nx,ny,nz=dnon.shape
@@ -298,10 +301,10 @@ pylab.show()
 ## #vdw.GetC6()
 ## ##################################################
 ## #test using GridDescriptor
-## #non periodic
+## #non pbc
 ## ##################################################
 
-## e1 = VanDerWaals(dnon, gd=gd,xcname='revPBE',pbc=(False,False,False)).GetEnergy(n=4)
+## e1 = VanDerWaals(dnon, gd=gd,xcname='revPBE',pbc=(False,False,False)).GetEnergyty(n=4)
 ## dnon += dnon[::-1].copy()
 ## e2 = VanDerWaals(dnon, gd=gd,xcname='revPBE',pbc=(False,False,False)).GetEnergy(n=4)
 ## print  'revPBE',e1, e2, 2 * e1 - e2
@@ -318,14 +321,7 @@ pylab.show()
 ##             r = sqrt((x * h - c)**2 + (y * h - c)**2 + (z * h - c)**2)
 ##             d[x, y, z] = exp(-2 * r) / pi
                                     
-<<<<<<< .working
-## e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc=(True,True,True)).GetEnergy(n=4)
-## d += d[::-1].copy()
-## e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc=(True,True,True)).GetEnergy(n=4)
-## print  'revPBE mic',e1, e2, 2 * e1 - e2
-=======
 e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
 d += d[::-1].copy()
 e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
 print  'revPBE mic',e1, e2, 2 * e1 - e2
->>>>>>> .merge-right.r1518

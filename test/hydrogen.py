@@ -8,7 +8,7 @@ h = 0.2
 hydrogen = Atoms([Atom('H', (a / 2, a / 2, a / 2))],
                  cell=(a, a, a))
 
-calc = Calculator(h=h, nbands=1, convergence={'energy': 1e-6})
+calc = Calculator(h=h, nbands=1, convergence={'energy': 1e-7})
 hydrogen.set_calculator(calc)
 e1 = hydrogen.get_potential_energy()
 

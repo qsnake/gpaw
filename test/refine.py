@@ -38,6 +38,6 @@ for ending in endings:
 
     print Edirect, Erestart
     # Note: the different density mixing introduces small differences 
-    equal(Edirect, Erestart, 1e-5)
+    equal(Edirect, Erestart, 4e-5)
 
     os.remove(restart_wf)
