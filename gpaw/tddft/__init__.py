@@ -71,7 +71,7 @@ class TDDFT:
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
         paw.initialize_wave_functions()
-        paw.update_pseudo_charge()
+        paw.density.update_pseudo_charge()
 
         # Convert PAW-object to complex
         paw.totype(complex);
