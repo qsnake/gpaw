@@ -136,67 +136,51 @@ def coordinates(gd):
     # Return r^2 matrix
     return xyz, r2
 
-def dagger(matrix, copy=True):
-    """Return hermitian conjugate of input matrix.
+def dagger(a):
+    """Return Hermitian conjugate of input"""
+    return a.T.conj()
 
-    If copy is False, the input matrix will be changed (no new allocation
-    of memory).
-    """
-    # First change the axis: (Does not allocate a new array)
-    dag = npy.swapaxes(matrix, 0, 1)
-
-    if copy: # Allocate space for new array
-        return npy.conjugate(dag)
-    else: # The input array is used for output
-        if dag.dtype.char == complex:
-            npy.multiply(dag.imag, -1, dag.imag)
-        return dag
+def dagger_self(a):
+    """Hermitian conjugate input"""
+    a = a.T
+    if a.dtype.char == complex:
+        npy.multiply(a.imag, -1, a.imag)
 
 def project(a, b):
-    """Returns the projection of b onto a."""
-    return a * (npy.dot(npy.conjugate(a), b) / npy.dot(npy.conjugate(a), a))
+    """Return the projection of b onto a."""
+    return a * (npy.dot(a.conj(), b) / npy.dot(a.conj(), a))
 
-def normalize(vec):
-    """Normalize NxM matrix vec containing M vectors as its columns."""
-    newvec = npy.zeros(vec.shape, complex)
-    M = vec.shape[1]
-    for m in range(M):
-	newvec[:, m] = vec[:,m] / npy.sqrt(npy.dot(npy.conjugate(vec[:, m]),
-                                                   vec[:, m]))
-    return newvec
+def normalize(U):
+    """Normalize columns of U."""
+    for col in U.T:
+	col /= npy.sqrt(npy.dot(col.conj(), col))
 	    
-def gram_schmidt_orthonormalize(vec, order=None):
-    """vec is a NxM matrix containing M vectors as its columns.
-    These will be orthogonalized by Gram-Schmidt using the order
-    specified in the list 'order'"""
-    newvec = npy.zeros(vec.shape, complex)
-    N, M = vec.shape[0], vec.shape[1]
+def gram_schmidt(U, order=None):
+    """Orthogonalize according to the Gram-Schmidt procedure.
+    
+    U is an NxM matrix containing M vectors as its columns.
+    These will be orthogonalized using the order specified in the list 'order'
+    """
     if order is None:
-        order = range(M)
-    for m in range(M):
-        temp = vec[:, order[m]]
-        for i in range(m):
-            temp -= project(newvec[:, order[i]], vec[:, order[m]])
-        # Normalize before saving
-        newvec[:, order[m]] = temp / npy.sqrt(npy.dot(npy.conjugate(temp),
-                                                      temp))
-    return newvec
+        order = range(U.shape[1])
 
-def lowdin_orthonormalize(vec, S=None):
-    """vec is a NxM matrix containing M vectors as its columns.
-        These will be orthogonalized by Lowdin procedure"""
+    for i, m in enumerate(order):
+        col = U[:, m]
+        for i2 in range(i):
+            col -= project(U[:, order[i2]], col)
+        col /= npy.sqrt(npy.dot(col.conj(), col))
 
+def lowdin(U, S=None):
+    """Orthogonalize according to the Lowdin procedure.
+    
+    U is an NxM matrix containing M vectors as its columns.
+    S is the overlap Matrix.
+    """
     if S is None:
-        S = npy.dot(dagger(vec), vec)
-    epsilon, U = npy.linalg.eigh(npy.conjugate(S))
-
-    # Now, U contains the eigenvectors as ROWS and epsilon the eigenvalues
-    D = npy.identity(S.shape[0], complex) / npy.sqrt(epsilon)
-
-    # T = S^(-1/2)
-    T = npy.dot(npy.transpose(U),
-                               npy.dot(D, npy.conjugate(U)))
-    return npy.dot(vec, T)
+        S = npy.dot(dagger(U), U)
+    eig, rot = npy.linalg.eigh(S)
+    rot = npy.dot(rot / npy.sqrt(eig), dagger(rot))
+    return npy.dot(U, rot)
 
 def symmetrize(matrix):
     """Symmetrize input matrix."""
@@ -206,7 +190,7 @@ def symmetrize(matrix):
 
 def erf3D(M):
     """Return matrix with the value of the error function evaluated for
-       each element in input matrix 'M'.
+    each element in input matrix 'M'.
     """
     from gpaw.utilities import erf
     return elementwise_apply(M, erf, copy=True)
