@@ -9,8 +9,8 @@ from _gpaw import localize
 
 class Wannier:
     def __init__(self, calc=None, spin=0):
+        self.spin = spin
         if calc is not None:
-            self.spin = spin
             self.cell_c = calc.domain.cell_c * Bohr
             n = calc.get_number_of_bands()
             self.Z_nnc = npy.empty((n, n, 3), complex)
@@ -44,4 +44,6 @@ class Wannier:
 
     def get_function(self, calc, n):
         psit_nG = calc.kpt_u[self.spin].psit_nG[:].reshape((calc.nbands, -1))
-        return npy.dot(self.U[:, n],  psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
+        return npy.dot(self.U_nn[:, n],
+                       psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
+
