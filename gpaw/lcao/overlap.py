@@ -50,7 +50,7 @@ class TwoCenterIntegrals:
     integrals.
     """
 
-    def __init__(self, setups):
+    def __init__(self, setups, ng):
         self.rcmax = 0.0
         for setup in setups:
             for phit in setup.phit_j:
@@ -63,10 +63,10 @@ class TwoCenterIntegrals:
                 rc = pt.get_cutoff()
                 assert rc < self.rcmax
 
-        self.ng = 2**9
+        self.ng = ng 
         self.dr = self.rcmax / self.ng
         self.r_g = npy.arange(self.ng) * self.dr
-        self.Q = 4 * 2**9
+        self.Q = 4 * self.ng
         self.dk = 2 * pi / self.Q / self.dr
         self.k = npy.arange(self.Q // 2) * self.dk
 

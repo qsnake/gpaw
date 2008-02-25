@@ -11,7 +11,7 @@ from _gpaw import overlap
 
 
 class LCAOHamiltonian(Hamiltonian):
-    """Hamiltonian class for LCAO-basis calculations"""
+    """Hamiltonian class for LCAO-basis calculations."""
 
     def __init__(self, paw):
         Hamiltonian.__init__(self, paw)
@@ -20,14 +20,24 @@ class LCAOHamiltonian(Hamiltonian):
         self.gamma = paw.gamma
         self.dtype = paw.dtype
         self.initialized = False
+        self.ng = 2**12
 
     def initialize(self):
+        """Setting up S_kmm, T_kmm and P_kmi for LCAO calculations.
+
+        ======    ==============================================
+        S_kmm     Overlap between pairs of basis-functions
+        T_kmm     Kinetic-Energy operator
+        P_kmi     Overlap between basis-functions and projectors
+        ======    ==============================================
+        """
+        
         self.nao = 0
         for nucleus in self.nuclei:
             nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc, lfbc=None)
             self.nao += nucleus.get_number_of_atomic_orbitals()
 
-        tci = TwoCenterIntegrals(self.setups)
+        tci = TwoCenterIntegrals(self.setups, self.ng)
 
         R_dc = self.calculate_displacements(tci.rcmax)
         
@@ -80,10 +90,21 @@ class LCAOHamiltonian(Hamiltonian):
                     self.S_kmm[k] += S_mm * phase_k[k]
                     self.T_kmm[k] += T_mm * phase_k[k]
 
+
         for nucleus in self.nuclei:
             dO_ii = nucleus.setup.O_ii
             for S_mm, P_mi in zip(self.S_kmm, nucleus.P_kmi):
                 S_mm += npy.dot(P_mi, npy.inner(dO_ii, P_mi).conj())
+
+        # Debug stuff        
+        if 0:
+            print 'Hamiltonian S_kmm[0] diag'
+            print self.S_kmm[0].diagonal()
+            print 'Hamiltonian S_kmm[0]'
+            for row in self.S_kmm[0]:
+                print ' '.join(['%02.03f' % f for f in row])
+            print 'Eigenvalues:'    
+            print npy.linalg.eig(self.S_kmm[0])[0]
 
         self.initialized = True
 
@@ -118,8 +139,10 @@ class LCAOHamiltonian(Hamiltonian):
                    i2 += 1
 
     def calculate_displacements(self, rmax):
-        # Number of neighbor cells:
-        nn_c = npy.zeros(3, int)
+        """Calculate displacement vectors to be used for the relevant
+        phase factors (phase_k)."""
+
+        nn_c = npy.zeros(3, int)  # Number of neighboring cells
         for c in range(3):
             if self.gd.domain.pbc_c[c]:
                 nn_c[c] = 1 + int(2 * rmax / self.gd.domain.cell_c[c])
