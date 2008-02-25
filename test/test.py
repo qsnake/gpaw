@@ -71,7 +71,8 @@ if len(tests) == 0:
              'revPBE_Li.py','ylexpand.py',
              'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
-             'ae-calculation.py', 'H2Al110.py']
+             'ae-calculation.py', 'H2Al110.py',
+             'plt.py']
     tests_lxc = [
         #'lxc_spinpol_Li.py', 'lxc_testsetups.py', 'lxc_generatesetups.py'
         'lxc_xcatom.py'
