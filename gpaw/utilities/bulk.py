@@ -1,12 +1,11 @@
 from math import sqrt, sin, cos, pi
 
-from ASE import ListOfAtoms, Atom
-from ASE.ChemicalElements import numbers
-from ASE.ChemicalElements.crystal_structure import crystal_structures
-from ASE.ChemicalElements.covalent_radius import covalent_radii
+from ase.atoms import Atom, Atoms
+from ase.data import atomic_numbers as numbers
+from ase.data import reference_states as crystal_structures
+from ase.data import covalent_radii
 
 from gpaw import Calculator
-from gpaw.utilities.singleatom import SingleAtom
 from gpaw.atom.generator import parameters as setup_parameters
 
 data = {}
@@ -36,18 +35,18 @@ for symbol in setup_parameters:
         t = X['alpha'] * pi / 180
         V = a**3 * sin(t) * sqrt(1 - (cos(t) / cos(t / 2))**2) / 2
         data[symbol] = {'structure': 'sc', 'volume': V}
-        
+
 data['Fe']['magmom'] = 2.2
 #data['Co']['magmom'] = 1.5
 data['Ni']['magmom'] = 0.6
 
 class Bulk:
-    
+
     def __init__(self, symbol, structure=None, a=None, c=None, magmom=None):
         self.symbol = symbol
-        
+
         d = data.get(symbol, {})
-        
+
         if structure is None:
             structure = d['structure']
 
@@ -61,15 +60,15 @@ class Bulk:
                                 (.5, 1/6., .5), (0, 2/3., .5)],
                    'diamond':  [(0, 0, 0), (.25, .5, 0),
                                 (.5, .5, .5), (.75, 0, .5)]}[structure]
-        
-        self.atoms = ListOfAtoms([Atom(symbol, spos_c, magmom=magmom)
-                                  for spos_c in spos_ac],
-                                 periodic=True)
+
+        self.atoms = Atoms([Atom(symbol, spos_c, magmom=magmom)
+                            for spos_c in spos_ac],
+                           pbc=True)
 
         V = d.get('volume', 20.0)
 
         natoms = len(spos_ac)
-        
+
         if structure == 'hcp':
             if c is None:
                 coa = d.get('c/a', sqrt(8.0 / 3))
@@ -90,18 +89,17 @@ class Bulk:
                 a = (V * natoms)**(1.0 / 3)
             b = a
             c = a
-            
-        self.atoms.SetUnitCell([a, b, c])
+
+        self.atoms.set_cell([a, b, c])
 
     def energy(self, h=None, gpts=None, kpts=None, parameters={}):
-        cell = self.atoms.GetUnitCell()
+        cell = self.atoms.get_cell()
         if kpts is None:
             kpts = [2 * int(8.0 / cell[c, c]) for c in range(3)]
 
         calc = Calculator(h=h, gpts=gpts, kpts=kpts, **parameters)
-        self.atoms.SetCalculator(calc)
-        
-        e = self.atoms.GetPotentialEnergy()
-        m = self.atoms.GetCalculator().GetMagneticMoment()
-        return e, m
+        self.atoms.set_calculator(calc)
 
+        e = self.atoms.get_potential_energy()
+        m = self.atoms.get_calculator().get_magnetic_moments()
+        return e, m
