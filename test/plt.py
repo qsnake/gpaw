@@ -13,7 +13,7 @@ txt='-'
 txt='/dev/null'
 
 load = False
-load = True
+#load = True
 
 R=0.7 # approx. experimental bond length
 a = 4
@@ -49,3 +49,5 @@ for d, do in zip(data, data_org):
     norm = dd2.sum() 
     print norm
     assert(norm < 1e-10)
+
+os.remove(fname)
