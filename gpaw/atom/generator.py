@@ -450,7 +450,7 @@ class Generator(AllElectron):
             self.s_j = self.u_j.copy()
             # Construct all pseudo wave-functions
             for j, (l, u) in enumerate(zip(self.l_j, self.u_j)):
-                construct_smooth_wavefunction(u, l, gcutnc, r, self.s_j[j])
+                construct_smooth_wavefunction(u, l, gcut_l[l], r, self.s_j[j])
                 if (j < njcore):
                      self.s_j[j][:] = 0.0
 

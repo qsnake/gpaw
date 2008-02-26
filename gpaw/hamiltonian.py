@@ -140,6 +140,11 @@ class Hamiltonian:
             Exc = self.xc.get_energy_and_potential(
                 density.nt_sg[0], self.vt_sg[0])
 
+        if self.xc.xcfunc.is_gllb():
+            self.timer.start('GLLB')
+            Exc = self.xc.xcfunc.xc.update_xc_potential()
+            self.timer.stop('GLLB')
+
         self.timer.start('Poisson')
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, density.rhot_g,

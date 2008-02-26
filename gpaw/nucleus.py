@@ -722,9 +722,12 @@ class Nucleus:
             self.pt_i.add(b_nG, None, k, communicate=True)
 
 
-    def symmetrize(self, D_aii, map_sa, s):
+    def symmetrize(self, D_aii, map_sa, s, response=False):
         D_ii = self.setup.symmetrize(self.a, D_aii, map_sa)
-        self.D_sp[s] = pack(D_ii)
+        if response:
+            self.Dresp_sp[s] = pack(D_ii)
+        else:
+            self.D_sp[s] = pack(D_ii)
 
     def calculate_force_kpoint(self, kpt):
         f_n = kpt.f_n

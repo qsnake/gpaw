@@ -561,6 +561,8 @@ class PAW(PAWExtra, Output):
             self.hamiltonian.xc.set_functional(xcfunc)
             for setup in self.setups:
                 setup.xc_correction.xc.set_functional(xcfunc)
+            if xcfunc.is_gllb():
+                xcfunc.initialize_gllb(self)
 
         # Calculate occupation numbers:
         self.occupation.calculate(self.kpt_u)

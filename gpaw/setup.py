@@ -17,7 +17,6 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.utilities import unpack, erf, fac, hartree, pack2, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
-from gpaw.gllb.xcnonlocalcorrection import XCNonLocalCorrection
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
     if type == 'ae':
@@ -213,9 +212,11 @@ class Setup:
         vbar_g = vbar_g[:gcut2].copy()
         tauc_g = tauc_g[:gcut2].copy()
 
+        # Cut down the GLLB related extra data
         for key, item in extra_xc_data.iteritems():
             if len(item)>1:
                 extra_xc_data[key] = item[:gcut2].copy()
+        self.extra_xc_data = extra_xc_data
 
         if self.phicorehole_g is not None:
             self.phicorehole_g = self.phicorehole_g[:gcut2].copy()
@@ -332,13 +333,17 @@ class Setup:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
         if xcfunc.xcname.startswith("GLLB"):
-            self.xc_correction = XCNonLocalCorrection(
-                xcfunc.xc,
+            xc = XCRadialGrid(xcfunc, rgd, nspins)
+
+            self.xc_correction = XCCorrection(
+                xc,
                 [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
                 [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, extra_xc_data)
+                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,
+                tauc_g)
+            
         elif xcfunc.xcname == "TPSS":
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 
@@ -659,6 +664,7 @@ class Setup:
          core_hole_e,
          core_hole_e_kin,
          core_response) = PAWXMLParser().parse(self.symbol, self.setupname)
+
 
         # radial grid
         g = npy.arange(ng, dtype=float)

@@ -49,6 +49,7 @@ class XCFunctional:
         self.parameters = parameters
         self.mgga = False
         self.gga = False
+        self.gllb = False
         self.orbital_dependent = False
         self.uses_libxc = False
         self.nspins = nspins
@@ -143,6 +144,7 @@ class XCFunctional:
             # treatment at first iterations, where there is no orbitals
             # available. Therefore orbital_dependent = True!
             self.orbital_dependent = True
+            self.gllb = True
             code = 'gllb'
         else:
             self.gga = True
@@ -234,6 +236,16 @@ class XCFunctional:
     def is_non_local(self):
         return self.orbital_dependent
 
+    def is_gllb(self):
+        return self.gllb
+
+    # Initialize the GLLB functional, hopefully at this stage, the eigenvalues and functions are already available
+    def initialize_gllb(self, paw):
+        self.xc.pass_stuff(paw.hamiltonian.vt_sg, paw.density.nt_sg, paw.kpt_u, paw.gd, paw.finegd,
+                           paw.density.interpolate, paw.nspins,
+                           paw.my_nuclei, paw.nuclei, paw.occupation, paw.kpt_comm, paw.symmetry, paw.nvalence)
+
+
     def set_non_local_things(self, paw, energy_only=False):
         if self.xcname == 'TPSS':
             paw.hamiltonian.xc.taua_g = paw.gd.empty()
@@ -245,11 +257,6 @@ class XCFunctional:
 
         if not self.orbital_dependent:
             return
-
-        if self.xcname.startswith('GLLB') or self.xcname == 'KLI':
-            self.xc.pass_stuff(paw.kpt_u, paw.gd, paw.finegd,
-                               paw.density.interpolate, paw.nspins,
-                               paw.my_nuclei, paw.occupation, paw.kpt_comm)
 
         if self.hybrid > 0.0:
             if paw.dtype == complex:
@@ -304,10 +311,10 @@ class XCFunctional:
     # case of setup-generator. The processes for non-local in radial and
     # 3D-grid deviate so greatly that this is special treatment is needed.
     def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j,
-                                             v_xc, density=None, vbar= False):
+                                             v_xc, density=None):
         # Send the command one .xc up
         return self.xc.get_non_local_energy_and_potential1D(
-            gd, u_j, f_j, e_j, l_j, v_xc, density=density, vbar=vbar)
+            gd, u_j, f_j, e_j, l_j, v_xc, density=density)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              taua_g=None):

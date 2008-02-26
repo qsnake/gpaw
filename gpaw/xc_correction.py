@@ -12,6 +12,8 @@ from gpaw.spherical_harmonics import YL
 # load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
 
+from gpaw.gllb import SMALL_NUMBER
+
 """
                            3
              __   dn       __   __    dY
@@ -132,6 +134,10 @@ class XCCorrection:
             self.tauc_g = tauc_g
 
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
+        if self.xc.get_functional().is_gllb():
+            # The coefficients for GLLB-functional are evaluated elsewhere
+            return 0.0
+
         if self.xc.get_functional().mgga:
             return self.MGGA(D_sp, H_sp)
         
@@ -1159,6 +1165,141 @@ class XCCorrection:
                 y += 1
 #        return 0.0
         return E - self.Exc0
+
+    def GLLB(self, D_sp, Dresp_sp, H_sp, core_response):
+        r_g = self.rgd.r_g
+        xcfunc = self.xc.xcfunc.xc.slater_functional
+        E = 0.0
+        if len(D_sp) == 1:
+            D_p = D_sp[0]
+            D_Lq = dot3(self.B_Lqp, D_p)
+            n_Lg = npy.dot(D_Lq, self.n_qg)
+            n_Lg[0] += self.nc_g * sqrt(4 * pi)
+
+            Dresp_p = Dresp_sp[0]
+            Dresp_Lq = dot3(self.B_Lqp, Dresp_p)
+            nresp_Lg = npy.dot(Dresp_Lq, self.n_qg)
+            
+            nt_Lg = npy.dot(D_Lq, self.nt_qg)
+            nt_Lg[0] += self.nct_g * sqrt(4 * pi)
+
+            ntresp_Lg = npy.dot(Dresp_Lq, self.nt_qg)
+            
+            dndr_Lg = npy.zeros((self.Lmax, self.ng))
+            dntdr_Lg = npy.zeros((self.Lmax, self.ng))
+            for L in range(self.Lmax):
+                self.rgd.derivative(n_Lg[L], dndr_Lg[L])
+                self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
+            dEdD_p = H_sp[0][:]
+            dEdD_p[:] = 0.0
+            y = 0
+            for w, Y_L in zip(self.weights, self.Y_yL):
+                A_Li = A_Liy[:self.Lmax, :, y]
+                n_g = npy.dot(Y_L, n_Lg)
+
+                if not (npy.all(n_g >= 0 )):
+                    print "Warning.... negative density!"
+                    return 0.0
+                    #n_g = n_g - npy.min(n_g)
+                
+                nresp_g = npy.dot(Y_L, nresp_Lg)
+                
+                a1x_g = npy.dot(A_Li[:, 0], n_Lg)
+                a1y_g = npy.dot(A_Li[:, 1], n_Lg)
+                a1z_g = npy.dot(A_Li[:, 2], n_Lg)
+                a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
+                a2_g[1:] /= r_g[1:]**2
+                a2_g[0] = a2_g[1]
+                a1_g = npy.dot(Y_L, dndr_Lg)
+                a2_g += a1_g**2
+                v_g = npy.zeros(self.ng)
+                e_g = npy.zeros(self.ng)
+                deda2_g = npy.zeros(self.ng)
+                xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+                E += w * npy.dot(e_g, self.dv_g)
+                
+                #x_g = -2.0 * deda2_g * self.dv_g * a1_g
+                #self.rgd.derivative2(x_g, x_g)
+                x_g = (2*e_g + nresp_g + core_response) / (n_g + SMALL_NUMBER)
+                #print "POT1 ", 2*e_g / (n_g + SMALL_NUMBER)
+                #print "POT2 ", nresp_g / (n_g + SMALL_NUMBER)
+                #print "POT3 ", core_response / (n_g + SMALL_NUMBER)
+                x_g[0] = x_g[1]
+                x_g *= self.dv_g
+                #print "cr ", core_response
+                #print "cr a", core_response / (n_g + SMALL_NUMBER)
+                #print "n_g", n_g
+                
+                B_Lqp = self.B_Lqp
+                dEdD_p += w * npy.dot(dot3(self.B_pqL, Y_L),
+                                      npy.dot(self.n_qg, x_g))
+
+                n_g = npy.dot(Y_L, nt_Lg)
+                ntresp_g = npy.dot(Y_L, ntresp_Lg)
+                
+                a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
+                a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
+                a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
+                a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
+                a2_g[1:] /= r_g[1:]**2
+                a2_g[0] = a2_g[1]
+                a1_g = npy.dot(Y_L, dntdr_Lg)
+                a2_g += a1_g**2
+                v_g = npy.zeros(self.ng)
+                e_g = npy.zeros(self.ng)
+                deda2_g = npy.zeros(self.ng)
+                xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+                E -= w * npy.dot(e_g, self.dv_g)
+                #x_g = -2.0 * deda2_g * self.dv_g * a1_g
+                #self.rgd.derivative2(x_g, x_g)
+                x_g = (2*e_g + ntresp_g) / (n_g + SMALL_NUMBER)
+
+                x_g[0] = x_g[1]
+                x_g *= self.dv_g
+                
+                B_Lqp = self.B_Lqp
+                dEdD_p -= w * npy.dot(dot3(self.B_pqL, Y_L),
+                                      npy.dot(self.nt_qg, x_g))
+                y += 1
+        else:
+            raise NotImplementedError('GLLB spinpolarized xc-corrections')
+        return E - self.Exc0
+
+    def GLLBint(self, D_p, Dresp_p, Dlumo_p):
+        r_g = self.rgd.r_g
+        E = 0.0
+        D_Lq = dot3(self.B_Lqp, D_p)
+        n_Lg = npy.dot(D_Lq, self.n_qg)
+        n_Lg[0] += self.nc_g * sqrt(4 * pi)
+        nt_Lg = npy.dot(D_Lq, self.nt_qg)
+        nt_Lg[0] += self.nct_g * sqrt(4 * pi)
+            
+        Dresp_Lq = dot3(self.B_Lqp, Dresp_p)
+        nresp_Lg = npy.dot(Dresp_Lq, self.n_qg)
+        ntresp_Lg = npy.dot(Dresp_Lq, self.nt_qg)
+
+        Dlumo_Lq = dot3(self.B_Lqp, Dlumo_p)
+        nlumo_Lg = npy.dot(Dlumo_Lq, self.n_qg)
+        ntlumo_Lg = npy.dot(Dlumo_Lq, self.nt_qg)
+            
+        y = 0
+        for w, Y_L in zip(self.weights, self.Y_yL):
+            A_Li = A_Liy[:self.Lmax, :, y]
+            n_g = npy.dot(Y_L, n_Lg)
+            nt_g = npy.dot(Y_L, nt_Lg)
+            nresp_g = npy.dot(Y_L, nresp_Lg)
+            ntresp_g = npy.dot(Y_L, ntresp_Lg)
+            nlumo_g = npy.dot(Y_L, nlumo_Lg)
+            ntlumo_g = npy.dot(Y_L, ntlumo_Lg)
+            
+            E += w * npy.dot(nlumo_g * nresp_g / (n_g + SMALL_NUMBER), self.dv_g)
+            E -= w * npy.dot(ntlumo_g * ntresp_g / (nt_g + SMALL_NUMBER), self.dv_g)
+                
+            y += 1
+
+        return E
+
+
 
     def two_phi_integrals(self,
                           D_sp # density matrix in packed(pack) form
