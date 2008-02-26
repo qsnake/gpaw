@@ -69,7 +69,8 @@ if len(tests) == 0:
              #'wannier-hwire.py',
              'exx.py', 'exx_coarse.py', 'ldos.py',
              'revPBE_Li.py','ylexpand.py',
-             'td_hydrogen.py', 'aedensity.py', 'IP-oxygen.py', '2Al.py',
+             #'td_hydrogen.py',  
+             'aedensity.py', 'IP-oxygen.py', '2Al.py',
              '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
              'ae-calculation.py', 'H2Al110.py',
              'plt.py']
