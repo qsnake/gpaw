@@ -136,6 +136,13 @@ def coordinates(gd):
     # Return r^2 matrix
     return xyz, r2
 
+def pick(a_ix, i):
+    if isinstance(i, int):
+        return a_ix[i]
+    shape = a_ix.shape
+    a_x = npy.dot(i, a_ix.reshape(shape[0], -1))
+    return npy.reshape(a_x, shape)
+
 def dagger(a):
     """Return Hermitian conjugate of input"""
     return a.T.conj()

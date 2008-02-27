@@ -2,6 +2,7 @@ from math import sqrt, pi
 import numpy as npy
 
 from gpaw.utilities import pack
+from gpaw.utilities.tools import pick
 from gpaw.localized_functions import create_localized_functions
 
 
@@ -54,16 +55,16 @@ class PairDensity2:
         self.u = kpt.u
         self.spin = kpt.s
         
-        self.psit1_G = kpt.psit_nG[n1]
-        self.psit2_G = kpt.psit_nG[n2]
+        self.psit1_G = pick(kpt.psit_nG, n1)
+        self.psit2_G = pick(kpt.psit_nG, n2)
 
     def get_coarse(self, nt_G):
         """Get pair density"""
-        npy.multiply(self.psit1_G, self.psit2_G, nt_G)
+        npy.multiply(self.psit1_G.conj(), self.psit2_G, nt_G)
 
     def add_compensation_charges(self, nt_G, rhot_g):
-        """Add compensation charghes to input pair density, which
-        iss interpolated to the fine grid if needed."""
+        """Add compensation charges to input pair density, which
+        is interpolated to the fine grid if needed."""
 
         if self.finegrid:
             # interpolate the pair density to the fine grid
@@ -76,9 +77,9 @@ class PairDensity2:
         for nucleus in self.ghat_nuclei:
             if nucleus.in_this_domain:
                 # Generate density matrix
-                P1_i = nucleus.P_uni[self.u, self.n1]
-                P2_i = nucleus.P_uni[self.u, self.n2]
-                D_ii = npy.outer(P1_i, P2_i)
+                P1_i = pick(nucleus.P_uni[self.u], self.n1)
+                P2_i = pick(nucleus.P_uni[self.u], self.n2)
+                D_ii = npy.outer(P1_i.conj(), P2_i)
                 # allowed to pack as used in the scalar product with
                 # the symmetric array Delta_pL
                 D_p  = pack(D_ii, tolerance=1e30)
@@ -99,7 +100,6 @@ class PairDensity2:
                     ghat_L.comm.broadcast(Q_L, ghat_L.root)
                 else:
                     Ghat_L.add(rhot_g, Q_L, communicate=True)
-                                        
 
 
 class PairDensity:
@@ -197,4 +197,4 @@ class PairDensity:
                 else:
                     Ghat_L.add(rhot, Q_L, communicate=True)
                 
-        return rhot 
+        return rhot

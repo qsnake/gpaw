@@ -131,3 +131,76 @@ class Coulomb:
             return real(self.gd.integrate(I))
         else:
             return self.gd.integrate(I)
+
+
+import numpy as npy
+from pair_density import PairDensity2 as PairDensity
+from gpaw.utilities.tools import pick
+class Coulomb4:
+    """Determine four-index Coulomb integrals."""
+    def __init__(self, paw, spin):
+        self.kpt = paw.kpt_u[spin]
+        self.pd = PairDensity(paw, finegrid=True)
+        self.nt12_G = paw.gd.empty()
+        self.nt34_G = paw.gd.empty()
+        self.rhot12_g = paw.finegd.empty()
+        self.rhot34_g = paw.finegd.empty()
+        self.phit34_g = paw.finegd.empty()
+        self.poisson = paw.poisson.solve
+        self.integrate = paw.finegd.integrate
+        self.psum = paw.gd.comm.sum
+        
+    def get_integral(n1, n2, n3, n4):
+        self.pd.initialize(self.kpt, n1, n2)
+        self.pd.get_coarse(self.nt12_G)
+        self.rhot12_g[:] = 0.0
+        self.pd.add_compensation_charges(self.nt12_G, self.rhot12_g)
+        
+        self.pd.initialize(self.kpt, n3, n4)
+        self.pd.get_coarse(self.nt34_G)
+        self.rhot34_g[:] = 0.0
+        self.pd.add_compensation_charges(self.nt34_G, self.rhot34_g)
+
+        self.poisson(self.phit34_g, self.rhot34_g,
+                     charge=None, zero_initial_phi=True)
+
+        # smooth part
+        I = self.integrate(self.rhot12_g * self.phit34_g)
+        
+        # Add atomic corrections
+        Ia = 0.0
+        for nucleus in self.my_nuclei:
+            # ----
+            # >      P   P  C    P  P
+            # ----    1i  2j ijkl 3k 4l
+            # ijkl
+            P_ni = nucleus.P_uni[self.u]
+            D12_p = pack(npy.outer(pick(P_ni, n1), pick(P_ni, n2)), 1e3)
+            D34_p = pack(npy.outer(pick(P_ni, n3), pick(P_ni, n4)), 1e3)
+            Ia += npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
+        I += self.psum(Ia)
+
+        return I
+
+from gpaw.utilities import unpack
+from gpaw.utilities.blas import r2k
+
+def get_vxc(paw, spin):
+    """Calculate matrix elements of the xc-potential."""
+    psit_nG = paw.kpt_u[spin].psit_nG[:]
+    nt_g = paw.density.nt_sg[spin]
+    vxct_g = paw.finegd.empty()
+    paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
+    vxct_G = paw.gd.empty()
+    paw.hamiltonian.restrict(vxct_g, vxct_G)
+    Vxc_nn = npy.zeros((paw.nbands, paw.nbands))
+    r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
+    for nucleus in paw.my_nuclei:
+        D_sp = nucleus.D_sp
+        H_sp = 0.0 * D_sp
+        nucleus.setup.xc_correction.calculate_energy_and_derivatives(
+            D_sp, H_sp)
+        H_ii = unpack(H_sp[spin])
+        P_ni = nucleus.P_uni[spin]
+        Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, num.transpose(P_ni)))
+    return Vxc_nn * paw.Ha
