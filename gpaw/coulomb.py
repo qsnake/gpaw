@@ -170,14 +170,14 @@ class Coulomb4:
         # Add atomic corrections
         Ia = 0.0
         for nucleus in self.my_nuclei:
-            # ----
-            # >      P   P  C    P  P
-            # ----    1i  2j ijkl 3k 4l
-            # ijkl
+            #   ----
+            # 2 >     P   P  C    P  P
+            #   ----   1i  2j ijkl 3k 4l
+            #   ijkl 
             P_ni = nucleus.P_uni[self.u]
             D12_p = pack(npy.outer(pick(P_ni, n1), pick(P_ni, n2)), 1e3)
             D34_p = pack(npy.outer(pick(P_ni, n3), pick(P_ni, n4)), 1e3)
-            Ia += npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
+            Ia += 2 * npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
         I += self.psum(Ia)
 
         return I
