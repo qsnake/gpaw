@@ -7,15 +7,15 @@ from gpaw.gllb import SMALL_NUMBER
 import numpy as npy
 from gpaw.mpi import world
 
-K_G = 0.382106112167171
-SLATER_FUNCTIONAL = "X_B88-None"
-
 class GLLBFunctional(ZeroFunctional, GLLB1D):
-    def __init__(self, correlation = False, relaxed_core_response=False):
-        self.correlation = correlation
+    def __init__(self, slater_xc_name, v_xc_name, K_G, relaxed_core_response=False):
         self.relaxed_core_response = relaxed_core_response
-        self.slater_functional = XCFunctional('X_B88-None', 1)
-
+        self.K_G = K_G
+        self.slater_xc = XCFunctional(slater_xc_name, 1)
+        if v_xc_name is not None:
+            self.v_xc = XCFunctional(v_xc_name, 1)
+        else:
+            self.v_xc = None
         
         GLLB1D.__init__(self)
         
@@ -43,7 +43,11 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         self.resp_sg = finegd.zeros(self.nspins)
         self.e_g = finegd.zeros()
 
-        self.slater_xc = XC3DGrid(self.slater_functional, self.finegd, self.nspins)
+        self.slater_xc3d = XC3DGrid(self.slater_xc, self.finegd, self.nspins)
+        if self.v_xc is not None:
+            self.v_xc3d = XC3DGrid(self.v_xc, self.finegd, self.nspins)
+        else:
+            self.v_xc3d = None
 
         # Allocate 'response-density' matrices for each nucleus
         for nucleus in self.nuclei:
@@ -70,13 +74,18 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         # Update the response weights on each k-point
         for kpt in self.kpt_u:
             temp = self.fermi_level-kpt.eps_n[:]
-            kpt.wf_n[:] = K_G * (npy.where(temp<1e-5, 0, temp))**(0.5) * kpt.f_n[:]
+            kpt.wf_n[:] = self.K_G * (npy.where(temp<1e-5, 0, temp))**(0.5) * kpt.f_n[:]
        
         # The smooth scr-part
         if self.nspins == 1:
-            Exc = self.slater_xc.get_energy_and_potential_spinpaired(self.nt_sg[0], self.vtp_sg[0], e_g=self.e_g)
+            Exc = self.slater_xc3d.get_energy_and_potential_spinpaired(self.nt_sg[0], self.vtp_sg[0], e_g=self.e_g)
             self.scr_sg[0][:] = 2*self.e_g / (self.nt_sg[0]+SMALL_NUMBER)
 
+            if self.v_xc3d is not None:
+                self.vtp_sg[0][:] = 0.
+                Exc += self.v_xc3d.get_energy_and_potential_spinpaired(self.nt_sg[0], self.vtp_sg[0], e_g = self.e_g)
+                self.scr_sg[0][:] += self.vtp_sg[0]
+                
         self.update_response_part()
 
         # Update the effective potential with screened and response part
@@ -157,7 +166,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
 
         lumo *= output.Ha
         homo *= output.Ha
-        
+
         output.text("HOMO EIGENVALUE   :     %.4f eV" % homo)
         output.text("LUMO EIGENVALUE   :     %.4f eV" % lumo)
         output.text("------------------------------------")
@@ -171,7 +180,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         # Update the response weights on each k-point
         for kpt in self.kpt_u:
             temp = lumo_level-kpt.eps_n[:]
-            kpt.wf_n[:] = K_G * (npy.where(temp<1e-5, 0, temp))**(0.5) * kpt.f_n[:] - kpt.wf_n[:]
+            kpt.wf_n[:] = self.K_G * (npy.where(temp<1e-5, 0, temp))**(0.5) * kpt.f_n[:] - kpt.wf_n[:]
 
         output.text("ii) Calculating perturbing potential...")
         self.update_response_part()
@@ -204,7 +213,13 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
             new_eig = eps + shift + paw_shift_all
             kpt.eps_n[self.ref_loc+1] = new_eig
             if self.gd.comm.rank == 0:
-                print " (%.2f,%.2f,%.2f)  %.4f  %.4f  %.4f " % (kpt.k_c[0], kpt.k_c[1], kpt.k_c[2], shift*output.Ha, paw_shift*output.Ha, new_eig*output.Ha)
+                # Gamma point calculation means kpt.k_c = None!!
+                if kpt.k_c == None:
+                    k_c = [ 0, 0, 0]
+                else:
+                    k_c = kpt.k_c
+
+                print " (%.2f,%.2f,%.2f)  %.4f  %.4f  %.4f " % (k_c[0], k_c[1], k_c[2], shift*output.Ha, paw_shift*output.Ha, new_eig*output.Ha)
 
         # Locate LUMO-level again
         lumo = -1.0 * self.kpt_comm.max(-1.0* min(kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u ))

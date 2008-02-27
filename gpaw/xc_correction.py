@@ -1168,7 +1168,8 @@ class XCCorrection:
 
     def GLLB(self, D_sp, Dresp_sp, H_sp, core_response):
         r_g = self.rgd.r_g
-        xcfunc = self.xc.xcfunc.xc.slater_functional
+        xcfunc = self.xc.xcfunc.xc.slater_xc
+        vfunc = self.xc.xcfunc.xc.v_xc
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
@@ -1216,19 +1217,24 @@ class XCCorrection:
                 e_g = npy.zeros(self.ng)
                 deda2_g = npy.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
+
+                x_g = (2*e_g + nresp_g + core_response) / (n_g + SMALL_NUMBER)
+                x_g[0] = x_g[1]
+
+                if vfunc is not None:
+                    # if vfunc.gga:
+                    # Assume vfunc is a lib-xc LDA
+                    assert(vfunc.gga == False)
+                    v2_g = npy.zeros(self.ng)
+                    e2_g = npy.zeros(self.ng)
+                    vfunc.calculate_spinpaired(e2_g, n_g, v2_g)
+                    e_g[:] += e2_g
+                    x_g += v2_g
+                
+
                 E += w * npy.dot(e_g, self.dv_g)
                 
-                #x_g = -2.0 * deda2_g * self.dv_g * a1_g
-                #self.rgd.derivative2(x_g, x_g)
-                x_g = (2*e_g + nresp_g + core_response) / (n_g + SMALL_NUMBER)
-                #print "POT1 ", 2*e_g / (n_g + SMALL_NUMBER)
-                #print "POT2 ", nresp_g / (n_g + SMALL_NUMBER)
-                #print "POT3 ", core_response / (n_g + SMALL_NUMBER)
-                x_g[0] = x_g[1]
                 x_g *= self.dv_g
-                #print "cr ", core_response
-                #print "cr a", core_response / (n_g + SMALL_NUMBER)
-                #print "n_g", n_g
                 
                 B_Lqp = self.B_Lqp
                 dEdD_p += w * npy.dot(dot3(self.B_pqL, Y_L),
@@ -1249,12 +1255,22 @@ class XCCorrection:
                 e_g = npy.zeros(self.ng)
                 deda2_g = npy.zeros(self.ng)
                 xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-                E -= w * npy.dot(e_g, self.dv_g)
-                #x_g = -2.0 * deda2_g * self.dv_g * a1_g
-                #self.rgd.derivative2(x_g, x_g)
-                x_g = (2*e_g + ntresp_g) / (n_g + SMALL_NUMBER)
 
+                x_g = (2*e_g + ntresp_g) / (n_g + SMALL_NUMBER)
                 x_g[0] = x_g[1]
+
+                if vfunc is not None:
+                    # if vfunc.gga:
+                    # Assume vfunc is a lib-xc LDA
+                    assert(vfunc.gga == False)
+                    v2_g = npy.zeros(self.ng)
+                    e2_g = npy.zeros(self.ng)
+                    vfunc.calculate_spinpaired(e2_g, n_g, v2_g)
+                    e_g[:] += e2_g
+                    x_g += v2_g
+
+                E -= w * npy.dot(e_g, self.dv_g)
+                
                 x_g *= self.dv_g
                 
                 B_Lqp = self.B_Lqp

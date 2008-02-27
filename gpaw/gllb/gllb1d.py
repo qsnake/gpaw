@@ -1,12 +1,13 @@
 import numpy as npy
 
-K_G = 0.38210611216717
-SMALL_NUMBER = 1e-9
+from gpaw.gllb import SMALL_NUMBER
+
 class GLLB1D:
     def __init__(self):
 
         # Stuff needed by setup-generator
-        self.slater_part1D = None
+        self.slater_xc1D = None
+        self.v_xc1D = None
         self.v_g1D = None
         self.e_g1D = None
         print "Initializing...", self.v_g1D
@@ -60,10 +61,25 @@ class GLLB1D:
         if njcore == None:
             # Divide with the density, beware division by zero
             v_xc[1:] /= n_g[1:] + SMALL_NUMBER
+            
+            # Do we have already XCRadialGrid object for v_xc
+            if self.v_xc is not None:
+                if self.v_xc1D == None:
+                    from gpaw.xc_functional import XCFunctional, XCRadialGrid
+                    self.v_xc1D = XCRadialGrid(self.v_xc, gd)
+                    
+                self.v_g[:] = 0.0
+                self.e_g[:] = 0.0
+        
+                # Calculate the local v
+                self.v_xc1D.get_energy_and_potential_spinpaired(n_g, self.v_g, e_g=self.e_g)
+                v_xc[:] += self.v_g
+
+                # Calculate the exchange energy
+                Exc += npy.dot(self.e_g, gd.dv_g)
 
         # Fix the r=0 value
         v_xc[0] = v_xc[1]
-        print "Vxc potential ", v_xc
 
         return Exc
 
@@ -113,15 +129,15 @@ class GLLB1D:
             self.e_g = n_g.copy()
 
         # Do we have already XCRadialGrid object, if not, create one
-        if self.slater_part1D == None:
+        if self.slater_xc1D == None:
             from gpaw.xc_functional import XCFunctional, XCRadialGrid
-            self.slater_part1D = XCRadialGrid(self.slater_functional, gd)
+            self.slater_xc1D = XCRadialGrid(self.slater_xc, gd)
 
         self.v_g[:] = 0.0
         self.e_g[:] = 0.0
         
         # Calculate B88-energy density
-        self.slater_part1D.get_energy_and_potential_spinpaired(n_g, self.v_g, e_g=self.e_g)
+        self.slater_xc1D.get_energy_and_potential_spinpaired(n_g, self.v_g, e_g=self.e_g)
 
         # Calculate the exchange energy
         Exc = npy.dot(self.e_g, gd.dv_g)
@@ -168,7 +184,7 @@ class GLLB1D:
         if (epsilon +1e-5 > reference_level):
             return 0
 
-        return K_G * npy.sqrt(reference_level-epsilon)
+        return self.K_G * npy.sqrt(reference_level-epsilon)
 
     def find_reference_level1D(self, f_j, e_j, lumo=False):
         """Finds the reference level from occupations and eigenvalue energies.
@@ -226,7 +242,7 @@ class GLLB1D:
 
         extra_xc_data['core_response'] = v_xc.copy()
 
-        print "Core response looks like", v_xc / (ae.n + SMALL_NUMBER)
+        #print "Core response looks like", v_xc / (ae.n + SMALL_NUMBER)
 
         if self.relaxed_core_response:
 
