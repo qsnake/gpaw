@@ -16,11 +16,12 @@ EX = {'Be': -2.666 - 0.010, 'Ne': -12.107 -0.122, 'Mg': -15.992 -0.092 }
 EHOMO = {'Be': -0.309 + 0.008, 'Ne': -0.851 + 0.098, 'Mg': -0.253 + 0.006}
 eignum = {'Be': 0, 'Ne':3, 'Mg':0 }
 
-atoms = ['Mg']
+atoms = ['Be','Ne']
+xcname = 'GLLB'
 if world.rank == 0:
     for atom in atoms:
         # Test AllElectron GLLB
-        GLLB = AllElectron(atom, xcname ='GLLB', scalarrel = False)
+        GLLB = AllElectron(atom, xcname = xcname, scalarrel = False)
 	GLLB.run()
 
 	out("Total energy", "1D", atom,  ETotal[atom] , GLLB.ETotal,"Ha")
@@ -29,11 +30,10 @@ if world.rank == 0:
 
 setup_paths.insert(0, '.')
 
-xc = 'GLLB'
 for atom in atoms:
     if world.rank == 0:
 	# Generate non-scalar-relativistic setup for atom
-	g = Generator(atom, xc, scalarrel=False, nofiles=True)
+	g = Generator(atom, xcname, scalarrel=False, nofiles=True)
 	g.run(**parameters[atom])
 
     #SS = Atoms([Atom(atom)], cell=(12, 12, 12), pbc=False)
@@ -43,7 +43,7 @@ for atom in atoms:
     #h = 0.20
     h = 0.25
     world.barrier()
-    calc = Calculator(h=h, xc=xc)
+    calc = Calculator(h=h, xc=xcname, nbands=5)
     SS.set_calculator(calc)
     E = SS.get_potential_energy()
     eigs = calc.get_eigenvalues()
@@ -61,6 +61,5 @@ if world.rank == 0:
 #Phys. Rev. A Vol. 51 p. 1944"""
 
 import os
-os.remove('Be.GLLB')
-os.remove('Ne.GLLB')
-os.remove('Mg.GLLB')
+os.remove('Be.'+xcname)
+os.remove('Ne.'+xcname)
