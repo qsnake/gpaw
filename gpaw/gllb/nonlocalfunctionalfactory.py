@@ -27,8 +27,8 @@ class NonLocalFunctionalFactory:
             from gpaw.gllb.gllb import GLLBFunctional
             return GLLBFunctional(relaxed_core_response=True)
         elif name == 'GLLBplusC':
-            from gpaw.gllb.gllbc import GLLBCFunctional
-            return GLLBCFunctional()
+            from gpaw.gllb.gllb import GLLBFunctional
+            return GLLBFunctional(correlation=True)
         elif name == 'GLLBLUMO':
             from gpaw.gllb.gllb import GLLBFunctional
             return GLLBFunctional(lumo=True)

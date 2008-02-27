@@ -1,3 +1,3 @@
-SMALL_NUMBER = 1e-6
+SMALL_NUMBER = 1e-8
 
 
