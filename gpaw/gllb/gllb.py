@@ -8,17 +8,14 @@ import numpy as npy
 from gpaw.mpi import world
 
 K_G = 0.382106112167171
-#SLATER_FUNCTIONAL = "X_B88-None"
-#SLATER_FUNCTIONAL_C1 = "X_B88-C_P86"
-#SLATER_FUNCTIONAL_C2 = "X_B88-C_PW91"
+SLATER_FUNCTIONAL = "X_B88-None"
 
 class GLLBFunctional(ZeroFunctional, GLLB1D):
-    def __init__(self, slater_functional, v_functional, relaxed_core_response=False):
+    def __init__(self, correlation = False, relaxed_core_response=False):
+        self.correlation = correlation
         self.relaxed_core_response = relaxed_core_response
-        self.slater_functional = XCFunctional(slater_functional,_1)
+        self.slater_functional = XCFunctional('X_B88-None', 1)
 
-        if v_functional is not None:
-            self.v_functional = XCFunctional(v_functional, 1)
         
         GLLB1D.__init__(self)
         
@@ -47,9 +44,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         self.e_g = finegd.zeros()
 
         self.slater_xc = XC3DGrid(self.slater_functional, self.finegd, self.nspins)
-        if self.v_functional is not None:
-            self.v_xc = XC3DGrid(self.v_functional, self.finegd, self.nspins)
-        
+
         # Allocate 'response-density' matrices for each nucleus
         for nucleus in self.nuclei:
             ni = nucleus.get_number_of_partial_waves()
@@ -81,9 +76,6 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         if self.nspins == 1:
             Exc = self.slater_xc.get_energy_and_potential_spinpaired(self.nt_sg[0], self.vtp_sg[0], e_g=self.e_g)
             self.scr_sg[0][:] = 2*self.e_g / (self.nt_sg[0]+SMALL_NUMBER)
-            if self.v_xc is not None:
-                Exc += self.v_xc.get_energy_and_potential_spinpaired(self.nt_sg[0], self.vtp_sg[0], e_g=self.e_g)
-                self.scr_sg[0][:] += self.vtp_sg[0]
 
         self.update_response_part()
 
@@ -159,7 +151,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
             print "ITERATION ", i
             self.iterate_quasi(output)
             
-    def iterate_quasi(self, output):
+    def iterate_quasi(self, output):      
         # Locate HOMO-level
         homo = self.kpt_comm.max(max( kpt.eps_n[self.ref_loc] for kpt in self.kpt_u ))
 
