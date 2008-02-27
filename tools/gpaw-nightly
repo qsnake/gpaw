@@ -20,8 +20,7 @@ import docutils
 
 
 def send_email(subject, filename='/dev/null'):
-    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
-    #assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
                      (subject, filename)) == 0
 
 def send_jj_email(subject, filename='/dev/null'):
