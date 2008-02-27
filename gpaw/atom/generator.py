@@ -8,6 +8,7 @@ import numpy as npy
 from numpy.linalg import solve, inv
 from ase.data import atomic_names
 
+from gpaw.pawxml import SetupData
 from gpaw.atom.configurations import configurations
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
@@ -79,7 +80,8 @@ class Generator(AllElectron):
 
     def run(self, core='', rcut=1.0, extra=None,
             logderiv=False, vbar=None, exx=False, name=None,
-            normconserving='', filter=(0.4, 1.75), rcutcomp=None):
+            normconserving='', filter=(0.4, 1.75), rcutcomp=None,
+            write_xml=True):
 
         self.name = name
 
@@ -695,9 +697,84 @@ class Generator(AllElectron):
             X_p = None
             ExxC = None
 
-        self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-                       nc, nct, nt, Ekincore, X_p, ExxC, vbar,
-                       tauc, tauct, extra_xc_data)
+        #self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
+        #               nc, nct, nt, Ekincore, X_p, ExxC, vbar,
+        #               tauc, tauct, extra_xc_data)
+        sqrt4pi = sqrt(4 * pi)
+        setup = SetupData(self.symbol, self.xcfunc.get_name(), self.name, 
+                          readxml=False)
+
+        def divide_by_r(x_g, l):
+            r = self.r
+            #for x_g, l in zip(x_jg, l_j):
+            p = x_g.copy()
+            p[1:] /= self.r[1:]
+            # XXXXX go to higher order!!!!!
+            if l == 0:#l_j[self.jcorehole] == 0:
+                p[0] = (p[2] +
+                        (p[1] - p[2]) * (r[0] - r[2]) / (r[1] - r[2]))
+            return p
+
+        def divide_all_by_r(x_jg):
+            return [divide_by_r(x_g, l) for x_g, l in zip(x_jg, vl_j)]
+            
+        setup.l_j = vl_j
+        setup.n_j = vn_j
+        setup.f_j = vf_j
+        setup.eps_j = ve_j
+        setup.rcut_j = [rcut_l[l] for l in vl_j]
+
+        setup.nc_g = nc * sqrt4pi
+        setup.nct_g = nct * sqrt4pi
+        setup.nvt_g = (nt - nct) * sqrt4pi
+        setup.e_kinetic_core = Ekincore
+        setup.vbar_g = vbar * sqrt4pi
+        setup.tauc_g = tauc * sqrt4pi
+        setup.tauct_g = tauct * sqrt4pi
+        setup.extra_xc_data = extra_xc_data
+        setup.Z = Z
+        setup.Nc = self.Nc
+        setup.Nv = self.Nv
+        setup.e_kinetic = self.Ekin
+        setup.e_xc = self.Exc
+        setup.e_electrostatic = self.Epot
+        setup.e_total = self.Epot + self.Exc + self.Ekin
+        setup.beta = self.beta
+        setup.ng = self.N
+        setup.rcgauss = self.rcutcomp / sqrt(self.gamma)
+        setup.e_kin_jj = self.dK_jj
+        setup.ExxC = ExxC
+        setup.phi_jg = divide_all_by_r(vu_j)
+        setup.phit_jg = divide_all_by_r(vs_j)
+        setup.pt_jg = divide_all_by_r(vq_j)
+        setup.X_p = X_p
+
+        if self.jcorehole is not None:
+            setup.has_corehole = True
+            setup.lcorehole = l_j[self.jcorehole] # l_j or vl_j ????? XXX
+            setup.ncorehole = n_j[self.jcorehole]
+            setup.phicorehole_g = divide_by_r(self.u_j[self.jcorehole], 
+                                                  setup.lcorehole)
+            setup.core_hole_e = self.e_j[self.jcorehole]
+            setup.core_hole_e_kin = self.Ekincorehole
+
+        if self.ghost:
+            raise RuntimeError('Ghost!')
+
+        if self.scalarrel:
+            reltype = 'scalar-relativistic'
+        else:
+            reltype = 'non-relativistic'
+
+        attrs = [('type', reltype), ('name', 'gpaw-%s' % version)]
+        data = 'Frozen core: '+ (self.core or 'none')
+
+        setup.generatorattrs = attrs
+        setup.generatordata  = data
+
+        if write_xml:
+            setup.write_xml()
+        return setup
 
     def diagonalize(self, h):
         ng = 350
@@ -787,6 +864,7 @@ class Generator(AllElectron):
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar,
                   tauc, tauct, extra_xc_data):
+        raise DeprecationWarning('use pawxml.py')
         xcname = self.xcfunc.get_name()
         if self.name is None:
             xml = open('%s.%s' % (self.symbol, xcname), 'w')

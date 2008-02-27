@@ -11,12 +11,6 @@ parser.add_option('-n', '--name', default=None, metavar='<name>',
 parser.add_option('-t', '--type', default='dz', metavar='<type>',
                   help='type of basis.  For example: sz, dzp, qztp, '+
                   '4z3p.  [default: %default]')
-#parser.add_option('-l', '--include-lesser', action='store_true',
-#                  help='write all basis sets that are subsets of the'+
-#                  ' given type (e.g. sz is a subset of dz)')
-#parser.add_option('-r', '--reference', action='store_true',
-#                  help='perform reference calculations for polarization'+
-#                  ' orbitals.  No basis will be written')
 parser.add_option('-E', '--energy-shift', metavar='<energy>', type='float',
                   default=.3,
                   help='use given energy shift to determine cutoff')
@@ -24,11 +18,6 @@ parser.add_option('-T', '--tail-norm', metavar='<norm>', type='float',
                   default=.15, dest='tailnorm',
                   help='use the given fraction to define the split'+
                   '-valence cutoff')
-#parser.add_option('-v', '--verbose', action='store_true',
-#                  help='print generator output')
-#parser.add_option('--tolerance', type='float', default=1.0e-3,
-#                  metavar='<tol>',
-#                  help='energy shift tolerance [default: %default]')
 parser.add_option('-P', '--plot', action='store_true',
                   help='plot basis functions')
 parser.add_option('-N', '--no-files', action='store_true',
@@ -93,35 +82,16 @@ def main():
                 reference_atom_indices[i] = int(symbol_and_file[2])
     else:
         symbols = args
-    #txt = None
-    #if opts.verbose:
-    #    txt = '-'
 
     if opts.name is not None:
         name = '%s.%s' % (opts.name, basistype)
     else:
         name = basistype
 
-    if opts.no_files:
-        txt = sys.stdout
-    else:
-        txt = open('main.%s.txt' % name, 'w')
-
-    print >> txt, 'Basis set batch for: %s' % symbols
-    print >> txt, 'Basis set batch name: %s' % opts.name
-    print >> txt, 'Basis set batch type: %s' % basistype
-    print >> txt, 'Confinement energy shift: %.03f eV' % opts.energy_shift
-    if zetacount > 1:
-        print >> txt, 'Tail norm: %.03f' % opts.tailnorm
-    if polcount > 0:
-        msg = 'Polarization cutoff multiplier: %.03f' % opts.rcut_pol_rel
-        print >> txt, msg
-    print >> txt
-    
     for symbol, referencefile, referenceindex in zip(symbols, referencefiles,
                                                      reference_atom_indices):
         generator = Generator(symbol, txt=None)
-        bm = BasisMaker(generator)
+        bm = BasisMaker(generator, name)
 
         if opts.no_files:
             txt = '-'
@@ -129,16 +99,15 @@ def main():
             txt = open('%s.%s.txt' % (symbol, name), 'w')
         basis = bm.generate(zetacount, polcount, tailnorm=opts.tailnorm,
                             energysplit=opts.energy_shift,
-                            #tolerance=opts.tolerance,
                             referencefile=referencefile,
                             referenceindex=referenceindex,
                             rcutpol_rel=opts.rcut_pol_rel,
                             rcutmax=opts.rcut_max,
                             txt=txt)
         if opts.plot:
-            bm.plot(basis, title=referencefile)
+            bm.plot(basis.bf_j, title=referencefile)
         if not opts.no_files:
-            bm.writexml(basis, name=name)
+            basis.write_xml()
     if opts.plot:
         import pylab
         pylab.show()

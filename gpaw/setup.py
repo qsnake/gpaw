@@ -9,8 +9,8 @@ import numpy as npy
 from numpy.linalg import inv
 from ase.data import atomic_names
 
-from gpaw.read_setup import PAWXMLParser
-from gpaw.read_basis import BasisSetXMLParser
+from gpaw.pawxml import SetupData
+from gpaw.read_basis import Basis
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
@@ -18,7 +18,8 @@ from gpaw.utilities import unpack, erf, fac, hartree, pack2, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
-def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
+def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None,
+                 setupdata=None):
     if type == 'ae':
         from gpaw.ae import AllElectronSetup
         return AllElectronSetup(symbol, xcfunc, nspins)
@@ -31,7 +32,7 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None):
         from gpaw.hgh import HGHSetup
         return HGHSetup(symbol, xcfunc, nspins, semicore=True)
 
-    return Setup(symbol, xcfunc, lmax, nspins, type, basis)
+    return Setup(symbol, xcfunc, lmax, nspins, type, basis, setupdata)
 
 
 class Setup:
@@ -47,53 +48,57 @@ class Setup:
 
     """
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
-                 type='paw', basis=None):
-        self.xcfunc = xcfunc
-        self.xcname = xcfunc.get_name()
-        self.setupname = xcfunc.get_setup_name()
-        self.softgauss = False
-        xcname = self.xcname
+                 type='paw', basis=None, setupdata=None):
+        actual_symbol = symbol
+        self.type = type
+
         zero_reference = xcfunc.hybrid > 0
         self.HubU = None
         
-        self.type = type
         if type != 'paw':
             symbol += '.' + type
         self.symbol = symbol
 
-        (Z, Nc, Nv,
-         e_total, e_kinetic, e_electrostatic, e_xc,
-         e_kinetic_core,
-         n_j, l_j, f_j, eps_j, rcut_j, id_j,
-         ng, beta,
-         nc_g, nct_g, vbar_g, rcgauss,
-         phi_jg, phit_jg, pt_jg,
-         e_kin_jj, X_p, ExxC,
-         tauc_g, tauct_g,
-         self.fingerprint,
-         filename,
-         self.phicorehole_g,
-         self.fcorehole,
-         eigcorehole,
-         ekincorehole,
-         extra_xc_data) = PAWXMLParser().parse(self.symbol, self.setupname,
-                                               zero_reference)
+        self.xcname = xcfunc.get_name()
 
-        self.filename = filename
+        if setupdata is None:
+            data = SetupData(actual_symbol, xcfunc.get_setup_name(),
+                             type, zero_reference, True)
+        else:
+            data = setupdata
+        self.data = data
 
-        self.Nv = Nv
-        self.Nc = Nc
-        self.Z = Z
-        self.X_p = X_p
-        self.ExxC = ExxC
+        # Copy variables from data object to self.
+        # Some variables should probably exist only on the data object, but
+        # presently we copy them to keep existing code from failing.
 
+        self.Nc = data.Nc
+        self.Nv = data.Nv
+        self.Z = data.Z
+        l_j = self.l_j = data.l_j
+        n_j = self.n_j = data.n_j
+        self.f_j = data.f_j
+        self.eps_j = data.eps_j
         nj = len(l_j)
-        e_kin_jj.shape = (nj, nj)
+        ng = self.ng = data.ng
+        beta = self.beta = data.beta
+        self.softgauss = data.softgauss
+        rcgauss = self.rcgauss = data.rcgauss
+        rcut_j = self.rcut_j = data.rcut_j
 
-        self.n_j = n_j
-        self.l_j = l_j
-        self.f_j = f_j
-        self.eps_j = eps_j
+        self.fcorehole = data.fcorehole
+
+        self.ExxC = data.ExxC
+        self.X_p = data.X_p
+
+        pt_jg = data.pt_jg
+        phit_jg = data.phit_jg
+        phi_jg = data.phi_jg
+        nc_g = data.nc_g
+        nct_g = data.nct_g
+
+        self.fingerprint = data.fingerprint
+        self.filename = data.filename
 
         g = npy.arange(ng, dtype=float)
         r_g = beta * g / (ng - g)
@@ -124,7 +129,8 @@ class Setup:
                 i2=0
                 for n2, l2 in enumerate(l_j):
                     for m2 in range(2 * l2 + 1):
-                        self.B_ii[i1][i2] = delta(l1,l2)*delta(m1,m2)*B_jj[n1][n2]
+                        self.B_ii[i1][i2] = \
+                            delta(l1,l2) * delta(m1,m2) * B_jj[n1][n2]
                         i2 +=1
                 i1 +=1
 
@@ -141,7 +147,7 @@ class Setup:
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
 
         # Find cutoff for core density:
-        if Nc == 0:
+        if self.Nc == 0:
             self.rcore = rcore = 0.5
         else:
             N = 0.0
@@ -170,15 +176,16 @@ class Setup:
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
 
-        if self.phicorehole_g is not None:
+        if data.phicorehole_g is not None:
             print "ok"
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
         # Construct splines:
-        self.nct = Spline(0, rcore, nct_g, r_g, beta)
-        self.vbar = Spline(0, rcutfilter, vbar_g, r_g, beta)
+        self.nct = Spline(0, rcore, data.nct_g, r_g, beta)
+        self.vbar = Spline(0, rcutfilter, data.vbar_g, r_g, beta)
 
         # Construct splines for core kinetic energy density:
+        tauct_g = data.tauct_g
         if tauct_g is None:
             tauct_g = npy.zeros(ng)
         self.tauct = Spline(0, rcore, tauct_g, r_g, beta)
@@ -196,7 +203,7 @@ class Setup:
         if basis is None:
             self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
         else:
-            self.read_basis_functions(basis, r_g, beta)
+            self.read_basis_functions(basis)#, r_g, beta)
 
         self.niAO = 0
         for phit in self.phit_j:
@@ -205,19 +212,21 @@ class Setup:
 
         r_g = r_g[:gcut2].copy()
         dr_g = dr_g[:gcut2].copy()
-        phi_jg = npy.array([phi_g[:gcut2] for phi_g in phi_jg])
-        phit_jg = npy.array([phit_g[:gcut2] for phit_g in phit_jg])
+        phi_jg = npy.array([phi_g[:gcut2].copy() for phi_g in phi_jg])
+        phit_jg = npy.array([phit_g[:gcut2].copy() for phit_g in phit_jg])
         nc_g = nc_g[:gcut2].copy()
         nct_g = nct_g[:gcut2].copy()
-        vbar_g = vbar_g[:gcut2].copy()
-        tauc_g = tauc_g[:gcut2].copy()
+        vbar_g = data.vbar_g[:gcut2].copy()
+        tauc_g = data.tauc_g[:gcut2].copy()
 
+        extra_xc_data = dict(data.extra_xc_data)
         # Cut down the GLLB related extra data
         for key, item in extra_xc_data.iteritems():
-            if len(item)>1:
+            if len(item) > 1:
                 extra_xc_data[key] = item[:gcut2].copy()
         self.extra_xc_data = extra_xc_data
 
+        self.phicorehole_g = data.phicorehole_g
         if self.phicorehole_g is not None:
             self.phicorehole_g = self.phicorehole_g[:gcut2].copy()
 
@@ -264,7 +273,7 @@ class Setup:
                 delta_p = npy.dot(Delta_lq[l], T_Lqp[L + m])
                 self.Delta_pL[:, L + m] = delta_p
 
-        Delta = npy.dot(nc_g - nct_g, r_g**2 * dr_g) - Z / sqrt(4 * pi)
+        Delta = npy.dot(nc_g - nct_g, r_g**2 * dr_g) - self.Z / sqrt(4 * pi)
         self.Delta0 = Delta
 
         def H(n_g, l):
@@ -287,7 +296,7 @@ class Setup:
         rdr_g = r_g * dr_g
         dv_g = r_g * rdr_g
         A = 0.5 * npy.dot(nc_g, wnc_g)
-        A -= sqrt(4 * pi) * Z * npy.dot(rdr_g, nc_g)
+        A -= sqrt(4 * pi) * self.Z * npy.dot(rdr_g, nc_g)
         mct_g = nct_g + Delta * g_lg[0]
         wmct_g = wnct_g + Delta * wg_lg[0]
         A -= 0.5 * npy.dot(mct_g, wmct_g)
@@ -297,7 +306,7 @@ class Setup:
 
         A_q = 0.5 * (npy.dot(wn_lqg[0], nc_g)
                      + npy.dot(n_qg, wnc_g))
-        A_q -= sqrt(4 * pi) * Z * npy.dot(n_qg, rdr_g)
+        A_q -= sqrt(4 * pi) * self.Z * npy.dot(n_qg, rdr_g)
 
         A_q -= 0.5 * (npy.dot(wnt_lqg[0], mct_g)
                      + npy.dot(nt_qg, wmct_g))
@@ -341,9 +350,8 @@ class Setup:
                 [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,
-                tauc_g)
-            
+                2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole, nspins,
+                tauc_g)            
         elif xcfunc.xcname == "TPSS":
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 
@@ -353,8 +361,8 @@ class Setup:
                 [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,
-                tauc_g)
+                2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole, 
+                nspins, tauc_g)
         else:
             xc = XCRadialGrid(xcfunc, rgd, nspins)
 
@@ -364,8 +372,8 @@ class Setup:
                 [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
                 nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
                 rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, e_xc, self.phicorehole_g, self.fcorehole, nspins,
-                tauc_g)
+                2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole,
+                nspins, tauc_g)
 
         if self.softgauss:
             rcutsoft = rcut2####### + 1.4
@@ -374,13 +382,14 @@ class Setup:
 
         self.rcutsoft = rcutsoft
 
-        if xcname != self.xcname:
-            raise RuntimeError('Not the correct XC-functional!')
+        # XXX reinstate the following check with correct names
+        #if xcfunc.get_name() != self.xcname:
+        #    raise RuntimeError('Not the correct XC-functional!')
 
         # Use atomic all-electron energies as reference:
-        self.Kc = e_kinetic_core - e_kinetic
-        self.M -= e_electrostatic
-        self.E = e_total
+        self.Kc = data.e_kinetic_core - data.e_kinetic
+        self.M -= data.e_electrostatic
+        self.E = data.e_total
 
         self.O_ii = sqrt(4.0 * pi) * unpack(self.Delta_pL[:, 0].copy())
 
@@ -391,7 +400,7 @@ class Setup:
         K_q = []
         for j1 in range(nj):
             for j2 in range(j1, nj):
-                K_q.append(e_kin_jj[j1, j2])
+                K_q.append(data.e_kin_jj[j1, j2])
         self.K_p = sqrt(4 * pi) * npy.dot(K_q, T_Lqp[0])
 
         self.lmax = lmax
@@ -451,11 +460,10 @@ class Setup:
                        for l in range(lmax + 1)]
 
         self.rcutcomp = sqrt(10) * rcgauss
-        self.rcut_j = rcut_j
-
 
         # compute inverse overlap coefficients C_ii
-        self.C_ii = -npy.dot(self.O_ii, inv(npy.identity(size) + npy.dot(self.B_ii, self.O_ii)))
+        self.C_ii = -npy.dot(self.O_ii, inv(npy.identity(size) + 
+                                            npy.dot(self.B_ii, self.O_ii)))
 
     def set_hubbard_u(self, U, l):
         """Set Hubbard parameter.
@@ -508,13 +516,14 @@ class Setup:
                 self.phit_j.append(Spline(l, rcut3, phit_g, r_g, beta,
                                           points=100))
 
-    def read_basis_functions(self, basis_name, r_g, beta):
-        parser = BasisSetXMLParser()
-        (l_j, rc, phit_jg, filename) = parser.parse(self.symbol, basis_name)
-
-        self.phit_j = []
-        for l, phit_g in zip(l_j, phit_jg):
-            self.phit_j.append(Spline(l, rc, phit_g, r_g, beta, points=100))
+    def read_basis_functions(self, basis_name):
+        basis = Basis(self.symbol, basis_name)
+        g = npy.arange(basis.ng, dtype=float)
+        r_g = basis.beta * g / (basis.ng - g)
+        
+        self.phit_j = [Spline(bf.l, bf.rc, bf.phit_g, r_g, 
+                              basis.beta, points=100)
+                       for bf in basis.bf_j]
 
     def print_info(self, text):
         if self.phicorehole_g is None:
@@ -529,7 +538,7 @@ class Setup:
         else:
             text('  core   : %.1f' % self.Nc)
         text('  charge :', self.Z - self.Nv - self.Nc)
-        text('  file   :', self.filename)
+        text('  file   :', self.data.filename)
         text(('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
               ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
                             self.rcore, self.lmax)))
@@ -567,46 +576,38 @@ class Setup:
     def get_partial_waves(self):
         """Return spline representation of partial waves and densities."""
 
-        # Load setup data from XML file:
-        (Z, Nc, Nv,
-         e_total, e_kinetic, e_electrostatic, e_xc,
-         e_kinetic_core,
-         n_j, l_j, f_j, eps_j, rcut_j, id_j,
-         ng, beta,
-         nc_g, nct_g, vbar_g, rcgauss,
-         phi_jg, phit_jg, pt_jg,
-         e_kin_jj, X_p, ExxC,
-         tauc_g, tauct_g,
-         fingerprint,
-         filename,
-         core_hole_state,
-         fcorehole,
-         core_hole_e,
-         core_hole_e_kin,
-         core_response) = PAWXMLParser().parse(self.symbol, self.setupname)
+        l_j = self.l_j
+        nj = len(l_j)
+        beta = self.beta
 
         # cutoffs
-        nj = len(l_j)
-        rcut2 = 2 * max(rcut_j)
-        gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
+        rcut2 = 2 * max(self.rcut_j)
+        gcut2 = 1 + int(rcut2 * self.ng / (rcut2 + beta))
 
         # radial grid
-        g = npy.arange(ng, dtype=float)
-        r_g = beta * g / (ng - g)
+        g = npy.arange(self.ng, dtype=float)
+        r_g = beta * g / (self.ng - g)
+
+        data = self.data
 
         # Construct splines:
-        nc_g[gcut2:] = nc_g[gcut2:] = 0.0
-        nc = Spline(0, rcut2, nc_g, r_g, beta, points=1000)
-        nct = Spline(0, rcut2, nct_g, r_g, beta, points=1000)
+        nc_g = data.nc_g.copy()
+        nct_g = data.nct_g.copy()
+        tauc_g = data.tauc_g
+        nc_g[gcut2:] = nct_g[gcut2:] = 0.0
+        nc = Spline(0, rcut2, data.nc_g, r_g, beta, points=1000)
+        nct = Spline(0, rcut2, data.nct_g, r_g, beta, points=1000)
         if tauc_g is None:
             tauc_g = npy.zeros(nct_g.shape)
             tauct_g = tauc_g
-        tauc = Spline(0, rcut2, tauc_g, r_g, beta, points=1000)
-        tauct = Spline(0, rcut2, tauct_g, r_g, beta, points=1000)
+        tauc = Spline(0, rcut2, data.tauc_g, r_g, beta, points=1000)
+        tauct = Spline(0, rcut2, data.tauct_g, r_g, beta, points=1000)
         phi_j = []
         phit_j = []
-        for j, (phi_g, phit_g) in enumerate(zip(phi_jg, phit_jg)):
+        for j, (phi_g, phit_g) in enumerate(zip(data.phi_jg, data.phit_jg)):
             l = l_j[j]
+            phi_g = phi_g.copy()
+            phit_g = phit_g.copy()
             phi_g[gcut2:] = phit_g[gcut2:] = 0.0
             phi_j.append(Spline(l, rcut2, phi_g, r_g, beta, points=100))
             phit_j.append(Spline(l, rcut2, phit_g, r_g, beta, points=100))
@@ -619,7 +620,7 @@ class Setup:
         for j in range(nj):
             l = self.l_j[j]
             if l == 1:
-                a = npy.dot(r_g**3 * dr_g, phi_jg[j] * self.phicorehole_g)
+                a = npy.dot(r_g**3 * dr_g, phi_jg[j] * self.data.phicorehole_g)
 
                 for m in range(3):
                     c = (m + 1) % 3
@@ -647,29 +648,14 @@ class Setup:
 ##            print "already done"
             return # job already done
 
-        # Load setup data from XML file:
-        (Z, Nc, Nv,
-         e_total, e_kinetic, e_electrostatic, e_xc,
-         e_kinetic_core,
-         n_j, l_j, f_j, eps_j, rcut_j, id_j,
-         ng, beta,
-         nc_g, nct_g, vbar_g, rcgauss,
-         phi_jg, phit_jg, pt_jg,
-         e_kin_jj, X_p, ExxC,
-         tauc_g, tauct_g,
-         fingerprint,
-         filename,
-         core_hole_state,
-         fcorehole,
-         core_hole_e,
-         core_hole_e_kin,
-         core_response) = PAWXMLParser().parse(self.symbol, self.setupname)
-
-
         # radial grid
+        ng = self.ng
         g = npy.arange(ng, dtype=float)
-        r_g = beta * g / (ng - g)
-        dr_g = beta * ng / (ng - g)**2
+        r_g = self.beta * g / (ng - g)
+        dr_g = self.beta * ng / (ng - g)**2
+
+        phi_jg = self.data.phi_jg
+        phit_jg = self.data.phit_jg
 
         # compute radial parts
         nj = len(self.l_j)

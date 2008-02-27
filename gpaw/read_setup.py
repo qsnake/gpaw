@@ -1,6 +1,8 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+raise DeprecationWarning('Please use module pawxml instead')
+
 import os
 import xml.sax
 import md5
