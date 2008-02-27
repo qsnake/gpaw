@@ -198,6 +198,10 @@ class Density:
 
     def set_mixer(self, paw, mixer):
         if mixer is not None:
+            if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
+                if isinstance(mixer, Mixer):
+                    raise RuntimeError("""Cannot use Mixer in spin-polarized
+                    calculations with fixed moment or finite Fermi-width""")
             self.mixer = mixer
         else:
             if self.nspins == 2 and (not paw.fixmom or paw.kT != 0):
