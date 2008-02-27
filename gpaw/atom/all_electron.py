@@ -80,6 +80,10 @@ class AllElectron:
                           'Kr': 8,
                           'Xe': 11}[conf]
 
+        maxnodes = max([n - l - 1 for n, l in zip(self.n_j, self.l_j)])
+        self.N = (maxnodes + 1) * 150
+        self.beta = 0.4
+
         t = self.text
         t()
         if scalarrel:
@@ -140,17 +144,14 @@ class AllElectron:
         #     beta + r
 
         t = self.text
-        maxnodes = max([n - l - 1 for n, l in zip(self.n_j, self.l_j)])
-        N = (maxnodes + 1) * 150
+        N = self.N
+        beta = self.beta
         t(N, 'radial gridpoints.')
-        beta = 0.4
         g = npy.arange(N, dtype=float)
         self.r = beta * g / (N - g)
         self.dr = beta * N / (N - g)**2
         self.rgd = RadialGridDescriptor(self.r, self.dr)
         self.d2gdr2 = -2 * N * beta / (beta + self.r)**3
-        self.N = N
-        self.beta = beta
 
         # Number of orbitals:
         nj = len(self.n_j)
