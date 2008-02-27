@@ -147,11 +147,6 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
        
     
     def print_converged(self, output):
-        for i in range(0,20):
-            print "ITERATION ", i
-            self.iterate_quasi(output)
-            
-    def iterate_quasi(self, output):      
         # Locate HOMO-level
         homo = self.kpt_comm.max(max( kpt.eps_n[self.ref_loc] for kpt in self.kpt_u ))
 
