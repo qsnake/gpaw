@@ -57,10 +57,13 @@ class LrTDDFT(ExcitationList):
                  xc=None,
                  derivativeLevel=1,
                  numscale=0.00001,
+                 txt=None,
                  filename=None,
                  finegrid=2,
                  force_ApmB=False # for tests
                  ):
+
+        self.txt=txt
 
         if filename is None:
 
@@ -150,7 +153,7 @@ class LrTDDFT(ExcitationList):
             name = 'LrTDDFThyb'
         self.Om = Om(self.calculator, self.kss,
                      self.xc, self.derivativeLevel, self.numscale,
-                     finegrid=self.finegrid)
+                     finegrid=self.finegrid, out=self.txt)
         self.name = name
 ##        self.diagonalize()
 
@@ -208,9 +211,11 @@ class LrTDDFT(ExcitationList):
                 
             self.kss = KSSingles(filehandle=f)
             if self.name == 'LrTDDFT':
-                self.Om = OmegaMatrix(kss=self.kss, filehandle=f)
+                self.Om = OmegaMatrix(kss=self.kss, filehandle=f,
+                                      out=self.txt)
             else:
-                self.Om = ApmB(kss=self.kss, filehandle=f)
+                self.Om = ApmB(kss=self.kss, filehandle=f,
+                                      out=self.txt)
             self.Om.Kss(self.kss)
 
             # check if already diagonalized

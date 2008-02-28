@@ -5,13 +5,15 @@ import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 
+from ase.parallel import paropen
+
 from gpaw import debug
 import gpaw.mpi as mpi
 from gpaw.poisson import PoissonSolver
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.transformers import Transformer
-from gpaw.utilities import pack,pack2,packed_index
+from gpaw.utilities import pack, pack2, packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.timing import Timer
 from gpaw.xc_functional import XC3DGrid, XCFunctional
@@ -31,7 +33,7 @@ class OmegaMatrix:
       - derivativeLevel: which level i of d^i Exc/dn^i to use
       - numscale: numeric epsilon for derivativeLevel=0,1
       - filehandle: the oject can be read from a filehandle
-      - out: output stream
+      - out: output stream or file name
       - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
         2 everything on the fine grid
     """
@@ -46,18 +48,28 @@ class OmegaMatrix:
                  finegrid=2
                  ):
         
+        if out is None:
+            if calculator is not None:
+                out = calculator.txt
+            else:
+                if mpi.rank == MASTER:
+                    out = sys.stdout
+                else:
+                    out = DownTheDrain()
+        else:
+            if type(out) == type(''):
+                out = paropen(out, 'w')
+            else:
+                raise RuntimeError('unknown output object of type ' +
+                                   str(type(out)))
+        self.out = out
+
         if filehandle is not None:
             self.kss = kss
             self.read(fh=filehandle)
-            if out is None:
-                if mpi.rank != MASTER: out = DownTheDrain()
-                else: out = sys.stdout
-            self.out = out
             return None
 
         self.paw = calculator
-        if out is None: out = calculator.txt
-        self.out = out
         self.fullkss = kss
         
         # handle different grid possibilities
