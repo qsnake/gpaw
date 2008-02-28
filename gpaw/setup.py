@@ -9,8 +9,8 @@ import numpy as npy
 from numpy.linalg import inv
 from ase.data import atomic_names
 
-from gpaw.pawxml import SetupData
-from gpaw.read_basis import Basis
+from gpaw.setup_data import SetupData
+from gpaw.basis_data import Basis
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor

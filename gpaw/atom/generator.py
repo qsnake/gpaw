@@ -8,7 +8,7 @@ import numpy as npy
 from numpy.linalg import solve, inv
 from ase.data import atomic_names
 
-from gpaw.pawxml import SetupData
+from gpaw.setup_data import SetupData
 from gpaw.atom.configurations import configurations
 from gpaw.version import version
 from gpaw.atom.all_electron import AllElectron, shoot
@@ -864,7 +864,7 @@ class Generator(AllElectron):
     def write_xml(self, vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
                   nc, nct, nt, Ekincore, X_p, ExxC, vbar,
                   tauc, tauct, extra_xc_data):
-        raise DeprecationWarning('use pawxml.py')
+        raise DeprecationWarning('use gpaw/setup_data.py')
         xcname = self.xcfunc.get_name()
         if self.name is None:
             xml = open('%s.%s' % (self.symbol, xcname), 'w')

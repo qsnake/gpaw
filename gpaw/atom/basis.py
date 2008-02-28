@@ -13,7 +13,7 @@ from gpaw.spline import Spline
 from gpaw.atom.generator import Generator, parameters
 from gpaw.atom import polarization
 from gpaw.utilities import devnull, divrl
-from gpaw.read_basis import Basis, BasisFunction
+from gpaw.basis_data import Basis, BasisFunction
 from gpaw.version import version
 
 AMPLITUDE = 100. # default confinement potential modifier

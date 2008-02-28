@@ -1,7 +1,7 @@
 import pylab as pl
 from sys import argv
 from ase.data import atomic_names as names
-from gpaw.pawxml import SetupData
+from gpaw.setup_data import SetupData
 
 input = argv[1].split('.')
 symbol = input[0]

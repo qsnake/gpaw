@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-raise DeprecationWarning('Please use module pawxml instead')
+raise DeprecationWarning('Please use module setup_data instead')
 
 import os
 import xml.sax

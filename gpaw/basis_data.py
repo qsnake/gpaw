@@ -8,7 +8,7 @@ import md5
 import numpy as npy
 
 from gpaw import setup_paths
-from gpaw.pawxml import search_for_file
+from gpaw.setup_data import search_for_file
 
 try:
     import gzip
