@@ -7,8 +7,8 @@ input = argv[1].split('.')
 symbol = input[0]
 xcname = input[-1]
 setupname = 'paw'
-if len(input) == 3:
-    setupname = input[1]
+if len(input) > 2:
+    setupname = '.'.join(input[1:-1])
 
 setup = SetupData(symbol, xcname, setupname)
 
