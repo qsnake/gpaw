@@ -83,6 +83,9 @@ class Excitation:
         return self.me / sqrt(self.energy)
     
     def GetOscillatorStrength(self):
+        return self.get_oscillator_strength()
+
+    def get_oscillator_strength(self):
         """Return the excitations dipole oscillator strength.
 
         self.me is assumed to be::
