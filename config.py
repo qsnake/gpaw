@@ -141,6 +141,8 @@ def get_system_config(define_macros, undef_macros,
             library_dirs += [acml[-1]]
             extra_link_args += ['-Wl,-rpath=' + acml[-1]]
             msg += ['* Using ACML library']
+        else:
+            libraries += ['blas', 'lapack']
 
     elif machine =='ia64':
 
