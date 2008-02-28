@@ -198,6 +198,7 @@ def search_for_file(name):
     Returns the file path and file contents.  If the file is not found,
     contents will be None."""
     source = None
+    filename = None
     for path in setup_paths:
         filename = os.path.join(path, name)
         if os.path.isfile(filename):
