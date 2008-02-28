@@ -15,6 +15,8 @@ class Cluster(Atoms):
 
     def __init__(self, *args, **kwargs):
 
+        self.data = {}
+
         if kwargs.get('filename') is not None:
             filename = kwargs.pop('filename')
             Atoms.__init__(self, *args, **kwargs)
@@ -84,6 +86,24 @@ class Cluster(Atoms):
         self.set_cell(tuple(extr[1]), fix=True)
 
         return self.get_cell()
+
+    def get(self, name):
+        """General get"""
+        attr = 'get_' + name
+        if hasattr(self, attr):
+            getattr(self, attr)(data)
+        elif self.data.has_key(name):
+            return self.data[name]
+        else:
+            return None
+
+    def set(self, name, data):
+        """General set"""
+        attr = 'set_' + name
+        if hasattr(self, attr):
+            getattr(self, attr)(data)
+        else:
+            self.data[name] = data
 
     def read(self, filename, filetype=None):
         """Read the structure from some file. The type can be given
