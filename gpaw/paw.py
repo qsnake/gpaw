@@ -996,11 +996,19 @@ class PAW(PAWExtra, Output):
         cell_cc = atoms.get_cell() / Bohr
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
-        magmom_a = atoms.get_magnetic_moments()
-        if magmom_a is None:
+        try:
+            magmom_a = atoms.get_magnetic_moments()
+            if magmom_a is None:
+                print 'Please update ase!'
+                raise KeyError
+        except KeyError:
             magmom_a = npy.zeros(self.natoms)
-        tag_a = atoms.get_tags()
-        if tag_a is None:
+        try:
+            tag_a = atoms.get_tags()
+            if tag_a is None:
+                print 'Please update ase!'
+                raise KeyError
+        except KeyError:
             tag_a = npy.zeros(self.natoms, int)
 
         # Check that the cell is orthorhombic:
