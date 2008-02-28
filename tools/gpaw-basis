@@ -4,7 +4,7 @@
 import sys
 from optparse import OptionParser
 
-parser = OptionParser(usage='%prog [options] [element]',
+parser = OptionParser(usage='%prog [options] elements',
                       version='%prog 0.1')
 parser.add_option('-n', '--name', default=None, metavar='<name>',
                   help='name of generated basis files')
@@ -18,8 +18,8 @@ parser.add_option('-T', '--tail-norm', metavar='<norm>', type='float',
                   default=.15, dest='tailnorm',
                   help='use the given fraction to define the split'+
                   '-valence cutoff')
-parser.add_option('-P', '--plot', action='store_true',
-                  help='plot basis functions')
+#parser.add_option('-P', '--plot', action='store_true',
+#                  help='plot basis functions')
 parser.add_option('-N', '--no-files', action='store_true',
                   help='Do not write basis function files')
 parser.add_option('--rcut-max', type='float', default=16., metavar='rcut',
@@ -29,6 +29,8 @@ parser.add_option('--rcut-max', type='float', default=16., metavar='rcut',
 parser.add_option('--rcut-pol-rel', type='float', default=1.0, metavar='rcut',
                   help='polarization function cutoff relative to largest'+
                   ' single-zeta cutoff [default: %default]')
+parser.add_option('--debug', action='store_true',
+                  help='Use gpaw-DEBUG mode')
 
 opts, args = parser.parse_args()
 
@@ -93,24 +95,27 @@ def main():
         generator = Generator(symbol, txt=None)
         bm = BasisMaker(generator, name)
 
-        if opts.no_files:
-            txt = '-'
-        else:
-            txt = open('%s.%s.txt' % (symbol, name), 'w')
+        #if opts.no_files:
+            #txt = '-'
+            #figfile = None
+        #else:
+            #txt = open('%s.%s.txt' % (symbol, name), 'w')
+            #figfile = '%s.%s.png' % (symbol, name)
         basis = bm.generate(zetacount, polcount, tailnorm=opts.tailnorm,
                             energysplit=opts.energy_shift,
                             referencefile=referencefile,
                             referenceindex=referenceindex,
                             rcutpol_rel=opts.rcut_pol_rel,
-                            rcutmax=opts.rcut_max,
-                            txt=txt)
-        if opts.plot:
-            bm.plot(basis.bf_j, title=referencefile)
+                            rcutmax=opts.rcut_max)#,
+                            #txt=txt)
+#        if opts.plot:
+#            bm.plot(basis, title=referencefile, filename=figfile)
+#            bm.plot(basis.bf_j, title=referencefile)
         if not opts.no_files:
             basis.write_xml()
-    if opts.plot:
-        import pylab
-        pylab.show()
+    #if opts.plot and opts.no_files:
+    #    import pylab
+    #    pylab.show()
 
 if __name__ == '__main__':    
     main()

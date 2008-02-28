@@ -518,11 +518,13 @@ class Setup:
 
     def read_basis_functions(self, basis_name):
         basis = Basis(self.symbol, basis_name)
-        g = npy.arange(basis.ng, dtype=float)
-        r_g = basis.beta * g / (basis.ng - g)
+        #g = npy.arange(basis.ng, dtype=float)
+        #r_g = basis.beta * g / (basis.ng - g)
+        rc = basis.d * (basis.ng - 1)
+        r_g = npy.linspace(0., rc, basis.ng)
         
-        self.phit_j = [Spline(bf.l, bf.rc, bf.phit_g, r_g, 
-                              basis.beta, points=100)
+        self.phit_j = [Spline(bf.l, r_g[-1], bf.phit_g, r_g, 
+                              None, points=100)
                        for bf in basis.bf_j]
 
     def print_info(self, text):

@@ -17,13 +17,14 @@ except:
 else:
     has_gzip = True
 
+
 class Basis:
     def __init__(self, symbol, name, readxml=True):
         self.symbol = symbol
         self.name = name
         self.bf_j = []
         self.ng = None
-        self.beta = None
+        self.d = None
 
         if readxml:
             self.read_xml()
@@ -49,15 +50,25 @@ class Basis:
         write = open(filename, 'w').write
         write('<paw_basis version="0.1">\n')
 
-        write(('  <radial_grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
-              'istart="0" iend="%d" id="g1"/>\n') % (self.beta, self.ng,
-                                                     self.ng-1))
-        rc = max([bf.rc for bf in self.bf_j])
+        #rc = max([bf.rc for bf in self.bf_j])
         # hack since elsewhere multiple rcs are not supported
+        generatorattrs = ' '.join(['%s="%s"' % (key, value)
+                                   for key, value
+                                   in self.generatorattrs.iteritems()])
+        write('  <generator %s>' % generatorattrs)
+        for line in self.generatordata.split('\n'):
+            write('\n    '+line)
+        write('\n  </generator>\n')
+
+        #write(('  <radial_grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
+        #      'istart="0" iend="%d" id="g1"/>\n') % (self.beta, self.ng,
+        #                                             self.ng-1))
+        write(('  <radial_grid eq="r=d*i" d="%f" istart="0" iend="%d" ' +
+               'id="lingrid"/>\n') % (self.d, self.ng - 1))
 
         for bf in self.bf_j:
             write('  <basis_function l="%d" rc="%f" type="%s">\n' % 
-                  (bf.l, rc, bf.type))
+                  (bf.l, bf.rc, bf.type))
             write('   ')
             for value in bf.phit_g:
                 write(' %16.12e' % value)
@@ -107,12 +118,15 @@ for details."""
         basis = self.basis
         if name == 'paw_basis':
             basis.version = attrs['version']
+        elif name == 'generator':
+            basis.generatorattrs = dict(attrs)
+            self.data = []
         elif name == 'radial_grid':
-            assert attrs['eq'] == 'r=a*i/(n-i)'
-            basis.ng = int(attrs['n'])
-            basis.beta = float(attrs['a'])
+            assert attrs['eq'] == 'r=d*i'
+            basis.ng = int(attrs['iend']) + 1#int(attrs['n'])
+            basis.d = float(attrs['d'])
             assert int(attrs['istart']) == 0
-            assert int(attrs['iend']) == basis.ng - 1
+            #assert int(attrs['iend']) == basis.ng - 1
         elif name == 'basis_function':
             self.l = int(attrs['l'])
             self.rc = float(attrs['rc'])
@@ -130,4 +144,5 @@ for details."""
             assert len(phit_g) == basis.ng
             bf = BasisFunction(self.l, self.rc, phit_g, self.type)
             basis.bf_j.append(bf)
-
+        elif name == 'generator':
+            basis.generatordata = self.data

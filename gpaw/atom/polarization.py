@@ -12,6 +12,7 @@ except ImportError:
     print 'Pylab not imported'
 
 from gpaw import Calculator
+from gpaw.kpoint import KPoint
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.spline import Spline
@@ -171,7 +172,8 @@ def rotation_test():
     #orbital = pog.generate(l, calc.gd, calc.kpt_u[0].psit_nG, center)
     #print 'Quality by orbital', pretty(pog.optimizer.lastterms)
 
-def make_dummy_calculation(l, function=None, rcut=6., a=12., n=60):
+def make_dummy_calculation(l, function=None, rcut=6., a=12., n=60,
+                           dtype=float):
     """Make a mock reference wave function using a made-up radial function
     as reference"""
     #print 'Dummy reference: l=%d, rcut=%.02f, alpha=%.02f' % (l, rcut, alpha)
@@ -190,9 +192,9 @@ def make_dummy_calculation(l, function=None, rcut=6., a=12., n=60):
     gd = GridDescriptor(domain, (n, n, n))
     spline = Spline(l, r[-1], function(r), points=50)
     center = (.5, .5, .5)
-    lf = create_localized_functions([spline], gd, center)
-    psit_k = gd.zeros(mcount)
-    coef_xi = npy.identity(mcount * fcount)
+    lf = create_localized_functions([spline], gd, center, dtype=dtype)
+    psit_k = gd.zeros(mcount, dtype=dtype)
+    coef_xi = npy.identity(mcount * fcount, dtype=dtype)
     lf.add(psit_k, coef_xi)
     return gd, psit_k, center, function
 
@@ -206,9 +208,9 @@ class CoefficientOptimizer:
     if fix is True, the first coefficient will be set to 1. and only the
     remaining coefficients will be subject to optimization.
     """
-    def __init__(self, s, S, ccount, fix=False):
-        self.s = s
-        self.S = S
+    def __init__(self, s_kmii, S_kmii, ccount, fix=False):
+        self.s_kmii = s_kmii
+        self.S_kmii = S_kmii
         self.fix = fix
         function = self.evaluate
         self.lastterms = None
@@ -233,14 +235,37 @@ class CoefficientOptimizer:
         return self.evaluate([1.] + list(coef))
 
     def evaluate(self, coef):
-        coef_trans = npy.array([coef])
-        coef = npy.transpose(coef_trans)
+        ncoef = len(coef)
+
+        coef_trans = npy.array([coef]) # complex coefficients?
+        coef = coef_trans.transpose()
+
+        terms_km = npy.zeros((ncoef, ncoef))
+
+        for i, (s_mii, S_mii) in enumerate(zip(self.s_kmii, self.S_kmii)):
+            for j, (s_ii, S_ii) in enumerate(zip(s_mii, S_mii)):
+                numerator = npy.dot(coef_trans, npy.dot(S_ii, coef))
+                denominator = npy.dot(coef_trans, npy.dot(s_ii, coef))
+                assert numerator.shape == (1,1)
+                assert denominator.shape == (1,1)                
+                terms_km[i, j] = numerator[0,0] / denominator[0,0]
+        
+        self.lastterms = terms_km
+        quality = terms_km.sum()
+        badness = - quality
+        return badness
+
+    def old_evaluate(self, coef):
+        coef_trans = npy.array([coef]) # complex coefficients?
+        coef = coef_trans.transpose()
+
         numerator = npy.array([npy.dot(coef_trans, npy.dot(S, coef))
-                               for S in self.S])
+                               for S in self.S_kmii[0]])
         denominator = npy.array([npy.dot(coef_trans, npy.dot(s, coef))
-                                 for s in self.s])
+                                 for s in self.s_kmii[0]])
+        
         terms = numerator / denominator
-        assert terms.shape == (len(self.S), 1, 1)
+        assert terms.shape == (len(self.S_kmii[0]), 1, 1)
         self.lastterms = terms[:, 0, 0]
         quality = terms.sum()
         badness = - quality
@@ -264,14 +289,15 @@ class PolarizationOrbitalGenerator:
         self.rcut = rcut
         if gaussians is None:
             gaussians = int(rcut / .3) # lots!
-        r_alphas = npy.linspace(1., .9 * rcut, gaussians)
-        self.alphas = 1. / r_alphas**2
+        self.r_alphas = npy.linspace(1., .6 * rcut, gaussians)
+        self.alphas = 1. / self.r_alphas**2
         self.s = None
         self.S = None
         self.optimizer = None
 
-    def generate(self, l, gd, psit_k, center):
+    def generate(self, l, gd, kpt_u, center, dtype=None):
         """Generate polarization orbital."""
+
         rcut = self.rcut
         phi_i = [QuasiGaussian(alpha, rcut) for alpha in self.alphas]
         r = npy.arange(0, rcut, .01)
@@ -282,7 +308,20 @@ class PolarizationOrbitalGenerator:
             norm = (dr * sum(y * y * integration_multiplier))**.5
             phi.renormalize(norm)
         splines = [Spline(l, r[-1], phi(r), points=50) for phi in phi_i]
-        self.s, self.S = get_matrices(l, gd, splines, psit_k, center)
+
+        if dtype is None:
+            if len(kpt_u) == 1:
+                dtype = float
+            else:
+                dtype = complex
+
+        if  dtype == complex:
+            self.s, self.S = multkpts_matrices(l, gd, splines, kpt_u, center)
+        elif dtype == float:
+            self.s, self.S = get_matrices(l, gd, splines, kpt_u, center)
+        else:
+            raise ValueError('Bad dtype')
+        
         self.optimizer = CoefficientOptimizer(self.s, self.S, len(phi_i))
         coefs = self.optimizer.find_coefficients()
         self.quality = - self.optimizer.amoeba.y[0]
@@ -291,7 +330,93 @@ class PolarizationOrbitalGenerator:
         orbital.renormalize(get_norm(r, orbital(r), l))
         return orbital
 
-def get_matrices(l, gd, splines, psit_k, center=(.5, .5, .5)):
+def multkpts_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
+    """Get scalar products of basis functions and references.
+
+    Returns the triple-indexed matrices s and S, where::
+
+        s    = < phi   | phi   > ,
+         mij        mi      mj
+
+              -----
+               \     /        |  ~   \   /  ~   |        \
+        S    =  )   (  phi    | psi   ) (  psi  | phi     )
+         mij   /     \    mi  |    k /   \    k |     mj /
+              -----
+                k
+
+    The functions phi are taken from the given splines, whereas psit
+    must be on the grid represented by the GridDescriptor gd.
+    Integrals are evaluated at the relative location given by center.
+    """
+    dtype = complex
+    lvalues = [spline.get_angular_momentum_number() for spline in splines]
+    assert lvalues.count(l) == len(lvalues) # all must be equal
+    mcount = 2*l + 1
+    fcount = len(splines)
+    lf = create_localized_functions(splines, gd, center, dtype=dtype)
+    k_kc = [kpt.k_c for kpt in kpt_u]
+    lf.set_phase_factors(k_kc)
+
+    kcount = len(kpt_u)
+    bcount = kpt_u[0].psit_nG.shape[0]
+    for kpt in kpt_u:
+        assert kpt.psit_nG.shape[0] == bcount
+
+    # First we have to calculate the scalar products between
+    # pairs of basis functions < phi_kmi | phi_kmj >.
+
+    s_kmii = npy.zeros((kcount, mcount, fcount, fcount), dtype=dtype)
+    coef_xi = npy.identity(mcount * fcount, dtype=dtype)
+    #phi_miG = gd.zeros(mcount * fcount, dtype=dtype)
+    for kpt in kpt_u:
+        phi_nG = gd.zeros(mcount * fcount, dtype=dtype)
+        lf.add(phi_nG, coef_xi, k=kpt.k)
+        phi_overlaps_ii = npy.zeros((fcount * mcount,
+                                     fcount * mcount), dtype=dtype)
+        lf.integrate(phi_nG, phi_overlaps_ii, k=kpt.k)
+        phi_overlaps_ii.shape = (fcount, mcount, fcount, mcount)
+        for m in range(mcount):
+            for i in range(fcount):
+                for j in range(fcount):
+                    s_kmii[kpt.k, m, i, j] = phi_overlaps_ii[i, m, j, m]
+    
+    # Now calculate scalar products between basis functions and
+    # reference functions < phi_kmi | psi_kn >.
+    
+    overlaps_knmi = npy.zeros((kcount, bcount, mcount, fcount), dtype=dtype)
+    for kpt in kpt_u:
+        overlaps_mii = npy.zeros((bcount, mcount * fcount), dtype=dtype)
+        lf.integrate(kpt.psit_nG, overlaps_mii, k=kpt.k)
+        overlaps_mii.shape = (bcount, fcount, mcount)
+        overlaps_knmi[kpt.k, :, :, :] = overlaps_mii.swapaxes(1, 2)
+        
+    S_kmii = npy.zeros((kcount, mcount, fcount, fcount), dtype=dtype)
+    conj_overlaps_knmi = overlaps_knmi.conjugate()
+
+    for k in range(kcount):
+        for m in range(mcount):
+            for i in range(fcount):
+                for j in range(fcount):
+                    x1 = conj_overlaps_knmi[k, :, m, i]
+                    x2 = overlaps_knmi[k, :, m, j]
+                    S_kmii[k, m, i, j] = (x1 * x2).sum()
+
+    #print 's_kmii.shape, diags', s_kmii.shape
+    #print s_kmii[1,0].diagonal()
+    #print s_kmii[1,1].diagonal()
+    #print s_kmii[1,2].diagonal()
+
+    #print 'S_kmii diags'
+    #print S_kmii[1,0].diagonal()
+    #print S_kmii[1,1].diagonal()
+    #print S_kmii[1,2].diagonal()
+
+    assert s_kmii.shape == S_kmii.shape
+
+    return s_kmii, S_kmii
+
+def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     """Get scalar products of basis functions and references
 
     Returns the triple-indexed matrices s and S, where::
@@ -310,6 +435,10 @@ def get_matrices(l, gd, splines, psit_k, center=(.5, .5, .5)):
     must be on the grid represented by the GridDescriptor gd.
     Integrals are evaluated at the relative location given by center.
     """
+    assert len(kpt_u) == 1, 'This method only works for one k-point'
+    kpt = kpt_u[0]
+    psit_k = kpt.psit_nG
+    
     mcounts = [spline.get_angular_momentum_number() for spline in splines]
     mcount = mcounts[0]
     for mcount_i in mcounts:
@@ -369,12 +498,24 @@ def get_matrices(l, gd, splines, psit_k, center=(.5, .5, .5)):
             for k in range(psitcount):
                 psiproducts_mik[m, i, k] = psi_phi_integrals[k, mcount * i + m]
 
-    # s[ij] = < phi_mi | phi_mj >
-    s = phiproducts_mij
+    # s[mij] = < phi_mi | phi_mj >
+    s = npy.array([phiproducts_mij])
 
-    # S[ij] = sum over k: < phi_mi | psit_k > < psit_k | phi_mj >
-    S = npy.array([npy.dot(psiproducts_ik, npy.transpose(psiproducts_ik))
-                   for psiproducts_ik in psiproducts_mik])
+    # S[mij] = sum over k: < phi_mi | psit_k > < psit_k | phi_mj >
+    S = npy.array([[npy.dot(psiproducts_ik, npy.transpose(psiproducts_ik))
+                    for psiproducts_ik in psiproducts_mik]])
+
+
+    #assert mcount == 3
+    #print 's_kmii.shape, diags', s.shape
+    #print s[0,0].diagonal()
+    #print s[0,1].diagonal()
+    #print s[0,2].diagonal()
+
+    #print 'S_kmii diags'
+    #print S[0,0].diagonal()
+    #print S[0,1].diagonal()
+    #print S[0,2].diagonal()
 
     return s, S
 
@@ -397,8 +538,8 @@ def main():
         n, l_atom, occupation, energy = highest_state
         l = l_atom + 1
         
-        phi = generator.generate(l, gd, psit_k, center)
-        print 'Quality by orbital', pretty(generator.optimizer.lastterms)
+        phi = generator.generate(l, gd, psit_k, center, dtype=dtype)
+        #print 'Quality by orbital', pretty(generator.optimizer.lastterms)
         
         r = npy.arange(0., rcut, .01)
         norm = get_norm(r, phi(r), l)
@@ -413,20 +554,28 @@ def main():
 
 def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
     """Run a test using a Gaussian reference function."""
-    generator = PolarizationOrbitalGenerator(rcut/2.5, gaussians=20)
+    dtype = complex
+    generator = PolarizationOrbitalGenerator(rcut, gaussians=4)
     r = npy.arange(0., rcut, .01)
-    alpha_ref = 1. / (rcut/2.) ** 2.
+    alpha_ref = 1. / (rcut/4.) ** 2.
     for l in range(lmin, lmax + 1):
-        g = QuasiGaussian(alpha_ref, rcut/2)
+        g = QuasiGaussian(alpha_ref, rcut)
         norm = get_norm(r, g(r), l)
         g.renormalize(norm)
-        gd, psit_k, center, ref = make_dummy_calculation(l, g, rcut)
-        phi = generator.generate(l, gd, psit_k, center)
+        gd, psit_k, center, ref = make_dummy_calculation(l, g, rcut,
+                                                         dtype=dtype)
+        k_kc = ((0.,0.,0.), (.5,.5,.5))
+        kpt_u = [KPoint(gd, 1., 0, i, i, k_c, dtype=dtype)
+                 for i, k_c in enumerate(k_kc)]
+        for kpt in kpt_u:
+            kpt.psit_nG = psit_k
+        
+        phi = generator.generate(l, gd, kpt_u, center, dtype=dtype)
         
         pylab.figure(l)
-        pylab.plot(r, ref(r)*r**l, 'g', label='ref')
+        #pylab.plot(r, ref(r)*r**l, 'g', label='ref')
         pylab.plot(r, g(r)*r**l, 'b', label='g')
-        pylab.plot(r, phi(r)*r**l, 'r', label='pol')
+        pylab.plot(r, phi(r)*r**l, 'r--', label='pol')
         pylab.title('l=%d' % l)
         pylab.legend()
     pylab.show()
@@ -540,6 +689,10 @@ class Reference:
             formula, index = get_system(symbol)
             filename = restart_filename % formula
         calc = Calculator(filename, txt=txt)
+        print 'Loaded reference data'
+        print 'kpts', calc.kpt_u
+
+        
         atoms = calc.get_atoms()
         symbols = atoms.get_chemical_symbols()
         if index is None:
@@ -557,22 +710,17 @@ class Reference:
         self.index = index
         self.center = atoms.positions[index]
 
-        # OUTRAGEOUS HACK
-        #pbc = npy.array([True, True, True])
-        #calc.gd.domain.pbc_c = pbc # *cough*
-
         self.cell = atoms.get_cell().diagonal() # cubic cell
         self.gpts = calc.gd.N_c
-        # NOTE: for spin-polarized calculations, BAD THINGS HAPPEN
-        if len(calc.kpt_u) > 1:
-            raise RuntimeError('Multiple kpts/spin-pol not supported!!')
-        k0 = calc.kpt_u[0]
-        if k0.psit_nG is None:
+        if calc.kpt_u[0].psit_nG is None:
             raise RuntimeError('No wave functions found in .gpw file')
 
     def get_reference_data(self):
         c = self.calc
-        return c.gd, c.kpt_u[0].psit_nG[:], self.center / self.cell
+        for kpt in c.kpt_u:
+            kpt.psit_nG = kpt.psit_nG[:] # load wave functions from the file
+            # this is an ugly way to do it, by the way, but it probably works
+        return c.gd, c.kpt_u, self.center / self.cell
 
 if __name__ == '__main__':
     dummy_test(lmin=1, lmax=1)
