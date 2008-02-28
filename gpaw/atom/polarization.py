@@ -469,9 +469,15 @@ def check_magmoms():
     systems = get_systems()
     for formula, index in systems:
         atoms = g2.get_g2(formula, (0, 0, 0))
-        magmom = atoms.get_magnetic_moments()
-        if magmom is not None:
-            print formula,'has nonzero magnetic moment!!'
+        try:
+            magmom = atoms.get_magnetic_moments()
+            if magmom is None:
+                raise KeyError
+        except KeyError:
+            pass
+        else:
+            if magmom.any():
+                print formula, 'has nonzero magnetic moment!!'
     
 def get_system(symbol):
     """Get default reference formula or atomic index."""

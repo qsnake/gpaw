@@ -61,12 +61,18 @@ def write(paw, filename, mode):
         w['energyunit'] = 'Hartree'
 
         atoms = paw.atoms
-        
-        magmom_a = atoms.get_magnetic_moments()
-        tag_a = atoms.get_tags()
-        if magmom_a is None:
+
+        try:
+            magmom_a = atoms.get_magnetic_moments()
+            if magmom_a is None:
+                raise KeyError
+        except KeyError:
             magmom_a = npy.zeros(paw.natoms)
-        if tag_a is None:
+        try:
+            tag_a = atoms.get_tags()
+            if tag_a is None:
+                raise KeyError
+        except KeyError:
             tag_a = npy.zeros(paw.natoms, int)
         
         w.dimension('natoms', paw.natoms)

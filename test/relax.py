@@ -32,7 +32,7 @@ molecule = Calculator('H2fa.gpw', txt=None).get_atoms()
 f4 = molecule.get_forces()
 t4 = time() - t0 - t1 - t2 - t3
 print t1, t2, t3, t4
-assert t2 < t1 / 2
+assert t2 < 0.6 * t1
 assert t3 < 0.5
 assert t4 < 0.5
 print f1
