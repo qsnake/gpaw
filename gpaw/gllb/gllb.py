@@ -67,7 +67,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         assert(self.nspins == 1)
 
         # Locate the reference-level
-        self.fermi_level = self.kpt_comm.max(max( kpt.eps_n[self.ref_loc] for kpt in self.kpt_u ))
+        self.fermi_level = self.kpt_comm.max(max( [ kpt.eps_n[self.ref_loc] for kpt in self.kpt_u ]))
 
         print "Located reference level ", self.fermi_level
 
@@ -157,10 +157,10 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
     
     def print_converged(self, output):
         # Locate HOMO-level
-        homo = self.kpt_comm.max(max( kpt.eps_n[self.ref_loc] for kpt in self.kpt_u ))
+        homo = self.kpt_comm.max(max( [ kpt.eps_n[self.ref_loc] for kpt in self.kpt_u ]))
 
         # Locate LUMO-level
-        lumo = -1.0 * self.kpt_comm.max(-1.0* min(kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u ))
+        lumo = -1.0 * self.kpt_comm.max(-1.0* min( [kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u] ))
 
         lumo_level = lumo
 
@@ -222,7 +222,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
                 print " (%.2f,%.2f,%.2f)  %.4f  %.4f  %.4f " % (k_c[0], k_c[1], k_c[2], shift*output.Ha, paw_shift*output.Ha, new_eig*output.Ha)
 
         # Locate LUMO-level again
-        lumo = -1.0 * self.kpt_comm.max(-1.0* min(kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u ))
+        lumo = -1.0 * self.kpt_comm.max(-1.0* min([ kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u ] ))
         lumo *= output.Ha
         output.text("PERTURBED LUMO    :     %.4f eV" % lumo)
         output.text("QUASIPARTICLE GAP :     %.4f eV" % (lumo-homo))
