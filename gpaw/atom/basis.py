@@ -26,6 +26,7 @@ class BasisMaker:
         self.generator = generator
         self.name = name
         if run:
+            generator.N = 2000
             generator.run(write_xml=False, **parameters[generator.symbol])
 
     def get_unsmoothed_projector_coefficients(self, psi_jg, l):
@@ -395,7 +396,7 @@ class BasisMaker:
 
         rcmax = max([bf.rc for bf in bf_j])
 
-        equidistant_grid = npy.linspace(0., rcmax, 2**2)
+        equidistant_grid = npy.linspace(0., rcmax, 2**10)
         for bf in bf_j:
             norm = npy.dot(self.generator.dr, bf.phit_g * bf.phit_g)**.5
             bf.phit_g /= norm
@@ -403,8 +404,9 @@ class BasisMaker:
             bf.phit_g = divrl(bf.phit_g, 1, g.r)
 
             # Quick hack to change to equidistant coordinates
-            spline = Spline(0, g.r[-1], bf.phit_g, g.r, beta=g.beta,
-                            points=g.N)
+            spline = Spline(bf.l, g.r[g.r2g(bf.rc)],
+                            bf.phit_g * g.r**bf.l, 
+                            g.r, beta=g.beta, points=100)
             bf.phit_g = npy.array([spline(r) for r in equidistant_grid])
         
         basis = Basis(g.symbol, self.name, False)

@@ -523,8 +523,7 @@ class Setup:
         rc = basis.d * (basis.ng - 1)
         r_g = npy.linspace(0., rc, basis.ng)
         
-        self.phit_j = [Spline(bf.l, r_g[-1], bf.phit_g, r_g, 
-                              None, points=100)
+        self.phit_j = [Spline(bf.l, r_g[-1], divrl(bf.phit_g, bf.l, r_g))
                        for bf in basis.bf_j]
 
     def print_info(self, text):
