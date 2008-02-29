@@ -30,8 +30,8 @@ typedef struct
   MPI_Comm comm;
 } boundary_conditions;
 
-const static int COPY_DATA = -2;
-const static int DO_NOTHING = -3; // ??????????
+static const int COPY_DATA = -2;
+static const int DO_NOTHING = -3; // ??????????
 
 boundary_conditions* bc_init(const long size1[3],
 			     const long padding[3][2], 
