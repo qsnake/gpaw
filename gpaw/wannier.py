@@ -55,15 +55,18 @@ class Wannier:
 
 
 class LocFun(Wannier):
-    def localize(self, calc, N=None):
+    def localize(self, calc, N=None, projections=None, ortho=True):
         # N is size of Hilbert space to fix. Default is number of occ. bands.
         if N is None:
             N = 0
             f_n = calc.collect_occupations(0, self.spin)
             while f_n[N] > .01:
                 N += 1
-            
-        U_nj, S_jj = get_locfun_rotation(single_zeta(calc, self.spin), N, True)
+
+        if projections is None:
+            projections = single_zeta(calc, self.spin)
+        
+        U_nj, self.S_jj = get_locfun_rotation(projections, N, ortho)
         Z_nnc = npy.empty(S_jj.shape + (3,))
         for c in range(3):
             Z_nnc[:, :, c] = npy.dot(dagger(U_nj),
