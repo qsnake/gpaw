@@ -48,6 +48,9 @@ class Output:
                     # it as a GPAW text file.
                     firsttime = True
                 self.txt = open(txt, 'w')
+        else:
+            assert hasattr(txt, 'write'), 'Not a stream object!'
+            self.txt = txt
         if firsttime:
             self.print_logo()
 
