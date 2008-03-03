@@ -40,17 +40,7 @@ class SerialCommunicator:
         return self
 
 
-class DummyCommunicator(SerialCommunicator):
-
-    def new_communicator(self, ranks):
-        new_comm = DummyCommunicator()
-        new_comm.size = len(ranks)
-        return new_comm
-
-
 serial_comm = SerialCommunicator()
-if debug:
-    serial_comm.comm = serial_comm # cycle? XXX
 
 try:
     world = _gpaw.Communicator()
@@ -61,7 +51,7 @@ size = world.size
 rank = world.rank
 parallel = (size > 1)
 
-if parallel and debug:
+if debug:
     class _Communicator:
         def __init__(self, comm):
             self.comm = comm
@@ -85,7 +75,6 @@ if parallel and debug:
 
         def sum(self, array, root=-1):
             if isinstance(array, (float, complex)):
-                assert isinstance(array, float)
                 return self.comm.sum(array, root)
             else:
                 tc = array.dtype
@@ -155,10 +144,7 @@ if parallel and debug:
             self.comm.barrier()
 
     world = _Communicator(world)
-elif parallel:
-    _Communicator = _gpaw.Communicator
-else:
-    _Communicator = SerialCommunicator
+    serial_comm = _Communicator(serial_comm)
 
 def broadcast_string(string=None, root=MASTER, comm=world):
     if rank == root:

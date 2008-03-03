@@ -969,8 +969,8 @@ class PAW(PAWExtra, Output):
         ranks = range(r0, r0 + (ndomains * parsize_bands), ndomains)
         self.band_comm = self.world.new_communicator(npy.array(ranks))
 
-        assert(size == domain_comm.size * self.kpt_comm.size *
-               self.band_comm.size)
+        assert (size == domain_comm.size * self.kpt_comm.size *
+                self.band_comm.size)
 
     def initialize(self, atoms=None):
         """Inexpensive initialization."""
@@ -983,8 +983,6 @@ class PAW(PAWExtra, Output):
         self.world = p.get('communicator')
         if self.world is None:
             self.world = mpi.world
-        else:
-            assert isinstance(self.world, mpi._Communicator)
         self.master = (self.world.rank == 0)
         
         self.set_text(p['txt'], p['verbose'])
