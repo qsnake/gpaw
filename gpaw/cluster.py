@@ -34,25 +34,25 @@ class Cluster(Atoms):
         
         def add_if_new(atoms, atom):
             new = False
-            va = Vector3d(atom.get_positions()[0])
+            va = Vector3d(atom.position)
             dmin = 99999999999
             for a in atoms:
-                dmin = min(dmin, va.distance(a.get_positions()[0]))
+                dmin = min(dmin, va.distance(a.position))
             if dmin > 0.1:
                 atoms += atom
                 return True
             return False
 
-        connected = Cluster(self[i])
+        connected = Cluster(self[i:i + 1])
 
         isolated = False
         while not isolated:
             new = 0
             for ca in connected:
                 # search atoms that are connected to you
-                vca = Vector3d(ca.get_positions()[0])
+                vca = Vector3d(ca.position)
                 for oa in self:
-                    if vca.distance(oa.get_positions()[0]) < dmax:
+                    if vca.distance(oa.position) < dmax:
                         new += int(add_if_new(connected, oa))
             if new == 0:
                 isolated = True
