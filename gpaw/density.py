@@ -263,6 +263,13 @@ class Density:
                 P_ni = nucleus.P_uni[kpt.u]
                 D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
                                              P_ni * kpt.f_n[:, newaxis]))
+
+                # hack used in delta scf - calculations
+                if hasattr(kpt, 'ft_omn'):
+                    for i in range(len(kpt.ft_omn)):
+                        D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
+                                             dot(kpt.ft_omn[i], P_ni)))
+
             nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
             self.band_comm.sum(nucleus.D_sp)
             self.kpt_comm.sum(nucleus.D_sp)

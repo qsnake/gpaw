@@ -191,6 +191,15 @@ class KPoint:
             for psit_G, f in zip(self.psit_nG, self.f_n):
                 nt_G += f * (psit_G * npy.conjugate(psit_G)).real
 
+        # hack used in delta scf - calculations
+        if hasattr(self, 'ft_omn'):
+            for ft_mn in self.ft_omn:
+                for ft_n, psi_m in zip(ft_mn, self.psit_nG):
+                    for ft, psi_n in zip(ft_n, self.psit_nG):
+                        if abs(ft) > 1.e-12:
+                            nt_G += (npy.conjugate(psi_m) *
+                                     ft * psi_n).real
+
     def add_to_kinetic_density(self, taut_G):
         """Add contribution to pseudo kinetic energy density."""
 
