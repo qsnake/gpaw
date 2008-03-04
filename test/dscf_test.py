@@ -20,6 +20,7 @@ calc = Calculator(h=0.24,
                                'density': 1.0e-2,
                                'eigenstates': 1.0e-6,
                                'bands': 14},
+                  txt=None,
                   )
 
 atoms.set_calculator(calc)
@@ -32,3 +33,7 @@ dscf_calculation(calc, [[1.0,sigma_star,1]], atoms)
 e_exc=atoms.get_potential_energy()
 
 equal(e_exc,e_gs+3.0,1.e-1)
+
+del sigma_star
+del calc.occupation
+del calc
