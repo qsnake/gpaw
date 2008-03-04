@@ -54,7 +54,7 @@ if len(tests) == 0:
              'ase3k.py',
              'xcatom.py', 'coulomb.py', 'nonselfconsistentLDA.py', 'bee1.py',
              #'kli.py',
-             'revPBE.py', 'nonselfconsistent.py', 'mixer.py',
+             'dscf_test.py','revPBE.py', 'nonselfconsistent.py', 'mixer.py',
              'hydrogen.py', 'spinpol.py', 'wfs_io.py', 'bulk.py',
              'stdout.py', 'gga-atom.py', 'atomize.py', 'lcao-h2o.py',
              'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
