@@ -1,8 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-"""Atomic-centered localized functions.
-"""
+"""Atomic-centered localized functions."""
 
 from math import pi, cos, sin
 
@@ -10,6 +9,7 @@ import numpy as npy
 
 from gpaw import debug
 from gpaw.utilities import is_contiguous
+from gpaw.mpi import run
 import _gpaw
 
 
@@ -19,21 +19,22 @@ MASTER = 0
 def create_localized_functions(functions, gd, spos_c,
                                dtype=float, cut=False,
                                forces=True, lfbc=None):
-    """Create `LocFuncs` object.
+    """Create LocFuncs object.
 
     From a list of splines, a grid-descriptor and a scaled position,
-    create a `LocFuncs` object.  If this domain does not contribute to
-    the localized functions, ``None`` is returned.
+    create a LocFuncs object.  If this domain does not contribute to
+    the localized functions, None is returned.
 
-    ============= ======================== ===================================
-    keyword       type
-    ============= ======================== ===================================
-    ``dtype``     ``float`` or ``complex`` Type of arrays to operate on.
-    ``cut``       ``bool``                 Allow functions to cut boundaries
-                                           when not periodic.
-    ``forces``    ``bool``                 Calculate derivatives.
-    ``lfbc``      `LocFuncBroadcaster`     Parallelization ...
-    ============= ======================== ===================================
+    Parameters
+    ==========
+    dtype: float or complex
+        Type of arrays to operate on.
+    cut: bool
+        Allow functions to cut boundaries when not periodic.
+    forces: bool
+        Calculate derivatives.
+    lfbc: LocFuncBroadcaster
+        Parallelization over **k**-points/spins.
     """
 
     lfs = LocFuncs(functions, gd, spos_c,
@@ -50,9 +51,9 @@ class LocFuncs:
     """Class to handle atomic-centered localized functions."""
     def __init__(self, functions, gd, spos_c,
                  dtype, cut, forces, lfbc):
-        """Create `LocFuncs` object.
+        """Create LocFuncs object.
 
-        Use `create_localized_functions()` to create this object."""
+        Use create_localized_functions() to create this object."""
 
         # We assume that all functions have the same cut-off:
         rcut = functions[0].get_cutoff()
@@ -77,37 +78,65 @@ class LocFuncs:
             self.ni += 2 * l + 1
 
         self.dtype = dtype
-        self.set_communicator(gd.comm, MASTER)
+        self.comm = gd.comm
         self.phase_kb = None
 
-    def set_communicator(self, comm, root):
-        """Set MPI-communicator and master CPU."""
-        self.comm = comm
-        self.root = root
+        if gd.comm.size > 1:
+            # Find out which ranks have a piece of the
+            # localized functions:
+            i_have_a_piece = npy.array(int(b > 0))
+            i_have_a_piece_r = npy.empty(gd.comm.size, int)
+            gd.comm.all_gather(i_have_a_piece, i_have_a_piece_r)
+            if i_have_a_piece:
+                self.ranks = npy.arange(self.comm.size)[i_have_a_piece_r == 1]
+                self.root = gd.domain.get_rank_for_position(spos_c)
+        else:
+            self.ranks = [0]
+            self.root = 0
 
     def set_phase_factors(self, k_kc):
+        """Set phase factors for Bloch boundary conditions."""
         self.phase_kb = npy.exp(2j * pi * npy.inner(k_kc, self.sdisp_bc))
         
     def add(self, a_xg, coef_xi, k=None, communicate=False):
-        for i in self.iadd(a_xg, coef_xi, k, communicate):
-            pass
-        
-    def iadd(self, a_xg, coef_xi, k=None, communicate=False):
         """Add localized functions to extended arrays.
 
-        Add the product of ``coef_xi`` and the localized functions to
-        ``a_xg``.  With Bloch boundary-condtions, ``k`` is used to
-        index the phase-factors.  If ``communicate`` is false,
-        ``coef_xi`` will be broadcasted from the root-CPU."""
+        Add the product of coef_xi and the localized functions to
+        a_xg.  With Bloch boundary-condtions, k is used to
+        index the phase-factors.  If communicate is True,
+        coef_xi will be broadcasted from the root-CPU."""
         
+        run(self.iadd(a_xg, coef_xi, k, communicate))
+        
+    def iadd(self, a_xg, coef_xi, k=None, communicate=False):
+        """Iterator for adding localized functions to extended arrays."""
         if communicate:
-            if coef_xi is None:
-                shape = a_xg.shape[:-3] + (self.ni,)
-                coef_xi = npy.zeros(shape, self.dtype)
-            self.comm.broadcast(coef_xi, self.root)
+            if len(self.ranks) == 1:
+                # Nothing to do:
+                yield None
+            else:
+                # Send coefficients to other ranks:
+                if self.comm.rank == self.root:
+                    requests = []
+                    for rank in self.ranks:
+                        if rank == self.root:
+                            continue
+                        request = self.comm.send(coef_xi, rank, 1329, False)
+                        requests.append(request)
+                    yield None
+                    for request in requests:
+                        self.comm.wait(request)
+                else:
+                    # Get coefficients from root:
+                    shape = a_xg.shape[:-3] + (self.ni,)
+                    coef_xi = npy.zeros(shape, self.dtype)
+                    request = self.comm.receive(coef_xi, self.root,
+                                                1329, False)
 
+                    yield None
+                    self.comm.wait(request)
         yield None
-        
+
         if k is None or self.phase_kb is None:
             # No k-points:
             for box in self.box_b:
@@ -116,26 +145,39 @@ class LocFuncs:
             # K-points:
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.add(coef_xi / phase, a_xg)
-                                                
+                
         yield None
-        
+
     def integrate(self, a_xg, result_xi, k=None):
-        for i in self.iintegrate(a_xg, result_xi, k):
-            pass
-        
-    def iintegrate(self, a_xg, result_xi, k=None):
         """Calculate integrals of arrays times localized functions.
 
         Return the integral of extended arrays times localized
-        functions in ``result_xi``.  Correct phase-factors are used if
-        the **k**-point index ``k`` is not ``None`` (Bloch
-        boundary-condtions)."""
+        functions in result_xi.  Correct phase-factors are used if the
+        **k**-point index k is not None (Bloch boundary-condtions)."""
+
+        run(self.iintegrate(a_xg, result_xi, k))
+        
+    def iintegrate(self, a_xg, result_xi, k=None):
+        """Iterator for projecting extended arrays onto localized functions.
+
+        There are three steps (the iterator will yield three times):
+
+        1. Root-cpu starts non-blocking receive.
+        2. Do local integral.  Non-root cpus send results to root
+           (non-blocking).
+        3. Wait for sends/receives to finish, then root returns sum.
+        """
 
         shape = a_xg.shape[:-3] + (self.ni,)
         tmp_xi = npy.zeros(shape, self.dtype)
+
         if result_xi is None:
             result_xi = npy.zeros(shape, self.dtype)
             
+        isum = self.isum(result_xi)
+        isum.next()
+        yield None
+                    
         if k is None or self.phase_kb is None:
             # No k-points:
             for box in self.box_b:
@@ -146,26 +188,111 @@ class LocFuncs:
             for box, phase in zip(self.box_b, self.phase_kb[k]):
                 box.integrate(a_xg, tmp_xi)
                 result_xi += phase * tmp_xi
-               
+
+
+        isum.next()
         yield None
+        isum.next()
+        yield None
+
+    def sum(self, a_x, broadcast=False):
+        """Sum up array.
+
+        The default behavior is to let the owner-node return the
+        result in a_x.  With broadcast=True, all nodes will return the
+        result in a_x."""
         
-        self.comm.sum(result_xi, self.root)
+        run(self.isum(a_x, broadcast))
+        
+    def isum(self, a_x, broadcast=False):
+        """Iterator for adding arrays.
+
+        There are three steps:
+
+        1. Root-node starts receiving.
+        2. Non-root nodes start sending.
+        3. Wait.  Then root does sum.
+
+        If broadcast is True, there will be two more steps:
+
+        4. Root-node sends and non-root nodes receive.
+        5. Wait.
+        """
+
+        ndomains = len(self.ranks)
+        if ndomains > 1:
+            if self.comm.rank == self.root:
+                requests = []
+                a_dx = npy.empty((ndomains - 1,) + a_x.shape, self.dtype)
+                d = 0
+                for rank in self.ranks:
+                    if rank == self.root:
+                        continue
+                    request = self.comm.receive(a_dx[d:d + 1], rank,
+                                                1330, False)
+                    requests.append(request)
+                    d += 1
+
+                yield None
+                yield None
+
+                for request in requests:
+                    self.comm.wait(request)
+
+                a_x += a_dx.sum(0)
+
+                if broadcast:
+                    yield None
+                    requests = []
+                    for rank in self.ranks:
+                        if rank == self.root:
+                            continue
+                        request = self.comm.send(a_x, rank, 1331, False)
+                        requests.append(request)
+                    yield None
+                    for request in requests:
+                        self.comm.wait(request)
+            else:
+                yield None
+                request = self.comm.send(a_x, self.root, 1330, False)
+                yield None
+                self.comm.wait(request)
+                if broadcast:
+                    yield None
+                    request = self.comm.receive(a_x, self.root, 1331, False)
+                    yield None
+                    self.comm.wait(request)
+
+        else:
+            yield None
+            yield None
+            if broadcast:
+                yield None
+                yield None
 
         yield None
-        
+            
     def derivative(self, a_xg, result_xic, k=None):
         """Calculate derivatives of localized integrals.
 
         Return the *x*- *y*- and *z*-derivatives of the integral of
-        extended arrays times localized functions in ``result_xi``.
-        Correct phase-factors are used if the **k**-point index ``k``
-        is not ``None`` (Block boundary-condtions)."""
+        extended arrays times localized functions in result_xi.
+        Correct phase-factors are used if the **k**-point index k
+        is not None (Block boundary-condtions)."""
         
+        run(self.iderivative(a_xg, result_xic, k))
+        
+    def iderivative(self, a_xg, result_xic, k=None):
+        """Iterator for calculating derivatives of localized integrals."""
         shape = a_xg.shape[:-3] + (self.ni, 3)
         tmp_xic = npy.zeros(shape, self.dtype)
         if result_xic is None:
             result_xic = npy.zeros(shape, self.dtype)
             
+        isum = self.isum(result_xic)
+        isum.next()
+        yield None
+
         if k is None or self.phase_kb is None:
             # No k-points:
             for box in self.box_b:
@@ -177,14 +304,17 @@ class LocFuncs:
                 box.derivative(a_xg, tmp_xic)
                 result_xic += phase * tmp_xic
                
-        self.comm.sum(result_xic, self.root)
+        isum.next()
+        yield None
+        isum.next()
+        yield None
 
     def add_density(self, n_G, f_i):
         """Add atomic electron density to extended density array.
 
         Special method for adding the atomic electron density
         calculated from atomic orbitals and occupation numbers
-        ``f_i``."""
+        f_i."""
         for box in self.box_b:
             box.add_density(n_G, f_i)
 
@@ -193,10 +323,11 @@ class LocFuncs:
         
         Special method for adding the atomic electron density
         calculated from all cross products of atomic orbitals
-        weighted using the density matrix ``D_p``.
+        weighted using the density matrix D_p.
 
         The method returns the integral of the atomic electron density
         """
+        assert self.comm.size == 1
         I = 0.0
         for box in self.box_b:
             I += box.add_density2(n_G, D_p)
@@ -208,14 +339,14 @@ class LocFuncs:
         I_i = npy.zeros(self.ni)
         for box in self.box_b:
             box.norm(I_i)
-        self.comm.sum(I_i)
+        self.sum(I_i, broadcast=True)
         return I_i
         
     def normalize(self, I0):
         """Normalize localized functions.
         
         The integral of the first function (shperically symmetric, l =
-        0) is normalized to the value ``I0`` and the following
+        0) is normalized to the value I0 and the following
         functions (l > 0) are adjusted so that they integrate to
         zero."""
 
@@ -225,23 +356,23 @@ class LocFuncs:
 
         
 class LocalizedFunctionsWrapper:
-    """Python wrapper class for C-extension: ``LocalizedFunctions``.
+    """Python wrapper class for C-extension: LocalizedFunctions.
 
     This class is used for construction of the C-object and for adding
     type-checking to the C-methods."""
     
     def __init__(self, functions, beg_c, end_c, spos_c, sdisp_c, gd,
                  dtype, forces, locfuncbcaster):
-        """Construct a ``LocalizedFunctions`` C-object.
+        """Construct a LocalizedFunctions C-object.
 
         Evaluate function values from a list of splines
-        (``functions``) inside a box between grid points ``beg_c``
-        (included) to ``end_c`` (not included).  The functions are
-        centered at the scaled position ``spos_c`` displaced by
-        ``sdisp_c`` (in units of lattice vectors), and ``gd`` is the
+        (functions) inside a box between grid points beg_c
+        (included) to end_c (not included).  The functions are
+        centered at the scaled position spos_c displaced by
+        sdisp_c (in units of lattice vectors), and gd is the
         grid-descriptor.
 
-        Derivatives are calculated when ``forces=True``."""
+        Derivatives are calculated when forces=True."""
 
         assert dtype in [float, complex]
 
@@ -279,7 +410,7 @@ class LocalizedFunctionsWrapper:
         """Calculate integrals of arrays times localized functions.
 
         Return the integral of extended arrays times localized
-        functions in ``result_xi``."""
+        functions in result_xi."""
         
         assert is_contiguous(a_xg, self.dtype)
         assert is_contiguous(result_xi, self.dtype)
@@ -293,7 +424,7 @@ class LocalizedFunctionsWrapper:
 
         Return the *x*- *y*- and *z*-derivatives of the integral of
         extended arrays times localized functions in
-        ``result_xic``."""
+        result_xic."""
 
         assert self.forces
         assert is_contiguous(a_xg, self.dtype)
@@ -306,8 +437,8 @@ class LocalizedFunctionsWrapper:
     def add(self, coef_xi, a_xg):
         """Add localized functions to extended arrays.
 
-        Add the product of ``coef_xi`` and the localized functions to
-        ``a_xg``."""
+        Add the product of coef_xi and the localized functions to
+        a_xg."""
         
         assert is_contiguous(a_xg, self.dtype)
         assert is_contiguous(coef_xi, self.dtype)
@@ -321,7 +452,7 @@ class LocalizedFunctionsWrapper:
 
         Special method for adding the atomic electron density
         calculated from atomic orbitals and occupation numbers
-        ``f_i``."""
+        f_i."""
         
         assert is_contiguous(n_G, float)
         assert is_contiguous(f_i, float)
@@ -334,7 +465,7 @@ class LocalizedFunctionsWrapper:
         
         Special method for adding the atomic electron density
         calculated from all cross products of atomic orbitals
-        weighted using the density matrix ``D_p``.
+        weighted using the density matrix D_p.
 
         The method returns the integral of the atomic electron density
         """
@@ -370,13 +501,19 @@ else:
 
 
 class LocFuncBroadcaster:
-    """..."""
-    def __init__(self, comm):
+    """Parallelize evaluation of localized functions over k-points/spins."""
+    def __init__(self, kpt_comm):
+        """Set up framework for parallelization over k-points/spins.
+        
+        One of the CPU's in the k-point communicator will do the work
+        and later broadcast arrays to the other CPU's.
+        """
+
         if debug:
-            comm = comm.comm
-        self.comm = comm
-        self.size = comm.size
-        self.rank = comm.rank
+            kpt_comm = kpt_comm.comm
+        self.kpt_comm = kpt_comm
+        self.size = kpt_comm.size
+        self.rank = kpt_comm.rank
         self.reset()
 
     def reset(self):
@@ -384,15 +521,22 @@ class LocFuncBroadcaster:
         self.root = 0
 
     def next(self):
+        """Distribute work.
+
+        Return True if this CPU should do anything.
+        """
+        
         compute = (self.root == self.rank)
         self.root = (self.root + 1) % self.size
         return compute
 
     def add(self, lf):
+        """Add localized functions to pool."""
         self.lfs.append(lf)
     
     def broadcast(self):
+        """Distribute arrays to all processors."""
         if self.size > 1:
             for root, lf in enumerate(self.lfs):
-                lf.broadcast(self.comm, root % self.size)
+                lf.broadcast(self.kpt_comm, root % self.size)
         self.reset()

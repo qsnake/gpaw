@@ -200,10 +200,7 @@ class EXX:
                         if self.use_finegrid:
                             nucleus.ghat_L.integrate(self.vt_g, v_L)
                         else:
-                            if nucleus.Ghat_L is None:
-                                # XXX What is this???
-                                nucleus.ghat_L.comm.sum(v_L, ghat_L.root)
-                            else:
+                            if nucleus.Ghat_L is not None:
                                 nucleus.Ghat_L.integrate(self.vt_G, v_L)
 
                         if nucleus.in_this_domain:

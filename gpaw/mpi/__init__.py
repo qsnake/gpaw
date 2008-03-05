@@ -172,8 +172,15 @@ def all_gather_array(comm, a): #???
 
 def run(iterators):
     """Run through list of iterators one step at a time."""
+    if not isinstance(iterators, list):
+        # It's a single iterator - empty it:
+        for i in iterators:
+            pass
+        return
+    
     if len(iterators) == 0:
         return
+
     while True:
         try:
             results = [iter.next() for iter in iterators]

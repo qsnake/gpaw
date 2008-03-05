@@ -1,23 +1,24 @@
 #!/usr/bin/env python
 import sys
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
 from gpaw.mpi import rank
 
+gpw = '/scratch/jensj/H-par.gpw'
 a = 4.0
 
 def f(n, magmom, periodic, dd):
-    H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=magmom)],
-                    periodic=periodic,
-                    cell=(a, a, a))
+    H = Atoms('H', positions=[(a/2, a/2, a/2)], magmoms=[magmom],
+              pbc=periodic,
+              cell=(a, a, a))
     
-    H.SetCalculator(Calculator(nbands=1, gpts=(n, n, n),
-                               txt=None, tolerance=0.001,
-                               parsize=dd))
-    e = H.GetPotentialEnergy()
-    H.GetCalculator().write('H-par.gpw')
-    H = Calculator('H-par.gpw', txt=None).get_atoms()
-    assert e == H.GetPotentialEnergy()
+    H.set_calculator(Calculator(nbands=1, gpts=(n, n, n),
+                                txt=None, tolerance=0.001,
+                                parsize=dd))
+    e = H.get_potential_energy()
+    H.get_calculator().write(gpw)
+    H = Calculator(gpw, txt=None).get_atoms()
+    assert e == H.get_potential_energy()
     return e
     
 for n in [24]:

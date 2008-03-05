@@ -30,18 +30,12 @@ class PairDensity2:
     
             if Ghat_L is not None:
                 assert nucleus.ghat_L is not None
-                Ghat_L.set_communicator(nucleus.ghat_L.comm,
-                                        nucleus.ghat_L.root)
     
         self.yes_I_have_done_the_Ghat_L = True
     
         for nucleus in self.ghat_nuclei:
             Ghat_L = nucleus.Ghat_L
-            if Ghat_L is None:
-                ghat_L = nucleus.ghat_L
-                I_i = npy.zeros(ghat_L.ni)
-                ghat_L.comm.sum(I_i)
-            else:
+            if Ghat_L is not None:
                 Ghat_L.normalize(sqrt(4 * pi))
 
     def initialize(self, kpt, n1, n2):
@@ -94,11 +88,7 @@ class PairDensity2:
                 nucleus.ghat_L.add(rhot_g, Q_L, communicate=True)
             else:
                 Ghat_L = nucleus.Ghat_L
-                if Ghat_L is None:
-                    ghat_L = nucleus.ghat_L
-                    Q_L = npy.empty(ghat_L.ni)
-                    ghat_L.comm.broadcast(Q_L, ghat_L.root)
-                else:
+                if Ghat_L is not None:
                     Ghat_L.add(rhot_g, Q_L, communicate=True)
 
 
@@ -127,18 +117,12 @@ class PairDensity:
     
             if Ghat_L is not None:
                 assert nucleus.ghat_L is not None
-                Ghat_L.set_communicator(nucleus.ghat_L.comm,
-                                        nucleus.ghat_L.root)
     
         paw.yes_I_have_done_the_Ghat_L = True
     
         for nucleus in self.ghat_nuclei:
             Ghat_L = nucleus.Ghat_L
-            if Ghat_L is None:
-                ghat_L = nucleus.ghat_L
-                I_i = npy.zeros(ghat_L.ni)
-                ghat_L.comm.sum(I_i)
-            else:
+            if Ghat_L is not None:
                 Ghat_L.normalize(sqrt(4 * pi))
 
     def initialize(self, kpt, i, j):
@@ -190,11 +174,7 @@ class PairDensity:
                 nucleus.ghat_L.add(rhot, Q_L, communicate=True)
             else:
                 Ghat_L = nucleus.Ghat_L
-                if Ghat_L is None:
-                    ghat_L = nucleus.ghat_L
-                    Q_L = npy.empty(ghat_L.ni)
-                    ghat_L.comm.broadcast(Q_L, ghat_L.root)
-                else:
+                if Ghat_L is not None:
                     Ghat_L.add(rhot, Q_L, communicate=True)
                 
         return rhot

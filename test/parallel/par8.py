@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-from ASE import Atom, ListOfAtoms
+from ase import *
 from gpaw import Calculator
 from gpaw.mpi import rank
 
@@ -9,18 +9,18 @@ a = 4.0
 de1 = 0.0
 def f(kpts, n, magmom, periodic, dd):
     global de1
-    H = ListOfAtoms([Atom('H',(a/2, a/2, a/2), magmom=magmom)],
-                    periodic=periodic,
-                    cell=(a, a, a))
+    H = Atoms('H', positions=[(a/2, a/2, a/2)], magmoms=[magmom],
+              pbc=periodic,
+              cell=(a, a, a))
     
-    H.SetCalculator(Calculator(nbands=1, gpts=(n, n, n), kpts=kpts,
+    H.set_calculator(Calculator(nbands=1, gpts=(n, n, n), kpts=kpts,
                                txt=None, tolerance=0.0001,
                                parsize=dd))
-    e = H.GetPotentialEnergy()
-    H.GetCalculator().write('H-par.gpw')
+    e = H.get_potential_energy()
+    H.get_calculator().write('H-par.gpw')
     c = Calculator('H-par.gpw', txt=None)
     H = c.get_atoms()
-    de = abs(H.GetPotentialEnergy() - e)
+    de = abs(H.get_potential_energy() - e)
     if de > de1:
         de1 = de
     assert de < 1e-15

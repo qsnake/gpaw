@@ -138,8 +138,7 @@ class Nucleus:
         self.in_this_domain = in_this_domain
         self.rank = rank
 
-    def move(self, spos_c, gd, finegd, k_ki, lfbc, domain,
-             pt_nuclei, ghat_nuclei):
+    def move(self, spos_c, gd, finegd, k_ki, lfbc, pt_nuclei, ghat_nuclei):
         """Move nucleus.
 
         """
@@ -202,33 +201,11 @@ class Nucleus:
         # Smooth core density:
         nct = self.setup.nct
         self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
-        if self.nct is not None:
-            self.nct.set_communicator(self.comm, rank)
 
         # Smooth core kinetic energy density:
         tauct = self.setup.tauct
         self.tauct = create([tauct], gd, spos_c, cut=True, lfbc=lfbc)
-        if self.tauct is not None:
-            self.tauct.set_communicator(self.comm, rank)
             
-        if self.comm.size > 1:
-            # Make MPI-group communicators:
-            flags = npy.array([1 * (pt_i is not None) +
-                               2 * (vbar is not None) +
-                               4 * (ghat_L is not None)])
-
-            flags_r = npy.zeros((self.comm.size, 1), int)
-            self.comm.all_gather(flags, flags_r)
-            for mask, lfs in [(1, [pt_i]),
-                              (2, [vbar, stepf]),
-                              (4, [ghat_L, vhat_L])]:
-                group = [r for r, flags in enumerate(flags_r) if flags & mask]
-                root = group.index(rank)
-                comm = domain.get_communicator(group)
-                for lf in lfs:
-                    if lf is not None:
-                        lf.set_communicator(comm, root)
-
         self.ready = True
 
         # Moving the atoms in a course grid EXX calculation doesn't
@@ -253,8 +230,6 @@ class Nucleus:
             Nct = -(self.setup.Delta0 * sqrt(4 * pi)
                     + self.setup.Z - self.setup.Nc)
             self.nct.normalize(Nct)
-        else:
-            self.comm.sum(0.0)
 
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc):
         phit_j = self.setup.phit_j
@@ -363,15 +338,26 @@ class Nucleus:
             self.vbar.add(vt2, npy.array([1.0]))
         
     def calculate_projections(self, kpt):
+        """Iterator for calculation of wave-function projections.
+
+        This iterator must be called twice, and after that the result
+        will be in self.P_uni on the node that owns the atom::
+
+                             ~    _  ~a _ _a  
+          P_uni[u, n, i] = <psi  (r)|p (r-R )>
+                               un     i
+
+        """
+        
         if self.in_this_domain:
             P_ni = self.P_uni[kpt.u]
             P_ni[:] = 0.0
-            for x in self.pt_i.iintegrate(kpt.psit_nG, P_ni, kpt.k):
-                yield None
         else:
-            for x in self.pt_i.iintegrate(kpt.psit_nG, None, kpt.k):
-                yield None
-            
+            P_ni = None
+
+        for x in self.pt_i.iintegrate(kpt.psit_nG, P_ni, kpt.k):
+            yield None
+
     def calculate_multipole_moments(self):
         if self.in_this_domain:
             self.Q_L[:] = npy.dot(self.D_sp.sum(0), self.setup.Delta_pL)
@@ -453,47 +439,47 @@ class Nucleus:
                     yield None
             for x in self.ghat_L.iintegrate(vHt_g, None):
                 yield None
+
             yield 0.0, 0.0, 0.0, 0.0, 0.0
 
     def adjust_residual(self, R_nG, eps_n, s, u, k):
         if self.in_this_domain:
             H_ii = unpack(self.H_sp[s])
             P_ni = self.P_uni[u]
-            coefs_ni =  (npy.dot(P_ni, H_ii) -
-                         npy.dot(P_ni * eps_n[:, None], self.setup.O_ii))
+            coef_ni = (npy.dot(P_ni, H_ii) -
+                       npy.dot(P_ni * eps_n[:, None], self.setup.O_ii))
 
             if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
-                coefs_ni += self.vxx_uni[u]
+                coef_ni += self.vxx_uni[u]
                 
-            for x in self.pt_i.iadd(R_nG, coefs_ni, k, communicate=True):
-                yield None
         else:
-            for x in self.pt_i.iadd(R_nG, None, k, communicate=True):
-                yield None
+            coef_ni = None
+
+        for x in self.pt_i.iadd(R_nG, coef_ni, k, communicate=True):
+            yield None
             
     def adjust_residual2(self, pR_G, dR_G, eps, u, s, k, n):
         if self.in_this_domain:
             ni = self.get_number_of_partial_waves()
             dP_i = npy.zeros(ni, self.dtype)
-            for x in self.pt_i.iintegrate(pR_G, dP_i, k):
-                yield None
         else:
-            for x in self.pt_i.iintegrate(pR_G, None, k):
-                yield None
+            dP_i = None
+
+        for x in self.pt_i.iintegrate(pR_G, dP_i, k):
+            yield None
 
         if self.in_this_domain:
             H_ii = unpack(self.H_sp[s])
-            coefs_i = (npy.dot(dP_i, H_ii) -
-                       npy.dot(dP_i * eps, self.setup.O_ii))
+            coef_i = (npy.dot(dP_i, H_ii) -
+                      npy.dot(dP_i * eps, self.setup.O_ii))
 
             if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
-                coefs_i += npy.dot(self.vxx_unii[u, n], dP_i)
-                
-            for x in self.pt_i.iadd(dR_G, coefs_i, k, communicate=True):
-                yield None
+                coef_i += npy.dot(self.vxx_unii[u, n], dP_i)
         else:
-            for x in self.pt_i.iadd(dR_G, None, k, communicate=True):
-                yield None
+            coef_i = None
+            
+        for x in self.pt_i.iadd(dR_G, coef_i, k, communicate=True):
+            yield None
 
     def apply_hamiltonian(self, a_nG, b_nG, kpt, calculate_P_uni=True):
         """Apply non-local part of Hamiltonian.
@@ -790,9 +776,7 @@ class Nucleus:
                 if self.vhat_L is not None:
                     self.vhat_L.derivative(nt_g, None)
                 
-            if self.nct is None:
-                self.comm.sum(npy.zeros(3), self.rank)
-            else:
+            if self.nct is not None:
                 self.nct.derivative(vt_G, None)
                 
             if self.vbar is not None:

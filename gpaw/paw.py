@@ -445,7 +445,6 @@ class PAW(PAWExtra, Output):
                                      self.nspins, self.nmyu, self.nmybands)
                 nucleus.move(spos_c, self.gd, self.finegd,
                              self.ibzk_kc, self.locfuncbcaster,
-                             self.domain,
                              self.pt_nuclei, self.ghat_nuclei)
 
         if movement:
