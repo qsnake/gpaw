@@ -25,6 +25,8 @@ class Basis:
         self.bf_j = []
         self.ng = None
         self.d = None
+        self.generatorattrs = {}
+        self.generatordata = ''
 
         if readxml:
             self.read_xml()
@@ -90,6 +92,10 @@ class BasisSetXMLParser(xml.sax.handler.ContentHandler):
     def __init__(self, basis):
         xml.sax.handler.ContentHandler.__init__(self)
         self.basis = basis
+        self.type = None
+        self.rc = None
+        self.data = None
+        self.l = None
 
     def parse(self, filename=None):
         basis = self.basis
@@ -106,7 +112,7 @@ the directory where the basis set files are stored.  See
 for details."""
 
                 raise RuntimeError('Could not find "%s" basis for "%s".' %
-                                   (basis_name, symbol))
+                                   (basis.name, basis.symbol))
         else:
             basis.filename = filename
             source = open(filename).read()

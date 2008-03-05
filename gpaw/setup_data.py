@@ -5,7 +5,7 @@ import xml.sax
 import md5
 import re
 from cStringIO import StringIO
-from math import sqrt, pi
+from math import sqrt
 
 import numpy as npy
 from ase.data import atomic_names
@@ -35,7 +35,6 @@ class SetupData:
             self.stdfilename = '%s.%s.%s' % (symbol, name, self.setupname)
 
         self.filename = None # full path
-        # things that were already there
         self.n_j = []
         self.l_j = []
         self.f_j = []
@@ -57,13 +56,29 @@ class SetupData:
         self.core_hole_e_kin = None
         self.extra_xc_data = {}
 
-        # misc added
+        self.Z = None
+        self.Nc = None
+        self.Nv = None
+        self.beta = None
+        self.ng = None
+        self.rcgauss = None
+        self.e_kinetic = None
+        self.e_xc = None
+        self.e_electrostatic = None
+        self.e_total = None
+        self.e_kinetic_core = None
+
+        self.nc_g = None
+        self.nct_g = None
         self.nvt_g = None
+        self.vbar_g = None
+
+        self.e_kin_jj = None
+
         self.generatorattrs = []
         self.generatordata = ''
         
         self.has_corehole = False
-        # the final attributes will be entered during parse
 
         if readxml:
             PAWXMLParser(self).parse()
@@ -182,10 +197,10 @@ class SetupData:
         print >> xml, '\n  </kinetic_energy_differences>'
 
         if self.X_p is not None:
-            print >>xml, '  <exact_exchange_X_matrix>\n    ',
+            print >> xml, '  <exact_exchange_X_matrix>\n    ',
             for x in self.X_p:
                 print >> xml, '%16.12e' % x,
-            print >>xml, '\n  </exact_exchange_X_matrix>'
+            print >> xml, '\n  </exact_exchange_X_matrix>'
 
             print >> xml, '  <exact_exchange core-core="%f"/>' % self.ExxC
 
@@ -220,6 +235,8 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
     def __init__(self, setup):
         xml.sax.handler.ContentHandler.__init__(self)
         self.setup = setup
+        self.id = None
+        self.data = None
 
     def parse(self):
         setup = self.setup
@@ -294,7 +311,6 @@ http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
                 setup.rcgauss = float(attrs['rc'])
             else:
                 # Old style: XXX
-                from math import sqrt
                 setup.rcgauss = max(setup.rcut_j) / sqrt(float(attrs['alpha']))
         elif name in ['ae_core_density', 'pseudo_core_density',
                       'localized_potential', 'zero_potential',  # XXX
