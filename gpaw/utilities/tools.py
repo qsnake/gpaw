@@ -167,6 +167,9 @@ def gram_schmidt(U, order=None):
     
     U is an NxM matrix containing M vectors as its columns.
     These will be orthogonalized using the order specified in the list 'order'
+
+    Warning: The values of the original matrix is changed, return is just for
+    convenience.
     """
     if order is None:
         order = range(U.shape[1])
@@ -176,6 +179,7 @@ def gram_schmidt(U, order=None):
         for i2 in range(i):
             col -= project(U[:, order[i2]], col)
         col /= npy.sqrt(npy.dot(col.conj(), col))
+    return U
 
 def lowdin(U, S=None):
     """Orthogonalize according to the Lowdin procedure.
@@ -189,18 +193,23 @@ def lowdin(U, S=None):
     rot = npy.dot(rot / npy.sqrt(eig), dagger(rot))
     return npy.dot(U, rot)
 
+def rotate_matrix(h, U):
+    """ U contains the new basis as its columns"""
+    return npy.dot(dagger(U), npy.dot(h, U))
+
 def symmetrize(matrix):
     """Symmetrize input matrix."""
     npy.add(dagger(matrix), matrix, matrix)
     npy.multiply(.5, matrix, matrix)
     return matrix
 
-def erf3D(M):
-    """Return matrix with the value of the error function evaluated for
-    each element in input matrix 'M'.
-    """
-    from gpaw.utilities import erf
-    return elementwise_apply(M, erf, copy=True)
+erf3D = npy.frompyfunc(erf, 1, 1)
+## def erf3D(M):
+##     """Return matrix with the value of the error function evaluated for
+##     each element in input matrix 'M'.
+##     """
+##     from gpaw.utilities import erf
+##     return elementwise_apply(M, erf, copy=True)
 
 def elementwise_apply(array, function, copy=True):
     """Apply ``function`` to each element of input ``array``. If copy is False,
@@ -211,8 +220,8 @@ def elementwise_apply(array, function, copy=True):
     else: # The input array is used for output
         result = array
     
-    for n in range(len(array.ravel())):
-        result.ravel()[n] = function(array.ravel()[n])
+    for n in range(len(array.flat)):
+        result.flat[n] = function(array.flat[n])
 
     return result
 
