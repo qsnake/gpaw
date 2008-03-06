@@ -41,7 +41,7 @@ def dscf_calculation(calc, orbitals, atoms = None):
     if not hasattr(calc, 'occupation'):
         calc.initialize(atoms)
     occ = calc.occupation
-    if hasattr(occ, 'kT'):
+    if isinstance(occ, FermiDirac):
         n_occ = FermiDiracDSCF(occ.ne, occ.nspins, occ.kT, orbitals ,calc)
     else:
         n_occ = ZeroKelvinDSCF(occ.ne, occ.nspins, orbitals ,calc)
@@ -154,7 +154,7 @@ class FermiDiracDSCF(FermiDirac):
         if self.epsF is None:
             # Fermi level not set.  Make a good guess:
             self.guess_fermi_level(kpts)
-            
+
         # Now find the correct Fermi level for the non-controlled electrons
         self.find_fermi_level(kpts)
 
@@ -198,6 +198,7 @@ class FermiDiracDSCF(FermiDirac):
 
         self.S = self.kpt_comm.sum(S) * self.kT
         self.calculate_band_energy(kpts)
+
 
 
 class MolecularOrbitals:
@@ -296,8 +297,8 @@ class MolecularOrbitals:
                 ft_m = npy.zeros(len(kpt.f_n), npy.float)
             else:
                 ft_m = npy.zeros(len(kpt.f_n), npy.complex)
-            for m in argsort:
-                nosf = 0
+            nosf = 0
+            for m in argsort[::-1]:
                 if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
                     kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
                     ft_m[m] = Porb_n[m]
