@@ -1,6 +1,6 @@
 """Utilities to measure and estimate memory"""
 
-# The functions  _VmB, memory, resident, and stacksize are based on 
+# The functions  _VmB, memory, resident, and stacksize are based on
 # Python Cookbook, recipe number 286222
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/286222
 
@@ -62,7 +62,7 @@ def maxrss():
 
     # no more idea
     return 0.0
- 
+
 def estimate_memory(paw):
 
     scales = {'GB': 1024.0**3,
@@ -92,37 +92,37 @@ def estimate_memory(paw):
         print >> out, "----------------------------------"
 
     # initial overhead (correct probably only in linux)
-    mem = memory()
-    print >> out, "Initial overhead:                 %.3f" % (mem/scale)
+    mem = memory()/scale
+    print >> out, "Initial overhead:                 %.3f" % (mem)
     # coarse grid size
     grid_size = n_c[0] * n_c[1] * n_c[2]
     # density object
-    mem_density = grid_size * 8 * (1 + nspins)
-    mem_density += grid_size * (1 + nspins)
-    mem_density += grid_size * (nspins - 1)
+    mem_density = (grid_size * 8 * (1 + nspins))/scale
+    mem_density += (grid_size * (1 + nspins))/scale
+    mem_density += (grid_size * (nspins - 1))/scale
     # interpolator
-    mem_density += grid_size * 5
+    mem_density += (grid_size * 5)/scale
     mem_density *= float_size
-    print >> out, "Density object:                   %.3f" % (mem_density/scale)
+    print >> out, "Density object:                   %.3f" % (mem_density)
     mem += mem_density
 
     # hamiltonian
     # potentials
-    mem_hamilt = grid_size * nspins
-    mem_hamilt += grid_size * 8 * (1 + nspins)
+    mem_hamilt = (grid_size * nspins)/scale
+    mem_hamilt += (grid_size * 8 * (1 + nspins))/scale
     # xc (not GGA contributions)
-    mem_hamilt += grid_size * 8 * nspins
+    mem_hamilt += (grid_size * 8 * nspins)/scale
     # restrictor
-    mem_hamilt += grid_size * 12
+    mem_hamilt += (grid_size * 12)/scale
     # Poisson (rhos, phis, residuals, interpolators, restrictors)
     # Multigrid adds a factor of 1.14
-    mem_hamilt += grid_size * 8 * 4 * 1.14
-    mem_hamilt += grid_size * 6 * 1.14
-    mem_hamilt += grid_size * 12 * 1.14
+    mem_hamilt += (grid_size * 8 * 4 * 1.14)/scale
+    mem_hamilt += (grid_size * 6 * 1.14)/scale
+    mem_hamilt += (grid_size * 12 * 1.14)/scale
     mem_hamilt *= float_size
     # Laplacian
-    mem_hamilt += grid_size * type_size
-    print >> out, "Hamiltonian object:               %.3f" % (mem_hamilt/scale)
+    mem_hamilt += grid_size / scale * type_size
+    print >> out, "Hamiltonian object:               %.3f" % (mem_hamilt)
     mem += mem_hamilt
 
     # Localized functions. Normally 1 value + 3 derivatives + 1 work array
@@ -132,50 +132,50 @@ def estimate_memory(paw):
         ni = nucleus.get_number_of_partial_waves()
         np = ni * (ni + 1) // 2
         # D_sp and H_sp
-        mem_nuclei[nucleus.rank] += 2 * nspins * np * float_size
+        mem_nuclei[nucleus.rank] += (2 * nspins * np * float_size)/scale
         # P_uni
-        mem_nuclei[nucleus.rank] += nmyu * nbands * ni * type_size
-        # projectors 
+        mem_nuclei[nucleus.rank] += (nmyu * nbands * ni * type_size)/scale
+        # projectors
         box = 2 * nucleus.setup.pt_j[0].get_cutoff() / h_c
         # func + derivatives
-        mem_nuclei[nucleus.rank] += 4 * ni * box[0] * box[1] * box[2] * float_size
+        mem_nuclei[nucleus.rank] += (4 * ni * box[0] * box[1] * box[2] * float_size)/scale
         # work
-        mem_nuclei[nucleus.rank] += box[0] * box[1] * box[2] * type_size
+        mem_nuclei[nucleus.rank] += (box[0] * box[1] * box[2] * type_size)/scale
         # vbar
         box = 4 * nucleus.setup.vbar.get_cutoff() / h_c
-        mem_nuclei[nucleus.rank] += 5 * box[0] * box[1] * box[2] * float_size
+        mem_nuclei[nucleus.rank] += (5 * box[0] * box[1] * box[2] * float_size)/scale
         # step
-        mem_nuclei[nucleus.rank] += 2 * box[0] * box[1] * box[2] * float_size
+        mem_nuclei[nucleus.rank] += (2 * box[0] * box[1] * box[2] * float_size)/scale
         # ghat and vhat
         box = 4 * nucleus.setup.ghat_l[0].get_cutoff() / h_c
         nl = 0
         for ghat in nucleus.setup.ghat_l:
             l = ghat.get_angular_momentum_number()
             nl += 2 * l + 1
-        mem_nuclei[nucleus.rank] += 4 * nl * box[0] * box[1] * box[2] * float_size
-        mem_nuclei[nucleus.rank] += box[0] * box[1] * box[2] * float_size
+        mem_nuclei[nucleus.rank] += (4 * nl * box[0] * box[1] * box[2] * float_size)/scale
+        mem_nuclei[nucleus.rank] += (box[0] * box[1] * box[2] * float_size)/scale
         # nct
         box = 2 * nucleus.setup.nct.get_cutoff() / h_c
-        mem_nuclei[nucleus.rank] += 5 * box[0] * box[1] * box[2] * float_size
+        mem_nuclei[nucleus.rank] += (5 * box[0] * box[1] * box[2] * float_size)/scale
 
     mem_nuclei = max(mem_nuclei)
-    print >> out, "Localized functions:              %.3f" % (mem_nuclei/scale)
+    print >> out, "Localized functions:              %.3f" % (mem_nuclei)
     mem += mem_nuclei
 
     #eigensolver (estimate for RMM-DIIS, CG higher)
     #preconditioner
-    mem_eigen = grid_size * 4
+    mem_eigen = (grid_size * 4)/scale
     # Htpsit + dR + 1 temp for subspace diagonalization !!!remember to add
-    mem_eigen += (nbands + 1) * grid_size
-    mem_eigen += nbands**2
+    mem_eigen += (nbands + 1) / scale * grid_size
+    mem_eigen += nbands / scale * nbands
     mem_eigen *= type_size
-    print >> out, "Eigensolver:                      %.3f" % (mem_eigen/scale)
+    print >> out, "Eigensolver:                      %.3f" % (mem_eigen)
     mem += mem_eigen
 
     # Wave functions
-    mem_wave_functions = nmyu * nbands * grid_size
+    mem_wave_functions = nmyu * nbands / scale * grid_size
     mem_wave_functions *= type_size
-    print >> out, "Wave functions:                   %.3f" % (mem_wave_functions/scale)
+    print >> out, "Wave functions:                   %.3f" % (mem_wave_functions)
     mem += mem_wave_functions
 
     # temporary data in initialization
@@ -187,15 +187,14 @@ def estimate_memory(paw):
         box_size = min(grid_size, box_size)
         nao = nucleus.setup.niAO
         nao_tot += nao
-        mem_temp[nucleus.rank] += 2 * nao * box_size
+        mem_temp[nucleus.rank] += (2 * nao * box_size)/scale
     mem_temp = max(mem_temp)
-    print >> out, "Atomic orbitals:                  %.3f" % (mem_temp * type_size/scale)
+    print >> out, "Atomic orbitals:                  %.3f" % (mem_temp * type_size)
 
-    mem_temp += (nao_tot ) * grid_size
-    mem_temp += (nao_tot - nbands) * grid_size
+    mem_temp += nao_tot / scale * grid_size
+    mem_temp += (nao_tot - nbands) / scale * grid_size
     mem_temp *= type_size
-    print >> out, "Temp. for initial wave functions: %.3f" % (mem_temp/scale)
+    print >> out, "Temp. for initial wave functions: %.3f" % (mem_temp)
     mem += mem_temp
-    mem /= scale
     print >> out, "Total:                            %.3f %s" % (mem, scalename)
     print >> out
