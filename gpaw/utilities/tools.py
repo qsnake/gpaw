@@ -137,11 +137,12 @@ def coordinates(gd):
     return xyz, r2
 
 def pick(a_ix, i):
+    """Take integer index of a, or a linear combination of the elements of a"""
     if isinstance(i, int):
         return a_ix[i]
     shape = a_ix.shape
-    a_x = npy.dot(i, a_ix.reshape(shape[0], -1))
-    return npy.reshape(a_x, shape)
+    a_x = npy.dot(i, a_ix[:].reshape(shape[0], -1))
+    return npy.reshape(a_x, shape[1:])
 
 def dagger(a):
     """Return Hermitian conjugate of input"""

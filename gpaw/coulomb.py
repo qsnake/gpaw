@@ -5,8 +5,8 @@ from numpy.fft import fftn
 
 from pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
-from gpaw.utilities import unpack
-from gpaw.utilities.tools import pick, construct_reciprocal
+from gpaw.utilities import pack, unpack
+from gpaw.utilities.tools import pick, construct_reciprocal, dagger
 from gpaw.utilities.complex import real
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.blas import r2k
@@ -29,7 +29,7 @@ def get_vxc(paw, spin):
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
         P_ni = nucleus.P_uni[spin]
-        Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, num.transpose(P_ni)))
+        Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, P_ni.T))
     return Vxc_nn * paw.Ha
 
 
@@ -184,31 +184,34 @@ class Coulomb4:
         self.rhot12_g = paw.finegd.empty()
         self.rhot34_g = paw.finegd.empty()
         self.psum = paw.gd.comm.sum
+        self.my_nuclei = paw.my_nuclei
+        self.u = spin
 
-        coulomb = Coulomb(paw.finegd, poisson=paw.poisson)
+        coulomb = Coulomb(paw.finegd, poisson=paw.hamiltonian.poisson)
         coulomb.load(method)
-        self.metod = method
+        self.method = method
         self.coulomb = coulomb.coulomb
         
-    def get_integral(n1, n2, n3, n4):
-        rho12_g = self.rho12_g
+    def get_integral(self, n1, n2, n3, n4):
+        rhot12_g = self.rhot12_g
         rhot12_g[:] = 0.0
         self.pd.initialize(self.kpt, n1, n2)
         self.pd.get_coarse(self.nt12_G)
         self.pd.add_compensation_charges(self.nt12_G, rhot12_g)
         
-        if n3 == n1 and n4 == n2:
-            rho34_g = None
+        if npy.all(n3 == n1) and npy.all(n4 == n2):
+            rhot34_g = None
         else:
-            rho34_g = self.rho34_g
+            rhot34_g = self.rhot34_g
             rhot34_g[:] = 0.0
             self.pd.initialize(self.kpt, n3, n4)
             self.pd.get_coarse(self.nt34_G)
             self.pd.add_compensation_charges(self.nt34_G, rhot34_g)
 
         # smooth part
-        I = self.coulomb(rho12_g, rho34_g,
-                         float(n1==n2), float(n3==n4), method=self.method)
+        Z12 = float(npy.all(n1 == n2))
+        Z34 = float(npy.all(n3 == n4))
+        I = self.coulomb(rhot12_g, rhot34_g, Z12, Z34, self.method)
         
         # Add atomic corrections
         Ia = 0.0
@@ -221,6 +224,59 @@ class Coulomb4:
             D12_p = pack(npy.outer(pick(P_ni, n1), pick(P_ni, n2)), 1e3)
             D34_p = pack(npy.outer(pick(P_ni, n3), pick(P_ni, n4)), 1e3)
             Ia += 2 * npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
+        #print I, Ia
         I += self.psum(Ia)
 
         return I
+
+
+def wannier_coulomb_integrals(paw, U_nj, spin):
+    # Returns the direct Coulomb integrals
+    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}|w_i(r)|^2 |w_j(r')|^2
+    # as well as the exchange integrals (if exchange=1)
+    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}w_i(r)^*w_j(r')^*w_j(r)w_i(r')
+    # and the iijj-integrals
+    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}w_i(r)^*w_i(r')^*w_j(r)w_j(r')
+    # and the semi-exchange integrals
+    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}w_i(r)^*w_i(r')^*w_i(r)w_j(r')
+    # Note that both the direct and the exchange matrices are symmetric
+
+    vxc_jj = npy.dot(dagger(U_nj), npy.dot(get_vxc(paw, spin), U_nj))
+    coulomb4 = Coulomb4(paw, spin).get_integral
+    nwannier = U_nj.shape[1]
+    Hartree = paw.Ha
+                          
+    V_direct       = npy.zeros([nwannier, nwannier], complex)
+    V_exchange     = npy.zeros([nwannier, nwannier], complex)
+    V_iijj         = npy.zeros([nwannier, nwannier], complex)
+    V_semiexchange = npy.zeros([nwannier, nwannier], complex)
+    
+    for i in range(nwannier):
+        ni = U_nj[:, i]
+        for j in range(i, nwannier):
+            nj = U_nj[:, j]
+            print "Doing Coulomb integrals for orbitals", i, j
+
+            # V_{ij,ij}
+            V_direct[i, j] = coulomb4(ni, ni, nj, nj) * Hartree
+                
+            # V_{ij,ji}    
+            V_exchange[i, j] = coulomb4(ni, nj, nj, ni) * Hartree
+
+            # V_{ii,jj}
+            V_iijj[i, j] = coulomb4(ni, nj, ni, nj) * Hartree
+
+            # V_{ii,ij}
+            V_semiexchange[i, j] = coulomb4(ni, ni, ni, nj) * Hartree
+
+            # V_{jj,ji}
+            V_semiexchange[j, i] = coulomb4(nj, nj, nj, ni) * Hartree
+
+    # Fill out lower triangle of V_direct and V_exchange and V_iijj
+    for i in range(nwannier):
+        for j in range(i):
+            V_direct[i, j] = V_direct[j, i]
+            V_exchange[i, j] = V_exchange[j, i]
+            V_iijj[i, j] = npy.conjugate(V_iijj[j, i])
+
+    return vxc_jj, V_direct, V_exchange, V_iijj, V_semiexchange
