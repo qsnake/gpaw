@@ -3,10 +3,35 @@ from math import pi
 import numpy as npy
 from numpy.fft import fftn
 
-from gpaw.utilities.complex import real
+from pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
+from gpaw.utilities import unpack
+from gpaw.utilities.tools import pick, construct_reciprocal
+from gpaw.utilities.complex import real
 from gpaw.utilities.gauss import Gaussian
-from gpaw.utilities.tools import construct_reciprocal
+from gpaw.utilities.blas import r2k
+
+
+def get_vxc(paw, spin):
+    """Calculate matrix elements of the xc-potential."""
+    psit_nG = paw.kpt_u[spin].psit_nG[:]
+    nt_g = paw.density.nt_sg[spin]
+    vxct_g = paw.finegd.empty()
+    paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
+    vxct_G = paw.gd.empty()
+    paw.hamiltonian.restrict(vxct_g, vxct_G)
+    Vxc_nn = npy.zeros((paw.nbands, paw.nbands))
+    r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
+    for nucleus in paw.my_nuclei:
+        D_sp = nucleus.D_sp
+        H_sp = 0.0 * D_sp
+        nucleus.setup.xc_correction.calculate_energy_and_derivatives(
+            D_sp, H_sp)
+        H_ii = unpack(H_sp[spin])
+        P_ni = nucleus.P_uni[spin]
+        Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, num.transpose(P_ni)))
+    return Vxc_nn * paw.Ha
+
 
 class Coulomb:
     """Class used to evaluate coulomb integrals"""
@@ -54,6 +79,7 @@ class Coulomb:
                     solver = PoissonSolver(nn=2)
                     solver.initialize(self.gd, load_gauss=True)
                     self.solve = solver.solve
+
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):
         """Evaluates the coulomb integral of n1 and n2
@@ -133,39 +159,56 @@ class Coulomb:
             return self.gd.integrate(I)
 
 
-import numpy as npy
-from pair_density import PairDensity2 as PairDensity
-from gpaw.utilities.tools import pick
 class Coulomb4:
-    """Determine four-index Coulomb integrals."""
-    def __init__(self, paw, spin):
+    """Determine four-index Coulomb integrals::
+
+                                             *
+                            /    /      rho12(r) rho34(r')
+          (n1 n2 | n3 n4) = | dr | dr'  ------------------,
+                            /    /            |r - r'|
+                                                *     *
+                            /    /      w1(r) w2(r) w3(r') w4(r')
+                          = | dr | dr'  -------------------------,
+                            /    /               |r - r'|
+
+    where::
+
+                       *
+          rho12(r) = w1(r) w2(r)
+    """
+    def __init__(self, paw, spin, method='recip_gauss'):
         self.kpt = paw.kpt_u[spin]
         self.pd = PairDensity(paw, finegrid=True)
         self.nt12_G = paw.gd.empty()
         self.nt34_G = paw.gd.empty()
         self.rhot12_g = paw.finegd.empty()
         self.rhot34_g = paw.finegd.empty()
-        self.phit34_g = paw.finegd.empty()
-        self.poisson = paw.poisson.solve
-        self.integrate = paw.finegd.integrate
         self.psum = paw.gd.comm.sum
+
+        coulomb = Coulomb(paw.finegd, poisson=paw.poisson)
+        coulomb.load(method)
+        self.metod = method
+        self.coulomb = coulomb.coulomb
         
     def get_integral(n1, n2, n3, n4):
+        rho12_g = self.rho12_g
+        rhot12_g[:] = 0.0
         self.pd.initialize(self.kpt, n1, n2)
         self.pd.get_coarse(self.nt12_G)
-        self.rhot12_g[:] = 0.0
-        self.pd.add_compensation_charges(self.nt12_G, self.rhot12_g)
+        self.pd.add_compensation_charges(self.nt12_G, rhot12_g)
         
-        self.pd.initialize(self.kpt, n3, n4)
-        self.pd.get_coarse(self.nt34_G)
-        self.rhot34_g[:] = 0.0
-        self.pd.add_compensation_charges(self.nt34_G, self.rhot34_g)
-
-        self.poisson(self.phit34_g, self.rhot34_g,
-                     charge=None, zero_initial_phi=True)
+        if n3 == n1 and n4 == n2:
+            rho34_g = None
+        else:
+            rho34_g = self.rho34_g
+            rhot34_g[:] = 0.0
+            self.pd.initialize(self.kpt, n3, n4)
+            self.pd.get_coarse(self.nt34_G)
+            self.pd.add_compensation_charges(self.nt34_G, rhot34_g)
 
         # smooth part
-        I = self.integrate(self.rhot12_g * self.phit34_g)
+        I = self.coulomb(rho12_g, rho34_g,
+                         float(n1==n2), float(n3==n4), method=self.method)
         
         # Add atomic corrections
         Ia = 0.0
@@ -181,26 +224,3 @@ class Coulomb4:
         I += self.psum(Ia)
 
         return I
-
-from gpaw.utilities import unpack
-from gpaw.utilities.blas import r2k
-
-def get_vxc(paw, spin):
-    """Calculate matrix elements of the xc-potential."""
-    psit_nG = paw.kpt_u[spin].psit_nG[:]
-    nt_g = paw.density.nt_sg[spin]
-    vxct_g = paw.finegd.empty()
-    paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
-    vxct_G = paw.gd.empty()
-    paw.hamiltonian.restrict(vxct_g, vxct_G)
-    Vxc_nn = npy.zeros((paw.nbands, paw.nbands))
-    r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
-    for nucleus in paw.my_nuclei:
-        D_sp = nucleus.D_sp
-        H_sp = 0.0 * D_sp
-        nucleus.setup.xc_correction.calculate_energy_and_derivatives(
-            D_sp, H_sp)
-        H_ii = unpack(H_sp[spin])
-        P_ni = nucleus.P_uni[spin]
-        Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, num.transpose(P_ni)))
-    return Vxc_nn * paw.Ha
