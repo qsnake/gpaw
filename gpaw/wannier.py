@@ -67,7 +67,7 @@ class LocFun(Wannier):
             projections = single_zeta(calc, self.spin)
         
         U_nj, self.S_jj = get_locfun_rotation(projections, N, ortho)
-        Z_nnc = npy.empty(S_jj.shape + (3,))
+        Z_nnc = npy.empty(self.S_jj.shape + (3,))
         for c in range(3):
             Z_nnc[:, :, c] = npy.dot(dagger(U_nj),
                                      npy.dot(self.Z_nnc[:, :, c], U_nj))
@@ -109,7 +109,8 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
     # Check for linear dependencies
     Scd = npy.diagonal(npy.linalg.cholesky(S_jj))
     if Scd.min() < 0.01:
-        print "Warning: possibly near linear depedence"
+        print ('Warning: possibly near linear depedence.\n'
+               'Minimum eigenvale of cholesky decomposition is', Scd.min())
 
     if ortho:
         ap_nj = lowdin(ap_nj, S_jj)
@@ -132,3 +133,4 @@ def single_zeta(paw, spin):
     projections_nj = dagger(npy.array(p_jn))
     assert projections_nj.shape[0] >= projections_nj.shape[1]
     return projections_nj
+
