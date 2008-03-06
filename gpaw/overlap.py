@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2008  CSC Scientific Computing Ltd.
-
 # Please see the accompanying LICENSE file for further information.
 
 """This module defines an Overlap operator.
@@ -20,16 +19,16 @@ from gpaw.utilities import swap
 class Overlap:
     """Overlap operator class.
 
-    Attributes:
-    =============== =====================================================
-    ``nuclei``      List of ``Nucleus`` objects.
-    ``my_nuclei``   List of ``Nucleus`` objects whose centers are
-                    in the current domain.
-    ``pt_nuclei``   List of ``Nucleus`` objects whose projector functions
-                    overlap the current domain.
-    ``dtype``    Numerical type of operator (real/complex)
-    =============== =====================================================
-
+    Attributes
+    ==========
+    nuclei: list of Nucleus objects
+        All nuclei.
+    my_nuclei: list of Nucleus objects
+        Nuclei with centers in the current domain.
+    pt_nuclei: list of Nucleus objects
+        Nuclei with projector functions overlapping the current domain.
+    dtype: type object
+        Numerical type of operator (float/complex)
     """
 
     def __init__(self, paw):
@@ -47,17 +46,17 @@ class Overlap:
         """Apply the overlap operator to a set of vectors.
 
         Parameters
-        ..........
-        a_nG           : ndarray, input
+        ==========
+        a_nG: ndarray
             Set of vectors to which the overlap operator is applied.
-        b_nG           : ndarray, output
+        b_nG: ndarray, output
             Resulting S times a_nG vectors.
-        kpt            : KPoint object (kpoint.py), input
-
-        calculate_P_uni: boolean, input
+        kpt: KPoint object
+            k-point object defined in kpoint.py.
+        calculate_P_uni: bool
             When True, the integrals of projector times vectors
             P_ni = <p_i | a_nG> are calculated.
-            When false, existing P_uni are used
+            When False, existing P_uni are used
         
         """
 
@@ -82,21 +81,23 @@ class Overlap:
     def orthonormalize(self, a_nG, kpt, work_nG=None, work_nn=None):
         """Orthonormalizes the vectors a_nG with respect to the overlap.
 
-        First, a Cholesky factorization C is done for the overlap matrix
-        S_nn = <a_nG | S | a_nG> = C*_nn C_nn
-        Cholesky matrix C is inverted and orthonormal vectors a_nG' are obtained as
-        a_nG' = inv(C_nn) a_nG
+        First, a Cholesky factorization C is done for the overlap
+        matrix S_nn = <a_nG | S | a_nG> = C*_nn C_nn Cholesky matrix C
+        is inverted and orthonormal vectors a_nG' are obtained as::
+
+          a_nG' = inv(C_nn) a_nG
         
         Parameters
         ----------
-        a_nG           : ndarray, input/output
+        a_nG: ndarray, input/output
             On input the set of vectors to orthonormalize,
             on output the overlap-orthonormalized vectors.
-        kpt            : KPoint object (kpoint.py), input
-        work_nG           : ndarray, input
-            Optional work array for overlap matrix times a_nG
-        work_nn           : ndarray, input
-            Optional work array for overlap matrix
+        kpt: KPoint object:
+            k-point object from kpoint.py.
+        work_nG: ndarray
+            Optional work array for overlap matrix times a_nG.
+        work_nn: ndarray
+            Optional work array for overlap matrix.
 
         """
 

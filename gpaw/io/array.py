@@ -81,9 +81,9 @@ def load_array(file, comments='#', delimiter=None, converters={},
                skiprows=[], skipcols=[], dtype='O', transpose=False):
     """Load array from ascii file.
 
-    ============== =========================================================
+    ============== ===========================================================
     Argument       Description
-    ============== =========================================================
+    ============== ===========================================================
     ``file``       Filehandle, or filename (string).
                    Support for gzipped files is automatic, if the filename
                    ends in .gz.
@@ -111,7 +111,7 @@ def load_array(file, comments='#', delimiter=None, converters={},
     ``skipcols``   A sequence of integer column indices to skip, where 0 is
                    the first column.
     
-    ``dtype``   The dtype of the output array. Use 'list' if you do
+    ``dtype``      The dtype of the output array. Use 'list' if you do
                    not want the data array to be converted to a Numeric array.
                    The dtype 'O' (for object), should be used if not all
                    of the elements are numbers.
@@ -120,7 +120,7 @@ def load_array(file, comments='#', delimiter=None, converters={},
                    assigned to different variables. Eg.::
 
                     >>> col1, col2 = load('data.txt', transpose=True)
-    ============== =========================================================
+    ============== ===========================================================
 
     """
     # Open file using gzip if necessary

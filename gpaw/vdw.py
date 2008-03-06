@@ -89,12 +89,8 @@ class VanDerWaals:
         p.show()
         
     def get_energy(self, ncut=0.0005):
-        """
-        ###################################################
         #introduces periodic boundary conditions using
         #the minimum image convention
-        ###################################################
-        """
 
         gd = self.gd
         n_g = gd.collect(self.n_g)

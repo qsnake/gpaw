@@ -3,6 +3,7 @@ from numpy.fft import fft, inverse_fft
 
 """
 Methods for perfoming the Hilbert transform of a function::
+
                      +oo
             1       /     f(x) 
   H[f](y) = -- p.v. | dx -----
@@ -12,7 +13,8 @@ Methods for perfoming the Hilbert transform of a function::
 
 def hilbert_kernel_simple(n):
     """Construct Hilbert kernel with n grid points.
-       This is just the discrete Fourier transform of 1 / x.
+    
+    This is just the discrete Fourier transform of 1 / x.
     """
     ker = npy.zeros(n, dtype=complex)
     ker[1: n / 2] = 1.j
@@ -21,8 +23,9 @@ def hilbert_kernel_simple(n):
 
 def hilbert_kernel_interpolate(n):
     """Construct Hilbert kernel with n grid points.
-       This is just the discrete Hilbert transform of the linear
-       interpolation kernel L(s) = (1 - |s|) Heaviside(1 - |s|).
+    
+    This is just the discrete Hilbert transform of the linear
+    interpolation kernel `L(s) = (1 - |s|) Heaviside(1 - |s|)`.
     """
     # middle grid point
     mid = (n + 1) / 2

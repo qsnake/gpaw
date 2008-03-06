@@ -215,8 +215,8 @@ class LocFuncs:
 
         If broadcast is True, there will be two more steps:
 
-        4. Root-node sends and non-root nodes receive.
-        5. Wait.
+        1. Root-node sends and non-root nodes receive.
+        2. Wait.
         """
 
         ndomains = len(self.ranks)

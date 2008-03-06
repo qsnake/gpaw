@@ -614,12 +614,11 @@ class AllElectron:
         
         Returns a (potential) function which is zero inside the radius ri
         and goes to infinity smoothly at rc, after which point it is nan.
-        The potential is given by
+        The potential is given by::
 
-
-                 alpha         /   rc - ri \
-        V(r) = --------   exp ( - --------- )   for   ri < r < rc
-                rc - r         \    r - ri /
+                   alpha         /   rc - ri \
+          V(r) = --------   exp ( - --------- )   for   ri < r < rc
+                  rc - r         \    r - ri /
 
         """
         i_ri = self.r2g(ri)

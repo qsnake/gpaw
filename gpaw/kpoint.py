@@ -19,60 +19,71 @@ from gpaw.utilities.lapack import diagonalize
 from gpaw.polynomial import Polynomial
 
 class KPoint:
-    """Class for a singel **k**-point.
+    """Class for a singel k-point.
 
-    The ``KPoint`` class takes care of all wave functions for a
-    certain **k**-point and a certain spin."""
+    The KPoint class takes care of all wave functions for a
+    certain k-point and a certain spin.
+
+    Attributes
+    ==========
+    phase_cd: complex ndarray
+        Bloch phase-factors for translations - axis c=0,1,2
+        and direction d=0,1.
+    eps_n: float ndarray
+        Eigenvalues.
+    f_n: float ndarray
+        Occupation numbers.
+    psit_nG: ndarray
+        Wave functions.
+    nbands: int
+        Number of bands.
+
+    Parallel stuff
+    ==============
+    comm: Communicator object
+        MPI-communicator for domain.
+    root: int
+        Rank of the CPU that does the matrix diagonalization of
+        H_nn and the Cholesky decomposition of S_nn.
+    """
     
     def __init__(self, gd, weight, s, k, u, k_c, dtype, timer=None):
-        """Construct **k**-point object.
+        """Construct k-point object.
 
-        Parameters:
-         ============ =======================================================
-         ``gd``       Descriptor for wave-function grid.
-         ``weight``   Weight of this **k**-point.
-         ``s``        Spin index: up or down (0 or 1).
-         ``k``        **k**-point index.
-         ``u``        Combined spin and **k**-point index.
-         ``k_c``      scaled **k**-point vector (coordinates scaled to
-                      [-0.5:0.5] interval).
-         ``dtype`` Data type of wave functions (``Float`` or ``Complex``).
-         ``timer``    Timer (optional)
-         ============ =======================================================
+        Parameters
+        ==========
+        gd: GridDescriptor object
+            Descriptor for wave-function grid.
+        weight: float
+            Weight of this k-point.
+        s: int
+            Spin index: up or down (0 or 1).
+        k: int
+            k-point index.
+        u: int
+            Combined spin and k-point index.
+        k_c: float-ndarray of shape (3,)
+            scaled **k**-point vector (coordinates scaled to
+            [-0.5:0.5] interval).
+        dtype: type object
+            Data type of wave functions (float or complex).
+        timer: Timer object
+            Optional.
 
-        Note that ``s`` and ``k`` are global spin/**k**-point indices,
-        whereas ``u`` is a local spin/**k**-point pair index for this
-        processor.  So if we have `S` spins and `K` **k**-points, and
-        the spins/**k**-points are parallelized over `P` processors
-        (``kpt_comm``), then we have this equation relating ``s``,
-        ``k`` and ``u``::
+        Note that s and k are global spin/k-point indices,
+        whereas u is a local spin/k-point pair index for this
+        processor.  So if we have `S` spins and `K` k-points, and
+        the spins/k-points are parallelized over `P` processors
+        (kpt_comm), then we have this equation relating s,
+        k and u::
 
            rSK
            --- + u = sK + k,
             P
 
-        where `r` is the processor rank within ``kpt_comm``.  The
-        total number of spin/**k**-point pairs, `SK`, is always a
+        where `r` is the processor rank within kpt_comm.  The
+        total number of spin/k-point pairs, `SK`, is always a
         multiple of the number of processors, `P`.
-
-        Attributes:
-         ============= =======================================================
-         ``phase_cd``  Bloch phase-factors for translations - axis ``c=0,1,2``
-                       and direction ``d=0,1``.
-         ``eps_n``     Eigenvalues.
-         ``f_n``       Occupation numbers.
-
-         ``psit_nG``   Wave functions.
-
-         ``nbands``    Number of bands.
-         ============= =======================================================
-
-        Parallel stuff:
-         ======== =======================================================
-         ``comm`` MPI-communicator for domain.
-         ``root`` Rank of the CPU that does the matrix diagonalization of
-                  ``H_nn`` and the Cholesky decomposition of ``S_nn``.
-         ======== =======================================================
         """
 
         self.weight = weight
@@ -116,8 +127,8 @@ class KPoint:
         """Adjust the number of states.
 
         If we are starting from atomic orbitals, then the desired
-        number of bands (``nbands``) will most likely differ from the
-        number of current atomic orbitals (``self.nbands``).  If this
+        number of bands (nbands) will most likely differ from the
+        number of current atomic orbitals (self.nbands).  If this
         is the case, then new arrays are allocated:
 
         * Too many bands: The bands with the lowest eigenvalues are
@@ -216,7 +227,7 @@ class KPoint:
     def create_atomic_orbitals(self, nao, nuclei):
         """Initialize the wave functions from atomic orbitals.
 
-        Create ``nao`` atomic orbitals."""
+        Create nao atomic orbitals."""
 
         # Allocate space for wave functions, occupation numbers,
         # eigenvalues and projections:
@@ -243,12 +254,13 @@ class KPoint:
 
         The function is approximated by a low-order polynomial near nuclei.
 
-        Currently supports only quadratic 
-        (actually, only linear as nucleus.apply_polynomial support only linear):
-        p(x,y,z) = a + b_x x + b_y y + b_z z 
-        .              + c_x^2 x^2 + c_xy x y
-        .              + c_y^2 y^2 + c_yz y z
-        .              + c_z^2 z^2 + c_zx z x 
+        Currently supports only quadratic (actually, only linear as
+        nucleus.apply_polynomial support only linear)::
+        
+          p(x,y,z) = a + b_x x + b_y y + b_z z 
+                       + c_x^2 x^2 + c_xy x y
+                       + c_y^2 y^2 + c_yz y z
+                       + c_z^2 z^2 + c_zx z x 
 
 
         The polynomial is constructed by making a least-squares fit to
@@ -321,8 +333,7 @@ class KPoint:
 
 
     def add_linear_xfield(self, pt_nuclei, a_nG, b_nG, strength):
-        """Adds linear x-field f(x,y,z) = str * x to wavefunctions.
-        """
+        """Adds linear x-field f(x,y,z) = str * x to wavefunctions."""
 
         # apply local part to smooth wavefunctions psit_n
         for i in range(self.gd.n_c[0]):

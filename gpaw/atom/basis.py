@@ -135,10 +135,11 @@ class BasisMaker:
     def make_split_valence_vector(self, psi_g, l, rcut):
         """Get polynomial which joins psi smoothly at rcut.
 
-        Returns an array of function values f(r) * r, where
-                l           2
-        f(r) = r  * (a - b r ),  r < rcut
-        f(r) = psi(r),           r >= rcut
+        Returns an array of function values f(r) * r, where::
+        
+                  l           2
+          f(r) = r  * (a - b r ),  r < rcut
+          f(r) = psi(r),           r >= rcut
 
         where a and b are determined such that f(r) is continuous and
         differentiable at rcut.  The parameter psi should be an atomic

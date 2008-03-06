@@ -126,11 +126,14 @@ class NonLocalFunctional:
         raise "NonLocalFunctional::get_functional_desc must be overrided"
 
     def calculate_non_local_paw_correction(self, a, s, xc_corr, v_g, vt_g):
-        """Called from XCNonLocalCorrections class to calculate the non-local paw-corrections.
-           To be implemented in subclasses of NonLocalFunctional
+        """HEADLINE ...
 
-           Note: This methods parameters are likely to change a lot in future, 
-           as I optimize the code) - Mikael
+        Called from XCNonLocalCorrections class to calculate the
+        non-local paw-corrections.  To be implemented in subclasses of
+        NonLocalFunctional
+
+        Note: This methods parameters are likely to change a lot in future, 
+        as I optimize the code) - Mikael
         """
 
         raise "NonLocalFunctional::calculate_non_local_paw_correction not implemented"
@@ -158,7 +161,7 @@ class NonLocalFunctional:
         =========== ======================================================
         Key:        Value:
         =========== ======================================================
-        dtype    For example float, if the orbitals are real
+        dtype       For example float, if the orbitals are real
         gd          The grid descriptor object for coarse grid
         finegd      The grid descriptor object for fine grid
         n_g         Numeric array for density, supplied if needs_density()

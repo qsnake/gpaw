@@ -196,17 +196,17 @@ class Hamiltonian:
         """Apply the Hamiltonian operator to a set of vectors.
 
         Parameters
-        ..........
-        a_nG           : ndarray, input
+        ==========
+        a_nG: ndarray
             Set of vectors to which the overlap operator is applied.
-        b_nG           : ndarray, output
+        b_nG: ndarray, output
             Resulting S times a_nG vectors.
-        kpt            : KPoint object (kpoint.py), input
-
-        calculate_P_uni: boolean, input
+        kpt: KPoint object
+             k-point object defined in kpoint.py.
+        calculate_P_uni: bool
             When True, the integrals of projector times vectors
             P_ni = <p_i | a_nG> are calculated.
-            When false, existing P_uni are used
+            When False, existing P_uni are used
         
         """
 

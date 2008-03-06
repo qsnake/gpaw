@@ -16,17 +16,22 @@ import numpy as npy
 from gpaw.occupations import ZeroKelvin, FermiDirac
 import gpaw.mpi as mpi
 
-def dscf_calculation(calc, orbitals, atoms = None):
+def dscf_calculation(calc, orbitals, atoms=None):
     """Helper function to prepare a calculator for a dSCF calculation
 
-    orbitals: list of orbitals which one wants to occupy. The format is
+    Parameters
+    ==========
+    orbitals: list of lists
+        Orbitals which one wants to occupy. The format is
         orbitals = [[1.0,orb1,0],[1.0,orb2,1],...], where 1.0 is the no.
         of electrons, orb1 and orb2 are the orbitals (see MolecularOrbitals
         below for an example of an orbital class). 0 and 1 represents the
         spin (up and down). This number is ignored in a spin-paired
         calculation.
 
-    Example:
+    Example
+    =======
+    
     >>> atoms.set_calculator(calc)
     >>> e_gs = atoms.get_potential_energy() #ground state energy
     >>> sigma_star=MolecularOrbitals(calc, molecule=[0,1],
@@ -121,7 +126,7 @@ class ZeroKelvinDSCF(ZeroKelvin):
         
 
 class FermiDiracDSCF(FermiDirac):
-    """ Occupation class
+    """Occupation class.
 
     Corresponds to the ordinary FermiDirac class in occupation.py. Only
     difference is that it forces some electrons in the supplied orbitals
@@ -202,7 +207,7 @@ class FermiDiracDSCF(FermiDirac):
 
 
 class MolecularOrbitals:
-    """Class to define the orbitals that should be filled in a dSCF calculation
+    """Class defining the orbitals that should be filled in a dSCF calculation.
     
     An orbital is defined through a linear combination of the atomic
     projector functions. In each self-consistent cycle the method get_ft_km
@@ -213,24 +218,26 @@ class MolecularOrbitals:
     Parameters
     ----------
     paw: gpaw calculator instance
-        The calculator used in the dSCF calculation
+        The calculator used in the dSCF calculation.
     molecule: list of integers
-        The atoms, which are a part of the molecule
+        The atoms, which are a part of the molecule.
     Estart: float
         Kohn-Sham orbitals with an energy above Efermi+Estart are used
-        in the linear expansion
+        in the linear expansion.
     Eend: float
         Kohn-Sham orbitals with an energy below Efermi+Eend are used
-        in the linear expansion
-    no_of_states: integer
+        in the linear expansion.
+    no_of_states: int
         The maximum number of Kohn-Sham orbitals used in the linear expansion.
     w: list
         The weights of the atomic projector functions.
-        Format: [[weight of 1. projector function of the 1. atom,
-                  weight of 2. projector function of the 1. atom, ...],
-                 [weight of 1. projector function of the 2. atom,
-                  weight of 2. projector function of the 2. atom, ...],
-                 ...]
+        Format::
+
+          [[weight of 1. projector function of the 1. atom,
+            weight of 2. projector function of the 1. atom, ...],
+           [weight of 1. projector function of the 2. atom,
+            weight of 2. projector function of the 2. atom, ...],
+           ...]
     """
 
     def __init__(self, paw, molecule=[0,1], Estart=0.0, Eend=1.e6,

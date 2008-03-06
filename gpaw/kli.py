@@ -120,7 +120,7 @@ class NonLocalFunctional:
            =========== =================================================
            Key:        Value:
            =========== =================================================
-           dtype    For example float, if the orbitals are real
+           dtype       For example float, if the orbitals are real
            gd          The grid descriptor object for coarse grid
            finegd      The grid descriptor object for fine grid
            n_g         Numeric array for density, supplied if
