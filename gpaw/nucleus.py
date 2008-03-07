@@ -398,7 +398,7 @@ class Nucleus:
             Epot = U + s.M + npy.dot(D_p, (s.M_p + npy.dot(s.M_pp, D_p)))
 
             if s.HubU is not None:
-                print '-----'
+##                 print '-----'
                 nspins = len(self.D_sp)
                 i0 = s.Hubi
                 i1 = i0 + 2 * s.Hubl + 1
@@ -406,11 +406,11 @@ class Nucleus:
                     N_mm = unpack2(D_p)[i0:i1, i0:i1] / 2 * nspins 
                     Eorb = s.HubU/2. * (N_mm - npy.dot(N_mm,N_mm)).trace()
                     Vorb = s.HubU * (0.5 * npy.eye(i1-i0) - N_mm)
-                    print '========='
-                    print 'occs:',npy.diag(N_mm)
-                    print 'Eorb:',Eorb
-                    print 'Vorb:',npy.diag(Vorb)
-                    print '========='
+##                     print '========='
+##                     print 'occs:',npy.diag(N_mm)
+##                     print 'Eorb:',Eorb
+##                     print 'Vorb:',npy.diag(Vorb)
+##                     print '========='
                     Exc += Eorb                    
                     Htemp = unpack(H_p)
                     Htemp[i0:i1,i0:i1] += Vorb
