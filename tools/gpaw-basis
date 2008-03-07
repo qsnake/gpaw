@@ -14,12 +14,13 @@ parser.add_option('-t', '--type', default='dz', metavar='<type>',
 parser.add_option('-E', '--energy-shift', metavar='<energy>', type='float',
                   default=.3,
                   help='use given energy shift to determine cutoff')
-parser.add_option('-T', '--tail-norm', metavar='<norm>', type='float',
-                  default=.15, dest='tailnorm',
+parser.add_option('-T', '--tail-norm', metavar='<norm>', type='str',
+                  default='.15,.3,.5', dest='tailnorm',
                   help='use the given fraction to define the split'+
-                  '-valence cutoff')
-#parser.add_option('-P', '--plot', action='store_true',
-#                  help='plot basis functions')
+                  '-valence cutoff.  To specify multiple cutoffs, '+
+                  'write: norm1,norm2,...')
+parser.add_option('-P', '--plot', action='store_true',
+                  help='plot basis functions')
 parser.add_option('-N', '--no-files', action='store_true',
                   help='Do not write basis function files')
 parser.add_option('--rcut-max', type='float', default=16., metavar='rcut',
@@ -29,18 +30,43 @@ parser.add_option('--rcut-max', type='float', default=16., metavar='rcut',
 parser.add_option('--rcut-pol-rel', type='float', default=1.0, metavar='rcut',
                   help='polarization function cutoff relative to largest'+
                   ' single-zeta cutoff [default: %default]')
+parser.add_option('--gaussians', type='int', metavar='n',
+                  help='Use the specified number of Gaussians for '+
+                  'polarization functions.')
+parser.add_option('-X', '--exclude', action='store_true',
+                  help='Generate basis sets for all g2 elements, excluding '+
+                  'those specified')
 parser.add_option('--debug', action='store_true',
                   help='Use gpaw-DEBUG mode')
 
 opts, args = parser.parse_args()
 
-if __name__ == '__main__' and len(args) == 0:
+if __name__ == '__main__' and len(args) == 0 and not opts.exclude:
     parser.print_help()
     sys.exit(0)
 
 from gpaw.atom.generator import Generator
 from gpaw.atom.basis import BasisMaker
 from gpaw.atom import polarization
+
+if opts.exclude: # Invert selection of elements
+    from gpaw.testing import g2
+    # If the user specifies N:<reference_system> then remember that
+    # because we don't want to exclude those
+    special_args = [arg for arg in args if ':' in arg]
+
+    # List of the actual element names in argv
+    elements = [arg.split(':')[0] for arg in args]
+    inverted_args = [arg for arg in g2.atoms.keys() if not arg in elements]
+    inverted_args.remove('Mg') # g2 contains no Mg reference systems
+
+    # Now re-add those we remembered earlier
+    inverted_args.extend(special_args)
+
+    args = inverted_args
+    if len(args) == 0:
+        print 'Another job well done!'
+        sys.exit(0)
 
 def parse_basis_name(name):
     """Parse any basis type identifier: 'sz', 'dzp', 'qztp', '4z3p', ... """
@@ -95,27 +121,26 @@ def main():
         generator = Generator(symbol, txt=None)
         bm = BasisMaker(generator, name)
 
-        #if opts.no_files:
-            #txt = '-'
-            #figfile = None
-        #else:
-            #txt = open('%s.%s.txt' % (symbol, name), 'w')
-            #figfile = '%s.%s.png' % (symbol, name)
-        basis = bm.generate(zetacount, polcount, tailnorm=opts.tailnorm,
+        if opts.no_files:
+            figfile = None
+        else:
+            figfile = '%s.%s.png' % (symbol, name)
+        tailnorm = [float(norm) for norm in opts.tailnorm.split(',')]
+        basis = bm.generate(zetacount, polcount,
+                            tailnorm=tailnorm,
                             energysplit=opts.energy_shift,
                             referencefile=referencefile,
                             referenceindex=referenceindex,
                             rcutpol_rel=opts.rcut_pol_rel,
-                            rcutmax=opts.rcut_max)#,
-                            #txt=txt)
-#        if opts.plot:
-#            bm.plot(basis, title=referencefile, filename=figfile)
-#            bm.plot(basis.bf_j, title=referencefile)
+                            rcutmax=opts.rcut_max,
+                            ngaussians=opts.gaussians)
+        if opts.plot:
+            bm.plot(basis, title=referencefile, filename=figfile)
         if not opts.no_files:
             basis.write_xml()
-    #if opts.plot and opts.no_files:
-    #    import pylab
-    #    pylab.show()
+    if opts.plot and opts.no_files:
+        import pylab
+        pylab.show()
 
 if __name__ == '__main__':    
     main()
