@@ -51,7 +51,7 @@ class Wannier:
     def get_hamiltonian(self, calc):
         # U^T diag(eps_n) U
         eps_n = calc.get_eigenvalues(kpt=0, spin=self.spin)
-        npy.dot(self.U_nn.T * eps_n, self.U_nn)
+        return npy.dot(self.U_nn.T * eps_n, self.U_nn)
 
 
 class LocFun(Wannier):

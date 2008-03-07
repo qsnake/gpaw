@@ -208,14 +208,13 @@ class Calculator(PAW):
         """Return eigenvalue array."""
         return self.collect_eigenvalues(kpt, spin) * self.Ha
 
-    def GetWannierLocalizationMatrix(self, nbands, dirG, kpoint,
-                                     nextkpoint, G_I, spin):
+    def get_wannier_localization_matrix(self, nbands, Gdir_c, kpoint,
+                                        nextkpoint, k0_c, spin):
         """Calculate integrals for maximally localized Wannier functions."""
 
         # Due to orthorhombic cells, only one component of dirG is non-zero.
-        c = dirG.index(1)
-        kpts = self.GetBZKPoints()
-        G = kpts[nextkpoint, c] - kpts[kpoint, c] + G_I[c]
+        c = Gdir_c.tolist().index(1)
+        G = self.bzk_kc[nextkpoint, c] - self.bzk_kc[kpoint, c] + k0_c[c]
 
         return self.get_wannier_integrals(c, spin, kpoint, nextkpoint, G)
 
