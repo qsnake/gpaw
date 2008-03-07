@@ -751,6 +751,7 @@ generate a good initial guess for the density).
 def shoot_confined(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False,
                    gmax=None, rc=10., beta=7.):
     """This method is used by the solve_confined method."""
+    # XXX much of this is pasted from the ordinary shoot method
 
     if scalarrel:
         x = 0.5 * alpha**2 # x = 1 / (2c^2)
@@ -777,7 +778,7 @@ guess for the density).
     f0 = c0 - 2 * c2
 
     if gmax is None:
-        gcut = int(round(rc * len(r) / (beta + rc)))
+        gcut = int(rc * len(r) / (beta + rc))
         # set boundary conditions at r -> oo (u(oo) = 0 is implicit)
         u[gcut-1] = 1.
         u[gcut:] = 0.

@@ -9,7 +9,7 @@ from ase import Atom, Atoms
 try:
     import pylab
 except ImportError:
-    print 'Pylab not imported'
+    pass
 
 from gpaw import Calculator
 from gpaw.kpoint import KPoint
@@ -198,14 +198,32 @@ def make_dummy_calculation(l, function=None, rcut=6., a=12., n=60,
     lf.add(psit_k, coef_xi)
     return gd, psit_k, center, function
 
+def make_dummy_kpt_reference(l, function, kpt,
+                             rcut=6., a=10., n=60, dtype=complex):
+    norm = get_norm(r, function(r), l)
+    function.renormalize(norm)
+    mcount = 2*l + 1
+    fcount = 1
+    kcount = 1
+    domain = Domain((a, a, a,), (True, True, True))
+    gd = GridDescriptor(domain, (n, n, n))
+    spline = Spline(l, r[-1], function(r), points=50)
+    center = (.5, .5, .5)
+    lf = create_localized_functions([spline], gd, ccenter, dtype=dtype)
+    lf.set_phase_factors([kpt.k_c])
+    psit_n = gd.zeros(mcount, dtype=dtype)
+    coef_xi = npy.identity(mcount * fcount, dtype=dtype)
+    lf.add(psit_n, coef_xi)
+    return gd, psit_n, center
+
 class CoefficientOptimizer:
     """Class for optimizing Gaussian/reference overlap.
 
-    Given matrices of scalar products s and S as returned by get_matrices,
+    Given matrices of scalar products s and S as returned by overlaps(),
     finds the optimal set of coefficients resulting in the largest overlap.
 
     ccount is the number of coefficients.
-    if fix is True, the first coefficient will be set to 1. and only the
+    if fix is True, the first coefficient will be set to 1, and only the
     remaining coefficients will be subject to optimization.
     """
     def __init__(self, s_kmii, S_kmii, ccount, fix=False):
@@ -240,7 +258,7 @@ class CoefficientOptimizer:
         coef_trans = npy.array([coef]) # complex coefficients?
         coef = coef_trans.transpose()
 
-        terms_km = npy.zeros((ncoef, ncoef))
+        terms_km = npy.zeros(self.S_kmii.shape[0:2])
 
         for i, (s_mii, S_mii) in enumerate(zip(self.s_kmii, self.S_kmii)):
             for j, (s_ii, S_ii) in enumerate(zip(s_mii, S_mii)):
@@ -289,7 +307,10 @@ class PolarizationOrbitalGenerator:
         self.rcut = rcut
         if gaussians is None:
             gaussians = int(rcut / .3) # lots!
-        self.r_alphas = npy.linspace(1., .6 * rcut, gaussians)
+        if isinstance(gaussians, int):
+            self.r_alphas = npy.linspace(1., .6 * rcut, gaussians + 1)[1:]
+        else: # assume it is a list of actual characteristic lengths
+            self.r_alphas = gaussians
         self.alphas = 1. / self.r_alphas**2
         self.s = None
         self.S = None
@@ -316,9 +337,9 @@ class PolarizationOrbitalGenerator:
                 dtype = complex
 
         if  dtype == complex:
-            self.s, self.S = multkpts_matrices(l, gd, splines, kpt_u, center)
+            self.s, self.S = multikpt_overlaps(l, gd, splines, kpt_u, center)
         elif dtype == float:
-            self.s, self.S = get_matrices(l, gd, splines, kpt_u, center)
+            self.s, self.S = overlaps(l, gd, splines, kpt_u, center)
         else:
             raise ValueError('Bad dtype')
         
@@ -330,7 +351,7 @@ class PolarizationOrbitalGenerator:
         orbital.renormalize(get_norm(r, orbital(r), l))
         return orbital
 
-def multkpts_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
+def multikpt_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     """Get scalar products of basis functions and references.
 
     Returns the triple-indexed matrices s and S, where::
@@ -402,22 +423,11 @@ def multkpts_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
                     x2 = overlaps_knmi[k, :, m, j]
                     S_kmii[k, m, i, j] = (x1 * x2).sum()
 
-    #print 's_kmii.shape, diags', s_kmii.shape
-    #print s_kmii[1,0].diagonal()
-    #print s_kmii[1,1].diagonal()
-    #print s_kmii[1,2].diagonal()
-
-    #print 'S_kmii diags'
-    #print S_kmii[1,0].diagonal()
-    #print S_kmii[1,1].diagonal()
-    #print S_kmii[1,2].diagonal()
-
     assert s_kmii.shape == S_kmii.shape
-
     return s_kmii, S_kmii
 
-def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
-    """Get scalar products of basis functions and references
+def overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
+    """Get scalar products of basis functions and references.
 
     Returns the triple-indexed matrices s and S, where::
 
@@ -438,7 +448,7 @@ def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     assert len(kpt_u) == 1, 'This method only works for one k-point'
     kpt = kpt_u[0]
     psit_k = kpt.psit_nG
-    
+
     mcounts = [spline.get_angular_momentum_number() for spline in splines]
     mcount = mcounts[0]
     for mcount_i in mcounts:
@@ -446,10 +456,10 @@ def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     mcount = 2*l + 1
     fcount = len(splines)
     phi_lf = create_localized_functions(splines, gd, center)
-    phi_mi = gd.zeros(fcount*mcount) # one set for each phi
-    coef_xi = npy.identity(fcount*mcount)
+    phi_mi = gd.zeros(fcount * mcount) # one set for each phi
+    coef_xi = npy.identity(fcount * mcount)
     phi_lf.add(phi_mi, coef_xi)
-    integrals = npy.zeros((fcount*mcount, fcount*mcount))
+    integrals = npy.zeros((fcount*mcount, fcount * mcount))
     phi_lf.integrate(phi_mi, integrals)
     """Integral matrix contents (assuming l==1 so there are three m-values)
 
@@ -475,17 +485,17 @@ def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     phiproducts_mij = npy.zeros((mcount, fcount, fcount))
     for i in range(fcount):
         for j in range(fcount):
-            ioff = mcount*i
-            joff = mcount*j
-            submatrix_ij = integrals[ioff:ioff+mcount,joff:joff+mcount]
+            ioff = mcount * i
+            joff = mcount * j
+            submatrix_ij = integrals[ioff:ioff + mcount,joff:joff + mcount]
             phiproducts_mij[:, i, j] = submatrix_ij.diagonal()
     # This should be ones in submatrix diagonals and zero elsewhere
 
     # Now calculate scalar products < phi_mi | psit_k >, where psit_k are
     # solutions from reference calculation
     psitcount = len(psit_k)
-    psi_phi_integrals = npy.zeros((psitcount, fcount*mcount))
-    phi_lf.integrate(psit_k, psi_phi_integrals)
+    integrals_kim = npy.zeros((psitcount, fcount * mcount))
+    phi_lf.integrate(psit_k, integrals_kim)
 
     # Now psiproducts[k] is a flat list, but we want it to be a matrix with
     # dimensions corresponding to f and m.
@@ -496,7 +506,8 @@ def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     for m in range(mcount):
         for i in range(fcount):
             for k in range(psitcount):
-                psiproducts_mik[m, i, k] = psi_phi_integrals[k, mcount * i + m]
+                w = kpt.f_n[k]
+                psiproducts_mik[m, i, k] = w * integrals_kim[k, mcount * i + m]
 
     # s[mij] = < phi_mi | phi_mj >
     s = npy.array([phiproducts_mij])
@@ -504,18 +515,6 @@ def get_matrices(l, gd, splines, kpt_u, center=(.5, .5, .5)):
     # S[mij] = sum over k: < phi_mi | psit_k > < psit_k | phi_mj >
     S = npy.array([[npy.dot(psiproducts_ik, npy.transpose(psiproducts_ik))
                     for psiproducts_ik in psiproducts_mik]])
-
-
-    #assert mcount == 3
-    #print 's_kmii.shape, diags', s.shape
-    #print s[0,0].diagonal()
-    #print s[0,1].diagonal()
-    #print s[0,2].diagonal()
-
-    #print 'S_kmii diags'
-    #print S[0,0].diagonal()
-    #print S[0,1].diagonal()
-    #print S[0,2].diagonal()
 
     return s, S
 
@@ -538,8 +537,7 @@ def main():
         n, l_atom, occupation, energy = highest_state
         l = l_atom + 1
         
-        phi = generator.generate(l, gd, psit_k, center, dtype=dtype)
-        #print 'Quality by orbital', pretty(generator.optimizer.lastterms)
+        phi = generator.generate(l, gd, psit_k, center, dtype=float)
         
         r = npy.arange(0., rcut, .01)
         norm = get_norm(r, phi(r), l)
@@ -551,6 +549,21 @@ def main():
                    label='%s [type=%s][q=%.03f]' % (symbol, orbital, quality))
     pylab.legend()
     pylab.show()
+
+def dummy_kpt_test():
+    l = 0
+    rcut = 6.
+    dtype=complex
+    generator = PolarizationOrbitalGenerator(rcut, gaussians=20)
+    r = npy.arange(0., rcut, .01)
+    alpha_ref = 1 / (rcut/4.) ** 2.
+    ref = QuasiGaussian(alpha_ref, rcut)
+    norm = get_norm(r, g(r), l)
+    ref.renormalize(norm)
+    kpt = KPoint
+    gd, psit_n, center = make_dummy_kpt_reference(l, function, kpt,
+                                                  rcut, 10., 60, dtype)
+    
 
 def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
     """Run a test using a Gaussian reference function."""
@@ -586,17 +599,18 @@ output_filename = 'ref.%s.txt'
 # Systems for non-dimer-forming or troublesome atoms
 # 'symbol' : (g2 key, index of desired atom)
 
-special_systems = {'H' : ('HCl', 1), # Better results with more states
-                   'Li' : ('LiF', 0), # More states
-                   'Na' : ('NaCl', 0), # More states
+special_systems = {'Li' : ('LiF', 0),
                    'B' : ('BCl3', 0), # No boron dimer
                    'C' : ('CH4', 0), # No carbon dimer
                    'N' : ('NH3', 0), # double/triple bonds tend to be bad
                    'O' : ('H2O', 0), # O2 requires spin polarization
+                   'F' : ('HF', 0),
+                   'Na' : ('NaCl', 0),
                    'Al' : ('AlCl3', 0),
                    'Si' : ('SiO', 0), # No reason really.
-                   'S' : ('SO2', 0), # S2 requires spin polarization
-                   'P' : ('PH3', 0)}
+                   'P' : ('PH3', 0),
+                   'S' : ('SH2', 0), # S2 requires spin polarization
+                   }
 
 # Calculator parameters for particularly troublesome systems
 #special_parameters = {('Be2', 'h') : .2, # malloc thing?
@@ -689,9 +703,7 @@ class Reference:
             formula, index = get_system(symbol)
             filename = restart_filename % formula
         calc = Calculator(filename, txt=txt)
-        print 'Loaded reference data'
-        print 'kpts', calc.kpt_u
-
+        #print 'Loaded reference data'
         
         atoms = calc.get_atoms()
         symbols = atoms.get_chemical_symbols()
@@ -723,8 +735,7 @@ class Reference:
         return c.gd, c.kpt_u, self.center / self.cell
 
 if __name__ == '__main__':
-    dummy_test(lmin=1, lmax=1)
+    dummy_kpt_test()
+    #dummy_test(lmin=1, lmax=1)
     #rotation_test()
 
-#def load_reference(symbol, filename=None, index=None, txt=None):
-    #print 'Loading reference for %s from disk.' % symbol
