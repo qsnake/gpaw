@@ -193,9 +193,16 @@ class Calculator(PAW):
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
         return fold(energies * self.Ha, weights, npts, width)
 
-    def get_pseudo_wave_function(self, band=0, kpt=0, spin=0):
+    def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True):
         """Return pseudo-wave-function array."""
-        return self.get_wave_function_array(band, kpt, spin) / self.a0**1.5
+        psit_G = self.get_wave_function_array(band, kpt, spin)
+        if broadcast:
+            if not self.master:
+                psit_G = self.gd.empty(dtype=self.dtype, global_array=True)
+            self.world.broadcast(psit_G, 0)
+            return psit_G / Bohr**1.5
+        elif self.master:
+            return psit_G / Bohr**1.5
 
     def get_eigenvalues(self, kpt=0, spin=0):
         """Return eigenvalue array."""
