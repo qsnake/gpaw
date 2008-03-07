@@ -56,10 +56,10 @@ class PAWExtra:
             raise RuntimeError('This calculator has no wave functions!')
 
         if self.world.size == 1:
-            return psit_nG[n]
+            return psit_nG[n][:]
 
         if self.kpt_comm.rank == kpt_rank:
-            psit_G = self.gd.collect(psit_nG[n])
+            psit_G = self.gd.collect(psit_nG[n][:])
 
             if kpt_rank == MASTER:
                 if self.master:
