@@ -1,28 +1,58 @@
 import time
 import sys
 import pickle
+import traceback
 
 import numpy as npy
 from numpy.linalg import inv
+
+from gpaw import Calculator
 from gpaw.utilities import devnull
+from gpaw.testing import calc, g2, atomization_data
+
 
 """
-Contains various Test classes to be used by the gpaw setup optimizer
+Contains various Test classes ("badness functions") to be used by the gpaw 
+setup optimizer
 """
 
 nullpickler = pickle.Pickler(devnull)
 
 class Test:
     """
-    Base class of setup badness tests. An actual test should override the
-    badness method. Presently a test needs not be a subclass of Test, it needs
-    only implement a badness method with appropriate signature.
+    Base class of setup badness tests.
+
+    An actual test should override the badness method. Presently a
+    test needs not be a subclass of Test, it needs only implement a
+    badness method with appropriate signature.
     """
 
-    def __init__(self):
+    def __init__(self, name=None):
         # Any relevant data may be dumped into this dictionary when the 
         # badness function is called.  Just overwrite entries each time.
         self.dumplog = {}
+        if name is None:
+            name = self.__class__.__name__
+        self.name = name
+            
+    def run(self, symbol, setup, out=devnull):
+        """Print info and invoke self.badness."""
+        msg = 'Test: %s' % str(self)
+        print >> out
+        print >> out, msg
+        print >> out, '=' * len(msg)
+        time1 = time.clock()
+        rtime1 = time.time()
+        badness = self.badness(symbol, setup, out)
+        time2 = time.clock()
+        rtime2 = time.time()
+        print >> out, 'Badness:', badness
+        print >> out, 'CPU Time:', time2 - time1
+        print >> out, 'Realtime:', rtime2 - rtime1
+        return badness
+
+    def __str__(self):
+        return self.name
 
     def badness(self, symbol, setup, out=devnull):
         """
@@ -46,375 +76,186 @@ class Test:
           returns 10000.
       
         """
-
         print >> out, 'Badness function not implemented!'
         return 10000.
+        
+default_badness_units = (0.05, # atomization energy deviation, eV
+                         0.005, # bond length deviation, A
+                         0.05, # egg box effect amplitude, eV
+                         0.35, # h-convergence energy deviation, eV
+                         1.) # (for iteration test - no effect except if None)
 
 class MoleculeTest(Test):
-    """
-    Test class for elements that form molecules.
-    """
-    def __init__(self):
+    def __init__(self, a_big=6.5, a_small=4.5, 
+                 unit_badness=default_badness_units):
         Test.__init__(self)
-        e = EnergyTest()
-        d = DistanceTest()
-        self.tests = [e, d, NoiseTest(),
-                      ConvergenceTest()]
-        self.names = ['energy', 'distance', 'noise', 'convergence']
-        self.iterationtest = IterationTest([e, d], ['Ea','d '], [5, 1])
-        self.dump_to_log(None)        
+        assert len(unit_badness) == 5
+        h = .25
+        energytest = EnergyTest(a_big, h)
+        distancetest = DistanceTest(a_big, h)
+        eggboxtest = EggboxTest(a_small, h)
+        convergencetest = ConvergenceTest(a_small)
+        all_tests = [energytest, distancetest, eggboxtest, convergencetest]
+        self.tests = []
+        self.unit_badness = []
+        for unit, test in zip(unit_badness, all_tests):
+            if unit: # if unit is e.g. None, don't perform the test
+                self.tests.append(test)
+                self.unit_badness.append(unit)
+        
+        # the iteration count is only relevant for some of the tests
+        iterationtests = []
+        if unit_badness[0]:
+            iterationtests.append(energytest)
+        if unit_badness[1]:
+            iterationtests.append(distancetest)
+        self.iterationtest = IterationTest(iterationtests)
 
     def badness(self, symbol, setup, out=devnull):
-        """
-        Returns a weighted square sum of badnesses from EnergyTest,
-        DistanceTest, NoiseTest and FluctuationTest, multiplied by a
-        number derived from the iteration count during these badness
-        evaluations.
-        """
-        starttime = time.clock()
-        startwalltime = time.time()
-        badnessvalues = [test.badness(symbol, setup, out)
-                         for test in self.tests]
-        (b_energy, b_dist, b_noise, b_conv) = tuple(badnessvalues)
-        b_iter = self.iterationtest.badness(symbol, setup, out,
-                                            starttime, startwalltime)
-        badness = (b_energy + b_dist + b_noise + b_conv) * b_iter
-        self.dump_to_log(badness)
-
+        badnesses = []
+        for unit, test in zip(self.unit_badness, self.tests):
+            partial_badness = test.run(symbol, setup, out)
+            badnesses.append(partial_badness / unit ** 2.)
+        bniter = self.iterationtest.run(symbol, setup, out)
+        badness = sum(badnesses) * bniter
+        print >> out, 'Done'
         return badness
 
-    def dump_to_log(self, badness):
-        log = self.dumplog
 
-        log['badness'] = badness
+class IterationTest(Test):
+    def __init__(self, tests):
+        Test.__init__(self)
+        self.tests = tests
 
-        for name, test in zip(self.names, self.tests):
-            log[name] = dict(test.dumplog)
-        log['iterations'] = dict(self.iterationtest.dumplog)        
+    def badness(self, symbol, setup, out=devnull):
+        if len(self.tests) == 0:
+            return 1.
+        niter = 0
+        count = 0
+        for test in self.tests:
+            print test,':',test.niter
+            count += len(test.niter)
+            niter += sum(test.niter)
+        print 'Number of calculations:', count
+        print 'Total iterations:', niter
+        return niter / 24. / count# something which is not too far from 1
 
+def get_reference_energy(formula):
+    energy = atomization_data.atomization[formula][2] # 2 -> PBE
+    return - energy * 43.364e-3
+
+class DistanceTest(Test):
+    def __init__(self, a, h):
+        Test.__init__(self)
+        self.a = a
+        self.h = h
+        self.niter = None
+
+    def badness(self, symbol, setup, out=devnull):
+        formula = symbol + '2'
+        reference_energy = get_reference_energy(formula)
+        calculator = Calculator(xc='PBE', txt=None, setups=setup, h=self.h)
+        system = g2.get_g2(formula, (self.a,)*3)
+        system.set_calculator(calculator)
+        original_positions = system.positions.copy()
+        displ = original_positions[1] - original_positions[0]
+        actual_bondlength = npy.dot(displ, displ) ** .5
+        energies = []
+        displacements = []
+        self.niter = []
+        for i in [-1, 0, 1]:
+            amount = i * .03 * actual_bondlength
+            system.set_positions([original_positions[0] - displ/2. * amount,
+                                  original_positions[1] + displ/2. * amount])
+            system.center()
+            energy = system.get_potential_energy()
+            displacements.append(amount)
+            energies.append(energy)
+            self.niter.append(calculator.niter)
+        print >> out, 'Energies  :', ' '.join(['%8.5f' % e for e in energies])
+        print >> out, 'Distance  :', ' '.join(['%8.5f' % d for d 
+                                              in displacements])
+        error, e_molecule, coefs = calc.interpolate(displacements, energies)
+        print >> out, 'Error     :', error
+        print >> out, 'Relaxed E :', e_molecule
+        print >> out, 'Iter      :', self.niter
+        return error ** 2
+        
 
 class EnergyTest(Test):
-    """
-    This test compares the energy of a diatomic molecule of the
-    relevant element to a reference PBE value.
-    """
-    def __init__(self, cellsize=7.5, unit_badness=.05):
+    def __init__(self, a, h):
         Test.__init__(self)
-        self.cellsize = cellsize
-        
-        #self.element = atomization.elements[symbol]
-        #self.ref_energy = self.element.Ea_PBE
-        self.unit_badness = unit_badness
-        self.iterationcounts = None
-        self.dumplog['unit'] =  unit_badness
-        self.dumplog['cell'] = cellsize
+        self.a = a
+        self.h = h
+        self.niter = None
 
-    def badness(self, symbol, setup, out=devnull, calctxt=None):
-        """
-        Returns the badness of the specified setup, which is
-        proportional to the square of the deviation of the atomization
-        energy from the reference value
-        """
-        #energy_badness_ = 1/.05**2 #badness == 1 for deviation == .05 eV
-        
-        #molecule = atomization.elements[symbol]
-        (c1,c2) = atomization.atomization_calculators(out=calctxt,setup=setup,
-                                                      symbol=symbol)
-        print >> out, 'Energy test'
-        out.flush()
-        subtesttime1 = time.clock()
-        energy = atomization.calc_energy(c1,c2,a=self.cellsize,
-                                         symbol=symbol)
-        subtesttime2 = time.clock()
-        self.iterationcounts = (c1.niter, c2.niter)
-        ref_energy = atomization.elements[symbol].energy_pbe
-        energybadness = ((energy - ref_energy)/self.unit_badness)**2
-        testtime = subtesttime2-subtesttime1
-
-        print >> out, '  Ea         : ', energy
-        print >> out, '  Time       : ', testtime
-        print >> out, '  Badness    : ', energybadness
-        print >> out, '  Iterations : ', self.iterationcounts
-        out.flush()
-
-        log = self.dumplog
-        log['energy'] = energy
-        log['time'] = testtime
-        log['badness'] = energybadness
-        log['niter'] = self.iterationcounts
-
-        return energybadness
-
-    def get_last_iteration_count(self):
-        return sum(self.iterationcounts)
-        
-class DistanceTest(Test):
-    """
-    This test compares the bond length to some reference value.
-    """
-    def __init__(self, cellsize=7.5, unit_badness=.005):
-        Test.__init__(self)
-        self.unit_badness = unit_badness
-        self.cellsize = cellsize
-        self.dumplog['unit']=unit_badness
-        self.dumplog['cell']=cellsize
-    
     def badness(self, symbol, setup, out=devnull):
-        """
-        The badness is proportional to the square of the deviation of
-        the bond length from the reference value.
+        formula = symbol + '2'
+        reference_energy = get_reference_energy(formula)
+        a = self.a
+        atom = g2.get_g2(symbol, (a,a,a))
+        acalc = Calculator(h=self.h, xc='PBE', hund=True, setups=setup,
+                           txt=None)
+        atom.set_calculator(acalc)
+        e_atom = atom.get_potential_energy()
+        molecule = g2.get_g2(formula, (a,a,a))
+        mcalc = Calculator(h=self.h, xc='PBE', setups=setup, txt=None)
+        molecule.set_calculator(mcalc)
+        e_molecule = molecule.get_potential_energy()
+        e_atomization = e_molecule - 2 * e_atom
+        self.niter = [acalc.niter, mcalc.niter]
+        deviation = reference_energy - e_atomization
+        print >> out, 'Energy     :', e_atomization
+        print >> out, '  Molecule :', e_molecule
+        print >> out, '  Atomic   :', e_atom
+        print >> out, '  Error    :', deviation
+        print >> out, 'Iterations :', self.niter
+        return deviation ** 2.
 
-        The bond length is calculated by finding three energies close
-        to the bond length, interpolating with a 2nd degree
-        polynomial, then finding the minimum value of that polynomial.
-        """
-        print >> out, 'Distance test'
-        ref_dist = atomization.elements[symbol].d
-        out.flush()
-        subtesttime1 = time.clock()
-        d = self.bondlength(symbol, setup)
 
-        distancebadness = ((d - ref_dist)/self.unit_badness)**2
-        subtesttime2 = time.clock()
-        elapsed = subtesttime2-subtesttime1
-        print >> out, '  Distance   : ', d
-        print >> out, '  Time       : ', elapsed
-        print >> out, '  Badness    : ', distancebadness
-        print >> out, '  Iterations : ', self.iterationcounts
-        out.flush()
+class EggboxTest(Test):
+    def __init__(self, a, h):
+        Test.__init__(self)
+        self.a = a
+        self.h = h
 
-        log = self.dumplog
-        log['distance'] = d
-        log['time'] = elapsed
-        log['badness'] = distancebadness
-        log['niter'] = self.iterationcounts
-
-        return distancebadness
-
-    def get_last_iteration_count(self):
-        """
-        Returns the iteration count from the last calculation.
-        """
-        return sum(self.iterationcounts)
-
-    def bondlength(self, symbol, setup, out=devnull):
-        """
-        Returns the bond length. Calculates energy at three locations
-        around the reference bond length, interpolates with a 2nd degree
-        polynomial and returns the minimum of this polynomial which would
-        be roughly equal to the bond length without engaging in a large
-        whole relaxation test
-        """
-
-        element = atomization.elements[symbol]
-        d0 = element.d
-        #REMEMBER: find out what unit badness should be for other elements!
-        dd = ( .2 / 140. )**.5 #around .04 A. Bond properties correspond to
-        #an energy of E = .5 k x**2 with k = 140 eV/A**2
-        #If we want .1 eV deviation then the above dd should be used
-        calc = atomization.makecalculator(nbands=element.nbands2,
-                                          out=None, setup=setup)
-        #Calculate energies at the three points
-        dists = [d0-dd, d0, d0+dd]
-        niter = []
+    def badness(self, symbol, setup, out=devnull):
+        formula = symbol + '2'
+        system = g2.get_g2(formula, (self.a,)*3)
+        system.set_pbc(1)
+        calculator = Calculator(xc='PBE', txt=None, setups=setup, h=self.h)
+        system.set_calculator(calculator)
+        displacement_vector = npy.array([1.,1.,1.])/3.**.5
+        original_positions = system.positions.copy()
         energies = []
-        for d in dists:
-            e = atomization.energy_at_distance(d, calc=calc, a=self.cellsize,
-                                               symbol=symbol)
-            energies.append(e)
-            niter.append(calc.niter)
-
-        #Now find parabola and determine minimum
-        x = npy.array(dists)
-        y = npy.array(energies)
-
-        coeffmatrix = npy.transpose(npy.array([x**0, x**1, x**2]))
-        c = npy.dot(inv(coeffmatrix), y)
-        bond_length = - c[1] / (2.*c[2]) # "-b/(2a)"
-
-        self.iterationcounts = tuple(niter)
-        return bond_length#, calc.niter
-
-class NoiseTest(Test):
-    """
-    This test calculates the energy of several systems differing only
-    by a translation smaller than the grid resolution.  The badness is
-    proportional to the square of the maximum deviation of these
-    energies, which should obviously be identical ideally.
-    """
-    def __init__(self, unit_badness=.05, points=None):
-        Test.__init__(self)
-        self.h = .2
-        self.a = 4.5
-        if points is None:
-            d = npy.arange(7.)/6.*self.h/2. # [0 .. h/2], where h ~ 0.2
-            points = [(x,x,x) for x in d]
-        self.unit_badness=unit_badness
-        self.points = tuple(points)
-        self.dumplog['unit']=unit_badness
-        self.dumplog['points'] = points
-
-    def badness(self, symbol, setup, out=devnull):
-        print >> out, 'Fluctuation test'
-        out.flush()
-        subtesttime1 = time.clock()
-
-        energies = self.energy_fluctuation_test(symbol, setup)
-        noise = max(energies) - min(energies)
-        
-        noisebadness = (noise/self.unit_badness)**2
-        subtesttime2 = time.clock()
-        elapsed = subtesttime2-subtesttime1
-        print >> out, '  Fluctuation:', noise
-        print >> out, '  All points :', energies
-        print >> out, '  Time       :', elapsed
-        print >> out, '  Badness    :', noisebadness
-
-        log = self.dumplog
-        log['noise'] = noise
-        log['energies'] = energies
-        log['time'] = elapsed
-        log['badness'] = noisebadness
-
-        return noisebadness
-
-    def energy_fluctuation_test(self, symbol, setup, out=devnull):
-        """
-        Returns the difference between the energy of a nitrogen molecule
-        at the center of the unit cell and the energy of one translated by
-        h/2 along the z axis.
-        """
-        a, h = (self.a, self.h)
-        element = atomization.elements[symbol]
-        calc = atomization.makecalculator(element.nbands2, out=None,
-                                          setup=setup,h=h)
-        d = element.d
-
-        energies = [atomization.energy_at_distance(d, calc=calc, a=a,
-                                                   dislocation=(dx,dy,dz),
-                                                   symbol=symbol,
-                                                   periodic=True)
-                    for (dx,dy,dz) in self.points]
-
-        return energies
+        displacements = npy.linspace(0., self.h/2, 6)
+        for dx in displacements:
+            system.set_positions(original_positions + displacement_vector * dx)
+            energy = system.get_potential_energy()
+            energies.append(energy)
+        fluctuation = max(energies) - min(energies)
+        print >> out, 'Energies   :', ' '.join(['%8.5f' % e for e in energies])
+        print >> out, 'Difference :', fluctuation
+        return fluctuation ** 2.
 
 
 class ConvergenceTest(Test):
-    """
-    Evaluates the energy of a simple system for a couple of different
-    grid resolutions.  It is desirable that the energies be equal,
-    since this would infer that it is not necessary to use greater
-    resolution.  Badness is proportional to the square of the maximal
-    deviation of calculated energies.
-    """
-    def __init__(self, unit_badness=.35):
-        #Formerly standard value was .2
-        #change default unit badness to .005 someday
+    def __init__(self, a):
         Test.__init__(self)
-        self.a = 4.5
-        self.unit_badness = unit_badness
-        self.dumplog['unit'] = unit_badness
+        self.a = a
 
     def badness(self, symbol, setup, out=devnull):
-        print >> out, 'Convergence test'
-        out.flush()
-        subtesttime1 = time.clock()
-        convergencevalue = self.convergence_test(symbol, setup)
-        convergencebadness = (convergencevalue/self.unit_badness)**2
-        subtesttime2 = time.clock()
-        elapsed = subtesttime2-subtesttime1
-        print >> out, '  Convergence: ', convergencevalue
-        print >> out, '  Time       : ', elapsed
-        print >> out, '  Badness    : ', convergencebadness
-
-        log = self.dumplog
-        log['conv'] = convergencevalue
-        log['time'] = elapsed
-        log['badness'] = convergencebadness
-        
-        return convergencebadness
-
-    def convergence_test(self, symbol, setup):
-        """ Finds the energy of a nitrogen molecule as a function of
-        different resolutions (h-values) and returns the maximal
-        difference """
-
-        element = atomization.elements[symbol]
-        h = [.15, .17, .20]
-        a = self.a
-        calc = [atomization.makecalculator(element.nbands2, out=None, h=h0,
-                                           setup=setup) for h0 in h]
-        element = atomization.elements[symbol]
-        energies = [atomization.energy_at_distance(element.d, calc=c, a=a,
-                                                   symbol=symbol,
-                                                   periodic=True)
-                    for c in calc]
-
-        return max(energies) - min(energies)
-
-class IterationTest(Test):
-    """
-    This test can be instantiated by specifying a couple of other
-    tests, each of which must be able to return an iteration count.
-    This test will return a badness value proportional to the total
-    iteration count of the specified tests, where the iteration counts
-    can be weighted.
-    """
-    def __init__(self, tests, names, weights):
-        Test.__init__(self)
-        self.tests = tests
-        self.names = names
-        self.weights = weights
-
-    def badness(self, symbol, setup, out=devnull, starttime=None,
-                startwalltime=None):
-        print >> out, 'Time/Iterations'
-        dt = time.clock() - starttime
-
-        weightedsum = sum([test.get_last_iteration_count() * weight
-                           for (test, weight)
-                           in zip(self.tests, self.weights)])
-        sumweights = float(sum(self.weights))
-        
-        iterationbadness = weightedsum/sumweights/128.
-
-        cputime = time.clock() - starttime
-        walltime = time.time() - startwalltime
-        
-        if starttime != None:
-            print >> out, '  Cpu Time   :', cputime
-        if startwalltime != None:
-            print >> out, '  Wall time  :', walltime
-        for test,name in zip(self.tests, self.names):
-            print >> out, '  Iter.',name,':',test.get_last_iteration_count()
-        #print >> out, 'Iter. (Ea) : ', iterationcount_Ea
-        #print >> out, 'Iter. (d)  : ', iterationcount_d
-        print >> out, '  Iter.Badn. : ', iterationbadness
-        out.flush()
-
-        log = self.dumplog
-        log['badness'] = iterationbadness
-        log['walltime'] = walltime
-        log['cputime'] = cputime
-
-        return iterationbadness
-
-def test():
-    setups = 'paw'
-    if len(sys.argv) > 1:
-        setups = sys.argv[-1]
-    elements = ['H', 'Li', 'Be', 'N', 'O', 'F', 'P', 'Cl']
-    test = MoleculeTest()
-    results = []
-    outputfile = open('test.%s.txt' % setups, 'w')
-    for element in elements:
-        try:
-            result = test.badness(element, setups, sys.stdout)
-        except Exception:
-            result = 'FAIL'
-        results.append(result)
-        print >> outputfile, element, result
-        outputfile.flush()
-
-if __name__ =='__main__':
-    test()
+        formula = symbol + '2'
+        hvalues = [.2, .17, .14]
+        system = g2.get_g2(formula, (self.a,)*3)
+        system.set_pbc(1)
+        energies = []
+        for h in hvalues:
+            calculator = Calculator(h=h, xc='PBE', txt=None, setups=setup)
+            system.set_calculator(calculator)
+            energy = system.get_potential_energy()
+            energies.append(energy)
+        fluctuation = max(energies) - min(energies)
+        print >> out, 'Energies', ' '.join(['%8.5f' % e for e in energies])
+        print >> out, 'Difference', fluctuation
+        return fluctuation ** 2

@@ -82,8 +82,8 @@ class Optimizer:
                                                       generatorname)
         elif isinstance(generator, setupgenerator.SetupGenerator):
            # Override generator defaults
-            generator.set_name(generatorname)
-            generator.set_symbol(symbol)
+            generator.name = generatorname
+            generator.symbol = symbol
         else:
             try: # Test whether generator is specified as a parameter list
                 parms = list(generator)
@@ -186,9 +186,7 @@ class Optimizer:
             self.dumplog.dump(data)
 
     def badness(self, args):
-        """
-        Runs a full test of a given GPAW setup
-        """
+        """Runs a full test of a given GPAW setup."""
         
         out = self.output
 
@@ -199,7 +197,7 @@ class Optimizer:
             badness = self.test.badness(self.symbol,
                                         self.setup_name, out)
         except KeyboardInterrupt:
-            raise sys.exc_info()[0]
+            raise
         except Exception:
             badness = 10000
             header = '=== Exception ==='
@@ -237,8 +235,8 @@ def main(symbol='H', name='test', generator=(3,4), tolerance=0.01,
     if generator is None:
         generator = setupgenerator.SetupGenerator(symbol, name)
     elif isinstance(generator, setupgenerator.SetupGenerator):
-        generator.set_name(name)
-        generator.set_symbol(symbol)
+        generator.name = name
+        generator.symbol = symbol
     else:
         try:
             whichparms = list(generator)
@@ -265,8 +263,8 @@ def make_and_test_single_setup(generator, setup_parameters, test=None,
         gen = setupgenerator.SetupGenerator(symbol, name,
                                             whichparms=generator)
     else:
-        gen.set_name(name)
-        gen.set_symbol(symbol)
+        gen.name = name
+        gen.symbol = symbol
 
     generator.generate_setup(setup_parameters)
     if test is None:

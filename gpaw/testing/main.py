@@ -7,16 +7,21 @@ import pickle
 from optparse import OptionParser
 
 from gpaw.utilities import locked
-from gpaw.testing import data
+from gpaw.testing import g2
 from gpaw.paw import ConvergenceError
 from gpaw.testing import calc
 
-tests = {'a' : calc.atomic_energy,
+tests = {'a' : calc.calculate_energy,
          'c' : calc.grid_convergence_energies,
          'm' : calc.molecular_energies,
          'e' : calc.eggbox_energies}
 
 elements_requiring_lattice_test = ['C']
+
+defaultformulae = ['H2', 'LiH', 'CH4', 'NH3', 'OH',
+                   'H2O', 'HF', 'Li2', 'LiF', 'Be2',
+                   'C2H2', 'C2H4', 'HCN', 'CO', 'N2',
+                   'NO', 'O2', 'F2', 'P2', 'Cl2']
 
 def loadfromfile(filename):
     unpickler = pickle.Unpickler(open(filename))
@@ -74,7 +79,7 @@ def test(function, formula, setups='paw', quick=False, clean=False,
     sys.stdout.flush()
     try:
         results = tests[function](formula, setups=setups, quick=quick,
-                                  txt=log)
+                                  txt='wiggles.txt')
         print 'Done'
     except: # It is quite difficult to know which exceptions are relevant
         traceback.print_exc(file=log)
@@ -89,13 +94,12 @@ def testmultiple(testfunctions='acme', formulae=None, setups='paw',
     if testfunctions.strip('acme') != '':
         raise ValueError('Unknown tests designated: %s' % testfunctions)
     if formulae is None:
-        formulae = data.moleculedata.keys()
+        formulae = defaultformulae
 
     symbollist = [] # Obtain the atomic symbols of all constituents
     if 'a' in testfunctions:
         for formula in formulae:
-            symbollist.extend([atom.GetChemicalSymbol() for atom
-                              in data.molecules[formula]])
+            symbollist.extend(g2.get_g2(formula).get_chemical_symbols())
     # The 'set' builtin is not included in some python versions. Using hack
     symbols = dict(zip(symbollist, symbollist)).keys()
     #symbols = set(symbollist)
@@ -147,7 +151,7 @@ def main():
     opt, formulae = parser.parse_args()
 
     if not formulae:
-        formulae = data.molecules.keys()
+        formulae = defaultformulae
 
     print '+---------------------------+'
     print '| Molecule tests commencing |'

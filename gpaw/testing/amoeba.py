@@ -168,7 +168,7 @@ class Amoeba:
                             simplex[i][j] = coord_sums[j]
                         y[i] = function(coord_sums)
                 self.evaluationcount += dimcount
-                coord_sums = self.calc_coord_sums()
+                self.calc_coord_sums()
 
         return self.analyzepoints()
         

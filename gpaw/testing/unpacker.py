@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+"""This module unpacks the pickle files made by the main module tests."""
+
 import sys
 import pickle
 from math import sqrt
 
 import numpy as npy
 
-import data
-from data import molecules
+from gpaw.testing import g2
+from main import defaultformulae as molecules
 
 # Sort all molecules by mass: ['H2', ... ]
 allformulae = zip(*sorted([(sum(molecule.GetMasses()), name)

@@ -60,18 +60,6 @@ class SetupGenerator:
             self.parmfilter = parmfilter.filter
             self.get_standard_parameters = parmfilter.get_standard_parameters
 
-    def get_name(self):
-        return self.name
-
-    def get_symbol(self):
-        return self.symbol
-
-    def set_name(self, name):
-        self.name = name
-
-    def set_symbol(self, symbol):
-        self.symbol = symbol
-
     def get_standard_parameters(self):
         if self.stdparms is None:
             raise ValueError('Standard parameters not defined!')

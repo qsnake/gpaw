@@ -1,74 +1,30 @@
 import os
 import sys
 import pickle
-from math import sqrt
-from optparse import OptionParser
 
 import numpy as npy
-from ASE.Units import Convert
-from ASE import ListOfAtoms, Atom
 from numpy.linalg import inv
 
-from gpaw.testing import g2, data
+from gpaw.testing import g2
 from gpaw.utilities.bulk import Bulk
 from gpaw.paw import ConvergenceError
 from gpaw import Calculator
 
-def setup_molecule(formula, a=12., h=None, gpts=None, sep=None, periodic=False,
-                   setups='paw', txt='-'):
-    """Constructs a ListOfAtoms corresponding to the specified molecule,
-    and attaches a Calculator with suitable parameters."""
-    try:
-        system = data.molecules[formula]
-    except: # Try single atom
-        system = ListOfAtoms([Atom(formula, magmom=g2.atoms[formula])])
-    system.SetBoundaryConditions(periodic)
-    system.SetUnitCell([a,a,a], fix=True)
-    if sep is not None:
-        if len(system) != 2:
-            raise ValueError('Separation ambiguous for non-diatomic molecule')
-        system.atoms[1].SetCartesianPosition([sep,0,0])
-    system.center()
-    if gpts is not None:
-        gpts = [gpts]*3
-    # Warning: bad hacks...
-    if len(system) == 1:
-        calc = Calculator(h=h, gpts=gpts, xc='PBE', setups=setups, txt=txt,
-                          hund=True)
-    else:
-        calc = Calculator(h=h, gpts=gpts, xc='PBE', setups=setups, txt=txt)
-    system.SetCalculator(calc)
-    return system, calc
 
-def atomic_energy(symbol, a=12., h=.16, displacement=None,
-                  setups='paw', quick=False, txt='-'):
-    """Places an atom of the specified type in the center of a unit cell
-    and returns a tuple with the energy and iteration count."""
-    try:
-        if quick:
-            a, h = (6., .3)
-        system, calc = setup_molecule(symbol, a, h, setups=setups, txt=txt)
-        if displacement is not None:
-            system.SetCartesianPositions(system.GetCartesianPositions() +
-                                         displacement)
-        energy = system.GetPotentialEnergy()
-    finally:
-        system.SetCalculator(None)
-    return energy, calc.niter
-
-def molecular_energy(formula, a=12., h=.16, sep=None, dislocation=None,
-                         setups='paw', quick=False, txt='-'):
-    """Calculates the energy of the specified molecule. Returns a tuple
-    with the energy and iteration count."""
+def calculate_energy(formula, a=12., h=.16, sep=None, dislocation=None,
+                     setups='paw', quick=False, txt='-'):
     try:
         if quick:
             (a, h) = (6., .3)
-        system, calc = setup_molecule(formula, a, h, sep=sep, setups=setups,
-                                      txt=txt)
-        energy = system.GetPotentialEnergy()
+        system = g2.get_g2(formula, (a,a,a))
+        hund = (len(system) == 1)
+        calc = Calculator(xc='PBE', h=h, setups=setups, txt=txt, hund=hund)
+        system.set_calculator(calc)
+        energy = system.get_potential_energy()
     finally:
-        system.SetCalculator(None)
+        system.set_calculator(None)
     return energy, calc.niter
+
 
 def molecular_energies(formula, a=12., h=.16, displacements=None,
                        setups='paw', quick=False, txt='-'):
@@ -80,28 +36,31 @@ def molecular_energies(formula, a=12., h=.16, displacements=None,
         if displacements is None:
             displacements = [(i - 2) * 0.015 for i in range(5)]
 
-        system, calc = setup_molecule(formula, a, h, setups=setups, txt=txt)
+        system = g2.get_g2(formula, (a,a,a))
+        calc = Calculator(h=h, setups=setups, txt=txt, xc='PBE')
+        system.set_calculator(calc)
 
         if len(system) != 2:
             displacement = 0.
-            energy = system.GetPotentialEnergy()
+            energy = system.get_potential_energy()
             niter = calc.niter
             return [displacement], [energy], [niter]
 
         energies = []
         niters = []
-        originalpositions = system.GetCartesianPositions()    
+        originalpositions = system.positions.copy()
         for displ in displacements:
-            system.SetCartesianPositions(originalpositions +
-                                         [[-displ/2., 0., 0.],
-                                          [+displ/2., 0., 0.]])
-            energy = system.GetPotentialEnergy()
+            system.set_positions(originalpositions +
+                                 [[-displ/2., 0., 0.],
+                                  [+displ/2., 0., 0.]])
+            energy = system.get_potential_energy()
             niter = calc.niter
             energies.append(energy)
             niters.append(niter)
     finally:
-        system.SetCalculator(None)
+        system.set_calculator(None)
     return displacements, energies, niters
+
 
 def eggbox_energies(formula, a=10., gpts=48, direction=(1.,1.,1.), periods=.5,
                     count=12, setups='paw', quick=False, txt='-'):
@@ -110,51 +69,31 @@ def eggbox_energies(formula, a=10., gpts=48, direction=(1.,1.,1.), periods=.5,
             a, gpts, count = (6., 16, 4)
 
         direction = npy.asarray(direction)
-        direction = direction / sqrt(npy.dot(direction, direction))
-        system, calc = setup_molecule(formula, a, gpts=gpts, periodic=True,
-                                      setups=setups, txt=txt)
-        originalpositions = system.GetCartesianPositions()
+        direction = direction / npy.dot(direction, direction) ** .5
+        system = g2.get_g2(formula, (a,a,a))
+        system.set_pbc(1)
+        calc = Calculator(xc='PBE', gpts=(gpts, gpts, gpts), setups=setups,
+                          txt=txt)
+        system.set_calculator(calc)
+
+        originalpositions = system.positions.copy()
         h = float(a)/gpts
-        displacements = [i*h*periods/(count-1.) for i in range(count)]
+        #displacements = [i*h*periods/(count-1.) for i in range(count)]
+        displacements = npy.linspace(0., h * periods, count)
         energies = []
         niters = []
 
         for amount in displacements:
             # Displace all components by 'amount' along 'direction'
             displacement_vector = direction * amount
-            system.SetCartesianPositions(originalpositions +
-                                         displacement_vector)
-            energy = system.GetPotentialEnergy()
+            system.set_positions(originalpositions + displacement_vector)
+            energy = system.get_potential_energy()
             energies.append(energy)
             niters.append(calc.niter)
     finally:
-        system.SetCalculator(None)
+        system.set_calculator(None)
     return displacements, energies, niters
 
-def eggbox_energies_old(formula, a=10., gpts=48, count=12, displacements=None,
-                        setups='paw', quick=False, txt='-'):
-    """Calculates the energy of the specified molecule at 'count'
-    different and equally spaced displacements from (0,0,0) to
-    (1,1,1)(h/2)"""
-    if quick:
-        a, gpts, count = (6., 16, 4)
-    system, calc = setup_molecule(formula, a, gpts=gpts, periodic=True,
-                                  setups=setups, txt=txt)
-    originalpositions = system.GetCartesianPositions()
-    if displacements is None:
-        h = float(a)/gpts
-        displacements = [i*h/2./(count-1.) for i in range(count)]
-    energies = []
-    niters = []
-
-    for displ in displacements:
-        # Displace all components by displ along *all* axes
-        system.SetCartesianPositions(originalpositions + displ)
-        energy = system.GetPotentialEnergy()
-        energies.append(energy)
-        niters.append(calc.niter)
-    system.SetCalculator(None)
-    return displacements, energies, niters
 
 def grid_convergence_energies(formula, a=10., gpts=None, setups='paw',
                               quick=False, txt='-'):
@@ -166,19 +105,22 @@ def grid_convergence_energies(formula, a=10., gpts=None, setups='paw',
             hvalues = [.15, .2]
             gptmax, gptmin = [int(a/h)/4*4 for h in hvalues]
             gpts = range(gptmin, gptmax+1, 4)
-        system, calc = setup_molecule(formula, a, gpts=gpts[0], txt=None,
-                                      periodic=True)
+        system = g2.get_g2(formula, (a,a,a))
+        system.set_pbc(1)
+        calc = Calculator(gpts=gpts[0], txt=txt, xc='PBE', setups=setups)
+        system.set_calculator(calc)
         energies = []
         niters = []
 
         for gptcount in gpts:
             calc.set(gpts=[gptcount]*3)
-            energy = system.GetPotentialEnergy()
+            energy = system.get_potential_energy()
             energies.append(energy)
             niters.append(calc.niter)
     finally:
-        system.SetCalculator(None)
+        system.set_calculator(None)
     return gpts, energies, niters
+
 
 def lattice_energies(symbol='C', gpts=(24,16,16), kpts=(6,8,8),
                      displacements=None, setups='paw',
@@ -187,18 +129,18 @@ def lattice_energies(symbol='C', gpts=(24,16,16), kpts=(6,8,8),
     # for non-carbon elements
     try:
         if quick:
-            gpts = (8, 8, 8)
+            gpts = (12, 8, 8)
             kpts = (2, 2, 2)
         crystal = Bulk(symbol)
-        atoms = crystal.atoms
-        base_cell = atoms.GetUnitCell()
+        system = crystal.atoms
+        base_cell = system.get_cell()
         base_cell_size = base_cell[0,0]
         aref = base_cell[0,0]
 
         energies = []
         niters = []
         c = Calculator(xc='PBE', gpts=gpts, kpts=kpts, setups=setups, txt=txt)
-        atoms.SetCalculator(c)
+        system.set_calculator(c)
         # .035 angstroms is probably okay.  This is about equivalent to the
         # number used in the molecule distance test
         if displacements is None:
@@ -207,13 +149,14 @@ def lattice_energies(symbol='C', gpts=(24,16,16), kpts=(6,8,8),
             lattice_constants = npy.array([aref + d for d in displacements])
 
         for a in lattice_constants:
-            atoms.SetUnitCell(a/base_cell_size * base_cell)
-            energy = atoms.GetPotentialEnergy()
+            system.set_cell(a/base_cell_size * base_cell)
+            energy = system.get_potential_energy()
             energies.append(energy)
             niters.append(c.niter)
     finally:
-        system.SetCalculator(None)
+        system.set_calculator(None)
     return displacements, energies, niters
+
 
 def interpolate(xvalues, yvalues):
     """Utility function for returning a 2nd order polynomial interpolating
@@ -226,6 +169,7 @@ def interpolate(xvalues, yvalues):
     ymin = coeffs[0] + xmin * (coeffs[1] + xmin * coeffs[2])
     return xmin, ymin, coeffs
 
+
 def test_atomization_energy(symbol='H', a=10., h=.18, setups='paw'):
     e_atom, niter = atomic_energy(symbol, a, h, setups=setups)
     e_molecule, niter2 = molecular_energy(symbol+'2', a, h, setups=setups)
@@ -236,6 +180,7 @@ def test_atomization_energy(symbol='H', a=10., h=.18, setups='paw'):
     print 'Iterations',niter,niter2
     return energy
 
+
 def test_dimer_energy_curve(symbol='H', a=6., h=.25, displs=None):
     if displs is None:
         count = 17
@@ -245,3 +190,12 @@ def test_dimer_energy_curve(symbol='H', a=6., h=.25, displs=None):
     print dists
     print energies
     return dists, energies
+
+if __name__ == '__main__':
+    symbol = 'H'
+    formula = symbol + '2'
+    calculate_energy(symbol, quick=True)
+    molecular_energies(formula, quick=True)
+    eggbox_energies(formula, quick=True)
+    grid_convergence_energies(formula, quick=True)
+    lattice_energies('C', quick=True)
