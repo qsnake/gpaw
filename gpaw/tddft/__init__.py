@@ -1,11 +1,22 @@
 # Copyright (c) 2007 Lauri Lehtovaara
 
 """This module implements a class for (true) time-dependent density 
-functional theory calculations."""
+functional theory calculations.
+
+"""
+
+
+__docformat__ = "restructuredtext en"
+
 
 import sys
 
 import numpy as npy
+
+from gpaw.paw import PAW
+#from gpaw.pawextra import PAWExtra
+
+from gpaw.mpi import rank
 
 from gpaw.preconditioner import Preconditioner
 
@@ -20,64 +31,77 @@ from gpaw.tddft.tdopers import \
     TimeDependentDensity, \
     AbsorptionKickHamiltonian
 
-
+# Where to put these?
+# vvvvvvvvv
 class DummyMixer:
     def mix(self, nt_sG):
         pass
 
 # T^-1
+# Bad preconditioner
 class KineticEnergyPreconditioner:
     def __init__(self, gd, kin, dtype):
         self.preconditioner = Preconditioner(gd, kin, dtype)
 
-    def solve(self, kpt, psi, psin):
+    def apply(self, kpt, psi, psin):
         psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
 
 # S^-1
+# Not too good preconditioner, might be useful in big system
 class InverseOverlapPreconditioner:
     def __init__(self, overlap):
         self.overlap = overlap
 
-    def solve(self, kpt, psi, psin):
+    def apply(self, kpt, psi, psin):
         self.overlap.apply_inverse(psi, psin, kpt)
+# ^^^^^^^^^^
 
 
-class TDDFT:
+###########################
+# Main class
+###########################
+class TDDFT(PAW):
     """ Time-dependent density functional theory
     
     This class is the core class of the time-dependent density functional 
-    theory implementation and is the only class which user has to utilize.
+    theory implementation and is the only class which user has to use.
     """
     
-    def __init__( self, paw, td_potential = None, kpt = None,
-                  propagator='ECN', solver='BiCGStab', tolerance=1e-15 ):
+    def __init__( self, ground_state, td_potential = None,
+                  propagator='SICN', solver='BiCGStab', tolerance=1e-15 ):
         """Create TDDFT-object.
         
-        ============ =========================================================
         Parameters:
-        ============ =========================================================
-        paw          the PAW-object from a time-independent (the ground state)
-                     calculation
-        td_potential the time-dependent potential
-        kpt          k-points   (if None, paw.kpt_u)
-        propagator   the name of the time propagator
-        solver       the name of the iterative linear equations solver 
-        tolerance    tolerance for the solver
-        ============ =========================================================
+        -----------
+        ground_state: Filename
+            Filename
+        td_potential: class, optional
+            Function class for the time-dependent potential. It must have method
+            'strength(time)' which returns the strength of the linear potential
+            to each direction as a vector of three floats.
+        propagator:  {'SICN', 'ECN'}, optional
+            Name of the propagator the name of the time propagator
+        solver: {'BiCGStab'}, optional
+            Name of the iterative linear equations solver 
+        tolerance: float
+            Tolerance for the linear solver
+            Note: Use about ???10^-3 - 10^-4??? tighter tolerance for PAW.
 
-        Note: Use about ???10^-3 - 10^-4??? tighter tolerance for PAW.
         """
+
+        # Initialize paw-object
+        PAW.__init__(self,filename)
 
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
-        paw.initialize_wave_functions()
-        paw.density.update_pseudo_charge()
+        self.initialize_wave_functions()
+        self.density.update_pseudo_charge()
 
         # Convert PAW-object to complex
-        paw.totype(complex);
+        self.totype(complex);
 
         # No density mixing
-        paw.density.mixer = DummyMixer()
+        self.density.mixer = DummyMixer()
 
         # Set initial time
         self.time = 0.
@@ -85,17 +109,11 @@ class TDDFT:
         # Time-dependent variables and operators
         self.td_potential = td_potential
         self.td_hamiltonian = \
-            TimeDependentHamiltonian( paw.pt_nuclei,
-                                      paw.hamiltonian,
+            TimeDependentHamiltonian( self.pt_nuclei,
+                                      self.hamiltonian,
                                       td_potential )
-        self.td_overlap = TimeDependentOverlap(paw.overlap)
-        self.td_density = TimeDependentDensity(paw)
-
-        # Grid descriptor
-        self.gd = paw.gd
-
-        # Timer
-        self.timer = paw.timer
+        self.td_overlap = TimeDependentOverlap(self.overlap)
+        self.td_density = TimeDependentDensity(self)
 
         # Solver for linear equations
         if solver is 'BiCGStab':
@@ -107,11 +125,7 @@ class TDDFT:
                                 % (solver) )
 
         # Preconditioner
-        # DO NOT USE, BAD PRECONDITIONER!
-        #self.preconditioner = KineticEnergyPreconditioner( paw.gd,
-        #                                                   paw.hamiltonian.kin,
-        #                                                   complex )
-        #self.preconditioner = InverseOverlapPreconditioner( paw.overlap )
+        # No preconditioner as none good found
         self.preconditioner = None
 
         # Time propagator
@@ -138,39 +152,74 @@ class TDDFT:
                                 'Time propagator %s not supported. '
                                 % (propagator) )
         
-        # K-points
-        if kpt is not None:
-            self.kpt = kpt
-        else:
-            self.kpt = paw.kpt_u
 
-        # grid descriptor
-        self.gd = paw.hamiltonian.gd
-        # projectors
-        self.pt_nuclei = paw.pt_nuclei
-
-        
-    def propagate(self, time_step, iterations=1):
+    def propagate(self, time_step, iterations=1, dipole_data_file = None, 
+                  restart_file = None, dump_interval = 1000):
         """Propagates wavefunctions.
         
-        ============ =========================================================
         Parameters:
-        ============ =========================================================
-        time_step    time step
-        iterations   iterations
-        ============ =========================================================
-
+        time_step: float
+            Time step
+        iterations: integer
+            Iterations
+        dipole_data_file: string, optional
+            Name of the data file where to the time-dependent dipole 
+            moment is saved
+        restart_file: string, optional
+            Name of the restart file
+        dump_interval: integer
+            After how many iterations restart data is dumped
+        
         """
+        if dm_file is not None:
+            dm_file = file(dipole_moment_file,'w')
+
         for i in range(iterations):
-            self.propagator.propagate(self.kpt, self.time, time_step)
+            # write dipole moment
+            if dipole_moment_file is not None:
+                if rank == 0:
+                    paw.gd.calculate_dipole_moment(self.density)
+                    line = repr(time).rjust(10) + '  '
+                    line = repr(dm[0]).rjust(20) + '  '
+                    line = repr(dm[1]).rjust(20) + '  '
+                    line = repr(dm[2]).rjust(20)
+                    dipole_moment_file.write(line)
+
+            # propagate
+            self.propagator.propagate(self.kpt_u, self.time, time_step)
             self.time += time_step
-            
+
+            # restart data
+            if restart_file is not None and ( (i+1) % dump_interval == 0 ):
+                if rank == 0:
+                    self.write(restart_file, 'all')
+                    
+        # close dipole moment file
+        if dm_file is not None:
+            dm_file.close()
+
+
+    def photoabsortion_spectrum(self, dipole_moment_file, spectrum_file):
+        """ Calculates photoabsorption spectrum from the time-dependent
+        dipole moment.
+        
+        Parameters:
+        dipole_moment_file: string
+            Name of the time-dependent dipole moment file from which
+            the specturm is calculated
+        spectrum_file: string
+            Name of the spectrum file
+        """
+        print 'Method "photoabsortion_spectrum(self, dipole_moment_file, spectrum_file)" not implemented yet.'
+        pass
 
     # exp(ip.r) psi
-    def absorption_kick(self, strength = 1e-3, direction = [0.0,0.0,1.0]):
+    def absorption_kick(self, strength = [0.0,0.0,1e-4]):
+        """ Delta absoprtion kick for photoabsorption spectrum.
+        
+        """
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
-                                                       strength,
-                                                       direction ),
+                                                       strength ),
                             self.td_overlap, self.solver, self.gd, self.timer )
-        abs_kick.kick(self.kpt)
+        abs_kick.kick(self.kpt_u)

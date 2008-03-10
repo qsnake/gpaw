@@ -656,8 +656,8 @@ class Nucleus:
             self.pt_i.add(b_nG, None, k, communicate=True)
 
 
-    def apply_linear_xfield(self, a_nG, b_nG, k, c0, cx):
-        """Apply non-local part of the polynomial operator."""
+    def apply_linear_field(self, a_nG, b_nG, k, c0, cxyz):
+        """Apply non-local part of the linear field."""
         
         if self.in_this_domain:
             # number of wavefunctions, psit_nG
@@ -684,22 +684,31 @@ class Nucleus:
             # where (see spherical_harmonics.py)
             #
             #   1_ij = sqrt(4pi) Delta_0ij
+            #   y_ij = sqrt(4pi/3) Delta_1ij
+            #   z_ij = sqrt(4pi/3) Delta_2ij
             #   x_ij = sqrt(4pi/3) Delta_3ij
             # ...
 
             Delta_Lii = self.setup.Delta_Lii
 
             #   1_ij = sqrt(4pi) Delta_0ij
+            #   y_ij = sqrt(4pi/3) Delta_1ij
+            #   z_ij = sqrt(4pi/3) Delta_2ij
             #   x_ij = sqrt(4pi/3) Delta_3ij
             oneij = npy.sqrt(4.*npy.pi) \
                 * npy.dot(P_ni, Delta_Lii[:,:,0])
+            yij = npy.sqrt(4.*npy.pi / 3.) \
+                * npy.dot(P_ni, Delta_Lii[:,:,1])
+            zij = npy.sqrt(4.*npy.pi / 3.) \
+                * npy.dot(P_ni, Delta_Lii[:,:,2])
             xij = npy.sqrt(4.*npy.pi / 3.) \
                 * npy.dot(P_ni, Delta_Lii[:,:,3])
 
             # coefficients
             # coefs_ni = sum_j ( <phi_i| f(x,y,z) | phi_j>
             #                    - <phit_i| f(x,y,z) | phit_j> ) P_nj
-            coefs_ni = c0 * oneij + cx * xij
+            coefs_ni = ( c0 * oneij 
+                         + cxyz[0] * xij + cxyz[1] * yij + cxyz[2] * zij )
 
             # add partial wave pt_nG to psit_nG with proper coefficient
             self.pt_i.add(b_nG, coefs_ni, k, communicate=True)

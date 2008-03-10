@@ -1,7 +1,7 @@
 # Copyright (c) 2007 Lauri Lehtovaara
 
 """This module defines BiCGStab-class, which implements biconjugate
-gradient stabilized method. Requires Numeric and BLAS."""
+gradient stabilized method. Requires Numpy and GPAW's own BLAS."""
 
 import numpy as npy
 
@@ -20,6 +20,8 @@ class BiCGStab:
     function dot(self,x,b), where x and b are complex arrays 
     (numpy.array([], complex), and x is the known vector, and 
     b is the result.
+
+    Now x and b are multivectors, i.e., list of vectors.
     """ 
     
     def __init__( self, gd, timer = None,
@@ -33,16 +35,18 @@ class BiCGStab:
         .5 sqrt(kappa) ln(2/tolerance). A small number is treated as zero
         if it's magnitude is smaller than argument eps.
         
-        ================ =====================================================
         Parameters:
-        ================ =====================================================
-        gd               grid descriptor for coarse (pseudowavefunction) grid
-        timer            timer
-        tolerance        tolerance for the norm of the residual ||b - A.x||^2
-        max_iterations   maximum number of iterations
-        eps              if abs(rho) or (omega) < eps, it's regarded as zero 
-                         and the method breaks down
-        ================ =====================================================
+        gd: GridDescriptor
+            grid descriptor for coarse (pseudowavefunction) grid
+        timer: Timer
+            timer
+        tolerance: float
+            tolerance for the norm of the residual ||b - A.x||^2
+        max_iterations: integer
+            maximum number of iterations
+        eps: float
+            if abs(rho) or (omega) < eps, it's regarded as zero 
+            and the method breaks down
 
         """
         
@@ -62,48 +66,60 @@ class BiCGStab:
     def solve(self, A, x, b):
         """Solve a set of linear equations A.x = b.
         
-        =========== ==========================================================
         Parameters:
-        =========== ==========================================================
         A           matrix A
         x           initial guess x_0 (on entry) and the result (on exit)
-        b           right-hand side vector
-        =========== ==========================================================
+        b           right-hand side (multi)vector
 
         """
         if self.timer is not None:
             self.timer.start('BiCGStab')
 
+        # number of vectors
+        nvec = len(x)
+
         # r_0 = b - A x_0
-        r = self.gd.zeros(dtype=complex)
+        r = self.gd.zeros(nvec, dtype=complex)
         A.dot(-x,r)
         r += b
         
-        q = self.gd.empty(dtype=complex)
+        q = self.gd.zeros(nvec, dtype=complex)
         q[:] = r
-        p = self.gd.zeros(dtype=complex)
-        v = self.gd.zeros(dtype=complex)
-        t = self.gd.zeros(dtype=complex)
-        m = self.gd.zeros(dtype=complex)
-        alpha = 0.
-        rhop  = 1.
-        omega = 1.
+        p = self.gd.zeros(nvec, dtype=complex)
+        v = self.gd.zeros(nvec, dtype=complex)
+        t = self.gd.zeros(nvec, dtype=complex)
+        m = self.gd.zeros(nvec, dtype=complex)
+        alpha = npy.zeros((nvec,), dtype=real) 
+        rho  = npy.zeros((nvec,), dtype=real) 
+        rhop  = npy.zeros((nvec,), dtype=real) 
+        omega = npy.zeros((nvec,), dtype=real) 
+        scale = npy.zeros((nvec,), dtype=real) 
+        tmp = npy.zeros((nvec,), dtype=real) 
+        rhop[:] = 1.
+        omega[:] = 1.
 
-        # Vector dot product, a^H b, where ^H is conjugate transpose
-        def zdotc(x,y):
-            return self.gd.comm.sum(dotc(x,y))
-        # a x + y => y
-        def zaxpy(a,x,y):
-            axpy(a*(1+0J), x, y)
+        # Multivector dot product, a^H b, where ^H is conjugate transpose
+        def multi_zdotc(s, x,y, nvec):
+            for i in range(nvec):
+                s[i] = dotc(x[i],y[i])
+            self.gd.comm.sum(s)
+            return s        
+        # Multivector ZAXPY: a x + y => y
+        def multi_zaxpy(a,x,y, nvec):
+            for i in range(nvec):
+                axpy(a[i]*(1+0J), x[i], y[i])
 
         # scale = square of the norm of b
-        scale = abs( zdotc(b,b) )
-        if scale < self.eps:
+        multi_zdotc(scale, b,b, nvec)
+        scale = npy.abs( scale )
+
+        # FIXME: ???
+        if (scale < self.eps).any():
             scale = 1.0
 
         for i in range(self.max_iter):
             # rho_i-1 = q^H r_i-1
-            rho = zdotc(q,r)
+            multi_zdotc(rho, q, r, nvec)
 
             # if i=1, p_i = r_i-1
             # else beta = (rho_i-1 / rho_i-2) (alpha_i-1 / omega_i-1)
@@ -112,57 +128,68 @@ class BiCGStab:
 
             # if abs(beta) / scale < eps, then BiCGStab breaks down
             if ( (i > 0) and
-                 ((abs(beta) / scale) < self.eps) ):
-                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (abs(rho),self.eps))
+                 ((npy.abs(beta) / scale) < self.eps).any() ):
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (npy.min(npy.abs(rho)),self.eps))
             
             
             # p = r + beta * (p - omega * v)
             # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-            zaxpy(-omega, v, p)
+            multi_zaxpy(-omega, v, p, nvec)
             p *= beta
             p += r
             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
             
             # v_i = A.(M^-1.p)
-            A.solve_preconditioner(p,m)
+            A.apply_preconditioner(p,m)
             A.dot(m,v)
             # alpha_i = rho_i-1 / (q^H v_i)
-            alpha = rho / zdotc(q,v)
+            multi_zdotc(alpha, q,v, nvec)
+            alpha = rho / alpha
             # s = r_i-1 - alpha_i v_i
-            zaxpy(-alpha, v, r)
+            multi_zaxpy(-alpha, v, r, nvec)
             # s is denoted by r
             
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = x_i-1 + alpha (M^-1.p_i)
-            zaxpy(alpha, m, x)
+            multi_zaxpy(alpha, m, x, nvec)
             
             # if ( |s|^2 < tol^2 ) done
-            if ( (abs(zdotc(r,r)) / scale) < self.tol*self.tol ):
+            multi_zdotc(tmp, r,r, nvec)
+            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).any():
                 break
             
             # t = A.(M^-1.s), M = 1
-            A.solve_preconditioner(r,m)
+            A.apply_preconditioner(r,m)
             A.dot(m,t)
             # omega_i = t^H s / (t^H t) 
-            omega = zdotc(t,r) / zdotc(t,t)
+            multi_zdotc(omega, t,r, nvec)
+            multi_zdotc(tmp, t,t, nvec)
+            omega = omega / tmp
             
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = ... + omega_i (M^-1.s)
-            zaxpy(omega, m, x)
+            multi_zaxpy(omega, m, x, nvec)
             # r_i = s - omega_i * t
-            zaxpy(-omega, t, r)
+            multi_zaxpy(-omega, t, r, nvec)
             # s is no longer denoted by r
             
             # if ( |r|^2 < tol^2 ) done
-            if ( (abs(zdotc(r,r)) / scale) < self.tol*self.tol ):
+            zdotc(tmp, r,r, nvec)
+            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).any():
                 break
             
             # if abs(omega) < eps, then BiCGStab breaks down
-            if ( (abs(omega) / scale) < self.eps ):
-                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (abs(omega) / scale,self.eps))
+            if ( (npy.abs(omega) / scale) < self.eps ).any():
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (npy.min(npy(abs(omega))) / scale,self.eps))
             
             rhop = rho
+
             
+        # if max iters reached, raise error
+        if (i == self.max_iter):
+            raise RuntimeError("Biconjugate gradient stabilized method failed to converged within given number of iterations).")
+            
+
         # done
         self.iterations = i+1
 
@@ -170,5 +197,4 @@ class BiCGStab:
             self.timer.stop('BiCGStab')
 
         #print self.iterations
-        return x
 
