@@ -419,7 +419,7 @@ class Nucleus:
             # Note that the external potential is assumed to be
             # constant inside the augmentation spheres.
             Eext = 0.0
-            if vext:
+            if vext is not None:
                 Eext += vext * sqrt(4 * pi) * (self.Q_L[0] + s.Z)
                 dH_p += vext * sqrt(4 * pi) * s.Delta_pL[:, 0]
             

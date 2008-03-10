@@ -6,6 +6,7 @@ operators."""
 import numpy as npy
 
 from gpaw.polynomial import Polynomial
+from gpaw.external_potential import ExternalPotential
 from gpaw.mpi import run
 
 
@@ -39,12 +40,11 @@ class TimeDependentHamiltonian:
         self.time = self.old_time = 0
         
         # internal smooth potential
-        if hamiltonian.vt_sG is None:
-            hamiltonian.vt_sG = hamiltonian.finegd.zeros(n=hamiltonian.nspins)
+        self.vt_sG = hamiltonian.gd.zeros(n=hamiltonian.nspins)
 
         # external potential
-        if hamiltonian.vext_g is None:
-            hamiltonian.vext_g = hamiltonian.finegd.zeros()
+        #if hamiltonian.vext_g is None:
+        #    hamiltonian.vext_g = hamiltonian.finegd.zeros()
 
         #self.ti_vext_g = hamiltonian.vext_g
         #self.td_vext_g = hamiltonian.finegd.zeros(n=hamiltonian.nspins)
@@ -120,9 +120,10 @@ class TimeDependentHamiltonian:
         self.hamiltonian.apply(psit, hpsit, kpt)
         if self.td_potential is not None:
             strength = self.td_potential.strength
-            kpt.add_linear_field( self.pt_nuclei, psit, hpsit,
-                                   .5 * strength(self.time)
-                                   + .5 * strength(self.old_time) )
+            ExternalPotential().add_linear_field( self.pt_nuclei, psit, hpsit,
+                                                  .5*strength(self.time)
+                                                  + .5*strength(self.old_time),
+                                                  kpt )
 
 
 # AbsorptionKickHamiltonian
@@ -199,8 +200,8 @@ class AbsorptionKickHamiltonian:
 
         """
         hpsit[:] = 0.0
-        kpt.add_linear_field( self.pt_nuclei, psit, hpsit,
-                              self.abs_hamiltonian )
+        ExternalPotential().add_linear_field( self.pt_nuclei, psit, hpsit,
+                                              self.abs_hamiltonian, kpt )
 
 
 # Overlap

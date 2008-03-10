@@ -89,12 +89,12 @@ class BiCGStab:
         v = self.gd.zeros(nvec, dtype=complex)
         t = self.gd.zeros(nvec, dtype=complex)
         m = self.gd.zeros(nvec, dtype=complex)
-        alpha = npy.zeros((nvec,), dtype=real) 
-        rho  = npy.zeros((nvec,), dtype=real) 
-        rhop  = npy.zeros((nvec,), dtype=real) 
-        omega = npy.zeros((nvec,), dtype=real) 
-        scale = npy.zeros((nvec,), dtype=real) 
-        tmp = npy.zeros((nvec,), dtype=real) 
+        alpha = npy.zeros((nvec,), dtype=complex) 
+        rho  = npy.zeros((nvec,), dtype=complex) 
+        rhop  = npy.zeros((nvec,), dtype=complex) 
+        omega = npy.zeros((nvec,), dtype=complex) 
+        scale = npy.zeros((nvec,), dtype=complex) 
+        tmp = npy.zeros((nvec,), dtype=complex) 
         rhop[:] = 1.
         omega[:] = 1.
 
@@ -108,6 +108,10 @@ class BiCGStab:
         def multi_zaxpy(a,x,y, nvec):
             for i in range(nvec):
                 axpy(a[i]*(1+0J), x[i], y[i])
+        # Multiscale: a x => x
+        def multi_scale(a,x, nvec):
+            for i in range(nvec):
+                x[i] *= a[i]
 
         # scale = square of the norm of b
         multi_zdotc(scale, b,b, nvec)
@@ -135,7 +139,7 @@ class BiCGStab:
             # p = r + beta * (p - omega * v)
             # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
             multi_zaxpy(-omega, v, p, nvec)
-            p *= beta
+            multi_scale(beta, p, nvec)
             p += r
             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
             
@@ -174,7 +178,7 @@ class BiCGStab:
             # s is no longer denoted by r
             
             # if ( |r|^2 < tol^2 ) done
-            zdotc(tmp, r,r, nvec)
+            multi_zdotc(tmp, r,r, nvec)
             if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).any():
                 break
             

@@ -7,6 +7,12 @@ import numpy as npy
 
 from gpaw.utilities.blas import axpy
 
+# Multivector ZAXPY: a x + y => y
+def multi_zaxpy(a,x,y, nvec):
+    for i in range(nvec):
+        axpy(a*(1+0J), x[i], y[i])
+
+
 ###############################################################################
 # Propagator
 ###############################################################################
@@ -129,8 +135,9 @@ class ExplicitCrankNicolson(Propagator):
             self.timer.stop('Apply time-dependent operators')
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
-            kpt.psit_nG[:] = self.spsit
-            multi_axpy(-.5j * self.time_step, self.hpsit, kpt.psit_nG)
+            kpt.psit_nG[:] = self.spsit            
+            multi_zaxpy(-.5j * self.time_step, self.hpsit, kpt.psit_nG, 
+                          len(kpt.psit_nG))
 
             # A x = b
             self.solver.solve(self, kpt.psit_nG, kpt.psit_nG)
@@ -154,7 +161,9 @@ class ExplicitCrankNicolson(Propagator):
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit 
         psin[:] = self.spsit
-        multi_axpy(.5j * self.time_step, self.hpsit, psin)
+        multi_zaxpy(.5j * self.time_step, self.hpsit, psin,
+                     len(psi))
+
 
 
     #  M psin = psi, where M = T (kinetic energy operator)
@@ -318,12 +327,12 @@ class SemiImplicitCrankNicolson(Propagator):
         if self.tmp_psit_nG is None:
             self.tmp_psit_nG = []
             for kpt in kpt_u:
-                self.twf.append( self.gd.empty( len(kpt.psit_nG),
-                                                dtype=complex ) )
+                self.tmp_psit_nG.append( self.gd.empty( len(kpt.psit_nG),
+                                                        dtype=complex ) )
 
         # copy current wavefunctions to temporary variable
         for u in range(len(kpt_u)):
-            self.twf[u][:] = kpt_u[u].psit_nG
+            self.tmp_psit_nG[u][:] = kpt_u[u].psit_nG
         
         if self.hpsit is None:
             self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG), dtype=complex)
@@ -361,7 +370,7 @@ class SemiImplicitCrankNicolson(Propagator):
 
         # propagate psit(t), not psit(t+dt), in correct
         for u in range(len(kpt_u)):
-            kpt_u[u].psit_nG[:] = self.twf[u]
+            kpt_u[u].psit_nG[:] = self.tmp_psit_nG[u]
         
         # correct
         self.solve_propagation_equation(kpt_u, time_step)
@@ -379,10 +388,11 @@ class SemiImplicitCrankNicolson(Propagator):
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
             kpt.psit_nG[:] = self.spsit
-            multi_axpy(-.5j * self.time_step, self.hpsit, kpt.psit_nG)
-            
+            multi_zaxpy(-.5j * self.time_step, self.hpsit, kpt.psit_nG,
+                          len(kpt.psit_nG))
+
             # A x = b
-            kpt.psit_nG[:] = self.solver.solve(self, kpt.psit_nG, kpt.psit_nG)
+            self.solver.solve(self, kpt.psit_nG, kpt.psit_nG)
             
             
     # ( S + i H dt/2 ) psi
@@ -403,11 +413,12 @@ class SemiImplicitCrankNicolson(Propagator):
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit
         psin[:] = self.spsit
-        multi_axpy(.5j * self.time_step, self.hpsit, psin)
+        multi_zaxpy(.5j * self.time_step, self.hpsit, psin,
+                     len(psi))
 
 
     #  M psin = psi, where M = T (kinetic energy operator)
-    def solve_preconditioner(self, psi, psin):
+    def apply_preconditioner(self, psi, psin):
         """Applies preconditioner.
         
         Parameters:

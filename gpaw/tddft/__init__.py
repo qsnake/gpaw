@@ -67,14 +67,14 @@ class TDDFT(PAW):
     theory implementation and is the only class which user has to use.
     """
     
-    def __init__( self, ground_state, td_potential = None,
+    def __init__( self, ground_state_file, td_potential = None,
                   propagator='SICN', solver='BiCGStab', tolerance=1e-15 ):
         """Create TDDFT-object.
         
         Parameters:
         -----------
-        ground_state: Filename
-            Filename
+        ground_state_file: string
+            File name for the ground state data
         td_potential: class, optional
             Function class for the time-dependent potential. It must have method
             'strength(time)' which returns the strength of the linear potential
@@ -90,12 +90,18 @@ class TDDFT(PAW):
         """
 
         # Initialize paw-object
-        PAW.__init__(self,filename)
+        PAW.__init__(self,ground_state_file)
 
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
+        for nucleus in self.nuclei:
+            nucleus.ready = False
+        self.set_positions()
         self.initialize_wave_functions()
         self.density.update_pseudo_charge()
+
+        # Don't be too strict
+        self.density.charge_eps = 1e-4
 
         # Convert PAW-object to complex
         self.totype(complex);
@@ -153,16 +159,17 @@ class TDDFT(PAW):
                                 % (propagator) )
         
 
-    def propagate(self, time_step, iterations=1, dipole_data_file = None, 
+    def propagate(self, time_step = 1.0, iterations=10000, 
+                  dipole_moment_file = None, 
                   restart_file = None, dump_interval = 1000):
         """Propagates wavefunctions.
         
         Parameters:
         time_step: float
-            Time step
+            Time step in attoseconds (10^-18 s)
         iterations: integer
             Iterations
-        dipole_data_file: string, optional
+        dipole_moment_file: string, optional
             Name of the data file where to the time-dependent dipole 
             moment is saved
         restart_file: string, optional
@@ -171,19 +178,23 @@ class TDDFT(PAW):
             After how many iterations restart data is dumped
         
         """
-        if dm_file is not None:
+        # Convert to atomic units
+        time_step = time_step / 24.1888
+
+        if dipole_moment_file is not None:
             dm_file = file(dipole_moment_file,'w')
 
         for i in range(iterations):
             # write dipole moment
             if dipole_moment_file is not None:
                 if rank == 0:
-                    paw.gd.calculate_dipole_moment(self.density)
-                    line = repr(time).rjust(10) + '  '
-                    line = repr(dm[0]).rjust(20) + '  '
-                    line = repr(dm[1]).rjust(20) + '  '
-                    line = repr(dm[2]).rjust(20)
-                    dipole_moment_file.write(line)
+                    dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
+                    line = repr(self.time).rjust(10) + '  '
+                    line = line + repr(dm[0]).rjust(20) + '  '
+                    line = line + repr(dm[1]).rjust(20) + '  '
+                    line = line + repr(dm[2]).rjust(20) + '\n'
+                    dm_file.write(line)
+                    dm_file.flush()
 
             # propagate
             self.propagator.propagate(self.kpt_u, self.time, time_step)
@@ -195,11 +206,11 @@ class TDDFT(PAW):
                     self.write(restart_file, 'all')
                     
         # close dipole moment file
-        if dm_file is not None:
+        if dipole_moment_file is not None:
             dm_file.close()
 
 
-    def photoabsortion_spectrum(self, dipole_moment_file, spectrum_file):
+    def photoabsortion_spectrum(self, dipole_moment_file, spectrum_file, fwhm = 0.2, delta_omega = 0.01, omega_max = 50.0):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
@@ -209,8 +220,16 @@ class TDDFT(PAW):
             the specturm is calculated
         spectrum_file: string
             Name of the spectrum file
+        fwhm: float
+            Full width at half maximum for peaks
+        delta_omega: float
+            Energy resolution in electron volts, eV
+        omega_max: float
+            Maximum excitation energy
         """
         print 'Method "photoabsortion_spectrum(self, dipole_moment_file, spectrum_file)" not implemented yet.'
+        dm_file = file(dipole_moment_file, 'r')
+        dm_file.close()
         pass
 
     # exp(ip.r) psi
@@ -220,6 +239,7 @@ class TDDFT(PAW):
         """
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
-                                                       strength ),
+                                                       npy.array(strength, 
+                                                                 dtype=float) ),
                             self.td_overlap, self.solver, self.gd, self.timer )
         abs_kick.kick(self.kpt_u)
