@@ -170,7 +170,8 @@ class TDDFT(PAW):
                   restart_file = None, dump_interval = 1000):
         """Propagates wavefunctions.
         
-        Parameters:
+        Parameters
+        ----------
         time_step: float
             Time step in attoseconds (10^-18 s)
         iterations: integer
@@ -231,7 +232,8 @@ class TDDFT(PAW):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
-        Parameters:
+        Parameters
+        ----------
         dipole_moment_file: string
             Name of the time-dependent dipole moment file from which
             the specturm is calculated

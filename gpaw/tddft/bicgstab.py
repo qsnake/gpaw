@@ -10,7 +10,7 @@ from gpaw.utilities.blas import dotc
 
 
 class BiCGStab:
-    """ Biconjugate gradient stabilized method
+    """Biconjugate gradient stabilized method
     
     This class solves a set of linear equations A.x = b using biconjugate 
     gradient stabilized method (BiCGStab). The matrix A is a general, 
@@ -35,7 +35,8 @@ class BiCGStab:
         .5 sqrt(kappa) ln(2/tolerance). A small number is treated as zero
         if it's magnitude is smaller than argument eps.
         
-        Parameters:
+        Parameters
+        ----------
         gd: GridDescriptor
             grid descriptor for coarse (pseudowavefunction) grid
         timer: Timer
@@ -116,7 +117,6 @@ class BiCGStab:
         # scale = square of the norm of b
         multi_zdotc(scale, b,b, nvec)
         scale = npy.abs( scale )
-        #print scale
 
         # FIXME: ???
         if (scale < self.eps).any():
@@ -128,10 +128,14 @@ class BiCGStab:
             # rho_i-1 = q^H r_i-1
             multi_zdotc(rho, q, r, nvec)
 
+            print 'Rho = ', rho
+
             # if i=1, p_i = r_i-1
             # else beta = (rho_i-1 / rho_i-2) (alpha_i-1 / omega_i-1)
             #      p_i = r_i-1 + b_i-1 (p_i-1 - omega_i-1 v_i-1)
             beta = (rho / rhop) * (alpha / omega)
+
+            print 'Beta = ', beta
 
             # if abs(beta) / scale < eps, then BiCGStab breaks down
             if ( (i > 0) and
@@ -156,13 +160,15 @@ class BiCGStab:
             multi_zaxpy(-alpha, v, r, nvec)
             # s is denoted by r
             
+            print 'Alpha = ', alpha
+
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = x_i-1 + alpha (M^-1.p_i)
             multi_zaxpy(alpha, m, x, nvec)
             
             # if ( |s|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
-            #print 'R2 = ' , tmp
+            print 'r2 = ', tmp
             if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
                 break
             
@@ -174,6 +180,8 @@ class BiCGStab:
             multi_zdotc(tmp, t,t, nvec)
             omega = omega / tmp
             
+            print 'Omega = ', omega
+
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = ... + omega_i (M^-1.s)
             multi_zaxpy(omega, m, x, nvec)
@@ -183,6 +191,7 @@ class BiCGStab:
             
             # if ( |r|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
+            print 'r2 = ' , tmp
             if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).any():
                 break
             

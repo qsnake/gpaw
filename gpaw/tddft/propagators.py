@@ -29,7 +29,8 @@ class Propagator:
     def __init__(self, td_density, td_hamiltonian, td_overlap):
         """Create the Propagator-object.
         
-        Parameters:
+        Parameters
+        ----------
         td_density: TimeDependentDensity
             the time-dependent density
         td_hamiltonian: TimeDependentHamiltonian
@@ -45,10 +46,13 @@ class Propagator:
         self.td_overlap = td_overlap
 
         
-    def propagate(self, time, time_step):
+    def propagate(self, kpt_u, time, time_step):
         """Propagate wavefunctions once. 
         
-        Parameters:
+        Parameters
+        ----------
+        kpt_u: Kpoint
+            K-point
         time: float
             the current time
         time_step: float
@@ -76,7 +80,8 @@ class ExplicitCrankNicolson(Propagator):
                   solver, preconditioner, gd, timer):
         """Create ExplicitCrankNicolson-object.
         
-        Parameters:
+        Parameters
+        ----------
         td_density: TimeDependentDensity
             time-dependent density
         td_hamiltonian: TimeDependentHamiltonian
@@ -109,7 +114,8 @@ class ExplicitCrankNicolson(Propagator):
     def propagate(self, kpt_u, time, time_step):
         """Propagate spin up and down wavefunctions. 
         
-        Parameters:
+        Parameters
+        ----------
         kpt_u: List of Kpoints
             K-points
         time: float
@@ -152,7 +158,8 @@ class ExplicitCrankNicolson(Propagator):
     def dot(self, psi, psin):
         """Applies the propagator matrix to the given wavefunction.
 
-        Parameters:
+        Parameters
+        ----------
         psi: List of coarse grids
             the known wavefunctions
         psin: List of coarse grids
@@ -174,7 +181,8 @@ class ExplicitCrankNicolson(Propagator):
     def apply_preconditioner(self, psi, psin):
         """Solves preconditioner equation.
 
-        Parameters:
+        Parameters
+        ----------
         psi: List of coarse grids
             the known wavefunctions
         psin: List of coarse grids
@@ -218,7 +226,8 @@ class AbsorptionKick(ExplicitCrankNicolson):
     def __init__(self, abs_kick_hamiltonian, td_overlap, solver, gd, timer):
         """Create AbsorptionKick-object.
         
-        Parameters:
+        Parameters
+        ----------
         abs_kick_hamiltonian: AbsorptionKickHamiltonian
             the absorption kick hamiltonian
         td_overlap: TimeDependentOverlap
@@ -246,9 +255,11 @@ class AbsorptionKick(ExplicitCrankNicolson):
     def kick(self, kpt_u):
         """Excite all possible frequencies.
         
-        Parameters:
+        Parameters
+        ----------
         kpt_u: List of Kpoints
             K-points
+
         """ 
 
         if rank == 0:
@@ -284,7 +295,8 @@ class SemiImplicitCrankNicolson(Propagator):
                   solver, preconditioner, gd, timer ):
         """Create SemiImplicitCrankNicolson-object.
         
-        Parameters:
+        Parameters
+        ----------
         td_density: TimeDependentDensity
             the time-dependent density
         td_hamiltonian: TimeDependentHamiltonian
@@ -317,17 +329,14 @@ class SemiImplicitCrankNicolson(Propagator):
     def propagate(self, kpt_u, time, time_step):
         """Propagate wavefunctions once.
         
-        =========== =========================================================
-        Parameters:
-        =========== =========================================================
+        Parameters
+        ----------
         kpt_u: List of Kpoints
             K-points
         time: float
             the current time
         time_step: float
-            time step
-        =========== =========================================================
-        
+            time step        
         """
         # temporary wavefunctions
         
@@ -406,7 +415,8 @@ class SemiImplicitCrankNicolson(Propagator):
     def dot(self, psi, psin):
         """Applies the propagator matrix to the given wavefunctions.
         
-        Parameters:
+        Parameters
+        ----------
         psi: List of coarse grids
             the known wavefunctions
         psin: List of coarse grids
@@ -428,7 +438,8 @@ class SemiImplicitCrankNicolson(Propagator):
     def apply_preconditioner(self, psi, psin):
         """Applies preconditioner.
         
-        Parameters:
+        Parameters
+        ----------
         psi: List of coarse grids
             the known wavefunctions
         psin: List of coarse grids

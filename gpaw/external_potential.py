@@ -10,7 +10,8 @@ class ExternalPotential:
         """Adds (does NOT apply) linear field 
         f(x,y,z) = str_x * x + str_y * y + str_z * z to wavefunctions.
 
-        Parameters:
+        Parameters
+        ----------
         pt_nuclei: List of ?LocalizedFunctions?
             Projectors (paw.pt_nuclei)
         a_nG:

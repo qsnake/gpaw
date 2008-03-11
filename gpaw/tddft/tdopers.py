@@ -25,7 +25,8 @@ class TimeDependentHamiltonian:
         function strength(self,time), which provides the strength of the
         time-dependent external potential to x-direction at the given time.
         
-        Parameters:
+        Parameters
+        ----------
         pt_nuclei: List of ?LocalizedFunctions?
             projector functions (paw.pt_nuclei)
         hamiltonian: Hamiltonian
@@ -59,7 +60,8 @@ class TimeDependentHamiltonian:
     def update(self, density, time):
         """Updates the time-dependent Hamiltonian.
     
-        Parameters:
+        Parameters
+        ----------
         density: Density
             the density at the given time 
             (TimeDependentDensity.get_density())
@@ -76,7 +78,8 @@ class TimeDependentHamiltonian:
         """Updates the time-dependent Hamiltonian, in such a way, that a
         half of the old Hamiltonian is kept and the other half is updated.
         
-        Parameters:
+        Parameters
+        ----------
         density: Density
             the density at the given time 
             (TimeDependentDensity.get_density())
@@ -106,7 +109,8 @@ class TimeDependentHamiltonian:
         """Applies the time-dependent Hamiltonian to the wavefunction psit of
         the k-point kpt.
         
-        Parameters:
+        Parameters
+        ----------
         kpt: Kpoint
             the current k-point (kpt_u[index_of_k-point])
         psit: List of coarse grid
@@ -114,7 +118,6 @@ class TimeDependentHamiltonian:
             (kpt_u[index_of_k-point].psit_nG[index_of_wavefunc])
         hpsit: List of coarse grid
             the resulting "operated wavefunctions" (H psit)
-        =========== ==========================================================
 
         """
         self.hamiltonian.apply(psit, hpsit, kpt)
@@ -137,7 +140,8 @@ class AbsorptionKickHamiltonian:
     def __init__(self, pt_nuclei, strength = [0.0, 0.0, 1e-4]):
         """ Create the AbsorptionKickHamiltonian-object.
 
-        Parameters:
+        Parameters
+        ----------
         pt_nuclei: List of ?LocalizedFunctions?
             projector functions (pt_nuclei)
         strength: float[3]
@@ -164,7 +168,8 @@ class AbsorptionKickHamiltonian:
     def update(self, density, time):
         """Dummy function = does nothing. Required to have correct interface.
         
-        Parameters:
+        Parameters
+        ----------
         density: Density or None
             the density at the given time or None (ignored)
         time: Float or None
@@ -176,7 +181,8 @@ class AbsorptionKickHamiltonian:
     def half_update(self, density, time):
         """Dummy function = does nothing. Required to have correct interface.
         
-        Parameters:
+        Parameters
+        ----------
         density: Density or None
             the density at the given time or None (ignored)
         time: float or None
@@ -189,7 +195,8 @@ class AbsorptionKickHamiltonian:
         """Applies the absorption kick Hamiltonian to the wavefunction psit of
         the k-point kpt.
         
-        Parameters:
+        Parameters
+        ----------
         kpt: Kpoint
             the current k-point (kpt_u[index_of_k-point])
         psit: List of coarse grids
@@ -215,7 +222,8 @@ class TimeDependentOverlap:
     def __init__(self, overlap):
         """Creates the TimeDependentOverlap-object.
         
-        Parameters:
+        Parameters
+        ----------
         pt_nuclei: List of ?LocalizedFunctions?   
             projector functions (pt_nuclei)
 
@@ -225,7 +233,8 @@ class TimeDependentOverlap:
     def update(self):
         """Updates the time-dependent overlap operator. !Currently does nothing!
         
-        Parameters:
+        Parameters
+        ----------
         None
         """
         # !!! FIX ME !!! update overlap operator/projectors/...
@@ -236,7 +245,8 @@ class TimeDependentOverlap:
         that a half of the old overlap operator is kept and the other half 
         is updated. !Currently does nothing!
 
-        Parameters:
+        Parameters
+        ----------
         None
         """
         # !!! FIX ME !!! update overlap operator/projectors/...
@@ -246,7 +256,8 @@ class TimeDependentOverlap:
         """Applies the time-dependent overlap operator to the wavefunction 
         psit of the k-point kpt.
         
-        Parameters:
+        Parameters
+        ----------
         kpt: Kpoint
             the current k-point (kpt_u[index_of_k-point])
         psit: List of coarse grids
@@ -254,7 +265,6 @@ class TimeDependentOverlap:
             (kpt_u[index_of_k-point].psit_nG[index_of_wavefunc])
         spsit: List of coarse grids
             the resulting "operated wavefunctions" (S psit)
-        =========== ==========================================================
 
         """
         self.overlap.apply(psit, spsit, kpt)
@@ -272,17 +282,18 @@ class TimeDependentDensity:
     def __init__(self, paw):
         """Creates the TimeDependentDensity-object.
         
-        Parameters:
+        Parameters
+        ----------
         paw: PAW
             the PAW-object
-
         """
         self.paw = paw
         
     def update(self):
         """Updates the time-dependent density.
         
-        Parameters:
+        Parameters
+        ----------
         None
 
         """
@@ -294,7 +305,8 @@ class TimeDependentDensity:
     def get_density(self):
         """Returns the current density.
         
-        Parameters:
+        Parameters
+        ----------
         None
 
         """
