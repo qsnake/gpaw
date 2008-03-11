@@ -3,12 +3,16 @@
 """This module implements time propagators for time-dependent density 
 functional theory calculations."""
 
+import sys
+
 import numpy as npy
 
 from gpaw.utilities.blas import axpy
 
+from gpaw.mpi import rank
+
 # Multivector ZAXPY: a x + y => y
-def multi_zaxpy(a,x,y, nvec):
+def multi_zaxpy2(a,x,y, nvec):
     for i in range(nvec):
         axpy(a*(1+0J), x[i], y[i])
 
@@ -39,6 +43,7 @@ class Propagator:
         self.td_density = td_density
         self.td_hamiltonian = td_hamiltonian
         self.td_overlap = td_overlap
+
         
     def propagate(self, time, time_step):
         """Propagate wavefunctions once. 
@@ -136,7 +141,7 @@ class ExplicitCrankNicolson(Propagator):
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
             kpt.psit_nG[:] = self.spsit            
-            multi_zaxpy(-.5j * self.time_step, self.hpsit, kpt.psit_nG, 
+            multi_zaxpy2(-.5j * self.time_step, self.hpsit, kpt.psit_nG, 
                           len(kpt.psit_nG))
 
             # A x = b
@@ -161,9 +166,8 @@ class ExplicitCrankNicolson(Propagator):
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit 
         psin[:] = self.spsit
-        multi_zaxpy(.5j * self.time_step, self.hpsit, psin,
-                     len(psi))
-
+        multi_zaxpy2(.5j * self.time_step, self.hpsit, psin,
+                      len(psi))
 
 
     #  M psin = psi, where M = T (kinetic energy operator)
@@ -246,14 +250,17 @@ class AbsorptionKick(ExplicitCrankNicolson):
         kpt_u: List of Kpoints
             K-points
         """ 
-        #print "Absorption kick iterations = ", self.td_hamiltonian.iterations
-        #print " (. = 10 iterations)"
+
+        if rank == 0:
+            print "Kick iterations = ", self.td_hamiltonian.iterations
+
         for l in range(self.td_hamiltonian.iterations):
             self.propagate(kpt_u, 0, 1.0)
-        #    if ( ((l+1) % 10) == 0 ): 
-        #        print ".",
-        #        sys.stdout.flush()
-        #print ""
+            if rank == 0:
+                print '.',
+                sys.stdout.flush()
+        if rank == 0:
+            print ''
         
 
 ###############################################################################
@@ -388,7 +395,7 @@ class SemiImplicitCrankNicolson(Propagator):
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
             kpt.psit_nG[:] = self.spsit
-            multi_zaxpy(-.5j * self.time_step, self.hpsit, kpt.psit_nG,
+            multi_zaxpy2(-.5j * self.time_step, self.hpsit, kpt.psit_nG,
                           len(kpt.psit_nG))
 
             # A x = b
@@ -413,7 +420,7 @@ class SemiImplicitCrankNicolson(Propagator):
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit
         psin[:] = self.spsit
-        multi_zaxpy(.5j * self.time_step, self.hpsit, psin,
+        multi_zaxpy2(.5j * self.time_step, self.hpsit, psin,
                      len(psi))
 
 

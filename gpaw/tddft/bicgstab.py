@@ -116,10 +116,13 @@ class BiCGStab:
         # scale = square of the norm of b
         multi_zdotc(scale, b,b, nvec)
         scale = npy.abs( scale )
+        #print scale
 
         # FIXME: ???
         if (scale < self.eps).any():
             scale = 1.0
+
+        print 'Scale = ', scale
 
         for i in range(self.max_iter):
             # rho_i-1 = q^H r_i-1
@@ -159,7 +162,8 @@ class BiCGStab:
             
             # if ( |s|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
-            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).any():
+            #print 'R2 = ' , tmp
+            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
                 break
             
             # t = A.(M^-1.s), M = 1
@@ -184,7 +188,7 @@ class BiCGStab:
             
             # if abs(omega) < eps, then BiCGStab breaks down
             if ( (npy.abs(omega) / scale) < self.eps ).any():
-                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (npy.min(npy(abs(omega))) / scale,self.eps))
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (npy.min(npy.abs(omega)) / scale, self.eps))
             
             rhop = rho
 

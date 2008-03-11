@@ -159,7 +159,7 @@ class AbsorptionKickHamiltonian:
         self.dp = strength / self.iterations
 
         # hamiltonian
-        self.abs_hamiltonian = [ self.dp[0], self.dp[1], self.dp[2] ]
+        self.abs_hamiltonian = npy.array([self.dp[0], self.dp[1], self.dp[2]])
         
     def update(self, density, time):
         """Dummy function = does nothing. Required to have correct interface.

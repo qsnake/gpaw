@@ -58,7 +58,7 @@ class ExternalPotential:
 
             # if not in this domain
             else:
-                nucleus.apply_linear_field(a_nG, b_nG, self.k, None, None)
+                nucleus.apply_linear_field(a_nG, b_nG, kpt.k, None, None)
 
 
 

@@ -13,6 +13,8 @@ import sys
 
 import numpy as npy
 
+from ase.units import Bohr, Hartree
+
 from gpaw.paw import PAW
 #from gpaw.pawextra import PAWExtra
 
@@ -89,6 +91,10 @@ class TDDFT(PAW):
 
         """
 
+        # Set units to ASE units
+        self.a0 = Bohr
+        self.Ha = Hartree
+
         # Initialize paw-object
         PAW.__init__(self,ground_state_file)
 
@@ -101,7 +107,7 @@ class TDDFT(PAW):
         self.density.update_pseudo_charge()
 
         # Don't be too strict
-        self.density.charge_eps = 1e-4
+        self.density.charge_eps = 1e-6
 
         # Convert PAW-object to complex
         self.totype(complex);
@@ -185,11 +191,20 @@ class TDDFT(PAW):
             dm_file = file(dipole_moment_file,'w')
 
         for i in range(iterations):
+            # print something
+            if rank == 0:
+                if i % 100 == 0:
+                    print ''
+                    print i, ' iterations done. Current time is ', self.time * 24.1888, ' as.'
+                elif i % 10 == 0:
+                    print '.',
+                    sys.stdout.flush()
+
             # write dipole moment
             if dipole_moment_file is not None:
+                dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
                 if rank == 0:
-                    dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
-                    line = repr(self.time).rjust(10) + '  '
+                    line = repr(self.time).rjust(20) + '  '
                     line = line + repr(dm[0]).rjust(20) + '  '
                     line = line + repr(dm[1]).rjust(20) + '  '
                     line = line + repr(dm[2]).rjust(20) + '\n'
@@ -208,6 +223,8 @@ class TDDFT(PAW):
         # close dipole moment file
         if dipole_moment_file is not None:
             dm_file.close()
+
+        print ''
 
 
     def photoabsortion_spectrum(self, dipole_moment_file, spectrum_file, fwhm = 0.2, delta_omega = 0.01, omega_max = 50.0):
@@ -237,6 +254,9 @@ class TDDFT(PAW):
         """ Delta absoprtion kick for photoabsorption spectrum.
         
         """
+        if rank == 0:
+            print 'Delta kick: ', strength
+
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
                                                        npy.array(strength, 
