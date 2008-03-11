@@ -217,9 +217,6 @@ class PAW(PAWExtra, Output):
 
         self.timer = Timer()
 
-        self.a0 = 0.52917720859 # Angstroms
-        self.Ha = 27.21138386   # Electron volts
-
         self.input_parameters = {
             'h':             None,  # Angstrom
             'xc':            'LDA',
