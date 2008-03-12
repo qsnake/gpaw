@@ -189,14 +189,16 @@ class TDDFT(PAW):
         time_step = time_step / 24.1888
 
         if dipole_moment_file is not None:
-            dm_file = file(dipole_moment_file,'w')
+            if rank == 0:
+                dm_file = file(dipole_moment_file,'w')
 
         for i in range(iterations):
             # print something
             if rank == 0:
                 if i % 100 == 0:
                     print ''
-                    print i, ' iterations done. Current time is ', self.time * 24.1888, ' as.'
+                    print i, ' iterations done. Current time is ', \
+                        self.time * 24.1888, ' as.'
                 elif i % 10 == 0:
                     print '.',
                     sys.stdout.flush()
@@ -206,11 +208,8 @@ class TDDFT(PAW):
                 dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
                 norm = self.finegd.integrate(self.density.rhot_g)
                 if rank == 0:
-                    line = repr(self.time).rjust(20) + '  '
-                    line = line + repr(norm).rjust(20) + '  '
-                    line = line + repr(dm[0]).rjust(20) + '  '
-                    line = line + repr(dm[1]).rjust(20) + '  '
-                    line = line + repr(dm[2]).rjust(20) + '\n'
+                    line = '%20.8lf %20.8le %22.12le %22.12le %22.12le\n' \
+                        % (self.time, norm, dm[0], dm[1], dm[2])
                     dm_file.write(line)
                     dm_file.flush()
 
@@ -225,12 +224,29 @@ class TDDFT(PAW):
                     
         # close dipole moment file
         if dipole_moment_file is not None:
-            dm_file.close()
+            if rank == 0:
+                dm_file.close()
 
         print ''
 
 
-    def photoabsortion_spectrum(self, dipole_moment_file, spectrum_file, fwhm = 0.2, delta_omega = 0.01, omega_max = 50.0):
+    # exp(ip.r) psi
+    def absorption_kick(self, strength = [0.0,0.0,1e-4]):
+        """ Delta absoprtion kick for photoabsorption spectrum.
+        
+        """
+        if rank == 0:
+            print 'Delta kick: ', strength
+
+        abs_kick = \
+            AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
+                                                       npy.array(strength, 
+                                                                 dtype=float) ),
+                            self.td_overlap, self.solver, self.preconditioner, self.gd, self.timer )
+        abs_kick.kick(self.kpt_u)
+
+
+    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength = [0,0,1e-4], fwhm = 0.2, delta_omega = 0.01, omega_max = 50.0):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
@@ -248,22 +264,68 @@ class TDDFT(PAW):
         omega_max: float
             Maximum excitation energy
         """
-        print 'Method "photoabsortion_spectrum(self, dipole_moment_file, spectrum_file)" not implemented yet.'
-        dm_file = file(dipole_moment_file, 'r')
-        dm_file.close()
-        pass
-
-    # exp(ip.r) psi
-    def absorption_kick(self, strength = [0.0,0.0,1e-4]):
-        """ Delta absoprtion kick for photoabsorption spectrum.
-        
-        """
         if rank == 0:
-            print 'Delta kick: ', strength
+            print 'Calculating photoabsorption spectrum from file "%s."' \
+                % dipole_moment_file
 
-        abs_kick = \
-            AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
-                                                       npy.array(strength, 
-                                                                 dtype=float) ),
-                            self.td_overlap, self.solver, self.preconditioner, self.gd, self.timer )
-        abs_kick.kick(self.kpt_u)
+            f_file = file(spectrum_file, 'w')
+            dm_file = file(dipole_moment_file, 'r')
+            lines = dm_file.readlines()
+            n = len(lines)
+            dm = npy.zeros((n,3),dtype=float)
+            time = npy.zeros((n,),dtype=float)
+            for i in range(n):
+                data = lines[i].split()
+                time[i] = float(data[0])
+                dm[i,0] = float(data[2])
+                dm[i,1] = float(data[3])
+                dm[i,2] = float(data[4])
+            dm_file.close()      
+
+            t = time - time[0]
+            dt = time[1] - time[0]
+            dm[:] = dm - dm[0]
+            nw = int(omega_max / delta_omega)
+            dw = delta_omega / 27.211
+            # f(w) = Nw exp(-w^2/2sigma^2)
+            sigma = fwhm / (2.* npy.sqrt(2.* npy.log(2.0)))
+            # f(t) = Nt exp(-t^2/2gamma^2)
+            gamma = 1.0 / sigma
+            kick_magnitude = npy.sum(npy.array(kick_strength)**2)
+
+            # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
+            #                                * ( dm(t) - dm(0) )
+            alpha = 0
+            for i in range(nw):
+                w = i * dw
+                # x
+                alphax = npy.sum( npy.sin(t * w) 
+                                 * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
+                alphax *= \
+                    2 * dt / (2*npy.pi) / kick_magnitude * kick_strength[0]
+                # y
+                alphay = npy.sum( npy.sin(t * w) 
+                                 * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
+                alphay *= \
+                    2 * dt / (2*npy.pi) / kick_magnitude * kick_strength[1]
+                # z
+                alphaz = npy.sum( npy.sin(t * w) 
+                                 * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
+                alphaz *= \
+                    2 * dt / (2*npy.pi) / kick_magnitude * kick_strength[2]
+
+                # f = 2 * omega * alpha
+                line = '%10.6lf %20.10le %20.10le %20.10le\n' \
+                    % ( w*27.211, 
+                       2*w*alphax / 27.211, 
+                        2*w*alphay / 27.211,
+                        2*w*alphaz / 27.211 )
+                f_file.write(line)
+
+            f_file.close()      
+
+            print 'Calculated photoabsorption spectrum saved to file "%s."' \
+                % spectrum_file
+
+    photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
+
