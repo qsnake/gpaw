@@ -7,7 +7,7 @@ import numpy as npy
 
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotc
-
+from gpaw.mpi import rank
 
 class BiCGStab:
     """Biconjugate gradient stabilized method
@@ -25,7 +25,7 @@ class BiCGStab:
     """ 
     
     def __init__( self, gd, timer = None,
-                  tolerance = 1e-15, max_iterations = 100, eps=1e-15 ):
+                  tolerance = 1e-15, max_iterations = 1000, eps=1e-15 ):
         """Create the BiCGStab-object.
         
         Tolerance should not be smaller than attainable accuracy, which is 
@@ -104,7 +104,7 @@ class BiCGStab:
             for i in range(nvec):
                 s[i] = dotc(x[i],y[i])
             self.gd.comm.sum(s)
-            return s        
+            return s
         # Multivector ZAXPY: a x + y => y
         def multi_zaxpy(a,x,y, nvec):
             for i in range(nvec):
@@ -122,20 +122,22 @@ class BiCGStab:
         if (scale < self.eps).any():
             scale = 1.0
 
-        print 'Scale = ', scale
+        #print 'Scale = ', scale
+
+        slow_convergence_iters = 50
 
         for i in range(self.max_iter):
             # rho_i-1 = q^H r_i-1
             multi_zdotc(rho, q, r, nvec)
 
-            print 'Rho = ', rho
+            #print 'Rho = ', rho
 
             # if i=1, p_i = r_i-1
             # else beta = (rho_i-1 / rho_i-2) (alpha_i-1 / omega_i-1)
             #      p_i = r_i-1 + b_i-1 (p_i-1 - omega_i-1 v_i-1)
             beta = (rho / rhop) * (alpha / omega)
 
-            print 'Beta = ', beta
+            #print 'Beta = ', beta
 
             # if abs(beta) / scale < eps, then BiCGStab breaks down
             if ( (i > 0) and
@@ -160,7 +162,7 @@ class BiCGStab:
             multi_zaxpy(-alpha, v, r, nvec)
             # s is denoted by r
             
-            print 'Alpha = ', alpha
+            #print 'Alpha = ', alpha
 
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = x_i-1 + alpha (M^-1.p_i)
@@ -168,9 +170,15 @@ class BiCGStab:
             
             # if ( |s|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
-            print 'r2 = ', tmp
             if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
+                #print 'R2 of proc #', rank, '  = ' , tmp, \
+                #    ' after ', i+1, ' iterations'
                 break
+
+            # print if slow convergence
+            if ((i+1) % slow_convergence_iters) == 0:
+                print 'R2 of proc #', rank, '  = ' , tmp, \
+                    ' after ', i+1, ' iterations'
             
             # t = A.(M^-1.s), M = 1
             A.apply_preconditioner(r,m)
@@ -180,7 +188,7 @@ class BiCGStab:
             multi_zdotc(tmp, t,t, nvec)
             omega = omega / tmp
             
-            print 'Omega = ', omega
+            #print 'Omega = ', omega
 
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = ... + omega_i (M^-1.s)
@@ -191,9 +199,15 @@ class BiCGStab:
             
             # if ( |r|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
-            print 'r2 = ' , tmp
-            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).any():
+            if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
+                #print 'R2 of proc #', rank, '  = ' , tmp, \
+                #    ' after ', i+1, ' iterations'
                 break
+
+            # print if slow convergence
+            if ((i+1) % slow_convergence_iters) == 0:
+                print 'R2 of proc #', rank, '  = ' , tmp, \
+                    ' after ', i+1, ' iterations'
             
             # if abs(omega) < eps, then BiCGStab breaks down
             if ( (npy.abs(omega) / scale) < self.eps ).any():
@@ -203,12 +217,13 @@ class BiCGStab:
 
             
         # if max iters reached, raise error
-        if (i == self.max_iter):
-            raise RuntimeError("Biconjugate gradient stabilized method failed to converged within given number of iterations).")
+        if (i >= self.max_iter-1):
+            raise RuntimeError("Biconjugate gradient stabilized method failed to converged within given number of iterations (= %d)." % self.max_iter)
             
 
         # done
         self.iterations = i+1
+        #print 'BiCGStab iterations = ', self.iterations
 
         if self.timer is not None:
             self.timer.stop('BiCGStab')

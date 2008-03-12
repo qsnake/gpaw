@@ -50,10 +50,10 @@ class ExternalPotential:
                 x_c = nucleus.spos_c[0] * kpt.gd.domain.cell_c[0]
                 y_c = nucleus.spos_c[1] * kpt.gd.domain.cell_c[1]
                 z_c = nucleus.spos_c[2] * kpt.gd.domain.cell_c[2]
-                
+
                 # apply linear x operator
                 nucleus.apply_linear_field( a_nG, b_nG, kpt.k,
-                                            strength[0] * x_c 
+                                            strength[0] * x_c
                                             + strength[1] * y_c
                                             + strength[2] * z_c, strength )
 

@@ -112,7 +112,7 @@ class ExplicitCrankNicolson(Propagator):
         
     # ( S + i H dt/2 ) psit(t+dt) = ( S - i H dt/2 ) psit(t)
     def propagate(self, kpt_u, time, time_step):
-        """Propagate spin up and down wavefunctions. 
+        """Propagate wavefunctions. 
         
         Parameters
         ----------
@@ -130,6 +130,7 @@ class ExplicitCrankNicolson(Propagator):
         self.td_density.update()
         self.td_hamiltonian.update(self.td_density.get_density(), time)
         self.td_overlap.update()
+
         if self.hpsit is None:
             self.hpsit = self.gd.zeros(n=len(kpt_u[0].psit_nG), dtype=complex)
         if self.spsit is None:
@@ -223,7 +224,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
     
     """
     
-    def __init__(self, abs_kick_hamiltonian, td_overlap, solver, gd, timer):
+    def __init__(self, abs_kick_hamiltonian, td_overlap, solver, preconditioner, gd, timer):
         """Create AbsorptionKick-object.
         
         Parameters
@@ -234,6 +235,8 @@ class AbsorptionKick(ExplicitCrankNicolson):
             the time-dependent overlap operator
         solver: LinearSolver
             solver for linear equations
+        preconditioner: Preconditioner
+            preconditioner for linear equations
         gd: GridDescriptor
             coarse (wavefunction) grid descriptor
         timer: Timer
@@ -244,7 +247,7 @@ class AbsorptionKick(ExplicitCrankNicolson):
         self.td_hamiltonian = abs_kick_hamiltonian
         self.td_overlap = td_overlap
         self.solver = solver
-        self.preconditioner = None
+        self.preconditioner = preconditioner
         self.gd = gd
         self.timer = timer
 
@@ -321,7 +324,7 @@ class SemiImplicitCrankNicolson(Propagator):
         self.gd = gd
         self.timer = timer
         
-        self.tmp_psit_nG = None        
+        self.tmp_psit_nG = None
         self.hpsit = None
         self.spsit = None
         
@@ -336,14 +339,14 @@ class SemiImplicitCrankNicolson(Propagator):
         time: float
             the current time
         time_step: float
-            time step        
+            time step
         """
         # temporary wavefunctions
         
         if self.tmp_psit_nG is None:
             self.tmp_psit_nG = []
             for kpt in kpt_u:
-                self.tmp_psit_nG.append( self.gd.empty( len(kpt.psit_nG),
+                self.tmp_psit_nG.append( self.gd.empty( n=len(kpt.psit_nG),
                                                         dtype=complex ) )
 
         # copy current wavefunctions to temporary variable
@@ -448,7 +451,7 @@ class SemiImplicitCrankNicolson(Propagator):
         """
         self.timer.start('Solve TDDFT preconditioner')
         if self.preconditioner is not None:
-            self.preconditioner.solve(self.kpt, psi, psin)
+            self.preconditioner.apply(self.kpt, psi, psin)
         else:
             psin[:] = psi
         self.timer.stop('Solve TDDFT preconditioner')

@@ -615,7 +615,7 @@ class PAW(PAWExtra, Output):
                     kpt.psit_nG = kpt.psit_nG[:]
 
         for kpt in self.kpt_u:
-            kpt.adjust_number_of_bands(self.nbands, self.pt_nuclei)
+            kpt.adjust_number_of_bands(self.nmybands, self.pt_nuclei)
             self.overlap.orthonormalize(kpt.psit_nG, kpt)
 
     def orthonormalize_wave_functions(self):
@@ -945,6 +945,7 @@ class PAW(PAWExtra, Output):
         if parsize_bands is None:
             parsize_bands = 1
         self.nmybands = self.nbands // parsize_bands
+        print 'Bands per processor = ', self.nmybands
         if self.nbands != self.nmybands * parsize_bands:
             raise RuntimeError('Cannot distribute %d bands to %d processors' %
                                (self.nbands, parsize_bands))

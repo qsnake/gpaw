@@ -156,9 +156,9 @@ class AbsorptionKickHamiltonian:
                              + strength[1]*strength[1] 
                              + strength[2]*strength[2])
         # iterations
-        self.iterations = int(round(magnitude / 1.0e-3))
-        if self.iterations < 10:
-            self.iterations = 10
+        self.iterations = int(round(magnitude / 1.0e-4))
+        if self.iterations < 4:
+            self.iterations = 4
         # delta p
         self.dp = strength / self.iterations
 

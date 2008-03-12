@@ -14,7 +14,7 @@ from gpaw.mpi import rank
 
 if ( not os.path.exists('be_gs.gpw') ):
     atoms = Atoms(symbols='Be', positions=[(0,0,0)], pbc=False)
-    atoms.center(vacuum=5.0)
+    atoms.center(vacuum=6.0)
     calc = Calculator(nbands=2, h=0.3,
                       convergence={'eigenstates': 1e-15},
                       poissonsolver=PoissonSolver(relax='J'))
@@ -23,7 +23,7 @@ if ( not os.path.exists('be_gs.gpw') ):
     calc.write('be_gs.gpw', 'all')
 
 
-time_step = 1.0 # 1 as = 0.041341 autime 
+time_step = 1.0 # 1 as = 0.041341 autime
 iters = 100     # 100 x 1 as => 0.1 fs
 
 td_atoms = TDDFT('be_gs.gpw')

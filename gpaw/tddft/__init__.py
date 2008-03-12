@@ -5,10 +5,6 @@ functional theory calculations.
 
 """
 
-
-__docformat__ = "restructuredtext en"
-
-
 import sys
 
 import numpy as npy
@@ -70,7 +66,7 @@ class TDDFT(PAW):
     """
     
     def __init__( self, ground_state_file, td_potential = None,
-                  propagator='SICN', solver='BiCGStab', tolerance=1e-15 ):
+                  propagator='SICN', solver='BiCGStab', tolerance=1e-12 ):
         """Create TDDFT-object.
         
         Parameters:
@@ -129,7 +125,7 @@ class TDDFT(PAW):
 
         # Solver for linear equations
         if solver is 'BiCGStab':
-            self.solver = BiCGStab( gd=self.gd, timer=self.timer, 
+            self.solver = BiCGStab( gd=self.gd, timer=self.timer,
                                     tolerance=tolerance )
         else:
             raise RuntimeError( 'Error in TDDFT: Solver %s not supported. '
@@ -139,6 +135,7 @@ class TDDFT(PAW):
         # Preconditioner
         # No preconditioner as none good found
         self.preconditioner = None
+        self.preconditioner = InverseOverlapPreconditioner(self.overlap)
 
         # Time propagator
         if propagator is 'ECN':
@@ -163,10 +160,13 @@ class TDDFT(PAW):
             raise RuntimeError( 'Error in TDDFT:' +
                                 'Time propagator %s not supported. '
                                 % (propagator) )
+
+        if rank == 0:
+            print 'States per processor = ', self.nmybands
         
 
-    def propagate(self, time_step = 1.0, iterations=10000, 
-                  dipole_moment_file = None, 
+    def propagate(self, time_step = 1.0, iterations=10000,
+                  dipole_moment_file = None,
                   restart_file = None, dump_interval = 1000):
         """Propagates wavefunctions.
         
@@ -204,8 +204,10 @@ class TDDFT(PAW):
             # write dipole moment
             if dipole_moment_file is not None:
                 dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
+                norm = self.finegd.integrate(self.density.rhot_g)
                 if rank == 0:
                     line = repr(self.time).rjust(20) + '  '
+                    line = line + repr(norm).rjust(20) + '  '
                     line = line + repr(dm[0]).rjust(20) + '  '
                     line = line + repr(dm[1]).rjust(20) + '  '
                     line = line + repr(dm[2]).rjust(20) + '\n'
@@ -263,5 +265,5 @@ class TDDFT(PAW):
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
                                                        npy.array(strength, 
                                                                  dtype=float) ),
-                            self.td_overlap, self.solver, self.gd, self.timer )
+                            self.td_overlap, self.solver, self.preconditioner, self.gd, self.timer )
         abs_kick.kick(self.kpt_u)
