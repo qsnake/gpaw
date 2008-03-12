@@ -65,6 +65,7 @@ parameters = {
  'Cs': {'core': '[Kr]4d', 'rcut': [2.2, 2.0]},
  'Ba': {'core': '[Kr]4d', 'rcut': 2.2, 'extra': {1: [0.0], 2: [0.0, 1.0]}},
  'La': {'core': '[Kr]4d', 'rcut': [2.3, 2.0, 1.9]},
+# 'La': {'core': '[Kr]4d5s', 'rcut': [2.3, 2.0, 1.9]},
 # 'Ta': {'core': '[Xe]',   'rcut': 2.5},
 # 'W':  {'core': '[Xe]',   'rcut': 2.5},
  'Ir': {'core': '[Xe]4f', 'rcut': [2.3, 2.6, 2.0],
@@ -819,7 +820,7 @@ class Generator(AllElectron):
             e_n = npy.zeros(ng)
             error = diagonalize(H, e_n, S)
             if error != 0:
-                raise RuntimeError
+                raise RuntimeError('Diagonaliztion failed for l=%d.' % l)
             ePAW = e_n[0]
             if l <= self.lmax and self.n_ln[l][0] > 0:
                 eAE = self.e_ln[l][0]
