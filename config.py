@@ -105,10 +105,9 @@ def get_system_config(define_macros, undef_macros,
         cc_version = os.popen3('cc -V')[2].readline().split()[3]
         if cc_version > '5.6':
             libraries.append('mtsk')
-            define_macros.append(('NO_C99_COMPLEX', '1'))
         else:
             extra_link_args.append('-lmtsk')
-            define_macros.append(('NO_C99_COMPLEX', '1'))
+        #define_macros.append(('NO_C99_COMPLEX', '1'))
 
         msg += ['* Using SUN high performance library']
 
