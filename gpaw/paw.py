@@ -945,7 +945,6 @@ class PAW(PAWExtra, Output):
         if parsize_bands is None:
             parsize_bands = 1
         self.nmybands = self.nbands // parsize_bands
-        print 'Bands per processor = ', self.nmybands
         if self.nbands != self.nmybands * parsize_bands:
             raise RuntimeError('Cannot distribute %d bands to %d processors' %
                                (self.nbands, parsize_bands))

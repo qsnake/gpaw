@@ -13,10 +13,12 @@ from ase.units import Bohr, Hartree
 
 from gpaw.paw import PAW
 #from gpaw.pawextra import PAWExtra
+from gpaw.mixer import BaseMixer
 
 from gpaw.mpi import rank
 
-from gpaw.preconditioner import Preconditioner
+#from gpaw.preconditioner import Preconditioner
+
 
 from gpaw.tddft.bicgstab import BiCGStab
 from gpaw.tddft.propagators import \
@@ -31,18 +33,18 @@ from gpaw.tddft.tdopers import \
 
 # Where to put these?
 # vvvvvvvvv
-class DummyMixer:
+class DummyMixer(BaseMixer):
     def mix(self, nt_sG):
         pass
 
 # T^-1
 # Bad preconditioner
-class KineticEnergyPreconditioner:
-    def __init__(self, gd, kin, dtype):
-        self.preconditioner = Preconditioner(gd, kin, dtype)
-
-    def apply(self, kpt, psi, psin):
-        psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
+#class KineticEnergyPreconditioner:
+#    def __init__(self, gd, kin, dtype):
+#        self.preconditioner = Preconditioner(gd, kin, dtype)
+#
+#    def apply(self, kpt, psi, psin):
+#        psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
 
 # S^-1
 # Not too good preconditioner, might be useful in big system
