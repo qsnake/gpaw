@@ -3,6 +3,7 @@ from math import pi
 import numpy as npy
 from numpy.fft import fftn
 
+from ase import Hartree
 from pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
 from gpaw.utilities import pack, unpack
@@ -176,7 +177,7 @@ class Coulomb4:
                        *
           rho12(r) = w1(r) w2(r)
     """
-    def __init__(self, paw, spin, method='recip_gauss'):
+    def __init__(self, paw, spin, method='real'):
         self.kpt = paw.kpt_u[spin]
         self.pd = PairDensity(paw, finegrid=True)
         self.nt12_G = paw.gd.empty()
@@ -230,26 +231,35 @@ class Coulomb4:
         return I
 
 
-def wannier_coulomb_integrals(paw, U_nj, spin):
-    # Returns the direct Coulomb integrals
-    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}|w_i(r)|^2 |w_j(r')|^2
-    # as well as the exchange integrals (if exchange=1)
-    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}w_i(r)^*w_j(r')^*w_j(r)w_i(r')
-    # and the iijj-integrals
-    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}w_i(r)^*w_i(r')^*w_j(r)w_j(r')
-    # and the semi-exchange integrals
-    #  V_{ij}=\int \int dr dr' (|r-r'|)^{-1}w_i(r)^*w_i(r')^*w_i(r)w_j(r')
-    # Note that both the direct and the exchange matrices are symmetric
+def wannier_coulomb_integrals(paw, U_nj, spin,
+                              types=['xc',   # Local xc functional
+                                     'ijij', # Direct
+                                     'ijji', # Exchange
+                                     'iijj', # iijj
+                                     'iiij', # Semiexchange
+                                     'ikjk', # Extra
+                                     ]):
+    # Returns some of the Coulomb integrals
+    # V_{ijkl} = \iint drdr' / |r-r'| i*(r) j*(r') k(r) l(r')
+    # using coulomb4, which determines
+    # C4(ijkl) = \iint drdr' / |r-r'| i(r) j*(r) k*(r') l(r')
+    # i.e. V_ijkl = C4(jkil)
 
-    vxc_jj = npy.dot(dagger(U_nj), npy.dot(get_vxc(paw, spin), U_nj))
     coulomb4 = Coulomb4(paw, spin).get_integral
     nwannier = U_nj.shape[1]
-    Hartree = paw.Ha
+    if paw.dtype is complex or U_nj.dtype is complex:
+        dtype = complex
+    else:
+        dtype = float
                           
-    V_direct       = npy.zeros([nwannier, nwannier], complex)
-    V_exchange     = npy.zeros([nwannier, nwannier], complex)
-    V_iijj         = npy.zeros([nwannier, nwannier], complex)
-    V_semiexchange = npy.zeros([nwannier, nwannier], complex)
+    if 'xc' in types:
+        V_xc = npy.dot(dagger(U_nj), npy.dot(get_vxc(paw, spin), U_nj))
+    V_ijij = npy.zeros([nwannier, nwannier], dtype)
+    V_ijji = npy.zeros([nwannier, nwannier], dtype)
+    V_iijj = npy.zeros([nwannier, nwannier], dtype)
+    V_iiij = npy.zeros([nwannier, nwannier], dtype)
+    if 'ikjk' in types:
+        V_ikjk = npy.zeros([nwannier, nwannier, nwannier], dtype)
     
     for i in range(nwannier):
         ni = U_nj[:, i]
@@ -257,26 +267,41 @@ def wannier_coulomb_integrals(paw, U_nj, spin):
             nj = U_nj[:, j]
             print "Doing Coulomb integrals for orbitals", i, j
 
-            # V_{ij,ij}
-            V_direct[i, j] = coulomb4(ni, ni, nj, nj) * Hartree
+            if 'ijij' in types:
+                # V_{ij, ij} = C4(jiij)
+                V_ijij[i, j] = coulomb4(nj, ni, ni, nj) * Hartree
                 
-            # V_{ij,ji}    
-            V_exchange[i, j] = coulomb4(ni, nj, nj, ni) * Hartree
+            if 'ijji' in types:
+                # V_{ij, ji} = C4(jjii)
+                V_ijji[i, j] = coulomb4(nj, nj, ni, ni) * Hartree
 
-            # V_{ii,jj}
-            V_iijj[i, j] = coulomb4(ni, nj, ni, nj) * Hartree
+            if 'iijj' in types:
+                # V_{ii, jj} = C4(ijij)
+                V_iijj[i, j] = coulomb4(ni, nj, ni, nj) * Hartree
 
-            # V_{ii,ij}
-            V_semiexchange[i, j] = coulomb4(ni, ni, ni, nj) * Hartree
+            if 'iiij' in types:
+                # V_{ii, ij} = C4(iiij)
+                V_iiij[i, j] = coulomb4(ni, ni, ni, nj) * Hartree
 
-            # V_{jj,ji}
-            V_semiexchange[j, i] = coulomb4(nj, nj, nj, ni) * Hartree
+                # V_{jj, ji} = C4(jjji)
+                V_iiij[j, i] = coulomb4(nj, nj, nj, ni) * Hartree
+
+            if 'ikjk' in types:
+                for k in range(nwannier):
+                    nk = U_nj[:, nk]
+                    # V_{ik, jk} = C4(kjik)
+                    V_ikjk[i, j, k] = coulomb4(nk, nj, ni, nk) * Hartree
 
     # Fill out lower triangle of V_direct and V_exchange and V_iijj
     for i in range(nwannier):
         for j in range(i):
             V_direct[i, j] = V_direct[j, i]
             V_exchange[i, j] = V_exchange[j, i]
-            V_iijj[i, j] = npy.conjugate(V_iijj[j, i])
+            V_iijj[i, j] = V_iijj[j, i].conj()
+            if 'ikjk' in types:
+                V_ikjk[i,j,:] = V_ikjk[j,i,:].conj()
 
-    return vxc_jj, V_direct, V_exchange, V_iijj, V_semiexchange
+    result = ()
+    for type in types:
+        result += (eval('V_' + type), )
+    return result
