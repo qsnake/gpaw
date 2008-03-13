@@ -71,55 +71,56 @@ class EXX:
     Class offering methods for selfconsistent evaluation of the
     exchange energy."""
     
-    def __init__(self, paw, gd, finegd, interpolate, restrict, poisson,
-                 my_nuclei, ghat_nuclei, nspins, nmyu, nbands, Na,
-                 kcomm, dcomm, energy_only=False, use_finegrid=True):
+    def __init__(self, paw, poisson, energy_only=False, use_finegrid=True):
         
         # Initialize class-attributes
-        self.density      = paw.density
-        self.nspins       = nspins
-        self.nbands       = nbands
-        self.my_nuclei    = my_nuclei
-        self.interpolate  = interpolate
-        self.restrict     = restrict
-        self.rank         = dcomm.rank
-        self.psum         = lambda x: kcomm.sum(dcomm.sum(x))
-        self.energy_only  = energy_only
-        self.integrate    = gd.integrate
-        self.Na           = Na
-        self.use_finegrid = use_finegrid
-        self.pair_density = PairDensity(paw, use_finegrid)
-
+        self.density       = paw.density
+        self.nspins        = paw.nspins
+        self.nbands        = paw.nbands
+        self.my_nuclei     = paw.my_nuclei
+        self.interpolate   = paw.density.interpolate
+        self.restrict      = paw.hamiltonian.restrict
+        self.integrate     = paw.gd.integrate
+        self.fineintegrate = paw.finegd.integrate
+        self.pair_density  = PairDensity(paw, finegrid=True)
+        self.ghat_nuclei   = paw.ghat_nuclei
+        self.rank          = paw.domain.comm.rank
+        self.psum          = lambda x: paw.kpt_comm.sum(paw.domain.comm.sum(x))
+        self.energy_only   = energy_only
+        self.Na            = len(paw.nuclei)
+        self.use_finegrid  = use_finegrid
+        self.pair_density  = PairDensity(paw, use_finegrid)
+        self.poisson_solve = paw.hamiltonian.poisson.solve
+        if usefft:
+            if use_finegrid:
+                solver = PoissonFFTSolver()
+                solver.initialize(paw.finegd)
+                self.poisson_solve = solver.solve
+            else:
+                solver = PoissonFFTSolver()
+                solver.initialize(paw.gd)
+                self.poisson_solve = solver.solve
+        
         # Allocate space for matrices
-        self.nt_G = gd.empty() # Pseudo density on coarse grid
-        self.vt_G = gd.empty() # Pot. of comp. pseudo density on coarse grid
-        self.ghat_nuclei = ghat_nuclei
-        if self.use_finegrid:
-            self.rhot_g = finegd.empty()# Comp. pseudo density on fine grid
-            self.vt_g = finegd.empty()# Pot. of comp. pseudo dens. on fine grid
-            if usefft:
-                solver = PoissonFFTSolver()
-                solver.initialize(finegd)
-                self.poisson_solve = solver.solve
-            else:
-                self.poisson_solve = poisson.solve
-            self.fineintegrate = finegd.integrate
-        else:
+        self.nt_G = paw.gd.empty()# Pseudo density on coarse grid
+        self.rhot_g = paw.finegd.empty()# Comp. pseudo density on fine grid
+        self.vt_G = paw.gd.empty()# Pot. of comp. pseudo density on coarse grid
+        self.vt_g = paw.finegd.empty()# Pot. of comp. pseudo dens. on fine grid
+        self.v_ani = [npy.zeros((paw.nbands, n.setup.ni))
+                      for n in paw.my_nuclei]
+        if not use_finegrid:
+            self.fineintegrate = paw.gd.integrate
             self.interpolate = dummy_interpolate
-            self.rhot_g = gd.empty()# Comp. pseudo density on coarse grid
-            self.vt_g = self.vt_G   # Pot. of comp. pseudo dens. on coarse grid
-            if usefft:
-                solver = PoissonFFTSolver()
-                solver.initialize(gd)
-                self.poisson_solve = solver.solve
-            else:
+            self.rhot_g = paw.gd.empty()
+            self.vt_g = self.vt_G
+            if not usefft:
                 solver = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
-                solver.initialize(gd)
+                solver.initialize(paw.gd)
                 self.poisson_solve = solver.solve
-                    
-            self.fineintegrate = gd.integrate
+        
         if not energy_only:
-            self.vt_unG = gd.zeros((nmyu, nbands))# Diagonal pot. for residuals
+            # Diagonal pot. for residuals
+            self.vt_unG = paw.gd.zeros((paw.nmyu, paw.nbands))
 
     def apply(self, kpt, Htpsit_nG, H_nn, hybrid):
         """Apply exact exchange operator."""
