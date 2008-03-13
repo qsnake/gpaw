@@ -295,8 +295,8 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
     # Fill out lower triangle of V_direct and V_exchange and V_iijj
     for i in range(nwannier):
         for j in range(i):
-            V_direct[i, j] = V_direct[j, i]
-            V_exchange[i, j] = V_exchange[j, i]
+            V_ijij[i, j] = V_ijij[j, i]
+            V_ijji[i, j] = V_ijji[j, i]
             V_iijj[i, j] = V_iijj[j, i].conj()
             if 'ikjk' in types:
                 V_ikjk[i,j,:] = V_ikjk[j,i,:].conj()
@@ -305,3 +305,132 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
     for type in types:
         result += (eval('V_' + type), )
     return result
+
+
+from gpaw.utilities.tools import symmetrize
+from gpaw.utilities import packed_index, unpack2
+from gpaw.utilities.blas import r2k
+class EXX:
+    def __init__(self, paw):
+        
+        # Initialize class-attributes
+        self.density      = paw.density
+        self.nspins       = paw.nspins
+        self.nbands       = paw.nbands
+        self.my_nuclei    = paw.my_nuclei
+        self.interpolate  = paw.density.interpolate
+        self.restrict     = paw.hamiltonian.restrict
+        self.integrate    = paw.gd.integrate
+        self.pair_density = PairDensity(paw, finegrid=True)
+        self.ghat_nuclei  = paw.ghat_nuclei
+        self.dv           = paw.gd.dv
+        self.dtype        = paw.dtype 
+
+        # Allocate space for matrices
+        self.nt_G = paw.gd.empty()# Pseudo density on coarse grid
+        self.rhot_g = paw.finegd.empty()# Comp. pseudo density on fine grid
+        self.vt_G = paw.gd.empty()# Pot. of comp. pseudo density on coarse grid
+        self.vt_g = paw.finegd.empty()# Pot. of comp. pseudo dens. on fine grid
+        self.v_ani = [npy.zeros((paw.nbands, n.setup.ni))
+                      for n in paw.my_nuclei]
+        self.poisson_solve = paw.hamiltonian.poisson.solve
+        self.fineintegrate = paw.finegd.integrate
+
+    def apply(self, kpt):
+        """Apply exact exchange operator."""
+        
+        # Initialize method-attributes
+        psit_nG = kpt.psit_nG   # Wave functions
+        Exx = 0.0               # Energy of eXact eXchange
+        deg = 2 / self.nspins   # Spin degeneracy
+        f_n = kpt.f_n           # Occupation number
+        s   = kpt.s             # Global spin index
+        u   = kpt.u             # Local spin/kpoint index
+        pd  = self.pair_density # Class for handling pair densities
+        fmin= 1e-9              # Occupations less than this counts as empty
+
+        H_nn = npy.zeros((self.nbands, self.nbands), self.dtype)
+        Htpsit_nG = npy.zeros(kpt.psit_nG.shape, self.dtype)
+
+        # Determine pseudo-exchange
+        for n1 in range(self.nbands):
+            psit1_G = psit_nG[n1]
+            f1 = f_n[n1]
+            for n2 in range(n1, self.nbands):
+                psit2_G = psit_nG[n2]
+                f2 = f_n[n2]
+                if f1 < fmin and f2 < fmin:
+                    continue # Don't do anything if both occupations are small
+                
+                dc = 1 + (n1 != n2) # double count factor
+                pd.initialize(kpt, n1, n2)
+
+                # Determine current exchange density
+                pd.get_coarse(self.nt_G)
+                pd.add_compensation_charges(self.nt_G, self.rhot_g)
+
+                # Determine exchange potential:
+                iter = self.poisson_solve(self.vt_g, -self.rhot_g,
+                                          charge=-float(n1 == n2), eps=1e-12,
+                                          zero_initial_phi=True)
+
+                self.restrict(self.vt_g, self.vt_G)
+
+                int = self.fineintegrate(self.vt_g * self.rhot_g)
+                Exx += 0.5 * f1 * f2 * dc / deg * int
+
+                Htpsit_nG[n1] += f2 / deg * self.vt_G * psit2_G
+                if n1 != n2:
+                    Htpsit_nG[n2] += f1 / deg * self.vt_G * psit1_G
+
+                # Update the vxx_uni vector of the nuclei,
+                # used to determine the atomic hamiltonian
+                for v_ni, nucleus in zip(self.v_ani, self.my_nuclei):
+                    v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
+                    nucleus.ghat_L.integrate(self.vt_g, v_L)
+
+                    v_ii = unpack(npy.dot(nucleus.setup.Delta_pL, v_L))
+                    v_ni[n1] += f2 / deg * npy.dot(v_ii, nucleus.P_uni[u, n2])
+                    if n1 != n2:
+                        v_ni[n2] += f1 / deg * npy.dot(v_ii,
+                                                       nucleus.P_uni[u, n1])
+
+        # Apply the atomic corrections to the energy and the Hamiltonian matrix
+        for v_ni, nucleus in zip(self.v_ani, self.my_nuclei):
+            # Add non-trivial corrections the Hamiltonian matrix
+            H_nn += symmetrize(npy.inner(nucleus.P_uni[u], v_ni))
+
+            # Get atomic density and Hamiltonian matrices
+            D_p  = nucleus.D_sp[s]
+            D_ii = unpack2(D_p)
+            H_p  = 0.0 * D_p
+            ni = len(D_ii)
+            
+            # Add atomic corrections to the valence-valence exchange energy
+            # --
+            # >  D   C     D
+            # --  ii  iiii  ii
+            C_pp = nucleus.setup.M_pp
+            for i1 in range(ni):
+                for i2 in range(ni):
+                    A = 0.0 # = C * D
+                    for i3 in range(ni):
+                        p13 = packed_index(i1, i3, ni)
+                        for i4 in range(ni):
+                            p24 = packed_index(i2, i4, ni)
+                            A += C_pp[p13, p24] * D_ii[i3, i4]
+                    p12 = packed_index(i1, i2, ni)
+                    H_p[p12] -= 2 / deg * A / ((i1 != i2) + 1)
+                    Exx -= 1. / deg * D_ii[i1, i2] * A
+            
+            # Add valence-core exchange energy
+            #Exx -= npy.dot(D_p, nucleus.setup.X_p)
+            #H_p -= nucleus.setup.X_p
+
+            # Sum up stuff in the Hamiltonian
+            P_ni = nucleus.P_uni[u]
+            dH_ii = unpack(nucleus.H_sp[s])
+            H_nn += npy.dot(P_ni, npy.inner(dH_ii, P_ni).conj())
+
+        r2k(0.5 * self.dv, kpt.psit_nG[:], Htpsit_nG, 1.0, H_nn)
+        return Exx, H_nn
