@@ -101,7 +101,7 @@ def get_system_config(define_macros, undef_macros,
 
         # We need the -Bstatic before the -lsunperf and -lfsu:
         # http://forum.java.sun.com/thread.jspa?threadID=5072537&messageID=9265782
-        extra_link_args += ['-Bstatic', '-lsunperf', '-lfsu']
+        extra_link_args += ['-Bstatic', '-lsunperf', '-lfsu', '-Bdynamic']
         cc_version = os.popen3('cc -V')[2].readline().split()[3]
         if cc_version > '5.6':
             libraries.append('mtsk')
