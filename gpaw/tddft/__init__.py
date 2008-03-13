@@ -221,9 +221,11 @@ class TDDFT(PAW):
 
             # restart data
             if restart_file is not None and ( (i+1) % dump_interval == 0 ):
+                #self.write(restart_file, 'all')
                 if rank == 0:
-                    self.write(restart_file, 'all')
-                    
+                    print 'Warning: Writing restart files in TDDFT does not work yet.'
+                    print 'Continuing without writing restart file.'
+
         # close dipole moment file
         if dipole_moment_file is not None:
             if rank == 0:

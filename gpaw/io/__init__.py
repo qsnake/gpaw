@@ -51,7 +51,7 @@ def write(paw, filename, mode):
       Defines the filenames to be ``'mywfs/psit_Gs%dk%dn%d' % (s, k, n)``.
       The directory ``mywfs`` is created if not present. XXX
     """
-    
+
     if paw.master:
         w = open(filename, 'w')
 
@@ -74,7 +74,7 @@ def write(paw, filename, mode):
                 raise KeyError
         except KeyError:
             tag_a = npy.zeros(paw.natoms, int)
-        
+
         w.dimension('natoms', paw.natoms)
         w.dimension('3', 3)
 
@@ -91,7 +91,7 @@ def write(paw, filename, mode):
               units=(0, 1))
         if paw.F_ac is not None:
             w.add('CartesianForces', ('natoms', '3'), paw.F_ac, units=(-1, 1))
-        
+
         # Write the k-points:
         w.dimension('nbzkpts', len(paw.bzk_kc))
         w.dimension('nibzkpts', paw.nkpts)
@@ -110,7 +110,7 @@ def write(paw, filename, mode):
         w.dimension('nfinegptsz', ng[2])
         w.dimension('nspins', paw.nspins)
         w.dimension('nbands', paw.nbands)
-        
+
         nproj = 0
         nadm = 0
         for nucleus in paw.nuclei:
@@ -146,7 +146,7 @@ def write(paw, filename, mode):
         w['Ekin'] = paw.Ekin
         w['Epot'] = paw.Epot
         w['Ebar'] = paw.Ebar
-        w['Eext'] = paw.Eext        
+        w['Eext'] = paw.Eext
         w['Exc'] = paw.Exc
         w['S'] = paw.S
         epsF = paw.occupation.get_fermi_level()
@@ -171,7 +171,7 @@ def write(paw, filename, mode):
         if isinstance(setup_types, str):
             setup_types = {None: setup_types}
         w['SetupTypes'] = repr(setup_types)
-              
+
         dtype = {float: float, complex: complex}[paw.dtype]
         # write projections
         w.add('Projections', ('nspins', 'nibzkpts', 'nbands', 'nproj'),
@@ -195,9 +195,12 @@ def write(paw, filename, mode):
             for u in range(paw.nmyu):
                 w.fill(all_P_uni[u])
         assert i == nproj
+
+    # else is slave
     else:
         for nucleus in paw.my_nuclei:
             paw.world.send(nucleus.P_uni, MASTER, 300)
+
 
     # Write atomic density matrices and non-local part of hamiltonian:
     if paw.master:
@@ -222,11 +225,12 @@ def write(paw, filename, mode):
         assert q2 == nadm
         w.add('AtomicDensityMatrices', ('nspins', 'nadm'), all_D_sp)
         w.add('NonLocalPartOfHamiltonian', ('nspins', 'nadm'), all_H_sp)
-        
+
     elif paw.kpt_comm.rank == MASTER:
         for nucleus in paw.my_nuclei:
             paw.domain.comm.send(nucleus.D_sp, MASTER, 207)
             paw.domain.comm.send(nucleus.H_sp, MASTER, 2071)
+
 
     # Write the eigenvalues:
     if paw.master:
@@ -312,7 +316,7 @@ def write(paw, filename, mode):
         paw.world.barrier()
         print >> paw.txt, 'Writing wave functions to', dirname,\
               'using mode=', mode
-        
+
         ngd = paw.gd.get_size_of_global_array()
         for s in range(paw.nspins):
             for k in range(paw.nkpts):
@@ -330,7 +334,7 @@ def write(paw, filename, mode):
                                  dtype=dtype)
                         wpsi.fill(psit_G)
                         wpsi.close()
-                    
+
     if paw.master:
         # Close the file here to ensure that the last wave function is
         # written to disk:
