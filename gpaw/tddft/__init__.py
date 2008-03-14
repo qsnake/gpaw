@@ -34,6 +34,7 @@ from gpaw.tddft.tdopers import \
 # Where to put these?
 # vvvvvvvvv
 class DummyMixer(BaseMixer):
+    """Dummy mixer for TDDFT, i.e., it does not mix."""
     def mix(self, nt_sG):
         pass
 
@@ -47,8 +48,8 @@ class DummyMixer(BaseMixer):
 #        psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
 
 # S^-1
-# Not too good preconditioner, might be useful in big system
 class InverseOverlapPreconditioner:
+    """Preconditioner for TDDFT.""" 
     def __init__(self, overlap):
         self.overlap = overlap
 
@@ -250,7 +251,7 @@ class TDDFT(PAW):
         abs_kick.kick(self.kpt_u)
 
 
-    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength = [0,0,1e-4], fwhm = 0.2, delta_omega = 0.01, omega_max = 50.0):
+    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength = [0,0,1e-4], fwhm = 0.2, delta_omega = 0.01, max_energy = 50.0):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
@@ -265,10 +266,13 @@ class TDDFT(PAW):
             Full width at half maximum for peaks
         delta_omega: float
             Energy resolution in electron volts, eV
-        omega_max: float
+        max_energy: float
             Maximum excitation energy
         """
+
         if rank == 0:
+            strength = npy.array(kick_strength, dtype=float)
+
             print 'Calculating photoabsorption spectrum from file "%s."' \
                 % dipole_moment_file
 
@@ -284,18 +288,18 @@ class TDDFT(PAW):
                 dm[i,0] = float(data[2])
                 dm[i,1] = float(data[3])
                 dm[i,2] = float(data[4])
-            dm_file.close()      
+            dm_file.close()
 
             t = time - time[0]
             dt = time[1] - time[0]
             dm[:] = dm - dm[0]
-            nw = int(omega_max / delta_omega)
+            nw = int(max_energy / delta_omega)
             dw = delta_omega / 27.211
             # f(w) = Nw exp(-w^2/2sigma^2)
             sigma = fwhm / (2.* npy.sqrt(2.* npy.log(2.0)))
             # f(t) = Nt exp(-t^2/2gamma^2)
             gamma = 1.0 / sigma
-            kick_magnitude = npy.sum(npy.array(kick_strength)**2)
+            kick_magnitude = npy.sum(strength**2)
 
             # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
             #                                * ( dm(t) - dm(0) )
@@ -306,17 +310,17 @@ class TDDFT(PAW):
                 alphax = npy.sum( npy.sin(t * w) 
                                  * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
                 alphax *= \
-                    2 * dt / (2*npy.pi) / kick_magnitude * kick_strength[0]
+                    2 * dt / (2*npy.pi) / kick_magnitude * strength[0]
                 # y
                 alphay = npy.sum( npy.sin(t * w) 
                                  * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
                 alphay *= \
-                    2 * dt / (2*npy.pi) / kick_magnitude * kick_strength[1]
+                    2 * dt / (2*npy.pi) / kick_magnitude * strength[1]
                 # z
                 alphaz = npy.sum( npy.sin(t * w) 
                                  * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
                 alphaz *= \
-                    2 * dt / (2*npy.pi) / kick_magnitude * kick_strength[2]
+                    2 * dt / (2*npy.pi) / kick_magnitude * strength[2]
 
                 # f = 2 * omega * alpha
                 line = '%10.6lf %20.10le %20.10le %20.10le\n' \
@@ -326,7 +330,7 @@ class TDDFT(PAW):
                         2*w*alphaz / 27.211 )
                 f_file.write(line)
 
-            f_file.close()      
+            f_file.close()
 
             print 'Calculated photoabsorption spectrum saved to file "%s."' \
                 % spectrum_file
