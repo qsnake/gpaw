@@ -121,7 +121,7 @@ class TwoCenterIntegrals:
             S_g[:] = 0.0
             a_q = (phit1 * phit2)
             a_g = (8 * fbt(l, a_q * k1**(-2 - l1 - l2 - l), self.k, R) /
-                   R1**(2 * l + 1))           
+                   R1**(2 * l + 1))          
             if l==0:
                 a_g[0] = 8 * npy.sum(a_q * k1**(-l1 - l2)) * self.dk
             else:    
@@ -143,13 +143,12 @@ class TwoCenterIntegrals:
         L2 = l2**2 + m2
         ssplines = self.S[(id1, id2)]
         tsplines = self.T[(id1, id2)]
-        YL = Y(L, R[0], R[1], R[2])
         sr = s(r)
         tr = t(r)
         for s, t in zip(ssplines, tsplines):
             for m in range(2 * l + 1):
                 L = l**2 + m
-                c = YL * gaunt[L1, L2, L]
+                c = Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
                 S += sr * c
                 T += tr * c
             l += 2
@@ -164,10 +163,11 @@ class TwoCenterIntegrals:
         r = sqrt(npy.dot(R, R))
         L1 = l1**2 + m1
         L2 = l2**2 + m2
+        pr = p(r)
         for p in self.P[(id1, id2)]:
             for m in range(2 * l + 1):
                 L = l**2 + m
-                P += p(r) * Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
+                P += pr * Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
             l += 2
         return P
  
