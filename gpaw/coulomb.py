@@ -3,7 +3,7 @@ from math import pi
 import numpy as npy
 from numpy.fft import fftn
 
-from ase import Hartree
+from ase.units import Hartree
 from pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
 from gpaw.utilities import pack, unpack
@@ -305,3 +305,4 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
     for type in types:
         result += (eval('V_' + type), )
     return result
+
