@@ -143,12 +143,15 @@ class TwoCenterIntegrals:
         L2 = l2**2 + m2
         ssplines = self.S[(id1, id2)]
         tsplines = self.T[(id1, id2)]
+        YL = Y(L, R[0], R[1], R[2])
+        sr = s(r)
+        tr = t(r)
         for s, t in zip(ssplines, tsplines):
             for m in range(2 * l + 1):
                 L = l**2 + m
-                c = Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
-                S += s(r) * c
-                T += t(r) * c
+                c = YL * gaunt[L1, L2, L]
+                S += sr * c
+                T += tr * c
             l += 2
         return S, T
     
