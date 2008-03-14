@@ -263,11 +263,11 @@ class TDDFT(PAW):
         spectrum_file: string
             Name of the spectrum file
         fwhm: float
-            Full width at half maximum for peaks
+            Full width at half maximum for peaks in eV
         delta_omega: float
-            Energy resolution in electron volts, eV
+            Energy resolution in eV
         max_energy: float
-            Maximum excitation energy
+            Maximum excitation energy in eV
         """
 
         if rank == 0:
