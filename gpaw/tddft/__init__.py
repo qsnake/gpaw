@@ -251,7 +251,7 @@ class TDDFT(PAW):
         abs_kick.kick(self.kpt_u)
 
 
-    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength = [0,0,1e-4], fwhm = 0.2, delta_omega = 0.01, max_energy = 50.0):
+    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength = [0,0,1e-4], fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
@@ -296,10 +296,13 @@ class TDDFT(PAW):
             nw = int(max_energy / delta_omega)
             dw = delta_omega / 27.211
             # f(w) = Nw exp(-w^2/2sigma^2)
-            sigma = fwhm / (2.* npy.sqrt(2.* npy.log(2.0)))
+            sigma = fwhm / 27.211 / (2.* npy.sqrt(2.* npy.log(2.0)))
             # f(t) = Nt exp(-t^2/2gamma^2)
             gamma = 1.0 / sigma
             kick_magnitude = npy.sum(strength**2)
+
+            # write comment line
+            f_file.write('# FWHM = %lf eV = %lf Hartree <=> sigma = %lf eV\n' % (fwhm, fwhm/27.211, sigma*27.211))
 
             # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
             #                                * ( dm(t) - dm(0) )
@@ -330,6 +333,11 @@ class TDDFT(PAW):
                         2*w*alphaz / 27.211 )
                 f_file.write(line)
 
+                if (i % 100) == 0:
+                    print '.',
+                    sys.stdout.flush()
+
+            print ''
             f_file.close()
 
             print 'Calculated photoabsorption spectrum saved to file "%s."' \
