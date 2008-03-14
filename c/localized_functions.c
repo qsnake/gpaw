@@ -13,13 +13,18 @@
 #include "mympi.h"
 #include "localized_functions.h"
 
+#ifdef GPAW_AIX
+#  define dgemm_ dgemm
+#  define dgemv_ dgemv
+#endif
+
 int dgemm_(char *transa, char *transb, int *m, int * n,
-	   int *k, double *alpha, double *a, int *lda, 
-	   double *b, int *ldb, double *beta, 
+	   int *k, double *alpha, double *a, int *lda,
+	   double *b, int *ldb, double *beta,
 	   double *c, int *ldc);
 int dgemv_(char *trans, int *m, int * n,
-	   double *alpha, double *a, int *lda, 
-	   double *x, int *incx, double *beta, 
+	   double *alpha, double *a, int *lda,
+	   double *x, int *incx, double *beta,
 	   double *y, int *incy);
 
 static void localized_functions_dealloc(LocalizedFunctionsObject *self)
@@ -62,7 +67,7 @@ static PyObject * localized_functions_integrate(LocalizedFunctionsObject *self,
   else
     for (int n = 0; n < na; n++)
       {
-	bmgs_cutz((const double_complex*)a, self->size, self->start, 
+	bmgs_cutz((const double_complex*)a, self->size, self->start,
 		  (double_complex*)w, self->size0);
 	double zero = 0.0;
 	int inc = 2;
@@ -108,7 +113,7 @@ static PyObject * localized_functions_derivative(
   else
     for (int n = 0; n < na; n++)
       {
-	bmgs_cutz((const double_complex*)a, self->size, self->start, 
+	bmgs_cutz((const double_complex*)a, self->size, self->start,
 		  (double_complex*)w, self->size0);
 	double zero = 0.0;
 	int inc = 2;
@@ -159,7 +164,7 @@ static PyObject * localized_functions_add(LocalizedFunctionsObject *self,
 	int inc = 2;
 	dgemm_("n", "t", &inc, &ng0, &nf, &one, c, &inc, f, &ng0,
 	       &zero, w, &inc);
-	bmgs_pastepz((const double_complex*)w, self->size0, 
+	bmgs_pastepz((const double_complex*)w, self->size0,
 		    (double_complex*)a, self->size, self->start);
 	a += 2 * ng;
 	c += 2 * nf;
@@ -362,7 +367,7 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
   int real;
   int forces;
   int compute;
-  if (!PyArg_ParseTuple(args, "OOOOOOiii", &radials, 
+  if (!PyArg_ParseTuple(args, "OOOOOOiii", &radials,
 			&size0_array, &size_array,
                         &start_array, &h_array, &C_array,
                         &real, &forces, &compute))
@@ -388,14 +393,14 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
       self->size0[i] = size0[i];
       self->size[i] = size[i];
       self->start[i] = start[i];
-    } 
+    }
   int nf = 0;
   int nfd = 0;
   int nbins = 0;
   double dr = 0.0;
   for (int j = 0; j < PyList_Size(radials); j++)
     {
-      const bmgsspline* spline = 
+      const bmgsspline* spline =
 	&(((SplineObject*)PyList_GetItem(radials, j))->spline);
       int l = spline->l;
       assert(l <= 4);
@@ -409,7 +414,7 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
 	  assert(spline->nbins == nbins);
 	  assert(spline->dr == dr);
 	}
-      nf += (2 * l + 1); 
+      nf += (2 * l + 1);
     }
 
   if (forces)
@@ -434,12 +439,12 @@ PyObject * NewLocalizedFunctionsObject(PyObject *obj, PyObject *args)
       double* fd0 = 0;
       if (forces)
 	fd0 = GPAW_MALLOC(double, ng0);
-	  
+
       double* a = self->f;
       double* ad = self->fd;
       for (int j = 0; j < PyList_Size(radials); j++)
 	{
-	  const bmgsspline* spline = 
+	  const bmgsspline* spline =
 	    &(((SplineObject*)PyList_GetItem(radials, j))->spline);
 	  if (j == 0)
 	    bmgs_radial1(spline, self->size0, C, h, bin, d);

@@ -200,7 +200,7 @@ void bc_unpack1(const boundary_conditions* bc,
 	      if (d == 1)
 		{
 		  int count = bc->nsend[i][0] + bc->nsend[i][1];
-#ifdef GRIDPAW_AIX
+#ifdef GPAW_AIX
 		  MPI_Send(sbuf0, count, MPI_DOUBLE, p, 20, bc->comm);
 #else
 		  MPI_Isend(sbuf0, count, MPI_DOUBLE, p, 20,
@@ -211,7 +211,7 @@ void bc_unpack1(const boundary_conditions* bc,
 	  else
  	    {
 	      int count = bc->nsend[i][d];
-#ifdef GRIDPAW_AIX
+#ifdef GPAW_AIX
 	      MPI_Send(sbuf, count, MPI_DOUBLE, p, 11 - d, bc->comm);
 #else
 	      MPI_Isend(sbuf, count, MPI_DOUBLE, p, 11 - d,
@@ -290,7 +290,7 @@ void bc_unpack2(const boundary_conditions* bc,
 		      (double_complex*)a2, bc->size2, bc->recvstart[i][d]);
 	rbuf += bc->nrecv[i][d];
       }
-#ifndef GRIDPAW_AIX
+#ifndef GPAW_AIX
   // This does not work on the ibm!  We do a blocking send instead.
   for (int d = 0; d < 2; d++)
     if (sendreq[d] != 0)

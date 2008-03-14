@@ -3,22 +3,26 @@
 #include "extensions.h"
 #include "bmgs/bmgs.h"
 
+#ifdef GPAW_AIX
+#  define dgemv_ dgemm
+#  define dgemm_ dgemm
+#endif
 
 int dgemv_(char *trans, int *m, int * n,
-	   double *alpha, double *a, int *lda, 
-	   double *x, int *incx, double *beta, 
+	   double *alpha, double *a, int *lda,
+	   double *x, int *incx, double *beta,
 	   double *y, int *incy);
 int dgemm_(char *transa, char *transb, int *m, int * n,
-	   int *k, const double *alpha, double *a, int *lda, 
-	   double *b, int *ldb, double *beta, 
+	   int *k, const double *alpha, double *a, int *lda,
+	   double *b, int *ldb, double *beta,
 	   double *c, int *ldc);
 
 
 //                    +-----------n
 //  +----m   +----m   | +----c+m  |
 //  |    |   |    |   | |    |    |
-//  |  b | = |  v | * | |  a |    |  
-//  |    |   |    |   | |    |    |  
+//  |  b | = |  v | * | |  a |    |
+//  |    |   |    |   | |    |    |
 //  0----+   0----+   | c----+    |
 //                    |           |
 //                    0-----------+
@@ -123,7 +127,7 @@ PyObject * overlap(PyObject* self, PyObject *args)
 	      double* H = a2 + ng * nao2;
 	      double* f2 = lf2->f;
 	      double* vt2 = lf2->w;
-	      double dv = lf1->dv; 
+	      double dv = lf1->dv;
 	      int m2 = m_b[b2];
 	      if (b2 > b1)
 		for (int i = 0; i < nao2; i++)
@@ -177,7 +181,7 @@ PyObject * overlap(PyObject* self, PyObject *args)
 			  for (int i1 = 0; i1 < nao1; i1++)
 			    for (int i2 = i1; i2 < nao2; i2++)
 			      Vt_mm[i1 + i2 * nm] += H[i2 + i1 * nao2];
-			else 			  
+			else
 			  {
 			    double complex phase = \
 			      (phase_bk[b1 * nk + k] *

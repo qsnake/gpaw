@@ -3,6 +3,18 @@
 #include <numpy/arrayobject.h>
 #include "extensions.h"
 
+#ifdef GPAW_AIX
+#  define daxpy_ daxpy
+#  define zaxpy_ zaxpy
+#  define dsyrk_ dsyrk
+#  define zherk_ zherk
+#  define dsyr2k_ dsyr2k
+#  define zher2k_ zher2k
+#  define dgemm_ dgemm
+#  define zgemm_ zgemm
+#  define ddot_ ddot
+#endif
+
 void daxpy_(int* n, double* alpha,
 	    double* x, int *incx, 
 	    double* y, int *incy);

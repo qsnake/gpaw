@@ -7,7 +7,15 @@
 #  define dsyev_ dsyev
 #  define zheev_ zheev
 #  define dsygv_ dsygv
+#  define dhegv_ dhegv
 #  define zhegv_ zhegv
+#  define dgeev_ dgeev
+#  define dpotrf_ dpotrf
+#  define dpotri_ dpotri
+#  define zpotrf_ zpotrf
+#  define zpotri_ zpotri
+#  define dtrtri_ dtrtri
+#  define ztrtri_ ztrtri
 #endif
 
 int dsyev_(char *jobz, char *uplo, int *n, double *
