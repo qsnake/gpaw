@@ -143,9 +143,9 @@ class TwoCenterIntegrals:
         L2 = l2**2 + m2
         ssplines = self.S[(id1, id2)]
         tsplines = self.T[(id1, id2)]
-        sr = s(r)
-        tr = t(r)
         for s, t in zip(ssplines, tsplines):
+            sr = s(r)
+            tr = t(r)
             for m in range(2 * l + 1):
                 L = l**2 + m
                 c = Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
@@ -163,8 +163,8 @@ class TwoCenterIntegrals:
         r = sqrt(npy.dot(R, R))
         L1 = l1**2 + m1
         L2 = l2**2 + m2
-        pr = p(r)
         for p in self.P[(id1, id2)]:
+            pr = p(r)
             for m in range(2 * l + 1):
                 L = l**2 + m
                 P += pr * Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
