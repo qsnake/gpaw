@@ -92,6 +92,8 @@ class EXX:
         self.use_finegrid  = use_finegrid
         self.pair_density  = PairDensity(paw, use_finegrid)
         self.poisson_solve = paw.hamiltonian.poisson.solve
+
+        # Set correct Poisson solver
         if usefft:
             if use_finegrid:
                 solver = PoissonFFTSolver()
@@ -101,6 +103,11 @@ class EXX:
                 solver = PoissonFFTSolver()
                 solver.initialize(paw.gd)
                 self.poisson_solve = solver.solve
+        elif not use_finegrid:
+            solver = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
+            solver.initialize(paw.gd)
+            self.poisson_solve = solver.solve
+            
         
         # Allocate space for matrices
         self.nt_G = paw.gd.empty()# Pseudo density on coarse grid
@@ -109,18 +116,16 @@ class EXX:
         self.vt_g = paw.finegd.empty()# Pot. of comp. pseudo dens. on fine grid
         self.v_ani = [npy.zeros((paw.nbands, n.setup.ni))
                       for n in paw.my_nuclei]
+
+        # Overwrites in case of coarse grid Poisson solver
         if not use_finegrid:
             self.fineintegrate = paw.gd.integrate
             self.interpolate = dummy_interpolate
             self.rhot_g = paw.gd.empty()
             self.vt_g = self.vt_G
-            if not usefft:
-                solver = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
-                solver.initialize(paw.gd)
-                self.poisson_solve = solver.solve
         
+        # For rotating the residuals we need the diagonal Fock potentials
         if not energy_only:
-            # Diagonal pot. for residuals
             self.vt_unG = paw.gd.zeros((paw.nmyu, paw.nbands))
 
     def apply(self, kpt, Htpsit_nG, H_nn, hybrid):
