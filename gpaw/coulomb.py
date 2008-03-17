@@ -31,7 +31,7 @@ def get_vxc(paw, spin):
         H_ii = unpack(H_sp[spin])
         P_ni = nucleus.P_uni[spin]
         Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, P_ni.T))
-    return Vxc_nn * paw.Ha
+    return Vxc_nn * Hartree
 
 
 class Coulomb:
@@ -213,7 +213,7 @@ class Coulomb4:
         Z12 = float(npy.all(n1 == n2))
         Z34 = float(npy.all(n3 == n4))
         I = self.coulomb(rhot12_g, rhot34_g, Z12, Z34, self.method)
-        
+
         # Add atomic corrections
         Ia = 0.0
         for nucleus in self.my_nuclei:
@@ -225,7 +225,6 @@ class Coulomb4:
             D12_p = pack(npy.outer(pick(P_ni, n1), pick(P_ni, n2)), 1e3)
             D34_p = pack(npy.outer(pick(P_ni, n3), pick(P_ni, n4)), 1e3)
             Ia += 2 * npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
-        #print I, Ia
         I += self.psum(Ia)
 
         return I
@@ -243,7 +242,7 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
     # V_{ijkl} = \iint drdr' / |r-r'| i*(r) j*(r') k(r) l(r')
     # using coulomb4, which determines
     # C4(ijkl) = \iint drdr' / |r-r'| i(r) j*(r) k*(r') l(r')
-    # i.e. V_ijkl = C4(jkil)
+    # i.e. V_ijkl = C4(kijl)
 
     coulomb4 = Coulomb4(paw, spin).get_integral
     nwannier = U_nj.shape[1]
@@ -268,16 +267,16 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
             print "Doing Coulomb integrals for orbitals", i, j
 
             if 'ijij' in types:
-                # V_{ij, ij} = C4(jiij)
-                V_ijij[i, j] = coulomb4(nj, ni, ni, nj) * Hartree
+                # V_{ij, ij} = C4(iijj)
+                V_ijij[i, j] = coulomb4(ni, ni, nj, nj) * Hartree
                 
             if 'ijji' in types:
-                # V_{ij, ji} = C4(jjii)
-                V_ijji[i, j] = coulomb4(nj, nj, ni, ni) * Hartree
+                # V_{ij, ji} = C4(jiji)
+                V_ijji[i, j] = coulomb4(nj, ni, nj, ni) * Hartree
 
             if 'iijj' in types:
-                # V_{ii, jj} = C4(ijij)
-                V_iijj[i, j] = coulomb4(ni, nj, ni, nj) * Hartree
+                # V_{ii, jj} = C4(jiij)
+                V_iijj[i, j] = coulomb4(nj, ni, ni, nj) * Hartree
 
             if 'iiij' in types:
                 # V_{ii, ij} = C4(iiij)
@@ -289,8 +288,8 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
             if 'ikjk' in types:
                 for k in range(nwannier):
                     nk = U_nj[:, k]
-                    # V_{ik, jk} = C4(kjik)
-                    V_ikjk[i, j, k] = coulomb4(nk, nj, ni, nk) * Hartree
+                    # V_{ik, jk} = C4(jikk)
+                    V_ikjk[i, j, k] = coulomb4(nj, ni, nk, nk) * Hartree
 
     # Fill out lower triangle of direct, exchange, and iijj elements
     for i in range(nwannier):
