@@ -151,4 +151,4 @@ for details."""
             bf = BasisFunction(self.l, self.rc, phit_g, self.type)
             basis.bf_j.append(bf)
         elif name == 'generator':
-            basis.generatordata = ''.join(line for line in self.data)
+            basis.generatordata = ''.join([line for line in self.data])
