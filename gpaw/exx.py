@@ -85,7 +85,8 @@ class EXX:
         self.pair_density  = PairDensity(paw, finegrid=True)
         self.ghat_nuclei   = paw.ghat_nuclei
         self.rank          = paw.domain.comm.rank
-        self.psum          = lambda x: paw.kpt_comm.sum(paw.domain.comm.sum(x))
+        ksum, dsum = paw.kpt_comm.sum, paw.domain.comm.sum
+        self.psum          = lambda x: ksum(dsum(x)) # Sum over all processors
         self.energy_only   = energy_only
         self.Na            = len(paw.nuclei)
         self.use_finegrid  = use_finegrid
