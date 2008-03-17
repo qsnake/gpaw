@@ -9,9 +9,7 @@
 
 static void mpi_dealloc(MPIObject *obj)
 {
-  if (obj->comm == MPI_COMM_WORLD)
-    MPI_Finalize();
-  else
+  if (obj->comm != MPI_COMM_WORLD)
     {
       MPI_Comm_free(&(obj->comm));
       Py_DECREF(obj->parent);

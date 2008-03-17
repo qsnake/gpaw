@@ -109,7 +109,7 @@ extern DL_EXPORT(int) Py_Main(int, char **);
 int
 main(int argc, char **argv)
 {
-
+  int status;
   MPI_Init(&argc, &argv);
   Py_Initialize();
 
@@ -128,6 +128,8 @@ main(int argc, char **argv)
   Py_INCREF(&MPIType);
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
   import_array1(-1);
-  return Py_Main(argc, argv);
+  status = Py_Main(argc, argv);
+  MPI_Finalize();
+  return status;
 }
 #endif
