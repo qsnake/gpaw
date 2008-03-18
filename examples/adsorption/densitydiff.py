@@ -7,11 +7,8 @@ HAl_density = calc.get_pseudo_valence_density()
 atoms = calc.get_atoms()
 HAl = atoms.copy()
 
-# Save the position of the hydrogen atom for later:
-H = atoms[2]
-
 # Remove hydrogen and do a clean slab calculation:
-del atoms[2]
+H = atoms.pop(2)
 atoms.get_potential_energy()
 Al_density = calc.get_pseudo_valence_density()
 
