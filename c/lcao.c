@@ -4,7 +4,7 @@
 #include "bmgs/bmgs.h"
 
 #ifdef GPAW_AIX
-#  define dgemv_ dgemm
+#  define dgemv_ dgemv
 #  define dgemm_ dgemm
 #endif
 
