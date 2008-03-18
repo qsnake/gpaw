@@ -392,7 +392,7 @@ class BasisMaker:
         if polarizationcount > 0:
             # Now make up some properties for the polarization orbital
             # We just use the cutoffs from the previous one times a factor
-            rcut = singlezetas[-1].rc * rcutpol_rel
+            rcut = max([bf.rc for bf in singlezetas]) * rcutpol_rel
             rcut = min(rcut, rcutmax)
             l_pol = lmax + 1
             msg = 'Polarization function: l=%d, rc=%.02f' % (l_pol, rcut)
