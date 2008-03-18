@@ -137,7 +137,7 @@ class ExplicitCrankNicolson(Propagator):
             self.spsit = self.gd.zeros(n=len(kpt_u[0].psit_nG), dtype=complex)
 
         self.timer.stop('Update time-dependent operators')
-        
+
         # loop over k-points (spins)
         for kpt in kpt_u:
             self.kpt = kpt
@@ -147,7 +147,7 @@ class ExplicitCrankNicolson(Propagator):
             self.timer.stop('Apply time-dependent operators')
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
-            kpt.psit_nG[:] = self.spsit            
+            kpt.psit_nG[:] = self.spsit
             multi_zaxpy2(-.5j * self.time_step, self.hpsit, kpt.psit_nG, 
                           len(kpt.psit_nG))
 

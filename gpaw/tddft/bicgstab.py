@@ -86,6 +86,7 @@ class BiCGStab:
         
         q = self.gd.zeros(nvec, dtype=complex)
         q[:] = r
+
         p = self.gd.zeros(nvec, dtype=complex)
         v = self.gd.zeros(nvec, dtype=complex)
         t = self.gd.zeros(nvec, dtype=complex)
@@ -96,6 +97,7 @@ class BiCGStab:
         omega = npy.zeros((nvec,), dtype=complex) 
         scale = npy.zeros((nvec,), dtype=complex) 
         tmp = npy.zeros((nvec,), dtype=complex) 
+
         rhop[:] = 1.
         omega[:] = 1.
 
@@ -143,15 +145,15 @@ class BiCGStab:
             if ( (i > 0) and
                  ((npy.abs(beta) / scale) < self.eps).any() ):
                 raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (npy.min(npy.abs(rho)),self.eps))
-            
-            
+
+
             # p = r + beta * (p - omega * v)
             # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
             multi_zaxpy(-omega, v, p, nvec)
             multi_scale(beta, p, nvec)
             p += r
             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            
+
             # v_i = A.(M^-1.p)
             A.apply_preconditioner(p,m)
             A.dot(m,v)
@@ -161,13 +163,13 @@ class BiCGStab:
             # s = r_i-1 - alpha_i v_i
             multi_zaxpy(-alpha, v, r, nvec)
             # s is denoted by r
-            
+
             #print 'Alpha = ', alpha
 
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
             # next line is x_i = x_i-1 + alpha (M^-1.p_i)
             multi_zaxpy(alpha, m, x, nvec)
-            
+
             # if ( |s|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
             if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
@@ -179,15 +181,15 @@ class BiCGStab:
             if ((i+1) % slow_convergence_iters) == 0:
                 print 'R2 of proc #', rank, '  = ' , tmp, \
                     ' after ', i+1, ' iterations'
-            
+
             # t = A.(M^-1.s), M = 1
             A.apply_preconditioner(r,m)
             A.dot(m,t)
-            # omega_i = t^H s / (t^H t) 
+            # omega_i = t^H s / (t^H t)
             multi_zdotc(omega, t,r, nvec)
             multi_zdotc(tmp, t,t, nvec)
             omega = omega / tmp
-            
+
             #print 'Omega = ', omega
 
             # x_i = x_i-1 + alpha_i (M^-1.p_i) + omega_i (M^-1.s)
@@ -196,7 +198,7 @@ class BiCGStab:
             # r_i = s - omega_i * t
             multi_zaxpy(-omega, t, r, nvec)
             # s is no longer denoted by r
-            
+
             # if ( |r|^2 < tol^2 ) done
             multi_zdotc(tmp, r,r, nvec)
             if ( (npy.abs(tmp) / scale) < self.tol*self.tol ).all():
@@ -208,18 +210,18 @@ class BiCGStab:
             if ((i+1) % slow_convergence_iters) == 0:
                 print 'R2 of proc #', rank, '  = ' , tmp, \
                     ' after ', i+1, ' iterations'
-            
+
             # if abs(omega) < eps, then BiCGStab breaks down
             if ( (npy.abs(omega) / scale) < self.eps ).any():
                 raise RuntimeError("Biconjugate gradient stabilized method failed (abs(omega)/scale=%le < eps = %le)." % (npy.min(npy.abs(omega)) / scale, self.eps))
-            
-            rhop = rho
+            # finally update rho
+            rhop[:] = rho
 
-            
+
         # if max iters reached, raise error
         if (i >= self.max_iter-1):
             raise RuntimeError("Biconjugate gradient stabilized method failed to converged within given number of iterations (= %d)." % self.max_iter)
-            
+
 
         # done
         self.iterations = i+1

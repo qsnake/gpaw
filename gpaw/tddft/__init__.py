@@ -245,9 +245,10 @@ class TDDFT(PAW):
 
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
-                                                       npy.array(strength, 
+                                                       npy.array(strength,
                                                                  dtype=float) ),
-                            self.td_overlap, self.solver, self.preconditioner, self.gd, self.timer )
+                            self.td_overlap, self.solver, self.preconditioner, 
+                            self.gd, self.timer )
         abs_kick.kick(self.kpt_u)
 
 

@@ -151,7 +151,7 @@ class AbsorptionKickHamiltonian:
 
         self.pt_nuclei = pt_nuclei
 
-        # normalized direction
+        # magnitude
         magnitude = npy.sqrt(strength[0]*strength[0] 
                              + strength[1]*strength[1] 
                              + strength[2]*strength[2])
