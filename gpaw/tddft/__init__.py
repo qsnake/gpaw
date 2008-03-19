@@ -138,7 +138,7 @@ class TDDFT(PAW):
         # Preconditioner
         # No preconditioner as none good found
         self.preconditioner = None
-        self.preconditioner = InverseOverlapPreconditioner(self.overlap)
+        #self.preconditioner = InverseOverlapPreconditioner(self.overlap)
 
         # Time propagator
         if propagator is 'ECN':

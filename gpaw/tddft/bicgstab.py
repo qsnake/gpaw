@@ -179,8 +179,8 @@ class BiCGStab:
 
             # print if slow convergence
             if ((i+1) % slow_convergence_iters) == 0:
-                print 'R2 of proc #', rank, '  = ' , tmp, \
-                    ' after ', i+1, ' iterations'
+                print 'Log10 S2 of proc #', rank, '  = ' , npy.round(npy.log10(npy.abs(tmp)),1), \
+                      ' after ', i+1, ' iterations'
 
             # t = A.(M^-1.s), M = 1
             A.apply_preconditioner(r,m)
@@ -208,8 +208,8 @@ class BiCGStab:
 
             # print if slow convergence
             if ((i+1) % slow_convergence_iters) == 0:
-                print 'R2 of proc #', rank, '  = ' , tmp, \
-                    ' after ', i+1, ' iterations'
+                print 'Log10 R2 of proc #', rank, '  = ' , npy.round(npy.log10(npy.abs(tmp)),1), \
+                      ' after ', i+1, ' iterations'
 
             # if abs(omega) < eps, then BiCGStab breaks down
             if ( (npy.abs(omega) / scale) < self.eps ).any():
