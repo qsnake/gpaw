@@ -4,7 +4,7 @@ import numpy as npy
 from numpy.fft import ifft
 
 from gpaw.spline import Spline
-from gpaw.spherical_harmonics import Y
+from gpaw.spherical_harmonics import Y,Yl
 from gpaw.gaunt import gaunt
 from gpaw.utilities import fac
 
@@ -132,7 +132,7 @@ class TwoCenterIntegrals:
             splines.append(s)
         return splines
 
-    def st_overlap(self, id1, id2, l1, l2, m1, m2, R):
+    def st_overlap0(self, id1, id2, l1, l2, m1, m2, R):
         """ Returns the overlap and kinetic energy matrices. """
         
         l = (l1 + l2) % 2
@@ -153,8 +153,28 @@ class TwoCenterIntegrals:
                 T += tr * c
             l += 2
         return S, T
+
+    def st_overlap(self, id1, id2, l1, l2, m1, m2, R):
+        """ Returns the overlap and kinetic energy matrices. """
+        
+        l = (l1 + l2) % 2
+        S = 0.0
+        T = 0.0
+        r = sqrt(npy.dot(R, R))
+        L1 = l1**2 + m1
+        L2 = l2**2 + m2
+        ssplines = self.S[(id1, id2)]
+        tsplines = self.T[(id1, id2)]
+        for s, t in zip(ssplines, tsplines):
+            Y_m = npy.empty(2 * l + 1)
+            Yl(l, R, Y_m)
+            L = l**2
+            S += s(r) * npy.dot(Y_m, gaunt[L1, L2, L:L + 2 * l + 1])
+            T += t(r) * npy.dot(Y_m, gaunt[L1, L2, L:L + 2 * l + 1])
+            l += 2
+        return S, T
     
-    def p_overlap(self, id1, id2, l1, l2, m1, m2, R):
+    def p_overlap0(self, id1, id2, l1, l2, m1, m2, R):
         """ Returns the overlap between basis functions and projector
         functions. """
 
@@ -168,6 +188,23 @@ class TwoCenterIntegrals:
             for m in range(2 * l + 1):
                 L = l**2 + m
                 P += pr * Y(L, R[0], R[1], R[2]) * gaunt[L1, L2, L]
+            l += 2
+        return P
+
+    def p_overlap(self, id1, id2, l1, l2, m1, m2, R):
+        """ Returns the overlap between basis functions and projector
+        functions. """
+
+        l = (l1 + l2) % 2
+        P = 0.0
+        r = sqrt(npy.dot(R, R))
+        L1 = l1**2 + m1
+        L2 = l2**2 + m2
+        for p in self.P[(id1, id2)]:
+            Y_m = npy.empty(2 * l + 1)
+            Yl(l, R, Y_m)
+            L = l**2
+            P += p(r) * npy.dot(Y_m, gaunt[L1, L2, L:L + 2 * l + 1])
             l += 2
         return P
  

@@ -260,3 +260,66 @@ PyObject* swap_arrays(PyObject *self, PyObject *args)
     
   Py_RETURN_NONE;
 }
+
+
+PyObject* spherical_harmonics(PyObject *self, PyObject *args)
+{
+  int l;
+  PyArrayObject* R_obj_c;
+  PyArrayObject* Y_obj_m;
+  if (!PyArg_ParseTuple(args, "iOO", &l, &R_obj_c, &Y_obj_m)) 
+    return NULL;
+
+  double* R_c = DOUBLEP(R_obj_c);
+  double* Y_m = DOUBLEP(Y_obj_m);
+
+  if (l == 0)
+      Y_m[0] = 0.28209479177387814;
+  else
+    {
+      double x = R_c[0];
+      double y = R_c[1];
+      double z = R_c[2];
+      if (l == 1)
+	{
+	  Y_m[0] = 0.48860251190291992 * y;
+	  Y_m[1] = 0.48860251190291992 * z;
+	  Y_m[2] = 0.48860251190291992 * x;
+	}
+      else
+ 	{
+	  double r2 = x*x+y*y+z*z;
+	  if (l == 2)
+	    {		    
+	      Y_m[0] = 1.0925484305920792 * x*y;
+	      Y_m[1] = 1.0925484305920792 * y*z;
+	      Y_m[2] = 0.31539156525252005 * (3*z*z-r2);
+	      Y_m[3] = 1.0925484305920792 * x*z;
+	      Y_m[4] = 0.54627421529603959 * (x*x-y*y);
+	    }
+	  else if (l == 3)
+	    {
+	      Y_m[0] = 0.59004358992664352 * (-y*y*y+3*x*x*y);
+	      Y_m[1] = 2.8906114426405538 * x*y*z;
+	      Y_m[2] = 0.45704579946446577 * (-y*r2+5*y*z*z);
+	      Y_m[3] = 0.3731763325901154 * (5*z*z*z-3*z*r2);
+	      Y_m[4] = 0.45704579946446577 * (5*x*z*z-x*r2);
+	      Y_m[5] = 1.4453057213202769 * (x*x*z-y*y*z);
+	      Y_m[6] = 0.59004358992664352 * (x*x*x-3*x*y*y);
+	    }
+	  else if (l == 4)
+	    {
+	      Y_m[0] = 2.5033429417967046 * (x*x*x*y-x*y*y*y);
+	      Y_m[1] = 1.7701307697799307 * (-y*y*y*z+3*x*x*y*z);
+	      Y_m[2] = 0.94617469575756008 * (-x*y*r2+7*x*y*z*z);
+	      Y_m[3] = 0.66904654355728921 * (-3*y*z*r2+7*y*z*z*z);
+	      Y_m[4] = 0.10578554691520431 * (-30*z*z*r2+3*r2*r2+35*z*z*z*z);
+	      Y_m[5] = 0.66904654355728921 * (7*x*z*z*z-3*x*z*r2);
+	      Y_m[6] = 0.47308734787878004 * (-x*x*r2+7*x*x*z*z+y*y*r2-7*y*y*z*z);
+	      Y_m[7] = 1.7701307697799307 * (x*x*x*z-3*x*y*y*z);
+	      Y_m[8] = 0.62583573544917614 * (-6*x*x*y*y+x*x*x*x+y*y*y*y);
+	    }
+	}
+    }
+  Py_RETURN_NONE;
+}

@@ -35,6 +35,8 @@ Gaunt coefficients::
 from math import pi, sqrt
 
 from gpaw import debug
+from _gpaw import spherical_harmonics as Yl
+
 
 # Computer generated tables - do not touch!
 YL = [# s:
