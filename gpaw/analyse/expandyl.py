@@ -1,7 +1,7 @@
 from math import pi
 
 import numpy as npy
-from ase.units import Bohr
+from ase.units import Bohr, Hartree
 
 import gpaw.mpi as mpi
 from gpaw.spherical_harmonics import Y
@@ -148,6 +148,7 @@ class ExpandYl:
         print >> f, '# dR =', self.dR * self.a0, lu
         print >> f, '# lmax =', self.lmax 
         print >> f, '# s    k     n',
+        print >> f, '     e[eV]      occ',
         print >> f, '    norm      sum   weight',
         spdfghi = 's p d f g h i'.split()
         for l in range(self.lmax+1):
@@ -158,7 +159,8 @@ class ExpandYl:
             for k in krange:
                 u = k*calculator.nspins + s
                 for n in nrange:
-                    psit_G = calculator.kpt_u[u].psit_nG[n]
+                    kpt = calculator.kpt_u[u]
+                    psit_G = kpt.psit_nG[n]
                     norm = self.gd.integrate(psit_G**2)
 
                     gl, weight = self.expand(psit_G)
@@ -166,6 +168,8 @@ class ExpandYl:
                     gl = 100 * gl / gsum
 
                     print >> f, '%2d %5d %5d' % (s, k, n),
+                    print >> f, '%10.4f %8.4f' % (kpt.eps_n[n] * Hartree,
+                                                  kpt.f_n[n]),
                     print >> f, "%8.4f %8.4f %8.4f" % (norm, gsum, weight),
                 
                     for g in gl:
