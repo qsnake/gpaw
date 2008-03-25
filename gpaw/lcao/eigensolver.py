@@ -50,7 +50,9 @@ class LCAO:
         self.S_mm[:] = hamiltonian.S_kmm[k]
         #error = diagonalize(self.S_mm, self.eps_m)
         #print self.eps_m, error
+        self.eps_m[0] = 42
         error = diagonalize(H_mm, self.eps_m, self.S_mm)
+        assert self.eps_m[0] != 42
         if error != 0:
             raise RuntimeError('Error code from dsyevd/zheevd: %d.' % error)
         kpt.C_nm = H_mm[0:self.nbands].copy()  # XXX
