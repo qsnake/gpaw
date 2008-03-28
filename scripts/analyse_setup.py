@@ -2,6 +2,7 @@ import pylab as pl
 from sys import argv
 from ase.data import atomic_names as names
 from gpaw.setup_data import SetupData
+from gpaw.atom.all_electron import shoot
 
 input = argv[1].split('.')
 symbol = input[0]
@@ -46,6 +47,7 @@ print ''
 print 'Compensation charge cutoff: %0.4f Bohr' % setup.rcgauss
 #print 'Kinetic energy differences:\n', e_kin_jj
 
+
 rmax = max(setup.rcut_j)
 fig = pl.figure(1, figsize=(13, 6))
 fig.subplots_adjust(left=.05, right=.95)
@@ -61,7 +63,7 @@ pl.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
 pl.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
 pl.title('Partial Waves')
 pl.xlabel('r [Bohr]')
-pl.ylabel(r'$r^l\phi, r^l\tilde{\phi}, \rm{[Bohr}^{-3/2}\rm{]}$')
+pl.ylabel(r'$r^l\phi,\ r^l\tilde{\phi},\ \rm{[Bohr}^{-3/2}\rm{]}$')
 
 pl.subplot(132)
 for pt_g, id, color in zip(setup.pt_jg, id_j, colors):
@@ -73,7 +75,7 @@ pl.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
 pl.legend()
 pl.title('Projectors')
 pl.xlabel('r [Bohr]')
-pl.ylabel(r'$r^l\tilde{p}, \rm{[Bohr}^{-3/2}\rm{]}$')
+pl.ylabel(r'$r^l\tilde{p},\ \rm{[Bohr}^{-3/2}\rm{]}$')
 
 pl.subplot(133)
 pl.plot(r_g, setup.nc_g, colors[0], label=r'$n_c$')

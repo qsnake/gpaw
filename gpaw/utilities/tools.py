@@ -1,16 +1,16 @@
 import numpy as npy
-from time import time
 
 def function_timer(func, *args, **kwargs):
+    from time import time
     t1 = time()
     r = func(*args, **kwargs)
     t2 = time()
-    return tuple(r) + (t2-t1,)
-
-def factorial(x):
-    """Return x!, where x is a non-negative integer."""
-    if x < 2: return 1
-    else: return x * factorial(x - 1)
+    
+    if 'timeout' in kwargs:
+        print >> kwargs[timeout], t2 - t1
+    else:
+        print t2 - t1
+    return r
 
 def L_to_lm(L):
     """Convert L index to (l, m) index."""
@@ -21,22 +21,6 @@ def L_to_lm(L):
 def lm_to_L(l,m):
     """Convert (l, m) index to L index."""
     return l**2 + l + m
-
-def sort_xyz(loa, axes=[0, 1, 2]):
-    """Sort ListOfAtoms according to cartesian coordinates.
-
-    'axes' is a list of axis indices according to which the atoms should
-    be sorted.
-    """
-    def compare_atoms(a, b):
-        for axis in axes:
-            x = cmp(a.GetCartesianPosition()[axis],
-                    b.GetCartesianPosition()[axis])
-            if x != 0:
-                return x
-        return x
-    
-    loa.sort(compare_atoms)
 
 def core_states(symbol):
     """Method returning the number of core states for given element."""
@@ -195,7 +179,7 @@ def lowdin(U, S=None):
     return npy.dot(U, rot)
 
 def rotate_matrix(h, U):
-    """ U contains the new basis as its columns"""
+    """U contains the new basis as its columns"""
     return npy.dot(dagger(U), npy.dot(h, U))
 
 def symmetrize(matrix):
@@ -204,28 +188,8 @@ def symmetrize(matrix):
     npy.multiply(.5, matrix, matrix)
     return matrix
 
-## from gpaw.utilities import erf
-## erf3D = npy.frompyfunc(erf, 1, 1)
-def erf3D(M):
-    """Return matrix with the value of the error function evaluated for
-    each element in input matrix 'M'.
-    """
-    from gpaw.utilities import erf
-    return elementwise_apply(M, erf, copy=True)
-
-def elementwise_apply(array, function, copy=True):
-    """Apply ``function`` to each element of input ``array``. If copy is False,
-       the input matrix will be changed (no new allocation of memory).
-    """
-    if copy: # Allocate space for new array
-        result = array.copy()
-    else: # The input array is used for output
-        result = array
-    
-    for n in range(len(array.flat)):
-        result.flat[n] = function(array.flat[n])
-
-    return result
+from gpaw.utilities import erf
+erf3D = npy.vectorize(erf, [float,], 'Elementwise erf on arrays')
 
 def apply_subspace_mask(H_nn, f_n):
     """Uncouple occupied and unoccupied subspaces.
@@ -238,51 +202,15 @@ def apply_subspace_mask(H_nn, f_n):
     while occ < nbands and f_n[occ] > 1e-3: occ +=1
     H_nn[occ:, :occ] = H_nn[:occ, occ:] = 0
 
-def standard_deviation(a, axis=0):
-    """Returns the standard deviation of array ``a`` along specified axis.
-
-    The standard deviation is the square root of the average of the squared
-    deviations from the mean.
-    """
-    mean = npy.average(a, axis=axis)
-    shape = list(a.shape)
-    shape[axis] = 1
-    mean.shape = tuple(shape)
-    return npy.sqrt(npy.average((a - mean)**2, axis=axis))
-
-def energy_cutoff_to_gridspacing(E, E_unit='Hartree', h_unit='Ang'):
-    """Convert planewave energy cutoff to a real-space gridspacing.
-
-       The method uses the conversion formula::
-       
-                pi
-        h =   =====
-            \/ 2 E
-              
-       in atomic units (Hartree and Bohr)
-    """
-    from ASE.Units import Convert
-    E = Convert(E, E_unit, 'Hartree')
-    h = npy.pi / npy.sqrt(2 * E)
-    h = Convert(h, 'Bohr', h_unit)
-    return h
+def cutoff2gridspacing(E):
+    """Convert planewave energy cutoff to a real-space gridspacing."""
+    from ase import Hartree, Bohr
+    return .5 * npy.pi / npy.sqrt(E / Hartree) * Bohr
     
-def gridspacing_to_energy_cutoff(h, h_unit='Ang', E_unit='Hartree'):
-    """Convert real-space gridspacing to planewave energy cutoff.
-
-       The method uses the conversion formula::
-       
-             1   pi  2
-        E  = - ( -- )
-         c   2   h
-       
-       in atomic units (Hartree and Bohr)
-    """
-    from ASE.Units import Convert
-    h = Convert(h, h_unit, 'Bohr')
-    E = .5 * (npy.pi / h)**2
-    E = Convert(E, 'Hartree', E_unit)
-    return E
+def gridspacing2cutoff(h):
+    """Convert real-space gridspacing to planewave energy cutoff."""
+    from ase import Hartree, Bohr
+    return (.5 * npy.pi * Bohr / h)**2 * Hartree
 
 def get_HS_matrices(atoms, nt_sg, D_asp, psit_unG):
     """Determine matrix elements of the Hamiltonian defined by the

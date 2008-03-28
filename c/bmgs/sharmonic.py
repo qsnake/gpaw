@@ -432,7 +432,7 @@ def dYdq(l, m, q):
     return norm, dxyzs
 
 def simplify(xyzs):
-    """Rescale coeeficients to smallest integer value"""
+    """Rescale coefficients to smallest integer value"""
     norm = Q(1)
     numxyz = npy.array(xyzs.values())
 
