@@ -391,6 +391,9 @@ class PAW(PAWExtra, Output):
         self.call(final=True)
         self.print_converged()
 
+        # Don't fix the density in the next step:
+        self.fixdensity = -1
+
     def step(self):
         if self.niter > self.fixdensity:
             self.density.update(self.kpt_u, self.symmetry)
