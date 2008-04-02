@@ -283,11 +283,7 @@ class MolecularOrbitals:
             
         ft_km = []
         for kpt in self.paw.kpt_u:
-            if self.paw.dtype == float:
-                Porb_n = npy.zeros(npy.swapaxes(P_auni[0][0],0,1)[0].shape,
-                                   npy.float)
-            else:
-                Porb_n = npy.zeros(npy.swapaxes(P_auni[0][0],0,1)[0].shape,
+            Porb_n = npy.zeros(npy.swapaxes(P_auni[0][0],0,1)[0].shape,
                                    npy.complex)
             for nuc in range(len(self.mol)):
                 for pw_no in range(len(self.w[nuc])):
@@ -300,10 +296,7 @@ class MolecularOrbitals:
 
             assert(len(kpt.f_n) == len(Pabs_n))
 
-            if self.paw.dtype == float:
-                ft_m = npy.zeros(len(kpt.f_n), npy.float)
-            else:
-                ft_m = npy.zeros(len(kpt.f_n), npy.complex)
+            ft_m = npy.zeros(len(kpt.f_n), npy.complex)
             nosf = 0
             for m in argsort[::-1]:
                 if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
