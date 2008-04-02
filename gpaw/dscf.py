@@ -41,20 +41,22 @@ def dscf_calculation(calc, orbitals, atoms=None):
 
     """
 
-    # if the calculator has not been initialized it dos not have a
+    # if the calculator has not been initialized it does not have an
     # occupation object
     if not hasattr(calc, 'occupation'):
         calc.initialize(atoms)
     occ = calc.occupation
-    if isinstance(occ, FermiDirac):
+    if isinstance(occ, FermiDirac) and not isinstance(occ, FermiDiracDSCF):
         n_occ = FermiDiracDSCF(occ.ne, occ.nspins, occ.kT, orbitals ,calc)
-    else:
+        n_occ.set_communicator(occ.kpt_comm)
+        calc.occupation = n_occ
+        calc.converged = False
+    elif (isinstance(occ, ZeroKelvinDSCF) and
+          not isinstance(occ, ZeroKelvinDSCF)):
         n_occ = ZeroKelvinDSCF(occ.ne, occ.nspins, orbitals ,calc)
-    n_occ.set_communicator(occ.kpt_comm)
-
-    calc.occupation = n_occ
-    calc.converged = False
-    
+        n_occ.set_communicator(occ.kpt_comm)
+        calc.occupation = n_occ
+        calc.converged = False
 
 class ZeroKelvinDSCF(ZeroKelvin):
     """ Occupation class
