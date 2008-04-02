@@ -314,4 +314,120 @@ class MolecularOrbitals:
 
         return ft_km
                     
+class WaveFunction:
+    """Class defining the orbitals that should be filled in a dSCF calculation.
+    
+    An orbital is defined through a linear combination of KS orbitals which is
+    determined by this class as follows: For each kpoint we calculate the
+    quantity ft_m = <m|a> where |m> is the all-electron KS states in the
+    calculation and |a> is the all-electron resonant state to be kept occupied.
+    We can then write |a> = Sum(ft_m|m>) and in each self-consistent
+    cycle the method get_ft_km is called. This method take the Kohn-Sham
+    orbitals fulfilling the criteria given by Estart, Eend and no_of_states
+    and return the best possible expansion of the orbital in this basis.
+
+    Parameters
+    ----------
+    paw: gpaw calculator instance
+        The calculator used in the dSCF calculation.
+    molecule: list of integers
+        The atoms, which are a part of the molecule.
+    Estart: float
+        Kohn-Sham orbitals with an energy above Efermi+Estart are used
+        in the linear expansion.
+    Eend: float
+        Kohn-Sham orbitals with an energy below Efermi+Eend are used
+        in the linear expansion.
+    no_of_states: int
+        The maximum number of Kohn-Sham orbitals used in the linear expansion.
+    wf_u: list of wavefunction arrays
+        Wavefunction to be occupied on the kpts on this processor.
+    P_uai: list of two-dimensional arrays.
+        Calulator.nuclei[a].P_uni[:,n,:] for a in molecule
+        Projector overlaps with the wavefunction to be occupied for each
+        kpoint. These are used when correcting to all-electron wavefunction
+        overlaps. wf_u and P_uai can also be given as full lists
+        corresponding to the all the kpoints in the calculation.
+    """
+
+    def __init__(self, paw, wf_u, P_uai, Estart=0.0, Eend=1.e6,
+                 molecule=[0,1], no_of_states=None):
+    
+        self.paw = paw
+        self.wf_u = wf_u
+        self.P_uai = P_uai
+        self.Estart = Estart
+        self.Eend = Eend
+        self.mol = molecule
+        self.nos = no_of_states
+
+    def get_ft_km(self, epsF):
+
+        if self.paw.nspins == 1:
+            epsF = [epsF]
+        elif not self.paw.fixmom:
+            epsF = [epsF, epsF]
+        if self.nos == None:
+            self.nos = len(self.paw.kpt_u[0].f_n)
+
+        if len(self.wf_u) == len(self.paw.kpt_u):
+            wf_u = self.wf_u
+            P_uai = self.P_uai
+        elif len(self.wf_u) == self.paw.nkpts * self.paw.nspins:
+            wf_u = []
+            P_uai = []
+            for kpt in self.paw.kpt_u:
+                k = kpt.s * self.paw.nkpts + kpt.k
+                wf_u.append(self.wf_u[k])
+                P_uai.append(self.P_uai[k])
+        else:
+            raise RuntimeError('List of wavefunctions has wrong size')
+
+        ft_km = []
+        for kpt in self.paw.kpt_u:
+            
+            # Inner product of pseudowavefunctions
+            wf = npy.reshape(wf_u[kpt.u], -1) * self.paw.a0**1.5
+            psit_nG = npy.reshape(kpt.psit_nG, (len(kpt.f_n), -1))
+            dV = self.paw.gd.h_c[0] * self.paw.gd.h_c[1] * self.paw.gd.h_c[2]
+            Porb_n = npy.dot(npy.conjugate(psit_nG), wf) * dV
+            
+            # Correction to obtain inner product of AE wavefunctions
+            for n in range(self.paw.nbands):
+                for a, b in zip(self.mol, range(len(self.mol))):
+                    atom = self.paw.nuclei[a]
+                    p_i = npy.conjugate(atom.P_uni[kpt.u][n])
+                    for i in range(len(p_i)):
+                        for j in range(len(p_i)):
+                            Porb_n[n] += (p_i[i] * atom.setup.O_ii[i][j]
+                                          * P_uai[kpt.u][b][j])
+            
+            Pabs_n = abs(Porb_n)**2
+            argsort = npy.argsort(Pabs_n)
+
+            print 'Kpoint', kpt.k, kpt.weight, sum(abs(Porb_n)**2)
+
+            if self.paw.dtype == float:
+                ft_m = npy.zeros(len(kpt.f_n), npy.float)
+            else:
+                ft_m = npy.zeros(len(kpt.f_n), npy.complex)
+            nosf = 0
+            for m in argsort[::-1]:
+                if (Pabs_n[m] > kpt.f_n[m] / kpt.weight and
+                    kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
+                    kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
+                    ft_m[m] = npy.conjugate(Porb_n[m])
+                nosf += 1
+                if nosf == self.nos:
+                    break
+
+            ft_m /= npy.sqrt(sum(abs(ft_m)**2))
+            ft_km.append(ft_m)
+            
+        return ft_km
+                    
+
+
+    
+
 

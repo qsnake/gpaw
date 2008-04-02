@@ -193,6 +193,22 @@ class Calculator(PAW):
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
         return fold(energies * self.Ha, weights, npts, width)
 
+    def get_molecular_ldos(self, mol, spin, npts=201, width=None,
+                           lc=None, wf=None, P_uai=None):
+        """The Projected Density of States, using either atomic
+        orbital basis functions (lc) for a specified molecule (mol)
+        or a molecular wavefunction(wf)."""
+        
+        if width is None:
+            width = self.get_electronic_temperature()
+        if width == 0.0:
+            width = 0.1
+
+        from gpaw.utilities.dos import molecular_LDOS, fold
+        energies, weights = molecular_LDOS(self, mol, spin,
+                                           lc=lc, wf=wf, P_uai=P_uai)
+        return fold(energies * self.Ha, weights, npts, width)
+
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True):
         """Return pseudo-wave-function array."""
         psit_G = self.get_wave_function_array(band, kpt, spin)

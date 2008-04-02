@@ -94,6 +94,74 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
 
+def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_uai=None):
+    """Returns a list of eigenvalues, and their weights on a given molecule
+    
+       If wf is None, the weights are calculated as linear combinations of
+       atomic orbitals using P_uni. lc should then be a list of weights
+       for each atom. For example, the pure 2pi_x orbital of a
+       molecule can be obtained with lc=[[0,0,0,1.0],[0,0,0,-1.0]]. mol
+       should be a list of atom numbers contributing to the molecule.
+
+       If wf is not none, it should be a list of wavefunctions
+       corresponding to different kpoints and a specified band. It should
+       be accompanied by P_uai=nucleus[a].P_uni for the band n and a in mol.
+       The weights are then calculated as the overlap of all-electron
+       KS wavefunctions with wf"""
+
+    w_k = paw.weight_k
+    nk = len(w_k)
+    nb = paw.nbands
+    
+    P_un = npy.zeros((nk, nb), npy.complex)
+
+    if wf is None:
+        P_auni = npy.array([paw.nuclei[a].P_uni for a in mol])
+        if lc is None:
+            lc = [[1,0,0,0] for a in mol]
+        N = 0
+        for atom, w_a in zip(range(len(mol)), lc):
+            i=0
+            for w_o in w_a:
+                P_un += w_o * P_auni[atom,:,:,i]
+                N += abs(w_o)**2
+                i +=1
+        P_un /= sqrt(N)
+
+    else:
+        if len(wf) == 1:  # Using the Gamma point only
+            wf = [wf[0] for u in range(nk)]
+            P_uai = [P_uai[0] for u in range(nk)]
+        P_uai = npy.conjugate(P_uai)
+        for kpt in paw.kpt_u:
+            w = npy.reshape(npy.conjugate(wf)[kpt.u], -1)
+            for n in range(nb):
+                psit_nG = npy.reshape(kpt.psit_nG[n], -1)
+                dV = paw.gd.h_c[0] * paw.gd.h_c[1] * paw.gd.h_c[2]
+                P_un[kpt.u][n] = npy.dot(w, psit_nG) * dV * paw.a0**1.5
+                for a, b in zip(mol, range(len(mol))):
+                    atom = paw.nuclei[a]
+                    p_i = atom.P_uni[kpt.u][n]
+                    for i in range(len(p_i)):
+                        for j in range(len(p_i)):
+                            P_un[kpt.u][n] += (P_uai[kpt.u][b][i] *
+                                               atom.setup.O_ii[i][j] * p_i[j])
+                print n, abs(P_un)[kpt.u][n]**2
+                
+            print 'Kpoint', kpt.u, ' Sum: ',  sum(abs(P_un[kpt.u])**2)
+            
+    energies = npy.empty(nb * nk)
+    weights = npy.empty(nb * nk)
+    x = 0
+    for k, w in enumerate(w_k):
+        energies[x:x + nb] = paw.collect_eigenvalues(k=k, s=spin)
+        u = spin * nk + k
+        weights[x:x + nb] = w * npy.absolute(P_un[u])**2
+        x += nb
+
+    return energies, weights
+
+                    
 def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
     gd = paw.gd
