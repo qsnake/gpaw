@@ -1,0 +1,89 @@
+from time import time
+import numpy as npy
+from gpaw import mpi
+from gpaw.operators import Laplace
+from gpaw.transformers import Transformer
+from gpaw.grid_descriptor import GridDescriptor
+from gpaw.preconditioner import Preconditioner
+from gpaw.domain import Domain
+
+def run(ngpts, repeat, narrays, prec=False):
+    if mpi.rank == 0:
+        out = open('timings-%d.dat' % ngpts, 'w')
+    p = mpi.size
+    while p > 0:
+        if mpi.rank == 0:
+            out.write('%4d' % p)
+        comm = mpi.world.new_communicator(npy.arange(p))
+        if comm is not None:
+            go(comm, ngpts, repeat, narrays, out, prec)
+        mpi.world.barrier()
+        p = p // 2
+    if mpi.rank == 0:
+        out.close()
+        
+def go(comm, ngpts, repeat, narrays, out, prec):
+    N_c = npy.array((ngpts, ngpts, ngpts))
+    a = 10.0
+    domain = Domain((a, a, a))
+    domain.set_decomposition(comm, N_c=N_c)
+    gd = GridDescriptor(domain, N_c)
+    gdcoarse = gd.coarsen()
+    gdfine = gd.refine()
+    kin1 = Laplace(gd, -0.5, 1).apply
+    laplace = Laplace(gd, -0.5, 2)
+    kin2 = laplace.apply
+    restrict = Transformer(gd, gdcoarse, 1).apply
+    interpolate = Transformer(gd, gdfine, 1).apply
+    precondition = Preconditioner(gd, laplace, float)
+    a1 = gd.empty(narrays)
+    a1[:] = 1.0
+    a2 = gd.empty(narrays)
+    c = gdcoarse.empty(narrays)
+    f = gdfine.empty(narrays)
+
+    T = [0, 0, 0, 0, 0]
+    for i in range(repeat):
+        comm.barrier()
+        t0a = time()
+        kin1(a1, a2)
+        t0b = time()
+        comm.barrier()
+        t1a = time()
+        kin2(a1, a2)
+        t1b = time()
+        comm.barrier()
+        t2a = time()
+        for A, C in zip(a1,c):
+            restrict(A, C)
+        t2b = time()
+        comm.barrier()
+        t3a = time()
+        for A, F in zip(a1,f):
+            interpolate(A, F)
+        t3b = time()
+        comm.barrier()
+        if prec:
+            t4a = time()
+            for A in a1:
+                precondition(A, None, None, None)
+            t4b = time()
+            comm.barrier()
+
+        T[0] += t0b - t0a
+        T[1] += t1b - t1a
+        T[2] += t2b - t2a
+        T[3] += t3b - t3a
+        if prec:
+            T[4] += t4b - t4a
+
+    if mpi.rank == 0:
+        out.write(' %2d %2d %2d' % tuple(domain.parsize_c))
+        out.write(' %12.4f %12.4f %12.4f %12.4f %12.4f\n' % tuple(T))
+        out.flush()
+
+if __name__ == '__main__':
+    #run(128, 150, 10, prec=True)
+    #run(32, 250, 20)
+    run(32, 1, 1, prec=1)
+
