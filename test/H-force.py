@@ -13,5 +13,6 @@ atoms.set_calculator(calc)
 f1 = atoms.get_forces()[0]
 for i in range(3):
     f2i = numeric_force(atoms, 0, i)
-    equal(f1[i], f2i, 0.0072)
+    print f1[i], f2i
+    equal(f1[i], f2i, 0.0073)
 
