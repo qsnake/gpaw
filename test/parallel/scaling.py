@@ -10,6 +10,8 @@ from gpaw.domain import Domain
 def run(ngpts, repeat, narrays, prec=False):
     if mpi.rank == 0:
         out = open('timings-%d.dat' % ngpts, 'w')
+    else:
+        out = None
     p = mpi.size
     while p > 0:
         if mpi.rank == 0:
@@ -79,11 +81,12 @@ def go(comm, ngpts, repeat, narrays, out, prec):
 
     if mpi.rank == 0:
         out.write(' %2d %2d %2d' % tuple(domain.parsize_c))
-        out.write(' %12.4f %12.4f %12.4f %12.4f %12.4f\n' % tuple(T))
+        out.write(' %12.4f %12.4f %12.4f %12.4f %12.4f\n' %
+                  tuple([t / repeat / narrays for t in T]))
         out.flush()
 
 if __name__ == '__main__':
-    #run(128, 150, 10, prec=True)
-    #run(32, 250, 20)
-    run(32, 1, 1, prec=1)
+    run(128, 150, 10, prec=True)
+    run(32, 250, 20)
+    #run(32, 1, 1, prec=1)
 
