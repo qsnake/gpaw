@@ -1,5 +1,11 @@
 from time import time
-import numpy as npy
+try:
+    import numpy as npy
+except ImportError:
+    try:
+        import Numeric as npy
+    except ImportError:
+        raise SystemExit('numpy nor Numeric not installed!')
 from gpaw import mpi
 from gpaw.operators import Laplace
 from gpaw.transformers import Transformer
@@ -12,18 +18,18 @@ def run(ngpts, repeat, narrays, prec=False):
         out = open('timings-%d.dat' % ngpts, 'w')
     else:
         out = None
-    p = mpi.size
-    while p > 0:
+    p = 1
+    while p <= mpi.size and ngpts**3 / p > 4**3:
         if mpi.rank == 0:
             out.write('%4d' % p)
         comm = mpi.world.new_communicator(npy.arange(p))
         if comm is not None:
             go(comm, ngpts, repeat, narrays, out, prec)
         mpi.world.barrier()
-        p = p // 2
+        p *= 2
     if mpi.rank == 0:
         out.close()
-        
+
 def go(comm, ngpts, repeat, narrays, out, prec):
     N_c = npy.array((ngpts, ngpts, ngpts))
     a = 10.0
@@ -81,7 +87,7 @@ def go(comm, ngpts, repeat, narrays, out, prec):
 
     if mpi.rank == 0:
         out.write(' %2d %2d %2d' % tuple(domain.parsize_c))
-        out.write(' %12.4f %12.4f %12.4f %12.4f %12.4f\n' %
+        out.write(' %12.6f %12.6f %12.6f %12.6f %12.6f\n' %
                   tuple([t / repeat / narrays for t in T]))
         out.flush()
 
@@ -89,4 +95,3 @@ if __name__ == '__main__':
     run(128, 150, 10, prec=True)
     run(32, 250, 20)
     #run(32, 1, 1, prec=1)
-
