@@ -6,6 +6,7 @@ from ase import Atom, Atoms
 from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
 from ase.io.cube import read_cube
+from ase import read as ase_read
 from gpaw.utilities.vector import Vector3d
 from gpaw.io.xyz import read_xyz
 
@@ -119,7 +120,10 @@ class Cluster(Atoms):
         elif filetype == 'xyz':
             loa = read_xyz(filename)
         else:
-            raise NotImplementedError('unknown file type "'+filetype+'"')
+            try:
+                loa = ase_read(filename)
+            except:
+                raise NotImplementedError('unknown file type "'+filetype+'"')
         self.__init__(loa)
                 
         return len(self)
