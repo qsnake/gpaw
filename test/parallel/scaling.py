@@ -1,9 +1,11 @@
 from time import time
 try:
     import numpy as npy
+    npy_float = npy.float
 except ImportError:
     try:
         import Numeric as npy
+        npy_float = npy.Float
     except ImportError:
         raise SystemExit('numpy nor Numeric not installed!')
 from gpaw import mpi
@@ -43,7 +45,7 @@ def go(comm, ngpts, repeat, narrays, out, prec):
     kin2 = laplace.apply
     restrict = Transformer(gd, gdcoarse, 1).apply
     interpolate = Transformer(gd, gdfine, 1).apply
-    precondition = Preconditioner(gd, laplace, float)
+    precondition = Preconditioner(gd, laplace, npy_float)
     a1 = gd.empty(narrays)
     a1[:] = 1.0
     a2 = gd.empty(narrays)
@@ -92,6 +94,6 @@ def go(comm, ngpts, repeat, narrays, out, prec):
         out.flush()
 
 if __name__ == '__main__':
-    run(128, 150, 10, prec=True)
-    run(32, 250, 20)
+    run(128, 50, 2, prec=True)
+    run(32, 50, 20)
     #run(32, 1, 1, prec=1)
