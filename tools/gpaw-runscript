@@ -106,12 +106,14 @@ class RunScript:
         size=int((set['nodes']+1)/2)
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
-        print >> f,"#PBS -l size=%d" % size
-        print >> f,"#PBS -l walltime=" + str(set['time'])
+        print >> f,"#PBS -l mppwidth=%d" % size
+        hs = dhms(set['time'])
+        print >> f,'#PBS -l walltime=' + ( str(hs[0]) + ':' +
+                                           str(hs[1]) + ':' + str(hs[2]) )
         if set['mem']:
             print >> f, '#PBS -l mppmem=1900M'
-        print >> f,"#PBS -o",set['out']
-        print >> f,"#PBS -e",set['err']
+        print >> f, 'module load python'
+        print >> f, 'module load ASE/3.0'
         print >> f, 'module load gpaw'
         print >> f, 'cd', set['wd']
         print >> f, 'aprun -n %d' % size,
@@ -143,6 +145,24 @@ class RunScript:
         print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
         print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
         print >> f,"setenv GPAW_PYTHON",env['GPAW_PYTHON']
+        print >> f,"mpirun -srun $GPAW_PYTHON",set['script']
+      
+    def murska_pre(self, f, set, env):
+        """Pre-installed version on murska."""
+        print >> f,"#!/bin/csh"
+        print >> f,"#BSUB -n%d" % set['nodes']
+        hs = dhms(set['time'])
+        print >> f,"#BSUB -W %d:%d" % (hs[0]*24+hs[1],hs[2])
+        print >> f,"#BSUB -J",set['name']
+        if set['mail'] is not None:
+            print >> f,"#BSUB -u",set['mail']
+        print >> f,"#BSUB -e ",set['err']+'_%J'
+        print >> f,"#BSUB -o ",set['out']+'_%J'
+        if set['mem']:
+            print >> f, '#BSUB -ext "SLURM[constraint=mediummem|bigmem]"'
+        print >> f, 'module load ASE'
+        print >> f, 'module load ASE/3.0'
+        print >> f, 'module load gpaw'
         print >> f,"mpirun -srun $GPAW_PYTHON",set['script']
       
     def pbs(self, f, set, env):
