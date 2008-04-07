@@ -162,6 +162,9 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         # Locate LUMO-level
         lumo = -1.0 * self.kpt_comm.max(-1.0* min( [kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u] ))
 
+        # Calculate the Kohn-Sham gap
+        self.kohn_sham_gap = (lumo-homo)*output.Ha
+
         lumo_level = lumo
 
         lumo *= output.Ha
@@ -195,7 +198,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
             eps = kpt.eps_n[self.ref_loc+1]
 
             # Interpolate the wave functions to finer grid
-            self.vt_G = (psit_G * npy.conjugate(psit_G) ).real
+            self.vt_G[:] = (psit_G * npy.conjugate(psit_G) ).real
             self.vtp_sg[:] = 0.0 # TODO: Is this needed for interpolate?
             self.interpolate(self.vt_G, self.vtp_sg[0])
             
@@ -224,5 +227,18 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         # Locate LUMO-level again
         lumo = -1.0 * self.kpt_comm.max(-1.0* min([ kpt.eps_n[self.ref_loc+1] for kpt in self.kpt_u ] ))
         lumo *= output.Ha
+
+        self.quasiparticle_gap = lumo-homo
+
         output.text("PERTURBED LUMO    :     %.4f eV" % lumo)
-        output.text("QUASIPARTICLE GAP :     %.4f eV" % (lumo-homo))
+        output.text("DELTA X(C)        :     %.4f.eV" % self.get_discontinuity())
+        output.text("QUASIPARTICLE GAP :     %.4f eV" % self.get_quasiparticle_gap())
+
+    def get_kohn_sham_gap(self):
+        return self.kohn_sham_gap
+
+    def get_discontinuity(self):
+        return self.quasiparticle_gap - self.kohn_sham_gap
+
+    def get_quasiparticle_gap(self):
+        return self.quasiparticle_gap
