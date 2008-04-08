@@ -28,6 +28,7 @@ dr_g = setup.beta * setup.ng / (setup.ng - g)**2
 d2gdr2 = -2 * setup.ng * setup.beta / (setup.beta + r_g)**3
 rmax = max(setup.rcut_j)
 gmax = 1 + int(rmax * setup.ng / (rmax + setup.beta))
+rlog = r_g[gmax + 10]
 rcutcomp = sqrt(10) * setup.rcgauss
 
 # Find Fourier-filter cutoff radius:
@@ -49,18 +50,26 @@ else:
     rcore = r_g[g]
 
 # Construct logarithmic derivatives
-logr = 1.475
-## logd = {}
-## loge = pl.load('B.ae.ld.s')[:, 0]
-## logd['sae'] = pl.load('B.ae.ld.s')[:, 1]
-## logd['pae'] = pl.load('B.ae.ld.p')[:, 1]
-## logd['dae'] = pl.load('B.ae.ld.d')[:, 1]
-## logd['sps'] = pl.load('B.ps.ld.s')[:, 1]
-## logd['pps'] = pl.load('B.ps.ld.p')[:, 1]
-## logd['dps'] = pl.load('B.ps.ld.d')[:, 1]
-## eig = [[-0.347, 0.653], # s
-##        [-0.133, 0.867], # p
-##        [-0.000,]]       # d
+eig = {}
+for l, e in zip(setup.l_j, setup.eps_j):
+    eig['spdf'[l]] = eig.get('spdf'[l], []) + [e,]
+logd = {}
+ref = []
+try: # Only works if logarithmic derivatives have been predetermined
+    loge = pl.load(symbol + '.ae.ld.s')[:, 0]
+    logd['sae'] = pl.load(symbol + '.ae.ld.s')[:, 1]
+    logd['pae'] = pl.load(symbol + '.ae.ld.p')[:, 1]
+    logd['dae'] = pl.load(symbol + '.ae.ld.d')[:, 1]
+    logd['sps'] = pl.load(symbol + '.ps.ld.s')[:, 1]
+    logd['pps'] = pl.load(symbol + '.ps.ld.p')[:, 1]
+    logd['dps'] = pl.load(symbol + '.ps.ld.d')[:, 1]
+    
+    for l, e in zip(setup.l_j, setup.eps_j):
+        i = loge.searchsorted(e)
+        ref.append([loge[i], logd['spdf'[l] + 'ae'][i]])
+    ref = pl.array(ref)
+except:
+    pass
 
 def pfill(s, l):
     print s + (l-len(s)) * ' ' + '|'
@@ -123,10 +132,9 @@ pl.subplot(221)
 for phi_g, phit_g, id, color in zip(setup.phi_jg, setup.phit_jg, id_j, colors):
     pl.plot(r_g, r_g * phi_g, color + '-', label=id)
     pl.plot(r_g, r_g * phit_g, color + '--', label='_nolegend_')
-
 pl.legend()
 pl.axis('tight')
-lim = pl.axis(xmin=0, xmax=rmax*1.2, ymin=-.6, ymax=.7)
+lim = pl.axis(xmin=0, xmax=rmax*1.2)
 pl.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
 pl.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
 pl.title('Partial Waves')
@@ -136,7 +144,6 @@ pl.ylabel(r'$r^{l+1}\phi,\ r^{l+1}\tilde{\phi},\ \rm{[Bohr}^{-3/2}\rm{]}$')
 pl.subplot(222)
 for pt_g, id, color in zip(setup.pt_jg, id_j, colors):
     pl.plot(r_g, r_g * pt_g, color + '-', label=id)
-
 pl.axis('tight')
 lim = pl.axis(xmin=0, xmax=rmax*1.2)
 pl.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
@@ -147,22 +154,16 @@ pl.xlabel('r [Bohr]')
 pl.ylabel(r'$r^{l+1}\tilde{p},\ \rm{[Bohr}^{-3/2}\rm{]}$')
 
 pl.subplot(223)
-## for id, color, es in zip('spd', colors, eig):
-##     refx = []
-##     refy = []
-##     for e in es:
-##         i = loge.searchsorted(e)
-##         refx.append(loge[i])
-##         refy.append(logd[id+'ae'][i])
-    
-##     pl.plot(refx, refy, 'ko', label='_nolegend_')
-##     pl.plot(loge, logd[id+'ae'],linestyle='-',color=color,label=id)
-##     pl.plot(loge, logd[id+'ps'],linestyle='--',color=color,label='_nolegend_')
-
-## lim = pl.axis('tight')
+if len(logd) != 0:
+    pl.plot(ref[:, 0], ref[:, 1], 'ko', label='_nolegend_')
+    for id, color in zip('spd', colors):
+        pl.plot(loge, logd[id+'ae'], linestyle='-', color=color, label=id)
+        pl.plot(loge, logd[id+'ps'], linestyle='--', color=color,
+                label='_nolegend_')
+lim = pl.axis('tight')
 pl.legend()
 pl.title('Logarithmic Derivatives')
-pl.ylabel('log. deriv. at r=%s Bohr' % logr)
+pl.ylabel('log. deriv. at r=%s Bohr' % rlog)
 pl.xlabel('Energy [Hartree]')
 
 pl.subplot(224)
