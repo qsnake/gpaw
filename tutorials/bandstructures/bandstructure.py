@@ -17,12 +17,13 @@ calc.write('Na_sc.gpw')
 nkpt = 50
 kpts = [(k / float(2 * nkpt), 0, 0) for k in range(nkpt)]
 calc = Calculator('Na_sc.gpw', txt='out_Na_harris.txt',
-                    kpts=kpts, fixdensity=True, nbands=6,
-                    eigensolver='cg')
+                    kpts=kpts, fixdensity=True, nbands=7,
+                  eigensolver='cg', convergence={'bands': 'all'})
+ef = calc.get_fermi_level()
 calc.get_potential_energy()
 
 # Write the results to a file e.g. for plotting with gnuplot
 f = open('Na_bands.txt', 'w')
 for k, kpt_c in enumerate(calc.get_ibz_k_points()):
      for eig in calc.get_eigenvalues(kpt=k):
-         print >> f, kpt_c[0], eig - calc.get_fermi_level()
+         print >> f, kpt_c[0], eig - ef
