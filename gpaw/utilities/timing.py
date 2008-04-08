@@ -80,6 +80,14 @@ class Timer:
         assert t > 0.0
         return t
 
+    def reset(self):
+        """Reset all timers"""
+        for name in self.timers:
+            if self.timers[name] < 0.0:
+                self.timers[name] = -time.time()
+            else:
+                self.timers[name] = 0.0
+                
     def write(self, out=sys.stdout):
         if len(self.timers) == 0:
             return
