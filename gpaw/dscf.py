@@ -317,14 +317,16 @@ class MolecularOrbitals:
 class WaveFunction:
     """Class defining the orbitals that should be filled in a dSCF calculation.
     
-    An orbital is defined through a linear combination of KS orbitals which is
-    determined by this class as follows: For each kpoint we calculate the
-    quantity ft_m = <m|a> where |m> is the all-electron KS states in the
-    calculation and |a> is the all-electron resonant state to be kept occupied.
-    We can then write |a> = Sum(ft_m|m>) and in each self-consistent
-    cycle the method get_ft_km is called. This method take the Kohn-Sham
-    orbitals fulfilling the criteria given by Estart, Eend and no_of_states
-    and return the best possible expansion of the orbital in this basis.
+    An orbital is defined through a linear combination of KS orbitals
+    which is determined by this class as follows: For each kpoint we
+    calculate the quantity ``ft_m = <m|a>`` where ``|m>`` is the
+    all-electron KS states in the calculation and |a> is the
+    all-electron resonant state to be kept occupied.  We can then
+    write ``|a> = Sum(ft_m|m>)`` and in each self-consistent cycle the
+    method get_ft_km is called. This method take the Kohn-Sham
+    orbitals fulfilling the criteria given by Estart, Eend and
+    no_of_states and return the best possible expansion of the orbital
+    in this basis.
 
     Parameters
     ----------
