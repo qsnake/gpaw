@@ -17,14 +17,22 @@ def get_vxc(paw, spin):
     """Calculate matrix elements of the xc-potential."""
     psit_nG = paw.kpt_u[spin].psit_nG[:]
     nt_g = paw.density.nt_sg[spin]
-    vxct_g = paw.finegd.empty()
+    vxct_g = paw.finegd.zeros()
     paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
     vxct_G = paw.gd.empty()
     paw.hamiltonian.restrict(vxct_g, vxct_G)
     Vxc_nn = npy.zeros((paw.nbands, paw.nbands))
+
+    # Fill in upper triangle
     r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
+
+    # Fill in lower triangle
+    Vxc_nn += dagger(Vxc_nn)
+    Vxc_nn.flat[::Vxc_nn.shape[0] + 1] *= .5
+
+    # Add atomic PAW corrections
     for nucleus in paw.my_nuclei:
-        D_sp = nucleus.D_sp
+        D_sp = nucleus.D_sp[:]
         H_sp = 0.0 * D_sp
         nucleus.setup.xc_correction.calculate_energy_and_derivatives(
             D_sp, H_sp)
@@ -167,6 +175,7 @@ class Coulomb4:
                             /    /      rho12(r) rho34(r')
           (n1 n2 | n3 n4) = | dr | dr'  ------------------,
                             /    /            |r - r'|
+                            
                                                 *     *
                             /    /      w1(r) w2(r) w3(r') w4(r')
                           = | dr | dr'  -------------------------,
@@ -195,7 +204,6 @@ class Coulomb4:
         
     def get_integral(self, n1, n2, n3, n4):
         rhot12_g = self.rhot12_g
-        rhot12_g[:] = 0.0
         self.pd.initialize(self.kpt, n1, n2)
         self.pd.get_coarse(self.nt12_G)
         self.pd.add_compensation_charges(self.nt12_G, rhot12_g)
@@ -204,7 +212,6 @@ class Coulomb4:
             rhot34_g = None
         else:
             rhot34_g = self.rhot34_g
-            rhot34_g[:] = 0.0
             self.pd.initialize(self.kpt, n3, n4)
             self.pd.get_coarse(self.nt34_G)
             self.pd.add_compensation_charges(self.nt34_G, rhot34_g)
@@ -225,7 +232,9 @@ class Coulomb4:
             D12_p = pack(npy.outer(pick(P_ni, n1), pick(P_ni, n2)), 1e3)
             D34_p = pack(npy.outer(pick(P_ni, n3), pick(P_ni, n4)), 1e3)
             Ia += 2 * npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
-        I += self.psum(Ia)
+        #I += self.psum(Ia)
+        # print Ia
+        I += Ia
 
         return I
 
