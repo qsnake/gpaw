@@ -55,6 +55,8 @@ def go(comm, ngpts, repeat, narrays, out, prec):
     T = [0, 0, 0, 0, 0]
     for i in range(repeat):
         comm.barrier()
+        kin1(a1, a2)
+        comm.barrier()
         t0a = time()
         kin1(a1, a2)
         t0b = time()
