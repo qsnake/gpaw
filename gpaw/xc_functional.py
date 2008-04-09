@@ -181,6 +181,11 @@ class XCFunctional:
                 code = 14
             elif xcname == 'LB94':
                 code = 17
+                parameters = [1., 0.05] # alpha, beta
+                if self.parameters:
+                    for i, key in enumerate(['alpha', 'beta']):
+                        if self.parameters.has_key(key):
+                            parameters[i] = self.parameters[key]
             elif xcname == 'BEE1':
                 code = 18
             else:
@@ -190,7 +195,7 @@ class XCFunctional:
             i = int(xcname[3])
             s0 = float(xcname[5:])
             self.xc = _gpaw.XCFunctional(code, self.gga, s0, i)
-        elif code in [5, 18]:
+        elif code in [5, 17, 18]:
             self.xc = _gpaw.XCFunctional(code, self.gga,
                                          0.0, 0, npy.array(parameters))
         elif code == 6:

@@ -19,7 +19,7 @@ double lb94_correction(const xc_parameters* par,
   // dirty fix, destroys -1/r, but we can not determine r from x anymore
   if(x>500) return 0.0;
   /* constant as given in [LB94] */
-  double beta = 0.05;
+  double beta = par->pade[1];
   double corr = -beta* x*x / ( rhom13 * ( 1. + 3.*beta*x*asinh(x) ) );
   return corr;
 }

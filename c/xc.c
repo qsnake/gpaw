@@ -416,6 +416,14 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       self->par.gga = 0; /* hide gga */
       self->exchange = pbe_exchange;
       self->correction = lb94_correction;
+      int n = padearray->dimensions[0];
+      assert(n == 2);
+      double* p = DOUBLEP(padearray);
+      for (int i = 0; i < n; i++) {
+	printf("-------- p[%d]=%g\n", i, p[i]);
+	self->par.pade[i] = p[i];
+      }
+      
     }
   else if (type == 18)
     {
