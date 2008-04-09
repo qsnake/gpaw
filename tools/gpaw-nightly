@@ -46,13 +46,13 @@ if os.system('svn export ' +
              'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
     fail('Checkout of gpaw failed!')
 if os.system('svn export ' +
-             'https://svn.fysik.dtu.dk/projects/ase3000/trunk ase3000') != 0:
+             'https://svn.fysik.dtu.dk/projects/ase/trunk ase') != 0:
     fail('Checkout of ASE failed!')
 os.chdir('gpaw')
 if os.system('python setup.py install --home=%s' % dir) != 0:
     fail('Installation failed!')
 
-os.system('mv ../ase3000/ase ../lib/python')
+os.system('mv ../ase/ase ../lib/python')
 
 os.system('wget --no-check-certificate ' +
           'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
