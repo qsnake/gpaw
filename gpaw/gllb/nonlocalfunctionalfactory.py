@@ -24,6 +24,9 @@ class NonLocalFunctionalFactory:
             return GLLBFunctional('X_LDA-None','None-C_VWN', KC_G)
         elif name == 'GLLBplusC':
             return GLLBFunctional('X_B88-C_PW91',None,KC_G)
+        elif name == 'SAOP':
+             return GLLBFunctional('X_B88-None', None, 0.42,
+                                   outer_xc_name='LBalpha')
         else:
             raise RuntimeError('Unkown NonLocal density functional: ' + name)
 

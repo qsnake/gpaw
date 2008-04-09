@@ -139,7 +139,7 @@ class XCFunctional:
             self.orbital_dependent = True
             if self.setupname is None:
                 self.setupname = 'LDA'
-        elif xcname.startswith('GLLB') or xcname=='KLI':
+        elif xcname.startswith('GLLB') or xcname=='KLI' or xcname == 'SAOP':
             # GLLB type of functionals which use orbitals, require special
             # treatment at first iterations, where there is no orbitals
             # available. Therefore orbital_dependent = True!
@@ -179,9 +179,12 @@ class XCFunctional:
                 ##self.mgga = False ## use local tau and local potential
             elif xcname == 'PW91':
                 code = 14
-            elif xcname == 'LB94':
+            elif xcname == 'LB94' or xcname == 'LBalpha':
                 code = 17
-                parameters = [1., 0.05] # alpha, beta
+                if xcname == 'LB94':
+                    parameters = [1., 0.05] # alpha, beta
+                else:
+                    parameters = [1.19, 0.01] # alpha, beta
                 if self.parameters:
                     for i, key in enumerate(['alpha', 'beta']):
                         if self.parameters.has_key(key):

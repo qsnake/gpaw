@@ -8,7 +8,9 @@ import numpy as npy
 from gpaw.mpi import world
 
 class GLLBFunctional(ZeroFunctional, GLLB1D):
-    def __init__(self, slater_xc_name, v_xc_name, K_G, relaxed_core_response=False):
+    def __init__(self, slater_xc_name, v_xc_name, K_G,
+                 relaxed_core_response=False,
+                 outer_xc_name=None):
         self.relaxed_core_response = relaxed_core_response
         self.K_G = K_G
         self.slater_xc = XCFunctional(slater_xc_name, 1)
@@ -16,6 +18,12 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
             self.v_xc = XCFunctional(v_xc_name, 1)
         else:
             self.v_xc = None
+
+        # xc for the outer region (SAOP)
+        if outer_xc_name:
+            self.outer_xc = XCFunctional(outer_xc_name)
+        else:
+            self.outer_xc = None
         
         GLLB1D.__init__(self)
         
@@ -48,7 +56,12 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
             self.v_xc3d = XC3DGrid(self.v_xc, self.finegd, self.nspins)
         else:
             self.v_xc3d = None
-
+        if self.outer_xc is not None:
+            self.outer_v_xc3d = XC3DGrid(self.outer_xc,
+                                         self.finegd, self.nspins)
+        else:
+             self.outer_v_xc3d = None
+         
         # Allocate 'response-density' matrices for each nucleus
         for nucleus in self.nuclei:
             ni = nucleus.get_number_of_partial_waves()
