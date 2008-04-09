@@ -130,7 +130,7 @@ def pick(a_ix, i):
 
 def dagger(a):
     """Return Hermitian conjugate of input"""
-    return a.T.conj()
+    return npy.conj(a.T)
 
 def dagger_self(a):
     """Hermitian conjugate input"""
