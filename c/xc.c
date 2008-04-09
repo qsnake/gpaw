@@ -116,6 +116,16 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
       deda2_g = DOUBLEP(deda2_array);
     }
 
+  /* h1 is the weight for the exchange part of the energy */
+  double h1 = 1.0 - par->hybrid;
+  /* h1v is the weight for the exchange part of the potential */
+  double h1v = h1;
+  if(self->correction) { 
+    /* we assume this to be LB, increase of the exchange part, see 
+       Schipper et al, J.Chem.Phys. 112, 1344 (2000) */
+    h1v += par->pade[0] - 1.0;
+  }
+
   for (int g = 0; g < ng; g++)
     {
       double n = n_g[g];
@@ -140,9 +150,8 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
           ex = self->exchange(par, n, rs, 0.0, &dexdrs, 0);
           ec = self->correlation(n, rs, 0.0, 0.0, 0, 0, &decdrs, 0, 0);
         }
-      double h1 = 1.0 - par->hybrid;
       e_g[g] = n * (h1 * ex + ec);
-      v_g[g] += h1 * ex + ec - rs * (h1 * dexdrs + decdrs) / 3.0;
+      v_g[g] += h1v * ex + ec - rs * (h1v * dexdrs + decdrs) / 3.0;
       if(self->correction) {
 	if(!par->gga) { /* we need to load the GGA arrays */
 	  a2_g = DOUBLEP(a2_array);
