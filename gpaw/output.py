@@ -251,8 +251,8 @@ class Output:
                 t(nucleus.a, nucleus.mom)
             t()
 
-        if self.xcfunc.is_gllb():
-            self.xcfunc.xc.print_converged(self)
+##         if self.xcfunc.is_gllb():
+##             self.xcfunc.xc.print_converged(self)
 
     def print_iteration(self):
         # Output from each iteration:
