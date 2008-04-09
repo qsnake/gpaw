@@ -429,7 +429,6 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       assert(n == 2);
       double* p = DOUBLEP(padearray);
       for (int i = 0; i < n; i++) {
-	printf("-------- p[%d]=%g\n", i, p[i]);
 	self->par.pade[i] = p[i];
       }
       
