@@ -1166,7 +1166,14 @@ class XCCorrection:
 #        return 0.0
         return E - self.Exc0
 
-    def GLLB(self, D_sp, Dresp_sp, H_sp, extra_xc_data, K_G, reference_levels):
+    def GLLB(self, nucleus, gllb):
+        D_sp = nucleus.D_sp
+        Dresp_sp = nucleus.Dresp_sp
+        H_sp = nucleus.H_sp
+        extra_xc_data = nucleus.setup.extra_xc_data
+        K_G = gllb.K_G
+        reference_levels = [ gllb.fermi_level ]
+        
         r_g = self.rgd.r_g
 
         # Normally, the response-part from core orbitals is calculated using the reference-level of setup-atom
@@ -1247,6 +1254,9 @@ class XCCorrection:
                     e_g[:] += e2_g
                     x_g += v2_g
                 
+
+                #if gllb.relaxed_core_response:
+                #    stuff todo here:
 
                 E += w * npy.dot(e_g, self.dv_g)
                 
