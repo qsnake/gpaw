@@ -314,3 +314,95 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
         result += (eval('V_' + type), )
     return result
 
+
+from gpaw.utilities.tools import symmetrize
+from gpaw.utilities import packed_index, unpack2
+from gpaw.utilities.blas import r2k
+class HF:
+    def __init__(self, paw):
+        self.nspins       = paw.nspins
+        self.nbands       = paw.nbands
+        self.my_nuclei    = paw.my_nuclei
+        self.restrict     = paw.hamiltonian.restrict
+        self.pair_density = PairDensity(paw, finegrid=True)
+        self.dv           = paw.gd.dv
+        self.dtype        = paw.dtype 
+
+        # Allocate space for matrices
+        self.nt_G   = paw.gd.empty()
+        self.rhot_g = paw.finegd.empty()
+        self.vt_G   = paw.gd.empty()
+        self.vt_g   = paw.finegd.empty()
+        self.poisson_solve = paw.hamiltonian.poisson.solve
+
+    def apply(self, kpt):
+        H_nn = npy.zeros((self.nbands, self.nbands), self.dtype)
+        self.soft_pseudo(kpt, H_nn, H_nn)
+        self.atomic_val_val(kpt, H_nn)
+        self.atomic_val_core(kpt, H_nn)
+        return H_nn * Hartree
+
+    def soft_pseudo(self, kpt, H_nn, h_nn):
+        pd = self.pair_density
+        deg = 2 / self.nspins
+        fmin = 1e-9
+        Htpsit_nG = npy.zeros(kpt.psit_nG.shape, self.dtype)
+
+        for n1 in range(self.nbands):
+            psit1_G = kpt.psit_nG[n1]
+            f1 = kpt.f_n[n1] / deg
+            for n2 in range(n1, self.nbands):
+                psit2_G = kpt.psit_nG[n2]
+                f2 = kpt.f_n[n2] / deg
+                if f1 < fmin and f2 < fmin:
+                    continue
+                
+                dc = 1 + (n1 != n2)
+                pd.initialize(kpt, n1, n2)
+                pd.get_coarse(self.nt_G)
+                pd.add_compensation_charges(self.nt_G, self.rhot_g)
+                self.poisson_solve(self.vt_g, -self.rhot_g,
+                                   charge=-float(n1 == n2), eps=1e-12,
+                                   zero_initial_phi=True)
+                self.restrict(self.vt_g, self.vt_G)
+                Htpsit_nG[n1] += f2 * self.vt_G * psit2_G
+                if n1 != n2:
+                    Htpsit_nG[n2] += f1 * self.vt_G * psit1_G
+
+                for nucleus in self.my_nuclei:
+                    P_ni = nucleus.P_uni[kpt.u]
+                    v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
+                    nucleus.ghat_L.integrate(self.vt_g, v_L)
+                    v_ii = unpack(npy.dot(nucleus.setup.Delta_pL, v_L))
+                    h_nn[:, n1] += f2 * npy.dot(P_ni, npy.dot(v_ii, P_ni[n2]))
+                    if n1 != n2:
+                        h_nn[:,n2] += f1 * npy.dot(P_ni,npy.dot(v_ii,P_ni[n1]))
+                    
+        symmetrize(h_nn) # Grrrr why!!! XXX
+        r2k(0.5 * self.dv, kpt.psit_nG[:], Htpsit_nG, 1.0, H_nn)
+
+    def atomic_val_val(self, kpt, H_nn):
+        deg = 2 / self.nspins
+        for nucleus in self.my_nuclei:
+            P_ni = nucleus.P_uni[kpt.u]
+            D_p  = nucleus.D_sp[kpt.s]
+            D_ii = unpack2(D_p)
+            H_p  = 0.0 * D_p
+            ni = len(D_ii)
+            for i1 in range(ni):
+                for i2 in range(ni):
+                    A = 0.0
+                    for i3 in range(ni):
+                        p13 = packed_index(i1, i3, ni)
+                        for i4 in range(ni):
+                            p24 = packed_index(i2, i4, ni)
+                            A += nucleus.setup.M_pp[p13, p24] * D_ii[i3, i4]
+                    p12 = packed_index(i1, i2, ni)
+                    H_p[p12] -= 2 / deg * A / ((i1 != i2) + 1)
+            H_nn += npy.dot(P_ni, npy.inner(unpack(H_p), P_ni.conj()))
+
+    def atomic_val_core(self, kpt, H_nn):
+        for nucleus in self.my_nuclei:
+            P_ni = nucleus.P_uni[kpt.u]
+            dH_ii = unpack(-nucleus.setup.X_p)
+            H_nn += npy.dot(P_ni, npy.inner(dH_ii, P_ni.conj()))
