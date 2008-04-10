@@ -55,7 +55,7 @@ parameters = {
  'Sr': {'core': '[Ar]3d', 'rcut': [2.4, 2.4, 2.3],
         'extra':{1: [0.0], 2: [0.0]}},
  'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
- 'Nb': {'core': '[Kr]',   'rcut': 3.0},
+ 'Nb': {'core': '[Kr]',   'rcut': [2.9, 2.9, 2.6]},
  'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.5]},
  'Ru': {'core': '[Kr]',   'rcut': 2.6},
  'Rh': {'core': '[Kr]',   'rcut': 2.5},
