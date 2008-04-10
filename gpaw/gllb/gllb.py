@@ -107,7 +107,8 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
 
         # Apply ALL PAW corrections!
         for nucleus in self.nuclei:
-            Exc += nucleus.setup.xc_correction.GLLB(nucleus.D_sp, nucleus.Dresp_sp, nucleus.H_sp, nucleus.setup.extra_xc_data['core_response'])
+            Exc += nucleus.setup.xc_correction.GLLB(nucleus.D_sp, nucleus.Dresp_sp, nucleus.H_sp, 
+                                                    nucleus.setup.extra_xc_data, self.K_G,[ self.fermi_level])
 
         return Exc
 

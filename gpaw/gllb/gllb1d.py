@@ -248,7 +248,7 @@ class GLLB1D:
 
             for nc in range(0, ae.njcore):
                 # Add the response multiplied with density to potential
-                orbital_density = construct_density1D(ae.rgd, ae.u_j[nc], ae.f_j[nc])
+                orbital_density = self.construct_density1D(ae.rgd, ae.u_j[nc], ae.f_j[nc])
                 extra_xc_data['core_orbital_density_'+str(nc)] = orbital_density
                 extra_xc_data['core_eigenvalue_'+str(nc)] = [ ae.e_j[nc] ]
 

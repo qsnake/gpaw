@@ -1166,8 +1166,24 @@ class XCCorrection:
 #        return 0.0
         return E - self.Exc0
 
-    def GLLB(self, D_sp, Dresp_sp, H_sp, core_response):
+    def GLLB(self, D_sp, Dresp_sp, H_sp, extra_xc_data, K_G, reference_levels):
         r_g = self.rgd.r_g
+
+        # Normally, the response-part from core orbitals is calculated using the reference-level of setup-atom
+        # If relaxed_core_response flag is on, the response-part is calculated using
+        # core eigenvalues and self consistent reference level.
+        if self.xc.xcfunc.xc.relaxed_core_response:
+            core_response = npy.zeros(self.ng)
+            njcore = extra_xc_data['njcore']
+            for nc in range(0, njcore):
+                psi2_g = extra_xc_data['core_orbital_density_'+str(nc)]
+                deps = reference_levels[0]-extra_xc_data['core_eigenvalue_'+str(nc)]
+                
+                core_response[:] += psi2_g * K_G * (npy.where(deps<0, 0, deps))**(0.5)
+        else:
+            # Otherwise, the static core response from setup is used
+            core_response = extra_xc_data['core_response']
+        
         xcfunc = self.xc.xcfunc.xc.slater_xc
         vfunc = self.xc.xcfunc.xc.v_xc
         E = 0.0
