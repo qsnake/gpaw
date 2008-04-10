@@ -108,7 +108,7 @@ class Eigensolver:
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             dH_ii = unpack(nucleus.H_sp[kpt.s])
-            H_nn += npy.dot(P_ni, npy.inner(dH_ii, P_ni).conj())
+            H_nn += npy.dot(P_ni, npy.inner(dH_ii, P_ni.conj()))
 
         self.comm.sum(H_nn, kpt.root)
 
