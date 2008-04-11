@@ -1,6 +1,6 @@
 from math import exp
 import numpy as npy
-npy.seterr(all='raise')
+#npy.seterr(all='raise')
 
 from gpaw.xc_functional import XCFunctional, XC3DGrid, XCRadialGrid
 from gpaw.gllb import SMALL_NUMBER
