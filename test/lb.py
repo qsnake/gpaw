@@ -12,7 +12,7 @@ ref2 = 'Gritsenko IntJQuanChem 76, 407 (2000)'
 e_HOMO_cs = { 'He': 851, 'Be': 321, 'Ne': 788,
               'Ar': 577, 'Kr': 529,# 'Xe': 474,
               'Mg' : 281 + 8 }
-##e_HOMO_cs = { 'He': 851 }
+e_HOMO_cs = { 'Ne': 788 }
 txt=None
 
 print '--- Comparing LB94 with', ref1
@@ -64,7 +64,8 @@ e_HOMO_os = { 'He': [851, 0], # added for cross check
               'N': [534-23, 3],
               'Na':[189+17, 1],
               'P': [385-16, 3] }
-##e_HOMO_os = { 'He': [851, 0] }
+e_HOMO_os = { 'Ne': [788, 0], # added for cross check
+              'H': [440, 1] }
 
 for atom in e_HOMO_os.keys():
     e_ref = e_HOMO_os[atom][0]
