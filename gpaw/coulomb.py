@@ -27,8 +27,8 @@ def get_vxc(paw, spin):
     r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
 
     # Fill in lower triangle
-    Vxc_nn += dagger(Vxc_nn)
-    Vxc_nn.flat[::Vxc_nn.shape[0] + 1] *= .5
+    for n in range(paw.nbands - 1):
+        Vxc_nn[n:, n] = Vxc_nn[n, n:]
 
     # Add atomic PAW corrections
     for nucleus in paw.my_nuclei:

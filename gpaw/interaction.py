@@ -3,7 +3,6 @@
 
 from math import pi, sqrt
 
-import sys
 import numpy as npy
 
 from gpaw.gauss import I
@@ -37,12 +36,13 @@ class GInteraction2:
 ##         self.cutoffs = ('Summed cutoffs: %4.2f(comp), %4.2f(filt), '
 ##                         '%4.2f(core), %4.2f(proj) Bohr' % (
 ##             rcutcomp, rcutfilter, rcore, rcutproj))
-##         self.mindist = rcutproj - .3
+##         self.mindist = rcutproj * .6
 
     def __call__(self, R):
 ##         dist = sqrt(npy.sum(R**2))
 ##         if dist > 0 and dist < self.mindist:
-##             print >> sys.stderr, warning('Atomic distance: %4.2f Bohr.\n%s' % (
+##             from sys import stderr
+##             print >> stderr, warning('Atomic distance: %4.2f Bohr.\n%s' % (
 ##                 dist, self.cutoffs))
 
         if not self.softgauss:
