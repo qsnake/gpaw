@@ -59,7 +59,7 @@ if len(tests) == 0:
              'revPBE_Li.py', 'lxc_xcatom.py', 'exx_coarse.py', '2Al.py',
              '8Si.py', 'dscf_test.py', 'lcao-h2o.py', 'IP-oxygen.py',
              'generatesetups.py', 'aedensity.py', 'Cu.py', 'exx.py',
-             'H2Al110.py', 'ltt.py', 'ae-calculation.py']
+             'H2Al110.py', 'ltt.py', 'ae-calculation.py', 'lb.py']
 
 disabled_tests = ['kli.py', 'C-force.py', 'apply.py',
                   'viewmol_trajectory.py', 'vdw.py', 'fixdensity.py',
