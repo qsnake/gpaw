@@ -313,8 +313,8 @@ class Nucleus:
             i += degeneracy
 
         if magmom != 0:
-            raise RuntimeError('Bad magnetic moment for %s atom!' %
-                               self.setup.symbol)
+            raise RuntimeError('Bad magnetic moment %g for %s atom!' %
+                               (magmom, self.setup.symbol))
         assert i == niao
         return f_si
     
