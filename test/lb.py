@@ -1,3 +1,5 @@
+import os
+
 from ase import *
 from gpaw import Calculator
 from gpaw import setup_paths
@@ -90,3 +92,6 @@ for atom in e_HOMO_os.keys():
     assert( abs(diff) < 14 )
         
         
+# clean up
+for atom in setups:
+    os.remove(atom + '.LB94')
