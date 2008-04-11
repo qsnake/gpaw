@@ -18,6 +18,7 @@ class NonLocalFunctionalFactory:
         K_G = 0.382106112167171
         KC_G = 0.470
         from gpaw.gllb.gllb import GLLBFunctional
+        from gpaw.gllb.saop import SAOPFunctional
         if name == 'GLLB':
             return GLLBFunctional('X_B88-None',None, K_G)
         elif name == 'GLLBexp':
@@ -25,8 +26,7 @@ class NonLocalFunctionalFactory:
         elif name == 'GLLBplusC':
             return GLLBFunctional('X_B88-C_PW91',None,KC_G)
         elif name == 'SAOP':
-             return GLLBFunctional('X_B88-None', None, 0.42,
-                                   outer_xc_name='LBalpha')
+             return SAOPFunctional('GLLB', 'LBalpha')
         else:
             raise RuntimeError('Unkown NonLocal density functional: ' + name)
 
