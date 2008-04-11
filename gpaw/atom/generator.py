@@ -22,7 +22,7 @@ parameters = {
  'H' : {'rcut': 0.9},
  'He': {'rcut': 1.5},
  'Li': {'core': '[He]',   'rcut': 2.1},
- 'Be': {'core': '[He]',   'rcut': 1.5},
+ 'Be': {'core': '[He]',   'rcut': 1.5}, # rcut=1.9 is enough?
  'B' : {'core': '[He]',   'rcut': 1.2},
  'C' : {'core': '[He]',   'rcut': 1.2},
  'N' : {'core': '[He]',   'rcut': 1.1},
@@ -74,6 +74,13 @@ parameters = {
  'Au': {'core': '[Xe]4f', 'rcut': 2.5},
  'Pb': {'core': '[Xe]4f', 'rcut': [2.4,2.6,2.4]}
  }
+
+parameters_hard = {
+ 'Li': {'name': 'hard', 'rcut': 1.5, 'extra': {1: [-0.0413]}}, # nocore
+ 'O' : {'name': 'hard', 'core': '[He]', 'rcut': 1.2},
+ 'Si': {'name': 'hard', 'core': '[Ne]', 'rcut': 1.85},
+ }
+
 
 class Generator(AllElectron):
     def __init__(self, symbol, xcname='LDA', scalarrel=False, corehole=None,
