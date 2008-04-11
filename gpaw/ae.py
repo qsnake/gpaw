@@ -99,8 +99,7 @@ class AllElectronSetup:
         alpha2 = 15.0 / rcutsoft**2
         self.M = -sqrt(alpha / 2 / pi)
 
-        vt0 = 4 * pi * (npy.array([erf(x) for x in sqrt(alpha) * r]) -
-                        npy.array([erf(x) for x in sqrt(alpha2) * r]))
+        vt0 = 4 * pi * (erf(sqrt(alpha) * r) - erf(sqrt(alpha2) * r))
         vt0[0] = 8 * sqrt(pi) * (sqrt(alpha) - sqrt(alpha2))
         vt0[1:] /= r[1:]
         vt0[-1] = 0.0

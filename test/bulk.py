@@ -15,4 +15,4 @@ print e
 import numpy as npy
 a = npy.roots(npy.polyder(npy.polyfit(A, e, 2), 1))[0]
 print 'a =', a
-assert abs(a - 2.6492) < 0.0001
+assert abs(a - 2.64931934872) < 0.0001

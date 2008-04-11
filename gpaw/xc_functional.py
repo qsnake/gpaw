@@ -251,7 +251,8 @@ class XCFunctional:
     def initialize_gllb(self, paw):
         self.xc.pass_stuff(paw.hamiltonian.vt_sg, paw.density.nt_sg, paw.kpt_u, paw.gd, paw.finegd,
                            paw.density.interpolate, paw.nspins,
-                           paw.my_nuclei, paw.nuclei, paw.occupation, paw.kpt_comm, paw.symmetry, paw.nvalence)
+                           paw.my_nuclei, paw.nuclei, paw.occupation, paw.kpt_comm, paw.symmetry, paw.nvalence,
+                           paw.eigensolver)
 
 
     def set_non_local_things(self, paw, energy_only=False):

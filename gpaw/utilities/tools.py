@@ -188,9 +188,6 @@ def symmetrize(matrix):
     npy.multiply(.5, matrix, matrix)
     return matrix
 
-from gpaw.utilities import erf
-erf3D = npy.vectorize(erf, [float,], 'Elementwise erf on arrays')
-
 def apply_subspace_mask(H_nn, f_n):
     """Uncouple occupied and unoccupied subspaces.
 

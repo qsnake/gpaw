@@ -4,17 +4,18 @@ from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 
-# Generate non-scalar-relativistic setup for Cu:
-g = Generator('Cu', scalarrel=False, nofiles=True)
-g.run(logderiv=True, **parameters['Cu'])
+if 1:
+    # Generate non-scalar-relativistic setup for Cu:
+    g = Generator('Cu', scalarrel=False, nofiles=True)
+    g.run(logderiv=True, **parameters['Cu'])
 setup_paths.insert(0, '.')
 
 a = 8.0
 c = a / 2
-Cu = Atoms([Atom('Cu', (c, c, c), magmom=1)],
-                 cell=(a, a, a))
+Cu = Atoms('Cu', [(c, c, c)], magmoms=[1],
+           cell=(a, a, a), pbc=0)
 
-calc = Calculator(h=0.2, lmax=0)
+calc = Calculator(h=0.2, lmax=0)# basis='sz')
 Cu.set_calculator(calc)
 Cu.get_potential_energy()
 

@@ -18,6 +18,7 @@ from gpaw.utilities import unpack, erf, fac, hartree, pack2, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
+
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None,
                  setupdata=None):
     if type == 'ae':
@@ -414,8 +415,7 @@ class Setup:
             alpha2 = 22.0 / rcutsoft**2
             alpha2 = 15.0 / rcutsoft**2
 
-            vt0 = 4 * pi * (npy.array([erf(x) for x in sqrt(alpha) * r]) -
-                            npy.array([erf(x) for x in sqrt(alpha2) * r]))
+            vt0 = 4 * pi * (erf(sqrt(alpha) * r) - erf(sqrt(alpha2) * r))
             vt0[0] = 8 * sqrt(pi) * (sqrt(alpha) - sqrt(alpha2))
             vt0[1:] /= r[1:]
             vt_l = [vt0]
@@ -516,8 +516,9 @@ class Setup:
                 self.phit_j.append(Spline(l, rcut3, phit_g, r_g, beta,
                                           points=100))
 
-    def read_basis_functions(self, basis_name):
-        basis = Basis(self.symbol, basis_name)
+    def read_basis_functions(self, basis):
+        if isinstance(basis, str):
+            basis = Basis(self.symbol, basis)
         #g = npy.arange(basis.ng, dtype=float)
         #r_g = basis.beta * g / (basis.ng - g)
         rc = basis.d * (basis.ng - 1)
@@ -532,6 +533,7 @@ class Setup:
         else:
             text('%s-setup (%.1f core hole):' % (self.symbol, self.fcorehole))
         text('  name   :', atomic_names[self.Z])
+        text('  id     :', self.fingerprint)
         text('  Z      :', self.Z)
         text('  valence:', self.Nv)
         if self.phicorehole_g is None:

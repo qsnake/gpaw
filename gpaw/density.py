@@ -111,7 +111,15 @@ class Density:
         # electron density comes from overlapping atomic densities
         # or from a restart file.  We scale the density to match
         # the compensation charges:
+        self.scale()
 
+        self.mixer.mix(self.nt_sG)
+
+        self.interpolate_pseudo_density()
+
+        self.initialized = True
+
+    def scale(self):
         for nucleus in self.nuclei:
             nucleus.calculate_multipole_moments()
 
@@ -127,14 +135,7 @@ class Density:
             Q0 = sqrt(4 * pi) * comm.sum(Q0)
             Nt = self.gd.integrate(self.nt_sG[0])
             # Nt + Q must be equal to minus the total charge:
-            if Q0 - Q != 0:
-                x = (Nt + Q0 + self.charge) / (Q0 - Q)
-                for nucleus in self.my_nuclei:
-                    nucleus.D_sp *= x
-
-                for nucleus in self.nuclei:
-                    nucleus.calculate_multipole_moments()
-            else:
+            if Nt != 0:
                 x = -(self.charge + Q) / Nt
                 self.nt_sG *= x
 
@@ -163,7 +164,8 @@ class Density:
                                         -Q_s[0] + Q_s[1] + M]))
 
             if self.charge == 0:
-                if abs(x - 1.0) > 0.17 or abs(y - 1.0) > 0.17:
+                if (abs(x - 1.0) > 0.17 and Nt_s[0] > 0.1 or
+                    abs(y - 1.0) > 0.17 and Nt_s[1] > 0.1):
                     warning = ('Bad initial density.  Scaling factors: %f, %f'
                                % (x, y))
                     if self.idiotproof:
@@ -174,12 +176,6 @@ class Density:
             self.nt_sG[0] *= x
             self.nt_sG[1] *= y
 
-        self.mixer.mix(self.nt_sG)
-
-        self.interpolate_pseudo_density()
-
-        self.initialized = True
-
     def interpolate_pseudo_density(self):
         """Transfer the density from the coarse to the fine grid."""
         for s in range(self.nspins):
@@ -187,7 +183,7 @@ class Density:
 
         # With periodic boundary conditions, the interpolation will
         # conserve the number of electrons.
-        if False in self.gd.domain.pbc_c:
+        if not self.gd.domain.pbc_c.all():
             # With zero-boundary conditions in one or more directions,
             # this is not the case.
             for s in range(self.nspins):
@@ -223,9 +219,11 @@ class Density:
 
         if self.lcao:
             Nt = self.finegd.integrate(self.nt_g)
-            scale = -Q / Nt
-            assert abs(scale - 1.0) < 0.01, 'Scale = %.03f' % scale
-            self.nt_g *= scale
+            if Nt != 0:
+                scale = -(self.charge + Q) / Nt
+                if abs(scale - 1.0) > 0.01:
+                    print 'Scale = %.03f' % scale
+                self.nt_g *= scale
             
         self.rhot_g[:] = self.nt_g
 
@@ -247,7 +245,7 @@ class Density:
 
         # Add contribution from all k-points:
         for kpt in kpt_u:
-            kpt.add_to_density(self.nt_sG[kpt.s])
+            kpt.add_to_density(self.nt_sG[kpt.s], self.lcao)
 
         self.band_comm.sum(self.nt_sG)
         self.kpt_comm.sum(self.nt_sG)
@@ -263,7 +261,7 @@ class Density:
                 P_ni = nucleus.P_uni[kpt.u]
                 D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
                                              P_ni * kpt.f_n[:, newaxis]))
-
+                
                 # hack used in delta scf - calculations
                 if hasattr(kpt, 'ft_omn'):
                     for i in range(len(kpt.ft_omn)):

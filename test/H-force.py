@@ -15,4 +15,5 @@ for i in range(3):
     f2i = numeric_force(atoms, 0, i)
     print f1[i], f2i
     equal(f1[i], f2i, 0.0073)
+    equal(f1[i], f2i, 0.0073)
 

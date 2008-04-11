@@ -1,7 +1,7 @@
 import numpy as npy
 from numpy import sqrt, pi, exp
 from gpaw.utilities.tools import coordinates
-from gpaw.utilities.tools import erf3D as erf
+from gpaw.utilities import erf
 
 # computer generated code:
 # use c/bmgs/sharmonic.py::construct_gauss_code(lmax) to generate more

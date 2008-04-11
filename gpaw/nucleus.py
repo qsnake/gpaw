@@ -268,6 +268,7 @@ class Nucleus:
         else:
             self.f_si = self.calculate_initial_occupation_numbers(ns, niao,
                                                                   magmom, hund)
+
         if self.in_this_domain:
             D_sii = npy.zeros((ns, ni, ni))
             for i in range(min(ni, niao)):

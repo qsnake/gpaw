@@ -25,11 +25,13 @@ for fg in fgl:
     else:
         tstr = 'Exx on coarse grid'
     timer.start(tstr)
-    calc = Calculator(h = .3, xc={ 'name':'PBE0', 'finegrid': fg },
+    calc = Calculator(h = .3, xc='PBE',
                       nbands=4,
                       convergence={'eigenstates': 1e-4},
                       charge=-1)
     loa.set_calculator(calc)
+    E[fg] = loa.get_potential_energy()
+    calc.set(xc={'name':'PBE0', 'finegrid': fg})
     E[fg] = loa.get_potential_energy()
     timer.stop(tstr)
 

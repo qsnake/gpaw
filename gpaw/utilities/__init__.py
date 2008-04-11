@@ -17,8 +17,7 @@ utilities_vdot = _gpaw.utilities_vdot
 utilities_vdot_self = _gpaw.utilities_vdot_self
 
 
-# Error function:
-erf = _gpaw.erf
+erf = npy.vectorize(_gpaw.erf, (float,), 'Error function')
 
 
 # Factorials:
@@ -37,7 +36,7 @@ def swap(a, b):
 
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the
-       euclidian algorithm.
+    euclidian algorithm.
     """
     while b != 0:
         a, b = b, a % b

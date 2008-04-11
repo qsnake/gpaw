@@ -47,7 +47,7 @@ class KPoint:
         H_nn and the Cholesky decomposition of S_nn.
     """
     
-    def __init__(self, gd, weight, s, k, u, k_c, dtype, timer=None):
+    def __init__(self, nuclei, gd, weight, s, k, u, k_c, dtype, timer=None):
         """Construct k-point object.
 
         Parameters
@@ -86,6 +86,7 @@ class KPoint:
         multiple of the number of processors, `P`.
         """
 
+        self.nuclei = nuclei
         self.weight = weight
         self.dtype = dtype
         self.timer = timer
@@ -107,9 +108,11 @@ class KPoint:
         self.u = u  # combined spin and k-point index
 
         self.set_grid_descriptor(gd)
-        
-        self.psit_nG = None
 
+        # Only one of these two will be used:
+        self.psit_nG = None  # wave functions on 3D grid
+        self.C_nm = None     # LCAO coefficients for wave functions
+        
     def set_grid_descriptor(self, gd):
         self.gd = gd
         # Which CPU does overlap-matrix Cholesky-decomposition and
@@ -123,47 +126,25 @@ class KPoint:
         self.eps_n = npy.empty(nbands)
         self.f_n = npy.empty(nbands)
         
-    def adjust_number_of_bands(self, nbands, pt_nuclei):
-        """Adjust the number of states.
+    def add_extra_bands(self, nbands, nao):
+        """Add extra states.
 
-        If we are starting from atomic orbitals, then the desired
-        number of bands (nbands) will most likely differ from the
-        number of current atomic orbitals (self.nbands).  If this
-        is the case, then new arrays are allocated:
-
-        * Too many bands: The bands with the lowest eigenvalues are
-          used.
-        * Too few bands: Extra random wave functions are added.
+        If the number of atomic orbitals is less than the desired
+        number of bands, then extra random wave functions are added.
         """
-        
-        if nbands == self.nbands:
-            return
 
-        nao = self.nbands  # number of atomic orbitals
-        nmin = min(nao, nbands)
+        eps_n = self.eps_n
+        f_n = self.f_n
 
-        tmp_nG = self.psit_nG
-        self.psit_nG = self.gd.empty(nbands, self.dtype)
-        self.psit_nG[:nmin] = tmp_nG[:nmin]
-
-        tmp_n = self.eps_n
         self.allocate(nbands)
-        self.eps_n[:nmin] = tmp_n[:nmin]
 
-        extra = nbands - nao
-        if extra > 0:
-            # Generate random wave functions:
-            self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
-            self.random_wave_functions(self.psit_nG[nao:])
+        self.eps_n[:nao] = eps_n
+        self.f_n[:nao] = f_n
 
-            #Calculate projections
-            for nucleus in pt_nuclei:
-                if nucleus.in_this_domain:
-                    P_ni = nucleus.P_uni[self.u,nao:]
-                    P_ni[:] = 0.0
-                    nucleus.pt_i.integrate(self.psit_nG[nao:], P_ni, self.k)
-                else:
-                    nucleus.pt_i.integrate(self.psit_nG[nao:], None, self.k)
+        # Generate random wave functions:
+        self.eps_n[nao:] = self.eps_n[nao - 1] + 0.5
+        self.f_n[nao:] = 0.0
+        self.random_wave_functions(self.psit_nG[nao:])
                     
     def random_wave_functions(self, psit_nG):
         """Generate random wave functions"""
@@ -193,16 +174,35 @@ class KPoint:
             interpolate2(psit_G2, psit_G1, self.phase_cd)
             interpolate1(psit_G1, psit_G, self.phase_cd)
 
-    def add_to_density(self, nt_G):
+    def add_to_density(self, nt_G, use_lcao):
         """Add contribution to pseudo electron-density."""
-        if self.dtype == float:
-            for psit_G, f in zip(self.psit_nG, self.f_n):
-                axpy(f, psit_G**2, nt_G)  # nt_G += f * psit_G**2
+        self.add_to_density_with_occupation(nt_G, use_lcao, self.f_n)
+        
+    def add_to_density_with_occupation(self, nt_G, use_lcao, f_n):
+        """Add contribution to pseudo electron-density. Do not use the standard
+        occupation numbers, but ones given with argument f_n."""
+        if use_lcao:
+            psit_G = self.gd.empty(dtype=self.dtype)
+            nuclei = [nucleus
+                      for nucleus in self.nuclei if nucleus.phit_i is not None]
+            for f, C_m in zip(f_n, self.C_nm):
+                psit_G[:] = 0.0
+                m1 = 0
+                for nucleus in nuclei:
+                    niao = nucleus.get_number_of_atomic_orbitals()
+                    m2 = m1 + niao
+                    nucleus.phit_i.add(psit_G, C_m[m1:m2], self.k)
+                    m1 = m2
+                nt_G += f * (psit_G * psit_G.conj()).real
         else:
-            for psit_G, f in zip(self.psit_nG, self.f_n):
-                nt_G += f * (psit_G * npy.conjugate(psit_G)).real
+            if self.dtype == float:
+                for psit_G, f in zip(self.psit_nG, f_n):
+                    axpy(f, psit_G**2, nt_G)  # nt_G += f * psit_G**2
+            else:
+                for psit_G, f in zip(self.psit_nG, f_n):
+                    nt_G += f * (psit_G * npy.conjugate(psit_G)).real
 
-        # hack used in delta scf - calculations
+        # Hack used in delta-scf calculations:
         if hasattr(self, 'ft_omn'):
             for ft_mn in self.ft_omn:
                 for ft_n, psi_m in zip(ft_mn, self.psit_nG):
@@ -223,6 +223,18 @@ class KPoint:
                     axpy(f, d_G[c]**2, taut_G) #taut_G += f * d_G[c]**2
                 else:
                     taut_G += f * (d_G * npy.conjugate(d_G)).real
+
+    def calculate_wave_functions_from_lcao_coefficients(self, nbands):
+        self.nbands = nbands
+        self.psit_nG = self.gd.zeros(nbands, dtype=self.dtype)
+        psit_nG = self.psit_nG[:len(self.C_nm)]
+        m1 = 0
+        for nucleus in self.nuclei:
+            niao = nucleus.get_number_of_atomic_orbitals()
+            m2 = m1 + niao
+            if nucleus.phit_i is not None:
+                nucleus.phit_i.add(psit_nG, self.C_nm[:, m1:m2].copy(), self.k)
+            m1 = m2
 
     def create_atomic_orbitals(self, nao, nuclei):
         """Initialize the wave functions from atomic orbitals.

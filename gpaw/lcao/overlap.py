@@ -104,7 +104,7 @@ class TwoCenterIntegrals:
         for id1, (l1, pt1_q) in pt_jq.items():
             for id2, (l2, phit2_q) in phit_jq.items():
                 p = self.calculate_spline(pt1_q, phit2_q, l1, l2)
-                self.P[(id1, id2)] = p
+                self.P[(id2, id1)] = p
                 
         self.setups = setups # XXX
 
@@ -132,6 +132,40 @@ class TwoCenterIntegrals:
             splines.append(s)
         return splines
 
+    def p(self, ida, idb, la, lb, r, Y_lm):
+        """ Returns the overlap between basis functions and projector
+        functions. """
+        
+        p_mi = npy.zeros((2 * la + 1, 2 * lb + 1))
+
+        l = (la + lb) % 2
+        for p in self.P[(ida, idb)]:
+            G_mmm = gaunt[la**2:(la + 1)**2,
+                          lb**2:(lb + 1)**2,
+                          l**2:(l + 1)**2].transpose((0, 2, 1))
+            p_mi += p(r) * npy.dot(Y_lm[l], G_mmm)
+            l += 2
+        return p_mi
+        
+    def st_overlap3(self, ida, idb, la, lb, r, Y_lm):
+        """ Returns the overlap and kinetic energy matrices. """
+        
+        s_mm = npy.zeros((2 * lb + 1, 2 * la + 1))
+        t_mm = npy.zeros((2 * lb + 1, 2 * la + 1))
+        ssplines = self.S[(ida, idb)]
+        tsplines = self.T[(ida, idb)]
+        l = (la + lb) % 2
+        for s, t in zip(ssplines, tsplines):
+            G_mmm = gaunt[lb**2:(lb + 1)**2,
+                          la**2:(la + 1)**2,
+                          l**2:(l + 1)**2].transpose((0, 2, 1))
+            s_mm += s(r) * npy.dot(Y_lm[l], G_mmm)
+            t_mm += t(r) * npy.dot(Y_lm[l], G_mmm)
+            l += 2
+        return s_mm, t_mm
+
+        
+    #################  Old overlaps  ####################
     def st_overlap0(self, id1, id2, l1, l2, m1, m2, R):
         """ Returns the overlap and kinetic energy matrices. """
         
@@ -200,7 +234,7 @@ class TwoCenterIntegrals:
         r = sqrt(npy.dot(R, R))
         L1 = l1**2 + m1
         L2 = l2**2 + m2
-        for p in self.P[(id1, id2)]:
+        for p in self.P[(id2, id1)]:
             Y_m = npy.empty(2 * l + 1)
             Yl(l, R, Y_m)
             L = l**2

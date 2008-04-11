@@ -547,7 +547,7 @@ class AllElectron:
         dr = self.dr
         vr = self.vr.copy()
         if vconf is not None:
-            vr += vconf
+            vr += vconf * r
 
         c2 = -(r / dr)**2
         c10 = -self.d2gdr2 * r**2 # first part of c1 vector

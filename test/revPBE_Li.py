@@ -14,7 +14,7 @@ setup_paths.insert(0, '.')
 
 a = 5.0
 n = 24
-li = Atoms([Atom('Li', (0.0, 0.0, 0.0), magmom=1.0)], cell=(a, a, a), pbc=True)
+li = Atoms('Li', magmoms=[1.0], cell=(a, a, a), pbc=True)
 
 calc = Calculator(gpts=(n, n, n), nbands=1, xc='PBE')
 li.set_calculator(calc)

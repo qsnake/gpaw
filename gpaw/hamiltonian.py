@@ -17,9 +17,10 @@ from gpaw.poisson import PoissonSolver
 from gpaw.transformers import Transformer
 from gpaw.xc_functional import XC3DGrid
 from gpaw.mpi import run
+from gpaw.lcao.hamiltonian import LCAOHamiltonian
 
 
-class Hamiltonian:
+class Hamiltonian(LCAOHamiltonian):
     """Hamiltonian object.
 
     Attributes:
@@ -41,9 +42,15 @@ class Hamiltonian:
      ========== =========================================
     """
 
-    def __init__(self, paw):
+    def __init__(self, ng=2**12):
         """Create the Hamiltonian."""
+        LCAOHamiltonian.__init__(self, ng)
 
+        # These should be set here:
+        #self.vext_g = ...
+        #self.nn = ...
+
+    def initialize(self, paw):
         self.nspins = paw.nspins
         self.gd = paw.gd
         self.finegd = paw.finegd
@@ -100,6 +107,8 @@ class Hamiltonian:
 
         # Exchange-correlation functional object:
         self.xc = XC3DGrid(paw.xcfunc, self.finegd, self.nspins)
+
+        LCAOHamiltonian.initialize(self, paw)
 
     def update(self, density):
         """Calculate effective potential.

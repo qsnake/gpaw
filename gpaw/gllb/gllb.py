@@ -10,6 +10,7 @@ from gpaw.mpi import world
 class GLLBFunctional(ZeroFunctional, GLLB1D):
     def __init__(self, slater_xc_name, v_xc_name, K_G,
                  relaxed_core_response=False):
+        self.initialized = False
         self.relaxed_core_response = relaxed_core_response
         self.K_G = K_G
         self.slater_xc = XCFunctional(slater_xc_name, 1)
@@ -23,7 +24,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
     def get_functional(self):
         return self
 
-    def pass_stuff(self, vt_sg, nt_sg, kpt_u, gd, finegd, interpolate, nspins, nuclei, all_nuclei, occupation, kpt_comm, symmetry, nvalence):
+    def pass_stuff(self, vt_sg, nt_sg, kpt_u, gd, finegd, interpolate, nspins, nuclei, all_nuclei, occupation, kpt_comm, symmetry, nvalence, eigensolver):
         self.vt_sg = vt_sg
         self.nt_sg = nt_sg
         self.kpt_u = kpt_u
@@ -37,7 +38,8 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         self.kpt_comm = kpt_comm
         self.symmetry = symmetry
         self.nvalence = nvalence
-
+        self.eigensolver = eigensolver
+        
         self.vt_G = gd.zeros() 
         self.vtp_sg = finegd.zeros(self.nspins)
         self.scr_sg = finegd.zeros(self.nspins)
@@ -58,11 +60,16 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
             nucleus.Dresp_sp = npy.zeros((self.nspins, np))
 
         # Allocate the 'response-weights' for each kpoint
-        for kpt in self.kpt_u:
-            kpt.wf_n = npy.zeros(kpt.nbands)
+        self.update_band_count()
 
         self.ref_loc = self.nvalence // 2 - 1
         if self.ref_loc < 0: ref_loc = 0
+        self.initialized = True
+
+    def update_band_count(self):
+        # Allocate the 'response-weights' for each kpoint
+        for kpt in self.kpt_u:
+            kpt.wf_n = npy.zeros(kpt.nbands)
 
     def update_xc_potential(self):
         assert(self.nspins == 1)
@@ -75,7 +82,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         # Update the response weights on each k-point
         for kpt in self.kpt_u:
             temp = self.fermi_level-kpt.eps_n[:]
-            kpt.wf_n[:] = self.K_G * (npy.where(temp<1e-5, 0, temp))**(0.5) * kpt.f_n[:]
+            kpt.wf_n[:] = self.K_G * (npy.where(temp<1e-5, 0.0, temp))**(0.5) * kpt.f_n[:]
        
         # The smooth scr-part
         if self.nspins == 1:
@@ -100,16 +107,18 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         return Exc
 
     def update_response_part(self):
-       
-        # The smooth response part
+
+        # Calculate the smooth response part
         self.vt_G[:] = 0.0
+
+        # If in lcao-mode and first iteration, do nothing.
+        if self.eigensolver.lcao:
+            if self.kpt_u[0].C_nm is None:
+                print "LCAO-Wave functions not available. Not updating response part."
+                return
+
         for kpt in self.kpt_u:
-            # For each orbital, add the response part
-            for wf, psit_G in zip(kpt.wf_n, kpt.psit_nG):
-                if kpt.dtype is float:
-                    axpy(wf, psit_G**2, self.vt_G)
-                else:
-                    self.vt_G += wf * (psit_G * npy.conjugate(psit_G)).real
+            kpt.add_to_density_with_occupation(self.vt_G, self.eigensolver.lcao, kpt.wf_n)
 
         # Communicate the coarse-response part
         self.kpt_comm.sum(self.vt_G)
@@ -195,14 +204,21 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
 
         
         for kpt in self.kpt_u:
-            psit_G = kpt.psit_nG[self.ref_loc+1]
             eps = kpt.eps_n[self.ref_loc+1]
 
-            # Interpolate the wave functions to finer grid
-            self.vt_G[:] = (psit_G * npy.conjugate(psit_G) ).real
-            self.vtp_sg[:] = 0.0 # TODO: Is this needed for interpolate?
+
+            self.vtp_sg[:] = 0.0
+            if not self.eigensolver.lcao:
+                psit_G = kpt.psit_nG[self.ref_loc+1]
+                # Interpolate the wave functions to finer grid
+                self.vt_G[:] = (psit_G * npy.conjugate(psit_G) ).real
+            else:
+                # Create an occupation vector with full of zeros, except 1.0 at LUMO
+                e_n = npy.zeros(kpt.nbands)
+                e_n[self.ref_loc+1] = 1.0
+                kpt.add_to_density_with_occupation(self.vt_G, self.eigensolver.lcao, e_n)
+
             self.interpolate(self.vt_G, self.vtp_sg[0])
-            
             shift = self.finegd.integrate( self.vtp_sg[0] * v_g )
 
             paw_shift = 0.0

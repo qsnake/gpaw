@@ -7,6 +7,7 @@ the fastest will be run first.
 
 import os
 import sys
+import time
 import unittest
 from glob import glob
 import gc
@@ -40,45 +41,33 @@ parser.add_option('-p', '--parallel',
 opt, tests = parser.parse_args()
 
 if len(tests) == 0:
-    tests = ['lapack.py',
-             'cg2.py',
-             'cluster.py',
-             'setups.py',
-             'pbe-pw91.py', # needs xc.exchange, xc.correlation
-             'xcfunc.py', 'gradient.py',
-             'xc.py', 'lxc_xc.py', # need xc.exchange, xc.correlation
-             'gp2.py', 'Gauss.py', 'non-periodic.py', 'lf.py',
-             'denom_int.py', 'transformations.py', 'XC2.py', 'poisson.py',
-             'XC2Spin.py', 'integral4.py', 'd2Excdn2.py',
-             'multipoletest.py', 'proton.py', 'restart.py', 'timing.py',
-             'ase3k.py',
-             'xcatom.py', 'coulomb.py', 'nonselfconsistentLDA.py', 'bee1.py',
-             #'kli.py',
-             'dscf_test.py','revPBE.py', 'nonselfconsistent.py', 'mixer.py',
-             'hydrogen.py', 'spinpol.py', 'wfs_io.py', 'bulk.py',
-             'stdout.py', 'gga-atom.py', 'atomize.py', 'lcao-h2o.py',
-             'gauss_func.py', 'H-force.py', 'degeneracy.py', 'cg.py',
-             # 'C-force.py', 'apply.py', 'viewmol_trajectory.py', 'vdw.py',
-             # 'fixdensity.py', 'average_potential.py', 'lxc_testsetups.py',
-             # 'restart3.py', 'td_abs_beryllium.py', 'totype_test.py'
-             'h2o-xas.py', 'h2o-xas-recursion.py', 'si-xas.py', 'relax.py',
-             'davidson.py', 'wannier-ethylene.py',
-             'restart2.py', 'refine.py', 'CH4.py', 'gllb2.py',
-             'lrtddft.py', 'apmb.py',
-             'fixmom.py',
-             #'wannier-hwire.py',
-             'exx.py', 'exx_coarse.py', 'ldos.py',
-             'revPBE_Li.py','ylexpand.py',
-             #'td_hydrogen.py',  
-             'aedensity.py', 'IP-oxygen.py', '2Al.py',
-             '8Si.py', 'Cu.py', 'ltt.py', 'generatesetups.py',
-             'ae-calculation.py', 'H2Al110.py',
-             'plt.py']
-    tests_lxc = [
-        #'lxc_spinpol_Li.py', 'lxc_testsetups.py', 'lxc_generatesetups.py'
-        'lxc_xcatom.py'
-        ]
-    tests = tests + tests_lxc
+    # Fastest first, slowest last:
+    tests = ['pbe-pw91.py', 'xcfunc.py', 'xc.py', 'gp2.py', 'lapack.py',
+             'gradient.py', 'lf.py', 'non-periodic.py', 'lxc_xc.py',
+             'transformations.py', 'Gauss.py', 'denom_int.py', 'setups.py',
+             'poisson.py', 'cluster.py', 'integral4.py', 'cg2.py', 'XC2.py',
+             'd2Excdn2.py', 'XC2Spin.py', 'multipoletest.py', 'coulomb.py',
+             'ase3k.py', 'mixer.py', 'proton.py', 'timing.py', 'restart.py',
+             'gauss_func.py', 'xcatom.py', 'wfs_io.py', 'ylexpand.py',
+             'nonselfconsistentLDA.py', 'bee1.py', 'gga-atom.py', 'revPBE.py',
+             'nonselfconsistent.py', 'bulk.py', 'spinpol.py', 'refine.py',
+             'bulk-lcao.py', 'stdout.py', 'restart2.py', 'hydrogen.py',
+             'H-force.py', 'plt.py', 'h2o-xas.py', 'degeneracy.py',
+             'davidson.py', 'cg.py', 'ldos.py', 'h2o-xas-recursion.py',
+             'atomize.py', 'wannier-ethylene.py', 'lrtddft.py', 'CH4.py',
+             'gllb2.py', 'apmb.py', 'relax.py', 'fixmom.py', 'si-xas.py',
+             'revPBE_Li.py', 'lxc_xcatom.py', 'exx_coarse.py', '2Al.py',
+             '8Si.py', 'dscf_test.py', 'lcao-h2o.py', 'IP-oxygen.py',
+             'generatesetups.py', 'aedensity.py', 'Cu.py', 'exx.py',
+             'H2Al110.py', 'ltt.py', 'ae-calculation.py']
+
+disabled_tests = ['kli.py', 'C-force.py', 'apply.py',
+                  'viewmol_trajectory.py', 'vdw.py', 'fixdensity.py',
+                  'average_potential.py', 'lxc_testsetups.py',
+                  'restart3.py', 'td_abs_beryllium.py', 'totype_test.py',
+                  'wannier-hwire.py', 'td_hydrogen.py',  
+                  'lxc_spinpol_Li.py', 'lxc_testsetups.py',
+                  'lxc_generatesetups.py']
 
 tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
                   'parallel/par8.py', 'parallel/par6.py',
@@ -136,6 +125,18 @@ class ScriptTestCase(unittest.TestCase):
     def __repr__(self):
         return "ScriptTestCase('%s')" % self.filename
 
+class MyTextTestResult(unittest._TextTestResult):
+    def startTest(self, test):
+        unittest._TextTestResult.startTest(self, test)
+        self.t0 = time.time()
+        
+    def addSuccess(self, test):
+        self.stream.write('(%.3fs) ' % (time.time() - self.t0))    
+        unittest._TextTestResult.addSuccess(self, test)
+
+class MyTextTestRunner(unittest.TextTestRunner):
+    def _makeResult(self):
+        return MyTextTestResult(self.stream, self.descriptions, self.verbosity)
 
 ts = unittest.TestSuite()
 for test in tests:
@@ -144,7 +145,7 @@ for test in tests:
 from gpaw.utilities import devnull
 sys.stdout = devnull
 
-ttr = unittest.TextTestRunner(verbosity=opt.verbosity)
+ttr = MyTextTestRunner(verbosity=opt.verbosity)
 result = ttr.run(ts)
 failed = [test.filename for test, msg in result.failures + result.errors]
 

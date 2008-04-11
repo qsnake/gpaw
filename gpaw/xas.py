@@ -278,16 +278,20 @@ class RecursionMethod:
 
         if gd.comm.rank == MASTER:
             if kpt_comm.rank == MASTER:
-                ni = self.a_uci.shape[2]
-                a_kci = npy.empty((self.nkpts, self.dim, ni), self.paw.dtype)
-                b_kci = npy.empty((self.nkpts, self.dim, ni), self.paw.dtype)
+                nmyu, dim, ni = self.a_uci.shape
+                a_kci = npy.empty((kpt_comm.size, nmyu, dim, ni),
+                                  self.paw.dtype)
+                b_kci = npy.empty((kpt_comm.size, nmyu, dim, ni),
+                                  self.paw.dtype)
                 kpt_comm.gather(self.a_uci, MASTER, a_kci)
                 kpt_comm.gather(self.b_uci, MASTER, b_kci)
+                a_kci.shape = (self.nkpts, dim, ni)
+                b_kci.shape = (self.nkpts, dim, ni)
                 data = {'ab': (a_kci, b_kci),
                         'nkpts': self.nkpts,
                         'swaps': self.swaps,
                         'weight_k':self.weight_k,
-                        'dim':self.dim}
+                        'dim':dim}
             else:
                 kpt_comm.gather(self.a_uci, MASTER)
                 kpt_comm.gather(self.b_uci, MASTER)
@@ -298,11 +302,11 @@ class RecursionMethod:
             y0_ucG = gd.collect(self.y_ucG)
             if gd.comm.rank == MASTER:
                 if kpt_comm.rank == MASTER:
-                    w_kcG = gd.empty((self.nkpts, self.dim), self.paw.dtype,
+                    w_kcG = gd.empty((self.nkpts, dim), self.paw.dtype,
                                      global_array=True)
-                    wold_kcG = gd.empty((self.nkpts, self.dim), self.paw.dtype,
+                    wold_kcG = gd.empty((self.nkpts, dim), self.paw.dtype,
                                         global_array=True)
-                    y_kcG = gd.empty((self.nkpts, self.dim), self.paw.dtype,
+                    y_kcG = gd.empty((self.nkpts, dim), self.paw.dtype,
                                      global_array=True)
                     kpt_comm.gather(w0_ucG, MASTER, w_kcG)
                     kpt_comm.gather(wold0_ucG, MASTER, wold_kcG)
