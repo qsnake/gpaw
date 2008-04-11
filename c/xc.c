@@ -110,7 +110,7 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
 
   const double* a2_g = 0;
   double* deda2_g = 0;
-  if (par->gga)
+  if (par->gga || self->correction)
     {
       a2_g = DOUBLEP(a2_array);
       deda2_g = DOUBLEP(deda2_array);
@@ -153,10 +153,6 @@ XCFunctional_CalculateSpinPaired(XCFunctionalObject *self, PyObject *args)
       e_g[g] = n * (h1 * ex + ec);
       v_g[g] += h1v * ex + ec - rs * (h1v * dexdrs + decdrs) / 3.0;
       if(self->correction) {
-	if(!par->gga) { /* we need to load the GGA arrays */
-	  a2_g = DOUBLEP(a2_array);
-	  deda2_g = DOUBLEP(deda2_array);
-	}
 	v_g[g] += self->correction(par, n, rs, a2_g[g], &dexdrs, &dexda2);
 	deda2_g[g] = 0.0; /* avoid correction used in python gga code */
       }
@@ -196,7 +192,7 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
   double* dedaa2_g = 0;
   double* dedab2_g = 0;
   const xc_parameters* par = &self->par;
-  if (par->gga)
+  if (par->gga || self->correction)
     {
       a2_g = DOUBLEP(a2);
       aa2_g = DOUBLEP(aa2);
@@ -205,6 +201,16 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
       dedaa2_g = DOUBLEP(dedaa2);
       dedab2_g = DOUBLEP(dedab2);
     }
+
+  /* h1 is the weight for the exchange part of the energy */
+  double h1 = 1.0 - par->hybrid;
+  /* h1v is the weight for the exchange part of the potential */
+  double h1v = h1;
+  if(self->correction) { 
+    /* we assume this to be LB, increase of the exchange part, see 
+       Schipper et al, J.Chem.Phys. 112, 1344 (2000) */
+    h1v += par->pade[0] - 1.0;
+  }
 
   for (int g = 0; g < ng; g++)
     {
@@ -248,12 +254,19 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
           ec = self->correlation(n, rs, zeta, 0.0, 0, 1, 
 				 &decdrs, &decdzeta, 0);
         }
-      double h1 = 1.0 - par->hybrid;
       e_g[g] = 0.5 * h1 * (na * exa + nb * exb) + n * ec;
       va_g[g] += (h1 * exa + ec - (h1 * rsa * dexadrs + rs * decdrs) / 3.0 -
                   (zeta - 1.0) * decdzeta);
       vb_g[g] += (h1 * exb + ec - (h1 * rsb * dexbdrs + rs * decdrs) / 3.0 -
                   (zeta + 1.0) * decdzeta);
+      if(self->correction) {
+	va_g[g] += self->correction(par, na, rsa, 4.0 * aa2_g[g], 
+				    &dexadrs, &dexada2);
+	vb_g[g] += self->correction(par, nb, rsb, 4.0 * ab2_g[g], 
+				    &dexbdrs, &dexbda2);
+	dedaa2_g[g] = 0.0; /* avoid correction used in python gga code */
+	dedab2_g[g] = 0.0; /* avoid correction used in python gga code */
+      }
     }
   Py_RETURN_NONE;
 }
