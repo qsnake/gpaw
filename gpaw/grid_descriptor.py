@@ -478,3 +478,8 @@ class RadialGridDescriptor:
         b_g[1:-1] = 0.5 * (c_g[2:] - c_g[:-2])
         b_g[-2] = c_g[-1] - 0.5 * c_g[-3]
         b_g[-1] = -c_g[-1] - 0.5 * c_g[-2]
+
+    def integrate(self, f_g):
+        """Integrate over a radial grid."""
+        
+        return npy.sum(self.dv_g * f_g)
