@@ -6,10 +6,6 @@ import traceback
 
 import numpy as npy
 from ase import Atom, Atoms
-try:
-    import pylab
-except ImportError:
-    pass
 
 from gpaw import Calculator
 from gpaw.kpoint import KPoint
@@ -113,7 +109,7 @@ def rotation_test():
     r = npy.linspace(0., rcut, 300)
 
     maxvalues = []
-
+    import pylab
     for i in range(0, int(6.28/angle_increment)):
         ascii = plot(system.positions,
                      system.get_atomic_numbers(),
@@ -172,7 +168,7 @@ def make_dummy_kpt_reference(l, function, k_c,
     kcount = 1
     domain = Domain((a, a, a,), (True, True, True))
     gd = GridDescriptor(domain, (n, n, n))
-    kpt = KPoint(gd, 1., 0, 0, 0, k_c, dtype)
+    kpt = KPoint([], gd, 1., 0, 0, 0, k_c, dtype)
     spline = Spline(l, r[-1], function(r))
     center = (.5, .5, .5)
     lf = create_localized_functions([spline], gd, center, dtype=dtype)
@@ -315,7 +311,7 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
 
     # XXX
     spos_c = spos_ac[0]
-    assert len(spos_ac) == 1
+    assert len(spos_ac) == 1, str(spos_c)
 
     mcount = 2 * l + 1
     fcount = len(splines)
@@ -505,6 +501,7 @@ def main():
         args = g2.atoms.keys()
     rcut = 6.
     generator = PolarizationOrbitalGenerator(rcut)
+    import pylab
     for symbol in args:
         gd, psit_k, center = Reference(symbol, txt=None).get_reference_data()
         psitcount = len(psit_k)
@@ -539,7 +536,7 @@ def dummy_kpt_test():
     dtype = complex
     r = npy.arange(0., rcut, .01)
 
-    spos_ac_ref = [(0., 0., 0.), (.2, .2, .2)]
+    spos_ac_ref = [(0., 0., 0.)]#, (.2, .2, .2)]
     spos_ac = [(0., 0., 0.), (.2, .2, .2)]
 
 
@@ -566,7 +563,7 @@ def dummy_kpt_test():
     for reflf in reflf_a:
         reflf.set_phase_factors(k_kc)
 
-    kpt_u = [KPoint(gd, 1., 0, k, k, k_c, dtype=dtype)
+    kpt_u = [KPoint([], gd, 1., 0, k, k, k_c, dtype)
              for k, k_c in enumerate(k_kc)]
     
     for kpt in kpt_u:
@@ -583,7 +580,7 @@ def dummy_kpt_test():
 
     print 'calculating overlaps'
     os_kmii, oS_kmii = overlaps(l, gd, splines, kpt_u,
-                                spos_ac=spos_ac)
+                                spos_ac=spos_ac_ref)
     print 'done'
 
     lf_a = [create_localized_functions(splines, gd, spos_c, dtype=dtype)
@@ -684,6 +681,7 @@ def dummy_kpt_test2():
     gd, kpt, center = make_dummy_kpt_reference(l, ref, k_c,
                                                rcut, a, 40, dtype)
     psit_nG = kpt.psit_nG
+    kpt.f_n = npy.array([1.])
     print 'Norm sqr', gd.integrate(psit_nG * psit_nG)
     #gramschmidt(gd, psit_nG)
     print 'Normalized norm sqr', gd.integrate(psit_nG * psit_nG)
@@ -696,9 +694,9 @@ def dummy_kpt_test2():
         y.append(g(r))
     splines = [Spline(l, rcut, f_g) for f_g in y]
     s_kmii, S_kmii = overlaps(l, gd, splines, [kpt],
-                              center=[(.5, .5, .5)])
+                              spos_ac=[(.5, .5, .5)])
 
-    orbital = generator.generate(l, gd, [kpt], center, dtype=complex)
+    orbital = generator.generate(l, gd, [kpt], [center], dtype=complex)
     print 'coefs'
     print npy.array(orbital.coefs)
 
@@ -718,21 +716,22 @@ def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
     generator = PolarizationOrbitalGenerator(rcut, gaussians=4)
     r = npy.arange(0., rcut, .01)
     alpha_ref = 1. / (rcut/4.) ** 2.
+    import pylab
     for l in range(lmin, lmax + 1):
         g = QuasiGaussian(alpha_ref, rcut)
         norm = get_norm(r, g(r), l)
         g.renormalize(norm)
-        gd, psit_k, center, ref = make_dummy_calculation(l, g, rcut,
-                                                         dtype=dtype)
+        gd, psit_k, center, ref = make_dummy_reference(l, g, rcut,
+                                                       dtype=dtype)
         k_kc = ((0.,0.,0.), (.5,.5,.5))
-        kpt_u = [KPoint(gd, 1., 0, i, i, k_c, dtype=dtype)
+        kpt_u = [KPoint([], gd, 1., 0, i, i, k_c, dtype=dtype)
                  for i, k_c in enumerate(k_kc)]
         for kpt in kpt_u:
             kpt.allocate(1)
             kpt.f_n = npy.array([2.])
             kpt.psit_nG = psit_k
         
-        phi = generator.generate(l, gd, kpt_u, center, dtype=dtype)
+        phi = generator.generate(l, gd, kpt_u, [center], dtype=dtype)
         
         pylab.figure(l)
         #pylab.plot(r, ref(r)*r**l, 'g', label='ref')
