@@ -49,6 +49,7 @@ parameters = {
  'Cu': {'core': '[Ar]',   'rcut': [2.2, 2.2, 2.0]},
  'Zn': {'core': '[Ar]',   'rcut': [2.0, 1.9, 1.9]},
  'Ga': {'core': '[Ar]3d', 'rcut': 2.2},
+ 'Ge': {'core': '[Ar]3d', 'rcut': 1.9},
  'As': {'core': '[Ar]',   'rcut': 2.0},
  'Kr': {'core': '[Ar]3d', 'rcut': 2.2},
  'Rb': {'core': '[Kr]',   'rcut': 4.05},
