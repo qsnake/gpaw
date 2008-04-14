@@ -52,7 +52,7 @@ parameters = {
  'Ge': {'core': '[Ar]3d', 'rcut': 1.9},
  'As': {'core': '[Ar]',   'rcut': 2.0},
  'Kr': {'core': '[Ar]3d', 'rcut': 2.2},
- 'Rb': {'core': '[Kr]',   'rcut': 4.05},
+ 'Rb': {'core': '[Ar]3d', 'rcut': [2.8, 2.4, 2.4]},
  'Sr': {'core': '[Ar]3d', 'rcut': [2.4, 2.4, 2.3],
         'extra':{1: [0.0], 2: [0.0]}},
  'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
