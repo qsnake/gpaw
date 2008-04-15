@@ -102,14 +102,34 @@ class RunScript:
         print >> f,"cd",set['wd']
         print >> f,"yod $GPAW_PYTHON",set['script']
         
-    def louhi_pre(self,f,set,env):
-        size=int((set['nodes']+1)/2)
+    def louhi_deisa(self, f, set, env):
+        size = set['nodes']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l mppwidth=%d" % size
         hs = dhms(set['time'])
-        print >> f,'#PBS -l walltime=' + ( str(hs[0]) + ':' +
-                                           str(hs[1]) + ':' + str(hs[2]) )
+        print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
+                                           str(hs[2]) + ':' + str(hs[3]) )
+        if set['mem']:
+            print >> f, '#PBS -l mppmem=1900M'
+        print >> f, 'source /opt/deisa/modules/ch_modules.csh'
+        print >> f, 'module load python'
+        print >> f, 'module load ASE/3.0'
+        print >> f, 'module load gpaw'
+        print >> f, 'cd', set['wd']
+        print >> f, 'aprun -n %d' % size,
+        if set['mem']:
+             print >> f, '-m 1900M',
+        print >> f, '$GPAW_PYTHON', set['script']
+        
+    def louhi_pre(self, f, set, env):
+        size = set['nodes']
+        print >> f,"#!/bin/csh"
+        print >> f,"#PBS -N",set['name']
+        print >> f,"#PBS -l mppwidth=%d" % size
+        hs = dhms(set['time'])
+        print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
+                                           str(hs[2]) + ':' + str(hs[3]) )
         if set['mem']:
             print >> f, '#PBS -l mppmem=1900M'
         print >> f, 'module load python'
