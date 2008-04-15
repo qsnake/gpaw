@@ -66,9 +66,12 @@ class Trajectory(PickleTrajectory):
     def read(self, filename, filetype=None):
         """Read from a file"""
 
+        ftfe = filetype_from_ending(filename)
         aft = ase_filetype(filename)
         
-        if aft == 'traj':
+        if ftfe == 'vmol':
+            self.read_viewmol(filename)
+        elif aft == 'traj':
             PickleTrajectory.__init__(self, filename)
         elif aft == 'gpaw-text':
             # this is strange code, but I don't know how to create the full

@@ -117,6 +117,10 @@ class Cluster(Atoms):
 
         if filetype == 'cube':
             loa = read_cube(filename)
+        elif filetype == 'vmol':
+            from gpaw.utilities.viewmol import Trajectory
+            traj = Trajectory(filename)
+            loa = traj[-1]
         elif filetype == 'xyz':
             loa = read_xyz(filename)
         else:
