@@ -24,7 +24,9 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
     def get_functional(self):
         return self
 
-    def pass_stuff(self, vt_sg, nt_sg, kpt_u, gd, finegd, interpolate, nspins, nuclei, all_nuclei, occupation, kpt_comm, symmetry, nvalence, eigensolver):
+    def pass_stuff(self, vt_sg, nt_sg, kpt_u, gd, finegd,
+                   interpolate, nspins, nuclei, all_nuclei,
+                   occupation, kpt_comm, symmetry, nvalence, eigensolver):
         self.vt_sg = vt_sg
         self.nt_sg = nt_sg
         self.kpt_u = kpt_u

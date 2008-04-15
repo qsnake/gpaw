@@ -139,12 +139,17 @@ class XCFunctional:
             self.orbital_dependent = True
             if self.setupname is None:
                 self.setupname = 'LDA'
-        elif xcname.startswith('GLLB') or xcname=='KLI' or xcname == 'SAOP':
+        elif xcname.startswith('GLLB') or xcname=='KLI':
             # GLLB type of functionals which use orbitals, require special
             # treatment at first iterations, where there is no orbitals
             # available. Therefore orbital_dependent = True!
             self.orbital_dependent = True
             self.gllb = True
+            code = 'gllb'
+        elif xcname == 'SAOP':
+            self.orbital_dependent = True
+            self.gllb = True
+            self.gga = True
             code = 'gllb'
         else:
             self.gga = True
@@ -249,9 +254,11 @@ class XCFunctional:
 
     # Initialize the GLLB functional, hopefully at this stage, the eigenvalues and functions are already available
     def initialize_gllb(self, paw):
-        self.xc.pass_stuff(paw.hamiltonian.vt_sg, paw.density.nt_sg, paw.kpt_u, paw.gd, paw.finegd,
+        self.xc.pass_stuff(paw.hamiltonian.vt_sg, paw.density.nt_sg,
+                           paw.kpt_u, paw.gd, paw.finegd,
                            paw.density.interpolate, paw.nspins,
-                           paw.my_nuclei, paw.nuclei, paw.occupation, paw.kpt_comm, paw.symmetry, paw.nvalence,
+                           paw.my_nuclei, paw.nuclei, paw.occupation,
+                           paw.kpt_comm, paw.symmetry, paw.nvalence,
                            paw.eigensolver)
 
 
