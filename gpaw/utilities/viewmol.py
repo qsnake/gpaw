@@ -133,7 +133,52 @@ class Trajectory(PickleTrajectory):
     def write_viewmol_positions(self, file, atoms):
         for c, s in zip(atoms.get_positions(), atoms.get_chemical_symbols()):
             print  >> file, '%10.4f %10.4f %10.4f' % (c[0],c[1],c[2]), s
-        
+
+    def read_viewmol(self, filename):
+        f = open(filename)
+
+        # read the definition first
+        definition=False
+        for line in f:
+            w = line.split()
+            if not definition:
+                if w[0] == '$coord':
+                    definition=True
+                    self.scale = float(w[1])
+                    loa = Cluster([])
+            else:
+                if w[0] == '$grad':
+                    # definition ends here
+                    self.definition = loa
+                    break
+                else:
+                    # we assume this is a coordinate entry
+                    coo = (float(w[0]),  float(w[1]), float(w[2]))
+                    loa.append(Atom(w[3], coo))
+ 
+        # get the iterations
+        cycle = False
+        for line in f:
+            w = line.split()
+            if not cycle:
+                # search for the cycle keyword
+                if w[0] == 'cycle=':
+                    cycle=True
+                    n_coo=0
+                    n_F=0
+                    self.images.append(Cluster([]))
+            else:
+                if n_coo < len(self.definition):
+                    n_coo += 1
+                    coo = (float(w[0]),  float(w[1]), float(w[2]))
+                    self[-1].append(Atom(w[3], coo))
+                elif n_F < len(self.definition):
+                    F = (float(w[0]),  float(w[1]), float(w[2]))
+                    self[-1][n_F].F = F
+                    n_F += 1
+                    if n_F == len(self.definition):
+                        cycle=False
+
 class ViewmolTrajectory(Trajectory):
     """Write a trajectory for viewmol (http://viewmol.sourceforge.net)
 
