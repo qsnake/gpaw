@@ -21,10 +21,16 @@ class NonLocalFunctionalFactory:
         from gpaw.gllb.saop import SAOPFunctional
         if name == 'GLLB':
             return GLLBFunctional('X_B88-None',None, K_G)
-        elif name == 'GLLBexp':
-            return GLLBFunctional('X_LDA-None','None-C_VWN', KC_G)
+        elif name == 'GLLBLDA':
+            return GLLBFunctional('None-None','LDA', 0)
+        elif name == 'GLLBLDARCR':
+            return GLLBFunctional('None-None','LDA', 0, relaxed_core_response=True)
         elif name == 'GLLBplusC':
             return GLLBFunctional('X_B88-C_PW91',None,KC_G)
+        elif name == 'GLLBRCR':
+             return GLLBFunctional('X_B88-None',None, K_G, relaxed_core_response=True)
+        elif name == 'GLLBplusCRCR':
+             return GLLBFunctional('X_B88-C_PW91',None, KC_G, relaxed_core_response=True)
         elif name == 'SAOP':
              return SAOPFunctional('GLLB', 'LBalpha')
         else:

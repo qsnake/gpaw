@@ -259,8 +259,7 @@ class XCFunctional:
                            paw.density.interpolate, paw.nspins,
                            paw.my_nuclei, paw.nuclei, paw.occupation,
                            paw.kpt_comm, paw.symmetry, paw.nvalence,
-                           paw.eigensolver)
-
+                           paw.eigensolver, paw.hamiltonian)
 
     def set_non_local_things(self, paw, energy_only=False):
         if self.xcname == 'TPSS':

@@ -1186,7 +1186,7 @@ class XCCorrection:
                 psi2_g = extra_xc_data['core_orbital_density_'+str(nc)]
                 deps = reference_levels[0]-extra_xc_data['core_eigenvalue_'+str(nc)]
                 
-                core_response[:] += psi2_g * K_G * (npy.where(deps<0, 0, deps))**(0.5)
+                core_response[:] += psi2_g * extra_xc_data['core_occupation_'+str(nc)]* K_G * (npy.where(deps<0, 0, deps))**(0.5)
         else:
             # Otherwise, the static core response from setup is used
             core_response = extra_xc_data['core_response']
@@ -1254,13 +1254,17 @@ class XCCorrection:
                     e_g[:] += e2_g
                     x_g += v2_g
                 
-
-                #if gllb.relaxed_core_response:
-                #    stuff todo here:
-
                 E += w * npy.dot(e_g, self.dv_g)
+
+                #print "x_g", x_g
                 
                 x_g *= self.dv_g
+
+                if gllb.relaxed_core_response:
+                    # This is the XC-contribution to core-eigenvalue
+                    for k in range(0, njcore):
+                        psi2_g = extra_xc_data['core_orbital_density_'+str(k)]
+                        nucleus.coreref_k[k] += w * npy.dot(x_g, psi2_g)
                 
                 B_Lqp = self.B_Lqp
                 dEdD_p += w * npy.dot(dot3(self.B_pqL, Y_L),

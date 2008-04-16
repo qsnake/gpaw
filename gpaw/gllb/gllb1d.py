@@ -1,6 +1,7 @@
 import numpy as npy
 
 from gpaw.gllb import SMALL_NUMBER
+from gpaw.utilities import hartree
 
 class GLLB1D:
     def __init__(self):
@@ -248,9 +249,25 @@ class GLLB1D:
 
             for nc in range(0, ae.njcore):
                 # Add the response multiplied with density to potential
-                orbital_density = self.construct_density1D(ae.rgd, ae.u_j[nc], ae.f_j[nc])
+                orbital_density = self.construct_density1D(ae.rgd, ae.u_j[nc], 1.0)
                 extra_xc_data['core_orbital_density_'+str(nc)] = orbital_density
+                extra_xc_data['core_occupation_'+str(nc)] = [ ae.f_j[nc] ]
                 extra_xc_data['core_eigenvalue_'+str(nc)] = [ ae.e_j[nc] ]
+
+                # calculate hartree potential for pure core density
+                vHcr = npy.zeros(ae.N)
+                hartree(0, ae.nc * ae.rgd.r_g * ae.rgd.dr_g, ae.beta, ae.N, vHcr)
+
+                # The reference eigenvalue will be used as a starting point for core--eigenvalue calculation
+                # It contains follownig contributions
+                # - The kinetic energy 
+                # - The potential energy due to external potential
+                # - The hartree energy due to core electrons
+                # These values do not change in chemical enviroinment due to frozen core approximation
+
+                ref = ae.e_j[nc] - npy.sum((npy.where(abs(ae.u_j[nc]) < 1e-160, 0, ae.u_j[nc])**2 * (ae.vr + ae.Z - vHcr) * ae.rgd.dr_g)[1:] / ae.rgd.r_g[1:])
+                print "Initial eigenvalue: ", ref
+                extra_xc_data['core_ref_'+str(nc)] = [ ref ]
 
             extra_xc_data['njcore'] = [ ae.njcore ]
         

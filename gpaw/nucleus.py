@@ -443,6 +443,31 @@ class Nucleus:
 
             yield 0.0, 0.0, 0.0, 0.0, 0.0
 
+    def update_core_eigenvalues(self, vHt_g):
+        # TODO: How to calculate just W_0? Get it from calculate hamiltonian?
+        W_L = npy.zeros((self.setup.lmax + 1)**2)
+        for x in self.ghat_L.iintegrate(vHt_g, W_L):
+            yield None
+    
+        all_Et = W_L[0] / sqrt(4*pi) 
+        all_Eat = - self.Q_L[0] * self.setup.core_B - self.setup.core_C
+
+        D_p = self.D_sp.sum(0)
+
+        # Start with pure kinetic energy + external potential contribution
+        self.coreref_k = self.setup.coreref_k.copy()
+
+        # Calculate the eigenvalue dependent contributions
+        for k in range(0, self.setup.njcore):
+            # From E^a
+            I = npy.dot(D_p, self.setup.core_A_kp[k])
+            # From \tilde{E}^a
+            It = npy.dot(D_p, self.setup.core_At_kp[k])
+            # Include all corrections to eigenvalue
+            self.coreref_k[k] += all_Et + all_Eat + I - It
+
+        yield None
+            
     def adjust_residual(self, R_nG, eps_n, s, u, k):
         if self.in_this_domain:
             H_ii = unpack(self.H_sp[s])

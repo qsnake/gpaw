@@ -210,6 +210,8 @@ class Generator(AllElectron):
             nc[1:] /= r[1:]**2
             nc[0] = nc[1]
 
+        self.nc = nc
+
         # Calculate core kinetic energy density
         if njcore == 0:
             tauc = npy.zeros(N)

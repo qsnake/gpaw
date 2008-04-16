@@ -5,7 +5,7 @@ from gpaw.utilities import pack, unpack2
 from gpaw.gllb.gllb1d import GLLB1D
 from gpaw.gllb import SMALL_NUMBER
 import numpy as npy
-from gpaw.mpi import world
+from gpaw.mpi import world, run
 
 class GLLBFunctional(ZeroFunctional, GLLB1D):
     def __init__(self, slater_xc_name, v_xc_name, K_G,
@@ -24,9 +24,11 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
     def get_functional(self):
         return self
 
-    def pass_stuff(self, vt_sg, nt_sg, kpt_u, gd, finegd,
-                   interpolate, nspins, nuclei, all_nuclei,
-                   occupation, kpt_comm, symmetry, nvalence, eigensolver):
+    def pass_stuff(self, vt_sg, nt_sg, kpt_u, gd, finegd, 
+                   interpolate, nspins, nuclei, all_nuclei, 
+                   occupation, kpt_comm, symmetry, nvalence,
+                   eigensolver, hamiltonian):
+
         self.vt_sg = vt_sg
         self.nt_sg = nt_sg
         self.kpt_u = kpt_u
@@ -41,7 +43,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         self.symmetry = symmetry
         self.nvalence = nvalence
         self.eigensolver = eigensolver
-        
+        self.hamiltonian = hamiltonian
         self.vt_G = gd.zeros() 
         self.vtp_sg = finegd.zeros(self.nspins)
         self.scr_sg = finegd.zeros(self.nspins)
@@ -102,9 +104,20 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
         self.vt_sg[0] += self.scr_sg[0]
         self.vt_sg[0] += self.resp_sg[0]
 
-        # Apply ALL PAW corrections!
+        if self.relaxed_core_response:
+            # Calculate some of the core-eigenvalue corrections
+            tasks = []
+            for nucleus in self.nuclei:
+                tasks.append(nucleus.update_core_eigenvalues(self.hamiltonian.vHt_g))
+            run(tasks)
+
+        # Apply ALL PAW corrections, including the rest of the core eigenvalue
+        # corrections if relaxed_core_response flag is on
         for nucleus in self.nuclei:
             Exc += nucleus.setup.xc_correction.GLLB(nucleus, self)
+
+        #for nucleus in self.nuclei:
+        #    print "CORE EIGENVALUES: ", nucleus.coreref_k
 
         return Exc
 

@@ -245,6 +245,7 @@ class Setup:
                 p += 1
             i1 += 1
 
+        # Create gaussians used to expand compensation charges
         g_lg = npy.zeros((lmax + 1, gcut2))
         g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * npy.exp(-(r_g / rcgauss)**2)
         for l in range(1, lmax + 1):
@@ -277,6 +278,7 @@ class Setup:
         Delta = npy.dot(nc_g - nct_g, r_g**2 * dr_g) - self.Z / sqrt(4 * pi)
         self.Delta0 = Delta
 
+        # Solves the radial poisson equation for density n_g
         def H(n_g, l):
             yrrdr_g = npy.zeros(gcut2)
             nrdr_g = n_g * r_g * dr_g
@@ -315,6 +317,27 @@ class Setup:
                       + npy.dot(g_lg[0], wmct_g)) * Delta_lq[0]
         self.M_p = npy.dot(A_q, T_Lqp[0])
 
+        if xcfunc.is_gllb():
+            if xcfunc.xc.relaxed_core_response:
+                self.njcore = extra_xc_data['njcore']
+                self.core_A_kp = npy.zeros((self.njcore, np))
+                self.core_At_kp = npy.zeros((self.njcore, np))
+                self.core_B = npy.dot(g_lg[0], wg_lg[0]) / sqrt(4*pi)
+                self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
+                self.coreref_k = npy.zeros((self.njcore))
+                for k in range(0, self.njcore):
+                    # Put the density of core orbital into radial representation
+                    rho_g = extra_xc_data['core_orbital_density_'+str(k)] * sqrt(4*pi)
+
+                    # Calculate the D_p dependent correction for E^a
+                    self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g,0)), T_Lqp[0])
+
+                    # Calculate the D_P dependent correction for \tilde{E}^a
+                    self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]), T_Lqp[0]) / sqrt(4*pi)
+
+                    # All other contributions are already included in reference from setup
+                    self.coreref_k[k] = extra_xc_data['core_ref_'+str(k)]
+                    
         AB_q = -npy.dot(nt_qg, dv_g * vbar_g)
         self.MB_p = npy.dot(AB_q, T_Lqp[0])
 
@@ -708,6 +731,7 @@ class Setup:
 
         self.I4_iip = I4_iip
 
+    
 
 if __name__ == '__main__':
     print """\
