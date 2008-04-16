@@ -23,7 +23,7 @@ parser.add_option('-T', '--tail-norm', metavar='<norm>', type='str',
                   'write: norm1,norm2,...')
 parser.add_option('-D', '--energy-derivative', action='store_true',
                   dest='derivative',
-                  help='Include derivative of atomic orbital with respect '+
+                  help='include derivative of atomic orbital with respect '+
                   'to confinement potential inner cutoff as second '+
                   'basis function')
 parser.add_option('-P', '--plot', action='store_true',
@@ -34,16 +34,20 @@ parser.add_option('-X', '--exclude', action='store_true',
                   help='generate basis sets for all g2 elements, excluding '+
                   'those specified')
 parser.add_option('--rcut-max', type='float', default=16., metavar='<rcut>',
-                  help='Max cutoff for confined atomic orbitals.  This '+
+                  help='max cutoff for confined atomic orbitals.  This '+
                   'option has no effect on orbitals with smaller cutoff '+
                   '[default/Bohr: %default]')
 parser.add_option('--rcut-pol-rel', type='float', default=1.0,
                   metavar='<rcut>',
                   help='polarization function cutoff relative to largest'+
                   ' single-zeta cutoff [default: %default]')
+parser.add_option('--rchar-pol-rel', type='float', default=None,
+                  metavar='<rchar>',
+                  help='characteristic radius of Gaussian when not using '+
+                  'interpolation scheme, relative to rcut')
 parser.add_option('--gaussians', type='int', metavar='<n>',
                   help='use the specified number of Gaussians for '+
-                  'polarization functions.')
+                  'polarization function interpolation')
 parser.add_option('--vconf-amplitude', type='float', default=8.,
                   metavar='<alpha>',
                   help='set proportionality constant of smooth confinement '+
@@ -55,7 +59,7 @@ parser.add_option('--vconf-rstart-rel', type='float', default=.6,
 parser.add_option('--vconf-sharp-confinement', action='store_true',
                   help='use sharp rather than smooth confinement potential')
 parser.add_option('--debug', action='store_true',
-                  help='Use gpaw-DEBUG mode')
+                  help='use gpaw-DEBUG mode')
 
 opts, args = parser.parse_args()
 
@@ -156,6 +160,7 @@ def main():
                             rcutpol_rel=opts.rcut_pol_rel,
                             rcutmax=opts.rcut_max,
                             ngaussians=opts.gaussians,
+                            rcharpol_rel=opts.rchar_pol_rel,
                             vconf_args=vconf_args,
                             include_energy_derivatives=opts.derivative)
         if opts.plot:

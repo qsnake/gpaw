@@ -10,7 +10,8 @@ from ase.units import Hartree
 
 from gpaw.spline import Spline
 from gpaw.atom.generator import Generator, parameters
-from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference
+from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
+     QuasiGaussian, default_rchar_rel, rchar_rels
 from gpaw.utilities import devnull, divrl
 from gpaw.basis_data import Basis, BasisFunction
 from gpaw.version import version
@@ -276,7 +277,8 @@ class BasisMaker:
     def generate(self, zetacount=2, polarizationcount=0, 
                  tailnorm=(.15, .25, .35), energysplit=.3, tolerance=1.0e-3,
                  referencefile=None, referenceindex=None, rcutpol_rel=1., 
-                 rcutmax=20., ngaussians=None, vconf_args=(8., .6), txt='-',
+                 rcutmax=20., ngaussians=None, rcharpol_rel=None,
+                 vconf_args=(8., .6), txt='-',
                  include_energy_derivatives=False):
         """Generate an entire basis set.
 
@@ -445,14 +447,27 @@ class BasisMaker:
             msg = 'Polarization function: l=%d, rc=%.02f' % (l_pol, rcut)
             print >> txt, '\n' + msg
             print >> txt, '-' * len(msg)
-            psi_pol = self.make_polarization_function(rcut, l_pol,
-                                                      referencefile,
-                                                      referenceindex,
-                                                      ngaussians,
-                                                      txt)
-            
-            bf_pol = BasisFunction(l_pol, rcut, psi_pol, 
-                                   '%s-type polarization' % 'spdfg'[l_pol])
+            if referencefile is None:
+                if rcharpol_rel is None:
+                    rcharpol_rel = rchar_rels.get(l_pol, default_rchar_rel)
+                rchar = rcharpol_rel * rcut
+                gaussian = QuasiGaussian(1./rchar**2, rcut)
+                psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
+                print >> txt, 'Single quasi Gaussian'
+                msg = 'Rchar = %.03f*rcut = %.03f Bohr' % (rcharpol_rel, rchar)
+                adjective = 'Gaussian'
+                print >> txt, msg
+            else:
+                psi_pol = self.make_polarization_function(rcut, l_pol,
+                                                          referencefile,
+                                                          referenceindex,
+                                                          ngaussians,
+                                                          txt)
+                adjective = 'interpolated'
+
+            type = '%s-type %s polarization' % ('spdfg'[l_pol], adjective)
+            bf_pol = BasisFunction(l_pol, rcut, psi_pol, type)
+                                   
             polarization_functions.append(bf_pol)
             for i in range(polarizationcount - 1):
                 npol = i + 2
