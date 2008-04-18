@@ -147,6 +147,8 @@ class XCFunctional:
             self.gllb = True
             code = 'gllb'
         elif xcname == 'SAOP':
+            self.reference = ( 'P.R.T. Schipper et al, ' +
+                               'J Chem Phys 112 (2000) 1344' )
             self.orbital_dependent = True
             self.gllb = True
             self.gga = True
@@ -187,8 +189,12 @@ class XCFunctional:
             elif xcname == 'LB94' or xcname == 'LBalpha':
                 code = 17
                 if xcname == 'LB94':
+                    self.reference = ( 'R. van Leeuwen and E. J. Bearends, ' +
+                                       'Phys Rev A 49 (1994) 2421' )
                     parameters = [1., 0.05] # alpha, beta
                 else:
+                    self.reference = ( 'P.R.T. Schipper et al, ' +
+                                       'J Chem Phys 112 (2000) 1344' )
                     parameters = [1.19, 0.01] # alpha, beta
                 if self.parameters:
                     for i, key in enumerate(['alpha', 'beta']):
