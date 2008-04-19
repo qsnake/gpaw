@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import re
+from optparse import OptionParser
+
+from ase import PickleTrajectory
+## from gpaw.utilities.viewmol import write_viewmol
+from gpaw.utilities.viewmol import Trajectory
+
+parser = OptionParser(usage='%prog pickletrajectory [viewmolfile]',
+                      version='%prog 0.1')
+opt, args = parser.parse_args()
+##print opt, args
+
+if len(args) < 1:
+    print 'Missing input file name'
+    sys.exit()
+    
+def getext(string):
+    p = re.compile("\.")
+    words = p.split(string)
+    ext = words.pop()
+    base = "".join("%s." % w for w in words)
+    return ext, base
+
+if len(args) == 1:
+    pklf = args[0]
+    ext, base = getext(pklf)
+    if ext == 'traj':
+        vmf = base + 'vmol'
+    else:
+        vmf = pklf + '.vmol'
+else:
+    pklf, vmf = args
+
+##pt = PickleTrajectory(pklf)
+pt = Trajectory(pklf)
+print 'writing', len(pt), 'structures to', vmf 
+##write_viewmol(pt, vmf)
+pt.write(vmf , filetype='vmol')
+
