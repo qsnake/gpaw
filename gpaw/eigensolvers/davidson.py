@@ -44,12 +44,12 @@ class Davidson(Eigensolver):
 
         nbands = self.nbands
 
-        self.diagonalize(hamiltonian, kpt)
+        self.subspace_diagonalize(hamiltonian, kpt)
                     
         H_2n2n = self.H_2n2n
         S_2n2n = self.S_2n2n
         eps_2n = self.eps_2n
-        psit2_nG = self.work
+        psit2_nG = self.big_work_arrays['work_nG']
 
         self.timer.start('Davidson')
         R_nG = self.Htpsit_nG

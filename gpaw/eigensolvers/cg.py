@@ -7,7 +7,6 @@ from numpy import dot # avoid the dotblas bug!
 
 from gpaw.utilities.blas import axpy, rk, r2k, gemm
 from gpaw.utilities.complex import cc, real
-from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import unpack
 from gpaw.eigensolvers.eigensolver import Eigensolver
 from gpaw.mpi import run
@@ -44,10 +43,10 @@ class CG(Eigensolver):
         phi_G = self.phi_G
         phi_old_G = self.phi_old_G
 
-        self.diagonalize(hamiltonian, kpt)
+        self.subspace_diagonalize(hamiltonian, kpt)
             
-        R_nG = self.work
-        Htphi_G = self.work[0]
+        R_nG = self.big_work_arrays['work_nG']
+        Htphi_G = self.big_work_arrays['work_nG'][0]
 
         R_nG[:] = self.Htpsit_nG
         self.timer.start('Residuals')        

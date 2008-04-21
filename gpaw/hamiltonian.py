@@ -201,7 +201,8 @@ class Hamiltonian(LCAOHamiltonian):
 
         self.timer.stop('Hamiltonian')
 
-    def apply(self, a_nG, b_nG, kpt, calculate_P_uni=True):
+    def apply(self, a_nG, b_nG, kpt, 
+              calculate_projections=True, local_part_only=False):
         """Apply the Hamiltonian operator to a set of vectors.
 
         Parameters
@@ -211,7 +212,7 @@ class Hamiltonian(LCAOHamiltonian):
         b_nG: ndarray, output
             Resulting S times a_nG vectors.
         kpt: KPoint object
-             k-point object defined in kpoint.py.
+            k-point object defined in kpoint.py.
         calculate_P_uni: bool
             When True, the integrals of projector times vectors
             P_ni = <p_i | a_nG> are calculated.
@@ -219,21 +220,27 @@ class Hamiltonian(LCAOHamiltonian):
         
         """
 
-        b_nG[:] = 0.0
-        if self.timer is not None:
-            self.timer.start('Apply pseudo-hamiltonian');
-        self.kin.apply(a_nG, b_nG, kpt.phase_cd)
-        b_nG += a_nG * self.vt_sG[kpt.s]
-        if self.timer is not None:
-            self.timer.stop('Apply pseudo-hamiltonian');
-        
-        # Apply the non-local part:
-        if self.timer is not None:
-            self.timer.start('Apply atomic hamiltonian');
-        run([nucleus.apply_hamiltonian(a_nG, b_nG, kpt, calculate_P_uni)
-             for nucleus in self.pt_nuclei])
+        self.timer.start('Apply pseudo-hamiltonian')
 
-        if self.timer is not None:
+        self.kin.apply(a_nG, b_nG, kpt.phase_cd)
+        vt_G = self.vt_sG[kpt.s]
+        if a_nG.ndim == 3:
+            b_nG += a_nG * vt_G
+        else:
+            for a_G, b_G in zip(a_nG, b_nG):
+                b_G += a_G * vt_G
+
+        self.timer.stop('Apply pseudo-hamiltonian');
+        
+        if local_part_only:
+            assert not calculate_projections
+        else:
+            # Apply the non-local part:
+            self.timer.start('Apply atomic hamiltonian');
+            run([nucleus.apply_hamiltonian(a_nG, b_nG, kpt,
+                                           calculate_projections)
+                 for nucleus in self.pt_nuclei])
+
             self.timer.stop('Apply atomic hamiltonian');
 
         

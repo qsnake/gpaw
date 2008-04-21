@@ -259,7 +259,8 @@ class PAW(PAWExtra, Output):
         self.callback_functions = []
         self.niter = 0
         self.F_ac = None
-
+        self.big_work_arrays = {}
+        
         self.eigensolver = None
         self.density = None
         self.kpt_u = None
@@ -585,14 +586,10 @@ class PAW(PAWExtra, Output):
             self.wave_functions_initialized = True
 
     def orthonormalize_wave_functions(self):
-        if self.eigensolver.lcao:
-            self.wave_functions_orthonormalized = True
-            return
-        
-        for kpt in self.kpt_u:
-            run([nucleus.calculate_projections(kpt)
-                for nucleus in self.pt_nuclei])
-            self.overlap.orthonormalize(kpt.psit_nG, kpt)
+        if not self.eigensolver.lcao:
+            for kpt in self.kpt_u:
+                self.overlap.orthonormalize(kpt)
+
         self.wave_functions_orthonormalized = True
 
     def calculate_forces(self):
