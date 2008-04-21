@@ -227,7 +227,8 @@ class KPoint:
     def calculate_wave_functions_from_lcao_coefficients(self, nbands):
         self.nbands = nbands
         self.psit_nG = self.gd.zeros(nbands, dtype=self.dtype)
-        psit_nG = self.psit_nG[:len(self.C_nm)]
+        nlcao = len(self.C_nm)
+        psit_nG = self.psit_nG[:nlcao]
         m1 = 0
         for nucleus in self.nuclei:
             niao = nucleus.get_number_of_atomic_orbitals()

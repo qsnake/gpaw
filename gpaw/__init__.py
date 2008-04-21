@@ -81,7 +81,7 @@ if debug:
         if a.dtype == int:
             a[:] = -100000000
         else:
-            a[:] = 1e400
+            a[:] = numpy.inf
         return a
     numpy.empty = empty
 
