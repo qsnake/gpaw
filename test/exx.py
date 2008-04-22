@@ -16,7 +16,7 @@ tolerance = 0.0003 # must reproduce old gpaw results
 tolerance = 30.0003 # must reproduce old gpaw results
 
 #for setup in ['LDA', 'PBE']:#, 'oldPBE', 'LDA']:
-for setup in ['PBE', 'PBE0', 'EXX', 'PBE']:#, 'oldPBE', 'LDA']:
+for setup in ['PBE', 'PBE0', 'EXX']:#, 'oldPBE', 'LDA']:
     # Generate setup
     #g = Generator('Be', setup, scalarrel=True, nofiles=True, txt=None)
     #g.run(exx=True, **parameters['Be'])
@@ -27,7 +27,5 @@ for setup in ['PBE', 'PBE0', 'EXX', 'PBE']:#, 'oldPBE', 'LDA']:
     bands = calc.get_eigenvalues()
 
     print setup, E
-    print bands
-
     for i in range(2): # not 3 as unoccupied eigenvalues are random!?? XXX
-        print(bands[i])
+        print i, bands[i]
