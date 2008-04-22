@@ -22,7 +22,7 @@ parameters = {
  'H' : {'rcut': 0.9},
  'He': {'rcut': 1.5},
  'Li': {'core': '[He]',   'rcut': 2.1},
- 'Be': {'core': '[He]',   'rcut': 1.5}, # rcut=1.9 is enough?
+ 'Be': {'core': '[He]',   'rcut': 1.5},
  'B' : {'core': '[He]',   'rcut': 1.2},
  'C' : {'core': '[He]',   'rcut': 1.2},
  'N' : {'core': '[He]',   'rcut': 1.1},
@@ -77,10 +77,15 @@ parameters = {
  'Pb': {'core': '[Xe]4f', 'rcut': [2.4,2.6,2.4]}
  }
 
-parameters_hard = {
- 'Li': {'name': 'hard', 'rcut': 1.5, 'extra': {1: [-0.0413]}}, # nocore
+# Extra setups
+parameters_extra = {
+ 'H' : {'name': 'single', 'rcut': 0.9, 'extra': {}},# No extra projectors
+ 'Li': {'name': 'hard', 'rcut': 1.5, 'extra': {1: [-0.0413]}}, # No core
+ 'Be': {'name': 'soft', 'core': '[He]', 'rcut': 1.9},
  'O' : {'name': 'hard', 'core': '[He]', 'rcut': 1.2},
  'Si': {'name': 'hard', 'core': '[Ne]', 'rcut': 1.85},
+ 'Pt': {'name': 'soft', 'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3],
+        'rcutcomp': 2.5},
  }
 
 
@@ -1046,7 +1051,6 @@ if __name__ == '__main__':
     for symbol in 'Ir Pt Au'.split():
         g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
         g.run(exx=True, **parameters[symbol])
-    #for xcname in ['LDA', 'PBE', 'X-C_PW', 'X_PBE-C_PBE']:
     for xcname in ['LDA', 'PBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + XCFunctional(xcname).get_name()
