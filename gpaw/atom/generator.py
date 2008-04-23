@@ -1048,7 +1048,7 @@ def construct_smooth_wavefunction(u, l, gc, r, s):
 if __name__ == '__main__':
     import os
     from gpaw.xc_functional import XCFunctional
-    for symbol in 'Ir Pt Au'.split():
+    for symbol in 'Pt Au'.split():
         g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
         g.run(exx=True, **parameters[symbol])
     for xcname in ['LDA', 'PBE']:
