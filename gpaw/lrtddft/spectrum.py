@@ -2,7 +2,7 @@ import sys
 import numpy as npy
 from math import exp, pi, sqrt
 
-from ASE.Units import Convert
+from ase import Hartree as Ha
 from gpaw.gauss import Gauss, Lorentz
 
 def spectrum(exlist=None,
@@ -50,6 +50,9 @@ def spectrum(exlist=None,
     else:
         raise RuntimeError('unknown folding "'+folding+'"')
     
+    if energyunit != 'eV':
+        raise RuntimeError('currently only eV supported')
+ 
     # output
     out = sys.stdout
     if filename != None:
@@ -58,7 +61,6 @@ def spectrum(exlist=None,
         print >> out, '#', comment
 
     # energy unit
-    Ha = Convert(1., 'Hartree', energyunit)
 
     # minimal and maximal energies
     if emin == None:
