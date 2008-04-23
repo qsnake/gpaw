@@ -6,7 +6,7 @@
 from optparse import OptionParser
 
 
-parser = OptionParser(usage='%prog [options] element',
+parser = OptionParser(usage='%prog [options] element[s]',
                       version='%prog 0.1')
 parser.add_option('-s', '--summary', action='store_true',
                   default=False,
@@ -24,191 +24,18 @@ parser.add_option('-q', '--queue', action='store_true',
 opt, args = parser.parse_args()
 
 import os
+import sys
 import pickle
 import tempfile
 from math import sqrt
 
-import Numeric as npy
-import LinearAlgebra as linalg
-from LinearAlgebra import inverse
-from ASE.Units import Convert
-from ASE.ChemicalElements.symbol import symbols
+import numpy as npy
+from ase.atoms import Atoms
+from ase.data import atomic_names, covalent_radii, atomic_numbers
 
-from gpaw.utilities.singleatom import SingleAtom
-from gpaw.utilities.molecule import molecules
-from gpaw.utilities.bulk import Bulk
-from gpaw.utilities.bulk import data as bulkdata
-from gpaw.utilities import locked
-from gpaw.paw import ConvergenceError
+from gpaw import Calculator, ConvergenceError
 
-import os
-import sys
-import pickle
-from math import log, sqrt
-
-import Numeric as npy
-from LinearAlgebra import inverse
-from LinearAlgebra import solve_linear_equations as solve
-from ASE import ListOfAtoms, Atom
-from ASE.ChemicalElements import numbers
-from ASE.ChemicalElements.covalent_radius import covalent_radii
-from ASE.ChemicalElements.name import names
-
-from gpaw.utilities import fix, fix2, devnull
-from gpaw.atom.generator import parameters as symbols
-from gpaw.atom.generator import Generator
-from gpaw import Calculator
-
-b0 = {
-'H':  (0, 0.77),
-'He': (0, 2.54),
-'Li': (0, 3.0),
-'Be': (2, 2.16),
-'C':  (0, 1.26),
-'N':  (0, 1.11),
-'O':  (2, 1.2),
-'F':  (0, 1.35),
-'Ne': (0, 3.0),
-'Na': (0, 3.24),
-'Mg': (0, 3.58),
-'Al': (2, 2.65),
-'P':  (0, 1.90),
-'S':  (2, 1.9),
-'Cl': (0, 1.99),
-'Ar': (0, 4.2),
-'V':  (4, 2.6),
-'Cr': (6, 2.5),
-'Fe': (6, 1.99),
-'Ni': (2, 2.06),
-'Cu': (0, 2.19),
-'Ga': (0, 2.73),
-'Kr': (0, 3.56),
-'Mo': (4, 2.64),
-'Ru': (8, 2.7),
-'Pd': (6, 2.7),
-'Ag': (0, 2.55),
-'Pt': (4, 2.9),
-'Au': (0, 2.68)}
-
-class Notes:
-    def __init__(self):
-        self.txt = {}
-        self.reset()
-        
-    def reset(self):
-        self.tags = {}
-        
-    def register(self, tag, txt):
-        self.txt[tag] = txt
-
-    def __getitem__(self, tag):
-        if tag not in self.tags:
-            self.tags[tag] = len(self.tags) + 1
-        return self.tags[tag]
-
-    def __str__(self):
-        a = [(n, tag) for tag, n in self.tags.items()]
-        a.sort()
-        t = ''
-        for n, tag in a:
-            t += '.. [%d] %s\n' % (n, self.txt[tag].replace('\n', '\n       '))
-        return t
-
-notes = Notes()
-
-X = {}
-for symbol in symbols:
-    X[symbol] = {'aref': [], 'Bref': [], 'Ecref': []}
-
-X['Fe']['Mref'] = []
-#X['Co']['Mref'] = []
-X['Ni']['Mref'] = []
-
-notes.register('KPB',
-""""Molecular and Solid.State Tests of Density Functional
-Approximations: LSD, GGAs, and Meta-GGAs", S. Kurth,
-J. P. Perdew and P. Blaha, Int. J. Quant. Chem. 75, 889-909
-(1999)""")
-
-for symbol, Vref in [('Na', 249.8*2),
-                     ('Al', 111.2*4),
-                     ('Si', 276.3*4),
-#                     ('Ge', 322.1*4),
-                     ('Cu',  80.6*4),
-#                     ('W',  108.9*2),
-                     ('Fe',  76.7*2),
-                     ('Pd', 103.2*4),
-                     ('Pt', 105.7*4),
-                     ('Au', 121.1*4)]:
-    X[symbol]['aref'].append((Vref**(1/3.)*0.529177, 'KPB'))
-
-for symbol, Bref in [('Na',   7.6),
-                     ('Al',  77.3),
-                     ('Si',  89.0),
-#                     ('Ge',  59.9),
-                     ('Cu', 139),
-#                     ('W',  298),
-                     ('Fe', 198),
-                     ('Pd', 174),
-                     ('Pt', 247),
-                     ('Au', 142)]:
-    X[symbol]['Bref'].append((Bref, 'KPB'))
-
-notes.register('PMHKGA',
-""""Screened hybrid density functionals applied to solids",
-J. Paier, M. Marsman, K. Hummer, G. Kresse, I. C. Gerber,
-J. G. Ángyán, J. Chem. Phys. 124, 154709 (2006)""")
-
-for symbol, aref in [('Li', 3.438),
-                     ('Na', 4.200),
-                     ('Al', 4.040),
-                     ('C',  3.574),
-                     ('Si', 5.469),
-                     ('Cu', 3.635),
-#                     ('Rh', 3.830),
-                     ('Pd', 3.943),
-                     ('Ag', 4.147)]:
-    X[symbol]['aref'].append((aref, 'PMHKGA'))
-    
-for symbol, Bref in [('Li',  13.7),
-                     ('Na',   7.80),
-                     ('Al',  76.6),
-                     ('C',  431),
-                     ('Si',  87.8),
-                     ('Cu', 136),
-#                     ('Rh', 254),
-                     ('Pd', 166),
-                     ('Ag',  89.1)]:
-    X[symbol]['Bref'].append((Bref, 'PMHKGA'))
-    
-for symbol, Ecref in [('Li', 1.605),
-                      ('Na', 1.079),
-                      ('Al', 3.434),
-                      ('C',  7.706),
-                      ('Si', 4.556),
-                      ('Cu', 3.484),
-#                      ('Rh', 5.724),
-                      ('Pd', 3.706),
-                      ('Ag', 2.518)]:
-    X[symbol]['Ecref'].append((Ecref, 'PMHKGA'))
-
-X['Fe']['Mref'] += [(2.2, 'PMHKGA')]
-
-notes.register('BRSN',
-""""Degree of localization of the exchange-correlation hole and its influence on the ground-state (structural and magnetic) properties of d metals", E. L. P. y Blancá, C. O. Rodríguez, J. Shitu and D. L. Novikov, J. Phys.: Cond. Matter 13, 9463-9470 (2001)""")
-
-for symbol, aref in [('Fe', 5.36),
-                    #('Co', 6.70),
-                     ('Ni', 6.59)]:
-    X[symbol]['aref'].append((aref * 0.529177, 'BRSN'))
-    
-for symbol, Bref in [#('Co',  1.96),
-                     ('Ni', 1.89)]:
-    X[symbol]['Bref'].append((Bref * 100, 'BRSN'))
-
-X['Fe']['Mref'] += [(2.17, 'BRSN')]
-#X['Co']['Mref'] += [(1.66, 'BRSN')]
-X['Ni']['Mref'] += [(0.61, 'BRSN')]
+b0 = {'Ni': 2.18, 'Pt': 2.73, 'Ru': 2.35, 'Na': 3.30, 'Mg': 3.65, 'Li': 2.94, 'Pd': 2.26, 'Fe': 1.83, 'He': 2.74, 'C': 1.29, 'F': 1.41, 'H': 0.75, 'Mo': 2.48, 'O': 1.22, 'Ne': 3.12, 'P': 1.88, 'S': 1.90, 'V': 2.44, 'N': 1.11, 'Kr': 3.77, 'Ag': 2.65, 'Al': 2.99, 'Au': 2.57, 'Ga': 2.84, 'Cr': 2.35, 'Cu': 2.29, 'B': 1.71, 'Ca': 3.69, 'Cd': 2.99, 'K': 4.14, 'La': 2.65, 'Nb': 2.52, 'Rh': 2.35, 'Si': 2.22, 'Sr': 4.05, 'Ti': 2.48, 'Zn': 2.60, 'Zr': 2.73}
 
 colors = ['black', 'brown', 'red', 'orange',
           'yellow', 'green', 'blue', 'violet', 'gray', 'gray']
@@ -219,41 +46,43 @@ class TestAtom:
         if not os.path.isdir(symbol):
             os.mkdir(symbol)
 
-        self.Z = numbers[symbol]
-        self.name = names[self.Z]
-        self.magmom, self.d0 = (2, 2 * covalent_radii[self.Z])
-        if symbol in b0:
-                self.magmom, self.d0 = b0[symbol]
-
-        self.a = max(2.5 * self.d0, 5.5)
-
-        self.gmin = 4 * int(self.a / 0.30 / 4 + 0.5)
-        self.gmax = 4 * int(self.a / 0.14 / 4 + 0.5)
+        self.Z = atomic_numbers[symbol]
+        self.name = atomic_names[self.Z]
+        r = covalent_radii[self.Z]
         
-        self.ng = (self.gmax + 4 - self.gmin) // 4
+        if symbol in b0:
+            self.d0 = b0[symbol]
+        else:
+            self.d0 = 2 * r
 
-        self.h = npy.array([self.a / g
-                            for g in range(self.gmin, self.gmax + 4, 4)])
+        self.a = round(max(5 * r, 5.5) / 0.2 / 4) * 4 * 0.2
 
-    def run(self):
+        gmin = 4 * int(self.a / 0.30 / 4 + 0.5)
+        gmax = 4 * int(self.a / 0.14 / 4 + 0.5)
+        
+        self.ng = (gmax + 4 - gmin) // 4
+
+        self.h = self.a / npy.arange(gmin, gmax + 4, 4)
+
+    def run(self, summary):
         tasks = ['eggbox', 'dimer']
-        if self.symbol not in ['H', 'N', 'O', 'F', 'P', 'Cl']:
-            tasks.append('bulk')
+        self.ready = True
         for task in tasks:
             filename = self.symbol + '/' + task + '.pckl'
             if os.path.isfile(filename):
-                print 'Reading', filename,
-                try:
-                    data = pickle.load(open(filename))
-                except (EOFError, IOError, ValueError):
-                    print 'FAILED'
-                else:
-                    print
+                data = pickle.load(open(filename))
+                if data:
                     for name, value in data.items():
                         setattr(self, name, value)
+                else:
+                    print 'Skipping', filename
+                    self.ready = False
             else:
-                print 'Running', task, 'part'
-                getattr(self, task)()
+                self.ready = False
+                if not summary:
+                    self.pickle(task, [])
+                    print 'Running', task, 'part for', self.symbol
+                    getattr(self, task)()
 
     def pickle(self, task, attrs):
         data = {}
@@ -261,568 +90,141 @@ class TestAtom:
             data[attr] = getattr(self, attr)
         pickle.dump(data, open(self.symbol + '/' + task + '.pckl', 'w'))
         
-    def bulk(self):
-        #self.scale = npy.array([(1 + (i - 2) * 0.015) for i in range(5)])
-        self.scale = npy.array([(1 + (i - 2) * 0.007) for i in range(5)])
-        a0 = 12.0
-        h = 0.16
-        bulk = Bulk(self.symbol)
-        cell = npy.diagonal(bulk.atoms.GetUnitCell())
-        ref = X[self.symbol].get('aref')
-        if len(ref) > 0:
-            cell = cell * ref[0][0] / cell[0]
-        self.gpts = [4 * int(L / h / 4 + 0.5) for L in cell]
-        self.kpts = [min(14, 2 * int(15 / L)) for L in cell]
-        self.Eb = npy.zeros(5, npy.Float)
-        self.M = npy.zeros(5, npy.Float)
-        self.Ea = npy.zeros(5, npy.Float)
-        self.V0 = npy.product(cell) / len(bulk.atoms)
-        self.cell = cell
-        N = len(bulk.atoms)
-
-        parameters = {'lmax': 2, 'xc': 'PBE'}
-
-        gptsa = []
-        abc = []
-        for c in range(3):
-            h = cell[c] / self.gpts[c]
-            ng = 4 * (int(a0 / 4 / h + 0.5) + c - 1)
-            gptsa.append(ng)
-            abc.append(h * ng)
-
-            
-        for i in range(5):
-            print i,
-            parameters['txt'] = '%s/bulkatom-%d.txt' % (self.symbol, i)
-            s = self.scale[i]
-            a = abc[0] * s
-            b = abc[1] * s
-            c = abc[2] * s
-            sa = SingleAtom(self.symbol, a=a, b=b, c=c,
-                            spinpaired=False, gpts=gptsa,
-                            parameters=parameters)
-            try:
-                self.Ea[i] = sa.energy()
-            except ConvergenceError:
-                break
-
-        print
-
-        parameters['nbands'] = -4 * len(bulk.atoms)
-        for i in range(5):
-            print i,
-            parameters['txt'] = '%s/bulk-%d.txt' % (self.symbol, i)
-            bulk.atoms.SetUnitCell(cell * self.scale[i])
-            e, m = bulk.energy(gpts=self.gpts, kpts=self.kpts,
-                               parameters=parameters)
-            self.Eb[i] = e / N
-            self.M[i] = m / N
-
-        print
-        
-        self.pickle('bulk', ['Eb', 'M', 'Ea', 'scale', 'V0',
-                             'cell', 'gpts', 'kpts'])
-
     def eggbox(self):
-        atom = ListOfAtoms([Atom(self.symbol)],
-                           periodic=True,
-                           cell=(self.a, self.a, self.a))
+        atom = Atoms(self.symbol, pbc=True, cell=(self.a, self.a, self.a))
 
-        negg = 15
-        self.Eegg = npy.zeros((self.ng, negg), npy.Float)
-        self.Fegg = npy.zeros((self.ng, negg), npy.Float)
+        negg = 25
+        self.Eegg = npy.zeros((self.ng, negg))
+        self.Fegg = npy.zeros((self.ng, negg))
         
         for i in range(self.ng):
             h = self.h[i]
-            print h
-            calc = Calculator(h=h, width=0.1,
+            print '%.3f:' % h,
+            calc = Calculator(h=h, width=0.1, xc='PBE',
                               txt='%s/eggbox-%.3f.txt' % (self.symbol, h))
-            atom.SetCalculator(calc)
+            atom.set_calculator(calc)
             for j in range(negg):
                 x = h * j / (2 * negg - 2)
-                atom[0].SetCartesianPosition([x, 0, 0])
+                atom[0].x = x
                 try:
-                    self.Eegg[i, j] = atom.GetPotentialEnergy()
+                    self.Eegg[i, j] = atom.get_potential_energy()
                 except ConvergenceError:
+                    sys.stdout.write('E')
                     break
-                self.Fegg[i, j] = atom.GetCartesianForces()[0, 0]
+                self.Fegg[i, j] = atom.get_forces()[0, 0]
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            print
 
         self.pickle('eggbox', ['Eegg', 'Fegg'])
 
     def dimer(self):
-        q0 = self.d0 / sqrt(3)
-        dimer = ListOfAtoms([Atom(self.symbol, (0, 0, 0),
-                                  magmom=0.5 * self.magmom),
-                             Atom(self.symbol, (q0, q0, q0),
-                                  magmom=0.5 * self.magmom)],
-                            periodic=True,
-                            cell=(self.a, self.a, self.a))
+        dimer = Atoms([self.symbol, self.symbol],
+                      pbc=True, cell=(self.a, self.a, self.a))
 
-        atom = ListOfAtoms([Atom(self.symbol)],
-                           periodic=True,
-                           cell=(self.a, self.a, self.a))
-
-        tolerance = 1e-9
-        if self.symbol in ['Fe', 'Zr']:
-            tolerance = 1e-7
-
-        self.Eadimer = npy.zeros(self.ng, npy.Float)
-        self.Edimer = npy.zeros((self.ng, 7), npy.Float)
+        self.Edimer = npy.zeros((self.ng, 7))
+        self.Fdimer = npy.zeros((self.ng, 7, 2))
         
+        q0 = self.d0 / sqrt(3)
         for i in range(self.ng):
             h = self.h[i]
-            print h
-            calc = Calculator(h=h, width=0.1,
-                              txt='%s/atom-%.3f.txt' % (self.symbol, h))
-            atom.SetCalculator(calc)
-
-            try:
-                self.Eadimer[i] = atom.GetPotentialEnergy()
-            except ConvergenceError:
-                continue
-
-            calc = Calculator(h=h, width=0.1, tolerance=tolerance,
+            print '%.3f:' % h,
+            calc = Calculator(h=h, width=0.1, xc='PBE',
                               txt='%s/dimer-%.3f.txt' % (self.symbol, h))
-            dimer.SetCalculator(calc)
+            dimer.set_calculator(calc)
             y = []
             for j in range(-3, 4):
                 q = q0 * (1 + j * 0.02)
-                dimer[1].SetCartesianPosition([q, q, q])
+                dimer.positions[1] = (q, q, q)
                 try:
-                    self.Edimer[i, j + 3] = dimer.GetPotentialEnergy()
+                    self.Edimer[i, j + 3] = dimer.get_potential_energy()
                 except ConvergenceError:
+                    sys.stdout.write('E')
                     break
+                self.Fdimer[i, j + 3] = dimer.get_forces()[:, 0]
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            print
 
-        self.pickle('dimer', ['Eadimer', 'Edimer'])
+        self.pickle('dimer', ['Edimer', 'Fdimer'])
 
-    def summary(self, include_setup_summary):
-        import matplotlib
-        matplotlib.use('Agg')
-        import pylab
+    def summary(self):
+        dd = 0.02 * self.d0
+        d = self.d0 + dd * npy.arange(-3, 4)
+        M = npy.array([(1, 0, 0, 0),
+                      (1, 1, 1, 1),
+                      (0, 1, 0, 0),
+                      (0, 1, 2, 3)])
 
-        notes.reset()
-        
-        Y = X[self.symbol]
-        
-        o = open('%s/page.txt' % self.symbol, 'w')
-
-        print >> o, """\
-============================"""
-        print >> o, self.name, """
-============================
-
-.. contents::
-.. section-numbering::
-
-Tests
-=====
-"""
-        
-        if self.symbol in ['H', 'Li', 'Be', 'C', 'N', 'O', 'F', 'P', 'Cl']:
-            formulas = [fix2(formula)
-                        for formula in molecules if self.symbol in formula]
-            if len(formulas) == 1:
-                txt = 'test for ' + formulas[0]
-                headline = 'Molecule'
-            else:
-                txt = ('tests for ' + ', '.join(formulas[:-1]) +
-                       ' and ' + formulas[-1])
-                headline = 'Molecules'
-            print >> o, """
-%s
----------
-
-See %s in `Molecule Tests`_.
-""" % (headline, txt)
-            
-        if self.symbol not in ['H', 'N', 'O', 'F', 'P', 'Cl']:
-            notes.register('bulk',
-"""Compensation charges are expanded with correct multipole
-moments up to *l*\ `max`:sub:\ =2.  Open-shell atoms are
-treated as non-spherical with integer occupation numbers, and
-zero-point energy is not included in the cohesive energies.""")
-
-            print >> o, """
-Bulk
-----
-
-.. figure:: bulk.png
-
-Lattice constant (*a*), bulk mudulus (*B*) and cohesive energy
-(*E*\ `c`:sub:) for %s %s calculated with the PBE functional [%d]_.
-The numbers
-are compared to very accurate, state-of-the-art, PBE calculations if
-available.
-""" % (bulkdata[self.symbol]['structure'], self.name.lower(),
-       notes['bulk'])
-            
-            A = npy.zeros((4, 5), npy.Float)
-            for n in range(4):
-                A[n] = self.scale**-n
-            AA = npy.innerproduct(A, A)
-
-            Ec = self.Eb - self.Ea
-
-            V = self.V0 * self.scale**3
-            Vfit = npy.arange(V[0] * 0.94, V[-1] * 1.06, self.V0 * 0.005)
-
-            a = solve(AA, npy.dot(A, Ec))
-
-            D = 4 * a[2]**2 - 12 * a[1] * a[3]
-            s = (-2 * a[2] + sqrt(D)) / (6 * a[3])
-
-            Vmin = self.V0 / s**3
-            B = s**2 / 9 / Vmin * (2 * a[2] + 6 * a[3] * s) * 160.21765
-
-            aM = solve(AA, npy.dot(A, self.M))
-
-            Mmin = aM[0]
-            Emin = a[0]
-            Efit = a[0]
-            ee = a[0]
-            for n in range(1, 4):
-                Efit += a[n] * (self.V0 / Vfit)**(n / 3.0)
-                Emin += a[n] * (self.V0 / Vmin)**(n / 3.0)
-                Mmin += aM[n] * (self.V0 / Vmin)**(n / 3.0)
-                ee += a[n] * self.scale**(-n)
-
-            amin = self.cell[0] * (Vmin / self.V0)**(1 / 3.0)
-
-            pylab.figure(figsize=(5, 3))
-            pylab.gca().set_position([0.25, 0.17, 0.71, 0.79])
-            pylab.plot(Vfit, Efit, '-', color='0.7')
-            pylab.plot(V, Ec, 'g.')
-            pylab.xlabel(r'$\rm{Volume} [\angstrom^3/\rm{atom}]$')
-            pylab.ylabel('Energy [eV/atom]')
-            pylab.savefig(self.symbol + '/bulk.png')
-
-            if 1:
-                a = solve(AA, npy.dot(A, self.Eb))
-                D = 4 * a[2]**2 - 12 * a[1] * a[3]
-                if D > 0.0:
-                    xs = (-2 * a[2] + sqrt(D)) / (6 * a[3])
-                    xVmin = self.V0 / xs**3
-                    xB = (xs**2 / 9 / Vmin * (2 * a[2] + 6 * a[3] * xs) *
-                          160.21765)
-                    xamin = self.cell[0] * (xVmin / self.V0)**(1 / 3.0)
-                else:
-                    xB = 0.0
-                    xamin = 0.0
-
-            print >> o, """
-.. list-table::
-   :widths: 5 4 9 9
-   :header-rows: 1
-   :stub-columns: 1
-
-   * -
-     - GPAW
-     - *ref.*
-     - error"""
-
-            aref = Y.get('aref', [])
-            Bref = Y.get('Bref', [])
-            Eref = Y.get('Ecref', [])
-            for txt, format, d, ref in [('*a* [Å]', '%.3f', amin, aref),
-                                        ('*a* [Å]', '%.3f', xamin, aref),
-                                        ('*B* [GPa]', '%.1f', B, Bref),
-                                        ('*B* [GPa]', '%.1f', xB, Bref),
-                                        ('*E*\ `c`:sub: [eV]', '%.3f',
-                                         -Emin, Eref)]:
-                print >> o, '   * -', txt
-                print >> o, '     -', format % d
-                print >> o, '     -',
-                print >> o, ', '.join([(format + ' [%d]_') % (dref, notes[r])
-                                       for dref, r in ref])
-                print >> o, '     -',
-                print >> o, ', '.join([format % (d - dref)
-                                       for dref, r in ref])
-
-            if Mmin != 0.0:
-                print >> o, '\nMagnetic moment per atom: %.2f.' % Mmin
-                if 'Mref' in Y:
-                    x = Y['Mref']
-                    print >> o, 'Reference value' + 's:'[-len(x):]
-                    print >> o, ', '.join(['%.2f [%d]_' % (M, notes[r])
-                                           for M, r in x]) + '.'
-
-            natoms = int(round(npy.product(self.cell) / self.V0))
-            if natoms == 1:
-                natoms = 'one atom'
-            else:
-                natoms = str(natoms) + ' atoms'
-            print >> o, """
-The unit cell contains %s:
-
-.. list-table::
-   :widths: 3 1 1 1
-   :header-rows: 1
-   :stub-columns: 1
-   
-""" % natoms
-            
-            for txt, format, data in [('', '*%s*', 'xyz'),
-                                      ('Side lengths [Å]', '%.3f',
-                                       self.cell / s),
-                                      ('Number of grid points', '%d',
-                                       self.gpts),
-                                      ('Grid spacings [Å]', '%.3f',
-                                       self.cell / self.gpts),
-                                      ('Number of **k**-points', '%d',
-                                       self.kpts)]:
-                print >> o, '   * -', txt
-                for d in data:
-                    print >> o, '     -', format % d
-
-            print >> o, """
-"""
-
-
-        notes.register('egg',
-"""The size of the egg-box effect is characterized by the maximum
-force and the maximum energy variation as an atom in vacuum
-(periodic boundary conditions) is displaced from ontop of one
-grid point to the neighboring one.""")
-
-        print >> o, """
-Dimer, egg-box
----------------
-
-.. figure:: dimer.png
-
-The first three rows of the folowing table shows the covergence of
-the dimer bond length (*d*), the atomization energy difference
-(*E*\ `d`:sub: - 2\ *E*\ `a`:sub:)
-and the total energy (*E*\ `d`:sub:) as a funcion of grid
-spacing *h* relative to the converged values for *h* = %.3f Å.  The
-last two rows show the size of the egg-box noise [%d]_ (*E*\ `egg`:sub:
-and *F*\ `egg`:sub:) as a funcion of *h*:
-
-.. list-table::
-   :widths: 2%s
-   :header-rows: 1
-   :stub-columns: 1
-
-   * - *h* [Å]""" % (self.h[-1], notes['egg'], ' 1' * self.ng)
-
+        self.Edimer0 = npy.empty(self.ng)
+        self.ddimer0 = npy.empty(self.ng)
         for i in range(self.ng):
-            print >> o, '     - %.3f' % self.h[i]
-
-        pylab.figure(figsize=(6, 4))
-        pylab.subplots_adjust(left=0.05, right=0.97, bottom=0.15, wspace=0.25)
-        p1 = pylab.subplot(121)
-        p2 = pylab.subplot(122)
-        d = self.d0 * (1 + 0.02 * npy.arange(-3, 4))
-        M = npy.zeros((4, 7), npy.Float)
-        for n in range(4):
-            M[n] = npy.array(d)**-n
-        M = npy.dot(inverse(npy.innerproduct(M, M)), M)
-
-        emin = []
-        eemin = []
-        dmin = []
-        eegg = []
-        fegg = []
-        for i in range(self.ng):
-            c = npy.dot(M, self.Edimer[i])
-
-            D = 4 * c[2]**2 - 12 * c[1] * c[3]
-            if D <= 0.0:
-                d0 = 0.0
-                e0 = 0.0
+            E = self.Edimer[i]
+            ia = E.argsort()[0]
+            E0 = E[ia]
+            d0 = d[ia]
+            if self.Fdimer[i, ia, 0] > 0.0:
+                ib = ia + 1
             else:
-                d0 = 1 / ((-2 * c[2] + sqrt(D)) / (6 * c[3]))
-                e0 = c[0]
-                for n in range(1, 4):
-                    e0 += c[n] * d0**-n
+                ib = ia - 1
+            if 0 <= ib < 7:
+                fa = self.Fdimer[i, ia, 0] * dd
+                fb = self.Fdimer[i, ib, 0] * dd
+                c = npy.linalg.solve(M, npy.array([E[ia], E[ib], fa, fb]))
+                x = (ib - ia) * fa / (fa - fb)
+                if 0 < x < 1:
+                    E0 = c[0] + x * (c[1] + x * (c[2] + x * c[3]))
+                    d0 = d[ia] + x * dd
+            self.Edimer0[i] = E0
+            self.ddimer0[i] = d0
+        print '%r: %.2f,' % (self.symbol, d0),
+        self.Ediss = 2 * self.Eegg[:, 0] - self.Edimer0
+        if 0:
+            import pylab as plt
+            plt.figure(figsize=(10, 12))
+            plt.subplots_adjust(left=0.07, right=0.97, bottom=0.05, wspace=0.25)
+            p1 = plt.subplot(321)
+            p2 = plt.subplot(322)
+            for i in range(self.ng):
+                x, y = f(d, self.Edimer[i] - self.Eegg[i, 0],
+                         -self.Fdimer[i, :, 1] * sqrt(3))
+                p1.plot(x, y, color=colors[i])
+                x, y = f(npy.linspace(0, 0.5 * self.h[i], 25),
+                         self.Eegg[i] - self.Eegg[i, 0],
+                         -self.Fegg[i])
+                p2.plot(x, y, color=colors[i])
+            p3 = plt.subplot(323)
+            p3.plot(self.h, self.Ediss - self.Ediss[-1], '-')
+            p3.plot(self.h, self.Eegg.ptp(axis=1), '-')
+            p4 = plt.subplot(324)
+            p4.plot(self.h, npy.abs(self.Fegg).max(axis=1), '-')
+            p4.plot(self.h, npy.abs(self.Fdimer.sum(axis=2)).max(axis=1), '-')
+            p5 = plt.subplot(325)
+            p5.plot(self.h, self.Edimer0 - self.Edimer0[-1], '-')
+            p6 = plt.subplot(326)
+            p6.plot(self.h, self.ddimer0 - self.ddimer0[-1], '-')
+            plt.title(self.symbol)
+            plt.show()
 
-            dmin.append(d0)
-            emin.append(e0)
-            eemin.append(e0 - 2 * self.Eadimer[i])
+def f(x, y, dydx):
+    dx = x[1] - x[0]
+    x2 = npy.empty(3 * len(x))
+    x2[::3] = x - 0.4 * dx
+    x2[1::3] = x + 0.4 * dx
+    x2[2::3] = x + 0.5 * dx
+    y2 = npy.empty_like(x2)
+    y2[::3] = y - dydx * 0.4 * dx
+    y2[1::3] = y + dydx * 0.4 * dx
+    y2[2::3] = npy.nan
+    return x2, y2
 
-            p1.plot(d, self.Edimer[i], color=colors[i])
-            p2.plot(d, self.Edimer[i] - 2 * self.Eadimer[i], color=colors[i])
-
-            eegg.append(1000 * (max(self.Eegg[i]) - min(self.Eegg[i])))
-            fegg.append(max(abs(self.Fegg[i])))
-
-        lines = []
-        labels = []
-        for h, c in zip(self.h, colors):
-            lines.append(p1.plot([], '-', color=c))
-            labels.append('%.3f' % h)
-
-        p2.legend(lines, labels, loc='upper right')
-        p1.set(xlabel=u'Bond length [Å]')
-        p2.set(xlabel=u'Bond length [Å]')
-        p1.set(title=r'$E_\rm{d} \rm{[eV]}$')
-        p2.set(title=r'$E_\rm{d}-2E_\rm{a} \rm{[eV]}$')
-        pylab.savefig(self.symbol + '/dimer.png')
-
-        for txt, data in [('*d* [Å]', dmin),
-                          ('*E*\ `d`:sub:-2\ *E*\ `a`:sub: [eV]',
-                           eemin),
-                          ('*E*\ `d`:sub: [eV]', emin)]:
-            print >> o, '   * -', txt
-            for d in data[:-1]:
-                print >> o, '     - %+.3f' % (d - data[-1])
-            print >> o, '     - (0.000)'
-        for txt, format, data in [('*E*\ `egg`:sub: [meV]', '%.1f', eegg),
-                                  ('*F*\ `egg`:sub: [eV/Å]', '%.3f', fegg)]:
-            print >> o, '   * -', txt
-            for d in data:
-                print >> o, '     -', format % d
-
-        if include_setup_summary:
-            self.setup_summary(o)
-            
-        print >> o, """
-
-Back to `periodic table`_.
-
-.. _periodic table: Setups_
-
-"""
-        print >> o, notes
-        
-        o.close()
-
-    def setup_summary(self, o):
-        import pylab
-
-        sys.stdout = devnull
-        G = Generator(self.symbol, 'LDA', scalarrel=True, nofiles=True)
-        params = symbols[symbol]
-        if len(params) == 2:
-            core, rcut = symbols[symbol]
-            extra = None
-        else:
-            core, rcut, extra = symbols[symbol]
-        G.run(core, rcut, extra, logderiv=False)
-        sys.stdout = sys.__stdout__
-
-        pylab.figure(figsize=(6,4))
-        print >> o
-        print >> o, 'Setup details'
-        print >> o, '============='
-        print >> o
-        print >> o, 'All-electron atom (LDA)'
-        print >> o, '-----------------------'
-        print >> o
-        print >> o, '====================  ===================='
-        print >> o, 'Energy contributions'
-        print >> o, '====================  ===================='
-        print >> o, 'Kinetic               %.6f' % G.Ekin
-        print >> o, 'XC                    %.6f' % G.Exc
-        print >> o, 'Potential             %.6f' % G.Epot
-        print >> o, 'Total                 %.6f' % (G.Ekin + G.Exc + G.Epot)
-        print >> o, '====================  ===================='
-
-        print >> o, """
-(units: Hartree)
-
-Eigenstates for spin-compensated atom:
-
-.. list-table::
-   :widths: 5 7 7 4
-   :header-rows: 1
-   :stub-columns: 1
-
-   * - State
-     - Eigenvalue
-     - *E*\ `kin`:sub:
-     - *r*\ `max`:sub:"""
-        for m, l, f, e, u in zip(G.n_j, G.l_j, G.f_j, G.e_j, G.u_j):
-            # Find kinetic energy:
-            k = e - npy.sum((npy.where(abs(u) < 1e-160, 0, u)**2 * #XXXNumeric!
-                             G.vr * G.dr)[1:] / G.r[1:])
-            
-            # Find outermost maximum:
-            g = G.N - 4
-            while u[g - 1] > u[g]:
-                g -= 1
-            x = G.r[g - 1:g + 2]
-            y = u[g - 1:g + 2]
-            A = npy.transpose(npy.array([x**i for i in range(3)]))
-            c, b, a = linalg.solve_linear_equations(A, y)
-            assert a < 0.0
-            rmax = -0.5 * b / a
-            
-            t = 'spdf'[l]
-            print >> o, '   * - %d%s\\ `%d`:sup:' % (m, 'spdf'[l], f)
-            print >> o, '     - %.4f' % e
-            print >> o, '     - %.4f' % k
-            print >> o, '     - %.3f' % rmax
-
-        print >> o, """
-(units: Bohr and Hartree)
-
-Pseudo atom
------------
-
-Pseudo and all-electron partial waves:
-
-.. figure:: waves.png
-
-Projectors:
-
-.. list-table::
-   :widths: 5 7 7 4
-   :header-rows: 1
-   :stub-columns: 1
-
-   * - State
-     - Norm
-     - Eigenvalue
-     - *r*\ `cut`:sub:"""
-
-        lines = []
-        labels = []
-        c = 0
-        for l, (n_n, f_n, e_n) in enumerate(zip(G.n_ln, G.f_ln, G.e_ln)):
-            for n in range(len(e_n)):
-                if n_n[n] > 0:
-                    label = '%d%s' % (n_n[n], 'spdf'[l])
-                    print >> o, '   * - %s\\ `%d`:sup:' % (label, f_n[n])
-                    print >> o, '     - %.4f' % npy.dot(G.s_ln[l][n]**2, G.dr)
-                    lines.append(pylab.plot(G.r, G.u_ln[l][n], '-',
-                                            color=colors[c]))
-                    labels.append(label)
-                    pylab.plot(G.r, G.s_ln[l][n], '--',  color=colors[c])
-                    c += 1
-                else:
-                    print >> o, '   * -', 'spdf'[l]
-                    print >> o, '     -'
-                print >> o, '     - %.3f' % e_n[n]
-                print >> o, '     - %.2f' % G.rcut_l[l]
-        print >> o, """
-(units: Bohr and Hartree)
-"""
-        pylab.legend(lines, labels, loc='upper right')
-        pylab.xlabel(r'$r \rm{[Bohr]}$')
-        pylab.ylabel(r'$\phi(r),\ \tilde{\phi}(r)$')
-        pylab.axis(xmax=G.rcut * 3)
-        pylab.axhline(color='black')
-        pylab.savefig(self.symbol + '/waves.png')
-        
-    def html(self):
-        os.system('rst2html.py ' +
-                  '--no-footnote-backlinks ' +
-                  '--trim-footnote-reference-space ' +
-                  '--footnote-references=superscript ' +
-                  '%s/page.txt %s/page.html' % (self.symbol, self.symbol))
+if len(args) == 0:
+    from gpaw.atom.generator import parameters
+    args = parameters.keys()
 
 for symbol in args:
-    if opt.queue:
-        fd, filename = tempfile.mkstemp(prefix=symbol + '.')
-        os.write(fd, 'gpaw-test ' + symbol + '\n')
-        os.close(fd)
-        os.system('qsub -q long ' + filename)
-    else:
-        ta = TestAtom(symbol)
-        ta.run()
-        if opt.summary:
-            ta.summary(opt.setup)
-        if opt.html:
-            ta.html()
+    ta = TestAtom(symbol)
+    ta.run(opt.summary)
+    if opt.summary and ta.ready:
+        ta.summary()
 
