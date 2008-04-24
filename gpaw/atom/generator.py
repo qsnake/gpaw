@@ -37,7 +37,7 @@ parameters = {
  'S' : {'core': '[Ne]',   'rcut': 1.6},
  'Cl': {'core': '[Ne]',   'rcut': 1.5},
  'Ar': {'core': '[Ne]',   'rcut': 1.6},
- 'K' : {'core': '[Ar]',   'rcut': 3.3},
+ 'K' : {'core': '[Ne]',   'rcut': [2.5, 2.1, 2.1]},
  'Ca': {'core': '[Ne]',   'rcut': [2.0, 1.7]},
  'Ti': {'core': '[Ne]3s', 'rcut': [2.4, 1.8, 1.8],
         'vbar': ('poly', 2.3), 'rcutcomp': 2.3},
