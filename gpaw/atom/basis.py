@@ -342,6 +342,7 @@ class BasisMaker:
         g = self.generator
 
         # Get (only) one occupied valence state for each l
+        # Not including polarization in this list
         lvalues = npy.unique([l for l, f in zip(g.l_j[g.njcore:], 
                                                 g.f_j[g.njcore:])
                               if f > 0])
@@ -448,9 +449,26 @@ class BasisMaker:
             print >> txt, '\n' + msg
             print >> txt, '-' * len(msg)
             if referencefile is None:
+                # Make a single Gaussian for polarization function.
+                #
+                # It is known that for given l, the sz cutoff defined
+                # by some fixed energy is strongly correlated to the
+                # value of the characteristic radius which best reproduces
+                # the wave function found by interpolation.
+                #
+                # We know that for e.g. d orbitals:
+                #   rchar ~= .37 rcut[sz](.3eV)
+                # Since we don't want to spend a lot of time finding
+                # these value for other energies, we just find the energy
+                # shift at .3 eV now
+
+                j = j_l[l_pol - 1]
+                u, e, de, vconf, rc_fixed = self.rcut_by_energy(j, .3, 1e-2,
+                                                                6., (8., .6))
+                
                 if rcharpol_rel is None:
                     rcharpol_rel = rchar_rels.get(l_pol, default_rchar_rel)
-                rchar = rcharpol_rel * rcut
+                rchar = rcharpol_rel * rc_fixed
                 gaussian = QuasiGaussian(1./rchar**2, rcut)
                 psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
                 print >> txt, 'Single quasi Gaussian'
