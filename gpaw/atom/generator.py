@@ -1048,9 +1048,17 @@ def construct_smooth_wavefunction(u, l, gc, r, s):
 if __name__ == '__main__':
     import os
     from gpaw.xc_functional import XCFunctional
+
+    # Pt and Au needs to be done non-scalar-relatistic first:
     for symbol in 'Pt Au'.split():
         g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
         g.run(exx=True, **parameters[symbol])
+
+    # Special case for Ir also:
+    g = Generator('Ir', 'LDA', scalarrel=False, nofiles=False)
+    g.run(exx=True, **{'core': '[Xe]4f', 'rcut': [2.5, 2.6, 2.5],
+                       'vbar': ('poly', 2.1), 'rcutcomp': 2.3})
+
     for xcname in ['LDA', 'PBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + XCFunctional(xcname).get_name()
