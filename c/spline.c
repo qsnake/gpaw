@@ -17,11 +17,26 @@ static PyObject * spline_get_angular_momentum_number(SplineObject *self,
   return Py_BuildValue("i", self->spline.l);
 }
 
+static PyObject * spline_get_value_and_derivative(SplineObject *obj, 
+						  PyObject *args,
+						  PyObject *kwargs)
+{
+  double r;
+  if (!PyArg_ParseTuple(args, "d", &r))
+    return NULL;  
+  double f;
+  double dfdr;
+  bmgs_get_value_and_derivative(&obj->spline, r, &f, &dfdr);
+  return Py_BuildValue("(dd)", f, dfdr);
+}
+
 static PyMethodDef spline_methods[] = {
     {"get_cutoff",
      (PyCFunction)spline_get_cutoff, METH_VARARGS, 0},
     {"get_angular_momentum_number", 
      (PyCFunction)spline_get_angular_momentum_number, METH_VARARGS, 0},
+    {"get_value_and_derivative", 
+     (PyCFunction)spline_get_value_and_derivative, METH_VARARGS, 0},
     {NULL, NULL, 0, NULL}
 };
 

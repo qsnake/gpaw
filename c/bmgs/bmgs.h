@@ -59,6 +59,8 @@ bmgsstencil bmgs_gradient(int k, int i, double h,
 void bmgs_deletestencil(bmgsstencil* spline);
 bmgsspline bmgs_spline(int l, double dr, int nbins, double* f);
 double bmgs_splinevalue(const bmgsspline* spline, double r);
+void bmgs_get_value_and_derivative(const bmgsspline* spline, double r,
+				   double *f, double *dfdr);
 void bmgs_deletespline(bmgsspline* spline);
 void bmgs_radial1(const bmgsspline* spline, 
 		  const int n[3], const double C[3],
