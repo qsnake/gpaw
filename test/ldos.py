@@ -13,6 +13,10 @@ Hnospin.center()
 Hspin.center()
 LiH.center()
 
+# This is needed for the Wigner-Zeitz test to give
+# architecture-independent results:
+LiH.translate(0.003234)
+
 calc = Calculator(fixmom=True, hund=True)
 Hnospin.set_calculator(calc)
 Hnospin.get_potential_energy()
@@ -47,7 +51,7 @@ assert ((Li_wzweight - [.12, .94]).round(2) == 0).all()
 assert ((H_wzweight - [.88, .06]).round(2) == 0).all()
 assert ((Li_wzweight + H_wzweight).round(5) == 1).all()
 equal(n_a.sum(), 0., 1e-5)
-equal(n_a[1], .766, .001)
+equal(n_a[1], .764, .001)
 
 #               HOMO    s   py  pz  px  *s
 Li_orbitalweight[0] -= [.4, .0, .6, .0, .0]
