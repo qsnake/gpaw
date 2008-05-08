@@ -11,12 +11,14 @@ from gpaw.domain import Domain
 from gpaw.xc_functional import XC3DGrid
 from gpaw.transformers import Transformer
 from gpaw.utilities import  check_unit_cell
+from gpaw import Calculator
 import gpaw.mpi as mpi
 import _gpaw
 
 
 class VanDerWaals:
-    def __init__(self, n_g, gd, xcname='revPBE', ncoarsen=0):
+    def __init__(self, n_g, gd, calc=None,
+                 xcname='revPBE', ncoarsen=0):
         """Van der Waals object.
 
         Bla-bla-bla, ref to paper, ...
@@ -43,9 +45,11 @@ class VanDerWaals:
 
         # GGA exchange and correlation:
         xc = XC3DGrid(xcname, gd)
+
         self.GGA_xc_energy = xc.get_energy_and_potential(n_g, v_g)
         self.a2_g = xc.a2_g
 
+            
         # LDA correlation energy:
         c = XC3DGrid('None-C_PW', gd)
         self.LDA_c_energy = c.get_energy_and_potential(n_g, v_g)
@@ -54,6 +58,22 @@ class VanDerWaals:
         xname = {'revPBE': 'X_PBE_R-None','RPBE': 'X_RPBE-None'}[xcname]
         x = XC3DGrid(xname, gd)
         self.GGA_x_energy = x.get_energy_and_potential(n_g, v_g)
+
+        self.dExc_semilocal = (-self.GGA_xc_energy + self.LDA_c_energy +
+                               self.GGA_x_energy)
+
+        if calc is not None:
+            if isinstance(calc, Calculator):
+                name = {'revPBE': 'X_PBE_R-C_PW',
+                        'RPBE': 'X_RPBE-C_PW'}[xcname]
+                self.dExc_semilocal = calc.get_xc_difference(name)
+            else:
+                nxc = {'revPBE': 4, 'RPBE': 5}[xcname]
+                self.dExc_semilocal = (
+                    calc.GetNetCDFEntry('EvaluateCorrelationEnergy')[-1, 1] -
+                    calc.GetNetCDFEntry('EvaluateCorrelationEnergy'[-1, nxc]))
+
+            self.dExc_semilocal /= Hartree
 
         ncut = 1.0e-7
         n_g.clip(ncut, npy.inf, out=n_g)
@@ -134,9 +154,8 @@ class VanDerWaals:
                          self.phi_jk, self.deltaD, self.deltadelta,
                          iA, iB)
         E_cl = mpi.world.sum(E_cl * gd.h_c.prod()**2)
-        E_nl_c = (-self.GGA_xc_energy + E_cl + self.LDA_c_energy +
-                  self.GGA_x_energy)
-        return E_nl_c * Hartree
+        E_nl_c = self.dExc_semilocal + E_cl
+        return E_nl_c * Hartree, E_cl*Hartree
     
 
     def get_e_xc_LDA(self):
