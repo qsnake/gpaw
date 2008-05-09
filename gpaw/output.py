@@ -105,7 +105,7 @@ class Output:
         t('Positions:')
         for a, pos_c in enumerate(pos_ac):
             symbol = self.nuclei[a].setup.symbol
-            t('%3d %-2s %8.4f%8.4f%8.4f' %
+            t('%3d %-2s %9.4f %9.4f %9.4f' %
               ((a, symbol) + tuple(self.a0 * pos_c)))
         t()
 
@@ -325,7 +325,7 @@ class Output:
         c = self.Ha / self.a0
         for a, nucleus in enumerate(self.nuclei):
             symbol = nucleus.setup.symbol
-            t('%3d %-2s %8.4f%8.4f%8.4f' %
+            t('%3d %-2s %10.5f %10.5f %10.5f' %
               ((a, symbol) + tuple(self.F_ac[a] * c)))
 
     def print_eigenvalues(self):
