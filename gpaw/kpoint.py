@@ -213,15 +213,15 @@ class KPoint:
 
     def add_to_kinetic_density(self, taut_G):
         """Add contribution to pseudo kinetic energy density."""
-
-        ddr = [Gradient(self.gd, c).apply for c in range(3)]
-        d_G = self.gd.empty()
+        ddr = [Gradient(self.gd, c, dtype=self.dtype).apply for c in range(3)]
+        d_G = self.gd.empty(dtype=self.dtype)
         for f,psit_G in zip(self.f_n,self.psit_nG):
             for c in range(3):
-                ddr[c](psit_G,d_G)
                 if self.dtype == float:
-                    axpy(f, d_G[c]**2, taut_G) #taut_G += f * d_G[c]**2
+                    ddr[c](psit_G,d_G)
+                    axpy(f, d_G**2, taut_G) #taut_G += f * d_G**2
                 else:
+                    ddr[c](psit_G,d_G,self.phase_cd)
                     taut_G += f * (d_G * npy.conjugate(d_G)).real
 
     def calculate_wave_functions_from_lcao_coefficients(self, nbands):
