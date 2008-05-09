@@ -205,7 +205,7 @@ class CoefficientOptimizer:
         simplex = npy.concatenate((npy.ones((ccount,1)),
                                    ones + .5 * diag), axis=1)
         simplex = npy.transpose(simplex)
-        self.amoeba = Amoeba(simplex, function=function, tolerance=1e-10)
+        self.amoeba = Amoeba(function, simplex, tolerance=1e-10)
         
     def find_coefficients(self):
         self.amoeba.optimize()
@@ -784,7 +784,7 @@ def get_systems(symbols=None):
 class Reference:
     """Represents a reference function loaded from a file."""
     def __init__(self, symbol, filename=None, index=None, txt=None):
-        if filename is None:
+        if filename is None or filename == '-':
             formula, index = get_system(symbol)
             filename = restart_filename % formula
         calc = Calculator(filename, txt=txt)

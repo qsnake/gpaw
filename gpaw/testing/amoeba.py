@@ -8,94 +8,71 @@ reflect = -1.0
 halfway = 0.5
 extrapolate = 2.0
 
-def standardfunction(x):
-    """Default test function with one minimum at (1,2,3, ...).
-    
-    The minimum is exactly 42. Takes a list of coordinates as an argument
-    and returns a number.
-    """
-    y = 42
-    for i in range(len(x)):
-        y += (x[i] - (i + 1))**2
-    return y
-
-class Logger:
-    """
-    This class can be used to encapsulate a function which is to be optimized.
-    Invocations of that function will then be logged by this object during
-    optimization.
-    """
-    def __init__(self, function, amoeba):
-        self.innerfunction = function
-        self.amoeba = amoeba
-        self.x = []
-        self.y = []
-        self.dx = []
-        self.dev = []
-        self.vol = []
-        self.center = 0
-
-    def function(self, args):
-        y = self.innerfunction(args)
-        self.x.append(tuple(args))
-        self.y.append(y)
-        currentcenter = center(self.amoeba.simplex)
-        dcenter = currentcenter - self.center
-        self.dx.append(npy.sqrt(npy.dot(dcenter, dcenter)))        
-        #self.c.append(center(self.amoeba.simplex))
-        self.dev.append(self.amoeba.relativedeviation)
-        self.vol.append(volume(self.amoeba.simplex))
-        self.center = currentcenter
-        return y
-
-    def unzip(self):
-        # equivalent to zip(*...)?
-        return [[x[i] for x in self.x] for i in range(len(self.x[0]))]
-
-    def numarray(self, transpose = False):
-        arr = npy.array(self.x)
-        if transpose:
-            arr = npy.transpose(arr)
-        return arr
 
 class Amoeba:
     """Implementation of the downhill simplex minimization method.
 
     This works by evaluating function values on the vertices of a simplex,
-    moving worse points in the general direction of better ones."""
+    moving worse points in the general direction of better ones.
 
-    def __init__(self, simplex, values=None, function=standardfunction,
+    Use:
+    >>> amoeba = Amoeba(...)
+    >>> x, y = amoeba.optimize()
+
+    See test function in this module for example.
+
+    Notable attributes:
+
+      * simplex - list of points
+      * y - list of corresponding function values
+      * itercount - number of iterations
+      * evaluationcount - number of function evaluations (>= itercount)
+      * relativedeviation - the number |ymax - ymin| / |ymax + ymin|
+      * logger - object which stores history
+      
+    """
+
+    def __init__(self, function, x, dx=.1, y=None,
                  tolerance=0.001, savedata=False):
-        y = values
-        self.vertexcount = len(simplex)
-        self.dimcount = self.vertexcount - 1
+        rank = npy.rank(x)
+        if rank == 2: # simplex
+            self.simplex = npy.asarray(x)
+            np, nc = self.simplex.shape
+            assert np == nc + 1, 'Simplex should be (N+1) x N, is %d x %d' % \
+                   (np, nc)
+        elif rank == 1: # single vector
+            self.simplex = build_simplex(x, dx)
+        else:
+            raise ValueError('x should be a point (1D) or a simplex (2D)!')
 
-        self.simplex = simplex
-
-        self.relativedeviation=0.
+        self.vertexcount, self.dimcount = self.simplex.shape        
+        self.relativedeviation = 0.
 
         if savedata:
             self.logger = Logger(function, self)
             function = self.logger.function
 
         if y is None:
-            y = map(function, simplex)
+            y = map(function, self.simplex)
         elif len(simplex) != len(y):
             raise Exception('Vertex count differs from value count')
-        self.y = y
+        self.y = npy.asarray(y)
 
+        self.itercount = 0
         self.evaluationcount = 0
         self.tolerance = tolerance
         self.function = function
-        #This is probably the coordinate sum, i.e.
-        #it probably has to do with the geometric center of the simplex
-        self.coord_sums = [None]*self.dimcount
+        self.coord_sums = npy.zeros(self.dimcount)
         self.calc_coord_sums()
         self.analyzepoints()
 
-    def optimize(self):
-        while self.step() > self.tolerance:
+    def optimize(self, maxiter=npy.inf):
+        """Run optimization.
+
+        Returns minimum point and corresponding function value."""
+        while self.step() > self.tolerance and self.itercount < maxiter:
             pass
+        return self.simplex[self.ilow], self.y[self.ilow]
 
     def analyzepoints(self):
         simplex = self.simplex
@@ -132,16 +109,15 @@ class Amoeba:
         return self.relativedeviation
     
     def calc_coord_sums(self):
-        """
-        Given a list of (dimcount+1) vectors each with dimcount
+        """Given a list of (dimcount+1) vectors each with dimcount
         coordinates, returns the list of coordinate sums across
         vectors, i.e. the n'th element is the sum of the n'th
-        coordinates of all vectors in p
-        """
+        coordinates of all vectors in p"""
         for i in range(self.dimcount):
             self.coord_sums[i] = sum([q[i] for q in self.simplex])
 
     def step(self):
+        self.itercount += 1
         simplex = self.simplex
         y = self.y
         dimcount = self.dimcount
@@ -174,11 +150,9 @@ class Amoeba:
         
                             
     def grope(self, factor):
-        """
-        Extrapolates through or partway to simplex face, possibly
-        finding a better vertex
-        """
-
+        """Extrapolates through or partway to simplex face, possibly
+        finding a better vertex """
+        
         y = self.y
         ihigh = self.ihigh
         dimcount = self.dimcount
@@ -202,11 +176,94 @@ class Amoeba:
         
         return ytest
 
+
+class Logger:
+    """Utility class to log data."""
+    
+    def __init__(self, function, amoeba):
+        self.innerfunction = function
+        self.amoeba = amoeba
+        self.x = []
+        self.y = []
+        self.dx = []
+        self.dev = []
+        self.vol = []
+        self.center = 0
+
+    def function(self, args):
+        y = self.innerfunction(args)
+        self.x.append(tuple(args))
+        self.y.append(y)
+        currentcenter = center(self.amoeba.simplex)
+        dcenter = currentcenter - self.center
+        self.dx.append(npy.sqrt(npy.dot(dcenter, dcenter)))        
+        self.dev.append(self.amoeba.relativedeviation)
+        self.vol.append(volume(self.amoeba.simplex))
+        self.center = currentcenter
+        return y
+
+    def unzip(self):
+        # equivalent to zip(*...)?
+        return [[x[i] for x in self.x] for i in range(len(self.x[0]))]
+
+    def numarray(self, transpose = False):
+        arr = npy.array(self.x)
+        if transpose:
+            arr = npy.transpose(arr)
+        return arr
+
+
+def build_simplex(x_c, dx):
+    nc = len(x_c)
+    nn = nc + 1
+    simplex_nc = npy.repeat(npy.asarray([x_c]), nn, 0)
+    simplex_nc[1:] += npy.identity(nc) * dx
+    return simplex_nc
+
+
 def center(simplex):
+    """Get the center of a simplex."""
     vertices = [npy.array(point) for point in simplex]
     return sum(vertices)/len(simplex)
 
+
 def volume(simplex):
+    """Get the volume of a simplex."""
     vertices = [npy.array(point) for point in simplex]
     differences = [vertices[i]-vertices[i+1] for i in range(len(vertices)-1)]
     return npy.linalg.det(npy.array(differences))
+
+
+def standardfunction(x):
+    """Default test function with one minimum at (1,2,3, ...).
+    
+    The minimum is exactly 42. Takes a list of coordinates as an argument
+    and returns a number."""
+    y = 42
+    for i in range(len(x)):
+        y += (x[i] - (i + 1))**2
+    return y
+
+
+def example():
+    """Make a simple test optimization."""
+    f = standardfunction
+    x = npy.array([2.,1.,5.,4.,6.])
+    dx = .1
+
+    amoeba = Amoeba(f, x, dx, tolerance=1e-8, savedata=True)
+    x, y = amoeba.optimize()
+    print amoeba.itercount
+    print y
+    print x
+
+    assert abs(y - 42.) < 1e-3
+
+    # Plot history
+    import pylab
+    pylab.plot(amoeba.logger.y)
+    pylab.show()
+
+
+if __name__ == '__main__':
+    example()
