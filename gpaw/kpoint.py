@@ -196,10 +196,10 @@ class KPoint:
                 nt_G += f * (psit_G * psit_G.conj()).real
         else:
             if self.dtype == float:
-                for psit_G, f in zip(self.psit_nG, f_n):
+                for f, psit_G in zip(f_n, self.psit_nG):
                     axpy(f, psit_G**2, nt_G)  # nt_G += f * psit_G**2
             else:
-                for psit_G, f in zip(self.psit_nG, f_n):
+                for f, psit_G in zip(f_n, self.psit_nG):
                     nt_G += f * (psit_G * npy.conjugate(psit_G)).real
 
         # Hack used in delta-scf calculations:
