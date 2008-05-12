@@ -1,4 +1,4 @@
-# Copyright (c) 2007 Lauri Lehtovaara
+# Written by Lauri Lehtovaara, 2008
 
 """This module defines BiCGStab-class, which implements biconjugate
 gradient stabilized method. Requires Numpy and GPAW's own BLAS."""
@@ -83,7 +83,7 @@ class BiCGStab:
         r = self.gd.zeros(nvec, dtype=complex)
         A.dot(-x,r)
         r += b
-        
+
         q = self.gd.zeros(nvec, dtype=complex)
         q[:] = r
 
@@ -144,7 +144,7 @@ class BiCGStab:
             # if abs(beta) / scale < eps, then BiCGStab breaks down
             if ( (i > 0) and
                  ((npy.abs(beta) / scale) < self.eps).any() ):
-                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (npy.min(npy.abs(rho)),self.eps))
+                raise RuntimeError("Biconjugate gradient stabilized method failed (abs(beta)=%le < eps = %le)." % (npy.min(npy.abs(beta)),self.eps))
 
 
             # p = r + beta * (p - omega * v)
@@ -225,7 +225,7 @@ class BiCGStab:
 
         # done
         self.iterations = i+1
-        #print 'BiCGStab iterations = ', self.iterations
+        print 'BiCGStab iterations = ', self.iterations
 
         if self.timer is not None:
             self.timer.stop('BiCGStab')

@@ -1,4 +1,4 @@
-# Copyright (c) 2007 Lauri Lehtovaara
+# Written by Lauri Lehtovaara, 2007
 
 """This module implements a class for (true) time-dependent density 
 functional theory calculations.
@@ -21,9 +21,11 @@ from gpaw.mpi import rank
 
 
 from gpaw.tddft.bicgstab import BiCGStab
+from gpaw.tddft.cscg import CSCG
 from gpaw.tddft.propagators import \
     ExplicitCrankNicolson, \
     SemiImplicitCrankNicolson, \
+    SemiImplicitKrylovExponential, \
     AbsorptionKick
 from gpaw.tddft.tdopers import \
     TimeDependentHamiltonian, \
@@ -130,6 +132,9 @@ class TDDFT(PAW):
         if solver is 'BiCGStab':
             self.solver = BiCGStab( gd=self.gd, timer=self.timer,
                                     tolerance=tolerance )
+        elif solver is 'CSCG':
+            self.solver = CSCG( gd=self.gd, timer=self.timer,
+                                tolerance=tolerance )
         else:
             raise RuntimeError( 'Error in TDDFT: Solver %s not supported. '
                                 'Only BiCGStab is currently supported.' 
@@ -159,6 +164,14 @@ class TDDFT(PAW):
                                            self.preconditioner,
                                            self.gd,
                                            self.timer )
+        elif propagator is 'SIKE':
+            self.propagator = \
+                SemiImplicitKrylovExponential( self.td_density,
+                                               self.td_hamiltonian,
+                                               self.td_overlap,
+                                               degree = 8,
+                                               gd = self.gd,
+                                               timer = self.timer )
         else:
             raise RuntimeError( 'Error in TDDFT:' +
                                 'Time propagator %s not supported. '

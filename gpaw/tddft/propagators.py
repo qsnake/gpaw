@@ -1,4 +1,4 @@
-# Copyright (c) 2007 Lauri Lehtovaara
+# Written by Lauri Lehtovaara, 2007
 
 """This module implements time propagators for time-dependent density 
 functional theory calculations."""
@@ -8,14 +8,20 @@ import sys
 import numpy as npy
 
 from gpaw.utilities.blas import axpy
+from gpaw.utilities.blas import dotc
 
 from gpaw.mpi import rank
+
 
 # Multivector ZAXPY: a x + y => y
 def multi_zaxpy2(a,x,y, nvec):
     for i in range(nvec):
         axpy(a*(1+0J), x[i], y[i])
 
+
+class DummyKPoint:
+    def __init__(self):
+        pass
 
 ###############################################################################
 # Propagator
@@ -324,7 +330,8 @@ class SemiImplicitCrankNicolson(Propagator):
         self.gd = gd
         self.timer = timer
         
-        self.tmp_psit_nG = None
+        self.tmp_kpt_u = None
+        self.tmp2_kpt_u = None
         self.hpsit = None
         self.spsit = None
         
@@ -341,18 +348,30 @@ class SemiImplicitCrankNicolson(Propagator):
         time_step: float
             time step
         """
-        # temporary wavefunctions
-        
-        if self.tmp_psit_nG is None:
-            self.tmp_psit_nG = []
-            for kpt in kpt_u:
-                self.tmp_psit_nG.append( self.gd.empty( n=len(kpt.psit_nG),
-                                                        dtype=complex ) )
 
-        # copy current wavefunctions to temporary variable
-        for u in range(len(kpt_u)):
-            self.tmp_psit_nG[u][:] = kpt_u[u].psit_nG
-        
+        # temporary wavefunctions
+        #if self.tmp_psit_nG is None:
+        #    self.tmp_psit_nG = []
+        #    for kpt in kpt_u:
+        #        self.tmp_psit_nG.append( self.gd.empty( n=len(kpt.psit_nG),
+        #                                                dtype=complex ) )
+        if self.tmp_kpt_u is None:
+            self.tmp_kpt_u = []
+            for kpt in kpt_u:
+                tmp_kpt = DummyKPoint()
+                tmp_kpt.psit_nG = self.gd.empty( n=len(kpt.psit_nG),
+                                                 dtype=complex )
+                self.tmp_kpt_u.append(tmp_kpt)
+
+        if self.tmp2_kpt_u is None:
+            self.tmp2_kpt_u = []
+            for kpt in kpt_u:
+                tmp_kpt = DummyKPoint()
+                tmp_kpt.psit_nG = self.gd.empty( n=len(kpt.psit_nG),
+                                                 dtype=complex )
+                self.tmp2_kpt_u.append(tmp_kpt)
+
+
         if self.hpsit is None:
             self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG), dtype=complex)
         if self.spsit is None:
@@ -372,8 +391,23 @@ class SemiImplicitCrankNicolson(Propagator):
 
         self.timer.stop('Update time-dependent operators')
 
+
+        # copy current wavefunctions to temporary variable
+        #for u in range(len(kpt_u)):
+        #    self.tmp_psit_nG[u][:] = kpt_u[u].psit_nG
+        for u in range(len(kpt_u)):
+            self.tmp_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
+            #self.tmp2_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
+            #kpt_u[u].psit_nG[:] = 0.0
+
         # predict
-        self.solve_propagation_equation(kpt_u, time_step)
+        #  here kpt_u is overwritten by (S - i H(t) t / 2 hbar) kpt_u
+        #  before actually solving the equation, maybe better would
+        #  be full Euler step (S - i H(t) t hbar) kpt_u, maybe not
+        #self.solve_propagation_equation(kpt_u, self.tmp2_kpt_u, time_step, True)
+        #self.solve_propagation_equation(kpt_u, self.tmp2_kpt_u, time_step)
+        self.solve_propagation_equation(kpt_u, kpt_u, time_step)
+
 
         self.timer.start('Update time-dependent operators')
 
@@ -387,31 +421,42 @@ class SemiImplicitCrankNicolson(Propagator):
 
         self.timer.stop('Update time-dependent operators')
 
+
         # propagate psit(t), not psit(t+dt), in correct
-        for u in range(len(kpt_u)):
-            kpt_u[u].psit_nG[:] = self.tmp_psit_nG[u]
-        
+        #for u in range(len(kpt_u)):
+        #    kpt_u[u].psit_nG[:] = self.tmp_psit_nG[u]
+
+        #for u in range(len(kpt_u)):
+        #    kpt_u[u].psit_nG[:] = self.tmp_kpt_u[u].psit_nG
+
         # correct
-        self.solve_propagation_equation(kpt_u, time_step)
+        # ( predicted kpt_u is given as initial guess, old wavefunction are
+        #   used to calculate rhs )
+        self.solve_propagation_equation(kpt_u, self.tmp_kpt_u, time_step)
         
-        
+
     # ( S + i H dt/2 ) psit(t+dt) = ( S - i H dt/2 ) psit(t)
-    def solve_propagation_equation(self, kpt_u, time_step):
-        
-        for kpt in kpt_u:
+    def solve_propagation_equation(self, kpt_u, rhs_kpt_u, time_step, guess = False):
+        # kpt_u is guess, rhs_kpt_u is used to calculate rhs and is overwritten
+        for [kpt, rhs_kpt] in zip(kpt_u, rhs_kpt_u):
             self.kpt = kpt
             self.timer.start('Apply time-dependent operators')
-            self.td_hamiltonian.apply(self.kpt, kpt.psit_nG, self.hpsit)
-            self.td_overlap.apply(self.kpt, kpt.psit_nG, self.spsit)
+            self.td_hamiltonian.apply(self.kpt, rhs_kpt.psit_nG, self.hpsit)
+            self.td_overlap.apply(self.kpt, rhs_kpt.psit_nG, self.spsit)
             self.timer.stop('Apply time-dependent operators')
 
-            #psit[:] = self.spsit - .5J * self.hpsit * time_step
-            kpt.psit_nG[:] = self.spsit
-            multi_zaxpy2(-.5j * self.time_step, self.hpsit, kpt.psit_nG,
-                          len(kpt.psit_nG))
+            #self.psit_nG[:] = self.spsit - .5J * self.hpsit * time_step
+            rhs_kpt.psit_nG[:] = self.spsit
+            multi_zaxpy2(-.5j * self.time_step, self.hpsit, rhs_kpt.psit_nG,
+                          len(rhs_kpt.psit_nG))
+
+            if guess:
+                kpt.psit_nG[:] = self.spsit
+                multi_zaxpy2(-1.0j * self.time_step, self.hpsit, kpt.psit_nG,
+                              len(rhs_kpt.psit_nG))
 
             # A x = b
-            self.solver.solve(self, kpt.psit_nG, kpt.psit_nG)
+            self.solver.solve(self, kpt.psit_nG, rhs_kpt.psit_nG)
             
             
     # ( S + i H dt/2 ) psi
@@ -433,8 +478,7 @@ class SemiImplicitCrankNicolson(Propagator):
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit
         psin[:] = self.spsit
-        multi_zaxpy2(.5j * self.time_step, self.hpsit, psin,
-                     len(psi))
+        multi_zaxpy2(.5j * self.time_step, self.hpsit, psin, len(psi))
 
 
     #  M psin = psi, where M = T (kinetic energy operator)
@@ -455,3 +499,311 @@ class SemiImplicitCrankNicolson(Propagator):
         else:
             psin[:] = psi
         self.timer.stop('Solve TDDFT preconditioner')
+
+
+
+
+
+###############################################################################
+# SemiImpicitKrylovExponential
+###############################################################################
+class SemiImplicitKrylovExponential(Propagator):
+    """Semi-implicit Krylov exponential propagator
+    
+    
+    """
+
+    # Multivector dot product, a^H b, where ^H is conjugate transpose
+    def multi_zdotc(self, s, x,y, nvec):
+        for i in range(nvec):
+            s[i] = dotc(x[i],y[i])
+            self.gd.comm.sum(s)
+        return s
+
+    # Multivector ZAXPY: a x + y => y
+    def multi_zaxpy(self, a,x,y, nvec):
+        for i in range(nvec):
+            axpy(a[i]*(1+0J), x[i], y[i])
+        
+    # Multiscale: a x => x
+    def multi_scale(self, a,x, nvec):
+        for i in range(nvec):
+            x[i] *= a[i]
+
+    
+    def __init__( self, td_density, td_hamiltonian, td_overlap, 
+                  degree, gd, timer ):
+        """Create SemiImplicitKrylovExponential-object.
+        
+        Parameters
+        ----------
+        td_density: TimeDependentDensity
+            the time-dependent density
+        td_hamiltonian: TimeDependentHamiltonian
+            the time-dependent hamiltonian
+        td_overlap: TimeDependentOverlap
+            the time-dependent overlap operator
+        degree: integer
+            Degree of the Krylov subspace
+        gd: GridDescriptor
+            coarse (wavefunction) grid descriptor
+        timer: Timer
+            timer
+        
+        """
+        self.td_density = td_density
+        self.td_hamiltonian = td_hamiltonian
+        self.td_overlap = td_overlap
+        self.degree = degree
+        self.gd = gd
+        self.timer = timer
+        
+        self.tmp_kpt_u = None
+        self.lm = None
+        self.em = None
+        self.hm = None
+        self.sm = None
+        self.xm = None
+        self.qm = None
+        self.Hqm = None
+        self.Sqm = None
+        self.rqm = None
+        
+        
+    def propagate(self, kpt_u, time, time_step):
+        """Propagate wavefunctions once.
+        
+        Parameters
+        ----------
+        kpt_u: List of Kpoints
+            K-points
+        time: float
+            the current time
+        time_step: float
+            time step
+        """
+
+        # temporary wavefunctions
+        #if self.tmp_psit_nG is None:
+        #    self.tmp_psit_nG = []
+        #    for kpt in kpt_u:
+        #        self.tmp_psit_nG.append( self.gd.empty( n=len(kpt.psit_nG),
+        #                                                dtype=complex ) )
+        if self.tmp_kpt_u is None:
+            self.tmp_kpt_u = []
+            for kpt in kpt_u:
+                tmp_kpt = DummyKPoint()
+                tmp_kpt.psit_nG = self.gd.empty( n=len(kpt.psit_nG),
+                                                 dtype=complex )
+                self.tmp_kpt_u.append(tmp_kpt)
+
+
+        # Allocate memory for Krylov subspace stuff
+        self.nvec = len(kpt_u[0].psit_nG)
+        nvec = self.nvec
+
+        # em = (wfs, degree)
+        if self.em is None:
+            self.em = npy.zeros( (nvec, self.degree), float)
+
+        # em = (wfs)
+        if self.lm is None:
+            self.lm = npy.zeros( (nvec,), complex)
+
+        # hm = (wfs, degree, degree)
+        if self.hm is None:
+            self.hm = npy.zeros( (nvec, self.degree, self.degree), complex)
+        # sm = (wfs, degree, degree)
+        if self.sm is None:
+            self.sm = npy.zeros( (nvec, self.degree, self.degree), complex)
+        # xm = (wfs, degree, degree)
+        if self.xm is None:
+            self.xm = npy.zeros( (nvec, self.degree, self.degree), complex)
+
+        # qm = (degree, wfs, nx, ny, nz) 
+        if self.qm is None:
+            self.qm = self.gd.zeros( (self.degree, nvec), 
+                                     dtype=complex )
+        # H qm = (degree, wfs, nx, ny, nz) 
+        if self.Hqm is None:
+            self.Hqm = self.gd.zeros( (self.degree, nvec), 
+                                     dtype=complex )
+        # S qm = (degree, wfs, nx, ny, nz) 
+        if self.Sqm is None:
+            self.Sqm = self.gd.zeros( (self.degree, nvec), 
+                                     dtype=complex )
+        # rqm = (wfs, nx, ny, nz) 
+        if self.rqm is None:
+            self.rqm = self.gd.zeros( (nvec,), 
+                                      dtype=complex )
+
+        
+        self.time_step = time_step
+
+
+        self.timer.start('Update time-dependent operators')
+
+        # rho(t)
+        self.td_density.update()
+        # H(t)
+        self.td_hamiltonian.update(self.td_density.get_density(), time)
+        # S(t)
+        self.td_overlap.update()
+
+        self.timer.stop('Update time-dependent operators')
+
+
+        # copy current wavefunctions to temporary variable
+        #for u in range(len(kpt_u)):
+        #    self.tmp_psit_nG[u][:] = kpt_u[u].psit_nG
+        for u in range(len(kpt_u)):
+            self.tmp_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
+            #self.tmp2_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
+            #kpt_u[u].psit_nG[:] = 0.0
+
+        # predict
+        self.solve_propagation_equation(kpt_u, time_step)
+
+
+        self.timer.start('Update time-dependent operators')
+
+        # rho(t+dt)
+        self.td_density.update()
+        # H(t+dt/2)
+        self.td_hamiltonian.half_update( self.td_density.get_density(),
+                                         time + time_step )
+        # S(t+dt/2)
+        self.td_overlap.half_update()
+
+        self.timer.stop('Update time-dependent operators')
+
+
+        # propagate psit(t), not psit(t+dt), in correct
+        for u in range(len(kpt_u)):
+            kpt_u[u].psit_nG[:] = self.tmp_kpt_u[u].psit_nG
+
+        # correct
+        self.solve_propagation_equation(kpt_u, time_step)
+        
+
+    # psi(t) = exp(-i t S^-1 H) psi(0)
+    def solve_propagation_equation(self, kpt_u, time_step):
+        tmp = npy.zeros((self.nvec,), complex)
+        xm_tmp = npy.zeros((self.nvec, self.degree), complex)
+        qm = self.qm
+        Hqm = self.Hqm
+        Sqm = self.Sqm
+
+        # for each kpt_u
+        for kpt in kpt_u:
+            self.kpt = kpt
+            scale = self.create_krylov_subspace( kpt, 
+                                                 self.td_hamiltonian, 
+                                                 self.td_overlap, 
+                                                 self.qm, self.Hqm, self.Sqm )
+
+            # Calculate hm and sm
+            for i in range(self.degree):
+                for j in range(self.degree):
+                    self.multi_zdotc(tmp, qm[i], Hqm[j], self.nvec)
+                    for k in range(self.nvec):
+                        self.hm[k][i][j] = tmp[k]
+                    self.multi_zdotc(tmp, qm[i], Sqm[j], self.nvec)
+                    for k in range(self.nvec):
+                        self.sm[k][i][j] = tmp[k]
+
+            #print 'Hm ='
+            #print npy.round(self.hm*1e4) / 1e4
+            #print 'log Hm ='
+            #print npy.round(npy.log(self.hm)*1e2)/1e2
+            #print 'Sm ='
+            #print npy.round(self.sm*1e4) / 1e4
+
+            #print npy.round(npy.log10(npy.abs(npy.linalg.eigh(self.hm[0])[1]))*1e6)/1e6
+
+            # Diagonalize
+            # Propagate
+            # psi(t) = Qm Xm exp(-i Em t) Xm^H Sm e_1
+            #        = Qm Xm exp(-i Em t) Sm Qm^H S psi(0)
+            #        = Qm Xm exp(-i Em t) y
+            #        = Qm Xm z
+            # y = Sm Qm^H S psi(0) = Xm^H Sm e_1
+            # if Sm = I then y is the first row of Xm^*
+            # and z = exp(-i Em t) y
+            for k in range(self.nvec):
+                (self.em[k], self.xm[k]) = npy.linalg.eigh(self.hm[k])
+            #print self.em[0]
+            #print self.xm[0]
+            #print self.em[0] * (-1.0J*self.time_step)
+            self.em = npy.exp(self.em * (-1.0J*self.time_step))
+            #print self.em[0]
+            #print npy.linalg.eigh(self.hm[0])
+            for k in range(self.nvec):
+                z = self.em[k] * npy.conj(self.xm[k,0])
+                xm_tmp[k][:] = npy.dot(self.xm[k], z)
+            #print xm_tmp
+            kpt.psit_nG[:] = 0.0
+            for k in range(self.nvec):
+                for i in range(self.degree):
+                    axpy( xm_tmp[k][i] / scale[k], 
+                          self.qm[i][k], kpt.psit_nG[k] )
+
+            #print self.qm
+            #print kpt.psit_nG
+
+
+    # Create Krylov subspace 
+    #    K_v = { psi, (H - lambda_0 S) psi, 
+    #             (H - lambda_1 S) (H - lambda_0 S) psi, ... }
+    def create_krylov_subspace(self, kpt, h, s, qm, Hqm, Sqm):
+        nvec = self.nvec
+        lm = self.lm
+        tmp = npy.zeros( lm.shape, complex )
+        scale = npy.zeros( lm.shape, complex )
+        rqm = self.rqm
+        rqm[:] = kpt.psit_nG
+
+        for i in range(self.degree):
+            # qm_i = r_i-1
+            qm[i][:] = rqm
+
+            # S-orthonormalize
+            # q_i = q_i - sum_j<i <q_j|S|q_i> q_j
+            for j in range(i):
+                self.multi_zdotc(tmp, qm[i], Sqm[j], nvec)
+                tmp = npy.conj(tmp)
+                self.multi_zaxpy(-tmp, qm[j], qm[i], nvec)
+                #print 'Ovelap', tmp
+
+            self.timer.start('Apply time-dependent operators')
+            # S qm_i
+            s.apply(kpt, qm[i], Sqm[i])
+            self.timer.stop('Apply time-dependent operators')
+
+            # q_i = q_i / sqrt( <q_i|S|q_i> )
+            self.multi_zdotc(tmp, qm[i], Sqm[i], nvec)
+            tmp = 1. / npy.sqrt(tmp)
+            self.multi_scale(tmp, qm[i], nvec)
+            self.multi_scale(tmp, Sqm[i], nvec)
+            #print 'Norm2', tmp
+            if i == 0:
+                scale[:] = tmp
+
+            self.timer.start('Apply time-dependent operators')
+            # H qm_i
+            h.apply(kpt, qm[i], Hqm[i])
+            self.timer.stop('Apply time-dependent operators')
+
+
+            # lambda = <qm_0|H|qm_0> / <qm_0|S|qm_0>
+            self.multi_zdotc(lm, qm[i], Hqm[i], nvec)
+            #self.multi_zdotc(tmp, qm[i], Sqm[i], nvec)
+            #lm /= tmp
+
+            #print 'lambda', lm
+
+            # r_i+1 = H qm_i - lambda_i S qm_i
+            rqm[:] = Hqm[i]
+            self.multi_zaxpy(-lm, Sqm[i], rqm, nvec)
+
+        return scale

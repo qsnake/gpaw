@@ -1,4 +1,4 @@
-# Copyright (c) 2007 Lauri Lehtovaara
+# Written by Lauri Lehtovaara, 2007
 
 """This module implements classes for time-dependent variables and 
 operators."""

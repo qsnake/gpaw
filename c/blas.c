@@ -212,3 +212,43 @@ PyObject* dotc(PyObject *self, PyObject *args)
 #endif
     }
 }
+
+
+PyObject* dotu(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  PyArrayObject* b;
+  if (!PyArg_ParseTuple(args, "OO", &a, &b)) 
+    return NULL;
+  int n = a->dimensions[0];
+  for (int i = 1; i < a->nd; i++)
+    n *= a->dimensions[i];
+  int incx = 1;
+  int incy = 1;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double result;
+      result = ddot_(&n, (void*)DOUBLEP(a), 
+	     &incx, (void*)DOUBLEP(b), &incy);
+      return PyFloat_FromDouble(result);
+    }
+  else
+    {
+      double_complex* ap = COMPLEXP(a);
+      double_complex* bp = COMPLEXP(b);
+#ifndef NO_C99_COMPLEX
+      double_complex z = 0.0;
+      for (int i = 0; i < n; i++)
+	z += ap[i] * bp[i];
+      return PyComplex_FromDoubles(creal(z), cimag(z));
+#else
+      double_complex z = {0.0, 0.0};
+      for (int i = 0; i < n; i++)
+        {
+          z.r += ap[i].r * bp[i].r - ap[i].i * bp[i].i;
+          z.i += ap[i].r * bp[i].i + ap[i].i * bp[i].r;
+        }
+      return PyComplex_FromDoubles(z.r, z.i);
+#endif
+    }
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from ase import *
 from gpaw import *
+from ase import *
 from gpaw.poisson import PoissonSolver
 import numpy as npy
 from gpaw.tddft import TDDFT
@@ -24,9 +24,9 @@ if ( not os.path.exists('be_gs.gpw') ):
 
 
 time_step = 1.0 # 1 as = 0.041341 autime
-iters = 1000     # 1000 x 1 as => 1 fs
+iters = 1000    # 1000 x 1 as => 1 fs
 
-td_atoms = TDDFT('be_gs.gpw')
-td_atoms.absorption_kick()
+td_atoms = TDDFT('be_gs.gpw', propagator = 'SIKE', solver='CSCG')
+td_atoms.absorption_kick([0.,0.,1e-4])
 td_atoms.propagate(time_step, iters, 'be_dm.dat', 'be_td.gpw')
 TDDFT.photoabsorption_spectrum('be_dm.dat', 'be_spectrum.dat')

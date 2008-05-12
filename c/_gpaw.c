@@ -8,6 +8,7 @@ PyObject* d2Excdn2(PyObject *self, PyObject *args);
 PyObject* rk(PyObject *self, PyObject *args);
 PyObject* r2k(PyObject *self, PyObject *args);
 PyObject* dotc(PyObject *self, PyObject *args);
+PyObject* dotu(PyObject *self, PyObject *args);
 PyObject* diagonalize(PyObject *self, PyObject *args);
 PyObject* inverse_cholesky(PyObject *self, PyObject *args);
 PyObject* right_eigenvectors(PyObject *self, PyObject *args);
@@ -41,6 +42,7 @@ static PyMethodDef functions[] = {
   {"rk",  rk,  METH_VARARGS, 0},
   {"r2k", r2k, METH_VARARGS, 0},
   {"dotc", dotc, METH_VARARGS, 0},
+  {"dotu", dotu, METH_VARARGS, 0},
   {"diagonalize", diagonalize, METH_VARARGS, 0},
   {"inverse_cholesky", inverse_cholesky, METH_VARARGS, 0},
   {"right_eigenvectors", right_eigenvectors, METH_VARARGS, 0},

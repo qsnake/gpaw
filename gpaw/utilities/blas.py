@@ -152,6 +152,25 @@ def dotc(a, b):
     assert a.shape == b.shape
     return _gpaw.dotc(a, b)
     
+
+def dotu(a, b):
+    """Dot product, NOT conjugating the first vector with complex arguments.
+
+    Returns the value of the operation::
+
+        _
+       \
+        ) a       * b
+       /_  ijk...    ijk...
+       ijk...
+
+
+    """
+    assert ((is_contiguous(a, float) and is_contiguous(b, float)) or
+            (is_contiguous(a, complex) and is_contiguous(b,complex)))
+    assert a.shape == b.shape
+    return _gpaw.dotu(a, b)
+    
 if not debug:
     gemm = _gpaw.gemm
     axpy = _gpaw.axpy
