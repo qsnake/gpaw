@@ -10,7 +10,7 @@ parser = OptionParser(usage='%prog [options] [elements]',
                       version='%prog 0.1', description=description)
 parser.add_option('-n', '--name', default=None, metavar='<name>',
                   help='name of generated basis files')
-parser.add_option('-t', '--type', default='dz', metavar='<type>',
+parser.add_option('-t', '--type', default='dzp', metavar='<type>',
                   help='type of basis.  For example: sz, dzp, qztp, '+
                   '4z3p.  [default: %default]')
 parser.add_option('-E', '--energy-shift', metavar='<energy>', type='float',
@@ -140,8 +140,7 @@ def main():
 
     for symbol, referencefile, referenceindex in zip(symbols, referencefiles,
                                                      reference_atom_indices):
-        generator = Generator(symbol, txt=None)
-        bm = BasisMaker(generator, name)
+        bm = BasisMaker(symbol, name, gtxt=None)
 
         if opts.no_files:
             figfile = None
