@@ -476,17 +476,19 @@ class LocalizedFunctionsWrapper:
         assert D_p.shape == (self.ni * (self.ni + 1) / 2,)
         return self.lfs.add_density2(n_G, D_p)
 
-    def norm(self, I_i):
+    def norm(self, I_ic):
         """Integrate functions."""
-        assert is_contiguous(I_i, float)
-        assert I_i.shape == (self.ni,)
-        return self.lfs.norm(I_i)
+        assert I_ic.flags.contiguous
+        assert I_ic.dtype == float
+        assert I_ic.shape == (self.ni, 4)
+        return self.lfs.norm(I_ic)
 
-    def normalize(self, I0, I_i):
+    def normalize(self, I0, I_ic):
         """Normalize functions."""
-        assert is_contiguous(I_i, float)
-        assert I_i.shape == (self.ni,)
-        return self.lfs.normalize(I0, I_i)
+        assert I_ic.flags.contiguous
+        assert I_ic.dtype == float
+        assert I_ic.shape == (self.ni, 4)
+        return self.lfs.normalize(I0, I_ic)
 
 if debug:
     # Add type and sanity checks:

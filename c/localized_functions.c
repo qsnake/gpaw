@@ -254,16 +254,19 @@ static PyObject * localized_functions_norm(LocalizedFunctionsObject* self,
       f += self->ng0;
     }
 
-  const double* fd = self->fd;
-  for (int i = 0; i < self->nf; i++)
-    for (int c = 0; c < 3; c++)
-      {
-	double F = 0.0;
-	for (int n = 0; n < self->ng0; n++)
-	  F += fd[n];
-	II[i][c + 1] += F * self->dv;
-	fd += self->ng0;
-      }
+  if (self->nfd > 0)
+    {
+      const double* fd = self->fd;
+      for (int i = 0; i < self->nf; i++)
+	for (int c = 0; c < 3; c++)
+	  {
+	    double F = 0.0;
+	    for (int n = 0; n < self->ng0; n++)
+	      F += fd[n];
+	    II[i][c + 1] += F * self->dv;
+	    fd += self->ng0;
+	  }
+    }
   Py_RETURN_NONE;
 }
 
