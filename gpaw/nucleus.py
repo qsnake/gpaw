@@ -864,8 +864,8 @@ class Nucleus:
                 + self.setup.Z - self.setup.Nc)
 
         # Actual normalizations:
-        Nc0 = nc.norm()[0]
-        Nct0 = nct.norm()[0]
+        Nc0 = nc.norm()[0, 0]
+        Nct0 = nct.norm()[0, 0]
 
         for s in range(nspins):
             # Numeric and analytic integrations of density corrections:

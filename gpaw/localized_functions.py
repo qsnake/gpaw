@@ -336,11 +336,11 @@ class LocFuncs:
     def norm(self):
         """Calculate norm of localized functions."""
 
-        I_i = npy.zeros(self.ni+3)
+        I_ic = npy.zeros((self.ni, 4))
         for box in self.box_b:
-            box.norm(I_i)
-        self.sum(I_i, broadcast=True)
-        return I_i
+            box.norm(I_ic)
+        self.sum(I_ic, broadcast=True)
+        return I_ic
         
     def normalize(self, I0):
         """Normalize localized functions.
@@ -350,9 +350,9 @@ class LocFuncs:
         functions (l > 0) are adjusted so that they integrate to
         zero."""
 
-        I_i = self.norm()
+        I_ic = self.norm()
         for box in self.box_b:
-            box.normalize(I0, I_i)
+            box.normalize(I0, I_ic)
 
         
 class LocalizedFunctionsWrapper:

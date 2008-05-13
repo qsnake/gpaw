@@ -23,4 +23,5 @@ calc = Calculator(gpts=(n, n, n),
 bulk.set_calculator(calc)
 f1 = bulk.get_forces()[0, 2]
 f2 = numeric_force(bulk, 0, 2)
+print f1,f2,f1-f2
 equal(f1, f2, 0.012)

@@ -243,27 +243,27 @@ static PyObject * localized_functions_norm(LocalizedFunctionsObject* self,
   if (!PyArg_ParseTuple(args, "O", &I_obj))
     return NULL;
 
-  double *II = DOUBLEP(I_obj);
+  double (*II)[4] = (double (*)[4])DOUBLEP(I_obj);
   const double* f = self->f;
   for (int i = 0; i < self->nf; i++)
     {
       double F = 0.0;
       for (int n = 0; n < self->ng0; n++)
 	F += f[n];
-      II[i] += F * self->dv;
+      II[i][0] += F * self->dv;
       f += self->ng0;
     }
 
-
   const double* fd = self->fd;
-  for (int i = 0; i < 3; i++)
-    {
-      double F = 0.0;
-      for (int n = 0; n < self->ng0; n++)
-	F += fd[n];
-      II[self->nf + i] += F * self->dv;
-      fd += self->ng0;
-    }
+  for (int i = 0; i < self->nf; i++)
+    for (int c = 0; c < 3; c++)
+      {
+	double F = 0.0;
+	for (int n = 0; n < self->ng0; n++)
+	  F += fd[n];
+	II[i][c + 1] += F * self->dv;
+	fd += self->ng0;
+      }
   Py_RETURN_NONE;
 }
 
@@ -275,9 +275,9 @@ static PyObject * localized_functions_normalize(LocalizedFunctionsObject* self,
   if (!PyArg_ParseTuple(args, "dO", &I0, &I_obj))
     return NULL;
 
-  double *II = DOUBLEP(I_obj);
+  double (*II)[4] = (double (*)[4])DOUBLEP(I_obj);
   double* f = self->f;
-  double s = I0 / II[0];
+  double s = I0 / II[0][0];
   // Scale spherically symmetric function so that the integral
   // becomes exactly I0:
   for (int n = 0; n < self->ng0; n++)
@@ -287,7 +287,7 @@ static PyObject * localized_functions_normalize(LocalizedFunctionsObject* self,
   for (int i = 1; i < self->nf; i++)
     {
       double *g = f + i * self->ng0;
-      double a = -II[i] / I0;
+      double a = -II[i][0] / I0;
       for (int n = 0; n < self->ng0; n++)
 	g[n] += a * f[n];
     }
@@ -300,19 +300,26 @@ static PyObject * localized_functions_normalize(LocalizedFunctionsObject* self,
       for (int n = 0; n < 3 * self->ng0; n++)
 	fd[n] *= s;
 
-      for (int nx = 0; nx < 3; nx++)
+      for (int c = 0; c < 3; c++)
 	{
-	  double sd = II[self->nf + nx] / II[0];
+	  double sd = II[0][c + 1] / II[0][0];
 	  for (int n = 0; n < self->ng0; n++)
-	    fd[n + nx * self->ng0] -= f[n] * sd ;
+	    fd[n + c * self->ng0] -= f[n] * sd ;
 	}
 
       for (int i = 1; i < self->nf; i++)
 	{
 	  double *gd = fd + 3 * i * self->ng0;
-	  double a = -II[i] / I0;
+	  double a = -II[i][0] / I0;
 	  for (int n = 0; n < 3 * self->ng0; n++)
 	    gd[n] += a * fd[n];
+
+	  for (int c = 0; c < 3; c++)
+	    {
+	      double sd = II[i][c + 1] / I0;
+	      for (int n = 0; n < self->ng0; n++)
+		gd[n + c * self->ng0] -= f[n] * sd ;
+	    }
 	}
     }
 
