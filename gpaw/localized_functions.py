@@ -336,7 +336,7 @@ class LocFuncs:
     def norm(self):
         """Calculate norm of localized functions."""
 
-        I_i = npy.zeros(self.ni)
+        I_i = npy.zeros(self.ni+3)
         for box in self.box_b:
             box.norm(I_i)
         self.sum(I_i, broadcast=True)

@@ -253,6 +253,17 @@ static PyObject * localized_functions_norm(LocalizedFunctionsObject* self,
       II[i] += F * self->dv;
       f += self->ng0;
     }
+
+
+  const double* fd = self->fd;
+  for (int i = 0; i < 3; i++)
+    {
+      double F = 0.0;
+      for (int n = 0; n < self->ng0; n++)
+	F += fd[n];
+      II[self->nf + i] += F * self->dv;
+      fd += self->ng0;
+    }
   Py_RETURN_NONE;
 }
 
@@ -281,12 +292,20 @@ static PyObject * localized_functions_normalize(LocalizedFunctionsObject* self,
 	g[n] += a * f[n];
     }
 
+
   if (self->nfd > 0)
     {
       // Adjust derivatives:
       double* fd = self->fd;
       for (int n = 0; n < 3 * self->ng0; n++)
 	fd[n] *= s;
+
+      for (int nx = 0; nx < 3; nx++)
+	{
+	  double sd = II[self->nf + nx] / II[0];
+	  for (int n = 0; n < self->ng0; n++)
+	    fd[n + nx * self->ng0] -= f[n] * sd ;
+	}
 
       for (int i = 1; i < self->nf; i++)
 	{
