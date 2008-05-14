@@ -410,7 +410,8 @@ def read(paw, reader):
     paw.S = r['S']
     paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
 
-    paw.occupation.set_fermi_level(r['FermiLevel'])
+    if not paw.fixmom:
+        paw.occupation.set_fermi_level(r['FermiLevel'])
 
     # Wave functions and eigenvalues:
     nkpts = len(r.get('IBZKPoints'))
