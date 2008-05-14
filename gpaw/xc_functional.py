@@ -183,6 +183,7 @@ class XCFunctional:
             elif xcname == 'TPSS':
                 code = 9
                 self.mgga = True ## use real tau and local potential
+                local_tau = True ## use Weiszacker term
                 ##self.mgga = False ## use local tau and local potential
             elif xcname == 'PW91':
                 code = 14
@@ -215,7 +216,7 @@ class XCFunctional:
         elif code == 6:
             self.xc = ZeroFunctional()
         elif code == 9:
-            self.xc = _gpaw.MGGAFunctional(code,self.mgga)
+            self.xc = _gpaw.MGGAFunctional(code,local_tau)
         elif code == 'gllb':
             # Get the correct functional from NonLocalFunctionalFactory
             self.xc = NonLocalFunctionalFactory().get_functional_by_name(xcname)

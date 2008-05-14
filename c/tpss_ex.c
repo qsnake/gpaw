@@ -24,8 +24,8 @@ void tpssfx(double *n,    // I: density
   z = *g / (8. * *n * *t);
   alpha = (10 * (-1 * *g / (8. * *n) + *t))/(3. * Power(3,0.6666666666666666) * Power(*n,1.6666666666666667) * Power(Pi,1.3333333333333333));
   p = *g / (4. * Power(3,0.6666666666666666) * Power(*n,2.6666666666666665) * Power(Pi,1.3333333333333333));
-  if (alpha<0) {alpha=0.;z=1.;} /*Treatment in Tao is alpha=fabs(alpha)*/
-  //  if (alpha<0) {alpha=fabs(alpha);}
+  //  if (alpha<0) {alpha=0.;z=1.;} /*Treatment in Tao is alpha=fabs(alpha)*/
+  if (alpha<0) {alpha=fabs(alpha);}
   if (iexc==7) alpha=1-z;
   q = (9. * (-1. + alpha)) / (20. * sqrt(1 + 0.4 * (-1. + alpha) * alpha)) + (2. * p)/3.;     
   x = (0.018957187845257784 * Power(p,2) + 0.33738687 * Power(p,3) + (146. * Power(q,2))/2025. + 0.11020071474751965 * Power(z,2) - (73. * q * sqrt(Power(p,2) / 2. + (9. * Power(z,2)) / 50.)) / 405. + p * (0.12345679012345678 + (1.59096 * Power(z,2))/(1 + 2 * Power(z,2) + Power(z,4))))/(1 + 2.479516081819192 * p + 1.537 * Power(p,2));
