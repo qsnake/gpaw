@@ -64,8 +64,9 @@ class XCCorrection:
                  lmax,  # maximal angular momentum to consider
                  Exc0,
                  phicorehole_g, fcorehole, nspins, # ?
-                 tauc_g=None): # kinetic core energy array
- 
+                 tauc_g=None, # kinetic core energy array
+                 tauct_g=None): # kinetic core energy array
+
         
         self.nc_g = nc_g
         self.nct_g = nct_g
@@ -124,14 +125,6 @@ class XCCorrection:
                 ncorehole_g = fcorehole * phicorehole_g**2 / (4 * pi)
                 self.nca_g = 0.5 * (nc_g - ncorehole_g)
                 self.ncb_g = 0.5 * (nc_g + ncorehole_g)
-        
-        if self.xc.get_functional().mgga:
-            ny = len(points)
-            self.tau_ypg = npy.zeros((ny, np, ng))
-            self.taut_ypg = npy.zeros((ny, np, ng))
-            self.create_kinetic(lmax,jlL,jl,ny,np,wt_jg,self.taut_ypg)
-            self.create_kinetic(lmax,jlL,jl,len(points),np,w_jg,self.tau_ypg)            
-            self.tauc_g = tauc_g
 
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().is_gllb():
@@ -870,6 +863,7 @@ class XCCorrection:
                 tau_pg = self.tau_ypg[y]
                 tau_g = npy.dot(D_p,tau_pg)
                 tau_g += self.tauc_g / sqrt(4. * pi)
+                ##taut_g += self.tauct_g / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]
                 
                 n_g = npy.dot(Y_L, n_Lg)
@@ -973,8 +967,10 @@ class XCCorrection:
                 tau_pg = self.tau_ypg[y]
                 taua_g = npy.dot(Da_p,tau_pg)
                 taub_g = npy.dot(Db_p,tau_pg)
-                taua_g += self.tauc_g * 0.5 / sqrt(4. * pi)
-                taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
+                ##taua_g += self.tauc_g * 0.5 / sqrt(4. * pi)
+                ##taub_g += self.tauc_g * 0.5 / sqrt(4. * pi)
+                ##tauat_g += self.tauct_g * 0.5 / sqrt(4. * pi)
+                ##taubt_g += self.tauct_g * 0.5 / sqrt(4. * pi)
                 A_Li = A_Liy[:self.Lmax, :, y]                
 
                 na_g = npy.dot(Y_L, na_Lg)
@@ -1410,38 +1406,77 @@ class XCCorrection:
         return J_pp
 
 
-    def create_kinetic(self,lmax,jlL,jl,ny,np,w_jg,tau_ypg):
-        #no core kinetic energy added
+    def create_kinetic(self,
+                       phi_jg,  # all-lectron partial waves
+                       phit_jg, # pseudo partial waves
+                       jl,    # 
+                       nspins, # 
+                       tauc_g, # kinetic core energy array
+                       tauct_g): # kinetic core energy array
+
+        """                                                      __         __
+        kinetic expression is tau_s = 1/2 Sum_{i1,i2} D(s,i1,i2) \/phi_i1 . \/phi_i2 +tauc_s
+        here the orbital dependent part is calculated.
+        __         __         __    __
+        \/phi_i1 . \/phi_i2 = \/YL1.\/YL2 phi_j1 phi_j2 + YL1 YL2 dphi_j1 dphi_j2
+                                                                  ------  ------
+                                                                  dr     dr
+        __    __
+        \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2 
+        
+        """
+        self.taug_g = tauc_g
+        self.tauct_g = tauct_g
         ng = self.ng
-        jlmax = (jl[-1][0] + 1, lmax + 1)
-        dphitdr_jlg = npy.zeros(jlmax + (ng,))
-        for j1,l1 in jl:
-            phit_jlg = self.rgd.r_g**l1 * w_jg[j1]                
-            self.rgd.derivative(phit_jlg, dphitdr_jlg[j1][l1])
+        npoints = len(points)
+        Lmax = self.Lmax
+        jlL = []
+        nj = len(lj)
+        for j, l in jl:
+            for m in range(2 * l + 1):
+                jlL.append((j, l, l**2 + m))
+        ni = len(jlL)
+        self.tau_yiig = npy.zeros(npoints,ni,ni,ng)
+
+        dphidr_jg = npy.zeros(nj,ng)
+        for j in range(nj):
+            phi_g = phi_jg[j]                
+            self.rgd.derivative(phi_g, dphidr_jg[j])
 
         Y_L = npy.zeros((self.Lmax))
-        taut = npy.zeros((ng))
-        for y in range(ny):
+        ##second term
+        for y in points:
+            Y_L = Y_nL[y,:self.Lmax]
+            for i1 in range(ni):
+                j1 = jlL[i1][0]
+                L1 = jlL[i1][2]
+                for i2 in range(ni):
+                    j2 = jlL[i2][0]
+                    L1 = jlL[i1][2]
+                    c = Y_L[L1]*Y_L[L2]
+                    temp = c * dphidr_jg[j1] *  dphidr_jg[j2]
+                    self.tau_yiig[y,i1,i2,:] += temp
+        ##first term
+        for y in points:
             A_Li = A_Liy[:self.Lmax, :, y]
             A_Lxg = A_Li[:, 0]
             A_Lyg = A_Li[:, 1]
             A_Lzg = A_Li[:, 2]
-            Y_L = Y_nL[y,:self.Lmax]
-            p = 0
-            i1 = 0
-            for j1, l1 , L1 in jlL:
-                dphi1 = dphitdr_jlg[j1][l1]
-                for j2, l2, L2 in jlL[i1:]:
-                    dphi2 = dphitdr_jlg[j2][l2]
-                    tau = A_Lxg[L1] * A_Lxg[L2] + A_Lyg[L1] * A_Lyg[L2] + A_Lzg[L1] * A_Lzg[L2] 
-                    tau *= self.rgd.r_g**(l1 + l2) * w_jg[j1] * w_jg[j2] 
-                    tau[1:] /= self.rgd.r_g[1:]**2                       
-                    tau[0] = tau[1]
-                    tau += dphi1 * dphi2 * Y_L[L1] * Y_L[L2]
-                    tau *= 0.5
-                    tau_ypg[y,p] = tau
-                    p +=1
-                i1 += 1
+
+            for i1 in range(ni):
+                j1 = jlL[i1][0]
+                L1 = jlL[i1][2]
+                for i2 in range(ni):
+                    j2 = jlL[i2][0]
+                    L1 = jlL[i1][2]
+                    temp = A_Lxg[L1] * A_Lxg[L2] + A_Lyg[L1] * A_Lyg[L2] + A_Lzg[L1] * A_Lzg[L2] 
+                    temp *=  phi_jg[j1] * phi_jg[j2] 
+                    temp[1:] /= self.rgd.r_g[1:]**2                       
+                    temp[0] = temp[1]
+                    self.tau_yiig[y,i1,i2,:] += temp
+        
+        self.tau_yiig *= 0.5
+                    
         return 
         
     def set_nspins(self, nspins):
@@ -1452,3 +1487,17 @@ class XCCorrection:
                 self.nc_g = self.nca_g + self.ncb_g
             else:
                 self.nca_g = self.ncb_g = 0.5 * self.nc_g
+                
+    def initialize_kinetic(self):
+        
+        ny = len(points)
+        ng = self.ng
+        np = npy.shape(self.B_Lqp)[2]
+        self.tau_ypg = npy.zeros((ny, np, ng))
+        self.taut_ypg = npy.zeros((ny, np, ng))
+        ##self.create_kinetic(lmax,jlL,jl,ny,np,wt_jg,self.taut_ypg)
+        ##self.create_kinetic(lmax,jlL,jl,len(points),np,w_jg,self.tau_ypg)            
+        self.tauc_g = npy.zeros(npy.shape(self.nc_g))
+
+        return
+    
