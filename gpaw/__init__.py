@@ -23,7 +23,7 @@ from distutils.util import get_platform
 from glob import glob
 from os.path import join, isfile
 
-__all__ = ['Calculator', 'Mixer', 'MixerSum', 'PoissonSolver']
+__all__ = ['Calculator', 'Mixer', 'MixerSum', 'PoissonSolver', 'restart']
 
 
 class ConvergenceError(Exception):
@@ -100,11 +100,6 @@ def get_gpaw_python_path():
             return path
     raise RuntimeError('Could not find gpaw-python!')
 
-#import Numeric
-#from gpaw.utilities.blas import dotc
-#Numeric.vdot = dotc
-
-
 
 paths = os.environ.get('GPAW_SETUP_PATH', '')
 if paths != '':
@@ -113,6 +108,13 @@ if paths != '':
 from gpaw.aseinterface import Calculator
 from gpaw.mixer import Mixer, MixerSum
 from gpaw.poisson import PoissonSolver
+
+
+def restart(filename, Class=Calculator, **kwargs):
+    calc = Class(filename, **kwargs)
+    atoms = calc.get_atoms()
+    return atoms, calc
+
 
 if trace:
     indent = '    '
