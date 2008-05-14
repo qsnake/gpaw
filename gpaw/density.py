@@ -383,6 +383,9 @@ class Density:
             kpt.add_to_kinetic_density(self.taut_sG[kpt.s])
         self.band_comm.sum(self.taut_sG)
         self.kpt_comm.sum(self.taut_sG)
+        """Add the pseudo core kinetic array """
+        for nucleus in self.nuclei:
+            nucleus.add_smooth_core_kinetic_energy_density(self.taut_sG,self.nspins)
 
         """Transfer the density from the coarse to the fine grid."""
         for s in range(self.nspins):
