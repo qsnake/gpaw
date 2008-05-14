@@ -184,6 +184,7 @@ class XCFunctional:
                 code = 9
                 self.mgga = True ## use real tau and local potential
                 local_tau = True ## use Weiszacker term
+                self.orbital_dependent = True
                 ##self.mgga = False ## use local tau and local potential
             elif xcname == 'PW91':
                 code = 14
@@ -269,13 +270,6 @@ class XCFunctional:
                            paw.eigensolver, paw.hamiltonian)
 
     def set_non_local_things(self, paw, energy_only=False):
-        if self.xcname == 'TPSS':
-            paw.hamiltonian.xc.taua_g = paw.gd.empty()
-            if self.nspins == 2:
-                paw.hamiltonian.taub_g = paw.gd.empty()
-            paw.density.initialize_kinetic()
-            paw.density.update_kinetic(paw.kpt_u)
-            paw.hamiltonian.xc.set_kinetic(paw.density.taut_sg)
 
         if not self.orbital_dependent:
             return
@@ -290,6 +284,17 @@ class XCFunctional:
 
             self.exx = EXX(paw, energy_only, use_finegrid=use_finegrid)
         
+        if self.xcname == 'TPSS':
+            paw.density.initialize_kinetic()
+            paw.density.update_kinetic(paw.kpt_u)
+            if paw.nspins ==1:
+                paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
+            if self.nspins == 2:
+                paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
+                paw.hamiltonian.xc.taub_g = paw.density.taut_sg[1]
+            for nucleus in paw.my_nuclei:
+                nucleus.setup.xc_correction.initialize_kinetic() 
+                
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
             if self.hybrid > 0.0:
@@ -598,12 +603,6 @@ class XC3DGrid(XCGrid):
                                                 nb_g, vb_g)
         return e_g.sum() * self.dv
 
-    def set_kinetic(self,taut_sg):
-        if self.nspins ==1:
-            self.taua_g = taut_sg[0]
-        if self.nspins == 2:
-            self.taua_g = taut_sg[0]
-            self.taub_g = taut_sg[1]
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):
