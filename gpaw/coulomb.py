@@ -253,6 +253,7 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
     # C4(ijkl) = \iint drdr' / |r-r'| i(r) j*(r) k*(r') l(r')
     # i.e. V_ijkl = C4(kijl)
 
+    paw.set_positions()
     coulomb4 = Coulomb4(paw, spin).get_integral
     nwannier = U_nj.shape[1]
     if paw.dtype is complex or U_nj.dtype is complex:

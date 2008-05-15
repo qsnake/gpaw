@@ -203,7 +203,7 @@ def cutoff2gridspacing(E):
     """Convert planewave energy cutoff to a real-space gridspacing."""
     from ase import Hartree, Bohr
     return .5 * npy.pi / npy.sqrt(E / Hartree) * Bohr
-    
+
 def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
     from ase import Hartree, Bohr

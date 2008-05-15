@@ -2030,7 +2030,7 @@ elements = ['H','Li','Be','B','C','N','O','F','Na','Mg','Al','Si','P','S','Cl']
 extra = order[:1] # The extra systems
 g1 = order[1:56]  # The g1 molecules
 g2 = order[1:149] # The g2 molecules
-g3 = order[1:]    # The g3 molecules
+g3 = order[1:224] # The g3 molecules
 del order
 
 def get_ae(name):

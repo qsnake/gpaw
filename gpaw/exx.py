@@ -72,7 +72,6 @@ class EXX:
     exchange energy."""
     
     def __init__(self, paw, poisson, energy_only=False, use_finegrid=True):
-        
         # Initialize class-attributes
         self.nspins        = paw.nspins
         self.nbands        = paw.nbands
@@ -522,5 +521,20 @@ def get_valence_core_exx(paw, hybrid=None):
     for nucleus in paw.my_nuclei:
         D_p = npy.sum(nucleus.D_sp, axis=0)
         Exx_vc -= hybrid * npy.dot(D_p, nucleus.setup.X_p)
+
+    return paw.gd.comm.sum(Exx_vc) * paw.Ha
+
+def H_coulomb_val_core(paw, u=0):
+    """           core  *    *
+          //       --   i(r) k(r') k(r) j (r')
+    H   = || drdr' >   ----------------------
+     ij   //       --          |r - r'|
+                   k  
+    """
+    H_nn = npy.zeros((paw.nbands, paw.nbands), dtype=paw.dtype)
+    for nucleus in paw.nuclei:
+        X_ii = unpack(nucleus.setup.X_p)
+        P_ni = nucleus.P_uni[u]
+        H_nn += 2 * npy.dot(P_ni.conj(), npy.dot(X_ii, P_ni.T))
 
     return paw.gd.comm.sum(Exx_vc) * paw.Ha

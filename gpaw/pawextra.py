@@ -278,7 +278,7 @@ class PAWExtra:
 
                 # atomic corrections
                 for nucleus in self.my_nuclei:
-                    # make shure the integrals are there
+                    # make sure the integrals are there
                     nucleus.setup.four_phi_integrals()
                     P_i = nucleus.P_uni[k, n]
                     ni = len(P_i)
