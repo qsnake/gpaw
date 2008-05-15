@@ -113,9 +113,14 @@ class Density:
         # the compensation charges:
         self.scale()
 
-        self.mixer.mix(self.nt_sG)
+        if not self.mixer.mix_rho:
+            self.mixer.mix(self)
 
         self.interpolate_pseudo_density()
+        self.update_pseudo_charge()
+
+        if self.mixer.mix_rho:
+            self.mixer.mix(self)
 
         self.initialized = True
 
@@ -205,7 +210,7 @@ class Density:
             else:
                 self.mixer = Mixer()#mix, self.gd, self.nspins)
 
-        self.mixer.initialize(self.gd, self.nspins)
+        self.mixer.initialize(paw)
         
     def update_pseudo_charge(self):
         if self.nspins == 2:
@@ -213,7 +218,7 @@ class Density:
             self.nt_g += self.nt_sg[1]
 
         Q = 0.0
-        for nucleus in self.nuclei:
+        for nucleus in self.my_nuclei:
             nucleus.calculate_multipole_moments()
             Q += nucleus.Q_L[0] * sqrt(4 * pi)
 
@@ -295,17 +300,25 @@ class Density:
                 for nucleus in self.my_nuclei:
                     nucleus.symmetrize(D_aii, symmetry.maps, s)
 
-        self.mixer.mix(self.nt_sG)
+        if not self.mixer.mix_rho:
+            self.mixer.mix(self)
 
         self.interpolate_pseudo_density()
+        self.update_pseudo_charge()
+
+        if self.mixer.mix_rho:
+            self.mixer.mix(self)
 
     def move(self):
-        self.mixer.reset(self.my_nuclei)
+        self.mixer.reset()
 
         # Set up smooth core density:
         self.nct_G[:] = 0.0
         for nucleus in self.nuclei:
             nucleus.add_smooth_core_density(self.nct_G, self.nspins)
+
+        if self.initialized:
+            self.update_pseudo_charge()
 
     def calculate_local_magnetic_moments(self):
         # XXX remove this?

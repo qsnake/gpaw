@@ -121,8 +121,6 @@ class Hamiltonian(LCAOHamiltonian):
         vt_g = self.vt_sg[0]
         vt_g[:] = 0.0
 
-        density.update_pseudo_charge()
-
         for nucleus in self.ghat_nuclei:
             nucleus.add_localized_potential(vt_g)
 
