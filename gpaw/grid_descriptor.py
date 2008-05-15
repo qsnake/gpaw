@@ -382,6 +382,23 @@ class GridDescriptor:
             for request, a_xg in requests:
                 self.comm.wait(request)
         
+    def zero_pad(self, a_xg):
+        """Pad array with zeros as first element along non-periodic directions.
+
+        XXX Does not work for parallel domain-distributed arrays.
+        """
+        pbc_c = self.domain.pbc_c
+
+        if pbc_c.all():
+            return a_xg
+
+        npbx, npby, npbz = 1 - pbc_c
+        shape = npy.array(a_xg.shape)
+        shape[-3:] += [npbx, npby, npbz]
+        b_xg = npy.zeros(shape, dtype=a_xg.dtype)
+        b_xg[..., npbx:, npby:, npbz:] = a_xg
+        return b_xg
+
     def calculate_dipole_moment(self, rho_xyz):
         """Calculate dipole moment of density."""
         rho_xy = npy.sum(rho_xyz, axis=2)

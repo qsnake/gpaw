@@ -95,8 +95,10 @@ class Calculator(PAW):
         
         return self.weight_k
 
-    def get_pseudo_valence_density(self):
+    def get_pseudo_valence_density(self, pad=False):
         """Return pseudo-density array."""
+        if pad:
+            return self.gd.zero_pad(self.get_pseudo_valence_density(False))
         return self.density.get_density_array() / self.a0**3
 
     def get_pseudo_density_corrections(self):
@@ -113,8 +115,11 @@ class Calculator(PAW):
             return npy.array([[n.get_density_correction(spin, 2)
                               for n in self.nuclei] for spin in range(2)])
 
-    def get_all_electron_density(self, gridrefinement=2):
+    def get_all_electron_density(self, gridrefinement=2, pad=False):
         """Return reconstructed all-electron density array."""
+        if pad:
+            return self.gd.zero_pad(self.get_all_electron_density(
+                gridrefinement, False))
         return self.density.get_all_electron_density(gridrefinement)\
                / self.a0**3
 
@@ -209,8 +214,12 @@ class Calculator(PAW):
                                            lc=lc, wf=wf, P_uai=P_uai)
         return fold(energies * self.Ha, weights, npts, width)
 
-    def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True):
+    def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
+                                 pad=False):
         """Return pseudo-wave-function array."""
+        if pad:
+            return self.gd.zero_pad(self.get_pseudo_wave_function(
+                band, kpt, spin, broadcast, False))
         psit_G = self.get_wave_function_array(band, kpt, spin)
         if broadcast:
             if not self.master:
@@ -226,13 +235,13 @@ class Calculator(PAW):
         if result is not None:
             return result * self.Ha
 
-    def get_wannier_localization_matrix(self, nbands, Gdir_c, kpoint,
-                                        nextkpoint, k0_c, spin):
+    def get_wannier_localization_matrix(self, nbands, dirG, kpoint,
+                                        nextkpoint, G_I, spin):
         """Calculate integrals for maximally localized Wannier functions."""
 
         # Due to orthorhombic cells, only one component of dirG is non-zero.
-        c = Gdir_c.tolist().index(1)
-        G = self.bzk_kc[nextkpoint, c] - self.bzk_kc[kpoint, c] + k0_c[c]
+        c = dirG.tolist().index(1)
+        G = self.bzk_kc[nextkpoint, c] - self.bzk_kc[kpoint, c] + G_I[c]
 
         return self.get_wannier_integrals(c, spin, kpoint, nextkpoint, G)
 
