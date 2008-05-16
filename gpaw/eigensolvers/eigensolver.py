@@ -8,7 +8,6 @@ from gpaw.operators import Laplace
 from gpaw.preconditioner import Preconditioner
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm
-from gpaw.utilities.complex import cc, real
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
 

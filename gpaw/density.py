@@ -218,7 +218,7 @@ class Density:
             self.nt_g += self.nt_sg[1]
 
         Q = 0.0
-        for nucleus in self.my_nuclei:
+        for nucleus in self.nuclei:
             nucleus.calculate_multipole_moments()
             Q += nucleus.Q_L[0] * sqrt(4 * pi)
 
