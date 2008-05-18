@@ -117,19 +117,15 @@ def cesiumchloride(symbol1, symbol2, a):
     return atoms
 
 def rocksalt(symbol1, symbol2, a):
-    atoms = Atoms(symbols='%s4%s4' % (symbol1, symbol2),
+    atoms = Atoms(symbols='%s2%s2' % (symbol1, symbol2),
                   pbc=True,
                   positions=[
         (.0, .0, .0),
-        (.0, .5, .5),
-        (.5, .0, .5),
-        (.5, .5, .0),
         (.5, .5, .5),
-        (.5, .0, .0),
-        (.0, .5, .0),
+        (.5, .5, .0),
         (.0, .0, .5)
         ])
-    atoms.set_cell([a, a, a])
+    atoms.set_cell([a/sqrt(2), a/sqrt(2), a])
     return atoms
 
 def alloy(structure, symbol1, symbol2, a):
