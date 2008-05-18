@@ -112,6 +112,11 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X_RPBE-None'
+        elif xcname == 'PW91':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            xcname = 'X_PW91-C_PW91'
         elif xcname == 'PBE0':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -179,15 +184,16 @@ class XCFunctional:
                 xcname = 'revPBEx'
             elif xcname == 'oldRPBEx':
                 code = 12
-                xcname = 'oldRPBEx'
+                xcname = 'RPBEx'
             elif xcname == 'TPSS':
                 code = 9
                 self.mgga = True ## use real tau and local potential
                 local_tau = True ## use Weiszacker term
                 self.orbital_dependent = True
                 ##self.mgga = False ## use local tau and local potential
-            elif xcname == 'PW91':
+            elif xcname == 'oldPW91':
                 code = 14
+                xcname = 'PW91'
             elif xcname == 'LB94' or xcname == 'LBalpha':
                 code = 17
                 if xcname == 'LB94':
@@ -283,7 +289,7 @@ class XCFunctional:
                 use_finegrid = True
 
             self.exx = EXX(paw, energy_only, use_finegrid=use_finegrid)
-        
+
         if self.xcname == 'TPSS':
             paw.density.initialize_kinetic()
             paw.density.update_kinetic(paw.kpt_u)
@@ -293,8 +299,8 @@ class XCFunctional:
                 paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
                 paw.hamiltonian.xc.taub_g = paw.density.taut_sg[1]
             for nucleus in paw.my_nuclei:
-                nucleus.setup.xc_correction.initialize_kinetic() 
-                
+                nucleus.setup.xc_correction.initialize_kinetic()
+
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
             if self.hybrid > 0.0:
@@ -510,7 +516,7 @@ class XC3DGrid(XCGrid):
         elif self.xcfunc.gga:
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
-            
+
             npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
 
             self.xcfunc.calculate_spinpaired(e_g,
