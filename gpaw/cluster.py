@@ -90,7 +90,7 @@ class Cluster(Atoms):
             
         # move lower corner to (0,0,0)
         self.translate(tuple(-1.*npy.array(extr[0])))
-        self.set_cell(tuple(extr[1]), fix=True)
+        self.set_cell(tuple(extr[1]))
 
         return self.get_cell()
 

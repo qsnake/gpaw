@@ -26,7 +26,7 @@ class Molecule:
         self.c = c
         
         self.atoms = molecules[formula].Copy()
-        self.atoms.SetUnitCell([a, b, c], fix=True)
+        self.atoms.SetUnitCell([a, b, c])
         center(self.atoms)        
         calc = Calculator(h=h, **parameters)
         self.atoms.SetCalculator(calc)

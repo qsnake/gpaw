@@ -2053,7 +2053,7 @@ def get_g2(name, cell=(1.0, 1.0, 1.0)):
         loa =  Atoms([Atom(name, magmom=atoms[name][0])], cell=cell, pbc=False)
     elif name in extra or name in g2:
         loa = eval(name).copy()
-        loa.set_cell(cell, fix=True)
+        loa.set_cell(cell)
         loa.set_pbc(False)
     else:
         raise NotImplementedError('System %s not in database.' % name)
