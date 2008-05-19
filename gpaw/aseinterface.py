@@ -251,7 +251,7 @@ class Calculator(PAW):
 
     def get_magnetic_moments(self):
         """Return the local magnetic moments within augmentation spheres"""
-        magmoms = npy.empty(self.natoms)
+        magmoms = npy.zeros(self.natoms)
         for a, nucleus in enumerate(self.nuclei):
             magmoms[a] = nucleus.mom
         return magmoms
