@@ -17,7 +17,7 @@ from gpaw.mixer import BaseMixer
 
 from gpaw.mpi import rank
 
-#from gpaw.preconditioner import Preconditioner
+from gpaw.preconditioner import Preconditioner
 
 
 from gpaw.tddft.bicgstab import BiCGStab
@@ -42,12 +42,13 @@ class DummyMixer(BaseMixer):
 
 # T^-1
 # Bad preconditioner
-#class KineticEnergyPreconditioner:
-#    def __init__(self, gd, kin, dtype):
-#        self.preconditioner = Preconditioner(gd, kin, dtype)
-#
-#    def apply(self, kpt, psi, psin):
-#        psin[:] = self.preconditioner(psi, kpt.phase_cd, None, None)
+class KineticEnergyPreconditioner:
+    def __init__(self, gd, kin, dtype):
+        self.preconditioner = Preconditioner(gd, kin, dtype)
+
+    def apply(self, kpt, psi, psin):
+        for i range(len(psi)):
+            psin[i][:] = self.preconditioner(psi[i], kpt.phase_cd, None, None)
 
 # S^-1
 class InverseOverlapPreconditioner:
@@ -108,7 +109,7 @@ class TDDFT(PAW):
         self.density.update_pseudo_charge()
 
         # Don't be too strict
-        self.density.charge_eps = 1e-6
+        self.density.charge_eps = 1e-5
 
         # Convert PAW-object to complex
         self.totype(complex);
@@ -144,6 +145,7 @@ class TDDFT(PAW):
         # No preconditioner as none good found
         self.preconditioner = None
         #self.preconditioner = InverseOverlapPreconditioner(self.overlap)
+        #self.preconditioner = KineticEnergyPreconditioner(self.gd, self.td_hamiltonian.hamiltonian.kin, npy.complex)
 
         # Time propagator
         if propagator is 'ECN':
@@ -169,6 +171,8 @@ class TDDFT(PAW):
                 SemiImplicitKrylovExponential( self.td_density,
                                                self.td_hamiltonian,
                                                self.td_overlap,
+                                               self.solver,
+                                               self.preconditioner,
                                                degree = 8,
                                                gd = self.gd,
                                                timer = self.timer )
@@ -260,7 +264,7 @@ class TDDFT(PAW):
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
                                                        npy.array(strength,
                                                                  dtype=float) ),
-                            self.td_overlap, self.solver, self.preconditioner, 
+                            self.td_overlap, self.solver, None,
                             self.gd, self.timer )
         abs_kick.kick(self.kpt_u)
 
@@ -359,3 +363,5 @@ class TDDFT(PAW):
 
     photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
 
+        
+        

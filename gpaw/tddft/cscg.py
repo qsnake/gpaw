@@ -7,6 +7,7 @@ import numpy as npy
 
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotu
+from gpaw.utilities.blas import dotc
 from gpaw.mpi import rank
 
 class CSCG:
@@ -121,7 +122,7 @@ class CSCG:
 
         #print 'Scale = ', scale
 
-        slow_convergence_iters = 50
+        slow_convergence_iters = 100
 
         for i in range(self.max_iter):
             # z_i = (M^-1.r)
