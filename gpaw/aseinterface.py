@@ -249,6 +249,13 @@ class Calculator(PAW):
         """Return the magnetic moment."""
         return self.occupation.magmom
 
+    def get_magnetic_moments(self):
+        """Return the local magnetic moments within augmentation spheres"""
+        magmoms = npy.empty(self.natoms)
+        for a, nucleus in enumerate(self.nuclei):
+            magmoms[a] = nucleus.mom
+        return magmoms
+        
     def get_fermi_level(self):
         """Return the Fermi-level."""
         e = self.occupation.get_fermi_level()
