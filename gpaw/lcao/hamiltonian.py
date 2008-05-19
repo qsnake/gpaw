@@ -107,13 +107,17 @@ class LCAOHamiltonian:
             for S_mm, P_mi in zip(self.S_kmm, nucleus.P_kmi):
                 S_mm += npy.dot(P_mi, npy.inner(dO_ii, P_mi).conj())
                 
-        # Check that the overlap matrix is positive definite        
-        '''s_m = npy.empty(self.nao)
-        for S_mm in self.S_kmm:
-            assert diagonalize(S_mm.copy(), s_m) == 0
-            if s_m[0] <= 0:
-                print s_m[:10]
-                raise RuntimeError('Overlap matrix not positive definite!')'''
+        # Near-linear dependence check. This is done by checking the
+        # eigenvalues of the overlap matrix S_kmm. Eigenvalues close
+        # to zero mean near-linear dependence in the basis-set.
+        self.linear_kpts = {}
+        for k in range(nkpts):
+            P_mm = self.S_kmm[k].copy()
+            p_m = npy.empty(self.nao)
+            diagonalize(P_mm, p_m)
+            self.thres = 1e-6
+            if (p_m <= self.thres).any():
+                self.linear_kpts[k] = (P_mm, p_m)
 
         # Debug stuff        
         if 0:

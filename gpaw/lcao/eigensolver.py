@@ -53,14 +53,12 @@ class LCAO:
         H_mm += hamiltonian.T_kmm[k]
 
         self.S_mm[:] = hamiltonian.S_kmm[k]
-        
-        # Near-linear dependence check
-        p_m = npy.empty(self.nao)
-        P_mm = self.S_mm.copy()
-        diagonalize(P_mm, p_m)
-        thres = 1e-6
-        if (p_m <= thres).any():
+
+        #Check and remove linear dependence for the current k-point
+        if k in hamiltonian.linear_kpts:
             print '*Warning*: near linear dependence detected for k=%s' %k
+            P_mm, p_m = hamiltonian.linear_kpts[k]
+            thres = hamiltonian.thres
             eps_q, C_nm = self.remove_linear_dependence(P_mm, p_m, H_mm, thres)
             kpt.C_nm[:] = C_nm[0:self.nbands]
             kpt.eps_n[:] = eps_q[0:self.nbands]
