@@ -72,7 +72,7 @@ class TDDFT(PAW):
     """
     
     def __init__( self, ground_state_file, td_potential = None,
-                  propagator='SICN', solver='BiCGStab', tolerance=1e-12 ):
+                  propagator='SICN', solver='CSCG', tolerance=1e-8 ):
         """Create TDDFT-object.
         
         Parameters:
@@ -85,11 +85,10 @@ class TDDFT(PAW):
             to each direction as a vector of three floats.
         propagator:  {'SICN', 'ECN'}, optional
             Name of the propagator the name of the time propagator
-        solver: {'BiCGStab'}, optional
+        solver: {'CSCG','BiCGStab'}, optional
             Name of the iterative linear equations solver 
         tolerance: float
             Tolerance for the linear solver
-            Note: Use about ???10^-3 - 10^-4??? tighter tolerance for PAW.
 
         """
 
@@ -183,9 +182,9 @@ class TDDFT(PAW):
 
         if rank == 0:
             print 'States per processor = ', self.nmybands
-        
 
-    def propagate(self, time_step = 1.0, iterations=10000,
+
+    def propagate(self, time_step, iterations,
                   dipole_moment_file = None,
                   restart_file = None, dump_interval = 1000):
         """Propagates wavefunctions.
@@ -193,11 +192,11 @@ class TDDFT(PAW):
         Parameters
         ----------
         time_step: float
-            Time step in attoseconds (10^-18 s)
+            Time step in attoseconds (10^-18 s), e.g., 1.0 or 4.0
         iterations: integer
-            Iterations
+            Iterations, e.g., 10 000 as / 1.0 as = 10 000
         dipole_moment_file: string, optional
-            Name of the data file where to the time-dependent dipole 
+            Name of the data file where to the time-dependent dipole
             moment is saved
         restart_file: string, optional
             Name of the restart file
@@ -253,23 +252,28 @@ class TDDFT(PAW):
 
 
     # exp(ip.r) psi
-    def absorption_kick(self, strength = [0.0,0.0,1e-4]):
+    def absorption_kick(self, kick_strength):
         """ Delta absoprtion kick for photoabsorption spectrum.
+
+        Parameters
+        ----------
+        kick_strength: [float, float, float]
+            Strength of the kick, e.g., [0.0, 0.0, 1e-3]
         
         """
         if rank == 0:
-            print 'Delta kick: ', strength
+            print 'Delta kick: ', kick_strength
 
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
-                                                       npy.array(strength,
+                                                       npy.array(kick_strength,
                                                                  dtype=float) ),
                             self.td_overlap, self.solver, None,
                             self.gd, self.timer )
         abs_kick.kick(self.kpt_u)
 
 
-    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength = [0,0,1e-4], fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
+    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength, fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
@@ -280,6 +284,8 @@ class TDDFT(PAW):
             the specturm is calculated
         spectrum_file: string
             Name of the spectrum file
+        kick_strength: [float, float, float]
+            Strength of the kick, e.g., [0.0, 0.0, 1e-3]
         fwhm: float
             Full width at half maximum for peaks in eV
         delta_omega: float
