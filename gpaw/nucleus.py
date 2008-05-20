@@ -913,3 +913,7 @@ class Nucleus:
         Z_nn = e * npy.dot(npy.dot(P_ni, O_ii), cc(npy.transpose(P1_ni)))
 
         return Z_nn
+
+    def get_electrostatic_correction(self):
+        """Calculate PAW correction to average electrostatic potential."""
+        return self.setup.dEH0 + npy.dot(self.setup.dEH_p, self.D_sp.sum(0))

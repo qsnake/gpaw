@@ -315,7 +315,7 @@ class Setup:
                                     sqrt(4 * pi) * self.Z * r_g * dr_g).sum()
         dEh_q = (wn_lqg[0].sum(1) - wnt_lqg[0].sum(1) -
                  Delta_lq[0] * wg_lg[0].sum())
-        self.dEH_p = npy.dot(dEh_q, T_Lqp[0]) / sqrt(4 * pi)
+        self.dEH_p = npy.dot(dEh_q, T_Lqp[0]) * sqrt(4 * pi)
 
         A_q = 0.5 * (npy.dot(wn_lqg[0], nc_g)
                      + npy.dot(n_qg, wnc_g))
