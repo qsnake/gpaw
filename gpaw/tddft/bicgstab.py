@@ -225,7 +225,7 @@ class BiCGStab:
 
         # done
         self.iterations = i+1
-        print 'BiCGStab iterations = ', self.iterations
+        #print 'BiCGStab iterations = ', self.iterations
 
         if self.timer is not None:
             self.timer.stop('BiCGStab')

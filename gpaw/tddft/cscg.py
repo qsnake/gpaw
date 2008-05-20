@@ -189,7 +189,7 @@ class CSCG:
 
         # done
         self.iterations = i+1
-        print 'CSCG iterations = ', self.iterations
+        #print 'CSCG iterations = ', self.iterations
 
         if self.timer is not None:
             self.timer.stop('CSCG')

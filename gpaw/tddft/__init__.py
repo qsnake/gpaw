@@ -47,7 +47,7 @@ class KineticEnergyPreconditioner:
         self.preconditioner = Preconditioner(gd, kin, dtype)
 
     def apply(self, kpt, psi, psin):
-        for i range(len(psi)):
+        for i in range(len(psi)):
             psin[i][:] = self.preconditioner(psi[i], kpt.phase_cd, None, None)
 
 # S^-1
