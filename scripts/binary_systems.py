@@ -49,15 +49,12 @@ binary_compounds = {
     }
 
 def perovskite(symbol1, symbol2, symbol3, a):
-    atoms = Atoms(symbols='%s%s%s3' % (symbol1, symbol2, symbol3),
-                  pbc=True,
-                  positions=[
-        (.0, .0, .0),
-        (.5, .5, .5),
-        (.5, .0, .5),
-        (.5, .5, .0),
-        (.0, .5, .5),
-        ])
+    atoms = Atoms(symbols='%s%s%s3' % (symbol1, symbol2, symbol3), pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.5, .5, .5),
+                             (.5, .0, .5),
+                             (.5, .5, .0),
+                             (.0, .5, .5),])
     atoms.set_cell([a, a, a], scale_atoms=True)
     return atoms
 
@@ -74,94 +71,89 @@ def wurtzite(symbol1, symbol2, a):
 def c7(symbol1, symbol2, a):
     z = 0.6210
     c = 12.927
-    atoms = Atoms(symbols='%s2%s4%s2%s4' % (symbol1, symbol2, symbol1, symbol2),
-                  pbc=True,
-                  positions=[
-        (0.,    4./6.,    1./4.),
-        (0.,    2./6.,    3./4.),
-        (0.,    2./6.,  z-1./2.),
-        (0.,    4./6.,  z),
-        (0.,    4./6., -z+3./2.),
-        (0.,    2./6., -z+1),
-        (1./2., 1./6.,    1./4.),
-        (1./2., 5./6.,    3./4.),
-        (1./2., 5./6.,  z-1./2.),
-        (1./2., 1./6.,  z),
-        (1./2., 1./6., -z+3./2.),
-        (1./2., 5./6., -z+1.)
-        ])
+    atoms = Atoms(symbols='%s4%s8' % (symbol1, symbol2), pbc=True,
+                  positions=[(0.,    4./6.,    1./4.),
+                             (0.,    2./6.,    3./4.),
+                             (1./2., 1./6.,    1./4.),
+                             (1./2., 5./6.,    3./4.),
+                             (0.,    2./6.,  z-1./2.),
+                             (0.,    4./6.,        z),
+                             (0.,    4./6., -z+3./2.),
+                             (0.,    2./6.,     -z+1),
+                             (1./2., 5./6.,  z-1./2.),
+                             (1./2., 1./6.,        z),
+                             (1./2., 1./6., -z+3./2.),
+                             (1./2., 5./6.,    -z+1.),])
     atoms.set_cell([a, a*sqrt(3.0), c], scale_atoms=True)
     return atoms
 
 def fluorite(symbol1, symbol2, a):
-    atoms = Atoms(symbols='%s4%s4%s4' % (symbol1, symbol2, symbol2),
-                  pbc=True,
-                  positions=[
-        (.0, .0, .0),
-        (.0, .5, .5),
-        (.5, .0, .5),
-        (.5, .5, .0),
-        (.25, .25, .25),
-        (.25, .75, .75),
-        (.75, .25, .75),
-        (.75, .75, .25),
-        (.75, .75, .75),
-        (.75, .25, .25),
-        (.25, .75, .25),
-        (.25, .25, .75)
-        ])
+    atoms = Atoms(symbols='%s4%s8' % (symbol1, symbol2), pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.0, .5, .5),
+                             (.5, .0, .5),
+                             (.5, .5, .0),
+                             (.25, .25, .25),
+                             (.25, .75, .75),
+                             (.75, .25, .75),
+                             (.75, .75, .25),
+                             (.75, .75, .75),
+                             (.75, .25, .25),
+                             (.25, .75, .25),
+                             (.25, .25, .75),])
     atoms.set_cell([a, a, a], scale_atoms=True)
     return atoms
 
 def zincblende(symbol1, symbol2, a):
-    atoms = Atoms(symbols='%s4%s4' % (symbol1, symbol2),
-                  pbc=True,
-                  positions=[
-        (.0, .0, .0),
-        (.0, .5, .5),
-        (.5, .0, .5),
-        (.5, .5, .0),
-        (.25, .25, .25),
-        (.25, .75, .75),
-        (.75, .25, .75),
-        (.75, .75, .25)
-        ])
+    atoms = Atoms(symbols='%s4%s4' % (symbol1, symbol2), pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.0, .5, .5),
+                             (.5, .0, .5),
+                             (.5, .5, .0),
+                             (.25, .25, .25),
+                             (.25, .75, .75),
+                             (.75, .25, .75),
+                             (.75, .75, .25),])
     atoms.set_cell([a, a, a], scale_atoms=True)
     return atoms
 
 def cesiumchloride(symbol1, symbol2, a):
-    atoms = Atoms(symbols='%s%s' % (symbol1, symbol2),
-                  pbc=True,
-                  positions=[
-        (.0, .0, .0),
-        (.5, .5, .5)
-        ])
+    atoms = Atoms(symbols='%s%s' % (symbol1, symbol2), pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.5, .5, .5),])
     atoms.set_cell([a, a, a])
     return atoms
 
 def rocksalt(symbol1, symbol2, a):
-    atoms = Atoms(symbols='%s2%s2' % (symbol1, symbol2),
-                  pbc=True,
-                  positions=[
-        (.0, .0, .0),
-        (.5, .5, .5),
-        (.5, .5, .0),
-        (.0, .0, .5)
-        ])
+    atoms = Atoms(symbols='%s2%s2' % (symbol1, symbol2), pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.5, .5, .5),
+                             (.5, .5, .0),
+                             (.0, .0, .5),])
     atoms.set_cell([a/sqrt(2), a/sqrt(2), a], scale_atoms=True)
     return atoms
 
+def facecenteredcubic(symbol, a):
+    atoms = Atoms(symbols='%s2' % symbol, pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.5, .5, .5),])
+    atoms.set_cell([a/sqrt(2), a/sqrt(2), a], scale_atoms=True)
+    return atoms
 
+def bodycenteredcubic(symbol, a):
+    atoms = Atoms(symbols='%s2' % symbol, pbc=True,
+                  positions=[(.0, .0, .0),
+                             (.5, .5, .5),])
+    atoms.set_cell([a, a, a], scale_atoms=True)
+    return atoms
+
+def simplecubic(symbol, a):
+    atoms = Atoms(symbols='%s2' % symbol, pbc=True)
+    atoms.set_cell([a, a, a], scale_atoms=True)
+    return atoms
 
 def alloy(structure, symbol1, symbol2, a):
-    atoms = {
-        'fluorite':   fluorite(symbol1, symbol2, a),
-        'zincblende': zincblende(symbol1, symbol2, a),
-        'cesiumchloride': cesiumchloride(symbol1, symbol2, a),
-        'rocksalt':   rocksalt(symbol1, symbol2, a),
-        'c7':   c7(symbol1, symbol2, a)
-        }[structure]
-    return atoms
+    return eval(structure)(symbol1, symbol2, a)
 
 #SiO = zincblende('Si', 'O', 7.)
 #view(SiO)
