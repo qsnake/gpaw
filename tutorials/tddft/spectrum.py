@@ -42,6 +42,6 @@ td_calc = TDDFT('na2_gs.gpw', propagator='SICN', solver='CSCG', tolerance=1e-8)
 # Kick
 td_calc.absorption_kick(kick)
 # Propagate
-td_calc.propagate(time_step, iters, 'na2_dmz.dat', 'na2_td.gpw)
+td_calc.propagate(time_step, iters, 'na2_dmz.dat', 'na2_td.gpw')
 # Linear absorption spectrum
 TDDFT.photoabsorption_spectrum('na2_dmz.dat', 'na2_spectrum_z.dat', kick)

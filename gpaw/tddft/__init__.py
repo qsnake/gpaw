@@ -25,6 +25,7 @@ from gpaw.tddft.cscg import CSCG
 from gpaw.tddft.propagators import \
     ExplicitCrankNicolson, \
     SemiImplicitCrankNicolson, \
+    SemiImplicitTaylorExponential, \
     SemiImplicitKrylovExponential, \
     AbsorptionKick
 from gpaw.tddft.tdopers import \
@@ -165,6 +166,16 @@ class TDDFT(PAW):
                                            self.preconditioner,
                                            self.gd,
                                            self.timer )
+        elif propagator is 'SITE':
+            self.propagator = \
+                SemiImplicitTaylorExponential( self.td_density,
+                                               self.td_hamiltonian,
+                                               self.td_overlap,
+                                               self.solver,
+                                               self.preconditioner,
+                                               degree = 4,
+                                               gd = self.gd,
+                                               timer = self.timer )
         elif propagator is 'SIKE':
             self.propagator = \
                 SemiImplicitKrylovExponential( self.td_density,
