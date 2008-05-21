@@ -101,9 +101,13 @@ PyObject * vdw(PyObject* self, PyObject *args)
 	    for (int a3 = -repeat[2]; a3 <= repeat[2]; a3++)
 	      {
 		//int i2max = ni;
+		double x = 0.5;
 		int i2max = iB;
 		if (a1 == 0 && a2 == 0 && a3 == 0)
-		  i2max = i1;
+		  {
+		    i2max = i1;
+		    x = 1.0;
+		  }
 		double R1a[3] = {R1[0] + a1 * cell[0],
 				 R1[1] + a2 * cell[1],
 				 R1[2] + a3 * cell[2]};
@@ -117,7 +121,7 @@ PyObject * vdw(PyObject* self, PyObject *args)
 		      }
 		    double e12 = vdwkernel(sqrt(r2), q01, q0[i2],
 					   nD, ndelta, dD, ddelta, phi);
-		    e1 += n[i2] * e12;
+		    e1 += x * n[i2] * e12;
 		  }
 	      }
 	energy += n[i1] * e1;
