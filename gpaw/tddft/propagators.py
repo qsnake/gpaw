@@ -657,7 +657,9 @@ class SemiImplicitTaylorExponential(Propagator):
                 # psin = psi(0) + (1/k) (-i S^-1 H t) psin
                 self.td_hamiltonian.apply(self.kpt, self.psin, self.hpsit)
                 # S psin = H psin
+                self.psin[:] = self.hpsit
                 self.solver.solve(self, self.psin, self.hpsit)
+                #print 'Linear solver iterations = ', self.solver.iterations
                 # psin = psi(0) + (-it/k) S^-1 H psin
                 self.mblas.multi_scale( -(1.0J) * self.time_step / k, 
                                          self.psin, nvec )
@@ -728,7 +730,7 @@ class SemiImplicitKrylovExponential(Propagator):
         self.td_overlap = td_overlap
         self.solver = solver
         self.preconditioner = preconditioner
-        self.degree = degree
+        self.kdim = degree + 1
         self.gd = gd
         self.timer = timer
 
@@ -774,7 +776,7 @@ class SemiImplicitKrylovExponential(Propagator):
 
         # em = (wfs, degree)
         if self.em is None:
-            self.em = npy.zeros( (nvec, self.degree), float)
+            self.em = npy.zeros( (nvec, self.kdim), float)
 
         # lm = (wfs)
         if self.lm is None:
@@ -782,25 +784,25 @@ class SemiImplicitKrylovExponential(Propagator):
 
         # hm = (wfs, degree, degree)
         if self.hm is None:
-            self.hm = npy.zeros( (nvec, self.degree, self.degree), complex)
+            self.hm = npy.zeros( (nvec, self.kdim, self.kdim), complex)
         # sm = (wfs, degree, degree)
         if self.sm is None:
-            self.sm = npy.zeros( (nvec, self.degree, self.degree), complex)
+            self.sm = npy.zeros( (nvec, self.kdim, self.kdim), complex)
         # xm = (wfs, degree, degree)
         if self.xm is None:
-            self.xm = npy.zeros( (nvec, self.degree, self.degree), complex)
+            self.xm = npy.zeros( (nvec, self.kdim, self.kdim), complex)
 
         # qm = (degree, wfs, nx, ny, nz) 
         if self.qm is None:
-            self.qm = self.gd.zeros( (self.degree, nvec), 
+            self.qm = self.gd.zeros( (self.kdim, nvec), 
                                      dtype=complex )
         # H qm = (degree, wfs, nx, ny, nz) 
         if self.Hqm is None:
-            self.Hqm = self.gd.zeros( (self.degree, nvec), 
+            self.Hqm = self.gd.zeros( (self.kdim, nvec), 
                                      dtype=complex )
         # S qm = (degree, wfs, nx, ny, nz) 
         if self.Sqm is None:
-            self.Sqm = self.gd.zeros( (self.degree, nvec), 
+            self.Sqm = self.gd.zeros( (self.kdim, nvec), 
                                      dtype=complex )
         # rqm = (wfs, nx, ny, nz) 
         if self.rqm is None:
@@ -856,7 +858,7 @@ class SemiImplicitKrylovExponential(Propagator):
     def solve_propagation_equation(self, kpt_u, time_step):
         nvec = len(kpt_u[0].psit_nG)
         tmp = npy.zeros((nvec,), complex)
-        xm_tmp = npy.zeros((nvec, self.degree), complex)
+        xm_tmp = npy.zeros((nvec, self.kdim), complex)
         qm = self.qm
         Hqm = self.Hqm
         Sqm = self.Sqm
@@ -870,8 +872,8 @@ class SemiImplicitKrylovExponential(Propagator):
                                                  self.qm, self.Hqm, self.Sqm )
 
             # Calculate hm and sm
-            for i in range(self.degree):
-                for j in range(self.degree):
+            for i in range(self.kdim):
+                for j in range(self.kdim):
                     self.mblas.multi_zdotc(tmp, qm[i], Hqm[j], nvec)
                     for k in range(nvec):
                         self.hm[k][i][j] = tmp[k]
@@ -914,7 +916,7 @@ class SemiImplicitKrylovExponential(Propagator):
             #print xm_tmp
             kpt.psit_nG[:] = 0.0
             for k in range(nvec):
-                for i in range(self.degree):
+                for i in range(self.kdim):
                     #print 'Xm_tmp[',k,'][',i,'] = ', xm_tmp[k][i]
                     axpy( xm_tmp[k][i] / scale[k], 
                           self.qm[i][k], kpt.psit_nG[k] )
@@ -936,7 +938,7 @@ class SemiImplicitKrylovExponential(Propagator):
         # q_0 = psi
         rqm[:] = kpt.psit_nG
 
-        for i in range(self.degree):
+        for i in range(self.kdim):
             qm[i][:] = rqm
 
             # S orthogonalize
@@ -958,9 +960,10 @@ class SemiImplicitKrylovExponential(Propagator):
             h.apply(kpt, qm[i], Hqm[i])
 
             # S r = H q_i, (if stuff, to save one inversion)
-            if i+1 < self.degree:
+            if i+1 < self.kdim:
+                rqm[:] = Hqm[i]
                 self.solver.solve(self, rqm, Hqm[i])
-                #print 'iters = ', self.solver.iterations
+                #print 'Linear solver iterations = ', self.solver.iterations
 
         #print '---'
         return scale
