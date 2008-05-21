@@ -96,6 +96,8 @@ class TDDFT(PAW):
         # Set units to ASE units
         self.a0 = Bohr
         self.Ha = Hartree
+        self.attosec_to_autime = 1/24.188843265
+        self.autime_to_attosec = 24.188843265
 
         # Initialize paw-object
         PAW.__init__(self,ground_state_file)
@@ -253,8 +255,8 @@ class TDDFT(PAW):
         """
 
         # Convert to atomic units
-        time_step = time_step / 24.1888
-
+        time_step = time_step * self.attosec_to_autime
+        
         if dipole_moment_file is not None:
             if rank == 0:
                 dm_file = file(dipole_moment_file,'w')
@@ -265,7 +267,7 @@ class TDDFT(PAW):
                 if i % 100 == 0:
                     print ''
                     print i, ' iterations done. Current time is ', \
-                        self.time * 24.1888, ' as.'
+                        self.time * self.autime_to_attosec, ' as.'
                 elif i % 10 == 0:
                     print '.',
                     sys.stdout.flush()
@@ -345,8 +347,7 @@ class TDDFT(PAW):
         if rank == 0:
             strength = npy.array(kick_strength, dtype=float)
 
-            self.text( 'Calculating photoabsorption spectrum from file "',
-                       dipole_moment_file, '".' )
+            print ('Calculating photoabsorption spectrum from file "%s"' % dipole_moment_file)
 
             f_file = file(spectrum_file, 'w')
             dm_file = file(dipole_moment_file, 'r')
@@ -374,6 +375,8 @@ class TDDFT(PAW):
             kick_magnitude = npy.sum(strength**2)
 
             # write comment line
+            f_file.write('# Total time = %lf fs, Time step = %lf as\n' % (n * dt * 24.1888/1000.0, dt *  24.1888))
+            f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
             f_file.write('# FWHM = %lf eV = %lf Hartree <=> sigma = %lf eV\n' % (fwhm, fwhm/27.211, sigma*27.211))
 
             # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
@@ -412,9 +415,8 @@ class TDDFT(PAW):
             print ''
             f_file.close()
 
-            self.text( 'Calculated photoabsorption spectrum saved to file "',
-                       spectrum_file, '".' )
-
+            print ('Calculated photoabsorption spectrum saved to file "%s"' % spectrum_file)
+            
     # Make static method
     photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
 
