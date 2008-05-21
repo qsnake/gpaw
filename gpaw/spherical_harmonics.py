@@ -155,3 +155,16 @@ def Y(L, x, y, z):
     for c, n in YL[L]:
         result += c * x**n[0] * y**n[1] * z**n[2]
     return result
+
+
+def nablaYL(L, R):
+    """Calculate the gradient of a real solid spherical harmonic."""
+    x, y, z = R
+    dYdx = dYdy = dYdz = 0.
+    terms = YL[L]
+    # The 'abs' avoids error in case powx == 0
+    for N, (powx, powy, powz) in terms:
+        dYdx += N * powx * x**abs(powx - 1) * y**powy * z**powz
+        dYdy += N * powy * x**powx * y**abs(powy - 1) * z**powz
+        dYdz += N * powz * x**powx * y**powy * z**abs(powz - 1)
+    return (dYdx, dYdy, dYdz)
