@@ -38,3 +38,4 @@ for ending in endings:
 
     os.remove(restart)
     os.remove(result)
+

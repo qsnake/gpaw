@@ -4,9 +4,8 @@ import numpy as npy
 from gpaw import Calculator
 from gpaw.poisson import PoissonSolver
 
-bulk = Atoms([Atom('Li')], pbc=True)
 a = 2.7
-bulk.set_cell((a, a, a))
+bulk = Atoms('Li', pbc=True, cell=(a, a, a))
 k = 4
 g = 8
 calc = Calculator(gpts=(g, g, g), kpts=(k, k, k), nbands=2,

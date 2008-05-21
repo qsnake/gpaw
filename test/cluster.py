@@ -46,7 +46,7 @@ fxyz='CO.xyz'
 fpdb='CO.pdb'
 
 cell = [2.,3.,R+2.]
-CO.set_cell(cell)
+CO.set_cell(cell, scale_atoms=True)
 CO.write(fxyz)
 CO_b = Cluster(filename=fxyz)
 assert(len(CO) == len(CO_b))
