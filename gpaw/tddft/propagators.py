@@ -702,8 +702,6 @@ class SemiImplicitKrylovExponential(Propagator):
     def __init__( self, td_density, td_hamiltonian, td_overlap, solver, 
                   preconditioner, degree, gd, timer ):
         """Create SemiImplicitKrylovExponential-object.
-
-        BROKEN AT THE MOMENT!!!
         
         Parameters
         ----------
@@ -762,11 +760,6 @@ class SemiImplicitKrylovExponential(Propagator):
         """
 
         # temporary wavefunctions
-        #if self.tmp_psit_nG is None:
-        #    self.tmp_psit_nG = []
-        #    for kpt in kpt_u:
-        #        self.tmp_psit_nG.append( self.gd.empty( n=len(kpt.psit_nG),
-        #                                                dtype=complex ) )
         if self.tmp_kpt_u is None:
             self.tmp_kpt_u = []
             for kpt in kpt_u:
@@ -777,8 +770,7 @@ class SemiImplicitKrylovExponential(Propagator):
 
 
         # Allocate memory for Krylov subspace stuff
-        self.nvec = len(kpt_u[0].psit_nG)
-        nvec = self.nvec
+        nvec = len(kpt_u[0].psit_nG)
 
         # em = (wfs, degree)
         if self.em is None:
@@ -832,12 +824,8 @@ class SemiImplicitKrylovExponential(Propagator):
 
 
         # copy current wavefunctions to temporary variable
-        #for u in range(len(kpt_u)):
-        #    self.tmp_psit_nG[u][:] = kpt_u[u].psit_nG
         for u in range(len(kpt_u)):
             self.tmp_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
-            #self.tmp2_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
-            #kpt_u[u].psit_nG[:] = 0.0
 
         # predict
         self.solve_propagation_equation(kpt_u, time_step)
@@ -866,8 +854,9 @@ class SemiImplicitKrylovExponential(Propagator):
 
     # psi(t) = exp(-i t S^-1 H) psi(0)
     def solve_propagation_equation(self, kpt_u, time_step):
-        tmp = npy.zeros((self.nvec,), complex)
-        xm_tmp = npy.zeros((self.nvec, self.degree), complex)
+        nvec = len(kpt_u[0].psit_nG)
+        tmp = npy.zeros((nvec,), complex)
+        xm_tmp = npy.zeros((nvec, self.degree), complex)
         qm = self.qm
         Hqm = self.Hqm
         Sqm = self.Sqm
@@ -875,19 +864,19 @@ class SemiImplicitKrylovExponential(Propagator):
         # for each kpt_u
         for kpt in kpt_u:
             self.kpt = kpt
-            scale = self.create_krylov_subspace( kpt, 
-                                                 self.td_hamiltonian, 
-                                                 self.td_overlap, 
+            scale = self.create_krylov_subspace( kpt,
+                                                 self.td_hamiltonian,
+                                                 self.td_overlap,
                                                  self.qm, self.Hqm, self.Sqm )
 
             # Calculate hm and sm
             for i in range(self.degree):
                 for j in range(self.degree):
-                    self.mblas.multi_zdotc(tmp, qm[i], Hqm[j], self.nvec)
-                    for k in range(self.nvec):
+                    self.mblas.multi_zdotc(tmp, qm[i], Hqm[j], nvec)
+                    for k in range(nvec):
                         self.hm[k][i][j] = tmp[k]
-                    self.mblas.multi_zdotc(tmp, qm[i], Sqm[j], self.nvec)
-                    for k in range(self.nvec):
+                    self.mblas.multi_zdotc(tmp, qm[i], Sqm[j], nvec)
+                    for k in range(nvec):
                         self.sm[k][i][j] = tmp[k]
 
             #print 'Hm ='
@@ -908,23 +897,23 @@ class SemiImplicitKrylovExponential(Propagator):
             # y = Sm Qm^H S psi(0) = Xm^H Sm e_1
             # if Sm = I then y is the first row of Xm^*
             # and z = exp(-i Em t) y
-            for k in range(self.nvec):
+            for k in range(nvec):
                 (self.em[k], self.xm[k]) = npy.linalg.eigh(self.hm[k])
             #print 'Em = ', self.em
-            for k in range(self.nvec):
-                print 'Xm',k,' = '
+            #for k in range(nvec):
+                #print 'Xm',k,' = '
                 #print self.xm[k]
 
             #print self.em[0] * (-1.0J*self.time_step)
             self.em = npy.exp(self.em * (-1.0J*self.time_step))
             #print self.em[0]
             #print npy.linalg.eigh(self.hm[0])
-            for k in range(self.nvec):
+            for k in range(nvec):
                 z = self.em[k] * npy.conj(self.xm[k,0])
                 xm_tmp[k][:] = npy.dot(self.xm[k], z)
             #print xm_tmp
             kpt.psit_nG[:] = 0.0
-            for k in range(self.nvec):
+            for k in range(nvec):
                 for i in range(self.degree):
                     #print 'Xm_tmp[',k,'][',i,'] = ', xm_tmp[k][i]
                     axpy( xm_tmp[k][i] / scale[k], 
@@ -932,68 +921,52 @@ class SemiImplicitKrylovExponential(Propagator):
 
             #print self.qm
             #print kpt.psit_nG
-            
 
 
-    # Create Krylov subspace 
-    #    K_v = { psi, (H - lambda_0 S) psi, 
-    #             (H - lambda_1 S) (H - lambda_0 S) psi, ... }
+    # Create Krylov subspace
+    #    K_v = { psi, S^-1 H psi, (S^-1 H)^2 psi, ... }
     def create_krylov_subspace(self, kpt, h, s, qm, Hqm, Sqm):
-        nvec = self.nvec
-        lm = self.lm
-        tmp = npy.zeros( lm.shape, complex )
-        scale = npy.zeros( lm.shape, complex )
+        nvec = len(kpt.psit_nG)
+        # tmp = (wfs)
+        tmp = npy.zeros( (nvec,), complex)
+        scale = npy.zeros( (nvec,), complex)
+        scale[:] = 0.0
         rqm = self.rqm
+
+        # q_0 = psi
         rqm[:] = kpt.psit_nG
 
         for i in range(self.degree):
-            # qm_i = r_i-1
-            if i == 0:
-                qm[i][:] = rqm
-            else:
-                self.apply_preconditioner(rqm,qm[i])
+            qm[i][:] = rqm
 
-            # S-orthonormalize
+            # S orthogonalize
             # q_i = q_i - sum_j<i <q_j|S|q_i> q_j
             for j in range(i):
                 self.mblas.multi_zdotc(tmp, qm[i], Sqm[j], nvec)
                 tmp = npy.conj(tmp)
                 self.mblas.multi_zaxpy(-tmp, qm[j], qm[i], nvec)
-                #print 'Ovelap', tmp
 
-            self.timer.start('Apply time-dependent operators')
-            # S qm_i
+            # S q_i
             s.apply(kpt, qm[i], Sqm[i])
-            self.timer.stop('Apply time-dependent operators')
-
-            # q_i = q_i / sqrt( <q_i|S|q_i> )
             self.mblas.multi_zdotc(tmp, qm[i], Sqm[i], nvec)
-            tmp = 1. / npy.sqrt(tmp)
-            self.mblas.multi_scale(tmp, qm[i], nvec)
-            self.mblas.multi_scale(tmp, Sqm[i], nvec)
-            #print 'Norm2', tmp
+            self.mblas.multi_scale(1./npy.sqrt(tmp), qm[i], nvec)
+            self.mblas.multi_scale(1./npy.sqrt(tmp), Sqm[i], nvec)
             if i == 0:
-                scale[:] = tmp
+                scale[:] = 1/npy.sqrt(tmp)
 
-            self.timer.start('Apply time-dependent operators')
-            # H qm_i
+            # H q_i
             h.apply(kpt, qm[i], Hqm[i])
-            self.timer.stop('Apply time-dependent operators')
 
+            # S r = H q_i, (if stuff, to save one inversion)
+            if i+1 < self.degree:
+                self.solver.solve(self, rqm, Hqm[i])
+                #print 'iters = ', self.solver.iterations
 
-            # lambda = <qm_0|H|qm_0> / <qm_0|S|qm_0>
-            if i == 0:
-                self.mblas.multi_zdotc(lm, qm[i], Hqm[i], nvec)
-            #self.mblas.multi_zdotc(tmp, qm[i], Sqm[i], nvec)
-            #lm /= tmp
-
-            #print 'lambda', lm
-
-            # r_i+1 = H qm_i - lambda_i S qm_i
-            rqm[:] = Hqm[i]
-            self.mblas.multi_zaxpy(-lm, Sqm[i], rqm, nvec)
-
+        #print '---'
         return scale
+
+    def dot(self, psit, spsit):
+        self.td_overlap.apply(self.kpt, psit, spsit)
 
 
     #  Solve M psin = psi
@@ -1018,6 +991,7 @@ class SemiImplicitKrylovExponential(Propagator):
         self.timer.stop('Solve TDDFT preconditioner')
 
 
+    ### Below this, just for testing & debug
     def Sdot(self, psit, spsit):
         self.apply_preconditioner(psit, self.tmp)
         self.td_overlap.apply(self.kpt, self.tmp, spsit)

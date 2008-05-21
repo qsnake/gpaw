@@ -183,7 +183,7 @@ class TDDFT(PAW):
                                                self.td_overlap,
                                                self.solver,
                                                self.preconditioner,
-                                               degree = 8,
+                                               degree = 4,
                                                gd = self.gd,
                                                timer = self.timer )
         else:
