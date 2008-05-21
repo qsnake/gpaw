@@ -30,8 +30,9 @@ def f1(xc, rs, s):
 
 pbe_1 = XCFunctional('oldPBE', nspin_1)
 pbe_2 = XCFunctional('oldPBE', nspin_2)
-pw91_1 = XCFunctional('PW91', nspin_1)
-pw91_2 = XCFunctional('PW91', nspin_2)
+pw91_1 = XCFunctional('oldPW91', nspin_1)
+
+pw91_2 = XCFunctional('oldPW91', nspin_2)
 assert abs(f0(pbe_1, 2, 3) - 1.58) < 0.01
 assert abs(f1(pbe_2, 2, 3) - 1.88) < 0.01
 assert abs(f0(pw91_1, 2, 3) - 1.60) < 0.01
