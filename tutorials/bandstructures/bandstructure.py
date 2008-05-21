@@ -2,8 +2,10 @@ from gpaw import Calculator
 from ase import *
 
 a = 4.23
-atoms = Atoms(symbols='Na2', positions=[(0, 0, 0),(0.5, 0.5, 0.5)], pbc=True)
-atoms.set_cell((a, a, a))
+atoms = Atoms('Na2',
+              [(0, 0, 0),
+               (0.5 * a, 0.5 * a, 0.5 * a)],
+              pbc=True, cell=(a, a, a))
 
 # Make self-consistent calculation and save results
 h = 0.25

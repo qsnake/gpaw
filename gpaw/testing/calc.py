@@ -149,7 +149,7 @@ def lattice_energies(symbol='C', gpts=(24,16,16), kpts=(6,8,8),
             lattice_constants = npy.array([aref + d for d in displacements])
 
         for a in lattice_constants:
-            system.set_cell(a/base_cell_size * base_cell)
+            system.set_cell(a/base_cell_size * base_cell, scale_atoms=True)
             energy = system.get_potential_energy()
             energies.append(energy)
             niters.append(c.niter)

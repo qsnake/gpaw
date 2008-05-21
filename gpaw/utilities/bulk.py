@@ -90,7 +90,7 @@ class Bulk:
             b = a
             c = a
 
-        self.atoms.set_cell([a, b, c])
+        self.atoms.set_cell([a, b, c], scale_atoms=True)
 
     def energy(self, h=None, gpts=None, kpts=None, parameters={}):
         cell = self.atoms.get_cell()
