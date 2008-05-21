@@ -17,7 +17,7 @@ parser.add_option('-E', '--energy-shift', metavar='<energy>', type='float',
                   default=.3,
                   help='use given energy shift to determine cutoff')
 parser.add_option('-T', '--tail-norm', metavar='<norm>', type='str',
-                  default='.15,.3,.5', dest='tailnorm',
+                  default='.03,.1,.4', dest='tailnorm',
                   help='use the given fraction to define the split'+
                   '-valence cutoff.  To specify multiple cutoffs, '+
                   'write: norm1,norm2,...')
@@ -48,7 +48,7 @@ parser.add_option('--rchar-pol-rel', type='float', default=None,
 parser.add_option('--gaussians', type='int', metavar='<n>',
                   help='use the specified number of Gaussians for '+
                   'polarization function interpolation')
-parser.add_option('--vconf-amplitude', type='float', default=8.,
+parser.add_option('--vconf-amplitude', type='float', default=12.,
                   metavar='<alpha>',
                   help='set proportionality constant of smooth confinement '+
                   'potential [default: %default]')

@@ -744,11 +744,12 @@ def dummy_test(lmax=4, rcut=6., lmin=0): # fix args
 restart_filename = 'ref.%s.gpw'
 output_filename = 'ref.%s.txt'
 
+# XXX find a better way to do this
 # Default characteristic radii when using only one gaussian
-default_rchar_rel = .37
-# Defaults for each l
-rchar_rels = {1: .3,
-              2: .37}
+default_rchar_rel = .25
+# Defaults for each l.  Actually we don't care right now
+rchar_rels = {}#1: .3,
+              #2: .25}
 
 # Systems for non-dimer-forming or troublesome atoms
 # 'symbol' : (g2 key, index of desired atom)
