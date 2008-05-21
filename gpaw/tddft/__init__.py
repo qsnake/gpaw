@@ -108,17 +108,28 @@ class TDDFT(PAW):
         self.initialize_wave_functions()
         self.density.update_pseudo_charge()
 
-        # Don't be too strict
-        self.density.charge_eps = 1e-5
 
         # Convert PAW-object to complex
         self.totype(complex);
+
+
+        self.text('')
+        self.text('')
+        self.text('------------------------------------------')
+        self.text('  Time-propagation TDDFT                  ')
+        self.text('------------------------------------------')
+        self.text('')
+
 
         # No density mixing
         self.density.mixer = DummyMixer()
 
         # Set initial time
         self.time = 0.
+
+        # Don't be too strict
+        self.density.charge_eps = 1e-5
+        self.text('Charge epsilon: ', self.density.charge_eps)
 
         # Time-dependent variables and operators
         self.td_potential = td_potential
@@ -129,10 +140,13 @@ class TDDFT(PAW):
         self.td_overlap = TimeDependentOverlap(self.overlap)
         self.td_density = TimeDependentDensity(self)
 
+
         # Solver for linear equations
+        self.text('Solver: ', solver)
         if solver is 'BiCGStab':
             self.solver = BiCGStab( gd=self.gd, timer=self.timer,
                                     tolerance=tolerance )
+
         elif solver is 'CSCG':
             self.solver = CSCG( gd=self.gd, timer=self.timer,
                                 tolerance=tolerance )
@@ -143,11 +157,13 @@ class TDDFT(PAW):
 
         # Preconditioner
         # No preconditioner as none good found
+        self.text('Preconditioner: ', 'None')
         self.preconditioner = None
         #self.preconditioner = InverseOverlapPreconditioner(self.overlap)
         #self.preconditioner = KineticEnergyPreconditioner(self.gd, self.td_hamiltonian.hamiltonian.kin, npy.complex)
 
         # Time propagator
+        self.text('Propagator: ', propagator)
         if propagator is 'ECN':
             self.propagator = \
                 ExplicitCrankNicolson( self.td_density,
@@ -186,13 +202,33 @@ class TDDFT(PAW):
                                                degree = 4,
                                                gd = self.gd,
                                                timer = self.timer )
+        elif propagator is 'SIKE5':
+            self.propagator = \
+                SemiImplicitKrylovExponential( self.td_density,
+                                               self.td_hamiltonian,
+                                               self.td_overlap,
+                                               self.solver,
+                                               self.preconditioner,
+                                               degree = 5,
+                                               gd = self.gd,
+                                               timer = self.timer )
+        elif propagator is 'SIKE6':
+            self.propagator = \
+                SemiImplicitKrylovExponential( self.td_density,
+                                               self.td_hamiltonian,
+                                               self.td_overlap,
+                                               self.solver,
+                                               self.preconditioner,
+                                               degree = 6,
+                                               gd = self.gd,
+                                               timer = self.timer )
         else:
             raise RuntimeError( 'Error in TDDFT:' +
                                 'Time propagator %s not supported. '
                                 % (propagator) )
 
         if rank == 0:
-            print 'States per processor = ', self.nmybands
+            self.text('States per processor = ', self.nmybands)
 
 
     def propagate(self, time_step, iterations,
@@ -215,6 +251,7 @@ class TDDFT(PAW):
             After how many iterations restart data is dumped
         
         """
+
         # Convert to atomic units
         time_step = time_step / 24.1888
 
@@ -273,7 +310,7 @@ class TDDFT(PAW):
         
         """
         if rank == 0:
-            print 'Delta kick: ', kick_strength
+            self.text('Delta kick: ', kick_strength)
 
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
@@ -308,8 +345,8 @@ class TDDFT(PAW):
         if rank == 0:
             strength = npy.array(kick_strength, dtype=float)
 
-            print 'Calculating photoabsorption spectrum from file "%s."' \
-                % dipole_moment_file
+            self.text( 'Calculating photoabsorption spectrum from file "',
+                       dipole_moment_file, '".' )
 
             f_file = file(spectrum_file, 'w')
             dm_file = file(dipole_moment_file, 'r')
@@ -375,9 +412,10 @@ class TDDFT(PAW):
             print ''
             f_file.close()
 
-            print 'Calculated photoabsorption spectrum saved to file "%s."' \
-                % spectrum_file
+            self.text( 'Calculated photoabsorption spectrum saved to file "',
+                       spectrum_file, '".' )
 
+    # Make static method
     photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
 
         
