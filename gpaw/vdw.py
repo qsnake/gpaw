@@ -108,7 +108,7 @@ class VanDerWaals:
         p.ylabel(r'$4\pi D^2 \phi(\rm{Hartree})$')
         p.show()
         
-    def get_energy(self, ncut=0.0005):
+    def get_energy(self, repeat=None, ncut=0.0005):
         #introduces periodic boundary conditions using
         #the minimum image convention
 
@@ -149,8 +149,14 @@ class VanDerWaals:
         
         if mpi.rank == mpi.size - 1:
             iB = ni
+
+        if repeat is None:
+            repeat_c = npy.zeros(3, int)
+        else:
+            repeat_c = npy.asarray(repeat, int)
             
         E_cl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
+                         repeat_c,
                          self.phi_jk, self.deltaD, self.deltadelta,
                          iA, iB)
         E_cl = mpi.world.sum(E_cl * gd.h_c.prod()**2)
@@ -213,7 +219,7 @@ class VanDerWaals:
         #filename='eta_2_phi_delta'
         faktor = 2.0*4.0*pi/pi**2.0
         for n in npy.arange(0.0,1.0,self.deltadelta):
-            f = path+filename+str(n)+'.dat'
+            f = path + '/' + filename + str(n) + '.dat'
             data = self.read_array1d_from_txt_file(f)
             x[n] = npy.array(data[:])*faktor 
         #h=0.05 for D og delta 
