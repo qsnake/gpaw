@@ -485,7 +485,8 @@ class PAW(PAWExtra, Output):
         if self.eigensolver.lcao:
             for nucleus in self.nuclei:
                 nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc,
-                                                   self.locfuncbcaster)
+                                                   self.locfuncbcaster,
+                                                   self.hamiltonian.lcao_forces)
             self.locfuncbcaster.broadcast()
             
             if not self.density.initialized:
@@ -599,6 +600,10 @@ class PAW(PAWExtra, Output):
             return
 
         self.F_ac = npy.empty((self.natoms, 3))
+
+        self.density.update(self.kpt_u, self.symmetry)
+        self.update_kinetic()
+        self.hamiltonian.update(self.density)
         
         nt_g = self.density.nt_g
         vt_sG = self.hamiltonian.vt_sG
@@ -615,7 +620,11 @@ class PAW(PAWExtra, Output):
         # Calculate force-contribution from k-points:
         for kpt in self.kpt_u:
             for nucleus in self.pt_nuclei:
-                nucleus.calculate_force_kpoint(kpt)
+                # XXX
+                if self.eigensolver.lcao:
+                    nucleus.calculate_force_kpoint_lcao(kpt, self.hamiltonian)
+                else:
+                    nucleus.calculate_force_kpoint(kpt)
         for nucleus in self.my_nuclei:
             self.kpt_comm.sum(nucleus.F_c)
 

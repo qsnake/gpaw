@@ -121,10 +121,10 @@ class TwoCenterIntegrals:
             S_g[:] = 0.0
             a_q = (phit1 * phit2)
             a_g = (8 * fbt(l, a_q * k1**(-2 - l1 - l2 - l), self.k, R) /
-                   R1**(2 * l + 1))          
+                   R1**(2 * l + 1))
             if l==0:
                 a_g[0] = 8 * npy.sum(a_q * k1**(-l1 - l2)) * self.dk
-            else:    
+            else:
                 a_g[0] = a_g[1]  # XXXX
             a_g *= (-1)**((-l1 + l2 - l) / 2)
             S_g += a_g
@@ -132,26 +132,55 @@ class TwoCenterIntegrals:
             splines.append(s)
         return splines
 
-    def p(self, ida, idb, la, lb, r, Y_lm):
+    def p(self, ida, idb, la, lb, r, R, rlY_lm, drlYdR_lmc):
         """ Returns the overlap between basis functions and projector
         functions. """
         
+        derivative = bool(drlYdR_lmc)
+
         p_mi = npy.zeros((2 * la + 1, 2 * lb + 1))
+        dPdR_cmi = None
+        if derivative:
+            dPdR_cmi = npy.zeros((3, 2 * la + 1, 2 * lb + 1))
 
         l = (la + lb) % 2
         for p in self.P[(ida, idb)]:
+            # Wouldn't that *actually* be G_mmi ?
             G_mmm = gaunt[la**2:(la + 1)**2,
                           lb**2:(lb + 1)**2,
                           l**2:(l + 1)**2].transpose((0, 2, 1))
-            p_mi += p(r) * npy.dot(Y_lm[l], G_mmm)
+            P, dPdr = p.get_value_and_derivative(r)
+
+            GrlY_mi = npy.dot(rlY_lm[l], G_mmm)
+            
+            p_mi += P * GrlY_mi
+
+            # If basis function and projector are located on the same atom,
+            # the overlap is translation invariant
+            if derivative:
+                if r < 1e-14:
+                    dPdR_cmi[:] = 0.
+                else:
+                    Rhat = R / r
+                    for c in range(3):
+                        A_mi = P * npy.dot(drlYdR_lmc[l][:, c], G_mmm)
+                        B_mi = dPdr * GrlY_mi * Rhat[c]
+                        dPdR_cmi[c, :, :] += A_mi + B_mi
+
             l += 2
-        return p_mi
+        return p_mi, dPdR_cmi
         
-    def st_overlap3(self, ida, idb, la, lb, r, Y_lm):
+    def st_overlap3(self, ida, idb, la, lb, r, R, rlY_lm, drlYdR_lmc):
         """ Returns the overlap and kinetic energy matrices. """
         
         s_mm = npy.zeros((2 * lb + 1, 2 * la + 1))
         t_mm = npy.zeros((2 * lb + 1, 2 * la + 1))
+        dSdR_cmm = None
+        dTdR_cmm = None
+        derivative = bool(drlYdR_lmc)
+        if derivative:
+            dSdR_cmm = npy.zeros((3, 2 * lb + 1, 2 * la + 1))
+            dTdR_cmm = npy.zeros((3, 2 * lb + 1, 2 * la + 1))
         ssplines = self.S[(ida, idb)]
         tsplines = self.T[(ida, idb)]
         l = (la + lb) % 2
@@ -159,12 +188,41 @@ class TwoCenterIntegrals:
             G_mmm = gaunt[lb**2:(lb + 1)**2,
                           la**2:(la + 1)**2,
                           l**2:(l + 1)**2].transpose((0, 2, 1))
-            s_mm += s(r) * npy.dot(Y_lm[l], G_mmm)
-            t_mm += t(r) * npy.dot(Y_lm[l], G_mmm)
-            l += 2
-        return s_mm, t_mm
+            
+            S, dSdr = s.get_value_and_derivative(r)
+            T, dTdr = t.get_value_and_derivative(r)
 
-        
+            GrlY_mm = npy.dot(rlY_lm[l], G_mmm)
+
+            s_mm += S * GrlY_mm
+            t_mm += T * GrlY_mm
+
+            # If basis functions are located on the same atom,
+            # the overlap is translation invariant
+            if derivative:
+                if r < 1e-14:
+                    dSdR_cmm[:] = 0.
+                    dTdR_cmm[:] = 0.
+                else:
+                    rl = r**l
+                    Rhat = R / r
+                    for c in range(3):
+                        # Product differentiation - two terms
+                        GdrlYdR_mm = npy.dot(drlYdR_lmc[l][:, c], G_mmm)
+                        rlYRhat_mm = GrlY_mm * Rhat[c]
+
+                        S1_mm = S * GdrlYdR_mm
+                        S2_mm = dSdr * rlYRhat_mm
+                        dSdR_cmm[c, :, :] += S1_mm + S2_mm
+
+                        T1_mm = T * GdrlYdR_mm
+                        T2_mm = dTdr * rlYRhat_mm
+                        dTdR_cmm[c, :, :] += T1_mm + T2_mm
+            
+            l += 2
+        return s_mm, t_mm, dSdR_cmm, dTdR_cmm
+
+
     #################  Old overlaps  ####################
     def st_overlap0(self, id1, id2, l1, l2, m1, m2, R):
         """ Returns the overlap and kinetic energy matrices. """
