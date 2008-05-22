@@ -36,9 +36,16 @@ from ase.data import atomic_names, covalent_radii, atomic_numbers
 from gpaw import Calculator, ConvergenceError
 
 b0 = {'Ni': 2.18, 'Pt': 2.73, 'Ru': 2.35, 'Na': 3.30, 'Mg': 3.65, 'Li': 2.94, 'Pd': 2.26, 'Fe': 1.83, 'He': 2.74, 'C': 1.29, 'F': 1.41, 'H': 0.75, 'Mo': 2.48, 'O': 1.22, 'Ne': 3.12, 'P': 1.88, 'S': 1.90, 'V': 2.44, 'N': 1.11, 'Kr': 3.77, 'Ag': 2.65, 'Al': 2.99, 'Au': 2.57, 'Ga': 2.84, 'Cr': 2.35, 'Cu': 2.29, 'B': 1.71, 'Ca': 3.69, 'Cd': 2.99, 'K': 4.14, 'La': 2.65, 'Nb': 2.52, 'Rh': 2.35, 'Si': 2.22, 'Sr': 4.05, 'Ti': 2.48, 'Zn': 2.60, 'Zr': 2.73}
+b0 = {'Ni': 2.15, 'Pd': 2.40, 'Pt': 2.57, 'Ru': 2.21, 'Na': 3.30, 'Nb': 2.37, 'Mg': 3.87, 'Li': 3.12, 'Pb': 2.88, 'Rb': 4.37, 'Ti': 2.33, 'Rh': 2.21, 'Be': 1.91, 'Ba': 3.80, 'La': 2.81, 'Si': 2.22, 'As': 2.26, 'Fe': 1.84, 'Sr': 4.29, 'Mo': 2.33, 'He': 2.85, 'C': 1.29, 'B': 1.71, 'F': 1.41, 'H': 0.75, 'K': 4.14, 'Mn': 2.20, 'O': 1.24, 'Ne': 3.06, 'P': 1.88, 'S': 1.90, 'V': 2.29, 'N': 1.11, 'Kr': 4.00, 'Zn': 2.76, 'Ag': 2.65, 'Cl': 1.99, 'Ca': 3.91, 'Ir': 2.39, 'Al': 2.81, 'Cd': 3.17, 'Ge': 2.39, 'Ar': 2.08, 'Au': 2.57, 'Zr': 2.57, 'Ga': 2.84, 'Cs': 4.85, 'Cr': 2.21, 'Cu': 2.27}
+
+b0 = {'Ni': 2.150, 'Pd': 2.496,
+      'Pt': 2.35,
+      'Ru': 2.122, 'Na': 3.300,
+      'Nb': 1.99,
+      'Mg': 4.3, 'Li': 3.270, 'Pb': 2.880, 'Rb': 4.375, 'Ti': 2.05, 'Rh': 2.232, 'Be': 2.25, 'Ba': 4.5, 'La': 2.968, 'Si': 2.220, 'As': 2.124, 'Fe': 1.843, 'Sr': 4.547, 'Mo': 1.95, 'He': 2.850, 'C': 1.290, 'B': 1.710, 'F': 1.413, 'H': 0.753, 'K': 4.107, 'Mn': 1.85, 'O': 1.240, 'Ne': 3.061, 'P': 1.880, 'S': 1.900, 'Kr': 4.4, 'V': 1.9, 'N': 1.110, 'Zn': 3.0, 'Ag': 2.650, 'Cl': 1.990, 'Ca': 4.3, 'Ir': 2.2, 'Al': 2.824, 'Cd': 3.5, 'Ge': 2.390, 'Ar': 2.35, 'Au': 2.570, 'Zr': 2.3, 'Ga': 2.840, 'Cs': 4.850, 'Cr': 1.85, 'Cu': 2.277}
 
 colors = ['black', 'brown', 'red', 'orange',
-          'yellow', 'green', 'blue', 'violet', 'gray', 'gray']
+          'yellow', 'green', 'blue', 'violet', 'gray', 'gray', 'gray', 'gray']
 
 class TestAtom:
     def __init__(self, symbol):
@@ -177,8 +184,22 @@ class TestAtom:
                     d0 = d[ia] + x * dd
             self.Edimer0[i] = E0
             self.ddimer0[i] = d0
-        print '%r: %.2f,' % (self.symbol, d0),
+        
+        for i in range(self.ng):
+            if abs(self.h[i] - 0.2) < 0.00001:
+                break
+        #print '%r: %.3f,' % (self.symbol, d0),
         self.Ediss = 2 * self.Eegg[:, 0] - self.Edimer0
+        if 1:
+            print ('%-2s %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f' %
+                   (self.symbol,
+                    self.Edimer0[i:].ptp(),
+                    self.Ediss[i:].ptp(),
+                    self.Eegg.ptp(axis=1)[i:].max(),
+                    self.ddimer0[i:].ptp(),
+                    npy.abs(self.Fegg[i:]).max(1).max(),
+                    npy.abs(self.Fdimer[i:].sum(2)).max(1).max()
+                   ))
         if 0:
             import pylab as plt
             plt.figure(figsize=(10, 12))
