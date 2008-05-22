@@ -456,11 +456,19 @@ class PAW(PAWExtra, Output):
                              self.ibzk_kc, self.locfuncbcaster,
                              self.pt_nuclei, self.ghat_nuclei)
 
+                if self.eigensolver.lcao or self.kpt_u[0].psit_nG is None:
+                    nucleus.initialize_atomic_orbitals(
+                        self.gd, self.ibzk_kc,
+                        self.locfuncbcaster,
+                        self.hamiltonian.lcao_forces)
+                    
         if movement:
             self.niter = 0
             self.converged = False
             self.F_ac = None
             self.old_energies = []
+            
+            self.hamiltonian.lcao_initialized = False
             
             self.locfuncbcaster.broadcast()
 
@@ -483,12 +491,6 @@ class PAW(PAWExtra, Output):
         self.fixdensity = max(2, self.fixdensity)
 
         if self.eigensolver.lcao:
-            for nucleus in self.nuclei:
-                nucleus.initialize_atomic_orbitals(self.gd, self.ibzk_kc,
-                                                   self.locfuncbcaster,
-                                                   self.hamiltonian.lcao_forces)
-            self.locfuncbcaster.broadcast()
-            
             if not self.density.initialized:
                 self.density.initialize()
 
