@@ -382,8 +382,8 @@ class Density:
         """Initial pseudo electron kinetic density."""
         """flag to use local variable in tpss.c"""
 
-        self.taut_sG = self.gd.empty(self.nspins)
-        self.taut_sg = self.finegd.empty(self.nspins)
+        self.taut_sG = self.gd.zeros(self.nspins)
+        self.taut_sg = self.finegd.zeros(self.nspins)
 
     def update_kinetic(self, kpt_u):
         """Calculate pseudo electron kinetic density.
