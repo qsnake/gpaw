@@ -245,16 +245,23 @@ class Calculator(PAW):
 
         return self.get_wannier_integrals(c, spin, kpoint, nextkpoint, G)
 
-    def get_magnetic_moment(self):
-        """Return the magnetic moment."""
+    def get_magnetic_moment(self, atoms=None):
+        """Return the total magnetic moment."""
         return self.occupation.magmom
 
-    def get_magnetic_moments(self):
+    def get_magnetic_moments(self, atoms=None):
         """Return the local magnetic moments within augmentation spheres"""
-        magmoms = npy.zeros(self.natoms)
-        for a, nucleus in enumerate(self.nuclei):
-            magmoms[a] = nucleus.mom
-        return magmoms
+        magmom_a = npy.zeros(self.natoms)
+        if self.nspins == 2:
+            self.density.calculate_local_magnetic_moments()
+            for a, nucleus in enumerate(self.nuclei):
+                magmom_a[a] = nucleus.mom
+            # scale the moments to sum up tp the total magnetic moment
+            M = magmom_a.sum()
+            if abs(M) > 1e-4:
+                scale = self.occupation.magmom / M
+            magmom_a *= scale
+        return magmom_a
         
     def get_fermi_level(self):
         """Return the Fermi-level."""

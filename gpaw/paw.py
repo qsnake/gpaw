@@ -392,7 +392,7 @@ class PAW(PAWExtra, Output):
             self.niter += 1
             if write:
                 self.call()
-
+                
         if write:
             self.call(final=True)
             self.print_converged()
@@ -971,13 +971,8 @@ class PAW(PAWExtra, Output):
         cell_cc = atoms.get_cell() / Bohr
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
-        try:
-            magmom_a = atoms.get_magnetic_moments()
-            if magmom_a is None:
-                print 'Please update ase!'
-                raise KeyError
-        except KeyError:
-            magmom_a = npy.zeros(self.natoms)
+        magmom_a = atoms.get_initial_magnetic_moments()
+        
         try:
             tag_a = atoms.get_tags()
             if tag_a is None:

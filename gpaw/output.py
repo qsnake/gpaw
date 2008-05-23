@@ -242,13 +242,13 @@ class Output:
             t('Center of Charge: %s' % (dipole * self.a0))
 
         if self.nspins == 2:
-            self.density.calculate_local_magnetic_moments()
+            magmom_a = self.get_magnetic_moments()
 
             t()
             t('Total Magnetic Moment: %f' % self.occupation.magmom)
             t('Local Magnetic Moments:')
-            for nucleus in self.nuclei:
-                t(nucleus.a, nucleus.mom)
+            for a, mom in enumerate(magmom_a):
+                t(a, mom)
             t()
 
 ##         if self.xcfunc.is_gllb():
