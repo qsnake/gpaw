@@ -23,84 +23,99 @@
 #define XC_GGA_X_PBE          101 /* Perdew, Burke & Ernzerhof exchange             */
 #define XC_GGA_X_PBE_R        102 /* Perdew, Burke & Ernzerhof exchange (revised)   */
 #define XC_GGA_X_PBE_SOL      116 /* Perdew, Burke & Ernzerhof exchange (solids)    */
+#define XC_GGA_X_XPBE         123 /* xPBE reparametrization by Xu & Goddard         */
 
 static inline void 
-func(xc_gga_type *p, double x, double *f, double *dfdx, double *ldfdx)
+func(const XC(gga_type) *p, FLOAT x, FLOAT *f, FLOAT *dfdx, FLOAT *ldfdx, FLOAT *d2fdx2)
 {
-  static const double kappa[3] = {
-    0.8040, /* original PBE */
-    1.245,  /* PBE R */
-    0.8040  /* PBE sol */
+  static const FLOAT kappa[4] = {
+    0.8040,  /* original PBE */
+    1.245,   /* PBE R */
+    0.8040,  /* PBE sol */
+    0.91954  /* xPBE */
   };
 
-  /* 
-     the variable used in the original PBE paper is s = |grad n|/(2 k_f n)
-     while here we use x = |grad n_s|/n_s^(4/3). Therefore, the value of mu
-     we use here is he original mu multiplied by 
-
-       1/2^(2/3) * 1/(4*(3 pi^2)^(2/3))
-
-     where the first term comes from using the spin densities, and the second
-     from the constants of k_f = (3 pi^2 n)^(1/3)
-  */
-  static const double mu[3] = {
-    0.00361218645365094697,  /* PBE: mu = beta*pi^2/3, beta = 0.066725 (plus above mentioned constants) */
-    0.00361218645365094697,  /* PBE rev: as PBE */
-    0.00203151948716303243   /* PBE sol: 10/81 */
+  static const FLOAT mu[4] = {
+    0.2195149727645171,  /* PBE: mu = beta*pi^2/3, beta = 0.066725 */
+    0.2195149727645171,  /* PBE rev: as PBE */
+    10.0/81.0,           /* PBE sol */
+    0.23214              /* xPBE */
   };
 
-  double dd;
+  FLOAT ss, f0, df0, d2f0;
   int func;
 
   switch(p->info->number){
   case XC_GGA_X_PBE_R:   func = 1; break;
   case XC_GGA_X_PBE_SOL: func = 2; break;
+  case XC_GGA_X_XPBE:    func = 3; break;
   default:               func = 0; /* original PBE */
   }
 
-  dd     = 1.0/(kappa[func] + mu[func]*x*x);
+  ss = X2S*x;
 
-  *f     = 1.0 + kappa[func]*(1.0 - kappa[func]*dd);
-  *dfdx  = 2.0*x*mu[func]*kappa[func]*kappa[func]*dd*dd;
-  *ldfdx = mu[func];
+  f0 = kappa[func] + mu[func]*ss*ss;
+  *f = 1.0 + kappa[func]*(1.0 - kappa[func]/f0);
+
+  if(dfdx==NULL && d2fdx2==NULL) return; /* nothing else to do */
+
+  df0 = 2.0*ss*mu[func];
+
+  if(dfdx!=NULL){
+    *dfdx  = X2S*kappa[func]*kappa[func]*df0/(f0*f0);
+    *ldfdx = X2S*X2S*mu[func];
+  }
+
+  if(d2fdx2==NULL) return; /* nothing else to do */
+
+  d2f0 = 2.0*mu[func];
+  *d2fdx2 = X2S*X2S*kappa[func]*kappa[func]/(f0*f0)*(d2f0 - 2.0*df0*df0/f0);
 }
+
 
 #include "work_gga_x.c"
 
-const xc_func_info_type func_info_gga_x_pbe = {
+const XC(func_info_type) XC(func_info_gga_x_pbe) = {
   XC_GGA_X_PBE,
   XC_EXCHANGE,
   "Perdew, Burke & Ernzerhof",
   XC_FAMILY_GGA,
   "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
   "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };
 
-const xc_func_info_type func_info_gga_x_pbe_r = {
+const XC(func_info_type) XC(func_info_gga_x_pbe_r) = {
   XC_GGA_X_PBE_R,
   XC_EXCHANGE,
-  "Perdew, Burke & Ernzerhof",
+  "Revised PBE from Zhang & Yang",
   XC_FAMILY_GGA,
-  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
-  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)\n"
   "Y Zhang and W Yang, Phys. Rev. Lett 80, 890 (1998)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };
 
-const xc_func_info_type func_info_gga_x_pbe_sol = {
+const XC(func_info_type) XC(func_info_gga_x_pbe_sol) = {
   XC_GGA_X_PBE_SOL,
   XC_EXCHANGE,
   "Perdew, Burke & Ernzerhof SOL",
   XC_FAMILY_GGA,
-  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 77, 3865 (1996)\n"
-  "JP Perdew, K Burke, and M Ernzerhof, Phys. Rev. Lett. 78, 1396(E) (1997)\n"
-  "JP Perdew, et al, arXiv:0707.2088v1",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  "JP Perdew, et al, Phys. Rev. Lett. 100, 136406 (2008)",
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
+  NULL, NULL, NULL,
+  work_gga_x
+};
+
+const XC(func_info_type) XC(func_info_gga_x_xpbe) = {
+  XC_GGA_X_XPBE,
+  XC_EXCHANGE,
+  "Extended PBE by Xu & Goddard III",
+  XC_FAMILY_GGA,
+  "X Xu and WA Goddard III, J. Chem. Phys. 121, 4068 (2004)",
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };

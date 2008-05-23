@@ -26,7 +26,7 @@
 #define XC_LCA_LCH       302   /* Lee, Colwell & Handy         */
 
 /* initialization */
-void xc_lca_init(xc_lca_type *p, int functional, int nspin)
+void XC(lca_init)(XC(lca_type) *p, int functional, int nspin)
 {
   /* sanity check */
   assert(functional == XC_LCA_LCH ||
@@ -38,11 +38,11 @@ void xc_lca_init(xc_lca_type *p, int functional, int nspin)
   /* initialize the functionals */
   switch(functional){
   case XC_LCA_LCH:
-    lca_lch_init(p);
+    XC(lca_lch_init)(p);
     break;
 
   case XC_LCA_OMC:
-    lca_omc_init(p);
+    XC(lca_omc_init)(p);
     break;
   }
 
@@ -51,12 +51,12 @@ void xc_lca_init(xc_lca_type *p, int functional, int nspin)
 /* WARNING - should use new definition of input/output !! */
 #define   _(is, x)   [3*is + x]
 
-void xc_lca(xc_lca_type *p, double *rho, double *v, double *e, double *dedd, double *dedv)
+void XC(lca)(XC(lca_type) *p, FLOAT *rho, FLOAT *v, FLOAT *e, FLOAT *dedd, FLOAT *dedv)
 {
   int i;
   int j;
-  double rs, drsdd, vs, vs2, kf, dkfdrs, f, s, dsdrs;
-  double dens;
+  FLOAT rs, drsdd, vs, vs2, kf, dkfdrs, f, s, dsdrs;
+  FLOAT dens;
 
   assert(p!=NULL);
 
@@ -78,17 +78,17 @@ void xc_lca(xc_lca_type *p, double *rho, double *v, double *e, double *dedd, dou
 	      v _(i, 1)*v _(i, 1) +
 	      v _(i, 2)*v _(i, 2));
     vs2 = vs*vs;
-    dkfdrs = pow(9.0*M_PI/4.0, 1.0/3.0);
+    dkfdrs = POW(9.0*M_PI/4.0, 1.0/3.0);
     kf = dkfdrs*rs;
     f = 24.0*M_PI*M_PI;
 
     switch(p->info->number){
     case XC_LCA_LCH:
-      lca_s_lch(rs, &s, &dsdrs);
+      XC(lca_s_lch)(rs, &s, &dsdrs);
       break;
 
     case XC_LCA_OMC:
-      lca_s_omc(rs, &s, &dsdrs);
+      XC(lca_s_omc)(rs, &s, &dsdrs);
       break;
     }
 
@@ -99,19 +99,3 @@ void xc_lca(xc_lca_type *p, double *rho, double *v, double *e, double *dedd, dou
   
 }
 
-void xc_lca_sp(xc_lca_type *p, float *rho, float *v, 
-	       float *e, float *dedd, float *dedv)
-{
-  double drho[2], dv[6];
-  double de[1], ddedd[2], ddedv[6];
-  int ii;
-
-  for(ii=0; ii < p->nspin; ii++) drho[ii] = rho[ii];
-  for(ii=0; ii < 3*p->nspin; ii++) dv[ii] = v[ii];
-  
-  xc_lca(p, drho, dv, de, ddedd, ddedv);
-
-  e[0] = de[0];
-  for(ii=0; ii < p->nspin; ii++) dedd[ii] = ddedd[ii];
-  for(ii=0; ii < 3*p->nspin; ii++) dedv[ii] = ddedv[ii];
-}

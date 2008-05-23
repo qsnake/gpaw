@@ -33,11 +33,17 @@
 #define  XC_GGA_X_RPBE        117  /* Hammer, Hansen & Norskov (PBE-like)                        */
 #define  XC_GGA_X_WC          118  /* Wu & Cohen                                                 */
 #define  XC_GGA_X_mPW91       119  /* Modified form of PW91 by Adamo & Barone                    */
+#define  XC_GGA_X_AM05        120  /* Armiento & Mattsson 05 exchange                            */
+#define  XC_GGA_X_PBEA        121  /* Madsen (PBE-like)                                          */
+#define  XC_GGA_X_MPBE        122  /* Adamo & Barone modification to PBE                         */
+#define  XC_GGA_X_XPBE        123  /* xPBE reparametrization by Xu & Goddard                     */
 #define  XC_GGA_C_PBE         130  /* Perdew, Burke & Ernzerhof correlation                      */
 #define  XC_GGA_C_LYP         131  /* Lee, Yang & Parr                                           */
 #define  XC_GGA_C_P86         132  /* Perdew 86                                                  */
 #define  XC_GGA_C_PBE_SOL     133  /* Perdew, Burke & Ernzerhof correlation SOL                  */
 #define  XC_GGA_C_PW91        134  /* Perdew & Wang 91                                           */
+#define  XC_GGA_C_AM05        135  /* Armiento & Mattsson 05 correlation                         */
+#define  XC_GGA_C_XPBE        136  /* xPBE reparametrization by Xu & Goddard                     */
 #define  XC_GGA_XC_LB         160  /* van Leeuwen & Baerends                                     */
 #define  XC_GGA_XC_HCTH_93    161  /* HCTH functional fitted to  93 molecules                    */
 #define  XC_GGA_XC_HCTH_120   162  /* HCTH functional fitted to 120 molecules                    */
@@ -51,6 +57,7 @@
 #define  XC_HYB_GGA_XC_O3LYP  404  /* hybrid using the optx functional                           */
 #define  XC_HYB_GGA_XC_PBEH   406  /* aka PBE0 or PBE1PBE                                        */
 #define  XC_HYB_GGA_XC_X3LYP  411  /* maybe the best hybrid                                      */
+#define  XC_HYB_GGA_XC_B1WC   412  /* Becke 1-parameter mixture of WC and EXX                    */
 #define  XC_MGGA_X_TPSS       201  /* Perdew, Tao, Staroverov & Scuseria exchange                */
 #define  XC_MGGA_C_TPSS       202  /* Perdew, Tao, Staroverov & Scuseria correlation             */
 #define  XC_LCA_OMC           301  /* Orestes, Marcasso & Capelle                                */

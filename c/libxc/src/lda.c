@@ -25,21 +25,22 @@
 
 
 /* initialization */
-int xc_lda_init(xc_lda_type *p, int functional, int nspin)
+int XC(lda_init)(XC(lda_type) *p, int functional, int nspin)
 {
   int i;
 
   assert(p != NULL);
 
   /* let us first find out if we know the functional */
-  for(i=0; lda_known_funct[i]!=NULL; i++){
-    if(lda_known_funct[i]->number == functional) break;
+  for(i=0; XC(lda_known_funct)[i]!=NULL; i++){
+    if(XC(lda_known_funct)[i]->number == functional) break;
   }
-  assert(lda_known_funct[i] != NULL);
-  if(lda_known_funct[i] == NULL) return -1; /* functional not found */
+  assert(XC(lda_known_funct)[i] != NULL);
+  if(XC(lda_known_funct)[i] == NULL) return -1; /* functional not found */
   
   /* initialize structure */
-  p->info = lda_known_funct[i];
+  p->params = NULL;
+  p->info   = XC(lda_known_funct)[i];
 
   assert(nspin==XC_UNPOLARIZED || nspin==XC_POLARIZED);
   p->nspin = nspin;
@@ -51,8 +52,9 @@ int xc_lda_init(xc_lda_type *p, int functional, int nspin)
   return 0;
 }
 
+
 /* termination */
-void xc_lda_end(xc_lda_type *p)
+void XC(lda_end)(XC(lda_type) *p)
 {
   assert(p != NULL);
 
@@ -60,33 +62,48 @@ void xc_lda_end(xc_lda_type *p)
     p->info->end(p);
 }
 
+
 /* get the lda functional */
-void xc_lda(const xc_lda_type *p, const double *rho, double *exc, double *vxc, double *fxc, double *kxc)
+void XC(lda)(const XC(lda_type) *p, const FLOAT *rho, 
+	    FLOAT *zk, FLOAT *vrho, FLOAT *v2rho2, FLOAT *v3rho3)
 {
-  double dens;
+  FLOAT dens;
 
   assert(p!=NULL);
   
+  /* sanity check */
+  if(zk != NULL && !(p->info->provides & XC_PROVIDES_EXC)){
+    fprintf(stderr, "Functional '%s' does not provide an implementation of Exc",
+	    p->info->name);
+    exit(1);
+  }
+
+  if(vrho != NULL && !(p->info->provides & XC_PROVIDES_VXC)){
+    fprintf(stderr, "Functional '%s' does not provide an implementation of vxc",
+	    p->info->name);
+    exit(1);
+  }
+
   { /* initialize output to zero */
     int i;
 
-    if(exc != NULL) *exc = 0.0;
+    if(zk != NULL) *zk = 0.0;
 
-    if(vxc != NULL){
+    if(vrho != NULL){
       for(i=0; i<p->nspin; i++)
-    	vxc[i] = 0.0;
+    	vrho[i] = 0.0;
     }
 
-    if(fxc != NULL){
+    if(v2rho2 != NULL){
       int n = (p->nspin == XC_UNPOLARIZED) ? 1 : 3;
       for(i=0; i<n; i++)
-	fxc[i] = 0.0;
+	v2rho2[i] = 0.0;
     }
 
-    if(kxc != NULL){
+    if(v3rho3 != NULL){
       int n = (p->nspin == XC_UNPOLARIZED) ? 1 : 4;
       for(i=0; i<n; i++)
-    	kxc[i] = 0.0;
+    	v3rho3[i] = 0.0;
     }
   }
 
@@ -97,115 +114,55 @@ void xc_lda(const xc_lda_type *p, const double *rho, double *exc, double *vxc, d
     return;
 
   assert(p->info!=NULL && p->info->lda!=NULL);
-  if((exc != NULL || vxc !=NULL) || 
-     (fxc != NULL && (p->info->provides & XC_PROVIDES_FXC)))
-    p->info->lda(p, rho, exc, vxc, fxc);
 
-  if(fxc != NULL && !(p->info->provides & XC_PROVIDES_FXC))
-    xc_lda_fxc_fd(p, rho, fxc);
+  /* call the LDA routines */
+  if((zk != NULL || vrho !=NULL) || 
+     (v2rho2 != NULL && (p->info->provides & XC_PROVIDES_FXC)))
+    p->info->lda(p, rho, zk, vrho, v2rho2);
 
-  if(kxc != NULL && !(p->info->provides & XC_PROVIDES_KXC))
-    xc_lda_kxc_fd(p, rho, kxc);
-}
+  /* if necessary, call the finite difference routines */
+  if(v2rho2 != NULL && !(p->info->provides & XC_PROVIDES_FXC))
+    XC(lda_fxc_fd)(p, rho, v2rho2);
 
-/* get the lda functional */
-void xc_lda_sp(const xc_lda_type *p, const float *rho, float *exc, float *vxc, float *fxc, float *kxc)
-{
-  double drho[2];
-  double dexc;
-
-  double * pexc = NULL;
-  double * pvxc = NULL;
-  double * pfxc = NULL;
-  double * pkxc = NULL;
-
-  int ii;
-  const int nspin = p->nspin;
-
-  drho[0] = rho[0];
-  if(nspin > 1) drho[1] = rho[1];
-  
-  /* Allocate space for return values in double precision */
-  if(exc) pexc = &dexc;
-  if(vxc) pvxc = (double *) malloc(nspin * sizeof(double));
-  if(fxc) pfxc = (double *) malloc(nspin * nspin * sizeof(double));
-  if(kxc) pkxc = (double *) malloc(nspin * nspin * nspin * sizeof(double));
-
-  /* Call the double precision version */
-  xc_lda(p, drho, pexc, pvxc, pfxc, pkxc);
-
-  /* Copy the result to the single precision return values */
-  if(exc) exc[0] = dexc;
-
-  if(vxc) {
-    for(ii = 0; ii < nspin; ii++) vxc[ii] = pvxc[ii];
-    free(pvxc);
-  }
-
-  if(fxc) {
-    for(ii = 0; ii < nspin*nspin; ii++) fxc[ii] = pfxc[ii];
-    free(pfxc);
-  }
-
-  if(kxc) {
-    for(ii = 0; ii < nspin*nspin*nspin; ii++) kxc[ii] = pkxc[ii];
-    free(pkxc);
-  }
-
+  if(v3rho3 != NULL && !(p->info->provides & XC_PROVIDES_KXC))
+    XC(lda_kxc_fd)(p, rho, v3rho3);
 }
 
 
 /* especializations */
-void xc_lda_exc(const xc_lda_type *p, const double *rho, double *exc)
+inline void XC(lda_exc)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *zk)
 {
-  xc_lda(p, rho, exc, NULL, NULL, NULL);
+  XC(lda)(p, rho, zk, NULL, NULL, NULL);
 }
 
-void xc_lda_vxc(const xc_lda_type *p, const double *rho, double *exc, double *vxc)
+inline void XC(lda_vxc)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *zk, FLOAT *vrho)
 {
-  xc_lda(p, rho, exc, vxc, NULL, NULL);
+  XC(lda)(p, rho, zk, vrho, NULL, NULL);
 }
 
-void xc_lda_fxc(const xc_lda_type *p, const double *rho, double *fxc)
+inline void XC(lda_fxc)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *v2rho2)
 {
-  xc_lda(p, rho, NULL, NULL, fxc, NULL);
+  XC(lda)(p, rho, NULL, NULL, v2rho2, NULL);
 }
 
-void xc_lda_kxc(const xc_lda_type *p, const double *rho, double *kxc)
+inline void XC(lda_kxc)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *v3rho3)
 {
-  xc_lda(p, rho, NULL, NULL, NULL, kxc);
-}
-
-/* especialization in single precision */
-void xc_lda_exc_sp(const xc_lda_type *p, const float *rho, float *exc)
-{
-  xc_lda_sp(p, rho, exc, NULL, NULL, NULL);
-}
-
-void xc_lda_vxc_sp(const xc_lda_type *p, const float *rho, float *exc, float *vxc)
-{
-  xc_lda_sp(p, rho, exc, vxc, NULL, NULL);
-}
-
-void xc_lda_fxc_sp(const xc_lda_type *p, const float *rho, float *fxc)
-{
-  xc_lda_sp(p, rho, NULL, NULL, fxc, NULL);
-}
-
-void xc_lda_kxc_sp(const xc_lda_type *p, const float *rho, float *kxc)
-{
-  xc_lda_sp(p, rho, NULL, NULL, NULL, kxc);
+  XC(lda)(p, rho, NULL, NULL, NULL, v3rho3);
 }
 
 
 /* get the xc kernel through finite differences */
-void xc_lda_fxc_fd(const xc_lda_type *p, const double *rho, double *fxc)
+void XC(lda_fxc_fd)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *fxc)
 {
-  static const double delta_rho = 1e-8;
+#ifdef SINGLE_PRECISION
+  static const FLOAT delta_rho = 1e-8;
+#else
+  static const FLOAT delta_rho = 1e-6;
+#endif
   int i;
 
   for(i=0; i<p->nspin; i++){
-    double rho2[2], e, vc1[2], vc2[2];
+    FLOAT rho2[2], e, vc1[2], vc2[2];
     int j, js;
 
     j  = (i+1) % 2;
@@ -213,10 +170,10 @@ void xc_lda_fxc_fd(const xc_lda_type *p, const double *rho, double *fxc)
 
     rho2[i] = rho[i] + delta_rho;
     rho2[j] = (p->nspin == XC_POLARIZED) ? rho[j] : 0.0;
-    xc_lda_vxc(p, rho2, &e, vc1);
+    XC(lda_vxc)(p, rho2, &e, vc1);
 
     if(rho[i]<2.0*delta_rho){ /* we have to use a forward difference */
-      xc_lda_vxc(p, rho, &e, vc2);
+      XC(lda_vxc)(p, rho, &e, vc2);
 	
       fxc[js] = (vc1[i] - vc2[i])/(delta_rho);
       if(p->nspin == XC_POLARIZED && i==0)
@@ -224,7 +181,7 @@ void xc_lda_fxc_fd(const xc_lda_type *p, const double *rho, double *fxc)
 	
     }else{                    /* centered difference (more precise)  */
       rho2[i] = rho[i] - delta_rho;
-      xc_lda_vxc(p, rho2, &e, vc2);
+      XC(lda_vxc)(p, rho2, &e, vc2);
       
       fxc[js] = (vc1[i] - vc2[i])/(2.0*delta_rho);
       if(p->nspin == XC_POLARIZED && i==0)
@@ -238,19 +195,19 @@ void xc_lda_fxc_fd(const xc_lda_type *p, const double *rho, double *fxc)
 /* WANRNING - get rid of this by using new definition of output variable kxc */
 #define ___(i, j, k) [2*(2*i + j) + k] 
 
-void xc_lda_kxc_fd(const xc_lda_type *p, const double *rho, double *kxc)
+void XC(lda_kxc_fd)(const XC(lda_type) *p, const FLOAT *rho, FLOAT *kxc)
 {
   /* Kxc, this is a third order tensor with respect to the densities */
 
   int i, j, k;
-  const double delta_rho = 1e-4;
+  const FLOAT delta_rho = 1e-4;
 
   for(i=0; i < p->nspin; i++){
     for(j=0; j < p->nspin; j++){
       for(k=0; k < p->nspin; k++){
     
 
-	double rho2[2], e, vc1[2], vc2[2], vc3[2];
+	FLOAT rho2[2], e, vc1[2], vc2[2], vc3[2];
 	int n, der_dir, func_dir;
 
 	/* This is a bit tricky, we have to calculate a third mixed
@@ -275,13 +232,13 @@ void xc_lda_kxc_fd(const xc_lda_type *p, const double *rho, double *kxc)
 
 	for(n=0; n< p->nspin; n++) rho2[n] = rho[n];
 
-	xc_lda_vxc(p, rho , &e, vc2);
+	XC(lda_vxc)(p, rho , &e, vc2);
 
 	rho2[der_dir] += delta_rho;
-	xc_lda_vxc(p, rho2, &e, vc1);
+	XC(lda_vxc)(p, rho2, &e, vc1);
 	
 	rho2[der_dir] -= 2.0*delta_rho;
-	xc_lda_vxc(p, rho2, &e, vc3);
+	XC(lda_vxc)(p, rho2, &e, vc3);
 
 	kxc ___(i, j, k) = (vc1[func_dir] - 2.0*vc2[func_dir] + vc3[func_dir])/(delta_rho*delta_rho);
 	

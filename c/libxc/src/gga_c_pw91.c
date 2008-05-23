@@ -35,35 +35,35 @@
 
    both results agree. I already mailed Huub van Dam to try to clarify the problem.
 */
-static double pw91_nu, pw91_beta;
-static const double
+static FLOAT pw91_nu, pw91_beta;
+static const FLOAT
   pw91_C_c0  = 4.235e-3, 
   pw91_alpha = 0.09;
 
 static void gga_c_pw91_init(void *p_)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
 
-  p->lda_aux = (xc_lda_type *) malloc(sizeof(xc_lda_type));
-  xc_lda_init(p->lda_aux, XC_LDA_C_PW, p->nspin);
+  p->lda_aux = (XC(lda_type) *) malloc(sizeof(XC(lda_type)));
+  XC(lda_init)(p->lda_aux, XC_LDA_C_PW, p->nspin);
 
-  pw91_nu   = 16.0/M_PI * pow(3.0*M_PI*M_PI, 1.0/3.0);
+  pw91_nu   = 16.0/M_PI * POW(3.0*M_PI*M_PI, 1.0/3.0);
   pw91_beta = pw91_nu*pw91_C_c0;
 }
 
 
 static void gga_c_pw91_end(void *p_)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
 
   free(p->lda_aux);
 }
 
 
-void
-A_eq14(double ec, double g, double *A, double *dec, double *dg)
+static void
+A_eq14(FLOAT ec, FLOAT g, FLOAT *A, FLOAT *dec, FLOAT *dg)
 {
-  double g2, g3, dd;
+  FLOAT g2, g3, dd;
 
   g2 = g*g;
   g3 = g*g2;
@@ -77,12 +77,12 @@ A_eq14(double ec, double g, double *A, double *dec, double *dg)
   *dg  = -(*A)/(dd - 1.0) * dd * (+6.0*pw91_alpha*ec/(g*g3*pw91_beta*pw91_beta));
 }
 
-void
-H0_eq13(double   ec, double   g, double   t, double *H0,
-	double *dec, double *dg, double *dt)
+static void
+H0_eq13(FLOAT   ec, FLOAT   g, FLOAT   t, FLOAT *H0,
+	FLOAT *dec, FLOAT *dg, FLOAT *dt)
 {
-  double A, dAdec, dAdg;
-  double g3, t2, t4, n0, d0, dd, dA;
+  FLOAT A, dAdec, dAdg;
+  FLOAT g3, t2, t4, n0, d0, dd, dA;
 
   A_eq14(ec, g, &A, &dAdec, &dAdg);
 
@@ -109,13 +109,13 @@ H0_eq13(double   ec, double   g, double   t, double *H0,
    M Rasolt & DJW Geldart, Phys. Rev. B 34, 1325 (1986)
 */
 static inline void 
-Rasold_Geldart_C_xc(double rs, double *C_xc, double *drs)
+Rasold_Geldart_C_xc(FLOAT rs, FLOAT *C_xc, FLOAT *drs)
 {
-  const double 
+  const FLOAT 
     a[3] = {2.568, 23.266, 0.007389},
     b[3] = {1.0, 8.723, 0.472};
   
-  double d0, d1, n0, n1;
+  FLOAT d0, d1, n0, n1;
 
   n0 = (a[0] + rs*(a[1] + rs*a[2]));
   d0 =  b[0] + rs*(b[1] + rs*(b[2] + 10.0*rs*a[2]));
@@ -128,14 +128,14 @@ Rasold_Geldart_C_xc(double rs, double *C_xc, double *drs)
 }
 
 
-void 
-H1_eq15(double   rs, double   g, double   t, double   ks, double   kf, double *H1,
-	double *drs, double *dg, double *dt, double *dks, double *dkf)
+static void 
+H1_eq15(FLOAT   rs, FLOAT   g, FLOAT   t, FLOAT   ks, FLOAT   kf, FLOAT *H1,
+	FLOAT *drs, FLOAT *dg, FLOAT *dt, FLOAT *dks, FLOAT *dkf)
 {
-  const double C_xc0 = 2.568e-3, C_x = -0.001667;
+  const FLOAT C_xc0 = 2.568e-3, C_x = -0.001667;
 
-  double g3, g4, t2, kf2, ks2, dd1, dd2;
-  double C_xc, dC_xc;
+  FLOAT g3, g4, t2, kf2, ks2, dd1, dd2;
+  FLOAT C_xc, dC_xc;
 
   g3  = g*g*g;
   g4  = g3*g;
@@ -161,11 +161,11 @@ H1_eq15(double   rs, double   g, double   t, double   ks, double   kf, double *H
 
 
 static inline void 
-ec_eq9(double   ec, double   rs, double   t, double   g, double   ks, double   kf, double  *ec_gga,
-       double *dec, double *drs, double *dt, double *dg, double *dks, double *dkf)
+ec_eq9(FLOAT   ec, FLOAT   rs, FLOAT   t, FLOAT   g, FLOAT   ks, FLOAT   kf, FLOAT  *ec_gga,
+       FLOAT *dec, FLOAT *drs, FLOAT *dt, FLOAT *dg, FLOAT *dks, FLOAT *dkf)
 {
-  double H0, dH0dec, dH0dg, dH0dt;
-  double H1, dH1drs, dH1dg, dH1dt, dH1dks, dH1dkf;
+  FLOAT H0, dH0dec, dH0dg, dH0dt;
+  FLOAT H1, dH1drs, dH1dg, dH1dt, dH1dks, dH1dkf;
 
   H0_eq13(ec, g, t, &H0, 
 	  &dH0dec, &dH0dg, &dH0dt);
@@ -181,21 +181,23 @@ ec_eq9(double   ec, double   rs, double   t, double   g, double   ks, double   k
   *dkf    = dH1dkf;
 }
 
-static void gga_c_pw91(void *p_, double *rho, double *sigma,
-		       double *e, double *vrho, double *vsigma)
+static void 
+gga_c_pw91(const void *p_, const FLOAT *rho, const FLOAT *sigma,
+	   FLOAT *e, FLOAT *vrho, FLOAT *vsigma,
+	   FLOAT *v2rho2, FLOAT *v2rhosigma, FLOAT *v2sigma2)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
-  perdew_t pt;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
+  XC(perdew_t) pt;
 
-  perdew_params(p, rho, sigma, &pt);
+  XC(perdew_params)(p, rho, sigma, 1, &pt);
   
   ec_eq9(pt.ecunif, pt.rs, pt.t, pt.phi, pt.ks, pt.kf, e,
 	 &pt.decunif, &pt.drs, &pt.dt, &pt.dphi, &pt.dks, &pt.dkf);
 
-  perdew_potentials(&pt, rho, *e, vrho, vsigma);
+  XC(perdew_potentials)(&pt, rho, *e, 1, vrho, vsigma, v2rho2, v2rhosigma, v2sigma2);
 }
 
-const xc_func_info_type func_info_gga_c_pw91 = {
+const XC(func_info_type) XC(func_info_gga_c_pw91) = {
   XC_GGA_C_PW91,
   XC_EXCHANGE,
   "Perdew & Wang 91",

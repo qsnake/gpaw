@@ -24,13 +24,13 @@
 #define XC_GGA_X_DK87_R2      112 /* dePristo & Kress 87 (version R2)               */
 
 static inline void 
-func(xc_gga_type *p, double x, double *f, double *dfdx, double *ldfdx)
+func(const XC(gga_type) *p, FLOAT x, FLOAT *f, FLOAT *dfdx, FLOAT *ldfdx, FLOAT *d2fdx2)
 {
-  static const double a1[2] = {0.861504, 0.861213}, 
+  static const FLOAT a1[2] = {0.861504, 0.861213}, 
     b1[2] = {0.044286, 0.042076}, alpha[2] = {1.0, 0.98};
-  static const double betag = 0.00132326681668994855/X_FACTOR_C; /* 7/(432*pi*(6*pi^2)^(1/3)) */
+  static const FLOAT betag = 0.00132326681668994855/X_FACTOR_C; /* 7/(432*pi*(6*pi^2)^(1/3)) */
   
-  double f0, f1, f2;
+  FLOAT f0, f1, f2, df1, df2, d2f1, d2f2;
   int func;
 
   switch(p->info->number){
@@ -38,35 +38,50 @@ func(xc_gga_type *p, double x, double *f, double *dfdx, double *ldfdx)
   default:               func = 0; /* XC_GGA_X_DK87_R1 */
   }
 
-  f0 = a1[func]*pow(x, alpha[func]);
-  f1 = 1.0 + f0;
+  f0 = a1[func]*POW(x, alpha[func]);
+  f1 = betag*x*x*(1.0 + f0);
   f2 = 1.0 + b1[func]*x*x;
   
-  *f     = 1.0 + betag*x*x*f1/f2;
-  *dfdx  = betag*(2.0*x*f1/f2 + x*(alpha[func]*f0*f2 - 2.0*b1[func]*x*x*f1)/(f2*f2));
-  *ldfdx = betag;
+  *f     = 1.0 + f1/f2;
+
+  if(dfdx==NULL && d2fdx2==NULL) return; /* nothing else to do */
+
+  df1 = betag*x*(2.0 + f0*(2.0 + alpha[func]));
+  df2 = 2.0*b1[func]*x;
+
+  if(dfdx!=NULL){
+    *dfdx  = (df1*f2 - f1*df2)/(f2*f2);
+    *ldfdx = betag;
+  }
+  
+  if(d2fdx2==NULL) return; /* nothing else to do */
+
+  d2f1 = betag*(2.0 + f0*(2.0 + alpha[func])*(1.0 + alpha[func]));
+  d2f2 = 2.0*b1[func];
+
+  *d2fdx2 = (2.0*f1*df2*df2 + d2f1*f2*f2 - f2*(2.0*df1*df2 + f1*d2f2))/(f2*f2*f2);
 }
 
 #include "work_gga_x.c"
 
-const xc_func_info_type func_info_gga_x_dk87_r1 = {
+const XC(func_info_type) XC(func_info_gga_x_dk87_r1) = {
   XC_GGA_X_DK87_R1,
   XC_EXCHANGE,
   "dePristo & Kress 87 version R1",
   XC_FAMILY_GGA,
   "AE DePristo and JD Kress, J. Chem. Phys. 86, 1425 (1987)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };
 
-const xc_func_info_type func_info_gga_x_dk87_r2 = {
+const XC(func_info_type) XC(func_info_gga_x_dk87_r2) = {
   XC_GGA_X_DK87_R2,
   XC_EXCHANGE,
   "dePristo & Kress 87 version R2",
   XC_FAMILY_GGA,
   "AE DePristo and JD Kress, J. Chem. Phys. 86, 1425 (1987)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };

@@ -1,11 +1,11 @@
 #include "util.h"
 
-extern xc_func_info_type func_info_lca_omc;
-extern xc_func_info_type func_info_lca_lch;
+extern XC(func_info_type) XC(func_info_lca_omc);
+extern XC(func_info_type) XC(func_info_lca_lch);
 
 
-const xc_func_info_type *lca_known_funct[] = {
-  &func_info_lca_omc,
-  &func_info_lca_lch,
+const XC(func_info_type) *XC(lca_known_funct)[] = {
+  &XC(func_info_lca_omc),
+  &XC(func_info_lca_lch),
   NULL
 };

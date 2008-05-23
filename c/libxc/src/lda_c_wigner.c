@@ -25,39 +25,40 @@
 
 #define XC_LDA_C_WIGNER  2   /* Wigner parametrization       */
 
-static void lda_c_wigner(const void *p_, const double *rho, double *ec, double *vc, double *fc)
+static inline void 
+func(const XC(lda_type) *p, FLOAT *rs, FLOAT zeta, 
+     FLOAT *zk, FLOAT *dedrs, FLOAT *dedz, 
+     FLOAT *d2edrs2, FLOAT *d2edrsz, FLOAT *d2edz2)
 {
-  xc_lda_type *p = (xc_lda_type *)p_;
-
-  static double a = -0.44, b = 7.8;
-  double dens, zeta, rs;
-  double etmp, decdrs, t;
+  static FLOAT a = -0.44, b = 7.8;
+  FLOAT t;
   
-  rho2dzeta(p->nspin, rho, &dens, &zeta);
+  t   =  b + rs[1];
+  *zk =  a/t;
 
-  rs    =  RS(dens); /* Wigner radius */
-  t     =  b + rs;
+  if(dedrs != NULL)
+    *dedrs = -a/(t*t);
 
-  etmp   =  a/t;
-  decdrs = -a/(t*t);                         /* now contains d ec/d rs */
+  if(d2edrs2 != NULL)
+    *d2edrs2 = 2.0*a/(t*t*t);
   
-  if(ec != NULL) *ec = etmp;
-
-  if(vc != NULL){
-    vc[0] = etmp - decdrs*rs/3.0;              /* and now d ec/d rho */
-    if(p->nspin==XC_POLARIZED) vc[1] = vc[0]; /* have to return something */
+  if(p->nspin==XC_POLARIZED){
+    if(dedrs   != NULL) *dedz = 0.0;
+    if(d2edrs2 != NULL) *d2edrsz = *d2edz2 = 0.0;
   }
 
 }
 
-const xc_func_info_type func_info_lda_c_wigner = {
+#include "work_lda.c"
+
+const XC(func_info_type) XC(func_info_lda_c_wigner) = {
   XC_LDA_C_WIGNER,
   XC_CORRELATION,
   "Wigner",
   XC_FAMILY_LDA,
   "EP Wigner, Trans. Faraday Soc. 34, 678 (1938)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
-  NULL,         /* init */
-  NULL,         /* end  */
-  lda_c_wigner, /* lda  */
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
+  NULL,     /* init */
+  NULL,     /* end  */
+  work_lda, /* lda  */
 };

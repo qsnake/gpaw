@@ -22,7 +22,7 @@
 #include "util.h"
 
 /* initialization */
-void xc_mgga_init(xc_mgga_type *p, int functional, int nspin)
+void XC(mgga_init)(XC(mgga_type) *p, int functional, int nspin)
 {
   /* sanity check */
   assert(functional == XC_MGGA_X_TPSS    ||
@@ -34,33 +34,33 @@ void xc_mgga_init(xc_mgga_type *p, int functional, int nspin)
   /* initialize the functionals that need it */
   switch(functional){
   case(XC_MGGA_X_TPSS):
-    mgga_x_tpss_init(p);
+    XC(mgga_x_tpss_init)(p);
     break;
   case(XC_MGGA_C_TPSS):
-    mgga_c_tpss_init(p);
+    XC(mgga_c_tpss_init)(p);
     break;
   }
 }
 
 
-void xc_mgga_end(xc_mgga_type *p)
+void XC(mgga_end)(XC(mgga_type) *p)
 {
   switch(p->info->number){
   case(XC_MGGA_X_TPSS) :
-    mgga_x_tpss_end(p);
+    XC(mgga_x_tpss_end)(p);
     break;
   case(XC_MGGA_C_TPSS) :
-    mgga_c_tpss_end(p);
+    XC(mgga_c_tpss_end)(p);
     break;
   }
 }
 
 
-void xc_mgga(xc_mgga_type *p, double *rho, double *grho, double *tau,
-	  double *e, double *dedd, double *dedgd, double *dedtau)
+void XC(mgga)(XC(mgga_type) *p, FLOAT *rho, FLOAT *grho, FLOAT *tau,
+	  FLOAT *e, FLOAT *dedd, FLOAT *dedgd, FLOAT *dedtau)
 
 {
-  double dens;
+  FLOAT dens;
 
   assert(p!=NULL);
   
@@ -80,34 +80,13 @@ void xc_mgga(xc_mgga_type *p, double *rho, double *grho, double *tau,
   
   switch(p->info->number){
   case(XC_MGGA_X_TPSS):
-    mgga_x_tpss(p, rho, grho, tau, e, dedd, dedgd, dedtau);
+    XC(mgga_x_tpss)(p, rho, grho, tau, e, dedd, dedgd, dedtau);
     break;
 
   case(XC_MGGA_C_TPSS):
-    mgga_c_tpss(p, rho, grho, tau, e, dedd, dedgd, dedtau);
+    XC(mgga_c_tpss)(p, rho, grho, tau, e, dedd, dedgd, dedtau);
     break;
   }
-
-}
-
-void xc_mgga_sp(xc_mgga_type *p, float *rho, float *grho, float *tau,
-		float *e, float *dedd, float *dedgd, float *dedtau){
-
-  double drho[2], dgrho[6], dtau[2];
-  double de[1], ddedd[2], ddedgd[6], ddedtau[2];
-  int ii;
-
-  for(ii=0; ii < p->nspin; ii++) drho[ii] = rho[ii];
-  for(ii=0; ii < 3*p->nspin; ii++) dgrho[ii] = grho[ii];
-  for(ii=0; ii < p->nspin; ii++) dtau[ii] = tau[ii];
-
-  xc_mgga(p, drho, dgrho, dtau,
-	  de, ddedd, ddedgd, ddedtau);
-  
-  e[0] = de[0];
-  for(ii=0; ii < p->nspin; ii++) dedd[ii] = ddedd[ii];
-  for(ii=0; ii < 3*p->nspin; ii++) dedgd[ii] = ddedgd[ii];
-  for(ii=0; ii < p->nspin; ii++) dedtau[ii] = ddedtau[ii];
 
 }
 

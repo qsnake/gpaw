@@ -47,12 +47,12 @@
 
 #define XC_LDA_X  1   /* Exchange                     */
 
-void lda_x(const void *p_, const double *rho, double *ex, double *vx, double *fx)
+static void lda_x(const void *p_, const FLOAT *rho, FLOAT *zk, FLOAT *vrho, FLOAT *v2rho2)
 {
-  xc_lda_type *p = (xc_lda_type *)p_;
+  XC(lda_type) *p = (XC(lda_type) *)p_;
 
-  static double a_x[3] = {-1.0, -1.06384608107049, -0.738558766382022};
-  double dens, extmp, alpha, factor;
+  static FLOAT a_x[3] = {-1.0, -1.06384608107049, -0.738558766382022};
+  FLOAT dens, extmp, alpha, factor;
   int i;
   
   assert(p!=NULL);
@@ -61,27 +61,27 @@ void lda_x(const void *p_, const double *rho, double *ex, double *vx, double *fx
   for(i=0; i<p->nspin; i++) dens += rho[i];
 
   alpha   = (p->dim + 1.0)/p->dim;
-  factor  = (p->nspin == XC_UNPOLARIZED) ? 1.0 : pow(2.0, alpha)/2.0;
+  factor  = (p->nspin == XC_UNPOLARIZED) ? 1.0 : POW(2.0, alpha)/2.0;
   factor *= a_x[p->dim-1];
 
   extmp = 0.0;
   for(i=0; i<p->nspin; i++){
-    extmp += factor*pow(rho[i], alpha)/dens;
+    extmp += factor*POW(rho[i], alpha)/dens;
 
-    if(vx != NULL)
-      vx[i]  = factor*alpha*pow(rho[i], alpha - 1.0);
+    if(vrho != NULL)
+      vrho[i]  = factor*alpha*POW(rho[i], alpha - 1.0);
 
-    if(fx!=NULL && rho[i]>0){
+    if(v2rho2!=NULL && rho[i]>0){
       int js = (i==0) ? 0 : 2;
-      fx[js] = factor*alpha*(alpha - 1.0)*pow(rho[i], alpha - 2.0);
+      v2rho2[js] = factor*alpha*(alpha - 1.0)*POW(rho[i], alpha - 2.0);
     }
   }
 
   /* Relativistic corrections */
   if(p->relativistic != 0){
-    double beta, beta2, f1, f2, f3, phi;
+    FLOAT beta, beta2, f1, f2, f3, phi;
   
-    beta   = pow(3.0*M_PI*M_PI*dens, 1.0/3.0)/M_C;
+    beta   = POW(3.0*M_PI*M_PI*dens, 1.0/3.0)/M_C;
     beta2  = beta*beta;
     f1     = sqrt(1.0 + beta2);
     f2     = asinh(beta);
@@ -90,25 +90,25 @@ void lda_x(const void *p_, const double *rho, double *ex, double *vx, double *fx
 
     extmp *= phi;
 
-    if(vx != NULL){
-      double dphidbeta, dbetadd;
+    if(vrho != NULL){
+      FLOAT dphidbeta, dbetadd;
       
       dphidbeta = 6.0/(beta2*beta2*beta)*
 	(beta2 - beta*(2 + beta2)*f2/f1 + f2*f2);
-      dbetadd = M_PI*M_PI/(pow(M_C, 3)*beta2);
+      dbetadd = M_PI*M_PI/(POW(M_C, 3)*beta2);
     
-      vx[0]  = vx[0]*phi + dens*extmp*dphidbeta*dbetadd;
+      vrho[0]  = vrho[0]*phi + dens*extmp*dphidbeta*dbetadd;
     }
 
     /* WARNING - missing fxc */
   }
 
-  if(ex != NULL)
-    *ex = extmp;
+  if(zk != NULL)
+    *zk = extmp;
 }
 
 
-const xc_func_info_type func_info_lda_x = {
+const XC(func_info_type) XC(func_info_lda_x) = {
   XC_LDA_X,
   XC_EXCHANGE,
   "Slater exchange",
@@ -122,9 +122,9 @@ const xc_func_info_type func_info_lda_x = {
 };
 
 
-void xc_lda_x_init(xc_lda_type *p, int nspin, int dim, int irel)
+void XC(lda_x_init)(XC(lda_type) *p, int nspin, int dim, int irel)
 {
-  p->info = &func_info_lda_x;
+  p->info = &XC(func_info_lda_x);
 
   assert(nspin==XC_UNPOLARIZED || nspin==XC_POLARIZED);
   assert(dim>=2 && dim<=3);

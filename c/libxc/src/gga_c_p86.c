@@ -31,33 +31,36 @@
 
 /* TODO: convert to perdew functionals */
 
-void gga_c_p86_init(void *p_)
+static void
+gga_c_p86_init(void *p_)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
 
-  p->lda_aux = (xc_lda_type *) malloc(sizeof(xc_lda_type));
-  xc_lda_init(p->lda_aux, XC_LDA_C_PZ, p->nspin);
+  p->lda_aux = (XC(lda_type) *) malloc(sizeof(XC(lda_type)));
+  XC(lda_init)(p->lda_aux, XC_LDA_C_PZ, p->nspin);
 }
 
-void gga_c_p86_end(void *p_)
+static void
+gga_c_p86_end(void *p_)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
 
   free(p->lda_aux);
 }
 
-void gga_c_p86(void *p_, double *rho, double *sigma,
-	       double *e, double *vrho, double *vsigma)
+static void 
+gga_c_p86(void *p_, FLOAT *rho, FLOAT *sigma,
+	  FLOAT *e, FLOAT *vrho, FLOAT *vsigma)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
 
-  double dens, zeta, dzdd[2], gdmt, ecunif, vcunif[2];
-  double rs, DD, dDDdzeta, CC, CCinf, dCCdd;
-  double Phi, dPhidd, dPhidgdmt;
+  FLOAT dens, zeta, dzdd[2], gdmt, ecunif, vcunif[2];
+  FLOAT rs, DD, dDDdzeta, CC, CCinf, dCCdd;
+  FLOAT Phi, dPhidd, dPhidgdmt;
 
-  xc_lda_vxc(p->lda_aux, rho, &ecunif, vcunif);
+  XC(lda_vxc)(p->lda_aux, rho, &ecunif, vcunif);
 
-  rho2dzeta(p->nspin, rho, &dens, &zeta);
+  XC(rho2dzeta)(p->nspin, rho, &dens, &zeta);
   dzdd[0] =  (1.0 - zeta)/dens;
   dzdd[1] = -(1.0 + zeta)/dens;
     
@@ -71,15 +74,15 @@ void gga_c_p86(void *p_, double *rho, double *sigma,
 
 
   { /* Equation [1].(4) */ 
-    DD       = sqrt(pow(1.0 + zeta, 5.0/3.0) + pow(1.0 - zeta, 5.0/3.0))/M_SQRT2;
-    dDDdzeta = 5.0/(3.0*4.0*DD)*(pow(1.0 + zeta, 2.0/3.0) - pow(1.0 - zeta, 2.0/3.0));
+    DD       = sqrt(POW(1.0 + zeta, 5.0/3.0) + POW(1.0 - zeta, 5.0/3.0))/M_SQRT2;
+    dDDdzeta = 5.0/(3.0*4.0*DD)*(POW(1.0 + zeta, 2.0/3.0) - POW(1.0 - zeta, 2.0/3.0));
   }
 
   { /* Equation (6) of [1] */
-    static const double alpha = 0.023266, beta = 7.389e-6, gamma = 8.723, delta = 0.472;
-    static const double aa = 0.001667, bb = 0.002568;
+    static const FLOAT alpha = 0.023266, beta = 7.389e-6, gamma = 8.723, delta = 0.472;
+    static const FLOAT aa = 0.001667, bb = 0.002568;
 
-    double rs2 = rs*rs, f1, f2, df1, df2, drsdd;
+    FLOAT rs2 = rs*rs, f1, f2, df1, df2, drsdd;
 
     f1    = bb + alpha*rs + beta*rs2;
     f2    = 1.0 + gamma*rs + delta*rs2 + 1.0e4*beta*rs*rs2;
@@ -93,33 +96,33 @@ void gga_c_p86(void *p_, double *rho, double *sigma,
   }
 
   { /* Equation (9) of [1] */
-    static const double ftilde = 1.745*0.11;
+    static const FLOAT ftilde = 1.745*0.11;
 
-    double f1, f2, df1, df2;
+    FLOAT f1, f2, df1, df2;
 
     f1  = ftilde*(CCinf/CC);
-    f2  = pow(dens, -7.0/6.0);
+    f2  = POW(dens, -7.0/6.0);
     Phi = f1*gdmt*f2;
 
     df1 = -f1/(CC)*dCCdd;
-    df2 = -7.0/6.0*pow(dens, -13.0/6.0);
+    df2 = -7.0/6.0*POW(dens, -13.0/6.0);
     dPhidd    = gdmt*(df1*f2 + f1*df2);
     dPhidgdmt = f1*f2;
   }
 
   { /* Equation [1].(8) */
-    double gdmt2;
-    double f1, f2, f3, df1, df1dgdmt, df2, df3, df3dgdmt;
+    FLOAT gdmt2;
+    FLOAT f1, f2, f3, df1, df1dgdmt, df2, df3, df3dgdmt;
 
     gdmt2 = gdmt*gdmt;
 
     f1 = exp(-Phi);
-    f2 = pow(dens, -4.0/3.0);
+    f2 = POW(dens, -4.0/3.0);
     f3 = f1*CC*gdmt2*f2;
 
     df1      = -f1*dPhidd;
     df1dgdmt = -f1*dPhidgdmt;
-    df2      = -4.0/3.0*pow(dens, -7.0/3.0);
+    df2      = -4.0/3.0*POW(dens, -7.0/3.0);
     df3      = gdmt2*(df1*CC*f2 + f1*dCCdd*f2 + f1*CC*df2);
     df3dgdmt = CC*f2*(df1dgdmt*gdmt2 + f1*2.0*gdmt);
 
@@ -136,7 +139,7 @@ void gga_c_p86(void *p_, double *rho, double *sigma,
   }
 }
 
-const xc_func_info_type func_info_gga_c_p86 = {
+const XC(func_info_type) XC(func_info_gga_c_p86) = {
   XC_GGA_C_P86,
   XC_CORRELATION,
   "Perdew 86",

@@ -16,22 +16,13 @@
  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <assert.h>
+#ifndef _XC_S_H
+#define _XC_S_H
 
-#include "util.h"
+#ifndef SINGLE_PRECISION
+#define SINGLE_PRECISION 1
+#endif
 
-/* this function converts the spin-density into total density and
-	 relative magnetization */
-inline void
-XC(rho2dzeta)(int nspin, const FLOAT *rho, FLOAT *d, FLOAT *zeta)
-{
-  assert(nspin==XC_UNPOLARIZED || nspin==XC_POLARIZED);
-  
-  if(nspin==XC_UNPOLARIZED){
-    *d    = max(MIN_DENS, rho[0]);
-    *zeta = 0.0;
-  }else{
-    *d    = max(MIN_DENS, rho[0]+rho[1]);
-    *zeta = (*d > MIN_DENS) ? (rho[0]-rho[1])/(*d) : 0.0;
-  }
-}
+#include "xc.h"
+
+#endif

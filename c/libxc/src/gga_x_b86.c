@@ -24,15 +24,15 @@
 #define XC_GGA_X_B86_R        104 /* Becke 86 Xalfa,beta,gamma (reoptimized)        */
 
 static inline void 
-func(xc_gga_type *p, double x, double *f, double *dfdx, double *ldfdx)
+func(const XC(gga_type) *p, FLOAT x, FLOAT *f, FLOAT *dfdx, FLOAT *ldfdx, FLOAT *d2fdx2)
 {
-  static const double beta[2]  = {
+  static const FLOAT beta[2]  = {
     0.0076,  /* beta from the original Becke paper */
     0.00787  /* reoptimized value used in part 3 of Becke 97 paper */
   };
-  static const double gamma = 0.004;
+  static const FLOAT gamma = 0.004;
 
-  double f1, f2;
+  FLOAT f1, f2, df1, df2, d2f1, d2f2;
   int func;
 
   switch(p->info->number){
@@ -43,32 +43,46 @@ func(xc_gga_type *p, double x, double *f, double *dfdx, double *ldfdx)
   f1    = (1.0 + beta[func]*x*x);
   f2    = (1.0 + gamma*x*x);
   *f    = f1/f2;
-    
-  *dfdx  = 2.0*x*(beta[func]*f2 - gamma*f1)/(f2*f2);
-  *ldfdx = (beta[func] - gamma);
+  
+  if(dfdx==NULL && d2fdx2==NULL) return; /* nothing else to do */
+
+  df1   = 2.0*beta[func]*x;
+  df2   = 2.0*gamma     *x;
+
+  if(dfdx!=NULL){
+    *dfdx  = (df1*f2 - f1*df2)/(f2*f2);
+    *ldfdx = (beta[func] - gamma);
+  }
+
+  if(d2fdx2==NULL) return; /* nothing else to do */
+
+  d2f1 = 2.0*beta[func];
+  d2f2 = 2.0*gamma;
+
+  *d2fdx2 = (2.0*f1*df2*df2 + d2f1*f2*f2 - f2*(2.0*df1*df2 + f1*d2f2))/(f2*f2*f2);
 }
 
 #include "work_gga_x.c"
 
-const xc_func_info_type func_info_gga_x_b86 = {
+const XC(func_info_type) XC(func_info_gga_x_b86) = {
   XC_GGA_X_B86,
   XC_EXCHANGE,
   "Becke 86",
   XC_FAMILY_GGA,
   "AD Becke, J. Chem. Phys 84, 4524 (1986)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };
 
-const xc_func_info_type func_info_gga_x_b86_r = {
+const XC(func_info_type) XC(func_info_gga_x_b86_r) = {
   XC_GGA_X_B86_R,
   XC_EXCHANGE,
   "Becke 86 (reoptimized)",
   XC_FAMILY_GGA,
   "AD Becke, J. Chem. Phys 84, 4524 (1986)\n"
   "AD Becke, J. Chem. Phys 107, 8554 (1997)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   NULL, NULL, NULL,
   work_gga_x
 };

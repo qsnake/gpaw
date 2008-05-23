@@ -31,6 +31,7 @@ AC_PROG_CC
 AC_PROG_RANLIB
 AC_LANG_PREPROC
 AM_PROG_CC_C_O
+AC_C_INLINE
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -73,8 +74,18 @@ if test $ac_cv_build_fortran = yes; then
   dnl Fortran default flags
   ACX_FCFLAGS
 
+  dnl libxc needs the preprocessor. The result goes to FCCPP
+  dnl this is a hack, and should be changed in the future
+  AC_LANG_PREPROC
+
   dnl how Fortran mangles function names
   AC_FC_WRAPPERS
+
+  dnl check whether we have or not a compiler that allows for very long lines...
+  ACX_LONG_FORTRAN_LINES
+
+  dnl check whether the Fortran 90 compiler accepts line markers cast by the preprocessor.
+  ACX_F90_ACCEPTS_LINE_NUMBERS
 
   dnl Need to know the size of a Fortran integer
   ACX_FC_INTEGER_SIZE
@@ -86,6 +97,15 @@ else
 fi
 
 AM_CONDITIONAL(COMPILE_FORTRAN, test x${HAVE_FORTRAN} = x1)
+
+dnl should I compile libxc in single precision?
+AC_ARG_ENABLE([single], 
+	      AS_HELP_STRING([--enable-single], [compile libxc in single precision]),
+              [ac_cv_single_prec=$enableval],
+	      [ac_cv_single_prec=no])
+
+AM_CONDITIONAL(COMPILE_SINGLE, test  $ac_cv_single_prec = yes)
+
 
 AC_CONFIG_FILES([Makefile src/Makefile testsuite/Makefile])
 

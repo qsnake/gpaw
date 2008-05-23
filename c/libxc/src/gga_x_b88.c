@@ -24,13 +24,13 @@
 #define XC_GGA_X_B88          106 /* Becke 88 */
 
 typedef struct{
-  double beta;
+  FLOAT beta;
 } gga_x_b88_params;
 
 
-void gga_x_b88_init(void *p_)
+static void gga_x_b88_init(void *p_)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
   gga_x_b88_params *params;
 
   assert(p->params == NULL);
@@ -39,20 +39,21 @@ void gga_x_b88_init(void *p_)
   params = (gga_x_b88_params *) (p->params);
 
   /* value of beta in standard Becke 88 functional */
-  gga_x_b88_set_params(p, 0.0042);
+  XC(gga_x_b88_set_params)(p, 0.0042);
 }
 
 
-void gga_x_b88_end(void *p_)
+static void gga_x_b88_end(void *p_)
 {
-  xc_gga_type *p = (xc_gga_type *)p_;
+  XC(gga_type) *p = (XC(gga_type) *)p_;
 
   assert(p->params != NULL);
   free(p->params);
+  p->params = NULL;
 }
 
 
-void gga_x_b88_set_params(xc_gga_type *p, double beta)
+void XC(gga_x_b88_set_params)(XC(gga_type) *p, FLOAT beta)
 {
   gga_x_b88_params *params;
 
@@ -64,30 +65,44 @@ void gga_x_b88_set_params(xc_gga_type *p, double beta)
 
 
 static inline void 
-func(xc_gga_type *p, double x, double *f, double *dfdx, double *ldfdx)
+func(const XC(gga_type) *p, FLOAT x, FLOAT *f, FLOAT *dfdx, FLOAT *ldfdx, FLOAT *d2fdx2)
 {
-  double f1;
-  double beta;
+  FLOAT f1, f2, df1, df2, d2f1, d2f2;
+  FLOAT beta;
 
   assert(p->params != NULL);
   beta = ((gga_x_b88_params *) (p->params))->beta;
 
-  f1 = (1.0 + 6.0*beta*x*asinh(x));
-  *f = 1.0 + beta/X_FACTOR_C*x*x/f1;
+  f1 = beta/X_FACTOR_C*x*x;
+  f2 = 1.0 + 6.0*beta*x*asinh(x);
+  *f = 1.0 + f1/f2;
  
-  *dfdx = beta/X_FACTOR_C*x*(2.0 + 6.0*beta*(x*asinh(x) - x*x/sqrt(1.0+x*x)))/(f1*f1);
-  *ldfdx= beta/X_FACTOR_C;
+  if(dfdx==NULL && d2fdx2==NULL) return; /* nothing else to do */
+
+  df1 = 2.0*beta/X_FACTOR_C*x;
+  df2 = 6.0*beta*(asinh(x) + x/sqrt(1.0 + x*x));
+  if(dfdx!=NULL){
+    *dfdx = (df1*f2 - f1*df2)/(f2*f2);
+    *ldfdx= beta/X_FACTOR_C;
+  }
+
+  if(d2fdx2==NULL) return; /* nothing else to do */
+
+  d2f1 = 2.0*beta/X_FACTOR_C;
+  d2f2 = 6.0*beta*(2.0 + x*x)/pow(1.0 + x*x, 3.0/2.0);
+
+  *d2fdx2 = (2.0*f1*df2*df2 + d2f1*f2*f2 - f2*(2.0*df1*df2 + f1*d2f2))/(f2*f2*f2);
 }
 
 #include "work_gga_x.c"
 
-const xc_func_info_type func_info_gga_x_b88 = {
+const XC(func_info_type) XC(func_info_gga_x_b88) = {
   XC_GGA_X_B88,
   XC_EXCHANGE,
   "Becke 88",
   XC_FAMILY_GGA,
   "AD Becke, Phys. Rev. A 38, 3098 (1988)",
-  XC_PROVIDES_EXC | XC_PROVIDES_VXC,
+  XC_PROVIDES_EXC | XC_PROVIDES_VXC | XC_PROVIDES_FXC,
   gga_x_b88_init, 
   gga_x_b88_end, 
   NULL,

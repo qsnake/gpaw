@@ -66,15 +66,15 @@ typedef struct
 /* a general call for an LDA functional */
 void get_point_lda(functionals_type *func, double point[5], double *e, double der[5])
 {
-/*   xc_lda_vxc(&(func->lda_func), &(point[0]), e, &(der[0])); */
-  xc_lda_vxc(&(func->lda_func), point, e, der);
+/*   XC(lda_vxc)(&(func->lda_func), &(point[0]), e, &(der[0])); */
+  XC(lda_vxc)(&(func->lda_func), point, e, der);
 }
 
 /* a general call for a GGA functional */
 void get_point_gga(functionals_type *func, double point[5], double *e, double der[5])
 {
-  xc_gga(&(func->gga_func), &(point[0]), &(point[2]),
-	 e, &(der[0]), &(der[2]));
+  XC(gga_vxc)(&(func->gga_func), &(point[0]), &(point[2]),
+              e, &(der[0]), &(der[2]));
 }
 
 /* a general call for a MGGA functional */
@@ -82,7 +82,7 @@ void get_point_mgga(functionals_type *func, double point[5], double *e, double d
 {
   printf("get_point_mgga: MGGA not implemented yet\n");
   exit(1);
-/*   xc_mgga(&(func->mgga_func), &(point[0]), &(point[2]), */
+/*   XC(mgga)(&(func->mgga_func), &(point[0]), &(point[2]), */
 /*	  e, &(der[0]), &(der[2])); */
 }
 
@@ -92,10 +92,10 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->xc_functional.family)
     {
     case XC_FAMILY_GGA:
-      xc_gga_end(&(self->xc_functional.gga_func));
+      XC(gga_end)(&(self->xc_functional.gga_func));
       break;
     case XC_FAMILY_LCA:
-      /* xc_lca_end(&(self->xc_functional.lca_func)); */ /* MDTMP - does not exist in libx! */
+      /* XC(lca_end)(&(self->xc_functional.lca_func)); */ /* MDTMP - does not exist in libx! */
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_dealloc: cannot destroy nonexisting %d xc functional\n", self->xc_functional.family); */
@@ -104,13 +104,13 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->x_functional.family)
     {
     case XC_FAMILY_LDA:
-/*       xc_lda_end(&(self->x_functional.lda_func)); */
+/*       XC(lda_end)(&(self->x_functional.lda_func)); */
       break;
     case XC_FAMILY_GGA:
-      xc_gga_end(&(self->x_functional.gga_func));
+      XC(gga_end)(&(self->x_functional.gga_func));
       break;
     case XC_FAMILY_MGGA:
-      xc_mgga_end(&(self->x_functional.mgga_func));
+      XC(mgga_end)(&(self->x_functional.mgga_func));
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_dealloc: cannot destroy nonexisting %d x functional\n", self->x_functional.family); */
@@ -119,13 +119,13 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->c_functional.family)
     {
     case XC_FAMILY_LDA:
-      xc_lda_end(&(self->c_functional.lda_func));
+      XC(lda_end)(&(self->c_functional.lda_func));
       break;
     case XC_FAMILY_GGA:
-      xc_gga_end(&(self->c_functional.gga_func));
+      XC(gga_end)(&(self->c_functional.gga_func));
       break;
     case XC_FAMILY_MGGA:
-      xc_mgga_end(&(self->c_functional.mgga_func));
+      XC(mgga_end)(&(self->c_functional.mgga_func));
       break;
 /*     default: */
 /*       printf("lxcXCFunctional_dealloc: cannot destroy nonexisting %d c functional\n", self->c_functional.family); */
@@ -667,16 +667,16 @@ PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
     {
     case XC_FAMILY_LDA:
       if(x == XC_LDA_X)
-	xc_lda_x_init(&(self->x_functional.lda_func),
+	XC(lda_x_init)(&(self->x_functional.lda_func),
 		      nspin, 3, XC_NON_RELATIVISTIC);
       else
-	xc_lda_init(&(self->x_functional.lda_func), x, nspin);
+	XC(lda_init)(&(self->x_functional.lda_func), x, nspin);
       break;
     case XC_FAMILY_GGA:
-      xc_gga_init(&(self->x_functional.gga_func), x, nspin);
+      XC(gga_init)(&(self->x_functional.gga_func), x, nspin);
       break;
     case XC_FAMILY_MGGA:
-      xc_mgga_init(&(self->x_functional.mgga_func), x, nspin);
+      XC(mgga_init)(&(self->x_functional.mgga_func), x, nspin);
       break;
 /*     default: */
 /*       printf("NewlxcXCFunctionalObject: exchange functional '%d' not found\n", x); */
@@ -687,13 +687,13 @@ PyObject * NewlxcXCFunctionalObject(PyObject *obj, PyObject *args)
   switch(self->c_functional.family)
     {
     case XC_FAMILY_LDA:
-      xc_lda_init(&(self->c_functional.lda_func), c, nspin);
+      XC(lda_init)(&(self->c_functional.lda_func), c, nspin);
       break;
     case XC_FAMILY_GGA:
-      xc_gga_init(&(self->c_functional.gga_func), c, nspin);
+      XC(gga_init)(&(self->c_functional.gga_func), c, nspin);
       break;
     case XC_FAMILY_MGGA:
-      xc_mgga_init(&(self->c_functional.mgga_func), c, nspin);
+      XC(mgga_init)(&(self->c_functional.mgga_func), c, nspin);
       break;
 /*     default: */
 /*       printf("NewlxcXCFunctionalObject: correlation functional '%d' not found\n", c); */
