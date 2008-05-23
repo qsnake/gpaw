@@ -219,10 +219,10 @@ class KPoint:
             for c in range(3):
                 if self.dtype == float:
                     ddr[c](psit_G,d_G)
-                    axpy(f, d_G**2, taut_G) #taut_G += f * d_G**2
+                    axpy(0.5*f, d_G**2, taut_G) #taut_G += 0.5*f * d_G**2
                 else:
                     ddr[c](psit_G,d_G,self.phase_cd)
-                    taut_G += f * (d_G * npy.conjugate(d_G)).real
+                    taut_G += 0.5* f * (d_G * npy.conjugate(d_G)).real
 
     def calculate_wave_functions_from_lcao_coefficients(self, nbands):
         self.nbands = nbands
