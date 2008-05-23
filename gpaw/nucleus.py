@@ -271,13 +271,29 @@ class Nucleus:
             # Convert to ndarray:
             self.f_si = npy.asarray(self.f_si, float)
         else:
-            self.f_si = self.calculate_initial_occupation_numbers(ns, niao,
-                                                                  magmom, hund)
+            self.f_si = self.calculate_initial_occupation_numbers(
+                ns, niao, magmom, hund)
 
         if self.in_this_domain:
             D_sii = npy.zeros((ns, ni, ni))
-            for i in range(min(ni, niao)):
-                D_sii[:, i, i] = self.f_si[:, i]
+            nj = len(self.setup.n_j)
+            j = 0
+            i = 0
+            ib = 0
+            for phit in self.setup.phit_j:
+                l = phit.get_angular_momentum_number()
+                # Skip projector functions not in basis set:
+                while j < nj and self.setup.l_j[j] != l:
+                    i += 2 * self.setup.l_j[j] + 1
+                    j += 1
+                if j == nj:
+                    break
+
+                for m in range(2 * l + 1):
+                    D_sii[:, i + m, i + m] = self.f_si[:, ib + m]
+                j += 1
+                i += 2 * l + 1
+                ib += 2 * l + 1
             for s in range(ns):
                 self.D_sp[s] = pack(D_sii[s])
 
@@ -286,16 +302,27 @@ class Nucleus:
 
     def calculate_initial_occupation_numbers(self, ns, niao, magmom, hund):
         f_si = npy.zeros((ns, niao))
+
+        setup = self.setup
+
+        # Projector function indices:
+        j = 0
+        nj = len(setup.n_j)
+        
         i = 0
-        nj = len(self.setup.n_j)
-        for j, phit in enumerate(self.setup.phit_j):
+        for phit in setup.phit_j:
             l = phit.get_angular_momentum_number()
-            if j < nj and self.setup.n_j[j] >= 0:
-                f = self.setup.f_j[j]
+
+            # Skip projector functions not in basis set:
+            while j < nj and setup.l_j[j] != l:
+                j += 1
+            if j < nj:
+                f = int(setup.f_j[j])
             else:
                 f = 0
+
             degeneracy = 2 * l + 1
-            f = int(f)
+
             if hund:
                 # Use Hunds rules:
                 f_si[0, i:i + min(f, degeneracy)] = 1.0      # spin up
@@ -317,11 +344,13 @@ class Nucleus:
                     magmom -= mag
                 
             i += degeneracy
+            j += 1
 
         if magmom != 0:
             raise RuntimeError('Bad magnetic moment %g for %s atom!' %
                                (magmom, self.setup.symbol))
         assert i == niao
+
         return f_si
     
     def add_smooth_core_density(self, nct_G, nspins):

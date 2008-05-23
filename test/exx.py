@@ -9,7 +9,7 @@ from gpaw import setup_paths
 loa = Atoms([Atom('Be', (0, 0, 0)), Atom('Be', (2.45, 0, 0))])
 loa.center(vacuum=2.0)
 calc = Calculator(h=0.21, nbands=3, convergence={'eigenstates': 1e-6},
-                  txt='Be2.txt')
+                  txt=None)
 loa.set_calculator(calc)
 
 ref_1871 = { # Values from revision 1871. Not true reference values
