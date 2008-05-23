@@ -81,3 +81,52 @@ double atpss_correlation(double na, double  nb, double aa2, double ab2,
    }
  return e;
 }
+
+double tpss_exchange(double n, double a2, double tau, 
+		      double* dexdn, double* deda2)
+{
+  double e,dfxdn,dfxdg,dfxdt,dedn;
+
+  tpssfx(&n,&a2,&tau,&e,&dfxdn,&dfxdg,&dfxdt,0);
+  dedn = dfxdn ;
+  *dexdn = dedn ;
+  *deda2 = dfxdg ;
+  return e;
+}
+
+double tpss_correlation(double na, double  nb, double aa2, double ab2,
+			 double a2, double ta, double tb, 
+			 bool spinpol, double* decdna, 
+			 double* decdnb, double* decdaa2, double* decdab2, 
+			 double* decdgab)
+{    
+  double e;
+  double dfcdna, dfcdgaa, dfcdta;
+  double dfcdnb, dfcdgbb, dfcdtb;
+  double dfcdgab;
+  
+  double gaa = aa2 ;
+  double gbb = ab2;
+  double gab = (a2 - aa2 - ab2) / 2.;
+
+ if (spinpol == 0)
+   {
+     tpssfc(&na,&na,&gaa,&gaa,&gaa,&ta,&ta,&e,&dfcdna, &dfcdnb, 
+	    &dfcdgaa, &dfcdgbb, &dfcdgab,&dfcdta,&dfcdtb);
+     *decdna = dfcdna ;
+     *decdaa2 =  dfcdgaa ;
+     *decdgab = dfcdgab ;
+
+   }
+ else
+   {
+     tpssfc(&na,&nb,&gaa,&gbb,&gab,&ta,&tb,&e,&dfcdna, &dfcdnb, 
+	    &dfcdgaa, &dfcdgbb, &dfcdgab,&dfcdta,&dfcdtb);
+     *decdna = dfcdna ;
+     *decdnb = dfcdnb ;
+     *decdaa2 = dfcdgaa ;
+     *decdab2 = dfcdgbb ;
+     *decdgab = dfcdgab ;
+   }
+ return e;
+}

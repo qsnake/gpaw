@@ -35,6 +35,13 @@ double atpss_correlation(double na, double nb, double aa2,
 			 bool spinpol, 
 			 double* dedna, double* dednb, double* dedaa2,
 			 double* dedab2, double* dedgud);
+double tpss_exchange(double n, double a2, double tau,
+		     double* dedn, double* deda2);
+double tpss_correlation(double na, double nb, double aa2,
+			 double ab2, double a2, double taua, double taub,
+			 bool spinpol, 
+			 double* dedna, double* dednb, double* dedaa2,
+			 double* dedab2, double* dedgud);
 
 typedef struct 
 {
@@ -63,7 +70,7 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
   PyArrayObject* a2_array = 0;
   PyArrayObject* deda2_array = 0;
   PyArrayObject* tau_array = 0;
-  if (!PyArg_ParseTuple(args, "OOOOO|O", &e_array, &n_array, &v_array,
+  if (!PyArg_ParseTuple(args, "OOOOOO", &e_array, &n_array, &v_array,
 			&a2_array, &deda2_array, &tau_array))
     return NULL;
 
@@ -78,8 +85,7 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
   double* deda2_g = DOUBLEP(deda2_array);
 
   double* tau_g;
-  if (par->mgga)
-    tau_g = DOUBLEP(tau_array);
+  tau_g = DOUBLEP(tau_array);
 
 
   for (int g = 0; g < ng; g++)
@@ -102,8 +108,13 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
       if (par->mgga)
 	{
 	  tau = a2/ (8. * n);
+	  tau_g[g] = tau;
 	}
-      
+      if (tau < a2/ (8. * n))
+	{
+	  tau = a2/ (8. * n);
+	  tau_g[g] = tau;
+	} 
       ex = self->exchange(n, a2, tau, &dexdn, &dexda2);
       ec = self->correlation(n / 2., 0, a2 / 4. , 0, 0, 0.5 * tau, 0.5 * tau,
 			     0, &decdna, 
@@ -134,7 +145,7 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
   PyArrayObject* taua_array = 0;
   PyArrayObject* taub_array = 0;
 
-  if (!PyArg_ParseTuple(args, "OOOOOOOOOOO|OO", &e_array, &na_array, &va_array
+  if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOO", &e_array, &na_array, &va_array
 			, &nb_array, &vb_array, &a2_array, &aa2_array,
 			&ab2_array, &deda2_array, &dedaa2_array, &dedab2_array,
 			&taua_array, &taub_array))
@@ -194,8 +205,21 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
 	{
 	  taua = aa2 / (4.* na);
 	  taub = ab2 / (4.* nb);
+	  taua_g[g] = taua;
+	  taub_g[g] = taub;
 	}
-
+      if (taua < aa2 / (4.* na))
+	{
+	  taua_g[g] =  aa2 / (4.* na);
+	  taua = aa2 / (4.* na);
+	}
+      
+      if (taub < ab2 / (4.* nb))
+	{
+	  taub_g[g] = ab2 / (4.* nb);
+	  taub = ab2 / (4.* nb);
+	}
+      
       exa = self->exchange(na, 4.*aa2, 2.*taua, &dexdna, &dexada2);
       exb = self->exchange(nb, 4.*ab2, 2.*taub, &dexdnb, &dexbda2);
       ec = self->correlation(0.5 * na, 0.5 * nb, aa2, ab2, a2, taua, taub,
@@ -272,7 +296,12 @@ PyObject * NewMGGAFunctionalObject(PyObject *obj, PyObject *args)
       self->exchange = atpss_exchange;
       self->correlation = atpss_correlation;
     }
-  
+  else
+    {
+      //TPSS non local
+      self->exchange = tpss_exchange;
+      self->correlation = tpss_correlation;
+    }
 
   return (PyObject*)self;
 }
