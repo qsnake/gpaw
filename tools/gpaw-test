@@ -11,8 +11,7 @@ parser = OptionParser(usage='%prog [options] element[s]',
 parser.add_option('-s', '--summary', action='store_true',
                   default=False,
                   help='Do a summary.')
-parser.add_option('--lcao', action='store_true',
-                  default=False,
+parser.add_option('--lcao', type='string', metavar='basis',
                   help='Do a LCAO calculation.')
 
 opt, args = parser.parse_args()
@@ -105,7 +104,7 @@ class TestAtom:
             calc = Calculator(h=h, width=0.1, xc='PBE',
                               txt='%s/eggbox-%.3f.txt' % (self.symbol, h))
             if self.lcao:
-                calc.set(eigensolver='lcao', basis='dzp')
+                calc.set(eigensolver='lcao', basis=self.lcao)
 
             atom.set_calculator(calc)
 
@@ -142,7 +141,7 @@ class TestAtom:
             calc = Calculator(h=h, width=0.1, xc='PBE',
                               txt='%s/dimer-%.3f.txt' % (self.symbol, h))
             if self.lcao:
-                calc.set(eigensolver='lcao', basis='dzp')
+                calc.set(eigensolver='lcao', basis=self.lcao)
 
             dimer.set_calculator(calc)
 
