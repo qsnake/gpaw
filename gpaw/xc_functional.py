@@ -188,9 +188,9 @@ class XCFunctional:
             elif xcname == 'TPSS':
                 code = 9
                 self.mgga = True ## use real tau and local potential
-                local_tau = True ## use Weiszacker term
+                local_tau = False ## use Weiszacker term
                 self.orbital_dependent = True
-                ##self.mgga = False ## use local tau and local potential
+
             elif xcname == 'oldPW91':
                 code = 14
                 xcname = 'PW91'
@@ -299,7 +299,7 @@ class XCFunctional:
                 paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
                 paw.hamiltonian.xc.taub_g = paw.density.taut_sg[1]
             for nucleus in paw.my_nuclei:
-                nucleus.setup.xc_correction.initialize_kinetic()
+                nucleus.setup.xc_correction.initialize_kinetic(nucleus.setup.data)
 
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
         if self.orbital_dependent:
