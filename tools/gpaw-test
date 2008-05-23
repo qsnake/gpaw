@@ -11,15 +11,9 @@ parser = OptionParser(usage='%prog [options] element[s]',
 parser.add_option('-s', '--summary', action='store_true',
                   default=False,
                   help='Do a summary.')
-parser.add_option('--setup', action='store_true',
+parser.add_option('--lcao', action='store_true',
                   default=False,
-                  help='Include a setup summary.')
-parser.add_option('--html', action='store_true',
-                  default=False,
-                  help='Write HTML.')
-parser.add_option('-q', '--queue', action='store_true',
-                  default=False,
-                  help='Send job to niflheim.')
+                  help='Do a LCAO calculation.')
 
 opt, args = parser.parse_args()
 
@@ -71,7 +65,8 @@ class TestAtom:
 
         self.h = self.a / npy.arange(gmin, gmax + 4, 4)
 
-    def run(self, summary):
+    def run(self, summary, lcao):
+        self.lcao = lcao
         tasks = ['eggbox', 'dimer']
         self.ready = True
         for task in tasks:
@@ -109,7 +104,15 @@ class TestAtom:
             print '%.3f:' % h,
             calc = Calculator(h=h, width=0.1, xc='PBE',
                               txt='%s/eggbox-%.3f.txt' % (self.symbol, h))
+            if self.lcao:
+                calc.set(eigensolver='lcao', basis='dzp')
+
             atom.set_calculator(calc)
+
+            if self.lcao:
+                calc.initialize(atom)
+                calc.hamiltonian.lcao_forces = True
+
             for j in range(negg):
                 x = h * j / (2 * negg - 2)
                 atom[0].x = x
@@ -138,7 +141,15 @@ class TestAtom:
             print '%.3f:' % h,
             calc = Calculator(h=h, width=0.1, xc='PBE',
                               txt='%s/dimer-%.3f.txt' % (self.symbol, h))
+            if self.lcao:
+                calc.set(eigensolver='lcao', basis='dzp')
+
             dimer.set_calculator(calc)
+
+            if self.lcao:
+                calc.initialize(dimer)
+                calc.hamiltonian.lcao_forces = True
+
             y = []
             for j in range(-3, 4):
                 q = q0 * (1 + j * 0.02)
@@ -200,7 +211,7 @@ class TestAtom:
                     npy.abs(self.Fegg[i:]).max(1).max(),
                     npy.abs(self.Fdimer[i:].sum(2)).max(1).max()
                    ))
-        if 0:
+        if 1:
             import pylab as plt
             plt.figure(figsize=(10, 12))
             plt.subplots_adjust(left=0.07, right=0.97, bottom=0.05, wspace=0.25)
@@ -238,14 +249,26 @@ def f(x, y, dydx):
     y2[1::3] = y + dydx * 0.4 * dx
     y2[2::3] = npy.nan
     return x2, y2
+def f(x, y, dydx):
+    dx = x[1] - x[0]
+    x2 = npy.empty(2 * len(x))
+    x2[::2] = x - 0.5 * dx
+    x2[1::2] = x + 0.5 * dx
+    y2 = npy.empty_like(x2)
+    y2[::2] = y - dydx * 0.5 * dx
+    y2[1::2] = y + dydx * 0.5 * dx
+    return x2, y2
 
 if len(args) == 0:
     from gpaw.atom.generator import parameters
     args = parameters.keys()
 
+if opt.summary:
+    print '    deltaE   deltaEa  Eegg     deltad   Fegg     Ftot'
+
 for symbol in args:
     ta = TestAtom(symbol)
-    ta.run(opt.summary)
+    ta.run(opt.summary, opt.lcao)
     if opt.summary and ta.ready:
         ta.summary()
 
