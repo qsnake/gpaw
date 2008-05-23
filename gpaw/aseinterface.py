@@ -260,7 +260,7 @@ class Calculator(PAW):
             M = magmom_a.sum()
             if abs(M) > 1e-4:
                 scale = self.occupation.magmom / M
-            magmom_a *= scale
+                magmom_a *= scale
         return magmom_a
         
     def get_fermi_level(self):
