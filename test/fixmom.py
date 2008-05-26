@@ -7,7 +7,7 @@ bulk = Atoms([Atom('Fe', (0, 0, 0), magmom=2.20),
               Atom('Fe', (0.5, 0.5, 0.5), magmom=2.20)],
              pbc=True)
 bulk.set_cell((a, a, a), scale_atoms=True)
-mom0 = sum(bulk.get_magnetic_moments())
+mom0 = sum(bulk.get_initial_magnetic_moments())
 h = 0.20
 calc = Calculator(h=h, nbands=11, kpts=(3, 3, 3),
                   convergence={'eigenstates': 0.02}, fixmom=True)
