@@ -322,6 +322,8 @@ class PAW(PAWExtra, Output):
                          'communicator']:
                 self.reuse_old_density = False
                 self.kpt_u = None
+            else:
+                raise TypeError('Unknown keyword argument:' + key)
             
     def calculate(self, atoms):
         """Update PAW calculaton if needed."""
