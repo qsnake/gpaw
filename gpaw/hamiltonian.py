@@ -56,21 +56,8 @@ class Hamiltonian(LCAOHamiltonian):
         self.timer = paw.timer
 
         p = paw.input_parameters
-        stencils = p['stencils']
+        self.stencils = p['stencils']
 
-        # Number of neighbor grid points used for finite difference
-        # Laplacian in the Schrödinger equation (1, 2, ...):
-        nn = stencils[0]
-
-        # Kinetic energy operator:
-        self.kin = Laplace(self.gd, -0.5, nn, paw.dtype)
-
-        # Number of neighbor grid points used for interpolation (1, 2,
-        # or 3):
-        nn = stencils[1]
-
-        # Restrictor function for the potential:
-        self.restrict = Transformer(self.finegd, self.gd, nn).apply
 
         # Solver for the Poisson equation:
         psolver = p['poissonsolver']
@@ -100,6 +87,20 @@ class Hamiltonian(LCAOHamiltonian):
 
         self.poisson.initialize(self.finegd)
         self.npoisson = 0 #???
+
+        # Number of neighbor grid points used for finite difference
+        # Laplacian in the Schrödinger equation (1, 2, ...):
+        nn = self.stencils[0]
+
+        # Kinetic energy operator:
+        self.kin = Laplace(self.gd, -0.5, nn, paw.dtype)
+
+        # Number of neighbor grid points used for interpolation (1, 2,
+        # or 3):
+        nn = self.stencils[1]
+
+        # Restrictor function for the potential:
+        self.restrict = Transformer(self.finegd, self.gd, nn).apply
 
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(paw.setups)

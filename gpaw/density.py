@@ -67,10 +67,8 @@ class Density:
             self.charge += (setup.Z - setup.Nv - setup.Nc)
         
         # Number of neighbor grid points used for interpolation (1, 2, or 3):
-        nn = p['stencils'][1]
+        self.nn = p['stencils'][1]
 
-        # Interpolation function for the density:
-        self.interpolate = Transformer(self.gd, self.finegd, nn).apply
         
         # Density mixer
         self.set_mixer(paw, p['mixer'])
@@ -89,6 +87,9 @@ class Density:
             self.nt_g = self.nt_sg[0]
         else:
             self.nt_g = self.finegd.empty()
+
+        # Interpolation function for the density:
+        self.interpolate = Transformer(self.gd, self.finegd, self.nn).apply
 
         self.initialized = True
 
