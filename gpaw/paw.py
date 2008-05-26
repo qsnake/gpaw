@@ -277,6 +277,8 @@ class PAW(PAWExtra, Output):
 
         if filename is not None:
             self.initialize()
+            self.density.initialize()
+            self.hamiltonian.initialize(self)
             gpaw.io.read(self, reader)
             self.plot_atoms(self.atoms)
 
@@ -338,13 +340,11 @@ class PAW(PAWExtra, Output):
             self.kpt_u = None
             self.reuse_old_density = False
             self.initialize(atoms)
-            self.print_parameters()
             self.find_ground_state(atoms)
             return
 
         if not self.initialized:
             self.initialize(atoms)
-            self.print_parameters()
             self.find_ground_state(atoms)
             return
 
@@ -366,8 +366,14 @@ class PAW(PAWExtra, Output):
     def find_ground_state(self, atoms, write=True):
         """Start iterating towards the ground state."""
         
+        if not self.density.initialized:
+            self.density.initialize()
+        if not self.hamiltonian.initialized:
+            self.hamiltonian.initialize(self)
+
         self.set_positions(atoms)
         self.initialize_kinetic()
+        
         if not self.eigensolver.initialized:
             # We know that we have enough memory to initialize the
             # eigensolver here:
@@ -376,11 +382,12 @@ class PAW(PAWExtra, Output):
             self.initialize_wave_functions()
         if not self.wave_functions_orthonormalized:
             self.orthonormalize_wave_functions()
-        if not self.density.initialized:
+        if not self.density.starting_density_initialized:
             self.density.update(self.kpt_u, self.symmetry)
         if self.xcfunc.is_gllb():
             if not self.xcfunc.xc.initialized:
                 self.xcfunc.initialize_gllb(self)
+
         self.hamiltonian.update(self.density)
 
         # Self-consistency loop:
@@ -493,8 +500,8 @@ class PAW(PAWExtra, Output):
         self.fixdensity = max(2, self.fixdensity)
 
         if self.eigensolver.lcao:
-            if not self.density.initialized:
-                self.density.initialize()
+            if not self.density.starting_density_initialized:
+                self.density.initialize_from_atomic_density()
 
             for kpt in self.kpt_u:
                 kpt.allocate(self.nbands)
@@ -1041,18 +1048,6 @@ class PAW(PAWExtra, Output):
             self.dtype = float
         else:
             self.dtype = complex
-
-        if self.density is None:
-            self.reuse_old_density = False
-            
-        if self.reuse_old_density:
-            nt_sG = self.density.nt_sG
-            D_asp = {}
-            P_auni = {}
-            for nucleus in self.my_nuclei:
-                D_asp[nucleus.a] = nucleus.D_sp
-                if self.kpt_u is not None:
-                    P_auni[nucleus.a] = nucleus.P_uni
                 
         type_a, basis_a = self.create_nuclei_and_setups(Z_a)
 
@@ -1161,17 +1156,21 @@ class PAW(PAWExtra, Output):
         
         self.locfuncbcaster = LocFuncBroadcaster(self.kpt_comm)
 
+        if self.density is None:
+            self.reuse_old_density = False
+
+        if self.reuse_old_density:
+            nt_sG = self.density.nt_sG
+            D_asp = {}
+            P_auni = {}
+            for nucleus in self.my_nuclei:
+                D_asp[nucleus.a] = nucleus.D_sp
+                if self.kpt_u is not None:
+                    P_auni[nucleus.a] = nucleus.P_uni
+
         self.my_nuclei = []
         self.pt_nuclei = []
         self.ghat_nuclei = []
-
-        self.density = Density(self, magmom_a)#???
-        self.hamiltonian = Hamiltonian()
-        self.hamiltonian.initialize(self)
-        
-        self.overlap = Overlap(self)
-
-        self.xcfunc.set_non_local_things(self)
 
         self.Eref = 0.0
         for nucleus in self.nuclei:
@@ -1181,8 +1180,17 @@ class PAW(PAWExtra, Output):
             spos_c = self.domain.scale_position(pos_c)
             nucleus.set_position(spos_c, self.domain, self.my_nuclei,
                                  self.nspins, self.nmyu, self.nmybands)
-            
+
+        self.density = Density(self, magmom_a)#???
+
+        self.hamiltonian = Hamiltonian(self)        
+        self.overlap = Overlap(self)
+
+        self.xcfunc.set_non_local_things(self)
+        
+
         if self.reuse_old_density:
+            self.density.initialize()
             for a, D_sp in D_asp.items():
                 self.nuclei[a].D_sp[:] = D_sp
             for a, P_uni in P_auni.items():
@@ -1190,12 +1198,11 @@ class PAW(PAWExtra, Output):
             self.density.nt_sG[:] = nt_sG
             #self.density.scale()
             self.density.interpolate_pseudo_density()
-            self.density.initialized = True
-
+            self.density.starting_density_initialized = True
+            
         self.print_init(pos_ac)
-
+        self.print_parameters()
         if dry_run:
-            self.print_parameters()
             estimate_memory(self)
             self.txt.flush()
             sys.exit()

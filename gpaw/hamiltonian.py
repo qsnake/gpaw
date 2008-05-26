@@ -42,15 +42,10 @@ class Hamiltonian(LCAOHamiltonian):
      ========== =========================================
     """
 
-    def __init__(self, ng=2**12):
+    def __init__(self, paw, ng=2**12):
         """Create the Hamiltonian."""
         LCAOHamiltonian.__init__(self, ng)
 
-        # These should be set here:
-        #self.vext_g = ...
-        #self.nn = ...
-
-    def initialize(self, paw):
         self.nspins = paw.nspins
         self.gd = paw.gd
         self.finegd = paw.finegd
@@ -59,22 +54,6 @@ class Hamiltonian(LCAOHamiltonian):
         self.ghat_nuclei = paw.ghat_nuclei
         self.nuclei = paw.nuclei
         self.timer = paw.timer
-
-        # Allocate arrays for potentials and densities on coarse and
-        # fine grids:
-        self.vt_sG = self.gd.empty(self.nspins)
-        self.vHt_g = self.finegd.zeros()
-        self.vt_sg = self.finegd.empty(self.nspins)
-
-        # The external potential
-        vext_g = paw.input_parameters['external']
-        if vext_g is not None:
-            assert npy.alltrue(vext_g.shape ==
-                               self.finegd.get_size_of_global_array())
-            self.vext_g = self.finegd.zeros()
-            self.finegd.distribute(vext_g, self.vext_g)
-        else:
-            self.vext_g = None
 
         p = paw.input_parameters
         stencils = p['stencils']
@@ -98,17 +77,39 @@ class Hamiltonian(LCAOHamiltonian):
         if psolver is None:
             psolver = PoissonSolver(nn='M', relax='J')
         self.poisson = psolver
+
+        # The external potential
+        vext_g = paw.input_parameters['external']
+        if vext_g is not None:
+            assert npy.alltrue(vext_g.shape ==
+                               self.finegd.get_size_of_global_array())
+            self.vext_g = self.finegd.zeros()
+            self.finegd.distribute(vext_g, self.vext_g)
+        else:
+            self.vext_g = None
+
+        self.initialized = False
+
+    def initialize(self, paw):
+        """Allocate arrays for potentials on coarse and fine grids
+        and initialize objects which require array allocations"""
+
+        self.vt_sG = self.gd.empty(self.nspins)
+        self.vHt_g = self.finegd.zeros()
+        self.vt_sg = self.finegd.empty(self.nspins)
+
         self.poisson.initialize(self.finegd)
+        self.npoisson = 0 #???
 
         # Pair potential for electrostatic interacitons:
         self.pairpot = PairPotential(paw.setups)
-
-        self.npoisson = 0 #???
 
         # Exchange-correlation functional object:
         self.xc = XC3DGrid(paw.xcfunc, self.finegd, self.nspins)
 
         LCAOHamiltonian.initialize(self, paw)
+
+        self.initialized = True
 
     def update(self, density):
         """Calculate effective potential.

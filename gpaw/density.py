@@ -66,17 +66,6 @@ class Density:
             setup = nucleus.setup
             self.charge += (setup.Z - setup.Nv - setup.Nc)
         
-        # Allocate arrays for potentials and densities on coarse and
-        # fine grids:
-        self.nct_G = self.gd.empty()
-        self.nt_sG = self.gd.empty(self.nspins)
-        self.rhot_g = self.finegd.empty()
-        self.nt_sg = self.finegd.empty(self.nspins)
-        if self.nspins == 1:
-            self.nt_g = self.nt_sg[0]
-        else:
-            self.nt_g = self.finegd.empty()
-
         # Number of neighbor grid points used for interpolation (1, 2, or 3):
         nn = p['stencils'][1]
 
@@ -87,9 +76,24 @@ class Density:
         self.set_mixer(paw, p['mixer'])
         
         self.initialized = False
+        self.starting_density_initialized = False
 
     def initialize(self):
-        """Initialize density.
+        """Allocate arrays for densities on coarse and fine grids"""
+
+        self.nct_G = self.gd.empty()
+        self.nt_sG = self.gd.empty(self.nspins)
+        self.rhot_g = self.finegd.empty()
+        self.nt_sg = self.finegd.empty(self.nspins)
+        if self.nspins == 1:
+            self.nt_g = self.nt_sg[0]
+        else:
+            self.nt_g = self.finegd.empty()
+
+        self.initialized = True
+
+    def initialize_from_atomic_density(self):
+        """Initialize density from atomic densities.
 
         The density is initialized from atomic orbitals, and will
         be constructed with the specified magnetic moments and
@@ -122,7 +126,7 @@ class Density:
         if self.mixer.mix_rho:
             self.mixer.mix(self)
 
-        self.initialized = True
+        self.starting_density_initialized = True
 
     def scale(self):
         for nucleus in self.nuclei:
@@ -317,7 +321,7 @@ class Density:
         for nucleus in self.nuclei:
             nucleus.add_smooth_core_density(self.nct_G, self.nspins)
 
-        if self.initialized:
+        if self.starting_density_initialized:
             self.update_pseudo_charge()
 
     def calculate_local_magnetic_moments(self):

@@ -372,7 +372,7 @@ def read(paw, reader):
 
     # Transfer the density to the fine grid:
     paw.density.interpolate_pseudo_density()  # Do this later??????
-    paw.density.initialized = True
+    paw.density.starting_density_initialized = True
     
     if version > 0.3:
         for s in range(paw.nspins): 
