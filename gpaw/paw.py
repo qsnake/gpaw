@@ -43,7 +43,7 @@ import tempfile
 import time
 
 from gpaw.utilities import check_unit_cell
-from gpaw.utilities.memory import maxrss
+from gpaw.utilities.memory import estimate_memory, maxrss
 import gpaw.utilities.timing as timing
 import gpaw.io
 import gpaw.mpi as mpi
@@ -52,7 +52,6 @@ from gpaw.rotation import rotation
 from gpaw.domain import Domain
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import gcd
-from gpaw.utilities.memory import estimate_memory
 from gpaw.setup import create_setup
 from gpaw.pawextra import PAWExtra
 from gpaw.output import Output
@@ -912,12 +911,16 @@ class PAW(PAWExtra, Output):
         if not hasattr(self, 'txt') or self.txt is None:
             return
         
-        if hasattr(self, 'timer'):
-            self.timer.write(self.txt)
+        if not dry_run:
+            mr = maxrss()
+            if mr > 0:
+                if mr < 1024.0**3:
+                    self.text('Memory  usage: %.2f MB' % (mr / 1024.0**2))
+                else:
+                    self.text('Memory  usage: %.2f GB' % (mr / 1024.0**3))
 
-        mr = maxrss()
-        if mr > 0:
-            self.text('memory  : %.2f MB' % (mr / 1024**2))
+            if hasattr(self, 'timer'):
+                self.timer.write(self.txt)
 
     def distribute_cpus(self, parsize_c, parsize_bands, N_c):
         """Distribute k-points/spins to processors.
@@ -1199,8 +1202,8 @@ class PAW(PAWExtra, Output):
             
         self.print_init(pos_ac)
         self.print_parameters()
+        estimate_memory(self)
         if dry_run:
-            estimate_memory(self)
             self.txt.flush()
             sys.exit()
 
