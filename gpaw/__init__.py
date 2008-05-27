@@ -33,6 +33,7 @@ class ConvergenceError(Exception):
 debug = False
 trace = False
 dry_run = False
+dry_run_size = 1
 parsize = None
 parsize_bands = None
 arg = None
@@ -49,8 +50,10 @@ while len(sys.argv) > i:
     elif arg == '--debug':
         debug = True
         print >> sys.stderr, 'gpaw-DEBUG mode'
-    elif arg == '--dry-run':
+    elif arg.startswith('--dry-run'):
         dry_run = True
+        if len(arg.split('=')) == 2:
+            dry_run_size = int(arg.split('=')[1])
     elif arg.startswith('--setups='):
         setup_paths = arg.split('=')[1].split(':')
     elif arg.startswith('--domain-decomposition='):
