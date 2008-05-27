@@ -1186,9 +1186,6 @@ class PAW(PAWExtra, Output):
         self.hamiltonian = Hamiltonian(self)        
         self.overlap = Overlap(self)
 
-        self.xcfunc.set_non_local_things(self)
-        
-
         if self.reuse_old_density:
             self.density.initialize()
             for a, D_sp in D_asp.items():

@@ -108,6 +108,8 @@ class Hamiltonian(LCAOHamiltonian):
         # Exchange-correlation functional object:
         self.xc = XC3DGrid(paw.xcfunc, self.finegd, self.nspins)
 
+        paw.xcfunc.set_non_local_things(paw)
+
         LCAOHamiltonian.initialize(self, paw)
 
         self.initialized = True
