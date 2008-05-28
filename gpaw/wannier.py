@@ -11,6 +11,7 @@ from gpaw.utilities.tools import dagger, lowdin
 class Wannier:
     def __init__(self, calc=None, spin=0):
         self.spin = spin
+        self.Z_nnc = None
         if calc is not None:
             self.cell_c = calc.domain.cell_c * Bohr
             n = calc.get_number_of_bands()
@@ -51,7 +52,7 @@ class Wannier:
     def get_hamiltonian(self, calc):
         # U^T diag(eps_n) U
         eps_n = calc.get_eigenvalues(kpt=0, spin=self.spin)
-        return npy.dot(self.U_nn.T * eps_n, self.U_nn)
+        return npy.dot(dagger(self.U_nn) * eps_n, self.U_nn)
 
 
 class LocFun(Wannier):
@@ -66,12 +67,14 @@ class LocFun(Wannier):
         if projections is None:
             projections = single_zeta(calc, self.spin)
         
-        U_nj, self.S_jj = get_locfun_rotation(projections, N, ortho)
+        self.U_nn, self.S_jj = get_locfun_rotation(projections, N, ortho)
+        if self.Z_nnc is None:
+            return 1
+        
         Z_nnc = npy.empty(self.S_jj.shape + (3,))
         for c in range(3):
-            Z_nnc[:, :, c] = npy.dot(dagger(U_nj),
-                                     npy.dot(self.Z_nnc[:, :, c], U_nj))
-        self.U_nn = U_nj
+            Z_nnc[:, :, c] = npy.dot(dagger(self.U_nn),
+                                     npy.dot(self.Z_nnc[:, :, c], self.U_nn))
         self.Z_nnc = Z_nnc
         self.value = npy.sum(npy.abs(Z_nnc.diagonal())**2)
         return self.value # / Bohr**6
