@@ -276,24 +276,28 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
             nj = U_nj[:, j]
             print "Doing Coulomb integrals for orbitals", i, j
 
-            if 'ijij' in types:
-                # V_{ij, ij} = C4(iijj)
-                V_ijij[i, j] = coulomb4(ni, ni, nj, nj) * Hartree
-                
-            if 'ijji' in types:
-                # V_{ij, ji} = C4(jiji)
-                V_ijji[i, j] = coulomb4(nj, ni, nj, ni) * Hartree
+            if i == j:
+                V_ijij[i, i] = V_ijji[i, i] = V_iijj[i, i] = V_iiij[i, i] = \
+                               coulomb4(ni, ni, ni, ni) * Hartree
+            else:
+                if 'ijij' in types:
+                    # V_{ij, ij} = C4(iijj)
+                    V_ijij[i, j] = coulomb4(ni, ni, nj, nj) * Hartree
 
-            if 'iijj' in types:
-                # V_{ii, jj} = C4(jiij)
-                V_iijj[i, j] = coulomb4(nj, ni, ni, nj) * Hartree
+                if 'ijji' in types:
+                    # V_{ij, ji} = C4(jiji)
+                    V_ijji[i, j] = coulomb4(nj, ni, nj, ni) * Hartree
 
-            if 'iiij' in types:
-                # V_{ii, ij} = C4(iiij)
-                V_iiij[i, j] = coulomb4(ni, ni, ni, nj) * Hartree
+                if 'iijj' in types:
+                    # V_{ii, jj} = C4(jiij)
+                    V_iijj[i, j] = coulomb4(nj, ni, ni, nj) * Hartree
 
-                # V_{jj, ji} = C4(jjji)
-                V_iiij[j, i] = coulomb4(nj, nj, nj, ni) * Hartree
+                if 'iiij' in types:
+                    # V_{ii, ij} = C4(iiij)
+                    V_iiij[i, j] = coulomb4(ni, ni, ni, nj) * Hartree
+
+                    # V_{jj, ji} = C4(jjji)
+                    V_iiij[j, i] = coulomb4(nj, nj, nj, ni) * Hartree
 
             if 'ikjk' in types:
                 for k in range(nwannier):
@@ -314,6 +318,38 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
     for type in types:
         result += (eval('V_' + type), )
     return result
+
+
+def coulomb_all(paw, U_nj, spin=0):
+    # Returns all of the Coulomb integrals
+    # V_{ijkl} = \iint drdr' / |r-r'| i*(r) j*(r') k(r) l(r')
+    # using coulomb4, which determines
+    # C4(ijkl) = \iint drdr' / |r-r'| i(r) j*(r) k*(r') l(r')
+    # i.e. V_ijkl = C4(kijl)
+    paw.set_positions()
+    coulomb4 = Coulomb4(paw, spin).get_integral
+    nwannier = U_nj.shape[1]
+    if paw.dtype is complex or U_nj.dtype is complex:
+        dtype = complex
+    else:
+        dtype = float
+
+    V_ijkl = npy.zeros([nwannier, nwannier, nwannier, nwannier], dtype)
+    for i in range(nwannier):
+        ni = U_nj[:, i]
+        for j in range(i, nwannier):
+            nj = U_nj[:, j]
+            for k in range(nwannier):
+                nk = U_nj[:, k]
+                for l in range(nwannier):
+                    nl = U_nj[:, l]
+                    print 'Doing', i, j, k, l
+                    V_ijkl[i, j, k, l] = coulomb4(nk, ni, nj, nl) * Hartree
+    
+    for i in range(nwannier):
+        for j in range(i):
+            V_ijkl[i, j] = V_ijkl[j, i].T
+    return V_ijkl
 
 
 from gpaw.utilities.tools import symmetrize
