@@ -21,6 +21,9 @@ class SerialCommunicator:
         if isinstance(array, (float, complex)):
             return array
 
+    def scatter(self, s, r, root):
+        r[:] = s
+        
     def max(self, value, root=-1):
         return value
         
@@ -95,6 +98,18 @@ if debug:
                 assert root == -1 or 0 <= root < self.size
                 self.comm.sum(array, root)
 
+        def scatter(self, s, r, root):
+            """Call MPI_Scatter.
+
+            Distribute *s* array from *root* to *r*."""
+            
+            assert s.dtype == r.dtype
+            assert s.size == self.size * r.size
+            assert s.flags.contiguous
+            assert r.flags.contiguous
+            assert 0 <= root < self.size
+            self.comm.scatter(s, r, root)
+
         def max(self, array, root=-1):
             if isinstance(array, (float, complex)):
                 assert isinstance(array, float)
@@ -108,20 +123,20 @@ if debug:
 
         def all_gather(self, a, b):
             tc = a.dtype
-            assert is_contiguous(a, tc)
-            assert is_contiguous(b, tc)
-            assert b.shape[0] == self.size
-            assert a.shape == b.shape[1:]
+            assert a.flags.contiguous
+            assert b.flags.contiguous
+            assert b.dtype == a.dtype
+            assert (b.shape[0] == self.size and a.shape == b.shape[1:] or
+                    a.size * self.size == b.size)
             self.comm.all_gather(a, b)
 
         def gather(self, a, root, b=None):
-            tc = a.dtype
-            assert is_contiguous(a, tc)
+            assert a.flags.contiguous
             assert 0 <= root < self.size
             if root == self.rank:
-                assert is_contiguous(b, tc)
-                assert b.shape[0] == self.size
-                assert a.shape == b.shape[1:]
+                assert b.flags.contiguous and b.dtype == a.dtype
+                assert (b.shape[0] == self.size and a.shape == b.shape[1:] or
+                        a.size * self.size == b.size)
                 self.comm.gather(a, root, b)
             else:
                 assert b is None
