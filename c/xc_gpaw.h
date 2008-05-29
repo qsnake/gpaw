@@ -26,7 +26,7 @@ C0 = 4 * pi / 3
 #define C3     0.10231023756535741
 #define C0     4.1887902047863905
 #define THIRD  0.33333333333333333
-#define NMIN   1.0e-10
+#define NMIN   1.0E-10
 
 typedef int bool;
 
