@@ -56,7 +56,7 @@ PyObject* gemm(PyObject *self, PyObject *args)
   char transa = 'n';
   if (!PyArg_ParseTuple(args, "DOODO|c", &alpha, &a, &b, &beta, &c, &transa)) 
     return NULL;
-  int m, n, k, lda, ldb;
+  int m, k, lda, ldb, ldc;
   if (transa == 'n')
     {
       m = a->dimensions[1];
@@ -64,7 +64,8 @@ PyObject* gemm(PyObject *self, PyObject *args)
 	m *= a->dimensions[i];
       k = a->dimensions[0];
       lda = m;
-      ldb = k;
+      ldb = b->strides[0] / b->strides[1];
+      ldc = m;
     } 
   else
     {
@@ -74,22 +75,23 @@ PyObject* gemm(PyObject *self, PyObject *args)
       m = a->dimensions[0];
       lda = k;
       ldb = k;
+      ldc = c->strides[0] / c->strides[1];
     } 
-  n = b->dimensions[0];
+  int n = b->dimensions[0];
   if (a->descr->type_num == PyArray_DOUBLE)
     dgemm_(&transa, "n", &m, &n, &k, 
            &(alpha.real),
            DOUBLEP(a), &lda, 
            DOUBLEP(b), &ldb,
            &(beta.real), 
-           DOUBLEP(c), &m);
+           DOUBLEP(c), &ldc);
   else
     zgemm_(&transa, "n", &m, &n, &k, 
            &alpha,
            (void*)COMPLEXP(a), &lda, 
            (void*)COMPLEXP(b), &ldb,
            &beta, 
-           (void*)COMPLEXP(c), &m);
+           (void*)COMPLEXP(c), &ldc);
   Py_RETURN_NONE;
 }
 
@@ -137,14 +139,15 @@ PyObject* rk(PyObject *self, PyObject *args)
   int k = a->dimensions[1];
   for (int d = 2; d < a->nd; d++)
     k *= a->dimensions[d];
+  int ldc = c->strides[0] / c->strides[1];
   if (a->descr->type_num == PyArray_DOUBLE)
     dsyrk_("u", "c", &n, &k, 
            &alpha, DOUBLEP(a), &k, &beta,
-           DOUBLEP(c), &n);
+           DOUBLEP(c), &ldc);
   else
     zherk_("u", "c", &n, &k, 
            &alpha, (void*)COMPLEXP(a), &k, &beta,
-           (void*)COMPLEXP(c), &n);
+           (void*)COMPLEXP(c), &ldc);
   Py_RETURN_NONE;
 }
 

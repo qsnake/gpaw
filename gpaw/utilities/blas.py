@@ -28,7 +28,8 @@ def gemm(alpha, a, b, beta, c, transa='n'):
            ijkl...   /_  ip   pjkl...
                       p
     
-    If transa is "t" or "c", ``b.a`` denotes the matrix multiplication defined by::
+    If transa is "t" or "c", ``b.a`` denotes the matrix multiplication
+    defined by::
     
                       _
                      \  
@@ -36,22 +37,23 @@ def gemm(alpha, a, b, beta, c, transa='n'):
            ij        /_  iklm...   jklm...
                      klm... 
 
-     where in case of "c" also complex conjugate of a is taken.
+    where in case of "c" also complex conjugate of a is taken.
     """
-    assert ((is_contiguous(a, float) and
-             is_contiguous(b, float) and
-             is_contiguous(c, float) and
-             isinstance(alpha, float) and isinstance(beta, float)) or
-            (is_contiguous(a, complex) and
-             is_contiguous(b, complex) and
-             is_contiguous(c, complex)))
-    if transa == "n":   
-        assert npy.rank(b) == 2
+    assert (a.dtype == float and b.dtype == float and c.dtype == float and
+            isinstance(alpha, float) and isinstance(beta, float) or
+            a.dtype == complex and b.dtype == complex and c.dtype == complex)
+    assert a.flags.contiguous
+    if transa == 'n':
+        assert c.flags.contiguous
+        assert b.ndim == 2
+        assert b.strides[1] == b.itemsize
         assert a.shape[0] == b.shape[1]
         assert c.shape == b.shape[0:1] + a.shape[1:]
     else:
+        assert b.flags.contiguous
+        assert c.strides[1] == c.itemsize
         assert a.shape[1:] == b.shape[1:]
-        assert c.shape == b.shape[0:1] + a.shape[0:1]
+        assert c.shape == (b.shape[0], a.shape[0])
     _gpaw.gemm(alpha, a, b, beta, c, transa)
 
     
@@ -95,10 +97,12 @@ def rk(alpha, a, beta, c):
     
     Only the lower triangle of ``c`` will contain sensible numbers.
     """
-    assert (is_contiguous(a, float) and is_contiguous(c, float) or
-            is_contiguous(a, complex) and is_contiguous(c, complex))
-    assert npy.rank(a) > 1
+    assert (a.dtype == float and c.dtype == float or
+            a.dtype == complex and c.dtype == complex)
+    assert a.flags.contiguous
+    assert a.ndim > 1
     assert c.shape == (a.shape[0], a.shape[0])
+    assert c.strides[1] == c.itemsize
     _gpaw.rk(alpha, a, beta, c)
 
     
