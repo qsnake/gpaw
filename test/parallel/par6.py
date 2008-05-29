@@ -13,7 +13,8 @@ def f(n, magmom, periodic, dd):
               cell=(a, a, a))
     
     H.set_calculator(Calculator(nbands=1, gpts=(n, n, n),
-                                txt=None, tolerance=0.001,
+                                txt=None,
+                                convergence={'eigenstates': 0.0001},
                                 parsize=dd))
     e = H.get_potential_energy()
     H.get_calculator().write(gpw)

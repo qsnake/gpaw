@@ -14,8 +14,9 @@ def f(kpts, n, magmom, periodic, dd):
               cell=(a, a, a))
     
     H.set_calculator(Calculator(nbands=1, gpts=(n, n, n), kpts=kpts,
-                               txt=None, tolerance=0.0001,
-                               parsize=dd))
+                                txt=None,
+                                convergence={'eigenstates': 0.0001},
+                                parsize=dd))
     e = H.get_potential_energy()
     H.get_calculator().write('H-par.gpw')
     c = Calculator('H-par.gpw', txt=None)
