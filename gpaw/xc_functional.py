@@ -344,12 +344,12 @@ class XCFunctional:
             gd, u_j, f_j, e_j, l_j, v_xc, density=density)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
-                             taua_g=None):
+                             taua_g=None,dedtaua_g=None):
         if self.timer is not None:
             self.timer.start('Local xc')
         if self.mgga:
             self.xc.calculate_spinpaired(e_g.ravel(), n_g, v_g, a2_g, deda2_g,
-                                         taua_g)
+                                         taua_g,dedtaua_g)
         elif self.gga:
             # e_g.ravel() !!!!! XXX
             self.xc.calculate_spinpaired(e_g.ravel(), n_g, v_g, a2_g, deda2_g)
@@ -361,14 +361,16 @@ class XCFunctional:
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                a2_g=None, aa2_g=None, ab2_g=None,
                                deda2_g=None, dedaa2_g=None, dedab2_g=None,
-                                taua_g=None,taub_g=None):
+                                taua_g=None,taub_g=None,dedtaua_g=None,
+                                dedtaub_g=None):
         if self.timer is not None:
             self.timer.start('Local xc')
         if self.mgga:
+            #dedtau on the grid not used, only in xc_correction 
               self.xc.calculate_spinpolarized(e_g.ravel(), na_g, va_g, nb_g, vb_g,
                                            a2_g, aa2_g, ab2_g,
                                            deda2_g, dedaa2_g, dedab2_g,
-                                              taua_g,taub_g)
+                                              taua_g,taub_g,dedtaua_g,dedtaub_g)
         elif self.gga:
             self.xc.calculate_spinpolarized(e_g.ravel(), na_g, va_g, nb_g, vb_g,
                                            a2_g, aa2_g, ab2_g,
@@ -489,7 +491,8 @@ class XC3DGrid(XCGrid):
                 self.ab2_g = gd.empty()
                 self.dedaa2_g = gd.empty()
                 self.dedab2_g = gd.empty()
-
+        if xcfunc.mgga:
+            self.temp = gd.empty()
         self.e_g = gd.empty()
 
     # Calculates exchange energy and potential.
@@ -507,7 +510,7 @@ class XC3DGrid(XCGrid):
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
-                                             self.taua_g)
+                                             self.taua_g,self.temp)
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
@@ -554,7 +557,9 @@ class XC3DGrid(XCGrid):
                                                 self.dedaa2_g,
                                                 self.dedab2_g,
                                                 self.taua_g,
-                                                self.taub_g)
+                                                self.taub_g,
+                                                self.temp,
+                                                self.temp)
             tmp_g = self.a2_g
             for c in range(3):
                 if not self.uses_libxc:

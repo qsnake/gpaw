@@ -18,6 +18,7 @@
 //
 // deda2 = 1/2 dexc/daa2 
 //        
+// dedtau = dexc/dtaua
 //        
 //  OUTPUT SPIN POLARIZED:
 //
@@ -27,32 +28,36 @@
 //
 // deda2 = 1/2 dexc/dgab
 //
+// detaua = dexc/dtaua
 
 double atpss_exchange(double n, double a2, double tau,
-		     double* dedn, double* deda2);
+		      double* dedn, double* deda2, double* detaua);
 double atpss_correlation(double na, double nb, double aa2,
 			 double ab2, double a2, double taua, double taub,
 			 bool spinpol, 
 			 double* dedna, double* dednb, double* dedaa2,
-			 double* dedab2, double* dedgud);
-double tpss_exchange(double n, double a2, double tau,
-		     double* dedn, double* deda2);
+			 double* dedab2, double* dedgud,double* detaua,
+			 double* detaub);
+double tpss_exchange(double n, double a2, double tau, double* dedn, 
+		     double* deda2, double* detaua);
 double tpss_correlation(double na, double nb, double aa2,
-			 double ab2, double a2, double taua, double taub,
-			 bool spinpol, 
-			 double* dedna, double* dednb, double* dedaa2,
-			 double* dedab2, double* dedgud);
+			double ab2, double a2, double taua, double taub,
+			bool spinpol, 
+			double* dedna, double* dednb, double* dedaa2,
+			double* dedab2, double* dedgud,double* detaua,
+			double* detaub);
 
 typedef struct 
 {
   PyObject_HEAD
   double (*exchange)(double n, double a2, double tau,
-		     double* dedn, double* deda2);
+		     double* dedn, double* deda2, double* dedtaua);
   double (*correlation)(double nu, double nd, double aa2,
 			double ab2, double gud, double taua, double taub,
 			bool spinpol, 
  			double* dednu, double* dednd, double* dedaa2,
-			double* dedab2, double* dedgud); 
+			double* dedab2, double* dedgud,double* detaua,
+			double* detaub); 
   xc_parameters par;
 } MGGAFunctionalObject;
 
@@ -69,9 +74,10 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
   PyArrayObject* v_array;
   PyArrayObject* a2_array = 0;
   PyArrayObject* deda2_array = 0;
+  PyArrayObject* dedtaua_array = 0;
   PyArrayObject* tau_array = 0;
-  if (!PyArg_ParseTuple(args, "OOOOOO", &e_array, &n_array, &v_array,
-			&a2_array, &deda2_array, &tau_array))
+  if (!PyArg_ParseTuple(args, "OOOOOOO", &e_array, &n_array, &v_array,
+			&a2_array, &deda2_array, &tau_array,&dedtaua_array))
     return NULL;
 
   int ng = e_array->dimensions[0];
@@ -83,7 +89,7 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
 
   const double* a2_g = DOUBLEP(a2_array);
   double* deda2_g = DOUBLEP(deda2_array);
-
+  double* dedtaua_g = DOUBLEP(dedtaua_array);
   double* tau_g;
   tau_g = DOUBLEP(tau_array);
 
@@ -104,6 +110,8 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
       double decdgab;
       double ec;
       double temp;
+      double dexdtaua;
+      double decdtaua;
       double tau = tau_g[g]; 
       if (par->mgga)
 	{
@@ -115,15 +123,15 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
 	  tau = a2/ (8. * n);
 	  tau_g[g] = tau;
 	} 
-      ex = self->exchange(n, a2, tau, &dexdn, &dexda2);
+      ex = self->exchange(n, a2, tau, &dexdn, &dexda2, &dexdtaua);
       ec = self->correlation(n / 2., 0, a2 / 4. , 0, 0, 0.5 * tau, 0.5 * tau,
 			     0, &decdna, 
-			     &temp, &decdaa2, &temp, &decdgab); 
+			     &temp, &decdaa2, &temp, &decdgab,&decdtaua,&temp); 
 
       deda2_g[g] =  dexda2 + 0.5 * decdaa2 + 0.25 * decdgab;
       e_g[g] =  ex +  ec;
       v_g[g] +=  decdna +  dexdn;
-
+      dedtaua_g[g] = dexdtaua + decdtaua;
       }  
   Py_RETURN_NONE;
 }
@@ -144,11 +152,14 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
   PyArrayObject* dedab2_array = 0;
   PyArrayObject* taua_array = 0;
   PyArrayObject* taub_array = 0;
+  PyArrayObject* dedtaua_array = 0;
+  PyArrayObject* dedtaub_array = 0;
 
-  if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOO", &e_array, &na_array, &va_array
+  if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOOOO", &e_array, &na_array, &va_array
 			, &nb_array, &vb_array, &a2_array, &aa2_array,
 			&ab2_array, &deda2_array, &dedaa2_array, &dedab2_array,
-			&taua_array, &taub_array))
+			&taua_array, &taub_array, &dedtaua_array,
+			&dedtaub_array))
     return NULL;
 
   const xc_parameters* par = &self->par; 
@@ -169,7 +180,9 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
   double* taub_g ;
   taua_g = DOUBLEP(taua_array);
   taub_g = DOUBLEP(taub_array);
-  
+  double* dedtaua_g = DOUBLEP(dedtaua_array);
+  double* dedtaub_g = DOUBLEP(dedtaub_array);
+    
   for (int g = 0; g < ng; g++)
     {
       double na = 2.0 * na_g[g];
@@ -201,6 +214,10 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
       double ec;
       double taua = taua_g[g];
       double taub = taub_g[g];
+      double dexdtaua;
+      double dexdtaub;
+      double decdtaua;
+      double decdtaub;
       if (par->mgga)
 	{
 	  taua = aa2 / (4.* na);
@@ -220,15 +237,19 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
 	  taub = ab2 / (4.* nb);
 	}
       
-      exa = self->exchange(na, 4.*aa2, 2.*taua, &dexdna, &dexada2);
-      exb = self->exchange(nb, 4.*ab2, 2.*taub, &dexdnb, &dexbda2);
+      exa = self->exchange(na, 4.*aa2, 2.*taua, &dexdna, &dexada2, 
+			   &dexdtaua);
+      exb = self->exchange(nb, 4.*ab2, 2.*taub, &dexdnb, &dexbda2, &dexdtaub);
       ec = self->correlation(0.5 * na, 0.5 * nb, aa2, ab2, a2, taua, taub,
 			     1, &decdna,
-			     &decdnb, &decdaa2, &decdab2, &decdgab);
+			     &decdnb, &decdaa2, &decdab2, &decdgab,
+			     &decdtaua,&decdtaub);
 
       dedaa2_g[g] = dexada2 + 0.5 * decdaa2 - 0.25 * decdgab;
       dedab2_g[g] = dexbda2 + 0.5 * decdab2 - 0.25 * decdgab;
       deda2_g[g] = 0.5 * decdgab;
+      dedtaua_g[g] = dexdtaua+decdtaua;
+      dedtaub_g[g] = dexdtaub+decdtaub;
 
       e_g[g] = 0.5 * (exa + exb) + ec;
       va_g[g] +=  dexdna + decdna ;

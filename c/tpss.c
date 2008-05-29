@@ -21,7 +21,7 @@ void tpssfc(double *nu, double *nd, double *guu, double *gdd, double *gud,
 /* use with PBE setups and do not apply to atom H alone */
 
 double atpss_exchange(double n, double a2, double tau, 
-		      double* dexdn, double* deda2)
+		      double* dexdn, double* deda2, double* dedtaua)
 {
   double e,dfxdn,dfxdg,dfxdt,dedn;
   double dtdn = - a2 / (cons2 * n * n) + 2 * cons * p * pow(n,p-1.)* pow(0.5,p); 
@@ -39,7 +39,7 @@ double atpss_correlation(double na, double  nb, double aa2, double ab2,
 			 double a2, double ta, double tb, 
 			 bool spinpol, double* decdna, 
 			 double* decdnb, double* decdaa2, double* decdab2, 
-			 double* decdgab)
+			 double* decdgab,double* dedtaua,double* dedtaub)
 {    
   double e;
   double dfcdna, dfcdgaa, dfcdta;
@@ -83,7 +83,7 @@ double atpss_correlation(double na, double  nb, double aa2, double ab2,
 }
 
 double tpss_exchange(double n, double a2, double tau, 
-		      double* dexdn, double* deda2)
+		     double* dexdn, double* deda2, double* dedtaua)
 {
   double e,dfxdn,dfxdg,dfxdt,dedn;
 
@@ -91,6 +91,7 @@ double tpss_exchange(double n, double a2, double tau,
   dedn = dfxdn ;
   *dexdn = dedn ;
   *deda2 = dfxdg ;
+  *dedtaua = dfxdt;
   return e;
 }
 
@@ -98,7 +99,7 @@ double tpss_correlation(double na, double  nb, double aa2, double ab2,
 			 double a2, double ta, double tb, 
 			 bool spinpol, double* decdna, 
 			 double* decdnb, double* decdaa2, double* decdab2, 
-			 double* decdgab)
+			double* decdgab,double* dedtaua,double* dedtaub)
 {    
   double e;
   double dfcdna, dfcdgaa, dfcdta;
@@ -116,7 +117,7 @@ double tpss_correlation(double na, double  nb, double aa2, double ab2,
      *decdna = dfcdna ;
      *decdaa2 =  dfcdgaa ;
      *decdgab = dfcdgab ;
-
+     *dedtaua = dfcdta ;
    }
  else
    {
@@ -127,6 +128,8 @@ double tpss_correlation(double na, double  nb, double aa2, double ab2,
      *decdaa2 = dfcdgaa ;
      *decdab2 = dfcdgbb ;
      *decdgab = dfcdgab ;
+     *dedtaua = dfcdta ;
+     *dedtaub = dfcdtb ;
    }
  return e;
 }
