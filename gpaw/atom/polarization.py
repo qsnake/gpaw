@@ -359,7 +359,7 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
         for m in range(mcount):
             for i in range(fcount):
                 for j in range(fcount):
-                    s_kmii[kpt.k, m, i, j] = phi_overlaps_ii[i, m, j, m]
+                    s_kmii[kpt.u, m, i, j] = phi_overlaps_ii[i, m, j, m]
 
     # Now calculate scalar products between basis functions and
     # reference functions < phi_kmi | psi_kn >.
@@ -370,7 +370,7 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
         overlaps_nim = npy.zeros((bcount, mcount * fcount), dtype=dtype)
         lf.integrate(kpt.psit_nG, overlaps_nim, k=kpt.k)
         overlaps_nim.shape = (bcount, fcount, mcount)
-        overlaps_knmi[kpt.k, :, :, :] = overlaps_nim.swapaxes(1, 2)
+        overlaps_knmi[kpt.u, :, :, :] = overlaps_nim.swapaxes(1, 2)
 
     print >> txt, 'Aligning matrices'
     for k in range(kcount):
