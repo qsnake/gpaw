@@ -155,7 +155,7 @@ class XAS:
                 for swap, mirror in self.symmetry.symmetries:
                     swaps[swap] = None
                 for swap in swaps:
-                    sigma2_cn += npy.take(sigma0_cn, swap)
+                    sigma2_cn += sigma0_cn.take(swap, axis=0)
                 sigma2_cn /= len(swaps)
         
         eps_n = self.eps_n[:]
