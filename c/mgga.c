@@ -100,8 +100,8 @@ MGGAFunctional_CalculateSpinPaired(MGGAFunctionalObject *self, PyObject *args)
       if (n < NMIN) 
 	n = NMIN; 
       double a2 = a2_g[g];
-      if (a2 < NMIN) 
- 	a2 = NMIN; 
+      if (a2 < NMIN2) 
+ 	a2 = NMIN2; 
       double dexdn;  /*dex/d(2*na)*/
       double dexda2; /*dex/d(4*aa2)*/
       double ex;
@@ -192,14 +192,14 @@ MGGAFunctional_CalculateSpinPolarized(MGGAFunctionalObject *self, PyObject *args
       if (nb <  NMIN) 
 	nb = NMIN; 
       double aa2 = aa2_g[g];  
-      if (aa2 < NMIN) 
-	aa2 = NMIN; 
-      double ab2 = ab2_g[g]; 
-      if (ab2 < NMIN) 
-	ab2 = NMIN; 
-      double a2 = a2_g[g];  
-      if (a2 < NMIN) 
-	a2 = NMIN; 
+      double ab2 = ab2_g[g];
+      double a2 = a2_g[g];   
+      if (aa2 < NMIN2) 
+	aa2 = NMIN2; 
+      if (ab2 < NMIN2) 
+	ab2 = NMIN2; 
+      if (a2 < NMIN2) 
+	a2 = NMIN2; 
       double dexdna;  /*dex/d(2*na)*/
       double dexada2; /*dex/d(4*aa2)*/
       double exa;
