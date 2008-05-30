@@ -480,11 +480,12 @@ class RecursionMethod:
 
         if len(self.swaps) > 0:
             sigma0_cn = sigma_cn
+            print sigma_cn, sigma_cn.shape, self.dim, n
             sigma_cn = npy.zeros((self.dim, n))
             for swap in self.swaps:
-                sigma_cn += npy.take(sigma0_cn, swap)
+                print swap
+                sigma_cn += sigma0_cn.take(swap, axis=0)
             sigma_cn /= len(self.swaps)
-
 
         # gaussian broadening 
         if fwhm is not None:

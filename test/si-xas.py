@@ -44,12 +44,12 @@ x, y = xas.get_spectra()
 calc.set_positions(si)
 r = RecursionMethod(calc)
 r.run(40)
-
+z = r.get_spectra(x)
 if 0:
     import pylab as p
     p.plot(x, y[0])
     p.plot(x, sum(y))
-    p.plot(x, r.get_spectra(x)[0])
+    p.plot(x, z[0])
     p.show()
 
 os.system('rm si.gpw')
