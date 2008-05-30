@@ -16,8 +16,6 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.density import Density
 from gpaw.utilities import pack
 
-MASTER = 0
-
 
 class PAWExtra:
     def get_fermi_level(self):
@@ -61,13 +59,13 @@ class PAWExtra:
         if self.kpt_comm.rank == kpt_rank:
             psit_G = self.gd.collect(psit_nG[n][:])
 
-            if kpt_rank == MASTER:
+            if kpt_rank == 0:
                 if self.master:
                     return psit_G
 
             # Domain master send this to the global master
-            if self.domain.comm.rank == MASTER:
-                self.kpt_comm.send(psit_G, MASTER, 1398)
+            if self.domain.comm.rank == 0:
+                self.kpt_comm.send(psit_G, 0, 1398)
 
         if self.master:
             # allocate full wavefunction and receive
@@ -84,18 +82,7 @@ class PAWExtra:
         global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
-
-        if kpt_rank == MASTER:
-            return self.kpt_u[u].eps_n
-
-        if self.kpt_comm.rank == kpt_rank:
-            # Domain master send this to the global master
-            if self.domain.comm.rank == MASTER:
-                self.kpt_comm.send(self.kpt_u[u].eps_n, MASTER, 1301)
-        elif self.master:
-            eps_n = npy.zeros(self.nbands)
-            self.kpt_comm.receive(eps_n, kpt_rank, 1301)
-            return eps_n
+        return self.collect_array(self.kpt_u[u].eps_n, kpt_rank)
 
     def collect_occupations(self, k=0, s=0):
         """Return occupation array.
@@ -106,18 +93,39 @@ class PAWExtra:
         global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
+        return self.collect_array(self.kpt_u[u].f_n, kpt_rank)
 
-        if kpt_rank == MASTER:
-            return self.kpt_u[u].f_n
+    def collect_array(self, a_n, kpt_rank):
+        """Helper method for collect_eigenvalues and collect_occupations."""
+        if kpt_rank == 0:
+            if self.band_comm.size == 1:
+                return a_n
+            
+            if self.band_comm.rank == 0:
+                b_n = npy.zeros(self.nbands)
+            else:
+                b_n = None
+            self.band_comm.gather(a_n, 0, b_n)
+            return b_n
 
         if self.kpt_comm.rank == kpt_rank:
             # Domain master send this to the global master
-            if self.domain.comm.rank == MASTER:
-                self.kpt_comm.send(self.kpt_u[u].f_n, MASTER, 1313)
+            if self.domain.comm.rank == 0:
+                if self.band_comm.size == 1:
+                    self.kpt_comm.send(a_n, 0, 1301)
+                else:
+                    if self.band_comm.rank == 0:
+                        b_n = npy.zeros(self.nbands)
+                    else:
+                        b_n = None
+                    self.band_comm.gather(a_n, 0, b_n)
+                    if self.band_comm.rank == 0:
+                        self.kpt_comm.send(b_n, 0, 1301)
+
         elif self.master:
-            f_n = npy.zeros(self.nbands)
-            self.kpt_comm.receive(f_n, kpt_rank, 1313)
-            return f_n
+            b_n = npy.zeros(self.nbands)
+            self.kpt_comm.receive(b_n, kpt_rank, 1301)
+            return b_n
 
     def get_wannier_integrals(self, c, s, k, k1, G):
         """Calculate integrals for maximally localized Wannier functions."""
@@ -138,7 +146,7 @@ class PAWExtra:
         for nucleus in self.my_nuclei:
             Z_nn += nucleus.wannier_correction(G, c, u, u1)
 
-        self.gd.comm.sum(Z_nn, MASTER)
+        self.gd.comm.sum(Z_nn, 0)
             
         return Z_nn
 

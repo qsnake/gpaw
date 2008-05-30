@@ -51,12 +51,27 @@ class RMM_DIIS(Eigensolver):
         vt_G = hamiltonian.vt_sG[kpt.s]
         dR_G = self.big_work_arrays['work_nG'][0]
         error = 0.0
-        for n in range(kpt.nbands):
-            R_G = R_nG[n]
+        n0 = self.band_comm.rank * self.nmybands
+        for n in range(self.nmybands):
+            if self.keep_htpsit:
+                R_G = R_nG[n]
+            else:
+                R_G = self.big_work_arrays['work_nG'][1]
+                psit_G = kpt.psit_nG[n]
+                hamiltonian.apply(psit_G, R_G, kpt,
+                                  local_part_only=True,
+                                  calculate_projections=False)
+                axpy(-kpt.eps_n[n], psit_G, R_G)
+                run([nucleus.adjust_residual2(psit_G, R_G, kpt.eps_n[n],
+                                             kpt.s, kpt.u, kpt.k, n)
+                     for nucleus in hamiltonian.pt_nuclei])
 
             weight = kpt.f_n[n]
             if self.nbands_converge != 'occupied':
-                weight = kpt.weight * float(n < self.nbands_converge)
+                if n0 + n < self.nbands_converge:
+                    weight = kpt.weight
+                else:
+                    weight = 0.0
             error += weight * np.vdot(R_G, R_G).real
 
             # Precondition the residual:
@@ -78,6 +93,7 @@ class RMM_DIIS(Eigensolver):
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
             RdR = self.comm.sum(np.vdot(R_G, dR_G).real)
             dRdR = self.comm.sum(np.vdot(dR_G, dR_G).real)
+
             lam = -RdR / dRdR
 
             # Calculate new psi'_G = psi_G + lam pR_G + lam pR'_G

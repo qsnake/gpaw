@@ -83,7 +83,7 @@ PyMODINIT_FUNC init_gpaw(void)
 #endif
 
   PyObject* m = Py_InitModule3("_gpaw", functions,
-			       "C-extension for gpaw\n\n...\n");
+			       "C-extension for GPAW\n\n...\n");
   if (m == NULL)
     return;
 
@@ -125,7 +125,7 @@ main(int argc, char **argv)
     return -1;
 
   PyObject* m = Py_InitModule3("_gpaw", functions,
-			       "C-extension for gpaw\n\n...\n");
+			       "C-extension for GPAW\n\n...\n");
   if (m == NULL)
     return -1;
 

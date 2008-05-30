@@ -16,9 +16,13 @@ class Dummy:
         self.niter = -1
         self.S = 0.0
         self.kpt_comm = mpi.serial_comm
+        self.band_comm = mpi.serial_comm
         
-    def set_communicator(self, kpt_comm):
+    def set_communicator(self, kpt_comm, band_comm=None):
         self.kpt_comm = kpt_comm
+        if band_comm is None:
+            band_comm = mpi.serial_comm
+        self.band_comm = band_comm
         
     def calculate(self, kpts):
         self.calculate_band_energy(kpts)
@@ -38,18 +42,8 @@ class Dummy:
         Eband = 0.0
         for kpt in kpt_u:
             Eband += npy.dot(kpt.f_n, kpt.eps_n)    
-        self.Eband = self.kpt_comm.sum(Eband)
+        self.Eband = self.band_comm.sum(self.kpt_comm.sum(Eband))
 
-    def calculate_magnetic_moment(self, kpts):
-        """Recalculate the magnetic moment from occupations"""
-        if self.nspins == 1:
-            return 0.0
-            
-        M = 0.0
-        for kpt in kpts:
-            sign = 1. - 2. * kpt.s
-            M += sign * kpt.weight * kpt.f_n.sum()
-        return M
 
 class ZeroKelvin(Dummy):
     """Occupations for Gamma-point calculations without Fermi-smearing"""
@@ -120,7 +114,7 @@ class FermiDirac(Dummy):
         if self.epsF is None:
             # Fermi level not set.  Make a good guess:
             self.guess_fermi_level(kpts)
-            
+
         # Now find the correct Fermi level:
         self.find_fermi_level(kpts)
 
@@ -137,31 +131,56 @@ class FermiDirac(Dummy):
             y -= npy.log(z)
             S -= kpt.weight * npy.sum(y)
 
-        self.S = self.kpt_comm.sum(S) * self.kT
+        self.S = self.band_comm.sum(self.kpt_comm.sum(S)) * self.kT
         self.calculate_band_energy(kpts)
 
     def guess_fermi_level(self, kpts):
-        nu = len(kpts) * self.kpt_comm.size
-        nb = len(kpts[0].eps_n)
+
+        # XXX Only domain_comm.rank == 0 should do this stuff:
+
+        kpt_comm = self.kpt_comm
+        band_comm = self.band_comm
 
         # Make a long array for all the eigenvalues:
-        list_eps_n =  npy.array([kpt.eps_n for kpt in kpts])
+        eps_n =  npy.array([kpt.eps_n for kpt in kpts]).ravel()
 
-        if self.kpt_comm.size > 1:
-            eps_n = mpi.all_gather_array(self.kpt_comm, list_eps_n)
-        else:
-            eps_n = list_eps_n.ravel()
- 
-        # Sort them:
-        eps_n = npy.sort(eps_n)
-        n = int(self.ne * nu)
-        if n // 2 == len(eps_n):
-            self.epsF = 1000.0
-        else:
-            self.epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
+        if kpt_comm.size > 1:
+            if kpt_comm.rank == 0:
+                eps_qn = npy.empty((kpt_comm.size, len(eps_n)))
+                kpt_comm.gather(eps_n, 0, eps_qn)
+                eps_n = eps_qn.ravel()
+            else:
+                kpt_comm.gather(eps_n, 0)
+
+        epsF = npy.array([42.0])
+
+        if kpt_comm.rank == 0:
+            if band_comm.size > 1:
+                if band_comm.rank == 0:
+                    eps_qn = npy.empty((band_comm.size, len(eps_n)))
+                    band_comm.gather(eps_n, 0, eps_qn)
+                    eps_n = eps_qn.ravel()
+                else:
+                    band_comm.gather(eps_n, 0)
+
+            if band_comm.rank == 0:
+                eps_n = npy.sort(eps_n)
+                n = int(self.ne * len(kpts) * kpt_comm.size)
+                if n // 2 == len(eps_n):
+                    epsF = 1000.0
+                else:
+                    epsF = 0.5 * (eps_n[n // 2] + eps_n[(n - 1) // 2])
+                epsF = npy.array([epsF])
+
+            band_comm.broadcast(epsF, 0)
+
+        kpt_comm.broadcast(epsF, 0)
+        
+        self.epsF = epsF[0]
         if self.fixmom:
             self.epsF = npy.array([self.epsF, self.epsF])
-
+        
+        
     def find_fermi_level(self, kpts):
         """Find the Fermi level by integrating in energy until
         the number of electrons is correct. For fixed spin moment calculations
@@ -201,10 +220,12 @@ class FermiDirac(Dummy):
             if self.fixmom:
                 self.kpt_comm.sum(n)
                 self.kpt_comm.sum(dnde)
+                self.band_comm.sum(n)
+                self.band_comm.sum(dnde)
             else:
-                n = self.kpt_comm.sum(n)
-                dnde = self.kpt_comm.sum(dnde)
-            magmom = self.kpt_comm.sum(magmom)
+                n = self.band_comm.sum(self.kpt_comm.sum(n))
+                dnde = self.band_comm.sum(self.kpt_comm.sum(dnde))
+            magmom = self.band_comm.sum(self.kpt_comm.sum(magmom))
 
             if self.fixmom:
                 ne = npy.array([(self.ne + self.M) / 2, (self.ne - self.M) / 2])

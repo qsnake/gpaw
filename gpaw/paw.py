@@ -400,7 +400,6 @@ class PAW(PAWExtra, Output):
             self.niter += 1
             if write:
                 self.call()
-                
         if write:
             self.call(final=True)
             self.print_converged()
@@ -426,6 +425,7 @@ class PAW(PAWExtra, Output):
 
     def add_up_energies(self):
         H = self.hamiltonian
+        #print H.Ekin, self.occupation.Eband, self.Enlkin, H.Epot, H.Eext, H.Ebar, H.Exc, self.Enlxc,self.occupation.S
         self.Ekin = H.Ekin + self.occupation.Eband + self.Enlkin
         self.Epot = H.Epot
         self.Eext = H.Eext
@@ -458,6 +458,9 @@ class PAW(PAWExtra, Output):
             spos_c = self.domain.scale_position(pos_c)
             if npy.sometrue(spos_c != nucleus.spos_c) or not nucleus.ready:
                 movement = True
+                if len(self.pt_nuclei) == 1 and self.pt_nuclei[0] is None:
+                    self.pt_nuclei.pop()
+                    self.ghat_nuclei.pop()
                 nucleus.set_position(spos_c, self.domain, self.my_nuclei,
                                      self.nspins, self.nmyu, self.nmybands)
                 nucleus.move(spos_c, self.gd, self.finegd,
@@ -503,7 +506,7 @@ class PAW(PAWExtra, Output):
                 self.density.initialize_from_atomic_density()
 
             for kpt in self.kpt_u:
-                kpt.allocate(self.nbands)
+                kpt.allocate(self.nmybands)
 
             self.wave_functions_initialized = True
             return
@@ -512,6 +515,7 @@ class PAW(PAWExtra, Output):
             # Initialize wave functions from atomic orbitals:
             original_eigensolver = self.eigensolver
             original_nbands = self.nbands
+            original_nmybands = self.nmybands
             original_maxiter = self.maxiter
 
             self.text('Atomic orbitals used for initialization:', self.nao)
@@ -521,10 +525,13 @@ class PAW(PAWExtra, Output):
             
             self.maxiter = 0
             self.nbands = min(self.nbands, self.nao)
+            if self.band_comm.size == 1:
+                self.nmybands = self.nbands
+                
             self.eigensolver = get_eigensolver('lcao')
 
             for nucleus in self.my_nuclei:
-                nucleus.reallocate(self.nbands)
+                nucleus.reallocate(self.nmybands)
 
             self.density.lcao = True
 
@@ -535,9 +542,10 @@ class PAW(PAWExtra, Output):
 
             self.maxiter = original_maxiter
             self.nbands = original_nbands
+            self.nmybands = original_nmybands
             for kpt in self.kpt_u:
                 kpt.calculate_wave_functions_from_lcao_coefficients(
-                    self.nbands)
+                    self.nmybands)
                 # Delete basis-set expansion coefficients:
                 kpt.C_nm = None
 
@@ -545,7 +553,7 @@ class PAW(PAWExtra, Output):
                 del nucleus.P_kmi
                 
             for nucleus in self.my_nuclei:
-                nucleus.reallocate(self.nbands)
+                nucleus.reallocate(self.nmybands)
 
             self.eigensolver = original_eigensolver
             if self.xcfunc.is_gllb():
@@ -637,6 +645,7 @@ class PAW(PAWExtra, Output):
                     nucleus.calculate_force_kpoint(kpt)
         for nucleus in self.my_nuclei:
             self.kpt_comm.sum(nucleus.F_c)
+            self.band_comm.sum(nucleus.F_c)
 
         for nucleus in self.nuclei:
             nucleus.calculate_force(vHt_g, nt_g, vt_G)
@@ -649,7 +658,7 @@ class PAW(PAWExtra, Output):
                 else:
                     self.domain.comm.receive(self.F_ac[a], nucleus.rank, 7)
         else:
-            if self.kpt_comm.rank == 0:
+            if self.kpt_comm.rank == 0 and self.band_comm.rank == 0:
                 for nucleus in self.my_nuclei:
                     self.domain.comm.send(nucleus.F_c, MASTER, 7)
 
@@ -1101,7 +1110,7 @@ class PAW(PAWExtra, Output):
         self.distribute_cpus(p['parsize'], p['parsize_bands'], N_c)
         ## print "My bands", self.nmybands
 
-        self.occupation.set_communicator(self.kpt_comm)
+        self.occupation.set_communicator(self.kpt_comm, self.band_comm)
 
         self.stencils = p['stencils']
         self.maxiter = p['maxiter']
@@ -1172,8 +1181,8 @@ class PAW(PAWExtra, Output):
                     P_auni[nucleus.a] = nucleus.P_uni
 
         self.my_nuclei = []
-        self.pt_nuclei = []
-        self.ghat_nuclei = []
+        self.pt_nuclei = [None]
+        self.ghat_nuclei = [None]
 
         self.Eref = 0.0
         for nucleus in self.nuclei:

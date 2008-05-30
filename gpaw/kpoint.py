@@ -122,7 +122,6 @@ class KPoint:
 
     def allocate(self, nbands):
         """Allocate arrays."""
-        self.nbands = nbands
         self.eps_n = npy.empty(nbands)
         self.f_n = npy.empty(nbands)
         
@@ -225,7 +224,6 @@ class KPoint:
                     taut_G += 0.5* f * (d_G * npy.conjugate(d_G)).real
 
     def calculate_wave_functions_from_lcao_coefficients(self, nbands):
-        self.nbands = nbands
         self.psit_nG = self.gd.zeros(nbands, dtype=self.dtype)
         nlcao = len(self.C_nm)
         psit_nG = self.psit_nG[:nlcao]

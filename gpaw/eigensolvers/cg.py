@@ -62,7 +62,7 @@ class CG(Eigensolver):
         vt_G = hamiltonian.vt_sG[kpt.s]
 
         total_error = 0.0
-        for n in range(kpt.nbands):
+        for n in range(self.nbands):
             R_G = R_nG[n]
             Htpsit_G = self.Htpsit_nG[n]
             gamma_old = 1.0
@@ -93,7 +93,7 @@ class CG(Eigensolver):
 
                 # Orthonormalize phi_G to all bands
                 self.timer.start('CG: orthonormalize')
-                for nn in range(kpt.nbands):
+                for nn in range(self.nbands):
                     overlap = npy.vdot(kpt.psit_nG[nn], phi_G) * self.gd.dv
                     for nucleus in hamiltonian.my_nuclei:
                         P2_i = nucleus.P2_i

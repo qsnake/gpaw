@@ -42,7 +42,11 @@ class Overlap:
         self.dtype = paw.dtype
         self.timer = paw.timer
         self.comm = paw.gd.comm
+        self.band_comm = paw.band_comm
         self.work_nn = None
+        self.S_pnn = None
+        self.work_In = None
+        self.work2_In = None
         self.big_work_arrays = paw.big_work_arrays
 
     def apply(self, a_nG, b_nG, kpt, calculate_P_uni=True):
@@ -90,7 +94,12 @@ class Overlap:
         is inverted and orthonormal vectors a_nG' are obtained as::
 
           psit_nG' = inv(C_nn) psit_nG
-        
+                    __
+           ~   _   \    -1   ~   _
+          psi (r) = )  C    psi (r)
+             n     /__  nm     m
+                    m
+                    
         Parameters
         ----------
         psit_nG: ndarray, input/output
@@ -115,7 +124,8 @@ class Overlap:
         if psit_nG is None:
             psit_nG = kpt.psit_nG
             
-        nbands = len(psit_nG)
+        nmybands = len(psit_nG)
+        nbands = nmybands * self.band_comm.size
 
         # Allocate work arrays if necessary:
         if self.work_nn is None:
@@ -130,17 +140,9 @@ class Overlap:
                 work_nG = npy.zeros_like(psit_nG)
 
         # Construct the overlap matrix:
-        rk(self.gd.dv, psit_nG, 0.0, S_nn)
+        self.calculate_overlap_matrix(psit_nG, work_nG, kpt, S_nn)
 
-        for nucleus in self.my_nuclei:
-            P_ni = nucleus.P_uni[kpt.u]
-            dO_ii = nucleus.setup.O_ii
-            #???????gemm(1.0, P_ni, npy.dot(P_ni, dO_ii), 1.0, S_nn, 't')
-            S_nn += npy.dot(P_ni, cc(npy.inner(nucleus.setup.O_ii, P_ni)))
-
-        self.comm.sum(S_nn, kpt.root)
-
-        if self.comm.rank == kpt.root:
+        if self.comm.rank == kpt.root and self.band_comm.rank == 0:
             info = inverse_cholesky(S_nn)
             if info != 0:
                 raise RuntimeError('Orthogonalization failed!')
@@ -149,22 +151,147 @@ class Overlap:
         C_nn = S_nn
         del S_nn
 
-        self.comm.broadcast(C_nn, kpt.root)
+        if self.band_comm.rank == 0:
+            self.comm.broadcast(C_nn, kpt.root)
+        self.band_comm.broadcast(C_nn, 0)
 
-        if len(work_nG) == nbands:
-            # We have enough work space to do this operation in one step:
+        self.matrix_multiplication(kpt, C_nn)
+
+        self.timer.stop('Orthonormalize')
+
+    def matrix_multiplication(self, kpt, C_nn):
+        band_comm = self.band_comm
+        size = band_comm.size
+        psit_nG =  kpt.psit_nG
+        work_nG = self.big_work_arrays['work_nG']
+        nmybands = len(psit_nG)
+        if size == 1:
             gemm(1.0, psit_nG, C_nn, 0.0, work_nG)
-
+            
             kpt.psit_nG = work_nG
 
             if work_nG is self.big_work_arrays.get('work_nG'):
                 self.big_work_arrays['work_nG'] = psit_nG
 
-        else:
-            blocked_matrix_multiplication(psit_nG, C_nn, work_nG)
-            
-        for nucleus in self.my_nuclei:
-            P_ni = nucleus.P_uni[kpt.u]
-            gemm(1.0, P_ni.copy(), C_nn, 0.0, P_ni)
+            for nucleus in self.my_nuclei:
+                P_ni = nucleus.P_uni[kpt.u]
+                gemm(1.0, P_ni.copy(), C_nn, 0.0, P_ni)
 
-        self.timer.stop('Orthonormalize')
+            return
+
+        # Parallelize over bands:
+        C_bnbn = C_nn.reshape((size, nmybands, size, nmybands))
+        work2_nG = self.big_work_arrays['work2_nG']
+        
+        rank = band_comm.rank
+
+        beta = 0.0
+        for p in range(size - 1):
+            sreq = band_comm.send(psit_nG, (rank - 1) % size, 61, False)
+            rreq = band_comm.receive(work_nG, (rank + 1) % size, 61, False)
+            gemm(1.0, psit_nG, C_bnbn[rank, :, (rank + p) % size],
+                 beta, work2_nG)
+            beta = 1.0
+            band_comm.wait(rreq)
+            band_comm.wait(sreq)
+            psit_nG, work_nG = work_nG, psit_nG
+
+        gemm(1.0, psit_nG, C_bnbn[rank, :, rank - 1], 1.0, work2_nG)
+
+        kpt.psit_nG = work2_nG
+        self.big_work_arrays['work2_nG'] = psit_nG
+
+        run([nucleus.calculate_projections(kpt)
+             for nucleus in self.pt_nuclei])
+
+    def calculate_overlap_matrix(self, psit_nG, work_nG, kpt, S_nn):
+        band_comm = self.band_comm
+        size = band_comm.size
+        if size == 1:
+            rk(self.gd.dv, psit_nG, 0.0, S_nn)
+            for nucleus in self.my_nuclei:
+                P_ni = nucleus.P_uni[kpt.u]
+                dO_ii = nucleus.setup.O_ii
+                #???????gemm(1.0, P_ni, npy.dot(P_ni, dO_ii), 1.0, S_nn, 't')
+                S_nn += npy.dot(P_ni, cc(npy.inner(nucleus.setup.O_ii, P_ni)))
+
+            self.comm.sum(S_nn, kpt.root)
+            return
+
+        assert size % 2 == 1
+        np = size // 2 + 1
+        rank = band_comm.rank
+        nmybands = len(work_nG)
+
+        nI = 0
+        for nucleus in self.my_nuclei:
+            nI += nucleus.get_number_of_partial_waves()
+
+        if self.work_In is None or len(self.work_In) != nI:
+            self.work_In = npy.empty((nI, nmybands), psit_nG.dtype)
+            self.work2_In = npy.empty((nI, nmybands), psit_nG.dtype)
+        work_In = self.work_In
+        work2_In = self.work2_In
+
+        if 'work2_nG' not in self.big_work_arrays:
+            self.big_work_arrays['work2_nG'] = npy.empty_like(psit_nG)
+        work2_nG = self.big_work_arrays['work2_nG']
+
+        if self.S_pnn is None:
+            self.S_pnn = npy.empty((np, nmybands, nmybands), psit_nG.dtype)
+        S_pnn = self.S_pnn
+
+        I1 = 0
+        for nucleus in self.my_nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            I2 = I1 + ni
+            P_ni = nucleus.P_uni[kpt.u]
+            dO_ii = nucleus.setup.O_ii
+            work_In[I1:I2] = npy.inner(dO_ii, P_ni).conj()
+            I1 = I2
+
+        for p in range(np):
+            if p == 0:
+                sreq = band_comm.send(psit_nG, (rank - 1) % size, 11, False)
+            else:
+                sreq = band_comm.send(work_nG, (rank - 1) % size, 11, False)
+            sreq2 = band_comm.send(work_In, (rank - 1) % size, 31, False)
+            rreq = band_comm.receive(work2_nG, (rank + 1) % size, 11, False)
+            rreq2 = band_comm.receive(work2_In, (rank + 1) % size, 31, False)
+
+            if p == 0:
+                rk(self.gd.dv, psit_nG, 0.0, S_pnn[0])
+            else:
+                gemm(self.gd.dv, psit_nG, work_nG, 0.0, S_pnn[p], 'c')
+
+            I1 = 0
+            for nucleus in self.my_nuclei:
+                ni = nucleus.get_number_of_partial_waves()
+                I2 = I1 + ni
+                P_ni = nucleus.P_uni[kpt.u]
+                S_pnn[p] += npy.dot(P_ni, work_In[I1:I2]).T
+                I1 = I2
+            
+            band_comm.wait(sreq)
+            band_comm.wait(sreq2)
+            band_comm.wait(rreq)
+            band_comm.wait(rreq2)
+            
+            work_nG, work2_nG = work2_nG, work_nG
+            work_In, work2_In = work2_In, work_In
+
+        self.comm.sum(S_pnn, kpt.root)
+
+        S_bnbn = S_nn.reshape((size, nmybands, size, nmybands))
+        if self.comm.rank == kpt.root:
+            if rank == 0:
+                S_bnbn[:np, :, 0] = S_pnn
+                for p1 in range(1, size):
+                    band_comm.receive(S_pnn, p1, 13)
+                    for p2 in range(np):
+                        if p1 + p2 < size:
+                            S_bnbn[p1 + p2, :, p1] = S_pnn[p2]
+                        else:
+                            S_bnbn[p1, :, p1 + p2 - size] = S_pnn[p2].T
+            else:
+                band_comm.send(S_pnn, 0, 13)

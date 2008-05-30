@@ -257,8 +257,8 @@ def mtime(path, name, mtimes):
 
     if mtimes.has_key(name):
         return mtimes[name]
-    t = os.stat(os.path.join(path,name))[ST_MTIME]
-    for name2 in include.findall(open(os.path.join(path,name)).read()):
+    t = os.stat(os.path.join(path, name))[ST_MTIME]
+    for name2 in include.findall(open(os.path.join(path, name)).read()):
         path2, name22 = os.path.split(name2)
         if (path2 != ''):
             name2 = name22

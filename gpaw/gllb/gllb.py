@@ -73,7 +73,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
     def update_band_count(self):
         # Allocate the 'response-weights' for each kpoint
         for kpt in self.kpt_u:
-            kpt.wf_n = npy.zeros(kpt.nbands)
+            kpt.wf_n = npy.zeros(self.eigensolver.nbands)
 
     def update_xc_potential(self):
         assert(self.nspins == 1)
@@ -229,7 +229,7 @@ class GLLBFunctional(ZeroFunctional, GLLB1D):
                 self.vt_G[:] = (psit_G * npy.conjugate(psit_G) ).real
             else:
                 # Create an occupation vector with full of zeros, except 1.0 at LUMO
-                e_n = npy.zeros(kpt.nbands)
+                e_n = npy.zeros(self.eigensolver.nbands)
                 e_n[self.ref_loc+1] = 1.0
                 kpt.add_to_density_with_occupation(self.vt_G, self.eigensolver.lcao, e_n)
 

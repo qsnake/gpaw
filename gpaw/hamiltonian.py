@@ -49,10 +49,12 @@ class Hamiltonian(LCAOHamiltonian):
         self.nspins = paw.nspins
         self.gd = paw.gd
         self.finegd = paw.finegd
+
         self.my_nuclei = paw.my_nuclei
         self.pt_nuclei = paw.pt_nuclei
         self.ghat_nuclei = paw.ghat_nuclei
         self.nuclei = paw.nuclei
+
         self.timer = paw.timer
 
         p = paw.input_parameters
@@ -234,9 +236,7 @@ class Hamiltonian(LCAOHamiltonian):
 
         self.timer.stop('Apply pseudo-hamiltonian');
         
-        if local_part_only:
-            assert not calculate_projections
-        else:
+        if not local_part_only:
             # Apply the non-local part:
             self.timer.start('Apply atomic hamiltonian');
             run([nucleus.apply_hamiltonian(a_nG, b_nG, kpt,

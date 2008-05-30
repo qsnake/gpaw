@@ -19,6 +19,8 @@ class LCAO:
         self.nspins = paw.nspins
         self.nkpts = paw.nkpts
         self.nbands = paw.nbands
+        self.nmybands = paw.nmybands
+        self.band_comm = paw.band_comm
         self.dtype = paw.dtype
         self.initialized = True
 
@@ -31,7 +33,7 @@ class LCAO:
             self.Vt_skmm = npy.empty((self.nspins, self.nkpts,
                                       self.nao, self.nao), self.dtype)
             for kpt in kpt_u:
-                kpt.C_nm = npy.empty((self.nbands, self.nao), self.dtype)
+                kpt.C_nm = npy.empty((self.nmybands, self.nao), self.dtype)
 
         hamiltonian.calculate_effective_potential_matrix(self.Vt_skmm)
         for kpt in kpt_u:
@@ -54,14 +56,19 @@ class LCAO:
 
         self.S_mm[:] = hamiltonian.S_kmm[k]
 
-        #Check and remove linear dependence for the current k-point
+        rank = self.band_comm.rank
+        size = self.band_comm.size
+        n1 = rank * self.nmybands
+        n2 = n1 + self.nmybands
+            
+        # Check and remove linear dependence for the current k-point
         if k in hamiltonian.linear_kpts:
             print '*Warning*: near linear dependence detected for k=%s' %k
             P_mm, p_m = hamiltonian.linear_kpts[k]
             thres = hamiltonian.thres
             eps_q, C_nm = self.remove_linear_dependence(P_mm, p_m, H_mm, thres)
-            kpt.C_nm[:] = C_nm[0:self.nbands]
-            kpt.eps_n[:] = eps_q[0:self.nbands]
+            kpt.C_nm[:] = C_nm[n1:n2]
+            kpt.eps_n[:] = eps_q[n1:n2]
         else:
             self.eps_m[0] = 42
             errorcode = diagonalize(H_mm, self.eps_m, self.S_mm)
@@ -70,8 +77,8 @@ class LCAO:
                 raise RuntimeError('Error code from dsyevd/zheevd: %d.' %
                                    errorcode)
 
-            kpt.C_nm[:] = H_mm[0:self.nbands]
-            kpt.eps_n[:] = self.eps_m[0:self.nbands]
+            kpt.C_nm[:] = H_mm[n1:n2]
+            kpt.eps_n[:] = self.eps_m[n1:n2]
 
         for nucleus in self.my_nuclei:
             nucleus.P_uni[u] = npy.dot(kpt.C_nm, nucleus.P_kmi[k])
@@ -104,7 +111,7 @@ class LCAO:
         S_qq = npy.array(S_qq, self.dtype)
         q = len(s_q)
         p = self.nao - q
-        P_mq = P_mm[p:,:].T.conj()
+        P_mq = P_mm[p:, :].T.conj()
         
         # Filling up the upper triangle
         for m in range(self.nao - 1):

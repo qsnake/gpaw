@@ -358,10 +358,11 @@ def eigenvalue_string(paw, comment=None):
     if paw.nspins == 1:
         s += comment + 'Band   Eigenvalues  Occupancy\n'
         eps_n = paw.collect_eigenvalues(k=0, s=0)
-        f_n   = paw.collect_occupations(k=0, s=0)
-        for n in range(paw.nbands):
-            s += ('%4d   %10.5f  %10.5f\n' %
-                  (n, Ha * eps_n[n], f_n[n]))
+        f_n   = paw.collect_occupations(k=0, s=0) 
+        if paw.master:
+            for n in range(paw.nbands):
+                s += ('%4d   %10.5f  %10.5f\n' %
+                      (n, Ha * eps_n[n], f_n[n]))
     else:
         s += comment + '                 Up                     Down\n'
         s += comment + 'Band  Eigenvalues  Occupancy  Eigenvalues  Occupancy\n'
