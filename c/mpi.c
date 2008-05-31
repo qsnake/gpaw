@@ -40,7 +40,7 @@ static PyObject * mpi_receive(MPIObject *self, PyObject *args)
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
- 
+
 static PyObject * mpi_send(MPIObject *self, PyObject *args)
 {
   PyArrayObject* a;
@@ -64,7 +64,7 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
- 
+
 static PyObject * mpi_abort(MPIObject *self, PyObject *args)
 {
   int errcode;
@@ -90,7 +90,7 @@ static PyObject * mpi_wait(MPIObject *self, PyObject *args)
   MPI_Wait((MPI_Request*)s, MPI_STATUS_IGNORE);
   Py_RETURN_NONE;
 }
- 
+
 static PyObject * mpi_sum(MPIObject *self, PyObject *args)
 {
   PyObject* obj;
@@ -109,7 +109,7 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
     }
   else if (PyComplex_Check(obj))
     {
-      double din[2]; 
+      double din[2];
       double dout[2];
       din[0] = PyComplex_RealAsDouble(obj);
       din[1] = PyComplex_ImagAsDouble(obj);
@@ -140,7 +140,7 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
           double* b = 0;
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-          if (rank == root)
+          // if (rank == root) // bug on BGP
             b = GPAW_MALLOC(double, n);
           // XXX Use MPI_IN_PLACE!!
           MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_SUM, root, self->comm);
@@ -217,7 +217,7 @@ static PyObject * mpi_max(MPIObject *self, PyObject *args)
           double* b = 0;
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-          if (rank == root)
+          // if (rank == root) // bug on BGP
             b = GPAW_MALLOC(double, n);
           // XXX Use MPI_IN_PLACE!!
           MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_MAX, root, self->comm);
@@ -231,7 +231,7 @@ static PyObject * mpi_max(MPIObject *self, PyObject *args)
     }
 }
 
- 
+
 static PyObject * mpi_allgather(MPIObject *self, PyObject *args)
 {
   PyArrayObject* a;
@@ -245,7 +245,7 @@ static PyObject * mpi_allgather(MPIObject *self, PyObject *args)
   MPI_Allgather(LONGP(a), n, MPI_BYTE, LONGP(b), n, MPI_BYTE, self->comm);
   Py_RETURN_NONE;
 }
- 
+
 static PyObject * mpi_gather(MPIObject *self, PyObject *args)
 {
   PyArrayObject* a;
@@ -262,7 +262,7 @@ static PyObject * mpi_gather(MPIObject *self, PyObject *args)
     MPI_Gather(LONGP(a), n, MPI_BYTE, LONGP(b), n, MPI_BYTE, root, self->comm);
   Py_RETURN_NONE;
 }
- 
+
 static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
 {
   PyArrayObject* buf;
@@ -371,7 +371,7 @@ PyTypeObject MPIType = {
     0,                         /* tp_dictoffset */
     (initproc)NewMPIObject2,      /* tp_init */
     0,                         /* tp_alloc */
-    Noddy_new,                 /* tp_new */ 
+    Noddy_new,                 /* tp_new */
 };
 
 static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
@@ -396,7 +396,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   MPI_Comm_create(self->comm, newgroup, &comm);
   MPI_Group_free(&newgroup);
   MPI_Group_free(&group);
-  if (comm == MPI_COMM_NULL) 
+  if (comm == MPI_COMM_NULL)
     {
       Py_RETURN_NONE;
     }
