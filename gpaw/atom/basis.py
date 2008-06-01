@@ -73,11 +73,10 @@ class BasisMaker:
         Q_nm = npy.dot(g.r * q_ng, psi_mg.T)
         Qt_nm = npy.linalg.solve(Pi_nn, Q_nm)
 
-        # Truncate all-electron parts smoothly near core
+        # Weight-function for truncating all-electron parts smoothly near core
         gmerge = g.r2g(g.rcut_l[l])
-        w_g = g.r.copy()
-        w_g[gmerge:] = 1.
-        w_g[:gmerge] /= g.r[gmerge]
+        w_g = npy.ones(g.r.shape)
+        w_g[0:gmerge] = (g.r[0:gmerge] / g.r[gmerge])**2.
         w_g = w_g[None]
         
         psit_mg = psi_mg * w_g + npy.dot(Qt_nm.T, s_ng - u_ng * w_g)
