@@ -20,6 +20,8 @@ parser.add_option('-s', '--save-figs', action='store_true', dest='save',
                   help='Save figures to disk rather than showing plots')
 parser.add_option('-r', '--no-r-multiplication', action='store_true',
                   help='Do not pre-multiply wave functions by r in plots')
+parser.add_option('-n', '--normalize', action='store_true',
+                  help='Plot normalized wave functions')
 # The --setups parameter is actually handled by setup_data module internally
 # We just provide it here so the parser won't complain when it is used
 parser.add_option('--setups', metavar='dir',
@@ -41,14 +43,22 @@ for path in files:
     else: # Search GPAW setup dirs
         basis = Basis(symbol, name)
 
+    rc = basis.d * (basis.ng - 1)
+    r_g = npy.linspace(0., rc, basis.ng)
+
     print 'Element  :', basis.symbol
     print 'Name     :', basis.name
     print 'Filename :', basis.filename
     print
     print 'Basis functions'
     print '---------------'
-    for bf in basis.bf_j:
-        print bf.type
+
+    norm_j = []
+    for j, bf in enumerate(basis.bf_j):
+        rphit_g = r_g * bf.phit_g
+        norm = (npy.dot(rphit_g, rphit_g) * basis.d) ** .5
+        norm_j.append(norm)
+        print bf.type, '[norm=%0.4f]' % norm
 
     print
     print 'Generator'
@@ -58,9 +68,6 @@ for path in files:
     print 'Generator data'
     print basis.generatordata
 
-    rc = basis.d * (basis.ng - 1)
-    r_g = npy.linspace(0., rc, basis.ng)
-
     if opts.no_r_multiplication:
         factor = 1.
         ylabel = r'$\tilde{\phi}$'
@@ -69,8 +76,10 @@ for path in files:
         ylabel = r'$\tilde{\phi} r$'
 
     pylab.figure()
-    for bf in basis.bf_j:
+    for norm, bf in zip(norm_j, basis.bf_j):
         y_g = bf.phit_g * factor
+        if opts.normalize:
+            y_g /= norm
         pylab.plot(r_g, y_g, label=bf.type[:12])
     axis = pylab.axis()
     rc = max([bf.rc for bf in basis.bf_j])

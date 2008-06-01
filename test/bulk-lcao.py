@@ -6,7 +6,7 @@ sym = 'Li'
 bm = BasisMaker(sym, run=False)
 bm.generator.N = 300
 bm.generator.run(write_xml=False)
-basis = bm.generate(2)
+basis = bm.generate(2, 1)
 
 bulk = Atoms([Atom(sym)], pbc=True)
 k = 4
@@ -25,4 +25,4 @@ print e
 import numpy as npy
 a = npy.roots(npy.polyder(npy.polyfit(A, e, 2), 1))[0]
 print 'a =', a
-assert abs(a - 2.8498) < 0.0001
+assert abs(a - 2.6527) < 0.0001

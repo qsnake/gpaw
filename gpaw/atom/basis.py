@@ -102,6 +102,7 @@ class BasisMaker:
 
         where p_i-tilde are the projectors and phi_k the AE partial waves.
         """
+        raise DeprecationWarning
         if npy.rank(psi_jg) == 1:
             # vector/matrix polymorphism hack
             return self.get_unsmoothed_projector_coefficients([psi_jg], l)[0]
@@ -142,6 +143,7 @@ class BasisMaker:
                                   -----
                                     j
         """
+        raise DeprecationWarning
         if npy.rank(psit_jg) == 1:
             # vector/matrix polymorphism hack
             return self.unsmoothify([psit_jg], l)[0]
@@ -167,6 +169,7 @@ class BasisMaker:
                                     j
 
         """
+        raise DeprecationWarning
         if npy.rank(psi_jg) == 1:
             # vector/matrix polymorphism hack
             return self.old_smoothify([psi_jg], l)[0]
@@ -329,7 +332,7 @@ class BasisMaker:
         splitwave = self.make_split_valence_vector(u, l, rsplit)
         return rsplit, partial_norm, splitwave
 
-    def generate(self, zetacount=2, polarizationcount=0, 
+    def generate(self, zetacount=2, polarizationcount=1,
                  tailnorm=(.15, .25, .35), energysplit=.3, tolerance=1.0e-3,
                  referencefile=None, referenceindex=None, rcutpol_rel=1., 
                  rcutmax=20., ngaussians=None, rcharpol_rel=None,
@@ -514,7 +517,6 @@ class BasisMaker:
             print >> txt, '\n' + msg
             print >> txt, '-' * len(msg)
             if referencefile is None:
-                l_pol = 1
                 # Make a single Gaussian for polarization function.
                 #
                 # It is known that for given l, the sz cutoff defined
@@ -537,6 +539,8 @@ class BasisMaker:
                 rchar = rcharpol_rel * rc_fixed
                 gaussian = QuasiGaussian(1./rchar**2, rcut)
                 psi_pol = gaussian(g.r) * g.r**(l_pol + 1)
+                norm = npy.dot(g.dr, psi_pol * psi_pol) ** .5
+                psi_pol /= norm
                 print >> txt, 'Single quasi Gaussian'
                 msg = 'Rchar = %.03f*rcut = %.03f Bohr' % (rcharpol_rel, rchar)
                 adjective = 'Gaussian'
@@ -545,8 +549,7 @@ class BasisMaker:
                 psi_pol = self.make_polarization_function(rcut, l_pol,
                                                           referencefile,
                                                           referenceindex,
-                                                          ngaussians,
-                                                          txt)
+                                                          ngaussians, txt)
                 adjective = 'interpolated'
 
             type = '%s-type %s polarization' % ('spdfg'[l_pol], adjective)
@@ -566,20 +569,18 @@ class BasisMaker:
                 bf_pol = BasisFunction(l_pol, rsplit, psi_pol - splitwave,
                                        descr)
                 polarization_functions.append(bf_pol)
-                    
+        
         bf_j = []
         bf_j.extend(singlezetas)
         bf_j.extend(energy_derivative_functions)
         for multizeta_list in multizetas:
             bf_j.extend(multizeta_list)
         bf_j.extend(polarization_functions)
-
+        
         rcmax = max([bf.rc for bf in bf_j])
-
+        
         equidistant_grid = npy.linspace(0., rcmax, 2**10)
         for bf in bf_j:
-            #norm = npy.dot(self.generator.dr, bf.phit_g * bf.phit_g)**.5
-            #bf.phit_g /= norm
             # We have been storing phit_g * r, but we just want phit_g
             bf.phit_g = divrl(bf.phit_g, 1, g.r)
 
