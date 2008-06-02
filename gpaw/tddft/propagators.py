@@ -147,7 +147,9 @@ class ExplicitCrankNicolson(Propagator):
             self.kpt = kpt
             self.timer.start('Apply time-dependent operators')
             self.td_hamiltonian.apply(self.kpt, kpt.psit_nG, self.hpsit)
-            self.td_overlap.apply(self.kpt, kpt.psit_nG, self.spsit)
+            # Note: calculate_P_uni=True required by AbsorptionKick
+            # Fix applying linear field before changing
+            self.td_overlap.apply(self.kpt, kpt.psit_nG, self.spsit, calculate_P_uni=True)
             self.timer.stop('Apply time-dependent operators')
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
@@ -173,7 +175,9 @@ class ExplicitCrankNicolson(Propagator):
         """
         self.timer.start('Apply time-dependent operators')
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
-        self.td_overlap.apply(self.kpt, psi, self.spsit)
+        # Note: calculate_P_uni=True required by AbsorptionKick
+        # Fix applying linear field before changing
+        self.td_overlap.apply(self.kpt, psi, self.spsit, calculate_P_uni=True)
         self.timer.stop('Apply time-dependent operators')
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit 
@@ -372,7 +376,7 @@ class SemiImplicitCrankNicolson(Propagator):
             self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG), dtype=complex)
         if self.spsit is None:
             self.spsit = self.gd.zeros(len(kpt_u[0].psit_nG), dtype=complex)
-        
+
         self.time_step = time_step
 
 
@@ -396,6 +400,7 @@ class SemiImplicitCrankNicolson(Propagator):
             #self.tmp2_kpt_u[u].psit_nG[:] = kpt_u[u].psit_nG
             #kpt_u[u].psit_nG[:] = 0.0
 
+
         # predict
         #  here kpt_u is overwritten by (S - i H(t) t / 2 hbar) kpt_u
         #  before actually solving the equation, maybe better would
@@ -418,7 +423,6 @@ class SemiImplicitCrankNicolson(Propagator):
 
         self.timer.stop('Update time-dependent operators')
 
-
         # propagate psit(t), not psit(t+dt), in correct
         #for u in range(len(kpt_u)):
         #    kpt_u[u].psit_nG[:] = self.tmp_psit_nG[u]
@@ -434,7 +438,6 @@ class SemiImplicitCrankNicolson(Propagator):
 
 
 
-
     # ( S + i H dt/2 ) psit(t+dt) = ( S - i H dt/2 ) psit(t)
     def solve_propagation_equation(self, kpt_u, rhs_kpt_u, time_step, guess = False):
 
@@ -447,11 +450,13 @@ class SemiImplicitCrankNicolson(Propagator):
             self.kpt = kpt
             self.timer.start('Apply time-dependent operators')
             self.td_hamiltonian.apply(self.kpt, rhs_kpt.psit_nG, self.hpsit)
-            self.td_overlap.apply(self.kpt, rhs_kpt.psit_nG, self.spsit)
+            self.td_overlap.apply(self.kpt, rhs_kpt.psit_nG, self.spsit, calculate_P_uni=False)
             self.timer.stop('Apply time-dependent operators')
 
             #self.mblas.multi_zdotc(self.shift, rhs_kpt.psit_nG, self.hpsit, nvec)
+            #self.shift *= self.gd.dv
             #self.mblas.multi_zdotc(self.tmp_shift, rhs_kpt.psit_nG, self.spsit, nvec)
+            #self.tmp_shift *= self.gd.dv
             #self.shift /= self.tmp_shift
 
             #self.psit_nG[:] = self.spsit - .5J * self.hpsit * time_step
@@ -487,7 +492,7 @@ class SemiImplicitCrankNicolson(Propagator):
         """
         self.timer.start('Apply time-dependent operators')
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
-        self.td_overlap.apply(self.kpt, psi, self.spsit)
+        self.td_overlap.apply(self.kpt, psi, self.spsit, calculate_P_uni=False)
         self.timer.stop('Apply time-dependent operators')
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit
@@ -875,9 +880,11 @@ class SemiImplicitKrylovExponential(Propagator):
             for i in range(self.kdim):
                 for j in range(self.kdim):
                     self.mblas.multi_zdotc(tmp, qm[i], Hqm[j], nvec)
+                    tmp *= self.gd.dv
                     for k in range(nvec):
                         self.hm[k][i][j] = tmp[k]
                     self.mblas.multi_zdotc(tmp, qm[i], Sqm[j], nvec)
+                    tmp *= self.gd.dv
                     for k in range(nvec):
                         self.sm[k][i][j] = tmp[k]
 
@@ -945,16 +952,19 @@ class SemiImplicitKrylovExponential(Propagator):
             # q_i = q_i - sum_j<i <q_j|S|q_i> q_j
             for j in range(i):
                 self.mblas.multi_zdotc(tmp, qm[i], Sqm[j], nvec)
+                tmp *= self.gd.dv
                 tmp = npy.conj(tmp)
                 self.mblas.multi_zaxpy(-tmp, qm[j], qm[i], nvec)
 
             # S q_i
             s.apply(kpt, qm[i], Sqm[i])
             self.mblas.multi_zdotc(tmp, qm[i], Sqm[i], nvec)
+            tmp *= self.gd.dv
             self.mblas.multi_scale(1./npy.sqrt(tmp), qm[i], nvec)
             self.mblas.multi_scale(1./npy.sqrt(tmp), Sqm[i], nvec)
             if i == 0:
                 scale[:] = 1/npy.sqrt(tmp)
+                #print 'Scale', scale
 
             # H q_i
             h.apply(kpt, qm[i], Hqm[i])
@@ -1013,9 +1023,11 @@ class SemiImplicitKrylovExponential(Propagator):
         for i in range(10):
             self.solver.solve(self, self.kpt.psit_nG, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
+            nrm2 *= self.gd.dv
             self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_overlap.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
+        nrm2 *= self.gd.dv
         print 'S min eig = ', nrm2
 
 
@@ -1030,9 +1042,11 @@ class SemiImplicitKrylovExponential(Propagator):
             self.tmp[:] = self.kpt.psit_nG
             self.td_overlap.apply(self.kpt, self.tmp, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
+            nrm2 *= self.gd.dv
             self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_overlap.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
+        nrm2 *= self.gd.dv
         print 'S max eig = ', nrm2
 
 
@@ -1046,9 +1060,11 @@ class SemiImplicitKrylovExponential(Propagator):
         for i in range(10):
             self.solver.solve(self, self.kpt.psit_nG, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
+            nrm2 *= self.gd.dv
             self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_hamiltonian.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
+        nrm2 *= self.gd.dv
         print 'H min eig = ', nrm2
 
 
@@ -1063,7 +1079,9 @@ class SemiImplicitKrylovExponential(Propagator):
             self.tmp[:] = self.kpt.psit_nG
             self.td_hamiltonian.apply(self.kpt, self.tmp, self.kpt.psit_nG)
             self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.kpt.psit_nG, nvec)
+            nrm2 *= self.gd.dv
             self.mblas.multi_scale(1/npy.sqrt(nrm2), self.kpt.psit_nG, nvec)
         self.td_hamiltonian.apply(self.kpt, self.kpt.psit_nG, self.tmp)
         self.mblas.multi_zdotc(nrm2, self.kpt.psit_nG, self.tmp, nvec)
+        nrm2 *= self.gd.dv
         print 'H max eig = ', nrm2

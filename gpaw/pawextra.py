@@ -15,6 +15,7 @@ import gpaw.mpi as mpi
 from gpaw.xc_functional import XCFunctional
 from gpaw.density import Density
 from gpaw.utilities import pack
+from gpaw.mpi import run, MASTER
 
 
 class PAWExtra:

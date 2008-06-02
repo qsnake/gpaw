@@ -558,6 +558,7 @@ class Nucleus:
                 P_ni = npy.zeros((n, ni), self.dtype)
                 for x in self.pt_i.iintegrate(a_nG, P_ni, k):
                     yield None
+                self.P_uni[u][:] = P_ni
             else:
                 P_ni = self.P_uni[u]
             H_ii = unpack(self.H_sp[s])
@@ -588,6 +589,7 @@ class Nucleus:
                 P_ni = npy.zeros((n, ni), self.dtype)
                 for x in self.pt_i.iintegrate(a_nG, P_ni, k):
                     yield None
+                self.P_uni[u][:] = P_ni
             else:
                 P_ni = self.P_uni[u]
             coefs_ni = npy.dot(P_ni, self.setup.O_ii)

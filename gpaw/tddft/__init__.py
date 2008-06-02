@@ -20,6 +20,7 @@ from gpaw.mpi import rank
 from gpaw.preconditioner import Preconditioner
 
 
+from gpaw.tddft.utils import MultiBlas
 from gpaw.tddft.bicgstab import BiCGStab
 from gpaw.tddft.cscg import CSCG
 from gpaw.tddft.propagators import \
@@ -233,18 +234,24 @@ class TDDFT(PAW):
         if rank == 0:
             self.text('States per processor = ', self.nmybands)
 
+        self.hpsit = None
+        self.eps_tmp = None
+        self.mblas = MultiBlas(self.gd)
+
+        self.kick_strength = npy.array([0.0,0.0,0.0], dtype=float)
+
 
     def propagate(self, time_step, iterations,
                   dipole_moment_file = None,
-                  restart_file = None, dump_interval = 1000):
+                  restart_file = None, dump_interval = 100):
         """Propagates wavefunctions.
         
         Parameters
         ----------
         time_step: float
-            Time step in attoseconds (10^-18 s), e.g., 1.0 or 4.0
+            Time step in attoseconds (10^-18 s), e.g., 4.0 or 8.0
         iterations: integer
-            Iterations, e.g., 10 000 as / 1.0 as = 10 000
+            Iterations, e.g., 20 000 as / 4.0 as = 5000
         dipole_moment_file: string, optional
             Name of the data file where to the time-dependent dipole
             moment is saved
@@ -266,17 +273,53 @@ class TDDFT(PAW):
                     # We probably continue from restart
                     mode = 'a'
                 dm_file = file(dipole_moment_file, mode)
+                line = '# Kick = [%22.12le, %22.12le, %22.12le]\n' \
+                    % (self.kick_strength[0], self.kick_strength[1], self.kick_strength[2])
+                dm_file.write(line)
+                dm_file.flush()
 
         for i in range(iterations):
-            # print something
-            if rank == 0:
-                if i % 100 == 0:
-                    print ''
-                    print i, ' iterations done. Current time is ', \
-                        self.time * self.autime_to_attosec, ' as.'
-                elif i % 10 == 0:
-                    print '.',
-                    sys.stdout.flush()
+            # print energy
+            if i % 10 == 0:
+                #print '.',
+                #sys.stdout.flush()
+                # Calculate and print total energy here 
+                # self.Eband = sum_i <psi_i|H|psi_j>
+                # !!!!
+                H = self.td_hamiltonian.hamiltonian
+                self.td_density.update()
+                self.td_hamiltonian.update( self.td_density.get_density(), 
+                                            self.time )
+                self.td_overlap.update()
+
+                if self.hpsit is None:
+                    self.hpsit = self.gd.zeros( len(self.kpt_u[0].psit_nG), 
+                                                dtype=complex )
+                if self.eps_tmp is None:
+                    self.eps_tmp = npy.zeros( len(self.kpt_u[0].eps_n), 
+                                              dtype=complex )
+
+                for kpt in self.kpt_u:
+                    self.td_hamiltonian.apply(kpt, kpt.psit_nG, self.hpsit)
+                    self.mblas.multi_zdotc(self.eps_tmp, kpt.psit_nG, self.hpsit, len(self.kpt_u[0].psit_nG)) 
+                    self.eps_tmp *= self.gd.dv
+                    #print 'Eps_n = ', self.eps_tmp
+                    kpt.eps_n = self.eps_tmp.real
+
+                self.occupation.calculate_band_energy(self.kpt_u)
+                # Nonlocal
+                xcfunc = H.xc.xcfunc
+                self.Enlxc = xcfunc.get_non_local_energy()
+                self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
+                # PAW
+                self.Ekin = H.Ekin + self.occupation.Eband + self.Enlkin
+                self.Epot = H.Epot
+                self.Eext = H.Eext
+                self.Ebar = H.Ebar
+                self.Exc = H.Exc + self.Enlxc
+                self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
+                if rank == 0:
+                    print 'Etot ', i, self.Etot
 
             # write dipole moment
             if dipole_moment_file is not None:
@@ -292,10 +335,14 @@ class TDDFT(PAW):
             self.propagator.propagate(self.kpt_u, self.time, time_step)
             self.time += time_step
 
+
             # restart data
             if restart_file is not None and ( (i+1) % dump_interval == 0 ):
                 self.write(restart_file, 'all')
-                # if rank == 0:
+                if rank == 0:
+                    print 'Wrote restart file.'
+                    print i, ' iterations done. Current time is ', \
+                        self.time * self.autime_to_attosec, ' as.' 
                     # print 'Warning: Writing restart files in TDDFT does not work yet.'
                     # print 'Continuing without writing restart file.'
 
@@ -320,7 +367,8 @@ class TDDFT(PAW):
         
         """
         if rank == 0:
-            self.text('Delta kick: ', kick_strength)
+            self.text('Delta kick = ', kick_strength)
+        self.kick_strength = npy.array(kick_strength)
 
         abs_kick = \
             AbsorptionKick( AbsorptionKickHamiltonian( self.pt_nuclei,
@@ -334,102 +382,135 @@ class TDDFT(PAW):
         """Destructor"""
         PAW.__del__(self)
 
-def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength, fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
-        """ Calculates photoabsorption spectrum from the time-dependent
-        dipole moment.
+# Function for calculating photoabsorption spectrum
+#def photoabsorption_spectrum(dipole_moment_file, spectrum_file, fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
+def photoabsorption_spectrum(dipole_moment_file, spectrum_file, folding='Gauss', width=0.2123, e_min=0.0, e_max=30.0, delta_e=0.05):
+    """ Calculates photoabsorption spectrum from the time-dependent
+    dipole moment.
+    
+    Parameters
+    ----------
+    dipole_moment_file: string
+        Name of the time-dependent dipole moment file from which
+        the specturm is calculated
+    spectrum_file: string
+        Name of the spectrum file
+    folding: 'Gauss' or 'Lorentz'
+        Whether to use Gaussian or Lorentzian folding
+    width: float
+        Width of the Gaussian (sigma) or Lorentzian (Gamma)
+        Gaussian =     1/(sigma sqrt(2pi)) exp(-(1/2)(omega/sigma)^2)
+        Lonrentzian =  (1/pi) (1/2) Gamma / [omega^2 + ((1/2) Gamma)^2]
+    e_min: float
+        Minimum energy shown in the spectrum (eV)
+    e_max: float
+        Maxiumum energy shown in the spectrum (eV)
+    delta_e: float
+        Energy resolution (eV)
+    
+
+    """
+
+
+#    kick_strength: [float, float, float]
+#        Strength of the kick, e.g., [0.0, 0.0, 1e-3]
+#    fwhm: float
+#        Full width at half maximum for peaks in eV
+#    delta_omega: float
+#        Energy resolution in eV
+#    max_energy: float
+#        Maximum excitation energy in eV
+
+    if folding != 'Gauss':
+        raise RuntimeError( 'Error in photoabsorption_spectrum: '
+                            'Only Gaussian folding is currently supported.' )
+    
+    
+    if rank == 0:
+        print ('Calculating photoabsorption spectrum from file "%s"' % dipole_moment_file)
+
+        f_file = file(spectrum_file, 'w')
+        dm_file = file(dipole_moment_file, 'r')
+        lines = dm_file.readlines()
+        dm_file.close()
+        # Read kick strength
+        columns = lines[0].split('[')
+        columns = columns[1].split(']')
+        columns = columns[0].split(',')
+        kick_strength = npy.array([eval(columns[0]),eval(columns[1]),eval(columns[2])], dtype=float)
+        strength = npy.array(kick_strength, dtype=float)
+        # Remove first line
+        lines.pop(0)
+        print 'Using kick strength = ', strength
+        # Continue with dipole moment data
+        n = len(lines)
+        dm = npy.zeros((n,3),dtype=float)
+        time = npy.zeros((n,),dtype=float)
+        for i in range(n):
+            data = lines[i].split()
+            time[i] = float(data[0])
+            dm[i,0] = float(data[2])
+            dm[i,1] = float(data[3])
+            dm[i,2] = float(data[4])
+
+        t = time - time[0]
+        dt = time[1] - time[0]
+        dm[:] = dm - dm[0]
+        nw = int(e_max / delta_e)
+        dw = delta_e / 27.211
+        # f(w) = Nw exp(-w^2/2sigma^2)
+        #sigma = fwhm / 27.211 / (2.* npy.sqrt(2.* npy.log(2.0)))
+        # f(t) = Nt exp(-t^2/2gamma^2)
+        #gamma = 1.0 / sigma
+        sigma = width/27.211
+        gamma = 1.0 / sigma
+        fwhm = sigma * (2.* npy.sqrt(2.* npy.log(2.0)))
+        kick_magnitude = npy.sum(strength**2)
+
+        # write comment line
+        f_file.write('# Total time = %lf fs, Time step = %lf as\n' % (n * dt * 24.1888/1000.0, dt *  24.1888))
+        f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
+        f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> FWHM = %lf eV\n' % (folding, sigma*27.211, sigma, fwhm*27.211))
+
+        # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
+        #                                * ( dm(t) - dm(0) )
+        alpha = 0
+        for i in range(nw):
+            w = i * dw
+            # x
+            alphax = npy.sum( npy.sin(t * w) 
+                              * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
+            alphax *= \
+                2 * dt / (2*npy.pi) / kick_magnitude * strength[0]
+            # y
+            alphay = npy.sum( npy.sin(t * w) 
+                              * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
+            alphay *= \
+                2 * dt / (2*npy.pi) / kick_magnitude * strength[1]
+            # z
+            alphaz = npy.sum( npy.sin(t * w) 
+                              * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
+            alphaz *= \
+                2 * dt / (2*npy.pi) / kick_magnitude * strength[2]
+
+            # f = 2 * omega * alpha
+            line = '%10.6lf %20.10le %20.10le %20.10le\n' \
+                % ( w*27.211, 
+                    2*w*alphax / 27.211, 
+                    2*w*alphay / 27.211,
+                    2*w*alphaz / 27.211 )
+            f_file.write(line)
+
+            if (i % 100) == 0:
+                print '.',
+                sys.stdout.flush()
+                
+        print ''
+        f_file.close()
         
-        Parameters
-        ----------
-        dipole_moment_file: string
-            Name of the time-dependent dipole moment file from which
-            the specturm is calculated
-        spectrum_file: string
-            Name of the spectrum file
-        kick_strength: [float, float, float]
-            Strength of the kick, e.g., [0.0, 0.0, 1e-3]
-        fwhm: float
-            Full width at half maximum for peaks in eV
-        delta_omega: float
-            Energy resolution in eV
-        max_energy: float
-            Maximum excitation energy in eV
-        """
+        print ('Calculated photoabsorption spectrum saved to file "%s"' % spectrum_file)
 
-        if rank == 0:
-            strength = npy.array(kick_strength, dtype=float)
-
-            print ('Calculating photoabsorption spectrum from file "%s"' % dipole_moment_file)
-
-            f_file = file(spectrum_file, 'w')
-            dm_file = file(dipole_moment_file, 'r')
-            lines = dm_file.readlines()
-            n = len(lines)
-            dm = npy.zeros((n,3),dtype=float)
-            time = npy.zeros((n,),dtype=float)
-            for i in range(n):
-                data = lines[i].split()
-                time[i] = float(data[0])
-                dm[i,0] = float(data[2])
-                dm[i,1] = float(data[3])
-                dm[i,2] = float(data[4])
-            dm_file.close()
-
-            t = time - time[0]
-            dt = time[1] - time[0]
-            dm[:] = dm - dm[0]
-            nw = int(max_energy / delta_omega)
-            dw = delta_omega / 27.211
-            # f(w) = Nw exp(-w^2/2sigma^2)
-            sigma = fwhm / 27.211 / (2.* npy.sqrt(2.* npy.log(2.0)))
-            # f(t) = Nt exp(-t^2/2gamma^2)
-            gamma = 1.0 / sigma
-            kick_magnitude = npy.sum(strength**2)
-
-            # write comment line
-            f_file.write('# Total time = %lf fs, Time step = %lf as\n' % (n * dt * 24.1888/1000.0, dt *  24.1888))
-            f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
-            f_file.write('# FWHM = %lf eV = %lf Hartree <=> sigma = %lf eV\n' % (fwhm, fwhm/27.211, sigma*27.211))
-
-            # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
-            #                                * ( dm(t) - dm(0) )
-            alpha = 0
-            for i in range(nw):
-                w = i * dw
-                # x
-                alphax = npy.sum( npy.sin(t * w) 
-                                 * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
-                alphax *= \
-                    2 * dt / (2*npy.pi) / kick_magnitude * strength[0]
-                # y
-                alphay = npy.sum( npy.sin(t * w) 
-                                 * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
-                alphay *= \
-                    2 * dt / (2*npy.pi) / kick_magnitude * strength[1]
-                # z
-                alphaz = npy.sum( npy.sin(t * w) 
-                                 * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
-                alphaz *= \
-                    2 * dt / (2*npy.pi) / kick_magnitude * strength[2]
-
-                # f = 2 * omega * alpha
-                line = '%10.6lf %20.10le %20.10le %20.10le\n' \
-                    % ( w*27.211, 
-                       2*w*alphax / 27.211, 
-                        2*w*alphay / 27.211,
-                        2*w*alphaz / 27.211 )
-                f_file.write(line)
-
-                if (i % 100) == 0:
-                    print '.',
-                    sys.stdout.flush()
-
-            print ''
-            f_file.close()
-
-            print ('Calculated photoabsorption spectrum saved to file "%s"' % spectrum_file)
             
     # Make static method
     # photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
-
-        
         

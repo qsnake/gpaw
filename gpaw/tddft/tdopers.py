@@ -107,7 +107,7 @@ class TimeDependentHamiltonian:
             self.hamiltonian.my_nuclei[a].H_sp *= .5
 
         
-    def apply(self, kpt, psit, hpsit):
+    def apply(self, kpt, psit, hpsit, calculate_P_uni=True):
         """Applies the time-dependent Hamiltonian to the wavefunction psit of
         the k-point kpt.
         
@@ -117,12 +117,12 @@ class TimeDependentHamiltonian:
             the current k-point (kpt_u[index_of_k-point])
         psit: List of coarse grid
             the wavefuntions (on coarse grid) 
-            (kpt_u[index_of_k-point].psit_nG[index_of_wavefunc])
+            (kpt_u[index_of_k-point].psit_nG[indices_of_wavefunc])
         hpsit: List of coarse grid
             the resulting "operated wavefunctions" (H psit)
 
         """
-        self.hamiltonian.apply(psit, hpsit, kpt)
+        self.hamiltonian.apply(psit, hpsit, kpt, calculate_P_uni)
         if self.td_potential is not None:
             strength = self.td_potential.strength
             ExternalPotential().add_linear_field( self.pt_nuclei, psit, hpsit,
@@ -139,7 +139,7 @@ class AbsorptionKickHamiltonian:
     Hamiltonian to a wavefunction.
     """
     
-    def __init__(self, pt_nuclei, strength = [0.0, 0.0, 1e-4]):
+    def __init__(self, pt_nuclei, strength = [0.0, 0.0, 1e-3]):
         """ Create the AbsorptionKickHamiltonian-object.
 
         Parameters
@@ -193,7 +193,7 @@ class AbsorptionKickHamiltonian:
         """
         pass
         
-    def apply(self, kpt, psit, hpsit):
+    def apply(self, kpt, psit, hpsit, calculate_P_uni=True):
         """Applies the absorption kick Hamiltonian to the wavefunction psit of
         the k-point kpt.
         
@@ -203,7 +203,7 @@ class AbsorptionKickHamiltonian:
             the current k-point (kpt_u[index_of_k-point])
         psit: List of coarse grids
             the wavefuntions (on coarse grid) 
-            (kpt_u[index_of_k-point].psit_nG[index_of_wavefunc])
+            (kpt_u[index_of_k-point].psit_nG[indices_of_wavefunc])
         hpsit: List of coarse grids
             the resulting "operated wavefunctions" (H psit)
 
@@ -254,7 +254,7 @@ class TimeDependentOverlap:
         # !!! FIX ME !!! update overlap operator/projectors/...
         pass
     
-    def apply(self, kpt, psit, spsit):
+    def apply(self, kpt, psit, spsit, calculate_P_uni=True):
         """Applies the time-dependent overlap operator to the wavefunction 
         psit of the k-point kpt.
         
@@ -264,12 +264,12 @@ class TimeDependentOverlap:
             the current k-point (kpt_u[index_of_k-point])
         psit: List of coarse grids
             the wavefuntions (on coarse grid) 
-            (kpt_u[index_of_k-point].psit_nG[index_of_wavefunc])
+            (kpt_u[index_of_k-point].psit_nG[indices_of_wavefunc])
         spsit: List of coarse grids
             the resulting "operated wavefunctions" (S psit)
 
         """
-        self.overlap.apply(psit, spsit, kpt)
+        self.overlap.apply(psit, spsit, kpt, calculate_P_uni)
 
 
 

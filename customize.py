@@ -3,7 +3,7 @@
 #Here, one can override the default arguments, or append own 
 #arguments to default ones
 #To override use the form
-#     libraries = ['somelib',otherlib']
+#libraries = ['acml','gfortran']
 #To append use the form
 #     libraries += ['somelib',otherlib']
 
