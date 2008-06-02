@@ -147,8 +147,8 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
           if (rank == root)
             {
               memcpy(LONGP(a), b, n * sizeof(double));
-              free(b);
             }
+          free(b); // bug on BGP
         }
       Py_RETURN_NONE;
     }
@@ -224,8 +224,8 @@ static PyObject * mpi_max(MPIObject *self, PyObject *args)
           if (rank == root)
             {
               memcpy(LONGP(a), b, n * sizeof(double));
-              free(b);
             }
+          free(b); // bug on BGP
         }
       Py_RETURN_NONE;
     }
