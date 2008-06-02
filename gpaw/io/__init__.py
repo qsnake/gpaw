@@ -442,11 +442,7 @@ def read(paw, reader):
     nkpts = len(r.get('IBZKPoints'))
     nbands = len(r.get('Eigenvalues', 0, 0))
 
-    if nkpts == paw.nkpts:
-        if nbands != paw.band_comm.size * paw.nmybands:
-            raise RuntimeError("""Nbands of restart file incompatible
-                               for band parallelization %d != %d x %d"""
-                               % (nbands, paw.band_comm.size, paw.nmybands))
+    if nkpts == paw.nkpts and nbands == paw.band_comm.size * paw.nmybands:
         for kpt in paw.kpt_u:
             kpt.allocate(paw.nmybands)
             # Eigenvalues and occupation numbers:
