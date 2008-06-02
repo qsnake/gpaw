@@ -37,7 +37,7 @@ for symbol in setup_parameters:
         data[symbol] = {'structure': 'sc', 'volume': V}
 
 data['Fe']['magmom'] = 2.2
-#data['Co']['magmom'] = 1.5
+data['Co']['magmom'] = 1.5
 data['Ni']['magmom'] = 0.6
 
 class Bulk:

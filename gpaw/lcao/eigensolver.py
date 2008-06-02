@@ -12,6 +12,7 @@ class LCAO:
         self.initialized = False
 
     def initialize(self, paw):
+        self.timer = paw.timer
         self.nuclei = paw.nuclei
         self.my_nuclei = paw.my_nuclei
         self.comm = paw.gd.comm
@@ -23,7 +24,7 @@ class LCAO:
         self.band_comm = paw.band_comm
         self.dtype = paw.dtype
         self.initialized = True
-
+        
     def iterate(self, hamiltonian, kpt_u):
         if not hamiltonian.lcao_initialized:
             hamiltonian.initialize_lcao()
@@ -35,7 +36,10 @@ class LCAO:
             for kpt in kpt_u:
                 kpt.C_nm = npy.empty((self.nmybands, self.nao), self.dtype)
 
+        self.timer.start('LCAO: potential matrix')
         hamiltonian.calculate_effective_potential_matrix(self.Vt_skmm)
+        self.timer.stop('LCAO: potential matrix')
+
         for kpt in kpt_u:
             self.iterate_one_k_point(hamiltonian, kpt)
 
@@ -70,12 +74,18 @@ class LCAO:
             kpt.C_nm[:] = C_nm[n1:n2]
             kpt.eps_n[:] = eps_q[n1:n2]
         else:
-            self.eps_m[0] = 42
-            errorcode = diagonalize(H_mm, self.eps_m, self.S_mm)
-            assert self.eps_m[0] != 42
-            if errorcode != 0:
-                raise RuntimeError('Error code from dsyevd/zheevd: %d.' %
-                                   errorcode)
+            self.timer.start('LCAO: diagonalize')
+            if self.comm.rank == 0:
+                self.eps_m[0] = 42
+                info = diagonalize(H_mm, self.eps_m, self.S_mm)
+                assert self.eps_m[0] != 42
+                if info != 0:
+                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
+                
+            self.timer.stop('LCAO: diagonalize')
+
+            self.comm.broadcast(self.eps_m, 0)
+            self.comm.broadcast(H_mm, 0)
 
             kpt.C_nm[:] = H_mm[n1:n2]
             kpt.eps_n[:] = self.eps_m[n1:n2]

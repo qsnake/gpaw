@@ -184,7 +184,18 @@ class LCAOHamiltonian:
         for k in range(nkpts):
             P_mm = self.S_kmm[k].copy()
             p_m = npy.empty(self.nao)
-            diagonalize(P_mm, p_m)
+            self.timer.start('LCAO: diagonalize-test')
+            if self.gd.comm.rank == 0:
+                p_m[0] = 42
+                info = diagonalize(P_mm, p_m)
+                assert p_m[0] != 42
+                if info != 0:
+                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
+            self.timer.stop('LCAO: diagonalize-test')
+
+            self.gd.comm.broadcast(P_mm, 0)
+            self.gd.comm.broadcast(p_m, 0)
+
             self.thres = 1e-6
             if (p_m <= self.thres).any():
                 self.linear_kpts[k] = (P_mm, p_m)

@@ -149,7 +149,6 @@ class Density:
             if Nt != 0:
                 x = -(self.charge + Q) / Nt
                 self.nt_sG *= x
-
         else:
             Q_s = array([0.0, 0.0])
             for nucleus in self.my_nuclei:
