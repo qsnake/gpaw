@@ -3,9 +3,9 @@
 #Here, one can override the default arguments, or append own 
 #arguments to default ones
 #To override use the form
-#libraries = ['acml','gfortran']
+#     libraries = ['somelib','otherlib']
 #To append use the form
-#     libraries += ['somelib',otherlib']
+#     libraries += ['somelib','otherlib']
 
 
 #compiler = 'mpcc'
