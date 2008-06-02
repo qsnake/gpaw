@@ -66,6 +66,7 @@ class Hamiltonian(LCAOHamiltonian):
         if psolver is None:
             psolver = PoissonSolver(nn='M', relax='J')
         self.poisson = psolver
+        self.poisson_eps = 2e-10
 
         # The external potential
         vext_g = paw.input_parameters['external']
@@ -161,6 +162,7 @@ class Hamiltonian(LCAOHamiltonian):
         self.timer.start('Poisson')
         # npoisson is the number of iterations:
         self.npoisson = self.poisson.solve(self.vHt_g, density.rhot_g,
+                                           self.poisson_eps, 
                                            charge=-density.charge)
         self.timer.stop('Poisson')
 

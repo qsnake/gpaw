@@ -43,6 +43,9 @@ class TimeDependentHamiltonian:
         # internal smooth potential
         self.vt_sG = hamiltonian.gd.zeros(n=hamiltonian.nspins)
 
+        # Increase the accuracy of Poisson solver
+        self.hamiltonian.poisson_eps = 1e-12
+
         # external potential
         #if hamiltonian.vext_g is None:
         #    hamiltonian.vext_g = hamiltonian.finegd.zeros()
@@ -72,7 +75,6 @@ class TimeDependentHamiltonian:
 
         self.old_time = self.time = time
         self.hamiltonian.update(density)
-        
         
     def half_update(self, density, time):
         """Updates the time-dependent Hamiltonian, in such a way, that a
