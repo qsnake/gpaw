@@ -339,11 +339,13 @@ class PAW(PAWExtra, Output):
             self.kpt_u = None
             self.reuse_old_density = False
             self.initialize(atoms)
+            self.print_parameters()
             self.find_ground_state(atoms)
             return
 
         if not self.initialized:
             self.initialize(atoms)
+            self.print_parameters()
             self.find_ground_state(atoms)
             return
 
@@ -1220,9 +1222,9 @@ class PAW(PAWExtra, Output):
             self.density.starting_density_initialized = True
             
         self.print_init(pos_ac)
-        self.print_parameters()
         estimate_memory(self)
         if dry_run:
+            self.print_parameters()
             self.txt.flush()
             sys.exit()
 
