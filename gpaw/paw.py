@@ -859,6 +859,16 @@ class PAW(PAWExtra, Output):
         except (AttributeError, KeyError):
             pass
 
+        try:
+            datatype = r['DataType']
+        except (AttributeError, KeyError):
+            pass
+        else:
+            if datatype == 'Float':
+                self.dtype = float
+            else:
+                self.dtype = complex
+
         pos_ac = r.get('CartesianPositions')
         Z_a = npy.asarray(r.get('AtomicNumbers'), int)
         cell_cc = r.get('UnitCell')
@@ -1056,10 +1066,11 @@ class PAW(PAWExtra, Output):
         self.gamma = (len(self.bzk_kc) == 1 and
                       not npy.sometrue(self.bzk_kc[0]))
 
-        if self.gamma:
-            self.dtype = float
-        else:
-            self.dtype = complex
+        if not hasattr(self, 'dtype'):
+            if self.gamma:
+                self.dtype = float
+            else:
+                self.dtype = complex
                 
         type_a, basis_a = self.create_nuclei_and_setups(Z_a)
 
@@ -1108,7 +1119,6 @@ class PAW(PAWExtra, Output):
             p['parsize_bands'] = parsize_bands
 
         self.distribute_cpus(p['parsize'], p['parsize_bands'], N_c)
-        ## print "My bands", self.nmybands
 
         self.occupation.set_communicator(self.kpt_comm, self.band_comm)
 

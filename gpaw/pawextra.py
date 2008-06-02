@@ -48,29 +48,32 @@ class PAWExtra:
         global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
+        nn, band_rank = divmod(n, self.band_comm.size)
 
         psit_nG = self.kpt_u[u].psit_nG
         if psit_nG is None:
             raise RuntimeError('This calculator has no wave functions!')
 
         if self.world.size == 1:
-            return psit_nG[n][:]
+            return psit_nG[nn][:]
 
         if self.kpt_comm.rank == kpt_rank:
-            psit_G = self.gd.collect(psit_nG[n][:])
+            if self.band_comm.rank == band_rank:
+                psit_G = self.gd.collect(psit_nG[nn][:])
 
-            if kpt_rank == 0:
-                if self.master:
-                    return psit_G
+                if kpt_rank == MASTER and band_rank == MASTER:
+                    if self.master:
+                        return psit_G
 
-            # Domain master send this to the global master
-            if self.domain.comm.rank == 0:
-                self.kpt_comm.send(psit_G, 0, 1398)
+                # Domain master send this to the global master
+                if self.domain.comm.rank == MASTER:
+                    self.world.send(psit_G, MASTER, 1398)
 
         if self.master:
             # allocate full wavefunction and receive
             psit_G = self.gd.empty(dtype=self.dtype, global_array=True)
-            self.kpt_comm.receive(psit_G, kpt_rank, 1398)
+            world_rank = kpt_rank * self.domain.comm.size * self.band_comm.size + band_rank * self.domain.comm.size
+            self.world.receive(psit_G, world_rank, 1398)
             return psit_G
 
     def collect_eigenvalues(self, k=0, s=0):
@@ -82,7 +85,34 @@ class PAWExtra:
         global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
+        # Does this work correctly? Strides?
         return self.collect_array(self.kpt_u[u].eps_n, kpt_rank)
+
+        if kpt_rank == MASTER:
+            if self.band_comm.size == 1:
+                return self.kpt_u[u].eps_n
+                
+
+        if self.kpt_comm.rank == kpt_rank:
+            if not (kpt_rank == MASTER and self.master):
+                # Domain master send this to the global master
+                if self.domain.comm.rank == MASTER:
+                    self.world.send(self.kpt_u[u].eps_n, MASTER, 1301)
+        elif self.master:
+            eps_all_n = npy.zeros(self.nbands)
+            nstride = self.band_comm.size
+            eps_n = npy.zeros(self.nmybands)
+            r0 = 0
+            if kpt_rank == MASTER:
+                # Master has already the first slice
+                eps_all_n[0::nstride] = self.kpt_u[u].eps_n
+                r0 = 1
+            for r in range(r0, self.band_comm.size):
+                world_rank = kpt_rank * self.domain.comm.size * self.band_comm.size + r * self.domain.comm.size
+                self.world.receive(eps_n, world_rank, 1301)
+                eps_all_n[r::nstride] = eps_n
+
+            return eps_all_n
 
     def collect_occupations(self, k=0, s=0):
         """Return occupation array.
@@ -94,6 +124,30 @@ class PAWExtra:
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
         return self.collect_array(self.kpt_u[u].f_n, kpt_rank)
+
+        if kpt_rank == MASTER:
+            if self.band_comm.size == 1:
+                return self.kpt_u[u].f_n
+
+        if self.kpt_comm.rank == kpt_rank:
+            if not (kpt_rank == MASTER and self.master):
+                # Domain master send this to the global master
+                if self.domain.comm.rank == MASTER:
+                    self.world.send(self.kpt_u[u].f_n, MASTER, 1313)
+        elif self.master:
+            f_all_n = npy.zeros(self.nbands)
+            nstride = self.band_comm.size
+            f_n = npy.zeros(self.nbands)
+            r0 = 0
+            if kpt_rank == MASTER:
+                # Master has already the first slice
+                f_all_n[0::nstride] = self.kpt_u[u].f_n
+                r0 = 1
+            for r in range(r0, self.band_comm.size):
+                world_rank = kpt_rank * self.domain.comm.size * self.band_comm.size + r * self.domain.comm.size
+                self.world.receive(f_n, world_rank, 1313)
+                f_all_n[r::nstride] = f_n
+            return f_all_n
 
     def collect_array(self, a_n, kpt_rank):
         """Helper method for collect_eigenvalues and collect_occupations."""

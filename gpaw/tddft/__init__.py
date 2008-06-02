@@ -99,6 +99,10 @@ class TDDFT(PAW):
         self.attosec_to_autime = 1/24.188843265
         self.autime_to_attosec = 24.188843265
 
+
+        # Set initial time
+        self.time = 0.0
+
         # Initialize paw-object
         PAW.__init__(self,ground_state_file)
 
@@ -112,7 +116,8 @@ class TDDFT(PAW):
 
 
         # Convert PAW-object to complex
-        self.totype(complex);
+        if self.dtype == float:
+            self.totype(complex);
 
 
         self.text('')
@@ -126,9 +131,6 @@ class TDDFT(PAW):
         # No density mixing
         self.density.mixer = DummyMixer()
 
-        # Set initial time
-        self.time = 0.
-
         # Don't be too strict
         self.density.charge_eps = 1e-5
         self.text('Charge epsilon: ', self.density.charge_eps)
@@ -141,7 +143,6 @@ class TDDFT(PAW):
                                       td_potential )
         self.td_overlap = TimeDependentOverlap(self.overlap)
         self.td_density = TimeDependentDensity(self)
-
 
         # Solver for linear equations
         self.text('Solver: ', solver)
@@ -259,7 +260,12 @@ class TDDFT(PAW):
         
         if dipole_moment_file is not None:
             if rank == 0:
-                dm_file = file(dipole_moment_file,'w')
+                if self.time == 0.0:
+                    mode = 'w'
+                else:
+                    # We probably continue from restart
+                    mode = 'a'
+                dm_file = file(dipole_moment_file, mode)
 
         for i in range(iterations):
             # print something
@@ -288,16 +294,18 @@ class TDDFT(PAW):
 
             # restart data
             if restart_file is not None and ( (i+1) % dump_interval == 0 ):
-                #self.write(restart_file, 'all')
-                if rank == 0:
-                    print 'Warning: Writing restart files in TDDFT does not work yet.'
-                    print 'Continuing without writing restart file.'
+                self.write(restart_file, 'all')
+                # if rank == 0:
+                    # print 'Warning: Writing restart files in TDDFT does not work yet.'
+                    # print 'Continuing without writing restart file.'
 
         # close dipole moment file
         if dipole_moment_file is not None:
             if rank == 0:
                 dm_file.close()
 
+        if restart_file is not None:
+            self.write(restart_file, 'all')
         print ''
 
 
@@ -322,8 +330,11 @@ class TDDFT(PAW):
                             self.gd, self.timer )
         abs_kick.kick(self.kpt_u)
 
+    def __del__(self):
+        """Destructor"""
+        PAW.__del__(self)
 
-    def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength, fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
+def photoabsorption_spectrum(dipole_moment_file, spectrum_file, kick_strength, fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
         """ Calculates photoabsorption spectrum from the time-dependent
         dipole moment.
         
@@ -418,7 +429,7 @@ class TDDFT(PAW):
             print ('Calculated photoabsorption spectrum saved to file "%s"' % spectrum_file)
             
     # Make static method
-    photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
+    # photoabsorption_spectrum=staticmethod(photoabsorption_spectrum)
 
         
         

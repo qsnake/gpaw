@@ -158,6 +158,14 @@ def write(paw, filename, mode):
         w['EnergyError'] = paw.error['energy']
         w['EigenstateError'] = paw.error['eigenstates']
 
+        if paw.dtype == float:
+            w['DataType'] = 'Float'
+        else:
+            w['DataType'] = 'Complex'
+        # In time propagation, write current time
+        if hasattr(paw, 'time'):
+            w['Time'] = paw.time
+
         # Write fingerprint (md5-digest) for all setups:
         for setup in paw.setups:
             key = atomic_names[setup.Z] + 'Fingerprint'
@@ -176,19 +184,21 @@ def write(paw, filename, mode):
               dtype=dtype)
 
         all_P_uni = npy.empty((paw.nmyu, paw.nbands, nproj), paw.dtype)
+        nstride = paw.band_comm.size
         for kpt_rank in range(paw.kpt_comm.size):
-            i = 0
-            for nucleus in paw.nuclei:
-                ni = nucleus.get_number_of_partial_waves()
-                if kpt_rank == MASTER and nucleus.in_this_domain:
-                    P_uni = nucleus.P_uni
-                else:
-                    P_uni = npy.empty((paw.nmyu, paw.nbands, ni), paw.dtype)
-                    world_rank = nucleus.rank + kpt_rank * paw.domain.comm.size
-                    paw.world.receive(P_uni, world_rank, 300)
+            for band_rank in range(paw.band_comm.size):
+                i = 0
+                for nucleus in paw.nuclei:
+                    ni = nucleus.get_number_of_partial_waves()
+                    if kpt_rank == MASTER and band_rank == MASTER and nucleus.in_this_domain:
+                        P_uni = nucleus.P_uni
+                    else:
+                        P_uni = npy.empty((paw.nmyu, paw.nmybands, ni), paw.dtype)
+                        world_rank = nucleus.rank + kpt_rank * paw.domain.comm.size * paw.band_comm.size + band_rank * paw.domain.comm.size
+                        paw.world.receive(P_uni, world_rank, 300)
 
-                all_P_uni[:, :, i:i + ni] = P_uni
-                i += ni
+                    all_P_uni[:, band_rank::nstride, i:i + ni] = P_uni
+                    i += ni
 
             for u in range(paw.nmyu):
                 w.fill(all_P_uni[u])
@@ -236,15 +246,20 @@ def write(paw, filename, mode):
         for kpt_rank in range(paw.kpt_comm.size):
             for u in range(paw.nmyu):
                 s, k = divmod(u + kpt_rank * paw.nmyu, paw.nkpts)
-                if kpt_rank == MASTER:
-                    eps_n = paw.kpt_u[u].eps_n
-                else:
-                    eps_n = npy.empty(paw.nbands)
-                    paw.kpt_comm.receive(eps_n, kpt_rank, 4300)
-                w.fill(eps_n)
+                eps_all_n = npy.empty(paw.nbands)
+                nstride = paw.band_comm.size
+                for band_rank in range(paw.band_comm.size):
+                    if kpt_rank == MASTER and band_rank == MASTER:
+                        eps_all_n[0::nstride] = paw.kpt_u[u].eps_n
+                    else:
+                        eps_n = npy.empty(paw.nmybands)
+                        world_rank = kpt_rank * paw.domain.comm.size * paw.band_comm.size + band_rank * paw.domain.comm.size 
+                        paw.world.receive(eps_n, world_rank, 4300)
+                        eps_all_n[band_rank::nstride] = eps_n
+                w.fill(eps_all_n)
     elif paw.domain.comm.rank == MASTER:
         for kpt in paw.kpt_u:
-            paw.kpt_comm.send(kpt.eps_n, MASTER, 4300)
+            paw.world.send(kpt.eps_n, MASTER, 4300)
 
     # Write the occupation numbers:
     if paw.master:
@@ -253,15 +268,20 @@ def write(paw, filename, mode):
         for kpt_rank in range(paw.kpt_comm.size):
             for u in range(paw.nmyu):
                 s, k = divmod(u + kpt_rank * paw.nmyu, paw.nkpts)
-                if kpt_rank == MASTER:
-                    f_n = paw.kpt_u[u].f_n
-                else:
-                    f_n = npy.empty(paw.nbands)
-                    paw.kpt_comm.receive(f_n, kpt_rank, 4300)
-                w.fill(f_n)
+                f_all_n = npy.empty(paw.nbands)
+                nstride = paw.band_comm.size
+                for band_rank in range(paw.band_comm.size):
+                    if kpt_rank == MASTER and band_rank == MASTER:
+                        f_all_n[0::nstride] = paw.kpt_u[u].f_n
+                    else:
+                        f_n = npy.empty(paw.nmybands)
+                        world_rank = kpt_rank * paw.domain.comm.size * paw.band_comm.size + band_rank * paw.domain.comm.size 
+                        paw.world.receive(f_n, world_rank, 4301)
+                        f_all_n[band_rank::nstride] = f_n
+                w.fill(f_all_n)
     elif paw.domain.comm.rank == MASTER:
         for kpt in paw.kpt_u:
-            paw.kpt_comm.send(kpt.f_n, MASTER, 4300)
+            paw.world.send(kpt.f_n, MASTER, 4301)
 
     # Write the pseudodensity on the coarse grid:
     if paw.master:
@@ -411,6 +431,13 @@ def read(paw, reader):
     if not paw.fixmom:
         paw.occupation.set_fermi_level(r['FermiLevel'])
 
+    # Try to read the current time step in time-propagation
+    if hasattr(paw, 'time'):
+        try:
+            paw.time = r['Time']
+        except KeyError:
+            pass
+        
     # Wave functions and eigenvalues:
     nkpts = len(r.get('IBZKPoints'))
     nbands = len(r.get('Eigenvalues', 0, 0))
