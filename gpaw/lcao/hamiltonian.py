@@ -21,10 +21,10 @@ class LCAOHamiltonian:
         self.tci = None  # two-center integrals
         self.lcao_initialized = False
         self.ng = ng
-        
+
         # Derivative overlaps should be evaluated lazily rather than
         # during initialization  to save memory/time. This is not implemented
-        # yet, so presently we disable this.  Change behaviour by setting 
+        # yet, so presently we disable this.  Change behaviour by setting
         # this boolean.
         self.lcao_forces = False # XXX
 
@@ -43,7 +43,7 @@ class LCAOHamiltonian:
         P_kmi     Overlap between basis-functions and projectors
         ======    ==============================================
         """
-        
+
         nkpts = len(self.ibzk_kc)
 
         self.nao = 0
@@ -55,7 +55,7 @@ class LCAOHamiltonian:
             ni = nucleus.get_number_of_partial_waves()
             nucleus.P_kmi = npy.zeros((nkpts, self.nao, ni), self.dtype)
             if self.lcao_forces:
-                nucleus.dPdR_kcmi = npy.zeros((nkpts, 3, self.nao, ni), 
+                nucleus.dPdR_kcmi = npy.zeros((nkpts, 3, self.nao, ni),
                                               self.dtype)
                 # XXX Create "masks" on the nuclei which specify signs
                 # and zeros for overlap derivatives.
@@ -70,13 +70,13 @@ class LCAOHamiltonian:
 
         if self.tci is None:
             self.tci = TwoCenterIntegrals(self.setups, self.ng)
-                   
+
         self.S_kmm = npy.zeros((nkpts, self.nao, self.nao), self.dtype)
         self.T_kmm = npy.zeros((nkpts, self.nao, self.nao), self.dtype)
         if self.lcao_forces:
-            self.dSdR_kcmm = npy.zeros((nkpts, 3, self.nao, self.nao), 
+            self.dSdR_kcmm = npy.zeros((nkpts, 3, self.nao, self.nao),
                                        self.dtype)
-            self.dTdR_kcmm = npy.zeros((nkpts, 3, self.nao, self.nao), 
+            self.dTdR_kcmm = npy.zeros((nkpts, 3, self.nao, self.nao),
                                        self.dtype)
 
         cell_c = self.gd.domain.cell_c
@@ -89,7 +89,7 @@ class LCAOHamiltonian:
                                 for phit in n.setup.phit_j])
                            for n in self.nuclei], skin=0, sorted=True)
         nl.update(atoms)
-        
+
         for a, nucleusa in enumerate(self.nuclei):
             sposa = nucleusa.spos_c
             i, offsets = nl.get_neighbors(a)
@@ -97,9 +97,9 @@ class LCAOHamiltonian:
                 assert b >= a
                 selfinteraction = (a == b and offset.any())
                 ma = nucleusa.m
-                nucleusb = self.nuclei[b] 
+                nucleusb = self.nuclei[b]
                 sposb = nucleusb.spos_c + offset
-                
+
                 d = -cell_c * (sposb - sposa)
                 r = sqrt(npy.dot(d, d))
                 rlY_lm = []
@@ -115,12 +115,12 @@ class LCAOHamiltonian:
                             L = l**2 + m
                             drlYdR_mc[m, :] = nablaYL(L, d)
                         drlYdR_lmc.append(drlYdR_mc)
-                    
+
                 phase_k = npy.exp(-2j * pi * npy.dot(self.ibzk_kc, offset))
                 phase_k.shape = (-1, 1, 1)
 
                 # Calculate basis-basis overlaps:
-                self.st(a, b, r, d, rlY_lm, drlYdR_lmc, phase_k, 
+                self.st(a, b, r, d, rlY_lm, drlYdR_lmc, phase_k,
                         selfinteraction)
 
                 # Calculate basis-projector function overlaps:
@@ -141,11 +141,11 @@ class LCAOHamiltonian:
         # so far.  Better fill out the rest
         if self.lcao_forces:
             tri1 = npy.tri(self.nao)
-            tri2 = npy.tri(self.nao, None, -1)            
+            tri2 = npy.tri(self.nao, None, -1)
             def tri2full(matrix, op=1):
                 return tri1 * matrix + (op * tri2 * matrix).transpose().conj()
 
-            for S_mm, T_mm, dSdR_cmm, dTdR_cmm in zip(self.S_kmm, 
+            for S_mm, T_mm, dSdR_cmm, dTdR_cmm in zip(self.S_kmm,
                                                       self.T_kmm,
                                                       self.dSdR_kcmm,
                                                       self.dTdR_kcmm):
@@ -162,7 +162,7 @@ class LCAOHamiltonian:
             # not necessary here
             #self.Theta_kmm = self.S_kmm.copy()
             self.dThetadR_kcmm = self.dSdR_kcmm.copy()
-            
+
         # Add adjustment from O_ii, having already calculated <phi_m1|phi_m2>:
         #
         #                         -----
@@ -176,7 +176,7 @@ class LCAOHamiltonian:
             dO_ii = nucleus.setup.O_ii
             for S_mm, P_mi in zip(self.S_kmm, nucleus.P_kmi):
                 S_mm += npy.dot(P_mi, npy.inner(dO_ii, P_mi).conj())
-                
+
         # Near-linear dependence check. This is done by checking the
         # eigenvalues of the overlap matrix S_kmm. Eigenvalues close
         # to zero mean near-linear dependence in the basis-set.
@@ -200,14 +200,14 @@ class LCAOHamiltonian:
             if (p_m <= self.thres).any():
                 self.linear_kpts[k] = (P_mm, p_m)
 
-        # Debug stuff        
+        # Debug stuff
         if 0:
             print 'Hamiltonian S_kmm[0] diag'
             print self.S_kmm[0].diagonal()
             print 'Hamiltonian S_kmm[0]'
             for row in self.S_kmm[0]:
                 print ' '.join(['%02.03f' % f for f in row])
-            print 'Eigenvalues:'    
+            print 'Eigenvalues:'
             print npy.linalg.eig(self.S_kmm[0])[0]
 
         self.lcao_initialized = True
@@ -230,7 +230,7 @@ class LCAOHamiltonian:
                 lb = phitb.get_angular_momentum_number()
                 mb2 = mb + 2 * lb + 1
                 (s_mm, t_mm, dSdR_cmm, dTdR_cmm) = \
-                    self.tci.st_overlap3(ida, idb, la, lb, r, R, rlY_lm, 
+                    self.tci.st_overlap3(ida, idb, la, lb, r, R, rlY_lm,
                                          drlYdR_lmc)
 
                 if self.gamma:
@@ -250,7 +250,7 @@ class LCAOHamiltonian:
                     self.S_kmm[:, mb:mb2, ma:ma2] += s_kmm
                     self.T_kmm[:, mb:mb2, ma:ma2] += t_kmm
 
-                if self.lcao_forces: 
+                if self.lcao_forces:
                     # the below is more or less copy-paste of the above
                     # XXX do this in a less silly way
                     if self.gamma:
@@ -296,7 +296,7 @@ class LCAOHamiltonian:
                 idb = (setupb.symbol, jb)
                 lb = ptb.get_angular_momentum_number()
                 ib2 = ib + 2 * lb + 1
-                p_mi, dPdR_cmi = self.tci.p(ida, idb, la, lb, r, R, 
+                p_mi, dPdR_cmi = self.tci.p(ida, idb, la, lb, r, R,
                                             rlY_lm, drlYdR_lm)
                 if self.gamma:
                     nucleusb.P_kmi[0, ma:ma2, ib:ib2] += p_mi
@@ -314,16 +314,16 @@ class LCAOHamiltonian:
 
                 ib = ib2
             ma = ma2
-        
+
     def calculate_effective_potential_matrix(self, Vt_skmm):
         Vt_skmm[:] = 0.0
-        
+
         # Count number of boxes:
         nb = 0
         for nucleus in self.nuclei:
             if nucleus.phit_i is not None:
                 nb += len(nucleus.phit_i.box_b)
-        
+
         # Array to hold basis set index:
         m_b = npy.empty(nb, int)
 
@@ -340,9 +340,9 @@ class LCAOHamiltonian:
         for nucleus in self.nuclei:
             phit_i = nucleus.phit_i
             if phit_i is not None:
-                if debug:	
+                if debug:
                     box_b = [box.lfs for box in phit_i.box_b]
-                else:	
+                else:
                     box_b = phit_i.box_b
                 b2 = b1 + len(box_b)
                 m_b[b1:b2] = m
@@ -353,10 +353,10 @@ class LCAOHamiltonian:
             m += nucleus.get_number_of_atomic_orbitals()
 
         assert b1 == nb
-        
+
         overlap(lfs_b, m_b, phase_bk, self.vt_sG, Vt_skmm)
 
-    # Methods not in use any more                    
+    # Methods not in use any more
     def p_overlap(self, R_c, i1, pos1, id1, l1, m1, P_mi):
         i2 = 0
         for nucleus2 in self.nuclei:
@@ -427,7 +427,7 @@ class LCAOHamiltonian:
 
         self.S_mm = npy.zeros((self.nao, self.nao))
         rk(self.gd.dv, self.phi_mG, 0.0, self.S_mm)
-        
+
         # Filling up the upper triangle:
         for m in range(self.nao - 1):
             self.S_mm[m, m:] = self.S_mm[m:, m]
@@ -443,4 +443,4 @@ class LCAOHamiltonian:
 
         # Filling up the upper triangle:
         for m in range(self.nao - 1):
-            self.T_mm[m, m:] = self.T_mm[m:, m] 
+            self.T_mm[m, m:] = self.T_mm[m:, m]

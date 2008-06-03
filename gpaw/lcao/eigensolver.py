@@ -24,7 +24,7 @@ class LCAO:
         self.band_comm = paw.band_comm
         self.dtype = paw.dtype
         self.initialized = True
-        
+
     def iterate(self, hamiltonian, kpt_u):
         if not hamiltonian.lcao_initialized:
             hamiltonian.initialize_lcao()
@@ -55,7 +55,7 @@ class LCAO:
             H_mm += npy.dot(P_mi, npy.inner(dH_ii, P_mi).conj())
 
         self.comm.sum(H_mm)
-        
+
         H_mm += hamiltonian.T_kmm[k]
 
         self.S_mm[:] = hamiltonian.S_kmm[k]
@@ -64,7 +64,7 @@ class LCAO:
         size = self.band_comm.size
         n1 = rank * self.nmybands
         n2 = n1 + self.nmybands
-            
+
         # Check and remove linear dependence for the current k-point
         if k in hamiltonian.linear_kpts:
             print '*Warning*: near linear dependence detected for k=%s' %k
@@ -81,7 +81,7 @@ class LCAO:
                 assert self.eps_m[0] != 42
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
-                
+
             self.timer.stop('LCAO: diagonalize')
 
             self.comm.broadcast(self.eps_m, 0)
@@ -109,10 +109,10 @@ class LCAO:
            |   |
            |   |
            m   |
-           |   |   
-           |   |   
+           |   |
+           |   |
              . |
-             .        
+             .
 
         """
 
@@ -122,20 +122,28 @@ class LCAO:
         q = len(s_q)
         p = self.nao - q
         P_mq = P_mm[p:, :].T.conj()
-        
+
         # Filling up the upper triangle
         for m in range(self.nao - 1):
             H_mm[m, m:] = H_mm[m:, m].conj()
-        
+
         H_qq = npy.dot(P_mq.T.conj(), npy.dot(H_mm, P_mq))
-        
+
         eps_q = npy.zeros(q)
-        eps_q[0] = 42
-        errorcode = diagonalize(H_qq, eps_q, S_qq)
+
+        self.timer.start('LCAO: diagonalize-remove')
+        if self.comm.rank == 0:
+            eps_q[0] = 42
+            info = diagonalize(H_qq, eps_q, S_qq)
+            assert eps_q[0] != 42
+            if info != 0:
+                raise RuntimeError('Failed to diagonalize: info=%d' % info)
+
+        self.timer.stop('LCAO: diagonalize-remove')
+
+        self.comm.broadcast(eps_q, 0)
+        self.comm.broadcast(H_qq, 0)
+
         C_nq = H_qq
-        assert eps_q[0] != 42
-        if errorcode != 0:
-            raise RuntimeError('Error code from dsyevd/zheevd: %d.' %
-                               errorcode)
         C_nm = npy.dot(C_nq, P_mq.T.conj())
-        return eps_q, C_nm 
+        return eps_q, C_nm
