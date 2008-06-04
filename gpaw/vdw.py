@@ -71,7 +71,7 @@ class VanDerWaals:
                 nxc = {'revPBE': 4, 'RPBE': 5}[xcname]
                 self.dExc_semilocal = (
                     calc.GetNetCDFEntry('EvaluateCorrelationEnergy')[-1, 1] -
-                    calc.GetNetCDFEntry('EvaluateCorrelationEnergy'[-1, nxc]))
+                    calc.GetNetCDFEntry('EvaluateCorrelationEnergy')[-1, nxc])
 
             self.dExc_semilocal /= Hartree
 
