@@ -17,6 +17,7 @@ from gpaw.lrtddft.apmb import ApmB
 from gpaw.utilities import packed_index
 from gpaw.utilities.lapack import diagonalize
 from gpaw.xc_functional import XC3DGrid, XCFunctional
+from gpaw.lrtddft.spectrum import spectrum
 
 """This module defines a linear response TDDFT-class."""
 
@@ -64,6 +65,10 @@ class LrTDDFT(ExcitationList):
                  ):
 
         self.txt=txt
+
+        if calculator is not None:
+            if not calculator.wave_functions_initialized:
+                calculator.initialize_wave_functions()
 
         if filename is None:
 
@@ -395,7 +400,25 @@ class LrTDDFTExcitation(Excitation):
         s+='  rest=%.3g'%rest
         return s
         
+def photoabsorption_spectrum(excitation_list, spectrum_file=None,
+                             e_min=None, e_max=None, delta_e = None,
+                             folding='Gauss', width=0.1, comment=None):
+    """Uniform absorption spectrum interface
 
+    Parameters:
+    ================= ===================================================
+    ``exlist``        ExcitationList
+    ``spectrum_file`` File name for the output file, STDOUT if not given
+    ``e_min``         min. energy, set to cover all energies if not given
+    ``e_max``         max. energy, set to cover all energies if not given
+    ``delta_e``       energy spacing
+    ``energyunit``    Energy unit, default 'eV'
+    ``folding``       Gauss (default) or Lorentz
+    ``width``         folding width in terms of the chosen energyunit
+    ================= ===================================================
+    all energies in [eV]
+    """
 
-
-
+    spectrum(exlist=excitation_list, filename=spectrum_file, emin=e_min, emax=e_max,
+             de=delta_e, energyunit='eV', folding=folding, width=width,
+             comment=comment)
