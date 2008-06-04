@@ -10,7 +10,7 @@ import numpy as npy
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.blas import dotc
 
-from gpaw.mpi import rank
+from gpaw.mpi import rank, run
 
 from gpaw.tddft.utils import MultiBlas
 
@@ -146,10 +146,12 @@ class ExplicitCrankNicolson(Propagator):
         for kpt in kpt_u:
             self.kpt = kpt
             self.timer.start('Apply time-dependent operators')
-            self.td_hamiltonian.apply(self.kpt, kpt.psit_nG, self.hpsit)
-            # Note: calculate_P_uni=True required by AbsorptionKick
-            # Fix applying linear field before changing
-            self.td_overlap.apply(self.kpt, kpt.psit_nG, self.spsit, calculate_P_uni=True)
+            run([nucleus.calculate_projections(kpt)
+                 for nucleus in self.td_hamiltonian.pt_nuclei])
+            self.td_hamiltonian.apply(self.kpt, kpt.psit_nG, self.hpsit,
+                                      calculate_P_uni=False)
+            self.td_overlap.apply(self.kpt, kpt.psit_nG, self.spsit,
+                                  calculate_P_uni=False)
             self.timer.stop('Apply time-dependent operators')
 
             #psit[:] = self.spsit - .5J * self.hpsit * time_step
@@ -174,10 +176,11 @@ class ExplicitCrankNicolson(Propagator):
 
         """
         self.timer.start('Apply time-dependent operators')
-        self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
-        # Note: calculate_P_uni=True required by AbsorptionKick
-        # Fix applying linear field before changing
-        self.td_overlap.apply(self.kpt, psi, self.spsit, calculate_P_uni=True)
+        run([nucleus.calculate_projections(kpt)
+             for nucleus in self.td_hamiltonian.pt_nuclei])
+        self.td_hamiltonian.apply(self.kpt, psi, self.hpsit,
+                                  calculate_P_uni=False)
+        self.td_overlap.apply(self.kpt, psi, self.spsit, calculate_P_uni=False)
         self.timer.stop('Apply time-dependent operators')
 
         #  psin[:] = self.spsit + .5J * self.time_step * self.hpsit 
@@ -449,8 +452,12 @@ class SemiImplicitCrankNicolson(Propagator):
 
             self.kpt = kpt
             self.timer.start('Apply time-dependent operators')
-            self.td_hamiltonian.apply(self.kpt, rhs_kpt.psit_nG, self.hpsit)
-            self.td_overlap.apply(self.kpt, rhs_kpt.psit_nG, self.spsit, calculate_P_uni=False)
+            run([nucleus.calculate_projections(kpt, rhs_kpt.psit_nG)
+                 for nucleus in self.td_hamiltonian.pt_nuclei])
+            self.td_hamiltonian.apply(self.kpt, rhs_kpt.psit_nG, self.hpsit,
+                                      calculate_P_uni=False)
+            self.td_overlap.apply(self.kpt, rhs_kpt.psit_nG, self.spsit,
+                                  calculate_P_uni=False)
             self.timer.stop('Apply time-dependent operators')
 
             #self.mblas.multi_zdotc(self.shift, rhs_kpt.psit_nG, self.hpsit, nvec)
@@ -491,7 +498,10 @@ class SemiImplicitCrankNicolson(Propagator):
         
         """
         self.timer.start('Apply time-dependent operators')
-        self.td_hamiltonian.apply(self.kpt, psi, self.hpsit)
+        run([nucleus.calculate_projections(kpt, psi)
+             for nucleus in self.td_hamiltonian.pt_nuclei])
+        self.td_hamiltonian.apply(self.kpt, psi, self.hpsit,
+                                  calculate_P_uni=False)
         self.td_overlap.apply(self.kpt, psi, self.spsit, calculate_P_uni=False)
         self.timer.stop('Apply time-dependent operators')
 
