@@ -176,7 +176,7 @@ class ExplicitCrankNicolson(Propagator):
 
         """
         self.timer.start('Apply time-dependent operators')
-        run([nucleus.calculate_projections(kpt)
+        run([nucleus.calculate_projections(self.kpt, psi)
              for nucleus in self.td_hamiltonian.pt_nuclei])
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit,
                                   calculate_P_uni=False)
@@ -498,7 +498,7 @@ class SemiImplicitCrankNicolson(Propagator):
         
         """
         self.timer.start('Apply time-dependent operators')
-        run([nucleus.calculate_projections(kpt, psi)
+        run([nucleus.calculate_projections(self.kpt, psi)
              for nucleus in self.td_hamiltonian.pt_nuclei])
         self.td_hamiltonian.apply(self.kpt, psi, self.hpsit,
                                   calculate_P_uni=False)
