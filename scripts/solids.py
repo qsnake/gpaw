@@ -74,7 +74,17 @@ def wurtzite(symbol1, symbol2, a, u=None, c=None):
     if u is None:
         u = 3 / 8.
         
-    pass
+    atoms = Atoms(symbols='%s4%s4' % (symbol1, symbol2), pbc=True,
+                  positions=[(0.00, 0.00,  0.00),
+                             (1/2., 1/2.,  0.00),
+                             (0.00, 1/3.,  1/2.),
+                             (1/2., 5/6.,  1/2.),
+                             (0.00, 0.00,     u),
+                             (1/2., 1/2.,     u),
+                             (0.00, 1/3.,u+1/2.),
+                             (1/2., 5/6.,u+1/2.),])
+    atoms.set_cell([a, a * sqrt(3), c], scale_atoms=True)
+    return atoms
 
 def c7(symbol1, symbol2, a):
     """C7"""
@@ -203,3 +213,6 @@ def alloy(structure, symbol1, symbol2, a):
 
 #Be = hcp('Be', 2.29)
 #view(Be)
+
+#ZnO = wurtzite('Zn', 'O', 3.25, c=5.23).repeat([2,2,2])
+#view(ZnO)
