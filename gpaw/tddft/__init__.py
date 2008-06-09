@@ -16,6 +16,7 @@ from gpaw.paw import PAW
 from gpaw.mixer import BaseMixer
 
 from gpaw.mpi import rank
+from gpaw.version import version
 
 from gpaw.preconditioner import Preconditioner
 
@@ -468,6 +469,8 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file, folding='Gauss',
         kick_magnitude = npy.sum(strength**2)
 
         # write comment line
+        f_file.write('# Photoabsorption spectrum from real-time propagation')
+        f_file.write('# GPAW version %f' % version)
         f_file.write('# Total time = %lf fs, Time step = %lf as\n' % (n * dt * 24.1888/1000.0, dt *  24.1888))
         f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
         f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> FWHM = %lf eV\n' % (folding, sigma*27.211, sigma, fwhm*27.211))

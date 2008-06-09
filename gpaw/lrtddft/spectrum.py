@@ -5,6 +5,8 @@ from math import exp, pi, sqrt
 from ase import Hartree as Ha
 from gpaw.gauss import Gauss, Lorentz
 
+from gpaw.version import version
+
 def spectrum(exlist=None,
              filename=None,
              emin=None,
@@ -59,6 +61,9 @@ def spectrum(exlist=None,
         out = open( filename, 'w' )
     if comment:
         print >> out, '#', comment
+
+    print >> f_file, '# Photoabsorption spectrum from linear response TD-DFT'
+    print >> f_file, '# GPAW version %f' % version
 
     # energy unit
 
