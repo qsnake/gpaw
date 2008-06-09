@@ -39,6 +39,7 @@ parameters = {
  'Ar': {'core': '[Ne]',   'rcut': 1.6},
  'K' : {'core': '[Ne]',   'rcut': [2.5, 2.1, 2.1]},
  'Ca': {'core': '[Ne]',   'rcut': [2.0, 1.7]},
+#'Sc': Missing
  'Ti': {'core': '[Ne]3s', 'rcut': [2.4, 1.8, 1.8],
         'vbar': ('poly', 2.3), 'rcutcomp': 2.3},
  'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.0],
@@ -59,26 +60,42 @@ parameters = {
  'Rb': {'core': '[Ar]3d', 'rcut': [2.8, 2.4, 2.4]},
  'Sr': {'core': '[Ar]3d', 'rcut': [2.4, 2.4, 2.3],
         'extra':{1: [0.0], 2: [0.0]}},
+#'Y' : Missing 
  'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
  'Nb': {'core': '[Kr]',   'rcut': [2.9, 2.9, 2.6]},
  'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.5]},
+#'Tc': Radioactive 
  'Ru': {'core': '[Kr]',   'rcut': 2.6},
  'Rh': {'core': '[Kr]',   'rcut': 2.5},
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
  'Ag': {'core': '[Kr]',   'rcut': 2.45},
  'Cd': {'core': '[Kr]',   'rcut': 2.5},
  'Sn': {'core': '[Kr]',   'rcut': 2.5},
+#'Sb' : Missing 
+#'Te' : Missing 
+#'I'  : Missing 
+#'Xe' : Missing 
  'Cs': {'core': '[Kr]4d', 'rcut': [2.2, 2.0]},
  'Ba': {'core': '[Kr]4d', 'rcut': 2.2, 'extra': {1: [0.0], 2: [0.0, 1.0]}},
  'La': {'core': '[Kr]4d', 'rcut': [2.3, 2.0, 1.9]},
 # 'La': {'core': '[Kr]4d5s', 'rcut': [2.3, 2.0, 1.9]},
+#'Lu' : Missing 
+#'Hf' : Missing 
  'Ta': {'core': '[Xe]4f', 'rcut': 2.8},
  'W':  {'core': '[Xe]4f', 'rcut': 2.8},
+#'Re' : Missing 
+#'Os' : Missing 
  'Ir': {'core': '[Xe]4f', 'rcut': [2.3, 2.6, 2.0],
         'vbar': ('poly', 2.1), 'rcutcomp': 2.3},
  'Pt': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3]},
  'Au': {'core': '[Xe]4f', 'rcut': 2.5},
+#'Hg' : Missing 
+#'Tl' : Missing 
  'Pb': {'core': '[Xe]4f', 'rcut': [2.4,2.6,2.4]}
+#'Bi' : Missing 
+#'Po' : Missing 
+#'At' : Missing 
+#'Rn' : Missing 
  }
 
 # Extra setups
