@@ -235,6 +235,17 @@ class Calculator(PAW):
         if result is not None:
             return result * self.Ha
 
+    def initial_wannier(self, initialwannier, kpointgrid, fixedstates,
+                        edf, spin):
+        """Initial guess for the shape of wannier functions.
+
+        Use initial guess for wannier orbitals to determine rotation
+        matrices U and C.
+        """
+        raise NotImplementedError
+
+        return c, U
+
     def get_wannier_localization_matrix(self, nbands, dirG, kpoint,
                                         nextkpoint, G_I, spin):
         """Calculate integrals for maximally localized Wannier functions."""
@@ -256,24 +267,13 @@ class Calculator(PAW):
             self.density.calculate_local_magnetic_moments()
             for a, nucleus in enumerate(self.nuclei):
                 magmom_a[a] = nucleus.mom
-            # scale the moments to sum up tp the total magnetic moment
+            # scale the moments to sum up to the total magnetic moment
             M = magmom_a.sum()
             if abs(M) > 1e-4:
                 scale = self.occupation.magmom / M
                 magmom_a *= scale
         return magmom_a
         
-    def get_fermi_level(self):
-        """Return the Fermi-level."""
-        e = self.occupation.get_fermi_level()
-        if e is None:
-            # Zero temperature calculation - return vacuum level:
-            e = 0.0
-        return e * self.Ha
-
-    def get_grid_spacings(self):
-        return self.a0 * self.gd.h_c
-
     def get_number_of_grid_points(self):
         return self.gd.N_c
 
