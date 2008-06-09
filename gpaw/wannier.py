@@ -137,3 +137,39 @@ def single_zeta(paw, spin):
     assert projections_nj.shape[0] >= projections_nj.shape[1]
     return projections_nj
 
+
+from gpaw.localized_functions import create_localized_functions
+from gpaw.spline import Spline
+    
+def initial_guess(calc, initwan):
+    """Initial guess for Wannier functions
+
+    initwan = [[spos_c], l, a]
+    """
+    nbf = 0
+    for spos_c, l, a in initwan:
+        nbf += 2 * l + 1
+    f_kni = npy.zeros((len(calc.ibzk_kc), calc.nbands, nbf), complex)
+
+    nbf = 0
+    for spos_c,l,a in initwan:
+        if len(spos_c) == 1:
+            spos_c = spos_ac[spos_c[0]]
+
+        a /= calc.a0
+        cutoff = 10 * a
+        x = npy.arange(0.0, cutoff, cutoff / 500.0)
+        rad_g = npy.exp(-x*x / a)
+        rad_g[-2:] = 0.0
+        functions = [Spline(l, cutoff, rad_g)]
+        lf = create_localized_functions(functions, calc.gd, spos_c,
+                                        dtype=complex)
+        lf.set_phase_factors(calc.ibzk_kc)
+        nlf = 2 * l + 1
+        nbands = calc.nbands
+        nkpts = len(calc.ibzk_kc)
+        for k in range(nkpts):
+            lf.integrate(calc.kpt_u[k].psit_nG[:],
+                         f_kni[k, :, nbf:nbf + nlf], k=k)
+        nbf += nlf
+    return f_kni.conj()
