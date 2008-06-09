@@ -346,9 +346,11 @@ class Nucleus:
             i += degeneracy
             j += 1
 
-        if magmom != 0:
-            raise RuntimeError('Bad magnetic moment %g for %s atom!' %
-                               (magmom, self.setup.symbol))
+        #These lines disable the calculation of charged atoms!
+        #Therefore I commented them. -Mikael
+        #if magmom != 0:
+        #    raise RuntimeError('Bad magnetic moment %g for %s atom!'
+        # % (magmom, self.setup.symbol))
         assert i == niao
 
         return f_si

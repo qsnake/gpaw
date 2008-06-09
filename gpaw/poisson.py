@@ -16,6 +16,8 @@ from gpaw.utilities.gauss import Gaussian
 class PoissonSolver:
     def __init__(self, nn='M', relax='GS'):
         self.nn = nn
+
+        self.charged_periodic_correction = None
         
         # Relaxation method
         if relax == 'GS':
@@ -96,7 +98,31 @@ class PoissonSolver:
             # System is charged and periodic. Subtract a homogeneous
             # background charge
             background = charge / npy.product(self.gd.domain.cell_c)
-            return self.solve_neutral(phi, rho - background, eps=eps)
+
+            iters = self.solve_neutral(phi, rho - background, eps=eps)
+            if self.charged_periodic_correction == None:
+                # Load necessary attributes
+                if not hasattr(self, 'rho_gauss'):
+                    print "+---------------------------------------------------------------------------------------+"
+                    print "| Calculating charged periodic correction according to eq 45 of ref:                    |"
+                    print "| The Journal of Chemical Physics vol. 122, 243102, 2005                                |"
+                    print "| ...using difference in energy between non periodic and periodic gaussian test charge. |"
+                    print "+---------------------------------------------------------------------------------------+"
+                    from gpaw.utilities.gauss import Gaussian
+                    gauss = Gaussian(self.gd)
+                    self.rho_gauss = gauss.get_gauss(0)
+                    self.phi_gauss = gauss.get_gauss_pot(0)
+                    periodic_gauss = self.gd.zeros()
+                    neutral_gauss = self.rho_gauss / npy.sqrt(4*npy.pi) - 1. / npy.product(self.gd.domain.cell_c) 
+                    self.solve_neutral(periodic_gauss, neutral_gauss, eps=1e-10)
+                    E_periodic = self.gd.integrate(periodic_gauss * neutral_gauss)
+                    E_single = self.gd.integrate(self.rho_gauss * self.phi_gauss) / (4*npy.pi)
+                    self.charged_periodic_correction = (E_single - E_periodic)
+                    print "Potential shift will be ", self.charged_periodic_correction, " Ha."
+            
+            iters = self.solve_neutral(phi, rho - background, eps=eps)
+            phi += charge * self.charged_periodic_correction
+            return iters            
         
         elif abs(charge) > maxcharge and not self.gd.domain.pbc_c.any():
             # The system is charged and in a non-periodic unit cell.
