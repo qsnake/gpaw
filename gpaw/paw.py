@@ -439,7 +439,22 @@ class PAW(PAWExtra, Output):
         if len(self.old_energies) == 3:
             self.old_energies.pop(0)
         self.old_energies.append(self.Etot)
-        
+
+    def calculate_magnetic_moments(self):
+        """Calculate the local magnetic moments within augmentation spheres.
+        Local magnetic moments are scaled to sum up to the total magnetic
+        moment"""
+
+        if self.nspins == 2:
+            self.density.calculate_local_magnetic_moments()
+            for a, nucleus in enumerate(self.nuclei):
+                self.magmom_a[a] = nucleus.mom
+            # scale the moments to sum up tp the total magnetic moment
+            M = self.magmom_a.sum()
+            if abs(M) > 1e-4:
+                scale = self.occupation.magmom / M
+                self.magmom_a *= scale
+
     def set_positions(self, atoms=None):
         """Update the positions of the atoms.
 
@@ -1004,7 +1019,7 @@ class PAW(PAWExtra, Output):
         cell_cc = atoms.get_cell() / Bohr
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
-        magmom_a = atoms.get_initial_magnetic_moments()
+        self.magmom_a = atoms.get_initial_magnetic_moments()
         
         try:
             tag_a = atoms.get_tags()
@@ -1028,7 +1043,7 @@ class PAW(PAWExtra, Output):
         else:
             self.bzk_kc = npy.array(kpts)
         
-        magnetic = bool(npy.sometrue(magmom_a))  # numpy!
+        magnetic = bool(npy.sometrue(self.magmom_a))  # numpy!
 
         self.spinpol = p['spinpol']
         if self.spinpol is None:
@@ -1090,7 +1105,7 @@ class PAW(PAWExtra, Output):
             # Reduce the the k-points to those in the irreducible part of
             # the Brillouin zone:
             self.symmetry, self.weight_k, self.ibzk_kc = reduce_kpoints(
-                self.bzk_kc, pos_ac, Z_a, type_a, magmom_a, basis_a,
+                self.bzk_kc, pos_ac, Z_a, type_a, self.magmom_a, basis_a,
                 self.domain, p['usesymm'])
             self.nkpts = len(self.ibzk_kc)
         
@@ -1112,7 +1127,7 @@ class PAW(PAWExtra, Output):
             self.kT /= Hartree
             
         self.initialize_occupation(p['charge'], p['nbands'],
-                                   self.kT, p['fixmom'], magmom_a)
+                                   self.kT, p['fixmom'])
 
         if parsize is not None:  # command-line option
             p['parsize'] = parsize
@@ -1186,11 +1201,8 @@ class PAW(PAWExtra, Output):
         if self.reuse_old_density:
             nt_sG = self.density.nt_sG
             D_asp = {}
-            P_auni = {}
             for nucleus in self.my_nuclei:
                 D_asp[nucleus.a] = nucleus.D_sp
-                if self.kpt_u is not None:
-                    P_auni[nucleus.a] = nucleus.P_uni
 
         self.my_nuclei = []
         self.pt_nuclei = [None]
@@ -1205,8 +1217,7 @@ class PAW(PAWExtra, Output):
             nucleus.set_position(spos_c, self.domain, self.my_nuclei,
                                  self.nspins, self.nmyu, self.nmybands)
 
-        self.density = Density(self, magmom_a)#???
-
+        self.density = Density(self, self.magmom_a.copy())#???
         self.hamiltonian = Hamiltonian(self)        
         self.overlap = Overlap(self)
 
@@ -1214,8 +1225,6 @@ class PAW(PAWExtra, Output):
             self.density.initialize()
             for a, D_sp in D_asp.items():
                 self.nuclei[a].D_sp[:] = D_sp
-            for a, P_uni in P_auni.items():
-                self.nuclei[a].P_uni[:] = P_uni
             self.density.nt_sG[:] = nt_sG
             #self.density.scale()
             self.density.interpolate_pseudo_density()
@@ -1230,7 +1239,7 @@ class PAW(PAWExtra, Output):
 
         self.initialized = True
 
-    def initialize_occupation(self, charge, nbands, kT, fixmom, magmom_a):
+    def initialize_occupation(self, charge, nbands, kT, fixmom):
         """Sets number of valence orbitals and initializes occupation."""
 
         # Sum up the number of valence electrons:
@@ -1256,7 +1265,7 @@ class PAW(PAWExtra, Output):
 
         # check number of bands ?  XXX
         
-        M = magmom_a.sum()
+        M = self.magmom_a.sum()
 
         if self.nbands <= 0:
             self.nbands = int(self.nvalence + M + 0.5) // 2 + (-self.nbands)

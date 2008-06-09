@@ -242,12 +242,11 @@ class Output:
             t('Center of Charge: %s' % (dipole * self.a0))
 
         if self.nspins == 2:
-            magmom_a = self.get_magnetic_moments()
-
+            self.calculate_magnetic_moments()
             t()
             t('Total Magnetic Moment: %f' % self.occupation.magmom)
             t('Local Magnetic Moments:')
-            for a, mom in enumerate(magmom_a):
+            for a, mom in enumerate(self.magmom_a):
                 t(a, mom)
             t()
 

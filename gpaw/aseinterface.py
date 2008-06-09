@@ -262,17 +262,7 @@ class Calculator(PAW):
 
     def get_magnetic_moments(self, atoms=None):
         """Return the local magnetic moments within augmentation spheres"""
-        magmom_a = npy.zeros(self.natoms)
-        if self.nspins == 2:
-            self.density.calculate_local_magnetic_moments()
-            for a, nucleus in enumerate(self.nuclei):
-                magmom_a[a] = nucleus.mom
-            # scale the moments to sum up to the total magnetic moment
-            M = magmom_a.sum()
-            if abs(M) > 1e-4:
-                scale = self.occupation.magmom / M
-                magmom_a *= scale
-        return magmom_a
+        return self.magmom_a
         
     def get_number_of_grid_points(self):
         return self.gd.N_c
