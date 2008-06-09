@@ -215,6 +215,9 @@ class Density:
             else:
                 self.mixer = Mixer()#mix, self.gd, self.nspins)
 
+        if self.nspins == 1 and isinstance(mixer, MixerSum):
+            raise RuntimeError('Cannot use MixerSum with nspins==1')
+
         self.mixer.initialize(paw)
         
     def update_pseudo_charge(self):
