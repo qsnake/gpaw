@@ -198,6 +198,7 @@ class XAS:
                 fwhm2 = linbroad[0]
                 lin_e1 = linbroad[1]
                 lin_e2 = linbroad[2]
+                print "fwhm", fwhm, fwhm2, lin_e1, lin_e2
                 for n, eps in enumerate(eps_n):
                     if eps < lin_e1:
                         alpha = 4*log(2) / fwhm**2
@@ -208,10 +209,10 @@ class XAS:
                     elif eps >= lin_e2:
                         alpha =  4*log(2) / fwhm2**2
                         
-                        x = -alpha * (e - eps)**2
-                        x = npy.clip(x, -100.0, 100.0)
-                        a_c += npy.outer(sigma2_cn[:, n],
-                                        (alpha / pi)**0.5 * npy.exp(x))
+                    x = -alpha * (e - eps)**2
+                    x = npy.clip(x, -100.0, 100.0)
+                    a_c += npy.outer(sigma2_cn[:, n],
+                                     (alpha / pi)**0.5 * npy.exp(x))
                 
             return  e, a_c
 
