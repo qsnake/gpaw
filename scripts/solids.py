@@ -60,15 +60,7 @@ def perovskite(symbol1, symbol2, symbol3, a):
     return atoms
 
 def wurtzite(symbol1, symbol2, a, u=None, c=None):
-    """Wurtzite - Zinc Oxide
-    
-    hexagonal lattice with basis
-
-    species 1 in (0, 0, 0) and (1/3., 1/3. 1/2.)
-    species 2 in (0, 0, u) and (1/3., 1/3. u+1/2.)
-    
-    in primitive vector coordinates
-    """
+    """Wurtzite - Zinc Oxide"""
     if c is None:
         c = sqrt(8 / 3.) * a
     if u is None:
@@ -125,20 +117,13 @@ def fluorite(symbol1, symbol2, a):
     return atoms
 
 def zincblende(symbol1, symbol2, a):
-    """Zinc Blende - Zinc Sulfide
-
-    XXX This can be reduced to 4 atoms?!
-    """
-    atoms = Atoms(symbols='%s4%s4' % (symbol1, symbol2), pbc=True,
+    """Zinc Blende - Zinc Sulfide"""
+    atoms = Atoms(symbols='%s2%s2' % (symbol1, symbol2), pbc=True,
                   positions=[(.0, .0, .0),
-                             (.0, .5, .5),
-                             (.5, .0, .5),
-                             (.5, .5, .0),
-                             (.25, .25, .25),
-                             (.25, .75, .75),
-                             (.75, .25, .75),
-                             (.75, .75, .25),])
-    atoms.set_cell([a, a, a], scale_atoms=True)
+                             (.5, .5, .5),
+                             (.0, .5, .75),
+                             (.5, .0, .25),])
+    atoms.set_cell([a / sqrt(2), a / sqrt(2), a], scale_atoms=True)
     return atoms
 
 def cesiumchloride(symbol1, symbol2, a):
@@ -196,8 +181,8 @@ def sc(symbol, a):
 def alloy(structure, symbol1, symbol2, a):
     return eval(structure)(symbol1, symbol2, a)
 
-#SiO = zincblende('Si', 'O', 7.)
-#view(SiO)
+#ZnS = zincblende('Zn', 'S', 5.41).repeat([2,2,2])
+#view(ZnS)
 
 #NaCl = rocksalt('Na', 'Cl', 5.64)
 #view(NaCl)
