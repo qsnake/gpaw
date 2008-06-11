@@ -277,6 +277,9 @@ class TDDFT(PAW):
                 line = '# Kick = [%22.12le, %22.12le, %22.12le]\n' \
                     % (self.kick_strength[0], self.kick_strength[1], self.kick_strength[2])
                 dm_file.write(line)
+                line = '# %15s %15s %22s %22s %22s\n' \
+                        % ('time', 'norm', 'dmx', 'dmy', 'dmz')
+                dm_file.write(line)
                 dm_file.flush()
 
         for i in range(iterations):
@@ -440,7 +443,8 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file, folding='Gauss',
         columns = columns[0].split(',')
         kick_strength = npy.array([eval(columns[0]),eval(columns[1]),eval(columns[2])], dtype=float)
         strength = npy.array(kick_strength, dtype=float)
-        # Remove first line
+        # Remove first two lines
+        lines.pop(0)
         lines.pop(0)
         print 'Using kick strength = ', strength
         # Continue with dipole moment data
@@ -469,12 +473,13 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file, folding='Gauss',
         kick_magnitude = npy.sum(strength**2)
 
         # write comment line
-        f_file.write('# Photoabsorption spectrum from real-time propagation')
-        f_file.write('# GPAW version %f' % version)
+        f_file.write('# Photoabsorption spectrum from real-time propagation\n')
+        f_file.write('# GPAW version: ' + str(version) + '\n')
         f_file.write('# Total time = %lf fs, Time step = %lf as\n' % (n * dt * 24.1888/1000.0, dt *  24.1888))
         f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
         f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> FWHM = %lf eV\n' % (folding, sigma*27.211, sigma, fwhm*27.211))
 
+        f_file.write('#  om (eV) %14s%20s%20s\n' % ('Sx', 'Sy', 'Sz'))
         # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
         #                                * ( dm(t) - dm(0) )
         alpha = 0

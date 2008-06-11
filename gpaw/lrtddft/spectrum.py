@@ -62,8 +62,8 @@ def spectrum(exlist=None,
     if comment:
         print >> out, '#', comment
 
-    print >> f_file, '# Photoabsorption spectrum from linear response TD-DFT'
-    print >> f_file, '# GPAW version %f' % version
+    print >> out, '# Photoabsorption spectrum from linear response TD-DFT'
+    print >> out, '# GPAW version:', version
 
     # energy unit
 

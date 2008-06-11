@@ -21,6 +21,8 @@ from gpaw.lrtddft.spectrum import spectrum
 
 """This module defines a linear response TDDFT-class."""
 
+__all__ = ['LrTDDFT', 'photoabsorption_spectrum']
+
 class LrTDDFT(ExcitationList):
     """Linear Response TDDFT excitation class
     
