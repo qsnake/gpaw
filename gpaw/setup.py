@@ -146,6 +146,7 @@ class Setup:
         rcut2 = 2 * rcutmax
         gcutmax = 1 + int(rcutmax * ng / (rcutmax + beta))
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
+        self.gcut2 = gcut2
 
         # Find cutoff for core density:
         if self.Nc == 0:
@@ -171,9 +172,9 @@ class Setup:
         self.ni = ni
 
         np = ni * (ni + 1) // 2
-        nq = nj * (nj + 1) // 2
+        self.nq = nq = nj * (nj + 1) // 2
  
-        lcut = max(l_j)
+        self.lcut = lcut = max(l_j)
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
 
@@ -215,7 +216,7 @@ class Setup:
         dr_g = dr_g[:gcut2].copy()
         phi_jg = npy.array([phi_g[:gcut2].copy() for phi_g in phi_jg])
         phit_jg = npy.array([phit_g[:gcut2].copy() for phit_g in phit_jg])
-        nc_g = nc_g[:gcut2].copy()
+        self.nc_g = nc_g = nc_g[:gcut2].copy()
         nct_g = nct_g[:gcut2].copy()
         vbar_g = data.vbar_g[:gcut2].copy()
         tauc_g = data.tauc_g[:gcut2].copy()
@@ -254,6 +255,7 @@ class Setup:
         for l in range(lmax + 1):
             g_lg[l] /= npy.dot(r_g**(l + 2) * dr_g, g_lg[l])
 
+        self.g_lg = g_lg
         n_qg = npy.zeros((nq, gcut2))
         nt_qg = npy.zeros((nq, gcut2))
         q = 0
@@ -267,7 +269,7 @@ class Setup:
         for l in range(lmax + 1):
             Delta_lq[l] = npy.dot(n_qg - nt_qg, r_g**(2 + l) * dr_g)
 
-        Lmax = (lmax + 1)**2
+        self.Lmax = Lmax = (lmax + 1)**2
         self.Delta_pL = npy.zeros((np, Lmax))
         for l in range(lmax + 1):
             L = l**2
@@ -289,7 +291,7 @@ class Setup:
         wnc_g = H(nc_g, l=0)
         wnct_g = H(nct_g, l=0)
 
-        wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
+        self.wg_lg = wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
 
         wn_lqg = [npy.array([H(n_qg[q], l) for q in range(nq)])
                   for l in range(2 * lcut + 1)]

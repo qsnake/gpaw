@@ -13,7 +13,7 @@ import numpy as npy
 
 from gpaw.utilities.complex import real, cc
 from gpaw.localized_functions import create_localized_functions
-from gpaw.utilities import unpack, pack, pack2, unpack2
+from gpaw.utilities import unpack, pack, pack2, unpack2, hartree
 import gpaw.mpi as mpi
 
 
@@ -481,6 +481,100 @@ class Nucleus:
                 yield None
 
             yield 0.0, 0.0, 0.0, 0.0, 0.0
+
+    def calculate_all_electron_potential(self, vHt_g):
+        nspins = len(self.D_sp)
+        nj = self.setup.gcut2
+        Lmax = self.setup.Lmax
+        lmax = self.setup.lmax
+        corr = self.setup.xc_correction
+        xc = self.setup.xc_correction.xc
+
+        # Calculate the generalized gaussian integrals over smooth ES potential
+
+        W_L = npy.zeros(Lmax)
+        W_L2 = npy.zeros(Lmax)
+        W_L3 = npy.zeros(Lmax)
+        self.ghat_L.integrate(vHt_g, W_L)
+        # The KS potential expanded in spherical harmonics
+        vKS_sLg = npy.zeros((nspins, Lmax, nj))
+
+        n_sg  = npy.zeros((nspins, nj)) # density
+        nt_sg = npy.zeros((nspins, nj)) # density
+        v_sg  = npy.zeros((nspins, nj)) # potential
+
+        vH_g = npy.zeros(nj)
+        vHt1_g = npy.zeros(nj)
+
+        def H(n_g, l):
+            v_g = npy.zeros(nj)
+            hartree(l, n_g * corr.rgd.r_g * corr.rgd.dr_g, self.setup.beta, self.setup.ng, v_g)
+            v_g[1:] /= corr.rgd.r_g[1:]
+            v_g[0] = v_g[1]
+            return v_g
+
+        # Calculate poisson solutions for radial functions
+        wn_lqg = [npy.array([H(corr.n_qg[q], l) for q in range(self.setup.nq)])
+                  for l in range(2 * self.setup.lcut + 1)]
+        
+        wnt_lqg = [npy.array([H(corr.nt_qg[q], l) for q in range(self.setup.nq)])
+                   for l in range(2 * self.setup.lcut + 1)]
+
+        # Prepare expansion of Hartree-potential
+        i_sw = corr.prepare_slater_integration(self.D_sp.sum(0) , wn_lqg, wnt_lqg)
+        # The core Hartree-potential
+        wc_g = H(self.setup.nc_g, 0) / sqrt(4*pi)
+        # First calculate the exchange potential
+        # Calculate the spin-density expansion
+        i_sn = [ corr.prepare_density_integration(D_p, add_core=True) for D_p in self.D_sp ]
+        print "D_sp", self.D_sp
+        #print "Q_L", self.Q_L
+        for i in corr.get_slices():
+            y, (w, Y_L) = i
+            for s, i_n in enumerate(i_sn):
+                corr.expand_density(i, i_n, n_sg[s], nt_sg[s]) #nt_sg not used
+                v_sg[s][:] = 0.0
+
+            if nspins == 1:
+                xc.get_energy_and_potential(n_sg[0], v_sg[0])
+            else:
+                xc.get_energy_and_potential(n_sg[0], v_sg[0], n_sg[1], v_sg[1])
+
+            corr.expand_density(i, i_sw, vH_g, vHt1_g)
+
+            L = 0
+            for l in range(0, lmax):
+                for m in range(0, l*2+1):
+                    W_L[L] -= w * Y_L[L] * npy.dot(vHt1_g, self.setup.g_lg[l] * corr.rgd.dv_g) 
+                    W_L[L] -= w * self.Q_L[L] * Y_L[L] * npy.dot(self.setup.g_lg[l], self.setup.wg_lg[l]) * sqrt(4*pi)
+                    L += 1
+            
+            vH_g[1:] += -self.setup.Z / corr.rgd.r_g[1:]
+            vH_g[0] = vH_g[1]
+            vH_g += wc_g
+
+            # Add the electrostatic potential
+            for s, v_g in enumerate(v_sg):
+                v_sg[:] += vH_g 
+
+            # Integrate wrt spherical harmonics
+            for s, v_g in enumerate(v_sg):
+                for L, Y in enumerate(Y_L):
+                    if L < Lmax:
+                        vKS_sLg[s][L] += w * Y * v_sg[s] * 4 * pi
+
+        # Add the correction from outside the sphere
+
+        print "W_L", W_L
+
+        L = 0
+        for l in range(0, lmax):
+            for m in range(0, l*2+1):
+                vKS_sLg[s][L][:] += W_L[L] * corr.rgd.r_g ** l 
+                L += 1
+
+        return vKS_sLg
+            
 
     def update_core_eigenvalues(self, vHt_g):
         # TODO: How to calculate just W_0? Get it from calculate hamiltonian?
