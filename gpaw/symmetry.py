@@ -8,7 +8,7 @@ from gpaw import debug
 
 class Symmetry:
     def __init__(self, Z_a, type_a, magmom_a, basis_a,
-                 domain, tolerance=1e-9):
+                 domain, tolerance=1e-11):
         """Symmetry object.
 
         Two atoms can only be identical if they have the same atomic
