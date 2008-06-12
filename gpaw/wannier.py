@@ -138,23 +138,23 @@ def single_zeta(paw, spin):
     return projections_nj
 
 
-from gpaw.localized_functions import create_localized_functions
-from gpaw.spline import Spline
-    
 def initial_guess(calc, initwan):
     """Initial guess for Wannier functions
 
     initwan = [[spos_c], l, a]
     """
+    from gpaw.localized_functions import create_localized_functions
+    from gpaw.spline import Spline
+
     nbf = 0
     for spos_c, l, a in initwan:
         nbf += 2 * l + 1
     f_kni = npy.zeros((len(calc.ibzk_kc), calc.nbands, nbf), complex)
 
     nbf = 0
-    for spos_c,l,a in initwan:
+    for spos_c, l, a in initwan:
         if len(spos_c) == 1:
-            spos_c = spos_ac[spos_c[0]]
+            spos_c = calc.nuclei[spos_c[0]].spos_c
 
         a /= calc.a0
         cutoff = 10 * a
