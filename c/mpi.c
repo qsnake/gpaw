@@ -140,15 +140,24 @@ static PyObject * mpi_sum(MPIObject *self, PyObject *args)
           double* b = 0;
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-          // if (rank == root) // bug on BGP
-            b = GPAW_MALLOC(double, n);
+#ifdef GPAW_BGP
+          b = GPAW_MALLOC(double, n); // bug on BGP
+#else
+          if (rank == root)
+               b = GPAW_MALLOC(double, n);
+#endif
           // XXX Use MPI_IN_PLACE!!
           MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_SUM, root, self->comm);
           if (rank == root)
             {
               memcpy(LONGP(a), b, n * sizeof(double));
             }
+#ifdef GPAW_BGP
           free(b); // bug on BGP
+#else
+          if (rank == root)
+               free(b);
+#endif
         }
       Py_RETURN_NONE;
     }
@@ -217,15 +226,24 @@ static PyObject * mpi_max(MPIObject *self, PyObject *args)
           double* b = 0;
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-          // if (rank == root) // bug on BGP
-            b = GPAW_MALLOC(double, n);
+#ifdef GPAW_BGP
+          b = GPAW_MALLOC(double, n); // bug on BGP
+#else
+          if (rank == root)
+               b = GPAW_MALLOC(double, n);
+#endif
           // XXX Use MPI_IN_PLACE!!
           MPI_Reduce(LONGP(a), b, n, MPI_DOUBLE, MPI_MAX, root, self->comm);
           if (rank == root)
             {
               memcpy(LONGP(a), b, n * sizeof(double));
             }
+#ifdef GPAW_BGP
           free(b); // bug on BGP
+#else
+          if (rank == root)
+               free(b);
+#endif
         }
       Py_RETURN_NONE;
     }
