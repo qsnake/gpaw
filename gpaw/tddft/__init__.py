@@ -114,6 +114,8 @@ class TDDFT(PAW):
             nucleus.ready = False
         self.set_positions()
         self.initialize_wave_functions()
+        # Don't be too strict
+        self.density.charge_eps = 1e-5
         self.density.update_pseudo_charge()
 
 
@@ -133,8 +135,6 @@ class TDDFT(PAW):
         # No density mixing
         self.density.mixer = DummyMixer()
 
-        # Don't be too strict
-        self.density.charge_eps = 1e-5
         self.text('Charge epsilon: ', self.density.charge_eps)
 
         # Time-dependent variables and operators
