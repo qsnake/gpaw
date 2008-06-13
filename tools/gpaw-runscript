@@ -29,9 +29,12 @@ hosts = { 'batman'             : 'pbs',
           'sepeli.csc.fi'      : 'sepeli'
           }
 
+platforms = { 'aix5' : 'loadleveler' }
+
 env = {'PYTHONPATH'      : None,
        'GPAW_PYTHON'     : None, 
-       'GPAW_SETUP_PATH' : None
+       'GPAW_SETUP_PATH' : None,
+       'GPAW_MAIL'       : None
        }
 
 set = defaults
@@ -50,6 +53,26 @@ def dhms(secs):
     s = secs % 60
     dhms[3] = int(s+.5)
     return dhms
+
+def hms(secs):
+    """return hours,minutes and seconds"""
+    hms = [0,0,0]
+    hms[0] = int(secs // 3600)
+    s = secs % 3600
+    hms[1] = int(s // 60)
+    s = secs % 60
+    hms[2] = int(s+.5)
+    return hms
+
+def hms_string(secs):
+    """return hours,minutes and seconds string, e.g. 02:00:45"""
+    l = hms(secs)
+    def extend10(n):
+        if n<10:
+	    return '0' + str(n)
+        else:
+            return str(n)
+    return extend10(l[0]) + ':' + extend10(l[1]) + ':' + extend10(l[2])
 
 def s_from_dhms(time):
     """return seconds from dhms"""
@@ -83,6 +106,36 @@ class RunScript:
         eval(call)
         f.close()
         print name,"written"
+
+    def loadleveler(self, f, set, env):
+        print >> f,"#!/bin/bash"
+	if set['nodes'] > 1:
+            print >> f, "# @ job_type=parallel"
+	else:
+            print >> f, "# @ job_type=serial"
+        # ibm nodes contain 32 cpus
+        nodes = int(set['nodes'] / 32)
+	if nodes == 0:
+            print >> f, '# @ node = 1'
+        else:
+            if nodes * 32 != int(set['nodes']):
+                raise RuntimeError("! use a multiple of 32 cpus !")
+            print >> f, '# @ node =', nodes
+        print >> f, '# @ total_tasks =', set['nodes']
+        print >> f, '# @ wall_clock_limit =', hms_string(set['time']) 
+##        print >> f, "#PBS -N", set['name']
+        print >> f, '# @ output = ', (set['out'] + '.$(jobid).$(stepid)')
+        print >> f, '# @ error = ', (set['err'] + '.$(jobid).$(stepid)')
+        print >> f, '# @ notify_user =', str(env['GPAW_MAIL'])
+        print >> f, '# @ queue'
+        print >> f
+        print >> f, "export GPAW_SETUP_PATH=" + str(env['GPAW_SETUP_PATH'])
+        print >> f, "export PYTHONPATH=$PYTHONPATH:"+env['PYTHONPATH']
+        print >> f, "export GPAW_PYTHON=" + str(env['GPAW_PYTHON'])
+        print >> f
+        print >> f, 'cd', set['wd']
+        print >> f, 'poe $GPAW_PYTHON', set['script']
+
 
     def louhi(self,f,set,env):
         size=int((set['nodes']+1)/2)
@@ -335,6 +388,9 @@ else:
     if hosts.has_key(host):
         set['qsys']=hosts[host]
         print 'hostname',host,'found,',
+    elif platforms.has_key(sys.platform):
+	set['qsys'] = platforms[sys.platform]
+        print 'platform', sys.platform, 'found,',
     else:
         print "Host "+str(host)+" unknown, try -q option. Allowed names are:"
         p = re.compile('__')
