@@ -69,7 +69,7 @@ parameters = {
  'Rh': {'core': '[Kr]',   'rcut': 2.5},
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
  'Ag': {'core': '[Kr]',   'rcut': 2.45},
- 'Cd': {'core': '[Kr]',   'rcut': 2.5},
+ 'Cd': {'core': '[Kr]',   'rcut': [2.1, 2.5, 2.0]},
  'Sn': {'core': '[Kr]',   'rcut': 2.5},
 #'Sb' : Missing 
 #'Te' : Missing 
