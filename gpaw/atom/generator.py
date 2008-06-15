@@ -798,6 +798,7 @@ class Generator(AllElectron):
                                                   setup.lcorehole)
             setup.core_hole_e = self.e_j[self.jcorehole]
             setup.core_hole_e_kin = self.Ekincorehole
+            setup.fcorehole = self.fcorehole
 
         if self.ghost:
             raise RuntimeError('Ghost!')
