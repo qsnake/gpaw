@@ -5,6 +5,7 @@ import numpy as npy
 from ase import Atom, Atoms
 from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
+from gpaw.io.cc1 import read_cc1
 from ase.io.cube import read_cube
 from ase import read as ase_read
 from gpaw.utilities.vector import Vector3d
@@ -121,7 +122,9 @@ class Cluster(Atoms):
             filetype = filename.split('.')[-1]
         filetype.lower()
 
-        if filetype == 'cube':
+        if filetype == 'cc1':
+            loa = read_cc1(filename)
+        elif filetype == 'cube':
             loa = read_cube(filename)
         elif filetype == 'vmol':
             from gpaw.utilities.viewmol import Trajectory
