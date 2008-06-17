@@ -21,7 +21,7 @@ from gpaw.atom.filter import Filter
 parameters = {
  'H' : {'rcut': 0.9},
  'He': {'rcut': 1.5},
- 'Li': {'core': '[He]',   'rcut': 1.9},
+ 'Li': {'core': '[He]',   'rcut': 2.0},
  'Be': {'core': '[He]',   'rcut': 1.5},
  'B' : {'core': '[He]',   'rcut': 1.2},
  'C' : {'core': '[He]',   'rcut': 1.2},
