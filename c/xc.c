@@ -264,6 +264,7 @@ XCFunctional_CalculateSpinPolarized(XCFunctionalObject *self, PyObject *args)
 				    &dexadrs, &dexada2);
 	vb_g[g] += self->correction(par, nb, rsb, 4.0 * ab2_g[g], 
 				    &dexbdrs, &dexbda2);
+	deda2_g[g] = 0.0;  /* avoid correction used in python gga code */
 	dedaa2_g[g] = 0.0; /* avoid correction used in python gga code */
 	dedab2_g[g] = 0.0; /* avoid correction used in python gga code */
       }
