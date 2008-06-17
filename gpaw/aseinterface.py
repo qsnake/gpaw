@@ -62,6 +62,29 @@ class Calculator(PAW):
         """Return the stress for the current state of the ListOfAtoms."""
         raise NotImplementedError
 
+    def calculation_required(self, atoms, quantities):
+        if 'stress' in quantities:
+            quantities.remove('stress')
+
+        if len(quantities) == 0:
+            return False
+
+        if not (self.initialized and self.converged):
+            return True
+
+        if (len(atoms) != len(self.atoms) or
+            (atoms.get_positions() != self.atoms.get_positions()).any() or
+            (atoms.get_atomic_numbers() !=
+             self.atoms.get_atomic_numbers()).any() or
+            (atoms.get_cell() != self.atoms.get_cell()).any() or
+            (atoms.get_pbc() != self.atoms.get_pbc()).any()):
+            return True
+
+        if 'forces' in quantities:
+            return self.F_ac is None
+
+        return False
+        
     def get_number_of_bands(self):
         """Return the number of bands."""
         return self.nbands 
