@@ -40,8 +40,8 @@ parameters = {
  'K' : {'core': '[Ne]',   'rcut': [2.5, 2.1, 2.1]},
  'Ca': {'core': '[Ne]',   'rcut': [2.0, 1.7]},
 #'Sc': Missing
- 'Ti': {'core': '[Ne]3s', 'rcut': [2.4, 1.8, 1.8],
-        'vbar': ('poly', 2.3), 'rcutcomp': 2.3},
+ 'Ti': {'core': '[Ne]', 'rcut': [2.4, 2.0, 2.0],
+        'vbar': ('f', 1.8), 'rcutcomp': 2.3},
  'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.0],
         'vbar': ('poly', 2.3), 'rcutcomp': 2.5},
  'Cr': {'core': '[Ar]',   'rcut': [2.2, 2.3, 2.1]},
