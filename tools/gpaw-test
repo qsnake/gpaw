@@ -129,7 +129,7 @@ class TestAtom:
                 x = h * j / (2 * negg - 2)
                 atom[0].x = x
                 try:
-                    self.Eegg[i, j] = calc.get_potential_energy(
+                    self.Eegg[i, j] = calc.get_potential_energy(atom,
                         force_consistent=True)
                 except ConvergenceError:
                     sys.stdout.write('E')
@@ -169,7 +169,7 @@ class TestAtom:
                 q = q0 * (1 + j * 0.02)
                 dimer.positions[1] = (q, q, q)
                 try:
-                    self.Edimer[i, j + 3] = dimer.get_potential_energy(
+                    self.Edimer[i, j + 3] = calc.get_potential_energy(dimer,
                         force_consistent=True)
                 except ConvergenceError:
                     sys.stdout.write('E')
