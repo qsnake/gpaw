@@ -1073,15 +1073,19 @@ if __name__ == '__main__':
 
     # Pt and Au needs to be done non-scalar-relatistic first:
     for symbol in 'Pt Au'.split():
-        g = Generator(symbol, 'LDA', scalarrel=False, nofiles=False)
-        g.run(exx=True, **parameters[symbol])
+        if not os.path.isfile(symbol + '.restart'):
+            AllElectron(symbol, 'LDA', scalarrel=False, nofiles=False).run()
 
     # Special case for Ir also:
-    g = Generator('Ir', 'LDA', scalarrel=False, nofiles=False)
-    g.run(exx=True, **{'core': '[Xe]4f', 'rcut': [2.5, 2.6, 2.5],
-                       'vbar': ('poly', 2.1), 'rcutcomp': 2.3})
+    if not os.path.isfile('Ir.restart'):
+        AllElectron('Ir', 'LDA', scalarrel=False, nofiles=False).run()
 
-    for xcname in ['LDA', 'PBE']:
+    # ... and Ta and W:
+    if not os.path.isfile('Ta.restart') or not os.path.isfile('W.restart'):
+        AllElectron('Re', 'LDA', scalarrel=False, nofiles=False).run()
+        os.system('cp Re.restart Ta.restart; cp Re.restart W.restart')
+        
+    for xcname in ['LDA', 'PBE', 'RPBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + XCFunctional(xcname).get_name()
             if os.path.isfile(filename):
