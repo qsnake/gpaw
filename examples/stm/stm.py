@@ -10,7 +10,7 @@ if len(argv) > 2:
 else:
     z = 2.5
     
-atoms = Calculator(filename, txt=None).get_atoms()
+atoms, calc = restart(filename, txt=None)
 stm = STM(atoms, symmetries=[0, 1, 2])
 c = stm.get_averaged_current(z)
 
