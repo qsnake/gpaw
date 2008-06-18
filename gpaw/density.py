@@ -339,7 +339,7 @@ class Density:
         for nucleus in self.nuclei:
             #locmom += nucleus.mom[0]
             mom = array([0.0])
-            if nucleus.stepf is not None:
+            if hasattr(nucleus, 'stepf') and nucleus.stepf is not None:
                 nucleus.stepf.integrate(spindensity, mom)
                 nucleus.mom = array(nucleus.mom + mom[0])
             nucleus.comm.broadcast(nucleus.mom, nucleus.rank)
