@@ -225,9 +225,10 @@ class KSSingle(Excitation,PairDensity):
                         ma1 += npy.array([ Delta_pL[ij,3], Delta_pL[ij,1], \
                                            Delta_pL[ij,2] ])*pij
             ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
+        gd.comm.sum(ma)
 
-##         print '<KSSingle> i,j,m,fac=',self.i,self.j,\
-##               me+ma,sqrt(self.energy*self.fij)
+#        print '<KSSingle> i,j,me,ma,fac=',self.i,self.j,\
+#            me, ma,sqrt(self.energy*self.fij)
         self.me = sqrt(self.energy*self.fij) * ( me + ma )
 
         self.mur = - ( me + ma )
