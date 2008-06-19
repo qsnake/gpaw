@@ -72,7 +72,7 @@ if additional_info:
         else:
             fixmom = ''
         print >> out, '# magnetic moment:', \
-              paw.occupation.calculate_magnetic_moment(paw.kpt_u), fixmom
+              paw.calculate_magnetic_moments(), fixmom
     atoms = paw.get_atoms()
     cell = atoms.get_cell().diagonal()
     h = cell / p['gpts']
