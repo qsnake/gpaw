@@ -108,7 +108,7 @@ class PairDensity:
 
     def set_coarse_ghat(self, paw):
         create = create_localized_functions
-        for nucleus in self.ghat_nuclei:
+        for nucleus in self.nuclei:
             # Shape functions:
             ghat_l = nucleus.setup.ghat_l
             Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
@@ -120,7 +120,7 @@ class PairDensity:
     
         paw.yes_I_have_done_the_Ghat_L = True
     
-        for nucleus in self.ghat_nuclei:
+        for nucleus in self.nuclei:
             Ghat_L = nucleus.Ghat_L
             if Ghat_L is not None:
                 Ghat_L.normalize(sqrt(4 * pi))
