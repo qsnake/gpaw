@@ -3,7 +3,6 @@
 
 import os
 import sys
-import socket
 import re
 from optparse import OptionParser
 
@@ -384,7 +383,14 @@ if len(args):
 if opt.qsys:
     set['qsys']=opt.qsys
 else:
-    host = socket.gethostname().split('-')[0]
+    host = None
+    try:
+        import socket
+        host = socket.gethostname().split('-')[0]
+    except:
+        dummy, hostname = os.popen4('hostname -s')
+        host = hostname.readline().split()
+        
     if hosts.has_key(host):
         set['qsys']=hosts[host]
         print 'hostname',host,'found,',
