@@ -52,6 +52,8 @@ parser.add_option('--name', type='string', metavar='<id>',
                   'Default name is <symbol>.<xc>.')
 parser.add_option('-w', '--write-files', action='store_true',
                   help='Write wave functions and other things to files.')
+parser.add_option('-p', '--plot', action='store_true',
+                  help='Show plot and generate reStructuredText.')
 
 opt, args = parser.parse_args()
 
@@ -118,3 +120,7 @@ for symbol in atoms:
               exx=opt.exact_exchange, name=opt.name, **p)
     except RuntimeError, m:
         print m
+
+    if opt.plot:
+        from gpaw.atom.analyse_setup import analyse
+        analyse(g, show=True)

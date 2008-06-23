@@ -340,6 +340,7 @@ class Generator(AllElectron):
         gcut_l = [1 + int(rc * N / (rc + beta)) for rc in rcut_l]
 
         rcutfilter = xfilter * rcutmax
+        self.rcutfilter = rcutfilter
         gcutfilter = 1 + int(rcutfilter * N / (rcutfilter + beta))
         gcutmax = 1 + int(rcutmax * N / (rcutmax + beta))
 
@@ -431,7 +432,7 @@ class Generator(AllElectron):
 
         # Calculate pseudo core density:
         gcutnc = 1 + int(rcutmax * N / (rcutmax + beta))
-        nct = nc.copy()
+        self.nct = nct = nc.copy()
         A = npy.ones((4, 4))
         A[0] = 1.0
         A[1] = r[gcutnc - 2:gcutnc + 2]**2
@@ -619,9 +620,13 @@ class Generator(AllElectron):
                     t('*%s    : %12.6f' % ('spdf'[l], e_n[n]))
         t('--------------------------------')
 
+        self.logd = {}
         if logderiv:
+            ni = 300
+            self.elog = npy.linspace(-5.0, 1.0, ni)
             # Calculate logarithmic derivatives:
             gld = gcutmax + 10
+            self.rlog = r[gld]
             assert gld < gmax
             t('Calculating logarithmic derivatives at r=%.3f' % r[gld])
             t('(skip with [Ctrl-C])')
@@ -629,6 +634,7 @@ class Generator(AllElectron):
             try:
                 u = npy.zeros(N)
                 for l in range(3):
+                    self.logd[l] = (npy.empty(ni), npy.empty(ni))
                     if l <= lmax:
                         dO_nn = dO_lnn[l]
                         dH_nn = dH_lnn[l]
@@ -637,17 +643,15 @@ class Generator(AllElectron):
                     fae = open(self.symbol + '.ae.ld.' + 'spdf'[l], 'w')
                     fps = open(self.symbol + '.ps.ld.' + 'spdf'[l], 'w')
 
-                    ni = 300
-                    e1 = -5.0
-                    e2 = 1.0
-                    e = e1
-                    for i in range(ni):
+                    for i, e in enumerate(elog):
                         # All-electron logarithmic derivative:
                         u[:] = 0.0
                         shoot(u, l, self.vr, e, self.r2dvdr, r, dr, c10, c2,
                               self.scalarrel, gmax=gld)
                         dudr = 0.5 * (u[gld + 1] - u[gld - 1]) / dr[gld]
-                        print >> fae, e,  dudr / u[gld] - 1.0 / r[gld]
+                        ld = dudr / u[gld] - 1.0 / r[gld]
+                        print >> fae, e, ld
+                        self.logd[l][0][i] = ld
 
                         # PAW logarithmic derivative:
                         s = self.integrate(l, vt, e, gld)
@@ -664,9 +668,10 @@ class Generator(AllElectron):
                             s -= npy.dot(c_n, s_n)
 
                         dsdr = 0.5 * (s[gld + 1] - s[gld - 1]) / dr[gld]
-                        print >> fps, e, dsdr / s[gld] - 1.0 / r[gld]
+                        ld = dsdr / s[gld] - 1.0 / r[gld]
+                        print >> fps, e, ld
+                        self.logd[l][1][i] = ld
 
-                        e += (e2 - e1) / ni
             except KeyboardInterrupt:
                 pass
 
