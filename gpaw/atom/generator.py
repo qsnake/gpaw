@@ -643,7 +643,7 @@ class Generator(AllElectron):
                     fae = open(self.symbol + '.ae.ld.' + 'spdf'[l], 'w')
                     fps = open(self.symbol + '.ps.ld.' + 'spdf'[l], 'w')
 
-                    for i, e in enumerate(elog):
+                    for i, e in enumerate(self.elog):
                         # All-electron logarithmic derivative:
                         u[:] = 0.0
                         shoot(u, l, self.vr, e, self.r2dvdr, r, dr, c10, c2,

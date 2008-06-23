@@ -19,7 +19,7 @@ def analyse(generator, show=False):
     for j, n in enumerate(gen.vn_j):
         if n == -1: n = '*'
         id_j.append(str(n) + 'spdf'[gen.vl_j[j]])
-        colors.append('kbrgymc'[j])
+        colors.append('krgbymc'[j])
 
     r_g = gen.r
     g = np.arange(gen.N)
@@ -46,7 +46,7 @@ def analyse(generator, show=False):
         elog = gen.elog
         ref = []
         for l, e in zip(gen.vl_j, gen.ve_j):
-            i = gen.loge.searchsorted(e)
+            i = elog.searchsorted(e)
             ref.append((elog[i], logd[l][1][i]))
         ref = np.array(ref)
 
@@ -100,11 +100,11 @@ def analyse(generator, show=False):
     plt.subplot(221)
     for phi_g, phit_g, id, color in zip(gen.vu_j, gen.vs_j,
                                         id_j, colors):
-        plt.plot(r_g, r_g * phi_g, color + '-', label=id)
-        plt.plot(r_g, r_g * phit_g, color + '--', label='_nolegend_')
+        plt.plot(r_g, phi_g, color + '-', label=id)
+        plt.plot(r_g, phit_g, color + '--', label='_nolegend_')
     plt.legend()
     plt.axis('tight')
-    lim = plt.axis(xmin=0, xmax=rmax*1.2)
+    lim = plt.axis(xmin=0, xmax=rmax * 2)
     plt.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
     plt.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
     plt.title('Partial Waves')
@@ -113,7 +113,7 @@ def analyse(generator, show=False):
 
     plt.subplot(222)
     for pt_g, id, color in zip(gen.vq_j, id_j, colors):
-        plt.plot(r_g, r_g * pt_g, color + '-', label=id)
+        plt.plot(r_g, pt_g, color + '-', label=id)
     plt.axis('tight')
     lim = plt.axis(xmin=0, xmax=rmax*1.2)
     plt.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
@@ -128,8 +128,8 @@ def analyse(generator, show=False):
         plt.plot(ref[:, 0], ref[:, 1], 'ko', label='_nolegend_')
         for l, color in enumerate(colors[:3]):
             id = 'spd'[l]
-            plt.plot(loge, logd[l][0], linestyle='-', color=color, label=id)
-            plt.plot(loge, logd[l][1], linestyle='--', color=color,
+            plt.plot(elog, logd[l][0], linestyle='-', color=color, label=id)
+            plt.plot(elog, logd[l][1], linestyle='--', color=color,
                      label='_nolegend_')
         plt.ylabel('log. deriv. at r=%s Bohr' % rlog)
     lim = plt.axis('tight')
