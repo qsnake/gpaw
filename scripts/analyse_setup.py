@@ -3,13 +3,13 @@ from math import sqrt, pi
 import pylab as pl
 from ase.data import atomic_names as names
 from gpaw.setup_data import SetupData
-from gpaw.atom.all_electron import shoot
+
 
 class TxtWriter:
     def __init__(self, symbol):
         self.file = open(symbol + '.rst', 'w')
 
-    def __call__(s, fill=None):
+    def __call__(self, s, fill=None):
         if fill is not None:
             s = s + (fill - len(s)) * ' ' + '|'
         print >> self.file, s
