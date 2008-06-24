@@ -182,15 +182,14 @@ class KPoint:
         occupation numbers, but ones given with argument f_n."""
         if use_lcao:
             psit_G = self.gd.empty(dtype=self.dtype)
-            nuclei = [nucleus
-                      for nucleus in self.nuclei if nucleus.phit_i is not None]
             for f, C_m in zip(f_n, self.C_nm):
                 psit_G[:] = 0.0
                 m1 = 0
-                for nucleus in nuclei:
+                for nucleus in self.nuclei:
                     niao = nucleus.get_number_of_atomic_orbitals()
                     m2 = m1 + niao
-                    nucleus.phit_i.add(psit_G, C_m[m1:m2], self.k)
+                    if nucleus.phit_i is not None:
+                        nucleus.phit_i.add(psit_G, C_m[m1:m2], self.k)
                     m1 = m2
                 nt_G += f * (psit_G * psit_G.conj()).real
         else:
