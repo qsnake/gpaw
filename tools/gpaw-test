@@ -189,16 +189,20 @@ class TestAtom:
                       (0, 1, 0, 0),
                       (0, 1, 2, 3)])
 
-        self.Edimer0 = npy.empty(self.ng)
-        self.ddimer0 = npy.empty(self.ng)
+        Edimer0 = npy.empty(self.ng)
+        ddimer0 = npy.empty(self.ng)
+        Eegg = self.Eegg
+        Edimer = self.Edimer
+        h = self.h
         for i in range(self.ng):
-            E = self.Edimer[i]
+            E = Edimer[i]
             ia = E.argsort()[0]
             E0 = E[ia]
             d0 = d[ia]
             energy = npy.polyfit(d**-1, E, 3)
             der = npy.polyder(energy, 1)
             roots = npy.roots(der)
+            print roots, d, E
             if isinstance(roots[0], float):
                 der2 = npy.polyder(der, 1)
                 if npy.polyval(der2, roots[0]) > 0:
@@ -207,52 +211,83 @@ class TestAtom:
                     root = roots[1]
                 d0 = 1.0 / root
                 E0 = npy.polyval(energy, root)
-            self.Edimer0[i] = E0
-            self.ddimer0[i] = d0
+            Edimer0[i] = E0
+            ddimer0[i] = d0
         
-        for i in range(self.ng):
-            if abs(self.h[i] - 0.2) < 0.00001:
+        for j in range(self.ng):
+            if abs(h[j] - 0.2) < 0.00001:
                 break
         #print '%r: %.3f,' % (self.symbol, d0),
-        self.Ediss = 2 * self.Eegg[:, 0] - self.Edimer0
-        B,C=fit(self.h[i:], self.Edimer[i:, 3])
+        Ediss = 2 * Eegg[:, 0] - Edimer0
+        B , C = fit(h[j:], Edimer[j:, 3])
         if 1:
             print ('%-2s %8.5f %8.5f %8.5f %8.6f %8.5f %8.5f %6.3f %6.4f %7.3f %10.2f %7.2f' %
                    (self.name,
-                    self.Edimer0[i:].ptp(),
-                    self.Ediss[i:].ptp(),
-                    self.Eegg.ptp(axis=1)[i:].max(),
-                    self.ddimer0[i:].ptp(),
-                    npy.abs(self.Fegg[i:]).max(1).max(),
-                    npy.abs(self.Fdimer[i:].sum(2)).max(1).max(),
-                    self.Ediss[-1], d0,
+                    Edimer0[j:].ptp(),
+                    Ediss[j:].ptp(),
+                    Eegg.ptp(axis=1)[j:].max(),
+                    ddimer0[j:].ptp(),
+                    npy.abs(self.Fegg[j:]).max(1).max(),
+                    npy.abs(self.Fdimer[j:].sum(2)).max(1).max(),
+                    Ediss[-1], d0,
                     d0 - self.d0,B,C
                    ))
         if 1:
             import pylab as plt
-            plt.figure(figsize=(10, 7))
-            plt.subplots_adjust(left=0.07, right=0.97, bottom=0.05, wspace=0.25)
-            p1 = plt.subplot(221)
-            p2 = plt.subplot(222)
+            dpi = 80
+            fig = plt.figure(1, figsize=(9.2, 12.4), dpi=dpi)
+            fig.subplots_adjust(left=.079, right=.97, top=.99, bottom=.05,
+                                wspace=0.25)
+
+            plt.subplot(321)
             for i in range(self.ng):
-                x, y = f(d, self.Edimer[i] - self.Eegg[i, 0],
+                x, y = f(d, Edimer[i] - 2 * Eegg[i, 0],
                          -self.Fdimer[i, :, 1] * sqrt(3))
-                p1.plot(x, y, color=colors[i])
-                x, y = f(npy.linspace(0, 0.5 * self.h[i], 25),
-                         self.Eegg[i] - self.Eegg[i, 0],
+                plt.plot(x, y, color=colors[i], label=u'h=%.2f Å' % h[i])
+            plt.xlabel(u'bond length [Å]')
+            plt.ylabel(r'$\Delta E$ [eV]')
+            plt.legend(loc='best')
+
+            plt.subplot(322)
+            plt.plot(h, 100 * ddimer0 / ddimer0[-1] - 100, '-o')
+            plt.xlabel(u'h [Å]')
+            plt.ylabel(u'bond length error [%]')
+                
+            plt.subplot(323)
+            for i in range(self.ng):
+                x, y = f(npy.linspace(0, 0.5 * h[i], 25),
+                         Eegg[i] - Eegg[i, 0],
                          -self.Fegg[i])
-                p2.plot(x, y, color=colors[i])
-            p3 = plt.subplot(223)
-            p3.plot(self.h, self.Ediss - self.Ediss[-1], '-')
-            p3.plot(self.h, self.Eegg.ptp(axis=1), '-')
-            p4 = plt.subplot(224)
-            p4.plot(self.h, npy.abs(self.Fegg).max(axis=1), '-')
-            p4.plot(self.h, npy.abs(self.Fdimer.sum(axis=2)).max(axis=1), '-')
-            #p5 = plt.subplot(325)
-            #p5.plot(self.h, self.Edimer0 - self.Edimer0[-1], '-')
-            #p6 = plt.subplot(326)
-            #p6.plot(self.h, self.ddimer0 - self.ddimer0[-1], '-')
-            plt.title(self.name)
+                plt.plot(x, 1000 * y, color=colors[i])
+            plt.xlabel(u'displacement [Å]')
+            plt.ylabel(r'$E_{egg}$ [meV]')
+            
+            plt.subplot(324)
+            plt.plot(h, Ediss - Ediss[-1], '-o', label=r'$\Delta E$')
+            plt.plot(h, Eegg.ptp(axis=1), '-o', label=r'$E_{egg}$')
+            plt.xlabel(u'h [Å]')
+            plt.ylabel('[eV]')
+            plt.legend(loc='best')
+
+            plt.subplot(325)
+            plt.plot(h, npy.abs(self.Fegg).max(axis=1), '-o', label='eggbox')
+            plt.plot(h, npy.abs(self.Fdimer.sum(axis=2)).max(axis=1), '-o',
+                     label='dimer')
+            plt.xlabel(u'h [Å]')
+            plt.ylabel(u'force [eV/Å]')
+            plt.legend(loc='best')
+
+            plt.subplot(326)
+            E = B * h**C
+            plt.plot(h[j:], Edimer0[j:] - Edimer0[-1], '-o', label='$E_d$')
+            plt.plot(h[j:], 2 * Eegg[j:, 0] - 2 * Eegg[-1, 0], '-o',
+                     label='$2E_a$')
+            plt.plot(h[j:], E[j:] - E[-1], '-o', label='$2A(h/h_0)^n$')
+            plt.xlabel(u'h [Å]')
+            plt.ylabel('[eV]')
+            plt.legend(loc='best')
+
+            plt.savefig(self.name + '.png')
             plt.show()
 
 def f(x, y, dydx):
