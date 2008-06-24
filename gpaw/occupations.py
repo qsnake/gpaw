@@ -50,7 +50,9 @@ class ZeroKelvin(Dummy):
 
     def calculate(self, kpts):
         if self.nspins == 1:
-            assert len(kpts) == 1
+            if len(kpts) > 1:
+                raise RuntimeError('width=0 only works for gamma-point ' +
+                                   'calculations!  Use width > 0.')
             b = int(self.ne // 2)
             f_n = kpts[0].f_n
             f_n[:b] = 2.0
