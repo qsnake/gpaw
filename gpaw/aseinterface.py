@@ -258,6 +258,10 @@ class Calculator(PAW):
         if result is not None:
             return result * self.Ha
 
+    def get_occupations(self, kpt=0, spin=0):
+        """Return occupation array."""
+        return self.collect_occupations(kpt, spin)
+
     def initial_wannier(self, initialwannier, kpointgrid, fixedstates,
                         edf, spin):
         """Initial guess for the shape of wannier functions.
