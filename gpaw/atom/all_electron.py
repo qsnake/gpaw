@@ -6,6 +6,7 @@ Atomic Density Functional Theory
 """
 
 from math import pi, sqrt, log
+import tempfile
 import pickle
 import sys
 
@@ -17,6 +18,8 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree, devnull
 from gpaw.exx import atomic_exact_exchange
+
+tempdir = tempfile.gettempdir()
 
 # fine-structure constant
 alpha = 1 / 137.036
@@ -184,7 +187,7 @@ class AllElectron:
         self.vXC = npy.zeros(self.N)
 
         try:
-            f = open(self.symbol + '.restart', 'r')
+            f = open('%s/%s.restart' % (tempdir, self.symbol), 'r')
         except IOError:
             self.intialize_wave_functions()
             n[:] = self.calculate_density()
@@ -275,8 +278,7 @@ class AllElectron:
         t()
         t('Converged in %d iteration%s.' % (niter, 's'[:niter != 1]))
 
-        if not self.nofiles:
-            pickle.dump(n, open(self.symbol + '.restart', 'w'))
+        pickle.dump(n, open('%s/%s.restart' % (tempdir, self.symbol), 'w'))
 
         Epot = 2 * pi * npy.dot(n * r * (vHr - Z), dr)
         Ekin = -4 * pi * npy.dot(n * vr * r, dr)

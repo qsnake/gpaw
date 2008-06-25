@@ -1075,20 +1075,19 @@ def construct_smooth_wavefunction(u, l, gc, r, s):
 if __name__ == '__main__':
     import os
     from gpaw.xc_functional import XCFunctional
-
+    from gpaw.atom.all_electron import tempdir
+    
     # Pt and Au needs to be done non-scalar-relatistic first:
-    for symbol in 'Pt Au'.split():
-        if not os.path.isfile(symbol + '.restart'):
+    for symbol in 'Pt Au Ir'.split():
+        if not os.path.isfile('%s/%s.restart' % (tempdir, symbol)):
             AllElectron(symbol, 'LDA', scalarrel=False, nofiles=False).run()
 
-    # Special case for Ir also:
-    if not os.path.isfile('Ir.restart'):
-        AllElectron('Ir', 'LDA', scalarrel=False, nofiles=False).run()
-
-    # ... and Ta and W:
-    if not os.path.isfile('Ta.restart') or not os.path.isfile('W.restart'):
+    # Special case for Ta and W:
+    if not os.path.isfile('%s/Ta.restart' % tempdir):
         AllElectron('Re', 'LDA', scalarrel=False, nofiles=False).run()
-        os.system('cp Re.restart Ta.restart; cp Re.restart W.restart')
+        os.system('cp %s/Re.restart %s/Ta.restart' % (tempdir, tempdir))
+    if not os.path.isfile('%s/W.restart' % tempdir):
+        os.system('cp %s/Ta.restart %s/W.restart' % (tempdir, tempdir))
         
     for xcname in ['LDA', 'PBE', 'RPBE']:
         for symbol, par in parameters.items():
