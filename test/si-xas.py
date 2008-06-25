@@ -26,18 +26,20 @@ si = Atoms([Atom('Si', (0, 0, 0)),
             Atom('Si', (c, d, d))],
            cell=(a, a, a), pbc=True)
 
-if 1:
-    k = 2
-    import numpy as npy
-    calc = Calculator(nbands=None, h=0.25, kpts=(k, k, k),
-                      width=0.05,
-                      setups={0: 'hch1s'}, usesymm=True
-                      )
-    si.set_calculator(calc)
-    e = si.get_potential_energy()
-    calc.write('si.gpw')
-else:
-    calc = Calculator('si.gpw')
+k = 2
+import numpy as npy
+calc = Calculator(nbands=None, h=0.25, 
+                  width=0.05,
+                  setups={0: 'hch1s'}, usesymm=True
+                  )
+si.set_calculator(calc)
+e = si.get_potential_energy()
+calc.write('si.gpw')
+
+# restart from file
+calc = Calculator('si.gpw', kpts=(k, k, k))
+
+assert calc.dtype == complex
 
 xas = XAS(calc)
 x, y = xas.get_spectra()
