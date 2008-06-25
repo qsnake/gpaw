@@ -41,10 +41,10 @@ h2o = Atoms('32(OH2)',
             cell=[L, L, L], pbc=True,
             calculator=Calculator(h=0.2, txt='32H2O.txt', width=0.01))
 
-md = VelocityVerlet(h2o)
+md = VelocityVerlet(h2o, dt=0.5 * fs)
 md.attach(PickleTrajectory('32H2O.traj', 'w', h2o).write, interval=5)
 for i in range(15):
     pot = h2o.get_potential_energy()
     kin = h2o.get_kinetic_energy()
     print '%2d: %.5f eV, %.5f eV, %.5f eV' % (i, pot + kin, pot, kin)
-    md.run(dt=0.5 * fs, steps=20)
+    md.run(steps=20)
