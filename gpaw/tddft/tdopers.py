@@ -167,6 +167,7 @@ class AbsorptionKickHamiltonian:
         # hamiltonian
         self.abs_hamiltonian = npy.array([self.dp[0], self.dp[1], self.dp[2]])
         
+
     def update(self, density, time):
         """Dummy function = does nothing. Required to have correct interface.
         
@@ -232,6 +233,8 @@ class TimeDependentOverlap:
         """
         self.overlap = overlap
     
+
+
     def update(self):
         """Updates the time-dependent overlap operator. !Currently does nothing!
         
@@ -291,6 +294,7 @@ class TimeDependentDensity:
         """
         self.paw = paw
         
+
     def update(self):
         """Updates the time-dependent density.
         

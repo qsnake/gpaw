@@ -56,7 +56,7 @@ if len(tests) == 0:
              'davidson.py', 'cg.py', 'ldos.py', 'h2o-xas-recursion.py',
              'atomize.py', 'wannier-ethylene.py', 'lrtddft.py', 'CH4.py',
              'gllb2.py', 'apmb.py', 'relax.py', 'fixmom.py',
-             'si-xas.py',
+             'si-xas.py', 
              'revPBE_Li.py', 'lxc_xcatom.py', 'exx_coarse.py', '2Al.py',
              '8Si.py', 'dscf_test.py', 'lcao-h2o.py', 'IP-oxygen.py',
              'generatesetups.py', 'aedensity.py', 'h2o_dks.py', 'Cu.py',
@@ -66,8 +66,8 @@ if len(tests) == 0:
 disabled_tests = ['lb.py', 'kli.py', 'C-force.py', 'apply.py',
                   'viewmol_trajectory.py', 'vdw.py', 'fixdensity.py',
                   'average_potential.py', 'lxc_testsetups.py',
-                  'restart3.py', 'td_abs_beryllium.py', 'totype_test.py',
-                  'wannier-hwire.py', 'td_hydrogen.py',  
+                  'restart3.py', 'totype_test.py',
+                  'wannier-hwire.py', 'td_na2.py',
                   'lxc_spinpol_Li.py', 'lxc_testsetups.py',
                   'lxc_generatesetups.py']
 
