@@ -50,51 +50,33 @@ def analyse(generator, show=False):
             ref.append((elog[i], logd[l][1][i]))
         ref = np.array(ref)
 
-    txt('=========  =========')
-    txt('Electrons')
-    txt('=========  =========')
-    txt('total      %d' % gen.Z)
-    txt('valence    %d' % gen.Nv)
-    txt('core       %d' % gen.Nc)
-    txt('=========  =========')
-    txt('')
-    txt('====================  ==============')
-    txt('Cutoffs')
-    txt('====================  ==============')
-    txt('compensation charges  %4.2f Bohr' % rcutcomp)
-    txt('filtering             %4.2f Bohr' % rcutfilter)
-    txt('core density          %4.2f Bohr' % rcore)
-    txt('====================  ==============')
-    txt('')
-    txt('========= ===============')
-    txt('Energy Contributions ')
-    txt('=========================')
-    txt('Kinetic   %12.4f Ha' % gen.Ekin)
-    txt('Potential %12.4f Ha' % gen.Epot)
-    txt('XC        %12.4f Ha' % gen.Exc)
-    txt('--------- ---------------')
-    txt('Total     %12.4f Ha' % gen.ETotal)
-    txt('========= ===============')
-    txt('')
-    txt('=== === ========= =========')
-    txt('Partial Wave Valence States')
-    txt('===========================')
-    txt('id  occ eigenvals cutoff')
-    txt('--- --- --------- ---------')
+    table1 = ['=========  =========',
+              'total      %d' % gen.Z,
+              'valence    %d' % gen.Nv,
+              'core       %d' % gen.Nc,
+              '=========  =========']
+    table2 = ['====================  ==============',
+              'compensation charges  %4.2f Bohr' % rcutcomp,
+              'filtering             %4.2f Bohr' % rcutfilter,
+              'core density          %4.2f Bohr' % rcore,
+              '====================  ==============']
+    table3 = ['========= ===============',
+              'Kinetic   %12.4f Ha' % gen.Ekin,
+              'Potential %12.4f Ha' % gen.Epot,
+              'XC        %12.4f Ha' % gen.Exc,
+              '--------- ---------------',
+              'Total     %12.4f Ha' % gen.ETotal,
+              '========= ===============']
+    table4 = ['=== === ========= =========',
+              'id  occ eigenvals cutoff',
+              '--- --- --------- ---------']
     for id, f, eps, l in zip(id_j, gen.vf_j, gen.ve_j, gen.vl_j):
-        txt('%3s  %s  %6.3f Ha %4.2f Bohr' % (id.replace('*','\*'), f,
-                                              eps, gen.rcut_l[l]))
-    txt('=== === ========= =========')
-    txt('')
-    txt('.. figure:: %s_waves.png' % symbol)
-    txt('')
-    txt('Back to the `periodic table`_.')
-    txt('')
-    txt('.. _periodic table: Setups_')
-    txt('')
+        table4.append('%3s  %d  %6.3f Ha %4.2f Bohr' % (id.replace('*','\*'), f,
+                                                        eps, gen.rcut_l[l]))
+    table4.append('=== === ========= =========')
 
     dpi = 80
-    fig = plt.figure(1, figsize=(9.2, 8.4), dpi=dpi)
+    fig = plt.figure(figsize=(8.0, 8.0), dpi=dpi)
     fig.subplots_adjust(left=.075, right=.99, top=.96, bottom=.06)
 
     plt.subplot(221)
@@ -102,14 +84,14 @@ def analyse(generator, show=False):
                                         id_j, colors):
         plt.plot(r_g, phi_g, color + '-', label=id)
         plt.plot(r_g, phit_g, color + '--', label='_nolegend_')
-    plt.legend()
+    plt.legend(loc='best')
     plt.axis('tight')
     lim = plt.axis(xmin=0, xmax=rmax * 2)
     plt.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
     plt.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
     plt.title('Partial Waves')
     plt.xlabel('r [Bohr]')
-    plt.ylabel(r'$r^{l+1}\phi,\ r^{l+1}\tilde{\phi},\ \rm{[Bohr}^{-3/2}\rm{]}$')
+    plt.ylabel(r'$r\phi,\ r\tilde{\phi},\ \rm{[Bohr}^{-1/2}\rm{]}$')
 
     plt.subplot(222)
     for pt_g, id, color in zip(gen.vq_j, id_j, colors):
@@ -118,10 +100,10 @@ def analyse(generator, show=False):
     lim = plt.axis(xmin=0, xmax=rmax*1.2)
     plt.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
     plt.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
-    plt.legend()
+    plt.legend(loc='best')
     plt.title('Projectors')
     plt.xlabel('r [Bohr]')
-    plt.ylabel(r'$r^{l+1}\tilde{p},\ \rm{[Bohr}^{-3/2}\rm{]}$')
+    plt.ylabel(r'$r\tilde{p},\ \rm{[Bohr}^{-1/2}\rm{]}$')
 
     plt.subplot(223)
     if len(gen.logd) > 0:
@@ -131,9 +113,9 @@ def analyse(generator, show=False):
             plt.plot(elog, logd[l][0], linestyle='-', color=color, label=id)
             plt.plot(elog, logd[l][1], linestyle='--', color=color,
                      label='_nolegend_')
-        plt.ylabel('log. deriv. at r=%s Bohr' % rlog)
+        plt.ylabel('log. deriv. at r=%.2f Bohr' % rlog)
     lim = plt.axis('tight')
-    plt.legend()
+    plt.legend(loc='best')
     plt.title('Logarithmic Derivatives')
     plt.xlabel('Energy [Hartree]')
 
@@ -145,14 +127,16 @@ def analyse(generator, show=False):
     lim = plt.axis(xmin=0, xmax=rmax * 1.2, ymax=max(gen.nct))
     plt.plot([rmax, rmax], lim[2:], 'k--', label='_nolegend_')
     plt.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
-    plt.legend()
+    plt.legend(loc='best')
     plt.title('Other stuff')
     plt.xlabel('r [Bohr]')
 
-    plt.savefig('%s_waves.png' % symbol, dpi=dpi)
+    plt.savefig('%s-setup.png' % symbol, dpi=dpi)
     
     if show:
         plt.show()
+
+    return (table1, table2, table3, table4)
 
 
 if __name__ == '__main__':

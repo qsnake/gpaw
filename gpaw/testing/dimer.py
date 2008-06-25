@@ -181,7 +181,7 @@ class TestAtom:
 
         self.pickle('dimer', ['Edimer', 'Fdimer'])
 
-    def summary(self):
+    def summary(self, show=True):
         dd = 0.02 * self.d0
         d = self.d0 + dd * npy.arange(-3, 4)
         M = npy.array([(1, 0, 0, 0),
@@ -219,7 +219,9 @@ class TestAtom:
                 break
         #print '%r: %.3f,' % (self.symbol, d0),
         Ediss = 2 * Eegg[:, 0] - Edimer0
-        B , C = fit(h[j:], Edimer[j:, 3])
+        
+        B , C = fit(h[j:], Eegg[j:, 0])
+        
         if 1:
             print ('%-2s %8.5f %8.5f %8.5f %8.6f %8.5f %8.5f %6.3f %6.4f %7.3f %10.2f %7.2f' %
                    (self.name,
@@ -235,9 +237,8 @@ class TestAtom:
         if 1:
             import pylab as plt
             dpi = 80
-            fig = plt.figure(1, figsize=(9.2, 12.4), dpi=dpi)
-            fig.subplots_adjust(left=.079, right=.97, top=.99, bottom=.05,
-                                wspace=0.25)
+            fig = plt.figure(figsize=(8, 10), dpi=dpi)
+            fig.subplots_adjust(left=.099, right=.97, top=.99, bottom=.05)
 
             plt.subplot(321)
             for i in range(self.ng):
@@ -245,7 +246,7 @@ class TestAtom:
                          -self.Fdimer[i, :, 1] * sqrt(3))
                 plt.plot(x, y, color=colors[i], label=u'h=%.2f Å' % h[i])
             plt.xlabel(u'bond length [Å]')
-            plt.ylabel(r'$\Delta E$ [eV]')
+            plt.ylabel(r'$\Delta E\ \rm{[eV]}$')
             plt.legend(loc='best')
 
             plt.subplot(322)
@@ -260,7 +261,7 @@ class TestAtom:
                          -self.Fegg[i])
                 plt.plot(x, 1000 * y, color=colors[i])
             plt.xlabel(u'displacement [Å]')
-            plt.ylabel(r'$E_{egg}$ [meV]')
+            plt.ylabel(r'$E_{egg}\ \rm{[meV]}$')
             
             plt.subplot(324)
             plt.plot(h, Ediss - Ediss[-1], '-o', label=r'$\Delta E$')
@@ -287,20 +288,12 @@ class TestAtom:
             plt.ylabel('[eV]')
             plt.legend(loc='best')
 
-            plt.savefig(self.name + '.png')
-            plt.show()
+            plt.savefig(self.name + '-dimer-eggbox.png', dpi=dpi)
+            if show:
+                plt.show()
+        return self.h[-1], B, C
 
-def f(x, y, dydx):
-    dx = x[1] - x[0]
-    x2 = npy.empty(3 * len(x))
-    x2[::3] = x - 0.4 * dx
-    x2[1::3] = x + 0.4 * dx
-    x2[2::3] = x + 0.5 * dx
-    y2 = npy.empty_like(x2)
-    y2[::3] = y - dydx * 0.4 * dx
-    y2[1::3] = y + dydx * 0.4 * dx
-    y2[2::3] = npy.nan
-    return x2, y2
+
 def f(x, y, dydx):
     dx = x[1] - x[0]
     x2 = npy.empty(2 * len(x))
@@ -321,16 +314,17 @@ def fit(h, e):
     x,d = a.optimize(1000)
     return x[1], x[2]
 
-if len(args) == 0:
-    from gpaw.atom.generator import parameters
-    args = parameters.keys()
+if __name__ == '__main__':
+    if len(args) == 0:
+        from gpaw.atom.generator import parameters
+        args = parameters.keys()
+        
+    if opt.summary:
+        print '    deltaE   deltaEa  Eegg     deltad   Fegg     Ftot'
 
-if opt.summary:
-    print '    deltaE   deltaEa  Eegg     deltad   Fegg     Ftot'
-
-for symbol in args:
-    ta = TestAtom(symbol)
-    ta.run(opt.summary, opt.lcao)
-    if opt.summary and ta.ready:
-        ta.summary()
+    for symbol in args:
+        ta = TestAtom(symbol)
+        ta.run(opt.summary, opt.lcao)
+        if opt.summary and ta.ready:
+            ta.summary()
 
