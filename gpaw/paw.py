@@ -1083,11 +1083,10 @@ class PAW(PAWExtra, Output):
         self.gamma = (len(self.bzk_kc) == 1 and
                       not npy.sometrue(self.bzk_kc[0]))
 
-        if not hasattr(self, 'dtype'):
-            if self.gamma:
-                self.dtype = float
-            else:
-                self.dtype = complex
+        if self.gamma and not hasattr(self, 'time'):
+            self.dtype = float
+        else:
+            self.dtype = complex
                 
         type_a, basis_a = self.create_nuclei_and_setups(Z_a)
 

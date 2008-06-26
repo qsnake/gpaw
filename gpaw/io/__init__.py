@@ -428,7 +428,7 @@ def read(paw, reader):
     if not paw.fixmom:
         paw.occupation.set_fermi_level(r['FermiLevel'])
 
-    # Try to read the current time step in time-propagation
+    # Try to read the current time in time-propagation:
     if hasattr(paw, 'time'):
         try:
             paw.time = r['Time']
