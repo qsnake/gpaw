@@ -10,6 +10,7 @@ bulk = Atoms(symbols='4Al', pbc=True,
                         (.5, .0, .5)])
 
 calc = Calculator(nbands=16,  gpts=(16, 16, 16), kpts=(6, 6, 6))
+bulk.set_calculator(calc)
 for a in [3.9, 4.0, 4.1, 4.2]:
     calc.set(txt='bulk-fcc-a%.1f.txt' % a)
     bulk.set_cell((a, a, a), scale_atoms=True)
