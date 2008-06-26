@@ -8,6 +8,7 @@ from gpaw import setup_paths
 g = Generator('O', xcname='PBE', scalarrel=True,
               corehole=(1, 0, 1.0), nofiles=True)
 g.run(name='fch1s', **parameters['O'])
+setup_paths.insert(0, '.')
 
 atoms = get_g2('H2O')
 atoms.center(vacuum=2.5)
