@@ -27,6 +27,7 @@ PyObject* localize(PyObject *self, PyObject *args);
 PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewlxcXCFunctionalObject(PyObject *self, PyObject *args);
+PyObject *exterior_electron_density_region(PyObject *self, PyObject *args);
 PyObject* elf(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
 PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
@@ -53,6 +54,7 @@ static PyMethodDef functions[] = {
   {"elementwise_multiply_add", elementwise_multiply_add, METH_VARARGS, 0},
   {"utilities_vdot", utilities_vdot, METH_VARARGS, 0},
   {"utilities_vdot_self", utilities_vdot_self, METH_VARARGS, 0},
+  {"eed_region", exterior_electron_density_region, METH_VARARGS, 0},
   {"erf",        errorfunction,        METH_VARARGS, 0},
   {"unpack",       unpack,           METH_VARARGS, 0},
   {"unpack_complex",       unpack_complex,           METH_VARARGS, 0},
