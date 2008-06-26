@@ -65,6 +65,17 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
     }
 }
 
+static PyObject * mpi_name(MPIObject *self, PyObject *args)
+{
+  if (!PyArg_ParseTuple(args, ""))
+    return NULL;
+
+  char name[MPI_MAX_PROCESSOR_NAME];
+  int resultlen;
+  MPI_Get_processor_name(name, &resultlen);
+  return Py_BuildValue("s#", name, resultlen);
+}
+
 static PyObject * mpi_abort(MPIObject *self, PyObject *args)
 {
   int errcode;
@@ -303,6 +314,7 @@ static PyMethodDef mpi_methods[] = {
     {"receive",          (PyCFunction)mpi_receive,     METH_VARARGS, 0},
     {"send",             (PyCFunction)mpi_send,        METH_VARARGS, 0},
     {"abort",            (PyCFunction)mpi_abort,       METH_VARARGS, 0},
+    {"name",             (PyCFunction)mpi_name,        METH_VARARGS, 0},
     {"barrier",          (PyCFunction)mpi_barrier,     METH_VARARGS, 0},
     {"wait",             (PyCFunction)mpi_wait,        METH_VARARGS, 0},
     {"sum",              (PyCFunction)mpi_sum,         METH_VARARGS, 0},

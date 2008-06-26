@@ -167,6 +167,9 @@ if debug:
         def abort(self, errcode):
             self.comm.abort(errcode)
 
+        def name(self):
+            return self.comm.name()
+
         def barrier(self):
             self.comm.barrier()
 
