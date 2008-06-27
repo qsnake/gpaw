@@ -2,9 +2,6 @@ from gpaw import *
 from ase import *
 from gpaw.tddft import *
 import os
-import gc
-
-gc.set_debug(gc.DEBUG_LEAK)
 
 # Sodium dimer, Na2
 d = 1.5
@@ -44,9 +41,8 @@ td_rest = TDDFT('na2_td.gpw')
 td_rest.propagate(time_step, iters, 'na2_dmz2.dat', 'na2_td2.gpw')
 photoabsorption_spectrum('na2_dmz2.dat', 'na2_spectrum_z2.dat', width=0.3)
 
-gc.collect()
-
-print gc.garbage
+td_calc.td_density.paw = None
+td_rest.td_density.paw = None
 
 os.remove('na2_gs.gpw')
 os.remove('na2_td.gpw')

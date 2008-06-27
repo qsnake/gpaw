@@ -50,6 +50,7 @@ if len(tests) == 0:
              'ase3k.py', 'mixer.py', 'proton.py', 'timing.py', 'restart.py',
              'gauss_func.py', 'xcatom.py', 'wfs_io.py', 'ylexpand.py',
              'nonselfconsistentLDA.py', 'bee1.py', 'gga-atom.py', 'revPBE.py',
+             'td_na2.py',
              'nonselfconsistent.py', 'bulk.py', 'spinpol.py', 'refine.py',
              'bulk-lcao.py', 'stdout.py', 'restart2.py', 'hydrogen.py',
              'H-force.py', 'plt.py', 'h2o-xas.py', 'degeneracy.py',
@@ -67,7 +68,7 @@ disabled_tests = ['lb.py', 'kli.py', 'C-force.py', 'apply.py',
                   'viewmol_trajectory.py', 'vdw.py', 'fixdensity.py',
                   'average_potential.py', 'lxc_testsetups.py',
                   'restart3.py', 'totype_test.py',
-                  'wannier-hwire.py', 'td_na2.py',
+                  'wannier-hwire.py',
                   'lxc_spinpol_Li.py', 'lxc_testsetups.py',
                   'lxc_generatesetups.py']
 
