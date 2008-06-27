@@ -71,10 +71,13 @@ class Hamiltonian(LCAOHamiltonian):
         # The external potential
         vext_g = paw.input_parameters['external']
         if vext_g is not None:
-            assert npy.alltrue(vext_g.shape ==
-                               self.finegd.get_size_of_global_array())
-            self.vext_g = self.finegd.zeros()
-            self.finegd.distribute(vext_g, self.vext_g)
+            if hasattr(vext_g, 'get_potential'):
+                self.vext_g = vext_g.get_potential(self.finegd)
+            else:
+                assert npy.alltrue(vext_g.shape ==
+                                   self.finegd.get_size_of_global_array())
+                self.vext_g = self.finegd.zeros()
+                self.finegd.distribute(vext_g, self.vext_g)
         else:
             self.vext_g = None
 

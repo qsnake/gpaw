@@ -77,6 +77,7 @@ class GridDescriptor:
          ``end_c``  End of grid-point indices (exclusive).
          ``comm``   MPI-communicator for domain decomosition.
          ========== ========================================================
+         The length unit is Bohr.
         """
         
         self.domain = domain

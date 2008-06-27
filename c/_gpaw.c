@@ -16,6 +16,7 @@ PyObject* NewLocalizedFunctionsObject(PyObject *self, PyObject *args);
 PyObject* NewOperatorObject(PyObject *self, PyObject *args);
 PyObject* NewSplineObject(PyObject *self, PyObject *args);
 PyObject* NewTransformerObject(PyObject *self, PyObject *args);
+PyObject *pc_potential(PyObject *self, PyObject *args);
 PyObject* elementwise_multiply_add(PyObject *self, PyObject *args);
 PyObject* utilities_vdot(PyObject *self, PyObject *args);
 PyObject* utilities_vdot_self(PyObject *self, PyObject *args);
@@ -69,6 +70,7 @@ static PyMethodDef functions[] = {
   {"vdw", vdw, METH_VARARGS, 0},
   {"swap", swap_arrays, METH_VARARGS, 0},
   {"spherical_harmonics", spherical_harmonics, METH_VARARGS, 0},
+  {"pc_potential", pc_potential, METH_VARARGS, 0},
  {0, 0, 0, 0}
 };
 

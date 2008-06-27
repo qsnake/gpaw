@@ -1,6 +1,8 @@
 #include "extensions.h"
 #include <stdlib.h>
 
+double distance(double *a, double *b);
+
 // returns the squared distance between a 3d double vector
 // and a 3d int vector
 double distance3d2_di(double *a, int *b)
@@ -55,18 +57,6 @@ PyObject *wigner_seitz_grid(PyObject *self, PyObject *args)
 
   Py_RETURN_NONE;
 }
-
-// returns the distance between two 3d double vectors
-double distance(double *a, double *b)
-{
-  double sum = 0;
-  double diff;
-  for (int c = 0; c < 3; c++) {
-    diff = a[c] - b[c];
-    sum += diff*diff;
-  }
-  return sqrt(sum);
-} 
 
 PyObject *exterior_electron_density_region(PyObject *self, PyObject *args)
 {

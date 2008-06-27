@@ -5,6 +5,18 @@
 #include <math.h>
 
 
+// returns the distance between two 3d double vectors
+double distance(double *a, double *b)
+{
+  double sum = 0;
+  double diff;
+  for (int c = 0; c < 3; c++) {
+    diff = a[c] - b[c];
+    sum += diff*diff;
+  }
+  return sqrt(sum);
+} 
+
 /* elementwise multiply and add result to another vector
  *
  * c[i] += a[i] * b[i] ,  for i = every element in the vectors

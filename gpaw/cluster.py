@@ -3,6 +3,7 @@ import re
 import numpy as npy
 
 from ase import Atom, Atoms
+from ase.io.cube import write_cube
 from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
 from gpaw.io.cc1 import read_cc1
@@ -90,10 +91,11 @@ class Cluster(Atoms):
             extr[1][i]+=b[i]-extr[0][i] # shifted already
             
         # move lower corner to (0,0,0)
-        self.translate(tuple(-1.*npy.array(extr[0])))
+        shift = tuple(-1.*npy.array(extr[0]))
+        self.translate(shift)
         self.set_cell(tuple(extr[1]))
 
-        return self.get_cell()
+        return shift
 
     def get(self, name):
         """General get"""
@@ -170,7 +172,9 @@ class Cluster(Atoms):
             filetype = filename.split('.')[-1]
         filetype.lower()
 
-        if filetype == 'pdb':
+        if filetype == 'cube':
+            write_cube(filename, out)
+        elif filetype == 'pdb':
             write_pdb(filename, out)
         elif filetype == 'xyz':
             write_xyz(filename, out)
