@@ -79,9 +79,9 @@ from os.path import isfile
 def latex2html(node, source):
     inline = isinstance(node.parent, nodes.TextElement)
     latex = node['latex']
-    print latex
     name = 'math-' + md5(latex).hexdigest()[-10:]
     if not isfile('_static/%s.png' % name):
+        print latex,
         f = open('math.tex', 'w')
         f.write(r"""\documentclass[12pt]{article}
                     \pagestyle{empty}

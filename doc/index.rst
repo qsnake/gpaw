@@ -12,6 +12,7 @@ Contents:
 
    exercises/exercises
    summerschool
+   setups/setups
 
 Indices and tables
 ==================
