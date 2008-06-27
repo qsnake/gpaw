@@ -606,6 +606,8 @@ class Generator(AllElectron):
             q_n[:] = npy.dot(inv(npy.transpose(A_nn)), q_n)
 
         self.vt = vt
+        self.vbar = vbar
+
 
         t('state    eigenvalue         norm')
         t('--------------------------------')

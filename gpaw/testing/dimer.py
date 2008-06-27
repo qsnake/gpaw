@@ -202,7 +202,6 @@ class TestAtom:
             energy = npy.polyfit(d**-1, E, 3)
             der = npy.polyder(energy, 1)
             roots = npy.roots(der)
-            print roots, d, E
             if isinstance(roots[0], float):
                 der2 = npy.polyder(der, 1)
                 if npy.polyval(der2, roots[0]) > 0:
@@ -220,7 +219,7 @@ class TestAtom:
         #print '%r: %.3f,' % (self.symbol, d0),
         Ediss = 2 * Eegg[:, 0] - Edimer0
         
-        B , C = fit(h[j:], Eegg[j:, 0])
+        B, C = fit(h[j:], Eegg[j:, 0])
         
         if 1:
             print ('%-2s %8.5f %8.5f %8.5f %8.6f %8.5f %8.5f %6.3f %6.4f %7.3f %10.2f %7.2f' %
@@ -237,20 +236,23 @@ class TestAtom:
         if 1:
             import pylab as plt
             dpi = 80
-            fig = plt.figure(figsize=(8, 10), dpi=dpi)
-            fig.subplots_adjust(left=.099, right=.97, top=.99, bottom=.05)
+            fig = plt.figure(figsize=(8, 12), dpi=dpi)
+            fig.subplots_adjust(left=0.09, right=0.97, top=0.97, bottom=0.04,
+                                wspace=0.25, hspace=0.25)
 
             plt.subplot(321)
             for i in range(self.ng):
                 x, y = f(d, Edimer[i] - 2 * Eegg[i, 0],
                          -self.Fdimer[i, :, 1] * sqrt(3))
                 plt.plot(x, y, color=colors[i], label=u'h=%.2f Å' % h[i])
+            plt.title('Dimer')
             plt.xlabel(u'bond length [Å]')
-            plt.ylabel(r'$\Delta E\ \rm{[eV]}$')
+            plt.ylabel(r'$\Delta E=E_d-2E_a\ \rm{[eV]}$')
             plt.legend(loc='best')
 
             plt.subplot(322)
             plt.plot(h, 100 * ddimer0 / ddimer0[-1] - 100, '-o')
+            plt.title('Bond length')
             plt.xlabel(u'h [Å]')
             plt.ylabel(u'bond length error [%]')
                 
@@ -260,38 +262,43 @@ class TestAtom:
                          Eegg[i] - Eegg[i, 0],
                          -self.Fegg[i])
                 plt.plot(x, 1000 * y, color=colors[i])
+            plt.axis('tight')
+            plt.title('Eggbox error')
             plt.xlabel(u'displacement [Å]')
             plt.ylabel(r'$E_{egg}\ \rm{[meV]}$')
             
             plt.subplot(324)
-            plt.plot(h, Ediss - Ediss[-1], '-o', label=r'$\Delta E$')
-            plt.plot(h, Eegg.ptp(axis=1), '-o', label=r'$E_{egg}$')
+            plt.plot(h, 1000 * (Ediss - Ediss[-1]), '-o', label=r'$\Delta E$')
+            plt.plot(h, 1000 * Eegg.ptp(axis=1), '-o', label=r'$E_{egg}$')
+            plt.title('Energy differences')
             plt.xlabel(u'h [Å]')
-            plt.ylabel('[eV]')
+            plt.ylabel('energy [meV]')
             plt.legend(loc='best')
 
             plt.subplot(325)
             plt.plot(h, npy.abs(self.Fegg).max(axis=1), '-o', label='eggbox')
             plt.plot(h, npy.abs(self.Fdimer.sum(axis=2)).max(axis=1), '-o',
                      label='dimer')
+            plt.title('Forces')
             plt.xlabel(u'h [Å]')
             plt.ylabel(u'force [eV/Å]')
             plt.legend(loc='best')
 
             plt.subplot(326)
-            E = B * h**C
+            E = 2 * B * h**C
             plt.plot(h[j:], Edimer0[j:] - Edimer0[-1], '-o', label='$E_d$')
             plt.plot(h[j:], 2 * Eegg[j:, 0] - 2 * Eegg[-1, 0], '-o',
                      label='$2E_a$')
             plt.plot(h[j:], E[j:] - E[-1], '-o', label='$2A(h/h_0)^n$')
+            plt.title('Absolute energies')
             plt.xlabel(u'h [Å]')
-            plt.ylabel('[eV]')
+            plt.ylabel('energy [eV]')
             plt.legend(loc='best')
 
             plt.savefig(self.name + '-dimer-eggbox.png', dpi=dpi)
             if show:
                 plt.show()
-        return self.h[-1], B, C
+        return self.h[-1], B * 0.2**C, C
 
 
 def f(x, y, dydx):

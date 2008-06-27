@@ -14,18 +14,24 @@ from gpaw.testing.dimer import TestAtom
 
 bulk = {'Ti': ()}
 
-def make(symbol):
+def make(symbol, show):
     Z = atomic_numbers[symbol]
     name = atomic_names[Z]
 
     if not os.path.isfile(symbol + '.pckl'):
-        g = Generator(symbol, 'PBE', scalarrel=True)
-        g.run(logderiv=True, **parameters[symbol])
-        tables = analyse(g, show=False)
+        if os.path.isfile(symbol + '-generator.pckl'):
+            gen = pickle.load(open(symbol + '-generator.pckl'))
+        else:
+            gen = Generator(symbol, 'PBE', scalarrel=True)
+            gen.run(logderiv=True, **parameters[symbol])
+            gen.txt = None
+            pickle.dump(gen, open(symbol + '-generator.pckl', 'w'))
+    
+        tables = analyse(gen, show=show)
 
         t = TestAtom(symbol)
         t.run(True, False)
-        hmin, B, n = t.summary(show=False)
+        hmin, B, n = t.summary(show=show)
 
         molecules = []
         for x in extra + g2:
@@ -94,13 +100,19 @@ A fit to `E_a` for `h` between %.2f Å and 0.20 Å gives:
 .. math::  E_a \simeq A + B (h / h_0)^n,
 
 with *B* = %.2f eV and *n* = %.2f (`h_0` = 0.20 Å).
+This gives `dE_a/dh=nB/h_0` = %.3f eV/Å for `h=h_0`.
 
-""" % (aname, aname, symbol, hmin, B, n))
+""" % (aname, aname, symbol, hmin, B, n, n * B / 0.2))
+
 
     tables = ['\n'.join(t) for t in tables]
     f.write(u"""
 Setup details
 =============
+
+The setup is based on a scalar-relativistic spin-paired neutral
+all-electron PBE calculation.
+
 
 Electrons
 ---------
@@ -138,8 +150,10 @@ Back to :ref:`setups`.
 
 if len(argv) == 1:
     symbols = parameters.keys()
+    show = False
 else:
     symbols = argv[1:]
+    show = True
 for symbol in symbols:
-    if not os.path.isfile(symbol + '.rst') and os.path.isdir(symbol):
-        make(symbol)
+    if os.path.isdir(symbol):
+        make(symbol, show)
