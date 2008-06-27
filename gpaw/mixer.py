@@ -61,7 +61,7 @@ class BaseMixer:
 
         elif self.metric_type == 'new':
             a = 0.125 * (self.weight + 7)
-            b = 0.0625 * (1 - self.weight)
+            b = 0.0625 * (self.weight - 1)
             c = 0.03125 * (self.weight - 1)
             d = 0.015625 * (self.weight - 1)
             self.metric = Operator([a,
