@@ -1083,7 +1083,7 @@ class PAW(PAWExtra, Output):
         self.gamma = (len(self.bzk_kc) == 1 and
                       not npy.sometrue(self.bzk_kc[0]))
 
-        if not hasattr(self, 'dtype'):
+        if not hasattr(self, 'time'):
             if self.gamma:
                 self.dtype = float
             else:
