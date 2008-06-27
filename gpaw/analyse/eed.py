@@ -1,7 +1,7 @@
-from math import sqrt, pi
+import sys
 import numpy as npy
 
-from ase.units import Bohr
+from ase.units import Bohr, Hartree
 
 import _gpaw
 
@@ -33,7 +33,7 @@ class ExteriorElectronDensity:
     def get_weight(self, psit_G):
         """Get the weight of a wave function in the exterior region
         (outside of the van der Waals radius). The augmentation sphere
-        is assumed to be smaler as the van der Waals radius and hence 
+        is assumed to be smaller as the van der Waals radius and hence 
         does not contribute."""
 
         # smooth part
@@ -52,12 +52,45 @@ class ExteriorElectronDensity:
             return r
         
     def write_mies_weights(self, paw, file=None):
-        kpt = paw.kpt_u[0]
-        print '# Band energy   occ  weight'
-        for n in range(paw.nbands):
-            print '%4d  %10.5f  %10.5f  %10.5f' % (n, kpt.eps_n[n],
-                                                   kpt.f_n[n], 
-                                                   self.get_weight(kpt.psit_nG[n]) )
+        if paw.nkpts > 1:
+            raise NotImplementedError # XXXX TODO
+
+        out = sys.stdout
+        if file != None:
+            if isinstance(file, str):
+                out = open(filename, 'aw')
+            else:
+                out = file
+
+        print >> out, '# exterior electron density weights after'
+        print >> out, '# Y. Harada et al., Chem. Rev. 97 (1997) 1897'
+        if paw.nspins == 1:
+            print >> out, '# Band   energy      occ         weight'
+            kpt = paw.kpt_u[0]
+            for n in range(paw.nbands):
+                print  >> out, '%4d  %10.5f  %10.5f  %10.5f' % \
+                    (n, 
+                     kpt.eps_n[n] * Hartree,
+                     kpt.f_n[n], 
+                     self.get_weight(kpt.psit_nG[n]) )
+                if hasattr(out, 'flush'):
+                    out.flush()
+        else:
+            print >> out, '# Band   energy      occ         weight     energy      occ         weight'
+            kpta = paw.kpt_u[0]
+            kptb = paw.kpt_u[1]
+            for n in range(paw.nbands):
+                print  >> out, '%4d  %10.5f  %10.5f  %10.5f  %10.5f    %10.5f  %10.5f' % \
+                    (n, 
+                     kpta.eps_n[n] * Hartree,
+                     kpta.f_n[n], 
+                     self.get_weight(kpta.psit_nG[n]),
+                     kptb.eps_n[n] * Hartree,
+                     kptb.f_n[n], 
+                     self.get_weight(kptb.psit_nG[n]),
+                     )
+                if hasattr(out, 'flush'):
+                    out.flush()
                 
 # van der Waals radii in [A] taken from
 # http://www.webelements.com/periodicity/van_der_waals_radius/
