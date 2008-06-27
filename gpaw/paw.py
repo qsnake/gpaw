@@ -1225,10 +1225,11 @@ class PAW(PAWExtra, Output):
             self.density.initialize()
             for a, D_sp in D_asp.items():
                 self.nuclei[a].D_sp[:] = D_sp
-            self.density.nt_sG[:] = nt_sG
-            #self.density.scale()
-            self.density.interpolate_pseudo_density()
-            self.density.starting_density_initialized = True
+            if self.density.nt_sG.shape == nt_sG.shape:
+                self.density.nt_sG[:] = nt_sG
+                #self.density.scale()
+                self.density.interpolate_pseudo_density()
+                self.density.starting_density_initialized = True
             
         self.print_init(pos_ac)
         estimate_memory(self)
