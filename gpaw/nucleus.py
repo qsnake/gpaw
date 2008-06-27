@@ -359,9 +359,15 @@ class Nucleus:
         if self.nct is not None:
             self.nct.add(nct_G, npy.array([1.0 / nspins]))
 
-    def add_smooth_core_kinetic_energy_density(self, tauct_G, nspins):
-        if self.tauct is not None:
-            self.tauct.add(tauct_G, npy.array([1.0 / nspins]))
+    def add_smooth_core_kinetic_energy_density(self, tauct_G, nspins,gd):
+        if self.tauct is None:
+            # Load splines
+            tauct = self.setup.get_partial_waves()[-1]
+            # Create localized functions from splines
+            create = create_localized_functions
+            self.tauct = create([tauct], gd, self.spos_c)
+        for s in range(nspins):
+            self.tauct.add(tauct_G[s], npy.array([1.0 / nspins]))
 
     def add_compensation_charge(self, nt2):
         self.ghat_L.add(nt2, self.Q_L)
