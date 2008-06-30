@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 double distance(double *a, double *b);
+#define MIN(a,b) ((a)<(b)?(a):(b))
 
 PyObject *pc_potential(PyObject *self, PyObject *args)
 {
@@ -23,6 +24,12 @@ PyObject *pc_potential(PyObject *self, PyObject *args)
   double *h_c = DOUBLEP(hh_c);
   double *q = DOUBLEP(qi);
 
+  // cutoff to avoid singularities
+  // = Coulomb integral over a ball of the same volume
+  //   as the volume element of the grid
+  double dV = h_c[0] * h_c[1] * h_c[2];
+  double v_max = 2.417988 / cbrt(dV);
+
   int n[3], ij;
   double pos[3];
   for (int c = 0; c < 3; c++) { n[c] = end[c] - beg[c]; }
@@ -38,7 +45,9 @@ PyObject *pc_potential(PyObject *self, PyObject *args)
 	double V = 0.0;
 	for (int a=0; a < npc; a++) {
 	  double d = distance(pc_c + a*3, pos);
-	  V -= q[a] / d;
+	  double v = v_max;
+	  if(d != 0.0) { v = MIN(v_max, 1. / d); }
+	  V -= q[a] * v;
 	}
 	pot[ij + k] = V;
       }

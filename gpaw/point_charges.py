@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as npy
 
 import _gpaw
@@ -11,11 +13,36 @@ class PointCharges(list):
         if file is not None:
             self.read(file)
 
-    def read(self, file):
+    def charge(self):
+        """Return the summed charge of all point charges."""
+        charge = 0
+        for pc in self:
+            charge += pc.charge
+        return charge
+
+    def read(self, file, filetype=None):
+        """Read point charges from a file."""
 
         if hasattr(self, 'potential'):
             del(self.potential)
             del(self.gd)
+
+        if filetype is None and isinstance(file, str):
+            # estimate file type from name ending
+            filetype = os.path.split(file)[-1].split('.')[-1]
+        filetype = filetype.lower()
+
+        if filetype == 'pc_info':
+            self.read_PC_info(file)
+        elif filetype == 'xyz':
+            self.read_xyz(file)
+        else:
+            raise NotImplementedError('unknown file type "'+filetype+'"')
+##        print "<PointCharges::read> found %d PC's" % len(self)
+
+
+    def read_PC_info(self, file):
+        """Read point charges from a PC_info file."""
 
         if isinstance(file, str):
             f = open(file)
@@ -36,7 +63,27 @@ class PointCharges(list):
                                         charge=float(q) ) )
             else:
                 break
-        print "<PointCharges::read> found %d PC's" % len(self)
+
+    def read_xyz(self, file):
+        """Read point charges from a xyz file."""
+
+        if isinstance(file, str):
+            f = open(file)
+        else:
+            f = file
+
+        lines = f.readlines()
+        L0 = lines[0].split()
+        del lines[0:2]
+
+        n = int(L0[0])
+        for i in range(n):
+            words = lines[i].split()
+            dummy, x, y, z, q = words[:5]
+            self.append(PointCharge(position=(float(x), 
+                                              float(y), 
+                                              float(z)),
+                                    charge=float(q) ) )
 
     def get_potential(self, gd):
         """Create the Coulomb potential on the grid."""
