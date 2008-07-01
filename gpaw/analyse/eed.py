@@ -58,7 +58,7 @@ class ExteriorElectronDensity:
         out = sys.stdout
         if file != None:
             if isinstance(file, str):
-                out = open(filename, 'aw')
+                out = open(file, 'aw')
             else:
                 out = file
 
