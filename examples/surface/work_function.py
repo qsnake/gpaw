@@ -8,7 +8,7 @@ slab = calc.get_atoms()
 # Get the height of the unit cell:
 L = slab.get_cell()[2, 2]
 
-# Get the effective postential on a 3D grid:
+# Get the effective potential on a 3D grid:
 v = calc.hamiltonian.vt_sG[0] * Hartree
 
 nx, ny, nz = v.shape
