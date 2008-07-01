@@ -135,9 +135,10 @@ def analyse(generator, show=False):
             plt.plot(elog, logd[l][1], linestyle='--', color=color,
                      label='_nolegend_')
         plt.ylabel('log. deriv. at r=%.2f Bohr' % rlog)
-    ymin = ref[:, 1].min()
-    ymax = ref[:, 1].max()
-    plt.axis(ymin=ymin - (ymax - ymin) * 0.1, ymax=ymax + (ymax - ymin) * 0.1)
+        ymin = ref[:, 1].min()
+        ymax = ref[:, 1].max()
+        plt.axis(ymin=ymin - (ymax - ymin) * 0.1,
+                 ymax=ymax + (ymax - ymin) * 0.1)
     plt.legend(loc='best')
     plt.title('Logarithmic Derivatives')
     plt.xlabel('Energy [Hartree]')
@@ -174,15 +175,3 @@ def analyse(generator, show=False):
         plt.show()
 
     return (table1, table2, table3, table4)
-
-
-if __name__ == '__main__':
-    from sys import argv
-    input = argv[1].split('.')
-    symbol = input[0]
-    xcname = input[-1]
-    setupname = 'paw'
-    if len(input) > 2:
-        setupname = '.'.join(input[1:-1])
-
-    make_page(symbol, xcname, setupname, show=True)
