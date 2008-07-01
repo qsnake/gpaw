@@ -94,10 +94,19 @@ def s_from_dhms(time):
                 raise RuntimeError, 'unknown format in timestring ' + time
     return seconds
     
+def list_systems(obj):
+    print "Allowed names are:"
+    p = re.compile('__')
+    for host in dir(obj):
+        if not p.match(host):
+            print '', host
+ 
 class RunScript:
     def __init__(self, set, env, name=None):
         if not hasattr(self,set['qsys']):
-            raise RuntimeError, "unkown system >"+set['qsys']+"<"
+            print "unkown system >"+set['qsys']+"<"
+            list_systems(self)
+            sys.exit()
         if name is None:
             name = 'run.'+set['qsys']
         f = open(name,'w')
@@ -398,12 +407,10 @@ else:
 	set['qsys'] = platforms[sys.platform]
         print 'platform', sys.platform, 'found,',
     else:
-        print "Host "+str(host)+" unknown, try -q option. Allowed names are:"
-        p = re.compile('__')
-        for host in dir(RunScript):
-            if not p.match(host):
-                print '',host
+        print "Host "+str(host)+" unknown, try -q option."
+        list_systems(RunScript)
         sys.exit()
+
 print 'using',set['qsys']
 
 # ............................................................
