@@ -62,6 +62,17 @@ class _Operator:
                  phase_cd.shape == (3, 2)))
         self.operator.apply(in_xg, out_xg, phase_cd)
 
+    def apply2(self, in_xg, out_xg, phase_cd=None):
+        assert in_xg.shape == out_xg.shape
+        assert in_xg.shape[-3:] == self.shape
+        assert is_contiguous(in_xg, self.dtype)
+        assert is_contiguous(out_xg, self.dtype)
+        assert (self.dtype == float or
+                (phase_cd.dtype == complex and
+                 phase_cd.shape == (3, 2)))
+        self.operator.apply2(in_xg, out_xg, phase_cd)
+
+
     def relax(self, relax_method, f_g, s_g, n, w=None):
         assert f_g.shape == self.shape
         assert s_g.shape == self.shape
