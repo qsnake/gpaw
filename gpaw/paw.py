@@ -686,7 +686,13 @@ class PAW(PAWExtra, Output):
         # Add non-local contributions
         for kpt in self.kpt_u:
             self.F_ac += self.xcfunc.get_non_local_force(kpt)
-            
+    
+        # Add contributions from external fields
+        external = self.input_parameters['external']
+        if hasattr(external, 'get_ion_energy_and_forces'):
+            E_ext, F_ext = external.get_ion_energy_and_forces(self.nuclei)
+            self.F_ac += F_ext
+
         if self.symmetry is not None:
             # Symmetrize forces:
             F_ac = npy.zeros((self.natoms, 3))

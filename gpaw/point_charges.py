@@ -110,6 +110,19 @@ class PointCharges(list):
 
         return potential
 
+    def get_ion_energy_and_forces(self, nuclei):
+        """Return the ionic energy and force contribution."""
+        forces = npy.zeros((len(atoms),3))
+        energy = 0
+        for a, atom in enumerate(atoms):
+            for pc in self:
+                dr = atom.position - pc.position
+                dist = sqrt(npy.sum(dr*dr))
+                e = atom.number * pc.charge / dist
+                forces[a] += dr * e
+                energy += e
+        return energy, forces
+        
     def translate(self, displacement):
         for pc in self:
             pc.position += displacement
@@ -140,3 +153,8 @@ class ConstantPotential:
     def get_potential(self, gd):
         potential = gd.zeros() + self.constant
         return potential
+    def get_ion_energy_and_forces(self, atoms):
+        """Return the ionic energy and force contribution."""
+        forces = npy.zeros((len(atoms),3))
+        energy = 0
+        return energy, forces
