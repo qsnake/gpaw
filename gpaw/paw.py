@@ -434,7 +434,8 @@ class PAW(PAWExtra, Output):
         self.Ebar = H.Ebar
         self.Exc = H.Exc + self.Enlxc
         self.S = self.occupation.S
-        self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc - self.S
+        self.Etot = (self.Ekin + self.Epot + self.Eext + 
+                     self.Ebar + self.Exc - self.S       )
 
         if len(self.old_energies) == 3:
             self.old_energies.pop(0)
