@@ -9,8 +9,9 @@ from ase.io.pdb import write_pdb
 from gpaw.io.cc1 import read_cc1
 from ase.io.cube import read_cube
 from ase import read as ase_read
+from ase import write as ase_write
 from gpaw.utilities.vector import Vector3d
-from gpaw.io.xyz import read_xyz
+#from gpaw.io.xyz import read_xyz
 
 class Cluster(Atoms):
     """A class for cluster structures
@@ -179,6 +180,9 @@ class Cluster(Atoms):
         elif filetype == 'xyz':
             write_xyz(filename, out)
         else:
-            raise NotImplementedError('unknown file type "'+filetype+'"')
+            try:
+                ase_write(filename, self)
+            except:
+                raise NotImplementedError('unknown file type "'+filetype+'"')
                 
        
