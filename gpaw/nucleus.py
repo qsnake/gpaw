@@ -466,7 +466,7 @@ class Nucleus:
             # constant inside the augmentation spheres.
             Eext = 0.0
             if vext is not None:
-                Eext += vext * sqrt(4 * pi) * (self.Q_L[0] + s.Z)
+                Eext += vext * sqrt(4 * pi) * (self.Q_L[0] - self.setup.Delta0)
                 dH_p += vext * sqrt(4 * pi) * s.Delta_pL[:, 0]
             
             for H_p in self.H_sp:

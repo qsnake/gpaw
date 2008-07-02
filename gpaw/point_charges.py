@@ -133,3 +133,10 @@ class PointCharge(Atom):
         Atom.__init__(self, position=position, charge=charge)
 
  
+class ConstantPotential:
+    """Constant potential for tests."""
+    def __init__(self, constant=1):
+        self.constant = constant
+    def get_potential(self, gd):
+        potential = gd.zeros() + self.constant
+        return potential
