@@ -13,8 +13,12 @@ from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.blas import r2k
 
 
-def get_vxc(paw, spin):
+def get_vxc(paw, spin=0, U=None):
     """Calculate matrix elements of the xc-potential."""
+
+    if U is not None: # Rotate xc matrix
+        return npy.dot(dagger(U), npy.dot(get_vxc(paw, spin), U))
+    
     psit_nG = paw.kpt_u[spin].psit_nG[:]
     nt_g = paw.density.nt_sg[spin]
     vxct_g = paw.finegd.zeros()
@@ -217,8 +221,8 @@ class Coulomb4:
             self.pd.add_compensation_charges(self.nt34_G, rhot34_g)
 
         # smooth part
-        Z12 = float(npy.all(n1 == n2))
-        Z34 = float(npy.all(n3 == n4))
+        Z12 = None#float(npy.all(n1 == n2))
+        Z34 = None#float(npy.all(n3 == n4))
         I = self.coulomb(rhot12_g, rhot34_g, Z12, Z34, self.method)
 
         # Add atomic corrections

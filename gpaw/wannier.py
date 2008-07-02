@@ -119,6 +119,7 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
     if ortho:
         ap_nj = lowdin(ap_nj, S_jj)
         ap_vj = lowdin(ap_vj, S_jj)
+        S_jj = npy.identity(len(S_jj))
 
     U_nj = npy.concatenate([ap_nj.flat, ap_vj.flat]).reshape(N + V, M)
     return U_nj, S_jj

@@ -24,7 +24,7 @@ class BaseMixer:
             aggressive).
         nmaxold: int
             Maximum number of old densities.
-        metrix: None, 'old' or 'new'
+        metric: None, 'old' or 'new'
             Type of metric to use.
         weight: float
             Weight parameter for special metric (for long wave-length
