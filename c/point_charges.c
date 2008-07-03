@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 double distance(double *a, double *b);
-#define MIN(a,b) ((a)<(b)?(a):(b))
 
 PyObject *pc_potential(PyObject *self, PyObject *args)
 {
