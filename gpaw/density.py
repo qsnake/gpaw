@@ -393,7 +393,7 @@ class Density:
         self.taut_sG = self.gd.zeros(self.nspins)
         self.taut_sg = self.finegd.zeros(self.nspins)
 
-    def update_kinetic(self, kpt_u):
+    def update_kinetic(self, kpt_u, lfbc):
         """Calculate pseudo electron kinetic density.
         The pseudo electron-density ``taut_sG`` is calculated from the
         wave functions, the occupation numbers,
@@ -406,7 +406,8 @@ class Density:
         self.kpt_comm.sum(self.taut_sG)
         """Add the pseudo core kinetic array """
         for nucleus in self.nuclei:
-            nucleus.add_smooth_core_kinetic_energy_density(self.taut_sG,self.nspins, self.gd)
+            nucleus.add_smooth_core_kinetic_energy_density(self.taut_sG,self.nspins,
+                                                           self.gd,lfbc)
 
         """Transfer the density from the coarse to the fine grid."""
         for s in range(self.nspins):
