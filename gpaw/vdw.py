@@ -100,10 +100,10 @@ class VanDerWaals:
         import pylab as p
         for delta, c in [(0, 'r'), (0.5, 'g'), (0.9, 'b')]:
             jdelta = int(delta / self.deltadelta + 0.5)
-            p.plot(D, self.phimat[jdelta, :nD8], c + '-',
+            p.plot(D, self.phi_jk[jdelta, :nD8], c + '-',
                    label=r'$\delta=%.1f$' % delta)
-        p.plot(D, 0, 'k-')
         p.legend(loc='best')
+        p.plot(D, npy.zeros(len(D)), 'k-')       
         p.xlabel('D')
         p.ylabel(r'$4\pi D^2 \phi(\rm{Hartree})$')
         p.show()
