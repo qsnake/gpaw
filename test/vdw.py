@@ -40,10 +40,13 @@ for x in range(nx):
             r = sqrt((x * h - c*2.)**2 + (y * h - c)**2 + (z * h - c)**2)
             dnon[x, y, z] = exp(-2 * r) / pi
 
-vdw_revPBE=VanDerWaals(dnon, gd=gd,xcname='revPBE',pbc=(False,False,False))
-E_revPBE = vdw_revPBE.get_energy(n=1)
-vdw_RPBE=VanDerWaals(dnon, gd=gd,xcname='RPBE',pbc=(False,False,False))
-E_RPBE = vdw_RPBE.get_energy(n=1)
+#vdw_revPBE=VanDerWaals(dnon, gd=gd,xcname='revPBE',pbc=(False,False,False))
+vdw_revPBE=VanDerWaals(dnon, gd=gd,xcname='revPBE')
+E_revPBE = vdw_revPBE.get_energy()
+
+#vdw_RPBE=VanDerWaals(dnon, gd=gd,xcname='RPBE',pbc=(False,False,False))
+vdw_RPBE=VanDerWaals(dnon, gd=gd,xcname='RPBE')
+E_RPBE = vdw_RPBE.get_energy()
 
 
 
@@ -95,7 +98,7 @@ def interpolation(ymax=8):
 ref_label = ['min', 'max', 'average']
 reference = npy.array([0.024754860873480139,7.512329131951498,0.87798411512677765])
 
-q0=vdw_RPBE.q0
+q0=vdw_RPBE.q0_g
 q0test = npy.array([q0.min(), q0.max(), q0.mean()]) - reference
 print q0test
 
@@ -142,16 +145,18 @@ pylab.legend()
 
 ##########
 #C6 i Hartree
+#this test is obsolete and should be changed to the new way of coarsening the grid
 ##########
 
 
 
-C6 = []
+
 C6_c = []
+#C6 = []
 
 for n in [1,2,4,8]:
-    C6_c.append(vdw_revPBE.get_c6_coarse(n=n)[0])
-    C6.append(vdw_revPBE.get_c6(n=n)[0])
+    C6_c.append(vdw_revPBE.get_c6()[0])
+    #C6.append(vdw_revPBE.get_c6(n=n)[0])
 
 
 
@@ -194,10 +199,10 @@ for x in range(nx):
             r = sqrt((x * h - c*2.)**2 + (y * h - c)**2 + (z * h - c)**2)
             d[x, y, z] = exp(-2 * r) / pi
 
-vdw_revPBE=VanDerWaals(d, gd=gd,xcname='revPBE',pbc=(True,True,True))
-E_revPBE = vdw_revPBE.get_energy(n=1)
-vdw_RPBE=VanDerWaals(d, gd=gd,xcname='RPBE',pbc=(True,True,True))
-E_RPBE = vdw_RPBE.get_energy(n=1)
+vdw_revPBE=VanDerWaals(d, gd=gd,xcname='revPBE')
+E_revPBE = vdw_revPBE.get_energy()
+vdw_RPBE=VanDerWaals(d, gd=gd,xcname='RPBE')
+E_RPBE = vdw_RPBE.get_energy()
 
 ##########
 #Energy Test
@@ -206,36 +211,11 @@ E_RPBE = vdw_RPBE.get_energy(n=1)
 ##########
 ref_label = ['E_revPBE', 'E_RPBE']
 reference = npy.array([-0.45965246445715274, -0.45965246445798807])
-test=[E_revPBE,E_RPBE]
+test=[E_revPBE[0],E_RPBE[0]]
 print test
 for n in range(len(reference)):
     if abs(reference[n]- test[n]) > tolerance:
         print 'Energy test failed'+ref_label[n] 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ##########
 #plotting q0 and density at x axis going through H atoms
@@ -321,7 +301,7 @@ pylab.show()
 ##             r = sqrt((x * h - c)**2 + (y * h - c)**2 + (z * h - c)**2)
 ##             d[x, y, z] = exp(-2 * r) / pi
                                     
-e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
-d += d[::-1].copy()
-e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
-print  'revPBE mic',e1, e2, 2 * e1 - e2
+#e1 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
+#d += d[::-1].copy()
+#e2 = VanDerWaals(d, unitcell=uc,xcname='revPBE',pbc='mic').get_energy(n=4)
+#print  'revPBE mic',e1, e2, 2 * e1 - e2
