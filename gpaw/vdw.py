@@ -93,7 +93,7 @@ class VanDerWaals:
             
         self.phi_jk = self.get_phitab_from_1darrays()
 
-    def get_prl_plot(self):
+    def get_kernel_plot(self):
         ndelta, nD = self.phi_jk.shape
         nD8 = int(8.0 / self.deltaD)
         D = npy.linspace(0, nD8 * self.deltaD, nD8, endpoint=False)
@@ -165,10 +165,10 @@ class VanDerWaals:
     
 
     def get_e_xc_LDA(self):
-        e_xc_LDA=self.get_e_xc_LDA_c()+self.get_e_x_LDA()
+        e_xc_LDA=self.get_e_c_LDA()+self.get_e_x_LDA()
         return e_xc_LDA
     
-    def get_e_xc_LDA_c(self):
+    def get_e_c_LDA(self):
         #this is for one spin only
         #PW91 LDA correlation
         c=1.7099210
@@ -229,53 +229,53 @@ class VanDerWaals:
                 phimat[n,m] = x[n*0.05][m]
         return phimat
 
-    def get_c6(self,n=1,ncut=0.0005):
+##     def get_c6(self,n=1,ncut=0.0005):
+##         #Returns C6 in units of Hartree
+##         ncut=ncut
+##         h_c = self.h_c
+##         denstab=self.n_g
+##         nx, ny, nz = denstab[::n,::n,::n].shape
+##         print 'denstab.shape' ,denstab.shape
+##         N = nx * ny * nz
+##         print 'N' , N
+##         qtab_N = self.q0[::n,::n,::n].copy()
+##         print 'qtab_N.shape',qtab_N.shape
+##         qtab_N.shape = [N]
+
+##         denstab_N = denstab[::n,::n,::n].copy()
+##         denstab_N.shape = [N]
+##         print 'denstab_N.shape', denstab_N.shape
+##         qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
+##         denstab_N = npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
+##         #print denstab_N
+##         #print 'B:h_c[0]',h_c[0]
+##         #print denstab.shape
+##         print 'denstab_N.shape[0]', denstab_N.shape[0]
+##         C6 = 0.0
+##         C=(-12.*(4.*npy.pi/9.)**3)
+##         for m in range(denstab_N.shape[0]):
+##             #print C6
+##             C6 = C6+npy.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
+##         #print 'C:h_c[0]',h_c[:], 'n=', n
+##         #print 'udenfor loop C6=',C6
+##         #print 'norm', n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
+##         C6 = -C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
+##         #print denstab.shape
+##         Ry = 13.6058
+##         self.mik = qtab_N
+##         self.mikd = denstab_N
+##         return C6 ,'Ha*a0**6'
+
+    def get_c6(self,ncut=0.0005):
         #Returns C6 in units of Hartree
         ncut=ncut
-        h_c = self.h_c
-        denstab=self.n_g
-        nx, ny, nz = denstab[::n,::n,::n].shape
-        print 'denstab.shape' ,denstab.shape
-        N = nx * ny * nz
-        print 'N' , N
-        qtab_N = self.q0[::n,::n,::n].copy()
-        print 'qtab_N.shape',qtab_N.shape
-        qtab_N.shape = [N]
-
-        denstab_N = denstab[::n,::n,::n].copy()
-        denstab_N.shape = [N]
-        print 'denstab_N.shape', denstab_N.shape
-        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
-        denstab_N = npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
-        #print denstab_N
-        #print 'B:h_c[0]',h_c[0]
-        #print denstab.shape
-        print 'denstab_N.shape[0]', denstab_N.shape[0]
-        C6 = 0.0
-        C=(-12.*(4.*npy.pi/9.)**3)
-        for m in range(denstab_N.shape[0]):
-            #print C6
-            C6 = C6+npy.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
-        #print 'C:h_c[0]',h_c[:], 'n=', n
-        #print 'udenfor loop C6=',C6
-        #print 'norm', n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        C6 = -C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        #print denstab.shape
-        Ry = 13.6058
-        self.mik = qtab_N
-        self.mikd = denstab_N
-        return C6 ,'Ha*a0**6'
-
-    def get_c6_coarse(self,n=1,ncut=0.0005):
-        #Returns C6 in units of Hartree
-        ncut=ncut
-        h_c = self.h_c
-        denstab =self.coarsen(self.n_g,n)
+        h_c = self.gd.h_c
+        denstab = self.n_g
         print 'denstab.shape' ,denstab.shape
         nx, ny, nz = denstab.shape
         N = nx * ny * nz
         print 'N',N
-        qtab_N = self.coarsen(self.q0.copy(),n)
+        qtab_N = self.q0_g 
         qtab_N.shape = [N]
         denstab_N = denstab.copy()
         denstab_N.shape = [N]
@@ -286,7 +286,7 @@ class VanDerWaals:
         C=(-12.*(4.*npy.pi/9.)**3)
         for m in range(denstab_N.shape[0]):
             C6 = C6+npy.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
-        C6 = -C6*n**6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
+        C6 = -C6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
         Ry = 13.6058
         return C6 ,'Ha*a0**6'
 
