@@ -3,7 +3,7 @@
 from ase import *
 
 def fcc100(symbol, a, layers, L):
-    """Build a fcc(100) surface
+    """Build an fcc(100) surface
 
     symbol: chemical symbol ('H', 'Li', ...)
     a     : lattice constant
