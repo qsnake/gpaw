@@ -39,10 +39,7 @@ photoabsorption_spectrum('na2_dmz.dat', 'na2_spectrum_z.dat', width=0.3)
 
 td_rest = TDDFT('na2_td.gpw')
 td_rest.propagate(time_step, iters, 'na2_dmz2.dat', 'na2_td2.gpw')
-photoabsorption_spectrum('na2_dmz2.dat', 'na2_spectrum_z2.dat', width=0.3)
-
-td_calc.td_density.paw = None
-td_rest.td_density.paw = None
+# photoabsorption_spectrum('na2_dmz2.dat', 'na2_spectrum_z2.dat', width=0.3)
 
 os.remove('na2_gs.gpw')
 os.remove('na2_td.gpw')
@@ -50,5 +47,5 @@ os.remove('na2_dmz.dat')
 os.remove('na2_spectrum_z.dat')
 os.remove('na2_td2.gpw')
 os.remove('na2_dmz2.dat')
-os.remove('na2_spectrum_z2.dat')
+# os.remove('na2_spectrum_z2.dat')
 
