@@ -175,7 +175,10 @@ class Output:
             mixer = self.density.mixer
             t('Linear Mixing Parameter:           %g' % mixer.beta)
             t('Pulay Mixing with %d Old Densities' % mixer.nmaxold)
-            t('Damping of Long Wave Oscillations: %g' % mixer.weight)
+            if mixer.metric_type is None:
+                t('No Damping of Long Wave Oscillations')
+            else:
+                t('Damping of Long Wave Oscillations: %g' % mixer.weight)
 
         cc = p['convergence']
         t()
