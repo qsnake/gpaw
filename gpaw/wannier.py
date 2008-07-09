@@ -44,7 +44,9 @@ class Wannier:
         scaled_c = -npy.angle(self.Z_nnc.diagonal()).T / (2 * pi)
         return (scaled_c % 1.0) * self.cell_c
 
-    def get_function(self, calc, n):
+    def get_function(self, calc, n, pad=True):
+        if pad:
+            return calc.gd.zero_pad(self.get_function(calc, n, False))
         psit_nG = calc.kpt_u[self.spin].psit_nG[:].reshape((calc.nbands, -1))
         return npy.dot(self.U_nn[:, n],
                        psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
