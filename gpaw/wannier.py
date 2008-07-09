@@ -56,7 +56,8 @@ class Wannier:
 
 
 class LocFun(Wannier):
-    def localize(self, calc, N=None, projections=None, ortho=True):
+    def localize(self, calc, N=None, projections=None, ortho=True,
+                 verbose=False):
         # N is size of Hilbert space to fix. Default is number of occ. bands.
         if N is None:
             N = 0
@@ -65,18 +66,17 @@ class LocFun(Wannier):
                 N += 1
 
         if projections is None:
-            projections = single_zeta(calc, self.spin)
+            projections = single_zeta(calc, self.spin, verbose=verbose)
         
         self.U_nn, self.S_jj = get_locfun_rotation(projections, N, ortho)
         if self.Z_nnc is None:
             return 1
         
-        Z_nnc = npy.empty(self.S_jj.shape + (3,))
+        self.Z_jjc = npy.empty(self.S_jj.shape + (3,))
         for c in range(3):
-            Z_nnc[:, :, c] = npy.dot(dagger(self.U_nn),
+            self.Z_jjc[:, :, c] = npy.dot(dagger(self.U_nn),
                                      npy.dot(self.Z_nnc[:, :, c], self.U_nn))
-        self.Z_nnc = Z_nnc
-        self.value = npy.sum(npy.abs(Z_nnc.diagonal())**2)
+        self.value = npy.sum(npy.abs(self.Z_jjc.diagonal())**2)
         return self.value # / Bohr**6
             
 
@@ -95,6 +95,17 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
     P = M - N # Extra degrees of freedom
     V = Nbands - N # Virtual states
 
+    if V == 0:
+        D_jj = npy.dot(dagger(projections_nj), projections_nj)
+        U_nj = 1.0 / npy.sqrt(D_jj.diagonal()) * projections_nj
+        S_jj = npy.dot(dagger(U_nj), U_nj)
+        assert npy.diagonal(npy.linalg.cholesky(S_jj)).min() > .01, \
+               'Close to linear dependence.'
+        if ortho:
+            U_nj = lowdin(U_nj, S_jj)
+            S_jj = npy.identity(len(S_jj))
+        return U_nj, S_jj
+
     a0_nj = projections_nj[:N, :]
     a0_vj = projections_nj[N:N + V, :]
     B_vv = npy.dot(a0_vj, dagger(a0_vj))
@@ -108,13 +119,12 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
     ap_nj = D2_j * a0_nj
     ap_vj = D2_j * npy.dot(R_vv, a0_vj)
     S_jj = npy.dot(dagger(ap_nj), ap_nj) + npy.dot(dagger(ap_vj), ap_vj)
-    
+
     # Check for linear dependencies
-    Scd = npy.diagonal(npy.linalg.cholesky(S_jj))
-    if Scd.min() < 0.01:
+    Scd = npy.diagonal(npy.linalg.cholesky(S_jj)).min()
+    if Scd < 0.01:
         print ('Warning: possibly near linear depedence.\n'
-               'Minimum eigenvalue of cholesky decomposition is %s'
-               % Scd.min())
+               'Minimum eigenvalue of cholesky decomposition is %s' % Scd)
 
     if ortho:
         ap_nj = lowdin(ap_nj, S_jj)
@@ -124,7 +134,15 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
     U_nj = npy.concatenate([ap_nj.flat, ap_vj.flat]).reshape(N + V, M)
     return U_nj, S_jj
 
-def single_zeta(paw, spin):
+def single_zeta(paw, spin, verbose=False):
+    angular = [['1'],
+               ['y', 'z', 'x'],
+               ['xy', 'yz', '3z^2-r^2', 'xz', 'x^2-y^2'],
+               ['3x^2y-y^3', 'xyz', '5yz^2-yr^2', '5z^3-3zr^2',
+                '5xz^2-xr^2', 'x^2z-y^2z', 'x^3-3xy^2'],
+               ]
+    if verbose:
+        print 'index atom orbital'
     p_jn = []
     for nucleus in paw.nuclei:
         i = 0
@@ -133,6 +151,9 @@ def single_zeta(paw, spin):
                 break
             for j in range(i, i + 2 * l + 1):
                 p_jn.append(nucleus.P_uni[spin, :, j])
+                if verbose:
+                    print '%5i %4i %s_%s' % (len(p_jn), nucleus.a,
+                                             'spdf'[l], angular[l][j - i])
             i += 2 * l + 1
     projections_nj = dagger(npy.array(p_jn))
     assert projections_nj.shape[0] >= projections_nj.shape[1]
