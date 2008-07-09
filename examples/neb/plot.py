@@ -14,8 +14,8 @@ atoms.append(Atom('Al', (a / 2, b / 2, 3 * h)))
 atoms.center(vacuum=4., axis=2)
 
 atoms *= (2, 3, 1)
-rotation = '-75x, 10y'
-radii = covalent_radii[atoms.numbers] * 1.1
+rotation = '-60x, 10y'
+radii = covalent_radii[atoms.numbers] * 1.2
 colors = jmol_colors[atoms.numbers]
 colors[16::17] = [1, 0, 0]
 pov_options = {'display': False,
