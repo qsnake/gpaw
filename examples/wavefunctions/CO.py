@@ -1,8 +1,9 @@
 from ase import *
 from gpaw import *
 
-# Gpaw calculator with 4 unonccupied bands (CO has 10 valence electrons)
-calc = Calculator(h=0.2, txt='CO.txt', nbands=-4)
+# Gpaw calculator with 3 unonccupied bands (CO has 10 valence electrons)
+calc = Calculator(h=0.2, txt='CO.txt', nbands=8, eigensolver='cg',
+                  convergence={'bands': 'all'})
 
 # Make the CO molecule and relax the structure
 CO = molecule('CO')
