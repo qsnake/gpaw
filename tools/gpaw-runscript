@@ -18,14 +18,15 @@ defaults = { 'err'   : None,
              'wd'    : None
              }
 
-hosts = { 'batman'             : 'pbs',
+hosts = { 'batman'             : 'pbs_batman',
           'c551'               : 'murska',
           'c552'               : 'murska',
           'c553'               : 'murska',
           'c554'               : 'murska',
           'louhi'              : 'louhi',
           'opaali.phys.jyu.fi' : 'sge',
-          'sepeli.csc.fi'      : 'sepeli'
+          'sepeli.csc.fi'      : 'sepeli',
+          'ui.bfg.uni'         : 'pbs'
           }
 
 platforms = { 'aix5' : 'loadleveler' }
@@ -246,7 +247,7 @@ class RunScript:
         print >> f, 'module load gpaw'
         print >> f,"mpirun -srun $GPAW_PYTHON",set['script']
       
-    def pbs(self, f, set, env):
+    def pbs_batman(self, f, set, env):
         print >> f,"#PBS -N "+set['name']
         print >> f,"#PBS -l ncpus="+str(set['nodes'])
         print >> f,"#PBS -l walltime="""+str(set['time'])
@@ -283,6 +284,23 @@ unset CC CFLAGS LDFLAGS
         print >> f, 'date'
         print >> f, 'echo "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"'
         print >> f, 'exit 0'
+
+    def pbs_bfg(self, f, set, env):
+        print >> f, '#!/bin/bash'
+        print >> f, '#PBS -N '+set['name']
+        print >> f, '#PBS -l ncpus='+str(set['nodes'])
+        print >> f, '#PBS -l walltime='+str(set['time'])
+        print >> f, '#PBS -m bea'
+        if set['mail'] is not None:
+            print >> f, '#PBS -M',set['mail']
+        print >> f, '#PBS -o', set['out']+'_$PBS_JOBID'
+        print >> f, '#PBS -e', set['err']+'_$PBS_JOBID'
+        print >> f, 'cd', set['wd']
+        print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
+        print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
+        print >> f, 'export GPAW_PYTHON=~/gridpaw/build/bin.linux-ia64-2.4/gpaw-python'
+        print >> f, 'mpirun -np', set['nodes'], '$GPAW_PYTHON', set['script']
+        print >> f, 'date'
 
     def sepeli(self, f, set, env):
         print >> f,"#$ -N",set['name']
