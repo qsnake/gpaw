@@ -1,4 +1,4 @@
-"""Diffusion along rows"""
+"""Diffusion by an exchange process"""
 
 from ase import *
 
@@ -52,4 +52,4 @@ minimizer.run(fmax=0.05)
 
 # Write the path to a trajectory:
 view(images)
-write('jump1.traj', images)
+write('jump3.traj', images)

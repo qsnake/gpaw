@@ -1,3 +1,5 @@
+"""Diffusion across rows"""
+
 from ase import *
 
 a = 4.0614
@@ -9,6 +11,7 @@ initial = Atoms([Atom('Al', (0, 0, 0)),
                 cell=(a, b, 2 * h))
 initial *= (2, 2, 2)
 initial.append(Atom('Al', (a / 2, b / 2, 3 * h)))
+initial.center(vacuum=4., axis=2)
 
 final = initial.copy()
 final.positions[-1, 1] += b
