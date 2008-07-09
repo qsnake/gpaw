@@ -5,16 +5,15 @@ from ase import *
 a = 4.0614
 b = a / sqrt(2)
 h = b / 2
-initial = Atoms([Atom('Al', (0, 0, 0)),
-                 Atom('Al', (a / 2, b / 2, -h))],
-                pbc=(1, 1, 0),
-                cell=(a, b, 2 * h))
+initial = Atoms('Al2', pbc=(1, 1, 0), cell=(a, b, 2 * h),
+                positions=((0, 0, 0),
+                           (a / 2, b / 2, -h)))
 initial *= (2, 2, 2)
 initial.append(Atom('Al', (a / 2, b / 2, 3 * h)))
 initial.center(vacuum=4., axis=2)
 
 final = initial.copy()
-final.positions[-1, 1] += b
+final.positions[-1, 0] += a
 
 view([initial, final])
 
@@ -24,9 +23,9 @@ for i in range(5):
     images.append(initial.copy())
 images.append(final)
 
-# Make a mask of zeros and ones that select the dynamic atoms (the
-# three topmost layers):
-mask = initial.positions[:, 2] < 0.5 * h
+# Make a mask of zeros and ones that select fixed atoms (the
+# two bottom layers):
+mask = initial.positions[:, 2] - min(initial.positions[:, 2]) < 1.5 * h
 constraint = FixAtoms(mask=mask)
 print mask
 
@@ -51,5 +50,5 @@ minimizer = QuasiNewton(neb)
 minimizer.run(fmax=0.05)
 
 # Write the path to a trajectory:
-view(images)
+view(images) # 564 meV
 write('jump2.traj', images)
