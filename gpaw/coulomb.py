@@ -361,6 +361,8 @@ from gpaw.utilities import packed_index, unpack2
 from gpaw.utilities.blas import r2k
 class HF:
     def __init__(self, paw):
+        paw.set_positions()
+        
         self.nspins       = paw.nspins
         self.nbands       = paw.nbands
         self.my_nuclei    = paw.my_nuclei
@@ -420,7 +422,13 @@ class HF:
                         h_nn[:,n2] += f1 * npy.dot(P_ni,npy.dot(v_ii,P_ni[n1]))
                     
         symmetrize(h_nn) # Grrrr why!!! XXX
+
+        # Fill in upper triangle
         r2k(0.5 * self.dv, kpt.psit_nG[:], Htpsit_nG, 1.0, H_nn)
+
+        # Fill in lower triangle
+        for n in range(self.nbands - 1):
+            H_nn[n:, n] = H_nn[n, n:]
 
     def atomic_val_val(self, kpt, H_nn):
         deg = 2 / self.nspins
