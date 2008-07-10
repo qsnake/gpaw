@@ -56,11 +56,13 @@ class ExteriorElectronDensity:
             raise NotImplementedError # XXXX TODO
 
         out = sys.stdout
-        if file != None:
-            if isinstance(file, str):
-                out = open(file, 'aw')
-            else:
-                out = file
+        if file is None:
+            file = 'mies.dat'
+
+        if isinstance(file, str):
+            out = open(file, 'aw')
+        else:
+            out = file
 
         print >> out, '# exterior electron density weights after'
         print >> out, '# Y. Harada et al., Chem. Rev. 97 (1997) 1897'
