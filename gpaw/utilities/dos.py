@@ -60,12 +60,11 @@ def fold(energies, weights, npts, width):
     for each."""
     emin = min(energies) - 5 * width
     emax = max(energies) + 5 * width
-    step = (emax - emin) / (npts - 1)
-    e = npy.arange(emin, emax + 1e-7, step, dtype=float)
-    ldos_e = npy.zeros(npts, dtype=float)
+    e = npy.linspace(emin, emax, npts)
+    dos_e = npy.zeros(npts)
     for e0, w in zip(energies, weights):
-        ldos_e += w * delta(e, e0, width)
-    return e, ldos_e
+        dos_e += w * delta(e, e0, width)
+    return e, dos_e
 
 def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     """Return a list of eigenvalues, and their weight on the specified atom.

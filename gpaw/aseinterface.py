@@ -168,7 +168,7 @@ class Calculator(PAW):
             
         return weight_a
 
-    def get_dos(self, spin, npts=201, width=None):
+    def get_dos(self, spin=0, npts=201, width=None):
         """The total DOS.
 
         Fold eigenvalues with Gaussians, and put on an energy grid."""
@@ -188,7 +188,8 @@ class Calculator(PAW):
             x += Nb
             
         from gpaw.utilities.dos import fold
-        return fold(energies, weights, npts, width)        
+        e, dos = fold(energies, weights, npts, width)
+        return e - self.get_fermi_level(), dos
 
     def get_wigner_seitz_ldos(self, a, spin, npts=201, width=None):
         """The Local Density of States, using a Wigner-Seitz basis function.
