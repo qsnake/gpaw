@@ -239,7 +239,10 @@ class Calculator(PAW):
 
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
                                  pad=False):
-        """Return pseudo-wave-function array."""
+        """Return pseudo-wave-function array.
+
+        Unit: 1/Angstrom^(3/2)
+        """
         if pad:
             return self.gd.zero_pad(self.get_pseudo_wave_function(
                 band, kpt, spin, broadcast, False))
