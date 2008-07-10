@@ -14,14 +14,13 @@ from cmath import exp
 
 import numpy as npy
 
+from gpaw.mpi import MASTER
 from gpaw.utilities.complex import cc
 
 # Remove this:  XXX
 assert (-1) % 3 == 2
 assert (npy.array([-1]) % 3)[0] == 2
 
-
-MASTER = 0
 NONBLOCKING = False
 
 class GridDescriptor:
