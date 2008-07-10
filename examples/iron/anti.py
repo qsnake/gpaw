@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator, MixerSum
+from gpaw import Calculator
 
 a = 2.87
 m = 2.2
@@ -12,7 +12,6 @@ calc = Calculator(kpts=(6, 6, 6),
                   nbands=18,
                   eigensolver='dav',
                   fixmom=True,
-                  mixer=MixerSum(metric='new'),
                   txt='anti.txt')
 bulk.set_calculator(calc)
 print bulk.get_potential_energy()
