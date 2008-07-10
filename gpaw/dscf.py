@@ -44,10 +44,10 @@ def dscf_calculation(calc, orbitals, atoms=None):
     # if the calculator has not been initialized it does not have an
     # occupation object
     if not hasattr(calc, 'occupation'):
-        calc.initialize(atoms)
+       calc.initialize(atoms)
     occ = calc.occupation
     if isinstance(occ, FermiDirac) and not isinstance(occ, FermiDiracDSCF):
-        n_occ = FermiDiracDSCF(occ.ne, occ.nspins, occ.kT, orbitals ,calc)
+        n_occ = FermiDiracDSCF(occ.ne, occ.nspins, occ.kT, orbitals, calc)
         n_occ.set_communicator(occ.kpt_comm)
         calc.occupation = n_occ
         calc.converged = False
@@ -57,7 +57,10 @@ def dscf_calculation(calc, orbitals, atoms=None):
         n_occ.set_communicator(occ.kpt_comm)
         calc.occupation = n_occ
         calc.converged = False
+    else:
+        calc.occupation.orbitals = orbitals 
 
+        
 class ZeroKelvinDSCF(ZeroKelvin):
     """ Occupation class
 
@@ -390,6 +393,9 @@ class WaveFunction:
             
             # Inner product of pseudowavefunctions
             wf = npy.reshape(wf_u[kpt.u], -1) * self.paw.a0**1.5
+            if kpt.psit_nG is None:
+                a,b,c = self.paw.gd.N_c
+                kpt.psit_nG = npy.zeros((len(kpt.f_n), a, b, c),float)
             psit_nG = npy.reshape(kpt.psit_nG, (len(kpt.f_n), -1))
             dV = self.paw.gd.h_c[0] * self.paw.gd.h_c[1] * self.paw.gd.h_c[2]
             Porb_n = npy.dot(npy.conjugate(psit_nG), wf) * dV
@@ -407,7 +413,7 @@ class WaveFunction:
             Pabs_n = abs(Porb_n)**2
             argsort = npy.argsort(Pabs_n)
 
-            print 'Kpoint', kpt.k, kpt.weight, sum(abs(Porb_n)**2)
+            print 'Kpoint', mpi.rank, kpt.u, kpt.k, sum(abs(Porb_n)**2)
 
             if self.paw.dtype == float:
                 ft_m = npy.zeros(len(kpt.f_n), npy.float)
