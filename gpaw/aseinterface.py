@@ -191,7 +191,7 @@ class Calculator(PAW):
         e, dos = fold(energies, weights, npts, width)
         return e - self.get_fermi_level(), dos
 
-    def get_wigner_seitz_ldos(self, a, spin, npts=201, width=None):
+    def get_wigner_seitz_ldos(self, a, spin=0, npts=201, width=None):
         """The Local Density of States, using a Wigner-Seitz basis function.
 
         Project wave functions onto a Wigner-Seitz box at atom ``a``, and
@@ -205,14 +205,19 @@ class Calculator(PAW):
         energies, weights = raw_wignerseitz_LDOS(self, a, spin)
         return fold(energies * self.Ha, weights, npts, width)        
     
-    def get_orbital_ldos(self, a, spin, angular, npts=201, width=None):
+    def get_orbital_ldos(self, a,
+                         spin=0, angular='spdf', npts=201, width=None):
         """The Local Density of States, using atomic orbital basis functions.
 
         Project wave functions onto an atom orbital at atom ``a``, and
         use this as weight when summing the eigenvalues.
 
         The atomic orbital has angular momentum ``angular``, which can be
-        's', 'p', 'd', 'f', or any combination (e.g. 'sdf')."""
+        's', 'p', 'd', 'f', or any combination (e.g. 'sdf').
+
+        An integer value for ``angular`` can also be used to specify a specific
+        projector function to project onto.
+        """
         if width is None:
             width = self.get_electronic_temperature()
         if width == 0.0:
@@ -222,7 +227,7 @@ class Calculator(PAW):
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
         return fold(energies * self.Ha, weights, npts, width)
 
-    def get_molecular_ldos(self, mol, spin, npts=201, width=None,
+    def get_molecular_ldos(self, mol, spin=0, npts=201, width=None,
                            lc=None, wf=None, P_uai=None):
         """The Projected Density of States, using either atomic
         orbital basis functions (lc) for a specified molecule (mol)

@@ -27,7 +27,7 @@ def get_angular_projectors(nucleus, angular, type='bound'):
     quantum number.
 
     angular can be s, p, d, f, or a list of these.
-    If type is 'bound', only bound state projectors are considered, otherwize
+    If type is 'bound', only bound state projectors are considered, otherwise
     all projectors are included.
     """
     # Get the number of relevant j values
@@ -70,7 +70,11 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     """Return a list of eigenvalues, and their weight on the specified atom.
 
     angular can be s, p, d, f, or a list of these.
-    If angular is None, the raw weight for each projector is returned"""
+    If angular is None, the raw weight for each projector is returned.
+
+    An integer value for ``angular`` can also be used to specify a specific
+    projector function.
+    """
     w_k = paw.weight_k
     nk = len(w_k)
     nb = paw.nbands
@@ -87,6 +91,8 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
 
     if angular is None:
         return energies, weights_xi
+    elif type(angular) is int:
+        return energies, weights_xi[angular]
     else:
         projectors = get_angular_projectors(nucleus, angular, type='bound')
         weights = npy.sum(npy.take(weights_xi,
