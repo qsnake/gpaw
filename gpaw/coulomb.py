@@ -323,7 +323,30 @@ def wannier_coulomb_integrals(paw, U_nj, spin,
         result += (eval('V_' + type), )
     return result
 
+def symmetry(i, j, k, l):
+    ijkl = npy.array((i, j, k, l), int)
+    a = npy.argmin(ijkl)
+    conj = False
+    if a == 1:
+        npy.take(ijkl, (1, 0, 3, 2), out=ijkl)
+    elif a == 2:
+        conj = True
+        npy.take(ijkl, (2, 3, 0, 1), out=ijkl)
+    elif a == 3:
+        conj = True
+        npy.take(ijkl, (3, 2, 1, 0), out=ijkl)
 
+    if ijkl[0] == ijkl[1] and ijkl[3] < ijkl[2]:
+        npy.take(ijkl, (0, 1, 3, 2), out=ijkl)
+
+    return tuple(ijkl), conj
+
+def update_dict(i, j, k, l, dict, func):
+    ijkl, conj = symmetry(i, j, k, l)
+    if conj:
+        return dict.setdefault(ijkl, npy.conj(func(i, j, k, l)))
+    return dict.setdefault(ijkl, func(i, j, k, l))
+   
 def coulomb_all(paw, U_nj, spin=0):
     # Returns all of the Coulomb integrals
     # V_{ijkl} = \iint drdr' / |r-r'| i*(r) j*(r') k(r) l(r')
