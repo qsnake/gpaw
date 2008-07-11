@@ -1,0 +1,14 @@
+scale to 0.4
+
+mol delrep 0 top
+
+mol representation CPK 1.0 0.2 30.0 10.0
+mol addrep top
+
+mol representation Isosurface 0.150000 0.000000 0.000000 0.000000 1 1
+mol color ColorID 0
+mol addrep top
+
+mol representation Isosurface -0.150000 0.000000 2.000000 0.000000 1 1
+mol color ColorID 1
+mol addrep top
