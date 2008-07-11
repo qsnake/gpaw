@@ -2,6 +2,7 @@ import sys
 import numpy as npy
 
 from ase.units import Bohr, Hartree
+from ase.parallel import paropen
 
 import _gpaw
 
@@ -60,7 +61,7 @@ class ExteriorElectronDensity:
             file = 'mies.dat'
 
         if isinstance(file, str):
-            out = open(file, 'aw')
+            out = paropen(file, 'aw')
         else:
             out = file
 
