@@ -1,11 +1,23 @@
 from math import pi, sqrt
 import numpy as npy
 from gpaw.utilities import pack, wignerseitz
+from gpaw.setup_data import SetupData
+
+
 
 def print_projectors(nucleus):
-    """Print information on the projectors of input nucleus object"""
-    n_j = nucleus.setup.n_j
-    l_j = nucleus.setup.l_j
+    """Print information on the projectors of input nucleus object.
+
+    If nucleus is a string, treat this as an element name.
+    """
+    if type(nucleus) is str:
+        setup = SetupData(nucleus, 'LDA', 'paw')
+        n_j = setup.n_j
+        l_j = setup.l_j
+    else:
+        n_j = nucleus.setup.n_j
+        l_j = nucleus.setup.l_j
+    
     angular = [['1'],
                ['y', 'z', 'x'],
                ['xy', 'yz', '3z^2-r^2', 'xz', 'x^2-y^2'],
