@@ -1,9 +1,8 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import restart
 from gpaw.wannier import Wannier
 
-calc = Calculator('benzene.gpw')
-atoms = calc.get_atoms()
+atoms, calc = restart('benzene.gpw')
 
 homo = calc.get_pseudo_wave_function(band=14, pad=True)
 write('homo.cube', atoms, data=homo)

@@ -2,8 +2,11 @@ from ase import *
 from gpaw import Calculator
 from gpaw.wannier import Wannier
 
-calc = Calculator('co.gpw')
-atoms = calc.get_atoms()
+calc = Calculator(nbands=5)
+atoms = molecule('CO')
+atoms.center(vacuum=3.)
+atoms.set_calculator(calc)
+atoms.get_potential_energy()
 
 # Initialize the Wannier class
 w = Wannier(calc)
