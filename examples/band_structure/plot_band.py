@@ -1,4 +1,3 @@
-import numpy as npy
 from gpaw import Calculator
 from pylab import *
 
@@ -7,14 +6,13 @@ nbands = calc.get_number_of_bands()
 kpts = calc.get_ibz_k_points()
 nkpts = len(kpts)
 
-eigs = npy.empty((nbands, nkpts))
+eigs = empty((nbands, nkpts))
 
 for k in range(nkpts):
     eigs[:, k] = calc.get_eigenvalues(kpt=k)
 
-eigs -= calc.get_fermi_level()
+# Subtract Fermi level from the self-consistent calculation
+eigs -= Calculator('Na_sc.gpw', txt=None).get_fermi_level()
 for n in range(nbands):
     plot(kpts[:, 0], eigs[n], '.m')
-#xlabel('Kpoint', fontsize=22)
-#ylabel('Eigenvalue', fontsize=22)
 show()
