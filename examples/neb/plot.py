@@ -14,6 +14,7 @@ atoms.append(Atom('Al', (a / 2, b / 2, 3 * h)))
 atoms.center(vacuum=4., axis=2)
 
 atoms *= (2, 3, 1)
+atoms.cell /= [2, 3, 1]
 rotation = '-60x, 10y'
 radii = covalent_radii[atoms.numbers] * 1.2
 colors = jmol_colors[atoms.numbers]
@@ -26,6 +27,7 @@ write('slab.pov', atoms,
       rotation=rotation,
       colors=colors,
       radii=radii,
+      show_unit_cell=2,
       **pov_options)
 
 import os
