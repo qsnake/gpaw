@@ -127,6 +127,19 @@ class PointCharges(list):
         for pc in self:
             pc.position += displacement
 
+    def write(self, file='PC.xyz', filetype=None):
+
+        if filetype is None and isinstance(file, str):
+            # estimate file type from name ending
+            filetype = os.path.split(file)[-1].split('.')[-1]
+        filetype = filetype.lower()
+
+        if filetype == 'xyz':
+            self.write_xyz(file)
+        else:
+            raise NotImplementedError('unknown file type "'+filetype+'"')
+##        print "<PointCharges::read> found %d PC's" % len(self)
+
     def write_xyz(self, file='PC.xyz'):
         if isinstance(file, str):
             f = open(file, 'w')
