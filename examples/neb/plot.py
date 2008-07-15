@@ -16,7 +16,7 @@ atoms.center(vacuum=4., axis=2)
 atoms *= (2, 3, 1)
 atoms.cell /= [2, 3, 1]
 rotation = '-60x, 10y'
-radii = covalent_radii[atoms.numbers] * 1.2
+radii = 1.2 # single float specifies a uniform scaling of the covalent radii
 colors = jmol_colors[atoms.numbers]
 colors[16::17] = [1, 0, 0]
 pov_options = {'display': False,

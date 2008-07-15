@@ -2,8 +2,8 @@ from gpaw import Calculator
 from ase import *
 
 a = 4.23
-atoms = Atoms('Na2',[[0, 0, 0], [.5, .5, .5]], pbc=True)
-atoms.set_cell((a, a, a), scale_atoms=True)
+atoms = Atoms('Na2', cell=(a, a, a), pbc=True,
+              scaled_positions=[[0, 0, 0], [.5, .5, .5]])
 
 # Make self-consistent calculation and save results
 calc = Calculator(h=0.25, kpts=(8, 8, 8), width=0.05,

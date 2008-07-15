@@ -1,6 +1,5 @@
 import sys
-import pylab as p
-from ase import *
+import pylab
 from gpaw import Calculator
 
 filename = sys.argv[1]
@@ -10,11 +9,10 @@ else:
     width = None
 
 calc = Calculator(filename, txt=None)
-dos = DOS(calc, width=width)
-if calc.get_number_of_spins() == 1:
-    p.plot(dos.get_energies(), dos.get_dos())
-else:
-    p.plot(dos.get_energies(), dos.get_dos(0), label='up')
-    p.plot(dos.get_energies(), dos.get_dos(1), label='down')
-    p.legend()
-p.show()
+energy, dos = calc.get_dos(spin=0, width=width)
+pylab.plot(energy, dos)
+if calc.get_number_of_spins() == 2:
+    energy, dos = calc.get_dos(spin=1, width=width)
+    pylap.plot(energy, dos)
+    pylap.legend(('up', 'down'), loc='upper left')
+pylap.show()
