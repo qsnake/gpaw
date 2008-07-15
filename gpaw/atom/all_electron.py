@@ -186,23 +186,29 @@ class AllElectron:
         vHr = npy.zeros(self.N)
         self.vXC = npy.zeros(self.N)
 
-        try:
-            f = open('%s/%s.restart' % (tempdir, self.symbol), 'r')
-        except IOError:
+        if self.xc.is_non_local():
+            # Do not start from initial guess when doing
+            # non local XC!
+            # This is because we need wavefunctions as well
+            # on the first iteration.
+            f = None
+        else:
+            try:
+                f = open('%s/%s.restart' % (tempdir, self.symbol), 'r')
+            except IOError:
+                f = None
+            else:
+                try:
+                    n[:] = pickle.load(f)
+                except ValueError:
+                    f = None
+                else:
+                    t('Using old density for initial guess.')
+                    n *= Z / (npy.dot(n * r**2, dr) * 4 * pi)
+
+        if f is None:
             self.intialize_wave_functions()
             n[:] = self.calculate_density()
-        else:
-            if not self.xc.is_non_local():
-                t('Using old density for initial guess.')
-                n[:] = pickle.load(f)
-                n *= Z / (npy.dot(n * r**2, dr) * 4 * pi)
-            else:
-                # Do not start from initial guess when doing
-                # non local XC!
-                # This is because we need wavefunctions as well
-                # on the first iteration.
-                self.intialize_wave_functions()
-                n[:] = self.calculate_density()
 
         bar = '|------------------------------------------------|'
         t(bar)
