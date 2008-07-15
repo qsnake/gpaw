@@ -12,7 +12,7 @@ from gpaw.point_charges import PointCharges, ConstantPotential
 
 cp = ConstantPotential()
 
-sc = 2.
+sc = 2.9
 R=0.7 # approx. experimental bond length
 R=1.
 a = 2 * sc

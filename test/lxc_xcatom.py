@@ -47,7 +47,7 @@ for xc in libxc_set:
     s = Setup('N', xcfunc)
     ni = s.ni
     np = ni * (ni + 1) / 2
-    D_p = 0.1 * ra.random(np) + 0.2
+    D_p = 0.1 * ra.random(np) + 0.4
     H_p = npy.zeros(np)
 
     E1 = s.xc_correction.calculate_energy_and_derivatives([D_p], [H_p])
