@@ -60,7 +60,7 @@ os.system('wget --no-check-certificate ' +
 
 os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
-setups = dir + '/gpaw/' + glob.glob('gpaw-setups-*/setups')[0]
+setups = dir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
 export = ('export PYTHONPATH=%s/lib/python; ' % dir +
           'export GPAW_SETUP_PATH=%s; ' % setups)
 print export
