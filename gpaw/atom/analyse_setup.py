@@ -127,23 +127,6 @@ def analyse(generator, show=False):
     plt.ylabel(r'$r\tilde{p},\ \rm{[Bohr}^{-1/2}\rm{]}$')
 
     plt.subplot(323)
-    if len(gen.logd) > 0:
-        plt.plot(ref[:, 0], ref[:, 1], 'ko', label='_nolegend_')
-        for l, color in enumerate(colors[:3]):
-            id = 'spd'[l]
-            plt.plot(elog, logd[l][0], linestyle='-', color=color, label=id)
-            plt.plot(elog, logd[l][1], linestyle='--', color=color,
-                     label='_nolegend_')
-        plt.ylabel('log. deriv. at r=%.2f Bohr' % rlog)
-        ymin = ref[:, 1].min()
-        ymax = ref[:, 1].max()
-        plt.axis(ymin=ymin - (ymax - ymin) * 0.1,
-                 ymax=ymax + (ymax - ymin) * 0.1)
-    plt.legend(loc='best')
-    plt.title('Logarithmic Derivatives')
-    plt.xlabel('Energy [Hartree]')
-
-    plt.subplot(324)
     plt.plot(r_g, gen.nc, colors[0], label=r'$n_c$')
     plt.plot(r_g, gen.nct, colors[1], label=r'$\tilde{n}_c$')
     plt.axis('tight')
@@ -155,7 +138,7 @@ def analyse(generator, show=False):
     plt.xlabel('r [Bohr]')
     plt.ylabel(r'$\rm{density [Bohr}^{-3}\rm{]}$')
 
-    plt.subplot(325)
+    plt.subplot(324)
     plt.plot(r_g[1:], gen.vr[1:] / r_g[1:] , label=r'$v$')
     plt.plot(r_g, gen.vt, label=r'$\tilde{v}$')
     plt.plot(r_g, gen.vt - gen.vbar, label=r'$\tilde{v}-\bar{v}$')
@@ -168,6 +151,23 @@ def analyse(generator, show=False):
     plt.title('Potentials')
     plt.xlabel('r [Bohr]')
     plt.ylabel('potential [Hartree]')
+
+    plt.subplot(325)
+    if len(gen.logd) > 0:
+        plt.plot(ref[:, 0], ref[:, 1], 'ko', label='_nolegend_')
+        for l, color in enumerate(colors[:3]):
+            id = 'spd'[l]
+            plt.plot(elog, logd[l][0], linestyle='-', color=color, label=id)
+            plt.plot(elog, logd[l][1], linestyle='--', color=color,
+                     label='_nolegend_')
+        plt.ylabel('log. deriv. at r=%.2f Bohr' % rlog)
+        ymin = ref[:, 1].min()
+        ymax = ref[:, 1].max()
+        plt.axis(ymin=ymin - (ymax - ymin) * 0.1,
+                 ymax=ymax + (ymax - ymin) * 0.1)
+        plt.legend(loc='best')
+    plt.title('Logarithmic Derivatives')
+    plt.xlabel('Energy [Hartree]')
 
     plt.savefig('%s-setup.png' % symbol, dpi=dpi)
     
