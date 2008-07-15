@@ -242,7 +242,7 @@ class Output:
         if self.density.charge == 0:
             t('Dipole Moment: %s' % (dipole * self.a0))
         else:
-            t('Center of Charge: %s' % (dipole * self.a0))
+            t('Center of Charge: %s' % (dipole * self.a0 / abs(charge)))
 
         if self.nspins == 2:
             self.calculate_magnetic_moments()
