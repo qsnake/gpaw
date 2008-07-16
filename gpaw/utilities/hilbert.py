@@ -1,5 +1,5 @@
 import numpy as npy
-from numpy.fft import fft, inverse_fft
+from numpy.fft import fft, ifft
 
 """
 Methods for perfoming the Hilbert transform of a function::
@@ -68,7 +68,7 @@ def hilbert(f, ker=None, nfft=None, axis=0,
     if nfft == None: nfft = 2 * n
 
     # Generate new kernel if needed
-    if ker == None: ker = eval('hilbert_kernel' + kerneltype)(nfft)
+    if ker == None: ker = eval('hilbert_kernel_' + kerneltype)(nfft)
 
     # Reshape kernel
     ker_shape = [1,] * len(f.shape)
@@ -87,7 +87,7 @@ def hilbert(f, ker=None, nfft=None, axis=0,
         trans.shape = ker.shape
 
     # Make convolution of f and kernel
-    hil = inverse_fft(fft(f, n=nfft, axis=axis) * ker * trans, axis=axis)
+    hil = ifft(fft(f, n=nfft, axis=axis) * ker * trans, axis=axis)
     return hil[0:n]
     
 def analytic_transforms(x):
