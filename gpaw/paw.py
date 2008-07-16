@@ -19,7 +19,7 @@ import gpaw.io
 import gpaw.mpi as mpi
 import gpaw.occupations as occupations
 from gpaw import parsize, parsize_bands, dry_run
-from gpaw import ConvergenceError
+from gpaw import KohnShamConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.eigensolvers.eigensolver import Eigensolver
@@ -394,7 +394,7 @@ class PAW(PAWExtra, Output):
         # Self-consistency loop:
         while not self.converged:
             if self.niter > self.maxiter:
-                raise ConvergenceError('Did not converge!')
+                raise KohnShamConvergenceError('Did not converge!')
             self.step()
             self.add_up_energies()
             self.check_convergence()
@@ -555,7 +555,7 @@ class PAW(PAWExtra, Output):
 
             try:
                 self.find_ground_state(self.atoms, write=False)
-            except ConvergenceError:
+            except KohnShamConvergenceError:
                 pass
 
             self.maxiter = original_maxiter

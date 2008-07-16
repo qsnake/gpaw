@@ -29,6 +29,15 @@ __all__ = ['Calculator', 'Mixer', 'MixerSum', 'PoissonSolver', 'restart']
 class ConvergenceError(Exception):
     pass
 
+
+class KohnShamConvergenceError(ConvergenceError):
+    pass
+
+
+class PoissonConvergenceError(ConvergenceError):
+    pass
+
+
 # Check for special command line arguments:
 debug = False
 trace = False

@@ -8,7 +8,7 @@ import numpy as npy
 
 from gpaw.transformers import Transformer
 from gpaw.operators import Laplace, LaplaceA, LaplaceB
-from gpaw import ConvergenceError
+from gpaw import PoissonConvergenceError
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.gauss import Gaussian
 
@@ -176,7 +176,8 @@ class PoissonSolver:
         if niter == maxiter:
             charge = npy.sum(rho.ravel()) * self.dv
             print 'CHARGE, eps:', charge, eps
-            raise ConvergenceError('Poisson solver did not converge!')
+            msg = 'Poisson solver did not converge in %d iterations!' % maxiter
+            raise PoissonConvergenceError(msg)
 
         # Set the average potential to zero in periodic systems
         if npy.alltrue(self.gd.domain.pbc_c):
