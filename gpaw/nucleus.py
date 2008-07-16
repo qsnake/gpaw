@@ -1136,7 +1136,7 @@ class Nucleus:
             g_c = tuple(self.get_nearest_grid_point(gd) % gd.N_c)
             n_sg[s][g_c] += (Iana - Inum) / gd.dv
         
-    def wannier_correction(self, G, c, u, u1):
+    def wannier_correction(self, G, c, u, u1, nbands=None):
         """
         Calculate the correction to the wannier integrals Z,
         given by (Eq. 27 ref1)::
@@ -1157,8 +1157,12 @@ class Nucleus:
 
         ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
         """
-        P_ni = self.P_uni[u]
-        P1_ni = self.P_uni[u1]
+
+        if nbands is None:
+            nbands = self.P_uni.shape[1]
+            
+        P_ni = self.P_uni[u, :nbands]
+        P1_ni = self.P_uni[u1, :nbands]
         O_ii = self.setup.O_ii
         e = exp(-2.j * pi * G * self.spos_c[c])
         Z_nn = e * npy.dot(npy.dot(P_ni, O_ii), cc(npy.transpose(P1_ni)))

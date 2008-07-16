@@ -9,19 +9,21 @@ from gpaw.utilities.tools import dagger, lowdin
 
 
 class Wannier:
-    def __init__(self, calc=None, spin=0):
+    def __init__(self, calc=None, spin=0, nbands=None):
         self.spin = spin
         self.Z_nnc = None
         if calc is not None:
             self.cell_c = calc.domain.cell_c * Bohr
-            n = calc.get_number_of_bands()
-            self.Z_nnc = npy.empty((n, n, 3), complex)
+            if nbands is None:
+                nbands = calc.get_number_of_bands()
+            self.Z_nnc = npy.empty((nbands, nbands, 3), complex)
             for c in range(3):
                 self.Z_nnc[:, :, c] = calc.get_wannier_integrals(c, spin,
                                                                 #k, k1, G
-                                                                 0, 0, 1.0)
+                                                                 0, 0, 1.0,
+                                                                 nbands)
             self.value = 0.0
-            self.U_nn = npy.identity(n)
+            self.U_nn = npy.identity(nbands)
 
     def load(self, filename):
         self.cell_c, self.Z_nnc, self.value, self.U_nn = load(open(filename))

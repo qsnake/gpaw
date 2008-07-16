@@ -182,7 +182,7 @@ class PAWExtra:
             self.kpt_comm.receive(b_n, kpt_rank, 1301)
             return b_n
 
-    def get_wannier_integrals(self, c, s, k, k1, G):
+    def get_wannier_integrals(self, c, s, k, k1, G, nbands=None):
         """Calculate integrals for maximally localized Wannier functions."""
 
         assert s <= self.nspins
@@ -195,11 +195,11 @@ class PAWExtra:
         
         # Get pseudo part
         Z_nn = self.gd.wannier_matrix(self.kpt_u[u].psit_nG,
-                                      self.kpt_u[u1].psit_nG, c, G)
+                                      self.kpt_u[u1].psit_nG, c, G, nbands)
 
         # Add corrections
         for nucleus in self.my_nuclei:
-            Z_nn += nucleus.wannier_correction(G, c, u, u1)
+            Z_nn += nucleus.wannier_correction(G, c, u, u1, nbands)
 
         self.gd.comm.sum(Z_nn, 0)
             

@@ -414,7 +414,7 @@ class GridDescriptor:
         self.comm.sum(d_c)
         return d_c
 
-    def wannier_matrix(self, psit_nG, psit_nG1, c, G):
+    def wannier_matrix(self, psit_nG, psit_nG1, c, G, nbands=None):
         """Wannier localization integrals
 
         The soft part of Z is given by (Eq. 27 ref1)::
@@ -433,7 +433,9 @@ class GridDescriptor:
         if psit_nG is psit_nG1:
             same_wave = True
 
-        nbands = len(psit_nG)
+        if nbands is None:
+            nbands = len(psit_nG)
+            
         Z_nn = npy.zeros((nbands, nbands), complex)
         psit_nG = psit_nG[:]
         if not same_wave:
@@ -441,11 +443,11 @@ class GridDescriptor:
             
         def get_slice(c, g, psit_nG):
             if c == 0:
-                slice_nG = psit_nG[:, g].copy()
+                slice_nG = psit_nG[:nbands, g].copy()
             elif c == 1:
-                slice_nG = psit_nG[:, :, g].copy()
+                slice_nG = psit_nG[:nbands, :, g].copy()
             else:
-                slice_nG = psit_nG[:, :, :, g].copy()
+                slice_nG = psit_nG[:nbands, :, :, g].copy()
             slice_nG.shape = (nbands, -1)
             return slice_nG
 

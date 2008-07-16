@@ -20,14 +20,14 @@ ethylene = Atoms([Atom('H', (-1.235,-0.936 , 0 )),
 ethylene.center()
 
 if not os.path.isfile('ethylene.gpw'):
-    calc = Calculator(nbands=6, h=0.20, convergence={'eigenstates': 1e-6})
+    calc = Calculator(nbands=8, h=0.20, convergence={'eigenstates': 1e-6})
     ethylene.set_calculator(calc)
     ethylene.get_potential_energy()
     calc.write('ethylene.gpw', 'all')
 else:
     calc = Calculator('ethylene.gpw', txt=None)
 
-wannier = Wannier(calc)
+wannier = Wannier(calc, nbands=6)
 wannier.localize()
 
 centers = wannier.get_centers()
