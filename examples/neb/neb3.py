@@ -44,12 +44,13 @@ QuasiNewton(final).run(fmax=0.05)
 # Create a Nudged Elastic Band:
 neb = NEB(images)
 
-# Mak a starting guess for the minimum energy path (a straight line
+# Make a starting guess for the minimum energy path (a straight line
 # from the initial to the final state):
 neb.interpolate()
 
 # Relax the NEB path:
-minimizer = QuasiNewton(neb)
+minimizer = MDMin(neb)
+#minimizer = QuasiNewton(neb)
 minimizer.run(fmax=0.05)
 
 # Write the path to a trajectory:
