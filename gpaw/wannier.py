@@ -17,6 +17,7 @@ class Wannier:
             if nbands is None:
                 nbands = calc.get_number_of_bands()
             self.Z_nnc = npy.empty((nbands, nbands, 3), complex)
+            print "calculating Z_nnc"
             for c in range(3):
                 self.Z_nnc[:, :, c] = calc.get_wannier_integrals(c, spin,
                                                                 #k, k1, G
@@ -60,44 +61,75 @@ class Wannier:
 
 
 class LocFun(Wannier):
-    def localize(self, calc, N=None, projections=None, ortho=True,
+    def localize(self, calc, M=None, T=0,projections=None, ortho=True,
                  verbose=False):
-        # N is size of Hilbert space to fix. Default is number of occ. bands.
-        if N is None:
-            N = 0
+        # M is size of Hilbert space to fix. Default is ~ number of occ. bands.
+        if M is None:
+            M = 0
             f_n = calc.collect_occupations(0, self.spin)
-            while f_n[N] > .01:
-                N += 1
+            while f_n[M] > .01:
+                M += 1
 
         if projections is None:
             projections = single_zeta(calc, self.spin, verbose=verbose)
         
-        self.U_nn, self.S_jj = get_locfun_rotation(projections, N, ortho)
+        self.U_nn, self.S_jj = get_locfun_rotation(projections, M, T, ortho)
         if self.Z_nnc is None:
-            return 1
+            self.value = 1
+            return self.value
         
         self.Z_jjc = npy.empty(self.S_jj.shape + (3,))
         for c in range(3):
             self.Z_jjc[:, :, c] = npy.dot(dagger(self.U_nn),
                                      npy.dot(self.Z_nnc[:, :, c], self.U_nn))
+        
         self.value = npy.sum(npy.abs(self.Z_jjc.diagonal())**2)
+        
         return self.value # / Bohr**6
+
+    def get_centers(self):
+        z_jjc = npy.empty(self.S_jj.shape+(3,))
+        for c in range(3):
+            z_jjc = npy.dot(dagger(self.U_nn),
+                            npy.dot(self.Z_nnc[:,:,c],self.U_nn))
+
+        scaled_c = -npy.angle(z_jjc.diagonal()).T / (2 * pi)
+        return (scaled_c % 1.0) * self.cell_c
+
+    def get_eigenstate_centers(self):
+        scaled_c = -npy.angle(self.Z_nnc.diagonal()).T / (2 * pi)
+        return (scaled_c % 1.0) * self.cell_c
+        
+
+    def get_proj_norm(self,calc):
+        U_nj = self.U_nn
+        N,M = U_nj.shape
+        norm_n = npy.zeros(N,npy.float)
+        for n in range(N):
+            norm_n[n] = npy.sqrt(npy.dot(U_nj[n],U_nj[n].conjugate()))
+        
+        return norm_n
             
 
-def get_locfun_rotation(projections_nj, N=None, ortho=False):
+def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
     """Mikkel Strange's localized functions.
     
     projections_nj = <psi_n|p_j>
     psi_n: eigenstates
     p_j: localized function
-    N = number of occupied states (or part of Hilbert space to fix)
+    Nw =  number of localized functions
+    M = Number of fixed states
+    T = Number of virtual states to exclude (from above) 
     """
 
-    Nbands, M = projections_nj.shape
-    if N is None:
-        N = Nbands
-    P = M - N # Extra degrees of freedom
-    V = Nbands - N # Virtual states
+    Nbands, Nw = projections_nj.shape
+    if M is None:
+        M = Nw
+    L = Nw - M # Extra degrees of freedom
+    V = Nbands - M - T# Virtual states
+    print "V,M",V,M
+    a0_nj = projections_nj[:M, :]
+    a0_vj = projections_nj[M:M + V, :]
 
     if V == 0:
         D_jj = npy.dot(dagger(projections_nj), projections_nj)
@@ -110,12 +142,10 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
             S_jj = npy.identity(len(S_jj))
         return U_nj, S_jj
 
-    a0_nj = projections_nj[:N, :]
-    a0_vj = projections_nj[N:N + V, :]
     B_vv = npy.dot(a0_vj, dagger(a0_vj))
     b_v, b_vv = npy.linalg.eigh(B_vv)
     list = npy.argsort(-b_v)
-    T_vp = npy.take(b_vv, npy.argsort(-b_v)[:P], axis=1)
+    T_vp = npy.take(b_vv, npy.argsort(-b_v)[:L], axis=1)
     R_vv = npy.dot(T_vp, dagger(T_vp))
     D_jj = npy.dot(dagger(a0_nj), a0_nj) + npy.dot(dagger(a0_vj),
                                                    npy.dot(R_vv, a0_vj))
@@ -135,7 +165,7 @@ def get_locfun_rotation(projections_nj, N=None, ortho=False):
         ap_vj = lowdin(ap_vj, S_jj)
         S_jj = npy.identity(len(S_jj))
 
-    U_nj = npy.concatenate([ap_nj.flat, ap_vj.flat]).reshape(N + V, M)
+    U_nj = npy.concatenate([ap_nj.flat, ap_vj.flat]).reshape(M+V, Nw)
     return U_nj, S_jj
 
 def single_zeta(paw, spin, verbose=False):
