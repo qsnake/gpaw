@@ -203,7 +203,7 @@ class AllElectron:
             else:
                 try:
                     n[:] = pickle.load(fd)
-                except ValueError:
+                except (ValueError, IndexError):
                     fd = None
                 else:
                     t('Using old density for initial guess.')
