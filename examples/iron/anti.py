@@ -3,16 +3,18 @@ from gpaw import Calculator
 
 a = 2.87
 m = 2.2
-bulk = Atoms([Atom('Fe', (0,   0,   0),   magmom=m),
-              Atom('Fe', (a/2, a/2, a/2), magmom=-m)],
+bulk = Atoms('Fe2',
+             positions=[(0,   0,   0), (a/2, a/2, a/2)],
+             magmoms=[m, -m],
              cell=(a, a, a),
              pbc=True)
+
 calc = Calculator(kpts=(6, 6, 6),
                   h=0.20,
                   nbands=18,
                   eigensolver='dav',
-                  fixmom=True,
                   txt='anti.txt')
+
 bulk.set_calculator(calc)
 print bulk.get_potential_energy()
 calc.write('anti.gpw')
