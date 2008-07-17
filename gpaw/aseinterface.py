@@ -44,10 +44,10 @@ class Calculator(PAW):
 
         if force_consistent:
             # Free energy:
-            return self.Ha * self.Etot
+            return Hartree * self.Etot
         else:
             # Energy extrapolated to zero Kelvin:
-            return self.Ha * (self.Etot + 0.5 * self.S)
+            return Hartree * (self.Etot + 0.5 * self.S)
 
     def get_forces(self, atoms):
         """Return the forces for the current state of the ListOfAtoms."""
@@ -56,7 +56,7 @@ class Calculator(PAW):
                 self.converged = False
         self.calculate(atoms)
         self.calculate_forces()
-        return self.F_ac * (self.Ha / self.a0)
+        return self.F_ac * (Hartree / Bohr)
       
     def get_stress(self, atoms):
         """Return the stress for the current state of the ListOfAtoms."""
@@ -84,7 +84,7 @@ class Calculator(PAW):
             return self.F_ac is None
 
         return False
-        
+
     def get_number_of_bands(self):
         """Return the number of bands."""
         return self.nbands 
@@ -118,12 +118,36 @@ class Calculator(PAW):
         
         return self.weight_k
 
-    def get_pseudo_valence_density(self, pad=False):
-        """Return pseudo-density array."""
-        if pad:
-            return self.gd.zero_pad(self.get_pseudo_valence_density(False))
-        return self.density.get_density_array() / self.a0**3
+    def get_pseudo_density(self, spin=None, pad=True):
+        """Return pseudo-density array.
 
+        If *spin* is not given, then the total density is returned.
+        Otherwise, the spin up or down density is returned (spin=0 or
+        1)."""
+        
+        nt_sG = self.density.nt_sG
+        if self.nspins == 1:
+            nt_G = nt_sG[0]
+            if spin is not None:
+                nt_G = 0.5 * nt_G
+        else:
+            if spin is None:
+                nt_G = nt_sG.sum(axis=0)
+            else:
+                nt_G = nt_sG[spin]
+        if pad:
+            nt_G = self.gd.zero_pad(nt_G)
+        return nt_G / Bohr**3
+
+    get_pseudo_valence_density = get_pseudo_density  # Don't use this one!
+    
+    def get_effective_potential(self, spin=0, pad=True):
+        """Return pseudo effective-potential."""
+        vt_G = self.hamiltonian.vt_sG[spin]
+        if pad:
+            vt_G = self.gd.zero_pad(vt_G)
+        return vt_G * Hartree
+    
     def get_pseudo_density_corrections(self):
         """Integrated density corrections.
 
@@ -138,13 +162,12 @@ class Calculator(PAW):
             return npy.array([[n.get_density_correction(spin, 2)
                               for n in self.nuclei] for spin in range(2)])
 
-    def get_all_electron_density(self, gridrefinement=2, pad=False):
+    def get_all_electron_density(self, gridrefinement=2, pad=True):
         """Return reconstructed all-electron density array."""
+        n_G = self.density.get_all_electron_density(gridrefinement)
         if pad:
-            return self.gd.zero_pad(self.get_all_electron_density(
-                gridrefinement, False))
-        return self.density.get_all_electron_density(gridrefinement)\
-               / self.a0**3
+            n_G = self.gd.zero_pad(n_G)
+        return n_G / Bohr**3
 
     def get_wigner_seitz_densities(self, spin):
         """Get the weight of the spin-density in Wigner-Seitz cells
@@ -203,7 +226,7 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import raw_wignerseitz_LDOS, fold
         energies, weights = raw_wignerseitz_LDOS(self, a, spin)
-        return fold(energies * self.Ha, weights, npts, width)        
+        return fold(energies * Hartree, weights, npts, width)        
     
     def get_orbital_ldos(self, a,
                          spin=0, angular='spdf', npts=201, width=None):
@@ -225,7 +248,7 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import raw_orbital_LDOS, fold
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
-        return fold(energies * self.Ha, weights, npts, width)
+        return fold(energies * Hartree, weights, npts, width)
 
     def get_molecular_ldos(self, mol, spin=0, npts=201, width=None,
                            lc=None, wf=None, P_uai=None):
@@ -241,7 +264,7 @@ class Calculator(PAW):
         from gpaw.utilities.dos import molecular_LDOS, fold
         energies, weights = molecular_LDOS(self, mol, spin,
                                            lc=lc, wf=wf, P_uai=P_uai)
-        return fold(energies * self.Ha, weights, npts, width)
+        return fold(energies * Hartree, weights, npts, width)
 
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
                                  pad=False):
@@ -265,7 +288,7 @@ class Calculator(PAW):
         """Return eigenvalue array."""
         result = self.collect_eigenvalues(kpt, spin)
         if result is not None:
-            return result * self.Ha
+            return result * Hartree
 
     def get_occupations(self, kpt=0, spin=0):
         """Return occupation array."""
@@ -322,4 +345,4 @@ class Calculator(PAW):
         return npy.array(coefs)
 
     def get_electronic_temperature(self):
-        return self.kT * self.Ha
+        return self.kT * Hartree

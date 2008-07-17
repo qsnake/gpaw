@@ -19,8 +19,8 @@ R=0.7 # approx. experimental bond length
 a = 4
 c = 4
 H2 = Cluster([Atom('H', (a/2,a/2,(c-R)/2)),
-            Atom('H', (a/2,a/2,(c+R)/2))],
-           cell=(a,a,c))
+              Atom('H', (a/2,a/2,(c+R)/2))],
+             cell=(a,a,c))
 H2.rotate([1.,1.,1.])
 ##H2.write('H2.xyz')
 
@@ -37,7 +37,7 @@ else:
 
 fname = 'aed.plt'
 cell = calc.get_atoms().get_cell()
-aed = calc.get_all_electron_density(1)
+aed = calc.get_all_electron_density(1, pad=False)
 data_org = [cell, aed, npy.array([0., 0., 0.])]
 write_plt(fname, calc.get_atoms(), aed)
 
