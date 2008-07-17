@@ -1075,7 +1075,9 @@ class Nucleus:
         nucleus belongs to (i.e. return can be negative, or larger than
         gd.end_c), in which case something clever should be done.
         """
-        return npy.around(gd.N_c * self.spos_c).astype(int) - gd.beg_c
+        # avoid points outside the grid
+        spos_c = npy.clip(self.spos_c, 0., 1.)
+        return npy.around(gd.N_c * spos_c).astype(int) - gd.beg_c
 
     def get_density_correction(self, spin, nspins):
         """Integrated atomic density correction.
