@@ -30,8 +30,8 @@ class ExternalPotential:
     def get_value(self, spos_c=None, position=None):
         """The potential value (as seen by an electron) 
         at a certain grid point."""
-        g_c = gd.get_nearest_grid_point(spos_c, position)
-        g_c -= (g_c == gd.n_c) # force point to this domain
+        g_c = self.gd.get_nearest_grid_point(spos_c, position)
+        g_c -= (g_c == self.gd.n_c) # force point to this domain
         return self.vext_g[tuple(g_c)]
 
     def get_nuclear_energy(self, nucleus):
@@ -180,3 +180,18 @@ class ExternalPotential:
                 nucleus.apply_polynomial(a_nG, b_nG, self.k, None)
 
 
+class ConstantPotential(ExternalPotential):
+    """Constant potential for tests."""
+    def __init__(self, constant=1.):
+        self.constant = constant
+        ExternalPotential.__init__(self)
+    def get_potential(self, gd):
+        if self.vext_g is None:
+            self.gd = gd
+            self.vext_g = gd.zeros() + self.constant
+        return self.vext_g
+    def get_ion_energy_and_forces(self, atoms):
+        """Return the ionic energy and force contribution."""
+        forces = npy.zeros((len(atoms),3))
+        energy = 0
+        return energy, forces

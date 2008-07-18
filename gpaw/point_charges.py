@@ -110,6 +110,20 @@ class PointCharges(list):
 
         return potential
 
+    def get_nuclear_energy(self, nucleus):
+        return -1. * nucleus.setup.Z * self.get_value(spos_c = nucleus.spos_c)
+
+    def get_value(self, spos_c=None, position=None):
+        """Value as seen by an electron."""
+        if position is None:
+            position = spos_c * self.gd.h_c
+        v = 0
+        for pc in self:
+            # use c function XXXXX
+            d = npy.sqrt(npy.sum((position - pc.position / Bohr)**2))
+            v -= pc.charge / d
+        return v
+
     def get_ion_energy_and_forces(self, nuclei):
         """Return the ionic energy and force contribution."""
         forces = npy.zeros((len(atoms),3))
@@ -159,15 +173,3 @@ class PointCharge(Atom):
         Atom.__init__(self, position=position, charge=charge)
 
  
-class ConstantPotential:
-    """Constant potential for tests."""
-    def __init__(self, constant=1):
-        self.constant = constant
-    def get_potential(self, gd):
-        potential = gd.zeros() + self.constant
-        return potential
-    def get_ion_energy_and_forces(self, atoms):
-        """Return the ionic energy and force contribution."""
-        forces = npy.zeros((len(atoms),3))
-        energy = 0
-        return energy, forces
