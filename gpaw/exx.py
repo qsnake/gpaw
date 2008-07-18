@@ -71,7 +71,7 @@ class EXX:
     Class offering methods for selfconsistent evaluation of the
     exchange energy."""
     
-    def __init__(self, paw, poisson, energy_only=False, use_finegrid=True):
+    def __init__(self, paw, energy_only=False, use_finegrid=True):
         # Initialize class-attributes
         self.nspins        = paw.nspins
         self.nbands        = paw.nbands
