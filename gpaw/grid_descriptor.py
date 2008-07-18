@@ -255,6 +255,20 @@ class GridDescriptor:
 
         return boxes
 
+    def get_nearest_grid_point(self, spos_c=None, position=None):
+        """Return index of nearest grid point.
+        
+        The nearest grid point can be on a different CPU than the one the
+        nucleus belongs to (i.e. return can be negative, or larger than
+        gd.end_c), in which case something clever should be done.
+        """
+        if spos_c is None and position is None:
+            raise RuntimeError('Expecting a position')
+        else:
+            if spos_c is None:
+                spos_c = position / self.h_c
+        return npy.around(self.N_c * spos_c).astype(int) - self.beg_c
+
     def mirror(self, a_g, c):
         """Apply mirror symmetry to array.
 

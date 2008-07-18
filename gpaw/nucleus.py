@@ -1067,17 +1067,6 @@ class Nucleus:
             if self.vbar is not None:
                 self.vbar.derivative(nt_g, None)
 
-    def get_nearest_grid_point(self, gd):
-        """Return index of nearest grid point.
-        
-        The nearest grid point can be on a different CPU than the one the
-        nucleus belongs to (i.e. return can be negative, or larger than
-        gd.end_c), in which case something clever should be done.
-        """
-        # avoid points outside the grid
-        spos_c = npy.clip(self.spos_c, 0., 1.)
-        return npy.around(gd.N_c * spos_c).astype(int) - gd.beg_c
-
     def get_density_correction(self, spin, nspins):
         """Integrated atomic density correction.
 
@@ -1134,7 +1123,7 @@ class Nucleus:
                 nct.add(n_sg[s], -npy.ones(1) / nspins)
 
             # Correct density, such that correction is norm-conserving
-            g_c = tuple(self.get_nearest_grid_point(gd) % gd.N_c)
+            g_c = tuple(gd.get_nearest_grid_point(self.spos_c) % gd.N_c)
             n_sg[s][g_c] += (Iana - Inum) / gd.dv
         
     def wannier_correction(self, G, c, u, u1, nbands=None):
