@@ -18,4 +18,4 @@ for i in range(51):
     calc.txt.flush()
     H2.positions[0] += (a / 25, 0, 0)
     H2.positions[1] += (0, 0, a / 25)
-assert abs(e - e0) < 1e-5
+assert abs(e - e0) < 1e-4
