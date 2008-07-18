@@ -226,7 +226,8 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import raw_wignerseitz_LDOS, fold
         energies, weights = raw_wignerseitz_LDOS(self, a, spin)
-        return fold(energies * Hartree, weights, npts, width)        
+        e, ldos = fold(energies * Hartree, weights, npts, width)
+        return e - self.get_fermi_level(), ldos
     
     def get_orbital_ldos(self, a,
                          spin=0, angular='spdf', npts=201, width=None):
@@ -248,13 +249,16 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import raw_orbital_LDOS, fold
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
-        return fold(energies * Hartree, weights, npts, width)
+        e, ldos = fold(energies * Hartree, weights, npts, width)
+        return e - self.get_fermi_level(), ldos
 
     def get_molecular_ldos(self, mol, spin=0, npts=201, width=None,
                            lc=None, wf=None, P_uai=None):
-        """The Projected Density of States, using either atomic
-        orbital basis functions (lc) for a specified molecule (mol)
-        or a molecular wavefunction(wf)."""
+        """The Projected Density of States, using molecular orbitals.
+
+        Projects onto either atomic orbital basis functions (lc) for a
+        specified molecule (mol), or a molecular wavefunction(wf).
+        """
         
         if width is None:
             width = self.get_electronic_temperature()
@@ -264,7 +268,8 @@ class Calculator(PAW):
         from gpaw.utilities.dos import molecular_LDOS, fold
         energies, weights = molecular_LDOS(self, mol, spin,
                                            lc=lc, wf=wf, P_uai=P_uai)
-        return fold(energies * Hartree, weights, npts, width)
+        e, ldos = fold(energies * Hartree, weights, npts, width)
+        return e - self.get_fermi_level(), ldos
 
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
                                  pad=False):
@@ -313,7 +318,8 @@ class Calculator(PAW):
         c = dirG.tolist().index(1)
         G = self.bzk_kc[nextkpoint, c] - self.bzk_kc[kpoint, c] + G_I[c]
 
-        return self.get_wannier_integrals(c, spin, kpoint, nextkpoint, G)
+        return self.get_wannier_integrals(c, spin, kpoint,
+                                          nextkpoint, G, nbands)
 
     def get_magnetic_moment(self, atoms=None):
         """Return the total magnetic moment."""
