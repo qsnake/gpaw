@@ -4,7 +4,7 @@ from gpaw.wannier import Wannier
 
 atoms, calc = restart('benzene.gpw')
 
-homo = calc.get_pseudo_wave_function(band=14, pad=True)
+homo = calc.get_pseudo_wave_function(band=14)
 write('homo.cube', atoms, data=homo)
 write('homo.plt', atoms, data=homo)
 

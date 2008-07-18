@@ -16,5 +16,5 @@ calc.write('CO.gpw', mode='all')
 
 # Generate cube-files of the orbitals.
 for n in range(calc.get_number_of_bands()):
-  wf = calc.get_pseudo_wave_function(band=n, pad=True)
+  wf = calc.get_pseudo_wave_function(band=n)
   write('CO%d.cube' % n, CO, data=wf)
