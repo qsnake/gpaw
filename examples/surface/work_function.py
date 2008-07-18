@@ -9,7 +9,7 @@ slab = calc.get_atoms()
 L = slab.get_cell()[2, 2]
 
 # Get the effective potential on a 3D grid:
-v = calc.hamiltonian.vt_sG[0] * Hartree
+v = calc.get_effective_potential()
 
 nx, ny, nz = v.shape
 z = linspace(0, L, nz, endpoint=False)
