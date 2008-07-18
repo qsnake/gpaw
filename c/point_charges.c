@@ -40,7 +40,7 @@ PyObject *pc_potential(PyObject *self, PyObject *args)
       ij = (i*n[1] + j)*n[2];
       for (int k = 0; k < n[2]; k++) {
 	pos[2] = (beg[2] + k) * h_c[2];
-	// loop over all atoms
+	// loop over all point charges
 	double V = 0.0;
 	for (int a=0; a < npc; a++) {
 	  double d = distance(pc_c + a*3, pos);
