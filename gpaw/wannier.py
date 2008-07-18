@@ -127,7 +127,6 @@ def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
         M = Nw
     L = Nw - M # Extra degrees of freedom
     V = Nbands - M - T# Virtual states
-    print "V,M",V,M
     a0_nj = projections_nj[:M, :]
     a0_vj = projections_nj[M:M + V, :]
 

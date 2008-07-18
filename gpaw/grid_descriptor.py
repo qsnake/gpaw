@@ -15,7 +15,6 @@ from cmath import exp
 import numpy as npy
 
 from gpaw.mpi import MASTER
-from gpaw.utilities.complex import cc
 
 # Remove this:  XXX
 assert (-1) % 3 == 2
@@ -460,7 +459,7 @@ class GridDescriptor:
                 B_nG = get_slice(c, g, psit_nG1)
                 
             e = exp(-2.j * pi * G * (g + self.beg_c[c]) / self.N_c[c])
-            Z_nn += e * npy.dot(cc(A_nG), npy.transpose(B_nG)) * self.dv
+            Z_nn += e * npy.dot(A_nG.conj(), B_nG.T) * self.dv
             
         return Z_nn
 

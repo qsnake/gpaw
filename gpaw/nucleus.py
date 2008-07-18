@@ -11,7 +11,6 @@ from cmath import exp
 
 import numpy as npy
 
-from gpaw.utilities.complex import real, cc
 from gpaw.localized_functions import create_localized_functions
 from gpaw.utilities import unpack, pack, pack2, unpack2, hartree
 import gpaw.mpi as mpi
@@ -1009,7 +1008,7 @@ class Nucleus:
         u = kpt.u
         k = kpt.k
         if self.in_this_domain:
-            P_ni = cc(self.P_uni[u])
+            P_ni = self.P_uni[u].conj()
             nb = P_ni.shape[0]
             H_ii = unpack(self.H_sp[s])
             O_ii = self.setup.O_ii
@@ -1019,14 +1018,14 @@ class Nucleus:
             self.pt_i.derivative(psit_nG, F_nic, k)
             F_nic.shape = (nb, ni * 3)
             F_nic *= f_n[:, None]
-            F_iic = npy.dot(H_ii, npy.dot(npy.transpose(P_ni), F_nic))
+            F_iic = npy.dot(H_ii, npy.dot(P_ni.T, F_nic))
             F_nic *= eps_n[:, None]
-            F_iic -= npy.dot(O_ii, npy.dot(npy.transpose(P_ni), F_nic))
+            F_iic -= npy.dot(O_ii, npy.dot(P_ni.T, F_nic))
             F_iic *= 2.0
             F = self.F_c
             F_iic.shape = (ni, ni, 3)
             for i in range(ni):
-                F += real(F_iic[i, i])
+                F += F_iic[i, i].real
         else:
             self.pt_i.derivative(psit_nG, None, k)
 
@@ -1148,9 +1147,9 @@ class Nucleus:
              nm       n             m
                             
                            __                __
-                   ~      \              a  \     a  a    a  *
-            Z    = Z    +  ) exp[-i G . R ]  )   P  O   (P  )
-             nmx    nmx   /__            x  /__   ni ii'  mi'
+                   ~      \              a  \     a*  a    a   
+            Z    = Z    +  ) exp[-i G . R ]  )   P   O    P  
+             nmx    nmx   /__            x  /__   ni  ii'  mi'
 
                            a                 ii'
 
@@ -1167,7 +1166,7 @@ class Nucleus:
         P1_ni = self.P_uni[u1, :nbands]
         O_ii = self.setup.O_ii
         e = exp(-2.j * pi * G * self.spos_c[c])
-        Z_nn = e * npy.dot(npy.dot(P_ni, O_ii), cc(npy.transpose(P1_ni)))
+        Z_nn = e * npy.dot(npy.dot(P_ni.conj(), O_ii), P1_ni.T)
 
         return Z_nn
 
