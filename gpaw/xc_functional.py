@@ -287,8 +287,8 @@ class XCFunctional:
                 use_finegrid = self.parameters['finegrid']
             else:
                 use_finegrid = True
-
-            self.exx = EXX(paw, energy_only, use_finegrid=use_finegrid)
+            self.exx = EXX(paw, energy_only=energy_only,
+                           use_finegrid=use_finegrid)
 
         if self.xcname == 'TPSS':
             paw.density.initialize_kinetic()
