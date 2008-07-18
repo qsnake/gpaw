@@ -103,6 +103,11 @@ class Nucleus:
         if self.setup.xc_correction.xc.xcfunc.hybrid > 0.0:
             self.vxx_uni = npy.empty((nmyu, nbands, ni), self.dtype)
             self.vxx_unii = npy.zeros((nmyu, nbands, ni, ni), self.dtype)
+    
+    def allocate_non_local_things(self, nmyu, nbands):
+        ni = self.get_number_of_partial_waves()
+        self.vxx_uni = npy.empty((nmyu, nbands, ni), self.dtype)
+        self.vxx_unii = npy.zeros((nmyu, nbands, ni, ni), self.dtype)    
 
     def reallocate(self, nbands):
         nu, nao, ni = self.P_uni.shape

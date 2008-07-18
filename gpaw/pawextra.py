@@ -214,17 +214,20 @@ class PAWExtra:
             newxcfunc = XCFunctional(xcname, self.nspins)
         else:
             newxcfunc = xcname
-
+        
         newxcfunc.set_non_local_things(self, energy_only=True)
 
         xc.set_functional(newxcfunc)
         for setup in self.setups:
             setup.xc_correction.xc.set_functional(newxcfunc)
 
-        if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready:
+        if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready: #bugged?
             self.set_positions(npy.array([n.spos_c * self.domain.cell_c
                                           for n in self.nuclei]))
-
+        if newxcfunc.hybrid > 0.0:
+            for nucleus in self.my_nuclei:
+                nucleus.allocate_non_local_things(self.nmyu,self.nmybands)
+        
         vt_g = self.finegd.empty()  # not used for anything!
         nt_sg = self.density.nt_sg
         if self.nspins == 2:
