@@ -32,7 +32,7 @@ calc.write('ontop.gpw') # Write gpw output after the minimization
 print 'ontop:', fcc.get_potential_energy()
 print 'height:', fcc.positions[-1, 2]
 
-pseudo_density = calc.get_pseudo_valence_density()
+pseudo_density = calc.get_pseudo_density()
 ae_density = calc.get_all_electron_density()
 
 for format in ['cube', 'plt']:
