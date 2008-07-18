@@ -1,3 +1,5 @@
+import numpy as npy
+
 """This module defines different external potentials to be used in 
 time-independent and time-dependent calculations."""
 
@@ -5,6 +7,36 @@ class ExternalPotential:
     """ External potential
 
     """
+    def __init__(self, vext_g=None, gd=None):
+        """Initialize with a grid and the corresponding grid descriptor."""
+        self.vext_g = vext_g
+        self.gd = gd
+        if self.gd is not None:
+            if npy.alltrue(vext_g.shape ==
+                           gd.get_size_of_global_array()):
+                # this is a global arry and has to be distributed
+                self.vext_g = self.gd.zeros()
+                self.gd.distribute(vext_g, self.vext_g)
+
+    def get_potential(self, gd=None):
+        if self.gd is None:
+            self.gd = gd
+        else:
+            if gd is not None:
+                # make shure we are talking about the same grid
+                assert(gd == self.gd)
+        return self.vext_g
+
+    def get_value(self, spos_c=None, position=None):
+        """The potential value (as seen by an electron) 
+        at a certain grid point."""
+        g_c = gd.get_nearest_grid_point(spos_c, position)
+        g_c -= (g_c == gd.n_c) # force point to this domain
+        return self.vext_g[tuple(g_c)]
+
+    def get_nuclear_energy(self, nucleus):
+        """Return the energy contribution of the bare nucleus."""
+        return 0. # don't assume anything about the nucleus
 
     def add_linear_field(self, pt_nuclei, a_nG, b_nG, strength, kpt):
         """Adds (does NOT apply) linear field 

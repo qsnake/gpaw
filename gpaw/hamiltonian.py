@@ -69,17 +69,7 @@ class Hamiltonian(LCAOHamiltonian):
         self.poisson_eps = 2e-10
 
         # The external potential
-        vext_g = paw.input_parameters['external']
-        if vext_g is not None:
-            if hasattr(vext_g, 'get_potential'):
-                self.vext_g = vext_g.get_potential(self.finegd)
-            else:
-                assert npy.alltrue(vext_g.shape ==
-                                   self.finegd.get_size_of_global_array())
-                self.vext_g = self.finegd.zeros()
-                self.finegd.distribute(vext_g, self.vext_g)
-        else:
-            self.vext_g = None
+        self.vext_g = paw.input_parameters['external']
 
         self.initialized = False
 
@@ -143,7 +133,7 @@ class Hamiltonian(LCAOHamiltonian):
 
         Eext = 0.0
         if self.vext_g is not None:
-            vt_g += self.vext_g
+            vt_g += self.vext_g.get_potential(self.finegd)
             Eext = npy.vdot(vt_g, density.nt_g) * self.finegd.dv - Ebar - Epot
 
         if self.nspins == 2:
@@ -183,9 +173,8 @@ class Hamiltonian(LCAOHamiltonian):
             # Energy corections due to external potential.
             # Potential is assumed to be constant inside augmentation spheres.
             if self.vext_g is not None and nucleus.in_this_domain:
-                g_c = nucleus.get_nearest_grid_point(density.finegd)
-                g_c -= (g_c == density.finegd.n_c) # force point to this domain
-                vext = self.vext_g[tuple(g_c)]
+                vext = self.vext_g.get_value(spos_c=nucleus.spos_c)
+                Eext += self.vext_g.get_nuclear_energy(nucleus)
             else:
                 vext = None
 
