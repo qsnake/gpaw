@@ -135,7 +135,7 @@ def get_system_config(define_macros, undef_macros,
         extra_compile_args += ['-Wall', '-std=c99']
 
         # Look for ACML libraries:
-        acml = glob('/opt/acml*/gnu64/lib')
+        acml = glob('/opt/acml*/g*64/lib')
         if len(acml) > 0:
             libraries += ['acml', 'g2c']
             library_dirs += [acml[-1]]
