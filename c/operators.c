@@ -1,6 +1,15 @@
+//*** The operator apply and some associate structors are imple-  ***//
+//*** mented in two version: a original version and a speciel     ***//
+//*** Blue Gene version. By default the original version will     ***//
+//*** be used, but it's possible to use the Blue Gene version     ***//
+//*** by compiling gpaw with the macro BLUEGENE defined.          ***//
+//*** Author of the optimized Blue Gene code:                     ***//
+//*** Mads R. B. Kristensen - madsbk@diku.dk                      ***//
+
 #include <Python.h>
 #define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
+#include <pthread.h>
 #include "extensions.h"
 #include "bc.h"
 #include "mympi.h"
@@ -11,8 +20,14 @@ typedef struct
   PyObject_HEAD
   bmgsstencil stencil;
   boundary_conditions* bc;
+#ifndef BLUEGENE
   MPI_Request recvreq[2];
   MPI_Request sendreq[2];
+#else
+  //We need 2 revc and send request per Blue Gene kernel e.g. 4.
+  MPI_Request recvreq[2 * 4];
+  MPI_Request sendreq[2 * 4];
+#endif
   double* buf;
   double* sendbuf;
   double* recvbuf;
@@ -49,19 +64,18 @@ static PyObject * Operator_relax(OperatorObject *self,
   for (int n = 0; n < nrelax; n++ )
     {
       for (int i = 0; i < 3; i++)
-  {
-    bc_unpack1(bc, fun, self->buf, i,
-         self->recvreq, self->sendreq,
-         self->recvbuf, self->sendbuf, ph + 2 * i);
-    bc_unpack2(bc, self->buf, i,
-         self->recvreq, self->sendreq, self->recvbuf);
-  }
+        {
+          bc_unpack1(bc, fun, self->buf, i,
+               self->recvreq, self->sendreq,
+               self->recvbuf, self->sendbuf, ph + 2 * i);
+          bc_unpack2(bc, self->buf, i,
+               self->recvreq, self->sendreq, self->recvbuf);
+        }
       bmgs_relax(relax_method, &self->stencil, self->buf, fun, src, w);
     }
   Py_RETURN_NONE;
 }
-
-
+#ifndef BLUEGENE
 static PyObject * Operator_apply(OperatorObject *self,
                                  PyObject *args)
 {
@@ -93,18 +107,18 @@ static PyObject * Operator_apply(OperatorObject *self,
   for (int n = 0; n < nin; n++)
     {
       for (int i = 0; i < 3; i++)
-  {
-    bc_unpack1(bc, in, self->buf, i,
-         self->recvreq, self->sendreq,
-         self->recvbuf, self->sendbuf, ph + 2 * i);
-    bc_unpack2(bc, self->buf, i,
-         self->recvreq, self->sendreq, self->recvbuf);
-  }
+        {
+          bc_unpack1(bc, in, self->buf, i,
+               self->recvreq, self->sendreq,
+               self->recvbuf, self->sendbuf, ph + 2 * i);
+          bc_unpack2(bc, self->buf, i,
+               self->recvreq, self->sendreq, self->recvbuf);
+        }
       if (real)
-  bmgs_fd(&self->stencil, self->buf, out);
+        bmgs_fd(&self->stencil, self->buf, out);
       else
-  bmgs_fdz(&self->stencil, (const double_complex*)self->buf,
-     (double_complex*)out);
+        bmgs_fdz(&self->stencil, (const double_complex*)self->buf,
+                                 (double_complex*)out);
 
       in += ng;
       out += ng;
@@ -112,7 +126,58 @@ static PyObject * Operator_apply(OperatorObject *self,
   Py_RETURN_NONE;
 }
 
-static PyObject * Operator_apply2(OperatorObject *self,
+#else
+
+typedef struct
+{
+  OperatorObject *self;
+  boundary_conditions *bc;
+  double *in, *out;
+  int nin, ng, thd_id;
+  bool real;
+  double_complex *ph;
+  pthread_barrier_t *barrier;
+} fd_worker_t;
+
+void* fd_worker(void* args)
+{
+  fd_worker_t* arg = args;
+  OperatorObject *self = arg->self;
+  int thd_id = arg->thd_id;
+  int nin = arg->nin;
+
+  double *in = arg->in + (thd_id * arg->ng * (nin / 4));
+  double *out = arg->out + (thd_id * arg->ng * (nin / 4));
+
+  double *buf = self->buf + thd_id;
+  double *sendbuf = self->sendbuf + thd_id;
+  double *recvbuf = self->recvbuf + thd_id;
+  MPI_Request *sendreq = self->sendreq + (thd_id * 2);
+  MPI_Request *recvreq = self->recvreq + (thd_id * 2);
+
+  int nmax = (thd_id == 3) ? nin : (nin / 4) * (thd_id + 1);
+  for (int n = (nin / 4) * thd_id; n < nmax; n++)
+  {
+    for (int i = 0; i < 3; i++)
+      {
+        bc_unpack1(arg->bc, in, buf, i,
+                   recvreq, sendreq,
+                   recvbuf, sendbuf, arg->ph + 2 * i);
+        bc_unpack2(arg->bc, buf, i,
+                   recvreq, sendreq, recvbuf);
+      }
+    if (arg->real)
+      bmgs_fd(&arg->self->stencil, buf, out);
+    else
+      bmgs_fdz(&arg->self->stencil, (const double_complex*)buf,
+                                    (double_complex*)out);
+    in += arg->ng;
+    out += arg->ng;
+  }
+  return NULL;
+}
+
+static PyObject * Operator_apply(OperatorObject *self,
                                   PyObject *args)
 {
   PyArrayObject* input;
@@ -125,13 +190,13 @@ static PyObject * Operator_apply2(OperatorObject *self,
   if (input->nd == 4)
     nin = input->dimensions[0];
 
-  const boundary_conditions* bc = self->bc;
+  boundary_conditions* bc = self->bc;
   const int* size1 = bc->size1;
   int ng = bc->ndouble * size1[0] * size1[1] * size1[2];
 
-  const double* in = DOUBLEP(input);
+  double* in = DOUBLEP(input);
   double* out = DOUBLEP(output);
-  const double_complex* ph;
+  double_complex* ph;
 
   bool real = (input->descr->type_num == PyArray_DOUBLE);
 
@@ -140,28 +205,30 @@ static PyObject * Operator_apply2(OperatorObject *self,
   else
     ph = COMPLEXP(phases);
 
-  printf("Hej jeg hedder mads!\n");
-  for (int n = 0; n < nin; n++)
-    {
-      for (int i = 0; i < 3; i++)
-  {
-    bc_unpack1(bc, in, self->buf, i,
-         self->recvreq, self->sendreq,
-         self->recvbuf, self->sendbuf, ph + 2 * i);
-    bc_unpack2(bc, self->buf, i,
-         self->recvreq, self->sendreq, self->recvbuf);
-  }
-      if (real)
-  bmgs_fd(&self->stencil, self->buf, out);
-      else
-  bmgs_fdz(&self->stencil, (const double_complex*)self->buf,
-     (double_complex*)out);
+  // Worker-thread handlers
+  pthread_t fd_threads[4];
+  fd_worker_t* fd_arg = malloc(4 * sizeof(fd_worker_t));
 
-      in += ng;
-      out += ng;
+  for (int i = 0; i < 4; i++)
+    {
+      (fd_arg + i)->thd_id = i;
+      (fd_arg + i)->self = self;
+      (fd_arg + i)->bc = bc;
+      (fd_arg + i)->in = in;
+      (fd_arg + i)->out = out;
+      (fd_arg + i)->nin = nin;
+      (fd_arg + i)->real = real;
+      (fd_arg + i)->ng = ng;
+      (fd_arg + i)->ph = ph;
+      pthread_create(&fd_threads[i], NULL, &fd_worker, (fd_arg + i));
     }
+  for (int i = 0; i < 4; i++)
+    pthread_join(fd_threads[i], NULL);
+  free(fd_arg);
+
   Py_RETURN_NONE;
 }
+#endif
 
 static PyObject * Operator_get_diagonal_element(OperatorObject *self,
                                               PyObject *args)
@@ -182,8 +249,6 @@ static PyObject * Operator_get_diagonal_element(OperatorObject *self,
 static PyMethodDef Operator_Methods[] = {
     {"apply",
      (PyCFunction)Operator_apply, METH_VARARGS, NULL},
-    {"apply2",
-     (PyCFunction)Operator_apply2, METH_VARARGS, NULL},
     {"relax",
      (PyCFunction)Operator_relax, METH_VARARGS, NULL},
     {"get_diagonal_element",
@@ -221,7 +286,7 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   int cfd;
   if (!PyArg_ParseTuple(args, "OOOiOiOi",
                         &coefs, &offsets, &size, &range, &neighbors,
-      &real, &comm_obj, &cfd))
+                        &real, &comm_obj, &cfd))
     return NULL;
 
   OperatorObject *self = PyObject_NEW(OperatorObject, &OperatorType);
@@ -229,12 +294,12 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
     return NULL;
 
   self->stencil = bmgs_stencil(coefs->dimensions[0], DOUBLEP(coefs),
-             LONGP(offsets), range, LONGP(size));
+                               LONGP(offsets), range, LONGP(size));
 
   const long (*nb)[2] = (const long (*)[2])LONGP(neighbors);
   const long padding[3][2] = {{range, range},
-           {range, range},
-           {range, range}};
+                             {range, range},
+                             {range, range}};
 
   MPI_Comm comm = MPI_COMM_NULL;
   if (comm_obj != Py_None)
@@ -243,9 +308,17 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   self->bc = bc_init(LONGP(size), padding, padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
+#ifndef BLUEGENE
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
         self->bc->ndouble);
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
+#else
+  //We need a buffer per Blue Gene kernel e.g. 4.
+  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
+        self->bc->ndouble * 4);
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * 4);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * 4);
+#endif
   return (PyObject*)self;
 }
