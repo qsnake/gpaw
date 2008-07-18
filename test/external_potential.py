@@ -8,7 +8,8 @@ from gpaw import Calculator
 from gpaw.utilities import equal
 
 from gpaw.cluster import Cluster
-from gpaw.point_charges import PointCharges, ConstantPotential
+from gpaw.point_charges import PointCharges
+from gpaw.external_potential import ConstantPotential
 
 cp = ConstantPotential()
 
