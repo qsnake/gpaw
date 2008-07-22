@@ -14,7 +14,7 @@ class ExternalPotential:
         if self.gd is not None:
             if npy.alltrue(vext_g.shape ==
                            gd.get_size_of_global_array()):
-                # this is a global arry and has to be distributed
+                # this is a global array and has to be distributed
                 self.vext_g = self.gd.zeros()
                 self.gd.distribute(vext_g, self.vext_g)
 
@@ -195,3 +195,56 @@ class ConstantPotential(ExternalPotential):
         forces = npy.zeros((len(atoms),3))
         energy = 0
         return energy, forces
+
+class ConstantElectricField(ExternalPotential):
+    """External constant electric field"""
+    def __init__(self, strength, direction=[0,0,1], center=None):
+        """
+        strength: field strength [???]
+        direction: polarisation direction
+        center: the center of zero field
+        """
+        self.strength = strength
+        self.center = center
+
+        # normalise the direction
+        dir = npy.array(direction)
+        dir /= npy.sqrt(npy.dot(dir, dir))
+        self.direction = dir
+        
+    def get_potential(self, gd):
+        """Get the potential on the grid."""
+
+        if hasattr(self, 'potential') and gd == self.gd:
+            # nothing changed
+            return self.potential
+
+        self.gd = gd
+
+        if self.center is None:
+            # use the center of the grid as default
+            self.center = .5 * gd.h_c * gd.N_c
+        else:
+            self.center = npy.array(self.center)
+
+        potential = gd.empty()
+        for i in range(gd.beg_c[0],gd.end_c[0]):
+            ii = i - gd.beg_c[0]
+            for j in range(gd.beg_c[1],gd.end_c[1]):
+                jj = j - gd.beg_c[1]
+                for k in range(gd.beg_c[2],gd.end_c[2]):
+                    kk = k - gd.beg_c[2]
+                    vr = npy.array([i * gd.h_c[0],
+                                    j * gd.h_c[1],
+                                    k * gd.h_c[2]])
+                    potential[ii,jj,kk] = self.get_value(vr)
+        self.potential = potential
+        return potential
+
+    def get_value(self, spos_c=None, position=None):
+        gd = self.gd
+        if position is None:
+            vr = spos_c * gd.h_c * gd.N_c - self.center
+        else:
+            vr =  position - self.center
+        return - self.strength * npy.dot(vr, self.direction)
