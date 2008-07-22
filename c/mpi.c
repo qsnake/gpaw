@@ -311,19 +311,19 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
 static PyObject * MPICommunicator(MPIObject *self, PyObject *args);
 
 static PyMethodDef mpi_methods[] = {
-    {"receive",          (PyCFunction)mpi_receive,     METH_VARARGS, 0},
-    {"send",             (PyCFunction)mpi_send,        METH_VARARGS, 0},
-    {"abort",            (PyCFunction)mpi_abort,       METH_VARARGS, 0},
-    {"name",             (PyCFunction)mpi_name,        METH_VARARGS, 0},
-    {"barrier",          (PyCFunction)mpi_barrier,     METH_VARARGS, 0},
-    {"wait",             (PyCFunction)mpi_wait,        METH_VARARGS, 0},
-    {"sum",              (PyCFunction)mpi_sum,         METH_VARARGS, 0},
-    {"scatter",          (PyCFunction)mpi_scatter,     METH_VARARGS, 0},
-    {"max",              (PyCFunction)mpi_max,         METH_VARARGS, 0},
-    {"gather",           (PyCFunction)mpi_gather,      METH_VARARGS, 0},
-    {"all_gather",       (PyCFunction)mpi_allgather,   METH_VARARGS, 0},
-    {"broadcast",        (PyCFunction)mpi_broadcast,   METH_VARARGS, 0},
-    {"new_communicator", (PyCFunction)MPICommunicator, METH_VARARGS, 0},
+    {"receive",          (PyCFunction)mpi_receive,      METH_VARARGS, 0},
+    {"send",             (PyCFunction)mpi_send,         METH_VARARGS, 0},
+    {"abort",            (PyCFunction)mpi_abort,        METH_VARARGS, 0},
+    {"name",             (PyCFunction)mpi_name,         METH_VARARGS, 0},
+    {"barrier",          (PyCFunction)mpi_barrier,      METH_VARARGS, 0},
+    {"wait",             (PyCFunction)mpi_wait,         METH_VARARGS, 0},
+    {"sum",              (PyCFunction)mpi_sum,          METH_VARARGS, 0},
+    {"scatter",          (PyCFunction)mpi_scatter,      METH_VARARGS, 0},
+    {"max",              (PyCFunction)mpi_max,          METH_VARARGS, 0},
+    {"gather",           (PyCFunction)mpi_gather,       METH_VARARGS, 0},
+    {"all_gather",       (PyCFunction)mpi_allgather,    METH_VARARGS, 0},
+    {"broadcast",        (PyCFunction)mpi_broadcast,    METH_VARARGS, 0},
+    {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS, 0},
     {0, 0, 0, 0}
 };
 
