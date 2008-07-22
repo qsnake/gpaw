@@ -531,53 +531,63 @@ class PAW(PAWExtra, Output):
         
         if self.kpt_u[0].psit_nG is None:
             # Initialize wave functions from atomic orbitals:
-            original_eigensolver = self.eigensolver
-            original_nbands = self.nbands
-            original_nmybands = self.nmybands
-            original_maxiter = self.maxiter
-
             self.text('Atomic orbitals used for initialization:', self.nao)
             if self.nbands > self.nao:
                 self.text('Random orbitals used for initialization:',
                           self.nbands - self.nao)
-            
-            self.maxiter = 0
-            self.nbands = min(self.nbands, self.nao)
-            if self.band_comm.size == 1:
-                self.nmybands = self.nbands
-                
-            self.eigensolver = get_eigensolver('lcao')
 
-            for nucleus in self.my_nuclei:
-                nucleus.reallocate(self.nmybands)
+            if self.nao > 0:
+                original_eigensolver = self.eigensolver
+                original_nbands = self.nbands
+                original_nmybands = self.nmybands
+                original_maxiter = self.maxiter
 
-            self.density.lcao = True
+                self.maxiter = 0
+                self.nbands = min(self.nbands, self.nao)
+                if self.band_comm.size == 1:
+                    self.nmybands = self.nbands
 
-            try:
-                self.find_ground_state(self.atoms, write=False)
-            except KohnShamConvergenceError:
-                pass
+                self.eigensolver = get_eigensolver('lcao')
 
-            self.maxiter = original_maxiter
-            self.nbands = original_nbands
-            self.nmybands = original_nmybands
-            for kpt in self.kpt_u:
-                kpt.calculate_wave_functions_from_lcao_coefficients(
-                    self.nmybands)
-                # Delete basis-set expansion coefficients:
-                kpt.C_nm = None
+                for nucleus in self.my_nuclei:
+                    nucleus.reallocate(self.nmybands)
 
-            for nucleus in self.nuclei:
-                del nucleus.P_kmi
-                
-            for nucleus in self.my_nuclei:
-                nucleus.reallocate(self.nmybands)
+                self.density.lcao = True
 
-            self.eigensolver = original_eigensolver
-            if self.xcfunc.is_gllb():
-                self.xcfunc.xc.eigensolver = self.eigensolver
-            #self.density.mixer.reset(self.my_nuclei)
-            self.density.lcao = False
+                try:
+                    self.find_ground_state(self.atoms, write=False)
+                except KohnShamConvergenceError:
+                    pass
+
+                self.maxiter = original_maxiter
+                self.nbands = original_nbands
+                self.nmybands = original_nmybands
+                for kpt in self.kpt_u:
+                    kpt.calculate_wave_functions_from_lcao_coefficients(
+                        self.nmybands)
+                    # Delete basis-set expansion coefficients:
+                    kpt.C_nm = None
+
+                for nucleus in self.nuclei:
+                    del nucleus.P_kmi
+
+                for nucleus in self.my_nuclei:
+                    nucleus.reallocate(self.nmybands)
+
+                self.eigensolver = original_eigensolver
+                if self.xcfunc.is_gllb():
+                    self.xcfunc.xc.eigensolver = self.eigensolver
+                #self.density.mixer.reset(self.my_nuclei)
+                self.density.lcao = False
+            else:
+                # Use only random wave functions:
+                for kpt in self.kpt_u:
+                    kpt.allocate(0)
+                    kpt.psit_nG = self.gd.zeros(self.nmybands,
+                                                dtype=self.dtype)
+                if not self.density.starting_density_initialized:
+                    self.density.initialize_from_atomic_density()
+
             self.density.scale()
             self.density.interpolate_pseudo_density()
             self.converged = False
@@ -1262,7 +1272,7 @@ class PAW(PAWExtra, Output):
         if self.nbands is None:
             self.nbands = self.nao
         elif self.nbands > self.nao and self.eigensolver.lcao:
-            raise ValueError('Too many bands for LCAO calculation:' +
+            raise ValueError('Too many bands for LCAO calculation: ' +
                              '%d bands and only %d atomic orbitals!' %
                              (self.nbands, self.nao))
         
