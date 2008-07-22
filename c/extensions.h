@@ -35,6 +35,10 @@ static INLINE void* gpaw_malloc(int n)
 #else
 #define GPAW_MALLOC(T, n) ((T*)gpaw_malloc((n) * sizeof(T)))
 #endif
+// works on BGP
+#ifdef GPAW_BGP
+#define GPAW_MALLOC(T, n) ((T*)gpaw_malloc((n) * sizeof(T)))
+#endif
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define LONGP(a) ((long*)((a)->data))
