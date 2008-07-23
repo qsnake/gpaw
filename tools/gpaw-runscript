@@ -173,8 +173,6 @@ class RunScript:
         size = set['nodes']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
-        print >> f,"#!/bin/csh"
-        print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l mppwidth=%d" % size
         hs = dhms(set['time'])
         print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
