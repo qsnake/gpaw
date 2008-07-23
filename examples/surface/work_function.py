@@ -18,9 +18,13 @@ efermi = calc.get_fermi_level()
 
 # Calculate xy averaged potential:
 vz = v.reshape((nx * ny, nz)).mean(axis=0)
+print 'Work function: %.2f eV'%(vz[0]-efermi) # Assumes a centered slab
 
 import pylab as p
-p.plot(z, vz)
-p.plot([0, L], [efermi, efermi])
+p.plot(z, vz, label='xy averaged effective potential')
+p.plot([0, L], [efermi, efermi], label='Fermi level')
+p.ylabel('Potential / V')
+p.xlabel('z / Angstrom')
+p.legend(loc=0)
 p.show()
 
