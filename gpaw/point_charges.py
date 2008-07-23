@@ -85,23 +85,26 @@ class PointCharges(list):
                                               float(z)),
                                     charge=float(q) ) )
 
-    def get_potential(self, gd):
+    def get_potential(self, gd=None):
         """Create the Coulomb potential on the grid."""
 
-        if hasattr(self, 'potential') and gd == self.gd:
-            # nothing changed
-            return self.potential
+        if hasattr(self, 'potential'):
+            if gd == self.gd or gd is None:
+                # nothing changed
+                return self.potential
 
+        if gd is None:
+            gd = self.gd
         potential = gd.empty()
 
         n = len(self)
-        pc_c = npy.empty((n, 3))
-        charges = npy.empty((n))
+        pc_nc = npy.empty((n, 3))
+        charge_n = npy.empty((n))
         for a, pc in enumerate(self):
-            pc_c[a] = pc.position / Bohr 
-            charges[a] = pc.charge
+            pc_nc[a] = pc.position / Bohr 
+            charge_n[a] = pc.charge
 
-        _gpaw.pc_potential(potential, pc_c, charges, 
+        _gpaw.pc_potential(potential, pc_nc, charge_n, 
                            gd.beg_c, gd.end_c, gd.h_c)
 
         # save grid descriptor and potential for future use
@@ -113,14 +116,20 @@ class PointCharges(list):
     def get_nuclear_energy(self, nucleus):
         return -1. * nucleus.setup.Z * self.get_value(spos_c = nucleus.spos_c)
 
-    def get_value(self, spos_c=None, position=None):
-        """Value as seen by an electron."""
+    def get_value(self, position=None, spos_c=None):
+        """The potential value (as seen by an electron) 
+        at a certain grid point.
+
+        position [Angstrom]
+        spos_c scaled position on the grid"""
         if position is None:
-            position = spos_c * self.gd.h_c
+            vr = spos_c * self.gd.h_c
+        else:
+            vr = position / Bohr
         v = 0
         for pc in self:
             # use c function XXXXX
-            d = npy.sqrt(npy.sum((position - pc.position / Bohr)**2))
+            d = npy.sqrt(npy.sum((vr - pc.position / Bohr)**2))
             v -= pc.charge / d
         return v
 
