@@ -1,5 +1,4 @@
 import sys
-import datetime
 from math import sqrt
 
 import numpy as npy
@@ -152,7 +151,11 @@ class SimpleStm(STM):
             fname = file
         f = open(fname, 'w')
 
-        print >> f, '#', datetime.datetime.now().ctime()
+        try:
+            import datetime
+            print >> f, '#', datetime.datetime.now().ctime()
+        except:
+            pass
         print >> f, '# Simulated STM picture'
         print >> f, '# density=', self.density,'[e/Angstrom^3]',
         print >> f, '(current=', self.density_to_current(self.density), '[nA])'
