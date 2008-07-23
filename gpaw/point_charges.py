@@ -2,9 +2,11 @@ import os.path
 
 import numpy as npy
 
-import _gpaw
 from ase.atom import Atom
 from ase.units import Bohr
+
+import _gpaw
+from gpaw import debug
 
 class PointCharges(list):
     def __init__(self, file=None):
@@ -103,6 +105,8 @@ class PointCharges(list):
         for a, pc in enumerate(self):
             pc_nc[a] = pc.position / Bohr 
             charge_n[a] = pc.charge
+        self.pc_nc = pc_nc
+        self.charge_n = charge_n
 
         _gpaw.pc_potential(potential, pc_nc, charge_n, 
                            gd.beg_c, gd.end_c, gd.h_c)
@@ -123,14 +127,18 @@ class PointCharges(list):
         position [Angstrom]
         spos_c scaled position on the grid"""
         if position is None:
-            vr = spos_c * self.gd.h_c
+            vr = spos_c * self.gd.h_c * self.gd.N_c
         else:
             vr = position / Bohr
-        v = 0
-        for pc in self:
-            # use c function XXXXX
-            d = npy.sqrt(npy.sum((vr - pc.position / Bohr)**2))
-            v -= pc.charge / d
+
+        if debug:
+            v = 0
+            for pc in self:
+                # use c function XXXXX
+                d = npy.sqrt(npy.sum((vr - pc.position / Bohr)**2))
+                v -= pc.charge / d
+        else:
+            v = _gpaw.pc_potential_value(vr, self.pc_nc, self.charge_n)
         return v
 
     def get_ion_energy_and_forces(self, nuclei):

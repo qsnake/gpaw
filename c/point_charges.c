@@ -20,6 +20,22 @@ double pc_pot_value(double *pos,    // position [Bohr]
   return V;
 }
 
+PyObject *pc_potential_value(PyObject *self, PyObject *args)
+{
+  PyArrayObject* posi_c;
+  PyArrayObject* pci_nc;
+  PyArrayObject* qi_n;
+  if (!PyArg_ParseTuple(args, "OOO", &posi_c, &pci_nc, &qi_n))
+    return NULL;
+
+  double *pos_c = DOUBLEP(posi_c);
+  int npc = pci_nc->dimensions[0];
+  double *pc_nc = DOUBLEP(pci_nc);
+  double *q_n = DOUBLEP(qi_n);
+
+  return Py_BuildValue("d", pc_pot_value(pos_c, pc_nc, q_n, npc, 1.e+99));
+}
+
 PyObject *pc_potential(PyObject *self, PyObject *args)
 {
   PyArrayObject* poti;
