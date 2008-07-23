@@ -26,7 +26,7 @@ hosts = { 'batman'             : 'pbs_batman',
           'louhi'              : 'louhi',
           'opaali.phys.jyu.fi' : 'sge',
           'sepeli.csc.fi'      : 'sepeli',
-          'ui.bfg.uni'         : 'pbs'
+          'ui.bfg.uni'         : 'pbs_bfg'
           }
 
 platforms = { 'aix5' : 'loadleveler' }
@@ -147,37 +147,46 @@ class RunScript:
 
 
     def louhi(self,f,set,env):
-        size=int((set['nodes']+1)/2)
+        size = set['nodes']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
-        print >> f,"#PBS -l mppwidth=%d" % size
-        print >> f,"#PBS -l walltime=" + str(set['time'])
-        print >> f,"#PBS -o",set['out']
-        print >> f,"#PBS -e",set['err']
-        print >> f
-        print >> f,"module load netcdf"
-        print >> f,"module load ASE"
-        print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
-        print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
-        print >> f,"setenv GPAW_PYTHON",env['GPAW_PYTHON']
-        print >> f
-        print >> f,"cd",set['wd']
-        print >> f,"yod $GPAW_PYTHON",set['script']
-        
-    def louhi_deisa(self, f, set, env):
-        size = set['nodes']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l mppwidth=%d" % size
         hs = dhms(set['time'])
         print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
                                            str(hs[2]) + ':' + str(hs[3]) )
+        print >> f
+        print >> f,"module load python"
+        print >> f,"module load acml"
+        print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
+        print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
+        print >> f,"setenv GPAW_PYTHON",env['GPAW_PYTHON']
+        print >> f
+        print >> f, 'cd', set['wd']
+        print >> f, 'aprun -n %d' % size,
         if set['mem']:
-            print >> f, '#PBS -l mppmem=1900M'
+             print >> f, '-m 1900M',
+        print >> f, '$GPAW_PYTHON', set['script']
+        
+    def louhi_deisa(self,f,set,env):
+        size = set['nodes']
+        print >> f,"#!/bin/csh"
+        print >> f,"#PBS -N",set['name']
+        print >> f,"#!/bin/csh"
+        print >> f,"#PBS -N",set['name']
+        print >> f,"#PBS -l mppwidth=%d" % size
+        hs = dhms(set['time'])
+        print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
+                                           str(hs[2]) + ':' + str(hs[3]) )
+        print >> f
         print >> f, 'source /opt/deisa/modules/ch_modules.csh'
         print >> f, 'module load python'
-        print >> f, 'module load ASE/3.0'
-        print >> f, 'module load gpaw'
+        print >> f, 'module load acml'
+        print >> f, 'setenv GPAW_SETUP_PATH', env['GPAW_SETUP_PATH']
+        print >> f, 'setenv PYTHONPATH ${PYTHONPATH}:' + env['PYTHONPATH']
+        print >> f, 'setenv GPAW_PYTHON', env['GPAW_PYTHON']
+        print >> f
         print >> f, 'cd', set['wd']
         print >> f, 'aprun -n %d' % size,
         if set['mem']:
@@ -288,19 +297,19 @@ unset CC CFLAGS LDFLAGS
     def pbs_bfg(self, f, set, env):
         print >> f, '#!/bin/bash'
         print >> f, '#PBS -N '+set['name']
-        print >> f, '#PBS -l ncpus='+str(set['nodes'])
+        print >> f, '#PBS -l nodes='+str(set['nodes'])
         print >> f, '#PBS -l walltime='+str(set['time'])
         print >> f, '#PBS -m bea'
         if set['mail'] is not None:
             print >> f, '#PBS -M',set['mail']
         print >> f, '#PBS -o', set['out']+'_$PBS_JOBID'
         print >> f, '#PBS -e', set['err']+'_$PBS_JOBID'
+        print >> f, '#PBS -q bfg'
         print >> f, 'cd', set['wd']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
-        print >> f, 'export GPAW_PYTHON=~/gridpaw/build/bin.linux-ia64-2.4/gpaw-python'
+        print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
         print >> f, 'mpirun -np', set['nodes'], '$GPAW_PYTHON', set['script']
-        print >> f, 'date'
 
     def sepeli(self, f, set, env):
         print >> f,"#$ -N",set['name']
