@@ -3,11 +3,13 @@ from math import sqrt
 
 import numpy as npy
 
+from ase.atoms import Atoms
 from ase.units import Bohr
 from ase.dft.stm import STM
 from ase.io.cube import write_cube
 from ase.io.plt import write_plt
 
+import gpaw.mpi as mpi
 from gpaw.mpi import MASTER
 
 class SimpleStm(STM):
@@ -16,28 +18,49 @@ class SimpleStm(STM):
     The simulation uses either a single pseudo-wavefunction (PWF)
     or the PWFs inside the given bias range (XXX TODO)."""
     def __init__(self, atoms):
-        STM.__init__(self, atoms)
-
+        if isinstance(atoms, Atoms):
+            self.calc = atoms.get_calculator()
+        else:
+            self.calc = atoms
         self.calc.initialize_wave_functions()
 
         self.gd = self.calc.gd
         self.offset_c = [int(not a) for a in self.gd.domain.pbc_c]
-        
 
     def calculate_ldos(self, bias):
         """bias is the n, k, s list/tuple."""
         self.bias = bias
         self.wf = True
+        self.ldos = self.gd.zeros()
 
         n, k, s = bias
-        psi = self.calc.get_pseudo_wave_function(n, k, s)
-        self.ldos = (psi * npy.conj(psi)).real
+        u = self.calc.nspins * k + s
+        nu = self.calc.nkpts * self.calc.nspins
+        if nu != self.calc.nmyu:
+            # parallelisation over spins/kpoints XXXXX
+            kpt = self.calc.kpt_u[0]
+            if kpt.s == s and kpt.k == k:
+                psi = kpt.psit_nG[n]
+            else:
+                psi = None
+        else:
+            psi = self.calc.kpt_u[s].psit_nG[n]
+
+        if psi is not None:
+            self.ldos += (psi * npy.conj(psi)).real
 
     def write_3D(self, bias, file, filetype=None):
         """Write the density as a 3D file.
 
         Units: [e/A^3]"""
         self.calculate_ldos(bias)
+        self.calc.kpt_comm.sum(self.ldos)
+        ldos = self.gd.collect(self.ldos)
+        
+        if mpi.rank != MASTER:
+            return
+
+        ldos /= Bohr**3
 
         if filetype is None:
             # estimate file type from name ending
@@ -45,9 +68,9 @@ class SimpleStm(STM):
         filetype.lower()
 
         if filetype == 'cube':
-            write_cube(file, self.calc.get_atoms(), self.ldos)
+            write_cube(file, self.calc.get_atoms(), ldos)
         elif filetype == 'plt':
-            write_plt(file, self.calc.get_atoms(), self.ldos)
+            write_plt(file, self.calc.get_atoms(), ldos)
         else:
             raise NotImplementedError('unknown file type "'+filetype+'"')
 
@@ -133,7 +156,7 @@ class SimpleStm(STM):
         gd = self.calc.gd
         bias = self.bias
 
-        if gd.rank != MASTER:
+        if mpi.rank != MASTER:
             return
         
         heights = self.heights
