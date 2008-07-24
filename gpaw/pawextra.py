@@ -36,10 +36,6 @@ class PAWExtra:
     def get_reference_energy(self):
         return self.Eref * self.Ha
     
-    def get_ibz_kpoints(self):
-        """Return array of k-points in the irreducible part of the BZ."""
-        return self.ibzk_kc
-
     def get_wave_function_array(self, n, k, s):
         """Return pseudo-wave-function array.
         
