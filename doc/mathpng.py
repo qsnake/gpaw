@@ -69,8 +69,10 @@ def setup(app):
             self.body.extend(['\\begin{equation*}\\begin{split}',
                               node['latex'],
                               '\\end{split}\\end{equation*}'])
+            
     def depart_latex_math_latex(self, node):
-            pass
+        pass
+    
     LaTeXTranslator.visit_latex_math = visit_latex_math_latex
     LaTeXTranslator.depart_latex_math = depart_latex_math_latex
 
@@ -80,28 +82,59 @@ def latex2html(node, source):
     inline = isinstance(node.parent, nodes.TextElement)
     latex = node['latex']
     name = 'math-' + md5(latex).hexdigest()[-10:]
-    if not isfile('_static/%s.png' % name):
-        print latex,
-        f = open('math.tex', 'w')
-        f.write(r"""\documentclass[12pt]{article}
-                    \pagestyle{empty}
-                    \begin{document}""")
-        if inline:
-            f.write('$%s$' % latex)
-        else:
-            f.write(r'\[ %s \]' % latex)
-        f.write('\end{document}')
-        f.close()
-        os.system('latex --interaction=nonstopmode math.tex > /dev/null')
-        os.system('dvipng -bgTransparent -Ttight --noghostscript -l10 ' +
-                  '-o _static/%s.png math.dvi > /dev/null' % name)
-    path = source.split('/doc/')[-1].count('/') * '../' + '_static'
-    if inline and '_' in latex:
-        align = 'align="absmiddle" '
+    pngname = '_static/%s.png' % name
+    txtname = '_static/%s.txt' % name
+
+    if not isfile(name):
+        depth = make_png(latex, pngname, inline)
+        txtfile = open(txtname, 'w')
+        print >> txtfile, depth
+        txtfile.close()
     else:
-        align = ''
+        depth = int(open(txtfile).read().strip())
+
+    path = source.split('/doc/')[-1].count('/') * '../' + '_static'
     if inline:
         cls = ''
+        align = 'style="vertical-align: -%dpx" ' % depth
+        term = ''
     else:
         cls = 'class="center" '
-    return '<img src="%s/%s.png" %s%s/>' % (path, name, align, cls)
+        align = ''
+        term = '<br>'
+    return '<img src="%s/%s.png" %s%s />%s' % (path, name, align,
+                                                           cls, term)
+
+
+def make_png(latex, name, inline):
+    """Make png file and return the depth relative to baseline."""
+    # Unfortunately we have to store depth info
+    print latex,
+    f = open('math.tex', 'w')
+    f.write(r"""\documentclass{article}
+                \usepackage[active]{preview}
+                \begin{document}
+                \begin{preview}""")
+    if inline:
+        f.write(r'$%s$' % latex)
+    else:
+        f.write(r'\[ %s \]' % latex)
+    f.write(r'\end{preview}\end{document}')
+    f.close()
+
+    os.system('latex --interaction=nonstopmode math.tex > /dev/null')
+
+    cmd = ('dvipng -bgTransparent -Ttight --noghostscript -l10 ' +
+           '--depth -D 136 -o %s math.dvi' % name)
+    dvipng = os.popen(cmd, 'r')
+    output = dvipng.read()
+    depth = int(output.split('=')[-1].strip()[:-1])
+    return depth
+
+def main():
+    latex = r'\sum_{\mu\nu} T_{\mu \nu} \rho_{\nu\mu}'
+    #latex = r'$\beta_0$'
+    make_png(latex, 'pngtestfile.png', True)
+
+if __name__ == '__main__':
+    main()

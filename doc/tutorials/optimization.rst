@@ -1,0 +1,52 @@
+.. _structure_optimization:
+
+========================
+ Structure optimization
+========================
+
+.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
+.. |H2| replace:: H\ :sub:`2`
+
+In the tutorial on `how to calculate atomization energies`_, we
+calculated the atomization energy for |H2| using the experimental bond
+length of 0.74 |angst|.  In this tutorial, we ask a QuasiNewton_ minimizer 
+to iteratively find the structural energy
+minimum, where all atomic forces are below 0.05 eV/|angst|.  The
+following script will do the job:
+
+relax_
+
+.. _relax: inline:relax.py
+
+
+.. _QuasiNewton: https://web2.fysik.dtu.dk/ase/ase/optimize.html#module-optimize.qn
+.. _how to calculate atomization energies: Atomization_
+
+The result is::
+
+  $[tut] python relax.py
+  experimental bond length:
+  hydrogen molecule energy: -6.35 eV
+  bondlength              :  0.74 Ang
+
+  PBE energy minimum:
+  hydrogen molecule energy: -6.35 eV
+  bondlength              :  0.73 Ang
+
+.. note::
+   You must run the Atomization_ script first.
+
+To save time you could have told the minimizer to keep one atom fixed,
+and only relaxing the other. This is achieved through the use of
+constraints::
+
+  molecule.set_constraint(FixAtoms(mask=[0, 1]))
+
+The keyword `mask` contains list of booleans for each atom indicating whether the atom's
+position should be fixed or not. See the constraints_ section in the ASE manual for more information
+and examples for setting constraints.
+
+.. _ASE manual: https://web2.fysik.dtu.dk/ase/ase/optimize.html
+.. _filters: wiki:ASE:Filters
+.. _FixCoordinates: wiki:ASE:Filters#fixcoordinates
+.. _constraints: http://web2.fysik.dtu.dk/ase/ase/constraints.html

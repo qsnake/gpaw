@@ -1,0 +1,56 @@
+=======================
+Density of states (DOS)
+=======================
+
+
+
+Take a look at the dos.py_ program and try to get a rough idea of what
+it can do for you.  Use it to plot DOS for the three Fe configurations
+(on the *x*-axis you have the energy relative to the Fermilevel).
+
+
+
+.. _dos.py: wiki:SVN:examples/dos/dos.py
+
+
+
+
+* Do the DOS plots integrate to the correct numbers? (i.e.
+  number of valence electrons).
+
+* The DOS for the anti-ferromagnetic phase looks a bit like that for
+  the non-magnetic phase - is it magnetic at all?!  Try to visualize
+  the magnetization like this::
+
+    from ase import *
+    from gpaw import *
+    calc = Calculator('anti.gpw')
+    atoms = calc.get_atoms()
+    up, down = calc.get_pseudo_valence_density()
+    zeta = (up - down) / (up + down)
+    write('magnetization.cube', atoms, data=zeta)
+
+* Calculate the DOS for bulk Aluminum and compare it
+  (qualitatively) to the DOS for the non-magnetic calculation. The DOS
+  for a simple metal has this shape: *g*\ (*E*) ~ *E*\ :sup:`1/2`.  Explain
+  the qualitative difference.
+
+* Plot also the DOS for bulk Si and the CO molecule.  Identify the
+  bandgap between valence and conduction bands for Si and the
+  HOMO-LUMO gap for CO.
+
+
+Projected Density of states (PDOS)
+----------------------------------
+
+The projected density of states is usefull for for analyzing chemical
+bonding. There exist several studies where the density projected onto
+the d states of a given surface atom is used. This short excercise
+demonstrates how to construct the PDOS of Fe.
+
+We will get a feel for the local density of states by plotting the
+PDOS for the ferro-magnetic Fe crystal.  Look at pdos.py_. Use it to plot
+the s, p, and d-states on one of the Fe atoms.
+
+
+.. _pdos.py: wiki:SVN:examples/dos/pdos.py
