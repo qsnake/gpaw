@@ -27,7 +27,7 @@ class Amoeba:
       * y - list of corresponding function values
       * itercount - number of iterations
       * evaluationcount - number of function evaluations (>= itercount)
-      * relativedeviation - the number |ymax - ymin| / |ymax + ymin|
+      * relativedeviation - the number *|ymax - ymin| / |ymax + ymin|*
       * logger - object which stores history
       
     """

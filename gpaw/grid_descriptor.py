@@ -65,17 +65,19 @@ class GridDescriptor:
         (three integers).
 
         Attributes:
-         ========== ========================================================
-         ``domain`` Domain object.
-         ``dv``     Volume per grid point.
-         ``h_c``    Array of the grid spacing along the three axes.
-         ``N_c``    Array of the number of grid points along the three axes.
-         ``n_c``    Number of grid points on this CPU.
-         ``beg_c``  Beginning of grid-point indices (inclusive).
-         ``end_c``  End of grid-point indices (exclusive).
-         ``comm``   MPI-communicator for domain decomosition.
-         ========== ========================================================
-         The length unit is Bohr.
+
+        ==========  ========================================================
+        ``domain``  Domain object.
+        ``dv``      Volume per grid point.
+        ``h_c``     Array of the grid spacing along the three axes.
+        ``N_c``     Array of the number of grid points along the three axes.
+        ``n_c``     Number of grid points on this CPU.
+        ``beg_c``   Beginning of grid-point indices (inclusive).
+        ``end_c``   End of grid-point indices (exclusive).
+        ``comm``    MPI-communicator for domain decomosition.
+        ==========  ========================================================
+
+        The length unit is Bohr.
         """
         
         self.domain = domain

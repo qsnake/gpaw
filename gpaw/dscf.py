@@ -323,7 +323,7 @@ class WaveFunction:
     An orbital is defined through a linear combination of KS orbitals
     which is determined by this class as follows: For each kpoint we
     calculate the quantity ``ft_m = <m|a>`` where ``|m>`` is the
-    all-electron KS states in the calculation and |a> is the
+    all-electron KS states in the calculation and ``|a>`` is the
     all-electron resonant state to be kept occupied.  We can then
     write ``|a> = Sum(ft_m|m>)`` and in each self-consistent cycle the
     method get_ft_km is called. This method take the Kohn-Sham

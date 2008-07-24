@@ -50,7 +50,7 @@ class Nucleus:
                functions of this atom (``P_{\sigma\vec{k}ni}^a``).
      ``D_sp``  Atomic density matrix (``D_{\sigma i_1i_2}^a``).
                Packed with pack 1.
-     ``H_sp`` Atomic Hamiltonian correction (``\Delta H_{\sigma i_1i_2}^a``).
+     ``H_sp``  Atomic Hamiltonian correction (``\Delta H_{\sigma i_1i_2}^a``).
                Packed with pack 2.
      ``Q_L``   Multipole moments  (``Q_{\ell m}^a``).
      ``F_c``   Force.

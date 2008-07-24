@@ -1576,20 +1576,23 @@ class XCCorrection:
 
     def create_kinetic(self,jlL,jl,ny,np,phi_jg,tau_ypg):
 
-        """                                                     
-        kinetic expression is              __         __ 
-        tau_s = 1/2 Sum_{i1,i2} D(s,i1,i2) \/phi_i1 . \/phi_i2 +tauc_s
+        """Short title here.                                                     
+        kinetic expression is::
 
-        here the orbital dependent part is calculated.
-        __         __         
-        \/phi_i1 . \/phi_i2 = 
-                    __    __
-                    \/YL1.\/YL2 phi_j1 phi_j2 +YL1 YL2 dphi_j1 dphi_j2
-                                                       ------  ------
-                                                         dr     dr
-        __    __
-        \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2 
-        
+                                             __         __ 
+          tau_s = 1/2 Sum_{i1,i2} D(s,i1,i2) \/phi_i1 . \/phi_i2 +tauc_s
+
+        here the orbital dependent part is calculated::
+
+          __         __         
+          \/phi_i1 . \/phi_i2 = 
+                      __    __
+                      \/YL1.\/YL2 phi_j1 phi_j2 +YL1 YL2 dphi_j1 dphi_j2
+                                                         ------  ------
+                                                           dr     dr
+          __    __
+          \/YL1.\/YL2 [y] = Sum_c A[L1,c,y] A[L2,c,y] / r**2 
+          
         """
         ng = self.ng
         Lmax = self.Lmax

@@ -100,7 +100,7 @@ class LCAO:
         The eigenvectors P_mm of the overlap matrix S_mm which correspond
         to eigenvalues p_m < thres are removed, thus producing a
         q-dimensional subspace. The hamiltonian H_mm is also transformed into
-        H_qq and diagonalized. The transformation operator P_mq looks like
+        H_qq and diagonalized. The transformation operator P_mq looks like::
 
                 ------------m--------- ...
                 ---p---  ------q------ ...
@@ -113,6 +113,7 @@ class LCAO:
            |   |
              . |
              .
+
 
         """
 

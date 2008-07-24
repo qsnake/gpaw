@@ -525,11 +525,16 @@ def get_valence_core_exx(paw, hybrid=None):
     return paw.gd.comm.sum(Exx_vc) * paw.Ha
 
 def H_coulomb_val_core(paw, u=0):
-    """           core  *    *
-          //       --   i(r) k(r') k(r) j (r')
-    H   = || drdr' >   ----------------------
-     ij   //       --          |r - r'|
-                   k  
+    """Short description here.
+
+    ::
+
+                     core   *    *
+             //       --   i(r) k(r') k(r) j (r')
+       H   = || drdr' >   ----------------------
+        ij   //       --          |r - r'|
+                      k
+                      
     """
     H_nn = npy.zeros((paw.nbands, paw.nbands), dtype=paw.dtype)
     for nucleus in paw.nuclei:
