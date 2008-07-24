@@ -29,6 +29,13 @@ class ExternalPotential:
                 assert(gd == self.gd)
         return self.vext_g
 
+    def get_taylor(self, position=None, spos_c=None):
+        """Get the Taylor expansion around a point
+
+        position [Angstrom]"""
+        # use only 0 order term, i.e. the value
+        return [[self.get_value(position, spos_c)]]
+
     def get_value(self, position=None, spos_c=None):
         """The potential value (as seen by an electron) 
         at a certain grid point.
@@ -246,6 +253,21 @@ class ConstantElectricField(ExternalPotential):
                     potential[ii,jj,kk] = self.get_value(pos_c)
         self.potential = potential
         return potential
+
+    def get_taylor(self, position=None, spos_c=None):
+        """Get the Taylor expansion around a point
+
+        position [Angstrom]"""
+        if position is None:
+            gd = self.gd
+            pos = spos_c * gd.h_c * gd.N_c * Bohr
+        else:
+            pos = position
+        # see spherical_harmonics.py for the assignement
+        return [[self.get_value(position=pos)],
+                [self.strength * self.direction[1], # y
+                 self.strength * self.direction[2], # z
+                 self.strength * self.direction[0]]]# x
 
     def get_value(self, position=None, spos_c=None):
         """The potential value (as seen by an electron) 

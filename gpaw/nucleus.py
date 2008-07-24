@@ -461,13 +461,21 @@ class Nucleus:
                     Htemp[i0:i1,i0:i1] += Vorb
                     H_p[:] = pack2(Htemp)
 
-            # Note that the external potential is assumed to be
-            # constant inside the augmentation spheres.
             Eext = 0.0
             if vext is not None:
-                Eext += vext * (sqrt(4 * pi) * self.Q_L[0] + s.Z)
-                dH_p += vext * sqrt(4 * pi) * s.Delta_pL[:, 0]
-            
+                # Tailor expansion to
+                # the zeroth order
+                Eext += vext[0][0] * (sqrt(4 * pi) * self.Q_L[0] + s.Z)
+                dH_p += vext[0][0] * sqrt(4 * pi) * s.Delta_pL[:, 0]
+                if len(vext) > 1:
+                    # the first order
+                    Eext += sqrt(4 * pi / 3) * npy.dot(vext[1], self.Q_L[1:4])
+                    # there must be a better way XXXX
+                    Delta_p1 = npy.array([s.Delta_pL[:, 1],
+                                          s.Delta_pL[:, 2],
+                                          s.Delta_pL[:, 3]])
+                    dH_p += sqrt(4 * pi / 3) * npy.dot(vext[1], Delta_p1)
+
             for H_p in self.H_sp:
                 H_p += dH_p
 

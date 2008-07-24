@@ -7,8 +7,9 @@ from ase.units import Bohr
 
 import _gpaw
 from gpaw import debug
+from gpaw.external_potential import ExternalPotential
 
-class PointCharges(list):
+class PointCharges(list, ExternalPotential):
     def __init__(self, file=None):
         list.__init__(self)
         
