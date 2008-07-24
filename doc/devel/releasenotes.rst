@@ -45,7 +45,7 @@ Release notes
 
   - Parallellization over spin and **k**-points added.
   - Interpolation of the density and restriction of the potential and
-    the radial functions done to O(*h*\ :sup:`6`) - gives much
+    the radial functions done to :math:`O(h^6)` - gives much
     improved convergence with respect to *h*.
   - Imporoved test-suite (no failing tests!).
   - Parallellized calculation of localized functions - was not

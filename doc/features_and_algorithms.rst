@@ -28,7 +28,7 @@ Grids
 Pseudo wave functions, pseudo electron densities and potentials are
 represented on uniform real-space orthorhombic grids.  Two kinds of
 grids are involved in the calculations: A coarse grid used for the
-wave functions and a fine grid (2\ `3`:sup: = 8 times higher grid point
+wave functions and a fine grid (:math:`2^3=8` times higher grid point
 density) used for densities and potentials.  The pseudo electron
 density is first calculated on the coarse grid from the wave
 functions, and then interpolated to the fine grid, where compensation

@@ -298,7 +298,7 @@ In words:
   should be less than 0.001 electrons per valence electron.
 
 * The integrated value of the square of the residuals of the Kohn-Sham
-  equations should be less than 1.0 |times| 10\ :sup:`-9` (per state).
+  equations should be less than :math:`1.0 \times 10^{-9}` (per state).
 
 The individual criteria can be changed by giving only the specific entry of dictionary 
 e.g. ``convergence={'energy': 0.0001}`` would set the convergence criteria of energy to 0.1 meV
