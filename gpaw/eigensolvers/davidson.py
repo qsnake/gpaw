@@ -26,8 +26,9 @@ class Davidson(Eigensolver):
     * Add preconditioned residuals to the subspace and diagonalize 
     """
 
-    def __init__(self):
+    def __init__(self, niter=4):
         Eigensolver.__init__(self)
+        self.niter = niter
 
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
@@ -39,9 +40,9 @@ class Davidson(Eigensolver):
                                 self.dtype)        
         self.eps_2n = npy.empty(2 * self.nbands)        
 
-    def iterate_one_k_point(self, hamiltonian, kpt, niter=2):
+    def iterate_one_k_point(self, hamiltonian, kpt):
         """Do Davidson iterations for the kpoint"""
-
+        niter = self.niter
         nbands = self.nbands
 
         self.subspace_diagonalize(hamiltonian, kpt)
@@ -52,7 +53,7 @@ class Davidson(Eigensolver):
         psit2_nG = self.big_work_arrays['work_nG']
 
         self.timer.start('Davidson')
-        R_nG = self.Htpsit_nG
+        R_nG = self.Htpsit_nG #HH: includes nonlocal EXX?
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G

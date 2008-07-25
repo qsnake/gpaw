@@ -26,8 +26,9 @@ class CG(Eigensolver):
     * Conjugate gradient steps
     """
 
-    def __init__(self):
+    def __init__(self, niter=4):
         Eigensolver.__init__(self)
+        self.niter = niter
 
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
@@ -37,17 +38,18 @@ class CG(Eigensolver):
 
         # self.f = open('CG_debug','w')
 
-    def iterate_one_k_point(self, hamiltonian, kpt, niter=4):      
+    def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a conjugate gradient iterations for the kpoint"""
-    
+        
+        niter = self.niter
         phi_G = self.phi_G
         phi_old_G = self.phi_old_G
-
+        
         self.subspace_diagonalize(hamiltonian, kpt)
-            
+        
         R_nG = self.big_work_arrays['work_nG']
         Htphi_G = self.big_work_arrays['work_nG'][0]
-
+        
         R_nG[:] = self.Htpsit_nG
         self.timer.start('Residuals')        
         # optimize XXX 
