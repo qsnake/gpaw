@@ -347,7 +347,7 @@ class WaveFunction:
         The maximum number of Kohn-Sham orbitals used in the linear expansion.
     wf_u: list of wavefunction arrays
         Wavefunction to be occupied on the kpts on this processor.
-    P_uai: list of two-dimensional arrays.
+    P_aui: list of two-dimensional arrays.
         Calulator.nuclei[a].P_uni[:,n,:] for a in molecule
         Projector overlaps with the wavefunction to be occupied for each
         kpoint. These are used when correcting to all-electron wavefunction
@@ -355,12 +355,12 @@ class WaveFunction:
         corresponding to the all the kpoints in the calculation.
     """
 
-    def __init__(self, paw, wf_u, P_uai, Estart=0.0, Eend=1.e6,
+    def __init__(self, paw, wf_u, P_aui, Estart=0.0, Eend=1.e6,
                  molecule=[0,1], no_of_states=None):
     
         self.paw = paw
         self.wf_u = wf_u
-        self.P_uai = P_uai
+        self.P_aui = P_aui
         self.Estart = Estart
         self.Eend = Eend
         self.mol = molecule
@@ -376,15 +376,18 @@ class WaveFunction:
             self.nos = len(self.paw.kpt_u[0].f_n)
 
         if len(self.wf_u) == len(self.paw.kpt_u):
+            print 'lllllllllllllllllllllllllll'
             wf_u = self.wf_u
-            P_uai = self.P_uai
+            P_aui = self.P_aui
         elif len(self.wf_u) == self.paw.nkpts * self.paw.nspins:
+            print 'dddddddddddddddddddddddddddddddd'
             wf_u = []
             P_uai = []
             for kpt in self.paw.kpt_u:
                 k = kpt.s * self.paw.nkpts + kpt.k
                 wf_u.append(self.wf_u[k])
                 P_uai.append(self.P_uai[k])
+            P_aui = npy.swapaxes(P_uai, 0, 1)
         else:
             raise RuntimeError('List of wavefunctions has wrong size')
 
@@ -408,7 +411,7 @@ class WaveFunction:
                     for i in range(len(p_i)):
                         for j in range(len(p_i)):
                             Porb_n[n] += (p_i[i] * atom.setup.O_ii[i][j]
-                                          * P_uai[kpt.u][b][j])
+                                          * P_aui[b][kpt.u][j])
             
             Pabs_n = abs(Porb_n)**2
             argsort = npy.argsort(Pabs_n)
