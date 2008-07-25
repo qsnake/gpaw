@@ -253,7 +253,7 @@ class Calculator(PAW):
         return e - self.get_fermi_level(), ldos
 
     def get_molecular_ldos(self, mol, spin=0, npts=201, width=None,
-                           lc=None, wf=None, P_uai=None):
+                           lc=None, wf=None, P_aui=None):
         """The Projected Density of States, using molecular orbitals.
 
         Projects onto either atomic orbital basis functions (lc) for a
@@ -267,7 +267,7 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import molecular_LDOS, fold
         energies, weights = molecular_LDOS(self, mol, spin,
-                                           lc=lc, wf=wf, P_uai=P_uai)
+                                           lc=lc, wf=wf, P_aui=P_aui)
         e, ldos = fold(energies * Hartree, weights, npts, width)
         return e - self.get_fermi_level(), ldos
 
