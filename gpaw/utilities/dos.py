@@ -111,7 +111,7 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
 
-def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_uai=None):
+def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_aui=None):
     """Returns a list of eigenvalues, and their weights on a given molecule
     
        If wf is None, the weights are calculated as linear combinations of
@@ -122,9 +122,9 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_uai=None):
 
        If wf is not none, it should be a list of wavefunctions
        corresponding to different kpoints and a specified band. It should
-       be accompanied by P_uai=nucleus[a].P_uni for the band n and a in mol.
-       The weights are then calculated as the overlap of all-electron
-       KS wavefunctions with wf"""
+       be accompanied by a list of arrays: P_uai=nucleus[a].P_uni for the
+       band n and a in mol. The weights are then calculated as the overlap
+       of all-electron KS wavefunctions with wf"""
 
     w_k = paw.weight_k
     nk = len(w_k)
@@ -148,8 +148,8 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_uai=None):
     else:
         if len(wf) == 1:  # Using the Gamma point only
             wf = [wf[0] for u in range(nk)]
-            P_uai = [P_uai[0] for u in range(nk)]
-        P_uai = npy.conjugate(P_uai)
+            P_aui = [P_aui[0] for u in range(nk)]
+        P_uai = npy.conjugate(P_aui)
         for kpt in paw.kpt_u:
             w = npy.reshape(npy.conjugate(wf)[kpt.u], -1)
             for n in range(nb):
@@ -161,7 +161,7 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_uai=None):
                     p_i = atom.P_uni[kpt.u][n]
                     for i in range(len(p_i)):
                         for j in range(len(p_i)):
-                            P_un[kpt.u][n] += (P_uai[kpt.u][b][i] *
+                            P_un[kpt.u][n] += (P_aui[b][kpt.u][i] *
                                                atom.setup.O_ii[i][j] * p_i[j])
                 print n, abs(P_un)[kpt.u][n]**2
                 
