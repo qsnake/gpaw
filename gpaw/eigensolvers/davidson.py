@@ -26,7 +26,7 @@ class Davidson(Eigensolver):
     * Add preconditioned residuals to the subspace and diagonalize 
     """
 
-    def __init__(self, niter=4):
+    def __init__(self, niter=2):
         Eigensolver.__init__(self)
         self.niter = niter
 
@@ -53,7 +53,7 @@ class Davidson(Eigensolver):
         psit2_nG = self.big_work_arrays['work_nG']
 
         self.timer.start('Davidson')
-        R_nG = self.Htpsit_nG #HH: includes nonlocal EXX?
+        R_nG = self.Htpsit_nG 
         # optimize XXX 
         for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
             axpy(-eps, psit_G, R_G)  # R_G -= eps * psit_G
