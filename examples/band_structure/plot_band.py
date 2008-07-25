@@ -6,7 +6,7 @@ nbands = calc.get_number_of_bands()
 kpts = calc.get_ibz_k_points()
 nkpts = len(kpts)
 
-eigs = empty((nbands, nkpts))
+eigs = empty((nbands, nkpts), float)
 
 for k in range(nkpts):
     eigs[:, k] = calc.get_eigenvalues(kpt=k)
