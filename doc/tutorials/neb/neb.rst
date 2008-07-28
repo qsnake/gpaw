@@ -6,9 +6,7 @@ NEB calculations parallelized over images
 
 The `Gold atom diffusion on Al(100)`_ example can be used with GPAW like this:
 
-par_
-
-.. _par: inline:neb.py
+.. literalinclude: neb.py
 
 If we run the job on 12 cpu's::
 

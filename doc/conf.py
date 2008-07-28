@@ -24,7 +24,7 @@ sys.path.append('.')
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['ext', 'mathpng']
+extensions = ['ext', 'mathpng', 'images']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -95,7 +95,7 @@ html_style = 'gpaw.css'
 
 # The name of an image file (within the static path) to place at the top of
 # the sidebar.
-html_logo = 'logo-gpaw.png'
+html_logo = '_static/logo-gpaw.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

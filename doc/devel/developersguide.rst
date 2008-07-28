@@ -295,7 +295,7 @@ where
 
 .. _Symmetry: wiki:API:gpaw.symmetry.Symmetry-class.html
 
-
+.. _developersguide_total_energy:
 
 The total energy
 ================

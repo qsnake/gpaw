@@ -11,9 +11,11 @@ ground_state_
 
 .. _ground_state: literalinclude:ground_state.py
 
-Linear response TDDFT needs unoccupied states, so we calculate 19 of them in addition to the one
-occupied state. Note that in realistic calculation there should be more vacuum around the molecule. One might 
-also want to first `optimize the geometry`_, save the structure::
+Linear response TDDFT needs unoccupied states, so we calculate 19 of
+them in addition to the one occupied state. Note that in realistic
+calculation there should be more vacuum around the molecule. One might
+also want to first :ref:`optimize the geometry
+<structure_optimization>`, save the structure::
 
   calc.write('na2_gs.gpw')
 
@@ -24,15 +26,11 @@ and start a then a new calculation with more vacuum and unoccupied states::
   calc.set(nbands=20, ...)
   ...
 
-.. _`optimize the geometry`: Optimization_
-
 Once the ground state calculation with unoccupied states is finished, a linear response TDDFT calculation is performed:
 
-spectrum_
+.. literalinclude: spectrum.py
 
-.. _spectrum: inline:spectrum.py
-
-.. figure:: spectrum.png
+.. figure:: ../../_static/spectrum.png
 
 As the construction of the Omega matrix is computationally the most intensive part it is sometimes convenient to
 perform diagonalisation and construction of spectrum in separate calculations::
@@ -64,7 +62,6 @@ Exercises
 
 3. Check how the results vary with the empty space around the molecule.
 
-4. Try to calculate optical spectrum also with the time-propagation_ approach and see how the results compare to 
+4. Try to calculate optical spectrum also with the :ref:`timepropagation` approach and see how the results compare to 
    linear response calculation.
 
-.. _time-propagation: Time_Propagation_

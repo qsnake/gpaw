@@ -11,20 +11,14 @@ News
 
 *   The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007).
 
-*   A GPAW Sprint_ will be held on November 16 in Lyngby (Okt 18 2007)
+*   A GPAW Sprint will be held on November 16 in Lyngby (Okt 18 2007)
 
-*   Work on `atomic basis-sets`_ begun (Sep 25 2007)
-
-*   New `Parallel Scaling`_ measurements on Opteron cluster (Jul 23 2007)
-
+*   Work on atomic basis-sets begun (Sep 25 2007)
 
 .. _numpy: http://www.scipy.org/NumPy
 .. _CSC: http://www.csc.fi
 .. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
-.. _atomic basis-sets: News_#work-on-lcao-version-of-gpaw-begun
-
-More :ref:`news`
 
 GPAW
 ====
@@ -54,15 +48,15 @@ features and the algorithms used <features_and_algorithms>`.
 .. |i3| image:: _static/logo-jyu.png
         :height: 44
         :target: http://www.phys.jyu.fi
-.. |i4| image:: _static/logo-tut.png
-        :height: 44
-        :target: http://www.tut.fi
-.. |i5| image:: _static/logo-hut.png
-        :height: 44
-        :target: http://www.fyslab.hut.fi
-.. |i6| image:: _static/logo-fmf.png
+.. |i4| image:: _static/logo-fmf.png
         :height: 44
         :target: http://www.fmf.uni-freiburg.de/index.html-en/view?set_language=en
+.. |i5| image:: _static/logo-tut.png
+        :height: 44
+        :target: http://www.tut.fi
+.. |i6| image:: _static/logo-hut.png
+        :height: 44
+        :target: http://www.fyslab.hut.fi
 .. |i7| image:: _static/logo-tree.png
         :height: 44
 
@@ -75,5 +69,7 @@ features and the algorithms used <features_and_algorithms>`.
 * `CSC, the Finnish IT center for science <http://www.csc.fi>`_
 * `CAMd, Technical University of Denmark <http://www.camp.dtu.dk>`_
 * `Department of Physics, University of Jyväskylä <http://www.phys.jyu.fi>`_
+* `Freiburg Materials Research Center <http://www.fmf.uni-freiburg.de/index.html-en/view?set_language=en>`_
 * `Institute of Physics, Tampere University of Technology <http://www.tut.fi>`_
 * `Laboratory of Physics, Helsinki University of Technology <http://www.fyslab.hut.fi>`_
+

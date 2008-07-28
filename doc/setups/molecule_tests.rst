@@ -14,7 +14,7 @@ numbers, and zero-point energy is not included in the atomization
 energies. The numbers are compared to very accurate, state-of-the-art,
 PBE calculations (*ref* subscripts).
 
-.. figure:: molecules.png
+.. figure:: ../_static/molecules.png
    
 
 Bond lengths and atomization energies at relaxed geometries

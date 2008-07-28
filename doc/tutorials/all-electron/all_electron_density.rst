@@ -31,7 +31,7 @@ As the all-electron density has more structure than the pseudo-density, it is ne
 
 The plot below shows a line-section of the Si density using a grid refinement factor of 1, 2, and 4 respectively
 
-.. image:: gridrefinement.png
+.. image:: ../../_static/gridrefinement.png
 
 The all-electron density will always integrate to the total number of electrons of the considered system (independent of the grid resolution), while the pseudo density will integrate to some more or less arbitrary number. This fact is illustrated in the following example.
 
@@ -39,10 +39,10 @@ The all-electron density will always integrate to the total number of electrons 
 Example 1: NaCl
 ---------------
 
-As an example of application, consider the three systems Na, Cl, and NaCl. The pseudo- and all-electron densities of these three systems are shown on the graph below (the results of this example have been made with the script NaCl.py_)
+As an example of application, consider the three systems Na, Cl, and NaCl. The pseudo- and all-electron densities of these three systems are shown on the graph below (the results of this example have been made with the following script)
 
-.. _NaCl.py: attachment:NaCl.py
-.. image:: NaCl.png
+.. literalinclude NaCl.py
+.. image:: ../../_static/ae_density_NaCl.png
 
 The pseudo- and all-electron densities of the three systems integrate to:
 
@@ -61,9 +61,7 @@ Example 2: Bader analysis of H\ :sub:`2`\ O
 
 To do a bader anaysis of the all-electron density, you should first save the density to a .cube file:
 
-Bader_
-
-.. _Bader: inline:H2O-bader.py
+.. literalinclude: H2O-bader.py
 
 Then run the bader program::
 
@@ -91,11 +89,11 @@ To access the ``bader_rho.dat`` file in python, you can do the following:
 
 This will put the array ``bader`` in the same format as the density arrays.
 
-The plot below shows a crossection of the ae-density and the bader partitions. The plots have been made using the script `H2O-plot.py`_
+The plot below shows a crossection of the ae-density and the bader partitions. The plots have been made using the script ``H2O-plot.py``:
 
-.. _`H2O-plot.py`: attachment:H2O-plot.py
+.. literalinclude: H2O-plot.py
 
-.. image:: H2O.png
+.. image:: ../../_static/ae_density_H2O.png
 
 For more information on the Bader method, see the tutorial_ on the ASE wiki.
 

@@ -27,12 +27,14 @@ Parallelization using domain decomposition is fully supported.
 
 The Fock operator can be used to do the hybrid functional PBE0, and of course, Hartree-Fock type EXX. These are accessed by setting the ``xc`` keyword to ``PBE0`` or ``EXX`` respectively.
 
-A thesis on the implementation of EXX in the PAW framework, and the specifics of the GPAW project can be seen on the :ref:`literature <literature#reports-presentations-and-theses-using-gpaw>` page.
+A thesis on the implementation of EXX in the PAW framework, and the
+specifics of the GPAW project can be seen on the :ref:`literature
+<literature_reports_presentations_and_theses>` page.
 
 A comparison of the atomization energies of the g2-1 test-set calculated in VASP, Gaussian03, and GPAW is shown in the below two figures for the PBE and the PBE0 functional respectively.
 
-.. image:: g2test_pbe.png
+.. image:: ../_static/g2test_pbe.png
 
-.. image:: g2test_pbe0.png
+.. image:: ../_static/g2test_pbe0.png
 
 In the last figure, the curve marked ``GPAW (nonself.)`` is a non-selfconsistent PBE0 calculation using self-consistent PBE orbitals.

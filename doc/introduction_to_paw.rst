@@ -11,7 +11,7 @@ A simple example
 
 We look at the `2\sigma`\ * orbital of a CO molecule: |ts|
 
-.. |ts| image:: 2sigma.png
+.. |ts| image:: _static/2sigma.png
 
 The main quantity in the PAW method is the pseudo wave-function (blue
 crosses) defined in all of the simulation box:
@@ -22,11 +22,9 @@ crosses) defined in all of the simulation box:
 
 where `h` is the grid spacing and `(i, j, k)` are the indices of the grid points. 
 
-.. figure:: cowf.png
+.. figure:: _static/co_wavefunctions.png
 
-   cowf.py_
-
-.. _cowf.py: attachment:cowf.py
+.. literalinclude:co_wavefunctions.py
 
 In order to get the all-electron wave function, we add and subtract one-center expansions of the all-electron (thick lines) and pseudo wave-functions (thin lines):
 

@@ -9,12 +9,12 @@ Compare the Si band diagram to the band diagram below (adapted from Cohen and Ch
 .. _Na_band.py : wiki:SVN:examples/band_structure/Na_band.py
 .. _plot_band.py : wiki:SVN:examples/band_structure/plot_band.py
 
-.. figure:: Si_banddiagram.gif
+.. figure:: ../../_static/silicon_banddiagram.gif
    :width: 600
    :align: center
 
 For a description of the symmetry labels of the Brillouin zone; see the figure below.
 
-.. figure:: BZ-all.png
+.. figure:: ../../_static/bz-all.png
    :width: 600
    :align: center

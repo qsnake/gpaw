@@ -7,20 +7,18 @@
 .. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
 .. |H2| replace:: H\ :sub:`2`
 
-In the tutorial on `how to calculate atomization energies`_, we
-calculated the atomization energy for |H2| using the experimental bond
-length of 0.74 |angst|.  In this tutorial, we ask a QuasiNewton_ minimizer 
-to iteratively find the structural energy
-minimum, where all atomic forces are below 0.05 eV/|angst|.  The
-following script will do the job:
+In the tutorial on :ref:`how to calculate atomization energies
+<atomization_energy>`, we calculated the atomization energy for |H2|
+using the experimental bond length of 0.74 |angst|.  In this tutorial,
+we ask a QuasiNewton_ minimizer to iteratively find the structural
+energy minimum, where all atomic forces are below 0.05 eV/|angst|.
+The following script will do the job:
 
-relax_
-
-.. _relax: inline:relax.py
+.. literalunclude: relax.py
 
 
 .. _QuasiNewton: https://web2.fysik.dtu.dk/ase/ase/optimize.html#module-optimize.qn
-.. _how to calculate atomization energies: Atomization_
+.. _how to calculate atomization energies: :ref:`atomization_energy`
 
 The result is::
 
@@ -34,7 +32,7 @@ The result is::
   bondlength              :  0.73 Ang
 
 .. note::
-   You must run the Atomization_ script first.
+   You must run the :ref:`atomization <atomization_energy>` script first.
 
 To save time you could have told the minimizer to keep one atom fixed,
 and only relaxing the other. This is achieved through the use of

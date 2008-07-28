@@ -6,7 +6,7 @@ Development
 
 .. toctree::
 
-   developersguide
+   TODO: write funny things like this <developersguide>
    eigenvalues_of_core_states
    developer_installation
    overview
@@ -23,6 +23,7 @@ Development
    testsuite
    statistics
    about_this_wiki
+   code/code
 
 GPAW development can be done by anyone!  Just take a look at the :ref:`todo` list and find something that suits your talents!  Read more about the :ref:`technology` and :ref:`theory <features_and_algorithms>` behind the code.
 
@@ -47,7 +48,8 @@ Topics:
 * Trac_.
 
 * The gpaw mailing lists: gpaw-developer_ and gpaw-svncheckins_
-* `Setup Optimization`_
+
+XXX
 
 .. _API: wiki:API:
 .. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html
@@ -62,7 +64,7 @@ The big picture
 Keep this under your pillow (work in progress):
 
 
-.. image:: overview.png
+.. image:: ../_static/overview.png
    :target: overview.pdf_
    :width: 550
 
@@ -70,14 +72,14 @@ Created with OpenOffice.org-Draw_: overview.odg_.
 
 
 .. _OpenOffice.org-Draw: http://www.openoffice.org/product/draw.html
-.. _overview.pdf: attachment:overview.pdf
-.. _overview.odg: attachment:overview.odg
+.. _overview.pdf: ../_static/overview.pdf
+.. _overview.odg: ../_static/overview.odg
 
 When committing significant changes to the code, remember to add a note in the :ref:`releasenotes` at the top (current svn) - the version to become the next release.
 
-.. image:: bslogo.php.png
+.. image:: ../_static/bslogo.png
    :target: http://developer.berlios.de/projects/gridpaw
 
-The source for the GPAW-logo can be found here: GPAW-logo.odg_
+The source for the GPAW-logo can be found here: gpaw-logo.odg_
 
-.. _GPAW-logo.odg: attachment:GPAW-logo.odg
+.. _gpaw-logo.odg: ../_static/gpaw-logo.odg

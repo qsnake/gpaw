@@ -10,7 +10,7 @@ The documentation consists of several parts:
 * Some :ref:`faq`.
 * Some :ref:`literature`.
 * The ASE_ web-page.
-* The `Application Programming Interface`_.
+* The Application Programming Interface XXX create link.
 * The Python code - it can be found in ``/usr/lib/python2.4/site-packages/gpaw`` (or something similar).
 
 You can subscribe to page changes in this wiki by adding the regular expression "GPAW:.*" to the "Subscribed wiki pages" field on your "User Preferences" page (you should register first).
@@ -51,4 +51,4 @@ are being converted to new format.
    There are example input files also in :ref:`exercises`.
 
 
-.. _Bader: wiki:ASE:Analysis#bader-analysis
+.. _Bader: https://web2.fysik.dtu.dk/ase/ase/dft/bader.html

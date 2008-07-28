@@ -95,7 +95,15 @@ In rare occasions the default eigensolver_ ``rmm-diis`` does not converge, and o
   Calculator(..., eigensolver='cg')
 
 .. _density mixing: wiki:GPAW:Manual#density-mixing
-.. _eigensolver: wiki:GPAW:Manual#eigensolver
+.. _eigensolver: :ref:`gpaw_manual_eigensolver`
+
+Poisson solver did not converge!
+================================
+
+If you are doing a spin-polarized calculation for an isolated molecule, 
+then you should set the Fermi temperature to a low value: 
+``width=0.001``.
+
 
 Tests fail!
 ===========
@@ -115,4 +123,4 @@ Writing a restart file results in error::
   IOError: netcdf: Operation not allowed in define mode
 
 NetCDF (or more specifically Scientific python's netCDF) does not support files larger than 2 GB. Use instead ``.gpw``
-format or write the wave functions into separate files. See the `Restart file`_ page for more details.
+format or write the wave functions into separate files. See the :ref:`restart_files` page for more details.

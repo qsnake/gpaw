@@ -7,12 +7,12 @@ Tutorials
 .. toctree::
    :maxdepth: 2
 
-   atomization
-   optimization
-   plot_wave_functions
-   bandstructures
+   atomization/atomization
+   optimization/optimization
+   plotting/plot_wave_functions
+   bandstructures/bandstructures
    
-   all_electron_density
-   ensembles
+   all-electron/all_electron_density
+   ensembles/ensembles
 
-   neb
+   neb/neb

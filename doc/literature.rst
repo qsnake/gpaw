@@ -12,6 +12,8 @@ Guides on this wiki
 * A review of some `current development <Morning_meeting_2007>`_ projects.
 * The gpaw :ref:`manual`.
 
+.. _literature_reports_presentations_and_theses:
+
 Reports, presentations, and theses using gpaw
 ---------------------------------------------
 * A short note on the basics of PAW: `paw note`_
@@ -23,14 +25,14 @@ Reports, presentations, and theses using gpaw
 * Slides from a talk about GPAW development: `gpaw for developers`_
 * Slides from a mini symposium during early development stage: `early gpaw`_
 
-.. _paw note: attachment:paw_notes.pdf
-.. _exact exchange: attachment:Rostgaard_master.pdf
-.. _lcao: attachment:Marco_master.pdf
-.. _localized basis sets: attachment:AskHL_master.pdf
-.. _setup optimization: attachment:Larsen_10302report.pdf
-.. _introduction to PAW slides: attachment:Mortensen_PAW.pdf
-.. _gpaw for developers: attachment:gpaw-dev.pdf
-.. _early gpaw: attachment:Mini2003_Jens_Talk.pdf
+.. _paw note: _static/rostgaard_paw_notes.pdf
+.. _exact exchange: _static/rostgaard_master.pdf
+.. _lcao: _static/marco_master.pdf
+.. _localized basis sets: _static/askhl_master.pdf
+.. _setup optimization: _static/askhl_10302_report.pdf
+.. _introduction to PAW slides: _static/mortensen_paw.pdf
+.. _gpaw for developers: _static/mortensen_gpaw-dev.pdf
+.. _early gpaw: _static/mortensen_mini2003talk.pdf
 
 Publications using the gpaw code
 --------------------------------

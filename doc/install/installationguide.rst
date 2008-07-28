@@ -107,4 +107,4 @@ For the parallel calculations, a special ``gpaw-python`` python-interpreter is c
 ``<my-directory>/bin`` should be added to PATH. Alternatively, the full pathname ``<my-directory>/bin/gpaw-python`` can be
 used when executing parallel runs.
 
-Instructions for running parallel calculations can be found in the :ref:`user manual <manual#parallel-calculations>`.
+Instructions for running parallel calculations can be found in the :ref:`user manual <manual_parallel_calculations>`.

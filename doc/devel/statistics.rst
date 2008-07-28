@@ -4,6 +4,6 @@
 Statistics
 ==========
 
-.. image:: stat.png
+.. image:: ../_static/stat.png
 
 

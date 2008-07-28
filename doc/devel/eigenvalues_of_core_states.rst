@@ -26,7 +26,8 @@ where `f_k` is the occupation of the core state.  When `f_k` is varied, `Q_L^a` 
   \frac{\partial n_c^a(r)}{\partial f_k} = 
   [\phi_k^a(\mathbf{r})]^2.
 
-Using the PAW expressions for the `energy contributions`_, we get:
+Using the PAW expressions for the :ref:`energy
+contributions<developersguide_total_energy>`, we get:
 
 .. math::
 
@@ -69,4 +70,3 @@ Using the PAW expressions for the `energy contributions`_, we get:
   \frac{\delta E_{\text{xc}}[n(\mathbf{r})]}
   {\delta n} [\phi_k^a(\mathbf{r})]^2
  
-.. _energy contributions: Developers_guide#the-total-energy

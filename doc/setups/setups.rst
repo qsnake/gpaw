@@ -9,6 +9,7 @@ Atomic PAW Setups
 
    molecule_tests
    generation_of_setups
+   more-setups-stuff
 
 Periodic table
 ==============
@@ -30,6 +31,7 @@ Tests
 
 * :ref:`molecule_tests`.
 * Bulk tests.
+
 XXX
 
 

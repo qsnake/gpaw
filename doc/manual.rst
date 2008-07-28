@@ -29,6 +29,8 @@ Below, there will be Python code examples starting with ``>>>`` (and
 ``...`` for continuation lines).  It is a good idea to start the
 Python interpreter and try some of the examples below.
 
+XXX Ase links
+
 .. _Python: http://www.python.org
 .. _ASE:
 .. _Atomic Simulation Environment: http://www.fysik.dtu.dk/campos/ASE
@@ -195,11 +197,13 @@ common are listed here, for the complete list see
 ``'LDA'`` is the default value.  The three last ones are of
 generalized gradient approximation (GGA) type.
 
-The functionals from libxc_ are used by default -
-keywords are based on the ``gpaw/libxc_functionals.py`` file.
-Custom combinations of exchange and correlation functionals are allowed, the exchange and correlation strings
-from the `gpaw/libxc_functionals.py` file need to be stripped off the ``'XC_LDA'`` or ``'XC_GGA'`` prefix and combined using the dash (-);
-e.g. to use "the" LDA approximation (most common) in chemistry specify ``'X-C_VWN'``.
+The functionals from libxc_ are used by default - keywords are based
+on the ``gpaw/libxc_functionals.py`` file.  Custom combinations of
+exchange and correlation functionals are allowed, the exchange and
+correlation strings from the ``gpaw/libxc_functionals.py`` file need
+to be stripped off the ``'XC_LDA'`` or ``'XC_GGA'`` prefix and
+combined using the dash (-); e.g. to use "the" LDA approximation (most
+common) in chemistry specify ``'X-C_VWN'``.
 
 **For developers only**: It is still possible to use the "old" functionals
 by prefixing the keyword with ``'old'``, e.g. ``'oldrevPBEx'``.
@@ -236,7 +240,7 @@ reasonable convergence of total energies.  If a ``n1`` |times| ``n2``
 ``n1``, ``n2`` and ``n3`` are positive ``int``'s all divisible by
 four.  Alternatively, one can use something like ``h=0.25``, and the program will try
 to choose a number of grid points that gives approximately the desired
-grid spacing.  For more details, see Grids_.
+grid spacing.  For more details, see :ref:`grids`.
 
 
 
@@ -346,6 +350,8 @@ however more SCF-iterations may be needed.
 
 
 
+.. _gpaw_manual_eigensolver:
+
 Eigensolver
 -----------
 
@@ -396,7 +402,7 @@ standard output.  One can also give a ``file`` object (anything with a
 passed to the ``out`` keyword, a file with that name will be opened
 and used for output.  Use ``txt=None`` to disable all text output.
 
-
+.. _manual_parallel_calculations:
 
 ---------------------
 Parallel calculations
@@ -483,7 +489,7 @@ change the number of grid points:
    >>> print atoms.get_potential_energy()
 
 
-More details can be found on the `Restart file`_ page.
+More details can be found on the :ref:`restart_files` page.
 
 ----------------------
 Command line arguments

@@ -1107,11 +1107,11 @@ Now you should be ready for massively parallel calculations, a sample job file w
 
 In order to use a preinstalled version of gpaw one can give the command ``module load gpaw`` which sets all the correct environment variables (PYTHONPATH, GPAW_SETUP_PATH, ...)
 
-__ attachment:numpy-1.0.4-gnu.py.patch
-__ attachment:numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
-__ attachment:numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg
-__ attachment:numpy-1.0.4-site.cfg.lapack_bgp_esslbg
-__ attachment:dynload_redstorm.c
-__ attachment:unixccompiler.py
-__ attachment:Setup
-__ attachment:customize.py
+.. literalinclude: numpy-1.0.4-gnu.py.patch
+.. literalinclude: numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
+.. literalinclude: numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg
+.. literalinclude: numpy-1.0.4-site.cfg.lapack_bgp_esslbg
+.. literalinclude: dynload_redstorm.c
+.. literalinclude: unixccompiler.py
+.. literalinclude: setup
+.. literalinclude: customize.py

@@ -7,9 +7,7 @@ Calculation of atomization energies
 The following script will calculate the atomization
 energy of a hydrogen molecule:
 
-atomize_
-
-.. _atomize: inline:atomize.py
+.. literalinclude:atomize.py
 
 First, an ``Atoms`` object containing one hydrogen atom with a
 magnetic moment of one, is created.  Next, a GPAW calculator is
