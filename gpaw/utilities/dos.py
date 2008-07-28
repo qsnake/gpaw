@@ -1,5 +1,6 @@
 from math import pi, sqrt
 import numpy as npy
+from ase.units import Hartree
 from gpaw.utilities import pack, wignerseitz
 from gpaw.setup_data import SetupData
 
@@ -242,7 +243,7 @@ class RawLDOS:
         # get element indicees
         elemi = {}
         for i,a in enumerate(self.paw.atoms):
-            symbol = a.GetChemicalSymbol()
+            symbol = a.symbol
             if elemi.has_key(symbol):
                 elemi[symbol].append(i)
             else:
@@ -251,18 +252,18 @@ class RawLDOS:
             elemi[key] = self.get(elemi[key])
         return elemi
 
-    def by_element_to_file(self,filename='ldos_by_element.dat'):
+    def by_element_to_file(self, filename='ldos_by_element.dat'):
         """Write the LDOS by element to a file"""
         ldbe = self.by_element()
         f = open(filename,'w')
-        eu = '['+units.GetEnergyUnit()+']'
+        eu = '[eV]'
         print >> f, '# e_i'+eu+'  spin   n ',
         for key in ldbe:
             if len(key) == 1: key=' '+key
             print  >> f, ' '+key+':s     p        d      ',
         print  >> f,' sum'
         for s in range(self.paw.nspins):
-            e_n = self.paw.GetEigenvalues(spin=s)
+            e_n = self.paw.collect_eigenvalues(s=s) * Hartree
             for n in range(self.paw.nbands):
                 sum = 0.
                 print >> f, '%10.5f' % e_n[n], s, '%6d' % n,
