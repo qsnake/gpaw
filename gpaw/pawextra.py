@@ -178,6 +178,10 @@ class PAWExtra:
             self.kpt_comm.receive(b_n, kpt_rank, 1301)
             return b_n
 
+        # return something also on the slaves
+        # might be nicer to have the correct array everywhere XXXX 
+        return a_n
+
     def get_wannier_integrals(self, c, s, k, k1, G, nbands=None):
         """Calculate integrals for maximally localized Wannier functions."""
 

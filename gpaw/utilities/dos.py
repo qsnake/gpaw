@@ -5,6 +5,8 @@ from ase.parallel import paropen
 from gpaw.utilities import pack, wignerseitz
 from gpaw.setup_data import SetupData
 
+import gpaw.mpi as mpi
+
 def print_projectors(nucleus):
     """Print information on the projectors of input nucleus object.
 
@@ -221,7 +223,7 @@ class RawLDOS:
                         l_i.append(l)
                 nucleus.setup.l_i = l_i
 
-    def get(self,atom):
+    def get(self, atom):
         """Return the s,p,d weights for each state"""
         spd = npy.zeros((self.paw.nspins, self.paw.nbands, 3))
 
@@ -230,12 +232,18 @@ class RawLDOS:
             for a in atom:
                 spd += self.get(a)
             return spd
-        
+
+        k=0
         nucleus = self.paw.nuclei[atom]
         for s in range(self.paw.nspins):
-            for n in range(self.paw.nbands):
-                for i, P in enumerate(nucleus.P_uni[s, n]):
-                    spd[s, n, nucleus.setup.l_i[i]] += abs(P)**2
+            u = self.paw.get_myu(k, s)
+            if u is not None and nucleus.in_this_domain:
+                for n in range(self.paw.nbands):
+                    for i, P in enumerate(nucleus.P_uni[u, n]):
+                        spd[s, n, nucleus.setup.l_i[i]] += abs(P)**2
+                        
+        self.paw.domain.comm.sum(spd)
+        self.paw.kpt_comm.sum(spd)
         return spd
 
     def by_element(self):
@@ -254,6 +262,7 @@ class RawLDOS:
     def by_element_to_file(self, filename='ldos_by_element.dat'):
         """Write the LDOS by element to a file"""
         ldbe = self.by_element()
+
         f = paropen(filename,'w')
         eu = '[eV]'
         print >> f, '# e_i'+eu+'  spin   n ',

@@ -1322,3 +1322,11 @@ class PAW(PAWExtra, Output):
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
 
 
+    def get_myu(self, k, s):
+        """Return my u corresponding to a certain kpoint and spin - or None"""
+        # very slow, but we are shure, that we have it
+        for u in range(self.nmyu):
+            if self.kpt_u[u].k == k and self.kpt_u[u].s == s:
+                return u
+        return None
+            
