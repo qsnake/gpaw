@@ -4,7 +4,7 @@ from math import sqrt
 import numpy as npy
 
 from ase.atoms import Atoms
-from ase.units import Bohr
+from ase.units import Bohr, Hartree
 from ase.dft.stm import STM
 from ase.io.cube import write_cube
 from ase.io.plt import write_plt
@@ -33,21 +33,43 @@ class SimpleStm(STM):
         self.wf = True
         self.ldos = self.gd.zeros()
 
-        n, k, s = bias
-        u = self.calc.nspins * k + s
-        nu = self.calc.nkpts * self.calc.nspins
-        if nu != self.calc.nmyu:
-            # parallelisation over spins/kpoints XXXXX
-            kpt = self.calc.kpt_u[0]
-            if kpt.s == s and kpt.k == k:
-                psi = kpt.psit_nG[n]
-            else:
-                psi = None
-        else:
-            psi = self.calc.kpt_u[s].psit_nG[n]
+        try:
+            n, k, s = bias
+            # only a single wf requested
+            u = self.calc.get_myu(k, s)
+            if u is not None:
+                self.add_wf_to_ldos(n, u)
 
-        if psi is not None:
-            self.ldos += (psi * npy.conj(psi)).real
+        except:
+            # energy bias
+            efermi = self.calc.get_fermi_level()
+            if bias > 0:
+                # positive bias = negative tip
+                # -> probe unoccupied states
+                emin = efermi
+                emax = efermi + bias
+            else:
+                # negative bias = positive tip
+                # -> probe occupied states
+                emin = efermi + bias
+                emax = efermi
+            emin /= Hartree
+            emax /= Hartree
+            
+            for u in range(self.calc.nmyu):
+                kpt = self.calc.kpt_u[u]
+                for n, eps in enumerate(kpt.eps_n):
+                    if eps>emin and eps<emax:
+                        self.add_wf_to_ldos(n, u, kpt.weight)
+
+    def add_wf_to_ldos(self, n, u, weight=None):
+        """Add the wf with given kpoint and spin to the ldos"""
+        kpt = self.calc.kpt_u[u]
+        psi = kpt.psit_nG[n]
+        w = weight
+        if w is None:
+            w = kpt.weight
+        self.ldos += w * (psi * npy.conj(psi)).real
 
     def write_3D(self, bias, file, filetype=None):
         """Write the density as a 3D file.
