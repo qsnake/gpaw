@@ -1,10 +1,9 @@
 from math import pi, sqrt
 import numpy as npy
 from ase.units import Hartree
+from ase.parallel import paropen
 from gpaw.utilities import pack, wignerseitz
 from gpaw.setup_data import SetupData
-
-
 
 def print_projectors(nucleus):
     """Print information on the projectors of input nucleus object.
@@ -235,8 +234,8 @@ class RawLDOS:
         nucleus = self.paw.nuclei[atom]
         for s in range(self.paw.nspins):
             for n in range(self.paw.nbands):
-                for i,P in enumerate(nucleus.P_uni[s, n]):
-                     spd[s, n, nucleus.setup.l_i[i]] += abs(P)**2
+                for i, P in enumerate(nucleus.P_uni[s, n]):
+                    spd[s, n, nucleus.setup.l_i[i]] += abs(P)**2
         return spd
 
     def by_element(self):
@@ -255,7 +254,7 @@ class RawLDOS:
     def by_element_to_file(self, filename='ldos_by_element.dat'):
         """Write the LDOS by element to a file"""
         ldbe = self.by_element()
-        f = open(filename,'w')
+        f = paropen(filename,'w')
         eu = '[eV]'
         print >> f, '# e_i'+eu+'  spin   n ',
         for key in ldbe:
