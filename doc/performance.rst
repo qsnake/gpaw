@@ -11,10 +11,7 @@ The PAW method gives us the accuracy of all-electron calculations, if:
 * we have enough projector functions for all atoms.
 
 We have tested this for the atomization energy of 20 molecules
-[Mor05]_: H\ `2`:sub:, LiH, CH\ `4`:sub:, NH\ `3`:sub:, OH, H\
-`2`:sub:\ O, HF, Li\ `2`:sub:, LiF, Be\ `2`:sub:, C\ `2`:sub:\ H\
-`2`:sub:, C\ `2`:sub:\ H\ `4`:sub:, HCN, CO, N\ `2`:sub:, NO, O\
-`2`:sub:, F\ `2`:sub:, P\ `2`:sub:, and Cl\ `2`:sub:,.  The average
+[Mor05]_.  The average
 and maximum differences between our PAW atomization energies and the
 all-electron calculations of Kurth *et al.* [Kur99]_ are
 0.05 eV and 0.15 eV respectively, and comparing with the all-electron
@@ -44,11 +41,11 @@ improve as we find time for optimization.
 Molybdenumdisulfide slab
 ------------------------
 
-Here we have calculated the energy difference between a perfect MoS\
-`2`:sub: slab and one with a defect.  The following plots show the
-convergence of the defect energy as a function of grid spacing (for
-the gridcode calculation) and the planewave cutoff (for the Dacapo
-calculation):
+Here we have calculated the energy difference between a perfect
+:math:`\rm{MoS}_2` slab and one with a defect.  The following plots
+show the convergence of the defect energy as a function of grid
+spacing (for the gridcode calculation) and the planewave cutoff (for
+the Dacapo calculation):
 
 ================== =========================
          Defect energy [eV]

@@ -4,12 +4,7 @@
 Manual
 ======
 
-.. |H2| replace:: H\ :sub:`2`
-.. |Gamma|  unicode:: U+00393 .. GREEK CAPITAL LETTER GAMMA
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-.. |times|  unicode:: U+000D7 .. MULTIPLICATION SIGN
-.. |simeq|  unicode:: U+02243 .. ASYMPTOTICALLY EQUAL TO
-
+.. default-role:: math
 
 
 ------------
@@ -67,16 +62,16 @@ In Python code, it looks like this:
 >>> atoms.set_calculator(calc)
 >>> print atoms.get_forces()
 
-If the above code was executed, a calculation for a single |H2|
+If the above code was executed, a calculation for a single `\rm{H}_2`
 molecule would be started.  The calculation would be done using a
-supercell of size 6.0 |times| 6.0 |times| 6.0 |angst| with cluster
+supercell of size :math:`6.0 \times 6.0 \times 6.0` Å with cluster
 boundary conditions.  The parameters for the PAW calculation are:
 
 * 2 electronic bands.
 * Local density approximation (LDA)\ [#LDA]_ for the
   exchange-correlation functional.
 * Spin-paired calculation.
-* 32 |times| 32 |times| 32 grid points.
+* :math:`32 \times 32 \times 32` grid points.
 * Text output from the program is dumped directly to standard output.
 
 The values of these parameters can be found in the text output file:
@@ -99,7 +94,7 @@ keyword          type       default value        description
 ===============  =========  ===================  =============================
 ``nbands``       ``int``                         Number of bands
 ``xc``           ``str``    ``'LDA'``            XC-functional
-``kpts``         *seq*      |Gamma|-point        **k**-point sampling
+``kpts``         *seq*      `\Gamma`-point       **k**-point sampling
 ``spinpol``      ``bool``                        Spinpolarized calculation
 ``gpts``         *seq*                           Number of gridpoints
 ``h``            ``float``                       Grid spacing
@@ -218,11 +213,11 @@ Brillouin-zone sampling
 -----------------------
 
 The default sampling of the Brillouin-zone is with only the
-|Gamma|-point.  This allows us to choose the wave functions to be real.
+`\Gamma`-point.  This allows us to choose the wave functions to be real.
 Monkhorst-Pack sampling can be used if required: ``kpts=(n1, n2,
 n3)``, where ``n1``, ``n2`` and ``n3`` are positive ``int``'s.  This
-will sample the Brillouin-zone with a regular grid of ``n1`` |times|
-``n2`` |times| ``n3`` **k**-points.
+will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
+``n2`` `\times` ``n3`` **k**-points.
 
 
 
@@ -235,8 +230,8 @@ The number of grid points to use for the grid representation of the
 wave functions determines the quality of the calculation.  More
 gridpoints (smaller grid spacing, *h*), gives better convergence
 of the total energy.  For most elements, *h* should be 0.2 Å for
-reasonable convergence of total energies.  If a ``n1`` |times| ``n2``
-|times| ``n3`` grid is desired, use ``gpts=(n1, n2, n3)``, where
+reasonable convergence of total energies.  If a ``n1`` `\times` ``n2``
+`\times` ``n3`` grid is desired, use ``gpts=(n1, n2, n3)``, where
 ``n1``, ``n2`` and ``n3`` are positive ``int``'s all divisible by
 four.  Alternatively, one can use something like ``h=0.25``, and the program will try
 to choose a number of grid points that gives approximately the desired
@@ -258,14 +253,14 @@ using ``usesymm=False``.
 Fermi-distribution
 ------------------
 
-The width (*k*\ :sub:`B`\ *T*) of the Fermi-distribution used for
+The width (`k_B T`) of the Fermi-distribution used for
 occupation numbers:
 
-  *f*\ (*E*) = 1 / (1 + exp[*E* / (*k*\ :sub:`B`\ *T*)])
+.. math::  f(E) = \frac{1}{1 + \exp[E / (k_B T)]}
 
 is given by the ``width`` keyword.  For calculations with **k**-points,
 the default value is 0.1 eV and the total
-energies are extrapolated to *T* = 0 Kelvin.  For a |Gamma|-point
+energies are extrapolated to *T* = 0 Kelvin.  For a `\Gamma`-point
 calculation (no **k**-points) the default value is ``width=0``, which
 gives integer occupation numbers.
 
@@ -276,7 +271,7 @@ Compensation charges
 --------------------
 
 The compensation charges are expanded with correct multipoles up to
-and including *l* = *l*\ :sub:`max`.  Default value: ``lmax=2``.
+and including `\ell=\ell_{max}`.  Default value: ``lmax=2``.
 
 
 
@@ -466,7 +461,7 @@ wave functions, densities, positions and everything else (also the
 parameters characterizing the PAW calculator used for the
 calculation).
 
-If you want to restart the |H2| calculation in another Python session
+If you want to restart the `\rm{H}_2` calculation in another Python session
 at a later time, this can be done as follows:
 
 >>> from gpaw import *
@@ -559,3 +554,5 @@ Optical photoabsorption spectrum as well as nonlinear effects can be studied usi
              Improved adsorption energetics within density-functional
              theory using revised Perdew-Burke-Ernzerhof functionals,
              *Phys. Rev. B* **59**, 7413 (1999)
+
+.. default-role::
