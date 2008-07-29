@@ -150,15 +150,19 @@ class RunScript:
         size = set['nodes']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
-        print >> f,"#!/bin/csh"
-        print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l mppwidth=%d" % size
         hs = dhms(set['time'])
         print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
                                            str(hs[2]) + ':' + str(hs[3]) )
+        if set['mem']:
+            print >> f, '#PBS -l mppmem=1900M'
+        if set['mail'] is not None:
+            print >> f,"#PBS -M",set['mail']
         print >> f
         print >> f,"module load python"
         print >> f,"module load acml"
+        print >> f, 'setenv MPICH_PTL_UNEX_EVENTS 60000'
+        print >> f, 'setenv MPICH_UNEX_BUFFER_SIZE 400M'
         print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
         print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
         print >> f,"setenv GPAW_PYTHON",env['GPAW_PYTHON']
@@ -177,10 +181,16 @@ class RunScript:
         hs = dhms(set['time'])
         print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
                                            str(hs[2]) + ':' + str(hs[3]) )
+        if set['mem']:
+            print >> f, '#PBS -l mppmem=1900M'
+        if set['mail'] is not None:
+            print >> f,"#PBS -M",set['mail']
         print >> f
         print >> f, 'source /opt/deisa/modules/ch_modules.csh'
         print >> f, 'module load python'
         print >> f, 'module load acml'
+        print >> f, 'setenv MPICH_PTL_UNEX_EVENTS 60000'
+        print >> f, 'setenv MPICH_UNEX_BUFFER_SIZE 400M'
         print >> f, 'setenv GPAW_SETUP_PATH', env['GPAW_SETUP_PATH']
         print >> f, 'setenv PYTHONPATH ${PYTHONPATH}:' + env['PYTHONPATH']
         print >> f, 'setenv GPAW_PYTHON', env['GPAW_PYTHON']
