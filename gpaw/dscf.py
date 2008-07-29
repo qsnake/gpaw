@@ -155,8 +155,9 @@ class FermiDiracDSCF(FermiDirac):
             Eband += npy.dot(kpt.f_n, kpt.eps_n)
             if hasattr(kpt, 'ft_omn'):
                 for i in range(len(kpt.ft_omn)):
-                    Eband += npy.dot(npy.diagonal(kpt.ft_omn[i]).real,
-                                     kpt.eps_n)
+                    Eband += (self.orbitals[i][0] *
+                              npy.dot(npy.diagonal(kpt.ft_omn[i]).real,
+                                      kpt.eps_n))
         self.Eband = self.kpt_comm.sum(Eband)
 
     def calculate(self, kpts):
@@ -376,11 +377,9 @@ class WaveFunction:
             self.nos = len(self.paw.kpt_u[0].f_n)
 
         if len(self.wf_u) == len(self.paw.kpt_u):
-            print 'lllllllllllllllllllllllllll'
             wf_u = self.wf_u
             P_aui = self.P_aui
         elif len(self.wf_u) == self.paw.nkpts * self.paw.nspins:
-            print 'dddddddddddddddddddddddddddddddd'
             wf_u = []
             P_uai = []
             for kpt in self.paw.kpt_u:
