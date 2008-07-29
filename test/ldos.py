@@ -1,7 +1,8 @@
+import os
 import numpy as npy
 from ase import *
 from gpaw import Calculator
-from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS
+from gpaw.utilities.dos import raw_orbital_LDOS, raw_wignerseitz_LDOS, RawLDOS
 from gpaw.utilities import equal
 
 Hnospin = Atoms([Atom('H')], cell=[5, 5, 5], pbc=False)
@@ -36,6 +37,12 @@ energies, H_orbitalweight = raw_orbital_LDOS(calc, a=1, spin=0, angular=None)
 energies, Li_wzweight = raw_wignerseitz_LDOS(calc, a=0, spin=0)
 energies, H_wzweight = raw_wignerseitz_LDOS(calc, a=1, spin=0)
 n_a = calc.get_wigner_seitz_densities(spin=0)
+
+ldos = RawLDOS(calc)
+fname = 'ldbe.dat'
+ldos.by_element_to_file(fname)
+ldos.by_element_to_file(fname, 2.)
+os.remove(fname)
 
 ## print sweight, pdfweight
 ## print sweight_spin
