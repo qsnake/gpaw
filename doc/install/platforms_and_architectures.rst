@@ -559,7 +559,8 @@ surveyor.alcf.anl.gov
 The **0.3** version of gpaw uses Numeric `<https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3/>`_.
 The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-Get the Numeric-24.2_ and do this::
+Get the Numeric-24.2_ (only if you want to run the **0.3** version)
+and do this::
 
   $ gunzip -c Numeric-24.2.tar.gz | tar xf -
   $ cd Numeric-24.2
@@ -586,8 +587,8 @@ Set these environment variables in the ``.softenvrc`` file::
   GPAW_SETUP_PATH = ${HOME}/gpaw-setups-0.4.2039
 
   LD_LIBRARY_PATH += /bgsys/drivers/ppcfloor/runtime/SPI
-  LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/lib:/opt/ibmcmp/lib/bg
-  LD_LIBRARY_PATH += /opt/ibmcmp/xlsmp/bg/1.7/lib:/bgsys/drivers/ppcfloor/gnu-linux/lib
+  LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/lib/bg
+  LD_LIBRARY_PATH += /opt/ibmcmp/xlsmp/bg/1.7/bglib:/bgsys/drivers/ppcfloor/gnu-linux/lib
   PATH += ${HOME}/gpaw/tools:${HOME}/CamposASE2/tools:${HOME}/ase3k/tools
 
 and do::
