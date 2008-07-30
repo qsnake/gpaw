@@ -52,7 +52,7 @@ def main():
 def atomization_energies():
     Ea = {}
     fd = open('atomization_energies.csv', 'w')
-    for formula in molecules:
+    for formula in sorted(molecules):
         ea = -E[formula]
         for a in string2symbols(data[formula]['symbols']):
             ea += E[a]
