@@ -23,6 +23,7 @@ class SimpleStm(STM):
     def __init__(self, atoms):
         if isinstance(atoms, str):
             self.read_3D(atoms)
+            self.calc = None
         else:
             if isinstance(atoms, Atoms):
                 self.calc = atoms.get_calculator()
@@ -35,6 +36,9 @@ class SimpleStm(STM):
 
     def calculate_ldos(self, bias):
         """bias is the n, k, s list/tuple."""
+        if self.calc is None:
+            return
+
         self.bias = bias
         self.wf = True
         self.ldos = self.gd.zeros()
@@ -102,6 +106,7 @@ class SimpleStm(STM):
         self.calculate_ldos(bias)
         self.calc.kpt_comm.sum(self.ldos)
         ldos = self.gd.collect(self.ldos)
+##        print "write: integrated =", self.gd.integrate(self.ldos)
         
         if mpi.rank != MASTER:
             return
@@ -137,13 +142,16 @@ class SimpleStm(STM):
                 if N_c[c] % 2 == 1:
                     pbc_c[c] = False
                     N_c[c] += 1
-            self.gd = GridDescriptor(Domain(cell.diagonal(), pbc_c), N_c)
+            self.gd = GridDescriptor(Domain(cell.diagonal() / Bohr, pbc_c), 
+                                     N_c)
+            self.offset_c = [int(not a) for a in self.gd.domain.pbc_c]
             
         else:
             raise NotImplementedError('unknown file type "' + filetype + '"')
 
-        self.calc = None
-        self.ldos = grid
+        self.file = file
+        self.ldos = npy.array(grid * Bohr**3, npy.float)
+##        print "read: integrated =", self.gd.integrate(self.ldos)
  
     def current_to_density(self, current):
         """The connection between density n and current I
@@ -157,13 +165,16 @@ class SimpleStm(STM):
     def density_to_current(self, density):
         return 5000. * density**2
 
-    def scan_const_current(self, current, bias):
+    def scan_const_current(self, current, bias=None, 
+                           interpolate=False, hmax=None):
         """Get the height image for constant current I [nA].
+
+        hmax is the maximal height to consider
         """
         return self.scan_const_density(self.current_to_density(current),
-                                       bias)
+                                       bias, interpolate, hmax)
 
-    def scan_const_density(self, density, bias, interpolate=False):
+    def scan_const_density(self, density, bias, interpolate=False, hmax=None):
         """Get the height image for constant density [e/Angstrom^3].
         """
  
@@ -171,7 +182,7 @@ class SimpleStm(STM):
 
         self.density = density
 
-        gd = self.calc.gd
+        gd = self.gd
         h_c = gd.h_c
         pbc_c = gd.domain.pbc_c
         nx, ny = (gd.N_c - self.offset_c)[:2]
@@ -179,6 +190,12 @@ class SimpleStm(STM):
         # each cpu will have the full array, but works on its
         # own part only
         heights = npy.zeros((nx, ny)) - 1
+        if hmax is None:
+            hmax = gd.h_c[2] * self.ldos.shape[2] + h_c[2] / 2.
+        else:
+            hmax /= Bohr
+        ihmax = min(gd.end_c[2]-1, int(hmax / h_c[2]))
+
         for i in range(gd.beg_c[0], gd.end_c[0]):
             ii = i - gd.beg_c[0]
             for j in range(gd.beg_c[1], gd.end_c[1]):
@@ -187,7 +204,7 @@ class SimpleStm(STM):
                 zline = self.ldos[ii, jj]
                 
                 # check from above until you find the required density 
-                for k in range(gd.end_c[2]-1, gd.beg_c[2]-1, -1):
+                for k in range(ihmax, gd.beg_c[2]-1, -1):
                     kk = k - gd.beg_c[2]
                     if zline[kk] > density:
                         heights[i - self.offset_c[0], 
@@ -224,8 +241,7 @@ class SimpleStm(STM):
     def write(self, file=None):
         """Write STM data to a file in gnuplot readable tyle."""
 
-        gd = self.calc.gd
-        bias = self.bias
+        gd = self.gd
 
         if mpi.rank != MASTER:
             return
@@ -251,12 +267,16 @@ class SimpleStm(STM):
         except:
             pass
         print >> f, '# Simulated STM picture'
+        if hasattr(self, 'file'):
+            print >> f, '# density read from', self.file
+        else:
+            if self.wf:
+                print >> f, '# pseudo-wf n=%d k=%d s=%d' % tuple(self.bias)
+            else:
+                print >> f, '# bias=', self.bias, '[eV]'
+        print >> f, '#'
         print >> f, '# density=', self.density,'[e/Angstrom^3]',
         print >> f, '(current=', self.density_to_current(self.density), '[nA])'
-        if self.wf:
-            print >> f, '# pseudo-wf n=%d k=%d s=%d' % tuple(self.bias)
-        else:
-            print >> f, '# bias=', self.bias, '[eV]'
         print >> f, '# x[Angs.]   y[Angs.]     h[Angs.] (-1 is not found)'
         for i in range(nx):
             for j in range(ny):
