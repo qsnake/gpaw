@@ -8,7 +8,7 @@ A grid-descriptor is used to create grids for functions like wave functions and 
 
 Attributes:
  ========== ========================================================
- ``domain`` Domain_ object.
+ ``domain`` :ref:`domain` object.
  ``dv``     Volume per grid point.
  ``h_i``    Array of the grid spacing along the three axes.
  ``n_i``    Array of the number of grid points along the three axes.

@@ -1,12 +1,11 @@
-=======================
-Density of states (DOS)
-=======================
+=================
+Density of states
+=================
 
-Take a look at the dos.py_ program and try to get a rough idea of what
-it can do for you.  Use it to plot DOS for the three Fe configurations
-(on the *x*-axis you have the energy relative to the Fermilevel).
-
-.. _dos.py: wiki:SVN:examples/dos/dos.py
+Take a look at the :svn:`examples/dos/dos.py` program and try to get a
+rough idea of what it can do for you.  Use it to plot the density of
+states (DOS) for the three Fe configurations (on the *x*-axis you have
+the energy relative to the Fermilevel).
 
 * Do the DOS plots integrate to the correct numbers? (i.e.
   number of bands).
@@ -38,14 +37,12 @@ it can do for you.  Use it to plot DOS for the three Fe configurations
 Projected Density of states (PDOS)
 ----------------------------------
 
-The projected density of states is usefull for for analyzing chemical
+The projected density of states is useful for for analyzing chemical
 bonding. There exist several studies where the density projected onto
 the d states of a given surface atom is used. This short excercise
 demonstrates how to construct the PDOS of Fe.
 
 We will get a feel for the local density of states by plotting the
-PDOS for the ferro-magnetic Fe crystal.  Look at pdos.py_. Use it to plot
-the s, p, and d-states on one of the Fe atoms.
-
-
-.. _pdos.py: wiki:SVN:examples/dos/pdos.py
+PDOS for the ferro-magnetic Fe crystal.  Look at
+:svn:`examples/dos/pdos.py`. Use it to plot the s, p, and d-states on
+one of the Fe atoms.

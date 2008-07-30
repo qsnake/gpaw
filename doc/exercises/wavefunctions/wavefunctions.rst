@@ -56,12 +56,9 @@ molecule and compare them to results from molecular orbital theory.
   You might find it usefull to look at the molecular orbital diagram
   below, taken from `The Chemogenesis Web Book`_.
 
-  XXX co.jpg?
-  
   .. 
 
-     figure:: co.jpg
+     figure:: ../../_static/co_bonding.jpg
      :align: center
-
 
 .. _The Chemogenesis Web Book: http://www.meta-synthesis.com/webbook/39_diatomics/diatomics.html#CO

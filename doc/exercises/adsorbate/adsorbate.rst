@@ -1,11 +1,6 @@
-======================================
-Adsorption of H on the Al(100) surface
-======================================
-
-Test relax_
-
-.. _relax: relax.py
-
+================================
+Aluminium with adsorbed hydrogen
+================================
 
 One of the most prominent applications of density functional theory is
 making predictions about alternative atomic structures, when
@@ -36,7 +31,7 @@ adsorption PES.
 
   - We relax ionic positions.  For simplicity, we'll freeze the
     Aluminum slab atoms, and only relax the H adsorbate. This is done
-    in the script relax.py (see below).
+    in the script :svn:`examples/adsorption/relax.py`.
 
   - If you want the relaxation to converge quickly, it is necessary to
     make a qualified guess on the equilibrium position of the H
@@ -79,9 +74,6 @@ adsorption PES.
  
     $ ag -t -g 'd(1,2),F[2,2]' ontop.traj
 
-The relax.py script:
-
-.. literalinclude:: relax.py
 
 
 Making nice plots with VMD
@@ -131,10 +123,8 @@ Using VMD to plot density differences
 -------------------------------------
 
 It is sometimes useful to look at density changes when studying for
-instance adsorption reactions. Copy the script densitydiff.py to
-your area. 
-
-.. literalinclude:: densitydiff.py
+instance adsorption reactions. Copy the script
+:svn:`examples/adsorbate/densitydiff.py` to your area.
 
 Read it and try to understand what is does. Change the
 necessary lines to look at one of your slabs with H adsorbed. There is

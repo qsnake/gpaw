@@ -14,11 +14,16 @@ on.  Do this::
 
   [~]$ svn checkout https://USER@svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
-**On slid machine only**: if you want to use a parallel version apply the openmpi environment settings::
+**On slid and thul machines only**: if you want to use a parallel version modify `customize.py`::
 
-  [~]$ source /usr/local/openmpi-1.2.3-pathf90/bin/mpivars-1.2.3.csh
+ libraries += ['gfortran']
 
-To make it the default setting add the line to your ~/.tcshrc. See `<https://wiki.fysik.dtu.dk/niflheim/Parallelization>`_ for details.
+and apply the openmpi environment settings::
+
+  [~]$ source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.csh
+
+To make it the default setting add the line to your ~/.tcshrc. See `<https://wiki.fysik.dtu.dk/niflheim/Parallelization>`_ for details
+(note however, that it contains instructions for openmpi fortran codes).
 
 Then::
 

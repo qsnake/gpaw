@@ -568,7 +568,7 @@ and do this::
   $ cd Numeric-24.2
   $ /bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py install --root=$HOME/Numeric-24.2-1
 
-To build numpy, save the numpy-1.0.4-gnu.py.patch__ patch file 
+To build numpy, save the numpy-1.0.4-gnu.py.patch_ patch file 
 (modifications required to get mpif77 instead of gfortran compiler),
 get and numpy-1.0.4_ and do this::
 
@@ -666,10 +666,10 @@ Instructions below are valid for ``frontend-13`` and the filesystem ``/gpfs/fs2/
 The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
 To build an optimized? (this does not work completely, see problems below) numpy,
-save the numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran__ patch file 
+save the numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran_ patch file 
 (modifications required to get powerpc-bgp-linux-gfortran instead of gfortran compiler),
-the numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg__ patch file (lapack section configured to use ``lapack_bgp``
-and blas section to use ``esslbg``, the numpy-1.0.4-site.cfg.lapack_bgp_esslbg__ file
+the numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg_ patch file (lapack section configured to use ``lapack_bgp``
+and blas section to use ``esslbg``, the numpy-1.0.4-site.cfg.lapack_bgp_esslbg_ file
 (contains paths to ``lapack_bgp``, ``esslbg`` and xlf* related libraries).
 **Note** that ``lapack_bgp`` is not available on ``frontend-13``, use a personal of somebody else's version!
 Get numpy-1.0.4_ and do this::
@@ -1031,7 +1031,7 @@ Next, one can proceed with the actual python installation. The following instruc
     return tab->initfunc;
   }
 
-dynload_redstorm.c__
+dynload_redstorm.c_
 
 Then, one should remove ``sharemods`` from ``all:`` target in ``Makefile.pre.in`` and set the correct C compiler and flags, e.g.::
 
@@ -1042,7 +1042,7 @@ You should be now ready to run ``configure``::
 
   ./configure --prefix=<install_path> SO=.a DYNLOADFILE=dynload_redstorm.o MACHDEP=redstorm --host=x86_64-unknown-linux-gnu --disable-sockets --disable-ssl --enable-static --disable-shared --without-threads
 
-Now, one should specify which modules will be statically linked in to the python interpreter by editing ``Modules/Setup``. An example can be loaded here. Setup__. Note that at this point all numpy related stuff in the example should be commented out. Finally, in order to use ``distutils`` for building extensions the following function should be added to the end of ``Lib/distutils/unixccompiler.py`` so that instead of shared libraries static ones are created::
+Now, one should specify which modules will be statically linked in to the python interpreter by editing ``Modules/Setup``. An example can be loaded here. Setup_. Note that at this point all numpy related stuff in the example should be commented out. Finally, in order to use ``distutils`` for building extensions the following function should be added to the end of ``Lib/distutils/unixccompiler.py`` so that instead of shared libraries static ones are created::
 
     def link_shared_object (self,
                          objects,
@@ -1077,7 +1077,7 @@ Now, one should specify which modules will be statically linked in to the python
         self.static_lib_format = old_fmt
         print "Append to Setup: ", linkline
 
-unixccompiler.py__
+unixccompiler.py_
 
 You should be now ready to run ``make`` and ``make install`` and have a working python interpreter.
 
@@ -1094,7 +1094,7 @@ and add the correct lines to the ``Modules/Setup`` in the python source tree. Sw
 
 Final step is naturaly to compile GPAW. Only thing is to specify ``numpy``, ``expat`` and ``zlib`` libraries in ``customize.py`` then `compile GPAW`_ as usual. Here is an example of ``customize.py``, modify according your own directory structures:
 
-customize.py__
+.. literalinclude:: customize.py
 
 Now you should be ready for massively parallel calculations, a sample job file would be::
 
@@ -1112,13 +1112,11 @@ Now you should be ready for massively parallel calculations, a sample job file w
 
 In order to use a preinstalled version of gpaw one can give the command ``module load gpaw`` which sets all the correct environment variables (PYTHONPATH, GPAW_SETUP_PATH, ...)
 
-XXX should be attachments
+.. _numpy-1.0.4-gnu.py.patch: ../_static/numpy-1.0.4-gnu.py.patch
+.. _numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran: ../_static/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
+.. _numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg: ../_static/numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg
+.. _numpy-1.0.4-site.cfg.lapack_bgp_esslbg: ../_static/numpy-1.0.4-site.cfg.lapack_bgp_esslbg
+.. _dynload_redstorm.c: ../_static/dynload_redstorm.c
+.. _unixccompiler.py: ../_static/unixccompiler.py
+.. _setup: ../_static/setup
 
-.. literalinclude: numpy-1.0.4-gnu.py.patch
-.. literalinclude: numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
-.. literalinclude: numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg
-.. literalinclude: numpy-1.0.4-site.cfg.lapack_bgp_esslbg
-.. literalinclude: dynload_redstorm.c
-.. literalinclude: unixccompiler.py
-.. literalinclude: setup
-.. literalinclude: customize.py

@@ -28,4 +28,4 @@ From tar-file
 
 You should always use the latest version from SVN.  If you for some reason can't get that, you can try this tar-file_, which corresponds to the latest stable release.
 
-.. _tar-file: http://wiki.fysik.dtu.dk/stuff/gpaw-0.3.1775.tar.gz
+.. _tar-file: http://wiki.fysik.dtu.dk/stuff/gpaw-0.4.2171.tar.gz

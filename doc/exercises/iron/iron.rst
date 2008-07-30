@@ -1,6 +1,6 @@
-======================
-Electron spin: Fe(bcc)
-======================
+====================================
+Electron spin and magnetic structure
+====================================
 
 As an example of spin polarized calculations, we'll study Fe(bcc) in a
 two-atom unit cell, i.e. a simple cubic Bravais lattice with a basis,
@@ -49,20 +49,17 @@ Hint: Do it in this exercise!
   moment parameters: magnetic moment for each of the two atoms in the
   unit cell.
 
-Start with this script: ferro.py_.
+Start with this script: :svn:`examples/iron/ferro.py`.
 
 Compare the energies of the three magnetic phases:
 
 * Experimentally, the ferromagnetic phase is most stable.
   Is this reproduced for LDA and GGA?  Instead of repeating the three
   calculations using PBE, you can estimate the PBE numbers from the LDA
-  densities you already have.  This is done in this script: PBE.py_.
+  densities you already have.  This is done in this script:
+  :svn:`examples/iron/PBE.py`.
 
 * Compare the calculated magnetic moment for the
   ferromagnetic phase with the experimental value.  You can find the
   calculated value in the text output, or by using the
   ``get_magnetic_moment()`` method of the calculator object.
-
-
-.. _ferro.py: wiki:SVN:examples/iron/ferro.py
-.. _PBE.py: wiki:SVN:examples/iron/PBE.py

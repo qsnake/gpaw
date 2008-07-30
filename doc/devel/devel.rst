@@ -58,6 +58,8 @@ XXX
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
 
 
+.. _the_big_picture:
+
 The big picture
 ===============
 

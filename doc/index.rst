@@ -18,7 +18,7 @@ features and the algorithms used <features_and_algorithms>`.
 * Read :ref:`about_this_wiki`.
 * Go to the ASE_ page.
 * Read the :ref:`literature` page.
-* :ref:`exercises` for 10302.
+* Do the :ref:`exercises`.
 
 .. _ASE: https://web2.fysik.dtu.dk/ase/
 

@@ -1,3 +1,5 @@
+.. _lrtddft_optical_spectra:
+
 ==============================
 Calculation of optical spectra
 ==============================
@@ -5,9 +7,11 @@ Calculation of optical spectra
 In this exercise we calculate optical spectrum of Na2 molecule using linear response time-dependent density functional
 theory. We start with a normal ground state calculation:
 
-Linear response TDDFT needs unoccupied states, so we calculate 19 of them in addition to the one
-occupied state. Note that in realistic calculation there should be more vacuum around the molecule. One might 
-also want to first `optimize the geometry`_, save the structure::
+Linear response TDDFT needs unoccupied states, so we calculate 19 of
+them in addition to the one occupied state. Note that in realistic
+calculation there should be more vacuum around the molecule. One might
+also want to first :ref:`optimize the geometry
+<structure_optimization>`, save the structure::
 
   calc.write('na2_gs.gpw')
 
@@ -17,8 +21,6 @@ and start a then a new calculation with more vacuum and unoccupied states::
   atoms.center(vacuum=6.0)
   calc.set(nbands=20, ...)
   ...
-
-.. _`optimize the geometry`: Optimization_
 
 Once the ground state calculation with unoccupied states is finished, a linear response TDDFT calculation is performed:
 
@@ -36,18 +38,18 @@ and::
   photoabsorption_spectrum(lr, 'Na2_spectrum.dat', e_min=0.0, e_max=10)
 
 The number of electron-hole pairs used in the calculation can be controlled with 
-`istart` and `jend` options of LrTDDFT::
+``istart`` and ``jend`` options of LrTDDFT::
 
   LrTDDFT(calc, istart=0, jend=10)
 
-By default only singlet-singlet transitions are calculated, singlet-triplet transitions can be calculated by giving the `nspins` parameter::
+By default only singlet-singlet transitions are calculated, singlet-triplet transitions can be calculated by giving the ``nspins`` parameter::
 
   LrTDDFT(calc, istart=0, jend=10, nspins=2)
   
 Exercises
 --------- 
 
-1. Check how the results vary with the number of unoccupied states in calculation (`jend` parameter).
+1. Check how the results vary with the number of unoccupied states in calculation (``jend`` parameter).
 
 2. Calculate also singlet-triplet transitions. Why they do not show up in spectrum?
 

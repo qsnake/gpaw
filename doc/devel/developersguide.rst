@@ -12,7 +12,7 @@ Introduction
 
 This page goes throught the most important equations of a PAW
 calculation and has references to the code.  It is a good idea to have
-`the big picture`_ in front of you when reading this page.
+:ref:`the_big_picture` in front of you when reading this page.
 
 For special topics, look at these pages:
 
@@ -22,9 +22,6 @@ For special topics, look at these pages:
 * Finding the ground state (todo)
 * Density mixing (todo)
 * ...
-
-
-.. _the big picture: Development_#the-big-picture
 
 
 Wave functions
@@ -77,22 +74,20 @@ partial waves respectively, of the atoms.
      - ``nuclei[a].P_uni``
      - ``ndarray``
 
-See indices_ for more information on the naming of arrays.  Note that
-``spos_c`` gives the position of the atom in scaled coordinates in the
-range [0:1[ (relative to the unit cell).
+See :ref:`overview_array_naming` for more information on the naming of
+arrays.  Note that ``spos_c`` gives the position of the atom in scaled
+coordinates in the range [0:1[ (relative to the unit cell).
 
-
-.. _indices: Overview_#naming-convention-for-arrays
 
 Note, that in the code, ``i`` refers to `n`, `\ell` and `m` quantum
-numbers, and ``j`` refers to `n` and `\ell` only (see indices_).  So,
-to put an atom-centered function like `\tilde{p}_{n\ell
-m}^a(\mathbf{r})` on the 3D grid, you need both the radial part
-`\tilde{p}_{n\ell}^a(r)` (one of the splines in ``paw.nucleus[a].setup.pt_j``)
-and a spherical harmonics `Y_{\ell m}(\theta,\phi)`.  Putting radial
-functions times spherical harmonics on a grid is done by the
-create_localized_functions_ function.  The result of the function is a
-LocFuncs_ object (``paw.nuclei[a].pt_i``).
+numbers, and ``j`` refers to `n` and `\ell` only (see
+:ref:`overview_array_naming`).  So, to put an atom-centered
+function like `\tilde{p}_{n\ell m}^a(\mathbf{r})` on the 3D grid, you
+need both the radial part `\tilde{p}_{n\ell}^a(r)` (one of the splines
+in ``paw.nucleus[a].setup.pt_j``) and a spherical harmonics `Y_{\ell
+m}(\theta,\phi)`.  Putting radial functions times spherical harmonics
+on a grid is done by the create_localized_functions_ function.  The
+result of the function is a LocFuncs_ object (``paw.nuclei[a].pt_i``).
 
 .. _create_localized_functions: wiki:API:gpaw.localized_functions-module.html#create_localized_functions
 .. _LocFuncs: wiki:API:gpaw.localized_functions.LocFuncs-class.html

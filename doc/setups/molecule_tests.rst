@@ -11,7 +11,7 @@ have been calculated with the PBE functional.  All calculations are
 done with a grid spacing of 0.16 Å, zero-boundary conditions and
 approximately 6 Å of vacuum surrounding the molecules.  Compensation
 charges are expanded with correct multipole moments up to
-`\ell_{max}=2`.  Open-shell atoms are treated as non-spherical with
+:math:`\ell_{max}=2`.  Open-shell atoms are treated as non-spherical with
 integer occupation numbers, and zero-point energy is not included in
 the atomization energies. The numbers are compared to very accurate,
 state-of-the-art, PBE calculations [1]_.  The script that does the

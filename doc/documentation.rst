@@ -39,7 +39,7 @@ Tutorials
 2. :ref:`structure_optimization`.
 3. How to :ref:`plot_wave_functions`.
 4. How to calculate :ref:`bandstructures`.
-5. :ref:`calculation_of_optical_spectra` with time-dependent DFT.
+5. :ref:`calculation of optical spectra<lrtddft>` with time-dependent DFT.
 
 The tutorials 6. and 7. use old ASE and do not work with the latest version of GPAW without modifications. The tutorials
 are being converted to new format.

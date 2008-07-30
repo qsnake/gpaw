@@ -104,6 +104,8 @@ XXX
 .. _Au: Au.html
 .. _Pb: Pb.html
 
+XXX missing:  Ca Ti Sr Sn Ir
+
 .. toctree::
    :maxdepth: 1
 
@@ -126,8 +128,6 @@ XXX
    Cl
    Ar
    K
-   Ca
-   Ti
    V
    Cr
    Mn
@@ -141,8 +141,8 @@ XXX
    As
    Se
    Kr
+   In
    Rb
-   Sr
    Zr
    Nb
    Mo
@@ -151,13 +151,11 @@ XXX
    Pd
    Ag
    Cd
-   Sn
    Cs
    Ba
    La
    Ta
    W
-   Ir
    Pt
    Au
    Pb

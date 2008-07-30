@@ -1,6 +1,6 @@
-=================
-Aluminum surfaces
-=================
+===============================
+Setting up an aluminium surface
+===============================
 
 .. default-role:: math
 
@@ -62,7 +62,8 @@ whereas (110) is most open. Here we'll focus on (100).
 
 * Now that we know the surface geometry, we can setup a toolbox
   for making surface structures with arbitrary number of layers.  Copy
-  the script build_bcc.py_ to your area.  Browse the script and try
+  the script :svn:`examples/surface/build_bcc.py` to your area.
+  Browse the script and try
   to understand it. The central part is the function starting with
   ``def bcc100(...)``  that creates a body centered cubic (100)
   surface.
@@ -92,8 +93,6 @@ whereas (110) is most open. Here we'll focus on (100).
      0
      >>> 1 / 3.0
      0.33333333333333331
-
-.. _build_bcc.py: wiki:SVN:examples/surface/build_bcc.py
 
 Aluminum fcc(100) Surface Slabs
 ===============================
@@ -130,7 +129,8 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
   .. math:: \sigma = \frac{NE_{N-1} - (N-1)E_N}{2A}
 
-* Take a look at the script `Al100.py`_.  Calculate `\sigma` for `N` =
+* Take a look at the script :svn:`examples/surface/Al100.py`.
+  Calculate `\sigma` for `N` =
   2, 3, 4, 5 and 6.  Use a two-dimensional Monkhorst-Pack **k**-point
   sampling (``kpts=(k, k, 1)``) that matches the size of your unit
   cell.  The experimental value of `\sigma` is 54 meV/Å\ :sup:`2`.  How
@@ -150,21 +150,12 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
     Remember that convergence in this parameter should always be checked.
 
-.. _Al100.py : wiki:SVN:examples/surface/Al100.py
-
-
-
 Work function
 -------------
 
-Run the work_function.py_ script and estimate the work function for a
-Al(100) surface. A typical experimental value for the work function of 
-the Al(100) surface is 4.20 eV.
-Try to do the slab calculation with periodic
-boundary conditions in all three directions, and run the script again.
-How does this affect the Fermi level and the average potential?
-
-
-.. _work_function.py : wiki:SVN:examples/surface/work_function.py
-
-.. default-role::
+Run the :svn:`examples/surface/work_function.py` script and estimate
+the work function for a Al(100) surface. A typical experimental value
+for the work function of the Al(100) surface is 4.20 eV.  Try to do
+the slab calculation with periodic boundary conditions in all three
+directions, and run the script again.  How does this affect the Fermi
+level and the average potential?

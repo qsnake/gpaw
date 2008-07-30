@@ -24,24 +24,8 @@
 A setup is to the PAW method what a pseudo-potential is to the
 pseudo-potential method.  All available setups are contained in this
 tar-file: gpaw-setups-0.4.2039.tar.gz_.  Install them as described in the
-InstallationGuide_.  The setups are stored as compressed pawxml_
+:ref:`installationguide`.  The setups are stored as compressed pawxml_
 files.
-
-
- ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
- H_                                                                                   He 
- Li_  Be_                                                    B    C_   N_   O_   F_   Ne  
- Na_  Mg_                                                    Al_  Si_  P_   S_   Cl_  Ar   
- K_   Ca_  Sc   Ti   V_   Cr   Mn   Fe_  Co   Ni_  Cu_  Zn   Ga_  Ge   As   Se   Br   Kr 
- Rb_  Sr   Y    Zr   Nb_  Mo_  Tc   Ru   Rh_  Pd_  Ag_  Cd   In   Sn   Sb   Te   I    Xe 
- Cs   Ba_  \*   Hf   Ta   W    Re   Os   Ir   Pt_  Au_  Hg   Tl   Pb   Bi   Po   At   Rn 
- ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
- 
-
- =============  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
- \*Lanthanoids  La   Ce   Pr   Nd   Pm   Sm   Eu   Gd   Tb   Dy   Ho   Er   Tm   Yb   Lu
- =============  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
-
 
 See also `NIST Atomic Reference Data`_ and `Computational Chemistry Comparison and Benchmark DataBase`_.  Link to `Dacapo pseudo potentials`_.
 
@@ -59,12 +43,12 @@ For details - see the periodic table above.
 Figure shows relative percentage errors
 of the equilibrium lattice constant calculated with GPAW using PBE, compared to very accurate, state-of-the-art, PBE calculations.
 
-.. figure:: http://wiki.fysik.dtu.dk/stuff/test-atom-1389/lattice_constant_percentage_error_PBE.png
+XXX .. figure:: http://wiki.fysik.dtu.dk/stuff/test-atom-1389/lattice_constant_percentage_error_PBE.png
 
 Figure shows relative percentage errors
 of the bulk modulus calculated with GPAW using PBE, compared to very accurate, state-of-the-art, PBE calculations.
 
-.. figure:: http://wiki.fysik.dtu.dk/stuff/test-atom-1389/bulk_modulus_percentage_error_PBE.png
+XXX .. figure:: http://wiki.fysik.dtu.dk/stuff/test-atom-1389/bulk_modulus_percentage_error_PBE.png
 
 Generating your own setups
 ==========================

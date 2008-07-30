@@ -69,10 +69,10 @@ Standard installation
      [gpaw]$ cd test
      [test]$ python test.py
 
-   This will take around 20 minutes.  Please report errors to:
+   This will take around 20 minutes.  Please report errors to the `GPAW 
+   developer mailing list`_
 
-   .. macro:: [[MailTo(gridpaw-developer@lists.berlios.de)]]
-
+  .. _GPAW developer mailing list: gridpaw-developer@lists.berlios.de
 
 If you are a developer, you will want to install the code in a
 different way to allow code updates via SVN checkout.  See

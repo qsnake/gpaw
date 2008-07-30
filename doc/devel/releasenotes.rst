@@ -19,7 +19,7 @@ Release notes
 
 * Version 0.9.0
 
-  - Dropped numarray!  This gives a slight `speedup <NumarrayToNumeric>`_.
+  - Dropped numarray!  This gives a slight speedup.
   - Renamed ``gridpaw-slave`` to the more correct name ``gridpaw-mpi``.
   - ``paw.py`` has been split into four files: ``startup.py``, ``paw.py``,
     ``wf.py`` and ``netcdf.py``.
@@ -45,7 +45,7 @@ Release notes
 
   - Parallellization over spin and **k**-points added.
   - Interpolation of the density and restriction of the potential and
-    the radial functions done to :math:`O(h^6)` - gives much
+    the radial functions done to :math:`\mathcal O(h^6)` - gives much
     improved convergence with respect to *h*.
   - Imporoved test-suite (no failing tests!).
   - Parallellized calculation of localized functions - was not

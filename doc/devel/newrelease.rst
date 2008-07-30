@@ -35,8 +35,8 @@ When it is time for a new release of the code, here is what you have to do:
 
    scp ~/gpaw-0.3/dist/gpaw-0.3.1425.tar.gz root@web2:/var/www/wiki/stuff
 
-* Change the Download_ link to the new tar file.
-* Optionally, update the ReleaseNotes_.
+* Change the :ref:`download` link to the new tar file.
+* Optionally, update the :ref:`releasenotes`.
 * Send announcement email to:
 
   - campos@listserv.fysik.dtu.dk

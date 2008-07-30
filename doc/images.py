@@ -49,27 +49,34 @@ askhl_master.pdf        mortensen_mini2003talk.pdf  rostgaard_paw_notes.pdf
 marco_master.pdf        mortensen_paw.pdf
 """.split()
 
-get('doc/literature', literature)
-get('exercises', ['NEB_Al-Al110.traj'])
-
 logos = """
 logo-csc.png  logo-fmf.png   logo-hut.png  logo-tree.png
 logo-dtu.png  logo-gpaw.png  logo-jyu.png  logo-tut.png
 """.split()
 
-if not os.path.isdir('logos'):
-    os.mkdir('logos')
-get('logos', logos)
 
 # flowchart.pdf  flowchart.sxd <-- where?
 devel_stuff = """
 gpaw-logo.odg  overview.odg overview.pdf
 """.split()
 
+architectures_stuff = """
+dynload_redstorm.c
+numpy-1.0.4-gnu.py.patch
+numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
+numpy-1.0.4-site.cfg.lapack_bgp_esslbg
+numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg
+setup
+unixccompiler.py
+""".split()
+
+get('logos', logos)
+get('architectures', architectures_stuff)
+get('doc/literature', literature)
 get('doc/devel', devel_stuff, '_static')
 get('devel', ['bslogo.png', 'overview.png', 'stat.png'])
-
-get('exercises', ['silicon_banddiagram.png'])
+get('exercises', ['silicon_banddiagram.png', 'co_bonding.jpg',
+                  'NEB_Al-Al110.traj'])
 get('tutorials', ['ensemble.png', 'sodium_bands.png', 'bz-all.png',
                   'gridrefinement.png', 'ae_density_H2O.png',
                   'ae_density_NaCl.png'])

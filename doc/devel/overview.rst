@@ -39,7 +39,7 @@ To do a DFT calculation, you must have a list-of-atoms object and a GPAW calcula
 .. _Calculator: wiki:API:gpaw.calculator.Calculator-class.html
 .. _Paw: wiki:API:gpaw.paw.Paw-class.html
 
-
+.. _overview_array_naming:
 
 ----------------------------
 Naming convention for arrays
@@ -110,9 +110,6 @@ For the case of a `Gamma`-point calculation all parallel communication
 is done in the one `domain_comm` communicator, which are in this case 
 equal to `mpi.world`. 
 
-.. _excact exchange page: EXX_
-
-
 .. [1] J J. Mortensen and L. B. Hansen and K. W. Jacobsen, Phys. Rev. B 71 (2005) 035109.
 .. [2] C. Rostgaard, Masters thesis, CAMP, dep. of physics, Denmark, 2006.
-       This document can be found at the `excact exchange page`_.
+       This document can be found at the :ref:`exx` page.

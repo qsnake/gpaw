@@ -1,11 +1,15 @@
-==========================================
-NEB: Self-diffusion on the Al(110) surface
-==========================================
+================================
+Nudged elastic band calculations
+================================
+
+Self-diffusion on the Al(110) surface
+-------------------------------------
 
 XXX generate slab.png using gpaw/exercises/neb/plot.py
+
 .. 
 
-   image:: slab.png
+   image:: ../../_static/slab.png
    :height: 270 px
    :alt: Al(110) surface
    :align: right
@@ -20,8 +24,9 @@ The adatom can jump along the rows or across the rows.
 * Which of the two jumps do you think will have the largest energy
   barrier?
 
-The template script neb1.py_ will find the minimum energy path for a jump
-along the rows.  Read, understand, and run the script.
+The template script :svn:`examples/neb/neb1.py` will find the minimum
+energy path for a jump along the rows.  Read, understand, and run the
+script.
 
 * Make sure you understand what is going on (make a good sketch of the
   110 surface).
@@ -41,9 +46,13 @@ along the rows.  Read, understand, and run the script.
   When opening a trajectory in ``ag`` with calculated energies, the
   default plot window shows the energy versus frame number.  To get a
   better feel of the energy barrier in an NEB calculation; choose
-  ``Tools -> NEB``. This will give a smooth curve of the energy as a
+  :guilabel:`Tools` -> :guilabel:`NEB`. This will give a smooth curve
+  of the energy as a
   function of the NEB path length, with the slope at each point
   estimated from the force.
 
-.. _Al-Al110.traj: attachment:Al-Al110.traj
-.. _neb1.py : wiki:SVN:examples/neb/neb1.py
+XXX Why is the traj file attached when not referenced in the text?
+
+Trajectory file: trajfile_
+
+.. _trajfile: ../../_static/NEB_Al-Al100.traj

@@ -1,6 +1,6 @@
-==============
-Bulk aluminium
-==============
+=========================
+Getting started with GPAW
+=========================
 
 .. default-role:: math
 
@@ -8,12 +8,14 @@ Now we are ready to run the first GPAW calculation. We will look at
 bulk fcc aluminum and make a single energy calculation at the
 experimental lattice constant `a_0` = 4.05 Å. For the first example,
 we choose 0.2 Å as grid spacing and 6 x
-6 x 6 **k**-points.  Copy the script:
+6 x 6 **k**-points.  Copy the script :svn:`examples/aluminium/Al_fcc.py`
 
-    Al_fcc.py_
+    .. note::
 
-    .. _Al_fcc.py : wiki:SVN:examples/aluminium/Al_fcc.py
-
+      The link above is a Trac link, showing you a view into the
+      current status of gpaw development. To download the actual file,
+      find the link in the bottom saying *Download in other formats:*
+      then click either *Plain Text* or *Original Format*.
 
 to a place in your file area. Read the script and try to get an idea
 of what it will do. Run the script by typing::
@@ -64,7 +66,7 @@ typing the following from the Python interpreter::
   >>> calc = Calculator('Al-fcc.gpw')
   >>> bulk = calc.get_atoms()
   >>> print bulk.get_potential_energy()
-  >>> density = calc.get_pseudo_valence_density()
+  >>> density = calc.get_pseudo_density()
   >>> from ase import *
   >>> write('Al.cube', bulk, data=density)
   >>> [hit CTRL-d]
@@ -81,7 +83,8 @@ and grid spacing needed for bulk fcc Aluminum at the
 experimental lattice constant `a_0` = 4.05 Å; this is a standard
 first step in all DFT calculations.
 
-* Copy the script Al_fcc_convergence.py_  to a place in your file
+* Copy the script :svn:`examples/aluminium/Al_fcc_convergence.py` to a
+  place in your file
   area.  Read the script and get an idea of what it will do. Then run
   the script by typing::
 
@@ -104,9 +107,6 @@ first step in all DFT calculations.
   and kpts = (8,8,8) for fcc and  kpts = (10,10,10) for bcc
 
 
-.. _Al_fcc_convergence.py: wiki:SVN:examples/aluminium/Al_fcc_convergence.py
-
-
 Equilibrium lattice properties
 ==============================
 
@@ -126,13 +126,13 @@ lattice properties of bulk Aluminum.
 
   .. math:: B = \frac{M}{9a_0}\frac{d^2 E}{da^2}
 
-  for *a* = `a_0`, where *M* is the number of atoms per cubic unit
+  for `a = a_0`, where *M* is the number of atoms per cubic unit
   cell.  Make the fit using your favorite math package
-  (Mathematica/MatLab/Maple/Python/...) or use `ag` like this::
+  (Mathematica/MatLab/Maple/Python/...) or use ``ag`` like this::
 
     $ ag bulk-*.txt
 
-  Then choose `Tools` -> `Bulk Modulus`.
+  Then choose :guilabel:`Tools` -> :guilabel:`Bulk Modulus`.
 
 * Compare your results to the experimental values `a_0` = 4.05 Å and `B`
   = 76 GPa.  Mind the units when you calculate the bulk modulus.
@@ -157,8 +157,8 @@ Equilibrium lattice properties for bcc
   assumptions. Later, you can comment on which assumption gives the
   guess closer to the right lattice constant.
 
-* Check that your structure is right by repeating the unit cell. In `ag` this
-  is done by choosing `View` -> `Repeat...`.
+* Check that your structure is right by repeating the unit cell. In ``ag`` this
+  is done by choosing :guilabel:`View` -> :guilabel:`Repeat...`.
 
 * Map out the cohesive curve *E*\ (*a*) for Al(bcc) and determine *a*\
   :sub:`bcc`, using a few points.  Is it a good idea to use the same
@@ -181,5 +181,3 @@ Equilibrium lattice properties for bcc
   is  possible to choose an orthorhombic (but not cubic) unit cell for fcc 
   which contains two atoms. Would this minimal choice affect the choice of 
   **k**-point sampling?
-
-.. default-role::
