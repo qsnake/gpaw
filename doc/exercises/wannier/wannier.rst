@@ -1,7 +1,7 @@
 .. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
 .. |pi|     unicode:: U+003C0 .. GREEK SMALL LETTER PI
 
-=================
+
 Wannier Functions
 =================
 
@@ -9,7 +9,7 @@ In order to get a feel for chemical bonds in molecules and solids,
 we can transform the Kohn-Sham orbitals 
 into a set of maximally localized Wannier functions.
 We have cheated a little bit and
-prepared a file for bulk silcon and a Benzene molecule so that you
+prepared a file for bulk silicon and a Benzene molecule so that you
 only have to concentrate on the wannier analysis of the molecules.
 
 Start by running si.py_ and make sure you agree with the way the
@@ -43,6 +43,13 @@ Now repeat the wannier function analysis on the following molecules
   single, double or triple bond?
 
 or study your own favorite molecule.
+
+.. hint::
+  
+  To be able to see the Wannier centers, it might be necessary to
+  decrease the atomic radii, so the spheres don't overlap.
+  In ``ag`` this can be done by choosing ``View -> Settings...``, and
+  then decrease the scaling factor of the covalent radii.
 
 .. _benzene.py : wiki:SVN:examples/wannier/benzene.py
 .. _wannier-benzene.py : wiki:SVN:examples/wannier/wannier-benzene.py

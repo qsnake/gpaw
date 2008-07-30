@@ -2,21 +2,14 @@
 Density of states (DOS)
 =======================
 
-
-
 Take a look at the dos.py_ program and try to get a rough idea of what
 it can do for you.  Use it to plot DOS for the three Fe configurations
 (on the *x*-axis you have the energy relative to the Fermilevel).
 
-
-
 .. _dos.py: wiki:SVN:examples/dos/dos.py
 
-
-
-
 * Do the DOS plots integrate to the correct numbers? (i.e.
-  number of valence electrons).
+  number of bands).
 
 * The DOS for the anti-ferromagnetic phase looks a bit like that for
   the non-magnetic phase - is it magnetic at all?!  Try to visualize
@@ -26,7 +19,8 @@ it can do for you.  Use it to plot DOS for the three Fe configurations
     from gpaw import *
     calc = Calculator('anti.gpw')
     atoms = calc.get_atoms()
-    up, down = calc.get_pseudo_valence_density()
+    up = calc.get_pseudo_density(0)
+    down = calc.get_pseudo_density(1)
     zeta = (up - down) / (up + down)
     write('magnetization.cube', atoms, data=zeta)
 
@@ -37,7 +31,8 @@ it can do for you.  Use it to plot DOS for the three Fe configurations
 
 * Plot also the DOS for bulk Si and the CO molecule.  Identify the
   bandgap between valence and conduction bands for Si and the
-  HOMO-LUMO gap for CO.
+  HOMO-LUMO gap for CO. Make sure that your **k**-point mesh for
+  Si is dense enough to sample the band structure.
 
 
 Projected Density of states (PDOS)

@@ -1,3 +1,10 @@
+.. _tst:
+
+===================================================
+Analytical problem on transition state theory (TST)
+===================================================
+
+
 .. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
 .. |infin|  unicode:: U+0221E .. INFINITY
 .. |simeq|  unicode:: U+02243 .. ASYMPTOTICALLY EQUAL TO
@@ -11,9 +18,6 @@
 .. |deg|    unicode:: U+000B0 .. DEGREE SIGN
 
 
-===================================================
-Analytical problem on transition state theory (TST)
-===================================================
 This problem is mostly analytical and was developed by 
 Hannes Jonsson. It deals with the potential energy surface (PES) 
 of a hydrogen atom adsorbed on a (100) crystal surface of an FCC metal.

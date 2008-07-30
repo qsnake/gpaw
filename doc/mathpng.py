@@ -85,15 +85,16 @@ def latex2html(node, source):
     pngname = '_static/%s.png' % name
     txtname = '_static/%s.txt' % name
 
-    if not isfile(name):
+    if not isfile(pngname):
         depth = make_png(latex, pngname, inline)
         txtfile = open(txtname, 'w')
         print >> txtfile, depth
         txtfile.close()
     else:
-        depth = int(open(txtfile).read().strip())
+        depth = int(open(txtname).read().strip())
 
     path = source.split('/doc/')[-1].count('/') * '../' + '_static'
+
     if inline:
         cls = ''
         align = 'style="vertical-align: -%dpx" ' % depth

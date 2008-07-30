@@ -1,8 +1,9 @@
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-
 ======================================================
 Vibrational frequencies of the H\ :sub:`2`\ O molecule
 ======================================================
+
+
+.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
 
 Density functional theory can be used to calculate vibrational frequencies of
 molecules, e.g. either in the gas phase or on a surface. These results can be
@@ -21,10 +22,10 @@ will calculate the vibrational frequencies for a water molecule.
 
 * Make a script where a H\ :sub:`2`\ O molecule is relaxed to its equilibrium
   position.  It can be done like this: h2o.py_.  An alternative is to
-  use the MP2 structures from GPAW's g2_ module::
+  use the MP2 structures from ASE's molecular database::
 
-    from gpaw.testing.g2 import get_g2
-    h2o = get_g2('H2O')
+    from ase import *
+    h2o = molecule('H2O')
     h2o.center(vacuum=3.5)
 
 * Copy the file `H2O_vib.py`_ to your area and try to understand what it does.
@@ -44,5 +45,4 @@ will calculate the vibrational frequencies for a water molecule.
   one point)?
 
 .. _H2O_vib.py: wiki:SVN:examples/vibrations/H2O_vib.py
-.. _g2: wiki:SVN:gpaw/testing/g2.py
 .. _h2o.py: wiki:SVN:examples/vibrations/h2o.py

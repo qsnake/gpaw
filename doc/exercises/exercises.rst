@@ -24,17 +24,12 @@ Exercises
 
 Also: :ref:`timepropagation`
 
-10302 Exercises
-===============
+Exercises
+=========
 
-These exercises are used in the course Electronic structure methods in 
-materials
- physics, chemistry and biology. For comments and questions, email 
-jensj_.
+These exercises are used in the course Electronic structure methods in materials physics, chemistry and biology. For comments and questions, email jensj_.
 
-.. _jensj: 
-http://www.fys.dtu.dk/Om_instituttet/Medarbejdere.aspx?lg=showcommon&
-id=1666&type=person
+.. _jensj: http://www.fys.dtu.dk/Medarbejdere/Samlet_medarbejderstab.aspx?lg=showcommon&id=1666&type=person
 
 
 0) `Exercises/Setup`_: Setting up your UNIX environment
@@ -50,6 +45,5 @@ id=1666&type=person
 10) `Exercises/STM`_: STM
 11) `Exercises/NEB`_: Nudged elastic band calculations
 12) `Exercises/TST`_: Transition State Theory
-13) `time-dependent_DFT`_: TDDFT - Linear Response
-14) `Time_Propagation`_: TDDFT - Time Propagation
-
+13) `Exercises/LrTDDFT`_: TDDFT - Linear response
+14) `Exercises/tpTDDFT`_: TDDFT - Time propagation

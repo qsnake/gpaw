@@ -2,20 +2,23 @@
 NEB: Self-diffusion on the Al(110) surface
 ==========================================
 
+.. image:: slab.png
+   :height: 270
+   :alt: Al(110) surface
+   :align: right
+
 In this exercise, we will find minimum energy paths and transition
 states using the "Nudged Elastic Band" method.
 
-Look at the Al(110) surface in the file Al-Al110.traj_ It may help to repeat the structure with the keyword -r: 
-e.g. ``ag -r 2,2,1 Al-Al110.traj``. 
-The adatom can jump along the rows or across the rows. 
-
-  .. _Al-Al110.traj : attachment: Al-Al110.traj.
+Take a look at the Al(110) surface shown in the picture on the right.
+The red atom represents an Al adatom that can move around on the surface.
+The adatom can jump along the rows or across the rows.
 
 * Which of the two jumps do you think will have the largest energy
   barrier?
 
 The template script neb1.py_ will find the minimum energy path for a jump
-along the rows.  Read, understand and run the script.
+along the rows.  Read, understand, and run the script.
 
 * Make sure you understand what is going on (make a good sketch of the
   110 surface).
@@ -30,5 +33,14 @@ along the rows.  Read, understand and run the script.
   called an exchange process.  Find the barrier for this process, and
   compare the energy barrier with the two other ones.
 
+.. hint::
 
-.. _neb1.py : wiki:ASESVN:ase/examples/neb1.py
+  When opening a trajectory in ``ag`` with calculated energies, the
+  default plot window shows the energy versus frame number.  To get a
+  better feel of the energy barrier in an NEB calculation; choose
+  ``Tools -> NEB``. This will give a smooth curve of the energy as a
+  function of the NEB path length, with the slope at each point
+  estimated from the force.
+
+.. _Al-Al110.traj: attachment:Al-Al110.traj
+.. _neb1.py : wiki:SVN:examples/neb/neb1.py

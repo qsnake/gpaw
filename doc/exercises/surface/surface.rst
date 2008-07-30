@@ -1,6 +1,6 @@
-==================
-Aluminium surfaces
-==================
+=================
+Aluminum surfaces
+=================
 
 .. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
 .. |infin|  unicode:: U+0221E .. INFINITY
@@ -14,14 +14,11 @@ Aluminium surfaces
 .. |nu|     unicode:: U+003BD .. GREEK SMALL LETTER NU
 .. |deg|    unicode:: U+000B0 .. DEGREE SIGN
 
-
-
-
 In this exercise, we make a toolbox for building an Al(100) surface. For this
 surface, we calculate the surface energy and other properties.
 
 
-Making Python Tool boxes
+Making Python Tool Boxes
 ========================
 
 A science project (like the one you are going to make), will often
@@ -31,7 +28,7 @@ plethora of similar Python scripts, made by *copy+paste*, it is
 advantageous to put the repeated code into tool boxes.
 
 Python supports such tool boxes (in Python called modules): put any
-Python code into a file ``stuff.py`` then it may be used as tool box
+Python code into a file ``stuff.py`` then it may be used as a tool box
 in other scripts, using the Python command: ``from stuff import
 thing``, where ``thing`` can be almost anything.  When Python sees
 this line, it runs the file ``stuff.py`` (only the first time) and
@@ -67,10 +64,10 @@ properties are well reproduced by a slab with just 2 - 20 layers,
 depending on the material and what properties you are looking for.
 
 The most important cubic surfaces are (100), (110), and (111).  For
-face centered cubic, (111) has most compact atomic arrangement,
+face centered cubic, (111) has the most compact atomic arrangement,
 whereas (110) is most open. Here we'll focus on (100).
 
-* What is the coordination *Z* (number of nearest neighbors) of an
+* What is the coordination number *Z* (number of nearest neighbors) of an
   fcc(100) surface atom?  What is it for a bulk atom?
 
 * Now that we know the surface geometry, we can setup a toolbox
@@ -96,12 +93,15 @@ whereas (110) is most open. Here we'll focus on (100).
 
 .. note::
 
-   >>> 1 / 3
-   0
-   >>> 1 / 3.0
-   0.33333333333333331
+   In python, ``/`` is used for both integer- and float
+   divisions. Integer division is only performed if both sides of the
+   operator are integers (you can always force an integer division by
+   using ``//``)::
 
-
+     >>> 1 / 3
+     0
+     >>> 1 / 3.0
+     0.33333333333333331
 
 .. _build_bcc.py: wiki:SVN:examples/surface/build_bcc.py
 
@@ -142,10 +142,24 @@ atom. For Aluminium we have *E*\ :sub:`coh` = 3.34 eV.
     |sigma| = (*NE*\ :sub:`N-1` - (*N* - 1)\ *E*\ :sub:`N`) / (2\ *A*)
 
 * Take a look at the script `Al100.py`_.  Calculate |sigma| for *N* =
-  2, 3, 4, 5 and 6.  Use a two-dimensional 6 x 6 Monkhorst-Pack **k**-point
-  sampling (``kpts=(6, 6, 1)``).  The experimental value of |sigma| is
-  54 meV/Å\ :sup:`2`.  How well is the EMT estimate satisfied?
+  2, 3, 4, 5 and 6.  Use a two-dimensional Monkhorst-Pack **k**-point
+  sampling (``kpts=(k, k, 1)``) that matches the size of your unit
+  cell.  The experimental value of |sigma| is 54 meV/Å\ :sup:`2`.  How
+  well is the EMT estimate satisfied?
 
+  .. hint::
+
+    A rule of thumb for choosing the initial **k**-point sampling is,
+    that the product, *ka*, between the number of **k**-points, *k*,
+    in any direction, and the length of the basis vector in this
+    direction, *a*, should be:
+
+    * *ka* ~ 30 |angst|, for *d* band metals
+    * *ka* ~ 25 |angst|, for simple metals
+    * *ka* ~ 20 |angst|, for semiconductors
+    * *ka* ~ 15 |angst|, for insulators
+
+    Remember that convergence in this parameter should always be checked.
 
 .. _Al100.py : wiki:SVN:examples/surface/Al100.py
 
@@ -155,8 +169,11 @@ Work function
 -------------
 
 Run the work_function.py_ script and estimate the work function for a
-Al(100) surface.  Try to do the slab calculation with periodic
-boundary conditions in all three direction, and run the script again.
+Al(100) surface. A typical experimental value for the work function of 
+the Al(100) surface is 4.20 eV.
+Try to do the slab calculation with periodic
+boundary conditions in all three directions, and run the script again.
+How does this affect the Fermi level and the average potential?
 
 
 .. _work_function.py : wiki:SVN:examples/surface/work_function.py

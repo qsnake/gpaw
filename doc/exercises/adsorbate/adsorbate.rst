@@ -2,11 +2,16 @@
 Adsorption of H on the Al(100) surface
 ======================================
 
+Test relax_
+
+.. _relax: relax.py
+
+
 One of the most prominent applications of density functional theory is
 making predictions about alternative atomic structures, when
 adsorbates are present on the surface.  In this exercise, we study the
 adsorption of H onto Al(100). For simplicity, we use a small and thin
-Al(100) slab: A 1 x 1 surface unit cell of a two layer Al(100) aurface and
+Al(100) slab: A 1 x 1 surface unit cell of a two layer Al(100) surface and
 deposit a monolayer of H onto the Al(100) slab.  The thermodynamics of
 the H/Al(100) system is governed by the adsorption potential energy
 surface (PES), i.e. the energy of H/Al(100) as function of the H atom
@@ -17,7 +22,7 @@ adsorption PES.
   candidates for stable adsorption sites?
 
 * How many inequivalent high symmetry adsorption sites are present on
-  a two layer Al(100) 1 x 1 surface unit cell.  What is the coordination
+  a Al(100) surface.  What is the coordination number 
   *Z* (i.e. number of nearest Aluminum neighbors of an H atom) in each
   adsorption site?
 
@@ -31,7 +36,7 @@ adsorption PES.
 
   - We relax ionic positions.  For simplicity, we'll freeze the
     Aluminum slab atoms, and only relax the H adsorbate. This is done
-    in the script relax.py_.
+    in the script relax.py (see below).
 
   - If you want the relaxation to converge quickly, it is necessary to
     make a qualified guess on the equilibrium position of the H
@@ -67,17 +72,16 @@ adsorption PES.
 
   or::
 
-    $ ag -g 'd(0,2),F[2,2]' ontop.traj
+    $ ag -g 'd(1,2),F[2,2]' ontop.traj
 
   to plot the force in the *z*-direction on the H atom as a function of the Al-H
   distance.  Try also *terminal-only-mode*::
  
-    $ ag -t -g 'd(0,2),F[2,2]' ontop.traj
+    $ ag -t -g 'd(1,2),F[2,2]' ontop.traj
 
+The relax.py script:
 
-
-.. _relax.py: wiki:SVN:examples/adsorption/relax.py
-
+.. literalinclude:: relax.py
 
 
 Making nice plots with VMD
@@ -87,7 +91,7 @@ One functionality in ASE is that you can make nice plots of the atomic
 configurations, the Kohn-Sham wave functions and the electron
 density. Apart from that these plots can be made to look very nice,
 they can also visualize things which otherwise are hard to analyze or
-explain. ASE supports visualization tools like VTK, Rasmol and VMD. We
+explain. ASE supports visualization tools like gOpenMol, Rasmol and VMD. We
 will focus on VMD.
 
 
@@ -101,10 +105,9 @@ integrated in a basic script or written afterwards from a .gpw
 file. In the example above one can use
 
   >>> from ase import * 
-  >>> from gpaw import Calculator
-  >>> calc = Calculator('ontop.gpw')
-  >>> atoms = calc.get_atoms()
-  >>> n = calc.get_pseudo_valence_density()
+  >>> from gpaw import *
+  >>> atoms, calc = restart('ontop.gpw')
+  >>> n = calc.get_pseudo_density()
   >>> write('relax.cube', atoms, data=n)
 
 The resulting ``relax.cube`` file contains the atoms and density and is
@@ -128,18 +131,17 @@ Using VMD to plot density differences
 -------------------------------------
 
 It is sometimes useful to look at density changes when studying for
-instance adsorption reactions. Copy the script densitydiff.py_ to
-your area. Read it and try to understand what is does. Change the
+instance adsorption reactions. Copy the script densitydiff.py to
+your area. 
+
+.. literalinclude:: densitydiff.py
+
+Read it and try to understand what is does. Change the
 necessary lines to look at one of your slabs with H adsorbed. There is
 one major assumption in the script if this is used for the H adsorbed
 on a metal surface, try to identify it. When you have written the
 density difference to a .cube file open this file in vmd and use it to
 investigate what is happing.
-
-
-.. _densitydiff.py : wiki:SVN:examples/adsorption/densitydiff.py
-
-
 
 
 Using VMD to make input files
@@ -150,7 +152,8 @@ calculations. Use /Mouse/Move/Atom to move H to another position and
 save the coordinates as a xyz file.  xyz files can be read from your
 Python script like this::
 
-  atoms = read('abc.xyz')
+  >>> atoms = read('abc.xyz')
 
-The atoms will not have the right unit cell, so you must set that
-yourself!
+The xyz format does not have a unit cell, so you must set that yourself::
+
+  >>> atoms.set_cell((Lx,Ly,Lz), scale_atoms=False)

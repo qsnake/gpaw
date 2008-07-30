@@ -1,7 +1,6 @@
-
 .. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
 
-======================
+
 Electron spin: Fe(bcc)
 ======================
 
@@ -26,13 +25,10 @@ Hint: Do it in this exercise!
   along with electron populations.
 
 * We'll make three calculations for bulk iron:
+
   1) A non-magnetic calculation
   2) A ferro-magnetic calculation (aligned atomic moments)
-  3) A anti ferro-magnetic calculation (antiparallel atomic moments).
-
-  Calculation 3 is only possible if we have at least two atoms in
-  the unit cell.
-
+  3) An anti ferro-magnetic calculation (antiparallel atomic moments).
 
 * How many bands are needed?  Assuming the atoms polarize
   maximally (as the isolated atoms).  For metals, always have at least
@@ -43,9 +39,9 @@ Hint: Do it in this exercise!
   magnetic moment on an atom like ``Atom('Fe', ..., magmom=?)`` This
   option is necessary to find magnetic states.  Choose the magnetic
   moment close to the expected/desired magnetic state of your system
-  (the expeimental value is 2.22 per atom). The initial magnetic
+  (the experimental value is 2.22 per atom). The initial magnetic
   moment is relaxed during the self consistency cycles. When an 
-  initial magnetic moment is chosen, a spin polarized calculation is 
+  initial magnetic moment is specified, a spin polarized calculation is 
   initialized and the spinpol keyword is not necessary.
   Note that for a spin polarized calculation, each iteration step takes 
   twice the time compaired to a spin paired calculation.

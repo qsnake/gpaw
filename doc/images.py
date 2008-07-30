@@ -79,6 +79,7 @@ get('tddft', ['spectrum.png'])
 get('exx', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
 get('xas', ['xas_32H2O.png', 'xas.png', 'xas_exp.png', 'xas_H2O.png'])
 get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split())
+get('vdw', ['phi.dat', 'makephi.tar.gz'])
 
 # Generate one page for each setup:
 if get('setups', ['setup-images.tar.gz', 'setup-data.pckl']):

@@ -302,7 +302,8 @@ where ``submit.sh`` looks like this::
   echo Total run time : $hours Hours $minutes Minutes $seconds Seconds
   echo ========================================================= 
 
-It's convenient to customize in this way ``gpaw-qsub.py`` which can be found at `<https://wiki.fysik.dtu.dk/gpaw/Parallel_Runs>`_.
+It's convenient to customize as in ``gpaw-qsub.py`` which can be
+found at :ref:`parallel_runs`
 
 
 Linux cluster Niflheim - Infiniband nodes
@@ -311,7 +312,7 @@ Linux cluster Niflheim - Infiniband nodes
 A subset of the Niflheim's nodes is equipped with Infiniband network `<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_.
 
 On the login node ``slid`` build GPAW (``python setup.py build_ext``) with gcc compiler using
-the following ``customize.py`` file (comment out experimental `scalapack` and `blacs` features)::
+the following ``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
 
   extra_link_args += ['-cc=gcc']
   extra_compile_args += [
@@ -365,7 +366,7 @@ the following ``customize.py`` file (comment out experimental `scalapack` and `b
 
 You can alternatively build on ``slid`` build GPAW (``python setup.py build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
 compiler using
-the following ``customize.py`` file (comment out experimental `scalapack` and `blacs` features)::
+the following ``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
 
   libraries = [
     'pathfortran',
@@ -423,13 +424,14 @@ and for pathcc version looks like this::
   mpirun -machinefile $PBS_NODEFILE -np 4 \
          $HOME/gpaw/build/bin.linux-x86_64-2.4/gpaw-python gpaw-script.py
 
-Please make sure that the threads use 100% of CPU, e.g. for a job running on `p024` do from ``audhumbla``::
+Please make sure that the threads use 100% of CPU, e.g. for a job running on ``p024`` do from ``audhumbla``::
 
   ssh p024 ps -fL
 
 Numbers higher then **1** in the **NLWP** column mean multi-threaded job.
 
-It's convenient to customize in this way ``gpaw-qsub.py`` which can be found at `<https://wiki.fysik.dtu.dk/gpaw/Parallel_Runs>`_.
+It's convenient to customize as in ``gpaw-qsub.py`` which can be
+found at the :ref:`parallel_runs` page.
 
 
 Sun Solaris
@@ -596,7 +598,7 @@ and do::
   resoft
 
 and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py build_ext``) with this
-``customize.py`` file (comment out experimental `scalapack` and `blacs` features)::
+``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
 
   extra_compile_args += [
       '-O3'
@@ -652,7 +654,8 @@ A gpaw script ``gpaw-script.py`` can be submitted like this::
 
 Absolute paths are important!
 
-It's convenient to customize in this way ``gpaw-qsub.py`` which can be found at `<https://wiki.fysik.dtu.dk/gpaw/Parallel_Runs>`_.
+It's convenient to customize as in ``gpaw-qsub.py`` which can be
+found at the :ref:`parallel_runs` page.
 
 
 bcssh.rochester.ibm.com
@@ -683,7 +686,7 @@ Get numpy-1.0.4_ and do this::
   $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -DNO_APPEND_FORTRAN\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-Numpy built in this way does not build the `$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
+Numpy built in this way does not build the ``$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so``
 (numpy requires cblas for this),
 and running the following python script (save it as ``/gpfs/fs2/frontend-13/$USER/dot.py``)
 for the optimized and standard versions of numpy show the same time (~ 329 sec) for ``numpy.dot`` operation::
@@ -773,7 +776,7 @@ Suggestions how to build numpy using an optimized blas (preferably essl) are wel
 
 Build GPAW (``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in **/gpfs/fs2/frontend-13/$USER/gpaw**
 (you need to install the ase also somewhere below **/gpfs/fs2/frontend-13/$USER**!)
-with this ``customize.py`` file (comment out experimental `scalapack` and `blacs` features)::
+with this ``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
 
   extra_compile_args += [
       '-DNDEBUG',
@@ -888,7 +891,8 @@ where ``gpaw-script.llrun`` looks like this::
 
 Absolute paths are important!
 
-It's convenient to customize in this way ``gpaw-qsub.py`` which can be found at `<https://wiki.fysik.dtu.dk/gpaw/Parallel_Runs>`_.
+It's convenient to customize as in ``gpaw-qsub.py`` which can be
+found at the :ref:`parallel_runs` page.
 
 
 HP
@@ -1107,6 +1111,8 @@ Now you should be ready for massively parallel calculations, a sample job file w
   aprun -n 512 /path_to_gpaw_bin/gpaw-python input.py
 
 In order to use a preinstalled version of gpaw one can give the command ``module load gpaw`` which sets all the correct environment variables (PYTHONPATH, GPAW_SETUP_PATH, ...)
+
+XXX should be attachments
 
 .. literalinclude: numpy-1.0.4-gnu.py.patch
 .. literalinclude: numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
