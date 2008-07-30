@@ -61,7 +61,7 @@ def setup(app):
     #import atexit
     #atexit.register(fix_sidebar)
     create_png_files()
-
+    
 def create_png_files():
     for dirpath, dirnames, filenames in os.walk('.'):
         for filename in filenames:

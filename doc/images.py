@@ -22,11 +22,16 @@ but that is just blasphemous.  """
 from urllib import urlretrieve
 import os
 
-srcpath = 'http://dcwww.camd.dtu.dk/~askhl/gpaw-wiki-files'
+srcpath = 'http://web2.fysik.dtu.dk//gpaw-files'
 
 def get(path, names, target='_static'):#, target=None):
+    """Get files from web-server.
+
+    Returns True if something new was fetched."""
+    
     if target is None:
         target = path
+    got_something = False
     for name in names:
         src = os.path.join(srcpath, path, name)
         dst = os.path.join(target, name)
@@ -35,6 +40,8 @@ def get(path, names, target='_static'):#, target=None):
             print dst,
             urlretrieve(src, dst)
             print 'OK'
+            got_something = True
+    return got_something
 
 literature = """
 askhl_10302_report.pdf  mortensen_gpaw-dev.pdf      rostgaard_master.pdf
@@ -72,3 +79,10 @@ get('tddft', ['spectrum.png'])
 get('exx', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
 get('xas', ['xas_32H2O.png', 'xas.png', 'xas_exp.png', 'xas_H2O.png'])
 get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split())
+
+# Generate one page for each setup:
+if get('setups', ['setup-images.tar.gz', 'setup-data.pckl']):
+    print 'Extracting setup images ...'
+    os.system('tar --directory=_static -xzf _static/setup-images.tar.gz')
+    print 'Generating setup pages ...'
+    os.system('cd setups; python make_setup_pagess.py')

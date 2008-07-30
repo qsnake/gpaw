@@ -103,3 +103,61 @@ XXX
 .. _Pt: Pt.html
 .. _Au: Au.html
 .. _Pb: Pb.html
+
+.. toctree::
+   :maxdepth: 1
+
+   H
+   He
+   Li
+   Be
+   B
+   C
+   N
+   O
+   F
+   Ne
+   Na
+   Mg
+   Al
+   Si
+   P
+   S
+   Cl
+   Ar
+   K
+   Ca
+   Ti
+   V
+   Cr
+   Mn
+   Fe
+   Co
+   Ni
+   Cu
+   Zn
+   Ga
+   Ge
+   As
+   Se
+   Kr
+   Rb
+   Sr
+   Zr
+   Nb
+   Mo
+   Ru
+   Rh
+   Pd
+   Ag
+   Cd
+   Sn
+   Cs
+   Ba
+   La
+   Ta
+   W
+   Ir
+   Pt
+   Au
+   Pb
