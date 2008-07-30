@@ -16,7 +16,7 @@ class SimpleStm(STM):
     """Simple STM object to simulate STM pictures.
 
     The simulation uses either a single pseudo-wavefunction (PWF)
-    or the PWFs inside the given bias range (XXX TODO)."""
+    or the PWFs inside the given bias range."""
     def __init__(self, atoms):
         if isinstance(atoms, Atoms):
             self.calc = atoms.get_calculator()
@@ -48,11 +48,13 @@ class SimpleStm(STM):
                 # -> probe unoccupied states
                 emin = efermi
                 emax = efermi + bias
+                occupied = False
             else:
                 # negative bias = positive tip
                 # -> probe occupied states
                 emin = efermi + bias
                 emax = efermi
+                occupied = True
             emin /= Hartree
             emax /= Hartree
             
@@ -60,7 +62,12 @@ class SimpleStm(STM):
                 kpt = self.calc.kpt_u[u]
                 for n, eps in enumerate(kpt.eps_n):
                     if eps>emin and eps<emax:
-                        self.add_wf_to_ldos(n, u, kpt.weight)
+                        if occupied:
+                            weight = kpt.weight * kpt.f_n[n]
+                        else:
+                            weight = kpt.weight * (self.calc.nspins 
+                                                   - kpt.f_n[n]     )
+                        self.add_wf_to_ldos(n, u, weight)
 
     def add_wf_to_ldos(self, n, u, weight=None):
         """Add the wf with given kpoint and spin to the ldos"""
