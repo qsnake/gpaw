@@ -1,4 +1,4 @@
-//*** The operator apply and some associate structors are imple-  ***//
+//*** The apply operator and some associate structors are imple-  ***//
 //*** mented in two version: a original version and a speciel     ***//
 //*** Blue Gene version. By default the original version will     ***//
 //*** be used, but it's possible to use the Blue Gene version     ***//
@@ -25,8 +25,8 @@ typedef struct
   MPI_Request sendreq[2];
 #else
   //We need 2 revc and send request per Blue Gene kernel e.g. 4.
-  MPI_Request recvreq[2 * 4];
-  MPI_Request sendreq[2 * 4];
+  MPI_Request recvreq[2 * NUM_OF_THREADS];
+  MPI_Request sendreq[2 * NUM_OF_THREADS];
 #endif
   double* buf;
   double* sendbuf;
@@ -146,8 +146,8 @@ void* fd_worker(void* args)
   int thd_id = arg->thd_id;
   int nin = arg->nin;
 
-  double *in = arg->in + (thd_id * arg->ng * (nin / 4));
-  double *out = arg->out + (thd_id * arg->ng * (nin / 4));
+  double *in = arg->in + (thd_id * arg->ng * (nin / NUM_OF_THREADS));
+  double *out = arg->out + (thd_id * arg->ng * (nin / NUM_OF_THREADS));
 
   double *buf = self->buf + thd_id;
   double *sendbuf = self->sendbuf + thd_id;
@@ -155,8 +155,8 @@ void* fd_worker(void* args)
   MPI_Request *sendreq = self->sendreq + (thd_id * 2);
   MPI_Request *recvreq = self->recvreq + (thd_id * 2);
 
-  int nmax = (thd_id == 3) ? nin : (nin / 4) * (thd_id + 1);
-  for (int n = (nin / 4) * thd_id; n < nmax; n++)
+  int nmax = (thd_id == NUM_OF_THREADS - 1) ? nin : (nin / NUM_OF_THREADS) * (thd_id + 1);
+  for (int n = (nin / NUM_OF_THREADS) * thd_id; n < nmax; n++)
   {
     for (int i = 0; i < 3; i++)
       {
@@ -206,10 +206,10 @@ static PyObject * Operator_apply(OperatorObject *self,
     ph = COMPLEXP(phases);
 
   // Worker-thread handlers
-  pthread_t fd_threads[4];
-  fd_worker_t* fd_arg = malloc(4 * sizeof(fd_worker_t));
+  pthread_t fd_threads[NUM_OF_THREADS];
+  fd_worker_t* fd_arg = malloc(NUM_OF_THREADS * sizeof(fd_worker_t));
 
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < NUM_OF_THREADS; i++)
     {
       (fd_arg + i)->thd_id = i;
       (fd_arg + i)->self = self;
@@ -222,7 +222,7 @@ static PyObject * Operator_apply(OperatorObject *self,
       (fd_arg + i)->ph = ph;
       pthread_create(&fd_threads[i], NULL, &fd_worker, (fd_arg + i));
     }
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < NUM_OF_THREADS; i++)
     pthread_join(fd_threads[i], NULL);
   free(fd_arg);
 
@@ -316,9 +316,9 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
 #else
   //We need a buffer per Blue Gene kernel e.g. 4.
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-        self->bc->ndouble * 4);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * 4);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * 4);
+        self->bc->ndouble * NUM_OF_THREADS);
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * NUM_OF_THREADS);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * NUM_OF_THREADS);
 #endif
   return (PyObject*)self;
 }
