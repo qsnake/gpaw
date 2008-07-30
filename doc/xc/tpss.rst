@@ -3,9 +3,7 @@ TPSS notes
 ==========
 
 
-.. contents::
-.. section-numbering::
-.. default-role:: latex-math
+.. default-role:: math
 
 
 
@@ -14,7 +12,7 @@ Kinetic energy density
 
 Inside the augmentation sphere of atom `a` (`r<r_c^a`), we have:
 
-.. latex-math::
+.. math::
 
   \psi_{\sigma\mathbf{k}n}(\mathbf{r}) =
   \sum_i 
@@ -23,7 +21,7 @@ Inside the augmentation sphere of atom `a` (`r<r_c^a`), we have:
 
 The kinetic energy density from the valence electrons will be:
 
-.. latex-math::
+.. math::
 
   \frac{1}{2}
   \sum_{\mathbf{k}n} f_{\sigma\mathbf{k}n} \sum_{i_1i_2}
@@ -36,7 +34,7 @@ The kinetic energy density from the valence electrons will be:
 
 Here, we insert `\phi_i^a(\mathbf{r})=Y_L\phi_j^a(r)` and use:
 
-.. latex-math::
+.. math::
 
   \mathbf{\nabla}\phi_i^a(\mathbf{r}) =
   \mathbf{\nabla}Y_L \phi_j^a(r) +
@@ -44,7 +42,7 @@ Here, we insert `\phi_i^a(\mathbf{r})=Y_L\phi_j^a(r)` and use:
 
 to get:
 
-.. latex-math::
+.. math::
 
   \mathbf{\nabla}\phi_{i_1}^a \cdot \mathbf{\nabla}\phi_{i_2}^a =
   \mathbf{\nabla}Y_{L_1} \cdot \mathbf{\nabla}Y_{L_2} 

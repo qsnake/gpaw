@@ -1,5 +1,3 @@
-.. section-numbering::
-
 .. |H2| replace:: H\ :sub:`2`
 .. |Gamma|  unicode:: U+00393 .. GREEK CAPITAL LETTER GAMMA
 .. |angst|  unicode:: U+0212B .. ANGSTROM SIGN

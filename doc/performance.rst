@@ -47,11 +47,9 @@ show the convergence of the defect energy as a function of grid
 spacing (for the gridcode calculation) and the planewave cutoff (for
 the Dacapo calculation):
 
-================== =========================
-         Defect energy [eV]
---------------------------------------------
+Defect energy [eV]:
+
 |grid|             |dacapo|
-================== =========================
 
 .. |grid| image:: _static/gridperf.png
 .. |dacapo| image:: _static/dacapoperf.png
