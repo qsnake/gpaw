@@ -2,16 +2,12 @@
 Bulk aluminium
 ==============
 
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-.. |infin|  unicode:: U+0221E .. INFINITY
-
-.. |a0| replace:: *a*\ :sub:`0`
-
+.. default-role:: math
 
 Now we are ready to run the first GPAW calculation. We will look at
 bulk fcc aluminum and make a single energy calculation at the
-experimental lattice constant |a0| = 4.05 |angst|. For the first example,
-we choose 0.2 |angst| as grid spacing and 6 x
+experimental lattice constant `a_0` = 4.05 Å. For the first example,
+we choose 0.2 Å as grid spacing and 6 x
 6 x 6 **k**-points.  Copy the script:
 
     Al_fcc.py_
@@ -82,7 +78,7 @@ Convergence in **k**-points and grid spacing
 
 Now we will investigate the necessary **k**-point sampling
 and grid spacing needed for bulk fcc Aluminum at the
-experimental lattice constant |a0| = 4.05 Å; this is a standard
+experimental lattice constant `a_0` = 4.05 Å; this is a standard
 first step in all DFT calculations.
 
 * Copy the script Al_fcc_convergence.py_  to a place in your file
@@ -104,7 +100,7 @@ first step in all DFT calculations.
 * Why do you think Al was chosen for this exercise?
 
 ..
-  We use h = 0.2 |angst|
+  We use h = 0.2 Å
   and kpts = (8,8,8) for fcc and  kpts = (10,10,10) for bcc
 
 
@@ -120,17 +116,17 @@ lattice properties of bulk Aluminum.
 
 * First map out the cohesive curve *E*\ (*a*) for Al(fcc), i.e.  the
   total energy as function of lattice constant a, around the
-  experimental equilibrium value of |a0| = 4.05 Å.  Notice that the
-  vacuum energy level *E*\ (|infin|) is not zero.  Get four or more
+  experimental equilibrium value of `a_0` = 4.05 Å.  Notice that the
+  vacuum energy level `E(\infty)` is not zero.  Get four or more
   energy points, so that you can make a fit.
 
-* Fit the data you have obtained to get |a0| and the energy curve
-  minimum E\ :sub:`0` = E(|a0|).  From your fit, calculate the bulk
+* Fit the data you have obtained to get `a_0` and the energy curve
+  minimum E\ :sub:`0` = E(`a_0`).  From your fit, calculate the bulk
   modulus
 
-    *B* = *M*/(9\ |a0|\ )\ *d*\ :sup:`2`\ *E*/*da*\ :sup:`2`
+    *B* = *M*/(9\ `a_0`\ )\ *d*\ :sup:`2`\ *E*/*da*\ :sup:`2`
 
-  for *a* = |a0|, where *M* is the number of atoms per cubic unit
+  for *a* = `a_0`, where *M* is the number of atoms per cubic unit
   cell.  Make the fit using your favorite math package
   (Mathematica/MatLab/Maple/Python/...) or use `ag` like this::
 
@@ -138,7 +134,7 @@ lattice properties of bulk Aluminum.
 
   Then choose `Tools` -> `Bulk Modulus`.
 
-* Compare your results to the experimental values |a0| = 4.05 Å and B
+* Compare your results to the experimental values `a_0` = 4.05 Å and B
   = 76 GPa.  Mind the units when you calculate the bulk modulus.
   What are the possible error sources, and what quantity is more
   sensitive, the lattice constant or the bulk modulus?
@@ -172,7 +168,7 @@ Equilibrium lattice properties for bcc
 
 * Using the lattice constants determined above for fcc and bcc,
   calculate the fcc/bcc total energies at different grid spacings:
-  0.25 |angst| and 0.2 |angst|, i.e. four calculations.  Compare the
+  0.25 Å and 0.2 Å, i.e. four calculations.  Compare the
   structure energy differences for the two cutoffs.  Generally,
   energy differences converge much faster
   with grid spacing than total energies themselves.  Further
@@ -185,3 +181,5 @@ Equilibrium lattice properties for bcc
   is  possible to choose an orthorhombic (but not cubic) unit cell for fcc 
   which contains two atoms. Would this minimal choice affect the choice of 
   **k**-point sampling?
+
+.. default-role::
