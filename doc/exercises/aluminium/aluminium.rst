@@ -114,17 +114,17 @@ Having determined the necessary values of grid spacing and
 **k**-point sampling, we now proceed to calculate some equilibrium
 lattice properties of bulk Aluminum.
 
-* First map out the cohesive curve *E*\ (*a*) for Al(fcc), i.e.  the
+* First map out the cohesive curve `E(a)` for Al(fcc), i.e.  the
   total energy as function of lattice constant a, around the
   experimental equilibrium value of `a_0` = 4.05 Å.  Notice that the
   vacuum energy level `E(\infty)` is not zero.  Get four or more
   energy points, so that you can make a fit.
 
 * Fit the data you have obtained to get `a_0` and the energy curve
-  minimum E\ :sub:`0` = E(`a_0`).  From your fit, calculate the bulk
+  minimum `E_0=E(a_0)`.  From your fit, calculate the bulk
   modulus
 
-    *B* = *M*/(9\ `a_0`\ )\ *d*\ :sup:`2`\ *E*/*da*\ :sup:`2`
+  .. math:: B = \frac{M}{9a_0}\frac{d^2 E}{da^2}
 
   for *a* = `a_0`, where *M* is the number of atoms per cubic unit
   cell.  Make the fit using your favorite math package
@@ -134,7 +134,7 @@ lattice properties of bulk Aluminum.
 
   Then choose `Tools` -> `Bulk Modulus`.
 
-* Compare your results to the experimental values `a_0` = 4.05 Å and B
+* Compare your results to the experimental values `a_0` = 4.05 Å and `B`
   = 76 GPa.  Mind the units when you calculate the bulk modulus.
   What are the possible error sources, and what quantity is more
   sensitive, the lattice constant or the bulk modulus?

@@ -1,6 +1,4 @@
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-
-
+======================
 Electron spin: Fe(bcc)
 ======================
 
@@ -8,7 +6,7 @@ As an example of spin polarized calculations, we'll study Fe(bcc) in a
 two-atom unit cell, i.e. a simple cubic Bravais lattice with a basis,
 where one Fe atom sits at the origin, the other in the middle of the
 unit cell. We'll stick to the experimental lattice constant *a* = 2.87
-|angst|. The atomic term of iron is [Ar]3d\ :sup:`6`\ 4s\ :sup:`2`, i.e. 8
+Å.  The atomic term of iron is [Ar]3d\ :sup:`6`\ 4s\ :sup:`2`, i.e. 8
 valence electrons/atom is included in the calculation.
 
 A spin polarized calculation can be initiated with the Calculator

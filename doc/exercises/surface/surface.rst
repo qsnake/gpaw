@@ -2,18 +2,6 @@
 Aluminum surfaces
 =================
 
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-.. |infin|  unicode:: U+0221E .. INFINITY
-.. |simeq|  unicode:: U+02243 .. ASYMPTOTICALLY EQUAL TO
-.. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
-.. |Delta|  unicode:: U+00394 .. GREEK CAPITAL LETTER DELTA
-.. |mu|     unicode:: U+003BC .. GREEK SMALL LETTER MU
-.. |beta|   unicode:: U+003B2 .. GREEK SMALL LETTER BETA
-.. |pi|     unicode:: U+003C0 .. GREEK SMALL LETTER PI
-.. |alpha|  unicode:: U+003B1 .. GREEK SMALL LETTER ALPHA
-.. |nu|     unicode:: U+003BD .. GREEK SMALL LETTER NU
-.. |deg|    unicode:: U+000B0 .. DEGREE SIGN
-
 In this exercise, we make a toolbox for building an Al(100) surface. For this
 surface, we calculate the surface energy and other properties.
 
@@ -116,35 +104,34 @@ Surface Energetics
 ------------------
 
 One surface property is the surface tension
-|sigma| defined implicitly via:
+`\sigma` defined implicitly via:
 
-   *E*\ :sub:`N` = 2\ *A*\ |sigma| + *NE*\ :sub:`B`
+.. math:: E_N = 2A\sigma + NE_B
 
-where *E*\ :sub:`N` is the total energy of a slab with *N* layers,
-*A* the area of the surface unit cell (the factor 2 because the slab
-has two surfaces), and finally *E*\ :sub:`B` is the total energy per bulk
-atom.  The limit *N* -> |infin| corresponds to the macroscopic
+where `E_N` is the total energy of a slab with `N` layers,
+`A` the area of the surface unit cell (the factor 2 because the slab
+has two surfaces), and finally `E_B` is the total energy per bulk
+atom.  The limit `N \rightarrow \infty` corresponds to the macroscopic
 crystal termination.
 
 Estimate the surface tension using an expression from the simplest
 Effective Medium Theory (EMT) description:
 
-   *A*\ |sigma| |simeq| [1 - (*Z*/*Z*\ :sub:`0`)\ :sup:`1/2`] *E*\ :sub:`coh`
+.. math:: A\sigma \simeq [1 - (Z/Z_0)^{1/2}] E_{coh}
 
-where *Z* and *Z*\ :sub:`0` are the coordination numbers (number of
-nearest neighbors) of a surface and a bulk atom, respectively, and *A* is
-the surface area per surface atom, and *E*\ :sub:`coh` = *E*\
-:sub:`atom` - *E*\ :sub:`B` > 0 is the cohesive energy per bulk
-atom. For Aluminium we have *E*\ :sub:`coh` = 3.34 eV.
+where `Z` and `Z_0` are the coordination numbers (number of nearest
+neighbors) of a surface and a bulk atom, respectively, and `A` is the
+surface area per surface atom, and `E_{coh}` = `E_{atom}-E_B` > 0 is
+the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
 * Derive the following equation:
 
-    |sigma| = (*NE*\ :sub:`N-1` - (*N* - 1)\ *E*\ :sub:`N`) / (2\ *A*)
+  .. math:: \sigma = \frac{NE_{N-1} - (N-1)E_N}{2A}
 
-* Take a look at the script `Al100.py`_.  Calculate |sigma| for *N* =
+* Take a look at the script `Al100.py`_.  Calculate `\sigma` for `N` =
   2, 3, 4, 5 and 6.  Use a two-dimensional Monkhorst-Pack **k**-point
   sampling (``kpts=(k, k, 1)``) that matches the size of your unit
-  cell.  The experimental value of |sigma| is 54 meV/Å\ :sup:`2`.  How
+  cell.  The experimental value of `\sigma` is 54 meV/Å\ :sup:`2`.  How
   well is the EMT estimate satisfied?
 
   .. hint::
@@ -154,10 +141,10 @@ atom. For Aluminium we have *E*\ :sub:`coh` = 3.34 eV.
     in any direction, and the length of the basis vector in this
     direction, *a*, should be:
 
-    * *ka* ~ 30 |angst|, for *d* band metals
-    * *ka* ~ 25 |angst|, for simple metals
-    * *ka* ~ 20 |angst|, for semiconductors
-    * *ka* ~ 15 |angst|, for insulators
+    * *ka* ~ 30 Å, for *d* band metals
+    * *ka* ~ 25 Å, for simple metals
+    * *ka* ~ 20 Å, for semiconductors
+    * *ka* ~ 15 Å, for insulators
 
     Remember that convergence in this parameter should always be checked.
 
