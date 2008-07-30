@@ -2,17 +2,11 @@
 Kohn-Sham wavefunctions of a CO molecule
 ========================================
 
-
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-.. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
-.. |pi|     unicode:: U+003C0 .. GREEK SMALL LETTER PI
-
-
 In this section, we will look at the Kohn-Sham wavefunctions of the CO
 molecule and compare them to results from molecular orbital theory.
 
 * Make a script, where a CO molecule is placed in the center of a qubic
-  unit cell with non-periodic boundary conditions, e.g. of 6 |angst|. For
+  unit cell with non-periodic boundary conditions, e.g. of 6 Å. For
   more accurate calculations, the cell should definitely be bigger,
   but for reasons of speed, we use  this cell here. Which value for the
   grid spacing would you use? Include a couple of unoccupied bands in the
@@ -54,8 +48,8 @@ molecule and compare them to results from molecular orbital theory.
   What is the highest occupied state and the lowest unoccupied state?
 
   How does your wave functions compare to a molecular orbital picture?
-  Try to Identify |sigma| and |pi| orbitals. Which wavefunctions are
-  bonding and which are antibonding?
+  Try to Identify :math:`\sigma` and :math:`\pi` orbitals. Which
+  wavefunctions are bonding and which are antibonding?
 
 .. hint::
 

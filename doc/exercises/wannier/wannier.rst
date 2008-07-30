@@ -1,7 +1,4 @@
-.. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
-.. |pi|     unicode:: U+003C0 .. GREEK SMALL LETTER PI
-
-
+=================
 Wannier Functions
 =================
 
@@ -32,7 +29,8 @@ you include one or two unoccupied bands?  The script also produces two
 .cube files. One contains the wavefunction of the Highest Occupied
 Molecular Orbital (HOMO) and the other contains a wannier function
 centered between a Carbon and a Hydrogen atom. Study these with vmd
-and determine which type of orbitals they represent (|sigma| or |pi|).
+and determine which type of orbitals they represent (:math:`\sigma` or
+:math:`\pi`).
 
 Now repeat the wannier function analysis on the following molecules
 

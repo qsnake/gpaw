@@ -4,20 +4,6 @@
 Analytical problem on transition state theory (TST)
 ===================================================
 
-
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-.. |infin|  unicode:: U+0221E .. INFINITY
-.. |simeq|  unicode:: U+02243 .. ASYMPTOTICALLY EQUAL TO
-.. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
-.. |Delta|  unicode:: U+00394 .. GREEK CAPITAL LETTER DELTA
-.. |mu|     unicode:: U+003BC .. GREEK SMALL LETTER MU
-.. |beta|   unicode:: U+003B2 .. GREEK SMALL LETTER BETA
-.. |pi|     unicode:: U+003C0 .. GREEK SMALL LETTER PI
-.. |alpha|  unicode:: U+003B1 .. GREEK SMALL LETTER ALPHA
-.. |nu|     unicode:: U+003BD .. GREEK SMALL LETTER NU
-.. |deg|    unicode:: U+000B0 .. DEGREE SIGN
-
-
 This problem is mostly analytical and was developed by 
 Hannes Jonsson. It deals with the potential energy surface (PES) 
 of a hydrogen atom adsorbed on a (100) crystal surface of an FCC metal.
@@ -35,11 +21,13 @@ than the hydrogen atom.  For a hydrogen atom on the (100) surface of
 an FCC metal, the potential energy of the hydrogen atom can be
 approximated by the function
 
-  *V*\ (*x, y, z*) = *V*\ :sub:`s`\ [exp(-cos(2\ |pi|\ *x*\ /*b*)
-  - cos(2\ |pi|\ *y*\ /*b*) - 2\ |alpha|\ *z*) - 2exp(-|alpha|\ *z*)]
+.. math::
 
-For the parameters of the potential, we take *V*\ :sub:`s` = 0.2 eV,
-*b* = 3 |angst|, |alpha| = 2 |angst|\ :sup:`-1`.
+   V(x, y, z) = V_s [\exp(-\cos(2\pi x/b)
+	-\cos(2\pi y/b) - 2\alpha z) - 2\exp(-\alpha z)]
+
+For the parameters of the potential, we take :math:`V_s` = 0.2 eV,
+:math:`b` = 3 Å, :math:`\alpha` = 2 Å\ :sup:`-1`.
 
 Identify the minima, maxima and saddle points of the PES. You may do this
 by either looking at the plot or taking the partial derivatives. You will need

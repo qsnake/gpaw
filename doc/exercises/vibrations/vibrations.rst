@@ -2,9 +2,6 @@
 Vibrational frequencies of the H\ :sub:`2`\ O molecule
 ======================================================
 
-
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-
 Density functional theory can be used to calculate vibrational frequencies of
 molecules, e.g. either in the gas phase or on a surface. These results can be
 compared to experimental output, e.g. from IR-spectroscopy, and they can be

@@ -16,9 +16,8 @@ Attributes:
 
 Parallel stuff: ``comm``, ``N_i``, ``beg0_i``, ``beg_i`` and ``end_i``.
 
-.. |times|  unicode:: U+000D7 .. MULTIPLICATION SIGN
 
-This is how a 2 |times| 2 |times| 2 3D array is layed out in memory::
+This is how a 2*2*2 3D array is layed out in memory::
 
     3-----7
     |\    |\

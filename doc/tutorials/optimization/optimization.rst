@@ -4,15 +4,12 @@
  Structure optimization
 ========================
 
-.. |angst|  unicode:: U+0212B .. ANGSTROM SIGN
-.. |H2| replace:: H\ :sub:`2`
-
 In the tutorial on :ref:`how to calculate atomization energies
-<atomization_energy>`, we calculated the atomization energy for |H2|
-using the experimental bond length of 0.74 |angst|.  In this tutorial,
-we ask a QuasiNewton_ minimizer to iteratively find the structural
-energy minimum, where all atomic forces are below 0.05 eV/|angst|.
-The following script will do the job:
+<atomization_energy>`, we calculated the atomization energy for
+:math:`\rm{H}_2` using the experimental bond length of 0.74 Å.
+In this tutorial, we ask a QuasiNewton_ minimizer to iteratively find
+the structural energy minimum, where all atomic forces are below 0.05
+eV/Å.  The following script will do the job:
 
 .. literalunclude: relax.py
 

@@ -2,6 +2,8 @@
 Aluminum surfaces
 =================
 
+.. default-role:: math
+
 In this exercise, we make a toolbox for building an Al(100) surface. For this
 surface, we calculate the surface energy and other properties.
 
@@ -164,3 +166,5 @@ How does this affect the Fermi level and the average potential?
 
 
 .. _work_function.py : wiki:SVN:examples/surface/work_function.py
+
+.. default-role::
