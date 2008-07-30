@@ -14,9 +14,9 @@ molecule and compare them to results from molecular orbital theory.
   Guess reasonable positions from
   the covalent radii of C and O. Then relax the CO molecule to its
   minimum energy position. Write the relaxation to a trajectory file and
-  the final results to a .gpw file. The wavefunctions
-  are not written to the .gpw file by default, but can be saved by
-  writing ``calc.write('CO.gpw', mode='all')``, where ``calc`` is
+  the final results to a :file:`.gpw` file. The wavefunctions
+  are not written to the :file:`.gpw` file by default, but can be saved by
+  writing :samp:`{calc}.write('CO.gpw', mode='all')`, where :samp:`{calc}` is
   your calculator object. The trajectory can be viewed by::
 
     $ ag CO.traj
@@ -28,9 +28,9 @@ molecule and compare them to results from molecular orbital theory.
   temperature was used?
 
 * Plot the Kohn-Sham wavefunctions of the different wave functions of the CO
-  molecule. The wavefunctions should be written to .cube files for handling
-  with VMD. The following lines could be included in a script or written
-  directly from the python promt::
+  molecule. The wavefunctions should be written to :file:`.cube` files for 
+  handling with :program:`VMD`. The following lines could be included in a
+  script or written directly from the python promt::
 
     >>> from ase import *
     >>> from gpaw import *
@@ -39,10 +39,12 @@ molecule and compare them to results from molecular orbital theory.
     ...     wf = calc.get_pseudo_wave_function(band=n)
     ...     write('CO%d.cube' % n, CO, data=wf)
 
-  You can then load all of the wave functions into VMD simultaneously,
-  by running ``vmd CO?.cube``.  In VMD chose ``Graphics ->
-  Representations``, click ``Create Rep``, then choose ``Drawing
-  Method -> isosurface``.  In the ``Data Set`` field, you can then
+  You can then load all of the wave functions into :program:`VMD`
+  simultaneously, by running :samp:`vmd CO{?}.cube`.  In :program:`VMD` choose 
+  :menuselection:`Graphics --> Representations`, click 
+  :guilabel:`Create Rep`, then choose 
+  :menuselection:`Drawing Method --> isosurface`.  In the 
+  :guilabel:`Data Set` field, you can then
   choose between all the saved wave functions.
 
   What is the highest occupied state and the lowest unoccupied state?

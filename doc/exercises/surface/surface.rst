@@ -18,13 +18,13 @@ plethora of similar Python scripts, made by *copy+paste*, it is
 advantageous to put the repeated code into tool boxes.
 
 Python supports such tool boxes (in Python called modules): put any
-Python code into a file ``stuff.py`` then it may be used as a tool box
+Python code into a file :file:`stuff.py` then it may be used as a tool box
 in other scripts, using the Python command: ``from stuff import
 thing``, where ``thing`` can be almost anything.  When Python sees
-this line, it runs the file ``stuff.py`` (only the first time) and
+this line, it runs the file :file:`stuff.py` (only the first time) and
 makes ``thing`` available.  Lets try an example:
 
-* In file ``stuff.py``, put::
+* In file :file:`stuff.py`, put::
 
     constant = 17
 
@@ -32,15 +32,15 @@ makes ``thing`` available.  Lets try an example:
     def function(x):
         return x - 5
 
-* and in file ``program.py``, put::
+* and in file :file:`program.py`, put::
 
     from stuff import constant, function
     print 'result =', function(constant)
 
-* Now run the script ``program.py`` and watch the output.
+* Now run the script :file:`program.py` and watch the output.
 
-You can think of ASE and GPAW as big collections of modules, that
-we use in our scripts.
+You can think of ASE and GPAW as big collections of modules, that we
+use in our scripts.
 
 
 
@@ -65,10 +65,10 @@ whereas (110) is most open. Here we'll focus on (100).
   the script :svn:`examples/surface/build_bcc.py` to your area.
   Browse the script and try
   to understand it. The central part is the function starting with
-  ``def bcc100(...)``  that creates a body centered cubic (100)
+  :samp:`def bcc100({...})` that creates a body centered cubic (100)
   surface.
 
-* Create a ``build_fcc.py`` script containing a function called ``fcc100``.
+* Create a :file:`build_fcc.py` script containing a function called ``fcc100``.
   This function should build an fcc(100) surface slab.  Run the script
   until you are sure that your new function works (by running the
   script, you activate the self test in the last few lines of the
@@ -122,7 +122,7 @@ Effective Medium Theory (EMT) description:
 
 where `Z` and `Z_0` are the coordination numbers (number of nearest
 neighbors) of a surface and a bulk atom, respectively, and `A` is the
-surface area per surface atom, and `E_{coh}` = `E_{atom}-E_B` > 0 is
+surface area per surface atom, and `E_{coh} = E_{atom}-E_B > 0` is
 the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
 * Derive the following equation:

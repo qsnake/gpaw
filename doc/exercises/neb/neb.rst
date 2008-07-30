@@ -33,7 +33,7 @@ script.
 
 * What is the energy barrier?
 
-* Copy the script to ``neb2.py`` and modify it to find the barrier for
+* Copy the script to :file:`neb2.py` and modify it to find the barrier for
   diffusion across one of the rows.  What is the barrier for this
   process?
 
@@ -43,10 +43,10 @@ script.
 
 .. hint::
 
-  When opening a trajectory in ``ag`` with calculated energies, the
+  When opening a trajectory in :program:`ag` with calculated energies, the
   default plot window shows the energy versus frame number.  To get a
   better feel of the energy barrier in an NEB calculation; choose
-  :guilabel:`Tools` -> :guilabel:`NEB`. This will give a smooth curve
+  :menuselection:`Tools --> NEB`. This will give a smooth curve
   of the energy as a
   function of the NEB path length, with the slope at each point
   estimated from the force.

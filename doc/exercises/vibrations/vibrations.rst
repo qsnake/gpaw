@@ -36,9 +36,9 @@ will calculate the vibrational frequencies for a water molecule.
   is the accuracy and what are possible error sources?
 
 * Now we want to look at the modes to see how the atoms move. For this
-  we use the files ``vib.?.traj`` where ``?`` is the number of the
+  we use the files :file:`vib.{?}.traj` where :file:`{?}` is the number of the
   mode counted in the order they are printed out. You can look at
-  these trajectories with the ``ag`` command - click :guilabel:`Play` to play
-  the movie. Do they look like you expected and what would you have
+  these trajectories with the :command:`ag` command - click :guilabel:`Play` 
+  to play the movie. Do they look like you expected and what would you have
   expected (you may have learned something about symmetry groups at
   one point)?

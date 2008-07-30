@@ -10,7 +10,7 @@ tools.
 
 We will use GPAW to simulate an STM image.  Start by doing a Al(100)
 surface with hydrogen adsorbed in the ontop site:
-:svn:`examples/stm/HAl100.py`.  This will produce a ``gpw`` file
+:svn:`examples/stm/HAl100.py`.  This will produce a :file:`gpw` file
 containing the wave functions that are needed for calculating local
 density of states.
 

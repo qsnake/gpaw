@@ -60,7 +60,7 @@ adsorption PES.
   you do this? What would have to be changed from the present setup?
 
 
-* Look at the relaxed configurations with the ``ag``
+* Look at the relaxed configurations with the :command:`ag`
   command::
 
     $ ag -r 3,3,1 ontop.traj
@@ -76,15 +76,15 @@ adsorption PES.
 
 
 
-Making nice plots with VMD
-==========================
+Making nice plots with :program:`VMD`
+=====================================
 
 One functionality in ASE is that you can make nice plots of the atomic
 configurations, the Kohn-Sham wave functions and the electron
 density. Apart from that these plots can be made to look very nice,
 they can also visualize things which otherwise are hard to analyze or
-explain. ASE supports visualization tools like gOpenMol, Rasmol and VMD. We
-will focus on VMD.
+explain. ASE supports visualization tools like :program:`gOpenMol`,
+:program:`Rasmol` and :program:`VMD`. We will focus on :program:`VMD`.
 
 
 
@@ -92,9 +92,9 @@ Plotting the atoms
 ------------------
 
 
-VMD uses .cube files as input. The construction of these can be
-integrated in a basic script or written afterwards from a .gpw
-file. In the example above one can use
+:program:`VMD` uses :file:`.cube` files as input. The construction of
+these can be integrated in a basic script or written afterwards from a
+:file:`.gpw` file. In the example above one can use
 
   >>> from ase import * 
   >>> from gpaw import *
@@ -102,48 +102,50 @@ file. In the example above one can use
   >>> n = calc.get_pseudo_density()
   >>> write('relax.cube', atoms, data=n)
 
-The resulting ``relax.cube`` file contains the atoms and density and is
-opened in vmd by ``vmd relax.cube``.
+The resulting :file:`relax.cube` file contains the atoms and density and is
+opened in :program:`VMD` by ``vmd relax.cube``.
 
 Three windows pop up, an OpenGL display where the atoms are visible, a
-vmd console, and VMD main. The VMD main window have different menues,
-open the /Graphics/Representation/ menue and change the drawing method
-to CPK.  VMD can do many things but you should try to use the Render
+vmd console, and :program:`VMD` main. The :program:`VMD` main window
+have different menues, open the :menuselection:`Graphics -->
+Representations` menu and change the drawing method to CPK.
+:program:`VMD` can do many things but you should try to use the Render
 option to make a ray tracing figure of your slab, change the colors of
 the atoms using different representations, remove the axis indicator
 and change the background color. Now add a representation that shows a
 density isosurface (it is best visualized with mesh or solid
 surface). When you have made a povray plot you can use your favorite
-graphics program (``gimp`` is a good one), to edit your plot and save
-it as an ``.eps`` file, which you can include in latex.
+graphics program (:program:`gimp` is a good one), to edit your plot
+and save it as an :file:`.eps` file, which you can include in latex.
 
 
 
-Using VMD to plot density differences
--------------------------------------
+Using :program:`VMD` to plot density differences
+------------------------------------------------
 
 It is sometimes useful to look at density changes when studying for
 instance adsorption reactions. Copy the script
 :svn:`examples/adsorbate/densitydiff.py` to your area.
 
-Read it and try to understand what is does. Change the
-necessary lines to look at one of your slabs with H adsorbed. There is
-one major assumption in the script if this is used for the H adsorbed
-on a metal surface, try to identify it. When you have written the
-density difference to a .cube file open this file in vmd and use it to
-investigate what is happing.
+Read it and try to understand what is does. Change the necessary lines
+to look at one of your slabs with H adsorbed. There is one major
+assumption in the script if this is used for the H adsorbed on a metal
+surface, try to identify it. When you have written the density
+difference to a :file:`.cube` file, open this file in :program:`VMD`
+and use it to investigate what is happening.
 
 
-Using VMD to make input files
------------------------------
+Using :program:`VMD` to make input files
+----------------------------------------
 
-VMD is very useful for setting up input files to your
-calculations. Use /Mouse/Move/Atom to move H to another position and
-save the coordinates as a xyz file.  xyz files can be read from your
-Python script like this::
+:program:`VMD` is very useful for setting up input files to your
+calculations. Use :menuselection:`Mouse --> Move --> Atom` to move H
+to another position and save the coordinates as an :file:`xyz` file.
+:file:`xyz` files can be read from your Python script like this::
 
   >>> atoms = read('abc.xyz')
 
-The xyz format does not have a unit cell, so you must set that yourself::
+The :file:`xyz` format does not have a unit cell, so you must set that
+yourself::
 
   >>> atoms.set_cell((Lx,Ly,Lz), scale_atoms=False)

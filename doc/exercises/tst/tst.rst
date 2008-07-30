@@ -33,18 +33,18 @@ Identify the minima, maxima and saddle points of the PES. You may do this
 by either looking at the plot or taking the partial derivatives. You will need
 the derivatives anyway at a later point.
 
-Plot the function with the
-plot program of your choice. In the following, it is described, how
-you can plot the potential with Mathematica. Type ``mathematica`` to
-start the program.  Then, type::
+Plot the function with the plot program of your choice. In the
+following, it is described, how you can plot the potential with
+:program:`Mathematica`. Type ``mathematica`` to start the
+program.  Then, type::
 
   f[x_, y_, z_] := Vs * (Exp[-Cos[2 Pi x/b]-Cos[2 Pi y/b] -2 alpha z]
                          -2 Exp[-alpha z])
 
-To make mathematica read and evaluate this statement, press
-SHIFT + ENTER. You have to do this after each statement to make mathematica
-evaluate your statement and give you output. Then you can set the parameters
-by the statements::
+To make :program:`Mathematica` read and evaluate this statement, press
+:kbd:`Shift-Enter`. You have to do this after each statement to make
+:program:`Mathematica` evaluate your statement and give you
+output. Then you can set the parameters by the statements::
 
   Vs = 0.2
   b = 3
@@ -59,8 +59,8 @@ or::
 
   Plot3D[f[x, 0, z], {x, -3, 3} ,{z, -1.5, 3}]
 
-Then again, press SHIFT+ENTER. Now you should see a pretty plot of the
-potential.
+Then again, press :kbd:`Shift-Enter`. Now you should see a pretty plot
+of the potential.
 
 Evaluate the activation energy for diffusion hops. Then Taylor expand
 the potential energy about the minimum and saddle point to find the

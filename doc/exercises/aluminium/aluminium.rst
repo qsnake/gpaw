@@ -32,27 +32,27 @@ Notice that the program has generated two output files::
   Al-fcc.gpw
   Al-fcc.txt
 
-In general, when you execute a GPAW electronic structure
-calculation, you get two files:
+In general, when you execute a GPAW electronic structure calculation,
+you get two files:
 
-* A tar-file (conventional suffix ``.gpw``) containing binary data
+* A tar-file (conventional suffix :file:`.gpw`) containing binary data
   input/output files and an XML file. The contents may be viewed with
   the command::
 
     $ tar -tf Al-fcc.gpw
 
-  The file info.xml has information about array sizes, types,
+  The file :file:`info.xml` has information about array sizes, types,
   endianness, parameters, and more.  Try::
 
     $ tar -f Al-fcc.gpw -xO info.xml
 
   or use ``tar --help`` for more options.
 
-* An ASCII formatted log file (conventional suffix ``.txt``) that
+* An ASCII formatted log file (conventional suffix :file:`.txt`) that
   monitors the progress of the calculation.
 
-Try to take a look at the file ``Al-fcc.txt``.  You can conveniently
-monitor some variables by using the ``grep`` utility.  By typing::
+Try to take a look at the file :file:`Al-fcc.txt`.  You can conveniently
+monitor some variables by using the :command:`grep` utility.  By typing::
 
   $ grep iter Al-fcc.txt
 
@@ -72,7 +72,7 @@ typing the following from the Python interpreter::
   >>> [hit CTRL-d]
   $ vmd Al.cube
 
-Try to make VMD show an isosurface of the electron density.
+Try to make :program:`VMD` show an isosurface of the electron density.
 
 
 Convergence in **k**-points and grid spacing
@@ -128,11 +128,11 @@ lattice properties of bulk Aluminum.
 
   for `a = a_0`, where *M* is the number of atoms per cubic unit
   cell.  Make the fit using your favorite math package
-  (Mathematica/MatLab/Maple/Python/...) or use ``ag`` like this::
+  (Mathematica/MatLab/Maple/Python/...) or use :program:`ag` like this::
 
     $ ag bulk-*.txt
 
-  Then choose :guilabel:`Tools` -> :guilabel:`Bulk Modulus`.
+  Then choose :menuselection:`Tools --> Bulk Modulus`.
 
 * Compare your results to the experimental values `a_0` = 4.05 Å and `B`
   = 76 GPa.  Mind the units when you calculate the bulk modulus.
@@ -157,8 +157,9 @@ Equilibrium lattice properties for bcc
   assumptions. Later, you can comment on which assumption gives the
   guess closer to the right lattice constant.
 
-* Check that your structure is right by repeating the unit cell. In ``ag`` this
-  is done by choosing :guilabel:`View` -> :guilabel:`Repeat...`.
+* Check that your structure is right by repeating the unit cell. In
+  :program:`ag` this
+  is done by choosing :menuselection:`View --> Repeat`.
 
 * Map out the cohesive curve *E*\ (*a*) for Al(bcc) and determine *a*\
   :sub:`bcc`, using a few points.  Is it a good idea to use the same
