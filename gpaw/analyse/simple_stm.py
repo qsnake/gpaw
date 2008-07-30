@@ -11,6 +11,9 @@ from ase.io.plt import write_plt
 
 import gpaw.mpi as mpi
 from gpaw.mpi import MASTER
+from gpaw.io.plt import read_plt
+from gpaw.domain import Domain
+from gpaw.grid_descriptor import GridDescriptor
 
 class SimpleStm(STM):
     """Simple STM object to simulate STM pictures.
@@ -18,14 +21,17 @@ class SimpleStm(STM):
     The simulation uses either a single pseudo-wavefunction (PWF)
     or the PWFs inside the given bias range."""
     def __init__(self, atoms):
-        if isinstance(atoms, Atoms):
-            self.calc = atoms.get_calculator()
+        if isinstance(atoms, str):
+            self.read_3D(atoms)
         else:
-            self.calc = atoms
-        self.calc.initialize_wave_functions()
-
-        self.gd = self.calc.gd
-        self.offset_c = [int(not a) for a in self.gd.domain.pbc_c]
+            if isinstance(atoms, Atoms):
+                self.calc = atoms.get_calculator()
+            else:
+                self.calc = atoms
+            self.calc.initialize_wave_functions()
+            
+            self.gd = self.calc.gd
+            self.offset_c = [int(not a) for a in self.gd.domain.pbc_c]
 
     def calculate_ldos(self, bias):
         """bias is the n, k, s list/tuple."""
@@ -43,18 +49,29 @@ class SimpleStm(STM):
         except:
             # energy bias
             efermi = self.calc.get_fermi_level()
-            if bias > 0:
-                # positive bias = negative tip
-                # -> probe unoccupied states
-                emin = efermi
-                emax = efermi + bias
-                occupied = False
+
+            if len(bias) == 2:
+                # emin and emax given
+                emin, emax = bias
+                if abs(emin) > abs(emax):
+                    occupied = True
+                else:
+                    occupied = False
             else:
-                # negative bias = positive tip
-                # -> probe occupied states
-                emin = efermi + bias
-                emax = efermi
-                occupied = True
+                # bias given
+                if bias > 0:
+                    # positive bias = negative tip
+                    # -> probe unoccupied states
+                    emin = efermi
+                    emax = efermi + bias
+                    occupied = False
+                else:
+                    # negative bias = positive tip
+                    # -> probe occupied states
+                    emin = efermi + bias
+                    emax = efermi
+                    occupied = True
+
             emin /= Hartree
             emax /= Hartree
             
@@ -101,8 +118,33 @@ class SimpleStm(STM):
         elif filetype == 'plt':
             write_plt(file, self.calc.get_atoms(), ldos)
         else:
-            raise NotImplementedError('unknown file type "'+filetype+'"')
+            raise NotImplementedError('unknown file type "' + filetype + '"')
 
+    def read_3D(self, file, filetype=None):
+        """Read the density from a 3D file"""
+
+        if filetype is None:
+            # estimate file type from name ending
+            filetype = file.split('.')[-1]
+        filetype.lower()
+
+        if filetype == 'plt':
+            cell, grid, origin = read_plt(file)
+
+            pbc_c = [True, True, True]
+            N_c = npy.array(grid.shape)
+            for c in range(3):
+                if N_c[c] % 2 == 1:
+                    pbc_c[c] = False
+                    N_c[c] += 1
+            self.gd = GridDescriptor(Domain(cell.diagonal(), pbc_c), N_c)
+            
+        else:
+            raise NotImplementedError('unknown file type "' + filetype + '"')
+
+        self.calc = None
+        self.ldos = grid
+ 
     def current_to_density(self, current):
         """The connection between density n and current I
 
