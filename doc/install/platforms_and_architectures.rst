@@ -536,8 +536,8 @@ and put the ``$HOME/lib/python/Numeric`` directory in your
 Now we are ready to `compile GPAW`_.
 
 
-.. _Numeric-24.2: http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=1351
-.. _numpy-1.0.4: http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=175103
+.. _Numeric-24.2: http://downloads.sourceforge.net/numpy/Numeric-24.2.tar.gz
+.. _numpy-1.0.4: http://downloads.sourceforge.net/numpy/numpy-1.0.4.tar.gz
 .. _compile GPAW: :ref:`compile GPAW <installationguide>`
 
 
