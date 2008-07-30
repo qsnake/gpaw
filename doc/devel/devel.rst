@@ -66,7 +66,7 @@ Keep this under your pillow (work in progress):
 
 .. image:: ../_static/overview.png
    :target: overview.pdf_
-   :width: 550
+   :width: 550 px
 
 Created with OpenOffice.org-Draw_: overview.odg_.
 

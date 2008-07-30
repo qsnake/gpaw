@@ -7,7 +7,7 @@ XAS examples
 Schematic illustration of XAS (from [Nil04]_):
 
 .. figure:: ../_static/xas.png
-   :width: 400
+   :width: 400 px
   
 Excitation energies can be calculated as eigenvalue differences `\epsilon_n-\epsilon_{1s}`, where the eigenvalues are taken from *one* transition potential calculation with half a core-hole removed.
 
@@ -17,9 +17,9 @@ The oscillator strengths are proportional to
 Calculated oxygen 1s XA spectra for isolated water molecule for different box sizes and experimental data [Myn02]_:
 
 .. |i1| image:: ../_static/xas_H2O.png
-        :width: 550
+        :width: 550 px
 .. |i2| image:: ../_static/xas_exp.png
-        :width: 330
+        :width: 330 px
 
 |i1| |i2|
 

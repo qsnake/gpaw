@@ -53,8 +53,8 @@ get('doc/literature', literature)
 get('exercises', ['NEB_Al-Al110.traj'])
 
 logos = """
-logo-csc.gif  logo-fmf.png   logo-hut.png  logo-tree.png
-logo-dtu.gif  logo-gpaw.png  logo-jyu.png  logo-tut.png
+logo-csc.png  logo-fmf.png   logo-hut.png  logo-tree.png
+logo-dtu.png  logo-gpaw.png  logo-jyu.png  logo-tut.png
 """.split()
 
 if not os.path.isdir('logos'):
@@ -69,7 +69,7 @@ gpaw-logo.odg  overview.odg overview.pdf
 get('doc/devel', devel_stuff, '_static')
 get('devel', ['bslogo.png', 'overview.png', 'stat.png'])
 
-get('exercises', ['silicon_banddiagram.gif'])
+get('exercises', ['silicon_banddiagram.png'])
 get('tutorials', ['ensemble.png', 'sodium_bands.png', 'bz-all.png',
                   'gridrefinement.png', 'ae_density_H2O.png',
                   'ae_density_NaCl.png'])
@@ -86,4 +86,4 @@ if get('setups', ['setup-images.tar.gz', 'setup-data.pckl']):
     print 'Extracting setup images ...'
     os.system('tar --directory=_static -xzf _static/setup-images.tar.gz')
     print 'Generating setup pages ...'
-    os.system('cd setups; python make_setup_pagess.py')
+    os.system('cd setups; python make_setup_pages.py')

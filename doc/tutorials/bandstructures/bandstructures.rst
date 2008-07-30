@@ -20,5 +20,5 @@ the larger primitive Brillouin zone. For a description of the symmetry labels of
 see the figure below.
 
 .. figure:: ../../_static/bz-all.png
-   :width: 600
+   :width: 600 px
    :align: left

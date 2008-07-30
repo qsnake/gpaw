@@ -28,7 +28,7 @@ The result of running the script is::
 Ensemble of atomization energies for H\ `2`:sub: :
 
 .. image:: ../../_static/ensemble.png
-   :width: 400
+   :width: 400 px
 
 .. [Mor05b] J. J. Mortensen, K. Kaasbjerg, S. L. Frederiksen,
    J. K. Nørskov, J. P. Sethna, and K. W. Jacobsen,

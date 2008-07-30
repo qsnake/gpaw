@@ -2,8 +2,11 @@
 NEB: Self-diffusion on the Al(110) surface
 ==========================================
 
-.. image:: slab.png
-   :height: 270
+XXX generate slab.png using gpaw/exercises/neb/plot.py
+.. 
+
+   image:: slab.png
+   :height: 270 px
    :alt: Al(110) surface
    :align: right
 

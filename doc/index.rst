@@ -2,23 +2,6 @@
 Grid-based projector-augmented wave method
 ==========================================
 
-News
-====
-
-*   GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
-
-*   CSC_ is organizing a `GPAW course`_: "Electronic structure calculations with GPAW". (Dec 11 2007).
-
-*   The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007).
-
-*   A GPAW Sprint will be held on November 16 in Lyngby (Okt 18 2007)
-
-*   Work on atomic basis-sets begun (Sep 25 2007)
-
-.. _numpy: http://www.scipy.org/NumPy
-.. _CSC: http://www.csc.fi
-.. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
-.. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
 
 GPAW
 ====
@@ -39,26 +22,26 @@ features and the algorithms used <features_and_algorithms>`.
 
 .. _ASE: https://web2.fysik.dtu.dk/ase/
 
-.. |i1| image:: _static/logo-csc.gif
-        :height: 44
+.. |i1| image:: _static/logo-csc.png
+        :height: 44 px
         :target: http://www.csc.fi
-.. |i2| image:: _static/logo-dtu.gif
-        :height: 44
+.. |i2| image:: _static/logo-dtu.png
+        :height: 44 px
         :target: http://www.camp.dtu.dk
 .. |i3| image:: _static/logo-jyu.png
-        :height: 44
+        :height: 44 px
         :target: http://www.phys.jyu.fi
 .. |i4| image:: _static/logo-fmf.png
-        :height: 44
+        :height: 44 px
         :target: http://www.fmf.uni-freiburg.de/index.html-en/view?set_language=en
 .. |i5| image:: _static/logo-tut.png
-        :height: 44
+        :height: 44 px
         :target: http://www.tut.fi
 .. |i6| image:: _static/logo-hut.png
-        :height: 44
+        :height: 44 px
         :target: http://www.fyslab.hut.fi
 .. |i7| image:: _static/logo-tree.png
-        :height: 44
+        :height: 44 px
 
 
 
@@ -73,3 +56,20 @@ features and the algorithms used <features_and_algorithms>`.
 * `Institute of Physics, Tampere University of Technology <http://www.tut.fi>`_
 * `Laboratory of Physics, Helsinki University of Technology <http://www.fyslab.hut.fi>`_
 
+News
+====
+
+*   GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
+
+*   CSC_ is organizing a `GPAW course`_: "Electronic structure calculations with GPAW". (Dec 11 2007).
+
+*   The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007).
+
+*   A GPAW Sprint will be held on November 16 in Lyngby (Okt 18 2007)
+
+*   Work on atomic basis-sets begun (Sep 25 2007)
+
+.. _numpy: http://www.scipy.org/NumPy
+.. _CSC: http://www.csc.fi
+.. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
+.. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
