@@ -39,7 +39,7 @@ def read_plt(filename):
             cell_c[c] = xe * n / (n - 1)
             origin_c[c] = x0
         else:
-            # non-peorigin_c[c] = 0.riodic -> first point not stored
+            # non-periodic -> first point not stored
             cell_c[c] = xe * (n + 1)/ n
             origin_c[c] = x0 - xe / n
 
