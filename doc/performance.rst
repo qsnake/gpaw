@@ -26,9 +26,8 @@ agreement.  The solids were: Na, Li, Si, C, SiC, AlP, MgO, NaCl, LiF, Cu
 and Pt (see the paper [Mor05b]_ for more details).
 
 
-The setups used for the test calculations can be found here_.
-
-.. _here: :ref:`setups`
+The setups used for the test calculations can be found on the
+:ref:`setups` page.
 
 
 Efficiency

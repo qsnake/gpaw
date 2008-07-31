@@ -2,10 +2,6 @@
 Grid-based projector-augmented wave method
 ==========================================
 
-
-GPAW
-====
-
 GPAW is a density-functional theory (DFT) Python_ code based on the
 projector-augmented wave (:ref:`PAW <literature>`) method.  It uses
 real-space uniform grids and multigrid methods.  Read more about :ref:`its
@@ -19,6 +15,7 @@ features and the algorithms used <features_and_algorithms>`.
 * Go to the ASE_ page.
 * Read the :ref:`literature` page.
 * Do the :ref:`exercises`.
+* Browse the complete :ref:`table of contents <toc>`.
 
 .. _ASE: https://web2.fysik.dtu.dk/ase/
 
@@ -59,6 +56,8 @@ features and the algorithms used <features_and_algorithms>`.
 News
 ====
 
+*   This site is now powered by Sphinx_ (Jul 31 2008).
+
 *   GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
 
 *   CSC_ is organizing a `GPAW course`_: "Electronic structure calculations with GPAW". (Dec 11 2007).
@@ -73,3 +72,4 @@ News
 .. _CSC: http://www.csc.fi
 .. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
+.. _Sphinx: http://sphinx.pocoo.org

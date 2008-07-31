@@ -19,7 +19,7 @@ it actually works.  One way to actually make it work is to make sure
 that every image is linked from an unreachable page in the source dir,
 but that is just blasphemous.  """
 
-from urllib import urlretrieve
+from urllib2 import urlopen, HTTPError
 import os
 
 srcpath = 'http://web2.fysik.dtu.dk//gpaw-files'
@@ -38,10 +38,19 @@ def get(path, names, target='_static'):#, target=None):
 
         if not os.path.isfile(dst):
             print dst,
-            urlretrieve(src, dst)
-            print 'OK'
-            got_something = True
+            try:
+                data = urlopen(src).read()
+                sink = open(dst, 'w')
+                sink.write(data)
+                sink.close()
+                print 'OK'
+                got_something = True                
+            except HTTPError:
+                print 'HTTP Error!'
     return got_something
+
+get('test', ['test.png'])
+
 
 literature = """
 askhl_10302_report.pdf  mortensen_gpaw-dev.pdf      rostgaard_master.pdf
