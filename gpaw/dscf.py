@@ -302,18 +302,14 @@ class MolecularOrbitals:
             assert(len(kpt.f_n) == len(Pabs_n))
 
             ft_m = npy.zeros(len(kpt.f_n), npy.complex)
+            nosf = 0
             for m in argsort[::-1]:
-                if self.hole:
-                    if Pabs_n[m] < kpt.f_n[m] / kpt.weight:
-                        ft_m[m] = npy.conjugate(Porb_n[m])
-                else:
-                    nosf = 0
-                    if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
-                        kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
-                        ft_m[m] = Porb_n[m]
-                        nosf += 1
-                    if nosf == self.nos:
-                        break
+                if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
+                    kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
+                    ft_m[m] = Porb_n[m]
+                    nosf += 1
+                if nosf == self.nos:
+                    break
 
             ft_m /= npy.sqrt(sum(abs(ft_m)**2))
 
@@ -369,8 +365,6 @@ class WaveFunction:
         self.Eend = Eend
         self.mol = molecule
         self.nos = no_of_states
-        if no_of_states < 0:
-            self.hole = True
 
     def get_ft_km(self, epsF):
 
@@ -427,21 +421,17 @@ class WaveFunction:
             else:
                 ft_m = npy.zeros(len(kpt.f_n), npy.complex)
 
+            nosf = 0
             for m in argsort[::-1]:
-                if self.hole:
-                    if Pabs_n[m] < kpt.f_n[m] / kpt.weight:
-                        ft_m[m] = npy.conjugate(Porb_n[m])
-                else:
-                    nosf = 0
-                    if (Pabs_n[m] > kpt.f_n[m] / kpt.weight and
-                        kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
-                        kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
-                        ft_m[m] = npy.conjugate(Porb_n[m])
+                if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
+                    kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
+                    ft_m[m] = Porb_n[m]
                     nosf += 1
-                    if nosf == self.nos:
-                        break
+                if nosf == self.nos:
+                    break
 
             ft_m /= npy.sqrt(sum(abs(ft_m)**2))
+            
             ft_km.append(ft_m)
             
         return ft_km
