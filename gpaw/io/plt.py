@@ -30,12 +30,18 @@ def read_plt(filename):
 
     cell_c = npy.zeros((3))
     origin_c = npy.zeros((3))
+    fmt='ff'
+    if byteswap: fmt='>ff'
     for c, n in enumerate(dim_c):
-        fmt='ff'
-        if byteswap: fmt='>ff'
         x0, xe  = unpack(fmt,f.read(calcsize(fmt)))
-        cell_c[c] = xe * n / (n - 1)
-        origin_c[c] = xe * n / (n - 1)
+        if n % 2 == 0:
+            # periodic -> all points stored
+            cell_c[c] = xe * n / (n - 1)
+            origin_c[c] = x0
+        else:
+            # non-peorigin_c[c] = 0.riodic -> first point not stored
+            cell_c[c] = xe * (n + 1)/ n
+            origin_c[c] = x0 - xe / n
 
     cell = npy.zeros((3,3))
     cell[0,0] = cell_c[2]
