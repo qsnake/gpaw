@@ -35,12 +35,12 @@ def fail(msg, filename='/dev/null'):
 
 tests = ''
 # For a quick test - uncomment this line:
-#tests = 'gradient.py hydrogen.py h2o-xas.py'
+#tests = 'gradient.py hydrogen.py'
 #tests = 'PBE.py Gauss.py parallel-restart.py parmigrate.py wannier-hwire.py'
 #tests = 'parmigrate.py'
 
-dir = tempfile.mkdtemp(prefix='gpaw-')
-os.chdir(dir)
+tmpdir = tempfile.mkdtemp(prefix='gpaw-')
+os.chdir(tmpdir)
 
 # Checkout a fresh version and install:
 if os.system('svn export ' +
@@ -50,7 +50,7 @@ if os.system('svn export ' +
              'https://svn.fysik.dtu.dk/projects/ase/trunk ase') != 0:
     fail('Checkout of ASE failed!')
 os.chdir('gpaw')
-if os.system('python setup.py install --home=%s' % dir) != 0:
+if os.system('python setup.py install --home=%s' % tmpdir) != 0:
     fail('Installation failed!')
 
 os.system('mv ../ase/ase ../lib/python')
@@ -60,8 +60,8 @@ os.system('wget --no-check-certificate ' +
 
 os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
-setups = dir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
-export = ('export PYTHONPATH=%s/lib/python; ' % dir +
+setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
+export = ('export PYTHONPATH=%s/lib/python; ' % tmpdir +
           'export GPAW_SETUP_PATH=%s; ' % setups)
 print export
 
@@ -86,8 +86,9 @@ else:
         if n > 2:
             subject += ', ...'
     send_email(subject, 'test.out')
-    
-out = open('/scratch/jensj/nightly-tests/test-results.txt', 'w')
+
+dir = '/scratch/jensj/nightly-test/'
+out = open(dir + 'test-results.txt', 'w')
 print >> out, """\
 .. contents::
 
@@ -101,54 +102,57 @@ for line in open('test.out'):
     print >> out, '  ', line,
 print >> out
 
-# PyLint:
-os.chdir('../../lib/python')
-os.system('rm -rf gpaw/gui')
-if os.system(export + 'pylint -f html gpaw; ' +
-             'cp pylint_global.html /home/camp/jensj/.gpaw/cron') != 0:
-    fail('PyLint failed!')
+if 0:
+    # PyLint:
+    os.chdir('../../lib/python')
+    os.system('rm -rf gpaw/gui')
+    if os.system(export + 'pylint -f html gpaw; ' +
+                 'cp pylint_global.html %s' % dir) != 0:
+        fail('PyLint failed!')
 
 # Generate tar-file:
 os.chdir('../../gpaw')
 if False:#ok:
     assert os.system('python setup.py sdist;' +
-                     'cp dist/*.tar.gz /home/camp/jensj/.gpaw/cron') == 0
+                     'cp dist/*.tar.gz ' + dir) == 0
 
-# Count number of lines:
-f = open('/home/camp/jensj/.gpaw/cron/pylint_global.html')
-code = 0
-docstring = 0
-comment = 0
-while True:
-    line = f.readline()
-    if line == '<td>code</td>\n':
-        code += int(f.readline()[4:].split('<')[0])
-    elif line == '<td>docstring</td>\n':
-        docstring += int(f.readline()[4:].split('<')[0])
-    elif line == '<td>comment</td>\n':
-        comment += int(f.readline()[4:].split('<')[0])
-        break
-    
-c = 0
-for name in (glob.glob('c/*.c') +
-             glob.glob('c/*.h') +
-             glob.glob('c/bmgs/*.c') +
-             glob.glob('c/bmgs/*.h')):
-        c += len(open(name).readlines())
+if 0:
+    # Count number of lines:
+    f = open(dir + 'pylint_global.html')
+    code = 0
+    docstring = 0
+    comment = 0
+    while True:
+        line = f.readline()
+        if line == '<td>code</td>\n':
+            code += int(f.readline()[4:].split('<')[0])
+        elif line == '<td>docstring</td>\n':
+            docstring += int(f.readline()[4:].split('<')[0])
+        elif line == '<td>comment</td>\n':
+            comment += int(f.readline()[4:].split('<')[0])
+            break
+
+def count(dir, pattern):
+    p = os.popen('wc -l `find %s -name %s` | tail -1' % (dir, pattern), 'r')
+    return int(p.read().split()[0])
+
+libxc = count('c/libxc', '\\*.[ch]')
+ch = count('c', '\\*.[ch]') - libxc
+py = count('gpaw', '\\*.py')
+test = count('test', '\\*.py')
 
 # Update the stat.dat file:
-f = open('/home/camp/jensj/.gpaw/cron/stat.dat', 'a')
-print >> f, pylab.epoch2num(time.time()), code, docstring, comment, c
+f = open(dir + 'stat.dat', 'a')
+print >> f, pylab.epoch2num(time.time()), libxc, ch, py, test
 f.close()
 
 # Construct the stat.png file:
-lines = open('/home/camp/jensj/.gpaw/cron/stat.dat').readlines()
-date, code, docstring, comment, c = zip(*[[float(x) for x in line.split()]
-                                          for line in lines[1:]])
+lines = open(dir + 'stat.dat').readlines()
+date, libxc, c, code, test = zip(*[[float(x) for x in line.split()]
+                                   for line in lines[1:]])
 date = pylab.array(date)
 code = pylab.array(code)
-docstring = pylab.array(docstring)
-comment = pylab.array(comment)
+test = pylab.array(test)
 c = pylab.array(c)
 
 def polygon(x, y1, y2, *args, **kwargs):
@@ -158,20 +162,18 @@ def polygon(x, y1, y2, *args, **kwargs):
 
 fig = pylab.figure()
 ax = fig.add_subplot(111)
-polygon(date, comment + docstring + code, comment + docstring + code +c,
+polygon(date, code + test, code + test + c,
         facecolor='r', label='C-code')
-polygon(date, comment + docstring, comment + docstring + code,
+polygon(date, code, code + test,
+        facecolor='y', label='Tests')
+polygon(date, [0] * len(date), code,
         facecolor='g', label='Python-code')
-polygon(date, comment, comment + docstring,
-        facecolor='m', label='Python-docstring')
-polygon(date, [0] * len(date), comment,
-        facecolor='y', label='Python-comment')
 polygon(date, [0] * len(date), [0] * len(date),
         facecolor='b', label='Fortran-code')
 
-months = pylab.dates.MonthLocator()
-months3 = pylab.dates.MonthLocator(interval=3)
-month_year_fmt = pylab.dates.DateFormatter("%b '%y")
+months = pylab.MonthLocator()
+months3 = pylab.MonthLocator(interval=3)
+month_year_fmt = pylab.DateFormatter("%b '%y")
 
 ax.xaxis.set_major_locator(months3)
 ax.xaxis.set_minor_locator(months)
@@ -181,9 +183,9 @@ pylab.setp(labels, rotation=30)
 pylab.axis('tight')
 pylab.legend(loc='upper left')
 pylab.title('Number of lines')
-pylab.savefig('/home/camp/jensj/.gpaw/cron/stat.png')
+pylab.savefig(dir + 'stat.png')
 
-f = open('/home/camp/jensj/.gpaw/cron/stat.txt', 'w')
+f = open(dir + 'stat.txt', 'w')
 print >> f, """\
 
 .. image:: stat.png
@@ -194,9 +196,9 @@ print >> f, """\
 # Coverage test:
 os.chdir('test')
 day = time.localtime()[6]
-if ok and day == 6:  # only Sunday
+if ok and day == 3:  # only Sunday
     if os.system(export +
-                 'rm /home/camp/jensj/.gpaw/cron/*.cover; ' +
+                 'rm %s/*.cover; ' % dir +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +
                  ' --count --coverdir coverage --missing' +
                  ' --ignore-dir /usr:%s test.py %s' % (home, tests)) != 0:
@@ -204,7 +206,7 @@ if ok and day == 6:  # only Sunday
     
     filenames = glob.glob('coverage/gpaw.*.cover')
 else:
-    filenames = glob.glob('/home/camp/jensj/.gpaw/cron/*.cover')
+    filenames = glob.glob(dir + '*.cover')
     
 names = []
 for filename in filenames:
@@ -215,8 +217,8 @@ for filename in filenames:
     if missing > 0:
         if filename.startswith('coverage/gpaw.'):
             name = filename[14:-6]
-            if os.system('cp %s /home/camp/jensj/.gpaw/cron/%s.cover' %
-                         (filename, name)) != 0:
+            if os.system('cp %s %s/%s.cover' %
+                         (filename, dir, name)) != 0:
                 fail('????')
         else:
             name = filename[28:-6]
@@ -255,11 +257,11 @@ os.system(export + 'cd ..; rm -rf gpaw/gui; '+
           '--name GPAW --url http://wiki.fysik.dtu.dk/gpaw ' +
           '--show-imports --no-frames -v gpaw ' +
           '>& warnings; ' +
-          'rm -rf /home/camp/jensj/.gpaw/cron/html; ' +
-          'cp -rp html /home/camp/jensj/.gpaw/cron')
+          'rm -rf %s/html; ' % dir +
+          'cp -rp html %s' % dir)
 
 if ' Warning:' in open('../warnings').read():
     send_jj_email('Warning(s) from epydoc!', '../warnings')
 
-#os.system('cd; rm -r ' + dir)
+#os.system('cd; rm -r ' + tmpdir)
 
