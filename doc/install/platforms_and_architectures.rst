@@ -605,11 +605,16 @@ Set these environment variables in the :file:`.softenvrc` file::
   LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/lib/bg
   LD_LIBRARY_PATH += /opt/ibmcmp/xlsmp/bg/1.7/bglib:/bgsys/drivers/ppcfloor/gnu-linux/lib
   PATH += ${HOME}/gpaw/tools:${HOME}/CamposASE2/tools:${HOME}/ase3k/tools
+  # to enable TAU profiling add also:
+  PYTHONPATH += /soft/apps/tau/tau_latest/bgp/lib/bindings-mpi-gnu-python-pdt
+  LD_LIBRARY_PATH += /soft/apps/tau/tau_latest/bgp/lib/bindings-mpi-gnu-python-pdt
+  TAU_THROTTLE = 1
 
 and do::
 
   resoft
 
+(to enable TAU profiling do also ``soft add +tau``),
 and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
 setup.py build_ext``) with this :file:`customize.py` file (comment out
 experimental ``scalapack`` and ``blacs`` features)::
@@ -656,19 +661,44 @@ experimental ``scalapack`` and ``blacs`` features)::
             ('GPAW_BGP', '1')
             ]
 
+  # uncomment the two following lines to enable TAU profiling
+  #tau_make = '/soft/apps/tau/tau_latest/bgp/lib/Makefile.tau-mpi-gnu-python-pdt'
+  #mpicompiler = 'tau_cc.sh -tau_options="-optShared -optVerbose" -tau_makefile='+tau_make
+
 Because of missing ``popen3`` function you need to remove all the
 contents of the :file:`gpaw/version.py` file after ``version =
 '0.4'``.  The same holds for :file:`ase/version.py` in the ase
 installation!  Suggestions how to skip the ``popen3`` testing in
 :file:`gpaw/version.py` on BGP are welcome!
 
-A gpaw script :file:`gpaw-script.py` can be submitted like this::
+A gpaw script ``CH4.py`` (fetch it from ``gpaw/test``) can be submitted like this::
 
-  qsub -n 64 -t 10 --mode smp --env \
+  qsub -n 2 -t 10 --mode vn --env \
        OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=$PYTHONPATH:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
-       /home/dulak/gpaw/build/bin.linux-ppc64-2.5/gpaw-python /home/dulak/gpaw-script.py
+       ${HOME}/gpaw/build/bin.linux-ppc64-2.5/gpaw-python ${HOME}/CH4.py
 
 Absolute paths are important!
+
+If you want to perform profiling with TAU submit the following wrapper instead::
+
+  import tau
+  from gpaw.mpi import rank
+
+  def OurMain():
+      import CH4;
+
+  tau.run('OurMain()')
+
+This TAU run will produce ``profile.*`` files that can be merged into
+the default TAU's ``ppk`` format using the command issued from the directory
+where the ``profile.*`` files reside::
+
+ paraprof --pack CH4.ppk
+
+The actual analysis can be made on a different machine, by transferring
+the ``CH4.ppk`` file from `surveyor`, installing TAU, and launching::
+
+ paraprof CH4.ppk
 
 It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.
