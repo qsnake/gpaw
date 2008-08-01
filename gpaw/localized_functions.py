@@ -490,6 +490,11 @@ class LocalizedFunctionsWrapper:
         assert I_ic.shape == (self.ni, 4)
         return self.lfs.normalize(I0, I_ic)
 
+    def get_functions(self):
+        """Return functions in ndarray."""
+        return self.get_functions()
+
+
 if debug:
     # Add type and sanity checks:
     LocalizedFunctions = LocalizedFunctionsWrapper

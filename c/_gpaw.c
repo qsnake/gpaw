@@ -1,4 +1,5 @@
 #include <Python.h>
+#define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
 #include <numpy/arrayobject.h>
 
 PyObject* gemm(PyObject *self, PyObject *args);
