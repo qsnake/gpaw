@@ -4,6 +4,8 @@
 Frequently Asked Questions
 ==========================
 
+.. contents::
+
 General
 =======
 
