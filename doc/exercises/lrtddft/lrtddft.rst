@@ -1,11 +1,12 @@
-.. _lrtddft_optical_spectra:
+.. _exercise_lrtddft:
 
 ==============================
 Calculation of optical spectra
 ==============================
 
-In this exercise we calculate optical spectrum of Na2 molecule using linear response time-dependent density functional
-theory. We start with a normal ground state calculation:
+In this exercise we calculate optical spectrum of Na2 molecule using
+linear response time-dependent density functional theory. We start
+with a normal ground state calculation:
 
 Linear response TDDFT needs unoccupied states, so we calculate 19 of
 them in addition to the one occupied state. Note that in realistic
@@ -55,7 +56,5 @@ Exercises
 
 3. Check how the results vary with the empty space around the molecule.
 
-4. Try to calculate optical spectrum also with the time-propagation_ approach and see how the results compare to 
-   linear response calculation.
+4. Try to calculate optical spectrum also with the :ref:`timepropagation` approach and see how the results compare to linear response calculation.
 
-.. _time-propagation: Exercises/tpTDDFT

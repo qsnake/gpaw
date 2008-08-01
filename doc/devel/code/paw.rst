@@ -1,3 +1,7 @@
+===
+PAW
+===
+
 The ``Paw`` object defined in ``paw.py`` is the central object for a
 calculation.  Instantiating such an object by hand is not recommended.
 Use the ``create_paw_object()`` helper-function instead (it will

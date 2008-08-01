@@ -33,8 +33,8 @@ specifics of the GPAW project can be seen on the :ref:`literature
 
 A comparison of the atomization energies of the g2-1 test-set calculated in VASP, Gaussian03, and GPAW is shown in the below two figures for the PBE and the PBE0 functional respectively.
 
-.. image:: ../_static/g2test_pbe.png
+.. image:: g2test_pbe.png
 
-.. image:: ../_static/g2test_pbe0.png
+.. image:: g2test_pbe0.png
 
 In the last figure, the curve marked ``GPAW (nonself.)`` is a non-selfconsistent PBE0 calculation using self-consistent PBE orbitals.

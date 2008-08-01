@@ -9,14 +9,22 @@ Ubuntu
 
 Install these packages:
 
-* python-numeric
-* python-numeric-ext
 * python-dev
 * lapack3
 * lapack3-dev
 * refblas3
 * refblas3-dev
 * build-essential
+
+If using GPAW 0.3, then:
+
+* python-numeric
+* python-numeric-ext
+
+Else, if using trunk:
+
+* python-numpy
+* python-numpy-ext
 
 Optional:
 
@@ -34,15 +42,15 @@ The Monolith_ machine is a cluster of 2.4Ghz Xeon processors with 2GB of
 memory.  The ScaMPI implementation of MPI has a problem, but we can
 use MPICH.
 
-.. _Monolith: http://www.nsc.liu.se/systems/monolith
+.. _Monolith: http://www.nsc.liu.se/systems/retiredsystems/monolith/
 
-Add these two line to the ``.modules`` file::
+Add these two line to the :file:`.modules` file::
 
   python/2.3.3
   mkl/9.0p18
 
 The Numeric Python module on the system is way too old, so we build
-our own version with this ``customize.py`` file::
+our own version with this :file:`customize.py` file::
 
   use_system_lapack = 1
   mkl = '/usr/local/intel/ict/l_ict_p_3.0.023/cmkl/9.0'
@@ -52,14 +60,14 @@ our own version with this ``customize.py`` file::
   dotblas_include_dirs = [mkl + '/include']
   dotblas_cblas_header = '<mkl_cblas.h>'
 
-Set these environment variables in the ``.bashrc`` file::
+Set these environment variables in the :file:`.bashrc` file::
 
   export PYTHONPATH=$HOME/campos-ase-2.3.4:$HOME/gpaw:$HOME/lib/python/Numeric
   export GPAW_SETUP_PATH=$HOME/setups
   export LD_LIBRARY_PATH=$MKL_ROOT
 
 and build GPAW (``python setup.py build_ext``) with this
-``customize.py`` file::
+:file:`customize.py` file::
 
   extra_compile_args += ['-w1']
   mpicompiler = 'icc -Nmpich'
@@ -71,7 +79,7 @@ Jobs can be submitted like this::
   qsub -l nodes=2:ppn=2 -A <account> -l walltime=2:00:00 \
        -m abe run.sh
 
-where ``run.sh`` looks like this::
+where :file:`run.sh` looks like this::
 
   cd $PBS_O_WORKDIR
   mpirun $HOME/gpaw/build/bin.linux-i686-2.3/gpaw-python gpaw-script.py
@@ -80,16 +88,17 @@ where ``run.sh`` looks like this::
 Linux cluster Carbon at CNM
 ===========================
 
-The Carbon machine is a cluster of dual socket, quad-core Intel Xeon 5355 CPUs, 2.66 GHz
-processors with 2 GB of memory per core.
+The Carbon machine is a cluster of dual socket, quad-core Intel Xeon
+5355 CPUs, 2.66 GHz processors with 2 GB of memory per core.
 
-To build (``python setup.py install --home=~/numpy-1.0.4-1``) numpy-1.0.4 add these lines to ``site.cfg``::
+To build (``python setup.py install --home=~/numpy-1.0.4-1``)
+numpy-1.0.4 add these lines to :file:`site.cfg`::
 
   [DEFAULT]
   library_dirs = /usr/local/lib:/opt/intel/mkl/10.0.2.018/lib/em64t
   include_dirs = /usr/local/include:/opt/intel/mkl/10.0.2.018/include
 
-and, in ``numpy/distutils/system_info.py`` change the line::
+and, in :file:`numpy/distutils/system_info.py` change the line::
 
   _lib_mkl = ['mkl','vml','guide']
 
@@ -105,7 +114,7 @@ into::
 
   lapack_libs = self.get_libs('lapack_libs',['mkl_lapack'])
 
-Set these environment variables in the ``.bashrc`` file::
+Set these environment variables in the :file:`.bashrc` file::
 
   export OMPI_CC=gcc
   export OMP_NUM_THREADS=1
@@ -123,7 +132,7 @@ Set these environment variables in the ``.bashrc`` file::
   fi
 
 and build GPAW (``python setup.py build_ext``) with this
-``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
+:file:`customize.py` file (comment out experimental ``scalapack`` and ``blacs`` features)::
 
   extra_compile_args += [
       '-O3'
@@ -151,22 +160,24 @@ and build GPAW (``python setup.py build_ext``) with this
     '/usr/lib64/openmpi'
     ]
 
-A gpaw script ``gpaw-script.py`` can be submitted like this::
+A gpaw script :file:`gpaw-script.py` can be submitted like this::
 
   qsub -l nodes=1:ppn=8 -l walltime=02:00:00 \
        -m abe run.sh
 
-where ``run.sh`` looks like this::
+where :file:`run.sh` looks like this::
 
   cd $PBS_O_WORKDIR
   mpirun -machinefile $PBS_NODEFILE -np 8 -mca btl openib -mca btl_openib_retry_count 14 -x OMP_NUM_THREADS \
          $HOME/gpaw/build/bin.linux-x86_64-2.4/gpaw-python gpaw-script.py
 
-Please make sure that your jobs do not run multi-threaded, e.g. for a job running on ``n090`` do from a login node::
+Please make sure that your jobs do not run multi-threaded, e.g. for a
+job running on ``n090`` do from a login node::
 
   ssh n090 ps -fL
 
-you should see **1** in the **NLWP** column. Numbers higher then **1** mean multi-threaded job.
+you should see **1** in the **NLWP** column. Numbers higher then **1**
+mean multi-threaded job.
 
 It's convenient to customize as described on the :ref:`parallel_runs` page.
 
@@ -177,7 +188,7 @@ Linux cluster davinci.ssci.liv.ac.uk
 The machine is a cluster of dual-core Intel Xeon CPUs, 3.2 GHz
 processors with 2 GB of memory per core.
 
-To build (``python setup.py install --home=~/numpy-1.1.0-1``) numpy-1.1.0 add this line to ``site.cfg``::
+To build (``python setup.py install --home=~/numpy-1.1.0-1``) numpy-1.1.0 add this line to :file:`site.cfg`::
 
   [DEFAULT]
   library_dirs = /usr/local/Cluster-Apps/intel_mkl_7.0.1.006/mkl701/lib/32
@@ -205,11 +216,11 @@ and build GPAW (``PYTHONPATH=${HOME}/dulak/numpy-1.1.0-1/usr/local/lib/python2.5
     home+'numpy-1.1.0-1/usr/local/lib/python2.5/site-packages/numpy/core/include'
     ]
 
-A gpaw script ``test/CH4.py`` can be submitted like this::
+A gpaw script :file:`test/CH4.py` can be submitted like this::
 
   qsub submit.sh
 
-where ``submit.sh`` looks like this::
+where :file:`submit.sh` looks like this::
 
   #!/bin/bash
   #
@@ -302,17 +313,19 @@ where ``submit.sh`` looks like this::
   echo Total run time : $hours Hours $minutes Minutes $seconds Seconds
   echo ========================================================= 
 
-It's convenient to customize as in ``gpaw-qsub.py`` which can be
+It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at :ref:`parallel_runs`
 
 
 Linux cluster Niflheim - Infiniband nodes
 =========================================
 
-A subset of the Niflheim's nodes is equipped with Infiniband network `<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_.
+A subset of the Niflheim's nodes is equipped with Infiniband network
+`<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_.
 
-On the login node ``slid`` build GPAW (``python setup.py build_ext``) with gcc compiler using
-the following ``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
+On the login node ``slid`` build GPAW (``python setup.py build_ext``)
+with gcc compiler using the following :file:`customize.py` file
+(comment out experimental ``scalapack`` and ``blacs`` features)::
 
   extra_link_args += ['-cc=gcc']
   extra_compile_args += [
@@ -364,9 +377,10 @@ the following ``customize.py`` file (comment out experimental ``scalapack`` and 
 
   mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc'
 
-You can alternatively build on ``slid`` build GPAW (``python setup.py build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
-compiler using
-the following ``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
+You can alternatively build on ``slid`` build GPAW (``python setup.py
+build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
+compiler using the following :file:`customize.py` file (comment out
+experimental ``scalapack`` and ``blacs`` features)::
 
   libraries = [
     'pathfortran',
@@ -399,12 +413,12 @@ the following ``customize.py`` file (comment out experimental ``scalapack`` and 
 
   mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc -Ofast'
 
-A gpaw script ``gpaw-script.py`` can be submitted like this::
+A gpaw script :file:`gpaw-script.py` can be submitted like this::
 
   qsub -l nodes=1:ppn=4:infiniband -l walltime=02:00:00 \
        -m abe run.sh
 
-where ``run.sh`` for gcc version looks like this::
+where :file:`run.sh` for gcc version looks like this::
 
   cd $PBS_O_WORKDIR
   export LD_LIBRARY_PATH=/opt/pathscale/lib/2.5
@@ -430,7 +444,7 @@ Please make sure that the threads use 100% of CPU, e.g. for a job running on ``p
 
 Numbers higher then **1** in the **NLWP** column mean multi-threaded job.
 
-It's convenient to customize as in ``gpaw-qsub.py`` which can be
+It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.
 
 
@@ -449,7 +463,7 @@ Submit jobs like this::
 bohr.gbar.dtu.dk
 ----------------
 
-Follow instructions from `<http://www.gbar.dtu.dk/index.php/GridEngine>`_ to create `~/.grouprc`.
+Follow instructions from `<http://www.gbar.dtu.dk/index.php/GridEngine>`_ to create :file:`~/.grouprc`.
 
 Download `MPIscript.sh <http://www.hpc.dtu.dk/GridEngine/MPIscript.sh>`_ and edit it, so it resembles::
 
@@ -492,9 +506,10 @@ IBM
 jump.fz-juelich.de
 ------------------
 
-The only way we found to compile numpy is using python2.3 and numpy-1.0.4. The next version numpy-1.1.0 
-did not work unfortunately. In addition the usage of the generic IBM lapack/blas in numpy does not work,
-hence one has to use site.cfg::
+The only way we found to compile numpy is using python2.3 and
+numpy-1.0.4. The next version numpy-1.1.0 did not work
+unfortunately. In addition the usage of the generic IBM lapack/blas in
+numpy does not work, hence one has to use site.cfg::
 
   : diff site.cfg site.cfg.example
   58,60c58,60
@@ -506,7 +521,8 @@ hence one has to use site.cfg::
   > #library_dirs = /usr/local/lib
   > #include_dirs = /usr/local/include
 
-With his change numpy compiles and the installation of ASE and gpaw does not cause problems.
+With his change numpy compiles and the installation of ASE and gpaw
+does not cause problems.
 
 seaborg.nersc.gov
 -----------------
@@ -530,16 +546,13 @@ install it.  Get the Numeric-24.2_ and do this::
   $ cd Numeric-24.2
   $ python setup.py install --home=$HOME
 
-and put the ``$HOME/lib/python/Numeric`` directory in your
-``$PYTHONPATH``.
+and put the :file:`$HOME/lib/python/Numeric` directory in your
+:envvar:`$PYTHONPATH`.
 
-Now we are ready to `compile GPAW`_.
-
+Now we are ready to :ref:`compile GPAW <installationguide>`
 
 .. _Numeric-24.2: http://downloads.sourceforge.net/numpy/Numeric-24.2.tar.gz
 .. _numpy-1.0.4: http://downloads.sourceforge.net/numpy/numpy-1.0.4.tar.gz
-.. _compile GPAW: :ref:`compile GPAW <installationguide>`
-
 
 ibmsc.csc.fi
 ------------
@@ -581,7 +594,7 @@ get and numpy-1.0.4_ and do this::
   $ c="\"mpicc\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-Set these environment variables in the ``.softenvrc`` file::
+Set these environment variables in the :file:`.softenvrc` file::
 
   PYTHONPATH = ${HOME}/Numeric-24.2-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/Numeric
   PYTHONPATH += ${HOME}/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
@@ -597,8 +610,9 @@ and do::
 
   resoft
 
-and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py build_ext``) with this
-``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
+and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
+setup.py build_ext``) with this :file:`customize.py` file (comment out
+experimental ``scalapack`` and ``blacs`` features)::
 
   extra_compile_args += [
       '-O3'
@@ -642,11 +656,13 @@ and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py build_ex
             ('GPAW_BGP', '1')
             ]
 
-Because of missing ``popen3`` function you need to remove all the contents of the ``gpaw/version.py`` file after ``version = '0.4'``.
-The same holds for ``ase/version.py`` in the ase installation!
-Suggestions how to skip the ``popen3`` testing in ``gpaw/version.py`` on BGP are welcome!
+Because of missing ``popen3`` function you need to remove all the
+contents of the :file:`gpaw/version.py` file after ``version =
+'0.4'``.  The same holds for :file:`ase/version.py` in the ase
+installation!  Suggestions how to skip the ``popen3`` testing in
+:file:`gpaw/version.py` on BGP are welcome!
 
-A gpaw script ``gpaw-script.py`` can be submitted like this::
+A gpaw script :file:`gpaw-script.py` can be submitted like this::
 
   qsub -n 64 -t 10 --mode smp --env \
        OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=$PYTHONPATH:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
@@ -654,25 +670,30 @@ A gpaw script ``gpaw-script.py`` can be submitted like this::
 
 Absolute paths are important!
 
-It's convenient to customize as in ``gpaw-qsub.py`` which can be
+It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.
 
 
 bcssh.rochester.ibm.com
 -----------------------
 
-Instructions below are valid for ``frontend-13`` and the filesystem ``/gpfs/fs2/frontend-13``.
+Instructions below are valid for ``frontend-13`` and the filesystem
+:file:`/gpfs/fs2/frontend-13`.
 
-The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
+The latest version of gpaw uses numpy
+`<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-To build an optimized? (this does not work completely, see problems below) numpy,
-save the numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran_ patch file 
-(modifications required to get powerpc-bgp-linux-gfortran instead of gfortran compiler),
-the numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg_ patch file (lapack section configured to use ``lapack_bgp``
-and blas section to use ``esslbg``, the numpy-1.0.4-site.cfg.lapack_bgp_esslbg_ file
-(contains paths to ``lapack_bgp``, ``esslbg`` and xlf* related libraries).
-**Note** that ``lapack_bgp`` is not available on ``frontend-13``, use a personal of somebody else's version!
-Get numpy-1.0.4_ and do this::
+To build an optimized? (this does not work completely, see problems
+below) numpy, save the
+numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran_ patch file
+(modifications required to get powerpc-bgp-linux-gfortran instead of
+gfortran compiler), the
+numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg_ patch file (lapack
+section configured to use ``lapack_bgp`` and blas section to use
+``esslbg``, the numpy-1.0.4-site.cfg.lapack_bgp_esslbg_ file (contains
+paths to ``lapack_bgp``, ``esslbg`` and xlf* related libraries).
+**Note** that ``lapack_bgp`` is not available on ``frontend-13``, use
+a personal of somebody else's version!  Get numpy-1.0.4_ and do this::
 
   $ gunzip -c numpy-1.0.4.tar.gz | tar xf -
   $ mv numpy-1.0.4 numpy-1.0.4.optimized; cd numpy-1.0.4.optimized
@@ -686,10 +707,12 @@ Get numpy-1.0.4_ and do this::
   $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -DNO_APPEND_FORTRAN\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-Numpy built in this way does not build the ``$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so``
-(numpy requires cblas for this),
-and running the following python script (save it as ``/gpfs/fs2/frontend-13/$USER/dot.py``)
-for the optimized and standard versions of numpy show the same time (~ 329 sec) for ``numpy.dot`` operation::
+Numpy built in this way does not build the
+:file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
+(numpy requires cblas for this), and running the following python
+script (save it as :file:`/gpfs/fs2/frontend-13/$USER/dot.py`) for the
+optimized and standard versions of numpy show the same time (~ 329
+sec) for ``numpy.dot`` operation::
 
   import numpy
   print numpy.__file__
@@ -710,8 +733,9 @@ for the optimized and standard versions of numpy show the same time (~ 329 sec) 
   #Numeric.dot(Num, Num)
   #print 'Numeric', time()-t
 
-Use the following command to submit this job ``cd /gpfs/fs2/frontend-13/$USER; llsubmit numpy.llrun``,
-with the following ``numpy.llrun`` file::
+Use the following command to submit this job ``cd
+/gpfs/fs2/frontend-13/$USER; llsubmit numpy.llrun``, with the
+following :file:`numpy.llrun` file::
 
   #!/bin/bash
 
@@ -772,11 +796,16 @@ Here is how you build the standard numpy::
   $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-Suggestions how to build numpy using an optimized blas (preferably essl) are welcome!
+Suggestions on how to build numpy using an optimized blas (preferably
+essl) are welcome!
 
-Build GPAW (``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in **/gpfs/fs2/frontend-13/$USER/gpaw**
-(you need to install the ase also somewhere below **/gpfs/fs2/frontend-13/$USER**!)
-with this ``customize.py`` file (comment out experimental ``scalapack`` and ``blacs`` features)::
+Build GPAW
+(``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
+:file:`/gpfs/fs2/frontend-13/$USER/gpaw` (you need to install the ase
+also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
+:file:`customize.py` file (comment out experimental ``scalapack`` and
+``blacs`` features)::
 
   extra_compile_args += [
       '-DNDEBUG',
@@ -825,19 +854,22 @@ with this ``customize.py`` file (comment out experimental ``scalapack`` and ``bl
             ('GPAW_BGP', '1')
             ]
 
-Because of missing ``popen3`` function you need to remove all the contents of the ``gpaw/version.py`` file after ``version = '0.4'``.
-The same holds for ``ase/version.py`` in the ase installation!
-Suggestions how to skip the ``popen3`` testing in ``gpaw/version.py`` on BGP are welcome!
+Because of missing ``popen3`` function you need to remove all the
+contents of the :file:`gpaw/version.py` file after ``version =
+'0.4'``.  The same holds for :file:`ase/version.py` in the ase
+installation!  Suggestions how to skip the ``popen3`` testing in
+:file:`gpaw/version.py` on BGP are welcome!
 
-Note that only files located below **/gpfs/fs2/frontend-13** are accesible to the compute nodes (even python scripts!).
-A gpaw script ``/gpfs/fs2/frontend-13/$USER/gpaw/test/CH4.py`` can be submitted
-to 32 CPUs in the single mode (SMP) for 30 minutes
-using `LoadLeveler <http://www.fz-juelich.de/jsc/ibm-bgl/usage/loadl/>`_ like this::
+Note that only files located below :file:`/gpfs/fs2/frontend-13` are
+accesible to the compute nodes (even python scripts!).  A gpaw script
+:file:`/gpfs/fs2/frontend-13/$USER/gpaw/test/CH4.py` can be submitted to
+32 CPUs in the single mode (SMP) for 30 minutes using `LoadLeveler
+<http://www.fz-juelich.de/jsc/ibm-bgl/usage/loadl/>`_ like this::
 
   cd /gpfs/fs2/frontend-13/$USER
   llsubmit gpaw-script.llrun
 
-where ``gpaw-script.llrun`` looks like this::
+where :file:`gpaw-script.llrun` looks like this::
 
   #!/bin/bash
 
@@ -891,7 +923,7 @@ where ``gpaw-script.llrun`` looks like this::
 
 Absolute paths are important!
 
-It's convenient to customize as in ``gpaw-qsub.py`` which can be
+It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.
 
 
@@ -901,7 +933,8 @@ HP
 sepeli.csc.fi
 -------------
 
-The installed subversion in sepeli does not support https-protocol, so one should use a tar file.
+The installed subversion in sepeli does not support https-protocol, so
+one should use a tar file.
 
 Compile like this::
 
@@ -925,8 +958,10 @@ On runtime you need the following::
 
 .. Note::
 
-   The compute nodes have different filesystem than the front end node. Especially, $HOME and $METAWRK are 
-   mounted only on the frontend, so one should place gpaw on $WRKDIR
+   The compute nodes have different filesystem than the front end
+   node. Especially, :envvar:`$HOME` and :envvar:`$METAWRK` are
+   mounted only on the frontend, so one should place gpaw on 
+   :envvar:`$WRKDIR`
 
 A sample job script with mvapich (Infiniband) MPI::
 
@@ -938,7 +973,9 @@ A sample job script with mvapich (Infiniband) MPI::
    setenv PATH "$PATH":/path_to_gpaw-python/
    mpirun -np 8 gpaw-python input.py
 
-In order to use a preinstalled version of gpaw one give the command ``use gpaw`` which sets all the correct environment variables (PYTHONPATH, GPAW_SETUP_PATH, ...)
+In order to use a preinstalled version of gpaw one give the command
+``use gpaw`` which sets all the correct environment variables
+(:envvar:`PYTHONPATH`, :envvar:`GPAW_SETUP_PATH`, ...)
 
 murska.csc.fi
 -------------
@@ -948,11 +985,11 @@ We want to use python2.4 and gcc compiler::
   > module load python
   > module swap PrgEnv-pgi  PrgEnv-gnu
 
-and use this customize.py::
+and use this :file:`customize.py`::
 
   libraries = ['acml', 'gfortran']
 
-Then, `compile GPAW`_.
+Then, :ref:`compile GPAW <installationguide>`.
 
 A sample job script::
 
@@ -968,11 +1005,14 @@ A sample job script::
   setenv PYTHONPATH ...
   mpirun -srun gpaw-python input.py
 
-Murska uses LSF-HPC batch system where jobs are submitted as (note the stdin redirection)::
+Murska uses LSF-HPC batch system where jobs are submitted as (note the
+stdin redirection)::
 
   > bsub < input.py
 
-In order to use a preinstalled version of gpaw one give the command ``module load gpaw`` which sets all the correct environment variables (PYTHONPATH, GPAW_SETUP_PATH, ...)
+In order to use a preinstalled version of gpaw one give the command
+``module load gpaw`` which sets all the correct environment variables
+(:envvar:`PYTHONPATH`, :envvar:`GPAW_SETUP_PATH`, ...)
 
 SGI
 ===
@@ -980,14 +1020,15 @@ SGI
 batman.chem.jyu.fi
 ------------------
 
-To prepare the compilation, we need to load the required modules and clean the environment::
+To prepare the compilation, we need to load the required modules and
+clean the environment::
 
  > module purge # remove all modules
  > module add mpt
  > module add mkl
  > unset CC CFLAGS LDFLAGS
 
-We have to change customize.py to get the libs and the right compiler::
+We have to change :file:`customize.py` to get the libs and the right compiler::
 
  # uncomment and change in customize.py
  libraries += ['mpi','mkl']
@@ -995,7 +1036,8 @@ We have to change customize.py to get the libs and the right compiler::
  mpicompiler = 'gcc'
  custom_interpreter = True
 
-Then compile as usual (python setup.py build). This will build the custom python interpreter for parallel use also.
+Then compile as usual (``python setup.py build``). This will build the
+custom python interpreter for parallel use also.
 
 Cray XT4
 ========
@@ -1003,12 +1045,24 @@ Cray XT4
 louhi.csc.fi
 ------------
 
-The current operating system in Cray XT4 compute nodes, Compute Linux Environment (CLE) has some limitations, most notably it does not support shared libraries. In order to use python in CLE some modifications to the standard python are needed. Before installing a special python, there are two packages which are needed by GPAW, but which are not included in the python distribution. Installation of expat_ and zlib_ should succee with a standard ``./configure; make; make install;`` procedure.
+The current operating system in Cray XT4 compute nodes, Compute Linux
+Environment (CLE) has some limitations, most notably it does not
+support shared libraries. In order to use python in CLE some
+modifications to the standard python are needed. Before installing a
+special python, there are two packages which are needed by GPAW, but
+which are not included in the python distribution. Installation of
+expat_ and zlib_ should succee with a standard ``./configure; make;
+make install;`` procedure.
 
 .. _expat: http://expat.sourceforge.net/
 .. _zlib: http://www.zlib.net/  
 
-Next, one can proceed with the actual python installation. The following instructions are tested with python 2.5.1, and it is assumed that one is working in the top level of python source directory. First, one should create a special dynamic loader for correct resolution of namespaces. Create a file ``dynload_redstorm.c`` in the ``Python/`` directory::
+Next, one can proceed with the actual python installation. The
+following instructions are tested with python 2.5.1, and it is assumed
+that one is working in the top level of python source
+directory. First, one should create a special dynamic loader for
+correct resolution of namespaces. Create a file :file:`dynload_redstorm.c`
+in the :file:`Python/` directory::
 
   /* This module provides the simulation of dynamic loading in Red Storm */
 
@@ -1033,16 +1087,24 @@ Next, one can proceed with the actual python installation. The following instruc
 
 dynload_redstorm.c_
 
-Then, one should remove ``sharemods`` from ``all:`` target in ``Makefile.pre.in`` and set the correct C compiler and flags, e.g.::
+Then, one should remove ``sharemods`` from ``all:`` target in
+:file:`Makefile.pre.in` and set the correct C compiler and flags,
+e.g.::
 
  setenv CC cc
  setenv OPT '-fastsse'
 
-You should be now ready to run ``configure``::
+You should be now ready to run :file:`configure`::
 
   ./configure --prefix=<install_path> SO=.a DYNLOADFILE=dynload_redstorm.o MACHDEP=redstorm --host=x86_64-unknown-linux-gnu --disable-sockets --disable-ssl --enable-static --disable-shared --without-threads
 
-Now, one should specify which modules will be statically linked in to the python interpreter by editing ``Modules/Setup``. An example can be loaded here. Setup_. Note that at this point all numpy related stuff in the example should be commented out. Finally, in order to use ``distutils`` for building extensions the following function should be added to the end of ``Lib/distutils/unixccompiler.py`` so that instead of shared libraries static ones are created::
+Now, one should specify which modules will be statically linked in to
+the python interpreter by editing :file:`Modules/Setup`. An example can be
+loaded here. Setup_. Note that at this point all numpy related stuff
+in the example should be commented out. Finally, in order to use
+``distutils`` for building extensions the following function should be
+added to the end of :file:`Lib/distutils/unixccompiler.py` so that instead
+of shared libraries static ones are created::
 
     def link_shared_object (self,
                          objects,
@@ -1079,24 +1141,34 @@ Now, one should specify which modules will be statically linked in to the python
 
 unixccompiler.py_
 
-You should be now ready to run ``make`` and ``make install`` and have a working python interpreter.
+You should be now ready to run ``make`` and ``make install`` and have
+a working python interpreter.
 
-Next, one can use the newly created interpreter for installing ``numpy``. Switch to the ``numpy`` source directory
-and install it normally::
+Next, one can use the newly created interpreter for installing
+``numpy``. Switch to the ``numpy`` source directory and install it
+normally::
 
   <your_new_python> setup.py install >& install.log
 
-The C-extensions of numpy have to be still added to the python interpreter. Grep ``install.log``::
+The C-extensions of numpy have to be still added to the python
+interpreter. Grep :file:`install.log`::
 
   grep 'Append to Setup' install.log
 
-and add the correct lines to the ``Modules/Setup`` in the python source tree. Switch to the python source directory and run ``make`` and ``make install`` again to get interpreter with builtin numpy.
+and add the correct lines to the :file:`Modules/Setup` in the python
+source tree. Switch to the python source directory and run ``make``
+and ``make install`` again to get interpreter with builtin numpy.
 
-Final step is naturaly to compile GPAW. Only thing is to specify ``numpy``, ``expat`` and ``zlib`` libraries in ``customize.py`` then `compile GPAW`_ as usual. Here is an example of ``customize.py``, modify according your own directory structures:
+Final step is naturaly to compile GPAW. Only thing is to specify
+``numpy``, ``expat`` and ``zlib`` libraries in :file:`customize.py`
+then `compile GPAW <installationguide>` as usual. Here is an example
+of :file:`customize.py`, modify according your own directory
+structures:
 
 .. literalinclude:: customize.py
 
-Now you should be ready for massively parallel calculations, a sample job file would be::
+Now you should be ready for massively parallel calculations, a sample
+job file would be::
 
   #!/bin/csh
   #
@@ -1110,7 +1182,9 @@ Now you should be ready for massively parallel calculations, a sample job file w
 
   aprun -n 512 /path_to_gpaw_bin/gpaw-python input.py
 
-In order to use a preinstalled version of gpaw one can give the command ``module load gpaw`` which sets all the correct environment variables (PYTHONPATH, GPAW_SETUP_PATH, ...)
+In order to use a preinstalled version of gpaw one can give the
+command ``module load gpaw`` which sets all the correct environment
+variables (:envvar:`PYTHONPATH`, :envvar:`GPAW_SETUP_PATH`, ...)
 
 .. _numpy-1.0.4-gnu.py.patch: ../_static/numpy-1.0.4-gnu.py.patch
 .. _numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran: ../_static/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran

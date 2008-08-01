@@ -12,13 +12,13 @@ Introduction
 ------------
 
 GPAW calculations are controlled through scripts written in the
-programming language Python_.  GPAW relies on the `Atomic
-Simulation Environment`_ (ASE), which is a Python package, that helps
+programming language Python_.  GPAW relies on the :ase:`Atomic
+Simulation Environment <>` (ASE), which is a Python package that helps
 us describe our atoms.  The ASE package also
 handles molecular dynamics, analysis, visualization, geometry
 optimization and more.  If you don't know anything about ASE, then it
 might be a good idea to familiarize yourself with it before continuing
-(at least read the `ASE introduction`_).  
+(at least read the :ase:`ASE introduction <intro.html>`).
 
 Below, there will be Python code examples starting with ``>>>`` (and
 ``...`` for continuation lines).  It is a good idea to start the
@@ -27,10 +27,6 @@ Python interpreter and try some of the examples below.
 XXX Ase links
 
 .. _Python: http://www.python.org
-.. _ASE:
-.. _Atomic Simulation Environment: http://www.fysik.dtu.dk/campos/ASE
-.. _ASE introduction: http://www.fysik.dtu.dk/campos/ASE/intro.html
-.. _Atoms: http://www.fysik.dtu.dk/campos/ASE/manual/manual.html#listofatoms
 
 
 
@@ -39,7 +35,8 @@ Doing a PAW calculation
 -----------------------
 
 To do a PAW calculation with the GPAW code, you need an ASE
-Atoms_ and a GPAW Calculator::
+:ase:`Atoms <ase/atoms.html>` and a GPAW
+:class:`gpaw.aseinterface.Calculator`::
 
    _____________          ____________
   |             |        |            |
@@ -75,9 +72,9 @@ boundary conditions.  The parameters for the PAW calculation are:
 * Text output from the program is dumped directly to standard output.
 
 The values of these parameters can be found in the text output file:
-``h2.txt``.
+:file:`h2.txt`.
 
-The calculator will try to make sensible choises for all parameters
+The calculator will try to make sensible choices for all parameters
 that the user does not specify.  Specifying parameters can be done
 like this:
 
@@ -129,11 +126,11 @@ keyword          type       default value        description
 .. note:: 
    
    Parameters can be changed after the calculator has been constructed
-   by using the ``set`` method:
+   by using the :meth:`gpaw.paw.set` method:
 
    >>> calc.set(txt='H2.txt', charge=1)
 
-   This would send all output to a file named ``'H2.txt'``, and the
+   This would send all output to a file named :file:`'H2.txt'`, and the
    calculation will be done with one electron removed.
 
 
@@ -178,7 +175,7 @@ Exchange-Correlation functional
 
 The exchange-correlation functional can be one of (only the most
 common are listed here, for the complete list see
-``gpaw/libxc_functionals.py``):
+:file:`gpaw/libxc_functionals.py`):
 
 ============  =================== ===========================  ==========
 ``xc``        libxc_ keyword      description                  reference 
@@ -193,9 +190,9 @@ common are listed here, for the complete list see
 generalized gradient approximation (GGA) type.
 
 The functionals from libxc_ are used by default - keywords are based
-on the ``gpaw/libxc_functionals.py`` file.  Custom combinations of
+on the :file:`gpaw/libxc_functionals.py` file.  Custom combinations of
 exchange and correlation functionals are allowed, the exchange and
-correlation strings from the ``gpaw/libxc_functionals.py`` file need
+correlation strings from the :file:`gpaw/libxc_functionals.py` file need
 to be stripped off the ``'XC_LDA'`` or ``'XC_GGA'`` prefix and
 combined using the dash (-); e.g. to use "the" LDA approximation (most
 common) in chemistry specify ``'X-C_VWN'``.
@@ -215,7 +212,7 @@ Brillouin-zone sampling
 The default sampling of the Brillouin-zone is with only the
 `\Gamma`-point.  This allows us to choose the wave functions to be real.
 Monkhorst-Pack sampling can be used if required: ``kpts=(n1, n2,
-n3)``, where ``n1``, ``n2`` and ``n3`` are positive ``int``'s.  This
+n3)``, where ``n1``, ``n2`` and ``n3`` are positive ``int``s.  This
 will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
 ``n2`` `\times` ``n3`` **k**-points.
 
@@ -228,14 +225,14 @@ Number of grid points
 
 The number of grid points to use for the grid representation of the
 wave functions determines the quality of the calculation.  More
-gridpoints (smaller grid spacing, *h*), gives better convergence
-of the total energy.  For most elements, *h* should be 0.2 Å for
+gridpoints (smaller grid spacing, *h*), gives better convergence of
+the total energy.  For most elements, *h* should be 0.2 Å for
 reasonable convergence of total energies.  If a ``n1`` `\times` ``n2``
 `\times` ``n3`` grid is desired, use ``gpts=(n1, n2, n3)``, where
-``n1``, ``n2`` and ``n3`` are positive ``int``'s all divisible by
-four.  Alternatively, one can use something like ``h=0.25``, and the program will try
-to choose a number of grid points that gives approximately the desired
-grid spacing.  For more details, see :ref:`grids`.
+``n1``, ``n2`` and ``n3`` are positive ``int``s all divisible by four.
+Alternatively, one can use something like ``h=0.25``, and the program
+will try to choose a number of grid points that gives approximately
+the desired grid spacing.  For more details, see :ref:`grids`.
 
 
 
@@ -258,11 +255,11 @@ occupation numbers:
 
 .. math::  f(E) = \frac{1}{1 + \exp[E / (k_B T)]}
 
-is given by the ``width`` keyword.  For calculations with **k**-points,
-the default value is 0.1 eV and the total
-energies are extrapolated to *T* = 0 Kelvin.  For a `\Gamma`-point
-calculation (no **k**-points) the default value is ``width=0``, which
-gives integer occupation numbers.
+is given by the ``width`` keyword.  For calculations with
+**k**-points, the default value is 0.1 eV and the total energies are
+extrapolated to *T* = 0 Kelvin.  For a `\Gamma`-point calculation (no
+**k**-points) the default value is ``width=0``, which gives integer
+occupation numbers.
 
 
 
@@ -299,9 +296,10 @@ In words:
 * The integrated value of the square of the residuals of the Kohn-Sham
   equations should be less than :math:`1.0 \times 10^{-9}` (per state).
 
-The individual criteria can be changed by giving only the specific entry of dictionary 
-e.g. ``convergence={'energy': 0.0001}`` would set the convergence criteria of energy to 0.1 meV
-while other criteria remain in their default values.
+The individual criteria can be changed by giving only the specific
+entry of dictionary e.g. ``convergence={'energy': 0.0001}`` would set
+the convergence criteria of energy to 0.1 meV while other criteria
+remain in their default values.
 
 As the total energy and charge density depend only on the occupied
 states, unoccupied states do not contribute to the convergence
@@ -311,9 +309,8 @@ also use ``{'bands': 200}`` to converge the lowest 200 bands. One can
 also write ``{'bands': -10}`` to converge all bands except the last
 10. It is often hard to converge the last few bands in a calculation.
 
-The calculation will stop with an error if
-convergence is not reached in ``maxiter`` self-consistent iterations
-(defaults to 120).
+The calculation will stop with an error if convergence is not reached
+in ``maxiter`` self-consistent iterations (defaults to 120).
 
 
 
@@ -323,11 +320,13 @@ Density mixing
 The default is to use Pulay mixing using the three last densities, a
 linear mixing coefficient of 0.25 and no special metric for estimating
 the magnitude of the change from input density to output density -
-this is equivalent to ``mixer=Mixer(0.25, 3)``.  In some
-cases (metals) it can be an advantage to use something like
-``mixer=Mixer(0.1, 5, metric='new', weight=100.0)``.  Here, long wavelength changes
-are weighted 100 times higher than short wavelength changes. In spin-polarized calculations
-using Fermi-distribution occupations one has to use ``MixerSum`` instead of ``Mixer``.
+this is equivalent to ``mixer=Mixer(0.25, 3)``.  In some cases
+(metals) it can be an advantage to use something like
+``mixer=Mixer(0.1, 5, metric='new', weight=100.0)``.  Here, long
+wavelength changes are weighted 100 times higher than short wavelength
+changes. In spin-polarized calculations using Fermi-distribution
+occupations one has to use :class:`gpaw.mixer.MixerSum` instead of
+:class:`gpaw.mixer.Mixer`.
 
 
 
@@ -378,12 +377,13 @@ The ``setups`` keyword can be a dictionary mapping chemical symbols or
 atom numbers to types of setups (strings).  The default type is
 ``'paw'``.  Another type is ``'ae'`` for all-electron calculations.
 In the future there might be a ``'hgh'`` type for
-Hartwigsen-Goedecker-Hutter pseudopotential calculations.  An example::
+Hartwigsen-Goedecker-Hutter pseudopotential calculations.  An
+example::
 
   setups={'Li': 'mine', 'H': 'ae'}
 
-For an LDA calculation, GPAW will look for ``Li.mine.LDA`` (or
-``Li.mine.LDA.gz``) in your ``$GPAW_SETUP_PATH`` and use an
+For an LDA calculation, GPAW will look for :file:`Li.mine.LDA` (or
+:file:`Li.mine.LDA.gz`) in your :envvar:`$GPAW_SETUP_PATH` and use an
 all-electron potential for hydrogen atoms.
 
 
@@ -408,13 +408,13 @@ interpreter::
 
   $ mpirun ... gpaw-python script.py
 
-The parallelization is done both over the k-points (and spin in
+The parallelization is done both over the **k**-points (and spin in
 spin-polarized calculations) and using real-space domain
 decomposition.  The code will try to make a sensible domain
 decomposition that match both the number of processors and the size of
 the unit cell.  If desired, this choise can be overruled with the
-keyword ``parsize=(nx,ny,nz)``.  There is also a command
-line argument that allow you to control the domain decomposition::
+keyword ``parsize=(nx,ny,nz)``.  There is also a command line argument
+that allow you to control the domain decomposition::
 
   $ mpirun .. gpaw-python script.py --domain-decomposition=2,2,3
 
@@ -456,7 +456,7 @@ The state of a calculation can be saved to a file like this:
 
 >>> calc.write('H2.gpw')
 
-The file ``'H2.gpw'`` is a binary file containing
+The file :file:`H2.gpw` is a binary file containing
 wave functions, densities, positions and everything else (also the
 parameters characterizing the PAW calculator used for the
 calculation).
@@ -468,7 +468,7 @@ at a later time, this can be done as follows:
 >>> atoms, calc = restart('H2.gpw')
 >>> print atoms.get_potential_energy()
 
-Everything will be just as before we wrote the ``'H2.gpw'`` file.
+Everything will be just as before we wrote the :file:`H2.gpw` file.
 Often, one wants to restart the calculation with one or two parameters
 changed slightly.  This is very simple to do.  Suppose you want to
 change the number of grid points:
@@ -522,20 +522,24 @@ Extensions
 
 Currently available extensions:
 
- 1. :ref:`lrtddft` time-dependent DFT
- 2. :ref:`timepropagation` time-dependent DFT
+ 1. :ref:`Linear response time-dependent DFT <lrtddft>`
+ 2. :ref:`Time propagation time-dependent DFT <timepropagation>`
 
 
-:ref:`lrtddft` time-dependent DFT
------------------------------------------
+:ref:`lrtddft`
+--------------
 
-Optical photoabsorption spectrum can be simulated using :ref:`lrtddft` time-dependent DFT.
+Optical photoabsorption spectrum can be simulated using :ref:`lrtddft`
 
 
-:ref:`timepropagation` time-dependent DFT
------------------------------------------
+:ref:`timepropagation`
+----------------------
 
-Optical photoabsorption spectrum as well as nonlinear effects can be studied using :ref:`timepropagation` time-dependent DFT. This approach scales better than linear response, but the prefactor is so large that for small and moderate systems linear response is significantly faster.
+Optical photoabsorption spectrum as well as nonlinear effects can be
+studied using :ref:`timepropagation`. This approach
+scales better than linear response, but the prefactor is so large that
+for small and moderate systems linear response is significantly
+faster.
 
 
 

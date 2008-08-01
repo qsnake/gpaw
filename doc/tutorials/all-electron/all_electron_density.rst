@@ -1,18 +1,13 @@
 .. _all_electron_density:
 
-=========================================
-Using the get_all_electron_density method
-=========================================
-
+================================
+Getting the all-electron density
+================================
 
 The variational quantity of the PAW formalism is the pseudo-density ñ. This is also the density returned by the ``GetDensityArray`` method of the GPAW calculator. Sometimes it is desirable to work with the true all-electron density.
 The PAW formalism offers a recipe for reconstructing the all-electron density from the pseudo-density, and in GPAW, this can be reached by the method ``get_all_electron_density`` of the ``Calculator`` class.
 
 This tutorial describes how to get and use the all-electron density.
-
---------------------------------
-Getting the all electron density
---------------------------------
 
 The all electron density is reached by calling the ``get_all_electron_density`` method in the same way as you would normally use the ``GetDensityArray`` method, i.e.
 
@@ -31,7 +26,7 @@ As the all-electron density has more structure than the pseudo-density, it is ne
 
 The plot below shows a line-section of the Si density using a grid refinement factor of 1, 2, and 4 respectively
 
-.. image:: ../../_static/gridrefinement.png
+.. image:: gridrefinement.png
 
 The all-electron density will always integrate to the total number of electrons of the considered system (independent of the grid resolution), while the pseudo density will integrate to some more or less arbitrary number. This fact is illustrated in the following example.
 
@@ -39,10 +34,13 @@ The all-electron density will always integrate to the total number of electrons 
 Example 1: NaCl
 ---------------
 
-As an example of application, consider the three systems Na, Cl, and NaCl. The pseudo- and all-electron densities of these three systems are shown on the graph below (the results of this example have been made with the script NaCl.py_)
+As an example of application, consider the three systems Na, Cl, and NaCl. The pseudo- and all-electron densities of these three systems are shown on the graph below.  
 
-.. _NaCl.py: NaCl.py
-.. image:: ../../_static/ae_density_NaCl.png
+.. image:: ae_density_NaCl.png
+
+The results of this example have been made with the script NaCl.py:
+
+.. literalinclude:: NaCl.py
 
 The pseudo- and all-electron densities of the three systems integrate to:
 
@@ -89,4 +87,14 @@ To access the ``bader_rho.dat`` file in python, you can do the following:
 
 This will put the array ``bader`` in the same format as the density arrays.
 
-The plot below shows a crossection of the ae-density and the bader partitions. The plots have been 
+The plot below shows a crossection of the ae-density and the bader partitions.
+
+.. image:: ae_density_H2O.png
+
+The plots have been made using the script H2O-plot.py:
+
+.. literalinclude:: H2O-plot.py
+
+For more information on the Bader method, see the tutorial_ on the ASE wiki.
+
+.. _tutorial: wiki:ASE:Analysis#bader-analysis

@@ -9,7 +9,7 @@ Requirements
 
 1) Python 2.3 or later is required.  Python is available from http://www.python.org.
 
-2) Atomic Simulation Environment (ASE_).
+2) Atomic Simulation Environment (:ase:`ASE <>`).
 
 3) NumPy_.
 
@@ -18,7 +18,6 @@ Requirements
 5) An MPI library is required for parallel calculations.
 
 
-.. _ASE: https://wiki.fysik.dtu.dk/ase
 .. _NumPy: http://www.scipy.org/NumPy
 
 See the :ref:`platforms_and_architectures` page for information on how to
@@ -30,7 +29,7 @@ Standard installation
 
 1) :ref:`download` the code.
 
-2) Go to the ``gpaw`` directory (``gpaw-0.3`` if you use the tar-ball)::
+2) Go to the :file:`gpaw` directory (:file:`gpaw-0.3` if you use the tar-ball)::
 
      [~]$ cd gpaw
 
@@ -43,24 +42,25 @@ Standard installation
 
      [gpaw]$ python setup.py install --home=<my-directory>
 
-   and put ``<my-directory>/lib/python`` (or
-   ``<my-directory>/lib64/python``) in your ``PYTHONPATH`` environment
-   variable.  Usually ``$HOME`` is a good coice for
-   ``<my-directory>``.
+   and put :file:`{<my-directory>}/lib/python` (or
+   :file:`{<my-directory>}/lib64/python`) in your :envvar:`$PYTHONPATH` 
+   environment variable.  Usually :envvar:`$HOME` is a good coice for
+   :file:`{<my-directory>}`.
 
-4) Get the tar file ``gpaw-setups-<version>.tar.gz`` from the :ref:`setups` page
-   and unpack it somewhere, preferably in ``${HOME}`` 
+4) Get the tar file :file:`gpaw-setups-{<version>}.tar.gz` from the 
+   :ref:`setups` page
+   and unpack it somewhere, preferably in :envvar:`${HOME}`
    (``cd; tar zxf gpaw-setups-<version>.tar.gz``) - it could
    also be somewhere global where
-   many users can access it like in ``/usr/share/gpaw/``.  There will
-   now be a directory ``gpaw-setups-<version>/`` containing all the
+   many users can access it like in :file:`/usr/share/gpaw/`.  There will
+   now be a directory :file:`gpaw-setups-{<version>}/` containing all the
    atomic data needed for doing LDA and PBE calculations.  Set the
-   environment variable ``GPAW_SETUP_PATH`` to point to the directory
-   ``gpaw-setups-<version>/``, e.g. put into ``~/.tcshrc``::
+   environment variable :envvar:`$GPAW_SETUP_PATH` to point to the directory
+   :file:`gpaw-setups-{<version>}/`, e.g. put into :file:`~/.tcshrc`::
 
     setenv GPAW_SETUP_PATH ${HOME}/gpaw-setups-<version>
 
-   or if you use bash, put these lines into ``~/.bashrc``::
+   or if you use bash, put these lines into :file:`~/.bashrc`::
 
     export GPAW_SETUP_PATH=${HOME}/gpaw-setups-<version>
 
@@ -86,25 +86,32 @@ Custom installation
 The install script does its best when trying to guess proper libraries
 and commands to build gpaw. However, if the standard procedure fails
 or user wants to override default values it is possible to customize
-the setup with ``customize.py`` file which is located in the gpaw base
-directory. As an example, ``customize.py`` might contain the following
+the setup with :file:`customize.py` file which is located in the gpaw base
+directory. As an example, :file:`customize.py` might contain the following
 lines::
 
   libraries = ['myblas', 'mylapack']
   library_dirs = ['path_to_myblas']
 
-Now, gpaw would be built with "``-Lpath_to_myblas -lmyblas -lmylapack``" linker flags. Look at the file ``customize.py`` itself for more possible options. After editing ``customize.py``, follow the instructions for the standard installation from step 3 on.
+Now, gpaw would be built with "``-Lpath_to_myblas -lmyblas
+-lmylapack``" linker flags. Look at the file :file:`customize.py`
+itself for more possible options. After editing :file:`customize.py`,
+follow the instructions for the standard installation from step 3 on.
 
 Parallel installation
 =====================
 
-By default, setup looks if mpicc is available, and if setup finds one, a parallel version is build. If the setup does not find mpicc, a user can specify one in the ``customize.py`` file. 
+By default, setup looks if mpicc is available, and if setup finds one, a parallel version is build. If the setup does not find mpicc, a user can specify one in the :file:`customize.py` file. 
 
-For the parallel calculations, a special ``gpaw-python`` python-interpreter is created. If gpaw was installed without root permissions, i.e.::
+For the parallel calculations, a special :file:`gpaw-python`
+python-interpreter is created. If gpaw was installed without root
+permissions, i.e.::
 
   python setup.py install --home=<my-directory>
 
-``<my-directory>/bin`` should be added to PATH. Alternatively, the full pathname ``<my-directory>/bin/gpaw-python`` can be
-used when executing parallel runs.
+:file:`{<my-directory>}/bin` should be added to
+:envvar:`PATH`. Alternatively, the full pathname
+:file:`{<my-directory}>/bin/gpaw-python` can be used when executing
+parallel runs.
 
 Instructions for running parallel calculations can be found in the :ref:`user manual <manual_parallel_calculations>`.

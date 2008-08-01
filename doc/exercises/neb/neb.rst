@@ -9,7 +9,7 @@ XXX generate slab.png using gpaw/exercises/neb/plot.py
 
 .. 
 
-   image:: ../../_static/slab.png
+   image:: slab.png
    :height: 270 px
    :alt: Al(110) surface
    :align: right

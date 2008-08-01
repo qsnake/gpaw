@@ -21,10 +21,9 @@ XXX link to setting up unix environment
    stm/stm
    neb/neb
    tst/tst
+   lrtddft/lrtddft
    
-Time-dependent density functional theory:
-  * :ref:`lrtddft_optical_spectra`
-  * :ref:`timepropagation`
+See also :ref:`timepropagation`.
 
 These exercises are used in the course Electronic structure methods in
 materials physics, chemistry and biology. For comments and questions,

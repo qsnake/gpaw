@@ -60,7 +60,7 @@ molecule and compare them to results from molecular orbital theory.
 
   .. 
 
-     figure:: ../../_static/co_bonding.jpg
+     figure:: co_bonding.jpg
      :align: center
 
 .. _The Chemogenesis Web Book: http://www.meta-synthesis.com/webbook/39_diatomics/diatomics.html#CO

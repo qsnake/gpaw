@@ -12,12 +12,10 @@ features and the algorithms used <features_and_algorithms>`.
 * :ref:`download` latest version.
 * Read the :ref:`manual`.
 * Read :ref:`about_this_wiki`.
-* Go to the ASE_ page.
+* Go to the :ase:`ASE <>` page.
 * Read the :ref:`literature` page.
 * Do the :ref:`exercises`.
 * Browse the complete :ref:`table of contents <toc>`.
-
-.. _ASE: https://web2.fysik.dtu.dk/ase/
 
 .. |i1| image:: _static/logo-csc.png
         :height: 44 px

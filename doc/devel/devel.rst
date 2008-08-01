@@ -66,7 +66,7 @@ The big picture
 Keep this under your pillow (work in progress):
 
 
-.. image:: ../_static/overview.png
+.. image:: overview.png
    :target: overview.pdf_
    :width: 550 px
 
@@ -79,7 +79,7 @@ Created with OpenOffice.org-Draw_: overview.odg_.
 
 When committing significant changes to the code, remember to add a note in the :ref:`releasenotes` at the top (current svn) - the version to become the next release.
 
-.. image:: ../_static/bslogo.png
+.. image:: bslogo.png
    :target: http://developer.berlios.de/projects/gridpaw
 
 The source for the GPAW-logo can be found here: gpaw-logo.odg_

@@ -4,17 +4,18 @@
 Developer installation
 ======================
 
-The `Standard installation`_ will copy all the Python files to the
-standard place for Python modules (something like
-``/usr/lib/python2.5/site-packages/gpaw``) or to
-``<my-directory>/lib/python/gpaw`` if you used the
-``--home=<my-directory>`` option.  As a developer, you will want
-Python to use the files from the SVN checkout that you are hacking
-on.  Do this::
+The :ref:`standard installation <installationguide>` will copy all the
+Python files to the standard place for Python modules (something like
+:file:`/usr/lib/python2.5/site-packages/gpaw`) or to
+:file:`{<my-directory>}/lib/python/gpaw` if you used the
+:file:`--home={<my-directory>}` option.  As a developer, you will want
+Python to use the files from the SVN checkout that you are hacking on.
+Do this::
 
   [~]$ svn checkout https://USER@svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
-**On slid and thul machines only**: if you want to use a parallel version modify `customize.py`::
+**On slid and thul machines only**: if you want to use a parallel
+version, modify :file:`customize.py`::
 
  libraries += ['gfortran']
 
@@ -22,8 +23,10 @@ and apply the openmpi environment settings::
 
   [~]$ source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.csh
 
-To make it the default setting add the line to your ~/.tcshrc. See `<https://wiki.fysik.dtu.dk/niflheim/Parallelization>`_ for details
-(note however, that it contains instructions for openmpi fortran codes).
+To make it the default setting add the line to your
+:file:`~/.tcshrc`. See :wiki:`niflheim/Parallelization` for details
+(note however, that it contains instructions for openmpi fortran
+codes).
 
 Then::
 
@@ -32,28 +35,31 @@ Then::
 
 This will build two things:
 
-* ``_gpaw.so``:  A shared library for serial calculations containing
+* :file:`_gpaw.so`:  A shared library for serial calculations containing
   GPAW's C-extension module.  The module will be in
-  ``~/gpaw/build/lib.<platform>-2.5/``.
-* ``gpaw-python``: A special Python interpreter for parallel
+  :file:`~/gpaw/build/lib.{<platform>}-2.5/`.
+* :file:`gpaw-python`: A special Python interpreter for parallel
   calculations.  The interpreter has GPAW's C-code build in.  The
-  executable is in ``~/gpaw/build/bin.<platform>-2.5/``.
+  executable is in :file:`~/gpaw/build/bin.{<platform>}-2.5/`.
 
-The ``gpaw-python`` interpreter will only be made if ``setup.py`` found an ``mpicc`` compiler.
+The :file:`gpaw-python` interpreter will only be made if
+:file:`setup.py` found an ``mpicc`` compiler.
 
-Put ``~/gpaw`` in your ``$PYTHONPATH`` and ``~/gpaw/tools:~/gpaw/build/bin.<platform>-2.5`` in your
-``$PATH``, e.g. put into ~/.tcshrc::
+Put :file:`~/gpaw` in your :envvar:`$PYTHONPATH` and
+:file:`~/gpaw/tools:~/gpaw/build/bin.{<platform>}-2.5` in your
+:envvar:`$PATH`, e.g. put into :file:`~/.tcshrc`::
 
  setenv PYTHONPATH ${HOME}/gpaw
  setenv PATH ${HOME}/gpaw/build/bin.<platform>-2.5:${PATH}
 
-or if you use bash, put these lines into ~/.bashrc::
+or if you use bash, put these lines into :file:`~/.bashrc`::
 
  export PYTHONPATH=${HOME}/gpaw
  export PATH=${HOME}/gpaw/build/bin.<platform>-2.5:${PATH}
 
-GPAW uses functionals from `libxc <http://www.tddft.org/programs/octopus/wiki/index.php/Libxc>`_
-- the source code of which is in the trunk of GPAW under ``c/libxc``.
+GPAW uses functionals from `libxc
+<http://www.tddft.org/programs/octopus/wiki/index.php/Libxc>`_ - the
+source code of which is in the trunk of GPAW under :file:`c/libxc`.
 Here is how to update gpaw to use the latest version of libxc:
 
  - backup the current version of libxc (you will need it later!)::
@@ -71,7 +77,7 @@ Here is how to update gpaw to use the latest version of libxc:
 
     cd libxc; rm -rf .svn; rm -rf */.svn
 
- - copy gpaw's svn directories (this is where you need libxc.old created in the first step), e.g.::
+ - copy gpaw's svn directories (this is where you need :file:`libxc.old` created in the first step), e.g.::
 
     cp -rp ../libxc.old/.svn .
     cp -rp ../libxc.old/src/.svn src
@@ -83,8 +89,8 @@ Here is how to update gpaw to use the latest version of libxc:
 
    and (svn add)/(svn remove) necessary files.
 
- - create libxc header files (at the time of writing `config.h` and `src/xc_funcs.h`)
-   and the automatically generated c-code (at the time of writing `src/work_*.c`)::
+ - create libxc header files (at the time of writing :file:`config.h` and :file:`src/xc_funcs.h`)
+   and the automatically generated c-code (at the time of writing :file:`src/work_*.c`)::
 
     autoreconf -i
     ./configure --disable-fortran
@@ -94,16 +100,18 @@ Here is how to update gpaw to use the latest version of libxc:
 
     svn status
 
-   **Remember**: do not add automatically generated files (like src/Makefile and many others to gpaw's svn)!
+   **Remember**: do not add automatically generated files (like :file:`src/Makefile` and many others to gpaw's svn)!
 
-If you have made changes (e.g. added new functionals) to the libxc included in gpaw
-or just updated to the latest libxc, change the version number ``self.version`` in ``gpaw/libxc.py``
-and make sure to run from the top level (important!) directory of gpaw::
+If you have made changes (e.g. added new functionals) to the libxc
+included in gpaw or just updated to the latest libxc, change the
+version number :file:`self.version` in :file:`gpaw/libxc.py` and make
+sure to run from the top level (important!) directory of gpaw::
 
   [gpaw]$ python gpaw/libxc.py
 
-This will generate ``gpaw/libxc_functionals.py`` python-dictionary file of available functionals,
-based on the ``c/libxc/src/xc.h`` file.
+This will generate :file:`gpaw/libxc_functionals.py` python-dictionary
+file of available functionals, based on the :file:`c/libxc/src/xc.h`
+file.
 
 Now, (after the developer installation), test the serial code::
 
@@ -122,7 +130,8 @@ Try also::
   [gpaw]$ cd examples
   [demo]$ mpirun -np 2 gpaw-python H.py
 
-This will do a calculation for a single hydrogen atom parallelized with spin up on one processor and spin down on the other.  If you run the example on 4 processors, you should get parallelization over both spins and the domain.
+This will do a calculation for a single hydrogen atom parallelized
+with spin up on one processor and spin down on the other.  If you run
+the example on 4 processors, you should get parallelization over both
+spins and the domain.
 
-
-.. _standard installation:  InstallationGuide_#standard-installation
