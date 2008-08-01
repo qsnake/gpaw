@@ -13,31 +13,8 @@ This document describes the most important objects used for a DFT calculation.
 More information can be found in the API_ or in the code.
 
 
-.. _API: wiki:API:
+.. _API: http:/web2.fysik.dtu.dk/gpaw-epydoc
 
-
-
-To do a DFT calculation, you must have a list-of-atoms object and a GPAW calculator attached to it:
-
-.. parsed-literal::
-
-      ASE_          |            GPAW
-    package                     package
-                   |
-  +-------------+                   +------------+
-  | ListOfAtoms_ |  |                | Calculator_ |
-  |             | ----------------> |            |
-  |             |  |                |            |
-  |             | < - - - - - - - - |            |
-  +-------------+  |                |            |
-                                    +------------+
-                   |              
-  
-
-.. _ASE: wiki:ASE:
-.. _ListOfAtoms: wiki:ASE:ListOfAtoms
-.. _Calculator: wiki:API:gpaw.calculator.Calculator-class.html
-.. _Paw: wiki:API:gpaw.paw.Paw-class.html
 
 .. _overview_array_naming:
 
@@ -47,24 +24,28 @@ Naming convention for arrays
 
 A few examples:
 
- ========== =================== ===========================================
- name       shape    
- ========== =================== ===========================================
- ``spos_c`` ``(3,)``            **S**\ caled **pos**\ ition vector
- ``nt_sG``  ``(2, 24, 24, 24)`` Pseudo-density array (``t`` means *tilde*):
-                                two spins, 24*24*24 grid points.
- ========== =================== ===========================================
+ =========== =================== ===========================================
+ name        shape    
+ =========== =================== ===========================================
+ ``spos_c``  ``(3,)``            **S**\ caled **pos**\ ition vector
+ ``nt_sG``   ``(2, 24, 24, 24)`` Pseudo-density array
+                                 :math:`\tilde{n}_\sigma(\vec{r})`
+                                 (``t`` means *tilde*):
+                                 two spins, 24*24*24 grid points.
+ ``cell_cv`` ``(3, 3)``          Unit cell vectors.
+ =========== =================== ===========================================
 
  =======  ==================================================
  index    description
  =======  ==================================================
  ``a``    Atom number
- ``c``    Axis index (*x*, *y*, *z*)                                    
+ ``c``    Unit cell axis-index (0, 1, 2)
+ ``v``    *xyz*-index (0, 1, 2)                                    
  ``k``    **k**-point index                                   
- ``s``    Spin index                                     
+ ``s``    Spin index (:math:`\sigma`)                           
  ``u``    Combined spin and **k**-point index 
- ``G``    Index into the coarse grid                     
- ``g``    Index into the fine grid                       
+ ``G``    Three indices into the coarse 3D grid                     
+ ``g``    Three indices into the fine 3D grid                     
  ``n``    Principal quantum number *or* band number        
  ``l``    Angular momentum quantum number (s, p, d, ...)
  ``m``    Magnetic quantum number (0, 1, ..., l)         
@@ -97,19 +78,20 @@ Parallelization over spins, k-points and domains
 When using parallization over spins, **k**-points and domains,
 three different MPI communicators are used:
 
-* `mpi.world`
+* *mpi.world*
    Communicator containing all processors. 
-* `domain_comm`
-   One `domain_comm` communicator contains the whole real space 
+* *domain_comm*
+   One *domain_comm* communicator contains the whole real space 
    domain for a selection of the spin/k-point pairs.
-* `kpt_comm` 
-   One `kpt_comm` communicator contains all k-points and spin 
+* *kpt_comm* 
+   One *kpt_comm* communicator contains all k-points and spin 
    for a part of the real space domain.
 
-For the case of a `Gamma`-point calculation all parallel communication
-is done in the one `domain_comm` communicator, which are in this case 
-equal to `mpi.world`. 
+For the case of a :math:`\Gamma`-point calculation all parallel communication
+is done in the one *domain_comm* communicator, which are in this case 
+equal to *mpi.world*. 
 
-.. [1] J J. Mortensen and L. B. Hansen and K. W. Jacobsen, Phys. Rev. B 71 (2005) 035109.
+.. [1] J J. Mortensen and L. B. Hansen and K. W. Jacobsen,
+       Phys. Rev. B 71 (2005) 035109.
 .. [2] C. Rostgaard, Masters thesis, CAMP, dep. of physics, Denmark, 2006.
        This document can be found at the :ref:`exx` page.
