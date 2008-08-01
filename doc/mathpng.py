@@ -74,26 +74,20 @@ def setup(app):
         pass
 
     def visit_subscript(self, node):
-            self.body.append('$_2$')
+            self.body.append('$_{')
+    def depart_subscript(self, node):
+            self.body.append('}$')
     def visit_superscript(self, node):
-            self.body.append('$^2$')
+            self.body.append('$^{')
+    def depart_superscript(self, node):
+            self.body.append('}$')
         
     LaTeXTranslator.visit_latex_math = visit_latex_math_latex
     LaTeXTranslator.depart_latex_math = depart_latex_math_latex
     LaTeXTranslator.visit_subscript = visit_subscript
-    LaTeXTranslator.depart_subscript = depart_latex_math_latex
+    LaTeXTranslator.depart_subscript = depart_subscript
     LaTeXTranslator.visit_superscript = visit_superscript
-    LaTeXTranslator.depart_superscript = depart_latex_math_latex
-
-    if 1:
-        ve0 = LaTeXTranslator.visit_entry
-        def ve(s, n):
-            print dir(n)
-            print n.attributes, n.astext(), n.rawsource
-            ljkhkljhlkhj
-            #ve0(s,n)
-        
-        LaTeXTranslator.visit_generated = ve
+    LaTeXTranslator.depart_superscript = depart_superscript
 
 from os.path import isfile
 # LaTeX to HTML translation stuff:
