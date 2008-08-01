@@ -1,4 +1,4 @@
-"""Make a plot"""
+# creates: Al110slab.png
 
 from ase import *
 from ase.data.colors import jmol_colors
@@ -23,7 +23,7 @@ pov_options = {'display': False,
                'transparent': False,
                'canvas_width': 500}
 
-write('slab.pov', atoms,
+write('Al110slab.pov', atoms,
       rotation=rotation,
       colors=colors,
       radii=radii,
@@ -31,4 +31,4 @@ write('slab.pov', atoms,
       **pov_options)
 
 import os
-os.system('povray slab.ini')
+os.system('povray Al110slab.ini')

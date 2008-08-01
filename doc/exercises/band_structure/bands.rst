@@ -13,7 +13,7 @@ Cohen and Chelikowsky: "Electronic Structure and Optical Properties of
 Semiconductors" Solid-State Sciences 75, Springer-Verlag 1988).  How
 does this correspond to the DOS calculation in the previous exercise?
 
-.. figure:: ../../_static/silicon_banddiagram.png
+.. figure:: silicon_banddiagram.png
    :width: 600 px
    :align: center
 

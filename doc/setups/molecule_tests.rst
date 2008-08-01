@@ -21,12 +21,12 @@ calculations is :svn:`here <doc/setups/molecule_test.py>`.
 Bond lengths
 ============
 
-.. figure:: ../_static/bondlengths.png
+.. figure:: bondlengths.png
 
 Bondlengths in Å:
 
 .. csv-table::
-   :file: ../_static/bondlengths.csv		
+   :file: bondlengths.csv		
    :header: dimer, GPAW, reference, error
 
 Atomization energies
@@ -35,7 +35,7 @@ Atomization energies
 Atomization energies in eV:
 
 .. csv-table::
-   :file: ../_static/atomization_energies.csv
+   :file: atomization_energies.csv
    :header: molecule, GPAW, reference, error
 
 References

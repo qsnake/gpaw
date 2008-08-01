@@ -7,7 +7,7 @@ Calculation of electronic band structures
 The script bandstructure.py_ will calculate the band structure of Na along the Gamma-X direction.
 The resulting band structure is shown below.
 
-.. figure:: ../../_static/sodium_bands.png
+.. figure:: sodium_bands.png
 
 (This plot was made using plot_bands.py_)
 

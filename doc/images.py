@@ -13,8 +13,8 @@ may not exist.
 from urllib2 import urlopen, HTTPError
 import os
 
-#srcpath = 'http://web2.fysik.dtu.dk//gpaw-files'
-srcpath = 'http://dcwww.camp.dtu.dk/~askhl/gpaw-files'
+srcpath = 'http://web2.fysik.dtu.dk//gpaw-files'
+#srcpath = 'http://dcwww.camp.dtu.dk/~askhl/gpaw-files'
 
 def get(path, names, target=None):
     """Get files from web-server.
@@ -79,7 +79,6 @@ get('devel', ['bslogo.png', 'overview.png', 'stat.png'])
 get('.', ['bz-all.png'], '_static')
 get('exercises/band_structure', ['silicon_banddiagram.png'])
 get('exercises/wavefunctions', ['co_bonding.jpg'])
-get('exercises/neb', ['NEB_Al-Al110.traj'], '_static')
 
 get('tutorials/all-electron', ['gridrefinement.png',
                                'ae_density_NaCl.png',
