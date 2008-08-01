@@ -15,7 +15,7 @@ void IP1D(const T* a, int n, int m, T* b, int skip[2])
   #endif
   for (int j = 0; j < m; j++)
     {
-      T* aa = a + j * (K - 1 - skip[1] + n);
+      const T* aa = a + j * (K - 1 - skip[1] + n);
       T* bb = b + j;
       for (int i = 0; i < n; i++)
         {
