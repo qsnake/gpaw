@@ -12,6 +12,9 @@ def svn_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
         text = text[i + 1:-1]
     else:
         name = text
+        if name[0] == '~':
+            name = name.split('/')[-1]
+            text = text[1:]
     ref = 'http://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/' + text
     set_classes(options)
     node = nodes.reference(rawtext, name, refuri=ref,
@@ -76,7 +79,7 @@ def create_png_files():
                     run = False
                     for file in line.split()[2:]:
                         try:
-                            t = os.stat(join('_static', file))[ST_MTIME]
+                            t = os.stat(join(dirpath, file))[ST_MTIME]
                         except OSError:
                             run = True
                             break
@@ -85,11 +88,9 @@ def create_png_files():
                                 run = True
                                 break
                     if run:
-                        print 'running:', join(dirpath, filename)
+                        print 'running:', path
                         os.system('cd %s; python %s' % (dirpath, filename))
                         for file in line.split()[2:]:
                             print dirpath, file
-                            os.rename(join(dirpath, file),
-                                      join('_static', file))
         if '.svn' in dirnames:
             dirnames.remove('.svn')
