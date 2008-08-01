@@ -37,6 +37,12 @@ class Domain:
         """
         
         self.cell_c = npy.array(cell, float)
+        if self.cell_c.ndim == 1:
+            self.cell_cc = npy.diag(self.cell_c)
+        else:
+            self.cell_cc = self.cell_c
+            self.cell_c = self.cell_cc.diagonal()
+            
         self.pbc_c = npy.asarray(pbc, bool)
         
         self.set_decomposition(serial_comm, (1, 1, 1))
@@ -79,7 +85,8 @@ class Domain:
         Return array with the coordinates scaled to the interval [0,
         1)."""
         
-        spos_c = pos_c / self.cell_c
+        spos_c = npy.linalg.solve(self.cell_cc.T, pos_c)
+
         for c in range(3):
             if self.pbc_c[c]:
                 spos_c[c] %= 1.0
