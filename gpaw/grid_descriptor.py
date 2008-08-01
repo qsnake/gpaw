@@ -112,8 +112,8 @@ class GridDescriptor:
             
         self.n_c = self.end_c - self.beg_c
 
-        self.h_c = domain.cell_c / N_c
-        self.dv = self.h_c[0] * self.h_c[1] * self.h_c[2]
+        self.h_c = (domain.cell_cv**2).sum(1)**0.5 / N_c
+        self.dv = abs(npy.linalg.det(domain.cell_cv)) / self.N_c.prod()
 
         # Sanity check for grid spacings:
         if max(self.h_c) / min(self.h_c) > 1.3:
