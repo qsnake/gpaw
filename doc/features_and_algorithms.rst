@@ -47,7 +47,7 @@ Solving the Kohn-Sham equation is done via the "residual minimization
 method - direct inversion in iterative subspace" (RMM-DIIS)
 method [Kre96]_.  A good starting guess for the wave functions is obtained
 by diagonalizing a Hamiltonian for the subspace of atomic orbitals.
-We use the milti-grid preconditioner described by Briggs *et
+We use the multi-grid preconditioner described by Briggs *et
 al.* [Bri96]_ for the residuals, and standard Pulay
 mixing is used to update the density.
 
@@ -56,23 +56,16 @@ mixing is used to update the density.
 Compensation charges
 ====================
 
-Ideally the compensation charges used in the PAW method should be
-localized inside the augmentation spheres, and the augmentation
-spheres of the different atoms should not overlap.  However, this
-would force us to use a very fine grid to represent the compensation
-charge correctly.  Therefore, we allow the compensation charges to
-overlap, and add a correction.  The correction is an extra term in the
-effective potential plus a simple pair potential.  Compensation charges
+Compensation charges
 are expanded to give correct multipole moments up to angular momentum
-number ``l=2``.
+number :math:`\ell=2`.
 
 
 Boundary conditions
 ===================
 
 In each of the three directions, the boundary conditions can be either
-periodic or open.  A student (Stefan Othmar Poulsen) will be looking at
-chiral boundary conditions (September-November 2005).
+periodic or open.
 
 
 Mask function technique
@@ -85,7 +78,8 @@ wave function times an atom centered localized function (radial
 functions times a spherical harmonic).  To reduce this dependence, we
 use the technique of [Taf06]_, where the radial functions (projector functions) are smoothened as follows:
 
-* Divide function by a mask function that goes smoothly to zero at twice the cutoff radius.
+* Divide function by a mask function that goes smoothly to zero at
+  approximately twice the cutoff radius.
 * Fourier transform.
 * Cut off short wavelength components.
 * Inverse Fourier transform.
@@ -95,40 +89,32 @@ use the technique of [Taf06]_, where the radial functions (projector functions) 
 Exchange-correlation functionals
 ================================
 
-The following functionals have been implemented: LDA, PBE, revPBE and
-RPBE.  Calculating the XC-energy and potential for the extended pseudo
-density is simple.  For GGA functionals, a nearest neighbor finite
-difference stencil is used for the gradient operator.  In the PAW
-method, there is a correction to the XC-energy inside the augmentation
-spheres.  The integration is done on a non-linear radial grid - very
-dense close to the nuclei and less dense away from the nuclei.
+All the functionals from the :ref:`libxc <xc_functionals>` library can
+be used.  Calculating the XC-energy and potential for the extended
+pseudo density is simple.  For GGA functionals, a nearest neighbor
+finite difference stencil is used for the gradient operator.  In the
+PAW method, there is a correction to the XC-energy inside the
+augmentation spheres.  The integration is done on a non-linear radial
+grid - very dense close to the nuclei and less dense away from the
+nuclei.
+
 
 
 ASE interface
 =============
 
-The code has been designed to work well together with the
-atomic simulation environment (ASE_).  Any force calculator that has the right interface can work with ASE.  ASE provides:
+The code has been designed to work well together with the atomic
+simulation environment (:ase:`ASE <>`).  Any force calculator that has
+the right interface can work with ASE.  ASE provides:
 
  * Structure optimization.
  * Molecular dynamics.
  * Nudged elastic band calculations.
  * Maximally localized Wannier functions.
  * Scanning tunneling microscopy images.
- * Transport calculations (works currently only with Dacapo_).
+ * Transport calculations.
 
 
-.. _ASE: wiki:ASE:
-.. _Dacapo: wiki:Dacapo:
-
-The ASE interface consists of a Python class ``Calculator`` that has
-these methods:
-
-* ``GetPotentialEnergy()``
-* ``GetCartesianForces()``
-* ``GetElectronicStates()``
-
-plus a few more.
 
 
 Parallelization
