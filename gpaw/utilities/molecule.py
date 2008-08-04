@@ -7,7 +7,7 @@ from gpaw.utilities import center
 from gpaw.utilities.singleatom import SingleAtom
 
 raise DeprecationWarning, ('Molecule class is outdated. '
-                           'Use gpaw.testing.g2 instead')
+                           'Use ase.data.molecules instead')
 
 class Molecule:
     def __init__(self, formula, a=None, b=None, c=None, h=None,

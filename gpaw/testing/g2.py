@@ -13,6 +13,8 @@ J. Chem. Phys. Vol. 106, 1063 (1997).
 """
 from ase.atoms import Atoms, Atom
 
+raise DeprecationWarning, ('g2 module is outdated. '
+                           'Use ase.data.molecules instead')
 
 """
 Atomic enthalpies of formation at 0K, H_exp(OK), and thermal
