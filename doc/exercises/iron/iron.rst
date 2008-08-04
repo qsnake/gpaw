@@ -10,14 +10,12 @@ unit cell. We'll stick to the experimental lattice constant *a* = 2.87
 valence electrons/atom is included in the calculation.
 
 A spin polarized calculation can be initiated with the Calculator
-keyword :keyword:`spinpol=True <spinpol>` (``False`` by
-default). Magnetic calculations may sometimes have poor convergence
-and it can help to switch the eigensolver (which iteratively
-diagonalizes the Kohn-Sham equations) to Conjugate Gradient or
-Davidson (default is RMM-DIIS) with the Calculator keyword
-:keyword:`eigensolver='cg' <eigensolver>` or
-:keyword:`eigensolver='dav' <eigensolver>` - Hint: Do it in this
-exercise!
+keyword ``spinpol=True`` (``False`` by default). Magnetic calculations
+may sometimes have poor convergence and it can help to switch the
+eigensolver (which iteratively diagonalizes the Kohn-Sham equations)
+to Conjugate Gradient or Davidson (default is RMM-DIIS) with the
+Calculator keyword ``eigensolver='cg'`` or ``eigensolver='dav'`` -
+Hint: Do it in this exercise!
 
 * Use Hunds rule (maximum polarization rule) to calculate
   the magnetic moment of an isolated Fe atom.  Draw schematically the
@@ -42,7 +40,7 @@ exercise!
   (the experimental value is 2.22 per atom). The initial magnetic
   moment is relaxed during the self consistency cycles. When an 
   initial magnetic moment is specified, a spin polarized calculation is 
-  initialized and the :keyword:`spinpol` keyword is not necessary.
+  initialized and the ``spinpol`` keyword is not necessary.
   Note that for a spin polarized calculation, each iteration step takes 
   twice the time compared to a spin paired calculation.
 

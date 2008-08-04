@@ -78,7 +78,7 @@ Code C in the C99 style::
   }
 
 
-General advise
+General advice
 ==============
 
  * Get rid of as many ``break`` and ``continue`` statements as possible.

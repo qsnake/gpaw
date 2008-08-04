@@ -4,8 +4,9 @@
 Literature
 ==========
 
-Guides on this wiki
--------------------
+Guides and manual pages
+-----------------------
+
 * An :ref:`introduction to paw <introduction_to_paw>`.
 * A :ref:`guide for developers <developersguide>` linking the the main quantities of the equations to their names and positions in the code.
 * A description of some of the more specific :ref:`techniques and algorithms <features_and_algorithms>` used in the code.

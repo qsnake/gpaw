@@ -7,10 +7,7 @@ Developers guide to GPAW
 .. default-role:: math
 
 
-Introduction
-============
-
-This page goes throught the most important equations of a PAW
+This page goes through the most important equations of a PAW
 calculation and has references to the code.  It is a good idea to have
 :ref:`the_big_picture` in front of you when reading this page.
 

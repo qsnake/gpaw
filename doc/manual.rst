@@ -7,10 +7,6 @@ Manual
 .. default-role:: math
 
 
-------------
-Introduction
-------------
-
 GPAW calculations are controlled through scripts written in the
 programming language Python_.  GPAW relies on the :ase:`Atomic
 Simulation Environment <>` (ASE), which is a Python package that helps
@@ -24,8 +20,6 @@ Below, there will be Python code examples starting with ``>>>`` (and
 ``...`` for continuation lines).  It is a good idea to start the
 Python interpreter and try some of the examples below.
 
-XXX Ase links
-
 .. _Python: http://www.python.org
 
 
@@ -36,7 +30,7 @@ Doing a PAW calculation
 
 To do a PAW calculation with the GPAW code, you need an ASE
 :ase:`Atoms <ase/atoms.html>` and a GPAW
-:class:`gpaw.aseinterface.Calculator`::
+:class:`~gpaw.aseinterface.Calculator`::
 
    _____________          ____________
   |             |        |            |
@@ -126,7 +120,7 @@ keyword          type       default value        description
 .. note:: 
    
    Parameters can be changed after the calculator has been constructed
-   by using the :meth:`gpaw.paw.set` method:
+   by using the :meth:`~gpaw.paw.set` method:
 
    >>> calc.set(txt='H2.txt', charge=1)
 
@@ -325,8 +319,8 @@ this is equivalent to ``mixer=Mixer(0.25, 3)``.  In some cases
 ``mixer=Mixer(0.1, 5, metric='new', weight=100.0)``.  Here, long
 wavelength changes are weighted 100 times higher than short wavelength
 changes. In spin-polarized calculations using Fermi-distribution
-occupations one has to use :class:`gpaw.mixer.MixerSum` instead of
-:class:`gpaw.mixer.Mixer`.
+occupations one has to use :class:`~gpaw.mixer.MixerSum` instead of
+:class:`~gpaw.mixer.Mixer`.
 
 
 
