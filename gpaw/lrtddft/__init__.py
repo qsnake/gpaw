@@ -68,31 +68,31 @@ class LrTDDFT(ExcitationList):
 
         self.txt=txt
 
+        if isinstance(calculator, str):
+            return self.read(calculator)
+        if filename is not None:
+            return self.read(filename)
+
+        ExcitationList.__init__(self, calculator)
+
+        self.filename=None
+        self.calculator=None
+        self.nspins=None
+        self.eps=None
+        self.istart=None
+        self.jend=None
+        self.xc=None
+        self.derivativeLevel=None
+        self.numscale=numscale
+        self.finegrid=finegrid
+        self.force_ApmB=force_ApmB
+ 
         if calculator is not None:
             if not calculator.wave_functions_initialized:
                 calculator.initialize_wave_functions()
-
-        if filename is None:
-
-            ExcitationList.__init__(self,calculator)
-
-            self.filename=None
-            self.calculator=None
-            self.nspins=None
-            self.eps=None
-            self.istart=None
-            self.jend=None
-            self.xc=None
-            self.derivativeLevel=None
-            self.numscale=numscale
-            self.finegrid=finegrid
-            self.force_ApmB=force_ApmB
-            
-            self.update(calculator,nspins,eps,istart,jend,
-                        xc,derivativeLevel,numscale)
-
-        else:
-            self.read(filename)
+                
+            self.update(calculator, nspins, eps, istart, jend,
+                        xc, derivativeLevel, numscale)
 
     def analyse(self, what=None, out=None, min=0.1):
         """Print info about the transitions.

@@ -63,9 +63,10 @@ if not io_only:
 fname = 'lr.dat.gz'
 if not io_only:
     lr.write(fname)
-lr = LrTDDFT(filename=fname)
+lr = LrTDDFT(fname)
 if not io_only:
     os.remove(fname)
+lr.diagonalize()
 t4 = lr[0]
 
 if not io_only:
