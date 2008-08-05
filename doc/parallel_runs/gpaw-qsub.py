@@ -33,17 +33,26 @@ assert c in 'nmpqtu'
 
 if c in 'nmq':
     # Normal Niflheim node:
-    mpirun = "export LD_LIBRARY_PATH=/usr/lib:/usr/lib/openmpi/1.2.5-gcc/lib&&export PATH=/usr/lib/openmpi/1.2.5-gcc/bin:${PATH}&&mpirun"
+    mpirun = ('export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' +
+              '/opt/acml-4.0.1/gfortran64/lib:' +
+              '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' +
+              'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && ' +
+              'mpirun')
 
 elif c == 'p':
     # Infiniband:
     np = len(open(os.environ['PBS_NODEFILE']).readlines())
-    mpirun = "export LD_LIBRARY_PATH=/usr/lib:/usr/lib/openmpi/1.2.5-gcc/lib&&export PATH=/usr/lib/openmpi/1.2.5-gcc/bin:${PATH}&&mpirun -np %d -machinefile $PBS_NODEFILE" % np
+    mpirun = 'mpirun -np %d -machinefile $PBS_NODEFILE' % np
     
 elif c in 'tu':
     # s50:
-    mpirun = "export LD_LIBRARY_PATH=/usr/lib:/usr/lib/openmpi/1.2.5-gcc/lib&&export PATH=/usr/lib/openmpi/1.2.5-gcc/bin:${PATH}&&mpirun"
+    mpirun = ('export LD_LIBRARY_PATH=/opt/intel/mkl/9.0/lib/32:' +
+              '/opt/intel/mkl/9.0/lib/32:' +
+              '/usr/local/openmpi-1.2.5-gfortran/lib && '
+              'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && ' +
+              'mpirun')
 """
+
 # Release script:
 qsub += "os.chmod('%s', 0644)\n" % script
 
