@@ -54,11 +54,11 @@ system.
 More advanced example
 ---------------------
 
-At CAMd, we use this submit tool: :svn:`~doc/parallel_runs/gpaw-qsub.py`.
+At CAMd, we use this submit tool: :svn:`~doc/parallel_runs/gpaw-qsub`.
 
 Example::
 
-  $ gpaw-qsub.py -q medium -l nodes=8 -m abe fcc.py --domain-decomposition=1,2,2
+  $ gpaw-qsub -q medium -l nodes=8 -m abe fcc.py --domain-decomposition=1,2,2
 
 
 Alternative submit tool

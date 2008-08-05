@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Emacs: treat this as -*- python -*-
 
 from sys import argv
 import os
