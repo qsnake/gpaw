@@ -1,6 +1,5 @@
 from ase import *
 from gpaw import Calculator
-from gpaw.testing.g2 import get_g2
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 
@@ -10,7 +9,7 @@ g = Generator('O', xcname='PBE', scalarrel=True,
 g.run(name='fch1s', **parameters['O'])
 setup_paths.insert(0, '.')
 
-atoms = get_g2('H2O')
+atoms = molecule('H2O')
 atoms.center(vacuum=2.5)
 
 calc = Calculator(xc='PBE')
