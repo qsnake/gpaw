@@ -97,13 +97,13 @@ def rotation_test():
 
     from gpaw.output import plot
 
-    rotationvector = npy.array([1.,1.,1.])
-    angle_increment = .3
+    rotationvector = npy.array([1.0, 1.0, 1.0])
+    angle_increment = 0.3
     
     system = g2.molecule(molecule)
-    system.set_cell(a,a,a)
+    system.set_cell([a, a, a])
     system.center()
-    calc = Calculator(h=.27, txt=None)
+    calc = Calculator(h=0.27, txt=None)
     system.set_calculator(calc)
 
     pog = PolarizationOrbitalGenerator(rcut)
