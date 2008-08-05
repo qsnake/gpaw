@@ -10,7 +10,7 @@
 
 #compiler = 'mpcc'
 #libraries = []
-#libraries += ['gomp']
+#libraries += []
 
 #library_dirs = []
 #library_dirs += []
@@ -19,10 +19,10 @@
 #include_dirs += []
 
 #extra_link_args = []
-extra_link_args += ['-fopenmp']
+#extra_link_args += []
 
 #extra_compile_args = []
-extra_compile_args += ['-fopenmp']
+#extra_compile_args += []
 
 #runtime_library_dirs = []
 #runtime_library_dirs += []
@@ -31,11 +31,11 @@ extra_compile_args += ['-fopenmp']
 #extra_objects += []
 
 #define_macros = []
-define_macros += [('BLUEGENE', '1'), ('NUM_OF_THREADS', '2')]
+#define_macros += []
 
 #mpicompiler = None
 #mpi_libraries = []
-#mpi_libraries += ['gomp']
+#mpi_libraries += []
 
 #mpi_library_dirs = []
 #mpi_library_dirs += []
@@ -47,4 +47,4 @@ define_macros += [('BLUEGENE', '1'), ('NUM_OF_THREADS', '2')]
 #mpi_runtime_library_dirs += []
 
 #mpi_define_macros = []
-mpi_define_macros += [('BLUEGENE', '1'), ('NUM_OF_THREADS', '2')]
+#mpi_define_macros += []
