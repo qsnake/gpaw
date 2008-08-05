@@ -6,6 +6,7 @@ import traceback
 
 import numpy as npy
 from ase import Atom, Atoms
+from ase.data import molecules as g2
 
 from gpaw import Calculator
 from gpaw.kpoint import KPoint
@@ -15,7 +16,6 @@ from gpaw.spline import Spline
 from gpaw.localized_functions import create_localized_functions
 from gpaw.atom.all_electron import AllElectron
 from gpaw.atom.configurations import configurations
-from gpaw.testing import g2
 from gpaw.testing.amoeba import Amoeba
 from gpaw.utilities import devnull
 
@@ -100,7 +100,9 @@ def rotation_test():
     rotationvector = npy.array([1.,1.,1.])
     angle_increment = .3
     
-    system = g2.get_g2(molecule, (a,a,a))
+    system = g2.molecule(molecule)
+    system.set_cell(a,a,a)
+    system.center()
     calc = Calculator(h=.27, txt=None)
     system.set_calculator(calc)
 
@@ -498,7 +500,7 @@ def main():
     """Testing."""
     args = sys.argv[1:]
     if len(args) == 0:
-        args = g2.atoms.keys()
+        args = g2.atoms
     rcut = 6.
     generator = PolarizationOrbitalGenerator(rcut)
     import pylab
@@ -776,7 +778,7 @@ def get_system(symbol):
 
 def get_systems(symbols=None):
     if symbols is None:
-        symbols = g2.atoms.keys()
+        symbols = g2.atoms
     systems = []
     for symbol in symbols:
         systems.append(get_system(symbol))
