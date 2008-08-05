@@ -23,7 +23,10 @@ from distutils.util import get_platform
 from glob import glob
 from os.path import join, isfile
 
-__all__ = ['Calculator', 'Mixer', 'MixerSum', 'PoissonSolver', 'restart']
+__all__ = ['GPAW', 'Calculator',
+           'Mixer', 'MixerSum',
+           'PoissonSolver',
+           'restart']
 
 
 class ConvergenceError(Exception):
@@ -121,6 +124,7 @@ from gpaw.aseinterface import Calculator
 from gpaw.mixer import Mixer, MixerSum
 from gpaw.poisson import PoissonSolver
 
+GPAW = Calculator
 
 def restart(filename, Class=Calculator, **kwargs):
     calc = Class(filename, **kwargs)

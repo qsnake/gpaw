@@ -189,6 +189,8 @@ class PAW(PAWExtra, Output):
     =============== ===================================================
     """
 
+    non_orthorhombic_unit_cells_allowed = False
+    
     def __init__(self, filename=None, **kwargs):
         """ASE-calculator interface.
 
@@ -469,10 +471,10 @@ class PAW(PAWExtra, Output):
             # Save the state of the atoms:
             self.atoms = atoms.copy()
             
-        pos_ac = atoms.get_positions() / Bohr
+        pos_av = atoms.get_positions() / Bohr
 
         movement = False
-        for nucleus, pos_c in zip(self.nuclei, pos_ac):
+        for nucleus, pos_c in zip(self.nuclei, pos_av):
             spos_c = self.domain.scale_position(pos_c)
             if npy.sometrue(spos_c != nucleus.spos_c) or not nucleus.ready:
                 movement = True
@@ -505,15 +507,15 @@ class PAW(PAWExtra, Output):
                 nucleus.normalize_shape_function_and_pseudo_core_density()
 
             if self.symmetry:
-                self.symmetry.check(pos_ac)
+                self.symmetry.check(pos_av)
 
-            self.hamiltonian.pairpot.update(pos_ac, self.nuclei, self.domain,
+            self.hamiltonian.pairpot.update(pos_av, self.nuclei, self.domain,
                                             self.text)
 
             self.density.move()
 
             # Output the updated position of the atoms
-            self.print_positions(pos_ac)
+            self.print_positions(pos_av)
 
     def initialize_wave_functions(self):
         # do at least the first 3 iterations with fixed density
@@ -903,18 +905,18 @@ class PAW(PAWExtra, Output):
             else:
                 self.dtype = complex
 
-        pos_ac = r.get('CartesianPositions')
+        pos_av = r.get('CartesianPositions')
         Z_a = npy.asarray(r.get('AtomicNumbers'), int)
-        cell_cc = r.get('UnitCell')
+        cell_cv = r.get('UnitCell')
         pbc_c = r.get('BoundaryConditions')
         tag_a = r.get('Tags')
         magmom_a = r.get('MagneticMoments')
 
-        self.atoms = Atoms(positions=pos_ac * Bohr,
+        self.atoms = Atoms(positions=pos_av * Bohr,
                            numbers=Z_a,
                            tags=tag_a,
                            magmoms=magmom_a,
-                           cell=cell_cc * Bohr,
+                           cell=cell_cv * Bohr,
                            pbc=pbc_c)
         return r
     
@@ -1032,8 +1034,8 @@ class PAW(PAWExtra, Output):
         
         self.natoms = len(atoms)
 
-        pos_ac = atoms.get_positions() / Bohr
-        cell_cc = atoms.get_cell() / Bohr
+        pos_av = atoms.get_positions() / Bohr
+        cell_cv = atoms.get_cell() / Bohr
         pbc_c = atoms.get_pbc()
         Z_a = atoms.get_atomic_numbers()
         self.magmom_a = atoms.get_initial_magnetic_moments()
@@ -1046,10 +1048,9 @@ class PAW(PAWExtra, Output):
         except KeyError:
             tag_a = npy.zeros(self.natoms, int)
 
-        # Check that the cell is orthorhombic:
-        check_unit_cell(cell_cc)
-        # Get the diagonal:
-        cell_c = npy.diagonal(cell_cc)
+        if not self.non_orthorhombic_unit_cells_allowed:
+            # Check that the cell is orthorhombic:
+            check_unit_cell(cell_cv)
         
         # Set the scaled k-points:
         kpts = p['kpts']
@@ -1091,10 +1092,15 @@ class PAW(PAWExtra, Output):
             else:
                 h = p['h'] / Bohr
             # N_c should be a multiple of 4:
-            N_c = npy.array([max(4, int(L / h / 4 + 0.5) * 4) for L in cell_c])
+            N_c = []
+            for axis_v in cell_cv:
+                L = (axis_v**2).sum()**0.5
+                N_c.append(max(4, int(L / h / 4 + 0.5) * 4))
+            N_c = npy.array(N_c)
+                       
         
         # Create a Domain object:
-        self.domain = Domain(cell_c, pbc_c)
+        self.domain = Domain(cell_cv, pbc_c)
 
         # Is this a gamma-point calculation?
         self.gamma = (len(self.bzk_kc) == 1 and
@@ -1122,7 +1128,7 @@ class PAW(PAWExtra, Output):
             # Reduce the the k-points to those in the irreducible part of
             # the Brillouin zone:
             self.symmetry, self.weight_k, self.ibzk_kc = reduce_kpoints(
-                self.bzk_kc, pos_ac, Z_a, type_a, self.magmom_a, basis_a,
+                self.bzk_kc, pos_av, Z_a, type_a, self.magmom_a, basis_a,
                 self.domain, p['usesymm'])
             self.nkpts = len(self.ibzk_kc)
         
@@ -1229,7 +1235,7 @@ class PAW(PAWExtra, Output):
         for nucleus in self.nuclei:
             self.Eref += nucleus.setup.E
 
-        for nucleus, pos_c in zip(self.nuclei, pos_ac):
+        for nucleus, pos_c in zip(self.nuclei, pos_av):
             spos_c = self.domain.scale_position(pos_c)
             nucleus.set_position(spos_c, self.domain, self.my_nuclei,
                                  self.nspins, self.nmyu, self.nmybands)
@@ -1248,7 +1254,7 @@ class PAW(PAWExtra, Output):
                 self.density.interpolate_pseudo_density()
                 self.density.starting_density_initialized = True
             
-        self.print_init(pos_ac)
+        self.print_init(pos_av)
         estimate_memory(self)
         if dry_run:
             self.print_parameters()

@@ -273,3 +273,31 @@ class PoissonFFTSolver(PoissonSolver):
     def solve_screened(self, phi, rho, screening=0):
         phi[:] = real(ifftn(fftn(rho) * 4 * pi / (self.k2 + screening**2)))
         return 1
+
+
+class FFTPoissonSolver(PoissonSolver):
+    """FFT poisson-solver for for general unit cells."""
+    
+    relax_method = 0
+    nn = 999
+    
+    def __init__(self):
+        pass
+
+    def initialize(self, gd):
+        assert gd.domain.comm.size == 1 and gd.domain.pbc_c.all()
+
+        N_c1 = gd.N_c[:, npy.newaxis]
+        i_cq = npy.indices(gd.N_c).reshape((3, -1))
+        i_cq += N_c1 // 2
+        i_cq %= N_c1
+        i_cq -= N_c1 // 2
+        B_vc = 2.0 * pi * npy.linalg.inv(gd.domain.cell_cv).T
+        k_vq = npy.dot(B_vc, i_cq)
+        k_vq *= k_vq
+        self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
+        self.k2_Q[0, 0, 0] = 42.0
+
+    def solve_neutral(self, phi_g, rho_g, eps=None):
+        phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q).real
+        return 1
