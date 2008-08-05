@@ -358,3 +358,26 @@ class PAWExtra:
                 volumes[k, n] += I
                 
         return 1. / volumes
+
+    def get_homo_lumo(self):
+        """Return HOMO and LUMO eigenvalues.
+
+        Works for zero-temperature Gamma-point calculations only.
+        """
+        if len(self.bzk_kc) != 1 or self.kT != 0:
+            raise RuntimeError
+        occ = self.collect_occupations()
+        eig = self.collect_eigenvalues()
+        lumo = self.nbands - occ[::-1].searchsorted(0, side='right')
+        homo = lumo - 1
+        e_homo = eig[homo]
+        if self.nspins == 1:
+            e_lumo = eig[lumo]
+        else:
+            occ_minor = self.collect_occupations(s=1)
+            eig_minor = self.collect_eigenvalues(s=1)
+            lumo_minor = self.nbands - occ_minor[::-1].searchsorted(
+                0, side='right')
+            e_lumo = min(eig[lumo], eig_minor[lumo_minor])
+
+        return e_homo * self.Ha, e_lumo * self.Ha
