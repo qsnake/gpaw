@@ -341,12 +341,57 @@ def symmetry(i, j, k, l):
 
     return tuple(ijkl), conj
 
-def update_dict(i, j, k, l, dict, func):
+def update_dict(i, j, k, l, done, func):
     ijkl, conj = symmetry(i, j, k, l)
     if conj:
-        return dict.setdefault(ijkl, npy.conj(func(i, j, k, l)))
-    return dict.setdefault(ijkl, func(i, j, k, l))
+        return done.setdefault(ijkl, npy.conj(func(i, j, k, l)))
+    return done.setdefault(ijkl, func(i, j, k, l))
    
+def get_coulomb(i, j, k, l, coulomb, done, U, dtype):
+    ijkl, conj = symmetry(i, j, k, l)
+    if dtype == float: conj = False
+    ni, nj, nk, nl = U[:, ijkl].T
+    if conj:
+        return done.setdefault(ijkl, npy.conj(
+            coulomb.get_integral(nk, ni, nj, nl)) * Hartree)
+    return done.setdefault(ijkl, coulomb.get_integral(nk, ni, nj, nl) *Hartree)
+
+def coulomb_all2(paw, U_nj, spin=0):
+    paw.set_positions()
+    nwannier = U_nj.shape[1]
+    dtype = float
+    if paw.dtype is complex or U_nj.dtype is complex: dtype = complex
+    coulomb = Coulomb4(paw, spin)
+    done = {}
+    V_ijkl = npy.zeros([nwannier, nwannier, nwannier, nwannier], dtype)
+    for i in range(nwannier):
+        for j in range(nwannier):
+            for k in range(nwannier):
+                for l in range(nwannier):
+                    print 'Doing', i, j, k, l
+                    V_ijkl[i, j, k, l] = get_coulomb(i, j, k, l,
+                                                     coulomb, done, U_nj,dtype)
+    return V_ijkl
+
+def coulomb_pairs(paw, U_nj, spin, basis):
+    paw.set_positions()
+    nwannier = U_nj.shape[1]
+    dtype = float
+    if paw.dtype is complex or U_nj.dtype is complex: dtype = complex
+    coulomb = Coulomb4(paw, spin)
+    done = {}
+    V_ijkl = npy.zeros([nwannier, nwannier, nwannier, nwannier], dtype)
+    for start1, end1 in basis:
+        for start2, end2 in basis:
+            for i in range(start1, end1):
+                for k in range(start1, end1):
+                    for j in range(start2, end2):
+                        for l in range(start2, end2):
+                            print 'Doing', i, j, k, l
+                            V_ijkl[i, j, k, l] = get_coulomb(i, j, k, l,
+                                                     coulomb, done, U_nj,dtype)
+    return V_ijkl, done
+
 def coulomb_all(paw, U_nj, spin=0):
     # Returns all of the Coulomb integrals
     # V_{ijkl} = \iint drdr' / |r-r'| i*(r) j*(r') k(r) l(r')
