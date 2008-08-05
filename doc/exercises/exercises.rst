@@ -10,6 +10,7 @@ XXX link to setting up unix environment
    :maxdepth: 1
 
    aluminium/aluminium
+   diffusion/diffusion
    surface/surface
    adsorbate/adsorbate
    vibrations/vibrations

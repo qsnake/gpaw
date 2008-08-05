@@ -60,9 +60,9 @@ def write_rest(symbol, tables, hmin, B, n, mols):
     name = atomic_names[Z]
     f = open(symbol + '.rst', 'w')
 
-    f.write(""".. _%s:
+    f.write(""".. index:: %s
 
-.. index:: %s
+.. _%s:
 
 ================
 %s
