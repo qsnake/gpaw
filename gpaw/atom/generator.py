@@ -106,6 +106,7 @@ parameters_extra = {
  'Be': {'name': 'soft', 'core': '[He]', 'rcut': 1.9},
  'O' : {'name': 'hard', 'core': '[He]', 'rcut': 1.2},
  'Si': {'name': 'hard', 'core': '[Ne]', 'rcut': 1.85},
+ 'Br': {'name': 'old',  'core': '[Ar]3d', 'rcut': 2.2},
  'Pt': {'name': 'soft', 'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3],
         'rcutcomp': 2.5},
  }
