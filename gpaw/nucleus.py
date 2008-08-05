@@ -217,7 +217,7 @@ class Nucleus:
             
         self.ready = True
 
-        # Moving the atoms in a course grid EXX calculation doesn't
+        # Moving the atoms in a coarse grid EXX calculation doesn't
         # work.  Make sure it fails:
         self.Ghat_L = None
 
@@ -1155,7 +1155,7 @@ class Nucleus:
 
                            a                 ii'
 
-        Note that this correction is an approximation assuming that the
+        Note that this correction is an approximation that assumes the
         exponential varies slowly over the extent of the augmentation sphere.
 
         ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
