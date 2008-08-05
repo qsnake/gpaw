@@ -2,7 +2,6 @@ from math import pi, sqrt
 
 import numpy as npy
 
-import _gpaw
 import gpaw.mpi as mpi
 from gpaw import debug
 from gpaw.utilities import pack,packed_index
@@ -158,7 +157,7 @@ class KSSingles(ExcitationList):
                 f.close()
 
  
-class KSSingle(Excitation,PairDensity):
+class KSSingle(Excitation, PairDensity):
     """Single Kohn-Sham transition containing all it's indicees
 
     ::
@@ -171,8 +170,8 @@ class KSSingle(Excitation,PairDensity):
       muv = - <i|nabla|a>/omega_ia with omega_ia>0
       m   = <i|[r x nabla]|a> / (2c)
     """
-    def __init__(self,iidx=None,jidx=None,pspin=None,spin=None,
-                 paw=None,string=None,fijscale=1):
+    def __init__(self, iidx=None, jidx=None, pspin=None, spin=None,
+                 paw=None, string=None, fijscale=1):
         
         if string is not None: 
             self.fromstring(string)
@@ -256,8 +255,38 @@ class KSSingle(Excitation,PairDensity):
 #        for i in range(3):
 #            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])
         
-         
-         
+    def __add__(self, other):
+        """Add two KSSingles"""
+        result = self.copy()
+        result.me = self.me + other.me
+        result.mur = self.mur + other.mur
+        result.muv = self.muv + other.muv
+        return result
+
+    def __sub__(self, other):
+        """Subtract two KSSingles"""
+        result = self.copy()
+        result.me = self.me - other.me
+        result.mur = self.mur - other.mur
+        result.muv = self.muv - other.muv
+        return result
+
+    def __mul__(self, x):
+        """Multiply a KSSingle with a number"""
+        if type(x) == type(0.) or type(x) == type(0):
+            result = self.copy()
+            result.me = self.me * x
+            result.mur = self.mur * x
+            result.muv = self.muv * x
+            return result
+        else:
+            return RuntimeError('not a number')
+        
+    def __div__(self, x):
+        return self.__mul__(1. / x)
+
+    def copy(self):
+        return KSSingle(string=self.outstring())
 
     def fromstring(self,string):
         l = string.split()

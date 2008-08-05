@@ -246,6 +246,20 @@ class LrTDDFT(ExcitationList):
             if fh is None:
                 f.close()
 
+    def singlets_triplets(self):
+        """Split yourself into a singlet and triplet object"""
+
+        slr = LrTDDFT(None, self.nspins, self.eps,
+                      self.istart, self.jend, self.xc, 
+                      self.derivativeLevel, self.numscale)
+        tlr = LrTDDFT(None, self.nspins, self.eps,
+                      self.istart, self.jend, self.xc, 
+                      self.derivativeLevel, self.numscale)
+        slr.Om, tlr.Om = self.Om.singlets_triplets()
+        for lr in [slr, tlr]:
+            lr.kss = lr.Om.fullkss
+        return slr, tlr
+
     def SPA(self):
         """Return the excitation list according to the
         single pole approximation. See e.g.:

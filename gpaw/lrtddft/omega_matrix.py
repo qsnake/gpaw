@@ -1,7 +1,6 @@
 import sys
 from math import sqrt
 import numpy as npy
-import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 
@@ -55,7 +54,7 @@ class OmegaMatrix:
                 if mpi.rank == MASTER:
                     out = sys.stdout
                 else:
-                    out = DownTheDrain()
+                    out = open('/dev/null', 'w')
         else:
             if type(out) == type(''):
                 out = paropen(out, 'w')
@@ -69,18 +68,22 @@ class OmegaMatrix:
             self.read(fh=filehandle)
             return None
 
-        self.paw = calculator
         self.fullkss = kss
+        self.finegrid = finegrid
+
+        if calculator is None:
+            return
+
+        self.paw = calculator
         
         # handle different grid possibilities
-        self.finegrid=finegrid
-        self.restrict=None
+        self.restrict = None
         self.poisson = PoissonSolver(nn=self.paw.hamiltonian.poisson.nn)
         if finegrid:
             self.poisson.initialize(self.paw.finegd)
             
             self.gd = self.paw.finegd
-            if finegrid==1:
+            if finegrid == 1:
                 self.gd = self.paw.gd
         else:
             self.poisson.initialize(self.paw.gd)
@@ -88,13 +91,13 @@ class OmegaMatrix:
         self.restrict = Transformer(self.paw.finegd, self.paw.gd,
                                     self.paw.stencils[0]).apply
 
-        if xc == 'RPA': xc=None # enable RPA as keyword
+        if xc == 'RPA': 
+            xc = None # enable RPA as keyword
         if xc is not None:
-            self.xc = XC3DGrid(xc,self.gd,
-                               kss.npspins)
+            self.xc = XC3DGrid(xc, self.gd, kss.npspins)
             # check derivativeLevel
             if derivativeLevel is None:
-                derivativeLevel=\
+                derivativeLevel= \
                     self.xc.get_functional().get_max_derivative_level()
             self.derivativeLevel=derivativeLevel
             # change the setup xc functional if needed
@@ -112,9 +115,9 @@ class OmegaMatrix:
         else:
             self.xc = None
 
-        self.numscale=numscale
+        self.numscale = numscale
     
-        self.singletsinglet=False
+        self.singletsinglet = False
         if kss.nvspins<2 and kss.npspins<2:
              # this will be a singlet to singlet calculation only
              self.singletsinglet=True
@@ -458,6 +461,37 @@ class OmegaMatrix:
                       self.timestring(t0*(nij-ij-1)+t)
 
         return Om
+
+    def singlets_triplets(self):
+        """Split yourself into singlet and triplet transitions"""
+
+        assert(self.fullkss.npspins == 2)
+        assert(self.fullkss.nvspins == 1)
+        
+        # strip kss from down spins
+        skss = KSSingles()
+        tkss = KSSingles()
+        map = []
+        for ij, ks in enumerate(self.fullkss):
+            if ks.pspin == ks.spin:
+                skss.append((ks + ks) / sqrt(2))
+                tkss.append((ks - ks) / sqrt(2))
+                map.append(ij)
+            
+        nkss = len(skss)
+
+        # define the singlet and the triplet omega-matrixes
+        sOm = OmegaMatrix(kss=skss)
+        sOm.full = npy.empty((nkss, nkss))
+        tOm = OmegaMatrix(kss=tkss)
+        tOm.full = npy.empty((nkss, nkss))
+        for ij in range(nkss):
+            for kl in range(nkss):
+                sOm.full[ij, kl] = (self.full[map[ij], map[kl]] +
+                                    self.full[map[ij], nkss + map[kl]])
+                tOm.full[ij, kl] = (self.full[map[ij], map[kl]] -
+                                    self.full[map[ij], nkss + map[kl]])
+        return sOm, tOm
 
     def timestring(self,t):
         ti = int(t+.5)

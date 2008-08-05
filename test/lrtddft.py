@@ -36,7 +36,8 @@ if not io_only:
 
     # with spin
     
-    lr_vspin = LrTDDFT(calc,xc=xc,nspins=2)
+    lr_vspin = LrTDDFT(calc, xc=xc, nspins=2)
+    singlet, triplet = lr_vspin.singlets_triplets()
     lr_vspin.diagonalize()
     # the triplet is lower, so that the second is the first singlet
     # excited state
@@ -58,6 +59,15 @@ if not io_only:
         print 'i, real, virtual spin: ', i, lr_vspin[i], lr_spin[i]
         equal(lr_vspin[i].get_energy(), lr_spin[i].get_energy(), 5.e-6)
 
+    # singlet/triplet separation
+    singlet.diagonalize()
+    equal(singlet[0].get_energy(), lr_spin[1].get_energy(), 2.e-9)
+    equal(singlet[0].get_oscillator_strength()[0],
+          lr_spin[1].get_oscillator_strength()[0], 2.e-9)
+    triplet.diagonalize()
+    equal(triplet[0].get_oscillator_strength()[0], 0)
+    equal(triplet[0].get_energy(), lr_spin[0].get_energy(), 2.e-9)
+    equal(triplet[0].get_oscillator_strength()[0], 0)
 
 # io
 fname = 'lr.dat.gz'
