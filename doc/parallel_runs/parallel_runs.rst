@@ -26,11 +26,22 @@ examples::
 Simple submit tool
 ==================
 
-Instead writing a file with the line "mpirun ... gpaw-python script.py" and then submitting it to a queueing system, it is simpler to automate this:
+Instead writing a file with the line "mpirun ... gpaw-python script.py" and then submitting it to a queueing system, it is simpler to automate this::
 
-qsub.py_
-
-.. _qsub.py: literalinclude:qsub.py
+  #!/usr/bin/env python
+  from sys import argv
+  import os
+  options = ' '.join(argv[1:-1])
+  job = argv[-1]
+  dir = os.getcwd()
+  f = open('script.sh', 'w')
+  f.write("""\
+  NP=`wc -l < $PBS_NODEFILE`
+  cd %s
+  mpirun -np $NP -machinefile $PBS_NODEFILE gpaw-python %s
+  """ % (dir, job))
+  f.close()
+  os.system('qsub ' + options + ' script.sh')
 
 Now you can do::
 
@@ -43,11 +54,7 @@ system.
 More advanced example
 ---------------------
 
-At CAMd, we use this submit tool:
-
-gpaw-qsub.py_
-
-.. _gpaw-qsub.py: literalinclude:gpaw-qsub.py
+At CAMd, we use this submit tool: :svn:`~doc/parallel_runs/gpaw-qsub.py`.
 
 Example::
 
@@ -66,6 +73,7 @@ to get the architectures implemented and the available options. As an example, u
   $ gpaw-runscript script.py 32
 
 to write a job sumission script running script.py on 32 cpus. The tool tries to guess the architecture/host automatically.
+
 
 Writing to files
 ================
