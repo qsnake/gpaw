@@ -7,21 +7,18 @@ Getting started with GPAW
 Now we are ready to run the first GPAW calculation. We will look at
 bulk fcc aluminum and make a single energy calculation at the
 experimental lattice constant `a_0` = 4.05 Å. For the first example,
-we choose 0.2 Å as grid spacing and 6 x 6 x 6 **k**-points.  Copy the
-script :svn:`~doc/exercises/aluminium/Al_fcc.py?format=raw`
+we choose 0.2 Å as grid spacing and 6 x 6 x 6 **k**-points.  Copy this
+:svn:`script <doc/exercises/aluminium/Al_fcc.py?format=raw>` to a
+place in your file area:
 
-    .. note::
+.. literalinclude:: Al_fcc.py
 
-      The link above is a Trac link, showing you a view into the
-      current status of gpaw development. To download the actual file,
-      find the link in the bottom saying *Download in other formats:*
-      then click either *Plain Text* or *Original Format*.
+.. highlight:: bash
 
-to a place in your file area. Read the script and try to get an idea
-of what it will do. Run the script by typing::
+Read the script and try to get an idea of what it will do. Run the
+script by typing::
 
   $ python Al_fcc.py
-
 
 The program will pop up a window showing the bulk structure.  Verify
 that the structure indeed is fcc. Try to identify the closepacked
@@ -32,7 +29,7 @@ Notice that the program has generated two output files::
   Al-fcc.gpw
   Al-fcc.txt
 
-In general, when you execute a GPAW electronic structure calculation,
+Typically, when you execute a GPAW electronic structure calculation,
 you get two files:
 
 * A tar-file (conventional suffix :file:`.gpw`) containing binary data
@@ -59,6 +56,8 @@ monitor some variables by using the :command:`grep` utility.  By typing::
 you see the progress of the iteration cycles including convergence of
 wavefunctions, density and total energy.
 
+.. highlight:: python
+
 The binary file contains all information about the calculation. Try
 typing the following from the Python interpreter::
 
@@ -82,6 +81,8 @@ Now we will investigate the necessary **k**-point sampling
 and grid spacing needed for bulk fcc Aluminum at the
 experimental lattice constant `a_0` = 4.05 Å; this is a standard
 first step in all DFT calculations.
+
+.. highlight:: bash
 
 * Copy the script
   :svn:`~doc/exercises/aluminium/Al_fcc_convergence.py?format=raw` to a
@@ -117,8 +118,7 @@ lattice properties of bulk Aluminum.
 
 * First map out the cohesive curve `E(a)` for Al(fcc), i.e.  the
   total energy as function of lattice constant a, around the
-  experimental equilibrium value of `a_0` = 4.05 Å.  Notice that the
-  vacuum energy level `E(\infty)` is not zero.  Get four or more
+  experimental equilibrium value of `a_0` = 4.05 Å.  Get four or more
   energy points, so that you can make a fit.
 
 * Fit the data you have obtained to get `a_0` and the energy curve
@@ -135,8 +135,13 @@ lattice properties of bulk Aluminum.
 
   Then choose :menuselection:`Tools --> Bulk Modulus`.
 
+  Another alternative is to use the :ase:`Equation of state module
+  <ase/utils.html#equation-of-state>` (see this :ase:`tutorial
+  <tutorials/eos/eos.html>`).
+
 * Compare your results to the experimental values `a_0` = 4.05 Å and `B`
-  = 76 GPa.  Mind the units when you calculate the bulk modulus.
+  = 76 GPa.  Mind the units when you calculate the bulk modulus (read
+  about ASE-units :ase:`here <ase/units.html>`).
   What are the possible error sources, and what quantity is more
   sensitive, the lattice constant or the bulk modulus?
 
@@ -173,9 +178,9 @@ Equilibrium lattice properties for bcc
   0.25 Å and 0.2 Å, i.e. four calculations.  Compare the
   structure energy differences for the two cutoffs.  Generally,
   energy differences converge much faster
-  with grid spacing than total energies themselves.  Further
-  notice that the energy zero does not
-  have physical significance. This exercise is sensitive to the number
+  with grid spacing than total energies themselves.  The total
+  energies that GPAW calculates are relative to isolated atoms (more
+  details here: :ref:`zero_energy`).  This exercise is sensitive to the number
   of **k**-points, make sure that your **k**-point sampling is dense enough.
 
 * GPAW requires an orthorhombic unit cell and therefore one cannot choose a

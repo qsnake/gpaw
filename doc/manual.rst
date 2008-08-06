@@ -417,6 +417,8 @@ There is more information about running parallel calculations on the
 
 
 
+.. _zero_energy:
+
 --------------
 Total Energies
 --------------
