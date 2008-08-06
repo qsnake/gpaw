@@ -1,12 +1,3 @@
-#ifndef NUM_OF_THREADS
-  //Default number of threads
-  #ifdef BLUEGENE
-    #define NUM_OF_THREADS 4
-  #else
-    #define NUM_OF_THREADS 1
-  #endif
-#endif
-
 #ifndef DOUBLECOMPLEXDEFINED
 #  define DOUBLECOMPLEXDEFINED 1
 #  ifdef NO_C99_COMPLEX

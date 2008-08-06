@@ -1,6 +1,6 @@
 #include "bmgs.h"
 
-#ifdef BLUEGENE
+#ifdef GPAW_OMP
   #include <omp.h>
 #endif
 
@@ -10,8 +10,8 @@ void IP1D(const T* a, int n, int m, T* b, int skip[2])
 {
   a += K / 2 - 1;
 
-  #ifdef BLUEGENE
-    #pragma omp parallel for num_threads(NUM_OF_THREADS)
+  #ifdef GPAW_OMP
+    #pragma omp parallel for
   #endif
   for (int j = 0; j < m; j++)
     {
