@@ -87,8 +87,8 @@ class KSSingles(ExcitationList):
                         ks=KSSingle(i,j,ispin,vspin,paw,fijscale=fijscale)
                         self.append(ks)
 
-        self.istart=istart
-        self.jend=jend
+        self.istart = istart
+        self.jend = jend
 
         trkm = self.GetTRK()
         print >> self.out, 'KSS TRK sum %g (%g,%g,%g)' % \
@@ -123,11 +123,19 @@ class KSSingles(ExcitationList):
     def update(self):
         istart = self[0].i
         jend = 0
+        npspins = 1
+        nvspins = 1
         for kss in self:
-            istart = min(kss.i,istart)
-            jend = max(kss.j,jend)
+            istart = min(kss.i, istart)
+            jend = max(kss.j, jend)
+            if kss.pspin == 1:
+                npspins = 2
+            if kss.spin == 1:
+                nvspins = 2
         self.istart = istart
         self.jend = jend
+        self.npspins = npspins
+        self.nvspins = nvspins
 
     def write(self, filename=None, fh=None):
         """Write current state to a file.

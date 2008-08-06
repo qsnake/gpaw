@@ -21,7 +21,7 @@ from gpaw.lrtddft.spectrum import spectrum
 
 """This module defines a linear response TDDFT-class."""
 
-__all__ = ['LrTDDFT', 'photoabsorption_spectrum']
+__all__ = ['LrTDDFT', 'photoabsorption_spectrum', 'spectrum']
 
 class LrTDDFT(ExcitationList):
     """Linear Response TDDFT excitation class
@@ -67,6 +67,9 @@ class LrTDDFT(ExcitationList):
                  ):
 
         self.txt=txt
+        self.nspins = None
+        self.istart=None
+        self.jend=None
 
         if isinstance(calculator, str):
             return self.read(calculator)
@@ -77,10 +80,7 @@ class LrTDDFT(ExcitationList):
 
         self.filename=None
         self.calculator=None
-        self.nspins=None
         self.eps=None
-        self.istart=None
-        self.jend=None
         self.xc=None
         self.derivativeLevel=None
         self.numscale=numscale
@@ -179,7 +179,7 @@ class LrTDDFT(ExcitationList):
         return self.Om
 
     def Read(self, filename=None, fh=None):
-        return self.read(filename,fh)
+        return self.read(filename, fh)
         
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
@@ -245,6 +245,10 @@ class LrTDDFT(ExcitationList):
 
             if fh is None:
                 f.close()
+
+            # update own variables
+            self.istart = self.Om.fullkss.istart
+            self.jend = self.Om.fullkss.jend
 
     def singlets_triplets(self):
         """Split yourself into a singlet and triplet object"""
