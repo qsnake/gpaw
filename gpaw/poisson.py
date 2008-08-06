@@ -292,7 +292,7 @@ class FFTPoissonSolver(PoissonSolver):
         i_cq += N_c1 // 2
         i_cq %= N_c1
         i_cq -= N_c1 // 2
-        B_vc = 2.0 * pi * npy.linalg.inv(gd.domain.cell_cv).T
+        B_vc = 2.0 * pi * gd.domain.icell_cv.T
         k_vq = npy.dot(B_vc, i_cq)
         k_vq *= k_vq
         self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)

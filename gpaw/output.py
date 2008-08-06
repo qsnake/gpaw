@@ -335,6 +335,8 @@ class Output:
         print >> self.txt, eigenvalue_string(self)
 
     def plot_atoms(self, atoms):
+        if self.non_orthorhombic_unit_cells_allowed:
+            return
         cell_c = npy.diagonal(atoms.get_cell()) / self.a0
         pos_ac = atoms.get_positions() / self.a0
         Z_a = atoms.get_atomic_numbers()

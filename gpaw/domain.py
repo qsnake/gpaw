@@ -42,6 +42,8 @@ class Domain:
         else:
             self.cell_cv = self.cell_c
             self.cell_c = self.cell_cv.diagonal()
+
+        self.icell_cv = npy.linalg.inv(self.cell_cv).T
             
         self.pbc_c = npy.asarray(pbc, bool)
         

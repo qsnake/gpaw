@@ -191,10 +191,11 @@ class GridDescriptor:
     def get_boxes(self, spos_c, rcut, cut=True):
         """Find boxes enclosing sphere."""
         N_c = self.N_c
-        ncut = rcut / self.h_c
+        #ncut = rcut / self.h_c
+        ncut = rcut * (self.domain.icell_cv**2).sum(axis=1)**0.5 * self.N_c
         npos_c = spos_c * N_c
         beg_c = npy.ceil(npos_c - ncut).astype(int)
-        end_c   = npy.ceil(npos_c + ncut).astype(int)
+        end_c = npy.ceil(npos_c + ncut).astype(int)
 
         if cut:
             for c in range(3):
