@@ -24,12 +24,12 @@ slab.set_constraint(fixlayers)
 if use_emt:
     calc = EMT()
 else:
-    calc = GPAW(h=0.25, kpts=(2, 2, 1), xc='PBE', txt='initial.txt')
+    calc = GPAW(h=0.25, kpts=(4, 4, 1), xc='PBE', txt='initial.txt')
 slab.set_calculator(calc)
 qn = QuasiNewton(slab, trajectory='initial.traj')
 qn.run(fmax=0.05)
-if not use_emt:
-  assert len(calc.get_ibz_k_points()) == 1
+#if not use_emt:
+#  assert len(calc.get_ibz_k_points()) == 1
 
 del slab[-1]
 slab.translate((x, y, 0))
@@ -37,7 +37,7 @@ add_adsorbate(slab, 'Au', 2.0, 'bridge')
 if use_emt:
     calc = EMT()
 else:
-    calc = GPAW(h=0.25, kpts=(2, 2, 1), xc='PBE', txt='final.txt')
+    calc = GPAW(h=0.25, kpts=(4, 4, 1), xc='PBE', txt='final.txt')
 slab.set_calculator(calc)
 qn = QuasiNewton(slab, trajectory='final.traj')
 qn.run(fmax=0.05)
