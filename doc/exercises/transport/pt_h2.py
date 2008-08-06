@@ -1,4 +1,5 @@
-# create: pt_h2.png
+# creates: pt_h2.png
+
 from ase import *
 import os
 
@@ -17,7 +18,8 @@ h2 = Atoms('H2',[((N-1)*a+c,l,l),((N-1)*a+c+b,l,l)],pbc=True)
 
 atoms = atoms1 + h2 + atoms2
 atoms.set_cell([(2*N-1)*a+b+2*c,L,L])
-write('pt_h2.pov', atoms, show_unit_cell=2, pause=False)
+pov_options = {'display' : False}
+write('pt_h2.pov', atoms, show_unit_cell=2, pause=False,**pov_options)
 os.system('povray pt_h2.ini')
 
 
