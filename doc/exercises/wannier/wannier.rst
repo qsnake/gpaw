@@ -8,30 +8,30 @@ Wannier functions.  We have cheated a little bit and prepared a file
 for bulk silicon and a Benzene molecule so that you only have to
 concentrate on the wannier analysis of the molecules.
 
-Start by running :svn:`examples/wannier/si.py` and make sure you agree
-with the way the diamond structure is set up. The resulting
-:file:`.gpw` file is used as input to
-:svn:`examples/wannier/wannier-si.py` which transforms the Kohn-Sham
-orbitals to maximally localized wannier functions and plot the atoms
-along with the centers of the wannier functions.  Note that the
-wannier centers are treated as "X" atoms which are plotted as small
-red spheres.  How many covalent bonds do you expect in a unit cell
-with 8 tetravalent Silicon atoms?
+Start by running :svn:`~doc/exercises/wannier/si.py?format=raw` and
+make sure you agree with the way the diamond structure is set up. The
+resulting :file:`.gpw` file is used as input to
+:svn:`~doc/exercises/wannier/wannier-si.py?format=raw` which
+transforms the Kohn-Sham orbitals to maximally localized wannier
+functions and plot the atoms along with the centers of the wannier
+functions.  Note that the wannier centers are treated as "X" atoms
+which are plotted as small red spheres.  How many covalent bonds do
+you expect in a unit cell with 8 tetravalent Silicon atoms?
 
-The script :svn:`examples/wannier/benzene.py` produces a :file:`.gpw`
-that can be used as input to create wannier functions. Convince
-yourself that the chosen number of bands matches the number of
-occupied orbitals in the molecule.  How many covalent bonds do you
-expect in Benzene?  Look at :svn:`examples/wannier/wannier-benzene.py`
-and figure out what it does. Run it and look at the graphical
-representation.  Note in particular the alternating single/double
-bonds between the carbon atoms.  What happens if also you include one
-or two unoccupied bands?  The script also produces two :file:`.cube`
-files. One contains the wavefunction of the Highest Occupied Molecular
-Orbital (HOMO) and the other contains a wannier function centered
-between a Carbon and a Hydrogen atom. Study these with :program:`VMD`
-and determine which type of orbitals they represent (:math:`\sigma` or
-:math:`\pi`).
+The script :svn:`~doc/exercises/wannier/benzene.py?format=raw`
+produces a :file:`.gpw` that can be used as input to create wannier
+functions. Convince yourself that the chosen number of bands matches
+the number of occupied orbitals in the molecule.  How many covalent
+bonds do you expect in Benzene?  Look at
+:svn:`~doc/exercises/wannier/wannier-benzene.py?format=raw` and figure
+out what it does. Run it and look at the graphical representation.
+Note in particular the alternating single/double bonds between the
+carbon atoms.  What happens if also you include one or two unoccupied
+bands?  The script also produces two :file:`.cube` files. One contains
+the wavefunction of the Highest Occupied Molecular Orbital (HOMO) and
+the other contains a wannier function centered between a Carbon and a
+Hydrogen atom. Study these with :program:`VMD` and determine which
+type of orbitals they represent (:math:`\sigma` or :math:`\pi`).
 
 Now repeat the wannier function analysis on the following molecules
 

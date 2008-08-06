@@ -33,9 +33,9 @@ Identify the minima, maxima and saddle points of the PES. You may do this
 by either looking at the plot or taking the partial derivatives. You will need
 the derivatives anyway at a later point.
 
-Plot the function with the plot program of your choice. In the script :svn:`examples/tst/plot.py` it 
-is shown, how to plot the potential with
-:program:`matplotlib`.
+Plot the function with the plot program of your choice. In the script
+:svn:`~doc/exercises/tst/plot.py?format=raw` it is shown, how to plot
+the potential with :program:`matplotlib`.
 
 
 

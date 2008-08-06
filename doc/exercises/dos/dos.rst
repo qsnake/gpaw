@@ -2,10 +2,10 @@
 Density of states
 =================
 
-Take a look at the :svn:`examples/dos/dos.py` program and try to get a
-rough idea of what it can do for you.  Use it to plot the density of
-states (DOS) for the three Fe configurations (on the *x*-axis you have
-the energy relative to the Fermilevel).
+Take a look at the :svn:`~doc/exercises/dos/dos.py?format=raw` program
+and try to get a rough idea of what it can do for you.  Use it to plot
+the density of states (DOS) for the three Fe configurations (on the
+*x*-axis you have the energy relative to the Fermilevel).
 
 * Do the DOS plots integrate to the correct numbers? (i.e.
   number of bands).
@@ -44,5 +44,5 @@ demonstrates how to construct the PDOS of Fe.
 
 We will get a feel for the local density of states by plotting the
 PDOS for the ferro-magnetic Fe crystal.  Look at
-:svn:`examples/dos/pdos.py`. Use it to plot the s, p, and d-states on
-one of the Fe atoms.
+:svn:`~doc/exercises/dos/pdos.py?format=raw`. Use it to plot the s, p,
+and d-states on one of the Fe atoms.

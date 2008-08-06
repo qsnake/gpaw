@@ -15,6 +15,8 @@ def svn_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
         if name[0] == '~':
             name = name.split('/')[-1]
             text = text[1:]
+        if '?' in name:
+            name = name[:name.index('?')]
     ref = 'http://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/' + text
     set_classes(options)
     node = nodes.reference(rawtext, name, refuri=ref,

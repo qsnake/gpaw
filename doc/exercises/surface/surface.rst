@@ -62,7 +62,8 @@ whereas (110) is most open. Here we'll focus on (100).
 
 * Now that we know the surface geometry, we can setup a toolbox
   for making surface structures with arbitrary number of layers.  Copy
-  the script :svn:`examples/surface/build_bcc.py` to your area.
+  the script :svn:`~doc/exercises/surface/build_bcc.py?format=raw`
+  to your area.
   Browse the script and try
   to understand it. The central part is the function starting with
   :samp:`def bcc100({...})` that creates a body centered cubic (100)
@@ -129,7 +130,7 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
   .. math:: \sigma = \frac{NE_{N-1} - (N-1)E_N}{2A}
 
-* Take a look at the script :svn:`examples/surface/Al100.py`.
+* Take a look at the script :svn:`~doc/exercises/surface/Al100.py?format=raw`.
   Calculate `\sigma` for `N` =
   2, 3, 4, 5 and 6.  Use a two-dimensional Monkhorst-Pack **k**-point
   sampling (``kpts=(k, k, 1)``) that matches the size of your unit
@@ -153,9 +154,9 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 Work function
 -------------
 
-Run the :svn:`examples/surface/work_function.py` script and estimate
-the work function for a Al(100) surface. A typical experimental value
-for the work function of the Al(100) surface is 4.20 eV.  Try to do
-the slab calculation with periodic boundary conditions in all three
-directions, and run the script again.  How does this affect the Fermi
-level and the average potential?
+Run the :svn:`~doc/exercises/surface/work_function.py?format=raw`
+script and estimate the work function for a Al(100) surface. A typical
+experimental value for the work function of the Al(100) surface is
+4.20 eV.  Try to do the slab calculation with periodic boundary
+conditions in all three directions, and run the script again.  How
+does this affect the Fermi level and the average potential?

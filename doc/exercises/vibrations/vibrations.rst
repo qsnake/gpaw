@@ -19,15 +19,15 @@ will calculate the vibrational frequencies for a water molecule.
 
 * Make a script where a H\ :sub:`2`\ O molecule is relaxed to its equilibrium
   position.  It can be done like this:
-  :svn:`examples/vibrations/h2o.py`.  An alternative is to
+  :svn:`~doc/exercises/vibrations/h2o.py?format=raw`.  An alternative is to
   use the MP2 structures from ASE's molecular database::
 
     from ase import *
     h2o = molecule('H2O')
     h2o.center(vacuum=3.5)
 
-* Copy the file :svn:`examples/vibrations/H2O_vib.py` to your area and
-  try to understand what it does.
+* Copy the file :svn:`~doc/exercises/vibrations/H2O_vib.py?format=raw`
+  to your area and try to understand what it does.
 
 * Run the script and look at the output frequencies. Compare them to
   literature values, which are 1595cm\ :sup:`-1` for the bending

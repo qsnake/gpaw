@@ -7,8 +7,8 @@ Getting started with GPAW
 Now we are ready to run the first GPAW calculation. We will look at
 bulk fcc aluminum and make a single energy calculation at the
 experimental lattice constant `a_0` = 4.05 Å. For the first example,
-we choose 0.2 Å as grid spacing and 6 x
-6 x 6 **k**-points.  Copy the script :svn:`examples/aluminium/Al_fcc.py`
+we choose 0.2 Å as grid spacing and 6 x 6 x 6 **k**-points.  Copy the
+script :svn:`~doc/exercises/aluminium/Al_fcc.py?format=raw`
 
     .. note::
 
@@ -83,7 +83,8 @@ and grid spacing needed for bulk fcc Aluminum at the
 experimental lattice constant `a_0` = 4.05 Å; this is a standard
 first step in all DFT calculations.
 
-* Copy the script :svn:`examples/aluminium/Al_fcc_convergence.py` to a
+* Copy the script
+  :svn:`~doc/exercises/aluminium/Al_fcc_convergence.py?format=raw` to a
   place in your file
   area.  Read the script and get an idea of what it will do. Then run
   the script by typing::

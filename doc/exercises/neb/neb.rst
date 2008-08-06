@@ -20,9 +20,9 @@ The adatom can jump along the rows or across the rows.
 * Which of the two jumps do you think will have the largest energy
   barrier?
 
-The template script :svn:`~examples/neb/neb1.py` will find the minimum
-energy path for a jump along the rows.  Read, understand, and run the
-script.
+The template script :svn:`~doc/exercises/neb/neb1.py?format=raw` will
+find the minimum energy path for a jump along the rows.  Read,
+understand, and run the script.
 
 * Make sure you understand what is going on (make a good sketch of the
   110 surface).

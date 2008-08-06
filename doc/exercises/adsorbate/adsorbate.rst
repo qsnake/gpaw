@@ -31,7 +31,7 @@ adsorption PES.
 
   - We relax ionic positions.  For simplicity, we'll freeze the
     Aluminum slab atoms, and only relax the H adsorbate. This is done
-    in the script :svn:`examples/adsorption/relax.py`.
+    in the script :svn:`~doc/exercises/adsorbate/relax.py?format=raw`.
 
   - If you want the relaxation to converge quickly, it is necessary to
     make a qualified guess on the equilibrium position of the H
@@ -125,7 +125,7 @@ Using :program:`VMD` to plot density differences
 
 It is sometimes useful to look at density changes when studying for
 instance adsorption reactions. Copy the script
-:svn:`examples/adsorbate/densitydiff.py` to your area.
+:svn:`~doc/exercises/adsorbate/densitydiff.py?format=raw` to your area.
 
 Read it and try to understand what is does. Change the necessary lines
 to look at one of your slabs with H adsorbed. There is one major
