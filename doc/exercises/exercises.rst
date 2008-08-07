@@ -4,7 +4,9 @@
 Exercises
 =========
 
-XXX link to setting up unix environment
+XXX link to setting up unix environment (:ref:`summerschool`)
+
+XXX link to ASE
 
 .. toctree::
    :maxdepth: 1
@@ -29,6 +31,4 @@ See also :ref:`timepropagation`.
 
 These exercises are used in the course Electronic structure methods in
 materials physics, chemistry and biology. For comments and questions,
-email jensj_.
-
-.. _jensj: http://www.fys.dtu.dk/Medarbejdere/Samlet_medarbejderstab.aspx?lg=showcommon&id=1666&type=person
+write to the :ref:`gpaw-devel-ml`.

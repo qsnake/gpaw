@@ -99,24 +99,26 @@ If you *really* want all nodes to write something to files, you should make sure
 
 Running different calculations in parallel
 ==========================================
-A GPAW calculator object will per default distribute its work on all available processes. If you want to use several different calculators at the same time, however, you can specify a set of processes to be used by each calculator. The processes are supplied to the constructor, either by specifying an MPI Communicator object or a list of MPI process ranks. Thus, you may write::
 
-  from gpaw import Calculator, mpi
+A GPAW calculator object will per default distribute its work on all
+available processes. If you want to use several different calculators
+at the same time, however, you can specify a set of processes to be
+used by each calculator. The processes are supplied to the
+constructor, either by specifying an MPI Communicator object. Thus,
+you may write::
+
+  from gpaw import GPAW
+  import gpaw.mpi as mpi
+  import numpy as np
 
   # Create a calculator using ranks 0, 3 and 4 from the mpi world communicator
-  calc = Calculator(communicator=[0,3,4])
+  comm = mpi.world.new_communicator(np.array([0, 3, 4]))
+  calc = GPAW(communicator=comm)
 
-We could also obtain an actual communicator object. This is equivalent to the above::
+Be sure to specify different output files to each calculator,
+otherwise their outputs will be mixed up.
 
-  import Numeric
+Here is an example which calculates the atomization energy of a
+nitrogen molecule using two processes:
 
-  comm = mpi.world.new_communicator(Numeric.array([0, 3, 4]))
-  calc = Calculator(communicator=comm)
-
-Be sure to specify different output files to each calculator, otherwise their outputs will be mixed up.
-
-Here is an example which calculates the atomization energy of a nitrogen molecule using two processes:
-
-parallel_atomization.py_
-
-.. _parallel_atomization.py: literalinclude:parallel_atomization.py
+.. literalinclude:: parallel_atomization.py

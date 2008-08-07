@@ -47,14 +47,16 @@ By default only singlet-singlet transitions are calculated, singlet-triplet tran
 
   LrTDDFT(calc, istart=0, jend=10, nspins=2)
   
-Exercises
---------- 
 
-1. Check how the results vary with the number of unoccupied states in calculation (``jend`` parameter).
+1. Check how the results vary with the number of unoccupied states in
+   the calculation (``jend`` parameter).
 
-2. Calculate also singlet-triplet transitions. Why they do not show up in spectrum?
+2. Calculate also singlet-triplet transitions. Why do they not show up
+   in the spectrum?
 
 3. Check how the results vary with the empty space around the molecule.
 
-4. Try to calculate optical spectrum also with the :ref:`timepropagation` approach and see how the results compare to linear response calculation.
+4. Try to calculate optical spectrum also with the
+   :ref:`timepropagation` approach and see how the results compare to
+   linear response calculation.
 

@@ -22,14 +22,14 @@ Python interpreter and try some of the examples below.
 
 .. _Python: http://www.python.org
 
-
+XXX units used?
 
 -----------------------
 Doing a PAW calculation
 -----------------------
 
 To do a PAW calculation with the GPAW code, you need an ASE
-:ase:`Atoms <ase/atoms.html>` and a GPAW
+:ase:`Atoms <ase/atoms.html>` object and a GPAW
 :class:`~gpaw.aseinterface.Calculator`::
 
    _____________          ____________
@@ -41,17 +41,7 @@ To do a PAW calculation with the GPAW code, you need an ASE
 
 In Python code, it looks like this:
 
->>> from ase import *
->>> from gpaw import *
->>> d = 0.74
->>> a = 6.0
->>> atoms = Atoms([Atom('H', [0, 0, 0]),
-...                Atom('H', [0, 0, d])],
-...               cell=(a, a, a))
->>> atoms.center()
->>> calc = GPAW(nbands=2, txt='h2.txt')
->>> atoms.set_calculator(calc)
->>> print atoms.get_forces()
+.. literalinclude:: h2.py
 
 If the above code was executed, a calculation for a single `\rm{H}_2`
 molecule would be started.  The calculation would be done using a
@@ -63,10 +53,9 @@ boundary conditions.  The parameters for the PAW calculation are:
   exchange-correlation functional.
 * Spin-paired calculation.
 * :math:`32 \times 32 \times 32` grid points.
-* Text output from the program is dumped directly to standard output.
 
 The values of these parameters can be found in the text output file:
-:file:`h2.txt`.
+`<h2.txt>`_.
 
 The calculator will try to make sensible choices for all parameters
 that the user does not specify.  Specifying parameters can be done
@@ -92,7 +81,7 @@ keyword          type       default value        description
 ``usesymm``      ``bool``   ``True``             Use symmetry
 ``random``       ``bool``   ``False``            Initialize wave functions 
                                                  with random numbers
-``width``        ``float``  ``0``                Width of Fermi-distribution
+``width``        ``float``  ``0`` or ``0.1`` eV  Width of Fermi-distribution
 ``lmax``         ``int``    ``2``                Maximum angular momentum
                                                  for expansion of
 			      		         compensation charges
@@ -102,7 +91,7 @@ keyword          type       default value        description
                                                  SCF-iterations
 ``txt``                     ``sys.stdout``       Where to send text output
 ``parsize``      *seq*                           Parallel domain decomposition
-``stencils``                ``(2, 'M', 3)``      Number of neighbors for
+``stencils``                ``(2, 3)``           Number of neighbors for
                                                  finite difference stencils.
 ``mixer``                                        Density mixing object
 ``fixdensity``   ``bool``   ``False``            Keep the density fixed
@@ -146,8 +135,8 @@ Number of electronic bands
 The default number of electronic bands (``nbands``) is equal to the
 number of atomic orbitals present in the atomic setups.  For systems
 with the occupied states well separated from the unoccupied states,
-one could use just the number of bands need to hold the occupied
-states.  For metals more bands are needed.  Sometimes, adding more
+one could use just the number of bands needed to hold the occupied
+states.  For metals, more bands are needed.  Sometimes, adding more
 unoccupied bands will improve convergence.
 
 .. tip::
@@ -169,7 +158,7 @@ Exchange-Correlation functional
 
 The exchange-correlation functional can be one of (only the most
 common are listed here, for the complete list see
-:file:`gpaw/libxc_functionals.py`):
+:svn:`~gpaw/libxc_functionals.py`):
 
 ============  =================== ===========================  ==========
 ``xc``        libxc_ keyword      description                  reference 
@@ -182,6 +171,10 @@ common are listed here, for the complete list see
 
 ``'LDA'`` is the default value.  The three last ones are of
 generalized gradient approximation (GGA) type.
+
+XXX simplify this.  Put all abreviation in the table above.
+
+XXX link to libxc description.
 
 The functionals from libxc_ are used by default - keywords are based
 on the :file:`gpaw/libxc_functionals.py` file.  Custom combinations of
@@ -206,7 +199,7 @@ Brillouin-zone sampling
 The default sampling of the Brillouin-zone is with only the
 `\Gamma`-point.  This allows us to choose the wave functions to be real.
 Monkhorst-Pack sampling can be used if required: ``kpts=(n1, n2,
-n3)``, where ``n1``, ``n2`` and ``n3`` are positive ``int``s.  This
+n3)``, where ``n1``, ``n2`` and ``n3`` are positive integers.  This
 will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
 ``n2`` `\times` ``n3`` **k**-points.
 
@@ -330,12 +323,7 @@ Wave function initialization
 By default, a linear combination of atomic orbitals is used as initial
 guess for the wave functions. If the user wants to calculate more bands
 than there are precalculated atomic orbitals, random numbers will be
-used for the remaining bands. It is possible to initialize all the
-wave functions from random numbers with the ``random`` keyword. If
-there are more atomic orbitals than needed for the actual number of
-bands, initialization from random numbers will save some memory,
-however more SCF-iterations may be needed.
-
+used for the remaining bands.
 
 
 .. _gpaw_manual_eigensolver:
@@ -377,8 +365,8 @@ example::
   setups={'Li': 'mine', 'H': 'ae'}
 
 For an LDA calculation, GPAW will look for :file:`Li.mine.LDA` (or
-:file:`Li.mine.LDA.gz`) in your :envvar:`$GPAW_SETUP_PATH` and use an
-all-electron potential for hydrogen atoms.
+:file:`Li.mine.LDA.gz`) in your :envvar:`GPAW_SETUP_PATH` environment
+variable and use an all-electron potential for hydrogen atoms.
 
 
 
@@ -388,7 +376,7 @@ Where to send text output
 The ``txt`` keyword defaults to the string ``'-'``, which means
 standard output.  One can also give a ``file`` object (anything with a
 ``write`` method will do).  If a string (different from ``'-'``) is
-passed to the ``out`` keyword, a file with that name will be opened
+passed to the ``txt`` keyword, a file with that name will be opened
 and used for output.  Use ``txt=None`` to disable all text output.
 
 .. _manual_parallel_calculations:
@@ -447,6 +435,8 @@ calculations, your system is in an unstable state!
 ------------------------
 Restarting a calculation
 ------------------------
+
+XXX link to restart-page.
 
 The state of a calculation can be saved to a file like this:
 

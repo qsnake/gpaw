@@ -110,19 +110,8 @@ then you should set the Fermi temperature to a low value:
 Tests fail!
 ===========
 
-Please report the failing test as well as information about your environment (processor architecture, C-compiler, 
-BLAS and LAPACK libraries, MPI library) to the mailing-list_. 
+Please report the failing test as well as information about your
+environment (processor architecture, C-compiler, BLAS and LAPACK
+libraries, MPI library) to the mailing-list_.
 
 .. _mailing-list: https://lists.berlios.de/mailman/listinfo/gridpaw-developer
-
-Writing a restart file fails
-============================
-
-Writing a restart file results in error::
-
-  File "/.../gridpaw/trunk/gpaw/io/netcdf.py", line 68, in fill
-      self.var[indices] = array
-  IOError: netcdf: Operation not allowed in define mode
-
-NetCDF (or more specifically Scientific python's netCDF) does not support files larger than 2 GB. Use instead ``.gpw``
-format or write the wave functions into separate files. See the :ref:`restart_files` page for more details.

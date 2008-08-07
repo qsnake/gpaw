@@ -33,8 +33,7 @@ Standard installation
 
      [~]$ cd gpaw
 
-3) See :ref:`developer_installation` for the recommended way of installing gpaw,
-4) or, alternatively, install with the standard::
+3) or, alternatively, install with the standard::
 
      [gpaw]$ python setup.py install
 
@@ -55,7 +54,7 @@ Standard installation
    many users can access it like in :file:`/usr/share/gpaw/`.  There will
    now be a directory :file:`gpaw-setups-{<version>}/` containing all the
    atomic data needed for doing LDA and PBE calculations.  Set the
-   environment variable :envvar:`$GPAW_SETUP_PATH` to point to the directory
+   environment variable :envvar:`GPAW_SETUP_PATH` to point to the directory
    :file:`gpaw-setups-{<version>}/`, e.g. put into :file:`~/.tcshrc`::
 
     setenv GPAW_SETUP_PATH ${HOME}/gpaw-setups-<version>
@@ -75,7 +74,7 @@ Standard installation
   .. _GPAW developer mailing list: gridpaw-developer@lists.berlios.de
 
 If you are a developer, you will want to install the code in a
-different way to allow code updates via SVN checkout.  See
+different way to allow code updates via SVN update.  See
 :ref:`developer_installation`.
 
 
@@ -86,25 +85,29 @@ Custom installation
 The install script does its best when trying to guess proper libraries
 and commands to build gpaw. However, if the standard procedure fails
 or user wants to override default values it is possible to customize
-the setup with :file:`customize.py` file which is located in the gpaw base
-directory. As an example, :file:`customize.py` might contain the following
+the setup with :svn:`customize.py` file which is located in the gpaw base
+directory. As an example, :svn:`customize.py` might contain the following
 lines::
 
   libraries = ['myblas', 'mylapack']
   library_dirs = ['path_to_myblas']
 
 Now, gpaw would be built with "``-Lpath_to_myblas -lmyblas
--lmylapack``" linker flags. Look at the file :file:`customize.py`
-itself for more possible options. After editing :file:`customize.py`,
+-lmylapack``" linker flags. Look at the file :svn:`customize.py`
+itself for more possible options. After editing :svn:`customize.py`,
 follow the instructions for the standard installation from step 3 on.
+
+
 
 Parallel installation
 =====================
 
-By default, setup looks if mpicc is available, and if setup finds one, a parallel version is build. If the setup does not find mpicc, a user can specify one in the :file:`customize.py` file. 
+By default, setup looks if :program:`mpicc` is available, and if setup
+finds one, a parallel version is build. If the setup does not find
+mpicc, a user can specify one in the :svn:`customize.py` file.
 
-For the parallel calculations, a special :file:`gpaw-python`
-python-interpreter is created. If gpaw was installed without root
+For the parallel calculations, a special :program:`gpaw-python`
+python-interpreter is created. If GPAW was installed without root
 permissions, i.e.::
 
   python setup.py install --home=<my-directory>
@@ -114,4 +117,5 @@ permissions, i.e.::
 :file:`{<my-directory}>/bin/gpaw-python` can be used when executing
 parallel runs.
 
-Instructions for running parallel calculations can be found in the :ref:`user manual <manual_parallel_calculations>`.
+Instructions for running parallel calculations can be found in the
+:ref:`user manual <manual_parallel_calculations>`.

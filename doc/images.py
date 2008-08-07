@@ -87,7 +87,7 @@ get('tutorials/bandstructures', ['sodium_bands.png'])
 get('tutorials/ensembles', ['ensemble.png'])
 
 get('.', ['2sigma.png', 'co_wavefunctions.png', 'molecules.png'], '_static')
-get('tutorials/lrtddft', ['spectrum.png'])
+get('exercises/lrtddft', ['spectrum.png'])
 get('xc', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
 get('xas', ['xas_32H2O.png', 'xas.png', 'xas_exp.png', 'xas_H2O.png'])
 get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split(),

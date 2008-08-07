@@ -8,6 +8,7 @@ Atomic PAW Setups
    :maxdepth: 2
 
    molecule_tests
+   bulk_tests
    generation_of_setups
    more-setups-stuff
 
@@ -30,7 +31,7 @@ Tests
 =====
 
 * :ref:`molecule_tests`.
-* Bulk tests.
+* :ref:`bulk_tests`.
 
 XXX
 

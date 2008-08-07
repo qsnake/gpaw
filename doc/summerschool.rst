@@ -1,12 +1,16 @@
+.. _summerschool:
+
+=======================
 CAMd Summer school 2008
 =======================
 
 ...
-================================
+
 Setting up your UNIX environment
 ================================
 
-This page describes how to make GPAW, ASE, PYTHON and VMD run on your account at ``bohr.gbar.dtu.dk``.
+This page describes how to make GPAW, ASE, PYTHON and VMD run on your
+account at ``bohr.gbar.dtu.dk``.
 
 First, find out what type of shell you are using.  Type::
 
@@ -53,8 +57,9 @@ Put this in your $HOME/.vmdrc file::
   mol representation CPK 1.0 0.1 10.0 10.0
   mol addrep top
 
-This will enable CPK representation of your atoms, and make the main window appear.
-You can also show the main window manually by typing the following in the *VMD Console* ::
+This will enable CPK representation of your atoms, and make the main
+window appear.  You can also show the main window manually by typing
+the following in the *VMD Console* ::
 
   menu main on
 

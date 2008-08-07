@@ -22,7 +22,7 @@ BLAS_
 LAPACK_
                    Linear Algebra PACKage
 
-`Numeric Python`_
+`NumPy`_
                    Numeric Python provides array manipulation and
                    computational capabilities similar to those found
                    in IDL, Matlab, or Octave.  
@@ -41,7 +41,7 @@ MPI_
 .. _docutils: http://docutils.sourceforge.net
 .. _BLAS: http://www.netlib.org/blas
 .. _LAPACK: http://www.netlib.org/lapack
-.. _Numeric Python: http://numpy.sf.net
+.. _NumPy: http://numpy.sf.net
 .. _distutils: http://www.python.org/sigs/distutils-sig
 .. _MPI: http://www.mpi-forum.org
 .. _FFTW: http://www.fftw.org

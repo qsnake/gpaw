@@ -21,6 +21,7 @@ Development
    debugging
    profiling
    statistics
+   testsuite
    about_this_wiki
    code/code
 
