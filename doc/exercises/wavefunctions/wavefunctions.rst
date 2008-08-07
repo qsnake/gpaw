@@ -32,12 +32,12 @@ molecule and compare them to results from molecular orbital theory.
   handling with :program:`VMD`. The following lines could be included in a
   script or written directly from the python promt::
 
-    >>> from ase import *
-    >>> from gpaw import *
-    >>> CO, calc = restart('CO.gpw')
-    >>> for n in range(calc.get_number_of_bands()):
-    ...     wf = calc.get_pseudo_wave_function(band=n)
-    ...     write('CO%d.cube' % n, CO, data=wf)
+    from ase import *
+    from gpaw import *
+    CO, calc = restart('CO.gpw')
+    for n in range(calc.get_number_of_bands()):
+        wf = calc.get_pseudo_wave_function(band=n)
+        write('CO%d.cube' % n, CO, data=wf)
 
   You can then load all of the wave functions into :program:`VMD`
   simultaneously, by running :samp:`vmd CO{?}.cube`.  In :program:`VMD` choose 
@@ -51,16 +51,14 @@ molecule and compare them to results from molecular orbital theory.
 
   How does your wave functions compare to a molecular orbital picture?
   Try to Identify :math:`\sigma` and :math:`\pi` orbitals. Which
-  wavefunctions are bonding and which are antibonding?
+  wave functions are bonding and which are antibonding?
 
 .. hint::
 
   You might find it usefull to look at the molecular orbital diagram
   below, taken from `The Chemogenesis Web Book`_.
 
-  .. 
-
-     figure:: co_bonding.jpg
+  .. figure:: co_bonding.jpg
      :align: center
 
 .. _The Chemogenesis Web Book: http://www.meta-synthesis.com/webbook/39_diatomics/diatomics.html#CO

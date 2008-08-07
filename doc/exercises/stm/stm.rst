@@ -8,7 +8,7 @@ structure of a given surface and it is often difficult if not
 impossiple to intrepret STM images without the aid of theoretical
 tools.
 
-We will use GPAW to simulate an STM image.  Start by doing a Al(100)
+We will use GPAW to simulate an STM image.  Start by doing an Al(100)
 surface with hydrogen adsorbed in the ontop site:
 :svn:`~doc/exercises/stm/HAl100.py?format=raw`.  This will produce a
 :file:`gpw` file containing the wave functions that are needed for
