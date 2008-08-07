@@ -465,6 +465,10 @@ bohr.gbar.dtu.dk
 
 Follow instructions from `<http://www.gbar.dtu.dk/index.php/GridEngine>`_ to create :file:`~/.grouprc`.
 
+To build gpaw add to the `gpaw/customize.py`:
+
+  library_dirs += ['/opt/csw/lib']
+
 Download `MPIscript.sh <http://www.hpc.dtu.dk/GridEngine/MPIscript.sh>`_ and edit it, so it resembles::
 
  #!/bin/sh 
@@ -491,7 +495,7 @@ Download `MPIscript.sh <http://www.hpc.dtu.dk/GridEngine/MPIscript.sh>`_ and edi
  # ------------------------------- Program_name_and_options
  LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
  export LD_LIBRARY_PATH
- gpawpython=/xbar/nas2/home2/fys/v40082/gpaw/build/bin.solaris-2.10-sun4u-2.5/gpaw-python
+ gpawpython=/xbar/nas2/home2/fys/mdul/gpaw/build/bin.solaris-2.10-sun4u-2.5/gpaw-python
  /appl/hgrid/current/bin/mprun -np $NSLOTS $gpawpython gpaw/examples/H.py
  # ---------------------------
 
