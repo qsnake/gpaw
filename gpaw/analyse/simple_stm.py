@@ -294,4 +294,4 @@ class SimpleStm():
         xvals = [(i + self.offset_c[0]) * h_c[0] for i in range(nx)]
         yvals = [(i + self.offset_c[1]) * h_c[1] for i in range(ny)]
 
-        return npy.array(xvals), npy.array(yvals), self.heights
+        return npy.array(xvals), npy.array(yvals), self.heights * Bohr
