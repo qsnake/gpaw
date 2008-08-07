@@ -272,7 +272,7 @@ class Calculator(PAW):
         return e - self.get_fermi_level(), ldos
 
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
-                                 pad=False):
+                                 pad=True):
         """Return pseudo-wave-function array.
 
         Unit: 1/Angstrom^(3/2)

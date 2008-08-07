@@ -44,11 +44,6 @@ XXX
 
 
 
-..  for s in chemical_symbols:
-       if s in parameters:
-           if len(s)==1: print '..  _%s:  %s.html' % (s,s)
-           else: print '.. _%s: %s.html' % (s,s)
-
 ..  _H:  H.html
 .. _He: He.html
 .. _Li: Li.html
@@ -106,6 +101,8 @@ XXX
 
 XXX missing:  Ca Ti Sr Sn Ir
 
+.. latex: stop
+
 .. toctree::
    :maxdepth: 1
 
@@ -159,3 +156,5 @@ XXX missing:  Ca Ti Sr Sn Ir
    Pt
    Au
    Pb
+
+.. latex: start

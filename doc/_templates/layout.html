@@ -167,13 +167,15 @@
     {%- if builder != 'htmlhelp' %}
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:   '{{ pathto("", 1) }}',
-        VERSION:    '{{ release }}'
+          URL_ROOT:    '{{ pathto("", 1) }}',
+          VERSION:     '{{ release }}',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '{{ file_suffix }}'
       };
     </script>
-    <script type="text/javascript" src="{{ pathto('_static/jquery.js', 1) }}"></script>
-    <script type="text/javascript" src="{{ pathto('_static/interface.js', 1) }}"></script>
-    <script type="text/javascript" src="{{ pathto('_static/doctools.js', 1) }}"></script>
+    {%- for scriptfile in script_files %}
+    <script type="text/javascript" src="{{ pathto(scriptfile, 1) }}"></script>
+    {%- endfor %}
     {%- if use_opensearch %}
     <link rel="search" type="application/opensearchdescription+xml"
           title="Search within {{ docstitle }}"
@@ -244,7 +246,7 @@
       Last updated on {{ last_updated }}.
     {%- endif %}
     {%- if show_sphinx %}
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a>.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> {{ sphinx_version }}.
     {%- endif %}
     </div>
 {%- endblock %}
