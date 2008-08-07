@@ -293,7 +293,10 @@ class AllElectron:
             pass
         else:
             pickle.dump(n, fd)
-            os.chmod(restartfile, 0666)
+            try:
+                os.chmod(restartfile, 0666)
+            except OSError:
+                pass
 
         Epot = 2 * pi * npy.dot(n * r * (vHr - Z), dr)
         Ekin = -4 * pi * npy.dot(n * vr * r, dr)
