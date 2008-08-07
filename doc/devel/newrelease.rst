@@ -10,7 +10,7 @@ When it is time for a new release of the code, here is what you have to do:
 
    svn co https://svn.fysik.dtu.dk/projects/gpaw/trunk ~/gpaw
 
-  and run the test suite (run `python test.py` in `tests` directory).
+  and run the test suite (run ``python test.py`` in ``tests`` directory).
 * Increase the version number in gpaw/version.py, and commit the change::
 
    cd ~/gpaw

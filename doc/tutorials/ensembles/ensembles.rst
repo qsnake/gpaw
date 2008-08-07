@@ -4,10 +4,10 @@
 Ensembles
 =========
 
-In the tutorial on `how to calculate atomization energies
-<atomization_energy>`, we calculated the atomization energy for H\
-`2`:sub: using the PBE functional.  In this tutorial, we wish to
-estimate the uncertainty of the calculated atomization energy.
+In the tutorial on :ref:`atomization_energy`, we calculated the
+atomization energy for H\ `2`:sub: using the PBE functional.  In this
+tutorial, we wish to estimate the uncertainty of the calculated
+atomization energy.
 
 In the following script, an ensemble of 1000 atomization
 energies are calculated (non-selfconsistently) with an ensemble of 1000

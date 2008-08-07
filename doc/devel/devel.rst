@@ -20,12 +20,14 @@ Development
    newrelease
    debugging
    profiling
-   testsuite
    statistics
    about_this_wiki
    code/code
 
-GPAW development can be done by anyone!  Just take a look at the :ref:`todo` list and find something that suits your talents!  Read more about the :ref:`technology` and :ref:`theory <features_and_algorithms>` behind the code.
+GPAW development can be done by anyone!  Just take a look at the
+:ref:`todo` list and find something that suits your talents!  Read
+more about the :ref:`technology` and :ref:`theory
+<features_and_algorithms>` behind the code.
 
 Topics:
 

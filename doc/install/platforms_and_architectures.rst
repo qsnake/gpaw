@@ -465,7 +465,7 @@ bohr.gbar.dtu.dk
 
 Follow instructions from `<http://www.gbar.dtu.dk/index.php/GridEngine>`_ to create :file:`~/.grouprc`.
 
-To build gpaw add to the `gpaw/customize.py`:
+To build gpaw add to the ``gpaw/customize.py``:
 
   library_dirs += ['/opt/csw/lib']
 
@@ -700,7 +700,7 @@ where the ``profile.*`` files reside::
  paraprof --pack CH4.ppk
 
 The actual analysis can be made on a different machine, by transferring
-the ``CH4.ppk`` file from `surveyor`, installing TAU, and launching::
+the ``CH4.ppk`` file from ``surveyor``, installing TAU, and launching::
 
  paraprof CH4.ppk
 
@@ -1195,7 +1195,7 @@ and ``make install`` again to get interpreter with builtin numpy.
 
 Final step is naturaly to compile GPAW. Only thing is to specify
 ``numpy``, ``expat`` and ``zlib`` libraries in :file:`customize.py`
-then `compile GPAW <installationguide>` as usual. Here is an example
+then :ref:`compile GPAW <installationguide>` as usual. Here is an example
 of :file:`customize.py`, modify according your own directory
 structures:
 

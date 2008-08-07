@@ -35,13 +35,17 @@ Tutorials
 2. :ref:`structure_optimization`.
 3. How to :ref:`plot_wave_functions`.
 4. How to calculate :ref:`bandstructures`.
-5. :ref:`calculation of optical spectra<tutorial_lrtddft>` with time-dependent DFT.
+
+XXX tddft + lrtddft?
+
+XXX old ASE?
 
 The tutorials 6. and 7. use old ASE and do not work with the latest
 version of GPAW without modifications. The tutorials are being
 converted to new format.
 
-6. How to get the :ref:`all_electron_density` and using it for doing e.g. :ase:`Bader <ase/dft/bader.html>` analysis.
+6. How to get the :ref:`all_electron_density` and using it for doing
+   e.g. :ase:`Bader <ase/dft/bader.html>` analysis.
 7. Calculations with :ref:`ensembles` of exchange-correlation functionals.
 
 .. Note::
