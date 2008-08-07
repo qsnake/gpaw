@@ -1,4 +1,3 @@
-import sys
 from math import sqrt
 
 import numpy as npy
@@ -15,12 +14,19 @@ from gpaw.io.plt import read_plt
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 
-class SimpleStm(STM):
+class SimpleStm():
     """Simple STM object to simulate STM pictures.
 
     The simulation uses either a single pseudo-wavefunction (PWF)
     or the PWFs inside the given bias range."""
     def __init__(self, atoms):
+
+        self.file = None
+        self.is_wf = False
+        self.bias = None
+        self.ldos = None
+        self.heights = None
+
         if isinstance(atoms, str):
             self.read_3D(atoms)
             self.calc = None
@@ -40,7 +46,7 @@ class SimpleStm(STM):
             return
 
         self.bias = bias
-        self.wf = True
+        self.is_wf = True
         self.ldos = self.gd.zeros()
 
         try:
@@ -82,7 +88,7 @@ class SimpleStm(STM):
             for u in range(self.calc.nmyu):
                 kpt = self.calc.kpt_u[u]
                 for n, eps in enumerate(kpt.eps_n):
-                    if eps>emin and eps<emax:
+                    if eps > emin and eps < emax:
                         if occupied:
                             weight = kpt.weight * kpt.f_n[n]
                         else:
@@ -134,7 +140,7 @@ class SimpleStm(STM):
         filetype.lower()
 
         if filetype == 'plt':
-            cell, grid, origin = read_plt(file)
+            cell, grid = read_plt(file)[:2]
 
             pbc_c = [True, True, True]
             N_c = npy.array(grid.shape)
@@ -184,7 +190,6 @@ class SimpleStm(STM):
 
         gd = self.gd
         h_c = gd.h_c
-        pbc_c = gd.domain.pbc_c
         nx, ny = (gd.N_c - self.offset_c)[:2]
 
         # each cpu will have the full array, but works on its
@@ -241,18 +246,11 @@ class SimpleStm(STM):
     def write(self, file=None):
         """Write STM data to a file in gnuplot readable tyle."""
 
-        gd = self.gd
-
         if mpi.rank != MASTER:
             return
         
-        heights = self.heights
-
-        # the lowest point is not stored for non-periodic BCs
+        xvals, yvals, heights = self.pylab_contour()
         nx, ny = heights.shape[:2]
-        h_c = gd.h_c * Bohr
-        xvals = [(i + self.offset_c[0]) * h_c[0] for i in range(nx)]
-        yvals = [(i + self.offset_c[1]) * h_c[1] for i in range(ny)]
 
         if file is None:
             n, k, s = bias
@@ -270,12 +268,12 @@ class SimpleStm(STM):
         if hasattr(self, 'file'):
             print >> f, '# density read from', self.file
         else:
-            if self.wf:
+            if self.is_wf:
                 print >> f, '# pseudo-wf n=%d k=%d s=%d' % tuple(self.bias)
             else:
                 print >> f, '# bias=', self.bias, '[eV]'
         print >> f, '#'
-        print >> f, '# density=', self.density,'[e/Angstrom^3]',
+        print >> f, '# density=', self.density, '[e/Angstrom^3]',
         print >> f, '(current=', self.density_to_current(self.density), '[nA])'
         print >> f, '# x[Angs.]   y[Angs.]     h[Angs.] (-1 is not found)'
         for i in range(nx):
@@ -288,3 +286,12 @@ class SimpleStm(STM):
             print >> f
         f.close()
 
+    def pylab_contour(self):
+
+        # the lowest point is not stored for non-periodic BCs
+        nx, ny = self.heights.shape[:2]
+        h_c = self.gd.h_c * Bohr
+        xvals = [(i + self.offset_c[0]) * h_c[0] for i in range(nx)]
+        yvals = [(i + self.offset_c[1]) * h_c[1] for i in range(ny)]
+
+        return npy.array(xvals), npy.array(yvals), self.heights
