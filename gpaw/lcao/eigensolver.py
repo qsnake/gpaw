@@ -25,6 +25,24 @@ class LCAO:
         self.dtype = paw.dtype
         self.initialized = True
 
+    def get_hamiltonian_matrix(self, hamiltonian, kpt):
+        k = kpt.k
+        s = kpt.s
+        u = kpt.u
+        
+        H_mm = self.Vt_skmm[s,k]
+
+        for nucleus in self.my_nuclei:
+            dH_ii = unpack(nucleus.H_sp[s])
+            P_mi = nucleus.P_kmi[k]
+            H_mm += npy.dot(P_mi, npy.inner(dH_ii, P_mi).conj())
+
+        self.comm.sum(H_mm)
+
+        H_mm += hamiltonian.T_kmm[k]
+
+        return H_mm
+
     def iterate(self, hamiltonian, kpt_u):
         if not hamiltonian.lcao_initialized:
             hamiltonian.initialize_lcao()
@@ -42,22 +60,14 @@ class LCAO:
 
         for kpt in kpt_u:
             self.iterate_one_k_point(hamiltonian, kpt)
-
+    
+       
     def iterate_one_k_point(self, hamiltonian, kpt):
         k = kpt.k
         s = kpt.s
         u = kpt.u
 
-        H_mm = self.Vt_skmm[s, k]
-        for nucleus in self.my_nuclei:
-            dH_ii = unpack(nucleus.H_sp[s])
-            P_mi = nucleus.P_kmi[k]
-            H_mm += npy.dot(P_mi, npy.inner(dH_ii, P_mi).conj())
-
-        self.comm.sum(H_mm)
-
-        H_mm += hamiltonian.T_kmm[k]
-
+        H_mm = self.get_hamiltonian_matrix(hamiltonian, kpt)
         self.S_mm[:] = hamiltonian.S_kmm[k]
 
         rank = self.band_comm.rank
