@@ -1,8 +1,8 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.wannier import Wannier
 
-calc = Calculator('si.gpw')
+calc = GPAW('si.gpw')
 atoms = calc.get_atoms()
 w = Wannier(calc)
 w.localize()

@@ -20,7 +20,7 @@ A vdW calculation is done in the following way. Assuming that we have a input .g
 >>> from ase import *
 >>> from gpaw import *
 >>> from ase.units import *
->>> calc = Calculator(input.gpw, txt=None)
+>>> calc = GPAW(input.gpw, txt=None)
 >>> density = calc.get_all_electron_density()
 >>> density = density*Bohr**3 
 >>> vdw = VanDerWaals(density, calc.finegd,calc,'revPBE', ncoarsen=0)

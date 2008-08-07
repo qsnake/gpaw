@@ -14,9 +14,9 @@ for i in range(1, 4):
     image = initial.copy()
     comm = world.new_communicator(np.array([rank]))
     if i == j:
-        calc = Calculator(h=0.3, kpts=(2, 2, 1),
-                          txt='neb%d.txt' % j,
-                          communicator=comm)
+        calc = GPAW(h=0.3, kpts=(2, 2, 1),
+                    txt='neb%d.txt' % j,
+                    communicator=comm)
         image.set_calculator(calc)
     image.set_constraint(constraint)
     images.append(image)

@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 
 
 d = 1.1   # bondlength of hydrogen molecule
@@ -9,7 +9,7 @@ atoms = Atoms([Atom('C', [c - d / 2, c, c]),
                      Atom('O', [c + d / 2, c, c])],
                     cell=(a, a, a), pbc=True)
 
-calc = Calculator(nbands=5, h=0.2, txt=None)
+calc = GPAW(nbands=5, h=0.2, txt=None)
 atoms.set_calculator(calc)
 
 # Start a calculation:

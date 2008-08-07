@@ -17,10 +17,10 @@ bulk = Atoms(symbols='4Al',
 view(bulk)
 
 k = 4
-calc = Calculator(nbands=16,          # number of electronic bands
-                  h=0.2,              # grid spacing
-                  kpts=(k, k, k),     # k-points
-                  txt=name + '.txt')  # output file
+calc = GPAW(nbands=16,          # number of electronic bands
+            h=0.2,              # grid spacing
+            kpts=(k, k, k),     # k-points
+            txt=name + '.txt')  # output file
 bulk.set_calculator(calc)
 
 energy = bulk.get_potential_energy()

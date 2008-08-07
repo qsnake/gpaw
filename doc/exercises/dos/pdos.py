@@ -1,7 +1,7 @@
 from ase import *
 from gpaw import *
 
-calc = Calculator('ferro.gpw', txt=None)
+calc = GPAW('ferro.gpw', txt=None)
 
 # Plot s, p, d projected LDOS:
 import pylab as p

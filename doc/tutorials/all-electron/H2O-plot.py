@@ -1,4 +1,4 @@
-from gpaw import Calculator
+from gpaw import GPAW
 import Numeric as num
 from os.path import isfile
 from gpaw.io.array import load_array as load
@@ -6,7 +6,7 @@ from gpaw.io.array import save_array as save
 gridrefinement = 2
 
 # Load calculation parameters
-calc = Calculator('H2O.gpw')
+calc = GPAW('H2O.gpw')
 H2O = calc.get_atoms()
 a_c = num.diagonal(H2O.GetUnitCell())
 N_c = gridrefinement * calc.GetNumberOfGridPoints()

@@ -1,9 +1,9 @@
 import Numeric as na
 from ASE.Utilities.BEE import GetEnsembleEnergies
-from gpaw import Calculator 
+from gpaw import GPAW 
 
-atom = Calculator('H.gpw', txt=None).get_atoms()
-molecule = Calculator('H2.gpw', txt=None).get_atoms()
+atom = GPAW('H.gpw', txt=None).get_atoms()
+molecule = GPAW('H2.gpw', txt=None).get_atoms()
 e1 = atom.GetPotentialEnergy()
 e2 = molecule.GetPotentialEnergy()
 ea = 2 * e1 - e2

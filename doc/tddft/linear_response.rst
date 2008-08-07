@@ -9,15 +9,15 @@ Ground state
 
 The linear response TDDFT calculation needs a converged ground state calculation with a set of unoccupied states. The standard eigensolver 'rmm-diis' should not be used for the calculation of unoccupied states, better use 'dav' or 'cg'::
 
-  from gpaw import Calculator
+  from gpaw import GPAW
   from gpaw.cluster import Cluster
   from gpaw.lrtddft import LrTDDFT
 
   ffname='PBE_125bands.gpw'
   s = Cluster(filename='structure.xyz')
-  c = Calculator(xc='PBE', nbands=125,
-                 convergence={'bands':120},
-                 eigensolver='dav', charge=1)
+  c = GPAW(xc='PBE', nbands=125,
+           convergence={'bands':120},
+           eigensolver='dav', charge=1)
   s.set_calculator(c)
   try:
       s.get_potential_energy()
@@ -32,11 +32,11 @@ Calculating the Omega Matrix
 
 The next step is to calculate the Omega Matrix from the ground state orbitals::
 
-  from gpaw import Calculator
+  from gpaw import GPAW
   from gpaw.lrtddft import LrTDDFT
 
   ifname = 'PBE_125bands.gpw'
-  c = Calculator(ifname)
+  c = GPAW(ifname)
 
   istart=30 # band index of the first occ. band to consider
   jend=120  # band index of the last unocc. band to consider
@@ -66,7 +66,7 @@ Parameters for LrTDDFT:
 ===============  ==============  ===================  ========================================
 keyword          type            default value        description
 ===============  ==============  ===================  ========================================
-``calculator``   ``Calculator``                       Calculator object of ground state
+``calculator``   ``GPAW``                             Calculator object of ground state
                                                       calculation
 ``filename``     ``string``                           read the state of LrTDDFT calculation 
                                                       (i.e. omega matrix, excitations)

@@ -1,9 +1,9 @@
 """Calculate the vibrational modes of a H2O molecule."""
 from ase import *
 from ase.vibrations import Vibrations
-from gpaw import Calculator
+from gpaw import GPAW
 
-h2o = Calculator('h2o.gpw', txt=None).get_atoms()
+h2o = GPAW('h2o.gpw', txt=None).get_atoms()
 vib = Vibrations(h2o)
 vib.run()
 vib.summary()

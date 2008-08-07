@@ -14,10 +14,10 @@ for h in [0.25, 0.20]:
                              (.0, .5, .5),
                              (.5, .0, .5)])
     bulk.set_cell([afcc,afcc,afcc],scale_atoms=True)
-    calc = Calculator(nbands=16,
-                      txt='bulk-fcc-h%.2f.txt' % h,
-                      h=h ,
-                      kpts=(6, 6, 6))
+    calc = GPAW(nbands=16,
+                txt='bulk-fcc-h%.2f.txt' % h,
+                h=h ,
+                kpts=(6, 6, 6))
     bulk.set_calculator(calc)
     Efcc=bulk.get_potential_energy()
     #bcc
@@ -25,10 +25,10 @@ for h in [0.25, 0.20]:
                  positions=[(0, 0, 0),
                             (.5, .5, .5)])
     bulk.set_cell((abcc, abcc, abcc), scale_atoms=True)
-    calc = Calculator(nbands=8,
-                      txt='bulk-bcc-h%.2f.txt' % h,
-                      h=h,
-                      kpts=(8, 8, 8))
+    calc = GPAW(nbands=8,
+                txt='bulk-bcc-h%.2f.txt' % h,
+                h=h,
+                kpts=(8, 8, 8))
     bulk.set_calculator(calc)
     Ebcc=bulk.get_potential_energy()
     print h, Efcc/4., Ebcc/2., 0.25*Efcc-0.5*Ebcc

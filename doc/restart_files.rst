@@ -29,7 +29,7 @@ Reading restart files
 
 In case that you havve written the wave functions to separate files, you can read them via::
 
-  calc = Calculator('xyz.gpw')
+  calc = GPAW('xyz.gpw')
   calc.read_wave_functions(mode='gpw:wfs_tmp/psit_Gs%dk%dn%d')
 
 where the syntax for mode is the same as for writing the wave functions.

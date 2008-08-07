@@ -9,12 +9,12 @@ unit cell. We'll stick to the experimental lattice constant *a* = 2.87
 Å.  The atomic term of iron is [Ar]3d\ :sup:`6`\ 4s\ :sup:`2`, i.e. 8
 valence electrons/atom is included in the calculation.
 
-A spin polarized calculation can be initiated with the Calculator
+A spin polarized calculation can be initiated with the
 keyword ``spinpol=True`` (``False`` by default). Magnetic calculations
 may sometimes have poor convergence and it can help to switch the
 eigensolver (which iteratively diagonalizes the Kohn-Sham equations)
 to Conjugate Gradient or Davidson (default is RMM-DIIS) with the
-Calculator keyword ``eigensolver='cg'`` or ``eigensolver='dav'`` -
+keyword ``eigensolver='cg'`` or ``eigensolver='dav'`` -
 Hint: Do it in this exercise!
 
 * Use Hunds rule (maximum polarization rule) to calculate

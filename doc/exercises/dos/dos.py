@@ -1,6 +1,6 @@
 import sys
 import pylab
-from gpaw import Calculator
+from gpaw import GPAW
 
 filename = sys.argv[1]
 if len(sys.argv) > 2:
@@ -8,7 +8,7 @@ if len(sys.argv) > 2:
 else:
     width = None
 
-calc = Calculator(filename, txt=None)
+calc = GPAW(filename, txt=None)
 energy, dos = calc.get_dos(spin=0, width=width)
 pylab.plot(energy, dos)
 if calc.get_number_of_spins() == 2:

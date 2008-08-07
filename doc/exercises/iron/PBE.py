@@ -1,7 +1,7 @@
 from gpaw import *
 print 'state    LDA        PBE'
 for name in ['ferro', 'anti', 'non']:
-    calc = Calculator(name + '.gpw', txt=None)
+    calc = GPAW(name + '.gpw', txt=None)
     atoms = calc.get_atoms()
     eLDA = atoms.get_potential_energy()
     deltaxc = calc.get_xc_difference('PBE')

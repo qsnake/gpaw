@@ -16,7 +16,7 @@ if True:
     # Add adsorbate:
     slab += Atom('H', (b, b, 1.55))
     
-calc = Calculator(kpts=(4, 4, 1))
+calc = GPAW(kpts=(4, 4, 1))
 slab.set_calculator(calc)
 slab.get_potential_energy()
 calc.write('HAl100.gpw', 'all')

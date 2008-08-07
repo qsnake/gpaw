@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 
 a = 2.87
 m = 2.2
@@ -9,11 +9,11 @@ bulk = Atoms('Fe2',
              cell=(a, a, a),
              pbc=True)
 
-calc = Calculator(kpts=(6, 6, 6),
-                  h=0.20,
-                  nbands=18,
-                  eigensolver='dav',
-                  txt='anti.txt')
+calc = GPAW(kpts=(6, 6, 6),
+            h=0.20,
+            nbands=18,
+            eigensolver='dav',
+            txt='anti.txt')
 
 bulk.set_calculator(calc)
 print bulk.get_potential_energy()

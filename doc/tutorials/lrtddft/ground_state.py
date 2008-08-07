@@ -9,7 +9,7 @@ atoms = Atoms( symbols='Na2',
                pbc=False)
 
 atoms.center(vacuum=4.0) # For real calculations use larger vacuum (e.g. 6)
-calc = Calculator(nbands=1, h=0.35, txt='Na2_gs.txt')
+calc = GPAW(nbands=1, h=0.35, txt='Na2_gs.txt')
 atoms.set_calculator(calc)
 e = atoms.get_potential_energy()
 

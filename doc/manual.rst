@@ -34,7 +34,7 @@ To do a PAW calculation with the GPAW code, you need an ASE
 
    _____________          ____________
   |             |        |            |
-  | Atoms       |------->| Calculator |
+  | Atoms       |------->| GPAW       |
   |             |        |            |
   |_____________|        |____________|
        atoms                  calc
@@ -49,7 +49,7 @@ In Python code, it looks like this:
 ...                Atom('H', [0, 0, d])],
 ...               cell=(a, a, a))
 >>> atoms.center()
->>> calc = Calculator(nbands=2, txt='h2.txt')
+>>> calc = GPAW(nbands=2, txt='h2.txt')
 >>> atoms.set_calculator(calc)
 >>> print atoms.get_forces()
 
@@ -72,9 +72,9 @@ The calculator will try to make sensible choices for all parameters
 that the user does not specify.  Specifying parameters can be done
 like this:
 
->>> calc = Calculator(nbands=1,
-...                   xc='PBE',
-...                   gpts=(24, 24, 24))
+>>> calc = GPAW(nbands=1,
+...             xc='PBE',
+...             gpts=(24, 24, 24))
 
 Here, we want to use one electronic band, the Perdew, Burke,
 Ernzerhof (PBE)\ [#PBE]_ exchange-correlation functional and 24 grid points

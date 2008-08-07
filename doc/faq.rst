@@ -77,12 +77,12 @@ Calculation does not converge
 
 First, you can try to get more information during the calculation by setting the ``verbose`` parameter::
 
-  Calculator(..., verbose=True)
+  GPAW(..., verbose=True)
 
 If your (finite) system contains nearly degenerate occupied and unoccupied states, there can be convergence problems.
 You can try to occupy the states with Fermi-distribution by specifying the ``width`` parameter::
 
-  Calculator(..., width=0.05)
+  GPAW(..., width=0.05)
 
 However, note that this might change also the symmetry of your system
 
@@ -90,11 +90,11 @@ Sometimes it is possible to improve the convergence by changing the default para
 `density mixing`_, try e.g.::
 
   mixer=Mixer(0.1, 5, metric='new', weight=100.0)
-  Calculator(..., mixer=mixer)
+  GPAW(..., mixer=mixer)
 
 In rare occasions the default eigensolver_ ``rmm-diis`` does not converge, and one can try either conjugate gradient or Davidson eigensolvers::
 
-  Calculator(..., eigensolver='cg')
+  GPAW(..., eigensolver='cg')
 
 .. _density mixing: wiki:GPAW:Manual#density-mixing
 .. _eigensolver: :ref:`gpaw_manual_eigensolver`

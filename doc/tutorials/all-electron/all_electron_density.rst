@@ -4,8 +4,15 @@
 Getting the all-electron density
 ================================
 
-The variational quantity of the PAW formalism is the pseudo-density ñ. This is also the density returned by the ``GetDensityArray`` method of the GPAW calculator. Sometimes it is desirable to work with the true all-electron density.
-The PAW formalism offers a recipe for reconstructing the all-electron density from the pseudo-density, and in GPAW, this can be reached by the method ``get_all_electron_density`` of the ``Calculator`` class.
+XXX rewrite this page!
+
+The variational quantity of the PAW formalism is the pseudo-density
+ñ. This is also the density returned by the ``GetDensityArray`` method
+of the GPAW calculator. Sometimes it is desirable to work with the
+true all-electron density.  The PAW formalism offers a recipe for
+reconstructing the all-electron density from the pseudo-density, and
+in GPAW, this can be reached by the method
+``get_all_electron_density`` of the ``GPAW`` class.
 
 This tutorial describes how to get and use the all-electron density.
 

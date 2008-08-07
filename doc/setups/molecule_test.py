@@ -14,7 +14,7 @@ from ase.units import kcal, mol
 import pylab as plt
 import numpy as np
 
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.testing.atomization_data import atomization_vasp, diatomic
 
 dimers = diatomic.keys()
@@ -146,10 +146,10 @@ def do_calculations():
         h = 0.16
         s.set_cell((cell / (4 * h)).round() * 4 * h)
         s.center()
-        calc = Calculator(h=h,
-                          xc='PBE',
-                          fixmom=True,
-                          txt=formula + '.txt')
+        calc = GPAW(h=h,
+                    xc='PBE',
+                    fixmom=True,
+                    txt=formula + '.txt')
 
         if len(s) == 1:
             calc.set(hund=True)

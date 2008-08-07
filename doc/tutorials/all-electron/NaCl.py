@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from ASE import Atom, ListOfAtoms
-from gpaw import Calculator
+from gpaw import GPAW
 import Numeric as num
 
 unitcell = num.array([6., 6., 9.])
@@ -21,7 +21,7 @@ Cl = ListOfAtoms([Atom('Cl', b, magmom=1)],
 NaCl = ListOfAtoms([Atom('Na', b - d / 2, magmom=1),
                     Atom('Cl', b + d / 2, magmom=1)],
                    periodic=False, cell=unitcell)
-calc = Calculator(**parameters)
+calc = GPAW(**parameters)
 
 # Determine densities
 for loa in ('Na', 'Cl', 'NaCl'):

@@ -1,13 +1,13 @@
-from gpaw import Calculator
+from gpaw import GPAW
 from build_fcc import fcc100
 
 a = 4.05
 def energy(n):
     fcc = fcc100('Al', a, n, 20.0)
-    calc = Calculator(nbands=n * 5,
-                      kpts=(6, 6, 1),
-                      h=0.25,
-                      txt='slab-%d.txt' % n)
+    calc = GPAW(nbands=n * 5,
+                kpts=(6, 6, 1),
+                h=0.25,
+                txt='slab-%d.txt' % n)
     fcc.set_calculator(calc)
     e = fcc.get_potential_energy()
     calc.write('slab-%d.gpw' % n)

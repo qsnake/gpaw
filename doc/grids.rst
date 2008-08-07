@@ -33,7 +33,7 @@ An example:
 >>> atoms = ListOfAtoms([...],
 ...                     cell=(L, L, L),
 ...                     periodic=False)
->>> calc = Calculator(..., gpts=(8, 8, 8))
+>>> calc = GPAW(..., gpts=(8, 8, 8))
 >>> atoms.SetCalculator(calc)
 >>> e = atoms.GetPotentialEnergy()
 >>> wf = calc.GetWaveFunctionArray(band=0)

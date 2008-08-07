@@ -48,7 +48,7 @@ An example session might look like::
 
   corona1 ~/gpaw/trunk/test> python -m pdb H.py
   > /home/csc/jenkovaa/gpaw/trunk/test/H.py(1)?()
-  -> from gpaw import Calculator
+  -> from gpaw import GPAW
   (Pdb) l 11,5
    11     hydrogen.SetCalculator(calc)
    12     e1 = hydrogen.GetPotentialEnergy()
@@ -115,7 +115,7 @@ One can also do combined C and python debugging by starting the input script as 
   [Thread debugging using libthread_db enabled]
   [New Thread -1208371520 (LWP 1575)]
   > /home/jenkovaa/test/H.py(1)?()
-  -> from gpaw import Calculator
+  -> from gpaw import GPAW
   (Pdb)
 
 

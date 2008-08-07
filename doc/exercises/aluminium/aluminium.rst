@@ -61,8 +61,8 @@ wavefunctions, density and total energy.
 The binary file contains all information about the calculation. Try
 typing the following from the Python interpreter::
 
-  >>> from gpaw import Calculator
-  >>> calc = Calculator('Al-fcc.gpw')
+  >>> from gpaw import GPAW
+  >>> calc = GPAW('Al-fcc.gpw')
   >>> bulk = calc.get_atoms()
   >>> print bulk.get_potential_energy()
   >>> density = calc.get_pseudo_density()

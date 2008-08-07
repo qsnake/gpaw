@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from build_fcc import fcc100
 
 
@@ -12,10 +12,10 @@ p = fcc.positions[1]
 # Add the adsorbate:
 fcc.append(Atom('H', p + (0, 0, 1.55)))
 
-calc = Calculator(nbands=2 * 5,
-                  kpts=(4, 4, 1),
-                  h = 0.25,
-                  txt='ontop.txt')
+calc = GPAW(nbands=2 * 5,
+            kpts=(4, 4, 1),
+            h = 0.25,
+            txt='ontop.txt')
 fcc.set_calculator(calc)
 
 # Only the height (z-coordinate) of the H atom is relaxed:

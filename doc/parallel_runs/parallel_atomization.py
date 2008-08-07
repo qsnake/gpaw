@@ -1,7 +1,7 @@
 """This script calculates the atomization energy of nitrogen using two
 processes, each process working on a separate system."""
 
-from gpaw import Calculator, mpi
+from gpaw import GPAW, mpi
 import Numeric as num
 from ASE import ListOfAtoms, Atom
 
@@ -24,7 +24,7 @@ else:
 # Open different files depending on rank
 output = '%d.txt' % rank
 
-calc = Calculator(communicator=[rank], txt=output, xc='PBE')
+calc = GPAW(communicator=[rank], txt=output, xc='PBE')
 system.SetCalculator(calc)
 energy = system.GetPotentialEnergy()
 

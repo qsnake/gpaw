@@ -1,6 +1,6 @@
 from math import sqrt, pi, cos, sin
 from ASE import  ListOfAtoms, Atom
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.utilities import center
 from ASE.IO.Cube import WriteCube
 from ASE.Units import units, Convert
@@ -17,7 +17,7 @@ H2O = ListOfAtoms([Atom('O', (0, 0, 0)),
                   cell=[xy, xy, z], periodic=True)
 center(H2O)
 
-calc = Calculator(xc='PBE', h=.18)
+calc = GPAW(xc='PBE', h=.18)
 H2O.SetCalculator(calc)
 H2O.GetPotentialEnergy()
 calc.write('H2O.gpw')

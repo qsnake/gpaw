@@ -16,7 +16,7 @@ the density of states (DOS) for the three Fe configurations (on the
 
     from ase import *
     from gpaw import *
-    calc = Calculator('anti.gpw')
+    calc = GPAW('anti.gpw')
     atoms = calc.get_atoms()
     up = calc.get_pseudo_density(0)
     down = calc.get_pseudo_density(1)

@@ -15,7 +15,7 @@ bulk = Atoms(symbols='4Al',
              pbc=True)
 
 # Convergence with respect to k-points:
-calc = Calculator(nbands=16, h=0.3, txt=name + '-k.txt')
+calc = GPAW(nbands=16, h=0.3, txt=name + '-k.txt')
 bulk.set_calculator(calc)
 f = open(name + '-k.dat', 'w')
 for k in [2, 4, 6, 8]: 
@@ -26,7 +26,7 @@ for k in [2, 4, 6, 8]:
 
 # Convergence with respect to grid spacing:
 k = 4
-calc = Calculator(nbands=16, kpts=(k, k, k), txt=name + '-h.txt')
+calc = GPAW(nbands=16, kpts=(k, k, k), txt=name + '-h.txt')
 bulk.set_calculator(calc)
 f = open(name + '-h.dat', 'w')
 for g in [12, 16, 20]:

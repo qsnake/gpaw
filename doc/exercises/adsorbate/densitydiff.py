@@ -1,7 +1,7 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 
-calc = Calculator('ontop.gpw', txt=None)
+calc = GPAW('ontop.gpw', txt=None)
 HAl_density = calc.get_pseudo_density()
 
 atoms = calc.get_atoms()

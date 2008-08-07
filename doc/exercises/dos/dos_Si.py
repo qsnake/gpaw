@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 
 a = 5.475
 atoms = Atoms(symbols='Si4', pbc=True, cell=[a / sqrt(2), a / sqrt(2), a],
@@ -7,7 +7,7 @@ atoms = Atoms(symbols='Si4', pbc=True, cell=[a / sqrt(2), a / sqrt(2), a],
                                 (.5, .5, .5),
                                 (.0, .5, .75),
                                 (.5, .0, .25),])
-calc = Calculator(h=.23, kpts=(6, 6, 4), txt='si.txt', nbands=10)
+calc = GPAW(h=.23, kpts=(6, 6, 4), txt='si.txt', nbands=10)
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
 calc.write('si_664.gpw')

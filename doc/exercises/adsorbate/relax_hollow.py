@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from build_fcc import fcc100
 
 
@@ -15,10 +15,10 @@ d = 1.18 + 0.37
 # Add the adsorbate:
 fcc.append(Atom('H', (0, 0, p[2] + .16)))
 
-calc = Calculator(nbands=2 * 5,
-                  kpts=(4, 4, 1),
-                  h = 0.25,
-                  txt='hollow.txt')
+calc = GPAW(nbands=2 * 5,
+            kpts=(4, 4, 1),
+            h = 0.25,
+            txt='hollow.txt')
 fcc.set_calculator(calc)
 
 # Fix the two Al atoms, so only the H atom is relaxed:

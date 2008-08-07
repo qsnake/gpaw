@@ -7,7 +7,7 @@ atoms = Atoms(symbols='Al4', cell=(a, a, a), pbc=True,
                                 (.5, .5, .0),
                                 (.0, .5, .5),
                                 (.5, .0, .5)])
-calc = Calculator(nbands=16, h=0.23, kpts=(6, 6, 6), txt='Al.txt')
+calc = GPAW(nbands=16, h=0.23, kpts=(6, 6, 6), txt='Al.txt')
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
 

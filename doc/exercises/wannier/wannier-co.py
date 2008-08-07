@@ -1,8 +1,8 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.wannier import Wannier
 
-calc = Calculator(nbands=5)
+calc = GPAW(nbands=5)
 atoms = molecule('CO')
 atoms.center(vacuum=3.)
 atoms.set_calculator(calc)

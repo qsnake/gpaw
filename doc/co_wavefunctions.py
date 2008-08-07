@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import Numeric as num
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.spherical_harmonics import Y
 
 a = 6.0
 c = a / 2
 d = 1.13
-paw = Calculator('co.gpw', txt=None)
+paw = GPAW('co.gpw', txt=None)
 
 import pylab as p
 dpi = 2*80

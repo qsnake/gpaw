@@ -2,7 +2,7 @@ from ase import *
 from gpaw import *
 from gpaw.wannier import LocFun
 
-calc = Calculator('CO.gpw', txt=None)
+calc = GPAW('CO.gpw', txt=None)
 locfun = LocFun()
 locfun.localize(calc, N=8, ortho=True, verbose=True)
 print around(locfun.U_nn, 1)
