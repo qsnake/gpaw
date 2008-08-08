@@ -28,7 +28,6 @@ makes ``thing`` available.  Lets try an example:
 
     constant = 17
 
-
     def function(x):
         return x - 5
 

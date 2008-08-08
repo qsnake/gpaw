@@ -10,7 +10,7 @@ In these two tutorials:
 * :ase:`Constraint <tutorials/constraints/diffusion.html>`
 
 the energy barrier for diffusion of a gold atom on an Al(100) surface
-was calculated using a semi-emperical EMT potential.  In this
+was calculated using a semi-empirical EMT potential.  In this
 exercise, we will try to use DFT and GPAW.
 
 * Run the scripts form one of the two tutorials above to get good
