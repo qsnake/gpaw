@@ -5,7 +5,7 @@ Kohn-Sham wavefunctions of a CO molecule
 In this section, we will look at the Kohn-Sham wavefunctions of the CO
 molecule and compare them to results from molecular orbital theory.
 
-* Make a script, where a CO molecule is placed in the center of a qubic
+* Make a script, where a CO molecule is placed in the center of a cubic
   unit cell with non-periodic boundary conditions, e.g. of 6 Å. For
   more accurate calculations, the cell should definitely be bigger,
   but for reasons of speed, we use  this cell here. Which value for the
