@@ -39,7 +39,7 @@ What is the calculated band-gap of the hydrogen-molecule?
 Try to plot the molecular orbital projected density of states which
 can be obtained like this::
 
-    pdos = calc_tran.get_pdos()
+    pdos_n = calc_tran.get_pdos(psi_jn)
 
 Which orbital do you think is responsible for the high conductance?
 
