@@ -7,16 +7,16 @@ def show():
     pylab.savefig('x%d.png' % n)
     n += 1
 pylab.show = show
-os.system('cp surface/build_fcc.py .')
-os.system('cp surface/build_fcc.py adsorption')
+os.system('rm -rf test; mkdir test')
+os.chdir('test')
 for dir, script in [
-    ('aluminium', 'Al_fcc.py'),
-    ('aluminium', 'Al_fcc_convergence.py'),
-    ('surface', 'build_bcc.py'),
-    ('surface', 'Al100.py'),
-    ('surface', 'work_function.py'),
-    ('adsorption', 'relax.py'),
-    ('adsorption', 'densitydiff.py'),
+#    ('aluminium', 'Al_fcc.py'),
+#    ('aluminium', 'Al_fcc_convergence.py'),
+#    ('surface', 'Al100.py'),
+#    ('surface', 'work_function.py'),
+#    ('diffusion', 'initial.py'),
+    ('diffusion', 'solution.py'),
+    ('diffusion', 'densitydiff.py'),
     ('vibrations', 'h2o.py'),
     ('vibrations', 'H2O_vib.py'),
     ('iron', 'ferro.py'),
@@ -31,11 +31,9 @@ for dir, script in [
     ('wannier', 'wannier-benzene.py'),
     ('stm', 'HAl100.py'),
     ]:
-    os.chdir(dir)
-    execfile(script)
-    os.chdir('..')
-for dir, script, arg in [
-    ('stm', 'stm.py', 'HAl100.gpw')]:
+    execfile('../' + dir + '/' + script, {'k': 6})
+if 0:#for dir, script, arg in [
+    #('stm', 'stm.py', 'HAl100.gpw')]:
     os.chdir(dir)
     sys.argv = ['', arg]
     execfile(script)

@@ -14,7 +14,8 @@ def aual100(site, height, calc=None):
     slab.set_calculator(calc)
     qn = QuasiNewton(slab, trajectory=site + '.traj')
     qn.run(fmax=0.05)
-    calc.write(site + '.gpw')
+    if isinstance(calc, GPAW):
+        calc.write(site + '.gpw')
     return slab.get_potential_energy()
 
 e_hollow = aual100('hollow', 1.6)

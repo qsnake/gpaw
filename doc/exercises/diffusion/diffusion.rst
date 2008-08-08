@@ -80,13 +80,14 @@ Writing an adsorption script
 
 As a non-trivial example of a Python module, try to write a function:
 
-.. function:: aual100(site)
+.. function:: aual100(site, height)
 
 The *site* argument should be one of the strings that the
-:ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` function accepts:
-``'ontop'``, ``'hollow'`` or ``'bridge'``.  The function must return the
-energy and write ``<site>.txt``, ``<site>.tray``, and ``<site>.gpw``
-files.
+:ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` function
+accepts: ``'ontop'``, ``'hollow'`` or ``'bridge'``.  The *height*
+argument is the height above the Al layer.  The function must return
+the energy and write ``<site>.txt``, ``<site>.tray``, and
+``<site>.gpw`` files.
 
 * You could have used this functions to calculate the energy barrier
   above.  Use it to calculate the energy in the ontop site::

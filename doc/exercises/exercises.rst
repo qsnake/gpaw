@@ -6,7 +6,7 @@ Exercises
 
 XXX link to setting up unix environment (:ref:`summerschool`)
 
-XXX link to ASE
+XXX link to ASE, Python tips and tricks, ...
 
 .. hint::
 
@@ -26,6 +26,7 @@ XXX link to ASE
      >>> 1 / 3.0
      0.33333333333333331
 
+XXX add more links from the exercises to the corresponding ASE-documentation.
 
 .. toctree::
    :maxdepth: 1

@@ -17,8 +17,8 @@ z = linspace(0, L, nz, endpoint=False)
 efermi = calc.get_fermi_level()
 
 # Calculate xy averaged potential:
-vz = v.reshape((nx * ny, nz)).mean(axis=0)
-print 'Work function: %.2f eV'%(vz[0]-efermi) # Assumes a centered slab
+vz = v.mean(axis=0).mean(axis=0)
+print 'Work function: %.2f eV' % (vz.max() - efermi)
 
 import pylab as p
 p.plot(z, vz, label='xy averaged effective potential')
