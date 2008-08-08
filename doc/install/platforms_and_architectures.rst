@@ -460,6 +460,8 @@ Submit jobs like this::
   qsub -pe cre 8 -cwd -V -S /p/bin/python job.py
 
 
+.. _bohr_gbar_dtu_dk:
+
 bohr.gbar.dtu.dk
 ----------------
 

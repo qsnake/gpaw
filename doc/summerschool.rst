@@ -67,4 +67,4 @@ the following in the *VMD Console* ::
 Parallel runs
 =============
 
-Follow instructions from :ref:`platforms_and_architectures`
+Follow instructions from :ref:`bohr_gbar_dtu_dk`
