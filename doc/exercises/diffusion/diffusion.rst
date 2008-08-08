@@ -4,7 +4,7 @@
 Diffusion of gold atom on Al(100) surface
 =========================================
 
-In these two tutorials:
+In these two ASE-tutorials:
 
 * :ase:`NEB <tutorials/neb/diffusion.html>`
 * :ase:`Constraint <tutorials/constraints/diffusion.html>`
@@ -29,7 +29,7 @@ calculations::
 In order to speed up the calculation, use just a single frozen Al(100) layer.
 
 * Calculate the energy of the initial and final states.  Start from
-  this script: :svn:`~doc/exercises/diffusion/initial.py>`.  Do we need
+  this script: :svn:`~doc/exercises/diffusion/initial.py`.  Do we need
   to apply any constraint to the gold atom?
 
 * What is the PBE energy barrier?
@@ -60,7 +60,6 @@ makes ``thing`` available.  Lets try an example:
 * In file :file:`stuff.py`, put::
 
     constant = 17
-
     def function(x):
         return x - 5
 
@@ -85,14 +84,14 @@ As a non-trivial example of a Python module, try to write a function:
 
 The *site* argument should be one of the strings that the
 :ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` function accepts:
-``ontop``, ``hollow`` or ``bridge``.  The function must return the
+``'ontop'``, ``'hollow'`` or ``'bridge'``.  The function must return the
 energy and write ``<site>.txt``, ``<site>.tray``, and ``<site>.gpw``
 files.
 
 * You could have used this functions to calculate the energy barrier
   above.  Use it to calculate the energy in the ontop site::
 
-    ebridge = aual100('bridge')
+    e_ontop = aual100('ontop')
 
 * What seems to determine the relative energetic ordering of the three sites?
 
@@ -111,7 +110,7 @@ files.
 * Look at the relaxed configurations with the :command:`ag`
   command::
 
-    $ ag -r 3,3,1 ontop.traj
+    $ ag -r 3,3,2 ontop.traj
 
   or::
 

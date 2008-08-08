@@ -33,7 +33,6 @@ XXX link to ASE
    aluminium/aluminium
    diffusion/diffusion
    surface/surface
-   adsorbate/adsorbate
    vibrations/vibrations
    wavefunctions/wavefunctions
    wannier/wannier
