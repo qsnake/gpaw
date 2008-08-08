@@ -30,6 +30,7 @@ GPAW development can be done by anyone!  Just take a look at the
 more about the :ref:`technology` and :ref:`theory
 <features_and_algorithms>` behind the code.
 
+
 Topics:
 
 * :ref:`introduction_to_paw`

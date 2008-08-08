@@ -29,8 +29,8 @@ calculations::
 In order to speed up the calculation, use just a single frozen Al(100) layer.
 
 * Calculate the energy of the initial and final states.  Start from
-  this script: :svn:`~doc/exercises/diffusion/initial.py`.  Do we need
-  to apply any constraint to the gold atom?
+  this script: :svn:`~doc/exercises/diffusion/initial.py?format=raw`.
+  Do we need to apply any constraint to the gold atom?
 
 * What is the PBE energy barrier?
 
@@ -172,12 +172,12 @@ Using :program:`VMD` to plot density differences
 
 It is sometimes useful to look at density changes when studying for
 instance adsorption reactions. Copy the script
-:svn:`~doc/exercises/adsorbate/densitydiff.py?format=raw` to your area.
+:svn:`~doc/exercises/diffusion/densitydiff.py?format=raw` to your area.
 
 Read it and try to understand what is does. Change the necessary lines
 to look at one of your slabs with Au adsorbed. There is one major
-assumption in the script if this is used for the H adsorbed on a metal
-surface, try to identify it. When you have written the density
+assumption in the script if this is used for the Au adsorbed on a
+surface, try to identify it XXX?. When you have written the density
 difference to a :file:`.cube` file, open this file in :program:`VMD`
 and use it to investigate what is happening.
 
@@ -186,7 +186,7 @@ Using :program:`VMD` to make input files
 ----------------------------------------
 
 :program:`VMD` is very useful for setting up input files to your
-calculations. Use :menuselection:`Mouse --> Move --> Atom` to move H
+calculations. Use :menuselection:`Mouse --> Move --> Atom` to move Au
 to another position and save the coordinates as an :file:`xyz` file.
 :file:`xyz` files can be read from your Python script like this::
 
