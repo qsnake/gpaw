@@ -371,13 +371,15 @@ class PAWExtra:
         lumo = self.nbands - occ[::-1].searchsorted(0, side='right')
         homo = lumo - 1
         e_homo = eig[homo]
-        if self.nspins == 1:
-            e_lumo = eig[lumo]
-        else:
-            occ_minor = self.collect_occupations(s=1)
-            eig_minor = self.collect_eigenvalues(s=1)
-            lumo_minor = self.nbands - occ_minor[::-1].searchsorted(
-                0, side='right')
-            e_lumo = min(eig[lumo], eig_minor[lumo_minor])
+        e_lumo = eig[lumo]
+        if self.nspins == 2:
+            # Spin polarized: check if frontier orb is in minority spin
+            occ = self.collect_occupations(s=1)
+            eig = self.collect_eigenvalues(s=1)
+            lumo = self.nbands - occ[::-1].searchsorted(0, side='right')
+            homo = lumo - 1
+            if homo >= 0:
+                e_homo = max(e_homo, eig[homo])
+            e_lumo = min(e_lumo, eig[lumo])
 
         return e_homo * self.Ha, e_lumo * self.Ha
