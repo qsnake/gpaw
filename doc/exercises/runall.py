@@ -10,11 +10,11 @@ pylab.show = show
 os.system('rm -rf test; mkdir test')
 os.chdir('test')
 for dir, script in [
-#    ('aluminium', 'Al_fcc.py'),
-#    ('aluminium', 'Al_fcc_convergence.py'),
-#    ('surface', 'Al100.py'),
-#    ('surface', 'work_function.py'),
-#    ('diffusion', 'initial.py'),
+    ('aluminium', 'Al_fcc.py'),
+    ('aluminium', 'Al_fcc_convergence.py'),
+    ('surface', 'Al100.py'),
+    ('surface', 'work_function.py'),
+    ('diffusion', 'initial.py'),
     ('diffusion', 'solution.py'),
     ('diffusion', 'densitydiff.py'),
     ('vibrations', 'h2o.py'),
@@ -32,9 +32,8 @@ for dir, script in [
     ('stm', 'HAl100.py'),
     ]:
     execfile('../' + dir + '/' + script, {'k': 6})
-if 0:#for dir, script, arg in [
-    #('stm', 'stm.py', 'HAl100.gpw')]:
+for dir, script, arg in [
+    ('stm', 'stm.py', 'HAl100.gpw')]:
     os.chdir(dir)
     sys.argv = ['', arg]
-    execfile(script)
-    os.chdir('..')
+    execfile('../' + dir + '/' + script)
