@@ -26,7 +26,9 @@ class Cluster(Atoms):
             if isinstance(filename, str):
                 self.read(filename, kwargs.get('filetype'))
                 return
-            
+        else:
+            Atoms.__init__(self, [])
+
         if kwargs.get('filename') is not None:
             filename = kwargs.pop('filename')
             Atoms.__init__(self, *args, **kwargs)
