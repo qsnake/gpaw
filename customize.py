@@ -19,10 +19,10 @@
 #include_dirs += []
 
 #extra_link_args = []
-extra_link_args += ['-fopenmp']
+#extra_link_args += []
 
 #extra_compile_args = []
-extra_compile_args += ['-fopenmp', '-O3']
+#extra_compile_args += []
 
 #runtime_library_dirs = []
 #runtime_library_dirs += []
@@ -31,7 +31,7 @@ extra_compile_args += ['-fopenmp', '-O3']
 #extra_objects += []
 
 #define_macros = []
-define_macros += [('BLUEGENE', '1')]
+#define_macros += []
 
 #mpicompiler = None
 #mpi_libraries = []
