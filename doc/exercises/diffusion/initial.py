@@ -22,21 +22,20 @@ slab.set_constraint(fixlayer)
 calc = GPAW(h=0.25, kpts=(2, 2, 1), xc='PBE', txt='hollow.txt')
 slab.set_calculator(calc)
 
-
-qn = QuasiNewton(slab, trajectory='ontop.traj')
+qn = QuasiNewton(slab, trajectory='hollow.traj')
 
 # Find optimal height.  The stopping criteria is: the force on the
 # Au atom should be less than 0.05 eV/Ang
-dyn.run(fmax=0.05)
+qn.run(fmax=0.05)
 
-calc.write('ontop.gpw') # Write gpw output after the minimization
+calc.write('hollow.gpw') # Write gpw output after the minimization
 
-print 'energy:', fcc.get_potential_energy()
-print 'height:', fcc.positions[-1, 2] - fcc.positions[0, 2]
+print 'energy:', slab.get_potential_energy()
+print 'height:', slab.positions[-1, 2] - slab.positions[0, 2]
 
 pseudo_density = calc.get_pseudo_density()
 ae_density = calc.get_all_electron_density()
 
 for format in ['cube', 'plt']:
-    write('pseudo.' + format, fcc, data=pseudo_density)
-    write('ae.' + format, fcc, data=ae_density)
+    write('pseudo.' + format, slab, data=pseudo_density)
+    write('ae.' + format, slab, data=ae_density)
