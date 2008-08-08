@@ -24,13 +24,13 @@ calculation we can do with just a :math:`2 \times 2` sampling of the
 surface Brillouin zone.  Use these parameters for the DFT
 calculations::
 
-  from gpaw import GPAW
   calc = GPAW(h=0.25, kpts=(2, 2, 1), xc='PBE')
 
 In order to speed up the calculation, use just a single frozen Al(100) layer.
 
-* Calculate the energy of the initial and final states.  Do we need to
-  apply any constraint to the gold atom?
+* Calculate the energy of the initial and final states.  Start from
+  this script: :svn:`~doc/exercises/diffusion/initial.py>`.  Do we need
+  to apply any constraint to the gold atom?
 
 * What is the PBE energy barrier?
 
@@ -75,13 +75,19 @@ You can think of ASE and GPAW as big collections of modules, that we
 use in our scripts.
 
 
+
+Writing an adsorption script
+============================
+
 As a non-trivial example of a Python module, try to write a function:
 
 .. function:: aual100(site)
 
 The *site* argument should be one of the strings that the
-:ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` accepts:
-``ontop``, ``hollow`` or ``bridge``.
+:ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` function accepts:
+``ontop``, ``hollow`` or ``bridge``.  The function must return the
+energy and write ``<site>.txt``, ``<site>.tray``, and ``<site>.gpw``
+files.
 
 * You could have used this functions to calculate the energy barrier
   above.  Use it to calculate the energy in the ontop site::

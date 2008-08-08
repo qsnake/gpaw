@@ -1,25 +1,22 @@
 from ase import *
-from gpaw import GPAW
+from gpaw import restart
 
-calc = GPAW('ontop.gpw', txt=None)
-HAl_density = calc.get_pseudo_density()
+slab, calc = restart('ontop.gpw', txt=None)
+AuAl = slab.copy()
+AuAl_density = calc.get_pseudo_density()
 
-atoms = calc.get_atoms()
-HAl = atoms.copy()
-
-# Remove hydrogen and do a clean slab calculation:
-H = atoms.pop(2)
-atoms.get_potential_energy()
+# Remove gold atom and do a clean slab calculation:
+del slab[4]
+slab.get_potential_energy()
 Al_density = calc.get_pseudo_density()
 
-# Add the hydrogen atom again and remove the slab:
-atoms += H
-del atoms[:2]
+# Remove Al atoms and do a calculation for Au only:
+slab, calc = restart('ontop.gpw', txt=None)
+del slab[:4]
+calc.set(kpts=None)
+slab.get_potential_energy()
+Au_density = calc.get_pseudo_density()
 
-# Find the ground state for hydrogen only:
-atoms.get_potential_energy()
-H_density = calc.get_pseudo_density()
-
-diff = HAl_density - H_density - Al_density
-write('diff.cube', HAl, data=diff)
-write('diff.plt', HAl, data=diff)
+diff = AuAl_density - Au_density - Al_density
+write('diff.cube', AuAl, data=diff)
+write('diff.plt', AuAl, data=diff)
