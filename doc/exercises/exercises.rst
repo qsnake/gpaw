@@ -8,6 +8,25 @@ XXX link to setting up unix environment (:ref:`summerschool`)
 
 XXX link to ASE
 
+.. hint::
+
+   Square roots are calculated like this: ``2**0.5`` or
+   ``sqrt(2)`` (the ``sqrt`` function must first be imported: ``from
+   math import sqrt`` or ``from ase import *``).
+
+.. note::
+
+   In python, ``/`` is used for both integer- and float
+   divisions. Integer division is only performed if both sides of the
+   operator are integers (you can always force an integer division by
+   using ``//``)::
+
+     >>> 1 / 3
+     0
+     >>> 1 / 3.0
+     0.33333333333333331
+
+
 .. toctree::
    :maxdepth: 1
 

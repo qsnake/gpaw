@@ -4,108 +4,43 @@ Setting up an aluminium surface
 
 .. default-role:: math
 
-In this exercise, we make a toolbox for building an Al(100) surface. For this
+In this exercise, we build an Al(100) surface. For this
 surface, we calculate the surface energy and other properties.
 
 
-Making Python Tool Boxes
-========================
 
-A science project (like the one you are going to make), will often
-contain some repeated and similar sub tasks like loops over different
-kind of atoms, structures, parameters etc.  As an alternative to a
-plethora of similar Python scripts, made by *copy+paste*, it is
-advantageous to put the repeated code into tool boxes.
+Fcc Surfaces
+============
 
-Python supports such tool boxes (in Python called modules): put any
-Python code into a file :file:`stuff.py` then it may be used as a tool box
-in other scripts, using the Python command: ``from stuff import
-thing``, where ``thing`` can be almost anything.  When Python sees
-this line, it runs the file :file:`stuff.py` (only the first time) and
-makes ``thing`` available.  Lets try an example:
-
-* In file :file:`stuff.py`, put::
-
-    constant = 17
-
-    def function(x):
-        return x - 5
-
-* and in file :file:`program.py`, put::
-
-    from stuff import constant, function
-    print 'result =', function(constant)
-
-* Now run the script :file:`program.py` and watch the output.
-
-You can think of ASE and GPAW as big collections of modules, that we
-use in our scripts.
-
-
-
-Fcc Surface Builders
---------------------
-
-As a non-trivial example of a Python module, we'll try to make a tool
-box for making fcc surface slabs with arbitrary number of layers.  A
-real fcc surface has a large number of atomic layers, but most surface
-properties are well reproduced by a slab with just 2 - 20 layers,
-depending on the material and what properties you are looking for.
+A real fcc surface has a large number of atomic layers, but most
+surface properties are well reproduced by a slab with just 2 - 20
+layers, depending on the material and what properties you are looking
+for.
 
 The most important cubic surfaces are (100), (110), and (111).  For
 face centered cubic, (111) has the most compact atomic arrangement,
 whereas (110) is most open. Here we'll focus on (100).
 
-* What is the coordination number *Z* (number of nearest neighbors) of an
-  fcc(100) surface atom?  What is it for a bulk atom?
+* What is the coordination number *Z* (number of nearest neighbors) of
+  an fcc(100) surface atom?  What is it for a bulk atom?  Start the
+  Python interpreter and try this::
 
-* Now that we know the surface geometry, we can setup a toolbox
-  for making surface structures with arbitrary number of layers.  Copy
-  the script :svn:`~doc/exercises/surface/build_bcc.py?format=raw`
-  to your area.
-  Browse the script and try
-  to understand it. The central part is the function starting with
-  :samp:`def bcc100({...})` that creates a body centered cubic (100)
-  surface.
+    from ase import *
+    from ase.lattice.surface import fcc100
+    s = fcc100('Al', (1, 1, 5))
+    view(s, repeat=(4, 4, 1))
 
-* Create a :file:`build_fcc.py` script containing a function called ``fcc100``.
-  This function should build an fcc(100) surface slab.  Run the script
-  until you are sure that your new function works (by running the
-  script, you activate the self test in the last few lines of the
-  script, starting at ``if __name__ == '__main__':`` - the
-  self test is not done, when you import from your module, though).
+  Read more about the :func:`~ase.lattice.surface.fcc100` function
+  :ase:`here <ase/lattice.html>`.
+
+* Answer the same questions for the (111) surface.
 
 
-.. hint::
+Aluminum fcc(100) surface energetics
+====================================
 
-   Square roots are calculated like this: ``2**0.5`` or
-   ``sqrt(2)`` (the ``sqrt`` function must first be imported: ``from
-   math import sqrt`` or ``from ase import *``).
-
-.. note::
-
-   In python, ``/`` is used for both integer- and float
-   divisions. Integer division is only performed if both sides of the
-   operator are integers (you can always force an integer division by
-   using ``//``)::
-
-     >>> 1 / 3
-     0
-     >>> 1 / 3.0
-     0.33333333333333331
-
-Aluminum fcc(100) Surface Slabs
-===============================
-
-In this section, we'll study how surface properties converge, as
-the slab becomes thicker and thicker.
-
-
-Surface Energetics
-------------------
-
-One surface property is the surface tension
-`\sigma` defined implicitly via:
+One surface property is the surface tension `\sigma` defined
+implicitly via:
 
 .. math:: E_N = 2A\sigma + NE_B
 
@@ -129,12 +64,11 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
   .. math:: \sigma = \frac{NE_{N-1} - (N-1)E_N}{2A}
 
-* Take a look at the script :svn:`~doc/exercises/surface/Al100.py?format=raw`.
-  Calculate `\sigma` for `N` =
-  2, 3, 4, 5 and 6.  Use a two-dimensional Monkhorst-Pack **k**-point
-  sampling (``kpts=(k, k, 1)``) that matches the size of your unit
-  cell.  The experimental value of `\sigma` is 54 meV/Å\ :sup:`2`.  How
-  well is the EMT estimate satisfied?
+* The script :svn:`~doc/exercises/surface/Al100.py?format=raw` defines
+  an ``energy()`` function for calculating `E_N`.  Use it to calculate
+  `\sigma` for `N` = 5.  Use a two-dimensional Monkhorst-Pack
+  **k**-point sampling (``kpts=(k, k, 1)``) that matches the size of
+  your unit cell.  
 
   .. hint::
 
@@ -150,8 +84,15 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
     Remember that convergence in this parameter should always be checked.
 
+* How well is the EMT estimate satisfied?
+
+.. note:: For a close-packed Al(111) surface, the
+  experimental value of `\sigma` is 54 meV/Å\ :sup:`2`.  
+
+
+
 Work function
--------------
+=============
 
 Run the :svn:`~doc/exercises/surface/work_function.py?format=raw`
 script and estimate the work function for a Al(100) surface. A typical

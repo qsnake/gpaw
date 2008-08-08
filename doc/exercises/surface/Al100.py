@@ -1,11 +1,10 @@
 from gpaw import GPAW
-from build_fcc import fcc100
+from ase.lattice.surface import fcc100
 
-a = 4.05
-def energy(n):
-    fcc = fcc100('Al', a, n, 20.0)
+def energy(n, k, a=4.05):
+    fcc = fcc100('Al', (1, 1, n), a=a, vacuum=7.5)
     calc = GPAW(nbands=n * 5,
-                kpts=(6, 6, 1),
+                kpts=(k, k, 1),
                 h=0.25,
                 txt='slab-%d.txt' % n)
     fcc.set_calculator(calc)
@@ -13,8 +12,4 @@ def energy(n):
     calc.write('slab-%d.gpw' % n)
     return e
 
-f = file('e6x6.dat', 'w')
-for n in range(1, 7):
-    e = energy(n)
-    print n, e
-    print >> f, n, e
+e4 = energy(4, ?)
