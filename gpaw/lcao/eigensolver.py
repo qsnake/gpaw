@@ -25,10 +25,10 @@ class LCAO:
         self.dtype = paw.dtype
         self.initialized = True
 
-    def get_hamiltonian_matrix(self, hamiltonian, kpt):
-        k = kpt.k
-        s = kpt.s
-        u = kpt.u
+    def get_hamiltonian_matrix(self, hamiltonian, kpt=None,k=0,s=0):
+        if kpt != None:
+            k = kpt.k
+            s = kpt.s
         
         H_mm = self.Vt_skmm[s,k]
 
