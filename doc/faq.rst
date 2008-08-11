@@ -4,8 +4,6 @@
 Frequently Asked Questions
 ==========================
 
-.. contents::
-
 General
 =======
 
@@ -86,18 +84,18 @@ You can try to occupy the states with Fermi-distribution by specifying the ``wid
 
 However, note that this might change also the symmetry of your system
 
-Sometimes it is possible to improve the convergence by changing the default parameters for 
-`density mixing`_, try e.g.::
+Sometimes it is possible to improve the convergence by changing the
+default parameters for :ref:`manual_density_mixing`, try e.g.::
 
   mixer=Mixer(0.1, 5, metric='new', weight=100.0)
   GPAW(..., mixer=mixer)
 
-In rare occasions the default eigensolver_ ``rmm-diis`` does not converge, and one can try either conjugate gradient or Davidson eigensolvers::
+In rare occasions the default :ref:`eigensolver
+<gpaw_manual_eigensolver>` ``rmm-diis`` does not converge, and one can
+try either conjugate gradient or Davidson eigensolvers::
 
   GPAW(..., eigensolver='cg')
 
-.. _density mixing: wiki:GPAW:Manual#density-mixing
-.. _eigensolver: :ref:`gpaw_manual_eigensolver`
 
 Poisson solver did not converge!
 ================================

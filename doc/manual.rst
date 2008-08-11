@@ -299,7 +299,7 @@ also write ``{'bands': -10}`` to converge all bands except the last
 The calculation will stop with an error if convergence is not reached
 in ``maxiter`` self-consistent iterations (defaults to 120).
 
-
+.. _manual_density_mixing:
 
 Density mixing
 --------------
