@@ -31,6 +31,7 @@ XXX add more links from the exercises to the corresponding ASE-documentation.
 .. toctree::
    :maxdepth: 1
 
+   ../summerschool
    aluminium/aluminium
    diffusion/diffusion
    surface/surface
