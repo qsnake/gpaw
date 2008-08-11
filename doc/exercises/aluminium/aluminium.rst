@@ -41,7 +41,8 @@ you get two files:
   The file :file:`info.xml` has information about array sizes, types,
   endianness, parameters, and more.  Try::
 
-    $ tar -f Al-fcc.gpw -xO info.xml
+    $ tar xf Al-fcc.gpw info.xml
+    $ less info.xml
 
   or use ``tar --help`` for more options.
 
