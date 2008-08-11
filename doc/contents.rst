@@ -18,30 +18,6 @@ Contents
    exercises/exercises
    faq
 
-Move to documentation
----------------------
-
-   literature
-   manual
-
-
-Move to manual
---------------
-
-.. toctree::
-   :maxdepth: 2
-
-   parallel_runs/parallel_runs
-   restart_files
-   xc/xc
-
-Special topics
---------------
-
-   xas/xas
-   tddft/tddft
-
-
 Talk about this later
 ---------------------
 

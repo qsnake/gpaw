@@ -4,6 +4,21 @@
 Documentation
 =============
 
+.. toctree::
+   :maxdepth: 2
+
+   manual
+   literature
+   parallel_runs/parallel_runs
+   restart_files
+   xc/xc
+   tddft/tddft
+   xas/xas
+
+
+Old stuff
+---------
+
 The documentation consists of several parts:
 
 * A :ref:`manual`.
