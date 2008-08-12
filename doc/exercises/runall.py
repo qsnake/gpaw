@@ -31,10 +31,16 @@ for dir, script in [
     ('wannier', 'benzene.py'),
     ('wannier', 'wannier-benzene.py'),
     ('stm', 'HAl100.py'),
+    ('wavefunctions', 'CO.py'),
+    ('dos', 'pdos.py'),
+    ('lrtddft', 'ground_state.py'),
+    ('lrtddft', 'spectrum.py')
     ]:
     execfile('../' + dir + '/' + script, {'k': 6})
-for dir, script, arg in [
-    ('stm', 'stm.py', 'HAl100.gpw')]:
-    os.chdir(dir)
-    sys.argv = ['', arg]
-    execfile('../' + dir + '/' + script)
+for dir, script, args in [
+    ('stm', 'stm.py', ['HAl100.gpw']),
+    ('dos', 'dos.py', ['Al-fcc.gpw', 'si.gpw', 'CO.gpw',
+                       'ferro.gpw', 'anti.gpw', 'non.gpw'])]:
+    for arg in args:
+        sys.argv = ['', arg]
+        execfile('../' + dir + '/' + script)
