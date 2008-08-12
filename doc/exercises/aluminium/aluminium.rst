@@ -1,48 +1,4 @@
-head	1.1;
-access;
-symbols;
-locks; strict;
-comment	@# @;
-
-
-1.1
-date	2008.08.12.14.08.28;	author tolsen;	state Exp;
-branches;
-next	;
-
-
-desc
-@@
-
-
-1.1
-log
-@Initial revision
-@
-text
-@head	1.1;
-access;
-symbols;
-locks; strict;
-comment	@@# @@;
-
-
-1.1
-date	2008.08.12.14.07.52;	author tolsen;	state Exp;
-branches;
-next	;
-
-
-desc
-@@@@
-
-
-1.1
-log
-@@Initial revision
-@@
-text
-@@=========================
+=========================
 Getting started with GPAW
 =========================
 
@@ -99,9 +55,8 @@ monitor some variables by using the :command:`grep` utility.  By typing::
   $ grep iter Al-fcc.txt
 
 you see the progress of the iteration cycles including convergence of
-wavefunctions, density and total energy. Sometimes it is more convenient to 
-print the log output directly into the terminal which is done if the txt 
-keyword in the GPAW calculator is omitted.
+wavefunctions, density and total energy. If the txt keyword is omitted 
+the log output will be printed directly in the terminal.
 
 .. highlight:: python
 
@@ -235,5 +190,3 @@ Equilibrium lattice properties for bcc
   is  possible to choose an orthorhombic (but not cubic) unit cell for fcc 
   which contains two atoms. Would this minimal choice affect the choice of 
   **k**-point sampling?
-@@
-@
