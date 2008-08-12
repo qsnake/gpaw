@@ -88,11 +88,12 @@ get('tutorials/ensembles', ['ensemble.png'])
 
 get('.', ['2sigma.png', 'co_wavefunctions.png', 'molecules.png'], '_static')
 get('exercises/lrtddft', ['spectrum.png'])
-get('xc', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
-get('xas', ['xas_32H2O.png', 'xas.png', 'xas_exp.png', 'xas_H2O.png'])
+get('documentation/xc', 'g2test_pbe0.png  g2test_pbe.png  results.png'.split())
+get('documentation/xas', ['xas_32H2O.png', 'xas.png', 'xas_exp.png',
+                          'xas_H2O.png'])
 get('performance', 'dacapoperf.png  goldwire.png  gridperf.png'.split(),
     '_static')
-get('vdw', ['phi.dat', 'makephi.tar.gz'], '_static')
+get('documentation/xc', ['phi.dat', 'makephi.tar.gz'], '_static')
 
 # Generate one page for each setup:
 if get('setups', ['setup-images.tar.gz', 'setup-data.pckl'], '_static'):

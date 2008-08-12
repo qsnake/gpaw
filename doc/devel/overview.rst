@@ -10,10 +10,7 @@ Introduction
 ------------
 
 This document describes the most important objects used for a DFT calculation.
-More information can be found in the API_ or in the code.
-
-
-.. _API: http:/wiki.fysik.dtu.dk/gpaw-epydoc
+More information can be found in the :epydoc:`API <gpaw>` or in the code.
 
 
 .. _overview_array_naming:
