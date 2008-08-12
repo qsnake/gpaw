@@ -1,4 +1,4 @@
-.. _diffusion_exercise:
+x.. _diffusion_exercise:
 
 =========================================
 Diffusion of gold atom on Al(100) surface
@@ -173,10 +173,8 @@ instance adsorption reactions. Copy the script
 :svn:`~doc/exercises/diffusion/densitydiff.py?format=raw` to your area.
 
 Read it and try to understand what is does. Change the necessary lines
-to look at one of your slabs with Au adsorbed. There is one major
-assumption in the script if this is used for the Au adsorbed on a
-surface, try to identify it XXX?. When you have written the density
-difference to a :file:`.cube` file, open this file in :program:`VMD`
+to look at one of your slabs with Au adsorbed. When you have written the 
+density difference to a :file:`.cube` file, open this file in :program:`VMD`
 and use it to investigate what is happening.
 
 
