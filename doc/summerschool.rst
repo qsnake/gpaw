@@ -68,3 +68,37 @@ Parallel runs
 =============
 
 Follow instructions from :ref:`bohr_gbar_dtu_dk`
+
+Notes XXX
+==========
+
+*   Useful links: Userguides_ FAQ_ Unix_ USB-sticks_
+
+*   Octopus_ tutorial_
+
+*   Editors: emacs, vim, nedit (MS Windows/Macintosh-like environment). Python syntax
+
+*   Printer: gps1-308. Terminal: lp -d gps1-308 filename
+
+*   E-mail client:
+    Thunderbird is the default mail client in the databar and configured  
+    with your summer school e-mail (camd0??@student.dtu.dk).
+
+*   To open a pdf-file: acroread filename
+
+*   Log in to niflheim: ssh school1.fysik.dtu.dk or ssh school2.fysik.dtu.dk.
+    Same password as handed out for the databar. Please use school1 if the number in your 
+    userid is odd and school2 if it is even.
+
+*   gpaw-qsub...
+
+*   How to copy from gbar to niflheim:
+    scp hald.gbar.dtu.dk:path/filename .
+    scp school1.fysik.dtu.dk:path/filename .
+
+.. _Userguides: http://www.gbar.dtu.dk/index.php/Category:User_Guides
+.. _FAQ: http://www.gbar.dtu.dk/index.php/General_use_FAQ
+.. _Unix: http://www.gbar.dtu.dk/index.php/UNIX
+.. _USB-sticks: http://www.gbar.dtu.dk/index.php/USBsticks
+.. _Octopus: http://www.tddft.org/programs/octopus/wiki/index.php/
+.. _tutorial: http://www.tddft.org/programs/octopus/wiki/index.php/Tutorial
