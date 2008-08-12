@@ -55,7 +55,7 @@ boundary conditions.  The parameters for the PAW calculation are:
 * :math:`32 \times 32 \times 32` grid points.
 
 The values of these parameters can be found in the text output file:
-`<h2.txt>`_.
+`h2.txt <../h2.txt>`_.
 
 The calculator will try to make sensible choices for all parameters
 that the user does not specify.  Specifying parameters can be done
