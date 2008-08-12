@@ -74,8 +74,6 @@ Notes XXX
 
 *   Useful links: Userguides_ FAQ_ Unix_ USB-sticks_
 
-*   Octopus_ tutorial_
-
 *   Editors: emacs, vim, nedit (MS Windows/Macintosh-like environment). Python syntax
 
 *   Printer: gps1-308. Terminal: lp -d gps1-308 filename
@@ -89,6 +87,17 @@ Notes XXX
 *   Log in to niflheim: ssh school1.fysik.dtu.dk or ssh school2.fysik.dtu.dk.
     Same password as handed out for the databar. Please use school1 if the number in your 
     userid is odd and school2 if it is even.
+
+*   Octopus_ is installed on the 'q' opteron nodes on Niflheim. The way to run jobs is the following:
+    - create inp file in the working directory as described in the tutorial_, and then run 
+    :svn:`~doc/run.py?format=raw`. To use various octopus utilities such as ``oct-cross-section`` 
+    and ``oct-broad`` you need to do::
+
+	source /usr/local/openmpi-1.2.5-pathf90/bin/mpivars-1.2.5.csh
+
+    first. Submitting jobs to the queue is done by::
+
+	qsub -l nodes=2:ppn=4:switch5 run.py
 
 *   gpaw-qsub...
 
