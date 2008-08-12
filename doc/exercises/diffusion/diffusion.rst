@@ -4,17 +4,16 @@
 Diffusion of gold atom on Al(100) surface
 =========================================
 
-In these two ASE-tutorials:
+In this ASE-tutorial:
 
-* :ase:`NEB <tutorials/neb/diffusion.html>`
 * :ase:`Constraint <tutorials/constraints/diffusion.html>`
 
 the energy barrier for diffusion of a gold atom on an Al(100) surface
-was calculated using a semi-empirical EMT potential.  In this
+is calculated using a semi-empirical EMT potential.  In this
 exercise, we will try to use DFT and GPAW.
 
-* Run the scripts form one of the two tutorials above to get good
-  initial guesses for the height of the gold atom in the initial and
+* Run the script from the ASE-tutorial above and use the graphical representation 
+  to get good initial guesses for the height of the gold atom in the initial and
   transition states (hollow and bridge sites).
 
 The PAW setups for both Al and Au are quite smooth (see
@@ -32,7 +31,9 @@ In order to speed up the calculation, use just a single frozen Al(100) layer.
   this script: :svn:`~doc/exercises/diffusion/initial.py?format=raw`.
   Do we need to apply any constraint to the gold atom?
 
-* What is the PBE energy barrier?
+* What is the PBE energy barrier? (Do not repeat the ASE-tutorial with GPAW, 
+  but simply relax the gold atom at the transition state and use the total energy 
+  differences)
 
 * Can both initial and transition state calculations be done with only
   one **k**-point in the irreducible part of the Brillouin zone?
@@ -86,7 +87,7 @@ The *site* argument should be one of the strings that the
 :ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` function
 accepts: ``'ontop'``, ``'hollow'`` or ``'bridge'``.  The *height*
 argument is the height above the Al layer.  The function must return
-the energy and write ``<site>.txt``, ``<site>.tray``, and
+the energy and write ``<site>.txt``, ``<site>.traj``, and
 ``<site>.gpw`` files.
 
 * You could have used this functions to calculate the energy barrier
@@ -104,9 +105,6 @@ the energy and write ``<site>.txt``, ``<site>.tray``, and
 * For biological catalytic processes, a popular rule of thumb is
   that the rate doubles for every temperature increase of 10 K around
   room temperature.  What activation energy does this correspond to?
-
-* If one would want to investigate the diffusion process properly, how would
-  you do this? What would have to be changed from the present setup? XXX?
 
 * Look at the relaxed configurations with the :command:`ag`
   command::
