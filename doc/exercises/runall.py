@@ -10,6 +10,7 @@ pylab.show = show
 os.system('rm -rf test; mkdir test')
 os.chdir('test')
 for dir, script in [
+    ('neb', 'neb1.py'),
     ('aluminium', 'Al_fcc.py'),
     ('aluminium', 'Al_fcc_convergence.py'),
     ('surface', 'Al100.py'),
