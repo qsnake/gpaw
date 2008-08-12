@@ -1,4 +1,4 @@
-x.. _diffusion_exercise:
+.. _diffusion_exercise:
 
 =========================================
 Diffusion of gold atom on Al(100) surface
