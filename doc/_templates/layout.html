@@ -233,7 +233,12 @@
       <div class="clearer"></div>
     </div>
 
-{%- block relbar2 %}{{ relbar() }}{% endblock %}
+<!-- 
+Remove footer.  Sphinx will actually parse anything with curly braces even if
+it is inside a comment.  The footer can be added by removing this comment
+and replacing [] by corresponding curly brackets
+[%- block relbar2 %][[ relbar() ]][% endblock %] 
+-->
 
 {%- block footer %}
     <div class="footer">
