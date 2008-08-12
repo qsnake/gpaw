@@ -25,6 +25,6 @@ See :ref:`faq` in case of problems.
 From tar-file
 =============
 
-XXX Where are the stable releases?
+Here is the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
 
-XXX Tar-file?
+XXX Where are the stable releases?
