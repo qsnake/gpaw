@@ -14,7 +14,7 @@ from gpaw.io.plt import read_plt
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 
-class SimpleStm():
+class SimpleStm:
     """Simple STM object to simulate STM pictures.
 
     The simulation uses either a single pseudo-wavefunction (PWF)
