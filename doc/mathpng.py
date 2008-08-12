@@ -127,6 +127,7 @@ def make_png(latex, name, inline):
     f = open('math.tex', 'w')
     f.write(r"""\documentclass{article}
                 \usepackage[active]{preview}
+                \usepackage{amsmath,amssymb}
                 \begin{document}
                 \begin{preview}""")
     if inline:
