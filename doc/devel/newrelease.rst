@@ -4,6 +4,8 @@
 New release
 ===========
 
+XXX This page needs to be updated!!
+
 When it is time for a new release of the code, here is what you have to do:
 
 * Make a fresh checkout from svn::

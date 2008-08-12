@@ -6,16 +6,15 @@
 
 In the tutorial on :ref:`how to calculate atomization energies
 <atomization_energy>`, we calculated the atomization energy for
-:math:`\rm{H}_2` using the experimental bond length of 0.74 Å.
-In this tutorial, we ask a QuasiNewton_ minimizer to iteratively find
+:math:`\rm{H}_2` using the experimental bond length of 0.74 Å.  In
+this tutorial, we ask a :ase:`QuasiNewton
+<ase/optimize.html#module-optimize.qn>` minimizer to iteratively find
 the structural energy minimum, where all atomic forces are below 0.05
 eV/Å.  The following script will do the job:
 
 .. literalunclude: relax.py
 
 
-.. _QuasiNewton: https://web2.fysik.dtu.dk/ase/ase/optimize.html#module-optimize.qn
-.. _how to calculate atomization energies: :ref:`atomization_energy`
 
 The result is::
 
@@ -37,11 +36,7 @@ constraints::
 
   molecule.set_constraint(FixAtoms(mask=[0, 1]))
 
-The keyword `mask` contains list of booleans for each atom indicating whether the atom's
-position should be fixed or not. See the constraints_ section in the ASE manual for more information
-and examples for setting constraints.
-
-.. _ASE manual: https://web2.fysik.dtu.dk/ase/ase/optimize.html
-.. _filters: wiki:ASE:Filters
-.. _FixCoordinates: wiki:ASE:Filters#fixcoordinates
-.. _constraints: http://web2.fysik.dtu.dk/ase/ase/constraints.html
+The keyword `mask` contains list of booleans for each atom indicating
+whether the atom's position should be fixed or not. See the
+:ase:`constraints <ase/constraints.html>` section on the ASE page for
+more information and examples for setting constraints.

@@ -53,7 +53,7 @@ def epydoc_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
     else:
         ref = '.'.join(components) + '-module.html'
 
-    ref = 'http://web2.fysik.dtu.dk/gpaw/epydoc/' + ref
+    ref = 'http://wiki.fysik.dtu.dk/gpaw-epydoc/' + ref
     set_classes(options)
     node = nodes.reference(rawtext, name,
                            refuri=ref,

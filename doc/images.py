@@ -13,7 +13,7 @@ may not exist.
 from urllib2 import urlopen, HTTPError
 import os
 
-srcpath = 'http://web2.fysik.dtu.dk//gpaw-files'
+srcpath = 'http://wiki.fysik.dtu.dk/gpaw-files'
 #srcpath = 'http://dcwww.camp.dtu.dk/~askhl/gpaw-files'
 
 def get(path, names, target=None):

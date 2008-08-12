@@ -2,13 +2,15 @@
 PAW
 ===
 
+XXX This page needs more work ...
+
 The ``Paw`` object defined in ``paw.py`` is the central object for a
 calculation.  Instantiating such an object by hand is not recommended.
 Use the ``create_paw_object()`` helper-function instead (it will
 supply many default values) - it is used py the ASE_ Calculator
 interface.
 
-.. _ASE: https://web2.fysik.dtu.dk/ase/
+.. _ASE: https://wiki.fysik.dtu.dk/ase/
 
 These are the most important attributes of a ``Paw`` object:
  =============== =================================================

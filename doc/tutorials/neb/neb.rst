@@ -4,7 +4,9 @@
 NEB calculations parallelized over images
 =========================================
 
-The `Gold atom diffusion on Al(100)`_ example can be used with GPAW like this:
+The :ase:`Gold atom diffusion on Al(100)
+<tutorials/neb/diffusion.html>` example can be used with GPAW like
+this:
 
 .. literalinclude: neb.py
 
@@ -14,6 +16,3 @@ If we run the job on 12 cpu's::
 
 then each of the three internal images will be parallelized over 4 cpu's.
 The energy barrier is found to be 0.29 eV.
-
-
-.. _Gold atom diffusion on Al(100): http://web2.fysik.dtu.dk/ase/tutorials/neb/diffusion.html
