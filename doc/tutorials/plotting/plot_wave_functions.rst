@@ -11,7 +11,7 @@ Creating a wave function file
 The following script will do a calculation for a CO
 molecule and save the wave functions in a file (``CO.gpw``).
 
-.. literalinclude: CO.py
+.. literalinclude:: CO.py
 
 ---------------------------------
 Creating wave function cube files
@@ -19,7 +19,7 @@ Creating wave function cube files
 
 You can get seperate cube files (the format used by Gaussian) for each wavefunction with the script:
 
-.. literalinclude: CO2cube.py
+.. literalinclude:: CO2cube.py
 
 The script produced the files CO_0.cube .. CO_5.cube, which might be viewed using for example `gOpenMol <http://www.csc.fi/gopenmol/>`_ or `VMD <http://www.ks.uiuc.edu/Research/vmd/>`_. 
 
@@ -35,4 +35,4 @@ Creating wave function plt files
 
 One can write out the wave functions in the very compact (binary) `gOpenMol <http://www.csc.fi/gopenmol/>`_ plt format directly:
 
-.. literalinclude: CO2plt.py
+.. literalinclude:: CO2plt.py

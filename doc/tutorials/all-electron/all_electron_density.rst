@@ -66,7 +66,7 @@ Example 2: Bader analysis of H\ :sub:`2`\ O
 
 To do a bader anaysis of the all-electron density, you should first save the density to a .cube file:
 
-.. literalinclude: H2O-bader.py
+.. literalinclude:: H2O-bader.py
 
 Then run the bader program::
 

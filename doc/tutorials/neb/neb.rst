@@ -8,7 +8,7 @@ The :ase:`Gold atom diffusion on Al(100)
 <tutorials/neb/diffusion.html>` example can be used with GPAW like
 this:
 
-.. literalinclude: neb.py
+.. literalinclude:: neb.py
 
 If we run the job on 12 cpu's::
 

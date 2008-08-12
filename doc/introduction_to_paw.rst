@@ -24,7 +24,7 @@ where `h` is the grid spacing and `(i, j, k)` are the indices of the grid points
 
 .. figure:: _static/co_wavefunctions.png
 
-.. literalinclude:co_wavefunctions.py
+.. literalinclude:: co_wavefunctions.py
 
 In order to get the all-electron wave function, we add and subtract one-center expansions of the all-electron (thick lines) and pseudo wave-functions (thin lines):
 

@@ -14,7 +14,7 @@ energies are calculated (non-selfconsistently) with an ensemble of 1000
 exchange-correlation functionals distributed according to their
 probability (see article [Mor05b]_ for details).
 
-.. literalinclude: ensemble.py
+.. literalinclude:: ensembles.py
 
 The result of running the script is::
 
