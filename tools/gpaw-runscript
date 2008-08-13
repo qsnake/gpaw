@@ -44,7 +44,7 @@ set = defaults
 
 def dhms(secs):
     """return days,hours,minutes and seconds"""
-    dhms = [0,0,0,0]
+    dhms = [0, 0, 0, 0]
     dhms[0] = int(secs // 86400)
     s = secs % 86400
     dhms[1] = int(s // 3600)
@@ -69,7 +69,7 @@ def hms_string(secs):
     l = hms(secs)
     def extend10(n):
         if n<10:
-	    return '0' + str(n)
+            return '0' + str(n)
         else:
             return str(n)
     return extend10(l[0]) + ':' + extend10(l[1]) + ':' + extend10(l[2])
@@ -118,13 +118,13 @@ class RunScript:
 
     def loadleveler(self, f, set, env):
         print >> f,"#!/bin/bash"
-	if set['nodes'] > 1:
+        if set['nodes'] > 1:
             print >> f, "# @ job_type=parallel"
-	else:
+        else:
             print >> f, "# @ job_type=serial"
         # ibm nodes contain 32 cpus
         nodes = int(set['nodes'] / 32)
-	if nodes == 0:
+        if nodes == 0:
             print >> f, '# @ node = 1'
         else:
             if nodes * 32 != int(set['nodes']):
@@ -170,7 +170,7 @@ class RunScript:
         print >> f, 'cd', set['wd']
         print >> f, 'aprun -n %d' % size,
         if set['mem']:
-             print >> f, '-m 1900M',
+            print >> f, '-m 1900M',
         print >> f, '$GPAW_PYTHON', set['script']
         
     def louhi_deisa(self,f,set,env):
@@ -198,7 +198,7 @@ class RunScript:
         print >> f, 'cd', set['wd']
         print >> f, 'aprun -n %d' % size,
         if set['mem']:
-             print >> f, '-m 1900M',
+            print >> f, '-m 1900M',
         print >> f, '$GPAW_PYTHON', set['script']
         
     def louhi_pre(self, f, set, env):
@@ -217,10 +217,10 @@ class RunScript:
         print >> f, 'cd', set['wd']
         print >> f, 'aprun -n %d' % size,
         if set['mem']:
-             print >> f, '-m 1900M',
+            print >> f, '-m 1900M',
         print >> f, '$GPAW_PYTHON', set['script']
         
-    def murska(self,f,set,env):
+    def murska(self, f, set, env):
         # Michaels defaults
         if not env['GPAW_SETUP_PATH']:
             env['GPAW_SETUP_PATH'] = '/v/linux26_x86_64/appl/nano/gpaw/setups'
@@ -305,8 +305,8 @@ unset CC CFLAGS LDFLAGS
     def pbs_bfg(self, f, set, env):
         print >> f, '#!/bin/bash'
         print >> f, '#PBS -N '+set['name']
-        print >> f, '#PBS -l nodes='+str(set['nodes'])
-        print >> f, '#PBS -l walltime='+str(set['time'])
+        print >> f, '#PBS -l nodes=1:ppn=' + str(set['nodes'])
+        print >> f, '#PBS -l walltime=' + str(set['time'])
         print >> f, '#PBS -m bea'
         if set['mail'] is not None:
             print >> f, '#PBS -M',set['mail']
@@ -439,7 +439,7 @@ else:
         set['qsys']=hosts[host]
         print 'hostname',host,'found,',
     elif platforms.has_key(sys.platform):
-	set['qsys'] = platforms[sys.platform]
+        set['qsys'] = platforms[sys.platform]
         print 'platform', sys.platform, 'found,',
     else:
         print "Host "+str(host)+" unknown, try -q option."
