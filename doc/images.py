@@ -55,7 +55,7 @@ logo-dtu.png  logo-gpaw.png  logo-jyu.png  logo-tut.png
 
 # flowchart.pdf  flowchart.sxd <-- where?
 devel_stuff = """
-gpaw-logo.odg  overview.odg overview.pdf
+gpaw-logo.odg overview.odg overview.pdf svn-refcard.pdf
 """.split()
 
 architectures_stuff = """

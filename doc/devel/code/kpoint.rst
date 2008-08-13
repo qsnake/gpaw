@@ -8,7 +8,7 @@ Defined in file ``kpoint.py``.
  ``gd``       Descriptor for wave-function grid.
  ``weight``   Weight of **k**-point.
  ``typecode`` Data type of wave functions (``Float`` or ``Complex``).
- ``timer``    Timer_ object.
+ ``timer``    :epydoc:`gpaw.utilities.timing.Timer` object.
  ``nbands``   Number of bands.
  ``s``        Spin index: up or down (0 or 1).
  ``k``        **k**-point index.
@@ -34,6 +34,3 @@ Parallel stuff:
  ``root`` Rank of the CPU that does the matrix diagonalization of ``H_nn``
           and the Cholesky decomposition of ``S_nn``.
  ======== =================================================================
-
-.. _Timer: https://wiki.fysik.dtu.dk/stuff/html/public/gridpaw.utilities.timing.Timer-class.html
-.. _LocFuncBroadcaster: https://wiki.fysik.dtu.dk/stuff/html/public/gridpaw.localized_functions.LocFuncBroadcaster-class.html

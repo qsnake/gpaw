@@ -11,7 +11,7 @@ Browse svn online_.
 
 Take a look at this `SVN cheat sheet`_
 
-.. _SVN cheat sheet: attachment:svn-refcard.pdf
+.. _SVN cheat sheet: ../_static/svn-refcard.pdf
 
 Working with branches
 =====================

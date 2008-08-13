@@ -30,6 +30,11 @@ The documentation consists of several parts:
 
 For Python_ documentation, check the links :ase:`here <python.html>`.
 
+.. _gpaw-devel-ml:
+
+Mailing list
+============
+
 If you can't find what you are looking for, ask on the `mailing list`_.
 
 

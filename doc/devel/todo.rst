@@ -6,6 +6,43 @@ To do
 
 This page lists what we would like to do when time permits.  In each section, items are ordered according to priority.
 
+
+Immediate documentation work
+============================
+
+To do:
+
+* search for XXX and ASE imports, variable names loa : ask, marco
+* fix the global modules page and .. autoclass : not important right now
+* put cross references from gpaw to ase where proper : marco
+* use the ..class::QuasiNewton somewhere to get the links : marco
+* finish up ASE quick-overview and text on tutorials : marco
+* STM-docs : marco
+* siesta exercises on ase pages  : marco
+
+New things:
+
+* Fix TST-exercise : jj
+* Write TOC-like documentation page (documentation/documentation) properly : ?
+* Write TOC-like development page (devel/devel) properly : ?
+* Take care of orphan entries listed in the main TOC ("Talk about this later") : ?
+
+Done:
+
+* fix background of gpaw logo - transparent vs green  :  ask
+* fix math role in ase, copy to ase svn : ask
+* latex-builder has trouble with image sizes : jj
+* find out how it should work with document structure/TOC and so on
+* povray-png's look black in pdf : JJ
+* smaller abinit logo : Ask
+* main page:  make TOC-like list in side bar : ask
+* convert wiki:API: to :epydoc: : ask
+* Also search for wiki:SVN: in rst-files : ask
+* put contents and search on one line : ask
+* top navigation bar should be moved to sidebar and combined with main page links to resemble TOC-like thing on the ase page : ask
+* Add link to https://wiki.fysik.dtu.dk/gpaw/epydoc/ somewhere : Actually there's already one on the devel page, *and* on the documentation page
+
+
 New features and long-term goals
 ================================
 
@@ -23,8 +60,8 @@ Improved convergence (fewer iterations)
 * Alternative to RMM-DIIS.
 
 
-Documetation
-============
+Documentation
+=============
 
 * Write more tutorials: bulk-modulus/lattice constant, MD, STM, Wannier functions, OpenDX, ...
 

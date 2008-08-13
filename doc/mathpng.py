@@ -116,8 +116,8 @@ def latex2html(node, source):
         cls = 'class="center" '
         align = ''
         term = '<br>'
-    return '<img src="%s/%s.png" %s%s />%s' % (path, name, align,
-                                                           cls, term)
+    return '<img src="%s/%s.png" alt="%s" %s%s />%s' % (path, name, latex,
+                                                        align, cls, term)
 
 
 def make_png(latex, name, inline):

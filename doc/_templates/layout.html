@@ -6,7 +6,7 @@
 {%- set reldelim2 = reldelim2 is not defined and ' |' or reldelim2 %}
 {%- macro relbar %}
     <div class="related">
-
+    
           {%- block sidebarsearch %}
           {%- if pagename != "search" %}
             <!-- <h3>[[ builder == 'web' and 'Keyword' or 'Quick' ]] search</h3> -->
@@ -24,8 +24,6 @@
           {%- endif %}
           {%- endblock %}
 
-
-
       <!-- <h3>Navigation</h3> -->
       <ul>
         {%- for rellink in rellinks[:2]*0 %}
@@ -35,36 +33,10 @@
           {%- if not loop.first %}{{ reldelim2 }}{% endif %}</li>
         {%- endfor %}
 
-        <!--
-	<li class="right"><a href="{{ pathto('faq') }}" 
-	title="Frequently asked questions">FAQ</a> | </li>
-	<li class="right"><a href="{{ pathto('devel/devel') }}" 
-	title="Development">Devel</a> | </li>
-	<li class="right"><a href="{{ pathto('install/installationguide') }}" 
-	title="Installation">Install</a> | </li>
-	<li class="right"><a href="{{ pathto('download') }}" 
-	title="Download">Download</a> | </li>
-	<li class="right"><a href="{{ pathto('setups/setups') }}" 
-	title="PAW setups">Setups</a> | </li>
-	<li class="right"><a href="{{ pathto('documentation/documentation') }}" 
-	title="Documentation">Docs</a> | </li>
-	<li class="right"><a href="{{ pathto('index') }}" 
-	title="GPAW main page">Front page</a> | </li>
-        -->
-
-	<!--
-        <li class="right"><a href="{{ pathto('faq') }}" title="Frequently Asked Questions">FAQ</a> |</li>
-        <li class="right"><a href="{{ pathto('download') }}" title="Download and installation">download</a> |</li>
-        <li class="right"><a href="{{ pathto('tutorials/tutorials') }}" title="Tutorials">tutorials</a> |</li>
-        <li class="right"><a href="{{ pathto('gpaw/gpaw') }}"
-        title="Documentation for GPAW modules">documentation</a> |</li>
-	-->
-
         {%- block rootrellink %}
-        <a href="{{ pathto('index') }}"><img class="logo" src="{{ pathto('_static/' + logo, 1) }}" alt="Logo"/></a>
+        <li><a href="{{ pathto('index') }}"><img class="logo" src="{{ pathto('_static/' + logo, 1) }}" alt="GPAW logo"/></a></li>
         {%- endblock %}
-	{{ reldelim1 }}
-	<li><a href="{{ pathto('contents') }}">Contents</a>{{ reldelim1 }}</li>
+	<li> {{ reldelim1 }} <a href="{{ pathto('contents') }}">Contents</a>{{ reldelim1 }}</li>
         {%- for parent in parents %}
           <li><a href="{{ parent.link|e }}" accesskey="U">{{ parent.title }}</a>{{ reldelim1 }}</li>
         {%- endfor %}
@@ -112,12 +84,6 @@
 	    -->
           {%- endif %}
           {%- if next %}
-
-	  <!--
-            <h4>Next topic</h4>
-            <p class="topless"><a href="{{ next.link|e }}" title="next
-            chapter">{{ next.title }}</a></p>
-	    -->
 
           {%- endif %}
           {%- endblock %}
