@@ -80,9 +80,6 @@ get('.', ['bz-all.png'], '_static')
 get('exercises/band_structure', ['silicon_banddiagram.png'])
 get('exercises/wavefunctions', ['co_bonding.jpg'])
 
-get('tutorials/all-electron', ['gridrefinement.png',
-                               'ae_density_NaCl.png',
-                               'ae_density_H2O.png'])
 get('tutorials/bandstructures', ['sodium_bands.png'])
 get('tutorials/ensembles', ['ensemble.png'])
 
