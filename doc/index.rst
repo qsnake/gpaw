@@ -12,7 +12,6 @@ algorithms used <features_and_algorithms>`.
 
 * :ref:`download` latest version.
 * Read the :ref:`manual`.
-* Read :ref:`about_this_wiki`.
 * Go to the :ase:`ASE <>` page.
 * Read the :ref:`literature` page.
 * Do the :ref:`exercises`.

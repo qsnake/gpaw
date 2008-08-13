@@ -63,10 +63,10 @@ partial waves respectively, of the atoms.
      - ``ndarray``
    * - `\tilde{p}_j^a(r)`
      - ``setup.pt_j``
-     - List of Spline_'s
+     - List of :epydoc:`gpaw.spline.Spline`\ s
    * - `\tilde{p}_i^a(\mathbf{r}-\mathbf{R}^a)`
      - ``nuclei[a].pt_i``
-     - LocFuncs_
+     - :epydoc:`gpaw.localized_functions.LocFuncs`
    * - `\langle\tilde{p}_i^a|\tilde{\psi}_{\sigma\mathbf{k}n} \rangle`
      - ``nuclei[a].P_uni``
      - ``ndarray``
@@ -78,16 +78,15 @@ coordinates in the range [0:1[ (relative to the unit cell).
 
 Note, that in the code, ``i`` refers to `n`, `\ell` and `m` quantum
 numbers, and ``j`` refers to `n` and `\ell` only (see
-:ref:`overview_array_naming`).  So, to put an atom-centered
-function like `\tilde{p}_{n\ell m}^a(\mathbf{r})` on the 3D grid, you
-need both the radial part `\tilde{p}_{n\ell}^a(r)` (one of the splines
-in ``paw.nucleus[a].setup.pt_j``) and a spherical harmonics `Y_{\ell
+:ref:`overview_array_naming`).  So, to put an atom-centered function
+like `\tilde{p}_{n\ell m}^a(\mathbf{r})` on the 3D grid, you need both
+the radial part `\tilde{p}_{n\ell}^a(r)` (one of the splines in
+``paw.nucleus[a].setup.pt_j``) and a spherical harmonics `Y_{\ell
 m}(\theta,\phi)`.  Putting radial functions times spherical harmonics
-on a grid is done by the create_localized_functions_ function.  The
-result of the function is a LocFuncs_ object (``paw.nuclei[a].pt_i``).
-
-.. _create_localized_functions: wiki:API:gpaw.localized_functions-module.html#create_localized_functions
-.. _LocFuncs: wiki:API:gpaw.localized_functions.LocFuncs-class.html
+on a grid is done by the :epydoc:`create_localized_functions
+<gpaw.localized_functions>` function.  The result of the function is a
+:epydoc:`gpaw.localized_functions.LocFuncs` object
+(``paw.nuclei[a].pt_i``).
 
 The pseudo wave-functions are othonormalized like this:
 
@@ -111,13 +110,7 @@ The constants `\Delta O_{i_1 i_2}^a` are found in
 ``nuclei[a].setup.O_ii`` (``ndarray``).  Someone should rename
 ``setup.O_ii`` to ``setup.dO_ii``.
 
-See also Setup_, Nucleus_ and Spline_.
-
-
-.. _Setup: wiki:API:gpaw.setup.Setup-class.html
-.. _Nucleus: wiki:API:gpaw.nucleus.Nucleus-class.html
-.. _Spline: wiki:API:gpaw.spline.Spline-class.html
-
+See also :epydoc:`gpaw.setup.Setup`, :epydoc:`gpaw.nucleus.Nucleus` and :epydoc:`gpaw.spline.Spline`.
 
 
 Densities
@@ -136,7 +129,7 @@ constructed:
   \frac{1}{2} \sum_a \tilde{n}_c^a(|\mathbf{r}-\mathbf{R}^a|) \right ].
 
 Here, `\hat{S}_s` is one of the `N_s` symmetry operators of the system
-(see Symmetry_), `f_{n\mathbf{k}\sigma}` are the occupation numbers (adding up to the number of valence elctrons), and
+(see :epydoc:`gpaw.symmetry.Symmetry`), `f_{n\mathbf{k}\sigma}` are the occupation numbers (adding up to the number of valence elctrons), and
 `\tilde{n}_c^a(r)` is the pseudo core density for atom number `a`.
 
 The all-electron spin-densities are given as:
@@ -183,7 +176,7 @@ way as the pseudo electron spin-densities.
      - type
    * - `\hat{S}_s`
      - ``paw.symmetry``
-     - Symmetry_
+     - :epydoc:`gpaw.symmetry.Symmetry`
    * - `\tilde{n}_\sigma`
      - ``paw.density.nt_sG`` and ``paw.density.nt_sg``
      - ``ndarray``
@@ -192,10 +185,10 @@ way as the pseudo electron spin-densities.
      - ``ndarray``
    * - `\tilde{n}_c^a(r)`
      - ``setup.nct``
-     - Spline_
+     - :epydoc:`gpaw.spline.Spline`
    * - `\tilde{n}_c^a(\mathbf{r}-\mathbf{R}^a)`
      - ``nuclei[a].nct``
-     - LocFuncs_
+     - :epydoc:`gpaw.localized_functions.LocFuncs`
    * - `f_{\sigma\mathbf{k}n}`
      - ``paw.kpt_u[u].f_n``
      - ``ndarray``
@@ -276,16 +269,14 @@ where
      - ``float``
    * - `\hat{g}_\ell^a(r)`
      - ``setup.ghat_l``
-     - List of Spline_'s
+     - List of :epydoc:`gpaw.spline.Spline`\ s
    * - `\hat{g}_L^a(\mathbf{r}-\mathbf{R}^a)`
      - ``nuclei[a].ghat_L``
-     - LocFuncs_
+     - :epydoc:`gpaw.localized_functions.LocFuncs`
    * - `Q_L^a`
      - ``nuclei[a].Q_L``
      - ``ndarray``
 
-
-.. _Symmetry: wiki:API:gpaw.symmetry.Symmetry-class.html
 
 .. _developersguide_total_energy:
 
@@ -346,7 +337,4 @@ The electrostatic energy part of `\tilde{E}` is calculated as
 d\mathbf{r}\tilde{v}_H(\mathbf{r})\tilde{\rho}(\mathbf{r})`, where the
 Hartree potential is found by solving Poissons equation:
 `\nabla\tilde{v}_H(\mathbf{r})=-4\pi\tilde{\rho}(\mathbf{r})` (see
-PoissonSolver_).
-
-
-.. _PoissonSolver: wiki:API:gpaw.poisson_solver.PoissonSolver-class.html
+:epydoc:`gpaw.poisson.PoissonSolver`).

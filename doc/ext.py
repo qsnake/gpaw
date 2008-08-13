@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import types
 from os.path import join
 from stat import ST_MTIME
 from docutils import nodes, utils
@@ -38,13 +39,17 @@ def epydoc_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
         name = components[-1]
         
     try:
+        module = None
         for n in range(2, len(components) + 1):
             module = __import__('.'.join(components[:n]))
     except ImportError:
+        if module is None:
+            print 'epydoc: could not process: %s' % str(components)
+            raise
         for component in components[1:n]:
             module = getattr(module, component)
             ref = '.'.join(components[:n])
-            if isinstance(module, type):
+            if isinstance(module, (type, types.ClassType)):
                 ref += '-class.html'
             else:
                 ref += '-module.html'

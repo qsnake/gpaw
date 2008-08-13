@@ -13,9 +13,9 @@ all-electron calculation with spherical symmetry.
 All-electron calculations for spherical atoms
 =============================================
 
-This is done by the AllElectron_ class in
-``gpaw/atom/all_electron.py``.  The all-electron wave functions are
-defined as:
+This is done by the :epydoc:`gpaw.atom.all_electron.AllElectron` class
+in :epydoc:`gpaw.atom.all_electron`.  The all-electron wave functions
+are defined as:
 
 .. math::
 
@@ -23,9 +23,10 @@ defined as:
   \frac{u_{n\ell}(r)}{r} Y_{\ell m}(\hat{\mathbf{r}}),
 
 The `u_{n\ell}(r)` functions are stored in an attribute ``u_j`` of the
-AllElectron_ object.  The ``u_j`` member/attribute is an ``ndarray``
-with shape ``(nj, N)``, where ``nj`` is the number of states (1s, 2s,
-2p, ...) and ``N`` is the number of radial grid points.
+:epydoc:`gpaw.atom.all_electron.AllElectron` object.  The ``u_j``
+member/attribute is an ``ndarray`` with shape ``(nj, N)``, where
+``nj`` is the number of states (1s, 2s, 2p, ...) and ``N`` is the
+number of radial grid points.
 
 .. tip::
 
@@ -35,9 +36,6 @@ with shape ``(nj, N)``, where ``nj`` is the number of states (1s, 2s,
     $ gpaw-setup -a Cu
 
   Try ``gpaw-setup -h`` for more options.
-
-
-.. _AllElectron: wiki:API:gpaw.atom.all_electron.AllElectron-class.html
 
 
 Generation of setups
