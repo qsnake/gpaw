@@ -162,9 +162,18 @@ class Calculator(PAW):
             return npy.array([[n.get_density_correction(spin, 2)
                               for n in self.nuclei] for spin in range(2)])
 
-    def get_all_electron_density(self, gridrefinement=2, pad=True):
+    def get_all_electron_density(self, spin=None, gridrefinement=2, pad=True):
         """Return reconstructed all-electron density array."""
         n_G = self.density.get_all_electron_density(gridrefinement)
+
+        if self.nspins == 1 and spin is not None:
+            n_G *= .5
+        elif self.nspins == 2:
+            if spin is None:
+                n_G = n_G.sum(axis=0)
+            else:
+                n_G = n_G[spin]
+        
         if pad:
             n_G = self.gd.zero_pad(n_G)
         return n_G / Bohr**3
