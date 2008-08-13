@@ -7,6 +7,13 @@ def show():
     pylab.savefig('x%d.png' % n)
     n += 1
 pylab.show = show
+
+if 0:
+    def view(*args, **kwargs):
+        return
+    import ase
+    ase.view = view
+
 os.system('rm -rf test; mkdir test')
 os.chdir('test')
 for dir, script in [
