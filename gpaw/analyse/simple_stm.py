@@ -54,20 +54,20 @@ class SimpleStm:
             # only a single wf requested
             u = self.calc.get_myu(k, s)
             if u is not None:
-                self.add_wf_to_ldos(n, u)
+                self.add_wf_to_ldos(n, u, weight=1)
 
         except:
             # energy bias
             efermi = self.calc.get_fermi_level()
 
-            if len(bias) == 2:
-                # emin and emax given
-                emin, emax = bias
-                if abs(emin) > abs(emax):
-                    occupied = True
-                else:
-                    occupied = False
-            else:
+            def is_number(x):
+                try:
+                    x + 1
+                    return True
+                except:
+                    return False
+
+            if is_number(bias):
                 # bias given
                 if bias > 0:
                     # positive bias = negative tip
@@ -81,6 +81,13 @@ class SimpleStm:
                     emin = efermi + bias
                     emax = efermi
                     occupied = True
+            else:
+                # emin and emax given
+                emin, emax = bias
+                if abs(emin) > abs(emax):
+                    occupied = True
+                else:
+                    occupied = False
 
             emin /= Hartree
             emax /= Hartree
@@ -90,10 +97,9 @@ class SimpleStm:
                 for n, eps in enumerate(kpt.eps_n):
                     if eps > emin and eps < emax:
                         if occupied:
-                            weight = kpt.weight * kpt.f_n[n]
+                            weight = kpt.f_n[n]
                         else:
-                            weight = kpt.weight * (self.calc.nspins 
-                                                   - kpt.f_n[n]     )
+                            weight = kpt.weight - kpt.f_n[n]
                         self.add_wf_to_ldos(n, u, weight)
 
     def add_wf_to_ldos(self, n, u, weight=None):
@@ -103,6 +109,7 @@ class SimpleStm:
         w = weight
         if w is None:
             w = kpt.weight
+##        print "w=", w, kpt.weight
         self.ldos += w * (psi * npy.conj(psi)).real
 
     def write_3D(self, bias, file, filetype=None):
@@ -117,17 +124,15 @@ class SimpleStm:
         if mpi.rank != MASTER:
             return
 
-        ldos /= Bohr**3
-
         if filetype is None:
             # estimate file type from name ending
             filetype = file.split('.')[-1]
         filetype.lower()
 
         if filetype == 'cube':
-            write_cube(file, self.calc.get_atoms(), ldos)
+            write_cube(file, self.calc.get_atoms(), ldos / Bohr**3)
         elif filetype == 'plt':
-            write_plt(file, self.calc.get_atoms(), ldos)
+            write_plt(file, self.calc.get_atoms(), ldos / Bohr**3)
         else:
             raise NotImplementedError('unknown file type "' + filetype + '"')
 
