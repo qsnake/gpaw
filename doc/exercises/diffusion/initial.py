@@ -32,10 +32,3 @@ calc.write('hollow.gpw') # Write gpw output after the minimization
 
 print 'energy:', slab.get_potential_energy()
 print 'height:', slab.positions[-1, 2] - slab.positions[0, 2]
-
-pseudo_density = calc.get_pseudo_density()
-ae_density = calc.get_all_electron_density()
-
-for format in ['cube', 'plt']:
-    write('pseudo.' + format, slab, data=pseudo_density)
-    write('ae.' + format, slab, data=ae_density)
