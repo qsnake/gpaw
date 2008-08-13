@@ -44,17 +44,17 @@ Tutorials
 2. :ref:`structure_optimization`.
 3. :ref:`plot_wave_functions`.
 4. :ref:`bandstructures`.
+5. :ref:`all_electron_density` and using it for doing
+   e.g. :ase:`Bader <ase/dft/bader.html>` analysis.
 
 XXX tddft + lrtddft?
 
 XXX old ASE?
 
-The tutorials 6. and 7. use old ASE and do not work with the latest
-version of GPAW without modifications. The tutorials are being
-converted to new format.
+Tutorial 7. use the old ASE and do not work with the latest
+version of GPAW without modifications. The tutorial is being
+converted to the new format.
 
-6. :ref:`all_electron_density` and using it for doing
-   e.g. :ase:`Bader <ase/dft/bader.html>` analysis.
 7. Calculations with :ref:`ensembles` of exchange-correlation functionals.
 
 .. Note::
