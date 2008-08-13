@@ -24,27 +24,40 @@ def get_bf_centers(atoms):
     pos_ac = atoms.get_positions()
     #print pos_ac
     natoms = len(pos_ac)
-    pos_ic = npy.zeros((nbf,3),npy.float)
+    pos_ic = npy.zeros((nbf,3), npy.float)
     index = 0
     for a in xrange(natoms):
         nao = calc.nuclei[a].get_number_of_atomic_orbitals()
         pos_c = pos_ac[a]
         pos_c.shape = (1,3)
-        pos_ic[index:index+nao] = npy.repeat(pos_c,nao,axis=0)
+        pos_ic[index:index+nao] = npy.repeat(pos_c, nao, axis=0)
         index += nao
     return pos_ic
 
+def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
+    nbf = h_skmm.shape[-1]
+    nspins = len(h_skmm)
+    h_smm = npy.empty((2,nbf,nbf))
+    s_mm = npy.empty((nbf,nbf))
+    phase_k = npy.dot(2 * npy.pi * ibzk_kc, R_c)
+    c_k = npy.exp(1.0j * phase_k) * weight_k
+    c_k.shape = (len(ibzk_kc),1,1)
+    for s in range(nspins):
+        h_smm[s] = npy.sum((h_skmm[s] * c_k).real, axis=0)
+    
+    s_mm[:] = npy.sum((s_kmm * c_k).real, axis=0)
+    return h_smm, s_mm
 
-def remove_pbc(atoms,h,s):
+def remove_pbc(atoms, h, s, d=0):
     calc = atoms.get_calculator()
     if not calc.initialized:
         calc.initialize(atoms)
     nbf = calc.nao
     
-    cutoff = atoms.get_cell()[0,0] * 0.5 #XXX x-direction assump.
-    pos_i = get_bf_centers(atoms)[:,0]
+    cutoff = atoms.get_cell()[d,d] * 0.5 
+    pos_i = get_bf_centers(atoms)[:,d]
     for i in xrange(nbf):
-        dpos_i = npy.absolute(pos_i-pos_i[i])
+        dpos_i = npy.absolute(pos_i - pos_i[i])
         mask_i = (dpos_i < cutoff).astype(npy.int)
         h[i,:] = h[i,:] * mask_i
         h[:,i] = h[:,i] * mask_i
@@ -52,7 +65,7 @@ def remove_pbc(atoms,h,s):
         s[:,i] = s[:,i] * mask_i
 
 
-def dump_lcao_hamiltonian(calc, filename='hs.pickle'): # "parallel" dump of H
+def dump_lcao_hamiltonian(calc, filename): # "parallel" dump of H
     if calc.master:
         # Dump calulation info on master
         fd = open(filename, 'wb')
@@ -74,7 +87,7 @@ def dump_lcao_hamiltonian(calc, filename='hs.pickle'): # "parallel" dump of H
     if calc.kpt_comm.rank == 0:
         for s in range(calc.nspins):
             for k in range(len(calc.ibzk_kc)):
-                h_mm = eigensolver.get_hamiltonian_matrix(hamiltonian,ks=(k,s))
+                h_mm = eigensolver.get_hamiltonian_matrix(hamiltonian,k=0,s=0)
                 s_mm = hamiltonian.S_kmm[k]#XXX writes twice when spin!!
                 tri2full(h_mm)
                 tri2full(s_mm)
