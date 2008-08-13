@@ -8,7 +8,7 @@ from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.utilities import equal
 
 load=True
-load=False
+#load=False
 txt = '/dev/null'
 
 LiH = Atoms([Atom('Li', [.0, .0, .41]),
@@ -51,9 +51,13 @@ else:
     cp = Calculator('LiH-8kpts_wfs.gpw', txt=txt)
 
 stmp = SimpleStm(cp)
-stmp.write_3D(-4., f3dname)
 
-print 'Integrals: 2 * wf, bias=', 2 * wf, stmp.gd.integrate(stmp.ldos)
+stmp.write_3D(-4., f3dname)
+print 'Integrals(occ): 2 * wf, bias=', 2 * wf, stmp.gd.integrate(stmp.ldos)
+equal(2 * wf, stmp.gd.integrate(stmp.ldos), 0.02)
+
+stmp.write_3D(+4., f3dname)
+print 'Integrals(unocc): 2 * wf, bias=', 2 * wf, stmp.gd.integrate(stmp.ldos)
 equal(2 * wf, stmp.gd.integrate(stmp.ldos), 0.02)
 
 os.remove(f3dname)
