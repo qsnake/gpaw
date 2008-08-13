@@ -6,15 +6,36 @@
 {%- set reldelim2 = reldelim2 is not defined and ' |' or reldelim2 %}
 {%- macro relbar %}
     <div class="related">
-      <h3>Navigation</h3>
+
+          {%- block sidebarsearch %}
+          {%- if pagename != "search" %}
+            <!-- <h3>[[ builder == 'web' and 'Keyword' or 'Quick' ]] search</h3> -->
+	    <div class="toprightsearch">
+            <form class="search" action="{{ pathto('search') }}" method="get">
+              <input type="text" name="q" size="18" /> <input type="submit" value="Search" />
+              <input type="hidden" name="check_keywords" value="yes" />
+              <input type="hidden" name="area" value="default" />
+            </form>
+	    </div>
+
+            {%- if builder == 'web' %}
+            <p style="font-size: 90%">Enter a module, class or function name.</p>
+            {%- endif %}
+          {%- endif %}
+          {%- endblock %}
+
+
+
+      <!-- <h3>Navigation</h3> -->
       <ul>
-        {%- for rellink in rellinks[:2] %}
+        {%- for rellink in rellinks[:2]*0 %}
         <li class="right" {% if loop.first %}style="margin-right: 10px"{% endif %}>
           <a href="{{ pathto(rellink[0]) }}" title="{{ rellink[1]|striptags }}"
              accesskey="{{ rellink[2] }}">{{ rellink[3] }}</a>
           {%- if not loop.first %}{{ reldelim2 }}{% endif %}</li>
         {%- endfor %}
 
+        <!--
 	<li class="right"><a href="{{ pathto('faq') }}" 
 	title="Frequently asked questions">FAQ</a> | </li>
 	<li class="right"><a href="{{ pathto('devel/devel') }}" 
@@ -29,6 +50,7 @@
 	title="Documentation">Docs</a> | </li>
 	<li class="right"><a href="{{ pathto('index') }}" 
 	title="GPAW main page">Front page</a> | </li>
+        -->
 
 	<!--
         <li class="right"><a href="{{ pathto('faq') }}" title="Frequently Asked Questions">FAQ</a> |</li>
@@ -38,9 +60,8 @@
         title="Documentation for GPAW modules">documentation</a> |</li>
 	-->
 
-
         {%- block rootrellink %}
-        <a href="{{ pathto('index') }}"><img class="logo" src="{{ pathto('_static/' + logo, 1) }}" alt="Logo" align="absmiddle"/></a>
+        <a href="{{ pathto('index') }}"><img class="logo" src="{{ pathto('_static/' + logo, 1) }}" alt="Logo"/></a>
         {%- endblock %}
 	{{ reldelim1 }}
 	<li><a href="{{ pathto('contents') }}">Contents</a>{{ reldelim1 }}</li>
@@ -49,6 +70,7 @@
         {%- endfor %}
         {%- block relbaritems %}
 	{% endblock %}
+
       </ul>
     </div>
 {%- endmacro %}
@@ -57,47 +79,29 @@
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
           {%- block sidebartoc %}
+
+	  <h3>Links</h3>
+	  <ul class="this-page-menu">
+	    <li><a href="{{ pathto('index') }}">Main page</a></li>
+	    <li><a href="{{ pathto('features_and_algorithms') }}">Introduction</a></li>
+	    <li><a href="{{ pathto('download') }}">Download</a></li>
+	    <li><a href="{{ pathto('install/installationguide') }}">Install</a></li>
+	    <li><a href="{{ pathto('setups/setups') }}">Setups</a></li>
+	    <li><a href="{{ pathto('documentation/documentation') }}">Docs</a></li>
+	    <!-- <li><a href="{{ pathto('manual') }}">Manual</a></li> -->
+	    <li><a href="{{ pathto('devel/devel') }}">Devel</a></li>
+	    <li><a href="{{ pathto('tutorials/tutorials') }}">Tutorials</a></li>
+	    <li><a href="{{ pathto('exercises/exercises') }}">Exercises</a></li>
+	    <li><a href="{{ pathto('faq') }}">FAQ</a></li>
+	  </ul>
+
           {%- if display_toc and current_page_name not in ['index', 'contents'] %}
             <h3>Contents</h3>
             {{ toc }}
           {%- endif %}
 
-	  <!--
-          <h3>Links</h3>
-          <ul class="this-page-menu">
-            <li><a href="{{ pathto('intro') }}">
-	      Introduction</a></li>
-            <li><a href="{{ pathto('overview') }}">
-	      Quick overview</a></li>
-            <li><a href="{{ pathto('gpaw/gpaw') }}">
-	      Documentation</a></li>
-	    <li><a href="{{ pathto('gpaw-manual')[:-4] + 'pdf' }}">
-		Manual (pdf)</a></li>
-            <li><a href="{{ pathto('download') }}">
-	      Download</a></li>
-            <li><a href="{{ pathto('tutorials/tutorials') }}">
-	      Tutorials</em></a></li>
-            <li><a href="{{ pathto('python') }}">
-	      Python</em></a></li>
-            <li><a href="{{ pathto('numpy') }}">
-	      NumPy</a></li>
-	    <li><a href="http://wiki.fysik.dtu.dk/gpaw/epydoc/gpaw-module.html">
-		Epydoc</a></li>
-            <li><a href="{{ pathto('faq') }}">FAQ</a></li>
-            <li><a href="{{ pathto('bugs') }}">Bugs!</a></li>
-            <li><a href="{{ pathto('development/development') }}">
-		Development</a></li>
-            <li><a href="{{ pathto('glossary') }}">Glossary</a></li>
-            <li><a href="{{ pathto('intro') + '#ml' }}">Mailing list</a></li>
-	    <li><a href="http://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/">
-		Source code (svn)</a></li>
-	    <li><a href="http://trac.fysik.dtu.dk/projects/gpaw/report/1">
-		Trac</a></li>
-          </ul>
-	  -->
-
-
           {%- endblock %}
+
           {%- block sidebarrel %}
           {%- if prev %}
 	  <!-- Where does one find this "prev" variable?
@@ -108,18 +112,22 @@
 	    -->
           {%- endif %}
           {%- if next %}
+
 	  <!--
             <h4>Next topic</h4>
             <p class="topless"><a href="{{ next.link|e }}" title="next
             chapter">{{ next.title }}</a></p>
 	    -->
+
           {%- endif %}
           {%- endblock %}
           {%- if customsidebar %}
           {{ rendertemplate(customsidebar) }}
           {%- endif %}
-          {%- block sidebarsearch %}
-          {%- if pagename != "search" %}
+
+	  <!-- XXX -->
+          {%- block sidebarsearch0 %}
+          {%- if False and pagename != "search" %}
             <h3>{{ builder == 'web' and 'Keyword' or 'Quick' }} search</h3>
             <form class="search" action="{{ pathto('search') }}" method="get">
               <input type="text" name="q" size="18" /> <input type="submit" value="Go" />
@@ -131,6 +139,7 @@
             {%- endif %}
           {%- endif %}
           {%- endblock %}
+
           {%- if sourcename %}
             <ul class="this-page-menu">
             {%- if builder == 'web' %}
@@ -142,6 +151,7 @@
             {%- endif %}
             </ul>
           {%- endif %}
+
         </div>
       </div>
       {%- endif %}

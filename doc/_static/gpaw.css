@@ -11,6 +11,11 @@ img.center{
     text-align: center;
 }
 
+/* Align logo properly */
+img.logo {
+    vertical-align: middle;
+}
+
 body {
     background-color: #113d30;
 }
@@ -26,9 +31,8 @@ div.related {
     background-color: #13523f;
     color: #81f2bb;
     width: 100%;
-    /*height: 30px;*/
-    height: 64px;
-    line-height: 30px;
+    height: 68px;
+    line-height: 68px;
     font-size: 100%;
 }
 
@@ -54,6 +58,12 @@ div.modulecloud {
 }
 
 /* :::: SEARCH :::: */
+
+/* Custom rule to facilitate search field in the relbar */
+div.related div.toprightsearch {
+    float: right;
+    margin-right: 15px;
+}
 
 /* :::: COMMON FORM STYLES :::: */
 
