@@ -54,7 +54,7 @@ system.
 More advanced example
 ---------------------
 
-At CAMd, we use this submit tool: :svn:`~doc/parallel_runs/gpaw-qsub`.
+At CAMd, we use this submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`.
 
 Example::
 
