@@ -19,16 +19,15 @@ H_scat[2:4, 2:4] = [[0.0, -0.8], [-0.8, 0.0]]
 #coupling to the leads - nearest neighbor only
 H_scat[1, 2] = H_scat[2, 1] = H_scat[3, 4] = H_scat[4, 3] = 0.2
 
-
 tcalc = TransportCalculator(h=H_scat,  #Scattering Hamiltonian
                             h1=H_lead, #Lead 1 (left)
                             h2=H_lead, #Lead 2  (right)
                             pl=2)      #principal layer size
 
-tcalc.set(energies=npy.arange(-3,3,0.02))
+tcalc.set(energies=npy.arange(-3, 3, 0.02))
 T_e = tcalc.get_transmission()
 
-tcalc.set(pdos=[0,1])
+tcalc.set(pdos=[0, 1])
 pdos_ne = tcalc.get_pdos()
 
 h_rot, s_rot, eps_n, vec_nn = tcalc.subdiagonalize_bfs([0, 1])
@@ -41,7 +40,6 @@ pdos_rot_ne = tcalc.get_pdos()
 h_cut, s_cut = tcalc.cutcoupling_bfs([0])
 tcalc.set(h=h_cut, s=s_cut)
 T_cut_bonding_e = tcalc.get_transmission()
-
 
 #dump the date to txt files.
 fd = file('T.dat','w')

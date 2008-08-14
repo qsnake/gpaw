@@ -3,24 +3,21 @@
 from ase import *
 import os
 
-a = 2.41
-b = 0.9
-c = 1.7
-L = 7.
-l = L * 0.5
-N = 5
+a = 2.41 # Pt binding lenght
+b = 0.90 # H2 binding lenght
+c = 1.70 # Pt-H binding lenght
+L = 7.00 # width of unit cell
+N = 10 # Total number of Pt atoms on each side
 
-atoms1 = Atoms('Pt',[(.0, l, l)], pbc=True, cell=(a, L, L))
-atoms1 *= (N, 1, 1)
-atoms2 = atoms1.copy()
-atoms2.translate(((N - 1) * a + b + 2 * c, 0, 0))
-h2 = Atoms('H2', pbc=True, positions=[((N - 1) * a + c    , l, l),
-                                      ((N - 1) * a + c + b, l, l)])
+H2 = Atoms('H2', positions=[(-c - b, 0, 0), (-c, 0, 0)])
+atoms = Atoms('Pt', cell=(a, L, L)) * (N, 1, 1) + H2
+atoms.set_cell([(N - 1) * a + b + 2 * c, L, L])
+atoms.translate(-atoms.get_center_of_mass()) # center H2
+atoms.set_scaled_positions(atoms.get_scaled_positions() % 1) #wrap to unit cell
+atoms.translate([-(N / 2. - 2) * a, L / 2, L / 2])
+atoms.set_cell([3 * a + 2 * c + b, L, L])
 
-atoms = atoms1 + h2 + atoms2
-atoms.set_cell([(2 * N - 1) * a + b + 2 * c, L, L])
-
-pov_options = {'display': False, 'transparent': False}
+pov_options = {'display': True, 'transparent': False}
 write('pt_h2.pov', atoms, show_unit_cell=2, **pov_options)
 os.system('povray pt_h2.ini')
 
