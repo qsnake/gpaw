@@ -4,6 +4,9 @@
 Tutorials
 =========
 
+The tutorials are meant to guide the user through some scripts to
+perform some of the most common tasks:
+
 .. toctree::
    :maxdepth: 2
 
