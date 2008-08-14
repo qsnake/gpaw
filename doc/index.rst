@@ -10,7 +10,8 @@ algorithms used <features_and_algorithms>`.
 
 .. _Python: http://www.python.org
 
-`Index <genindex.html>`_ :ref:`table of contents <toc>`
+* :ref:`Table of contents <toc>`
+* :ref:`genindex`
 
 .. |i1| image:: _static/logo-csc.png
         :height: 44 px

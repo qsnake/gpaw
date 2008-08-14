@@ -66,6 +66,11 @@
 	    <li><a href="{{ pathto('exercises/exercises') }}">Exercises</a></li>
 	    <li><a href="{{ pathto('faq') }}">FAQ</a></li>
 	  </ul>
+          <ul>
+            <li><a href="https://wiki.fysik.dtu.dk/ase/">ASE Web Page</a></li>
+            <li><a href="https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/">Source Code</a></li>
+            <li><a href="https://trac.fysik.dtu.dk/projects/gpaw/report/1">Bug Tracker</a></li>
+          </ul>
 
           {%- if display_toc and current_page_name not in ['index', 'contents'] %}
             <h3>Contents</h3>
@@ -113,7 +118,7 @@
               <li><a href="{{ pathto('@edit/' + sourcename)|e }}">Suggest Change</a></li>
               <li><a href="{{ pathto('@source/' + sourcename)|e }}">Show Source</a></li>
             {%- elif builder == 'html' %}
-              <li><a href="{{ pathto('_sources/' + sourcename, true)|e }}">Show Source</a></li>
+              <li><a href="{{ pathto('_sources/' + sourcename, true)|e }}">Page Source</a></li> <!-- label changed from "Show source" to avoid confusion with the source code svn link -->
             {%- endif %}
             </ul>
           {%- endif %}

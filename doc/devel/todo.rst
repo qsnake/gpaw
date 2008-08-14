@@ -15,8 +15,6 @@ To do:
 * Write TOC-like documentation page (documentation/documentation) properly : Marco
 * Write intro on tut-page : Marco
 * Reorder dev-page : ask
-* Fix frontpage : ask
-* Sidebar: add svn, ase, trac : ask
 * add more links from the exercises to the corresponding ASE-documentation.
 * search for XXX and ASE imports, variable names loa : ask, marco
 * put cross references from gpaw to ase where proper : marco
@@ -28,6 +26,8 @@ To do:
 
 Done:
 
+* Fix frontpage : ask
+* Sidebar: add svn, ase, trac : ask
 * finish up ASE quick-overview and text on tutorials : marco
 * STM-docs : marco
 * use the ..class::QuasiNewton somewhere to get the links : marco
