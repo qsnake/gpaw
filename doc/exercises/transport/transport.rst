@@ -1,35 +1,41 @@
 .. _transport_exercise:
 
-==============================
-Exercise on electron transport
-==============================
+==================
+Electron transport
+==================
 
-This exercise shows how to use the ase transport module for 
-performing realistic calculations of the electron transport in nanoscale
-contacts. The class ``TransportCalculator`` (in ase.transport.calculators)
-allows you to calculate the elastic transmission function of any 
-system using a Green's function method. The system is described by 
-a Hamiltonian matrix which must
-be represented in terms of a localized basis set. The class
-``GPAWTransport`` (in gpaw.lcao.gpawtransport) allows you to
-construct such a Hamiltonian within DFT in terns of pseudo atomic
-orbitals. 
+.. default-role:: math
 
-In the first part of the exercise, the use of the ``TransportCalculatr``
-will be explained and illustrated using a simple tight-binding model.
-The second part deals with the construction of a realistic DFT
-Hamiltonian in terms of a pseudo atomic orbital basis set.
+This exercise shows how to use the ase transport module for performing
+realistic calculations of the electron transport in nanoscale contacts.
 
-Recent experiments suggests that a hydrogen molecule trapped between metal 
-electrodes has a conductance close to the quantum unit of conductance
-(1G0=2e^2/h). The Pt-H2-Pt will be the system we will have in mind.
+The exercise demonstrates the use of the classes:
 
-The Hamiltonian of entire system may be represented by two 
-Hamiltonian matrices: (i) ``H_scat`` which describes the scattering
-region including one princpial layer on either site, and (ii) 
-``H_L`` and ``H_R`` describing lead left and lead right lead, 
-respectively. 
-These ``H_scat`` have the generic shape::
+* :class:`~ase.transport.calculators.TransportCalculator` used to
+  calculate transmission functions.
+* :class:`GPAWTransport` used to extract realistic descriptions of
+  real systems using the GPAW DFT-LCAO mode.
+
+First-time users of the ASE transport module, should start by reading
+the methodology in the :ase:`ASE manual <ase/transport/transport.html>`.
+
+Recent experiments suggests that a hydrogen molecule trapped between
+metal electrodes has a conductance close to the quantum unit of
+conductance (`1G_0=2e^2/h`). The Pt-H2-Pt will be the system we will
+have in mind throughout the exercise.
+
+Tight-binding description
+=========================
+
+In this part of the exercise, we illustrate the use of the
+:class:`~ase.transport.calculators.TransportCalculator` class by means
+of a simple tight-binding model for the Pt-H2-Pt system.
+
+The Hamiltonian of entire system may be represented by two Hamiltonian
+matrices: (i) ``H_scat`` which describes the scattering region
+including one princpial layer on either side, and (ii) `H_L` and `H_R`
+describing lead left and lead right lead, respectively.  These
+``H_scat`` have the generic shape::
         
     {H_LL  H_LS      0}
     {H_RL  H_SS   H_SR}
@@ -128,19 +134,28 @@ calculate the calculate the transmission function::
     tcalc.cutcupling_bfs([0])
     T_cut_bonding_e = tcalc.get_transmission()
 
-You may now undestand the transport behavouir of the simple model system.
+You may now understand the transport behavior of the simple model system.
 The transmission peak at -0.8 eV and 0.8 eV are due to the
 bonding and antibonding states of the TB described hydrogen molecule.
 A script containing the above can be found here:
 :svn:`script <doc/exercises/transport/pt_h2_tb_transport.py?format=txt>`.
 
+DFT description
+===============
 
-We now continue to explore the Pt-H2-Pt system using DFT
-by considering a hydrogen molecule sandwiched 
-between semi-infinite one dimensional
-Pt leads. The figure below shows the scattering region.
+We now continue to explore the Pt-H2-Pt system using a more realistic
+desciption derived from ab-initio calculations.
+
+The class :class:`GPAWTransport` (in gpaw.lcao.gpawtransport) allows
+you to construct such a Hamiltonian within DFT in terms of pseudo
+atomic orbitals.
+
+As a managable model for the Pt-H2-Pt, we consider a hydrogen molecule
+sandwiched between semi-infinite one dimensional Pt leads. The figure
+below shows the scattering region.
 
 .. image:: pt_h2.png
+  :align: center
 
 To obtain the matrices for the scattering region and the leads using
 DFT and pseudo atomic orbitals using a szp basis set run this 
@@ -150,7 +165,6 @@ You should now have the files scat_hs.pickle, lead1_hs.pickle and
 lead2_hs.pickle in your directory.
 
 The ``TransportCalculator`` can now be setup::
-
     
     from ase.transport.calculators import TransportCalculator
     import numpy as npy
@@ -196,4 +210,3 @@ Which orbital do you think is responsible for the high conductance?
 
 Here is a script if you need some inspiration:
 :svn:`script <doc/exercises/transport/pt_h2_lcao_transport.py?format=txt>`.
-
