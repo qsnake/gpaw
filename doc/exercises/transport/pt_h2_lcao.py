@@ -1,48 +1,36 @@
-# creates: pt_h2.png
-
 from ase import *
-from gpaw import GPAW, Mixer
+from gpaw import *
 from gpaw.lcao.gpawtransport import GPAWTransport 
-import pickle
 
+a = 2.41 # Pt binding lenght
+b = 0.90 # H2 binding lenght
+c = 1.70 # Pt-H binding lenght
+L = 7.00 # width of unit cell
 
-a = 2.41
-b = 0.9
-c = 1.7
-L = 7
-l = L * 0.5
-N = 5
+# Setup the Atoms for the scattering region.
+atoms = Atoms('Pt5H2Pt5', pbc=True, cell=[9 * a + b + 2 * c, L, L])
+atoms.positions[:5, 0] = [i * a for i in range(5)]
+atoms.positions[-5:, 0] = [i * a + b + 2 * c for i in range(4, 9)]
+atoms.positions[5:7, 0] = [4 * a + c, 4 * a + c + b]
+atoms.center()
 
-#Setup the Atoms for the scattering region
-#The left lead principal layer atoms must be
-#the first in the Atoms list. The right lead principal
-#layer atoms must be the last.
-atoms1 = Atoms('Pt',[(0.0, l, l)],pbc=True,cell=(a, L, L))
-atoms1 *= (N, 1, 1)
-atoms2 = atoms1.copy()
-atoms2.translate(((N - 1) * a + b + 2 * c, 0, 0))
-h2 = Atoms('H2',[((N - 1) * a + c, l, l),(( N - 1) * a + c + b, l, l)],pbc=True)
-atoms = atoms1 + h2 + atoms2
-atoms.set_cell([(2 * N - 1)* a + b + 2 * c, L, L])
-
-mixer = Mixer(0.1, 5, metric='new', weight=100.0)
-calc = GPAW(h=0.3, xc='PBE', width=0.1, basis='szp', eigensolver='lcao',
-            txt='pt_h2_lcao.txt', mixer=mixer)
-
-atoms.set_calculator(calc)
-atoms.get_potential_energy()
+# Attach a GPAW calculator
+atoms.set_calculator(GPAW(h=0.3, xc='PBE', basis='szp',
+                          eigensolver='lcao', txt='pt_h2_lcao-nonperiodic.txt',
+                          mixer=Mixer(0.1, 5, metric='new', weight=100.0)))
 
 #Setup the GPAWTransport calculator
-pl_atoms1 = range(4) #The left principal layer atoms indices
-pl_atoms2 = range(-4,0) #The right principal layer atoms indices
-pl_cell1 = (len(pl_atoms1)*a,L,L) #Cell for the left principal layer
-pl_cell2 = pl_cell1 #Cell for the right principal layer
+pl_atoms1 = range(4)     # Atomic indices of the left principal layer
+pl_atoms2 = range(-4, 0) # Atomic indices of the right principal layer
+pl_cell1 = (4 * a, L, L) # Cell for the left principal layer
+pl_cell2 = pl_cell1      # Cell for the right principal layer
 
 gpawtran = GPAWTransport(atoms=atoms,
-                         pl_atoms=(pl_atoms1,pl_atoms2),
-                         pl_cells=(pl_cell1,pl_cell2),
-                         d=0) #transport direction (d=0->x)
+                         pl_atoms=(pl_atoms1, pl_atoms2),
+                         pl_cells=(pl_cell1, pl_cell2),
+                         d=0) #transport direction (0 := x)
 
-#Will the pickle files: lead1_hs.pickle, lead2_hs.pickle and scat_hs.pickle
+#Dump the Hamiltonian matrices to file: 
 gpawtran.write('hs.pickle')
-#The files can be read using
+
+#This creates the files: lead1_hs.pickle, lead2_hs.pickle and scat_hs.pickle

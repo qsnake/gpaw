@@ -7,7 +7,7 @@ a = 2.41 # Pt binding lenght
 b = 0.90 # H2 binding lenght
 c = 1.70 # Pt-H binding lenght
 L = 7.00 # width of unit cell
-N = 10 # Total number of Pt atoms on each side
+N = 10 # Total number of Pt atoms
 
 H2 = Atoms('H2', positions=[(-c - b, 0, 0), (-c, 0, 0)])
 atoms = Atoms('Pt', cell=(a, L, L)) * (N, 1, 1) + H2

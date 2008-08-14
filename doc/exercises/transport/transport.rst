@@ -139,23 +139,27 @@ desciption derived from ab-initio calculations.
 
 The class :class:`GPAWTransport` (in gpaw.lcao.gpawtransport) allows
 you to construct such a Hamiltonian within DFT in terms of pseudo
-atomic orbitals.
+atomic orbitals.  To obtain the matrices for the scattering region and
+the leads using DFT and pseudo atomic orbitals using a szp basis set
+run this :svn:`script
+<doc/exercises/transport/pt_h2_lcao.py?format=txt>`:
 
-To obtain the matrices for the scattering region and the leads using
-DFT and pseudo atomic orbitals using a szp basis set run this 
-:svn:`script <doc/exercises/transport/pt_h2_lcao.py?format=txt>`.
+.. literalinclude:: pt_h2_lcao.py
+
+notice that the size of the scattering region has been increased to 5
+atoms on each side.
 
 You should now have the files scat_hs.pickle, lead1_hs.pickle and
-lead2_hs.pickle in your directory.
-
-The ``TransportCalculator`` can now be setup::
+lead2_hs.pickle in your directory.  These can be loaded and used in
+the ``TransportCalculator``::
     
     from ase.transport.calculators import TransportCalculator
     import numpy as npy
     import pickle
 
 
-    #Read in the hamiltoniansh, s = pickle.load(file('scat_hs.pickle'))
+    #Read in the hamiltonians
+    h, s = pickle.load(file('scat_hs.pickle'))
     h1, s1 = pickle.load(file('lead1_hs.pickle'))
     h2, s2 = pickle.load(file('lead2_hs.pickle'))
     pl1 = len(h1) / 2 # left principal layer size
@@ -168,20 +172,19 @@ The ``TransportCalculator`` can now be setup::
                                 align_bf=1,        #align the the Fermi levels
                                 verbose=False)     #print extra information?
 
-
 What is the conductance?
     
 We will now try to investigate transport properties in more detail.
 Try to subdiagonalize the molecular subspace::
    
-    Pt_N = 5 # 
-    Pt_nbf = 9 #number of bf per Pt atom (basis=szp)
+    Pt_N = 5
+    Pt_nbf = 9 # number of bf per Pt atom (basis=szp)
     H_nbf = 4  # number of bf per H atom (basis=szp)
     bf_H1 = Pt_nbf * Pt_N
     bfs = range(bf_H1, bf_H1 + 2 * H_nbf)
     h_rot, s_rot, eps_n, vec_jn = tcalc.subdiagonalize_bfs(bfs)
     for n in range(len(eps_n)):
-        print "bf %i correpsonds to the eigenvalue %.2f eV" % (bfs[n],eps_n[n])
+        print 'bf %i correpsonds to the eigenvalue %.2f eV' % (bfs[n],eps_n[n])
 
 Argue that ``vec_jn[:,0]`` and ``vec_jn[:,1]`` corresponds to the bonding and 
 anti-bonding molecular hydrogen orbitals, respectively. 
