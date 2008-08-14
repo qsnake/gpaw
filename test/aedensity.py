@@ -21,7 +21,7 @@ NaCl.get_potential_energy()
 
 nt = calc.get_pseudo_valence_density()
 gridrefinement = 2 # grid-refinement-factor for all-electron density
-n = calc.get_all_electron_density(gridrefinement)
+n = calc.get_all_electron_density(gridrefinement=gridrefinement)
 
 dv = npy.product(calc.get_grid_spacings())
 Zt = npy.sum(nt.ravel()) * dv
