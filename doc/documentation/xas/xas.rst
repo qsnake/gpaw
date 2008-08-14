@@ -1,8 +1,8 @@
 .. _xas:
 
-===
-XAS
-===
+===================================
+X-Ray Absorption Spectroscopy (XAS)
+===================================
 
 .. toctree::
    :maxdepth: 2
