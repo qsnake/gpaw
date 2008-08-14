@@ -463,12 +463,11 @@ class Nucleus:
 
             Eext = 0.0
             if vext is not None:
-                # Tailor expansion to
-                # the zeroth order
+                # Tailor expansion to the zeroth order
                 Eext += vext[0][0] * (sqrt(4 * pi) * self.Q_L[0] + s.Z)
                 dH_p += vext[0][0] * sqrt(4 * pi) * s.Delta_pL[:, 0]
                 if len(vext) > 1:
-                    # the first order
+                    # Tailor expansion to the first order
                     Eext += sqrt(4 * pi / 3) * npy.dot(vext[1], self.Q_L[1:4])
                     # there must be a better way XXXX
                     Delta_p1 = npy.array([s.Delta_pL[:, 1],

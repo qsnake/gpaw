@@ -170,12 +170,9 @@ class Hamiltonian(LCAOHamiltonian):
         self.timer.start('Atomic Hamiltonians')
         iters = []
         for nucleus in self.ghat_nuclei:
-            # Energy corections due to external potential.
-            # Potential is assumed to be constant inside augmentation spheres.
+            # Potential corrections due to external potential.
             if self.vext_g is not None and nucleus.in_this_domain:
-                vext = self.vext_g.get_value(spos_c=nucleus.spos_c)
                 vext = self.vext_g.get_taylor(spos_c=nucleus.spos_c)
-#                Eext += self.vext_g.get_nuclear_energy(nucleus)
             else:
                 vext = None
 

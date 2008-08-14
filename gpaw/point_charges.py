@@ -7,9 +7,9 @@ from ase.units import Bohr
 
 import _gpaw
 from gpaw import debug
-from gpaw.external_potential import ExternalPotential
+from gpaw.external_potential import ElectrostaticPotential
 
-class PointCharges(list, ExternalPotential):
+class PointCharges(list, ElectrostaticPotential):
     def __init__(self, file=None):
         list.__init__(self)
         
@@ -142,18 +142,28 @@ class PointCharges(list, ExternalPotential):
             v = _gpaw.pc_potential_value(vr, self.pc_nc, self.charge_n)
         return v
 
-    def get_ion_energy_and_forces(self, nuclei):
-        """Return the ionic energy and force contribution."""
-        forces = npy.zeros((len(atoms),3))
-        energy = 0
-        for a, atom in enumerate(atoms):
-            for pc in self:
-                dr = atom.position - pc.position
-                dist = sqrt(npy.sum(dr*dr))
-                e = atom.number * pc.charge / dist
-                forces[a] += dr * e
-                energy += e
-        return energy, forces
+    def get_taylor(self, position=None, spos_c=None):
+        """Get the Taylor expansion around a point
+
+        position [Angstrom]
+        output [Hartree, Hartree/Bohr]
+        """
+        if position is None:
+            gd = self.gd
+            pos = spos_c * gd.h_c * gd.N_c * Bohr
+        else:
+            pos = position
+        vr = pos / Bohr
+
+        nabla = npy.zeros((3))
+        for pc in self:
+            dist = vr - pc.position / Bohr
+            d2 = npy.sum(dist**2)
+            nabla += dist * ( pc.charge / (d2 * npy.sqrt(d2)) )
+            
+        # see spherical_harmonics.py for the assignment
+        return [[self.get_value(position=pos)], 
+                [nabla[1], nabla[2], nabla[0]]]
         
     def translate(self, displacement):
         for pc in self:

@@ -432,7 +432,13 @@ class PAW(PAWExtra, Output):
         #print H.Ekin, self.occupation.Eband, self.Enlkin, H.Epot, H.Eext, H.Ebar, H.Exc, self.Enlxc,self.occupation.S
         self.Ekin = H.Ekin + self.occupation.Eband + self.Enlkin
         self.Epot = H.Epot
+
         self.Eext = H.Eext
+        # Add energy contribution due to the nuclei
+        vext_g = self.input_parameters['external']
+        if hasattr(vext_g, 'get_ion_energy_and_forces'):
+            self.Eext += vext_g.get_ion_energy_and_forces(self.atoms)[0]
+
         self.Ebar = H.Ebar
         self.Exc = H.Exc + self.Enlxc
         self.S = self.occupation.S

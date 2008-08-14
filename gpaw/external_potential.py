@@ -208,7 +208,29 @@ class ConstantPotential(ExternalPotential):
         energy = 0
         return energy, forces
 
-class ConstantElectricField(ExternalPotential):
+class ElectrostaticPotential(ExternalPotential):
+    """External electrostatic potential
+
+    The action of the external potential on the nucleus is defined in the
+    electrostatic case.
+    """
+    def get_ion_energy_and_forces(self, atoms):
+        """Return the ionic energy and force contribution."""
+        forces = npy.zeros((len(atoms),3))
+        energy = 0
+        for i, atom in enumerate(atoms):
+            taylor = self.get_taylor(atom.position)
+##            print "pos, taylor=", atom.position, taylor 
+            Z = atom.number
+            energy -= Z * taylor[0][0]
+            if len(taylor) > 1:
+                # see spherical_harmonics.py for the assignment
+                forces[i] += Z * npy.array([taylor[1][2], # x
+                                            taylor[1][0], # y
+                                            taylor[1][1]])# z
+        return energy, forces
+    
+class ConstantElectricField(ElectrostaticPotential):
     """External constant electric field"""
     def __init__(self, strength, direction=[0,0,1], center=None):
         """
@@ -263,11 +285,11 @@ class ConstantElectricField(ExternalPotential):
             pos = spos_c * gd.h_c * gd.N_c * Bohr
         else:
             pos = position
-        # see spherical_harmonics.py for the assignement
+        # see spherical_harmonics.py for the assignment
         return [[self.get_value(position=pos)],
-                [self.strength * self.direction[1], # y
-                 self.strength * self.direction[2], # z
-                 self.strength * self.direction[0]]]# x
+                [- self.strength * self.direction[1], # y
+                 - self.strength * self.direction[2], # z
+                 - self.strength * self.direction[0]]]# x
 
     def get_value(self, position=None, spos_c=None):
         """The potential value (as seen by an electron) 
