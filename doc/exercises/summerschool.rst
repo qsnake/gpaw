@@ -57,11 +57,16 @@ number in your userid is odd and school2 if it is even.
 Copying files from gbar to niflheim
 -----------------------------------
 
-::
+You can copy files from the Gbar to niflheim with ``scp``. If you are on 
+niflheim::
 
     scp hald.gbar.dtu.dk:path/filename .
+
+will copy ``filename`` to your present location. Likewise::
+
     scp school1.fysik.dtu.dk:path/filename .
 
+will copy ``filename`` from Niflheim to your present location at the Gbar.
 
 GPAW
 ----
@@ -78,7 +83,7 @@ described in the tutorial_, and then run
 :svn:`~doc/run.py?format=raw`. To use various octopus utilities such
 as ``oct-cross-section`` and ``oct-broad`` you need to do::
 
-  source /usr/local/openmpi-1.2.5-pathf90/bin/mpivars-1.2.5.csh
+  source /usr/local/openmpi-1.2.5-pathf90/bin/mpivars-1.2.5.sh
 
 first. Submitting jobs to the queue is done by::
 
