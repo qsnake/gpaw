@@ -30,7 +30,7 @@ void Z(bmgs_fd)(const bmgsstencil* s, const T* a, T* b)
                 }
               (*b).r = x;
               (*b).i = y;
-              b++;
+              bb++;
             #else
               T x = 0.0;
               for (int c = 0; c < s->ncoefs; c++)
@@ -41,6 +41,5 @@ void Z(bmgs_fd)(const bmgsstencil* s, const T* a, T* b)
             }
           aa += s->j[2];
         }
-      aa += s->j[1];
     }
 }
