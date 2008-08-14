@@ -24,6 +24,7 @@ Talk about this later
 .. toctree::
    :maxdepth: 2
 
+   summerschool
    technology
    introduction_to_paw
    grids

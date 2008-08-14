@@ -12,6 +12,7 @@ Immediate documentation work
 
 To do:
 
+* add more links from the exercises to the corresponding ASE-documentation.
 * search for XXX and ASE imports, variable names loa : ask, marco
 * fix the global modules page and .. autoclass : not important right now
 * put cross references from gpaw to ase where proper : marco
