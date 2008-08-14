@@ -15,7 +15,7 @@
 #include "bc.h"
 #include "mympi.h"
 #include "bmgs/bmgs.h"
-#ifdef GPAW_OMP
+#ifdef GPAW_OMPA
   #include <omp.h>
 #endif
 
@@ -102,7 +102,7 @@ static PyObject * Operator_apply(OperatorObject *self,
   else
     ph = COMPLEXP(phases);
 
-  #ifdef GPAW_OMP
+  #ifdef GPAW_OMPA
     MPI_Request *recvreq = GPAW_MALLOC(MPI_Request, 2 * omp_get_max_threads());
     MPI_Request *sendreq = GPAW_MALLOC(MPI_Request, 2 * omp_get_max_threads());
   #else
@@ -111,14 +111,14 @@ static PyObject * Operator_apply(OperatorObject *self,
   #endif
   int buf_offset = self->bc->size2[0] * self->bc->size2[1] * self->bc->size2[2] * self->bc->ndouble;
 
-  #ifdef GPAW_OMP
+  #ifdef GPAW_OMPA
     #pragma omp parallel for
   #endif
   for (int n = 0; n < nin; n++)
     {
       const double* in = inn + n * ng;
       double* out = outt + n * ng;
-      #ifdef GPAW_OMP
+      #ifdef GPAW_OMPA
         int thd = omp_get_thread_num();
       #else
         int thd = 0;
@@ -141,7 +141,7 @@ static PyObject * Operator_apply(OperatorObject *self,
         bmgs_fdz(&self->stencil, (const double_complex*) buf,
                                  (double_complex*)out);
     }
-  #ifdef GPAW_OMP
+  #ifdef GPAW_OMPAAA
     free(sendreq);
     free(recvreq);
   #endif
@@ -227,7 +227,7 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   self->bc = bc_init(LONGP(size), padding, padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
-#ifndef GPAW_OMP
+#ifndef GPAW_OMPA
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
                           self->bc->ndouble);
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
