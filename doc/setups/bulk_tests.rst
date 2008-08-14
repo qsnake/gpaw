@@ -4,7 +4,7 @@
 Bulk tests
 ==============
 
-Lattice constants (*a*) in Å and bulk moduli in GPa calculated using PBE fcuntional in GPAW revision 2041.
+Lattice constants (*a*) in Å and bulk moduli in GPa calculated using PBE functional in GPAW revision 2041.
 
 .. csv-table::
    :file: bulk_tests.csv
