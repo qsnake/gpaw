@@ -18,13 +18,14 @@ Contents
    exercises/exercises
    faq
 
-Talk about this later
----------------------
+
+Old pages that need some more work
+----------------------------------
 
 .. toctree::
    :maxdepth: 2
 
-   summerschool
+   exercises/summerschool
    technology
    introduction_to_paw
    grids

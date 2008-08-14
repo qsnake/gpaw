@@ -4,10 +4,18 @@
 Documentation
 =============
 
+
+
 .. toctree::
    :maxdepth: 2
 
    manual
+
+...
+
+.. toctree::
+   :maxdepth: 1
+
    literature
    parallel_runs/parallel_runs
    restart_files

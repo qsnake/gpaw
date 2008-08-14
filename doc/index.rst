@@ -10,12 +10,7 @@ algorithms used <features_and_algorithms>`.
 
 .. _Python: http://www.python.org
 
-* :ref:`download` latest version.
-* Read the :ref:`manual`.
-* Go to the :ase:`ASE <>` page.
-* Read the :ref:`literature` page.
-* Do the :ref:`exercises`.
-* Browse the complete :ref:`table of contents <toc>`.
+`Index <genindex.html>`_ :ref:`table of contents <toc>`
 
 .. |i1| image:: _static/logo-csc.png
         :height: 44 px
