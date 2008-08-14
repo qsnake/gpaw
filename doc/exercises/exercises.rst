@@ -4,6 +4,9 @@
 Exercises
 =========
 
+These exercises are used in the course Electronic structure methods in
+materials physics, chemistry and biology. 
+
 .. note::
 
   If you are participating in the CAMd summer school, you should read
@@ -16,9 +19,11 @@ of :ase:`ASE <>` and Python_.  Here are some useful resources:
 * Some :ref:`faeq`.
 * The Python_ homepage.
 * The :ase:`ASE <>` homepage.
-* ASE's :ase:`introduction to Python <>`.
+* ASE's :ase:`introduction to Python <python.html>`.
 
-.. _Python: www.python.org
+.. _Python: http://www.python.org
+
+For comments and questions, write to the :ref:`gpaw-devel-ml`.
 
 .. toctree::
    :maxdepth: 1
@@ -41,6 +46,3 @@ of :ase:`ASE <>` and Python_.  Here are some useful resources:
    
 See also :ref:`timepropagation`.
 
-These exercises are used in the course Electronic structure methods in
-materials physics, chemistry and biology. For comments and questions,
-write to the :ref:`gpaw-devel-ml`.
