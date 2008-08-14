@@ -43,20 +43,4 @@ If you can't find what you are looking for, ask on the `mailing list`_.
 .. _Python: http://www.python.org
 
 
-Old stuff
-=========
-
-The documentation consists of several parts:
-
-* A :ref:`manual`.
-* Some :ref:`faq`.
-* Some :ref:`literature`.
-* The :ase:`ASE <>` web-page.
-* The :epydoc:`Application Programming Interface <gpaw>`.
-* The :svn:`Python/C code <>`.
-
-For Python_ documentation, check the links :ase:`here <python.html>`.
-
-.. _gpaw-devel-ml:
-
 
