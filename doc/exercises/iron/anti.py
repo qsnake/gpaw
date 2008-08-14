@@ -1,5 +1,6 @@
 from ase import *
 from gpaw import GPAW
+from gpaw.mixer import MixerSum
 
 a = 2.87
 m = 2.2
@@ -12,6 +13,7 @@ bulk = Atoms('Fe2',
 calc = GPAW(kpts=(6, 6, 6),
             h=0.20,
             nbands=18,
+            mixer=MixerSum(beta=0.2, nmaxold=5, metric=None, weight=100.0),
             eigensolver='dav',
             txt='anti.txt')
 
