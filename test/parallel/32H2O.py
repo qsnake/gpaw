@@ -48,6 +48,7 @@ t0 = time()
 for i in range(15):
     pot = h2o.get_potential_energy()
     kin = h2o.get_kinetic_energy()
-    print time() - t0,
-    print ' %2d: %.5f eV, %.5f eV, %.5f eV' % (i, pot + kin, pot, kin)
+    if mpi.rank == 0:
+        print time() - t0,
+        print ' %2d: %.5f eV, %.5f eV, %.5f eV' % (i, pot + kin, pot, kin)
     md.run(steps=20)
