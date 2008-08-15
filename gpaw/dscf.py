@@ -374,18 +374,18 @@ class WaveFunction:
             epsF = [epsF, epsF]
         if self.nos == None:
             self.nos = len(self.paw.kpt_u[0].f_n)
-
+        
         if len(self.wf_u) == len(self.paw.kpt_u):
             wf_u = self.wf_u
             P_aui = self.P_aui
-        elif len(self.wf_u) == self.paw.nkpts * self.paw.nspins:
-            wf_u = []
-            P_uai = []
-            for kpt in self.paw.kpt_u:
-                k = kpt.s * self.paw.nkpts + kpt.k
-                wf_u.append(self.wf_u[k])
-                P_uai.append(self.P_uai[k])
-            P_aui = npy.swapaxes(P_uai, 0, 1)
+        #elif len(self.wf_u) == self.paw.nkpts * self.paw.nspins:
+        #    wf_u = []
+        #    P_uai = []
+        #    for kpt in self.paw.kpt_u:
+        #        k = kpt.s * self.paw.nkpts + kpt.k
+        #        wf_u.append(self.wf_u[k])
+        #        P_uai.append(self.P_uai[k])
+        #    P_aui = npy.swapaxes(P_uai, 0, 1)
         else:
             raise RuntimeError('List of wavefunctions has wrong size')
 
@@ -425,7 +425,7 @@ class WaveFunction:
             for m in argsort[::-1]:
                 if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
                     kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
-                    ft_m[m] = Porb_n[m]
+                    ft_m[m] = npy.conjugate(Porb_n[m])
                     nosf += 1
                 if nosf == self.nos:
                     break
