@@ -72,21 +72,33 @@ def write_rest(symbol, tables, hmin, B, n, mols):
 
 """ % (name, name, name))
 
-    if 1:
+    bulk = []
+    if symbol in 'Ni Pd Pt La Na Nb Mg Li Pb Rb Rh Ta Ba Fe Mo C K Si W V Zn Co Ag Ca Ir Al Cd Ge Au Cs Cr Cu'.split():
+        bulk.append(symbol)
+    for alloy in 'La,N Li,Cl Mg,O Na,Cl Ga,N Al,As B,P Fe,Al B,N Li,F Na,F Si,C Zr,C Zr,N Al,N V,N Nb,C Ga,P Al,P B,As Ga,As Mg,S Zn,O Ni,Al Ca,O'.split():
+        alloy = alloy.split(',')
+        if symbol in alloy:
+            bulk.append(''.join(alloy))
+    if len(bulk) > 0:
+        if len(bulk) == 1:
+            bulk = 'test for ' + bulk[0]
+        else:
+            bulk = 'tests for ' + ', '.join(bulk[:-1]) + ' and ' + bulk[-1]
         f.write("""
 Bulk tests
 ==========
 
-XXX
+See %s here: :ref:`bulk_tests`.
 
-""" % ())
+
+""" % bulk)
 
     if mols:
         f.write("""
 Molecule tests
 ==============
 
-See tests for %s in :ref:`molecule_tests`.
+See tests for %s here: :ref:`molecule_tests`.
 
 
 """ % mols)
