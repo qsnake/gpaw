@@ -50,20 +50,25 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
-*   This site is now powered by Sphinx_ (Jul 31 2008).
+* The :ref:`exercises` are finally ready for use in the `CAMd summer
+  school 2008`_ (Aug 15 2008)
 
-*   GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
+* This site is now powered by Sphinx_ (Jul 31 2008).
 
-*   CSC_ is organizing a `GPAW course`_: "Electronic structure calculations with GPAW". (Dec 11 2007).
+* GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
 
-*   The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007).
+* CSC_ is organizing a `GPAW course`_: "Electronic structure
+  calculations with GPAW". (Dec 11 2007).
 
-*   A GPAW Sprint will be held on November 16 in Lyngby (Okt 18 2007)
+* The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007).
 
-*   Work on atomic basis-sets begun (Sep 25 2007)
+* A GPAW Sprint will be held on November 16 in Lyngby (Okt 18 2007)
+
+* Work on atomic basis-sets begun (Sep 25 2007)
 
 .. _numpy: http://www.scipy.org/NumPy
 .. _CSC: http://www.csc.fi
 .. _GPAW course: http://www.csc.fi/english/csc/courses/archive/gpaw-2008-01
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
 .. _Sphinx: http://sphinx.pocoo.org
+.. _CAMd summer school 2008: http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2008/Programme.aspx

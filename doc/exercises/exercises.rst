@@ -4,8 +4,9 @@
 Exercises
 =========
 
-These exercises are used in the course Electronic structure methods in
-materials physics, chemistry and biology. 
+These exercises are used in the course `Electronic structure methods
+in materials physics, chemistry and biology
+<http://www.kurser.dtu.dk/10302.aspx>`_.
 
 .. note::
 
