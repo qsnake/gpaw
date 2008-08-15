@@ -43,7 +43,7 @@ for dir, script in [
     ('lrtddft', 'ground_state.py'),
     ('lrtddft', 'spectrum.py')
     ]:
-    execfile('../' + dir + '/' + script, {'k': 6})
+    execfile('../' + dir + '/' + script, {'k': 6, 'N': 5})
 for dir, script, args in [
     ('stm', 'stm.py', ['HAl100.gpw']),
     ('dos', 'dos.py', ['Al-fcc.gpw', 'si.gpw', 'CO.gpw',
