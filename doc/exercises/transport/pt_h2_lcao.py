@@ -8,15 +8,15 @@ c = 1.70 # Pt-H binding lenght
 L = 7.00 # width of unit cell
 
 # Setup the Atoms for the scattering region.
-atoms = Atoms('Pt5H2Pt5', pbc=True, cell=[9 * a + b + 2 * c, L, L])
+atoms = Atoms('Pt5H2Pt5', pbc=(1, 0, 0), cell=[9 * a + b + 2 * c, L, L])
 atoms.positions[:5, 0] = [i * a for i in range(5)]
 atoms.positions[-5:, 0] = [i * a + b + 2 * c for i in range(4, 9)]
 atoms.positions[5:7, 0] = [4 * a + c, 4 * a + c + b]
-atoms.center()
+atoms.positions[:, 1:] = L / 2.
 
 # Attach a GPAW calculator
-atoms.set_calculator(GPAW(h=0.3, xc='PBE', basis='szp',
-                          eigensolver='lcao', txt='pt_h2_lcao-nonperiodic.txt',
+atoms.set_calculator(GPAW(h=0.3, xc='PBE', basis='szp', width=0.1,
+                          eigensolver='lcao', txt='pt_h2_lcao.txt',
                           mixer=Mixer(0.1, 5, metric='new', weight=100.0)))
 
 #Setup the GPAWTransport calculator

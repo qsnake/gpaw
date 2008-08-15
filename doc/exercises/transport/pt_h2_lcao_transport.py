@@ -1,7 +1,7 @@
 from ase.transport.calculators import TransportCalculator
 import numpy as npy
 import pickle
-
+import pylab
 
 #Read in the hamiltonians
 h, s = pickle.load(file('scat_hs.pickle'))
@@ -10,35 +10,41 @@ h2, s2 = pickle.load(file('lead2_hs.pickle'))
 pl1 = len(h1) / 2 # left principal layer size
 pl2 = len(h2) / 2 # right principal layer size
 
-tcalc = TransportCalculator(h=h, h1=h1, h2=h2, #hamiltonian matrices
-                            s=s, s1=s1, s2=s2, #overlap matrices
-                            pl1=pl1, pl2=pl2,  #principal layer sizes
-                            energies=[0.0],    #energies
-                            align_bf=1,        #align the the Fermi levels
-                            verbose=False)      #print extra information?
+tcalc = TransportCalculator(h=h, h1=h1, h2=h2, # hamiltonian matrices
+                            s=s, s1=s1, s2=s2, # overlap matrices
+                            pl1=pl1, pl2=pl2,  # principal layer sizes
+                            align_bf=1,        # align the the Fermi levels
+                            verbose=False)     # print extra information?
 
 #Calculate the conductance (the zero (0.0) energy corresponds to the
 #Fermi level)
+tcalc.set(energies=[0.0])
 G = tcalc.get_transmission()[0]
-print "Conductance: %.2f 2e^2/h" % G
-#Change the desired range of energies
-energies = npy.arange(-8,4,0.05)
+print 'Conductance: %.2f 2e^2/h' % G
+
+#plot the transmission function
+energies = npy.arange(-8, 4, 0.1)
 tcalc.set(energies=energies)
+pylab.plot(energies, tcalc.get_transmission())
+pylab.show()
 
 #The basis functions of the two Hydrogen atoms
 Pt_N = 5 # 
-Pt_nbf = 9 #number of bf per Pt atom (basis=sz)
-H_nbf = 4  # number of bf per H atom (basis=sz)
+Pt_nbf = 9 #number of bf per Pt atom (basis=szp)
+H_nbf = 4  # number of bf per H atom (basis=szp)
 bf_H1 = Pt_nbf * Pt_N
 bfs = range(bf_H1, bf_H1 + 2 * H_nbf)
-print bfs
+h_rot, s_rot, eps_n, vec_jn = tcalc.subdiagonalize_bfs(bfs)
+for n in range(len(eps_n)):
+    print "bf %i correpsonds to the eigenvalue %.2f eV" % (bfs[n], eps_n[n])
+
 #Calculate the transmission and the projected density of states (pdos)
 #of the Hydrogen atoms basis functions.
-print "Calculating the transmission (T) and the H atomic orbital pdos (pdos_je)"
+print 'Calculating the transmission (T) and the H atomic orbital pdos'
 tcalc.set(pdos=bfs)
 T_e = tcalc.get_transmission()
 pdos_je = tcalc.get_pdos()
-
+    
 #Diagonalize the subspace corresponding the the Hydrogen molecule
 print "Diagonalizing the H2 subspace and recalculates the pdos"
 h_rot, s_rot, eps_n, vec_jn = tcalc.subdiagonalize_bfs(bfs)

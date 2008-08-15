@@ -107,6 +107,8 @@ can be calculated using::
     tcalc.set(pdos=[0, 1])
     pdos_ne = tcalc.get_pdos()
     
+Note that all indices in ``TransportCalculator`` refers to the
+scattering region minus the mandatory principal layer on each side.
 Why do you think the pdos of each the hydrogen TB sites has two peaks?
 
 To investigate the system you can try to diagonalize the subspace
@@ -157,7 +159,6 @@ the ``TransportCalculator``::
     import numpy as npy
     import pickle
 
-
     #Read in the hamiltonians
     h, s = pickle.load(file('scat_hs.pickle'))
     h1, s1 = pickle.load(file('lead1_hs.pickle'))
@@ -165,14 +166,16 @@ the ``TransportCalculator``::
     pl1 = len(h1) / 2 # left principal layer size
     pl2 = len(h2) / 2 # right principal layer size
 
-    tcalc = TransportCalculator(h=h, h1=h1, h2=h2, #hamiltonian matrices
-                                s=s, s1=s1, s2=s2, #overlap matrices
-                                pl1=pl1, pl2=pl2,  #principal layer sizes
-                                energies=[0.0],    #energies
-                                align_bf=1,        #align the the Fermi levels
-                                verbose=False)     #print extra information?
+    tcalc = TransportCalculator(h=h, h1=h1, h2=h2, # hamiltonian matrices
+                                s=s, s1=s1, s2=s2, # overlap matrices
+                                pl1=pl1, pl2=pl2,  # principal layer sizes
+                                align_bf=1,        # align the the Fermi levels
+                                verbose=False)     # print extra information?
 
-What is the conductance?
+
+In SZP there are 4 basis functions per H atom, and 9 per Pt atom. Does
+the size of the different matrices match your expectations?  What is
+the conductance?  How does the transmission function compare to the TB model?
     
 We will now try to investigate transport properties in more detail.
 Try to subdiagonalize the molecular subspace::

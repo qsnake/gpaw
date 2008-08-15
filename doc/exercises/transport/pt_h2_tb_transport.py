@@ -20,10 +20,10 @@ H_scat[2:4, 2:4] = [[0.0, -0.8], [-0.8, 0.0]]
 #coupling to the leads - nearest neighbor only
 H_scat[1, 2] = H_scat[2, 1] = H_scat[3, 4] = H_scat[4, 3] = 0.2
 
-tcalc = TransportCalculator(h=H_scat,  #Scattering Hamiltonian
-                            h1=H_lead, #Lead 1 (left)
-                            h2=H_lead, #Lead 2  (right)
-                            pl=2)      #principal layer size
+tcalc = TransportCalculator(h=H_scat,  # Scattering Hamiltonian
+                            h1=H_lead, # Lead 1 (left)
+                            h2=H_lead, # Lead 2  (right)
+                            pl=2)      # principal layer size
 
 tcalc.set(energies=npy.arange(-3, 3, 0.02))
 T_e = tcalc.get_transmission()
