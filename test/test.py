@@ -62,7 +62,7 @@ if len(tests) == 0:
              'revPBE_Li.py', 'lxc_xcatom.py', 'exx_coarse.py', '2Al.py',
              '8Si.py', 'dscf_test.py', 'lcao-h2o.py', 'IP-oxygen.py',
              'generatesetups.py', 'aedensity.py', 'h2o_dks.py', 'Cu.py',
-             'exx.py', 'simple_stm.py',
+             'exx.py',
              'H2Al110.py', 'ltt.py', 'ae-calculation.py']
 
 disabled_tests = ['lb.py', 'kli.py', 'C-force.py', 'apply.py',
@@ -71,7 +71,7 @@ disabled_tests = ['lb.py', 'kli.py', 'C-force.py', 'apply.py',
                   'restart3.py', 'totype_test.py',
                   'wannier-hwire.py',
                   'lxc_spinpol_Li.py', 'lxc_testsetups.py',
-                  'lxc_generatesetups.py']
+                  'lxc_generatesetups.py', 'simple_stm.py']
 
 tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
                   'parallel/par8.py', 'parallel/par6.py',
