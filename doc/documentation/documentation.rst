@@ -33,6 +33,8 @@ GPAW calculator:
    xas/xas
 
 
+.. _ml:
+
 Mailing list
 ============
 

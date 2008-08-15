@@ -13,6 +13,7 @@ materials physics, chemistry and biology.
   this :ref:`page <summerschool>` before you start working on the
   exercises.
 
+
 In order to do the exercises, it helps with a little bit of knowledge
 of :ase:`ASE <>` and Python_.  Here are some useful resources:
 
@@ -23,7 +24,8 @@ of :ase:`ASE <>` and Python_.  Here are some useful resources:
 
 .. _Python: http://www.python.org
 
-For comments and questions, write to the :ref:`gpaw-devel-ml`.
+For comments and questions, write to the :ref:`ml`.
+
 
 .. toctree::
    :maxdepth: 1
