@@ -31,8 +31,8 @@ For comments and questions, write to the :ref:`ml`.
    :maxdepth: 1
 
    aluminium/aluminium
-   diffusion/diffusion
    surface/surface
+   diffusion/diffusion
    vibrations/vibrations
    wavefunctions/wavefunctions
    wannier/wannier
