@@ -86,9 +86,9 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
 * How well is the EMT estimate satisfied?
 
-.. note:: For a close-packed Al(111) surface, the
-  experimental value of `\sigma` is 54 meV/Å\ :sup:`2`.  
-
+.. note:: The experimental value of `\sigma` is 54 meV/Å\ :sup:`2`. 
+   However, this was obtained from the curvature of an aluminium drop and
+   is more likely to represent the value for a closepacked Al(111) surface.
 
 
 Work function
@@ -97,6 +97,5 @@ Work function
 Run the :svn:`~doc/exercises/surface/work_function.py?format=raw`
 script and estimate the work function for a Al(100) surface. A typical
 experimental value for the work function of the Al(100) surface is
-4.20 eV.  Try to do the slab calculation with periodic boundary
-conditions in all three directions, and run the script again.  How
-does this affect the Fermi level and the average potential?
+4.20 eV. You may try to improve the result by adding more vacuum to the 
+slab calculation.
