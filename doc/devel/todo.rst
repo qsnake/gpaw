@@ -21,6 +21,7 @@ To do:
 * fix the global modules page and .. autoclass : not important right now
 * Take care of orphan entries listed in the main TOC ("Talk about this later") : ?
 * Take care of outdaged entries linked on documentation page: ? (probably not that important)
+* In the manual section about libxc functions, part of the description should be moved to documentation/xc/functionals.rst
 
 Done:
 

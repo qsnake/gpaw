@@ -22,7 +22,9 @@ Python interpreter and try some of the examples below.
 
 .. _Python: http://www.python.org
 
-XXX units used?
+The units used by the GPAW calculator correspond to the :ase:`ASE
+conventions <ase/units.html>`, most importantly electron volts and
+angstroms.
 
 -----------------------
 Doing a PAW calculation
@@ -171,10 +173,6 @@ common are listed here, for the complete list see
 
 ``'LDA'`` is the default value.  The three last ones are of
 generalized gradient approximation (GGA) type.
-
-XXX simplify this.  Put all abreviation in the table above.
-
-XXX link to libxc description.
 
 The functionals from libxc_ are used by default - keywords are based
 on the :file:`gpaw/libxc_functionals.py` file.  Custom combinations of
@@ -435,8 +433,6 @@ calculations, your system is in an unstable state!
 ------------------------
 Restarting a calculation
 ------------------------
-
-XXX link to restart-page.
 
 The state of a calculation can be saved to a file like this:
 

@@ -19,7 +19,12 @@ The latest revision can be obtained like this::
 
   $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
+The latest stable release can be obtained like this::
+
+  $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3 gpaw-0.3
+
 See :ref:`faq` in case of problems.
+
 
 
 From tar-file
@@ -27,4 +32,4 @@ From tar-file
 
 Here is the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
 
-XXX Where are the stable releases?
+
