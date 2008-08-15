@@ -12,7 +12,6 @@ Immediate documentation work
 
 To do:
 
-* Reorder dev-page : ask
 * add more links from the exercises to the corresponding ASE-documentation.
 * search for XXX and ASE imports, variable names loa : ask, marco
 * put cross references from gpaw to ase where proper : marco
@@ -21,6 +20,7 @@ To do:
 
 * fix the global modules page and .. autoclass : not important right now
 * Take care of orphan entries listed in the main TOC ("Talk about this later") : ?
+* Take care of outdaged entries linked on documentation page: ? (probably not that important)
 
 Done:
 
@@ -43,6 +43,7 @@ Done:
 * put contents and search on one line : ask
 * top navigation bar should be moved to sidebar and combined with main page links to resemble TOC-like thing on the ase page : ask
 * Add link to https://wiki.fysik.dtu.dk/gpaw/epydoc/ somewhere : Actually there's already one on the devel page, *and* on the documentation page
+* Reorder dev-page : ask
 
 
 New features and long-term goals

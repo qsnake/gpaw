@@ -1,21 +1,19 @@
 .. _bugs:
 
-If you have a problem with GPAW, like:
+==============
+Bug collection
+==============
+
+Bugs and feature proposals are managed using `Trac <https://trac.fysik.dtu.dk/projects/gpaw/>`_.  If you have
+a problem with GPAW, like:
 
 * bugs in the code,
 * enhancement proposals
 * and problems with the documentation,
 
-you are also very welcome to report the problem to
-the `mailing list`_.
+you are also very welcome to report the problem to the :ref:`mailing
+list <ml>`.
 
-
-.. _mailing list: http://listserv.fysik.dtu.dk/mailman/listinfo/campos
-
-
---------------
-Bug collection
---------------
 
 * General:
 

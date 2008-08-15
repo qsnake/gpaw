@@ -96,21 +96,6 @@
           {{ rendertemplate(customsidebar) }}
           {%- endif %}
 
-	  <!-- XXX -->
-          {%- block sidebarsearch0 %}
-          {%- if False and pagename != "search" %}
-            <h3>{{ builder == 'web' and 'Keyword' or 'Quick' }} search</h3>
-            <form class="search" action="{{ pathto('search') }}" method="get">
-              <input type="text" name="q" size="18" /> <input type="submit" value="Go" />
-              <input type="hidden" name="check_keywords" value="yes" />
-              <input type="hidden" name="area" value="default" />
-            </form>
-            {%- if builder == 'web' %}
-            <p style="font-size: 90%">Enter a module, class or function name.</p>
-            {%- endif %}
-          {%- endif %}
-          {%- endblock %}
-
           {%- if sourcename %}
             <ul class="this-page-menu">
             {%- if builder == 'web' %}
