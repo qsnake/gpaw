@@ -86,9 +86,11 @@ As a non-trivial example of a Python module, try to write a function:
 The *site* argument should be one of the strings that the
 :ase:`fcc100() <ase/lattice.html#lattice.surface.fcc100>` function
 accepts: ``'ontop'``, ``'hollow'`` or ``'bridge'``.  The *height*
-argument is the height above the Al layer.  The function must return
-the energy and write ``<site>.txt``, ``<site>.traj``, and
-``<site>.gpw`` files.
+argument is the height above the Al layer.  The function must relax a 
+gold atom at *site*, return the energy and write ``<site>.txt``, 
+``<site>.traj``, and ``<site>.gpw`` files. Start from 
+:svn:`~doc/exercises/diffusion/initial.py?format=raw` and make the 
+relevant changes
 
 * You could have used this functions to calculate the energy barrier
   above.  Use it to calculate the energy in the ontop site::
