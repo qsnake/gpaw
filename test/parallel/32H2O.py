@@ -1,5 +1,6 @@
 from ase import *
 from gpaw import *
+from time import time
 
 L = 9.8553729
 positions=[
@@ -43,8 +44,10 @@ h2o = Atoms('32(OH2)',
 
 md = VelocityVerlet(h2o, dt=0.5 * fs)
 md.attach(PickleTrajectory('32H2O.traj', 'w', h2o).write, interval=5)
+t0 = time()
 for i in range(15):
     pot = h2o.get_potential_energy()
     kin = h2o.get_kinetic_energy()
-    print '%2d: %.5f eV, %.5f eV, %.5f eV' % (i, pot + kin, pot, kin)
+    print time() - t0,
+    print ' %2d: %.5f eV, %.5f eV, %.5f eV' % (i, pot + kin, pot, kin)
     md.run(steps=20)
