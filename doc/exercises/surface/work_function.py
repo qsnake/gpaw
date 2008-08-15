@@ -2,7 +2,7 @@ from ase import *
 from gpaw import GPAW
 
 # Read in the 4-layer slab:
-calc = GPAW('slab-4.gpw', txt=None)
+calc = GPAW('slab-5.gpw', txt=None)
 slab = calc.get_atoms()
 
 # Get the height of the unit cell:
