@@ -41,7 +41,9 @@ for dir, script in [
     ('wavefunctions', 'CO.py'),
     ('dos', 'pdos.py'),
     ('lrtddft', 'ground_state.py'),
-    ('lrtddft', 'spectrum.py')
+    ('transport', 'pt_h2_tb_transport.py')
+    ('transport', 'pt_h2_lcao.py')
+    ('transport', 'pt_h2_lcao_transport.py')
     ]:
     execfile('../' + dir + '/' + script, {'k': 6, 'N': 5})
 for dir, script, args in [
