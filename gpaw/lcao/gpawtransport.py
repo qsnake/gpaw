@@ -22,18 +22,15 @@ class GPAWTransport:
         self.h2_skmm = None
         self.s2_kmm = None
 
-
     def write_left_lead(self,filename):
         self.update_lead_hamiltonian(0)
 
-
-    def write(self,filename):
-        
+    def write(self, filename):
         self.update_lead_hamiltonian(0)
 
         pl1 = self.h1_skmm.shape[-1]
-        h1 = npy.zeros((2*pl1,2*pl1),npy.complex)
-        s1 = npy.zeros((2*pl1,2*pl1),npy.complex)
+        h1 = npy.zeros((2*pl1, 2 * pl1), complex)
+        s1 = npy.zeros((2*pl1, 2 * pl1), complex)
 
         atoms1 = self.atoms_l[0]
         calc1 = atoms1.calc
@@ -51,28 +48,28 @@ class GPAWTransport:
                                          calc1.weight_k,
                                          R_c=R_c)
 
-        h1[:pl1,:pl1] = h1_sii[0]
-        h1[pl1:2*pl1,pl1:2*pl1] = h1_sii[0]
-        h1[:pl1,pl1:2*pl1] = h1_sij[0]
-        tri2full(h1,'U')
+        h1[:pl1, :pl1] = h1_sii[0]
+        h1[pl1:2 * pl1, pl1:2 * pl1] = h1_sii[0]
+        h1[:pl1, pl1:2 * pl1] = h1_sij[0]
+        tri2full(h1, 'U')
         
         s1[:pl1,:pl1] = s1_ii
         s1[pl1:2*pl1,pl1:2*pl1] = s1_ii
         s1[:pl1,pl1:2*pl1] = s1_ij
-        tri2full(s1,'U')
+        tri2full(s1, 'U')
         
         if calc1.master:
             print "Dumping lead 1 hamiltonian..."
-            fd = file('lead1_'+filename,'wb')
-            pickle.dump((h1,s1),fd,2)
+            fd = file('lead1_' + filename, 'wb')
+            pickle.dump((h1, s1), fd, 2)
             fd.close()
 
         world.barrier()
         
         self.update_lead_hamiltonian(1) 
         pl2 = self.h2_skmm.shape[-1]
-        h2 = npy.zeros((2*pl2,2*pl2),npy.complex)
-        s2 = npy.zeros((2*pl2,2*pl2),npy.complex)
+        h2 = npy.zeros((2 * pl2, 2 * pl2), complex)
+        s2 = npy.zeros((2 * pl2, 2 * pl2), complex)
 
         atoms2 = self.atoms_l[1]
         calc2 = atoms2.calc
@@ -115,8 +112,8 @@ class GPAWTransport:
         self.update_scat_hamiltonian()
         nbf_m = self.h_skmm.shape[-1]
         nbf = nbf_m + pl1 + pl2
-        h = npy.zeros((nbf,nbf),npy.complex)
-        s = npy.zeros((nbf,nbf),npy.complex)
+        h = npy.zeros((nbf, nbf), complex)
+        s = npy.zeros((nbf, nbf), complex)
         
         h_mm = self.h_skmm[0,0]
         s_mm = self.s_kmm[0]
@@ -138,14 +135,13 @@ class GPAWTransport:
             fd.close()
         world.barrier()
 
-
-    def update_lead_hamiltonian(self,l):
+    def update_lead_hamiltonian(self, l):
         self.atoms_l[l] = self.get_lead_atoms(l)
         atoms = self.atoms_l[l]
         atoms.get_potential_energy()
-        if l==0:
+        if l == 0:
             self.h1_skmm, self.s1_kmm = self.get_hs(atoms)
-        elif l==1:
+        elif l == 1:
             self.h2_skmm, self.s2_kmm = self.get_hs(atoms)
 
     def update_scat_hamiltonian(self):
@@ -165,8 +161,8 @@ class GPAWTransport:
         nspins = calc.nspins
         weight_k = calc.weight_k
         nao = calc.nao
-        h_skmm = npy.zeros((nspins,nkpts,nao,nao),npy.complex)
-        s_kmm = npy.zeros((nkpts,nao,nao),npy.complex)
+        h_skmm = npy.zeros((nspins, nkpts, nao, nao), complex)
+        s_kmm = npy.zeros((nkpts, nao, nao), complex)
         for k in range(nkpts):
             s_kmm[k] = ham.S_kmm[k]
             tri2full(s_kmm[k])
@@ -174,17 +170,16 @@ class GPAWTransport:
                 h_skmm[s,k] = calc.eigensolver.get_hamiltonian_matrix(ham,
                                                                       k=k,
                                                                       s=s)
-                tri2full(h_skmm[s,k])
+                tri2full(h_skmm[s, k])
                 h_skmm[s,k] *= Hartree
                 h_skmm[s,k] -= Ef * s_kmm[k]
 
         return h_skmm, s_kmm
 
-
-    def get_lead_atoms(self,l):
+    def get_lead_atoms(self, l):
         """l: 0, 1 correpsonding to left, right """
         atoms = self.atoms.copy()
-        atomsl = Atoms(pbc=True,cell=self.pl_cells[l])
+        atomsl = Atoms(pbc=atoms.pbc, cell=self.pl_cells[l])
     
         for a in self.pl_atoms[l]:
             atomsl.append(atoms[a])
@@ -193,24 +188,18 @@ class GPAWTransport:
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
 
-    def get_lead_calc(self,l):
+    def get_lead_calc(self, l):
         p = self.atoms.calc.input_parameters.copy()
-        calc = GPAW()
-        calc.set(**p)
-        L = self.pl_cells[l][self.d]
-        nkpts = 2 * int(25.0 / L) + 1
-        #if 'kpts' in p:
-        #    kpts = p['kpts']
-        #else:
-        kpts = [1,1,1]
+        p['nbands'] = None
 
-        kpts[self.d] = nkpts
-        if 'mixer' in p:
-            calc.set(mixer=Mixer(0.1,5,metric='new',weight=100.0))
+        kpts = [1, 1, 1]
+        kpts[self.d] = 2 * int(17.0 / self.pl_cells[l][self.d]) + 1
+        p['kpts'] = kpts
+        
+        if 'mixer' in p: # XXX Works only if spin-paired
+            p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
 
-        calc.set(kpts=kpts)
-        txt = p['txt']
-        if txt != '-':
-            calc.set(txt='lead%i_' % (l+1) + p['txt'])
-        return calc
+        if 'txt' in p and p['txt'] != '-':
+            p['txt'] = 'lead%i_' % (l + 1) + p['txt']
+        return GPAW(**p)
         

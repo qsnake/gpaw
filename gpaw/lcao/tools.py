@@ -4,7 +4,6 @@ import pickle
 import numpy as npy
 from gpaw.mpi import world, MASTER, rank
 
-
 def tri2full(M,UL='L'):
     """UP='L' => fill upper triangle from lower triangle
        such that M=M^d"""
@@ -108,7 +107,7 @@ def load_lcao_hamiltonian(filename): # serial version only
 
     for s in range(nspins):
         for k in range(nkpt):
-            HS_dskmm[:,s,k,:,:] = pickle.load(fd)
+            HS_dskmm[:, s, k, :, :] = pickle.load(fd)
         
     fd.close()
     return nao, ibzk_kc, weight_k, HS_dskmm

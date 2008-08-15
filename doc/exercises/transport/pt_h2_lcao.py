@@ -19,7 +19,7 @@ atoms.set_calculator(GPAW(h=0.3, xc='PBE', basis='szp', width=0.1,
                           eigensolver='lcao', txt='pt_h2_lcao.txt',
                           mixer=Mixer(0.1, 5, metric='new', weight=100.0)))
 
-#Setup the GPAWTransport calculator
+# Setup the GPAWTransport calculator
 pl_atoms1 = range(4)     # Atomic indices of the left principal layer
 pl_atoms2 = range(-4, 0) # Atomic indices of the right principal layer
 pl_cell1 = (4 * a, L, L) # Cell for the left principal layer
@@ -30,7 +30,6 @@ gpawtran = GPAWTransport(atoms=atoms,
                          pl_cells=(pl_cell1, pl_cell2),
                          d=0) #transport direction (0 := x)
 
-#Dump the Hamiltonian matrices to file: 
+# Dump the Hamiltonian matrices to the files:
+# lead1_hs.pickle, lead2_hs.pickle and scat_hs.pickle
 gpawtran.write('hs.pickle')
-
-#This creates the files: lead1_hs.pickle, lead2_hs.pickle and scat_hs.pickle

@@ -141,15 +141,14 @@ desciption derived from ab-initio calculations.
 
 The class :class:`GPAWTransport` (in gpaw.lcao.gpawtransport) allows
 you to construct such a Hamiltonian within DFT in terms of pseudo
-atomic orbitals.  To obtain the matrices for the scattering region and
-the leads using DFT and pseudo atomic orbitals using a szp basis set
-run this :svn:`script
+atomic orbitals.  Since real potential decay much slower than in our
+TB model, we increase the principal layers to 4 Pt atoms, and the
+scattering region to 5 Pt atoms on either side.  To obtain the
+matrices for the scattering region and the leads using DFT and pseudo
+atomic orbitals using a szp basis set run this :svn:`script
 <doc/exercises/transport/pt_h2_lcao.py?format=txt>`:
 
 .. literalinclude:: pt_h2_lcao.py
-
-notice that the size of the scattering region has been increased to 5
-atoms on each side.
 
 You should now have the files scat_hs.pickle, lead1_hs.pickle and
 lead2_hs.pickle in your directory.  These can be loaded and used in
@@ -172,10 +171,9 @@ the ``TransportCalculator``::
                                 align_bf=1,        # align the the Fermi levels
                                 verbose=False)     # print extra information?
 
-
 In SZP there are 4 basis functions per H atom, and 9 per Pt atom. Does
 the size of the different matrices match your expectations?  What is
-the conductance?  How does the transmission function compare to the TB model?
+the conductance? Does it agree with the experimental value?
     
 We will now try to investigate transport properties in more detail.
 Try to subdiagonalize the molecular subspace::
@@ -194,9 +192,14 @@ anti-bonding molecular hydrogen orbitals, respectively.
 
 What is the calculated band-gap of the hydrogen-molecule?
 
-Try to plot the molecular orbital projected density of states.
+Switch to the rotated basis set (``tcalc.set(h=h_rot, s=s_rot)``) then
+plot the transmission function end the projected density of states of
+the renormalized molecular orbitals in an energy range of say -8 to 4
+eV.
 
 Which orbital do you think is responsible for the high conductance?
+Try to cut the relevant orbitals from the basis set, as we did for the
+TB model.
 
 Here is a script if you need some inspiration:
 :svn:`script <doc/exercises/transport/pt_h2_lcao_transport.py?format=txt>`.
