@@ -8,7 +8,7 @@ from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.utilities import equal
 
 load=True
-#load=False
+load=False
 txt = '/dev/null'
 
 LiH = Atoms([Atom('Li', [.0, .0, .41]),
