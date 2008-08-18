@@ -74,6 +74,22 @@ GPAW
 gpaw-qsub ...
 
 
+SIESTA
+------
+
+Siesta is installed on Niflheim, so you need to log in to the Niflheim
+front-end nodes as described avobe in the Niflheim section.
+Furthermore you have to set two environment variables by adding the
+following two lines to your /.bashrc file::
+
+  export SIESTA_PP_PATH=~mvanin/asesiesta
+  export SIESTA_SCRIPT=~mvanin/asesiesta/run_siesta.py  
+
+and source it by typing
+
+  $ source ~/.bashrc
+
+
 Octopus
 -------
 
