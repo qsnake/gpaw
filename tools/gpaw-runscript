@@ -310,14 +310,14 @@ unset CC CFLAGS LDFLAGS
         print >> f, '#PBS -m bea'
         if set['mail'] is not None:
             print >> f, '#PBS -M',set['mail']
-        print >> f, '#PBS -o', set['out']+'_$PBS_JOBID'
-        print >> f, '#PBS -e', set['err']+'_$PBS_JOBID'
         print >> f, '#PBS -q bfg'
         print >> f, 'cd', set['wd']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
-        print >> f, 'mpirun -np', set['nodes'], '$GPAW_PYTHON', set['script']
+        print >> f, 'mpirun -np', set['nodes'], '$GPAW_PYTHON', set['script'],
+        print >> f, '>', set['out']+'_$PBS_JOBID',
+        print >> f, '2>', set['err']+'_$PBS_JOBID'
 
     def sepeli(self, f, set, env):
         print >> f,"#$ -N",set['name']
