@@ -4,13 +4,14 @@
 Atomic PAW Setups
 =================
 
-.. toctree::
-   :maxdepth: 2
+A setup is to the PAW method what a pseudo-potential is to the
+pseudo-potential method.  All available setups are contained in this
+tar-file: gpaw-setups-0.4.2039.tar.gz_.  Install them as described in the
+:ref:`installationguide`.  The setups are stored as compressed pawxml_
+files.
 
-   molecule_tests
-   bulk_tests
-   generation_of_setups
-   more-setups-stuff
+.. _gpaw-setups-0.4.2039.tar.gz: http://wiki.fysik.dtu.dk/stuff/gpaw-setups-0.4.2039.tar.gz
+.. _pawxml: http://wiki.fysik.dtu.dk/stuff/pawxml/pawxml.xhtml
 
 Periodic table
 ==============
@@ -24,24 +25,20 @@ Rb_  Sr_  Y    Zr_  Nb_  Mo_  Tc   Ru_  Rh_  Pd_  Ag_  Cd_  In   Sn_  Sb   Te   
 Cs_  Ba_  La_  Hf   Ta_  W_   Re   Os   Ir_  Pt_  Au_  Hg   Tl   Pb_  Bi   Po   At   Rn 
 ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
 
+See also `NIST Atomic Reference Data`_ and `Computational Chemistry Comparison and Benchmark DataBase`_.  Link to `Dacapo pseudo potentials`_.
+
+.. _NIST Atomic Reference Data: http://physics.nist.gov/PhysRefData/DFTdata/Tables/ptable.html
+.. _Computational Chemistry Comparison and Benchmark DataBase: http://srdata.nist.gov/cccbdb/
+.. _Dacapo pseudo potentials: https://wiki.fysik.dtu.dk/dacapo/Pseudopotential_Library
 
 
+.. toctree::
+   :maxdepth: 2
 
-Tests
-=====
+   molecule_tests
+   bulk_tests
+   generation_of_setups
 
-* :ref:`molecule_tests`.
-* :ref:`bulk_tests`.
-
-XXX
-
-
-
-
-Missing setups
-==============
-
-XXX
 
 
 
@@ -100,7 +97,6 @@ XXX
 .. _Au: Au.html
 .. _Pb: Pb.html
 
-XXX missing:  Ca Ti Sr Sn Ir
 
 .. latex: stop
 
