@@ -85,7 +85,7 @@ following two lines to your /.bashrc file::
   export SIESTA_PP_PATH=~mvanin/asesiesta
   export SIESTA_SCRIPT=~mvanin/asesiesta/run_siesta.py  
 
-and source it by typing
+and source it by typing::
 
   $ source ~/.bashrc
 
