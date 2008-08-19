@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef GPAW_ASYNC
+#undef GPAW_AIX
+#endif
+
 boundary_conditions* bc_init(const long size1[3],
 			     const long padding[3][2], 
 			     const long npadding[3][2], 
@@ -194,7 +198,6 @@ void bc_unpack1(const boundary_conditions* bc,
 	  else
 	    bmgs_cutmz((const double_complex*)a, sizea, start,
 		       (double_complex*)sbuf, size, phases[d]);
-
 	  if (bc->sjoin[i])
 	    {
 	      if (d == 1)
@@ -221,8 +224,7 @@ void bc_unpack1(const boundary_conditions* bc,
           sbuf += bc->nsend[i][d];
 	}
     }
-#endif // PARALLEL
-  
+#endif // Parallel 
   // Copy data:
   if (i == 0)
     {
@@ -291,10 +293,16 @@ void bc_unpack2(const boundary_conditions* bc,
 	rbuf += bc->nrecv[i][d];
       }
 #ifndef GPAW_AIX
-  // This does not work on the ibm!  We do a blocking send instead.
+  // This does not work on the ibm with gcc!  We do a blocking send instead.
   for (int d = 0; d < 2; d++)
     if (sendreq[d] != 0)
       MPI_Wait(&sendreq[d], MPI_STATUS_IGNORE);
 #endif
 #endif // PARALLEL
 }
+
+//Remember to redefine GPAW_AIX
+#ifdef GPAW_ASYNC
+#define GPAW_AIX
+#endif
+
