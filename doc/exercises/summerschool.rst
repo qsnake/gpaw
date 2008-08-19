@@ -89,6 +89,10 @@ and source it by typing::
 
   $ source ~/.bashrc
 
+To submit a job to Niflheim, use the ``qsub`` command::
+
+  $ qsub -l nodes=1:ppn=1:switch5 filename.py
+
 
 Octopus
 -------
