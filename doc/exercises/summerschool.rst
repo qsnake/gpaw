@@ -71,7 +71,7 @@ will copy ``filename`` from Niflheim to your present location at the Gbar.
 GPAW
 ----
 
-gpaw-qsub ...
+Use the :command:`gpaw-qsub.py` command to submit GPAW jobs to the queue.
 
 
 SIESTA

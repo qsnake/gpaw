@@ -35,13 +35,13 @@ For comments and questions, write to the :ref:`ml`.
    surface/surface
    diffusion/diffusion
    vibrations/vibrations
+   neb/neb
    wavefunctions/wavefunctions
    wannier/wannier
    iron/iron
    dos/dos
    band_structure/bands
    stm/stm
-   neb/neb
    tst/tst
    transport/transport
    lrtddft/lrtddft
