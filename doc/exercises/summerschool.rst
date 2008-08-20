@@ -129,7 +129,8 @@ The steps described below require root access and assume bash shell:
 
     cd
     ROOT=~rpmbuild/school08
-    REPO="http://wiki.fysik.dtu.dk/stuff/school08/RPMS"
+    REPO="https://wiki.fysik.dtu.dk/stuff/school08/RPMS"
+    yum install wget
 
    - el4 (CentOS 4)::
 
