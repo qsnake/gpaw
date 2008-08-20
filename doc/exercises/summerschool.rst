@@ -128,7 +128,6 @@ The steps described below require root access and assume bash shell:
  - install external packages required by gpaw and ase::
 
     cd
-    ROOT=~rpmbuild/school08
     REPO="https://wiki.fysik.dtu.dk/stuff/school08/RPMS"
     yum -y install wget
 
