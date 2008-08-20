@@ -32,8 +32,17 @@ class PairPotential:
                 self.interactions[(setup1.symbol, setup2.symbol)] = interaction
 
         self.neighborlist = None
+
+        self.need_neighbor_list = False
+        for setup in setups:
+            if setup.type == 'ae':
+                self.need_neighbor_list = True
+                break
         
     def update(self, pos_ac, nuclei, domain, text):
+        if not self.need_neighbor_list:
+            return
+        
         if self.neighborlist is None:
             # Make a neighbor list object:
             symbol_a = [nucleus.setup.symbol for nucleus in nuclei]
