@@ -130,6 +130,8 @@ The steps described below require root access and assume bash shell:
     cd
     REPO="https://wiki.fysik.dtu.dk/stuff/school08/RPMS"
     yum -y install wget
+    wget --no-check-certificate https://svn.fysik.dtu.dk/projects/rpmbuild/trunk/SOURCES/RPM-GPG-KEY-fys
+    rpm --import RPM-GPG-KEY-fys
 
    - el4 (CentOS 4)::
 
@@ -137,8 +139,6 @@ The steps described below require root access and assume bash shell:
       yum -y localinstall rpmforge-release-0.3.6-1.el4.rf.i386.rpm
       wget --no-check-certificate $REPO/i386/python-matplotlib-0.91.2-3.el4.fys.i386.rpm
       wget --no-check-certificate $REPO/i386/pytz-2006p-1.el4.fys.i386.rpm
-      wget --no-check-certificate https://svn.fysik.dtu.dk/projects/rpmbuild/trunk/SOURCES/RPM-GPG-KEY-fys
-      rpm --import RPM-GPG-KEY-fys
       yum -y localinstall python-matplotlib-0.91.2-3.el4.fys.i386.rpm pytz-2006p-1.el4.fys.i386.rpm
       wget ftp://ftp.scientificlinux.org/linux/scientific/4x/i386/SL/RPMS/numpy-1.0.4-1.i386.rpm
       wget --no-check-certificate https://www.scientificlinux.org/documentation/gpg/RPM-GPG-KEY-dawson
