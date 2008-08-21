@@ -59,4 +59,4 @@ Compare the energies of the three magnetic phases:
 * Compare the calculated magnetic moment for the
   ferromagnetic phase with the experimental value.  You can find the
   calculated value in the text output, or by using the
-  :meth:`get_magnetic_moment` method of the calculator object.
+  :meth:`get_magnetic_moments` method of the calculator object.
