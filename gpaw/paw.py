@@ -413,7 +413,8 @@ class PAW(PAWExtra, Output):
         
     def step(self):
         if self.niter > self.fixdensity:
-            self.density.update(self.kpt_u, self.symmetry)
+            self.density.update(self.kpt_u, self.symmetry,
+                                self.hamiltonian.lcao_initialized)
             self.update_kinetic()
             self.hamiltonian.update(self.density)
 

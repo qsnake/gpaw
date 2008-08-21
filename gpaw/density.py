@@ -247,7 +247,7 @@ class Density:
         if abs(charge) > self.charge_eps:
             raise RuntimeError('Charge not conserved: excess=%.7f' % charge ) 
 
-    def update(self, kpt_u, symmetry):
+    def update(self, kpt_u, symmetry, lcao_initialized=True):
         """Calculate pseudo electron-density.
 
         The pseudo electron-density ``nt_sG`` is calculated from the
@@ -266,24 +266,25 @@ class Density:
         # add the smooth core density:
         self.nt_sG += self.nct_G
 
-        # Compute atomic density matrices:
-        for nucleus in self.my_nuclei:
-            ni = nucleus.get_number_of_partial_waves()
-            D_sii = zeros((self.nspins, ni, ni))
-            for kpt in kpt_u:
-                P_ni = nucleus.P_uni[kpt.u]
-                D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
-                                             P_ni * kpt.f_n[:, newaxis]))
-                
-                # hack used in delta scf - calculations
-                if hasattr(kpt, 'ft_omn'):
-                    for i in range(len(kpt.ft_omn)):
-                        D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
-                                             dot(kpt.ft_omn[i], P_ni)))
+        if not self.lcao or lcao_initialized:
+            # Compute atomic density matrices:
+            for nucleus in self.my_nuclei:
+                ni = nucleus.get_number_of_partial_waves()
+                D_sii = zeros((self.nspins, ni, ni))
+                for kpt in kpt_u:
+                    P_ni = nucleus.P_uni[kpt.u]
+                    D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
+                                                 P_ni * kpt.f_n[:, newaxis]))
 
-            nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
-            self.band_comm.sum(nucleus.D_sp)
-            self.kpt_comm.sum(nucleus.D_sp)
+                    # hack used in delta scf - calculations
+                    if hasattr(kpt, 'ft_omn'):
+                        for i in range(len(kpt.ft_omn)):
+                            D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
+                                                 dot(kpt.ft_omn[i], P_ni)))
+
+                nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
+                self.band_comm.sum(nucleus.D_sp)
+                self.kpt_comm.sum(nucleus.D_sp)
 
         comm = self.gd.comm
         
