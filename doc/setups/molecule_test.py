@@ -11,6 +11,8 @@ from ase.parallel import paropen
 from ase.parallel import rank, barrier
 from ase.io.trajectory import PickleTrajectory
 from ase.units import kcal, mol
+import matplotlib
+matplotlib.use('Agg')
 import pylab as plt
 import numpy as np
 

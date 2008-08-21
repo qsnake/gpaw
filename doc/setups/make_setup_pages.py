@@ -2,6 +2,8 @@
 import os
 import pickle
 from sys import argv
+import matplotlib
+matplotlib.use('Agg')
 
 from ase.atoms import string2symbols
 from ase.data import atomic_numbers, atomic_names
@@ -107,7 +109,7 @@ See tests for %s here: :ref:`molecule_tests`.
         aname = 'an ' + name.lower()
     else:
         aname = 'a ' + name.lower()
-    f.write(u"""
+    f.write("""
 Convergence tests
 =================
 
@@ -124,7 +126,6 @@ with *B* = %.2f eV and *n* = %.2f (`h_0` = 0.20 Å).
 This gives `dE_a/dh=nB/h_0` = %.3f eV/Å for `h=h_0`.
 
 """ % (aname, aname, symbol, hmin, B, n, n * B / 0.2))
-
 
     tables = ['\n'.join(t) for t in tables]
     f.write(u"""
