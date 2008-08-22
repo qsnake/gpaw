@@ -1,5 +1,5 @@
 #include "bmgs.h"
-#ifdef GPAW_OMP
+#ifdef GPAW_OMPA
   #include <omp.h>
 #endif
 
@@ -8,7 +8,7 @@ void Z(bmgs_fd)(const bmgsstencil* s, const T* a, T* b)
 {
   a += (s->j[0] + s->j[1] + s->j[2]) / 2;
 
-  #ifdef GPAW_OMP
+  #ifdef GPAW_OMPA
     #pragma omp parallel for
   #endif
   for (int i0 = 0; i0 < s->n[0]; i0++)

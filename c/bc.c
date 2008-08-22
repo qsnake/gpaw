@@ -7,6 +7,10 @@
 #include "extensions.h"
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef GPAW_OMP
+ #include <omp.h>
+#endif
+
 
 #ifdef GPAW_ASYNC
 #undef GPAW_AIX
@@ -141,6 +145,14 @@ void bc_unpack1(const boundary_conditions* bc,
 {
   bool real = (bc->ndouble == 1);
 #ifdef PARALLEL
+
+  #ifdef GPAW_OMP
+    int thd = omp_get_thread_num();
+  #else
+    int thd = 0;
+  #endif
+
+
   // Start receiving.  
   for (int d = 0; d < 2; d++)
     {
@@ -152,14 +164,14 @@ void bc_unpack1(const boundary_conditions* bc,
 	      if (d == 0)
 		{
 		  int count = bc->nrecv[i][0] + bc->nrecv[i][1];
-		  MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 20,
+		  MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 20 + thd,
 			    bc->comm, &recvreq[0]);
 		}
 	    }
 	  else
 	    {
 	      int count = bc->nrecv[i][d];
-	      MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 10 + d, bc->comm,
+	      MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 10 + d + thd * 2, bc->comm,
 			&recvreq[d]);
 	      rbuf += bc->nrecv[i][d];
 	    }
@@ -204,9 +216,9 @@ void bc_unpack1(const boundary_conditions* bc,
 		{
 		  int count = bc->nsend[i][0] + bc->nsend[i][1];
 #ifdef GPAW_AIX
-		  MPI_Send(sbuf0, count, MPI_DOUBLE, p, 20, bc->comm);
+		  MPI_Send(sbuf0, count, MPI_DOUBLE, p, 20 + thd, bc->comm);
 #else
-		  MPI_Isend(sbuf0, count, MPI_DOUBLE, p, 20,
+		  MPI_Isend(sbuf0, count, MPI_DOUBLE, p, 20 + thd,
 			    bc->comm, &sendreq[0]);
 #endif
 		}
@@ -215,9 +227,9 @@ void bc_unpack1(const boundary_conditions* bc,
  	    {
 	      int count = bc->nsend[i][d];
 #ifdef GPAW_AIX
-	      MPI_Send(sbuf, count, MPI_DOUBLE, p, 11 - d, bc->comm);
+	      MPI_Send(sbuf, count, MPI_DOUBLE, p, 11 - d + thd * 2, bc->comm);
 #else
-	      MPI_Isend(sbuf, count, MPI_DOUBLE, p, 11 - d,
+	      MPI_Isend(sbuf, count, MPI_DOUBLE, p, 11 - d + thd * 2,
 			bc->comm, &sendreq[d]);
 #endif
 	    }
