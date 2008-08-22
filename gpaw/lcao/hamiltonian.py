@@ -51,10 +51,13 @@ class LCAOHamiltonian:
             nucleus.m = self.nao
             self.nao += nucleus.get_number_of_atomic_orbitals()
 
-        for nucleus in self.nuclei:
+        for nucleus in self.my_nuclei:
             ni = nucleus.get_number_of_partial_waves()
             nucleus.P_kmi = npy.zeros((nkpts, self.nao, ni), self.dtype)
-            if self.lcao_forces:
+
+        if self.lcao_forces:
+            for nucleus in self.nuclei:
+                ni = nucleus.get_number_of_partial_waves()
                 nucleus.dPdR_kcmi = npy.zeros((nkpts, 3, self.nao, ni),
                                               self.dtype)
                 # XXX Create "masks" on the nuclei which specify signs
@@ -172,10 +175,17 @@ class LCAOHamiltonian:
         #                         -----
         #                          aij
         #
-        for nucleus in self.nuclei:
+
+        if self.gd.comm.size > 1:
+            self.S_kmm /= self.gd.comm.size
+            
+        for nucleus in self.my_nuclei:
             dO_ii = nucleus.setup.O_ii
             for S_mm, P_mi in zip(self.S_kmm, nucleus.P_kmi):
                 S_mm += npy.dot(P_mi, npy.inner(dO_ii, P_mi).conj())
+
+        if self.gd.comm.size > 1:
+            self.gd.comm.sum(self.S_kmm)
 
         # Near-linear dependence check. This is done by checking the
         # eigenvalues of the overlap matrix S_kmm. Eigenvalues close
@@ -283,9 +293,13 @@ class LCAOHamiltonian:
         """Calculate basis-projector functions overlaps for the (a,b) pair
         of atoms."""
 
+        nucleusb = self.nuclei[b]
+
+        if not (self.lcao_forces or nucleusb.in_this_domain):
+            return
+        
         setupa = self.nuclei[a].setup
         ma = self.nuclei[a].m
-        nucleusb = self.nuclei[b]
         setupb = nucleusb.setup
         for ja, phita in enumerate(setupa.phit_j):
             ida = (setupa.symbol, ja)
@@ -298,9 +312,9 @@ class LCAOHamiltonian:
                 ib2 = ib + 2 * lb + 1
                 p_mi, dPdR_cmi = self.tci.p(ida, idb, la, lb, r, R,
                                             rlY_lm, drlYdR_lm)
-                if self.gamma:
+                if self.gamma and nucleusb.in_this_domain:
                     nucleusb.P_kmi[0, ma:ma2, ib:ib2] += p_mi
-                else:
+                elif nucleusb.in_this_domain:
                     nucleusb.P_kmi[:, ma:ma2, ib:ib2] += (p_mi[None, :, :] *
                                                           phase_k)
 
