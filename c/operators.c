@@ -105,7 +105,7 @@ static PyObject * Operator_apply(OperatorObject *self,
     ph = COMPLEXP(phases);
 
   #ifdef GPAW_OMP
-    #pragma omp parallel for 
+    #pragma omp parallel for
   #endif
   for (int n = 0; n < nin; n++)
     {
@@ -126,11 +126,11 @@ static PyObject * Operator_apply(OperatorObject *self,
       for (int i = 0; i < 3; i++)
         {
           bc_unpack1(bc, in, buf, i,
-               recvreq, sendreq,
-               recvbuf, sendbuf, ph + 2 * i);
+                     recvreq, sendreq,
+                     recvbuf, sendbuf, ph + 2 * i);
 
           bc_unpack2(bc, buf, i,
-               recvreq, sendreq, recvbuf);
+                     recvreq, sendreq, recvbuf);
         }
 
       if (real)
