@@ -332,7 +332,7 @@ def write_configuration(define_macros, include_dirs, libraries, library_dirs,
 def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
                       extra_link_args, extra_compile_args,
                       runtime_library_dirs, extra_objects,
-                      mpicompiler, mpi_libraries, mpi_library_dirs,
+                      mpicompiler, mpilinker, mpi_libraries, mpi_library_dirs,
                       mpi_include_dirs, mpi_runtime_library_dirs,
                       mpi_define_macros):
 
@@ -420,7 +420,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
 
     # Link the custom interpreter
     cmd = ('%s -o %s %s %s %s %s %s %s' ) % \
-          (mpicompiler,
+          (mpilinker,
            exefile,
            objects,
            ' '.join(extra_objects),
