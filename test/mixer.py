@@ -10,5 +10,3 @@ bulk.set_calculator(calc)
 bulk.get_potential_energy()
 calc.write('Li.gpw')
 calc2 = Calculator('Li.gpw')
-import os
-os.remove('Li.gpw')

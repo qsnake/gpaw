@@ -155,5 +155,7 @@ failed = [test.filename for test, msg in result.failures + result.errors]
 
 sys.stdout = sys.__stdout__
 
-if len(failed) > 0:
+from gpaw.mpi import rank
+
+if rank == 0 and len(failed) > 0:
     open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')

@@ -24,6 +24,7 @@ solver = PoissonSolver(nn=3)  # Numerical poisson solver
 solver.initialize(gd)
 solve = solver.solve
 xyz, r2 = coordinates(gd)     # Matrix with the square of the radial coordinate
+print r2.shape
 r  = npy.sqrt(r2)             # Matrix with the values of the radial coordinate
 nH = npy.exp(-2 * r) / pi     # Density of the hydrogen atom
 gauss = Gaussian(gd)          # An instance of Gaussian
@@ -69,6 +70,7 @@ for L in range(7): # Angular index of gaussian
 
     # Determine residual
     residual = norm(pot - vg)
+    residual = gd.integrate((pot - vg)**2)**0.5
 
     # print result
     print 'L=%s, processor %s of %s: %s'%(
@@ -77,6 +79,6 @@ for L in range(7): # Angular index of gaussian
         d.comm.size,
         residual)
 
-    assert residual < 2.1e-5
+    assert residual < 0.6
 
 # mpirun -np 2 python gauss_func.py --gpaw-parallel --gpaw-debug

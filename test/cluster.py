@@ -73,6 +73,3 @@ O 0 0 1. 6. 7. 8."""
 
     CO = Cluster(filename=fxyz)
 
-os.remove(fpdb)
-os.remove(fxyz)
-
