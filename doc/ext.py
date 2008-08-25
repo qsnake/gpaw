@@ -96,7 +96,9 @@ def create_png_files():
                                 break
                     if run:
                         print 'running:', path
-                        os.system('cd %s; python %s' % (dirpath, filename))
+                        e = os.system('cd %s; python %s' % (dirpath, filename))
+                        if e != 0:
+                            raise RuntimeError('FAILED!')
                         for file in line.split()[2:]:
                             print dirpath, file
         if '.svn' in dirnames:
