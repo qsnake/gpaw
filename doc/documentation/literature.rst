@@ -8,22 +8,40 @@ Guides and manual pages
 -----------------------
 
 * An :ref:`introduction to paw <introduction_to_paw>`.
-* A :ref:`guide for developers <developersguide>` linking the the main quantities of the equations to their names and positions in the code.
-* A description of some of the more specific :ref:`techniques and algorithms <features_and_algorithms>` used in the code.
+
+* A :ref:`guide for developers <developersguide>` linking the the main
+  quantities of the equations to their names and positions in the code.
+
+* A description of some of the more specific :ref:`techniques and
+  algorithms <features_and_algorithms>` used in the code.
+
 * A review of some `current development <Morning_meeting_2007>`_ projects.
+
 * The gpaw :ref:`manual`.
 
 .. _literature_reports_presentations_and_theses:
 
+
 Reports, presentations, and theses using gpaw
 ---------------------------------------------
+
 * A short note on the basics of PAW: `paw note`_
-* A master thesis on the inclusion of non-local exact exchange in the PAW formalism, and the implementation in gpaw: `exact exchange`_
-* A master thesis on the inclusion of a localized basis in the PAW formalism, plus implementation and test results in GPAW: `lcao`_
+
+* A master thesis on the inclusion of non-local exact exchange in the
+  PAW formalism, and the implementation in gpaw: `exact exchange`_
+
+* A master thesis on the inclusion of a localized basis in the PAW
+  formalism, plus implementation and test results in GPAW: `lcao`_
+
 * A master thesis on the inclusion of localized basis sets in the PAW formalism, focusing on basis set generation and force calculations: `localized basis sets`_
-* A course report on a project involving the optimization of the setups (equivalent of pseudopotentials) in gpaw: `setup optimization`_
+* A course report on a project involving the optimization of the
+  setups (equivalent of pseudopotentials) in gpaw: `setup
+  optimization`_
+
 * Slides from a talk about PAW: `introduction to PAW slides`_
+
 * Slides from a talk about GPAW development: `gpaw for developers`_
+
 * Slides from a mini symposium during early development stage: `early gpaw`_
 
 .. _paw note: ../_static/rostgaard_paw_notes.pdf
@@ -35,8 +53,11 @@ Reports, presentations, and theses using gpaw
 .. _gpaw for developers: ../_static/mortensen_gpaw-dev.pdf
 .. _early gpaw: ../_static/mortensen_mini2003talk.pdf
 
+
+
 Publications using the gpaw code
 --------------------------------
+
 The first article introducing the gpaw project:
    | J. J. Mortensen, L. B. Hansen , and K. W. Jacobsen
    | `Real-space grid implementation of the projector augmented wave method`__
@@ -51,7 +72,7 @@ The article describing the time-dependent DFT implementations in gpaw:
 
    __ http://dx.doi.org/10.1063/1.2943138
 
-A description of a statistical approach to the exchange-correlation energy in DFT.
+A description of a statistical approach to the exchange-correlation energy in DFT:
   | J. J. Mortensen, K. Kaasbjerg, S. L. Frederiksen, J. K. Nørskov, J. P. Sethna, and K. W. Jacobsen
   | `Bayesian Error Estimation in Density-Functional Theory`__
   | Physical Review Letters, Vol. **95**, 216401, 2005
@@ -72,8 +93,17 @@ Second article related to ligand protected gold clusters:
  
   __ http://www.pnas.org/cgi/content/abstract/0801001105v1
 
+GPAW applied to the study of graphene edges:
+  | Pekka Koskinen, Sami Malola and Hannu Häkkinen
+  | `Self-passivating edge reconstructions of graphene`__
+  | Accepted for publication in PRL.
+ 
+  __ http://arxiv.org/abs/0802.2623
+
+
 Articles on the PAW formalism
 -----------------------------
+
 The original article introducing the PAW formalism:
    | P. E. Blöchl
    | `Projector augmented-wave method`__
