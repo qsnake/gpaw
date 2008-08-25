@@ -136,7 +136,7 @@ The steps described below require root access and assume bash shell:
    - el4 (CentOS 4)::
 
       wget http://packages.sw.be/rpmforge-release/rpmforge-release-0.3.6-1.el4.rf.i386.rpm
-      yum -y localinstall rpmforge-release-0.3.6-1.el4.rf.i386.rpm
+      rpm -ivh rpmforge-release-0.3.6-1.el4.rf.i386.rpm
       wget --no-check-certificate $REPO/i386/python-matplotlib-0.91.2-3.el4.fys.i386.rpm
       wget --no-check-certificate $REPO/i386/pytz-2006p-1.el4.fys.i386.rpm
       yum -y localinstall python-matplotlib-0.91.2-3.el4.fys.i386.rpm pytz-2006p-1.el4.fys.i386.rpm
@@ -148,7 +148,7 @@ The steps described below require root access and assume bash shell:
    - el5 (CentOS 5)::
 
       wget http://packages.sw.be/rpmforge-release/rpmforge-release-0.3.6-1.el5.rf.i386.rpm
-      yum -y localinstall rpmforge-release-0.3.6-1.el5.rf.i386.rpm
+      yum -ivh rpmforge-release-0.3.6-1.el5.rf.i386.rpm
       rpm --import http://download.fedora.redhat.com/pub/epel/RPM-GPG-KEY-EPEL
       yum -y install blas-devel lapack-devel
       wget http://download.fedora.redhat.com/pub/epel/5/i386/numpy-1.0.4-1.el5.i386.rpm
