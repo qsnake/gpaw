@@ -61,7 +61,7 @@ layers + coupling:
 
 Assuming an onsite energy equal to the fermi energy, a nearest
 neighbor hopping energy of -1, and second nearest neighbor hopping of
-0.2, the lead Hamiltonian smay be constructed like this::
+0.2, the lead Hamiltonian may be constructed like this::
 
     import numpy as npy
     H_lead = npy.array([[ 0. , -1. ,  0.2,  0. ],
@@ -155,7 +155,6 @@ lead2_hs.pickle in your directory.  These can be loaded and used in
 the ``TransportCalculator``::
     
     from ase.transport.calculators import TransportCalculator
-    import numpy as npy
     import pickle
 
     #Read in the hamiltonians
