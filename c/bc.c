@@ -15,6 +15,7 @@
 //and not the blocking mpi calls dictated by the GPAW_AIX
 #ifdef GPAW_ASYNC
 #undef GPAW_AIX
+#define GPAW_REAIX
 #endif
 
 boundary_conditions* bc_init(const long size1[3],
@@ -290,8 +291,8 @@ void bc_unpack2(const boundary_conditions* bc,
     {
       if (d == 0)
         {
-    MPI_Wait(&recvreq[0], MPI_STATUS_IGNORE);
-    rbuf += bc->nrecv[i][1];
+          MPI_Wait(&recvreq[0], MPI_STATUS_IGNORE);
+          rbuf += bc->nrecv[i][1];
         }
       else
         rbuf = rbuf0;
@@ -317,7 +318,7 @@ void bc_unpack2(const boundary_conditions* bc,
 }
 
 //Remember to redefine GPAW_AIX
-#ifdef GPAW_ASYNC
+#ifdef GPAW_REAIX
 #define GPAW_AIX
 #endif
 

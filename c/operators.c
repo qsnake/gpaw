@@ -117,6 +117,7 @@ static PyObject * Operator_apply(OperatorObject *self,
         int thd = 0;
       #endif
 
+#ifndef GPAW_ASYNC
       double* sendbuf = self->sendbuf + thd * bc->maxsend;
       double* recvbuf = self->recvbuf + thd * bc->maxrecv;
       double* buf = self->buf + thd * ng2;
@@ -138,7 +139,28 @@ static PyObject * Operator_apply(OperatorObject *self,
       else
         bmgs_fdz(&self->stencil, (const double_complex*) buf,
                                  (double_complex*)out);
+#else
+      double* sendbuf = self->sendbuf + thd * bc->maxsend * 3;
+      double* recvbuf = self->recvbuf + thd * bc->maxrecv * 3;
+      double* buf = self->buf + thd * ng2;
+      for (int i = 0; i < 3; i++)
+        {
+          MPI_Request recvreq[2];
+          MPI_Request sendreq[2];
+          bc_unpack1(bc, in, buf, i,
+                     recvreq, sendreq,
+                     recvbuf + i * bc->maxrecv, sendbuf + i * bc->maxsend, ph + 2 * i);
 
+          bc_unpack2(bc, buf, i,
+                     recvreq, sendreq, recvbuf + i * bc->maxrecv);
+        }
+
+      if (real)
+        bmgs_fd(&self->stencil, buf, out);
+      else
+        bmgs_fdz(&self->stencil, (const double_complex*) buf,
+                                 (double_complex*)out);
+#endif
     }
   Py_RETURN_NONE;
 }
@@ -222,17 +244,25 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
   self->bc = bc_init(LONGP(size), padding, padding, nb, comm, real, cfd);
 
   const int* size2 = self->bc->size2;
+
+#ifdef GPAW_ASYNC
+  #define GPAW_ASYNC_D 3
+#else
+  #define GPAW_ASYNC_D 1
+#endif
 #ifndef GPAW_OMP
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
                           self->bc->ndouble);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * GPAW_ASYNC_D);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * GPAW_ASYNC_D);
 #else
   //We need a buffer per OpenMP Thread.
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
                           self->bc->ndouble * omp_get_max_threads());
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * omp_get_max_threads());
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * omp_get_max_threads());
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend *
+                              omp_get_max_threads() * GPAW_ASYNC_D);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
+                              omp_get_max_threads() * GPAW_ASYNC_D);
 #endif
   return (PyObject*)self;
 }
