@@ -28,13 +28,13 @@ bf_H1 = Pt_nbf * Pt_N
 bfs = range(bf_H1, bf_H1 + 2 * H_nbf)
 h_rot, s_rot, eps_n, vec_jn = tcalc.subdiagonalize_bfs(bfs)
 for n in range(len(eps_n)):
-    print "bf %i correpsonds to the eigenvalue %.2f eV" % (bfs[n], eps_n[n])
+    print "bf %i corresponds to the eigenvalue %.2f eV" % (bfs[n], eps_n[n])
 
 # Switch to the rotated basis set
 tcalc.set(h=h_rot, s=s_rot)
 
 # plot the transmission function
-tcalc.set(energies=npy.arange(-8, 4, 0.05))
+tcalc.set(energies=npy.arange(-8, 4, 0.1))
 pylab.plot(tcalc.energies, tcalc.get_transmission())
 pylab.title('Transmission function')
 pylab.show()
