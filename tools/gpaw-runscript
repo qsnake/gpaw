@@ -157,7 +157,8 @@ class RunScript:
         if set['mem']:
             print >> f, '#PBS -l mppmem=1900M'
         if set['mail'] is not None:
-            print >> f,"#PBS -M",set['mail']
+            print >> f, '#PBS -m be'
+            print >> f, '#PBS -M', set['mail']
         print >> f
         print >> f,"module load python"
         print >> f,"module load acml"
