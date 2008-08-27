@@ -42,7 +42,9 @@ class ExternalPotential:
 
         position [Angstrom]
         spos_c scaled position on the grid"""
-        g_c = self.gd.get_nearest_grid_point(spos_c, position)
+        if spos_c is None:
+            spos_c = self.gd.domain.scale_position(position / Bohr)
+        g_c = self.gd.get_nearest_grid_point(spos_c)
         g_c -= (g_c == self.gd.n_c) # force point to this domain
         return self.vext_g[tuple(g_c)]
 
