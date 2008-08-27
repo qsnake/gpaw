@@ -1,6 +1,7 @@
 from ase import *
 from gpaw import *
 from time import time
+import gpaw.mpi as mpi
 
 L = 9.8553729
 positions=[
