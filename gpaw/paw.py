@@ -709,7 +709,7 @@ class PAW(PAWExtra, Output):
         # Add contributions from external fields
         external = self.input_parameters['external']
         if hasattr(external, 'get_ion_energy_and_forces'):
-            E_ext, F_ext = external.get_ion_energy_and_forces(self.nuclei)
+            E_ext, F_ext = external.get_ion_energy_and_forces(self.atoms)
             self.F_ac += F_ext
 
         if self.symmetry is not None:
