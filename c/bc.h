@@ -27,6 +27,7 @@ typedef struct
   bool sjoin[3];
   bool rjoin[3];
   int ndouble;
+  bool cfd;
   MPI_Comm comm;
 } boundary_conditions;
 

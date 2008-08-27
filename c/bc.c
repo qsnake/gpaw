@@ -35,6 +35,7 @@ boundary_conditions* bc_init(const long size1[3],
 
   bc->comm = comm;
   bc->ndouble = (real ? 1 : 2);
+  bc->cfd = cfd;
 
   int rank = 0;
   if (comm != MPI_COMM_NULL)
@@ -146,6 +147,24 @@ void bc_unpack1(const boundary_conditions* bc,
                 const double_complex phases[2])
 {
   bool real = (bc->ndouble == 1);
+
+  // Copy data:
+  if (i == 0)
+    {
+      // Zero all of a2 array.  We should only zero the bounaries
+      // that are not periodic, but it's simpler to zero everything!
+      // XXX
+      memset(a2, 0, (bc->size2[0] * bc->size2[1] * bc->size2[2] *
+                     bc->ndouble * sizeof(double)));
+
+      // Copy data from a1 to central part of a2:
+      if (real)
+        bmgs_paste(a1, bc->size1, a2, bc->size2, bc->sendstart[0][0]);
+      else
+        bmgs_pastez((const double_complex*)a1, bc->size1,
+                  (double_complex*)a2, bc->size2, bc->sendstart[0][0]);
+    }
+
 #ifdef PARALLEL
 
   #ifdef GPAW_OMP
@@ -153,7 +172,6 @@ void bc_unpack1(const boundary_conditions* bc,
   #else
     int thd = 0;
   #endif
-
 
   // Start receiving.
   for (int d = 0; d < 2; d++)
@@ -166,7 +184,8 @@ void bc_unpack1(const boundary_conditions* bc,
               if (d == 0)
                 {
                   int count = bc->nrecv[i][0] + bc->nrecv[i][1];
-                  MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 10 * thd + 1000 * i + 100000,
+                  MPI_Irecv(rbuf, count, MPI_DOUBLE, p,
+                            10 * thd + 1000 * i + 100000,
                             bc->comm, &recvreq[0]);
                 }
             }
@@ -179,6 +198,7 @@ void bc_unpack1(const boundary_conditions* bc,
             }
         }
     }
+
   // Prepare send-buffers and start sending:
   double* sbuf0 = sbuf;
   for (int d = 0; d < 2; d++)
@@ -187,76 +207,44 @@ void bc_unpack1(const boundary_conditions* bc,
       int p = bc->sendproc[i][d];
       if (p >= 0)
         {
-          const double* a;
           const int* start = bc->sendstart[i][d];
-          const int* sizea;
           const int* size = bc->sendsize[i][d];
-          if (i == 0)
-            {
-              const int* p = bc->padding;
-              int start0[3] = {start[0] - p[0],
-                   start[1] - p[1],
-                   start[2] - p[2]};
-              a = a1;
-              start = start0;
-              sizea = bc->size1;
-            }
-          else
-            {
-              a = a2;
-              sizea = bc->size2;
-            }
-
           if (real)
-            bmgs_cut(a, sizea, start, sbuf, size);
+            bmgs_cut(a2, bc->size2, start, sbuf, size);
           else
-            bmgs_cutmz((const double_complex*)a, sizea, start,
-                      (double_complex*)sbuf, size, phases[d]);
+            bmgs_cutmz((const double_complex*)a2, bc->size2, start,
+                       (double_complex*)sbuf, size, phases[d]);
+          
           if (bc->sjoin[i])
             {
               if (d == 1)
                 {
                   int count = bc->nsend[i][0] + bc->nsend[i][1];
-            #ifdef GPAW_AIX
-                  MPI_Send(sbuf0, count, MPI_DOUBLE, p, 10 * thd + 1000 * i + 100000,
-                           bc->comm);
-            #else
-                  MPI_Isend(sbuf0, count, MPI_DOUBLE, p, 10 * thd + 1000 * i + 100000,
+#ifdef GPAW_AIX
+                  MPI_Send(sbuf0, count, MPI_DOUBLE, p,
+                           10 * thd + 1000 * i + 100000, bc->comm);
+#else
+                  MPI_Isend(sbuf0, count, MPI_DOUBLE, p,
+                            10 * thd + 1000 * i + 100000,
                             bc->comm, &sendreq[0]);
-            #endif
+#endif
                 }
             }
           else
             {
               int count = bc->nsend[i][d];
-            #ifdef GPAW_AIX
-              MPI_Send(sbuf, count, MPI_DOUBLE, p, 1 - d + 10 * thd + 1000 * i,
-                       bc->comm);
-            #else
-              MPI_Isend(sbuf, count, MPI_DOUBLE, p, 1 - d + 10 * thd + 1000 * i,
-                        bc->comm, &sendreq[d]);
-            #endif
+#ifdef GPAW_AIX
+              MPI_Send(sbuf, count, MPI_DOUBLE, p,
+                       1 - d + 10 * thd + 1000 * i, bc->comm);
+#else
+              MPI_Isend(sbuf, count, MPI_DOUBLE, p,
+                        1 - d + 10 * thd + 1000 * i, bc->comm, &sendreq[d]);
+#endif
             }
           sbuf += bc->nsend[i][d];
         }
     }
 #endif // Parallel
-  // Copy data:
-  if (i == 0)
-    {
-      memset(a2, 0, (bc->size2[0] * bc->size2[1] * bc->size2[2] *
-         bc->ndouble * sizeof(double))); // XXXXXXXXXXXXXXXXX
-
-      /*      assert(bc->sendstart[0][0][0] == bc->padding);
-      assert(bc->sendstart[0][0][1] == bc->padding);
-      assert(bc->sendstart[0][0][2] == bc->padding);*/
-
-      if (real)
-        bmgs_paste(a1, bc->size1, a2, bc->size2, bc->sendstart[0][0]);
-      else
-        bmgs_pastez((const double_complex*)a1, bc->size1,
-                  (double_complex*)a2, bc->size2, bc->sendstart[0][0]);
-    }
 
   // Copy data for periodic boundary conditions:
   for (int d = 0; d < 2; d++)
