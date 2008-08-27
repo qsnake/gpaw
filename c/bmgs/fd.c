@@ -6,7 +6,7 @@ void Z(bmgs_fd)(const bmgsstencil* s, const T* a, T* b)
 
   for (int i0 = 0; i0 < s->n[0]; i0++)
     {
-      T* aa = a + i0 * (s->j[1] + s->n[1] * (s->j[2] + s->n[2]));
+      const T* aa = a + i0 * (s->j[1] + s->n[1] * (s->j[2] + s->n[2]));
       T* bb = b + i0 * s->n[1] * s->n[2];
 
       for (int i1 = 0; i1 < s->n[1]; i1++)
