@@ -143,17 +143,29 @@ static PyObject * Operator_apply(OperatorObject *self,
       double* sendbuf = self->sendbuf + thd * bc->maxsend * 3;
       double* recvbuf = self->recvbuf + thd * bc->maxrecv * 3;
       double* buf = self->buf + thd * ng2;
+      MPI_Request recvreq[2 * 3];
+      MPI_Request sendreq[2 * 3];
       for (int i = 0; i < 3; i++)
         {
-          MPI_Request recvreq[2];
-          MPI_Request sendreq[2];
-          bc_unpack1(bc, in, buf, i,
-                     recvreq, sendreq,
-                     recvbuf + i * bc->maxrecv, sendbuf + i * bc->maxsend, ph + 2 * i);
 
-          bc_unpack2(bc, buf, i,
-                     recvreq, sendreq, recvbuf + i * bc->maxrecv);
+          bc_unpack1(bc, in, buf, i,
+                     recvreq + i * 2, sendreq + i * 2,
+                     recvbuf,
+                     sendbuf, ph + 2 * i);
+//          bc_unpack2(bc, buf, i,
+//                     recvreq + i * 2, sendreq + i * 2,
+//                     recvbuf + i * bc->maxrecv);
         }
+
+
+      for (int i = 0; i < 3; i++)
+        {
+          bc_unpack2(bc, buf, i,
+                     recvreq + i * 2, sendreq + i * 2,
+                     recvbuf);
+        }
+
+
 
       if (real)
         bmgs_fd(&self->stencil, buf, out);

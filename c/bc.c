@@ -166,15 +166,15 @@ void bc_unpack1(const boundary_conditions* bc,
               if (d == 0)
                 {
                   int count = bc->nrecv[i][0] + bc->nrecv[i][1];
-                  MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 20 + thd,
-                      bc->comm, &recvreq[0]);
+                  MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 10 * thd + 1000 * i + 100000,
+                            bc->comm, &recvreq[0]);
                 }
             }
           else
             {
               int count = bc->nrecv[i][d];
-              MPI_Irecv(rbuf, count, MPI_DOUBLE, p, 10 + d + thd * 2, bc->comm,
-            &recvreq[d]);
+              MPI_Irecv(rbuf, count, MPI_DOUBLE, p, d + 10 * thd + 1000 * i,
+                        bc->comm, &recvreq[d]);
               rbuf += bc->nrecv[i][d];
             }
         }
@@ -218,10 +218,10 @@ void bc_unpack1(const boundary_conditions* bc,
                 {
                   int count = bc->nsend[i][0] + bc->nsend[i][1];
             #ifdef GPAW_AIX
-                  MPI_Send(sbuf0, count, MPI_DOUBLE, p, 20 + thd,
+                  MPI_Send(sbuf0, count, MPI_DOUBLE, p, 10 * thd + 1000 * i + 100000,
                            bc->comm);
             #else
-                  MPI_Isend(sbuf0, count, MPI_DOUBLE, p, 20 + thd,
+                  MPI_Isend(sbuf0, count, MPI_DOUBLE, p, 10 * thd + 1000 * i + 100000,
                             bc->comm, &sendreq[0]);
             #endif
                 }
@@ -229,13 +229,13 @@ void bc_unpack1(const boundary_conditions* bc,
           else
             {
               int count = bc->nsend[i][d];
-      #ifdef GPAW_AIX
-              MPI_Send(sbuf, count, MPI_DOUBLE, p, 11 - d + thd * 2,
+            #ifdef GPAW_AIX
+              MPI_Send(sbuf, count, MPI_DOUBLE, p, 1 - d + 10 * thd + 1000 * i,
                        bc->comm);
-      #else
-              MPI_Isend(sbuf, count, MPI_DOUBLE, p, 11 - d + thd * 2,
+            #else
+              MPI_Isend(sbuf, count, MPI_DOUBLE, p, 1 - d + 10 * thd + 1000 * i,
                         bc->comm, &sendreq[d]);
-      #endif
+            #endif
             }
           sbuf += bc->nsend[i][d];
         }
