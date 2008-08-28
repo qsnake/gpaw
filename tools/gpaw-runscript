@@ -222,14 +222,6 @@ class RunScript:
         print >> f, '$GPAW_PYTHON', set['script']
         
     def murska(self, f, set, env):
-        # Michaels defaults
-        if not env['GPAW_SETUP_PATH']:
-            env['GPAW_SETUP_PATH'] = '/v/linux26_x86_64/appl/nano/gpaw/setups'
-        if not env['PYTHONPATH']:
-            env['PYTHONPATH'] = '${PYTHONPATH}:/wrk/walter/gridpaw/trunk'
-        if not env['GPAW_PYTHON']:
-            env['GPAW_PYTHON'] = '/wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4/gpaw-python'
-            
         print >> f,"#!/bin/csh"
         print >> f,"#BSUB -n%d" % set['nodes']
         hs = dhms(set['time'])
