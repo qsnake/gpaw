@@ -148,25 +148,26 @@ class RunScript:
 
     def louhi(self,f,set,env):
         size = set['nodes']
-        print >> f,"#!/bin/csh"
-        print >> f,"#PBS -N",set['name']
-        print >> f,"#PBS -l mppwidth=%d" % size
+        print >> f, '#!/bin/csh'
+        # louhi PBS does not like names longer than 16 characters
+        print >> f, '#PBS -N', set['name'][:15]
+        print >> f, '#PBS -l mppwidth=%d' % size
         hs = dhms(set['time'])
-        print >> f,'#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
-                                           str(hs[2]) + ':' + str(hs[3]) )
+        print >> f, '#PBS -l walltime=' + ( str(24 * hs[0] + hs[1]) + ':' +
+                                            str(hs[2]) + ':' + str(hs[3]) )
         if set['mem']:
             print >> f, '#PBS -l mppmem=1900M'
         if set['mail'] is not None:
             print >> f, '#PBS -m be'
             print >> f, '#PBS -M', set['mail']
         print >> f
-        print >> f,"module load python"
-        print >> f,"module load acml"
+        print >> f, 'module load python'
+        print >> f, 'module load acml'
         print >> f, 'setenv MPICH_PTL_UNEX_EVENTS 60000'
         print >> f, 'setenv MPICH_UNEX_BUFFER_SIZE 400M'
-        print >> f,"setenv GPAW_SETUP_PATH",env['GPAW_SETUP_PATH']
-        print >> f,"setenv PYTHONPATH ${PYTHONPATH}:"+env['PYTHONPATH']
-        print >> f,"setenv GPAW_PYTHON",env['GPAW_PYTHON']
+        print >> f, 'setenv GPAW_SETUP_PATH', env['GPAW_SETUP_PATH']
+        print >> f, 'setenv PYTHONPATH ${PYTHONPATH}:' + env['PYTHONPATH']
+        print >> f, 'setenv GPAW_PYTHON', env['GPAW_PYTHON']
         print >> f
         print >> f, 'cd', set['wd']
         print >> f, 'aprun -n %d' % size,
@@ -222,15 +223,16 @@ class RunScript:
         print >> f, '$GPAW_PYTHON', set['script']
         
     def murska(self, f, set, env):
-        print >> f,"#!/bin/csh"
-        print >> f,"#BSUB -n%d" % set['nodes']
+        print >> f, '#!/bin/csh'
+        print >> f, '#BSUB -n%d' % set['nodes']
         hs = dhms(set['time'])
-        print >> f,"#BSUB -W %d:%d" % (hs[0]*24+hs[1],hs[2])
-        print >> f,"#BSUB -J",set['name']
+        print >> f, '#BSUB -W %d:%d' % (hs[0]*24+hs[1],hs[2])
+        print >> f, '#BSUB -J', set['name']
         if set['mail'] is not None:
-            print >> f,"#BSUB -u",set['mail']
-        print >> f,"#BSUB -e ",set['err']+'_%J'
-        print >> f,"#BSUB -o ",set['out']+'_%J'
+            print >> f, '#BSUB -N'
+            print >> f, '#BSUB -u', set['mail']
+        print >> f, '#BSUB -e ', set['err'] + '_%J'
+        print >> f, '#BSUB -o ', set['out'] + '_%J'
         if set['mem']:
             print >> f, '#BSUB -ext "SLURM[constraint=mediummem|bigmem]"'
         print >> f,"module load ASE"
