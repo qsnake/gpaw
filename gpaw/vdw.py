@@ -121,16 +121,16 @@ class VanDerWaals:
         mpi.world.broadcast(n_g, 0)
         mpi.world.broadcast(q0_g, 0)
 
-        n_c = self.n_g.shape
+        n_c = n_g.shape
         R_gc = npy.empty(n_c + (3,))
         R_gc[..., 0] = (npy.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
         R_gc[..., 1] = (npy.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
         R_gc[..., 2] = npy.arange(0, n_c[2]) * gd.h_c[2]
 
-        mask_g = (self.n_g.ravel() > ncut)
+        mask_g = (n_g.ravel() > ncut)
         R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
-        n_i = self.n_g.ravel().compress(mask_g)
-        q0_i = self.q0_g.ravel().compress(mask_g)
+        n_i = n_g.ravel().compress(mask_g)
+        q0_i = q0_g.ravel().compress(mask_g)
 
         # Number of grid points:
         ni = len(n_i)
