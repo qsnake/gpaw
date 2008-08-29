@@ -7,8 +7,6 @@ import pylab
 h,  s  = pickle.load(file('scat_hs.pickle'))
 h1, s1 = pickle.load(file('lead1_hs.pickle'))
 h2, s2 = pickle.load(file('lead2_hs.pickle'))
-pl1 = len(h1) / 2 # left principal layer size
-pl2 = len(h2) / 2 # right principal layer size
 
 tcalc = TransportCalculator(h=h, h1=h1, h2=h2, # hamiltonian matrices
                             s=s, s1=s1, s2=s2, # overlap matrices
