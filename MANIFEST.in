@@ -1,4 +1,4 @@
-include LICENSE config.py customize.py
+include LICENSE config.py customize.py bg_compiler.py
 include c/*.c
 include c/*.h
 include c/libxc/*.h
