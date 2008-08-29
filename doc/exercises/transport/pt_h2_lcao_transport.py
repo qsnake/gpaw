@@ -12,8 +12,7 @@ pl2 = len(h2) / 2 # right principal layer size
 
 tcalc = TransportCalculator(h=h, h1=h1, h2=h2, # hamiltonian matrices
                             s=s, s1=s1, s2=s2, # overlap matrices
-                            pl1=pl1, pl2=pl2,  # principal layer sizes
-                            align_bf=1)        # align the the Fermi levels
+                            align_bf=1)        # align the Fermi levels
 
 # Calculate the conductance (the energy zero corresponds to the Fermi level)
 tcalc.set(energies=[0.0])
