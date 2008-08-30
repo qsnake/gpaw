@@ -620,7 +620,7 @@ and do::
 
   resoft
 
-(to enable TAU profiling do also ``soft add +tau``),
+(to enable TAU profiling do also ``source /soft/apps/tau/tau.bashrc`` or ``soft add +tau``, if available),
 and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
 setup.py build_ext``) with this :file:`customize.py` file (comment out
 experimental ``scalapack`` and ``blacs`` features)::
