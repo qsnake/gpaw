@@ -38,4 +38,4 @@ if rank == 0:
     print 'Integral of pseudo density:', Zt
     print 'Integral of all-electron density:', Z
 
-equal(Z, 28, 1e-5)
+    equal(Z, 28, 1e-5)
