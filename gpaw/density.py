@@ -384,7 +384,7 @@ class Density:
             n_sg = gd.collect(n_sg)
 
         # Return AE-(spin)-density
-        if self.nspins == 2:
+        if self.nspins == 2 or n_sg is None:
             return n_sg
         else:
             return n_sg[0]
