@@ -1119,29 +1119,31 @@ class Nucleus:
         # Actual normalizations:
         if nc is not None:
             Nc0 = nc.norm()[0, 0]
-        if nct is not None:
             Nct0 = nct.norm()[0, 0]
+        else:
+            Nc0 = Nct0 = 0
 
-        if not self.in_this_domain:
-            return
-        
         for s in range(nspins):
-            # Numeric and analytic integrations of density corrections:
+            # Numeric integration of density corrections:
             Inum = (Nc0 - Nct0) / nspins
-            Iana = ((Nc - Nct) / nspins +
-                    sqrt(4 * pi) * npy.dot(self.D_sp[s],
-                                           self.setup.Delta_pL[:, 0]))
 
             # Add density corrections to input array n_G
-            Inum += phi_i.add_density2(n_sg[s], self.D_sp[s])
-            Inum += phit_i.add_density2(n_sg[s], -self.D_sp[s])
-            if Nc != 0:
+            if hasattr(self, 'D_sp'):
+                Inum += phi_i.add_density2(n_sg[s], self.D_sp[s])
+                Inum += phit_i.add_density2(n_sg[s], -self.D_sp[s])
+            if nc is not None and Nc != 0:
                 nc.add(n_sg[s], npy.ones(1) / nspins)
                 nct.add(n_sg[s], -npy.ones(1) / nspins)
 
-            # Correct density, such that correction is norm-conserving
-            g_c = tuple(gd.get_nearest_grid_point(self.spos_c) % gd.N_c)
-            n_sg[s][g_c] += (Iana - Inum) / gd.dv
+            if self.in_this_domain:
+                # Correct density, such that correction is norm-conserving
+
+                # analytic integration of density corrections
+                Iana = ((Nc - Nct) / nspins +
+                        sqrt(4 * pi) * npy.dot(self.D_sp[s],
+                                               self.setup.Delta_pL[:, 0]))
+                g_c = tuple(gd.get_nearest_grid_point(self.spos_c) % gd.N_c)
+                n_sg[s][g_c] += (Iana - Inum) / gd.dv
         
     def wannier_correction(self, G, c, u, u1, nbands=None):
         """
