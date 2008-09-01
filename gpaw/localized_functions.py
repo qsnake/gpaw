@@ -327,7 +327,6 @@ class LocFuncs:
 
         The method returns the integral of the atomic electron density
         """
-        assert self.comm.size == 1
         I = 0.0
         for box in self.box_b:
             I += box.add_density2(n_G, D_p)

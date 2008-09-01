@@ -1095,6 +1095,7 @@ class Nucleus:
         Add the function correcting the pseuso density to the all-electron
         density, to the density array `n_sg`.
         """
+
         # Load splines
         symbol = self.setup.symbol
         if not symbol in splines:
@@ -1107,7 +1108,6 @@ class Nucleus:
         create = create_localized_functions
         phi_i = create(phi_j, gd, self.spos_c)
         phit_i = create(phit_j, gd, self.spos_c)
-
         nc = create([nc], gd, self.spos_c)
         nct = create([nct], gd, self.spos_c)
 
@@ -1117,9 +1117,14 @@ class Nucleus:
                 + self.setup.Z - self.setup.Nc)
 
         # Actual normalizations:
-        Nc0 = nc.norm()[0, 0]
-        Nct0 = nct.norm()[0, 0]
+        if nc is not None:
+            Nc0 = nc.norm()[0, 0]
+        if nct is not None:
+            Nct0 = nct.norm()[0, 0]
 
+        if not self.in_this_domain:
+            return
+        
         for s in range(nspins):
             # Numeric and analytic integrations of density corrections:
             Inum = (Nc0 - Nct0) / nspins

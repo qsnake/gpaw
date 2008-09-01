@@ -165,7 +165,9 @@ class Calculator(PAW):
     def get_all_electron_density(self, spin=None, gridrefinement=2, pad=True):
         """Return reconstructed all-electron density array."""
         n_G = self.density.get_all_electron_density(gridrefinement)
-
+        if n_G is None:
+            return npy.array([0.]) # let the slave return something
+        
         if self.nspins == 1 and spin is not None:
             n_G *= .5
         elif self.nspins == 2:

@@ -16,7 +16,6 @@ from gpaw.transformers import Transformer
 from gpaw.utilities import pack, unpack2
 from gpaw.utilities.complex import cc, real
 
-
 class Density:
     """Density object.
     
@@ -352,7 +351,7 @@ class Density:
         else:
             return self.nt_sG[0]
     
-    def get_all_electron_density(self, gridrefinement=2):
+    def get_all_electron_density(self, gridrefinement=2, collect=True):
         """Return real all-electron density array."""
 
         # Refinement of coarse grid, for representation of the AE-density
@@ -380,7 +379,10 @@ class Density:
         splines = {}
         for nucleus in self.nuclei:
             nucleus.add_density_correction(n_sg, self.nspins, gd, splines)
-        
+
+        if collect:
+            n_sg = gd.collect(n_sg)
+
         # Return AE-(spin)-density
         if self.nspins == 2:
             return n_sg
