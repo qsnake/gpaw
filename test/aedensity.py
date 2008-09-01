@@ -2,6 +2,8 @@
 import numpy as npy
 
 from ase import *
+from ase.parallel import rank
+
 from gpaw import Calculator
 from gpaw.utilities import equal
 
@@ -32,7 +34,8 @@ dv = npy.product(calc.get_grid_spacings())
 Zt = npy.sum(nt.ravel()) * dv
 Z = npy.sum(n.ravel()) * dv / gridrefinement**3
 
-print 'Integral of pseudo density:', Zt
-print 'Integral of all-electron density:', Z
+if rank == 0:
+    print 'Integral of pseudo density:', Zt
+    print 'Integral of all-electron density:', Z
 
 equal(Z, 28, 1e-5)
