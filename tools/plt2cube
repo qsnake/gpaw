@@ -13,7 +13,8 @@ from gpaw.io.plt import read_plt
 
 parser = OptionParser(usage='%prog plt structure',
                       version='%prog 0.1')
-parser.add_option("-o", "--output", dest='cubefile', default=None,
+parser.add_option("-o", "--output", dest='cubefile', action='count',
+                  default=None,
                   help='Name of the output cube file (default: derived from plt file)')
 opt, args = parser.parse_args()
 ## print opt, args
@@ -38,7 +39,7 @@ cell, grid, origin = read_plt(pltf)
 print "# <plt2cube> reading structure file:",structf
 atoms = Cluster(filename=structf)
 atoms.translate(-1. * npy.array(origin))
-atoms.set_cell(cell, fix=True)
+atoms.set_cell(cell, scale_atoms=False)
 ## Translate(atoms,tuple(-1.*num.array(origin)),'cartesian')
 ## atoms.SetUnitCell(cell,fix=True)
 
