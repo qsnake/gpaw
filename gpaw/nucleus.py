@@ -1142,7 +1142,8 @@ class Nucleus:
                 Iana = ((Nc - Nct) / nspins +
                         sqrt(4 * pi) * npy.dot(self.D_sp[s],
                                                self.setup.Delta_pL[:, 0]))
-                g_c = tuple(gd.get_nearest_grid_point(self.spos_c) % gd.N_c)
+                g_c = tuple(gd.get_nearest_grid_point(self.spos_c, True)
+                            % gd.N_c)
                 n_sg[s][g_c] += (Iana - Inum) / gd.dv
         
     def wannier_correction(self, G, c, u, u1, nbands=None):
