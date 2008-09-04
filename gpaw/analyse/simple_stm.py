@@ -292,11 +292,14 @@ class SimpleStm:
         f.close()
 
     def pylab_contour(self):
+        """Return the countour to be plotted using pylab."""
 
-        # the lowest point is not stored for non-periodic BCs
         nx, ny = self.heights.shape[:2]
         h_c = self.gd.h_c * Bohr
+        # the lowest point is not stored for non-periodic BCs
         xvals = [(i + self.offset_c[0]) * h_c[0] for i in range(nx)]
         yvals = [(i + self.offset_c[1]) * h_c[1] for i in range(ny)]
+        heights = self.heights * Bohr
 
-        return npy.array(xvals), npy.array(yvals), self.heights * Bohr
+        # pylab interprets heights[y_i][x_i]
+        return npy.array(xvals), npy.array(yvals), heights.swapaxes(0,1)
