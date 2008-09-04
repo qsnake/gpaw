@@ -344,6 +344,19 @@ static PyObject * get_functions(LocalizedFunctionsObject* self,
   return (PyObject*)functions;
 }
 
+static PyObject * set_corner(LocalizedFunctionsObject* self,
+                             PyObject *args)
+{
+  PyArrayObject* start_c_obj;
+  if (!PyArg_ParseTuple(args, "O", &start_c_obj))
+    return NULL;
+
+  double *start_c = DOUBLEP(start_c_obj);
+  for (int c = 0; c < 3; c++)
+    self->start[c] = start_c[c];
+  Py_RETURN_NONE;
+}
+
 #ifdef PARALLEL
 static PyObject * localized_functions_broadcast(LocalizedFunctionsObject*
 						self,
@@ -379,6 +392,8 @@ static PyMethodDef localized_functions_methods[] = {
      (PyCFunction)localized_functions_normalize, METH_VARARGS, 0},
     {"get_functions",
      (PyCFunction)get_functions, METH_VARARGS, 0},
+    {"set_corner",
+     (PyCFunction)set_corner, METH_VARARGS, 0},
 #ifdef PARALLEL
     {"broadcast",
      (PyCFunction)localized_functions_broadcast, METH_VARARGS, 0},

@@ -491,7 +491,14 @@ class LocalizedFunctionsWrapper:
 
     def get_functions(self):
         """Return functions in ndarray."""
-        return self.get_functions()
+        return self.lfs.get_functions()
+
+    def set_corner(self, start_c):
+        """Return functions in ndarray."""
+        assert start_c.flags.contiguous
+        assert start_c.dtype == int
+        assert start_c.shape == (3,)
+        self.lfs.set_corner(start_c)
 
 
 if debug:
