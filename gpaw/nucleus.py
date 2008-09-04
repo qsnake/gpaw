@@ -1131,6 +1131,12 @@ class Nucleus:
             if hasattr(self, 'D_sp'):
                 Inum += phi_i.add_density2(n_sg[s], self.D_sp[s])
                 Inum += phit_i.add_density2(n_sg[s], -self.D_sp[s])
+
+                # This code needs to be parallelized.  If phi or phit
+                # is distributed over more domains, Inum will be
+                # wrong.
+                assert phi_i.comm.size == 1
+                
             if nc is not None and Nc != 0:
                 nc.add(n_sg[s], npy.ones(1) / nspins)
                 nct.add(n_sg[s], -npy.ones(1) / nspins)
