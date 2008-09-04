@@ -139,6 +139,7 @@ and build GPAW (``python setup.py build_ext``) with this
       ]
 
   libraries = [
+    'mkl_def',
     'mkl',
     'mkl_lapack',
     'guide',
