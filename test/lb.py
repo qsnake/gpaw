@@ -90,9 +90,4 @@ for atom in e_HOMO_os.keys():
     e_homo = int( e_homo * 10000 + .5 ) / 10.
     diff = e_ref + e_homo
     print '%2s %8g %6.1f %4.1f' % (atom, e_ref, -e_homo, diff)
-    assert( abs(diff) < 14 )
-        
-        
-# clean up
-for atom in setups:
-    os.remove(atom + '.LB94')
+    assert abs(diff) < 14

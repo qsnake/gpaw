@@ -22,17 +22,17 @@ for soft in [False]:
     ghat_Lg.add(a_Lg, c_LL)
     for l in range(3):
         for m in range(2 * l + 1):
-            print soft, l, m
             L = l**2 + m
             a_g = a_Lg[L]
             Q0 = gd.integrate(a_g) / sqrt(4 * pi)
             Q1_m = -gd.calculate_dipole_moment(a_g) / sqrt(4 * pi / 3)
+            print Q0
             if l == 0:
                 Q0 -= 1.0
                 Q1_m[:] = 0.0
             elif l == 1:
                 Q1_m[(m + 1) % 3] -= 1.0
-            print Q0, Q1_m, m
+            print soft, l, m, Q0, Q1_m
             assert abs(Q0) < 2e-6
             assert npy.alltrue(abs(Q1_m) < 3e-5)
     b_Lg = npy.reshape(a_Lg, (9, n**3))

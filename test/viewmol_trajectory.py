@@ -28,7 +28,3 @@ dyn.run(fmax=0.05)
 traj = PickleTrajectory(pfname, 'r')
 vfname2='pickle.vmol'
 write_viewmol(traj, vfname2)
-    
-os.remove(vfname)
-os.remove(pfname)
-os.remove(vfname2)

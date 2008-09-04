@@ -23,25 +23,34 @@ calc = Calculator(nbands=10, h=0.2, setups={'O': 'hch1s'})
 H2O.set_calculator(calc)
 e = H2O.get_potential_energy()
 
-xas = XAS(calc)
-x, y = xas.get_spectra()
-e1_n = xas.eps_n
+import gpaw.mpi as mpi
+
+if mpi.size == 1:
+    xas = XAS(calc)
+    x, y = xas.get_spectra()
+    e1_n = xas.eps_n
+    de1 = e1_n[1] - e1_n[0]
 
 calc.write('h2o-xas.gpw')
 
-calc = Calculator('h2o-xas.gpw', txt=None)
-xas = XAS(calc)
-x, y = xas.get_spectra()
-e2_n = xas.eps_n
-w_n = sum(xas.sigma_cn.real**2, axis=0)
-de1 = e1_n[1] - e1_n[0]
-de2 = e2_n[1] - e2_n[0]
+comm = mpi.world.new_communicator(np.array([0]))
 
-assert de1 == de2
-print de1 - 2.0801
-assert abs(de1 - 2.0801) < 0.001
-print w_n[1] / w_n[0]
-assert abs(w_n[1] / w_n[0] - 2.19) < 0.01
+if mpi.rank == 0:
+    calc = Calculator('h2o-xas.gpw', txt=None, communicator=comm)
+    xas = XAS(calc)
+    x, y = xas.get_spectra()
+    e2_n = xas.eps_n
+    w_n = sum(xas.sigma_cn.real**2, axis=0)
+    de2 = e2_n[1] - e2_n[0]
+
+    print de2 - 2.0801
+    assert abs(de2 - 2.0801) < 0.001
+    print w_n[1] / w_n[0]
+    assert abs(w_n[1] / w_n[0] - 2.19) < 0.01
+
+    if mpi.size == 1:
+        assert de1 == de2
+        
 
 if 0:
     import pylab as p
@@ -49,7 +58,4 @@ if 0:
     p.plot(x, sum(y))
     p.show()
 
-os.remove('h2o-xas.gpw')
-# remove O.hch1s.* setup
-os.remove(calc.nuclei[0].setup.filename)
 del setup_paths[0]

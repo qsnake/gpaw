@@ -23,8 +23,6 @@ calc.set(xc='revPBE')
 e2 = atoms.get_potential_energy()
 e2a = calc.get_reference_energy()
 
-# Remove setup
-os.remove(symbol + '.' + XCFunctional('revPBE').get_name())
 del setup_paths[0]
 
 equal(e1a, -2.893 * Hartree, 8e-3)

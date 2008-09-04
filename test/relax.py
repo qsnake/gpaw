@@ -80,5 +80,3 @@ positions = molecule.get_positions()
 d0q = positions[1, 0] - positions[0, 0]
 assert abs(e2 - e2q) < 2e-6
 assert abs(d0q - d0) < 4e-4
-
-os.system('rm H2.gpw H2a.gpw H2f.gpw H2fa.gpw')

@@ -41,5 +41,3 @@ for eig0, eig1 in zip(eig00, eig10):
     equal(eig0, eig1, 1e-10)
 for eig0, eig1 in zip(eig01, eig11):
     equal(eig0, eig1, 1e-10)
-
-os.remove('tmp.gpw')

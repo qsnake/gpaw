@@ -59,5 +59,3 @@ equal(2 * wf, stmp.gd.integrate(stmp.ldos), 0.02)
 stmp.write_3D(+4., f3dname)
 print 'Integrals(unocc): 2 * wf, bias=', 2 * wf, stmp.gd.integrate(stmp.ldos)
 equal(2 * wf, stmp.gd.integrate(stmp.ldos), 0.02)
-
-os.remove(f3dname)

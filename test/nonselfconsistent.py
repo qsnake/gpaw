@@ -36,7 +36,4 @@ de21b = Calculator('revPBE.gpw').get_xc_difference('PBE')
 equal(de21, de21b, 9e-8)
 
 # Remove setup
-os.remove(symbol+'.'+XCFunctional('revPBE').get_name())
 del setup_paths[0]
-
-os.remove('revPBE.gpw')

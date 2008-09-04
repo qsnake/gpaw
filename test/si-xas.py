@@ -41,19 +41,22 @@ calc = Calculator('si.gpw', kpts=(k, k, k))
 
 assert calc.dtype == complex
 
-xas = XAS(calc)
-x, y = xas.get_spectra()
+import gpaw.mpi as mpi
+if mpi.size == 1:
+    xas = XAS(calc)
+    x, y = xas.get_spectra()
+else:
+    x = np.linspace(0, 10, 50)
+    
 calc.set_positions(si)
 r = RecursionMethod(calc)
 r.run(40)
-z = r.get_spectra(x)
+if mpi.size == 1:
+    z = r.get_spectra(x)
+    
 if 0:
     import pylab as p
     p.plot(x, y[0])
     p.plot(x, sum(y))
     p.plot(x, z[0])
     p.show()
-
-os.system('rm si.gpw')
-# remove Si.hch1s.* setup
-os.remove(calc.nuclei[0].setup.filename)

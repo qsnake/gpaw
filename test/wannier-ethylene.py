@@ -47,8 +47,6 @@ for center in centers:
             raise RuntimeError, 'Correct center not found'
     expected.pop(i)    
 
-os.remove('ethylene.gpw')
-
 ## for i in range(6):
 ##     wannier.write_cube(i, 'ethylene%s.cube' % i, real=True)
 

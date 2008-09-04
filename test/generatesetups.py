@@ -24,7 +24,8 @@ for symbol in ['He', 'Li']:
 for symbol in ['Mg']:
     gen(symbol, 'GLLB')
 
-if __name__ != '__main__':
+from ase.parallel import rank
+if __name__ != '__main__' and rank == 0:
     # We have been imported by test.py, so we should clean up:
     from os import remove
     for file in files:

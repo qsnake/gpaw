@@ -24,8 +24,6 @@ equal(e, -7.462 * Hartree, 1.4)
 calc.set(xc='revPBE')
 erev = li.get_potential_energy() + calc.get_reference_energy()
 
-# Remove setup
-os.remove(symbol + '.' + XCFunctional('revPBE').get_name())
 del setup_paths[0]
 
 equal(erev, -7.487 * Hartree, 1.3)

@@ -35,19 +35,22 @@ else:
     calc = Calculator(fname, txt=txt)
     calc.initialize_wave_functions()
 
+import gpaw.mpi as mpi
 fname = 'aed.plt'
 cell = calc.get_atoms().get_cell()
-aed = calc.get_all_electron_density(1, pad=False)
-data_org = [cell, aed, npy.array([0., 0., 0.])]
-write_plt(fname, calc.get_atoms(), aed)
+#aed = calc.get_all_electron_density(1, pad=False)
+aed = calc.get_pseudo_density(1, pad=False)
+aed = calc.gd.collect(aed)
 
-# check if read arrays match the written ones
-data = read_plt(fname)
-##print data[0], data[2]
-for d, do in zip(data, data_org):
-    dd2 = (d - do)**2
-    norm = dd2.sum() 
-    print norm
-    assert(norm < 1e-10)
-
-os.remove(fname)
+if mpi.size == 1:
+    data_org = [cell, aed, npy.array([0., 0., 0.])]
+    write_plt(fname, calc.get_atoms(), aed)
+    
+    # check if read arrays match the written ones
+    data = read_plt(fname)
+    ##print data[0], data[2]
+    for d, do in zip(data, data_org):
+        dd2 = (d - do)**2
+        norm = dd2.sum() 
+        print norm
+        assert(norm < 1e-10)

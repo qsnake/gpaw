@@ -36,4 +36,3 @@ for n in [0,1]:
 # io
 fname = 'expandyl.dat'
 yl.to_file(calc,fname)
-os.remove(fname)

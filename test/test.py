@@ -91,6 +91,10 @@ if opt.exclude is not None:
 if not opt.parallel:
     exclude.extend(tests_parallel)
 
+from ase.parallel import size
+if size > 1:
+    exclude += ['wannier-ethylene.py', 'lrtddft.py', 'apmb.py']
+    
 for test in exclude:
     if test in tests:
         tests.remove(test)
@@ -147,6 +151,8 @@ for test in tests:
     ts.addTest(ScriptTestCase(filename=test))
 
 from gpaw.utilities import devnull
+import gpaw.mpi as mpi
+
 sys.stdout = devnull
 
 ttr = MyTextTestRunner(verbosity=opt.verbosity)
@@ -155,7 +161,5 @@ failed = [test.filename for test, msg in result.failures + result.errors]
 
 sys.stdout = sys.__stdout__
 
-from gpaw.mpi import rank
-
-if rank == 0 and len(failed) > 0:
+if mpi.rank == 0 and len(failed) > 0:
     open('failed-tests.txt', 'w').write('\n'.join(failed) + '\n')

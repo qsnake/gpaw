@@ -823,7 +823,8 @@ class Generator(AllElectron):
         setup.generatorattrs = attrs
         setup.generatordata  = data
 
-        if write_xml:
+        import gpaw.mpi as mpi
+        if write_xml and mpi.rank == 0:
             setup.write_xml()
         return setup
 

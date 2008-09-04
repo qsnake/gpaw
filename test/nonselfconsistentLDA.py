@@ -25,5 +25,3 @@ calc.write('PBE.gpw')
 
 de21b = Calculator('PBE.gpw').get_xc_difference('LDA')
 equal(de21, de21b, 9e-8)
-
-os.remove('PBE.gpw')

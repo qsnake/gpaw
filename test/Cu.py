@@ -3,11 +3,15 @@ from ase import *
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
+import gpaw.mpi as mpi
 
-if 1:
+if mpi.rank == 0:
     # Generate non-scalar-relativistic setup for Cu:
     g = Generator('Cu', scalarrel=False, nofiles=True)
     g.run(logderiv=True, **parameters['Cu'])
+
+mpi.world.barrier()
+
 setup_paths.insert(0, '.')
 
 a = 8.0
@@ -19,19 +23,17 @@ calc = Calculator(h=0.2, lmax=0)# basis='sz')
 Cu.set_calculator(calc)
 Cu.get_potential_energy()
 
-e_4s_major = calc.kpt_u[0].eps_n[5]
-e_3d_minor = calc.kpt_u[1].eps_n[4]
+e_4s_major = calc.get_eigenvalues(spin=0)[5] / Hartree
+e_3d_minor = calc.get_eigenvalues(spin=1)[4] / Hartree
+print mpi.rank, e_4s_major, e_3d_minor
 
 #
 # The reference values are from:
 #
 #   http://physics.nist.gov/PhysRefData/DFTdata/Tables/29Cu.html
 #
+if mpi.rank == 0:
+    print e_4s_major - e_3d_minor, -0.184013 - -0.197109
+    assert abs(e_4s_major - e_3d_minor - (-0.184013 - -0.197109)) < 0.001
 
-print e_4s_major - e_3d_minor, -0.184013 - -0.197109
-assert abs(e_4s_major - e_3d_minor - (-0.184013 - -0.197109)) < 0.001
-
-os.system('rm Cu.??.ld.?')
-# remove Cu.* setup
-os.remove(calc.setups[0].filename)
 del setup_paths[0]

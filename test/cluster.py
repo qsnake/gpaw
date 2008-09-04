@@ -1,6 +1,7 @@
 import numpy as npy
 
 from ase import *
+from ase.parallel import barrier, rank
 #from gpaw.utilities.vector import Vector3d
 from gpaw.cluster import Cluster
 from gpaw.utilities import equal
@@ -48,6 +49,7 @@ fpdb='CO.pdb'
 cell = [2.,3.,R+2.]
 CO.set_cell(cell, scale_atoms=True)
 CO.write(fxyz)
+barrier()
 CO_b = Cluster(filename=fxyz)
 assert(len(CO) == len(CO_b))
 #for a, b in zip(cell, CO_b.get_cell().diagonal()):
@@ -56,20 +58,24 @@ offdiagonal = CO_b.get_cell().sum() - CO_b.get_cell().diagonal().sum()
 assert(offdiagonal == 0.0)
  
 CO.write(fxyz, repeat=[1,1,1])
+barrier()
 CO_b = Cluster(filename=fxyz)
 assert(8*len(CO) == len(CO_b)) 
  
 CO.write(fpdb)
 
 # read xyz files with additional info
-read_with_additional=True
+read_with_additional = True
 if read_with_additional:
-    f = open(fxyz, 'w')
-    print >> f, """2
+    if rank == 0:
+        f = open(fxyz, 'w')
+        print >> f, """2
 
 C 0 0 0. 1 2 3
 O 0 0 1. 6. 7. 8."""
-    f.close()
+        f.close()
+
+    barrier()
 
     CO = Cluster(filename=fxyz)
 

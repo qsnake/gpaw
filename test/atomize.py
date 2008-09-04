@@ -26,7 +26,3 @@ e2 = molecule.get_potential_energy()
 print 'hydrogen atom energy:     %5.2f eV' % e1
 print 'hydrogen molecule energy: %5.2f eV' % e2
 print 'atomization energy:       %5.2f eV' % (2 * e1 - e2)
-
-import os
-os.remove('H.txt')
-os.remove('H2.txt')

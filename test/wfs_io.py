@@ -43,8 +43,10 @@ for ending in endings:
     print E1, E2
     equal(E1, E2, 1e-12)
 
-    os.remove(restart_wf)
-    os.remove(restart)
-    for f in os.listdir(wfdir):
-        os.remove(wfdir + '/' + f)
-    os.rmdir(wfdir)
+    from ase.parallel import rank
+    if rank == 0:
+        os.remove(restart_wf)
+        os.remove(restart)
+        for f in os.listdir(wfdir):
+            os.remove(wfdir + '/' + f)
+        os.rmdir(wfdir)

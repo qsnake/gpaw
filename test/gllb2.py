@@ -60,6 +60,3 @@ if world.rank == 0:
 #Gritsenko, Oleg; Leeuwen, Robert van; Lenthe, Erik van; Baerends, Evert Jan
 #Phys. Rev. A Vol. 51 p. 1944"""
 
-import os
-os.remove('Be.'+xcname)
-os.remove('Ne.'+xcname)
