@@ -1,6 +1,7 @@
 """Test automatically write out of restart files"""
 
 import os
+import filecmp
 from gpaw import Calculator
 from ase import *
 from gpaw.utilities import equal
@@ -15,7 +16,7 @@ except ImportError:
 for ending in endings:
     restart = 'gpaw-restart.' + ending
     result  = 'gpaw-result.' + ending
-    # H atom: 
+    # H atom:
     H = Atoms([Atom('H')])
     H.center(vacuum=3.0)
 
@@ -27,15 +28,14 @@ for ending in endings:
 
     # the two files should be equal
     if ending == 'nc':
-        assert os.system('diff %s %s > /dev/null' % (restart, result)) == 0
+        assert filecmp.cmp(restart, result)
     else:
         for f in ['gpaw-restart', 'gpaw-result']:
             os.system('rm -rf %s; mkdir %s; cd %s; tar xf ../%s.gpw' %
                       (f, f, f, f))
         assert os.system('diff -r gpaw-restart gpaw-result > /dev/null') == 0
         os.system('rm -rf gpaw-restart gpaw-result')
-        
+
 
     os.remove(restart)
     os.remove(result)
-
