@@ -3,15 +3,16 @@ import os.path
 import numpy as npy
 
 from ase.atom import Atom
+from ase.atoms import Atoms
 from ase.units import Bohr
 
 import _gpaw
 from gpaw import debug
 from gpaw.external_potential import ElectrostaticPotential
 
-class PointCharges(list, ElectrostaticPotential):
+class PointCharges(Atoms, ElectrostaticPotential):
     def __init__(self, file=None):
-        list.__init__(self)
+        Atoms.__init__(self)
         
         if file is not None:
             self.read(file)
@@ -163,12 +164,8 @@ class PointCharges(list, ElectrostaticPotential):
             
         # see spherical_harmonics.py for the assignment
         return [[self.get_value(position=pos)], 
-                [nabla[1], nabla[2], nabla[0]]]
+                npy.array([nabla[1], nabla[2], nabla[0]])]
         
-    def translate(self, displacement):
-        for pc in self:
-            pc.position += displacement
-
     def write(self, file='PC.xyz', filetype=None):
 
         if filetype is None and isinstance(file, str):
