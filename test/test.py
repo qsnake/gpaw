@@ -101,6 +101,8 @@ for test in exclude:
 
 #gc.set_debug(gc.DEBUG_SAVEALL)
 
+import gpaw.mpi as mpi
+
 class ScriptTestCase(unittest.TestCase):
     garbage = []
     def __init__(self, filename):
@@ -115,6 +117,7 @@ class ScriptTestCase(unittest.TestCase):
             execfile(self.filename, {})
         except KeyboardInterrupt:
             raise RuntimeError('Keyboard interrupt')
+        mpi.world.barrier()
         
     def tearDown(self):
         gc.collect()
@@ -151,7 +154,6 @@ for test in tests:
     ts.addTest(ScriptTestCase(filename=test))
 
 from gpaw.utilities import devnull
-import gpaw.mpi as mpi
 
 sys.stdout = devnull
 
