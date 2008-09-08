@@ -7,7 +7,11 @@
 #include "mympi.h"
 #include "bmgs/bmgs.h"
 
-typedef struct 
+#ifdef GPAW_OMP
+  #include <omp.h>
+#endif
+
+typedef struct
 {
   PyObject_HEAD
   boundary_conditions* bc;
@@ -47,34 +51,58 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   const double_complex* ph = (real ? 0 : COMPLEXP(phases));
 
   const boundary_conditions* bc = self->bc;
-  for (int i = 0; i < 3; i++)
+#ifndef GPAW_OMP
+  if (1)
+#else
+  if (bc->cfd == 0)
+#endif
     {
-      bc_unpack1(bc, in, self->buf, i, 
-		 self->recvreq, self->sendreq, 
-		 self->recvbuf, self->sendbuf, ph + 2 * i);
-      bc_unpack2(bc, self->buf, i, 
-		 self->recvreq, self->sendreq, self->recvbuf);
+      for (int i = 0; i < 3; i++)
+        {
+          bc_unpack1(bc, in, self->buf, i,
+                     self->recvreq, self->sendreq,
+                     self->recvbuf, self->sendbuf, ph + 2 * i);
+          bc_unpack2(bc, self->buf, i,
+                     self->recvreq, self->sendreq, self->recvbuf);
+        }
     }
-
+  else
+    {
+//      #ifdef GPAW_OMP
+//        #pragma omp parallel for
+//      #endif
+      for (int i = 0; i < 3; i++)
+        {
+          MPI_Request recvreq[2];
+          MPI_Request sendreq[2];
+          double* sendbuf = self->sendbuf + i * bc->maxsend;
+          double* recvbuf = self->recvbuf + i * bc->maxrecv;
+          bc_unpack1(bc, in, self->buf, i,
+                     recvreq, sendreq,
+                     recvbuf, sendbuf, ph + 2 * i);
+          bc_unpack2(bc, self->buf, i,
+                     recvreq, sendreq, recvbuf);
+        }
+    }
   if (real)
     {
       if (self->interpolate)
-	bmgs_interpolate(self->k, self->skip, self->buf, bc->size2,
-			 out, self->buf2);
+        bmgs_interpolate(self->k, self->skip, self->buf, bc->size2,
+                         out, self->buf2);
       else
-	bmgs_restrict(self->k, self->buf, bc->size2,
-		      out, self->buf2);
+        bmgs_restrict(self->k, self->buf, bc->size2,
+                      out, self->buf2);
     }
   else
     {
       if (self->interpolate)
-	bmgs_interpolatez(self->k, self->skip, (double_complex*)self->buf,
-			  bc->size2, (double_complex*)out, 
-			  (double_complex*)self->buf2);
+        bmgs_interpolatez(self->k, self->skip, (double_complex*)self->buf,
+                          bc->size2, (double_complex*)out,
+                          (double_complex*)self->buf2);
       else
-	bmgs_restrictz(self->k, (double_complex*)self->buf,
-		       bc->size2, (double_complex*)out,
-		       (double_complex*)self->buf2);
+        bmgs_restrictz(self->k, (double_complex*)self->buf,
+                       bc->size2, (double_complex*)out,
+                       (double_complex*)self->buf2);
     }
 
   Py_RETURN_NONE;
@@ -112,10 +140,10 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   int real;
   PyObject* comm_obj;
   int interpolate;
-  if (!PyArg_ParseTuple(args, "OiOOOOiOi", 
+  if (!PyArg_ParseTuple(args, "OiOOOOiOi",
                         &size, &k, &paddings, &npaddings, &skip,
-			&neighbors, &real, &comm_obj,
-			&interpolate))
+                        &neighbors, &real, &comm_obj,
+                        &interpolate))
     return NULL;
 
   TransformerObject* self = PyObject_NEW(TransformerObject, &TransformerType);
@@ -141,19 +169,27 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
     for (int d = 0; d < 2; d++)
       self->skip[c][d] = (int)skp[c][d];
 
-  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] * 
-			  self->bc->ndouble);
+  self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
+                          self->bc->ndouble);
+
   if (interpolate)
     // Much larger than necessary!  I don't have the energy right now to
     // estimate the minimum size of buf2!
-    self->buf2 = GPAW_MALLOC(double, 16 * size2[0] * size2[1] * size2[2] * 
-			     self->bc->ndouble);
+    self->buf2 = GPAW_MALLOC(double, 16 * size2[0] * size2[1] * size2[2] *
+                             self->bc->ndouble);
   else
     self->buf2 = GPAW_MALLOC(double, size2[0] * size2[1] *
-			     //size1[2] / 2 * 
-			     (size2[2] - 2 * k + 3) / 2 * 
-			     self->bc->ndouble);
+                             //size1[2] / 2 *
+                             (size2[2] - 2 * k + 3) / 2 *
+                             self->bc->ndouble);
+#ifndef GPAW_OMP
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
+#else
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend *
+                              omp_get_max_threads());
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
+                              omp_get_max_threads());
+#endif
   return (PyObject*)self;
 }

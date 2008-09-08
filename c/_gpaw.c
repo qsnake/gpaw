@@ -90,7 +90,7 @@ PyMODINIT_FUNC init_gpaw(void)
 #endif
 
   PyObject* m = Py_InitModule3("_gpaw", functions,
-			       "C-extension for GPAW\n\n...\n");
+             "C-extension for GPAW\n\n...\n");
   if (m == NULL)
     return;
 
@@ -121,13 +121,20 @@ int
 main(int argc, char **argv)
 {
   int status;
-#ifndef GPAW_OMP
-  MPI_Init(&argc, &argv);
+//#ifndef GPAW_OMP
+//  MPI_Init(&argc, &argv);
+/*
 #else
   int granted;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif
+*/
+
+  int granted;
+  MPI_Init_thread(&argc, 0, MPI_THREAD_MULTIPLE, &granted);
+  if(granted != MPI_THREAD_MULTIPLE) exit(1);
+
 
   Py_Initialize();
 
@@ -139,7 +146,7 @@ main(int argc, char **argv)
     return -1;
 
   PyObject* m = Py_InitModule3("_gpaw", functions,
-			       "C-extension for GPAW\n\n...\n");
+             "C-extension for GPAW\n\n...\n");
   if (m == NULL)
     return -1;
 

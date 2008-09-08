@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef GPAW_OMP
- #include <omp.h>
+  #include <omp.h>
 #endif
 
 //By defining GPAW_ASYNC you will use non-blocking mpi calls

@@ -14,7 +14,6 @@
 #include "extensions.h"
 #include "bc.h"
 #include "mympi.h"
-#include "bmgs/bmgs.h"
 #ifdef GPAW_OMP
   #include <omp.h>
 #endif
@@ -110,9 +109,9 @@ static PyObject * Operator_apply(OperatorObject *self,
   else
     ph = COMPLEXP(phases);
 
-  #ifdef GPAW_OMP
-    #pragma omp parallel for
-  #endif
+//  #ifdef GPAW_OMP
+//    #pragma omp parallel for
+//  #endif
   for (int n = 0; n < nin; n++)
     {
       const double* in = inn + n * ng;
@@ -140,7 +139,6 @@ static PyObject * Operator_apply(OperatorObject *self,
               bc_unpack1(bc, in, buf, i,
                          recvreq, sendreq,
                          recvbuf, sendbuf, ph + 2 * i);
-
               bc_unpack2(bc, buf, i,
                          recvreq, sendreq, recvbuf);
             }
@@ -149,7 +147,6 @@ static PyObject * Operator_apply(OperatorObject *self,
         {
           for (int i = 0; i < 3; i++)
             {
-
               bc_unpack1(bc, in, buf, i,
                          recvreq + i * 2, sendreq + i * 2,
                          recvbuf + i * bc->maxrecv,
@@ -264,6 +261,8 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
                               omp_get_max_threads() * GPAW_ASYNC_D);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
                               omp_get_max_threads() * GPAW_ASYNC_D);
+
+  //fprintf(stderr, "omp_get_max_threads()=%d, GPAW_ASYNC_D=%d\n",omp_get_max_threads(), GPAW_ASYNC_D);
 #endif
   return (PyObject*)self;
 }

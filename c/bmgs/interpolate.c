@@ -123,7 +123,4 @@ void Z(bmgs_interpolate)(int k, int skip[3][2],
      ((size[2] - e) * 2 - skip[2][0] + skip[2][1]),
      b, skip[0]);
 }
-
-
-
 #endif

@@ -218,11 +218,11 @@ static PyObject * mpi_max(MPIObject *self, PyObject *args)
       PyArrayObject* a = (PyArrayObject*)obj;
       int n = 1;
       if (a->descr->type_num == PyArray_CDOUBLE)
-	{
-	  printf("mpi_max does not work with complex numbers \n");
-	  MPI_Abort(MPI_COMM_WORLD, 1);
-	  Py_RETURN_NONE;
-	}
+  {
+    printf("mpi_max does not work with complex numbers \n");
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    Py_RETURN_NONE;
+  }
       for (int d = 0; d < a->nd; d++)
         n *= a->dimensions[d];
       if (root == -1)
@@ -343,17 +343,29 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
 
 #ifndef GPAW_INTERPRETER
   int argc = 0;
-#ifndef GPAW_OMP
-  MPI_Init(&argc, 0);
+
+//#ifndef GPAW_OMP
+//  MPI_Init(&argc, 0);
+/*
 #else
   int granted;
   MPI_Init_thread(&argc, 0, MPI_THREAD_MULTIPLE, &granted);
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif
+*/
+
+  int granted;
+  MPI_Init_thread(&argc, 0, MPI_THREAD_MULTIPLE, &granted);
+  if(granted != MPI_THREAD_MULTIPLE) exit(1);
+
 #endif
   MPI_Comm_size(MPI_COMM_WORLD, &(self->size));
   MPI_Comm_rank(MPI_COMM_WORLD, &(self->rank));
   self->comm = MPI_COMM_WORLD;
+
+//  int dim_size[3] = {120,120,120};
+//  int periods[3] = {1,1,1};
+//  MPI_CART_CREATE(MPI_COMM_WORLD, 3, dim_size, periods, 1, &self->comm)
   return 0;
 }
 
@@ -392,12 +404,12 @@ PyTypeObject MPIType = {
   0,                         /*tp_as_buffer*/
   Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
   "MPI object",           /* tp_doc */
-  0,		               /* tp_traverse */
-  0,		               /* tp_clear */
-  0,		               /* tp_richcompare */
-  0,		               /* tp_weaklistoffset */
-  0,		               /* tp_iter */
-  0,		               /* tp_iternext */
+  0,                   /* tp_traverse */
+  0,                   /* tp_clear */
+  0,                   /* tp_richcompare */
+  0,                   /* tp_weaklistoffset */
+  0,                   /* tp_iter */
+  0,                   /* tp_iternext */
   mpi_methods,             /* tp_methods */
   mpi_members,
     0,                         /* tp_getset */
