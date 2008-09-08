@@ -122,7 +122,7 @@ main(int argc, char **argv)
 {
   int status;
 //#ifndef GPAW_OMP
-//  MPI_Init(&argc, &argv);
+  MPI_Init(&argc, &argv);
 /*
 #else
   int granted;
@@ -130,11 +130,6 @@ main(int argc, char **argv)
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif
 */
-
-  int granted;
-  MPI_Init_thread(&argc, 0, MPI_THREAD_MULTIPLE, &granted);
-  if(granted != MPI_THREAD_MULTIPLE) exit(1);
-
 
   Py_Initialize();
 

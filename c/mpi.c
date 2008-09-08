@@ -345,7 +345,7 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
   int argc = 0;
 
 //#ifndef GPAW_OMP
-//  MPI_Init(&argc, 0);
+  MPI_Init(&argc, 0);
 /*
 #else
   int granted;
@@ -354,9 +354,7 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
 #endif
 */
 
-  int granted;
-  MPI_Init_thread(&argc, 0, MPI_THREAD_MULTIPLE, &granted);
-  if(granted != MPI_THREAD_MULTIPLE) exit(1);
+
 
 #endif
   MPI_Comm_size(MPI_COMM_WORLD, &(self->size));
