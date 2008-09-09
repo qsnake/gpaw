@@ -16,7 +16,7 @@ class Domain:
 
     A ``Domain`` object (in `domain.py`) holds informaion on the unit
     cell and the boundary conditions"""
-    
+
     def __init__(self, cell, pbc=(True, True, True)):
         """Create Domain object from a unit cell and boundary conditions.
 
@@ -35,7 +35,7 @@ class Domain:
          ``stride_c``    Strides.
          =============== ==================================================
         """
-        
+
         self.cell_c = npy.array(cell, float)
         if self.cell_c.ndim == 1:
             self.cell_cv = npy.diag(self.cell_c)
@@ -44,13 +44,13 @@ class Domain:
             self.cell_c = self.cell_cv.diagonal()
 
         self.icell_cv = npy.linalg.inv(self.cell_cv).T
-            
+
         self.pbc_c = npy.asarray(pbc, bool)
-        
+
         self.set_decomposition(serial_comm, (1, 1, 1))
 
         self.comms = {}
-        
+
     def set_decomposition(self, comm, parsize_c=None, N_c=None):
         """Set MPI-communicator and do domain decomposition.
 
@@ -58,7 +58,7 @@ class Domain:
         ``a*b*c`` sub-domains - one for each CPU in ``comm``.  If
         ``parsize_c`` is not given, the number of grid points will be
         used to suggest a good domain decomposition."""
-        
+
         self.comm = comm
 
         if parsize_c is None:
@@ -68,9 +68,11 @@ class Domain:
         self.stride_c = npy.array([parsize_c[1] * parsize_c[2],
                                    parsize_c[2],
                                    1])
-        
+
         if npy.product(self.parsize_c) != self.comm.size:
             raise RuntimeError('Bad domain decomposition!')
+
+        self.comm.cart_create(self.parsize_c[0], self.parsize_c[1], self.parsize_c[2], 1)
 
         rnk = self.comm.rank
         self.parpos_c = npy.array(
@@ -86,7 +88,7 @@ class Domain:
 
         Return array with the coordinates scaled to the interval [0,
         1)."""
-        
+
         spos_c = npy.linalg.solve(self.cell_cv.T, pos_v)
 
         for c in range(3):
@@ -112,7 +114,7 @@ class Domain:
         * ``neighbor_cd``:  Rank of neighbor.
         * ``disp_cd``:  Displacement for neighbor.
         """
-        
+
         self.neighbor_cd = npy.zeros((3, 2), int)
         self.sdisp_cd = npy.zeros((3, 2), int)
         for c in range(3):
@@ -152,7 +154,7 @@ def decompose_domain(ng, p):
     for n in plist:
         pdict[n] += 1
     candidates = factorizations(pdict.items())
-    mincost = 10000000000.0  
+    mincost = 10000000000.0
     best = None
     for p1, p2, p3 in candidates:
         if n1 % p1 != 0 or n2 % p2 != 0 or n3 % p3 != 0:

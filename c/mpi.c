@@ -306,6 +306,23 @@ static PyObject * mpi_broadcast(MPIObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject * mpi_cart_create(MPIObject *self, PyObject *args)
+{
+  int dimx, dimy, dimz;
+  int periodic;
+
+  if (!PyArg_ParseTuple(args, "iii|i", &dimx,
+                        &dimy, &dimz, &periodic))
+    return NULL;
+
+  int dims[3] = {dimx, dimy, dimz};
+  int periods[3] = {periodic, periodic, periodic};
+  MPI_Comm comm_new;
+  MPI_Cart_create(self->comm, 3, dims, periods, 1, &comm_new);
+  return Py_BuildValue("s#", &comm_new, sizeof(comm_new));
+}
+
+
 // Forward declaration of MPI_Communicator because it needs MPIType
 // that needs MPI_getattr that needs MPI_Methods that need
 // MPI_Communicator that need ...
@@ -325,6 +342,7 @@ static PyMethodDef mpi_methods[] = {
     {"all_gather",       (PyCFunction)mpi_allgather,    METH_VARARGS, 0},
     {"broadcast",        (PyCFunction)mpi_broadcast,    METH_VARARGS, 0},
     {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS, 0},
+    {"cart_create",      (PyCFunction)mpi_cart_create,  METH_VARARGS, 0},
     {0, 0, 0, 0}
 };
 
@@ -462,5 +480,4 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
       return (PyObject*)obj;
     }
 }
-
 #endif

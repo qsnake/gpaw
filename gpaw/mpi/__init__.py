@@ -23,10 +23,10 @@ class SerialCommunicator:
 
     def scatter(self, s, r, root):
         r[:] = s
-        
+
     def max(self, value, root=-1):
         return value
-        
+
     def broadcast(self, buf, root):
         pass
 
@@ -40,6 +40,9 @@ class SerialCommunicator:
         b[:] = a
 
     def new_communicator(self, ranks):
+        return self
+
+    def cart_create(self, dimx, dimy, dimz, periodic):
         return self
 
 class DummyCommunicator(SerialCommunicator):
@@ -61,7 +64,7 @@ except:
 if dry_run and dry_run_size > 1:
     world = DummyCommunicator()
     world.size = dry_run_size
-    
+
 size = world.size
 rank = world.rank
 parallel = (size > 1)
@@ -73,7 +76,7 @@ if debug:
             self.size = comm.size
             self.rank = comm.rank
 
-        def new_communicator(self, ranks):            
+        def new_communicator(self, ranks):
             assert is_contiguous(ranks, int)
             sranks = npy.sort(ranks)
             # Are all ranks in range?
@@ -102,7 +105,7 @@ if debug:
             """Call MPI_Scatter.
 
             Distribute *s* array from *root* to *r*."""
-            
+
             assert s.dtype == r.dtype
             assert s.size == self.size * r.size
             assert s.flags.contiguous
@@ -154,13 +157,13 @@ if debug:
             if not block:
                 assert sys.getrefcount(a) > 3
             return self.comm.send(a, dest, tag, block)
-            
+
         def receive(self, a, src, tag=123, block=True):
             assert 0 <= src < self.size
             assert src != self.rank
             assert is_contiguous(a)
             return self.comm.receive(a, src, tag, block)
-            
+
         def wait(self, request):
             self.comm.wait(request)
 
@@ -172,6 +175,10 @@ if debug:
 
         def barrier(self):
             self.comm.barrier()
+
+        def cart_create(self, dimx, dimy, dimz, periodic):
+            return self.comm.cart_create(dimx, dimy, dimz, periodic)
+
 
     world = _Communicator(world)
     serial_comm = _Communicator(serial_comm)
@@ -207,7 +214,7 @@ def run(iterators):
         for i in iterators:
             pass
         return
-    
+
     if len(iterators) == 0:
         return
 
