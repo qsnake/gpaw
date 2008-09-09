@@ -121,15 +121,15 @@ int
 main(int argc, char **argv)
 {
   int status;
-//#ifndef GPAW_OMP
+#ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
-/*
+
 #else
   int granted;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif
-*/
+
 
   Py_Initialize();
 

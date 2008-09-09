@@ -35,18 +35,18 @@ static const int COPY_DATA = -2;
 static const int DO_NOTHING = -3; // ??????????
 
 boundary_conditions* bc_init(const long size1[3],
-			     const long padding[3][2], 
-			     const long npadding[3][2], 
-			     const long neighbors[3][2],
-			     MPI_Comm comm, bool real, bool cfd);
-void bc_unpack1(const boundary_conditions* bc, 
-		const double* input, double* output, int i,
-		MPI_Request recvreq[2],
-		MPI_Request sendreq[2], 
-		double* rbuf, double* sbuf,
-		const double_complex phases[2]);
-void bc_unpack2(const boundary_conditions* bc, 
-		double* a2, int i,
-		MPI_Request recvreq[2],
-		MPI_Request sendreq[2], 
-		double* rbuf);
+           const long padding[3][2],
+           const long npadding[3][2],
+           const long neighbors[3][2],
+           MPI_Comm comm, bool real, bool cfd);
+void bc_unpack1(const boundary_conditions* bc,
+    const double* input, double* output, int i,
+    MPI_Request recvreq[2],
+    MPI_Request sendreq[2],
+    double* rbuf, double* sbuf,
+    const double_complex phases[2], int thd);
+void bc_unpack2(const boundary_conditions* bc,
+    double* a2, int i,
+    MPI_Request recvreq[2],
+    MPI_Request sendreq[2],
+    double* rbuf);

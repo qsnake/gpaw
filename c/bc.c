@@ -7,9 +7,6 @@
 #include "extensions.h"
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef GPAW_OMP
-  #include <omp.h>
-#endif
 
 //By defining GPAW_ASYNC you will use non-blocking mpi calls
 //and not the blocking mpi calls dictated by the GPAW_AIX
@@ -144,7 +141,7 @@ void bc_unpack1(const boundary_conditions* bc,
                 MPI_Request recvreq[2],
                 MPI_Request sendreq[2],
                 double* rbuf, double* sbuf,
-                const double_complex phases[2])
+                const double_complex phases[2], int thd)
 {
   bool real = (bc->ndouble == 1);
 
@@ -166,13 +163,6 @@ void bc_unpack1(const boundary_conditions* bc,
     }
 
 #ifdef PARALLEL
-
-  #ifdef GPAW_OMP
-    int thd = omp_get_thread_num();
-  #else
-    int thd = 0;
-  #endif
-
   // Start receiving.
   for (int d = 0; d < 2; d++)
     {
@@ -214,7 +204,7 @@ void bc_unpack1(const boundary_conditions* bc,
           else
             bmgs_cutmz((const double_complex*)a2, bc->size2, start,
                        (double_complex*)sbuf, size, phases[d]);
-          
+
           if (bc->sjoin[i])
             {
               if (d == 1)

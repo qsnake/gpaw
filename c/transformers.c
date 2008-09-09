@@ -7,10 +7,6 @@
 #include "mympi.h"
 #include "bmgs/bmgs.h"
 
-#ifdef GPAW_OMP
-  #include <omp.h>
-#endif
-
 typedef struct
 {
   PyObject_HEAD
@@ -61,16 +57,13 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
         {
           bc_unpack1(bc, in, self->buf, i,
                      self->recvreq, self->sendreq,
-                     self->recvbuf, self->sendbuf, ph + 2 * i);
+                     self->recvbuf, self->sendbuf, ph + 2 * i, 0);
           bc_unpack2(bc, self->buf, i,
                      self->recvreq, self->sendreq, self->recvbuf);
         }
     }
   else
     {
-//      #ifdef GPAW_OMP
-//        #pragma omp parallel for
-//      #endif
       for (int i = 0; i < 3; i++)
         {
           MPI_Request recvreq[2];
@@ -79,7 +72,7 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
           double* recvbuf = self->recvbuf + i * bc->maxrecv;
           bc_unpack1(bc, in, self->buf, i,
                      recvreq, sendreq,
-                     recvbuf, sendbuf, ph + 2 * i);
+                     recvbuf, sendbuf, ph + 2 * i, 0);
           bc_unpack2(bc, self->buf, i,
                      recvreq, sendreq, recvbuf);
         }
@@ -186,10 +179,13 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
 #else
+  int nthds = 1;
+  if (getenv("OMP_NUM_THREADS") != NULL)
+    nthds = atoi(getenv("OMP_NUM_THREADS"));
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend *
-                              omp_get_max_threads());
+                              nthds);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
-                              omp_get_max_threads());
+                              nthds);
 #endif
   return (PyObject*)self;
 }

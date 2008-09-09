@@ -362,15 +362,14 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
 #ifndef GPAW_INTERPRETER
   int argc = 0;
 
-//#ifndef GPAW_OMP
+#ifndef GPAW_OMP
   MPI_Init(&argc, 0);
-/*
 #else
   int granted;
   MPI_Init_thread(&argc, 0, MPI_THREAD_MULTIPLE, &granted);
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif
-*/
+
 
 
 

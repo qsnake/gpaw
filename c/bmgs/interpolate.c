@@ -1,18 +1,11 @@
 #include "bmgs.h"
 
-#ifdef GPAW_OMP
-  #include <omp.h>
-#endif
-
 #ifdef K
 
 void IP1D(const T* a, int n, int m, T* b, int skip[2])
 {
   a += K / 2 - 1;
 
-  #ifdef GPAW_OMP
-    #pragma omp parallel for
-  #endif
   for (int j = 0; j < m; j++)
     {
       const T* aa = a + j * (K - 1 - skip[1] + n);

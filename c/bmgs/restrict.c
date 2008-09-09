@@ -1,18 +1,12 @@
 #include "bmgs.h"
 
-#ifdef GPAW_OMP
-  #include <omp.h>
-#endif
-
 #ifdef K
 
 void RST1D(const T* a, int n, int m, T* b)
 {
   a += K - 1;
 
-  #ifdef GPAW_OMP
-    #pragma omp parallel for
-  #endif
+
   for (int j = 0; j < m; j++)
     {
       const T* aa = a + j * (n * 2 + K * 2 - 3);
