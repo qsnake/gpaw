@@ -1,3 +1,7 @@
+#ifndef H_EXTENSIONS
+#define H_EXTENSIONS
+
+
 #include <Python.h>
 #define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
 #define NO_IMPORT_ARRAY
@@ -21,7 +25,7 @@
 #ifndef NO_C99_COMPLEX
 #define INLINE inline
 #else
-#define INLINE 
+#define INLINE
 #endif
 
 static INLINE void* gpaw_malloc(int n)
@@ -45,3 +49,5 @@ static INLINE void* gpaw_malloc(int n)
 #define LONGP(a) ((long*)((a)->data))
 #define DOUBLEP(a) ((double*)((a)->data))
 #define COMPLEXP(a) ((double_complex*)((a)->data))
+
+#endif //H_EXTENSIONS

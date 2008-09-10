@@ -1,18 +1,35 @@
 #include "bmgs.h"
+#include <pthread.h>
+#include "../extensions.h"
 
 #ifdef K
+struct RST1DA{
+  int thread_id;
+  int nthds;
+  const T* a;
+  int n;
+  int m;
+  T* b;
+};
 
-void RST1D(const T* a, int n, int m, T* b)
+void *RST1DW(void *threadarg)
 {
-  a += K - 1;
-
+  struct RST1DA *args = (struct RST1DA *) threadarg;
+  int m = args->m;
+  int chunksize = m / args->nthds + 1;
+  int nstart = args->thread_id * chunksize;
+  if (nstart >= m)
+    return NULL;
+  int nend = nstart + chunksize;
+  if (nend > m)
+    nend = m;
 
   for (int j = 0; j < m; j++)
     {
-      const T* aa = a + j * (n * 2 + K * 2 - 3);
-      T* bb = b + j;
+      const T* aa = args->a + j * (args->n * 2 + K * 2 - 3);
+      T* bb = args->b + j;
 
-      for (int i = 0; i < n; i++)
+      for (int i = 0; i < args->n; i++)
         {
         #if defined(BMGSCOMPLEX) && defined(NO_C99_COMPLEX)
           if(K==2)
@@ -50,23 +67,70 @@ void RST1D(const T* a, int n, int m, T* b)
           bb += m;
         }
     }
+  return NULL;
+}
+
+void RST1D(const T* a, int n, int m, T* b)
+{
+  a += K - 1;
+
+  int nthds = 1;
+#ifdef GPAW_OMP
+  if (getenv("OMP_NUM_THREADS") != NULL)
+    nthds = atoi(getenv("OMP_NUM_THREADS"));
+#endif
+  struct RST1DA *wargs = GPAW_MALLOC(struct RST1DA, nthds);
+  pthread_t *thds = GPAW_MALLOC(pthread_t, nthds);
+
+  for(int i=0; i < nthds; i++)
+    {
+      (wargs+i)->thread_id = i;
+      (wargs+i)->nthds = nthds;
+      (wargs+i)->a = a;
+      (wargs+i)->n = n;
+      (wargs+i)->m = m;
+      (wargs+i)->b = b;
+    }
+#ifdef GPAW_OMP
+  for(int i=1; i < nthds; i++)
+    pthread_create(thds + i, NULL, RST1DW, (void*) (wargs+i));
+#endif
+  RST1DW(wargs);
+#ifdef GPAW_OMP
+  for(int i=1; i < nthds; i++)
+    pthread_join(*(thds+i), NULL);
+#endif
+  free(wargs);
+  free(thds);
 }
 
 #else
 #  define K 2
 #  define RST1D Z(bmgs_restrict1D2)
+#  define RST1DA Z(bmgs_restrict1D2_args)
+#  define RST1DW Z(bmgs_restrict1D2_worker)
 #  include "restrict.c"
 #  undef RST1D
+#  undef RST1DA
+#  undef RST1DW
 #  undef K
 #  define K 4
 #  define RST1D Z(bmgs_restrict1D4)
+#  define RST1DA Z(bmgs_restrict1D4_args)
+#  define RST1DW Z(bmgs_restrict1D4_worker)
 #  include "restrict.c"
 #  undef RST1D
+#  undef RST1DA
+#  undef RST1DW
 #  undef K
 #  define K 6
 #  define RST1D Z(bmgs_restrict1D6)
+#  define RST1DA Z(bmgs_restrict1D6_args)
+#  define RST1DW Z(bmgs_restrict1D6_worker)
 #  include "restrict.c"
 #  undef RST1D
+#  undef RST1DA
+#  undef RST1DW
 #  undef K
 
 void Z(bmgs_restrict)(int k, T* a, const int n[3], T* b, T* w)

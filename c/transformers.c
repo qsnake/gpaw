@@ -47,35 +47,13 @@ static PyObject* Transformer_apply(TransformerObject *self, PyObject *args)
   const double_complex* ph = (real ? 0 : COMPLEXP(phases));
 
   const boundary_conditions* bc = self->bc;
-#ifndef GPAW_OMP
-  if (1)
-#else
-  if (bc->cfd == 0)
-#endif
+  for (int i = 0; i < 3; i++)
     {
-      for (int i = 0; i < 3; i++)
-        {
-          bc_unpack1(bc, in, self->buf, i,
-                     self->recvreq, self->sendreq,
-                     self->recvbuf, self->sendbuf, ph + 2 * i, 0);
-          bc_unpack2(bc, self->buf, i,
-                     self->recvreq, self->sendreq, self->recvbuf);
-        }
-    }
-  else
-    {
-      for (int i = 0; i < 3; i++)
-        {
-          MPI_Request recvreq[2];
-          MPI_Request sendreq[2];
-          double* sendbuf = self->sendbuf + i * bc->maxsend;
-          double* recvbuf = self->recvbuf + i * bc->maxrecv;
-          bc_unpack1(bc, in, self->buf, i,
-                     recvreq, sendreq,
-                     recvbuf, sendbuf, ph + 2 * i, 0);
-          bc_unpack2(bc, self->buf, i,
-                     recvreq, sendreq, recvbuf);
-        }
+      bc_unpack1(bc, in, self->buf, i,
+                 self->recvreq, self->sendreq,
+                 self->recvbuf, self->sendbuf, ph + 2 * i, 0);
+      bc_unpack2(bc, self->buf, i,
+                 self->recvreq, self->sendreq, self->recvbuf);
     }
   if (real)
     {
@@ -175,17 +153,7 @@ PyObject * NewTransformerObject(PyObject *obj, PyObject *args)
                              //size1[2] / 2 *
                              (size2[2] - 2 * k + 3) / 2 *
                              self->bc->ndouble);
-#ifndef GPAW_OMP
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv);
-#else
-  int nthds = 1;
-  if (getenv("OMP_NUM_THREADS") != NULL)
-    nthds = atoi(getenv("OMP_NUM_THREADS"));
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend *
-                              nthds);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
-                              nthds);
-#endif
   return (PyObject*)self;
 }
