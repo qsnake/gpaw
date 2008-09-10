@@ -2,7 +2,7 @@ from gpaw.utilities import unpack
 from ase import Hartree
 import pickle
 import numpy as npy
-from gpaw.mpi import world, MASTER, rank
+from gpaw.mpi import world, rank
 
 def tri2full(M,UL='L'):
     """UP='L' => fill upper triangle from lower triangle
@@ -21,7 +21,6 @@ def get_bf_centers(atoms):
         calc.initialize(atoms)
     nbf = calc.nao
     pos_ac = atoms.get_positions()
-    #print pos_ac
     natoms = len(pos_ac)
     pos_ic = npy.zeros((nbf,3), npy.float)
     index = 0
@@ -71,8 +70,8 @@ def dump_hamiltonian(filename, atoms, direction='z', remove_pbc=True):
         nkpts = len(s_kmm)
         for s in range(atoms.calc.nspins):
             for k in range(nkpts):
-                remove_pbc(atoms, h_skmm[s,k], s_mm[k], d) #XXX SPIN
-
+                remove_pbc(atoms, h_skmm[s,k], s_kmm[k], d) #XXX SPIN
+    
     if atoms.calc.master:
         print "Dumping scattering hamiltonian..."
         fd = file(filename,'wb')
@@ -87,7 +86,7 @@ def get_hamiltonian(atoms):
     eigensolver = calc.eigensolver
     hamiltonian = calc.hamiltonian
     Vt_skmm = eigensolver.Vt_skmm
-    print "Calculating effective potential matrix..."
+    print "Calculating effective potential matrix (%i)" % rank 
     hamiltonian.calculate_effective_potential_matrix(Vt_skmm)
     ibzk_kc = calc.ibzk_kc
     nkpts = len(ibzk_kc)
