@@ -62,18 +62,16 @@ def remove_pbc(atoms, h, s, d=0):
         s[i,:] = s[i,:] * mask_i
         s[:,i] = s[:,i] * mask_i
 
-def dump_hamiltonian(filename, atoms, direction='z', remove_pbc=True):
+def dump_hamiltonian(filename, atoms, direction=None):
     
-    d = {'x':0, 'y':1, 'z':2}[direction]
     h_skmm, s_kmm = get_hamiltonian(atoms)
-    if remove_pbc:
-        nkpts = len(s_kmm)
+    if direction!=None:
+        d = {'x':0, 'y':1, 'z':2}[direction]
         for s in range(atoms.calc.nspins):
-            for k in range(nkpts):
+            for k in range(atoms.calc.nkpts):
                 remove_pbc(atoms, h_skmm[s,k], s_kmm[k], d) #XXX SPIN
     
     if atoms.calc.master:
-        print "Dumping scattering hamiltonian..."
         fd = file(filename,'wb')
         pickle.dump((h_skmm, s_kmm), fd, 2)
         fd.close()
