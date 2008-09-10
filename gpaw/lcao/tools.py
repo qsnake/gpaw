@@ -63,6 +63,51 @@ def remove_pbc(atoms, h, s, d=0):
         s[i,:] = s[i,:] * mask_i
         s[:,i] = s[:,i] * mask_i
 
+def dump_hamiltonian(filename, atoms, direction='z', remove_pbc=True):
+    
+    d = {'x':0, 'y':1, 'z':2}[direction]
+    h_skmm, s_kmm = get_hamiltonian(atoms)
+    if remove_pbc:
+        nkpts = len(s_kmm)
+        for s in range(atoms.calc.nspins):
+            for k in range(nkpts):
+                remove_pbc(atoms, h_skmm[s,k], s_mm[k], d) #XXX SPIN
+
+    if atoms.calc.master:
+        print "Dumping scattering hamiltonian..."
+        fd = file(filename,'wb')
+        pickle.dump((h_skmm, s_kmm), fd, 2)
+        fd.close()
+
+    world.barrier()
+
+def get_hamiltonian(atoms):
+    calc = atoms.calc
+    Ef = calc.get_fermi_level()
+    eigensolver = calc.eigensolver
+    hamiltonian = calc.hamiltonian
+    Vt_skmm = eigensolver.Vt_skmm
+    print "Calculating effective potential matrix..."
+    hamiltonian.calculate_effective_potential_matrix(Vt_skmm)
+    ibzk_kc = calc.ibzk_kc
+    nkpts = len(ibzk_kc)
+    nspins = calc.nspins
+    weight_k = calc.weight_k
+    nao = calc.nao
+    h_skmm = npy.zeros((nspins, nkpts, nao, nao), complex)
+    s_kmm = npy.zeros((nkpts, nao, nao), complex)
+    for k in range(nkpts):
+        s_kmm[k] = hamiltonian.S_kmm[k]
+        tri2full(s_kmm[k])
+        for s in range(nspins):
+            h_skmm[s,k] = calc.eigensolver.get_hamiltonian_matrix(hamiltonian,
+                                                                  k=k,
+                                                                  s=s)
+            tri2full(h_skmm[s, k])
+            h_skmm[s,k] *= Hartree
+            h_skmm[s,k] -= Ef * s_kmm[k]
+
+    return h_skmm, s_kmm
 
 def dump_lcao_hamiltonian(calc, filename): # "parallel" dump of H
     if calc.master:
