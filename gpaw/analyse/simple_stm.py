@@ -1,3 +1,4 @@
+
 from math import sqrt
 
 import numpy as npy
@@ -88,6 +89,8 @@ class SimpleStm:
                     occupied = True
                 else:
                     occupied = False
+                emin += efermi
+                emax += efermi
 
             emin /= Hartree
             emax /= Hartree
