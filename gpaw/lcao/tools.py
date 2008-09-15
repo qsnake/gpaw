@@ -56,7 +56,7 @@ def remove_pbc(atoms, h, s, d=0):
     pos_i = get_bf_centers(atoms)[:,d]
     for i in xrange(nbf):
         dpos_i = npy.absolute(pos_i - pos_i[i])
-        mask_i = (dpos_i < cutoff).astype(npy.int)
+        mask_i = (dpos_i < cutoff).astype(int)
         h[i,:] = h[i,:] * mask_i
         h[:,i] = h[:,i] * mask_i
         s[i,:] = s[i,:] * mask_i

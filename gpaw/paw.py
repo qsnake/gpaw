@@ -977,9 +977,9 @@ class PAW(PAWExtra, Output):
             mr = maxrss()
             if mr > 0:
                 if mr < 1024.0**3:
-                    self.text('Memory  usage: %.2f MB' % (mr / 1024.0**2))
+                    self.text('Memory usage: %.2f MB' % (mr / 1024.0**2))
                 else:
-                    self.text('Memory  usage: %.2f GB' % (mr / 1024.0**3))
+                    self.text('Memory usage: %.2f GB' % (mr / 1024.0**3))
 
             if hasattr(self, 'timer'):
                 self.timer.write(self.txt)
