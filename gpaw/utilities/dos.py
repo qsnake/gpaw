@@ -264,8 +264,13 @@ class RawLDOS:
 
     def by_element_to_file(self, 
                            filename='ldos_by_element.dat',
-                           width=None):
-        """Write the LDOS by element to a file"""
+                           width=None,
+                           shift=True):
+        """Write the LDOS by element to a file
+
+        If a width is given, the LDOS will be Gaussian folded and shifted to set 
+        Fermi energy to 0 eV. The latter can be avoided by setting shift=False. 
+        """
         ldbe = self.by_element()
 
         f = paropen(filename,'w')
@@ -318,11 +323,21 @@ class RawLDOS:
             emin -= 4*width
             emax += 4*width
 
+            eshift = 0
+            if shift:
+                eshift = -self.paw.get_fermi_level()
+
             # set de to sample 4 points in the width
             de = width/4.
             
             for s in range(self.paw.nspins):
                 print >> f, '# Gauss folded, width=%g [eV]' % width
+                if shift:
+                    print >> f, '# shifted to Fermi energy = 0'
+                    print >> f, '# Fermi energy was',
+                else:
+                    print >> f, '# Fermi energy',
+                print >> f, self.paw.get_fermi_level(), 'eV'
                 print >> f, '# e[eV]  spin ',
                 for key in ldbe:
                     if len(key) == 1: key=' '+key
@@ -351,7 +366,7 @@ class RawLDOS:
                             for key in ldbe:
                                 val[key] += w_i * ldbe[key][u, n]
 
-                    print >> f, '%10.5f %2d' % (e, s), 
+                    print >> f, '%10.5f %2d' % (e + eshift, s), 
                     for key in val:
                         spd = val[key]
                         for l in range(3):
