@@ -121,20 +121,16 @@ class SetupData:
 
         print >> xml, '  <core_energy kinetic="%f"/>' % self.e_kinetic_core
         print >> xml, '  <valence_states>'
-        ids = []
         line1 = '    <state n="%d" l="%d" f=%s rc="%5.3f" e="%8.5f" id="%s"/>'
         line2 = '    <state       l="%d"        rc="%5.3f" e="%8.5f" id="%s"/>'
 
-        for l, n, f, e, rc in zip(l_j, self.n_j, self.f_j, self.eps_j, 
-                                  self.rcut_j):
+        for id, l, n, f, e, rc in zip(self.id_j, l_j, self.n_j, self.f_j,
+                                      self.eps_j, self.rcut_j):
             if n > 0:
                 f = '%-4s' % ('"%d"' % f)
-                id = '%s-%d%s' % (self.symbol, n, 'spdf'[l])
                 print >> xml, line1 % (n, l, f, rc, e, id)
             else:
-                id = '%s-%s%d' % (self.symbol, 'spdf'[l], -n)
                 print >> xml, line2 % (l, rc, e, id)
-            ids.append(id)
         print >> xml, '  </valence_states>'
 
         print >> xml, ('  <radial_grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
@@ -173,8 +169,8 @@ class SetupData:
                 print >> xml, '%16.12e' % x,
             print >> xml, '\n  </%s>' % newname
 
-        for l, u, s, q, in zip(l_j, self.phi_jg, self.phit_jg, self.pt_jg):
-            id = ids.pop(0)
+        for id, l, u, s, q, in zip(self.id_j, l_j, self.phi_jg, self.phit_jg,
+                                   self.pt_jg):
             for name, a in [('ae_partial_wave', u),
                             ('pseudo_partial_wave', s),
                             ('projector_function', q)]:
