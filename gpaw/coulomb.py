@@ -349,12 +349,16 @@ def update_dict(i, j, k, l, done, func):
    
 def get_coulomb(i, j, k, l, coulomb, done, U, dtype):
     ijkl, conj = symmetry(i, j, k, l)
-    if dtype == float: conj = False
-    ni, nj, nk, nl = U[:, ijkl].T
-    if conj:
-        return done.setdefault(ijkl, npy.conj(
-            coulomb.get_integral(nk, ni, nj, nl)) * Hartree)
-    return done.setdefault(ijkl, coulomb.get_integral(nk, ni, nj, nl) *Hartree)
+    if ijkl in done:
+        val = done[ijkl]
+    else:
+        ni, nj, nk, nl = U[:, ijkl].T
+        val = done.setdefault(ijkl,
+                              coulomb.get_integral(nk, ni, nj, nl) * Hartree)
+    
+    if dtype == float or not conj:
+        return val
+    return npy.conj(val)
 
 def coulomb_all2(paw, U_nj, spin=0):
     paw.set_positions()
