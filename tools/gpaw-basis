@@ -72,14 +72,14 @@ from gpaw.atom.basis import BasisMaker
 from gpaw.atom import polarization
 
 if opts.exclude: # Invert selection of elements
-    from gpaw.testing import g2
+    from ase.data import molecules
     # If the user specifies N:<reference_system> then remember that
     # because we don't want to exclude those
     special_args = [arg for arg in args if ':' in arg]
 
     # List of the actual element names in argv
     elements = [arg.split(':')[0] for arg in args]
-    inverted_args = [arg for arg in g2.atoms.keys() if not arg in elements]
+    inverted_args = [arg for arg in molecules.atoms if not arg in elements]
     inverted_args.remove('Mg') # g2 contains no Mg reference systems
 
     # Now re-add those we remembered earlier
