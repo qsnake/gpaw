@@ -747,9 +747,6 @@ class Generator(AllElectron):
             X_p = None
             ExxC = None
 
-        #self.write_xml(vl_j, vn_j, vf_j, ve_j, vu_j, vs_j, vq_j,
-        #               nc, nct, nt, Ekincore, X_p, ExxC, vbar,
-        #               tauc, tauct, extra_xc_data)
         sqrt4pi = sqrt(4 * pi)
         setup = SetupData(self.symbol, self.xcfunc.get_name(), self.name,
                           readxml=False)
@@ -822,6 +819,15 @@ class Generator(AllElectron):
 
         setup.generatorattrs = attrs
         setup.generatordata  = data
+
+        self.id_j = []
+        for l, n in zip(vl_j, vn_j):
+            if n > 0:
+                id = '%s-%d%s' % (self.symbol, n, 'spdf'[l])
+            else:
+                id = '%s-%s%d' % (self.symbol, 'spdf'[l], -n)
+            self.id_j.append(id)
+        setup.id_j = self.id_j
 
         import gpaw.mpi as mpi
         if write_xml and mpi.rank == 0:

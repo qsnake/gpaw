@@ -238,7 +238,8 @@ class Nucleus:
         if self.nct is not None:
             Nct = -(self.setup.Delta0 * sqrt(4 * pi)
                     + self.setup.Z - self.setup.Nc)
-            self.nct.normalize(Nct)
+            if abs(Nct) > 1e-15:
+                self.nct.normalize(Nct)
 
     def initialize_atomic_orbitals(self, gd, k_ki, lfbc, lcao_forces=False):
         phit_j = self.setup.phit_j

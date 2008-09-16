@@ -273,7 +273,7 @@ class Density:
                 for kpt in kpt_u:
                     P_ni = nucleus.P_uni[kpt.u]
                     D_sii[kpt.s] += real(dot(cc(transpose(P_ni)),
-                                                 P_ni * kpt.f_n[:, newaxis]))
+                                             P_ni * kpt.f_n[:, newaxis]))
 
                     # hack used in delta scf - calculations
                     if hasattr(kpt, 'ft_omn'):

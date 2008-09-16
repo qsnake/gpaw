@@ -35,6 +35,8 @@ class SetupData:
             self.stdfilename = '%s.%s.%s' % (symbol, name, self.setupname)
 
         self.filename = None # full path
+        self.fingerprint = None
+        
         self.n_j = []
         self.l_j = []
         self.f_j = []

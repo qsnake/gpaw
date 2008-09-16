@@ -27,11 +27,11 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None,
 
     if type == 'hgh':
         from gpaw.hgh import HGHSetup
-        return HGHSetup(symbol, xcfunc, nspins)
+        return HGHSetup(symbol, xcfunc, nspins, basis=basis)
 
     if type == 'hgh.sc':
         from gpaw.hgh import HGHSetup
-        return HGHSetup(symbol, xcfunc, nspins, semicore=True)
+        return HGHSetup(symbol, xcfunc, nspins, semicore=True, basis=basis)
 
     return Setup(symbol, xcfunc, lmax, nspins, type, basis, setupdata)
 
@@ -80,7 +80,7 @@ class Setup:
         n_j = self.n_j = data.n_j
         self.f_j = data.f_j
         self.eps_j = data.eps_j
-        nj = len(l_j)
+        nj = self.nj = len(l_j)
         ng = self.ng = data.ng
         beta = self.beta = data.beta
         self.softgauss = data.softgauss
@@ -105,6 +105,8 @@ class Setup:
         r_g = beta * g / (ng - g)
         dr_g = beta * ng / (ng - g)**2
         d2gdr2 = -2 * ng * beta / (beta + r_g)**3
+
+        self.lmax = lmax
 
         # compute inverse overlap coefficients B_ii
         B_jj = npy.zeros((len(l_j),len(l_j)))
@@ -140,6 +142,7 @@ class Setup:
         while pt_jg[0][g] == 0.0:
             g -= 1
         gcutfilter = g + 1
+
         self.rcutfilter = rcutfilter = r_g[gcutfilter]
 
         rcutmax = max(rcut_j)
@@ -148,16 +151,7 @@ class Setup:
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
         self.gcut2 = gcut2
 
-        # Find cutoff for core density:
-        if self.Nc == 0:
-            self.rcore = rcore = 0.5
-        else:
-            N = 0.0
-            g = ng - 1
-            while N < 1e-7:
-                N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
-                g -= 1
-            self.rcore = rcore = r_g[g]
+        self.rcore = self.find_core_density_cutoff(r_g, dr_g, nc_g)
 
         ni = 0
         i = 0
@@ -183,14 +177,14 @@ class Setup:
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
         # Construct splines:
-        self.nct = Spline(0, rcore, data.nct_g, r_g, beta)
+        self.nct = Spline(0, self.rcore, data.nct_g, r_g, beta)
         self.vbar = Spline(0, rcutfilter, data.vbar_g, r_g, beta)
 
         # Construct splines for core kinetic energy density:
         tauct_g = data.tauct_g
         if tauct_g is None:
             tauct_g = npy.zeros(ng)
-        self.tauct = Spline(0, rcore, tauct_g, r_g, beta)
+        self.tauct = Spline(0, self.rcore, tauct_g, r_g, beta)
 
         # Step function:
         stepf = sqrt(4 * pi) * npy.ones(ng)
@@ -205,7 +199,7 @@ class Setup:
         if basis is None:
             self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
         else:
-            self.read_basis_functions(basis)#, r_g, beta)
+            self.read_basis_functions(basis)
 
         self.niAO = 0
         for phit in self.phit_j:
@@ -217,7 +211,7 @@ class Setup:
         phi_jg = npy.array([phi_g[:gcut2].copy() for phi_g in phi_jg])
         phit_jg = npy.array([phit_g[:gcut2].copy() for phit_g in phit_jg])
         self.nc_g = nc_g = nc_g[:gcut2].copy()
-        nct_g = nct_g[:gcut2].copy()
+        self.nct_g = nct_g = nct_g[:gcut2].copy()
         vbar_g = data.vbar_g[:gcut2].copy()
         tauc_g = data.tauc_g[:gcut2].copy()
 
@@ -246,39 +240,12 @@ class Setup:
                 p += 1
             i1 += 1
 
-        # Create gaussians used to expand compensation charges
-        g_lg = npy.zeros((lmax + 1, gcut2))
-        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * npy.exp(-(r_g / rcgauss)**2)
-        for l in range(1, lmax + 1):
-            g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
-
-        for l in range(lmax + 1):
-            g_lg[l] /= npy.dot(r_g**(l + 2) * dr_g, g_lg[l])
+        (g_lg, n_qg, nt_qg,
+         Delta_lq) = self.create_compensation_charges(r_g, dr_g, phi_jg,
+                                                      phit_jg, np,
+                                                      T_Lqp)
 
         self.g_lg = g_lg
-        n_qg = npy.zeros((nq, gcut2))
-        nt_qg = npy.zeros((nq, gcut2))
-        q = 0
-        for j1 in range(nj):
-            for j2 in range(j1, nj):
-                n_qg[q] = phi_jg[j1] * phi_jg[j2]
-                nt_qg[q] = phit_jg[j1] * phit_jg[j2]
-                q += 1
-
-        Delta_lq = npy.zeros((lmax + 1, nq))
-        for l in range(lmax + 1):
-            Delta_lq[l] = npy.dot(n_qg - nt_qg, r_g**(2 + l) * dr_g)
-
-        self.Lmax = Lmax = (lmax + 1)**2
-        self.Delta_pL = npy.zeros((np, Lmax))
-        for l in range(lmax + 1):
-            L = l**2
-            for m in range(2 * l + 1):
-                delta_p = npy.dot(Delta_lq[l], T_Lqp[L + m])
-                self.Delta_pL[:, L + m] = delta_p
-
-        Delta = npy.dot(nc_g - nct_g, r_g**2 * dr_g) - self.Z / sqrt(4 * pi)
-        self.Delta0 = Delta
 
         # Solves the radial poisson equation for density n_g
         def H(n_g, l):
@@ -291,6 +258,7 @@ class Setup:
         wnc_g = H(nc_g, l=0)
         wnct_g = H(nct_g, l=0)
 
+
         self.wg_lg = wg_lg = [H(g_lg[l], l) for l in range(lmax + 1)]
 
         wn_lqg = [npy.array([H(n_qg[q], l) for q in range(nq)])
@@ -298,12 +266,15 @@ class Setup:
         wnt_lqg = [npy.array([H(nt_qg[q], l) for q in range(nq)])
                    for l in range(2 * lcut + 1)]
 
+        Delta0 = self.Delta0
+        #Delta_lq = Delta_lq
+
         rdr_g = r_g * dr_g
         dv_g = r_g * rdr_g
         A = 0.5 * npy.dot(nc_g, wnc_g)
         A -= sqrt(4 * pi) * self.Z * npy.dot(rdr_g, nc_g)
-        mct_g = nct_g + Delta * g_lg[0]
-        wmct_g = wnct_g + Delta * wg_lg[0]
+        mct_g = nct_g + Delta0 * g_lg[0]
+        wmct_g = wnct_g + Delta0 * wg_lg[0]
         A -= 0.5 * npy.dot(mct_g, wmct_g)
         self.M = A
         AB = -npy.dot(dv_g * nct_g, vbar_g)
@@ -411,6 +382,11 @@ class Setup:
                 2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole,
                 nspins, tauc_g)
 
+        # softgauss controls the use of particularly smooth compensation
+        # charges, which are not required to approach zero at the
+        # augmentation region boundary.
+        #
+        # Presently disabled
         if self.softgauss:
             rcutsoft = rcut2####### + 1.4
         else:
@@ -429,8 +405,8 @@ class Setup:
 
         self.O_ii = sqrt(4.0 * pi) * unpack(self.Delta_pL[:, 0].copy())
 
-        self.Delta_Lii = npy.zeros((ni, ni, Lmax))
-        for L in range(Lmax):
+        self.Delta_Lii = npy.zeros((ni, ni, self.Lmax))
+        for L in range(self.Lmax):
             self.Delta_Lii[:,:,L] = unpack(self.Delta_pL[:, L].copy())
 
         K_q = []
@@ -439,8 +415,6 @@ class Setup:
                 K_q.append(data.e_kin_jj[j1, j2])
         self.K_p = sqrt(4 * pi) * npy.dot(K_q, T_Lqp[0])
 
-        self.lmax = lmax
-
         r = 0.02 * rcutsoft * npy.arange(51, dtype=float)
 ##        r = 0.04 * rcutsoft * npy.arange(26, dtype=float)
         alpha = rcgauss**-2
@@ -448,7 +422,7 @@ class Setup:
         if self.softgauss:
             assert lmax <= 2
             alpha2 = 22.0 / rcutsoft**2
-            alpha2 = 15.0 / rcutsoft**2
+            alpha2 = 15.0 / rcutsoft**2 # What the heck
 
             vt0 = 4 * pi * (erf(sqrt(alpha) * r) - erf(sqrt(alpha2) * r))
             vt0[0] = 8 * sqrt(pi) * (sqrt(alpha) - sqrt(alpha2))
@@ -499,6 +473,64 @@ class Setup:
         # compute inverse overlap coefficients C_ii
         self.C_ii = -npy.dot(self.O_ii, inv(npy.identity(size) + 
                                             npy.dot(self.B_ii, self.O_ii)))
+
+    def create_compensation_charges(self, r_g, dr_g, phi_jg, phit_jg, np,
+                                    T_Lqp):
+        lmax = self.lmax
+        rcgauss = self.rcgauss
+        #r_g = self.r_g
+        #dr_g = self.dr_g
+        gcut2 = self.gcut2
+        nq = self.nq
+        
+        # Create gaussians used to expand compensation charges
+        g_lg = npy.zeros((lmax + 1, gcut2))
+        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * npy.exp(-(r_g / rcgauss)**2)
+        for l in range(1, lmax + 1):
+            g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
+
+        for l in range(lmax + 1):
+            g_lg[l] /= npy.dot(r_g**(l + 2) * dr_g, g_lg[l])
+
+        n_qg = npy.zeros((nq, gcut2))
+        nt_qg = npy.zeros((nq, gcut2))
+        q = 0 # q: common index for j1, j2
+        for j1 in range(self.nj):
+            for j2 in range(j1, self.nj):
+                n_qg[q] = phi_jg[j1] * phi_jg[j2]
+                nt_qg[q] = phit_jg[j1] * phit_jg[j2]
+                q += 1
+
+        Delta_lq = npy.zeros((lmax + 1, nq))
+        for l in range(lmax + 1):
+            Delta_lq[l] = npy.dot(n_qg - nt_qg, r_g**(2 + l) * dr_g)
+
+        self.Lmax = (lmax + 1)**2
+        self.Delta_pL = npy.zeros((np, self.Lmax))
+        for l in range(lmax + 1):
+            L = l**2
+            for m in range(2 * l + 1):
+                delta_p = npy.dot(Delta_lq[l], T_Lqp[L + m])
+                self.Delta_pL[:, L + m] = delta_p
+
+        Delta0 = npy.dot(self.nc_g - self.nct_g,
+                        r_g**2 * dr_g) - self.Z / sqrt(4 * pi)
+        self.Delta0 = Delta0
+        return g_lg, n_qg, nt_qg, Delta_lq
+
+
+    def find_core_density_cutoff(self, r_g, dr_g, nc_g):
+        # Find cutoff for core density:
+        if self.Nc == 0:
+            return 0.5
+        else:
+            N = 0.0
+            g = self.ng - 1
+            while N < 1e-7:
+                N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
+                g -= 1
+            return r_g[g]
+
 
     def set_hubbard_u(self, U, l):
         """Set Hubbard parameter.
@@ -719,7 +751,7 @@ class Setup:
         np = ni * (ni + 1) // 2 # length for packing
         # j_i is the list of j values
         # L_i is the list of L (=l**2+m for 0<=m<l) values
-        # https://wiki.fysik.dtu.dk/gpaw/Overview#naming-convention-for-arrays
+        # https://wiki.fysik.dtu.dk/gpaw/devel/overview.html
 
         # calculate the integrals
         I4_iip = npy.empty((ni,ni,np))
