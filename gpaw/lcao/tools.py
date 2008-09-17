@@ -35,7 +35,7 @@ def get_bf_centers(atoms):
 def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
     nbf = h_skmm.shape[-1]
     nspins = len(h_skmm)
-    h_smm = npy.empty((2,nbf,nbf))
+    h_smm = npy.empty((nspins, nbf, nbf))
     s_mm = npy.empty((nbf,nbf))
     phase_k = npy.dot(2 * npy.pi * ibzk_kc, R_c)
     c_k = npy.exp(1.0j * phase_k) * weight_k
@@ -83,9 +83,8 @@ def dump_hamiltonian(filename, atoms, direction=None):
                       'numbers':atoms.numbers, 'pbc':atoms.pbc}
         
         pickle.dump(atoms_data, fd, 2)
-        calc_data = {'input_parameters':atoms.calc.input_parameters,
-                     'weight_k':atoms.calc.weight_k, 
-                     'ibzk_kc':atoms.calc.ibzk_kc}
+        calc_data ={'weight_k':atoms.calc.weight_k, 
+                    'ibzk_kc':atoms.calc.ibzk_kc}
         
         pickle.dump(calc_data, fd, 2)
         fd.close()
