@@ -11,6 +11,7 @@ h2, s2 = pickle.load(file('lead2_hs.pickle'))
 tcalc = TransportCalculator(h=h, h1=h1, h2=h2, # hamiltonian matrices
                             s=s, s1=s1, s2=s2, # overlap matrices
                             align_bf=1)        # align the Fermi levels
+                            
 
 # Calculate the conductance (the energy zero corresponds to the Fermi level)
 tcalc.set(energies=[0.0])
@@ -32,11 +33,12 @@ tcalc.set(h=h_rot, s=s_rot)
 
 # plot the transmission function
 tcalc.set(energies=npy.arange(-8, 4, 0.1))
-pylab.plot(tcalc.energies, tcalc.get_transmission())
+T = tcalc.get_transmission()
+pylab.plot(tcalc.energies, T)
 pylab.title('Transmission function')
 pylab.show()
 
-# ... and the projected density of states (pdos) of the H2 basis functions
+# ... and the projected density of states (pdos) of the H2 molecular orbitals
 tcalc.set(pdos=bfs)
 pdos_ne = tcalc.get_pdos()
 pylab.plot(tcalc.energies, pdos_ne[0], label='bonding')
