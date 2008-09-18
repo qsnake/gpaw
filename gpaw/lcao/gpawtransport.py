@@ -1,6 +1,7 @@
 from ase import Atoms, Atom, monkhorst_pack, Hartree
 from gpaw import GPAW, Mixer
-from gpaw.lcao.tools import get_realspace_hs, tri2full, remove_pbc
+from gpaw.lcao.tools import get_realspace_hs, tri2full, remove_pbc 
+from gpaw.lcao.tools import dump_hamiltonian
 import pickle
 import numpy as npy
 from gpaw.mpi import world
@@ -110,28 +111,15 @@ class GPAWTransport:
         del self.atoms_l
 
         self.update_scat_hamiltonian()
-        nbf_m = self.h_skmm.shape[-1]
-        nbf = nbf_m + pl1 + pl2
-        h = npy.zeros((nbf, nbf), complex)
-        s = npy.zeros((nbf, nbf), complex)
-        
         h_mm = self.h_skmm[0,0]
         s_mm = self.s_kmm[0]
         atoms = self.atoms
         remove_pbc(atoms, h_mm, s_mm, self.d)
 
-        h[:2*pl1,:2*pl1] = h1
-        h[-2*pl2:,-2*pl2:] = h2
-        h[pl1:-pl2,pl1:-pl2] = h_mm
-
-        s[:2*pl1,:2*pl1] = s1
-        s[-2*pl2:,-2*pl2:] = s2
-        s[pl1:-pl2,pl1:-pl2] = s_mm
-  
         if atoms.calc.master:
             print "Dumping scat hamiltonian..."
             fd = file('scat_'+filename,'wb')
-            pickle.dump((h,s),fd,2)
+            pickle.dump((h_mm, s_mm), fd, 2)
             fd.close()
         world.barrier()
 
