@@ -11,6 +11,7 @@ from gpaw.operators import Laplace, LaplaceA, LaplaceB
 from gpaw import PoissonConvergenceError
 from gpaw.utilities.blas import axpy
 from gpaw.utilities.gauss import Gaussian
+from gpaw.utilities.ewald import Ewald
 
 
 class PoissonSolver:
@@ -104,29 +105,21 @@ class PoissonSolver:
 
             if self.charged_periodic_correction == None:
                 print "+-----------------------------------------------------+"
-                print "| Calculating charged periodic correction according   |"
-                print "| to eq (45) of JCP 122, 243102 (2005) using the      |"
-                print "| difference in energy between non periodic and       |"
-                print "| periodic gaussian test charge.                      |"
+                print "| Calculating charged periodic correction using the   |"
+                print "| Ewald potential from a lattice of point charges in  |"
+                print "| a homogenous background density                     |"
                 print "+-----------------------------------------------------+"
-                self.load_gauss()
-                periodic_gauss = self.gd.zeros()
-                neutral_gauss = (self.rho_gauss / npy.sqrt(4 * pi) -
-                                 1. / npy.product(self.gd.domain.cell_c))
-                self.solve_neutral(periodic_gauss, neutral_gauss, eps=1e-10)
-                E_periodic = self.gd.integrate(periodic_gauss * neutral_gauss)
-                E_single = self.gd.integrate(self.rho_gauss *
-                                             self.phi_gauss) / (4 * pi)
-                self.charged_periodic_correction = E_single - E_periodic
+                ewald = Ewald(self.gd.domain.cell_cv)
+                self.charged_periodic_correction = ewald.get_electrostatic_potential([.0,.0,.0], npy.array([[.0,.0,.0]]), [-1], 0)
                 print "Potential shift will be ", \
-                       self.charged_periodic_correction, " Ha."
-            
+                      self.charged_periodic_correction , "Ha."
+                       
             # Set initial guess for potential
             if zero_initial_phi:
                 phi[:] = 0.0
             else:
                 phi -= charge * self.charged_periodic_correction
-
+            
             iters = self.solve_neutral(phi, rho - background, eps=eps)
             phi += charge * self.charged_periodic_correction
             return iters            
@@ -155,7 +148,7 @@ class PoissonSolver:
 
             # correct error introduced by removing monopole
             axpy(q, self.phi_gauss, phi) #phi += q * self.phi_gauss
-
+            
             return niter
         else:
             # System is charged with mixed boundaryconditions
@@ -178,7 +171,7 @@ class PoissonSolver:
             print 'CHARGE, eps:', charge, eps
             msg = 'Poisson solver did not converge in %d iterations!' % maxiter
             raise PoissonConvergenceError(msg)
-
+        
         # Set the average potential to zero in periodic systems
         if npy.alltrue(self.gd.domain.pbc_c):
             phi_ave = self.gd.comm.sum(npy.sum(phi.ravel()))
