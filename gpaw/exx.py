@@ -90,6 +90,8 @@ class EXX:
         self.use_finegrid  = use_finegrid
         self.pair_density  = PairDensity(paw, use_finegrid)
         self.poisson_solve = paw.hamiltonian.poisson.solve
+        self.Exx = 0.
+        self.Ekin = 0.
 
         # Set correct Poisson solver
         if usefft:
