@@ -28,3 +28,27 @@ for k in [2, 4, 6]:
     restr(a, b)
     print k, npy.sum(a.ravel()) - npy.sum(b.ravel()) * 8
     assert abs(npy.sum(a.ravel()) - npy.sum(b.ravel()) * 8) < 3e-12
+
+# complex versions
+a = gd.empty(dtype=complex)
+a.real = npy.random.random((n, n, n))
+a.imag = npy.random.random((n, n, n))
+
+phase = npy.ones((3, 2), complex)
+
+gd2 = gd.refine()
+b = gd2.zeros(dtype=complex)
+for k in [2, 4, 6]:
+    inter = Transformer(gd, gd2, k // 2, complex).apply
+    inter(a, b, phase)
+    print k, npy.sum(a.ravel()) - npy.sum(b.ravel()) / 8
+    assert abs(npy.sum(a.ravel()) - npy.sum(b.ravel()) / 8) < 4e-11
+
+gd2 = gd.coarsen()
+b = gd2.zeros(dtype=complex)
+for k in [2, 4, 6]:
+    restr = Transformer(gd, gd2, k // 2, complex).apply
+    restr(a, b, phase)
+    print k, npy.sum(a.ravel()) - npy.sum(b.ravel()) * 8
+    assert abs(npy.sum(a.ravel()) - npy.sum(b.ravel()) * 8) < 2e-11
+
