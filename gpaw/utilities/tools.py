@@ -145,12 +145,12 @@ def project(a, b):
 def normalize(U):
     """Normalize columns of U."""
     for col in U.T:
-	col /= npy.sqrt(npy.dot(col.conj(), col))
-	    
+        col /= npy.sqrt(npy.dot(col.conj(), col))
+    
 def gram_schmidt(U, order=None):
     """Orthogonalize according to the Gram-Schmidt procedure.
     
-    U is an NxM matrix containing M vectors as its columns.
+    U is an N x M matrix containing M vectors as its columns.
     These will be orthogonalized using the order specified in the list 'order'
 
     Warning: The values of the original matrix is changed, return is just for
@@ -169,7 +169,7 @@ def gram_schmidt(U, order=None):
 def lowdin(U, S=None):
     """Orthogonalize according to the Lowdin procedure.
     
-    U is an NxM matrix containing M vectors as its columns.
+    U is an N x M matrix containing M vectors as its columns.
     S is the overlap Matrix.
     """
     if S is None:

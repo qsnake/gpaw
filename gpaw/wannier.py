@@ -61,7 +61,7 @@ class Wannier:
 
 
 class LocFun(Wannier):
-    def localize(self, calc, M=None, T=0,projections=None, ortho=True,
+    def localize(self, calc, M=None, T=0, projections=None, ortho=True,
                  verbose=False):
         # M is size of Hilbert space to fix. Default is ~ number of occ. bands.
         if M is None:
@@ -166,6 +166,7 @@ def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
 
     U_nj = npy.concatenate([ap_nj.flat, ap_vj.flat]).reshape(M+V, Nw)
     return U_nj, S_jj
+
 
 def single_zeta(paw, spin, verbose=False):
     angular = [['1'],
