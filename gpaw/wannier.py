@@ -99,16 +99,9 @@ class LocFun(Wannier):
     def get_eigenstate_centers(self):
         scaled_c = -npy.angle(self.Z_nnc.diagonal()).T / (2 * pi)
         return (scaled_c % 1.0) * self.cell_c
-        
-
-    def get_proj_norm(self,calc):
-        U_nj = self.U_nn
-        N,M = U_nj.shape
-        norm_n = npy.zeros(N,npy.float)
-        for n in range(N):
-            norm_n[n] = npy.sqrt(npy.dot(U_nj[n],U_nj[n].conjugate()))
-        
-        return norm_n
+    
+    def get_proj_norm(self, calc):
+        return npy.array([npy.linalg.norm(U_j) for U_j in self.U_nn])
             
 
 def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
@@ -197,7 +190,7 @@ def single_zeta(paw, spin, verbose=False):
 def initial_guess(calc, initwan):
     """Initial guess for Wannier functions
 
-    initwan = [[spos_c], l, a]
+    initwan = [[spos_c, l, a], [...]]
     """
     from gpaw.localized_functions import create_localized_functions
     from gpaw.spline import Spline
