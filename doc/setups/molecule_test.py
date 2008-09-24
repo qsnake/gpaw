@@ -45,7 +45,8 @@ dE = [('BeH', (0.0231, 0.0057, -0.0005, 0.0032, 0.0157)),
 def main():
     if 0:
         do_calculations()
-    read_and_check_results(systems)
+    if 0:
+        read_and_check_results(systems)
 
     Ea = atomization_energies()
     bondlengths(Ea)
@@ -148,11 +149,8 @@ def do_calculations():
         s.set_cell((cell / (4 * h)).round() * 4 * h)
         s.center()
         calc = GPAW(h=h,
-                    xc='LDA',
-                    setups='hgh',
+                    xc='PBE',
                     fixmom=True,
-                    idiotproof=False,
-                    basis='sz',
                     txt=formula + '.txt')
 
         if len(s) == 1:
