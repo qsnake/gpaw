@@ -31,7 +31,7 @@ GPAW calculator:
    xc/xc
    tddft/tddft
    xas/xas
-
+   rmm-diis
 
 .. _ml:
 
