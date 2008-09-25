@@ -1,15 +1,16 @@
 import numpy as npy
 
 def function_timer(func, *args, **kwargs):
+    if 'timeout' in kwargs:
+        out = kwargs.pop('timeout')
+    else:
+        from sys import stdout as out
+
     from time import time
     t1 = time()
     r = func(*args, **kwargs)
     t2 = time()
-    
-    if 'timeout' in kwargs:
-        print >> kwargs[timeout], t2 - t1
-    else:
-        print t2 - t1
+    print >>out, t2 - t1
     return r
 
 def L_to_lm(L):
@@ -18,7 +19,7 @@ def L_to_lm(L):
     m = L - l**2 - l
     return l, m
 
-def lm_to_L(l,m):
+def lm_to_L(l, m):
     """Convert (l, m) index to L index."""
     return l**2 + l + m
 
@@ -135,48 +136,35 @@ def dagger(a):
 def dagger_self(a):
     """Hermitian conjugate input"""
     a = a.T
-    if a.dtype.char == complex:
-        npy.multiply(a.imag, -1, a.imag)
+    if a.dtype == complex:
+        a.imag *= -1
 
 def project(a, b):
     """Return the projection of b onto a."""
-    return a * (npy.dot(a.conj(), b) / npy.dot(a.conj(), a))
+    return a * (npy.dot(a.conj(), b) / npy.linalg.norm(a))
 
 def normalize(U):
     """Normalize columns of U."""
     for col in U.T:
-        col /= npy.sqrt(npy.dot(col.conj(), col))
+        col /= npy.linalg.norm(col)
     
-def gram_schmidt(U, order=None):
-    """Orthogonalize according to the Gram-Schmidt procedure.
-    
-    U is an N x M matrix containing M vectors as its columns.
-    These will be orthogonalized using the order specified in the list 'order'
-
-    Warning: The values of the original matrix is changed, return is just for
-    convenience.
-    """
-    if order is None:
-        order = range(U.shape[1])
-
-    for i, m in enumerate(order):
-        col = U[:, m]
-        for i2 in range(i):
-            col -= project(U[:, order[i2]], col)
-        col /= npy.sqrt(npy.dot(col.conj(), col))
-    return U
+def gram_schmidt(U):
+    """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
+    for i, col in enumerate(U.T):
+        for col2 in U.T[:i]:
+            col -= col2 * npy.dot(col2.conj(), col)
+        col /= npy.linalg.norm(col)
 
 def lowdin(U, S=None):
-    """Orthogonalize according to the Lowdin procedure.
+    """Orthonormalize columns of U according to the Lowdin procedure.
     
-    U is an N x M matrix containing M vectors as its columns.
-    S is the overlap Matrix.
+    If the overlap matrix is know, it can be specified in S.
     """
     if S is None:
-        S = npy.dot(dagger(U), U)
+        S = npy.dot(dag(U), U)
     eig, rot = npy.linalg.eigh(S)
-    rot = npy.dot(rot / npy.sqrt(eig), dagger(rot))
-    return npy.dot(U, rot)
+    rot = npy.dot(rot / npy.sqrt(eig), dag(rot))
+    U[:] = npy.dot(U, rot)
 
 def rotate_matrix(h, U):
     """U contains the new basis as its columns"""
@@ -196,7 +184,7 @@ def apply_subspace_mask(H_nn, f_n):
     """
     occ = 0
     nbands = len(f_n)
-    while occ < nbands and f_n[occ] > 1e-3: occ +=1
+    while occ < nbands and f_n[occ] > 1e-3: occ += 1
     H_nn[occ:, :occ] = H_nn[:occ, occ:] = 0
 
 def cutoff2gridspacing(E):

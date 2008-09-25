@@ -383,3 +383,50 @@ class PAWExtra:
             e_lumo = min(e_lumo, eig[lumo])
 
         return e_homo * self.Ha, e_lumo * self.Ha
+
+    def get_projections(self, locfun):
+        """Project wave functions onto localized functions
+
+        Determine the projections of the Koh-Sham eigenstates
+        onto specified localized functions of the format::
+
+          locfun = [[spos_c, l, a], [...]]
+
+        Return format is::
+
+          f_kni = <psi_kn | f_i>
+
+        where psi_kn are the wave functions, and f_i are the specified
+        localized functions.
+        """
+        from gpaw.localized_functions import create_localized_functions
+        from gpaw.spline import Spline
+
+        nbf = 0
+        for spos_c, l, a in locfun:
+            nbf += 2 * l + 1
+        f_kni = npy.zeros((len(self.ibzk_kc), self.nbands, nbf), complex)
+
+        nbf = 0
+        for spos_c, l, a in locfun:
+            if type(spos_c) is int:
+                spos_c = self.nuclei[spos_c].spos_c
+
+            a /= self.a0
+            cutoff = 10 * a
+            x = npy.arange(0.0, cutoff, cutoff / 500.0)
+            rad_g = npy.exp(-x * x / a)
+            rad_g[-2:] = 0.0
+            functions = [Spline(l, cutoff, rad_g)]
+            lf = create_localized_functions(functions, self.gd, spos_c,
+                                            dtype=complex)
+            lf.set_phase_factors(self.ibzk_kc)
+            nlf = 2 * l + 1
+            nbands = self.nbands
+            nkpts = len(self.ibzk_kc)
+            for k in range(nkpts):
+                lf.integrate(self.kpt_u[k].psit_nG[:],
+                             f_kni[k, :, nbf:nbf + nlf], k=k)
+            nbf += nlf
+        return f_kni.conj()
+

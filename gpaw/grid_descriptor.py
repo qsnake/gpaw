@@ -468,8 +468,7 @@ class GridDescriptor:
                 slice_nG = psit_nG[:nbands, :, g].copy()
             else:
                 slice_nG = psit_nG[:nbands, :, :, g].copy()
-            slice_nG.shape = (nbands, -1)
-            return slice_nG
+            return slice_nG.reshape(nbands, -1)
 
         for g in range(self.n_c[c]):
             A_nG = get_slice(c, g, psit_nG)
