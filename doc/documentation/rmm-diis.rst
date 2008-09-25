@@ -33,7 +33,7 @@ Algorithm
 RMM-DIIS step
 -------------
 
-First calculate the residual:
+For each wave function we calculate the residual:
 
 .. math::
 
@@ -76,10 +76,14 @@ The ideal preconditioner would be:
 
 .. math::
 
- \hat{P} = -(\hat{H} - \epsilon_n \hat{S})^{-1} \simeq -\hat{T}^{-1}
+ \hat{P} = -(\hat{H} - \epsilon_n \hat{S})^{-1}.
 
-Calculate preconditioned residuals (`\tilde{R}_n = \hat{P} R_n`) by
-solving `\hat{T} \tilde{R}_n = -R_n` or equivalently:
+For the short wavelength parts of the residuals, `\hat{H} - \epsilon_n
+\hat{S}` will be dominated by the kinetic energy operator, so we have
+approximately `\hat{P} \simeq -\hat{T}^{-1}`.
+
+We calculate preconditioned residuals (`\tilde{R}_n = \hat{P} R_n`) by
+solving `\hat{T} \tilde{R}_n = -R_n` or equivalently
 
 .. math::
 
