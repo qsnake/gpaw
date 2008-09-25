@@ -166,6 +166,15 @@ def lowdin(U, S=None):
     rot = npy.dot(rot / npy.sqrt(eig), dag(rot))
     U[:] = npy.dot(U, rot)
 
+def lowdin_svd(U):
+    """Orthogonalize according to the Lowdin procedure
+       using singular value decomposition.
+       
+       U is an N x M matrix containing M vectors as its columns.
+    """
+    Z, D, V = npy.linalg.svd(U, full_matrices=0)
+    return npy.dot(Z, V)
+
 def rotate_matrix(h, U):
     """U contains the new basis as its columns"""
     return npy.dot(dagger(U), npy.dot(h, U))
