@@ -59,14 +59,14 @@ Publications using the gpaw code
 --------------------------------
 
 The first article introducing the gpaw project:
-   | J. J. Mortensen, L. B. Hansen , and K. W. Jacobsen
+   | J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen
    | `Real-space grid implementation of the projector augmented wave method`__
    | Physical Review B, Vol. **71**, 035109, 2005
 
    __ http://dx.doi.org/10.1103/PhysRevB.71.035109
 
 The article describing the time-dependent DFT implementations in gpaw:
-   | M. Walter, H. Häkkinen, L. Lehtovaara, M. Puska, J. Enkovaara, C. Rostgaard and J. J. Mortensen
+   | M. Walter, H. Häkkinen, L. Lehtovaara, M. Puska, J. Enkovaara, C. Rostgaard, and J. J. Mortensen
    | `Time-dependent density-functional theory in the projector augmented-wave method`__
    | Journal of Chemical Physics, Vol. **128**, 244101, 2008
 
@@ -80,25 +80,25 @@ A description of a statistical approach to the exchange-correlation energy in DF
   __ http://dx.doi.org/10.1103/PhysRevLett.95.216401
 
 First article related to ligand protected gold clusters:
-  | J. Akola, M. Walter, R. L. Whetten, H. Häkkinen and H. Grönbeck
+  | J. Akola, M. Walter, R. L. Whetten, H. Häkkinen, and H. Grönbeck
   | `On the structure of Thiolate-Protected Au25`__
   | J. Am. Chem. Soc., Vol **130**, 3756-3757, 2008
 
   __ http://dx.doi.org/10.1021/ja800594p
 
 Second article related to ligand protected gold clusters:
-  | M. Walter, J. Akola, O. Lopez-Acevedo, P.D. Jadzinsky, G. Calero, C.J. Ackerson, R.L. Whetten, H. Grönbeck and H. Häkkinen
+  | M. Walter, J. Akola, O. Lopez-Acevedo, P.D. Jadzinsky, G. Calero, C.J. Ackerson, R.L. Whetten, H. Grönbeck, and H. Häkkinen
   | `A unified view of ligand-protected gold clusters as superatom complexes`__
   | PNAS, Vol **105**, 9157-9162, 2008
  
   __ http://www.pnas.org/cgi/content/abstract/0801001105v1
 
 GPAW applied to the study of graphene edges:
-  | Pekka Koskinen, Sami Malola and Hannu Häkkinen
+  | Pekka Koskinen, Sami Malola, and Hannu Häkkinen
   | `Self-passivating edge reconstructions of graphene`__
-  | Accepted for publication in PRL.
+  | Physical Review Letters, Vol. **101**, 115502, 2008
  
-  __ http://arxiv.org/abs/0802.2623
+  __ http://dx.doi.org/10.1103/PhysRevLett.101.115502
 
 
 Articles on the PAW formalism
@@ -119,7 +119,7 @@ A different formulation of PAW by Kresse and Joubert designed to make the transi
   __ http://dx.doi.org/10.1103/PhysRevB.59.1758
 
 A second, more pedagogical, article on PAW by Blöchl and co-workers.
-  | P. E. Blöchl, C. J. Först. and J. Schimpl
+  | P. E. Blöchl, C. J. Först, and J. Schimpl
   | `Projector Augmented Wave Method: ab-initio molecular dynamics with full wave functions`__
   | Bulletin of Materials Science, Vol. **26**, 33, 2003
 
