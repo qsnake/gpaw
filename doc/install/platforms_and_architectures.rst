@@ -728,7 +728,7 @@ patch file
 gfortran compiler),
 the :svn:`numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg <doc/install/numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg>` patch file (lapack
 section configured to use ``lapack_bgp`` and
-blas section to use ``esslbg`` and ``cblas_bgp``,
+blas section to use ``esslbg`` and ``cblas_bgp``),
 and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/numpy-1.0.4-site.cfg.lapack_bgp_esslbg>` file (contains paths to
 ``lapack_bgp``, ``esslbg`` , ``cblas_bgp``, and xlf* related libraries).
 
