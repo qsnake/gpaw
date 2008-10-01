@@ -1,0 +1,5 @@
+[DEFAULT]
+library_dirs = /opt/ibmmath/essl/4.3/lib:/soft/apps/ESSL-4.3/lib:/soft/apps/blas-lapack-lib:/home/mdulak/blas-lapack-lib:/opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/xlmass/bg/4.4/bglib:/opt/ibmcmp/xlsmp/bg/1.7/bglib
+include_dirs = /opt/ibmmath/essl/4.3/include:/soft/apps/ESSL-4.3/include
+libraries = xl, xlopt, xlf90_r, xlfmath, xlsmp
+search_static_first = true
