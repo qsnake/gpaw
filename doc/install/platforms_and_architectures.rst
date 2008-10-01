@@ -852,7 +852,7 @@ also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
 ``blacs`` features)::
 
   extra_compile_args += [
-      '-O3',
+      '-O3'
       ]
 
   libraries = [
