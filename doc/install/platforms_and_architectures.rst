@@ -732,7 +732,7 @@ blas section to use ``esslbg`` and ``cblas_bgp``,
 and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/numpy-1.0.4-site.cfg.lapack_bgp_esslbg>` file (contains paths to
 ``lapack_bgp``, ``esslbg`` , ``cblas_bgp``, and xlf* related libraries).
 
-**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``frontend-13``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_.
+**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``frontend-13``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a`` and ``cblas_bgp.a``. Moreover numpy requires that ``esslbg`` and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`.
 
 **Warning** - if numpy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
