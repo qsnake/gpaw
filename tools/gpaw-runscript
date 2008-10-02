@@ -306,6 +306,7 @@ unset CC CFLAGS LDFLAGS
         if set['mail'] is not None:
             print >> f, '#PBS -M',set['mail']
         print >> f, '#PBS -q bfg'
+        print >> f, 'export PATH=/usr/lib/openmpi/1.2.5-gcc/bin:$PATH'
         print >> f, 'cd', set['wd']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
