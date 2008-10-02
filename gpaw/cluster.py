@@ -1,5 +1,3 @@
-import math
-import re
 import numpy as npy
 
 from ase import Atom, Atoms
@@ -39,7 +37,7 @@ class Cluster(Atoms):
     def extreme_positions(self):
         """get the extreme positions of the structure"""
         pos = self.get_positions()
-        return npy.array([npy.minimum.reduce(pos),npy.maximum.reduce(pos)])
+        return npy.array([npy.minimum.reduce(pos), npy.maximum.reduce(pos)])
 
     def find_connected(self, i, dmax):
         """Find the atoms connected to self[i] and return them."""
@@ -71,13 +69,19 @@ class Cluster(Atoms):
 
         return connected
 
-    def minimal_box(self,border=0):
+    def minimal_box(self, border=0, h=None):
         """The box needed to fit the structure in.
+
         The structure is moved to fit into the box [(0,x),(0,y),(0,z)]
         with x,y,z > 0 (fitting the ASE constriction).
         The border argument can be used to add a border of empty space
         around the structure.
-        """
+
+        If h is set, the box is extended to ensure that box/h is a multiple of 4. 
+        This ensures that GPAW uses the desired h.
+
+        The shift applied to the structure is returned.
+         """
 
         if len(self) == 0:
             return None
@@ -86,15 +90,27 @@ class Cluster(Atoms):
  
         # add borders
         if type(border)==type([]):
-            b=border
+            b = border
         else:
-            b=[border,border,border]
-        for i in range(3):
-            extr[0][i]-=b[i]
-            extr[1][i]+=b[i]-extr[0][i] # shifted already
+            b = [border, border, border]
+        for c in range(3):
+            extr[0][c] -= b[c]
+            extr[1][c] += b[c] - extr[0][c] # shifted already
+
+        # check for multiple of 4
+        if h is not None:
+            for c in range(3):
+                # apply the same as in paw.py 
+                L = extr[1][c] # shifted already
+                N = max(4, int(L / h / 4 + 0.5) * 4)
+                # correct L
+                dL = N * h - L
+                # move accordingly
+                extr[1][c] += dL # shifted already
+                extr[0][c] -= dL / 2.
             
-        # move lower corner to (0,0,0)
-        shift = tuple(-1.*npy.array(extr[0]))
+        # move lower corner to (0, 0, 0)
+        shift = tuple(-1. * npy.array(extr[0]))
         self.translate(shift)
         self.set_cell(tuple(extr[1]))
 
@@ -163,11 +179,11 @@ class Cluster(Atoms):
         else:
             out = Cluster([])
             cell = self.get_cell().diagonal()
-            for i in range(repeat[0]+1):
-                for j in range(repeat[1]+1):
-                    for k in range(repeat[2]+1):
+            for i in range(repeat[0] + 1):
+                for j in range(repeat[1] + 1):
+                    for k in range(repeat[2] + 1):
                         copy = self.copy()
-                        copy.translate(npy.array([i,j,k]) * cell)
+                        copy.translate(npy.array([i, j, k]) * cell)
                         out += copy
 
         if filetype is None:

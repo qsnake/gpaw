@@ -37,9 +37,17 @@ for c in range(3):
         width += R
     equal(cc[c, c], width, 1e-10)
 
-# conneted atoms
-assert(len(CO.find_connected(0, 1.1*R)) == 2)
-assert(len(CO.find_connected(0, 0.9*R)) == 1)
+# minimal box, ensure multiple of 4
+h = .13
+CO.minimal_box(b, h=h)
+cc = CO.get_cell() 
+for c in range(3):
+##    print "cc[c,c], cc[c,c] / h % 4 =", cc[c, c], cc[c, c] / h % 4
+    equal(cc[c, c] / h % 4, 0.0, 1e-10)
+
+# connected atoms
+assert(len(CO.find_connected(0, 1.1 * R)) == 2)
+assert(len(CO.find_connected(0, 0.9 * R)) == 1)
 
 # .............................................
 # I/O
