@@ -329,7 +329,7 @@ class Calculator(PAW):
 
         # Due to orthorhombic cells, only one component of dirG is non-zero.
         c = dirG.tolist().index(1)
-        G = self.bzk_kc[nextkpoint, c] - self.bzk_kc[kpoint, c] + G_I[c]
+        G = self.bzk_kc[nextkpoint, c] - self.bzk_kc[kpoint, c] - G_I[c]
 
         return self.get_wannier_integrals(c, spin, kpoint,
                                           nextkpoint, G, nbands)
