@@ -1,4 +1,4 @@
 # creates: h2.txt
 import os
-os.system('python h2.py')
+assert os.system('python h2.py') == 0
 os.system('cp h2.txt ../_build')
