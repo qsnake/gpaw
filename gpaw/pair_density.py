@@ -15,22 +15,24 @@ class PairDensity2:
         self.finegrid = finegrid
 
         self.ghat_nuclei = paw.ghat_nuclei
+        self.nuclei = paw.nuclei
         self.gd = paw.gd
 
         self.yes_I_have_done_the_Ghat_L = False
 
     def set_coarse_ghat(self):
         create = create_localized_functions
-        for nucleus in self.ghat_nuclei:
+
+        for nucleus in self.nuclei:
             # Shape functions:
             ghat_l = nucleus.setup.ghat_l
             Ghat_L = create(ghat_l, self.gd, nucleus.spos_c,
                             forces=False)
             nucleus.Ghat_L = Ghat_L
-    
+
             if Ghat_L is not None:
                 assert nucleus.ghat_L is not None
-    
+            
         self.yes_I_have_done_the_Ghat_L = True
     
         for nucleus in self.ghat_nuclei:
