@@ -132,8 +132,9 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_aui=None):
     w_k = paw.weight_k
     nk = len(w_k)
     nb = paw.nbands
+    ns = paw.nspins
     
-    P_un = npy.zeros((nk, nb), npy.complex)
+    P_un = npy.zeros((nk*ns, nb), npy.complex)
 
     if wf is None:
         P_auni = npy.array([paw.nuclei[a].P_uni for a in mol])
@@ -149,9 +150,6 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_aui=None):
         P_un /= sqrt(N)
 
     else:
-        if len(wf) == 1:  # Using the Gamma point only
-            wf = [wf[0] for u in range(nk)]
-            P_aui = [P_aui[0] for u in range(nk)]
         P_aui = [npy.conjugate(P_aui[a]) for a in range(len(mol))]
         for kpt in paw.kpt_u:
             w = npy.reshape(npy.conjugate(wf)[kpt.u], -1)
