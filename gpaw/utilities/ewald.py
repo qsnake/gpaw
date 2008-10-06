@@ -24,7 +24,7 @@ class Ewald:
     
     def __init__(self, cell, G=5, Ng=[9, 9, 9], Nl=[3, 3, 3]):
         self.cell = cell
-        self.Vcell = np.linalg.det(cell)
+        self.Vcell = abs(np.linalg.det(cell))
         self.recip_cell = np.linalg.inv(self.cell).T
         self.Ng = Ng
         self.Nl = Nl
