@@ -19,7 +19,7 @@ class Writer:
         self.xml1 = ['<gpaw_io version="0.1" endianness="%s">' %
                      ('big', 'little')[int(npy.little_endian)]]
         self.xml2 = []
-        if os.path.isdir(name):
+        if os.path.isfile(name):
             os.rename(name, name[:-4] + '.old.gpw')
         self.tar = tarfile.open(name, 'w')
         self.mtime = int(time.time())
