@@ -51,7 +51,7 @@ def dscf_calculation(calc, orbitals, atoms=None):
         n_occ.set_communicator(occ.kpt_comm)
         calc.occupation = n_occ
         calc.converged = False
-    elif (isinstance(occ, ZeroKelvinDSCF) and
+    elif (isinstance(occ, ZeroKelvin) and
           not isinstance(occ, ZeroKelvinDSCF)):
         n_occ = ZeroKelvinDSCF(occ.ne, occ.nspins, orbitals ,calc)
         n_occ.set_communicator(occ.kpt_comm)
@@ -210,7 +210,6 @@ class FermiDiracDSCF(FermiDirac):
         self.calculate_band_energy(kpts)
 
 
-
 class MolecularOrbitals:
     """Class defining the orbitals that should be filled in a dSCF calculation.
     
@@ -282,7 +281,7 @@ class MolecularOrbitals:
         if self.paw.nspins == 1:
             epsF = [epsF]
         elif not self.paw.fixmom:
-            epsF = [epsF,epsF]
+            epsF = [epsF, epsF]
         if self.nos == None:
             self.nos = len(self.paw.kpt_u[0].f_n)
             
@@ -348,11 +347,10 @@ class WaveFunction:
     wf_u: list of wavefunction arrays
         Wavefunction to be occupied on the kpts on this processor.
     P_aui: list of two-dimensional arrays.
-        Calulator.nuclei[a].P_uni[:,n,:] for a in molecule
+        [Calulator.nuclei[a].P_uni[:,n,:] for a in molecule]
         Projector overlaps with the wavefunction to be occupied for each
         kpoint. These are used when correcting to all-electron wavefunction
-        overlaps. wf_u and P_uai can also be given as full lists
-        corresponding to the all the kpoints in the calculation.
+        overlaps.
     """
 
     def __init__(self, paw, wf_u, P_aui, Estart=0.0, Eend=1.e6,
@@ -374,70 +372,63 @@ class WaveFunction:
             epsF = [epsF, epsF]
         if self.nos == None:
             self.nos = len(self.paw.kpt_u[0].f_n)
-        
+
         if len(self.wf_u) == len(self.paw.kpt_u):
             wf_u = self.wf_u
             P_aui = self.P_aui
-        #elif len(self.wf_u) == self.paw.nkpts * self.paw.nspins:
-        #    wf_u = []
-        #    P_uai = []
-        #    for kpt in self.paw.kpt_u:
-        #        k = kpt.s * self.paw.nkpts + kpt.k
-        #        wf_u.append(self.wf_u[k])
-        #        P_uai.append(self.P_uai[k])
-        #    P_aui = npy.swapaxes(P_uai, 0, 1)
         else:
             raise RuntimeError('List of wavefunctions has wrong size')
 
-        ft_km = []
+        if self.paw.kpt_u[0].psit_nG is None:
+            return npy.zeros((len(self.paw.kpt_u), self.paw.nbands), float)
+              
+        ft_un = []
+        
         for kpt in self.paw.kpt_u:
-            
+
             # Inner product of pseudowavefunctions
-            wf = npy.reshape(wf_u[kpt.u], -1) * self.paw.a0**1.5
-            if kpt.psit_nG is None:
-                a,b,c = self.paw.gd.N_c
-                kpt.psit_nG = npy.zeros((len(kpt.f_n), a, b, c),float)
-            psit_nG = npy.reshape(kpt.psit_nG, (len(kpt.f_n), -1))
-            dV = self.paw.gd.h_c[0] * self.paw.gd.h_c[1] * self.paw.gd.h_c[2]
-            Porb_n = npy.dot(npy.conjugate(psit_nG), wf) * dV
+            wf = npy.reshape(wf_u[kpt.u], -1)
+            Wf_n = kpt.psit_nG
+            print npy.shape(Wf_n)
+            Wf_n = npy.reshape(Wf_n, (len(kpt.f_n), -1))
+            p_n = npy.dot(npy.conjugate(Wf_n), wf) * self.paw.gd.dv
             
             # Correction to obtain inner product of AE wavefunctions
-            for n in range(self.paw.nbands):
-                for a, b in zip(self.mol, range(len(self.mol))):
-                    atom = self.paw.nuclei[a]
-                    p_i = npy.conjugate(atom.P_uni[kpt.u][n])
-                    for i in range(len(p_i)):
-                        for j in range(len(p_i)):
-                            Porb_n[n] += (p_i[i] * atom.setup.O_ii[i][j]
-                                          * P_aui[b][kpt.u][j])
-            
-            Pabs_n = abs(Porb_n)**2
-            argsort = npy.argsort(Pabs_n)
+            a = 0
+            for A in self.mol:
+                atom = self.paw.nuclei[A]
+                if atom.in_this_domain:
+                    for n in range(self.paw.nbands):
+                        P_ni = atom.P_uni[kpt.u]
+                        nai = len(P_aui[a][0])
+                        for i in range(nai):
+                            for j in range(nai):
+                                p_n[n] += (npy.conjugate(P_ni[n][i]) *
+                                           atom.setup.O_ii[i][j] *
+                                           P_aui[a][kpt.u][j])
+                    a += 1
 
-            print 'Kpoint', mpi.rank, kpt.u, kpt.k, sum(abs(Porb_n)**2)
+            self.paw.gd.comm.sum(p_n)
+
+            print 'Kpoint', mpi.rank, kpt.u, kpt.k, kpt.s, sum(abs(p_n)**2)
 
             if self.paw.dtype == float:
-                ft_m = npy.zeros(len(kpt.f_n), npy.float)
+                ft_n = npy.zeros(len(kpt.f_n), npy.float)
             else:
-                ft_m = npy.zeros(len(kpt.f_n), npy.complex)
+                ft_n = npy.zeros(len(kpt.f_n), npy.complex)
 
+            argsort = npy.argsort(abs(p_n)**2)
             nosf = 0
             for m in argsort[::-1]:
                 if (kpt.eps_n[m] > epsF[kpt.s] + self.Estart and
                     kpt.eps_n[m] < epsF[kpt.s] + self.Eend):
-                    ft_m[m] = npy.conjugate(Porb_n[m])
+                    ft_n[m] = npy.conjugate(p_n[m])
                     nosf += 1
                 if nosf == self.nos:
                     break
 
-            ft_m /= npy.sqrt(sum(abs(ft_m)**2))
+            ft_n /= npy.sqrt(sum(abs(ft_n)**2))
             
-            ft_km.append(ft_m)
+            ft_un.append(ft_n)
             
-        return ft_km
-                    
-
-
-    
-
-
+        return ft_un
