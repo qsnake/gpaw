@@ -16,6 +16,8 @@ from gpaw.utilities.complex import cc
 from gpaw.utilities.blas import rk, gemm
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.utilities import swap
+from gpaw.eigensolvers.eigensolver import blocked_matrix_multiply
+
 
 class Overlap:
     """Overlap operator class.
@@ -166,12 +168,15 @@ class Overlap:
         work_nG = self.big_work_arrays['work_nG']
         nmybands = len(psit_nG)
         if size == 1:
-            gemm(1.0, psit_nG, C_nn, 0.0, work_nG)
+            if psit_nG.shape != work_nG.shape:
+                blocked_matrix_multiply(psit_nG, C_nn, work_nG)
+            else:
+                gemm(1.0, psit_nG, C_nn, 0.0, work_nG)
             
-            kpt.psit_nG = work_nG
+                kpt.psit_nG = work_nG
 
-            if work_nG is self.big_work_arrays.get('work_nG'):
-                self.big_work_arrays['work_nG'] = psit_nG
+                if work_nG is self.big_work_arrays.get('work_nG'):
+                    self.big_work_arrays['work_nG'] = psit_nG
 
             for nucleus in self.my_nuclei:
                 P_ni = nucleus.P_uni[kpt.u]

@@ -16,16 +16,17 @@ from gpaw.mpi import run
 def blocked_matrix_multiply(a_nG, U_nn, work_nG):
     nbands = len(a_nG)
     b_ng = a_nG.reshape((nbands, -1))
-    w_ng = work_nG.reshape((nbands, -1))
+    w1_nq, w2_nq = work_nG.reshape((2, nbands, -1))
     ngpts = b_ng.shape[1]
-    blocksize = w_ng.shape[1]
+    blocksize = w1_nq.shape[1]
+    assert ngpts % blocksize == 0
     g1 = 0
     while g1 < ngpts:
         g2 = g1 + blocksize
-        if g2 > ngpts:
-            g2 = ngpts
-        gemm(1.0, b_ng[:, g1:g2], U_nn, 0.0, w_ng[:, :g2 - g1])
-        b_ng[:, g1:g2] = w_ng[:, :g2 - g1]
+        w1_nq[:] = b_ng[:, g1:g2]
+        gemm(1.0, w1_nq, U_nn, 0.0, w2_nq)
+        b_ng[:, g1:g2] = w2_nq
+        g1 = g2
     
 class Eigensolver:
     def __init__(self, keep_htpsit=True, nblocks=1):
@@ -129,7 +130,7 @@ class Eigensolver:
             r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
 
         else:
-            Htpsit_nG = self.work_nG
+            Htpsit_nG = self.big_work_arrays['work_nG']
             n1 = 0
             while n1 < self.nbands:
                 n2 = n1 + self.blocksize
@@ -138,8 +139,8 @@ class Eigensolver:
                 hamiltonian.apply(psit_nG[n1:n2], Htpsit_nG[:n2 - n1], kpt,
                                   local_part_only=True)
         
-                r2k(0.5 * self.gd.dv, psit_nG[n1:], Htpsit_nG, 0.0,
-                    H_nn[n1:, n1:n2])
+                gemm(self.gd.dv, Htpsit_nG, psit_nG[n1:], 0.0,
+                     H_nn[n1:, n1:n2], 'c')
                 n1 = n2
                 
         for nucleus in hamiltonian.my_nuclei:
