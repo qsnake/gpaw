@@ -57,7 +57,7 @@ parameters = {
  'Se': {'core': '[Ar]3d', 'rcut': [1.6, 1.9]},
 # 'Br': Missing
  'Kr': {'core': '[Ar]3d', 'rcut': 2.2},
- 'Rb': {'core': '[Ar]3d', 'rcut': [2.8, 2.4, 2.4]},
+ 'Rb': {'core': '[Ar]3d', 'rcut': [2.6, 2.4, 2.3]},
  'Sr': {'core': '[Ar]3d', 'rcut': [2.4, 2.4, 2.3],
         'extra':{1: [0.0], 2: [0.0]}},
 #'Y' : Missing 
