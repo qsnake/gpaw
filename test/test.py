@@ -114,10 +114,12 @@ class ScriptTestCase(unittest.TestCase):
 
     def testfile(self):
         try:
-            execfile(self.filename, {})
-        except KeyboardInterrupt:
-            raise RuntimeError('Keyboard interrupt')
-        mpi.world.barrier()
+            try:
+                execfile(self.filename, {})
+            except KeyboardInterrupt:
+                raise RuntimeError('Keyboard interrupt')
+        finally:
+            mpi.world.barrier()
         
     def tearDown(self):
         gc.collect()
