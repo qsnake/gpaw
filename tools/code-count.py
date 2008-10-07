@@ -1,19 +1,9 @@
 #!/usr/bin/python
 
 import os
-import glob
-import pylab
 import datetime
+import pylab as pl
 
-# Milestones:
-# Rev    1: 10/19/05 16:35:46  start revision log
-# Rev  383: 08/28/06 08:21:40  gridpaw -> gpaw
-# Rev  887: 07/11/07 10:33:37  libxc introduced
-# Rev 2050: 06/20/08 09:54:24  /doc in svn
-date1 = datetime.date(2005, 10, 19)
-date2 = datetime.date.today()
-delta = datetime.timedelta(days=1)
-dates = pylab.drange(date1, date2, delta)
 
 def count(dir, pattern):
     if not os.path.isdir(dir):
@@ -21,31 +11,92 @@ def count(dir, pattern):
     p = os.popen('wc -l `find %s -name %s` | tail -1' % (dir, pattern), 'r')
     return int(p.read().split()[0])
 
-stat = open('stat2.dat', 'w')
-date1 = datetime.date(2008, 1, 19)
-date2 = datetime.date(2008,  7,  7)
-dates = [date1, date2]
-dates = [datetime.date(y, m, 1) for y in range(2005,2008) for m in range(1,13)]
-dates = [datetime.date(2008, m, d) for m in range(1,8) for d in range(1,30,5)]
-for date in dates:
-    print date
-    # Checkout of relevant gpaw folders
-    svn = ('svn export --revision {%s} '
-           'https://svn.fysik.dtu.dk/projects/gpaw/trunk' % date.isoformat())
-    e = os.system(svn + ' temp-gpaw > /dev/null')
-    if e != 0:
+
+def polygon(x, y1, y2, *args, **kwargs):
+    x = pl.concatenate((x, x[::-1]))
+    y = pl.concatenate((y1, y2[::-1]))
+    pl.fill(x, y, *args, **kwargs)
+
+
+def plot_count(fname):
+    # Load data
+    date, libxc, c, code, test = pl.load(fname, unpack=True)
+    zero = pl.zeros_like(date)
+
+    fig = pl.figure(1, figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    polygon(date, code + test, code + test + c,
+            facecolor='r', label='C-code')
+    polygon(date, code, code + test,
+            facecolor='y', label='Tests')
+    polygon(date, zero, code,
+            facecolor='g', label='Python-code')
+    polygon(date, zero, zero,
+            facecolor='b', label='Fortran-code')
+
+    months = pl.MonthLocator()
+    months3 = pl.MonthLocator(interval=3)
+    month_year_fmt = pl.DateFormatter("%b '%y")
+
+    ax.xaxis.set_major_locator(months3)
+    ax.xaxis.set_minor_locator(months)
+    ax.xaxis.set_major_formatter(month_year_fmt)
+    labels = ax.get_xticklabels()
+    pl.setp(labels, rotation=30)
+    pl.axis('tight')
+    pl.legend(loc='upper left')
+    pl.title('Number of lines')
+    pl.savefig(fname.split('.')[0] + '.png')
+
+
+if __name__ == '__main__':
+    # Milestones:
+    # Rev    1: 10/19/05 16:35:46  start revision log
+    # Rev  383: 08/28/06 08:21:40  gridpaw -> gpaw
+    # Rev  887: 07/11/07 10:33:37  libxc introduced
+    # Rev 2050: 06/20/08 09:54:24  /doc in svn
+
+    # Check if stat file already exists, and stat from last checked day
+    if os.path.isfile('stat.dat'):
+        datenum = int(os.popen('tail -1 stat.dat','r').read().split()[0])
+        date1 = pl.num2date(datenum + 1)
+        stat = open('stat.dat', 'a')
+    else:
+        date1 = datetime.date(2005, 10, 19)
+        stat = open('stat.dat', 'w')
+    
+    date2 = datetime.date.today()
+    delta = datetime.timedelta(days=1)
+    dates = pl.drange(date1, date2, delta).astype(int)
+
+    for datenum in dates:
+        datestr = datetime.date.fromordinal(datenum).isoformat()
+        print datestr
+
+        # Checkout of relevant gpaw folders
+        svn = ('svn export --revision {%s} '
+               'https://svn.fysik.dtu.dk/projects/gpaw/trunk' % datestr)
+        e = os.system(svn + ' temp-gpaw > /dev/null')
+
+        if e != 0:
+            os.system('rm -rf temp-gpaw')
+            continue
+
+        # Remove gui:
+        os.system('rm -rf temp-gpaw/gpaw/gui')
+
+        libxc = count('temp-gpaw/c/libxc', '\\*.[ch]')
+        ch = count('temp-gpaw/c', '\\*.[ch]') - libxc
+        py = count('temp-gpaw/gridpaw', '\\*.py')
+        py += count('temp-gpaw/gpaw', '\\*.py')
+        test = count('temp-gpaw/test', '\\*.py')
+
+        # Clean up
         os.system('rm -rf temp-gpaw')
-        continue
-    # Run PyLint:
-    os.system('rm -rf temp-gpaw/gpaw/gui')
 
-    libxc = count('temp-gpaw/c/libxc', '\\*.[ch]')
-    ch = count('temp-gpaw/c', '\\*.[ch]') - libxc
-    py = count('temp-gpaw/gridpaw', '\\*.py')
-    py += count('temp-gpaw/gpaw', '\\*.py')
-    test = count('temp-gpaw/test', '\\*.py')
+        # Dump data to stat file
+        print >> stat, datenum, libxc, ch, py, test
 
-    # dump collected data to file, and clean up
-    print date, libxc, ch, py, test
-    print >> stat, pylab.date2num(date), libxc, ch, py, test
-    os.system('rm -rf temp-gpaw')
+    stat.close()
+    plot_count('stat.dat')
+
