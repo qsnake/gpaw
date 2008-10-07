@@ -1,6 +1,5 @@
 import numpy as np
 from gpaw.utilities.ewald import Ewald
-import tab
 
 verbose = True
 
