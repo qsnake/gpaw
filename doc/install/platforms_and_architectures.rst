@@ -1,4 +1,4 @@
-. _platforms_and_architectures:
+.. _platforms_and_architectures:
 
 ===========================
 Platforms and architectures
