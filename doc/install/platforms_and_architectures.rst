@@ -579,16 +579,80 @@ surveyor.alcf.anl.gov
 ---------------------
 
 The **0.3** version of gpaw uses Numeric `<https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3/>`_.
-The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-Get the Numeric-24.2_ (only if you want to run the **0.3** version)
+Get the Numeric-24.2_ (only if you want to run the **0.3** version of gpaw)
 and do this::
 
   $ gunzip -c Numeric-24.2.tar.gz | tar xf -
   $ cd Numeric-24.2
   $ /bgsys/drivers/ppcfloor/gnu-linux/bin/python setup.py install --root=$HOME/Numeric-24.2-1
 
-To build numpy, save the :svn:`numpy-1.0.4-gnu.py.patch <doc/install/numpy-1.0.4-gnu.py.patch>` patch file
+The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
+
+To build an optimized numpy based on ``goto`` blas, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
+patch file
+(modifications required to get powerpc-bgp-linux-gfortran instead of
+gfortran compiler),
+the :svn:`numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg <doc/install/numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg>` patch file (lapack
+section configured to use ``lapack_bgp`` and
+blas section to use ``goto``, ``cblas_bgp``, and ``esslbg``),
+and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg>` file (contains paths to
+``lapack_bgp``, ``goto``, ``esslbg`` , ``cblas_bgp``,
+and xlf* related libraries).
+
+**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``surveyor/intrepid``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a``, and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``goto``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS_goto/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. Change the locations of the libraries to be used in the makefiles: `/soft/apps/ESSL-4.3/lib` and `/opt/ibmcmp/lib/bg`.
+
+**Warning** - if numpy built using these libraries fails
+with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
+- please add ``-qpic`` to compile options for both ``lapack_bgp`` and ``cblas_bgp``. 
+After bulding ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4_ and do this::
+
+  $ gunzip -c numpy-1.0.4.tar.gz | tar xf -
+  $ mv numpy-1.0.4 numpy-1.0.4.optimized; cd numpy-1.0.4.optimized
+  $ patch -p1 < ../numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran
+  $ patch -p1 < ../numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg
+  $ cp ../numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg site.cfg
+  $ ldpath=/bgsys/drivers/ppcfloor/gnu-linux/lib
+  $ ldflags="-Wl,--allow-multiple-definition"
+  $ root=$HOME/numpy-1.0.4-1.optimized
+  $ p=/bgsys/drivers/ppcfloor/gnu-linux/bin/python
+  $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -DNO_APPEND_FORTRAN\""
+  $ LDFLAGS="$ldflags" LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
+
+Numpy built in this way does contain the
+:file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
+, and running the following python script results
+in better time than the standard version of numpy (~156 vs. ~329 sec)
+for ``numpy.dot`` operation::
+
+  num_string = "numpy"
+  #num_string = "Numeric"
+
+  if num_string == "numpy":
+      import numpy as num
+  elif num_string == "Numeric":
+      import Numeric as num
+  print num.__file__
+
+  from time import time
+
+  import random
+
+  N = 1700
+
+  A = num.array(num.ones((N,N)))
+  Al = A.tolist()
+  for item in Al:
+      for n,value in enumerate(item):
+          if (n % 2) == 0:
+              item[n] = random.random()
+  Anew = num.array([Al])
+
+  t = time()
+  num.dot(Anew, Anew)
+  print num_string, time()-t
+
+To build standard numpy, save the :svn:`numpy-1.0.4-gnu.py.patch <doc/install/numpy-1.0.4-gnu.py.patch>` patch file
 (modifications required to get mpif77 instead of gfortran compiler),
 get and numpy-1.0.4_ and do this::
 
@@ -604,7 +668,7 @@ get and numpy-1.0.4_ and do this::
 Set these environment variables in the :file:`.softenvrc` file::
 
   PYTHONPATH = ${HOME}/Numeric-24.2-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/Numeric
-  PYTHONPATH += ${HOME}/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+  PYTHONPATH += ${HOME}/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
   PYTHONPATH += ${HOME}/gpaw:${HOME}/CamposASE2:${HOME}/ase3k
   GPAW_SETUP_PATH = ${HOME}/gpaw-setups-0.4.2039
 
@@ -658,7 +722,7 @@ experimental ``scalapack`` and ``blacs`` features)::
   python_site = 'bgsys/drivers/ppcfloor/gnu-linux'
 
   include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
-                   gpfsdir+'/numpy-1.0.4-1/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
+                   gpfsdir+'/numpy-1.0.4-1.optimized/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
 
   extra_compile_args += ['-std=c99']
 
@@ -721,8 +785,7 @@ Instructions below are valid for ``frontend-13`` and the filesystem
 The latest version of gpaw uses numpy
 `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-To build an optimized? (this does not work completely, see problems
-below) numpy, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
+To build an optimized (consider to build based on ``goto`` blas to achieve the best performance: see `<https://wiki.fysik.dtu.dk/gpaw/install/platforms_and_architectures.html#surveyor-alcf-anl-gov>`_) numpy, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
 patch file
 (modifications required to get powerpc-bgp-linux-gfortran instead of
 gfortran compiler),
@@ -732,7 +795,7 @@ blas section to use ``esslbg`` and ``cblas_bgp``),
 and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/numpy-1.0.4-site.cfg.lapack_bgp_esslbg>` file (contains paths to
 ``lapack_bgp``, ``esslbg`` , ``cblas_bgp``, and xlf* related libraries).
 
-**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``frontend-13``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a`` and ``cblas_bgp.a``. Moreover numpy requires that ``esslbg`` and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. These instructions are valid also for `Surveyor/Intrepid` with the following locations of the libraries to be used in the makefiles: `/soft/apps/ESSL-4.3/lib` and `/opt/ibmcmp/lib/bg`.
+**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``frontend-13``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a`` and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. These instructions are valid also for `Surveyor/Intrepid` with the following locations of the libraries to be used in the makefiles: `/soft/apps/ESSL-4.3/lib` and `/opt/ibmcmp/lib/bg`.
 
 **Warning** - if numpy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
@@ -755,8 +818,8 @@ Numpy built in this way does contain the
 :file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
 , but running the following python
 script (save it as :file:`/gpfs/fs2/frontend-13/$USER/dot.py`) results
-in the same time as for the standard version of numpy (~329
-sec) for ``numpy.dot`` operation::
+in the same time as for the standard version of numpy (~329 sec)
+for ``numpy.dot`` operation::
 
   num_string = "numpy"
   #num_string = "Numeric"
@@ -813,7 +876,7 @@ following :file:`numpy.llrun` file::
   ldpath="${ldpath}:/bgsys/opt/ibmcmp/lib/bg"
   ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib"
   ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/lib"
-  pythonpath=":${home}/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages:"
+  pythonpath=":${home}/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages:"
 
   export LD_LIBRARY_PATH=\"$ldpath\"
   export PYTHONPATH=\"$pythonpath\"
@@ -852,7 +915,7 @@ Suggestions on how to build numpy using an optimized blas (preferably
 essl) are welcome!
 
 Build GPAW
-(``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
+(``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
 LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
 :file:`/gpfs/fs2/frontend-13/$USER/gpaw` (you need to install the ase
 also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
@@ -890,7 +953,7 @@ also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
   python_site = 'bgsys/drivers/ppcfloor/gnu-linux'
 
   include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
-                   gpfsdir+'/numpy-1.0.4-1/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
+                   gpfsdir+'/numpy-1.0.4-1.optimized/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
 
   extra_compile_args += ['-std=c99']
 
@@ -943,7 +1006,7 @@ where :file:`gpaw-script.llrun` looks like this::
   ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib"
   ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/lib"
   pythonpath=":${home}/Numeric-24.2-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/Numeric"
-  pythonpath="${pythonpath}:${home}/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages"
+  pythonpath="${pythonpath}:${home}/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages"
   pythonpath="${pythonpath}:${home}/gpaw"
   pythonpath="${pythonpath}:${home}/ase3k:"
 
