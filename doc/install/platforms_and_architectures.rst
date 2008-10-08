@@ -758,24 +758,32 @@ script (save it as :file:`/gpfs/fs2/frontend-13/$USER/dot.py`) results
 in the same time as for the standard version of numpy (~329
 sec) for ``numpy.dot`` operation::
 
-  import numpy
-  print numpy.__file__
-  #import Numeric
+  num_string = "numpy"
+  #num_string = "Numeric"
+
+  if num_string == "numpy":
+      import numpy as num
+  elif num_string == "Numeric":
+      import Numeric as num
+  print num.__file__
 
   from time import time
 
+  import random
+
   N = 1700
 
-  num = numpy.array(numpy.zeros((N,N)))
-  #Num = Numeric.array(Numeric.zeros((N,N)))
+  A = num.array(num.ones((N,N)))
+  Al = A.tolist()
+  for item in Al:
+      for n,value in enumerate(item):
+          if (n % 2) == 0:
+              item[n] = random.random()
+  Anew = num.array([Al])
 
   t = time()
-  numpy.dot(num, num)
-  print 'numpy', time()-t
-
-  #t = time()
-  #Numeric.dot(Num, Num)
-  #print 'Numeric', time()-t
+  num.dot(Anew, Anew)
+  print num_string, time()-t
 
 Use the following command to submit this job ``cd
 /gpfs/fs2/frontend-13/$USER; llsubmit numpy.llrun``, with the
