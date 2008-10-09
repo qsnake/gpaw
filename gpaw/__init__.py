@@ -24,7 +24,7 @@ from glob import glob
 from os.path import join, isfile
 
 __all__ = ['GPAW', 'Calculator',
-           'Mixer', 'MixerSum',
+           'Mixer', 'MixerSum', 'MixerDif',
            'PoissonSolver',
            'restart']
 
@@ -121,7 +121,7 @@ if paths != '':
     setup_paths += paths.split(':')
 
 from gpaw.aseinterface import Calculator
-from gpaw.mixer import Mixer, MixerSum
+from gpaw.mixer import Mixer, MixerSum, MixerDif
 from gpaw.poisson import PoissonSolver
 
 GPAW = Calculator
