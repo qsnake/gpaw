@@ -192,6 +192,9 @@ class PAWExtra:
 
         # XXX not for the kpoint/spin parallel case
         assert self.kpt_comm.size == 1
+
+        # If calc is a save file, read in tar references to memory
+        sel.initialize_wave_functions()
         
         # Get pseudo part
         Z_nn = self.gd.wannier_matrix(self.kpt_u[u].psit_nG,
