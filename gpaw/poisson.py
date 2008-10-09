@@ -246,6 +246,7 @@ from gpaw.utilities.tools import construct_reciprocal
 
 class PoissonFFTSolver(PoissonSolver):
     def __init__(self):
+        self.charged_periodic_correction = None
         pass
 
     """FFT implementation of the poisson solver"""
@@ -275,6 +276,7 @@ class FFTPoissonSolver(PoissonSolver):
     nn = 999
     
     def __init__(self):
+        self.charged_periodic_correction = None
         pass
 
     def initialize(self, gd):
