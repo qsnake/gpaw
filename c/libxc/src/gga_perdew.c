@@ -86,9 +86,9 @@ XC(perdew_potentials)(XC(perdew_t) *pt, const FLOAT *rho, FLOAT e_gga, int order
   if(pt->nspin == XC_POLARIZED){
     dpdz    = 0.0;
     if(fabs(1.0 + pt->zeta) >= MIN_DENS)
-      dpdz += (1.0/3.0)*POW(1.0 + pt->zeta, -1.0/3.0);
+      dpdz += 1.0/(3.0*POW(1.0 + pt->zeta, 1.0/3.0));
     if(fabs(1.0 - pt->zeta) >= MIN_DENS)
-      dpdz -= (1.0/3.0)*POW(1.0 - pt->zeta, -1.0/3.0);
+      dpdz -= 1.0/(3.0*POW(1.0 - pt->zeta, 1.0/3.0));
 
     dzdd[0] =  (1.0 - pt->zeta)/pt->dens;
     dzdd[1] = -(1.0 + pt->zeta)/pt->dens;
