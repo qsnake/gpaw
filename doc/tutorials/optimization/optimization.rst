@@ -12,9 +12,7 @@ this tutorial, we ask a :ase:`QuasiNewton
 the structural energy minimum, where all atomic forces are below 0.05
 eV/Å.  The following script will do the job:
 
-.. literalunclude: relax.py
-
-
+.. literalinclude:: relax.py
 
 The result is::
 
