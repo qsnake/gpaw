@@ -387,13 +387,15 @@ class PAWExtra:
 
         return e_homo * self.Ha, e_lumo * self.Ha
 
-    def get_projections(self, locfun):
+    def get_projections(self, locfun, spin=0):
         """Project wave functions onto localized functions
 
-        Determine the projections of the Koh-Sham eigenstates
+        Determine the projections of the Kohn-Sham eigenstates
         onto specified localized functions of the format::
 
           locfun = [[spos_c, l, a], [...]]
+
+        spos_c can be an atom index, or a scaled position vector.
 
         Return format is::
 
@@ -426,10 +428,8 @@ class PAWExtra:
             lf.set_phase_factors(self.ibzk_kc)
             nlf = 2 * l + 1
             nbands = self.nbands
-            nkpts = len(self.ibzk_kc)
-            for k in range(nkpts):
-                lf.integrate(self.kpt_u[k].psit_nG[:],
+            for k in range(self.nkpts):
+                lf.integrate(self.kpt_u[k + spin * self.nkpts].psit_nG[:],
                              f_kni[k, :, nbf:nbf + nlf], k=k)
             nbf += nlf
         return f_kni.conj()
-

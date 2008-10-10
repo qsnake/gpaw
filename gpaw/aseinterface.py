@@ -319,9 +319,14 @@ class Calculator(PAW):
         Use initial guess for wannier orbitals to determine rotation
         matrices U and C.
         """
-        raise NotImplementedError
-
-        return c, U
+        if self.nkpts != 1:
+            raise NotImplementedError
+        from ase.dft.wannier import rotation_from_projection
+        proj_knw = self.get_projections(intialwannier, spin)
+        U_ww, C_ul = rotation_from_projection(proj_knw[0],
+                                              fixedstates[0],
+                                              ortho=True)
+        return [C_ul], U_ww[npy.newaxis]
 
     def get_wannier_localization_matrix(self, nbands, dirG, kpoint,
                                         nextkpoint, G_I, spin):
