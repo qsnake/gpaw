@@ -490,9 +490,11 @@ class PAW(PAWExtra, Output):
                     self.ghat_nuclei.pop()
                 nucleus.set_position(spos_c, self.domain, self.my_nuclei,
                                      self.nspins, self.nmyu, self.nmybands)
+
                 nucleus.move(spos_c, self.gd, self.finegd,
                              self.ibzk_kc, self.locfuncbcaster,
-                             self.pt_nuclei, self.ghat_nuclei)
+                             self.pt_nuclei, self.ghat_nuclei,
+                             not self.eigensolver.lcao)
 
                 if self.eigensolver.lcao or self.kpt_u[0].psit_nG is None:
                     nucleus.initialize_atomic_orbitals(

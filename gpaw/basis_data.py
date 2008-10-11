@@ -34,7 +34,7 @@ class Basis:
     def read_xml(self, filename=None):
         parser = BasisSetXMLParser(self)
         parser.parse(filename)
-
+            
     def write_xml(self):
         """Write basis functions to file.
         
@@ -69,8 +69,9 @@ class Basis:
                'id="lingrid"/>\n') % (self.d, self.ng - 1))
 
         for bf in self.bf_j:
-            write('  <basis_function l="%d" rc="%f" type="%s">\n' % 
-                  (bf.l, bf.rc, bf.type))
+            write('  <basis_function l="%d" rc="%f" type="%s" '
+                  'grid="lingrid" ng="%d">\n'% 
+                  (bf.l, bf.rc, bf.type, bf.ng))
             write('   ')
             for value in bf.phit_g:
                 write(' %16.12e' % value)
@@ -83,8 +84,11 @@ class BasisFunction:
     """Encapsulates various basis function data."""
     def __init__(self, l=None, rc=None, phit_g=None, type=''):
         self.l = l
-        self.rc = rc
+        self.rc = rc # Guaranteed to correspond to last element in phit_g
         self.phit_g = phit_g
+        self.ng = None
+        if phit_g is not None:
+            self.ng = len(phit_g)
         self.type = type
 
 
@@ -137,6 +141,7 @@ for details."""
             self.l = int(attrs['l'])
             self.rc = float(attrs['rc'])
             self.type = attrs.get('type')
+            self.ng = int(attrs.get('ng'))
             self.data = []
 
     def characters(self, data):
@@ -147,8 +152,9 @@ for details."""
         basis = self.basis
         if name == 'basis_function':
             phit_g = npy.array([float(x) for x in ''.join(self.data).split()])
-            assert len(phit_g) == basis.ng
             bf = BasisFunction(self.l, self.rc, phit_g, self.type)
+            assert bf.ng == self.ng, ('Bad grid size %d vs ng=%d!'
+                                      % (bf.ng, self.ng))
             basis.bf_j.append(bf)
         elif name == 'generator':
             basis.generatordata = ''.join([line for line in self.data])

@@ -26,7 +26,7 @@ class BasisMaker:
         self.generator = generator
         self.name = name
         if run:
-            generator.N = 2000
+            generator.N *= 4
             generator.run(write_xml=False, **parameters[generator.symbol])
 
     def smoothify(self, psi_mg, l):
@@ -578,22 +578,38 @@ class BasisMaker:
         bf_j.extend(polarization_functions)
         
         rcmax = max([bf.rc for bf in bf_j])
-        
-        equidistant_grid = npy.linspace(0., rcmax, 2**10)
+
+        # The non-equidistant grids are really only suited for AE WFs
+        d = 1./64.
+        equidistant_grid = npy.arange(0., rcmax + d, d)
+        ng = len(equidistant_grid)
+
         for bf in bf_j:
             # We have been storing phit_g * r, but we just want phit_g
             bf.phit_g = divrl(bf.phit_g, 1, g.r)
-
+            
+            gcut = min(int(1 + bf.rc / d), ng - 1)
+            
+            assert equidistant_grid[gcut] >= bf.rc
+            assert equidistant_grid[gcut - 1] <= bf.rc
+            
+            bf.rc = equidistant_grid[gcut]
+            # Note: bf.rc *must* correspond to a grid point (spline issues)
+            bf.ng = gcut + 1
+            # XXX all this should be done while building the basis vectors,
+            # not here
+            
             # Quick hack to change to equidistant coordinates
             spline = Spline(bf.l, g.r[g.r2g(bf.rc)],
-                            bf.phit_g,# * g.r**bf.l, 
+                            bf.phit_g,
                             g.r, beta=g.beta, points=100)
             bf.phit_g = npy.array([spline(r) * r**bf.l
-                                   for r in equidistant_grid])
-        
+                                   for r in equidistant_grid[:bf.ng]])
+            bf.phit_g[-1] = 0.
+
         basis = Basis(g.symbol, self.name, False)
-        basis.ng = len(equidistant_grid)
-        basis.d = equidistant_grid[1]
+        basis.ng = ng
+        basis.d = d
         basis.bf_j = bf_j
         basis.generatordata = textbuffer.getvalue().strip()
         basis.generatorattrs = {'version' : version}

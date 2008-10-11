@@ -55,7 +55,7 @@ for path in files:
 
     norm_j = []
     for j, bf in enumerate(basis.bf_j):
-        rphit_g = r_g * bf.phit_g
+        rphit_g = r_g[:bf.ng] * bf.phit_g
         norm = (npy.dot(rphit_g, rphit_g) * basis.d) ** .5
         norm_j.append(norm)
         print bf.type, '[norm=%0.4f]' % norm
@@ -69,7 +69,7 @@ for path in files:
     print basis.generatordata
 
     if opts.no_r_multiplication:
-        factor = 1.
+        factor = npy.ones(r_g.shape)
         ylabel = r'$\tilde{\phi}$'
     else:
         factor = r_g
@@ -77,10 +77,10 @@ for path in files:
 
     pylab.figure()
     for norm, bf in zip(norm_j, basis.bf_j):
-        y_g = bf.phit_g * factor
+        y_g = bf.phit_g * factor[:bf.ng]
         if opts.normalize:
             y_g /= norm
-        pylab.plot(r_g, y_g, label=bf.type[:12])
+        pylab.plot(r_g[:bf.ng], y_g, label=bf.type[:12])
     axis = pylab.axis()
     rc = max([bf.rc for bf in basis.bf_j])
     newaxis = [0., rc, axis[2], axis[3]]

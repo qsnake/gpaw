@@ -586,12 +586,21 @@ class Setup:
     def read_basis_functions(self, basis):
         if isinstance(basis, str):
             basis = Basis(self.symbol, basis)
-        #g = npy.arange(basis.ng, dtype=float)
-        #r_g = basis.beta * g / (basis.ng - g)
+
         rc = basis.d * (basis.ng - 1)
         r_g = npy.linspace(0., rc, basis.ng)
-        
-        self.phit_j = [Spline(bf.l, r_g[-1], divrl(bf.phit_g, bf.l, r_g))
+
+        # enable if-statement to revert to 'inefficient' equal-range basis
+        # functions.  Left for testing purposes
+        if 0:
+            for j, bf in enumerate(basis.bf_j):
+                phit_g = npy.zeros(r_g.shape)
+                phit_g[:bf.ng] = bf.phit_g
+                bf.phit_g = phit_g
+                bf.ng = basis.ng
+                bf.rc = rc
+
+        self.phit_j = [Spline(bf.l, bf.rc, divrl(bf.phit_g, bf.l, r_g[:bf.ng]))
                        for bf in basis.bf_j]
 
     def print_info(self, text):

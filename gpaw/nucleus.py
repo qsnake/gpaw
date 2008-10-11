@@ -147,7 +147,8 @@ class Nucleus:
         self.in_this_domain = in_this_domain
         self.rank = rank
 
-    def move(self, spos_c, gd, finegd, k_ki, lfbc, pt_nuclei, ghat_nuclei):
+    def move(self, spos_c, gd, finegd, k_kc, lfbc, pt_nuclei, ghat_nuclei,
+             add_projectors_to_grid):
         """Move nucleus.
 
         """
@@ -158,11 +159,15 @@ class Nucleus:
         create = create_localized_functions
 
         # Projectors:
-        pt_j = self.setup.pt_j
-        pt_i = create(pt_j, gd, spos_c, dtype=self.dtype, lfbc=lfbc)
+        if add_projectors_to_grid:
+            pt_j = self.setup.pt_j
+            pt_i = create(pt_j, gd, spos_c, dtype=self.dtype, lfbc=lfbc)
+        else:
+            pt_i = None
+            assert self.pt_i is None
 
         if self.dtype == complex and pt_i is not None:
-            pt_i.set_phase_factors(k_ki)
+            pt_i.set_phase_factors(k_kc)
         
         # Update pt_nuclei:
         if pt_i is not None and self.pt_i is None:
@@ -241,13 +246,32 @@ class Nucleus:
             if abs(Nct) > 1e-15:
                 self.nct.normalize(Nct)
 
-    def initialize_atomic_orbitals(self, gd, k_ki, lfbc, lcao_forces=False):
+    def initialize_atomic_orbitals(self, gd, k_kc, lfbc, lcao_forces=False):
         phit_j = self.setup.phit_j
-        self.phit_i = create_localized_functions(
-            phit_j, gd, self.spos_c, dtype=self.dtype,
-            cut=True, forces=lcao_forces, lfbc=lfbc)
+
+        from gpaw.localized_functions import DissimilarlyLocalizedFunctions,\
+             LocFuncs
+
+        #phit_i = create_localized_functions(phit_j, gd, self.spos_c,
+        #                                    dtype=self.dtype, cut=True,
+        #                                    forces=lcao_forces, lfbc=lfbc)
+        #self.phit_i = phit_i
+        
+        self.phit_i = None
+        phit_i = [LocFuncs([phit], gd, self.spos_c,
+                           dtype=self.dtype, cut=True,
+                           forces=lcao_forces,
+                           lfbc=lfbc)
+                  for phit in phit_j]
+
+        # The self.phit_i must be None when no functions are in domain
+        for phit in phit_i:
+            if phit.box_b:
+                self.phit_i = DissimilarlyLocalizedFunctions(phit_i)
+                break
+        
         if self.dtype == complex and self.phit_i is not None:
-            self.phit_i.set_phase_factors(k_ki)
+            self.phit_i.set_phase_factors(k_kc)
 
     def get_number_of_atomic_orbitals(self):
         return self.setup.niAO

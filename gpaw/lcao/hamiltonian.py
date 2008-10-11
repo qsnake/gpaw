@@ -336,7 +336,8 @@ class LCAOHamiltonian:
         nb = 0
         for nucleus in self.nuclei:
             if nucleus.phit_i is not None:
-                nb += len(nucleus.phit_i.box_b)
+                for phit in nucleus.phit_i.lf_j:
+                    nb += len(phit.box_b)
 
         # Array to hold basis set index:
         m_b = npy.empty(nb, int)
@@ -354,17 +355,20 @@ class LCAOHamiltonian:
         for nucleus in self.nuclei:
             phit_i = nucleus.phit_i
             if phit_i is not None:
-                if debug:
-                    box_b = [box.lfs for box in phit_i.box_b]
-                else:
-                    box_b = phit_i.box_b
-                b2 = b1 + len(box_b)
-                m_b[b1:b2] = m
-                lfs_b.extend(box_b)
-                if not self.gamma:
-                    phase_bk[b1:b2] = phit_i.phase_kb.T
-                b1 = b2
-            m += nucleus.get_number_of_atomic_orbitals()
+                for phit in phit_i.lf_j:
+                    if debug:
+                        box_b = [box.lfs for box in phit.box_b]
+                    else:
+                        box_b = phit.box_b
+                    b2 = b1 + len(box_b)
+                    m_b[b1:b2] = m
+                    lfs_b.extend(box_b)
+                    if not self.gamma:
+                        phase_bk[b1:b2] = phit.phase_kb.T
+                    b1 = b2
+                    m += phit.ni
+            else:
+                m += nucleus.get_number_of_atomic_orbitals()
 
         assert b1 == nb
 
