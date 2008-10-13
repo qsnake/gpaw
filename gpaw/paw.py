@@ -1081,13 +1081,15 @@ class PAW(PAWExtra, Output):
 
         self.nspins = 1 + int(self.spinpol)
 
+        if not self.spinpol:
+            p['hund'] = False
+            # the magnetic moment is fixed already
+            p['fixmom'] = False
+
         self.fixmom = p['fixmom']
         if p['hund']:
             self.fixmom = True
             assert self.natoms == 1
-            if not self.spinpol:
-                p['hund'] = False
-                self.fixmom = False
 
         self.xcfunc = XCFunctional(p['xc'], self.nspins)
         self.xcfunc.set_timer(self.timer)
