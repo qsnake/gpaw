@@ -62,6 +62,7 @@ class Eigensolver:
         self.Htpsit_nG = None
         self.work_In = None
         self.H_pnn = None
+        self.eig_iteration = 0
 
     def initialize(self, paw):
         self.timer = paw.timer
@@ -202,7 +203,10 @@ class Eigensolver:
         H_nn = self.H_nn
         band_comm = self.band_comm
 
-        self.timer.start('dsyev/zheev')
+        dsyev_zheev_string = 'Subspace diag.: '+'dsyev/zheev'
+
+        self.timer.start(dsyev_zheev_string)
+        self.timer.start(dsyev_zheev_string+' %03d' % self.eig_iteration)
         if self.comm.rank == kpt.root:
             if band_comm.rank == 0:
                 info = diagonalize(H_nn, self.eps_n)
@@ -212,7 +216,9 @@ class Eigensolver:
             band_comm.scatter(self.eps_n, kpt.eps_n, 0)
             band_comm.broadcast(H_nn, 0)
 
-        self.timer.stop('dsyev/zheev')
+        self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_iteration)
+        self.eig_iteration += 1
+        self.timer.stop(dsyev_zheev_string)
         U_nn = H_nn
         del H_nn
 
