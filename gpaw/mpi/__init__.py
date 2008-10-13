@@ -223,4 +223,3 @@ def run(iterators):
             results = [iter.next() for iter in iterators]
         except StopIteration:
             return results
-
