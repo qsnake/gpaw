@@ -25,14 +25,12 @@ def plot_count(fname):
 
     fig = pl.figure(1, figsize=(8, 6))
     ax = fig.add_subplot(111)
-    polygon(date, code + test, code + test + c,
-            facecolor='r', label='C-code')
-    polygon(date, code, code + test,
-            facecolor='y', label='Tests')
-    polygon(date, zero, code,
+##     polygon(date, c + code, c + code + test,
+##             facecolor='y', label='Tests')
+    polygon(date, c, c + code,
             facecolor='g', label='Python-code')
-    polygon(date, zero, zero,
-            facecolor='b', label='Fortran-code')
+    polygon(date, zero, c,
+            facecolor='r', label='C-code')
 
     months = pl.MonthLocator()
     months3 = pl.MonthLocator(interval=3)
