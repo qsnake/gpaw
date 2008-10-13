@@ -24,9 +24,9 @@ def blocked_matrix_multiply(A_nG, U_nn, work_nG):
       A   <- )  A   U
        nG   /__  mG  nm
              m
-             
+
     """
-    
+
     nbands = len(A_nG)
     b_ng = A_nG.reshape((nbands, -1))
     ngpts = b_ng.shape[1]
@@ -72,7 +72,7 @@ class Eigensolver:
         self.comm = paw.gd.comm
         self.nbands = paw.nbands
         self.nmybands = paw.nmybands
-        
+
         if self.nmybands != self.nbands:
             self.keep_htpsit = False
 
@@ -115,7 +115,7 @@ class Eigensolver:
         error = 0.0
         for kpt in kpt_u:
             error += self.iterate_one_k_point(hamiltonian, kpt)
-            
+
         self.error = self.band_comm.sum(self.kpt_comm.sum(error))
 
     def iterate_one_k_point(self, hamiltonian, kpt):
@@ -131,12 +131,12 @@ class Eigensolver:
         The Hamiltonian (defined by *kin*, *vt_sG*, and
         *my_nuclei*) is applied to the wave functions, then the
         *H_nn* matrix is calculated.
-        
+
         It is assumed that the wave functions *psit_n* are orthonormal
         and that the integrals of projector functions and wave functions
         *P_uni* are already calculated
-        """        
-        
+        """
+
         if self.band_comm.size > 1:
             return self.calculate_hamiltonian_matrix2(hamiltonian, kpt)
 
@@ -149,9 +149,9 @@ class Eigensolver:
             hamiltonian.apply(psit_nG, Htpsit_nG, kpt,
                               local_part_only=True,
                               calculate_projections=False)
-        
+
             hamiltonian.xc.xcfunc.apply_non_local(kpt, Htpsit_nG, H_nn)
-        
+
             r2k(0.5 * self.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
 
         else:
@@ -163,11 +163,11 @@ class Eigensolver:
                     n2 = self.nbands
                 hamiltonian.apply(psit_nG[n1:n2], Htpsit_nG[:n2 - n1], kpt,
                                   local_part_only=True)
-        
+
                 gemm(self.gd.dv, Htpsit_nG, psit_nG[n1:], 0.0,
                      H_nn[n1:, n1:n2], 'c')
                 n1 = n2
-                
+
         for nucleus in hamiltonian.my_nuclei:
             P_ni = nucleus.P_uni[kpt.u]
             dH_ii = unpack(nucleus.H_sp[kpt.s])
@@ -190,12 +190,12 @@ class Eigensolver:
         *H_nn* matrix is calculated and diagonalized, and finally,
         the wave functions are rotated.  Also the projections
         *P_uni* (an attribute of the nuclei) are rotated.
-        
+
         It is assumed that the wave functions *psit_n* are orthonormal
         and that the integrals of projector functions and wave functions
         *P_uni* are already calculated.
-        """        
-           
+        """
+
         self.timer.start('Subspace diag.')
 
         self.calculate_hamiltonian_matrix(hamiltonian, kpt)
@@ -208,20 +208,20 @@ class Eigensolver:
                 info = diagonalize(H_nn, self.eps_n)
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
-                
+
             band_comm.scatter(self.eps_n, kpt.eps_n, 0)
             band_comm.broadcast(H_nn, 0)
 
         self.timer.stop('dsyev/zheev')
         U_nn = H_nn
         del H_nn
-        
+
         self.comm.broadcast(U_nn, kpt.root)
         self.comm.broadcast(kpt.eps_n, kpt.root)
 
         work_nG = self.big_work_arrays['work_nG']
         psit_nG = kpt.psit_nG
-        
+
         # Rotate psit_nG:
         if self.nblocks == 1:
             self.matrix_multiplication(kpt, U_nn)
@@ -302,12 +302,12 @@ class Eigensolver:
                 P_ni = nucleus.P_uni[kpt.u]
                 H_pnn[p] += npy.dot(P_ni, work_In[I1:I2]).T
                 I1 = I2
-            
+
             band_comm.wait(sreq)
             band_comm.wait(sreq2)
             band_comm.wait(rreq)
             band_comm.wait(rreq2)
-            
+
             work_nG, work2_nG = work2_nG, work_nG
             work_In, work2_In = work2_In, work_In
 
@@ -345,7 +345,7 @@ class Eigensolver:
         # Parallelize over bands:
         C_bnbn = C_nn.reshape((size, nmybands, size, nmybands))
         work2_nG = self.big_work_arrays['work2_nG']
-        
+
         rank = band_comm.rank
 
         beta = 0.0
