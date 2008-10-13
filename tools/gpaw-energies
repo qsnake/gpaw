@@ -8,7 +8,7 @@ from optparse import OptionParser
 from math import log,sqrt
 import numpy as npy
 
-from ase import DOS
+from ase import *
 from gpaw.output import eigenvalue_string
 from gpaw.cluster import Cluster
 
@@ -40,8 +40,6 @@ if len(args):
 
 from gpaw import Calculator
 paw = Calculator(fname, txt=None, idiotproof=False)
-Ha = paw.Ha
-a0 = paw.a0
 
 lengthunit = 'Ang'
 energyunit = 'eV'
@@ -94,8 +92,10 @@ if additional_info:
         pass
 
 print >> out, "# energy unit:", energyunit
-print >> out, "# total energy = ",paw.Etot * Ha,\
-      "("+str((paw.Eref+paw.Etot)*Ha)+")"
+print >> out, '# Fermi temp.  =', paw.kT * Ha
+print >> out, '# Free energy = ', paw.Etot * Ha,\
+      "(" + str((paw.Eref + paw.Etot) * Ha) + ")"
+print >> out, '# Zero Kelvin = ', (paw.Etot + 0.5 * paw.S) * Ha
 print >> out, '# kin.    "    = ',paw.Ekin * Ha
 print >> out, '# pot.    "    = ',paw.Epot * Ha
 print >> out, '# xc      "    = ',paw.Exc * Ha
