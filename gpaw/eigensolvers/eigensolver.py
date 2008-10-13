@@ -13,21 +13,46 @@ from gpaw.utilities import unpack
 from gpaw.mpi import run
 
 
-def blocked_matrix_multiply(a_nG, U_nn, work_nG):
-    nbands = len(a_nG)
-    b_ng = a_nG.reshape((nbands, -1))
-    w1_nq, w2_nq = work_nG.reshape((2, nbands, -1))
+def blocked_matrix_multiply(A_nG, U_nn, work_nG):
+    """Inplace matrix multipication.
+
+    Perform an inplace multiplication of *A_nG* and *U_nn* using
+    *work_nG* as work-space::
+
+             __
+            \
+      A   <- )  A   U
+       nG   /__  mG  nm
+             m
+             
+    """
+    
+    nbands = len(A_nG)
+    b_ng = A_nG.reshape((nbands, -1))
     ngpts = b_ng.shape[1]
-    blocksize = w1_nq.shape[1]
-    assert ngpts % blocksize == 0
+    nbands0 = work_nG.shape[0]
+    ngpts0 = ngpts * nbands0 // (2 * nbands)
+    w = work_nG.reshape((-1,))[:2 * nbands * ngpts0]
+    w1_nq, w2_nq = w.reshape(2, nbands, ngpts0)
     g1 = 0
     while g1 < ngpts:
-        g2 = g1 + blocksize
-        w1_nq[:] = b_ng[:, g1:g2]
-        gemm(1.0, w1_nq, U_nn, 0.0, w2_nq)
-        b_ng[:, g1:g2] = w2_nq
-        g1 = g2
-    
+        g2 = g1 + ngpts0
+        print g1,g2
+        if g2 <= ngpts:
+            w1_nq[:] = b_ng[:, g1:g2]
+            gemm(1.0, w1_nq, U_nn, 0.0, w2_nq)
+            b_ng[:, g1:g2] = w2_nq
+            g1 = g2
+        else:
+            print '*'
+            w = work_nG.reshape((-1,))[:2 * nbands * (ngpts - g1)]
+            w1_nq, w2_nq = w.reshape(2, nbands, ngpts - g1)
+            w1_nq[:] = b_ng[:, g1:]
+            gemm(1.0, w1_nq, U_nn, 0.0, w2_nq)
+            b_ng[:, g1:] = w2_nq
+            break
+
+
 class Eigensolver:
     def __init__(self, keep_htpsit=True, nblocks=1):
         self.keep_htpsit = keep_htpsit
