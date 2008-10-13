@@ -10,6 +10,7 @@ class LCAO:
     def __init__(self):
         self.lcao = True
         self.initialized = False
+        self.eig_lcao_iteration = 0
 
     def initialize(self, paw):
         self.timer = paw.timer
@@ -29,7 +30,7 @@ class LCAO:
         if kpt != None:
             k = kpt.k
             s = kpt.s
-        
+
         H_mm = self.Vt_skmm[s,k]
 
         for nucleus in self.my_nuclei:
@@ -60,8 +61,8 @@ class LCAO:
 
         for kpt in kpt_u:
             self.iterate_one_k_point(hamiltonian, kpt)
-    
-       
+
+
     def iterate_one_k_point(self, hamiltonian, kpt):
         k = kpt.k
         s = kpt.s
@@ -84,7 +85,11 @@ class LCAO:
             kpt.C_nm[:] = C_nm[n1:n2]
             kpt.eps_n[:] = eps_q[n1:n2]
         else:
-            self.timer.start('LCAO: diagonalize')
+            dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
+
+            self.timer.start(dsyev_zheev_string)
+            self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+
             if self.comm.rank == 0:
                 self.eps_m[0] = 42
                 info = diagonalize(H_mm, self.eps_m, self.S_mm)
@@ -92,7 +97,9 @@ class LCAO:
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
 
-            self.timer.stop('LCAO: diagonalize')
+            self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+            self.eig_lcao_iteration += 1
+            self.timer.stop(dsyev_zheev_string)
 
             self.comm.broadcast(self.eps_m, 0)
             self.comm.broadcast(H_mm, 0)
@@ -142,7 +149,11 @@ class LCAO:
 
         eps_q = npy.zeros(q)
 
-        self.timer.start('LCAO: diagonalize-remove')
+        dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv remove'
+
+        self.timer.start(dsyev_zheev_string)
+        self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+
         if self.comm.rank == 0:
             eps_q[0] = 42
             info = diagonalize(H_qq, eps_q, S_qq)
@@ -150,7 +161,9 @@ class LCAO:
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
 
-        self.timer.stop('LCAO: diagonalize-remove')
+        self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+        self.eig_lcao_iteration += 1
+        self.timer.stop(dsyev_zheev_string)
 
         self.comm.broadcast(eps_q, 0)
         self.comm.broadcast(H_qq, 0)
