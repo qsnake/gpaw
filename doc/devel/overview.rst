@@ -45,7 +45,7 @@ A few examples:
  ``g``    Three indices into the fine 3D grid                     
  ``n``    Principal quantum number *or* band number        
  ``l``    Angular momentum quantum number (s, p, d, ...)
- ``m``    Magnetic quantum number (0, 1, ..., l)         
+ ``m``    Magnetic quantum number (0, 1, ..., 2*l - 1)         
  ``L``    ``l`` and ``m`` (``L = l**2 + m``)                                
  ``j``    Valence orbital number (``n`` and ``l``)               
  ``i``    Valence orbital number (``n``, ``l`` and ``m``)            
