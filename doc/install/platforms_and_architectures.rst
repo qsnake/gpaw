@@ -679,7 +679,6 @@ Set these environment variables in the :file:`.softenvrc` file::
   # to enable TAU profiling add also:
   PYTHONPATH += /soft/apps/tau/tau_latest/bgp/lib/bindings-mpi-gnu-python-pdt
   LD_LIBRARY_PATH += /soft/apps/tau/tau_latest/bgp/lib/bindings-mpi-gnu-python-pdt
-  TAU_THROTTLE = 1
 
 and do::
 
@@ -734,7 +733,8 @@ experimental ``scalapack`` and ``blacs`` features)::
 
   # uncomment the two following lines to enable TAU profiling
   #tau_make = '/soft/apps/tau/tau_latest/bgp/lib/Makefile.tau-mpi-gnu-python-pdt'
-  #mpicompiler = 'tau_cc.sh -tau_options="-optShared -optVerbose" -tau_makefile='+tau_make
+  #tau_options='-optShared -optTau="-rn Py_RETURN_NONE -i /soft/apps/tau/tau_latest/include/TAU_PYTHON_FIX.h" '
+  #mpicompiler = 'tau_cc.sh -tau_options='+tau_options+' -tau_makefile='+tau_make
   #mpilinker = mpicompiler
 
 Because of missing ``popen3`` function you need to remove all the
