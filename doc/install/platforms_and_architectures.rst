@@ -754,7 +754,6 @@ Absolute paths are important!
 If you want to perform profiling with TAU submit the following wrapper instead::
 
   import tau
-  from gpaw.mpi import rank
 
   def OurMain():
       import CH4;
