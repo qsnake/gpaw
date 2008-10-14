@@ -736,6 +736,7 @@ experimental ``scalapack`` and ``blacs`` features)::
   #tau_options='-optShared -optTau="-rn Py_RETURN_NONE -i /soft/apps/tau/tau_latest/include/TAU_PYTHON_FIX.h" '
   #mpicompiler = 'tau_cc.sh -tau_options='+tau_options+' -tau_makefile='+tau_make
   #mpilinker = mpicompiler
+  #compiler = mpicompiler
 
 Because of missing ``popen3`` function you need to remove all the
 contents of the :file:`gpaw/version.py` file after ``version =
