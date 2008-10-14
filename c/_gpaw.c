@@ -35,6 +35,7 @@ PyObject* elf(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
 PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
 PyObject* vdw(PyObject *self, PyObject *args);
+PyObject* vdw2(PyObject *self, PyObject *args);
 PyObject* swap_arrays(PyObject *self, PyObject *args);
 PyObject* spherical_harmonics(PyObject *self, PyObject *args);
 
@@ -70,6 +71,7 @@ static PyMethodDef functions[] = {
   {"overlap",       overlap,        METH_VARARGS, 0},
   {"wigner_seitz_grid", wigner_seitz_grid, METH_VARARGS, 0},
   {"vdw", vdw, METH_VARARGS, 0},
+  {"vdw2", vdw2, METH_VARARGS, 0},
   {"swap", swap_arrays, METH_VARARGS, 0},
   {"spherical_harmonics", spherical_harmonics, METH_VARARGS, 0},
   {"pc_potential", pc_potential, METH_VARARGS, 0},
