@@ -137,8 +137,9 @@ def get_system_config(define_macros, undef_macros,
         # Look for ACML libraries:
         acml = glob('/opt/acml*/g*64/lib')
         if len(acml) > 0:
-            libraries += ['acml', 'g2c']
             library_dirs += [acml[-1]]
+            libraries += ['acml', 'g2c']
+            if acml[-1].find('gfortran') != -1: libraries.append('gfortran')
             extra_link_args += ['-Wl,-rpath=' + acml[-1]]
             msg += ['* Using ACML library']
         else:
