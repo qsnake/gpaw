@@ -180,8 +180,8 @@ class Test:
 
             if formula == 'BeH':
                 calc.initialize(s)
-                calc.nuclei[0].f_si = [(1, 0, 0.5, 0),
-                                       (0.5, 0, 0, 0)]
+                calc.nuclei[0].f_si = [(1, 0, 0.5, 0, 0),
+                                       (0.5, 0, 0, 0, 0)]
 
             if formula in ['NO', 'ClO', 'CH']:
                 s.positions[:, 1] += h * 1.5
