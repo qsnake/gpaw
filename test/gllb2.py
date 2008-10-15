@@ -28,6 +28,8 @@ if world.rank == 0:
 	out("Exchange energy", "1D", atom, EX[atom], GLLB.Exc,"Ha")
 	out("HOMO Eigenvalue", "1D", atom, EHOMO[atom], GLLB.e_j[-1],"Ha")
 
+world.barrier()
+
 setup_paths.insert(0, '.')
 
 for atom in atoms:
@@ -35,6 +37,7 @@ for atom in atoms:
 	# Generate non-scalar-relativistic setup for atom
 	g = Generator(atom, xcname, scalarrel=False, nofiles=True)
 	g.run(**parameters[atom])
+    world.barrier()
 
     #SS = Atoms([Atom(atom)], cell=(12, 12, 12), pbc=False)
     SS = Atoms([Atom(atom)], cell=(8, 8, 8), pbc=False)
@@ -42,7 +45,6 @@ for atom in atoms:
 
     #h = 0.20
     h = 0.25
-    world.barrier()
     calc = Calculator(h=h, nbands=5, xc=xcname)
     SS.set_calculator(calc)
     E = SS.get_potential_energy()

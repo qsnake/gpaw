@@ -1,5 +1,6 @@
 import os
 from ase import *
+from ase.parallel import rank, barrier
 from gpaw.utilities import equal
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
@@ -8,13 +9,15 @@ from gpaw import setup_paths
 
 # Generate setup
 symbol = 'Li'
-g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
-g.run(exx=True, **parameters[symbol])
+if rank == 0:
+    g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
+    g.run(exx=True, **parameters[symbol])
+barrier()
 setup_paths.insert(0, '.')
 
 a = 5.0
 n = 24
-li = Atoms('Li', magmoms=[1.0], cell=(a, a, a), pbc=True)
+li = Atoms(symbol, magmoms=[1.0], cell=(a, a, a), pbc=True)
 
 calc = Calculator(gpts=(n, n, n), nbands=1, xc='PBE')
 li.set_calculator(calc)

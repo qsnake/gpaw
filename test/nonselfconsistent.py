@@ -1,5 +1,6 @@
 import os
 from ase import *
+from ase.parallel import rank, barrier
 from gpaw.utilities import equal
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
@@ -8,8 +9,10 @@ from gpaw import setup_paths
 
 # Generate setup
 symbol = 'He'
-g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
-g.run(exx=True, **parameters[symbol])
+if rank == 0:
+    g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
+    g.run(exx=True, **parameters[symbol])
+barrier()
 setup_paths.insert(0, '.')
 
 a = 7.5 * Bohr

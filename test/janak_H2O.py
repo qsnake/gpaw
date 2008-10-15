@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 from ase import *
 from gpaw import Calculator
-from gpaw.mpi import run
+from gpaw.mpi import run, world
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 
 # Generate setups for oxygen and hydrogen:
-g = Generator('O', xcname='GLLBLDARCR', scalarrel=True, nofiles=True)
-g.run(**parameters['O'])
-g = Generator('H', xcname='GLLBLDARCR', scalarrel=True, nofiles=True)
-g.run(**parameters['H'])
+if world.rank == 0:
+    g = Generator('O', xcname='GLLBLDARCR', scalarrel=True, nofiles=True)
+    g.run(**parameters['O'])
+    g = Generator('H', xcname='GLLBLDARCR', scalarrel=True, nofiles=True)
+    g.run(**parameters['H'])
+world.barrier()
 setup_paths.insert(0, '.')
 
 # Then, calculate the core-eigenvalue of H2O molecule

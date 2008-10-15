@@ -1,5 +1,7 @@
 from os.path import isfile
 
+from ase.parallel import rank, barrier
+
 from gpaw.atom.generator import Generator, parameters
 from gpaw.xc_functional import XCFunctional
 from gpaw.setup import Setup
@@ -54,8 +56,10 @@ def gen(symbol, xcname):
         xcfunc = XCFunctional(xcname, 1)
         s = Setup(symbol, xcfunc)
     except (IOError, RuntimeError):
-        g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
-        g.run(exx=True, **parameters[symbol])
+        if rank == 0:
+            g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
+            g.run(exx=True, **parameters[symbol])
+        barrier()
         # list generated setups only - tests can handle setups on their own:
         # gen returns None if setup is read - see self.clean
         value = '%s.%s' % (symbol, XCFunctional(xcname).get_name())

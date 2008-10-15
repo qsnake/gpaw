@@ -1,15 +1,17 @@
 import os
 from math import pi, cos, sin
 from ase import *
+from ase.parallel import rank, barrier
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 from gpaw.xas import XAS, RecursionMethod
 
-if 1:
+if rank == 0:
     # Generate setup for oxygen with half a core-hole:
     g = Generator('Si', scalarrel=True, corehole=(1, 0, 0.5), nofiles=True)
     g.run(name='hch1s', **parameters['Si'])
+barrier()
 setup_paths.insert(0, '.')
 
 a = 4.0

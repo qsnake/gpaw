@@ -830,8 +830,7 @@ class Generator(AllElectron):
             self.id_j.append(id)
         setup.id_j = self.id_j
 
-        import gpaw.mpi as mpi
-        if write_xml and mpi.rank == 0:
+        if write_xml:
             setup.write_xml()
         return setup
 

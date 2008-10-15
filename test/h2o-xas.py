@@ -1,14 +1,17 @@
 import os
 from math import pi, cos, sin
 from ase import *
+from ase.parallel import rank, barrier
 from gpaw import Calculator
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 from gpaw.xas import XAS
 
-# Generate setup for oxygen with half a core-hole:
-g = Generator('O', scalarrel=True, corehole=(1, 0, 0.5), nofiles=True)
-g.run(name='hch1s', **parameters['O'])
+if rank == 0:
+    # Generate setup for oxygen with half a core-hole:
+    g = Generator('O', scalarrel=True, corehole=(1, 0, 0.5), nofiles=True)
+    g.run(name='hch1s', **parameters['O'])
+barrier()
 setup_paths.insert(0, '.')
 
 a = 5.0
@@ -25,7 +28,7 @@ e = H2O.get_potential_energy()
 
 import gpaw.mpi as mpi
 
-if mpi.size == 1:
+if mpi.size == 1: # XXX
     xas = XAS(calc)
     x, y = xas.get_spectra()
     e1_n = xas.eps_n
