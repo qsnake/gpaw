@@ -188,7 +188,7 @@ class FermiDiracDSCF(FermiDirac):
                 if self.nspins == 2 and self.orbitals[o][2] == kpt.s:
                     kpt.ft_omn[o] *= kpt.weight
                 elif self.nspins == 2 and self.orbitals[o][2] < 2:
-                    kpt.ft_omn[o] *= 0.
+                    kpt.ft_omn[o] *= 0.0
                 else:
                     kpt.ft_omn[o] *= 0.5 * kpt.weight
 
@@ -389,7 +389,6 @@ class WaveFunction:
             # Inner product of pseudowavefunctions
             wf = npy.reshape(wf_u[kpt.u], -1)
             Wf_n = kpt.psit_nG
-            print npy.shape(Wf_n)
             Wf_n = npy.reshape(Wf_n, (len(kpt.f_n), -1))
             p_n = npy.dot(npy.conjugate(Wf_n), wf) * self.paw.gd.dv
             
