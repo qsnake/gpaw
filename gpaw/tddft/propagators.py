@@ -277,16 +277,15 @@ class AbsorptionKick(ExplicitCrankNicolson):
 
         """ 
 
-        if rank == 0:
-            print 'Kick iterations = ', self.td_hamiltonian.iterations
+        # if rank == 0:
+        #     self.text('Kick iterations = ', self.td_hamiltonian.iterations)
 
         for l in range(self.td_hamiltonian.iterations):
             self.propagate(kpt_u, 0, 1.0)
-            if rank == 0:
-                print '.',
-                sys.stdout.flush()
-        if rank == 0:
-            print ''
+            # if rank == 0:
+            #     self.text('.')
+        # if rank == 0:
+        #     print ''
         
 
 ###############################################################################

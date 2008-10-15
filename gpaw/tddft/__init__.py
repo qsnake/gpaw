@@ -74,7 +74,7 @@ class TDDFT(PAW):
     theory implementation and is the only class which user has to use.
     """
     
-    def __init__( self, ground_state_file, td_potential = None,
+    def __init__( self, ground_state_file=None, txt='-', td_potential = None,
                   propagator='SICN', solver='CSCG', tolerance=1e-8 ):
         """Create TDDFT-object.
         
@@ -95,6 +95,9 @@ class TDDFT(PAW):
 
         """
 
+        if ground_state_file is None:
+            raise RuntimeError('TD calculation has to start from ground state restart file')
+
         # Set units to ASE units
         self.a0 = Bohr
         self.Ha = Hartree
@@ -106,7 +109,7 @@ class TDDFT(PAW):
         self.time = 0.0
 
         # Initialize paw-object
-        PAW.__init__(self,ground_state_file)
+        PAW.__init__(self,ground_state_file, txt=txt)
 
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
@@ -233,6 +236,18 @@ class TDDFT(PAW):
                                 % (propagator) )
 
         if rank == 0:
+            if self.kpt_comm.size > 1:
+                if self.nspins == 2:
+                    self.text('Parallelization Over Spin')
+
+                domain = self.domain
+                if domain.comm.size > 1:
+                    self.text('Using Domain Decomposition: %d x %d x %d' %
+                              tuple(domain.parsize_c))
+
+                if self.band_comm.size > 1:
+                    self.text('Parallelization Over bands on %d Processors' %
+                              self.band_comm.size)
             self.text('States per processor = ', self.nmybands)
 
         self.hpsit = None
@@ -323,7 +338,8 @@ class TDDFT(PAW):
                 self.Exc = H.Exc + self.Enlxc
                 self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
                 if rank == 0:
-                    print 'Etot ', i, self.Etot
+                    self.text('Etot', i, self.Etot)
+                    self.txt.flush()
 
             # write dipole moment
             if dipole_moment_file is not None:
@@ -357,8 +373,6 @@ class TDDFT(PAW):
 
         if restart_file is not None:
             self.write(restart_file, 'all')
-        print ''
-
 
     # exp(ip.r) psi
     def absorption_kick(self, kick_strength):

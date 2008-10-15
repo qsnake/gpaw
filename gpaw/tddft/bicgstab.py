@@ -230,5 +230,6 @@ class BiCGStab:
         if self.timer is not None:
             self.timer.stop('BiCGStab')
 
+        return self.iterations
         #print self.iterations
 
