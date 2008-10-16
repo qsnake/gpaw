@@ -58,7 +58,7 @@ The list shows the 20 functions where the most time is spent.  Check the pstats_
 
      $ python script.py --debug
 
-TAU
+tau
 ===
 
 `TAU Performance System <http://www.cs.uoregon.edu/research/tau/>`_
@@ -68,7 +68,15 @@ of parallel programs written in Fortran, C, C++, Java, Python.
 Installation and configuration
 ------------------------------
 
-Follow the vendor installation instructions or, on an RPM-based
+TAU requires `Program Database Toolkit <http://www.cs.uoregon.edu/research/pdt/>`_ to produce profiling data. Follow the vendor installation instructions
+for ``pdtoolkit`` or, on an RPM-based system
+(El4/EL5 and FC8/FC9 are currently supported), build RPM following
+`<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#pdtoolkit>`_. **Note**: If you want to use only TAU's
+``paraprof`` and/or ``perfexplorer``
+for analysing profile data made elsewhere - skip the installation of
+``pdtoolkit``.
+
+Follow the vendor installation instructions for ``tau`` or, on an RPM-based
 system (El4/EL5 and FC8/FC9 are currently supported), build RPM following
 `<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#tau>`_.
 Then, configure the environment by running first ``perfdmf_configure``.
@@ -94,7 +102,7 @@ Simply include the following into ``customize.py`` and run ``python setup.py bui
 
  import tau
  tau_path = tau.__file__[0:tau.__file__.find('lib')]
- tau_make = tau_path+'lib/Makefile.tau-mpi-python'
+ tau_make = tau_path+'lib/Makefile.tau-mpi-python-pdt'
  tau_options='-optShared '
  mpicompiler = 'tau_cc.sh -tau_options='+tau_options+' -tau_makefile='+tau_make
  mpilinker = mpicompiler
