@@ -378,9 +378,6 @@ static int NewMPIObject2(MPIObject* self, PyObject *args, PyObject *kwds)
   MPI_Comm_rank(MPI_COMM_WORLD, &(self->rank));
   self->comm = MPI_COMM_WORLD;
 
-//  int dim_size[3] = {120,120,120};
-//  int periods[3] = {1,1,1};
-//  MPI_CART_CREATE(MPI_COMM_WORLD, 3, dim_size, periods, 1, &self->comm)
   return 0;
 }
 
