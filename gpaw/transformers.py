@@ -26,7 +26,7 @@ class _Transformer:
         pad_cd = npy.empty((3, 2), int)
         neighborpad_cd = npy.empty((3, 2), int)
         skip_cd = npy.empty((3, 2), int)
-        
+
         if (gdin.N_c == 2 * gdout.N_c).all():
             # Restriction:
             pad_cd[:, 0] = 2 * nn - 1 - 2 * gdout.beg_c + gdin.beg_c
@@ -46,11 +46,11 @@ class _Transformer:
             interpolate = True
 
         assert npy.alltrue(pad_cd.ravel() >= 0)
-            
+
         self.transformer = _gpaw.Transformer(
             gdin.n_c, 2 * nn, pad_cd, neighborpad_cd, skip_cd, neighbor_cd,
             dtype == float, comm, interpolate)
-        
+
         self.ngpin = tuple(gdin.n_c)
         self.ngpout = tuple(gdout.n_c)
         assert dtype in [float, complex]
@@ -62,13 +62,15 @@ class _Transformer:
         assert output.shape == self.ngpout
         self.transformer.apply(input, output, phases)
 
-
 if debug:
     Transformer = _Transformer
 else:
     def Transformer(gdin, gdout, nn=1, dtype=float):
         return _Transformer(gdin, gdout, nn, dtype).transformer
-    
+
+def multiple_transform_apply(transformerlist, inputs, outputs, phases=None):
+    return _gpaw.multiple_transform_apply(transformerlist, inputs, outputs, phases)
+
 
 def coefs(k, p):
     for i in range(0, k * p, p):

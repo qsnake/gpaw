@@ -98,7 +98,7 @@ void IP1D(const T* a, int n, int m, T* b, int skip[2])
   a += K / 2 - 1;
 
   int nthds = 1;
-#ifdef GPAW_OMP
+#ifdef GPAW_OMP_MONLY
   if (getenv("OMP_NUM_THREADS") != NULL)
     nthds = atoi(getenv("OMP_NUM_THREADS"));
 #endif
@@ -115,12 +115,12 @@ void IP1D(const T* a, int n, int m, T* b, int skip[2])
       (wargs+i)->b = b;
       (wargs+i)->skip = skip;
     }
-#ifdef GPAW_OMP
+#ifdef GPAW_OMP_MONLY
   for(int i=1; i < nthds; i++)
     pthread_create(thds + i, NULL, IP1DW, (void*) (wargs+i));
 #endif
   IP1DW(wargs);
-#ifdef GPAW_OMP
+#ifdef GPAW_OMP_MONLY
   for(int i=1; i < nthds; i++)
     pthread_join(*(thds+i), NULL);
 #endif
