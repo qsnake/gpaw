@@ -38,7 +38,6 @@ PyObject* vdw(PyObject *self, PyObject *args);
 PyObject* vdw2(PyObject *self, PyObject *args);
 PyObject* swap_arrays(PyObject *self, PyObject *args);
 PyObject* spherical_harmonics(PyObject *self, PyObject *args);
-PyObject* multiple_transform_apply(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
@@ -77,7 +76,6 @@ static PyMethodDef functions[] = {
   {"spherical_harmonics", spherical_harmonics, METH_VARARGS, 0},
   {"pc_potential", pc_potential, METH_VARARGS, 0},
   {"pc_potential_value", pc_potential_value, METH_VARARGS, 0},
-  {"multiple_transform_apply", multiple_transform_apply, METH_VARARGS, 0},
  {0, 0, 0, 0}
 };
 
@@ -132,7 +130,6 @@ main(int argc, char **argv)
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
 #endif
-
 
   Py_Initialize();
 
