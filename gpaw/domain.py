@@ -72,7 +72,8 @@ class Domain:
         if npy.product(self.parsize_c) != self.comm.size:
             raise RuntimeError('Bad domain decomposition!')
 
-        self.comm.cart_create(self.parsize_c[0], self.parsize_c[1], self.parsize_c[2], 1)
+        self.comm.cart_create(self.parsize_c[0], self.parsize_c[1], \
+                              self.parsize_c[2], 1)
 
         rnk = self.comm.rank
         self.parpos_c = npy.array(
