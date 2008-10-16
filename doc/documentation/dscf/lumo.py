@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from ase import *
-from ase.parallel import paropen
+from ase.lattice.surface import fcc111, add_adsorbate
 from gpaw import *
 from gpaw import dscf
-from numpy import *
+from numpy import reshape
 
 filename='lumo'
 
@@ -16,7 +16,7 @@ c_mol = GPAW(nbands=9, h=0.2, xc='RPBE', kpts=(4,6,1),
                           'eigenstates': 1.0e-9,
                           'bands': -2}, txt='CO_lumo.txt')
 
-calc = GPAW(nbands=130, h=0.2, xc='RPBE', kpts=(4,6,1),
+calc = GPAW(nbands=60, h=0.2, xc='RPBE', kpts=(4,6,1),
             eigensolver='cg',
             spinpol=True,
             mixer=MixerSum(nmaxold=5, beta=0.1, weight=100),
@@ -27,9 +27,14 @@ calc = GPAW(nbands=130, h=0.2, xc='RPBE', kpts=(4,6,1),
 
 #----------------------------------------
 
-#Import Slab with relaxed CO
-slab = Calculator('gs.gpw').get_atoms()
-E_gs = slab.get_potential_energy()
+#  Import Slab with relaxed CO
+#slab = Calculator('gs.gpw').get_atoms()
+slab = fcc111('Pt', size=(1, 2, 3), orthogonal=True)
+add_adsorbate(slab, 'C', 2.0, 'ontop')
+add_adsorbate(slab, 'O', 3.15, 'ontop')
+slab.center(axis=2, vacuum=4.0)
+
+#view(slab)
 
 molecule = slab.copy()
 
@@ -41,7 +46,7 @@ molecule.set_calculator(c_mol)
 molecule.get_potential_energy()
 
 #Find band corresponding to lumo
-lumo = c_mol.get_pseudo_wave_function(band=6, kpt=0, spin=0)
+lumo = c_mol.get_pseudo_wave_function(band=5, kpt=0, spin=0)
 lumo = reshape(lumo, -1)
 
 wf1_k = [c_mol.get_pseudo_wave_function(band=5, kpt=k, spin=0)
@@ -60,8 +65,6 @@ for k in range(c_mol.nkpts):
     else:
         band_k.append(6)
 
-print band_k
-
 #Lumo wavefunction
 wf_u = [kpt.psit_nG[band_k[kpt.k]] for kpt in c_mol.kpt_u]
 
@@ -76,7 +79,4 @@ for atom in c_mol.nuclei:
 slab.set_calculator(calc)
 orbital = dscf.WaveFunction(calc, wf_u, P_aui, molecule=range(len(slab))[-2:])
 dscf.dscf_calculation(calc, [[1.0, orbital, 1]], slab)
-E_es = slab.get_potential_energy()
-
-print 'Excitations energy: ', E_es-E_gs
-
+slab.get_potential_energy()

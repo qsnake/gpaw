@@ -45,7 +45,7 @@ The example below calculates the excitation energy of the
 `5\sigma\rightarrow2\pi` transition in CO. We only specify that the 
 `2\pi` orbital should be occupied ([[1.0, lumo, 1]] means 1.0 electrons 
 in lumo with spin 1) and the method will take the electron from highest 
-occupid orbital which in this case is `5\sigma`.
+occupied orbital which in this case is `5\sigma`.
 
 The lumo is an instance of the class Wavefunction which calculates the 
 expansion of the saved `2\pi` state in each iteration step.
@@ -109,7 +109,7 @@ but for more complicated systems the WaveFunction class should be used
 In the example above we only specify a single state, but the function 
 ``dscf.dscf_calculation`` takes a list of orbitals as input and we could for 
 example have given the argument [[1.0, lumo, 1], [-1.0, pi, 0]] which would 
-force the elctron to be taken from the `\pi` orbital with spin 0. The pi 
+force the electron to be taken from the `\pi` orbital with spin 0. The pi 
 should of course be another instance of the WaveFunction class.
 
 ---------------------
@@ -122,12 +122,11 @@ traditional Delta Self-Consistent Field breaks down since the orbital
 to be occupied is no longer well described by a single Kohn-Sham state.
 
 The script :svn:`~doc/documentation/dscf/homo.py?format=raw` calculates 
-the HOMO energy of CO adsorbed on a transition metal. It is assumed that the
-starting point is a slab with relaxed CO saved in ``gs.gpw`` and 
-that the molecule constitutes the last two positions of the atoms list.
-The positions can for example be take as in 
-:svn:`~doc/documentation/dscf/gs.xyz?format=raw` which has CO adsorbed 
-on-top a three layer Pt(111) slab (top layer being relaxed).
+the HOMO energy of CO adsorbed on-top Pt(111). The script starts
+from scratch, but usually one would start from an optimized configuration
+saved in a file ``gs.gpw``. The script only calculates the total energy of 
+the excited state so the excitation energy is obtained as the difference 
+between ground and excited state energies.
 
 First a calculation of gas-phase CO is performed and the 
 HOMO pseudo-wavefunctions and the projector overlaps are saved. The 
@@ -135,8 +134,8 @@ energy range [-100.0, 0.0] means we only include states below the Fermi
 level (default is states above).
 
 The script :svn:`~doc/documentation/dscf/lumo.py?format=raw` calculates
-the LUMO energy of adsorbed CO, but is slightly more complicated due to the 
-degeneracy of the `2\pi` orbital. We would like to occupy the `2\pi_x` 
+the LUMO energy of the same system, but is slightly more complicated due to 
+the degeneracy of the `2\pi` orbital. We would like to occupy the `2\pi_y` 
 orbital and  we need to figure out which band (5 or 6) this orbital 
 corresponds to in each k-point before we start the slab calculation.
 
