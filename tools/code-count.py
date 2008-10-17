@@ -20,13 +20,15 @@ def polygon(x, y1, y2, *args, **kwargs):
 
 def plot_count(fname):
     # Load data
-    date, libxc, c, code, test = pl.load(fname, unpack=True)
+    date, libxc, c, code, test, doc = pl.load(fname, unpack=True)
     zero = pl.zeros_like(date)
 
     fig = pl.figure(1, figsize=(8, 6))
     ax = fig.add_subplot(111)
-##     polygon(date, c + code, c + code + test,
-##             facecolor='y', label='Tests')
+    polygon(date, c + code + test, c + code + test + doc,
+             facecolor='m', label='Documentation')
+    polygon(date, c + code, c + code + test,
+             facecolor='y', label='Tests')
     polygon(date, c, c + code,
             facecolor='g', label='Python-code')
     polygon(date, zero, c,
@@ -56,18 +58,14 @@ if __name__ == '__main__':
 
     # Check if stat file already exists, and stat from last checked day
     if os.path.isfile('stat.dat'):
-        datenum = int(os.popen('tail -1 stat.dat','r').read().split()[0])
-        date1 = pl.num2date(datenum + 1)
+        date1 = int(os.popen('tail -1 stat.dat','r').read().split()[0]) + 1
         stat = open('stat.dat', 'a')
     else:
-        date1 = datetime.date(2005, 10, 19)
+        date1 = datetime.date(2005, 10, 20).toordinal()
         stat = open('stat.dat', 'w')
     
-    date2 = datetime.date.today()
-    delta = datetime.timedelta(days=1)
-    dates = pl.drange(date1, date2, delta).astype(int)
-
-    for datenum in dates:
+    date2 = datetime.date.today().toordinal()
+    for datenum in range(date1, date2 + 1):
         datestr = datetime.date.fromordinal(datenum).isoformat()
         print datestr
 
@@ -83,17 +81,18 @@ if __name__ == '__main__':
         # Remove gui:
         os.system('rm -rf temp-gpaw/gpaw/gui')
 
-        libxc = count('temp-gpaw/c/libxc', '\\*.[ch]')
-        ch = count('temp-gpaw/c', '\\*.[ch]') - libxc
-        py = count('temp-gpaw/gridpaw', '\\*.py')
-        py += count('temp-gpaw/gpaw', '\\*.py')
-        test = count('temp-gpaw/test', '\\*.py')
+        libxc = count('temp-gpaw/c/libxc', '\*.[ch]')
+        ch = count('temp-gpaw/c', '\*.[ch]') - libxc
+        py = count('temp-gpaw/gridpaw', '\*.py')
+        py += count('temp-gpaw/gpaw', '\*.py')
+        test = count('temp-gpaw/test', '\*.py')
+        doc = count('temp-gpaw/doc', '\*.py -or -name \*.rst')
 
         # Clean up
         os.system('rm -rf temp-gpaw')
 
         # Dump data to stat file
-        print >> stat, datenum, libxc, ch, py, test
+        print >> stat, datenum, libxc, ch, py, test, doc
 
     stat.close()
     plot_count('stat.dat')
