@@ -8,6 +8,11 @@
 #include <numpy/arrayobject.h>
 #include <malloc.h>
 
+/* If strict ANSI, then some useful macros are not defined */
+#if defined(__STRICT_ANSI__)
+# define M_PI           3.14159265358979323846  /* pi */
+#endif
+
 #ifndef DOUBLECOMPLEXDEFINED
 #  define DOUBLECOMPLEXDEFINED 1
 #  ifdef NO_C99_COMPLEX
