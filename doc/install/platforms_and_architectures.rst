@@ -134,6 +134,8 @@ Set these environment variables in the :file:`.bashrc` file::
 and build GPAW (``python setup.py build_ext``) with this
 :file:`customize.py` file (comment out experimental ``scalapack`` and ``blacs`` features)::
 
+  scalapack = True
+
   extra_compile_args += [
       '-O3'
       ]
@@ -328,18 +330,13 @@ On the login node ``slid`` build GPAW (``python setup.py build_ext``)
 with gcc compiler using the following :file:`customize.py` file
 (comment out experimental ``scalapack`` and ``blacs`` features)::
 
+  scalapack = True
+
   extra_link_args += ['-cc=gcc']
   extra_compile_args += [
     '-cc=gcc',
-    '-pthread',
-    '-fno-strict-aliasing',
-    '-DNDEBUG',
     '-O2',
-    '-g',
-    '-pipe',
     '-m64',
-    '-fPIC',
-    '-UNDEBUG'
   ]
 
   libraries = [
@@ -382,6 +379,8 @@ You can alternatively build on ``slid`` build GPAW (``python setup.py
 build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
 compiler using the following :file:`customize.py` file (comment out
 experimental ``scalapack`` and ``blacs`` features)::
+
+  scalapack = True
 
   libraries = [
     'pathfortran',
@@ -689,6 +688,8 @@ and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
 setup.py build_ext``) with this :file:`customize.py` file (comment out
 experimental ``scalapack`` and ``blacs`` features)::
 
+  scalapack = True
+
   extra_compile_args += [
       '-O3'
       ]
@@ -919,6 +920,8 @@ LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
 also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
 :file:`customize.py` file (comment out experimental ``scalapack`` and
 ``blacs`` features)::
+
+  scalapack = True
 
   extra_compile_args += [
       '-O3'
