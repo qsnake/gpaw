@@ -732,11 +732,12 @@ experimental ``scalapack`` and ``blacs`` features)::
             ]
 
   # uncomment the two following lines to enable TAU profiling
-  #tau_make = '/soft/apps/tau/tau_latest/bgp/lib/Makefile.tau-mpi-gnu-python-pdt'
-  #tau_options='-optShared -optTau="-rn Py_RETURN_NONE -i /soft/apps/tau/tau_latest/include/TAU_PYTHON_FIX.h" '
-  #mpicompiler = 'tau_cc.sh -tau_options='+tau_options+' -tau_makefile='+tau_make
-  #mpilinker = mpicompiler
-  #compiler = mpicompiler
+  # tau_path = '/soft/apps/tau/tau_latest/bgp/lib'
+  # tau_make = tau_path+'lib/Makefile.tau-mpi-gnu-python-pdt'
+  # extra_compile_args += ['''-tau_options="-optShared -optTau='-rn Py_RETURN_NONE -i /soft/apps/tau/tau_latest/include/TAU_PYTHON_FIX.h' -optVerbose"''']
+  # mpicompiler = "tau_cc.sh -tau_makefile="+tau_make
+  # mpilinker = mpicompiler
+  # compiler = mpicompiler
 
 Because of missing ``popen3`` function you need to remove all the
 contents of the :file:`gpaw/version.py` file after ``version =
