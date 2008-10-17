@@ -70,7 +70,7 @@ class ZeroKelvin(Dummy):
             self.magmom = M
         else:
             nb = len(kpts[0].eps_n)
-            if self.kpt_comm.size>1: 
+            if self.kpt_comm.size > 1: 
                 all_eps_n = npy.zeros((self.kpt_comm.size, nb))
                 self.kpt_comm.all_gather(kpts[0].eps_n, all_eps_n)
                 eps_n = all_eps_n
@@ -267,4 +267,20 @@ class FermiDirac(Dummy):
         self.magmom = magmom
 
 
+class FermiDiracFixed(FermiDirac):
+    """Occupations with Fermi smearing and fixed Fermi level"""
+    def __init__(self, ne, nspins, kT, epsF):
+        FermiDirac.__init__(self, ne, nspins, kT)
+        self.set_fermi_level(epsF)
+        self.niter = 0
+    
+    def guess_fermi_level(self, kpts):
+        pass
 
+    def find_fermi_level(self, kpts):
+        magmom = 0.0
+        for kpt in kpts:
+            sign = 1.0 - 2 * kpt.s
+            magmom += sign * npy.sum(kpt.f_n)
+        magmom = self.band_comm.sum(self.kpt_comm.sum(magmom))
+        self.magmom = magmom
