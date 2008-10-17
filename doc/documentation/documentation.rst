@@ -9,7 +9,7 @@ calculator's functionalities:
 
 .. toctree::
    :maxdepth: 2
-
+qq
    manual
 
 Here you can find some literature about the PAW method and its real
@@ -30,6 +30,8 @@ GPAW calculator:
    restart_files
    xc/xc
    tddft/tddft
+   dscf/dscf
+   pdos/pdos
    xas/xas
    rmm-diis
 
