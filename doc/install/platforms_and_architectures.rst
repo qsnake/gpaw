@@ -732,7 +732,7 @@ experimental ``scalapack`` and ``blacs`` features)::
             ]
 
   # uncomment the following lines to enable TAU profiling
-  # tau_path = '/soft/apps/tau/tau_latest/bgp/lib'
+  # tau_path = '/soft/apps/tau/tau_latest/bgp/'
   # tau_make = tau_path+'lib/Makefile.tau-mpi-gnu-python-pdt'
   # extra_compile_args += ['''-tau_options="-optShared -optTau='-rn Py_RETURN_NONE -i /soft/apps/tau/tau_latest/include/TAU_PYTHON_FIX.h' -optVerbose"''']
   # mpicompiler = "tau_cc.sh -tau_makefile="+tau_make
