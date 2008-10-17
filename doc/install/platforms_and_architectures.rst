@@ -911,9 +911,6 @@ Here is how you build the standard numpy::
   $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-Suggestions on how to build numpy using an optimized blas (preferably
-essl) are welcome!
-
 Build GPAW
 (``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
 LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
