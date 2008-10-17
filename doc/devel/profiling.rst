@@ -65,15 +65,18 @@ tau
 is a portable profiling and tracing toolkit for performance analysis
 of parallel programs written in Fortran, C, C++, Java, Python.
 
+
 Installation and configuration
 ------------------------------
 
-TAU requires `Program Database Toolkit <http://www.cs.uoregon.edu/research/pdt/>`_ to produce profiling data. Follow the vendor installation instructions
-for ``pdtoolkit`` or, on an RPM-based system
-(El4/EL5 and FC8/FC9 are currently supported), build RPM following
-`<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#pdtoolkit>`_. **Note**: If you want to use only TAU's
-``paraprof`` and/or ``perfexplorer``
-for analysing profile data made elsewhere - skip the installation of
+TAU requires `Program Database Toolkit
+<http://www.cs.uoregon.edu/research/pdt/>`_ to produce profiling
+data. Follow the vendor installation instructions for ``pdtoolkit``
+or, on an RPM-based system (El4/EL5 and FC8/FC9 are currently
+supported), build RPM following
+`<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#pdtoolkit>`_. **Note**:
+If you want to use only TAU's ``paraprof`` and/or ``perfexplorer`` for
+analysing profile data made elsewhere - skip the installation of
 ``pdtoolkit``.
 
 Follow the vendor installation instructions for ``tau`` or, on an RPM-based
@@ -84,12 +87,12 @@ Choose the default answer for most of the questions, the only important
 points are to provide a reasonable path to the database directory
 (the database may grow to GB's), and ignore the password question::
 
- Please enter the path to the database directory.
- (/home/camp/dulak/.ParaProf/perfdmf):/scratch/dulak/perfdmf
- Please enter the database username.
- ():
- Store the database password in CLEAR TEXT in your configuration file? (y/n):y
- Please enter the database password:
+  Please enter the path to the database directory.
+  (/home/camp/dulak/.ParaProf/perfdmf):/scratch/dulak/perfdmf
+  Please enter the database username.
+  ():
+  Store the database password in CLEAR TEXT in your configuration file? (y/n):y
+  Please enter the database password:
 
 Similarly, run ``perfexplorer_configure`` letting the default settings.
 
@@ -100,44 +103,47 @@ You need to compile a special version of gpaw.
 
 Simply include the following into ``customize.py`` and run ``python setup.py build_ext``::
 
- import tau
- tau_path = tau.__file__[0:tau.__file__.find('lib')]
- tau_make = tau_path+'lib/Makefile.tau-mpi-python-pdt'
- tau_options='-optShared '
- mpicompiler = 'tau_cc.sh -tau_options='+tau_options+' -tau_makefile='+tau_make
- mpilinker = mpicompiler
- compiler = mpicompiler
+  import tau
+  tau_path = tau.__file__[0:tau.__file__.find('lib')]
+  tau_make = tau_path+'lib/Makefile.tau-mpi-python-pdt'
+  tau_options='-optShared '
+  mpicompiler = 'tau_cc.sh -tau_options='+tau_options+' -tau_makefile='+tau_make
+  mpilinker = mpicompiler
+  compiler = mpicompiler
 
- extra_link_args += ['-Wl,-rpath='+tau_path+'lib/']
+  extra_link_args += ['-Wl,-rpath='+tau_path+'lib/']
 
- To obtain the profiler data run the following ``wrapper.py``::
+To obtain the profiler data run the following ``wrapper.py``::
 
- import tau
+  import tau
 
- def OurMain():
-     import CH4;
+  def OurMain():
+      import CH4;
 
- tau.run('OurMain()')
+  tau.run('OurMain()')
 
-, e.g., for two processes::
+e.g., for two processes::
 
- mpirun -np 2 gpaw-python wrapper.py
+  mpirun -np 2 gpaw-python wrapper.py
 
-This will generate `profile.?.?.?` files, convert
+This will generate ``profile.?.?.?`` files, convert
 these files into a ppk (ParaProf Packed Profile) file with::
 
- paraprof --pack CH4.ppk
+  paraprof --pack CH4.ppk
 
 You should be able to quickly view the profiler data with::
 
- paraprof CH4.ppk
+  paraprof CH4.ppk
+
+
 
 Analysing profile data
 ----------------------
 
 Now, assuming you have an ppk (ParaProf Packed Profile) file ready,
-run ``paraprof`` and choose the following from the menu
-``Default -> add application -> add experiment -> add trial -> Type ParaProf Packed Profile``.
+run ``paraprof`` and choose the following using rigth clicks:
+``Applications -> Default -> Add application -> Add experiment -> Add
+trial -> Trial Type: ParaProf Packed Profile``.
 
 ``paraprof`` allows you to investigate profiler data for a single run (trial).
 Repeat the previous step (adding a trial) for parallel runs
