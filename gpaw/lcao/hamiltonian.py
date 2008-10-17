@@ -21,7 +21,8 @@ class LCAOHamiltonian:
         self.tci = None  # two-center integrals
         self.lcao_initialized = False
         self.ng = ng
-        self.eig_lcao_iteration = 0
+        if debug:
+            self.eig_lcao_iteration = 0
 
         # Derivative overlaps should be evaluated lazily rather than
         # during initialization  to save memory/time. This is not implemented
@@ -199,7 +200,8 @@ class LCAOHamiltonian:
             dsyev_zheev_string = 'LCAO: '+'diagonalize-test'
 
             self.timer.start(dsyev_zheev_string)
-            self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+            if debug:
+                self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
 
             if self.gd.comm.rank == 0:
                 p_m[0] = 42
@@ -208,8 +210,9 @@ class LCAOHamiltonian:
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
 
-            self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
-            self.eig_lcao_iteration += 1
+            if debug:
+                self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+                self.eig_lcao_iteration += 1
             self.timer.stop(dsyev_zheev_string)
 
             self.gd.comm.broadcast(P_mm, 0)

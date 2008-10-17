@@ -2,6 +2,7 @@ import numpy as npy
 from gpaw.utilities.blas import rk, r2k
 from gpaw.utilities import unpack
 from gpaw.utilities.lapack import diagonalize
+from gpaw import debug
 
 
 class LCAO:
@@ -10,7 +11,8 @@ class LCAO:
     def __init__(self):
         self.lcao = True
         self.initialized = False
-        self.eig_lcao_iteration = 0
+        if debug:
+            self.eig_lcao_iteration = 0
 
     def initialize(self, paw):
         self.timer = paw.timer
@@ -88,7 +90,8 @@ class LCAO:
             dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
 
             self.timer.start(dsyev_zheev_string)
-            self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+            if debug:
+                self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
 
             if self.comm.rank == 0:
                 self.eps_m[0] = 42
@@ -97,8 +100,9 @@ class LCAO:
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
 
-            self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
-            self.eig_lcao_iteration += 1
+            if debug:
+                self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+                self.eig_lcao_iteration += 1
             self.timer.stop(dsyev_zheev_string)
 
             self.comm.broadcast(self.eps_m, 0)
@@ -152,7 +156,8 @@ class LCAO:
         dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv remove'
 
         self.timer.start(dsyev_zheev_string)
-        self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+        if debug:
+            self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
 
         if self.comm.rank == 0:
             eps_q[0] = 42
@@ -161,8 +166,9 @@ class LCAO:
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
 
-        self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
-        self.eig_lcao_iteration += 1
+        if debug:
+            self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
+            self.eig_lcao_iteration += 1
         self.timer.stop(dsyev_zheev_string)
 
         self.comm.broadcast(eps_q, 0)
