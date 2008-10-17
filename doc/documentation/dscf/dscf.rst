@@ -148,3 +148,5 @@ corresponds to in each k-point before we start the slab calculation.
              Hot electron mediated desorption rates calculated from excited
 	     state potential energy surfaces,
              arXiv:0810.2630
+
+.. default-role::

@@ -139,3 +139,5 @@ Plot PDOS::
     show()
 
 .. [#Blo94] P. E. Blöchl, Phys. Rev. B 50, 17953 (1994)
+
+.. default-role::
