@@ -8,13 +8,16 @@ from gpaw import debug
 
 class Symmetry:
     def __init__(self, Z_a, type_a, magmom_a, basis_a,
-                 domain, tolerance=1e-11):
+                 domain, tolerance=1e-11, magmom_decimals=3):
         """Symmetry object.
 
         Two atoms can only be identical if they have the same atomic
         numbers, setup types and magnetic moments.  If it is an LCAO
         type of calculation, they must have the same atomic basis
         set also."""
+
+        # Round off:
+        magmom_a = magmom_a.round(decimals=magmom_decimals)
         
         self.ZTMB_a = zip(Z_a, type_a, magmom_a, basis_a)
         self.cell_c = domain.cell_c
