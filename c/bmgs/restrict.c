@@ -47,6 +47,11 @@ void *RST1DW(void *threadarg)
               bb[0].r=0.5*(aa[0].r+0.58593750*(aa[1].r+aa[-1].r)+-0.09765625*(aa[3].r+aa[-3].r)+0.01171875*(aa[5].r+aa[-5].r));
               bb[0].i=0.5*(aa[0].i+0.58593750*(aa[1].i+aa[-1].i)+-0.09765625*(aa[3].i+aa[-3].i)+0.01171875*(aa[5].i+aa[-5].i));
             }
+          else
+            {
+              bb[0].r=0.5*(aa[0].r+0.59814453125*(aa[1].r+aa[-1].r)+-0.11962890625*(aa[3].r+aa[-3].r)+0.02392578125*(aa[5].r+aa[-5].r)+-0.00244140625*(aa[7].r+aa[-7].r));
+              bb[0].i=0.5*(aa[0].i+0.59814453125*(aa[1].i+aa[-1].i)+-0.11962890625*(aa[3].i+aa[-3].i)+0.02392578125*(aa[5].i+aa[-5].i)+-0.00244140625*(aa[7].i+aa[-7].i));
+            }
         #else
           if      (K == 2)
             bb[0] = 0.5 * (aa[0] +
@@ -62,6 +67,13 @@ void *RST1DW(void *threadarg)
                0.58593750 * (aa[1] + aa[-1]) +
               -0.09765625 * (aa[3] + aa[-3]) +
                0.01171875 * (aa[5] + aa[-5]));
+
+          else
+            bb[0] = 0.5 * (aa[0] +
+               0.59814453125 * (aa[1] + aa[-1]) +
+              -0.11962890625 * (aa[3] + aa[-3]) +
+               0.02392578125 * (aa[5] + aa[-5]) +
+              -0.00244140625 * (aa[7] + aa[-7]));
           #endif
           aa += 2;
           bb += m;
@@ -132,6 +144,15 @@ void RST1D(const T* a, int n, int m, T* b)
 #  undef RST1DA
 #  undef RST1DW
 #  undef K
+#  define K 8
+#  define RST1D Z(bmgs_restrict1D8)
+#  define RST1DA Z(bmgs_restrict1D8_args)
+#  define RST1DW Z(bmgs_restrict1D8_worker)
+#  include "restrict.c"
+#  undef RST1D
+#  undef RST1DA
+#  undef RST1DW
+#  undef K
 
 void Z(bmgs_restrict)(int k, T* a, const int n[3], T* b, T* w)
 {
@@ -141,8 +162,10 @@ void Z(bmgs_restrict)(int k, T* a, const int n[3], T* b, T* w)
     plg = Z(bmgs_restrict1D2);
   else if (k == 4)
     plg = Z(bmgs_restrict1D4);
-  else
+  else if (k == 6)
     plg = Z(bmgs_restrict1D6);
+  else
+    plg = Z(bmgs_restrict1D8);
 
   int e = k * 2 - 3;
   plg(a, (n[2] - e) / 2, n[0] * n[1], w);

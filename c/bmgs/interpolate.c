@@ -55,7 +55,7 @@ void *IP1DW(void *threadarg)
                   bb[m].i = ( 0.5625 * (aa[0].i + aa[1].i) +
                              -0.0625 * (aa[-1].i + aa[2].i));
                 }
-              else
+              else if (args->k == 6)
                 {
                   bb[m].r = ( 0.58593750 * (aa[ 0].r + aa[1].r) +
                              -0.09765625 * (aa[-1].r + aa[2].r) +
@@ -63,6 +63,17 @@ void *IP1DW(void *threadarg)
                   bb[m].i = ( 0.58593750 * (aa[ 0].i + aa[1].i) +
                              -0.09765625 * (aa[-1].i + aa[2].i) +
                               0.01171875 * (aa[-2].i + aa[3].i));
+                }
+              else
+                {
+                  bb[m].r = ( 0.59814453125 * (aa[ 0].r + aa[1].r) +
+                           -0.11962890625 * (aa[-1].r + aa[2].r) +
+                            0.02392578125 * (aa[-2].r + aa[3].r) +
+                           -0.00244140625 * (aa[-3].r + aa[4].r));
+                  bb[m].i = ( 0.59814453125 * (aa[ 0].i + aa[1].i) +
+                           -0.11962890625 * (aa[-1].i + aa[2].i) +
+                            0.02392578125 * (aa[-2].i + aa[3].i) +
+                           -0.00244140625 * (aa[-3].i + aa[4].i));
                 }
             }
       #else
@@ -80,10 +91,15 @@ void *IP1DW(void *threadarg)
               else if (K == 4)
                 bb[m] = ( 0.5625 * (aa[ 0] + aa[1]) +
                          -0.0625 * (aa[-1] + aa[2]));
-              else
+              else if (K == 6)
                 bb[m] = ( 0.58593750 * (aa[ 0] + aa[1]) +
                          -0.09765625 * (aa[-1] + aa[2]) +
                           0.01171875 * (aa[-2] + aa[3]));
+              else
+                bb[m] = ( 0.59814453125 * (aa[ 0] + aa[1]) +
+                         -0.11962890625 * (aa[-1] + aa[2]) +
+                          0.02392578125 * (aa[-2] + aa[3]) +
+                         -0.00244140625 * (aa[-3] + aa[4]));
             }
       #endif
           aa++;
@@ -156,6 +172,15 @@ void IP1D(const T* a, int n, int m, T* b, int skip[2])
 #  undef IP1DA
 #  undef IP1DW
 #  undef K
+#  define K 8
+#  define IP1D Z(bmgs_interpolate1D8)
+#  define IP1DA Z(bmgs_interpolate1D8_args)
+#  define IP1DW Z(bmgs_interpolate1D8_worker)
+#  include "interpolate.c"
+#  undef IP1D
+#  undef IP1DA
+#  undef IP1DW
+#  undef K
 
 void Z(bmgs_interpolate)(int k, int skip[3][2],
        const T* a, const int size[3], T* b, T* w)
@@ -165,8 +190,10 @@ void Z(bmgs_interpolate)(int k, int skip[3][2],
     ip = Z(bmgs_interpolate1D2);
   else if (k == 4)
     ip = Z(bmgs_interpolate1D4);
-  else
+  else if (k == 6)
     ip = Z(bmgs_interpolate1D6);
+  else
+    ip = Z(bmgs_interpolate1D8);
 
   int e = k - 1;
 
