@@ -43,19 +43,19 @@ void *IP1DW(void *threadarg)
             bb -= m;
           else
             {
-              if (args->k == 2)
+              if (K == 2)
                 {
                   bb[m].r = 0.5 * (aa[0].r + aa[1].r);
                   bb[m].i = 0.5 * (aa[0].i + aa[1].i);
                 }
-              else if (args->k == 4)
+              else if (K == 4)
                 {
                   bb[m].r = ( 0.5625 * (aa[0].r + aa[1].r) +
                              -0.0625 * (aa[-1].r + aa[2].r));
                   bb[m].i = ( 0.5625 * (aa[0].i + aa[1].i) +
                              -0.0625 * (aa[-1].i + aa[2].i));
                 }
-              else if (args->k == 6)
+              else if (K == 6)
                 {
                   bb[m].r = ( 0.58593750 * (aa[ 0].r + aa[1].r) +
                              -0.09765625 * (aa[-1].r + aa[2].r) +
