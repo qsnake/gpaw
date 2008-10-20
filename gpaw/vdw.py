@@ -334,7 +334,7 @@ class VanDerWaals:
         
 
 
-        a1=1/self.get_q0*(-0.8491/9.0*sggf+7.0/3.0*-0.8491/9.0*s2*kF_g-4.0*npy.pi/3.0*n_g####*vlda#####
+        a1=1/self.get_q0*(-0.8491/9.0*sggf+7.0/3.0*-0.8491/9.0*s2*kF_g-4.0*npy.pi/3.0*n_g)####*vlda#####
 
         return a1,a2
 
