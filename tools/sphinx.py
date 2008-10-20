@@ -21,10 +21,11 @@ def build():
                  'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
         raise RuntimeError('Checkout of GPAW failed!')
     os.chdir('gpaw')
-    if os.system('python setup.py install --home=..') != 0:
+    if os.system('python setup.py install --home=.. ' +
+                 '2>&1 | grep -v "c/libxc/src"') != 0:
         raise RuntimeError('Installation of GPAW failed!')
 
-    os.system('wget --no-check-certificate ' +
+    os.system('wget --no-check-certificate --quiet ' +
               'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
 
     os.system('tar xvzf gpaw-setups-latest.tar.gz')
