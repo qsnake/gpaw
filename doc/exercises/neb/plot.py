@@ -19,16 +19,11 @@ rotation = '-60x, 10y'
 radii = 1.2 # single float specifies a uniform scaling of the covalent radii
 colors = jmol_colors[atoms.numbers]
 colors[16::17] = [1, 0, 0]
-pov_options = {'display': False,
-               'transparent': False,
-               'canvas_width': 500}
 
-write('Al110slab.pov', atoms,
+from ase.io.pov import povpng
+povpng('Al110slab.pov', atoms,
       rotation=rotation,
       colors=colors,
       radii=radii,
       show_unit_cell=2,
-      **pov_options)
-
-import os
-os.system('povray Al110slab.ini')
+      canvas_width=500)
