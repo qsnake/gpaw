@@ -458,19 +458,19 @@ def read(paw, reader):
             # We may not be able to keep all the wave
             # functions in memory - so psit_nG will be a special type of
             # array that is really just a reference to a file:
-             if paw.world.size > 1: # if parallel
-                 for kpt in paw.kpt_u:
-                     # Read band by band to save memory
-                     kpt.psit_nG = []
-                     for nb in range(paw.nmybands):
-                         n = paw.band_comm.rank + nb * paw.band_comm.size
-                         kpt.psit_nG.append(
-                             r.get_reference('PseudoWaveFunctions',
-                                             kpt.s, kpt.k, n) )
-             else:
-                 for kpt in paw.kpt_u:
-                     kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
-                                                   kpt.s, kpt.k)
+            if paw.world.size > 1: # if parallel
+                for kpt in paw.kpt_u:
+                    # Read band by band to save memory
+                    kpt.psit_nG = []
+                    for nb in range(paw.nmybands):
+                        n = paw.band_comm.rank + nb * paw.band_comm.size
+                        kpt.psit_nG.append(
+                            r.get_reference('PseudoWaveFunctions',
+                                            kpt.s, kpt.k, n) )
+            else:
+                for kpt in paw.kpt_u:
+                    kpt.psit_nG = r.get_reference('PseudoWaveFunctions',
+                                                  kpt.s, kpt.k)
 
         for u, kpt in enumerate(paw.kpt_u):
             P_ni = r.get('Projections', kpt.s, kpt.k)
