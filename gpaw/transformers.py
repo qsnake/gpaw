@@ -83,5 +83,5 @@ def coefs(k, p):
                     continue
                 n *= x - j
                 d *= i - j
-            print '%14.10f' % (n / d),
+            print '%14.16f' % (n / d),
         print
