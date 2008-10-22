@@ -113,14 +113,13 @@ class TDDFT(PAW):
 
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
+        self.density.charge_eps = 1e-5
         for nucleus in self.nuclei:
             nucleus.ready = False
         self.set_positions()
         self.initialize_wave_functions()
         # Don't be too strict
-        self.density.charge_eps = 1e-5
         self.density.update_pseudo_charge()
-
 
         # Convert PAW-object to complex
         if self.dtype == float:
