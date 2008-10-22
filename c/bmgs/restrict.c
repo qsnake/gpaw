@@ -87,7 +87,7 @@ void RST1D(const T* a, int n, int m, T* b)
   a += K - 1;
 
   int nthds = 1;
-#ifdef GPAW_OMP
+#ifdef GPAW_OMP_MONLY
   if (getenv("OMP_NUM_THREADS") != NULL)
     nthds = atoi(getenv("OMP_NUM_THREADS"));
 #endif
@@ -103,12 +103,12 @@ void RST1D(const T* a, int n, int m, T* b)
       (wargs+i)->m = m;
       (wargs+i)->b = b;
     }
-#ifdef GPAW_OMP
+#ifdef GPAW_OMP_MONLY
   for(int i=1; i < nthds; i++)
     pthread_create(thds + i, NULL, RST1DW, (void*) (wargs+i));
 #endif
   RST1DW(wargs);
-#ifdef GPAW_OMP
+#ifdef GPAW_OMP_MONLY
   for(int i=1; i < nthds; i++)
     pthread_join(*(thds+i), NULL);
 #endif
