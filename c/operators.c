@@ -23,6 +23,11 @@
   #define GPAW_ASYNC_D 1
 #endif
 
+#ifndef GPAW_ASYNC_CHUNKSIZE
+#define GPAW_ASYNC_CHUNKSIZE 1
+#endif
+
+
 typedef struct
 {
   PyObject_HEAD
@@ -95,6 +100,48 @@ void *apply_worker(void *threadarg)
 {
   struct apply_args *args = (struct apply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
+  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend;
+  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv;
+  double* buf = args->self->buf + args->thread_id * args->ng2;
+  MPI_Request recvreq[2];
+  MPI_Request sendreq[2];
+
+  int chunksize = args->nin / args->nthds;
+  if (!chunksize)
+    chunksize = 1;
+  int nstart = args->thread_id * chunksize;
+  if (nstart >= args->nin)
+    return NULL;
+  int nend = nstart + chunksize;
+  if (nend > args->nin)
+    nend = args->nin;
+
+  for (int n = nstart; n < nend; n++)
+    {
+      const double* in = args->in + n * args->ng;
+      double* out = args->out + n * args->ng;
+      for (int i = 0; i < 3; i++)
+        {
+          bc_unpack1(bc, in, buf, i,
+                     recvreq, sendreq,
+                     recvbuf, sendbuf, args->ph + 2 * i,
+                     args->thread_id);
+          bc_unpack2(bc, buf, i,
+                     recvreq, sendreq, recvbuf);
+        }
+      if (args->real)
+        bmgs_fd(&args->self->stencil, buf, out);
+      else
+        bmgs_fdz(&args->self->stencil, (const double_complex*) buf,
+                                       (double_complex*)out);
+    }
+    return NULL;
+}
+
+void *apply_worker_cfd(void *threadarg)
+{
+  struct apply_args *args = (struct apply_args *) threadarg;
+  boundary_conditions* bc = args->self->bc;
   double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend * GPAW_ASYNC_D;
   double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv * GPAW_ASYNC_D;
   double* buf = args->self->buf + args->thread_id * args->ng2;
@@ -111,44 +158,23 @@ void *apply_worker(void *threadarg)
   if (nend > args->nin)
     nend = args->nin;
 
-  //printf("thd: %d, nin: %d, nthds: %d, chunk: %d, nstart: %d, nend: %d\n", args->thread_id, args->nin, args->nthds, chunksize, nstart, nend);
-
   for (int n = nstart; n < nend; n++)
     {
       const double* in = args->in + n * args->ng;
       double* out = args->out + n * args->ng;
-    #ifndef GPAW_ASYNC
-      if (1)
-    #else
-      if (bc->cfd == 0)
-    #endif
+      for (int i = 0; i < 3; i++)
         {
-          for (int i = 0; i < 3; i++)
-            {
-              bc_unpack1(bc, in, buf, i,
-                         recvreq, sendreq,
-                         recvbuf, sendbuf, args->ph + 2 * i,
-                         args->thread_id);
-              bc_unpack2(bc, buf, i,
-                         recvreq, sendreq, recvbuf);
-            }
+          bc_unpack1(bc, in, buf, i,
+                     recvreq + i * 2, sendreq + i * 2,
+                     recvbuf + i * bc->maxrecv,
+                     sendbuf + i * bc->maxsend, args->ph + 2 * i,
+                     args->thread_id);
         }
-      else
+      for (int i = 0; i < 3; i++)
         {
-          for (int i = 0; i < 3; i++)
-            {
-              bc_unpack1(bc, in, buf, i,
-                         recvreq + i * 2, sendreq + i * 2,
-                         recvbuf + i * bc->maxrecv,
-                         sendbuf + i * bc->maxsend, args->ph + 2 * i,
-                         args->thread_id);
-            }
-          for (int i = 0; i < 3; i++)
-            {
-              bc_unpack2(bc, buf, i,
-                         recvreq + i * 2, sendreq + i * 2,
-                         recvbuf + i * bc->maxrecv);
-            }
+          bc_unpack2(bc, buf, i,
+                     recvreq + i * 2, sendreq + i * 2,
+                     recvbuf + i * bc->maxrecv);
         }
       if (args->real)
         bmgs_fd(&args->self->stencil, buf, out);
@@ -210,11 +236,26 @@ static PyObject * Operator_apply(OperatorObject *self,
       (wargs+i)->real = real;
       (wargs+i)->ph = ph;
     }
-#ifdef GPAW_OMP
-  for(int i=1; i < nthds; i++)
-    pthread_create(thds + i, NULL, apply_worker, (void*) (wargs+i));
+#ifndef GPAW_ASYNC
+  if (1)
+#else
+  if (bc->cfd == 0)
 #endif
-  apply_worker(wargs);
+    {
+    #ifdef GPAW_OMP
+      for(int i=1; i < nthds; i++)
+        pthread_create(thds + i, NULL, apply_worker, (void*) (wargs+i));
+    #endif
+      apply_worker(wargs);
+    }
+  else
+    {
+    #ifdef GPAW_OMP
+      for(int i=1; i < nthds; i++)
+        pthread_create(thds + i, NULL, apply_worker_cfd, (void*) (wargs+i));
+    #endif
+      apply_worker_cfd(wargs);
+    }
 #ifdef GPAW_OMP
   for(int i=1; i < nthds; i++)
     pthread_join(*(thds+i), NULL);
