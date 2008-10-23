@@ -104,7 +104,7 @@ def analyse(generator, show=False):
     plt.text(rmax, lim[2], r'$r_c$', ha='left', va='bottom', size=17)
     plt.title('Partial Waves')
     plt.xlabel('r [Bohr]')
-    plt.ylabel(r'$r\phi,\ r\tilde{\phi},\ \rm{[Bohr}^{-1/2}\rm{]}$')
+    plt.ylabel(r'$r\ \phi,\ r\tilde{\phi}$, [Bohr$^{-1/2}$]')
 
     plt.subplot(322)
     ymax = 0
@@ -124,7 +124,7 @@ def analyse(generator, show=False):
     plt.legend(loc='best')
     plt.title('Projectors')
     plt.xlabel('r [Bohr]')
-    plt.ylabel(r'$r\tilde{p},\ \rm{[Bohr}^{-1/2}\rm{]}$')
+    plt.ylabel(r'$r\ \tilde{p}$, [Bohr$^{-1/2}$]')
 
     plt.subplot(323)
     plt.plot(r_g, gen.nc, colors[0], label=r'$n_c$')
@@ -136,7 +136,7 @@ def analyse(generator, show=False):
     plt.legend(loc='best')
     plt.title('Densities')
     plt.xlabel('r [Bohr]')
-    plt.ylabel(r'$\rm{density [Bohr}^{-3}\rm{]}$')
+    plt.ylabel(r'density [Bohr$^{-3}$]')
 
     plt.subplot(324)
     plt.plot(r_g[1:], gen.vr[1:] / r_g[1:] , label=r'$v$')

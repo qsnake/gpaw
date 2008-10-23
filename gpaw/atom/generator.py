@@ -74,7 +74,7 @@ parameters = {
  'Sn': {'core': '[Kr]',   'rcut': 2.2},
 #'Sb' : Missing 
 #'Te' : Missing 
-#'I'  : Missing 
+ 'I': {'core': '[Kr]4d',   'rcut': 2.2},
 #'Xe' : Missing 
  'Cs': {'core': '[Kr]4d', 'rcut': [2.2, 2.0]},
  'Ba': {'core': '[Kr]4d', 'rcut': 2.2, 'extra': {1: [0.0], 2: [0.0, 1.0]}},
