@@ -160,7 +160,7 @@ from gpaw.utilities import devnull
 
 sys.stdout = devnull
 
-ttr = MyTextTestRunner(verbosity=opt.verbosity)
+ttr = MyTextTestRunner(verbosity=opt.verbosity, stream=sys.__stdout__)
 result = ttr.run(ts)
 failed = [test.filename for test, msg in result.failures + result.errors]
 
