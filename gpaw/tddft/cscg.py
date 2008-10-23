@@ -194,5 +194,6 @@ class CSCG:
         if self.timer is not None:
             self.timer.stop('CSCG')
 
+        return self.iterations
         #print self.iterations
 

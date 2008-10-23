@@ -6,6 +6,8 @@ functional theory calculations.
 """
 
 import sys
+import time
+from math import log
 
 import numpy as npy
 
@@ -277,6 +279,18 @@ class TDDFT(PAW):
         
         """
 
+        if rank == 0:
+            self.text()
+            self.text('Starting time: %7.2f as'
+                      % (self.time * self.autime_to_attosec))
+            self.text('Time step:     %7.2f as' % time_step)
+            header = """\
+                        Simulation      Total        log10     Iterations:
+             Time          time         Energy       Norm      Propagator"""
+            self.text()
+            self.text(header)
+
+
         # Convert to atomic units
         time_step = time_step * self.attosec_to_autime
         
@@ -296,9 +310,20 @@ class TDDFT(PAW):
                 dm_file.write(line)
                 dm_file.flush()
 
+        niterpropagator = 0
         for i in range(iterations):
-            # print energy
+            # write dipole moment at every iteration
+            if dipole_moment_file is not None:
+                dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
+                norm = self.finegd.integrate(self.density.rhot_g)
+                if rank == 0:
+                    line = '%20.8lf %20.8le %22.12le %22.12le %22.12le\n' \
+                        % (self.time, norm, dm[0], dm[1], dm[2])
+                    dm_file.write(line)
+                    dm_file.flush()
+
             if i % 10 == 0:
+                # print output (energy etc.) every 10th iteration 
                 #print '.',
                 #sys.stdout.flush()
                 # Calculate and print total energy here 
@@ -336,22 +361,22 @@ class TDDFT(PAW):
                 self.Ebar = H.Ebar
                 self.Exc = H.Exc + self.Enlxc
                 self.Etot = self.Ekin + self.Epot + self.Ebar + self.Exc
+                T = time.localtime()
                 if rank == 0:
-                    self.text('Etot', i, self.Etot)
+                    iter_text = """iter: %3d  %02d:%02d:%02d %11.2f\
+   %13.6f %9.1f %10d"""
+                    self.text(iter_text % 
+                              (i, T[3], T[4], T[5],
+                               self.time * self.autime_to_attosec,
+                               self.Etot, log(abs(norm))/log(10),
+                               niterpropagator))
+
                     self.txt.flush()
 
-            # write dipole moment
-            if dipole_moment_file is not None:
-                dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
-                norm = self.finegd.integrate(self.density.rhot_g)
-                if rank == 0:
-                    line = '%20.8lf %20.8le %22.12le %22.12le %22.12le\n' \
-                        % (self.time, norm, dm[0], dm[1], dm[2])
-                    dm_file.write(line)
-                    dm_file.flush()
 
             # propagate
-            self.propagator.propagate(self.kpt_u, self.time, time_step)
+            niterpropagator = self.propagator.propagate(self.kpt_u, self.time,
+                                                        time_step)
             self.time += time_step
 
 
