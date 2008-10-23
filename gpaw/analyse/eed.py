@@ -46,7 +46,7 @@ class ExteriorElectronDensity:
     def get_vdWradius(self, Z):
         """Return van der Waals radius in Bohr"""
         r = vdW_radii[Z] / Bohr
-        if r == npy.nan:
+        if npy.isnan(r):
             msg = 'van der Waals radius for Z=' + str(Z) + ' not known!'
             raise RuntimeError(msg)
         else:
