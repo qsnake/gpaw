@@ -52,9 +52,12 @@ PyObject * vdw(PyObject* self, PyObject *args)
   double ddelta;
   int iA;
   int iB;
-  if (!PyArg_ParseTuple(args, "OOOOOOOddii", &n_obj, &q0_obj, &R_obj,
+  PyArrayObject* histogram_obj;
+  double rcut;
+  if (!PyArg_ParseTuple(args, "OOOOOOOddiiOd", &n_obj, &q0_obj, &R_obj,
 			&cell_obj, &pbc_obj, &repeat_obj,
-			&phi_obj, &dD, &ddelta, &iA, &iB))
+			&phi_obj, &dD, &ddelta, &iA, &iB,
+			&histogram_obj, &rcut))
     return NULL;
 
   int nD = phi_obj->dimensions[1];
@@ -66,6 +69,10 @@ PyObject * vdw(PyObject* self, PyObject *args)
   const char* pbc = (const char*)(cell_obj->data);
   const long* repeat = (const long*)(repeat_obj->data);
   const double (*phi)[nD] = (const double (*)[nD])DOUBLEP(phi_obj);
+  double* histogram = (double*)DOUBLEP(histogram_obj);
+
+  double dr = rcut / (histogram_obj->dimensions[0] - 1);
+  double rcut2 = rcut * rcut;
 
   double energy = 0.0;
   if (repeat[0] == 0 && repeat[1] == 0 && repeat[2] == 0)
@@ -73,29 +80,32 @@ PyObject * vdw(PyObject* self, PyObject *args)
       {
 	const double* R1 = R[i1];
 	double q01 = q0[i1];
-	double e1 = 0.0;
 	for (int i2 = 0; i2 < i1; i2++)
 	  {
-	    double r2 = 0.0;
+	    double rr = 0.0;
 	    for (int c = 0; c < 3; c++)
 	      {
 		double f = R[i2][c] - R1[c];
 		if (pbc[c])
 		  f = fmod(f + 1.5 * cell[c], cell[c]) - 0.5 * cell[c];
-		r2 += f * f;
+		rr += f * f;
 	      }
-	    double e12 = vdwkernel(sqrt(r2), q01, q0[i2],
-				   nD, ndelta, dD, ddelta, phi);
-	    e1 += n[i2] * e12;
+	    if (rr < rcut2)
+	      {
+		double r = sqrt(rr);
+		double e12 = (vdwkernel(r, q01, q0[i2],
+					nD, ndelta, dD, ddelta, phi) *
+			      n[i1] * n[i2]);
+		histogram[(int)(r / dr)] += e12; 
+		energy += e12;
+	      }
 	  }
-	energy += n[i1] * e1;
       }
   else
     for (int i1 = iA; i1 < iB; i1++)
       {
 	const double* R1 = R[i1];
 	double q01 = q0[i1];
-	double e1 = 0.0;
 	for (int a1 = -repeat[0]; a1 <= repeat[0]; a1++)
 	  for (int a2 = -repeat[1]; a2 <= repeat[1]; a2++)
 	    for (int a3 = -repeat[2]; a3 <= repeat[2]; a3++)
@@ -113,18 +123,23 @@ PyObject * vdw(PyObject* self, PyObject *args)
 				 R1[2] + a3 * cell[2]};
 		for (int i2 = 0; i2 < i2max; i2++)
 		  {
-		    double r2 = 0.0;
+		    double rr = 0.0;
 		    for (int c = 0; c < 3; c++)
 		      {
 			double f = R[i2][c] - R1a[c];
-			r2 += f * f;
+			rr += f * f;
 		      }
-		    double e12 = vdwkernel(sqrt(r2), q01, q0[i2],
-					   nD, ndelta, dD, ddelta, phi);
-		    e1 += x * n[i2] * e12;
+		    if (rr < rcut2)
+		      {
+			double r = sqrt(rr);
+			double e12 = (vdwkernel(r, q01, q0[i2],
+						nD, ndelta, dD, ddelta, phi) *
+				      n[i1] * n[i2] * x);
+			energy += e12;
+			histogram[(int)(r / dr)] += e12; 
+		      }
 		  }
 	      }
-	energy += n[i1] * e1;
       }
   return PyFloat_FromDouble(0.25 * energy / M_PI);
 }

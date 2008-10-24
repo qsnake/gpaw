@@ -108,7 +108,7 @@ class VanDerWaals:
         p.ylabel(r'$4\pi D^2 \phi(\rm{Hartree})$')
         p.show()
         
-    def get_energy(self, repeat=None, ncut=0.0005):
+    def get_energy(self, repeat=None, ncut=0.0005, rcut=20.0):
         #introduces periodic boundary conditions using
         #the minimum image convention
 
@@ -154,11 +154,14 @@ class VanDerWaals:
             repeat_c = npy.zeros(3, int)
         else:
             repeat_c = npy.asarray(repeat, int)
-            
+
+        self.histogram = npy.zeros(100)
         E_cl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
                          repeat_c,
                          self.phi_jk, self.deltaD, self.deltadelta,
-                         iA, iB)
+                         iA, iB,
+                         self.histogram, rcut)
+        self.histogram *= gd.h_c.prod()**2 / (rcut / 99) / 4 / pi * Hartree
         E_cl = mpi.world.sum(E_cl * gd.h_c.prod()**2)
         E_nl_c = self.dExc_semilocal + E_cl
         return E_nl_c * Hartree, E_cl*Hartree
