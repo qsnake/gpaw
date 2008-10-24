@@ -174,13 +174,21 @@ void vdwkernel2(double r, double q01, double q02, int nD, int ndelta,
 		 (1.0 - a) * b         * phi[jdelta    ][jD + 1] +
 		 (1.0 - a) * (1.0 - b) * phi[jdelta    ][jD    ]) /
 		(D * D));
-      //first derivative of phi with d 
-      double dphidd = ((          b         * phi[jdelta + 1][jD + 1] +
+      //first derivative of phi with D 
+      double dphidD = ((          a         * phi[jdelta + 1][jD + 1] -
+				   a *         phi[jdelta + 1][jD    ] +
+				  (1.0 - a)   * phi[jdelta    ][jD + 1] -
+				  (1.0 - a) * phi[jdelta    ][jD    ]) /
+			(D * D))-2/(D * D)*Phi[3];
+
+      double dphiddelta = ((          b         * phi[jdelta + 1][jD + 1] +
 				  (1.0 - b) * phi[jdelta + 1][jD    ] -
 				  b         * phi[jdelta    ][jD + 1] -
 				  (1.0 - b) * phi[jdelta    ][jD    ]) /
 	     (D * D));
-      Phi[0] = d1 * dphidd;
+      Phi[0] = d1 * (0.5* dphiddelta+0.5*dphidD);
+
+      
 
       //getting the interpolation of second derivative
       /*
@@ -196,15 +204,21 @@ void vdwkernel2(double r, double q01, double q02, int nD, int ndelta,
 	    (D * D));
       */
       
-      double d2phidddd = 1.7;
+      double d2phidddd =d1*d1*(((         1         *  phi[jdelta + 1][jD + 1] -
+				   1  *         phi[jdelta + 1][jD    ] -
+				   1  *         phi[jdelta    ][jD + 1] +
+				   1  *         phi[jdelta    ][jD    ]) /
+				(D * D))-2/(D * D)*dphiddelta);
+
       Phi[1] = d1 * d1 * d2phidddd;
-      double d2phiddddp = 1.7;
-      Phi[2] = dphidd + d1 * d2phidddd + d2 * d2phiddddp;
+      double d2phiddddp = 0;
+      Phi[2] = (0.5* dphiddelta+0.5*dphidD) + d1 * d2phidddd + d2 * d2phiddddp;
     }
 }
 
 PyObject * vdw2(PyObject* self, PyObject *args)
 {
+  
   const PyArrayObject* n_obj;
   const PyArrayObject* q0_obj;
   const PyArrayObject* R_obj;
@@ -220,7 +234,7 @@ PyObject * vdw2(PyObject* self, PyObject *args)
   const PyArrayObject* s_obj;
   PyArrayObject* v_obj;
   if (!PyArg_ParseTuple(args, "OOOOOOddiiOOOO",
-			&n_obj, &q0_obj, q0_obj, &R_obj,
+			&n_obj, &q0_obj, &R_obj,
 			&cell_obj, &pbc_obj,
 			&phi_obj, &dD, &ddelta, &iA, &iB,
 			&a1_obj, &a2_obj, &s_obj, &v_obj))
@@ -239,6 +253,7 @@ PyObject * vdw2(PyObject* self, PyObject *args)
   const double* a2 = (const double*)DOUBLEP(a2_obj);
   const double (*s)[3] = (const double (*)[3])DOUBLEP(s_obj);
 
+  
   double* potential = (double*)DOUBLEP(v_obj);
   double energy = 0.0;
   for (int i1 = iA; i1 < iB; i1++)
@@ -276,6 +291,8 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 	  e4 += n[i2] * ie[3] * A3;
 	}
       potential[i1] += e1 + e2 + e3 + e4;
+      
+      
       energy += n[i1] * e1;
     }
   return PyFloat_FromDouble(0.25 * energy / M_PI);
