@@ -180,6 +180,9 @@ class Coulomb:
 class Coulomb4:
     """Determine four-index Coulomb integrals"""
     def __init__(self, paw, spin=0):
+        paw.set_positions()
+        paw.initialize_wave_functions()
+        
         self.kpt = paw.kpt_u[spin]
         self.pd = PairDensity(paw, finegrid=True)
         self.nt12_G = paw.gd.empty()
@@ -276,7 +279,6 @@ def get_coulomb(i, j, k, l, coulomb, U, done={}):
 
 
 def coulomb_all(paw, U_nj, spin=0):
-    paw.set_positions()
     nwannier = U_nj.shape[1]
     dtype = float
     if paw.dtype is complex or U_nj.dtype is complex: dtype = complex
@@ -299,7 +301,6 @@ def coulomb_all(paw, U_nj, spin=0):
     return V_ijkl
 
 def coulomb_pairs(paw, U_nj, spin, basis):
-    paw.set_positions()
     nwannier = U_nj.shape[1]
     dtype = float
     if paw.dtype is complex or U_nj.dtype is complex: dtype = complex
