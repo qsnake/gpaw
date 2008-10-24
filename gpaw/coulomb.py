@@ -28,6 +28,7 @@ def get_vxc(paw, spin=0, U=None):
 
     # Fill in upper triangle
     r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
+    paw.gd.comm.sum(Vxc_nn)
 
     # Fill in lower triangle
     for n in range(paw.nbands - 1):
@@ -45,7 +46,7 @@ def get_vxc(paw, spin=0, U=None):
     return Vxc_nn * Hartree
 
 
-class Coulomb2:
+class Coulomb:
     """Class used to evaluate two index coulomb integrals"""
     def __init__(self, gd, poisson=None):
         """Class should be initialized with a grid_descriptor 'gd' from
@@ -280,7 +281,7 @@ def coulomb_all(paw, U_nj, spin=0):
     dtype = float
     if paw.dtype is complex or U_nj.dtype is complex: dtype = complex
     coulomb = Coulomb4(paw, spin)
-    if rank == Master:
+    if rank == MASTER:
         done = {}
         V_ijkl = npy.zeros([nwannier, nwannier, nwannier, nwannier], dtype)
     else:
@@ -290,13 +291,12 @@ def coulomb_all(paw, U_nj, spin=0):
             for k in range(nwannier):
                 for l in range(nwannier):
                     print 'Doing', i, j, k, l
-                    if rank == Master:
+                    if rank == MASTER:
                         V_ijkl[i, j, k, l] = get_coulomb(
                             i, j, k, l, coulomb, U_nj, done)
                     else:
                         get_coulomb(i, j, k, l, coulomb, U_nj)
     return V_ijkl
-
 
 def coulomb_pairs(paw, U_nj, spin, basis):
     paw.set_positions()
