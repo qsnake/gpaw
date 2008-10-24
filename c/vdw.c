@@ -306,8 +306,7 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 	  e4 += n[i2] * ie[3] * A3;
 	}
       potential[i1] += e1 + e2 + e3 + e4;
-      
-      
+      potential[i2] += e1 + e2 + e3 + e4;
       energy += n[i1] * e1;
     }
   return PyFloat_FromDouble(0.25 * energy / M_PI);
