@@ -155,13 +155,14 @@ class VanDerWaals:
         else:
             repeat_c = npy.asarray(repeat, int)
 
-        self.histogram = npy.zeros(100)
+        self.histogram = npy.zeros(300)
         E_cl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
                          repeat_c,
                          self.phi_jk, self.deltaD, self.deltadelta,
                          iA, iB,
                          self.histogram, rcut)
-        self.histogram *= gd.h_c.prod()**2 / (rcut / 99) / 4 / pi * Hartree
+        self.histogram *= gd.h_c.prod()**2 / (rcut / 299) / 4 / pi * Hartree
+        mpi.world.sum(self.histogram)
         E_cl = mpi.world.sum(E_cl * gd.h_c.prod()**2)
         E_nl_c = self.dExc_semilocal + E_cl
         return E_nl_c * Hartree, E_cl*Hartree
@@ -396,12 +397,14 @@ class VanDerWaals:
         else:
             repeat_c = npy.asarray(repeat, int)
 
-        v_g = self.gd.zeros()
+        v_i = npy.zeros_like(n_i)
         E_cl = _gpaw.vdw2(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
                           #repeat_c,
                           self.phi_jk, self.deltaD, self.deltadelta,
                           iA, iB,
-                          a1_i, a2_i, s_i, v_g)
+                          a1_i, a2_i, s_i, v_i)
+        v_g = self.gd.empty()
+        v_g.ravel()[mask_g] = v_i
         #a=v_g.ravel()
         #n=0
         #for x in range(v_g.shape[0]):

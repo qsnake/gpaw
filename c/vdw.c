@@ -275,10 +275,6 @@ PyObject * vdw2(PyObject* self, PyObject *args)
     {
       const double* R1 = R[i1];
       double q01 = q0[i1];
-      double e1 = 0.0;
-      double e2 = 0.0;
-      double e3 = 0.0;
-      double e4 = 0.0;
       double A1 = a1[i1];
       double A2 = a2[i1];
       const double* S = s[i1];
@@ -300,14 +296,11 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 		     nD, ndelta, dD, ddelta, phi, ie);
 	  double A3 = Rrr[0] * S[0] + Rrr[1] * S[1] + Rrr[2] * S[2];
 	  A3 *= Zabover9 / r;
-	  e1 += n[i2] * ie[0];
-	  e2 += n[i2] * ie[1] * A1;
-	  e3 += n[i2] * ie[2] * A2;
-	  e4 += n[i2] * ie[3] * A3;
+	  energy += ie[0] * n[i1] * n[i2];
+	  double ev = n[i2] * (ie[0] + ie[1] * A1 + ie[2] * A2 + ie[3] * A3);
+          potential[i1] += ev;
+          potential[i2] += ev;
 	}
-      potential[i1] += e1 + e2 + e3 + e4;
-      potential[i2] += e1 + e2 + e3 + e4;
-      energy += n[i1] * e1;
     }
   return PyFloat_FromDouble(0.25 * energy / M_PI);
 }
