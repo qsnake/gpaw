@@ -417,7 +417,7 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
         if "--dry-run" not in sys.argv:
             error=os.system(cmd)
             if error != 0:
-                msg += ['* compiling FAILED!  Only serial version of code will work.']
+                msg = ['* compiling FAILED!  Only serial version of code will work.']
                 break
 
     # Link the custom interpreter
