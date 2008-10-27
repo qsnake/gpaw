@@ -41,6 +41,11 @@ class VanDerWaals:
         
         self.gd = gd
 
+        if n_g.shape != tuple(gd.n_c):
+            bign_g = n_g
+            n_g = gd.empty()
+            gd.distribute(bign_g, n_g)
+            
         v_g = gd.empty()
 
         # GGA exchange and correlation:
