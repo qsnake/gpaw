@@ -75,7 +75,7 @@ if os.system(export + 'python test.py %s >& test.out' % tests) != 0:
 try:
     failed = open('failed-tests.txt').readlines()
 except IOError:
-    ok = True
+    pass
 else:
     # Send mail:
     n = len(failed)
@@ -86,7 +86,7 @@ else:
                                                failed[0][:-1], failed[1][:-1])
         if n > 2:
             subject += ', ...'
-    send_email(subject, 'test.out')
+    fail(subject, 'test.out')
 
 dir = '/scratch/jensj/nightly-test/'
 out = open(dir + 'test-results.txt', 'w')
@@ -197,7 +197,7 @@ print >> f, """\
 # Coverage test:
 os.chdir('test')
 day = time.localtime()[6]
-if ok and day == 3:  # only Sunday
+if day == 3:  # only Sunday
     if os.system(export +
                  'rm %s/*.cover; ' % dir +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +
