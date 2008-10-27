@@ -20,10 +20,10 @@ radii = 1.2 # single float specifies a uniform scaling of the covalent radii
 colors = jmol_colors[atoms.numbers]
 colors[16::17] = [1, 0, 0]
 
-from ase.io.pov import povpng
-povpng('Al110slab.pov', atoms,
+write('Al110slab.pov', atoms,
       rotation=rotation,
       colors=colors,
       radii=radii,
       show_unit_cell=2,
-      canvas_width=500)
+      canvas_width=500,
+      transparent=False, display=False, run_povray=True)
