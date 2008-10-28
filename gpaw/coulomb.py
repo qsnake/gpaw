@@ -278,13 +278,35 @@ def get_coulomb(i, j, k, l, coulomb, U, done={}):
         return val
 
 
-def coulomb_all(paw, U_nj, spin=0):
+def coulomb_dict(paw, U_nj, pairs, spin=0, done={})
+    coulomb = Coulomb4(paw, spin)
+    for i, j, k, l in pairs:
+        ijkl, conj = symmetry(i, j, k, l)
+        if ijkl not in done:
+            ni, nj, nk, nl = U[:, ijkl].T
+            done[ijkl] = coulomb.get_integral(nk, ni, nj, nl) * Hartree)
+    return done
+
+
+def unfold_all(N, done, dtype=float):
+    V = npy.zeros([N, N, N, N], dtype)
+    for i in range(N):
+        for j in range(N):
+            for k in range(N):
+                for l in range(N):
+                    ijkl, conj = symmetry(i, j, k, l)
+                    if conj:
+                        V[i, j, k, l] = npy.conj(done[ijkl])
+                    else:
+                        V[i, j, k, l] = done[ijkl]
+
+
+def coulomb_all(paw, U_nj, spin=0, done={}):
     nwannier = U_nj.shape[1]
     dtype = float
     if paw.dtype is complex or U_nj.dtype is complex: dtype = complex
     coulomb = Coulomb4(paw, spin)
     if rank == MASTER:
-        done = {}
         V_ijkl = npy.zeros([nwannier, nwannier, nwannier, nwannier], dtype)
     else:
         V_ijkl = None
@@ -299,6 +321,7 @@ def coulomb_all(paw, U_nj, spin=0):
                     else:
                         get_coulomb(i, j, k, l, coulomb, U_nj)
     return V_ijkl
+
 
 def coulomb_pairs(paw, U_nj, spin, basis):
     nwannier = U_nj.shape[1]
