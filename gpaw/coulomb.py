@@ -278,13 +278,13 @@ def get_coulomb(i, j, k, l, coulomb, U, done={}):
         return val
 
 
-def coulomb_dict(paw, U_nj, pairs, spin=0, done={})
+def coulomb_dict(paw, U_nj, pairs, spin=0, done={}):
     coulomb = Coulomb4(paw, spin)
     for i, j, k, l in pairs:
         ijkl, conj = symmetry(i, j, k, l)
         if ijkl not in done:
             ni, nj, nk, nl = U[:, ijkl].T
-            done[ijkl] = coulomb.get_integral(nk, ni, nj, nl) * Hartree)
+            done[ijkl] = coulomb.get_integral(nk, ni, nj, nl) * Hartree
     return done
 
 
