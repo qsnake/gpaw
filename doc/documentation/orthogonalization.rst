@@ -118,7 +118,9 @@ Since `\mathbf{S}` is symmetric, we have all we need::
 
 With `B` blocks, we need `(B - 1) / 2` shifts.
 
-
+Now we can calculate `\mathbf{L}^{-1}` and do the matrix product
+`\tilde{\mathbf{\Psi}}_0 \mathbf{L}^{-1}` which requires `B - 1`
+shifts of the wave functions.
 
 
 .. default-role::
