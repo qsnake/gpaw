@@ -88,8 +88,10 @@ on a grid is done by the :epydoc:`create_localized_functions
 :epydoc:`gpaw.localized_functions.LocFuncs` object
 (``paw.nuclei[a].pt_i``).
 
-The pseudo wave-functions are othonormalized like this:
+.. _orthogonality:
 
+The pseudo wave-functions are othonormalized like this:
+ 
 .. math::
 
   \langle \psi_{\sigma\mathbf{k}n} | 
@@ -110,7 +112,16 @@ The constants `\Delta O_{i_1 i_2}^a` are found in
 ``nuclei[a].setup.O_ii`` (``ndarray``).  Someone should rename
 ``setup.O_ii`` to ``setup.dO_ii``.
 
-See also :epydoc:`gpaw.setup.Setup`, :epydoc:`gpaw.nucleus.Nucleus` and :epydoc:`gpaw.spline.Spline`.
+.. math::
+
+  \Delta O_{i_1 i_2}^a =
+  \int d\mathbf{r}
+  [\phi_{i_1}^a(\mathbf{r})\phi_{i_2}^a(\mathbf{r}) -
+   \tilde{\phi}_{i_1}^a(\mathbf{r})\tilde{\phi}_{i_2}^a(\mathbf{r})].
+
+See also :epydoc:`gpaw.setup.Setup`, :epydoc:`gpaw.nucleus.Nucleus`
+and :epydoc:`gpaw.spline.Spline`.
+
 
 
 Densities

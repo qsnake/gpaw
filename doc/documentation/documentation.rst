@@ -28,12 +28,13 @@ GPAW calculator:
    
    parallel_runs/parallel_runs
    restart_files
+   rmm-diis
+   orthogonalization
    xc/xc
    tddft/tddft
    dscf/dscf
    pdos/pdos
    xas/xas
-   rmm-diis
 
 .. _ml:
 
