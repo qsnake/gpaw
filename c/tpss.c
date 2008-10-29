@@ -1,9 +1,8 @@
 #include <math.h>
 #include "xc_gpaw.h"
-#define cons  2.87123400019 /* 3*(3*Pi^2)^(2/3)/10 = Cf*/
-#define cons 0.0
+#define cons 0.0*2.87123400019 /* a*3*(3*Pi^2)^(2/3)/10 = a*Cf */ 
 #define p 1.66666666667     /* 5/3 */
-#define cons2 8.  /* 8 *3 constant in 1/3 Tw */
+#define cons2 1.0*8.  /* b*8 constant in Tw */
 
 void tpssfx(double *n, double *g, double *t, double *fxu, double *dfxudn,
 	       double *dfxudg, double *dfxudtau, int iexc);
@@ -16,9 +15,9 @@ void tpssfc(double *nu, double *nd, double *guu, double *gdd, double *gud,
 /* Local part of tpss */
 /* for testing self-concistency and convergence called with local */
 /* local  tau variable */
-/* tau = tf + 1/3 tW */
-/* other existing functionals proposed are 1, 1/5 and 1/9 */ 
-/* use with PBE setups and do not apply to atom H alone */
+/* tau = a*tf + b*tW */
+/* other existing functionals proposed are a=1 and b=1, 1/5 and 1/9 */ 
+/* use with PBE setups, for atom H a=0.0 and b=1.0 is exact (default) */
 
 double atpss_exchange(double n, double a2, double tau, 
 		      double* dexdn, double* deda2, double* dedtaua)
