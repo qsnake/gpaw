@@ -132,6 +132,7 @@ void *transapply_worker(void *threadarg)
                            (double_complex*) buf2);
         }
     }
+  return NULL;
 }
 
 
