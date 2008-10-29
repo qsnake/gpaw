@@ -161,9 +161,9 @@ def lowdin(U, S=None):
     If the overlap matrix is know, it can be specified in S.
     """
     if S is None:
-        S = npy.dot(dag(U), U)
+        S = npy.dot(dagger(U), U)
     eig, rot = npy.linalg.eigh(S)
-    rot = npy.dot(rot / npy.sqrt(eig), dag(rot))
+    rot = npy.dot(rot / npy.sqrt(eig), dagger(rot))
     U[:] = npy.dot(U, rot)
 
 def lowdin_svd(U):

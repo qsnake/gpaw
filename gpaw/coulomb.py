@@ -283,7 +283,7 @@ def coulomb_dict(paw, U_nj, pairs, spin=0, done={}, reduce=True):
     if reduce:
         reduce_pairs(pairs)
     for ijkl in pairs:
-        ni, nj, nk, nl = U[:, ijkl].T
+        ni, nj, nk, nl = U_nj[:, ijkl].T
         done[ijkl] = coulomb.get_integral(nk, ni, nj, nl) * Hartree
     return done
 
