@@ -528,12 +528,6 @@ lxcXCFunctional_XCEnergy(lxcXCFunctionalObject *self, PyObject *args)
 
      double n = na + nb;
 
-     double dExcdna = 0.0;
-     double dExcdsigma0 = 0.0;
-     double dExcdnb = 0.0;
-     double dExcdsigma2 = 0.0;
-     double dExcdsigma1 = 0.0;
-
      double dExdna = 0.0;
      double dExdsigma0 = 0.0;
      double dExdnb = 0.0;
