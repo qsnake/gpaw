@@ -118,19 +118,19 @@ class RunScript:
 
     def loadleveler(self, f, set, env):
         print >> f,"#!/bin/bash"
-        if set['nodes'] > 1:
+        if set['cores'] > 1:
             print >> f, "# @ job_type=parallel"
         else:
             print >> f, "# @ job_type=serial"
         # ibm nodes contain 32 cpus
-        nodes = int(set['nodes'] / 32)
+        nodes = int(set['cores'] / 32)
         if nodes == 0:
             print >> f, '# @ node = 1'
         else:
             if nodes * 32 != int(set['nodes']):
                 raise RuntimeError("! use a multiple of 32 cpus !")
             print >> f, '# @ node =', nodes
-        print >> f, '# @ total_tasks =', set['nodes']
+        print >> f, '# @ total_tasks =', set['cores']
         print >> f, '# @ wall_clock_limit =', hms_string(set['time']) 
 ##        print >> f, "#PBS -N", set['name']
         print >> f, '# @ output = ', (set['out'] + '.$(jobid).$(stepid)')
@@ -147,7 +147,7 @@ class RunScript:
 
 
     def louhi(self,f,set,env):
-        size = set['nodes']
+        size = set['cores']
         print >> f, '#!/bin/csh'
         # louhi PBS does not like names longer than 16 characters
         print >> f, '#PBS -N', set['name'][:15]
@@ -176,7 +176,7 @@ class RunScript:
         print >> f, '$GPAW_PYTHON', set['script']
         
     def louhi_deisa(self,f,set,env):
-        size = set['nodes']
+        size = set['cores']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l mppwidth=%d" % size
@@ -204,7 +204,7 @@ class RunScript:
         print >> f, '$GPAW_PYTHON', set['script']
         
     def louhi_pre(self, f, set, env):
-        size = set['nodes']
+        size = set['cores']
         print >> f,"#!/bin/csh"
         print >> f,"#PBS -N",set['name']
         print >> f,"#PBS -l mppwidth=%d" % size
@@ -224,7 +224,7 @@ class RunScript:
         
     def murska(self, f, set, env):
         print >> f, '#!/bin/csh'
-        print >> f, '#BSUB -n%d' % set['nodes']
+        print >> f, '#BSUB -n%d' % set['cores']
         hs = dhms(set['time'])
         print >> f, '#BSUB -W %d:%d' % (hs[0]*24+hs[1],hs[2])
         print >> f, '#BSUB -J', set['name']
@@ -244,7 +244,7 @@ class RunScript:
     def murska_pre(self, f, set, env):
         """Pre-installed version on murska."""
         print >> f,"#!/bin/csh"
-        print >> f,"#BSUB -n%d" % set['nodes']
+        print >> f,"#BSUB -n%d" % set['cores']
         hs = dhms(set['time'])
         print >> f,"#BSUB -W %d:%d" % (hs[0]*24+hs[1],hs[2])
         print >> f,"#BSUB -J",set['name']
@@ -261,7 +261,7 @@ class RunScript:
       
     def pbs_batman(self, f, set, env):
         print >> f,"#PBS -N "+set['name']
-        print >> f,"#PBS -l ncpus="+str(set['nodes'])
+        print >> f,"#PBS -l ncpus="+str(set['cores'])
         print >> f,"#PBS -l walltime="""+str(set['time'])
         print >> f,"#PBS -m bea"
         if set['mail'] is not None:
@@ -292,7 +292,7 @@ unset CC CFLAGS LDFLAGS
 """
         print >> f,"date"
         print >> f,"export GPAW_PYTHON=~/gridpaw/build/bin.linux-ia64-2.4/gpaw-python"
-        print >> f,"mpirun -np", set['nodes'], "$GPAW_PYTHON", set['script']
+        print >> f,"mpirun -np", set['cores'], "$GPAW_PYTHON", set['script']
         print >> f, 'date'
         print >> f, 'echo "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"'
         print >> f, 'exit 0'
@@ -300,7 +300,14 @@ unset CC CFLAGS LDFLAGS
     def pbs_bfg(self, f, set, env):
         print >> f, '#!/bin/bash'
         print >> f, '#PBS -N '+set['name']
-        print >> f, '#PBS -l nodes=1:ppn=' + str(set['nodes'])
+        # bfg nodes contain 8 cores
+        cores = set['cores']
+        nodes = int((cores + 7) / 8)
+        ppn = int((cores + nodes - 1) / nodes)
+        if cores != nodes * ppn:
+            print 'Note:', nodes * ppn, 'cores reserved but only', cores, 'cores used.'
+            print '     Consider to use multiples of 8 processors for best performance.'
+        print >> f, '#PBS -l nodes=' + str(nodes) + ':ppn=' + str(ppn)
         print >> f, '#PBS -l walltime=' + str(set['time'])
         print >> f, '#PBS -m bea'
         if set['mail'] is not None:
@@ -311,7 +318,7 @@ unset CC CFLAGS LDFLAGS
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
         print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
-        print >> f, 'mpirun -np', set['nodes'], '$GPAW_PYTHON', set['script'],
+        print >> f, 'mpirun -np', cores, '$GPAW_PYTHON', set['script'],
         print >> f, '>', set['out']+'_$PBS_JOBID',
         print >> f, '2>', set['err']+'_$PBS_JOBID'
 
@@ -319,7 +326,7 @@ unset CC CFLAGS LDFLAGS
         print >> f,"#$ -N",set['name']
         print >> f,"#$ -cwd"
         print >> f,"#$ -j y"
-        print >> f,"#$ -pe mvapich-gnu64",set['nodes']
+        print >> f,"#$ -pe mvapich-gnu64",set['cores']
         print >> f,"#$ -S /bin/csh"
         print >> f,"#$ -R y"
         print >> f,"#$ -V"
@@ -335,7 +342,7 @@ setenv PYTHONPATH \"/mnt/nas2/wrk/walter/gridpaw/trunk:/home/u2/univ2/jyy/walter
 setenv GPAW_MPI_COMMAND \"mpirun -np 4 %(job)s &\"
 setenv GPAW_PYTHON /mnt/nas2/wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4/gpaw-python
 """
-        print >> f,"mpirun -np",set['nodes'],"$GPAW_PYTHON",set['script'],\
+        print >> f,"mpirun -np",set['cores'],"$GPAW_PYTHON",set['script'],\
               ">> $out"
         
     def sge(self,f,set,env):
@@ -348,7 +355,7 @@ setenv GPAW_PYTHON /mnt/nas2/wrk/walter/gridpaw/trunk/build/bin.linux-x86_64-2.4
         if set['mail'] is not None:
             print >> f,"#$ -M",set['mail']
         print >> f,"#$ -m be"
-        print >> f,"#$ -pe mpich",set['nodes']
+        print >> f,"#$ -pe mpich",set['cores']
         if set['mem']:
             print >> f, '#$ -q new8G'
         print >> f,"cd",set['wd']
@@ -369,7 +376,7 @@ export LD_LIBRARY_PATH=$MPIHOME/lib64:$MPIHOME/lib:$LD_LIBRARY_PATH
         print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:'+env['PYTHONPATH']
         print >> f, 'date'
-        print >> f,"mpirun -np",set['nodes'], '$GPAW_PYTHON',\
+        print >> f,"mpirun -np",set['cores'], '$GPAW_PYTHON',\
               set['script']
         print >> f,"""date
 echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
@@ -380,11 +387,11 @@ echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
 
 # handle command line options
 
-parser = OptionParser(usage='%prog [options] [script nnodes]')
+parser = OptionParser(usage='%prog [options] [script ncores]')
 parser.add_option("-m", "--mail", dest='mail',
                   help='Where to send an email about starting/ending of the job (def: read from environment variable GPAW_MAIL)')
 parser.add_option("-M", "--Memory", action='count', default=None,
-                  help='request large memory nodes (host specific)')
+                  help='request large memory cores (host specific)')
 parser.add_option("-n", "--name", dest='name',
                   help='Name of the job (def: name of parent directory)')
 parser.add_option("-o", "--outfile", dest='outfile',
@@ -415,7 +422,7 @@ if opt.time:
 if len(args):
     set['script'] = args[0]
     if len(args) > 1:
-        set['nodes'] = int(args[1])
+        set['cores'] = int(args[1])
 
 # ............................................................
 
