@@ -18,15 +18,12 @@
 #include "mympi.h"
 
 #ifdef GPAW_ASYNC
-  #define GPAW_ASYNC_D 3
+  #define GPAW_ASYNC3 3
+  #define GPAW_ASYNC2 2
 #else
-  #define GPAW_ASYNC_D 1
+  #define GPAW_ASYNC3 1
+  #define GPAW_ASYNC2 1
 #endif
-
-#ifndef GPAW_ASYNC_CHUNKSIZE
-#define GPAW_ASYNC_CHUNKSIZE 1
-#endif
-
 
 typedef struct
 {
@@ -74,9 +71,9 @@ static PyObject * Operator_relax(OperatorObject *self,
         {
           bc_unpack1(bc, fun, self->buf, i,
                self->recvreq, self->sendreq,
-               self->recvbuf, self->sendbuf, ph + 2 * i, 0);
+               self->recvbuf, self->sendbuf, ph + 2 * i, 0, 1);
           bc_unpack2(bc, self->buf, i,
-               self->recvreq, self->sendreq, self->recvbuf);
+               self->recvreq, self->sendreq, self->recvbuf, 1);
         }
       bmgs_relax(relax_method, &self->stencil, self->buf, fun, src, w);
     }
@@ -90,19 +87,22 @@ struct apply_args{
   int ng2;
   int nin;
   int nthds;
+  int chunksize;
+  int chunkinc;
   const double* in;
   double* out;
   int real;
   const double_complex* ph;
 };
 
+//Plain worker
 void *apply_worker(void *threadarg)
 {
   struct apply_args *args = (struct apply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
-  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend;
-  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv;
-  double* buf = args->self->buf + args->thread_id * args->ng2;
+  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend * args->chunksize;
+  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv * args->chunksize;
+  double* buf = args->self->buf + args->thread_id * args->ng2 * args->chunksize;
   MPI_Request recvreq[2];
   MPI_Request sendreq[2];
 
@@ -115,9 +115,13 @@ void *apply_worker(void *threadarg)
   int nend = nstart + chunksize;
   if (nend > args->nin)
     nend = args->nin;
+  if (chunksize > args->chunksize)
+    chunksize = args->chunksize;
 
-  for (int n = nstart; n < nend; n++)
+  for (int n = nstart; n < nend; n += chunksize)
     {
+      if (n + chunksize >= nend && chunksize > 1)
+        chunksize = nend - n;
       const double* in = args->in + n * args->ng;
       double* out = args->out + n * args->ng;
       for (int i = 0; i < 3; i++)
@@ -125,28 +129,29 @@ void *apply_worker(void *threadarg)
           bc_unpack1(bc, in, buf, i,
                      recvreq, sendreq,
                      recvbuf, sendbuf, args->ph + 2 * i,
-                     args->thread_id);
-          bc_unpack2(bc, buf, i,
-                     recvreq, sendreq, recvbuf);
+                     args->thread_id, chunksize);
+          bc_unpack2(bc, buf, i, recvreq, sendreq, recvbuf, chunksize);
         }
-      if (args->real)
-        bmgs_fd(&args->self->stencil, buf, out);
-      else
-        bmgs_fdz(&args->self->stencil, (const double_complex*) buf,
-                                       (double_complex*)out);
+      for (int m = 0; m < chunksize; m++)
+        if (args->real)
+          bmgs_fd(&args->self->stencil, buf + m * args->ng2, out + m * args->ng);
+        else
+          bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2),
+                                         (double_complex*) (out + m * args->ng));
     }
-    return NULL;
+  return NULL;
 }
 
-void *apply_worker_cfd(void *threadarg)
+//Async worker
+void *apply_worker_cfd_async(void *threadarg)
 {
   struct apply_args *args = (struct apply_args *) threadarg;
   boundary_conditions* bc = args->self->bc;
-  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend * GPAW_ASYNC_D;
-  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv * GPAW_ASYNC_D;
-  double* buf = args->self->buf + args->thread_id * args->ng2;
-  MPI_Request recvreq[2 * GPAW_ASYNC_D];
-  MPI_Request sendreq[2 * GPAW_ASYNC_D];
+  double* sendbuf = args->self->sendbuf + args->thread_id * bc->maxsend * GPAW_ASYNC3 * args->chunksize;
+  double* recvbuf = args->self->recvbuf + args->thread_id * bc->maxrecv * GPAW_ASYNC3 * args->chunksize;
+  double* buf = args->self->buf + args->thread_id * args->ng2 * args->chunksize;
+  MPI_Request recvreq[2 * GPAW_ASYNC3];
+  MPI_Request sendreq[2 * GPAW_ASYNC3];
 
   int chunksize = args->nin / args->nthds;
   if (!chunksize)
@@ -157,32 +162,132 @@ void *apply_worker_cfd(void *threadarg)
   int nend = nstart + chunksize;
   if (nend > args->nin)
     nend = args->nin;
+  if (chunksize > args->chunksize)
+    chunksize = args->chunksize;
 
-  for (int n = nstart; n < nend; n++)
+  for (int n = nstart; n < nend; n += chunksize)
     {
+      if (n + chunksize >= nend && chunksize > 1)
+        chunksize = nend - n;
       const double* in = args->in + n * args->ng;
       double* out = args->out + n * args->ng;
       for (int i = 0; i < 3; i++)
         {
           bc_unpack1(bc, in, buf, i,
                      recvreq + i * 2, sendreq + i * 2,
-                     recvbuf + i * bc->maxrecv,
-                     sendbuf + i * bc->maxsend, args->ph + 2 * i,
-                     args->thread_id);
+                     recvbuf + i * bc->maxrecv * chunksize,
+                     sendbuf + i * bc->maxsend * chunksize, args->ph + 2 * i,
+                     args->thread_id, chunksize);
         }
       for (int i = 0; i < 3; i++)
         {
           bc_unpack2(bc, buf, i,
                      recvreq + i * 2, sendreq + i * 2,
-                     recvbuf + i * bc->maxrecv);
+                     recvbuf + i * bc->maxrecv * chunksize, chunksize);
         }
-      if (args->real)
-        bmgs_fd(&args->self->stencil, buf, out);
-      else
-        bmgs_fdz(&args->self->stencil, (const double_complex*) buf,
-                                       (double_complex*)out);
+      for (int m = 0; m < chunksize; m++)
+        if (args->real)
+          bmgs_fd(&args->self->stencil, buf + m * args->ng2, out + m * args->ng);
+        else
+          bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2),
+                                         (double_complex*) (out + m * args->ng));
     }
+  return NULL;
+}
+
+//Double buffering async worker
+void *apply_worker_cfd(void *threadarg)
+{
+  struct apply_args *args = (struct apply_args *) threadarg;
+  boundary_conditions* bc = args->self->bc;
+  double* sendbuf = args->self->sendbuf + args->thread_id *
+          bc->maxsend * args->chunksize * GPAW_ASYNC3 * GPAW_ASYNC2;
+  double* recvbuf = args->self->recvbuf + args->thread_id *
+          bc->maxrecv * args->chunksize * GPAW_ASYNC3 * GPAW_ASYNC2;
+  double* buf = args->self->buf +
+          args->thread_id * args->ng2 * args->chunksize * GPAW_ASYNC2;
+  MPI_Request recvreq[2 * GPAW_ASYNC3 * GPAW_ASYNC2];
+  MPI_Request sendreq[2 * GPAW_ASYNC3 * GPAW_ASYNC2];
+
+  int chunksize = args->nin / args->nthds;
+  if (!chunksize)
+    chunksize = 1;
+  int nstart = args->thread_id * chunksize;
+  if (nstart >= args->nin)
     return NULL;
+  int nend = nstart + chunksize;
+  if (nend > args->nin)
+    nend = args->nin;
+  if (chunksize > args->chunksize)
+    chunksize = args->chunksize;
+
+  int chunk = args->chunkinc;
+  if (chunk > chunksize);
+    chunk = chunksize;
+
+  int odd = 0;
+  const double* in = args->in + nstart * args->ng;
+  double* out;
+  for (int i = 0; i < 3; i++)
+    bc_unpack1(bc, in, buf + odd * args->ng2 * chunksize, i,
+               recvreq + odd * 2 + i * 4, sendreq + odd * 2 + i * 4,
+               recvbuf + odd * bc->maxrecv * chunksize + i * bc->maxrecv * chunksize * GPAW_ASYNC2,
+               sendbuf + odd * bc->maxsend * chunksize + i * bc->maxsend * chunksize * GPAW_ASYNC2, args->ph + 2 * i,
+               args->thread_id, chunk);
+  odd = odd ^ 1;
+  int last_chunk = chunk;
+  for (int n = nstart+chunk; n < nend; n += chunk)
+    {
+      last_chunk += args->chunkinc;
+      if (last_chunk > chunksize);
+        last_chunk = chunksize;
+
+      if (n + last_chunk >= nend && last_chunk > 1)
+        last_chunk = nend - n;
+      in = args->in + n * args->ng;
+      out = args->out + (n-chunk) * args->ng;
+      for (int i = 0; i < 3; i++)
+        {
+          bc_unpack1(bc, in, buf + odd * args->ng2 * chunksize, i,
+                     recvreq + odd * 2 + i * 4, sendreq + odd * 2 + i * 4,
+                     recvbuf + odd * bc->maxrecv * chunksize + i * bc->maxrecv * chunksize * GPAW_ASYNC2,
+                     sendbuf + odd * bc->maxsend * chunksize + i * bc->maxsend * chunksize * GPAW_ASYNC2, args->ph + 2 * i,
+                     args->thread_id, last_chunk);
+        }
+      odd = odd ^ 1;
+      for (int i = 0; i < 3; i++)
+        {
+          bc_unpack2(bc, buf + odd * args->ng2 * chunksize, i,
+                     recvreq + odd * 2 + i * 4, sendreq + odd * 2 + i * 4,
+                     recvbuf + odd * bc->maxrecv * chunksize + i * bc->maxrecv * chunksize * GPAW_ASYNC2, chunk);
+        }
+      for (int m = 0; m < chunk; m++)
+        if (args->real)
+          bmgs_fd(&args->self->stencil, buf + m * args->ng2 + odd * args->ng2 * chunksize,
+                                        out + m * args->ng);
+        else
+          bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2 + odd * args->ng2 * chunksize),
+                                         (double_complex*) (out + m * args->ng));
+      chunk = last_chunk;
+    }
+
+  odd = odd ^ 1;
+  out = args->out + (nend-last_chunk) * args->ng;
+  for (int i = 0; i < 3; i++)
+    {
+      bc_unpack2(bc, buf + odd * args->ng2 * chunksize, i,
+                 recvreq + odd * 2 + i * 4, sendreq + odd * 2 + i * 4,
+                 recvbuf + odd * bc->maxrecv * chunksize + i * bc->maxrecv * chunksize * GPAW_ASYNC2, last_chunk);
+    }
+  for (int m = 0; m < last_chunk; m++)
+    if (args->real)
+      bmgs_fd(&args->self->stencil, buf + m * args->ng2 + odd * args->ng2 * chunksize,
+                                    out + m * args->ng);
+    else
+      bmgs_fdz(&args->self->stencil, (const double_complex*) (buf + m * args->ng2 + odd * args->ng2 * chunksize),
+                                     (double_complex*) (out + m * args->ng));
+
+  return NULL;
 }
 
 static PyObject * Operator_apply(OperatorObject *self,
@@ -215,6 +320,14 @@ static PyObject * Operator_apply(OperatorObject *self,
   else
     ph = COMPLEXP(phases);
 
+  int chunksize = 1;
+  if (getenv("GPAW_CHUNK_SIZE") != NULL)
+    chunksize = atoi(getenv("GPAW_CHUNK_SIZE"));
+
+  int chunkinc = chunksize;
+  if (getenv("GPAW_CHUNK_INC") != NULL)
+    chunkinc = atoi(getenv("GPAW_CHUNK_INC"));
+
   int nthds = 1;
 #ifdef GPAW_OMP
   if (getenv("OMP_NUM_THREADS") != NULL)
@@ -227,6 +340,8 @@ static PyObject * Operator_apply(OperatorObject *self,
     {
       (wargs+i)->thread_id = i;
       (wargs+i)->nthds = nthds;
+      (wargs+i)->chunksize = chunksize;
+      (wargs+i)->chunkinc = chunkinc;
       (wargs+i)->self = self;
       (wargs+i)->ng = ng;
       (wargs+i)->ng2 = ng2;
@@ -346,22 +461,26 @@ PyObject * NewOperatorObject(PyObject *obj, PyObject *args)
 
   const int* size2 = self->bc->size2;
 
+  int chunksize = 1;
+  if (getenv("GPAW_CHUNK_SIZE") != NULL)
+    chunksize = atoi(getenv("GPAW_CHUNK_SIZE"));
+
 #ifndef GPAW_OMP
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-                          self->bc->ndouble);
-  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * GPAW_ASYNC_D);
-  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * GPAW_ASYNC_D);
+                          self->bc->ndouble * chunksize * GPAW_ASYNC2);
+  self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
+  self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
 #else
   int nthds = 1;
   if (getenv("OMP_NUM_THREADS") != NULL)
     nthds = atoi(getenv("OMP_NUM_THREADS"));
   //We need a buffer per OpenMP Thread.
   self->buf = GPAW_MALLOC(double, size2[0] * size2[1] * size2[2] *
-                          self->bc->ndouble * nthds);
+                          self->bc->ndouble * nthds * chunksize * GPAW_ASYNC2);
   self->sendbuf = GPAW_MALLOC(double, self->bc->maxsend *
-                              nthds * GPAW_ASYNC_D);
+                              nthds * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
   self->recvbuf = GPAW_MALLOC(double, self->bc->maxrecv *
-                              nthds * GPAW_ASYNC_D);
+                              nthds * chunksize * GPAW_ASYNC3 * GPAW_ASYNC2);
 #endif
   return (PyObject*)self;
 }

@@ -44,9 +44,9 @@ void bc_unpack1(const boundary_conditions* bc,
     MPI_Request recvreq[2],
     MPI_Request sendreq[2],
     double* rbuf, double* sbuf,
-    const double_complex phases[2], int thd);
+    const double_complex phases[2], int thd, int nin);
 void bc_unpack2(const boundary_conditions* bc,
     double* a2, int i,
     MPI_Request recvreq[2],
     MPI_Request sendreq[2],
-    double* rbuf);
+    double* rbuf, int nin);

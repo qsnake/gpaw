@@ -78,38 +78,14 @@ void *transapply_worker(void *threadarg)
     {
       const double* in = args->in + n * args->ng;
       double* out = args->out + n * args->ng * 8;
-    #ifndef GPAW_ASYNC
-      if (1)
-    #else
-      if (bc->cfd == 0)
-    #endif
+      for (int i = 0; i < 3; i++)
         {
-          for (int i = 0; i < 3; i++)
-            {
-              bc_unpack1(bc, in, buf, i,
-                         recvreq, sendreq,
-                         recvbuf, sendbuf, args->ph + 2 * i,
-                         args->thread_id);
-              bc_unpack2(bc, buf, i,
-                         recvreq, sendreq, recvbuf);
-            }
-        }
-      else
-        {
-          for (int i = 0; i < 3; i++)
-            {
-              bc_unpack1(bc, in, buf, i,
-                         recvreq + i * 2, sendreq + i * 2,
-                         recvbuf + i * bc->maxrecv,
-                         sendbuf + i * bc->maxsend, args->ph + 2 * i,
-                         args->thread_id);
-            }
-          for (int i = 0; i < 3; i++)
-            {
-              bc_unpack2(bc, buf, i,
-                         recvreq + i * 2, sendreq + i * 2,
-                         recvbuf + i * bc->maxrecv);
-            }
+          bc_unpack1(bc, in, buf, i,
+                     recvreq, sendreq,
+                     recvbuf, sendbuf, args->ph + 2 * i,
+                     args->thread_id, 1);
+          bc_unpack2(bc, buf, i,
+                     recvreq, sendreq, recvbuf, 1);
         }
       if (args->real)
         {
