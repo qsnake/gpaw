@@ -12,6 +12,9 @@ from ase import Atoms
 from ase.calculators.neighborlist import NeighborList
 from gpaw import debug
 from _gpaw import overlap
+from gpaw.mpi import parallel
+from gpaw.utilities import scalapack
+from gpaw import sl_diagonalize
 
 
 class LCAOHamiltonian:
@@ -197,19 +200,26 @@ class LCAOHamiltonian:
             P_mm = self.S_kmm[k].copy()
             p_m = npy.empty(self.nao)
 
-            dsyev_zheev_string = 'LCAO: '+'diagonalize-test'
+            if sl_diagonalize:
+                assert parallel
+                assert scalapack()
+                dsyev_zheev_string = 'LCAO: '+'pdsyevd/pzhegvx test'
+            else:
+                dsyev_zheev_string = 'LCAO: '+'dsyev/zheev test'
 
+            p_m[0] = 42
             self.timer.start(dsyev_zheev_string)
             if debug:
                 self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
-
-            if self.gd.comm.rank == 0:
-                p_m[0] = 42
-                info = diagonalize(P_mm, p_m)
-                assert p_m[0] != 42
+            if sl_diagonalize:
+                info = diagonalize(P_mm, p_m, root=0)
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
-
+            else:
+                if self.gd.comm.rank == 0:
+                    info = diagonalize(P_mm, p_m)
+                    if info != 0:
+                        raise RuntimeError('Failed to diagonalize: info=%d' % info)
             if debug:
                 self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
                 self.eig_lcao_iteration += 1
@@ -217,6 +227,8 @@ class LCAOHamiltonian:
 
             self.gd.comm.broadcast(P_mm, 0)
             self.gd.comm.broadcast(p_m, 0)
+
+            assert p_m[0] != 42
 
             self.thres = 1e-6
             if (p_m <= self.thres).any():

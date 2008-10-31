@@ -320,6 +320,8 @@ def fix2(formula):
             s += c
     return s
 
+def scalapack():
+    return _gpaw.compiled_with_sl()
 
 if not debug:
     hartree = _gpaw.hartree

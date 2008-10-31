@@ -246,6 +246,11 @@ def get_parallel_config(mpi_libraries,mpi_library_dirs,mpi_include_dirs,
 
     return mpicompiler
 
+def get_scalapack_config(define_macros):
+    # check ScaLapack settings
+    define_macros.append(('GPAW_WITH_SL', '1'))
+
+
 def mtime(path, name, mtimes):
     """Return modification time.
 
@@ -348,11 +353,15 @@ def build_interpreter(define_macros, include_dirs, libraries, library_dirs,
     cfiles2remove = ['c/libxc/src/test.c',
                      'c/libxc/src/xc_f.c',
                      'c/libxc/src/work_gga_x.c',
-                     'c/libxc/src/work_lda.c']
+                     'c/libxc/src/work_lda.c'
+                     ]
+    cfiles2remove.append('c/scalapack.c')
+    cfiles2remove.append('c/sl_inverse_cholesky.c')
+
     for c2r in glob('c/libxc/src/funcs_*.c'): cfiles2remove.append(c2r)
     for c2r in cfiles2remove: cfiles.remove(c2r)
     sources = ['c/bc.c', 'c/localized_functions.c', 'c/mpi.c', 'c/_gpaw.c',
-               'c/operators.c', 'c/transformers.c'] 
+               'c/operators.c', 'c/transformers.c', 'c/compiled_WITH_SL.c']
     objects = ' '.join(['build/temp.%s/' % plat + x[:-1] + 'o'
                         for x in cfiles])
 

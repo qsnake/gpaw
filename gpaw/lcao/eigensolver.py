@@ -2,6 +2,9 @@ import numpy as npy
 from gpaw.utilities.blas import rk, r2k
 from gpaw.utilities import unpack
 from gpaw.utilities.lapack import diagonalize
+from gpaw.mpi import parallel
+from gpaw.utilities import scalapack
+from gpaw import sl_diagonalize
 from gpaw import debug
 
 
@@ -87,19 +90,27 @@ class LCAO:
             kpt.C_nm[:] = C_nm[n1:n2]
             kpt.eps_n[:] = eps_q[n1:n2]
         else:
-            dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
+            if sl_diagonalize:
+                assert parallel
+                assert scalapack()
+                dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx'
+            else:
+                dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
+
+            self.eps_m[0] = 42
 
             self.timer.start(dsyev_zheev_string)
             if debug:
                 self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
-
-            if self.comm.rank == 0:
-                self.eps_m[0] = 42
-                info = diagonalize(H_mm, self.eps_m, self.S_mm)
-                assert self.eps_m[0] != 42
+            if sl_diagonalize:
+                info = diagonalize(H_mm, self.eps_m, self.S_mm, root=0)
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' % info)
-
+            else:
+                if self.comm.rank == 0:
+                    info = diagonalize(H_mm, self.eps_m, self.S_mm)
+                    if info != 0:
+                        raise RuntimeError('Failed to diagonalize: info=%d' % info)
             if debug:
                 self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
                 self.eig_lcao_iteration += 1
@@ -107,6 +118,8 @@ class LCAO:
 
             self.comm.broadcast(self.eps_m, 0)
             self.comm.broadcast(H_mm, 0)
+
+            assert self.eps_m[0] != 42
 
             kpt.C_nm[:] = H_mm[n1:n2]
             kpt.eps_n[:] = self.eps_m[n1:n2]
@@ -153,19 +166,28 @@ class LCAO:
 
         eps_q = npy.zeros(q)
 
-        dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv remove'
+        if sl_diagonalize:
+            assert parallel
+            dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx remove'
+        else:
+            dsyev_zheev_string1 = 'LCAO: '+'dsygv/zhegv remove'
 
         self.timer.start(dsyev_zheev_string)
         if debug:
             self.timer.start(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
-
-        if self.comm.rank == 0:
+        if sl_diagonalize:
             eps_q[0] = 42
-            info = diagonalize(H_qq, eps_q, S_qq)
+            info = diagonalize(H_qq, eps_q, S_qq, root=0)
             assert eps_q[0] != 42
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
-
+        else:
+            if self.comm.rank == 0:
+                eps_q[0] = 42
+                info = diagonalize(H_qq, eps_q, S_qq)
+                assert eps_q[0] != 42
+                if info != 0:
+                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
         if debug:
             self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_lcao_iteration)
             self.eig_lcao_iteration += 1

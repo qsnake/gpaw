@@ -10,7 +10,9 @@ from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities.blas import axpy, r2k, gemm
 from gpaw.utilities.tools import apply_subspace_mask
 from gpaw.utilities import unpack
-from gpaw.mpi import run
+from gpaw.mpi import run, parallel
+from gpaw.utilities import scalapack
+from gpaw import sl_diagonalize
 from gpaw import debug
 
 
@@ -205,24 +207,35 @@ class Eigensolver:
         H_nn = self.H_nn
         band_comm = self.band_comm
 
-        dsyev_zheev_string = 'Subspace diag.: '+'dsyev/zheev'
+        if sl_diagonalize:
+            assert parallel
+            assert scalapack()
+            dsyev_zheev_string = 'Subspace diag.: '+'pdsyevd/pzheevd'
+        else:
+            dsyev_zheev_string = 'Subspace diag.: '+'dsyev/zheev'
 
         self.timer.start(dsyev_zheev_string)
         if debug:
             self.timer.start(dsyev_zheev_string+' %03d' % self.eig_iteration)
-        if self.comm.rank == kpt.root:
-            if band_comm.rank == 0:
-                info = diagonalize(H_nn, self.eps_n)
-                if info != 0:
-                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
-
-            band_comm.scatter(self.eps_n, kpt.eps_n, 0)
-            band_comm.broadcast(H_nn, 0)
-
+        if sl_diagonalize:
+            info = diagonalize(H_nn, self.eps_n, root=kpt.root)
+            if info != 0:
+                raise RuntimeError('Failed to diagonalize: info=%d' % info)
+        else:
+            if self.comm.rank == kpt.root:
+                if band_comm.rank == 0:
+                    info = diagonalize(H_nn, self.eps_n)
+                    if info != 0:
+                        raise RuntimeError('Failed to diagonalize: info=%d' % info)
         if debug:
             self.timer.stop(dsyev_zheev_string+' %03d' % self.eig_iteration)
             self.eig_iteration += 1
         self.timer.stop(dsyev_zheev_string)
+
+        if self.comm.rank == kpt.root:
+            band_comm.scatter(self.eps_n, kpt.eps_n, 0)
+            band_comm.broadcast(H_nn, 0)
+
         U_nn = H_nn
         del H_nn
 

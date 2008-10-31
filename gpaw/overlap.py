@@ -11,12 +11,14 @@ functions.
 import sys
 
 import numpy as npy
-from gpaw.mpi import run
+from gpaw.mpi import run, parallel
 from gpaw.utilities.complex import cc
 from gpaw.utilities.blas import rk, gemm
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.utilities import swap
 from gpaw.eigensolvers.eigensolver import blocked_matrix_multiply
+from gpaw.utilities import scalapack
+from gpaw import sl_inverse_cholesky
 
 
 class Overlap:
@@ -144,10 +146,22 @@ class Overlap:
         # Construct the overlap matrix:
         self.calculate_overlap_matrix(psit_nG, work_nG, kpt, S_nn)
 
-        if self.comm.rank == kpt.root and self.band_comm.rank == 0:
-            info = inverse_cholesky(S_nn)
+        self.timer.start('Orthonormalize: inverse_cholesky')
+
+        if sl_inverse_cholesky:
+            assert parallel and scalapack()
+            info = inverse_cholesky(S_nn, kpt.root)
+        else:
+            if self.comm.rank == kpt.root and self.band_comm.rank == 0:
+                info = inverse_cholesky(S_nn)
+        if sl_inverse_cholesky:
             if info != 0:
                 raise RuntimeError('Orthogonalization failed!')
+        else:
+            if self.comm.rank == kpt.root and self.band_comm.rank == 0:
+                if info != 0:
+                    raise RuntimeError('Orthogonalization failed!')
+        self.timer.stop('Orthonormalize: inverse_cholesky')
 
         # S_nn has been overwriten - let's call it something different:
         C_nn = S_nn

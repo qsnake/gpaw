@@ -38,6 +38,7 @@ PyObject* vdw(PyObject *self, PyObject *args);
 PyObject* vdw2(PyObject *self, PyObject *args);
 PyObject* swap_arrays(PyObject *self, PyObject *args);
 PyObject* spherical_harmonics(PyObject *self, PyObject *args);
+PyObject* compiled_WITH_SL(PyObject *self, PyObject *args);
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
@@ -74,6 +75,7 @@ static PyMethodDef functions[] = {
   {"vdw2", vdw2, METH_VARARGS, 0},
   {"swap", swap_arrays, METH_VARARGS, 0},
   {"spherical_harmonics", spherical_harmonics, METH_VARARGS, 0},
+  {"compiled_with_sl", compiled_WITH_SL, METH_VARARGS, 0},
   {"pc_potential", pc_potential, METH_VARARGS, 0},
   {"pc_potential_value", pc_potential_value, METH_VARARGS, 0},
  {0, 0, 0, 0}

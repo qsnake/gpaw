@@ -322,6 +322,9 @@ static PyObject * mpi_cart_create(MPIObject *self, PyObject *args)
   return Py_BuildValue("s#", &comm_new, sizeof(comm_new));
 }
 
+#ifdef GPAW_WITH_SL
+#include "scalapack.c"
+#endif
 
 // Forward declaration of MPI_Communicator because it needs MPIType
 // that needs MPI_getattr that needs MPI_Methods that need
@@ -341,6 +344,10 @@ static PyMethodDef mpi_methods[] = {
     {"gather",           (PyCFunction)mpi_gather,       METH_VARARGS, 0},
     {"all_gather",       (PyCFunction)mpi_allgather,    METH_VARARGS, 0},
     {"broadcast",        (PyCFunction)mpi_broadcast,    METH_VARARGS, 0},
+#ifdef GPAW_WITH_SL
+    {"diagonalize",      (PyCFunction)diagonalize,      METH_VARARGS, 0},
+    {"inverse_cholesky", (PyCFunction)inverse_cholesky, METH_VARARGS, 0},
+#endif
     {"new_communicator", (PyCFunction)MPICommunicator,  METH_VARARGS, 0},
     {"cart_create",      (PyCFunction)mpi_cart_create,  METH_VARARGS, 0},
     {0, 0, 0, 0}

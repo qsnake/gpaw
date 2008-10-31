@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from math import log
+from math import sqrt
 
 import numpy as npy
 import ase
@@ -10,7 +11,10 @@ from ase.data import chemical_symbols
 
 from gpaw.utilities import devnull
 from gpaw.mpi import MASTER
+from gpaw.mpi import size, parallel
 from gpaw.version import version
+from gpaw.utilities import scalapack
+from gpaw import sl_diagonalize, sl_inverse_cholesky
 import gpaw
 
 
@@ -128,6 +132,56 @@ class Output:
         t('Fermi Temperature: %.6f' % (self.kT * self.Ha))
         t('Eigen Solver:      %s \n                   (%s)' %
           (p['eigensolver'], fd(p['stencils'][0])))
+        diag_string = 'Lapack'
+        if sl_diagonalize: assert parallel
+        if sl_diagonalize: assert scalapack()
+        if scalapack() and sl_diagonalize:
+            assert len(sl_diagonalize) == 4
+            # set ScaLapack defaults
+            # cpus_per_node used only to make the topology of the grid
+            if sl_diagonalize[3] is 'd':
+                cpus_per_node = 4
+            else:
+                cpus_per_node = int(sl_diagonalize[3])
+            assert cpus_per_node > 0
+            npcol = max(1, cpus_per_node *
+                        (int(sqrt(size) / cpus_per_node + 0.5)))
+            nprow = min(max(1, int(size/npcol)), npcol)
+            npcol = max(max(1, int(size/npcol)), npcol)
+            sl_defaults = [nprow, npcol, 32, cpus_per_node]
+            for sl_args_index in range(len(sl_diagonalize)):
+                if sl_diagonalize[sl_args_index] is 'd':
+                    sl_diagonalize[sl_args_index] = sl_defaults[sl_args_index]
+            assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+            diag_string = ('ScaLapack'+
+                           ' - grid: [nprow, npcol, nb] = %s'
+                           % (sl_diagonalize[:3]))
+        t('Diagonalizer:      %s' % (diag_string))
+        inverse_cholesky_string = 'Lapack'
+        if sl_inverse_cholesky: assert parallel
+        if sl_inverse_cholesky: assert scalapack()
+        if scalapack() and sl_inverse_cholesky:
+            assert len(sl_inverse_cholesky) == 4
+            # set ScaLapack defaults
+            # cpus_per_node used only to make the topology of the grid
+            if sl_inverse_cholesky[3] is 'd':
+                cpus_per_node = 4
+            else:
+                cpus_per_node = int(sl_inverse_cholesky[3])
+            assert cpus_per_node > 0
+            npcol = max(1, cpus_per_node *
+                        (int(sqrt(size) / cpus_per_node + 0.5)))
+            nprow = min(max(1, int(size/npcol)), npcol)
+            npcol = max(max(1, int(size/npcol)), npcol)
+            sl_defaults = [nprow, npcol, 32, cpus_per_node]
+            for sl_args_index in range(len(sl_inverse_cholesky)):
+                if sl_inverse_cholesky[sl_args_index] is 'd':
+                    sl_inverse_cholesky[sl_args_index] = sl_defaults[sl_args_index]
+            assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
+            inverse_cholesky_string = ('ScaLapack'+
+                                       ' - grid: [nprow, npcol, nb] = %s'
+                                       % (sl_inverse_cholesky[:3]))
+        t('Inverse Cholesky:  %s' % (inverse_cholesky_string))
         t('Poisson Solver:    %s \n                   (%s)' %
           ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
            fd(self.hamiltonian.poisson.nn)))
@@ -362,7 +416,7 @@ def eigenvalue_string(paw, comment=None):
     if paw.nspins == 1:
         s += comment + 'Band   Eigenvalues  Occupancy\n'
         eps_n = paw.collect_eigenvalues(k=0, s=0)
-        f_n   = paw.collect_occupations(k=0, s=0) 
+        f_n   = paw.collect_occupations(k=0, s=0)
         if paw.master:
             for n in range(paw.nbands):
                 s += ('%4d   %10.5f  %10.5f\n' %

@@ -8,6 +8,7 @@ import numpy as npy
 
 from gpaw import debug, dry_run, dry_run_size
 from gpaw.utilities import is_contiguous
+from gpaw.utilities import scalapack
 import _gpaw
 
 
@@ -175,6 +176,15 @@ if debug:
 
         def barrier(self):
             self.comm.barrier()
+
+        def diagonalize(self, a, w,
+                        nprow=1, npcol=1, mb=32, root=0,
+                        b=None):
+            return self.comm.diagonalize(a, w, nprow, npcol, mb, root, b)
+
+        def inverse_cholesky(self, a,
+                             nprow=1, npcol=1, mb=32, root=0):
+            return self.comm.inverse_cholesky(a, nprow, npcol, mb, root)
 
         def cart_create(self, dimx, dimy, dimz, periodic):
             return self.comm.cart_create(dimx, dimy, dimz, periodic)

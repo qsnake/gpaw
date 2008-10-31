@@ -9,11 +9,14 @@ Linear Algebra PACKage (LAPACK)
 import numpy as npy
 
 from gpaw import debug
+from gpaw.utilities import scalapack
+from gpaw import sl_diagonalize, sl_inverse_cholesky
+from gpaw.mpi import parallel, rank, size, world
 import _gpaw
 
 from gpaw.utilities.blas import gemm
 
-def diagonalize(a, w, b=None):
+def diagonalize(a, w, b=None, root=0):
     """Diagonalize a symmetric/hermitian matrix.
 
     Uses dsyevd/zheevd to diagonalize symmetric/hermitian matrix
@@ -32,18 +35,61 @@ def diagonalize(a, w, b=None):
     n = len(a)
     assert a.shape == (n, n)
     assert w.shape == (n,)
+
+    if sl_diagonalize:
+        assert parallel and scalapack()
+
     if b is not None:
         assert b.flags.contiguous
         assert b.dtype == a.dtype
         assert b.shape == a.shape
-        info = _gpaw.diagonalize(a, w, b)
+        if sl_diagonalize:
+            #if rank == root:
+                #print 'python ScaLapack diagonalize general'
+            assert len(sl_diagonalize) == 4
+            assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+            # symmetrize the matrix
+            for i in range(n):
+                for j in range(i, n):
+                    a[i,j] = a[j,i]
+                    b[i,j] = b[j,i]
+            #if rank == root:
+            #    print 'python ScaLapack diagonalize general not implemented yet'
+            #assert (not sl_diagonalize)
+            info = world.diagonalize(a, w,
+                                     sl_diagonalize[0],
+                                     sl_diagonalize[1],
+                                     sl_diagonalize[2], root, b)
+        else:
+            #if rank == root:
+                #print 'python Lapack diagonalize general'
+            info = _gpaw.diagonalize(a, w, b)
+        #if rank == root:
+        #    print 'python Lapack diagonalize general'
+        #info = _gpaw.diagonalize(a, w, b)
     else:
-        info = _gpaw.diagonalize(a, w)
+        if sl_diagonalize:
+            #if rank == root:
+                #print 'python ScaLapack diagonalize'
+            assert len(sl_diagonalize) == 4
+            assert sl_diagonalize[0]*sl_diagonalize[1] <= size
+            # symmetrize the matrix
+            for i in range(n):
+                for j in range(i, n):
+                    a[i,j] = a[j,i]
+            info = world.diagonalize(a, w,
+                                     sl_diagonalize[0],
+                                     sl_diagonalize[1],
+                                     sl_diagonalize[2], root)
+        else:
+            #if rank == root:
+                #print 'python Lapack diagonalize'
+            info = _gpaw.diagonalize(a, w)
     return info
 
-def inverse_cholesky(a):
+def inverse_cholesky(a, root=0):
     """Calculate the inverse of the Cholesky decomposition of
-    a symmetric/hermitian positive definete matrix `a`.
+    a symmetric/hermitian positive definite matrix `a`.
 
     Uses dpotrf/zpotrf to calculate the decomposition and then
     dtrtri/ztrtri for the inversion"""
@@ -52,7 +98,27 @@ def inverse_cholesky(a):
     assert a.dtype in [float, complex]
     n = len(a)
     assert a.shape == (n, n)
-    info = _gpaw.inverse_cholesky(a)
+
+    if sl_inverse_cholesky:
+        assert parallel and scalapack()
+
+    if sl_inverse_cholesky:
+        #if rank == root:
+            #print 'python ScaLapack inverse_cholesky'
+        assert len(sl_inverse_cholesky) == 4
+        assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
+        # symmetrize the matrix
+        for i in range(n):
+            for j in range(i, n):
+                a[i,j] = a[j,i]
+        info = world.inverse_cholesky(a,
+                                      sl_inverse_cholesky[0],
+                                      sl_inverse_cholesky[1],
+                                      sl_inverse_cholesky[2], root)
+    else:
+        #if rank == root:
+            #print 'python Lapack inverse_cholesky'
+        info = _gpaw.inverse_cholesky(a)
     return info
 
 
@@ -129,10 +195,15 @@ def sqrt_matrix(a, preserve=False):
 
     # sqrt(b) = c * Z^T
     gemm(1., ZT, c, 0., b)
-    
+
     return b
 
 if not debug:
-    diagonalize = _gpaw.diagonalize
+    # Bypass the Python wrappers
     right_eigenvectors = _gpaw.right_eigenvectors
-    inverse_cholesky = _gpaw.inverse_cholesky
+
+    # For ScaLAPACK, we can't bypass the Python wrappers!
+    if not sl_diagonalize:
+        diagonalize = _gpaw.diagonalize
+    if not sl_inverse_cholesky:
+        inverse_cholesky = _gpaw.inverse_cholesky
