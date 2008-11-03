@@ -248,9 +248,9 @@ void bc_unpack2(const boundary_conditions* bc,
     MPI_Request sendreq[2],
     double* rbuf, int nin)
 {
+#ifdef PARALLEL
   int ng2 = bc->ndouble * bc->size2[0] * bc->size2[1] * bc->size2[2];
 
-#ifdef PARALLEL
   // Store data from receive-buffer:
   bool real = (bc->ndouble == 1);
 
