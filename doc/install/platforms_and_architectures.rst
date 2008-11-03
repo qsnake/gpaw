@@ -25,12 +25,13 @@ Optional:
 * python-scientific
 * python-matplotlib
 * python-sphinx
+* povray
 
-Sphinx is necessary only to build the documentation.
+Sphinx and povray are necessary only to build the documentation.
 
 For your pasting convenience::
   
-  sudo apt-get install python-dev python-numpy liblapack-dev python-scientific python-matplotlib python-sphinx
+  sudo apt-get install python-dev python-numpy liblapack-dev python-scientific python-matplotlib python-sphinx povray
 
 If using GPAW 0.3, Numeric is required rather than numpy (as below).
 
