@@ -120,7 +120,7 @@ static void lxcXCFunctional_dealloc(lxcXCFunctionalObject *self)
   switch(self->c_functional.family)
     {
     case XC_FAMILY_LDA:
-      XC(lda_end)(&(self->c_functional.lda_func));
+/*      XC(lda_end)(&(self->c_functional.lda_func)); */
       break;
     case XC_FAMILY_GGA:
       XC(gga_end)(&(self->c_functional.gga_func));
