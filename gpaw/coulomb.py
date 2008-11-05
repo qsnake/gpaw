@@ -278,43 +278,25 @@ def reduce_pairs(pairs):
             pairs.pop(p)
 
 
-def coulomb_dict(paw, U_nj, pairs, spin=0, done={}, reduce=True):
+def coulomb_dict(paw, U_nj, pairs, spin=0, done={}):
     coulomb = Coulomb4(paw, spin)
-    if reduce:
-        reduce_pairs(pairs)
     for ijkl in pairs:
         ni, nj, nk, nl = U_nj[:, ijkl].T
         done[ijkl] = coulomb.get_integral(nk, ni, nj, nl) * Hartree
     return done
 
 
-def unfold_all(N, done, dtype=float):
-    V = npy.zeros([N, N, N, N], dtype)
+def unfold(N, done, dtype=float):
+    V = npy.empty([N, N, N, N], dtype)
     for i in xrange(N):
         for j in xrange(N):
             for k in xrange(N):
                 for l in xrange(N):
                     ijkl, conj = symmetry(i, j, k, l)
                     if conj:
-                        V[i, j, k, l] = npy.conj(done[ijkl])
+                        V[i, j, k, l] = npy.conj(done.get(ijkl, 0))
                     else:
-                        V[i, j, k, l] = done[ijkl]
-    return V
-
-
-def unfold_pairs(N, basis, done, dtype=float):
-    V = npy.zeros([N, N, N, N], dtype)
-    for start1, end1 in basis:
-        for start2, end2 in basis:
-            for i in range(start1, end1):
-                for k in range(start1, end1):
-                    for j in range(start2, end2):
-                        for l in range(start2, end2):
-                            ijkl, conj = symmetry(i, j, k, l)
-                            if conj:
-                                V[i, j, k, l] = npy.conj(done[ijkl])
-                            else:
-                                V[i, j, k, l] = done[ijkl]
+                        V[i, j, k, l] = done.get(ijkl, 0)
     return V
 
 
