@@ -191,7 +191,7 @@ way as the pseudo electron spin-densities.
    * - `\tilde{n}_\sigma`
      - ``paw.density.nt_sG`` and ``paw.density.nt_sg``
      - ``ndarray``
-   * - `\tilde{n}=\sum_\sigma\tilde{n}\sigma`
+   * - `\tilde{n}=\sum_\sigma\tilde{n}_\sigma`
      - ``paw.density.nt_g``
      - ``ndarray``
    * - `\tilde{n}_c^a(r)`
