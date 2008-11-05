@@ -43,7 +43,7 @@ Standard installation
 
    and put :file:`{<my-directory>}/lib/python` (or
    :file:`{<my-directory>}/lib64/python`) in your :envvar:`$PYTHONPATH` 
-   environment variable.  Usually :envvar:`$HOME` is a good coice for
+   environment variable.  Usually :envvar:`$HOME` is a good choice for
    :file:`{<my-directory>}`.
 
 4) Get the tar file :file:`gpaw-setups-{<version>}.tar.gz` from the 
