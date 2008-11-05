@@ -325,7 +325,7 @@ class Calculator(PAW):
         if self.nkpts != 1:
             raise NotImplementedError
         from ase.dft.wannier import rotation_from_projection
-        proj_knw = self.get_projections(intialwannier, spin)
+        proj_knw = self.get_projections(initialwannier, spin)
         U_ww, C_ul = rotation_from_projection(proj_knw[0],
                                               fixedstates[0],
                                               ortho=True)

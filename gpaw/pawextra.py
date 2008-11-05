@@ -418,8 +418,9 @@ class PAWExtra:
                         if n >= 0:
                             for j in range(i, i + 2 * l + 1):
                                 f_kin.append(nucleus.P_uni[u, :, j])
-                    i += 2 * l + 1
-            f_kni = npy.array(f_kin).transpose(0, 2, 1)
+                        i += 2 * l + 1
+            f_kni = npy.array(f_kin).reshape(
+                self.nkpts, -1, self.nbands).transpose(0, 2, 1)
             return f_kni.conj()
 
         from gpaw.localized_functions import create_localized_functions
@@ -428,7 +429,7 @@ class PAWExtra:
         nbf = 0
         for spos_c, l, a in locfun:
             nbf += 2 * l + 1
-        f_kni = npy.zeros((len(self.ibzk_kc), self.nbands, nbf), complex)
+        f_kni = npy.zeros((self.nkpts, self.nbands, nbf), self.dtype)
 
         nbf = 0
         for spos_c, l, a in locfun:
@@ -439,7 +440,7 @@ class PAWExtra:
             rad_g[-2:] = 0.0
             functions = [Spline(l, cutoff, rad_g)]
             lf = create_localized_functions(functions, self.gd, spos_c,
-                                            dtype=complex)
+                                            dtype=self.dtype)
             lf.set_phase_factors(self.ibzk_kc)
             nlf = 2 * l + 1
             nbands = self.nbands
