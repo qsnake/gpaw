@@ -403,7 +403,25 @@ class PAWExtra:
 
         where psi_kn are the wave functions, and f_i are the specified
         localized functions.
+
+        As a special case, locfun can be the string 'projectors', in which
+        case the bound state projectors are used as localized functions.
         """
+
+        if locfun == 'projectors':
+            f_kin = []
+            for k in range(self.nkpts):
+                u = k + spin * self.nkpts
+                for nucleus in self.nuclei:
+                    i = 0
+                    for l, n in zip(nucleus.setup.l_j, nucleus.setup.n_j):
+                        if n >= 0:
+                            for j in range(i, i + 2 * l + 1):
+                                f_kin.append(nucleus.P_uni[u, :, j])
+                    i += 2 * l + 1
+            f_kni = npy.array(f_kin).transpose(0, 2, 1)
+            return f_kni.conj()
+
         from gpaw.localized_functions import create_localized_functions
         from gpaw.spline import Spline
 
