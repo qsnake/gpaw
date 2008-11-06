@@ -31,7 +31,6 @@ PyObject* NewXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewMGGAFunctionalObject(PyObject *self, PyObject *args);
 PyObject* NewlxcXCFunctionalObject(PyObject *self, PyObject *args);
 PyObject *exterior_electron_density_region(PyObject *self, PyObject *args);
-PyObject* elf(PyObject *self, PyObject *args);
 PyObject* overlap(PyObject *self, PyObject *args);
 PyObject* wigner_seitz_grid(PyObject *self, PyObject *args);
 PyObject* vdw(PyObject *self, PyObject *args);
@@ -68,7 +67,6 @@ static PyMethodDef functions[] = {
   {"XCFunctional",    NewXCFunctionalObject,    METH_VARARGS, 0},
   {"MGGAFunctional",    NewMGGAFunctionalObject,    METH_VARARGS, 0},
   {"lxcXCFunctional",    NewlxcXCFunctionalObject,    METH_VARARGS, 0},
-  {"elf",    elf,    METH_VARARGS, 0},
   {"overlap",       overlap,        METH_VARARGS, 0},
   {"wigner_seitz_grid", wigner_seitz_grid, METH_VARARGS, 0},
   {"vdw", vdw, METH_VARARGS, 0},
