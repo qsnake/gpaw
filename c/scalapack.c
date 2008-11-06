@@ -79,6 +79,10 @@ void zgebs2d_(int *ConTxt, char* scope, char* top, int *m, int *n,
 #define   Cpdgemr2d_  Cpdgemr2d
 #endif
 
+#ifdef SL_SECOND_UNDERSCORE
+#define   sl_init_  sl_init__
+#endif
+
 void descinit_(int* desc, int* m, int* n, int* mb, int* nb, int* irsrc,
                int* icsrc, int* ictxt,
                int* lld, int* info);
