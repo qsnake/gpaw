@@ -296,7 +296,7 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 		     nD, ndelta, dD, ddelta, phi, ie);
 	  double A3 = Rrr[0] * S[0] + Rrr[1] * S[1] + Rrr[2] * S[2];
 	  A3 *= Zabover9 / r;
-	  energy += ie[0] * n[i1] * n[i2];
+	  energy += ie[3] * n[i1] * n[i2];
 	  double ev = n[i2] * (ie[0] + ie[1] * A1 + ie[2] * A2 + ie[3] * A3);
           potential[i1] += ev;
           potential[i2] += ev;
