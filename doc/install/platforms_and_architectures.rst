@@ -405,6 +405,7 @@ with gcc compiler using the following :file:`customize.py` file
   ]
 
   mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc'
+  mpilinker = mpicompiler
 
 You can alternatively build on ``slid`` build GPAW (``python setup.py
 build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
@@ -443,6 +444,7 @@ experimental ``scalapack`` and ``blacs`` features)::
   ]
 
   mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc -Ofast'
+  mpilinker = mpicompiler
 
 A gpaw script :file:`gpaw-script.py` can be submitted like this::
 
