@@ -134,10 +134,11 @@ def get_locfun_rotation(projections_nj, M=None, T=0, ortho=False):
             S_jj = npy.identity(len(S_jj))
         return U_nj, S_jj
 
-    B_vv = npy.dot(a0_vj, dagger(a0_vj))
-    b_v, b_vv = npy.linalg.eigh(B_vv)
-    list = npy.argsort(-b_v)
-    T_vp = npy.take(b_vv, npy.argsort(-b_v)[:L], axis=1)
+    #b_v, b_vv = npy.linalg.eigh(npy.dot(a0_vj, dagger(a0_vj)))
+    #T_vp = b_vv[:, npy.argsort(-b_v)[:L]]
+    b_j, b_jj = npy.linalg.eigh(npy.dot(dagger(a0_vj), a0_vj))
+    T_vp = npy.dot(a0_vj, b_jj[:, npy.argsort(-b_j.real)[:L]])
+
     R_vv = npy.dot(T_vp, dagger(T_vp))
     D_jj = npy.dot(dagger(a0_nj), a0_nj) + npy.dot(dagger(a0_vj),
                                                    npy.dot(R_vv, a0_vj))
