@@ -436,7 +436,8 @@ class PAWExtra:
             if type(spos_c) is int:
                 spos_c = self.nuclei[spos_c].spos_c
             a /= self.a0
-            rad_g = npy.exp(-npy.linspace(0, 10. * a, 500)**2 / a)
+            cutoff = 10. * a
+            rad_g = npy.exp(-npy.linspace(0, cutoff, 500)**2 / a)
             rad_g[-2:] = 0.0
             functions = [Spline(l, cutoff, rad_g)]
             lf = create_localized_functions(functions, self.gd, spos_c,
