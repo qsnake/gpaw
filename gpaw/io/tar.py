@@ -197,3 +197,6 @@ class TarFileReference:
             array = array.byteswap()
         array.shape = self.shape[n:]
         return array
+
+    def __array__(self):
+        return self[::]
