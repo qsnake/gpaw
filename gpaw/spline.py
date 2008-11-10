@@ -13,6 +13,10 @@ class Spline:
 
         The integer l gives the angular momentum quantum number and
         the list contains the spline values from r=0 to r=rcut.
+
+        The array f_g gives the radial part of the function on the grid
+        specified by r_g (if any). The radial function is multiplied by
+        real solid spherical harmonics (r^l * Y_lm).
         """
         assert 0.0 < rmax
 
