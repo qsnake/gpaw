@@ -12,24 +12,27 @@ svn-server - read below.  When you have the code, go to the
 
 
 
-From subversion (SVN) at svn.fysik.dtu.dk
-=========================================
+Latest stable release
+=====================
+
+The latest stable release can be obtained from svn::
+
+  $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
+
+or from this tar file: `gpaw-0.4.2724.tar.gz <tarfile>`_.
+
+
+.. _tarfile: https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.4.2724.tar.gz
+
+
+
+Latest development release
+==========================
 
 The latest revision can be obtained like this::
 
   $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
-The latest stable release can be obtained like this::
-
-  $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3 gpaw-0.3
+or from the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
 
 See :ref:`faq` in case of problems.
-
-
-
-From tar-file
-=============
-
-Here is the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
-
-

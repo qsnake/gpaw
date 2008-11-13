@@ -10,39 +10,41 @@ When it is time for a new release of the code, here is what you have to do:
 
 * Make a fresh checkout from svn::
 
-   svn co https://svn.fysik.dtu.dk/projects/gpaw/trunk ~/gpaw
+   svn co https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
   and run the test suite (run ``python test.py`` in ``tests`` directory).
-* Increase the version number in gpaw/version.py, and commit the change::
 
-   cd ~/gpaw
-   svn ci -m"Version 0.3"
+* Make a tag in svn, using the current version number::
 
-  Note the svn release number of this checkin (e.g. 1405).
-* Make a tag in svn, using this svn release number::
-
-   svn copy -r 1405 https://USER@svn.fysik.dtu.dk/projects/gpaw/trunk https://USER@svn.fysik.dtu.dk/projects/gpaw/tags/0.3 -m "Version 0.3"
+    svn copy https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 -m "Version 0.4"
 
 * **Checkout** the source, specyfing the version number in the directory name::
 
-   svn co https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3 ~/gpaw-0.3
+   svn co https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
 
 * Create the tar file::
 
-   cd ~/gpaw-0.3; rm -f MANIFEST
+   cd gpaw-0.4
    python setup.py sdist
 
-  Note that the current svn release number is put into the name of the tar file automatically.
+  Note that the current svn release number is put into the name of the
+  tar file automatically.
+
 * Put the tar file on web2 (set it read-able for all)::
 
-   scp ~/gpaw-0.3/dist/gpaw-0.3.1425.tar.gz root@web2:/var/www/wiki/stuff
+   scp dist/gpaw-0.4.2724.tar.gz root@web2:/var/www/wiki/gpaw-files
 
 * Change the :ref:`download` link to the new tar file.
+
 * Optionally, update the :ref:`releasenotes`.
+
+* Increase the version number in gpaw/version.py, and commit the change::
+
+    cd gpaw
+    svn ci -m "Version 0.5"
+
+  Now the trunk is ready for work on the new version.
+
 * Send announcement email to:
 
-  - campos@listserv.fysik.dtu.dk
   - gridpaw-developer@lists.berlios.de
-  - python-announce-list@python.org
-
-* Register with PyPI??
