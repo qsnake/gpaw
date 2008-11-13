@@ -51,7 +51,7 @@ https://listserv.fysik.dtu.dk/mailman/listinfo:
 * gpaw-svncheckins_
 * gpaw-tickets_
 * ase-developers_
-* ase3000-svncheckins_
+* ase-svncheckins_
 * ase-tickets_
 * ase-users_
 * campos_
@@ -61,7 +61,7 @@ https://listserv.fysik.dtu.dk/mailman/listinfo:
 .. _gpaw-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-svncheckins
 .. _gpaw-tickets: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-tickets
 .. _ase-developers: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-developers
-.. _ase3000-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/ase3000-svncheckins
+.. _ase-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-svncheckins
 .. _ase-tickets: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-tickets
 .. _ase-users: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-users
 .. _campos: https://listserv.fysik.dtu.dk/mailman/listinfo/campos
