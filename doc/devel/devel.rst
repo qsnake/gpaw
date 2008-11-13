@@ -43,10 +43,32 @@ Other topics:
 * Trac_.
 * The gpaw mailing lists: :ref:`gpaw-developer <ml>` and gpaw-svncheckins_
 
-.. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html
-.. _gpaw-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-svncheckins
-.. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
+If you want to keep completely up to date on development, you can
+subscribe to the relevant mailing lists at
+https://listserv.fysik.dtu.dk/mailman/listinfo:
 
+* gridpaw-developers_ (at BerliOS_)
+* gpaw-svncheckins_
+* gpaw-tickets_
+* ase-developers_
+* ase3000-svncheckins_
+* ase-tickets_
+* ase-users_
+* campos_
+* campos-devel_
+
+.. _gridpaw-developers: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
+.. _gpaw-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-svncheckins
+.. _gpaw-tickets: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-tickets
+.. _ase-developers: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-developers
+.. _ase3000-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/ase3000-svncheckins
+.. _ase-tickets: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-tickets
+.. _ase-users: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-users
+.. _campos: https://listserv.fysik.dtu.dk/mailman/listinfo/campos
+.. _campos-devel: https://listserv.fysik.dtu.dk/mailman/listinfo/campos-devel
+.. _BerliOS: http://www.berlios.de
+.. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html
+.. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
 
 
 .. _the_big_picture:
