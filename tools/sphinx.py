@@ -17,13 +17,14 @@ def build():
     if os.system('python setup.py install --home=..') != 0:
         raise RuntimeError('Installation of ASE failed!')
     os.chdir('..')
-    if os.system('svn export ' +
+    if os.system('svn checkout ' +
                  'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
         raise RuntimeError('Checkout of GPAW failed!')
     os.chdir('gpaw')
-    if os.system('python setup.py install --home=.. ' +
-                 '2>&1 | grep -v "c/libxc/src"') != 0:
+    if os.system('python setup.py install --home=.. 2> error') != 0:
         raise RuntimeError('Installation of GPAW failed!')
+
+    os.system('grep -v "c/libxc/src" error 1>&2')
 
     os.system('wget --no-check-certificate --quiet ' +
               'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
@@ -44,7 +45,11 @@ def build():
     if ' Warning:' in open('epydoc.out').read():
         raise RuntimeError('Warning(s) from epydoc!')
 
+    sys.path.insert(0, tmpdir + '/lib/python')
+    from gpaw.version import version
+
     os.chdir('doc')
+    os.system('sed -i s/gpaw-snapshot/gpaw-%s/ download.rst' % version)
     os.mkdir('_build')
     if os.system('PYTHONPATH=%s/lib/python ' % tmpdir +
                  'GPAW_SETUP_PATH=%s ' % setups +
@@ -63,7 +68,7 @@ def build():
         os.chdir('_build')
 
     assert os.system('mv ../../html epydoc;' +
-                     'mv ../../dist/gpaw-0.4.tar.gz gpaw-snapshot.tar.gz') == 0
+                     'mv ../../dist/gpaw-%s.tar.gz .' % version) == 0
 
 tarfiledir = None
 if len(sys.argv) == 2:
