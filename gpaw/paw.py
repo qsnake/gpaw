@@ -1235,8 +1235,10 @@ class PAW(PAWExtra, Output):
         if self.reuse_old_density:
             nt_sG = self.density.nt_sG
             D_asp = {}
+            P_auni = {}
             for nucleus in self.my_nuclei:
                 D_asp[nucleus.a] = nucleus.D_sp
+                P_auni[nucleus.a] = nucleus.P_uni
 
         self.my_nuclei = []
         self.pt_nuclei = [None]
@@ -1259,6 +1261,8 @@ class PAW(PAWExtra, Output):
             self.density.initialize()
             for a, D_sp in D_asp.items():
                 self.nuclei[a].D_sp[:] = D_sp
+            for a, P_uni in P_auni.items():
+                self.nuclei[a].P_uni[:] = P_uni
             if self.density.nt_sG.shape == nt_sG.shape:
                 self.density.nt_sG[:] = nt_sG
                 #self.density.scale()
