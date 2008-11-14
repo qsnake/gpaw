@@ -17,7 +17,7 @@ MASTER = 0
 
 
 def create_localized_functions(functions, gd, spos_c,
-                               dtype=float, cut=True,
+                               dtype=float, cut=False,
                                forces=True, lfbc=None):
     """Create LocFuncs object.
 
