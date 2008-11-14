@@ -43,14 +43,6 @@ elif c == 'p':
     # Infiniband:
     np = len(open(os.environ['PBS_NODEFILE']).readlines())
     mpirun = 'mpirun -np %d -machinefile $PBS_NODEFILE' % np
-    
-elif c in 'tu':
-    # s50:
-    mpirun = ('export LD_LIBRARY_PATH=/opt/intel/mkl/9.0/lib/32:' +
-              '/opt/intel/mkl/9.0/lib/32:' +
-              '/usr/local/openmpi-1.2.5-gfortran/lib && '
-              'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && ' +
-              'mpirun')
 """
 
 # Release script:
