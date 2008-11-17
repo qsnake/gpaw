@@ -61,7 +61,7 @@ PyObject * vdw(PyObject* self, PyObject *args)
     return NULL;
 
   int nD = phi_obj->dimensions[1];
-  int ndelta = phi_obj->dimensions[1];
+  int ndelta = phi_obj->dimensions[0];
   const double* n = (const double*)DOUBLEP(n_obj);
   const double* q0 = (const double*)DOUBLEP(q0_obj);
   const double (*R)[3] = (const double (*)[3])DOUBLEP(R_obj);
