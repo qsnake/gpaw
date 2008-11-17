@@ -172,7 +172,7 @@ void vdwkernel2(double r, double q01, double q02, int nD, int ndelta,
      }
   else
     {
-      double xdelta = fabs(0.5 * (d1 - d2) / D) / ddelta;//OBS!! new interpolation??????
+      double xdelta = fabs(0.5 * (d1 - d2) / D) / ddelta;
       int jdelta = (int)xdelta;
       double a;
       if (jdelta >= ndelta - 1)
@@ -183,51 +183,123 @@ void vdwkernel2(double r, double q01, double q02, int nD, int ndelta,
       else
 	a = xdelta - jdelta;
       double b = xD - jD;
+
+      double Dmin=3;
+      if (1)
+      {
       //original phi interpolation
-      Phi[3] = ((a         * b         * phi[jdelta + 1][jD + 1] +
+      Phi[3] = 0.25/M_PI*((a         * b         * phi[jdelta + 1][jD + 1] +
 		 a         * (1.0 - b) * phi[jdelta + 1][jD    ] +
 		 (1.0 - a) * b         * phi[jdelta    ][jD + 1] +
 		 (1.0 - a) * (1.0 - b) * phi[jdelta    ][jD    ]) /
 		(D * D));
       //first derivative of phi with D 
-      double dphidD = ((          a         * phi[jdelta + 1][jD + 1] -
+      
+      double dphidD = 0.5*(0.25/M_PI*1/dD*(          a         * phi[jdelta + 1][jD + 1] -
 				   a *         phi[jdelta + 1][jD    ] +
 				  (1.0 - a)   * phi[jdelta    ][jD + 1] -
 				  (1.0 - a) * phi[jdelta    ][jD    ]) /
-			(D * D))-2/(D * D)*Phi[3];
-
-      double dphiddelta = ((          b         * phi[jdelta + 1][jD + 1] +
+			(D * D))-1/D*Phi[3];
+      double Xabs =1;
+      if (d1-d2 <0)
+	{
+	  Xabs=-1;
+	}
+         
+       double dphiddelta = 1/ddelta*0.25/M_PI*Xabs*2*d2/(d1+d2)/(d1+d2)*((          b         * phi[jdelta + 1][jD + 1] +
 				  (1.0 - b) * phi[jdelta + 1][jD    ] -
 				  b         * phi[jdelta    ][jD + 1] -
 				  (1.0 - b) * phi[jdelta    ][jD    ]) /
 	     (D * D));
-      Phi[0] = d1 * (0.5* dphiddelta+0.5*dphidD);
+       double help =       1/ddelta*0.25/M_PI*2*Xabs*(d1-d2)/(d1+d2)/(d1+d2)/(d1+d2)*((          b         * phi[jdelta + 1][jD + 1] +
+				  (1.0 - b) * phi[jdelta + 1][jD    ] -
+				  b         * phi[jdelta    ][jD + 1] -
+				  (1.0 - b) * phi[jdelta    ][jD    ]) /
+	     (D * D)); 
+       double dphiddeltaaa = 1/ddelta*Xabs*-4*d2/(d1+d2)/(d1+d2)/(d1+d2)*((          b         * phi[jdelta + 1][jD + 1] +
+				  (1.0 - b) * phi[jdelta + 1][jD    ] -
+				  b         * phi[jdelta    ][jD + 1] -
+				  (1.0 - b) * phi[jdelta    ][jD    ]) /
+	     (D * D));
+       
+          
+      Phi[0] = d1 * (dphiddelta+dphidD);
+        
 
       
 
-      //getting the interpolation of second derivative
-      /*
-      double phidd1=phi[jdelta-1][jD]-2*phi[jdelta][jd]+phi[jdelta+1][jD];
-      double phidd2=phi[jdelta][jD]-2*phi[jdelta+1][jd]+phi[jdelta+2][jD];
-      double phidd3=phi[jdelta-1][jD+1]-2*phi[jdelta][jd+1]+phi[jdelta+1][jD+1];
-      double phidd4=phi[jdelta][jD+1]-2*phi[jdelta+1][jd+1]+phi[jdelta+2][jD+1];
-      //second derivative of phi with d 
-      e14= ((a         * b          * phidd4+
-	      a         * (1.0 - b) * phidd2+
-	      (1.0 - a) * b         * phidd3+
-	     (1.0 - a) * (1.0 - b) * phidd1)/
-	    (D * D));
-      */
       
-      double d2phidddd =d1*d1*(((         1         *  phi[jdelta + 1][jD + 1] -
+      
+      
+      double d2phidddd =0.25/M_PI*((         1         *  phi[jdelta + 1][jD + 1] -
 				   1  *         phi[jdelta + 1][jD    ] -
 				   1  *         phi[jdelta    ][jD + 1] +
 				   1  *         phi[jdelta    ][jD    ]) /
-				(D * D))-2/(D * D)*dphiddelta);
+			 (D * D));
+      
+      double d2phihelp = 2*d2phidddd*1/dD*1/ddelta*Xabs*2*d2/(d1+d2)/(d1+d2)*1/2-(dphiddelta+dphidD)/D*1/2+dphiddeltaaa;
+      double d2phiddddp = d2phidddd*1/dD*1/ddelta*1/2*2/(d1+d2)/(d1+d2)*(d2-d1)+help;
+      
+	//	double d2phihelp = Xabs*2*(d2/(d1+d2)/(d1+d2))*(1/dD*1/ddelta*d2phidddd-dphiddelta/ddelta/D)+dphiddelta/ddelta*-Xabs*4*d2/(d1+d2)/(d1+d2)/(d1+d2)-dphidD*1/dD*0.25+3.0/2.0*Phi[3]/D/D*0.5-dphiddelta*Xabs*d2/(d1+d2)/(d1+d2 )*0.5*1/ddelta;
+      Phi[1] = d1 * d1*d2phihelp ;
+      //double d2phiddddp = d2phidddd/ddelta/dD/2*Xabs*(2*d2-2*d1)/(d1+d2)/(d1+d2)+1/ddelta*dphiddelta*2*(d2-d1)/(d1+d2)/(d1+d2)/(d1+d2)-dphidD*1/dD*0.25+3.0/2.0*Phi[3]/D/D*0.5-dphiddelta*-Xabs*d1/(d1+d2)/(d1+d2)*0.5*1/ddelta;
+      Phi[2] = (dphiddelta+dphidD) + d1 * d2phihelp +d2 * d2phiddddp;
+      }
+     /*  else //Laid in to stop D^2 dependece for small D */
+/*       { */
+/*        //original phi interpolation */
+/*       Phi[3] = 0.25/M_PI*((a         * b         * phi[jdelta + 1][jD + 1] + */
+/* 		 a         * (1.0 - b) * phi[jdelta + 1][jD    ] + */
+/* 		 (1.0 - a) * b         * phi[jdelta    ][jD + 1] + */
+/* 		 (1.0 - a) * (1.0 - b) * phi[jdelta    ][jD    ])); */
+/*       //first derivative of phi with D  */
+      
+/*       double dphidD = 0.5*(0.25/M_PI*1/dD*(          a         * phi[jdelta + 1][jD + 1] - */
+/* 				   a *         phi[jdelta + 1][jD    ] + */
+/* 				  (1.0 - a)   * phi[jdelta    ][jD + 1] - */
+/* 						     (1.0 - a) * phi[jdelta    ][jD    ])); */
+/*       double Xabs =1; */
+/*       if (d1-d2 <0) */
+/* 	{ */
+/* 	  Xabs=-1; */
+/* 	} */
+         
+/*        double dphiddelta = 1/ddelta*0.25/M_PI*Xabs*2*d2/(d1+d2)/(d1+d2)*((          b         * phi[jdelta + 1][jD + 1] + */
+/* 				  (1.0 - b) * phi[jdelta + 1][jD    ] - */
+/* 				  b         * phi[jdelta    ][jD + 1] - */
+/* 				  (1.0 - b) * phi[jdelta    ][jD    ])); */
+/*        double help =       1/ddelta*0.25/M_PI*2*Xabs*(d1-d2)/(d1+d2)/(d1+d2)/(d1+d2)*((          b         * phi[jdelta + 1][jD + 1] + */
+/* 				  (1.0 - b) * phi[jdelta + 1][jD    ] - */
+/* 				  b         * phi[jdelta    ][jD + 1] - */
+/* 				  (1.0 - b) * phi[jdelta    ][jD    ]));  */
+/*        double dphiddeltaaa = 1/ddelta*Xabs*-4*d2/(d1+d2)/(d1+d2)/(d1+d2)*((          b         * phi[jdelta + 1][jD + 1] + */
+/* 				  (1.0 - b) * phi[jdelta + 1][jD    ] - */
+/* 				  b         * phi[jdelta    ][jD + 1] - */
+/* 										     (1.0 - b) * phi[jdelta    ][jD    ])); */
+       
+          
+/*       Phi[0] = d1 * (dphiddelta+dphidD); */
+        
 
-      Phi[1] = d1 * d1 * d2phidddd;
-      double d2phiddddp = 0;
-      Phi[2] = (0.5* dphiddelta+0.5*dphidD) + d1 * d2phidddd + d2 * d2phiddddp;
+      
+
+      
+      
+      
+/*       double d2phidddd =0.25/M_PI*((         1         *  phi[jdelta + 1][jD + 1] - */
+/* 				   1  *         phi[jdelta + 1][jD    ] - */
+/* 				   1  *         phi[jdelta    ][jD + 1] + */
+/* 				   1  *         phi[jdelta    ][jD    ]) / */
+/* 			 (D * D)); */
+      
+/*       double d2phihelp = 2*d2phidddd*1/dD*1/ddelta*Xabs*2*d2/(d1+d2)/(d1+d2)*1/2+dphiddeltaaa; */
+/*       double d2phiddddp = d2phidddd*1/dD*1/ddelta*1/2*2/(d1+d2)/(d1+d2)*(d2-d1)+help; */
+      
+/* 	//	double d2phihelp = Xabs*2*(d2/(d1+d2)/(d1+d2))*(1/dD*1/ddelta*d2phidddd-dphiddelta/ddelta/D)+dphiddelta/ddelta*-Xabs*4*d2/(d1+d2)/(d1+d2)/(d1+d2)-dphidD*1/dD*0.25+3.0/2.0*Phi[3]/D/D*0.5-dphiddelta*Xabs*d2/(d1+d2)/(d1+d2 )*0.5*1/ddelta; */
+/*       Phi[1] = d1 * d1*d2phihelp ; */
+/*       //double d2phiddddp = d2phidddd/ddelta/dD/2*Xabs*(2*d2-2*d1)/(d1+d2)/(d1+d2)+1/ddelta*dphiddelta*2*(d2-d1)/(d1+d2)/(d1+d2)/(d1+d2)-dphidD*1/dD*0.25+3.0/2.0*Phi[3]/D/D*0.5-dphiddelta*-Xabs*d1/(d1+d2)/(d1+d2)*0.5*1/ddelta; */
+/*       Phi[2] = (dphiddelta+dphidD) + d1 * d2phihelp +d2 * d2phiddddp; */
+/*       } */
     }
 }
 
@@ -257,7 +329,7 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 
   const double Zabover9 = -0.8491 / 9.0;
   int nD = phi_obj->dimensions[1];
-  int ndelta = phi_obj->dimensions[1];
+  int ndelta = phi_obj->dimensions[0];
   const double* n = (const double*)DOUBLEP(n_obj);
   const double* q0 = (const double*)DOUBLEP(q0_obj);
   const double (*R)[3] = (const double (*)[3])DOUBLEP(R_obj);
@@ -279,16 +351,20 @@ PyObject * vdw2(PyObject* self, PyObject *args)
       double A2 = a2[i1];
       const double* S = s[i1];
       double ie[4]; 
-      for (int i2 = 0; i2 < i1; i2++)
-	{ 
+      for (int i2 = 0; i2 < iB; i2++)//Changed iB from iA
+	{
+	  if (i1 != i2)
+         { 
 	  double Rrr[3];
 	  double r2 = 0.0;
 	  for (int c = 0; c < 3; c++)
 	    {
 	      double f = R[i2][c] - R1[c];
 	      if (pbc[c])
-		f = fmod(f + 1.5 * cell[c], cell[c]) - 0.5 * cell[c];
-	      r2 += f * f;
+		{
+	       f = fmod(f + 1.5 * cell[c], cell[c]) - 0.5 * cell[c];
+                }
+              r2 += f * f;
 	      Rrr[c] = f * f;
 	    }
 	  double r = sqrt(r2);
@@ -296,11 +372,24 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 		     nD, ndelta, dD, ddelta, phi, ie);
 	  double A3 = Rrr[0] * S[0] + Rrr[1] * S[1] + Rrr[2] * S[2];
 	  A3 *= Zabover9 / r;
-	  energy += ie[3] * n[i1] * n[i2];
-	  double ev = n[i2] * (ie[0] + ie[1] * A1 + ie[2] * A2 + ie[3] * A3);
-          potential[i1] += ev;
-          potential[i2] += ev;
+          	    
+	  //energy += ie[3] * n[i1] * n[i2];
+	   //double ev = n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3);
+	  potential[i1] += n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3);
+           //potential[i2] += n[i1] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] *- A3);//Right?
+	 /*  if ( n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3)>100) */
+/*             { */
+/* 	      //printf("%f,%f,%f,%f,%f,%f,%f, \n",i1,i2,ie[0]*A1+ie[1]*A2+ie[2]*A3+ie[3],ie[0]*A1,ie[1]*A2,ie[2]*A3,ie[3]); */
+/* 	      printf("%f,%f,%f,%f,%f\n",i1,i2,A1,A2,A3); */
+/*             }  */
+/*            if (i1 <2 && i2 <100) */
+/* 	    { */
+/* 	      printf("%f ",ie[0]*A1+ie[1]*A2+ie[2]*A3+ie[3]); */
+/*               //printf("%f,%f \n",ie[0]*A1,ie[3]); */
+/* 	    } */
+	     }
+	   
 	}
     }
-  return PyFloat_FromDouble(0.25 * energy / M_PI);
+  return PyFloat_FromDouble(energy);
 }
