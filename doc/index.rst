@@ -50,7 +50,7 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
-* :ref:`GPAW version 0.4 <releasenotes>` released (13 November 2008).
+* :ref:`GPAW version 0.4 <releasenotes>` released (Nov 13 2008).
 
 * The :ref:`exercises` are finally ready for use in the `CAMd summer
   school 2008`_ (Aug 15 2008)
@@ -59,7 +59,7 @@ News
 
 * GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
 
-* :ref:`GPAW version 0.3 <releasenotes>` released (19 December 2007),
+* :ref:`GPAW version 0.3 <releasenotes>` released (Dec 19 2007),
 
 * CSC_ is organizing a `GPAW course`_: "Electronic structure
   calculations with GPAW". (Dec 11 2007).
