@@ -19,11 +19,11 @@ The latest stable release can be obtained from svn::
 
   $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
 
-or from this tar file: gpaw-0.4.2724.tar.gz_.
+or from this tar file: gpaw-0.4.2734.tar.gz_.
 
 
-.. _gpaw-0.4.2724.tar.gz:
-    https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.4.2724.tar.gz
+.. _gpaw-0.4.2734.tar.gz:
+    https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.4.2734.tar.gz
 
 
 
