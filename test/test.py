@@ -53,7 +53,7 @@ if len(tests) == 0:
              'gauss_func.py', 'xcatom.py', 'wfs_io.py', 'ylexpand.py',
              'nonselfconsistentLDA.py', 'bee1.py', 'gga-atom.py', 'revPBE.py',
              'td_na2.py', 'nonselfconsistent.py', 'external_potential.py',
-             'bulk.py', 'spinpol.py', 'refine.py', 'ewald.py',
+             'bulk.py', 'spinpol.py', 'refine.py', 'ewald.py', 'asewannier.py',
              'bulk-lcao.py', 'stdout.py', 'restart2.py', 'hydrogen.py',
              'H-force.py', 'plt.py', 'h2o-xas.py', 'degeneracy.py',
              'davidson.py', 'cg.py', 'ldos.py', 'h2o-xas-recursion.py',
