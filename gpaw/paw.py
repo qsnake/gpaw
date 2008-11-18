@@ -190,6 +190,7 @@ class PAW(PAWExtra, Output):
     """
 
     non_orthorhombic_unit_cells_allowed = False
+    timer_class = Timer
     
     def __init__(self, filename=None, **kwargs):
         """ASE-calculator interface.
@@ -215,7 +216,7 @@ class PAW(PAWExtra, Output):
         all symmetries will be used to reduce the number of
         **k**-points."""
 
-        self.timer = Timer()
+        self.timer = self.timer_class()
 
         self.input_parameters = {
             'h':             None,  # Angstrom
