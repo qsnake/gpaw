@@ -259,7 +259,11 @@ void vdwkernel2(double r, double q01, double q02, int nD, int ndelta,
 /* 				  (1.0 - a)   * phi[jdelta    ][jD + 1] - */
 /* 						     (1.0 - a) * phi[jdelta    ][jD    ])); */
 /*       double Xabs =1; */
-/*       if (d1-d2 <0) */
+      
+
+
+
+	/*       if (d1-d2 <0) */
 /* 	{ */
 /* 	  Xabs=-1; */
 /* 	} */
@@ -365,17 +369,18 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 	       f = fmod(f + 1.5 * cell[c], cell[c]) - 0.5 * cell[c];
                 }
               r2 += f * f;
-	      Rrr[c] = f * f;
+	      Rrr[c] = f;//not f squared
 	    }
 	  double r = sqrt(r2);
 	  vdwkernel2(r, q01, q0[i2],
 		     nD, ndelta, dD, ddelta, phi, ie);
-	  double A3 = Rrr[0] * S[0] + Rrr[1] * S[1] + Rrr[2] * S[2];
+	  double A3 = (Rrr[0] * S[0] + Rrr[1] * S[1] + Rrr[2] * S[2])/r;
 	  A3 *= Zabover9 / r;
           	    
 	  //energy += ie[3] * n[i1] * n[i2];
 	   //double ev = n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3);
 	  potential[i1] += n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3);
+          
            //potential[i2] += n[i1] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] *- A3);//Right?
 	 /*  if ( n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3)>100) */
 /*             { */
