@@ -1,46 +1,109 @@
 .. _pdos:
 
-===========================
-Projected Density Of States
-===========================
-
 .. default-role:: math
 
-The Projected density of states on a state `|\psi_i\rangle` is
+=================
+Density Of States
+=================
+
+The density of states is defined by
 
 .. math::
 
-  \rho_i(\varepsilon) = \sum_n|\langle\psi_i|\psi_n\rangle|^2
+  \rho(\varepsilon) = \sum_n \langle\psi_n|\psi_n\rangle
   \delta(\varepsilon-\varepsilon_n),
 
-where `\varepsilon_n` is the eigenvalue of the state `|\psi_n\rangle`.
+where `\varepsilon_n` is the eigenvalue of the eigenstate `|\psi_n\rangle`.
 
---------------------------------------------
-All-Electron PDOS
---------------------------------------------
-
-The all-electron overlaps `\langle\psi_n|\psi_i\rangle` for a Kohn-Sham 
-system can be calculated within the PAW formalism from the 
-pseudowavefunctions `|\tilde\psi\rangle` and their projector 
-overlaps \ [#Blo94]_:
+Inserting a comlete orthonormal basis, this can be rewritten as
 
 .. math::
 
-  \langle\psi_n|\psi_i\rangle=\langle\tilde\psi_n|\tilde\psi_i\rangle
-  +\sum_{a,k,l}\langle\tilde\psi_n|\tilde p_k^a\rangle
-  \Big(\langle\phi_k^a|\phi_l^a\rangle-
-  \langle\tilde\phi_k^a|\tilde\phi_l^a\rangle\Big)
-  \langle\tilde p_l^a|\tilde\psi_i\rangle,
+  \begin{array}{rlrl} \rho(\varepsilon) &= \sum_i \rho_i(\varepsilon)
+  ,& \rho_i(\varepsilon) &= \sum_n \langle \psi_n | i \rangle \langle i
+  | \psi_n \rangle \delta(\varepsilon - \varepsilon_n)\\
+  \rho(\varepsilon) &= \int\!\mathrm{d}r \rho(r, \varepsilon),&
+  \rho(r, \varepsilon) &= \sum_n \langle\psi_n | r \rangle \langle r |
+  \psi_n \rangle \delta(\varepsilon - \varepsilon_n) \end{array}
 
-where `\phi_k^a(r)` and  `\tilde p^a_k(r)` are partial waves and 
-projector functions of atom  `a`. Thus the projected density of states 
-can be calculated for a set of Kohn-Sham states provided that the set is 
-projected onto a state `|\psi_i\rangle` which is an eigenstate of another 
-Kohn-Sham system.
+using that `1 = \sum_i | i \rangle\langle i |` and `1 =
+\int\!\mathrm{d}r |r\rangle\langle r|`.
 
-The example below calculates the density of states for CO adsorbed 
-on a Pt(111) slab and the density of states projected onto the gasphase 
-orbitals of CO. The ``.gpw`` files can be generated with the script 
+`\rho_i(\varepsilon)` is called the projected density of states
+(PDOS), and `\rho(r, \varepsilon)` the local density of states (LDOS).
+
+Notice that an energy integrating of the LDOS multiplied by a Fermi
+destribution gives the electron density
+
+.. math::
+  
+  \int\!\mathrm{d}\varepsilon\, n_F(\varepsilon) \rho(r, \varepsilon) = n(r)
+
+Summing the PDOS over `i` gives the spectral weight of orbital `i`.
+
+A GPAW calculator gives access to three different kinds of projected
+density of states:
+
+* Total density of states.
+* Molecular orbital projected density of states.
+* Atomic orbital projected density of states.
+* Wigner-Seitz local density of states.
+
+Each of which are described in the following sections.
+
+
+---------
+Total DOS
+---------
+
+The total density of states can be obtained by the GPAW calculator
+method ``get_dos(spin=0, npts=201, width=None)``.
+
+
+----------------------
+Molecular Orbital PDOS
+----------------------
+
+As shown in the section `Density Of States`_, the construction of the
+PDOS requires the projection of the Kohn-Sham eigenstates
+`|\psi_n\rangle` onto a set of orthonormal states `|\psi_{\bar n}\rangle`.
+
+.. math::
+
+  \rho_{\bar n}(\varepsilon) &= \sum_n | \langle \psi_{\bar n} | \psi_n \rangle
+  \delta(\varepsilon - \varepsilon_n)
+
+The all electron overlaps `\langle \psi_{\bar n}|\psi_n\rangle` can be
+calculated within the PAW formalism from the pseudo wave functions
+`|\tilde\psi\rangle` and their projector overlaps by [#Blo94]_:
+
+.. math::
+
+  \langle \psi_{\bar n} | \psi_n\rangle = \langle \tilde \psi_{\bar n}
+  | \tilde \psi_n \rangle + \sum_a \sum_{i_1i_2} \langle \tilde
+  \psi_{\bar n} | \tilde p_{i_1}^a \rangle \Delta S^a_{i_1i_2}
+  P^a_{ni_2},
+
+where `\Delta S^a_{i_1i_2} = \langle\phi_{i_1}^a|\phi_{i_2}^a\rangle -
+\langle\tilde\phi_{i_1}^a|\tilde\phi_{i_2}^a\rangle` is the overlap metric,
+`\phi_i^a(r)`, `\tilde \phi_i^a(r)`, and `\tilde p^a_i(r)` are the
+partial waves, pseudo partial waves and projector functions of atom
+`a` respectively, and `P^a_{ni} = \langle \tilde p_i^a|\tilde\psi_n\rangle`.
+
+If one choses the states `|\psi_{\bar n}\rangle` as eigenstates of a
+different reference Kohn-Sham system, with the projector overlaps
+`\bar P_{\bar n i}^a`, the PDOS relative to these states can simply be
+calculated by
+
+.. math::
+
+  \langle \psi_{\bar n} | \psi_n\rangle = \langle \tilde \psi_{\bar n}
+  | \tilde \psi_n \rangle + \sum_a \sum_{i_1i_2} \bar P_{\bar n
+  i_1}^{a*} \Delta S^a_{i_1i_2} P^a_{ni_2}.
+
+The example below calculates the density of states for CO adsorbed on
+a Pt(111) slab and the density of states projected onto the gasphase
+orbitals of CO. The ``.gpw`` files can be generated with the script
 :svn:`~doc/documentation/pdos/top.py?format=raw`
 
 PDOS script::
@@ -78,21 +141,22 @@ PDOS script::
 
     show()
 
-When running the script `\int d\varepsilon\rho_i(\varepsilon)` is printed for
-each spin and k-point. The value should be close to one if the orbital `\psi_i(r)`
-is well represented by an expansion in Kohn-Sham orbitals and thus the integral
-is a measure of the completeness of the Kohn-Sham system. The bands 7 and 8 are
-delocalized and are not well represented by an expansion in the slab eigenstates 
-(Try changing ``range(2,7)`` to ``range(2,9)`` and note the integral is less than 
-one).
+When running the script `\int d\varepsilon\rho_i(\varepsilon)` is
+printed for each spin and k-point. The value should be close to one if
+the orbital `\psi_i(r)` is well represented by an expansion in
+Kohn-Sham orbitals and thus the integral is a measure of the
+completeness of the Kohn-Sham system. The bands 7 and 8 are
+delocalized and are not well represented by an expansion in the slab
+eigenstates (Try changing ``range(2,7)`` to ``range(2,9)`` and note
+the integral is less than one).
 
-The function ``calc.get_all_electron_ldos()`` calculates the square modulus
-of the overlaps and multiply by normalized gaussians of a certain width. 
-The energies is in ``eV`` and relative 
-to the Fermi level. Setting the keyword ``raw=True`` will return only the 
-overlaps and energies in Hartree. It is useful to simply save these in a ``.pickle``
-file since the ``.gpw`` files with wavefunctions can be quite large. The following
-script pickles the overlaps
+The function ``calc.get_all_electron_ldos()`` calculates the square
+modulus of the overlaps and multiply by normalized gaussians of a
+certain width.  The energies is in ``eV`` and relative to the Fermi
+level. Setting the keyword ``raw=True`` will return only the overlaps
+and energies in Hartree. It is useful to simply save these in a
+``.pickle`` file since the ``.gpw`` files with wavefunctions can be
+quite large. The following script pickles the overlaps
 
 Pickle script::
 
@@ -139,5 +203,106 @@ Plot PDOS::
     show()
 
 .. [#Blo94] P. E. Blöchl, Phys. Rev. B 50, 17953 (1994)
+
+
+-------------------
+Atomic Orbital PDOS
+-------------------
+
+If one chooses to project onto the all electron partial waves
+(i.e. the wave functions of the isolated atoms) `\phi_i^a`, we see
+directly from the expression of section `Molecular Orbital PDOS`_, that
+the relevant overlaps within the PAW formalism is
+
+.. math::
+
+  \langle \phi^a_i | \psi_n\rangle = \langle \tilde \phi^a_i
+  | \tilde \psi_n \rangle + \sum_{a'} \sum_{i_1i_2} \langle \tilde
+  \phi^a_i | \tilde p_{i_1}^{a'} \rangle \Big(\langle \phi_{i_1}^{a'} |
+  \phi_{i_2}^{a'} \rangle - \langle \tilde \phi_{i_1}^{a'} | \tilde 
+  \phi_{i_2}^{a}\rangle \Big)\langle \tilde p^{a'}_{i_2} | \tilde
+  \psi_n \rangle
+
+Using that projectors and pseudo partial waves form a complete basis
+within the augmentation spheres, this can be reexpressed as
+
+.. math::
+
+  \langle \phi^a_i | \psi_n \rangle = P^a_{ni} + \sum_{a' \neq a} \sum_{i_1i_2}
+  \langle \tilde \phi^a_i | \tilde p^{a'}_{i_1} \rangle \Delta S^{a'}_{i_1i_2}
+  P^{a'}_{ni_2}
+
+if the chosen orbital index `i` correspond to a bound state, the
+overlaps `\langle \tilde \phi^a_i | \tilde p^{a'}_{i_1} \rangle`,
+`a'\neq a` will be small, and we see that we can approximate
+
+.. math::
+
+  \langle \phi^a_i | \psi_n \rangle \approx 
+  \langle \tilde p_i^a | \tilde \psi_n \rangle
+
+We thus define an atomic orbital PDOS by
+
+.. math::
+
+  \rho^a_i(\varepsilon) = \sum_n |\langle\tilde p_i^a | \tilde \psi_n
+  \rangle |^2 \delta(\varepsilon - \varepsilon_n) \approx \sum_n 
+  | \langle \phi_i^a | \psi_n \rangle |^2 \delta(\varepsilon - \varepsilon_n)
+
+available from a GPAW calculator from the method ``get_orbital_ldos(a, spin=0,
+angular='spdf', npts=201, width=None)``.
+
+A specific projector function for the given atom can be specified by
+an integer value for the keyword ``angular``. Specifying a string
+value for ``angular``, being one or several of the letters s, p, d,
+and f, will cause the code to sum over all bound state projectors with
+the specified angular momentum.
+
+Note that the set of atomic partial waves do not form an orthonormal
+basis, thus the properties of the introduction are not fullfilled.
+This PDOS can however be used as a qualitative measure of the local
+character of the DOS.
+
+
+-----------------
+Wigner-Seitz LDOS
+-----------------
+
+For the Wigner-Seits LDOS, the eigenstates are projected onto the function
+
+.. math::
+
+  \theta^a(r) = \begin{cases}
+  1 & \text{if for all } a' \neq a: |r - R^a| < | r - R^{a'}\\
+  0 & \text{otherwise}
+  \end{cases}
+
+This defines an LDOS:
+
+.. math:: 
+  
+  \rho^a(\varepsilon) = \sum_n |\langle \theta^a| \psi_n \rangle|^2
+  \delta(\varepsilon - \varepsilon_n)
+
+Introducing the PAW formalism shows that the weights can be calculated by
+
+.. math::
+
+   |\langle \theta^a| \psi_n \rangle|^2 = |\langle \theta^a| \tilde
+   \psi_n \rangle|^2 + \sum_{ij} P^{a*}_{ni} \Delta S^a_{ij} P^a_{nj}, 
+
+This property can be accessed by ``calc.get_wigner_seitz_ldos(a,
+spin=0, npts=201, width=None)``.  It represents a local probe of the
+density of states at atom `a`. Summing over all atomic sites
+reproduces the total DOS (more efficiently computed using
+``calc.get_dos``). Integrating over energy gives the number of
+electrons contained in the region ascribed to atom `a` (more
+efficently computed using ``calc.get_wigner_seitz_densities(spin)``.
+Notice that the domain ascribed to each atom is deduced purely on a
+geometrical criterion. A more advanced scheme for asigning the charge
+density to atoms is the Bader_ algorithm (all though the Wgner-Seitz
+approach is faster).
+
+.. _Bader: https://wiki.fysik.dtu.dk/ase/ase/dft/bader.html
 
 .. default-role::
