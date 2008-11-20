@@ -70,8 +70,8 @@ PDOS requires the projection of the Kohn-Sham eigenstates
 
 .. math::
 
-  \rho_{\bar n}(\varepsilon) &= \sum_n | \langle \psi_{\bar n} | \psi_n \rangle
-  \delta(\varepsilon - \varepsilon_n)
+  \rho_{\bar n}(\varepsilon) = \sum_n | \langle \psi_{\bar n} | \psi_n \rangle
+  |^2 \delta(\varepsilon - \varepsilon_n)
 
 The all electron overlaps `\langle \psi_{\bar n}|\psi_n\rangle` can be
 calculated within the PAW formalism from the pseudo wave functions
