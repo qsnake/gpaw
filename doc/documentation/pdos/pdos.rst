@@ -15,7 +15,7 @@ The density of states is defined by
 
 where `\varepsilon_n` is the eigenvalue of the eigenstate `|\psi_n\rangle`.
 
-Inserting a comlete orthonormal basis, this can be rewritten as
+Inserting a complete orthonormal basis, this can be rewritten as
 
 .. math::
 
@@ -33,7 +33,7 @@ using that `1 = \sum_i | i \rangle\langle i |` and `1 =
 (PDOS), and `\rho(r, \varepsilon)` the local density of states (LDOS).
 
 Notice that an energy integrating of the LDOS multiplied by a Fermi
-destribution gives the electron density
+distribution gives the electron density
 
 .. math::
   
@@ -90,7 +90,7 @@ where `\Delta S^a_{i_1i_2} = \langle\phi_{i_1}^a|\phi_{i_2}^a\rangle -
 partial waves, pseudo partial waves and projector functions of atom
 `a` respectively, and `P^a_{ni} = \langle \tilde p_i^a|\tilde\psi_n\rangle`.
 
-If one choses the states `|\psi_{\bar n}\rangle` as eigenstates of a
+If one chooses the states `|\psi_{\bar n}\rangle` as eigenstates of a
 different reference Kohn-Sham system, with the projector overlaps
 `\bar P_{\bar n i}^a`, the PDOS relative to these states can simply be
 calculated by
@@ -102,7 +102,7 @@ calculated by
   i_1}^{a*} \Delta S^a_{i_1i_2} P^a_{ni_2}.
 
 The example below calculates the density of states for CO adsorbed on
-a Pt(111) slab and the density of states projected onto the gasphase
+a Pt(111) slab and the density of states projected onto the gas phase
 orbitals of CO. The ``.gpw`` files can be generated with the script
 :svn:`~doc/documentation/pdos/top.py?format=raw`
 
@@ -155,7 +155,7 @@ modulus of the overlaps and multiply by normalized gaussians of a
 certain width.  The energies is in ``eV`` and relative to the Fermi
 level. Setting the keyword ``raw=True`` will return only the overlaps
 and energies in Hartree. It is useful to simply save these in a
-``.pickle`` file since the ``.gpw`` files with wavefunctions can be
+``.pickle`` file since the ``.gpw`` files with wave functions can be
 quite large. The following script pickles the overlaps
 
 Pickle script::
@@ -178,7 +178,7 @@ Pickle script::
         P_n.append(P)
     pickle.dump((e_n, P_n), open('top.pickle', 'w'))
 
-and the ``top.pickle`` file can be plottet with
+and the ``top.pickle`` file can be plotted with
 
 Plot PDOS::
 
@@ -224,7 +224,7 @@ the relevant overlaps within the PAW formalism is
   \psi_n \rangle
 
 Using that projectors and pseudo partial waves form a complete basis
-within the augmentation spheres, this can be reexpressed as
+within the augmentation spheres, this can be re-expressed as
 
 .. math::
 
@@ -259,7 +259,7 @@ and f, will cause the code to sum over all bound state projectors with
 the specified angular momentum.
 
 Note that the set of atomic partial waves do not form an orthonormal
-basis, thus the properties of the introduction are not fullfilled.
+basis, thus the properties of the introduction are not fulfilled.
 This PDOS can however be used as a qualitative measure of the local
 character of the DOS.
 
@@ -268,7 +268,7 @@ character of the DOS.
 Wigner-Seitz LDOS
 -----------------
 
-For the Wigner-Seits LDOS, the eigenstates are projected onto the function
+For the Wigner-Seitz LDOS, the eigenstates are projected onto the function
 
 .. math::
 
@@ -297,10 +297,10 @@ density of states at atom `a`. Summing over all atomic sites
 reproduces the total DOS (more efficiently computed using
 ``calc.get_dos``). Integrating over energy gives the number of
 electrons contained in the region ascribed to atom `a` (more
-efficently computed using ``calc.get_wigner_seitz_densities(spin)``.
+efficiently computed using ``calc.get_wigner_seitz_densities(spin)``.
 Notice that the domain ascribed to each atom is deduced purely on a
-geometrical criterion. A more advanced scheme for asigning the charge
-density to atoms is the Bader_ algorithm (all though the Wgner-Seitz
+geometrical criterion. A more advanced scheme for assigning the charge
+density to atoms is the Bader_ algorithm (all though the Wigner-Seitz
 approach is faster).
 
 .. _Bader: https://wiki.fysik.dtu.dk/ase/ase/dft/bader.html
