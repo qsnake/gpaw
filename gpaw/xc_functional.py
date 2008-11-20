@@ -127,6 +127,9 @@ class XCFunctional:
             if self.setupname is None:
                 self.setupname = 'PBE'
         # End of: Abbreviations for common functionals from libxc
+        elif xcname == 'vdWDF':
+            code = 'vdWDF'
+            self.gga = True
         elif xcname == 'oldLDA':
             self.maxDerivativeLevel=2
             code = 117 # not used!
@@ -224,6 +227,9 @@ class XCFunctional:
             self.xc = ZeroFunctional()
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code,local_tau)
+        elif code == 'vdWDF':
+            from gpaw.vdw import VDWFunctional
+            self.xc = VDWFunctional(nspins)
         elif code == 'gllb':
             # Get the correct functional from NonLocalFunctionalFactory
             self.xc = NonLocalFunctionalFactory().get_functional_by_name(xcname)
@@ -277,6 +283,11 @@ class XCFunctional:
 
     def set_non_local_things(self, paw, energy_only=False):
 
+        from gpaw.vdw import VDWFunctional
+        if isinstance(self.xc, VDWFunctional):
+            self.xc.gd = paw.finegd
+            return
+            
         if not self.orbital_dependent:
             return
 
