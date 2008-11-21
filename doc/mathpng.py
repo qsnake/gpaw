@@ -28,7 +28,7 @@ except ImportError:
     from docutils.parsers.rst.directives import _directives
     def math_directive(name, arguments, options, content, lineno,
                        content_offset, block_text, state, state_machine):
-        latex = ''.join(content)
+        latex = ' '.join(content)
         node = latex_math(block_text)
         node['latex'] = latex
         return [node]
@@ -137,7 +137,9 @@ def make_png(latex, name, inline):
     f.write(r'\end{preview}\end{document}')
     f.close()
 
-    os.system('latex --interaction=nonstopmode math.tex > /dev/null')
+    status = os.system('latex --interaction=nonstopmode math.tex > /dev/null')
+    if status != 0:
+        raise RuntimeError('mathpng failed on equation:', latex)
 
     cmd = ('dvipng -bgTransparent -Ttight --noghostscript -l10 ' +
            '--depth -D 136 -o %s math.dvi' % name)
