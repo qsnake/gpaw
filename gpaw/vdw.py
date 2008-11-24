@@ -433,10 +433,20 @@ class VDWFunctional:
         file.close()
         return filearray1D
         
-    def calculate_alphas(self):
-        n_g = self.n_g
-        q0_g = self.q0_g
+   
+    def get_potential(self, repeat=None, ncut=0.0005):
+        #introduces periodic boundary conditions using
+        #the minimum image convention
+
         gd = self.gd
+        n_g = gd.collect(self.n_g)
+        q0_g = gd.collect(self.q0_g)
+        if mpi.rank != 0:
+            n_g = gd.empty(global_array=True)
+            q0_g = gd.empty(global_array=True)
+        mpi.world.broadcast(n_g, 0)
+        mpi.world.broadcast(q0_g, 0)
+        
         
         grad = [Gradient(gd, c) for c in range(3)]
         self.s_cg = gd.empty(3)
@@ -469,24 +479,6 @@ class VDWFunctional:
 
         q0=self.get_q0
         self.alpha1=1.0/self.q0_g*(-0.8491/9.0*sggf+7.0/3.0*-0.8491/9.0*s2*self.kF_g-4.0*npy.pi/3.0*(v_g-e_g))
-
-        
-
-        return self.alpha1,self.alpha2        
-
-    def get_potential(self, repeat=None, ncut=0.0005):
-        #introduces periodic boundary conditions using
-        #the minimum image convention
-
-        gd = self.gd
-        n_g = gd.collect(self.n_g)
-        q0_g = gd.collect(self.q0_g)
-        if mpi.rank != 0:
-            n_g = gd.empty(global_array=True)
-            q0_g = gd.empty(global_array=True)
-        mpi.world.broadcast(n_g, 0)
-        mpi.world.broadcast(q0_g, 0)
-
     
         n_c = n_g.shape
         R_gc = npy.empty(n_c + (3,))
@@ -546,9 +538,12 @@ class VDWFunctional:
         self.LDAc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
         e_g += erevPBEx_g
         deda2_g += revPBExdeda2_g
+        
+        
         if n_g.ndim == 3:
             self.set_density_and_gradient(n_g, a2_g)
-            e = self.get_energy()
-            #e, vvwd_g = self.get_potential()
-            #v_g += vvdw_g
+            #e = self.get_energy()
+            e, vvdw_g = self.get_potential()
+            v_g += vvdw_g
             e_g[0] += e / self.gd.h_c.prod()
+            
