@@ -138,6 +138,24 @@ if debug:
         return a
     numpy.empty = empty
 
+if debug:
+    import numpy
+    olddot = numpy.dot
+    def dot(a, b):
+        a = numpy.asarray(a)
+        b = numpy.asarray(b)
+        if (a.ndim == 1 and b.ndim == 1 and
+            (a.dtype == complex or b.dtype == complex)):
+            if 1:
+                #print 'Warning: Bad use of dot!'
+                from numpy.core.multiarray import dot
+                return dot(a, b)
+            else:
+                raise RuntimeError('Bad use of dot!')
+        else:
+            return olddot(a, b)
+    numpy.dot = dot
+
 build_path = join(__path__[0], '..', 'build')
 arch = '%s-%s' % (get_platform(), sys.version[0:3])
 
