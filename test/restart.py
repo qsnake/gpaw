@@ -32,7 +32,7 @@ eig11 = calc.get_eigenvalues(spin=1)
 equal(e0, e1, 1e-10)
 # print f0, f1
 for ff0, ff1 in zip(f0, f1):
-    err = npy.linalg.norm(ff0-ff1)
+    err = np.linalg.norm(ff0-ff1)
     assert err <= 1e-10
 # print m0, m1
 for mm0, mm1 in zip(m0, m1):
