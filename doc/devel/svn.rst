@@ -13,6 +13,8 @@ Take a look at this `SVN cheat sheet`_
 
 .. _SVN cheat sheet: ../_static/svn-refcard.pdf
 
+
+
 Working with branches
 =====================
 
@@ -38,3 +40,15 @@ Merge branch to trunk::
   $ svn up
   At revision 957.
   $ svn merge -r 667:957 https://svn.fysik.dtu.dk/projects/gpaw/branches/new-interface
+
+
+Reverting a bad commit
+======================
+
+Go back to revision 2748::
+
+  $ svn merge -r BASE:2748 .
+
+And commit the change::
+
+  $ svn ci -m "Reverting repository to r2748."
