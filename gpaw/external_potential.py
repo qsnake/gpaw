@@ -289,9 +289,9 @@ class ConstantElectricField(ElectrostaticPotential):
             pos = position
         # see spherical_harmonics.py for the assignment
         return [[self.get_value(position=pos)],
-                [- self.strength * self.direction[1], # y
-                 - self.strength * self.direction[2], # z
-                 - self.strength * self.direction[0]]]# x
+                [self.strength * self.direction[1], # y
+                 self.strength * self.direction[2], # z
+                 self.strength * self.direction[0]]]# x
 
     def get_value(self, position=None, spos_c=None):
         """The potential value (as seen by an electron) 
@@ -304,4 +304,4 @@ class ConstantElectricField(ElectrostaticPotential):
             vr = spos_c * gd.h_c * gd.N_c - self.center
         else:
             vr =  position / Bohr - self.center
-        return - self.strength * npy.dot(vr, self.direction)
+        return self.strength * npy.dot(vr, self.direction)
