@@ -184,7 +184,6 @@ void vdwkernel2(double r, double q01, double q02, int nD, int ndelta,
 	a = xdelta - jdelta;
       double b = xD - jD;
 
-      double Dmin=3;
       if (1)
       {
       //original phi interpolation
