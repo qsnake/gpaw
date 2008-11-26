@@ -232,6 +232,7 @@ class PAW(PAWExtra, Output):
             'width':         None,  # eV
             'spinpol':       None,
             'usesymm':       True,
+            'fortransport':  False,
             'stencils':      (2, 3),
             'convergence':   {'energy': 0.001,  # eV
                               'density': 1.0e-3,
@@ -315,7 +316,7 @@ class PAW(PAWExtra, Output):
             self.converged = False
             self.error = {}
             self.wave_functions_orthonormalized = False
-            if key in ['lmax', 'width', 'stencils', 'external']:
+            if key in ['lmax', 'width', 'stencils', 'external', 'fortransport']:
                 pass
             elif key in ['charge', 'xc']:
                 self.reuse_old_density = False
@@ -838,6 +839,7 @@ class PAW(PAWExtra, Output):
         p['spinpol'] = (r.dimension('nspins') == 2)
         p['kpts'] = r.get('BZKPoints')
         p['usesymm'] = r['UseSymmetry']
+        p['fortransport'] = r['ForTransport']
         p['gpts'] = ((r.dimension('ngptsx') + 1) // 2 * 2,
                      (r.dimension('ngptsy') + 1) // 2 * 2,
                      (r.dimension('ngptsz') + 1) // 2 * 2)
@@ -1139,9 +1141,16 @@ class PAW(PAWExtra, Output):
         else:
             # Reduce the the k-points to those in the irreducible part of
             # the Brillouin zone:
-            self.symmetry, self.weight_k, self.ibzk_kc = reduce_kpoints(
-                self.bzk_kc, pos_av, Z_a, type_a, self.magmom_a, basis_a,
-                self.domain, p['usesymm'])
+            if (p['fortransport']):
+                self.symmetry  = None
+                self.ibzk_kc = npy.copy(self.bzk_kc)
+                tmp = self.ibzk_kc.shape[0]
+                self.weight_k = npy.array([1.0 / tmp] * tmp)
+                
+            else:
+                self.symmetry, self.weight_k, self.ibzk_kc = reduce_kpoints(
+                    self.bzk_kc, pos_av, Z_a, type_a, self.magmom_a, basis_a,
+                    self.domain, p['usesymm'])
             self.nkpts = len(self.ibzk_kc)
         
             if p['usesymm'] and self.symmetry is not None:
