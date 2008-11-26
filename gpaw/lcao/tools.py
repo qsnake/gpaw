@@ -33,18 +33,48 @@ def get_bf_centers(atoms):
     return pos_ic
 
 def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
-    nbf = h_skmm.shape[-1]
-    nspins = len(h_skmm)
-    h_smm = npy.empty((nspins, nbf, nbf))
-    s_mm = npy.empty((nbf,nbf))
     phase_k = npy.dot(2 * npy.pi * ibzk_kc, R_c)
     c_k = npy.exp(1.0j * phase_k) * weight_k
     c_k.shape = (len(ibzk_kc),1,1)
-    for s in range(nspins):
-        h_smm[s] = npy.sum((h_skmm[s] * c_k).real, axis=0)
+
+    if h_skmm != None:
+        nbf = h_skmm.shape[-1]
+        nspins = len(h_skmm)
+        h_smm = npy.empty((nspins,nbf,nbf),complex)
+        for s in range(nspins):
+            h_smm[s] = npy.sum((h_skmm[s] * c_k), axis=0)
+    elif s_kmm != None:
+        nbf = s_kmm.shape[-1]
+        s_mm = npy.empty((nbf,nbf),complex)
+        s_mm[:] = npy.sum((s_kmm * c_k), axis=0)      
+    if h_skmm != None and s_kmm != None:
+        return h_smm, s_mm
+    elif h_skmm == None:
+        return s_mm
+    elif s_kmm == None:
+        return h_smm
+
+def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
+    phase_k = npy.dot(2 * npy.pi * R_vector, kvector)
+    c_k = npy.exp(-1.0j * phase_k)
+    c_k.shape = (len(R_vector), 1, 1)
     
-    s_mm[:] = npy.sum((s_kmm * c_k).real, axis=0)
-    return h_smm, s_mm
+    if h_srmm != None:
+        nbf = h_srmm.shape[-1]
+        nspins = len(h_srmm)
+        h_smm = npy.empty((nspins, nbf, nbf), complex)
+        for s in range(nspins):
+            h_smm[s] = npy.sum((h_srmm[s] * c_k), axis=0)
+    elif s_rmm != None:
+        nbf = s_rmm.shape[-1]
+        s_mm = npy.empty((nbf, nbf), complex)
+        s_mm[:] = npy.sum((s_rmm * c_k), axis=0)
+    if h_srmm != None and s_rmm != None:    
+        return h_smm, s_mm
+    elif h_srmm == None:
+        return s_mm
+    elif s_rmm == None:
+        return h_smm
 
 def remove_pbc(atoms, h, s=None, d=0):
     calc = atoms.get_calculator()
