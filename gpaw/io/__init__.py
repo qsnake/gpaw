@@ -124,6 +124,7 @@ def write(paw, filename, mode):
         w['Charge'] = p['charge']
         w['FixMagneticMoment'] = paw.fixmom
         w['UseSymmetry'] = p['usesymm']
+        w['ForTransport'] = p['fortransport']
         w['Converged'] = paw.converged
         w['FermiWidth'] = paw.occupation.kT
         w['MixClass'] = paw.density.mixer.__class__.__name__
