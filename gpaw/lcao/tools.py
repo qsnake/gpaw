@@ -43,7 +43,7 @@ def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
         h_smm = npy.empty((nspins,nbf,nbf),complex)
         for s in range(nspins):
             h_smm[s] = npy.sum((h_skmm[s] * c_k), axis=0)
-    elif s_kmm != None:
+    if s_kmm != None:
         nbf = s_kmm.shape[-1]
         s_mm = npy.empty((nbf,nbf),complex)
         s_mm[:] = npy.sum((s_kmm * c_k), axis=0)      
