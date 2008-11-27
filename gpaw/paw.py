@@ -839,7 +839,10 @@ class PAW(PAWExtra, Output):
         p['spinpol'] = (r.dimension('nspins') == 2)
         p['kpts'] = r.get('BZKPoints')
         p['usesymm'] = r['UseSymmetry']
-        p['fortransport'] = r['ForTransport']
+        try:
+            p['fortransport'] = r['ForTransport']
+        except (AttributeError, KeyError):
+            pass
         p['gpts'] = ((r.dimension('ngptsx') + 1) // 2 * 2,
                      (r.dimension('ngptsy') + 1) // 2 * 2,
                      (r.dimension('ngptsz') + 1) // 2 * 2)
