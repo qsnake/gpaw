@@ -51,6 +51,7 @@ if len(tests) == 0:
              'coulomb.py', 'nonselfconsistentvdw.py',
              'ase3k.py', 'mixer.py', 'proton.py', 'timing.py', 'restart.py',
              'gauss_func.py', 'xcatom.py', 'wfs_io.py', 'ylexpand.py',
+             'gemm.py',
              'nonselfconsistentLDA.py', 'bee1.py', 'gga-atom.py', 'revPBE.py',
              'td_na2.py', 'nonselfconsistent.py', 'external_potential.py',
              'bulk.py', 'spinpol.py', 'refine.py', 'ewald.py', 'asewannier.py',
