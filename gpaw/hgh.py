@@ -92,25 +92,16 @@ class HGHSetup(Setup):
         ng = 450
         beta = .4        
         g = npy.arange(ng, dtype=float)
-        r_g = self.r_g = beta * g / (ng - g)
+        self.r_g = r_g = self.r_g = beta * g / (ng - g)
         self.dr_g = dr_g = beta * ng / (ng - g)**2
-        self.r_g = r_g
 
         self.vloc_g = create_local_shortrange_potential(r_g, hghdata.Nv,
                                                         hghdata.rloc,
                                                         hghdata.c_n)
 
-        # XXX not necessary when relying on compensation charge generation
-        #self.charge_g = create_charge_distribution(r_g, hghdata.Nv,
-        #                                           hghdata.rloc)
-
-        # XXX it must be possible to somehow check that the automatically
-        # generated compensation charge due to core charge specifications
-        # does in fact have the right constant of proportionality
-
         # Code probably breaks if we use different radial grids for
         # projectors/partial waves, so we'll use this as filler
-        zerofunction = npy.zeros(r_g.shape)
+        zerofunction = npy.zeros(ng)
 
         data.tauc_g = zerofunction
         data.tauct_g = zerofunction
@@ -174,10 +165,11 @@ class HGHSetup(Setup):
                 # setup.py thinks it shouldn't add the splines phit_j even 
                 # though we define phit_jg
 
-                f = npy.min(data.Nv - electroncount)
+                degeneracy = (2 * l + 1) * 2
+                f = min(data.Nv - electroncount, degeneracy)
                 electroncount += f
-                data.f_j.append(f) # Must be right because of lcao init
-                data.eps_j.append(0.) # XXX
+                data.f_j.append(f)
+                data.eps_j.append(0.) # probably doesn't matter
                 data.rcut_j.append(3.) # XXX I have no idea
                 data.id_j.append('%s-%s%d' % (symbol, 'spdf'[l], n))
 
@@ -185,7 +177,7 @@ class HGHSetup(Setup):
                 # past cells and so on.  Of course this is wasteful, but
                 # so is the stuff going on in setup.py
                 rc = 3.0
-                gcut = rc * ng / (beta + rc) # why doesn't this crash?
+                gcut = int(rc * ng / (beta + rc)) # why doesn't this crash?
                 pt_g[gcut:] = 0.0
 
                 data.pt_jg.append(pt_g)
@@ -224,15 +216,6 @@ class HGHSetup(Setup):
         self.K_p[:] = K_p # Maybe simple assignment is enough
         # But this will complain if anything goes wrong with shape etc.
 
-def create_charge_distribution(r_g, Z, rloc):
-    """Get the charge distribution corresponding to the long-range part
-    of the local potential.
-
-    The long-range part goes like erf(r)/r, which corresponds to a
-    Gaussian-shaped radial charge distribution.
-    """
-    nabla2V = (2.0 / npy.pi) * Z / rloc**3 * npy.exp(-0.5 * r_g**2 / rloc**2)
-    return - nabla2V / 4. / npy.pi
 
 def create_local_shortrange_potential(r_g, Z, rloc, c_n):
     rr_g = r_g / rloc # "Relative r"
@@ -316,6 +299,7 @@ def parse_local_part(string):
     hgh = HGHData(symbol, Nv, rloc, c_n)
     return hgh
 
+
 def parse_hgh_setup(lines):
     """Initialize HGHData object from text representation."""
     lines = iter(lines)
@@ -354,6 +338,7 @@ def mksetup(symbol):
     setup = HGHSetup(symbol, xcfunc, 1)
     return setup
 
+
 def test_hgh():
     from gpaw import Calculator
     from ase.data.molecules import molecule
@@ -363,13 +348,13 @@ def test_hgh():
                       idiotproof=False,
                       basis='sz')
 
-    system = molecule('N', cell=(7.,7.,7.))
+    system = molecule('N', cell=(8.,8.,8.))
     system.center()
     system.set_calculator(calc)
     
     E = system.get_potential_energy()
 
-    sys2 = molecule('N2', cell=(7.,7.,7.))
+    sys2 = molecule('N2', cell=(8.,8.,8.))
     sys2.center()
     sys2.set_calculator(calc)
     E2 = sys2.get_potential_energy()
