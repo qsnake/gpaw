@@ -309,16 +309,21 @@ class Setup:
                 self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
                 self.coreref_k = npy.zeros((self.njcore))
                 for k in range(0, self.njcore):
-                    # Put the density of core orbital into radial representation
-                    rho_g = extra_xc_data['core_orbital_density_'+str(k)] * sqrt(4*pi)
+                    # Put the density of core orbital into radial
+                    # representation
+                    rho_g = extra_xc_data['core_orbital_density_'
+                                          + str(k)] * sqrt(4*pi)
 
                     # Calculate the D_p dependent correction for E^a
-                    self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g,0)), T_Lqp[0])
+                    self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g,0)),
+                                                T_Lqp[0])
 
                     # Calculate the D_P dependent correction for \tilde{E}^a
-                    self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]), T_Lqp[0]) / sqrt(4*pi)
+                    self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]),
+                                                 T_Lqp[0]) / sqrt(4*pi)
 
-                    # All other contributions are already included in reference from setup
+                    # All other contributions are already included in
+                    # reference from setup
                     self.coreref_k[k] = extra_xc_data['core_ref_'+str(k)]
                     
         AB_q = -npy.dot(nt_qg, dv_g * vbar_g)
@@ -348,39 +353,22 @@ class Setup:
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
-        if xcfunc.xcname.startswith("GLLB"):
-            xc = XCRadialGrid(xcfunc, rgd, nspins)
+        xc = XCRadialGrid(xcfunc, rgd, nspins)
 
-            self.xc_correction = XCCorrection(
-                xc,
-                [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
-                [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
-                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-                rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole, nspins,
-                tauc_g)            
-        elif xcfunc.xcname == "TPSS":
-            xc = XCRadialGrid(xcfunc, rgd, nspins)
-
-            self.xc_correction = XCCorrection(
-                xc,
-                [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
-                [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
-                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-                rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole, 
-                nspins, tauc_g)
-        else:
-            xc = XCRadialGrid(xcfunc, rgd, nspins)
-
-            self.xc_correction = XCCorrection(
-                xc,
-                [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
-                [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
-                nc_g / sqrt(4 * pi), nct_g / sqrt(4 * pi),
-                rgd, [(j, l_j[j]) for j in range(nj)],
-                2 * lcut, data.e_xc, self.phicorehole_g, data.fcorehole,
-                nspins, tauc_g)
+        self.xc_correction = XCCorrection(
+            xc,
+            [divrl(phi_g, l, r_g) for l, phi_g in zip(l_j, phi_jg)],
+            [divrl(phit_g, l, r_g) for l, phit_g in zip(l_j, phit_jg)],
+            nc_g / sqrt(4 * pi),
+            nct_g / sqrt(4 * pi),
+            rgd,
+            [(j, l_j[j]) for j in range(nj)],
+            2 * lcut,
+            data.e_xc,
+            self.phicorehole_g,
+            data.fcorehole,
+            nspins,
+            tauc_g)
 
         # softgauss controls the use of particularly smooth compensation
         # charges, which are not required to approach zero at the
