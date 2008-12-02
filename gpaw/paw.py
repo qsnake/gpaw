@@ -619,7 +619,7 @@ class PAW(PAWExtra, Output):
 
             if self.nbands > self.nao:
                 for kpt in self.kpt_u:
-                    kpt.add_extra_bands(self.nbands, self.nao)
+                    kpt.add_extra_bands(self.nmybands, self.nao)
                 if self.xcfunc.is_gllb():
                     self.xcfunc.xc.update_band_count()
 
