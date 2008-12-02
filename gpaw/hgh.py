@@ -82,9 +82,15 @@ class HGHSetup(Setup):
 
         self.expand_hamiltonian_matrix()
 
-    def find_core_density_cutoff(self, r_g, dr_g, nc_g):
-        return 0.5
-    
+    def construct_core_densities(self, r_g, dr_g, beta, setupdata):
+        return 0.5, setupdata.nc_g, setupdata.nct_g, None
+
+    def create_basis_functions(self, phit_jg, beta, ng, rcut2,
+                               gcut2, r_g):
+        raise NotImplementedError('No partial waves for HGH setups from '
+                                  'which to create basis functions!  '
+                                  'Please specify basis manually.')
+
     def initialize_setup_data(self, symbol, xcfunc, hghdata):
         data = SetupData(symbol, xcfunc.get_setup_name(), 'paw', readxml=False)
         self.hghdata = hghdata
@@ -92,7 +98,7 @@ class HGHSetup(Setup):
         ng = 450
         beta = .4        
         g = npy.arange(ng, dtype=float)
-        self.r_g = r_g = self.r_g = beta * g / (ng - g)
+        self.r_g = r_g = beta * g / (ng - g)
         self.dr_g = dr_g = beta * ng / (ng - g)**2
 
         self.vloc_g = create_local_shortrange_potential(r_g, hghdata.Nv,

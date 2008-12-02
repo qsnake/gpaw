@@ -132,7 +132,8 @@ def estimate_memory(paw):
         # projectors
         box = 2 * nucleus.setup.pt_j[0].get_cutoff() / h_c
         # func + derivatives
-        mem_nuclei[nucleus.rank] += (4 * ni * box[0] * box[1] * box[2] * float_size)
+        mem_nuclei[nucleus.rank] += (4 * ni * box[0] * box[1] * box[2]
+                                     * float_size)
         # work
         mem_nuclei[nucleus.rank] += (box[0] * box[1] * box[2] * type_size)
         # vbar
@@ -146,10 +147,15 @@ def estimate_memory(paw):
         for ghat in nucleus.setup.ghat_l:
             l = ghat.get_angular_momentum_number()
             nl += 2 * l + 1
-        mem_nuclei[nucleus.rank] += (4 * nl * box[0] * box[1] * box[2] * float_size)
+        mem_nuclei[nucleus.rank] += (4 * nl * box[0] * box[1] * box[2]
+                                     * float_size)
         mem_nuclei[nucleus.rank] += (box[0] * box[1] * box[2] * float_size)
         # nct
-        box = 2 * nucleus.setup.nct.get_cutoff() / h_c
+        box = 2 * nucleus.setup.rcore / h_c
+        
+        # XXX Why times 5?  There would be 4 from the func + derivs,
+        # and conceivably another 4 if including tauct, but never 5.
+        # Won't work for HGH setups which have no core density.
         mem_nuclei[nucleus.rank] += (5 * box[0] * box[1] * box[2] * float_size)
 
     mem_nuclei = max(mem_nuclei)

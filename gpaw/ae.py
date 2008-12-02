@@ -54,7 +54,8 @@ class AllElectronSetup:
         self.ni = 1
         self.niAO = 1
 
-        spline0 = Spline(0, 0.5, [0.0, 0.0, 0.0])
+        self.rcore = 0.5
+        spline0 = Spline(0, self.rcore, [0.0, 0.0, 0.0])
         
         # Construct splines:
         self.nct = spline0

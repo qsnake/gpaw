@@ -214,7 +214,8 @@ class Nucleus:
 
         # Smooth core density:
         nct = self.setup.nct
-        self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
+        if nct is not None:
+            self.nct = create([nct], gd, spos_c, cut=True, lfbc=lfbc)
 
         # Smooth core kinetic energy density:
         tauct = self.setup.tauct
@@ -243,8 +244,7 @@ class Nucleus:
         if self.nct is not None:
             Nct = -(self.setup.Delta0 * sqrt(4 * pi)
                     + self.setup.Z - self.setup.Nc)
-            if abs(Nct) > 1e-15:
-                self.nct.normalize(Nct)
+            self.nct.normalize(Nct)
 
     def initialize_atomic_orbitals(self, gd, k_kc, lfbc, lcao_forces=False):
         phit_j = self.setup.phit_j

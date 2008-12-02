@@ -95,8 +95,6 @@ class Setup:
         pt_jg = data.pt_jg
         phit_jg = data.phit_jg
         phi_jg = data.phi_jg
-        nc_g = data.nc_g
-        nct_g = data.nct_g
 
         self.fingerprint = data.fingerprint
         self.filename = data.filename
@@ -151,8 +149,6 @@ class Setup:
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
         self.gcut2 = gcut2
 
-        self.rcore = self.find_core_density_cutoff(r_g, dr_g, nc_g)
-
         ni = 0
         i = 0
         j = 0
@@ -177,8 +173,12 @@ class Setup:
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
         # Construct splines:
-        self.nct = Spline(0, self.rcore, data.nct_g, r_g, beta)
         self.vbar = Spline(0, rcutfilter, data.vbar_g, r_g, beta)
+
+        rcore, nc_g, nct_g, nct = self.construct_core_densities(r_g, dr_g,
+                                                                beta, data)
+        self.rcore = rcore
+        self.nct = nct
 
         # Construct splines for core kinetic energy density:
         tauct_g = data.tauct_g
@@ -197,9 +197,11 @@ class Setup:
             self.pt_j.append(Spline(l, rcutfilter, pt_jg[j], r_g, beta))
 
         if basis is None:
-            self.create_basis_functions(phit_jg, beta, ng, rcut2, gcut2, r_g)
+            phit_j = self.create_basis_functions(phit_jg, beta, ng, rcut2,
+                                                 gcut2, r_g)
         else:
-            self.read_basis_functions(basis)
+            phit_j = self.read_basis_functions(basis)
+        self.phit_j = phit_j
 
         self.niAO = 0
         for phit in self.phit_j:
@@ -506,6 +508,10 @@ class Setup:
         self.Delta0 = Delta0
         return g_lg, n_qg, nt_qg, Delta_lq
 
+    def construct_core_densities(self, r_g, dr_g, beta, setupdata):
+        rcore = self.find_core_density_cutoff(r_g, dr_g, setupdata.nc_g)
+        nct = Spline(0, rcore, setupdata.nct_g, r_g, beta)
+        return rcore, setupdata.nc_g, setupdata.nct_g, nct
 
     def find_core_density_cutoff(self, r_g, dr_g, nc_g):
         # Find cutoff for core density:
@@ -518,7 +524,6 @@ class Setup:
                 N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
                 g -= 1
             return r_g[g]
-
 
     def set_hubbard_u(self, U, l):
         """Set Hubbard parameter.
@@ -559,7 +564,7 @@ class Setup:
         a_g = 4 * x**3 * (1 - 0.75 * x)
         b_g = x**3 * (x - 1) * (rcut3 - rcut2)
 
-        self.phit_j = []
+        phit_j = []
         for j, phit_g in enumerate(phit_jg):
             if self.n_j[j] > 0:
                 l = self.l_j[j]
@@ -568,8 +573,9 @@ class Setup:
                            (r_g[gcut3] - r_g[gcut3 - 1]))
                 phit_g[gcut2:gcut3] -= phit * a_g + dphitdr * b_g
                 phit_g[gcut3:] = 0.0
-                self.phit_j.append(Spline(l, rcut3, phit_g, r_g, beta,
-                                          points=100))
+                phit_j.append(Spline(l, rcut3, phit_g, r_g, beta,
+                                     points=100))
+        return phit_j
 
     def read_basis_functions(self, basis):
         if isinstance(basis, str):
@@ -588,8 +594,9 @@ class Setup:
                 bf.ng = basis.ng
                 bf.rc = rc
 
-        self.phit_j = [Spline(bf.l, bf.rc, divrl(bf.phit_g, bf.l, r_g[:bf.ng]))
+        phit_j = [Spline(bf.l, bf.rc, divrl(bf.phit_g, bf.l, r_g[:bf.ng]))
                        for bf in basis.bf_j]
+        return phit_j
 
     def print_info(self, text):
         if self.phicorehole_g is None:
