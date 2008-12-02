@@ -1080,8 +1080,9 @@ class Nucleus:
             F[:] += npy.dot(Q_L, F_Lc)
 
             # Force from smooth core charge:
-##            self.nct.derivative(vt_G, F[npy.newaxis, :]) 
-            self.nct.derivative(vt_G, npy.reshape(F, (1, 3)))  # numpy!
+##            self.nct.derivative(vt_G, F[npy.newaxis, :])
+            if self.nct is not None:
+                self.nct.derivative(vt_G, npy.reshape(F, (1, 3)))  # numpy!
 
             # Force from zero potential:
             self.vbar.derivative(nt_g, npy.reshape(F, (1, 3)))
