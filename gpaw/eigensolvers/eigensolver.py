@@ -238,7 +238,6 @@ class Eigensolver:
 
         U_nn = H_nn
         del H_nn
-
         self.comm.broadcast(U_nn, kpt.root)
         self.comm.broadcast(kpt.eps_n, kpt.root)
 
@@ -277,7 +276,7 @@ class Eigensolver:
     def calculate_hamiltonian_matrix2(self, hamiltonian, kpt):
         band_comm = self.band_comm
         size = band_comm.size
-        assert size % 2 == 1
+        #assert size % 2 == 1
         np = size // 2 + 1
         rank = band_comm.rank
         psit_nG = kpt.psit_nG
@@ -311,7 +310,7 @@ class Eigensolver:
 
         hamiltonian.apply(psit_nG, work_nG, kpt, local_part_only=True, calculate_projections=False)
 
-        for p in range(np):
+        for p in range(np - 1):
             sreq = band_comm.send(work_nG, (rank - 1) % size, 11, False)
             sreq2 = band_comm.send(work_In, (rank - 1) % size, 31, False)
             rreq = band_comm.receive(work2_nG, (rank + 1) % size, 11, False)
@@ -333,6 +332,16 @@ class Eigensolver:
 
             work_nG, work2_nG = work2_nG, work_nG
             work_In, work2_In = work2_In, work_In
+
+        gemm(self.gd.dv, psit_nG, work_nG, 0.0, H_pnn[-1], 'c')
+
+        I1 = 0
+        for nucleus in hamiltonian.my_nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            I2 = I1 + ni
+            P_ni = nucleus.P_uni[kpt.u]
+            H_pnn[-1] += npy.dot(P_ni, work_In[I1:I2]).T
+            I1 = I2
 
         self.comm.sum(H_pnn, kpt.root)
 
@@ -381,8 +390,11 @@ class Eigensolver:
             band_comm.wait(rreq)
             band_comm.wait(sreq)
             psit_nG, work_nG = work_nG, psit_nG
-
+        
         gemm(1.0, psit_nG, C_bnbn[rank, :, rank - 1], 1.0, work2_nG)
+
+        if size % 2 == 0:
+            psit_nG, work_nG = work_nG, psit_nG
 
         kpt.psit_nG = work2_nG
         self.big_work_arrays['work2_nG'] = psit_nG

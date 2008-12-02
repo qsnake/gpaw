@@ -147,7 +147,6 @@ class Overlap:
         self.calculate_overlap_matrix(psit_nG, work_nG, kpt, S_nn)
 
         self.timer.start('Orthonormalize: inverse_cholesky')
-
         if sl_inverse_cholesky:
             assert parallel and scalapack()
             info = inverse_cholesky(S_nn, kpt.root)
@@ -217,6 +216,9 @@ class Overlap:
 
         gemm(1.0, psit_nG, C_bnbn[rank, :, rank - 1], 1.0, work2_nG)
 
+        if size % 2 == 0:
+            psit_nG, work_nG = work_nG, psit_nG
+
         kpt.psit_nG = work2_nG
         self.big_work_arrays['work2_nG'] = psit_nG
 
@@ -226,6 +228,7 @@ class Overlap:
     def calculate_overlap_matrix(self, psit_nG, work_nG, kpt, S_nn):
         band_comm = self.band_comm
         size = band_comm.size
+        #S_nn.fill(10.0)
         if size == 1:
             rk(self.gd.dv, psit_nG, 0.0, S_nn)
             for nucleus in self.my_nuclei:
@@ -237,7 +240,7 @@ class Overlap:
             self.comm.sum(S_nn, kpt.root)
             return
 
-        assert size % 2 == 1
+        #assert size % 2 == 1
         np = size // 2 + 1
         rank = band_comm.rank
         nmybands = len(work_nG)
@@ -269,7 +272,7 @@ class Overlap:
             work_In[I1:I2] = npy.inner(dO_ii, P_ni).conj()
             I1 = I2
 
-        for p in range(np):
+        for p in range(np - 1):
             if p == 0:
                 sreq = band_comm.send(psit_nG, (rank - 1) % size, 11, False)
             else:
@@ -298,6 +301,16 @@ class Overlap:
 
             work_nG, work2_nG = work2_nG, work_nG
             work_In, work2_In = work2_In, work_In
+
+        gemm(self.gd.dv, psit_nG, work_nG, 0.0, S_pnn[-1], 'c')
+
+        I1 = 0
+        for nucleus in self.my_nuclei:
+            ni = nucleus.get_number_of_partial_waves()
+            I2 = I1 + ni
+            P_ni = nucleus.P_uni[kpt.u]
+            S_pnn[-1] += npy.dot(P_ni, work_In[I1:I2]).T
+            I1 = I2
 
         self.comm.sum(S_pnn, kpt.root)
 
