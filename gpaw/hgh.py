@@ -6,6 +6,7 @@ from ase.data import atomic_numbers
 from gpaw.utilities import pack2
 from gpaw.setup import Setup
 from gpaw.setup_data import SetupData
+from gpaw.basis_data import Basis
 
 setups = {} # Filled out during parsing below
 
@@ -90,6 +91,17 @@ class HGHSetup(Setup):
         raise NotImplementedError('No partial waves for HGH setups from '
                                   'which to create basis functions!  '
                                   'Please specify basis manually.')
+
+    def read_basis_functions(self, basis):
+        if isinstance(basis, str):
+            basis = Basis(self.symbol, basis)
+            rc = basis.d * (basis.ng - 1)
+            r_g = npy.linspace(0., rc, basis.ng)
+            for bf in basis.bf_j:
+                rb_g = r_g[:bf.ng]
+                norm = npy.sum((bf.phit_g * rb_g)**2) * basis.d
+                bf.phit_g /= norm ** .5
+        return Setup.read_basis_functions(self, basis)
 
     def initialize_setup_data(self, symbol, xcfunc, hghdata):
         data = SetupData(symbol, xcfunc.get_setup_name(), 'paw', readxml=False)
