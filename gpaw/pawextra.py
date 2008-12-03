@@ -23,8 +23,7 @@ class PAWExtra:
         """Return the Fermi-level."""
         e = self.occupation.get_fermi_level()
         if e is None:
-            # Zero temperature calculation - return vacuum level:
-            e = 0.0
+            return None
         return e * self.Ha
 
     def write(self, filename, mode=''):
