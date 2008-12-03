@@ -9,8 +9,9 @@ bulk = Atoms([Atom('Fe', (0, 0, 0), magmom=2.20),
 bulk.set_cell((a, a, a), scale_atoms=True)
 mom0 = sum(bulk.get_initial_magnetic_moments())
 h = 0.20
+conv = {'eigenstates': 0.1, 'density':0.1, 'energy':0.1}
 calc = Calculator(h=h, nbands=11, kpts=(3, 3, 3),
-                  convergence={'eigenstates': 0.02}, fixmom=True)
+                  convergence=conv, fixmom=True)
 bulk.set_calculator(calc)
 e = bulk.get_potential_energy()
 mom = calc.get_magnetic_moment()

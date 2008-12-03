@@ -231,13 +231,20 @@ class FermiDirac(Dummy):
 
             if self.fixmom:
                 ne = npy.array([(self.ne + self.M) / 2, (self.ne - self.M) / 2])
+                # we might be dividing by dnde, so it should not be too small
+                dnde = npy.where(abs(dnde) < 1.5e-10, 1.0e-10, dnde)
                 dn = ne - n
                 if npy.alltrue(abs(dn) < 1.0e-9):
                     if abs(magmom - self.M) > 1.0e-8:
                         raise RuntimeError('Magnetic moment not fixed')
                     break
-                if npy.sometrue(abs(dnde) <  1.0e-9):
+                if npy.alltrue(abs(dnde) <  1.0e-9):
+                    # make guess only if dnde is small for both spin channels
                     self.guess_fermi_level(kpts)
+
+                    niter += 1
+                    if niter > 1000:
+                        raise RuntimeError('Could not locate the Fermi level!')
                     continue
             else:
                 dn = self.ne - n
