@@ -23,7 +23,7 @@ class PAWExtra:
         """Return the Fermi-level."""
         e = self.occupation.get_fermi_level()
         if e is None:
-            return None
+            return 0.0
         return e * self.Ha
 
     def write(self, filename, mode=''):
