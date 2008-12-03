@@ -6,7 +6,6 @@ from math import log, pi, sqrt
 import sys
 
 import numpy as npy
-from numpy.linalg import inv
 from ase.data import atomic_names
 
 from gpaw.setup_data import SetupData
@@ -43,10 +42,58 @@ class Setup:
     Name       Description
     ========== ============================================
     ``Z``      Charge
-    ``l_j``    List of angular momentum l values
-    ``I4_iip`` Integrals over 4 all electron wave functions
+    ``type``   Type-name of setup (eg. 'paw')
+    ``symbol`` Chemical element label (eg. 'Mg')
+    ``xcname`` Name of xc
+    ``data``   Container class for information on the the atom, eg.
+               Nc, Nv, n_j, l_j, f_j, eps_j, rcut_j.
+               It defines the radial grid by ng and beta, from which
+               r_g = beta * arange(ng) / (ng - arange(ng)).
+               It stores pt_jg, phit_jg, phi_jg, vbar_g
     ========== ============================================
 
+
+    Attributes for making PAW corrections
+
+    ============= ============================================
+    Name          Description
+    ============= ============================================
+    ``Delta0``    Constant in compensation charge expansion coeff.
+    ``Delta_Lii`` Linear term in compensation charge expansion coeff.
+    ``O_ii``      Overlap metric
+    ``B_ii``      Projector function overlaps B_ii = <pt_i | pt_i>
+    ``C_ii``      Inverse overlap coefficients
+    ``E``         Reference total energy of atom
+    ``M``         Constant correction to Coulomb energy
+    ``M_p``       Linear correction to Coulomb energy
+    ``M_pp``      2. order correction to Coulomb energy and Exx energy
+    ``Kc``        Core kinetic energy
+    ``K_p``       Linear correction to kinetic energy
+    ``Xc``        Core Exx energy (Actually called ExxC ... rename)
+    ``X_p``       Linear correction to Exx energy
+    ``Mb``        Constant correction due to vbar potential
+    ``Mb_p``      Linear correction due to vbar potential
+    ``dEH0``      Constant correction due to average electrostatic potential
+    ``dEH_p``     Linear correction due to average electrostatic potential
+    ``I4_iip``    Correction to integrals over 4 all electron wave functions
+    ========== ============================================
+
+    It also has the attribute ``xc_correction`` which is an XCCorrection class
+    instance capable of calculating the corrections due to the xc functional.
+
+
+    Splines:
+
+    ========== ============================================
+    Name       Description
+    ========== ============================================
+    ``pt_j``   Projector functions
+    ``phit_j`` Pseudo partial waves
+    ``stepf``  Stepfunction
+    ``vbar``   vbar potential
+    ``nct``    Pseudo core density
+    ``tauct``  Pseudo core kinetic energy density
+    ========== ============================================
     """
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
                  type='paw', basis=None, setupdata=None):
@@ -106,35 +153,6 @@ class Setup:
 
         self.lmax = lmax
 
-        # compute inverse overlap coefficients B_ii
-        B_jj = npy.zeros((len(l_j),len(l_j)))
-        for i1 in range(len(l_j)):
-            for i2 in range(len(l_j)):
-                B_jj[i1][i2] = npy.dot( r_g**2 * dr_g, pt_jg[i1] * pt_jg[i2] )
-
-        def delta(i,j):
-            #assert type(i) == int
-            #assert type(j) == int
-            if i == j: return 1
-            else: return 0
-
-        size=0
-        for l1 in l_j:
-            for m1 in range(2 * l1 + 1):
-                    size +=1
-        self.B_ii = npy.zeros((size,size))
-
-        i1=0
-        for n1, l1 in enumerate(l_j):
-            for m1 in range(2 * l1 + 1):
-                i2=0
-                for n2, l2 in enumerate(l_j):
-                    for m2 in range(2 * l2 + 1):
-                        self.B_ii[i1][i2] = \
-                            delta(l1,l2) * delta(m1,m2) * B_jj[n1][n2]
-                        i2 +=1
-                i1 +=1
-
         # Find Fourier-filter cutoff radius:
         g = ng - 1
         while pt_jg[0][g] == 0.0:
@@ -172,6 +190,24 @@ class Setup:
             print "ok"
             self.calculate_oscillator_strengths(r_g, dr_g, phi_jg)
 
+        # Compute projector function overlaps B_ii = <pt_i | pt_i>
+        B_jj = npy.zeros((nj, nj))
+        for j1, pt1_g in enumerate(pt_jg):
+            for j2, pt2_g in enumerate(pt_jg):
+                B_jj[j1, j2] = npy.dot(r_g**2 * dr_g, pt1_g * pt2_g)
+        self.B_ii = npy.zeros((ni, ni))
+        i1 = 0
+        for j1, l1 in enumerate(l_j):
+            for m1 in range(2 * l1 + 1):
+                i2 = 0
+                for j2, l2 in enumerate(l_j):
+                    for m2 in range(2 * l2 + 1):
+                        if l1 == l2 and m1 == m2:
+                            self.B_ii[i1, i2] = B_jj[j1, j2]
+                        i2 += 1
+                i1 += 1
+        del B_jj
+        
         # Construct splines:
         self.vbar = Spline(0, rcutfilter, data.vbar_g, r_g, beta)
 
@@ -269,7 +305,6 @@ class Setup:
                    for l in range(2 * lcut + 1)]
 
         Delta0 = self.Delta0
-        #Delta_lq = Delta_lq
 
         rdr_g = r_g * dr_g
         dv_g = r_g * rdr_g
@@ -279,8 +314,7 @@ class Setup:
         wmct_g = wnct_g + Delta0 * wg_lg[0]
         A -= 0.5 * npy.dot(mct_g, wmct_g)
         self.M = A
-        AB = -npy.dot(dv_g * nct_g, vbar_g)
-        self.MB = AB
+        self.MB = -npy.dot(dv_g * nct_g, vbar_g)
 
         # Correction for average electrostatic potential:
         #
@@ -295,39 +329,12 @@ class Setup:
         A_q = 0.5 * (npy.dot(wn_lqg[0], nc_g)
                      + npy.dot(n_qg, wnc_g))
         A_q -= sqrt(4 * pi) * self.Z * npy.dot(n_qg, rdr_g)
-
         A_q -= 0.5 * (npy.dot(wnt_lqg[0], mct_g)
                      + npy.dot(nt_qg, wmct_g))
         A_q -= 0.5 * (npy.dot(mct_g, wg_lg[0])
                       + npy.dot(g_lg[0], wmct_g)) * Delta_lq[0]
         self.M_p = npy.dot(A_q, T_Lqp[0])
 
-        if xcfunc.is_gllb():
-            if xcfunc.xc.relaxed_core_response:
-                self.njcore = extra_xc_data['njcore']
-                self.core_A_kp = npy.zeros((self.njcore, np))
-                self.core_At_kp = npy.zeros((self.njcore, np))
-                self.core_B = npy.dot(g_lg[0], wg_lg[0]) / sqrt(4*pi)
-                self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
-                self.coreref_k = npy.zeros((self.njcore))
-                for k in range(0, self.njcore):
-                    # Put the density of core orbital into radial
-                    # representation
-                    rho_g = extra_xc_data['core_orbital_density_'
-                                          + str(k)] * sqrt(4*pi)
-
-                    # Calculate the D_p dependent correction for E^a
-                    self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g,0)),
-                                                T_Lqp[0])
-
-                    # Calculate the D_P dependent correction for \tilde{E}^a
-                    self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]),
-                                                 T_Lqp[0]) / sqrt(4*pi)
-
-                    # All other contributions are already included in
-                    # reference from setup
-                    self.coreref_k[k] = extra_xc_data['core_ref_'+str(k)]
-                    
         AB_q = -npy.dot(nt_qg, dv_g * vbar_g)
         self.MB_p = npy.dot(AB_q, T_Lqp[0])
 
@@ -352,6 +359,32 @@ class Setup:
                                      npy.dot(A_lqq[l], T_Lqp[L]))
                 L += 1
 
+        if xcfunc.is_gllb():
+            if xcfunc.xc.relaxed_core_response:
+                self.njcore = extra_xc_data['njcore']
+                self.core_A_kp = npy.zeros((self.njcore, np))
+                self.core_At_kp = npy.zeros((self.njcore, np))
+                self.core_B = npy.dot(g_lg[0], wg_lg[0]) / sqrt(4*pi)
+                self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
+                self.coreref_k = npy.zeros((self.njcore))
+                for k in range(0, self.njcore):
+                    # Put the density of core orbital into radial
+                    # representation
+                    rho_g = extra_xc_data['core_orbital_density_'
+                                          + str(k)] * sqrt(4*pi)
+
+                    # Calculate the D_p dependent correction for E^a
+                    self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g, 0)),
+                                                T_Lqp[0])
+
+                    # Calculate the D_P dependent correction for \tilde{E}^a
+                    self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]),
+                                                 T_Lqp[0]) / sqrt(4 * pi)
+
+                    # All other contributions are already included in
+                    # reference from setup
+                    self.coreref_k[k] = extra_xc_data['core_ref_' + str(k)]
+                    
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
@@ -460,9 +493,9 @@ class Setup:
 
         self.rcutcomp = sqrt(10) * rcgauss
 
-        # compute inverse overlap coefficients C_ii
-        self.C_ii = -npy.dot(self.O_ii, inv(npy.identity(size) + 
-                                            npy.dot(self.B_ii, self.O_ii)))
+        # Compute inverse overlap coefficients C_ii
+        self.C_ii = -npy.dot(self.O_ii, npy.linalg.inv(
+            npy.identity(ni) + npy.dot(self.B_ii, self.O_ii)))
 
     def create_compensation_charges(self, r_g, dr_g, phi_jg, phit_jg, np,
                                     T_Lqp):
@@ -714,7 +747,7 @@ class Setup:
           | d vr  ( phi_i1 phi_i2 phi_i3 phi_i4
           /         - phit_i1 phit_i2 phit_i3 phit_i4 ),
 
-        where phi_i1 is a all electron function and phit_i1 is its
+        where phi_i1 is an all electron function and phit_i1 is its
         smooth partner.
         """
 
@@ -747,7 +780,7 @@ class Setup:
         # prepare for angular parts
         L_i = []
         j_i = []
-        for j,l1 in enumerate(self.l_j):
+        for j, l1 in enumerate(self.l_j):
             for m1 in range(2 * l1 + 1):
                 L_i.append(l1**2 + m1)
                 j_i.append(j)
@@ -758,8 +791,8 @@ class Setup:
         # https://wiki.fysik.dtu.dk/gpaw/devel/overview.html
 
         # calculate the integrals
-        I4_iip = npy.empty((ni,ni,np))
-        I = npy.empty((ni,ni))
+        I4_iip = npy.empty((ni, ni, np))
+        I = npy.empty((ni, ni))
         for i1 in range(ni):
             L1 = L_i[i1]
             j1 = j_i[i1]
