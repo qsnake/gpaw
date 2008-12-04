@@ -99,8 +99,8 @@ class HGHSetup(Setup):
             r_g = npy.linspace(0., rc, basis.ng)
             for bf in basis.bf_j:
                 rb_g = r_g[:bf.ng]
-                norm = npy.sum((bf.phit_g * rb_g)**2) * basis.d
-                bf.phit_g /= norm ** .5
+                normsqr = npy.sum((bf.phit_g * rb_g)**2) * basis.d
+                bf.phit_g /= normsqr ** .5
         return Setup.read_basis_functions(self, basis)
 
     def initialize_setup_data(self, symbol, xcfunc, hghdata):
@@ -171,39 +171,53 @@ class HGHSetup(Setup):
         # Construct projectors
         electroncount = 0 # Occupations are used during initialization,
         # for this reason we'll have to at least specify the right number
-        for v in v_l:
-            l = v.l
-            for n in range(v.nn):
-                pt_g = create_hgh_projector(r_g, l, n, v.r0)
-                norm = sqrt(npy.dot(dr_g, pt_g**2 * r_g**2))
-                assert npy.abs(1 - norm) < 1e-5
 
-                data.l_j.append(l)
-                data.n_j.append(42) # Must not be negative, because then
-                # setup.py thinks it shouldn't add the splines phit_j even 
-                # though we define phit_jg
+        v_j = []
+        n_j = []
+        l_j = []
 
-                degeneracy = (2 * l + 1) * 2
-                f = min(data.Nv - electroncount, degeneracy)
-                electroncount += f
-                data.f_j.append(f)
-                data.eps_j.append(0.) # probably doesn't matter
-                data.rcut_j.append(3.) # XXX I have no idea
-                data.id_j.append('%s-%s%d' % (symbol, 'spdf'[l], n))
+        # j ordering is significant, must be nl rather than ln
+        for n in range(4):
+            for l, v in enumerate(v_l):
+                if n < v.nn:
+                    v_j.append(v)
+                    n_j.append(n + 1) # Note: actual n must be positive!
+                    l_j.append(l)
+        assert nj == len(v_j), 'not ok'
 
-                # Must force projectors to be small so they don't extend
-                # past cells and so on.  Of course this is wasteful, but
-                # so is the stuff going on in setup.py
-                rc = 3.0
-                gcut = int(rc * ng / (beta + rc)) # why doesn't this crash?
-                pt_g[gcut:] = 0.0
+        data.l_j = l_j
+        data.n_j = n_j
 
-                data.pt_jg.append(pt_g)
-                data.phi_jg.append(zerofunction)
-                data.phit_jg.append(zerofunction)
+        for n, l, v in zip(n_j, l_j, v_j):
+            pt_g = create_hgh_projector(r_g, l, n, v.r0)
+            norm = sqrt(npy.dot(dr_g, pt_g**2 * r_g**2))
+            assert npy.abs(1 - norm) < 1e-5
+
+            degeneracy = (2 * l + 1) * 2
+            f = min(data.Nv - electroncount, degeneracy)
+            electroncount += f
+            data.f_j.append(f)
+            data.eps_j.append(-1.) # probably doesn't matter
+            data.rcut_j.append(3.) # XXX I have no idea
+            data.id_j.append('%s-%s%d' % (symbol, 'spdf'[l], n))
+            
+            # Must force projectors to be small so they don't extend
+            # past cells and so on.  Of course this is wasteful, but
+            # so is the stuff going on in setup.py
+            rc = 3.0
+            gcut = int(rc * ng / (beta + rc))
+            pt_g[gcut:] = 0.0
+
+            data.pt_jg.append(pt_g)
+            data.phi_jg.append(zerofunction)
+            data.phit_jg.append(zerofunction)
 
         data.stdfilename = '%s.hgh.LDA' % symbol
         return data
+
+    def print_info(self, text):
+        text('This is an HGH setup!')
+        Setup.print_info(self, text) # XXX write proper info
 
     def expand_hamiltonian_matrix(self):
         """Construct H_p from individual h_nn for each l."""
@@ -251,7 +265,6 @@ def create_local_shortrange_potential(r_g, Z, rloc, c_n):
 
 
 def create_hgh_projector(r_g, l, n, r0):
-    n += 1
     poly_g = r_g**(l + 2 * (n - 1))
     gauss_g = npy.exp(-.5 * r_g**2 / r0**2)
     A = r0**(l + (4 * n - 1)/2.)
