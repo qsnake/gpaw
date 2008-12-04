@@ -35,6 +35,7 @@ GPAW calculator:
    dscf/dscf
    pdos/pdos
    xas/xas
+   densitymix/densitymix
 
 .. _ml:
 
