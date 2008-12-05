@@ -85,12 +85,14 @@ class Excitation:
     def GetOscillatorStrength(self):
         return self.get_oscillator_strength()
 
-    def get_oscillator_strength(self):
+    def get_oscillator_strength(self, form='r'):
         """Return the excitations dipole oscillator strength.
+
 
         self.me is assumed to be::
 
-          sqrt(f*E) * <I|r|J>,
+          form='r': sqrt(f * E) * <I|r|J>,
+          form='v': sqrt(f / E) * <I|d/(dr)|J>
 
         for f = multiplicity, E = transition energy and initial and
         final states::
@@ -99,15 +101,22 @@ class Excitation:
           
         """
         
-        me=self.me
+        if form == 'r':
+            # length form
+            me = self.me
+        elif form == 'v':
+            # velocity form
+            me = self.muv
+
         osz=[0.]
-        for i in range(3):
-            val=2.*me[i]**2
-            osz.append( val )
-            osz[0]+=val/3.
+        for c in range(3):
+            val = 2. * me[c]**2
+            osz.append(val)
+            osz[0] += val / 3.
+        
         return osz
 
-    def SetEnergy(self,E):
+    def set_energy(self, E):
         """return the excitations energy relative to the ground state energy"""
         self.energy = E
     

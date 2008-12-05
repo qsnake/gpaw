@@ -272,8 +272,8 @@ class LrTDDFT(ExcitationList):
         spa = self.kss
         for i in range(len(spa)):
             E = sqrt(self.Om.full[i][i])
-            print "<SPA> E was",spa[i].GetEnergy()*27.211," and is ",E*27.211
-            spa[i].SetEnergy(sqrt(self.Om.full[i][i]))
+            print "<SPA> E was", spa[i].get_energy()*27.211," and is ",E*27.211
+            spa[i].set_energy(E)
         return spa
 
     def __str__(self):

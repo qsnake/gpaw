@@ -40,18 +40,34 @@ class KSSingles(ExcitationList):
                  eps=0.001,
                  istart=0,
                  jend=None,
+                 energyrange=None,
                  filehandle=None):
 
         if filehandle is not None:
             self.read(fh=filehandle)
             return None
 
-        ExcitationList.__init__(self,calculator)
+        ExcitationList.__init__(self, calculator)
         
         if calculator is None:
             return # leave the list empty
 
+        self.select(nspins, eps, istart, jend, energyrange)
+
+        trkm = self.GetTRK()
+        print >> self.out, 'KSS TRK sum %g (%g,%g,%g)' % \
+              (npy.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
+        pol = self.GetPolarizabilities(lmax=3)
+        print >> self.out, \
+              'KSS polarisabilities(l=0-3) %g, %g, %g, %g' % \
+              tuple(pol.tolist())
+
+    def select(self, nspins=None, eps=0.001,
+               istart=0, jend=None, energyrange=None):
+        """Select KSSingles according to the given criterium."""
+
         paw = self.calculator
+
         self.kpt_u = paw.kpt_u
         if self.kpt_u[0].psit_nG is None:
             raise RuntimeError('No wave functions in calculator!')
@@ -66,37 +82,44 @@ class KSSingles(ExcitationList):
         self.npspins = paw.nspins
         fijscale=1
         if self.nvspins < 2:
-            if nspins>self.nvspins:
+            if nspins > self.nvspins:
                 self.npspins = nspins
                 fijscale = 0.5
-                
-        # get possible transitions
-        for ispin in range(self.npspins):
-            vspin=ispin
-            if self.nvspins<2:
-                vspin=0
-            f=self.kpt_u[vspin].f_n
-            if jend==None: jend=len(f)-1
-            else         : jend=min(jend,len(f)-1)
-            
-            for i in range(istart,jend+1):
-                for j in range(istart,jend+1):
-                    fij=f[i]-f[j]
-                    if fij>eps:
-                        # this is an accepted transition
-                        ks=KSSingle(i,j,ispin,vspin,paw,fijscale=fijscale)
-                        self.append(ks)
 
-        self.istart = istart
-        self.jend = jend
+        if energyrange:
+            # select transitions according to transition energy
+            for kpt in self.kpt_u:
+                f_n = kpt.f_n
+                for i in range(len(f_n)):
+                    for j in range(i+1, len(f_n)):
+                        fij=f[i]-f[j]
+                        if fij > eps:
+                            # this is an accepted transition
+                            ks = KSSingle(i, j, kpt.s, kpt, paw,
+                                          fijscale=fijscale)
+                            self.append(ks)
+        else:
+            # select transitions according to band index
+            for ispin in range(self.npspins):
+                vspin=ispin
+                if self.nvspins<2:
+                    vspin=0
+                f=self.kpt_u[vspin].f_n
+                if jend==None: jend=len(f)-1
+                else         : jend=min(jend,len(f)-1)
 
-        trkm = self.GetTRK()
-        print >> self.out, 'KSS TRK sum %g (%g,%g,%g)' % \
-              (npy.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
-        pol = self.GetPolarizabilities(lmax=3)
-        print >> self.out, \
-              'KSS polarisabilities(l=0-3) %g, %g, %g, %g' % \
-              tuple(pol.tolist())
+                for i in range(istart,jend+1):
+                    for j in range(istart,jend+1):
+                        fij=f[i]-f[j]
+                        if fij > eps:
+                            # this is an accepted transition
+                            ks = KSSingle(i, j, ispin, 
+                                          self.kpt_u[vspin], paw,
+                                          fijscale=fijscale)
+                            self.append(ks)
+
+            self.istart = istart
+            self.jend = jend
 
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
@@ -172,13 +195,14 @@ class KSSingle(Excitation, PairDensity):
 
       pspin=physical spin
       spin=virtual  spin, i.e. spin in the ground state calc.
+      kpt=the Kpoint object
       fijscale=weight for the occupation difference::
       me  = sqrt(fij*epsij) * <i|r|j>
       mur = - <i|r|a>
       muv = - <i|nabla|a>/omega_ia with omega_ia>0
       m   = <i|[r x nabla]|a> / (2c)
     """
-    def __init__(self, iidx=None, jidx=None, pspin=None, spin=None,
+    def __init__(self, iidx=None, jidx=None, pspin=None, kpt=None,
                  paw=None, string=None, fijscale=1):
         
         if string is not None: 
@@ -188,18 +212,18 @@ class KSSingle(Excitation, PairDensity):
         # normal entry
         
         PairDensity.__init__(self, paw)
-        PairDensity.initialize(self, paw.kpt_u[spin], iidx, jidx)
+        PairDensity.initialize(self, kpt, iidx, jidx)
 
         self.pspin=pspin
         
-        f=paw.kpt_u[spin].f_n
+        f = kpt.f_n
         self.fij=(f[iidx]-f[jidx])*fijscale
-        e=paw.kpt_u[spin].eps_n
+        e=kpt.eps_n
         self.energy=e[jidx]-e[iidx]
 
         # calculate matrix elements -----------
 
-        gd = paw.kpt_u[spin].gd
+        gd = kpt.gd
         self.gd = gd
 
         # length form ..........................
