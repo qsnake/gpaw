@@ -9,9 +9,9 @@ from gpaw.utilities.tools import dagger
 from gpaw.utilities import pack
 from gpaw.lcao.IntCtrl import IntCtrl
 from gpaw.lcao.CvgCtrl import *
-from gpaw.lcao.selfenergy import LeadSelfEnergy
-from gpaw.lcao.greenfunction import GreenFunction
 from gpaw.utilities.timing import Timer
+from ase.transport.selfenergy import LeadSelfEnergy
+from ase.transport.greenfunction import GreenFunction
 from ase.transport.tools import *
 import pickle
 import numpy as npy
