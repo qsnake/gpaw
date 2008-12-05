@@ -2,6 +2,14 @@
 #define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
 #include <numpy/arrayobject.h>
 
+#ifdef GPAW_BGP_PERF
+void HPM_Init(void);
+void HPM_Start(char *);
+void HPM_Stop(char *);
+void HPM_Print(void);
+void HPM_Print_Flops(void);
+#endif
+
 PyObject* gemm(PyObject *self, PyObject *args);
 PyObject* axpy(PyObject *self, PyObject *args);
 PyObject* d2Excdnsdnt(PyObject *self, PyObject *args);
@@ -123,8 +131,34 @@ int
 main(int argc, char **argv)
 {
   int status;
+#ifdef GPAW_BGP_PERF
+  int tag = 99;
+  int myid, numprocs, i, procnamesize;
+  char procname[MPI_MAX_PROCESSOR_NAME];
+#endif
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
+#ifdef GPAW_BGP_PERF
+  MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid );
+  MPI_Get_processor_name(procname, &procnamesize);
+  if (myid > 0) {
+      MPI_Send(&procnamesize, 1, MPI_INT, 0, tag, MPI_COMM_WORLD);
+      MPI_Send(procname, procnamesize, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
+  }
+  else {
+      printf("MPI_COMM_SIZE is %d \n", numprocs);
+      printf("%s \n", procname);
+      
+      for (i = 1; i < numprocs; ++i) {
+	  MPI_Recv(&procnamesize, 1, MPI_INT, i, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	  MPI_Recv(procname, procnamesize, MPI_CHAR, i, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	  printf("%s \n", procname);
+      }
+  }
+  HPM_Init();
+  HPM_Start("GPAW");
+#endif
 #else
   int granted;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
@@ -149,6 +183,11 @@ main(int argc, char **argv)
   PyModule_AddObject(m, "Communicator", (PyObject *)&MPIType);
   import_array1(-1);
   status = Py_Main(argc, argv);
+#ifdef GPAW_BGP_PERF
+  HPM_Stop("GPAW");
+  HPM_Print();
+  HPM_Print_Flops();
+#endif
   MPI_Finalize();
   return status;
 }
