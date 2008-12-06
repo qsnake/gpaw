@@ -6,4 +6,5 @@
    overview
    svn
    developer_installation
+   benchmarks
    todo
