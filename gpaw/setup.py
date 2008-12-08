@@ -38,9 +38,9 @@ def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None,
 class Setup:
     """Attributes:
 
-    ========== ============================================
+    ========== =====================================================
     Name       Description
-    ========== ============================================
+    ========== =====================================================
     ``Z``      Charge
     ``type``   Type-name of setup (eg. 'paw')
     ``symbol`` Chemical element label (eg. 'Mg')
@@ -50,14 +50,14 @@ class Setup:
                It defines the radial grid by ng and beta, from which
                r_g = beta * arange(ng) / (ng - arange(ng)).
                It stores pt_jg, phit_jg, phi_jg, vbar_g
-    ========== ============================================
+    ========== =====================================================
 
 
     Attributes for making PAW corrections
 
-    ============= ============================================
+    ============= ==========================================================
     Name          Description
-    ============= ============================================
+    ============= ==========================================================
     ``Delta0``    Constant in compensation charge expansion coeff.
     ``Delta_Lii`` Linear term in compensation charge expansion coeff.
     ``O_ii``      Overlap metric
@@ -66,7 +66,7 @@ class Setup:
     ``E``         Reference total energy of atom
     ``M``         Constant correction to Coulomb energy
     ``M_p``       Linear correction to Coulomb energy
-    ``M_pp``      2. order correction to Coulomb energy and Exx energy
+    ``M_pp``      2nd order correction to Coulomb energy and Exx energy
     ``Kc``        Core kinetic energy
     ``K_p``       Linear correction to kinetic energy
     ``Xc``        Core Exx energy (Actually called ExxC ... rename)
@@ -76,7 +76,7 @@ class Setup:
     ``dEH0``      Constant correction due to average electrostatic potential
     ``dEH_p``     Linear correction due to average electrostatic potential
     ``I4_iip``    Correction to integrals over 4 all electron wave functions
-    ========== ============================================
+    ============= ==========================================================
 
     It also has the attribute ``xc_correction`` which is an XCCorrection class
     instance capable of calculating the corrections due to the xc functional.
@@ -102,7 +102,7 @@ class Setup:
 
         zero_reference = xcfunc.hybrid > 0
         self.HubU = None
-        
+
         if type != 'paw':
             symbol += '.' + type
         self.symbol = symbol
@@ -181,7 +181,7 @@ class Setup:
 
         np = ni * (ni + 1) // 2
         self.nq = nq = nj * (nj + 1) // 2
- 
+
         self.lcut = lcut = max(l_j)
         if 2 * lcut < lmax:
             lcut = (lmax + 1) // 2
@@ -207,7 +207,7 @@ class Setup:
                         i2 += 1
                 i1 += 1
         del B_jj
-        
+
         # Construct splines:
         self.vbar = Spline(0, rcutfilter, data.vbar_g, r_g, beta)
 
@@ -384,7 +384,7 @@ class Setup:
                     # All other contributions are already included in
                     # reference from setup
                     self.coreref_k[k] = extra_xc_data['core_ref_' + str(k)]
-                    
+
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 
@@ -505,7 +505,7 @@ class Setup:
         #dr_g = self.dr_g
         gcut2 = self.gcut2
         nq = self.nq
-        
+
         # Create gaussians used to expand compensation charges
         g_lg = npy.zeros((lmax + 1, gcut2))
         g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * npy.exp(-(r_g / rcgauss)**2)
@@ -571,7 +571,7 @@ class Setup:
                 break
             self.Hubi = self.Hubi+2*ll+1
         #print self.Hubi
-        
+
     def create_basis_functions(self, phit_jg, beta, ng, rcut2, gcut2, r_g):
         # Cutoff for atomic orbitals used for initial guess:
         rcut3 = 8.0  # XXXXX Should depend on the size of the atom!
@@ -812,7 +812,7 @@ class Setup:
 
         self.I4_iip = I4_iip
 
-    
+
 
 if __name__ == '__main__':
     print """\

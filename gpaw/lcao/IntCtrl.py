@@ -10,9 +10,8 @@ class IntCtrl:
         bias               // >0 for ul>u_r
         eqintpath,  eqinttol,  eqdelta,  eqresz     // eqInt Ctrl
         locintpath, lcointtol, locdelta, locresz    // locInt Ctrl
-        
-        neintmethod  // 0 - Manual Method : Linear (default)
-               // 1 - Auto Method
+
+        neintmethod  // 0 - Manual Method : Linear (default)// 1 - Auto Method
         neintstep    // used in Manual Method, defalut = 1e-2
         neinttol     // used in Auto Method, default = 1e-3
         neintpath    // [ minfermi leadfermi maxfermi ] + eta ( 1e-8 )}
