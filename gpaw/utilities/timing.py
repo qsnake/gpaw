@@ -93,6 +93,8 @@ class Timer:
                 self.timers[name] = 0.0
                 
     def write(self, out=sys.stdout):
+        while self.running:
+            self.stop()
         if len(self.timers) == 0:
             return
         print >> out
@@ -122,10 +124,6 @@ class Timer:
     def add(self, timer):
         for name, t in timer.timers.items():
             self.timers[name] = self.timers.get(name, 0.0) + t
-
-    def __del__(self):
-        while self.running:
-            self.stop()
 
 
 class StepTimer(Timer):
