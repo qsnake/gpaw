@@ -840,7 +840,8 @@ class GPAWTransport:
                                                                         zp[i])
             gamma[1, -nblead:, -nblead:] = self.selfenergies[1].get_lambda(
                                                                         zp[i])
-            self.greenfunction.set_hs(self.h_syzkmm[0, k], self.s_yzkmm[k])
+            self.greenfunction.H = self.h_syzkmm[0, k]
+            self.greenfunction.S = self.s_yzkmm[k]
             gr = self.greenfunction.calculate(zp[i], sigma)       
         
             # --ne-Integral---
@@ -881,7 +882,8 @@ class GPAWTransport:
         eqzp = self.eqpathinfo[k].energy
         nezp = self.nepathinfo[k].energy
         
-        self.greenfunction.set_hs(f_syzkmm[0,k], self.s_yzkmm[k])
+        self.greenfunction.H = f_syzkmm[0, k]
+        self.greenfunction.S = self.s_yzkmm[k]
         for i in range(len(eqzp)):
             sigma = npy.zeros([nbmol, nbmol], complex)  
             sigma[:nblead, :nblead] += self.eqpathinfo[k].sigma[0][i]
