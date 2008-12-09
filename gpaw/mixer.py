@@ -194,7 +194,6 @@ class BaseMixer:
 class Mixer(BaseMixer):
     """Mix spin up and down densities separately"""
 
-
     def initialize(self, paw):
         self.mixers = []
         for s in range(paw.nspins):
@@ -253,7 +252,7 @@ class MixerSum(BaseMixer):
         nt_sG[1] = 0.5 * (nt_G - dnt_G)
 
 class MixerSum2(BaseMixer):
-    """Mix the total pseudoelectron density and the total density matrices.
+    """Mix the total pseudo electron density and the total density matrices.
     Magnetization density is not mixed, i.e new magnetization density is used.
     """
 
@@ -292,7 +291,7 @@ class MixerDif(BaseMixer):
             aggressive).
         nmaxold: int
             Maximum number of old densities.
-        metrix: None, 'old' or 'new'
+        metric: None, 'old' or 'new'
             Type of metric to use.
         weight: float
             Weight parameter for special metric (for long wave-length

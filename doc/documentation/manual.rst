@@ -313,6 +313,7 @@ changes. In spin-polarized calculations using Fermi-distribution
 occupations one has to use :class:`~gpaw.mixer.MixerSum` instead of
 :class:`~gpaw.mixer.Mixer`.
 
+See also the documentation on :ref:`density mixing <densitymix>`.
 
 
 Wave function initialization

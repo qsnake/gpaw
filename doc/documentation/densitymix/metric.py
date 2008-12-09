@@ -43,7 +43,7 @@ for q in lines:
 plt.xticks(lines, textpath)
 plt.yticks([0, 1], [r'$1$', r'$w+1$'])
 plt.axis(lim)
-plt.legend(loc='upper right', pad=.1, axespad=.06)
+plt.legend(loc='upper right', pad=.2, axespad=.06)
 plt.title('Special metric for density changes')
 plt.savefig('metric.png', dpi=90)
 #plt.show()
