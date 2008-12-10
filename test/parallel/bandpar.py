@@ -1,16 +1,18 @@
+from time import time
 import sys
 import numpy as np
+from gpaw import parsize, parsize_bands
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
 from gpaw.operators import Laplace
 from gpaw.mpi import world
 
-B = 1   # number of blocks
-if len(sys.argv) > 1:
-    B = int(sys.argv[1])
+B = parsize_bands   # number of blocks
+# if len(sys.argv) > 1:
+#    B = int(sys.argv[1])
     
-G = 24  # number of grid points (G x G x G)
-N = 60  # number of bands
+G = 120  # number of grid points (G x G x G)
+N = 1000  # number of bands
 
 h = 0.2        # grid spacing
 a = h * G      # side length of box
@@ -27,13 +29,14 @@ band_comm = world.new_communicator(np.arange(world.rank % D, world.size, D))
 
 # Set up domain and grid descriptors:
 domain = Domain((a, a, a))
-domain.set_decomposition(domain_comm, N_c=(G, G, G))
+domain.set_decomposition(domain_comm, parsize, N_c=(G, G, G))
 gd = GridDescriptor(domain, (G, G, G))
 
 # Random wave functions:
 np.random.seed(world.rank)
 psit_mG = np.random.uniform(-0.5, 0.5, size=(M,) + tuple(gd.n_c))
-print 'Size of wave function array:', psit_mG.shape
+if world.rank == 0:
+    print 'Size of wave function array:', psit_mG.shape
 
 # Send and receive buffers:
 send_mG = gd.empty(M)
@@ -59,6 +62,7 @@ def run():
 
     # Check:
     S_nn = overlap(psit_mG, send_mG, recv_mG)
+
     if world.rank == 0:
         # Fill in upper part:
         for n in range(N - 1):
@@ -110,17 +114,27 @@ def overlap(psit_mG, send_mG, recv_mG):
 def matrix_multiply(C_nn, psit_mG, send_mG, recv_mG):
     """Calculate new linear compination of wave functions."""
     rank = band_comm.rank
-    psit2_mG = np.zeros_like(psit_mG)
     C_imim = C_nn.reshape((B, M, B, M))
     send_mG[:] = psit_mG
+    psit_mG[:] = 0.0
     for i in range(B - 1):
         rrequest = band_comm.receive(recv_mG, (rank + 1) % B, 117, False)
         srequest = band_comm.send(send_mG, (rank - 1) % B, 117, False)
-        psit2_mG += np.dot(C_imim[rank, :, (rank + i) % B], send_mG)
+        psit_mG += np.dot(C_imim[rank, :, (rank + i) % B], send_mG)
         band_comm.wait(rrequest)
         band_comm.wait(srequest)
         send_mG, recv_mG = recv_mG, send_mG
-    psit2_mG += np.dot(C_imim[rank, :, rank - 1], send_mG)
-    return psit2_mG
+    psit_mG += np.dot(C_imim[rank, :, rank - 1], send_mG)
+    return psit_mG
 
-run()
+ta = time()
+
+# Do twenty iterations.
+for x in range(20):
+    run()
+
+tb = time()
+
+if world.rank == 0:
+    print 'Time %f' % (tb -ta)
+    
