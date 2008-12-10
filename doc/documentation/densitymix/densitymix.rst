@@ -7,45 +7,17 @@
 Density Mixing
 ==============
 
+
+Pulay Mixing
+------------
+
 The density is updated using Pulay-mixing [#Pulay1980]_, [#Kresse1996]_.
 
 XXX More information needed!
 
-Specifying the mixing scheme and metric is done using the ``mix``
-keyword of the GPAW calculator::
 
-  from gpaw import GPAW, Mixer
-  calc = GPAW(mix=Mixer(beta=0.1, nmaxold=5, metric='new', weight=100))
-
-which is the recommended value if the default fails to converge.
-
-The class ``Mixer`` indicates one of the possible mixing schemes.  The
-Pulay mixing can be based on:
-
-1. The spin densities seperately, ``Mixer``
-2. The total density, ``MixerSum2``
-3. Spin channels seperately for the density matrices, and the summed
-   channels for the pseudo electron density, ``MixerSum``
-4. The total density and magnetization densities seperately, ``MixerDif``
-
-Where the magnetization density is the difference between the two spin
-densities.
-
-All mixer classes takes the arguments ``(beta=0.25, nmaxold=3,
-metric=None, weight=50.0)``. In addition, the ``MixerDif`` also takes
-the arguments ``(beta_m=0.7, nmaxold_m=2, metric_m=None,
-weight_m=10.0)`` which is the corresponding mixing parameters for the
-magnetization density.
-
-Here ``beta`` is the linear mixing coefficient, ``nmaxold`` is the
-number of old densities used, ``metric`` is either ``None`` or
-``'new'`` as described in `Special Metrics`_, and ``weight`` is the
-weight used by the metric, if any.
-
-
-===============
 Special Metrics
-===============
+---------------
 
 Convergence is improved by an optimized metric `\hat{M}` for
 calculation of scalar products in the mixing scheme, `\langle A | B
@@ -103,6 +75,44 @@ A comparison of the two metrics is displayed in the figure below
 
 .. image:: metric.png
   :align: center
+
+Specifying a Mixing Scheme in GPAW
+----------------------------------
+
+Specifying the mixing scheme and metric is done using the ``mix``
+keyword of the GPAW calculator::
+
+  from gpaw import GPAW, Mixer
+  calc = GPAW(mix=Mixer(beta=0.1, nmaxold=5, metric='new', weight=100))
+
+which is the recommended value if the default fails to converge.
+
+The class ``Mixer`` indicates one of the possible mixing schemes.  The
+Pulay mixing can be based on:
+
+1. The spin densities seperately, ``Mixer``
+2. The total density, ``MixerSum2``
+3. Spin channels seperately for the density matrices, and the summed
+   channels for the pseudo electron density, ``MixerSum``
+4. The total density and magnetization densities seperately, ``MixerDif``
+
+Where the magnetization density is the difference between the two spin
+densities.
+
+All mixer classes takes the arguments ``(beta=0.25, nmaxold=3,
+metric=None, weight=50.0)``. In addition, the ``MixerDif`` also takes
+the arguments ``(beta_m=0.7, nmaxold_m=2, metric_m=None,
+weight_m=10.0)`` which is the corresponding mixing parameters for the
+magnetization density.
+
+Here ``beta`` is the linear mixing coefficient, ``nmaxold`` is the
+number of old densities used, ``metric`` is either ``None`` or
+``'new'`` as described in `Special Metrics`_, and ``weight`` is the
+weight used by the metric, if any.
+
+
+References
+----------
 
 .. [#Pulay1980] Pulay, Chem. Phys. Let. **73**, 393 (1980)
 .. [#Kresse1996] Kresse, Phys. Rev. B **54**, 11169 (1996)
