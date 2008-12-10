@@ -135,7 +135,8 @@ class RunScript:
 ##        print >> f, "#PBS -N", set['name']
         print >> f, '# @ output = ', (set['out'] + '.$(jobid).$(stepid)')
         print >> f, '# @ error = ', (set['err'] + '.$(jobid).$(stepid)')
-        print >> f, '# @ notify_user =', str(env['GPAW_MAIL'])
+        if set['mail'] is not None:
+            print >> f, '# @ notify_user =', set['mail']
         print >> f, '# @ queue'
         print >> f
         print >> f, "export GPAW_SETUP_PATH=" + str(env['GPAW_SETUP_PATH'])
