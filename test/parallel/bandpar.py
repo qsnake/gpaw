@@ -50,10 +50,15 @@ recv_mG.shape = (M, -1)
 def run():
     S_nn = overlap(psit_mG, send_mG, recv_mG)
 
+    t1 = time()
     if world.rank == 0:
         C_nn = np.linalg.inv(np.linalg.cholesky(S_nn)).copy()
     else:
         C_nn = np.empty((N, N))
+    t2 = time()
+
+    if world.rank == 0:
+        print 'Cholesky Time %f' % (t2-t1)
 
     # Distribute matrix:
     world.broadcast(C_nn, 0)
@@ -92,6 +97,7 @@ def overlap(psit_mG, send_mG, recv_mG):
 
     domain_comm.sum(S_imm)
 
+    t1 = time()
     if domain_comm.rank == 0:
         if band_comm.rank == 0:
             # Master collects submatrices:
@@ -106,6 +112,8 @@ def overlap(psit_mG, send_mG, recv_mG):
                         S_imim[i1 + i2, :, i1] = S_imm[i2].T
                     else:
                         S_imim[i1, :, i1 + i2 - B] = S_imm[i2]
+            t2 = time()
+            print 'Collect submatrices time %f' % (t2-t1)
             return S_nn
         else:
             # Slaves send their submatrices:
@@ -136,5 +144,5 @@ for x in range(20):
 tb = time()
 
 if world.rank == 0:
-    print 'Time %f' % (tb -ta)
+    print 'Total Time %f' % (tb -ta)
     
