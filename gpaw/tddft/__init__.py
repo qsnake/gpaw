@@ -312,10 +312,11 @@ class TDDFT(PAW):
 
         niterpropagator = 0
         while self.niter<iterations:
+            norm = self.finegd.integrate(self.density.rhot_g)
+
             # write dipole moment at every iteration
             if dipole_moment_file is not None:
                 dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
-                norm = self.finegd.integrate(self.density.rhot_g)
                 if rank == 0:
                     line = '%20.8lf %20.8le %22.12le %22.12le %22.12le\n' \
                         % (self.time, norm, dm[0], dm[1], dm[2])
