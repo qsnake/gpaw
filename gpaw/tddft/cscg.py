@@ -56,7 +56,7 @@ class CSCG:
         if ( eps <= tolerance ):
             self.eps = eps
         else:
-            raise RuntimeError("BiCGStab method got invalid tolerance (tol = %le < eps = %le)." % (tolerance,eps))
+            raise RuntimeError("CSCG method got invalid tolerance (tol = %le < eps = %le)." % (tolerance,eps))
 
         self.iterations = -1
         
@@ -116,9 +116,9 @@ class CSCG:
         multi_zdotu(scale, b,b, nvec)
         scale = npy.abs( scale )
 
-        # FIXME: ???
+        # if scale < eps, then convergence check breaks down
         if (scale < self.eps).any():
-            scale = 1.0
+            raise RuntimeError("CSCG method detected underflow for squared norm of right-hand side (scale = %le < eps = %le)." % (scale,eps))
 
         #print 'Scale = ', scale
 

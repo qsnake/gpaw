@@ -120,9 +120,9 @@ class BiCGStab:
         multi_zdotc(scale, b,b, nvec)
         scale = npy.abs( scale )
 
-        # FIXME: ???
+        # if scale < eps, then convergence check breaks down
         if (scale < self.eps).any():
-            scale = 1.0
+            raise RuntimeError("BigCGStab method detected underflow for squared norm of right-hand side (scale = %le < eps = %le)." % (scale,eps))
 
         #print 'Scale = ', scale
 
