@@ -311,7 +311,7 @@ class TDDFT(PAW):
                 dm_file.flush()
 
         niterpropagator = 0
-        for i in range(iterations):
+        while self.niter<iterations:
             # write dipole moment at every iteration
             if dipole_moment_file is not None:
                 dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
@@ -322,7 +322,7 @@ class TDDFT(PAW):
                     dm_file.write(line)
                     dm_file.flush()
 
-            if i % 10 == 0:
+            if self.niter % 10 == 0:
                 # print output (energy etc.) every 10th iteration 
                 #print '.',
                 #sys.stdout.flush()
@@ -366,7 +366,7 @@ class TDDFT(PAW):
                     iter_text = """iter: %3d  %02d:%02d:%02d %11.2f\
    %13.6f %9.1f %10d"""
                     self.text(iter_text % 
-                              (i, T[3], T[4], T[5],
+                              (self.niter, T[3], T[4], T[5],
                                self.time * self.autime_to_attosec,
                                self.Etot, log(abs(norm))/log(10),
                                niterpropagator))
@@ -378,14 +378,17 @@ class TDDFT(PAW):
             niterpropagator = self.propagator.propagate(self.kpt_u, self.time,
                                                         time_step)
             self.time += time_step
+            self.niter += 1
 
+            # call registered callback functions
+            self.call()
 
             # restart data
-            if restart_file is not None and ( (i+1) % dump_interval == 0 ):
+            if restart_file is not None and ( self.niter % dump_interval == 0 ):
                 self.write(restart_file, 'all')
                 if rank == 0:
                     print 'Wrote restart file.'
-                    print i, ' iterations done. Current time is ', \
+                    print self.niter, ' iterations done. Current time is ', \
                         self.time * self.autime_to_attosec, ' as.' 
                     # print 'Warning: Writing restart files in TDDFT does not work yet.'
                     # print 'Continuing without writing restart file.'
@@ -394,6 +397,9 @@ class TDDFT(PAW):
         if dipole_moment_file is not None:
             if rank == 0:
                 dm_file.close()
+
+        # call registered callback functions
+        self.call(final=True)
 
         if restart_file is not None:
             self.write(restart_file, 'all')
