@@ -12,6 +12,7 @@ may not exist.
 
 from urllib2 import urlopen, HTTPError
 import os
+from sys import executable
 
 srcpath = 'http://wiki.fysik.dtu.dk/gpaw-files'
 #srcpath = 'http://dcwww.camp.dtu.dk/~askhl/gpaw-files'
@@ -97,4 +98,4 @@ if get('setups', ['setup-images.tar.gz', 'setup-data.pckl'], '_static'):
     print 'Extracting setup images ...'
     os.system('tar --directory=_static -xzf _static/setup-images.tar.gz')
     print 'Generating setup pages ...'
-    os.system('cd setups; python make_setup_pages.py')
+    os.system('cd setups; %s make_setup_pages.py' % executable)

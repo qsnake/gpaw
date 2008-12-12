@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+from sys import executable
 import types
 from os.path import join
 from stat import ST_MTIME
@@ -96,7 +97,7 @@ def create_png_files():
                                 break
                     if run:
                         print 'running:', path
-                        e = os.system('cd %s; python %s' % (dirpath, filename))
+                        e = os.system('cd %s; %s %s' % (dirpath, executable, filename))
                         if e != 0:
                             raise RuntimeError('FAILED!')
                         for file in line.split()[2:]:
