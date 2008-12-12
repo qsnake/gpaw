@@ -738,11 +738,11 @@ After bulding ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4_ and do this::
   $ patch -p1 < ../numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg
   $ cp ../numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg site.cfg
   $ ldpath=/bgsys/drivers/ppcfloor/gnu-linux/lib
-  $ ldflags="-Wl,--allow-multiple-definition"
+  $ ldflags="-Wl,--allow-multiple-definition -L/opt/ibmcmp/xlmass/bg/4.4/bglib"
   $ root=$HOME/numpy-1.0.4-1.optimized
   $ p=/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-  $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -DNO_APPEND_FORTRAN\""
-  $ LDFLAGS="$ldflags" LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
+  $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -DNO_APPEND_FORTRAN -L/opt/ibmcmp/xlmass/bg/4.4/bglib\""
+  $ MATHLIB="mass" LDFLAGS="$ldflags" LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
 Numpy built in this way does contain the
 :file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
