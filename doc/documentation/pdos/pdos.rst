@@ -220,7 +220,7 @@ the relevant overlaps within the PAW formalism is
   | \tilde \psi_n \rangle + \sum_{a'} \sum_{i_1i_2} \langle \tilde
   \phi^a_i | \tilde p_{i_1}^{a'} \rangle \Big(\langle \phi_{i_1}^{a'} |
   \phi_{i_2}^{a'} \rangle - \langle \tilde \phi_{i_1}^{a'} | \tilde 
-  \phi_{i_2}^{a}\rangle \Big)\langle \tilde p^{a'}_{i_2} | \tilde
+  \phi_{i_2}^{a'}\rangle \Big)\langle \tilde p^{a'}_{i_2} | \tilde
   \psi_n \rangle
 
 Using that projectors and pseudo partial waves form a complete basis
