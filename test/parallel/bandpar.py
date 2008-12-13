@@ -8,11 +8,9 @@ from gpaw.operators import Laplace
 from gpaw.mpi import world
 
 B = parsize_bands   # number of blocks
-# if len(sys.argv) > 1:
-#    B = int(sys.argv[1])
     
 G = 120  # number of grid points (G x G x G)
-N = 1000  # number of bands
+N = 2000  # number of bands
 
 h = 0.2        # grid spacing
 a = h * G      # side length of box
@@ -101,7 +99,7 @@ def overlap(psit_mG, send_mG, recv_mG):
     if domain_comm.rank == 0:
         if band_comm.rank == 0:
             # Master collects submatrices:
-            S_nn = np.empty((N, N))
+            S_nn = np.empty((N,N))
             S_nn[:] = 11111.77777
             S_imim = S_nn.reshape((B, M, B, M))
             S_imim[:Q, :, 0] = S_imm.transpose(0, 2, 1)
@@ -133,6 +131,7 @@ def matrix_multiply(C_nn, psit_mG, send_mG, recv_mG):
         band_comm.wait(srequest)
         send_mG, recv_mG = recv_mG, send_mG
     psit_mG += np.dot(C_imim[rank, :, rank - 1], send_mG)
+
     return psit_mG
 
 ta = time()
