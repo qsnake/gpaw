@@ -391,12 +391,11 @@ class Density:
 
     def initialize_kinetic(self):
         """Initial pseudo electron kinetic density."""
-        """flag to use local variable in tpss.c"""
 
         self.taut_sG = self.gd.zeros(self.nspins)
         self.taut_sg = self.finegd.zeros(self.nspins)
 
-    def update_kinetic(self, kpt_u):
+    def update_kinetic(self, kpt_u,symmetry=None):
         """Calculate pseudo electron kinetic density.
         The pseudo electron-density ``taut_sG`` is calculated from the
         wave functions, the occupation numbers"""
@@ -410,6 +409,10 @@ class Density:
         for nucleus in self.nuclei:
             nucleus.add_smooth_core_kinetic_energy_density(self.taut_sG,self.nspins,
                                                            self.gd)
+        """For periodic boundary conditions"""
+        if symmetry is not None:
+            for taut_G in self.taut_sG:
+                symmetry.symmetrize(taut_G, self.gd)
 
         """Transfer the density from the coarse to the fine grid."""
         for s in range(self.nspins):
