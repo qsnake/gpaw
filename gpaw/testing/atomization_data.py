@@ -251,6 +251,9 @@ IP = {# System     IE    IE_vert
     'CH3SH'     : ( 9.44,  9.44),
     'HOCl'      : (11.12,  None),
     'SO2'       : (12.35, 12.50),
+    'C6H6'      : ( 9.24,  9.25),
+    'C12H10'    : ( 8.16,  None), # Biphenyl
+    'C10H8'     : ( 8.14,  None), # Naphthalene
     }  
 
 ## Note the difference between the experimental data from Blaha [1] and
