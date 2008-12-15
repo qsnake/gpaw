@@ -23,9 +23,11 @@ class Lxc_testsetups:
         """self.clean removes only setups generated
         by this instance of self!."""
         from os import remove
-        for file in self.files:
-            if ((file is not None) and isfile(file)):
-                remove(file)
+        barrier()
+        if rank == 0:
+            for file in self.files:
+                if ((file is not None) and isfile(file)):
+                    remove(file)
 
 def generate():
     files = []
