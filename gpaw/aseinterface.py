@@ -260,25 +260,28 @@ class Calculator(PAW):
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
         return fold(energies * Hartree, weights, npts, width)
 
-    def get_molecular_ldos(self, mol, spin=0, npts=201, width=None,
-                           lc=None, wf=None, P_aui=None, raw=False):
-        """The Projected Density of States, using molecular orbitals.
+    def get_all_electron_ldos(self, mol, spin=0, npts=201, width=None,
+                              wf_k=None, P_aui=None, lc=None, raw=False):
+        """The Projected Density of States, using all-electron wavefunctions.
 
-        Projects onto either atomic orbital basis functions (lc) for a
-        specified molecule (mol), or a molecular wavefunction(wf).
+        Projects onto a pseudo_wavefunctions (wf_k) corresponding to some band
+        n and uses P_aui ([paw.nuclei[a].P_uni[:,n,:] for a in atoms]) to
+        obtain the all-electron overlaps.
+        Instead of projecting onto a wavefunctions a molecular orbital can
+        be specified by a linear combination of weights (lc)
         """
-        from gpaw.utilities.dos import molecular_LDOS, fold
+        from gpaw.utilities.dos import all_electron_LDOS, fold
 
         if raw:
-            return molecular_LDOS(self, mol, spin,
-                                  lc=lc, wf=wf, P_aui=P_aui)
+            return all_electron_LDOS(self, mol, spin, lc=lc,
+                                     wf_k=wf_k, P_aui=P_aui)
         if width is None:
             width = self.get_electronic_temperature()
         if width == 0.0:
             width = 0.1
 
-        energies, weights = molecular_LDOS(self, mol, spin,
-                                           lc=lc, wf=wf, P_aui=P_aui)
+        energies, weights = all_electron_LDOS(self, mol, spin,
+                                              lc=lc, wf_k=wf_k, P_aui=P_aui)
         return fold(energies * Hartree, weights, npts, width)
 
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
