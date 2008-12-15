@@ -222,8 +222,7 @@ class Calculator(PAW):
             x += Nb
             
         from gpaw.utilities.dos import fold
-        e, dos = fold(energies, weights, npts, width)
-        return e - self.get_fermi_level(), dos
+        return fold(energies, weights, npts, width)
 
     def get_wigner_seitz_ldos(self, a, spin=0, npts=201, width=None):
         """The Local Density of States, using a Wigner-Seitz basis function.
@@ -237,8 +236,7 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import raw_wignerseitz_LDOS, fold
         energies, weights = raw_wignerseitz_LDOS(self, a, spin)
-        e, ldos = fold(energies * Hartree, weights, npts, width)
-        return e - self.get_fermi_level(), ldos
+        return fold(energies * Hartree, weights, npts, width)
     
     def get_orbital_ldos(self, a,
                          spin=0, angular='spdf', npts=201, width=None):
@@ -260,8 +258,7 @@ class Calculator(PAW):
 
         from gpaw.utilities.dos import raw_orbital_LDOS, fold
         energies, weights = raw_orbital_LDOS(self, a, spin, angular)
-        e, ldos = fold(energies * Hartree, weights, npts, width)
-        return e - self.get_fermi_level(), ldos
+        return fold(energies * Hartree, weights, npts, width)
 
     def get_molecular_ldos(self, mol, spin=0, npts=201, width=None,
                            lc=None, wf=None, P_aui=None, raw=False):
@@ -282,8 +279,7 @@ class Calculator(PAW):
 
         energies, weights = molecular_LDOS(self, mol, spin,
                                            lc=lc, wf=wf, P_aui=P_aui)
-        e, ldos = fold(energies * Hartree, weights, npts, width)
-        return e - self.get_fermi_level(), ldos
+        return fold(energies * Hartree, weights, npts, width)
 
     def get_pseudo_wave_function(self, band=0, kpt=0, spin=0, broadcast=True,
                                  pad=True):

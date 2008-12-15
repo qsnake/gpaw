@@ -21,10 +21,11 @@ from gpaw.mpi import run, MASTER
 class PAWExtra:
     def get_fermi_level(self):
         """Return the Fermi-level."""
-        e = self.occupation.get_fermi_level()
-        if e is None:
-            return 0.0
-        return e * self.Ha
+        return self.occupation.get_fermi_level() * self.Ha
+
+    def get_homo_lumo(self):
+        """Return HOMO and LUMO eigenvalues."""
+        return self.occupation.get_homo_lumo(self.kpt_u) * self.Ha
 
     def write(self, filename, mode=''):
         """use mode='all' to write the wave functions"""
@@ -360,31 +361,6 @@ class PAWExtra:
                 volumes[k, n] += I
                 
         return 1. / volumes
-
-    def get_homo_lumo(self):
-        """Return HOMO and LUMO eigenvalues.
-
-        Works for zero-temperature Gamma-point calculations only.
-        """
-        if len(self.bzk_kc) != 1 or self.kT != 0:
-            raise RuntimeError
-        occ = self.collect_occupations()
-        eig = self.collect_eigenvalues()
-        lumo = self.nbands - occ[::-1].searchsorted(0, side='right')
-        homo = lumo - 1
-        e_homo = eig[homo]
-        e_lumo = eig[lumo]
-        if self.nspins == 2:
-            # Spin polarized: check if frontier orb is in minority spin
-            occ = self.collect_occupations(s=1)
-            eig = self.collect_eigenvalues(s=1)
-            lumo = self.nbands - occ[::-1].searchsorted(0, side='right')
-            homo = lumo - 1
-            if homo >= 0:
-                e_homo = max(e_homo, eig[homo])
-            e_lumo = min(e_lumo, eig[lumo])
-
-        return e_homo * self.Ha, e_lumo * self.Ha
 
     def get_projections(self, locfun, spin=0):
         """Project wave functions onto localized functions

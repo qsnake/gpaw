@@ -44,27 +44,35 @@ class Dummy:
             Eband += npy.dot(kpt.f_n, kpt.eps_n)    
         self.Eband = self.band_comm.sum(self.kpt_comm.sum(Eband))
 
+    def get_homo_lumo(self, kpts):
+        raise NotImplementedError('get_homo_lumo() only implemented for zero '
+                                  'Kelvin calculations!')
+
 
 class ZeroKelvin(Dummy):
     """Occupations for Gamma-point calculations without Fermi-smearing"""
 
     def calculate(self, kpts):
+        if ((self.kpt_comm.size == 1 and self.nspins != len(kpts)) or
+            (self.kpt_comm.size == 2 and len(kpts) != 1) or
+            self.kpt_comm.size > 2):
+            raise RuntimeError('width=0 only works for gamma-point ' +
+                               'calculations!  Use width > 0.')
+        
         if self.nspins == 1:
-            if len(kpts) > 1:
-                raise RuntimeError('width=0 only works for gamma-point ' +
-                                   'calculations!  Use width > 0.')
-            b = int(self.ne // 2)
+            lumo = int(self.ne // 2)
             f_n = kpts[0].f_n
-            f_n[:b] = 2.0
-            f_n[b:] = 0.0
-            if 2 * b < self.ne:
-                f_n[b] = self.ne - 2*b
+            f_n[:lumo] = 2.0
+            f_n[lumo:] = 0.0
+            if 2 * lumo < self.ne:
+                f_n[lumo] = self.ne - 2 * lumo # == 1.0
+                lumo += 1
             self.magmom = 0.0
         elif self.fixmom:
             M = int(round(self.M))
-            ne_s = [(self.ne + M) / 2, (self.ne - M) / 2]
+            lumo = (self.ne + M) / 2, (self.ne - M) / 2
             for kpt in kpts:
-                b = ne_s[kpt.s]
+                b = lumo[kpt.s]
                 kpt.f_n[:b] = 1.0
                 kpt.f_n[b:] = 0.0
             self.magmom = M
@@ -85,9 +93,10 @@ class ZeroKelvin(Dummy):
                     ma += 1
                 else:
                     mb += 1
-
-            if self.kpt_comm.size>1: 
-                f_n = npy.zeros((self.kpt_comm.size, nb))
+            lumo = ma, mb
+            
+            if self.kpt_comm.size > 1: 
+                f_n = npy.zeros((self.kpt_comm.size, nb)) # (2, nb)
             else:
                 f_n = [kpt.f_n for kpt in kpts]
  
@@ -98,10 +107,45 @@ class ZeroKelvin(Dummy):
             fb_n[mb:] = 0.0
             self.magmom = ma - mb
             # copy back information
-            if self.kpt_comm.size>1: 
+            if self.kpt_comm.size > 1: 
                 kpts[0].f_n = f_n[self.kpt_comm.rank]
 
+        self.lumo = lumo
         self.calculate_band_energy(kpts)
+
+    def get_fermi_level(self):
+        raise NotImplementedError('Fermi level only defined for width > 0. '
+                                  'Use get_homo_lumo() instead.')
+
+    def get_homo_lumo(self, kpts):
+        if not hasattr(self, 'lumo'):
+            self.calculate(kpts)
+        
+        def get(a, i):
+            if i < 0:
+                return npy.nan
+            try:
+                return a[i]
+            except IndexError:
+                return npy.nan
+
+        if self.nspins == 1:
+            e_homo = kpts[0].eps_n[self.lumo - 1]
+            e_lumo = get(kpts[0].eps_n, self.lumo)
+        elif self.kpt_comm.size == 1:
+            e_homo = max(get(kpts[0].eps_n, self.lumo[0] - 1),
+                         get(kpts[1].eps_n, self.lumo[1] - 1))
+            e_lumo = min(get(kpts[0].eps_n, self.lumo[0]),
+                         get(kpts[1].eps_n, self.lumo[1]))
+        else:
+            eps = npy.zeros((2, 2)) # proc, homo/lumo
+            hl = npy.array([get(kpts[0].eps_n, self.lumo[0] - 1),
+                            get(kpts[0].eps_n, self.lumo[0])])
+            self.kpt_comm.all_gather(hl, eps)
+            e_homo = eps[:, 0].max()
+            e_lumo = eps[:, 1].min()
+
+        return npy.array([e_homo, e_lumo])
 
 
 class FermiDirac(Dummy):

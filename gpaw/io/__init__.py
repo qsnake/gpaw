@@ -145,11 +145,11 @@ def write(paw, filename, mode):
         w['Eext'] = paw.Eext
         w['Exc'] = paw.Exc
         w['S'] = paw.S
-        epsF = paw.occupation.get_fermi_level()
-        if epsF is None:
-            # Zero temperature calculation - use vacuum level:
-            epsF = 0.0
-        w['FermiLevel'] = epsF
+        try:
+            w['FermiLevel'] = paw.occupation.get_fermi_level()
+        except NotImplementedError:
+            # Zero temperature calculation - don't write Fermi level:
+            pass
 
         # write errors
         w['DensityError'] = paw.error['density']
@@ -426,7 +426,7 @@ def read(paw, reader):
     paw.S = r['S']
     paw.Etot = r.get('PotentialEnergy') - 0.5 * paw.S
 
-    if not paw.fixmom:
+    if not paw.fixmom and 'FermiLevel' in r.parameters:
         paw.occupation.set_fermi_level(r['FermiLevel'])
 
     # Try to read the current time in time-propagation:

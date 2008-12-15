@@ -60,7 +60,7 @@ if len(tests) == 0:
              'davidson.py', 'cg.py', 'ldos.py', 'h2o-xas-recursion.py',
              'atomize.py', 'wannier-ethylene.py', 'lrtddft.py', 'CH4.py',
              'gllb2.py', 'apmb.py', 'relax.py', 'fixmom.py',
-             'si-xas.py', 
+             'si-xas.py', 'fermilevel.py',
              'revPBE_Li.py', 'lxc_xcatom.py', 'exx_coarse.py', '2Al.py',
              '8Si.py', 'dscf_test.py', 'lcao-h2o.py', 'IP-oxygen.py',
              'generatesetups.py', 'aedensity.py', 'h2o_dks.py', 'Cu.py',

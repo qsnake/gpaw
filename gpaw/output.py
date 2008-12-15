@@ -282,8 +282,12 @@ class Output:
         t('Free Energy:   %+10.5f' % (self.Ha * self.Etot))
         t('Zero Kelvin:   %+10.5f' % (self.Ha * (self.Etot + 0.5 * self.S)))
         t()
-        epsF = self.occupation.get_fermi_level()
-        if epsF is not None:
+
+        try:
+            epsF = self.occupation.get_fermi_level()
+        except NotImplementedError:
+            pass
+        else:
             t('Fermi Level:', self.Ha * epsF)
 
         self.print_eigenvalues()

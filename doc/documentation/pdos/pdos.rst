@@ -152,10 +152,10 @@ the integral is less than one).
 
 The function ``calc.get_molecular_ldos()`` calculates the square
 modulus of the overlaps and multiply by normalized gaussians of a
-certain width.  The energies is in ``eV`` and relative to the Fermi
-level. Setting the keyword ``raw=True`` will return only the overlaps
-and energies in Hartree. It is useful to simply save these in a
-``.pickle`` file since the ``.gpw`` files with wave functions can be
+certain width.  The energies are in ``eV`` and relative to the average
+potential. Setting the keyword ``raw=True`` will return only the
+overlaps and energies in Hartree. It is useful to simply save these in
+a ``.pickle`` file since the ``.gpw`` files with wave functions can be
 quite large. The following script pickles the overlaps
 
 Pickle script::

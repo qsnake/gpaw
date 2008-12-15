@@ -96,14 +96,14 @@ def remove_pbc(atoms, h, s=None, d=0):
 def dump_hamiltonian(filename, atoms, direction=None):
     
     h_skmm, s_kmm = get_hamiltonian(atoms)
-    if direction!=None:
-        d = {'x':0, 'y':1, 'z':2}[direction]
+    if direction != None:
+        d = {'x': 0, 'y': 1, 'z': 2}[direction]
         for s in range(atoms.calc.nspins):
             for k in range(atoms.calc.nkpts):
                 if s==0:
-                    remove_pbc(atoms, h_skmm[s,k], s_kmm[k], d)
+                    remove_pbc(atoms, h_skmm[s, k], s_kmm[k], d)
                 else:
-                    remove_pbc(atoms, h_skmm[s,k], None, d)
+                    remove_pbc(atoms, h_skmm[s, k], None, d)
 
     
     if atoms.calc.master:

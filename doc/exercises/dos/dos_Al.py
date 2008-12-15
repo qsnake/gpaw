@@ -14,7 +14,7 @@ atoms.get_potential_energy()
 energy, dos = calc.get_dos(width=.5)
 
 import pylab as p
-p.plot(energy, dos)
+p.plot(energy - calc.get_fermi_level(), dos)
 p.axis('tight')
 p.xlabel(r'$\epsilon - \epsilon_F \ \rm{(eV)}$')
 p.ylabel('Density of States (1/eV)')
