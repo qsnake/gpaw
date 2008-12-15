@@ -126,12 +126,12 @@ PDOS script::
     c_mol = Calculator('CO.gpw')
     for n in range(2,7):
         print 'Band', n
-	# PDOS on the band n
+        # PDOS on the band n
         wf_k = [c_mol.get_pseudo_wave_function(band=n, kpt=k, spin=0, pad=False)
                 for k in range(c_mol.nkpts)]
         P_aui = [a.P_uni[:,n,:] for a in c_mol.nuclei] # Inner products of pseudo wavefunctions and projectors
-        e, dos = calc.get_all_electron_ldos(mol=molecule, spin=0, npts=2001,
-                                            width=0.1, wf_k=wf_k, P_aui=P_aui)
+        e, dos = calc.get_molecular_ldos(mol=molecule, spin=0, npts=2001,
+                                         width=0.1, wf_k=wf_k, P_aui=P_aui)
         plot(e, dos, label='Band: '+str(n))
     legend()
     grid(True)
@@ -150,7 +150,7 @@ delocalized and are not well represented by an expansion in the slab
 eigenstates (Try changing ``range(2,7)`` to ``range(2,9)`` and note
 the integral is less than one).
 
-The function ``calc.get_all_electron_ldos()`` calculates the square
+The function ``calc.get_molecular_ldos()`` calculates the square
 modulus of the overlaps and multiply by normalized gaussians of a
 certain width.  The energies is in ``eV`` and relative to the Fermi
 level. Setting the keyword ``raw=True`` will return only the overlaps
@@ -173,7 +173,7 @@ Pickle script::
         wf_k = [c_mol.get_pseudo_wave_function(band=n, kpt=k, spin=0, pad=False)
                 for k in range(calc.nkpts)]
         P_aui = [a.P_uni[:,n,:] for a in c_mol.nuclei]
-        e, P = calc.get_all_electron_ldos(mol=molecule, wf_k=wf_k, spin=0, P_aui=P_aui, raw=True)
+        e, P = calc.get_molecular_ldos(mol=molecule, wf_k=wf_k, spin=0, P_aui=P_aui, raw=True)
         e_n.append(e)
         P_n.append(P)
     pickle.dump((e_n, P_n), open('top.pickle', 'w'))
