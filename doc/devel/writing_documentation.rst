@@ -84,33 +84,31 @@ Extensions to Sphinx
 
 We have a couple of extensions to Sphinx:
 
-.. role:: svn
+**:svn:**
 
    A role for creating a link to a file in SVN.  If you write
-   ``:svn:`ase/atoms.py```, you
-   will get: :svn:`ase/atoms.py`.  The implementation of this role is
+   ``:svn:`gpaw/paw.py```, you
+   will get: :svn:`gpaw/paw.py`.  The implementation of this role is
    here: :svn:`doc/ext.py`.
 
-.. role:: epydoc
+**:epydoc:**
 
    A role for creating a link to the API-documentation generated with
    epydoc_.  If you
-   write ``:epydoc:`ase.atoms.Atoms```, you will get:
-   :epydoc:`ase.atoms.Atoms`.  The implementation of this role is
+   write ``:epydoc:`gpaw.paw.PAW```, you will get:
+   :epydoc:`gpaw.paw.PAW`.  The implementation of this role is
    here: :svn:`doc/ext.py`.
 
-.. role:: math
+**:math:**
 
    This role is for inline LaTeX-style math.  Example:
    ``:math:`\sin(x_n^2)``` gives you :math:`\sin(x_n^2)`.
 
-.. directive:: math
+**.. math::**
 
    Write displayed LaTeX-style math.  Example::
 
-     .. math::
-
-        \frac{1}{1+x^2}
+     .. math:: \frac{1}{1+x^2}
 
    gives you:
 
