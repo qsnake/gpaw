@@ -45,8 +45,8 @@ n_a = calc.get_wigner_seitz_densities(spin=0)
 
 ldos = RawLDOS(calc)
 fname = 'ldbe.dat'
-ldos.by_element_to_file(fname)
-ldos.by_element_to_file(fname, 2.)
+ldos.by_element_to_file(fname, shift=False)
+ldos.by_element_to_file(fname, 2., shift=False)
 
 ## print sweight, pdfweight
 ## print sweight_spin

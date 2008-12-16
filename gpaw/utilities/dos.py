@@ -334,7 +334,10 @@ class RawLDOS:
                     print >> f, '# Fermi energy was',
                 else:
                     print >> f, '# Fermi energy',
-                print >> f, self.paw.get_fermi_level(), 'eV'
+                try:
+                    print >> f, self.paw.get_fermi_level(), 'eV'
+                except NotImplementedError:
+                    print >>f, 'Not available'
                 print >> f, '# e[eV]  spin ',
                 for key in ldbe:
                     if len(key) == 1: key=' '+key
