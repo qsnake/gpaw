@@ -118,6 +118,8 @@ class LCAO:
 
             self.comm.broadcast(self.eps_m, 0)
             self.comm.broadcast(H_mm, 0)
+            self.band_comm.broadcast(self.eps_m, 0)
+            self.band_comm.broadcast(H_mm, 0)
 
             assert self.eps_m[0] != 42
 
