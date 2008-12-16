@@ -192,6 +192,13 @@ class LCAOHamiltonian:
         if self.gd.comm.size > 1:
             self.gd.comm.sum(self.S_kmm)
 
+        # MDTMP Near-linear dependence check
+        # MDTMP does not work for band parallelization with scalapack
+        if sl_diagonalize:
+            self.linear_kpts = {}
+            self.lcao_initialized = True
+            return
+
         # Near-linear dependence check. This is done by checking the
         # eigenvalues of the overlap matrix S_kmm. Eigenvalues close
         # to zero mean near-linear dependence in the basis-set.
