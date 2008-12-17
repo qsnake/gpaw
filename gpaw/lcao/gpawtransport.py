@@ -49,7 +49,6 @@ class PathInfo:
     def set_nres(self, nres):
         self.nres = nres
     
-       
 class GPAWTransport:
     
     def __init__(self, atoms, pl_atoms, pl_cells, d=0):
@@ -235,7 +234,6 @@ class GPAWTransport:
             self.nct_G = pickle.load(fd)
             fd.close()
             
-
     def get_hs(self, atoms):
         calc = atoms.calc
         Ef = calc.get_fermi_level()
@@ -275,7 +273,7 @@ class GPAWTransport:
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
 
-    def get_lead_calc(self, l, nkpts=13):
+    def get_lead_calc(self, l, nkpts=21):
         p = self.atoms.calc.input_parameters.copy()
         p['nbands'] = None
         kpts = list(p['kpts'])
@@ -290,8 +288,7 @@ class GPAWTransport:
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'lead%i_' % (l + 1) + p['txt']
         return GPAW(**p)
-        
-    
+
     def read(self, filename):
         h, s = pickle.load(file('scat_' + filename))
         h1, s1 = pickle.load(file('lead1_' + filename))
@@ -335,16 +332,17 @@ class GPAWTransport:
         self.nxkmol = p['kpts'][0]  
         self.update_scat_hamiltonian(0)
         self.nbmol = self.h_skmm.shape[-1]
-        self.d_kmm = self.generate_density_matrix(2, flag)
+        self.d_skmm = self.generate_density_matrix(2, flag)
         self.initial_mol()        
  
-        self.edge_density_mm = self.calc_edge_charge(self.d_yzkmm_ij,
+        self.edge_density_mm = self.calc_edge_charge(self.d_syzkmm_ij,
                                                               self.s_yzkmm_ij)
-        self.edge_charge = npy.empty([self.nyzk])
+        self.edge_charge = npy.empty([self.nspins, self.nyzk])
         
-        for i in range(self.nyzk):
-            self.edge_charge[i] = npy.trace(self.edge_density_mm[i])
-            print 'edge_charge[',i,']=', self.edge_charge[i]
+        for i in range(self.nspins):
+            for j in range(self.nyzk):
+                self.edge_charge[i, j] = npy.trace(self.edge_density_mm[i, j])
+                print 'edge_charge[',i,']=', self.edge_charge[i, j]
 
     def initial_lead(self, lead):
         nxk = self.nxklead
@@ -368,6 +366,7 @@ class GPAWTransport:
                                               [-1.0,0,0])            
         else:
             print 'unkown lead index'
+
     def initial_mol(self):
         nxk = self.nxkmol
         kpts = self.atoms.calc.ibzk_kc
@@ -375,9 +374,9 @@ class GPAWTransport:
         self.s_yzkmm = self.substract_yzk(nxk, kpts, self.s_kmm)
         self.s_yzkmm_ij = self.substract_yzk(nxk, kpts, self.s_kmm, 's',
                                             [1.0,0,0])
-        self.d_kmm = self.d_kmm[0]
-        self.d_yzkmm = self.substract_yzk(nxk, kpts, self.d_kmm)
-        self.d_yzkmm_ij = self.fill_density_matrix()
+        self.d_syzkmm = self.substract_yzk(nxk, kpts, self.d_skmm, 'h')
+        self.d_syzkmm_ij = self.fill_density_matrix()
+
     def substract_yzk(self, nxk, kpts, k_mm, hors='s', position=[0, 0, 0]):
         nyzk = self.nyzk
         weight = npy.array([1.0 / nxk] * nxk )
@@ -434,16 +433,19 @@ class GPAWTransport:
             print 'Warning*: the principle layer should be lagger, \
                                                           matmax=%f' % matmax
     
-    def calc_edge_charge(self, d_yzkmm_ij, s_yzkmm_ij):
-        nkpts = s_yzkmm_ij.shape[0]
+    def calc_edge_charge(self, d_syzkmm_ij, s_yzkmm_ij):
+        nspins = self.nspins
+        nyzk = self.nyzk
         nbf = s_yzkmm_ij.shape[-1]
-        edge_charge_mm = npy.zeros([nkpts, nbf, nbf])
-        for i in range(nkpts):
-            edge_charge_mm[i] += npy.dot(d_yzkmm_ij[i],
+        edge_charge_mm = npy.zeros([nspins, nyzk, nbf, nbf])
+        for i in range(nspins):
+            for j in range(nyzk):
+                edge_charge_mm[i, j] += npy.dot(d_syzkmm_ij[i, j],
                                                    dagger(s_yzkmm_ij[i]))
-            edge_charge_mm[i] += npy.dot(dagger(d_yzkmm_ij[i]),
+                edge_charge_mm[i, j] += npy.dot(dagger(d_syzkmm_ij[i, j]),
                                                           s_yzkmm_ij[i])
         return edge_charge_mm
+
     def pick_out_xkpts(self, nxk, kpts):
         nyzk = self.nyzk
         xkpts = npy.zeros([nxk, 3])
@@ -452,6 +454,7 @@ class GPAWTransport:
             xkpts[i, 0] = kpts[num, 0]
             num += nyzk
         return xkpts
+
     def generate_density_matrix(self, lead, flag=0):
         nxk = self.nxklead
         nyzk = self.nyzk
@@ -472,7 +475,7 @@ class GPAWTransport:
             else:
                 raise KeyError('invalid lead index in \
                                                      generate_density_matrix')
-            d_skmm = npy.empty(dim,complex)
+            d_skmm = npy.empty(dim, complex)
             for kpt in calc.kpt_u:
                 C_nm = kpt.C_nm
                 f_nn = npy.diag(kpt.f_n)
@@ -500,14 +503,20 @@ class GPAWTransport:
         pl1 = self.h1_skmm.shape[-1]
         nbmol = self.h_skmm.shape[-1]
         nyzk = self.nyzk
-        d_yzkmm_ij = npy.zeros([nyzk, nbmol, nbmol])
-        d_yzkmm_ij[:, -pl1:, :pl1] = npy.copy(self.d1_syzkmm_ij[0])
-        return d_yzkmm_ij
+        nspins = self.nspins
+        d_syzkmm_ij = npy.zeros([nspins, nyzk, nbmol, nbmol])
+        d_syzkmm_ij[:, :, -pl1:, :pl1] = npy.copy(self.d1_syzkmm_ij)
+        return d_syzkmm_ij
+
     def boundary_check(self):
         tol = 1e-4
         pl1 = self.h1_skmm.shape[-1]
-        
         matdiff = self.h_syzkmm[0, :, :pl1, :pl1] - self.h1_syzkmm[0]
+        if self.nspins == 2:
+             matdiff1 = self.h_syzkmm[1, :, :pl1, :pl1] - self.h1_syzkmm[1]
+             float_diff = npy.max(abs(matdiff - matdiff1)) 
+             if float_diff > 1e-6:
+                  print 'Warning!, float_diff between spins %f' % float_diff
         if self.bias == 0:
             ediff = npy.sum(npy.diag(matdiff[0])) / npy.sum(
                                                    npy.diag(self.s1_yzkmm[0]))
@@ -522,11 +531,11 @@ class GPAWTransport:
         for i in range(nspins):
             self.h_syzkmm[i] += (self.gate - ediff) * self.s_yzkmm
         
-        matdiff = self.d_yzkmm[:, :pl1, :pl1] - self.d1_syzkmm[0]
+        matdiff = self.d_syzkmm[:, :, :pl1, :pl1] - self.d1_syzkmm
         if self.bias == 0:
             print_diff = npy.max(abs(matdiff))
         else:
-            print_diff= matdiff[0,0,0]
+            print_diff= matdiff[0,0,0,0]
         if print_diff > tol:
             print 'Warning*: density boundary difference %f' % print_diff
             
@@ -557,10 +566,12 @@ class GPAWTransport:
         dcvg(inputinfo, 'd', fcvg)
         if self.verbose:
             print 'mix_factor =', inputinfo['dalpha']
+        nspins = self.nspins
         nyzk = self.nyzk
         nbmol = self.nbmol
-        den = npy.empty([nyzk, nbmol, nbmol], complex)
-        denocc = npy.empty([nyzk, nbmol, nbmol], complex)
+        den = npy.empty([nspins, nyzk, nbmol, nbmol], complex)
+        denocc = npy.empty([nspins, nyzk, nbmol, nbmol], complex)
+
         self.selfenergies = [LeadSelfEnergy((self.h1_syzkmm[0,0],
                                                               self.s1_yzkmm[0]), 
                                             (self.h1_syzkmm_ij[0,0],
@@ -575,23 +586,31 @@ class GPAWTransport:
                                             (self.h2_syzkmm_ij[0,0],
                                                            self.s2_yzkmm_ij[0]),
                                              0)]
+
         self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
                                            H=self.h_syzkmm[0,0],
                                            S=self.s_yzkmm[0],
                                            eta=0)
         self.selfenergies[0].set_bias(bias/2.0)
         self.selfenergies[1].set_bias(-bias/2.0)
+        
         self.eqpathinfo = []
         self.nepathinfo = []
-        for k in range(nyzk):
-            self.eqpathinfo.append(PathInfo('eq'))
-            self.nepathinfo.append(PathInfo('ne'))
+       
+        for s in range(nspins):
+            self.eqpathinfo.append([])
+            self.nepathinfo.append([])
+            for k in range(nyzk):
+                self.eqpathinfo[s].append(PathInfo('eq'))
+                self.nepathinfo[s].append(PathInfo('ne'))
+
         self.boundary_check() 
 
         #-------get the path --------    
-        for k in range(nyzk):      
-            den[k] = self.get_eqintegral_points(intctrl, k)
-            denocc[k]= self.get_neintegral_points(intctrl, k)
+        for s in range(nspins):
+            for k in range(nyzk):      
+                den[s, k] = self.get_eqintegral_points(intctrl, s, k)
+                denocc[s, k]= self.get_neintegral_points(intctrl, s, k)
         
         #-------begin the SCF ----------         
         self.step = 0
@@ -599,29 +618,34 @@ class GPAWTransport:
         calc = self.atoms.calc    
         timer = Timer()
         nxk = self.nxkmol
-        xkpts = self.pick_out_xkpts(nxk, self.atoms.calc.ibzk_kc)
+        kpts = self.atoms.calc.ibzk_kc
         while self.cvgflag == 0:
             f_syzkmm = fcvg.matcvg(self.h_syzkmm)
             timer.start('Fock2Den')
-            for k in range(nyzk):
-                self.d_yzkmm[k] = self.fock2den(intctrl, f_syzkmm, k)
+            for s in range(nspins):
+                for k in range(nyzk):
+                    self.d_syzkmm[s, k] = self.fock2den(intctrl, f_syzkmm, s, k)
             timer.stop('Fock2Den')
             if self.verbose:
-                print'Fock2Den', timer.gettime('Fock2Den'),'second'
-            self.d_yzkmm = npy.real(self.d_yzkmm)*2
-            d_yzkmm_out = dcvg.matcvg(self.d_yzkmm)
+                print'Fock2Den', timer.gettime('Fock2Den'), 'second'
+            if nspins == 1:
+                self.d_syzkmm = npy.real(self.d_syzkmm) * 2
+            else:
+                self.d_syzkmm = npy.real(self.d_syzkmm)
+
+            d_syzkmm_out = dcvg.matcvg(self.d_syzkmm)
             self.cvgflag = fcvg.bcvg and dcvg.bcvg
             timer.start('Den2Fock')            
-            self.h_skmm = self.den2fock(d_yzkmm_out)
+            self.h_skmm = self.den2fock(d_syzkmm_out)
             timer.stop('Den2Fock')
             if self.verbose:
                 print'Den2Fock', timer.gettime('Den2Fock'),'second'
-            self.h_syzkmm = self.substract_yzk(nxk, xkpts , self.h_skmm, 'h')
+            self.h_syzkmm = self.substract_yzk(nxk, kpts , self.h_skmm, 'h')
             self.boundary_check()
             self.step +=  1
         return 1
     
-    def get_eqintegral_points(self, intctrl, k):
+    def get_eqintegral_points(self, intctrl, s, k):
         global zint, fint, tgtint, cntint
         maxintcnt = 500
         nblead = self.nblead
@@ -632,34 +656,37 @@ class GPAWTransport:
         fint = []
         tgtint = npy.empty([2, maxintcnt, nblead, nblead], complex)
         cntint = -1
-        
-        self.selfenergies[0].set_hs((self.h1_syzkmm[0, k],
-                                              self.s1_yzkmm[k]),
-                                             (self.h1_syzkmm_ij[0, k],
-                                              self.s1_yzkmm_ij[k]),
-                                             (self.h1_syzkmm_ij[0, k],
-                                              self.s1_yzkmm_ij[k]) )
-        
-        self.selfenergies[1].set_hs((self.h2_syzkmm[0, k],
-                                              self.s2_yzkmm[k]),
-                                             (self.h2_syzkmm_ij[0, k],
-                                              self.s2_yzkmm_ij[k]),
-                                             (self.h2_syzkmm_ij[0, k],
-                                              self.s2_yzkmm_ij[k]) )   
-        
+
+        self.selfenergies[0].h_ii = self.h1_syzkmm[s, k]
+        self.selfenergies[0].s_ii = self.s1_yzkmm[k]
+        self.selfenergies[0].h_ij = self.h1_syzkmm_ij[s, k]
+        self.selfenergies[0].s_ij = self.s1_yzkmm_ij[k]
+        self.selfenergies[0].h_im = self.h1_syzkmm_ij[s, k]
+        self.selfenergies[0].s_im = self.s1_yzkmm_ij[k]
+
+        self.selfenergies[1].h_ii = self.h2_syzkmm[s, k]
+        self.selfenergies[1].s_ii = self.s2_yzkmm[k]
+        self.selfenergies[1].h_ij = self.h2_syzkmm_ij[s, k]
+        self.selfenergies[1].s_ij = self.s2_yzkmm_ij[k]
+        self.selfenergies[1].h_im = self.h2_syzkmm_ij[s, k]
+        self.selfenergies[1].s_im = self.s2_yzkmm_ij[k]
+
+        self.greenfunction.H = self.h_syzkmm[s, k]
+        self.greenfunction.S = self.s_yzkmm[k]
+
         #--eq-Integral-----
         [grsum, zgp, wgp, fcnt] = function_integral(self,
                                                         intctrl.eqintpath,
                                                         intctrl.eqinttol,
-                                                       0, 'eqInt', intctrl, k)
+                                                       0, 'eqInt', intctrl)
         # res Calcu
-        grsum += self.calgfunc(intctrl.eqresz, 'resInt', intctrl, k)    
+        grsum += self.calgfunc(intctrl.eqresz, 'resInt', intctrl)    
         tmp = npy.resize(grsum, [nbmol, nbmol])
         den += 1.j * (tmp - dagger(tmp)) / npy.pi / 2
 
         # --sort SGF --
         nres = len(intctrl.eqresz)
-        self.eqpathinfo[k].set_nres(nres)
+        self.eqpathinfo[s][k].set_nres(nres)
         elist = zgp + intctrl.eqresz
         wlist = wgp + [1.0] * nres
 
@@ -684,15 +711,19 @@ class GPAWTransport:
             for j, num in zip(range(fcnt), sgforder):
                 sigma = tgtint[i, num]
                 siglist[i].append(sigma)
-        self.eqpathinfo[k].add(elist, wlist, flist, siglist)    
+        self.eqpathinfo[s][k].add(elist, wlist, flist, siglist)    
    
         if self.verbose: 
-            print 'Eq_k[',k,']=', npy.trace(npy.dot(den,
-                                                     self.s_yzkmm[k])) * 2
+            if self.nspins == 1:
+                print 'Eq_k[',k,']=', npy.trace(npy.dot(den,
+                                                  self.s_yzkmm[k])) * 2
+            else:
+                print 'Eq_sk[', s , k , ']=', npy.trace(npy.dot(den,
+                                                 self.s_yzkmm[k]))
         del fint, tgtint, zint
         return den 
     
-    def get_neintegral_points(self, intctrl, k):
+    def get_neintegral_points(self, intctrl, s, k):
         # -----initialize-------
         intpathtol = 1e-8
         nblead = self.nblead  
@@ -709,19 +740,24 @@ class GPAWTransport:
         # -------ne--Integral---------------
         zint = [0] * maxintcnt
         tgtint = npy.empty([2, maxintcnt, nblead, nblead], complex)
-        self.selfenergies[0].set_hs((self.h1_syzkmm[0, k],
-                                              self.s1_yzkmm[k]),
-                                             (self.h1_syzkmm_ij[0, k],
-                                              self.s1_yzkmm_ij[k]),
-                                             (self.h1_syzkmm_ij[0, k],
-                                              self.s1_yzkmm_ij[k]) )
- 
-        self.selfenergies[1].set_hs((self.h2_syzkmm[0, k],
-                                              self.s2_yzkmm[k]),
-                                             (self.h2_syzkmm_ij[0, k],
-                                              self.s2_yzkmm_ij[k]),
-                                             (self.h2_syzkmm_ij[0, k],
-                                              self.s2_yzkmm_ij[k]) ) 
+
+        self.selfenergies[0].h_ii = self.h1_syzkmm[s, k]
+        self.selfenergies[0].s_ii = self.s1_yzkmm[k]
+        self.selfenergies[0].h_ij = self.h1_syzkmm_ij[s, k]
+        self.selfenergies[0].s_ij = self.s1_yzkmm_ij[k]
+        self.selfenergies[0].h_im = self.h1_syzkmm_ij[s, k]
+        self.selfenergies[0].s_im = self.s1_yzkmm_ij[k]
+
+        self.selfenergies[1].h_ii = self.h2_syzkmm[s, k]
+        self.selfenergies[1].s_ii = self.s2_yzkmm[k]
+        self.selfenergies[1].h_ij = self.h2_syzkmm_ij[s, k]
+        self.selfenergies[1].s_ij = self.s2_yzkmm_ij[k]
+        self.selfenergies[1].h_im = self.h2_syzkmm_ij[s, k]
+        self.selfenergies[1].s_im = self.s2_yzkmm_ij[k]
+
+        self.greenfunction.H = self.h_syzkmm[s, k]
+        self.greenfunction.S = self.s_yzkmm[k]
+
         for n in range(1, len(intctrl.neintpath)):
             cntint = -1
             fint = [[],[]]
@@ -737,7 +773,7 @@ class GPAWTransport:
                                                             neintpath,
                                                         intctrl.neinttol,
                                                             0, 'neInt',
-                                                              intctrl, k)
+                                                              intctrl)
     
                 nefcnt = len(zgp)
                 sgforder = [0] * nefcnt
@@ -766,9 +802,9 @@ class GPAWTransport:
                 for i in range(nefcnt):
                     if iscalcuocc:
                         sumga += self.calgfunc(zgp[i], 'neInt',
-                                                      intctrl, k) * wgp[i]
+                                                      intctrl) * wgp[i]
                 else:
-                        self.calgfunc(zgp[i],'neInt', intctrl, k)
+                        self.calgfunc(zgp[i],'neInt', intctrl)
             denocc += sumga[0] / npy.pi / 2
    
             flist = [[],[]]
@@ -780,18 +816,22 @@ class GPAWTransport:
                     sigma = tgtint[i, num]
                     flist[i].append(fermi_factor)    
                     siglist[i].append(sigma)
-            self.nepathinfo[k].add(zgp, wgp, flist, siglist)
+            self.nepathinfo[s][k].add(zgp, wgp, flist, siglist)
         # Loop neintpath
         neq = npy.trace(npy.dot(denocc, self.s_yzkmm[k]))
         if self.verbose:
-            print 'NEQ_k[', k, ']=',npy.real(neq) * 2, 'ImagPart=',\
+            if self.nspins == 1:
+                print 'NEQ_k[', k, ']=',npy.real(neq) * 2, 'ImagPart=',\
                                                             npy.imag(neq) * 2
+            else:
+                print 'NEQ_sk[', s,  k, ']=',npy.real(neq), 'ImagPart=',\
+                                                         npy.imag(neq)
         del zint, tgtint
         if len(intctrl.neintpath) >= 2:
             del fint
         return denocc
         
-    def calgfunc(self, zp, calcutype, intctrl, k):			 
+    def calgfunc(self, zp, calcutype, intctrl):			 
         #calcutype = 
         #  - 'eqInt':  gfunc[Mx*Mx,nE] (default)
         #  - 'neInt':  gfunc[Mx*Mx,nE]
@@ -840,8 +880,6 @@ class GPAWTransport:
                                                                         zp[i])
             gamma[1, -nblead:, -nblead:] = self.selfenergies[1].get_lambda(
                                                                         zp[i])
-            self.greenfunction.H = self.h_syzkmm[0, k]
-            self.greenfunction.S = self.s_yzkmm[k]
             gr = self.greenfunction.calculate(zp[i], sigma)       
         
             # --ne-Integral---
@@ -871,47 +909,47 @@ class GPAWTransport:
                 gfunc[i] = gr * fint[cntint]    
         return gfunc        
 
-    def fock2den(self, intctrl, f_syzkmm, k):
+    def fock2den(self, intctrl, f_syzkmm, s, k):
         nyzk = self.nyzk
         nblead = self.nblead
-        nbmol = self.nbmol  
+        nbmol = self.nbmol
         den = npy.zeros([nbmol, nbmol], complex)
         sigmatmp = npy.zeros([nblead, nblead], complex)
 
         # missing loc states
-        eqzp = self.eqpathinfo[k].energy
-        nezp = self.nepathinfo[k].energy
+        eqzp = self.eqpathinfo[s][k].energy
+        nezp = self.nepathinfo[s][k].energy
         
-        self.greenfunction.H = f_syzkmm[0, k]
+        self.greenfunction.H = f_syzkmm[s, k]
         self.greenfunction.S = self.s_yzkmm[k]
         for i in range(len(eqzp)):
             sigma = npy.zeros([nbmol, nbmol], complex)  
-            sigma[:nblead, :nblead] += self.eqpathinfo[k].sigma[0][i]
-            sigma[-nblead:, -nblead:] += self.eqpathinfo[k].sigma[1][i]
+            sigma[:nblead, :nblead] += self.eqpathinfo[s][k].sigma[0][i]
+            sigma[-nblead:, -nblead:] += self.eqpathinfo[s][k].sigma[1][i]
             gr = self.greenfunction.calculate(eqzp[i], sigma)
-            fermifactor = self.eqpathinfo[k].fermi_factor[i]
-            weight = self.eqpathinfo[k].weight[i]
+            fermifactor = self.eqpathinfo[s][k].fermi_factor[i]
+            weight = self.eqpathinfo[s][k].weight[i]
             den += gr * fermifactor * weight
         den = 1.j * (den - dagger(den)) / npy.pi / 2
         for i in range(len(nezp)):
             sigma = npy.zeros([nbmol, nbmol], complex)
             sigmalesser = npy.zeros([nbmol, nbmol], complex)
-            sigma[:nblead, :nblead] += self.nepathinfo[k].sigma[0][i]
-            sigma[-nblead:, -nblead:] += self.nepathinfo[k].sigma[1][i]    
+            sigma[:nblead, :nblead] += self.nepathinfo[s][k].sigma[0][i]
+            sigma[-nblead:, -nblead:] += self.nepathinfo[s][k].sigma[1][i]    
             gr = self.greenfunction.calculate(nezp[i], sigma)
-            fermifactor = npy.real(self.nepathinfo[k].fermi_factor[0][i])
+            fermifactor = npy.real(self.nepathinfo[s][k].fermi_factor[0][i])
            
-            sigmatmp = self.nepathinfo[k].sigma[0][i]
+            sigmatmp = self.nepathinfo[s][k].sigma[0][i]
             sigmalesser[:nblead, :nblead] += 1.0j * fermifactor * (
                                           sigmatmp - dagger(sigmatmp))
-            fermifactor = npy.real(self.nepathinfo[k].fermi_factor[0][i])
+            fermifactor = npy.real(self.nepathinfo[s][k].fermi_factor[0][i])
 
-            sigmatmp = self.nepathinfo[k].sigma[1][i] 
+            sigmatmp = self.nepathinfo[s][k].sigma[1][i] 
             sigmalesser[-nblead:, -nblead:] += 1.0j * fermifactor * (
                                           sigmatmp - dagger(sigmatmp))       
             glesser = npy.dot(sigmalesser, dagger(gr))
             glesser = npy.dot(gr, glesser)
-            weight = self.nepathinfo[k].weight[i]            
+            weight = self.nepathinfo[s][k].weight[i]            
             den += glesser * weight / npy.pi / 2
         return den    
 
@@ -940,55 +978,59 @@ class GPAWTransport:
             linear_potential[i] = vx[i] * (npy.zeros(dimyz) + 1)
 
         calc.hamiltonian.vt_sG += linear_potential
-
         xcfunc = calc.hamiltonian.xc.xcfunc
         calc.Enlxc = xcfunc.get_non_local_energy()
         calc.Enlkin = xcfunc.get_non_local_kinetic_corrections()   
         h_skmm, s_kmm = self.get_hs(atoms)
-   
         return h_skmm
-
     
-    def get_density(self, density, dyzk_mm, kpt_u, symmetry,
+    def get_density(self, density, d_syzkmm, kpt_u, symmetry,
                                                        lcao_initialized=True):
         #Calculate pseudo electron-density based on green function.
+        nspins = self.nspins
         nxk = self.nxkmol
         nyzk = self.nyzk
         nbmol = self.nbmol
-        self.dk_mm = npy.zeros([nyzk, nxk, nbmol, nbmol], complex)
-        dr_mm = npy.zeros([nyzk, nxk, nbmol, nbmol], complex)
-        qr_mm = npy.zeros([self.nbmol, self.nbmol])
+        relate_layer = 3
+        dr_mm = npy.zeros([nspins, relate_layer, nyzk,  nbmol, nbmol], complex)
+        qr_mm = npy.zeros([nspins, nyzk, self.nbmol, self.nbmol])
         
-        for i in range(nyzk):
-            for j in range(nxk):
-                tmp = j - (nxk-1) /2   
-                if tmp == -1:
-                    dr_mm[i,j]= dagger(self.d_yzkmm_ij[i])
-                elif tmp == 0:
-                    dr_mm[i, j] += npy.copy(dyzk_mm[i])
-                    qr_mm += npy.dot(dr_mm[i, j], self.s_yzkmm[i])
-                elif tmp == 1:
-                    dr_mm[i,j]= npy.copy(self.d_yzkmm_ij[i])
-                else:
-                    pass         
-    
-        qr_mm += self.edge_density_mm[0]
+        for s in range(nspins):
+            for i in range(relate_layer):
+                for j in range(nyzk):
+                    if i == 0:
+                        dr_mm[s, i, j] = dagger(self.d_syzkmm_ij[s, j])
+                    elif i == 1:
+                        dr_mm[s, i, j] += npy.copy(d_syzkmm[s, j])
+                        qr_mm[s, j] += npy.dot(dr_mm[s, i, j], self.s_yzkmm[j])
+                    elif i == 2:
+                        dr_mm[s, i, j]= npy.copy(self.d_syzkmm_ij[s, j])
+                    else:
+                        pass         
+        qr_mm += self.edge_density_mm
         if self.verbose:
-            print 'charge on atomic basis', npy.diag(qr_mm)            
+            for i in range(nspins):
+                print 'spin', i, 'charge on atomic basis', npy.diag(npy.sum(qr_mm[s],axis=0))            
             print 'tolal charge'
-            print npy.trace(qr_mm)
-        rvector = npy.zeros([nxk, 3])
+            print npy.trace(npy.sum(npy.sum(qr_mm, axis=0), axis=0))
+
+        rvector = npy.zeros([relate_layer, 3])
         xkpts = self.pick_out_xkpts(nxk, self.atoms.calc.ibzk_kc)
-        for i in range(nxk):
-            rvector[i, 0] = i - (nxk - 1) / 2
-        for i in range(nyzk):
-            for j in range(nxk):
-                self.dk_mm[i, j] = get_kspace_hs(None, dr_mm[i],
-                                                            rvector, xkpts[j])
-                self.dk_mm[i, j] = self.dk_mm[i,j] / (nxk *  nyzk) 
-        
+        for i in range(relate_layer):
+            rvector[i, 0] = i - (relate_layer - 1) / 2
+
+        self.d_skmm.shape = (nspins, nxk, nyzk, nbmol, nbmol)
+        for s in range(nspins):
+            for i in range(nxk):
+                for j in range(nyzk):
+                    self.d_skmm[s, i, j] = get_kspace_hs(None, dr_mm[s, :, j],
+                                                                rvector, xkpts[i])
+                    self.d_skmm[s, i, j] = self.d_skmm[s, i, j] / (nxk *  nyzk) 
+
+        self.d_skmm.shape = (nspins, nxk * nyzk, nbmol, nbmol)
         calc = self.atoms.calc
         nt_G = calc.gd.zeros(1)
+
         for kpt in calc.kpt_u:
             phit_mG = calc.gd.zeros(nbmol,dtype=complex)
             m1 = 0
@@ -999,11 +1041,9 @@ class GPAWTransport:
                     nucleus.phit_i.add(phit_mG[m1:m2],
                                                  npy.identity(m2 - m1), kpt.k)
                 m1 = m2
-            tmp1 = kpt.k / nyzk
-            tmp2 = kpt.k - tmp1 * nyzk
             for i in range(nbmol):
                 for j in range(nbmol):
-                    nt_G += npy.real(self.dk_mm[tmp2, tmp1, i, j] *
+                    nt_G += npy.real(self.d_skmm[kpt.s, kpt.k, i, j] *
                                                phit_mG[i].conj() * phit_mG[j])
         density.nct_G = self.nct_G  
         density.nt_sG = nt_G + density.nct_G
@@ -1012,19 +1052,14 @@ class GPAWTransport:
             for nucleus in density.my_nuclei:
                 ni = nucleus.get_number_of_partial_waves()
                 D_sii = npy.zeros((density.nspins, ni, ni))
-                tmp = 0
                 for kpt in kpt_u:
                     P_kmi = nucleus.P_kmi[kpt.k]
-                    tmp1 = tmp / nyzk
-                    tmp2 = tmp - tmp1 * nyzk
                     D_sii[kpt.s] += npy.real(npy.dot(npy.dot(dagger(P_kmi),
-                                              self.dk_mm[tmp2, tmp1]), P_kmi))
-                    tmp += 1                  
+                                              self.d_skmm[kpt.s, kpt.k]), P_kmi))
                 nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
         if symmetry is not None:
             for nt_G in density.nt_sG:
                 symmetry.symmetrize(nt_G, density.gd)
-
             D_asp = []
             for s in range(density.nspins):
                 D_aii = [unpack2(D_sp[s]) for D_sp in D_asp]
