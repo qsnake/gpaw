@@ -138,7 +138,7 @@ main(int argc, char **argv)
 #endif
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
-#ifdef GPAW_BGP_PERF
+#ifdef GPAW_BGP_MAP
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
   MPI_Comm_rank(MPI_COMM_WORLD, &myid );
   MPI_Get_processor_name(procname, &procnamesize);
@@ -156,6 +156,8 @@ main(int argc, char **argv)
 	  printf("%s \n", procname);
       }
   }
+#endif
+#ifdef GPAW_BGP_PERF
   HPM_Init();
   HPM_Start("GPAW");
 #endif
