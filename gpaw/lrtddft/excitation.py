@@ -5,7 +5,7 @@ import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 from gpaw import debug
-from gpaw.utilities import pack,packed_index
+from gpaw.utilities import pack, packed_index
 
 #from gpaw.io.plt import write_plt
 
@@ -16,14 +16,15 @@ class ExcitationList(list):
     """
     General Excitation List class
     """
-    def __init__(self,calculator=None):
+    def __init__(self, calculator=None, out=None):
 
         # initialise empty list
         list.__init__(self)
 
         self.calculator = calculator
         if calculator is not None:
-            self.out = calculator.txt
+            if out is None:
+                self.out = calculator.txt
             self.Ha = calculator.Ha
             # initialize the nuclei if not ready
             if not calculator.nuclei[0].ready:
@@ -117,6 +118,6 @@ class Excitation:
         return osz
 
     def set_energy(self, E):
-        """return the excitations energy relative to the ground state energy"""
+        """Set the excitations energy relative to the ground state energy"""
         self.energy = E
     

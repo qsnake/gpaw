@@ -4,12 +4,13 @@ import numpy as npy
 
 import gpaw.mpi as mpi
 from gpaw import debug
-from gpaw.utilities import pack,packed_index
+from gpaw.utilities import pack, packed_index
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
 from gpaw.operators import Gradient
 
+from gpaw.utilities import contiguous, is_contiguous
 
 # KS excitation classes
 
@@ -41,13 +42,14 @@ class KSSingles(ExcitationList):
                  istart=0,
                  jend=None,
                  energyrange=None,
-                 filehandle=None):
+                 filehandle=None,
+                 out=None):
 
         if filehandle is not None:
             self.read(fh=filehandle)
             return None
 
-        ExcitationList.__init__(self, calculator)
+        ExcitationList.__init__(self, calculator, out=out)
         
         if calculator is None:
             return # leave the list empty
@@ -86,14 +88,17 @@ class KSSingles(ExcitationList):
                 self.npspins = nspins
                 fijscale = 0.5
 
-        if energyrange:
+        if energyrange is not None:
+            emin, emax = energyrange
             # select transitions according to transition energy
             for kpt in self.kpt_u:
                 f_n = kpt.f_n
+                eps_n = kpt.eps_n
                 for i in range(len(f_n)):
                     for j in range(i+1, len(f_n)):
-                        fij=f[i]-f[j]
-                        if fij > eps:
+                        fij = f_n[i] - f_n[j]
+                        epsij = eps_n[j] - eps_n[j]
+                        if fij > eps and epsij >= emin and epsij < emax:
                             # this is an accepted transition
                             ks = KSSingle(i, j, kpt.s, kpt, paw,
                                           fijscale=fijscale)
@@ -231,7 +236,7 @@ class KSSingle(Excitation, PairDensity):
         # course grid contribution
         # <i|r|j> is the negative of the dipole moment (because of negative
         # e- charge)
-        me = -gd.calculate_dipole_moment(self.get())
+        me = - gd.calculate_dipole_moment(self.get())
 
         # augmentation contributions
         ma = npy.zeros(me.shape)
@@ -258,9 +263,9 @@ class KSSingle(Excitation, PairDensity):
             ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
         gd.comm.sum(ma)
 
-#        print '<KSSingle> i,j,me,ma,fac=',self.i,self.j,\
-#            me, ma,sqrt(self.energy*self.fij)
-        self.me = sqrt(self.energy*self.fij) * ( me + ma )
+##        print '<KSSingle> i,j,me,ma,fac=',self.i,self.j,\
+##            me, ma,sqrt(self.energy*self.fij)
+        self.me = sqrt(self.energy * self.fij) * ( me + ma )
 
         self.mur = - ( me + ma )
 ##        print '<KSSingle> mur=',self.mur,-self.fij *me
@@ -268,19 +273,23 @@ class KSSingle(Excitation, PairDensity):
         # velocity form .............................
 
         # smooth contribution
-        dwfdr_G = gd.empty()
-        if not hasattr(gd,'ddr'):
-            gd.ddr = [Gradient(gd, c).apply for c in range(3)]
+        dtype = self.wfj.dtype
+        dwfdr_G = gd.empty(dtype=dtype)
+        if not hasattr(gd, 'ddr'):
+            gd.ddr = [Gradient(gd, c, dtype=dtype).apply for c in range(3)]
         for c in range(3):
-            gd.ddr[c](self.wfj, dwfdr_G)
-            me[c] = gd.integrate(self.wfi*dwfdr_G)
+            gd.ddr[c](self.wfj, dwfdr_G, kpt.phase_cd)
+            me[c] = gd.integrate(self.wfi * dwfdr_G)
             
+        # XXXX local corrections are missing here
+
+        # XXXX the weight fij is missing here
         self.muv = me / self.energy
-##        print '<KSSingle> muv=',self.muv
+#        print '<KSSingle> muv=', self.muv
 
         # magnetic transition dipole ................
         
-        # m depends on how the origin is set, so we need th centre of mass
+        # m depends on how the origin is set, so we need the centre of mass
         # of the structure
 #        cm = paw
 
