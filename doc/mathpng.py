@@ -139,7 +139,7 @@ def make_png(latex, name, inline):
 
     status = os.system('latex --interaction=nonstopmode math.tex > /dev/null')
     if status != 0:
-        raise RuntimeError('mathpng failed on equation:', latex)
+        raise RuntimeError('mathpng failed on equation: ' + latex)
 
     cmd = ('dvipng -bgTransparent -Ttight --noghostscript -l10 ' +
            '--depth -D 136 -o %s math.dvi' % name)

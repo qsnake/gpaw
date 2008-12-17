@@ -388,22 +388,21 @@ class AllElectron:
 
     def calculate_kinetic_energy_density(self):
         """Return the kinetic energy density"""
-        return self.radial_kinetic_energy_density(self.f_j,self.l_j,
-                                                  self.u_j)
+        return self.radial_kinetic_energy_density(self.f_j, self.l_j, self.u_j)
 
-    def radial_kinetic_energy_density(self,f_j,l_j,u_j):
+    def radial_kinetic_energy_density(self, f_j, l_j, u_j):
         """Kinetic energy density from a restricted set of wf's
         """
         shape = npy.shape(u_j[0])
         dudr = npy.zeros(shape)
         tau = npy.zeros(shape)
-        for f, l, u in zip(f_j,l_j,u_j):
+        for f, l, u in zip(f_j, l_j, u_j):
             self.rgd.derivative(u,dudr)
             # contribution from angular derivatives
-            if l>0:
-                tau += f * l*(l+1) * npy.where(abs(u) < 1e-160, 0, u)**2
+            if l > 0:
+                tau += f * l * (l + 1) * npy.where(abs(u) < 1e-160, 0, u)**2
             # contribution from radial derivatives
-            dudr = u - self.r*dudr
+            dudr = u - self.r * dudr
             tau += f * npy.where(abs(dudr) < 1e-160, 0, dudr)**2
         tau[1:] /= self.r[1:]**4
         tau[0] = tau[1]
@@ -421,23 +420,27 @@ class AllElectron:
         R = npy.zeros(shape)
         dRdr = npy.zeros(shape)
         tau = npy.zeros(shape)
-        for f, l, u in zip(self.f_j,self.l_j,self.u_j):
+        for f, l, u in zip(self.f_j, self.l_j, self.u_j):
             R[1:] = u[1:] / self.r[1:]
-            if l==0:
+            if l == 0:
                 # estimate value at origin by Taylor series to first order
-                d1=self.r[1]
-                d2=self.r[2]
-                R[0] = .5*(R[1]+R[2]+(R[1]-R[2])*(d1+d2)/(d2-d1))
-            else:    R[0] = 0
-            self.rgd.derivative(R,dRdr)
+                d1 = self.r[1]
+                d2 = self.r[2]
+                R[0] = .5 * (R[1] + R[2] + (R[1] - R[2]) *
+                             (d1 + d2) / (d2 - d1))
+            else:
+                R[0] = 0
+            self.rgd.derivative(R, dRdr)
             # contribution from radial derivatives
             tau += f * npy.where(abs(dRdr) < 1e-160, 0, dRdr)**2
             # contribution from angular derivatives
-            if l>0:
+            if l > 0:
                 R[1:] = R[1:] / self.r[1:]
-                if l==1: R[0] = R[1]
-                else:    R[0] = 0
-                tau += f * l*(l+1) * npy.where(abs(R) < 1e-160, 0, R)**2
+                if l == 1:
+                    R[0] = R[1]
+                else:
+                    R[0] = 0
+                tau += f * l * (l + 1) * npy.where(abs(R) < 1e-160, 0, R)**2
 
         return 0.5 * tau / (4 * pi)
 
@@ -573,7 +576,7 @@ class AllElectron:
         c10 = -self.d2gdr2 * r**2 # first part of c1 vector
 
         if j is None:
-            n,l,e,u=3,2,-0.15,self.u_j[-1].copy()
+            n, l, e, u = 3, 2, -0.15, self.u_j[-1].copy()
         else:
             n = self.n_j[j]
             l = self.l_j[j]
@@ -649,12 +652,12 @@ class AllElectron:
             i_rc -= 1
 
         potential = npy.zeros(npy.shape(self.r))
-        r = self.r[i_ri+1:i_rc+1]
+        r = self.r[i_ri + 1:i_rc + 1]
         exponent = - (rc - ri) / (r - ri)
         denom = rc - r
         value = npy.exp(exponent) / denom
-        potential[i_ri+1:i_rc+1] = value
-        potential[i_rc+1:] = float('nan')
+        potential[i_ri + 1:i_rc + 1] = value
+        potential[i_rc + 1:] = float('nan')
 
         return alpha * potential
 

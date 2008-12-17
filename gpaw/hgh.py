@@ -95,16 +95,16 @@ class HGHSetup(Setup):
     def read_basis_functions(self, basis):
         if isinstance(basis, str):
             basis = Basis(self.symbol, basis)
-            rc = basis.d * (basis.ng - 1)
-            r_g = npy.linspace(0., rc, basis.ng)
-            for bf in basis.bf_j:
-                rb_g = r_g[:bf.ng]
-                normsqr = npy.sum((bf.phit_g * rb_g)**2) * basis.d
-                bf.phit_g /= normsqr ** .5
+        rc = basis.d * (basis.ng - 1)
+        r_g = npy.linspace(0., rc, basis.ng)
+        for bf in basis.bf_j:
+            rb_g = r_g[:bf.ng]
+            normsqr = npy.sum((bf.phit_g * rb_g)**2) * basis.d
+            bf.phit_g /= normsqr ** .5
         return Setup.read_basis_functions(self, basis)
 
     def initialize_setup_data(self, symbol, xcfunc, hghdata):
-        data = SetupData(symbol, xcfunc.get_setup_name(), 'paw', readxml=False)
+        data = SetupData(symbol, xcfunc.get_setup_name(), 'hgh', readxml=False)
         self.hghdata = hghdata
 
         ng = 450
@@ -124,10 +124,8 @@ class HGHSetup(Setup):
         data.tauc_g = zerofunction
         data.tauct_g = zerofunction
 
-        trueZ = atomic_numbers[symbol]
-
-        data.Z = trueZ
-        data.Nc = trueZ -  hghdata.Nv
+        data.Z = hghdata.Z
+        data.Nc = hghdata.Z -  hghdata.Nv
         data.Nv = hghdata.Nv
         data.beta = beta
         data.ng = ng
@@ -183,7 +181,7 @@ class HGHSetup(Setup):
                     v_j.append(v)
                     n_j.append(n + 1) # Note: actual n must be positive!
                     l_j.append(l)
-        assert nj == len(v_j), 'not ok'
+        assert nj == len(v_j)
 
         data.l_j = l_j
         data.n_j = n_j
@@ -216,8 +214,7 @@ class HGHSetup(Setup):
         return data
 
     def print_info(self, text):
-        text('This is an HGH setup!')
-        Setup.print_info(self, text) # XXX write proper info
+        self.hghdata.print_info(text)
 
     def expand_hamiltonian_matrix(self):
         """Construct H_p from individual h_nn for each l."""
@@ -311,23 +308,34 @@ class VNonLocal:
 
 class HGHData:
     """Wrapper class for HGH-specific data corresponding to one element."""
-    def __init__(self, symbol, Nv, rloc, c_n):
-        self.symbol = symbol
-        self.Nv = Nv
-        self.rloc = rloc
-        self.c_n = c_n
+    def __init__(self, symbol, Z, Nv, rloc, c_n):
+        self.symbol = symbol # Identifier, e.g. 'Na', 'Na.sc', ...
+        self.Z = Z # Actual atomic number
+        self.Nv = Nv # Valence electron count
+        self.rloc = rloc # Characteristic radius of local part
+        self.c_n = c_n # Polynomial coefficients for local part
         self.v_l = [] # Non-local parts
         
-
+    def print_info(self, txt):
+        txt('HGH setup for %s' % self.symbol)
+        txt('Valence Z=%.3f, rloc=%.3f' % (self.Nv, self.rloc))
+        txt('Local part coeffs')
+        txt('  ' + ' '.join(['%5.3f' % c for c in self.c_n]))
+        for v in self.v_l:
+            txt('Projector  l=%d, rc=%.3f' % (v.l, v.r0))
+            for n in range(v.nn):
+                txt('  ' + ' '.join(['%7.3f' % h_n[n] for h_n in v.h_nn]))
+        
 def parse_local_part(string):
     """Create HGHData object with local part initialized."""
     tokens = iter(string.split())
     symbol = tokens.next()
-    assert symbol.split('.')[0].isalpha()
+    actual_chemical_symbol = symbol.split('.')[0]
+    Z = atomic_numbers[actual_chemical_symbol]
     Nv = int(tokens.next())
     rloc = float(tokens.next())
     c_n = [float(token) for token in tokens]
-    hgh = HGHData(symbol, Nv, rloc, c_n)
+    hgh = HGHData(symbol, Z, Nv, rloc, c_n)
     return hgh
 
 

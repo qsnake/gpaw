@@ -52,7 +52,7 @@ from gpaw.rotation import rotation
 from gpaw.domain import Domain
 from gpaw.xc_functional import XCFunctional
 from gpaw.utilities import gcd
-from gpaw.setup import create_setup
+from gpaw.setup import create_setup, Setup
 from gpaw.pawextra import PAWExtra
 from gpaw.output import Output
 
@@ -814,9 +814,12 @@ class PAW(PAWExtra, Output):
             if (Z, type, basis) in setups:
                 setup = setups[(Z, type, basis)]
             else:
-                symbol = chemical_symbols[Z]
-                setup = create_setup(symbol, self.xcfunc, p['lmax'],
-                                     self.nspins, type, basis)
+                if isinstance(type, Setup):
+                    setup = type
+                else:
+                    symbol = chemical_symbols[Z]
+                    setup = create_setup(symbol, self.xcfunc, p['lmax'],
+                                         self.nspins, type, basis)
                 setup.print_info(self.text)
                 setups[(Z, type, basis)] = setup
             self.nuclei.append(Nucleus(setup, a, self.dtype))

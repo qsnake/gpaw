@@ -16,10 +16,10 @@ from gpaw.mpi import parallel
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize
 
+lcao_forces_default = False
 
 class LCAOHamiltonian:
     """Hamiltonian class for LCAO-basis calculations."""
-
     def __init__(self, ng=2**12):
         self.tci = None  # two-center integrals
         self.lcao_initialized = False
@@ -31,7 +31,7 @@ class LCAOHamiltonian:
         # during initialization  to save memory/time. This is not implemented
         # yet, so presently we disable this.  Change behaviour by setting
         # this boolean.
-        self.lcao_forces = False # XXX
+        self.lcao_forces = lcao_forces_default # XXX
 
     def initialize(self, paw):
         self.setups = paw.setups
