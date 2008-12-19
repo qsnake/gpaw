@@ -22,7 +22,7 @@ dE = [('BeH', (0.0231, 0.0057, -0.0005, 0.0032, 0.0157)),
       ('Cl2', (0.0826, 0.0228, -0.0000, 0.0088, 0.0430))]
 
 
-from gpaw.testing.molecule_test import atomization_energies,\
+from gpaw.testing.old_molecule_test import atomization_energies,\
     bondlengths, read_and_check_results
 
 E0, dE0 = read_and_check_results()

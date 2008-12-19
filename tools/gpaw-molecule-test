@@ -51,7 +51,7 @@ parser.add_option('--debug', action='store_true',
 
 opt, args = parser.parse_args()
 
-from gpaw.testing.molecule_test import Test, molecules,\
+from gpaw.testing.old_molecule_test import Test, molecules,\
     read_and_check_results, atomization_energies, bondlengths
 
 h = opt.h
