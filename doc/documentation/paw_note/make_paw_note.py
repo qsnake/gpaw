@@ -26,10 +26,10 @@ plt.savefig('Pt.png', dpi=80)
 
 
 error = 0
-error += os.system('pdflatex paw_note')
-error += os.system('bibtex paw_note')
-error += os.system('pdflatex paw_note')
-error += os.system('pdflatex paw_note')
-error += os.system('mv paw_note.pdf ../../_build')
+error += os.system('pdflatex paw_note > /dev/null')
+error += os.system('bibtex paw_note > /dev/null')
+error += os.system('pdflatex paw_note > /dev/null')
+error += os.system('pdflatex paw_note > /dev/null')
+error += os.system('cp paw_note.pdf ../../_build')
 
 assert error == 0
