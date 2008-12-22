@@ -2,6 +2,8 @@
 
 import os
 import numpy as npy
+import matplotlib
+matplotlib.use('Agg')
 import pylab as plt
 from gpaw.atom.all_electron import AllElectron
 
