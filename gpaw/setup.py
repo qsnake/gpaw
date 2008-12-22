@@ -569,7 +569,7 @@ class Setup:
         for ll in self.l_j:
             if ll == self.Hubl:
                 break
-            self.Hubi = self.Hubi+2*ll+1
+            self.Hubi = self.Hubi + 2 * ll + 1
         #print self.Hubi
 
     def create_basis_functions(self, phit_jg, beta, ng, rcut2, gcut2, r_g):
