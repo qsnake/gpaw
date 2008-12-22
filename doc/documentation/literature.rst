@@ -44,7 +44,7 @@ Reports, presentations, and theses using gpaw
 
 * Slides from a mini symposium during early development stage: `early gpaw`_
 
-.. _paw note: ../_static/rostgaard_paw_notes.pdf
+.. _paw note: ../paw_note.pdf
 .. _exact exchange: ../_static/rostgaard_master.pdf
 .. _lcao: ../_static/marco_master.pdf
 .. _localized basis sets: ../_static/askhl_master.pdf
