@@ -114,20 +114,20 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
 
-def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_aui=None):
+def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
     """Returns a list of eigenvalues, and their weights on a given molecule
     
-       If wf is None, the weights are calculated as linear combinations of
+       If wf_k is None, the weights are calculated as linear combinations of
        atomic orbitals using P_uni. lc should then be a list of weights
        for each atom. For example, the pure 2pi_x orbital of a
        molecule can be obtained with lc=[[0,0,0,1.0],[0,0,0,-1.0]]. mol
        should be a list of atom numbers contributing to the molecule.
 
-       If wf is not none, it should be a list of wavefunctions
+       If wf_k is not none, it should be a list of wavefunctions
        corresponding to different kpoints and a specified band. It should
        be accompanied by a list of arrays: P_uai=nucleus[a].P_uni for the
        band n and a in mol. The weights are then calculated as the overlap
-       of all-electron KS wavefunctions with wf"""
+       of all-electron KS wavefunctions with wf_k"""
 
     w_k = paw.weight_k
     nk = len(w_k)
@@ -136,7 +136,7 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_aui=None):
     
     P_un = npy.zeros((nk*ns, nb), npy.complex)
 
-    if wf is None:
+    if wf_k is None:
         P_auni = npy.array([paw.nuclei[a].P_uni for a in mol])
         if lc is None:
             lc = [[1,0,0,0] for a in mol]
@@ -152,7 +152,7 @@ def molecular_LDOS(paw, mol, spin, lc=None, wf=None, P_aui=None):
     else:
         P_aui = [npy.conjugate(P_aui[a]) for a in range(len(mol))]
         for kpt in paw.kpt_u[spin*nk:(spin+1)*nk]:
-            w = npy.reshape(npy.conjugate(wf)[kpt.k], -1)
+            w = npy.reshape(npy.conjugate(wf_k)[kpt.k], -1)
             for n in range(nb):
                 psit_nG = npy.reshape(kpt.psit_nG[n], -1)
                 P_un[kpt.u][n] = npy.dot(w, psit_nG) * paw.gd.dv * paw.a0**1.5
