@@ -367,12 +367,12 @@ class HF:
                     
         symmetrize(h_nn) # Grrrr why!!! XXX
 
-        # Fill in upper triangle
+        # Fill in lower triangle
         r2k(0.5 * self.dv, kpt.psit_nG[:], Htpsit_nG, 1.0, H_nn)
 
-        # Fill in lower triangle
+        # Fill in upper triangle
         for n in range(self.nbands - 1):
-            H_nn[n:, n] = H_nn[n, n:]
+            H_nn[n, n:] = H_nn[n:, n]
 
     def atomic_val_val(self, kpt, H_nn):
         deg = 2 / self.nspins
