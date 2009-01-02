@@ -60,6 +60,7 @@ class Setup:
     ============= ==========================================================
     ``Delta0``    Constant in compensation charge expansion coeff.
     ``Delta_Lii`` Linear term in compensation charge expansion coeff.
+    ``Delta_pL``  Packed version of ``Delta_Lii``.
     ``O_ii``      Overlap metric
     ``B_ii``      Projector function overlaps B_ii = <pt_i | pt_i>
     ``C_ii``      Inverse overlap coefficients

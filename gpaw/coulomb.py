@@ -7,7 +7,7 @@ from ase.units import Hartree
 from pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
 from gpaw.utilities import pack, unpack
-from gpaw.utilities.tools import pick, construct_reciprocal, dagger
+from gpaw.utilities.tools import pick, construct_reciprocal, dagger, fill
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.blas import r2k
 from gpaw.mpi import rank, MASTER
@@ -37,7 +37,7 @@ def get_vxc(paw, spin=0, U=None):
     # Add atomic PAW corrections
     for nucleus in paw.my_nuclei:
         D_sp = nucleus.D_sp[:]
-        H_sp = 0.0 * D_sp
+        H_sp = npy.zeros_like(D_sp)
         nucleus.setup.xc_correction.calculate_energy_and_derivatives(
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
@@ -371,8 +371,7 @@ class HF:
         r2k(0.5 * self.dv, kpt.psit_nG[:], Htpsit_nG, 1.0, H_nn)
 
         # Fill in upper triangle
-        for n in range(self.nbands - 1):
-            H_nn[n, n:] = H_nn[n:, n]
+        fill(H_nn, 'upper')
 
     def atomic_val_val(self, kpt, H_nn):
         deg = 2 / self.nspins
@@ -380,7 +379,7 @@ class HF:
             P_ni = nucleus.P_uni[kpt.u]
             D_p  = nucleus.D_sp[kpt.s]
             D_ii = unpack2(D_p)
-            H_p  = 0.0 * D_p
+            H_p  = npy.zeros_like(D_p)
             ni = len(D_ii)
             for i1 in range(ni):
                 for i2 in range(ni):

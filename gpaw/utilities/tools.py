@@ -185,6 +185,27 @@ def symmetrize(matrix):
     npy.multiply(.5, matrix, matrix)
     return matrix
 
+def fill(H_nn, side='upper'):
+    """Fill in values of hermitian matrix.
+
+    Fill values in lower or upper triangle of H_nn based on the opposite
+    triangle, such that the resulting matrix is symmetric/hermitian.
+
+    side='lower' will copy (conjugated) values from upper triangle into the
+    lower triangle.
+    """
+    N, tmp = H_nn.shape
+    #assert N == tmp, 'Matrix must be square'
+    #assert npy.isreal(H_nn.diagonal()).all(), 'Diagonal should be real'
+
+    for n in range(N - 1):
+        lower = H_nn[n + 1:, n] # Lower coulumn
+        upper = H_nn[n, n + 1:] # Upper row
+        if side == 'upper':
+            upper[:] = lower.conj()
+        else:
+            lower[:] = upper.conj()
+        
 def apply_subspace_mask(H_nn, f_n):
     """Uncouple occupied and unoccupied subspaces.
 
