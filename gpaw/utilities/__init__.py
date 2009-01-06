@@ -133,6 +133,13 @@ def packed_index(i1, i2, ni):
         return (i1 * (2 * ni - 1 - i1) // 2) + i2
 
 
+def unpacked_indices(p, ni):
+    """Return unpacked indices corresponding to upper triangle"""
+    assert 0 <= p < ni * (ni + 1) // 2
+    i1 = int(ni + .5 - sqrt((ni - .5)**2 - 2 * (p - ni)))
+    return i1, p - i1 * (2 * ni - 1 - i1) // 2
+
+
 def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
     assert is_contiguous(M)
@@ -149,7 +156,7 @@ def unpack2(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack``."""
     M2 = unpack(M)
     M2 *= 0.5 # divide all by 2
-    M2.ravel()[0::len(M2) + 1] *= 2 # rescale diagonal to original size
+    M2.flat[0::len(M2) + 1] *= 2 # rescale diagonal to original size
     return M2
 
     
@@ -215,8 +222,8 @@ def check_unit_cell(cell):
     """Check that the unit cell (3*3 matrix) is orthorhombic (diagonal)."""
     c = cell.copy()
     # Zero the diagonal:
-    c.ravel()[::4] = 0.0
-    if npy.sometrue(c.ravel()):
+    c.flat[::4] = 0.0
+    if npy.sometrue(c.flat):
         raise RuntimeError('Unit cell not orthorhombic')
     
 
