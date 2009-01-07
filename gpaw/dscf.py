@@ -411,7 +411,7 @@ class WaveFunction:
 
             print 'Kpoint', mpi.rank, kpt.u, kpt.k, kpt.s, sum(abs(p_n)**2)
 
-            if self.paw.dtype == float and self.wf_u.dtype == float:
+            if self.paw.dtype == float:
                 ft_n = npy.zeros(len(kpt.f_n), npy.float)
             else:
                 ft_n = npy.zeros(len(kpt.f_n), npy.complex)
