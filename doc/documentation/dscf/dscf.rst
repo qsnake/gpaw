@@ -147,6 +147,6 @@ corresponds to in each k-point before we start the slab calculation.
 .. [#des]    T. Olsen, J. Gavnholt and J. Schiøtz,
              Hot electron mediated desorption rates calculated from excited
 	     state potential energy surfaces,
-             arXiv:0810.2630
+             *Phys. Rev. B* **79**, 035403 (2009)
 
 .. default-role::
