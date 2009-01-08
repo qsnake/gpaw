@@ -180,4 +180,5 @@ if not debug:
     axpy = _gpaw.axpy
     rk = _gpaw.rk
     r2k = _gpaw.r2k
-    dotc = _gpaw.dotc;
+    dotc = _gpaw.dotc
+    dotu = _gpaw.dotu
