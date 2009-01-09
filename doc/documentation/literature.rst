@@ -61,44 +61,59 @@ Publications using the gpaw code
 The first article introducing the gpaw project:
    | J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen
    | `Real-space grid implementation of the projector augmented wave method`__
-   | Physical Review B, Vol. **71**, 035109, 2005
+   | Physical Review B, Vol. **71**, 035109 (2005)
 
    __ http://dx.doi.org/10.1103/PhysRevB.71.035109
-
-The article describing the time-dependent DFT implementations in gpaw:
-   | M. Walter, H. Häkkinen, L. Lehtovaara, M. Puska, J. Enkovaara, C. Rostgaard, and J. J. Mortensen
-   | `Time-dependent density-functional theory in the projector augmented-wave method`__
-   | Journal of Chemical Physics, Vol. **128**, 244101, 2008
-
-   __ http://dx.doi.org/10.1063/1.2943138
 
 A description of a statistical approach to the exchange-correlation energy in DFT:
   | J. J. Mortensen, K. Kaasbjerg, S. L. Frederiksen, J. K. Nørskov, J. P. Sethna, and K. W. Jacobsen
   | `Bayesian Error Estimation in Density-Functional Theory`__
-  | Physical Review Letters, Vol. **95**, 216401, 2005
+  | Physical Review Letters, Vol. **95**, 216401 (2005)
 
   __ http://dx.doi.org/10.1103/PhysRevLett.95.216401
 
 First article related to ligand protected gold clusters:
   | J. Akola, M. Walter, R. L. Whetten, H. Häkkinen, and H. Grönbeck
   | `On the structure of Thiolate-Protected Au25`__
-  | J. Am. Chem. Soc., Vol **130**, 3756-3757, 2008
+  | Journal of the American Chemical Society, Vol. **130**, 3756-3757 (2008)
 
   __ http://dx.doi.org/10.1021/ja800594p
 
 Second article related to ligand protected gold clusters:
   | M. Walter, J. Akola, O. Lopez-Acevedo, P.D. Jadzinsky, G. Calero, C.J. Ackerson, R.L. Whetten, H. Grönbeck, and H. Häkkinen
   | `A unified view of ligand-protected gold clusters as superatom complexes`__
-  | PNAS, Vol **105**, 9157-9162, 2008
+  | Proceedings of the National Academy of Sciences, Vol. **105**, 9157-9162 (2008)
  
   __ http://www.pnas.org/cgi/content/abstract/0801001105v1
+
+The article describing the time-dependent DFT implementations in gpaw:
+   | M. Walter, H. Häkkinen, L. Lehtovaara, M. Puska, J. Enkovaara, C. Rostgaard, and J. J. Mortensen
+   | `Time-dependent density-functional theory in the projector augmented-wave method`__
+   | Journal of Chemical Physics, Vol. **128**, 244101 (2008)
+
+   __ http://dx.doi.org/10.1063/1.2943138
 
 GPAW applied to the study of graphene edges:
   | Pekka Koskinen, Sami Malola, and Hannu Häkkinen
   | `Self-passivating edge reconstructions of graphene`__
-  | Physical Review Letters, Vol. **101**, 115502, 2008
+  | Physical Review Letters, Vol. **101**, 115502 (2008)
  
   __ http://dx.doi.org/10.1103/PhysRevLett.101.115502
+
+Description of the delta SCF method implemented in GPAW for determination of excited-state energy surfaces.
+  | `Delta self-consistent field method to obtain potential energy surfaces of excited molecules on surfaces`__
+  | Jeppe Gavnholt, Thomas Olsen, Mads Engelund, and Jakob Schiotz
+  | Physical Review B, Vol. **78**, 075441 (2008)
+
+  __ http://dx.doi.org/10.1103/PhysRevB.78.075441
+
+Application of delta SCF method, for making predictions on hot-electron assisted chemistry.
+  | Thomas Olsen, Jeppe Gavnholt, and Jakob Schiotz
+  | `Hot-electron-mediated desorption rates calculated from excited-state potential energy surfaces`__
+  | Physical Review B, Vol. **79**, 035403 (2009)
+
+  __ http://dx.doi.org/10.1103/PhysRevB.79.035403
+
 
 
 Articles on the PAW formalism
