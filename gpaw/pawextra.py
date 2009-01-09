@@ -339,7 +339,7 @@ class PAWExtra:
     def wave_function_volumes(self):
         """Return the volume needed by the wave functions"""
         nu = self.nkpts * self.nspins
-        volumes = npy.empty((nu,self.nbands))
+        volumes = npy.empty((nu, self.nbands))
 
         for k in range(nu):
             for n, psit_G in enumerate(self.kpt_u[k].psit_nG):
@@ -347,18 +347,11 @@ class PAWExtra:
 
                 # atomic corrections
                 for nucleus in self.my_nuclei:
-                    # make sure the integrals are there
-                    nucleus.setup.four_phi_integrals()
+                    I4_pp = nucleus.setup.four_phi_integrals()
                     P_i = nucleus.P_uni[k, n]
-                    ni = len(P_i)
                     P_ii = npy.outer(P_i, P_i)
                     P_p = pack(P_ii)
-                    I = 0
-                    for i1 in range(ni):
-                        for i2 in range(ni):
-                            I += P_ii[i1, i2] * npy.dot(P_p,
-                                             nucleus.setup.I4_iip[i1, i2])
-                volumes[k, n] += I
+                    volumes[k, n] += npy.dot(P_p, npy.dot(I4_pp, P_p))
                 
         return 1. / volumes
 

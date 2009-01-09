@@ -13,7 +13,7 @@ from gpaw.basis_data import Basis
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.utilities import unpack, erf, fac, hartree, pack2, divrl
+from gpaw.utilities import unpack, erf, fac, hartree, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
 
@@ -751,69 +751,72 @@ class Setup:
         where phi_i1 is an all electron function and phit_i1 is its
         smooth partner.
         """
-
-        if hasattr(self, 'I4_iip'):
-##            print "already done"
-            return # job already done
+        if hasattr(self, 'I4_pp'):
+            return self.I4_pp
 
         # radial grid
         ng = self.ng
         g = npy.arange(ng, dtype=float)
-        r_g = self.beta * g / (ng - g)
-        dr_g = self.beta * ng / (ng - g)**2
+        r2dr_g = self.beta**3 * g**2 * ng / (ng - g)**4
 
         phi_jg = self.data.phi_jg
         phit_jg = self.data.phit_jg
 
         # compute radial parts
         nj = len(self.l_j)
-        R_llll = npy.zeros((nj,nj,nj,nj))
-        for i1 in range(nj):
-            for i2 in range(nj):
-                for i3 in range(nj):
-                    for i4 in range(nj):
-                        R_llll[i1,i2,i3,i4] = npy.dot( r_g**2 * dr_g,
-                                                       phi_jg[i1]*phi_jg[i2]*
-                                                       phi_jg[i3]*phi_jg[i4] -
-                                                       phit_jg[i1]*phit_jg[i2]*
-                                                       phit_jg[i3]*phit_jg[i4])
+        R_jjjj = npy.empty((nj, nj, nj, nj))
+        for j1 in range(nj):
+            for j2 in range(nj):
+                for j3 in range(nj):
+                    for j4 in range(nj):
+                        R_jjjj[j1, j2, j3, j4] = npy.dot(r2dr_g,
+                         phi_jg[j1] * phi_jg[j2] * phi_jg[j3] * phi_jg[j4] -
+                         phit_jg[j1] * phit_jg[j2] * phit_jg[j3] * phit_jg[j4])
 
         # prepare for angular parts
         L_i = []
         j_i = []
-        for j, l1 in enumerate(self.l_j):
-            for m1 in range(2 * l1 + 1):
-                L_i.append(l1**2 + m1)
+        for j, l in enumerate(self.l_j):
+            for m in range(2 * l + 1):
+                L_i.append(l**2 + m)
                 j_i.append(j)
         ni = len(L_i)
-        np = ni * (ni + 1) // 2 # length for packing
         # j_i is the list of j values
         # L_i is the list of L (=l**2+m for 0<=m<l) values
         # https://wiki.fysik.dtu.dk/gpaw/devel/overview.html
 
         # calculate the integrals
-        I4_iip = npy.empty((ni, ni, np))
-        I = npy.empty((ni, ni))
+        np = ni * (ni + 1) // 2 # length for packing
+        self.I4_pp = npy.empty((np, np))
+        p1 = 0
         for i1 in range(ni):
             L1 = L_i[i1]
             j1 = j_i[i1]
-            for i2 in range(ni):
+            for i2 in range(i1, ni):
                 L2 = L_i[i2]
                 j2 = j_i[i2]
+                p2 = 0
                 for i3 in range(ni):
                     L3 = L_i[i3]
                     j3 = j_i[i3]
-                    for i4 in range(ni):
+                    for i4 in range(i3, ni):
                         L4 = L_i[i4]
                         j4 = j_i[i4]
-                        I[i3,i4] = npy.dot( G_LLL[L1,L2],
-                                            G_LLL[L3,L4] ) *\
-                                    R_llll[j1,j2,j3,j4]
-                I4_iip[i1,i2,:] = pack2(I)
+                        self.I4_pp[p1, p2] = (npy.dot(G_LLL[L1, L2],
+                                                      G_LLL[L3, L4]) *
+                                              R_jjjj[j1, j2, j3, j4])
+                        p2 += 1
+                p1 += 1
 
-        self.I4_iip = I4_iip
+        # To unpack into I4_iip do:
+        # from gpaw.utilities import unpack
+        # I4_iip = npy.empty((ni, ni, np)):
+        # for p in range(np):
+        #     I4_iip[..., p] = unpack(I4_pp[:, p])
 
-
+        return self.I4_pp
+    
+    
 
 if __name__ == '__main__':
     print """\
