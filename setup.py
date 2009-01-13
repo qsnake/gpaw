@@ -157,7 +157,8 @@ sources2remove = ['c/libxc/src/test.c',
 sources2remove.append('c/scalapack.c')
 sources2remove.append('c/sl_inverse_cholesky.c')
 for s2r in glob('c/libxc/src/funcs_*.c'): sources2remove.append(s2r)
-for s2r in sources2remove: sources.remove(s2r)
+for s2r in sources2remove:
+    if s2r in sources: sources.remove(s2r)
 
 check_dependencies(sources)
 
