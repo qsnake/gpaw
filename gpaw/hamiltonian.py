@@ -206,13 +206,16 @@ class Hamiltonian(LCAOHamiltonian):
         a_nG: ndarray
             Set of vectors to which the overlap operator is applied.
         b_nG: ndarray, output
-            Resulting S times a_nG vectors.
+            Resulting H times a_nG vectors.
         kpt: KPoint object
             k-point object defined in kpoint.py.
-        calculate_P_uni: bool
+        calculate_projections: bool
             When True, the integrals of projector times vectors
             P_ni = <p_i | a_nG> are calculated.
             When False, existing P_uni are used
+        local_part_only: bool
+            When True, the non-local atomic parts of the Hamiltonian
+            are not applied and calculate_projections is ignored.
         
         """
 
