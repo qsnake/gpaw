@@ -256,7 +256,7 @@ Set these environment variables in the :file:`.bashrc` file::
   fi
 
 and build GPAW (``python setup.py build_ext``) with this
-:file:`customize.py` file (comment out experimental ``scalapack`` and ``blacs`` features)::
+:file:`customize.py` file::
 
   scalapack = True
 
@@ -451,8 +451,7 @@ A subset of the Niflheim's nodes is equipped with Infiniband network
 `<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_.
 
 On the login node ``slid`` build GPAW (``python setup.py build_ext``)
-with gcc compiler using the following :file:`customize.py` file
-(comment out experimental ``scalapack`` and ``blacs`` features)::
+with gcc compiler using the following :file:`customize.py` file::
 
   scalapack = True
 
@@ -502,8 +501,7 @@ with gcc compiler using the following :file:`customize.py` file
 
 You can alternatively build on ``slid`` build GPAW (``python setup.py
 build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
-compiler using the following :file:`customize.py` file (comment out
-experimental ``scalapack`` and ``blacs`` features)::
+compiler using the following :file:`customize.py` file::
 
   scalapack = True
 
@@ -703,9 +701,16 @@ Debug like this::
 surveyor.alcf.anl.gov
 ---------------------
 
+Instructions for the ``V1R3M0_460_2008-081112P`` driver.
+
+**Warning** - for this driver two versions of numpy need to be compiled for
+the compute nodes: a standard one used during the building process of gpaw,
+and the optimized one used for running gpaw jobs. Using optimized numpy
+for building of gpaw results in "ImportError: /opt/ibmcmp/lib/bg/bglib/libxlsmp.so.1: undefined symbol: __process_count" when importing numpy on the frontend node.
+
 The **0.3** version of gpaw uses Numeric `<https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3/>`_.
 
-Get the Numeric-24.2_ (only if you want to run the **0.3** version of gpaw)
+Get the Numeric-24.2_ (**only** if you want to run the **0.3** version of gpaw)
 and do this::
 
   $ gunzip -c Numeric-24.2.tar.gz | tar xf -
@@ -714,7 +719,7 @@ and do this::
 
 The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-To build an optimized numpy based on ``goto`` blas, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
+To build an optimized numpy for the compute nodes, based on ``goto`` blas, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
 patch file
 (modifications required to get powerpc-bgp-linux-gfortran instead of
 gfortran compiler),
@@ -726,6 +731,10 @@ and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/numpy-1.0.4-si
 and xlf* related libraries).
 
 **Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``surveyor/intrepid``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a``, and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``goto``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS_goto/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. Change the locations of the libraries to be used in the makefiles: `/soft/apps/LIBGOTO` and `/opt/ibmcmp/lib/bg`.
+
+**Warning**: - crashes have been reported with numpy compiled against ``goto``
+so build numpy agains ``esslbg`` - see
+`<https://wiki.fysik.dtu.dk/gpaw/install/platforms_and_architectures.html#bcssh-rochester-ibm-com>`_.
 
 **Warning** - if numpy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
@@ -810,9 +819,8 @@ and do::
   resoft
 
 (to enable TAU profiling do also ``source /soft/apps/tau/tau.bashrc`` or ``soft add +tau``, if available),
-and build GPAW (``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-setup.py build_ext``) with this :file:`customize.py` file (comment out
-experimental ``scalapack`` and ``blacs`` features)::
+and build GPAW (``PYTHONPATH=~/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages /bgsys/drivers/ppcfloor/gnu-linux/bin/python
+setup.py build_ext``) with this :file:`customize.py` file::
 
   scalapack = True
 
@@ -923,7 +931,7 @@ blas section to use ``esslbg`` and ``cblas_bgp``),
 and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/numpy-1.0.4-site.cfg.lapack_bgp_esslbg>` file (contains paths to
 ``lapack_bgp``, ``esslbg`` , ``cblas_bgp``, and xlf* related libraries).
 
-**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``frontend-13``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a`` and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. These instructions are valid also for `Surveyor/Intrepid` with the following locations of the libraries to be used in the makefiles: `/soft/apps/ESSL-4.3/lib` and `/opt/ibmcmp/lib/bg`.
+**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``frontend-13``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a`` and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. These instructions are valid also for `Surveyor/Intrepid` with the following locations of the libraries to be used in the makefiles: `/soft/apps/ESSL-4.4/lib` and `/opt/ibmcmp/lib/bg`.
 
 **Warning** - if numpy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
@@ -1044,8 +1052,7 @@ Build GPAW
 LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
 :file:`/gpfs/fs2/frontend-13/$USER/gpaw` (you need to install the ase
 also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
-:file:`customize.py` file (comment out experimental ``scalapack`` and
-``blacs`` features)::
+:file:`customize.py` file::
 
   scalapack = True
 
