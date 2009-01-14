@@ -13,7 +13,46 @@ Pulay Mixing
 
 The density is updated using Pulay-mixing [#Pulay1980]_, [#Kresse1996]_.
 
-XXX More information needed!
+Pulay mixing (or direct inversion of the iterative subspace (DIIS))
+attempts to find a good approximation of the final solution as a
+linear combination of a set of trial vector `\{n^i\}` generated during
+an iterative solution of a problem. If the error associated with a
+given solution is given as `\{R^i\}` then Pulay mixing assumes that
+the error of a linear combination of the trail vectors is given as the
+same linear combination of errors
+
+.. math::
+
+  n_{i+1}=\sum \alpha_i n_i \quad,\quad R_{i+1}=\sum \alpha_i R_i
+
+The norm `R^{i+1}` is thus given as 
+
+.. math::
+
+  \langle R_{i+1}|R_{i+1}\rangle=\bar{\alpha}^T \bar{\bar{R}}\bar{\alpha}
+
+where elements of the matrix is given as `\bar{\bar{R}}_{ij}=\langle
+R_{i}|R_{j}\rangle`. The norm can thus be minimized by solving
+
+.. math::
+
+  \frac{\delta \langle R_{i+1}|R_{i+1}\rangle}{\delta
+  \bar{\alpha}^T}=2 \bar{\bar{R}}\bar{\alpha}=0
+
+In density mixing the error of a given input density is given as
+
+.. math::
+
+  R_i = n_i^{out}[n_i^{in}]-n_i^{in}
+
+The original Pulay mixing only uses `n_i^{out}` to calculate the
+errors and thereby the mixing parameters. To more efficiently cover
+solution space it can be an advantage to include them with a certain
+weight, given as the input parameter `\beta`.
+
+.. math::
+
+  n_{i+1}^{in}=\sum \alpha_i (n_i^{in}+\beta R_i)
 
 
 Special Metrics
@@ -75,6 +114,7 @@ A comparison of the two metrics is displayed in the figure below
 
 .. image:: metric.png
   :align: center
+
 
 Specifying a Mixing Scheme in GPAW
 ----------------------------------
