@@ -127,7 +127,7 @@ def pick(a_ix, i):
         return a_ix[i]
     shape = a_ix.shape
     a_x = npy.dot(i, a_ix[:].reshape(shape[0], -1))
-    return npy.reshape(a_x, shape[1:])
+    return a_x.reshape(shape[1:])
 
 def dagger(a):
     """Return Hermitian conjugate of input"""
@@ -179,6 +179,11 @@ def rotate_matrix(h, U):
     """U contains the new basis as its columns"""
     return npy.dot(dagger(U), npy.dot(h, U))
 
+def permute_basis(h, basis):
+    """Permute basis of h according to list basis, specifying new order"""
+    assert h.ndim == 2 and h.shape[0] == h.shape[1]
+    return h.take(basis, 0).take(basis, 1)
+
 def symmetrize(matrix):
     """Symmetrize input matrix."""
     npy.add(dagger(matrix), matrix, matrix)
@@ -225,86 +230,3 @@ def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
     from ase import Hartree, Bohr
     return (.5 * npy.pi * Bohr / h)**2 * Hartree
-
-def get_HS_matrices(atoms, nt_sg, D_asp, psit_unG):
-    """Determine matrix elements of the Hamiltonian defined by the
-    input density and density matrices, with respect to input wave functions.
-
-    Extra parameters like k-points and xc functional can be set on the
-    calculator attached to the input ListOfAtoms.
-    
-    ============== =========================================================
-    Input argument Description
-    ============== =========================================================
-    ``atoms``      A ListOfAtoms object with a suitable gpaw calculator
-                   attached.
-                   
-    ``nt_sg``      The pseudo electron spin-density on the fine grid.
-
-    ``D_asp``      The atomic spin-density matrices in packed format.
-
-    ``psit_unG``   The periodic part of the wave function at combined spin-
-                   kpoint index ``u`` and band ``n``. Must be given on the
-                   coarse grid.
-    ============== =========================================================
-
-    Output tuple (H_unn, S_unn), where H_unn[u] is the Hamiltonian matrix at
-    the combined spin-kpoint index u. S_unn is the overlap matrix.
-    """
-    nspins = len(nt_sg)
-    nbands = len(psit_unG[0])
-    gpts = npy.array(psit_unG[0][0].shape)
-    paw = atoms.GetCalculator()
-    
-    # Ensure that a paw object is initialized
-    paw.set(nbands=nbands, out=None)
-    paw.initialize()
-
-    # Sanity checks
-    assert len(atoms) == len(D_asp)
-    assert len(psit_unG) == nspins * len(calc.GetIBZKPoints())
-    assert npy.alltrue(gpts * 2 == nt_sg[0].shape)
-    assert (nspins - 1) == calc.GetSpinPolarized()
-
-    # Set density on paw-object
-    paw.density.nt_sg[:] = nt_sg
-    for D_sp, nucleus in zip(D_asp, paw.nuclei):
-        nucleus.D_sp = D_sp
-
-    # Update Hamiltonian
-    paw.set_positions() # make the localized functions
-    for kpt, psit_nG in zip(paw.kpt_u, psit_unG):
-        kpt.psit_nG = psit_nG
-        for nucleus in paw.pt_nuclei:
-            nucleus.calculate_projections(kpt) # calc P = <p|psi>
-    paw.hamiltonian.update(paw.density) # solve poisson
-
-    # Determine Hamiltonian and overlap
-    Htpsit_nG = npy.zeros( (nbands,) + tuple(gpts), paw.dtype) # temp array
-    H_unn = npy.zeros((len(psit_unG), nbands, nbands), paw.dtype)
-    S_unn = npy.zeros((len(psit_unG), nbands, nbands), paw.dtype)
-    for H_nn, S_nn, kpt in zip(H_unn, S_unn, paw.kpt_u):
-        Htpsit_nG[:] = 0.0
-        psit_nG = kpt.psit_nG
-        u, s = kpt.u, kpt.s
-        comm, root = kpt.comm, kpt.root
-        phase_cd = kpt.phase_cd
-
-        # Fill in the lower triangle of the Hamiltonian matrix:
-        paw.hamiltonian.kin.apply(psit_nG, Htpsit_nG, phase_cd)           
-        Htpsit_nG += psit_nG * paw.hamiltonian.vt_sG[s]
-        r2k(0.5 * paw.gd.dv, psit_nG, Htpsit_nG, 1.0, H_nn)
-        for nucleus in paw.hamiltonian.my_nuclei:
-            P_ni = nucleus.P_uni[u]
-            H_nn += npy.dot(P_ni, npy.dot(unpack(nucleus.H_sp[s]),
-                                          cc(npy.transpose(P_ni))))
-        comm.sum(H_nn, root)
-
-        # Fill in the lower triangle of the overlap matrix:
-        rk(paw.gd.dv, psit_nG, 0.0, S_nn)
-        for nucleus in paw.my_nuclei:
-            P_ni = nucleus.P_uni[u]
-            S_nn += npy.dot(P_ni, cc(inner(nucleus.setup.O_ii, P_ni)))
-        comm.sum(S_nn, root)
-
-    return H_unn, S_unn
