@@ -1573,10 +1573,9 @@ class XCCorrection:
 
         return J_pp
 
-
     def create_kinetic(self,jlL,jl,ny,np,phi_jg,tau_ypg):
-
-        """Short title here.                                                     
+        """Short title here.
+        
         kinetic expression is::
 
                                              __         __ 

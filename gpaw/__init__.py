@@ -120,10 +120,9 @@ if 0:
     import numpy
     oldsum = numpy.sum
     def zum(*args, **kwargs):
-        a = oldsum(*args, **kwargs)
         if numpy.asarray(args[0]).ndim != 1 and 'axis' not in kwargs:
             raise RuntimeError
-        return a
+        return oldsum(*args, **kwargs)
     numpy.sum = zum
 
 if debug:
