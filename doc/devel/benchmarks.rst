@@ -62,11 +62,11 @@ Please perform the following steps:
     export NCORES=8 # default; set this variable to the number of cores in your machine
     export MACHINE=TEST # default; optional: set this to the name of you machine
     mkdir /tmp/benchmark.$$; cd /tmp/benchmark.*
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/H2Al110.py
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/prepare.sh
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/run.sh
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/memory_bandwidth.py
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/install/twiny.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/H2Al110.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/prepare.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/run.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/twiny.py
     sh prepare.sh
 
  - run with (it takes 6-10 hours with NCORES=8)::
