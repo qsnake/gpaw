@@ -119,11 +119,11 @@ A comparison of the two metrics is displayed in the figure below
 Specifying a Mixing Scheme in GPAW
 ----------------------------------
 
-Specifying the mixing scheme and metric is done using the ``mix``
+Specifying the mixing scheme and metric is done using the ``mixer``
 keyword of the GPAW calculator::
 
   from gpaw import GPAW, Mixer
-  calc = GPAW(mix=Mixer(beta=0.1, nmaxold=5, metric='new', weight=100))
+  calc = GPAW(mixer=Mixer(beta=0.1, nmaxold=5, metric='new', weight=100))
 
 which is the recommended value if the default fails to converge.
 
