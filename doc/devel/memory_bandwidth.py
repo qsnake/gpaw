@@ -80,7 +80,7 @@ def analyse_benchmark(ncores=8, machine='TEST'):
         'carbon' : 'mkl 10.0.2.018 dsyev on carbon',
         'niflheim_py' : 'gpaw 1865 on niflheim',
         'niflheim' : 'acml 4.0.1 dsyev on niflheim',
-        'TEST_py' : 'gpaw on TEST',
+        #'TEST_py' : 'gpaw on TEST',
         }.get(system, False)
 
     processes = {
@@ -88,7 +88,7 @@ def analyse_benchmark(ncores=8, machine='TEST'):
         'carbon' : [1, 2, 4, 8],
         'niflheim_py' : [1, 2, 3, 4],
         'niflheim' : [1, 2, 4],
-        'TEST_py' : [1, 2, 4, 6, 8],
+        #'TEST_py' : [1, 2, 4, 6, 8],
         }.get(system, False)
 
 
