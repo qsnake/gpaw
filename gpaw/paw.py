@@ -1278,7 +1278,10 @@ class PAW(PAWExtra, Output):
             for a, D_sp in D_asp.items():
                 self.nuclei[a].D_sp[:] = D_sp
             for a, P_uni in P_auni.items():
-                self.nuclei[a].P_uni[:] = P_uni
+                nbands_reuse = min(P_uni.shape[1], 
+                                   self.nuclei[a].P_uni.shape[1])
+                self.nuclei[a].P_uni[:, :nbands_reuse, :] = \
+                    P_uni[:, :nbands_reuse, :]
             if self.density.nt_sG.shape == nt_sG.shape:
                 self.density.nt_sG[:] = nt_sG
                 #self.density.scale()
