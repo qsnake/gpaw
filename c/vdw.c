@@ -34,7 +34,8 @@ double vdwkernel(double r, double q01, double q02, int nD, int ndelta,
 	      a         * (1.0 - b) * phi[jdelta + 1][jD    ] +
 	      (1.0 - a) * b         * phi[jdelta    ][jD + 1] +
 	      (1.0 - a) * (1.0 - b) * phi[jdelta    ][jD    ]) /
-	     (D * D));
+	     (D *D));
+      
     }
   return e12;
 }
@@ -73,7 +74,8 @@ PyObject * vdw(PyObject* self, PyObject *args)
 
   double dr = rcut / (histogram_obj->dimensions[0] - 1);
   double rcut2 = rcut * rcut;
-
+  //Marco and Andre
+  double ioutmax= n_obj->dimensions[0] -1;
   double energy = 0.0;
   if (repeat[0] == 0 && repeat[1] == 0 && repeat[2] == 0)
     for (int i1 = iA; i1 < iB; i1++)
@@ -112,7 +114,7 @@ PyObject * vdw(PyObject* self, PyObject *args)
 	      {
 		//int i2max = ni;
 		double x = 0.5;
-		int i2max = iB;
+		int i2max = ioutmax;
 		if (a1 == 0 && a2 == 0 && a3 == 0)
 		  {
 		    i2max = i1;
@@ -376,7 +378,7 @@ PyObject * vdw2(PyObject* self, PyObject *args)
 	  double A3 = (Rrr[0] * S[0] + Rrr[1] * S[1] + Rrr[2] * S[2])/r;
 	  A3 *= Zabover9 / r;
           	    
-	  //energy += ie[3] * n[i1] * n[i2];
+	  energy += ie[3] * n[i1] * n[i2];
 	   //double ev = n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3);
 	  potential[i1] += n[i2] * (ie[3] + ie[0] * A1 + ie[1] * A2 + ie[2] * A3);
           
