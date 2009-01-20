@@ -163,7 +163,7 @@ class PoissonSolver:
             self.B.apply(rho, self.rhos[0])
         
         niter = 1
-        maxiter = 500
+        maxiter = 1000
         while self.iterate2(self.step) > eps and niter < maxiter:
             niter += 1
         if niter == maxiter:
