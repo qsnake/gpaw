@@ -15,7 +15,8 @@ from gpaw import Calculator
 import gpaw.mpi as mpi
 import _gpaw
 from gpaw.operators import Gradient
-dg
+
+
 class VanDerWaals:
     def __init__(self, n_g, gd, calc=None,
                  xcname='revPBE', ncoarsen=0):
@@ -562,3 +563,38 @@ class VDWFunctional:
             v_g += vvdw_g
             e_g[0] += e / self.gd.h_c.prod()
             
+
+"""
+from math import sin, cos, exp, pi, log
+import numpy as np
+from scipy.integrate import dblquad
+
+def T(w, x, y, z):
+    return 0.5 * ((1.0 / (w + x) + 1.0 / (y + z)) *
+                  (1.0 / ((w + y) * (x + z)) + 1.0 / ((w + z) * (y + x))))
+def W(a, b):
+    return 2 * ((3 - a**2) * b * cos(b) * sin(a) +
+                (3 - b**2) * a * cos(a) * sin(b) +
+                (a**2 + b**2 - 3) * sin(a) * sin(b) -
+                3 * a * b * cos(a) * cos(b)) / (a * b)**3
+eta = 8 * pi / 9
+def nu(y, d):
+    return 0.5 * y**2 / (1 - exp(-0.5 * eta * (y / d)**2))
+def f(a, b, d):
+    va = nu(a, d)
+    vb = nu(b, d)
+    return (a * b)**2 * W(a, b) * T(va, vb, va, vb)
+A = 0
+B = 10
+import pylab as plt
+dd = np.linspace(0.1, 6, 40)
+#plt.plot(dd, [dblquad(f, A, B, lambda x: A, lambda x: B, (d,))[0] * d**2
+#          for d in dd])
+def g(x,y,d):
+    return f(-log(x), -log(y), d) / x / y
+A = 0
+B = 1
+plt.plot(dd, [dblquad(g, A, B, lambda x: A, lambda x: B, (d,))[0] * d**2
+          for d in dd])
+plt.show()
+"""
