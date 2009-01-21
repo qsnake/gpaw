@@ -10,7 +10,7 @@ defaults = { 'err'   : None,
              'mail'  : None,
              'mem'   : None,
              'name'  : None,
-             'nodes' : 2,
+             'cores' : 2,
              'out'   : None,
              'qsys'  : 'pbs',
              'script': 'run.py',
@@ -127,7 +127,7 @@ class RunScript:
         if nodes == 0:
             print >> f, '# @ node = 1'
         else:
-            if nodes * 32 != int(set['nodes']):
+            if nodes * 32 != int(set['cores']):
                 raise RuntimeError("! use a multiple of 32 cpus !")
             print >> f, '# @ node =', nodes
         print >> f, '# @ total_tasks =', set['cores']
