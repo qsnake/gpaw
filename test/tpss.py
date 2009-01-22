@@ -4,22 +4,22 @@ from ase.parallel import paropen
 from gpaw.utilities.tools import split_formula
 from gpaw.utilities import equal
 
-cell = [14.4, 14.4, 14.4]
+cell = [8., 8., 8.]
 data = paropen('data.txt', 'w')
 
 ##Reference from J. Chem. Phys. Vol 120 No. 15, 15 April 2004, page 6898
 tpss_de = {
-'N2' : 227.7,
+'LiH': 59.1,
 }
 tpss_old = {
-'N2' : 226.3,
+'LiH': 56.3,
 }
 
 exp_bonds_dE = {
-'N2' : (1.098,228.5),
+'LiH': (1.595,57.8),
 } 
 
-systems = tpss_de.keys()
+systems = ['LiH']
 
 # Add atoms
 for formula in systems:
@@ -34,8 +34,8 @@ for formula in systems:
     loa = molecule(formula)
     loa.set_cell(cell)
     loa.center()
-    calc = Calculator(h=.18,
-                      nbands=-5,
+    calc = Calculator(h=.3,
+                      nbands=-2,
                       xc='PBE',
                       fixmom=True,
                       txt=formula + '.txt')
@@ -85,5 +85,4 @@ for formula in tpss_de.keys():
 
 #comparison to gpaw 0.4 version value in kcal/mol
         equal(de_tpss, tpss_old[formula], 0.1)
-#comparison to reference
-        equal(de_tpss, tpss_de[formula], 2.0)
+
