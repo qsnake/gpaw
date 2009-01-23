@@ -320,9 +320,17 @@ class RawLDOS:
             emin -= 4*width
             emax += 4*width
 
+            # Fermi energy
+            try:
+                efermi = self.paw.get_fermi_level()
+            except:
+                # set Fermi level half way between HOMO and LUMO
+                hl = self.paw.occupation.get_homo_lumo(self.paw.kpt_u)
+                efermi = (hl[0] + hl[1]) * Hartree / 2
+
             eshift = 0
             if shift:
-                eshift = -self.paw.get_fermi_level()
+                eshift = -efermi
 
             # set de to sample 4 points in the width
             de = width/4.
@@ -331,13 +339,10 @@ class RawLDOS:
                 print >> f, '# Gauss folded, width=%g [eV]' % width
                 if shift:
                     print >> f, '# shifted to Fermi energy = 0'
-                    print >> f, '# Fermi energy was',
+                    print >> f, '# Fermi energy was', 
                 else:
                     print >> f, '# Fermi energy',
-                try:
-                    print >> f, self.paw.get_fermi_level(), 'eV'
-                except NotImplementedError:
-                    print >>f, 'Not available'
+                print  >> f, efermi, 'eV'
                 print >> f, '# e[eV]  spin ',
                 for key in ldbe:
                     if len(key) == 1: key=' '+key
