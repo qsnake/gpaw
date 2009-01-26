@@ -90,5 +90,4 @@ equal to *mpi.world*.
 
 .. [1] J J. Mortensen and L. B. Hansen and K. W. Jacobsen,
        Phys. Rev. B 71 (2005) 035109.
-.. [2] C. Rostgaard, Masters thesis, CAMP, dep. of physics, Denmark, 2006.
-       This document can be found at the :ref:`exx` page.
+.. [2] C. Rostgaard, `The Projector Augmented Wave Method <../paw_note.pdf>`_.

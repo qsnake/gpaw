@@ -234,8 +234,8 @@ def gridspacing2cutoff(h):
 def geth(cell, h=.2, nodes=1):
     """Convert suggested gridspacing to the actual gridspacing used by gpaw"""
     from gpaw.domain import decompose_domain
-    ng = [max(4, int(npy.linalg.norm(axis) / h / 4 + .5) * 4) for axis in cell]
-    print 'Grid points:', ng
-    if npy.array(cell).ndim == 2: cell = cell.diagonal()
-    print 'Grid spacing:', cell / ng
-    print 'Domain decomposition:', decompose_domain(ng, nodes)
+    L_c = [npy.linalg.norm(axis) for axis in cell]
+    N_c = [max(4, int(.25 * L / h + .5) * 4) for L in L_c]
+    print 'Grid points:', N_c
+    print 'Grid spacing:', npy.divide(L_c, N_c)
+    print 'Domain decomposition:', decompose_domain(N_c, nodes)
