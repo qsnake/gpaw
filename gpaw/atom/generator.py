@@ -39,7 +39,7 @@ parameters = {
  'Ar': {'core': '[Ne]',   'rcut': 1.6},
  'K' : {'core': '[Ne]',   'rcut': [2.5, 2.1, 2.1]},
  'Ca': {'core': '[Ne]',   'rcut': [2.0, 1.7]},
-#'Sc': Missing
+ 'Sc': {'core': '[Ne]',   'rcut': [1.9, 1.8]},
  'Ti': {'core': '[Ne]', 'rcut': [2.4, 2.0, 2.0],
         'vbar': ('f', 1.8), 'rcutcomp': 2.3},
  'V' : {'core': '[Ar]',   'rcut': [2.5, 2.4, 2.0],
