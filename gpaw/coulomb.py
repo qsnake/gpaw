@@ -12,9 +12,12 @@ from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.blas import r2k
 from gpaw.mpi import rank, MASTER
 
+
 def get_vxc(paw, spin=0, U=None):
     """Calculate matrix elements of the xc-potential."""
-
+    assert not paw.hamiltonian.xc.orbital_dependent, "LDA/GGA's only"
+    assert paw.dtype is float, 'Complex waves not implemented'
+    
     if U is not None: # Rotate xc matrix
         return npy.dot(dagger(U), npy.dot(get_vxc(paw, spin), U))
     
@@ -26,13 +29,10 @@ def get_vxc(paw, spin=0, U=None):
     paw.hamiltonian.restrict(vxct_g, vxct_G)
     Vxc_nn = npy.zeros((paw.nbands, paw.nbands))
 
-    # Fill in upper triangle
-    r2k(0.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, 0.0, Vxc_nn)
+    # Apply pseudo part
+    r2k(.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, .0, Vxc_nn) # lower triangle
+    fill(Vxc_nn, 'upper') # Fill in upper triangle
     paw.gd.comm.sum(Vxc_nn)
-
-    # Fill in lower triangle
-    for n in range(paw.nbands - 1):
-        Vxc_nn[n:, n] = Vxc_nn[n, n:]
 
     # Add atomic PAW corrections
     for nucleus in paw.my_nuclei:
