@@ -15,7 +15,7 @@ from gpaw.mpi import rank, MASTER
 
 def get_vxc(paw, spin=0, U=None):
     """Calculate matrix elements of the xc-potential."""
-    assert not paw.hamiltonian.xc.orbital_dependent, "LDA/GGA's only"
+    assert not paw.hamiltonian.xc.xcfunc.orbital_dependent, "LDA/GGA's only"
     assert paw.dtype is float, 'Complex waves not implemented'
     
     if U is not None: # Rotate xc matrix
@@ -47,7 +47,7 @@ def get_vxc(paw, spin=0, U=None):
 
 
 class Coulomb:
-    """Class used to evaluate two index coulomb integrals"""
+    """Class used to evaluate two index coulomb integrals."""
     def __init__(self, gd, poisson=None):
         """Class should be initialized with a grid_descriptor 'gd' from
            the gpaw module.
