@@ -66,6 +66,22 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args)
     }
 }
 
+static PyObject * mpi_ssend(MPIObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  int dest;
+  int tag = 123;
+  int block = 1;
+  if (!PyArg_ParseTuple(args, "Oi|i", &a, &dest, &tag))
+    return NULL;
+  int n = a->descr->elsize;
+  for (int d = 0; d < a->nd; d++)
+    n *= a->dimensions[d];
+  MPI_Ssend(LONGP(a), n, MPI_BYTE, dest, tag, self->comm);
+  Py_RETURN_NONE;
+}
+
+
 static PyObject * mpi_name(MPIObject *self, PyObject *args)
 {
   if (!PyArg_ParseTuple(args, ""))
@@ -334,6 +350,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args);
 static PyMethodDef mpi_methods[] = {
     {"receive",          (PyCFunction)mpi_receive,      METH_VARARGS, 0},
     {"send",             (PyCFunction)mpi_send,         METH_VARARGS, 0},
+    {"ssend",             (PyCFunction)mpi_ssend,         METH_VARARGS, 0},
     {"abort",            (PyCFunction)mpi_abort,        METH_VARARGS, 0},
     {"name",             (PyCFunction)mpi_name,         METH_VARARGS, 0},
     {"barrier",          (PyCFunction)mpi_barrier,      METH_VARARGS, 0},

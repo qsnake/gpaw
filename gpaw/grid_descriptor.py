@@ -343,7 +343,9 @@ class GridDescriptor:
 
         # Collect all arrays on the master:
         if self.rank != MASTER:
-            self.comm.send(a_xg, MASTER, 301)
+            # There can be several sends before the corresponding receives
+            # are posted, so use syncronous send here
+            self.comm.ssend(a_xg, MASTER, 301)
             return
 
         # Put the subdomains from the slaves into the big array
