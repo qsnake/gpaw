@@ -172,7 +172,7 @@ class LCAO:
             assert parallel
             dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx remove'
         else:
-            dsyev_zheev_string1 = 'LCAO: '+'dsygv/zhegv remove'
+            dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv remove'
 
         self.timer.start(dsyev_zheev_string)
         if debug:
