@@ -21,14 +21,14 @@ class RMM_DIIS(Eigensolver):
     * Improvement of wave functions:  psi' = psi + lambda PR + lambda PR'
     * Orthonormalization"""
 
-    def __init__(self, keep_hpsit=True, nblocks=1):
-        Eigensolver.__init__(self, keep_hpsit, nblocks)
+    def __init__(self, keep_htpsit=True, nblocks=1):
+        Eigensolver.__init__(self, keep_htpsit, nblocks)
 
     def initialize(self, paw):
         Eigensolver.initialize(self, paw)
         self.overlap = paw.overlap
-
-    def iterate_one_k_point(self, hamiltonian, kpt):
+        
+    def iterate_one_k_point(self, hamiltonian, kpt):      
         """Do a single RMM-DIIS iteration for the kpoint"""
 
         self.subspace_diagonalize(hamiltonian, kpt)
@@ -41,7 +41,7 @@ class RMM_DIIS(Eigensolver):
             for R_G, eps, psit_G in zip(R_nG, kpt.eps_n, kpt.psit_nG):
                 # R_G -= eps * psit_G
                 axpy(-eps, psit_G, R_G)
-
+            
             run([nucleus.adjust_residual(R_nG, kpt.eps_n, kpt.s, kpt.u, kpt.k)
                  for nucleus in hamiltonian.pt_nuclei])
 
@@ -89,7 +89,7 @@ class RMM_DIIS(Eigensolver):
 
             hamiltonian.xc.xcfunc.adjust_non_local_residual(
                 pR_G, dR_G, kpt.eps_n[n], kpt.u, kpt.s, kpt.k, n)
-
+            
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
             RdR = self.comm.sum(np.vdot(R_G, dR_G).real)
             dRdR = self.comm.sum(np.vdot(dR_G, dR_G).real)
@@ -102,11 +102,12 @@ class RMM_DIIS(Eigensolver):
             axpy(lam**2, dR_G, R_G)  # R_G += lam**2 * dR_G
             kpt.psit_nG[n] += self.preconditioner(R_G, kpt.phase_cd,
                                                   kpt.psit_nG[n], kpt.k_c)
-
+            
         self.timer.stop('RMM-DIIS')
 
         # Orthonormalize the wave functions
         self.overlap.orthonormalize(kpt)
-
+     
         error = self.comm.sum(error)
         return error
+    
