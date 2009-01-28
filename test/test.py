@@ -44,7 +44,7 @@ if len(tests) == 0:
     # Fastest first, slowest last:
     tests = ['pbe-pw91.py', 'xcfunc.py', 'xc.py', 'gp2.py', 'lapack.py',
              'gradient.py', 'lf.py', 'non-periodic.py', 'lxc_xc.py',
-             'blockedmm.py', 'pbc.py', 
+             'blockedmm.py', 'pbc.py', 'test_dot.py',
              'transformations.py', 'Gauss.py', 'denom_int.py', 'setups.py',
              'poisson.py', 'cluster.py', 'integral4.py', 'cg2.py', 'XC2.py',
              'd2Excdn2.py', 'XC2Spin.py', 'multipoletest.py', 'eed.py',

@@ -22,11 +22,11 @@ if world.rank == 0:
     for atom in atoms:
         # Test AllElectron GLLB
         GLLB = AllElectron(atom, xcname = xcname, scalarrel = False)
-	GLLB.run()
+        GLLB.run()
 
-	out("Total energy", "1D", atom,  ETotal[atom] , GLLB.ETotal,"Ha")
-	out("Exchange energy", "1D", atom, EX[atom], GLLB.Exc,"Ha")
-	out("HOMO Eigenvalue", "1D", atom, EHOMO[atom], GLLB.e_j[-1],"Ha")
+        out("Total energy", "1D", atom,  ETotal[atom] , GLLB.ETotal,"Ha")
+        out("Exchange energy", "1D", atom, EX[atom], GLLB.Exc,"Ha")
+        out("HOMO Eigenvalue", "1D", atom, EHOMO[atom], GLLB.e_j[-1],"Ha")
 
 world.barrier()
 
@@ -34,9 +34,9 @@ setup_paths.insert(0, '.')
 
 for atom in atoms:
     if world.rank == 0:
-	# Generate non-scalar-relativistic setup for atom
-	g = Generator(atom, xcname, scalarrel=False, nofiles=True)
-	g.run(**parameters[atom])
+        # Generate non-scalar-relativistic setup for atom
+        g = Generator(atom, xcname, scalarrel=False, nofiles=True)
+        g.run(**parameters[atom])
     world.barrier()
 
     #SS = Atoms([Atom(atom)], cell=(12, 12, 12), pbc=False)
@@ -56,7 +56,7 @@ for atom in atoms:
 if world.rank == 0:
     print "             Quanity        Method    Symbol     Ref[1]         GPAW      Unit  "
     for a,b,c,d,e,f in data:
-	print "%20s %10s %10s   %10.3f   %10.3f   %5s" % (a,b,c,d,e,f)
+        print "%20s %10s %10s   %10.3f   %10.3f   %5s" % (a,b,c,d,e,f)
 #        print """References:
 #[1] Self-consistent approximation to the Kohn-Sham exchange potential
 #Gritsenko, Oleg; Leeuwen, Robert van; Lenthe, Erik van; Baerends, Evert Jan
