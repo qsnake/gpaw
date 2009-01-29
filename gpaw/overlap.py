@@ -138,10 +138,9 @@ class Overlap:
         S_nn = self.work_nn
 
         if work_nG is None:
-            if 'work_nG' in self.big_work_arrays:
-                work_nG = self.big_work_arrays['work_nG']
-            else:
-                work_nG = npy.zeros_like(psit_nG)
+            if 'work_nG' not in self.big_work_arrays:
+                self.big_work_arrays['work_nG'] = npy.zeros_like(psit_nG)
+            work_nG = self.big_work_arrays['work_nG']
 
         # Construct the overlap matrix:
         self.calculate_overlap_matrix(psit_nG, work_nG, kpt, S_nn)
