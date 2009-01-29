@@ -621,7 +621,7 @@ Download `MPIscript.sh <http://www.hpc.dtu.dk/GridEngine/MPIscript.sh>`_ and edi
  # ------------------------------- Program_name_and_options
  LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
  export LD_LIBRARY_PATH
- gpawpython=/xbar/nas2/home2/fys/mdul/gpaw/build/bin.solaris-2.10-sun4u-2.5/gpaw-python
+ gpawpython=~mdul/gpaw/build/bin.solaris-2.10-sun4u-2.5/gpaw-python
  /appl/hgrid/current/bin/mprun -np $NSLOTS $gpawpython gpaw/examples/H.py
  # ---------------------------
 
