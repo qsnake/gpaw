@@ -170,7 +170,7 @@ def lead_kspace2realspace(filename, direction='x'):
 
     h_smm[:, :nbf, :nbf] = h_smm[:, nbf:, nbf:] = h_sii
     h_smm[:, :nbf, nbf:] = h_sij
-    h_smm[:, nbf:, :nbf] = h_sij.T.conj()
+    h_smm[:, nbf:, :nbf] = h_sij.swapaxes(1, 2).conj()
 
     s_mm[:nbf, :nbf] = s_mm[nbf:, nbf:] = s_ii
     s_mm[:nbf, nbf:] = s_ij
