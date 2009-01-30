@@ -7,7 +7,7 @@ from ase.units import Hartree
 from pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
 from gpaw.utilities import pack, unpack
-from gpaw.utilities.tools import pick, construct_reciprocal, dagger, fill
+from gpaw.utilities.tools import pick, construct_reciprocal, dagger, tri2full
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.blas import r2k
 from gpaw.mpi import rank, MASTER
@@ -31,7 +31,7 @@ def get_vxc(paw, spin=0, U=None):
 
     # Apply pseudo part
     r2k(.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, .0, Vxc_nn) # lower triangle
-    fill(Vxc_nn, 'upper') # Fill in upper triangle
+    tri2full(Vxc_nn, 'L') # Fill in upper triangle from lower
     paw.gd.comm.sum(Vxc_nn)
 
     # Add atomic PAW corrections
@@ -370,8 +370,8 @@ class HF:
         # Fill in lower triangle
         r2k(0.5 * self.dv, kpt.psit_nG[:], Htpsit_nG, 1.0, H_nn)
 
-        # Fill in upper triangle
-        fill(H_nn, 'upper')
+        # Fill in upper triangle from lower
+        tri2full(H_nn, 'L')
 
     def atomic_val_val(self, kpt, H_nn):
         deg = 2 / self.nspins

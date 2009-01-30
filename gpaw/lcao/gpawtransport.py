@@ -189,7 +189,7 @@ class GPAWTransport:
             if l == 0:
                 self.h1_skmm, self.s1_kmm = self.get_hs(atoms)
                 fd = file('leadhs0','wb')
-                pickle.dump((self.h1_skmm, self.s1_kmm, self.nxklead), fd, 2)            
+                pickle.dump((self.h1_skmm, self.s1_kmm, self.nxklead), fd, 2)
                 fd.close()            
             elif l == 1:
                 self.h2_skmm, self.s2_kmm = self.get_hs(atoms)

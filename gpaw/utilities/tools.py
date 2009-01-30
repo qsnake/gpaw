@@ -190,19 +190,22 @@ def symmetrize(matrix):
     npy.multiply(.5, matrix, matrix)
     return matrix
 
-def fill(H_nn, side='upper'):
+def tri2full(H_nn, UL='L'):
     """Fill in values of hermitian matrix.
 
     Fill values in lower or upper triangle of H_nn based on the opposite
     triangle, such that the resulting matrix is symmetric/hermitian.
 
-    side='lower' will copy (conjugated) values from upper triangle into the
+    UL='U' will copy (conjugated) values from upper triangle into the
     lower triangle.
+
+    UL='L' will copy (conjugated) values from lower triangle into the
+    upper triangle.
     """
     N, tmp = H_nn.shape
     assert N == tmp, 'Matrix must be square'
     #assert npy.isreal(H_nn.diagonal()).all(), 'Diagonal should be real'
-    if side != 'upper':
+    if UL != 'L':
         H_nn = H_nn.T
 
     for n in range(N - 1):
