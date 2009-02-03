@@ -22,6 +22,7 @@ class ExcitationList(list):
         list.__init__(self)
 
         self.calculator = calculator
+        self.out = out
         if calculator is not None:
             if out is None:
                 self.out = calculator.txt
