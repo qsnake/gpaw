@@ -276,7 +276,12 @@ class GPAWTransport:
     def get_lead_calc(self, l, nkpts=21):
         p = self.atoms.calc.input_parameters.copy()
         p['nbands'] = None
-        kpts = list(p['kpts'])
+        kpts = p['kpts']
+        if kpts is None:
+            kpts = [1, 1, 1]
+        else:
+            kpts = list(kpts)
+        
         if nkpts == 0:
             kpts[self.d] = 2 * int(17.0 / self.pl_cells[l][self.d]) + 1
         else:
