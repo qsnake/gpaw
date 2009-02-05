@@ -179,7 +179,8 @@ class BaseMixer:
             for i, alpha in enumerate(alpha_i):
                 axpy(alpha, self.nt_iG[i], nt_G)
                 axpy(alpha * beta, self.R_iG[i], nt_G)
-                for D_p, D_ip, dD_ip in zip(D_ap, self.D_iap[i], self.dD_iap[i]):
+                for D_p, D_ip, dD_ip in zip(D_ap, self.D_iap[i],
+                                            self.dD_iap[i]):
                     axpy(alpha, D_ip, D_p)
                     axpy(alpha * beta, dD_ip, D_p)
 
@@ -235,7 +236,6 @@ class MixerSum(BaseMixer):
     """
 
     def mix(self, density):
-
         nt_sG = density.nt_sG
         D_asp = [nucleus.D_sp for nucleus in density.my_nuclei]
 
@@ -250,6 +250,7 @@ class MixerSum(BaseMixer):
         # Construct new spin up/down densities 
         nt_sG[0] = 0.5 * (nt_G + dnt_G)
         nt_sG[1] = 0.5 * (nt_G - dnt_G)
+
 
 class MixerSum2(BaseMixer):
     """Mix the total pseudo electron density and the total density matrices.
@@ -277,6 +278,7 @@ class MixerSum2(BaseMixer):
             D_sp[0] = 0.5 * (D_p + dD_p)
             D_sp[1] = 0.5 * (D_p - dD_p)
 
+
 class MixerDif(BaseMixer):
     """Mix the charge density and magnetization density separately"""
     
@@ -296,7 +298,6 @@ class MixerDif(BaseMixer):
         weight: float
             Weight parameter for special metric (for long wave-length
             changes).
-
         """
 
         self.beta = beta
@@ -367,6 +368,7 @@ class MixerRho(BaseMixer):
 
         rhot_g = density.rhot_g
         BaseMixer.mix(self, rhot_g, [])
+
 
 class MixerRho2(BaseMixer):
     def initialize(self, paw):
