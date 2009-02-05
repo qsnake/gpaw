@@ -40,6 +40,7 @@ def count_lines(file):
 
 # We should use numpy for this! XXX
 def save_array(array, file, delimiter=' ', converters={}, header=None):
+    raise DeprecationWarning, 'You should use numpy.savetxt instead'
     """Save array to ascii file.
 
     ============== =========================================================
@@ -79,6 +80,7 @@ def save_array(array, file, delimiter=' ', converters={}, header=None):
 
 def load_array(file, comments='#', delimiter=None, converters={},
                skiprows=[], skipcols=[], dtype='O', transpose=False):
+    raise DeprecationWarning, 'You should use numpy.loadtxt instead'
     """Load array from ascii file.
 
     ============== ===========================================================
