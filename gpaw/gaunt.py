@@ -56,9 +56,12 @@ def make_gaunt(lmax=2):
 def make_ylnyl(lmax=2):
     """Create the array of the intergrals
 
-    /
-    | d\Omega Y_L \nabla Y_{L'}
-    /
+    ::
+
+       /            __
+       | d Omega Y  \/ Y
+       /          L     L'
+
     """
     Lmax = (lmax + 1)**2
     L2max = 3
