@@ -33,9 +33,6 @@ class PAWExtra:
         gpaw.io.write(self, filename, mode)
         self.timer.stop('IO')
         
-    def get_reference_energy(self):
-        return self.Eref * self.Ha
-    
     def get_wave_function_array(self, n, k, s):
         """Return pseudo-wave-function array.
         
@@ -82,27 +79,29 @@ class PAWExtra:
         global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
+        kpt_u = self.wfs.kpt_u
+        
         # Does this work correctly? Strides?
-        return self.collect_array(self.kpt_u[u].eps_n, kpt_rank)
+        return self.collect_array(kpt_u[u].eps_n, kpt_rank)
 
         if kpt_rank == MASTER:
             if self.band_comm.size == 1:
-                return self.kpt_u[u].eps_n
+                return kpt_u[u].eps_n
                 
 
         if self.kpt_comm.rank == kpt_rank:
             if not (kpt_rank == MASTER and self.master):
                 # Domain master send this to the global master
                 if self.domain.comm.rank == MASTER:
-                    self.world.send(self.kpt_u[u].eps_n, MASTER, 1301)
+                    self.world.send(kpt_u[u].eps_n, MASTER, 1301)
         elif self.master:
             eps_all_n = npy.zeros(self.nbands)
             nstride = self.band_comm.size
-            eps_n = npy.zeros(self.nmybands)
+            eps_n = npy.zeros(self.mynbands)
             r0 = 0
             if kpt_rank == MASTER:
                 # Master has already the first slice
-                eps_all_n[0::nstride] = self.kpt_u[u].eps_n
+                eps_all_n[0::nstride] = kpt_u[u].eps_n
                 r0 = 1
             for r in range(r0, self.band_comm.size):
                 world_rank = kpt_rank * self.domain.comm.size * self.band_comm.size + r * self.domain.comm.size
@@ -120,17 +119,18 @@ class PAWExtra:
         global master."""
 
         kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
-        return self.collect_array(self.kpt_u[u].f_n, kpt_rank)
+        kpt_u = self.wfs.kpt_u
+        return self.collect_array(kpt_u[u].f_n, kpt_rank)
 
         if kpt_rank == MASTER:
             if self.band_comm.size == 1:
-                return self.kpt_u[u].f_n
+                return kpt_u[u].f_n
 
         if self.kpt_comm.rank == kpt_rank:
             if not (kpt_rank == MASTER and self.master):
                 # Domain master send this to the global master
                 if self.domain.comm.rank == MASTER:
-                    self.world.send(self.kpt_u[u].f_n, MASTER, 1313)
+                    self.world.send(kpt_u[u].f_n, MASTER, 1313)
         elif self.master:
             f_all_n = npy.zeros(self.nbands)
             nstride = self.band_comm.size
@@ -138,7 +138,7 @@ class PAWExtra:
             r0 = 0
             if kpt_rank == MASTER:
                 # Master has already the first slice
-                f_all_n[0::nstride] = self.kpt_u[u].f_n
+                f_all_n[0::nstride] = kpt_u[u].f_n
                 r0 = 1
             for r in range(r0, self.band_comm.size):
                 world_rank = kpt_rank * self.domain.comm.size * self.band_comm.size + r * self.domain.comm.size
@@ -182,83 +182,6 @@ class PAWExtra:
         # might be nicer to have the correct array everywhere XXXX 
         return a_n
 
-    def get_wannier_integrals(self, c, s, k, k1, G, nbands=None):
-        """Calculate integrals for maximally localized Wannier functions."""
-
-        assert s <= self.nspins
-
-        kpt_rank, u = divmod(k + self.nkpts * s, self.nmyu)
-        kpt_rank1, u1 = divmod(k1 + self.nkpts * s, self.nmyu)
-
-        # XXX not for the kpoint/spin parallel case
-        assert self.kpt_comm.size == 1
-
-        # If calc is a save file, read in tar references to memory
-        self.initialize_wave_functions()
-        
-        # Get pseudo part
-        Z_nn = self.gd.wannier_matrix(self.kpt_u[u].psit_nG,
-                                      self.kpt_u[u1].psit_nG, c, G, nbands)
-
-        # Add corrections
-        for nucleus in self.my_nuclei:
-            Z_nn += nucleus.wannier_correction(G, c, u, u1, nbands)
-
-        self.gd.comm.sum(Z_nn, 0)
-            
-        return Z_nn
-
-    def get_xc_difference(self, xcname):
-        """Calculate non-selfconsistent XC-energy difference."""
-        xc = self.hamiltonian.xc
-        oldxcfunc = xc.xcfunc
-
-        if isinstance(xcname, str):
-            newxcfunc = XCFunctional(xcname, self.nspins)
-        else:
-            newxcfunc = xcname
-        
-        newxcfunc.set_non_local_things(self, energy_only=True)
-
-        xc.set_functional(newxcfunc)
-        for setup in self.setups:
-            setup.xc_correction.xc.set_functional(newxcfunc)
-
-        if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready: #bugged?
-            self.set_positions(npy.array([n.spos_c * self.domain.cell_c
-                                          for n in self.nuclei]))
-        if newxcfunc.hybrid > 0.0:
-            for nucleus in self.my_nuclei:
-                nucleus.allocate_non_local_things(self.nmyu,self.nmybands)
-        
-        vt_g = self.finegd.empty()  # not used for anything!
-        nt_sg = self.density.nt_sg
-        if self.nspins == 2:
-            Exc = xc.get_energy_and_potential(nt_sg[0], vt_g, nt_sg[1], vt_g)
-        else:
-            Exc = xc.get_energy_and_potential(nt_sg[0], vt_g)
-
-        for nucleus in self.my_nuclei:
-            D_sp = nucleus.D_sp
-            H_sp = npy.zeros(D_sp.shape) # not used for anything!
-            xc_correction = nucleus.setup.xc_correction
-            Exc += xc_correction.calculate_energy_and_derivatives(D_sp, H_sp)
-
-        Exc = self.domain.comm.sum(Exc)
-
-        for kpt in self.kpt_u:
-            newxcfunc.apply_non_local(kpt)
-        Exc += newxcfunc.get_non_local_energy()
-
-        xc.set_functional(oldxcfunc)
-        for setup in self.setups:
-            setup.xc_correction.xc.set_functional(oldxcfunc)
-
-        return self.Ha * (Exc - self.Exc)
-
-    def get_grid_spacings(self):
-        return self.a0 * self.gd.h_c
-
     def get_exact_exchange(self):
         dExc = self.get_xc_difference('EXX') / self.Ha
         Exx = self.Exc + dExc
@@ -274,7 +197,7 @@ class PAWExtra:
         
         self.set_positions()
         self.density.move()
-        self.density.update(self.kpt_u, self.symmetry)
+        self.density.update(self.wfs.kpt_u, self.symmetry)
 ##         if self.wave_functions_initialized:
 ##             self.density.move()
 ##             self.density.update(self.kpt_u, self.symmetry)
@@ -304,12 +227,12 @@ class PAWExtra:
 
         # reallocate only my_nuclei (as the others are not allocated at all)
         for nucleus in self.my_nuclei:
-            nucleus.reallocate(self.nmybands)
+            nucleus.reallocate(self.mynbands)
 
         self.set_positions()
 
         # Wave functions
-        for kpt in self.kpt_u:
+        for kpt in self.wfs.kpt_u:
             kpt.dtype = dtype
             kpt.psit_nG = npy.array(kpt.psit_nG[:], dtype)
 
@@ -320,8 +243,8 @@ class PAWExtra:
     def read_wave_functions(self, mode='gpw'):
         """Read wave functions one by one from seperate files"""
 
-        for u in range(self.nmyu):
-            kpt = self.kpt_u[u]
+        for u, kpt in enumerate(self.wfs.kpt_u):
+            #kpt = self.kpt_u[u]
             kpt.psit_nG = self.gd.empty(self.nbands, self.dtype)
             # Read band by band to save memory
             s = kpt.s
@@ -329,20 +252,13 @@ class PAWExtra:
             for n, psit_G in enumerate(kpt.psit_nG):
                 psit_G[:] = gpaw.io.read_wave_function(self.gd, s, k, n, mode)
                 
-    def warn(self, string=None):
-        if not string:
-            string = "somethings wrong"
-        print >> self.txt, "WARNING >>"
-        print >> self.txt, string
-        print >> self.txt, "WARNING <<"
-                
     def wave_function_volumes(self):
         """Return the volume needed by the wave functions"""
         nu = self.nkpts * self.nspins
         volumes = npy.empty((nu, self.nbands))
 
         for k in range(nu):
-            for n, psit_G in enumerate(self.kpt_u[k].psit_nG):
+            for n, psit_G in enumerate(self.wfs.kpt_u[k].psit_nG):
                 volumes[k, n] = self.gd.integrate(psit_G**4)
 
                 # atomic corrections
@@ -355,67 +271,3 @@ class PAWExtra:
                 
         return 1. / volumes
 
-    def get_projections(self, locfun, spin=0):
-        """Project wave functions onto localized functions
-
-        Determine the projections of the Kohn-Sham eigenstates
-        onto specified localized functions of the format::
-
-          locfun = [[spos_c, l, sigma], [...]]
-
-        spos_c can be an atom index, or a scaled position vector. l is
-        the angular momentum, and sigma is the (half-) width of the
-        radial gaussian.
-
-        Return format is::
-
-          f_kni = <psi_kn | f_i>
-
-        where psi_kn are the wave functions, and f_i are the specified
-        localized functions.
-
-        As a special case, locfun can be the string 'projectors', in which
-        case the bound state projectors are used as localized functions.
-        """
-
-        if locfun == 'projectors':
-            f_kin = []
-            for k in range(self.nkpts):
-                u = k + spin * self.nkpts
-                for nucleus in self.nuclei:
-                    i = 0
-                    for l, n in zip(nucleus.setup.l_j, nucleus.setup.n_j):
-                        if n >= 0:
-                            for j in range(i, i + 2 * l + 1):
-                                f_kin.append(nucleus.P_uni[u, :, j])
-                        i += 2 * l + 1
-            f_kni = npy.array(f_kin).reshape(
-                self.nkpts, -1, self.nbands).transpose(0, 2, 1)
-            return f_kni.conj()
-
-        from gpaw.localized_functions import create_localized_functions
-        from gpaw.spline import Spline
-        from gpaw.utilities import fac
-
-        nbf = npy.sum([2 * l + 1 for pos, l, a in locfun])
-        f_kni = npy.zeros((self.nkpts, self.nbands, nbf), self.dtype)
-
-        bf = 0
-        for spos_c, l, sigma in locfun:
-            if type(spos_c) is int:
-                spos_c = self.nuclei[spos_c].spos_c
-            a = .5 * self.a0**2 / sigma**2
-            r = npy.linspace(0, 6. * sigma, 500)
-            f_g = (fac[l] * (4 * a)**(l + 3 / 2.) * npy.exp(-a * r**2) /
-                   (npy.sqrt(4 * npy.pi) * fac[2 * l + 1]))
-            functions = [Spline(l, rmax=r[-1], f_g=f_g, points=61)]
-            lf = create_localized_functions(functions, self.gd, spos_c,
-                                            dtype=self.dtype)
-            lf.set_phase_factors(self.ibzk_kc)
-            nlf = 2 * l + 1
-            nbands = self.nbands
-            for k in range(self.nkpts):
-                lf.integrate(self.kpt_u[k + spin * self.nkpts].psit_nG[:],
-                             f_kni[k, :, bf:bf + nlf], k=k)
-            bf += nlf
-        return f_kni.conj()

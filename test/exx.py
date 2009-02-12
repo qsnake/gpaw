@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import os
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.utilities import equal
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 
 loa = Atoms([Atom('Be', (0, 0, 0)), Atom('Be', (2.45, 0, 0))])
 loa.center(vacuum=2.0)
-calc = Calculator(h=0.21, nbands=3, convergence={'eigenstates': 1e-6},
+calc = GPAW(h=0.21, nbands=3, convergence={'eigenstates': 1e-6},
                   txt=None)
 loa.set_calculator(calc)
 

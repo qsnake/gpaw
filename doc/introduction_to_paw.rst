@@ -20,13 +20,14 @@ crosses) defined in all of the simulation box:
 
   \tilde{\psi}(\mathbf{r}) =  \tilde{\psi}(ih, jh, kh),
 
-where `h` is the grid spacing and `(i, j, k)` are the indices of the grid points. 
+where `h` is the grid spacing and `(i, j, k)` are the indices of the
+grid points.
 
 .. figure:: _static/co_wavefunctions.png
 
-.. literalinclude:: co_wavefunctions.py
-
-In order to get the all-electron wave function, we add and subtract one-center expansions of the all-electron (thick lines) and pseudo wave-functions (thin lines):
+In order to get the all-electron wave function, we add and subtract
+one-center expansions of the all-electron (thick lines) and pseudo
+wave-functions (thin lines):
 
 .. math::
 
@@ -54,3 +55,20 @@ Approximations
 * Frozen core orbitals.
 * Truncated angular momentum expansion of compensation charges.
 * Finite number of basis functions and projector functions.
+
+
+More information on PAW
+=======================
+
+You can find additional information on the :ref:`literature` page, or
+by reading the `paw note`_
+
+.. _paw note: paw_note.pdf
+
+
+
+Script
+======
+
+.. literalinclude:: co_wavefunctions.py
+

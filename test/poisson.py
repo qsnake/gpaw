@@ -1,6 +1,5 @@
 from math import sqrt
 from gpaw.poisson import PoissonSolver
-import numpy as npy
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.domain import Domain
 
@@ -27,13 +26,12 @@ def f(n):
                 if r < 1:
                     a[x, y, z] = 1 - (3 - 2 * r) * r**2
 
-    #print max(npy.fabs((a[:C,:C,:C]-a[C:,C:,C:]).ravel()))
     I0 = gd.integrate(a)
     a -= gd.integrate(a) / L**3
 
     I = gd.integrate(a)
     b = gd.zeros()
-    np = p.solve(b, a)#, eps=1e-20)
+    p.solve(b, a)#, eps=1e-20)
     return b[0,0,0]-b[C,C,C]
 
 assert f(8) == 0

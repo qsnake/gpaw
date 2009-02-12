@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 from math import pi
 from gpaw.coulomb import Coulomb
 from gpaw.domain import Domain
@@ -15,8 +15,8 @@ def test_coulomb(N=2**6, a=20):
     d.set_decomposition(world, N_c=Nc) # decompose domain on processors
     gd = GridDescriptor(d, Nc)# grid-descriptor object
     xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
-    r  = npy.sqrt(r2)         # matrix with the values of the radial coordinate
-    nH = npy.exp(-2 * r) / pi # density of the hydrogen atom
+    r  = np.sqrt(r2)         # matrix with the values of the radial coordinate
+    nH = np.exp(-2 * r) / pi # density of the hydrogen atom
     C = Coulomb(gd)           # coulomb calculator
     
     if parallel:

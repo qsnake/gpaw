@@ -6,7 +6,8 @@ import sys
 
 import numpy as npy
 
-from gpaw import debug, dry_run, dry_run_size
+from gpaw import debug
+from gpaw import dry_run as dry_run_size
 from gpaw.utilities import is_contiguous
 from gpaw.utilities import scalapack
 import _gpaw
@@ -40,20 +41,14 @@ class SerialCommunicator:
     def gather(self, a, root, b):
         b[:] = a
 
+    def all_gather(self, a, b):
+        b[:] = a
+
     def new_communicator(self, ranks):
         return self
 
     def cart_create(self, dimx, dimy, dimz, periodic):
         return self
-
-class DummyCommunicator(SerialCommunicator):
-    size = 1
-    size = 0
-    def new_communicator(self, ranks):
-        new_comm = DummyCommunicator()
-        new_comm.size = len(ranks)
-        return new_comm
-
 
 serial_comm = SerialCommunicator()
 
@@ -62,8 +57,13 @@ try:
 except:
     world = serial_comm
 
-if dry_run and dry_run_size > 1:
-    world = DummyCommunicator()
+if dry_run_size > 1:
+    class DryRunCommunicator(SerialCommunicator):
+        def new_communicator(self, ranks):
+            new_comm = DryRunCommunicator()
+            new_comm.size = len(ranks)
+            return new_comm
+    world = DryRunCommunicator()
     world.size = dry_run_size
 
 size = world.size
@@ -159,6 +159,12 @@ if debug:
                 assert sys.getrefcount(a) > 3
             return self.comm.send(a, dest, tag, block)
 
+        def ssend(self, a, dest, tag=123):
+            assert 0 <= dest < self.size
+            assert dest != self.rank
+            assert is_contiguous(a)
+            return self.comm.ssend(a, dest, tag)
+
         def receive(self, a, src, tag=123, block=True):
             assert 0 <= src < self.size
             assert src != self.rank
@@ -180,7 +186,10 @@ if debug:
         def diagonalize(self, a, w,
                         nprow=1, npcol=1, mb=32, root=0,
                         b=None):
-            return self.comm.diagonalize(a, w, nprow, npcol, mb, root, b)
+            if b is None:
+                return self.comm.diagonalize(a, w, nprow, npcol, mb, root)
+            else:
+                return self.comm.diagonalize(a, w, nprow, npcol, mb, root, b)
 
         def inverse_cholesky(self, a,
                              nprow=1, npcol=1, mb=32, root=0):

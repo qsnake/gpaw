@@ -172,9 +172,9 @@ class ApmB(OmegaMatrix):
             return integrals[name]
         # create the Kohn-Sham singles
         kss_ij = PairDensity(self.paw)
-        kss_ij.initialize(self.paw.kpt_u[spin], i, j)
+        kss_ij.initialize(self.paw.wfs.kpt_u[spin], i, j)
         kss_kq = PairDensity(self.paw)
-        kss_kq.initialize(self.paw.kpt_u[spin], k, q)
+        kss_kq.initialize(self.paw.wfs.kpt_u[spin], k, q)
 ##         kss_ij = KSSingle(i, j, spin, spin, self.paw)
 ##         kss_kq = KSSingle(k, q, spin, spin, self.paw)
 
@@ -200,19 +200,22 @@ class ApmB(OmegaMatrix):
         # smooth part
         I = self.gd.integrate(rhot * phit)
         
+        wfs = self.paw.wfs
+        Pij_ani = wfs.kpt_u[kss_ij.spin].P_ani
+        Pkq_ani = wfs.kpt_u[kss_kq.spin].P_ani
+
         # Add atomic corrections
-        Ia = 0.
-        for nucleus in self.paw.my_nuclei:
-            ni = nucleus.get_number_of_partial_waves()
-            Pi_i = nucleus.P_uni[kss_ij.spin,kss_ij.i]
-            Pj_i = nucleus.P_uni[kss_ij.spin,kss_ij.j]
+        Ia = 0.0
+        for a, Pij_ni in Pij_ani.items():
+            Pi_i = Pij_ni[kss_ij.i]
+            Pj_i = Pij_ni[kss_ij.j]
             Dij_ii = npy.outer(Pi_i, Pj_i)
             Dij_p = pack(Dij_ii, tolerance=1e3)
-            Pk_i = nucleus.P_uni[kss_kq.spin,kss_kq.i]
-            Pq_i = nucleus.P_uni[kss_kq.spin,kss_kq.j]
+            Pk_i = Pkq_ani[a][kss_kq.i]
+            Pq_i = Pkq_ani[a][kss_kq.j]
             Dkq_ii = npy.outer(Pk_i, Pq_i)
             Dkq_p = pack(Dkq_ii, tolerance=1e3)
-            C_pp = nucleus.setup.M_pp
+            C_pp = wfs.setups[a].M_pp
             #   ----
             # 2 >      P   P  C    P  P
             #   ----    ip  jr prst ks qt

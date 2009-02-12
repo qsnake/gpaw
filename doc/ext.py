@@ -20,6 +20,7 @@ def svn_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
         if '?' in name:
             name = name[:name.index('?')]
     ref = 'http://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/' + text
+    ref = 'http://trac.fysik.dtu.dk/projects/gpaw/browser/branches/general_unit_cells/' + text
     set_classes(options)
     node = nodes.reference(rawtext, name, refuri=ref,
                            **options)

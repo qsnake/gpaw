@@ -4,7 +4,7 @@ import sys
 from ase import *
 from ase.units import Bohr, Hartree
 from ase.io.cube import write_cube
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.utilities import equal
 
 from gpaw.cluster import Cluster
@@ -25,35 +25,35 @@ H2 = Atoms([Atom(at, (a/2, a/2, (c-R)/2)),
 print at, 'dimer'
 nelectrons = 2 * H2[0].number
 
-txt='/dev/null'
-#txt='-'
+txt = None
+#txt = '-'
 
 # without potential
 if True:
 ##    print '\n################## no potential'
-    c00 = Calculator(h=0.3, nbands=-1, txt=txt)
+    c00 = GPAW(h=0.3, nbands=-1, txt=txt)
     c00.calculate(H2)
-    eps00_n = c00.kpt_u[0].eps_n
+    eps00_n = c00.get_eigenvalues()
 
 # 0 potential
 if False:
 ##    print '\n################## 0 potential'
     cp0 = ConstantPotential(0.0)
-    c01 = Calculator(h=0.3, nbands=-2, external=cp0, txt=txt)
+    c01 = GPAW(h=0.3, nbands=-2, external=cp0, txt=txt)
     c01.calculate(H2)
 
 # 1 potential
 if True:
 ##    print '################## 1 potential'
     cp1 = ConstantPotential(-1.0/Hartree)
-    c1 = Calculator(h=0.3, nbands=-2, external=cp1, txt=txt)
+    c1 = GPAW(h=0.3, nbands=-2, external=cp1, txt=txt)
     c1.calculate(H2)
 
-for i in range(c00.nbands):
-    f00 = c00.kpt_u[0].f_n[i]
+for i in range(c00.get_number_of_bands()):
+    f00 = c00.get_occupation_numbers()[i]
     if f00 > 0.01:
-        e00 = c00.kpt_u[0].eps_n[i] * Hartree
-        e1 = c1.kpt_u[0].eps_n[i] * Hartree
+        e00 = c00.get_eigenvalues()[i]
+        e1 = c1.get_eigenvalues()[i]
         print 'Eigenvalues no pot, expected, error=', e00, e1 + 1, e00 - e1 - 1
         equal(e00, e1 + 1., 0.002)
 

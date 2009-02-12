@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions
@@ -12,6 +12,6 @@ gd = GridDescriptor(domain, (n, n, n))
 print gd.get_boxes((0, 0, 0), 1.2, 0)
 if 0:
     p = create_localized_functions([s], gd, (0.0, 0.0, 0.0), cut=True)
-    a = npy.zeros((n, n, n))
-    p.add(a, npy.array([2.0]))
+    a = np.zeros((n, n, n))
+    p.add(a, np.array([2.0]))
     print a[1,0]

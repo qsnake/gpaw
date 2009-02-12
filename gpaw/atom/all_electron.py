@@ -31,7 +31,7 @@ class AllElectron:
 
     def __init__(self, symbol, xcname='LDA', scalarrel=False,
                  corehole=None, configuration=None, nofiles=True,
-                 txt='-'):
+                 txt='-', gpernode=150):
         """Do an atomic DFT calculation.
 
         Example::
@@ -86,7 +86,7 @@ class AllElectron:
                           'Xe': 11}[conf]
 
         maxnodes = max([n - l - 1 for n, l in zip(self.n_j, self.l_j)])
-        self.N = (maxnodes + 1) * 150
+        self.N = (maxnodes + 1) * gpernode
         self.beta = 0.4
 
         t = self.text
@@ -174,6 +174,11 @@ class AllElectron:
         self.xcfunc = XCFunctional(self.xcname, 1)
         self.xc = XCRadialGrid(self.xcfunc, self.rgd)
 
+        # Initialize for non-local functionals
+        if self.xc.is_non_local():
+            self.xcfunc.xc.pass_stuff_1d(self)
+            self.xcfunc.xc.initialize_1d()
+            
         n_j = self.n_j
         l_j = self.l_j
         f_j = self.f_j
@@ -228,7 +233,8 @@ class AllElectron:
             self.vXC[:] = 0.0
 
             if self.xc.is_non_local():
-                Exc = self.xc.get_non_local_energy_and_potential(self.u_j, self.f_j, self.e_j, self.l_j, self.vXC)
+                # Update the potential to self.vXC an the energy to self.Exc
+                Exc = self.xcfunc.xc.get_xc_potential_and_energy_1d(self.vXC)
             else:
                 tau = None
                 if self.xc.xcfunc.mgga:

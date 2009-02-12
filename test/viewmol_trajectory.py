@@ -9,7 +9,7 @@ from gpaw.utilities.viewmol import ViewmolTrajectory, write_viewmol
 
 s = Cluster([Atom('H'), Atom('H',(0,0,3))])
 s.minimal_box(2)
-c = Calculator(h=0.3, nbands=2)
+c = GPAW(h=0.3, nbands=2)
 s.set_calculator(c)
 
 vfname='traj.vmol'

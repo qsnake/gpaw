@@ -3,7 +3,7 @@
 
 from math import pi
 
-import numpy as npy
+import numpy as np
 
 from gpaw.transformers import Transformer
 from gpaw.operators import Laplace
@@ -26,7 +26,7 @@ class Preconditioner:
         self.interpolator2 = Transformer(gd2, gd1, 1, dtype).apply
         self.interpolator1 = Transformer(gd1, gd0, 1, dtype).apply
         
-    def __call__(self, residual, phases, phit, kpt):
+    def __call__(self, residual, phases, phit=None, kpt=None):
         step = self.step
         d0, q0 = self.scratch0
         r1, d1, q1 = self.scratch1
@@ -59,12 +59,12 @@ class Teter:
         self.dtype = dtype
         dims = gd.n_c.copy()
         dims.shape = (3, 1, 1, 1)
-        icell = 1.0 / npy.array(gd.domain.cell_c)
+        icell = 1.0 / np.array(gd.domain.cell_c)
         icell.shape = (3, 1, 1, 1)
-        q_cq = ((npy.indices(gd.n_c) + dims / 2) % dims - dims / 2) * icell
-        self.q2_q = npy.sum(q_cq**2)
+        q_cq = ((np.indices(gd.n_c) + dims / 2) % dims - dims / 2) * icell
+        self.q2_q = np.sum(q_cq**2)
 
-        self.r_cG = npy.indices(gd.n_c, float) / dims
+        self.r_cG = np.indices(gd.n_c, float) / dims
         self.r_cG.shape = (3, -1)
 
         self.cache = {}
@@ -76,14 +76,14 @@ class Teter:
         else:
             phase_G = self.cache.get(kpt_c)
             if phase_G is None:
-                phase_G = npy.exp(-2j * pi * npy.dot(kpt_c, self.r_cG))
+                phase_G = np.exp(-2j * pi * np.dot(kpt_c, self.r_cG))
                 phase_G.shape = phit_G.shape
                 self.cache[kpt_c] = phase_G
             phit_q = fftn(phit_G * phase_G)
             
-        norm = npy.vdot(phit_q, phit_q)
-        h_q = phit_q * npy.conjugate(phit_q) * self.q2_q / norm
-        ekin = npy.sum(h_q.ravel())
+        norm = np.vdot(phit_q, phit_q)
+        h_q = phit_q * np.conjugate(phit_q) * self.q2_q / norm
+        ekin = np.sum(h_q.ravel())
         x_q = self.q2_q / ekin
         
         K_q = x_q * 8.0

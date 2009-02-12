@@ -8,7 +8,7 @@ from gpaw.atom.all_electron import AllElectron
 # Calculate Helium atom using 3D-code
 he = Atoms(positions=[(0,0,0)], symbols='He')
 he.center(vacuum=3.0)
-calc = Calculator(h=0.17)
+calc = GPAW(h=0.17)
 he.set_calculator(calc)
 he.get_potential_energy()
 

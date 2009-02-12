@@ -1,5 +1,5 @@
 from math import sqrt, pi
-import numpy as npy
+import numpy as np
 from gpaw.domain import Domain
 from gpaw.setup import Setup
 from gpaw.grid_descriptor import GridDescriptor
@@ -10,7 +10,7 @@ n = 60#40 /8 * 10
 a = 10.0
 domain = Domain((a, a, a))
 gd = GridDescriptor(domain, (n, n, n))
-c_LL = npy.identity(9, float)
+c_LL = np.identity(9, float)
 a_Lg = gd.zeros(9)
 nspins = 2
 xcfunc = XCFunctional('LDA', nspins)
@@ -34,9 +34,9 @@ for soft in [False]:
                 Q1_m[(m + 1) % 3] -= 1.0
             print soft, l, m, Q0, Q1_m
             assert abs(Q0) < 2e-6
-            assert npy.alltrue(abs(Q1_m) < 3e-5)
-    b_Lg = npy.reshape(a_Lg, (9, n**3))
-    S_LL = npy.inner(b_Lg, b_Lg)
+            assert np.alltrue(abs(Q1_m) < 3e-5)
+    b_Lg = np.reshape(a_Lg, (9, n**3))
+    S_LL = np.inner(b_Lg, b_Lg)
     S_LL.ravel()[::10] = 0.0
     print max(abs(S_LL).ravel())
     assert max(abs(S_LL).ravel()) < 3e-4

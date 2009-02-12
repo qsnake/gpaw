@@ -24,15 +24,6 @@ erf = npy.vectorize(_gpaw.erf, (float,), 'Error function')
 fac = [1, 1, 2, 6, 24, 120, 720, 5040, 40320,
        362880, 3628800, 39916800, 479001600]
 
-def swap(a, b):
-    """Swap the references of a and b.
-    """
-
-    assert isinstance(a, npy.ndarray)
-    assert isinstance(b, npy.ndarray)
-    assert a.shape == b.shape
-    _gpaw.swap(a,b)
-    
 
 def gcd(a, b):
     """Return greatest common divisor of a and b, using the
@@ -44,7 +35,8 @@ def gcd(a, b):
 
 
 def contiguous(array, dtype):
-    """Convert a sequence to a contiguous Numeric array."""
+    # XXX Use numpy.ascontiguousarray(array, dtype=None) instead!
+    """Convert a sequence to a contiguous Numpy array."""
     array = npy.asarray(array, dtype)
     if array.flags.contiguous:
         return array
@@ -335,4 +327,3 @@ def scalapack():
 if not debug:
     hartree = _gpaw.hartree
     wignerseitz = _gpaw.wigner_seitz_grid
-    swap = _gpaw.swap

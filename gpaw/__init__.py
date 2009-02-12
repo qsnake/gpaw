@@ -44,32 +44,31 @@ class PoissonConvergenceError(ConvergenceError):
 # Check for special command line arguments:
 debug = False
 trace = False
-dry_run = False
-dry_run_size = 1
+setup_paths = []
+dry_run = 0
 parsize = None
 parsize_bands = None
 sl_diagonalize = False
 sl_inverse_cholesky = False
-arg = None
-setup_paths = []
 i = 1
 while len(sys.argv) > i:
     arg = sys.argv[i]
     if arg.startswith('--gpaw-'):
         # Found old-style gpaw command line argument:
         arg = '--' + arg[7:]
-        print 'Warning: %s is prefered instead of %s' % (arg, sys.argv[i])
+        raise RuntimeError('Warning: Use %s instead of %s.' %
+                           (arg, sys.argv[i]))
     if arg == '--trace':
         trace = True
     elif arg == '--debug':
         debug = True
-        print >> sys.stderr, 'gpaw-DEBUG mode'
-    elif arg.startswith('--dry-run'):
-        dry_run = True
-        if len(arg.split('=')) == 2:
-            dry_run_size = int(arg.split('=')[1])
+        sys.stderr.write('gpaw-DEBUG mode\n')
     elif arg.startswith('--setups='):
         setup_paths = arg.split('=')[1].split(':')
+    elif arg.startswith('--dry-run'):
+        dry_run = 1
+        if len(arg.split('=')) == 2:
+            dry_run = int(arg.split('=')[1])
     elif arg.startswith('--domain-decomposition='):
         parsize = [int(n) for n in arg.split('=')[1].split(',')]
     elif arg.startswith('--state-parallelization='):
@@ -116,24 +115,17 @@ while len(sys.argv) > i:
     # Delete used command line argument:
     del sys.argv[i]
 
-if 0:
-    import numpy
-    oldsum = numpy.sum
-    def zum(*args, **kwargs):
-        if numpy.asarray(args[0]).ndim != 1 and 'axis' not in kwargs:
-            raise RuntimeError
-        return oldsum(*args, **kwargs)
-    numpy.sum = zum
-
 if debug:
     import numpy
+    numpy.seterr(over='raise', divide='raise', invalid='raise', under='ignore')
+
     oldempty = numpy.empty
     def empty(*args, **kwargs):
         a = oldempty(*args, **kwargs)
         if a.dtype == int:
             a[:] = -100000000
         else:
-            a[:] = numpy.inf
+            a[:] = numpy.nan
         return a
     numpy.empty = empty
 
@@ -175,17 +167,19 @@ paths = os.environ.get('GPAW_SETUP_PATH', '')
 if paths != '':
     setup_paths += paths.split(':')
 
-from gpaw.aseinterface import Calculator
+from gpaw.aseinterface import GPAW
 from gpaw.mixer import Mixer, MixerSum, MixerDif
 from gpaw.poisson import PoissonSolver
 
-GPAW = Calculator
+class Calculator(GPAW):
+    def __init__(self, *args, **kwargs):
+        sys.stderr.write('Please start using GPAW instead of Calculator!\n')
+        GPAW.__init__(self, *args, **kwargs)
 
-def restart(filename, Class=Calculator, **kwargs):
+def restart(filename, Class=GPAW, **kwargs):
     calc = Class(filename, **kwargs)
     atoms = calc.get_atoms()
     return atoms, calc
-
 
 if trace:
     indent = '    '

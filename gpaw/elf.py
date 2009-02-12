@@ -66,7 +66,7 @@ class ELF:
         self.finegd = calc.finegd
 
         self.spinpol = calc.spinpol
-        self.nspins = calc.occupation.nspins
+        self.nspins = calc.occupations.nspins
 
         self.density = calc.density
 

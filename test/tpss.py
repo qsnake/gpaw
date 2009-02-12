@@ -34,31 +34,31 @@ for formula in systems:
     loa = molecule(formula)
     loa.set_cell(cell)
     loa.center()
-    calc = Calculator(h=.3,
-                      nbands=-2,
-                      xc='PBE',
-                      fixmom=True,
-                      txt=formula + '.txt')
+    calc = GPAW(h=0.3,
+                nbands=-2,
+                xc='PBE',
+                fixmom=True,
+                txt=formula + '.txt')
     if len(loa) == 1:
         calc.set(hund=True)
     else:
         pos = loa.get_positions()
-        pos[1,:] = pos[0,:] + [0.0,0.0,exp_bonds_dE[formula][0]]
+        pos[1,:] = pos[0,:] + [0.0, 0.0, exp_bonds_dE[formula][0]]
         loa.set_positions(pos)
     loa.set_calculator(calc)
     try:
         energy = loa.get_potential_energy()
         diff = calc.get_xc_difference('TPSS')
-        energies[formula]=(energy,energy+diff)
+        energies[formula] = (energy, energy + diff)
     except:
-        print >>data, formula, 'Error'
+        print >> data, formula, 'Error'
     else:
-        print >>data, formula, energy,energy+diff
+        print >> data, formula, energy, energy + diff
         data.flush()
 
 #calculate atomization energies
 file = paropen('tpss.txt', 'w')
-print >>file, "formula\tGPAW\tRef\tGPAW-Ref\tGPAW-exp"
+print >> file, 'formula\tGPAW\tRef\tGPAW-Ref\tGPAW-exp'
 mae_ref, mae_exp, mae_pbe, count = 0.0, 0.0, 0.0, 0
 for formula in tpss_de.keys():
     try:

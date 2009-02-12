@@ -68,7 +68,8 @@ if 0:
 
 test_files = glob('test/*')
 # subdirectories must not be referenced directly
-for dir_to_remove in ['test/analyse', 'test/parallel']:
+for dir_to_remove in ['test/analyse', 'test/parallel',
+                      'test/gllb', 'test/vdw']:
     if dir_to_remove in test_files:
         test_files.remove(dir_to_remove)
 test_analyse_files = glob('test/analyse/*')

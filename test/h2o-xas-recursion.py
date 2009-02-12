@@ -2,10 +2,10 @@ import os
 from math import pi, cos, sin
 from ase import *
 from ase.parallel import rank, barrier
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
-import numpy as npy
+import numpy as np
 
 if rank == 0:
     # Generate setup for oxygen with half a core-hole:
@@ -24,12 +24,12 @@ if 1:
                  Atom('H', (d * cos(t), d * sin(t), 0))],
                 cell=(a, a, a), pbc=False)
     H2O.center()
-    calc = Calculator(nbands=10, h=0.2, setups={'O': 'hch1s'})
+    calc = GPAW(nbands=10, h=0.2, setups={'O': 'hch1s'})
     H2O.set_calculator(calc)
     e = H2O.get_potential_energy()
     calc.write('h2o.gpw')
 else:
-    calc = Calculator('h2o.gpw')
+    calc = GPAW('h2o.gpw')
     calc.set_positions()
 
 from gpaw.xas import RecursionMethod
@@ -44,7 +44,7 @@ else:
 if 0:
     from pylab import *
 
-    x = -30 + 40 * npy.arange(300) / 300.0
+    x = -30 + 40 * np.arange(300) / 300.0
 
     for n in range(50, 401, 50):
         y = r.get_spectra(x, imax=n)

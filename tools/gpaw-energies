@@ -38,8 +38,8 @@ fname = 'gpaw-restart.gpw'
 if len(args):
     fname = args[0]
 
-from gpaw import Calculator
-paw = Calculator(fname, txt=None, idiotproof=False)
+from gpaw import GPAW
+paw = GPAW(fname, txt=None, idiotproof=False)
 
 lengthunit = 'Ang'
 energyunit = 'eV'
@@ -65,12 +65,12 @@ if additional_info:
     if  p['charge']:
         print >> out, '# charge:',p['charge']
     if paw.get_spin_polarized():
-        if paw.occupation.fixmom:
+        if paw.occupations.fixmom:
             fixmom = '(fixed)'
         else:
             fixmom = ''
         print >> out, '# magnetic moment:', \
-              paw.calculate_magnetic_moments(), fixmom
+            paw.get_magnetic_moment(), fixmom
     atoms = paw.get_atoms()
     cell = atoms.get_cell().diagonal()
     h = cell / p['gpts']
@@ -78,7 +78,7 @@ if additional_info:
     print >> out, '# h=', h
     print >> out, '# periodic=', atoms.get_pbc()
     print >> out, "#",
-    if not paw.converged:
+    if not paw.scf.converged:
         print >> out,'not',
     print >> out, 'converged'
     try:
@@ -92,13 +92,13 @@ if additional_info:
         pass
 
 print >> out, "# energy unit:", energyunit
-print >> out, '# Fermi temp.  =', paw.kT * Ha
-print >> out, '# Free energy = ', paw.Etot * Ha,\
-      "(" + str((paw.Eref + paw.Etot) * Ha) + ")"
-print >> out, '# Zero Kelvin = ', (paw.Etot + 0.5 * paw.S) * Ha
-print >> out, '# kin.    "    = ',paw.Ekin * Ha
-print >> out, '# pot.    "    = ',paw.Epot * Ha
-print >> out, '# xc      "    = ',paw.Exc * Ha
+print >> out, '# Fermi temp.  =', paw.occupations.kT * Ha
+print >> out, '# Free energy = ', paw.hamiltonian.Etot * Ha
+print >> out, '# Zero Kelvin = ', (paw.hamiltonian.Etot + 
+                                   0.5 * paw.hamiltonian.S) * Ha
+print >> out, '# kin.    "    = ',paw.hamiltonian.Ekin * Ha
+print >> out, '# pot.    "    = ',paw.hamiltonian.Epot * Ha
+print >> out, '# xc      "    = ',paw.hamiltonian.Exc * Ha
 print >> out, '# fermi level = ', paw.get_fermi_level()
 
 # dos
@@ -125,13 +125,14 @@ else:
 
 # forces
 if opt.Forces:
-    if paw.F_ac is None:
+    if paw.forces.F_av is None:
         print >> out, '# sorry, no forces'
     else:
         print >> out, '# Forces [' + energyunit + '/' + lengthunit + ']:'
         fmax = 0.
-        scale = Ha/a0
-        for s, f in zip(paw.get_atoms().get_chemical_symbols(), paw.F_ac):
+        scale = Ha / Bohr
+        for s, f in zip(paw.get_atoms().get_chemical_symbols(), 
+                        paw.forces.F_av):
             norm = sqrt(npy.dot(f, f)) * scale
             if norm > fmax:
                 fmax = norm

@@ -8,17 +8,18 @@ import numpy as npy
 import ase
 from ase.version import version as ase_version
 from ase.data import chemical_symbols
+from ase.units import Bohr, Hartree
 
 from gpaw.utilities import devnull
-from gpaw.mpi import MASTER
 from gpaw.mpi import size, parallel
 from gpaw.version import version
 from gpaw.utilities import scalapack
-from gpaw import sl_diagonalize, sl_inverse_cholesky
+from gpaw import sl_diagonalize, sl_inverse_cholesky, dry_run
+from gpaw.utilities.memory import maxrss
 import gpaw
 
 
-class Output:
+class PAWTextOutput:
     """Class for handling all text output."""
 
     def __init__(self):
@@ -38,7 +39,7 @@ class Output:
 
         firsttime = (self.txt is None)
 
-        if txt is None or (not self.master):
+        if txt is None or self.wfs.world.rank != 0:
             self.txt = devnull
         elif txt == '-':
             self.txt = sys.stdout
@@ -98,30 +99,31 @@ class Output:
             t('  %s-axis   %s   %8.4f   %3d    %8.4f' %
               ('xyz'[c],
                ['no ', 'yes'][int(self.domain.pbc_c[c])],
-               self.a0 * self.domain.cell_c[c],
+               Bohr * self.domain.cell_c[c],
                self.gd.N_c[c],
-               self.a0 * self.gd.h_c[c]))
+               Bohr * self.gd.h_c[c]))
         t()
 
-    def print_positions(self, pos_ac):
+    def print_positions(self):
         t = self.text
         t()
         t('Positions:')
-        for a, pos_c in enumerate(pos_ac):
-            symbol = self.nuclei[a].setup.symbol
-            t('%3d %-2s %9.4f %9.4f %9.4f' %
-              ((a, symbol) + tuple(self.a0 * pos_c)))
+        symbols = self.atoms.get_chemical_symbols()
+        for a, pos_c in enumerate(self.atoms.get_positions()):
+            symbol = symbols[a]
+            t('%3d %-2s %9.4f %9.4f %9.4f' % ((a, symbol) + tuple(pos_c)))
         t()
 
     def print_parameters(self):
         t = self.text
         p = self.input_parameters
 
-        t('Using the %s Exchange-Correlation Functional.' % self.xcfunc.xcname)
-        if self.spinpol:
+        t('Using the %s Exchange-Correlation Functional.'
+          % self.hamiltonian.xcfunc.xcname)
+        if self.wfs.nspins == 2:
             t('Spin-Polarized Calculation.')
-            t('Magnetic Moment:   %.6f' % sum(self.density.magmom_a), end='')
-            if self.fixmom:
+            t('Magnetic Moment:   %.6f' % self.density.magmom_a.sum(), end='')
+            if p.fixmom:
                 t('(fixed)')
             else:
                 t()
@@ -129,7 +131,7 @@ class Output:
             t('Spin-Paired Calculation')
 
         t('Total Charge:      %.6f' % p['charge'])
-        t('Fermi Temperature: %.6f' % (self.kT * self.Ha))
+        t('Fermi Temperature: %.6f' % (self.occupations.kT * Hartree))
         t('Eigen Solver:      %s \n                   (%s)' %
           (p['eigensolver'], fd(p['stencils'][0])))
         diag_string = 'Lapack'
@@ -146,17 +148,16 @@ class Output:
             assert cpus_per_node > 0
             npcol = max(1, cpus_per_node *
                         (int(sqrt(size) / cpus_per_node + 0.5)))
-            nprow = min(max(1, int(size/npcol)), npcol)
-            npcol = max(max(1, int(size/npcol)), npcol)
+            nprow = min(max(1, int(size / npcol)), npcol)
+            npcol = max(max(1, int(size / npcol)), npcol)
             sl_defaults = [nprow, npcol, 32, cpus_per_node]
             for sl_args_index in range(len(sl_diagonalize)):
                 if sl_diagonalize[sl_args_index] is 'd':
                     sl_diagonalize[sl_args_index] = sl_defaults[sl_args_index]
-            assert sl_diagonalize[0]*sl_diagonalize[1] <= size
-            diag_string = ('ScaLapack'+
-                           ' - grid: [nprow, npcol, nb] = %s'
-                           % (sl_diagonalize[:3]))
-        t('Diagonalizer:      %s' % (diag_string))
+            assert sl_diagonalize[0] * sl_diagonalize[1] <= size
+            diag_string = ('ScaLapack - grid: [nprow, npcol, nb] = %s'
+                           % sl_diagonalize[:3])
+        t('Diagonalizer:      %s' % diag_string)
         inverse_cholesky_string = 'Lapack'
         if sl_inverse_cholesky: assert parallel
         if sl_inverse_cholesky: assert scalapack()
@@ -171,59 +172,61 @@ class Output:
             assert cpus_per_node > 0
             npcol = max(1, cpus_per_node *
                         (int(sqrt(size) / cpus_per_node + 0.5)))
-            nprow = min(max(1, int(size/npcol)), npcol)
-            npcol = max(max(1, int(size/npcol)), npcol)
+            nprow = min(max(1, int(size / npcol)), npcol)
+            npcol = max(max(1, int(size / npcol)), npcol)
             sl_defaults = [nprow, npcol, 32, cpus_per_node]
             for sl_args_index in range(len(sl_inverse_cholesky)):
                 if sl_inverse_cholesky[sl_args_index] is 'd':
                     sl_inverse_cholesky[sl_args_index] = sl_defaults[sl_args_index]
             assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
-            inverse_cholesky_string = ('ScaLapack'+
+            inverse_cholesky_string = ('ScaLapack' +
                                        ' - grid: [nprow, npcol, nb] = %s'
-                                       % (sl_inverse_cholesky[:3]))
-        t('Inverse Cholesky:  %s' % (inverse_cholesky_string))
+                                       % sl_inverse_cholesky[:3])
+        t('Inverse Cholesky:  %s' % inverse_cholesky_string)
         t('Poisson Solver:    %s \n                   (%s)' %
           ([0, 'GaussSeidel', 'Jacobi'][self.hamiltonian.poisson.relax_method],
            fd(self.hamiltonian.poisson.nn)))
         order = str((2 * p['stencils'][1]))
         if order[-1] == '1':
-            order = order+'st'
+            order = order + 'st'
         elif order[-1] == '2':
-            order = order+'nd'
+            order = order + 'nd'
         elif order[-1] == '3':
-            order = order+'rd'
+            order = order + 'rd'
         else:
-            order = order+'th'
+            order = order + 'th'
 
-        t('Interpolation:     '+order+' Order')
-        t('Reference Energy:  %.6f' % (self.Eref * self.Ha))
+        t('Interpolation:     ' + order + ' Order')
+        t('Reference Energy:  %.6f' % (self.wfs.setups.Eref * Hartree))
         t()
-        if self.gamma:
+        if self.wfs.gamma:
             t('Gamma Point Calculation')
 
-        if self.kpt_comm.size > 1:
-            if self.nspins == 2 and self.nkpts == 1:
+        nibzkpts = self.wfs.nibzkpts
+
+        if self.wfs.kpt_comm.size > 1:
+            if self.wfs.nspins == 2 and nibzkpts == 1:
                 t('Parallelization Over Spin')
-            elif self.nspins == 2:
+            elif self.wfs.nspins == 2:
                 t('Parallelization Over k-points and Spin on %d Processors' %
-                  self.kpt_comm.size)
+                  self.wfs.kpt_comm.size)
             else:
                 t('Parallelization Over k-points on %d Processors' %
-                  self.kpt_comm.size)
+                  self.wfs.kpt_comm.size)
 
         domain = self.domain
         if domain.comm.size > 1:
             t('Using Domain Decomposition: %d x %d x %d' %
               tuple(domain.parsize_c))
 
-        if self.symmetry is not None:
-            self.symmetry.print_symmetries(t)
+        if self.wfs.symmetry is not None:
+            self.wfs.symmetry.print_symmetries(t)
 
         t(('%d k-point%s in the Irreducible Part of the ' +
            'Brillouin Zone (total: %d)') %
-          (self.nkpts, ' s'[1:self.nkpts], len(self.bzk_kc)))
+          (nibzkpts, ' s'[1:nibzkpts], len(self.wfs.bzk_kc)))
 
-        if self.fixdensity > self.maxiter:
+        if self.scf.fixdensity > self.scf.maxiter:
             t('Fixing the initial density')
         else:
             mixer = self.density.mixer
@@ -242,119 +245,123 @@ class Output:
         t('Integral of Absolute Density Change:    %g electrons' %
           cc['density'])
         t('Integral of Absolute Eigenstate Change: %g' % cc['eigenstates'])
-        t('Number of Bands in Calculation:         %i' % self.nbands)
+        t('Number of Bands in Calculation:         %i' % self.wfs.nbands)
         t('Bands to Converge:                      ', end='')
         if cc['bands'] == 'occupied':
             t('Occupied States Only')
         else:
             t('%d Lowest Bands' % cc['bands'])
-        t('Number of Valence Electrons:            %i' % self.nvalence)
+        t('Number of Valence Electrons:            %i'
+          % self.wfs.setups.nvalence)
 
-    def print_converged(self):
+    def print_converged(self, iter):
         t = self.text
         t('------------------------------------')
-        t('Converged After %d Iterations.' % self.niter)
+        t('Converged After %d Iterations.' % iter)
 
         t()
         self.print_all_information()
 
     def print_all_information(self):
         t = self.text
-        if len(self.nuclei) == 1:
+        if len(self.atoms) == 1:
             t('Energy Contributions Relative to Reference Atom:', end='')
         else:
             t('Energy Contributions Relative to Reference Atoms:', end='')
-        t('(reference = %.5f)' % (self.Eref * self.Ha))
+        t('(reference = %.5f)' % (self.wfs.setups.Eref * Hartree))
 
         t('-------------------------')
 
-        energies = [('Kinetic:      ', self.Ekin),
-                    ('Potential:    ', self.Epot),
-                    ('External:     ', self.Eext),
-                    ('XC:           ', self.Exc),
-                    ('Entropy (-ST):', -self.S),
-                    ('Local:        ', self.Ebar)]
+        energies = [('Kinetic:      ',  self.hamiltonian.Ekin),
+                    ('Potential:    ',  self.hamiltonian.Epot),
+                    ('External:     ',  self.hamiltonian.Eext),
+                    ('XC:           ',  self.hamiltonian.Exc),
+                    ('Entropy (-ST):', -self.hamiltonian.S),
+                    ('Local:        ',  self.hamiltonian.Ebar)]
 
         for name, e in energies:
-            t('%-14s %+10.5f' % (name, self.Ha * e))
+            t('%-14s %+10.5f' % (name, Hartree * e))
 
         t('-------------------------')
-        t('Free Energy:   %+10.5f' % (self.Ha * self.Etot))
-        t('Zero Kelvin:   %+10.5f' % (self.Ha * (self.Etot + 0.5 * self.S)))
+        t('Free Energy:   %+10.5f' % (Hartree * self.hamiltonian.Etot))
+        t('Zero Kelvin:   %+10.5f' % (Hartree * (self.hamiltonian.Etot +
+                                                 0.5 * self.hamiltonian.S)))
         t()
-
         try:
-            epsF = self.occupation.get_fermi_level()
+            epsF = self.occupations.get_fermi_level()
         except NotImplementedError:
             pass
         else:
-            t('Fermi Level:', self.Ha * epsF)
+            t('Fermi Level:', Hartree * epsF)
 
         self.print_eigenvalues()
 
+        if self.density.rhot_g is None:
+            return
+        
         t()
         charge = self.finegd.integrate(self.density.rhot_g)
         t('Total Charge:  %f electrons' % charge)
 
         dipole = self.finegd.calculate_dipole_moment(self.density.rhot_g)
         if self.density.charge == 0:
-            t('Dipole Moment: %s' % (dipole * self.a0))
+            t('Dipole Moment: %s' % (dipole * Bohr))
         else:
-            t('Center of Charge: %s' % (dipole * self.a0 / abs(charge)))
+            t('Center of Charge: %s' % (dipole * Bohr / abs(charge)))
 
-        if self.nspins == 2:
-            self.calculate_magnetic_moments()
+        if self.wfs.nspins == 2:
             t()
-            t('Total Magnetic Moment: %f' % self.occupation.magmom)
+            t('Total Magnetic Moment: %f' % self.occupations.magmom)
             t('Local Magnetic Moments:')
-            for a, mom in enumerate(self.magmom_a):
+            for a, mom in enumerate(self.get_magnetic_moments()):
                 t(a, mom)
             t()
 
 ##         if self.xcfunc.is_gllb():
 ##             self.xcfunc.xc.print_converged(self)
 
-    def print_iteration(self):
+    def print_iteration(self, iter):
         # Output from each iteration:
         t = self.text
 
+        nvalence = self.wfs.setups.nvalence
+        eigerr = self.scf.eigenstates_error / nvalence
         if self.verbose != 0:
             T = time.localtime()
             t()
             t('------------------------------------')
-            t('iter: %d %d:%02d:%02d' % (self.niter, T[3], T[4], T[5]))
+            t('iter: %d %d:%02d:%02d' % (iter, T[3], T[4], T[5]))
             t()
             t('Poisson Solver Converged in %d Iterations' %
-                      self.hamiltonian.npoisson)
-            t('Fermi Level Found  in %d Iterations' % self.occupation.niter)
-            t('Error in Wave Functions: %.13f' % self.error['eigenstates'])
+              self.hamiltonian.npoisson)
+            t('Fermi Level Found  in %d Iterations' % self.occupations.niter)
+            t('Error in Wave Functions: %.13f' % eigerr)              
             t()
             self.print_all_information()
 
         else:
-            if self.niter == 0:
+            if iter == 1:
                 header = """\
                      log10-error:    Total        Iterations:
            Time      WFS    Density  Energy       Fermi  Poisson"""
-                if self.spinpol:
+                if self.wfs.nspins == 2:
                     header += '  MagMom'
                 t(header)
 
             T = time.localtime()
 
-            if self.error['eigenstates'] == 0.0:
-                eigerror = ''
+            if eigerr == 0.0:
+                eigerr = ''
             else:
-                eigerror = '%-+5.1f' % (log(self.error['eigenstates']) /
-                                        log(10))
+                eigerr = '%-+5.1f' % (log(eigerr) / log(10))
 
-            dNt = self.density.mixer.get_charge_sloshing()
-            if dNt is None or dNt == 0 or self.nvalence == 0:
-                dNt = ''
+            denserr = self.density.mixer.get_charge_sloshing()
+            if denserr is None or denserr == 0 or nvalence == 0:
+                denserr = ''
             else:
-                dNt = '%+.1f' % (log(dNt / self.nvalence) / log(10))
+                denserr = '%+.1f' % (log(denserr / nvalence) / log(10))
 
-            niterocc = self.occupation.niter
+            niterocc = self.occupations.niter
             if niterocc == -1:
                 niterocc = ''
             else:
@@ -363,16 +370,16 @@ class Output:
             niterpoisson = '%d' % self.hamiltonian.npoisson
 
             t("iter: %3d  %02d:%02d:%02d  %-5s  %-5s    %- 12.5f %-5s  %-7s" %
-              (self.niter,
+              (iter,
                T[3], T[4], T[5],
-               eigerror,
-               dNt,
-               self.Ha * (self.Etot + 0.5 * self.S),
+               eigerr,
+               denserr,
+               Hartree * (self.hamiltonian.Etot + 0.5 * self.hamiltonian.S),
                niterocc,
                niterpoisson), end='')
 
-            if self.spinpol:
-                t('  %+.4f' % self.occupation.magmom)
+            if self.wfs.nspins == 2:
+                t('  %+.4f' % self.occupations.magmom)
             else:
                 t()
 
@@ -382,24 +389,49 @@ class Output:
         t = self.text
         t()
         t('Forces in eV/Ang:')
-        c = self.Ha / self.a0
-        for a, nucleus in enumerate(self.nuclei):
-            symbol = nucleus.setup.symbol
+        c = Hartree / Bohr
+        for a, setup in enumerate(self.setups):
             t('%3d %-2s %10.5f %10.5f %10.5f' %
-              ((a, symbol) + tuple(self.F_ac[a] * c)))
+              ((a, setup.symbol) + tuple(self.forces.F_ac[a] * c)))
 
     def print_eigenvalues(self):
         """Print eigenvalues and occupation numbers."""
         print >> self.txt, eigenvalue_string(self)
 
     def plot_atoms(self, atoms):
-        if self.non_orthorhombic_unit_cells_allowed:
+        cell_cv = atoms.get_cell()
+        if (cell_cv - npy.diag(cell_cv.diagonal())).any():
             return
-        cell_c = npy.diagonal(atoms.get_cell()) / self.a0
-        pos_ac = atoms.get_positions() / self.a0
+        
+        cell_c = npy.diagonal(cell_cv) / Bohr
+        pos_ac = atoms.get_positions() / Bohr
         Z_a = atoms.get_atomic_numbers()
         pbc_c = atoms.get_pbc()
         self.text(plot(pos_ac, Z_a, cell_c))
+
+    def __del__(self):
+        """Destructor:  Write timing output before closing."""
+        if not hasattr(self, 'txt') or self.txt is None:
+            return
+        
+        if not dry_run:
+            mr = maxrss()
+            if mr > 0:
+                if mr < 1024.0**3:
+                    self.text('Memory usage: %.2f MB' % (mr / 1024.0**2))
+                else:
+                    self.text('Memory usage: %.2f GB' % (mr / 1024.0**3))
+
+            if hasattr(self, 'timer'):
+                self.timer.write(self.txt)
+
+    def warn(self, string=None):
+        if not string:
+            string = "somethings wrong"
+        print >> self.txt, "WARNING >>"
+        print >> self.txt, string
+        print >> self.txt, "WARNING <<"
+                
 
 def eigenvalue_string(paw, comment=None):
     """
@@ -408,34 +440,32 @@ def eigenvalue_string(paw, comment=None):
     for example to escape it for gnuplot.
     """
 
-    if not comment: comment=' '
+    if not comment:
+        comment=' '
 
-    Ha = paw.Ha
-
-    if paw.nkpts > 1:
+    if len(paw.wfs.ibzk_kc) > 1:
         # not implemented yet:
         return ''
 
     s = ''
-    if paw.nspins == 1:
+    if paw.wfs.nspins == 1:
         s += comment + 'Band   Eigenvalues  Occupancy\n'
-        eps_n = paw.collect_eigenvalues(k=0, s=0)
-        f_n   = paw.collect_occupations(k=0, s=0)
-        if paw.master:
-            for n in range(paw.nbands):
-                s += ('%4d   %10.5f  %10.5f\n' %
-                      (n, Ha * eps_n[n], f_n[n]))
+        eps_n = paw.get_eigenvalues(kpt=0, spin=0)
+        f_n   = paw.get_occupation_numbers(kpt=0, spin=0)
+        if paw.wfs.world.rank == 0:
+            for n in range(paw.wfs.nbands):
+                s += ('%4d   %10.5f  %10.5f\n' % (n, eps_n[n], f_n[n]))
     else:
         s += comment + '                 Up                     Down\n'
         s += comment + 'Band  Eigenvalues  Occupancy  Eigenvalues  Occupancy\n'
-        epsa_n = paw.collect_eigenvalues(k=0, s=0)
-        epsb_n = paw.collect_eigenvalues(k=0, s=1)
-        fa_n   = paw.collect_occupations(k=0, s=0)
-        fb_n   = paw.collect_occupations(k=0, s=1)
-        if paw.master:
-            for n in range(paw.nbands):
+        epsa_n = paw.get_eigenvalues(kpt=0, spin=0, broadcast=False)
+        epsb_n = paw.get_eigenvalues(kpt=0, spin=1, broadcast=False)
+        fa_n   = paw.get_occupation_numbers(kpt=0, spin=0, broadcast=False)
+        fb_n   = paw.get_occupation_numbers(kpt=0, spin=1, broadcast=False)
+        if paw.wfs.world.rank == 0:
+            for n in range(paw.wfs.nbands):
                 s += (' %4d  %11.5f  %9.5f  %11.5f  %9.5f\n' %
-                      (n, Ha * epsa_n[n], fa_n[n], Ha * epsb_n[n], fb_n[n]))
+                      (n,epsa_n[n], fa_n[n], epsb_n[n], fb_n[n]))
     return s
 
 def plot(positions, numbers, cell):

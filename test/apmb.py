@@ -1,6 +1,6 @@
 from ase import *
 from gpaw.utilities import equal
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.lrtddft import LrTDDFT
 import numpy
 
@@ -19,13 +19,13 @@ if not load:
     H2 = Atoms([Atom('H', (a/2,a/2,(c-R)/2)),
                 Atom('H', (a/2,a/2,(c+R)/2))],
                cell=(a,a,c))
-    calc = Calculator(xc='PBE', nbands=2, spinpol=False, txt=txt)
+    calc = GPAW(xc='PBE', nbands=2, spinpol=False, txt=txt)
     H2.set_calculator(calc)
     H2.get_potential_energy()
 ##    calc.write('H2.gpw', 'all')
 else:
-    calc = Calculator('H2.gpw', txt=txt)
-calc.initialize_wave_functions()
+    calc = GPAW('H2.gpw', txt=txt)
+#calc.initialize_wave_functions()
 
 #-----------------------------------------------------------
 # DFT only
@@ -47,12 +47,12 @@ equal(lr[0].get_energy(), lr_ApmB[0].get_energy(), 5.e-10)
 print '------ with spin'
 
 if not load:
-    c_spin = Calculator(xc='PBE', nbands=2, spinpol=True, txt=txt)
+    c_spin = GPAW(xc='PBE', nbands=2, spinpol=True, txt=txt)
     H2.set_calculator(c_spin)
     c_spin.calculate(H2)
 ##    c_spin.write('H2spin.gpw', 'all')
 else:
-    c_spin = Calculator('H2spin.gpw', txt=txt)
+    c_spin = GPAW('H2spin.gpw', txt=txt)
 lr = LrTDDFT(c_spin, xc=xc)
 lr.diagonalize()
 

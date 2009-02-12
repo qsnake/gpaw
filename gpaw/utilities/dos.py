@@ -8,18 +8,18 @@ from gpaw.gauss import Gauss
 
 import gpaw.mpi as mpi
 
-def print_projectors(nucleus):
+def print_projectors(setup):
     """Print information on the projectors of input nucleus object.
 
     If nucleus is a string, treat this as an element name.
     """
-    if type(nucleus) is str:
-        setup = SetupData(nucleus, 'LDA', 'paw')
+    if type(setup) is str:
+        setup = SetupData(setup, 'LDA', 'paw')
         n_j = setup.n_j
         l_j = setup.l_j
     else:
-        n_j = nucleus.setup.n_j
-        l_j = nucleus.setup.l_j
+        n_j = setup.n_j
+        l_j = setup.l_j
     
     angular = [['1'],
                ['y', 'z', 'x'],
@@ -37,7 +37,7 @@ def print_projectors(nucleus):
             print '%2s %s %s_%s' % (i, n, 'spdf'[l], angular[l][m])
             i += 1
 
-def get_angular_projectors(nucleus, angular, type='bound'):
+def get_angular_projectors(setup, angular, type='bound'):
     """Determine the projector indices which have specified angula
     quantum number.
 
@@ -48,17 +48,17 @@ def get_angular_projectors(nucleus, angular, type='bound'):
     # Get the number of relevant j values
     if type == 'bound':
         nj = 0
-        while nucleus.setup.n_j[nj] != -1: nj += 1
+        while setup.n_j[nj] != -1: nj += 1
     else:
-        nj = len(nucleus.setup.n_j)
+        nj = len(setup.n_j)
             
 
     # Choose the relevant projectors
     projectors = []
     i = j = 0
     for j in range(nj):
-        m = 2 * nucleus.setup.l_j[j] + 1
-        if 'spdf'[nucleus.setup.l_j[j]] in angular:
+        m = 2 * setup.l_j[j] + 1
+        if 'spdf'[setup.l_j[j]] in angular:
             projectors.extend(range(i, i + m))
         j += 1
         i += m
@@ -90,18 +90,19 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     An integer value for ``angular`` can also be used to specify a specific
     projector function.
     """
-    w_k = paw.weight_k
+    wfs = paw.wfs
+    w_k = wfs.weight_k
     nk = len(w_k)
-    nb = paw.nbands
-    nucleus = paw.nuclei[a]
+    nb = wfs.nbands
+    setup = wfs.setups[a]
 
     energies = npy.empty(nb * nk)
-    weights_xi = npy.empty((nb * nk, nucleus.setup.ni))
+    weights_xi = npy.empty((nb * nk, setup.ni))
     x = 0
     for k, w in enumerate(w_k):
-        energies[x:x + nb] = paw.collect_eigenvalues(k=k, s=spin)
+        energies[x:x + nb] = wfs.collect_eigenvalues(k=k, s=spin)
         u = spin * nk + k
-        weights_xi[x:x + nb, :] = w * npy.absolute(nucleus.P_uni[u])**2
+        weights_xi[x:x + nb, :] = w * npy.absolute(wfs.kpt_u[u].P_ani[a])**2
         x += nb
 
     if angular is None:
@@ -109,7 +110,7 @@ def raw_orbital_LDOS(paw, a, spin, angular='spdf'):
     elif type(angular) is int:
         return energies, weights_xi[angular]
     else:
-        projectors = get_angular_projectors(nucleus, angular, type='bound')
+        projectors = get_angular_projectors(setup, angular, type='bound')
         weights = npy.sum(npy.take(weights_xi,
                                    indices=projectors, axis=1), axis=1)
         return energies, weights
@@ -129,15 +130,16 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
        band n and a in mol. The weights are then calculated as the overlap
        of all-electron KS wavefunctions with wf_k"""
 
-    w_k = paw.weight_k
+    wfs = paw.wfs
+    w_k = wfs.weight_k
     nk = len(w_k)
-    nb = paw.nbands
-    ns = paw.nspins
+    nb = wfs.nbands
+    ns = wfs.nspins
     
     P_un = npy.zeros((nk*ns, nb), npy.complex)
 
     if wf_k is None:
-        P_auni = npy.array([paw.nuclei[a].P_uni for a in mol])
+        P_auni = npy.array([wfs.nuclei[a].P_uni for a in mol])
         if lc is None:
             lc = [[1,0,0,0] for a in mol]
         N = 0
@@ -151,13 +153,13 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
 
     else:
         P_aui = [npy.conjugate(P_aui[a]) for a in range(len(mol))]
-        for kpt in paw.kpt_u[spin*nk:(spin+1)*nk]:
+        for kpt in wfs.kpt_u[spin*nk:(spin+1)*nk]:
             w = npy.reshape(npy.conjugate(wf_k)[kpt.k], -1)
             for n in range(nb):
                 psit_nG = npy.reshape(kpt.psit_nG[n], -1)
-                P_un[kpt.u][n] = npy.dot(w, psit_nG) * paw.gd.dv * paw.a0**1.5
+                P_un[kpt.u][n] = npy.dot(w, psit_nG) * wfs.gd.dv * wfs.a0**1.5
                 for a, b in zip(mol, range(len(mol))):
-                    atom = paw.nuclei[a]
+                    atom = wfs.nuclei[a]
                     p_i = atom.P_uni[kpt.u][n]
                     for i in range(len(p_i)):
                         for j in range(len(p_i)):
@@ -171,7 +173,7 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
     weights = npy.empty(nb * nk)
     x = 0
     for k, w in enumerate(w_k):
-        energies[x:x + nb] = paw.collect_eigenvalues(k=k, s=spin)
+        energies[x:x + nb] = wfs.collect_eigenvalues(k=k, s=spin)
         u = spin * nk + k
         weights[x:x + nb] = w * npy.absolute(P_un[u])**2
         x += nb
@@ -181,26 +183,26 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
                     
 def raw_wignerseitz_LDOS(paw, a, spin):
     """Return a list of eigenvalues, and their weight on the specified atom"""
-    gd = paw.gd
+    wfs = paw.wfs
+    gd = wfs.gd
     atom_index = gd.empty(dtype=int)
-    atom_ac = npy.array([n.spos_c * gd.N_c for n in paw.nuclei])
+    atom_ac = paw.atoms.get_scaled_positions() * gd.N_c
     wignerseitz(atom_index, atom_ac, gd.beg_c, gd.end_c)
 
-    w_k = paw.weight_k
+    w_k = wfs.weight_k
     nk = len(w_k)
-    nb = paw.nbands
-    nucleus = paw.nuclei[a]
+    nb = wfs.nbands
 
     energies = npy.empty(nb * nk)
     weights = npy.empty(nb * nk)
     x = 0
     for k, w in enumerate(w_k):
         u = spin * nk + k
-        energies[x:x + nb] = paw.collect_eigenvalues(k=k, s=spin)
-        for n, psit_G in enumerate(paw.kpt_u[u].psit_nG):
-            P_i = nucleus.P_uni[u, n]
+        energies[x:x + nb] = wfs.collect_eigenvalues(k=k, s=spin)
+        for n, psit_G in enumerate(wfs.kpt_u[u].psit_nG):
+            P_i = wfs.kpt_u[u].P_ani[a][n]
             P_p = pack(npy.outer(P_i, P_i))
-            Delta_p = sqrt(4 * pi) * nucleus.setup.Delta_pL[:, 0]
+            Delta_p = sqrt(4 * pi) * wfs.setups[a].Delta_pL[:, 0]
             weights[x + n] = w * (gd.integrate(npy.absolute(
                 npy.where(atom_index == a, psit_G, 0.0))**2)
                                   + npy.dot(Delta_p, P_p))
@@ -212,18 +214,20 @@ class RawLDOS:
     """Class to get the unfolded LDOS"""
     def __init__(self, calc):
         self.paw = calc
-        for nucleus in calc.nuclei:
-            if not hasattr(nucleus.setup,'l_i'):
+        for setup in calc.wfs.setups.setups.values():
+            if not hasattr(setup, 'l_i'):
                 # get the mapping
                 l_i = []
-                for l in nucleus.setup.l_j:
-                    for i in range(2*l+1):
+                for l in setup.l_j:
+                    for m in range(2 * l + 1):
                         l_i.append(l)
-                nucleus.setup.l_i = l_i
+                setup.l_i = l_i
 
     def get(self, atom):
         """Return the s,p,d weights for each state"""
-        spd = npy.zeros((self.paw.nspins * self.paw.nkpts, self.paw.nbands, 3))
+        wfs = self.paw.wfs
+        nibzkpts = len(wfs.ibzk_kc)
+        spd = npy.zeros((wfs.nspins, nibzkpts, wfs.nbands, 3))
 
         if hasattr(atom, '__iter__'):
             # atom is a list of atom indicies 
@@ -231,19 +235,14 @@ class RawLDOS:
                 spd += self.get(a)
             return spd
 
-        k=0
-        nucleus = self.paw.nuclei[atom]
-        for k in range(self.paw.nkpts):
-            for s in range(self.paw.nspins):
-                myu = self.paw.get_myu(k, s)
-                u = k * self.paw.nspins + s
-                if myu is not None and nucleus.in_this_domain:
-                    for n in range(self.paw.nbands):
-                        for i, P in enumerate(nucleus.P_uni[myu, n]):
-                            spd[u, n, nucleus.setup.l_i[i]] += abs(P)**2
-                        
-        self.paw.domain.comm.sum(spd)
-        self.paw.kpt_comm.sum(spd)
+        l_i = wfs.setups[atom].l_i
+        for kpt in self.paw.wfs.kpt_u:
+            if atom in kpt.P_ani:
+                for i, P_n in enumerate(kpt.P_ani[atom].T):
+                    spd[kpt.s, kpt.k, :, l_i[i]] += npy.abs(P_n)**2
+
+        wfs.gd.comm.sum(spd)
+        wfs.kpt_comm.sum(spd)
         return spd
 
     def by_element(self):
@@ -255,7 +254,7 @@ class RawLDOS:
                 elemi[symbol].append(i)
             else:
                 elemi[symbol] = [i]
-        for key in elemi.keys():
+        for key in elemi:
             elemi[key] = self.get(elemi[key])
         return elemi
 
@@ -272,6 +271,7 @@ class RawLDOS:
 
         f = paropen(filename,'w')
 
+        wfs = self.paw.wfs
         if width is None:
             # unfolded ldos
             eu = '[eV]'
@@ -280,22 +280,18 @@ class RawLDOS:
                 if len(key) == 1: key=' '+key
                 print  >> f, ' '+key+':s     p        d      ',
             print  >> f,' sum'
-            for k in range(self.paw.nkpts):
-                for s in range(self.paw.nspins):
-                    u = k * self.paw.nspins + s
-                    e_n = self.paw.collect_eigenvalues(k=k, s=s) * Hartree
-                    myu = self.paw.get_myu(k, s)
-                    if myu is None:
-                        w = 0.
-                    else:
-                        w = self.paw.kpt_u[myu].weight
-                    self.paw.kpt_comm.max(w)
-                    for n in range(self.paw.nbands):
-                        sum = 0.
+            for k in range(wfs.nibzkpts):
+                for s in range(wfs.nspins):
+                    e_n = self.paw.get_eigenvalues(kpt=k, spin=s)
+                    if e_n is None:
+                        continue
+                    w = wfs.weight_k[k]
+                    for n in range(wfs.nbands):
+                        sum = 0.0
                         print >> f, '%10.5f %2d %5d' % (e_n[n], s, k), 
                         print >> f, '%6d %8.4f' % (n, w),
                         for key in ldbe:
-                            spd = ldbe[key][u,n]
+                            spd = ldbe[key][s, k, n]
                             for l in range(3):
                                 sum += spd[l]
                                 print >> f, '%8.4f' % spd[l],
@@ -308,34 +304,31 @@ class RawLDOS:
             # minimal and maximal energies
             emin = 1.e32
             emax = -1.e32
-            for k in range(self.paw.nkpts):
-                for s in range(self.paw.nspins):
-                    e_n = self.paw.collect_eigenvalues(k=k, s=s).tolist()
-                    e_n.append(emin)
-                    emin = min(e_n)
-                    e_n[-1] = emax
-                    emax = max(e_n)
-            emin *= Hartree
-            emax *= Hartree
-            emin -= 4*width
-            emax += 4*width
+            for k in range(wfs.nibzkpts):
+                for s in range(wfs.nspins):
+                    e_n = self.paw.get_eigenvalues(kpt=k, spin=s,
+                                                   broadcast=True)
+                    emin = min(e_n.min(), emin)
+                    emax = min(e_n.max(), emax)
+            emin -= 4 * width
+            emax += 4 * width
 
             # Fermi energy
             try:
                 efermi = self.paw.get_fermi_level()
             except:
                 # set Fermi level half way between HOMO and LUMO
-                hl = self.paw.occupation.get_homo_lumo(self.paw.kpt_u)
+                hl = self.paw.occupations.get_homo_lumo(wfs.kpt_u)
                 efermi = (hl[0] + hl[1]) * Hartree / 2
 
-            eshift = 0
+            eshift = 0.0
             if shift:
                 eshift = -efermi
 
             # set de to sample 4 points in the width
-            de = width/4.
+            de = width / 4
             
-            for s in range(self.paw.nspins):
+            for s in range(wfs.nspins):
                 print >> f, '# Gauss folded, width=%g [eV]' % width
                 if shift:
                     print >> f, '# shifted to Fermi energy = 0'
@@ -356,20 +349,14 @@ class RawLDOS:
                     val = {}
                     for key in ldbe:
                         val[key] = npy.zeros((3))
-                    for k in range(self.paw.nkpts):
-                        u = k * self.paw.nspins + s
-                        myu = self.paw.get_myu(k, s)
-                        if myu is None:
-                            w = 0.
-                        else:
-                            w = self.paw.kpt_u[myu].weight
-                        self.paw.kpt_comm.max(w)
-
-                        e_n = self.paw.collect_eigenvalues(k=k, s=s) * Hartree
-                        for n in range(self.paw.nbands):
+                    for k in range(wfs.nibzkpts):
+                        w = wfs.weight_[k]
+                        e_n = self.paw.get_eigenvalues(kpt=k, spin=s,
+                                                       broadcast=True)
+                        for n in range(wfs.nbands):
                             w_i = w * gauss.get(e_n[n] - e)
                             for key in ldbe:
-                                val[key] += w_i * ldbe[key][u, n]
+                                val[key] += w_i * ldbe[key][s, k, n]
 
                     print >> f, '%10.5f %2d' % (e + eshift, s), 
                     for key in val:

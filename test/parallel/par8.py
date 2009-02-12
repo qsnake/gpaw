@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.mpi import rank
 
 a = 4.0
@@ -13,13 +13,13 @@ def f(kpts, n, magmom, periodic, dd):
               pbc=periodic,
               cell=(a, a, a))
     
-    H.set_calculator(Calculator(nbands=1, gpts=(n, n, n), kpts=kpts,
-                                txt=None,
-                                convergence={'eigenstates': 0.0001},
-                                parsize=dd))
+    H.set_calculator(GPAW(nbands=1, gpts=(n, n, n), kpts=kpts,
+                          txt=None,
+                          convergence={'eigenstates': 0.0001},
+                          parsize=dd))
     e = H.get_potential_energy()
-    H.get_calculator().write('H-par.gpw')
-    c = Calculator('H-par.gpw', txt=None)
+    H.get_calculator().write('/tmp/H-par.gpw')
+    c = GPAW('/tmp/H-par.gpw', txt=None)
     H = c.get_atoms()
     de = abs(H.get_potential_energy() - e)
     if de > de1:

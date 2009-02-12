@@ -75,21 +75,23 @@ class OmegaMatrix:
             return
 
         self.paw = calculator
+        wfs = self.paw.wfs
         
         # handle different grid possibilities
         self.restrict = None
         self.poisson = PoissonSolver(nn=self.paw.hamiltonian.poisson.nn)
         if finegrid:
-            self.poisson.initialize(self.paw.finegd)
+            self.poisson.initialize(self.paw.density.finegd)
             
-            self.gd = self.paw.finegd
+            self.gd = self.paw.density.finegd
             if finegrid == 1:
-                self.gd = self.paw.gd
+                self.gd = wfs.gd
         else:
-            self.poisson.initialize(self.paw.gd)
-            self.gd = self.paw.gd
-        self.restrict = Transformer(self.paw.finegd, self.paw.gd,
-                                    self.paw.stencils[0]).apply
+            self.poisson.initialize(wfs.gd)
+            self.gd = wfs.gd
+        self.restrict = Transformer(self.paw.density.finegd, wfs.gd,
+                                    self.paw.input_parameters.stencils[0]
+                                    ).apply
 
         if xc == 'RPA': 
             xc = None # enable RPA as keyword
@@ -106,7 +108,7 @@ class OmegaMatrix:
                 spin_increased = True
             else:
                 spin_increased = False
-            for setup in self.paw.setups:
+            for setup in wfs.setups.setups.values():
                 sxc = setup.xc_correction
                 if spin_increased or sxc.xc.xcfunc.xcname != xc:
                     sxc.xc.set_functional(XCFunctional(xc, kss.npspins))
@@ -141,6 +143,7 @@ class OmegaMatrix:
 
         # shorthands
         paw = self.paw
+        wfs = paw.wfs
         fgd = paw.finegd
         comm = fgd.comm
 
@@ -163,14 +166,13 @@ class OmegaMatrix:
             else:
                 nt_sg = paw.density.nt_sg
         # check if D_sp have been changed before
-        for nucleus in self.paw.my_nuclei:
-            if len(nucleus.D_sp) != kss.npspins:
-                if len(nucleus.D_sp) == 1:
-                    D_sp = npy.array([.5*nucleus.D_sp[0],
-                                      .5*nucleus.D_sp[0] ])
+        D_asp = self.paw.density.D_asp
+        for a, D_sp in D_asp.items():
+            if len(D_sp) != kss.npspins:
+                if len(D_sp) == 1:
+                    D_asp[a] = npy.array([0.5 * D_sp[0], 0.5 * D_sp[0]])
                 else:
-                    D_sp = npy.array([nucleus.D_sp[0] + nucleus.D_sp[1]])
-                nucleus.D_sp = D_sp
+                    D_asp[a] = npy.array([D_sp[0] + D_sp[1]])
                 
         # restrict the density if needed
         if fg:
@@ -178,7 +180,7 @@ class OmegaMatrix:
         else:
             nt_s = self.gd.zeros(nt_sg.shape[0])
             for s in range(nt_sg.shape[0]):
-                self.restrict(nt_sg[s],nt_s[s])
+                self.restrict(nt_sg[s], nt_s[s])
                 
         # initialize vxc or fxc
 
@@ -240,24 +242,23 @@ class OmegaMatrix:
 
                 # initialize the correction matrices
                 timer2.start('init v corrections')
-                for nucleus in self.paw.my_nuclei:
+                I_asp = {}
+                for a, P_ni in wfs.kpt_u[kss[ij].spin].P_ani.items():
                     # create the modified density matrix
-                    Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
-                    Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
+                    Pi_i = P_ni[kss[ij].i]
+                    Pj_i = P_ni[kss[ij].j]
                     P_ii = npy.outer(Pi_i,Pj_i)
                     # we need the symmetric form, hence we can pack
                     P_p = pack(P_ii,tolerance=1e30)
-                    D_sp = nucleus.D_sp.copy()
+                    D_sp = self.paw.density.D_asp[a].copy()
                     D_sp[kss[ij].pspin] += ns*P_p
-                    nucleus.I_sp = \
-                                 nucleus.setup.xc_correction.\
-                                 two_phi_integrals(D_sp)
-                    D_sp = nucleus.D_sp.copy()
+                    setup = wfs.setups[a]
+                    I_sp = setup.xc_correction.two_phi_integrals(D_sp)
+                    D_sp = self.paw.density.D_asp[a].copy()
                     D_sp[kss[ij].pspin] -= ns*P_p
-                    nucleus.I_sp -= \
-                                 nucleus.setup.xc_correction.\
-                                 two_phi_integrals(D_sp)
-                    nucleus.I_sp /= 2.*ns
+                    I_sp -= setup.xc_correction.two_phi_integrals(D_sp)
+                    I_sp /= 2.*ns
+                    I_asp[a] = I_sp
                 timer2.stop()
                     
             timer.stop()
@@ -327,15 +328,15 @@ class OmegaMatrix:
 
                     timer2.start('integrate corrections')
                     Exc = 0.
-                    for nucleus in self.paw.my_nuclei:
+                    for a, P_ni in wfs.kpt_u[kss[kq].spin].P_ani.items():
                         # create the modified density matrix
-                        Pk_i = nucleus.P_uni[kss[kq].spin, kss[kq].i]
-                        Pq_i = nucleus.P_uni[kss[kq].spin, kss[kq].j]
+                        Pk_i = P_ni[kss[kq].i]
+                        Pq_i = P_ni[kss[kq].j]
                         P_ii = npy.outer(Pk_i, Pq_i)
                         # we need the symmetric form, hence we can pack
                         # use pack as I_sp used pack2
                         P_p = pack(P_ii, tolerance=1e30)
-                        Exc += npy.dot(nucleus.I_sp[kss[kq].pspin], P_p)
+                        Exc += npy.dot(I_asp[a][kss[kq].pspin], P_p)
                     Om[ij, kq] += weight * self.gd.comm.sum(Exc)
                     timer2.stop()
 
@@ -370,7 +371,8 @@ class OmegaMatrix:
         # shorthands
         kss=self.fullkss
         finegrid=self.finegrid
-
+        wfs = self.paw.wfs
+        
         # calculate omega matrix
         nij = len(kss)
         print >> self.out,'RPA',nij,'transitions'
@@ -427,17 +429,17 @@ class OmegaMatrix:
                 # Add atomic corrections
                 timer2.start('integrate corrections 2')
                 Ia = 0.
-                for nucleus in self.paw.my_nuclei:
-                    ni = nucleus.get_number_of_partial_waves()
-                    Pi_i = nucleus.P_uni[kss[ij].spin,kss[ij].i]
-                    Pj_i = nucleus.P_uni[kss[ij].spin,kss[ij].j]
+                for a, P_ni in wfs.kpt_u[kss[ij].spin].P_ani.items():
+                    Pi_i = P_ni[kss[ij].i]
+                    Pj_i = P_ni[kss[ij].j]
                     Dij_ii = npy.outer(Pi_i, Pj_i)
                     Dij_p = pack(Dij_ii, tolerance=1e3)
-                    Pk_i = nucleus.P_uni[kss[kq].spin,kss[kq].i]
-                    Pq_i = nucleus.P_uni[kss[kq].spin,kss[kq].j]
+                    Pkq_ni = wfs.kpt_u[kss[kq].spin].P_ani[a]
+                    Pk_i = Pkq_ni[kss[kq].i]
+                    Pq_i = Pkq_ni[kss[kq].j]
                     Dkq_ii = npy.outer(Pk_i, Pq_i)
                     Dkq_p = pack(Dkq_ii, tolerance=1e3)
-                    C_pp = nucleus.setup.M_pp
+                    C_pp = wfs.setups[a].M_pp
                     #   ----
                     # 2 >      P   P  C    P  P
                     #   ----    ip  jr prst ks qt

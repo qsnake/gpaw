@@ -8,12 +8,16 @@ final = read('final.traj')
 
 constraint = FixAtoms(mask=[atom.tag > 1 for atom in initial])
 
+n = size // 3      # number of cpu's per image
+j = 1 + rank // n  # my image number
+assert 3 * n == size
+
 images = [initial]
-j = 1 + rank * 3 // size  # my image number
-for i in range(1, 4):
+for i in range(3):
+    ranks = np.arange(i * n, (i + 1) * n)
     image = initial.copy()
-    comm = world.new_communicator(np.array([rank]))
-    if i == j:
+    if rank in ranks:
+        comm = world.new_communicator(ranks)
         calc = GPAW(h=0.3, kpts=(2, 2, 1),
                     txt='neb%d.txt' % j,
                     communicator=comm)
@@ -25,7 +29,7 @@ images.append(final)
 neb = NEB(images, parallel=True)
 neb.interpolate()
 qn = QuasiNewton(neb, logfile='qn.log')
-if rank % (size // 3) == 0:
-    traj = PickleTrajectory('neb%d.traj' % j, 'w', images[j], master=True)
-    qn.attach(traj)
+traj = PickleTrajectory('neb%d.traj' % j, 'w', images[j],
+                        master=(rank % n == 0))
+qn.attach(traj)
 qn.run(fmax=0.05)

@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 
 h = 0.2
 n = 24
@@ -8,7 +8,7 @@ H2 = Atoms([Atom('He', [0.123, 0.234, 0.345]),
                   Atom('He', [2.523, 2.634, 0.345])],
                  pbc=True,
                  cell=(a, a, a))
-calc = Calculator(nbands=2, gpts=(n, n, n), #hosts=8,
+calc = GPAW(nbands=2, gpts=(n, n, n), #hosts=8,
                   txt='tmp')
 H2.set_calculator(calc)
 e0 = H2.get_potential_energy()

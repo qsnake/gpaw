@@ -1,6 +1,7 @@
 from math import pi, sqrt
 
 import numpy as npy
+from ase.units import Bohr
 
 import gpaw.mpi as mpi
 from gpaw import debug
@@ -9,6 +10,8 @@ from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.localized_functions import create_localized_functions
 from gpaw.pair_density import PairDensity
 from gpaw.operators import Gradient
+from gpaw.gaunt import gaunt as G_LLL
+from gpaw.gaunt import ylnyl
 
 from gpaw.utilities import contiguous, is_contiguous
 
@@ -69,8 +72,9 @@ class KSSingles(ExcitationList):
         """Select KSSingles according to the given criterium."""
 
         paw = self.calculator
+        wfs = paw.wfs
+        self.kpt_u = wfs.kpt_u
 
-        self.kpt_u = paw.kpt_u
         if self.kpt_u[0].psit_nG is None:
             raise RuntimeError('No wave functions in calculator!')
 
@@ -80,8 +84,8 @@ class KSSingles(ExcitationList):
         #       i.e. the spin used in the ground state calculation
         # pspin is the physical spin of the wave functions
         #       i.e. the spin of the excited states
-        self.nvspins = paw.nspins
-        self.npspins = paw.nspins
+        self.nvspins = wfs.nspins
+        self.npspins = wfs.nspins
         fijscale=1
         if self.nvspins < 2:
             if nspins > self.nvspins:
@@ -217,6 +221,7 @@ class KSSingle(Excitation, PairDensity):
         # normal entry
         
         PairDensity.__init__(self, paw)
+        wfs = paw.wfs
         PairDensity.initialize(self, kpt, iidx, jidx)
 
         self.pspin=pspin
@@ -228,7 +233,7 @@ class KSSingle(Excitation, PairDensity):
 
         # calculate matrix elements -----------
 
-        gd = kpt.gd
+        gd = wfs.gd
         self.gd = gd
 
         # length form ..........................
@@ -240,11 +245,12 @@ class KSSingle(Excitation, PairDensity):
 
         # augmentation contributions
         ma = npy.zeros(me.shape)
-        for nucleus in paw.my_nuclei:
-            Ra = nucleus.spos_c*paw.domain.cell_c
-            Pi_i = nucleus.P_uni[self.u,self.i]
-            Pj_i = nucleus.P_uni[self.u,self.j]
-            Delta_pL = nucleus.setup.Delta_pL
+        pos_av = paw.atoms.get_positions() / Bohr
+        for a, P_ni in kpt.P_ani.items():
+            Ra = pos_av[a]
+            Pi_i = P_ni[self.i]
+            Pj_i = P_ni[self.j]
+            Delta_pL = wfs.setups[a].Delta_pL
             ni=len(Pi_i)
             ma0 = 0
             ma1 = npy.zeros(me.shape)
@@ -255,16 +261,17 @@ class KSSingle(Excitation, PairDensity):
                     # L=0 term
                     ma0 += Delta_pL[ij,0]*pij
                     # L=1 terms
-                    if nucleus.setup.lmax>=1:
+                    if wfs.setups[a].lmax >= 1:
                         # see spherical_harmonics.py for
                         # L=1:y L=2:z; L=3:x
-                        ma1 += npy.array([ Delta_pL[ij,3], Delta_pL[ij,1], \
-                                           Delta_pL[ij,2] ])*pij
-            ma += sqrt(4*pi/3)*ma1 + Ra*sqrt(4*pi)*ma0
+                        ma1 += npy.array([Delta_pL[ij,3], Delta_pL[ij,1],
+                                          Delta_pL[ij,2]]) * pij
+            ma += sqrt(4 * pi / 3) * ma1 + Ra * sqrt(4 * pi) * ma0
         gd.comm.sum(ma)
 
 ##        print '<KSSingle> i,j,me,ma,fac=',self.i,self.j,\
 ##            me, ma,sqrt(self.energy*self.fij)
+#        print 'l: me, ma', me, ma
         self.me = sqrt(self.energy * self.fij) * ( me + ma )
 
         self.mur = - ( me + ma )
@@ -282,16 +289,56 @@ class KSSingle(Excitation, PairDensity):
             me[c] = gd.integrate(self.wfi * dwfdr_G)
             
         # XXXX local corrections are missing here
+        # augmentation contributions
+        ma = npy.zeros(me.shape)
+        for a, P_ni in kpt.P_ani.items():
+            setup = paw.wfs.setups[a]
+#            print setup.Delta1_jj
+#            print "l_j", setup.l_j, setup.n_j
+
+            if not (hasattr(setup, 'j_i') and hasattr(setup, 'l_i')):
+                l_i = [] # map i -> l
+                j_i = [] # map i -> j
+                for j, l in enumerate(setup.l_j):
+                    for m in range(2 * l + 1):
+                        l_i.append(l)
+                        j_i.append(j)
+                        
+                setup.l_i = l_i
+                setup.j_i = j_i
+
+            Pi_i = P_ni[self.i]
+            Pj_i = P_ni[self.j]
+            
+            ma1 = npy.zeros(me.shape)
+            for i1 in range(ni):
+                L1 = setup.l_i[i1]
+                j1 = setup.j_i[i1]
+                for i2 in range(ni):
+                    L2 = setup.l_i[i2]
+                    j2 = setup.j_i[i2]
+ 
+                    pi1i2 = Pi_i[i1] * Pj_i[i2]
+                    p = packed_index(i1, i2, ni)
+                    
+                    v1 = sqrt(4 * pi / 3) * npy.array([G_LLL[L1, L2, 3],
+                                                       G_LLL[L1, L2, 1],
+                                                       G_LLL[L1, L2, 2]])
+                    v2 = ylnyl[L1, L2, :]
+                    ma1 += pij * (v1 * setup.Delta1_jj[j1, j2] +
+                                  v2 * setup.Delta_pL[p, 0]      )
+            ma += ma1
+#        print 'v: me, ma=', me, ma
 
         # XXXX the weight fij is missing here
-        self.muv = me / self.energy
+        self.muv = (me + ma) / self.energy
 #        print '<KSSingle> muv=', self.muv
 
         # magnetic transition dipole ................
         
         # m depends on how the origin is set, so we need the centre of mass
         # of the structure
-#        cm = paw
+#        cm = wfs
 
 #        for i in range(3):
 #            me[i] = gd.integrate(self.wfi*dwfdr_cg[i])

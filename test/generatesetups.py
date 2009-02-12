@@ -23,8 +23,6 @@ if rank == 0:
         gen(symbol, 'PBE')
     for symbol in ['He', 'Li']:
         gen(symbol, 'revPBE')
-    for symbol in ['Mg']:
-        gen(symbol, 'GLLB')
 
     if __name__ != '__main__':
         # We have been imported by test.py, so we should clean up:

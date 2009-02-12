@@ -66,7 +66,7 @@ PyObject* gemm(PyObject *self, PyObject *args)
       k = a->dimensions[0];
       lda = m;
       ldb = b->strides[0] / b->strides[1];
-      ldc = m;
+      ldc = c->strides[0] / c->strides[c->nd - 1];
     } 
   else
     {
@@ -165,16 +165,17 @@ PyObject* r2k(PyObject *self, PyObject *args)
   int k = a->dimensions[1];
   for (int d = 2; d < a->nd; d++)
     k *= a->dimensions[d];
+  int ldc = c->strides[0] / c->strides[1];
   if (a->descr->type_num == PyArray_DOUBLE)
     dsyr2k_("u", "c", &n, &k, 
             (double*)(&alpha), DOUBLEP(a), &k, 
             DOUBLEP(b), &k, &beta,
-            DOUBLEP(c), &n);
+            DOUBLEP(c), &ldc);
   else
     zher2k_("u", "c", &n, &k, 
             (void*)(&alpha), (void*)COMPLEXP(a), &k, 
             (void*)COMPLEXP(b), &k, &beta,
-            (void*)COMPLEXP(c), &n);
+            (void*)COMPLEXP(c), &ldc);
   Py_RETURN_NONE;
 }
 

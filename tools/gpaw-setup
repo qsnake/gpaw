@@ -119,6 +119,8 @@ for symbol in atoms:
         g.run(logderiv=opt.logarithmic_derivatives,
               exx=opt.exact_exchange, name=opt.name, **p)
     except RuntimeError, m:
+        if len(m.__str__()) == 0:
+            raise
         print m
 
     if opt.plot:

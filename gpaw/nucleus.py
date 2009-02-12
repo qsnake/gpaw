@@ -17,6 +17,7 @@ import gpaw.mpi as mpi
 
 
 class Nucleus:
+    XXX
     """Nucleus-class.
 
     The ``Nucleus`` object basically consists of a ``Setup`` object, a
@@ -83,7 +84,6 @@ class Nucleus:
         self.P_uni = None
         self.P_kmi = None # basis function/projector overlaps
         self.dPdR_kcmi = None
-        self.phit_i = None # basis functions
         self.m = None # lowest index of basis functions for this nucleus
 
     def __cmp__(self, other):
@@ -246,32 +246,6 @@ class Nucleus:
                     + self.setup.Z - self.setup.Nc)
             self.nct.normalize(Nct)
 
-    def initialize_atomic_orbitals(self, gd, k_kc, lfbc, lcao_forces=False):
-        phit_j = self.setup.phit_j
-
-        from gpaw.localized_functions import DissimilarlyLocalizedFunctions,\
-             LocFuncs
-
-        #phit_i = create_localized_functions(phit_j, gd, self.spos_c,
-        #                                    dtype=self.dtype, cut=True,
-        #                                    forces=lcao_forces, lfbc=lfbc)
-        #self.phit_i = phit_i
-        
-        self.phit_i = None
-        phit_i = [LocFuncs([phit], gd, self.spos_c,
-                           dtype=self.dtype, cut=True,
-                           forces=lcao_forces,
-                           lfbc=lfbc)
-                  for phit in phit_j]
-
-        # The self.phit_i must be None when no functions are in domain
-        for phit in phit_i:
-            if phit.box_b:
-                self.phit_i = DissimilarlyLocalizedFunctions(phit_i)
-                break
-        
-        if self.dtype == complex and self.phit_i is not None:
-            self.phit_i.set_phase_factors(k_kc)
 
     def get_number_of_atomic_orbitals(self):
         return self.setup.niAO
@@ -279,57 +253,8 @@ class Nucleus:
     def get_number_of_partial_waves(self):
         return self.setup.ni
     
-    def create_atomic_orbitals(self, psit_iG, k):
-        if self.phit_i is None:
-            # Nothing to do in this domain:
-            return
-
-        coefs_ii = npy.identity(len(psit_iG), psit_iG.dtype.char)
-        self.phit_i.add(psit_iG, coefs_ii, k)
-
-    def add_atomic_density(self, nt_sG, magmom, hund):
-        if self.phit_i is None:
-            # Nothing to do in this domain:
-            return
-
-        ns = len(nt_sG)
-        ni = self.get_number_of_partial_waves()
+    def calculate_initial_occupation_numbers(self, ns, magmom, hund):
         niao = self.get_number_of_atomic_orbitals()
-        
-        if hasattr(self, 'f_si'):
-            # Convert to ndarray:
-            self.f_si = npy.asarray(self.f_si, float)
-        else:
-            self.f_si = self.calculate_initial_occupation_numbers(
-                ns, niao, magmom, hund)
-
-        if self.in_this_domain:
-            D_sii = npy.zeros((ns, ni, ni))
-            nj = len(self.setup.n_j)
-            j = 0
-            i = 0
-            ib = 0
-            for phit in self.setup.phit_j:
-                l = phit.get_angular_momentum_number()
-                # Skip projector functions not in basis set:
-                while j < nj and self.setup.l_j[j] != l:
-                    i += 2 * self.setup.l_j[j] + 1
-                    j += 1
-                if j == nj:
-                    break
-
-                for m in range(2 * l + 1):
-                    D_sii[:, i + m, i + m] = self.f_si[:, ib + m]
-                j += 1
-                i += 2 * l + 1
-                ib += 2 * l + 1
-            for s in range(ns):
-                self.D_sp[s] = pack(D_sii[s])
-
-        for s in range(ns):
-            self.phit_i.add_density(nt_sG[s], self.f_si[s])
-
-    def calculate_initial_occupation_numbers(self, ns, niao, magmom, hund):
         f_si = npy.zeros((ns, niao))
 
         setup = self.setup
@@ -384,6 +309,33 @@ class Nucleus:
 
         return f_si
     
+    def initialize_density_matrix(self, f_si):
+        if self.in_this_domain:
+            ns, niao = f_si.shape
+            ni = self.get_number_of_partial_waves()
+
+            D_sii = npy.zeros((ns, ni, ni))
+            nj = len(self.setup.n_j)
+            j = 0
+            i = 0
+            ib = 0
+            for phit in self.setup.phit_j:
+                l = phit.get_angular_momentum_number()
+                # Skip projector functions not in basis set:
+                while j < nj and self.setup.l_j[j] != l:
+                    i += 2 * self.setup.l_j[j] + 1
+                    j += 1
+                if j == nj:
+                    break
+
+                for m in range(2 * l + 1):
+                    D_sii[:, i + m, i + m] = f_si[:, ib + m]
+                j += 1
+                i += 2 * l + 1
+                ib += 2 * l + 1
+            for s in range(ns):
+                self.D_sp[s] = pack(D_sii[s])
+
     def add_smooth_core_density(self, nct_G, nspins):
         if self.nct is not None:
             self.nct.add(nct_G, npy.array([1.0 / nspins]))
@@ -746,24 +698,6 @@ class Nucleus:
 #             self.pt_i.integrate(a_nG, None, k)
 #             self.pt_i.add(b_nG, None, k, communicate=True)
             
-    def apply_inverse_overlap(self, a_nG, b_nG, k):
-        """Apply non-local part of the approximative inverse overlap operator.
-
-        Non-local part of the overlap operator is applied to ``a_nG``
-        and added to ``b_nG``."""
-
-        if self.in_this_domain:
-            n = len(a_nG)
-            ni = self.get_number_of_partial_waves()
-            P_ni = npy.zeros((n, ni), self.dtype)
-            self.pt_i.integrate(a_nG, P_ni, k)
-            coefs_ni = npy.dot(P_ni, self.setup.C_ii)
-            self.pt_i.add(b_nG, coefs_ni, k, communicate=True)
-        else:
-            self.pt_i.integrate(a_nG, None, k)
-            self.pt_i.add(b_nG, None, k, communicate=True)
-
-
     def apply_polynomial(self, a_nG, b_nG, k, poly):
         """Apply non-local part of the polynomial operator.
 
@@ -1037,74 +971,6 @@ class Nucleus:
             F = - (dEdrhodrhodR + dEdTdTdR + dEdDdDdR + dEdndndR)
             self.F_c[c] += F
 
-    def calculate_force_kpoint(self, kpt):
-        f_n = kpt.f_n
-        eps_n = kpt.eps_n
-        psit_nG = kpt.psit_nG
-        s = kpt.s
-        u = kpt.u
-        k = kpt.k
-        if self.in_this_domain:
-            P_ni = self.P_uni[u].conj()
-            nb = P_ni.shape[0]
-            H_ii = unpack(self.H_sp[s])
-            O_ii = self.setup.O_ii
-            ni = self.setup.ni
-            F_nic = npy.zeros((nb, ni, 3), self.dtype)
-            # ???? Optimization: Take the real value of F_nk * P_ni early.
-            self.pt_i.derivative(psit_nG, F_nic, k)
-            F_nic.shape = (nb, ni * 3)
-            F_nic *= f_n[:, None]
-            F_iic = npy.dot(H_ii, npy.dot(P_ni.T, F_nic))
-            F_nic *= eps_n[:, None]
-            F_iic -= npy.dot(O_ii, npy.dot(P_ni.T, F_nic))
-            F_iic *= 2.0
-            F = self.F_c
-            F_iic.shape = (ni, ni, 3)
-            for i in range(ni):
-                F += F_iic[i, i].real
-        else:
-            self.pt_i.derivative(psit_nG, None, k)
-
-    def calculate_force(self, vHt_g, nt_g, vt_G):
-        if self.in_this_domain:
-            lmax = self.setup.lmax
-            # ???? Optimization: do the sum over L before the sum over g and G.
-            F_Lc = npy.zeros(((lmax + 1)**2, 3))
-            self.ghat_L.derivative(vHt_g, F_Lc)
-            if self.vhat_L is not None:
-                self.vhat_L.derivative(nt_g, F_Lc) 
-            
-            Q_L = self.Q_L
-            F = self.F_c
-            F[:] += npy.dot(Q_L, F_Lc)
-
-            # Force from smooth core charge:
-##            self.nct.derivative(vt_G, F[npy.newaxis, :])
-            if self.nct is not None:
-                self.nct.derivative(vt_G, npy.reshape(F, (1, 3)))  # numpy!
-
-            # Force from zero potential:
-            self.vbar.derivative(nt_g, npy.reshape(F, (1, 3)))
-
-            dF = npy.zeros(((lmax + 1)**2, 3))
-            for neighbor in self.neighbors:
-                for c in range(3):
-                    dF[:, c] += npy.dot(neighbor.dvdr_LLc[:, :, c],
-                                        neighbor.nucleus().Q_L)
-            F += npy.dot(self.Q_L, dF)
-        else:
-            if self.ghat_L is not None:
-                self.ghat_L.derivative(vHt_g, None)
-                if self.vhat_L is not None:
-                    self.vhat_L.derivative(nt_g, None)
-                
-            if self.nct is not None:
-                self.nct.derivative(vt_G, None)
-                
-            if self.vbar is not None:
-                self.vbar.derivative(nt_g, None)
-
     def get_density_correction(self, spin, nspins):
         """Integrated atomic density correction.
 
@@ -1115,102 +981,3 @@ class Nucleus:
             npy.dot(self.D_sp[spin], self.setup.Delta_pL[:, 0])
             + self.setup.Delta0 / nspins)
 
-    def add_density_correction(self, n_sg, nspins, gd, splines={}):
-        """Add atomic density correction function.
-
-        Add the function correcting the pseuso density to the all-electron
-        density, to the density array `n_sg`.
-        """
-
-        # Load splines
-        symbol = self.setup.symbol
-        if not symbol in splines:
-            phi_j, phit_j, nc, nct = self.setup.get_partial_waves()[:4]
-            splines[symbol] = (phi_j, phit_j, nc, nct)
-        else:
-            phi_j, phit_j, nc, nct = splines[symbol]
-
-        # Create localized functions from splines
-        create = create_localized_functions
-        phi_i = create(phi_j, gd, self.spos_c)
-        phit_i = create(phit_j, gd, self.spos_c)
-        nc = create([nc], gd, self.spos_c)
-        nct = create([nct], gd, self.spos_c)
-
-        # The correct normalizations are:
-        Nc = self.setup.Nc
-        Nct = -(self.setup.Delta0 * sqrt(4 * pi)
-                + self.setup.Z - self.setup.Nc)
-
-        # Actual normalizations:
-        if nc is not None:
-            Nc0 = nc.norm()[0, 0]
-            Nct0 = nct.norm()[0, 0]
-        else:
-            Nc0 = Nct0 = 0
-
-        for s in range(nspins):
-            # Numeric integration of density corrections:
-            Inum = (Nc0 - Nct0) / nspins
-
-            # Add density corrections to input array n_G
-            if hasattr(self, 'D_sp'):
-                Inum += phi_i.add_density2(n_sg[s], self.D_sp[s])
-                Inum += phit_i.add_density2(n_sg[s], -self.D_sp[s])
-
-                # This code needs to be parallelized.  If phi or phit
-                # is distributed over more domains, Inum will be
-                # wrong.
-                assert phi_i.comm.size == 1
-                
-            if nc is not None and Nc != 0:
-                nc.add(n_sg[s], npy.ones(1) / nspins)
-                nct.add(n_sg[s], -npy.ones(1) / nspins)
-
-            if self.in_this_domain:
-                # Correct density, such that correction is norm-conserving
-
-                # analytic integration of density corrections
-                Iana = ((Nc - Nct) / nspins +
-                        sqrt(4 * pi) * npy.dot(self.D_sp[s],
-                                               self.setup.Delta_pL[:, 0]))
-                g_c = tuple(gd.get_nearest_grid_point(self.spos_c, True)
-                            % gd.N_c)
-                n_sg[s][g_c] += (Iana - Inum) / gd.dv
-        
-    def wannier_correction(self, G, c, u, u1, nbands=None):
-        """
-        Calculate the correction to the wannier integrals Z,
-        given by (Eq. 27 ref1)::
-
-                          -i G.r    
-            Z   = <psi | e      |psi >
-             nm       n             m
-                            
-                           __                __
-                   ~      \              a  \     a*  a    a   
-            Z    = Z    +  ) exp[-i G . R ]  )   P   O    P  
-             nmx    nmx   /__            x  /__   ni  ii'  mi'
-
-                           a                 ii'
-
-        Note that this correction is an approximation that assumes the
-        exponential varies slowly over the extent of the augmentation sphere.
-
-        ref1: Thygesen et al, Phys. Rev. B 72, 125119 (2005) 
-        """
-
-        if nbands is None:
-            nbands = self.P_uni.shape[1]
-            
-        P_ni = self.P_uni[u, :nbands]
-        P1_ni = self.P_uni[u1, :nbands]
-        O_ii = self.setup.O_ii
-        e = exp(-2.j * pi * G * self.spos_c[c])
-        Z_nn = e * npy.dot(npy.dot(P_ni.conj(), O_ii), P1_ni.T)
-
-        return Z_nn
-
-    def get_electrostatic_correction(self):
-        """Calculate PAW correction to average electrostatic potential."""
-        return self.setup.dEH0 + npy.dot(self.setup.dEH_p, self.D_sp.sum(0))

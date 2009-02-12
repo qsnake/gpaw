@@ -129,15 +129,15 @@ class ExpandYl:
             f = open('/dev/null', 'w')
 
         if not spins:
-            srange = range(calculator.nspins)
+            srange = range(calculator.wfs.nspins)
         else:
             srange = spins
         if not kpoints:
-            krange = range(calculator.nkpts)
+            krange = range(len(calculator.wfs.ibzk_kc))
         else:
             krange = kpoints
         if not bands:
-            nrange = range(calculator.nbands)
+            nrange = range(calculator.wfs.nbands)
         else:
             nrange = bands
 
@@ -157,9 +157,9 @@ class ExpandYl:
 
         for s in srange:
             for k in krange:
-                u = k*calculator.nspins + s
+                u = k*calculator.wfs.nspins + s
                 for n in nrange:
-                    kpt = calculator.kpt_u[u]
+                    kpt = calculator.wfs.kpt_u[u]
                     psit_G = kpt.psit_nG[n]
                     norm = self.gd.integrate(psit_G**2)
 

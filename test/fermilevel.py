@@ -28,6 +28,3 @@ ef = calc.get_fermi_level()
 equal(ef, -6.34843, .01)
 calc.write('test.gpw')
 equal(GPAW('test.gpw', txt=None).get_fermi_level(), ef, 1e-8)
-
-import os
-os.remove('test.gpw')

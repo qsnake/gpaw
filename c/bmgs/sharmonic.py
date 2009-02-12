@@ -12,7 +12,7 @@ harmonics (RSSH) in cartesian form. These can be written as::
    L     l    l       l                m
 
 where C_l^|m| is a normalization constant
-P_l^|m| is the associatied legendre polynomium
+P_l^|m| is the associatied legendre polynomial
 and:
 
               / cos(m phi) , m > 0
@@ -44,14 +44,14 @@ The first few harmonics are listed below::
  | 15 | 3 |  3 | x^3-3xy^2  | (      x^2-y^2,          -2xy,        0) |
  +----+--------+----------+--------------------------------------------+
 
-Y_lm is represented as a polynomium in x, y, and z
+Y_lm is represented as a polynomial in x, y, and z
 
 The function consists of three parts: a normalization constant accessed by
-class 'Normalization(l, m)', a polynomium in z accessed with method
-'legendre(l, m)', and a polynomium in x and y accessed with method 'Phi(l, m)'
+class 'Normalization(l, m)', a polynomial in z accessed with method
+'legendre(l, m)', and a polynomial in x and y accessed with method 'Phi(l, m)'
 
-The normalization and the z-polynomium are both invariant of the sign of m
-The z-polynomium has powers l-|m|, l-|m|-2, l-|m|-4, l-..., i.e. it is strictly odd (even) if l-|m| is odd (even)
+The normalization and the z-polynomial are both invariant of the sign of m
+The z-polynomial has powers l-|m|, l-|m|-2, l-|m|-4, l-..., i.e. it is strictly odd (even) if l-|m| is odd (even)
 The combined power of x and y is |m| in all terms of Phi
 """
 
@@ -580,6 +580,42 @@ def symmetry2(l, display=True):
             print str(key) + ' = ' + str(value[0]) + ' * ' + str(value[1:])
     else: return diff
 
+
+def construct_spherical_harmonic_c_function(filename='spherical_harmonics.h',
+                                            lmax=4):
+    file = open(filename, 'w')
+    w = file.write
+    indent = 0
+    def wn(string=''):
+        w(2 * indent * ' ')
+        w(string)
+        w('\\\n')
+    wn('#define spherical_harmonics(l, f, x, y, z, r2, p) (')
+    indent = 2
+    wn('{')
+    wn('  switch(l)')
+    wn('    {')
+    switchindent = 3
+    indent += switchindent
+    for l in range(lmax + 1):
+        wn('case %d:' % l)
+        indent += 1
+        for M, m in enumerate(range(-l, l + 1)):
+            Ystr = Y_to_string(l, m, numeric=True)
+            wn('p[%d] = f * %s;' % (M, Ystr))
+        wn('break;')
+        indent -= 1
+    wn('default:')
+    wn('  assert(0 == 1);')
+    indent -= switchindent
+    wn('    }')
+    wn('}')
+    indent = 0
+    wn(')')
+    w('\n')
+    file.close()
+
+    
 def construct_c_code(file='temp.c', lmax=3):
     """Method for generating the code in c/spline.c"""
     txt = '//Computer generated code! Hands off!'
@@ -728,3 +764,7 @@ def construct_spherical_code(lmax=3):
         print '  %s,' % Y
     print ']'
     print 'norms =', norms
+
+
+if __name__ == '__main__':
+    construct_spherical_harmonic_c_function()

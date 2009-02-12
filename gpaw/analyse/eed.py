@@ -1,6 +1,6 @@
 import sys
-import numpy as npy
 
+import numpy as npy
 from ase.units import Bohr, Hartree
 from ase.parallel import paropen
 
@@ -12,19 +12,17 @@ class ExteriorElectronDensity:
     Simple approach to describe MIES spectra after
     Y. Harada et al., Chem. Rev. 97 (1997) 1897
     """
-    def __init__(self, gd, nuclei):
+    def __init__(self, gd, setups, atoms):
         """Find the grid points outside of the van der Waals radii 
         of the atoms"""
 
-        self.nuclei = nuclei
         self.gd = gd
 
-        n = len(self.nuclei)
-        atom_c = npy.empty((n, 3))
+        n = len(atoms)
+        atom_c = atoms.positions / Bohr
         vdWradius = npy.empty((n))
-        for a, nucleus in enumerate(nuclei):
-            atom_c[a] = nucleus.spos_c * gd.domain.cell_c
-            vdWradius[a] = self.get_vdWradius(nucleus.setup.Z)
+        for a, setup in enumerate(setups):
+            vdWradius[a] = self.get_vdWradius(setup.Z)
 
         # define the exterior region mask
         mask = gd.empty(dtype=int)
@@ -52,8 +50,8 @@ class ExteriorElectronDensity:
         else:
             return r
         
-    def write_mies_weights(self, paw, file=None):
-        if paw.nkpts > 1:
+    def write_mies_weights(self, wfs, file=None):
+        if not wfs.gamma:
             raise NotImplementedError # XXXX TODO
 
         out = sys.stdout
@@ -67,10 +65,10 @@ class ExteriorElectronDensity:
 
         print >> out, '# exterior electron density weights after'
         print >> out, '# Y. Harada et al., Chem. Rev. 97 (1997) 1897'
-        if paw.nspins == 1:
+        if wfs.nspins == 1:
             print >> out, '# Band   energy      occ         weight'
-            kpt = paw.kpt_u[0]
-            for n in range(paw.nbands):
+            kpt = wfs.kpt_u[0]
+            for n in range(wfs.nbands):
                 print  >> out, '%4d  %10.5f  %10.5f  %10.5f' % \
                     (n, 
                      kpt.eps_n[n] * Hartree,
@@ -80,9 +78,9 @@ class ExteriorElectronDensity:
                     out.flush()
         else:
             print >> out, '# Band   energy      occ         weight     energy      occ         weight'
-            kpta = paw.kpt_u[0]
-            kptb = paw.kpt_u[1]
-            for n in range(paw.nbands):
+            kpta = wfs.kpt_u[0]
+            kptb = wfs.kpt_u[1]
+            for n in range(wfs.nbands):
                 print  >> out, '%4d  %10.5f  %10.5f  %10.5f  %10.5f    %10.5f  %10.5f' % \
                     (n, 
                      kpta.eps_n[n] * Hartree,

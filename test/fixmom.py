@@ -1,4 +1,4 @@
-from gpaw import Calculator
+from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
 
@@ -10,8 +10,8 @@ bulk.set_cell((a, a, a), scale_atoms=True)
 mom0 = sum(bulk.get_initial_magnetic_moments())
 h = 0.20
 conv = {'eigenstates': 0.1, 'density':0.1, 'energy':0.1}
-calc = Calculator(h=h, nbands=11, kpts=(3, 3, 3),
-                  convergence=conv, fixmom=True)
+calc = GPAW(h=h, nbands=11, kpts=(3, 3, 3),
+            convergence=conv, fixmom=True)
 bulk.set_calculator(calc)
 e = bulk.get_potential_energy()
 mom = calc.get_magnetic_moment()

@@ -13,8 +13,8 @@ from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize, sl_inverse_cholesky
 from gpaw.mpi import parallel, rank, size, world
 import _gpaw
-
 from gpaw.utilities.blas import gemm
+
 
 def diagonalize(a, w, b=None, root=0):
     """Diagonalize a symmetric/hermitian matrix.

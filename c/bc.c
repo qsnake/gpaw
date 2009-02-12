@@ -8,12 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//By defining GPAW_ASYNC you will use non-blocking mpi calls
-//and not the blocking mpi calls dictated by the GPAW_AIX
-#ifdef GPAW_ASYNC
-#undef GPAW_AIX
-#define GPAW_REAIX
-#endif
 
 boundary_conditions* bc_init(const long size1[3],
            const long padding[3][2],
@@ -137,30 +131,34 @@ boundary_conditions* bc_init(const long size1[3],
 
 
 void bc_unpack1(const boundary_conditions* bc,
-                const double* a1, double* a2, int i,
+                const double* aa1, double* aa2, int i,
                 MPI_Request recvreq[2],
                 MPI_Request sendreq[2],
-                double* rbuf, double* sbuf,
+                double* rbuff, double* sbuff,
                 const double_complex phases[2], int thd, int nin)
 {
+
+  int ng = bc->ndouble * bc->size1[0] * bc->size1[1] * bc->size1[2];
+  int ng2 = bc->ndouble * bc->size2[0] * bc->size2[1] * bc->size2[2];
   bool real = (bc->ndouble == 1);
+  for (int m = 0; m < nin; m++)
+    // Copy data:
+    if (i == 0)
+      {
+        // Zero all of a2 array.  We should only zero the bounaries
+        // that are not periodic, but it's simpler to zero everything!
+        // XXX
+        memset(aa2 + m * ng2, 0, ng2 * sizeof(double));
 
-  // Copy data:
-  if (i == 0)
-    {
-      // Zero all of a2 array.  We should only zero the bounaries
-      // that are not periodic, but it's simpler to zero everything!
-      // XXX
-      memset(a2, 0, (bc->size2[0] * bc->size2[1] * bc->size2[2] *
-                     bc->ndouble * sizeof(double)));
-
-      // Copy data from a1 to central part of a2:
-      if (real)
-        bmgs_paste(a1, bc->size1, a2, bc->size2, bc->sendstart[0][0]);
-      else
-        bmgs_pastez((const double_complex*)a1, bc->size1,
-                  (double_complex*)a2, bc->size2, bc->sendstart[0][0]);
-    }
+        // Copy data from a1 to central part of a2:
+        if (real)
+          bmgs_paste(aa1 + m * ng, bc->size1, aa2 + m * ng2,
+		     bc->size2, bc->sendstart[0][0]);
+        else
+          bmgs_pastez((const double_complex*)(aa1 + m * ng), bc->size1,
+		      (double_complex*)(aa2 + m * ng2),
+		      bc->size2, bc->sendstart[0][0]);
+      }
 
 #ifdef PARALLEL
   // Start receiving.
@@ -172,25 +170,23 @@ void bc_unpack1(const boundary_conditions* bc,
           if (bc->rjoin[i])
             {
               if (d == 0)
-                {
-                  int count = bc->nrecv[i][0] + bc->nrecv[i][1];
-                  MPI_Irecv(rbuf, count, MPI_DOUBLE, p,
-                            10 * thd + 1000 * i + 100000,
-                            bc->comm, &recvreq[0]);
-                }
+                MPI_Irecv(rbuff, (bc->nrecv[i][0] + bc->nrecv[i][1]) * nin,
+			  MPI_DOUBLE, p,
+                          10 * thd + 1000 * i + 100000,
+                          bc->comm, &recvreq[0]);
             }
           else
-            {
-              int count = bc->nrecv[i][d];
-              MPI_Irecv(rbuf, count, MPI_DOUBLE, p, d + 10 * thd + 1000 * i,
-                        bc->comm, &recvreq[d]);
-              rbuf += bc->nrecv[i][d];
-            }
+          {
+            MPI_Irecv(rbuff, bc->nrecv[i][d] * nin, MPI_DOUBLE, p,
+		      d + 10 * thd + 1000 * i,
+                      bc->comm, &recvreq[d]);
+	    rbuff += bc->nrecv[i][d] * nin;
+          }
         }
     }
-
   // Prepare send-buffers and start sending:
-  double* sbuf0 = sbuf;
+  double* sbuf = sbuff;
+  double* sbuf0 = sbuff;
   for (int d = 0; d < 2; d++)
     {
       sendreq[d] = 0;
@@ -199,56 +195,53 @@ void bc_unpack1(const boundary_conditions* bc,
         {
           const int* start = bc->sendstart[i][d];
           const int* size = bc->sendsize[i][d];
-          if (real)
-            bmgs_cut(a2, bc->size2, start, sbuf, size);
-          else
-            bmgs_cutmz((const double_complex*)a2, bc->size2, start,
-                       (double_complex*)sbuf, size, phases[d]);
+
+	  for (int m = 0; m < nin; m++)
+	    if (real)
+	      bmgs_cut(aa2 + m * ng2, bc->size2, start,
+		       sbuf + m * bc->nsend[i][d],
+		       size);
+	    else
+	      bmgs_cutmz((const double_complex*)(aa2 + m * ng2),
+			 bc->size2, start,
+			 (double_complex*)(sbuf + m * bc->nsend[i][d]),
+			 size, phases[d]);
 
           if (bc->sjoin[i])
             {
               if (d == 1)
                 {
-                  int count = bc->nsend[i][0] + bc->nsend[i][1];
-#ifdef GPAW_AIX
-                  MPI_Send(sbuf0, count, MPI_DOUBLE, p,
-                           10 * thd + 1000 * i + 100000, bc->comm);
-#else
-                  MPI_Isend(sbuf0, count, MPI_DOUBLE, p,
+                  MPI_Isend(sbuf0, (bc->nsend[i][0] + bc->nsend[i][1]) * nin,
+			    MPI_DOUBLE, p,
                             10 * thd + 1000 * i + 100000,
                             bc->comm, &sendreq[0]);
-#endif
                 }
             }
           else
             {
-              int count = bc->nsend[i][d];
-#ifdef GPAW_AIX
-              MPI_Send(sbuf, count, MPI_DOUBLE, p,
-                       1 - d + 10 * thd + 1000 * i, bc->comm);
-#else
-              MPI_Isend(sbuf, count, MPI_DOUBLE, p,
+              MPI_Isend(sbuf, bc->nsend[i][d] * nin, MPI_DOUBLE, p,
                         1 - d + 10 * thd + 1000 * i, bc->comm, &sendreq[d]);
-#endif
             }
-          sbuf += bc->nsend[i][d];
+          sbuf += bc->nsend[i][d] * nin;
         }
     }
 #endif // Parallel
-
-  // Copy data for periodic boundary conditions:
-  for (int d = 0; d < 2; d++)
-    if (bc->sendproc[i][d] == COPY_DATA)
-      {
-        if (real)
-          bmgs_translate(a2, bc->size2, bc->sendsize[i][d],
-             bc->sendstart[i][d], bc->recvstart[i][1 - d]);
-        else
-          bmgs_translatemz((double_complex*)a2, bc->size2,
-               bc->sendsize[i][d],
-               bc->sendstart[i][d], bc->recvstart[i][1 - d],
-                   phases[d]);
-      }
+  for (int m = 0; m < nin; m++)
+    {
+      // Copy data for periodic boundary conditions:
+      for (int d = 0; d < 2; d++)
+        if (bc->sendproc[i][d] == COPY_DATA)
+          {
+            if (real)
+              bmgs_translate(aa2 + m * ng2, bc->size2, bc->sendsize[i][d],
+                 bc->sendstart[i][d], bc->recvstart[i][1 - d]);
+            else
+              bmgs_translatemz((double_complex*)(aa2 + m * ng2), bc->size2,
+                   bc->sendsize[i][d],
+                   bc->sendstart[i][d], bc->recvstart[i][1 - d],
+                       phases[d]);
+          }
+    }
 }
 
 
@@ -259,44 +252,44 @@ void bc_unpack2(const boundary_conditions* bc,
     double* rbuf, int nin)
 {
 #ifdef PARALLEL
+  int ng2 = bc->ndouble * bc->size2[0] * bc->size2[1] * bc->size2[2];
+
   // Store data from receive-buffer:
   bool real = (bc->ndouble == 1);
+
   double* rbuf0 = rbuf;
   for (int d = 0; d < 2; d++)
     if (bc->recvproc[i][d] >= 0)
       {
-  if (bc->rjoin[i])
-    {
-      if (d == 0)
-        {
-          MPI_Wait(&recvreq[0], MPI_STATUS_IGNORE);
-          rbuf += bc->nrecv[i][1];
-        }
-      else
-        rbuf = rbuf0;
-    }
-  else
-    MPI_Wait(&recvreq[d], MPI_STATUS_IGNORE);
-
-  if (real)
-    bmgs_paste(rbuf, bc->recvsize[i][d],
-         a2, bc->size2, bc->recvstart[i][d]);
-  else
-    bmgs_pastez((const double_complex*)rbuf, bc->recvsize[i][d],
-          (double_complex*)a2, bc->size2, bc->recvstart[i][d]);
-  rbuf += bc->nrecv[i][d];
+        if (bc->rjoin[i])
+          {
+            if (d == 0)
+              {
+                MPI_Wait(&recvreq[0], MPI_STATUS_IGNORE);
+                rbuf += bc->nrecv[i][1] * nin;
+              }
+            else
+              rbuf = rbuf0;
+	  }
+	else
+	  MPI_Wait(&recvreq[d], MPI_STATUS_IGNORE);
+	
+	for (int m = 0; m < nin; m++)
+	  if (real)
+	    bmgs_paste(rbuf + m * bc->nrecv[i][d], bc->recvsize[i][d],
+		       a2 + m * ng2, bc->size2, bc->recvstart[i][d]);
+	  else
+	    bmgs_pastez((const double_complex*)(rbuf +
+						m * bc->nrecv[i][d]),
+			bc->recvsize[i][d],
+			(double_complex*)(a2 + m * ng2),
+			bc->size2, bc->recvstart[i][d]);
+	rbuf += bc->nrecv[i][d] * nin;
       }
-#ifndef GPAW_AIX
+  
   // This does not work on the ibm with gcc!  We do a blocking send instead.
   for (int d = 0; d < 2; d++)
     if (sendreq[d] != 0)
       MPI_Wait(&sendreq[d], MPI_STATUS_IGNORE);
-#endif
 #endif // PARALLEL
 }
-
-//Remember to redefine GPAW_AIX
-#ifdef GPAW_REAIX
-#define GPAW_AIX
-#endif
-

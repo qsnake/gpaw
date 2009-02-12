@@ -1,4 +1,4 @@
-from gpaw import Calculator
+from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
 
@@ -9,7 +9,7 @@ bulk = Atoms([Atom('Al', (0, 0, 0)),
              cell=(4*d, 4*d, 2*d),
              pbc=1)
 n = 16
-calc = Calculator(gpts=(2*n, 2*n, 1*n),
+calc = GPAW(gpts=(2*n, 2*n, 1*n),
                   nbands=1*8,
                   kpts=(1, 1, 4),
                   convergence={'eigenstates': 1e-11},xc='LDA')

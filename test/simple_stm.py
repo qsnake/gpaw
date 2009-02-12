@@ -2,7 +2,7 @@ import os
 
 from ase import *
 
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.cluster import Cluster 
 from gpaw.analyse.simple_stm import SimpleStm
 from gpaw.utilities import equal
@@ -19,12 +19,12 @@ LiH.center()
 # finite system
 if not load:
     LiH.set_pbc(False)
-    cf = Calculator(spinpol=True, nbands=2, h=.3, txt=txt)
+    cf = GPAW(spinpol=True, nbands=2, h=.3, txt=txt)
     LiH.set_calculator(cf)
     LiH.get_potential_energy()
 #    cf.write('LiH_wfs.gpw', 'all')
 else:
-    cf = Calculator('LiH-wfs.gpw', txt=txt)
+    cf = GPAW('LiH-wfs.gpw', txt=txt)
 
 f3dname = 'stm3d.plt'
 
@@ -43,12 +43,12 @@ equal(wf, wf2, 1.e-7)
 # periodic system
 if not load:
     LiH.set_pbc(True)
-    cp = Calculator(spinpol=True, nbands=2, h=.3, kpts=(2,2,2), txt=txt)
+    cp = GPAW(spinpol=True, nbands=2, h=.3, kpts=(2,2,2), txt=txt)
     LiH.set_calculator(cp)
     LiH.get_potential_energy()
 #    cp.write('LiH-8kpts_wfs.gpw', 'all')
 else:
-    cp = Calculator('LiH-8kpts_wfs.gpw', txt=txt)
+    cp = GPAW('LiH-8kpts_wfs.gpw', txt=txt)
 
 stmp = SimpleStm(cp)
 

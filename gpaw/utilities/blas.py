@@ -4,6 +4,9 @@
 """
 Python wrapper functions for the ``C`` package:
 Basic Linear Algebra Subroutines (BLAS)
+
+See also:
+http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 """
 
 import numpy as npy
@@ -44,7 +47,7 @@ def gemm(alpha, a, b, beta, c, transa='n'):
             a.dtype == complex and b.dtype == complex and c.dtype == complex)
     assert a.flags.contiguous
     if transa == 'n':
-        assert c.flags.contiguous
+        assert c.flags.contiguous or c.ndim == 2 and c.strides[1] == c.itemsize
         assert b.ndim == 2
         assert b.strides[1] == b.itemsize
         assert a.shape[0] == b.shape[1]
@@ -129,13 +132,13 @@ def r2k(alpha, a, b, beta, c):
 
     Only the lower triangle of ``c`` will contain sensible numbers.
     """
-    assert ((is_contiguous(a, float) and is_contiguous(b, float) and
-             is_contiguous(c, float) and isinstance(alpha, float)) or
-            (is_contiguous(a, complex) and is_contiguous(b,complex) and
-             is_contiguous(c, complex)))
+    assert (a.dtype == float and b.dtype == float and c.dtype == float or
+            a.dtype == complex and b.dtype == complex and c.dtype == complex)
+    assert a.flags.contiguous and b.flags.contiguous
     assert npy.rank(a) > 1
     assert a.shape == b.shape
     assert c.shape == (a.shape[0], a.shape[0])
+    assert c.strides[1] == c.itemsize
     _gpaw.r2k(alpha, a, b, beta, c)
 
 def dotc(a, b):

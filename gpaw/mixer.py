@@ -86,8 +86,8 @@ class BaseMixer:
         else:
             raise RuntimeError('Unknown metric type: "%s".' % self.metric_type)
         
-    def initialize(self, paw):
-        self.initialize_metric(paw.gd)
+    def initialize(self, density):
+        self.initialize_metric(density.gd)
 
     def reset(self):
         """Reset Density-history.
@@ -114,6 +114,9 @@ class BaseMixer:
         
         return self.dNt
 
+    def set_charge_sloshing(self, dNt):
+        self.dNt = dNt
+        
     def mix(self, nt_G, D_ap):
         iold = len(self.nt_iG)
         if iold > 0:
@@ -195,22 +198,22 @@ class BaseMixer:
 class Mixer(BaseMixer):
     """Mix spin up and down densities separately"""
 
-    def initialize(self, paw):
+    def initialize(self, density):
         self.mixers = []
-        for s in range(paw.nspins):
+        for s in range(density.nspins):
             mixer = BaseMixer(self.beta, self.nmaxold,
                               self.metric_type, self.weight)
-            mixer.initialize_metric(paw.gd)
+            mixer.initialize_metric(density.gd)
             self.mixers.append(mixer)
     
     def mix(self, density):
         """Mix pseudo electron densities."""
 
         nt_sG = density.nt_sG
-        D_asp = [nucleus.D_sp for nucleus in density.my_nuclei]
+        D_asp = density.D_asp.values()
         D_sap = []
         for s in range(density.nspins):
-            D_sap.append([D[s] for D in D_asp])
+            D_sap.append([D_sp[s] for D_sp in D_asp])
         for nt_G, D_ap, mixer in zip(nt_sG, D_sap, self.mixers):
             mixer.mix(nt_G, D_ap)
 
@@ -223,10 +226,14 @@ class Mixer(BaseMixer):
 
         Calculated as the integral of the absolute value of the change
         of the density from input to output."""
-        
+
         if self.mixers[0].dNt is None:
             return None
         return sum([mixer.dNt for mixer in self.mixers])
+
+    def set_charge_sloshing(self, dNt):
+        for mixer in self.mixers:
+            mixer.set_charge_sloshing(dNt / len(self.mixers))
 
 
 class MixerSum(BaseMixer):
@@ -237,7 +244,7 @@ class MixerSum(BaseMixer):
 
     def mix(self, density):
         nt_sG = density.nt_sG
-        D_asp = [nucleus.D_sp for nucleus in density.my_nuclei]
+        D_asp = density.D_asp.values()
 
         # Mix density
         nt_G = density.nt_sG.sum(0)
@@ -245,7 +252,7 @@ class MixerSum(BaseMixer):
 
         # Only new magnetization for spin density
         dnt_G = nt_sG[0] - nt_sG[1]
-        dD_ap = [D_sp[0] - D_sp[1] for D_sp in D_asp]
+        #dD_ap = [D_sp[0] - D_sp[1] for D_sp in D_asp]
 
         # Construct new spin up/down densities 
         nt_sG[0] = 0.5 * (nt_G + dnt_G)
@@ -260,7 +267,7 @@ class MixerSum2(BaseMixer):
     def mix(self, density):
 
         nt_sG = density.nt_sG
-        D_asp = [nucleus.D_sp for nucleus in density.my_nuclei]
+        D_asp = density.D_asp.values()
 
         # Mix density
         nt_G = density.nt_sG.sum(0)
@@ -314,15 +321,14 @@ class MixerDif(BaseMixer):
         self.mix_rho = False
 
 
-    def initialize(self, paw):
-        
-        assert paw.nspins == 2
+    def initialize(self, density):
+        assert density.nspins == 2
         self.mixer = BaseMixer(self.beta, self.nmaxold,
-                                   self.metric_type, self.weight)
-        self.mixer.initialize_metric(paw.gd)
+                               self.metric_type, self.weight)
+        self.mixer.initialize_metric(density.gd)
         self.mixer_m = BaseMixer(self.beta_m, self.nmaxold_m,
-                                   self.metric_type_m, self.weight_m)
-        self.mixer_m.initialize_metric(paw.gd)
+                                 self.metric_type_m, self.weight_m)
+        self.mixer_m.initialize_metric(density.gd)
 
     def reset(self):
         self.mixer.reset()
@@ -331,7 +337,7 @@ class MixerDif(BaseMixer):
     def mix(self, density):
 
         nt_sG = density.nt_sG
-        D_asp = [nucleus.D_sp for nucleus in density.my_nuclei]
+        D_asp = density.D_asp.values()
 
         # Mix density
         nt_G = density.nt_sG.sum(0)
@@ -358,10 +364,10 @@ class MixerDif(BaseMixer):
 
 
 class MixerRho(BaseMixer):
-    def initialize(self, paw):
+    def initialize(self, density):
     
         self.mix_rho = True
-        self.initialize_metric(paw.finegd)
+        self.initialize_metric(density.finegd)
     
     def mix(self, density):
         """Mix pseudo electron densities."""
@@ -371,15 +377,14 @@ class MixerRho(BaseMixer):
 
 
 class MixerRho2(BaseMixer):
-    def initialize(self, paw):
+    def initialize(self, density):
     
         self.mix_rho = True
-        self.initialize_metric(paw.finegd)
+        self.initialize_metric(density.finegd)
     
     def mix(self, density):
         """Mix pseudo electron densities."""
 
         rhot_g = density.rhot_g
-        D_asp = [nucleus.D_sp for nucleus in density.my_nuclei]
-        BaseMixer.mix(self, rhot_g, D_asp)
+        BaseMixer.mix(self, rhot_g, density.D_asp.values())
 

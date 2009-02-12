@@ -3,54 +3,30 @@ import numpy as npy
 
 from gpaw.utilities import pack
 from gpaw.utilities.tools import pick
-from gpaw.localized_functions import create_localized_functions
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 
 
 class PairDensity2:
-    def  __init__(self, paw, finegrid):
+    def  __init__(self, density, atoms, finegrid):
         """Initialization needs a paw instance, and whether the compensated
         pair density should be on the fine grid (boolean)"""
 
-        self.interpolate = paw.density.interpolate
+        self.density = density
         self.finegrid = finegrid
 
-        self.ghat_nuclei = paw.ghat_nuclei
-        self.nuclei = paw.nuclei
-        self.gd = paw.gd
-
-        self.yes_I_have_done_the_Ghat_L = False
-
-    def set_coarse_ghat(self):
-        create = create_localized_functions
-
-        for nucleus in self.nuclei:
-            # Shape functions:
-            ghat_l = nucleus.setup.ghat_l
-            Ghat_L = create(ghat_l, self.gd, nucleus.spos_c,
-                            forces=False)
-            nucleus.Ghat_L = Ghat_L
-
-            if Ghat_L is not None:
-                assert nucleus.ghat_L is not None
-            
-        self.yes_I_have_done_the_Ghat_L = True
-    
-        for nucleus in self.ghat_nuclei:
-            Ghat_L = nucleus.Ghat_L
-            if Ghat_L is not None:
-                Ghat_L.normalize(sqrt(4 * pi))
+        if not finegrid:
+            density.Ghat = LFC(density.gd,
+                               [setup.ghat_l
+                                for setup in density.setups],
+                               integral=sqrt(4 * pi))
+            density.Ghat.set_positions(atoms.get_scaled_positions() % 1.0)
 
     def initialize(self, kpt, n1, n2):
         """Set wave function indices."""
-        if not self.finegrid and not self.yes_I_have_done_the_Ghat_L:
-            # we need to set Ghat_L on the coarse grid
-            self.set_coarse_ghat()
-
         self.n1 = n1
         self.n2 = n2
-        self.u = kpt.u
         self.spin = kpt.s
-        
+        self.P_ani = kpt.P_ani
         self.psit1_G = pick(kpt.psit_nG, n1)
         self.psit2_G = pick(kpt.psit_nG, n2)
 
@@ -64,34 +40,30 @@ class PairDensity2:
 
         if self.finegrid:
             # interpolate the pair density to the fine grid
-            self.interpolate(nt_G, rhot_g)
+            self.density.interpolater.apply(nt_G, rhot_g)
         else:
             # copy values
             rhot_g[:] = nt_G
         
         # Determine the compensation charges for each nucleus
-        for nucleus in self.ghat_nuclei:
-            if nucleus.in_this_domain:
-                # Generate density matrix
-                P1_i = pick(nucleus.P_uni[self.u], self.n1)
-                P2_i = pick(nucleus.P_uni[self.u], self.n2)
-                D_ii = npy.outer(P1_i.conj(), P2_i)
-                # allowed to pack as used in the scalar product with
-                # the symmetric array Delta_pL
-                D_p  = pack(D_ii, tolerance=1e30)
-                    
-                # Determine compensation charge coefficients:
-                Q_L = npy.dot(D_p, nucleus.setup.Delta_pL)
-            else:
-                Q_L = None
+        Q_aL = {}
+        for a, P_ni in self.P_ani.items():
+            # Generate density matrix
+            P1_i = P_ni[self.n1]
+            P2_i = P_ni[self.n2]
+            D_ii = npy.outer(P1_i.conj(), P2_i)
+            # allowed to pack as used in the scalar product with
+            # the symmetric array Delta_pL
+            D_p  = pack(D_ii, tolerance=1e30)
+            
+            # Determine compensation charge coefficients:
+            Q_aL[a] = npy.dot(D_p, self.density.setups[a].Delta_pL)
 
-            # Add compensation charges
-            if self.finegrid:
-                nucleus.ghat_L.add(rhot_g, Q_L, communicate=True)
-            else:
-                Ghat_L = nucleus.Ghat_L
-                if Ghat_L is not None:
-                    Ghat_L.add(rhot_g, Q_L, communicate=True)
+        # Add compensation charges
+        if self.finegrid:
+            self.density.ghat.add(rhot_g, Q_aL)
+        else:
+            self.density.Ghat.add(rhot_g, Q_aL)
 
 
 class PairDensity:
@@ -99,40 +71,15 @@ class PairDensity:
         """basic initialisation knowing"""
 
         self.density = paw.density
-
-        self.ghat_nuclei = paw.ghat_nuclei
-        self.nuclei = paw.nuclei
-        
-        # we need to set Ghat_nuclei and Ghat_L
-        # on the course grid if not initialized already
-        if not hasattr(paw, 'yes_I_have_done_the_Ghat_L'):
-            self.set_coarse_ghat(paw)
-
-    def set_coarse_ghat(self, paw):
-        create = create_localized_functions
-        for nucleus in self.nuclei:
-            # Shape functions:
-            ghat_l = nucleus.setup.ghat_l
-            Ghat_L = create(ghat_l, paw.gd, nucleus.spos_c,
-                            forces=False)
-            nucleus.Ghat_L = Ghat_L
-    
-            if Ghat_L is not None:
-                assert nucleus.ghat_L is not None
-    
-        paw.yes_I_have_done_the_Ghat_L = True
-    
-        for nucleus in self.nuclei:
-            Ghat_L = nucleus.Ghat_L
-            if Ghat_L is not None:
-                Ghat_L.normalize(sqrt(4 * pi))
+        self.setups = paw.wfs.setups
+        self.spos_ac = paw.atoms.get_scaled_positions()
 
     def initialize(self, kpt, i, j):
         """initialize yourself with the wavefunctions"""
         self.i = i
         self.j = j
-        self.u = kpt.u
         self.spin = kpt.s
+        self.P_ani = kpt.P_ani
         
         self.wfi = kpt.psit_nG[i]
         self.wfj = kpt.psit_nG[j]
@@ -145,7 +92,7 @@ class PairDensity:
 
         # interpolate the pair density to the fine grid
         nijt_g = self.density.finegd.empty()
-        self.density.interpolate(nijt, nijt_g)
+        self.density.interpolater.apply(nijt, nijt_g)
 
         return nijt_g
 
@@ -153,30 +100,30 @@ class PairDensity:
         """Get pair densisty including the compensation charges"""
         rhot = self.get(finegrid)
 
-        ghat_nuclei = self.ghat_nuclei
-        
         # Determine the compensation charges for each nucleus
-        for nucleus in ghat_nuclei:
-            if nucleus.in_this_domain:
-                # Generate density matrix
-                Pi_i = nucleus.P_uni[self.u, self.i]
-                Pj_i = nucleus.P_uni[self.u, self.j]
-                D_ii = npy.outer(Pi_i, Pj_i)
-                # allowed to pack as used in the scalar product with
-                # the symmetric array Delta_pL
-                D_p  = pack(D_ii, tolerance=1e30)
-                    
-                # Determine compensation charge coefficients:
-                Q_L = npy.dot(D_p, nucleus.setup.Delta_pL)
-            else:
-                Q_L = None
+        Q_aL = {}
+        for a, P_ni in self.P_ani.items():
+            # Generate density matrix
+            Pi_i = P_ni[self.i]
+            Pj_i = P_ni[self.j]
+            D_ii = npy.outer(Pi_i, Pj_i)
+            # allowed to pack as used in the scalar product with
+            # the symmetric array Delta_pL
+            D_p  = pack(D_ii, tolerance=1e30)
+            
+            # Determine compensation charge coefficients:
+            Q_aL[a] = npy.dot(D_p, self.setups[a].Delta_pL)
 
-            # Add compensation charges
-            if finegrid:
-                nucleus.ghat_L.add(rhot, Q_L, communicate=True)
-            else:
-                Ghat_L = nucleus.Ghat_L
-                if Ghat_L is not None:
-                    Ghat_L.add(rhot, Q_L, communicate=True)
+        # Add compensation charges
+        if finegrid:
+            self.density.ghat.add(rhot, Q_aL)
+        else:
+            if not hasattr(self.density, 'Ghat'):
+                self.density.Ghat = LFC(self.density.gd,
+                                        [setup.ghat_l
+                                         for setup in self.setups],
+                                        integral=sqrt(4 * pi))
+                self.density.Ghat.set_positions(self.spos_ac)
+            self.density.Ghat.add(rhot, Q_aL)
                 
         return rhot

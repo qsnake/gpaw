@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.mpi import run, world
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
@@ -24,7 +24,7 @@ H2O = Atoms([Atom('O', (0, 0, 0)),
              Atom('H', (d * cos(t), d * sin(t), 0))],
             cell=(a, a, a), pbc=False)
 H2O.center()
-calc = Calculator(nbands=10, h=0.2, xc='GLLBLDARCR')
+calc = GPAW(nbands=10, h=0.2, xc='GLLBLDARCR')
 H2O.set_calculator(calc)
 e = H2O.get_potential_energy()
 

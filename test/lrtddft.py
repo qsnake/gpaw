@@ -1,6 +1,6 @@
 import os
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.utilities import equal
 from gpaw.lrtddft import LrTDDFT
 
@@ -15,7 +15,7 @@ if not io_only:
     H2 = Atoms([Atom('H', (a / 2, a / 2, (c - R) / 2)),
                 Atom('H', (a / 2, a / 2, (c + R) / 2))],
                cell=(a, a, c))
-    calc = Calculator(xc='PBE', nbands=2, spinpol=False, txt=txt)
+    calc = GPAW(xc='PBE', nbands=2, spinpol=False, txt=txt)
     H2.set_calculator(calc)
     H2.get_potential_energy()
 
@@ -47,12 +47,12 @@ if not io_only:
     equal(t1.get_energy(), t2.get_energy(), 5.e-7)
 
     if not load:
-        c_spin = Calculator(xc='PBE', nbands=2, spinpol=True, txt=txt)
+        c_spin = GPAW(xc='PBE', nbands=2, spinpol=True, txt=txt)
         H2.set_calculator(c_spin)
         c_spin.calculate(H2)
 ##        c_spin.write('H2spin.gpw', 'all')
     else:
-        c_spin = Calculator('H2spin.gpw', txt=txt)
+        c_spin = GPAW('H2spin.gpw', txt=txt)
     lr_spin = LrTDDFT(c_spin, xc=xc)
     lr_spin.diagonalize()
     for i in range(2):

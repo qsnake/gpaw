@@ -60,6 +60,8 @@ Example::
 
   $ gpaw-qsub -q medium -l nodes=8 -m abe fcc.py --domain-decomposition=1,2,2
 
+.. tip::
+  CAMd users must always remember to source the openmpi environment settings before recompiling the code. See :ref:`developer_installation`.
 
 Alternative submit tool
 =======================

@@ -26,7 +26,7 @@ import numpy as npy
 from ase.atoms import Atoms
 from ase.data import atomic_names, covalent_radii, atomic_numbers
 
-from gpaw import Calculator, ConvergenceError
+from gpaw import GPAW, ConvergenceError
 
 b0 = {'Ni': 2.150, 'Pd': 2.496,
       'Pt': 2.35,
@@ -113,17 +113,13 @@ class TestAtom:
         for i in range(self.ng):
             h = self.h[i]
             print '%.3f:' % h,
-            calc = Calculator(h=h, width=0.1, xc='PBE',
-                              txt='%s/eggbox-%.3f.txt' % (self.name, h),
-                              **self.parameters)
+            calc = GPAW(h=h, width=0.1, xc='PBE',
+                        txt='%s/eggbox-%.3f.txt' % (self.name, h),
+                        **self.parameters)
             if self.lcao:
-                calc.set(eigensolver='lcao', basis=self.lcao)
+                calc.set(mode='lcao', basis=self.lcao)
 
             atom.set_calculator(calc)
-
-            if self.lcao:
-                calc.initialize(atom)
-                calc.hamiltonian.lcao_forces = True
 
             for j in range(negg):
                 x = h * j / (2 * negg - 2)
@@ -152,17 +148,13 @@ class TestAtom:
         for i in range(self.ng):
             h = self.h[i]
             print '%.3f:' % h,
-            calc = Calculator(h=h, width=0.1, xc='PBE',
-                              txt='%s/dimer-%.3f.txt' % (self.name, h),
-                              **self.parameters)
+            calc = GPAW(h=h, width=0.1, xc='PBE',
+                        txt='%s/dimer-%.3f.txt' % (self.name, h),
+                        **self.parameters)
             if self.lcao:
-                calc.set(eigensolver='lcao', basis=self.lcao)
+                calc.set(mode='lcao', basis=self.lcao)
 
             dimer.set_calculator(calc)
-
-            if self.lcao:
-                calc.initialize(dimer)
-                calc.hamiltonian.lcao_forces = True
 
             y = []
             for j in range(-3, 4):

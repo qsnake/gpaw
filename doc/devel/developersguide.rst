@@ -50,27 +50,6 @@ number `a` and `\tilde{p}_i^a`, `\tilde{\phi}_i^a` and `\phi_i^a` are
 the projector functions, pseudo partial waves, and all-electron
 partial waves respectively, of the atoms.
 
-.. list-table::
-
-   * - formula
-     - object
-     - type
-   * - `\mathbf{R}^a`
-     - ``paw.nuclei[a].spos_c``
-     - ``ndarray``
-   * - `\tilde{\psi}_{\sigma\mathbf{k}n}(\mathbf{r})`
-     - ``paw.kpt_u[u].psit_nG``
-     - ``ndarray``
-   * - `\tilde{p}_j^a(r)`
-     - ``setup.pt_j``
-     - List of :epydoc:`gpaw.spline.Spline`\ s
-   * - `\tilde{p}_i^a(\mathbf{r}-\mathbf{R}^a)`
-     - ``nuclei[a].pt_i``
-     - :epydoc:`gpaw.localized_functions.LocFuncs`
-   * - `\langle\tilde{p}_i^a|\tilde{\psi}_{\sigma\mathbf{k}n} \rangle`
-     - ``nuclei[a].P_uni``
-     - ``ndarray``
-
 See :ref:`overview_array_naming` for more information on the naming of
 arrays.  Note that ``spos_c`` gives the position of the atom in scaled
 coordinates in the range [0:1[ (relative to the unit cell).
@@ -119,7 +98,7 @@ The constants `\Delta O_{i_1 i_2}^a` are found in
   [\phi_{i_1}^a(\mathbf{r})\phi_{i_2}^a(\mathbf{r}) -
    \tilde{\phi}_{i_1}^a(\mathbf{r})\tilde{\phi}_{i_2}^a(\mathbf{r})].
 
-See also :epydoc:`gpaw.setup.Setup`, :epydoc:`gpaw.nucleus.Nucleus`
+See also :epydoc:`gpaw.setup.Setup`,
 and :epydoc:`gpaw.spline.Spline`.
 
 

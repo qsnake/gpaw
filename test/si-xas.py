@@ -2,7 +2,7 @@ import os
 from math import pi, cos, sin
 from ase import *
 from ase.parallel import rank, barrier
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 from gpaw.xas import XAS, RecursionMethod
@@ -28,20 +28,18 @@ si = Atoms([Atom('Si', (0, 0, 0)),
             Atom('Si', (c, d, d))],
            cell=(a, a, a), pbc=True)
 
-k = 2
-import numpy as npy
-calc = Calculator(nbands=None, h=0.25, 
-                  width=0.05,
-                  setups={0: 'hch1s'}, usesymm=True
-                  )
+import numpy as np
+calc = GPAW(nbands=None,
+            h=0.25, 
+            width=0.05,
+            setups={0: 'hch1s'},
+            usesymm=True)
 si.set_calculator(calc)
 e = si.get_potential_energy()
 calc.write('si.gpw')
 
 # restart from file
-calc = Calculator('si.gpw', kpts=(k, k, k))
-
-assert calc.dtype == complex
+calc = GPAW('si.gpw')
 
 import gpaw.mpi as mpi
 if mpi.size == 1:
@@ -50,7 +48,12 @@ if mpi.size == 1:
 else:
     x = np.linspace(0, 10, 50)
     
+k = 2
+calc.set(kpts=(k, k, k))
+calc.initialize()
 calc.set_positions(si)
+assert calc.wfs.dtype == complex
+
 r = RecursionMethod(calc)
 r.run(40)
 if mpi.size == 1:

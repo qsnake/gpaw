@@ -333,10 +333,10 @@ class BasisMaker:
         return rsplit, partial_norm, splitwave
 
     def generate(self, zetacount=2, polarizationcount=1,
-                 tailnorm=(.15, .25, .35), energysplit=.3, tolerance=1.0e-3,
+                 tailnorm=(0.03, 0.1, 0.4), energysplit=.3, tolerance=1.0e-3,
                  referencefile=None, referenceindex=None, rcutpol_rel=1., 
                  rcutmax=20., ngaussians=None, rcharpol_rel=None,
-                 vconf_args=(8., .6), txt='-',
+                 vconf_args=(12., .6), txt='-',
                  include_energy_derivatives=False):
         """Generate an entire basis set.
 

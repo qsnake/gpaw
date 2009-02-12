@@ -2,7 +2,7 @@ import sys
 
 from ase import Atoms, Atom
 
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.utilities import equal
 from gpaw.utilities.timing import Timer
 
@@ -25,7 +25,7 @@ for fg in fgl:
     else:
         tstr = 'Exx on coarse grid'
     timer.start(tstr)
-    calc = Calculator(h = .3, xc='PBE',
+    calc = GPAW(h = .3, xc='PBE',
                       nbands=4,
                       convergence={'eigenstates': 1e-4},
                       charge=-1)

@@ -1,4 +1,4 @@
-from gpaw import Calculator
+from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
 
@@ -15,14 +15,14 @@ Be_aloneC = Atoms([Atom('Be', (a/2., a/2., a/2.), magmom=1)],
                  cell=(a, a, a), pbc=False)
 
 
-Be_solid.set_calculator(Calculator(h=0.3, nbands=1))
+Be_solid.set_calculator(GPAW(h=0.3, nbands=1))
 E_solid_neutral = Be_solid.get_potential_energy()
-Be_solidC.set_calculator(Calculator(h=0.3, charge=+1, nbands=1))
+Be_solidC.set_calculator(GPAW(h=0.3, charge=+1, nbands=1))
 E_solid_charged = Be_solidC.get_potential_energy()
 
-Be_alone.set_calculator(Calculator(h=0.3, nbands=1))
+Be_alone.set_calculator(GPAW(h=0.3, nbands=1))
 E_alone_neutral = Be_alone.get_potential_energy()
-Be_aloneC.set_calculator(Calculator(h=0.3, charge=+1, nbands=1))
+Be_aloneC.set_calculator(GPAW(h=0.3, charge=+1, nbands=1))
 E_alone_charged = Be_aloneC.get_potential_energy()
 
 print "A test for periodic charged calculations"

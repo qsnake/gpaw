@@ -52,7 +52,7 @@ class ExternalPotential:
         """Return the energy contribution of the bare nucleus."""
         return 0. # don't assume anything about the nucleus
 
-    def add_linear_field(self, pt_nuclei, a_nG, b_nG, strength, kpt):
+    def add_linear_field(self, wfs, spos_ac, a_nG, b_nG, strength, kpt):
         """Adds (does NOT apply) linear field 
         f(x,y,z) = str_x * x + str_y * y + str_z * z to wavefunctions.
 
@@ -70,43 +70,76 @@ class ExternalPotential:
             K-point
         """
 
+        gd = wfs.gd
+        
         # apply local part of x to smooth wavefunctions psit_n
-        for i in range(kpt.gd.n_c[0]):
-            x = (i + kpt.gd.beg_c[0]) * kpt.gd.h_c[0]
+        for i in range(gd.n_c[0]):
+            x = (i + gd.beg_c[0]) * gd.h_c[0]
             b_nG[:,i,:,:] += (strength[0] * x) * a_nG[:,i,:,:]
 
         # FIXME: combine y and z to one vectorized operation,
         # i.e., make yz-array and take its product with a_nG
 
         # apply local part of y to smooth wavefunctions psit_n
-        for i in range(kpt.gd.n_c[1]):
-            y = (i + kpt.gd.beg_c[1]) * kpt.gd.h_c[1]
+        for i in range(gd.n_c[1]):
+            y = (i + gd.beg_c[1]) * gd.h_c[1]
             b_nG[:,:,i,:] += (strength[1] * y) * a_nG[:,:,i,:]
 
         # apply local part of z to smooth wavefunctions psit_n
-        for i in range(kpt.gd.n_c[2]):
-            z = (i + kpt.gd.beg_c[2]) * kpt.gd.h_c[2]
+        for i in range(gd.n_c[2]):
+            z = (i + gd.beg_c[2]) * gd.h_c[2]
             b_nG[:,:,:,i] += (strength[2] * z) * a_nG[:,:,:,i]
 
 
         # apply the non-local part for each nucleus
-        for nucleus in pt_nuclei:
-            if nucleus.in_this_domain:
-                # position
-                x_c = nucleus.spos_c[0] * kpt.gd.domain.cell_c[0]
-                y_c = nucleus.spos_c[1] * kpt.gd.domain.cell_c[1]
-                z_c = nucleus.spos_c[2] * kpt.gd.domain.cell_c[2]
 
-                # apply linear x operator
-                nucleus.apply_linear_field( a_nG, b_nG, kpt.k,
-                                            strength[0] * x_c
-                                            + strength[1] * y_c
-                                            + strength[2] * z_c, strength )
+        # number of wavefunctions, psit_nG
+        n = len(a_nG)
+        P_ani = wfs.pt.dict(n)
+        wfs.pt.integrate(a_nG, P_ani, kpt.q)
 
-            # if not in this domain
-            else:
-                nucleus.apply_linear_field(a_nG, b_nG, kpt.k, None, None)
+        coef_ani = {}
+        for a, P_ni in P_ani.items():
+            c0 = npy.dot(spos_ac[a] * gd.domain.cell_c, strength)
+            cxyz = strength
+            # calculate coefficient 
+            # ---------------------
+            #
+            # coeffs_ni =
+            #   P_nj * c0 * 1_ij
+            #   + P_nj * cx * x_ij
+            #
+            # where (see spherical_harmonics.py)
+            #
+            #   1_ij = sqrt(4pi) Delta_0ij
+            #   y_ij = sqrt(4pi/3) Delta_1ij
+            #   z_ij = sqrt(4pi/3) Delta_2ij
+            #   x_ij = sqrt(4pi/3) Delta_3ij
+            # ...
 
+            Delta_iiL = wfs.setups[a].Delta_Lii  # XXX rename in setup.py
+
+            #   1_ij = sqrt(4pi) Delta_0ij
+            #   y_ij = sqrt(4pi/3) Delta_1ij
+            #   z_ij = sqrt(4pi/3) Delta_2ij
+            #   x_ij = sqrt(4pi/3) Delta_3ij
+            oneij = npy.sqrt(4.*npy.pi) \
+                * npy.dot(P_ni, Delta_iiL[:,:,0])
+            yij = npy.sqrt(4.*npy.pi / 3.) \
+                * npy.dot(P_ni, Delta_iiL[:,:,1])
+            zij = npy.sqrt(4.*npy.pi / 3.) \
+                * npy.dot(P_ni, Delta_iiL[:,:,2])
+            xij = npy.sqrt(4.*npy.pi / 3.) \
+                * npy.dot(P_ni, Delta_iiL[:,:,3])
+
+            # coefficients
+            # coefs_ni = sum_j ( <phi_i| f(x,y,z) | phi_j>
+            #                    - <phit_i| f(x,y,z) | phit_j> ) P_nj
+            coef_ani[a] = ( c0 * oneij 
+                            + cxyz[0] * xij + cxyz[1] * yij + cxyz[2] * zij )
+            
+        # add partial wave pt_nG to psit_nG with proper coefficient
+        wfs.pt.add(b_nG, coef_ani, kpt.k)
 
 
     # BAD, VERY VERY SLOW, DO NOT USE IN REAL CALCULATIONS!!!

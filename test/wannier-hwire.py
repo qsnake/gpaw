@@ -1,5 +1,5 @@
 import os
-from gpaw import Calculator
+from gpaw import GPAW
 from ase import *
 from gpaw.wannier import Wannier
 from gpaw.utilities import equal
@@ -19,7 +19,7 @@ kpts = monkhorst_pack((kpts, 1, 1)) + 2e-5
 
 if 1:
     # GPAW calculator:
-    calc = Calculator(nbands=natoms // 2 + 4,
+    calc = GPAW(nbands=natoms // 2 + 4,
                       kpts=kpts,
                       width=.1,
                       spinpol=False,
@@ -28,7 +28,7 @@ if 1:
     atoms.get_potential_energy()
     calc.write('hwire%s.gpw' % natoms, 'all')
 else:
-    calc = Calculator('hwire%s.gpw' % natoms, txt=None)
+    calc = GPAW('hwire%s.gpw' % natoms, txt=None)
 
 wannier = Wannier(numberofwannier=natoms,
                   calculator=calc,

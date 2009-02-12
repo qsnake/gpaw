@@ -1,25 +1,25 @@
-from ase import Atoms, Atom, monkhorst_pack, Hartree
-import ase
-from gpaw import GPAW, Mixer, restart
-from gpaw.lcao.tools import get_realspace_hs, get_kspace_hs, \
-                                                         tri2full, remove_pbc
-from gpaw.mpi import world
-from gpaw.utilities.lapack import diagonalize
-from gpaw.utilities.tools import dagger
-from gpaw.utilities import pack
-from gpaw.lcao.IntCtrl import IntCtrl
-from gpaw.lcao.CvgCtrl import *
-from gpaw.utilities.timing import Timer
+import pickle
+
 from ase.transport.selfenergy import LeadSelfEnergy
 from ase.transport.greenfunction import GreenFunction
-from ase.transport.tools import *
-import pickle
-import numpy as npy
+from ase.transport.tools import function_integral, fermidistribution
+from ase import Atoms, Atom, monkhorst_pack, Hartree
+import ase
+import numpy as np
+
+from gpaw import GPAW, Mixer
+from gpaw import restart as restart_gpaw
+from gpaw.lcao.tools import get_realspace_hs, get_kspace_hs, \
+     tri2full, remove_pbc
+from gpaw.mpi import world
+from gpaw.utilities.lapack import diagonalize
+from gpaw.utilities import pack
+from gpaw.lcao.IntCtrl import IntCtrl
+from gpaw.lcao.CvgCtrl import CvgCtrl
+from gpaw.utilities.timing import Timer
 
 class PathInfo:
     def __init__(self, type):
-    # equilibrium ------ eq
-    # non-equilibrium ---ne
         self.type = type
         self.num = 0
         self.energy = []
@@ -31,7 +31,7 @@ class PathInfo:
         elif type == 'ne':
             self.fermi_factor = [[], []]
         else:
-            print 'unkown PathInfo type'
+            raise TypeError('unkown PathInfo type')
 
     def add(self, elist, wlist, flist, siglist):
         self.num += len(elist)
@@ -43,18 +43,18 @@ class PathInfo:
             for i in [0, 1]:
                 self.fermi_factor[i] += flist[i]
         else:
-            print 'unkown PathInfo type'
+            raise TypeError('unkown PathInfo type')
         for i in [0, 1]:
             self.sigma[i] += siglist[i]
+
     def set_nres(self, nres):
         self.nres = nres
     
 class GPAWTransport:
     
-    def __init__(self, atoms, pl_atoms, pl_cells, d=0):
+    def __init__(self, atoms, pl_atoms, pl_cells, d=0, extend=False):
         self.atoms = atoms
-        if not self.atoms.calc.initialized:
-            self.atoms.calc.initialize(atoms)
+        print 'if not self.atoms.calc.initialized: self.atoms.calc.initialize(atoms)'
         self.pl_atoms = pl_atoms
         self.pl_cells = pl_cells
         self.d = d
@@ -65,6 +65,7 @@ class GPAWTransport:
         self.s1_kmm = None
         self.h2_skmm = None
         self.s2_kmm = None
+        self.extend = extend
 
     def write_left_lead(self,filename):
         self.update_lead_hamiltonian(0)
@@ -73,8 +74,8 @@ class GPAWTransport:
         self.update_lead_hamiltonian(0)
 
         pl1 = self.h1_skmm.shape[-1]
-        h1 = npy.zeros((2*pl1, 2 * pl1), complex)
-        s1 = npy.zeros((2*pl1, 2 * pl1), complex)
+        h1 = np.zeros((2*pl1, 2 * pl1), complex)
+        s1 = np.zeros((2*pl1, 2 * pl1), complex)
 
         atoms1 = self.atoms_l[0]
         calc1 = atoms1.calc
@@ -102,7 +103,7 @@ class GPAWTransport:
         s1[:pl1,pl1:2*pl1] = s1_ij
         tri2full(s1, 'U')
         
-        if calc1.master:
+        if calc1.wfs.world.rank == 0:
             print "Dumping lead 1 hamiltonian..."
             fd = file('lead1_' + filename, 'wb')
             pickle.dump((h1, s1), fd, 2)
@@ -112,8 +113,8 @@ class GPAWTransport:
         
         self.update_lead_hamiltonian(1) 
         pl2 = self.h2_skmm.shape[-1]
-        h2 = npy.zeros((2 * pl2, 2 * pl2), complex)
-        s2 = npy.zeros((2 * pl2, 2 * pl2), complex)
+        h2 = np.zeros((2 * pl2, 2 * pl2), complex)
+        s2 = np.zeros((2 * pl2, 2 * pl2), complex)
 
         atoms2 = self.atoms_l[1]
         calc2 = atoms2.calc
@@ -138,12 +139,12 @@ class GPAWTransport:
         h2[:pl2,pl2:2*pl2] = h2_sij[0]
         tri2full(h2,'U')
         
-        s2[:pl2,:pl2] = s2_ii
-        s2[pl2:2*pl2,pl2:2*pl2] = s2_ii
-        s2[:pl2,pl2:2*pl2] = s2_ij
-        tri2full(s2,'U')
+        s2[:pl2, :pl2] = s2_ii
+        s2[pl2:2*pl2, pl2:2*pl2] = s2_ii
+        s2[:pl2, pl2:2*pl2] = s2_ij
+        tri2full(s2, 'U')
 
-        if calc2.master:
+        if calc2.wfs.world.rank == 0:
             print "Dumping lead 2 hamiltonian..."
             fd = file('lead2_'+filename,'wb')
             pickle.dump((h2,s2),fd,2)
@@ -156,8 +157,8 @@ class GPAWTransport:
         self.update_scat_hamiltonian()
         nbf_m = self.h_skmm.shape[-1]
         nbf = nbf_m + pl1 + pl2
-        h = npy.zeros((nbf, nbf), complex)
-        s = npy.zeros((nbf, nbf), complex)
+        h = np.zeros((nbf, nbf), complex)
+        s = np.zeros((nbf, nbf), complex)
         
         h_mm = self.h_skmm[0,0]
         s_mm = self.s_kmm[0]
@@ -172,121 +173,116 @@ class GPAWTransport:
         s[-2*pl2:,-2*pl2:] = s2
         s[pl1:-pl2,pl1:-pl2] = s_mm
   
-        if atoms.calc.master:
+        if atoms.calc.wfs.world.rank == 0:
             print "Dumping scat hamiltonian..."
             fd = file('scat_'+filename,'wb')
             pickle.dump((h,s),fd,2)
             fd.close()
         world.barrier()
 
-    def update_lead_hamiltonian(self, l, flag=0):
-        # flag: 0 for calculation, 1 for restart
-        if flag == 0:
+    def update_lead_hamiltonian(self, l, restart=False):
+        if not restart:
             self.atoms_l[l] = self.get_lead_atoms(l)
             atoms = self.atoms_l[l]
             atoms.get_potential_energy()
+            rank = world.rank
             atoms.calc.write('lead' + str(l) + '.gpw')
             if l == 0:
                 self.h1_skmm, self.s1_kmm = self.get_hs(atoms)
-                fd = file('leadhs0','wb')
-                pickle.dump((self.h1_skmm, self.s1_kmm, self.nxklead), fd, 2)
+                fd = file('leadhs0_' + str(rank),'wb')
+                pickle.dump((self.h1_skmm, self.s1_kmm,
+                             self.atoms_l[0].calc.hamiltonian.vt_sG,
+                             self.ntklead), fd, 2)            
                 fd.close()            
             elif l == 1:
                 self.h2_skmm, self.s2_kmm = self.get_hs(atoms)
-                fd = file('leadhs1','wb')
-                pickle.dump((self.h2_skmm, self.s2_kmm, self.nxklead), fd, 2)
+                fd = file('leadhs1_' + str(rank),'wb')
+                pickle.dump((self.h2_skmm, self.s2_kmm,
+                             self.atoms_l[1].calc.hamiltonian.vt_sG,
+                             self.ntklead), fd, 2)
                 fd.close()
         else:
-            atoms, calc = restart('lead' + str(l) + '.gpw')
+            atoms, calc = restart_gpaw('lead' + str(l) + '.gpw')
+            calc.set_positions()
             self.atoms_l[l] = atoms
+            self.atoms_l[l].calc = calc
+            rank = world.rank
             if l == 0:        
-                fd = file('leadhs0','r') 
-                self.h1_skmm, self.s1_kmm, self.nxklead = pickle.load(fd)
+                fd = file('leadhs0_' + str(rank),'r') 
+                self.h1_skmm, self.s1_kmm, \
+                                   self.atoms_l[0].calc.hamiltonian.vt_sG, \
+                                               self.ntklead = pickle.load(fd)
                 fd.close()
             elif l == 1:
-                fd = file('leadhs1','r') 
-                self.h2_skmm, self.s2_kmm, self.nxklead = pickle.load(fd)
+                fd = file('leadhs1_' + str(rank),'r') 
+                self.h2_skmm, self.s2_kmm, \
+                                   self.atoms_l[1].calc.hamiltonian.vt_sG, \
+                                               self.ntklead = pickle.load(fd)
                 fd.close()
-
-    def update_scat_hamiltonian(self, flag=0):
-        # flag: 0 for calculation, 1 for restart
-        if flag == 0:
+        self.dimt_lead = self.atoms_l[0].calc.hamiltonian.vt_sG.shape[-1]
+        
+    def update_scat_hamiltonian(self, restart=False):
+        if not restart:
             atoms = self.atoms
             atoms.get_potential_energy()
-            atoms.calc.write('scat.gpw')
-            self.h_skmm, self.s_kmm = self.get_hs(atoms)
-            fd = file('scaths', 'wb')
-            pickle.dump((self.h_skmm, self.s_kmm), fd, 2)
-            fd.close()
             calc = atoms.calc
-            fd = file('nct_G.dat', 'wb')
-            pickle.dump(calc.density.nct_G, fd, 2)
+            rank = world.rank
+            calc.write('scat.gpw')
+            self.h_skmm, self.s_kmm = self.get_hs(atoms)
+            fd = file('scaths_' + str(rank), 'wb')
+            pickle.dump((self.h_skmm, self.s_kmm, calc.density.nct_G,
+                                          calc.hamiltonian.vt_sG), fd, 2)
             fd.close()
-            self.nct_G = npy.copy(calc.density.nct_G)
                         
-        else :
-            atoms, calc = restart('scat.gpw')
+        else:
+            atoms, calc = restart_gpaw('scat.gpw')
+            calc.set_positions()
+            rank = world.rank
             self.atoms = atoms
-            fd = file('scaths', 'r')
-            self.h_skmm, self.s_kmm = pickle.load(fd)
+            fd = file('scaths_' + str(rank), 'r')
+            self.h_skmm, self.s_kmm, calc.density.nct_G, \
+                                    calc.hamiltonian.vt_sG = pickle.load(fd)
             fd.close()
-            fd = file('nct_G.dat', 'r')
-            self.nct_G = pickle.load(fd)
-            fd.close()
+            self.atoms.calc = calc
             
     def get_hs(self, atoms):
         calc = atoms.calc
+        wfs = calc.wfs
         Ef = calc.get_fermi_level()
-        eigensolver = calc.eigensolver
+        eigensolver = wfs.eigensolver
         ham = calc.hamiltonian
-        Vt_skmm = eigensolver.Vt_skmm
-        ham.calculate_effective_potential_matrix(Vt_skmm)
-        ibzk_kc = calc.ibzk_kc
-        nkpts = len(ibzk_kc)
-        nspins = calc.nspins
-        weight_k = calc.weight_k
-        nao = calc.nao
-        h_skmm = npy.zeros((nspins, nkpts, nao, nao), complex)
-        s_kmm = npy.zeros((nkpts, nao, nao), complex)
-        for k in range(nkpts):
-            s_kmm[k] = ham.S_kmm[k]
-            tri2full(s_kmm[k])
-            for s in range(nspins):
-                h_skmm[s,k] = calc.eigensolver.get_hamiltonian_matrix(ham,
-                                                                      k=k,
-                                                                      s=s)
-                tri2full(h_skmm[s, k])
-                h_skmm[s,k] *= Hartree
-                h_skmm[s,k] -= Ef * s_kmm[k]
+        S_qMM = wfs.S_qMM.copy()
+        for S_MM in S_qMM:
+            tri2full(S_MM)
+        H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, complex)
+        for kpt in wfs.kpt_u:
+            eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
+            H_MM = eigensolver.H_MM
+            tri2full(H_MM)
+            H_MM *= Hartree
+            H_MM -= Ef * S_qMM[kpt.q]
+            H_sqMM[kpt.s, kpt.q] = H_MM
 
-        return h_skmm, s_kmm
+        return H_sqMM, S_qMM
 
     def get_lead_atoms(self, l):
         """l: 0, 1 correpsonding to left, right """
         atoms = self.atoms.copy()
-        atomsl = Atoms(pbc=atoms.pbc, cell=self.pl_cells[l])
-    
-        for a in self.pl_atoms[l]:
-            atomsl.append(atoms[a])
-       
+        atomsl = atoms[self.pl_atoms[l]]
+        atomsl.cell = self.pl_cells[l]
         atomsl.center()
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
 
-    def get_lead_calc(self, l, nkpts=21):
+    def get_lead_calc(self, l, nkpts=15):
         p = self.atoms.calc.input_parameters.copy()
         p['nbands'] = None
-        kpts = p['kpts']
-        if kpts is None:
-            kpts = [1, 1, 1]
-        else:
-            kpts = list(kpts)
-        
+        kpts = list(p['kpts'])
         if nkpts == 0:
             kpts[self.d] = 2 * int(17.0 / self.pl_cells[l][self.d]) + 1
         else:
             kpts[self.d] = nkpts
-        self.nxklead = kpts[self.d]
+        self.ntklead = kpts[self.d]
         p['kpts'] = kpts
         if 'mixer' in p: # XXX Works only if spin-paired
             p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
@@ -309,193 +305,199 @@ class GPAWTransport:
         self.atoms_l[0] = self.get_lead_atoms(0)
         self.atoms_l[1] = self.get_lead_atoms(1)
         
-    def negf_prepare(self, filename, flag=0):
-        # flag: 0 for calculation, 1 for restart
-        self.update_lead_hamiltonian(0, flag)
-
-        atoms1 = self.atoms_l[0]
-        calc1 = atoms1.calc
-        kpts = calc1.ibzk_kc
-
+    def negf_prepare(self, scat_restart=False, lead_restart=True):
+        self.update_lead_hamiltonian(0, lead_restart)
+        world.barrier()
+        self.update_lead_hamiltonian(1, lead_restart)
+        world.barrier()
+        if self.extend:
+            self.extend_scat()
+        
+        p = self.atoms.calc.input_parameters.copy()           
+        self.ntkmol = p['kpts'][self.d]
+        self.update_scat_hamiltonian(scat_restart)
+        world.barrier()
         self.nspins = self.h1_skmm.shape[0]
         self.nblead = self.h1_skmm.shape[-1]
-        self.nyzk = kpts.shape[0] / self.nxklead        
-        
-        nxk = self.nxklead
-        weight = npy.array([1.0 / nxk] * nxk )
-        xkpts = self.pick_out_xkpts(nxk, kpts)
-        self.check_edge(self.s1_kmm, xkpts, weight)
-        self.d1_skmm = self.generate_density_matrix(0, flag)        
-        self.initial_lead(0)
-       
+        self.nbmol = self.h_skmm.shape[-1]
+        kpts = self.atoms_l[0].calc.wfs.ibzk_kc  
+        self.npk = kpts.shape[0] / self.ntklead  
+        self.allocate_cpus()
 
-        self.update_lead_hamiltonian(1, flag)
-        self.d2_skmm = self.generate_density_matrix(1, flag)
+        self.d1_skmm = self.generate_density_matrix('lead_l', lead_restart)        
+        self.check_edge()
+        self.initial_lead(0)
+
+        self.d2_skmm = self.generate_density_matrix('lead_r', lead_restart)
         self.initial_lead(1)
 
-        p = self.atoms.calc.input_parameters.copy()           
-        self.nxkmol = p['kpts'][0]  
-        self.update_scat_hamiltonian(0)
-        self.nbmol = self.h_skmm.shape[-1]
-        self.d_skmm = self.generate_density_matrix(2, flag)
+        self.d_skmm = self.generate_density_matrix('scat', scat_restart)
         self.initial_mol()        
- 
-        self.edge_density_mm = self.calc_edge_charge(self.d_syzkmm_ij,
-                                                              self.s_yzkmm_ij)
-        self.edge_charge = npy.empty([self.nspins, self.nyzk])
-        
+
+        self.edge_density_mm = self.calc_edge_density(self.d_spkmm_ij,
+                                                              self.s_pkmm_ij)
+        self.edge_charge = np.zeros([self.nspins])
         for i in range(self.nspins):
-            for j in range(self.nyzk):
-                self.edge_charge[i, j] = npy.trace(self.edge_density_mm[i, j])
-                print 'edge_charge[',i,']=', self.edge_charge[i, j]
+            for j in range(self.my_npk):
+                self.edge_charge[i] += np.trace(self.edge_density_mm[i, j])
+            
+        self.kpt_comm.sum(self.edge_charge)
+        if world.rank == 0:
+            for i in range(self.nspins):  
+                total_edge_charge  = self.edge_charge[i] / self.npk
+                print 'edge_charge[%d]=%f' % (i, total_edge_charge)
+        self.boundary_check()
+        
+        del self.atoms_l
 
     def initial_lead(self, lead):
-        nxk = self.nxklead
-        kpts = self.atoms_l[lead].calc.ibzk_kc
+        nspins = self.nspins
+        ntk = self.ntklead
+        npk = self.my_npk
+        nblead = self.nblead
+        kpts = self.my_lead_kpts
+        position = [0, 0, 0]
         if lead == 0:
-            self.h1_syzkmm = self.substract_yzk(nxk, kpts, self.h1_skmm, 'h')
-            self.s1_yzkmm = self.substract_yzk(nxk, kpts, self.s1_kmm)
-            self.h1_syzkmm_ij = self.substract_yzk(nxk, kpts, self.h1_skmm, 'h',
-                                               [1.0,0,0])
-            self.s1_yzkmm_ij = self.substract_yzk(nxk, kpts, self.s1_kmm, 's',
-                                               [1.0,0,0])
-            self.d1_syzkmm = self.substract_yzk(nxk, kpts, self.d1_skmm, 'h')
-            self.d1_syzkmm_ij = self.substract_yzk(nxk, kpts, self.d1_skmm, 'h',
-                                               [1.0,0,0])
+            position[self.d] = 1.0
+            self.h1_spkmm = self.substract_pk(ntk, kpts, self.h1_skmm, 'h')
+            self.s1_pkmm = self.substract_pk(ntk, kpts, self.s1_kmm)
+            self.h1_spkmm_ij = self.substract_pk(ntk, kpts, self.h1_skmm,
+                                                   'h', position)
+            self.s1_pkmm_ij = self.substract_pk(ntk, kpts, self.s1_kmm,
+                                                  's', position)
+            self.d1_spkmm = self.substract_pk(ntk, kpts, self.d1_skmm, 'h')
+            self.d1_spkmm_ij = self.substract_pk(ntk, kpts, self.d1_skmm,
+                                                   'h', position)
         elif lead == 1:
-            self.h2_syzkmm = self.substract_yzk(nxk, kpts, self.h2_skmm, 'h')
-            self.s2_yzkmm = self.substract_yzk(nxk, kpts, self.s2_kmm)
-            self.h2_syzkmm_ij = self.substract_yzk(nxk, kpts, self.h2_skmm, 'h',
-                                               [-1.0,0,0])
-            self.s2_yzkmm_ij = self.substract_yzk(nxk, kpts, self.s2_kmm, 's',
-                                              [-1.0,0,0])            
+            position[self.d] = -1.0
+            self.h2_spkmm = self.substract_pk(ntk, kpts, self.h2_skmm, 'h')
+            self.s2_pkmm = self.substract_pk(ntk, kpts, self.s2_kmm)
+            self.h2_spkmm_ij = self.substract_pk(ntk, kpts, self.h2_skmm,
+                                                   'h', position)
+            self.s2_pkmm_ij = self.substract_pk(ntk, kpts, self.s2_kmm,
+                                                  's', position)            
         else:
-            print 'unkown lead index'
+            raise TypeError('unkown lead index')
 
     def initial_mol(self):
-        nxk = self.nxkmol
-        kpts = self.atoms.calc.ibzk_kc
-        self.h_syzkmm = self.substract_yzk(nxk, kpts, self.h_skmm, 'h')
-        self.s_yzkmm = self.substract_yzk(nxk, kpts, self.s_kmm)
-        self.s_yzkmm_ij = self.substract_yzk(nxk, kpts, self.s_kmm, 's',
-                                            [1.0,0,0])
-        self.d_syzkmm = self.substract_yzk(nxk, kpts, self.d_skmm, 'h')
-        self.d_syzkmm_ij = self.fill_density_matrix()
+        ntk = self.ntkmol
+        kpts = self.my_kpts
+        position = [0,0,0]
+        position[self.d] = 1.0
+        self.h_spkmm = self.substract_pk(ntk, kpts, self.h_skmm, 'h')
+        self.s_pkmm = self.substract_pk(ntk, kpts, self.s_kmm)
+        self.s_pkmm_ij = self.substract_pk(ntk, kpts, self.s_kmm, 's',
+                                            position)
+        self.d_spkmm = self.substract_pk(ntk, kpts, self.d_skmm, 'h')
+        self.d_spkmm_ij = self.substract_pk(ntk, kpts, self.d_skmm,
+                                                    'h', position)
+        #self.d_spkmm_ij2 = self.fill_density_matrix()
 
-    def substract_yzk(self, nxk, kpts, k_mm, hors='s', position=[0, 0, 0]):
-        nyzk = self.nyzk
-        weight = npy.array([1.0 / nxk] * nxk )
-        if hors != 's' and hors != 'h':
+    def substract_pk(self, ntk, kpts, k_mm, hors='s', position=[0, 0, 0]):
+        npk = self.my_npk
+        weight = np.array([1.0 / ntk] * ntk )
+        if hors not in 'hs':
             raise KeyError('hors should be h or s!')
         if hors == 'h':
             dim = k_mm.shape[:]
-            dim = (dim[0],) + (dim[1] / nxk,) + dim[2:]
-            yzk_mm = npy.empty(dim, complex)
-            dim = (dim[0],) + (nxk,) + dim[2:]
-            xk_mm = npy.empty(dim, complex)
+            dim = (dim[0],) + (dim[1] / ntk,) + dim[2:]
+            pk_mm = np.empty(dim, complex)
+            dim = (dim[0],) + (ntk,) + dim[2:]
+            tk_mm = np.empty(dim, complex)
         elif hors == 's':
             dim = k_mm.shape[:]
-            dim = (dim[0] / nxk,) + dim[1:]
-            yzk_mm = npy.empty(dim, complex)
-            dim = (nxk,) + dim[1:]
-            xk_mm = npy.empty(dim, complex)
+            dim = (dim[0] / ntk,) + dim[1:]
+            pk_mm = np.empty(dim, complex)
+            dim = (ntk,) + dim[1:]
+            tk_mm = np.empty(dim, complex)
         n = 0
-        xkpts = self.pick_out_xkpts(nxk, kpts)
-        for i in range(nyzk):
-            n = i
-            for j in range(nxk):
+        tkpts = self.pick_out_tkpts(ntk, kpts)
+        for i in range(npk):
+            n = i * ntk
+            for j in range(ntk):
                 if hors == 'h':
-                    xk_mm[:, j] = npy.copy(k_mm[:, n])
+                    tk_mm[:, j] = np.copy(k_mm[:, n + j])
                 elif hors == 's':
-                    xk_mm[j] = npy.copy(k_mm[n])
-                n += nyzk
+                    tk_mm[j] = np.copy(k_mm[n + j])
             if hors == 'h':
-                yzk_mm[:, i] = get_realspace_hs(xk_mm, None,
-                                               xkpts, weight, position)
+                pk_mm[:, i] = get_realspace_hs(tk_mm, None,
+                                               tkpts, weight, position)
             elif hors == 's':
-                yzk_mm[i] = get_realspace_hs(None, xk_mm,
-                                                   xkpts, weight, position)
-        return yzk_mm   
+                pk_mm[i] = get_realspace_hs(None, tk_mm,
+                                                   tkpts, weight, position)
+        return pk_mm   
             
-    def check_edge(self, k_mm, xkpts, weight):
+    def check_edge(self):
         tolx = 1e-6
-        position = [2,0,0]
-        nbf = k_mm.shape[-1]
-        nxk = self.nxklead
-        nyzk = self.nyzk
-        xk_mm = npy.empty([nxk, nbf, nbf], complex)
-      
-        num = 0       
-        for i in range(nxk):
-            xk_mm[i] = npy.copy(k_mm[num])
-            num += nyzk
-
-        r_mm = npy.empty([nbf, nbf], complex)
-        r_mm = get_realspace_hs(None, xk_mm, xkpts, weight, position)
-        matmax = npy.max(abs(r_mm))
-
+        position = [0,0,0]
+        position[self.d] = 2.0
+        ntk = self.ntklead
+        npk = self.npk
+        kpts = self.my_lead_kpts
+        s_pkmm = self.substract_pk(ntk, kpts, self.s1_kmm, 's', position)
+        matmax = np.max(abs(s_pkmm))
         if matmax > tolx:
             print 'Warning*: the principle layer should be lagger, \
-                                                          matmax=%f' % matmax
+                                                          matmax=%f' % matmax        
     
-    def calc_edge_charge(self, d_syzkmm_ij, s_yzkmm_ij):
+    def calc_edge_density(self, d_spkmm_ij, s_pkmm_ij):
         nspins = self.nspins
-        nyzk = self.nyzk
-        nbf = s_yzkmm_ij.shape[-1]
-        edge_charge_mm = npy.zeros([nspins, nyzk, nbf, nbf])
+        npk = self.my_npk
+        nbf = s_pkmm_ij.shape[-1]
+        edge_charge_mm = np.zeros([nspins, npk, nbf, nbf])
         for i in range(nspins):
-            for j in range(nyzk):
-                edge_charge_mm[i, j] += npy.dot(d_syzkmm_ij[i, j],
-                                                   dagger(s_yzkmm_ij[i]))
-                edge_charge_mm[i, j] += npy.dot(dagger(d_syzkmm_ij[i, j]),
-                                                          s_yzkmm_ij[i])
+            for j in range(npk):
+                edge_charge_mm[i, j] += np.dot(d_spkmm_ij[i, j],
+                                               s_pkmm_ij[j].T.conj())
+                edge_charge_mm[i, j] += np.dot(d_spkmm_ij[i, j].T.conj(),
+                                               s_pkmm_ij[j])
         return edge_charge_mm
 
-    def pick_out_xkpts(self, nxk, kpts):
-        nyzk = self.nyzk
-        xkpts = npy.zeros([nxk, 3])
-        num = 0
-        for i in range(nxk):
-            xkpts[i, 0] = kpts[num, 0]
-            num += nyzk
-        return xkpts
+    def pick_out_tkpts(self, ntk, kpts):
+        npk = self.npk
+        tkpts = np.zeros([ntk, 3])
+        for i in range(ntk):
+            tkpts[i, 2] = kpts[i, 2]
+        return tkpts
 
-    def generate_density_matrix(self, lead, flag=0):
-        nxk = self.nxklead
-        nyzk = self.nyzk
-        if flag == 0:
-            if lead == 0:
+    def generate_density_matrix(self, region, restart=True):
+        ntk = self.ntklead
+        npk = self.npk
+        rank = world.rank
+        if not restart:
+            if region == 'lead_l':
                 calc = self.atoms_l[0].calc
                 dim = self.h1_skmm.shape
-                filename = 'd1_skmm.dat'
-            elif lead == 1:
+                filename = 'd1_skmm_' + str(rank)
+            elif region == 'lead_r':
                 calc = self.atoms_l[1].calc
                 dim = self.h2_skmm.shape
-                filename = 'd2_skmm.dat'
-            elif lead == 2:
+                filename = 'd2_skmm_' + str(rank)
+            elif region == 'scat':
                 calc = self.atoms.calc
                 dim = self.h_skmm.shape
-                nxk = self.nxkmol
-                filename = 'd_skmm.dat'
+                ntk = self.ntkmol
+                filename = 'd_skmm_' + str(rank)
             else:
                 raise KeyError('invalid lead index in \
                                                      generate_density_matrix')
-            d_skmm = npy.empty(dim, complex)
-            for kpt in calc.kpt_u:
-                C_nm = kpt.C_nm
-                f_nn = npy.diag(kpt.f_n)
-                d_skmm[kpt.s, kpt.k] = npy.dot(dagger(C_nm),
-                                            npy.dot(f_nn, C_nm)) * nxk * nyzk
+            d_skmm = np.empty(dim, complex)
+            for kpt in calc.wfs.kpt_u:
+                C_nm = kpt.C_nM
+                f_nn = np.diag(kpt.f_n)
+                d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
+                                              np.dot(f_nn, C_nm)) * ntk * npk
             fd = file(filename,'wb')
             pickle.dump(d_skmm, fd, 2)
             fd.close()
         else:
-            if lead == 0:
-                filename = 'd1_skmm.dat'
-            elif lead == 1:
-                filename = 'd2_skmm.dat'
-            elif lead == 2:
-                filename = 'd_skmm.dat'
+            
+            if region == 'lead_l':
+                filename = 'd1_skmm_' + str(rank)
+            elif region == 'lead_r':
+                filename = 'd2_skmm_' + str(rank)
+            elif region == 'scat':
+                filename = 'd_skmm_'  + str(rank)
             else:
                 raise KeyError('invalid lead index in \
                                                      generate_density_matrix')
@@ -505,189 +507,239 @@ class GPAWTransport:
         return d_skmm
     
     def fill_density_matrix(self):
-        pl1 = self.h1_skmm.shape[-1]
-        nbmol = self.h_skmm.shape[-1]
-        nyzk = self.nyzk
+        nblead = self.nblead
+        nbmol = self.nbmol
+        npk = self.my_npk
         nspins = self.nspins
-        d_syzkmm_ij = npy.zeros([nspins, nyzk, nbmol, nbmol])
-        d_syzkmm_ij[:, :, -pl1:, :pl1] = npy.copy(self.d1_syzkmm_ij)
-        return d_syzkmm_ij
+        d_spkmm_ij = np.zeros([nspins, npk, nbmol, nbmol], complex)
+        d_spkmm_ij[:, :, -nblead:, :nblead] = np.copy(self.d1_spkmm_ij)                    
+        return d_spkmm_ij
 
     def boundary_check(self):
         tol = 1e-4
         pl1 = self.h1_skmm.shape[-1]
-        matdiff = self.h_syzkmm[0, :, :pl1, :pl1] - self.h1_syzkmm[0]
+        self.do_shift = False
+        matdiff = self.h_spkmm[0, :, :pl1, :pl1] - self.h1_spkmm[0]
         if self.nspins == 2:
-             matdiff1 = self.h_syzkmm[1, :, :pl1, :pl1] - self.h1_syzkmm[1]
-             float_diff = npy.max(abs(matdiff - matdiff1)) 
+             matdiff1 = self.h_spkmm[1, :, :pl1, :pl1] - self.h1_spkmm[1]
+             float_diff = np.max(abs(matdiff - matdiff1)) 
              if float_diff > 1e-6:
                   print 'Warning!, float_diff between spins %f' % float_diff
-        if self.bias == 0:
-            ediff = npy.sum(npy.diag(matdiff[0])) / npy.sum(
-                                                   npy.diag(self.s1_yzkmm[0]))
-            print_diff = npy.max(abs(matdiff - ediff * self.s1_yzkmm))
-        else:
-            ediff = matdiff[0,0,0]/ self.s1_yzkmm[0,0,0]
-            print_diff = abs(ediff)
+        e_diff = matdiff[0,0,0] / self.s1_pkmm[0,0,0]
+        if abs(e_diff) > tol:
+            print 'Warning*: hamiltonian boundary difference(rank=%d) %f' % (
+                                                           world.rank, e_diff)
+            self.do_shift = True
+        self.zero_shift = e_diff
+        matdiff = self.d_spkmm[:, :, :pl1, :pl1] - self.d1_spkmm
+        print_diff = np.max(abs(matdiff))
         if print_diff > tol:
-            print 'Warning*: hamiltonian boundary difference %f' % print_diff
+            print 'Warning*: density boundary difference(rank=%d) %f' % (
+                                                       world.rank, print_diff)
             
-        nspins = len(self.h_syzkmm)
-        for i in range(nspins):
-            self.h_syzkmm[i] += (self.gate - ediff) * self.s_yzkmm
-        
-        matdiff = self.d_syzkmm[:, :, :pl1, :pl1] - self.d1_syzkmm
-        if self.bias == 0:
-            print_diff = npy.max(abs(matdiff))
-        else:
-            print_diff= matdiff[0,0,0,0]
-        if print_diff > tol:
-            print 'Warning*: density boundary difference %f' % print_diff
-            
-    def get_selfconsistent_hamiltonian(self, bias=0, gate=0, verbose=0):
-        #----- initialize---------
-        self.verbose = verbose
-        self.bias = bias
-        self.gate = gate
-        self.kt = self.atoms.calc.kT * Hartree
-        fermi = 0
-        if self.verbose:
-            print 'prepare for selfconsistent calculation'
-            print '[bias, gate] =', bias, gate, 'V'
-            print 'lead_fermi_level =', fermi
+    def extend_scat(self):
+        lead_atoms_num = len(self.pl_atoms[0])
+        atoms_inner = self.atoms.copy()
+        atoms_inner.center()
+        atoms = self.atoms_l[0] + atoms_inner + self.atoms_l[1]
+        atoms.set_pbc(atoms_inner._pbc)
+        cell = self.atoms._cell.copy()
+        cell[2, 2] += self.pl_cells[0][2] * 2
+        atoms.set_cell(cell)
+        for i in range(lead_atoms_num):
+            atoms.positions[i, 2] -= self.pl_cells[0][2]
+        for i in range(-lead_atoms_num, 0):
+            atoms.positions[i, 2] += self.atoms._cell[2, 2]
+        atoms.calc = self.atoms.calc
+        self.atoms = atoms
+        self.atoms.center()
 
-        intctrl = IntCtrl(self.kt, fermi, bias)
-        fcvg = CvgCtrl()
-        dcvg = CvgCtrl()
-        inputinfo = {'fasmethodname':'SCL_None', 'fmethodname':'CVG_None',
-                     'falpha': 0.1, 'falphascaling':0.1, 'ftol':1e-3,
-                     'fallowedmatmax':1e-4, 'fndiis':10, 'ftolx':1e-5,
-                     'fsteadycheck': False,
-                     'dasmethodname':'SCL_None', 'dmethodname':'CVG_broydn',
-                     'dalpha': 0.01, 'dalphascaling':0.1, 'dtol':1e-3,
-                     'dallowedmatmax':1e-4, 'dndiis':6, 'dtolx':1e-5,
-                     'dsteadycheck': False}
-        fcvg(inputinfo, 'f', dcvg)
-        dcvg(inputinfo, 'd', fcvg)
-        if self.verbose:
-            print 'mix_factor =', inputinfo['dalpha']
+    def get_selfconsistent_hamiltonian(self, bias=0, gate=0,
+                                                    cal_loc=False, verbose=0):
+        self.initialize_scf(bias, gate, cal_loc, verbose)  
+        self.move_buffer()
+        nbmol = self.nbmol_inner
         nspins = self.nspins
-        nyzk = self.nyzk
-        nbmol = self.nbmol
-        den = npy.empty([nspins, nyzk, nbmol, nbmol], complex)
-        denocc = npy.empty([nspins, nyzk, nbmol, nbmol], complex)
+        npk = self.my_npk
+        den = np.empty([nspins, npk, nbmol, nbmol], complex)
+        denocc = np.empty([nspins, npk, nbmol, nbmol], complex)
+        if self.cal_loc:
+            #denvir = np.empty([nspins, npk, nbmol, nbmol], complex)
+            denloc = np.empty([nspins, npk, nbmol, nbmol], complex)            
 
-        self.selfenergies = [LeadSelfEnergy((self.h1_syzkmm[0,0],
-                                                              self.s1_yzkmm[0]), 
-                                            (self.h1_syzkmm_ij[0,0],
-                                                           self.s1_yzkmm_ij[0]),
-                                            (self.h1_syzkmm_ij[0,0],
-                                                           self.s1_yzkmm_ij[0]),
-                                             0),
-                             LeadSelfEnergy((self.h2_syzkmm[0,0],
-                                                              self.s2_yzkmm[0]), 
-                                            (self.h2_syzkmm_ij[0,0],
-                                                           self.s2_yzkmm_ij[0]),
-                                            (self.h2_syzkmm_ij[0,0],
-                                                           self.s2_yzkmm_ij[0]),
-                                             0)]
+ 
 
-        self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
-                                           H=self.h_syzkmm[0,0],
-                                           S=self.s_yzkmm[0],
-                                           eta=0)
-        self.selfenergies[0].set_bias(bias/2.0)
-        self.selfenergies[1].set_bias(-bias/2.0)
-        
-        self.eqpathinfo = []
-        self.nepathinfo = []
-       
-        for s in range(nspins):
-            self.eqpathinfo.append([])
-            self.nepathinfo.append([])
-            for k in range(nyzk):
-                self.eqpathinfo[s].append(PathInfo('eq'))
-                self.nepathinfo[s].append(PathInfo('ne'))
-
-        self.boundary_check() 
-
+        world.barrier()
         #-------get the path --------    
         for s in range(nspins):
-            for k in range(nyzk):      
-                den[s, k] = self.get_eqintegral_points(intctrl, s, k)
-                denocc[s, k]= self.get_neintegral_points(intctrl, s, k)
-        
+            for k in range(npk):      
+                den[s, k] = self.get_eqintegral_points(self.intctrl, s, k)
+                denocc[s, k] = self.get_neintegral_points(self.intctrl, s, k)
+                if self.cal_loc:
+                    #denvir[s, k]= self.get_neintegral_points(self.intctrl,
+                    #                                         s, k, 'neVirInt')
+                    denloc[s, k] = self.get_neintegral_points(self.intctrl,
+                                                              s, k, 'locInt')                    
+       
         #-------begin the SCF ----------         
         self.step = 0
         self.cvgflag = 0
         calc = self.atoms.calc    
         timer = Timer()
-        nxk = self.nxkmol
-        kpts = self.atoms.calc.ibzk_kc
-        while self.cvgflag == 0:
-            f_syzkmm = fcvg.matcvg(self.h_syzkmm)
+        ntk = self.ntkmol
+        kpts = self.my_kpts
+        spin_coff = 3 - nspins
+        max_steps = 200
+        while self.cvgflag == 0 and self.step < max_steps:
+            if self.master:
+                print '----------------step %d -------------------' % self.step
+            self.move_buffer()
+            f_spkmm_mol = self.fcvg.matcvg(self.h_spkmm_mol)
             timer.start('Fock2Den')
             for s in range(nspins):
-                for k in range(nyzk):
-                    self.d_syzkmm[s, k] = self.fock2den(intctrl, f_syzkmm, s, k)
+                for k in range(npk):
+                    self.d_spkmm_mol[s, k] = spin_coff * self.fock2den(
+                                                            self.intctrl,
+                                                            f_spkmm_mol,
+                                                            s, k)
             timer.stop('Fock2Den')
-            if self.verbose:
+            if self.verbose and self.master:
                 print'Fock2Den', timer.gettime('Fock2Den'), 'second'
-            if nspins == 1:
-                self.d_syzkmm = npy.real(self.d_syzkmm) * 2
-            else:
-                self.d_syzkmm = npy.real(self.d_syzkmm)
-
-            d_syzkmm_out = dcvg.matcvg(self.d_syzkmm)
-            self.cvgflag = fcvg.bcvg and dcvg.bcvg
+            self.collect_density_matrix()
+            d_stkmm_out = self.dcvg.matcvg(self.d_stkmm)
+            d_spkmm_out = self.distribute_density_matrix(d_stkmm_out)
+            self.cvgflag = self.fcvg.bcvg and self.dcvg.bcvg
             timer.start('Den2Fock')            
-            self.h_skmm = self.den2fock(d_syzkmm_out)
+            self.h_skmm = self.den2fock(d_spkmm_out)
             timer.stop('Den2Fock')
-            if self.verbose:
+            if self.verbose and self.master:
                 print'Den2Fock', timer.gettime('Den2Fock'),'second'
-            self.h_syzkmm = self.substract_yzk(nxk, kpts , self.h_skmm, 'h')
-            self.boundary_check()
+         
+            self.h_spkmm = self.substract_pk(ntk, kpts, self.h_skmm, 'h')
+            if self.do_shift:
+                for i in range(nspins):
+                    self.h_spkmm[i] -= self.zero_shift * self.s_pkmm
             self.step +=  1
+            
         return 1
-    
+ 
+    def initialize_scf(self, bias, gate, cal_loc, verbose, alpha=0.1):
+        self.verbose = verbose
+        self.master = (world.rank==0)
+        self.bias = bias
+        self.gate = gate
+        self.cal_loc = cal_loc and self.bias != 0
+        self.kt = self.atoms.calc.occupations.kT * Hartree
+        self.fermi = 0
+        self.current = 0
+        if self.nblead == self.nbmol:
+            self.buffer = 0
+        else:
+            self.buffer = self.nblead
+        self.atoms.calc.density.transport = True       
+
+        self.intctrl = IntCtrl(self.kt, self.fermi, self.bias)
+        self.fcvg = CvgCtrl(self.master)
+        self.dcvg = CvgCtrl(self.master)
+        inputinfo = {'fasmethodname':'SCL_None', 'fmethodname':'CVG_None',
+                     'falpha': 0.1, 'falphascaling':0.1, 'ftol':1e-3,
+                     'fallowedmatmax':1e-4, 'fndiis':10, 'ftolx':1e-5,
+                     'fsteadycheck': False,
+                     'dasmethodname':'SCL_None', 'dmethodname':'CVG_Broydn',
+                     'dalpha': alpha, 'dalphascaling':0.1, 'dtol':1e-4,
+                     'dallowedmatmax':1e-4, 'dndiis':6, 'dtolx':1e-5,
+                     'dsteadycheck': False}
+        self.fcvg(inputinfo, 'f', self.dcvg)
+        self.dcvg(inputinfo, 'd', self.fcvg)
+        
+        self.selfenergies = [LeadSelfEnergy((self.h1_spkmm[0,0],
+                                                            self.s1_pkmm[0]), 
+                                            (self.h1_spkmm_ij[0,0],
+                                                         self.s1_pkmm_ij[0]),
+                                            (self.h1_spkmm_ij[0,0],
+                                                         self.s1_pkmm_ij[0]),
+                                             0),
+                             LeadSelfEnergy((self.h2_spkmm[0,0],
+                                                            self.s2_pkmm[0]), 
+                                            (self.h2_spkmm_ij[0,0],
+                                                         self.s2_pkmm_ij[0]),
+                                            (self.h2_spkmm_ij[0,0],
+                                                         self.s2_pkmm_ij[0]),
+                                             0)]
+
+        self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
+                                           H=self.h_spkmm[0,0],
+                                           S=self.s_pkmm[0], eta=0)
+
+        self.selfenergies[0].set_bias(self.bias / 2.0)
+        self.selfenergies[1].set_bias(-self.bias / 2.0)
+       
+        self.eqpathinfo = []
+        self.nepathinfo = []
+        if self.cal_loc:
+            #self.virpathinfo = [] 
+            self.locpathinfo = []
+             
+       
+        for s in range(self.nspins):
+            self.eqpathinfo.append([])
+            self.nepathinfo.append([])
+            if self.cal_loc:
+                #self.virpathinfo.append([])
+                self.locpathinfo.append([])                
+            if self.cal_loc:
+                self.locpathinfo.append([])
+            for k in self.my_pk:
+                self.eqpathinfo[s].append(PathInfo('eq'))
+                self.nepathinfo[s].append(PathInfo('ne'))    
+                if self.cal_loc:
+                    #self.virpathinfo[s].append(PathInfo('ne'))
+                    self.locpathinfo[s].append(PathInfo('eq'))
+        if self.master:
+            print '------------------Transport SCF-----------------------'
+            print 'Mixer: %s,  Mixing factor: %s,  tol_Ham=%f, tol_Den=%f ' % (
+                                      inputinfo['dmethodname'],
+                                      inputinfo['dalpha'],
+                                      inputinfo['ftol'],
+                                      inputinfo['dtol']) 
+            print 'bias = %f (V), gate = %f (V)' % (bias, gate)
+
+     
     def get_eqintegral_points(self, intctrl, s, k):
-        global zint, fint, tgtint, cntint
+        #global zint, fint, tgtint, cntint
         maxintcnt = 500
         nblead = self.nblead
-        nbmol = self.nbmol
-        den = npy.zeros([nbmol, nbmol])
+        nbmol = self.nbmol_inner
+        den = np.zeros([nbmol, nbmol])
         
-        zint = [0] * maxintcnt
-        fint = []
-        tgtint = npy.empty([2, maxintcnt, nblead, nblead], complex)
-        cntint = -1
+        self.zint = [0] * maxintcnt
+        self.fint = []
+        self.tgtint = np.empty([2, maxintcnt, nblead, nblead], complex)
+        self.cntint = -1
 
-        self.selfenergies[0].h_ii = self.h1_syzkmm[s, k]
-        self.selfenergies[0].s_ii = self.s1_yzkmm[k]
-        self.selfenergies[0].h_ij = self.h1_syzkmm_ij[s, k]
-        self.selfenergies[0].s_ij = self.s1_yzkmm_ij[k]
-        self.selfenergies[0].h_im = self.h1_syzkmm_ij[s, k]
-        self.selfenergies[0].s_im = self.s1_yzkmm_ij[k]
+        self.selfenergies[0].h_ii = self.h1_spkmm[s, k]
+        self.selfenergies[0].s_ii = self.s1_pkmm[k]
+        self.selfenergies[0].h_ij = self.h1_spkmm_ij[s, k]
+        self.selfenergies[0].s_ij = self.s1_pkmm_ij[k]
+        self.selfenergies[0].h_im = self.h1_spkmm_ij[s, k]
+        self.selfenergies[0].s_im = self.s1_pkmm_ij[k]
 
-        self.selfenergies[1].h_ii = self.h2_syzkmm[s, k]
-        self.selfenergies[1].s_ii = self.s2_yzkmm[k]
-        self.selfenergies[1].h_ij = self.h2_syzkmm_ij[s, k]
-        self.selfenergies[1].s_ij = self.s2_yzkmm_ij[k]
-        self.selfenergies[1].h_im = self.h2_syzkmm_ij[s, k]
-        self.selfenergies[1].s_im = self.s2_yzkmm_ij[k]
-
-        self.greenfunction.H = self.h_syzkmm[s, k]
-        self.greenfunction.S = self.s_yzkmm[k]
-
+        self.selfenergies[1].h_ii = self.h2_spkmm[s, k]
+        self.selfenergies[1].s_ii = self.s2_pkmm[k]
+        self.selfenergies[1].h_ij = self.h2_spkmm_ij[s, k]
+        self.selfenergies[1].s_ij = self.s2_pkmm_ij[k]
+        self.selfenergies[1].h_im = self.h2_spkmm_ij[s, k]
+        self.selfenergies[1].s_im = self.s2_pkmm_ij[k]
+        
+        self.greenfunction.H = self.h_spkmm_mol[s, k]
+        self.greenfunction.S = self.s_pkmm_mol[k]
+       
         #--eq-Integral-----
-        [grsum, zgp, wgp, fcnt] = function_integral(self,
-                                                        intctrl.eqintpath,
-                                                        intctrl.eqinttol,
-                                                       0, 'eqInt', intctrl)
+        [grsum, zgp, wgp, fcnt] = function_integral(self, 'eqInt')
         # res Calcu
-        grsum += self.calgfunc(intctrl.eqresz, 'resInt', intctrl)    
-        tmp = npy.resize(grsum, [nbmol, nbmol])
-        den += 1.j * (tmp - dagger(tmp)) / npy.pi / 2
+        grsum += self.calgfunc(intctrl.eqresz, 'resInt')    
+        grsum.shape = (nbmol, nbmol)
+        den += 1.j * (grsum - grsum.T.conj()) / np.pi / 2
 
         # --sort SGF --
         nres = len(intctrl.eqresz)
@@ -698,379 +750,741 @@ class GPAWTransport:
         fcnt = len(elist)
         sgforder = [0] * fcnt
         for i in range(fcnt):
-            sgferr = npy.min(abs(elist[i] - npy.array(zint[:cntint + 1 ])))
+            sgferr = np.min(abs(elist[i] -
+                                      np.array(self.zint[:self.cntint + 1 ])))
                 
-            sgforder[i] = npy.argmin(abs(elist[i]
-                                              - npy.array(zint[:cntint + 1])))
-            if sgferr > 1e-15:
-                print '--Warning--: SGF not Found. eqzgp[', i, ']=', elist[i]
+            sgforder[i] = np.argmin(abs(elist[i]
+                                     - np.array(self.zint[:self.cntint + 1])))
+            if sgferr > 1e-12:
+                print 'Warning: SGF not Found. eqzgp[%d]= %f' %(i, elist[i])
                                              
         
-        flist = fint[:]
+        flist = self.fint[:]
         siglist = [[],[]]
         for i, num in zip(range(fcnt), sgforder):
-            flist[i] = fint[num]
+            flist[i] = self.fint[num]
  
-        sigma= npy.empty([nblead, nblead], complex)
+        sigma= np.empty([nblead, nblead], complex)
         for i in [0, 1]:
             for j, num in zip(range(fcnt), sgforder):
-                sigma = tgtint[i, num]
+                sigma = self.tgtint[i, num]
                 siglist[i].append(sigma)
         self.eqpathinfo[s][k].add(elist, wlist, flist, siglist)    
    
-        if self.verbose: 
+        if self.verbose and self.master: 
             if self.nspins == 1:
-                print 'Eq_k[',k,']=', npy.trace(npy.dot(den,
-                                                  self.s_yzkmm[k])) * 2
+                print 'Eq_k[%d]= %f '% (k, np.trace(np.dot(den,
+                                                self.greenfunction.S)) * 2 )
             else:
-                print 'Eq_sk[', s , k , ']=', npy.trace(npy.dot(den,
-                                                 self.s_yzkmm[k]))
-        del fint, tgtint, zint
+                print 'Eq_sk[%d, %d]= %f' %( s, k, np.trace(np.dot(den,
+                                                 self.greenfunction.S)))
+        del self.fint, self.tgtint, self.zint
         return den 
     
-    def get_neintegral_points(self, intctrl, s, k):
-        # -----initialize-------
+    def get_neintegral_points(self, intctrl, s, k, calcutype='neInt'):
         intpathtol = 1e-8
-        nblead = self.nblead  
-        nbmol = self.nbmol
-        nyzk = self.nyzk
-        denocc = npy.zeros([nbmol, nbmol], complex)
-        denvir = npy.zeros([nbmol, nbmol], complex)
-        denloc = npy.zeros([nbmol, nbmol], complex)
-
-        # -------Init Global Value -----------
-        global zint, fint, tgtint, cntint 
+        nblead = self.nblead
+        nbmol = self.nbmol_inner
+        den = np.zeros([nbmol, nbmol], complex)
         maxintcnt = 500
 
-        # -------ne--Integral---------------
-        zint = [0] * maxintcnt
-        tgtint = npy.empty([2, maxintcnt, nblead, nblead], complex)
+        self.zint = [0] * maxintcnt
+        self.tgtint = np.empty([2, maxintcnt, nblead, nblead], complex)
 
-        self.selfenergies[0].h_ii = self.h1_syzkmm[s, k]
-        self.selfenergies[0].s_ii = self.s1_yzkmm[k]
-        self.selfenergies[0].h_ij = self.h1_syzkmm_ij[s, k]
-        self.selfenergies[0].s_ij = self.s1_yzkmm_ij[k]
-        self.selfenergies[0].h_im = self.h1_syzkmm_ij[s, k]
-        self.selfenergies[0].s_im = self.s1_yzkmm_ij[k]
+        self.selfenergies[0].h_ii = self.h1_spkmm[s, k]
+        self.selfenergies[0].s_ii = self.s1_pkmm[k]
+        self.selfenergies[0].h_ij = self.h1_spkmm_ij[s, k]
+        self.selfenergies[0].s_ij = self.s1_pkmm_ij[k]
+        self.selfenergies[0].h_im = self.h1_spkmm_ij[s, k]
+        self.selfenergies[0].s_im = self.s1_pkmm_ij[k]
 
-        self.selfenergies[1].h_ii = self.h2_syzkmm[s, k]
-        self.selfenergies[1].s_ii = self.s2_yzkmm[k]
-        self.selfenergies[1].h_ij = self.h2_syzkmm_ij[s, k]
-        self.selfenergies[1].s_ij = self.s2_yzkmm_ij[k]
-        self.selfenergies[1].h_im = self.h2_syzkmm_ij[s, k]
-        self.selfenergies[1].s_im = self.s2_yzkmm_ij[k]
-
-        self.greenfunction.H = self.h_syzkmm[s, k]
-        self.greenfunction.S = self.s_yzkmm[k]
-
-        for n in range(1, len(intctrl.neintpath)):
-            cntint = -1
-            fint = [[],[]]
-            if intctrl.kt <= 0:
-                neintpath = [intctrl.neintpath[n - 1] + intpathtol,
-                             intctrl.neintpath[n] - intpathtol]
-            else:
-                neintpath = [intctrl.neintpath[n-1],intctrl.neintpath[n]]
-            if intctrl.neintmethod== 1:
-    
-                # ----Auto Integral------
-                sumga, zgp, wgp, nefcnt = function_integral(self,
-                                                            neintpath,
-                                                        intctrl.neinttol,
-                                                            0, 'neInt',
-                                                              intctrl)
-    
-                nefcnt = len(zgp)
-                sgforder = [0] * nefcnt
-                for i in range(nefcnt):
-                    sgferr = npy.min(npy.abs(zgp[i] - npy.array(
-                                                     zint[:cntint + 1 ])))
-                    sgforder[i] = npy.argmin(npy.abs(zgp[i] -
-                                            npy.array(zint[:cntint + 1])))
-                    if sgferr > 1e-15:
-                        print '--Warning: SGF not found, nezgp[', \
-                                                           i, ']=', zgp[i]
-            else:
-                # ----Manual Integral------
-                nefcnt = max(ceil(npy.real(neintpath[1] -
-                                                neintpath[0]) /
-                                                intctrl.neintstep) + 1, 6)
-                nefcnt = int(nefcnt)
-                zgp = npy.linspace(neintpath[0], neintpath[1], nefcnt)
-                zgp = list(zgp)
-                wgp = npy.array([3.0 / 8, 7.0 / 6, 23.0 / 24] + [1] *
-                         (nefcnt - 6) + [23.0 / 24, 7.0 / 6, 3.0 / 8]) * (
-                                                          zgp[1] - zgp[0])
-                wgp = list(wgp)
-                sgforder = range(nefcnt)
-                sumga = npy.zeros([nbmol, nbmol], complex)
-                for i in range(nefcnt):
-                    if iscalcuocc:
-                        sumga += self.calgfunc(zgp[i], 'neInt',
-                                                      intctrl) * wgp[i]
-                else:
-                        self.calgfunc(zgp[i],'neInt', intctrl)
-            denocc += sumga[0] / npy.pi / 2
-   
-            flist = [[],[]]
-            siglist = [[],[]]
-            sigma= npy.empty([nblead, nblead], complex)
-            for i in [0, 1]:
-                for j, num in zip(range(nefcnt), sgforder):
-                    fermi_factor = fint[i][num]
-                    sigma = tgtint[i, num]
-                    flist[i].append(fermi_factor)    
-                    siglist[i].append(sigma)
-            self.nepathinfo[s][k].add(zgp, wgp, flist, siglist)
-        # Loop neintpath
-        neq = npy.trace(npy.dot(denocc, self.s_yzkmm[k]))
-        if self.verbose:
-            if self.nspins == 1:
-                print 'NEQ_k[', k, ']=',npy.real(neq) * 2, 'ImagPart=',\
-                                                            npy.imag(neq) * 2
-            else:
-                print 'NEQ_sk[', s,  k, ']=',npy.real(neq), 'ImagPart=',\
-                                                         npy.imag(neq)
-        del zint, tgtint
-        if len(intctrl.neintpath) >= 2:
-            del fint
-        return denocc
+        self.selfenergies[1].h_ii = self.h2_spkmm[s, k]
+        self.selfenergies[1].s_ii = self.s2_pkmm[k]
+        self.selfenergies[1].h_ij = self.h2_spkmm_ij[s, k]
+        self.selfenergies[1].s_ij = self.s2_pkmm_ij[k]
+        self.selfenergies[1].h_im = self.h2_spkmm_ij[s, k]
+        self.selfenergies[1].s_im = self.s2_pkmm_ij[k]
         
-    def calgfunc(self, zp, calcutype, intctrl):			 
+        self.greenfunction.H = self.h_spkmm_mol[s, k]
+        self.greenfunction.S = self.s_pkmm_mol[k]
+
+        if calcutype == 'neInt' or calcutype == 'neVirInt':
+            for n in range(1, len(intctrl.neintpath)):
+                self.cntint = -1
+                self.fint = [[],[]]
+                if intctrl.kt <= 0:
+                    neintpath = [intctrl.neintpath[n - 1] + intpathtol,
+                                 intctrl.neintpath[n] - intpathtol]
+                else:
+                    neintpath = [intctrl.neintpath[n-1],intctrl.neintpath[n]]
+                if intctrl.neintmethod== 1:
+    
+                    # ----Auto Integral------
+                    sumga, zgp, wgp, nefcnt = function_integral(self,
+                                                                    calcutype)
+    
+                    nefcnt = len(zgp)
+                    sgforder = [0] * nefcnt
+                    for i in range(nefcnt):
+                        sgferr = np.min(np.abs(zgp[i] - np.array(
+                                            self.zint[:self.cntint + 1 ])))
+                        sgforder[i] = np.argmin(np.abs(zgp[i] -
+                                       np.array(self.zint[:self.cntint + 1])))
+                        if sgferr > 1e-15:
+                            print '--Warning: SGF not found, nezgp[%d]=%f' % (
+                                                                    i, zgp[i])
+                else:
+                    # ----Manual Integral------
+                    nefcnt = max(np.ceil(np.real(neintpath[1] -
+                                                    neintpath[0]) /
+                                                    intctrl.neintstep) + 1, 6)
+                    nefcnt = int(nefcnt)
+                    zgp = np.linspace(neintpath[0], neintpath[1], nefcnt)
+                    zgp = list(zgp)
+                    wgp = np.array([3.0 / 8, 7.0 / 6, 23.0 / 24] + [1] *
+                             (nefcnt - 6) + [23.0 / 24, 7.0 / 6, 3.0 / 8]) * (
+                                                          zgp[1] - zgp[0])
+                    wgp = list(wgp)
+                    sgforder = range(nefcnt)
+                    sumga = np.zeros([1, nbmol, nbmol], complex)
+                    for i in range(nefcnt):
+                        sumga += self.calgfunc(zgp[i], calcutype) * wgp[i]
+                den += sumga[0] / np.pi / 2
+                flist = [[],[]]
+                siglist = [[],[]]
+                sigma= np.empty([nblead, nblead], complex)
+                for i in [0, 1]:
+                    for j, num in zip(range(nefcnt), sgforder):
+                        fermi_factor = self.fint[i][num]
+                        sigma = self.tgtint[i, num]
+                        flist[i].append(fermi_factor)    
+                        siglist[i].append(sigma)
+                if calcutype == 'neInt':
+                    self.nepathinfo[s][k].add(zgp, wgp, flist, siglist)
+                elif calcutype == 'neVirInt':
+                    self.virpathinfo[s][k].add(zgp, wgp, flist, siglist)
+        # Loop neintpath
+        elif calcutype == 'locInt':
+            self.cntint = -1
+            self.fint =[]
+            sumgr, zgp, wgp, locfcnt = function_integral(self, 'locInt')
+            # res Calcu :minfermi
+            sumgr -= self.calgfunc(intctrl.locresz[0, :], 'resInt')
+               
+            # res Calcu :maxfermi
+            sumgr += self.calgfunc(intctrl.locresz[1, :], 'resInt')
+            
+            sumgr.shape = (nbmol, nbmol)
+            den = 1.j * (sumgr - sumgr.T.conj()) / np.pi / 2
+         
+            # --sort SGF --
+            nres = intctrl.locresz.shape[-1]
+            self.locpathinfo[s][k].set_nres(2 * nres)
+            loc_e = intctrl.locresz.copy()
+            loc_e.shape = (2 * nres, )
+            elist = zgp + loc_e.tolist()
+            wlist = wgp + [-1.0] * nres + [1.0] * nres
+            fcnt = len(elist)
+            sgforder = [0] * fcnt
+            for i in range(fcnt):
+                sgferr = np.min(abs(elist[i] -
+                                      np.array(self.zint[:self.cntint + 1 ])))
+                
+                sgforder[i] = np.argmin(abs(elist[i]
+                                     - np.array(self.zint[:self.cntint + 1])))
+                if sgferr > 1e-12:
+                    print 'Warning: SGF not Found. eqzgp[%d]= %f' %(i,
+                                                                     elist[i])
+            flist = self.fint[:]
+            siglist = [[],[]]
+            for i, num in zip(range(fcnt), sgforder):
+                flist[i] = self.fint[num]
+            sigma= np.empty([nblead, nblead], complex)
+            for i in [0, 1]:
+                for j, num in zip(range(fcnt), sgforder):
+                    sigma = self.tgtint[i, num]
+                    siglist[i].append(sigma)
+            self.locpathinfo[s][k].add(elist, wlist, flist, siglist)           
+        neq = np.trace(np.dot(den, self.greenfunction.S))
+        if self.verbose and self.master:
+            if self.nspins == 1:
+                print '%s NEQ_k[%d]= %f + %f j' % (calcutype, k,
+                                           np.real(neq) * 2, np.imag(neq) * 2)
+            else:
+                print '%s NEQ_sk[%d, %d]= %f, %f j' % (calcutype, s, k,
+                                                np.real(neq), np.imag(neq))
+        del self.zint, self.tgtint
+        if len(intctrl.neintpath) >= 2:
+            del self.fint
+        return den
+         
+    def calgfunc(self, zp, calcutype):			 
         #calcutype = 
         #  - 'eqInt':  gfunc[Mx*Mx,nE] (default)
         #  - 'neInt':  gfunc[Mx*Mx,nE]
         #  - 'resInt': gfunc[Mx,Mx] = gr * fint
         #              fint = -2i*pi*kt
-        global zint, fint, tgtint, cntint
-        
+      
+        intctrl = self.intctrl
         sgftol = 1e-10
         stepintcnt = 100
         nlead = 2
         nblead = self.nblead
-        nbmol = self.nbmol
-        gamma = npy.zeros([nlead, nbmol, nbmol], complex)
-        
+        nbmol = self.nbmol_inner
+                
         if type(zp) == list:
             pass
-        elif type(zp) == npy.ndarray:
+        elif type(zp) == np.ndarray:
             pass
         else:
             zp = [zp]
         nume = len(zp)
         if calcutype == 'resInt':
-            gfunc = npy.zeros([nbmol, nbmol], complex)
+            gfunc = np.zeros([nbmol, nbmol], complex)
         else:
-            gfunc = npy.zeros([nume, nbmol, nbmol], complex)
+            gfunc = np.zeros([nume, nbmol, nbmol], complex)
         for i in range(nume):
-            sigma = npy.zeros([nbmol, nbmol], complex)
-            if cntint + 1 >= len(zint):
-                zint = zint + [0] * stepintcnt
-                tmp = tgtint.shape[1]
-                tmptgtint = npy.copy(tgtint)
-                tgtint = npy.empty([2, tmp + stepintcnt, nblead, nblead],
+            sigma = np.zeros([nbmol, nbmol], complex)
+            gamma = np.zeros([nlead, nbmol, nbmol], complex)
+            if self.cntint + 1 >= len(self.zint):
+                self.zint += [0] * stepintcnt
+                tmp = self.tgtint.shape[1]
+                tmptgtint = np.copy(self.tgtint)
+                self.tgtint = np.empty([2, tmp + stepintcnt, nblead, nblead],
                                                                       complex)
-                tgtint[:, :tmp] = npy.copy(tmptgtint)
-                tgtint[:, tmp:tmp + stepintcnt] = npy.zeros([2,
+                self.tgtint[:, :tmp] = tmptgtint
+                self.tgtint[:, tmp:tmp + stepintcnt] = np.zeros([2,
                                                  stepintcnt, nblead, nblead])
-            cntint += 1
-            zint[cntint] = zp[i]
+            self.cntint += 1
+            self.zint[self.cntint] = zp[i]
 
             for j in [0, 1]:
-                tgtint[j, cntint] = self.selfenergies[j](zp[i])
+                self.tgtint[j, self.cntint] = self.selfenergies[j](zp[i])
             
-            sigma[:nblead, :nblead] += tgtint[0, cntint]
-            sigma[-nblead:, -nblead:] += tgtint[1, cntint]
-            gamma[0, :nblead, :nblead] = self.selfenergies[0].get_lambda(
+            sigma[:nblead, :nblead] += self.tgtint[0, self.cntint]
+            sigma[-nblead:, -nblead:] += self.tgtint[1, self.cntint]
+            gamma[0, :nblead, :nblead] += self.selfenergies[0].get_lambda(
                                                                         zp[i])
-            gamma[1, -nblead:, -nblead:] = self.selfenergies[1].get_lambda(
+            gamma[1, -nblead:, -nblead:] += self.selfenergies[1].get_lambda(
                                                                         zp[i])
             gr = self.greenfunction.calculate(zp[i], sigma)       
         
             # --ne-Integral---
             if calcutype == 'neInt':
-                gammaocc = npy.zeros([nbmol, nbmol], complex)
+                gammaocc = np.zeros([nbmol, nbmol], complex)
                 for n in [0, 1]:
-                    fint[n].append(  fermidistribution(zp[i] -
+                    self.fint[n].append(  fermidistribution(zp[i] -
                                          intctrl.leadfermi[n], intctrl.kt) - 
                                          fermidistribution(zp[i] -
                                              intctrl.minfermi, intctrl.kt) )
-                    gammaocc += gamma[n] * fint[n][cntint]
-                aocc = npy.dot(gr, gammaocc)
-                aocc = npy.dot(aocc, dagger(gr))
+                    gammaocc += gamma[n] * self.fint[n][self.cntint]
+                aocc = np.dot(gr, gammaocc)
+                aocc = np.dot(aocc, gr.T.conj())
                
                 gfunc[i] = aocc
+            elif calcutype == 'neVirInt':
+                gammavir = np.zeros([nbmol, nbmol], complex)
+                for n in [0, 1]:
+                    self.fint[n].append(fermidistribution(zp[i] -
+                                         intctrl.maxfermi, intctrl.kt) - 
+                                         fermidistribution(zp[i] -
+                                             intctrl.leadfermi[n], intctrl.kt))
+                    gammavir += gamma[n] * self.fint[n][self.cntint]
+                avir = np.dot(gr, gammavir)
+                avir = np.dot(avir, gr.T.conj())
+                gfunc[i] = avir
+            # --local-Integral--
+            elif calcutype == 'locInt':
+                # fmax-fmin
+                self.fint.append( fermidistribution(zp[i] -
+                                    intctrl.maxfermi, intctrl.kt) - \
+                                    fermidistribution(zp[i] -
+                                    intctrl.minfermi, intctrl.kt) )
+                gfunc[i] = gr * self.fint[self.cntint]
+ 
             # --res-Integral --
             elif calcutype == 'resInt':
-                fint.append(-2.j * npy.pi * intctrl.kt)
-                gfunc += gr * fint[cntint]
+                self.fint.append(-2.j * np.pi * intctrl.kt)
+                gfunc += gr * self.fint[self.cntint]
             #--eq-Integral--
             else:
                 if intctrl.kt <= 0:
-                    fint.append(1.0)
+                    self.fint.append(1.0)
                 else:
-                    fint.append(fermidistribution(zp[i] -
+                    self.fint.append(fermidistribution(zp[i] -
                                                 intctrl.minfermi, intctrl.kt))
-                gfunc[i] = gr * fint[cntint]    
+                gfunc[i] = gr * self.fint[self.cntint]    
         return gfunc        
-
-    def fock2den(self, intctrl, f_syzkmm, s, k):
-        nyzk = self.nyzk
+    
+    '''
+    def calgfunc(self,  zp, calcutype):
+        if type(zp)==list or type(zp) ==np.ndarray:
+            pass
+        else:
+            zp = [zp]
+        gfunc = np.empty([len(zp)])
+        for i in range(len(zp)):
+            gfunc[i] = 1
+        return gfunc
+    '''
+    def fock2den(self, intctrl, f_spkmm, s, k):
         nblead = self.nblead
-        nbmol = self.nbmol
-        den = npy.zeros([nbmol, nbmol], complex)
-        sigmatmp = npy.zeros([nblead, nblead], complex)
+        nbmol = self.nbmol_inner
+        den = np.zeros([nbmol, nbmol], complex)
+        denocc = np.zeros([nbmol, nbmol], complex)
+        if self.cal_loc:
+            denvir = np.zeros([nbmol, nbmol], complex)
+            denloc = np.zeros([nbmol, nbmol], complex)
+        sigmatmp = np.zeros([nblead, nblead], complex)
 
         # missing loc states
         eqzp = self.eqpathinfo[s][k].energy
-        nezp = self.nepathinfo[s][k].energy
         
-        self.greenfunction.H = f_syzkmm[s, k]
-        self.greenfunction.S = self.s_yzkmm[k]
+        self.greenfunction.H = f_spkmm[s, k]
+        self.greenfunction.S = self.s_pkmm_mol[k]
+        
         for i in range(len(eqzp)):
-            sigma = npy.zeros([nbmol, nbmol], complex)  
+            sigma = np.zeros([nbmol, nbmol], complex)  
             sigma[:nblead, :nblead] += self.eqpathinfo[s][k].sigma[0][i]
             sigma[-nblead:, -nblead:] += self.eqpathinfo[s][k].sigma[1][i]
             gr = self.greenfunction.calculate(eqzp[i], sigma)
             fermifactor = self.eqpathinfo[s][k].fermi_factor[i]
             weight = self.eqpathinfo[s][k].weight[i]
             den += gr * fermifactor * weight
-        den = 1.j * (den - dagger(den)) / npy.pi / 2
+        den = 1.j * (den - den.T.conj()) / np.pi / 2
+
+        if self.cal_loc:
+            eqzp = self.locpathinfo[s][k].energy
+            for i in range(len(eqzp)):
+                sigma = np.zeros([nbmol, nbmol], complex)  
+                sigma[:nblead, :nblead] += self.locpathinfo[s][k].sigma[0][i]
+                sigma[-nblead:, -nblead:] += self.locpathinfo[s][k].sigma[1][i]
+                gr = self.greenfunction.calculate(eqzp[i], sigma)
+                fermifactor = self.locpathinfo[s][k].fermi_factor[i]
+                weight = self.locpathinfo[s][k].weight[i]
+                denloc += gr * fermifactor * weight
+            denloc = 1.j * (denloc - denloc.T.conj()) / np.pi / 2
+
+        nezp = self.nepathinfo[s][k].energy
+        
+        intctrl = self.intctrl
         for i in range(len(nezp)):
-            sigma = npy.zeros([nbmol, nbmol], complex)
-            sigmalesser = npy.zeros([nbmol, nbmol], complex)
+            sigma = np.zeros([nbmol, nbmol], complex)
+            sigmalesser = np.zeros([nbmol, nbmol], complex)
             sigma[:nblead, :nblead] += self.nepathinfo[s][k].sigma[0][i]
             sigma[-nblead:, -nblead:] += self.nepathinfo[s][k].sigma[1][i]    
             gr = self.greenfunction.calculate(nezp[i], sigma)
-            fermifactor = npy.real(self.nepathinfo[s][k].fermi_factor[0][i])
+            fermifactor = np.real(self.nepathinfo[s][k].fermi_factor[0][i])
            
             sigmatmp = self.nepathinfo[s][k].sigma[0][i]
             sigmalesser[:nblead, :nblead] += 1.0j * fermifactor * (
-                                          sigmatmp - dagger(sigmatmp))
-            fermifactor = npy.real(self.nepathinfo[s][k].fermi_factor[0][i])
+                                          sigmatmp - sigmatmp.T.conj())
+            fermifactor = np.real(self.nepathinfo[s][k].fermi_factor[1][i])
 
             sigmatmp = self.nepathinfo[s][k].sigma[1][i] 
             sigmalesser[-nblead:, -nblead:] += 1.0j * fermifactor * (
-                                          sigmatmp - dagger(sigmatmp))       
-            glesser = npy.dot(sigmalesser, dagger(gr))
-            glesser = npy.dot(gr, glesser)
+                                          sigmatmp - sigmatmp.T.conj())       
+            glesser = np.dot(sigmalesser, gr.T.conj())
+            glesser = np.dot(gr, glesser)
             weight = self.nepathinfo[s][k].weight[i]            
-            den += glesser * weight / npy.pi / 2
+            denocc += glesser * weight / np.pi / 2
+            if self.cal_loc:
+                sigmalesser = np.zeros([nbmol, nbmol], complex)
+                fermifactor = fermidistribution(nezp[i] -
+                                              intctrl.maxfermi, intctrl.kt)-\
+                              fermidistribution(nezp[i] -
+                                             intctrl.leadfermi[0], intctrl.kt)
+                fermifactor = np.real(fermifactor)
+                sigmatmp = self.nepathinfo[s][k].sigma[0][i]
+                sigmalesser[:nblead, :nblead] += 1.0j * fermifactor * (
+                                                   sigmatmp - sigmatmp.T.conj())
+                fermifactor = fermidistribution(nezp[i] -
+                                         intctrl.maxfermi, intctrl.kt) -  \
+                              fermidistribution(nezp[i] -
+                                         intctrl.leadfermi[1], intctrl.kt)
+                fermifactor = np.real(fermifactor)
+                sigmatmp = self.nepathinfo[s][k].sigma[1][i] 
+                sigmalesser[-nblead:, -nblead:] += 1.0j * fermifactor * (
+                                                   sigmatmp - sigmatmp.T.conj())       
+                glesser = np.dot(sigmalesser, gr.T.conj())
+                glesser = np.dot(gr, glesser)
+                weight = self.nepathinfo[s][k].weight[i]            
+                denvir += glesser * weight / np.pi / 2
+        if self.cal_loc:
+            weight_mm = self.integral_diff_weight(denocc, denvir,
+                                                                 'transiesta')
+            diff = (denloc - (denocc + denvir)) * weight_mm
+            den += denocc + diff
+            percents = np.sum( diff * diff ) / np.sum( denocc * denocc )
+            print 'local percents %f' % percents
+        else:
+            den += denocc
+        den = (den + den.T.conj()) / 2
         return den    
 
-    def den2fock(self, d_yzkmm):
-        nyzk = self.nyzk
-        nbmol = self.nbmol
-        atoms = self.atoms
-        calc = atoms.calc
-        kpt = calc.kpt_u
-        density = calc.density
-        
-        timer = Timer()
-        timer.start('getdensity')
-        self.get_density(density, d_yzkmm , kpt, calc.symmetry)
-        timer.stop('getdensity')
-        print 'getdensity', timer.gettime('getdensity'), 'seconds'
+    def den2fock(self, d_pkmm):
+        self.get_density(d_pkmm)
+        calc = self.atoms.calc
         calc.update_kinetic()
+        density = calc.density
         calc.hamiltonian.update(density)
-        
-        linear_potential = npy.empty(calc.hamiltonian.vt_sG.shape)
-        dimx = linear_potential.shape[0]
-        dimyz = linear_potential.shape[1:]
-        bias = self.bias / Hartree
-        vx = npy.linspace(bias/2, -bias/2, dimx)
-        for i in range(dimx):
-            linear_potential[i] = vx[i] * (npy.zeros(dimyz) + 1)
-
+        linear_potential = self.get_linear_potential()
         calc.hamiltonian.vt_sG += linear_potential
-        xcfunc = calc.hamiltonian.xc.xcfunc
-        calc.Enlxc = xcfunc.get_non_local_energy()
-        calc.Enlkin = xcfunc.get_non_local_kinetic_corrections()   
-        h_skmm, s_kmm = self.get_hs(atoms)
+        #xcfunc = calc.hamiltonian.xc.xcfunc
+        #calc.Enlxc = xcfunc.get_non_local_energy()
+        #calc.Enlkin = xcfunc.get_non_local_kinetic_corrections()   
+        h_skmm, s_kmm = self.get_hs(self.atoms)
+ 
         return h_skmm
     
-    def get_density(self, density, d_syzkmm, kpt_u, symmetry,
-                                                       lcao_initialized=True):
+    def get_density(self,d_spkmm):
         #Calculate pseudo electron-density based on green function.
+        calc = self.atoms.calc
+        density = calc.density
+        wfs = calc.wfs
+
         nspins = self.nspins
-        nxk = self.nxkmol
-        nyzk = self.nyzk
+        ntk = self.ntkmol
+        npk = self.my_npk
         nbmol = self.nbmol
-        relate_layer = 3
-        dr_mm = npy.zeros([nspins, relate_layer, nyzk,  nbmol, nbmol], complex)
-        qr_mm = npy.zeros([nspins, nyzk, self.nbmol, self.nbmol])
+        relate_layer_num = 3
+        dr_mm = np.zeros([nspins, npk, relate_layer_num,
+                                                 nbmol, nbmol], complex)
+        qr_mm = np.zeros([nspins, npk, nbmol, nbmol])
         
         for s in range(nspins):
-            for i in range(relate_layer):
-                for j in range(nyzk):
+            for i in range(relate_layer_num):
+                for j in range(self.my_npk):
                     if i == 0:
-                        dr_mm[s, i, j] = dagger(self.d_syzkmm_ij[s, j])
+                        dr_mm[s, j, i] = self.d_spkmm_ij[s, j].T.conj()
                     elif i == 1:
-                        dr_mm[s, i, j] += npy.copy(d_syzkmm[s, j])
-                        qr_mm[s, j] += npy.dot(dr_mm[s, i, j], self.s_yzkmm[j])
+                        dr_mm[s, j, i] = np.copy(d_spkmm[s, j])
+                        qr_mm[s, j] += np.dot(dr_mm[s, j, i],
+                                                    self.s_pkmm[j]) 
                     elif i == 2:
-                        dr_mm[s, i, j]= npy.copy(self.d_syzkmm_ij[s, j])
+                        dr_mm[s, j, i]= np.copy(self.d_spkmm_ij[s, j])
                     else:
-                        pass         
+                        pass
         qr_mm += self.edge_density_mm
-        if self.verbose:
-            for i in range(nspins):
-                print 'spin', i, 'charge on atomic basis', npy.diag(npy.sum(qr_mm[s],axis=0))            
-            print 'tolal charge'
-            print npy.trace(npy.sum(npy.sum(qr_mm, axis=0), axis=0))
+        world.barrier()
+        self.kpt_comm.sum(qr_mm)
+        qr_mm /= self.npk
+     
+        if self.master:
+            if self.verbose:
+                for i in range(nspins):
+                   print 'spin[%d] charge on atomic basis =' % i
+                   print np.diag(np.sum(qr_mm[i],axis=0))
 
-        rvector = npy.zeros([relate_layer, 3])
-        xkpts = self.pick_out_xkpts(nxk, self.atoms.calc.ibzk_kc)
-        for i in range(relate_layer):
-            rvector[i, 0] = i - (relate_layer - 1) / 2
+            qr_mm = np.sum(np.sum(qr_mm, axis=0), axis=0)
+            natom_inlead = len(self.pl_atoms[0])
+            nb_atom = self.nblead / natom_inlead
+            pl1 = self.buffer + self.nblead
+            natom_print = pl1 / nb_atom 
+            edge_charge0 = np.diag(qr_mm[:pl1,:pl1])
+            edge_charge1 = np.diag(qr_mm[-pl1:, -pl1:])
+            edge_charge0.shape = (natom_print, nb_atom)
+            edge_charge1.shape = (natom_print, nb_atom)
+            edge_charge0 = np.sum(edge_charge0,axis=1)
+            edge_charge1 = np.sum(edge_charge1,axis=1)
+            print '***charge distribution at edges***'
+            if self.verbose:
+                info = []
+                for i in range(natom_print):
+                    info.append('--' +  str(edge_charge0[i])+'--')
+                print info
+                info = []
+                for i in range(natom_print):
+                    info.append('--' +  str(edge_charge1[i])+'--')
+                print info
+            else:
+                edge_charge0.shape = (natom_print / natom_inlead, natom_inlead)
+                edge_charge1.shape = (natom_print / natom_inlead, natom_inlead)                
+                edge_charge0 = np.sum(edge_charge0,axis=1)
+                edge_charge1 = np.sum(edge_charge1,axis=1)
+                info = ''
+                for i in range(natom_print / natom_inlead):
+                    info += '--' +  str(edge_charge0[i]) + '--'
+                info += '---******---'
+                for i in range(natom_print / natom_inlead):
+                    info += '--' +  str(edge_charge1[i]) + '--'
+                print info
+            print '***total charge***'
+            print np.trace(qr_mm)            
 
-        self.d_skmm.shape = (nspins, nxk, nyzk, nbmol, nbmol)
+        rvector = np.zeros([relate_layer_num, 3])
+        tkpts = self.pick_out_tkpts(ntk, self.my_kpts)
+        for i in range(relate_layer_num):
+            rvector[i, self.d] = i - (relate_layer_num - 1) / 2
+        
+        self.d_skmm.shape = (nspins, npk, ntk, nbmol, nbmol)
+        test = 0
+        test1 = 0
+        test2 = 0
         for s in range(nspins):
-            for i in range(nxk):
-                for j in range(nyzk):
-                    self.d_skmm[s, i, j] = get_kspace_hs(None, dr_mm[s, :, j],
-                                                                rvector, xkpts[i])
-                    self.d_skmm[s, i, j] = self.d_skmm[s, i, j] / (nxk *  nyzk) 
-
-        self.d_skmm.shape = (nspins, nxk * nyzk, nbmol, nbmol)
-        calc = self.atoms.calc
-        nt_G = calc.gd.zeros(1)
-
-        for kpt in calc.kpt_u:
-            phit_mG = calc.gd.zeros(nbmol,dtype=complex)
-            m1 = 0
-            for nucleus in kpt.nuclei:
-                niao =  nucleus.get_number_of_atomic_orbitals()
-                m2 = m1 + niao
-                if nucleus.phit_i is not None:
-                    nucleus.phit_i.add(phit_mG[m1:m2],
-                                                 npy.identity(m2 - m1), kpt.k)
-                m1 = m2
-            for i in range(nbmol):
-                for j in range(nbmol):
-                    nt_G += npy.real(self.d_skmm[kpt.s, kpt.k, i, j] *
-                                               phit_mG[i].conj() * phit_mG[j])
-        density.nct_G = self.nct_G  
-        density.nt_sG = nt_G + density.nct_G
-
-        if not density.lcao or lcao_initialized:
-            for nucleus in density.my_nuclei:
-                ni = nucleus.get_number_of_partial_waves()
-                D_sii = npy.zeros((density.nspins, ni, ni))
-                for kpt in kpt_u:
-                    P_kmi = nucleus.P_kmi[kpt.k]
-                    D_sii[kpt.s] += npy.real(npy.dot(npy.dot(dagger(P_kmi),
-                                              self.d_skmm[kpt.s, kpt.k]), P_kmi))
-                nucleus.D_sp[:] = [pack(D_ii) for D_ii in D_sii]
-        if symmetry is not None:
-            for nt_G in density.nt_sG:
-                symmetry.symmetrize(nt_G, density.gd)
-            D_asp = []
-            for s in range(density.nspins):
-                D_aii = [unpack2(D_sp[s]) for D_sp in D_asp]
-                for nucleus in density.my_nuclei:
-                    nucleus.symmetrize(D_aii, symmetry.maps, s)
-
-        density.interpolate_pseudo_density()
-        density.update_pseudo_charge()
+            for i in range(ntk):
+                for j in range(npk):
+                    self.d_skmm[s, j, i] = get_kspace_hs(None, dr_mm[s, j, :],
+                                                         rvector, tkpts[i])
+                    self.d_skmm[s, j, i] /=  ntk * self.npk
+                    test += np.max(abs(self.d_skmm[s, j,i] - self.d_skmm[s, j , i].T.conj()))
+                    if i==0:
+                        test1 += np.max(abs(d_spkmm[s, j] - d_spkmm[s, j].T.conj()))
+                        test2 += np.max(abs(self.d_spkmm[s, j] - self.d_spkmm[s, j].T.conj()))
+        self.d_skmm.shape = (nspins, ntk * npk, nbmol, nbmol)
+        print 'sym_test', test, test1, test2
+        for kpt in calc.wfs.kpt_u:
+            kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
+        density.update(wfs)
         return density
+
+    def calc_total_charge(self, d_spkmm):
+        nbmol = self.nbmol 
+        qr_mm = np.empty([self.nspins, self.my_npk, nbmol, nbmol])
+        for i in range(self.nspins):  
+            for j in range(self.my_npk):
+                qr_mm[i,j] = np.dot(d_spkmm[i, j],self.s_pkmm[j])
+        Qmol = np.trace(np.sum(np.sum(qr_mm, axis=0), axis=0))
+        Qmol += np.sum(self.edge_charge)
+        Qmol = self.kpt_comm.sum(Qmol) / self.npk
+        return Qmol        
+
+    def get_linear_potential(self):
+        calc = self.atoms.calc
+        linear_potential = np.zeros(calc.hamiltonian.vt_sG.shape)
+        
+        dimt = linear_potential.shape[-1]
+        dimp = linear_potential.shape[1:3]
+        dimt_lead = self.dimt_lead
+        if self.nblead == self.nbmol:
+            buffer_dim = 0
+        else:
+            buffer_dim = dimt_lead
+        scat_dim = dimt - buffer_dim * 2
+        bias = self.bias / Hartree
+        vt = np.empty([dimt])
+        if buffer_dim !=0:
+            vt[:buffer_dim] = bias / 2.0
+            vt[-buffer_dim:] = -bias / 2.0        
+            vt[buffer_dim : -buffer_dim] = np.linspace(bias/2.0,
+                                                         -bias/2.0, scat_dim)
+        else:
+            vt = np.linspace(bias/2.0, -bias/2.0, scat_dim)
+        for s in range(self.nspins):
+            for i in range(dimt):
+                linear_potential[s,:,:,i] = vt[i] * (np.zeros(dimp) + 1)
+        return linear_potential
+    
+    
+    def output(self, filename):
+        filename1 = filename + str(world.rank)
+        fd = file(filename1, 'wb')
+        pickle.dump((self.h1_spkmm, 
+                     self.h1_spkmm_ij, 
+                     self.h_spkmm,
+                     self.s1_pkmm, 
+                     self.s1_pkmm_ij, 
+                     self.s_pkmm,
+                     self.d_spkmm,
+                     self.bias,
+                     self.intctrl,
+                     self.atoms.calc.hamiltonian.vt_sG,
+                     self.atoms.calc.density.nt_sG,
+                     self.eqpathinfo,
+                     self.nepathinfo,
+                     self.current,
+                     self.step,
+                     self.cvgflag
+                     ), fd, 2)
+        fd.close()
+        
+    def input(self, filename):
+        filename1 = filename + str(world.rank)
+        fd = file(filename1, 'r')
+        (self.h1_spkmm, 
+                     self.h1_spkmm_ij,
+                     self.h_spkmm,
+                     self.s1_pkmm, 
+                     self.s1_pkmm_ij,
+                     self.s_pkmm,
+                     self.d_spkmm,
+                     self.bias,
+                     self.intctrl,
+                     #self.atoms.calc.hamiltonian.vt_sG,
+                     self.vt_sG,
+                     #self.atoms.calc.density.nt_sG,
+                     self.nt_sG,
+                     self.eqpathinfo,
+                     self.nepathinfo,
+                     self.current,
+                     self.step,
+                     self.cvgflag) = pickle.load(fd)
+        fd.close()
+       
+    def set_calculator(self, e_points):
+        from ase.transport.calculators import TransportCalculator
+     
+        h_scat = self.h_spkmm[0,0]
+        h_lead1 = self.double_size(self.h1_spkmm[0,0],
+                                   self.h1_spkmm_ij[0,0])
+        h_lead2 = self.double_size(self.h2_spkmm[0,0],
+                                   self.h2_spkmm_ij[0,0])
+       
+        s_scat = self.s_pkmm[0]
+        s_lead1 = self.double_size(self.s1_pkmm[0], self.s1_pkmm_ij[0])
+        s_lead2 = self.double_size(self.s2_pkmm[0], self.s2_pkmm_ij[0])
+        
+        tcalc = TransportCalculator(energies=e_points,
+                                    h = h_scat,
+                                    h1 = h_lead2,
+                                    h2 = h_lead2,
+                                    s = s_scat,
+                                    s1 = s_lead2,
+                                    s2 = s_lead2,
+                                    dos = True
+                                   )
+        return tcalc
+    
+    def plot_dos(self, E_range, point_num = 30):
+        e_points = np.linspace(E_range[0], E_range[1], point_num)
+        tcalc = self.set_calculator(e_points)
+        tcalc.get_transmission()
+        tcalc.get_dos()
+        f1 = self.intctrl.leadfermi[0] * (np.zeros([10, 1]) + 1)
+        f2 = self.intctrl.leadfermi[1] * (np.zeros([10, 1]) + 1)
+        a1 = np.max(tcalc.T_e)
+        a2 = np.max(tcalc.dos_e)
+        l1 = np.linspace(0, a1, 10)
+        l2 = np.linspace(0, a2, 10)
+       
+        import pylab
+        pylab.figure(1)
+        pylab.subplot(211)
+        pylab.plot(e_points, tcalc.T_e, 'b-o', f1, l1, 'r--', f2, l1, 'r--')
+        pylab.ylabel('Transmission Coefficients')
+        pylab.subplot(212)
+        pylab.plot(e_points, tcalc.dos_e, 'b-o', f1, l2, 'r--', f2, l2, 'r--')
+        pylab.ylabel('Density of States')
+        pylab.xlabel('Energy (eV)')
+        pylab.show()
+    
+    def double_size(self, m_ii, m_ij):
+        dim = m_ii.shape[-1]
+        mtx = np.empty([dim * 2, dim * 2])
+        mtx[:dim, :dim] = m_ii
+        mtx[-dim:, -dim:] = m_ii
+        mtx[:dim, -dim:] = m_ij
+        mtx[-dim:, :dim] = m_ij.T.conj()
+        return mtx
+    
+    def get_current(self):
+        E_Points, weight, fermi_factor = self.get_nepath_info()
+        tcalc = self.set_calculator(E_Points)
+        tcalc.initialize()
+        tcalc.update()
+        numE = len(E_Points) 
+        current = [0, 0]
+        for i in [0,1]:
+            for j in range(numE):
+                current[i] += tcalc.T_e[j] * weight[j] * fermi_factor[i][j]
+        self.current = current[0] - current[1]
+        return self.current
+    
+    def get_nepath_info(self):
+        if hasattr(self, 'nepathinfo'):
+            energy = self.nepathinfo[0][0].energy
+            weight = self.nepathinfo[0][0].weight
+            fermi_factor = self.nepathinfo[0][0].fermi_factor
+      
+        return energy, weight, fermi_factor
+    
+    def move_buffer(self):
+        self.nbmol_inner = self.nbmol - 2 * self.buffer
+        pl1 = self.buffer
+        if pl1 == 0:
+            self.h_spkmm_mol = self.h_spkmm
+            self.d_spkmm_mol = self.d_spkmm
+            self.s_pkmm_mol = self.s_pkmm
+        else:
+            self.h_spkmm_mol = self.h_spkmm[:, :, pl1: -pl1, pl1:-pl1]
+            self.d_spkmm_mol = self.d_spkmm[:, :, pl1: -pl1, pl1:-pl1]
+            self.s_pkmm_mol = self.s_pkmm[:, pl1: -pl1, pl1:-pl1]
+            
+    def allocate_cpus(self):
+        rank = world.rank
+        size = world.size
+        npk = self.npk
+        npk_each = npk / size
+        r0 = rank * npk_each
+        self.my_pk = np.arange(r0, r0 + npk_each)
+        self.my_npk = npk_each
+        self.kpt_comm = world.new_communicator(np.arange(size))
+
+        self.my_kpts = np.empty((npk_each * self.ntkmol, 3), complex)
+        kpts = self.atoms.calc.wfs.ibzk_kc
+        for i in range(self.ntkmol):
+            for j, k in zip(range(npk_each), self.my_pk):
+                self.my_kpts[j * self.ntkmol + i] = kpts[k * self.ntkmol + i]        
+
+        self.my_lead_kpts = np.empty((npk_each * self.ntklead, 3), complex)
+        kpts = self.atoms_l[0].calc.wfs.ibzk_kc
+        for i in range(self.ntklead):
+            for j, k in zip(range(npk_each), self.my_pk):
+                self.my_lead_kpts[j * self.ntklead + i] = kpts[
+                                                        k * self.ntklead + i]         
+
+    def real_projecting(self):
+        world.barrier()
+        self.h_spmm = np.sum(self.h_spkmm, axis=1)
+        self.s_pmm = np.sum(self.s_pkmm, axis=0)
+        self.d_spmm = np.sum(self.d_spkmm, axis=1)
+        self.kpt_comm.sum(self.h_spmm)
+        self.kpt_comm.sum(self.s_pmm)
+        self.kpt_comm.sum(self.d_spmm)
+        self.h_spmm /= self.npk
+        self.s_pmm /= self.npk
+        self.d_spmm /= self.npk
+
+        
+    def collect_density_matrix(self):
+        world.barrier()
+        npk = self.npk
+        self.d_stkmm = np.zeros([self.nspins, npk, self.nbmol, self.nbmol], complex)
+        for pk, kk in zip(self.my_pk, range(self.my_npk)):
+            self.d_stkmm[:, pk] = self.d_spkmm[:, kk]
+        self.kpt_comm.sum(self.d_stkmm)
+        for i in range(npk):
+            self.d_stkmm[0,i] = (self.d_stkmm[0,i] + self.d_stkmm[0,i].T.conj()) / 2
+
+    def distribute_density_matrix(self, d_stkmm):
+        world.barrier()
+        dagger_tol = 1e-9
+        d_spkmm = np.empty(self.d_spkmm.shape, complex)
+        for pk, kk in zip(self.my_pk, range(self.my_npk)):
+            if np.max(abs(d_stkmm[0, pk] -
+                          d_stkmm[0, pk].T.conj())) > dagger_tol:
+                print 'Warning, density matrix is not dagger symmetric'
+            d_spkmm[0, kk] = (d_stkmm[0, pk] + d_stkmm[0, pk].T.conj()) / 2.
+        return d_spkmm
+     
+    def integral_diff_weight(self, denocc, denvir, method='transiesta'):
+        if method=='transiesta':
+            weight = denocc * denocc.conj() / (denocc * denocc.conj() +
+                                               denvir * denvir.conj())
+        return weight
+
+    def revoke_right_lead(self):
+        self.h2_spkmm = self.h1_spkmm
+        self.s2_pkmm = self.s1_pkmm
+
+        self.h2_spkmm_ij = np.empty(self.h1_spkmm_ij.shape, complex)
+        self.s2_pkmm_ij = np.empty(self.s1_pkmm_ij.shape, complex)
+
+        nspins = self.h2_spkmm.shape[0]
+        npk = self.h2_spkmm.shape[1]
+
+        for s in range(nspins):
+            for k in range(npk):
+                 self.h2_spkmm_ij[s,k] = self.h1_spkmm_ij[s,k].T.conj()
+        for k in range(npk):
+            self.s2_pkmm_ij[k] = self.s1_pkmm_ij[k].T.conj()

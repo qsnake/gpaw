@@ -119,14 +119,21 @@ class GridDescriptor:
         if max(self.h_c) / min(self.h_c) > 1.3:
             raise ValueError('Very anisotropic grid spacings: %s' % self.h_c)
 
-    def get_size_of_global_array(self):
-        return self.N_c - 1 + self.domain.pbc_c
+    def get_size_of_global_array(self, pad=False):
+        if pad:
+            return self.N_c
+        else:
+            return self.N_c - 1 + self.domain.pbc_c
 
+    def flat_index(self, G_c):
+        g1, g2, g3 = G_c - self.beg_c
+        return g3 + self.n_c[2] * (g2 + g1 * self.n_c[1])
+    
     def get_slice(self):
         return [slice(b - 1 + p, e - 1 + p) for b, e, p in
                 zip(self.beg_c, self.end_c, self.domain.pbc_c)]
 
-    def zeros(self, n=(), dtype=float, global_array=False):
+    def zeros(self, n=(), dtype=float, global_array=False, pad=False):
         """Return new zeroed 3D array for this domain.
 
         The type can be set with the ``dtype`` keyword (default:
@@ -134,9 +141,9 @@ class GridDescriptor:
         global array spanning all domains can be allocated with
         ``global_array=True``."""
 
-        return self._new_array(n, dtype, True, global_array)
+        return self._new_array(n, dtype, True, global_array, pad)
     
-    def empty(self, n=(), dtype=float, global_array=False):
+    def empty(self, n=(), dtype=float, global_array=False, pad=False):
         """Return new uninitialized 3D array for this domain.
 
         The type can be set with the ``dtype`` keyword (default:
@@ -144,12 +151,12 @@ class GridDescriptor:
         global array spanning all domains can be allocated with
         ``global_array=True``."""
 
-        return self._new_array(n, dtype, False, global_array)
+        return self._new_array(n, dtype, False, global_array, pad)
         
     def _new_array(self, n=(), dtype=float, zero=True,
-                  global_array=False):
+                  global_array=False, pad=False):
         if global_array:
-            shape = self.get_size_of_global_array()
+            shape = self.get_size_of_global_array(pad)
         else:
             shape = self.n_c
             
@@ -178,7 +185,7 @@ class GridDescriptor:
         Reurned descriptor has 2x2x2 fewer grid points."""
         
         if npy.sometrue(self.N_c % 2):
-            raise ValueError('Grid %s not divisable by 2!' % self.N_c)
+            raise ValueError('Grid %s not divisible by 2!' % self.N_c)
 
         return GridDescriptor(self.domain, self.N_c // 2)
 
@@ -336,22 +343,28 @@ class GridDescriptor:
         self.distribute(A_g, b_g)
         return b_g
 
-    def collect(self, a_xg):
-        """Collect distributed array to master-CPU."""
+    def collect(self, a_xg, broadcast=False):
+        """Collect distributed array to master-CPU or all CPU's."""
         if self.comm.size == 1:
             return a_xg
+
+        xshape = a_xg.shape[:-3]
 
         # Collect all arrays on the master:
         if self.rank != MASTER:
             # There can be several sends before the corresponding receives
             # are posted, so use syncronous send here
             self.comm.ssend(a_xg, MASTER, 301)
-            return
+            if broadcast:
+                A_xg = self.empty(xshape, a_xg.dtype, global_array=True)
+                self.comm.broadcast(A_xg, 0)
+                return A_xg
+            else:
+                return None
 
         # Put the subdomains from the slaves into the big array
         # for the whole domain:
-        xshape = a_xg.shape[:-3]
-        A_xg = self.empty(xshape, a_xg.dtype.char, global_array=True)
+        A_xg = self.empty(xshape, a_xg.dtype, global_array=True)
         parsize_c = self.domain.parsize_c
         r = 0
         for n0 in range(parsize_c[0]):
@@ -367,6 +380,8 @@ class GridDescriptor:
                         self.comm.receive(a_xg, r, 301)
                     A_xg[..., b0:e0, b1:e1, b2:e2] = a_xg
                     r += 1
+        if broadcast:
+            self.comm.broadcast(A_xg, 0)
         return A_xg
 
     def distribute(self, B_xg, b_xg):

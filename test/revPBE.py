@@ -2,7 +2,7 @@ import os
 from ase import *
 from ase.parallel import rank, barrier
 from gpaw.utilities import equal
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
@@ -18,7 +18,7 @@ setup_paths.insert(0, '.')
 a = 7.5 * Bohr
 n = 16
 atoms = Atoms([Atom(symbol, (0.0, 0.0, 0.0))], cell=(a, a, a), pbc=True)
-calc = Calculator(gpts=(n, n, n), nbands=1, xc='PBE')
+calc = GPAW(gpts=(n, n, n), nbands=1, xc='PBE')
 atoms.set_calculator(calc)
 e1 = atoms.get_potential_energy()
 e1a = calc.get_reference_energy()

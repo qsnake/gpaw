@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.utilities import equal
 
 a = 4.8 # => N = 4.8 / 0.2 = 24
@@ -10,7 +10,7 @@ p = []
 exx = []
 i = 0
 for hosts in [1, 4]:
-    calc = Calculator(convergence={'eigenstates': 1e-6}, hosts=hosts,
+    calc = GPAW(convergence={'eigenstates': 1e-6}, hosts=hosts,
                       txt='exx_parallel.txt')
 
     loa.set_calculator(calc)

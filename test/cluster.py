@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 from ase import *
 from ase.parallel import barrier, rank

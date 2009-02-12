@@ -55,6 +55,12 @@ class LocFuncs:
 
         Use create_localized_functions() to create this object."""
 
+        # Quick hack to take care of some special cases
+        # (hgh setups without projectors and/or pseudo core density)
+        if functions[0] is None:
+            self.box_b = []
+            return
+
         # We assume that all functions have the same cut-off:
         rcut = functions[0].get_cutoff()
 
@@ -89,7 +95,7 @@ class LocFuncs:
             gd.comm.all_gather(i_have_a_piece, i_have_a_piece_r)
             if i_have_a_piece:
                 self.ranks = npy.arange(self.comm.size)[i_have_a_piece_r == 1]
-                self.root = gd.domain.get_rank_for_position(spos_c)
+                self.root = gd.domain.get_rank_from_position(spos_c)
         else:
             self.ranks = [0]
             self.root = 0

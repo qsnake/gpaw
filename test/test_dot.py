@@ -3,7 +3,8 @@ import numpy as np
 # Test that numpy.dot behaves as expected, i.e.
 # [A . B]_ijpq = sum_k  A_ijk * B_pkq
 # Product sum is over last dimension of A and second-to-last dimension of B
-
+#
+# See numpy.tensordot for ultimate flexibility in choosing the pruduct-sum axes
 
 # make "random" input arrays
 A = np.arange(6 * 2 * 5).reshape(6, 2, 5) - 3.

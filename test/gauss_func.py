@@ -1,5 +1,5 @@
 from math import pi, sqrt
-import numpy as npy
+import numpy as np
 from gpaw.utilities.tools import coordinates
 from gpaw.utilities.gauss import Gaussian
 from gpaw.domain import Domain
@@ -9,7 +9,7 @@ from gpaw.mpi import world
 from gpaw.poisson import PoissonSolver
 
 def norm(a):
-    return npy.sqrt(npy.sum(a.ravel()**2)) / len(a.ravel())
+    return np.sqrt(np.sum(a.ravel()**2)) / len(a.ravel())
 
 # Initialize classes
 a = 20 # Size of cell
@@ -25,8 +25,8 @@ solver.initialize(gd)
 solve = solver.solve
 xyz, r2 = coordinates(gd)     # Matrix with the square of the radial coordinate
 print r2.shape
-r  = npy.sqrt(r2)             # Matrix with the values of the radial coordinate
-nH = npy.exp(-2 * r) / pi     # Density of the hydrogen atom
+r  = np.sqrt(r2)             # Matrix with the values of the radial coordinate
+nH = np.exp(-2 * r) / pi     # Density of the hydrogen atom
 gauss = Gaussian(gd)          # An instance of Gaussian
 
 # /------------------------------------------------\

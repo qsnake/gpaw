@@ -1,6 +1,6 @@
 from ase import *
 from gpaw.utilities import equal
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw import setup_paths
 from lxc_testsetups import Lxc_testsetups
 
@@ -25,7 +25,7 @@ a = 5.0
 n = 24
 li = Atoms([Atom('Li', (0.0, 0.0, 0.0), magmom=1.0)], cell=(a, a, a), pbc=True)
 
-calc = Calculator(gpts=(n, n, n), nbands=1, xc='X_PBE-C_PBE')
+calc = GPAW(gpts=(n, n, n), nbands=1, xc='X_PBE-C_PBE')
 li.set_calculator(calc)
 e = li.get_potential_energy() + calc.get_reference_energy()
 equal(e, -7.462 * Hartree, 0.056 * Hartree)

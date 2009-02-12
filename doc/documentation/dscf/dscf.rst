@@ -47,7 +47,7 @@ The example below calculates the excitation energy of the
 in lumo with spin 1) and the method will take the electron from highest 
 occupied orbital which in this case is `5\sigma`.
 
-The lumo is an instance of the class Wavefunction which calculates the 
+The lumo is an instance of the class AEOrbital which calculates the 
 expansion of the saved `2\pi` state in each iteration step.
 In order to obtain the all-electron overlaps `\langle\varphi_n|2\pi\rangle` 
 we need to supply the projector overlaps in addition to the 
@@ -69,48 +69,43 @@ Exciting the LUMO in CO::
                              'bands': -1})
 
     CO = molecule('CO')
-    CO.center(vacuum=4)
+    CO.center(vacuum=3)
     CO.set_calculator(calc)
 
     E_gs = CO.get_potential_energy()
 
-    '''Obtain the pseudowavefunctions and projector overlaps of the
-     state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals'''
-    wf = [kpt.psit_nG[5] for kpt in calc.kpt_u]
-    P_aui = [a.P_uni[:,5,:] for a in calc.nuclei]
+    calc.write('CO.gpw', mode='all')
+    CO, calc = restart('CO.gpw')
+
+    ## '''Obtain the pseudowavefunctions and projector overlaps of the
+    ##  state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals'''
+    wf_u = [kpt.psit_nG[5] for kpt in calc.wfs.kpt_u]
+    P_aui = [[kpt.P_ani[a][5] for kpt in calc.wfs.kpt_u]
+              for a in range(len(CO))]
 
     # Excited state calculation
     #--------------------------------------------
 
-    calc = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
-                convergence={'energy': 100,
-                             'density': 100,
-                             'eigenstates': 1.0e-9,
-                             'bands': -1})
-
-    CO = molecule('CO')
-    CO.center(vacuum=4)
-    CO.set_calculator(calc)
-
-    lumo = dscf.WaveFunction(calc, wf, P_aui, molecule=[0,1])
-    #lumo = dscf.MolecularOrbitals(calc, [0,1], w=[[0,0,0,1],[0,0,0,-1]])
+    lumo = dscf.AEOrbital(calc, wf_u, P_aui, molecule=[0,1])
+    #lumo = dscf.MolecularOrbital(calc, molecule=[0,1], w=[[0,0,0,1],[0,0,0,-1]])
     dscf.dscf_calculation(calc, [[1.0, lumo, 1]], CO)
 
     E_es = CO.get_potential_energy()
 
-    print 'Excitation energy: ' , E_es-E_gs
+    print 'Excitation energy: ', E_es-E_gs
 
 The commented line ``dscf.Molecular...`` uses another class to specify the 
 `2\pi` orbital of CO which does not require a ground state calculation. 
 In the simple example above the two methods give identical results, 
-but for more complicated systems the WaveFunction class should be used
-\ [#des]_.
+but for more complicated systems the AEOrbital class should be used
+\ [#des]_. When using the AEOrbital class the calculator has to be restarted 
+from a file or a new calculator object must be constructed for the dscf calculation.
 
 In the example above we only specify a single state, but the function 
 ``dscf.dscf_calculation`` takes a list of orbitals as input and we could for 
 example have given the argument [[1.0, lumo, 1], [-1.0, pi, 0]] which would 
 force the electron to be taken from the `\pi` orbital with spin 0. The pi 
-should of course be another instance of the WaveFunction class.
+should of course be another instance of the AEOrbital class.
 
 ---------------------
 Exciting an adsorbate

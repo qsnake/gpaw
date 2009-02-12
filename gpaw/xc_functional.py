@@ -228,10 +228,10 @@ class XCFunctional:
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code,local_tau)
         elif code == 'vdWDF':
-            from gpaw.vdw import VDWFunctional
-            self.xc = VDWFunctional(nspins)
+            from gpaw.vdw import FFTVDWFunctional
+            self.xc = FFTVDWFunctional(nspins)
         elif code == 'gllb':
-            # Get the correct functional from NonLocalFunctionalFactory
+            # Get the correctly configured functional from NonLocalFunctionalFactory
             self.xc = NonLocalFunctionalFactory().get_functional_by_name(xcname)
         elif code == 'lxc':
 ###            self.xcname = xcname # MDTMP: to get the lxc name for setup
@@ -272,38 +272,35 @@ class XCFunctional:
     def is_gllb(self):
         return self.gllb
 
-    # Initialize the GLLB functional, hopefully at this stage, the eigenvalues and functions are already available
+    # Initialize the GLLB functional
     def initialize_gllb(self, paw):
-        self.xc.pass_stuff(paw.hamiltonian.vt_sg, paw.density.nt_sg,
-                           paw.kpt_u, paw.gd, paw.finegd,
-                           paw.density.interpolate, paw.nspins,
-                           paw.my_nuclei, paw.nuclei, paw.occupation,
-                           paw.kpt_comm, paw.symmetry, paw.nvalence,
-                           paw.eigensolver, paw.hamiltonian)
-
-    def set_non_local_things(self, paw, energy_only=False):
+        self.xc.pass_stuff(paw)
+        
+    def set_non_local_things(self, density, hamiltonian, wfs, atoms,
+                             energy_only=False):
 
         from gpaw.vdw import VDWFunctional
         if isinstance(self.xc, VDWFunctional):
-            self.xc.gd = paw.finegd
+            self.xc.set_grid_descriptor(density.finegd)
             return
             
         if not self.orbital_dependent:
             return
 
         if self.hybrid > 0.0:
-            if paw.dtype == complex:
-                raise NotImplementedError, 'k-point calculation with EXX'
+            if wfs.dtype == complex:
+                raise NotImplementedError('k-point calculation with EXX')
             if self.parameters and self.parameters.has_key('finegrid'):
                 use_finegrid = self.parameters['finegrid']
             else:
                 use_finegrid = True
-            self.exx = EXX(paw, energy_only=energy_only,
+            self.exx = EXX(density, hamiltonian, wfs, atoms,
+                           energy_only=energy_only,
                            use_finegrid=use_finegrid)
 
         if self.xcname == 'TPSS':
-            paw.density.initialize_kinetic()
-            paw.density.update_kinetic(paw.kpt_u,symmetry=paw.symmetry)
+            density.initialize_kinetic()
+            density.update_kinetic(wfs.kpt_u, symmetry=paw.symmetry)
             if paw.nspins ==1:
                 paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
             if self.nspins == 2:
@@ -312,10 +309,10 @@ class XCFunctional:
             for nucleus in paw.my_nuclei:
                 nucleus.setup.xc_correction.initialize_kinetic(nucleus.setup.data)
 
-    def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None):
+    def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None, dH_asp=None):
         if self.orbital_dependent:
             if self.hybrid > 0.0:
-                self.exx.apply(kpt, Htpsit_nG, H_nn, self.hybrid)
+                self.exx.apply(kpt, Htpsit_nG, H_nn, dH_asp, self.hybrid)
 
     def get_non_local_force(self, kpt):
         F_ac = 0.0
@@ -341,18 +338,9 @@ class XCFunctional:
 
         return Ekin
 
-    def adjust_non_local_residual(self, pR_G, dR_G, eps, u, s, k, n):
+    def adjust_non_local_residual(self, pR_G, dR_G, kpt, n):
         if self.hybrid > 0.0:
-            self.exx.adjust_residual(pR_G, dR_G, u, n)
-
-    # For non-local functional, this function does the calculation for special
-    # case of setup-generator. The processes for non-local in radial and
-    # 3D-grid deviate so greatly that this is special treatment is needed.
-    def get_non_local_energy_and_potential1D(self, gd, u_j, f_j, e_j, l_j,
-                                             v_xc, density=None):
-        # Send the command one .xc up
-        return self.xc.get_non_local_energy_and_potential1D(
-            gd, u_j, f_j, e_j, l_j, v_xc, density=density)
+            self.exx.adjust_residual(pR_G, dR_G, kpt, n)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
                              taua_g=None,dedtaua_g=None):
@@ -533,7 +521,7 @@ class XC3DGrid(XCGrid):
 
             npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
 
-            self.xcfunc.calculate_spinpaired(e_g,
+            self.xcfunc.calculate_spinpaired(e_g.ravel(),
                                              n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g)
@@ -590,7 +578,7 @@ class XC3DGrid(XCGrid):
             npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
             npy.sum(self.dnadr_cg**2, axis=0, out=self.aa2_g)
             npy.sum(self.dnbdr_cg**2, axis=0, out=self.ab2_g)
-            self.xcfunc.calculate_spinpolarized(e_g,
+            self.xcfunc.calculate_spinpolarized(e_g.ravel(),
                                                 na_g, va_g,
                                                 nb_g, vb_g,
                                                 self.a2_g,
@@ -658,12 +646,6 @@ class XCRadialGrid(XCGrid):
     # True, if this xc-potential depends on more than just density
     def is_non_local(self):
         return self.xcfunc.is_non_local()
-
-    # This is called from all_electron.py
-    # Special function for just 1D-case
-    def get_non_local_energy_and_potential(self, u_j, f_j, e_j, l_j, v_xc, density=None):
-        # Send the command one .xc up. Include also the grid descriptor.
-        return self.xcfunc.get_non_local_energy_and_potential1D(self.gd, u_j, f_j, e_j, l_j, v_xc, density=density)
 
     def get_energy_and_potential_spinpaired(self, n_g, v_g, e_g = None):
         if e_g == None:

@@ -1,600 +1,616 @@
-import os
-from math import pi, sqrt
+# -*- coding: utf-8 -*-
 
-import numpy as npy
-from ase.units import Hartree
+"""Van der Waals density functional.
+
+This module implements the Dion-Rydberg-Schröder-Langreth-Lundqvist
+XC-functional.  There are two implementations:
+
+1. A simlpe real-space double sum.
+
+2. A more efficient FFT implementation based on the Román-Péres-Soler paper.
+
+"""
+
+import os
+import sys
+import pickle
+from math import sin, cos, exp, pi, log, sqrt, ceil
+
+import numpy as np
+from numpy.fft import fftn, fftfreq, fft
 
 from gpaw.xc_functional import XCFunctional
-#these are used for calculating the gradient
-from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
-from gpaw.xc_functional import XC3DGrid
-from gpaw.transformers import Transformer
-from gpaw.utilities import  check_unit_cell
-from gpaw import Calculator
+from gpaw.operators import Gradient
 import gpaw.mpi as mpi
 import _gpaw
-from gpaw.operators import Gradient
+ 
+ 
+def T(w, x, y, z): 
+    return 0.5 * ((1.0 / (w + x) + 1.0 / (y + z)) * 
+                  (1.0 / ((w + y) * (x + z)) + 1.0 / ((w + z) * (y + x)))) 
+
+def W(a, b): 
+    return 2 * ((3 - a**2) * b * cos(b) * sin(a) + 
+                (3 - b**2) * a * cos(a) * sin(b) + 
+                (a**2 + b**2 - 3) * sin(a) * sin(b) - 
+                3 * a * b * cos(a) * cos(b)) / (a * b)**3 
+eta = 8 * pi / 9 
+def nu(y, d): 
+    return 0.5 * y**2 / (1 - exp(-0.5 * eta * (y / d)**2))
+
+def f(a, b, d, dp): 
+    va = nu(a, d) 
+    vb = nu(b, d) 
+    vpa = nu(a, dp) 
+    vpb = nu(b, dp) 
+    return 2 * (a * b)**2 * W(a, b) * T(va, vb, vpa, vpb) / pi**2
+
+def phi(d, dp):
+    """vdW-DF kernel."""
+    from scipy.integrate import quad 
+    kwargs = dict(epsabs=1.0e-6, epsrel=1.0e-6, limit=400)
+    cut = 35
+    return quad(lambda y: quad(f, 0, cut, (y, d, dp), **kwargs)[0],
+                0, cut, **kwargs)[0]
+
+C = 12 * (4 * pi / 9)**3
+def phi_asymptotic(d, dp):
+    """Asymptotic behavior of vdW-DF kernel."""
+    d2 = d**2
+    dp2 = dp**2
+    return -C / (d2 * dp2 * (d2 + dp2)) 
+
+def hRPS(x, xc=1.0):
+    """Cutoff function from Román-Péres-Soler paper."""
+    x1 = x / xc
+    xm = x1 * 1.0
+    y = -x1
+    for m in range(2, 13):
+        xm *= x1
+        y -= xm / m
+    return xc * (1.0 - np.exp(y))
 
 
-class VanDerWaals:
-    def __init__(self, n_g, gd, calc=None,
-                 xcname='revPBE', ncoarsen=0):
-        """Van der Waals object.
+class VDWFunctional:
+    """Base class for vdW-DF."""
+    def __init__(self, nspins=1, world=None, q0cut=5.0,
+                 phi0=0.5, ds=1.0, Dmax=20.0, nD=201, ndelta=21,
+                 verbose=False):
+        """vdW-DF.
 
-        Bla-bla-bla, ref to paper, ...
+        parameters:
 
-        ... the density must be given with the shape
-        spin,gridpoint_x,gridpoint_y,gridpoint_z, This class only
-        works for non spin polarized calculations. In case of
-        spinpolarized calcultions, one should ad the spin up and spin
-        down densities and use that as input.
-
-        Parameters
-        ----------
-        n_g : 3D ndarray of floats
-            Electron density.
-        gd : GridDescriptor
-            Grid-descriptor object.
-        xcname : string
-            Name of the XC functional used.  Default value: revPBE.
+        nspins: int
+            Number of spins.
+        world: MPI communicator
+            Communicator to parallelize over.  Defaults to gpaw.mpi.world.
+        q0cut: float
+            Maximum value for q0.
+        phi0: float
+            Smooth value for phi(0,0).
+        ds: float
+            Cutoff for smooth kernel.
+        Dmax: float
+            Maximum value for D.
+        nD: int
+            Number of values for D in kernel-table.
+        ndelta: int
+            Number of values for delta in kernel-table.
+        verbose: bool
+            Print useful information.
         """
         
-        self.gd = gd
-
-        if n_g.shape != tuple(gd.n_c):
-            bign_g = n_g
-            n_g = gd.empty()
-            gd.distribute(bign_g, n_g)
-            
-        v_g = gd.empty()
-
-        # GGA exchange and correlation:
-        xc = XC3DGrid(xcname, gd)
-
-        self.GGA_xc_energy = xc.get_energy_and_potential(n_g, v_g)
-        self.a2_g = xc.a2_g
-
-            
-        # LDA correlation energy:
-        c = XC3DGrid('None-C_PW', gd)
-        self.LDA_c_energy = c.get_energy_and_potential(n_g, v_g)
-        
-        # GGA exchange energy:
-        xname = {'revPBE': 'X_PBE_R-None','RPBE': 'X_RPBE-None'}[xcname]
-        x = XC3DGrid(xname, gd)
-        self.GGA_x_energy = x.get_energy_and_potential(n_g, v_g)
-
-        self.dExc_semilocal = (-self.GGA_xc_energy + self.LDA_c_energy +
-                               self.GGA_x_energy)
-
-        if calc is not None:
-            if isinstance(calc, Calculator):
-                name = {'revPBE': 'X_PBE_R-C_PW',
-                        'RPBE': 'X_RPBE-C_PW'}[xcname]
-                self.dExc_semilocal = calc.get_xc_difference(name)
-            else:
-                nxc = {'revPBE': 4, 'RPBE': 5}[xcname]
-                self.dExc_semilocal = (
-                    calc.GetNetCDFEntry('EvaluateCorrelationEnergy')[-1, 1] -
-                    calc.GetNetCDFEntry('EvaluateCorrelationEnergy')[-1, nxc])
-
-            self.dExc_semilocal /= Hartree
-
-        ncut = 1.0e-7
-        n_g.clip(ncut, npy.inf, out=n_g)
-
-        self.kF_g = (3.0 * pi**2 * n_g)**(1.0 / 3.0)
-        self.n_g = n_g
-        self.q0_g = self.get_q0(self.kF_g)
-
-        for n in range(ncoarsen):
-            coarsegd = self.gd.coarsen()
-            t = Transformer(self.gd, coarsegd)
-            self.n_g, n_g = coarsegd.empty(), self.n_g
-            self.q0_g, q0_g = coarsegd.empty(), self.q0_g
-            t.apply(n_g, self.n_g)
-            t.apply(q0_g, self.q0_g)
-            self.gd = coarsegd
-            
-        self.phi_jk = self.get_phitab_from_1darrays()
-
-    def get_kernel_plot(self):
-        ndelta, nD = self.phi_jk.shape
-        nD8 = int(8.0 / self.deltaD)
-        D = npy.linspace(0, nD8 * self.deltaD, nD8, endpoint=False)
-        import pylab as p
-        for delta, c in [(0, 'r'), (0.5, 'g'), (0.9, 'b')]:
-            jdelta = int(delta / self.deltadelta + 0.5)
-            p.plot(D, self.phi_jk[jdelta, :nD8], c + '-',
-                   label=r'$\delta=%.1f$' % delta)
-        p.legend(loc='best')
-        p.plot(D, npy.zeros(len(D)), 'k-')       
-        p.xlabel('D')
-        p.ylabel(r'$4\pi D^2 \phi(\rm{Hartree})$')
-        p.show()
-        
-    def get_energy(self, repeat=None, ncut=0.0005, rcut=15.0):
-        #introduces periodic boundary conditions using
-        #the minimum image convention
-        
-        gd = self.gd
-        n_g = gd.collect(self.n_g)
-        q0_g = gd.collect(self.q0_g)
-        if mpi.rank != 0:
-            n_g = gd.empty(global_array=True)
-            q0_g = gd.empty(global_array=True)
-        mpi.world.broadcast(n_g, 0)
-        mpi.world.broadcast(q0_g, 0)
-
-        n_c = n_g.shape
-        R_gc = npy.empty(n_c + (3,))
-        R_gc[..., 0] = (npy.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
-        R_gc[..., 1] = (npy.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
-        R_gc[..., 2] = npy.arange(0, n_c[2]) * gd.h_c[2]
-        
-        mask_g = (n_g.ravel() > ncut)
-        R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
-        n_i = n_g.ravel().compress(mask_g)
-        q0_i = q0_g.ravel().compress(mask_g)
-
-        # Number of grid points:
-        ni = len(n_i)
-
-        # Number of pairs per processor:
-        np = ni * (ni - 1) // 2 // mpi.size
-        
-        iA = 0
-        for r in range(mpi.size):
-            iB = iA + int(0.5 - iA + sqrt((iA - 0.5)**2 + 2 * np))
-            if r == mpi.rank:
-                break
-            iA = iB
-
-        assert iA <= iB
-        
-        if mpi.rank == mpi.size - 1:
-            iB = ni
-
-        if repeat is None:
-            repeat_c = npy.zeros(3, int)
+        if world is None:
+            self.world = mpi.world
         else:
-            repeat_c = npy.asarray(repeat, int)
+            self.world = world
 
-        self.histogram = npy.zeros(300)
-        E_cl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
-                         repeat_c,
-                         self.phi_jk, self.deltaD, self.deltadelta,
-                         iA, iB,
-                         self.histogram, rcut)
-        self.histogram *= gd.h_c.prod()**2 / (rcut / 299) / 4 / pi * Hartree
-        mpi.world.sum(self.histogram)
+        self.q0cut = q0cut
+        self.phi0 = phi0
+        self.ds = ds
+
+        self.delta_i = np.linspace(0, 1.0, ndelta)
+        self.D_j = np.linspace(0, Dmax, nD)
+
+        self.verbose = verbose
         
-        E_cl = mpi.world.sum(E_cl * gd.h_c.prod()**2)
-        E_nl_c = self.dExc_semilocal + E_cl
-        return E_nl_c * Hartree, E_cl*Hartree, self.histogram
-
-    def get_e_xc_LDA(self):
-        e_xc_LDA=self.get_e_c_LDA()+self.get_e_x_LDA()
-        return e_xc_LDA
-    
-    def get_e_c_LDA(self):
-        #this is for one spin only
-        #PW91 LDA correlation
-        c=1.7099210
-        n_up=self.n_g/2.0
-        n_down=self.n_g/2.0
-        #nt=abs(n_up+n_down)
-        n=self.n_g
-        #npy.choose(npy.less_equal(nt,0.00001),(nt,0.00001))
-        r=(3./(4.*npy.pi*n))**(1./3.)
-        zeta=(n_up-n_down)/n
-        wz=((1.+zeta)**(4./3.)+(1.-zeta)**(4./3.)-2.)/(2.**(4./3.)-2.)
-        res=self.e_PW92_LDA(r,0.031091,0.21370,7.5957,3.5876,1.6382,0.49294,1.)*(1.-wz*zeta**4.)
-        res=res+self.e_PW92_LDA(r,0.015545,0.20548,14.1189,6.1977,3.3662,0.62517,1.)*wz*zeta**4.
-        res=res-self.e_PW92_LDA(r,0.016887,0.11125,10.357,3.6231,0.88026,0.49671,1.)*wz*(1.-zeta**4.)/c
-        return(res)
-#function used by def eps_c_PW92_LDA (n_up,n_down):
-    def e_PW92_LDA (self,r,t,u,v,w,x,y,p):
-        return(-2.*t*(1.+u*r)*npy.log(1.+1./(2.*t*(v*npy.sqrt(r)+w*r+x*r**(3./2.)+y*r**(p+1.)))))
-    
-    def get_e_x_LDA(self):
-        result = (-3./(4.*npy.pi)*(3.*npy.pi*npy.pi*self.n_g)**(1./3.))
-        return result
-
-    def get_q0(self, kF_g):
-        #implementet as in PRL92(2004)246401-1
-        e_xc_0 = self.get_e_xc_LDA()-self.get_e_x_LDA()*(-0.8491/9.0*self.a2_g/(2.0*kF_g*self.n_g)**2.0)
-        q_0 = e_xc_0/self.get_e_x_LDA()*kF_g
-        return q_0
-    
-    def get_phitab_from_1darrays(self, filename='phi_delta'):
-        path = os.environ['VDW']
-        #function that constucts phimat from files containing phi_delta(D)
-        #The filename must be given as something+delta
-        #
-        file = open(path + '/grid.dat')
-        phigrid = {}
-        line = file.readline()
-        while line:
-            a = line.split()
-            phigrid[a[0]] = float(a[1])
-            line = file.readline()
-        file.close()
-        self.deltadelta = phigrid['deltadelta']
-        self.deltaD=phigrid['deltaD']
-        self.Dmax=phigrid['Dmax']
-        self.deltamax=phigrid['deltamax']
-        x = {}
-        #filename='eta_2_phi_delta'
-        faktor = 2.0*4.0*pi/pi**2.0
-        for n in npy.arange(0.0,1.0,self.deltadelta):
-            f = path + '/' + filename + str(n) + '.dat'
-            data = self.read_array1d_from_txt_file(f)
-            x[n] = npy.array(data[:])*faktor 
-        #h=0.05 for D og delta 
-        phimat = npy.zeros((len(x),len(x[0.0])))
-        for n in range(0,phimat.shape[0]):
-            for m in range(phimat.shape[1]):
-                phimat[n,m] = x[n*0.05][m]
-        return phimat
-
-    def get_c6(self,ncut=0.0005):
-        #Returns C6 in units of Hartree
-        ncut=ncut
-        h_c = self.gd.h_c
-        denstab = self.n_g
-        print 'denstab.shape' ,denstab.shape
-        nx, ny, nz = denstab.shape
-        N = nx * ny * nz
-        print 'N',N
-        qtab_N = self.q0_g 
-        qtab_N.shape = [N]
-        denstab_N = denstab.copy()
-        denstab_N.shape = [N]
-        print 'denstab_N.shape', denstab_N.shape
-        qtab_N = npy.compress(npy.greater_equal(denstab_N,ncut),qtab_N)
-        denstab_N = npy.compress(npy.greater_equal(denstab_N,ncut),denstab_N)
-        C6 = 0.0
-        C=(-12.*(4.*npy.pi/9.)**3)
-        for m in range(denstab_N.shape[0]):
-            C6 = C6+npy.sum(denstab_N[m]*denstab_N[:]*C/(qtab_N[m]**2*qtab_N[:]**2*(qtab_N[m]**2+qtab_N[:]**2)))
-        C6 = -C6*h_c[0]**2.0*h_c[1]**2.0*h_c[2]**2.0
-        Ry = 13.6058
-        return C6 ,'Ha*a0**6'
-
-    def read_array1d_from_txt_file(self,filename='Phi5_D0_10_1delta_0_09_01.dat'):
-        file = open(filename)
-        line = file.readline()
-        filearray1D = []
-        while line:
-            filearray1D.append(float(line))
-            line=file.readline()
-        file.close()
-        return filearray1D
-        
-
-from gpaw.xc_functional import XCFunctional
-class VDWFunctional:
-    def __init__(self, nspins):
         self.revPBEx = XCFunctional('revPBEx', nspins)
         self.LDAc = XCFunctional('None-C_PW', nspins)
 
-    def set_density_and_gradient(self, n_g, a2_g):
-        gd = self.gd
+        self.read_table()
 
-        ncoarsen = 0
-        ncut = 1.0e-7
-        n_g.clip(ncut, npy.inf, out=n_g)
+        self.gga = True
+        self.mgga = not True
+        self.hybrid = 0.0
+        self.uses_libxc = False
 
-        self.kF_g = (3.0 * pi**2 * n_g)**(1.0 / 3.0)
-        self.n_g = n_g
-        self.q0_g = self.get_q0(self.kF_g, a2_g)
+        self.gd = None
 
-        for n in range(ncoarsen):
-            coarsegd = self.gd.coarsen()
-            t = Transformer(self.gd, coarsegd)
-            self.n_g, n_g = coarsegd.empty(), self.n_g
-            self.q0_g, q0_g = coarsegd.empty(), self.q0_g
-            t.apply(n_g, self.n_g)
-            t.apply(q0_g, self.q0_g)
-            self.gd = coarsegd
-            
-        self.phi_jk = self.get_phitab_from_1darrays()
+    def set_grid_descriptor(self, gd):
+        self.gd = gd
 
-    def get_energy(self, repeat=None, ncut=0.0005, rcut=20.0):
-        #introduces periodic boundary conditions using
-        #the minimum image convention
+    def set_non_local_things(self, density, hamiltonian, wfs, atoms,
+                             energy_only=False):
+        self.set_grid_descriptor(density.finegd)
 
-        gd = self.gd
-        n_g = gd.collect(self.n_g)
-        q0_g = gd.collect(self.q0_g)
-        if mpi.rank != 0:
-            n_g = gd.empty(global_array=True)
-            q0_g = gd.empty(global_array=True)
-        mpi.world.broadcast(n_g, 0)
-        mpi.world.broadcast(q0_g, 0)
+    def is_gllb(self):
+        return False
+    
+    def apply_non_local(self, kpt):
+        pass
 
-        n_c = n_g.shape
-        R_gc = npy.empty(n_c + (3,))
-        R_gc[..., 0] = (npy.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
-        R_gc[..., 1] = (npy.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
-        R_gc[..., 2] = npy.arange(0, n_c[2]) * gd.h_c[2]
+    def get_non_local_energy(self, n_g=None, a2_g=None, e_LDAc_g=None):
+        """Calculate non-local correlation energy.
 
-        mask_g = (n_g.ravel() > ncut)
-        R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
-        n_i = n_g.ravel().compress(mask_g)
-        q0_i = q0_g.ravel().compress(mask_g)
+        parameters:
 
-        # Number of grid points:
-        ni = len(n_i)
-
-        # Number of pairs per processor:
-        np = ni * (ni - 1) // 2 // mpi.size
+        n_g: ndarray
+            Density.
+        a2_g: ndarray
+            Absolute value of the gradient of the density - squared.
+        e_LDAc_g: ndarray
+            LDA correlation energy density.
+        """
         
-        iA = 0
-        for r in range(mpi.size):
-            iB = iA + int(0.5 - iA + sqrt((iA - 0.5)**2 + 2 * np))
-            if r == mpi.rank:
-                break
-            iA = iB
-
-        assert iA <= iB
+        if n_g is None:
+            return 0.0
         
-        if mpi.rank == mpi.size - 1:
-            iB = ni
+        gd = self.gd
+        
+        if a2_g is None:
+            # Calculate square of gradient:
+            a2_g = np.zeros_like(n_g)
+            dndx_g = np.zeros_like(n_g)
+            for c in range(3):
+                Gradient(gd, c).apply(n_g, dndx_g)
+                a2_g += dndx_g**2
 
-        if repeat is None:
-            repeat_c = npy.zeros(3, int)
+        n_g = n_g.clip(1e-7, np.inf)
+        
+        if e_LDAc_g is None:
+            # Calculate LDA correlation energy density:
+            e_LDAc_g = np.empty_like(n_g)
+            v_g = np.empty_like(n_g)
+            self.LDAc.calculate_spinpaired(e_LDAc_g, n_g, v_g)
         else:
-            repeat_c = npy.asarray(repeat, int)
+            e_LDAc_g.shape = n_g.shape
 
-        self.histogram = npy.zeros(300)
-        E_vdwnl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c, gd.domain.pbc_c,
-                            repeat_c,
-                            self.phi_jk, self.deltaD, self.deltadelta,
-                            iA, iB,
-                            self.histogram, rcut)
-        self.histogram *= gd.h_c.prod()**2 / (rcut / 299) / 4 / pi * Hartree
-        mpi.world.sum(self.histogram)
-        E_vdwnl = mpi.world.sum(E_vdwnl * gd.h_c.prod()**2)
-        return E_vdwnl
+        # Calculate q0 and cut it off smoothly at q0cut:
+        kF_g = (3 * pi**2 * n_g)**(1.0 / 3.0)
+        Zab = -0.8491
+        q0_g = hRPS(kF_g -
+                    4 * pi / 3 * e_LDAc_g / n_g -
+                    Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
 
-    def get_e_xc_LDA(self):
-        e_xc_LDA=self.get_e_c_LDA()+self.get_e_x_LDA()
-        return e_xc_LDA
-    
-    def get_e_c_LDA(self):
-        #this is for one spin only
-        #PW91 LDA correlation
-        c=1.7099210
-        n_up=self.n_g/2.0
-        n_down=self.n_g/2.0
-        #nt=abs(n_up+n_down)
-        n=self.n_g
-        #npy.choose(npy.less_equal(nt,0.00001),(nt,0.00001))
-        r=(3./(4.*npy.pi*n))**(1./3.)
-        zeta=(n_up-n_down)/n
-        wz=((1.+zeta)**(4./3.)+(1.-zeta)**(4./3.)-2.)/(2.**(4./3.)-2.)
-        res=self.e_PW92_LDA(r,0.031091,0.21370,7.5957,3.5876,1.6382,0.49294,1.)*(1.-wz*zeta**4.)
-        res=res+self.e_PW92_LDA(r,0.015545,0.20548,14.1189,6.1977,3.3662,0.62517,1.)*wz*zeta**4.
-        res=res-self.e_PW92_LDA(r,0.016887,0.11125,10.357,3.6231,0.88026,0.49671,1.)*wz*(1.-zeta**4.)/c
-        return(res)
-#function used by def eps_c_PW92_LDA (n_up,n_down):
-    def e_PW92_LDA (self,r,t,u,v,w,x,y,p):
-        return(-2.*t*(1.+u*r)*npy.log(1.+1./(2.*t*(v*npy.sqrt(r)+w*r+x*r**(3./2.)+y*r**(p+1.)))))
-    
-    def get_e_x_LDA(self):
-        result = (-3./(4.*npy.pi)*(3.*npy.pi*npy.pi*self.n_g)**(1./3.))
-        return result
+        # Distribute density and q0 to all processors:
+        n_g = gd.collect(n_g, broadcast=True)
+        q0_g = gd.collect(q0_g, broadcast=True)
 
-    def get_q0(self, kF_g, a2_g):
-        #implementet as in PRL92(2004)246401-1
-        e_xc_0 = self.get_e_xc_LDA()-self.get_e_x_LDA()*(-0.8491/9.0*a2_g/(2.0*kF_g*self.n_g)**2.0)
-        q_0 = e_xc_0/self.get_e_x_LDA()*kF_g
-        return q_0
-    
-    def get_phitab_from_1darrays(self, filename='phi_delta'):
-        path = os.environ['VDW']
-        #function that constucts phimat from files containing phi_delta(D)
-        #The filename must be given as something+delta
-        #
-        file = open(path + '/grid.dat')
-        phigrid = {}
-        line = file.readline()
-        while line:
-            a = line.split()
-            phigrid[a[0]] = float(a[1])
-            line = file.readline()
-        file.close()
-        self.deltadelta = phigrid['deltadelta']
-        self.deltaD=phigrid['deltaD']
-        self.Dmax=phigrid['Dmax']
-        self.deltamax=phigrid['deltamax']
-        x = {}
-        #filename='eta_2_phi_delta'
-        faktor = 2.0*4.0*pi/pi**2.0
-        for n in npy.arange(0.0,1.0,self.deltadelta):
-            f = path + '/' + filename + str(n) + '.dat'
-            data = self.read_array1d_from_txt_file(f)
-            x[n] = npy.array(data[:])*faktor 
-        #h=0.05 for D og delta 
-        phimat = npy.zeros((len(x),len(x[0.0])))
-        for n in range(0,phimat.shape[0]):
-            for m in range(phimat.shape[1]):
-                phimat[n,m] = x[n*0.05][m]
-        return phimat
-
-    def read_array1d_from_txt_file(self,filename='Phi5_D0_10_1delta_0_09_01.dat'):
-        file = open(filename)
-        line = file.readline()
-        filearray1D = []
-        while line:
-            filearray1D.append(float(line))
-            line=file.readline()
-        file.close()
-        return filearray1D
-        
-
-   
-    def get_potential(self, repeat=None, ncut=0.0005):
-        #introduces periodic boundary conditions using
-        #the minimum image convention
-
-
-        gd = self.gd
-        n_g = gd.collect(self.n_g)
-        q0_g = gd.collect(self.q0_g)
-        if mpi.rank != 0:
-            n_g = gd.empty(global_array=True)
-            q0_g = gd.empty(global_array=True)
-        mpi.world.broadcast(n_g, 0)
-        mpi.world.broadcast(q0_g, 0)
-
-        #n_g = self.n_g
-        #q0_g = self.q0_g
-        #gd = self.gd
-
-        n_g = gd.collect(self.n_g)
-        q0_g = gd.collect(self.q0_g)
-        if mpi.rank != 0:
-            n_g = gd.empty(global_array=True)
-            q0_g = gd.empty(global_array=True)
-        mpi.world.broadcast(n_g, 0)
-        mpi.world.broadcast(q0_g, 0)
-        
-        
-        grad = [Gradient(gd, c) for c in range(3)]
-        self.s_cg = gd.empty(3)
-        for c in range(3):
-            grad[c].apply(n_g, self.s_cg[c])
-            
-        #div(s)    
-        self.s_cg /= 2 * self.kF_g * n_g
-        s2_cg = gd.empty(3)
-        for c in range(3):
-            grad[c].apply(self.s_cg[c], s2_cg[c])
-        sggf = s2_cg.sum(axis=0)
-        #exc'lda
-        
-        s2 = (self.s_cg**2).sum(axis=0)
-
-        self.alpha2 = gd.zeros()
-        temp_g = gd.empty()
-        for c in range(3):
-            grad[c].apply(self.q0_g, temp_g)
-            self.alpha2 += self.s_cg[c] * temp_g
-        self.alpha2 *= -0.8491/9.0 / self.q0_g**2
-        
-        # LDA:
-        xc = XC3DGrid('LDA', gd)
-        v_g = gd.empty()
-        e_g = gd.empty()
-        xc.get_energy_and_potential_spinpaired( n_g, v_g, e_g)
-        
-
-        q0=self.get_q0
-
-        self.alpha1=1.0/self.q0_g*(-0.8491/9.0*sggf+7.0/3.0*-0.8491/9.0*s2*self.kF_g-4.0*npy.pi/3.0*(v_g-e_g))    
-        n_c = n_g.shape
-        R_gc = npy.empty(n_c + (3,))
-        R_gc[..., 0] = (npy.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
-        R_gc[..., 1] = (npy.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
-        R_gc[..., 2] = npy.arange(0, n_c[2]) * gd.h_c[2]
-
-        mask_g = (n_g.ravel() > ncut)
-        R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
-        n_i = n_g.ravel().compress(mask_g)
-        q0_i = q0_g.ravel().compress(mask_g)
-        # Here we will cut the alphas and the s
-    
-        a1_i = self.alpha1.ravel().compress(mask_g)
-    
-        a2_i = self.alpha2.ravel().compress(mask_g)
-        s_i = self.s_cg.ravel().compress(mask_g)
-        # Number of grid points:
-        ni = len(n_i)
-
-        # Number of pairs per processor:
-        np = ni * (ni - 1) // 2 // mpi.size
-        
-        iA = 0
-        for r in range(mpi.size):
-            iB = iA + int(0.5 - iA + sqrt((iA - 0.5)**2 + 2 * np))
-            if r == mpi.rank:
-                break
-            iA = iB
-
-        assert iA <= iB
-        
-        if mpi.rank == mpi.size - 1:
-            iB = ni
-
-        if repeat is None:
-            repeat_c = npy.zeros(3, int)
-        else:
-            repeat_c = npy.asarray(repeat, int)
-
-        v_i = npy.zeros_like(n_i)
-        E_vdwnl = _gpaw.vdw2(n_i, q0_i, R_ic, gd.domain.cell_c,
-                             gd.domain.pbc_c,
-                             #repeat_c,
-                             self.phi_jk, self.deltaD, self.deltadelta,
-                             iA, iB,
-                             a1_i, a2_i, s_i, v_i)/2
-        E_vdwnl = mpi.world.sum(E_vdwnl * gd.h_c.prod()**2)
-        v_g = self.gd.zeros()
-        v_g.ravel()[mask_g] = v_i
-        return E_vdwnl, v_g
+        return self.calculate_6d_integral(n_g, q0_g)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g, deda2_g):
+        """Calculate energy and potential."""
+        # LDA correlation:
+        e_LDAc_g = np.empty_like(e_g)
+        self.LDAc.calculate_spinpaired(e_LDAc_g, n_g, v_g)
+
+        # revPBE exchange:
         self.revPBEx.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-        erevPBEx_g = e_g.copy()
-        revPBExdeda2_g = deda2_g.copy()
-        self.LDAc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-        e_g += erevPBEx_g
-        deda2_g += revPBExdeda2_g
-        
+        e_g += e_LDAc_g
         
         if n_g.ndim == 3:
-            self.set_density_and_gradient(n_g, a2_g)
-            #e = self.get_energy()
-            e, vvdw_g = self.get_potential()
-            v_g += vvdw_g
-            e_g[0] += e / self.gd.h_c.prod()
+            # Non-local part:
+            e = self.get_non_local_energy(n_g, a2_g, e_LDAc_g)
+            if self.gd.comm.rank == 0:
+                assert e_g.ndim == 1
+                e_g[0] += e / self.gd.dv
+                
+    def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
+                                a2_g, aa2_g, ab2_g,
+                                deda2_g, dedaa2_g, dedab2_g):
+        """Calculate energy and potential."""
+        # LDA correlation:
+        e_LDAc_g = np.empty_like(e_g)
+        self.LDAc.calculate_spinpolarized(e_LDAc_g, na_g, va_g, nb_g, vb_g)
+
+        # revPBE exchange:
+        self.revPBEx.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
+                                             a2_g, aa2_g, ab2_g,
+                                             deda2_g, dedaa2_g, dedab2_g)
+        e_g += e_LDAc_g
+        
+        if na_g.ndim == 3:
+            # Non-local part:
+            e = self.get_non_local_energy(na_g + nb_g, a2_g, e_LDAc_g)
+            if self.gd.comm.rank == 0:
+                assert e_g.ndim == 1
+                e_g[0] += e / self.gd.dv
+        
+    def read_table(self):
+        name = os.path.join(os.environ.get('GPAW_VDW', '.'),
+                            'phi-%.3f-%.3f-%.3f-%d-%d.pckl' %
+                            (self.phi0, self.ds, self.D_j[-1],
+                             len(self.delta_i), len(self.D_j)))
+        try:
+            self.phi_ij = pickle.load(open(name))
+            if self.verbose:
+                print 'VDW: using', name
+        except IOError:
+            print 'VDW: No such file:', name
+            self.make_table(name)
             
+    def make_table(self, name):
+        print 'VDW: Generating vdW-DF kernel ...'
+        print 'VDW:',
+        ndelta = len(self.delta_i)
+        nD = len(self.D_j)
+        self.phi_ij = np.zeros((ndelta, nD))
+        for i in range(self.world.rank, ndelta, self.world.size):
+            print ndelta - i,
+            sys.stdout.flush()
+            delta = self.delta_i[i]
+            for j in range(nD - 1, -1, -1):
+                D = self.D_j[j]
+                d = D * (1.0 + delta)
+                dp = D * (1.0 - delta)
+                if d**2 + dp**2 > self.ds**2:
+                    self.phi_ij[i, j] = phi(d, dp)
+                else:
+                    P = np.polyfit([0, self.D_j[j + 1]**2, self.D_j[j + 2]**2],
+                                   [self.phi0,
+                                    self.phi_ij[i, j + 1],
+                                    self.phi_ij[i, j + 2]],
+                                   2)
+                    self.phi_ij[i, :j + 3] = np.polyval(P, self.D_j[:j + 3]**2)
+                    break
 
-"""
-from math import sin, cos, exp, pi, log
-import numpy as np
-from scipy.integrate import dblquad
+        self.world.sum(self.phi_ij)
+        
+        print
+        print 'VDW: Done!'
+        if self.world.rank == 0:
+            pickle.dump(self.phi_ij, open(name, 'w'), pickle.HIGHEST_PROTOCOL)
 
-def T(w, x, y, z):
-    return 0.5 * ((1.0 / (w + x) + 1.0 / (y + z)) *
-                  (1.0 / ((w + y) * (x + z)) + 1.0 / ((w + z) * (y + x))))
-def W(a, b):
-    return 2 * ((3 - a**2) * b * cos(b) * sin(a) +
-                (3 - b**2) * a * cos(a) * sin(b) +
-                (a**2 + b**2 - 3) * sin(a) * sin(b) -
-                3 * a * b * cos(a) * cos(b)) / (a * b)**3
-eta = 8 * pi / 9
-def nu(y, d):
-    return 0.5 * y**2 / (1 - exp(-0.5 * eta * (y / d)**2))
-def f(a, b, d):
-    va = nu(a, d)
-    vb = nu(b, d)
-    return (a * b)**2 * W(a, b) * T(va, vb, va, vb)
-A = 0
-B = 10
-import pylab as plt
-dd = np.linspace(0.1, 6, 40)
-#plt.plot(dd, [dblquad(f, A, B, lambda x: A, lambda x: B, (d,))[0] * d**2
-#          for d in dd])
-def g(x,y,d):
-    return f(-log(x), -log(y), d) / x / y
-A = 0
-B = 1
-plt.plot(dd, [dblquad(g, A, B, lambda x: A, lambda x: B, (d,))[0] * d**2
-          for d in dd])
-plt.show()
-"""
+    def make_prl_plot(self, multiply_by_4_pi_D_squared=True):
+        import pylab as plt
+        x = np.linspace(0, 8.0, 100)
+        for delta in [0, 0.5, 0.9]:
+            y = [self.phi(D * (1.0 + delta), D * (1.0 - delta))
+                 for D in x]
+            if multiply_by_4_pi_D_squared:
+                y *= 4 * pi * x**2
+            plt.plot(x, y, label=r'$\delta=%.1f$' % delta)
+        plt.legend(loc='best')
+        plt.plot(x, np.zeros(len(x)), 'k-')       
+        plt.xlabel('D')
+        plt.ylabel(r'$4\pi D^2 \phi(\rm{Hartree})$')
+        plt.show()
+
+    def phi(self, d, dp):
+        """Kernel function.
+
+        Uses bi-linear interpolation and returns zero for D > Dmax.
+        """
+        
+        P = self.phi_ij
+        D = (d + dp) / 2.0
+        if D < 1e-14:
+            return P[0, 0]
+        if D >= self.D_j[-1]:
+            return 0.0
+        
+        delta = abs((d - dp) / (2 * D))
+        ddelta = self.delta_i[1]
+        x = delta / ddelta
+        i = int(x)
+        if i == len(self.delta_i) - 1:
+            i -= 1
+            x = 1.0
+        else:
+            x -= i
+
+        dD = self.D_j[1]
+        y = D / dD
+        j = int(y)
+        y -= j
+        return (x * (y * P[i + 1, j + 1] +
+                     (1 - y) * P[i + 1, j]) +
+                (1 - x) * (y * P[i, j + 1] +
+                           (1 - y) * P[i, j]))
+
+
+class RealSpaceVDWFunctional(VDWFunctional):
+    """Real-space implementation of vdW-DF."""
+    def __init__(self, nspins=1, repeat=None, ncut=0.0005, **kwargs):
+        """Real-space vdW-DF.
+
+        parameters:
+
+        repeat: 3-tuple
+            Repeat the unit cell.
+        ncut: float
+            Density cutoff.
+        """
+        
+        VDWFunctional.__init__(self, nspins, **kwargs)
+        self.repeat = repeat
+        self.ncut = ncut
+        
+    def calculate_6d_integral(self, n_g, q0_g):
+        """Real-space double-sum."""
+        gd = self.gd
+        n_c = n_g.shape
+        R_gc = np.empty(n_c + (3,))
+        R_gc[..., 0] = (np.arange(0, n_c[0]) * gd.h_c[0]).reshape((-1, 1, 1))
+        R_gc[..., 1] = (np.arange(0, n_c[1]) * gd.h_c[1]).reshape((-1, 1))
+        R_gc[..., 2] = np.arange(0, n_c[2]) * gd.h_c[2]
+
+        mask_g = (n_g.ravel() > self.ncut)
+        R_ic = R_gc.reshape((-1, 3)).compress(mask_g, axis=0)
+        n_i = n_g.ravel().compress(mask_g)
+        q0_i = q0_g.ravel().compress(mask_g)
+
+        # Number of grid points:
+        ni = len(n_i)
+
+        if self.verbose:
+            print 'VDW: number of points:', ni
+            
+        # Number of pairs per processor:
+        world = self.world
+        p = ni * (ni - 1) // 2 // world.size
+        
+        iA = 0
+        for r in range(world.size):
+            iB = iA + int(0.5 - iA + sqrt((iA - 0.5)**2 + 2 * p))
+            if r == world.rank:
+                break
+            iA = iB
+
+        assert iA <= iB
+        
+        if world.rank == world.size - 1:
+            iB = ni
+
+        if self.repeat is None:
+            repeat_c = np.zeros(3, int)
+        else:
+            repeat_c = np.asarray(self.repeat, int)
+
+        self.rhistogram = np.zeros(200)
+        self.Dhistogram = np.zeros(200)
+        dr = 0.05
+        dD = 0.05
+        E_vdwnl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c,
+                            gd.domain.pbc_c,
+                            repeat_c,
+                            self.phi_ij, self.delta_i[1], self.D_j[1],
+                            iA, iB,
+                            self.rhistogram, dr,
+                            self.Dhistogram, dD)
+        self.rhistogram *= gd.dv**2 / dr
+        self.Dhistogram *= gd.dv**2 / dD
+        self.world.sum(self.rhistogram)
+        self.world.sum(self.Dhistogram)
+        E_vdwnl = self.world.sum(E_vdwnl * gd.dv**2)
+        return E_vdwnl
+
+
+class FFTVDWFunctional(VDWFunctional):
+    """FFT implementation of vdW-DF."""
+    def __init__(self, nspins=1,
+                 Nalpha=20, lambd=1.2, rcut=125.0, Nr=2048, size=None,
+                 **kwargs):
+        """FFT vdW-DF.
+
+        parameters:
+
+        Nalpha: int
+            Number of interpolating cubic splines.
+        lambd: float
+            Parameter for defining geometric series of interpolation points.
+        rcut: float
+            Cutoff for kernel function.
+        Nr: int
+            Number of real-space points for kernel function.
+        size: 3-tuple
+            Size of FFT-grid.
+        """
+        
+        VDWFunctional.__init__(self, nspins, **kwargs)
+        self.Nalpha = Nalpha
+        self.lambd = lambd
+        self.rcut = rcut
+        self.Nr = Nr
+        self.size = size
+        
+        self.C_aip = None
+        self.phi_aajp = None
+        
+    def construct_cubic_splines(self):
+        """Construc interpolating splines for q0.
+
+        The recipe is from
+
+          http://en.wikipedia.org/wiki/Spline_(mathematics)
+        """
+        
+        n = self.Nalpha
+        lambd = self.lambd
+        q1 = self.q0cut * (lambd - 1) / (lambd**(n - 1) - 1)
+        q = q1 * (lambd**np.arange(n) - 1) / (lambd - 1)
+
+        if self.verbose:
+            print ('VDW: using %d qubic splines: 0.00, %.2f, ..., %.2f, %.2f' %
+                   (n, q1, q[-2], q[-1]))
+            
+        y = np.eye(n)
+        a = y
+        h = q[1:] - q[:-1]
+        alpha = 3 * ((a[2:] - a[1:-1]) / h[1:, np.newaxis] -
+                     (a[1:-1] - a[:-2]) / h[:-1, np.newaxis])
+        l = np.ones((n, n))
+        mu = np.zeros((n, n))
+        z = np.zeros((n, n))
+        for i in range(1, n - 1):
+            l[i] = 2 * (q[i + 1] - q[i - 1]) - h[i - 1] * mu[i - 1]
+            mu[i] = h[i] / l[i]
+            z[i] = (alpha[i - 1] - h[i - 1] * z[i - 1]) / l[i]
+        b = np.zeros((n, n))
+        c = np.zeros((n, n))
+        d = np.zeros((n, n))
+        for i in range(n - 2, -1, -1):
+            c[i] = z[i] - mu[i] * c[i + 1]
+            b[i] = (a[i + 1] - a[i]) / h[i] - h[i] * (c[i + 1] + 2 * c[i]) / 3
+            d[i] = (c[i + 1] - c[i]) / 3 / h[i]
+
+        self.C_aip = np.zeros((n, n, 4))
+        self.C_aip[:, :-1, 0] = a[:-1].T
+        self.C_aip[:, :-1, 1] = b[:-1].T
+        self.C_aip[:, :-1, 2] = c[:-1].T
+        self.C_aip[:, :-1, 3] = d[:-1].T
+        self.C_aip[-1, -1, 0] = 1.0
+        self.q_a = q
+
+    def p(self, alpha, q):
+        """Interpolating spline."""
+        i = int(log(q / self.q_a[1] * (self.lambd - 1) + 1) / log(self.lambd))
+        a, b, c, d = self.C_aip[alpha, i]
+        dq = q - self.q_a[i]
+        return a + dq * (b + dq * (c + dq * d))
+
+    def construct_fourier_transformed_kernels(self):
+        self.phi_aajp = phi_aajp = {}
+        M = self.Nr
+        rcut = self.rcut
+        r_g = np.linspace(0, rcut, M, 0)
+        k_j = np.arange(M // 2) * (2 * pi / rcut)
+
+        if self.verbose:
+            print ("VDW: cutoff for fft'ed kernel: %.3f Hartree" %
+                   (0.5 * k_j[-1]**2))
+            
+        for a in range(self.Nalpha):
+            qa = self.q_a[a]
+            for b in range(a, self.Nalpha):
+                qb = self.q_a[b]
+                phi_g = [self.phi(qa * r, qb * r) for r in r_g]
+                phi_j = (fft(r_g * phi_g * 1j).real[:M // 2] *
+                         (rcut / M * 4 * pi))
+                phi_j[0] = np.dot(r_g, r_g * phi_g) * (rcut / M * 4 * pi)
+                phi_j[1:] /= k_j[1:]
+                phi_aajp[a, b] = phi_aajp[b, a] = spline(k_j, phi_j)
+
+    def set_grid_descriptor(self, gd):
+        if (self.gd is not None and
+            (self.gd.N_c == gd.N_c).all() and
+            (self.gd.domain.pbc_c == gd.domain.pbc_c).all() and
+            (self.gd.domain.cell_c == gd.domain.cell_c).all()):
+            return
+
+        VDWFunctional.set_grid_descriptor(self, gd)
+
+        if self.size is None:
+            self.shape = gd.N_c.copy()
+            for c, n in enumerate(self.shape):
+                if not gd.domain.pbc_c[c]:
+                    self.shape[c] = int(2**ceil(log(n) / log(2)))
+        else:
+            self.shape = np.array(self.size)
+            
+        d_c = gd.domain.cell_c / (2 * pi * gd.N_c)
+        kx2 = fftfreq(self.shape[0], d_c[0]).reshape((-1,  1,  1))**2
+        ky2 = fftfreq(self.shape[1], d_c[1]).reshape(( 1, -1,  1))**2
+        kz2 = fftfreq(self.shape[2], d_c[2]).reshape(( 1,  1, -1))**2
+        k_k = (kx2 + ky2 + kz2)**0.5
+        self.dj_k = k_k / (2 * pi / self.rcut)
+        self.j_k = self.dj_k.astype(int)
+        self.dj_k -= self.j_k
+        self.dj_k *= 2 * pi / self.rcut
+
+        if self.verbose:
+            print 'VDW: density array size:', gd.get_size_of_global_array()
+            print 'VDW: zero-padded array size:', self.shape
+            print ('VDW: maximum kinetic energy: %.3f Hartree' %
+                   (0.5 * k_k.max()**2))
+
+    def calculate_6d_integral(self, n_g, q0_g):
+        if self.C_aip is None:
+            self.construct_cubic_splines()
+            self.construct_fourier_transformed_kernels()
+
+        gd = self.gd
+        N = self.Nalpha
+
+        world = self.world
+
+                
+        i_g = (np.log(q0_g / self.q_a[1] * (self.lambd - 1) + 1) /
+               log(self.lambd)).astype(int)
+        
+        dq0_g = q0_g - self.q_a[i_g]
+        theta_ak = {}
+
+        if self.verbose:
+            print 'VDW: fft:',
+            
+        for a in range(world.rank, N, world.size):
+            C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
+            theta_ak[a] = fftn(n_g * (C_pg[0] + dq0_g *
+                                      (C_pg[1] + dq0_g *
+                                       (C_pg[2] + dq0_g * C_pg[3]))),
+                               self.shape).copy()
+            if self.verbose:
+                print a,
+                sys.stdout.flush()
+
+        if self.verbose:
+            print
+            print 'VDW: convolution:',
+
+        dj_k = self.dj_k
+        energy = 0.0
+        for a in range(N):
+            ranka = a % world.size
+            Fa_k = np.zeros(self.shape, complex)
+            for b in range(world.rank, N, world.size):
+                _gpaw.vdw2(self.phi_aajp[a, b], self.j_k, dj_k,
+                           theta_ak[b], Fa_k)
+
+            self.world.sum(Fa_k, ranka)
+            if world.rank == ranka:
+                energy += np.vdot(theta_ak[a], Fa_k).real
+
+            if self.verbose:
+                print a,
+                sys.stdout.flush()
+
+        if self.verbose:
+            print
+
+        return 0.5 * world.sum(energy) * gd.dv / self.shape.prod()
+
+    
+def spline(x, y):
+    n = len(y)
+    result = np.zeros((n, 4))
+    a, b, c, d = result.T
+    a[:] = y
+    h = x[1:] - x[:-1]
+    alpha = 3 * ((a[2:] - a[1:-1]) / h[1:] - (a[1:-1] - a[:-2]) / h[:-1])
+    l = np.ones(n)
+    mu = np.zeros(n)
+    z = np.zeros(n)
+    for i in range(1, n - 1):
+        l[i] = 2 * (x[i + 1] - x[i - 1]) - h[i - 1] * mu[i - 1]
+        mu[i] = h[i] / l[i]
+        z[i] = (alpha[i - 1] - h[i - 1] * z[i - 1]) / l[i]
+    for i in range(n - 2, -1, -1):
+        c[i] = z[i] - mu[i] * c[i + 1]
+        b[i] = (a[i + 1] - a[i]) / h[i] - h[i] * (c[i + 1] + 2 * c[i]) / 3
+        d[i] = (c[i + 1] - c[i]) / 3 / h[i]
+    return result
+
+
+if __name__ == '__main__':
+    vdw = VDWFunctional()

@@ -1,10 +1,9 @@
 .. toctree::
 
-   python
    codingstandard
    c_extension
-   overview
    svn
+   python
    developer_installation
    benchmarks
    todo

@@ -1,21 +1,31 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
+if __name__ == '__main__':
+    print """\
+You are using the wrong setup.py script!  This setup.py defines a
+Setup class used to hold the atomic data needed for a specific atom.
+For building the GPAW code you must use the setup.py distutils script
+at the root of the code tree.  Just do "cd .." and you will be at the
+right place."""
+    raise SystemExit
+
 import os
 from math import log, pi, sqrt
 import sys
 
 import numpy as npy
-from ase.data import atomic_names
+from ase.data import atomic_names, chemical_symbols, atomic_numbers
 
 from gpaw.setup_data import SetupData
 from gpaw.basis_data import Basis
 from gpaw.gaunt import gaunt as G_LLL
 from gpaw.spline import Spline
 from gpaw.grid_descriptor import RadialGridDescriptor
-from gpaw.utilities import unpack, erf, fac, hartree, divrl
+from gpaw.utilities import unpack, pack, erf, fac, hartree, divrl
 from gpaw.xc_correction import XCCorrection
 from gpaw.xc_functional import XCRadialGrid
+from gpaw.rotation import rotation
 
 
 def create_setup(symbol, xcfunc, lmax=0, nspins=1, type='paw', basis=None,
@@ -98,6 +108,7 @@ class Setup:
     """
     def __init__(self, symbol, xcfunc, lmax=0, nspins=1,
                  type='paw', basis=None, setupdata=None):
+        self.natoms = 0  # number of atoms with this setup
         actual_symbol = symbol
         self.type = type
 
@@ -161,10 +172,9 @@ class Setup:
         gcutfilter = g + 1
 
         self.rcutfilter = rcutfilter = r_g[gcutfilter]
-
+ 
         rcutmax = max(rcut_j)
         rcut2 = 2 * rcutmax
-        gcutmax = 1 + int(rcutmax * ng / (rcutmax + beta))
         gcut2 = 1 + int(rcut2 * ng / (rcut2 + beta))
         self.gcut2 = gcut2
 
@@ -223,11 +233,6 @@ class Setup:
             tauct_g = npy.zeros(ng)
         self.tauct = Spline(0, self.rcore, tauct_g, r_g, beta)
 
-        # Step function:
-        stepf = sqrt(4 * pi) * npy.ones(ng)
-        stepf[gcutmax:] = 0.0
-        self.stepf = Spline(0, rcutfilter, stepf, r_g, beta)
-
         self.pt_j = []
         for j in range(nj):
             l = l_j[j]
@@ -257,7 +262,7 @@ class Setup:
         extra_xc_data = dict(data.extra_xc_data)
         # Cut down the GLLB related extra data
         for key, item in extra_xc_data.iteritems():
-            if len(item) > 1:
+            if len(item) > 1 and len(item)>gcut2:
                 extra_xc_data[key] = item[:gcut2].copy()
         self.extra_xc_data = extra_xc_data
 
@@ -283,8 +288,10 @@ class Setup:
          Delta_lq) = self.create_compensation_charges(r_g, dr_g, phi_jg,
                                                       phit_jg, np,
                                                       T_Lqp)
-
         self.g_lg = g_lg
+        self.Delta1_jj = self.create_derivative_integrals(r_g, dr_g, 
+                                                          phi_jg, phit_jg)
+#        print "self.Delta1_jj=", self.Delta1_jj
 
         # Solves the radial poisson equation for density n_g
         def H(n_g, l):
@@ -361,30 +368,31 @@ class Setup:
                 L += 1
 
         if xcfunc.is_gllb():
-            if xcfunc.xc.relaxed_core_response:
-                self.njcore = extra_xc_data['njcore']
-                self.core_A_kp = npy.zeros((self.njcore, np))
-                self.core_At_kp = npy.zeros((self.njcore, np))
-                self.core_B = npy.dot(g_lg[0], wg_lg[0]) / sqrt(4*pi)
-                self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
-                self.coreref_k = npy.zeros((self.njcore))
-                for k in range(0, self.njcore):
-                    # Put the density of core orbital into radial
-                    # representation
-                    rho_g = extra_xc_data['core_orbital_density_'
-                                          + str(k)] * sqrt(4*pi)
-
-                    # Calculate the D_p dependent correction for E^a
-                    self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g, 0)),
-                                                T_Lqp[0])
-
-                    # Calculate the D_P dependent correction for \tilde{E}^a
-                    self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]),
-                                                 T_Lqp[0]) / sqrt(4 * pi)
-
-                    # All other contributions are already included in
-                    # reference from setup
-                    self.coreref_k[k] = extra_xc_data['core_ref_' + str(k)]
+            pass
+            #if xcfunc.xc.relaxed_core_response:
+            #    self.njcore = extra_xc_data['njcore']
+            #    self.core_A_kp = npy.zeros((self.njcore, np))
+            #    self.core_At_kp = npy.zeros((self.njcore, np))
+            #    self.core_B = npy.dot(g_lg[0], wg_lg[0]) / sqrt(4*pi)
+            #    self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
+            #    self.coreref_k = npy.zeros((self.njcore))
+            #    for k in range(0, self.njcore):
+            #        # Put the density of core orbital into radial
+            #        # representation
+            #        rho_g = extra_xc_data['core_orbital_density_'
+            #                              + str(k)] * sqrt(4*pi)
+            #
+            #        # Calculate the D_p dependent correction for E^a
+            #        self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g, 0)),
+            #                                    T_Lqp[0])
+            #
+            #        # Calculate the D_P dependent correction for \tilde{E}^a
+            #        self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]),
+            #                                     T_Lqp[0]) / sqrt(4 * pi)
+            #
+            #        # All other contributions are already included in
+            #        # reference from setup
+            #        self.coreref_k[k] = extra_xc_data['core_ref_' + str(k)]
 
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
@@ -432,6 +440,9 @@ class Setup:
         self.Delta_Lii = npy.zeros((ni, ni, self.Lmax))
         for L in range(self.Lmax):
             self.Delta_Lii[:,:,L] = unpack(self.Delta_pL[:, L].copy())
+
+        # Integral of smooth core density:
+        self.Nct = -Delta0 * sqrt(4 * pi) - self.Z + self.Nc
 
         K_q = []
         for j1 in range(nj):
@@ -540,7 +551,46 @@ class Setup:
         Delta0 = npy.dot(self.nc_g - self.nct_g,
                         r_g**2 * dr_g) - self.Z / sqrt(4 * pi)
         self.Delta0 = Delta0
+
+        # Electron density inside augmenation sphere.  Used for estimating
+        # atomic magnetic moment:
+        rcutmax = max(self.rcut_j)
+        gcutmax = int(round(rcutmax * self.ng / (rcutmax + self.beta)))
+        N0_q = npy.dot(n_qg[:, :gcutmax], (r_g**2 * dr_g)[:gcutmax])
+        self.N0_p = npy.dot(N0_q, T_Lqp[0]) * sqrt(4 * pi)
+
         return g_lg, n_qg, nt_qg, Delta_lq
+
+    def create_derivative_integrals(self, r_g, dr_g, phi_jg, phit_jg):
+        """Calculate the integrals
+
+        ::
+
+          /
+          | dr r^2 [ phi_j1 d/dr phi_j2 - phit_j1 d/dr phit_j2 ]
+          /
+        """
+        # calculate radial derivatives
+        dphi_jg = npy.zeros((self.nj, self.gcut2))
+        dphit_jg = npy.zeros((self.nj, self.gcut2))
+        for j in range(self.nj):
+            for g in range(self.gcut2 - 1):
+                dphi_jg[j, g] = ((phi_jg[j, g + 1] - phi_jg[j, g]) /
+                                 dr_g[g])
+                dphit_jg[j, g] = ((phit_jg[j, g + 1] - phit_jg[j, g]) /
+                                  dr_g[g])
+        
+        pnp_jjg = npy.zeros((self.nj, self.nj, self.gcut2))
+        pnpt_jjg = npy.zeros((self.nj, self.nj, self.gcut2))
+
+        q = 0 # q: common index for j1, j2
+        for j1 in range(self.nj):
+            for j2 in range(self.nj):
+                pnp_jjg[j1, j2] = phi_jg[j1] * dphi_jg[j2]
+                pnpt_jjg[j1, j2] = phit_jg[j1] * dphit_jg[j2]
+
+        Delta1_jj = npy.dot(pnp_jjg - pnpt_jjg, r_g**2 * dr_g)
+        return Delta1_jj
 
     def construct_core_densities(self, r_g, dr_g, beta, setupdata):
         rcore = self.find_core_density_cutoff(r_g, dr_g, setupdata.nc_g)
@@ -620,7 +670,7 @@ class Setup:
 
         # enable if-statement to revert to 'inefficient' equal-range basis
         # functions.  Left for testing purposes
-        if 0:
+        if 1: # XXX
             for j, bf in enumerate(basis.bf_j):
                 phit_g = npy.zeros(r_g.shape)
                 phit_g[:bf.ng] = bf.phit_g
@@ -702,14 +752,14 @@ class Setup:
         nc_g = data.nc_g.copy()
         nct_g = data.nct_g.copy()
         tauc_g = data.tauc_g
-        nc_g[gcut2:] = nct_g[gcut2:] = 0.0
-        nc = Spline(0, rcut2, data.nc_g, r_g, beta, points=1000)
-        nct = Spline(0, rcut2, data.nct_g, r_g, beta, points=1000)
+        #nc_g[gcut2:] = nct_g[gcut2:] = 0.0
+        nc = Spline(0, rcut2, nc_g, r_g, beta, points=1000)
+        nct = Spline(0, rcut2, nct_g, r_g, beta, points=1000)
         if tauc_g is None:
             tauc_g = npy.zeros(nct_g.shape)
             tauct_g = tauc_g
-        tauc = Spline(0, rcut2, data.tauc_g, r_g, beta, points=1000)
-        tauct = Spline(0, rcut2, data.tauct_g, r_g, beta, points=1000)
+        tauc = Spline(0, rcut2, tauc_g, r_g, beta, points=1000)
+        tauct = Spline(0, rcut2, tauct_g, r_g, beta, points=1000)
         phi_j = []
         phit_j = []
         for j, (phi_g, phit_g) in enumerate(zip(data.phi_jg, data.phit_jg)):
@@ -720,6 +770,42 @@ class Setup:
             phi_j.append(Spline(l, rcut2, phi_g, r_g, beta, points=100))
             phit_j.append(Spline(l, rcut2, phit_g, r_g, beta, points=100))
         return phi_j, phit_j, nc, nct, tauc, tauct
+
+    def get_partial_waves_diff(self):
+        """Return spline representation of partial waves and densities."""
+
+        l_j = self.l_j
+        nj = len(l_j)
+        beta = self.beta
+
+        # cutoffs
+        rcut2 = 2 * max(self.rcut_j)
+        gcut2 = 1 + int(rcut2 * self.ng / (rcut2 + beta))
+
+        # radial grid
+        g = npy.arange(self.ng, dtype=float)
+        r_g = beta * g / (self.ng - g)
+
+        data = self.data
+
+        # Construct splines:
+        nc_g = data.nc_g
+        nct_g = data.nct_g
+        tauc_g = data.tauc_g
+        tauct_g = data.tauct_g
+        dnc = Spline(0, rcut2, nc_g - nct_g, r_g, beta, points=1000)
+        if tauc_g is None:
+            tauc_g = npy.zeros(nct_g.shape)
+            tauct_g = tauc_g
+        dtauc = Spline(0, rcut2, tauc_g - tauct_g, r_g, beta, points=1000)
+        dphi_j = []
+        for j, (phi_g, phit_g) in enumerate(zip(data.phi_jg, data.phit_jg)):
+            l = l_j[j]
+            phi_g = phi_g.copy()
+            phit_g = phit_g.copy()
+            dphi_j.append(Spline(l, rcut2, phi_g - phit_g, r_g, beta,
+                                 points=100))
+        return dphi_j, dnc, dtauc
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
         self.A_ci = npy.zeros((3, self.ni))
@@ -815,13 +901,200 @@ class Setup:
         #     I4_iip[..., p] = unpack(I4_pp[:, p])
 
         return self.I4_pp
-    
-    
 
-if __name__ == '__main__':
-    print """\
-You are using the wrong setup.py script!  This setup.py defines a
-Setup class used to hold the atomic data needed for a specific atom.
-For building the GPAW code you must use the setup.py distutils script
-at the root of the code tree.  Just do "cd .." and you will be at the
-right place."""
+    def calculate_initial_occupation_numbers(self, magmom, hund, charge, f_j = None):
+        """ If f_j is specified, custom occupation numbers will be used. Hund rules
+        disabled if so."""
+        niao = self.niAO
+        nspins = self.xc_correction.nspins
+        f_si = npy.zeros((nspins, niao))
+
+        assert hund == False or f_j is None
+        if f_j == None:
+            f_j = self.f_j
+
+        # Projector function indices:
+        nj = len(self.n_j)
+
+        f_j = npy.array(f_j, float)
+        if charge >= 0:
+            for j in range(nj - 1, -1, -1):
+                f = f_j[j]
+                c = min(f, charge)
+                f_j[j] -= c
+                charge -= c
+        else:
+            for j in range(nj):
+                f = f_j[j]
+                l = self.l_j[j]
+                c = min(2 * (2 * l + 1) - f, -charge)
+                f_j[j] += c
+                charge += c
+        assert charge == 0.0
+
+        i = 0
+        j = 0
+        for phit in self.phit_j:
+            l = phit.get_angular_momentum_number()
+
+            # Skip projector functions not in basis set:
+            while j < nj and self.l_j[j] != l:
+                j += 1
+            if j < nj:
+                f = f_j[j]
+            else:
+                f = 0
+
+            degeneracy = 2 * l + 1
+
+            if hund:
+                # Use Hunds rules:
+                assert f == int(f)
+                f = int(f)
+                f_si[0, i:i + min(f, degeneracy)] = 1.0      # spin up
+                f_si[1, i:i + max(f - degeneracy, 0)] = 1.0  # spin down
+                if f < degeneracy:
+                    magmom -= f
+                else:
+                    magmom -= 2 * degeneracy - f
+            else:
+                if nspins == 1:
+                    f_si[0, i:i + degeneracy] = 1.0 * f / degeneracy
+                else:
+                    maxmom = min(f, 2 * degeneracy - f)
+                    mag = magmom
+                    if abs(mag) > maxmom:
+                        mag = cmp(mag, 0) * maxmom
+                    f_si[0, i:i + degeneracy] = 0.5 * (f + mag) / degeneracy
+                    f_si[1, i:i + degeneracy] = 0.5 * (f - mag) / degeneracy
+                    magmom -= mag
+                
+            i += degeneracy
+            j += 1
+
+        #These lines disable the calculation of charged atoms!
+        #Therefore I commented them. -Mikael
+        #if magmom != 0:
+        #    raise RuntimeError('Bad magnetic moment %g for %s atom!'
+        # % (magmom, self.self.symbol))
+        assert i == niao
+
+        return f_si
+    
+    def initialize_density_matrix(self, f_si):
+        nspins, niao = f_si.shape
+        ni = self.ni
+
+        D_sii = npy.zeros((nspins, ni, ni))
+        D_sp = npy.zeros((nspins, ni * (ni + 1) // 2))
+        nj = len(self.n_j)
+        j = 0
+        i = 0
+        ib = 0
+        for phit in self.phit_j:
+            l = phit.get_angular_momentum_number()
+            # Skip projector functions not in basis set:
+            while j < nj and self.l_j[j] != l:
+                i += 2 * self.l_j[j] + 1
+                j += 1
+            if j == nj:
+                break
+
+            for m in range(2 * l + 1):
+                D_sii[:, i + m, i + m] = f_si[:, ib + m]
+            j += 1
+            i += 2 * l + 1
+            ib += 2 * l + 1
+        for s in range(nspins):
+            D_sp[s] = pack(D_sii[s])
+        return D_sp
+
+
+class Setups(list):
+    """
+
+    ``nvalence``    Number of valence electrons.
+    """
+
+    def __init__(self, Z_a, setup_types, basis_sets, nspins, lmax, xcfunc):
+        list.__init__(self)
+        natoms =  len(Z_a)
+        if isinstance(setup_types, str):
+            setup_types = {None: setup_types}
+        
+        # setup_types is a dictionary mapping chemical symbols and/or atom
+        # numbers to setup types.
+        
+        # If present, None will map to the default type:
+        default = setup_types.get(None, 'paw')
+        
+        type_a = [default] * natoms
+        
+        # First symbols ...
+        for symbol, type in setup_types.items():
+            if isinstance(symbol, str):
+                number = atomic_numbers[symbol]
+                for a, Z in enumerate(Z_a):
+                    if Z == number:
+                        type_a[a] = type
+        
+        # and then atom indices:
+        for a, type in setup_types.items():
+            if isinstance(a, int):
+                type_a[a] = type
+        
+        if isinstance(basis_sets, str):
+            basis_sets = {None: basis_sets}
+        
+        # basis_sets is a dictionary mapping chemical symbols and/or atom
+        # numbers to basis sets.
+        
+        # If present, None will map to the default type:
+        default = basis_sets.get(None, None)
+        
+        basis_a = [default] * natoms
+        
+        # First symbols ...
+        for symbol, basis in basis_sets.items():
+            if isinstance(symbol, str):
+                number = atomic_numbers[symbol]
+                for a, Z in enumerate(Z_a):
+                    if Z == number:
+                        basis_a[a] = basis
+        
+        # and then atom numbers:
+        for a, basis in basis_sets.items():
+            if isinstance(a, int):
+                basis_a[a] = basis
+        
+        # Construct necessary PAW-setup objects:
+        self.setups = {}
+        self.id_a = zip(Z_a, type_a, basis_a)
+        for a, id in enumerate(self.id_a):
+            setup = self.setups.get(id)
+            if setup is None:
+                Z, type, basis = id
+                symbol = chemical_symbols[Z]
+                setup = create_setup(symbol, xcfunc, lmax, nspins, type, basis)
+                self.setups[id] = setup
+            setup.natoms += 1
+            self.append(setup)
+
+        # Sum up ...
+        self.nvalence = 0       # number of valence electrons
+        self.nao = 0            # number of atomic orbitals
+        self.Eref = 0.0         # reference energy
+        self.core_charge = 0.0  # core hole charge
+        for setup in self.setups.values():
+            self.Eref += setup.natoms * setup.E
+            self.core_charge += setup.natoms * (setup.Z - setup.Nv - setup.Nc)
+            self.nvalence += setup.natoms * setup.Nv
+            self.nao += setup.natoms * setup.niAO
+
+    def set_symmetry(self, symmetry):
+        """Find rotation matrices for spherical harmonics."""
+        R_slmm = [[rotation(l, symm) for l in range(3)]
+                  for symm in symmetry.symmetries]
+        
+        for setup in self.setups.values():
+            setup.calculate_rotations(R_slmm)

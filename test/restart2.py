@@ -2,7 +2,7 @@
 
 import os
 import filecmp
-from gpaw import Calculator
+from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
 restart = 'gpaw-restart'
@@ -11,7 +11,7 @@ result  = 'gpaw-result'
 H = Atoms([Atom('H')])
 H.center(vacuum=3.0)
 
-calc = Calculator(nbands=1)
+calc = GPAW(nbands=1)
 calc.attach(calc.write, 4, restart)
 H.set_calculator(calc)
 H.get_potential_energy()

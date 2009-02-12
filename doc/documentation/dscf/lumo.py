@@ -9,14 +9,14 @@ filename='lumo'
 
 #-------------------------------------------
 
-c_mol = GPAW(nbands=9, h=0.2, xc='RPBE', kpts=(4,6,1),
+c_mol = GPAW(nbands=9, h=0.2, xc='RPBE', kpts=(8,6,1),
              spinpol=True,
              convergence={'energy': 100,
                           'density': 100,
                           'eigenstates': 1.0e-9,
                           'bands': -2}, txt='CO_lumo.txt')
 
-calc = GPAW(nbands=60, h=0.2, xc='RPBE', kpts=(4,6,1),
+calc = GPAW(nbands=60, h=0.2, xc='RPBE', kpts=(8,6,1),
             eigensolver='cg',
             spinpol=True,
             mixer=MixerSum(nmaxold=5, beta=0.1, weight=100),
@@ -34,7 +34,7 @@ add_adsorbate(slab, 'C', 2.0, 'ontop')
 add_adsorbate(slab, 'O', 3.15, 'ontop')
 slab.center(axis=2, vacuum=4.0)
 
-#view(slab)
+view(slab)
 
 molecule = slab.copy()
 
@@ -50,12 +50,12 @@ lumo = c_mol.get_pseudo_wave_function(band=5, kpt=0, spin=0)
 lumo = reshape(lumo, -1)
 
 wf1_k = [c_mol.get_pseudo_wave_function(band=5, kpt=k, spin=0)
-         for k in range(c_mol.nkpts)]
+         for k in range(len(c_mol.wfs.weight_k))]
 wf2_k = [c_mol.get_pseudo_wave_function(band=6, kpt=k, spin=0)
-         for k in range(c_mol.nkpts)]
+         for k in range(len(c_mol.wfs.weight_k))]
 
 band_k = []
-for k in range(c_mol.nkpts):
+for k in range(len(c_mol.wfs.weight_k)):
     wf1 = reshape(wf1_k[k], -1)
     wf2 = reshape(wf2_k[k], -1)
     p1 = abs(dot(wf1, lumo))
@@ -66,17 +66,20 @@ for k in range(c_mol.nkpts):
         band_k.append(6)
 
 #Lumo wavefunction
-wf_u = [kpt.psit_nG[band_k[kpt.k]] for kpt in c_mol.kpt_u]
+wf_u = [kpt.psit_nG[band_k[kpt.k]] for kpt in c_mol.wfs.kpt_u]
 
 #Lumo projector overlaps
-P_aui = []
-for atom in c_mol.nuclei:
-    P_aui.append([atom.P_uni[kpt.u][band_k[kpt.k]]
-                  for kpt in c_mol.kpt_u])
+P_aui = [[kpt.P_ani[a][band_k[kpt.k]] for kpt in c_mol.wfs.kpt_u]
+          for a in range(len(c_mol.wfs.kpt_u[0].P_ani))]
+
+#P_aui = []
+#for atom in c_mol.nuclei:
+#    P_aui.append([atom.P_uni[kpt.u][band_k[kpt.k]]
+#                  for kpt in c_mol.kpt_u])
 
 #   Slab with adsorbed molecule
 #-----------------------------------
 slab.set_calculator(calc)
-orbital = dscf.WaveFunction(calc, wf_u, P_aui, molecule=range(len(slab))[-2:])
+orbital = dscf.AEOrbital(calc, wf_u, P_aui, molecule=range(len(slab))[-2:])
 dscf.dscf_calculation(calc, [[1.0, orbital, 1]], slab)
 slab.get_potential_energy()

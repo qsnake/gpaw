@@ -1,32 +1,40 @@
-import numpy as npy
+import numpy as np
+from ase.units import Bohr
 
 from gpaw.symmetry import Symmetry
 
 
-def reduce_kpoints(bzk_kc, pos_ac, Z_a, type_a, magmom_a, basis_a,
-                   domain, usesymm):
+def reduce_kpoints(atoms, bzk_kc, setups, usesymm):
     """Reduce the number of k-points using symmetry.
 
     Returns symmetry object, weights and k-points in the irreducible
     part of the BZ."""
 
-    for c in range(3):
-        if not domain.pbc_c[c] and npy.sometrue(bzk_kc[:, c]):
-            raise ValueError('K-points can only be used with PBCs!')
+    #if np.logical_and(np.logical_not(atoms.pbc), bzk_kc.any(axis=0)).any():
+    if (~atoms.pbc & bzk_kc.any(0)).any():
+        raise ValueError('K-points can only be used with PBCs!')
+
+    if usesymm is None:
+        nkpts = len(bzk_kc)
+        return None, np.ones(nkpts) / nkpts, bzk_kc.copy()
+    
+    # Round off:
+    magmom_a = atoms.get_initial_magnetic_moments().round(decimals=3)
+    id_a = zip(magmom_a, setups.id_a)
 
     # Construct a Symmetry instance containing the identity
     # operation only:
-    symmetry = Symmetry(Z_a, type_a, magmom_a, basis_a, domain)
+    symmetry = Symmetry(id_a, atoms.get_cell() / Bohr, atoms.get_pbc())
 
     if usesymm:
         # Find symmetry operations of atoms:
-        symmetry.analyze(pos_ac)
+        symmetry.analyze(atoms.get_scaled_positions())
 
     # Reduce the set of k-points:
     ibzk_kc, weight_k = symmetry.reduce(bzk_kc)
 
     if usesymm:
-        symmetry = symmetry
+        setups.set_symmetry(symmetry)
     else:
         symmetry = None
 

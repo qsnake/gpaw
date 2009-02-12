@@ -1,10 +1,10 @@
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.xc_functional import XCFunctional
 
 a = 4.0
 atoms = Atoms([Atom('H')], cell=(a, a, a), pbc=True)
-calc = Calculator(txt=None)
+calc = GPAW(txt=None)
 atoms.set_calculator(calc)
 atoms.get_potential_energy()
 e1 = calc.get_xc_difference(XCFunctional('BEE1', parameters=[-100.0]))

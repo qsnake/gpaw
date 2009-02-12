@@ -1,6 +1,9 @@
 import sys
 from math import pi, sqrt
+
 import numpy as npy
+from ase.units import Hartree
+
 import _gpaw
 import gpaw.mpi as mpi
 MASTER = mpi.MASTER
@@ -26,10 +29,6 @@ class ExcitationList(list):
         if calculator is not None:
             if out is None:
                 self.out = calculator.txt
-            self.Ha = calculator.Ha
-            # initialize the nuclei if not ready
-            if not calculator.nuclei[0].ready:
-                calculator.set_positions()
         else:
             if mpi.rank != MASTER: self.out = DownTheDrain()
             else: self.out = sys.stdout
@@ -43,7 +42,7 @@ class ExcitationList(list):
 
     def GetEnergies(self):
         """Get excitation energies in units of the calculators energy unit"""
-        return self.get_energies()*self.Ha
+        return self.get_energies() * Hartree
 
     def GetTRK(self):
         """Evaluate the Thonmas Reiche Kuhn sum rule"""

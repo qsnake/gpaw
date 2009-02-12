@@ -97,12 +97,16 @@ class Domain:
                 spos_c[c] %= 1.0
         return spos_c
 
-    def get_rank_for_position(self, spos_c):
+    def get_ranks_from_positions(self, spos_ac):
         """Calculate rank of domain containing scaled position."""
-        rnk_c = npy.clip(npy.floor(spos_c * self.parsize_c).astype(int),
-                         0, npy.array(self.parsize_c) - 1)
-        for c in range(3):
-            assert 0 <= rnk_c[c] < self.parsize_c[c], 'Bad bad!'
+        rnk_ac = npy.floor(spos_ac * self.parsize_c).astype(int)
+        assert (rnk_ac >= 0).all() and (rnk_ac < self.parsize_c).all()
+        return npy.dot(rnk_ac, self.stride_c)
+
+    def get_rank_from_position(self, spos_c):
+        """Calculate rank of domain containing scaled position."""
+        rnk_c = npy.floor(spos_c * self.parsize_c).astype(int)
+        assert (rnk_c >= 0).all() and (rnk_c < self.parsize_c).all()
         return npy.dot(rnk_c, self.stride_c)
 
     def find_neighbor_processors(self):

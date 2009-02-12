@@ -6,33 +6,49 @@ class NonLocalFunctionalFactory:
     
     It contains a method called get_functional_by_name, which takes
     the xc-name for non-local functional and returns the corresponding
-    GLLBFunctional object. 
+    NonLocalFunctional object. 
 
-    * GLLB (The fermi-level reference set to HOMO)
-    * GLLBplusC (GLB with PW91 correlation scr-potential) 
-    * GLLBexp (Something to play with)
+    * GLLB
+    * GLLBLDA (A test functional, which is just LDA but via
+               NonLocalFunctional framework)
     """
 
     def get_functional_by_name(self, name):
         print "Functional name", name
         K_G = 0.382106112167171
         KC_G = 0.470
-        from gpaw.gllb.gllb import GLLBFunctional
-        from gpaw.gllb.saop import SAOPFunctional
+
+        from gpaw.gllb.nonlocalfunctional import NonLocalFunctional
+        functional = NonLocalFunctional()
+        
         if name == 'GLLB':
-            return GLLBFunctional('X_B88-None',None, K_G)
+            # Functional GLLB
+            # Contains screening part from GGA functional
+            # And response part based on simple square root expection
+            # of orbital energy differences.
+            from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
+            from gpaw.gllb.contributions.c_response import C_Response
+            C_Response(functional, 1.0, C_GLLBScr(functional, 1.0).get_coefficient_calculator())
+            return functional
         elif name == 'GLLBLDA':
-            return GLLBFunctional('None-None','LDA', 0)
-        elif name == 'GLLBLDARCR':
-            return GLLBFunctional('None-None','LDA', 0, relaxed_core_response=True)
-        elif name == 'GLLBplusC':
-            return GLLBFunctional('X_B88-C_PW91',None,KC_G)
-        elif name == 'GLLBRCR':
-             return GLLBFunctional('X_B88-None',None, K_G, relaxed_core_response=True)
-        elif name == 'GLLBplusCRCR':
-             return GLLBFunctional('X_B88-C_PW91',None, KC_G, relaxed_core_response=True)
-        elif name == 'SAOP':
-             return SAOPFunctional('GLLB', 'LBalpha')
+            from gpaw.gllb.contributions.c_lda import C_LDA
+            C_LDA(functional, 1.0)
+            return functional
+        elif name == 'GLLBSLATER':
+            raise RuntimeError('Slater functional not implemented')
+            from gpaw.gllb.contributions.c_slater import C_Slater
+            C_Slater(functional, 1.0)
+            return functional
+        elif name == 'GLLBNORESP':
+            from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
+            C_GLLBScr(functional, 1.0)
+            return functional
+        elif name == 'KLI':
+            raise RuntimeError('KLI functional not implemented')
+            from gpaw.gllb.contributions.c_slater import C_Slater
+            from gpaw.gllb.contributions.c_response import C_Response
+            C_Response(functional, 1.0, C_Slater(functional, 1.0))
+            return functional
         else:
             raise RuntimeError('Unkown NonLocal density functional: ' + name)
 

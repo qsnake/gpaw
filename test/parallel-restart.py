@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from ase import *
-from gpaw import Calculator
-import numpy as npy
+from gpaw import GPAW
+import numpy as np
 from gpaw.utilities import equal
 from gpaw.mpi import rank, world
 import time
@@ -24,7 +24,7 @@ for nkpt in [4]:
                               pbc=True,
                               cell = (2.55,2.55,2.55))
 
-            calc = Calculator(nbands=6,
+            calc = GPAW(nbands=6,
                               gpts=(ng,ng,ng),
                               kpts=(4, 2, 2),
                               txt=file_prefix+'.txt',
@@ -39,7 +39,7 @@ for nkpt in [4]:
         for nhosts in nhostsread: 
             file_prefix = 'Fe_%d_%1.1f_par%d'%(nkpt,magmom,nhosts)
             print '------ restart calculation  ',file_prefix, rank*111111111
-            calc = Calculator(file_prefix+'.gpw',
+            calc = GPAW(file_prefix+'.gpw',
                               txt=file_prefix+'_restart.txt',
                               tolerance = 1e-10)
             atoms = calc.get_atoms()
@@ -67,7 +67,7 @@ if 1:
                       Atom('O',(1.2+d,d,d), magmom=1)],
                      pbc=1,
                      cell=(a, a, a))
-    calc = Calculator(nbands=8, h=0.2, txt = 'O2.txt',tolerance=1e-9)
+    calc = GPAW(nbands=8, h=0.2, txt = 'O2.txt',tolerance=1e-9)
     O2.set_calculator(calc)
     e0 = O2.get_potential_energy()
     f  = O2.get_forces()
@@ -82,7 +82,7 @@ if 1:
     del calc,O2
 
 if 1: 
-    atoms = Calculator('O2.gpw', txt='O2-restart.txt',
+    atoms = GPAW('O2.gpw', txt='O2-restart.txt',
                        tolerance=1e-9).get_atoms()
     e = atoms.get_potential_energy()
     atoms[1].set_cartesian_position((1.21+d,d,d))

@@ -45,16 +45,17 @@ molecule.set_calculator(c_mol)
 molecule.get_potential_energy()
 
 #Homo wavefunction
-wf_u = [kpt.psit_nG[4] for kpt in c_mol.kpt_u]
+wf_u = [kpt.psit_nG[4] for kpt in c_mol.wfs.kpt_u]
 
 #Homo projector overlaps
-P_aui = [a.P_uni[:,4,:] for a in c_mol.nuclei]
+P_aui = [[kpt.P_ani[a][4] for kpt in c_mol.wfs.kpt_u]
+          for a in range(len(c_mol.wfs.kpt_u[0].P_ani))]
 
 #   Slab with adsorbed molecule
 #-----------------------------------
 slab.set_calculator(calc)
-orbital = dscf.WaveFunction(calc, wf_u, P_aui, molecule=range(len(slab))[-2:],
-                            Estart=-100.0, Eend=0.0)
+orbital = dscf.AEOrbital(calc, wf_u, P_aui, molecule=range(len(slab))[-2:],
+                         Estart=-100.0, Eend=0.0)
 dscf.dscf_calculation(calc, [[-1.0, orbital, 1]], slab)
 slab.get_potential_energy()
 

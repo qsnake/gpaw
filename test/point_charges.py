@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 from ase import *
 
 from gpaw.cluster import Cluster
@@ -22,9 +22,9 @@ assert(pc.charge() == -1.5)
 fxyz='pc.xyz'
 pc.write(fxyz)
 
-shift = npy.array([0.2, 0.6, 2.8])
+shift = np.array([0.2, 0.6, 2.8])
 pc.translate(shift)
 
 pc2 = PointCharges(fxyz)
 for p1, p2 in zip(pc, pc2):
-    assert(npy.sum(p1.position - shift - p2.position) < 1e-6)
+    assert(np.sum(p1.position - shift - p2.position) < 1e-6)

@@ -1,6 +1,6 @@
 import os
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
 import gpaw.mpi as mpi
@@ -19,7 +19,7 @@ c = a / 2
 Cu = Atoms('Cu', [(c, c, c)], magmoms=[1],
            cell=(a, a, a), pbc=0)
 
-calc = Calculator(h=0.2, lmax=0)# basis='sz')
+calc = GPAW(h=0.2, lmax=0)# basis='sz')
 Cu.set_calculator(calc)
 Cu.get_potential_energy()
 

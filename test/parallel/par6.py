@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import sys
 from ase import *
-from gpaw import Calculator
+from gpaw import GPAW
 from gpaw.mpi import rank
 
-gpw = '/scratch/jensj/H-par.gpw'
+gpw = '/tmp/H-par.gpw'
 a = 4.0
 
 def f(n, magmom, periodic, dd):
@@ -12,13 +12,13 @@ def f(n, magmom, periodic, dd):
               pbc=periodic,
               cell=(a, a, a))
     
-    H.set_calculator(Calculator(nbands=1, gpts=(n, n, n),
-                                txt=None,
-                                convergence={'eigenstates': 0.0001},
-                                parsize=dd))
+    H.set_calculator(GPAW(nbands=1, gpts=(n, n, n),
+                          txt=None,
+                          convergence={'eigenstates': 0.0001},
+                          parsize=dd))
     e = H.get_potential_energy()
     H.get_calculator().write(gpw)
-    H = Calculator(gpw, txt=None).get_atoms()
+    H = GPAW(gpw, txt=None).get_atoms()
     assert e == H.get_potential_energy()
     return e
     

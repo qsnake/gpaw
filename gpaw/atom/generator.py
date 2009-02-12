@@ -460,6 +460,7 @@ class Generator(AllElectron):
         nt[1:] /= r[1:]**2
         nt[0] = nt[1]
         nt += nct
+        self.nt = nt
 
         # Calculate the shape function:
         x = r / rcutcomp
@@ -490,24 +491,10 @@ class Generator(AllElectron):
         if not self.xc.is_non_local():
             Exct = self.xc.get_energy_and_potential(nt, vXCt)
         else:
-            # The difference between local and non-local functionals
-            # is that non-local ones need all the pseudo wave-functions,
-            # not just the valence ones.
-
-            self.s_j = self.u_j.copy()
-            # Construct all pseudo wave-functions
-            for j, (l, u) in enumerate(zip(self.l_j, self.u_j)):
-                construct_smooth_wavefunction(u, l, gcut_l[l], r, self.s_j[j])
-                if (j < njcore):
-                     self.s_j[j][:] = 0.0
-
-            # Calculate the response part using smooth orbitals, but
-            # the GGA-energy density part using the smooth core density.
-            Exct = self.xc.get_non_local_energy_and_potential(
-                self.s_j, self.f_j, self.e_j, self.l_j, vXCt, density = nt)
+            Exct = self.xcfunc.xc.get_smooth_xc_potential_and_energy_1d(vXCt)
 
             # Calculate extra-stuff for non-local functionals
-            self.xc.xcfunc.xc.calculate_extra_setup_data(extra_xc_data, self)
+            self.xcfunc.xc.get_extra_setup_data(extra_xc_data)
 
         vt = vHt + vXCt
 

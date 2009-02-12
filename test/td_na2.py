@@ -16,7 +16,7 @@ atoms = Atoms( symbols='Na2',
 # Larger box
 atoms.center(vacuum=5.0)
 # Larger grid spacing, LDA is ok
-gs_calc = Calculator(nbands=1, h=0.35, xc='LDA')
+gs_calc = GPAW(nbands=1, h=0.35, xc='LDA')
 atoms.set_calculator(gs_calc)
 e = atoms.get_potential_energy()
 gs_calc.write('na2_gs.gpw', 'all')

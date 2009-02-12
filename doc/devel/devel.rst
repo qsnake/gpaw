@@ -15,7 +15,14 @@ the corresponding objects are defined in the code:
 .. toctree::
    :maxdepth: 2
 
+   overview
    developersguide
+   paw
+   wavefunctions
+   setups
+   density_and_hamiltonian
+   others
+
 
 .. note --- below toctrees are defined in separate files to make sure that the line spacing doesn't get very large (which is of course a bad hack)
 
@@ -115,4 +122,3 @@ These pages may contain inaccurate or outdated information
    newrelease
    testsuite
    statistics
-   code/code

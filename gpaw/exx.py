@@ -51,7 +51,7 @@ from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
 from gpaw.ae import AllElectronSetup
-from gpaw.utilities.blas import gemm
+from gpaw.utilities.blas import gemm, r2k
 from gpaw.pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver, PoissonFFTSolver
 
@@ -71,61 +71,75 @@ class EXX:
     Class offering methods for selfconsistent evaluation of the
     exchange energy."""
     
-    def __init__(self, paw, energy_only=False, use_finegrid=True):
+    def __init__(self, density, hamiltonian, wfs, atoms,
+                 energy_only=False, use_finegrid=True):
         # Initialize class-attributes
-        self.nspins        = paw.nspins
-        self.nbands        = paw.nbands
-        self.my_nuclei     = paw.my_nuclei
-        self.interpolate   = paw.density.interpolate
-        self.restrict      = paw.hamiltonian.restrict
-        self.integrate     = paw.gd.integrate
-        self.fineintegrate = paw.finegd.integrate
-        self.pair_density  = PairDensity(paw, finegrid=True)
-        self.ghat_nuclei   = paw.ghat_nuclei
-        self.rank          = paw.domain.comm.rank
-        ksum, dsum = paw.kpt_comm.sum, paw.domain.comm.sum
+        self.nspins        = wfs.nspins
+        self.nbands        = wfs.nbands
+        self.interpolate   = density.interpolate
+        self.restrict      = hamiltonian.restrict
+        self.integrate     = wfs.gd.integrate
+        self.fineintegrate = density.finegd.integrate
+        ksum, dsum = wfs.kpt_comm.sum, wfs.gd.comm.sum
         self.psum          = lambda x: ksum(dsum(x)) # Sum over all processors
         self.energy_only   = energy_only
-        self.Na            = len(paw.nuclei)
         self.use_finegrid  = use_finegrid
-        self.pair_density  = PairDensity(paw, use_finegrid)
-        self.poisson_solve = paw.hamiltonian.poisson.solve
-        self.Exx = 0.
-        self.Ekin = 0.
+        self.pair_density  = PairDensity(density, atoms, use_finegrid)
+        self.poisson_solve = hamiltonian.poisson.solve
+        self.density = density
+        self.Exx = 0.0
+        self.Ekin = 0.0
+        self.qs0 = None
 
         # Set correct Poisson solver
         if usefft:
             if use_finegrid:
                 solver = PoissonFFTSolver()
-                solver.initialize(paw.finegd)
+                solver.initialize(density.finegd)
                 self.poisson_solve = solver.solve
             else:
                 solver = PoissonFFTSolver()
-                solver.initialize(paw.gd)
+                solver.initialize(wfs.gd)
                 self.poisson_solve = solver.solve
         elif not use_finegrid:
-            solver = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
-            solver.initialize(paw.gd)
+            solver = PoissonSolver(nn=hamiltonian.poisson.nn)
+            solver.initialize(wfs.gd)
             self.poisson_solve = solver.solve
             
         # Allocate space for matrices
-        self.nt_G = paw.gd.empty()# Pseudo density on coarse grid
-        self.rhot_g = paw.finegd.empty()# Comp. pseudo density on fine grid
-        self.vt_G = paw.gd.empty()# Pot. of comp. pseudo density on coarse grid
-        self.vt_g = paw.finegd.empty()# Pot. of comp. pseudo dens. on fine grid
+        self.nt_G = wfs.gd.empty()# Pseudo density on coarse grid
+        self.rhot_g = density.finegd.empty()# Comp. pseudo density on fine grid
+        self.vt_G = wfs.gd.empty()# Pot. of comp. pseudo density on coarse grid
+        self.vt_g = density.finegd.empty()# Pot. of comp. ps. dens. on fine grid
 
         # Overwrites in case of coarse grid Poisson solver
         if not use_finegrid:
-            self.fineintegrate = paw.gd.integrate
+            self.fineintegrate = wfs.gd.integrate
             self.interpolate = dummy_interpolate
-            self.rhot_g = paw.gd.empty()
+            self.rhot_g = wfs.gd.empty()
             self.vt_g = self.vt_G
         
         # For rotating the residuals we need the diagonal Fock potentials
         if not energy_only:
-            self.vt_unG = paw.gd.zeros((paw.nmyu, paw.nbands))
+            for kpt in wfs.kpt_u:
+                kpt.vt_nG = wfs.gd.zeros(wfs.nbands)
 
-    def apply(self, kpt, Htpsit_nG, H_nn, hybrid):
+    def grr(self, wfs, kpt, Htpsit_nG, hamiltonian):
+        nbands = wfs.nbands
+        domain_comm = self.density.gd.comm
+        H_nn = npy.zeros((nbands, nbands))
+        wfs.kin.apply(kpt.psit_nG, Htpsit_nG, kpt.phase_cd)
+        hamiltonian.apply_local_potential(kpt.psit_nG, Htpsit_nG, kpt.s)
+        self.apply(kpt, Htpsit_nG, H_nn, hamiltonian.dH_asp,
+                   hamiltonian.xc.xcfunc.hybrid)
+        r2k(0.5 * wfs.gd.dv, kpt.psit_nG, Htpsit_nG, 1.0, H_nn)
+        for a, P_ni in kpt.P_ani.items():
+            dH_p = unpack(hamiltonian.dH_asp[a][kpt.s])
+            gemm(1.0, P_ni, npy.dot(P_ni, dH_p), 1.0, H_nn, 'c')
+        domain_comm.sum(H_nn, 0)
+        return H_nn
+
+    def apply(self, kpt, Htpsit_nG, H_nn, dH_asp, hybrid):
         """Apply exact exchange operator."""
 
         # Initialize method-attributes
@@ -134,13 +148,21 @@ class EXX:
         deg = 2 / self.nspins   # Spin degeneracy
         f_n = kpt.f_n           # Occupation number
         s   = kpt.s             # Global spin index
-        u   = kpt.u             # Local spin/kpoint index
+        #u   = kpt.u             # Local spin/kpoint index
         pd  = self.pair_density # Class for handling pair densities
         fmin= 1e-9              # Occupations less than this counts as empty
 
+        P_ani = kpt.P_ani
+        setups = self.density.setups
+        domain_comm = self.density.gd.comm
+
         if not self.energy_only:
-            for nucleus in self.my_nuclei:
-                nucleus.vxx_uni[u] = 0.0
+            kpt.vxx_ani = vxx_ani = {}
+            kpt.vxx_anii = vxx_anii = {}
+            for a, P_ni in P_ani.items():
+                nbands, ni = P_ni.shape
+                vxx_ani[a] = npy.zeros((nbands, ni))
+                vxx_anii[a] = npy.zeros((nbands, ni, ni))
 
         # Determine pseudo-exchange
         for n1 in range(self.nbands):
@@ -183,56 +205,51 @@ class EXX:
                 # Integrate the potential on fine and coarse grids
                 int_fine = self.fineintegrate(self.vt_g * self.rhot_g)
                 int_coarse = self.integrate(self.vt_G * self.nt_G)
-                if self.rank == 0: # Only add to energy on master CPU
+                if domain_comm.rank == 0: # Only add to energy on master CPU
                     Exx += 0.5 * f1 * f2 * dc * int_fine
                     Ekin -= f1 * f2 * dc * int_coarse
-
                 if not self.energy_only:
                     Htpsit_nG[n1] += f2 * self.vt_G * psit2_G
                     if n1 != n2:
                         Htpsit_nG[n2] += f1 * self.vt_G * psit1_G
                     else:
-                        self.vt_unG[u, n2] = f2 * self.vt_G
+                        kpt.vt_nG[n2] = f2 * self.vt_G
 
                     # Update the vxx_uni and vxx_unii vectors of the nuclei,
                     # used to determine the atomic hamiltonian, and the 
                     # residuals
-                    for nucleus in self.ghat_nuclei:
-                        v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
-                        if self.use_finegrid:
-                            nucleus.ghat_L.integrate(self.vt_g, v_L)
+                    if self.use_finegrid:
+                        ghat = self.density.ghat
+                    else:
+                        ghat = self.density.Ghat
+                    v_aL = ghat.dict()
+                    ghat.integrate(self.vt_g, v_aL)
+                    for a, v_L in v_aL.items():
+                        v_ii = unpack(npy.dot(setups[a].Delta_pL, v_L))
+                        v_ni = vxx_ani[a]
+                        v_nii = vxx_anii[a]
+                        P_ni = P_ani[a]
+                        v_ni[n1] += f2 * npy.dot(v_ii, P_ni[n2])
+                        if n1 != n2:
+                            v_ni[n2] += f1 * npy.dot(v_ii, P_ni[n1])
                         else:
-                            if nucleus.Ghat_L is not None:
-                                nucleus.Ghat_L.integrate(self.vt_G, v_L)
-
-                        if nucleus.in_this_domain:
-                            v_ii = unpack(npy.dot(nucleus.setup.Delta_pL, v_L))
-                            v_ni = nucleus.vxx_uni[u]
-                            v_nii = nucleus.vxx_unii[u]
-
-                            v_ni[n1] += f2 * npy.dot(v_ii,nucleus.P_uni[u, n2])
-                            if n1 != n2:
-                                v_ni[n2] += f1 * npy.dot(v_ii,
-                                                         nucleus.P_uni[u, n1])
-                            else:
-                                # XXX Check this:
-                                v_nii[n1] = f2 * v_ii
+                            # XXX Check this:
+                            v_nii[n1] = f2 * v_ii
 
         # Apply the atomic corrections to the energy and the Hamiltonian matrix
-        for nucleus in self.my_nuclei:
-            setup = nucleus.setup
+        for a, P_ni in P_ani.items():
+            setup = setups[a]
 
             # Add non-trivial corrections the Hamiltonian matrix
             if not self.energy_only:
-                h_nn = symmetrize(npy.inner(nucleus.P_uni[u],
-                                            nucleus.vxx_uni[u]))
+                h_nn = symmetrize(npy.inner(P_ni, vxx_ani[a]))
                 H_nn += h_nn
                 Ekin -= npy.dot(f_n, npy.diagonal(h_nn))
 
             # Get atomic density and Hamiltonian matrices
-            D_p  = nucleus.D_sp[s]
+            D_p  = self.density.D_asp[a][s]
             D_ii = unpack2(D_p)
-            H_p  = nucleus.H_sp[s]
+            dH_p = dH_asp[a][s]
             ni = len(D_ii)
             
             # Add atomic corrections to the valence-valence exchange energy
@@ -249,7 +266,7 @@ class EXX:
                             A += setup.M_pp[p13, p24] * D_ii[i3, i4]
                     if not self.energy_only:
                         p12 = packed_index(i1, i2, ni)
-                        H_p[p12] -= 2 * hybrid / deg * A / ((i1 != i2) + 1)
+                        dH_p[p12] -= 2 * hybrid / deg * A / ((i1 != i2) + 1)
                         Ekin += 2 * hybrid / deg * D_ii[i1, i2] * A
                     Exx -= hybrid / deg * D_ii[i1, i2] * A
             
@@ -259,7 +276,7 @@ class EXX:
             # --  ii  ii
             Exx -= hybrid * npy.dot(D_p, setup.X_p)
             if not self.energy_only:
-                H_p -= hybrid * setup.X_p
+                dH_p -= hybrid * setup.X_p
                 Ekin += hybrid * npy.dot(D_p, setup.X_p)
 
             # Add core-core exchange energy
@@ -267,8 +284,11 @@ class EXX:
                 Exx += hybrid * setup.ExxC
 
         # Update the class attributes
-        if u == 0:
-            self.Exx = self.Ekin = 0
+        if self.qs0 is None:
+            self.qs0 = (kpt.q, kpt.s)
+        if (kpt.q, kpt.s) == self.qs0:
+            self.Exx = 0.0
+            self.Ekin = 0.0
         self.Exx += self.psum(Exx)
         self.Ekin += self.psum(Ekin)
 
@@ -357,17 +377,16 @@ class EXX:
                         nucleus.pt_i.derivative(psit2_G, None)
         return F_ac
 
-    def adjust_residual(self, pR_G, dR_G, u, n):
-        dR_G += self.vt_unG[u, n] * pR_G
+    def adjust_residual(self, pR_G, dR_G, kpt, n):
+        dR_G += kpt.vt_nG[n] * pR_G
 
-    def rotate(self, u, U_nn):
+    def rotate(self, kpt, U_nn):
         # Rotate EXX related stuff
-        vt_nG = self.vt_unG[u]
+        vt_nG = kpt.vt_nG
         gemm(1.0, vt_nG.copy(), U_nn, 0.0, vt_nG)
-        for nucleus in self.my_nuclei:
-            v_ni = nucleus.vxx_uni[u]
+        for v_ni in kpt.vxx_ani.values():
             gemm(1.0, v_ni.copy(), U_nn, 0.0, v_ni)
-            v_nii = nucleus.vxx_unii[u]
+        for v_nii in kpt.vxx_anii.values():
             gemm(1.0, v_nii.copy(), U_nn, 0.0, v_nii)
 
 
