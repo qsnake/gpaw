@@ -99,7 +99,7 @@ class Operator:
                 if q < Q - 1:
                     sreq = bcomm.send(sbuf_mG, rankm, 11, False)
                     rreq = bcomm.receive(rbuf_mG, rankp, 11, False)
-                if j == J - 1:
+                if j == J - 1 and P_ani:
                     if q == 0:
                         sbuf_In = np.concatenate([np.dot(P_ni, dA_aii[a]).T
                                                   for a, P_ni in P_ani.items()])
@@ -122,7 +122,7 @@ class Operator:
                     else:
                         gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
                         
-                if j == J - 1:
+                if j == J - 1 and P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
@@ -132,7 +132,7 @@ class Operator:
                 if q == Q - 1:
                     break
 
-                if j == J - 1:
+                if j == J - 1 and P_ani:
                     bcomm.wait(sreq2)
                     bcomm.wait(rreq2)
                     sbuf_In, rbuf_In = rbuf_In, sbuf_In
@@ -241,7 +241,7 @@ class Operator:
                 if q == B - 1:
                     break
                 
-                if j == 0:
+                if j == 0 and P_ani:
                     bcomm.wait(sreq2)
                     bcomm.wait(rreq2)
                     sbuf_In, rbuf_In = rbuf_In, sbuf_In
