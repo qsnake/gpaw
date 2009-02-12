@@ -807,7 +807,7 @@ Set these environment variables in the :file:`.softenvrc` file::
   GPAW_SETUP_PATH = ${HOME}/gpaw-setups-0.4.2039
 
   LD_LIBRARY_PATH += /bgsys/drivers/ppcfloor/runtime/SPI
-  LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/lib/bg
+  LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/lib/bglib
   LD_LIBRARY_PATH += /opt/ibmcmp/xlsmp/bg/1.7/bglib:/bgsys/drivers/ppcfloor/gnu-linux/lib
   PATH += ${HOME}/gpaw/tools:${HOME}/CamposASE2/tools:${HOME}/ase3k/tools
   # to enable TAU profiling add also:
