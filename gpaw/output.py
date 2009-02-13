@@ -254,6 +254,8 @@ class PAWTextOutput:
         t('Bands to Converge:                      ', end='')
         if cc['bands'] == 'occupied':
             t('Occupied States Only')
+        elif cc['bands'] == 'all':
+            t('All')
         else:
             t('%d Lowest Bands' % cc['bands'])
         t('Number of Valence Electrons:            %i'
