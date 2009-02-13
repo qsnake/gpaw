@@ -605,19 +605,16 @@ class GridWaveFunctions(WaveFunctions):
         elif isinstance(self.kpt_u[0].psit_nG, TarFileReference):
             self.initialize_wave_functions_from_restart_file()
 
-        if density.nt_sG is None:
-            if self.kpt_u[0].psit_nG is None:
-                density.initialize_from_atomic_densities(basis_functions)
-                # Initialize GLLB-potential from basis function orbitals
-                if hamiltonian.xcfunc.gllb:
-                    hamiltonian.xcfunc.xc.initialize_from_atomic_orbitals(
-                        basis_functions)
-
-
-            else:
-                density.nt_sG = self.gd.empty(self.nspins)
-                self.calculate_density(density)
-                density.nt_sG += density.nct_G
+        if self.kpt_u[0].psit_nG is not None:
+            density.nt_sG = self.gd.empty(self.nspins)
+            self.calculate_density(density)
+            density.nt_sG += density.nct_G
+        elif density.nt_sG is None:
+            density.initialize_from_atomic_densities(basis_functions)
+            # Initialize GLLB-potential from basis function orbitals
+            if hamiltonian.xcfunc.gllb:
+                hamiltonian.xcfunc.xc.initialize_from_atomic_orbitals(
+                    basis_functions)
 
         comp_charge = density.calculate_multipole_moments()
         density.normalize(comp_charge)
