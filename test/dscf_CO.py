@@ -26,20 +26,26 @@ P_aui = [[kpt.P_ani[a][5] for kpt in calc_gs.wfs.kpt_u]
 # Excited state calculation
 #--------------------------------------------
 
-calc_es = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
-               convergence={'energy': 100,
-                            'density': 100,
-                            'eigenstates': 1.0e-9,
-                            'bands': -1})
+calc_1 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
+              convergence={'energy': 100,
+                           'density': 100,
+                           'eigenstates': 1.0e-9,
+                           'bands': -1})
 
-CO.set_calculator(calc_es)
-
-lumo = dscf.MolecularOrbital(calc_es, molecule=[0,1], w=[[0,0,0,1],[0,0,0,-1]])
-dscf.dscf_calculation(calc_es, [[1.0, lumo, 1]], CO)
+CO.set_calculator(calc_1)
+lumo = dscf.MolecularOrbital(calc_1, molecule=[0,1], w=[[0,0,0,1],[0,0,0,-1]])
+dscf.dscf_calculation(calc_1, [[1.0, lumo, 1]], CO)
 E_es1 = CO.get_potential_energy()
 
-lumo = dscf.AEOrbital(calc_es, wf_u, P_aui, molecule=[0,1])
-dscf.dscf_calculation(calc_es, [[1.0, lumo, 1]], CO)
+calc_2 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
+              convergence={'energy': 100,
+                           'density': 100,
+                           'eigenstates': 1.0e-9,
+                           'bands': -1})
+
+CO.set_calculator(calc_2)
+lumo = dscf.AEOrbital(calc_2, wf_u, P_aui, molecule=[0,1])
+dscf.dscf_calculation(calc_2, [[1.0, lumo, 1]], CO)
 E_es2 = CO.get_potential_energy()
 
 equal(E_es1, E_gs+5.8, 0.1)

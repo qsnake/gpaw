@@ -54,7 +54,6 @@ def dscf_calculation(calc, orbitals, atoms=None):
         new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals, calc)
         new_occ.set_communicator(occ.kpt_comm)
         calc.occupations = new_occ
-        calc.converged = False
 
 class OccupationsDSCF(FermiDirac):
     """Occupation class.
