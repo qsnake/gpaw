@@ -132,8 +132,13 @@ class PAWTextOutput:
 
         t('Total Charge:      %.6f' % p['charge'])
         t('Fermi Temperature: %.6f' % (self.occupations.kT * Hartree))
-        t('Eigen Solver:      %s \n                   (%s)' %
-          (p['eigensolver'], fd(p['stencils'][0])))
+        t('Mode:              %s' % p['mode'])
+        eigensolver = p['eigensolver']
+        if eigensolver is None:
+            eigensolver = {'lcao':'lcao (direct)', 'fd':'rmm-diis'}[p['mode']]
+        t('Eigen Solver:      %s' % eigensolver)
+        if p['mode'] != 'lcao':
+            t('                   (%s)' % fd(p['stencils'][0]))
         diag_string = 'Lapack'
         if sl_diagonalize: assert parallel
         if sl_diagonalize: assert scalapack()
