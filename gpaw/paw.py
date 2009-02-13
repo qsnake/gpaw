@@ -119,7 +119,7 @@ class PAW(PAWTextOutput):
         self.initialized = False
 
         for key in kwargs:
-            if key in ['fixmom', 'mixer',
+            if key in ['fixmom', 'mixer', 'basis',
                        'verbose', 'txt', 'hund', 'random',
                        'eigensolver', 'poissonsolver', 'idiotproof']:
                 continue
@@ -134,13 +134,13 @@ class PAW(PAWTextOutput):
             if key in ['lmax', 'width', 'stencils', 'external', 'xc']:
                 self.hamiltonian = None
                 self.occupations = None
-            elif key in ['charge', 'xc']:  # XXX why is 'xc' here?
+            elif key in ['charge']:
                 self.hamiltonian = None
                 self.density = None
             elif key in ['kpts', 'nbands']:
                 self.wfs = EmptyWaveFunctions()
                 self.occupations = None
-            elif key in ['h', 'gpts', 'setups', 'basis', 'spinpol',
+            elif key in ['h', 'gpts', 'setups', 'spinpol',
                          'usesymm', 'parsize', 'parsize_bands',
                          'communicator', 'mode']:
                 self.density = None
