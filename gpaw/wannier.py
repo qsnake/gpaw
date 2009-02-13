@@ -50,7 +50,8 @@ class Wannier:
     def get_function(self, calc, n, pad=True):
         if pad:
             return calc.gd.zero_pad(self.get_function(calc, n, False))
-        psit_nG = calc.kpt_u[self.spin].psit_nG[:].reshape((calc.nbands, -1))
+        psit_nG = calc.wfs.kpt_u[self.spin].psit_nG[:]
+        psit_nG = psit_nG.reshape((calc.wfs.nbands, -1))
         return npy.dot(self.U_nn[:, n],
                        psit_nG).reshape(calc.gd.n_c) / Bohr**1.5
 
