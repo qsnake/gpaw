@@ -84,6 +84,7 @@ class PAW(PAWTextOutput):
             reader = gpaw.io.open(filename, 'r')
             self.atoms = gpaw.io.read_atoms(reader)
             self.input_parameters.read(reader)
+            self.input_parameters.txt = kwargs.pop('txt', '-')
             self.initialize()
             self.read(reader)
             
