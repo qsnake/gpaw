@@ -388,3 +388,127 @@ class MixerRho2(BaseMixer):
         rhot_g = density.rhot_g
         BaseMixer.mix(self, rhot_g, density.D_asp.values())
 
+class BaseMixer_Broydn:
+    def __init__(self):
+        self.step = 0
+        self.verbose = False
+        self.d_nt_G = []
+        self.d_D_ap = []
+        self.nt_iG = []
+        self.D_iap = []
+        self.c_G =  []
+        self.v_G = []
+        self.u_G = []
+        self.u_D = []
+        self.beta = 0.1
+        self.nmaxold = 10
+        self.metric_type ='new'
+        self.weight = 1
+        self.dNt = None
+        self.mix_rho = False
+        
+    def initialize(self, density):
+        self.gd = density.gd
+
+    def reset(self):
+        pass
+        
+    def get_charge_sloshing(self):
+        return self.dNt 
+    
+    def mix(self, nt_G, D_ap):
+        if self.step > 2:
+            del self.d_nt_G[0]
+            for d_Dp in self.d_D_ap:
+                del d_Dp[0]
+        if self.step > 0:
+            self.d_nt_G.append(nt_G - self.nt_iG[-1])
+            for d_Dp, D_p, D_ip in zip(self.d_D_ap, D_ap, self.D_iap):
+                d_Dp.append(D_p - D_ip[-1])
+            fmin_G = npy.sum(self.d_nt_G[-1] * self.d_nt_G[-1])
+            self.dNt = self.gd.integrate(npy.fabs(self.d_nt_G[-1]))
+            if self.verbose:
+                print 'Mixer: broydn: fmin_G = %f fmin_D = %f'% fmin_G
+        if self.step == 0:
+            self.eta_G = npy.empty(nt_G.shape)
+            self.eta_D = []
+            for D_p in D_ap:
+                self.eta_D.append(npy.empty(D_ap[0].shape))
+                self.u_D.append(npy.empty(D_ap[0].shape))
+        else:
+            if self.step >= 2:
+                del self.c_G[:]
+                temp_nt_G = self.d_nt_G[1] - self.d_nt_G[0]
+                self.v_G.append(temp_nt_G / npy.sum(temp_nt_G * temp_nt_G))
+                for i in range(self.step - 1):
+                    self.c_G.append(npy.sum(self.v_G[i] * self.d_nt_G[1]))
+                self.u_G.append(self.beta  * temp_nt_G + self.nt_iG[1] - self.nt_iG[0])
+                for d_Dp, u_D, D_ip in zip(self.d_D_ap, self.u_D, self.D_iap):
+                    temp_D_ap = d_Dp[1] - d_Dp[0]
+                    u_D.append(self.beta  * temp_D_ap + D_ip[1] - D_ip[0])
+                usize = len(self.u_G)
+                for i in range(usize - 1):
+                    a_G = npy.sum(self.v_G[i] * temp_nt_G)
+                    self.u_G[usize - 1]  -= a_G * self.u_G[i]
+                    for u_D in self.u_D:
+                        u_D[usize - 1]  -= a_G * u_D[i]                    
+            self.eta_G = self.beta * self.d_nt_G[-1]
+            for eta_D, d_Dp in zip(self.eta_D, self.d_D_ap):
+                eta_D = self.beta * d_Dp[-1]
+            usize = len(self.u_G) 
+            for i in range(usize):
+                self.eta_G -= self.c_G[i] * self.u_G[i]
+                for eta_D, u_D in zip(self.eta_D, self.u_D):
+                    eta_D -= self.c_G[i] * u_D[i]
+            nt_G = self.nt_iG[-1] + self.eta_G
+            for D_p, D_ip, eta_D in zip(D_ap, self.D_iap, self.eta_D):
+                D_p = D_ip[-1] + eta_D
+            if self.step >= 2:
+                del self.nt_iG[0]
+                for D_ip in self.D_iap:
+                    del D_ip[0]
+        self.nt_iG.append(npy.copy(nt_G))
+        for D_ip, D_p in zip(self.D_iap, D_ap):
+            D_ip.append(npy.copy(D_p))
+        self.step += 1
+        
+class Mixer_Broydn(BaseMixer_Broydn):
+    """Mix spin up and down densities separately"""
+
+    def initialize(self, density):
+        self.mixers = []
+        for s in range(density.nspins):
+            mixer = BaseMixer_Broydn()
+            mixer.initialize(density)
+            #mixer.initialize_metric(density.gd)
+            self.mixers.append(mixer)
+    
+    def mix(self, density):
+        """Mix pseudo electron densities."""
+
+        nt_sG = density.nt_sG
+        D_asp = density.D_asp.values()
+        D_sap = []
+        for s in range(density.nspins):
+            D_sap.append([D_sp[s] for D_sp in D_asp])
+        for nt_G, D_ap, mixer in zip(nt_sG, D_sap, self.mixers):
+            mixer.mix(nt_G, D_ap)
+
+    def reset(self):
+        for mixer in self.mixers:
+            mixer.reset()
+
+    def get_charge_sloshing(self):
+        """Return number of electrons moving around.
+
+        Calculated as the integral of the absolute value of the change
+        of the density from input to output."""
+
+        if self.mixers[0].dNt is None:
+            return None
+        return sum([mixer.dNt for mixer in self.mixers])
+
+    def set_charge_sloshing(self, dNt):
+        for mixer in self.mixers:
+            mixer.set_charge_sloshing(dNt / len(self.mixers))
+
