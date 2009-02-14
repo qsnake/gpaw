@@ -46,37 +46,31 @@ class CvgCtrl:
             ctrlmode = 'SelfCtrl'
         else:
             ctrlmode = 'Co-Ctrl'
-        #print self.matname + 'CvgCtrl: Init:Method=', self.cvgmethod,\
-        #                'tol0', self.tol, 'ctrlmode=', ctrlmode, \
-        #                        'steady_check0', self.bstdchk
-        #print 'alpha=', self.alpha, 'ndiis0', self.ndiis, 'tolx0', self.tolx
-        # print 'alpha_control_method=', self.asmethod, 'alphascaling=', \
-        #              self.alphascaling, 'allowedmatmax=', self.allowedmatmax
     
-    def cvgjudge(self, matin):
+    def cvgjudge(self, matin, txt):
         dmatmax = 0
         self.bcvglast = self.bcvg
         self.bcvg = 0
-        
-        nbmol = matin.shape[-1]
-        if self.step > 0:
-            dmatmax = npy.max(npy.abs(self.matlast - matin))
-            arg_max1 = npy.argmax(npy.abs(self.matlast - matin)) / nbmol
-            arg_max2 = npy.argmax(npy.abs(self.matlast - matin)) % nbmol
-            if dmatmax < self.tol:
-                self.bcvg = 1
-            if self.tol >= 0:
-                if self.matname == 'f' and self.master:
-                    print 'Hamiltonian: dmatmax= [%d, %d] %f tol=%f isCvg=%d'\
-                          %(arg_max1, arg_max2, dmatmax, self.tol, self.bcvg)
-                elif self.matname == 'd' and self.master:
-                    print  'Density: dmatmax= [%d %d] %f tol=%f isCvg=%d'\
-                        %(arg_max1, arg_max2, dmatmax, self.tol, self.bcvg)                    
-        self.record_dmatmax.append(dmatmax)   #attention here, vector push_back in C
+        if self.matname == 'f' or self.matname == 'd':       
+            nbmol = matin.shape[-1]
+            if self.step > 0:
+                dmatmax = npy.max(npy.abs(self.matlast - matin))
+                arg_max1 = npy.argmax(npy.abs(self.matlast - matin)) / nbmol
+                arg_max2 = npy.argmax(npy.abs(self.matlast - matin)) % nbmol
+                if dmatmax < self.tol:
+                    self.bcvg = 1
+                if self.tol >= 0:
+                    if self.matname == 'f' and self.master:
+                        txt('Hamiltonian: dmatmax= [%d, %d] %f tol=%f isCvg=%d'\
+                             %(arg_max1, arg_max2, dmatmax, self.tol, self.bcvg))
+                    elif self.matname == 'd' and self.master:
+                        txt('Density: dmatmax= [%d %d] %f tol=%f isCvg=%d'\
+                            %(arg_max1, arg_max2, dmatmax, self.tol, self.bcvg))
+            self.record_dmatmax.append(dmatmax)
 
-    def matcvg(self, matin):
+    def matcvg(self, matin, txt):
         if self.tol >= 0:
-            self.cvgjudge(matin)
+            self.cvgjudge(matin, txt)
             if self.bcvg and ((self.other == None) or self.other.bcvg):
                 matout = npy.copy(matin)
                 return matout
@@ -91,7 +85,6 @@ class CvgCtrl:
             matout = self.broydn(matin)
         elif self.cvgmethod == 'CVG_Broydn_lnsrch':
             matout = self.broydn_lnsrch(matin)
-        
         self.matlast = npy.copy(matout)
         self.step = self.step + 1
         return matout
@@ -102,12 +95,11 @@ class CvgCtrl:
             self.dmat[1] = npy.copy(self.dmat[0])
         if self.step > 0:
             self.dmat[0] = matin - self.mat[0]
-            fmin = npy.sum(self.dmat[0] * self.dmat[0]) #attention here matDotSum in C
-            #print self.matname + 'CvgCtrl: broydn: fmin=', fmin
+            fmin = npy.sum(self.dmat[0] * self.dmat[0])
         if self.step == 0:
-            self.dmat = [npy.empty(matin.shape), npy.empty(matin.shape)]
-            self.mat = [npy.empty(matin.shape), npy.empty(matin.shape)] 
-            self.eta = npy.empty(matin.shape)
+            self.dmat = [npy.empty(matin.shape,complex), npy.empty(matin.shape,complex)]
+            self.mat = [npy.empty(matin.shape, complex), npy.empty(matin.shape, complex)] 
+            self.eta = npy.empty(matin.shape, complex)
             self.c =  []
             self.v = []
             self.u = []
@@ -118,24 +110,24 @@ class CvgCtrl:
                 del self.c[:]
                 self.v.append((self.dmat[0] - self.dmat[1]) / 
                     npy.sum((self.dmat[0] - self.dmat[1]) * (self.dmat[0]-
-                                                    self.dmat[1]))) #matDotSum
+                                                    self.dmat[1])))
                 for i in range(self.step - 1):
-                    self.c.append(npy.sum(self.v[i] * self.dmat[0])) #matDotSum
+                    self.c.append(npy.sum(self.v[i] * self.dmat[0]))
                 self.u.append(self.alpha * (self.dmat[0] - self.dmat[1]) + 
                                                 (self.mat[0]-self.mat[1]))
-                usize = len(self.u)     #usize=step-1
+                usize = len(self.u)
                 for i in range(usize - 1):
                     a = npy.sum(self.v[i] * (self.dmat[0] - self.dmat[1]))
                     self.u[usize - 1] = self.u[usize - 1] - a * self.u[i]
             self.eta = self.alpha * self.dmat[0]
-            usize = len(self.u)  # usize= step-1
+            usize = len(self.u)
             for i in range(usize):
                 self.eta = self.eta - self.c[i] * self.u[i]
             matout = self.mat[0] + self.eta
         self.mat[1] = npy.copy(self.mat[0])
         self.mat[0] = npy.copy(matout)
         return matout
-
+       
     def linear_cvg(self, matin):
         if self.step == 0:
             matout = npy.copy(matin)
@@ -148,7 +140,6 @@ class CvgCtrl:
         self.mat[0] = npy.copy(matout)
         return matout
             
-        
     def broydn_lnsrch(self, matin):
         row = matin.shape[-2] 
         col = matin.shape[-1]
@@ -167,7 +158,7 @@ class CvgCtrl:
         else:
             self.dmat[0] = matin - self.mat[0]
             if self.step > 1:
-                self.fmin = npy.sum(self.dmat[0] * self.dmat[0]) #attention here, matDotSum    
+                self.fmin = npy.sum(self.dmat[0] * self.dmat[0])    
             if self.step > self.asbeginstep:
                 self.bscalealpha = True
             if self.step == 1 or self.alam < self.alamin \
@@ -175,7 +166,6 @@ class CvgCtrl:
                                                    or not self.bscalealpha:
                 if self.step >= 2:
                     del self.c[:]
-                    #matDotSum
                     self.v.append((self.dmat[0] - self.dmat[1]) / npy.sum((
                                                self.dmat[0] - self.dmat[1]) *
                                                (self.dmat[0] - self.dmat[1]))) 
@@ -183,17 +173,17 @@ class CvgCtrl:
                     self.u.append(self.alpha * (self.dmat[0] - self.dmat[1])
                                                 + (self.mat[0] - self.mat[1]))
  
-                    usize = len(self.u)  #usize=step-1
+                    usize = len(self.u)
                     for i in range(usize):
-                        self.c.append(npy.sum(self.v[i] * self.dmat[0])) #matDotSum
+                        self.c.append(npy.sum(self.v[i] * self.dmat[0]))
                     for i in range(usize - 1):
-                        a = npy.sum(self.v[i] * (self.dmat[0] - self.dmat[1]))#matDotSum
+                        a = npy.sum(self.v[i] * (self.dmat[0] - self.dmat[1]))
                         self.u[usize - 1] -=  a * self.u[i]
                 self.eta = self.alpha * self.dmat[0]
-                usize = len(self.u) # usize= step -1
+                usize = len(self.u)
                 for i in range(usize):
                     self.eta -= self.c[i] * self.u[i]
-                self.fold = npy.sum(self.dmat[0] * self.dmat[0])  #matDotSum
+                self.fold = npy.sum(self.dmat[0] * self.dmat[0])
                 self.slope = -self.fold
                 
                 if len(self.eta.shape) == 2:
