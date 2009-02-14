@@ -185,41 +185,29 @@ class GPAWTransport:
             self.atoms_l[l] = self.get_lead_atoms(l)
             atoms = self.atoms_l[l]
             atoms.get_potential_energy()
-            rank = world.rank
             atoms.calc.write('lead' + str(l) + '.gpw')
+            kpts = self.atoms_l[0].calc.wfs.ibzk_kc  
+            self.npk = kpts.shape[0] / self.ntklead  
+            self.dimt_lead = self.atoms_l[0].calc.hamiltonian.vt_sG.shape[-1]
             if l == 0:
                 self.h1_skmm, self.s1_kmm = self.get_hs(atoms)
-                fd = file('leadhs0_' + str(rank),'wb')
-                pickle.dump((self.h1_skmm, self.s1_kmm,
-                             self.atoms_l[0].calc.hamiltonian.vt_sG,
-                             self.ntklead), fd, 2)            
-                fd.close()            
+                self.d1_skmm = self.generate_density_matrix('lead_l')        
+                self.pl_write('leadhs0', (self.h1_skmm, self.s1_kmm, self.d1_skmm, self.ntklead, self.dimt_lead))            
             elif l == 1:
                 self.h2_skmm, self.s2_kmm = self.get_hs(atoms)
-                fd = file('leadhs1_' + str(rank),'wb')
-                pickle.dump((self.h2_skmm, self.s2_kmm,
-                             self.atoms_l[1].calc.hamiltonian.vt_sG,
-                             self.ntklead), fd, 2)
-                fd.close()
+                self.d2_skmm = self.generate_density_matrix('lead_r')        
+                self.pl_write('leadhs1', (self.h2_skmm, self.s2_kmm, self.d2_skmm, self.ntklead, self.dimt_lead))            
         else:
             atoms, calc = restart_gpaw('lead' + str(l) + '.gpw')
             calc.set_positions()
             self.atoms_l[l] = atoms
-            self.atoms_l[l].calc = calc
-            rank = world.rank
+            kpts = calc.wfs.ibzk_kc  
             if l == 0:        
-                fd = file('leadhs0_' + str(rank),'r') 
-                self.h1_skmm, self.s1_kmm, \
-                                   self.atoms_l[0].calc.hamiltonian.vt_sG, \
-                                               self.ntklead = pickle.load(fd)
-                fd.close()
+                (self.h1_skmm, self.s1_kmm, self.d1_skmm, self.ntklead, self.dimt_lead) = self.pl_read('leadhs0')
             elif l == 1:
-                fd = file('leadhs1_' + str(rank),'r') 
-                self.h2_skmm, self.s2_kmm, \
-                                   self.atoms_l[1].calc.hamiltonian.vt_sG, \
-                                               self.ntklead = pickle.load(fd)
-                fd.close()
-        self.dimt_lead = self.atoms_l[0].calc.hamiltonian.vt_sG.shape[-1]
+                (self.h2_skmm, self.s2_kmm, self.d2_skmm, self.ntklead, self.dimt_lead) = self.pl_read('leadhs1')
+            self.npk = kpts.shape[0] / self.ntklead  
+
         
     def update_scat_hamiltonian(self, restart=False):
         if not restart:
@@ -229,21 +217,16 @@ class GPAWTransport:
             rank = world.rank
             calc.write('scat.gpw')
             self.h_skmm, self.s_kmm = self.get_hs(atoms)
-            fd = file('scaths_' + str(rank), 'wb')
-            pickle.dump((self.h_skmm, self.s_kmm, calc.density.nct_G,
-                                          calc.hamiltonian.vt_sG), fd, 2)
-            fd.close()
-                        
+            self.d_skmm = self.generate_density_matrix('scat')
+            self.pl_write('scaths', (self.h_skmm, self.s_kmm, self.d_skmm))                        
         else:
             atoms, calc = restart_gpaw('scat.gpw')
             calc.set_positions()
-            rank = world.rank
             self.atoms = atoms
-            fd = file('scaths_' + str(rank), 'r')
-            self.h_skmm, self.s_kmm, calc.density.nct_G, \
-                                    calc.hamiltonian.vt_sG = pickle.load(fd)
-            fd.close()
-            self.atoms.calc = calc
+            self.h_skmm, self.s_kmm, self.d_skmm = self.read('scaths')
+        kpts = calc.wfs.ibzk_kc
+        if kpts.shape[0] / self.ntkmol != self.npk:
+            raise RuntimeError('the k_sampling of leads and scat do not coinside')
             
     def get_hs(self, atoms):
         calc = atoms.calc
@@ -262,7 +245,6 @@ class GPAWTransport:
             H_MM *= Hartree
             H_MM -= Ef * S_qMM[kpt.q]
             H_sqMM[kpt.s, kpt.q] = H_MM
-
         return H_sqMM, S_qMM
 
     def get_lead_atoms(self, l):
@@ -312,7 +294,6 @@ class GPAWTransport:
         world.barrier()
         if self.extend:
             self.extend_scat()
-        
         p = self.atoms.calc.input_parameters.copy()           
         self.ntkmol = p['kpts'][self.d]
         self.update_scat_hamiltonian(scat_restart)
@@ -320,18 +301,12 @@ class GPAWTransport:
         self.nspins = self.h1_skmm.shape[0]
         self.nblead = self.h1_skmm.shape[-1]
         self.nbmol = self.h_skmm.shape[-1]
-        kpts = self.atoms_l[0].calc.wfs.ibzk_kc  
-        self.npk = kpts.shape[0] / self.ntklead  
         self.allocate_cpus()
+        self.print_info = self.atoms.calc.text
 
-        self.d1_skmm = self.generate_density_matrix('lead_l', lead_restart)        
         self.check_edge()
         self.initial_lead(0)
-
-        self.d2_skmm = self.generate_density_matrix('lead_r', lead_restart)
         self.initial_lead(1)
-
-        self.d_skmm = self.generate_density_matrix('scat', scat_restart)
         self.initial_mol()        
 
         self.edge_density_mm = self.calc_edge_density(self.d_spkmm_ij,
@@ -340,14 +315,12 @@ class GPAWTransport:
         for i in range(self.nspins):
             for j in range(self.my_npk):
                 self.edge_charge[i] += np.trace(self.edge_density_mm[i, j])
-            
         self.kpt_comm.sum(self.edge_charge)
         if world.rank == 0:
             for i in range(self.nspins):  
                 total_edge_charge  = self.edge_charge[i] / self.npk
-                print 'edge_charge[%d]=%f' % (i, total_edge_charge)
+                self.print_info('edge_charge[%d]=%f' % (i, total_edge_charge))
         self.boundary_check()
-        
         del self.atoms_l
 
     def initial_lead(self, lead):
@@ -357,25 +330,21 @@ class GPAWTransport:
         nblead = self.nblead
         kpts = self.my_lead_kpts
         position = [0, 0, 0]
+        spk = self.substract_pk
         if lead == 0:
             position[self.d] = 1.0
-            self.h1_spkmm = self.substract_pk(ntk, kpts, self.h1_skmm, 'h')
-            self.s1_pkmm = self.substract_pk(ntk, kpts, self.s1_kmm)
-            self.h1_spkmm_ij = self.substract_pk(ntk, kpts, self.h1_skmm,
-                                                   'h', position)
-            self.s1_pkmm_ij = self.substract_pk(ntk, kpts, self.s1_kmm,
-                                                  's', position)
-            self.d1_spkmm = self.substract_pk(ntk, kpts, self.d1_skmm, 'h')
-            self.d1_spkmm_ij = self.substract_pk(ntk, kpts, self.d1_skmm,
-                                                   'h', position)
+            self.h1_spkmm = spk(ntk, kpts, self.h1_skmm, 'h')
+            self.s1_pkmm = spk(ntk, kpts, self.s1_kmm)
+            self.h1_spkmm_ij = spk(ntk, kpts, self.h1_skmm, 'h', position)
+            self.s1_pkmm_ij = spk(ntk, kpts, self.s1_kmm, 's', position)
+            self.d1_spkmm = spk(ntk, kpts, self.d1_skmm, 'h')
+            self.d1_spkmm_ij = spk(ntk, kpts, self.d1_skmm, 'h', position)
         elif lead == 1:
             position[self.d] = -1.0
-            self.h2_spkmm = self.substract_pk(ntk, kpts, self.h2_skmm, 'h')
-            self.s2_pkmm = self.substract_pk(ntk, kpts, self.s2_kmm)
-            self.h2_spkmm_ij = self.substract_pk(ntk, kpts, self.h2_skmm,
-                                                   'h', position)
-            self.s2_pkmm_ij = self.substract_pk(ntk, kpts, self.s2_kmm,
-                                                  's', position)            
+            self.h2_spkmm = spk(ntk, kpts, self.h2_skmm, 'h')
+            self.s2_pkmm = spk(ntk, kpts, self.s2_kmm)
+            self.h2_spkmm_ij = spk(ntk, kpts, self.h2_skmm, 'h', position)
+            self.s2_pkmm_ij = spk(ntk, kpts, self.s2_kmm, 's', position)            
         else:
             raise TypeError('unkown lead index')
 
@@ -386,12 +355,12 @@ class GPAWTransport:
         position[self.d] = 1.0
         self.h_spkmm = self.substract_pk(ntk, kpts, self.h_skmm, 'h')
         self.s_pkmm = self.substract_pk(ntk, kpts, self.s_kmm)
-        self.s_pkmm_ij = self.substract_pk(ntk, kpts, self.s_kmm, 's',
-                                            position)
+        #self.s_pkmm_ij = self.substract_pk(ntk, kpts, self.s_kmm, 's',
+        #                                    position)
         self.d_spkmm = self.substract_pk(ntk, kpts, self.d_skmm, 'h')
-        self.d_spkmm_ij = self.substract_pk(ntk, kpts, self.d_skmm,
-                                                    'h', position)
-        #self.d_spkmm_ij2 = self.fill_density_matrix()
+        #self.d_spkmm_ij = self.substract_pk(ntk, kpts, self.d_skmm,
+        #                                            'h', position)
+        self.s_pkmm_ij , self.d_spkmm_ij = self.fill_density_matrix()
 
     def substract_pk(self, ntk, kpts, k_mm, hors='s', position=[0, 0, 0]):
         npk = self.my_npk
@@ -410,7 +379,6 @@ class GPAWTransport:
             pk_mm = np.empty(dim, complex)
             dim = (ntk,) + dim[1:]
             tk_mm = np.empty(dim, complex)
-        n = 0
         tkpts = self.pick_out_tkpts(ntk, kpts)
         for i in range(npk):
             n = i * ntk
@@ -437,8 +405,8 @@ class GPAWTransport:
         s_pkmm = self.substract_pk(ntk, kpts, self.s1_kmm, 's', position)
         matmax = np.max(abs(s_pkmm))
         if matmax > tolx:
-            print 'Warning*: the principle layer should be lagger, \
-                                                          matmax=%f' % matmax        
+            self.print_info('Warning*: the principle layer should be lagger, \
+                                                          matmax=%f' % matmax)
     
     def calc_edge_density(self, d_spkmm_ij, s_pkmm_ij):
         nspins = self.nspins
@@ -457,66 +425,45 @@ class GPAWTransport:
         npk = self.npk
         tkpts = np.zeros([ntk, 3])
         for i in range(ntk):
-            tkpts[i, 2] = kpts[i, 2]
+            tkpts[i, self.d] = kpts[i, self.d]
         return tkpts
 
-    def generate_density_matrix(self, region, restart=True):
+    def generate_density_matrix(self, region):
         ntk = self.ntklead
         npk = self.npk
-        rank = world.rank
-        if not restart:
-            if region == 'lead_l':
-                calc = self.atoms_l[0].calc
-                dim = self.h1_skmm.shape
-                filename = 'd1_skmm_' + str(rank)
-            elif region == 'lead_r':
-                calc = self.atoms_l[1].calc
-                dim = self.h2_skmm.shape
-                filename = 'd2_skmm_' + str(rank)
-            elif region == 'scat':
-                calc = self.atoms.calc
-                dim = self.h_skmm.shape
-                ntk = self.ntkmol
-                filename = 'd_skmm_' + str(rank)
-            else:
-                raise KeyError('invalid lead index in \
-                                                     generate_density_matrix')
-            d_skmm = np.empty(dim, complex)
-            for kpt in calc.wfs.kpt_u:
-                C_nm = kpt.C_nM
-                f_nn = np.diag(kpt.f_n)
-                d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
-                                              np.dot(f_nn, C_nm)) * ntk * npk
-            fd = file(filename,'wb')
-            pickle.dump(d_skmm, fd, 2)
-            fd.close()
+        if region == 'lead_l':
+            calc = self.atoms_l[0].calc
+            dim = self.h1_skmm.shape
+            filename = 'd1_skmm'
+        elif region == 'lead_r':
+            calc = self.atoms_l[1].calc
+            dim = self.h2_skmm.shape
+            filename = 'd2_skmm'
+        elif region == 'scat':
+            calc = self.atoms.calc
+            dim = self.h_skmm.shape
+            ntk = self.ntkmol
+            filename = 'd_skmm'
         else:
-            
-            if region == 'lead_l':
-                filename = 'd1_skmm_' + str(rank)
-            elif region == 'lead_r':
-                filename = 'd2_skmm_' + str(rank)
-            elif region == 'scat':
-                filename = 'd_skmm_'  + str(rank)
-            else:
-                raise KeyError('invalid lead index in \
-                                                     generate_density_matrix')
-            fd = file(filename,'r')
-            d_skmm = pickle.load(fd)
-            fd.close()
+            raise KeyError('invalid lead index')
+        d_skmm = np.empty(dim, complex)
+        for kpt in calc.wfs.kpt_u:
+            C_nm = kpt.C_nM
+            f_nn = np.diag(kpt.f_n)
+            d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
+                                          np.dot(f_nn, C_nm)) * ntk * npk
         return d_skmm
     
     def fill_density_matrix(self):
         nblead = self.nblead
-        nbmol = self.nbmol
-        npk = self.my_npk
-        nspins = self.nspins
-        d_spkmm_ij = np.zeros([nspins, npk, nbmol, nbmol], complex)
-        d_spkmm_ij[:, :, -nblead:, :nblead] = np.copy(self.d1_spkmm_ij)                    
-        return d_spkmm_ij
+        s_pkmm_ij = np.zeros(self.s_pkmm.shape, complex)
+        s_pkmm_ij[:, -nblead:, :nblead] = self.s1_pkmm_ij
+        d_spkmm_ij = np.zeros(self.d_spkmm.shape, complex)
+        d_spkmm_ij[:, :, -nblead:, :nblead] = self.d1_spkmm_ij                    
+        return s_pkmm_ij, d_spkmm_ij
 
     def boundary_check(self):
-        tol = 1e-4
+        tol = 5.e-4
         pl1 = self.h1_skmm.shape[-1]
         self.do_shift = False
         matdiff = self.h_spkmm[0, :, :pl1, :pl1] - self.h1_spkmm[0]
@@ -524,18 +471,19 @@ class GPAWTransport:
              matdiff1 = self.h_spkmm[1, :, :pl1, :pl1] - self.h1_spkmm[1]
              float_diff = np.max(abs(matdiff - matdiff1)) 
              if float_diff > 1e-6:
-                  print 'Warning!, float_diff between spins %f' % float_diff
+                  self.print_info('Warning!, float_diff between spins %f' % float_diff)
         e_diff = matdiff[0,0,0] / self.s1_pkmm[0,0,0]
         if abs(e_diff) > tol:
-            print 'Warning*: hamiltonian boundary difference(rank=%d) %f' % (
-                                                           world.rank, e_diff)
-            self.do_shift = True
+            self.print_info('Warning*: hamiltonian boundary difference(rank=%d) %f' % (
+                                                           world.rank, e_diff))
+            #self.do_shift = True
+            raise RuntimeError('try to increse k points in perpendicular plane')
         self.zero_shift = e_diff
         matdiff = self.d_spkmm[:, :, :pl1, :pl1] - self.d1_spkmm
         print_diff = np.max(abs(matdiff))
         if print_diff > tol:
-            print 'Warning*: density boundary difference(rank=%d) %f' % (
-                                                       world.rank, print_diff)
+            self.print_info('Warning*: density boundary difference(rank=%d) %f' % (
+                                                       world.rank, print_diff))
             
     def extend_scat(self):
         lead_atoms_num = len(self.pl_atoms[0])
@@ -543,13 +491,14 @@ class GPAWTransport:
         atoms_inner.center()
         atoms = self.atoms_l[0] + atoms_inner + self.atoms_l[1]
         atoms.set_pbc(atoms_inner._pbc)
+        d = self.d
         cell = self.atoms._cell.copy()
-        cell[2, 2] += self.pl_cells[0][2] * 2
+        cell[d] += self.pl_cells[0][d] * 2
         atoms.set_cell(cell)
         for i in range(lead_atoms_num):
-            atoms.positions[i, 2] -= self.pl_cells[0][2]
+            atoms.positions[i, d] -= self.pl_cells[0][d]
         for i in range(-lead_atoms_num, 0):
-            atoms.positions[i, 2] += self.atoms._cell[2, 2]
+            atoms.positions[i, d] += self.atoms._cell[d, d]
         atoms.calc = self.atoms.calc
         self.atoms = atoms
         self.atoms.center()
@@ -567,8 +516,6 @@ class GPAWTransport:
             #denvir = np.empty([nspins, npk, nbmol, nbmol], complex)
             denloc = np.empty([nspins, npk, nbmol, nbmol], complex)            
 
- 
-
         world.barrier()
         #-------get the path --------    
         for s in range(nspins):
@@ -580,7 +527,6 @@ class GPAWTransport:
                     #                                         s, k, 'neVirInt')
                     denloc[s, k] = self.get_neintegral_points(self.intctrl,
                                                               s, k, 'locInt')                    
-       
         #-------begin the SCF ----------         
         self.step = 0
         self.cvgflag = 0
@@ -592,9 +538,9 @@ class GPAWTransport:
         max_steps = 200
         while self.cvgflag == 0 and self.step < max_steps:
             if self.master:
-                print '----------------step %d -------------------' % self.step
+                self.print_info('----------------step %d -------------------' % self.step)
             self.move_buffer()
-            f_spkmm_mol = self.fcvg.matcvg(self.h_spkmm_mol)
+            f_spkmm_mol = self.fcvg.matcvg(self.h_spkmm_mol, self.print_info)
             timer.start('Fock2Den')
             for s in range(nspins):
                 for k in range(npk):
@@ -604,26 +550,27 @@ class GPAWTransport:
                                                             s, k)
             timer.stop('Fock2Den')
             if self.verbose and self.master:
-                print'Fock2Den', timer.gettime('Fock2Den'), 'second'
+                self.print_info('Fock2Den', timer.gettime('Fock2Den'), 'second')
             self.collect_density_matrix()
-            d_stkmm_out = self.dcvg.matcvg(self.d_stkmm)
+            d_stkmm_out = self.dcvg.matcvg(self.d_stkmm, self.print_info)
             d_spkmm_out = self.distribute_density_matrix(d_stkmm_out)
             self.cvgflag = self.fcvg.bcvg and self.dcvg.bcvg
             timer.start('Den2Fock')            
             self.h_skmm = self.den2fock(d_spkmm_out)
+            #self.h_skmm = self.den2fock(self.d_spkmm)
+            self.cvgflag = self.fcvg.bcvg and self.dcvg.bcvg
             timer.stop('Den2Fock')
             if self.verbose and self.master:
-                print'Den2Fock', timer.gettime('Den2Fock'),'second'
+                self.print_info('Den2Fock', timer.gettime('Den2Fock'),'second')
          
             self.h_spkmm = self.substract_pk(ntk, kpts, self.h_skmm, 'h')
             if self.do_shift:
                 for i in range(nspins):
                     self.h_spkmm[i] -= self.zero_shift * self.s_pkmm
             self.step +=  1
-            
         return 1
  
-    def initialize_scf(self, bias, gate, cal_loc, verbose, alpha=0.1):
+    def initialize_scf(self, bias, gate, cal_loc, verbose, alpha=0.01):
         self.verbose = verbose
         self.master = (world.rank==0)
         self.bias = bias
@@ -637,7 +584,6 @@ class GPAWTransport:
         else:
             self.buffer = self.nblead
         self.atoms.calc.density.transport = True       
-
         self.intctrl = IntCtrl(self.kt, self.fermi, self.bias)
         self.fcvg = CvgCtrl(self.master)
         self.dcvg = CvgCtrl(self.master)
@@ -646,7 +592,7 @@ class GPAWTransport:
                      'fallowedmatmax':1e-4, 'fndiis':10, 'ftolx':1e-5,
                      'fsteadycheck': False,
                      'dasmethodname':'SCL_None', 'dmethodname':'CVG_Broydn',
-                     'dalpha': alpha, 'dalphascaling':0.1, 'dtol':1e-4,
+                     'dalpha': alpha, 'dalphascaling':0.1, 'dtol':5e-4,
                      'dallowedmatmax':1e-4, 'dndiis':6, 'dtolx':1e-5,
                      'dsteadycheck': False}
         self.fcvg(inputinfo, 'f', self.dcvg)
@@ -696,18 +642,18 @@ class GPAWTransport:
                     #self.virpathinfo[s].append(PathInfo('ne'))
                     self.locpathinfo[s].append(PathInfo('eq'))
         if self.master:
-            print '------------------Transport SCF-----------------------'
-            print 'Mixer: %s,  Mixing factor: %s,  tol_Ham=%f, tol_Den=%f ' % (
+            self.print_info('------------------Transport SCF-----------------------')
+            self.print_info('Mixer: %s,  Mixing factor: %s,  tol_Ham=%f, tol_Den=%f ' % (
                                       inputinfo['dmethodname'],
                                       inputinfo['dalpha'],
                                       inputinfo['ftol'],
-                                      inputinfo['dtol']) 
-            print 'bias = %f (V), gate = %f (V)' % (bias, gate)
+                                      inputinfo['dtol']))
+            self.print_info('bias = %f (V), gate = %f (V)' % (bias, gate))
 
      
     def get_eqintegral_points(self, intctrl, s, k):
         #global zint, fint, tgtint, cntint
-        maxintcnt = 500
+        maxintcnt = 100
         nblead = self.nblead
         nbmol = self.nbmol_inner
         den = np.zeros([nbmol, nbmol])
@@ -756,7 +702,7 @@ class GPAWTransport:
             sgforder[i] = np.argmin(abs(elist[i]
                                      - np.array(self.zint[:self.cntint + 1])))
             if sgferr > 1e-12:
-                print 'Warning: SGF not Found. eqzgp[%d]= %f' %(i, elist[i])
+                self.print_info('Warning: SGF not Found. eqzgp[%d]= %f' %(i, elist[i]))
                                              
         
         flist = self.fint[:]
@@ -773,11 +719,11 @@ class GPAWTransport:
    
         if self.verbose and self.master: 
             if self.nspins == 1:
-                print 'Eq_k[%d]= %f '% (k, np.trace(np.dot(den,
-                                                self.greenfunction.S)) * 2 )
+                self.print_info('Eq_k[%d]= %f '% (k, np.trace(np.dot(den,
+                                                self.greenfunction.S)) * 2 ))
             else:
-                print 'Eq_sk[%d, %d]= %f' %( s, k, np.trace(np.dot(den,
-                                                 self.greenfunction.S)))
+                self.print_info('Eq_sk[%d, %d]= %f' %( s, k, np.trace(np.dot(den,
+                                                 self.greenfunction.S))))
         del self.fint, self.tgtint, self.zint
         return den 
     
@@ -786,7 +732,7 @@ class GPAWTransport:
         nblead = self.nblead
         nbmol = self.nbmol_inner
         den = np.zeros([nbmol, nbmol], complex)
-        maxintcnt = 500
+        maxintcnt = 100
 
         self.zint = [0] * maxintcnt
         self.tgtint = np.empty([2, maxintcnt, nblead, nblead], complex)
@@ -831,8 +777,8 @@ class GPAWTransport:
                         sgforder[i] = np.argmin(np.abs(zgp[i] -
                                        np.array(self.zint[:self.cntint + 1])))
                         if sgferr > 1e-15:
-                            print '--Warning: SGF not found, nezgp[%d]=%f' % (
-                                                                    i, zgp[i])
+                            self.print_info('--Warning: SGF not found, nezgp[%d]=%f' % (
+                                                                    i, zgp[i]))
                 else:
                     # ----Manual Integral------
                     nefcnt = max(np.ceil(np.real(neintpath[1] -
@@ -893,8 +839,8 @@ class GPAWTransport:
                 sgforder[i] = np.argmin(abs(elist[i]
                                      - np.array(self.zint[:self.cntint + 1])))
                 if sgferr > 1e-12:
-                    print 'Warning: SGF not Found. eqzgp[%d]= %f' %(i,
-                                                                     elist[i])
+                    self.print_info('Warning: SGF not Found. eqzgp[%d]= %f' %(i,
+                                                                     elist[i]))
             flist = self.fint[:]
             siglist = [[],[]]
             for i, num in zip(range(fcnt), sgforder):
@@ -908,11 +854,11 @@ class GPAWTransport:
         neq = np.trace(np.dot(den, self.greenfunction.S))
         if self.verbose and self.master:
             if self.nspins == 1:
-                print '%s NEQ_k[%d]= %f + %f j' % (calcutype, k,
-                                           np.real(neq) * 2, np.imag(neq) * 2)
+                self.print_info('%s NEQ_k[%d]= %f + %f j' % (calcutype, k,
+                                           np.real(neq) * 2, np.imag(neq) * 2))
             else:
-                print '%s NEQ_sk[%d, %d]= %f, %f j' % (calcutype, s, k,
-                                                np.real(neq), np.imag(neq))
+                self.print_info('%s NEQ_sk[%d, %d]= %f, %f j' % (calcutype, s, k,
+                                                np.real(neq), np.imag(neq)))
         del self.zint, self.tgtint
         if len(intctrl.neintpath) >= 2:
             del self.fint
@@ -1016,17 +962,6 @@ class GPAWTransport:
                 gfunc[i] = gr * self.fint[self.cntint]    
         return gfunc        
     
-    '''
-    def calgfunc(self,  zp, calcutype):
-        if type(zp)==list or type(zp) ==np.ndarray:
-            pass
-        else:
-            zp = [zp]
-        gfunc = np.empty([len(zp)])
-        for i in range(len(zp)):
-            gfunc[i] = 1
-        return gfunc
-    '''
     def fock2den(self, intctrl, f_spkmm, s, k):
         nblead = self.nblead
         nbmol = self.nbmol_inner
@@ -1152,29 +1087,28 @@ class GPAWTransport:
                                                  nbmol, nbmol], complex)
         qr_mm = np.zeros([nspins, npk, nbmol, nbmol])
         
+        ind = (relate_layer_num - 1) / 2
         for s in range(nspins):
             for i in range(relate_layer_num):
                 for j in range(self.my_npk):
-                    if i == 0:
+                    if i == ind - 1:
                         dr_mm[s, j, i] = self.d_spkmm_ij[s, j].T.conj()
-                    elif i == 1:
+                    elif i == ind:
                         dr_mm[s, j, i] = np.copy(d_spkmm[s, j])
                         qr_mm[s, j] += np.dot(dr_mm[s, j, i],
                                                     self.s_pkmm[j]) 
-                    elif i == 2:
+                    elif i == ind + 1:
                         dr_mm[s, j, i]= np.copy(self.d_spkmm_ij[s, j])
-                    else:
-                        pass
         qr_mm += self.edge_density_mm
         world.barrier()
         self.kpt_comm.sum(qr_mm)
         qr_mm /= self.npk
      
         if self.master:
-            if self.verbose:
-                for i in range(nspins):
-                   print 'spin[%d] charge on atomic basis =' % i
-                   print np.diag(np.sum(qr_mm[i],axis=0))
+            #if self.verbose:
+                #for i in range(nspins):
+                #   self.print_info('spin[%d] charge on layer=' % i)
+                #   self.print_info(np.diag(np.sum(qr_mm[i],axis=0)))
 
             qr_mm = np.sum(np.sum(qr_mm, axis=0), axis=0)
             natom_inlead = len(self.pl_atoms[0])
@@ -1187,16 +1121,16 @@ class GPAWTransport:
             edge_charge1.shape = (natom_print, nb_atom)
             edge_charge0 = np.sum(edge_charge0,axis=1)
             edge_charge1 = np.sum(edge_charge1,axis=1)
-            print '***charge distribution at edges***'
+            self.print_info('***charge distribution at edges***')
             if self.verbose:
                 info = []
                 for i in range(natom_print):
                     info.append('--' +  str(edge_charge0[i])+'--')
-                print info
+                self.print_info(info)
                 info = []
                 for i in range(natom_print):
                     info.append('--' +  str(edge_charge1[i])+'--')
-                print info
+                self.print_info(info)
             else:
                 edge_charge0.shape = (natom_print / natom_inlead, natom_inlead)
                 edge_charge1.shape = (natom_print / natom_inlead, natom_inlead)                
@@ -1208,9 +1142,9 @@ class GPAWTransport:
                 info += '---******---'
                 for i in range(natom_print / natom_inlead):
                     info += '--' +  str(edge_charge1[i]) + '--'
-                print info
-            print '***total charge***'
-            print np.trace(qr_mm)            
+                self.print_info(info)
+            self.print_info('***total charge***')
+            self.print_info(np.trace(qr_mm))            
 
         rvector = np.zeros([relate_layer_num, 3])
         tkpts = self.pick_out_tkpts(ntk, self.my_kpts)
@@ -1218,24 +1152,21 @@ class GPAWTransport:
             rvector[i, self.d] = i - (relate_layer_num - 1) / 2
         
         self.d_skmm.shape = (nspins, npk, ntk, nbmol, nbmol)
-        test = 0
-        test1 = 0
-        test2 = 0
         for s in range(nspins):
             for i in range(ntk):
                 for j in range(npk):
                     self.d_skmm[s, j, i] = get_kspace_hs(None, dr_mm[s, j, :],
                                                          rvector, tkpts[i])
-                    self.d_skmm[s, j, i] /=  ntk * self.npk
-                    test += np.max(abs(self.d_skmm[s, j,i] - self.d_skmm[s, j , i].T.conj()))
-                    if i==0:
-                        test1 += np.max(abs(d_spkmm[s, j] - d_spkmm[s, j].T.conj()))
-                        test2 += np.max(abs(self.d_spkmm[s, j] - self.d_spkmm[s, j].T.conj()))
+                    self.d_skmm[s, j, i] /=  ntk * self.npk 
         self.d_skmm.shape = (nspins, ntk * npk, nbmol, nbmol)
-        print 'sym_test', test, test1, test2
         for kpt in calc.wfs.kpt_u:
             kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
         density.update(wfs)
+        #self.dcvg.matcvg(density)
+        #diff = density.mixer.get_charge_sloshing()
+        #print 'dcvg: dmatmax = %f   tol=%f' % (diff, calc.scf.density_error)
+        #if diff < calc.scf.density_error:
+        #    self.dcvg.bcvg = True
         return density
 
     def calc_total_charge(self, d_spkmm):
@@ -1367,6 +1298,32 @@ class GPAWTransport:
         pylab.ylabel('Density of States')
         pylab.xlabel('Energy (eV)')
         pylab.show()
+        
+    def plot_v(self):
+        import pylab
+        vt = self.vt_sG
+        dim = list(vt.shape[:3])
+        dim[0] = 0
+        dim[1] /= 2
+        dim[2] /= 2
+        pylab.plot(vt[dim[0], dim[1], dim[2]] * Hartree, 'b--o')
+        pylab.ylabel('energy(eV)')
+        pylab.title('bias=' + str(self.bias))
+        pylab.show()
+
+    def plot_d(self):
+        import pylab
+        nt = self.nt_sG
+        dim = list(nt.shape[:3])
+        dim[0] = 0
+        dim[1] /= 2
+        dim[2] /= 2
+        pylab.plot(nt[dim[0], dim[1], dim[2]], 'b--o')
+        pylab.ylabel('density')
+        pylab.title('bias=' + str(self.bias))
+        pylab.show()        
+        
+        
     
     def double_size(self, m_ii, m_ij):
         dim = m_ii.shape[-1]
@@ -1463,7 +1420,7 @@ class GPAWTransport:
         for pk, kk in zip(self.my_pk, range(self.my_npk)):
             if np.max(abs(d_stkmm[0, pk] -
                           d_stkmm[0, pk].T.conj())) > dagger_tol:
-                print 'Warning, density matrix is not dagger symmetric'
+                self.print_info('Warning, density matrix is not dagger symmetric')
             d_spkmm[0, kk] = (d_stkmm[0, pk] + d_stkmm[0, pk].T.conj()) / 2.
         return d_spkmm
      
@@ -1488,3 +1445,48 @@ class GPAWTransport:
                  self.h2_spkmm_ij[s,k] = self.h1_spkmm_ij[s,k].T.conj()
         for k in range(npk):
             self.s2_pkmm_ij[k] = self.s1_pkmm_ij[k].T.conj()
+
+    def pl_write(self, filename, matlist):
+        if type(matlist)!= 'tuple':
+            matlist = (matlist,)
+            nmat = 1
+        else:
+            nmat = len(matlist)
+        total_matlist = []
+        for i in range(nmat):
+            if type(matlist[i]) == 'ndarray':  
+                dim = matlist[i].shape
+                dim = (world.size,) + dim[:] 
+                total_mat = np.zeros(dim, dtype=mat.dtype)
+                total_mat[world.rank] = matlist[i]
+                self.kpt_comm.sum(total_mat)
+                total_matlist.append(total_mat)
+            else:
+                total_matlist.append(matlist[i])
+        if world.rank == 0:
+            fd = file(filename, 'wb')
+            pickle.dump(total_matlist, fd, 2)
+            fd.close()
+        world.barrier()
+
+    def pl_read(self, filename):
+        fd = file(filename, 'rb')
+        total_matlist = pickle.load(fd)
+        fd.close()
+        total_matlist = total_matlist[0]
+        matlist = []
+        if type(total_matlist) == 'tuple':
+            nmat = len(total_matlist)        
+            for i in range(nmat):
+                if type(total_matlist[i]) == 'ndarray':
+                    matlist.append(total_matlist[i][world.rank])
+                else:
+                    matlist.append(total_matlist[i])
+        else:
+            if type(total_matlist) == 'ndarray':
+                matlist = total_matlist[world.rank]
+            else:
+                matlist = total_matlist
+        return matlist
+
+
