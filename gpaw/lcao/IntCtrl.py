@@ -26,7 +26,7 @@ class IntCtrl:
         self.leadfermi = [efermi + bias / 2, efermi - bias / 2]
         self.minfermi = min(efermi + bias / 2, efermi - bias / 2)
         self.maxfermi = max(efermi + bias / 2, efermi - bias / 2)
-        self.eqinttol = 1e-3
+        self.eqinttol = 1e-6
         self.kttol = 1e-5
         self.biastol = 1e-10
         
@@ -46,11 +46,8 @@ class IntCtrl:
             dkt = 10 * npy.pi * self.kt
             #self.eqintpath = [-20.0, -20.0 + dkt * 1.j, -nkt + dkt * 1.j,
             #                  dkt * 1.j + nkt]
-            self.eqintpath = [-20, -20 + 10*1.j, -nkt + 5*1.j,
+            self.eqintpath = [-50, -50 + 10*1.j, -nkt + 5*1.j,
                                          -nkt + dkt * 1.j, dkt *1.j +nkt]
-           
-            self.eqpath_origin = -(20 + nkt) / 2. + dkt * 1.j
-            self.eqpath_radius = (20 - nkt) / 2.0
             self.eqdelta = dkt
             nRes = 10
             if abs( nRes - (npy.round((nRes - 1) / 2) * 2 + 1)) < 1e-3 :
@@ -120,7 +117,7 @@ class IntCtrl:
         # IntMethod = Manual Method
         # -------------------------------------------------- 
         # -- Integral Method -- 
-        self.neinttol = 1e-5        
+        self.neinttol = 1e-4        
         self.neintmethod= 1 # 0: Linear 1: Auto
 
         # -- Integral Step--
