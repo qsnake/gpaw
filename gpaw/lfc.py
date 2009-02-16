@@ -259,8 +259,18 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         for a in self.atom_indices:
             self.sphere_a[a].ranks = x_ra[:, a].nonzero()[0]
     
-    def add(self, c_axm, a_xG, q=-1):
-        xxx
+    def add(self, a_xG, c_axi=1.0, q=-1):
+        """Add localized functions to extended arrays.
+
+        ::
+        
+                   --  a     a
+          a (G) += >  c   Phi (G)
+           x       --  xi    i
+                   a,i
+        """
+        raise NotImplementedError
+        c_axm = c_axi
         dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
         c_xM = np.empty(xshape + (self.Mmax,), dtype)
@@ -281,6 +291,50 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             comm.wait(request)
 
         self.lfc.add(c_xM, a_xG, q)
+    
+    def add1(self, n_g, scale, I_a):
+        """What should this do? XXX"""
+        raise NotImplementedError
+
+    def add2(self, n_g, D_asp, s, I_a):
+        """Add atomic electron density to extended density array.
+
+        ::
+
+                   ---
+                   \    a         a        a
+           n(g) +=  )  D (s)   Phi (g)  Phi (g)
+                   /    i1,i2    i1       i2
+                   ---
+                  i1,i2
+
+        where s is the spin index, and D_ii' is the unpacked version of D_p
+        """
+        raise NotImplementedError
+
+    def integrate(self, a_xG, c_axi, q=-1):
+        """Calculate integrals of arrays times localized functions.
+
+        ::
+        
+                   /             a
+          c_axi =  | dG a (G) Phi (G)
+                   /     x       i
+        """
+        raise NotImplementedError
+
+    def derivative(self, a_xG, c_axiv, q=-1):
+        """Calculate x-, y-, and z-derivatives of localized function integrals.
+
+        ::
+        
+                    d   /             a
+          c_axiv =  --  | dG a (G) Phi (G)
+                    dv  /     x       i
+
+        where v is either x, y, or z.
+        """
+        raise NotImplementedError
 
     def griditer(self):
         """Iterate over grid points."""
@@ -311,8 +365,8 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
 
         ::
 
-          ~         _   _   a    ~ a
-          n (r) += >_  >_  f    phi (r)
+          ~         _   _   a      a
+          n (r) += >_  >_  f    Phi (r)
             s       a   i   si     i
         """
         nspins = len(nt_sG)
@@ -336,8 +390,8 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
 
         ::
                   
-          ~        --    ~ *             ~
-          n(r) +=  >    phi (r) rho     phi (r)
+          ~        --      *
+          n(r) +=  >    Phi (r) rho     Phi (r)
                    --     M1       M1M2   M2
                   M1,M2 
         """
@@ -346,11 +400,13 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
     def calculate_potential_matrix(self, vt_G, Vt_MM, q):
         """Calculate lower part of potential matrix.
 
-                       /
+        ::
+
+                      /
             ~         |     *  _  ~ _        _   _
             V      =  |  Phi  (r) v(r) Phi  (r) dr    for  mu >= nu
              mu nu    |     mu            nu
-                     /
+                      /
 
         Overwrites the elements of the target matrix Vt_MM. """
         Vt_MM[:] = 0.0
@@ -359,11 +415,13 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
     def lcao_to_grid(self, C_nM, psit_nG, q):
         """Deploy basis functions onto grids according to coefficients.
 
-                      -----
+        ::
+
+                       ----
              ~   _     \                 _
             psi (r) =   )    C     Phi  (r)
                n       /      n mu    mu
-                      -----
+                       ----
                         mu
         """
         for C_M, psit_G in zip(C_nM, psit_nG):
