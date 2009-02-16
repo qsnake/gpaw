@@ -297,7 +297,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         raise NotImplementedError
 
     def add2(self, n_g, D_asp, s, I_a):
-        """Add atomic electron density to extended density array.
+        """Add atomic electron density to extended density array and integrate.
 
         ::
 
@@ -308,6 +308,13 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                    ---
                   i1,i2
 
+        also at the same time::
+
+           a   /    --   a         a        a   
+          I  = | dg >   D (s)   Phi (g)  Phi (g)
+               /    --   i1,i2    i1       i2
+                   i1,i2
+        
         where s is the spin index, and D_ii' is the unpacked version of D_p
         """
         raise NotImplementedError
