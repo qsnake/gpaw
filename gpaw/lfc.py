@@ -368,13 +368,14 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
 class BasisFunctions(NewLocalizedFunctionsCollection):
     def add_to_density(self, nt_sG, f_asi):
-        """Add linear combination of localized functions to density.
+        """Add linear combination of squared localized functions to density.
 
         ::
 
-          ~         _   _   a      a
-          n (r) += >_  >_  f    Phi (r)
-            s       a   i   si     i
+          ~        --   a  /    a    \2
+          n (r) += >   f   | Phi (r) |
+            s      --   si \    i    /
+                   a,i
         """
         nspins = len(nt_sG)
         f_sM = np.empty((nspins, self.Mmax))
