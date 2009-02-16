@@ -556,7 +556,6 @@ class PAW(PAWTextOutput):
             self.density.update_kinetic(self.wfs.kpt_u)
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
 
-
     def get_myu(self, k, s):
         """Return my u corresponding to a certain kpoint and spin - or None"""
         # very slow, but we are sure that we have it
