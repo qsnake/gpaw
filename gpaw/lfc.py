@@ -306,7 +306,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
            n(g) +=  )  D (s)   Phi (g)  Phi (g)
                    /    i1,i2    i1       i2
                    ---
-                  i1,i2
+                 a,i1,i2
 
         also at the same time::
 
