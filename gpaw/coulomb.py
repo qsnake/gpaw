@@ -4,7 +4,7 @@ import numpy as npy
 from numpy.fft import fftn
 
 from ase.units import Hartree
-from pair_density import PairDensity2 as PairDensity
+from gpaw.pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
 from gpaw.utilities import pack, unpack
 from gpaw.utilities.tools import pick, construct_reciprocal, dagger, tri2full
@@ -16,18 +16,18 @@ from gpaw.mpi import rank, MASTER
 def get_vxc(paw, spin=0, U=None):
     """Calculate matrix elements of the xc-potential."""
     assert not paw.hamiltonian.xc.xcfunc.orbital_dependent, "LDA/GGA's only"
-    assert paw.dtype is float, 'Complex waves not implemented'
+    assert paw.wfs.dtype is float, 'Complex waves not implemented'
     
     if U is not None: # Rotate xc matrix
         return npy.dot(dagger(U), npy.dot(get_vxc(paw, spin), U))
     
-    psit_nG = paw.kpt_u[spin].psit_nG[:]
+    psit_nG = paw.wfs.kpt_u[spin].psit_nG[:]
     nt_g = paw.density.nt_sg[spin]
     vxct_g = paw.finegd.zeros()
     paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
     vxct_G = paw.gd.empty()
     paw.hamiltonian.restrict(vxct_g, vxct_G)
-    Vxc_nn = npy.zeros((paw.nbands, paw.nbands))
+    Vxc_nn = npy.zeros((paw.wfs.nbands, paw.wfs.nbands))
 
     # Apply pseudo part
     r2k(.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, .0, Vxc_nn) # lower triangle
@@ -35,13 +35,12 @@ def get_vxc(paw, spin=0, U=None):
     paw.gd.comm.sum(Vxc_nn)
 
     # Add atomic PAW corrections
-    for nucleus in paw.my_nuclei:
-        D_sp = nucleus.D_sp[:]
+    for a, P_ni in paw.wfs.kpt_u[spin].P_ani.items():
+        D_sp = paw.density.D_asp[a][:]
         H_sp = npy.zeros_like(D_sp)
-        nucleus.setup.xc_correction.calculate_energy_and_derivatives(
+        paw.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
-        P_ni = nucleus.P_uni[spin]
         Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, P_ni.T))
     return Vxc_nn * Hartree
 

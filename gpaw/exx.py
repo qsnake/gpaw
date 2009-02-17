@@ -110,7 +110,7 @@ class EXX:
         self.nt_G = wfs.gd.empty()# Pseudo density on coarse grid
         self.rhot_g = density.finegd.empty()# Comp. pseudo density on fine grid
         self.vt_G = wfs.gd.empty()# Pot. of comp. pseudo density on coarse grid
-        self.vt_g = density.finegd.empty()# Pot. of comp. ps. dens. on fine grid
+        self.vt_g =density.finegd.empty()# Pot. of comp. ps. dens. on fine grid
 
         # Overwrites in case of coarse grid Poisson solver
         if not use_finegrid:
@@ -534,6 +534,7 @@ def constructX(gen):
     X_p = pack2(X_ii, tolerance=1e-8)
     return X_p
 
+
 def get_valence_core_exx(paw, hybrid=None):
     if hybrid is None:
         hybrid = paw.xcfunc.hybrid
@@ -544,6 +545,7 @@ def get_valence_core_exx(paw, hybrid=None):
         Exx_vc -= hybrid * npy.dot(D_p, nucleus.setup.X_p)
 
     return paw.gd.comm.sum(Exx_vc) * paw.Ha
+
 
 def H_coulomb_val_core(paw, u=0):
     """Short description here.
