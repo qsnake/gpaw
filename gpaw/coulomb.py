@@ -1,6 +1,6 @@
 from math import pi
 
-import numpy as npy
+import numpy as np
 from numpy.fft import fftn
 
 from ase.units import Hartree
@@ -19,7 +19,7 @@ def get_vxc(paw, spin=0, U=None):
     assert paw.wfs.dtype is float, 'Complex waves not implemented'
     
     if U is not None: # Rotate xc matrix
-        return npy.dot(U.T.conj(), npy.dot(get_vxc(paw, spin), U))
+        return np.dot(U.T.conj(), np.dot(get_vxc(paw, spin), U))
     
     psit_nG = paw.wfs.kpt_u[spin].psit_nG[:]
     if paw.density.nt_sg is None:
@@ -29,7 +29,7 @@ def get_vxc(paw, spin=0, U=None):
     paw.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
     vxct_G = paw.gd.empty()
     paw.hamiltonian.restrict(vxct_g, vxct_G)
-    Vxc_nn = npy.zeros((paw.wfs.nbands, paw.wfs.nbands))
+    Vxc_nn = np.zeros((paw.wfs.nbands, paw.wfs.nbands))
 
     # Apply pseudo part
     r2k(.5 * paw.gd.dv, psit_nG, vxct_G * psit_nG, .0, Vxc_nn) # lower triangle
@@ -39,11 +39,11 @@ def get_vxc(paw, spin=0, U=None):
     # Add atomic PAW corrections
     for a, P_ni in paw.wfs.kpt_u[spin].P_ani.items():
         D_sp = paw.density.D_asp[a][:]
-        H_sp = npy.zeros_like(D_sp)
+        H_sp = np.zeros_like(D_sp)
         paw.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
-        Vxc_nn += npy.dot(P_ni, npy.dot(H_ii, P_ni.T))
+        Vxc_nn += np.dot(P_ni, np.dot(H_ii, P_ni.T))
     return Vxc_nn * Hartree
 
 
@@ -73,17 +73,17 @@ class Coulomb:
                 
             if method.endswith('ewald') and not hasattr(self, 'ewald'):
                 # cutoff radius
-                rc = 0.5 * npy.average(self.gd.domain.cell_c)
+                rc = 0.5 * np.average(self.gd.domain.cell_c)
                 # ewald potential: 1 - cos(k rc)
-                self.ewald = (npy.ones(self.gd.n_c) - 
-                              npy.cos(npy.sqrt(self.k2) * rc))
+                self.ewald = (np.ones(self.gd.n_c) - 
+                              np.cos(np.sqrt(self.k2) * rc))
                 # lim k -> 0 ewald / k2 
                 self.ewald[0, 0, 0] = 0.5 * rc**2
 
             if method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)
-                self.ng = gauss.get_gauss(0) / npy.sqrt(4 * pi)
-                self.vg = gauss.get_gauss_pot(0) / npy.sqrt(4 * pi)
+                self.ng = gauss.get_gauss(0) / np.sqrt(4 * pi)
+                self.vg = gauss.get_gauss_pot(0) / np.sqrt(4 * pi)
         
         else: # method == 'real'
             if not hasattr(self, 'solve'):
@@ -157,17 +157,17 @@ class Coulomb:
 
             # add the corrections to the integrand due to neutralization
             if n2 == None:
-                I += (2 * npy.real(npy.conj(Z1) * n1) -
+                I += (2 * np.real(np.conj(Z1) * n1) -
                       abs(Z1)**2 * self.ng) * self.vg
             else:
-                I += (npy.conj(Z1) * n2 + Z2 * n1.conj() -
-                      npy.conj(Z1) * Z2 * self.ng) * self.vg
+                I += (np.conj(Z1) * n2 + Z2 * n1.conj() -
+                      np.conj(Z1) * Z2 * self.ng) * self.vg
         else:
              raise RuntimeError, 'Method %s unknown' % method
          
         if n1.dtype.char == float and (n2 == None or
                                        n2.dtype.char == float):
-            return npy.real(self.gd.integrate(I))
+            return np.real(self.gd.integrate(I))
         else:
             return self.gd.integrate(I)
 
@@ -185,7 +185,7 @@ class CoulombNEW:
 
         # Set coarse ghat
         self.Ghat = LFC(paw.gd, [setup.ghat_l for setup in paw.density.setups],
-                        integral=npy.sqrt(4 * pi))
+                        integral=np.sqrt(4 * pi))
         self.Ghat.set_positions(paw.atoms.get_scaled_positions() % 1.0)
 
     def calculate(self, nt1_G, nt2_G, P1_ap, P2_ap):
@@ -200,18 +200,18 @@ class CoulombNEW:
             setup = self.setups[a]
             
             # Add atomic corrections to integral
-            I += 2 * npy.dot(P1_p, npy.dot(setup.M_pp, P2_p))
+            I += 2 * np.dot(P1_p, np.dot(setup.M_pp, P2_p))
 
             # Add compensation charges to pseudo densities
-            Q1_aL[a] = npy.dot(P1_p, setup.Delta_pL)
-            Q2_aL[a] = npy.dot(P2_p, setup.Delta_pL)
+            Q1_aL[a] = np.dot(P1_p, setup.Delta_pL)
+            Q2_aL[a] = np.dot(P2_p, setup.Delta_pL)
         self.Ghat_L.add(self.rhot1_G, Q1_aL)
         self.Ghat_L.add(self.rhot2_G, Q2_aL)
 
         # Add coulomb energy of compensated pseudo densities to integral
         self.poisson.solve(self.pot_G, self.rhot2_G, charge=None,
                            eps=1e-12, zero_initial_phi=True)
-        I += npy.vdot(self.rhot1_G, self.pot_G) * self.dv
+        I += np.vdot(self.rhot1_G, self.pot_G) * self.dv
 
         return I * Hartree
 
@@ -220,13 +220,14 @@ class HF:
     def __init__(self, paw):
         #paw.set_positions() XXX ARGHHH.... don't do it, P_ani will die :-(
         
-        self.nspins       = paw.nspins
-        self.nbands       = paw.nbands
+        self.nspins       = paw.wfs.nspins
+        self.nbands       = paw.wfs.nbands
         self.my_nuclei    = paw.my_nuclei
         self.restrict     = paw.hamiltonian.restrict
         self.pair_density = PairDensity(paw, finegrid=True)
         self.dv           = paw.gd.dv
-        self.dtype        = paw.dtype 
+        self.dtype        = paw.wfs.dtype
+        self.setups       = paw.wfs.setups
 
         # Allocate space for matrices
         self.nt_G   = paw.gd.empty()
@@ -235,18 +236,21 @@ class HF:
         self.vt_g   = paw.finegd.empty()
         self.poisson_solve = paw.hamiltonian.poisson.solve
 
-    def apply(self, kpt):
-        H_nn = npy.zeros((self.nbands, self.nbands), self.dtype)
-        self.soft_pseudo(kpt, H_nn, H_nn)
-        self.atomic_val_val(kpt, H_nn)
-        self.atomic_val_core(kpt, H_nn)
+    def apply(self, paw, u=0):
+        H_nn = np.zeros((self.nbands, self.nbands), self.dtype)
+        self.soft_pseudo(paw, H_nn, u=u)
+        self.atomic_val_val(paw, H_nn, u=u)
+        self.atomic_val_core(paw, H_nn, u=u)
         return H_nn * Hartree
 
-    def soft_pseudo(self, kpt, H_nn, h_nn):
+    def soft_pseudo(self, paw, H_nn, h_nn=None, u=0):
+        if h_nn is None:
+            h_nn = H_nn
+        kpt = paw.wfs.kpt_u[u]
         pd = self.pair_density
         deg = 2 / self.nspins
         fmin = 1e-9
-        Htpsit_nG = npy.zeros(kpt.psit_nG.shape, self.dtype)
+        Htpsit_nG = np.zeros(kpt.psit_nG.shape, self.dtype)
 
         for n1 in range(self.nbands):
             psit1_G = kpt.psit_nG[n1]
@@ -269,14 +273,14 @@ class HF:
                 if n1 != n2:
                     Htpsit_nG[n2] += f1 * self.vt_G * psit1_G
 
-                for nucleus in self.my_nuclei:
-                    P_ni = nucleus.P_uni[kpt.u]
-                    v_L = npy.zeros((nucleus.setup.lmax + 1)**2)
-                    nucleus.ghat_L.integrate(self.vt_g, v_L)
-                    v_ii = unpack(npy.dot(nucleus.setup.Delta_pL, v_L))
-                    h_nn[:, n1] += f2 * npy.dot(P_ni, npy.dot(v_ii, P_ni[n2]))
+                v_aL = ghat.dict()
+                paw.density.ghat.integrate(self.vt_g, v_aL)
+                for a, v_L in v_aL.items():
+                    v_ii = unpack(npy.dot(paw.wfs.setups[a].Delta_pL, v_L))
+                    P_ni = kpt.P_ani[a]
+                    h_nn[:, n1] += f2 * np.dot(P_ni, np.dot(v_ii, P_ni[n2]))
                     if n1 != n2:
-                        h_nn[:,n2] += f1 * npy.dot(P_ni,npy.dot(v_ii,P_ni[n1]))
+                        h_nn[:, n2] += f1 * np.dot(P_ni,np.dot(v_ii, P_ni[n1]))
                     
         symmetrize(h_nn) # Grrrr why!!! XXX
 
@@ -286,13 +290,17 @@ class HF:
         # Fill in upper triangle from lower
         tri2full(H_nn, 'L')
 
-    def atomic_val_val(self, kpt, H_nn):
-        deg = 2 / self.nspins
-        for nucleus in self.my_nuclei:
-            P_ni = nucleus.P_uni[kpt.u]
-            D_p  = nucleus.D_sp[kpt.s]
-            D_ii = unpack2(D_p)
-            H_p  = npy.zeros_like(D_p)
+    def atomic_val_val(self, paw, H_nn, u=0):
+        kpt = paw.wfs.kpt_u[u]
+        for a, P_ni in kpt.P_ani.items():
+            # Add atomic corrections to the valence-valence exchange energy
+            # --
+            # >  D   C     D
+            # --  ii  iiii  ii
+            setup = paw.wfs.setups[a]
+            D_p = paw.density.D_asp[a][kpt.s]
+            H_p = np.zeros_like(D_p)
+            D_ii = unpack(D_p)
             ni = len(D_ii)
             for i1 in range(ni):
                 for i2 in range(ni):
@@ -301,13 +309,13 @@ class HF:
                         p13 = packed_index(i1, i3, ni)
                         for i4 in range(ni):
                             p24 = packed_index(i2, i4, ni)
-                            A += nucleus.setup.M_pp[p13, p24] * D_ii[i3, i4]
+                            A += setup.M_pp[p13, p24] * D_ii[i3, i4]
                     p12 = packed_index(i1, i2, ni)
                     H_p[p12] -= 2 / deg * A / ((i1 != i2) + 1)
-            H_nn += npy.dot(P_ni, npy.inner(unpack(H_p), P_ni.conj()))
+            H_nn += np.dot(P_ni, np.inner(unpack(H_p), P_ni.conj()))
 
-    def atomic_val_core(self, kpt, H_nn):
-        for nucleus in self.my_nuclei:
-            P_ni = nucleus.P_uni[kpt.u]
-            dH_ii = unpack(-nucleus.setup.X_p)
-            H_nn += npy.dot(P_ni, npy.inner(dH_ii, P_ni.conj()))
+    def atomic_val_core(self, paw, H_nn, u=0):
+        kpt = paw.wfs.kpt_u[u]
+        for a, P_ni in kpt.P_ani.items():
+            dH_ii = unpack(-paw.wfs.setups[a].X_p)
+            H_nn += np.dot(P_ni, np.inner(dH_ii, P_ni.conj()))

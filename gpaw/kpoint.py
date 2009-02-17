@@ -134,7 +134,6 @@ class KPoint:
                     ddr[c](psit_G,d_G,self.phase_cd)
                     taut_G += 0.5* f * (d_G * np.conjugate(d_G)).real
 
-
     def create_atomic_orbitals(self, nao, nuclei):
         """Initialize the wave functions from atomic orbitals.
 

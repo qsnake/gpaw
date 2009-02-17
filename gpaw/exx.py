@@ -46,7 +46,6 @@ Masters Thesis by Carsten Rostgaard, CAMP 2006
 
 import numpy as npy
 
-from gpaw.utilities.complex import real
 from gpaw.utilities.tools import core_states, symmetrize
 from gpaw.gaunt import make_gaunt
 from gpaw.utilities import hartree, packed_index, unpack, unpack2, pack, pack2
@@ -148,7 +147,6 @@ class EXX:
         deg = 2 / self.nspins   # Spin degeneracy
         f_n = kpt.f_n           # Occupation number
         s   = kpt.s             # Global spin index
-        #u   = kpt.u             # Local spin/kpoint index
         pd  = self.pair_density # Class for handling pair densities
         fmin= 1e-9              # Occupations less than this counts as empty
 
@@ -294,6 +292,7 @@ class EXX:
 
     def force_kpoint(self, kpt, hybrid):
         """Force due to exact exchange operator"""
+        raise NotImplementedError
 
         deg = 2 / self.nspins
         u = kpt.u
@@ -370,7 +369,7 @@ class EXX:
                         # F_iic *= 2.0
                         F_iic.shape = (ni, ni, 3)
                         for i in range(ni):
-                            F_ac[nucleus.a] -= f1 * f2 * dc * real(F_iic[i, i])
+                            F_ac[nucleus.a] -= f1 * f2 * dc * F_iic[i, i].real
 
                     else:
                         nucleus.pt_i.derivative(psit1_G, None)
@@ -447,7 +446,7 @@ def atomic_exact_exchange(atom, type = 'all'):
                 G2 = gaunt[l1**2:(l1+1)**2, l2**2:(l2+1)**2, l**2:(l+1)**2]**2
 
                 # add to total potential
-                vr += vrl * npy.sum(G2.copy().ravel())
+                vr += vrl * npy.sum(G2)
 
             # add to total exchange the contribution from current two states
             Exx += -.5 * f12 * npy.dot(vr, nrdr)
@@ -535,18 +534,6 @@ def constructX(gen):
     return X_p
 
 
-def get_valence_core_exx(paw, hybrid=None):
-    if hybrid is None:
-        hybrid = paw.xcfunc.hybrid
-
-    Exx_vc = 0.0
-    for nucleus in paw.my_nuclei:
-        D_p = npy.sum(nucleus.D_sp, axis=0)
-        Exx_vc -= hybrid * npy.dot(D_p, nucleus.setup.X_p)
-
-    return paw.gd.comm.sum(Exx_vc) * paw.Ha
-
-
 def H_coulomb_val_core(paw, u=0):
     """Short description here.
 
@@ -557,12 +544,9 @@ def H_coulomb_val_core(paw, u=0):
        H   = || drdr' >   ----------------------
         ij   //       --          |r - r'|
                       k
-                      
     """
-    H_nn = npy.zeros((paw.nbands, paw.nbands), dtype=paw.dtype)
-    for nucleus in paw.nuclei:
-        X_ii = unpack(nucleus.setup.X_p)
-        P_ni = nucleus.P_uni[u]
+    H_nn = npy.zeros((paw.wfs.nbands, paw.wfs.nbands), dtype=paw.wfs.dtype)
+    for a, P_ni in paw.wfs.kpt_u[u].P_ani.items():
+        X_ii = unpack(paw.wfs.setups[a].X_p)
         H_nn += 2 * npy.dot(P_ni.conj(), npy.dot(X_ii, P_ni.T))
-
-    return paw.gd.comm.sum(Exx_vc) * paw.Ha
+    return paw.gd.comm.sum(H_nn) * paw.Ha

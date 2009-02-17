@@ -183,10 +183,9 @@ Attributes of the wave function object: :attr:`gd`, :attr:`nspins`,
 :attr:`nbands`, :attr:`mynbands`, :attr:`dtype`, :attr:`world`,
 :attr:`kpt_comm`, :attr:`band_comm`, :attr:`gamma`, :attr:`bzk_kc`,
 :attr:`ibzk_kc`, :attr:`weight_k`, :attr:`symmetry`, :attr:`kpt_comm`,
-:attr:`rank_a`, :attr:`nibzkpts`, :attr:`kpt_u`, :attr:`ibzk_qc`,
-:attr:`eigensolver` and :attr:`timer`.
+:attr:`rank_a`, :attr:`nibzkpts`, :attr:`kpt_u`, :attr:`setups`,
+:attr:`ibzk_qc`, :attr:`eigensolver`, and :attr:`timer`.
         
-
 
 .. _overview_array_naming:
 
@@ -215,11 +214,13 @@ Commonly used indices:
  ``a``    Atom number
  ``c``    Unit cell axis-index (0, 1, 2)
  ``v``    *xyz*-index (0, 1, 2)                                    
- ``k``    **k**-point index                                   
+ ``k``    **k**-point index
+ ``q``    **k**-point index (local, i.e. it starts at 0 on each processor)
  ``s``    Spin index (:math:`\sigma`)                           
  ``u``    Combined spin and **k**-point index 
  ``G``    Three indices into the coarse 3D grid                     
- ``g``    Three indices into the fine 3D grid                     
+ ``g``    Three indices into the fine 3D grid  
+ ``M``    LCAO orbital index (:math:`\mu`)
  ``n``    Principal quantum number *or* band number        
  ``l``    Angular momentum quantum number (s, p, d, ...)
  ``m``    Magnetic quantum number (0, 1, ..., 2*l - 1)         
@@ -257,7 +258,10 @@ Array names and their definition
    * - wfs.pt
      - `\tilde{p}_i^a(\mathbf{r}-\mathbf{R}^a)`
 
-
+The :class:`~gpaw.setup.Setup` instances are stored in the
+:class:`~gpaw.setup.Setups` list, shared by the wfs, density, and
+hamiltonian instances. E.g. paw.wfs.setups, paw.density.setups, or
+paw.hamiltonian.setups.
 
 
 Parallelization over spins, k-points domains and states
