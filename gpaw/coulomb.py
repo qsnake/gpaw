@@ -16,7 +16,7 @@ from gpaw.utilities.blas import r2k
 def get_vxc(paw, spin=0, U=None):
     """Calculate matrix elements of the xc-potential."""
     assert not paw.hamiltonian.xc.xcfunc.orbital_dependent, "LDA/GGA's only"
-    assert paw.wfs.dtype is float, 'Complex waves not implemented'
+    assert paw.wfs.dtype == float, 'Complex waves not implemented'
     
     if U is not None: # Rotate xc matrix
         return np.dot(U.T.conj(), np.dot(get_vxc(paw, spin), U))
@@ -59,18 +59,15 @@ class Coulomb:
     def load(self, method):
         """Make sure all necessary attributes have been initialized"""
         
-        # ensure that requested method is valid
         assert method in ('real', 'recip_gauss', 'recip_ewald'),\
             str(method) + ' is an invalid method name,\n' +\
             'use either real, recip_gauss, or recip_ewald'
 
         if method.startswith('recip'):
             if self.gd.comm.size > 1:
-                raise RuntimeError('Cannot do parallel FFT, ' +\
-                                   'use method=\'real\'')
+                raise RuntimeError("Cannot do parallel FFT, use method='real'")
             if not hasattr(self, 'k2'):
                 self.k2, self.N3 = construct_reciprocal(self.gd)
-                
             if method.endswith('ewald') and not hasattr(self, 'ewald'):
                 # cutoff radius
                 rc = 0.5 * np.average(self.gd.domain.cell_c)
@@ -79,12 +76,10 @@ class Coulomb:
                               np.cos(np.sqrt(self.k2) * rc))
                 # lim k -> 0 ewald / k2 
                 self.ewald[0, 0, 0] = 0.5 * rc**2
-
-            if method.endswith('gauss') and not hasattr(self, 'ng'):
+            elif method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)
                 self.ng = gauss.get_gauss(0) / np.sqrt(4 * pi)
                 self.vg = gauss.get_gauss_pot(0) / np.sqrt(4 * pi)
-        
         else: # method == 'real'
             if not hasattr(self, 'solve'):
                 if self.poisson is not None:
@@ -93,7 +88,6 @@ class Coulomb:
                     solver = PoissonSolver(nn=2)
                     solver.initialize(self.gd, load_gauss=True)
                     self.solve = solver.solve
-
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):
         """Evaluates the coulomb integral of n1 and n2
@@ -141,7 +135,7 @@ class Coulomb:
             if n2 == None: n2k = n1k
             else: n2k = fftn(n2)
             I = n1k.conj() * n2k * self.ewald * 4 * pi / (self.k2 * self.N3)
-        elif method == 'recip_gauss':
+        else: # method == 'recip_gauss':
             # Determine total charges
             if Z1 == None: Z1 = self.gd.integrate(n1)
             if Z2 == None and n2 != None: Z2 = self.gd.integrate(n2)
@@ -162,11 +156,7 @@ class Coulomb:
             else:
                 I += (np.conj(Z1) * n2 + Z2 * n1.conj() -
                       np.conj(Z1) * Z2 * self.ng) * self.vg
-        else:
-             raise RuntimeError, 'Method %s unknown' % method
-         
-        if n1.dtype.char == float and (n2 == None or
-                                       n2.dtype.char == float):
+        if n1.dtype == float and (n2 == None or n2.dtype == float):
             return np.real(self.gd.integrate(I))
         else:
             return self.gd.integrate(I)
@@ -219,12 +209,10 @@ class CoulombNEW:
 class HF:
     def __init__(self, paw):
         #paw.set_positions() XXX ARGHHH.... don't do it, P_ani will die :-(
-        
         self.nspins       = paw.wfs.nspins
         self.nbands       = paw.wfs.nbands
-        self.my_nuclei    = paw.my_nuclei
         self.restrict     = paw.hamiltonian.restrict
-        self.pair_density = PairDensity(paw, finegrid=True)
+        self.pair_density = PairDensity(paw.density, paw.atoms, finegrid=True)
         self.dv           = paw.gd.dv
         self.dtype        = paw.wfs.dtype
         self.setups       = paw.wfs.setups
@@ -273,10 +261,10 @@ class HF:
                 if n1 != n2:
                     Htpsit_nG[n2] += f1 * self.vt_G * psit1_G
 
-                v_aL = ghat.dict()
+                v_aL = paw.density.ghat.dict()
                 paw.density.ghat.integrate(self.vt_g, v_aL)
                 for a, v_L in v_aL.items():
-                    v_ii = unpack(npy.dot(paw.wfs.setups[a].Delta_pL, v_L))
+                    v_ii = unpack(np.dot(paw.wfs.setups[a].Delta_pL, v_L))
                     P_ni = kpt.P_ani[a]
                     h_nn[:, n1] += f2 * np.dot(P_ni, np.dot(v_ii, P_ni[n2]))
                     if n1 != n2:
@@ -291,6 +279,7 @@ class HF:
         tri2full(H_nn, 'L')
 
     def atomic_val_val(self, paw, H_nn, u=0):
+        deg = 2 / self.nspins
         kpt = paw.wfs.kpt_u[u]
         for a, P_ni in kpt.P_ani.items():
             # Add atomic corrections to the valence-valence exchange energy
