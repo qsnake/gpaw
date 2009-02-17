@@ -4,13 +4,13 @@ import numpy as npy
 from numpy.fft import fftn
 
 from ase.units import Hartree
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.pair_density import PairDensity2 as PairDensity
 from gpaw.poisson import PoissonSolver
-from gpaw.utilities import pack, unpack
-from gpaw.utilities.tools import pick, construct_reciprocal, dagger, tri2full
+from gpaw.utilities import pack, unpack, packed_index, unpack2
+from gpaw.utilities.tools import construct_reciprocal, tri2full, symmetrize
 from gpaw.utilities.gauss import Gaussian
 from gpaw.utilities.blas import r2k
-from gpaw.mpi import rank, MASTER
 
 
 def get_vxc(paw, spin=0, U=None):
@@ -19,7 +19,7 @@ def get_vxc(paw, spin=0, U=None):
     assert paw.wfs.dtype is float, 'Complex waves not implemented'
     
     if U is not None: # Rotate xc matrix
-        return npy.dot(dagger(U), npy.dot(get_vxc(paw, spin), U))
+        return npy.dot(U.T.conj(), npy.dot(get_vxc(paw, spin), U))
     
     psit_nG = paw.wfs.kpt_u[spin].psit_nG[:]
     if paw.density.nt_sg is None:
@@ -172,141 +172,53 @@ class Coulomb:
             return self.gd.integrate(I)
 
 
-## # coulomb integral types:
-## 'ijij', # Direct
-## 'ijji', # Exchange
-## 'iijj', # iijj
-## 'iiij', # Semiexchange
-## 'ikjk', # Extra
-class Coulomb4:
-    """Determine four-index Coulomb integrals"""
-    def __init__(self, paw, spin=0):
-        paw.set_positions()
-        paw.initialize_wave_functions()
-        
-        self.kpt = paw.kpt_u[spin]
-        self.pd = PairDensity(paw, finegrid=True)
-        self.nt12_G = paw.gd.empty()
-        self.nt34_G = paw.gd.empty()
-        self.rhot12_g = paw.finegd.empty()
-        self.rhot34_g = paw.finegd.empty()
-        self.potential_g = paw.finegd.empty()
-        self.psum = paw.gd.comm.sum
-        self.my_nuclei = paw.my_nuclei
-        self.integrate = paw.finegd.integrate
-        self.poisson_solve = paw.hamiltonian.poisson.solve
-        self.u = spin
-        
-    def get_integral(self, n1, n2, n3, n4, order=0):
-        """Get four-index coulomb integral.
+class CoulombNEW:
+    def __init__(self, paw):
+        self.rhot1_G = paw.gd.empty()
+        self.rhot2_G = paw.gd.empty()
+        self.pot_G = paw.gd.empty()
+        self.nuclei = paw.nuclei
+        self.dv = paw.gd.dv
+        self.poisson = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
+        self.poisson.initialize(paw.gd)
+        self.setups = paw.wfs.setups
 
-        Indices can be vectors or scalars.
-        If order == 0, return the Coulomb integrals::
+        # Set coarse ghat
+        self.Ghat = LFC(paw.gd, [setup.ghat_l for setup in paw.density.setups],
+                        integral=npy.sqrt(4 * pi))
+        self.Ghat.set_positions(paw.atoms.get_scaled_positions() % 1.0)
+
+    def calculate(self, nt1_G, nt2_G, P1_ap, P2_ap):
+        I = 0.0
+        self.rhot1_G[:] = nt1_G
+        self.rhot2_G[:] = nt2_G
         
-          C4(ijkl) = \iint drdr' / |r-r'| i(r) j*(r) k*(r') l(r')
+        Q1_aL = {}
+        Q2_aL = {}
+        for a, P1_p in P1_ap.items():
+            P2_p = P2_ap[a]
+            setup = self.setups[a]
+            
+            # Add atomic corrections to integral
+            I += 2 * npy.dot(P1_p, npy.dot(setup.M_pp, P2_p))
 
-        else, return::
+            # Add compensation charges to pseudo densities
+            Q1_aL[a] = npy.dot(P1_p, setup.Delta_pL)
+            Q2_aL[a] = npy.dot(P2_p, setup.Delta_pL)
+        self.Ghat_L.add(self.rhot1_G, Q1_aL)
+        self.Ghat_L.add(self.rhot2_G, Q2_aL)
 
-          V_{ijkl} = \iint drdr' / |r-r'| i*(r) j*(r') k(r) l(r')
-
-        Notice that V_ijkl = C4(kijl)
-        """
-        if order != 0:
-            n1, n2, n3, n4 = n3, n1, n2, n4
-        
-        self.pd.initialize(self.kpt, n1, n2)
-        self.pd.get_coarse(self.nt12_G)
-        self.pd.add_compensation_charges(self.nt12_G, self.rhot12_g)
-        
-        self.pd.initialize(self.kpt, n3, n4)
-        self.pd.get_coarse(self.nt34_G)
-        self.pd.add_compensation_charges(self.nt34_G, self.rhot34_g)
-
-        self.poisson_solve(self.potential_g, self.rhot34_g, charge=None,
+        # Add coulomb energy of compensated pseudo densities to integral
+        self.poisson.solve(self.pot_G, self.rhot2_G, charge=None,
                            eps=1e-12, zero_initial_phi=True)
-        I = self.integrate(self.rhot12_g * self.potential_g)
+        I += npy.vdot(self.rhot1_G, self.pot_G) * self.dv
 
-        # Add atomic corrections
-        Ia = 0.0
-        for nucleus in self.my_nuclei:
-            #   ----
-            # 2 >     P   P  C    P  P
-            #   ----   1i  2j ijkl 3k 4l
-            #   ijkl 
-            P_ni = nucleus.P_uni[self.u]
-            D12_p = pack(npy.outer(pick(P_ni, n1), pick(P_ni, n2)), 1e3)
-            D34_p = pack(npy.outer(pick(P_ni, n3), pick(P_ni, n4)), 1e3)
-            Ia += 2 * npy.dot(D12_p, npy.dot(nucleus.setup.M_pp, D34_p))
-        I += self.psum(Ia)
-
-        return I
+        return I * Hartree
 
 
-def symmetry(i, j, k, l):
-    """Uniqify index order.
-
-    Permute indices into unique ordering, conserving the symmetry of
-    the Coulomb kernel."""
-    ijkl = npy.array((i, j, k, l), int)
-    a = npy.argmin(ijkl)
-    conj = False
-    if a == 1:
-        npy.take(ijkl, (1, 0, 3, 2), out=ijkl)
-    elif a == 2:
-        conj = True
-        npy.take(ijkl, (2, 3, 0, 1), out=ijkl)
-    elif a == 3:
-        conj = True
-        npy.take(ijkl, (3, 2, 1, 0), out=ijkl)
-
-    if ijkl[0] == ijkl[1] and ijkl[3] < ijkl[2]:
-        npy.take(ijkl, (0, 1, 3, 2), out=ijkl)
-    elif ijkl[2] == ijkl[3] and ijkl[2] < ijkl[1]:
-        conj = not conj
-        npy.take(ijkl, (2, 3, 0, 1), out=ijkl)
-    
-    return tuple(ijkl), conj
-
-
-def reduce_pairs(pairs):
-    p = 0
-    while p < len(pairs):
-        i, j, k, l = pairs[p]
-        ijkl, conj = symmetry(i, j, k, l)
-        if ijkl == (i, j, k, l):
-            p += 1
-        else:
-            pairs.pop(p)
-
-
-def coulomb_dict(paw, U_nj, pairs, spin=0, done={}):
-    coulomb = Coulomb4(paw, spin)
-    for ijkl in pairs:
-        ni, nj, nk, nl = U_nj[:, ijkl].T
-        done[ijkl] = coulomb.get_integral(nk, ni, nj, nl) * Hartree
-    return done
-
-
-def unfold(N, done, dtype=float):
-    V = npy.empty([N, N, N, N], dtype)
-    for i in xrange(N):
-        for j in xrange(N):
-            for k in xrange(N):
-                for l in xrange(N):
-                    ijkl, conj = symmetry(i, j, k, l)
-                    if conj:
-                        V[i, j, k, l] = npy.conj(done.get(ijkl, 0))
-                    else:
-                        V[i, j, k, l] = done.get(ijkl, 0)
-    return V
-
-
-from gpaw.utilities.tools import symmetrize
-from gpaw.utilities import packed_index, unpack2
-from gpaw.utilities.blas import r2k
 class HF:
     def __init__(self, paw):
-        paw.set_positions()
+        #paw.set_positions() XXX ARGHHH.... don't do it, P_ani will die :-(
         
         self.nspins       = paw.nspins
         self.nbands       = paw.nbands
