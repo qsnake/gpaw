@@ -67,7 +67,7 @@ class LocFun(Wannier):
         # M is size of Hilbert space to fix. Default is ~ number of occ. bands.
         if M is None:
             M = 0
-            f_n = calc.collect_occupations(0, self.spin)
+            f_n = calc.get_occupation_numbers(0, self.spin)
             while f_n[M] > .01:
                 M += 1
 
@@ -173,15 +173,16 @@ def single_zeta(paw, spin, verbose=False):
     if verbose:
         print 'index atom orbital'
     p_jn = []
-    for nucleus in paw.nuclei:
+    for a, P_ni in paw.wfs.kpt_u[spin].P_ani.items():
+        setup = paw.wfs.setups[a]
         i = 0
-        for l, n in zip(nucleus.setup.l_j, nucleus.setup.n_j):
+        for l, n in zip(setup.l_j, setup.n_j):
             if n < 0:
                 break
             for j in range(i, i + 2 * l + 1):
-                p_jn.append(nucleus.P_uni[spin, :, j])
+                p_jn.append(P_ni[:, j])
                 if verbose:
-                    print '%5i %4i %s_%s' % (len(p_jn), nucleus.a,
+                    print '%5i %4i %s_%s' % (len(p_jn), a,
                                              'spdf'[l], angular[l][j - i])
             i += 2 * l + 1
     projections_nj = dagger(npy.array(p_jn))
