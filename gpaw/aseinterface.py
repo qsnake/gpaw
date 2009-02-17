@@ -231,8 +231,8 @@ class GPAW(PAW):
         if width == 0:
             width = 0.1
 
-        w_k = self.weight_k
-        Nb = self.nbands
+        w_k = self.wfs.weight_k
+        Nb = self.wfs.nbands
         energies = np.empty(len(w_k) * Nb)
         weights  = np.empty(len(w_k) * Nb)
         x = 0

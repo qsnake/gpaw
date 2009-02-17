@@ -110,29 +110,31 @@ PDOS script::
 
     from gpaw import *
     from pylab import *
-    
+
     # Density of States
     subplot(211)
-    calc = Calculator('top.gpw')
-    e, dos = calc.get_dos(spin=0, npts=2001, width=0.1)
-    plot(e, dos)
+    slab, calc = restart('top.gpw')
+    e, dos = calc.get_dos(spin=0, npts=2001, width=0.2)
+    e_f = calc.get_fermi_level()
+    plot(e-e_f, dos)
     grid(True)
     axis([-15, 10, None, None])
     ylabel('DOS')
 
-    molecule = range(len(calc.nuclei))[-2:]
+    molecule = range(len(slab))[-2:] 
 
     subplot(212)
-    c_mol = Calculator('CO.gpw')
+    c_mol = GPAW('CO.gpw')
     for n in range(2,7):
         print 'Band', n
         # PDOS on the band n
         wf_k = [c_mol.get_pseudo_wave_function(band=n, kpt=k, spin=0, pad=False)
-                for k in range(c_mol.nkpts)]
-        P_aui = [a.P_uni[:,n,:] for a in c_mol.nuclei] # Inner products of pseudo wavefunctions and projectors
+                for k in range(len(c_mol.wfs.weight_k))]
+        P_aui = [[kpt.P_ani[a][n] for kpt in c_mol.wfs.kpt_u]
+                 for a in range(len(molecule))]   # Inner products of pseudo wavefunctions and projectors
         e, dos = calc.get_all_electron_ldos(mol=molecule, spin=0, npts=2001,
-                                         width=0.1, wf_k=wf_k, P_aui=P_aui)
-        plot(e, dos, label='Band: '+str(n))
+                                            width=0.2, wf_k=wf_k, P_aui=P_aui)
+        plot(e-e_f, dos, label='Band: '+str(n))
     legend()
     grid(True)
     axis([-15, 10, None, None])
@@ -163,22 +165,21 @@ Pickle script::
     from gpaw import *
     import pickle
 
-    calc = GPAW('top.gpw')
+    slab, calc = restart('top.gpw')
     c_mol = GPAW('CO.gpw')
-    molecule = range(len(calc.nuclei))[-2:]
+    molecule = range(len(slab))[-2:]
     e_n = []
     P_n = []
-    for n in range(c_mol.nbands):
+    for n in range(c_mol.wfs.nbands):
         print 'Band: ', n
         wf_k = [c_mol.get_pseudo_wave_function(band=n, kpt=k, spin=0, pad=False)
-                for k in range(calc.nkpts)]
-        P_aui = [a.P_uni[:,n,:] for a in c_mol.nuclei]
+                for k in range(len(c_mol.wfs.weight_k))]
+        P_aui = [[kpt.P_ani[a][n] for kpt in c_mol.wfs.kpt_u]
+                 for a in range(len(molecule))]   # Inner products of pseudo wavefu
         e, P = calc.get_all_electron_ldos(mol=molecule, wf_k=wf_k, spin=0, P_aui=P_aui, raw=True)
         e_n.append(e)
         P_n.append(P)
     pickle.dump((e_n, P_n), open('top.pickle', 'w'))
-
-and the ``top.pickle`` file can be plotted with
 
 Plot PDOS::
 
