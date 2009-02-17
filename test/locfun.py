@@ -1,4 +1,6 @@
 import numpy as np
+#np.seterr(all='raise')
+#np.set_printoptions(precision=3, suppress=True)
 
 from ase import *
 from gpaw import *
@@ -12,8 +14,7 @@ if 1:
     atoms.get_potential_energy()
     calc.write('H2O.gpw', mode='all')
 
-atoms, calc = restart('H2O.gpw')
-calc.set_positions()
+atoms, calc = restart('H2O.gpw', txt=None)
 
 locfun = LocFun()
 locfun.localize(calc, ortho=True)

@@ -124,7 +124,8 @@ class WaveFunctions(EmptyWaveFunctions):
                                         np.dot(kpt.ft_omn[i],
                                                P_ni))).real
                 
-    def calculate_atomic_density_matrices_k_point_with_occupation(self, D_sii, kpt, a, f_n):
+    def calculate_atomic_density_matrices_k_point_with_occupation(self, D_sii,
+                                                                  kpt, a, f_n):
         if kpt.rho_MM is not None: 
             P_Mi = kpt.P_aMi[a]
             rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
@@ -150,7 +151,8 @@ class WaveFunctions(EmptyWaveFunctions):
         self.symmetrize_atomic_density_matrices(D_asp)
 
     def calculate_atomic_density_matrices_with_occupation(self, D_asp, f_kn):
-        """Calculate atomic density matrices from projections with custom occupation f_kn."""
+        """Calculate atomic density matrices from projections with
+        custom occupation f_kn."""
         for a, D_sp in D_asp.items():
             ni = self.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
@@ -163,7 +165,6 @@ class WaveFunctions(EmptyWaveFunctions):
             self.kpt_comm.sum(D_sp)
 
         self.symmetrize_atomic_density_matrices(D_asp)
-
 
     def symmetrize_atomic_density_matrices(self, D_asp):
         if self.symmetry:
