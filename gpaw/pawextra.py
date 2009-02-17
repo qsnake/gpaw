@@ -2,7 +2,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-"""This module will go away some dat in the future.  The few methods
+"""This module will go away some day in the future.  The few methods
 in the PAWExtra class should be moved to the PAW class or other
 modules."""
 
