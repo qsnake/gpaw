@@ -132,11 +132,9 @@ class C_Response(Contribution):
         lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
         Ksgap = lumo-homo
 
-        # Calculate current average of response potential
-        method1_A = npy.average(self.vt_sG[0])
-
         # Calculate new response potential with LUMO reference 
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
+        print w_kn
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
 
         self.vt_sG[:] = 0.0
@@ -149,14 +147,28 @@ class C_Response(Contribution):
             for nt_G, vt_G in zip(self.nt_sG, self.vt_sG):
                 self.symmetry.symmetrize(nt_G, self.gd)
                 self.symmetry.symmetrize(vt_G, self.gd)
+
         self.vt_sG[:] /= self.nt_sG + 1e-10
 
-        # Calculate average of lumo reference response potential
-        method1_B = npy.average(self.vt_sG[0])
+        self.wfs.calculate_atomic_density_matrices_with_occupation(
+            self.Dresp_asp, w_kn)
+        self.wfs.calculate_atomic_density_matrices_with_occupation(
+            self.D_asp, f_kn)
 
-        # Calculate Delta XC's
-        method1_dxc = method1_B-method1_A
-        method2_dxc = 0
+        # Calculate average of lumo reference response potential
+        method1_dxc = npy.average(self.vt_sG[0])
+
+        ne = self.occupations.ne # Number of electrons
+        assert self.nspins == 1
+        lumo_n = ne // 2
+        lumo_occupied = npy.array([ 1.0*(n==lumo_n) for n in range(len(self.kpt_u[0].f_n)) ])
+        eps_u =[]
+        for kpt in self.kpt_u:
+            self.nt_sG[:] = 0.0
+            self.wfs.add_to_density_from_k_point_with_occupation(self.nt_sG, kpt, lumo_occupied)
+            eps_u.append(kpt.f_n[lumo_n] + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
+
+        method2_dxc = min(eps_u)
 
         Ha = 27.2116 
         Ksgap *= Ha
@@ -167,10 +179,13 @@ class C_Response(Contribution):
         print "-----------------------------------------------"
         print "| Method      |  KS-Gap | \Delta XC |  QP-Gap |"
         print "-----------------------------------------------"
-        print "| Averaging   | %7.2f | %7.2f | %7.2f |" % (Ksgap, method1_dxc, Ksgap+method1_dxc)
-        print "| Lumo pert.  | %7.2f | %7.2f | %7.2f |" % (Ksgap, method2_dxc, Ksgap+method2_dxc)
+        print "| Averaging   | %7.2f | %9.2f | %7.2f |" % (Ksgap, method1_dxc, Ksgap+method1_dxc)
+        print "| Lumo pert.  | %7.2f | %9.2f | %7.2f |" % (Ksgap, method2_dxc, Ksgap+method2_dxc)
         print "-----------------------------------------------"
         print
+        print "Approximations:"
+        print "-Only smooth wave function is currently considered"
+
 
         return B-A
         #self.wfs.calculate_atomic_density_matrices_with_occupation(
