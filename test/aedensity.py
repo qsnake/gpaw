@@ -26,16 +26,16 @@ except IOError:
     NaCl.get_potential_energy()
     calc.write('NaCl.gpw')
 
-nt = calc.get_pseudo_valence_density()
-gridrefinement = 2 # grid-refinement-factor for all-electron density
-n = calc.get_all_electron_density(gridrefinement=gridrefinement)
-
 dv = calc.get_grid_spacings().prod()
-Zt = nt.sum() * dv
-Z = n.sum() * dv / gridrefinement**3
+nt1 = calc.get_pseudo_density(gridrefinement=1)
+Zt1 = nt1.sum() * dv
+nt2 = calc.get_pseudo_density(gridrefinement=2)
+Zt2 = nt2.sum() * dv / 8
+print 'Integral of pseudo density:', Zt1, Zt2
+equal(Zt1, Zt2, 1e-12)
 
-if 1:#rank == 0:
-    print 'Integral of pseudo density:', Zt
+for gridrefinement in [1, 2, 4]:
+    n = calc.get_all_electron_density(gridrefinement=gridrefinement)
+    Z = n.sum() * dv / gridrefinement**3
     print 'Integral of all-electron density:', Z
-
     equal(Z, 28, 1e-5)

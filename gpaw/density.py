@@ -267,8 +267,10 @@ class Density:
 
             # Transfer the pseudo-density to the fine grid:
             n_sg = gd.empty(self.nspins)
+            if self.nt_sg is None:
+                self.interpolate()
             for s in range(self.nspins):
-                interpolator.apply(self.nt_sg[s], n_sg[s])
+                interpolater.apply(self.nt_sg[s], n_sg[s])
         else:
             raise NotImplementedError
 

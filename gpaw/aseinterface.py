@@ -115,14 +115,24 @@ class GPAW(PAW):
         
         return self.wfs.weight_k
 
-    def get_pseudo_density(self, spin=None, pad=True, broadcast=True):
+    def get_pseudo_density(self, spin=None, gridrefinement=1,
+                           pad=True, broadcast=True):
         """Return pseudo-density array.
 
         If *spin* is not given, then the total density is returned.
         Otherwise, the spin up or down density is returned (spin=0 or
         1)."""
-        
-        nt_sG = self.density.nt_sG
+
+        if gridrefinement == 1:
+            nt_sG = self.density.nt_sG
+            gd = self.density.gd
+        elif gridrefinement == 2:
+            if self.density.nt_sg is None:
+                self.density.interpolate()
+            nt_sG = self.density.nt_sg
+            gd = self.density.finegd
+        else:
+            raise NotImplementedError
 
         if spin is None:
             if self.wfs.nspins == 1:
@@ -135,7 +145,7 @@ class GPAW(PAW):
             else:
                 nt_G = nt_sG[spin]
 
-        nt_G = self.wfs.gd.collect(nt_G, broadcast)
+        nt_G = gd.collect(nt_G, broadcast)
 
         if nt_G is None:
             return None
