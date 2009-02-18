@@ -21,6 +21,7 @@ static void lfc_dealloc(LFCObject *self)
 }
 
 PyObject* calculate_potential_matrix(LFCObject *self, PyObject *args);
+PyObject* integrate(LFCObject *self, PyObject *args);
 PyObject* construct_density(LFCObject *self, PyObject *args);
 PyObject* construct_density1(LFCObject *self, PyObject *args);
 PyObject* lcao_to_grid(LFCObject *self, PyObject *args);
@@ -28,6 +29,8 @@ PyObject* lcao_to_grid(LFCObject *self, PyObject *args);
 static PyMethodDef lfc_methods[] = {
     {"calculate_potential_matrix",
      (PyCFunction)calculate_potential_matrix, METH_VARARGS, 0},
+    {"integrate",
+     (PyCFunction)integrate, METH_VARARGS, 0},
     {"construct_density",
      (PyCFunction)construct_density, METH_VARARGS, 0},
     {"construct_density1",
@@ -97,12 +100,12 @@ PyObject * NewLFCObject(PyObject *obj, PyObject *args)
 
   int nimax = 0;
   int ngmax = 0;
-  int ni = 0; 
-  int Ga = 0;                 
+  int ni = 0;
+  int Ga = 0;
   for (int B = 0; B < nB; B++)
     {
-      int Gb = self->G_B[B];                                        
-      int nG = Gb - Ga;                                         
+      int Gb = self->G_B[B];
+      int nG = Gb - Ga;
       if (ni > 0 && nG > ngmax)
         ngmax = nG;
       if (self->W_B[B] >= 0)
@@ -239,6 +242,50 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
   Py_RETURN_NONE;
 }
 
+PyObject* integrate(LFCObject *lfc, PyObject *args)
+{
+  const PyArrayObject* a_G_obj;
+  PyArrayObject* c_M_obj;
+  int k;
+
+  if (!PyArg_ParseTuple(args, "OOi", &a_G_obj, &c_M_obj, &k))
+    return NULL; 
+
+  const double* a_G = (const double*)a_G_obj->data;
+
+  if (!lfc->bloch_boundary_conditions)
+    {
+      double* c_M = (double*)c_M_obj->data;
+      GRID_LOOP_START(lfc, -1)
+        {
+          for (int i = 0; i < ni; i++)
+            {
+              LFVolume* v = volume_i + i;
+              for (int gm = 0, G = Ga; G < Gb; G++)
+                for (int m = 0; m < v->nm; m++, gm++)
+		  c_M[v->M + m] += a_G[G] * v->A_gm[gm] * lfc->dv;
+            }
+        }
+      GRID_LOOP_STOP(lfc, -1);
+    }
+  else
+    {
+      complex double* c_M = (complex double*)c_M_obj->data;
+      GRID_LOOP_START(lfc, k)
+        {
+          for (int i = 0; i < ni; i++)
+            {
+              LFVolume* v = volume_i + i;
+	      double complex phase = phase_i[i] * lfc->dv;
+              for (int gm = 0, G = Ga; G < Gb; G++)
+                for (int m = 0; m < v->nm; m++, gm++)
+		  c_M[v->M + m] += a_G[G] * v->A_gm[gm] * phase;
+            }
+        }
+      GRID_LOOP_STOP(lfc, k);
+    }
+  Py_RETURN_NONE;
+}
 
 PyObject* construct_density(LFCObject *lfc, PyObject *args)
 {
