@@ -269,28 +269,39 @@ class NewLocalizedFunctionsCollection(BaseLFC):
            x       --  xi    i
                    a,i
         """
-        raise NotImplementedError
-        c_axm = c_axi
-        dtype = a_xG.dtype
-        xshape = a_xG.shape[:-3]
-        c_xM = np.empty(xshape + (self.Mmax,), dtype)
-        requests = []
-        M1 = 0
+        xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
+        Nx = np.prod(xshape)
+        a_xG = a_xG.reshape((Nx,) + Gshape)
+        c_xM = np.empty((Nx, self.Mmax))
         for a in self.atom_indices:
-            c_xm = c_axm.get(a)
             sphere = self.sphere_a[a]
+            M1 = self.M_a[a]
             M2 = M1 + sphere.Mmax
-            if c_xm is None:
-                requests.append(comm.receive(c_xM[..., '???', M1:M2],
-                                             sphere.rank, a, False))
-            else:
-                for r in sphere.ranks:
-                    requests.append(comm.send(c_xm, r, a, False))
+            c_xM[:, M1:M2] = c_axi[a].reshape(Nx, -1)
 
-        for request in requests:
-            comm.wait(request)
+        for a_G, c_M in zip(a_xG, c_xM):
+            self.lfc.lcao_to_grid(c_M, a_G, q)
 
-        self.lfc.add(c_xM, a_xG, q)
+##         # XXXXXXXXX JJ's version XXXXXXXXXXXXX       
+##         c_axm = c_axi
+##         dtype = a_xG.dtype
+##         xshape = a_xG.shape[:-3]
+##         c_xM = np.empty(xshape + (self.Mmax,), dtype)
+##         requests = []
+##         M1 = 0
+##         for a in self.atom_indices:
+##             c_xm = c_axm.get(a)
+##             sphere = self.sphere_a[a]
+##             M2 = M1 + sphere.Mmax
+##             if c_xm is None:
+##                 requests.append(comm.receive(c_xM[..., '???', M1:M2],
+##                                              sphere.rank, a, False))
+##             else:
+##                 for r in sphere.ranks:
+##                     requests.append(comm.send(c_xm, r, a, False))
+##         for request in requests:
+##             comm.wait(request)
+##         self.lfc.add(c_xM, a_xG, q)
     
     def add1(self, n_g, scale, I_a):
         """What should this do? XXX"""
@@ -328,7 +339,18 @@ class NewLocalizedFunctionsCollection(BaseLFC):
           c_axi =  | dG a (G) Phi (G)
                    /     x       i
         """
-        raise NotImplementedError
+        xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
+        Nx = np.prod(xshape)
+        a_xG = a_xG.reshape((Nx,) + Gshape)
+        c_xM = np.zeros((Nx, self.Mmax))
+        for a_G, c_M in zip(a_xG, c_xM):
+            self.lfc.integrate(a_G, c_M, q)
+        
+        for a in self.atom_indices:
+            sphere = self.sphere_a[a]
+            M1 = self.M_a[a]
+            M2 = M1 + sphere.Mmax
+            c_axi[a].reshape(Nx, -1)[:] = c_xM[:, M1:M2]
 
     def derivative(self, a_xG, c_axiv, q=-1):
         """Calculate x-, y-, and z-derivatives of localized function integrals.
@@ -404,6 +426,22 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                   M1,M2 
         """
         self.lfc.construct_density(rho_MM, nt_G, q)
+
+    def integrate2(self, a_xG, c_xM, q=-1):
+        """Calculate integrals of arrays times localized functions.
+
+        ::
+        
+                  /
+          c_xM += | dG a (G) Phi (G)
+                  /     x       M
+        """
+        xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
+        Nx = np.prod(xshape)
+        a_xG = a_xG.reshape((Nx,) + Gshape)
+        c_xM = c_xM.reshape(Nx, -1)
+        for a_G, c_M in zip(a_xG, c_xM):
+            self.lfc.integrate(a_G, c_M, q)
 
     def calculate_potential_matrix(self, vt_G, Vt_MM, q):
         """Calculate lower part of potential matrix.
