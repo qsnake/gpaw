@@ -340,7 +340,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                    /     x       i
         """
         xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
-        Nx = np.prod(xshape)
+        Nx = int(np.prod(xshape))
         a_xG = a_xG.reshape((Nx,) + Gshape)
         c_xM = np.zeros((Nx, self.Mmax))
         for a_G, c_M in zip(a_xG, c_xM):
@@ -437,7 +437,7 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                   /     x       M
         """
         xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
-        Nx = np.prod(xshape)
+        Nx = int(np.prod(xshape))
         a_xG = a_xG.reshape((Nx,) + Gshape)
         c_xM = c_xM.reshape(Nx, -1)
         for a_G, c_M in zip(a_xG, c_xM):
