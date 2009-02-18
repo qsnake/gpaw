@@ -13,15 +13,19 @@ double bee1_exchange(const xc_parameters* par,
   double kappa = 0.804;
   double x1 = MU / kappa;
   double x2 = x1 * s2;
-  double x3 = x2 * par->pade[0];
   double Fx = 1.0 + kappa;
   double dFxds2 = 0.0;
-  if (x3 < 100.0)
+  for (int i = 0; i < par->i; i++)
     {
-      double x4 = exp(x3);
-      double x5 = 1.0 / (1.0 + x2 * x4);
-      Fx -= kappa * x5;
-      dFxds2 = x5 * x5 * (1.0 + x3) * x1 * x4;
+      double x3 = x2 * par->pade[i];
+      if (x3 < 100.0)
+        {
+          double x4 = exp(x3);
+          double x5 = 1.0 / (1.0 + x2 * x4);
+          double coef = par->pade[i + par->i];
+          Fx -= coef * kappa * x5;
+          dFxds2 += coef * x5 * x5 * (1.0 + x3) * x1 * x4;
+        }
     }
   double ds2drs = 8.0 * c * a2 / rs;
   *dedrs = *dedrs * Fx + e * dFxds2 * ds2drs;

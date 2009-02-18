@@ -37,7 +37,7 @@ typedef struct
   double hybrid;
   int i;
   double s0;
-  double pade[10];
+  double pade[14];
 } xc_parameters;
 
 #endif /* _XC_GPAW_H */

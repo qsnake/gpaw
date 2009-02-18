@@ -220,9 +220,21 @@ class XCFunctional:
             i = int(xcname[3])
             s0 = float(xcname[5:])
             self.xc = _gpaw.XCFunctional(code, self.gga, s0, i)
-        elif code in [5, 17, 18]:
+        elif code in [5, 17]:
             self.xc = _gpaw.XCFunctional(code, self.gga,
                                          0.0, 0, npy.array(parameters))
+        elif code == 18:
+            if parameters is None:
+                parameters = [(-100.0,-5.17947467923,23.3572146909,
+                               48.3293023857,69.5192796178,320.0,10000.0),
+                              (9.16531398724, -9.09120195493, 0.392293264316,
+                               -0.219567219503, 0.499408969276,
+                               0.160492491676, 0.0932604619238)]
+            elif len(parameters) == 1:
+                parameters = [parameters[0], 1.0]
+            parameters = npy.asarray(parameters, float)
+            self.xc = _gpaw.XCFunctional(code, self.gga,
+                                         0.0, 0, parameters.ravel())
         elif code == 6:
             self.xc = ZeroFunctional()
         elif code == 9:

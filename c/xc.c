@@ -453,10 +453,10 @@ PyObject * NewXCFunctionalObject(PyObject *obj, PyObject *args)
       // BEE1
       self->exchange = bee1_exchange;
       int n = padearray->dimensions[0];
-      assert(n == 1);
       double* p = DOUBLEP(padearray);
       for (int i = 0; i < n; i++)
 	self->par.pade[i] = p[i];
+      self->par.i = n / 2;
     }
   else
     {
