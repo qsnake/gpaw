@@ -245,6 +245,7 @@ class XCFunctional:
         elif code == 'gllb':
             # Get the correctly configured functional from NonLocalFunctionalFactory
             self.xc = NonLocalFunctionalFactory().get_functional_by_name(xcname)
+            self.xc.print_functional()
         elif code == 'lxc':
 ###            self.xcname = xcname # MDTMP: to get the lxc name for setup
             # find numeric identifiers of libxc functional based on xcname

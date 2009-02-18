@@ -83,12 +83,13 @@ class XCCorrection:
             for m in range(2 * l + 1):
                 jlL.append((j, l, l**2 + m))
 
+        self.jlL = jlL
         ng = len(nc_g)
         self.ng = ng
-        ni = len(jlL)
-        nj = len(jl)
-        np = ni * (ni + 1) // 2
-        nq = nj * (nj + 1) // 2
+        self.ni = ni = len(jlL)
+        self.nj = nj = len(jl)
+        self.np = np = ni * (ni + 1) // 2
+        self.nq = nq = nj * (nj + 1) // 2
         self.B_Lqp = npy.zeros((self.Lmax, nq, np))
         p = 0
         i1 = 0

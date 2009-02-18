@@ -28,14 +28,14 @@ class NonLocalFunctionalFactory:
             # of orbital energy differences.
             from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
             from gpaw.gllb.contributions.c_response import C_Response
-            C_Response(functional, 1.0, C_GLLBScr(functional, 1.0).get_coefficient_calculator())
+            C_Response(functional, 1.0,
+                       C_GLLBScr(functional, 1.0).get_coefficient_calculator())
             return functional
         elif name == 'GLLBLDA':
             from gpaw.gllb.contributions.c_lda import C_LDA
             C_LDA(functional, 1.0)
             return functional
         elif name == 'GLLBSLATER':
-            raise RuntimeError('Slater functional not implemented')
             from gpaw.gllb.contributions.c_slater import C_Slater
             C_Slater(functional, 1.0)
             return functional
@@ -47,7 +47,8 @@ class NonLocalFunctionalFactory:
             raise RuntimeError('KLI functional not implemented')
             from gpaw.gllb.contributions.c_slater import C_Slater
             from gpaw.gllb.contributions.c_response import C_Response
-            C_Response(functional, 1.0, C_Slater(functional, 1.0))
+            C_Response(functional, 1.0,
+                       C_Slater(functional, 1.0).get_coefficient_calculator())
             return functional
         else:
             raise RuntimeError('Unkown NonLocal density functional: ' + name)

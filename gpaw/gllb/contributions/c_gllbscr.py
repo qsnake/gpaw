@@ -11,6 +11,9 @@ K_G = 0.382106112167171
 class C_GLLBScr(Contribution):
     def __init__(self, nlfunc, weight):
         Contribution.__init__(self, nlfunc, weight)
+
+    def get_name(self):
+        return "GLLBSCR"
         
     # Initialize GLLBScr functional
     def initialize_1d(self):
@@ -54,11 +57,15 @@ class C_GLLBScr(Contribution):
                      for e_n, f_n in zip(self.ae.e_ln, self.ae.f_ln) ]
         
 
-    def get_coefficients_by_kpt(self, kpt_u):
+    def get_coefficients_by_kpt(self, kpt_u, lumo_perturbation = False):
         if kpt_u[0].psit_nG is None or isinstance(kpt_u[0].psit_nG, TarFileReference): 
             return None
 
-        e_ref = self.occupations.get_zero_kelvin_homo_eigenvalue(kpt_u)
+        if lumo_perturbation:
+            e_ref = self.occupations.get_zero_kelvin_lumo_eigenvalue(kpt_u)
+        else:
+            e_ref = self.occupations.get_zero_kelvin_homo_eigenvalue(kpt_u)
+        print "E_REF", e_ref
         return [ npy.array([ f * K_G * npy.sqrt( npy.where(e_ref - e>1e-3, e_ref-e,0))
                 for e, f in zip(kpt.eps_n, kpt.f_n) ])
                 for kpt in kpt_u ]

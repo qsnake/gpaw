@@ -54,6 +54,10 @@ class OccupationNumbers:
         homo = (self.ne // 2)-1
         return max([ kpt.eps_n[homo] for kpt in kpt_u])
 
+    def get_zero_kelvin_lumo_eigenvalue(self, kpt_u):
+        lumo = (self.ne // 2)
+        return min([ kpt.eps_n[lumo] for kpt in kpt_u])
+
 class ZeroKelvin(OccupationNumbers):
     """Occupations for Gamma-point calculations without Fermi-smearing"""
 

@@ -7,6 +7,9 @@ from math import pi, sqrt
 class C_LDA(Contribution):
     def __init__(self, nlfunc, weight):
         Contribution.__init__(self, nlfunc, weight)
+
+    def get_name(self):
+        return 'LDA'
         
     def initialize(self):
         self.xc = XCFunctional('LDA')

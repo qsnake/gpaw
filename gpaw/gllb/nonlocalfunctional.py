@@ -4,7 +4,8 @@ class NonLocalFunctional(ZeroFunctional):
 
     def __init__(self):
         self.contributions = []
-
+        self.xcs = {}
+        
     def pass_stuff(self, paw):
         self.gd = paw.density.gd # smooth grid describtor
         self.finegd = paw.density.finegd # fine grid describtor
@@ -15,6 +16,7 @@ class NonLocalFunctional(ZeroFunctional):
         self.occupations = paw.occupations
         self.density = paw.density
         self.atoms = paw.atoms
+        self.hamiltonian = paw.hamiltonian
 
         #self.vt_sg = paw.vt_sg # smooth potential
         #self.kpt_u = kpt_u # kpoints object       
@@ -74,6 +76,18 @@ class NonLocalFunctional(ZeroFunctional):
 
     def add_contribution(self, contribution):
         self.contributions.append(contribution)
+        self.xcs[contribution.get_name()] = contribution
+
+    def print_functional(self):
+        print
+        print "Functional being used consists of"
+        print "--------------------------------"
+        print "| Weight    | Functional       |"
+        print "--------------------------------"
+        for contribution in self.contributions:
+            print "|%9.3f  | %-17s|" % (contribution.weight, contribution.get_name())
+        print "--------------------------------"
+        print
 
     def read(self, reader):
         for contribution in self.contributions:

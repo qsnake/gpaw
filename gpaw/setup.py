@@ -262,7 +262,7 @@ class Setup:
         extra_xc_data = dict(data.extra_xc_data)
         # Cut down the GLLB related extra data
         for key, item in extra_xc_data.iteritems():
-            if len(item) > 1 and len(item)>gcut2:
+            if len(item) == ng:
                 extra_xc_data[key] = item[:gcut2].copy()
         self.extra_xc_data = extra_xc_data
 
@@ -368,32 +368,18 @@ class Setup:
                 L += 1
 
         if xcfunc.is_gllb():
-            pass
-            #if xcfunc.xc.relaxed_core_response:
-            #    self.njcore = extra_xc_data['njcore']
-            #    self.core_A_kp = npy.zeros((self.njcore, np))
-            #    self.core_At_kp = npy.zeros((self.njcore, np))
-            #    self.core_B = npy.dot(g_lg[0], wg_lg[0]) / sqrt(4*pi)
-            #    self.core_C = npy.dot(nct_g, wg_lg[0]) / sqrt(4*pi)
-            #    self.coreref_k = npy.zeros((self.njcore))
-            #    for k in range(0, self.njcore):
-            #        # Put the density of core orbital into radial
-            #        # representation
-            #        rho_g = extra_xc_data['core_orbital_density_'
-            #                              + str(k)] * sqrt(4*pi)
-            #
-            #        # Calculate the D_p dependent correction for E^a
-            #        self.core_A_kp[k] = npy.dot(npy.dot(n_qg, H(rho_g, 0)),
-            #                                    T_Lqp[0])
-            #
-            #        # Calculate the D_P dependent correction for \tilde{E}^a
-            #        self.core_At_kp[k] = npy.dot(npy.dot(nt_qg, wg_lg[0]),
-            #                                     T_Lqp[0]) / sqrt(4 * pi)
-            #
-            #        # All other contributions are already included in
-            #        # reference from setup
-            #        self.coreref_k[k] = extra_xc_data['core_ref_' + str(k)]
-
+            if self.extra_xc_data.has_key('core_f'):
+                self.wnt_lqg = wnt_lqg
+                self.wn_lqg = wn_lqg
+                self.fc_j = self.extra_xc_data['core_f']
+                self.lc_j = self.extra_xc_data['core_l']
+                self.njcore = len(self.lc_j)
+                print self.extra_xc_data['core_states'].shape
+                if self.njcore > 0:
+                    self.uc_jg = self.extra_xc_data['core_states'].reshape((self.njcore, -1))
+                    self.uc_jg = self.uc_jg[:, :gcut2]
+                self.phi_jg = phi_jg
+            
         # Make a radial grid descriptor:
         rgd = RadialGridDescriptor(r_g, dr_g)
 

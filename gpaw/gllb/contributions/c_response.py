@@ -11,6 +11,9 @@ class C_Response(Contribution):
     def __init__(self, nlfunc, weight, coefficients):
         Contribution.__init__(self, nlfunc, weight)
         self.coefficients = coefficients
+
+    def get_name(self):
+        return "RESPONSE"
         
     # Initialize Response functional
     def initialize_1d(self):
@@ -32,6 +35,7 @@ class C_Response(Contribution):
         self.density = self.nlfunc.density
         self.symmetry = self.wfs.symmetry
         self.nspins = self.nlfunc.nspins
+        self.occupations = self.nlfunc.occupations
 
         self.vt_sg = self.finegd.empty(self.nlfunc.nspins)
         self.vt_sG = self.gd.empty(self.nlfunc.nspins)
@@ -121,6 +125,59 @@ class C_Response(Contribution):
                            
         vt_g += self.weight * v_g / (n_g + 1e-10)
         return 0.0 # Response part does not contribute to energy
+
+    def calculate_delta_xc_perturbation(self):
+        # Calculate band gap
+        homo = self.occupations.get_zero_kelvin_homo_eigenvalue(self.kpt_u)
+        lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(self.kpt_u)
+        Ksgap = lumo-homo
+
+        # Calculate current average of response potential
+        method1_A = npy.average(self.vt_sG[0])
+
+        # Calculate new response potential with LUMO reference 
+        w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
+        f_kn = [ kpt.f_n for kpt in self.kpt_u ]
+
+        self.vt_sG[:] = 0.0
+        self.nt_sG[:] = 0.0
+        for kpt, w_n in zip(self.kpt_u, w_kn):
+            self.wfs.add_to_density_from_k_point_with_occupation(self.vt_sG, kpt, w_n)
+            self.wfs.add_to_density_from_k_point(self.nt_sG, kpt)
+            
+        if self.wfs.symmetry:
+            for nt_G, vt_G in zip(self.nt_sG, self.vt_sG):
+                self.symmetry.symmetrize(nt_G, self.gd)
+                self.symmetry.symmetrize(vt_G, self.gd)
+        self.vt_sG[:] /= self.nt_sG + 1e-10
+
+        # Calculate average of lumo reference response potential
+        method1_B = npy.average(self.vt_sG[0])
+
+        # Calculate Delta XC's
+        method1_dxc = method1_B-method1_A
+        method2_dxc = 0
+
+        Ha = 27.2116 
+        Ksgap *= Ha
+        method1_dxc *= Ha
+        method2_dxc *= Ha
+        print
+        print "\Delta XC calulation"
+        print "-----------------------------------------------"
+        print "| Method      |  KS-Gap | \Delta XC |  QP-Gap |"
+        print "-----------------------------------------------"
+        print "| Averaging   | %7.2f | %7.2f | %7.2f |" % (Ksgap, method1_dxc, Ksgap+method1_dxc)
+        print "| Lumo pert.  | %7.2f | %7.2f | %7.2f |" % (Ksgap, method2_dxc, Ksgap+method2_dxc)
+        print "-----------------------------------------------"
+        print
+
+        return B-A
+        #self.wfs.calculate_atomic_density_matrices_with_occupation(
+        #    self.Dresp_asp, w_kn)
+        #self.wfs.calculate_atomic_density_matrices_with_occupation(
+        #    self.D_asp, f_kn)
+        
 
     def initialize_from_atomic_orbitals(self, basis_functions):
         # Initiailze 'response-density' and density-matrices
