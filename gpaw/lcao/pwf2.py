@@ -2,6 +2,7 @@ import numpy as np
 la = np.linalg
 
 from ase import Hartree
+from gpaw.aseinterface import GPAW
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.lfc import BasisFunctions
 from gpaw.lcao.overlap import TwoCenterIntegrals
@@ -36,7 +37,7 @@ def get_lcao_HSP(calc, bfs=None, spin=0):
     if bfs is None:
         bfs = get_bfs(calc)
 
-    tci = TwoCenterIntegrals(calc.domain, calc.wfssetups, calc.wfs.gamma,
+    tci = TwoCenterIntegrals(calc.domain, calc.wfs.setups, calc.wfs.gamma,
                                   calc.wfs.ibzk_qc)
     tci.set_positions(spos_ac)
 
@@ -100,7 +101,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     return Vxc_qMM * Hartree
 
 
-def get_lcao_projections(calc, lfc=None):
+def get_lcao_projections(calc, P_aqMi, lfc=None):
     nq = len(calc.wfs.ibzk_qc)
     nao = calc.wfs.setups.nao
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), calc.wfs.dtype)
@@ -119,7 +120,7 @@ def get_lcao_projections(calc, lfc=None):
     for q, V_Ani in enumerate(V_qAni):
         lfc.integrate(calc.wfs.kpt_u[q].psit_nG[:], V_Ani, q)
         M1 = 0
-        for A in range(len(spos_Ac)):
+        for A in V_Ani:
             V_ni = V_Ani[A]
             M2 = M1 + V_ni.shape[1]
             V_qnM[q, :, M1:M2] += V_ni
@@ -138,7 +139,7 @@ class ProjectedWannierFunctionsFBL:
     def __init__(self, V_nM, No):
         Nw = V_nM.shape[1]
         V_oM, V_uM = V_nM[:No], V_nM[No:]
-        U_ow, U_lw, U_ml = get_rot(F_MM, V_om, Nw - No)
+        U_ow, U_lw, U_Ml = get_rot(F_MM, V_oM, Nw - No)
         self.U_nw = np.vstack((U_ow, dots(V_uM, U_Ml, U_lw)))
         self.S_ww = np.dot(self.U_nw.T.conj(), self.U_nw)
         self.norms_n = np.dot(self.U_nw, la.solve(
@@ -172,13 +173,13 @@ class ProjectedWannierFunctionsIBL:
         Nw = V_nM.shape[1]
         self.V_oM, V_uM = V_nM[:No], V_nM[No:]
         F_MM = S_MM - np.dot(self.V_oM.T.conj(), self.V_oM)
-        U_ow, U_lw, U_ml = get_rot(F_MM, self.V_om, Nw - No)
+        U_ow, U_lw, U_Ml = get_rot(F_MM, self.V_oM, Nw - No)
         self.U_Mw = np.dot(U_Ml, U_lw)
         self.U_ow = U_ow - np.dot(self.V_oM, self.U_Mw)
         self.S_ww = np.dot(U_ow.T.conj(), U_ow) + dots(self.U_Mw.T.conj(),
-                                                       F_MM, U_Mw)
-        P_uW = np.dot(V_uM, self.U_Mw)
-        self.norm_n = np.hstack((
+                                                       F_MM, self.U_Mw)
+        P_uw = np.dot(V_uM, self.U_Mw)
+        self.norms_n = np.hstack((
             np.dot(self.U_ow, la.solve(self.S_ww,
                                        self.U_ow.T.conj())).diagonal(),
             np.dot(P_uw, la.solve(self.S_ww, P_uw.T.conj())).diagonal()))
@@ -190,7 +191,7 @@ class ProjectedWannierFunctionsIBL:
             A_ww += np.dot(self.U_ow.T.conj() * A_oo, self.U_ow)
         else:
             A_ww = dots(self.U_ow.T.conj(), A_oo, self.V_oM, self.U_Mw)
-            A_ww += np.conj(xc_ww.T)
+            A_ww += np.conj(A_ww.T)
             A_ww += dots(self.U_ow.T.conj(), A_oo, self.U_ow)
         A_ww += dots(self.U_Mw.T.conj(), A_MM, self.U_Mw)
         return A_ww
@@ -199,10 +200,10 @@ class ProjectedWannierFunctionsIBL:
         P_awi = {}
         for a, P_oi in P_aoi.items():
             P_awi[a] = np.tensordot(self.U_ow, P_oi, axes=[[0], [0]]) + \
-                       np.tensordot(self.U_Mw, P_Mi, axes=[[0], [0]])
+                       np.tensordot(self.U_Mw, P_aMi[a], axes=[[0], [0]])
         return P_awi
 
-    def function(self, psit_oG, bfs, q=-1)
+    def function(self, psit_oG, bfs, q=-1):
         w_wG = np.tensordot(self.U_ow, psit_oG, axes=[[0], [0]])
         bfs.lcao_to_grid(self.U_Mw.T.copy(), w_wG, q)
 
@@ -216,7 +217,7 @@ class PWF2:
         q = 0 # Temporary hack XXX
         eps_n = calc.get_eigenvalues(q) - Ef
         M = sum(eps_n <= fixedenergy)
-        V_qnM = get_lcao_projections(calc)
+        V_qnM = get_lcao_projections(calc, get_lcao_HSP(calc)[2])
         kpt = calc.wfs.kpt_u[spin * nq + q]
         
         if ibl:
@@ -228,7 +229,7 @@ class PWF2:
             H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
             xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin)[:M, :M],
                                       get_lcao_xc(calc, P_aqMi, bfs, spin)[q])
-            w_wG = pwf.function(kpt.psit_nG[:M], bfs)
+            w_wG = pwf.function(kpt.psit_nG[:][:M], bfs)
             P_awi = pwf.rotate_projections(
                 dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
                 dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
