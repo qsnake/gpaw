@@ -49,4 +49,7 @@ for n in range(norm_kn.shape[1]):
         deps = np.around(abs(eps1_kn[0,n] - eps_kn[0, n]), 13)
         print "%4i | %.1e | %.1e " % (n, deps, norm)
 
+for M, norm_n in zip(pwf.M_k, norm_kn):
+    assert np.all(abs(norm_n[:M]-1.0) < 1.0e-15)
+
 #os.remove('C6H6.gpw')
