@@ -1,0 +1,9 @@
+CC = /usr/local/packages/openmpi-1.3-1.gfortran/bin/mpicc
+F77 = /usr/local/packages/openmpi-1.3-1.gfortran/bin/mpicc
+CFLAGS = -O3 -Wall -I./include -DGPAW_MKL -std=c99
+INCLUDEMPI = -I/usr/local/packages/openmpi-1.3-1.gfortran/include
+LDFLAGS = -O3 -lgfortran
+LIBSCALAPACK = /usr/local/packages/scalapack-1.8.0-1.el5.fys.gfortran.acml.4.1.0/lib64/libscalapack.a
+LIBBLACS = /usr/local/packages/blacs-1.1-24.el5.fys.gfortran.6/lib64/libmpiblacsCinit.a /usr/local/packages/blacs-1.1-24.el5.fys.gfortran.6/lib64/libmpiblacs.a /usr/local/packages/blacs-1.1-24.el5.fys.gfortran.6/lib64/libmpiblacsCinit.a /usr/local/packages/blacs-1.1-24.el5.fys.gfortran.6/lib64/libmpiblacs.a
+LIBBLAS = /opt/acml-4.0.1/gfortran64/lib/libacml.a
+LIBMPI = -L/usr/local/packages/openmpi-1.3-1.gfortran/lib64 -lmpi
