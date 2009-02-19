@@ -5,7 +5,6 @@ from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lfc import BasisFunctions
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import dagger, lowdin
-from gpaw.lcao.tools import get_realspace_hs
 from ase import Hartree
 
 
