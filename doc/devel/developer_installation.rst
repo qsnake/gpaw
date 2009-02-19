@@ -14,19 +14,9 @@ Do this::
 
   [~]$ svn checkout https://USER@svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
-**On slid and thul machines only**: if you want to use a parallel
-version, modify :file:`customize.py`::
+If you want to enable scalapack, modify :file:`customize.py`::
 
- libraries += ['gfortran']
-
-and apply the openmpi environment settings::
-
-  [~]$ source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.csh
-
-To make it the default setting add the line to your
-:file:`~/.tcshrc`. See :wiki:`niflheim/Parallelization` for details
-(note however, that it contains instructions for openmpi fortran
-codes).
+ scalapack = True
 
 Then::
 
@@ -42,7 +32,7 @@ This will build two things:
   calculations.  The interpreter has GPAW's C-code build in.  The
   executable is in :file:`~/gpaw/build/bin.{<platform>}-2.5/`.
 
-The :file:`gpaw-python` interpreter will only be made if
+**Note** the :file:`gpaw-python` interpreter will only be made if
 :file:`setup.py` found an ``mpicc`` compiler.
 
 Put :file:`~/gpaw` in your :envvar:`$PYTHONPATH` and
@@ -135,3 +125,11 @@ with spin up on one processor and spin down on the other.  If you run
 the example on 4 processors, you should get parallelization over both
 spins and the domain.
 
+If you enabled scalapack, do::
+
+  [gpaw]$ cd ../test
+  [demo]$ mpirun -np 2 gpaw-python CH4.py --sl_diagonalize=1,2,2,4
+
+This will enable scalapack's diagonalization on a 1x2 blacs grid
+with the block size of 2. Scalapack can be currently used
+only in cases **without** k-points.

@@ -447,6 +447,20 @@ found at :ref:`parallel_runs`
 Linux cluster Niflheim - Infiniband nodes
 =========================================
 
+**On slid and thul machines only**: if you want to use a parallel
+version, modify :file:`customize.py`::
+
+ libraries += ['gfortran']
+
+and apply the openmpi environment settings::
+
+  [~]$ source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.csh
+
+To make it the default setting add the line to your
+:file:`~/.tcshrc`. See :wiki:`niflheim/Parallelization` for details
+(note however, that it contains instructions for openmpi fortran
+codes).
+
 A subset of the Niflheim's nodes is equipped with Infiniband network
 `<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_.
 

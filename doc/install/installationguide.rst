@@ -29,11 +29,11 @@ Standard installation
 
 1) :ref:`download` the code.
 
-2) Go to the :file:`gpaw` directory (:file:`gpaw-0.3` if you use the tar-ball)::
+2) Go to the :file:`gpaw-*` directory (:file:`gpaw` if you use svn's "Latest development release"):
 
-     [~]$ cd gpaw
+     [~]$ cd gpaw-*
 
-3) or, alternatively, install with the standard::
+3) install with the standard::
 
      [gpaw]$ python setup.py install
 
@@ -45,6 +45,9 @@ Standard installation
    :file:`{<my-directory>}/lib64/python`) in your :envvar:`$PYTHONPATH` 
    environment variable.  Usually :envvar:`$HOME` is a good choice for
    :file:`{<my-directory>}`.
+
+   **Note** that this installation is suitable only as a first try,
+   if you install on a cluster, please follow :ref:`install_custom_installation`.
 
 4) Get the tar file :file:`gpaw-setups-{<version>}.tar.gz` from the 
    :ref:`setups` page
@@ -77,7 +80,7 @@ If you are a developer, you will want to install the code in a
 different way to allow code updates via SVN update.  See
 :ref:`developer_installation`.
 
-
+.. _install_custom_installation:
 
 Custom installation
 ===================
@@ -97,7 +100,8 @@ Now, gpaw would be built with "``-Lpath_to_myblas -lmyblas
 itself for more possible options. After editing :svn:`customize.py`,
 follow the instructions for the standard installation from step 3 on.
 
-
+:ref:`platforms_and_architectures` provides examples of settings
+on different platforms.
 
 Parallel installation
 =====================
@@ -105,6 +109,13 @@ Parallel installation
 By default, setup looks if :program:`mpicc` is available, and if setup
 finds one, a parallel version is build. If the setup does not find
 mpicc, a user can specify one in the :svn:`customize.py` file.
+
+Additionally a user may want to enable scalapack, setting in :file:`customize.py`::
+
+ scalapack = True
+
+and, if needed, providing blacs/scalapack `libraries` and `library_dirs`
+as described in :ref:`install_custom_installation`.
 
 For the parallel calculations, a special :program:`gpaw-python`
 python-interpreter is created. If GPAW was installed without root
