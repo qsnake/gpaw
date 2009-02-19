@@ -580,17 +580,18 @@ def symmetry2(l, display=True):
             print str(key) + ' = ' + str(value[0]) + ' * ' + str(value[1:])
     else: return diff
 
-
-def construct_spherical_harmonic_c_function(filename='spherical_harmonics.h',
-                                            lmax=4):
-    file = open(filename, 'w')
+def construct_spherical_harmonic_c_function(file, lmax, funcname,
+                                            multiply=None, deriv=None):
+    """Construct a macro for evaluating values of spherical harmonics,
+    or the derivative of any spherical harmonic with respect to some axis.
+    The deriv keyword corresponds to that of the Y_to_string function."""
     w = file.write
     indent = 0
     def wn(string=''):
         w(2 * indent * ' ')
         w(string)
         w('\\\n')
-    wn('#define spherical_harmonics(l, f, x, y, z, r2, p) (')
+    wn('#define %s(l, f, x, y, z, r2, p) (' % funcname)
     indent = 2
     wn('{')
     wn('  switch(l)')
@@ -601,7 +602,7 @@ def construct_spherical_harmonic_c_function(filename='spherical_harmonics.h',
         wn('case %d:' % l)
         indent += 1
         for M, m in enumerate(range(-l, l + 1)):
-            Ystr = Y_to_string(l, m, numeric=True)
+            Ystr = Y_to_string(l, m, numeric=True, deriv=deriv)
             wn('p[%d] = f * %s;' % (M, Ystr))
         wn('break;')
         indent -= 1
@@ -613,6 +614,18 @@ def construct_spherical_harmonic_c_function(filename='spherical_harmonics.h',
     indent = 0
     wn(')')
     w('\n')
+
+
+def construct_spherical_harmonic_c_code(filename='spherical_harmonics.h',
+                                        lmax=4):
+    """Construct macros for evaluating spherical harmonics as well as their
+    derivatives."""
+    file = open(filename, 'w')
+    construct = construct_spherical_harmonic_c_function
+    construct(file, lmax, 'spherical_harmonics')
+    for c in range(3):
+        construct(file, lmax, 'spherical_harmonics_derivative_%s' % 'xyz'[c],
+                  multiply=c, deriv=c)
     file.close()
 
     
@@ -767,4 +780,4 @@ def construct_spherical_code(lmax=3):
 
 
 if __name__ == '__main__':
-    construct_spherical_harmonic_c_function()
+    construct_spherical_harmonic_c_code()

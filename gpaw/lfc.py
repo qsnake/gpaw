@@ -68,15 +68,15 @@ class Sphere:
         self.M_w = None
         self.sdisp_wc = None
 
-    def set_position(self, spos_c, gd, cut, ibzk_qc):
+    def set_position(self, spos_c, gd, cut):
         if self.spos_c is not None and not (self.spos_c - spos_c).any():
             return False
 
         self.A_wgm = []
         self.G_wb = []
         self.M_w = []
-        if ibzk_qc is not None:
-            self.sdisp_wc = []
+        self.sdisp_wc = []
+        
         ng = 0
         M = 0
         for spline in self.spline_j:
@@ -89,8 +89,7 @@ class Sphere:
                     self.A_wgm.append(A_gm)
                     self.G_wb.append(G_b)
                     self.M_w.append(M)
-                    if ibzk_qc is not None:
-                        self.sdisp_wc.append(sdisp_c)
+                    self.sdisp_wc.append(sdisp_c)
                     ng += A_gm.shape[0]
                     assert A_gm.shape[0] > 0
             M += 2 * l + 1
@@ -105,8 +104,7 @@ class Sphere:
             self.A_wgm = None
             self.G_wb = None
             self.M_w = None
-            if ibzk_qc is not None:
-                self.sdisp_wc = None
+            self.sdisp_wc = None
             
         self.spos_c = spos_c
         return True
@@ -176,8 +174,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
     def set_positions(self, spos_ac):
         movement = False
         for spos_c, sphere in zip(spos_ac, self.sphere_a):
-            movement |= sphere.set_position(spos_c, self.gd, self.cut,
-                                            self.ibzk_qc)
+            movement |= sphere.set_position(spos_c, self.gd, self.cut)
 
         if movement:
             self._update(spos_ac)
@@ -211,9 +208,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.G_B = np.empty(nB, np.intc)
         self.W_B = np.empty(nB, np.intc)
         self.A_Wgm = []
-        if not self.gamma:
-            sdisp_Wc = np.empty((nW, 3), int)
-            
+        sdisp_Wc = np.empty((nW, 3), int)
+        self.pos_Wv = np.empty((nW, 3))        
+        
         B1 = 0
         W = 0
         for a in self.atom_indices:
@@ -221,8 +218,10 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             self.A_Wgm.extend(sphere.A_wgm)
             nw = len(sphere.M_w)
             self.M_W[W:W + nw] = self.M_a[a] + np.array(sphere.M_w)
-            if not self.gamma:
-                sdisp_Wc[W:W + nw] = sphere.sdisp_wc
+            sdisp_Wc[W:W + nw] = sphere.sdisp_wc
+            self.pos_Wv[W:W + nw] = np.dot(spos_ac[a] -
+                                           np.array(sphere.sdisp_wc),
+                                           self.gd.domain.cell_cv)
             for G_b in sphere.G_wb:
                 B2 = B1 + len(G_b)
                 self.G_B[B1:B2] = G_b
@@ -236,7 +235,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             self.phase_qW = np.empty((0, nW), complex)
         else:
             self.phase_qW = np.exp(2j * pi * np.inner(self.ibzk_qc, sdisp_Wc))
-        
+
         indices = np.argsort(self.G_B, kind='mergesort')
         self.G_B = self.G_B[indices]
         self.W_B = self.W_B[indices]
@@ -472,6 +471,20 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
         """
         for C_M, psit_G in zip(C_nM, psit_nG):
             self.lfc.lcao_to_grid(C_M, psit_G, q)
+
+    def calculate_potential_matrix_derivative(self, vt_G, DVt_MMc, q):
+        cspline_M = []
+        for a, sphere in enumerate(self.sphere_a):
+            for j, spline in enumerate(sphere.spline_j):
+                nm = 2 * spline.get_angular_momentum_number() + 1
+                cspline_M.extend([spline.spline] * nm)
+        gd = self.gd
+        dom = gd.domain
+        h_cv = dom.cell_cv / gd.N_c
+        self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_MMc, h_cv,
+                                                       gd.n_c, q,
+                                                       np.array(cspline_M),
+                                                       gd.beg_c, self.pos_Wv)
 
     # Python implementations:
     if 0:

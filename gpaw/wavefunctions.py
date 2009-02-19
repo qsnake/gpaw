@@ -325,14 +325,7 @@ class LCAOWaveFunctions(WaveFunctions):
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
 
     def calculate_forces(self, hamiltonian, F_av):
-        # This will do a whole lot of unnecessary allocation, but we'll
-        # do better later
-        grid_bfs = LFC(self.gd, [s.phit_j for s in self.setups],
-                       self.kpt_comm, dtype=self.dtype, forces=True, cut=True)
         spos_ac = hamiltonian.vbar.spos_ac # XXX ugly way to obtain spos_ac
-        if not self.gamma:
-            grid_bfs.set_k_points(self.ibzk_kc)
-        grid_bfs.set_positions(spos_ac)
 
         # This will recalculate everything, which again is not necessary
         # But it won't bother non-force calculations
@@ -357,7 +350,7 @@ class LCAOWaveFunctions(WaveFunctions):
         for kpt in self.kpt_u:            
             self.calculate_forces_kpoint_lcao(kpt, hamiltonian,
                                               F_av, tci,
-                                              grid_bfs, S_qMM[kpt.k],
+                                              S_qMM[kpt.k],
                                               T_qMM[kpt.k],
                                               P_aqMi)
 
@@ -416,34 +409,29 @@ class LCAOWaveFunctions(WaveFunctions):
         return dThetadR_mm * tci.mask_amm[a] + pawcorrection_mm
 
     def calculate_all_potential_derivatives(self, tci, hamiltonian, kpt,
-                                            grid_bfs, rho_MM):
+                                            rho_MM):
         nao = self.setups.nao
         vt_G = hamiltonian.vt_sG[kpt.s]
-
-        phit_1G = grid_bfs.gd.empty(1, self.dtype)
-        derivs_a1iv = grid_bfs.dict(1, derivative=True)
-        derivs_aMiv = grid_bfs.dict(nao, derivative=True)
         dEdndndR_av = np.zeros((len(self.setups), 3))
+        rho_hc_MM = rho_MM.T.conj()
 
-        for M in range(nao):
-            phit_1G[:] = 0.0
-            coef_1M = np.zeros((1, nao), self.dtype)
-            coef_1M[0, M] = 1.0
+        DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
+        self.basis_functions.calculate_potential_matrix_derivative(vt_G,
+                                                                   DVt_MMv,
+                                                                   kpt.q)
+        self.gd.comm.sum(DVt_MMv)
 
-            self.basis_functions.lcao_to_grid(coef_1M, phit_1G, kpt.q)
-            grid_bfs.derivative(phit_1G * vt_G, derivs_a1iv, kpt.q)
-            for b, derivs_1iv in derivs_a1iv.items():
-                derivs_aMiv[b][M, :, :] = derivs_1iv[0, :, :]
-
-        for b, derivs_Miv in derivs_aMiv.items():
+        print DVt_MMv[0:4, 0:4, 2].real
+        
+        for b in self.basis_functions.my_atom_indices:
             M1 = self.basis_functions.M_a[b]
             M2 = M1 + self.setups[b].niAO
             for v in range(3):
-                forcecontrib = -2 * np.dot(rho_MM[M1:M2, :],
-                                           derivs_Miv[:, :, v]).real.trace()
+                forcecontrib = -2 * np.dot(DVt_MMv[M1:M2, :, v],
+                                           rho_hc_MM[:, M1:M2]).real.trace()
                 dEdndndR_av[b, v] = forcecontrib
 
-        self.gd.comm.sum(dEdndndR_av)
+        #self.gd.comm.sum(dEdndndR_av) #??
         return dEdndndR_av
 
     def calculate_potential_derivatives(self, tci, a, hamiltonian, kpt,
@@ -484,8 +472,7 @@ class LCAOWaveFunctions(WaveFunctions):
         return dEdndndR_v
 
     def calculate_forces_kpoint_lcao(self, kpt, hamiltonian,
-                                     F_av, tci, grid_bfs, S_MM,
-                                     T_MM, P_aqMi):
+                                     F_av, tci, S_MM, T_MM, P_aqMi):
         k = kpt.k
         if kpt.rho_MM is None:
             rho_MM = np.dot(kpt.C_nM.T.conj() * kpt.f_n, kpt.C_nM)
@@ -494,7 +481,7 @@ class LCAOWaveFunctions(WaveFunctions):
 
         dEdndndR_av = self.calculate_all_potential_derivatives(tci,
                                                                hamiltonian,
-                                                               kpt, grid_bfs,
+                                                               kpt,
                                                                rho_MM)
         dTdR_vMM = tci.dTdR_kcmm[k]
 
@@ -518,14 +505,14 @@ class LCAOWaveFunctions(WaveFunctions):
             dPdR_vMi = tci.dPdR_akcmi[a][k]
             mask_MM = tci.mask_amm[a]
             self.calculate_force_on_atom_lcao(a, kpt, hamiltonian, F_av[a],
-                                              tci, grid_bfs, T_MM,
+                                              tci, T_MM,
                                               P_aqMi,
                                               rho_MM, dTdR_vMM, dPdR_vMi,
                                               mask_MM, H_MM, ChcEFC_MM,
                                               dEdndndR_av)
 
     def calculate_force_on_atom_lcao(self, a, kpt, hamiltonian, F_v, tci,
-                                     grid_bfs, T_MM, P_aqMi, rho_MM,
+                                     T_MM, P_aqMi, rho_MM,
                                      dTdR_vMM, dPdR_vMi, mask_MM, H_MM,
                                      ChcEFC_MM, dEdndndR_av):
         k = kpt.k

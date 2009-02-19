@@ -21,7 +21,7 @@ typedef struct
   int* G_B;                  // boundary grid points
   int* W_B;                  // volume numbers
   int* i_W;                  // mapping from all volumes to current volumes
-  int* ngm_W;                // number of grid poinst per volume
+  int* ngm_W;                // number of grid points per volume
   bool bloch_boundary_conditions;  // Gamma-point calculation?
   complex double* phase_kW;  // phase factors: exp(ik.R)
   complex double* phase_i;   // phase factors for current volumes
@@ -45,6 +45,7 @@ typedef struct
       int nG = Gb - Ga;                                            \
       if (nG > 0)                                                  \
         {
+
 #define GRID_LOOP_STOP(lfc, k)                                     \
           for (int i = 0; i < ni; i++)                             \
             volume_i[i].A_gm += nG * volume_i[i].nm;               \
