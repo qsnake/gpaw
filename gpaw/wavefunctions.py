@@ -421,8 +421,6 @@ class LCAOWaveFunctions(WaveFunctions):
                                                                    kpt.q)
         self.gd.comm.sum(DVt_MMv)
 
-        print DVt_MMv[0:4, 0:4, 2].real
-        
         for b in self.basis_functions.my_atom_indices:
             M1 = self.basis_functions.M_a[b]
             M2 = M1 + self.setups[b].niAO
