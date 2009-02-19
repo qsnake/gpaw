@@ -341,7 +341,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
         Nx = int(np.prod(xshape))
         a_xG = a_xG.reshape((Nx,) + Gshape)
-        c_xM = np.zeros((Nx, self.Mmax))
+        c_xM = np.zeros((Nx, self.Mmax), a_xG.dtype)
         for a_G, c_M in zip(a_xG, c_xM):
             self.lfc.integrate(a_G, c_M, q)
         
