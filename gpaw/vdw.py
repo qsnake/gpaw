@@ -155,6 +155,12 @@ class VDWFunctional:
     def apply_non_local(self, kpt):
         pass
 
+    def get_non_local_kinetic_corrections(self):
+        return 0.0
+
+    def adjust_non_local_residual(self, pR_G, dR_G, kpt, n):
+        pass
+    
     def get_non_local_energy(self, n_g=None, a2_g=None, e_LDAc_g=None,
                              v_LDAc_g=None, v_g=None, deda2_g=None):
         """Calculate non-local correlation energy.
