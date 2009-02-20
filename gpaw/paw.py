@@ -85,6 +85,7 @@ class PAW(PAWTextOutput):
             self.atoms = gpaw.io.read_atoms(reader)
             self.input_parameters.read(reader)
             self.input_parameters.txt = kwargs.pop('txt', '-')
+            self.input_parameters.idiotproof = kwargs.pop('idiotproof', True)
             self.initialize()
             self.read(reader)
             
@@ -149,7 +150,7 @@ class PAW(PAWTextOutput):
                 self.wfs = EmptyWaveFunctions()
             else:
                 raise TypeError('Unknown keyword argument:' + key)
-            
+         
         p.update(kwargs)
 
     def calculate(self, atoms=None, converge=False,
