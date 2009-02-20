@@ -186,6 +186,5 @@ class TauTimer(Timer):
         pytau.stop(self.timers[name])
 
     def write(self, out=sys.stdout):
-        # Forces TAU to dump all its timing data.
-        # pytau.dbDump()
-        return
+        self.stop('PAW_calc')
+
