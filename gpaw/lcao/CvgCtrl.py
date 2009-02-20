@@ -46,12 +46,6 @@ class CvgCtrl:
             ctrlmode = 'SelfCtrl'
         else:
             ctrlmode = 'Co-Ctrl'
-        #print self.matname + 'CvgCtrl: Init:Method=', self.cvgmethod,\
-        #                'tol0', self.tol, 'ctrlmode=', ctrlmode, \
-        #                        'steady_check0', self.bstdchk
-        #print 'alpha=', self.alpha, 'ndiis0', self.ndiis, 'tolx0', self.tolx
-        # print 'alpha_control_method=', self.asmethod, 'alphascaling=', \
-        #              self.alphascaling, 'allowedmatmax=', self.allowedmatmax
     
     def cvgjudge(self, matin, txt):
         dmatmax = 0
@@ -78,16 +72,8 @@ class CvgCtrl:
                             %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg))
                         print 'Density: dmatmax= [%d %d, %d] %f tol=%f isCvg=%d'\
                             %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg)
-            self.record_dmatmax.append(dmatmax)   #attention here, vector push_back in C
-        #elif self.matname == 'd':
-            #if self.step > 0:
-             #   dmatmax = npy.max(npy.abs(self.matlast - matin.nt_sG))
-              #  if dmatmax < self.tol:
-               #     self.bcvg = 1
-               # if self.tol >= 0:
-                #    print  'Density: dmatmax= %f tol=%f isCvg=%d'\
-                 #           %(dmatmax, self.tol, self.bcvg)                    
-            #self.record_dmatmax.append(dmatmax)   #attention here, vector push_back in C            
+            self.record_dmatmax.append(dmatmax)
+         
     def matcvg(self, matin, txt):
         if self.tol >= 0:
             self.cvgjudge(matin, txt)
@@ -103,29 +89,20 @@ class CvgCtrl:
             matout = self.linear_cvg(matin)
         elif self.cvgmethod == 'CVG_Broydn':
             matout = self.broydn(matin)
-            #self.broydn(matin)
         elif self.cvgmethod == 'CVG_Broydn_lnsrch':
             matout = self.broydn_lnsrch(matin)
-        #if self.matname == 'f':
         self.matlast = npy.copy(matout)
-        #elif self.matname == 'd':
-        #    self.matlast = npy.copy(matin.nt_sG)
         self.step = self.step + 1
-        #if self.matname =='f':
         return matout
     
     def broydn(self,matin):
-        nmaxold = 20
+        nmaxold = self.ndiis
         if self.step >= 2:
             self.dmat[1] = npy.copy(self.dmat[0])
         if self.step > 0:
             self.dmat[0] = matin - self.mat[0]
-            fmin = npy.sum(self.dmat[0] * self.dmat[0]) #attention here matDotSum in C
-            #print self.matname + 'CvgCtrl: broydn: fmin=', fmin
+            fmin = npy.sum(self.dmat[0] * self.dmat[0]) 
         if self.step == 0:
-            #self.dmat = [npy.empty(matin.shape), npy.empty(matin.shape)]
-            #self.mat = [npy.empty(matin.shape), npy.empty(matin.shape)] 
-            #self.eta = npy.empty(matin.shape)
             self.dmat = [npy.empty(matin.shape,complex), npy.empty(matin.shape,complex)]
             self.mat = [npy.empty(matin.shape, complex), npy.empty(matin.shape, complex)] 
             self.eta = npy.empty(matin.shape, complex)
@@ -142,7 +119,7 @@ class CvgCtrl:
                     del self.u[0]
                 self.v.append((self.dmat[0] - self.dmat[1]) / 
                     npy.sum((self.dmat[0] - self.dmat[1]) * (self.dmat[0]-
-                                                    self.dmat[1]))) #matDotSum
+                                                    self.dmat[1])))
                 if len(self.v) < nmaxold:
                     for i in range(self.step - 1):
                         self.c.append(npy.sum(self.v[i] * self.dmat[0])) 
@@ -151,7 +128,7 @@ class CvgCtrl:
                         self.c.append(npy.sum(self.v[i] * self.dmat[0]))
                 self.u.append(self.alpha * (self.dmat[0] - self.dmat[1]) + 
                                                 (self.mat[0]-self.mat[1]))
-                usize = len(self.u)     #usize=step-1
+                usize = len(self.u)    
                 for i in range(usize - 1):
                     a = npy.sum(self.v[i] * (self.dmat[0] - self.dmat[1]))
                     self.u[usize - 1] = self.u[usize - 1] - a * self.u[i]
@@ -163,116 +140,7 @@ class CvgCtrl:
         self.mat[1] = npy.copy(self.mat[0])
         self.mat[0] = npy.copy(matout)
         return matout
-    '''
-    
-    def broydn(self, density):
-        nt_G = density.nt_sG
-        D_asp = density.D_asp.values()
-        D_sap = []
-        for s in range(density.nspins):
-            D_sap.append([D_sp[s] for D_sp in D_asp])
-        D_tap = D_sap[0]            
-        if self.step >= 2:
-            self.d_nt_G[1] = npy.copy(self.d_nt_G[0])
-            for d_D_ap in self.d_D_ap:
-                d_D_ap[1] = npy.copy(d_D_ap[0])
-        if self.step > 0:
-            self.d_nt_G[0] = nt_G - self.nt_iG[0]
-            for D_ap, d_D_ap, D_iap in zip(D_tap, self.d_D_ap, self.D_iap):
-                d_D_ap[0] = D_ap - D_iap[0]
-            fmin = npy.sum(self.d_nt_G[0] * self.d_nt_G[0]) #attention here matDotSum in C
-            self.dNt = density.gd.integrate(npy.fabs(self.d_nt_G[0]))
-            #print self.matname + 'CvgCtrl: broydn: fmin=', fmin
-        if self.step == 0:
-            self.d_nt_G = [npy.empty(nt_G.shape), npy.empty(nt_G.shape)]
-            #self.d_D_ap = [npy.empty(D_ap.shape), npy.empty(D_ap.shape)]
-            self.nt_iG = [npy.empty(nt_G.shape), npy.empty(nt_G.shape)]
-            #self.D_iap = [npy.empty(D_ap.shape), npy.empty(D_ap.shape)]
-            self.eta_G = npy.empty(nt_G.shape)
-            #self.eta_D = npy.empty(D_ap.shape)
-            self.len_D_ap = len(D_tap)
-            self.d_D_ap = []
-            self.D_iap = []
-            self.u_D = []
-            self.v_D = []
-            self.eta_D = []
-            self.D_ap_out = []
-            for i in range(self.len_D_ap):
-                self.d_D_ap.append([npy.empty(D_tap[0].shape), npy.empty(D_tap[0].shape)])
-                self.D_iap.append([npy.empty(D_tap[0].shape), npy.empty(D_tap[0].shape)])
-                self.eta_D.append(npy.empty(D_tap[0].shape))
-                self.u_D.append([])
-                #self.v_D.append([])
-                self.D_ap_out.append(npy.empty(D_tap[0].shape))
-            self.c_G = []
-            self.v_G = []
-            #self.v_D = []
-            self.u_G = []
-            #self.u_D = []
-            self.nt_iG[0] = npy.copy(nt_G)
-            for D_ap, D_iap in zip(D_tap, self.D_iap):
-                D_iap[0] = npy.copy(D_ap)
-            nt_G_out = npy.copy(nt_G)
-            for i in range(self.len_D_ap): 
-                self.D_ap_out[i] = npy.copy(D_tap[i])
-        else:
-            if self.step >= 2:
-                del self.c_G[:]
-                self.v_G.append((self.d_nt_G[0] - self.d_nt_G[1]) / 
-                    npy.sum((self.d_nt_G[0] - self.d_nt_G[1]) * (self.d_nt_G[0]-
-                                                    self.d_nt_G[1]))) #matDotSum
-                for i in range(self.step - 1):
-                    self.c_G.append(npy.sum(self.v_G[i] * self.d_nt_G[0])) #matDotSum
-                self.u_G.append(self.alpha * (self.d_nt_G[0] - self.d_nt_G[1]) + 
-                                                (self.nt_iG[0]-self.nt_iG[1]))
-                for i in range(self.len_D_ap):
-                    self.u_D[i].append(self.alpha * (self.d_D_ap[i][0] - self.d_D_ap[i][1]) + 
-                                                (self.D_iap[i][0]- self.D_iap[i][1]))
-                usize = len(self.u_G)     #usize=step-1
-                for i in range(usize - 1):
-                    a_G = npy.sum(self.v_G[i] * (self.d_nt_G[0] - self.d_nt_G[1]))
-                    self.u_G[usize - 1] = self.u_G[usize - 1] - a_G * self.u_G[i]
-                    for j in range(self.len_D_ap):
-                        self.u_D[j][usize - 1] = self.u_D[j][usize - 1] - a_G * self.u_D[j][i]
-            self.eta_G = self.alpha * self.d_nt_G[0]
-            for i in range(self.len_D_ap):
-                self.eta_D[i] = self.alpha * self.d_D_ap[i][0]
-            usize = len(self.u_G)  # usize= step-1
-            for i in range(usize):
-                self.eta_G = self.eta_G - self.c_G[i] * self.u_G[i]
-                for j in range(self.len_D_ap):
-                    self.eta_D[j] -= self.c_G[i] * self.u_D[j][i]
-            nt_G_out = self.nt_iG[0] + self.eta_G
-            for i in range(self.len_D_ap):
-                self.D_ap_out[i] = self.D_iap[i][0] + self.eta_D[i]
-        self.nt_iG[1] = npy.copy(self.nt_iG[0])
-        for D_iap in self.D_iap:
-            D_iap[1] = npy.copy(D_iap[0])
-        self.nt_iG[0] = npy.copy(nt_G_out)
-        for D_iap, D_ap_out in zip(self.D_iap, self.D_ap_out):
-            D_iap[0] = npy.copy(D_ap_out)
-        density.nt_sG = nt_G_out
-        for i in range(self.len_D_ap):
-            density.D_asp[i][0] = npy.copy(self.D_ap_out[i])
-        
-    '''
-        
-   
-        
-        
-    def linear_cvg(self, matin):
-        if self.step == 0:
-            matout = npy.copy(matin)
-            self.mat = [npy.empty(matin.shape)]
-        else:
-            dmatmax = npy.max(abs(self.mat[0]))
-            matout = self.alpha * matin + (1 - self.alpha) * self.mat[0]
-        if self.step !=0:
-            print '%sCvgCtrl, LinearCvg, alpha= %f' %(self.matname, self.alpha)
-        self.mat[0] = npy.copy(matout)
-        return matout
-            
-        
+  
     def broydn_lnsrch(self, matin):
         row = matin.shape[-2] 
         col = matin.shape[-1]
@@ -291,7 +159,7 @@ class CvgCtrl:
         else:
             self.dmat[0] = matin - self.mat[0]
             if self.step > 1:
-                self.fmin = npy.sum(self.dmat[0] * self.dmat[0]) #attention here, matDotSum    
+                self.fmin = npy.sum(self.dmat[0] * self.dmat[0])   
             if self.step > self.asbeginstep:
                 self.bscalealpha = True
             if self.step == 1 or self.alam < self.alamin \
@@ -299,7 +167,6 @@ class CvgCtrl:
                                                    or not self.bscalealpha:
                 if self.step >= 2:
                     del self.c[:]
-                    #matDotSum
                     self.v.append((self.dmat[0] - self.dmat[1]) / npy.sum((
                                                self.dmat[0] - self.dmat[1]) *
                                                (self.dmat[0] - self.dmat[1]))) 
@@ -307,17 +174,17 @@ class CvgCtrl:
                     self.u.append(self.alpha * (self.dmat[0] - self.dmat[1])
                                                 + (self.mat[0] - self.mat[1]))
  
-                    usize = len(self.u)  #usize=step-1
+                    usize = len(self.u) 
                     for i in range(usize):
-                        self.c.append(npy.sum(self.v[i] * self.dmat[0])) #matDotSum
+                        self.c.append(npy.sum(self.v[i] * self.dmat[0])) 
                     for i in range(usize - 1):
-                        a = npy.sum(self.v[i] * (self.dmat[0] - self.dmat[1]))#matDotSum
+                        a = npy.sum(self.v[i] * (self.dmat[0] - self.dmat[1]))
                         self.u[usize - 1] -=  a * self.u[i]
                 self.eta = self.alpha * self.dmat[0]
-                usize = len(self.u) # usize= step -1
+                usize = len(self.u) 
                 for i in range(usize):
                     self.eta -= self.c[i] * self.u[i]
-                self.fold = npy.sum(self.dmat[0] * self.dmat[0])  #matDotSum
+                self.fold = npy.sum(self.dmat[0] * self.dmat[0]) 
                 self.slope = -self.fold
                 
                 if len(self.eta.shape) == 2:
