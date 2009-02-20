@@ -579,7 +579,7 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
           iz = iza;
           LFVolume* v1 = volume_i + i1;
           int M1 = v1->M;
-          SplineObject* spline_obj = spline_obj_M[M1];
+          const SplineObject* spline_obj = spline_obj_M[M1];
           const bmgsspline* spline = \
             (const bmgsspline*)(&(spline_obj->spline));
           
@@ -682,7 +682,7 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
           iz = iza;
           LFVolume* v1 = volume_i + i1;
           int M1 = v1->M;
-          SplineObject* spline_obj = spline_obj_M[M1];
+          const SplineObject* spline_obj = spline_obj_M[M1];
           const bmgsspline* spline = \
             (const bmgsspline*)(&(spline_obj->spline));
           
