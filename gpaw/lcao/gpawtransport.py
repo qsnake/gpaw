@@ -497,6 +497,8 @@ class GPAWTransport:
             self.print_info('Warning*: hamiltonian boundary difference %f' %
                                                      e_diff)
             self.do_shift = True
+            for i in range(nspins):
+                self.h_spkmm[i] -= self.zero_shift * self.s_pkmm
         self.zero_shift = e_diff
         matdiff = self.d_spkmm[:, :, :pl1, :pl1] - self.d1_spkmm
         print_diff = np.max(abs(matdiff))
