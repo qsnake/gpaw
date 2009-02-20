@@ -252,6 +252,22 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.gd.comm.all_gather(x_a, x_ra)
         for a in self.atom_indices:
             self.sphere_a[a].ranks = x_ra[:, a].nonzero()[0]
+
+    def M_to_ai(self, src_xM, dst_axi):
+        xshape = src_xM.shape[:-1]
+        src_xM = src_xM.reshape(np.prod(xshape), self.Mmax)        
+        for a in self.my_atom_indices:
+            M1 = self.M_a[a]
+            M2 = M1 + self.sphere_a[a].Mmax
+            dst_axi[a] = src_xM[:, M1:M2].copy()
+
+    def ai_to_M(self, src_axi, dst_xM):
+        xshape = dst_xM.shape[:-1]
+        dst_xM = dst_xM.reshape(np.prod(xshape), self.Mmax)
+        for a in self.my_atom_indices:
+            M1 = self.M_a[a]
+            M2 = M1 + self.sphere_a[a].Mmax
+            dst_xM[:, M1:M2] = src_axi[a]
     
     def add(self, a_xG, c_axi=1.0, q=-1):
         """Add localized functions to extended arrays.
@@ -468,6 +484,17 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
             self.lfc.lcao_to_grid(C_M, psit_G, q)
 
     def calculate_potential_matrix_derivative(self, vt_G, DVt_MMc, q):
+        """Calculate derivatives of potential matrix elements.
+
+                   /     *  _
+                  |   Phi  (r)
+         ~c       |      mu    ~ _        _   _
+        DV      = |   -------- v(r) Phi  (r) dr
+          mu nu   |     dr             nu
+                 /        c
+
+        Results are added to DVt_MMc.
+        """
         cspline_M = []
         for a, sphere in enumerate(self.sphere_a):
             for j, spline in enumerate(sphere.spline_j):
