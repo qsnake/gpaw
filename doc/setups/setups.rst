@@ -25,11 +25,12 @@ Rb_  Sr_  Y    Zr_  Nb_  Mo_  Tc   Ru_  Rh_  Pd_  Ag_  Cd_  In   Sn_  Sb   Te   
 Cs_  Ba_  La_  Hf   Ta_  W_   Re   Os   Ir_  Pt_  Au_  Hg   Tl   Pb_  Bi   Po   At   Rn 
 ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
 
-See also `NIST Atomic Reference Data`_ and `Computational Chemistry Comparison and Benchmark DataBase`_.  Link to `Dacapo pseudo potentials`_.
+See also `NIST Atomic Reference Data`_ , `Computational Chemistry Comparison and Benchmark DataBase`_, `Dacapo pseudo potentials`_, and `Vasp pseudo potentials`_.
 
 .. _NIST Atomic Reference Data: http://physics.nist.gov/PhysRefData/DFTdata/Tables/ptable.html
 .. _Computational Chemistry Comparison and Benchmark DataBase: http://srdata.nist.gov/cccbdb/
 .. _Dacapo pseudo potentials: https://wiki.fysik.dtu.dk/dacapo/Pseudopotential_Library
+.. _Vasp pseudo potentials: http://cms.mpi.univie.ac.at/vasp/vasp/node236.html.
 
 
 .. toctree::
