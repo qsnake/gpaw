@@ -304,10 +304,10 @@ class PAW(PAWTextOutput):
             else:
                 dtype = complex
 
-        if isinstance(par.xc, XCFunctional):
-            xcfunc = par.xc
-        else:
+        if isinstance(par.xc, str):
             xcfunc = XCFunctional(par.xc, nspins)
+        else:
+            xcfunc = par.xc
 
         setups = Setups(Z_a, par.setups, par.basis, nspins, par.lmax, xcfunc)
 

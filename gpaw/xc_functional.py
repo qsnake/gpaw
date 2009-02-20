@@ -72,7 +72,7 @@ class XCFunctional:
             code = 3
             self.gga = True
             self.maxDerivativeLevel=1
-        elif '-' in xcname: # functionals from libxc
+        elif '-' in xcname and xcname != 'vdW-DF': # functionals from libxc
             assert (nspins is not None)
             code = 'lxc' # libxc
             self.uses_libxc = True
@@ -127,9 +127,10 @@ class XCFunctional:
             if self.setupname is None:
                 self.setupname = 'PBE'
         # End of: Abbreviations for common functionals from libxc
-        elif xcname == 'vdWDF':
-            code = 'vdWDF'
+        elif xcname in ['vdW-DF', 'vdWDF']:
+            code = 'vdW-DF'
             self.gga = True
+            self.setupname = 'revPBE'
         elif xcname == 'oldLDA':
             self.maxDerivativeLevel=2
             code = 117 # not used!
@@ -239,7 +240,7 @@ class XCFunctional:
             self.xc = ZeroFunctional()
         elif code == 9:
             self.xc = _gpaw.MGGAFunctional(code,local_tau)
-        elif code == 'vdWDF':
+        elif code == 'vdW-DF':
             from gpaw.vdw import FFTVDWFunctional
             self.xc = FFTVDWFunctional(nspins)
         elif code == 'gllb':

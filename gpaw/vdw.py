@@ -17,7 +17,7 @@ import pickle
 from math import sin, cos, exp, pi, log, sqrt, ceil
 
 import numpy as np
-from numpy.fft import fftn, fftfreq, fft
+from numpy.fft import fftn, fftfreq, fft, ifftn
 
 from gpaw.xc_functional import XCFunctional
 from gpaw.operators import Gradient
@@ -65,10 +65,16 @@ def hRPS(x, xc=1.0):
     x1 = x / xc
     xm = x1 * 1.0
     y = -x1
+    z = 1.0 + x1
     for m in range(2, 13):
         xm *= x1
         y -= xm / m
-    return xc * (1.0 - np.exp(y))
+        if m < 12:
+            z += xm
+    y = np.exp(y)
+    return xc * (1.0 - y), z * y
+
+Zab = -0.8491
 
 
 class VDWFunctional:
@@ -123,23 +129,34 @@ class VDWFunctional:
         self.mgga = not True
         self.hybrid = 0.0
         self.uses_libxc = False
+        self.gllb = False
+        self.xcname = 'vdw-DF'
 
         self.gd = None
-
+        self.energy_only = False
+        
     def set_grid_descriptor(self, gd):
         self.gd = gd
 
     def set_non_local_things(self, density, hamiltonian, wfs, atoms,
                              energy_only=False):
         self.set_grid_descriptor(density.finegd)
-
+        self.energy_only = energy_only
+        
     def is_gllb(self):
         return False
+
+    def get_name(self):
+        return 'vdW-DF'
+
+    def get_setup_name(self):
+        return 'revPBE'
     
     def apply_non_local(self, kpt):
         pass
 
-    def get_non_local_energy(self, n_g=None, a2_g=None, e_LDAc_g=None):
+    def get_non_local_energy(self, n_g=None, a2_g=None, e_LDAc_g=None,
+                             v_LDAc_g=None, v_g=None, deda2_g=None):
         """Calculate non-local correlation energy.
 
         parameters:
@@ -177,30 +194,40 @@ class VDWFunctional:
 
         # Calculate q0 and cut it off smoothly at q0cut:
         kF_g = (3 * pi**2 * n_g)**(1.0 / 3.0)
-        Zab = -0.8491
-        q0_g = hRPS(kF_g -
-                    4 * pi / 3 * e_LDAc_g / n_g -
-                    Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
+        q0_g, self.dhdx_g = hRPS(kF_g -
+                                 4 * pi / 3 * e_LDAc_g / n_g -
+                                 Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
 
+        if self.verbose:
+            print ('VDW: q0 (min, mean, max):',
+                   q0_g.min(), q0_g.mean(), q0_g.max())
+        
         # Distribute density and q0 to all processors:
         n_g = gd.collect(n_g, broadcast=True)
         q0_g = gd.collect(q0_g, broadcast=True)
 
-        return self.calculate_6d_integral(n_g, q0_g)
+        return self.calculate_6d_integral(n_g, q0_g, a2_g, e_LDAc_g, v_LDAc_g,
+                                          v_g, deda2_g)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g, deda2_g):
         """Calculate energy and potential."""
         # LDA correlation:
         e_LDAc_g = np.empty_like(e_g)
-        self.LDAc.calculate_spinpaired(e_LDAc_g, n_g, v_g)
-
+        v_LDAc_g = np.zeros_like(v_g)
+        self.LDAc.calculate_spinpaired(e_LDAc_g, n_g, v_LDAc_g)
+        v_g += v_LDAc_g
+        
         # revPBE exchange:
         self.revPBEx.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
         e_g += e_LDAc_g
         
         if n_g.ndim == 3:
             # Non-local part:
-            e = self.get_non_local_energy(n_g, a2_g, e_LDAc_g)
+            #v_g[:] = 0.0
+            #e_g[:] = 0.0
+            #deda2_g[:] = 0.0
+            e = self.get_non_local_energy(n_g, a2_g, e_LDAc_g, v_LDAc_g,
+                                          v_g, deda2_g)
             if self.gd.comm.rank == 0:
                 assert e_g.ndim == 1
                 e_g[0] += e / self.gd.dv
@@ -336,7 +363,9 @@ class RealSpaceVDWFunctional(VDWFunctional):
         self.repeat = repeat
         self.ncut = ncut
         
-    def calculate_6d_integral(self, n_g, q0_g):
+    def calculate_6d_integral(self, n_g, q0_g,
+                              a2_g=None, e_LDAc_g=None, v_LDAc_g=None,
+                              v_g=None, deda2_g=None):
         """Real-space double-sum."""
         gd = self.gd
         n_c = n_g.shape
@@ -534,7 +563,9 @@ class FFTVDWFunctional(VDWFunctional):
             print ('VDW: maximum kinetic energy: %.3f Hartree' %
                    (0.5 * k_k.max()**2))
 
-    def calculate_6d_integral(self, n_g, q0_g):
+    def calculate_6d_integral(self, n_g, q0_g,
+                              a2_g=None, e_LDAc_g=None, v_LDAc_g=None,
+                              v_g=None, deda2_g=None):
         if self.C_aip is None:
             self.construct_cubic_splines()
             self.construct_fourier_transformed_kernels()
@@ -544,22 +575,26 @@ class FFTVDWFunctional(VDWFunctional):
 
         world = self.world
 
-                
         i_g = (np.log(q0_g / self.q_a[1] * (self.lambd - 1) + 1) /
                log(self.lambd)).astype(int)
-        
+            
         dq0_g = q0_g - self.q_a[i_g]
-        theta_ak = {}
-
+        
         if self.verbose:
             print 'VDW: fft:',
             
+        theta_ak = {}
+        p_ag = {}
         for a in range(world.rank, N, world.size):
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
-            theta_ak[a] = fftn(n_g * (C_pg[0] + dq0_g *
-                                      (C_pg[1] + dq0_g *
-                                       (C_pg[2] + dq0_g * C_pg[3]))),
-                               self.shape).copy()
+            pa_g = (C_pg[0] + dq0_g *
+                    (C_pg[1] + dq0_g *
+                     (C_pg[2] + dq0_g * C_pg[3])))
+            theta_ak[a] = fftn(n_g * pa_g, self.shape).copy()
+
+            if not self.energy_only:
+                p_ag[a] = pa_g
+                
             if self.verbose:
                 print a,
                 sys.stdout.flush()
@@ -568,6 +603,7 @@ class FFTVDWFunctional(VDWFunctional):
             print
             print 'VDW: convolution:',
 
+        F_ag = {}
         dj_k = self.dj_k
         energy = 0.0
         for a in range(N):
@@ -585,11 +621,35 @@ class FFTVDWFunctional(VDWFunctional):
                 print a,
                 sys.stdout.flush()
 
+            if not self.energy_only:
+                F_ag[a] = ifftn(Fa_k)#.conj())
+                
         if self.verbose:
             print
 
+        if not self.energy_only:
+            self.calculate_potential(n_g, a2_g, i_g, dq0_g, p_ag, F_ag,
+                                     e_LDAc_g, v_LDAc_g,
+                                     v_g, deda2_g)
+
         return 0.5 * world.sum(energy) * gd.dv / self.shape.prod()
 
+    def calculate_potential(self, n_g, a2_g, i_g, dq0_g, p_ag, F_ag,
+                            e_LDAc_g, v_LDAc_g, v_g, deda2_g):
+        N = self.Nalpha
+
+        for a in range(N):
+            C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
+            dpadq0_g = C_pg[1] + dq0_g * (2 * C_pg[2] + 3 * dq0_g * C_pg[3])
+            dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
+                       4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
+                       7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
+                       n_g**(-11.0 / 3.0))
+            dthetaadn_g = p_ag[a] + n_g * dpadq0_g * dq0dn_g * self.dhdx_g
+            v_g += dthetaadn_g * F_ag[a]
+            dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+            dthetaada2_g = n_g * dpadq0_g * dq0da2_g * self.dhdx_g
+            deda2_g += dthetaada2_g * F_ag[a]
     
 def spline(x, y):
     n = len(y)
