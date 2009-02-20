@@ -27,6 +27,8 @@ install GPAW on a specific architecture.
 Standard installation
 =====================
 
+0) assuming bash
+
 1) :ref:`download` the code.
 
 2) Go to the :file:`gpaw-*` directory (:file:`gpaw` if you use svn's "Latest development release"):
@@ -35,11 +37,11 @@ Standard installation
 
 3) install with the standard::
 
-     [gpaw]$ python setup.py install
+     [gpaw]$ python setup.py install 2>&1 | tee install.log
 
    This step requires root permissions - if you don't have that, just do a::
 
-     [gpaw]$ python setup.py install --home=<my-directory>
+     [gpaw]$ python setup.py install --home=<my-directory>  2>&1 | tee install.log
 
    and put :file:`{<my-directory>}/lib/python` (or
    :file:`{<my-directory>}/lib64/python`) in your :envvar:`$PYTHONPATH` 
@@ -69,7 +71,7 @@ Standard installation
 5) Make sure that everything works by running the test suite::
 
      [gpaw]$ cd test
-     [test]$ python test.py
+     [test]$ python test.py 2>&1 | tee test.log
 
    This will take around 20 minutes.  Please report errors to the `GPAW 
    developer mailing list`_
@@ -121,7 +123,7 @@ For the parallel calculations, a special :program:`gpaw-python`
 python-interpreter is created. If GPAW was installed without root
 permissions, i.e.::
 
-  python setup.py install --home=<my-directory>
+  python setup.py install --home=<my-directory>  2>&1 | tee install.log
 
 :file:`{<my-directory>}/bin` should be added to
 :envvar:`PATH`. Alternatively, the full pathname

@@ -21,7 +21,7 @@ If you want to enable scalapack, modify :file:`customize.py`::
 Then::
 
   [~]$ cd gpaw
-  [gpaw]$ python setup.py build_ext
+  [gpaw]$ python setup.py build_ext 2>&1 | tee build_ext.log
 
 This will build two things:
 
@@ -106,7 +106,7 @@ file.
 Now, (after the developer installation), test the serial code::
 
   [gpaw]$ cd test
-  [test]$ python test.py
+  [test]$ python test.py 2>&1 | tee test.log
 
 If that works, you can go on and test the parallel code::
 
