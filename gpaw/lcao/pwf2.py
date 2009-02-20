@@ -29,45 +29,70 @@ def get_rot(F_MM, V_oM, L):
     return U_ow, U_lw, U_Ml
     
 
-def get_lcao_HSP(calc, bfs=None, spin=0):
+def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
+    """Some title.
+
+    if projectionsonly is True, return the projections::
+
+      V_qnM = <psi_qn | Phi_qM>
+
+    else, also return the Hamiltonian, overlap, and projector overlaps::
+
+      H_qMM  = <Phi_qM| H |Phi_qM'>
+      S_qMM  = <Phi_qM|Phi_qM'>
+      P_aqMi = <pt^a_qi|Phi_qM>
+    """
     spos_ac = calc.atoms.get_scaled_positions()
     nq = len(calc.wfs.ibzk_qc)
     nao = calc.wfs.setups.nao
     dtype = calc.wfs.dtype
     if bfs is None:
         bfs = get_bfs(calc)
-
-    tci = TwoCenterIntegrals(calc.domain, calc.wfs.setups, calc.wfs.gamma,
-                                  calc.wfs.ibzk_qc)
+    tci = TwoCenterIntegrals(calc.domain, calc.wfs.setups,
+                             calc.wfs.gamma, calc.wfs.ibzk_qc)
     tci.set_positions(spos_ac)
 
+    # Calculate projector overlaps, and (lower triangle of-) S and T matrices
     S_qMM = np.zeros((nq, nao, nao), dtype)
     T_qMM = np.zeros((nq, nao, nao), dtype)
     P_aqMi = {}
     for a in range(len(spos_ac)):
         ni = calc.wfs.setups[a].ni
         P_aqMi[a] = np.zeros((nq, nao, ni), dtype)
-
-    # Fill in the lower triangle
     tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi, dtype)
 
+    # Calculate projections
+    V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
+    for q, V_nM in enumerate(V_qnM):
+        bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM)
+        for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
+            dS_ii = calc.wfs.setups[a].O_ii
+            P_Mi = P_aqMi[a][q]
+            V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
+    if projectionsonly:
+        return V_qnM
+
+    # Determine potential matrix
     vt_G = calc.hamiltonian.vt_sG[spin]
     V_qMM = np.zeros((nq, nao, nao), dtype)
     for q, V_MM in enumerate(V_qMM):
         bfs.calculate_potential_matrix(vt_G, V_MM, q)
 
+    # Make Hamiltonian as sum of kinetic (T) and potential (V) matrices
+    # and add atomic corrections
     H_qMM = T_qMM + V_qMM
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
             H_MM +=  np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
     
+    # Fill in the upper triangles of H and S
     for H_MM, S_MM in zip(H_qMM, S_qMM):
-        tri2full(H_MM) # Fill in the upper triangle
-        tri2full(S_MM) # Fill in the upper triangle
+        tri2full(H_MM)
+        tri2full(S_MM)
     H_qMM *= Hartree
 
-    return H_qMM, S_qMM, P_aqMi
+    return V_qnM, H_qMM, S_qMM, P_aqMi
 
 
 def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
@@ -101,33 +126,6 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     return Vxc_qMM * Hartree
 
 
-def get_lcao_projections(calc, P_aqMi, lfc=None):
-    nq = len(calc.wfs.ibzk_qc)
-    nao = calc.wfs.setups.nao
-    V_qnM = np.zeros((nq, calc.wfs.nbands, nao), calc.wfs.dtype)
-    if lfc is None:
-        lfc = get_lfc(calc)
-
-    # Non local corrections
-    for q in range(nq):
-        for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
-            dS_ii = calc.wfs.setups[a].O_ii
-            P_Mi = P_aqMi[a][q]
-            V_qnM[q] += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
-
-    # Integrate the pseudo wave functions
-    V_qAni = [lfc.dict(calc.wfs.nbands) for q in range(nq)]
-    for q, V_Ani in enumerate(V_qAni):
-        lfc.integrate(calc.wfs.kpt_u[q].psit_nG[:], V_Ani, q)
-        M1 = 0
-        for A in V_Ani:
-            V_ni = V_Ani[A]
-            M2 = M1 + V_ni.shape[1]
-            V_qnM[q, :, M1:M2] += V_ni
-            M1 = M2
-    return V_qnM
-
-
 class ProjectedWannierFunctionsFBL:
     """PWF in the finite band limit.
 
@@ -140,6 +138,7 @@ class ProjectedWannierFunctionsFBL:
     def __init__(self, V_nM, No):
         Nw = V_nM.shape[1]
         V_oM, V_uM = V_nM[:No], V_nM[No:]
+        F_MM = np.dot(V_uM.T.conj(), V_uM)
         U_ow, U_lw, U_Ml = get_rot(F_MM, V_oM, Nw - No)
         self.U_nw = np.vstack((U_ow, dots(V_uM, U_Ml, U_lw)))
         self.S_ww = np.dot(self.U_nw.T.conj(), self.U_nw)
@@ -182,8 +181,7 @@ class ProjectedWannierFunctionsIBL:
                                                        F_MM, self.U_Mw)
         P_uw = np.dot(V_uM, self.U_Mw)
         self.norms_n = np.hstack((
-            np.dot(self.U_ow, la.solve(self.S_ww,
-                                       self.U_ow.T.conj())).diagonal(),
+            np.dot(U_ow, la.solve(self.S_ww, U_ow.T.conj())).diagonal(),
             np.dot(P_uw, la.solve(self.S_ww, P_uw.T.conj())).diagonal()))
 
     def rotate_matrix(self, A_oo, A_MM):
@@ -219,12 +217,12 @@ class PWF2:
         q = 0 # Temporary hack XXX
         eps_n = calc.get_eigenvalues(q) - Ef
         M = sum(eps_n <= fixedenergy)
-        V_qnM = get_lcao_projections(calc, get_lcao_HSP(calc)[2])
         kpt = calc.wfs.kpt_u[spin * nq + q]
         
         if ibl:
             bfs = get_bfs(calc)
-            H_qMM, S_qMM, P_aqMi = get_lcao_HSP(calc, bfs, spin=spin)
+            V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
+                calc, bfs=bfs, spin=spin, projectionsonly=False)
             H_qMM -= Ef * S_qMM
             pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
 
@@ -236,8 +234,8 @@ class PWF2:
                 dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
                 dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
         else:
+            V_qnM = get_lcao_projections_HSP(calc, spin=spin)
             pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M)
-
             H_ww = pwf.rotate_matrix(eps_n)
             xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin))
             w_wG = pwf.function(kpt.psit_nG[:])
