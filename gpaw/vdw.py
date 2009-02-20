@@ -205,7 +205,7 @@ class VDWFunctional:
                                  Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
 
         if self.verbose:
-            print ('VDW: q0 (min, mean, max):',
+            print ('VDW: q0 (min, mean, max): (%f, %f, %f)'%
                    q0_g.min(), q0_g.mean(), q0_g.max())
         
         # Distribute density and q0 to all processors:
