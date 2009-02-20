@@ -95,10 +95,10 @@ def read_and_check_results():
             continue
     
         nspins = calc.get_number_of_spins()
-        fa = calc.get_occupations(spin=0)
+        fa = calc.get_occupation_numbers(spin=0)
         assert ((fa.round() - fa)**2).sum() < 1e-14
         if nspins == 2:
-            fb = calc.get_occupations(spin=1)
+            fb = calc.get_occupation_numbers(spin=1)
             assert ((fb.round() - fb)**2).sum() < 1e-9
             if len(atoms) == 1:
                 M = data[formula]['magmom']
