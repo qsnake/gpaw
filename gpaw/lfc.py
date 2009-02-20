@@ -131,23 +131,16 @@ class BaseLFC:
             c_axiv = {}
             for a in self.my_atom_indices:
                 ni = self.get_function_count(a)
-                c_axiv[a] = np.empty(shape + (ni, 3), self.get_dtype())
+                c_axiv[a] = np.empty(shape + (ni, 3), self.dtype)
             return c_axiv
         else:
             c_axi = {}
             for a in self.my_atom_indices:
                 ni = self.get_function_count(a)
-                c_axi[a] = np.empty(shape + (ni,), self.get_dtype())
+                c_axi[a] = np.empty(shape + (ni,), self.dtype)
                 if zero:
                     c_axi[a].fill(0.0)
             return c_axi
-
-    def get_dtype(self): # only old LFC has the dtype attribute
-        if self.gamma:
-            return float
-        else:
-            return complex
-
 
 class NewLocalizedFunctionsCollection(BaseLFC):
     """New LocalizedFunctionsCollection
@@ -160,16 +153,18 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
     add, add1, add2, integrate, derivative
     """
-    def __init__(self, gd, spline_aj, kpt_comm=None, cut=False):
+    def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float):
         self.gd = gd
         self.sphere_a = [Sphere(spline_j) for spline_j in spline_aj]
         self.cut = cut
         self.ibzk_qc = None
         self.gamma = True
+        self.dtype = dtype
         
     def set_k_points(self, ibzk_qc):
         self.ibzk_qc = ibzk_qc
         self.gamma = False
+        self.dtype = complex
                 
     def set_positions(self, spos_ac):
         movement = False
