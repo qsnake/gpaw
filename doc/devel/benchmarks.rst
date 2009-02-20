@@ -90,3 +90,55 @@ Please perform the following steps:
    Ideally the time should not increase with the No. of processes,
    and increase of ~20% on 8 cores compared to 1 core can be considered
    satisfactory.
+
+Strong scaling benchmark of a medium size system
+===============================================
+
+Goal
+----
+
+Fix the problem size, vary the number of processors, and measure the speedup.
+The system used in this benchmark is of medium size,
+typical in state-of-the-art calculations in the year 2008,
+and consists of 256 water molecules in a box of ~20**3 Angstrom**3,
+120**3 grid points (grid spacing of ~0.16) and 1440 bands.
+LCAO initialization step is performed, then 3 SCF steps with a constant
+potential and 3 full SCF steps.
+The initialization step and the full SCF steps are timed separately,
+due to their different scaling.
+
+Prerequisites
+-------------
+
+This benchmark requires approximately 1 GB of RAM memory per core
+and at least 60 cores, up to 480.
+The amount of disk space required is minimal.
+
+The following packages are required (names given for FC 10 system):
+
+ - python, python-devel
+ - numpy
+ - python-matplotlib
+ - openmpi, openmpi-devel
+ - blacs, scalapack
+ - bash
+ - `campos-gpaw <https://wiki.fysik.dtu.dk/gpaw/install/installationguide.html>`_
+ - `campos-ase3 <https://wiki.fysik.dtu.dk/ase/download.html>`_
+
+**Note** that gpaw has to built with scalapack enabled -
+please refer to :ref:`platforms_and_architectures` for hints on
+installing gpaw on different platforms.
+
+Results
+-------
+
+to be written
+
+on surveyor submit :svn:`gpaw/doc/devel/256H2O/b256H2O.py` using
+:svn:`gpaw/doc/devel/256H2O/surveyor.sh` 
+
+
+Getting the results
+-------------------
+
+to be written
