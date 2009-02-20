@@ -140,7 +140,7 @@ build numpy using its internal blas/lapack::
 Set these environment variables in the :file:`.bashrc` file::
 
   export home=~/pfs
-  module add openmpi/gcc
+  module add openmpi/1.2.6/gcc
 
   export PYTHONPATH=${home}/gpaw:${home}/ase3k:${home}/numpy-1.0.4-1/lib64/python:
   export GPAW_SETUP_PATH=${home}/gpaw-setups-0.4.2039
@@ -202,9 +202,9 @@ with the following
   ###PBS -l pvmem=2000mb # default
   
   cd $PBS_O_WORKDIR
-  module add openmpi/gcc
+  module add openmpi/1.2.6/gcc
 
-  mpiexec gpaw-python gpaw-script.py
+  mpiexec ${HOME}/build/bin.linux-x86_64-2.4/gpaw-python gpaw-script.py
 
 It's convenient to customize as described on the :ref:`parallel_runs` page.
 
