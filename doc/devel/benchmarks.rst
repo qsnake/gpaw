@@ -92,7 +92,7 @@ Please perform the following steps:
    satisfactory.
 
 Strong scaling benchmark of a medium size system
-===============================================
+================================================
 
 Goal
 ----
