@@ -131,7 +131,8 @@ def get_lcao_projections(calc, P_aqMi, lfc=None):
 class ProjectedWannierFunctionsFBL:
     """PWF in the finite band limit.
 
-    ::    
+    ::
+    
                 --N              
         |w_w> = >    |psi_n> U_nw
                 --n=1            
@@ -165,6 +166,7 @@ class ProjectedWannierFunctionsIBL:
     """PWF in the infinite band limit.
 
     ::
+    
                 --No               --Nw
         |w_w> = >   |psi_o> U_ow + >   |f_M> U_Mw
                 --o=1              --M=1
