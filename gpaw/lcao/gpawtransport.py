@@ -525,9 +525,9 @@ class GPAWTransport:
     def get_selfconsistent_hamiltonian(self, bias=0, gate=0,
                                       cal_loc=False, recal_path = False,
                                       verbose=0, mix_dmm=True, 
-                                      scat_lead=False):
+                                      scat_lead=False, alpha=0.1, nmaxold=6):
         self.mix_dmm = mix_dmm
-        self.initialize_scf(bias, gate, cal_loc, verbose)  
+        self.initialize_scf(bias, gate, cal_loc, verbose, alpha, nmaxold)  
         self.move_buffer()
         nbmol = self.nbmol_inner
         nspins = self.nspins
@@ -615,7 +615,7 @@ class GPAWTransport:
             self.step +=  1
         return 1
  
-    def initialize_scf(self, bias, gate, cal_loc, verbose, alpha=0.1):
+    def initialize_scf(self, bias, gate, cal_loc, verbose, alpha, nmaxold):
         self.verbose = verbose
         self.master = (world.rank==0)
         self.bias = bias
@@ -638,8 +638,8 @@ class GPAWTransport:
                      'fallowedmatmax':1e-4, 'fndiis':10, 'ftolx':1e-5,
                      'fsteadycheck': False,
                      'dasmethodname':'SCL_None', 'dmethodname':'CVG_Broydn',
-                     'dalpha': alpha, 'dalphascaling':0.1, 'dtol':5e-4,
-                     'dallowedmatmax':1e-4, 'dndiis':6, 'dtolx':1e-5,
+                     'dalpha': alpha, 'dalphascaling':0.1, 'dtol':1e-4,
+                     'dallowedmatmax':1e-4, 'dndiis': nmaxold, 'dtolx':1e-5,
                      'dsteadycheck': False}
         self.fcvg(inputinfo, 'f', self.dcvg)
         self.dcvg(inputinfo, 'd', self.fcvg)
@@ -684,8 +684,7 @@ class GPAWTransport:
                 if self.cal_loc:
                     self.locpathinfo[s].append(PathInfo('eq'))
         if self.master:
-            self.print_info('------------------Transport SCF-----       \
-                                                          ------------------')
+            self.print_info('------------------Transport SCF-----------------------')
             self.print_info('Mixer: %s,  Mixing factor: %s,  tol_Ham=%f, \
                                       tol_Den=%f ' % (
                                       inputinfo['dmethodname'],
@@ -747,7 +746,6 @@ class GPAWTransport:
             if sgferr > 1e-15:
                 self.print_info('Warning: SGF not Found. eqzgp[%d]= %f'
                                                                %(i, elist[i]))
-        
         flist = self.fint[:]
         siglist = [[],[]]
         for i, num in zip(range(fcnt), sgforder):
@@ -887,13 +885,6 @@ class GPAWTransport:
                     siglist[i].append(sigma)
             self.locpathinfo[s][k].add(elist, wlist, flist, siglist)           
         neq = np.trace(np.dot(den, self.greenfunction.S))
-        if self.verbose and self.master:
-            if self.nspins == 1:
-                self.print_info('%s NEQ_k[%d]= %f + %f j' % (calcutype, k,
-                                        np.real(neq) * 2, np.imag(neq) * 2))
-            else:
-                self.print_info('%s NEQ_sk[%d, %d]= %f, %f j' % (calcutype, s,
-                                               k, np.real(neq), np.imag(neq)))
         del self.zint, self.tgtint
         if len(intctrl.neintpath) >= 2:
             del self.fint
@@ -1079,9 +1070,7 @@ class GPAWTransport:
                 weight = self.nepathinfo[s][k].weight[i]            
                 denvir += glesser * weight / np.pi / 2
         
-        denocc = np.real(denocc)
         if self.cal_loc:
-            denvir = np.real(denvir)
             weight_mm = self.integral_diff_weight(denocc, denvir,
                                                                  'transiesta')
             diff = (denloc - (denocc + denvir)) * weight_mm
@@ -1346,11 +1335,10 @@ class GPAWTransport:
                 vt = self.vt_sG
             else:
                 vt = self.atoms.calc.hamiltonian.vt_sG
-        dim = list(vt.shape[:3])
-        dim[0] = 0
-        dim[1] /= 2
-        dim[2] /= 2
-        pylab.plot(vt[dim[0], dim[1], dim[2]] * Hartree, 'b--o')
+        dim = vt.shape
+        for i in range(3):
+            vt = np.sum(vt, axis=0) / dim[i]
+        pylab.plot(vt * Hartree, 'b--o')
         if ylab == None:
             ylab = 'energy(eV)'
         pylab.ylabel(ylab)
@@ -1366,11 +1354,10 @@ class GPAWTransport:
                 nt = self.nt_sG
             else:
                 nt = self.atoms.calc.density.nt_sG
-        dim = list(nt.shape[:3])
-        dim[0] = 0
-        dim[1] /= 2
-        dim[2] /= 2
-        pylab.plot(nt[dim[0], dim[1], dim[2]], 'b--o')
+        dim = nt.shape
+        for i in range(3):
+            nt = np.sum(nt, axis=0) / dim[i]
+        pylab.plot(nt, 'b--o')
         if ylab == None:
             ylab = 'density'
         pylab.ylabel(ylab)
