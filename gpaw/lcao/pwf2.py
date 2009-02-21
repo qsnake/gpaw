@@ -7,7 +7,7 @@ from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.lfc import BasisFunctions
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities import unpack
-from gpaw.utilities.tools import tri2full
+from gpaw.utilities.tools import tri2full, lowdin
 from gpaw.coulomb import get_vxc as get_ks_xc
 
 from gpaw.lcao.projected_wannier import dots, condition_number, eigvals,\
@@ -135,13 +135,16 @@ class ProjectedWannierFunctionsFBL:
         |w_w> = >    |psi_n> U_nw
                 --n=1            
     """
-    def __init__(self, V_nM, No):
+    def __init__(self, V_nM, No, ortho=False):
         Nw = V_nM.shape[1]
         V_oM, V_uM = V_nM[:No], V_nM[No:]
         F_MM = np.dot(V_uM.T.conj(), V_uM)
         U_ow, U_lw, U_Ml = get_rot(F_MM, V_oM, Nw - No)
         self.U_nw = np.vstack((U_ow, dots(V_uM, U_Ml, U_lw)))
         self.S_ww = np.dot(self.U_nw.T.conj(), self.U_nw)
+        if ortho:
+            lowdin(self.U_nw, self.S_ww)
+            self.S_ww = np.identity(Nw)
         self.norms_n = np.dot(self.U_nw, la.solve(
             self.S_ww, self.U_nw.T.conj())).diagonal()
 
@@ -206,16 +209,20 @@ class ProjectedWannierFunctionsIBL:
     def function(self, psit_oG, bfs, q=-1):
         w_wG = np.tensordot(self.U_ow, psit_oG, axes=[[0], [0]])
         bfs.lcao_to_grid(self.U_Mw.T.copy(), w_wG, q)
+        return w_wG
 
 
 class PWF2:
-    def __init__(self, gpwfilename, fixedenergy, spin=0, ibl=True):
+    def __init__(self, gpwfilename, fixedenergy=0., spin=0, ibl=True):
         calc = GPAW(gpwfilename, txt=None, basis='sz')
-        Ef = calc.get_fermi_level()
+##         try:
+##             Ef = calc.get_fermi_level()
+##         except NotImplementedError:
+##             Ef = calc.get_homo_lumo().mean()
 
         nq = 1 # Temporary hack XXX
         q = 0 # Temporary hack XXX
-        eps_n = calc.get_eigenvalues(q) - Ef
+        eps_n = calc.get_eigenvalues(q)# - Ef
         M = sum(eps_n <= fixedenergy)
         kpt = calc.wfs.kpt_u[spin * nq + q]
         
@@ -223,7 +230,7 @@ class PWF2:
             bfs = get_bfs(calc)
             V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
                 calc, bfs=bfs, spin=spin, projectionsonly=False)
-            H_qMM -= Ef * S_qMM
+            #H_qMM -= Ef * S_qMM
             pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
 
             H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
@@ -235,7 +242,7 @@ class PWF2:
                 dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
         else:
             V_qnM = get_lcao_projections_HSP(calc, spin=spin)
-            pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M)
+            pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
             H_ww = pwf.rotate_matrix(eps_n)
             xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin))
             w_wG = pwf.function(kpt.psit_nG[:])
@@ -249,4 +256,9 @@ class PWF2:
         self.orbitals = (w_wG, P_awi)
         self.norms = norms_n
         self.eigs = eigvals(H_ww, S_ww)
+        self.Fcore_ww = np.zeros_like(H_ww)
+        for a, P_wi in P_awi.items():
+            X_ii = unpack(calc.wfs.setups[a].X_p)
+            self.Fcore_ww += 2 * dots(P_wi.conj(), X_ii, P_wi.T)
+        self.Fcore_ww *= Hartree
         print 'Condition number:', condition_number(S_ww)
