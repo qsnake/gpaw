@@ -167,7 +167,6 @@ class CoulombNEW:
         self.rhot1_G = paw.gd.empty()
         self.rhot2_G = paw.gd.empty()
         self.pot_G = paw.gd.empty()
-        self.nuclei = paw.nuclei
         self.dv = paw.gd.dv
         self.poisson = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
         self.poisson.initialize(paw.gd)
@@ -195,8 +194,8 @@ class CoulombNEW:
             # Add compensation charges to pseudo densities
             Q1_aL[a] = np.dot(P1_p, setup.Delta_pL)
             Q2_aL[a] = np.dot(P2_p, setup.Delta_pL)
-        self.Ghat_L.add(self.rhot1_G, Q1_aL)
-        self.Ghat_L.add(self.rhot2_G, Q2_aL)
+        self.Ghat.add(self.rhot1_G, Q1_aL)
+        self.Ghat.add(self.rhot2_G, Q2_aL)
 
         # Add coulomb energy of compensated pseudo densities to integral
         self.poisson.solve(self.pot_G, self.rhot2_G, charge=None,
