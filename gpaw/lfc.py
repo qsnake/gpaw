@@ -509,7 +509,7 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
 
                        ----
              ~   _     \                 _
-            psi (r) =   )    C     Phi  (r)
+            psi (r) +=  )    C     Phi  (r)
                n       /      n mu    mu
                        ----
                         mu
