@@ -259,6 +259,6 @@ class PWF2:
         self.Fcore_ww = np.zeros_like(H_ww)
         for a, P_wi in P_awi.items():
             X_ii = unpack(calc.wfs.setups[a].X_p)
-            self.Fcore_ww += 2 * dots(P_wi.conj(), X_ii, P_wi.T)
+            self.Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
         self.Fcore_ww *= Hartree
         print 'Condition number:', condition_number(S_ww)
