@@ -62,11 +62,11 @@ Please perform the following steps:
     export NCORES=8 # default; set this variable to the number of cores in your machine
     export MACHINE=TEST # default; optional: set this to the name of you machine
     mkdir /tmp/benchmark.$$; cd /tmp/benchmark.*
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/H2Al110.py
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/prepare.sh
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/run.sh
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth.py
-    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/twiny.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/H2Al110.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/prepare.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/run.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/memory_bandwidth.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/twiny.py
     sh prepare.sh
 
  - run with (it takes 6-10 hours with NCORES=8)::
@@ -134,8 +134,8 @@ Results
 
 to be written
 
-on surveyor submit :svn:`gpaw/doc/devel/256H2O/b256H2O.py` using
-:svn:`gpaw/doc/devel/256H2O/surveyor.sh` 
+on surveyor submit :svn:`doc/devel/256H2O/b256H2O.py` using
+:svn:`doc/devel/256H2O/surveyor.sh` 
 
 
 Getting the results
