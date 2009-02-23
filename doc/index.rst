@@ -14,9 +14,8 @@ algorithms used <features_and_algorithms>`.
 * :ref:`genindex`
 
 
-..
 
-  .. |i0| image:: _static/logo-anl.png
+.. |i0| image:: _static/logo-anl.png
         :height: 44 px
         :target: http://www.anl.gov
 
@@ -43,7 +42,7 @@ algorithms used <features_and_algorithms>`.
 
 
 
-|i1| |i2| |i3| |i4| |i5| |i6|
+|i0| |i1| |i2| |i3| |i4| |i5| |i6|
 
  
 * `Argonne National Laboratory <http://www.anl.gov>`_
