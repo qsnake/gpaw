@@ -341,6 +341,10 @@ class LCAOWaveFunctions(WaveFunctions):
             rho_MM = np.dot(kpt.C_nM.conj().T * kpt.f_n, kpt.C_nM)
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
 
+    def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
+        raise NotImplementedError('Kinetic density calculation for LCAO '
+                                  'wavefunctions is not implemented.')
+
     def calculate_forces(self, hamiltonian, F_av):
         spos_ac = hamiltonian.vbar.spos_ac # XXX ugly way to obtain spos_ac
 
