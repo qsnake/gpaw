@@ -87,6 +87,7 @@ class WaveFunctions(EmptyWaveFunctions):
 
         self.eigensolver = None
         self.timer = None
+        self.positions_set = False
         
         self.set_setups(setups)
 
@@ -189,6 +190,23 @@ class WaveFunctions(EmptyWaveFunctions):
         if self.symmetry is not None:
             self.symmetry.check(spos_ac)
 
+    def allocate_arrays_for_projections(self, my_atom_indices):
+        if not self.positions_set and self.kpt_u[0].P_ani is not None:
+            # Projections have been read from file - don't delete them!
+            if self.gd.comm.size == 1:
+                pass
+            else:
+                # Redistribute P_ani among domains.  Not implemented:
+                self.kpt_u[0].P_ani = None
+                self.allocate_arrays_for_projections(my_atom_indices)
+        else:
+            for kpt in self.kpt_u:
+                kpt.P_ani = {}
+            for a in my_atom_indices:
+                ni = self.setups[a].ni
+                for kpt in self.kpt_u:
+                    kpt.P_ani[a] = np.empty((self.mynbands, ni), self.dtype)
+
     def collect_eigenvalues(self, k, s):
         return self.collect_array('eps_n', k, s)
     
@@ -280,12 +298,8 @@ class LCAOWaveFunctions(WaveFunctions):
                 kpt.T_MM = self.T_qMM[q]
                 kpt.C_nM = np.empty((mynbands, nao), self.dtype)
 
-        for kpt in self.kpt_u:
-            kpt.P_ani = {}
-        for a in self.basis_functions.my_atom_indices:
-            ni = self.setups[a].ni
-            for kpt in self.kpt_u:
-                kpt.P_ani[a] = np.empty((mynbands, ni), self.dtype)
+        self.allocate_arrays_for_projections(
+            self.basis_functions.my_atom_indices)
             
         self.P_aqMi = {}
         for a in self.basis_functions.my_atom_indices:
@@ -301,6 +315,8 @@ class LCAOWaveFunctions(WaveFunctions):
         self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi,
                            self.dtype)
             
+        self.positions_set = True
+
     def initialize(self, density, hamiltonian, spos_ac):
         density.initialize_from_atomic_densities(self.basis_functions)
         comp_charge = density.calculate_multipole_moments()
@@ -568,16 +584,12 @@ class GridWaveFunctions(WaveFunctions):
         self.set_orthonormalized(False)
         self.pt.set_positions(spos_ac)
 
-        mynbands = self.mynbands
-        for kpt in self.kpt_u:
-            kpt.P_ani = {}
-        for a in self.pt.my_atom_indices:
-            ni = self.setups[a].ni
-            for kpt in self.kpt_u:
-                kpt.P_ani[a] = np.empty((mynbands, ni), self.dtype)
+        self.allocate_arrays_for_projections(self.pt.my_atom_indices)
 
         if not self.overlap:
             self.overlap = Overlap(self)
+
+        self.positions_set = True
 
     def initialize(self, density, hamiltonian, spos_ac):
         if self.kpt_u[0].psit_nG is None:
