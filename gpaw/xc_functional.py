@@ -314,7 +314,7 @@ class XCFunctional:
 
         if self.xcname == 'TPSS':
             density.initialize_kinetic()
-            density.update_kinetic(wfs.kpt_u, symmetry=paw.symmetry)
+            density.update_kinetic(wfs, symmetry=paw.wfs.symmetry)
             if paw.nspins ==1:
                 paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
             if self.nspins == 2:

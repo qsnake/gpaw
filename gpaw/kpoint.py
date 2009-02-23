@@ -122,6 +122,7 @@ class KPoint:
                     nt_G += f * (psit_G * np.conjugate(psit_G)).real
         
     def add_to_kinetic_density(self, taut_G):
+        raise DeprecationWarning
         """Add contribution to pseudo kinetic energy density."""
         ddr = [Gradient(self.gd, c, dtype=self.dtype).apply for c in range(3)]
         d_G = self.gd.empty(dtype=self.dtype)

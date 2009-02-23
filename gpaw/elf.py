@@ -59,7 +59,7 @@ class ELF:
 
         if calc is not None:
             self.set_calculator(calc)
-            self.update(calc.kpt_u)
+            self.update(calc.wfs)
 
     def set_calculator(self, calc):
         self.gd = calc.gd
@@ -95,18 +95,20 @@ class ELF:
                 ddr[c](self.density.nt_sG[s],d_G)
                 self.nt_grad2_sG[s] += d_G**2.0
 
+        #TODO are nct from setups usable for nt_grad2_sG ?
+
         # Transfer the density from the coarse to the fine grid
         for s in range(0,self.nspins):
             self.density.interpolate(self.nt_grad2_sG[s], self.nt_grad2_sg[s])
 
-    def update(self, kpt_u):
+    def update(self, wfs):
         assert self.initialized, 'ELF instance is not initialized'
 
         self.update_gradient_square()
 
         # The kinetic energy density must be reset before updating
         self.density.taut_sG[:] = 0.0
-        self.density.update_kinetic(kpt_u)
+        self.density.update_kinetic(wfs)
 
         self.updated = True
 

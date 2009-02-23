@@ -560,7 +560,7 @@ class PAW(PAWTextOutput):
             return
         else:
             #pseudo kinetic energy array on 3D grid
-            self.density.update_kinetic(self.wfs.kpt_u)
+            self.density.update_kinetic(self.wfs)
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
 
     def get_myu(self, k, s):

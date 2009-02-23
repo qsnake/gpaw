@@ -5,6 +5,7 @@ from gpaw.utilities.blas import axpy
 from gpaw.utilities import pack, unpack2
 from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
+from gpaw.operators import Gradient
 from gpaw import mpi
 
 
@@ -748,6 +749,41 @@ class GridWaveFunctions(WaveFunctions):
         else:
             for f, psit_G in zip(f_n, kpt.psit_nG):
                 nt_G += f * (psit_G * psit_G.conj()).real
+
+    def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
+        """Add contribution to pseudo kinetic energy density."""
+        d_c = [Gradient(self.gd, c, dtype=self.dtype).apply for c in range(3)]
+        dpsit_G = self.gd.empty(dtype=self.dtype)
+        if self.dtype == float:
+            for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
+                for c in range(3):
+                    d_c[c](psit_G, dpsit_G)
+                    axpy(0.5*f, dpsit_G**2, taut_G) #taut_G += 0.5*f*dpsit_G**2
+        else:
+            for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
+                for c in range(3):
+                    d_c[c](psit_G, dpsit_G, kpt.phase_cd)
+                    taut_G += 0.5 * f * (dpsit_G.conj() * dpsit_G).real
+
+        # Hack used in delta-scf calculations:
+        if hasattr(kpt, 'ft_omn'):
+            dwork_G = self.gd.empty(dtype=self.dtype)
+            if self.dtype == float:
+                for ft_mn in kpt.ft_omn:
+                    for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
+                        d_c[c](psit_m, dpsit_G)
+                        for ft, psit_n in zip(ft_n, kpt.psit_nG):
+                            if abs(ft) > 1.e-12:
+                                d_c[c](psit_n, dwork_G)
+                                axpy(0.5*ft, dpsit_G * dwork_G, taut_G) #taut_G += 0.5*f*dpsit_G*dwork_G
+            else:
+                for ft_mn in kpt.ft_omn:
+                    for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
+                        d_c[c](psit_m, dpsit_G, kpt.phase_cd)
+                        for ft, psit_n in zip(ft_n, kpt.psit_nG):
+                            if abs(ft) > 1.e-12:
+                                d_c[c](psit_n, dwork_G, kpt.phase_cd)
+                                taut_G += 0.5 * (dpsit_G.conj() * ft * dwork_G).real
 
     def orthonormalize(self):
         for kpt in self.kpt_u:

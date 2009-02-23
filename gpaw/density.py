@@ -72,10 +72,14 @@ class Density:
                        forces=True, cut=True)
         self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
                         integral=sqrt(4 * pi), forces=True)
+        self.tauct = LFC(self.gd, [[setup.tauct] for setup in setups],
+                        forces=True, cut=True)
+
 
     def set_positions(self, spos_ac, rank_a=None):
         self.nct.set_positions(spos_ac)
         self.ghat.set_positions(spos_ac)
+        self.tauct.set_positions(spos_ac)
         self.mixer.reset()
 
         self.nct_G = self.gd.zeros()
@@ -329,27 +333,27 @@ class Density:
         self.taut_sG = self.gd.zeros(self.nspins)
         self.taut_sg = self.finegd.zeros(self.nspins)
 
-    def update_kinetic(self, kpt_u,symmetry=None):
+    def update_kinetic(self, wfs, symmetry=None):
         """Calculate pseudo electron kinetic density.
         The pseudo electron-density ``taut_sG`` is calculated from the
         wave functions, the occupation numbers"""
 
-        ## Add contribution from all k-points:
-        for kpt in kpt_u:
-            kpt.add_to_kinetic_density(self.taut_sG[kpt.s])
-        self.band_comm.sum(self.taut_sG)
-        self.kpt_comm.sum(self.taut_sG)
-        """Add the pseudo core kinetic array """
-        for nucleus in self.nuclei:
-            nucleus.add_smooth_core_kinetic_energy_density(self.taut_sG,
-                                                           self.nspins,
-                                                           self.gd)
-        """For periodic boundary conditions"""
+        # Add contribution from all k-points
+        for kpt in wfs.kpt_u:
+            wfs.add_to_kinetic_density_from_k_point(self.taut_sG[kpt.s], kpt)
+        wfs.band_comm.sum(self.taut_sG)
+        wfs.kpt_comm.sum(self.taut_sG)
+
+        # Add the pseudo core kinetic array
+        for s in range(wfs.nspins):
+            self.tauct.add(self.taut_sG[s], 1.0 / wfs.nspins)
+
+        # For periodic boundary conditions
         if symmetry is not None:
             for taut_G in self.taut_sG:
                 symmetry.symmetrize(taut_G, self.gd)
 
-        """Transfer the density from the coarse to the fine grid."""
+        # Transfer the density from the coarse to the fine grid.
         for s in range(self.nspins):
             self.interpolater.apply(self.taut_sG[s], self.taut_sg[s])
 
