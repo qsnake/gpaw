@@ -136,7 +136,9 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
     """
         Dump the lcao representation of H and S to file(s) beginning
         with filename. If direction is x, y or z, the periodic boundary
-        conditions will be removed in the specified direction.
+        conditions will be removed in the specified direction. 
+        If the Fermi temperature is different from zero,  the
+        energy zero-point is taken as the Fermi level.
 
         Note:
         H and S are parallized over spin and k-points and
@@ -177,10 +179,14 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         else:
             if direction!=None:
                 remove_pbc(atoms, H_qMM[kpt.s, kpt.q], None, d)
+        if calc.occupations.kT>0:
+            H_qMM[kpt.s, kpt.q] -= S_qMM[kpt.q] * \
+                                   calc.occupations.get_fermi_level()    
     
     if wfs.gd.domain.comm.rank==0:
         fd = file(filename+'%i.pckl' % wfs.kpt_comm.rank, 'wb')
-        pickle.dump((H_qMM * Hartree, S_qMM),fd , 2)
+        H_qMM *= Hartree
+        pickle.dump((H_qMM, S_qMM),fd , 2)
         calc_data
         pickle.dump(calc_data, fd, 2) 
         fd.close()
