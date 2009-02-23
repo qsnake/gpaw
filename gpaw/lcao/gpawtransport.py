@@ -498,7 +498,7 @@ class GPAWTransport:
                                                      e_diff)
             self.do_shift = True
             for i in range(self.nspins):
-                self.h_spkmm[i] -= self.zero_shift * self.s_pkmm
+                self.h_spkmm[i] -= e_diff * self.s_pkmm
         self.zero_shift = e_diff
         matdiff = self.d_spkmm[:, :, :pl1, :pl1] - self.d1_spkmm
         print_diff = np.max(abs(matdiff))
@@ -636,7 +636,7 @@ class GPAWTransport:
         self.fcvg = CvgCtrl(self.master)
         self.dcvg = CvgCtrl(self.master)
         inputinfo = {'fasmethodname':'SCL_None', 'fmethodname':'CVG_None',
-                     'falpha': 0.1, 'falphascaling':0.1, 'ftol':1e-3,
+                     'falpha': 0.1, 'falphascaling':0.1, 'ftol':1e-5,
                      'fallowedmatmax':1e-4, 'fndiis':10, 'ftolx':1e-5,
                      'fsteadycheck': False,
                      'dasmethodname':'SCL_None', 'dmethodname':'CVG_Broydn',
