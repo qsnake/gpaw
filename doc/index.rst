@@ -13,6 +13,13 @@ algorithms used <features_and_algorithms>`.
 * :ref:`Table of contents <toc>`
 * :ref:`genindex`
 
+
+..
+
+  .. |i0| image:: _static/logo-anl.png
+        :height: 44 px
+        :target: http://www.anl.gov
+
 .. |i1| image:: _static/logo-csc.png
         :height: 44 px
         :target: http://www.csc.fi
@@ -39,13 +46,15 @@ algorithms used <features_and_algorithms>`.
 |i1| |i2| |i3| |i4| |i5| |i6|
 
  
-
-* `CSC, the Finnish IT center for science <http://www.csc.fi>`_
+* `Argonne National Laboratory <http://www.anl.gov>`_
 * `CAMd, Technical University of Denmark <http://www.camp.dtu.dk>`_
+* `CSC, the Finnish IT center for science <http://www.csc.fi>`_
 * `Department of Physics, University of Jyväskylä <http://www.phys.jyu.fi>`_
 * `Freiburg Materials Research Center <http://www.fmf.uni-freiburg.de/index.html-en/view?set_language=en>`_
 * `Institute of Physics, Tampere University of Technology <http://www.tut.fi>`_
 * `Laboratory of Physics, Helsinki University of Technology <http://www.fyslab.hut.fi>`_
+
+
 
 News
 ====
