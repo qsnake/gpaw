@@ -1,45 +1,45 @@
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full
-from ase import Hartree
+from ase.units import Hartree
 import cPickle as pickle
-import numpy as npy
+import numpy as np
 from gpaw.mpi import world, rank
 
 def get_bf_centers(atoms):
     calc = atoms.get_calculator()
     if not calc.initialized:
         calc.initialize(atoms)
-    nbf = calc.nao
+    nao = calc.wfs.setups.nao
     pos_ac = atoms.get_positions()
     natoms = len(pos_ac)
-    pos_ic = npy.zeros((nbf,3), npy.float)
+    pos_ic = np.zeros((nao, 3), np.float)
     index = 0
-    for a in xrange(natoms):
-        nao = calc.nuclei[a].get_number_of_atomic_orbitals()
+    for a in range(natoms):
+        n = calc.wfs.setups[a].niAO
         pos_c = pos_ac[a]
-        pos_c.shape = (1,3)
-        pos_ic[index:index+nao] = npy.repeat(pos_c, nao, axis=0)
-        index += nao
+        pos_c.shape = (1, 3)
+        pos_ic[index:index + n] = np.repeat(pos_c, n, axis=0)
+        index += n
     return pos_ic
 
 def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0), 
                      usesymm=None):
 
-    phase_k = npy.dot(2 * npy.pi * ibzk_kc, R_c)
-    c_k = npy.exp(1.0j * phase_k) * weight_k
+    phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
+    c_k = np.exp(1.0j * phase_k) * weight_k
     c_k.shape = (len(ibzk_kc),1,1)
 
     if usesymm==None:                     
         if h_skmm != None:
             nbf = h_skmm.shape[-1]
             nspins = len(h_skmm)
-            h_smm = npy.empty((nspins,nbf,nbf),complex)
+            h_smm = np.empty((nspins,nbf,nbf),complex)
             for s in range(nspins):
-                h_smm[s] = npy.sum((h_skmm[s] * c_k), axis=0)
+                h_smm[s] = np.sum((h_skmm[s] * c_k), axis=0)
         if s_kmm != None:
             nbf = s_kmm.shape[-1]
-            s_mm = npy.empty((nbf,nbf),complex)
-            s_mm[:] = npy.sum((s_kmm * c_k), axis=0)      
+            s_mm = np.empty((nbf,nbf),complex)
+            s_mm[:] = np.sum((s_kmm * c_k), axis=0)      
         if h_skmm != None and s_kmm != None:
             return h_smm, s_mm
         elif h_skmm == None:
@@ -50,12 +50,12 @@ def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0),
     elif usesymm==False:        
         nbf = h_skmm.shape[-1]
         nspins = len(h_skmm)
-        h_smm = npy.empty((nspins, nbf, nbf))
-        s_mm = npy.empty((nbf,nbf))
+        h_smm = np.empty((nspins, nbf, nbf))
+        s_mm = np.empty((nbf,nbf))
         for s in range(nspins):
-            h_smm[s] = npy.sum((h_skmm[s] * c_k).real, axis=0)
+            h_smm[s] = np.sum((h_skmm[s] * c_k).real, axis=0)
    
-        s_mm[:] = npy.sum((s_kmm * c_k).real, axis=0)
+        s_mm[:] = np.sum((s_kmm * c_k).real, axis=0)
         
         return h_smm, s_mm
 
@@ -64,20 +64,20 @@ def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0),
             
 
 def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
-    phase_k = npy.dot(2 * npy.pi * R_vector, kvector)
-    c_k = npy.exp(-1.0j * phase_k)
+    phase_k = np.dot(2 * np.pi * R_vector, kvector)
+    c_k = np.exp(-1.0j * phase_k)
     c_k.shape = (len(R_vector), 1, 1)
     
     if h_srmm != None:
         nbf = h_srmm.shape[-1]
         nspins = len(h_srmm)
-        h_smm = npy.empty((nspins, nbf, nbf), complex)
+        h_smm = np.empty((nspins, nbf, nbf), complex)
         for s in range(nspins):
-            h_smm[s] = npy.sum((h_srmm[s] * c_k), axis=0)
+            h_smm[s] = np.sum((h_srmm[s] * c_k), axis=0)
     elif s_rmm != None:
         nbf = s_rmm.shape[-1]
-        s_mm = npy.empty((nbf, nbf), complex)
-        s_mm[:] = npy.sum((s_rmm * c_k), axis=0)
+        s_mm = np.empty((nbf, nbf), complex)
+        s_mm[:] = np.sum((s_rmm * c_k), axis=0)
     if h_srmm != None and s_rmm != None:    
         return h_smm, s_mm
     elif h_srmm == None:
@@ -89,18 +89,21 @@ def remove_pbc(atoms, h, s=None, d=0):
     calc = atoms.get_calculator()
     if not calc.initialized:
         calc.initialize(atoms)
-    nbf = calc.nao
+
+    nao = calc.wfs.setups.nao
     
     cutoff = atoms.get_cell()[d,d] * 0.5 
     pos_i = get_bf_centers(atoms)[:,d]
-    for i in xrange(nbf):
-        dpos_i = npy.absolute(pos_i - pos_i[i])
+    for i in range(nao):
+        dpos_i = np.absolute(pos_i - pos_i[i])
         mask_i = (dpos_i < cutoff).astype(int)
         h[i,:] = h[i,:] * mask_i
         h[:,i] = h[:,i] * mask_i
         if s != None:
             s[i,:] = s[i,:] * mask_i
             s[:,i] = s[:,i] * mask_i
+
+
 
 def dump_hamiltonian(filename, atoms, direction=None):
     h_skmm, s_kmm = get_hamiltonian(atoms)
@@ -129,6 +132,44 @@ def dump_hamiltonian(filename, atoms, direction=None):
 
     world.barrier()
 
+def dump_hamiltonian_parallel(filename, atoms, direction=None):
+    if direction!=None:
+        d = 'xyz'.index(direction)
+
+    calc = atoms.calc
+    wfs = calc.wfs
+    nao = wfs.setups.nao
+    nq = len(wfs.kpt_u) // wfs.nspins
+    H_qMM = np.empty((wfs.nspins, nq, nao, nao), wfs.dtype)
+    calc_data = {'qk':{}, 'skpt_qc':np.empty((nq, 3))}
+    S_qMM = wfs.S_qMM
+   
+    for kpt in wfs.kpt_u:
+        calc_data['skpt_qc'][kpt.q] = calc.wfs.ibzk_kc[kpt.k]
+        calc_data['qk'][kpt.q] = kpt.k
+#        print 'Calc. H matrix on proc. %i: (rk, rd, q, k)=(%i, %i, %i, %i)' % (wfs.world.rank, wfs.kpt_comm.rank, wfs.gd.domain.comm.rank, kpt.q, kpt.k)
+        wfs.eigensolver.calculate_hamiltonian_matrix(calc.hamiltonian,
+                                                     wfs, 
+                                                     kpt)
+
+        H_qMM[kpt.s, kpt.q] = wfs.eigensolver.H_MM
+
+        tri2full(H_qMM[kpt.s, kpt.q])
+        if kpt.s==0:
+            tri2full(S_qMM[kpt.q])
+            if direction!=None:
+                remove_pbc(atoms, H_qMM[kpt.s, kpt.q], S_qMM[kpt.q], d)
+        else:
+            if direction!=None:
+                remove_pbc(atoms, H_qMM[kpt.s, kpt.q], None, d)
+    
+    if wfs.gd.domain.comm.rank==0:
+        fd = file(filename+'%i.pckl' % wfs.kpt_comm.rank, 'wb')
+        pickle.dump((H_qMM * Hartree, S_qMM),fd , 2)
+        calc_data
+        pickle.dump(calc_data, fd, 2) 
+        fd.close()
+
 def get_hamiltonian(atoms):
     """Calculate the Hamiltonian and overlap matrix."""
     calc = atoms.calc
@@ -143,8 +184,8 @@ def get_hamiltonian(atoms):
     nspins = calc.nspins
     weight_k = calc.weight_k
     nao = calc.nao
-    h_skmm = npy.zeros((nspins, nkpts, nao, nao), complex)
-    s_kmm = npy.zeros((nkpts, nao, nao), complex)
+    h_skmm = np.zeros((nspins, nkpts, nao, nao), complex)
+    s_kmm = np.zeros((nkpts, nao, nao), complex)
     for k in range(nkpts):
         s_kmm[k] = hamiltonian.S_kmm[k]
         tri2full(s_kmm[k])
@@ -171,8 +212,8 @@ def lead_kspace2realspace(filename, direction='x'):
 
     nbf = h_skmm.shape[-1]
     nspin = len(h_skmm)
-    h_smm = npy.zeros((nspin, 2 * nbf, 2 * nbf), h_skmm.dtype)
-    s_mm = npy.zeros((2 * nbf, 2 * nbf), h_skmm.dtype)
+    h_smm = np.zeros((nspin, 2 * nbf, 2 * nbf), h_skmm.dtype)
+    s_mm = np.zeros((2 * nbf, 2 * nbf), h_skmm.dtype)
 
     R_c = [0, 0, 0]
     h_sii, s_ii = get_realspace_hs(h_skmm,
