@@ -161,7 +161,7 @@ class ProjectedWannierFunctionsFBL:
         return P_awi
 
     def function(self, psit_nG):
-        return np.tensordot(psit_nG, self.U_nw, axes=[[0], [0]])
+        return np.tensordot(self.U_nw, psit_nG, axes=[[0], [0]])
 
 
 class ProjectedWannierFunctionsIBL:
