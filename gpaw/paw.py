@@ -205,7 +205,7 @@ class PAW(PAWTextOutput):
         elif converge:
             raise KohnShamConvergenceError('Did not converge!')        
 
-    def set_positions(self, atoms=None):
+    def initialize_positions(self, atoms=None):
         """Update the positions of the atoms."""
         if atoms is None:
             atoms = self.atoms
@@ -219,11 +219,14 @@ class PAW(PAWTextOutput):
         self.density.set_positions(spos_ac, self.wfs.rank_a)
         self.hamiltonian.set_positions(spos_ac)
 
+        return spos_ac
+    
+    def set_positions(self, atoms=None):
+        """Update the positions of the atoms and initialize wave functions."""
+        spos_ac = self.initialize_positions(atoms)
         self.wfs.initialize(self.density, self.hamiltonian, spos_ac)
-
         self.scf.reset()
         self.forces.reset()
-
         self.print_positions()
 
     def initialize(self, atoms=None):
@@ -305,7 +308,7 @@ class PAW(PAWTextOutput):
             else:
                 dtype = complex
 
-        if isinstance(par.xc, str):
+        if isinstance(par.xc, (str, dict)):
             xcfunc = XCFunctional(par.xc, nspins)
         else:
             xcfunc = par.xc
