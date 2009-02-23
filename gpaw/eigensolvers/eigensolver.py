@@ -147,22 +147,24 @@ class Eigensolver:
             Htpsit_xG = self.Htpsit_nG
         else:
             Htpsit_xG = self.operator.work1_xG
-            
+
         def H(psit_xG):
             wfs.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
             hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
             return Htpsit_xG
-        
+                
         dH_aii = dict([(a, unpack(dH_sp[kpt.s]))
                        for a, dH_sp in hamiltonian.dH_asp.items()])
 
+        self.timer.start('Subspace diag: calc_hamiltonian_matrix')
         if hamiltonian.xc.xcfunc.hybrid == 0.0:
             H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                            H, dH_aii)
         else:
             H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
                                                  hamiltonian)
-            
+        self.timer.stop('Subspace diag: calc_hamiltonian_matrix')
+
         if sl_diagonalize:
             assert parallel
             assert scalapack()
@@ -193,9 +195,11 @@ class Eigensolver:
         self.comm.broadcast(U_nn, 0)
         self.comm.broadcast(kpt.eps_n, 0)
 
+        self.timer.start('Subspace diag: rotate_psi')
         kpt.psit_nG = self.operator.matrix_multiply(U_nn, psit_nG, P_ani)
         if self.keep_htpsit:
             self.Htpsit_nG = self.operator.matrix_multiply(U_nn, Htpsit_xG)
+        self.timer.stop('Subspace diag: rotate_psi')
 
         # Rotate EXX related stuff
         if hamiltonian.xc.xcfunc.hybrid > 0.0:
