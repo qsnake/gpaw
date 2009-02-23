@@ -242,10 +242,9 @@ PyObject* integrate(LFCObject *lfc, PyObject *args)
   if (!PyArg_ParseTuple(args, "OOi", &a_G_obj, &c_M_obj, &k))
     return NULL; 
 
-  const double* a_G = (const double*)a_G_obj->data;
-
   if (!lfc->bloch_boundary_conditions)
     {
+      const double* a_G = (const double*)a_G_obj->data;
       double* c_M = (double*)c_M_obj->data;
       GRID_LOOP_START(lfc, -1)
         {
@@ -261,6 +260,7 @@ PyObject* integrate(LFCObject *lfc, PyObject *args)
     }
   else
     {
+      const complex double* a_G = (const complex double*)a_G_obj->data;
       complex double* c_M = (complex double*)c_M_obj->data;
       GRID_LOOP_START(lfc, k)
         {
