@@ -43,9 +43,15 @@ class GPAW(PAW):
     
     def get_forces(self, atoms):
         """Return the forces for the current state of the atoms."""
-        
+        # I believe that the force_call_to_set_positions must be set
+        # in order to make sure that psit_nG is correctly initialized
+        # from a tarfile reference.
+        #
+        # TODO: improve i/o interface so the rest of the program doesn't need
+        # to distinguish between the ways in which wave functions were obtained
         if (self.forces.F_av is None and
             hasattr(self.wfs, 'kpt_u') and
+            (self.wfs.kpt_u[0].psit_nG is not None) and
             not isinstance(self.wfs.kpt_u[0].psit_nG, np.ndarray)):
             force_call_to_set_positions = True
         else:
