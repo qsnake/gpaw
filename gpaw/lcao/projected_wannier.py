@@ -126,26 +126,12 @@ def get_phs(calc, s=0):
 
     # Calculate projections
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
-
-    # Non local corrections
-    for q in range(nq):
+    for q, V_nM in enumerate(V_qnM):
+        bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM, q)
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
-            V_qnM[q] += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
-
-    #Hack XXX, not needed when BasisFunctions get
-    #an integrate method.
-    lfc = get_lfc(calc)
-    V_qAni = [lfc.dict(calc.wfs.nbands) for q in range(nq)]
-    for q, V_Ani in enumerate(V_qAni):
-        lfc.integrate(calc.wfs.kpt_u[q].psit_nG[:], V_Ani, q)
-        M1 = 0
-        for A in range(len(V_Ani)):
-            V_ni = V_Ani[A]
-            M2 = M1 + V_ni.shape[1]
-            V_qnM[q, :, M1:M2] += V_ni
-            M1 = M2
+            V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
 
     return V_qnM, H_qMM, S_qMM, P_aqMi
 
