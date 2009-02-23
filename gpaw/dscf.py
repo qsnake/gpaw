@@ -43,7 +43,7 @@ def dscf_calculation(calc, orbitals, atoms=None):
 
     # if the calculator has not been initialized it does not have an
     # occupation object
-    if not hasattr(calc, 'occupation'):
+    if not hasattr(calc, 'occupations'):
         calc.initialize(atoms)
     occ = calc.occupations
     if occ.kT == 0:
@@ -54,6 +54,9 @@ def dscf_calculation(calc, orbitals, atoms=None):
         new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals, calc)
         new_occ.set_communicator(occ.kpt_comm)
         calc.occupations = new_occ
+
+    # reset self-consistency
+    calc.scf.reset()
 
 class OccupationsDSCF(FermiDirac):
     """Occupation class.
