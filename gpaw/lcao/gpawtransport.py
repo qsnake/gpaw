@@ -562,7 +562,9 @@ class GPAWTransport:
                                                                 % self.step)
                 print '----------------step %d -------------------' %self.step
             self.move_buffer()
-            f_spkmm_mol = self.fcvg.matcvg(self.h_spkmm_mol, self.print_info)
+            f_spkmm_mol = np.copy(self.h_spkmm_mol)
+            temp = self.fcvg.matcvg(self.atoms.calc.hamiltonian.vt_sG, self.print_info)
+            #f_spkmm_mol = self.fcvg.matcvg(self.h_spkmm_mol, self.print_info)
             timer.start('Fock2Den')
             if scat_lead == True:
                 self.fill_lead_with_scat()
@@ -615,6 +617,7 @@ class GPAWTransport:
                 for i in range(nspins):
                     self.h_spkmm[i] -= self.zero_shift * self.s_pkmm
             self.step +=  1
+        FF = self.atoms.calc.get_force(self.atoms)
         return 1
  
     def initialize_scf(self, bias, gate, cal_loc, verbose, alpha, nmaxold):
