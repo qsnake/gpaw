@@ -133,6 +133,17 @@ def dump_hamiltonian(filename, atoms, direction=None):
     world.barrier()
 
 def dump_hamiltonian_parallel(filename, atoms, direction=None):
+    """
+        Dump the lcao representation of H and S to file(s) beginning
+        with filename. If direction is x, y or z, the periodic boundary
+        conditions will be removed in the specified direction.
+
+        Note:
+        H and S are parallized over spin and k-points and
+        is for now dumped into a number of pickle files. This
+        may be changed into a dump to a single file in the feature.
+
+    """
     if direction!=None:
         d = 'xyz'.index(direction)
 
@@ -141,12 +152,16 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
     nao = wfs.setups.nao
     nq = len(wfs.kpt_u) // wfs.nspins
     H_qMM = np.empty((wfs.nspins, nq, nao, nao), wfs.dtype)
-    calc_data = {'qk':{}, 'skpt_qc':np.empty((nq, 3))}
+    calc_data = {'k_q':{},
+                 'skpt_qc':np.empty((nq, 3)), 
+                 'weight_q':np.empty(nq)}
+
     S_qMM = wfs.S_qMM
    
     for kpt in wfs.kpt_u:
         calc_data['skpt_qc'][kpt.q] = calc.wfs.ibzk_kc[kpt.k]
-        calc_data['qk'][kpt.q] = kpt.k
+        calc_data['weight_q'][kpt.q] = calc.wfs.weight_k[kpt.k]
+        calc_data['k_q'][kpt.q] = kpt.k
 #        print 'Calc. H matrix on proc. %i: (rk, rd, q, k)=(%i, %i, %i, %i)' % (wfs.world.rank, wfs.kpt_comm.rank, wfs.gd.domain.comm.rank, kpt.q, kpt.k)
         wfs.eigensolver.calculate_hamiltonian_matrix(calc.hamiltonian,
                                                      wfs, 
