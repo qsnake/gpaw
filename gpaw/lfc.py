@@ -120,6 +120,24 @@ class Sphere:
         return sum([2 * spline.get_angular_momentum_number() + 1
                     for spline in self.spline_j])
 
+    def normalize(self, integral, dv):
+        """Normalize localized functions."""
+        I_M = np.zeros(self.Mmax)
+        
+        nw = len(self.A_wgm) // len(self.spline_j)
+        assert nw * len(self.spline_j) == len(self.A_wgm)
+
+        for M, A_gm in zip(self.M_w, self.A_wgm):
+            I_m = A_gm.sum(axis=0)
+            I_M[M:M + len(I_m)] += I_m * dv
+
+        w = 0
+        for M, A_gm in zip(self.M_w, self.A_wgm):
+            if M == 0 and integral > 1e-15:
+                A_gm *= integral / I_M[0]
+            else:
+                A_gm -= I_M[M:M + A_gm.shape[1]] * self.A_wgm[w % nw]
+            w +=1
 
 # Quick hack: base class to share basic functionality across LFC classes
 class BaseLFC:
@@ -153,13 +171,20 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
     add, add1, add2, integrate, derivative
     """
-    def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float):
+    def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
+                 integral=None, forces=None):
         self.gd = gd
         self.sphere_a = [Sphere(spline_j) for spline_j in spline_aj]
         self.cut = cut
         self.ibzk_qc = None
         self.gamma = True
         self.dtype = dtype
+
+        if isinstance(integral, (float, int)):
+            self.integral_a = np.empty(len(self.sphere_a))
+            self.integral_a.fill(integral)
+        else:
+            self.integral_a = integral
         
     def set_k_points(self, ibzk_qc):
         self.ibzk_qc = ibzk_qc
@@ -243,6 +268,11 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.g_W = np.empty(nW, np.intc)
         self.i_W = np.empty(nW, np.intc)
 
+        if self.integral_a is not None:
+            assert self.gd.comm.size == 1
+            for I, sphere in zip(self.integral_a, self.sphere_a):
+                sphere.normalize(I, self.gd.dv)
+            
         # Find out which ranks have a piece of the
         # localized functions:
         x_a = np.zeros(natoms, bool)
@@ -279,6 +309,10 @@ class NewLocalizedFunctionsCollection(BaseLFC):
            x       --  xi    i
                    a,i
         """
+        if isinstance(c_axi, float):
+            assert q == -1
+            c_xi = np.array([c_axi])
+            c_axi = dict([(a, c_xi) for a in self.my_atom_indices])
         xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
         Nx = np.prod(xshape)
         a_xG = a_xG.reshape((Nx,) + Gshape)
@@ -695,6 +729,7 @@ class LocalizedFunctionsCollection(BaseLFC):
     def get_function_count(self, a):
         return self.lfs_a[a].ni
 
+#LocalizedFunctionsCollection = NewLocalizedFunctionsCollection
 
 def test():
     from gpaw.grid_descriptor import GridDescriptor
