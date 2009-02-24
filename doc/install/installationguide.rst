@@ -23,6 +23,8 @@ Requirements
 See the :ref:`platforms_and_architectures` page for information on how to
 install GPAW on a specific architecture.
 
+**CAMd users**: please follow instructions for :ref:`Niflheim`.
+
 
 Standard installation
 =====================

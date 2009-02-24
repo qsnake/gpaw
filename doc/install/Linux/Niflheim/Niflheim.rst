@@ -4,20 +4,60 @@
 Niflheim
 ========
 
-Here you find information about the the system
+Here you find information about Niflheim
 `<https://wiki.fysik.dtu.dk/niflheim>`_.
 
-**On slid machine only**: to use a parallel
-version on the nodes denoted by ``ethernet`` batch system property
-(see :wiki:`niflheim/Batch_jobs`),
-before issuing ``python setup.py build_ext``,
-apply the openmpi environment settings::
+Please follow :ref:`developer_installation`.
+The detailed settings are given below.
 
-  [~]$ source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.csh
+opteron ethernet nodes
+======================
 
-To make this the default setting add a line to your :file:`~/.tcshrc`.
-See :wiki:`niflheim/Parallelization` for details
-(note however, that it contains instructions for openmpi fortran codes).
+On the login node ``slid`` build GPAW (``python setup.py build_ext``)
+with gcc compiler using the following :file:`customize.py` file::
+
+  scalapack = True
+
+  extra_compile_args += [
+    '-O3'
+  ]
+
+  libraries = [
+    'gfortran',
+    'mpiblacsCinit',
+    'mpiblacs',
+    'acml',
+    'scalapack',
+    'mpi_f77'
+    ]
+
+  library_dirs = [
+    '/opt/acml-4.0.1/gfortran64/lib',
+    '/usr/local/blacs-1.1-24.56.gfortran/lib64',
+    '/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
+    '/usr/local/openmpi-1.2.5-gfortran/lib64'
+    ]
+
+  include_dirs += [
+    '/usr/local/openmpi-1.2.5-gfortran/include'
+   ]
+
+  extra_link_args += [
+    '-Wl,-rpath=/opt/acml-4.0.1/gfortran64/lib',
+    '-Wl,-rpath=/usr/local/blacs-1.1-24.56.gfortran/lib64',
+    '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
+    '-Wl,-rpath=/usr/local/openmpi-1.2.5-gfortran/lib64'
+  ]
+
+  define_macros += [
+    ('GPAW_MKL', '1'),
+  ]
+
+  mpicompiler = '/usr/local/openmpi-1.2.5-gfortran/bin/mpicc'
+  mpilinker = mpicompiler
+
+opteron infiniband nodes
+========================
 
 A subset of the Niflheim's nodes is equipped with Infiniband network
 `<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_
