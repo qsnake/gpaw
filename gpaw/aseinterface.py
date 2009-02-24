@@ -51,7 +51,7 @@ class GPAW(PAW):
         # to distinguish between the ways in which wave functions were obtained
         if (self.forces.F_av is None and
             hasattr(self.wfs, 'kpt_u') and
-            (self.wfs.kpt_u[0].psit_nG is not None) and
+            not hasattr(self.wfs, 'tci') and
             not isinstance(self.wfs.kpt_u[0].psit_nG, np.ndarray)):
             force_call_to_set_positions = True
         else:
