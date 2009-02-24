@@ -16,8 +16,8 @@ if not isfile('al.gpw'):
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
     calc.write('al.gpw', 'all')
-else:
-    calc = GPAW('al.gpw', txt=None, basis='sz')
+
+calc = GPAW('al.gpw', txt=None, basis='sz')
 
 ibzk_kc = calc.wfs.ibzk_kc
 nk = len(ibzk_kc)
@@ -36,7 +36,7 @@ pwf = ProjectedWannierFunctions(V_knM,
                                 kpoints=ibzk_kc)
 
 t1 = time()
-h_kMM, s_kMM = pwf.get_hamiltonian_and_overlap_matrix(useibl=False)
+h_kMM, s_kMM = pwf.get_hamiltonian_and_overlap_matrix(useibl=True)
 t2 = time()
 
 print "\nTime to construct PWF: %.3f seconds "  % (t2 - t1)

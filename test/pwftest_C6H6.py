@@ -14,8 +14,7 @@ if not os.path.isfile('C6H6.gpw'):
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
     calc.write('C6H6.gpw', 'all')
-else:
-    calc = GPAW('C6H6.gpw', txt=None, basis='sz')
+calc = GPAW('C6H6.gpw', txt=None, basis='sz')
 
 ibzk_kc = calc.wfs.ibzk_kc
 nk = len(ibzk_kc)
@@ -33,7 +32,7 @@ pwf = ProjectedWannierFunctions(V_knM,
                                 kpoints=ibzk_kc,
                                 fixedenergy=5.0)
 t1 = time()
-h, s = pwf.get_hamiltonian_and_overlap_matrix(useibl=True)
+h, s = pwf.get_hamiltonian_and_overlap_matrix(useibl=False)
 t2 = time()
 
 print "\nTime to construct PWF: %.3f seconds "  % (t2 - t1)
@@ -51,5 +50,7 @@ for n in range(norm_kn.shape[1]):
 
 for M, norm_n in zip(pwf.M_k, norm_kn):
     assert np.all(abs(norm_n[:M]-1.0) < 1.0e-15)
+
+print pwf.get_condition_number()
 
 #os.remove('C6H6.gpw')

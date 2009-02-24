@@ -17,8 +17,7 @@ if not os.path.isfile('H2O.gpw'):
     calc.write('H2O.gpw', mode='all')
 
 atoms, calc = restart('H2O.gpw', txt=None)
-# calc.set_positions() # XXX this will ruin calc.wfs.kpt_u[u].P_ani
-calc.density.ghat.set_positions(atoms.get_scaled_positions() % 1.)
+calc.initialize_positions()
 calc.hamiltonian.poisson.initialize(calc.finegd)
 
 locfun = LocFun()

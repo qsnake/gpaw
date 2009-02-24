@@ -16,8 +16,7 @@ if not isfile('al8.gpw'):
     atoms.set_calculator(calc)
     atoms.get_potential_energy()
     calc.write('al8.gpw', 'all')
-else:
-    calc = GPAW('al8.gpw', txt=None, basis='sz')
+calc = GPAW('al8.gpw', txt=None, basis='sz')
 
 ibzk_kc = calc.wfs.ibzk_kc
 nk = len(ibzk_kc)
