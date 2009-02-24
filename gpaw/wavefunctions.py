@@ -319,7 +319,8 @@ class LCAOWaveFunctions(WaveFunctions):
         self.positions_set = True
 
     def initialize(self, density, hamiltonian, spos_ac):
-        density.initialize_from_atomic_densities(self.basis_functions)
+        if density.nt_sG is None:
+            density.initialize_from_atomic_densities(self.basis_functions)
         comp_charge = density.calculate_multipole_moments()
         density.normalize(comp_charge)
         density.mix(comp_charge)
