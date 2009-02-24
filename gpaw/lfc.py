@@ -127,6 +127,7 @@ class Sphere:
         if self.normalized:
             yield None
             yield None
+            yield None
             return
         
         I_M = np.zeros(self.Mmax)
@@ -151,9 +152,19 @@ class Sphere:
         for request in requests:
             comm.wait(request)
             
+        requests = []
         if len(self.ranks) > 0:
             I_M += I_rM.sum(axis=0)
-            
+            for r in self.ranks:
+                requests.append(comm.send(I_M, r, a, False))
+        if self.rank != comm.rank:
+            requests.append(comm.receive(I_M, self.rank, a, False))
+
+        yield None
+
+        for request in requests:
+            comm.wait(request)
+        
         w = 0
         for M, A_gm in zip(self.M_w, self.A_wgm):
             if M == 0 and integral > 1e-15:
@@ -318,7 +329,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                                                        self.gd.dv,
                                                        self.gd.comm)
                 iterators.append(iterator)
-            for i in range(2):
+            for i in range(3):
                 for iterator in iterators:
                     iterator.next()
             
