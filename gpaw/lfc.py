@@ -180,6 +180,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.gamma = True
         self.dtype = dtype
 
+        # Global or local M-indices?
+        self.use_global_indices = False
+        
         if isinstance(integral, (float, int)):
             self.integral_a = np.empty(len(self.sphere_a))
             self.integral_a.fill(integral)
@@ -208,7 +211,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.M_a = []
         for a, sphere in enumerate(self.sphere_a):
             self.M_a.append(M)
-            M += sphere.Mmax
             G_wb = sphere.G_wb
             if G_wb:
                 nB += sum([len(G_b) for G_b in G_wb])
@@ -216,6 +218,13 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 self.atom_indices.append(a)
                 if sphere.rank == self.gd.comm.rank:
                     self.my_atom_indices.append(a)
+
+                if not self.use_global_indices:
+                    M += sphere.Mmax
+
+            if self.use_global_indices:
+                M += sphere.Mmax
+
         self.Mmax = M
 
         natoms = len(spos_ac)
@@ -262,11 +271,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         self.lfc = _gpaw.LFC(self.A_Wgm, self.M_W, self.G_B, self.W_B,
                              self.gd.dv, self.phase_qW)
-
-        #nimax = np.add.accumulate((self.W_B >= 0) * 2 - 1).max()
-        #self.W_i = np.empty(nimax, np.intc)
-        self.g_W = np.empty(nW, np.intc)
-        self.i_W = np.empty(nW, np.intc)
 
         if self.integral_a is not None:
             assert self.gd.comm.size == 1
@@ -326,26 +330,31 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         for a_G, c_M in zip(a_xG, c_xM):
             self.lfc.lcao_to_grid(c_M, a_G, q)
 
-##         # XXXXXXXXX JJ's version XXXXXXXXXXXXX       
-##         c_axm = c_axi
-##         dtype = a_xG.dtype
-##         xshape = a_xG.shape[:-3]
-##         c_xM = np.empty(xshape + (self.Mmax,), dtype)
-##         requests = []
-##         M1 = 0
-##         for a in self.atom_indices:
-##             c_xm = c_axm.get(a)
-##             sphere = self.sphere_a[a]
-##             M2 = M1 + sphere.Mmax
-##             if c_xm is None:
-##                 requests.append(comm.receive(c_xM[..., '???', M1:M2],
-##                                              sphere.rank, a, False))
-##             else:
-##                 for r in sphere.ranks:
-##                     requests.append(comm.send(c_xm, r, a, False))
-##         for request in requests:
-##             comm.wait(request)
-##         self.lfc.add(c_xM, a_xG, q)
+    def padd(self, a_xG, c_axi=1.0, q=-1):
+        if isinstance(c_axi, float):
+            assert q == -1
+            c_xi = np.array([c_axi])
+            c_axi = dict([(a, c_xi) for a in self.my_atom_indices])
+        dtype = a_xG.dtype
+        xshape = a_xG.shape[:-3]
+        c_xM = np.empty(xshape + (self.Mmax,), dtype)
+        requests = []
+        M1 = 0
+        for a in self.atom_indices:
+            c_xi = c_axi.get(a)
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if c_xi is None:
+                requests.append(comm.receive(c_xM[..., M1:M2],
+                                             sphere.rank, a, False))
+            else:
+                for r in sphere.ranks:
+                    requests.append(comm.send(c_xi, r, a, False))
+                c_xM[..., M1:M2] = c_xi
+            M1 = M2
+        for request in requests:
+            comm.wait(request)
+        self.lfc.add(c_xM, a_xG, q)
     
     def add1(self, n_g, scale, I_a):
         """What should this do? XXX"""
@@ -365,10 +374,11 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         also at the same time::
 
-           a   /    --   a         a        a   
+               /    __
+           a   |   \     a         a        a   
           I  = | dg >   D (s)   Phi (g)  Phi (g)
-               /    --   i1,i2    i1       i2
-                   i1,i2
+               |   /__   i1,i2     i1       i2
+               /   i1,i2
         
         where s is the spin index, and D_ii' is the unpacked version of D_p
         """
@@ -411,7 +421,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
     def griditer(self):
         """Iterate over grid points."""
-        self.g_W[:] = 0
+        self.g_W = np.zeros(len(self.M_W), np.intc)
         self.current_lfindices = []
         G1 = 0
         for W, G in zip(self.W_B, self.G_B):
@@ -433,6 +443,14 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
 
 class BasisFunctions(NewLocalizedFunctionsCollection):
+    def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
+                 integral=None, forces=None):
+        NewLocalizedFunctionsCollection.__init__(self, gd, spline_aj,
+                                                 kpt_comm, cut,
+                                                 dtype, integral,
+                                                 forces)
+        self.use_global_indices = True
+        
     def add_to_density(self, nt_sG, f_asi):
         """Add linear combination of squared localized functions to density.
 
