@@ -433,8 +433,10 @@ class BaseMixer_Broydn:
             self.eta_G = npy.empty(nt_G.shape)
             self.eta_D = []
             for D_p in D_ap:
-                self.eta_D.append(npy.empty(D_ap[0].shape))
-                self.u_D.append(npy.empty(D_ap[0].shape))
+                self.eta_D.append(0)
+                self.u_D.append([])
+                self.D_iap.append([])
+                self.d_D_ap.append([])
         else:
             if self.step >= 2:
                 del self.c_G[:]
