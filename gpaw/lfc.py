@@ -194,7 +194,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
     Methods missing before LocalizedFunctionsCollection is obsolete:
 
-    add, add1, add2, integrate, derivative
+    add1, add2, derivative
     """
     def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
                  integral=None, forces=None):
