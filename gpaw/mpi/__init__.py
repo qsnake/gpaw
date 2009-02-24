@@ -156,7 +156,7 @@ if debug:
             assert dest != self.rank
             assert is_contiguous(a)
             if not block:
-                assert sys.getrefcount(a) > 3
+                pass#assert sys.getrefcount(a) > 3
             return self.comm.send(a, dest, tag, block)
 
         def ssend(self, a, dest, tag=123):
