@@ -78,7 +78,7 @@ class WaveFunctions(EmptyWaveFunctions):
             q = k - k0
             weight = weight_k[k] * 2 / nspins
             if gamma:
-                phase_cd = None
+                phase_cd = np.ones((3, 2), complex)
             else:
                 phase_cd = np.exp(2j * np.pi *
                                   sdisp_cd * ibzk_kc[k, :, np.newaxis])
