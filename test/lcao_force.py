@@ -17,19 +17,12 @@ system.center(vacuum=1.5)
 system.rattle(stdev=.2, seed=42)
 system.set_pbc(1)
 
-args = dict(h=0.2,
+calc = GPAW(h=0.2,
             mode='lcao',
             basis=basis,
             kpts=[(.3, .1, .4)],
             convergence={'density':1e-5}
             )
-
-try:
-    calc = GPAW(**args)
-except TypeError:
-    args['eigensolver'] = args['mode']
-    del args['mode']
-    calc = GPAW(**args)
 
 system.set_calculator(calc)
 
