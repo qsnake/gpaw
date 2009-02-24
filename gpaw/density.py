@@ -142,14 +142,14 @@ class Density:
                 raise RuntimeError('Charge not conserved: excess=%.9f' %
                                    charge)
     def mix(self, comp_charge):
-        if not self.mixer.mix_rho and not hasattr(self, 'transport'):
+        if not self.mixer.mix_rho:
             self.mixer.mix(self)
             comp_charge = None
-            
+          
         self.interpolate(comp_charge)
         self.calculate_pseudo_charge()
 
-        if self.mixer.mix_rho and not hasattr(self, 'transport'):
+        if self.mixer.mix_rho:
             self.mixer.mix(self)
 
     def interpolate(self, comp_charge=None):
