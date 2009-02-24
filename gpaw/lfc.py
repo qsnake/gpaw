@@ -593,12 +593,14 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
     def calculate_potential_matrix_derivative(self, vt_G, DVt_MMc, q):
         """Calculate derivatives of potential matrix elements.
 
-                   /     *  _
-                  |   Phi  (r)
-         ~c       |      mu    ~ _        _   _
-        DV      = |   -------- v(r) Phi  (r) dr
-          mu nu   |     dr             nu
-                 /        c
+        ::
+
+                     /     *  _
+                    |   Phi  (r)
+           ~c       |      mu    ~ _        _   _
+          DV      = |   -------- v(r) Phi  (r) dr
+            mu nu   |     dr             nu
+                   /        c
 
         Results are added to DVt_MMc.
         """
