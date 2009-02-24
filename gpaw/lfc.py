@@ -355,6 +355,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             c_xi = np.array([c_axi])
             c_axi = dict([(a, c_xi) for a in self.my_atom_indices])
 
+        comm = self.gd.comm
         dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
         c_xM = np.empty(xshape + (self.Mmax,), dtype)
