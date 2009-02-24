@@ -67,7 +67,8 @@ class Sphere:
         self.G_wb = None
         self.M_w = None
         self.sdisp_wc = None
-
+        self.normalized = False
+        
     def set_position(self, spos_c, gd, cut):
         if self.spos_c is not None and not (self.spos_c - spos_c).any():
             return False
@@ -107,6 +108,7 @@ class Sphere:
             self.sdisp_wc = None
             
         self.spos_c = spos_c
+        self.normalized = False
         return True
 
     def spline_to_grid(self, spline, gd, start_c, end_c, spos_c):
@@ -120,8 +122,13 @@ class Sphere:
         return sum([2 * spline.get_angular_momentum_number() + 1
                     for spline in self.spline_j])
 
-    def normalize(self, integral, dv):
+    def normalize(self, integral, a, dv, comm):
         """Normalize localized functions."""
+        if self.normalized:
+            yield None
+            yield None
+            return
+        
         I_M = np.zeros(self.Mmax)
         
         nw = len(self.A_wgm) // len(self.spline_j)
@@ -131,6 +138,22 @@ class Sphere:
             I_m = A_gm.sum(axis=0)
             I_M[M:M + len(I_m)] += I_m * dv
 
+        requests = []
+        if len(self.ranks) > 0:
+            I_rM = np.empty((len(self.ranks), self.Mmax))
+            for r, J_M in zip(self.ranks, I_rM):
+                requests.append(comm.receive(J_M, r, a, False))
+        if self.rank != comm.rank:
+            requests.append(comm.send(I_M, self.rank, a, False))
+
+        yield None
+
+        for request in requests:
+            comm.wait(request)
+            
+        if len(self.ranks) > 0:
+            I_M += I_rM.sum(axis=0)
+            
         w = 0
         for M, A_gm in zip(self.M_w, self.A_wgm):
             if M == 0 and integral > 1e-15:
@@ -138,7 +161,9 @@ class Sphere:
             else:
                 A_gm -= I_M[M:M + A_gm.shape[1]] * self.A_wgm[w % nw]
             w +=1
-
+        self.normalized = True
+        yield None
+        
 # Quick hack: base class to share basic functionality across LFC classes
 class BaseLFC:
     def dict(self, shape=(), derivative=False, zero=False):
@@ -272,11 +297,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         self.lfc = _gpaw.LFC(self.A_Wgm, self.M_W, self.G_B, self.W_B,
                              self.gd.dv, self.phase_qW)
 
-        if self.integral_a is not None:
-            assert self.gd.comm.size == 1
-            for I, sphere in zip(self.integral_a, self.sphere_a):
-                sphere.normalize(I, self.gd.dv)
-            
         # Find out which ranks have a piece of the
         # localized functions:
         x_a = np.zeros(natoms, bool)
@@ -285,8 +305,23 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         x_ra = np.empty((self.gd.comm.size, natoms), bool)
         self.gd.comm.all_gather(x_a, x_ra)
         for a in self.atom_indices:
-            self.sphere_a[a].ranks = x_ra[:, a].nonzero()[0]
+            sphere = self.sphere_a[a]
+            if sphere.rank == self.gd.comm.rank:
+                sphere.ranks = x_ra[:, a].nonzero()[0]
+            else:
+                sphere.ranks = []
 
+        if self.integral_a is not None:
+            iterators = []
+            for a in self.atom_indices:
+                iterator = self.sphere_a[a].normalize(self.integral_a[a], a,
+                                                       self.gd.dv,
+                                                       self.gd.comm)
+                iterators.append(iterator)
+            for i in range(2):
+                for iterator in iterators:
+                    iterator.next()
+            
     def M_to_ai(self, src_xM, dst_axi):
         xshape = src_xM.shape[:-1]
         src_xM = src_xM.reshape(np.prod(xshape), self.Mmax)        
@@ -313,28 +348,13 @@ class NewLocalizedFunctionsCollection(BaseLFC):
            x       --  xi    i
                    a,i
         """
+        assert not self.use_global_indices
+        
         if isinstance(c_axi, float):
             assert q == -1
             c_xi = np.array([c_axi])
             c_axi = dict([(a, c_xi) for a in self.my_atom_indices])
-        xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
-        Nx = np.prod(xshape)
-        a_xG = a_xG.reshape((Nx,) + Gshape)
-        c_xM = np.empty((Nx, self.Mmax))
-        for a in self.atom_indices:
-            sphere = self.sphere_a[a]
-            M1 = self.M_a[a]
-            M2 = M1 + sphere.Mmax
-            c_xM[:, M1:M2] = c_axi[a].reshape(Nx, -1)
 
-        for a_G, c_M in zip(a_xG, c_xM):
-            self.lfc.lcao_to_grid(c_M, a_G, q)
-
-    def padd(self, a_xG, c_axi=1.0, q=-1):
-        if isinstance(c_axi, float):
-            assert q == -1
-            c_xi = np.array([c_axi])
-            c_axi = dict([(a, c_xi) for a in self.my_atom_indices])
         dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
         c_xM = np.empty(xshape + (self.Mmax,), dtype)
@@ -393,18 +413,52 @@ class NewLocalizedFunctionsCollection(BaseLFC):
           c_axi =  | dG a (G) Phi (G)
                    /     x       i
         """
-        xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
-        Nx = int(np.prod(xshape))
-        a_xG = a_xG.reshape((Nx,) + Gshape)
-        c_xM = np.zeros((Nx, self.Mmax), a_xG.dtype)
-        for a_G, c_M in zip(a_xG, c_xM):
-            self.lfc.integrate(a_G, c_M, q)
+        assert not self.use_global_indices
+
+        dtype = a_xG.dtype
         
+        xshape = a_xG.shape[:-3]
+        c_xM = np.zeros(xshape + (self.Mmax,), dtype)
+        self.lfc.integrate(a_xG, c_xM, q)
+
+        comm = self.gd.comm
+        rank = comm.rank
+        srequests = []
+        rrequests = []
+        c_arxi = {}
+        M1 = 0
         for a in self.atom_indices:
             sphere = self.sphere_a[a]
-            M1 = self.M_a[a]
             M2 = M1 + sphere.Mmax
-            c_axi[a].reshape(Nx, -1)[:] = c_xM[:, M1:M2]
+            if sphere.rank != rank:
+                srequests.append(comm.send(c_xM[..., M1:M2],
+                                           sphere.rank, a, False))
+            else:
+                if len(sphere.ranks) > 0:
+                    c_rxi = np.empty(sphere.ranks.shape + xshape + (M2 - M1,),
+                                     dtype)
+                    c_arxi[a] = c_rxi
+                    for r, b_xi in zip(sphere.ranks, c_rxi):
+                        rrequests.append(comm.receive(b_xi, r, a, False))
+            M1 = M2
+
+        for request in rrequests:
+            comm.wait(request)
+
+        M1 = 0
+        for a in self.atom_indices:
+            c_xi = c_axi.get(a)
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if c_xi is not None:
+                if len(sphere.ranks) > 0:
+                    c_xi[:] = c_xM[..., M1:M2] + c_rxi.sum(axis=0)
+                else:
+                    c_xi[:] = c_xM[..., M1:M2]
+            M1 = M2
+
+        for request in srequests:
+            comm.wait(request)
 
     def derivative(self, a_xG, c_axiv, q=-1):
         """Calculate x-, y-, and z-derivatives of localized function integrals.

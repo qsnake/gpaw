@@ -238,39 +238,53 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
 
 PyObject* integrate(LFCObject *lfc, PyObject *args)
 {
-  const PyArrayObject* a_G_obj;
-  PyArrayObject* c_M_obj;
-  int k;
+  const PyArrayObject* a_xG_obj;
+  PyArrayObject* c_xM_obj;
+  int q;
 
-  if (!PyArg_ParseTuple(args, "OOi", &a_G_obj, &c_M_obj, &k))
+  if (!PyArg_ParseTuple(args, "OOi", &a_xG_obj, &c_xM_obj, &q))
     return NULL; 
 
+  int nd = a_xG_obj->nd;
+  npy_intp* dims = a_xG_obj->dimensions;
+  int nx = PyArray_MultiplyList(dims, nd - 3);
+  int nG = PyArray_MultiplyList(dims + nd - 3, 3);
+  int nM = c_xM_obj->dimensions[c_xM_obj->nd - 1];
+
   if (!lfc->bloch_boundary_conditions) {
-    const double* a_G = (const double*)a_G_obj->data;
-    double* c_M = (double*)c_M_obj->data;
-    GRID_LOOP_START(lfc, -1) {
-      for (int i = 0; i < ni; i++) {
-        LFVolume* v = volume_i + i;
-        for (int gm = 0, G = Ga; G < Gb; G++)
-          for (int m = 0; m < v->nm; m++, gm++)
-            c_M[v->M + m] += a_G[G] * v->A_gm[gm] * lfc->dv;
+    const double* a_G = (const double*)a_xG_obj->data;
+    double* c_M = (double*)c_xM_obj->data;
+    for (int x = 0; x < nx; x++) {
+      GRID_LOOP_START(lfc, -1) {
+        for (int i = 0; i < ni; i++) {
+          LFVolume* v = volume_i + i;
+          for (int gm = 0, G = Ga; G < Gb; G++)
+            for (int m = 0; m < v->nm; m++, gm++)
+              c_M[v->M + m] += a_G[G] * v->A_gm[gm] * lfc->dv;
+        }
       }
+      GRID_LOOP_STOP(lfc, -1);
+      c_M += nM;
+      a_G += nG;
     }
-    GRID_LOOP_STOP(lfc, -1);
   }
   else {
-    const complex double* a_G = (const complex double*)a_G_obj->data;
-    complex double* c_M = (complex double*)c_M_obj->data;
-    GRID_LOOP_START(lfc, k) {
-      for (int i = 0; i < ni; i++) {
-        LFVolume* v = volume_i + i;
-        double complex phase = phase_i[i] * lfc->dv;
-        for (int gm = 0, G = Ga; G < Gb; G++)
-          for (int m = 0; m < v->nm; m++, gm++)
-            c_M[v->M + m] += a_G[G] * v->A_gm[gm] * phase;
+    const complex double* a_G = (const complex double*)a_xG_obj->data;
+    complex double* c_M = (complex double*)c_xM_obj->data;
+    for (int x = 0; x < nx; x++) {
+      GRID_LOOP_START(lfc, q) {
+        for (int i = 0; i < ni; i++) {
+          LFVolume* v = volume_i + i;
+          double complex phase = phase_i[i] * lfc->dv;
+          for (int gm = 0, G = Ga; G < Gb; G++)
+            for (int m = 0; m < v->nm; m++, gm++)
+              c_M[v->M + m] += a_G[G] * v->A_gm[gm] * phase;
+        }
       }
+      GRID_LOOP_STOP(lfc, q);
+      c_M += nM;
+      a_G += nG;
     }
-    GRID_LOOP_STOP(lfc, k);
   }
   Py_RETURN_NONE;
 }
