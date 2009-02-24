@@ -120,8 +120,8 @@ the right interface can work with ASE.  ASE provides:
 Parallelization
 ===============
 
-Parallelization is done by distributing **k**-points and spin over
-all processors and on top of that domain-decomposition is used.
+Parallelization is done by distributing **k**-points, spins, and bands
+over all processors and on top of that domain-decomposition is used.
 
 
 .. [Mor05] J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen,

@@ -124,3 +124,19 @@ Here is an example which calculates the atomization energy of a
 nitrogen molecule using two processes:
 
 .. literalinclude:: parallel_atomization.py
+
+ScaLapack
+=========
+
+.. toctree::
+   :maxdepth: 1
+
+   ScaLapack/ScaLapack
+
+Band parallelization
+====================
+
+.. toctree::
+   :maxdepth: 1
+
+   band_parallelization/band_parallelization

@@ -16,7 +16,7 @@ AIX:
 BGP:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    BGP/jugene
    BGP/rbgc
@@ -32,7 +32,7 @@ Cray:
 Linux:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    Linux/CentOS
    Linux/Fedora

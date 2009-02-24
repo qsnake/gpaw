@@ -10,7 +10,7 @@ Instructions below are valid for ``frontend-13`` and the filesystem
 The latest version of gpaw uses numpy
 `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-To build an optimized (consider to build based on ``goto`` blas to achieve the best performance: see :ref:`surveyor`) numpy, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/BGP/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
+To build an optimized (consider to build based on ``goto`` blas to achieve the best performance: see :ref:`compiling_with_gcc_on_surveyor`) numpy, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/BGP/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
 patch file
 (modifications required to get powerpc-bgp-linux-gfortran instead of
 gfortran compiler),
