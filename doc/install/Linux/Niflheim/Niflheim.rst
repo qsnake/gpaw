@@ -7,18 +7,21 @@ Niflheim
 Here you find information about the the system
 `<https://wiki.fysik.dtu.dk/niflheim>`_.
 
-**On slid and thul machines only**: if you want to use a parallel
-version, before ``python setup.py build_ext``,
+**On slid machine only**: to use a parallel
+version on the nodes denoted by ``ethernet`` batch system property
+(see :wiki:`niflheim/Batch_jobs`),
+before issuing ``python setup.py build_ext``,
 apply the openmpi environment settings::
 
   [~]$ source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.csh
 
-To make it the default setting add the line to your :file:`~/.tcshrc`.
+To make this the default setting add a line to your :file:`~/.tcshrc`.
 See :wiki:`niflheim/Parallelization` for details
 (note however, that it contains instructions for openmpi fortran codes).
 
 A subset of the Niflheim's nodes is equipped with Infiniband network
-`<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_.
+`<https://wiki.fysik.dtu.dk/niflheim/Hardware#infiniband-network>`_
+and denoted by ``infiniband`` batch system property.
 
 On the login node ``slid`` build GPAW (``python setup.py build_ext``)
 with gcc compiler using the following :file:`customize.py` file::
