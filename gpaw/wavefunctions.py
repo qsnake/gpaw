@@ -450,7 +450,6 @@ class LCAOWaveFunctions(WaveFunctions):
                                            rho_hc_MM[:, M1:M2]).real.trace()
                 dEdndndR_av[b, v] = forcecontrib
 
-        #self.gd.comm.sum(dEdndndR_av) #??
         return dEdndndR_av
 
     def calculate_potential_derivatives(self, tci, a, hamiltonian, kpt,
@@ -520,42 +519,56 @@ class LCAOWaveFunctions(WaveFunctions):
         #assert abs(ChcEFC_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
         #                              kpt.C_nM)).max() < 1e-8
         
-        for a in range(len(self.setups)):
-            dPdR_vMi = tci.dPdR_akcmi[a][k]
-            mask_MM = tci.mask_amm[a]
-            self.calculate_force_on_atom_lcao(a, kpt, hamiltonian, F_av[a],
-                                              tci, T_MM,
-                                              P_aqMi,
-                                              rho_MM, dTdR_vMM, dPdR_vMi,
-                                              mask_MM, H_MM, ChcEFC_MM,
-                                              dEdndndR_av)
-
-    def calculate_force_on_atom_lcao(self, a, kpt, hamiltonian, F_v, tci,
-                                     T_MM, P_aqMi, rho_MM,
-                                     dTdR_vMM, dPdR_vMi, mask_MM, H_MM,
-                                     ChcEFC_MM, dEdndndR_av):
-        k = kpt.k
+        my_atom_indices = self.basis_functions.my_atom_indices
+        atom_indices = self.basis_functions.atom_indices
         
-        for v, (dTdR_MM, dPdR_Mi) in enumerate(zip(dTdR_vMM, dPdR_vMi)):
-            dPdRa_aMi = self.get_projector_derivatives(tci, a, v, k)
-            dSdRa_MM = self.get_overlap_derivatives(tci, a, v, dPdRa_aMi, k)
+
+        dEdTdTdR_av = np.zeros_like(F_av)
+        for a in my_atom_indices:
+            mask_MM = tci.mask_amm[a]
+            for v in range(3):
+                dEdTdTdR_av[a, v] = np.dot(rho_MM, dTdR_vMM[v] *
+                                           mask_MM).real.trace()
+
+        dEdDdDdR_av = np.zeros_like(F_av)
+        dEdrhodrhodR_av = np.zeros_like(F_av)
+        for a in atom_indices:
+            for v in range(3):
+                dPdRa_aMi = self.get_projector_derivatives(tci, a, v, k)
+                dSdRa_MM = self.get_overlap_derivatives(tci, a, v,
+                                                        dPdRa_aMi, k)
+                if a in my_atom_indices:
+                    dEdrhodrhodR_av[a, v] = - np.dot(ChcEFC_MM,
+                                                     dSdRa_MM).real.trace()
             
-            dEdrhodrhodR = - np.dot(ChcEFC_MM, dSdRa_MM).real.trace()
-            
-            dEdTdTdR = np.dot(rho_MM, dTdR_MM * mask_MM).real.trace()
-            
-            dEdDdDdR = np.zeros(1)
-            for b, dPdRa_Mi in dPdRa_aMi.items():
-                A_ii = np.dot(dPdRa_Mi.T.conj(), 
-                              np.dot(rho_MM, self.P_aqMi[b][k]))
-                Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
-                dEdDdDdR += 2 * np.dot(Hb_ii, A_ii).real.trace()
-            self.gd.comm.sum(dEdDdDdR)
-            
-            dEdndndR = dEdndndR_av[a][v]
-            F = - (dEdrhodrhodR + dEdTdTdR + dEdDdDdR + dEdndndR)
-            if a in dPdRa_aMi:
-                F_v[v] += F
+                for b, dPdRa_Mi in dPdRa_aMi.items():
+                    A_ii = np.dot(dPdRa_Mi.T.conj(), 
+                                  np.dot(rho_MM, self.P_aqMi[b][k]))
+                    Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
+                    dEdDdDdR_av[a, v] += 2 * np.dot(Hb_ii, A_ii).real.trace()
+        # The array dEdDdDdR_av may contain contributions for atoms on this
+        # cpu stored on other CPUs.  Taking the sum of this array yields
+        # correct result on all CPUs.  However this is postponed till after
+        # the force calculation.
+
+        def print_arrays_with_ranks(self, names, arrays_ax):
+            # Debugging function for checking properties of distributed arrays
+            # Prints rank, label, list of atomic indices, and element sum
+            # for parts of array on this cpu as a primitive "hash" function
+            from gpaw.mpi import rank
+            my_atom_indices = self.basis_functions.my_atom_indices
+            for name, array_x in zip(names, arrays_ax):
+                sums = [array_x[a].sum() for a in my_atom_indices]
+                print rank, name, my_atom_indices, sums
+
+        #names = 'RTDn'
+        #print_arrays_with_ranks(self, names, [dEdrhodrhodR_av, dEdTdTdR_av,
+        #                                      dEdDdDdR_av, dEdndndR_av])
+
+        # For whom it may concern, dEdDdDdR is the only component which
+        # is nonzero even for atoms outside my_atom_indices
+        # (though indeed zero for atoms outside atom_indices)
+        F_av -= (dEdrhodrhodR_av + dEdTdTdR_av + dEdDdDdR_av + dEdndndR_av)
 
 
 from gpaw.eigensolvers import get_eigensolver

@@ -603,6 +603,9 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                    /        c
 
         Results are added to DVt_MMc.
+
+        NOTE: results are *not* sent across CPUs.  To get the
+        actual result on all cpus, invoke gd.comm.sum(DVt_MMc).
         """
         cspline_M = []
         for a, sphere in enumerate(self.sphere_a):
