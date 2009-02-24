@@ -242,7 +242,7 @@ class GPAWTransport:
                                          self.d_skmm))                        
         else:
             atoms, calc = restart_gpaw('scat.gpw')
-            calc.set_positions(None, True)
+            calc.set_positions()
             self.atoms = atoms
             self.h_skmm, self.s_kmm, self.d_skmm = self.pl_read('scaths')
         kpts = calc.wfs.ibzk_kc
