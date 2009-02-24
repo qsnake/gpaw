@@ -242,9 +242,9 @@ class GPAWTransport:
                                          self.d_skmm))                        
         else:
             atoms, calc = restart_gpaw('scat.gpw')
-            calc.set_positions()
+            calc.set_positions(None, True)
             self.atoms = atoms
-            self.h_skmm, self.s_kmm, self.d_skmm = self.read('scaths')
+            self.h_skmm, self.s_kmm, self.d_skmm = self.pl_read('scaths')
         kpts = calc.wfs.ibzk_kc
         self.nbmol = self.h_skmm.shape[-1]
             
@@ -617,7 +617,7 @@ class GPAWTransport:
                 for i in range(nspins):
                     self.h_spkmm[i] -= self.zero_shift * self.s_pkmm
             self.step +=  1
-        FF = self.atoms.calc.get_force(self.atoms)
+        FF = self.atoms.calc.get_forces(self.atoms)
         return 1
  
     def initialize_scf(self, bias, gate, cal_loc, verbose, alpha, nmaxold):
@@ -1194,13 +1194,14 @@ class GPAWTransport:
             kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
         density.update(wfs)
         if not self.mix_dmm:
-            diff = density.mixer.get_charge_sloshing()
-            self.print_info('dcvg: dmatmax = %f   tol=%f' % (diff,
-                                                      calc.scf.density_error))
-            print 'dcvg: dmatmax = %f   tol=%f' % (diff,
-                                                      calc.scf.density_error)
-            if diff < calc.scf.density_error:
-                self.dcvg.bcvg = True
+            if self.step > 0:
+                diff = density.mixer.get_charge_sloshing()
+                self.print_info('dcvg: dmatmax = %f   tol=%f' % (diff,
+                                                      calc.scf.max_density_error))
+                print 'dcvg: dmatmax = %f   tol=%f' % (diff,
+                                                      calc.scf.max_density_error)
+                if diff < calc.scf.max_density_error:
+                    self.dcvg.bcvg = True
         return density
 
     def calc_total_charge(self, d_spkmm):
