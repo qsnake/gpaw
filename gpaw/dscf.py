@@ -16,7 +16,7 @@ import numpy as np
 from gpaw.occupations import OccupationNumbers, FermiDirac
 import gpaw.mpi as mpi
 
-def dscf_calculation(calc, orbitals, atoms=None):
+def dscf_calculation(paw, orbitals, atoms=None):
     """Helper function to prepare a calculator for a dSCF calculation
 
     Parameters
@@ -41,22 +41,22 @@ def dscf_calculation(calc, orbitals, atoms=None):
 
     """
 
-    # if the calculator has not been initialized it does not have an
-    # occupation object
-    if not hasattr(calc, 'occupations'):
-        calc.initialize(atoms)
-    occ = calc.occupations
+    # if the calculator has not been initialized the
+    # occupation object is None
+    if paw.occupations == None:
+        paw.initialize(atoms)
+    occ = paw.occupations
     if occ.kT == 0:
         occ.kT = 1e-6
     if isinstance(occ, OccupationsDSCF):
         calc.occupations.orbitals = orbitals
     else:
-        new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals, calc)
+        new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals, paw)
         new_occ.set_communicator(occ.kpt_comm)
-        calc.occupations = new_occ
+        paw.occupations = new_occ
 
     # reset self-consistency
-    calc.scf.reset()
+    paw.scf.reset()
 
 class OccupationsDSCF(FermiDirac):
     """Occupation class.
