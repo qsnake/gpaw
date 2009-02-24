@@ -36,7 +36,7 @@ class InputParameters(dict):
             ('idiotproof'   , True,   ),
             ('mode',          'fd',   ),
             ('convergence',   {'energy':      0.001,  # eV / atom
-                               'density':     1.0e-3,
+                               'density':     1.0e-4,
                                'eigenstates': 1.0e-9,
                                'bands':       'occupied'})])
     
