@@ -32,7 +32,7 @@ pwf = ProjectedWannierFunctions(V_knM,
                                 kpoints=ibzk_kc,
                                 fixedenergy=5.0)
 t1 = time()
-h, s = pwf.get_hamiltonian_and_overlap_matrix(useibl=False)
+h, s = pwf.get_hamiltonian_and_overlap_matrix(useibl=True)
 t2 = time()
 
 print "\nTime to construct PWF: %.3f seconds "  % (t2 - t1)
