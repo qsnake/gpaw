@@ -740,9 +740,9 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
     for (int c = 0; c < 3; c++) {
       GRID_LOOP_START(lfc, k) {
         // In one grid loop iteration, only z changes.
-        int iza = Ga % n_c[2] + beg_c[0];
+        int iza = Ga % n_c[2] + beg_c[2];
         int iy = (Ga / n_c[2]) % n_c[1] + beg_c[1];
-        int ix = Ga / (n_c[2] * n_c[1]) + beg_c[2];
+        int ix = Ga / (n_c[2] * n_c[1]) + beg_c[0];
         int iz = iza;
 
         for (int i1 = 0; i1 < ni; i1++) {
