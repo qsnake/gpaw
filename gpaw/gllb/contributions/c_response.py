@@ -2,6 +2,7 @@ from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.gllb.contributions.contribution import Contribution
 from gpaw.xc_functional import XCRadialGrid, XCFunctional, XC3DGrid
 from gpaw.xc_correction import A_Liy
+from gpaw.utilities import pack
 from gpaw.gllb import safe_sqr
 from math import sqrt, pi
 
@@ -113,7 +114,30 @@ class C_Response(Contribution):
                                                 npy.dot(c.n_qg, x_g * c.rgd.dv_g))
             
         return 0.0
-    
+
+    def integrate_sphere(self, a, Dresp_sp, D_sp, Dwf_p):
+        c = self.nlfunc.setups[a].xc_correction
+        Dresp_p, D_p = Dresp_sp[0], D_sp[0]
+        print D_p.shape
+        print Dwf_p.shape
+        D_Lq = npy.dot(c.B_Lqp, D_p)
+        n_Lg = npy.dot(D_Lq, c.n_qg) # Construct density
+        n_Lg[0] += c.nc_g * sqrt(4 * pi)
+        nt_Lg = npy.dot(D_Lq, c.nt_qg) # Construct smooth density (without smooth core)
+        Dresp_Lq = npy.dot(c.B_Lqp, Dresp_p) # Construct response
+        nresp_Lg = npy.dot(Dresp_Lq, c.n_qg) # Construct 'response density'
+        nrespt_Lg = npy.dot(Dresp_Lq, c.nt_qg) # Construct smooth 'response density' (w/o smooth core)
+        Dwf_Lq = npy.dot(c.B_Lqp, Dwf_p) # Construct lumo wf
+        nwf_Lg = npy.dot(Dwf_Lq, c.n_qg)
+        nwft_Lg = npy.dot(Dwf_Lq, c.nt_qg)
+        E = 0.0
+        for w, Y_L in zip(c.weights, c.Y_yL):
+            v = npy.dot(Y_L, nwft_Lg) * npy.dot(Y_L, nrespt_Lg) / (npy.dot(Y_L, nt_Lg) + 1e-10)
+            E -= self.weight * w * npy.dot(v, c.rgd.dv_g)
+            v = npy.dot(Y_L, nwf_Lg) * npy.dot(Y_L, nresp_Lg) / (npy.dot(Y_L, n_Lg) + 1e-10)
+            E += self.weight * w * npy.dot(v, c.rgd.dv_g)
+        return E
+
     def add_smooth_xc_potential_and_energy_1d(self, vt_g):
         w_ln = self.coefficients.get_coefficients_1d(smooth=True)
         v_g = npy.zeros(self.ae.N)
@@ -166,7 +190,14 @@ class C_Response(Contribution):
         for kpt in self.kpt_u:
             self.nt_sG[:] = 0.0
             self.wfs.add_to_density_from_k_point_with_occupation(self.nt_sG, kpt, lumo_occupied)
-            eps_u.append(kpt.f_n[lumo_n] + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
+            Ecorr = 0
+            for a in self.D_asp:
+                D_sp = self.D_asp[a]
+                Dresp_sp = self.Dresp_asp[a]
+                Dwf_p = pack(npy.outer(kpt.P_ani[a][lumo_n].conj(), kpt.P_ani[a][lumo_n]).real)
+                Ecorr += self.integrate_sphere(a, Dresp_sp, D_sp, Dwf_p)
+            print "Spherical correction:", Ecorr * 27.21
+            eps_u.append(Ecorr + kpt.f_n[lumo_n] + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
 
         method2_dxc = min(eps_u)
 
@@ -183,16 +214,7 @@ class C_Response(Contribution):
         print "| Lumo pert.  | %7.2f | %9.2f | %7.2f |" % (Ksgap, method2_dxc, Ksgap+method2_dxc)
         print "-----------------------------------------------"
         print
-        print "Approximations:"
-        print "-Only smooth wave function is currently considered"
-
-
-        return B-A
-        #self.wfs.calculate_atomic_density_matrices_with_occupation(
-        #    self.Dresp_asp, w_kn)
-        #self.wfs.calculate_atomic_density_matrices_with_occupation(
-        #    self.D_asp, f_kn)
-        
+        return method2_dxc
 
     def initialize_from_atomic_orbitals(self, basis_functions):
         # Initiailze 'response-density' and density-matrices
@@ -256,6 +278,24 @@ class C_Response(Contribution):
         v_g[0] = v_g[1]
         dict['all_electron_response'] = v_g
 
+        # Calculate Hardness of spherical atom, for debugging purposes
+        l = [ npy.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]
+        h = [ npy.where(f>1e-3, e, -1000) for f,e in zip(self.ae.f_j, self.ae.e_j)]
+        lumo_e = min(l)
+        homo_e = max(h)
+        if lumo_e < 999: # If there is unoccpied orbital
+            print "lumoe", lumo_e, homo_e
+            w_j = self.coefficients.get_coefficients_1d(lumo_perturbation = True)
+            v_g = self.weight * npy.dot(w_j, u2_j) / (npy.dot(self.ae.f_j, u2_j) +1e-10)
+            print "Should be 1", npy.sum(u2_j[0] * self.ae.dr)
+            e2 = [ e+npy.dot(u2*v_g, self.ae.dr) for u2,e in zip(u2_j, self.ae.e_j) ]
+            lumo_2 = min([ npy.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, e2)])
+            print "Homo eigenvalue:", homo_e* 27.2107
+            print "New lumo eigenvalue", lumo_2 * 27.2107
+            self.hardness = lumo_2 - homo_e
+            print self.hardness
+            print "Hardness predicted: %10.3f eV" % (self.hardness * 27.2107)
+            
     def write(self, w):
         wfs = self.wfs
         world = wfs.world

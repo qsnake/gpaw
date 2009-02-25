@@ -31,6 +31,16 @@ class NonLocalFunctionalFactory:
             C_Response(functional, 1.0,
                        C_GLLBScr(functional, 1.0).get_coefficient_calculator())
             return functional
+        elif name == 'GLLBC':
+                        from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
+                        from gpaw.gllb.contributions.c_response import C_Response
+                        from gpaw.gllb.contributions.c_lda import C_LDA
+                        C_Response(functional, 1.0,
+                        C_GLLBScr(functional, 1.0,'PBE').get_coefficient_calculator())
+                        #C_LDA(functional, 1.0, 'LDA')
+                        #C_LDA(functional, -1.0, 'LDAx')
+                        return functional
+                                                        
         elif name == 'GLLBLDA':
             from gpaw.gllb.contributions.c_lda import C_LDA
             C_LDA(functional, 1.0)

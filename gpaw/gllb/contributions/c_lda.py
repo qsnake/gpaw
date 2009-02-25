@@ -5,20 +5,20 @@ from numpy import dot as dot3  # Avoid dotblas bug!
 from math import pi, sqrt
 
 class C_LDA(Contribution):
-    def __init__(self, nlfunc, weight):
+    def __init__(self, nlfunc, weight, functional = 'LDA'):
         Contribution.__init__(self, nlfunc, weight)
-
+        self.functional = functional
     def get_name(self):
         return 'LDA'
         
     def initialize(self):
-        self.xc = XCFunctional('LDA')
+        self.xc = XCFunctional(self.functional)
         self.vt_sg = self.nlfunc.finegd.empty(self.nlfunc.nspins)
         self.e_g = self.nlfunc.finegd.empty()#.ravel()
 
     def initialize_1d(self):
         self.ae = self.nlfunc.ae
-        self.xc = XCRadialGrid('LDA', self.ae.rgd) 
+        self.xc = XCRadialGrid(self.functional, self.ae.rgd) 
         self.v_g = npy.zeros(self.ae.N)
 
     def calculate_spinpaired(self, e_g, n_g, v_g):
