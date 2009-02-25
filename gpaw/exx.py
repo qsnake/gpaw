@@ -150,6 +150,12 @@ class EXX:
         pd  = self.pair_density # Class for handling pair densities
         fmin= 1e-9              # Occupations less than this counts as empty
 
+        if f_n is None:
+            raise RuntimeError(
+                'You should do an initial rough convergence using an\n'
+                'inexpensive xc functinal, e.g. LDA/GGA, before switching on\n'
+                'exact exchange.')
+
         P_ani = kpt.P_ani
         setups = self.density.setups
         domain_comm = self.density.gd.comm
