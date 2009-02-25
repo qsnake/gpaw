@@ -9,7 +9,7 @@ import sys
 import time
 from math import log
 
-import numpy as npy
+import numpy as np
 from ase.units import Bohr, Hartree
 
 from gpaw.aseinterface import GPAW
@@ -137,7 +137,7 @@ class TDDFT(GPAW):
 
             # Wave functions
             for kpt in wfs.kpt_u:
-                kpt.psit_nG = npy.array(kpt.psit_nG[:], complex)
+                kpt.psit_nG = np.array(kpt.psit_nG[:], complex)
         else:
             self.set_positions()
 
@@ -177,7 +177,7 @@ class TDDFT(GPAW):
         self.text('Preconditioner: ', 'None')
         self.preconditioner = None #TODO! check out SSOR preconditioning
         #self.preconditioner = InverseOverlapPreconditioner(self.overlap)
-        #self.preconditioner = KineticEnergyPreconditioner(self.gd, self.td_hamiltonian.hamiltonian.kin, npy.complex)
+        #self.preconditioner = KineticEnergyPreconditioner(self.gd, self.td_hamiltonian.hamiltonian.kin, np.complex)
 
         # Time propagator
         self.text('Propagator: ', propagator)
@@ -227,7 +227,7 @@ class TDDFT(GPAW):
         self.eps_tmp = None
         self.mblas = MultiBlas(self.gd)
 
-        self.kick_strength = npy.array([0.0,0.0,0.0], dtype=float)
+        self.kick_strength = np.array([0.0,0.0,0.0], dtype=float)
 
 
     def propagate(self, time_step, iterations, dipole_moment_file=None,
@@ -294,7 +294,7 @@ class TDDFT(GPAW):
                     self.hpsit = self.gd.zeros(len(kpt_u[0].psit_nG),
                                                dtype=complex)
                 if self.eps_tmp is None:
-                    self.eps_tmp = npy.zeros(len(kpt_u[0].eps_n),
+                    self.eps_tmp = np.zeros(len(kpt_u[0].eps_n),
                                              dtype=complex)
 
                 for kpt in kpt_u:
@@ -303,7 +303,7 @@ class TDDFT(GPAW):
                     self.mblas.multi_zdotc(self.eps_tmp, kpt.psit_nG,
                                            self.hpsit, len(kpt_u[0].psit_nG))
                     self.eps_tmp *= self.gd.dv
-                    #print 'Eps_n = ', self.eps_tmp
+                    # print 'Eps_n = ', self.eps_tmp
                     kpt.eps_n = self.eps_tmp.real
 
                 self.occupations.calculate_band_energy(kpt_u)
@@ -316,7 +316,7 @@ class TDDFT(GPAW):
                 self.Enlkin = xcfunc.get_non_local_kinetic_corrections()
 
                 # PAW
-                self.Ekin = H.Ekin + self.occupations.Eband + self.Enlkin
+                self.Ekin = H.Ekin0 + self.occupations.Eband + self.Enlkin
                 self.Epot = H.Epot
                 self.Eext = H.Eext
                 self.Ebar = H.Ebar
@@ -418,10 +418,10 @@ class TDDFT(GPAW):
         if self.rank == 0:
             self.text('Delta kick = ', kick_strength)
 
-        self.kick_strength = npy.array(kick_strength)
+        self.kick_strength = np.array(kick_strength)
 
         abs_kick_hamiltonian = AbsorptionKickHamiltonian(self.wfs, self.atoms,
-                                   npy.array(kick_strength, float))
+                                   np.array(kick_strength, float))
         abs_kick = AbsorptionKick(self.wfs, abs_kick_hamiltonian,
                                   self.td_overlap, self.solver,
                                   self.preconditioner, self.gd, self.timer)
@@ -491,16 +491,16 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         columns = lines[0].split('[')
         columns = columns[1].split(']')
         columns = columns[0].split(',')
-        kick_strength = npy.array([eval(columns[0]),eval(columns[1]),eval(columns[2])], dtype=float)
-        strength = npy.array(kick_strength, dtype=float)
+        kick_strength = np.array([eval(columns[0]),eval(columns[1]),eval(columns[2])], dtype=float)
+        strength = np.array(kick_strength, dtype=float)
         # Remove first two lines
         lines.pop(0)
         lines.pop(0)
         print 'Using kick strength = ', strength
         # Continue with dipole moment data
         n = len(lines)
-        dm = npy.zeros((n,3),dtype=float)
-        time = npy.zeros((n,),dtype=float)
+        dm = np.zeros((n,3),dtype=float)
+        time = np.zeros((n,),dtype=float)
         for i in range(n):
             data = lines[i].split()
             time[i] = float(data[0])
@@ -514,13 +514,13 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         nw = int(e_max / delta_e)
         dw = delta_e / 27.211
         # f(w) = Nw exp(-w^2/2sigma^2)
-        #sigma = fwhm / 27.211 / (2.* npy.sqrt(2.* npy.log(2.0)))
+        #sigma = fwhm / 27.211 / (2.* np.sqrt(2.* np.log(2.0)))
         # f(t) = Nt exp(-t^2/2gamma^2)
         #gamma = 1.0 / sigma
         sigma = width/27.211
         gamma = 1.0 / sigma
-        fwhm = sigma * (2.* npy.sqrt(2.* npy.log(2.0)))
-        kick_magnitude = npy.sum(strength**2)
+        fwhm = sigma * (2.* np.sqrt(2.* np.log(2.0)))
+        kick_magnitude = np.sum(strength**2)
 
         # write comment line
         f_file.write('# Photoabsorption spectrum from real-time propagation\n')
@@ -536,20 +536,20 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         for i in range(nw):
             w = i * dw
             # x
-            alphax = npy.sum( npy.sin(t * w) 
-                              * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
+            alphax = np.sum( np.sin(t * w) 
+                              * np.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
             alphax *= \
-                2 * dt / (2*npy.pi) / kick_magnitude * strength[0]
+                2 * dt / (2*np.pi) / kick_magnitude * strength[0]
             # y
-            alphay = npy.sum( npy.sin(t * w) 
-                              * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
+            alphay = np.sum( np.sin(t * w) 
+                              * np.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
             alphay *= \
-                2 * dt / (2*npy.pi) / kick_magnitude * strength[1]
+                2 * dt / (2*np.pi) / kick_magnitude * strength[1]
             # z
-            alphaz = npy.sum( npy.sin(t * w) 
-                              * npy.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
+            alphaz = np.sum( np.sin(t * w) 
+                              * np.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
             alphaz *= \
-                2 * dt / (2*npy.pi) / kick_magnitude * strength[2]
+                2 * dt / (2*np.pi) / kick_magnitude * strength[2]
 
             # f = 2 * omega * alpha
             line = '%10.6lf %20.10le %20.10le %20.10le\n' \
