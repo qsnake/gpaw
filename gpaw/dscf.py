@@ -49,7 +49,7 @@ def dscf_calculation(paw, orbitals, atoms=None):
     if occ.kT == 0:
         occ.kT = 1e-6
     if isinstance(occ, OccupationsDSCF):
-        calc.occupations.orbitals = orbitals
+        paw.occupations.orbitals = orbitals
     else:
         new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals, paw)
         new_occ.set_communicator(occ.kpt_comm)
