@@ -663,7 +663,7 @@ class GridWaveFunctions(WaveFunctions):
             # Read band by band to save memory
             for n, psit_G in enumerate(kpt.psit_nG):
                 if self.world.rank == 0:
-                    big_psit_G = file_nG[n][:]
+                    big_psit_G = np.array(file_nG[n][:], self.dtype)
                 else:
                     big_psit_G = None
                 self.gd.distribute(big_psit_G, psit_G)
