@@ -4,7 +4,45 @@
 Niflheim
 ========
 
-Here you find information about Niflheim
+The quick step-by-step
+----------------------
+
+First time:
+
+1. Run: ``svn checkout https://svn.fysik.dtu.dk/projects/gpaw/trunk
+   gpaw``, where `gpaw` should be a directory on the niflheim file
+   server.
+
+2. Replace the file gpaw/customize.py by
+   :svn:`~doc/install/Linux/Niflheim/customize_ethernet.py` (if you
+   want to run gpaw on the infiniband nodes, you should use
+   :svn:`~doc/install/Linux/Niflheim/customize_infiniband.py` instead).
+
+3. ssh to the login node ``slid`` and go to the gpaw directory.
+
+4. Run ``python setup.py build_ext``
+
+5. Add your gpaw directory to the ``PYTHONPATH`` environment variable,
+   and your setups directory to the ``GPAW_SETUP_PATH`` environment
+   variable
+
+6. When submitting jobs, use the file
+   :svn:`~doc/documentation/parallel_runs/gpaw-qsub` instead of the
+   usual qsub. (usage is exactly the same).
+
+
+When updating the gpaw code in the future:
+
+1. Go to the gpaw directory and run ``svn up``.
+
+2. If any of the c-code changed during the update, log on to ``slid`` and run:
+   
+   a. ``python setup.py clean``
+
+   b. ``python setup.py build_ext``
+
+
+Information about the Niflheim cluster can be found at
 `<https://wiki.fysik.dtu.dk/niflheim>`_.
 
 Please follow :ref:`developer_installation`.
