@@ -60,7 +60,7 @@ class UTGammaPointSetup(unittest.TestCase):
                     spinpol=True,
                     eigensolver='cg',
                     mixer=MixerSum(nmaxold=5, beta=0.1, weight=100),
-                    #convergence={'eigenstates': 1e-9, 'bands':nbands},
+                    convergence={'eigenstates': 1e-9, 'bands':nbands},
                     #width=0.1, #TODO might help convergence?
                     txt=self.name+'.txt')
 

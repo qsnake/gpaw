@@ -55,8 +55,11 @@ def dscf_calculation(paw, orbitals, atoms=None):
         new_occ.set_communicator(occ.kpt_comm)
         paw.occupations = new_occ
 
-    # reset self-consistency
-    paw.scf.reset()
+    # if the calculator has already converged (for the ground state),
+    # reset self-consistency and let the density be updated right away
+    if paw.scf.converged:
+        paw.scf.niter_fixdensity = 0
+        paw.scf.reset()
 
 class OccupationsDSCF(FermiDirac):
     """Occupation class.
