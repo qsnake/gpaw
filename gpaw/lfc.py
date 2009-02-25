@@ -369,23 +369,36 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         comm = self.gd.comm
         dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
-        c_xM = np.empty(xshape + (self.Mmax,), dtype)
         requests = []
+        M1 = 0
+        b_axi = {}
+        for a in self.atom_indices:
+            c_xi = c_axi.get(a)
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if c_xi is None:
+                c_xi = np.empty(xshape + (sphere.Mmax,), dtype)
+                b_axi[a] = c_xi
+                requests.append(comm.receive(c_xi, sphere.rank, a, False))
+            else:
+                for r in sphere.ranks:
+                    requests.append(comm.send(c_xi, r, a, False))
+            M1 = M2
+
+        for request in requests:
+            comm.wait(request)
+
+        c_xM = np.empty(xshape + (self.Mmax,), dtype)
         M1 = 0
         for a in self.atom_indices:
             c_xi = c_axi.get(a)
             sphere = self.sphere_a[a]
             M2 = M1 + sphere.Mmax
             if c_xi is None:
-                requests.append(comm.receive(c_xM[..., M1:M2],
-                                             sphere.rank, a, False))
-            else:
-                for r in sphere.ranks:
-                    requests.append(comm.send(c_xi, r, a, False))
-                c_xM[..., M1:M2] = c_xi
+                c_xi = b_axi[a]
+            c_xM[..., M1:M2] = c_xi
             M1 = M2
-        for request in requests:
-            comm.wait(request)
+            
         self.lfc.add(c_xM, a_xG, q)
     
     def add1(self, n_g, scale, I_a):
@@ -438,12 +451,15 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         srequests = []
         rrequests = []
         c_arxi = {}
+        b_axi = {}
         M1 = 0
         for a in self.atom_indices:
             sphere = self.sphere_a[a]
             M2 = M1 + sphere.Mmax
             if sphere.rank != rank:
-                srequests.append(comm.send(c_xM[..., M1:M2],
+                c_xi = c_xM[..., M1:M2].copy()
+                b_axi[a] = c_xi
+                srequests.append(comm.send(c_xi,
                                            sphere.rank, a, False))
             else:
                 if len(sphere.ranks) > 0:
@@ -464,7 +480,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             M2 = M1 + sphere.Mmax
             if c_xi is not None:
                 if len(sphere.ranks) > 0:
-                    c_xi[:] = c_xM[..., M1:M2] + c_rxi.sum(axis=0)
+                    c_xi[:] = c_xM[..., M1:M2] + c_arxi[a].sum(axis=0)
                 else:
                     c_xi[:] = c_xM[..., M1:M2]
             M1 = M2
