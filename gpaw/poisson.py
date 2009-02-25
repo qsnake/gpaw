@@ -279,8 +279,9 @@ class FFTPoissonSolver(PoissonSolver):
     relax_method = 0
     nn = 999
     
-    def __init__(self):
+    def __init__(self, eps=2e-10):
         self.charged_periodic_correction = None
+        self.eps = eps
         pass
 
     def initialize(self, gd):
