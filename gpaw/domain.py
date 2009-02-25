@@ -41,7 +41,7 @@ class Domain:
             self.cell_cv = npy.diag(self.cell_c)
         else:
             self.cell_cv = self.cell_c
-            self.cell_c = [npy.linalg.norm(self.cell_cv[x]) for x in range(3)]
+            self.cell_c = npy.array([npy.linalg.norm(self.cell_cv[x]) for x in range(3)])
 
         self.icell_cv = npy.linalg.inv(self.cell_cv).T
 
