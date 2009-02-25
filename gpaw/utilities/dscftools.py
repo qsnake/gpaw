@@ -1,5 +1,5 @@
 
-from numpy import array,zeros,sum,abs,dot,where,reshape,argmax,unique,sort,all
+from numpy import array,zeros,sum,abs,dot,where,reshape,argmax,unique,sort,all,outer
 import gpaw.mpi as mpi
 
 """
@@ -215,4 +215,23 @@ def dscf_linear_combination(paw, molecule, bands, coefficients, debug=False):
     """
 
     return (P_aui,wf_u,)
+
+# -------------------------------------------------------------------
+
+def dscf_decompose_occupations(ft_mn):
+    # We define a Hermitian matrix with elements f[m,n] = c[m]*c[n].conj()
+    # and rewrite the coefficients in polar form as c[n] = r[n]*exp(1j*v[n]):
+    # f[m,n] = r[m]*exp(1j*v[m])*r[n]*exp(-1j*v[n]) = r[m]*r[n]*exp(1j*(v[m]-v[n]))
+
+    # Assuming c[i] is positive real for some i, i.e. v[i] = 0, then
+    # c[m] = f[m,i]/r[i] = r[m]*exp(1j*v[m]) , where r[i] = sqrt(f[i,i])
+    i = argmax(abs(ft_mn.diagonal()))
+    c_n = ft_mn[:,i]/abs(ft_mn[i,i])**0.5
+
+    if not all(abs(ft_mn-outer(c_n,c_n.conj()))<1e-12):
+        raise RuntimeError('Hermitian matrix cannot be decomposed')
+
+	# Note that c_n is only defined up to an arbitrary phase factor
+    return c_n
+
 

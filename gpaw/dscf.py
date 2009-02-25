@@ -37,7 +37,7 @@ def dscf_calculation(paw, orbitals, atoms=None):
     >>> sigma_star=MolecularOrbitals(calc, molecule=[0,1],
     >>>                              w=[[1.,0.,0.,0.],[-1.,0.,0.,0.]])
     >>> dscf_calculation(calc, [[1.0,sigma_star,1]], atoms)
-    >>> e_exc=atoms.get_potential_energy() #excitation energy
+    >>> e_exc = atoms.get_potential_energy() #excitation energy
 
     """
 
@@ -73,10 +73,10 @@ class OccupationsDSCF(FermiDirac):
         FermiDirac.__init__(self, ne, nspins, kT)
         
         self.orbitals = orbitals
-        self.paw=paw
+        self.norbitals = len(self.orbitals)
 
         self.cnoe = 0.
-        for orb in orbitals:
+        for orb in self.orbitals:
             self.cnoe += orb[0]
         self.ne -= self.cnoe
 
@@ -98,10 +98,10 @@ class OccupationsDSCF(FermiDirac):
         # and create the occupation matrices, kpt.ft_omn
         c_oun = []
         for orb in self.orbitals:
-            c_oun.append(orb[1].expand(self.epsF))
+            c_oun.append(orb[1].expand(self.epsF, kpts))
             
-        for u, kpt in enumerate(self.paw.wfs.kpt_u):
-            kpt.ft_omn = np.zeros((len(self.orbitals), len(kpt.f_n),
+        for u, kpt in enumerate(kpts):
+            kpt.ft_omn = np.zeros((self.norbitals, len(kpt.f_n),
                                    len(kpt.f_n)), np.complex)
             for o, orb in enumerate(self.orbitals):
                 c_n = c_oun[o][u]
@@ -166,30 +166,30 @@ class MolecularOrbital:
 
     def __init__(self, paw, molecule=[0,1], Estart=0.0, Eend=1.e6,
                  nos=None, w=[[1.,0.,0.,0.],[-1.,0.,0.,0.]]):
-        
-        self.paw = paw
+
+        self.nspins = paw.wfs.nspins
+        self.fixmom = paw.input_parameters.fixmom
         self.mol = molecule
         self.w = w
         self.Estart = Estart
         self.Eend = Eend
         self.nos = nos
 
-    def expand(self, epsF):
+    def expand(self, epsF, kpts):
 
-        if self.paw.wfs.nspins == 1:
+        if self.nspins == 1:
             epsF = [epsF]
-        elif not self.paw.input_parameters.fixmom:
+        elif not self.fixmom:
             epsF = [epsF, epsF]
             
         if self.nos == None:
-            self.nos = len(self.paw.wfs.kpt_u[0].f_n)
+            self.nos = len(kpts[0].f_n)
 
         # Get P_uni from the relevent nuclei
-        P_auni = [[kpt.P_ani[a] for kpt in self.paw.wfs.kpt_u]
-                  for a in self.mol]
+        P_auni = [[kpt.P_ani[a] for kpt in kpts] for a in self.mol]
 
         c_un = []
-        for u, kpt in enumerate(self.paw.wfs.kpt_u):
+        for u, kpt in enumerate(kpts):
             Porb_n = np.zeros(len(kpt.f_n), np.complex)
             for atom in range(len(self.mol)):
                 for pw_no in range(len(self.w[atom])):
@@ -244,7 +244,7 @@ class AEOrbital:
     wf_u: list of wavefunction arrays
         Wavefunction to be occupied on the kpts on this processor.
     P_aui: list of two-dimensional arrays.
-        [Calulator.nuclei[a].P_uni[:,n,:] for a in molecule]
+        [[kpt.P_ani[a,n,:] for kpt in kpts] for a in molecule]
         Projector overlaps with the wavefunction to be occupied for each
         kpoint. These are used when correcting to all-electron wavefunction
         overlaps.
@@ -253,7 +253,13 @@ class AEOrbital:
     def __init__(self, paw, wf_u, P_aui, Estart=0.0, Eend=1.e6,
                  molecule=[0,1], nos=None):
     
-        self.paw = paw
+        self.nspins = paw.wfs.nspins
+        self.fixmom = paw.input_parameters.fixmom
+        self.gd = paw.wfs.gd
+        self.dtype = paw.wfs.dtype
+        self.nbands = paw.wfs.nbands
+        self.setups = paw.wfs.setups
+
         self.wf_u = wf_u
         self.P_aui = P_aui
         self.Estart = Estart
@@ -261,48 +267,48 @@ class AEOrbital:
         self.mol = molecule
         self.nos = nos
 
-    def expand(self, epsF):
+    def expand(self, epsF, kpts):
         
-        if self.paw.wfs.nspins == 1:
+        if self.nspins == 1:
             epsF = [epsF]
-        elif not self.paw.input_parameters.fixmom:
+        elif not self.fixmom:
             epsF = [epsF, epsF]
 
         if self.nos == None:
-            self.nos = len(self.paw.wfs.kpt_u[0].f_n)
+            self.nos = len(kpts[0].f_n)
         
         # Check dimension of lists
-        if len(self.wf_u) == len(self.paw.wfs.kpt_u):
+        if len(self.wf_u) == len(kpts):
             wf_u = self.wf_u
             P_aui = self.P_aui
         else:
             raise RuntimeError('List of wavefunctions has wrong size')
 
         c_un = []
-        for u, kpt in enumerate(self.paw.wfs.kpt_u):
+        for u, kpt in enumerate(kpts):
 
             # Inner product of pseudowavefunctions
             wf = np.reshape(wf_u[u], -1)
             Wf_n = kpt.psit_nG
             Wf_n = np.reshape(Wf_n, (len(kpt.f_n), -1))
-            p_n = np.dot(Wf_n.conj(), wf) * self.paw.gd.dv
+            p_n = np.dot(Wf_n.conj(), wf) * self.gd.dv
             
             # Correction to obtain inner product of AE wavefunctions
             P_ani = [kpt.P_ani[a] for a in self.mol]
             for P_ni, a, b in zip(P_ani, self.mol, range(len(self.mol))):
-                for n in range(self.paw.wfs.nbands):
+                for n in range(self.nbands):
                     for i in range(len(P_ni[0])):
                         for j in range(len(P_ni[0])):
                             p_n[n] += (P_ni[n][i].conj() *
-                                       self.paw.wfs.setups[a].O_ii[i][j] *
+                                       self.setups[a].O_ii[i][j] *
                                        P_aui[b][u][j])
 
-##             self.paw.gd.comm.sum(p_n)
+##             self.gd.comm.sum(p_n)
 
             print 'Kpt:', kpt.k, ' Spin:', kpt.s, \
                   ' Sum_n|<orb|nks>|^2:', sum(abs(p_n)**2)
             
-            if self.paw.wfs.dtype == float:
+            if self.dtype == float:
                 c_n = np.zeros(len(kpt.f_n), np.float)
             else:
                 c_n = np.zeros(len(kpt.f_n), np.complex)
