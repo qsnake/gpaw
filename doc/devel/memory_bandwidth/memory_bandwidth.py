@@ -5,7 +5,7 @@
 
 from optparse import OptionParser
 
-parser = OptionParser(usage='%prog [options] element',
+parser = OptionParser(usage='%prog [options]',
                       version='%prog 0.1')
 parser.add_option('--dir', dest="dir",
                   default='.',
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     from os import environ
 
     NCORES = int(environ.get('NCORES', 8))
-    MACHINE = environ.get('MACHINE', 'TESTA')
+    MACHINE = environ.get('MACHINE', 'TEST')
     assert NCORES > 1, str(NCORES)+' must be > 1'
 
     analyse_benchmark(NCORES, MACHINE)
