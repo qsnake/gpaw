@@ -231,7 +231,7 @@ def dscf_decompose_occupations(ft_mn):
     if not all(abs(ft_mn-outer(c_n,c_n.conj()))<1e-12):
         raise RuntimeError('Hermitian matrix cannot be decomposed')
 
-	# Note that c_n is only defined up to an arbitrary phase factor
+    # Note that c_n is only defined up to an arbitrary phase factor
     return c_n
 
 
