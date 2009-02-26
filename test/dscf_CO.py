@@ -33,8 +33,9 @@ calc_1 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
                            'bands': -1})
 
 CO.set_calculator(calc_1)
+calc_1.initialize(CO)
 lumo = dscf.MolecularOrbital(calc_1, molecule=[0,1], w=[[0,0,0,1],[0,0,0,-1]])
-dscf.dscf_calculation(calc_1, [[1.0, lumo, 1]], CO)
+dscf.dscf_calculation(calc_1, [[1.0, lumo, 1]])
 E_es1 = CO.get_potential_energy()
 
 calc_2 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
@@ -44,8 +45,9 @@ calc_2 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
                            'bands': -1})
 
 CO.set_calculator(calc_2)
+calc_2.initialize(CO)
 lumo = dscf.AEOrbital(calc_2, wf_u, P_aui, molecule=[0,1])
-dscf.dscf_calculation(calc_2, [[1.0, lumo, 1]], CO)
+dscf.dscf_calculation(calc_2, [[1.0, lumo, 1]])
 E_es2 = CO.get_potential_energy()
 
 equal(E_es1, E_gs+5.8, 0.1)

@@ -16,7 +16,7 @@ import numpy as np
 from gpaw.occupations import OccupationNumbers, FermiDirac
 import gpaw.mpi as mpi
 
-def dscf_calculation(paw, orbitals, atoms=None):
+def dscf_calculation(paw, orbitals):
     """Helper function to prepare a calculator for a dSCF calculation
 
     Parameters
@@ -41,11 +41,8 @@ def dscf_calculation(paw, orbitals, atoms=None):
 
     """
 
-    # if the calculator has not been initialized the
-    # occupation object is None
-    if paw.occupations == None:
-        paw.initialize(atoms)
     occ = paw.occupations
+
     if occ.kT == 0:
         occ.kT = 1e-6
     if isinstance(occ, OccupationsDSCF):
@@ -117,6 +114,8 @@ class OccupationsDSCF(FermiDirac):
                 else:
                     kpt.ft_omn[o] *= 0.5 * kpt.weight
 
+        self.calculate_band_energy(kpts)
+        
         # Correct the magnetic moment
         for orb in self.orbitals:
             if orb[2] == 0:

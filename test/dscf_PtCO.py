@@ -32,9 +32,10 @@ calc_es1 = GPAW(h=0.24,
                              'eigenstates': 1.0e-7,
                              'bands': -3})
 atoms.set_calculator(calc_es1)
+calc_es1.initialize(atoms)
 lumo = MolecularOrbital(calc_es1, molecule=[2,3],
                         w=[[0.,0.,0.,1.],[0.,0.,0.,-1.]])
-dscf_calculation(calc_es1, [[1.0, lumo, 1]], atoms)
+dscf_calculation(calc_es1, [[1.0, lumo, 1]])
 E_es1 = atoms.get_potential_energy()
 equal(E_es1, E_gs + 4.55, 0.1)
 
@@ -49,6 +50,9 @@ CO = atoms.copy()
 del CO[:2]
 CO.set_calculator(calc_mol)
 CO.get_potential_energy()
+wf_u = [kpt.psit_nG[1] for kpt in calc_mol.wfs.kpt_u]
+P_aui = [[kpt.P_ani[a][1] for kpt in calc_mol.wfs.kpt_u]
+         for a in range(len(CO))]
 
 calc_es2 = GPAW(h=0.24,
                 nbands=25,
@@ -60,10 +64,8 @@ calc_es2 = GPAW(h=0.24,
                              'eigenstates': 1.0e-7,
                              'bands': -3})
 atoms.set_calculator(calc_es2)
-wf_u = [kpt.psit_nG[1] for kpt in calc_mol.wfs.kpt_u]
-P_aui = [[kpt.P_ani[a][1] for kpt in calc_mol.wfs.kpt_u]
-         for a in range(len(CO))]
+calc_es2.initialize(atoms)
 lumo = AEOrbital(calc_es2, wf_u, P_aui, molecule=[2,3])
-dscf_calculation(calc_es2, [[1.0, lumo, 1]], atoms)
+dscf_calculation(calc_es2, [[1.0, lumo, 1]])
 E_es2 = atoms.get_potential_energy()
 equal(E_es2, E_gs + 3.55, 0.1)
