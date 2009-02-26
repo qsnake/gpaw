@@ -229,6 +229,8 @@ def cutoff2gridspacing(E):
 
 def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
+    # In Hartree units, E = k^2 / 2, where k_max is approx. given by pi / h
+    # See PRB, Vol 54, 14362 (1996)
     from ase import Hartree, Bohr
     return (.5 * npy.pi * Bohr / h)**2 * Hartree
 
