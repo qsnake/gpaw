@@ -52,6 +52,14 @@ class NonLocalFunctionalFactory:
                        C_GLLBScr(functional, 1.0,'X_PBE-None').get_coefficient_calculator())
             C_XC(functional, 1.0, 'None-C_PBE')
             return functional
+        elif name == 'GLLBCP86':
+            from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
+            from gpaw.gllb.contributions.c_response import C_Response
+            from gpaw.gllb.contributions.c_xc import C_XC
+            C_Response(functional, 1.0,
+                       C_GLLBScr(functional, 1.0).get_coefficient_calculator())
+            C_XC(functional, 1.0, 'None-C_P86')
+            return functional
         elif name == 'GLLBLDA':
             from gpaw.gllb.contributions.c_xc import C_XC
             C_XC(functional, 1.0,'LDA')

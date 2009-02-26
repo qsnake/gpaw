@@ -121,8 +121,6 @@ class C_Response(Contribution):
     def integrate_sphere(self, a, Dresp_sp, D_sp, Dwf_p):
         c = self.nlfunc.setups[a].xc_correction
         Dresp_p, D_p = Dresp_sp[0], D_sp[0]
-        print D_p.shape
-        print Dwf_p.shape
         D_Lq = npy.dot(c.B_Lqp, D_p)
         n_Lg = npy.dot(D_Lq, c.n_qg) # Construct density
         n_Lg[0] += c.nc_g * sqrt(4 * pi)
@@ -161,7 +159,7 @@ class C_Response(Contribution):
 
         # Calculate new response potential with LUMO reference 
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u, lumo_perturbation=True)
-        print w_kn
+       
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
 
         self.vt_sG[:] = 0.0
@@ -287,16 +285,12 @@ class C_Response(Contribution):
         lumo_e = min(l)
         homo_e = max(h)
         if lumo_e < 999: # If there is unoccpied orbital
-            print "lumoe", lumo_e, homo_e
             w_j = self.coefficients.get_coefficients_1d(lumo_perturbation = True)
             v_g = self.weight * npy.dot(w_j, u2_j) / (npy.dot(self.ae.f_j, u2_j) +1e-10)
-            print "Should be 1", npy.sum(u2_j[0] * self.ae.dr)
             e2 = [ e+npy.dot(u2*v_g, self.ae.dr) for u2,e in zip(u2_j, self.ae.e_j) ]
             lumo_2 = min([ npy.where(f<1e-3, e, 1000) for f,e in zip(self.ae.f_j, e2)])
-            print "Homo eigenvalue:", homo_e* 27.2107
-            print "New lumo eigenvalue", lumo_2 * 27.2107
+            print "New lumo eigenvalue:", lumo_2 * 27.2107
             self.hardness = lumo_2 - homo_e
-            print self.hardness
             print "Hardness predicted: %10.3f eV" % (self.hardness * 27.2107)
             
     def write(self, w):
