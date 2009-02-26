@@ -52,6 +52,7 @@ class NonLocalFunctional(ZeroFunctional):
         H_sp[:] = 0.0
         for contribution in self.contributions:
             Exc += contribution.calculate_energy_and_derivatives(D_sp, H_sp, a)
+        Exc -= self.setups[a].xc_correction.Exc0
         return Exc
 
     def get_xc_potential_and_energy_1d(self, v_g):

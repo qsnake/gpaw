@@ -173,7 +173,7 @@ class C_GLLBScr(Contribution):
                                   npy.dot(c.n_qg, v_g * c.rgd.dv_g))
             E += w * npy.dot(e_g, c.rgd.dv_g)
             
-        return (E - c.Exc0) * self.weight
+        return (E) * self.weight
 
     def add_smooth_xc_potential_and_energy_1d(self, vt_g):
         self.v_g[:] = 0.0

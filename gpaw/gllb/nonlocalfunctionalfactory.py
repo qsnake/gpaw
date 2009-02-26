@@ -9,14 +9,19 @@ class NonLocalFunctionalFactory:
     NonLocalFunctional object. 
 
     * GLLB
+    * GLLBC (GLLB with screening part from PBE + PBE Correlation)
+    * GLLBSC (GLLB with screening part from PBE_SOL + PBE Correlation)
+
+    
+    * GLLBNORESP (Just GLLB Screening)
     * GLLBLDA (A test functional, which is just LDA but via
+               NonLocalFunctional framework)
+    * GLLBGGA (A test functional, which is just GGA but via
                NonLocalFunctional framework)
     """
 
     def get_functional_by_name(self, name):
         print "Functional name", name
-        K_G = 0.382106112167171
-        KC_G = 0.470
 
         from gpaw.gllb.nonlocalfunctional import NonLocalFunctional
         functional = NonLocalFunctional()
@@ -31,19 +36,29 @@ class NonLocalFunctionalFactory:
             C_Response(functional, 1.0,
                        C_GLLBScr(functional, 1.0).get_coefficient_calculator())
             return functional
-        elif name == 'GLLBC':
+        elif name == 'GLLBSC':
                         from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
                         from gpaw.gllb.contributions.c_response import C_Response
-                        from gpaw.gllb.contributions.c_lda import C_LDA
+                        from gpaw.gllb.contributions.c_xc import C_XC
                         C_Response(functional, 1.0,
-                        C_GLLBScr(functional, 1.0,'PBE').get_coefficient_calculator())
-                        #C_LDA(functional, 1.0, 'LDA')
-                        #C_LDA(functional, -1.0, 'LDAx')
+                        C_GLLBScr(functional, 1.0,'X_PBE_SOL-None').get_coefficient_calculator())
+                        C_XC(functional, 1.0, 'None-C_PBE')
                         return functional
-                                                        
+        elif name == 'GLLBC':
+            from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
+            from gpaw.gllb.contributions.c_response import C_Response
+            from gpaw.gllb.contributions.c_xc import C_XC
+            C_Response(functional, 1.0,
+                       C_GLLBScr(functional, 1.0,'X_PBE-None').get_coefficient_calculator())
+            C_XC(functional, 1.0, 'None-C_PBE')
+            return functional
         elif name == 'GLLBLDA':
-            from gpaw.gllb.contributions.c_lda import C_LDA
-            C_LDA(functional, 1.0)
+            from gpaw.gllb.contributions.c_xc import C_XC
+            C_XC(functional, 1.0,'LDA')
+            return functional
+        elif name == 'GLLBGGA':
+            from gpaw.gllb.contributions.c_xc import C_XC
+            C_XC(functional, 1.0,'PBE')
             return functional
         elif name == 'GLLBSLATER':
             from gpaw.gllb.contributions.c_slater import C_Slater
