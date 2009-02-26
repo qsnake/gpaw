@@ -52,47 +52,9 @@ opteron ethernet nodes
 ======================
 
 On the login node ``slid`` build GPAW (``python setup.py build_ext``)
-with gcc compiler using the following :file:`customize.py` file::
+with gcc compiler using the following :file:`customize.py` file:
 
-  scalapack = True
-
-  extra_compile_args += [
-    '-O3'
-  ]
-
-  libraries = [
-    'gfortran',
-    'mpiblacsCinit',
-    'mpiblacs',
-    'acml',
-    'scalapack',
-    'mpi_f77'
-    ]
-
-  library_dirs = [
-    '/opt/acml-4.0.1/gfortran64/lib',
-    '/usr/local/blacs-1.1-24.56.gfortran/lib64',
-    '/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
-    '/usr/local/openmpi-1.2.5-gfortran/lib64'
-    ]
-
-  include_dirs += [
-    '/usr/local/openmpi-1.2.5-gfortran/include'
-   ]
-
-  extra_link_args += [
-    '-Wl,-rpath=/opt/acml-4.0.1/gfortran64/lib',
-    '-Wl,-rpath=/usr/local/blacs-1.1-24.56.gfortran/lib64',
-    '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.gfortran.acml/lib64',
-    '-Wl,-rpath=/usr/local/openmpi-1.2.5-gfortran/lib64'
-  ]
-
-  define_macros += [
-    ('GPAW_MKL', '1'),
-  ]
-
-  mpicompiler = '/usr/local/openmpi-1.2.5-gfortran/bin/mpicc'
-  mpilinker = mpicompiler
+.. literalinclude:: customize_ethernet.py
 
 opteron infiniband nodes
 ========================
@@ -102,91 +64,15 @@ A subset of the Niflheim's nodes is equipped with Infiniband network
 and denoted by ``infiniband`` batch system property.
 
 On the login node ``slid`` build GPAW (``python setup.py build_ext``)
-with gcc compiler using the following :file:`customize.py` file::
+with gcc compiler using the following :file:`customize.py` file:
 
-  scalapack = True
-
-  extra_link_args += ['-cc=gcc']
-  extra_compile_args += [
-    '-cc=gcc',
-    '-O2',
-    '-m64',
-  ]
-
-  libraries = [
-    'pathfortran',
-    'gfortran',
-    'mpiblacsCinit',
-    'acml',
-    'mpiblacs',
-    'scalapack'
-    ]
-
-  library_dirs = [
-    '/opt/pathscale/lib/2.5',
-    '/opt/acml-4.0.1/gfortran64/lib',
-    '/usr/local/blacs-1.1-24.6.infiniband/lib64',
-    '/usr/local/scalapack-1.8.0-1.infiniband/lib64',
-    '/usr/local/infinipath-2.0/lib64'
-    ]
-
-  include_dirs += [
-    '/usr/local/infinipath-2.0/include'
-   ]
-
-  extra_link_args += [
-    '-Wl,-rpath=/opt/pathscale/lib/2.5',
-    '-Wl,-rpath=/opt/acml-4.0.1/gfortran64/lib',
-    '-Wl,-rpath=/usr/local/blacs-1.1-24.6.infiniband/lib64',
-    '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.infiniband/lib64',
-    '-Wl,-rpath=/usr/local/infinipath-2.0/lib64'
-  ]
-
-  define_macros += [
-    ('GPAW_MKL', '1'),
-    ('SL_SECOND_UNDERSCORE', '1')
-  ]
-
-  mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc'
-  mpilinker = mpicompiler
+.. literalinclude:: customize_infiniband.py
 
 You can alternatively build on ``slid`` build GPAW (``python setup.py
 build_ext``) with pathcc (pathcc looks ~3% slower - check other jobs!)
 compiler using the following :file:`customize.py` file::
 
-  scalapack = True
-
-  libraries = [
-    'pathfortran',
-    'mpiblacsCinit',
-    'acml',
-    'mpiblacs',
-    'scalapack'
-    ]
-
-  library_dirs = [
-    '/opt/pathscale/lib/2.5',
-    '/opt/acml-4.0.1/pathscale64/lib',
-    '/usr/local/blacs-1.1-24.6.infiniband/lib64',
-    '/usr/local/scalapack-1.8.0-1.infiniband/lib64',
-    '/usr/local/infinipath-2.0/lib64'
-    ]
-
-  extra_link_args += [
-    '-Wl,-rpath=/opt/pathscale/lib/2.5',
-    '-Wl,-rpath=/opt/acml-4.0.1/pathscale64/lib',
-    '-Wl,-rpath=/usr/local/blacs-1.1-24.6.infiniband/lib64',
-    '-Wl,-rpath=/usr/local/scalapack-1.8.0-1.infiniband/lib64',
-    '-Wl,-rpath=/usr/local/infinipath-2.0/lib64'
-  ]
-
-  define_macros += [
-    ('GPAW_MKL', '1'),
-    ('SL_SECOND_UNDERSCORE', '1')
-  ]
-
-  mpicompiler = '/usr/local/infinipath-2.0/bin/mpicc -Ofast'
-  mpilinker = mpicompiler
+.. literalinclude:: customize_infiniband_pathcc.py
 
 A gpaw script :file:`gpaw-script.py` can be submitted like this::
 
