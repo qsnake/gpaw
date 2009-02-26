@@ -330,7 +330,7 @@ class TDDFT(GPAW):
                     self.text(iter_text % 
                               (self.niter, T[3], T[4], T[5],
                                self.time * self.autime_to_attosec,
-                               self.Etot, log(abs(norm))/log(10),
+                               self.Etot, log(abs(norm)+1e-16)/log(10),
                                niterpropagator))
 
                     self.txt.flush()
