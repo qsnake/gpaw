@@ -65,13 +65,9 @@ class CvgCtrl:
                     if self.matname == 'f' and self.master:
                         txt('Hamiltonian: dmatmax= [%d, %d, %d] %f tol=%f isCvg=%d'\
                              %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg))
-                        print 'Hamiltonian: dmatmax= [%d, %d, %d] %f tol=%f isCvg=%d'\
-                             %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg)
                     elif self.matname == 'd' and self.master:
                         txt('Density: dmatmax= [%d %d, %d] %f tol=%f isCvg=%d'\
                             %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg))
-                        print 'Density: dmatmax= [%d %d, %d] %f tol=%f isCvg=%d'\
-                            %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg)
             self.record_dmatmax.append(dmatmax)
          
     def matcvg(self, matin, txt):
