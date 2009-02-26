@@ -139,6 +139,7 @@ def write(paw, filename, mode):
         w['UseSymmetry'] = p['usesymm']
         w['Converged'] = scf.converged
         w['FermiWidth'] = paw.occupations.kT
+        w['Basis'] = p['basis']
         w['MixClass'] = paw.density.mixer.__class__.__name__
         w['MixBeta'] = paw.density.mixer.beta
         w['MixOld'] = paw.density.mixer.nmaxold
