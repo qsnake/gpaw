@@ -458,8 +458,6 @@ class LCAOWaveFunctions(WaveFunctions):
         else:
             rho_MM = kpt.rho_MM
 
-        dEdndndR_av = self.get_potential_derivative(tci, hamiltonian, kpt,
-                                                    rho_MM)
         dTdR_vMM = tci.dTdR_kcmm[k]
 
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
@@ -483,27 +481,90 @@ class LCAOWaveFunctions(WaveFunctions):
         
         dEdTdTdR_av = np.zeros_like(F_av)
         for a in my_atom_indices:
-            mask_MM = tci.mask_amm[a]
+            M1 = self.basis_functions.M_a[a]
+            M2 = M1 + self.setups[a].niAO
             for v in range(3):
-                dEdTdTdR_av[a, v] = np.dot(rho_MM, dTdR_vMM[v] *
-                                           mask_MM).real.trace()
+                dTdR_MM = dTdR_vMM[v]
+                x1 = (rho_MM[M1:M2, :] * dTdR_MM[:, M1:M2].T).real.sum()
+                x2 = (rho_MM[:, M1:M2] * dTdR_MM[M1:M2, :].T).real.sum()
+                dEdTdTdR_av[a, v] = x1 - x2
 
         dEdDdDdR_av = np.zeros_like(F_av)
         dEdrhodrhodR_av = np.zeros_like(F_av)
+        pawcorrection_avMM = dict([(a, np.zeros((3, nao, nao), self.dtype))
+                                   for a in atom_indices])
+        dPdR_avMi = dict([(a, tci.dPdR_akcmi[a][k]) for a in my_atom_indices])
+        for v in range(3):
+            for a in atom_indices:
+                M1 = self.basis_functions.M_a[a]
+                M2 = M1 + self.setups[a].niAO
+                pawcorrection_MM = pawcorrection_avMM[a][v]
+                for b in my_atom_indices:
+                    P_Mi = self.P_aqMi[b][k]
+                    PdO_Mi = np.dot(P_Mi, self.setups[b].O_ii)
+                    dOP_iM = PdO_Mi.T.conj()
+                    dPdR_Mi = dPdR_avMi[b][v]
+                    sign = cmp(b, a)
+                    if sign != 0:
+                        A_iM = np.dot(dPdR_Mi[M1:M2, :], dOP_iM)
+                        B_Mi = np.dot(PdO_Mi, dPdR_Mi.T.conj()[:, M1:M2])
+                        pawcorrection_MM[M1:M2, :] += A_iM * sign
+                        pawcorrection_MM[:, M1:M2] += B_Mi * sign
+                    else:
+                        A1_MM = np.dot(dPdR_Mi[:M1, :], dOP_iM)
+                        A2_MM = np.dot(dPdR_Mi[M2:, :], dOP_iM)
+                        B1_MM = np.dot(PdO_Mi, dPdR_Mi.T.conj()[:, :M1])
+                        B2_MM = np.dot(PdO_Mi, dPdR_Mi.T.conj()[:, M2:])
+                        pawcorrection_MM[:M1, :] -= A1_MM
+                        pawcorrection_MM[M2:, :] += A2_MM
+                        pawcorrection_MM[:, :M1] -= B1_MM
+                        pawcorrection_MM[:, M2:] += B2_MM
+        
+        dEdndndR_av = np.zeros_like(F_av)
+        vt_G = hamiltonian.vt_sG[kpt.s]
+        rho_hc_MM = rho_MM.T.conj()
+        DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
+
+        # Minimize synchronization by performing all operations requiring
+        # communication now
+        self.basis_functions.calculate_potential_matrix_derivative(vt_G,
+                                                                   DVt_MMv,
+                                                                   kpt.q)
         for a in atom_indices:
+            self.basis_functions.gd.comm.sum(pawcorrection_avMM[a])
+        
+        for b in my_atom_indices:
+            M1 = self.basis_functions.M_a[b]
+            M2 = M1 + self.setups[b].niAO
             for v in range(3):
-                dPdRa_aMi = self.get_projector_derivatives(tci, a, v, k)
-                dSdRa_MM = self.get_overlap_derivatives(tci, a, v,
-                                                        dPdRa_aMi, k)
-                if a in dPdRa_aMi:
-                    dEdrhodrhodR_av[a, v] = - np.dot(ChcEFC_MM,
-                                                     dSdRa_MM).real.trace()
+                forcecontrib = -2 * (DVt_MMv[M1:M2, :, v].T
+                                     * rho_hc_MM[:, M1:M2]).real.sum()
+                dEdndndR_av[b, v] = forcecontrib
+
+        for v in range(3):
+            for a in atom_indices:
+                M1 = self.basis_functions.M_a[a]
+                M2 = M1 + self.setups[a].niAO
+                pawcorrection_MM = pawcorrection_avMM[a][v]
+                if a in dPdR_avMi:
+                    dSdRa_MM = pawcorrection_MM.copy()
+                    dThetadR_MM = tci.dThetadR_kcmm[k, v, :, :]
+                    dSdRa_MM[:, M1:M2] += dThetadR_MM[:, M1:M2]
+                    dSdRa_MM[M1:M2, :] -= dThetadR_MM[M1:M2, :]
+                    dEdrhodrhodR_av[a, v] = -(ChcEFC_MM.T
+                                              * dSdRa_MM).real.sum()
             
-                for b, dPdRa_Mi in dPdRa_aMi.items():
-                    A_ii = np.dot(dPdRa_Mi.T.conj(), 
-                                  np.dot(rho_MM, self.P_aqMi[b][k]))
+                for b in my_atom_indices:
+                    dPdR_Mi = dPdR_avMi[b][v]
+                    rhoP_Mi = np.dot(rho_MM, self.P_aqMi[b][k]) # k vs q
                     Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
-                    dEdDdDdR_av[a, v] += 2 * np.dot(Hb_ii, A_ii).real.trace()
+                    if a != b:
+                        A_ii = np.dot(dPdR_Mi.T.conj()[:, M1:M2],
+                                      rhoP_Mi[M1:M2, :]) * cmp(b, a)
+                    else:
+                        A_ii = np.dot(dPdR_Mi.T.conj()[:, M2:], rhoP_Mi[M2:])\
+                               - np.dot(dPdR_Mi.T.conj()[:, :M1],rhoP_Mi[:M1])
+                    dEdDdDdR_av[a, v] += 2 * (Hb_ii.T * A_ii).real.sum()
         # The array dEdDdDdR_av may contain contributions for atoms on this
         # cpu stored on other CPUs.  comm.sum() of this array yields
         # correct result on all CPUs.  However this is postponed till after
@@ -514,7 +575,6 @@ class LCAOWaveFunctions(WaveFunctions):
             # Prints rank, label, list of atomic indices, and element sum
             # for parts of array on this cpu as a primitive "hash" function
             from gpaw.mpi import rank
-            my_atom_indices = self.basis_functions.my_atom_indices
             for name, array_x in zip(names, arrays_ax):
                 sums = [array_x[a].sum() for a in my_atom_indices]
                 print rank, name, my_atom_indices, sums
@@ -523,7 +583,7 @@ class LCAOWaveFunctions(WaveFunctions):
         #print_arrays_with_ranks(self, names, [dEdrhodrhodR_av, dEdTdTdR_av,
         #                                      dEdDdDdR_av, dEdndndR_av])
 
-        # For whom it may concern, dEdDdDdR is the only component which
+        # For whom it may concern, dEdDdDdR is the only force component which
         # is nonzero even for atoms outside my_atom_indices
         # (though indeed zero for atoms outside atom_indices)
         F_av -= (dEdrhodrhodR_av + dEdTdTdR_av + dEdDdDdR_av + dEdndndR_av)
