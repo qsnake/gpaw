@@ -164,7 +164,7 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
                     [( d2+1, 0   , d1+1),( d2+1 , 0    ,-d1-1),(-d2-1 , 0   , d1+1),(-d2-1,0    ,-d1-1)]]
 
             for i in range(3):
-                c=2.*cross[n][ci]*npy.dot(iucell_cv[i],iucell_cv[(i+1)%3])/(h[i]*h[(i+1)%3])
+                c = scale * 2. * cross[n][ci] * npy.dot(iucell_cv[i],iucell_cv[(i+1)%3]) / (h[i]*h[(i+1)%3])
 
                 if abs(c)>1E-11: #extend stencil only to points of non zero coefficient
                     offsets.extend(offset[i])
