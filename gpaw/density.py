@@ -72,14 +72,10 @@ class Density:
                        forces=True, cut=True)
         self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
                         integral=sqrt(4 * pi), forces=True)
-        self.tauct = LFC(self.gd, [[setup.tauct] for setup in setups],
-                        forces=True, cut=True)
-
 
     def set_positions(self, spos_ac, rank_a=None):
         self.nct.set_positions(spos_ac)
         self.ghat.set_positions(spos_ac)
-        self.tauct.set_positions(spos_ac)
         self.mixer.reset()
 
         self.nct_G = self.gd.zeros()
@@ -327,16 +323,52 @@ class Density:
 
         return n_sg, gd
 
-    def initialize_kinetic(self):
+    def initialize_kinetic(self, atoms):
         """Initial pseudo electron kinetic density."""
 
-        self.taut_sG = self.gd.zeros(self.nspins)
-        self.taut_sg = self.finegd.zeros(self.nspins)
+        self.tauct = LFC(self.gd, [[setup.tauct] for setup in self.setups],
+                        forces=True, cut=True)
+
+        spos_ac = atoms.get_scaled_positions() % 1.0
+        self.tauct.set_positions(spos_ac)
+
+        self.taut_sG = self.gd.empty(self.nspins)
+        self.taut_sg = None
+
+    def interpolate_kinetic(self, comp_charge=None):
+        """Interpolate pseudo electron kinetic density to the fine grid."""
+
+        if self.taut_sg is None:
+            self.taut_sg = self.finegd.empty(self.nspins)
+
+        for s in range(self.nspins):
+            self.interpolater.apply(self.taut_sG[s], self.taut_sg[s])
+
+        """
+        if comp_charge is None:
+            comp_charge = self.calculate_multipole_moments()
+
+        # With periodic boundary conditions, the interpolation will
+        # conserve the number of electrons.
+        if not self.gd.domain.pbc_c.all():
+            # With zero-boundary conditions in one or more directions,
+            # this is not the case.
+            pseudo_charge = -(self.charge + comp_charge)
+            if abs(pseudo_charge) > 1.0e-14:
+                work_sg = self.finegd.empty(self.nspins)
+                for s in range(self.nspins):
+                    self.interpolater.apply(self.nt_sG[s], work_sg[s])
+
+                x = pseudo_charge / self.finegd.integrate(work_sg).sum()
+                self.taut_sg *= x #TODO XXX scaling by same factor as nt_sg
+        """
 
     def update_kinetic(self, wfs, symmetry=None):
         """Calculate pseudo electron kinetic density.
         The pseudo electron-density ``taut_sG`` is calculated from the
-        wave functions, the occupation numbers"""
+        wave functions, the occupation numbers and atomic contributions."""
+
+        self.taut_sG[:] = 0.
 
         # Add contribution from all k-points
         for kpt in wfs.kpt_u:
@@ -353,8 +385,5 @@ class Density:
             for taut_G in self.taut_sG:
                 symmetry.symmetrize(taut_G, self.gd)
 
-        # Transfer the density from the coarse to the fine grid.
-        for s in range(self.nspins):
-            self.interpolater.apply(self.taut_sG[s], self.taut_sg[s])
+        return
 
-        return 

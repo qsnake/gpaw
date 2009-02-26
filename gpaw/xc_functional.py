@@ -313,8 +313,9 @@ class XCFunctional:
                            use_finegrid=use_finegrid)
 
         if self.xcname == 'TPSS':
-            density.initialize_kinetic()
+            density.initialize_kinetic(atoms)
             density.update_kinetic(wfs, symmetry=paw.wfs.symmetry)
+            density.interpolate_kinetic()
             if paw.nspins ==1:
                 paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
             if self.nspins == 2:

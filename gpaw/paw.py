@@ -552,7 +552,8 @@ class PAW(PAWTextOutput):
             return
         else:
             #pseudo kinetic energy array on 3D grid
-            self.density.initialize_kinetic()
+            self.density.initialize_kinetic(self.atoms)
+            self.density.interpolate_kinetic()
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)
 
     def update_kinetic(self):
@@ -561,6 +562,7 @@ class PAW(PAWTextOutput):
         else:
             #pseudo kinetic energy array on 3D grid
             self.density.update_kinetic(self.wfs)
+            self.density.interpolate_kinetic()
             self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
 
     def get_myu(self, k, s):
