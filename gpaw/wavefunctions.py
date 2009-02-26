@@ -120,12 +120,12 @@ class WaveFunctions(EmptyWaveFunctions):
             P_ni = kpt.P_ani[a] 
             D_sii[kpt.s] += np.dot(P_ni.T.conj() * kpt.f_n, P_ni).real
 
-        if hasattr(kpt, 'ft_omn'):
-            for i in range(len(kpt.ft_omn)):
+        if hasattr(kpt, 'c_on'):
+            for o,c_n in enumerate(kpt.c_on):
+                ft_mn = np.outer(c_n.conj(), c_n)
                 D_sii[kpt.s] += (np.dot(P_ni.T.conj(),
-                                        np.dot(kpt.ft_omn[i],
-                                               P_ni))).real
-                
+                                        np.dot(ft_mn, P_ni))).real
+
     def calculate_atomic_density_matrices_k_point_with_occupation(self, D_sii,
                                                                   kpt, a, f_n):
         if kpt.rho_MM is not None: 
@@ -227,11 +227,6 @@ class WaveFunctions(EmptyWaveFunctions):
 
         if self.kpt_comm.rank == kpt_rank:
             a_n = getattr(kpt_u[u], name)
-
-            ## Delta SCF hack - does not belong here XXX
-            #if name == 'f_n' and hasattr(kpt_u[u], 'ft_omn'):
-            #    for ft_mn in self.kpt_u[u].ft_omn:
-            #        a_n += np.diagonal(ft_mn).real
 
             # Domain master send this to the global master
             if self.gd.comm.rank == 0:
@@ -773,8 +768,9 @@ class GridWaveFunctions(WaveFunctions):
                 nt_G += f * (psit_G * psit_G.conj()).real
 
         # Hack used in delta-scf calculations:
-        if hasattr(kpt, 'ft_omn'):
-            for ft_mn in kpt.ft_omn:
+        if hasattr(kpt, 'c_on'):
+            for c_n in kpt.c_on:
+                ft_mn = np.outer(c_n.conj(), c_n)
                 for ft_n, psi_m in zip(ft_mn, kpt.psit_nG):
                     for ft, psi_n in zip(ft_n, kpt.psit_nG):
                         if abs(ft) > 1.e-12:
@@ -805,10 +801,11 @@ class GridWaveFunctions(WaveFunctions):
                     taut_G += 0.5 * f * (dpsit_G.conj() * dpsit_G).real
 
         # Hack used in delta-scf calculations:
-        if hasattr(kpt, 'ft_omn'):
+        if hasattr(kpt, 'c_on'):
             dwork_G = self.gd.empty(dtype=self.dtype)
             if self.dtype == float:
-                for ft_mn in kpt.ft_omn:
+                for c_n in kpt.c_on:
+                    ft_mn = np.outer(c_n.conj(), c_n)
                     for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
                         d_c[c](psit_m, dpsit_G)
                         for ft, psit_n in zip(ft_n, kpt.psit_nG):
@@ -816,7 +813,8 @@ class GridWaveFunctions(WaveFunctions):
                                 d_c[c](psit_n, dwork_G)
                                 axpy(0.5*ft, dpsit_G * dwork_G, taut_G) #taut_G += 0.5*f*dpsit_G*dwork_G
             else:
-                for ft_mn in kpt.ft_omn:
+                for c_n in kpt.c_on:
+                    ft_mn = np.outer(c_n.conj(), c_n)
                     for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
                         d_c[c](psit_m, dpsit_G, kpt.phase_cd)
                         for ft, psit_n in zip(ft_n, kpt.psit_nG):

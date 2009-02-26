@@ -69,7 +69,7 @@ class UTGammaPointSetup_DSCFExcitedState(UTGammaPointSetup):
         sigma_star = AEOrbital(self.calc,wf_u,P_aui,molecule=mol)
 
         # Force one electron (spin down) into the sigma star orbital
-        dscf_calculation(self.calc, [[1.0,sigma_star,1]], self.atoms)
+        dscf_calculation(self.calc, [[1.0,sigma_star,1]])
 
     # =================================
 
