@@ -665,11 +665,14 @@ class GridWaveFunctions(WaveFunctions):
                                                        density, hamiltonian,
                                                        spos_ac):
         if 0:
+            self.timer.start('Wavefunction: random')
             for kpt in self.kpt_u:
                 kpt.psit_nG = self.gd.zeros(self.mynbands, self.dtype)
             self.random_wave_functions(0)
+            self.timer.stop('Wavefunction: random')
             return
         
+        self.timer.start('Wavefunction: lcao')
         if self.nbands < self.setups.nao:
             lcaonbands = self.nbands
             lcaomynbands = self.mynbands
@@ -710,6 +713,7 @@ class GridWaveFunctions(WaveFunctions):
             # less than the desired number of bands, then extra random
             # wave functions are added.
             self.random_wave_functions(lcaomynbands)
+        self.timer.stop('Wavefunction: lcao')
 
     def initialize_wave_functions_from_restart_file(self):
         if not isinstance(self.kpt_u[0].psit_nG, TarFileReference):
