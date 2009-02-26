@@ -481,8 +481,8 @@ def read(paw, reader):
                     for myn, psit_G in enumerate(kpt.psit_nG):
                         n = band_comm.rank + myn * band_comm.size
                         if domain_comm.rank == 0:
-                            big_psit_G = r.get('PseudoWaveFunctions',
-                                               kpt.s, kpt.k, n)
+                            big_psit_G = npy.array(r.get('PseudoWaveFunctions',
+                                               kpt.s, kpt.k, n), wfs.dtype)
                         else:
                             big_psit_G = None
                         wfs.gd.distribute(big_psit_G, psit_G)
