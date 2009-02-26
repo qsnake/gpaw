@@ -10,6 +10,12 @@ class Contribution:
     def initialize_1d(self):
         raise NotImplementedError
 
+    def get_name(self):
+        raise NotImplementedError
+
+    def get_desc(self):
+        raise NotImplementedError
+
     def calculate_spinpaired(self, e_g, n_g, v_g):
         raise NotImplementedError
 

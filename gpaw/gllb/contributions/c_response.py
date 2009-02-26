@@ -15,6 +15,9 @@ class C_Response(Contribution):
 
     def get_name(self):
         return "RESPONSE"
+
+    def get_desc(self):
+        return ""
         
     # Initialize Response functional
     def initialize_1d(self):

@@ -82,12 +82,12 @@ class NonLocalFunctional(ZeroFunctional):
     def print_functional(self):
         print
         print "Functional being used consists of"
-        print "--------------------------------"
-        print "| Weight    | Functional       |"
-        print "--------------------------------"
+        print "---------------------------------------------------"
+        print "| Weight    | Module           | Description      |"
+        print "---------------------------------------------------"
         for contribution in self.contributions:
-            print "|%9.3f  | %-17s|" % (contribution.weight, contribution.get_name())
-        print "--------------------------------"
+            print "|%9.3f  | %-17s| %-17s|" % (contribution.weight, contribution.get_name(), contribution.get_desc())
+        print "---------------------------------------------------"
         print
 
     def read(self, reader):

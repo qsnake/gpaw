@@ -14,7 +14,10 @@ class C_GLLBScr(Contribution):
         self.functional = functional
 
     def get_name(self):
-        return "GLLBSCR"
+        return "SCREENING"
+
+    def get_desc(self):
+        return "("+self.functional+")"
         
     # Initialize GLLBScr functional
     def initialize_1d(self):

@@ -12,6 +12,9 @@ class C_XC(Contribution):
 
     def get_name(self):
         return 'XC'
+
+    def get_desc(self):
+        return "("+self.functional+")"
         
     def initialize(self):
         self.xc = XC3DGrid(XCFunctional(self.functional), self.nlfunc.finegd, self.nlfunc.nspins)
