@@ -631,7 +631,8 @@ class FFTVDWFunctional(VDWFunctional):
                 sys.stdout.flush()
 
             if not self.energy_only:
-                F_ag[a] = ifftn(Fa_k)#.conj())
+                n1, n2, n3 = gd.get_size_of_global_array()
+                F_ag[a] = ifftn(Fa_k).real[:n1, :n2, :n3].copy()
                 
         if self.verbose:
             print
