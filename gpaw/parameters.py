@@ -64,8 +64,8 @@ class InputParameters(dict):
         self.spinpol = (r.dimension('nspins') == 2)
         self.kpts = r.get('BZKPoints')
         self.usesymm = r['UseSymmetry']
-        if 'Basis' in r:
-            self.basis = r['Basis']
+        #if 'Basis' in r:
+        #    self.basis = r['Basis']
         self.gpts = ((r.dimension('ngptsx') + 1) // 2 * 2,
                      (r.dimension('ngptsy') + 1) // 2 * 2,
                      (r.dimension('ngptsz') + 1) // 2 * 2)
