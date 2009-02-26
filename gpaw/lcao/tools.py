@@ -195,7 +195,7 @@ def get_hamiltonian(atoms):
     """Calculate the Hamiltonian and overlap matrix."""
     calc = atoms.calc
     Ef = calc.get_fermi_level()
-    eigensolver = calc.eigensolver
+    eigensolver = calc.wfs.eigensolver
     hamiltonian = calc.hamiltonian
     Vt_skmm = eigensolver.Vt_skmm
     print "Calculating effective potential matrix (%i)" % rank 
