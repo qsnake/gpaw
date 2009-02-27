@@ -360,18 +360,11 @@ class LCAOWaveFunctions(WaveFunctions):
         
         tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi, self.dtype)
 
-        # Things required for force calculations
-        dSdR_qvMM = tci.dSdR_kcmm
-        dTdR_qvMM = tci.dTdR_kcmm
-        dPdR_aqvMi = tci.dPdR_akcmi
-        dThetadR_qvMM = tci.dThetadR_kcmm
-        mask_aMM = tci.mask_amm
-
         for kpt in self.kpt_u:            
             self.calculate_forces_by_kpoint(kpt, hamiltonian,
                                             F_av, tci,
-                                            S_qMM[kpt.k],
-                                            T_qMM[kpt.k],
+                                            S_qMM[kpt.q],
+                                            T_qMM[kpt.q],
                                             P_aqMi)
 
     def get_projector_derivatives(self, tci, a, c, k):
@@ -451,12 +444,13 @@ class LCAOWaveFunctions(WaveFunctions):
     def calculate_forces_by_kpoint(self, kpt, hamiltonian,
                                    F_av, tci, S_MM, T_MM, P_aqMi):
         k = kpt.k
+        q = kpt.q
         if kpt.rho_MM is None:
             rho_MM = np.dot(kpt.C_nM.T.conj() * kpt.f_n, kpt.C_nM)
         else:
             rho_MM = kpt.rho_MM
 
-        dTdR_vMM = tci.dTdR_kcmm[k]
+        dTdR_vMM = tci.dTdR_kcmm[q]
 
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
         H_MM = self.eigensolver.H_MM.copy()
@@ -491,14 +485,14 @@ class LCAOWaveFunctions(WaveFunctions):
         dEdrhodrhodR_av = np.zeros_like(F_av)
         pawcorrection_avMM = dict([(a, np.zeros((3, nao, nao), self.dtype))
                                    for a in atom_indices])
-        dPdR_avMi = dict([(a, tci.dPdR_akcmi[a][k]) for a in my_atom_indices])
+        dPdR_avMi = dict([(a, tci.dPdR_akcmi[a][q]) for a in my_atom_indices])
         for v in range(3):
             for a in atom_indices:
                 M1 = self.basis_functions.M_a[a]
                 M2 = M1 + self.setups[a].niAO
                 pawcorrection_MM = pawcorrection_avMM[a][v]
                 for b in my_atom_indices:
-                    P_Mi = self.P_aqMi[b][k]
+                    P_Mi = self.P_aqMi[b][q]
                     PdO_Mi = np.dot(P_Mi, self.setups[b].O_ii)
                     dOP_iM = PdO_Mi.T.conj()
                     dPdR_Mi = dPdR_avMi[b][v]
@@ -546,7 +540,7 @@ class LCAOWaveFunctions(WaveFunctions):
                 pawcorrection_MM = pawcorrection_avMM[a][v]
                 if a in dPdR_avMi:
                     dSdRa_MM = pawcorrection_MM.copy()
-                    dThetadR_MM = tci.dThetadR_kcmm[k, v, :, :]
+                    dThetadR_MM = tci.dThetadR_kcmm[q, v, :, :]
                     dSdRa_MM[:, M1:M2] += dThetadR_MM[:, M1:M2]
                     dSdRa_MM[M1:M2, :] -= dThetadR_MM[M1:M2, :]
                     dEdrhodrhodR_av[a, v] = -(ChcEFC_MM.T
@@ -554,7 +548,7 @@ class LCAOWaveFunctions(WaveFunctions):
             
                 for b in my_atom_indices:
                     dPdR_Mi = dPdR_avMi[b][v]
-                    rhoP_Mi = np.dot(rho_MM, self.P_aqMi[b][k]) # k vs q
+                    rhoP_Mi = np.dot(rho_MM, self.P_aqMi[b][q])
                     Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
                     if a != b:
                         A_ii = np.dot(dPdR_Mi.T.conj()[:, M1:M2],
