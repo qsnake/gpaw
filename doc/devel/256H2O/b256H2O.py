@@ -53,9 +53,9 @@ atoms.set_cell((L,L,L),scale_atoms=False)
 atoms.set_pbc(1)
 r = [2, 2, 2]
 atoms = atoms.repeat(r)
-n = [60 * ri for ri in r]
+n = [56 * ri for ri in r]
 # nbands (>=128) is the number of bands per 32 water molecules
-nbands = 2*3*5*6 # 180
+nbands = 2*6*11 # 132
 for ri in r: nbands = nbands*ri
 calc = GPAW(nbands=nbands,
             gpts=tuple(n),

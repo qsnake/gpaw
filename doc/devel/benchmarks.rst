@@ -91,30 +91,33 @@ Please perform the following steps:
    and increase of ~20% on 8 cores compared to 1 core can be considered
    satisfactory.
 
-Strong scaling benchmark of a medium size system
-================================================
+Strong scaling of a medium size system
+======================================
 
 Goal
 ----
 
 Fix the problem size, vary the number of processors, and measure the speedup.
-The system used in this benchmark is of medium size,
-typical in state-of-the-art calculations in the year 2008,
+The system used in this benchmark is of medium size, as for the year 2008,
 and consists of 256 water molecules in a box of ~20**3 Angstrom**3,
-120**3 grid points (grid spacing of ~0.16) and 1440 bands.
-LCAO initialization step is performed, then 3 SCF steps with a constant
-potential and 3 full SCF steps.
-The initialization step and the full SCF steps are timed separately,
-due to their different scaling.
+2048 electrons, and 1056 bands, and 112**3 grid points (grid spacing of ~0.18).
+LCAO initialization stage is performed, then 3 SCF steps with a constant
+potential and 2 full SCF steps.
+All the stages are timed separately, due to their different scaling.
+
+**Note** that the size of the system can be changed easily by modifying
+just one varaible in :file:`~/doc/devel/256H2O/b256H2O.py`::
+
+  r = [2, 2, 2]
 
 Prerequisites
 -------------
 
-This benchmark requires approximately 1 GB of RAM memory per core
-and at least 60 cores, up to 480.
+This benchmark requires approximately 2 GB of RAM memory per core
+and at least 32 cores, up to 512.
 The amount of disk space required is minimal.
 
-The following packages are required (names given for FC 10 system):
+The following packages are required (names given for Fedora Core 10 system):
 
  - python, python-devel
  - numpy
@@ -132,13 +135,58 @@ installing gpaw on different platforms.
 Results
 -------
 
-to be written
+gpaw code is executed in parallel in order to benchmark a number of processes that ranges from
+32, through integer powers of 2 and up to the total number of CPU 512 cores.
+The number of bands (1056) and cores are chosen to make comparisons
+of different band parallelizations (:ref:`band_parallelization`) possible.
 
-on surveyor submit :svn:`doc/devel/256H2O/b256H2O.py` using
-:svn:`doc/devel/256H2O/surveyor.sh` 
+The results of the benchmark is scaling of execution time of different stages
+of gpaw run with the number of processes (CPU cores).
 
 
 Getting the results
 -------------------
 
-to be written
+Please perform the following steps:
+
+ - use the following commands to setup the benchmark::
+
+    bash
+    mkdir 256H2O; cd 256H2O
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/256H2O/b256H2O.py
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/256H2O/akka.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/256H2O/surveyor.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/256H2O/prepare.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/256H2O/scaling.py
+    # set the prefix directory: results will be in $PATTERN_*_
+    export PATTERN=b256H2O_112_04x04m64.grid
+    sh prepare.sh
+
+   **Warning**: the choice of the directory names is not free in the sense that
+   the number of processes has to come at the end of directory name,
+   and be delimited by two underscores.
+
+ - run with, for example:
+
+    - on akka::
+
+       cd $PATTERN_00032_; qsub -l nodes=4:8 ../akka.sh; cd ..
+       cd $PATTERN_00064_; qsub -l nodes=8:8 ../akka.sh; cd ..
+       cd $PATTERN_00128_; qsub -l nodes=16:8 ../akka.sh; cd ..
+       cd $PATTERN_00256_; qsub -l nodes=32:8 ../akka.sh; cd ..
+       cd $PATTERN_00512_; qsub -l nodes=64:8 ../akka.sh; cd ..
+
+   **Warning**: on Linux clusters it s desirable to repeat these runs 2-3 times
+   to make sure that they give reproducible time.
+
+ - analyse the results::
+
+    python -v --dir=. --pattern="b256H2O_112_04x04m64.grid_*_" b256H2O
+
+   A typical output may look like
+   (example given for Intel Xeon dual-socket, quad-core L5k CPUs, 2.5 GHz,
+   gpaw linked with Intel mkl, infiniband)::
+
+    to be added
+
+   Clearly SCF part scales better than the initialization stage.
