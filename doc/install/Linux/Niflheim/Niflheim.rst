@@ -99,10 +99,7 @@ when installating GPAW for the first time:
 
 7. When submitting jobs to the batch system, use the file
    :svn:`~doc/documentation/parallel_runs/gpaw-qsub` instead of the
-   usual :command:`qsub`
-   (the only difference between these two commands is that
-   with :command:`gpaw-qsub` you get ``STDIN`` in the output and error name,
-   so specify ``-N`` option).
+   usual :command:`qsub`.
 
 When updating the gpaw code in the future:
 
