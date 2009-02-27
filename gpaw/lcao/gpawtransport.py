@@ -1227,14 +1227,14 @@ class GPAWTransport:
         return linear_potential
     
     def output(self, filename):
-       out_matrix={}
-       matrix = (self.h_skmm, self.d_skmm, self.s_kmm)
-       out_matrix[str(world.rank)] = matrix 
-       world.barrier()
-
-       if world.rank == 0:
-           fd = file(filename, 'wb')
-           pickle.dump((out_matrix,
+        out_matrix={}
+        matrix = (self.h_skmm, self.d_skmm, self.s_kmm)
+        out_matrix[str(world.rank)] = matrix 
+        world.barrier()
+        self.atoms.calc.write(filename + '.gpw')
+        if world.rank == 0:
+            fd = file(filename, 'wb')
+            pickle.dump((out_matrix,
                         self.kpts,
                         self.bias,
                         self.gate,
@@ -1247,9 +1247,11 @@ class GPAWTransport:
                         self.step,
                         self.cvgflag
                         ), fd, 2)
-           fd.close()
-      
+            fd.close()
+     
     def input(self, filename):
+        atoms, calc = restart_gpaw(filename + '.gpw')
+        self.atoms = atoms
         if world.rank == 0:
             fd = file(filename, 'r')
             (in_matrix,
@@ -1281,7 +1283,7 @@ class GPAWTransport:
             fd.close()
         world.barrier()
     
-    def initial_analysis(self, filename):
+    def analysis(self, filename):
         self.input(filename)
         (self.h1_skmm,
                  self.s1_kmm,
@@ -1352,11 +1354,7 @@ class GPAWTransport:
         
     def plot_v(self, vt=None, tit=None, ylab=None):
         import pylab
-        if vt == None:
-            if hasattr(self, 'vt_sG'):
-                vt = self.vt_sG
-            else:
-                vt = self.atoms.calc.hamiltonian.vt_sG
+        vt = self.atoms.calc.hamiltonian.vt_sG
         dim = vt.shape
         for i in range(3):
             vt = np.sum(vt, axis=0) / dim[i]
@@ -1371,11 +1369,7 @@ class GPAWTransport:
 
     def plot_d(self, nt=None, tit=None, ylab=None):
         import pylab
-        if nt == None:
-            if hasattr(self, 'nt_sG'):
-                nt = self.nt_sG
-            else:
-                nt = self.atoms.calc.density.nt_sG
+        nt = self.atoms.calc.density.nt_sG
         dim = nt.shape
         for i in range(3):
             nt = np.sum(nt, axis=0) / dim[i]
