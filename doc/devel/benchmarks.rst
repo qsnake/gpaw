@@ -106,7 +106,7 @@ potential and 2 full SCF steps.
 All the stages are timed separately, due to their different scaling.
 
 **Note** that the size of the system can be changed easily by modifying
-just one varaible in :file:`~/doc/devel/256H2O/b256H2O.py`::
+just one variable in :file:`~/doc/devel/256H2O/b256H2O.py`::
 
   r = [2, 2, 2]
 
@@ -139,6 +139,9 @@ gpaw code is executed in parallel in order to benchmark a number of processes th
 32, through integer powers of 2 and up to the total number of CPU 512 cores.
 The number of bands (1056) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
+**Note** also that a default domain decomposition is appplied, and different
+results can be obtained by tuning ``--domain-decomposition`` argument
+to your platform (see :ref:`submit_tool_on_niflheim`).
 
 The results of the benchmark is scaling of execution time of different stages
 of gpaw run with the number of processes (CPU cores).
@@ -187,6 +190,14 @@ Please perform the following steps:
    (example given for Intel Xeon dual-socket, quad-core L5k CPUs, 2.5 GHz,
    gpaw linked with Intel mkl, infiniband)::
 
-    to be written
+    # p - processes, p0 - reference processes, t - time [sec], s - speedup, e - efficiency
+    # stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total
+    # p     p/p0   t1      s1      e1    t2      s2      e2    t3      s3      e3    t4      s4      e4    t5      s5      e5
+         32   1.00   100.0    32.0  1.00   339.0    32.0  1.00   235.0    32.0  1.00     0.0     0.0  0.00   674.0    32.0  1.00
+         64   2.00    81.5    39.3  0.61   166.5    65.2  1.02   114.0    66.0  1.03     0.0     0.0  0.00   362.0    59.6  0.93
+        128   4.00    62.0    51.6  0.40    87.0   124.7  0.97    59.0   127.5  1.00     0.0     0.0  0.00   208.0   103.7  0.81
+        256   8.00    44.0    72.7  0.28    48.0   226.0  0.88    32.0   235.0  0.92     0.0     0.0  0.00   124.0   173.9  0.68
+        512  16.00    43.0    74.4  0.15    36.0   301.3  0.59    24.0   313.3  0.61     0.0     0.0  0.00   103.0   209.4  0.41
  
-   Clearly SCF part scales better than the initialization stage.
+   Clearly SCF part scales better than the initialization stage. Superscaling comes from different
+   domain decomposition (see :ref:`submit_tool_on_niflheim`) on different number of cores (verify!).

@@ -77,8 +77,11 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
         # extract gpaw version
         for n, l in enumerate(lines):
             if l.startswith(' |__ |  _|___|_____|'):
-                gpaw_version = int(lines[n + 0].strip().split()[3].split('.')[2])
+                gpaw_version = lines[n + 0].strip().split()[3].split('.')[2]
                 break
+        if gpaw_version[-1] == 'M':
+            gpaw_version = gpaw_version[:-1]
+        gpaw_version = int(gpaw_version)
         # deal with changes in the output
         if gpaw_version >= 3172:
             start_iter = 1
@@ -121,11 +124,12 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
                     fixdensity_start = n-1
                 else:
                     fixdensity_start = n+0
-                t = T(lines[fixdensity_start + 0].split()[2])
+                t1 = T(lines[fixdensity_start + 0].split()[2])
                 t2 = T(lines[fixdensity_start + 1].split()[2])
                 t3 = T(lines[fixdensity_start + 2].split()[2])
                 break
-        time[p]['fixdensity_start_estimate'] = t-(t2-t)
+        # estimate the begining of fixdensity based on 3 fixdensity steps
+        time[p]['fixdensity_start_estimate'] = t1-(t3-t1)/2.0
         time[p]['fixdensity_end'] = t3
         # extract SCF begining and end time
         time[p]['SCF_start'] = time[p]['fixdensity_end']
@@ -159,7 +163,10 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
         tot = max(time[p]['fixdensity_end'], time[p]['SCF_end'], time[p]['forces_end'])-time[p]['start']
         sum_of_entries = time[p]['init'] + time[p]['fixdensity']+ time[p]['SCF'] + time[p]['forces']
         #print time[p]['init'], time[p]['fixdensity'], time[p]['SCF'], time[p]['forces']
-        assert abs(float(tot)-float(time[p]['total'])) < 4.0, 'Error: Sum of time entries: '+str(tot)+' does not match total time in the output: '+str(time[p]['total'])
+        if verbose:
+            if abs(float(tot)-float(time[p]['total'])) > 5.0:
+                print 'Warning: Sum of time entries: '+str(tot)+' does not match total time in the output: '+str(time[p]['total'])
+        time[p]['total'] = sum_of_entries
         # calculate
         speedup[p] = {}
         efficiency[p] = {}

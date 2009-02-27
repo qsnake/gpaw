@@ -50,9 +50,10 @@ Now you can do::
 You will have to modify the script so that it works with your queueing
 system.
 
+.. _submit_tool_on_niflheim:
 
-More advanced example
----------------------
+Submit tool on Niflheim
+-----------------------
 
 At CAMd, we use this submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`.
 
