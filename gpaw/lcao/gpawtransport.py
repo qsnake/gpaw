@@ -276,7 +276,7 @@ class GPAWTransport:
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
 
-    def get_lead_calc(self, l, nkpts=35):
+    def get_lead_calc(self, l, nkpts=16):
         p = self.atoms.calc.input_parameters.copy()
         p['nbands'] = None
         kpts = list(p['kpts'])
@@ -1112,7 +1112,8 @@ class GPAWTransport:
                                                     self.s_pkmm[j]) 
                     elif i == ind + 1:
                         dr_mm[s, j, i]= np.copy(self.d_spkmm_ij[s, j])
-        qr_mm += self.edge_density_mm
+        if ntk != 1:
+            qr_mm += self.edge_density_mm
         world.barrier()
         self.kpt_comm.sum(qr_mm)
         qr_mm /= self.npk
