@@ -214,7 +214,7 @@ class WaveFunctions(EmptyWaveFunctions):
     def collect_occupations(self, k, s):
         return self.collect_array('f_n', k, s)
     
-    def collect_array(self, name, k, s):
+    def collect_array(self, name, k, s, subset=None):
         """Helper method for collect_eigenvalues and collect_occupations.
 
         For the parallel case find the rank in kpt_comm that contains
@@ -227,6 +227,9 @@ class WaveFunctions(EmptyWaveFunctions):
 
         if self.kpt_comm.rank == kpt_rank:
             a_n = getattr(kpt_u[u], name)
+
+            if subset is not None:
+                a_n = a_n[subset]
 
             # Domain master send this to the global master
             if self.gd.comm.rank == 0:

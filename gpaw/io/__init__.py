@@ -269,6 +269,27 @@ def write(paw, filename, mode):
                 if master:
                     w.fill(a_n)
 
+    # Attempt to read the number of delta-scf orbitals:
+    if hasattr(paw.occupations,'norbitals'):
+        norbitals = paw.occupations.norbitals
+    else:
+        norbitals = None
+
+    # Write the linear expansion coefficients for Delta SCF:
+    if mode == 'all' and norbitals is not None:
+        w.dimension('norbitals', norbitals)
+
+        if master:
+            w.add('LinearExpansionCoefficients', ('norbitals',
+                  'nspins', 'nibzkpts', 'nbands'), dtype=dtype)
+        for o in range(norbitals):
+            for s in range(wfs.nspins):
+                for k in range(nibzkpts):
+                    c_n = wfs.collect_array('c_on', k, s, subset=o)
+                if master:
+                    w.fill(c_n)
+
+
     # Write the pseudodensity on the coarse grid:
     if master:
         w.add('PseudoElectronDensity',
@@ -449,6 +470,14 @@ def read(paw, reader):
             paw.time = r['Time']
         except KeyError:
             pass
+
+    # Try to read the number of Delta SCF orbitals
+    try:
+        norbitals = r.dims['norbitals']
+        paw.occupations.norbitals = norbitals
+    except (AttributeError, KeyError):
+        norbitals = None
+
         
     # Wave functions and eigenvalues:
     nibzkpts = r.dims['nibzkpts']
@@ -466,7 +495,13 @@ def read(paw, reader):
             nstride = band_comm.size
             kpt.eps_n = eps_n[n0::nstride].copy()
             kpt.f_n = f_n[n0::nstride].copy()
-        
+
+            if norbitals is not None:
+                kpt.c_on = npy.empty((norbitals,wfs.mynbands), wfs.dtype)
+                for o in range(norbitals):
+                    c_n = r.get('LinearExpansionCoefficients', o, s, k)
+                    kpt.c_on[o,:] = c_n[n0::nstride].copy()
+
         if r.has_array('PseudoWaveFunctions'):
             if band_comm.size == 1:
                 # We may not be able to keep all the wave

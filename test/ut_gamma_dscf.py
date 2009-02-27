@@ -101,6 +101,11 @@ class UTGammaPointSetup_DSCFExcitedState(UTGammaPointSetup):
         for kpt,ne in zip(self.calc.wfs.kpt_u,ne_u):
             self.assertAlmostEqual(sum(kpt.f_n),ne,places=4)
 
+        ne_ou = [[0., 1.]]
+
+        for o,ne_u in enumerate(ne_ou):
+            for kpt,ne in zip(self.calc.wfs.kpt_u,ne_u):
+                self.assertAlmostEqual(sum(abs(kpt.c_on[o])**2),ne,places=9)
 
 # -------------------------------------------------------------------
 
