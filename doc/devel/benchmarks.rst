@@ -187,6 +187,6 @@ Please perform the following steps:
    (example given for Intel Xeon dual-socket, quad-core L5k CPUs, 2.5 GHz,
    gpaw linked with Intel mkl, infiniband)::
 
-    to be added
-
+    to be written
+ 
    Clearly SCF part scales better than the initialization stage.

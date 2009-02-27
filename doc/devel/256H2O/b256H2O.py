@@ -8,8 +8,9 @@ from gpaw.mpi import rank
 
 from gpaw import setup_paths
 
-# Use setups from the $PWD first
+# Use setups from the $PWD and $PWD/.. first
 setup_paths.insert(0, '.')
+setup_paths.insert(0, '../')
 
 positions=[
     (-0.069, 0.824,-1.295),  ( 0.786, 0.943,-0.752),  (-0.414,-0.001,-0.865),

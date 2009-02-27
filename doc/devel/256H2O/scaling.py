@@ -58,7 +58,7 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
     for f in f_list:
         # extract the number of processes p
         d = f.split('/')[-2]
-        p = d.split('_')[-1]
+        p = d.split('_')[-2]
         p = int(p)
         processes.append(p)
         #
@@ -159,7 +159,7 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
         tot = max(time[p]['fixdensity_end'], time[p]['SCF_end'], time[p]['forces_end'])-time[p]['start']
         sum_of_entries = time[p]['init'] + time[p]['fixdensity']+ time[p]['SCF'] + time[p]['forces']
         #print time[p]['init'], time[p]['fixdensity'], time[p]['SCF'], time[p]['forces']
-        assert abs(float(tot)-float(time[p]['total'])) < 3.0, 'Error: Sum of time entries: '+str(tot)+' does not match total time in the output: '+str(time[p]['total'])
+        assert abs(float(tot)-float(time[p]['total'])) < 4.0, 'Error: Sum of time entries: '+str(tot)+' does not match total time in the output: '+str(time[p]['total'])
         # calculate
         speedup[p] = {}
         efficiency[p] = {}
