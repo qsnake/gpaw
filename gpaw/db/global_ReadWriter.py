@@ -55,7 +55,7 @@ class Writer:
         self.no_db_copy=False  # do not copy the current file to the db
         self.ignore_mode=False # used to prevent disabled parameters 
                                # from being written to the file
-        self.private="777"     # the privacy mode of the db file
+        self.private="660"     # the privacy mode of the db file
         self.fname = name
         self.dims = {}
         self.print_python_type = True

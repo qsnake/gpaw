@@ -19,7 +19,7 @@ import gpaw.db.dacapo_ReadWriter  as dacapo_ReadWriter
 
 class GPW2DB:
     """ Takes an gpw file and creates a db file from it """
-    def __init__(self, gpw_filename, db_filename, db=True, private="666"):
+    def __init__(self, gpw_filename, db_filename, db=True, private="660"):
         print "Warning: db and private paramters have no effect yet"
         import gpaw
         import gpaw.db
@@ -63,7 +63,7 @@ def print_usage():
 def main():
     #the following parameters only work for nc - files currently:
     db = True         # copy the db file to the global database
-    private = "666"   # file attribute for the global db - file
+    private = "660"   # file attribute for the global db - file
 
 
     argv = sys.argv

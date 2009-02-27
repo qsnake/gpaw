@@ -37,7 +37,7 @@ def wave_function_name_template(mode):
         template = 'wfs/psit_Gs%dk%dn%d'
     return ftype, template
 
-def write(paw, filename, mode, db=True, private="666", **kwargs):
+def write(paw, filename, mode, db=True, private="660", **kwargs):
     """Write state to file.
     
     The `mode` argument should be one of:
