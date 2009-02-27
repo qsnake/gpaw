@@ -860,7 +860,7 @@ class GPAWTransport:
                 sgforder[i] = np.argmin(abs(elist[i]
                                      - np.array(self.zint[:self.cntint + 1])))
                 if sgferr > 1e-12:
-                    self.print_info('Warning: SGF not Found. eqzgp[%d]= %f'
+                    self.print_info('Warning: SGF not Found. eqzgp[%d]= %f %f'
                                                         %(i, elist[i],sgferr))
             flist = self.fint[:]
             siglist = [[],[]]
