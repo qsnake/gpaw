@@ -604,7 +604,6 @@ class GPAWTransport:
                                                      self.gate) * self.s_pkmm
             self.step +=  1
         self.forces = self.atoms.calc.get_forces(self.atoms)
-        return 1
  
     def initialize_scf(self, bias, gate, cal_loc, verbose):
         self.verbose = verbose
@@ -615,6 +614,7 @@ class GPAWTransport:
         self.kt = self.atoms.calc.occupations.kT * Hartree
         self.fermi = 0
         self.current = 0
+        self.forces = None
         if self.nblead == self.nbmol:
             self.buffer = 0
         else:
