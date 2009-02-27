@@ -16,7 +16,7 @@ import numpy as np
 from gpaw.occupations import OccupationNumbers, FermiDirac
 import gpaw.mpi as mpi
 
-def dscf_calculation(paw, orbitals):
+def dscf_calculation(paw, orbitals, atoms):
     """Helper function to prepare a calculator for a dSCF calculation
 
     Parameters
@@ -41,18 +41,21 @@ def dscf_calculation(paw, orbitals):
 
     """
 
+    # If the calculator has not been initialized the occupation object
+    # is None
+    if paw.occupations == None:
+       paw.initialize(atoms)
     occ = paw.occupations
-
     if occ.kT == 0:
         occ.kT = 1e-6
     if isinstance(occ, OccupationsDSCF):
         paw.occupations.orbitals = orbitals
     else:
-        new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals, paw)
+        new_occ = OccupationsDSCF(occ.ne, occ.nspins, occ.kT, orbitals)
         new_occ.set_communicator(occ.kpt_comm)
         paw.occupations = new_occ
 
-    # if the calculator has already converged (for the ground state),
+    # If the calculator has already converged (for the ground state),
     # reset self-consistency and let the density be updated right away
     if paw.scf.converged:
         paw.scf.niter_fixdensity = 0
@@ -66,7 +69,7 @@ class OccupationsDSCF(FermiDirac):
     in stead of placing all the electrons by a Fermi-Dirac distribution.
     """
 
-    def __init__(self, ne, nspins, kT, orbitals, paw):
+    def __init__(self, ne, nspins, kT, orbitals):
         FermiDirac.__init__(self, ne, nspins, kT)
         
         self.orbitals = orbitals
@@ -82,7 +85,6 @@ class OccupationsDSCF(FermiDirac):
         Eband = 0.0
         for kpt in kpt_u:
             Eband += np.dot(kpt.f_n, kpt.eps_n)
-
             if hasattr(kpt, 'c_on'):
                 for c_n in kpt.c_on:
                     Eband += np.dot(np.abs(c_n)**2, kpt.eps_n)
@@ -99,7 +101,7 @@ class OccupationsDSCF(FermiDirac):
             c_oun.append(orb[1].expand(self.epsF, kpts))
 
         for u, kpt in enumerate(kpts):
-            kpt.c_on = np.zeros((self.norbitals,len(kpt.f_n)), np.complex)
+            kpt.c_on = np.zeros((self.norbitals, len(kpt.f_n)), np.complex)
 
             for o, orb in enumerate(self.orbitals):
                 kpt.c_on[o,:] = orb[0]**0.5 * c_oun[o][u]
@@ -112,7 +114,7 @@ class OccupationsDSCF(FermiDirac):
                     else:
                         kpt.c_on[o,:] = 0.0
                 else:
-                    kpt.c_on[o,:] = (0.5*kpt.weight)**0.5
+                    kpt.c_on[o,:] *= (0.5*kpt.weight)**0.5
 
         self.calculate_band_energy(kpts)
         
@@ -166,8 +168,7 @@ class MolecularOrbital:
     def __init__(self, paw, molecule=[0,1], Estart=0.0, Eend=1.e6,
                  nos=None, w=[[1.,0.,0.,0.],[-1.,0.,0.,0.]]):
 
-        self.nspins = paw.wfs.nspins
-        self.fixmom = paw.input_parameters.fixmom
+        self.paw = paw
         self.mol = molecule
         self.w = w
         self.Estart = Estart
@@ -176,9 +177,9 @@ class MolecularOrbital:
 
     def expand(self, epsF, kpts):
 
-        if self.nspins == 1:
+        if self.paw.wfs.nspins == 1:
             epsF = [epsF]
-        elif not self.fixmom:
+        elif not self.paw.input_parameters.fixmom:
             epsF = [epsF, epsF]
             
         if self.nos == None:
@@ -216,7 +217,8 @@ class MolecularOrbital:
                     nos += 1
                 if nos == self.nos:
                     break
-
+                
+            # Normalize expansion coefficients
             c_n /= np.sqrt(sum(abs(c_n)**2))
             c_un.append(c_n)
         return c_un
@@ -261,13 +263,7 @@ class AEOrbital:
     def __init__(self, paw, wf_u, P_aui, Estart=0.0, Eend=1.e6,
                  molecule=[0,1], nos=None):
     
-        self.nspins = paw.wfs.nspins
-        self.fixmom = paw.input_parameters.fixmom
-        self.gd = paw.wfs.gd
-        self.dtype = paw.wfs.dtype
-        self.nbands = paw.wfs.nbands
-        self.setups = paw.wfs.setups
-
+        self.paw = paw
         self.wf_u = wf_u
         self.P_aui = P_aui
         self.Estart = Estart
@@ -277,9 +273,9 @@ class AEOrbital:
 
     def expand(self, epsF, kpts):
         
-        if self.nspins == 1:
+        if self.paw.wfs.nspins == 1:
             epsF = [epsF]
-        elif not self.fixmom:
+        elif not self.paw.input_parameters.fixmom:
             epsF = [epsF, epsF]
 
         if self.nos == None:
@@ -299,16 +295,16 @@ class AEOrbital:
             wf = np.reshape(wf_u[u], -1)
             Wf_n = kpt.psit_nG
             Wf_n = np.reshape(Wf_n, (len(kpt.f_n), -1))
-            Porb_n = np.dot(Wf_n.conj(), wf) * self.gd.dv
+            Porb_n = np.dot(Wf_n.conj(), wf) * self.paw.wfs.gd.dv
             
             # Correction to obtain inner product of AE wavefunctions
             P_ani = [kpt.P_ani[a] for a in self.mol]
             for P_ni, a, b in zip(P_ani, self.mol, range(len(self.mol))):
-                for n in range(self.nbands):
+                for n in range(self.paw.wfs.nbands):
                     for i in range(len(P_ni[0])):
                         for j in range(len(P_ni[0])):
                             Porb_n[n] += (P_ni[n][i].conj() *
-                                       self.setups[a].O_ii[i][j] *
+                                       self.paw.wfs.setups[a].O_ii[i][j] *
                                        P_aui[b][u][j])
 
 ##             self.gd.comm.sum(Porb_n)
@@ -316,7 +312,7 @@ class AEOrbital:
             print 'Kpt:', kpt.k, ' Spin:', kpt.s, \
                   ' Sum_n|<orb|nks>|^2:', sum(abs(Porb_n)**2)
             
-            if self.dtype == float:
+            if self.paw.wfs.dtype == float:
                 c_n = np.zeros(len(kpt.f_n), np.float)
             else:
                 c_n = np.zeros(len(kpt.f_n), np.complex)
@@ -339,7 +335,5 @@ class AEOrbital:
 
             # Normalize expansion coefficients
             c_n /= np.sqrt(sum(abs(c_n)**2))
-            
-            c_un.append(c_n)
-            
+            c_un.append(c_n)            
         return c_un
