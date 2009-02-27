@@ -93,12 +93,21 @@ else:
 
 
 def Gradient(gd, c, scale=1.0, dtype=float):
-    h = gd.h_c[c]
+    h = gd.h_c
     a = 0.5 / h * scale
-    coef_p = [-a, a]
-    offset_pc = npy.zeros((2, 3), int)
-    offset_pc[0, c] = -1
-    offset_pc[1, c] = 1
+    d = gd.domain.iucell_cv[:,c] 
+
+    coef_p = []
+    offset_pc = []  
+    for i in range(3):
+        if abs(d[i])>1e-11:
+            coef_p.extend([-a[i] * d[i], a[i] * d[i]])
+
+            offset = npy.zeros((2, 3), int)
+            offset[0, i] = -1
+            offset[1, i] =  1                    
+            offset_pc.extend(offset)
+
     return Operator(coef_p, offset_pc, gd, dtype)
 
 
@@ -113,13 +122,14 @@ laplace = [[0],
            [-5369/1800, 12/7, -15/56, 10/189, -1/112, 2/1925, -1/16632]]
 
 # Cross terms
+# given in (1,1),(1,2),...,(1,n),(2,2),(2,3),...,(2,n),...,(n,n) order
 cross = [[0],
          [1/4],
-         [4/9  ,-1/18  ,1/144], #1,1 / 1,2 / 2,2
-         [9/16, -9/80,  1/80, 9/400, -1/400, 1/3600], #1,1 / 1,2 / 1,3 / 2,2 / 2,3 / 3,3
-         [16/25,-4/25,16/525,-1/350,  1/25 ,-4/525 ,1/1400, 16/11025, -1/7350, 1/78400]]
-         #[....., 1/ 1587600]
-         #[....., 1/30735936]
+         [4/9, -1/18, 1/144],
+         [9/16, -9/80, 1/80, 9/400, -1/400, 1/3600],
+         [16/25, -4/25, 16/525, -1/350, 1/25, -4/525, 1/1400, 16/11025, -1/7350, 1/78400],
+         [25/35, -25/126, 25/504, -25/3024, 1/1512, 25/441, -25/1764, 25/10584, -1/5292, 25/7056, -25/42336, 1/21168, 25/254016, -1/127008, 1/1587600],
+         [36/49, -45/196, 10/147, -3/196, 6/2695, -1/6468, 225/3136, -25/1176, 15/3136, -3/4312, 5/103488, 25/3969, -5/3528, 1/4851, -5/349272, 1/3136, -1/21560, 1/310464, 1/148225, -1/2134440, 1/30735936]]
 
 # Check numbers:
 if debug:
@@ -135,8 +145,8 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
     n = int(n)
     h = gd.h_c
     h2 = h**2
+    iucell_cv = gd.domain.iucell_cv
 
-    iucell_cv = npy.linalg.inv((gd.domain.cell_cv/((gd.domain.cell_cv**2).sum(1)**0.5)).T) #jacobian of transformation
     d2 = (iucell_cv**2).sum(1) # gradient magnitudes squared [(Delta_xyzLattice_vector_i)**2]
 
     offsets = [(0, 0, 0)]
@@ -153,7 +163,6 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
                       c[2], c[2]])
 
     #cross-partial derivatives
-    n = min(n,4)
     ci=0
 
     for d1 in range(n):

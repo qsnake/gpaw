@@ -44,6 +44,7 @@ class Domain:
             self.cell_c = npy.array([npy.linalg.norm(self.cell_cv[x]) for x in range(3)])
 
         self.icell_cv = npy.linalg.inv(self.cell_cv).T
+        self.iucell_cv = npy.linalg.inv((self.cell_cv/self.cell_c).T) #Jacobian
 
         self.pbc_c = npy.asarray(pbc, bool)
 
