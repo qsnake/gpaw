@@ -302,6 +302,7 @@ class PAWTextOutput:
             t('Fermi Level:', Hartree * epsF)
 
         self.print_eigenvalues()
+        self.print_forces()
 
         if self.density.rhot_g is None:
             return
@@ -393,13 +394,16 @@ class PAWTextOutput:
         self.txt.flush()
 
     def print_forces(self):
+        if self.forces.F_av is None:
+            return
         t = self.text
         t()
         t('Forces in eV/Ang:')
         c = Hartree / Bohr
-        for a, setup in enumerate(self.setups):
+        symbols = self.atoms.get_chemical_symbols()
+        for a, symbol in enumerate(symbols):
             t('%3d %-2s %10.5f %10.5f %10.5f' %
-              ((a, setup.symbol) + tuple(self.forces.F_ac[a] * c)))
+              ((a, symbol) + tuple(self.forces.F_av[a] * c)))
 
     def print_eigenvalues(self):
         """Print eigenvalues and occupation numbers."""
