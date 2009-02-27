@@ -314,15 +314,15 @@ class XCFunctional:
 
         if self.xcname == 'TPSS':
             density.initialize_kinetic(atoms)
-            density.update_kinetic(wfs, symmetry=paw.wfs.symmetry)
+            density.update_kinetic(wfs, symmetry=wfs.symmetry)
             density.interpolate_kinetic()
-            if paw.nspins ==1:
-                paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
+            if self.nspins == 1:
+                hamiltonian.xc.taua_g = density.taut_sg[0]
             if self.nspins == 2:
-                paw.hamiltonian.xc.taua_g = paw.density.taut_sg[0]
-                paw.hamiltonian.xc.taub_g = paw.density.taut_sg[1]
-            for nucleus in paw.my_nuclei:
-                nucleus.setup.xc_correction.initialize_kinetic(nucleus.setup.data)
+                hamiltonian.xc.taua_g = density.taut_sg[0]
+                hamiltonian.xc.taub_g = density.taut_sg[1]
+            for setup in wfs.setups:
+                setup.xc_correction.initialize_kinetic(setup.data)
 
     def apply_non_local(self, kpt, Htpsit_nG=None, H_nn=None, dH_asp=None):
         if self.orbital_dependent:

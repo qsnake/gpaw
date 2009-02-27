@@ -317,7 +317,7 @@ class RawLDOS:
                 efermi = self.paw.get_fermi_level()
             except:
                 # set Fermi level half way between HOMO and LUMO
-                hl = self.paw.occupations.get_homo_lumo(wfs.kpt_u)
+                hl = self.paw.occupations.get_homo_lumo(wfs)
                 efermi = (hl[0] + hl[1]) * Hartree / 2
 
             eshift = 0.0

@@ -36,7 +36,7 @@ def dscf_calculation(paw, orbitals, atoms):
     >>> e_gs = atoms.get_potential_energy() #ground state energy
     >>> sigma_star=MolecularOrbitals(calc, molecule=[0,1],
     >>>                              w=[[1.,0.,0.,0.],[-1.,0.,0.,0.]])
-    >>> dscf_calculation(calc, [[1.0,sigma_star,1]])
+    >>> dscf_calculation(calc, [[1.0,sigma_star,1]], atoms)
     >>> e_exc = atoms.get_potential_energy() #excitation energy
 
     """
@@ -91,20 +91,20 @@ class OccupationsDSCF(FermiDirac):
 
         self.Eband = self.kpt_comm.sum(Eband)
 
-    def calculate(self, kpts):
-        FermiDirac.calculate(self, kpts)
+    def calculate(self, wfs):
+        FermiDirac.calculate(self, wfs)
 
         # Get the expansion coefficients c_un for each dscf-orbital
         # and incorporate their respective occupations into kpt.c_on
         c_oun = []
         for orb in self.orbitals:
-            c_oun.append(orb[1].expand(self.epsF, kpts))
+            c_oun.append(orb[1].expand(self.epsF, wfs))
 
-        for u, kpt in enumerate(kpts):
-            kpt.c_on = np.zeros((self.norbitals, len(kpt.f_n)), np.complex)
+        for u, kpt in enumerate(wfs.kpt_u):
+            kpt.c_on = np.zeros((self.norbitals, len(kpt.f_n)), dtype=complex)
 
             for o, orb in enumerate(self.orbitals):
-                kpt.c_on[o,:] = orb[0]**0.5 * c_oun[o][u]
+                kpt.c_on[o,:] = complex(orb[0])**0.5 * c_oun[o][u]
 
                 if self.nspins == 2:
                     assert orb[2] in range(2), 'Invalid spin index'
@@ -116,7 +116,7 @@ class OccupationsDSCF(FermiDirac):
                 else:
                     kpt.c_on[o,:] *= (0.5*kpt.weight)**0.5
 
-        self.calculate_band_energy(kpts)
+        self.calculate_band_energy(wfs.kpt_u)
         
         # Correct the magnetic moment
         for orb in self.orbitals:
@@ -124,7 +124,7 @@ class OccupationsDSCF(FermiDirac):
                 self.magmom += orb[0]
             elif orb[2] == 1:
                 self.magmom -= orb[0]
-        
+
 class MolecularOrbital:
     """Class defining the orbitals that should be filled in a dSCF calculation.
     
@@ -168,20 +168,22 @@ class MolecularOrbital:
     def __init__(self, paw, molecule=[0,1], Estart=0.0, Eend=1.e6,
                  nos=None, w=[[1.,0.,0.,0.],[-1.,0.,0.,0.]]):
 
-        self.paw = paw
+        self.fixmom = paw.input_parameters.fixmom
         self.mol = molecule
         self.w = w
         self.Estart = Estart
         self.Eend = Eend
         self.nos = nos
 
-    def expand(self, epsF, kpts):
+    def expand(self, epsF, wfs):
 
-        if self.paw.wfs.nspins == 1:
+        if wfs.nspins == 1:
             epsF = [epsF]
-        elif not self.paw.input_parameters.fixmom:
+        elif not self.fixmom:
             epsF = [epsF, epsF]
-            
+
+        kpts = wfs.kpt_u
+
         if self.nos == None:
             self.nos = len(kpts[0].f_n)
 
@@ -190,7 +192,7 @@ class MolecularOrbital:
 
         c_un = []
         for u, kpt in enumerate(kpts):
-            Porb_n = np.zeros(len(kpt.f_n), np.complex)
+            Porb_n = np.zeros(len(kpt.f_n), dtype=complex)
             for atom in range(len(self.mol)):
                 for pw_no in range(len(self.w[atom])):
                     Porb_n += (self.w[atom][pw_no] *
@@ -200,7 +202,7 @@ class MolecularOrbital:
             #print 'Kpt:', kpt.k, ' Spin:', kpt.s, \
             #      ' Sum_n|wi<pi|nks>|^2:', sum(abs(Porb_n)**2)/len(self.mol)
 
-            c_n = np.zeros(len(kpt.f_n), np.complex)
+            c_n = np.zeros(len(kpt.f_n), dtype=complex)
 
             # Starting from KS orbitals with largest overlap,
             # fill in the expansion coeffients as <n|a> where
@@ -213,7 +215,7 @@ class MolecularOrbital:
             for n in bandpriority:
                 if (kpt.eps_n[n] > epsF[kpt.s] + self.Estart and
                     kpt.eps_n[n] < epsF[kpt.s] + self.Eend):
-                    c_n[n] = Porb_n[n].conj() #XXX BAD
+                    c_n[n] = Porb_n[n].conj()
                     nos += 1
                 if nos == self.nos:
                     break
@@ -221,6 +223,7 @@ class MolecularOrbital:
             # Normalize expansion coefficients
             c_n /= np.sqrt(sum(abs(c_n)**2))
             c_un.append(c_n)
+
         return c_un
                     
 class AEOrbital:
@@ -263,7 +266,7 @@ class AEOrbital:
     def __init__(self, paw, wf_u, P_aui, Estart=0.0, Eend=1.e6,
                  molecule=[0,1], nos=None):
     
-        self.paw = paw
+        self.fixmom = paw.input_parameters.fixmom
         self.wf_u = wf_u
         self.P_aui = P_aui
         self.Estart = Estart
@@ -271,12 +274,14 @@ class AEOrbital:
         self.mol = molecule
         self.nos = nos
 
-    def expand(self, epsF, kpts):
+    def expand(self, epsF, wfs):
         
-        if self.paw.wfs.nspins == 1:
+        if wfs.nspins == 1:
             epsF = [epsF]
-        elif not self.paw.input_parameters.fixmom:
+        elif not self.fixmom:
             epsF = [epsF, epsF]
+
+        kpts = wfs.kpt_u
 
         if self.nos == None:
             self.nos = len(kpts[0].f_n)
@@ -295,27 +300,27 @@ class AEOrbital:
             wf = np.reshape(wf_u[u], -1)
             Wf_n = kpt.psit_nG
             Wf_n = np.reshape(Wf_n, (len(kpt.f_n), -1))
-            Porb_n = np.dot(Wf_n.conj(), wf) * self.paw.wfs.gd.dv
+            Porb_n = np.dot(Wf_n.conj(), wf) * wfs.gd.dv
             
             # Correction to obtain inner product of AE wavefunctions
             P_ani = [kpt.P_ani[a] for a in self.mol]
             for P_ni, a, b in zip(P_ani, self.mol, range(len(self.mol))):
-                for n in range(self.paw.wfs.nbands):
+                for n in range(wfs.nbands):
                     for i in range(len(P_ni[0])):
                         for j in range(len(P_ni[0])):
                             Porb_n[n] += (P_ni[n][i].conj() *
-                                       self.paw.wfs.setups[a].O_ii[i][j] *
+                                       wfs.setups[a].O_ii[i][j] *
                                        P_aui[b][u][j])
 
-##             self.gd.comm.sum(Porb_n)
+##             wfs.gd.comm.sum(Porb_n)
 
             print 'Kpt:', kpt.k, ' Spin:', kpt.s, \
                   ' Sum_n|<orb|nks>|^2:', sum(abs(Porb_n)**2)
             
-            if self.paw.wfs.dtype == float:
-                c_n = np.zeros(len(kpt.f_n), np.float)
+            if wfs.dtype == float:
+                c_n = np.zeros(len(kpt.f_n), dtype=float)
             else:
-                c_n = np.zeros(len(kpt.f_n), np.complex)
+                c_n = np.zeros(len(kpt.f_n), dtype=complex)
 
             # Starting from KS orbitals with largest overlap,
             # fill in the expansion coeffients as <n|a> where
@@ -328,12 +333,13 @@ class AEOrbital:
             for n in bandpriority:
                 if (kpt.eps_n[n] > epsF[kpt.s] + self.Estart and
                     kpt.eps_n[n] < epsF[kpt.s] + self.Eend):
-                    c_n[n] = Porb_n[n] #XXX BAD - correct without .conj()
+                    c_n[n] = Porb_n[n]
                     nos += 1
                 if nos == self.nos:
                     break
 
             # Normalize expansion coefficients
             c_n /= np.sqrt(sum(abs(c_n)**2))
-            c_un.append(c_n)            
+            c_un.append(c_n)    
+        
         return c_un

@@ -575,5 +575,5 @@ class PAW(PAWTextOutput):
             
     def get_homo_lumo(self):
         """Return HOMO and LUMO eigenvalues."""
-        return self.occupations.get_homo_lumo(self.wfs.kpt_u) * Hartree
+        return self.occupations.get_homo_lumo(self.wfs) * Hartree
 

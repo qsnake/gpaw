@@ -23,9 +23,9 @@ class OccupationNumbers:
         if band_comm is None:
             band_comm = mpi.serial_comm
         self.band_comm = band_comm
-        
-    def calculate(self, kpts):
-        for kpt in kpts:
+
+    def calculate(self, wfs):
+        for kpt in wfs.kpt_u:
             if kpt.f_n is None:
                 kpt.f_n = np.empty_like(kpt.eps_n)
 
@@ -46,7 +46,7 @@ class OccupationNumbers:
             Eband += np.dot(kpt.f_n, kpt.eps_n)    
         self.Eband = self.band_comm.sum(self.kpt_comm.sum(Eband))
 
-    def get_homo_lumo(self, kpts):
+    def get_homo_lumo(self, wfs):
         raise NotImplementedError('get_homo_lumo() only implemented for zero '
                                   'Kelvin calculations!')
 
@@ -61,8 +61,10 @@ class OccupationNumbers:
 class ZeroKelvin(OccupationNumbers):
     """Occupations for Gamma-point calculations without Fermi-smearing"""
 
-    def calculate(self, kpts):
-        OccupationNumbers.calculate(self, kpts)
+    def calculate(self, wfs):
+        OccupationNumbers.calculate(self, wfs)
+
+        kpts = wfs.kpt_u
 
         if ((self.kpt_comm.size == 1 and self.nspins != len(kpts)) or
             (self.kpt_comm.size == 2 and len(kpts) != 1) or
@@ -128,10 +130,12 @@ class ZeroKelvin(OccupationNumbers):
         raise NotImplementedError('Fermi level only defined for width > 0. '
                                   'Use get_homo_lumo() instead.')
 
-    def get_homo_lumo(self, kpts):
+    def get_homo_lumo(self, wfs):
         if not hasattr(self, 'lumo'):
-            self.calculate(kpts)
-        
+            self.calculate(wfs)
+
+        kpts = wfs.kpt_u
+
         def get(a, i):
             if i < 0:
                 return np.nan
@@ -166,9 +170,11 @@ class FermiDirac(OccupationNumbers):
         OccupationNumbers.__init__(self, ne, nspins)
         self.kT = kT
         
-    def calculate(self, kpts):
-        OccupationNumbers.calculate(self, kpts)
-        
+    def calculate(self, wfs):
+        OccupationNumbers.calculate(self, wfs)
+
+        kpts = wfs.kpt_u
+
         if self.epsF is None:
             # Fermi level not set.  Make a good guess:
             self.guess_fermi_level(kpts)

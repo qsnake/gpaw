@@ -308,7 +308,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
         if master:
             w.add('LinearExpansionCoefficients', ('norbitals',
-                  'nspins', 'nibzkpts', 'nbands'), dtype=dtype)
+                  'nspins', 'nibzkpts', 'nbands'), dtype=complex)
         for o in range(norbitals):
             for s in range(wfs.nspins):
                 for k in range(nibzkpts):
@@ -544,7 +544,7 @@ def read(paw, reader):
             kpt.f_n = f_n[n0::nstride].copy()
 
             if norbitals is not None:
-                kpt.c_on = npy.empty((norbitals,wfs.mynbands), wfs.dtype)
+                kpt.c_on = npy.empty((norbitals,wfs.mynbands), complex)
                 for o in range(norbitals):
                     c_n = r.get('LinearExpansionCoefficients', o, s, k)
                     kpt.c_on[o,:] = c_n[n0::nstride].copy()
