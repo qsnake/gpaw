@@ -393,9 +393,6 @@ def write(paw, filename, mode, db=True, private="666", **kwargs):
 
     if master and filename.endswith(".db"):
        # Set the private flag for the db copy
-       print "private: ",private
-       print "db: ",db
-       print "w:",w
        w.set_db_copy_settings(db, private)
 
     if master:

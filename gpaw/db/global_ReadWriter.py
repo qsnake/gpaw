@@ -102,7 +102,7 @@ class Writer:
 
     def set(self, name, value, unit=None):
         if not self.params.has_key(name):
-           print "Key \""+name+"\" is unknown or marked to be ignored and therefor not written."
+           #print "Key \""+name+"\" is unknown or marked to be ignored and therefor not written."
            return
 
         #for array types use fill
@@ -151,7 +151,7 @@ class Writer:
             shape = ["%s"%s for s in shape]
 
         if not self.params.has_key(name):
-           print "Key is marked to be ignored: "+name
+           #print "Key is marked to be ignored: "+name
            self.ignore_mode = True
            return
 
