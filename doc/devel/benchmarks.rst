@@ -199,5 +199,5 @@ Please perform the following steps:
         256   8.00    44.0    72.7  0.28    48.0   226.0  0.88    32.0   235.0  0.92     0.0     0.0  0.00   124.0   173.9  0.68
         512  16.00    43.0    74.4  0.15    36.0   301.3  0.59    24.0   313.3  0.61     0.0     0.0  0.00   103.0   209.4  0.41
  
-   Clearly SCF part scales better than the initialization stage. Superscaling comes from different
-   domain decomposition (see :ref:`submit_tool_on_niflheim`) on different number of cores (verify!).
+   Clearly SCF part scales better than the initialization stage. Superscaling comes probably
+   from inacurracies in printed time, and should disappear if more SCF steps were timed.
