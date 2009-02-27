@@ -603,7 +603,7 @@ class GPAWTransport:
                     self.h_spkmm[i] -= (self.zero_shift -
                                                      self.gate) * self.s_pkmm
             self.step +=  1
-        self.FF = self.atoms.calc.get_forces(self.atoms)
+        self.forces = self.atoms.calc.get_forces(self.atoms)
         return 1
  
     def initialize_scf(self, bias, gate, cal_loc, verbose):
@@ -861,7 +861,7 @@ class GPAWTransport:
                                      - np.array(self.zint[:self.cntint + 1])))
                 if sgferr > 1e-12:
                     self.print_info('Warning: SGF not Found. eqzgp[%d]= %f'
-                                                               %(i, elist[i]))
+                                                        %(i, elist[i],sgferr))
             flist = self.fint[:]
             siglist = [[],[]]
             for i, num in zip(range(fcnt), sgforder):
@@ -1243,6 +1243,7 @@ class GPAWTransport:
                         self.nepathinfo,
                         self.kpts,
                         self.lead_kpts,
+                        self.forces,
                         self.current,
                         self.step,
                         self.cvgflag
@@ -1263,6 +1264,7 @@ class GPAWTransport:
              self.nepathinfo,
              self.kpts,
              self.lead_kpts,
+             self.forces,
              self.current,
              self.step,
              self.cvgflag) = pickle.load(fd)
