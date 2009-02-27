@@ -46,15 +46,15 @@ for formula in systems:
         pos[1,:] = pos[0,:] + [0.0, 0.0, exp_bonds_dE[formula][0]]
         loa.set_positions(pos)
     loa.set_calculator(calc)
-    try:
-        energy = loa.get_potential_energy()
-        diff = calc.get_xc_difference('TPSS')
-        energies[formula] = (energy, energy + diff)
-    except:
-        print >> data, formula, 'Error'
-    else:
-        print >> data, formula, energy, energy + diff
-        data.flush()
+#    try:
+    energy = loa.get_potential_energy()
+    diff = calc.get_xc_difference('TPSS')
+    energies[formula] = (energy, energy + diff)
+#    except:
+#        print >> data, formula, 'Error'
+#    else:
+    print >> data, formula, energy, energy + diff
+    data.flush()
 
 #calculate atomization energies
 file = paropen('tpss.txt', 'w')
