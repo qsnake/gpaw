@@ -55,19 +55,15 @@ class CvgCtrl:
             nbmol = matin.shape[-1]
             if self.step > 0:
                 dmatmax = npy.max(npy.abs(self.matlast - matin))
-                aa = npy.argmax(npy.abs(self.matlast - matin))
-                arg_max1 = aa / nbmol ** 2
-                arg_max2 = (aa - arg_max1 * nbmol ** 2) / nbmol
-                arg_max3 = aa % nbmol
                 if dmatmax < self.tol:
                     self.bcvg = 1
                 if self.tol >= 0:
                     if self.matname == 'f' and self.master:
-                        txt('Hamiltonian: dmatmax= [%d, %d, %d] %f tol=%f isCvg=%d'\
-                             %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg))
+                        txt('Hamiltonian: dmatmax= %f tol=%f isCvg=%d'\
+                             %( dmatmax, self.tol, self.bcvg))
                     elif self.matname == 'd' and self.master:
-                        txt('Density: dmatmax= [%d %d, %d] %f tol=%f isCvg=%d'\
-                            %(arg_max1, arg_max2, arg_max3, dmatmax, self.tol, self.bcvg))
+                        txt('Density: dmatmax= %f tol=%f isCvg=%d'\
+                            %( dmatmax, self.tol, self.bcvg))
             self.record_dmatmax.append(dmatmax)
          
     def matcvg(self, matin, txt):
