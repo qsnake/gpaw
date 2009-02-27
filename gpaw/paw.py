@@ -541,10 +541,10 @@ class PAW(PAWTextOutput):
     def get_reference_energy(self):
         return self.wfs.setups.Eref * Hartree
     
-    def write(self, filename, mode=''):
+    def write(self, filename, mode='all', db=True, private="666", **kwargs):
         """use mode='all' to write the wave functions"""
         self.timer.start('IO')
-        gpaw.io.write(self, filename, mode)
+        gpaw.io.write(self, filename, mode, db=db, private=private, **kwargs)
         self.timer.stop('IO')
         
     def initialize_kinetic(self):

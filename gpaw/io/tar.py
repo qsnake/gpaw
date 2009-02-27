@@ -163,6 +163,9 @@ class Reader(xml.sax.handler.ContentHandler):
         fileobj.seek(offset)
         return fileobj, shape[n:], size, dtype
 
+    def get_parameters(self):
+        return self.parameters
+
     def close(self):
         self.tar.close()
 

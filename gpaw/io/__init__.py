@@ -1,3 +1,4 @@
+import gpaw.db
 import os
 import os.path
 
@@ -8,11 +9,14 @@ from ase.atoms import Atoms
 import numpy as npy
 
 import gpaw.mpi as mpi
+import os,time,tempfile
 
 
 def open(filename, mode='r'):
     if filename.endswith('.nc'):
         import gpaw.io.netcdf as io
+    elif filename.endswith('.db'):
+        import gpaw.db.gpaw_ReadWriter as io
     else:
         if not filename.endswith('.gpw'):
             filename += '.gpw'
@@ -33,7 +37,7 @@ def wave_function_name_template(mode):
         template = 'wfs/psit_Gs%dk%dn%d'
     return ftype, template
 
-def write(paw, filename, mode):
+def write(paw, filename, mode, db=True, private="666", **kwargs):
     """Write state to file.
     
     The `mode` argument should be one of:
@@ -43,12 +47,32 @@ def write(paw, filename, mode):
     ``'all'``:
       Write also the wave functions to the file.
     ``'nc'`` or ``'gpw'``:
-      Write wave functions as seperate files (the default filenames
+      Write wave functions as separate files (the default filenames
       are ``'psit_Gs%dk%dn%d.nc' % (s, k, n)`` for ``'nc'``, where
       ``s``, ``k`` and ``n`` are spin, **k**-point and band indices). XXX
     ``'nc:mywfs/psit_Gs%dk%dn%d'``:
       Defines the filenames to be ``'mywfs/psit_Gs%dk%dn%d' % (s, k, n)``.
       The directory ``mywfs`` is created if not present. XXX
+    
+    Please note: mode argument is ignored by *.db files
+
+    The `db` argument:
+        if True a copy of the results is automatically written to the location
+        specified in gpaw.db.db_path, IF that path exists!
+
+    The `private` argument:
+       unix file access rights (i.e. 700 or ug+rwx) for the db file
+
+       private is only applicable to *.db files.
+
+    The `kwargs` can be any keyword-parameter (only supported with *.db files). 
+    The following are commonly used arguments:
+        desc:     A short description of the calculation.
+        db_path:  The path to the user-database which will be a directory where
+                  the output is stored. (The filename is automatically created.)
+        keywords: A list of keywords to identify the calculation.
+                  A good practise is to identify calculations that belong
+                  together with the same keyword.
     """
 
     wfs = paw.wfs
@@ -74,6 +98,9 @@ def write(paw, filename, mode):
         w['version'] = '0.7'
         w['lengthunit'] = 'Bohr'
         w['energyunit'] = 'Hartree'
+
+        if filename.endswith(".db"):
+           w.write_additional_db_params(**kwargs)
 
         try:
             tag_a = atoms.get_tags()
@@ -364,6 +391,13 @@ def write(paw, filename, mode):
                         wpsi.fill(psit_G)
                         wpsi.close()
 
+    if master and filename.endswith(".db"):
+       # Set the private flag for the db copy
+       print "private: ",private
+       print "db: ",db
+       print "w:",w
+       w.set_db_copy_settings(db, private)
+
     if master:
         # Close the file here to ensure that the last wave function is
         # written to disk:
@@ -372,6 +406,22 @@ def write(paw, filename, mode):
     # We don't want the slaves to start reading before the master has
     # finished writing:
     world.barrier()
+
+    # Creates a db file
+    if master and db and not filename.endswith(".db"):
+       #Write a db copy to the database
+       tmp = tempfile.gettempdir()+"/"
+       if tmp==None:
+          tmp = "" #current directory
+       fname  = tmp+"gpaw.db"
+       
+       while os.path.exists(fname):
+             fname = tmp+str(time.time())+".db"
+       write(paw, fname, mode='', db=True, private=private, **kwargs)
+       try:
+           os.remove(fname)
+       except:
+           pass
 
 
 def read(paw, reader):
@@ -459,7 +509,7 @@ def read(paw, reader):
     else:
         paw.scf.converged = True
         
-    if not paw.input_parameters.fixmom and 'FermiLevel' in r.parameters:
+    if not paw.input_parameters.fixmom and 'FermiLevel' in r.get_parameters():
         paw.occupations.set_fermi_level(r['FermiLevel'])
 
     #paw.occupations.magmom = paw.atoms.get_initial_magnetic_moments().sum()

@@ -18,7 +18,7 @@ from gpaw.utilities import pack
 from gpaw.mpi import run, MASTER
 
 
-class PAWExtra:
+class PAWExtra(object):
     def get_fermi_level(self):
         """Return the Fermi-level."""
         return self.occupation.get_fermi_level() * self.Ha
@@ -27,10 +27,14 @@ class PAWExtra:
         """Return HOMO and LUMO eigenvalues."""
         return self.occupation.get_homo_lumo(self.kpt_u) * self.Ha
 
-    def write(self, filename, mode=''):
-        """use mode='all' to write the wave functions"""
+    def write(self, filename, mode='', db=True, **kwargs):
+        """use mode='all' to write the wave functions.
+           db=True means an extra db output file is created and stored in a public location
+           If more keyword-parameters are provided, they are
+           added to the db-output (*.db).
+        """
         self.timer.start('IO')
-        gpaw.io.write(self, filename, mode)
+        gpaw.io.write(self, filename, mode, db, **kwargs)
         self.timer.stop('IO')
         
     def get_wave_function_array(self, n, k, s):
