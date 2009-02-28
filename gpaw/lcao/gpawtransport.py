@@ -65,6 +65,7 @@ class GPAWTransport:
         self.h2_skmm = None
         self.s2_kmm = None
         self.extend = extend
+        self.kpt_comm = world.new_communicator(np.arange(world.size))
 
     def write_left_lead(self,filename):
         self.update_lead_hamiltonian(0)
@@ -191,7 +192,7 @@ class GPAWTransport:
                 self.h1_skmm, self.s1_kmm = self.get_hs(atoms)
                 self.d1_skmm = self.generate_density_matrix('lead_l')        
                 if savefile:
-                    atoms.calc.write('lead0.gpw')                    
+                    #atoms.calc.write('lead0.gpw')                    
                     self.pl_write('leadhs0', (self.h1_skmm,
                                           self.s1_kmm,
                                           self.d1_skmm,
@@ -201,7 +202,7 @@ class GPAWTransport:
                 self.h2_skmm, self.s2_kmm = self.get_hs(atoms)
                 self.d2_skmm = self.generate_density_matrix('lead_r')
                 if savefile:
-                    atoms.calc.write('lead1.gpw')    
+                    #atoms.calc.write('lead1.gpw')    
                     self.pl_write('leadhs1', (self.h2_skmm,
                                           self.s2_kmm,
                                           self.d2_skmm,
@@ -236,7 +237,7 @@ class GPAWTransport:
             self.h_skmm, self.s_kmm = self.get_hs(atoms)
             self.d_skmm = self.generate_density_matrix('scat')
             if savefile:
-                calc.write('scat.gpw')
+                #calc.write('scat.gpw')
                 self.pl_write('scaths', (self.h_skmm,
                                          self.s_kmm,
                                          self.d_skmm))                        
@@ -329,7 +330,6 @@ class GPAWTransport:
         self.initial_lead(0)
         self.initial_lead(1)
         self.initial_mol()        
-
         self.edge_density_mm = self.calc_edge_density(self.d_spkmm_ij,
                                                               self.s_pkmm_ij)
         self.edge_charge = np.zeros([self.nspins])
@@ -1228,15 +1228,14 @@ class GPAWTransport:
         return linear_potential
     
     def output(self, filename):
-        out_matrix={}
-        matrix = (self.h_skmm, self.d_skmm, self.s_kmm)
-        out_matrix[str(world.rank)] = matrix 
+        self.pl_write(filename + '.mat', (self.h_skmm, self.d_skmm, self.s_kmm))
         world.barrier()
-        self.atoms.calc.write(filename + '.gpw')
+        #self.atoms.calc.write(filename + '.gpw')
         if world.rank == 0:
             fd = file(filename, 'wb')
-            pickle.dump((out_matrix,
-                        self.kpts,
+            pickle.dump((
+                        self.atoms.calc.density.nt_sG,
+                        self.atoms.calc.hamiltonian.vt_sG,
                         self.bias,
                         self.gate,
                         self.intctrl,
@@ -1250,40 +1249,29 @@ class GPAWTransport:
                         self.cvgflag
                         ), fd, 2)
             fd.close()
-     
+        world.barrier()
+
     def input(self, filename):
         atoms, calc = restart_gpaw(filename + '.gpw')
         self.atoms = atoms
-        if world.rank == 0:
-            fd = file(filename, 'r')
-            (in_matrix,
-             self.kpts,
-             self.bias,
-             self.gate,
-             self.intctrl,
-             self.eqpathinfo,
-             self.nepathinfo,
-             self.kpts,
-             self.lead_kpts,
-             self.forces,
-             self.current,
-             self.step,
-             self.cvgflag) = pickle.load(fd)
-            an = len(in_matrix)
-            dimh = in_matrix['0'][0].shape
-            dims = in_matrix['0'][2].shape
-            npq = dims[0]
-            dimh = (dimh[0],) + (dimh[1] * an,) + dimh[2:]
-            dims = (dims[0] * an,) + dims[1:]
-            self.h_skmm = np.empty(dimh, complex)
-            self.d_skmm = np.empty(dimh, complex)
-            self.s_kmm = np.empty(dims, complex)
-            for i in range(an):
-                temp = i * npq
-                self.h_skmm[:, temp:temp + npq] = in_matrix[str(i)][0]
-                self.d_skmm[:, temp:temp + npq] = in_matrix[str(i)][1]
-                self.s_kmm[temp:temp + npq] = in_matrix[str(i)][2]
-            fd.close()
+        fd = file(filename, 'rb')
+        (
+         self.nt_sG,
+         self.vt_sG,
+         self.bias,
+         self.gate,
+         self.intctrl,
+         self.eqpathinfo,
+         self.nepathinfo,
+         self.kpts,
+         self.lead_kpts,
+         self.forces,
+         self.current,
+         self.step,
+         self.cvgflag) = pickle.load(fd)
+        fd.close()
+        self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
+           
         world.barrier()
     
     def analysis(self, filename):
@@ -1435,8 +1423,7 @@ class GPAWTransport:
         r0 = rank * npk_each
         self.my_pk = np.arange(r0, r0 + npk_each)
         self.my_npk = npk_each
-        self.kpt_comm = world.new_communicator(np.arange(size))
-
+    
         self.my_kpts = np.empty((npk_each * self.ntkmol, 3), complex)
         kpts = self.kpts
         for i in range(self.ntkmol):
@@ -1458,20 +1445,25 @@ class GPAWTransport:
         return weight
 
     def pl_write(self, filename, matlist):
-        if type(matlist)!= 'tuple':
+        if type(matlist)!= tuple:
             matlist = (matlist,)
             nmat = 1
         else:
             nmat = len(matlist)
         total_matlist = []
+
         for i in range(nmat):
-            if type(matlist[i]) == 'ndarray':  
+            if type(matlist[i]) == np.ndarray:
                 dim = matlist[i].shape
-                dim = (world.size,) + dim[:] 
-                total_mat = np.zeros(dim, dtype=mat.dtype)
-                total_mat[world.rank] = matlist[i]
-                self.kpt_comm.sum(total_mat)
-                total_matlist.append(total_mat)
+                if len(dim) == 4:
+                    dim = (dim[0],) + (dim[1] * world.size,) + dim[2:]
+                elif len(dim) == 3:
+                    dim = (dim[0] * world.size,) + dim[1:]
+                else:
+                    raise RuntimeError('wrong matrix dimension for pl_write')
+                totalmat = np.empty(dim, dtype=matlist[i].dtype)
+                self.kpt_comm.gather(matlist[i], 0, totalmat)
+                total_matlist.append(totalmat)
             else:
                 total_matlist.append(matlist[i])
         if world.rank == 0:
@@ -1484,17 +1476,25 @@ class GPAWTransport:
         fd = file(filename, 'rb')
         total_matlist = pickle.load(fd)
         fd.close()
-        total_matlist = total_matlist[0]
+        nmat= len(total_matlist)
         matlist = []
-        nmat = len(total_matlist)        
         for i in range(nmat):
-            if type(total_matlist[i]) == 'ndarray':
-                if not collect:
-                    matlist.append(total_matlist[i][world.rank])
+            if type(total_matlist[i]) == np.ndarray and not collect:
+                dim = total_matlist[i].shape
+                if len(dim) == 4:
+                    dim = (dim[0],) + (dim[1] / world.size,) + dim[2:]
+                elif len(dim) == 3:
+                    dim = (dim[0] / world.size,) + dim[1:]
                 else:
-                    matlist.append(np.sum(total_matlist[i], axis=0))
+                    raise RuntimeError('wrong matrix dimension for pl_read')
+                local_mat = np.empty(dim, dtype=total_matlist[i].dtype)
+                self.kpt_comm.scatter(total_matlist[i], local_mat, 0)
             else:
-                matlist.append(total_matlist[i])
+                local_mat = np.zeros([1], dtype=int)
+                local_mat[0] = total_matlist[i]
+                self.kpt_comm.broadcast(local_mat, 0)
+                local_mat = local_mat[0]
+            matlist.append(local_mat)
         return matlist
 
     def adjust_citeria(self):
