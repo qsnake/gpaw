@@ -192,7 +192,7 @@ class GPAWTransport:
                 self.h1_skmm, self.s1_kmm = self.get_hs(atoms)
                 self.d1_skmm = self.generate_density_matrix('lead_l')        
                 if savefile:
-                    #atoms.calc.write('lead0.gpw')                    
+                    atoms.calc.write('lead0.gpw')                    
                     self.pl_write('leadhs0', (self.h1_skmm,
                                           self.s1_kmm,
                                           self.d1_skmm,
@@ -202,7 +202,7 @@ class GPAWTransport:
                 self.h2_skmm, self.s2_kmm = self.get_hs(atoms)
                 self.d2_skmm = self.generate_density_matrix('lead_r')
                 if savefile:
-                    #atoms.calc.write('lead1.gpw')    
+                    atoms.calc.write('lead1.gpw')    
                     self.pl_write('leadhs1', (self.h2_skmm,
                                           self.s2_kmm,
                                           self.d2_skmm,
@@ -237,7 +237,7 @@ class GPAWTransport:
             self.h_skmm, self.s_kmm = self.get_hs(atoms)
             self.d_skmm = self.generate_density_matrix('scat')
             if savefile:
-                #calc.write('scat.gpw')
+                calc.write('scat.gpw')
                 self.pl_write('scaths', (self.h_skmm,
                                          self.s_kmm,
                                          self.d_skmm))                        
@@ -1230,12 +1230,10 @@ class GPAWTransport:
     def output(self, filename):
         self.pl_write(filename + '.mat', (self.h_skmm, self.d_skmm, self.s_kmm))
         world.barrier()
-        #self.atoms.calc.write(filename + '.gpw')
+        self.atoms.calc.write(filename + '.gpw')
         if world.rank == 0:
             fd = file(filename, 'wb')
             pickle.dump((
-                        self.atoms.calc.density.nt_sG,
-                        self.atoms.calc.hamiltonian.vt_sG,
                         self.bias,
                         self.gate,
                         self.intctrl,
@@ -1256,8 +1254,6 @@ class GPAWTransport:
         self.atoms = atoms
         fd = file(filename, 'rb')
         (
-         self.nt_sG,
-         self.vt_sG,
          self.bias,
          self.gate,
          self.intctrl,
