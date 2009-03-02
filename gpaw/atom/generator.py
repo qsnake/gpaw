@@ -85,7 +85,7 @@ parameters = {
  'Ta': {'core': '[Xe]4f', 'rcut': 2.8},
  'W' : {'core': '[Xe]4f', 'rcut': 2.8},
 #'Re': Missing 
-#'Os': Missing 
+ 'Os': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.5]},
  'Ir': {'core': '[Xe]4f', 'rcut': [2.3, 2.6, 2.0],
         'vbar': ('poly', 2.1), 'rcutcomp': 2.3},
  'Pt': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3]},
