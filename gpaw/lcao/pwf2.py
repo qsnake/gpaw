@@ -107,7 +107,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     nt_g = calc.density.nt_sg[spin]
     vxct_g = calc.finegd.zeros()
     calc.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
-    vxct_G = calc.gd.empty()
+    vxct_G = calc.gd.zeros()
     calc.hamiltonian.restrict(vxct_g, vxct_G)
     Vxc_qMM = np.zeros((nq, nao, nao), dtype)
     for q, Vxc_MM in enumerate(Vxc_qMM):
@@ -122,7 +122,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
         for Vxc_MM, P_Mi in zip(Vxc_qMM, P_qMi):
-            Vxc_MM += np.dot(P_Mi, np.dot(H_ii, P_Mi.T).conj())
+            Vxc_MM += dots(P_Mi, H_ii, P_Mi.T.conj())
     return Vxc_qMM * Hartree
 
 
@@ -137,11 +137,14 @@ class ProjectedWannierFunctionsFBL:
     """
     def __init__(self, V_nM, No, ortho=False):
         Nw = V_nM.shape[1]
+        assert No <= Nw
         V_oM, V_uM = V_nM[:No], V_nM[No:]
         F_MM = np.dot(V_uM.T.conj(), V_uM)
         U_ow, U_lw, U_Ml = get_rot(F_MM, V_oM, Nw - No)
         self.U_nw = np.vstack((U_ow, dots(V_uM, U_Ml, U_lw)))
-        self.S_ww = np.dot(self.U_nw.T.conj(), self.U_nw)
+
+        # stop here ?? XXX
+        self.S_ww = self.rotate_matrix(np.ones(1))
         if ortho:
             lowdin(self.U_nw, self.S_ww)
             self.S_ww = np.identity(Nw)
@@ -160,7 +163,7 @@ class ProjectedWannierFunctionsFBL:
             P_awi[a] = np.tensordot(self.U_nw, P_ni, axes=[[0], [0]])
         return P_awi
 
-    def function(self, psit_nG):
+    def rotate_function(self, psit_nG):
         return np.tensordot(self.U_nw, psit_nG, axes=[[0], [0]])
 
 
@@ -175,13 +178,15 @@ class ProjectedWannierFunctionsIBL:
     """
     def __init__(self, V_nM, S_MM, No):
         Nw = V_nM.shape[1]
+        assert No <= Nw
         self.V_oM, V_uM = V_nM[:No], V_nM[No:]
         F_MM = S_MM - np.dot(self.V_oM.T.conj(), self.V_oM)
         U_ow, U_lw, U_Ml = get_rot(F_MM, self.V_oM, Nw - No)
         self.U_Mw = np.dot(U_Ml, U_lw)
         self.U_ow = U_ow - np.dot(self.V_oM, self.U_Mw)
-        self.S_ww = np.dot(U_ow.T.conj(), U_ow) + dots(self.U_Mw.T.conj(),
-                                                       F_MM, self.U_Mw)
+
+        # stop here ?? XXX
+        self.S_ww = self.rotate_matrix(np.ones(1), S_MM)
         P_uw = np.dot(V_uM, self.U_Mw)
         self.norms_n = np.hstack((
             np.dot(U_ow, la.solve(self.S_ww, U_ow.T.conj())).diagonal(),
@@ -206,15 +211,17 @@ class ProjectedWannierFunctionsIBL:
                        np.tensordot(self.U_Mw, P_aMi[a], axes=[[0], [0]])
         return P_awi
 
-    def function(self, psit_oG, bfs, q=-1):
+    def rotate_function(self, psit_oG, bfs, q=-1):
         w_wG = np.tensordot(self.U_ow, psit_oG, axes=[[0], [0]])
         bfs.lcao_to_grid(self.U_Mw.T.copy(), w_wG, q)
         return w_wG
 
 
 class PWF2:
-    def __init__(self, gpwfilename, fixedenergy=0., spin=0, ibl=True):
-        calc = GPAW(gpwfilename, txt=None, basis='sz')
+    def __init__(self, gpwfilename, fixedenergy=0.,
+                 spin=0, ibl=True, basis='sz'):
+        calc = GPAW(gpwfilename, txt=None, basis=basis)
+        calc.initialize_positions()
 ##         try:
 ##             Ef = calc.get_fermi_level()
 ##         except NotImplementedError:
@@ -236,7 +243,7 @@ class PWF2:
             H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
             xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin)[:M, :M],
                                       get_lcao_xc(calc, P_aqMi, bfs, spin)[q])
-            w_wG = pwf.function(kpt.psit_nG[:][:M], bfs)
+            w_wG = pwf.rotate_function(kpt.psit_nG[:][:M], bfs)
             P_awi = pwf.rotate_projections(
                 dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
                 dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
@@ -245,7 +252,7 @@ class PWF2:
             pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
             H_ww = pwf.rotate_matrix(eps_n)
             xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin))
-            w_wG = pwf.function(kpt.psit_nG[:])
+            w_wG = pwf.rotate_function(kpt.psit_nG[:])
             P_awi = pwf.rotate_projections(kpt.P_ani)
 
         S_ww = pwf.S_ww
