@@ -389,7 +389,7 @@ class MixerRho2(BaseMixer):
         BaseMixer.mix(self, rhot_g, density.D_asp.values())
 
 class BaseMixer_Broydn:
-    def __init__(self):
+    def __init__(self, beta=0.1, nmaxold=6):
         self.step = 0
         self.verbose = False
         self.d_nt_G = []
@@ -400,8 +400,8 @@ class BaseMixer_Broydn:
         self.v_G = []
         self.u_G = []
         self.u_D = []
-        self.beta = 0.1
-        self.nmaxold = 10
+        self.beta = beta
+        self.nmaxold = nmaxold
         self.metric_type ='new'
         self.weight = 1
         self.dNt = None
@@ -440,9 +440,18 @@ class BaseMixer_Broydn:
         else:
             if self.step >= 2:
                 del self.c_G[:]
+                if len(self.v_G) >= self.nmaxold:
+                    del self.u_G[0]
+                    del self.v_G[0]
+                    for u_D in self.u_D:
+                        del u_D[0]
                 temp_nt_G = self.d_nt_G[1] - self.d_nt_G[0]
                 self.v_G.append(temp_nt_G / npy.sum(temp_nt_G * temp_nt_G))
-                for i in range(self.step - 1):
+                if len(self.v_G) < self.nmaxold:
+                    nstep = self.step - 1
+                else:
+                    nstep = self.nmaxold 
+                for i in range(nstep):
                     self.c_G.append(npy.sum(self.v_G[i] * self.d_nt_G[1]))
                 self.u_G.append(self.beta  * temp_nt_G + self.nt_iG[1] - self.nt_iG[0])
                 for d_Dp, u_D, D_ip in zip(self.d_D_ap, self.u_D, self.D_iap):
