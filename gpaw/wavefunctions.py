@@ -121,8 +121,8 @@ class WaveFunctions(EmptyWaveFunctions):
             D_sii[kpt.s] += np.dot(P_ni.T.conj() * kpt.f_n, P_ni).real
 
         if hasattr(kpt, 'c_on'):
-            for o,c_n in enumerate(kpt.c_on):
-                ft_mn = np.outer(c_n.conj(), c_n)
+            for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                ft_mn = ne * np.outer(c_n.conj(), c_n)
                 D_sii[kpt.s] += (np.dot(P_ni.T.conj(),
                                         np.dot(ft_mn, P_ni))).real
 
@@ -213,7 +213,7 @@ class WaveFunctions(EmptyWaveFunctions):
     
     def collect_occupations(self, k, s):
         return self.collect_array('f_n', k, s)
-    
+
     def collect_array(self, name, k, s, subset=None):
         """Helper method for collect_eigenvalues and collect_occupations.
 
@@ -255,6 +255,34 @@ class WaveFunctions(EmptyWaveFunctions):
             self.kpt_comm.receive(b_n, kpt_rank, 1301)
             return b_n
 
+    def collect_auxiliary(self, name, k, s, shape=1):
+        """Helper method for collecting band-independent scalars/arrays.
+
+        For the parallel case find the rank in kpt_comm that contains
+        the (k,s) pair, for this rank, collect on the corresponding
+        domain a full array on the domain master and send this to the
+        global master."""
+
+        kpt_u = self.kpt_u
+        kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
+
+        if self.kpt_comm.rank == kpt_rank:
+            a_o = getattr(kpt_u[u], name)
+
+            # Make sure data is a mutable object
+            a_o = np.asarray(a_o)
+
+            # Domain master send this to the global master
+            if self.gd.comm.rank == 0:
+                if kpt_rank == 0:
+                    return a_o
+                else:
+                    self.kpt_comm.send(a_o, 0, 1302)
+
+        elif self.world.rank == 0 and kpt_rank != 0:
+            b_o = np.zeros(shape)
+            self.kpt_comm.receive(b_o, kpt_rank, 1302)
+            return b_o
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
 class LCAOWaveFunctions(WaveFunctions):
@@ -766,8 +794,8 @@ class GridWaveFunctions(WaveFunctions):
 
         # Hack used in delta-scf calculations:
         if hasattr(kpt, 'c_on'):
-            for c_n in kpt.c_on:
-                ft_mn = np.outer(c_n.conj(), c_n)
+            for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                ft_mn = ne * np.outer(c_n.conj(), c_n)
                 for ft_n, psi_m in zip(ft_mn, kpt.psit_nG):
                     for ft, psi_n in zip(ft_n, kpt.psit_nG):
                         if abs(ft) > 1.e-12:
@@ -801,8 +829,8 @@ class GridWaveFunctions(WaveFunctions):
         if hasattr(kpt, 'c_on'):
             dwork_G = self.gd.empty(dtype=self.dtype)
             if self.dtype == float:
-                for c_n in kpt.c_on:
-                    ft_mn = np.outer(c_n.conj(), c_n)
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                    ft_mn = ne * np.outer(c_n.conj(), c_n)
                     for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
                         d_c[c](psit_m, dpsit_G)
                         for ft, psit_n in zip(ft_n, kpt.psit_nG):
@@ -810,8 +838,8 @@ class GridWaveFunctions(WaveFunctions):
                                 d_c[c](psit_n, dwork_G)
                                 axpy(0.5*ft, dpsit_G * dwork_G, taut_G) #taut_G += 0.5*f*dpsit_G*dwork_G
             else:
-                for c_n in kpt.c_on:
-                    ft_mn = np.outer(c_n.conj(), c_n)
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                    ft_mn = ne * np.outer(c_n.conj(), c_n)
                     for ft_n, psit_m in zip(ft_mn, kpt.psit_nG):
                         d_c[c](psit_m, dpsit_G, kpt.phase_cd)
                         for ft, psit_n in zip(ft_n, kpt.psit_nG):

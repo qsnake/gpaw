@@ -307,15 +307,23 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w.dimension('norbitals', norbitals)
 
         if master:
-            w.add('LinearExpansionCoefficients', ('norbitals',
-                  'nspins', 'nibzkpts', 'nbands'), dtype=complex)
-        for o in range(norbitals):
-            for s in range(wfs.nspins):
-                for k in range(nibzkpts):
-                    c_n = wfs.collect_array('c_on', k, s, subset=o)
+            w.add('LinearExpansionOccupations', ('nspins',
+                  'nibzkpts', 'norbitals'), dtype=float)
+        for s in range(wfs.nspins):
+            for k in range(nibzkpts):
+                ne_o = wfs.collect_auxiliary('ne_o', k, s, shape=norbitals)
                 if master:
-                    w.fill(c_n)
+                    w.fill(ne_o)
 
+        if master:
+            w.add('LinearExpansionCoefficients', ('nspins',
+                  'nibzkpts', 'norbitals', 'nbands'), dtype=complex)
+        for s in range(wfs.nspins):
+            for k in range(nibzkpts):
+                for o in range(norbitals):
+                    c_n = wfs.collect_array('c_on', k, s, subset=o)
+                    if master:
+                        w.fill(c_n)
 
     # Write the pseudodensity on the coarse grid:
     if master:
@@ -525,7 +533,6 @@ def read(paw, reader):
     except (AttributeError, KeyError):
         norbitals = None
 
-        
     # Wave functions and eigenvalues:
     nibzkpts = r.dims['nibzkpts']
     nbands = r.dims['nbands']
@@ -544,10 +551,12 @@ def read(paw, reader):
             kpt.f_n = f_n[n0::nstride].copy()
 
             if norbitals is not None:
-                kpt.c_on = npy.empty((norbitals,wfs.mynbands), complex)
+                kpt.ne_o = npy.empty(norbitals, dtype=float)
+                kpt.c_on = npy.empty((norbitals,wfs.mynbands), dtype=complex)
                 for o in range(norbitals):
-                    c_n = r.get('LinearExpansionCoefficients', o, s, k)
-                    kpt.c_on[o,:] = c_n[n0::nstride].copy()
+                    kpt.ne_o[o] = r.get('LinearExpansionOccupations',  s, k, o)
+                    c_n = r.get('LinearExpansionCoefficients', s, k, o)
+                    kpt.c_on[o,:] = c_n[n0::nstride]
 
         if r.has_array('PseudoWaveFunctions'):
             if band_comm.size == 1:

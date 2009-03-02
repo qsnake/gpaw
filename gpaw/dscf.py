@@ -86,8 +86,8 @@ class OccupationsDSCF(FermiDirac):
         for kpt in kpt_u:
             Eband += np.dot(kpt.f_n, kpt.eps_n)
             if hasattr(kpt, 'c_on'):
-                for c_n in kpt.c_on:
-                    Eband += np.dot(np.abs(c_n)**2, kpt.eps_n)
+                for ne, c_n in zip(kpt.ne_o, kpt.c_on):
+                    Eband += ne * np.dot(np.abs(c_n)**2, kpt.eps_n)
 
         self.Eband = self.kpt_comm.sum(Eband)
 
@@ -95,26 +95,31 @@ class OccupationsDSCF(FermiDirac):
         FermiDirac.calculate(self, wfs)
 
         # Get the expansion coefficients c_un for each dscf-orbital
-        # and incorporate their respective occupations into kpt.c_on
+        # and incorporate their respective occupations into kpt.ne_o
         c_oun = []
         for orb in self.orbitals:
             c_oun.append(orb[1].expand(self.epsF, wfs))
 
         for u, kpt in enumerate(wfs.kpt_u):
+            kpt.ne_o = np.zeros(self.norbitals, dtype=float)
             kpt.c_on = np.zeros((self.norbitals, len(kpt.f_n)), dtype=complex)
 
             for o, orb in enumerate(self.orbitals):
-                kpt.c_on[o,:] = complex(orb[0])**0.5 * c_oun[o][u]
+                #TODO XXX false if orb[0]<0 since abs(c_n)**2>0
+                #kpt.c_on[o,:] = abs(orb[0])**0.5 * c_oun[o][u]
+
+                kpt.ne_o[o] = orb[0]
+                kpt.c_on[o,:] = c_oun[o][u]
 
                 if self.nspins == 2:
                     assert orb[2] in range(2), 'Invalid spin index'
 
                     if orb[2] == kpt.s:
-                        kpt.c_on[o,:] *= kpt.weight**0.5
+                        kpt.ne_o[o] *= kpt.weight
                     else:
-                        kpt.c_on[o,:] = 0.0
+                        kpt.ne_o[o] = 0.0
                 else:
-                    kpt.c_on[o,:] *= (0.5*kpt.weight)**0.5
+                    kpt.ne_o[o] *= 0.5*kpt.weight
 
         self.calculate_band_energy(wfs.kpt_u)
         
