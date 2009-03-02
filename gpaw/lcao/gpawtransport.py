@@ -246,6 +246,7 @@ class GPAWTransport:
             calc.set_positions()
             self.atoms = atoms
             self.h_skmm, self.s_kmm, self.d_skmm = self.pl_read('scaths')
+            calc.set_text('restart.txt', 0)
         kpts = calc.wfs.ibzk_kc
         self.nbmol = self.h_skmm.shape[-1]
             
@@ -515,7 +516,7 @@ class GPAWTransport:
         atoms = self.atoms_l[0] + atoms_inner + self.atoms_l[1]
         atoms.set_pbc(atoms_inner._pbc)
         d = self.d
-        cell = self.atoms._cell.copy()
+        cell = np.diag(self.atoms._cell.copy())
         cell[d] += self.pl_cells[0][d] * 2
         atoms.set_cell(cell)
         for i in range(lead_atoms_num):
