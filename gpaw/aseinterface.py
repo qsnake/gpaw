@@ -332,7 +332,7 @@ class GPAW(PAW):
         psit_G = self.wfs.get_wave_function_array(band, kpt, spin)
         if broadcast:
             if not self.wfs.world.rank == 0:
-                psit_G = self.gd.empty(dtype=self.dtype, global_array=True)
+                psit_G = self.gd.empty(dtype=self.wfs.dtype, global_array=True)
             self.wfs.world.broadcast(psit_G, 0)
             return psit_G / Bohr**1.5
         elif self.wfs.world.rank == 0:
