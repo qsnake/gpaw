@@ -59,6 +59,9 @@ n = [56 * ri for ri in r]
 nbands = 2*6*11 # 132
 for ri in r: nbands = nbands*ri
 calc = GPAW(nbands=nbands,
+            # uncomment next two lines to use lcao/dzp
+            #mode='lcao',
+            #basis='dzp',
             gpts=tuple(n),
             maxiter=5,
             width = 0.01,
