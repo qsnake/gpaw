@@ -58,12 +58,12 @@ The list shows the 20 functions where the most time is spent.  Check the pstats_
 
      $ python script.py --debug
 
-tau
+TAU
 ===
 
 `TAU Performance System <http://www.cs.uoregon.edu/research/tau/>`_
 is a portable profiling and tracing toolkit for performance analysis
-of parallel programs written in Fortran, C, C++, Java, Python.
+of parallel programs written in Fortran, C, C++, Java, and Python.
 
 
 Installation and configuration
@@ -79,7 +79,7 @@ If you want to use only TAU's ``paraprof`` and/or ``perfexplorer`` for
 analysing profile data made elsewhere - skip the installation of
 ``pdtoolkit``.
 
-Follow the vendor installation instructions for ``tau`` or, on an RPM-based
+Follow the vendor installation instructions for ``TAU`` or, on an RPM-based
 system (El4/EL5 and FC8/FC9 are currently supported), build RPM following
 `<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#tau>`_.
 Then, configure the environment by running first ``perfdmf_configure``.
@@ -98,8 +98,24 @@ Similarly, run ``perfexplorer_configure`` letting the default settings.
 
 Generating profile data
 -----------------------
+TAU has a number of capabilities including generating a call path
+tree, memory profiling, measuring MPI message sizes, and much
+more. Here we describe the flat profile. There are two methods for
+generating a flat profile:
 
-You need to compile a special version of gpaw.
+* Manual - This is the most intuitive way to create profiles because it requires that you understand the fundamental algorithms. A TauTimer class is available that includes the most essential profiling commands. See gpaw/utilities/timing.py. Time is measured  **only** for each instance of ``timer.start(<text>)`` and ``timer.stop(<text>)``. There are a number of pre-defined timers for the most time consuming parts of GPAW, e.g. RMM-DIIS, subspace diagonalization, etc. It is very straightforward to add your own timers.
+
+Here is an example of how the TauTimer class can be used to profile a calculation. Note that the TAU library must be in your ``LD_LIBRARY_PATH``::
+
+  from gpaw.utilties.timing import TauTimer
+
+  class MyGPAW(GPAW):
+         timer_class = TauTimer
+
+  calc = MyGPAW(<args>)
+
+
+* Automatic - Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary.
 
 Simply include the following into ``customize.py`` and run ``python setup.py build_ext``::
 
@@ -113,6 +129,8 @@ Simply include the following into ``customize.py`` and run ``python setup.py bui
 
   extra_link_args += ['-Wl,-rpath='+tau_path+'lib/']
 
+There should be a number of Makefile TAU stubs available. Choose the one that is appropriate for the profile data that you wish to collect and the compiler.
+ 
 To obtain the profiler data run the following ``wrapper.py``::
 
   import tau
