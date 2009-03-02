@@ -312,6 +312,10 @@ class GPAWTransport:
                                           lead_restart=False, savefile=True):
         p = self.atoms.calc.input_parameters.copy()           
         self.ntkmol = p['kpts'][self.d]
+        if np.sum(np.array(p['kpts'])) == 3:
+            self.gamma = True
+        else:
+            self.gamma = False
         self.update_lead_hamiltonian(0, lead_restart, savefile)
         world.barrier()
         self.update_lead_hamiltonian(1, lead_restart, savefile)
@@ -460,7 +464,10 @@ class GPAWTransport:
             ntk = self.ntkmol
         else:
             raise KeyError('invalid lead index')
-        d_skmm = np.empty(dim, complex)
+        if region == 'scat' and self.gamma:
+            d_skmm = np.empty(dim)
+        else:
+            d_skmm = np.empty(dim, complex)
         for kpt in calc.wfs.kpt_u:
             C_nm = kpt.C_nM
             f_nn = np.diag(kpt.f_n)
@@ -623,7 +630,7 @@ class GPAWTransport:
         self.fcvg = CvgCtrl(self.master)
         self.dcvg = CvgCtrl(self.master)
         inputinfo = {'fasmethodname':'SCL_None', 'fmethodname':'CVG_None',
-                     'falpha': 0.1, 'falphascaling':0.1, 'ftol':1e-5,
+                     'falpha': 0.1, 'falphascaling':0.1, 'ftol':1e-4,
                      'fallowedmatmax':1e-4, 'fndiis':10, 'ftolx':1e-5,
                      'fsteadycheck': False,
                      'dasmethodname':'SCL_None', 'dmethodname':'CVG_Broydn',
