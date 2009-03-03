@@ -542,7 +542,14 @@ class PAW(PAWTextOutput):
         return self.wfs.setups.Eref * Hartree
     
     def write(self, filename, mode='', db=False, private="660", **kwargs):
-        """use mode='all' to write the wave functions"""
+        """Write state to file.
+
+        use mode='all' to write the wave functions.  db=True means an
+        extra db output file is created and stored in a public
+        location If more keyword-parameters are provided, they are
+        added to the db-output (*.db).
+        """
+        
         self.timer.start('IO')
         gpaw.io.write(self, filename, mode, db=db, private=private, **kwargs)
         self.timer.stop('IO')

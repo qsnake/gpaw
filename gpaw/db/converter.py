@@ -6,7 +6,7 @@
 
 
 """
-Converts gpaw nc-files to *.db files
+Converts gpaw nc-files to ``*.db`` files
 
 This file is intended to be moved into a different repository!
 """

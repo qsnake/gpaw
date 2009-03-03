@@ -54,7 +54,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
       Defines the filenames to be ``'mywfs/psit_Gs%dk%dn%d' % (s, k, n)``.
       The directory ``mywfs`` is created if not present. XXX
     
-    Please note: mode argument is ignored by *.db files
+    Please note: mode argument is ignored by ``*.db`` files
 
     The `db` argument:
         if True a copy of the results is automatically written to the location
@@ -63,16 +63,22 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
     The `private` argument:
        unix file access rights (i.e. 700 or ug+rwx) for the db file
 
-       private is only applicable to *.db files.
+       private is only applicable to ``*.db`` files.
 
-    The `kwargs` can be any keyword-parameter (only supported with *.db files). 
+    The `kwargs` can be any keyword-parameter (only supported with
+    ``*.db`` files).
+    
     The following are commonly used arguments:
-        desc:     A short description of the calculation.
-        db_path:  The path to the user-database which will be a directory where
-                  the output is stored. (The filename is automatically created.)
-        keywords: A list of keywords to identify the calculation.
-                  A good practise is to identify calculations that belong
-                  together with the same keyword.
+
+    desc:
+        A short description of the calculation.
+    db_path:
+        The path to the user-database which will be a directory where
+        the output is stored. (The filename is automatically created.)
+    keywords:
+        A list of keywords to identify the calculation.
+        A good practise is to identify calculations that belong
+        together with the same keyword.
     """
 
     wfs = paw.wfs
