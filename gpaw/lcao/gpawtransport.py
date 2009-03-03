@@ -611,6 +611,7 @@ class GPAWTransport:
                     self.h_spkmm[i] -= (self.zero_shift -
                                                      self.gate) * self.s_pkmm
             self.step +=  1
+        self.atoms.calc.forces.F_av = None
         self.forces = self.atoms.calc.get_forces(self.atoms)
  
     def initialize_scf(self, bias, gate, cal_loc, verbose):
@@ -1259,6 +1260,7 @@ class GPAWTransport:
 
     def input(self, filename):
         atoms, calc = restart_gpaw(filename + '.gpw')
+        calc.set_positions()
         self.atoms = atoms
         fd = file(filename, 'rb')
         (
@@ -1493,6 +1495,11 @@ class GPAWTransport:
                     raise RuntimeError('wrong matrix dimension for pl_read')
                 local_mat = np.empty(dim, dtype=total_matlist[i].dtype)
                 self.kpt_comm.scatter(total_matlist[i], local_mat, 0)
+            elif type(total_matlist[i]) == np.ndarray:
+                local_mat = np.empty(total_matlist[i].shape,
+                                             dtype= total_matlist[i].dtype)
+                local_mat = total_matlist[i]
+                self.kpt_comm.broadcast(local_mat, 0)
             else:
                 local_mat = np.zeros([1], dtype=int)
                 local_mat[0] = total_matlist[i]
