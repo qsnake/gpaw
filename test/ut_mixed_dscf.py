@@ -59,9 +59,8 @@ class UTMixedBCSetup_DSCFExcitedState(UTMixedBCSetup):
                     #mixer=Mixer(beta=0.1, nmaxold=5, metric='new', weight=100),
                     #convergence={'eigenstates': 1e-7, 'bands':nbands},
                     txt=self.name+'.txt')
-                    """
-                    txt=None)
-                    """
+                    #txt=None)
+
 
         self.atoms = self.calc.get_atoms()
 
