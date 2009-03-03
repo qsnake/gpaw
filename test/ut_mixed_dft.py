@@ -15,6 +15,7 @@ class UTMixedBCSetup(unittest.TestCase):
     Setup a mixed periodic, multiple k-point calculation with DFT."""
 
     name = 'ut_mixed_dft'
+    usesymmetry = True
 
     # Number of additional bands e.g. for DSCF linear expansion
     nextra = 0
@@ -63,6 +64,7 @@ class UTMixedBCSetup(unittest.TestCase):
                     mixer=MixerSum(nmaxold=5, beta=0.1, weight=100),
                     convergence={'eigenstates': 1e-9, 'bands':nbands},
                     #width=0.1, #TODO might help convergence?
+                    usesymm=self.usesymmetry,
                     txt=self.name+'.txt')
 
         self.atoms.set_calculator(self.calc)
