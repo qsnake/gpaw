@@ -319,6 +319,8 @@ class Hamiltonian:
         xc.set_functional(newxcfunc)
         for setup in self.setups.setups.values():
             setup.xc_correction.xc.set_functional(newxcfunc)
+            if newxcfunc.mgga:
+                setup.xc_correction.initialize_kinetic(setup.data)
 
         if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready: #bugged?
             self.set_positions(npy.array([n.spos_c * self.domain.cell_c
