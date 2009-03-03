@@ -42,8 +42,9 @@ def build():
                  '--show-imports --no-frames -v gpaw >& epydoc.out') != 0:
         raise RuntimeError('Epydoc failed!')
 
-    if ' Warning:' in open('epydoc.out').read():
-        raise RuntimeError('Warning(s) from epydoc!')
+    epydoc_errors = open('epydoc.out').read()
+    if ' Warning:' in epydoc_errors:
+        sys.stderr.write(epydoc_errors)
 
     sys.path.insert(0, tmpdir + '/lib/python')
     from gpaw.version import version
