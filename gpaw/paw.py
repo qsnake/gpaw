@@ -547,7 +547,7 @@ class PAW(PAWTextOutput):
         use mode='all' to write the wave functions.  db=True means an
         extra db output file is created and stored in a public
         location If more keyword-parameters are provided, they are
-        added to the db-output (*.db).
+        added to the db-output (``*.db``).
         """
         
         self.timer.start('IO')
