@@ -2,6 +2,20 @@
 VDW
 ===
 
+.. note::
+
+   For the development version of the vdW-DF code, you need to
+   download this file: phi-0.500-1.000-20.000-21-201.pckl_.
+
+.. _phi-0.500-1.000-20.000-21-201.pckl: http://wiki.fysik.dtu.dk/gpaw-files/phi-0.500-1.000-20.000-21-201.pckl
+
+
+.. note::
+
+   THE DOCUMENTATION BELOW IS FOR VERSION 0.4 ONLY!!
+
+
+XXX
 
 ------------
 Introduction
