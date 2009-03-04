@@ -615,6 +615,7 @@ class GPAWTransport:
                     self.h_spkmm[i] -= (self.zero_shift -
                                                      self.gate) * self.s_pkmm
             self.step +=  1
+        self.atoms.calc.scf.converged = self.cvgflag
         self.atoms.calc.forces.F_av = None
         self.forces = self.atoms.calc.get_forces(self.atoms)
  
@@ -1094,6 +1095,17 @@ class GPAWTransport:
         xcfunc = calc.hamiltonian.xc.xcfunc
         calc.Enlxc = xcfunc.get_non_local_energy()
         calc.Enlkin = xcfunc.get_non_local_kinetic_corrections() 
+        if self.step > 0:
+            self.diff = density.mixer.get_charge_sloshing()
+            if self.step == 1:
+                self.min_diff = self.diff
+            elif self.diff < self.min_diff:
+                self.min_diff = self.diff
+                self.output('step')
+            self.print_info('dcvg: dmatmax = %f   tol=%f' % (self.diff,
+                                                  calc.scf.max_density_error))
+            if self.diff < calc.scf.max_density_error:
+                self.dcvg.bcvg = True
         h_skmm, s_kmm = self.get_hs(self.atoms)
  
         return h_skmm
@@ -1190,17 +1202,6 @@ class GPAWTransport:
         for kpt in calc.wfs.kpt_u:
             kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
         density.update(wfs)
-        if self.step > 0:
-            self.diff = density.mixer.get_charge_sloshing()
-            if self.step == 1:
-                self.min_diff = self.diff
-            elif self.diff < self.min_diff:
-                self.min_diff = self.diff
-                self.output('step')
-            self.print_info('dcvg: dmatmax = %f   tol=%f' % (self.diff,
-                                                  calc.scf.max_density_error))
-            if self.diff < calc.scf.max_density_error:
-                self.dcvg.bcvg = True
         return density
 
     def calc_total_charge(self, d_spkmm):
@@ -1267,8 +1268,7 @@ class GPAWTransport:
         calc.set_positions()
         self.atoms = atoms
         fd = file(filename, 'rb')
-        (
-         self.bias,
+        (self.bias,
          self.gate,
          self.intctrl,
          self.eqpathinfo,
