@@ -213,7 +213,7 @@ Please perform the following steps:
 The system used in this benchmark is another one of medium size, as for the year 2008,
 and consists of a gold cluster interacting with organic groups
 (see `<http://www.pnas.org/cgi/content/abstract/0801001105v1>`_) in a box of 32**3 Angstrom**3,
-3366 electrons, and 1920 bands, and 240**3 grid points (grid spacing of ~0.13).
+3366 electrons, and 1728 bands, and 240**3 grid points (grid spacing of ~0.13).
 LCAO initialization stage is performed, then 3 SCF steps with a constant
 potential and 2 full SCF steps.
 All the stages are timed separately, due to their different scaling.
@@ -250,7 +250,7 @@ Results
 
 gpaw code is executed in parallel in order to benchmark a number of processes that ranges from
 512, through integer powers of 2 and up to the total number of CPU 4096 cores.
-The number of bands (1920) and cores are chosen to make comparisons
+The number of bands (1728) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
 **Note** also that a default domain decomposition is appplied, and different
 results can be obtained by tuning ``--domain-decomposition`` argument

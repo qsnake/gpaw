@@ -27,14 +27,17 @@ r = [1, 1, 1]
 atoms = atoms.repeat(r)
 n = [240 * ri for ri in r]
 # nbands (>=1683) is the number of bands per cluster
-nbands = 3*5*16*8 # 1920
+nbands = 3*6*6*16 # 1728
 for ri in r: nbands = nbands*ri
 mixer = Mixer(0.1, 5, 'new', 100.0)
+# the next three lines decrease memory usage
 es = RMM_DIIS(keep_htpsit=False)
+from gpaw.operator import Operator
+Operator.nblocks = 8
 calc = GPAW(nbands=nbands,
-            # uncomment next two lines to use lcao/dzp
+            # uncomment next two lines to use lcao/sz
             #mode='lcao',
-            #basis='dzp',
+            #basis='sz',
             gpts=tuple(n),
             maxiter=5,
             width = 0.1,
