@@ -121,16 +121,16 @@ class GPAWTransport:
         
         h2_sii, s2_ii = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc2.ibzk_kc, 
-                                         calc2.weight_k,
+                                         calc2.wfs.ibzk_kc, 
+                                         calc2.wfs.weight_k,
                                          R_c=(0,0,0))
         R_c = [0,0,0]
         R_c[self.d] = 1.0
 
         h2_sij, s2_ij = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc1.ibzk_kc, 
-                                         calc1.weight_k,
+                                         calc1.wfs.ibzk_kc, 
+                                         calc1.wfs.weight_k,
                                          R_c=R_c)
 
 
@@ -193,9 +193,9 @@ class GPAWTransport:
                 self.d1_skmm = self.generate_density_matrix('lead_l')        
                 if savefile:
                     atoms.calc.write('lead0.gpw')                    
-                    self.pl_write('leadhs0', (self.h1_skmm,
-                                          self.s1_kmm,
+                    self.pl_write('lead0.mat', (self.h1_skmm,
                                           self.d1_skmm,
+                                          self.s1_kmm,
                                           self.ntklead,
                                           self.dimt_lead))            
             elif l == 1:
@@ -203,9 +203,9 @@ class GPAWTransport:
                 self.d2_skmm = self.generate_density_matrix('lead_r')
                 if savefile:
                     atoms.calc.write('lead1.gpw')    
-                    self.pl_write('leadhs1', (self.h2_skmm,
-                                          self.s2_kmm,
+                    self.pl_write('lead1.mat', (self.h2_skmm,
                                           self.d2_skmm,
+                                          self.s2_kmm,
                                           self.ntklead,
                                           self.dimt_lead))            
         else:
@@ -214,21 +214,22 @@ class GPAWTransport:
             self.atoms_l[l] = atoms
             if l == 0:        
                 (self.h1_skmm,
-                 self.s1_kmm,
                  self.d1_skmm,
+                 self.s1_kmm,
                  self.ntklead,
-                 self.dimt_lead) = self.pl_read('leadhs0')
+                 self.dimt_lead) = self.pl_read('lead0.mat')
             elif l == 1:
                 (self.h2_skmm,
-                 self.s2_kmm,
                  self.d2_skmm,
+                 self.s2_kmm,
                  self.ntklead,
-                 self.dimt_lead) = self.pl_read('leadhs1')
+                 self.dimt_lead) = self.pl_read('lead1.mat')
             kpts = self.atoms_l[0].calc.wfs.ibzk_kc  
             self.npk = kpts.shape[0] / self.ntklead 
         self.nblead = self.h1_skmm.shape[-1]
         
-    def update_scat_hamiltonian(self, restart=False, savefile=True):
+    def update_scat_hamiltonian(self, restart=False,
+                                           savefile=True, restart_file=None):
         if not restart:
             atoms = self.atoms
             atoms.get_potential_energy()
@@ -238,14 +239,17 @@ class GPAWTransport:
             self.d_skmm = self.generate_density_matrix('scat')
             if savefile:
                 calc.write('scat.gpw')
-                self.pl_write('scaths', (self.h_skmm,
-                                         self.s_kmm,
-                                         self.d_skmm))                        
+                self.pl_write('scat.mat', (self.h_skmm,
+                                           self.d_skmm,
+                                           self.s_kmm))                        
         else:
-            atoms, calc = restart_gpaw('scat.gpw')
+            if restart_file == None:
+                restart_file = 'scat'
+            atoms, calc = restart_gpaw(restart_file + '.gpw')
             calc.set_positions()
             self.atoms = atoms
-            self.h_skmm, self.s_kmm, self.d_skmm = self.pl_read('scaths')
+            self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(restart_file
+                                                                     +'.mat')
             calc.set_text('restart.txt', 0)
         kpts = calc.wfs.ibzk_kc
         self.nbmol = self.h_skmm.shape[-1]
@@ -310,7 +314,7 @@ class GPAWTransport:
         self.atoms_l[1] = self.get_lead_atoms(1)
         
     def negf_prepare(self, scat_restart=False,
-                                          lead_restart=False, savefile=True):
+                        lead_restart=False, savefile=True, restart_file=None):
         p = self.atoms.calc.input_parameters.copy()           
         self.ntkmol = p['kpts'][self.d]
         if np.sum(np.array(p['kpts'])) == 3:
@@ -323,7 +327,7 @@ class GPAWTransport:
         world.barrier()
         if self.extend:
             self.extend_scat()
-        self.update_scat_hamiltonian(scat_restart, savefile)
+        self.update_scat_hamiltonian(scat_restart, savefile, restart_file)
         world.barrier()
         self.nspins = self.h1_skmm.shape[0]
         self.kpts = self.atoms.calc.wfs.ibzk_kc
@@ -1192,7 +1196,7 @@ class GPAWTransport:
                 self.min_diff = self.diff
             elif self.diff < self.min_diff:
                 self.min_diff = self.diff
-                self.output('step.dat')
+                self.output('step')
             self.print_info('dcvg: dmatmax = %f   tol=%f' % (self.diff,
                                                   calc.scf.max_density_error))
             if self.diff < calc.scf.max_density_error:
@@ -1286,12 +1290,12 @@ class GPAWTransport:
                  self.s1_kmm,
                  self.d1_skmm,
                  self.ntklead,
-                 self.dimt_lead) = self.pl_read('leadhs0', collect=True)
+                 self.dimt_lead) = self.pl_read('lead0.mat', collect=True)
         (self.h2_skmm,
                  self.s2_kmm,
                  self.d2_skmm,
                  self.ntklead,
-                 self.dimt_lead) = self.pl_read('leadhs1', collect=True)
+                 self.dimt_lead) = self.pl_read('lead1.mat', collect=True)
         self.nspins = self.h1_skmm.shape[0]
         self.npk = self.h1_skmm.shape[1] / self.ntklead
         self.ntkmol = self.h_skmm.shape[1] / self.npk
