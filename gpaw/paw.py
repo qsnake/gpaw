@@ -143,10 +143,12 @@ class PAW(PAWTextOutput):
                 self.occupations = None
             elif key in ['h', 'gpts', 'setups', 'spinpol',
                          'usesymm', 'parsize', 'parsize_bands',
-                         'communicator', 'mode']:
+                         'communicator']:
                 self.density = None
                 self.occupations = None
                 self.hamiltonian = None
+                self.wfs = EmptyWaveFunctions()
+            elif key in ['mode']:
                 self.wfs = EmptyWaveFunctions()
             else:
                 raise TypeError('Unknown keyword argument:' + key)
