@@ -11,13 +11,18 @@ class Writer:
         and intended to be used with gpaw
     """
 
-    def __init__(self, nc, calc, atoms, db_filename, db, private):
+    def __init__(self, nc, calc, atoms, db_filename, db, private, **kwargs):
         """nc: the open nc-file
            calc: a Dacapo calculator
         """
 
         w = dbrw.Writer(db_filename, "dacapo")
         w.set_db_copy_settings(db, private)
+
+        #0st write the user arguments, if present
+        for k in kwargs.keys():
+            w[k] = kwargs[k]
+
 
         #1st we write the parameters that can be
         #    extracted automatically:

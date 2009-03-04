@@ -19,20 +19,37 @@ import gpaw.db.dacapo_ReadWriter  as dacapo_ReadWriter
 
 class GPW2DB:
     """ Takes an gpw file and creates a db file from it """
-    def __init__(self, gpw_filename, db_filename, db=True, private="660"):
+    def __init__(self, gpw_filename, db_filename, db=True, private="660", **kwargs):
+        """
+           parameter 'gpw_filename': the name of the gpaw file
+           parameter 'db_filename': the name of the output db-file
+           parameter 'db': add the output also to the database location
+           parameter 'private': the file attribute for the db-file, if db=True
+           parameter 'kwargs': more arguments i.e. a list of keywords
+                     for example keywords=["...","..."]
+                                 desc="My description"
+                                 any_name="any other arguments"
+        """
         print "Warning: db and private paramters have no effect yet"
         import gpaw
         import gpaw.db
         calc = gpaw.GPAW(gpw_filename)
-        calc.write(db_filename, db=db, private=private)
+        calc.write(db_filename, db=db, private=private, kwargs=kwargs)
         
 
 class NC2DB:
     """ Takes an nc file and creates a db file from it """
     
-    def __init__(self, nc_filename, db_filename, db, private):
-        """param "nc_filename" the path to an input nc file
-           param "db_filename" the path to an output db file
+    def __init__(self, nc_filename, db_filename, db, private="", **kwargs):
+        """
+           parameter 'nc_filename': the name of the nc file
+           parameter 'db_filename': the name of the output db-file
+           parameter 'db': add the output also to the database location
+           parameter 'private': the file attribute for the db-file, if db=True
+           parameter 'kwargs': more arguments i.e. a list of keywords
+                     for example keywords=["...","..."]
+                                 desc="My description"
+                                 any_name="any other arguments"
         """
         from ase.io.pupynere import NetCDFFile
         nc = NetCDFFile(nc_filename)
@@ -41,7 +58,7 @@ class NC2DB:
            from Dacapo import Dacapo
            atoms=Dacapo.ReadAtoms(filename=nc_filename)
            calc=atoms.GetCalculator()
-           dacapo_ReadWriter.Writer(nc, calc, atoms, db_filename, db, private)
+           dacapo_ReadWriter.Writer(nc, calc, atoms, db_filename, db, private, **kwargs)
         else:
            print "Could not find calculator for ",calc_name
 

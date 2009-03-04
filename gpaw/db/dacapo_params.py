@@ -15,6 +15,26 @@ class dacapo_info(params.params):
     #          python_type: the internal type of the variable
     #          unit:        the unit of the variable
     dacapo_data = {
+            #arguments in example code
+            'number_of_layers':{"xml_name":'number_of_layers'},
+            'code':{"xml_name":'code'},
+            'electronicconv':{"xml_name":'electronicconv'},
+            'symmetry':{"xml_name":'symmetry'},
+            'title':{"xml_name":'title'},
+            'basis_set':{"xml_name":'basis_set'},
+            'coretreatment':{"xml_name":'coretreatment'},
+            'othertags':{"xml_name":'othertags'},
+            'runtype':{"xml_name":'runtype'},
+            'charge_on_unit_cell':{"xml_name":'charge_on_unit_cell'},
+            'person':{"xml_name":'person'},
+            'DOS':{"xml_name":'hiDOStory'},
+            'miller_indices':{"xml_name":'miller_indices'},
+            'ionicconv':{"xml_name":'ionicconv'},
+            'whererun':{"xml_name":'whererun'},
+            'typesystem':{"xml_name":'typesystem'},
+            'grid':{"xml_name":'grid'},
+
+
             'history':{"xml_name":'history'},
             'version':{"xml_name":'version'},
 #            'lengthunit':{"xml_name":'lengthunit'},
