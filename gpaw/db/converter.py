@@ -18,15 +18,24 @@ import gpaw.db.dacapo_ReadWriter  as dacapo_ReadWriter
 
 
 class GPW2DB:
-    """ Takes an gpw file and creates a db file from it """
+    """Takes an gpw file and creates a db file from it."""
     def __init__(self, gpw_filename, db_filename, db=True, private="660", **kwargs):
-        """
-           parameter 'gpw_filename': the name of the gpaw file
-           parameter 'db_filename': the name of the output db-file
-           parameter 'db': add the output also to the database location
-           parameter 'private': the file attribute for the db-file, if db=True
-           parameter 'kwargs': more arguments i.e. a list of keywords
-                     for example keywords=["...","..."]
+        """Initializes the GPAW 2 DB converter.
+
+        Parameters:
+
+        gpw_filename:  string
+                       the name of the gpaw file
+        db_filename:   string
+                       the name of the output db-file
+        db             boolean
+                       true: add output also to the database
+        private:       boolean
+                       if db=True, then private sets file attribute of the file
+                       copied to the public location
+        kwargs:        dictionary
+                       more arguments i.e. a list of keywords
+                        for example keywords=["...","..."]
                                  desc="My description"
                                  any_name="any other arguments"
         """
@@ -41,13 +50,22 @@ class NC2DB:
     """ Takes an nc file and creates a db file from it """
     
     def __init__(self, nc_filename, db_filename, db, private="", **kwargs):
-        """
-           parameter 'nc_filename': the name of the nc file
-           parameter 'db_filename': the name of the output db-file
-           parameter 'db': add the output also to the database location
-           parameter 'private': the file attribute for the db-file, if db=True
-           parameter 'kwargs': more arguments i.e. a list of keywords
-                     for example keywords=["...","..."]
+        """Initializes the GPAW 2 DB converter.
+
+        Parameters:
+
+        nc_filename:   string
+                       the name of the nc-file
+        db_filename:   string
+                       the name of the output db-file
+        db             boolean
+                       true: add output also to the database
+        private:       boolean
+                       if db=True, then private sets file attribute of the file
+                       copied to the public location
+        kwargs:        dictionary
+                       more arguments i.e. a list of keywords
+                        for example keywords=["...","..."]
                                  desc="My description"
                                  any_name="any other arguments"
         """
