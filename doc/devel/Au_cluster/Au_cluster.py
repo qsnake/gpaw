@@ -4,6 +4,7 @@ from ase import Atoms
 from ase.io.xyz import read_xyz
 
 from gpaw import GPAW
+from gpaw.mixer import Mixer
 from gpaw import ConvergenceError
 from gpaw.mpi import rank
 
@@ -29,6 +30,7 @@ n = [240 * ri for ri in r]
 nbands = 3*5*16*8 # 1920
 for ri in r: nbands = nbands*ri
 mixer = Mixer(0.1, 5, 'new', 100.0)
+es = RMM_DIIS(keep_hpsit=False, nblocks=5)
 calc = GPAW(nbands=nbands,
             # uncomment next two lines to use lcao/dzp
             #mode='lcao',
