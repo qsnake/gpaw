@@ -3,10 +3,13 @@ from ase import *
 from gpaw.utilities import equal
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
+from gpaw.mpi import world
 
 atom = 'Si'
-g = Generator(atom, xcname ='GLLB', scalarrel=False,nofiles=True)
-g.run(**parameters[atom])
+
+if world.rank == 0:
+    g = Generator(atom, xcname ='GLLB', scalarrel=False,nofiles=True)
+    g.run(**parameters[atom])
 
 setup_paths.insert(0, '.')
 

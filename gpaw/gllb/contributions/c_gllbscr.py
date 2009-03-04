@@ -12,7 +12,9 @@ class C_GLLBScr(Contribution):
     def __init__(self, nlfunc, weight, functional = 'X_B88-None'):
         Contribution.__init__(self, nlfunc, weight)
         self.functional = functional
-
+        self.old_coeffs = None
+        self.iter = 0
+        
     def get_name(self):
         return "SCREENING"
 
@@ -69,19 +71,33 @@ class C_GLLBScr(Contribution):
             return None
 
         e_ref = self.occupations.get_zero_kelvin_homo_eigenvalue(kpt_u)
+
+        # The parameter ee might sometimes be set to small thereshold value to
+        # achieve convergence on systems with degenerate HOMO.
+        ee = 0.0
+
         if lumo_perturbation:
             e_ref_lumo = self.occupations.get_zero_kelvin_lumo_eigenvalue(kpt_u)
             return [ npy.array([
-                f * K_G * (self.f( npy.where(e_ref_lumo - e>1e-3, e_ref_lumo-e,0))
-                         -self.f( npy.where(e_ref      - e>1e-3, e_ref-e,0)))
+                f * K_G * (self.f( npy.where(e_ref_lumo - e>ee, e_ref_lumo-e,0))
+                         -self.f( npy.where(e_ref      - e>ee, e_ref-e,0)))
                      for e, f in zip(kpt.eps_n, kpt.f_n) ])
                      for kpt in kpt_u ]
             
             
         else:
-            return [ npy.array([ f * K_G * self.f( npy.where(e_ref - e>1e-3, e_ref-e,0))
+            # Mix the coefficients with 25%
+            coeff = [ npy.array([ f * K_G * self.f( npy.where(e_ref - e>ee, e_ref-e,0))
                      for e, f in zip(kpt.eps_n, kpt.f_n) ])
                      for kpt in kpt_u ]
+            if self.old_coeffs is None:
+                self.old_coeffs = coeff
+            else:
+                mix = 1.0
+                #if self.iter > 7:
+                self.old_coeffs = [ (1-mix) * old + mix * new for old, new in zip(coeff, self.old_coeffs) ]
+                    
+            return self.old_coeffs
         
 
     def calculate_spinpaired(self, e_g, n_g, v_g):

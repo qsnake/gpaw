@@ -5,7 +5,7 @@ from gpaw.xc_correction import A_Liy
 from gpaw.utilities import pack
 from gpaw.gllb import safe_sqr
 from math import sqrt, pi
-
+from gpaw.mpi import world
 import numpy as npy
 
 class C_Response(Contribution):
@@ -40,7 +40,9 @@ class C_Response(Contribution):
         self.symmetry = self.wfs.symmetry
         self.nspins = self.nlfunc.nspins
         self.occupations = self.nlfunc.occupations
-
+        self.kpt_comm = self.wfs.kpt_comm
+        self.band_comm = self.wfs.band_comm
+        self.grid_comm = self.gd.comm
         self.vt_sg = self.finegd.empty(self.nlfunc.nspins)
         self.vt_sG = self.gd.empty(self.nlfunc.nspins)
         print "Writing over vt_sG!"
@@ -51,13 +53,17 @@ class C_Response(Contribution):
     def calculate_spinpaired(self, e_g, n_g, v_g):
         w_kn = self.coefficients.get_coefficients_by_kpt(self.kpt_u)
         f_kn = [ kpt.f_n for kpt in self.kpt_u ]
-
         if w_kn is not None:
             self.vt_sG[:] = 0.0
             self.nt_sG[:] = 0.0
             for kpt, w_n in zip(self.kpt_u, w_kn):
                 self.wfs.add_to_density_from_k_point_with_occupation(self.vt_sG, kpt, w_n)
                 self.wfs.add_to_density_from_k_point(self.nt_sG, kpt)
+
+            self.band_comm.sum(self.nt_sG)
+            self.kpt_comm.sum(self.nt_sG)
+            self.band_comm.sum(self.vt_sG)
+            self.kpt_comm.sum(self.vt_sG)
 
             if self.wfs.symmetry:
                 for nt_G, vt_G in zip(self.nt_sG, self.vt_sG):
@@ -71,9 +77,11 @@ class C_Response(Contribution):
                 self.D_asp, f_kn)
 
             self.vt_sG /= self.nt_sG +1e-10
-            print "Updating vt_sG"
+            if world.rank == 0:
+                print "Updating vt_sG"
         else:
-            print "Reusing potential"
+            if world.rank == 0:
+                print "Reusing potential"
             
         self.density.interpolater.apply(self.vt_sG[0], self.vt_sg[0])
         v_g[:] += self.weight * self.vt_sg[0]
@@ -168,6 +176,11 @@ class C_Response(Contribution):
             self.wfs.add_to_density_from_k_point_with_occupation(self.vt_sG, kpt, w_n)
             self.wfs.add_to_density_from_k_point(self.nt_sG, kpt)
             
+        self.band_comm.sum(self.nt_sG)
+        self.kpt_comm.sum(self.nt_sG)
+        self.band_comm.sum(self.vt_sG)
+        self.kpt_comm.sum(self.vt_sG)
+            
         if self.wfs.symmetry:
             for nt_G, vt_G in zip(self.nt_sG, self.vt_sG):
                 self.symmetry.symmetrize(nt_G, self.gd)
@@ -191,21 +204,26 @@ class C_Response(Contribution):
         for kpt in self.kpt_u:
             self.nt_sG[:] = 0.0
             self.wfs.add_to_density_from_k_point_with_occupation(self.nt_sG, kpt, lumo_occupied)
-            Ecorr = 0
+            Ecorr = 0.0
             for a in self.D_asp:
                 D_sp = self.D_asp[a]
                 Dresp_sp = self.Dresp_asp[a]
                 Dwf_p = pack(npy.outer(kpt.P_ani[a][lumo_n].conj(), kpt.P_ani[a][lumo_n]).real)
                 Ecorr += self.integrate_sphere(a, Dresp_sp, D_sp, Dwf_p)
-            print "Spherical correction:", Ecorr * 27.21
+            print "Proc", world.rank, " Ecorr", Ecorr
+            Ecorr = self.grid_comm.sum(Ecorr)
+            print "Spherical correction from processor ",world.rank, ":", Ecorr * 27.21
             eps_u.append(Ecorr + kpt.f_n[lumo_n] + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
 
         method2_dxc = min(eps_u)
+        method2_dxc = -self.kpt_comm.max(-method2_dxc)
 
         Ha = 27.2116 
         Ksgap *= Ha
         method1_dxc *= Ha
         method2_dxc *= Ha
+        if world.rank is not 0:
+            return (Ksgap, method2_dxc)
         print
         print "\Delta XC calulation"
         print "-----------------------------------------------"
@@ -215,7 +233,7 @@ class C_Response(Contribution):
         print "| Lumo pert.  | %7.2f | %9.2f | %7.2f |" % (Ksgap, method2_dxc, Ksgap+method2_dxc)
         print "-----------------------------------------------"
         print
-        return method2_dxc
+        return (Ksgap, method2_dxc)
 
     def initialize_from_atomic_orbitals(self, basis_functions):
         # Initiailze 'response-density' and density-matrices
@@ -311,7 +329,7 @@ class C_Response(Contribution):
             nadm += ni * (ni + 1) / 2
 
         # Not yet tested for parallerization
-        assert world.size == 1
+        #assert world.size == 1
 
         # Write the pseudodensity on the coarse grid:
         if master:

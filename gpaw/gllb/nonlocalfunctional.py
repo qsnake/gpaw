@@ -1,4 +1,5 @@
 from gpaw.xc_functional import ZeroFunctional
+from gpaw.mpi import world
 
 class NonLocalFunctional(ZeroFunctional):
 
@@ -80,6 +81,8 @@ class NonLocalFunctional(ZeroFunctional):
         self.xcs[contribution.get_name()] = contribution
 
     def print_functional(self):
+        if world.rank is not 0:
+            return
         print
         print "Functional being used consists of"
         print "---------------------------------------------------"
