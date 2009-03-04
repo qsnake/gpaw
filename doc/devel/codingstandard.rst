@@ -1,8 +1,12 @@
 .. _codingstandard:
 
-=========================
-Python Coding Conventions
-=========================
+==================
+Coding Conventions
+==================
+
+
+Python code
+===========
 
 The rules for the Python part of the GPAW code are almost identical
 to those used by the `Docutils project`_:
@@ -70,12 +74,17 @@ C-code
 
 Code C in the C99 style::
 
-  for (int i = 0; i < 3; i++)
-  {
-    double f = 0.5;
-    a[i] = 0.0;
-    b[i + 1] = f * i;
+  for (int i = 0; i < 3; i++) {
+      double f = 0.5;
+      a[i] = 0.0;
+      b[i + 1] = f * i;
   }
+
+and try to follow PEP7_.
+
+
+.. _PEP7: http://www.python.org/peps/pep-0007
+
 
 
 General advice
