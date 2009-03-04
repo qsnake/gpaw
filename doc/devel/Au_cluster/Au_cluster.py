@@ -30,7 +30,7 @@ n = [240 * ri for ri in r]
 nbands = 3*5*16*8 # 1920
 for ri in r: nbands = nbands*ri
 mixer = Mixer(0.1, 5, 'new', 100.0)
-es = RMM_DIIS(keep_hpsit=False, nblocks=5)
+es = RMM_DIIS(keep_htpsit=False)
 calc = GPAW(nbands=nbands,
             # uncomment next two lines to use lcao/dzp
             #mode='lcao',
