@@ -9,6 +9,7 @@ from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full, lowdin
 from gpaw.coulomb import get_vxc as get_ks_xc
+from gpaw.utilities.blas import r2k
 
 from gpaw.lcao.projected_wannier import dots, condition_number, eigvals,\
      get_bfs, get_lfc
@@ -112,7 +113,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
     Vxc_qMM = np.zeros((nq, nao, nao), dtype)
     for q, Vxc_MM in enumerate(Vxc_qMM):
         bfs.calculate_potential_matrix(vxct_G, Vxc_MM, q)
-        tri2full(Vxc_MM)
+        tri2full(Vxc_MM, 'L')
 
     # Add atomic PAW corrections
     for a, P_qMi in P_aqMi.items():
@@ -122,8 +123,34 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
         for Vxc_MM, P_Mi in zip(Vxc_qMM, P_qMi):
-            Vxc_MM += dots(P_Mi, H_ii, P_Mi.T.conj())
+            Vxc_MM += np.dot(P_Mi, np.dot(H_ii, P_Mi.T))
     return Vxc_qMM * Hartree
+
+
+def get_xc2(calc, w_wG, P_awi, spin=0):
+    if calc.density.nt_sg is None:
+        calc.density.interpolate()
+    nt_g = calc.density.nt_sg[spin]
+    vxct_g = calc.finegd.zeros()
+    calc.hamiltonian.xc.get_energy_and_potential(nt_g, vxct_g)
+    vxct_G = calc.gd.empty()
+    calc.hamiltonian.restrict(vxct_g, vxct_G)
+
+    # Integrate pseudo part
+    Nw = len(w_wG)
+    xc_ww = np.empty((Nw, Nw))
+    r2k(.5 * calc.gd.dv, w_wG, vxct_G * w_wG, .0, xc_ww)
+    tri2full(xc_ww, 'L')
+    
+    # Add atomic PAW corrections
+    for a, P_wi in P_awi.items():
+        D_sp = calc.density.D_asp[a][:]
+        H_sp = np.zeros_like(D_sp)
+        calc.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
+            D_sp, H_sp)
+        H_ii = unpack(H_sp[spin])
+        xc_ww += dots(P_wi, H_ii, P_wi.T)
+    return xc_ww * Hartree
 
 
 class ProjectedWannierFunctionsFBL:
@@ -212,7 +239,7 @@ class ProjectedWannierFunctionsIBL:
         return P_awi
 
     def rotate_function(self, psit_oG, bfs, q=-1):
-        w_wG = np.tensordot(self.U_ow, psit_oG, axes=[[0], [0]])
+        w_wG = np.tensordot(self.U_ow, psit_oG, axes=[[0], [0]]) # Do BLAS?
         bfs.lcao_to_grid(self.U_Mw.T.copy(), w_wG, q)
         return w_wG
 
@@ -241,12 +268,11 @@ class PWF2:
             pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
 
             H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
-            xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin)[:M, :M],
-                                      get_lcao_xc(calc, P_aqMi, bfs, spin)[q])
             w_wG = pwf.rotate_function(kpt.psit_nG[:][:M], bfs)
             P_awi = pwf.rotate_projections(
                 dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
                 dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
+            xc_ww = get_xc2(calc, w_wG, P_awi, spin)
         else:
             V_qnM = get_lcao_projections_HSP(calc, spin=spin)
             pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
