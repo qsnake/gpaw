@@ -153,7 +153,7 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
     #
     if verbose:
         print "# p - processes, p0 - reference processes, t - time [sec], s - speedup, e - efficiency"
-        print "# stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total"
+        print "# GPAW version "+str(gpaw_version)+": stages: 1 - initialization, 2 - fixdensity, 3 - SCF, 4 - forces, 5 - total"
         print "# p    "+" p/p0  "+" t1     "+" s1     "+" e1   "+" t2     "+" s2     "+" e2   "+" t3     "+" s3     "+" e3   "+" t4     "+" s4     "+" e4   "+" t5     "+" s5     "+" e5"
     for p in processes:
         time[p]['init'] = time[p]['fixdensity_start_estimate'] - time[p]['start']
