@@ -100,10 +100,10 @@ class CG(Eigensolver):
                 for a, P2_i in P2_ai.items():
                     dO_ii = wfs.setups[a].O_ii
                     norm += np.vdot(P2_i, np.inner(dO_ii, P2_i))
-                norm = self.comm.sum(norm)
-                phi_G /= sqrt(norm.real)
+                norm = self.comm.sum(norm.real)
+                phi_G /= sqrt(norm)
                 for P2_i in P2_ai.values():
-                    P2_i /= sqrt(norm.real)
+                    P2_i /= sqrt(norm)
                 self.timer.stop('CG: orthonormalize')
                     
                 #find optimum linear combination of psit_G and phi_G
@@ -117,19 +117,19 @@ class CG(Eigensolver):
                     dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
                     b += dot(P2_i, dot(dH_ii, P_i.conj()))
                     c += dot(P2_i, dot(dH_ii, P2_i.conj()))
-                b = self.comm.sum(b)
-                c = self.comm.sum(c)
+                b = self.comm.sum(b.real)
+                c = self.comm.sum(c.real)
 
-                theta = 0.5 * atan2(2 * b.real, (an - c).real)
+                theta = 0.5 * atan2(2 * b, an - c)
                 enew = (an * cos(theta)**2 +
                         c * sin(theta)**2 +
-                        b * sin(2.0 * theta)).real
+                        b * sin(2.0 * theta))
                 # theta can correspond either minimum or maximum
                 if ( enew - kpt.eps_n[n] ) > 0.0: #we were at maximum
                     theta += pi / 2.0
                     enew = (an * cos(theta)**2 +
                             c * sin(theta)**2 +
-                            b * sin(2.0 * theta)).real
+                            b * sin(2.0 * theta))
 
                 kpt.eps_n[n] = enew
                 kpt.psit_nG[n] *= cos(theta)
