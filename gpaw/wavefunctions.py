@@ -338,9 +338,8 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.P_aMi = dict([(a, P_qMi[q])
                               for a, P_qMi in self.P_aqMi.items()])
 
-        self.tci.set_positions(spos_ac)
-        self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi,
-                           self.dtype)
+        self.tci.set_positions(spos_ac)        
+        self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
             
         self.positions_set = True
 
@@ -374,26 +373,26 @@ class LCAOWaveFunctions(WaveFunctions):
 
     def calculate_forces(self, hamiltonian, F_av):
         spos_ac = hamiltonian.vbar.spos_ac # XXX ugly way to obtain spos_ac
-
-        # This will recalculate everything, which again is not necessary
-        # But it won't bother non-force calculations
-        tci = TwoCenterIntegrals(self.gd.domain, self.setups,
-                                 self.gamma, self.ibzk_qc)
-        tci.lcao_forces = True
-        tci.set_positions(spos_ac)
-        S_qMM = np.empty(self.S_qMM.shape, self.dtype)
-        T_qMM = np.empty(self.T_qMM.shape, self.dtype)
-        P_aqMi = dict([(a, np.zeros(P.shape, self.dtype))
-                       for a, P in self.P_aqMi.items()])
-        
-        tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi, self.dtype)
-
-        for kpt in self.kpt_u:            
+        nao = self.setups.nao
+        nq = len(self.ibzk_qc)
+        dtype = self.dtype
+        dThetadR_qvMM = np.empty((nq, 3, nao, nao), dtype)
+        dTdR_qvMM = np.empty((nq, 3, nao, nao), dtype)
+        dPdR_aqvMi = {}
+        for a in self.basis_functions.my_atom_indices:
+            ni = self.setups[a].ni
+            dPdR_aqvMi[a] = np.empty((nq, 3, nao, ni), dtype)
+        self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
+                                      dPdR_aqvMi)
+        for kpt in self.kpt_u:
             self.calculate_forces_by_kpoint(kpt, hamiltonian,
-                                            F_av, tci,
-                                            S_qMM[kpt.q],
-                                            T_qMM[kpt.q],
-                                            P_aqMi)
+                                            F_av, self.tci,
+                                            self.S_qMM[kpt.q],
+                                            self.T_qMM[kpt.q],
+                                            self.P_aqMi,
+                                            dThetadR_qvMM[kpt.q],
+                                            dTdR_qvMM[kpt.q],
+                                            dPdR_aqvMi)
 
     def get_projector_derivatives(self, tci, a, c, k):
         # Get dPdRa, i.e. derivative of all projector overlaps
@@ -470,7 +469,8 @@ class LCAOWaveFunctions(WaveFunctions):
         return dEdndndR_av
 
     def calculate_forces_by_kpoint(self, kpt, hamiltonian,
-                                   F_av, tci, S_MM, T_MM, P_aqMi):
+                                   F_av, tci, S_MM, T_MM, P_aqMi,
+                                   dThetadR_vMM, dTdR_vMM, dPdR_aqvMi):
         k = kpt.k
         q = kpt.q
         if kpt.rho_MM is None:
@@ -478,7 +478,7 @@ class LCAOWaveFunctions(WaveFunctions):
         else:
             rho_MM = kpt.rho_MM
 
-        dTdR_vMM = tci.dTdR_kcmm[q]
+        rhoT_MM = rho_MM.T.copy()
 
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
         H_MM = self.eigensolver.H_MM.copy()
@@ -498,22 +498,29 @@ class LCAOWaveFunctions(WaveFunctions):
         
         my_atom_indices = self.basis_functions.my_atom_indices
         atom_indices = self.basis_functions.atom_indices
-        
+
         dEdTdTdR_av = np.zeros_like(F_av)
         for a in my_atom_indices:
             M1 = self.basis_functions.M_a[a]
             M2 = M1 + self.setups[a].niAO
             for v in range(3):
                 dTdR_MM = dTdR_vMM[v]
-                x1 = (rho_MM[M1:M2, :] * dTdR_MM[:, M1:M2].T).real.sum()
-                x2 = (rho_MM[:, M1:M2] * dTdR_MM[M1:M2, :].T).real.sum()
-                dEdTdTdR_av[a, v] = x1 - x2
+                dTdR_MM[M1:M2, M1:M2] = 0.
+                
+                x1 = (dTdR_MM[:, M1:M2] * rhoT_MM[:, M1:M2]).real.sum()
+                #x2 = (dTdR_MM[M1:M2, :] * rhoT_MM[M1:M2, :]).real.sum()
+                # Good to know:
+                #   For any k: x1.imag = x2.imag
+                #   Gamma point: x1 + x2 = 0
+                dEdTdTdR_av[a, v] = 2 * x1# - x2
 
         dEdDdDdR_av = np.zeros_like(F_av)
         dEdrhodrhodR_av = np.zeros_like(F_av)
+
+        
         pawcorrection_avMM = dict([(a, np.zeros((3, nao, nao), self.dtype))
                                    for a in atom_indices])
-        dPdR_avMi = dict([(a, tci.dPdR_akcmi[a][q]) for a in my_atom_indices])
+        dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
         for v in range(3):
             for a in atom_indices:
                 M1 = self.basis_functions.M_a[a]
@@ -568,7 +575,7 @@ class LCAOWaveFunctions(WaveFunctions):
                 pawcorrection_MM = pawcorrection_avMM[a][v]
                 if a in dPdR_avMi:
                     dSdRa_MM = pawcorrection_MM.copy()
-                    dThetadR_MM = tci.dThetadR_kcmm[q, v, :, :]
+                    dThetadR_MM = dThetadR_vMM[v, :, :]
                     dSdRa_MM[:, M1:M2] += dThetadR_MM[:, M1:M2]
                     dSdRa_MM[M1:M2, :] -= dThetadR_MM[M1:M2, :]
                     dEdrhodrhodR_av[a, v] = -(ChcEFC_MM.T
