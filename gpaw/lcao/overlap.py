@@ -404,8 +404,11 @@ class TwoCenterIntegrals:
             else:
                 assert r != 0
                 X_xmm = splines.derivative(r, R, rlY_lm, drlYdR_lmc)
-            X_qxmm = X_xmm[None]
+            X_qxmm = X_xmm
             if not self.gamma:
+                dims = np.rank(X_xmm)
+                # phase_q has a sort of funny shape (nq, 1, 1) and not (nq,)
+                phase_q = phase_q.reshape(-1, *np.ones(np.rank(X_xmm)))
                 X_qxmm = X_qxmm * phase_q.conj()
             X_qxMM[..., M2a:M2b, M1a:M1b] += X_qxmm
             if selfinteraction:
