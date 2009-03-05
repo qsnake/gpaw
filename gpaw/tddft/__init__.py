@@ -304,7 +304,7 @@ class TDDFT(GPAW):
                                            self.hpsit, len(kpt_u[0].psit_nG))
                     self.eps_tmp *= self.gd.dv
                     # print 'Eps_n = ', self.eps_tmp
-                    kpt.eps_n = self.eps_tmp.real
+                    kpt.eps_n[:] = self.eps_tmp.real
 
                 self.occupations.calculate_band_energy(kpt_u)
 
