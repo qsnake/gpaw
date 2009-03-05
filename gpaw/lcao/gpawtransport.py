@@ -1283,13 +1283,13 @@ class GPAWTransport:
         fd.close()
         self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
         (self.h1_skmm,
-                 self.s1_kmm,
                  self.d1_skmm,
+                 self.s1_kmm,
                  self.ntklead,
                  self.dimt_lead) = self.pl_read('lead0.mat', collect=True)
         (self.h2_skmm,
-                 self.s2_kmm,
                  self.d2_skmm,
+                 self.s2_kmm,
                  self.ntklead,
                  self.dimt_lead) = self.pl_read('lead1.mat', collect=True)
         self.nspins = self.h1_skmm.shape[0]
@@ -1306,6 +1306,11 @@ class GPAWTransport:
         self.initial_lead(0)
         self.initial_lead(1)
         self.initial_mol()
+        if self.nblead == self.nbmol:
+            self.buffer = 0
+        else:
+            self.buffer = self.nblead
+        self.move_buffer()
       
     def set_calculator(self, e_points):
         from ase.transport.calculators import TransportCalculator
@@ -1323,7 +1328,7 @@ class GPAWTransport:
         h_lead1 = np.real(h_lead1)
         h_lead2 = np.real(h_lead2)
         
-        s_scat = np.sum(self.s_pkmm, axis=0) / self.npk
+        s_scat = np.sum(self.s_pkmm_mol, axis=0) / self.npk
         s_scat = np.real(s_scat)
         
         s_lead1 = self.double_size(np.sum(self.s1_pkmm, axis=0),
