@@ -282,3 +282,95 @@ def tridiag(a, b, c, r, u):
     for i in range(n-1, 0, -1):
         # Backward substitution
         u[i-1] -= tmp[i-1] * u[i]
+
+
+class Spline:
+    def __init__(self, xi, yi, leftderiv=None, rightderiv=None):
+        """Cubic spline approximation class.
+
+        xi, yi specifies the known data points.
+
+        leftderiv and rightderiv specifies the first derivative on the
+        boundaries. If set to None, the second derivative is set to zero.
+
+        Example usage::
+
+          >>> xi = arange(.1, 5, .5)    # known data points
+          >>> yi = cos(xi)              # known data points
+          >>> sp = Spline(xi, yi)       # make spline
+          >>> x = arange(-.5, 5.5, .05) # points to interpolate to
+          >>> y = sp(x)  # get spline value on an entire list
+          >>> y2 = sp(4) # get spline value at a single point
+
+        Based on 'Numerical recipes in c'
+        """
+        self.xy = (xi, yi)
+        N = len(xi)
+        self.ypp = u = np.zeros(N) # The second derivatives y''
+        tmp = np.zeros(N - 1)
+        
+        # Set left boundary condition
+        if leftderiv is None: # natural spline - second derivative is zero
+            tmp[0] = u[0] = 0.0
+        else: # clamped spline - first derivative is fixed
+            tmp[0] = 3 / (xi[1] - xi[0]) * (
+                (yi[1] - yi[0]) / (xi[1] - xi[0]) - leftderiv)
+            u[0] = -.5
+
+        for i in range(1, N - 1):
+            sig = (xi[i] - xi[i - 1]) / (xi[i + 1] - xi[i - 1])
+            p = sig * u[i - 1] + 2
+            u[i] = (sig - 1) / p
+            tmp[i] = (yi[i + 1] - yi[i]) / (xi[i + 1] - xi[i]) - \
+                     (yi[i] - yi[i - 1]) / (xi[i] - xi[i - 1])
+            tmp[i] = (6 * tmp[i] / (xi[i +1] - xi[i-1]) - sig * tmp[i - 1]) / p
+            
+        # Set right boundary condition
+        if rightderiv is None: # natural spline - second derivative is zero
+            qn = tmpn = 0.0
+        else: # clamped spline - first derivative is fixed
+            qn = .5
+            tmpn = 3 / (xi[N - 1] - xi[N - 2]) * (
+                rightderiv - (yi[N - 1] - yi[N - 2]) / (xi[N - 1] - xi[N - 2]))
+
+        u[N - 1] = (tmpn - qn * tmp[N - 2]) / (qn * u[N - 1] + 1)
+        for k in range(N - 2, -1, -1): # backsubstitution step
+            u[k] = u[k] * u[k + 1] + tmp[k]
+
+    def __call__(self, x):
+        """Evaluate spline for each point in input argument.
+
+        The value in point x[i-1] < x <= x[i] is determined by::
+        
+                                    ''       ''
+          y(x) = a y    + b y  + c y    + d y
+                    i-1      i      i-1      i
+
+        """
+        x = np.array(x, float)
+        if x.ndim == 0: x.shape = (1,)
+        y = np.zeros_like(x)
+        xi, yi = self.xy
+
+        i = None
+        for j, xval in enumerate(x):
+            i = self.locate(xval, i)
+            h = xi[i] - xi[i - 1]
+            a = (xi[i] - xval) / h
+            b = 1. - a
+            c = (a**3 - a) * h**2 / 6.
+            d = (b**3 - b) * h**2 / 6.
+            y[j] = (a * yi[i - 1] + b * yi[i] +
+                    c * self.ypp[i - 1] + d * self.ypp[i])
+        return y
+
+    def locate(self, x, guess=None):
+        """return i such that x[i-1] < x <= xi[i]
+
+        1 or len(xi) - 1 is returned if x is outside list range.
+        """
+        xi = self.xy[0]
+        if x <= xi[0]: return 1
+        elif x > xi[-1]: return len(xi) - 1
+        elif guess and xi[guess - 1] < x <= xi[guess]: return guess
+        else: return np.searchsorted(xi, x)
