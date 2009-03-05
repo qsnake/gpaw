@@ -35,6 +35,48 @@ class MultiBlas:
 
 import numpy as np
 
+class BandPropertyMonitor:
+    def __init__(self, wfs, name, interval=1):
+        self.niter = 0
+        self.interval = interval
+
+        self.wfs = wfs
+
+        self.name = name
+
+    def __call__(self):
+        self.update(self.wfs)
+        self.niter += self.interval
+
+    def update(self, wfs):
+        #strictly serial XXX!
+        data_un = []
+
+        for u, kpt in enumerate(wfs.kpt_u):
+            data_n = getattr(kpt, self.name)
+
+            data_un.append(data_n)
+
+        self.write(np.array(data_un))
+
+    def write(self, data):
+        pass
+
+class BandPropertyWriter(BandPropertyMonitor):
+    def __init__(self, filename, wfs, name, interval=1):
+        BandPropertyMonitor.__init__(self, wfs, name, interval)
+        self.fileobj = open(filename,'w')
+
+    def write(self, data):
+        self.fileobj.write(data.tostring())
+        self.fileobj.flush()
+
+    def __del__(self):
+        self.fileobj.close()
+
+# -------------------------------------------------------------------
+
+
 class StaticOverlapMonitor:
     def __init__(self, wfs, wf_u, P_aui, interval=1):
         self.niter = 0
