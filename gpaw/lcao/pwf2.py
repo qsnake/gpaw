@@ -60,7 +60,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     for a in range(len(spos_ac)):
         ni = calc.wfs.setups[a].ni
         P_aqMi[a] = np.zeros((nq, nao, ni), dtype)
-    tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi, dtype)
+    tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi)
 
     # Calculate projections
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
@@ -246,7 +246,7 @@ class ProjectedWannierFunctionsIBL:
 
 class PWF2:
     def __init__(self, gpwfilename, fixedenergy=0.,
-                 spin=0, ibl=True, basis='sz'):
+                 spin=0, ibl=True, basis='sz', extra=True):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
         calc.initialize_positions()
 ##         try:
@@ -259,39 +259,46 @@ class PWF2:
         eps_n = calc.get_eigenvalues(q)# - Ef
         M = sum(eps_n <= fixedenergy)
         kpt = calc.wfs.kpt_u[spin * nq + q]
-        
         if ibl:
-            bfs = get_bfs(calc)
-            V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
-                calc, bfs=bfs, spin=spin, projectionsonly=False)
-            #H_qMM -= Ef * S_qMM
-            pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
+            print 'start ibl'
+            self.init_ibl(calc, eps_n, M, q, kpt, spin, extra)
+            print 'finish ibl'
+        else:
+            self.init_fbl(calc, eps_n, M, q, kpt, spin, extra)
 
-            H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
-            w_wG = pwf.rotate_function(kpt.psit_nG[:][:M], bfs)
-            P_awi = pwf.rotate_projections(
+        if extra: 
+            self.Fcore_ww = np.zeros_like(self.H_ww)
+            for a, P_wi in self.P_awi.items():
+                X_ii = unpack(calc.wfs.setups[a].X_p)
+                self.Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
+            self.Fcore_ww *= Hartree
+
+        self.eigs = eigvals(self.H_ww, self.S_ww)
+        print 'Condition number:', condition_number(self.S_ww)
+           
+    def init_ibl(self, calc, eps_n, M, q, kpt, spin, extra):
+        bfs = get_bfs(calc)
+        V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
+            calc, bfs=bfs, spin=spin, projectionsonly=False)
+        #H_qMM -= Ef * S_qMM
+        pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
+        self.H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
+        self.S_ww = pwf.S_ww
+        self.norms_n = pwf.norms_n
+        if extra:
+            self.w_wG = pwf.rotate_function(kpt.psit_nG[:][:M], bfs)
+            self.P_awi = pwf.rotate_projections(
                 dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
                 dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
-            xc_ww = get_xc2(calc, w_wG, P_awi, spin)
-        else:
-            V_qnM = get_lcao_projections_HSP(calc, spin=spin)
-            pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
-            H_ww = pwf.rotate_matrix(eps_n)
-            xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin))
-            w_wG = pwf.rotate_function(kpt.psit_nG[:])
-            P_awi = pwf.rotate_projections(kpt.P_ani)
+            self.xc_ww = get_xc2(calc, w_wG, P_awi, spin)
 
-        S_ww = pwf.S_ww
-        norms_n = pwf.norms_n
-
-        # Store all the relevant stuff
-        self.HSxc = (H_ww, S_ww, xc_ww)
-        self.orbitals = (w_wG, P_awi)
-        self.norms = norms_n
-        self.eigs = eigvals(H_ww, S_ww)
-        self.Fcore_ww = np.zeros_like(H_ww)
-        for a, P_wi in P_awi.items():
-            X_ii = unpack(calc.wfs.setups[a].X_p)
-            self.Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
-        self.Fcore_ww *= Hartree
-        print 'Condition number:', condition_number(S_ww)
+    def init_fbl(self, calc, eps_n, M, q, kpt, spin, extra):
+        V_qnM = get_lcao_projections_HSP(calc, spin=spin)
+        pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
+        self.H_ww = pwf.rotate_matrix(eps_n)
+        self.S_ww = pwf.S_ww
+        self.norms_n = pwf.norms_n
+        if extra:
+            self.xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin))
+            self.w_wG = pwf.rotate_function(kpt.psit_nG[:])
+            self.P_awi = pwf.rotate_projections(kpt.P_ani)

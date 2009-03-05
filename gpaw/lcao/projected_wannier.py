@@ -100,7 +100,7 @@ def get_phs(calc, s=0):
         ni = calc.wfs.setups[a].ni
         P_aqMi[a] = np.zeros((nq, nao, ni), dtype)
 
-    tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi, dtype)
+    tci.calculate(spos_ac, S_qMM, T_qMM, P_aqMi)
 
     vt_G = calc.hamiltonian.vt_sG[s]
     H_qMM = np.zeros((nq, nao, nao), dtype)
