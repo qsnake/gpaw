@@ -269,28 +269,75 @@ def dscf_reconstruct_orbital(paw, c_un, mol):
 """
 
 
-def dscf_reconstruct_orbitals_k_point(paw, c_on, norbitals, mol, kpt):
+def dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt):
 
-    f_o = npy.zeros(norbitals,dtype=float)
-    wf_o = paw.gd.zeros(norbitals,dtype=complex)
+    f_o = npy.zeros(norbitals, dtype=float)
+    eps_o = npy.zeros(norbitals, dtype=float)
+    wf_oG = paw.gd.zeros(norbitals, dtype=complex)
 
     P_aoi = {}
     for a in mol:
         P_aoi[a] = npy.zeros((norbitals,paw.wfs.setups[a].ni), dtype=complex)
 
-    for o,c_n in enumerate(c_on):
-        f = npy.dot(c_n, c_n.conj())
+    for o, c_n in enumerate(kpt.c_on):
+        f = npy.dot(c_n.conj(), c_n)
 
-        for n,psit_G in enumerate(kpt.psit_nG):
-            #wf_o[o,:] += c/f**0.5*psit_G
-            axpy(c_n[n] / f**0.5, psit_G, wf_o[o,:])
+        for n, psit_G in enumerate(npy.asarray(kpt.psit_nG)):
+            wf_oG[o] += c_n[n] / f**0.5 * psit_G
+            #axpy(c_n[n] / f**0.5, psit_G, wf_oG[o,:])
 
-        for a in mol:
+        for a, P_oi in P_aoi.items():
             #for n,P_i in enumerate(kpt.P_ani[a]):
             #    P_aoi[a][o,:] += c_n[n]/f**0.5*P_i
-            P_aoi[a][o,:] += npy.sum(c_n[:,npy.newaxis] / f**0.5 * kpt.P_ani[a], axis=0)
+            P_oi[o] += npy.sum(c_n[:,npy.newaxis] / f**0.5 * kpt.P_ani[a], axis=0)
 
         f_o[o] = f
+        eps_o[o] = npy.dot(npy.abs(c_n)**2 / f, kpt.eps_n)
 
-    return (f_o,wf_o,P_aoi)
+    return (f_o, eps_o, wf_oG, P_aoi,)
+
+
+def dscf_collapse_orbitals(paw, norbitals, nmaxbands, mol):
+
+    for kpt in paw.wfs.kpt_u:
+        (f_o, eps_o, wf_oG, P_aoi,) = dscf_reconstruct_orbitals_k_point(paw, norbitals, mol, kpt)
+
+        assert abs(f_o-1)<1e-9
+        f_o = kpt.ne_o
+
+        #unocc_bands = npy.argwhere(abs(kpt.f_n)<1e-12).ravel()
+        neworder = npy.argsort(npy.hstack((kpt.eps_n, eps_o)))[:nmaxbands]
+
+        kpt.f_n = npy.hstack((kpt.f_n, f_o))[neworder]
+        kpt.eps_n = npy.hstack((kpt.eps_n, eps_o))[neworder]
+
+        for a, P_ni in kpt.P_ani.items():
+            assert a in mol #XXX
+            kpt.P_ani[a] = npy.vstack((P_ni, P_aoi[a]))[neworder,:]
+
+        #shape = (nmaxbands,) + psit_nG_old.shape[1:]
+        #kpt.psit_nG = npy.empty(shape, dtype=paw.wfs.dtype)
+        psit_nG_old = kpt.psit_nG
+        kpt.psit_nG = paw.wfs.gd.empty(nmaxbands, dtype=paw.wfs.dtype)
+
+        for m, n in enumerate(neworder):
+            if n < len(psit_nG_old):
+                kpt.psit_nG[m] = psit_nG_old[n]
+            else:
+                o = n - len(psit_nG_old)
+                kpt.psit_nG[m] = wf_oG[o]
+
+        del kpt.ne_o, kpt.c_on
+
+    del paw.occupations.norbitals
+
+    par = paw.input_parameters
+
+    if 'convergence' in par:
+        conv = par['convergence']
+        if 'bands' in conv:
+            conv['bands'] = min(nmaxbands,conv['bands'])
+
+    paw.wfs.mynbands = nmaxbands
+    paw.wfs.nbands = nmaxbands
 
