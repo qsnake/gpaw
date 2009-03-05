@@ -60,11 +60,11 @@ parameters = {
  'Rb': {'core': '[Ar]3d', 'rcut': [2.6, 2.4, 2.3]},
  'Sr': {'core': '[Ar]3d', 'rcut': [2.4, 2.4, 2.3],
         'extra':{1: [0.0], 2: [0.0]}},
-#'Y' : Missing 
+#'Y' : Missing
  'Zr': {'core': '[Ar]3d', 'rcut': 2.0},
  'Nb': {'core': '[Kr]',   'rcut': [2.9, 2.9, 2.6]},
  'Mo': {'core': '[Kr]',   'rcut': [2.8, 2.8, 2.5]},
-#'Tc': Radioactive 
+#'Tc': Radioactive
  'Ru': {'core': '[Kr]',   'rcut': 2.6},
  'Rh': {'core': '[Kr]',   'rcut': 2.5},
  'Pd': {'core': '[Kr]',   'rcut': [2.3, 2.5, 2.2]},
@@ -72,32 +72,32 @@ parameters = {
  'Cd': {'core': '[Kr]',   'rcut': [2.1, 2.5, 2.0]},
  'In': {'core': '[Kr]',   'rcut': [2.1, 2.5, 2.0]},
  'Sn': {'core': '[Kr]',   'rcut': 2.2},
-#'Sb': Missing 
+#'Sb': Missing
  'Te': {'core': '[Kr]',   'rcut': 2.2},
  'I' : {'core': '[Kr]4d', 'rcut': 2.2},
-#'Xe': Missing 
+#'Xe': Missing
  'Cs': {'core': '[Kr]4d', 'rcut': [2.2, 2.0]},
  'Ba': {'core': '[Kr]4d', 'rcut': 2.2, 'extra': {1: [0.0], 2: [0.0, 1.0]}},
  'La': {'core': '[Kr]4d', 'rcut': [2.3, 2.0, 1.9]},
 #'La': {'core': '[Kr]4d5s', 'rcut': [2.3, 2.0, 1.9]},
-#'Lu': Missing 
-#'Hf': Missing 
+#'Lu': Missing
+#'Hf': Missing
  'Ta': {'core': '[Xe]4f', 'rcut': 2.8},
  'W' : {'core': '[Xe]4f', 'rcut': 2.8},
-#'Re': Missing 
+#'Re': Missing
  'Os': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.5]},
  'Ir': {'core': '[Xe]4f', 'rcut': [2.3, 2.6, 2.0],
         'vbar': ('poly', 2.1), 'rcutcomp': 2.3},
  'Pt': {'core': '[Xe]4f', 'rcut': [2.5, 2.7, 2.3]},
  'Au': {'core': '[Xe]4f', 'rcut': 2.5},
-#'Hg': Missing 
-#'Tl': Missing 
+#'Hg': Missing
+#'Tl': Missing
  'Pb': {'core': '[Xe]4f', 'rcut': [2.4,2.6,2.4]},
  'Bi': {'core': '[Xe]4f', 'rcut': [2.2,2.4,2.2]}
-#'Bi': Missing 
-#'Po': Missing 
-#'At': Missing 
-#'Rn': Missing 
+#'Bi': Missing
+#'Po': Missing
+#'At': Missing
+#'Rn': Missing
  }
 
 # Extra setups
@@ -1074,19 +1074,21 @@ if __name__ == '__main__':
     import os
     from gpaw.xc_functional import XCFunctional
     from gpaw.atom.all_electron import tempdir
-    
+
     # Pt and Au needs to be done non-scalar-relatistic first:
     for symbol in 'Pt Au Ir'.split():
         if not os.path.isfile('%s/%s.restart' % (tempdir, symbol)):
             AllElectron(symbol, 'LDA', scalarrel=False, nofiles=False).run()
 
-    # Special case for Ta and W:
+    # Special case for Ta, W, Os:
     if not os.path.isfile('%s/Ta.restart' % tempdir):
         AllElectron('Re', 'LDA', scalarrel=False, nofiles=False).run()
         os.system('cp %s/Re.restart %s/Ta.restart' % (tempdir, tempdir))
     if not os.path.isfile('%s/W.restart' % tempdir):
         os.system('cp %s/Ta.restart %s/W.restart' % (tempdir, tempdir))
-        
+    if not os.path.isfile('%s/Os.restart' % tempdir):
+        os.system('cp %s/Ta.restart %s/Os.restart' % (tempdir, tempdir))
+
     for xcname in ['LDA', 'PBE', 'RPBE']:
         for symbol, par in parameters.items():
             filename = symbol + '.' + XCFunctional(xcname).get_name()
