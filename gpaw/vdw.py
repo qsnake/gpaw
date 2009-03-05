@@ -203,9 +203,9 @@ class VDWFunctional:
 
         # Calculate q0 and cut it off smoothly at q0cut:
         kF_g = (3 * pi**2 * n_g)**(1.0 / 3.0)
-        q0_g, self.dhdx_g = hRPS(kF_g -
-                                 4 * pi / 3 * e_LDAc_g / n_g -
-                                 Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
+        q0_g, dhdx_g = hRPS(kF_g -
+                            4 * pi / 3 * e_LDAc_g / n_g -
+                            Zab / 36 / kF_g * a2_g / n_g**2, self.q0cut)
 
         if self.verbose:
             print ('VDW: q0 (min, mean, max): (%f, %f, %f)' %
@@ -214,6 +214,9 @@ class VDWFunctional:
         # Distribute density and q0 to all processors:
         n_g = gd.collect(n_g, broadcast=True)
         q0_g = gd.collect(q0_g, broadcast=True)
+
+        if not self.energy_only:
+            self.dhdx_g = gd.collect(dhdx_g, broadcast=True)
 
         return self.calculate_6d_integral(n_g, q0_g, a2_g, e_LDAc_g, v_LDAc_g,
                                           v_g, deda2_g)
@@ -626,14 +629,14 @@ class FFTVDWFunctional(VDWFunctional):
             if world.rank == ranka:
                 energy += np.vdot(theta_ak[a], Fa_k).real
 
+                if not self.energy_only:
+                    n1, n2, n3 = gd.get_size_of_global_array()
+                    F_ag[a] = ifftn(Fa_k).real[:n1, :n2, :n3].copy()
+                
             if self.verbose:
                 print a,
                 sys.stdout.flush()
 
-            if not self.energy_only:
-                n1, n2, n3 = gd.get_size_of_global_array()
-                F_ag[a] = ifftn(Fa_k).real[:n1, :n2, :n3].copy()
-                
         if self.verbose:
             print
 
@@ -647,20 +650,36 @@ class FFTVDWFunctional(VDWFunctional):
     def calculate_potential(self, n_g, a2_g, i_g, dq0_g, p_ag, F_ag,
                             e_LDAc_g, v_LDAc_g, v_g, deda2_g):
         N = self.Nalpha
+        world = self.world
 
-        for a in range(N):
+        a2_g = self.gd.collect(a2_g, broadcast=True)
+        e_LDAc_g = self.gd.collect(e_LDAc_g, broadcast=True)
+        v_LDAc_g = self.gd.collect(v_LDAc_g, broadcast=True)
+
+        dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
+                   4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
+                   7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
+                   n_g**(-11.0 / 3.0))
+        dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+        v0_g = np.zeros_like(n_g)
+        deda20_g = np.zeros_like(n_g)
+
+        for a in range(world.rank, N, world.size):
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
             dpadq0_g = C_pg[1] + dq0_g * (2 * C_pg[2] + 3 * dq0_g * C_pg[3])
-            dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
-                       4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
-                       7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
-                       n_g**(-11.0 / 3.0))
+
             dthetaadn_g = p_ag[a] + n_g * dpadq0_g * dq0dn_g * self.dhdx_g
-            v_g += dthetaadn_g * F_ag[a]
-            dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+            v0_g += dthetaadn_g * F_ag[a]
+            
             dthetaada2_g = n_g * dpadq0_g * dq0da2_g * self.dhdx_g
-            deda2_g += dthetaada2_g * F_ag[a]
-    
+            deda20_g += dthetaada2_g * F_ag[a]
+
+        world.sum(v0_g)
+        world.sum(deda20_g)
+        slice = self.gd.get_slice()
+        v_g += v0_g[slice]
+        deda2_g += deda20_g[slice]
+        
 def spline(x, y):
     n = len(y)
     result = np.zeros((n, 4))
