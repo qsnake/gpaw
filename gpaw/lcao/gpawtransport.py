@@ -1278,14 +1278,10 @@ class GPAWTransport:
          self.forces,
          self.current,
          self.step,
-         self.cvgflag) = pickle.load(fd)
+         self.cvgflag
+         ) = pickle.load(fd)
         fd.close()
         self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
-           
-        world.barrier()
-    
-    def analysis(self, filename):
-        self.input(filename)
         (self.h1_skmm,
                  self.s1_kmm,
                  self.d1_skmm,
@@ -1301,6 +1297,11 @@ class GPAWTransport:
         self.ntkmol = self.h_skmm.shape[1] / self.npk
         self.nblead = self.h1_skmm.shape[-1]
         self.nbmol = self.h_skmm.shape[-1]
+        self.atoms.calc.hamiltonian.vt_sG += self.get_linear_potential()
+        world.barrier()
+    
+    def analysis(self, filename):
+        self.input(filename)
         self.allocate_cpus()
         self.initial_lead(0)
         self.initial_lead(1)
@@ -1309,15 +1310,32 @@ class GPAWTransport:
     def set_calculator(self, e_points):
         from ase.transport.calculators import TransportCalculator
      
-        h_scat = self.h_spkmm[0,0]
-        h_lead1 = self.double_size(self.h1_spkmm[0,0],
-                                   self.h1_spkmm_ij[0,0])
-        h_lead2 = self.double_size(self.h2_spkmm[0,0],
-                                   self.h2_spkmm_ij[0,0])
-       
-        s_scat = self.s_pkmm[0]
-        s_lead1 = self.double_size(self.s1_pkmm[0], self.s1_pkmm_ij[0])
-        s_lead2 = self.double_size(self.s2_pkmm[0], self.s2_pkmm_ij[0])
+        h_scat = np.sum(self.h_spkmm_mol[0], axis=0) / self.npk
+        h_scat = np.real(h_scat)
+        
+        h_lead1 = self.double_size(np.sum(self.h1_spkmm[0], axis=0),
+                                   np.sum(self.h1_spkmm_ij[0], axis=0))
+        h_lead2 = self.double_size(np.sum(self.h2_spkmm[0], axis=0),
+                                   np.sum(self.h2_spkmm_ij[0], axis=0))
+        h_lead1 /= self.npk
+        h_lead2 /= self.npk
+        
+        h_lead1 = np.real(h_lead1)
+        h_lead2 = np.real(h_lead2)
+        
+        s_scat = np.sum(self.s_pkmm, axis=0) / self.npk
+        s_scat = np.real(s_scat)
+        
+        s_lead1 = self.double_size(np.sum(self.s1_pkmm, axis=0),
+                                   np.sum(self.s1_pkmm_ij, axis=0))
+        s_lead2 = self.double_size(np.sum(self.s2_pkmm, axis=0),
+                                   np.sum(self.s2_pkmm_ij, axis=0))
+        
+        s_lead1 /= self.npk
+        s_lead2 /= self.npk
+        
+        s_lead1 = np.real(s_lead1)
+        s_lead2 = np.real(s_lead2)
         
         tcalc = TransportCalculator(energies=e_points,
                                     h = h_scat,
