@@ -468,6 +468,16 @@ class LCAOWaveFunctions(WaveFunctions):
 
         return dEdndndR_av
 
+    def print_arrays_with_ranks(self, names, arrays_nax):
+        # Debugging function for checking properties of distributed arrays
+        # Prints rank, label, list of atomic indices, and element sum
+        # for parts of array on this cpu as a primitive "hash" function
+        my_atom_indices = self.basis_functions.my_atom_indices
+        from gpaw.mpi import rank
+        for name, array_ax in zip(names, arrays_nax):
+            sums = [array_ax[a].sum() for a in my_atom_indices]
+            print rank, name, my_atom_indices, sums
+
     def calculate_forces_by_kpoint(self, kpt, hamiltonian,
                                    F_av, tci, S_MM, T_MM, P_aqMi,
                                    dThetadR_vMM, dTdR_vMM, dPdR_aqvMi):
@@ -505,8 +515,6 @@ class LCAOWaveFunctions(WaveFunctions):
             M2 = M1 + self.setups[a].niAO
             for v in range(3):
                 dTdR_MM = dTdR_vMM[v]
-                dTdR_MM[M1:M2, M1:M2] = 0.
-                
                 x1 = (dTdR_MM[:, M1:M2] * rhoT_MM[:, M1:M2]).real.sum()
                 #x2 = (dTdR_MM[M1:M2, :] * rhoT_MM[M1:M2, :]).real.sum()
                 # Good to know:
@@ -516,10 +524,10 @@ class LCAOWaveFunctions(WaveFunctions):
 
         dEdDdDdR_av = np.zeros_like(F_av)
         dEdrhodrhodR_av = np.zeros_like(F_av)
-
         
-        pawcorrection_avMM = dict([(a, np.zeros((3, nao, nao), self.dtype))
-                                   for a in atom_indices])
+        #pawcorrection_avMM = dict([(a, np.zeros((3, nao, nao), self.dtype))
+        #                           for a in atom_indices])
+        pawcorrection_avMM = np.zeros(F_av.shape + (nao, nao), self.dtype)
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
         for v in range(3):
             for a in atom_indices:
@@ -557,8 +565,9 @@ class LCAOWaveFunctions(WaveFunctions):
         self.basis_functions.calculate_potential_matrix_derivative(vt_G,
                                                                    DVt_MMv,
                                                                    kpt.q)
-        for a in atom_indices:
-            self.basis_functions.gd.comm.sum(pawcorrection_avMM[a])
+
+        #for a in atom_indices:
+        #self.basis_functions.gd.comm.sum(pawcorrection_avMM)
         
         for b in my_atom_indices:
             M1 = self.basis_functions.M_a[b]
@@ -592,23 +601,16 @@ class LCAOWaveFunctions(WaveFunctions):
                         A_ii = np.dot(dPdR_Mi.T.conj()[:, M2:], rhoP_Mi[M2:])\
                                - np.dot(dPdR_Mi.T.conj()[:, :M1],rhoP_Mi[:M1])
                     dEdDdDdR_av[a, v] += 2 * (Hb_ii.T * A_ii).real.sum()
+
+
         # The array dEdDdDdR_av may contain contributions for atoms on this
         # cpu stored on other CPUs.  comm.sum() of this array yields
         # correct result on all CPUs.  However this is postponed till after
         # the force calculation.
 
-        def print_arrays_with_ranks(self, names, arrays_ax):
-            # Debugging function for checking properties of distributed arrays
-            # Prints rank, label, list of atomic indices, and element sum
-            # for parts of array on this cpu as a primitive "hash" function
-            from gpaw.mpi import rank
-            for name, array_x in zip(names, arrays_ax):
-                sums = [array_x[a].sum() for a in my_atom_indices]
-                print rank, name, my_atom_indices, sums
-
         #names = 'RTDn'
-        #print_arrays_with_ranks(self, names, [dEdrhodrhodR_av, dEdTdTdR_av,
-        #                                      dEdDdDdR_av, dEdndndR_av])
+        #self.print_arrays_with_ranks(names, [dEdrhodrhodR_av, dEdTdTdR_av,
+        #                                     dEdDdDdR_av, dEdndndR_av])
 
         # For whom it may concern, dEdDdDdR is the only force component which
         # is nonzero even for atoms outside my_atom_indices

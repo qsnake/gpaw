@@ -271,7 +271,7 @@ class TwoCenterIntegrals:
 
         for (a1, a2, r, R, phase_q, offset) in self.atom_iter(spos_ac,
                                                               P_aqxMi):
-            if derivative and r == 0:
+            if derivative and a1 == a2:
                 continue
 
             selfinteraction = (a1 == a2 and offset.any())
