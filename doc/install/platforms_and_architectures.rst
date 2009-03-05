@@ -22,6 +22,8 @@ BGP:
    BGP/rbgc
    BGP/surveyor
 
+   BGP/performance
+
 Cray:
 
 .. toctree::

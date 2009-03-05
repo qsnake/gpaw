@@ -1,0 +1,5 @@
+.. _performance:
+
+======================
+Maximizing performance
+======================
