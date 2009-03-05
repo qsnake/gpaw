@@ -73,8 +73,12 @@ when installating GPAW for the first time:
       # p (infiniband) nodes
       if ( ! ( `echo ${query} | grep "^p"` ==  "")) then
         setenv PYTHONPATH $GPAW_HOME/gpaw_p:$PYTHONPATH
+        setenv PATH $GPAW_HOME/gpaw_p/tools:$PATH
+        setenv PATH $GPAW_HOME/gpaw_p/build/bin.linux-x86_64-2.3:$PATH
       else
         setenv PYTHONPATH $GPAW_HOME/gpaw:$PYTHONPATH
+        setenv PATH $GPAW_HOME/gpaw/tools:$PATH
+        setenv PATH $GPAW_HOME/gpaw/build/bin.linux-x86_64-2.3:$PATH
       endif
 
    - bash - add to /home/niflheim/$USER/.bashrc::
@@ -83,8 +87,12 @@ when installating GPAW for the first time:
       # p (infiniband) nodes
       if [ ! `echo ${query} | grep "^p"` ==  "" ]; then
         export PYTHONPATH=$GPAW_HOME/gpaw_p:$PYTHONPATH
+        export PATH=$GPAW_HOME/gpaw_p/tools:$PATH
+        export PATH=$GPAW_HOME/gpaw_p/build/bin.linux-x86_64-2.3:$PATH
       else
         export PYTHONPATH=$GPAW_HOME/gpaw:$PYTHONPATH
+        export PATH=$GPAW_HOME/gpaw/tools:$PATH
+        export PATH=$GPAW_HOME/gpaw/build/bin.linux-x86_64-2.3:$PATH
       fi
 
    Make sure that you add these settings above any line that
