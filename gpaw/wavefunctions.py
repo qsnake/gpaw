@@ -394,80 +394,6 @@ class LCAOWaveFunctions(WaveFunctions):
                                             dTdR_qvMM[kpt.q],
                                             dPdR_aqvMi)
 
-    def get_projector_derivatives(self, tci, a, c, k):
-        # Get dPdRa, i.e. derivative of all projector overlaps
-        # with respect to the position of *this* atom.  That includes
-        # projectors from *all* atoms.
-        #
-        # Some overlap derivatives must be multiplied by 0 or -1
-        # depending on which atom is moved.  This is a temporary hack.
-        # 
-        # For some reason the "masks" for atoms *before* this one must be
-        # multiplied by -1, whereas those *after* must not.
-        #
-        # Also, for this atom, we must apply a mask which is -1 for
-        # m < self.m, and +1 for m > self.m + self.setup.niAO
-        dPdRa_ami = {}
-        m = tci.M_a[a]
-        mask_m = np.zeros(self.setups.nao)
-        mask_m[m:m + self.setups[a].niAO] = 1.
-
-        for b in self.basis_functions.my_atom_indices:
-            if b == a:
-                ownmask_m = np.zeros(self.setups.nao)
-                m1 = m
-                m2 = m + self.setups[a].niAO
-                ownmask_m[:m1] = -1.
-                ownmask_m[m2:] = +1.
-                selfcontrib = (tci.dPdR_akcmi[a][k, c, :, :] * 
-                               ownmask_m[None].T)
-                dPdRa_ami[b] = selfcontrib
-            else:
-                if b > a:
-                    factor = 1.0
-                else:
-                    factor = -1.0
-                dPdRa_mi = (tci.dPdR_akcmi[b][k, c, :, :] * 
-                            mask_m[None].T * factor)
-                dPdRa_ami[b] = dPdRa_mi
-        return dPdRa_ami
-
-    def get_overlap_derivatives(self, tci, a, c, dPdRa_ami, k):
-        nao = self.setups.nao
-        dThetadR_mm = tci.dThetadR_kcmm[k, c, :, :]
-        pawcorrection_mm = np.zeros((nao, nao), self.dtype)
-
-        for b in self.basis_functions.my_atom_indices:
-            O_ii = self.setups[b].O_ii
-            dPdRa_mi = dPdRa_ami[b]            
-            P_mi = self.P_aqMi[b][k]
-            A_mm = np.dot(dPdRa_mi, np.dot(O_ii, P_mi.T.conj()))
-            B_mm = np.dot(P_mi, np.dot(O_ii, dPdRa_mi.T.conj()))
-            pawcorrection_mm += A_mm + B_mm
-        self.basis_functions.gd.comm.sum(pawcorrection_mm)
-        
-        return dThetadR_mm * tci.mask_amm[a] + pawcorrection_mm
-
-    def get_potential_derivative(self, tci, hamiltonian, kpt, rho_MM):
-        nao = self.setups.nao
-        vt_G = hamiltonian.vt_sG[kpt.s]
-        dEdndndR_av = np.zeros((len(self.setups), 3))
-        rho_hc_MM = rho_MM.T.conj()
-
-        DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
-        self.basis_functions.calculate_potential_matrix_derivative(vt_G,
-                                                                   DVt_MMv,
-                                                                   kpt.q)
-        for b in self.basis_functions.my_atom_indices:
-            M1 = self.basis_functions.M_a[b]
-            M2 = M1 + self.setups[b].niAO
-            for v in range(3):
-                forcecontrib = -2 * np.dot(DVt_MMv[M1:M2, :, v],
-                                           rho_hc_MM[:, M1:M2]).real.trace()
-                dEdndndR_av[b, v] = forcecontrib
-
-        return dEdndndR_av
-
     def print_arrays_with_ranks(self, names, arrays_nax):
         # Debugging function for checking properties of distributed arrays
         # Prints rank, label, list of atomic indices, and element sum
@@ -515,12 +441,12 @@ class LCAOWaveFunctions(WaveFunctions):
             M2 = M1 + self.setups[a].niAO
             for v in range(3):
                 dTdR_MM = dTdR_vMM[v]
-                x1 = (dTdR_MM[:, M1:M2] * rhoT_MM[:, M1:M2]).real.sum()
-                #x2 = (dTdR_MM[M1:M2, :] * rhoT_MM[M1:M2, :]).real.sum()
+                #x1 = (dTdR_MM[:, M1:M2] * rhoT_MM[:, M1:M2]).real.sum()
+                x2 = (dTdR_MM[M1:M2, :] * rhoT_MM[M1:M2, :]).real.sum()
                 # Good to know:
                 #   For any k: x1.imag = x2.imag
                 #   Gamma point: x1 + x2 = 0
-                dEdTdTdR_av[a, v] = 2 * x1# - x2
+                dEdTdTdR_av[a, v] = -2 * x2
 
         dEdDdDdR_av = np.zeros_like(F_av)
         dEdrhodrhodR_av = np.zeros_like(F_av)
@@ -557,7 +483,6 @@ class LCAOWaveFunctions(WaveFunctions):
         
         dEdndndR_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
-        rho_hc_MM = rho_MM.T.conj()
         DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
 
         # Minimize synchronization by performing all operations requiring
@@ -566,15 +491,14 @@ class LCAOWaveFunctions(WaveFunctions):
                                                                    DVt_MMv,
                                                                    kpt.q)
 
-        #for a in atom_indices:
-        #self.basis_functions.gd.comm.sum(pawcorrection_avMM)
+        self.basis_functions.gd.comm.sum(pawcorrection_avMM)
         
         for b in my_atom_indices:
             M1 = self.basis_functions.M_a[b]
             M2 = M1 + self.setups[b].niAO
             for v in range(3):
-                forcecontrib = -2 * (DVt_MMv[M1:M2, :, v].T
-                                     * rho_hc_MM[:, M1:M2]).real.sum()
+                forcecontrib = -2 * (DVt_MMv[M1:M2, :, v]
+                                     * rhoT_MM[M1:M2, :]).real.sum()
                 dEdndndR_av[b, v] = forcecontrib
 
         for v in range(3):
