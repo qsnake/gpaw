@@ -1,4 +1,5 @@
 #include <Python.h>
+#include <pthread.h>
 #define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
 #define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
