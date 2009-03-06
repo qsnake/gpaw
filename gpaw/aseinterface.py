@@ -59,6 +59,7 @@ class GPAW(PAW):
         self.calculate(atoms, converge=True,
                        force_call_to_set_positions=force_call_to_set_positions)
         F_av = self.forces.calculate(self.wfs, self.density, self.hamiltonian)
+        self.print_forces()
         return F_av * (Hartree / Bohr)
       
     def get_stress(self, atoms):
