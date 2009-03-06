@@ -134,7 +134,7 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
         # extract SCF begining and end time
         time[p]['SCF_start'] = time[p]['fixdensity_end']
         for n, l in enumerate(lines):
-            if l.startswith('iter:   '+str(iter)):
+            if l.startswith('iter: '+"%3s" % iter):
                 #print l, n, f
                 t = T(lines[n + 0].split()[2])
                 break
