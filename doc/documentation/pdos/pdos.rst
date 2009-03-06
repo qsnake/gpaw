@@ -259,6 +259,12 @@ value for ``angular``, being one or several of the letters s, p, d,
 and f, will cause the code to sum over all bound state projectors with
 the specified angular momentum.
 
+The meaning of an integer valued ``angular`` keyword can be determined
+by running::
+
+  >>> from gpaw.utilities.dos import print_projectors
+  >>> print_projectors('Fe')
+
 Note that the set of atomic partial waves do not form an orthonormal
 basis, thus the properties of the introduction are not fulfilled.
 This PDOS can however be used as a qualitative measure of the local
@@ -281,6 +287,17 @@ stored calculation, is shown below::
   plt.ylabel('d-projected DOS on atom 10')
   plt.title('d-band center = %s eV, d-band width = %s eV' % (center, width))
   plt.show()
+
+Warning: You should always plot the PDOS before using the calculated
+center and width to check that it is sensible. The very localized
+functions used to project onto can sometimes cause an artificial
+rising tail on the PDOS at high energies. If this happens, you should
+try to project onto LCAO orbitals instead of projectors, as these have
+a larger width. This however requires some calculation time, as the
+LCAO projections are not determined in a standard grid
+calculation. The projections onto the projector functions are always
+present, hence using these takes no extra computational effort.
+
 
 -----------------
 Wigner-Seitz LDOS
