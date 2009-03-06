@@ -31,8 +31,8 @@ when installating GPAW for the first time:
 
     - using csh/tcsh::
 
-       set GPAW_TRUNK https://svn.fysik.dtu.dk/projects/gpaw/trunk
-       set GPAW_HOME /home/niflheim/$USER
+       set GPAW_TRUNK=https://svn.fysik.dtu.dk/projects/gpaw/trunk
+       set GPAW_HOME=/home/niflheim/$USER
 
     - using bash::
 
@@ -46,6 +46,11 @@ when installating GPAW for the first time:
 
    You may consider adding :envvar:`GPAW_TRUNK` and :envvar:`GPAW_HOME` to
    :file:`/home/niflheim/$USER/.cshrc` (:file:`/home/niflheim/$USER/.bashrc`).
+
+   **Note**: that if you are doing a heavy development (many svn checkins)
+   you may consider installing a special development version on workstation's
+   local disk (faster), i.e. ``GPAW_HOME=/scratch/$USER``, however this version will
+   not be accesible from Niflheim.
 
 2a. Replace the file :file:`gpaw/customize.py` by :svn:`~doc/install/Linux/Niflheim/customize_ethernet.py`::
 
