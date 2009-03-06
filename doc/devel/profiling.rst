@@ -121,7 +121,7 @@ Simply include the following into ``customize.py`` and run ``python setup.py bui
 
   import tau
   tau_path = tau.__file__[0:tau.__file__.find('lib')]
-  tau_make = tau_path+'lib/Makefile.tau-mpi-compensate-python-pdt'
+  tau_make = tau_path+'lib/Makefile.tau-mpi-pthread-compensate-python-pdt'
   extra_compile_args += ['''-tau_options="-optShared -optTau='-rn Py_RETURN_NONE' -optVerbose"''']
   mpicompiler = "tau_cc.sh -tau_makefile="+tau_make
   mpilinker = mpicompiler
