@@ -295,7 +295,8 @@ class XCFunctional:
 
         from gpaw.vdw import VDWFunctional
         if isinstance(self.xc, VDWFunctional):
-            self.xc.set_grid_descriptor(density.finegd)
+            self.xc.set_non_local_things(density, hamiltonian, wfs, atoms,
+                                         energy_only)
             return
             
         if not self.orbital_dependent:
