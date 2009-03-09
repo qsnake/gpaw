@@ -6,6 +6,8 @@ from gpaw import GPAW
 from gpaw import ConvergenceError
 from gpaw.mpi import rank
 
+from gpaw.eigensolvers.rmm_diis import RMM_DIIS
+
 from gpaw import setup_paths
 
 # Use setups from the $PWD and $PWD/.. first
@@ -58,6 +60,8 @@ n = [56 * ri for ri in r]
 # nbands (>=128) is the number of bands per 32 water molecules
 nbands = 2*6*11 # 132
 for ri in r: nbands = nbands*ri
+# the next line decreases memory usage
+es = RMM_DIIS(keep_htpsit=False)
 calc = GPAW(nbands=nbands,
             # uncomment next two lines to use lcao/sz
             #mode='lcao',
@@ -65,6 +69,7 @@ calc = GPAW(nbands=nbands,
             gpts=tuple(n),
             maxiter=5,
             width = 0.01,
+            eigensolver = es,
             txt=prefix + '.txt',
             )
 atoms.set_calculator(calc)
