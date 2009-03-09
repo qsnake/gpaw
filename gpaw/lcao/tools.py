@@ -92,16 +92,16 @@ def remove_pbc(atoms, h, s=None, d=0):
 
     nao = calc.wfs.setups.nao
     
-    cutoff = atoms.get_cell()[d,d] * 0.5 
-    pos_i = get_bf_centers(atoms)[:,d]
+    cutoff = atoms.get_cell()[d, d] * 0.5 
+    pos_i = get_bf_centers(atoms)[:, d]
     for i in range(nao):
         dpos_i = np.absolute(pos_i - pos_i[i])
         mask_i = (dpos_i < cutoff).astype(int)
-        h[i,:] = h[i,:] * mask_i
-        h[:,i] = h[:,i] * mask_i
+        h[i, :] = h[i, :] * mask_i
+        h[:, i] = h[:, i] * mask_i
         if s != None:
-            s[i,:] = s[i,:] * mask_i
-            s[:,i] = s[:,i] * mask_i
+            s[i, :] = s[i, :] * mask_i
+            s[:, i] = s[:, i] * mask_i
 
 
 
@@ -146,7 +146,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         may be changed into a dump to a single file in the feature.
 
     """
-    if direction!=None:
+    if direction != None:
         d = 'xyz'.index(direction)
 
     calc = atoms.calc
