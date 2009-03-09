@@ -81,7 +81,7 @@ class VDWFunctional:
     """Base class for vdW-DF."""
     def __init__(self, nspins=1, world=None, q0cut=5.0,
                  phi0=0.5, ds=1.0, Dmax=20.0, nD=201, ndelta=21,
-                 verbose=False):
+                 soft_correction=False, verbose=False):
         """vdW-DF.
 
         parameters:
@@ -102,6 +102,8 @@ class VDWFunctional:
             Number of values for D in kernel-table.
         ndelta: int
             Number of values for delta in kernel-table.
+        soft_correction: bool
+            Correct for soft kernel.
         verbose: bool
             Print useful information.
         """
@@ -125,6 +127,11 @@ class VDWFunctional:
 
         self.read_table()
 
+        self.soft_correction = soft_correction
+        if soft_correction:
+            dD = self.D_j[1]
+            self.C_soft = np.dot(self.D_j**2, self.phi_ij[0]) * 4 * pi * dD
+            
         self.gga = True
         self.mgga = not True
         self.hybrid = 0.0
@@ -211,6 +218,11 @@ class VDWFunctional:
             print ('VDW: q0 (min, mean, max): (%f, %f, %f)' %
                    (q0_g.min(), q0_g.mean(), q0_g.max()))
         
+        if self.soft_correction:
+            dEcnl = gd.integrate(n_g**2 / q0_g**3) * 0.5 * self.C_soft
+        else:
+            dEcnl = 0.0
+            
         # Distribute density and q0 to all processors:
         n_g = gd.collect(n_g, broadcast=True)
         q0_g = gd.collect(q0_g, broadcast=True)
@@ -218,9 +230,10 @@ class VDWFunctional:
         if not self.energy_only:
             self.dhdx_g = gd.collect(dhdx_g, broadcast=True)
 
-        return self.calculate_6d_integral(n_g, q0_g, a2_g, e_LDAc_g, v_LDAc_g,
+        Ecnl = self.calculate_6d_integral(n_g, q0_g, a2_g, e_LDAc_g, v_LDAc_g,
                                           v_g, deda2_g)
-
+        return Ecnl + dEcnl
+    
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g, deda2_g):
         """Calculate energy and potential."""
         # LDA correlation:
@@ -235,9 +248,6 @@ class VDWFunctional:
         
         if n_g.ndim == 3:
             # Non-local part:
-            #v_g[:] = 0.0
-            #e_g[:] = 0.0
-            #deda2_g[:] = 0.0
             e = self.get_non_local_energy(n_g, a2_g, e_LDAc_g, v_LDAc_g,
                                           v_g, deda2_g)
             if self.gd.comm.rank == 0:
