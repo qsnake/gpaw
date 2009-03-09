@@ -203,8 +203,6 @@ will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
 
 
 
-
-
 Number of grid points
 ---------------------
 
@@ -225,9 +223,14 @@ Use of symmetry
 ---------------
 
 With ``usesymm=True`` (default) the **k**-points are reduced to only
-those in the irreducible part of the Brillouin-zone.  Moving the atoms so
-that a symmetry is broken will cause an error.  This can be avoided by
-using ``usesymm=False``.
+those in the irreducible part of the Brillouin-zone.  Moving the atoms
+so that a symmetry is broken will cause an error.  This can be avoided
+by using ``usesymm=False`` which will reduce the number of applied
+symmetries to just the time-reversal symmetry (implying that the
+Hamiltonian is invariant under **k** -> -**k**). For some purposes you
+might want to have no symmetry reduction of the **k**-points at all
+(debugging, transport, wannier functions). This can be achieved be
+specifying ``usesymm=None``.
 
 
 
