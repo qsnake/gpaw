@@ -18,13 +18,12 @@ algorithms used <features_and_algorithms>`.
 .. |i0| image:: _static/logo-anl.png
         :height: 44 px
         :target: http://www.anl.gov
-
-.. |i1| image:: _static/logo-csc.png
-        :height: 44 px
-        :target: http://www.csc.fi
-.. |i2| image:: _static/logo-dtu.png
+.. |i1| image:: _static/logo-dtu.png
         :height: 44 px
         :target: http://www.camp.dtu.dk
+.. |i2| image:: _static/logo-csc.png
+        :height: 44 px
+        :target: http://www.csc.fi
 .. |i3| image:: _static/logo-jyu.png
         :height: 44 px
         :target: http://www.phys.jyu.fi
