@@ -659,7 +659,7 @@ class FFTVDWFunctional(VDWFunctional):
         dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
                    4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
                    7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
-                   n_g**(-11.0 / 3.0))
+                   n_g**(-10.0 / 3.0))
         dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
         v0_g = np.zeros_like(n_g)
         deda20_g = np.zeros_like(n_g)
