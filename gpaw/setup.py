@@ -738,6 +738,7 @@ class Setup:
         nc_g = data.nc_g.copy()
         nct_g = data.nct_g.copy()
         tauc_g = data.tauc_g
+        tauct_g = data.tauct_g
         #nc_g[gcut2:] = nct_g[gcut2:] = 0.0
         nc = Spline(0, rcut2, nc_g, r_g, beta, points=1000)
         nct = Spline(0, rcut2, nct_g, r_g, beta, points=1000)
@@ -756,42 +757,6 @@ class Setup:
             phi_j.append(Spline(l, rcut2, phi_g, r_g, beta, points=100))
             phit_j.append(Spline(l, rcut2, phit_g, r_g, beta, points=100))
         return phi_j, phit_j, nc, nct, tauc, tauct
-
-    def get_partial_waves_diff(self):
-        """Return spline representation of partial waves and densities."""
-
-        l_j = self.l_j
-        nj = len(l_j)
-        beta = self.beta
-
-        # cutoffs
-        rcut2 = 2 * max(self.rcut_j)
-        gcut2 = 1 + int(rcut2 * self.ng / (rcut2 + beta))
-
-        # radial grid
-        g = npy.arange(self.ng, dtype=float)
-        r_g = beta * g / (self.ng - g)
-
-        data = self.data
-
-        # Construct splines:
-        nc_g = data.nc_g
-        nct_g = data.nct_g
-        tauc_g = data.tauc_g
-        tauct_g = data.tauct_g
-        dnc = Spline(0, rcut2, nc_g - nct_g, r_g, beta, points=1000)
-        if tauc_g is None:
-            tauc_g = npy.zeros(nct_g.shape)
-            tauct_g = tauc_g
-        dtauc = Spline(0, rcut2, tauc_g - tauct_g, r_g, beta, points=1000)
-        dphi_j = []
-        for j, (phi_g, phit_g) in enumerate(zip(data.phi_jg, data.phit_jg)):
-            l = l_j[j]
-            phi_g = phi_g.copy()
-            phit_g = phit_g.copy()
-            dphi_j.append(Spline(l, rcut2, phi_g - phit_g, r_g, beta,
-                                 points=100))
-        return dphi_j, dnc, dtauc
 
     def calculate_oscillator_strengths(self, r_g, dr_g, phi_jg):
         self.A_ci = npy.zeros((3, self.ni))

@@ -825,9 +825,9 @@ class LocalizedFunctionsCollection(BaseLFC):
                 box.norm(I_ic)
             I_a[a] += I_ic[0, 0] * scale
 
-    def add2(self, n_g, D_asp, s, I_a):
+    def add2(self, n_g, D_asp, s, scale, I_a):
         for a, lfs in self.lfs_a.items():
-            I_a[a] += lfs.add_density2(n_g, D_asp[a][s])
+            I_a[a] += lfs.add_density2(n_g, scale * D_asp[a][s])
 
     def get_function_count(self, a):
         return self.lfs_a[a].ni

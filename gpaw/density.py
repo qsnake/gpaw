@@ -276,24 +276,32 @@ class Density:
 
         # Add corrections to pseudo-density to get the AE-density
         splines = {}
-        dphi_aj = []
-        dnc_a = []
+        phi_aj = []
+        phit_aj = []
+        nc_a = []
+        nct_a = []
         for a, id in enumerate(self.setups.id_a):
             if id in splines:
-                dphi_j, dnc = splines[id]
+                phi_j, phit_j, nc, nct = splines[id]
             else:
                 # Load splines:
-                dphi_j, dnc = self.setups[a].get_partial_waves_diff()[:2]
-                splines[id] = (dphi_j, dnc)
-            dphi_aj.append(dphi_j)
-            dnc_a.append([dnc])
+                phi_j, phit_j, nc, nct = self.setups[a].get_partial_waves()[:4]
+                splines[id] = (phi_j, phit_j, nc, nct)
+            phi_aj.append(phi_j)
+            phit_aj.append(phit_j)
+            nc_a.append([nc])
+            nct_a.append([nct])
 
         # Create localized functions from splines
-        dphi = LFC(gd, dphi_aj)
-        dnc = LFC(gd, dnc_a)
+        phi = LFC(gd, phi_aj)
+        phit = LFC(gd, phit_aj)
+        nc = LFC(gd, nc_a)
+        nct = LFC(gd, nct_a)
         spos_ac = atoms.get_scaled_positions() % 1.0
-        dphi.set_positions(spos_ac)
-        dnc.set_positions(spos_ac)
+        phi.set_positions(spos_ac)
+        phit.set_positions(spos_ac)
+        nc.set_positions(spos_ac)
+        nct.set_positions(spos_ac)
 
         all_D_asp = []
         for a, setup in enumerate(self.setups):
@@ -307,8 +315,10 @@ class Density:
 
         for s in range(self.nspins):
             I_a = np.zeros(len(atoms))
-            dnc.add1(n_sg[s], 1.0 / self.nspins, I_a)
-            dphi.add2(n_sg[s], all_D_asp, s, I_a)
+            nc.add1(n_sg[s], 1.0 / self.nspins, I_a)
+            nct.add1(n_sg[s], -1.0 / self.nspins, I_a)
+            phi.add2(n_sg[s], all_D_asp, s, 1.0, I_a)
+            phit.add2(n_sg[s], all_D_asp, s, -1.0, I_a)
             for a, D_sp in self.D_asp.items():
                 setup = self.setups[a]
                 I_a[a] -= ((setup.Nc - setup.Nct) / self.nspins +
