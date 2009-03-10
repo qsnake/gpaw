@@ -142,6 +142,8 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
 
     Uses (max) 12*n**2 + 6*n neighbors."""
 
+    if n == 9:
+        return FTLaplace(gd, scale, dtype)
     n = int(n)
     h = gd.h_c
     h2 = h**2
@@ -187,6 +189,35 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
             ci+=1
 
     return Operator(coefs, offsets, gd, dtype)
+
+from numpy.fft import fftn, ifftn
+
+class FTLaplace:
+    def __init__(self, gd, scale, dtype):
+        assert gd.domain.comm.size == 1 and gd.domain.pbc_c.all()
+
+        N_c1 = gd.N_c[:, npy.newaxis]
+        i_cq = npy.indices(gd.N_c).reshape((3, -1))
+        i_cq += N_c1 // 2
+        i_cq %= N_c1
+        i_cq -= N_c1 // 2
+        B_vc = 2.0 * pi * gd.domain.icell_cv.T
+        k_vq = npy.dot(B_vc, i_cq)
+        k_vq *= k_vq
+        self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
+        self.k2_Q *= -scale
+        self.d = 6.0 / gd.h_c[0]**2
+        
+    def apply(self, in_xg, out_xg, phase_cd=None):
+        if in_xg.ndim > 3:
+            for in_g, out_g in zip(in_xg, out_xg):
+                out_g[:] = ifftn(fftn(in_g) * self.k2_Q).real
+        else:
+            out_xg[:] = ifftn(fftn(in_xg) * self.k2_Q).real
+
+    def get_diagonal_element(self):
+        return self.d
+
 
 def LaplaceA(gd, scale, dtype=float):
     c = npy.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
