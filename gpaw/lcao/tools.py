@@ -220,31 +220,35 @@ def get_hamiltonian(atoms):
 
     return h_skmm, s_kmm
 
-def lead_kspace2realspace(filename, direction='x', usesymm=None):
+def lead_kspace2realspace_fromfile(filename, direction='x', usesymm=None):
     """Convert a dumped hamiltonian representing a lead, to a realspace
     hamiltonian of double size representing two principal layers and the
     coupling between."""
-    dir = 'xyz'.index(direction)
     fd = file(filename, 'rb')
     h_skmm, s_kmm = pickle.load(fd)
     atom_data = pickle.load(fd)
     calc_data = pickle.load(fd)
+    ibzk_kc = calc.data['ibzk_kc']
+    weight_k = calc.data['weight_k']
     fd.close()
+    return lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
+                                 direction, usesymm)
 
-    nbf = h_skmm.shape[-1]
-    nspin = len(h_skmm)
+def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
+                          direction='x', usesymm=None):
+    """Convert a k-dependent (in transport dir) Hamiltonian representing
+    a lead, to a realspace hamiltonian of double size representing two
+    principal layers and the coupling between."""
+    dir = 'xyz'.index(direction)
+    nspin, nk, nbf = h_skmm.shape[:-1]
     h_smm = np.zeros((nspin, 2 * nbf, 2 * nbf), h_skmm.dtype)
     s_mm = np.zeros((2 * nbf, 2 * nbf), h_skmm.dtype)
 
     R_c = [0, 0, 0]
-    h_sii, s_ii = get_realspace_hs(h_skmm, s_kmm,
-                                   calc_data['ibzk_kc'],
-                                   calc_data['weight_k'],
+    h_sii, s_ii = get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k,
                                    R_c, usesymm)
     R_c[dir] = 1.
-    h_sij, s_ij = get_realspace_hs(h_skmm, s_kmm,
-                                   calc_data['ibzk_kc'],
-                                   calc_data['weight_k'],
+    h_sij, s_ij = get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k,
                                    R_c, usesymm=None)
 
     h_smm[:, :nbf, :nbf] = h_smm[:, nbf:, nbf:] = h_sii
