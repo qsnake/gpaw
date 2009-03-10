@@ -122,12 +122,18 @@ Simply include the following into ``customize.py`` and run ``python setup.py bui
   import tau
   tau_path = tau.__file__[0:tau.__file__.find('lib')]
   tau_make = tau_path+'lib/Makefile.tau-mpi-pthread-compensate-python-pdt'
-  extra_compile_args += ['''-tau_options="-optShared -optTau='-rn Py_RETURN_NONE' -optVerbose"''']
-  mpicompiler = "tau_cc.sh -tau_makefile="+tau_make
+  mpicompiler = "tau_cc.sh -tau_options='-optShared -optCompInst -optVerbose' -tau_makefile="+tau_make
   mpilinker = mpicompiler
   compiler = mpicompiler
 
   extra_link_args += ['-Wl,-rpath='+tau_path+'lib/']
+
+**Note**: March 10 2009: pdtoolkit-3.14.1 and tau-2.18.1p1: you may need to decrease optimization level to `-O2` to get rid of::
+
+  c/libxc/src/gga_x_pbea.c: In function `func':
+  c/libxc/src/gga_x_pbea.c:53: internal compiler error: in cgraph_expand_function, at cgraphunit.c:540
+
+Morever, blacs libraries are not linked, so ScaLapack needs to be disabled.
 
 There should be a number of Makefile TAU stubs available. Choose the one that is appropriate for the profile data that you wish to collect and the compiler.
  
