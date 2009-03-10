@@ -65,7 +65,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     # Calculate projections
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
     for q, V_nM in enumerate(V_qnM):
-        bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM)
+        bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM, q)
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
@@ -246,7 +246,7 @@ class ProjectedWannierFunctionsIBL:
 
 class PWF2:
     def __init__(self, gpwfilename, fixedenergy=0.,
-                 spin=0, ibl=True, basis='sz', extra=True, zero_fermi=False):
+                 spin=0, ibl=True, basis='sz', zero_fermi=False):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
         calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
         calc.hamiltonian.poisson.initialize(calc.finegd)
