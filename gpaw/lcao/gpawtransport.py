@@ -533,8 +533,10 @@ class GPAWTransport:
 
     def get_selfconsistent_hamiltonian(self, bias=0, gate=0,
                                       cal_loc=False, recal_path=False,
-                                      verbose=False,  scat_lead=False):
-        self.initialize_scf(bias, gate, cal_loc, verbose)  
+                                      verbose=False,  scat_lead=False,
+                                      use_linear_MM=False):
+        self.initialize_scf(bias, gate, cal_loc, verbose)
+        self.use_linear_MM = use_linear_MM
         self.move_buffer()
         nbmol = self.nbmol_inner
         nspins = self.nspins
@@ -629,6 +631,7 @@ class GPAWTransport:
         self.fermi = 0
         self.current = 0
         self.forces = None
+        self.linear_MM = None
         if self.nblead == self.nbmol:
             self.buffer = 0
         else:
@@ -1090,8 +1093,9 @@ class GPAWTransport:
         calc.update_kinetic()
         density = calc.density
         calc.hamiltonian.update(density)
-        linear_potential = self.get_linear_potential()
-        calc.hamiltonian.vt_sG += linear_potential
+        if not self.use_linear_MM:
+            linear_potential = self.get_linear_potential()
+            calc.hamiltonian.vt_sG += linear_potential
         xcfunc = calc.hamiltonian.xc.xcfunc
         calc.Enlxc = xcfunc.get_non_local_energy()
         calc.Enlkin = xcfunc.get_non_local_kinetic_corrections() 
@@ -1106,8 +1110,14 @@ class GPAWTransport:
                                                   calc.scf.max_density_error))
             if self.diff < calc.scf.max_density_error:
                 self.dcvg.bcvg = True
+            else:
+                self.dcvg.bcvg = False
         h_skmm, s_kmm = self.get_hs(self.atoms)
- 
+
+        if self.use_linear_MM:
+            if self.linear_MM == None:
+                self.linear_MM = self.get_linear_potential_matrix()            
+            h_skmm += self.linear_MM
         return h_skmm
     
     def get_density(self,d_spkmm):
@@ -1226,6 +1236,8 @@ class GPAWTransport:
             buffer_dim = 0
         else:
             buffer_dim = dimt_lead
+        if hasattr(self, 'use_linear_MM') and self.use_linear_MM:
+            buffer_dim = 0
         scat_dim = dimt - buffer_dim * 2
         bias = self.bias / Hartree
         vt = np.empty([dimt])
@@ -1293,11 +1305,11 @@ class GPAWTransport:
                  self.ntklead,
                  self.dimt_lead) = self.pl_read('lead1.mat', collect=True)
         self.nspins = self.h1_skmm.shape[0]
-        self.npk = self.h1_skmm.shape[1] / self.ntklead
-        self.ntkmol = self.h_skmm.shape[1] / self.npk
+        self.npk = len(self.lead_kpts) / self.ntklead
+        self.ntkmol = len(self.kpts) / self.npk
         self.nblead = self.h1_skmm.shape[-1]
         self.nbmol = self.h_skmm.shape[-1]
-        self.atoms.calc.hamiltonian.vt_sG += self.get_linear_potential()
+        #self.atoms.calc.hamiltonian.vt_sG += self.get_linear_potential()
         world.barrier()
     
     def analysis(self, filename):
@@ -1376,9 +1388,11 @@ class GPAWTransport:
         pylab.xlabel('Energy (eV)')
         pylab.show()
         
-    def plot_v(self, vt=None, tit=None, ylab=None):
+    def plot_v(self, vt=None, tit=None, ylab=None, l_MM=False):
         import pylab
-        vt = self.atoms.calc.hamiltonian.vt_sG
+        self.use_linear_MM = l_MM
+        if vt == None:
+            vt = self.atoms.calc.hamiltonian.vt_sG + self.get_linear_potential()
         dim = vt.shape
         for i in range(3):
             vt = np.sum(vt, axis=0) / dim[i]
@@ -1393,7 +1407,8 @@ class GPAWTransport:
 
     def plot_d(self, nt=None, tit=None, ylab=None):
         import pylab
-        nt = self.atoms.calc.density.nt_sG
+        if nt == None:
+            nt = self.atoms.calc.density.nt_sG
         dim = nt.shape
         for i in range(3):
             nt = np.sum(nt, axis=0) / dim[i]
@@ -1439,6 +1454,9 @@ class GPAWTransport:
     def move_buffer(self):
         self.nbmol_inner = self.nbmol - 2 * self.buffer
         pl1 = self.buffer
+        if hasattr(self, 'use_linear_MM') and self.use_linear_MM:
+            pl1 = 0
+            self.nbmol_inner = self.nbmol
         if pl1 == 0:
             self.h_spkmm_mol = self.h_spkmm
             self.d_spkmm_mol = self.d_spkmm
@@ -1604,3 +1622,241 @@ class GPAWTransport:
                     break
                 temp.append(atom.position[self.d])
                 
+    def get_linear_potential_matrix(self):
+        #a bad way to get linear_potential of scattering region 
+        lead_atoms_num = len(self.pl_atoms[0])
+        atoms_inner = self.atoms.copy()
+        atoms_inner.center()
+        atoms_extend = atoms_inner.copy()
+        for i in range(lead_atoms_num, 0 ,-1):
+            atoms_extend = atoms_inner[i:i+1] + atoms_extend + atoms_inner[-i-1:-i]
+        
+        atoms_extend.positions[:lead_atoms_num] = atoms_inner.positions[:lead_atoms_num]
+        atoms_extend.positions[-lead_atoms_num:] = atoms_inner.positions[-lead_atoms_num:]
+        
+        atoms_extend.set_pbc(atoms_inner._pbc)
+        d = self.d
+        cell = np.diag(atoms_inner._cell.copy())
+        cell[d] += self.pl_cells[0][d] * 2
+        atoms_extend.set_cell(cell)
+        for i in range(lead_atoms_num):
+            atoms_extend.positions[i, d] -= self.pl_cells[0][d]
+        for i in range(-lead_atoms_num, 0):
+            atoms_extend.positions[i, d] += self.pl_cells[1][d]
+        
+        atoms_extend.center()
+        
+        atoms_extend.set_calculator(GPAW(h=0.3,
+                          xc='PBE',
+                          basis='szp',
+                          kpts=(1,1,1),
+                          width=0.2,
+                          mode='lcao',
+                          usesymm=None,
+                          mixer=Mixer(0.1, 5, metric='new', weight=100.0)
+                          ))
+        
+        calc = atoms_extend.calc
+        self.initialize_lfc(calc, atoms_extend)
+        #calc.set_positions(atoms_extend)
+        
+        linear_potential = calc.gd.empty(self.nspins)
+        
+        dimt = linear_potential.shape[-1]
+        dimp = linear_potential.shape[1:3]
+        dimt_lead = self.dimt_lead
+
+        buffer_dim = dimt_lead
+        scat_dim = dimt - buffer_dim * 2
+        bias = self.bias / Hartree
+        vt = np.empty([dimt])
+        if buffer_dim !=0:
+            vt[:buffer_dim] = bias / 2.0
+            vt[-buffer_dim:] = -bias / 2.0        
+            vt[buffer_dim : -buffer_dim] = np.linspace(bias/2.0,
+                                                         -bias/2.0, scat_dim)
+        else:
+            vt = np.linspace(bias/2.0, -bias/2.0, scat_dim)
+        for s in range(self.nspins):
+            for i in range(dimt):
+                linear_potential[s,:,:,i] = vt[i] * (np.zeros(dimp) + 1)
+
+        wfs = calc.wfs
+        nq = len(wfs.ibzk_qc)
+        nao = wfs.setups.nao
+        H_sqMM = np.empty([wfs.nspins, nq, nao, nao])
+        H_MM = np.empty([nao, nao])
+        for kpt in wfs.kpt_u:
+            wfs.basis_functions.calculate_potential_matrix(linear_potential[kpt.s],
+                                                       H_MM, kpt.q)
+            tri2full(H_MM)
+            H_MM *= Hartree
+            H_sqMM[kpt.s, kpt.q] = H_MM
+        pl1 = self.nblead
+        return   H_sqMM[:, :, pl1:-pl1, pl1:-pl1]
+    
+    def initialize_lfc(self, calc, atoms):
+        from ase.units import Bohr
+        par = calc.input_parameters
+        pos_av = atoms.get_positions() / Bohr
+        cell_cv = atoms.get_cell() / Bohr
+        pbc_c = atoms.get_pbc()
+        Z_a = atoms.get_atomic_numbers()
+        magmom_a = atoms.get_initial_magnetic_moments()
+        
+        from ase.dft import monkhorst_pack
+        
+        kpts = par.kpts
+        if kpts is None:
+            bzk_kc = np.zeros((1, 3))
+        elif isinstance(kpts[0], int):
+            bzk_kc = monkhorst_pack(kpts)
+        else:
+            bzk_kc = np.array(kpts)
+         
+        magnetic = magmom_a.any()
+
+        spinpol = par.spinpol
+        if spinpol is None:
+            spinpol = magnetic
+        elif magnetic and not spinpol:
+            raise ValueError('Non-zero initial magnetic moment for a ' +
+                             'spin-paired calculation!')
+
+        nspins = 1 + int(spinpol)
+        if not spinpol:
+            assert not par.hund
+
+        fixmom = par.fixmom
+        if par.hund:
+            fixmom = True
+            assert natoms == 1   
+            
+        if par.gpts is not None and par.h is None:
+            N_c = np.array(par.gpts)
+        else:
+            if par.h is None:
+                h = 0.2 / Bohr
+            else:
+                h = par.h / Bohr
+            # N_c should be a multiple of 4:
+            N_c = []
+            for axis_v in cell_cv:
+                L = (axis_v**2).sum()**0.5
+                N_c.append(max(4, int(L / h / 4 + 0.5) * 4))
+            N_c = np.array(N_c)
+        
+        gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
+
+        if hasattr(calc, 'time'):
+            dtype = complex
+        else:
+            if gamma:
+                dtype = float
+            else:
+                dtype = complex
+
+        if isinstance(par.xc, (str, dict)):
+            from gpaw.xc_functional import XCFunctional
+            xcfunc = XCFunctional(par.xc, nspins)
+        else:
+            xcfunc = par.xc
+        from gpaw.setup import Setups
+        setups = Setups(Z_a, par.setups, par.basis, nspins, par.lmax, xcfunc)
+
+        # Brillouin zone stuff:
+        if gamma:
+            symmetry = None
+            weight_k = np.array([1.0])
+            ibzk_kc = np.zeros((1, 3))
+        else:
+            # Reduce the the k-points to those in the irreducible part of
+            # the Brillouin zone:
+            symmetry, weight_k, ibzk_kc = reduce_kpoints(atoms, bzk_kc,
+                                                         setups, par.usesymm)
+
+        width = par.width
+        if width is None:
+            if gamma:
+                width = 0
+            else:
+                width = 0.1 / Hartree
+        else:
+            width /= Hartree
+            
+        nao = setups.nao
+        nvalence = setups.nvalence - par.charge
+        
+        nbands = par.nbands
+        if nbands is None:
+            nbands = nao
+        elif nbands > nao and par.mode == 'lcao':
+            raise ValueError('Too many bands for LCAO calculation: ' +
+                             '%d bands and only %d atomic orbitals!' %
+                             (nbands, nao))
+        
+        if nvalence < 0:
+            raise ValueError(
+                'Charge %f is not possible - not enough valence electrons' %
+                par.charge)
+
+        M = magmom_a.sum()
+
+        if nbands <= 0:
+            nbands = int(nvalence + M + 0.5) // 2 + (-nbands)
+            
+            
+        from gpaw import parsize
+        if parsize is None:
+            parsize = par.parsize
+
+        from gpaw import parsize_bands
+        if parsize_bands is None:
+            parsize_bands = par.parsize_bands
+
+        if nbands % parsize_bands != 0:
+            raise RuntimeError('Cannot distribute %d bands to %d processors' %
+                               (nbands, parsize_bands))
+        mynbands = nbands // parsize_bands
+        
+        if not calc.wfs:
+            domain_comm, kpt_comm, band_comm = calc.distribute_cpus(
+                world, parsize, parsize_bands, nspins, len(ibzk_kc))
+
+            if calc.gd is not None and calc.gd.comm.size != domain_comm.size:
+                # Domain decomposition has changed, so we need to
+                # reinitialize density and hamiltonian:
+                self.density = None
+                self.hamiltonian = None
+
+            # Create a Domain object:
+            from gpaw.domain import Domain
+            calc.domain = Domain(cell_cv, pbc_c)
+            calc.domain.set_decomposition(domain_comm, parsize, N_c)
+
+            # Construct grid descriptor for coarse grids for wave functions:
+            from gpaw.grid_descriptor import GridDescriptor
+            calc.gd = GridDescriptor(calc.domain, N_c)
+
+            # do k-point analysis here? XXX
+
+            args = (calc.gd, nspins, setups,
+                    nbands, mynbands,
+                    dtype, world, kpt_comm, band_comm,
+                    gamma, bzk_kc, ibzk_kc, weight_k, symmetry)
+            from gpaw.wavefunctions import LCAOWaveFunctions
+            calc.wfs = LCAOWaveFunctions(*args)
+            spos_ac = atoms.get_scaled_positions() % 1.0
+            from gpaw.lfc import BasisFunctions
+            wfs = calc.wfs
+            wfs.basis_functions = BasisFunctions(wfs.gd,
+                                                  [setup.phit_j
+                                                   for setup in wfs.setups],
+                                                   wfs.kpt_comm,
+                                                  cut=True)
+            if not gamma:
+                wfs.basis_functions.set_k_points(wfs.ibzk_qc)
+            wfs.basis_functions.set_positions(spos_ac)
+            
+        
+            
