@@ -85,7 +85,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
-            H_MM +=  np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
+            H_MM += np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
     
     # Fill in the upper triangles of H and S
     for H_MM, S_MM in zip(H_qMM, S_qMM):
@@ -246,59 +246,91 @@ class ProjectedWannierFunctionsIBL:
 
 class PWF2:
     def __init__(self, gpwfilename, fixedenergy=0.,
-                 spin=0, ibl=True, basis='sz', extra=True):
+                 spin=0, ibl=True, basis='sz', extra=True, zero_fermi=False):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
-        calc.initialize_positions()
-##         try:
-##             Ef = calc.get_fermi_level()
-##         except NotImplementedError:
-##             Ef = calc.get_homo_lumo().mean()
-
-        nq = 1 # Temporary hack XXX
-        q = 0 # Temporary hack XXX
-        eps_n = calc.get_eigenvalues(q)# - Ef
-        M = sum(eps_n <= fixedenergy)
-        kpt = calc.wfs.kpt_u[spin * nq + q]
-        if ibl:
-            print 'start ibl'
-            self.init_ibl(calc, eps_n, M, q, kpt, spin, extra)
-            print 'finish ibl'
+        calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
+        calc.hamiltonian.poisson.initialize(calc.finegd)
+        if zero_fermi:
+            try:
+                Ef = calc.get_fermi_level()
+            except NotImplementedError:
+                Ef = calc.get_homo_lumo().mean()
         else:
-            self.init_fbl(calc, eps_n, M, q, kpt, spin, extra)
+            Ef = 0.0
 
-        if extra: 
-            self.Fcore_ww = np.zeros_like(self.H_ww)
-            for a, P_wi in self.P_awi.items():
-                X_ii = unpack(calc.wfs.setups[a].X_p)
-                self.Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
-            self.Fcore_ww *= Hartree
+        self.ibzk_kc = calc.get_ibz_k_points()
+        self.nk = len(self.ibzk_kc)
+        self.eps_kn = [calc.get_eigenvalues(kpt=q, spin=spin) - Ef
+                       for q in range(self.nk)]
+        self.M_k = [sum(eps_n <= fixedenergy) for eps_n in self.eps_kn]
+        self.calc = calc
+        self.dtype = self.calc.wfs.dtype
+        self.spin = spin
+        self.ibl = ibl
+        self.pwf_q = []
+        self.norms_qn = []
+        self.S_qww = []
+        self.H_qww = []
 
-        self.eigs = eigvals(self.H_ww, self.S_ww)
-        print 'Condition number:', condition_number(self.S_ww)
-           
-    def init_ibl(self, calc, eps_n, M, q, kpt, spin, extra):
-        bfs = get_bfs(calc)
-        V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
-            calc, bfs=bfs, spin=spin, projectionsonly=False)
-        #H_qMM -= Ef * S_qMM
-        pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
-        self.H_ww = pwf.rotate_matrix(eps_n[:M], H_qMM[q])
-        self.S_ww = pwf.S_ww
-        self.norms_n = pwf.norms_n
-        if extra:
-            self.w_wG = pwf.rotate_function(kpt.psit_nG[:][:M], bfs)
-            self.P_awi = pwf.rotate_projections(
-                dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
-                dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
-            self.xc_ww = get_xc2(calc, w_wG, P_awi, spin)
+        if ibl:
+            self.bfs = get_bfs(calc)
+            V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
+                calc, bfs=self.bfs, spin=spin, projectionsonly=False)
+            H_qMM -= Ef * S_qMM
+            for q, M in enumerate(self.M_k):
+                pwf = ProjectedWannierFunctionsIBL(V_qnM[q], S_qMM[q], M)
+                self.pwf_q.append(pwf)
+                self.norms_qn.append(pwf.norms_n)
+                self.S_qww.append(pwf.S_ww)
+                self.H_qww.append(pwf.rotate_matrix(self.eps_kn[q][:M],
+                                                    H_qMM[q]))
+        else:
+            V_qnM = get_lcao_projections_HSP(calc, spin=spin)
+            for q, M in enumerate(self.M_k):
+                pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
+                self.pwf_q.append(pwf)
+                self.norms_qn.append(pwf.norms_n)
+                self.S_qww.append(pwf.S_ww)
+                self.H_qww.append(pwf.rotate_matrix(self.eps_kn[q]))
 
-    def init_fbl(self, calc, eps_n, M, q, kpt, spin, extra):
-        V_qnM = get_lcao_projections_HSP(calc, spin=spin)
-        pwf = ProjectedWannierFunctionsFBL(V_qnM[q], M, ortho=False)
-        self.H_ww = pwf.rotate_matrix(eps_n)
-        self.S_ww = pwf.S_ww
-        self.norms_n = pwf.norms_n
-        if extra:
-            self.xc_ww = pwf.rotate_matrix(get_ks_xc(calc, spin=spin))
-            self.w_wG = pwf.rotate_function(kpt.psit_nG[:])
-            self.P_awi = pwf.rotate_projections(kpt.P_ani)
+    def get_projections(self, q=0):
+        kpt = self.calc.wfs.kpt_u[self.spin * self.nq + q]
+        if not hasattr(self, 'P_awi'):
+            if self.ibl:
+                self.P_awi = self.pwf_q[q].rotate_projections(
+                    dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
+                    dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
+            else:
+                self.P_awi = pwf.rotate_projections(kpt.P_ani)
+        return self.P_awi
+
+    def get_orbitals(self, q=0):
+        kpt = self.calc.wfs.kpt_u[self.spin * self.nk + q]
+        if not hasattr(self, 'w_wG'):
+            if self.ibl:
+                self.w_wG = self.pwf_q[q].rotate_function(
+                    kpt.psit_nG[:][:self.M_k[q]], self.bfs)
+            else:
+                self.w_wG = self.pwf_q[q].rotate_function(kpt.psit_nG[:])
+        return self.w_wG
+
+    def get_Fcore(self, q=0):
+        Fcore_ww = np.zeros_like(self.H_qww[q])
+        for a, P_wi in self.get_projections(q).items():
+            X_ii = unpack(self.calc.wfs.setups[a].X_p)
+            Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
+        return Fcore_ww * Hartree
+
+    def get_eigs(self, q=0):
+        return eigvals(self.H_qww[q], self.S_ww[q])
+
+    def get_condition_number(self, q=0):
+        return condition_number(self.S_qww[q])
+
+    def get_xc(self, q=0):
+        if self.ibl:
+            return get_xc2(self.calc, self.get_orbitals(q),
+                           self.get_projections(q), self.spin)
+        else:
+            return self.pwf_q[q].rotate_matrix(get_ks_xc(self.calc,
+                                                         spin=self.spin))
