@@ -220,7 +220,7 @@ def get_hamiltonian(atoms):
 
     return h_skmm, s_kmm
 
-def lead_kspace2realspace(filename, direction='x'):
+def lead_kspace2realspace(filename, direction='x', usesymm=None):
     """Convert a dumped hamiltonian representing a lead, to a realspace
     hamiltonian of double size representing two principal layers and the
     coupling between."""
@@ -237,17 +237,15 @@ def lead_kspace2realspace(filename, direction='x'):
     s_mm = np.zeros((2 * nbf, 2 * nbf), h_skmm.dtype)
 
     R_c = [0, 0, 0]
-    h_sii, s_ii = get_realspace_hs(h_skmm,
-                                   s_kmm,
+    h_sii, s_ii = get_realspace_hs(h_skmm, s_kmm,
                                    calc_data['ibzk_kc'],
                                    calc_data['weight_k'],
-                                   R_c)
+                                   R_c, usesymm)
     R_c[dir] = 1.
-    h_sij, s_ij = get_realspace_hs(h_skmm,
-                                   s_kmm,
+    h_sij, s_ij = get_realspace_hs(h_skmm, s_kmm,
                                    calc_data['ibzk_kc'],
                                    calc_data['weight_k'],
-                                   R_c)
+                                   R_c, usesymm=None)
 
     h_smm[:, :nbf, :nbf] = h_smm[:, nbf:, nbf:] = h_sii
     h_smm[:, :nbf, nbf:] = h_sij
