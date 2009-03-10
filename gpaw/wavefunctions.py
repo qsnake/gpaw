@@ -425,41 +425,46 @@ class LCAOWaveFunctions(WaveFunctions):
         utri = np.tri(nao, nao, -1).T
         H_MM[:] = H_MM * ltri + H_MM.T.conj() * utri
 
-        ChcEFC_MM = np.dot(np.dot(np.linalg.inv(S_MM), H_MM), rho_MM)
+        ChcEFCT_MM = np.dot(np.dot(np.linalg.inv(S_MM), H_MM), rho_MM).T.copy()
+        del H_MM
 
         # Useful check - whether C^dagger eps f C == S^(-1) H rho
         # Although this won't work if people are supplying a customized rho
         #assert abs(ChcEFC_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
         #                              kpt.C_nM)).max() < 1e-8
-        
-        my_atom_indices = self.basis_functions.my_atom_indices
-        atom_indices = self.basis_functions.atom_indices
 
-        dEdTdTdR_av = np.zeros_like(F_av)
-        for a in my_atom_indices:
-            M1 = self.basis_functions.M_a[a]
-            M2 = M1 + self.setups[a].niAO
-            for v in range(3):
-                dTdR_MM = dTdR_vMM[v]
-                #x1 = (dTdR_MM[:, M1:M2] * rhoT_MM[:, M1:M2]).real.sum()
-                x2 = (dTdR_MM[M1:M2, :] * rhoT_MM[M1:M2, :]).real.sum()
-                # Good to know:
-                #   For any k: x1.imag = x2.imag
-                #   Gamma point: x1 + x2 = 0
-                dEdTdTdR_av[a, v] = -2 * x2
+        basis_functions = self.basis_functions
+        my_atom_indices = basis_functions.my_atom_indices
+        atom_indices = basis_functions.atom_indices
 
-        dEdDdDdR_av = np.zeros_like(F_av)
-        dEdrhodrhodR_av = np.zeros_like(F_av)
-        
-        #pawcorrection_avMM = dict([(a, np.zeros((3, nao, nao), self.dtype))
-        #                           for a in atom_indices])
-        pawcorrection_avMM = np.zeros(F_av.shape + (nao, nao), self.dtype)
-        dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
-        for v in range(3):
-            for a in atom_indices:
-                M1 = self.basis_functions.M_a[a]
+        def _slices(indices):
+            for a in indices:
+                M1 = basis_functions.M_a[a]
                 M2 = M1 + self.setups[a].niAO
-                pawcorrection_MM = pawcorrection_avMM[a][v]
+                yield a, M1, M2
+
+        def slices():
+            return _slices(atom_indices)
+
+        def my_slices():
+            return _slices(my_atom_indices)
+
+        # Kinetic energy contribution
+        dEdTdTdR_av = np.zeros_like(F_av)
+        for a, M1, M2 in my_slices():
+            for v in range(3):
+                dTdR_iM = dTdR_vMM[v, M1:M2]
+                rhoT_iM = rhoT_MM[M1:M2]
+                dEdTdTdR_av[a, v] = -2 * (dTdR_iM * rhoT_iM).real.sum()
+
+        # Density matrix contributions
+        dEdrhodrhodR_av = np.zeros_like(F_av)
+        pawcorrection_MM = np.zeros((nao, nao), self.dtype)        
+        dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
+
+        for v in range(3):
+            for a, M1, M2 in slices():
+                pawcorrection_MM.fill(0.0)
                 for b in my_atom_indices:
                     P_Mi = self.P_aqMi[b][q]
                     PdO_Mi = np.dot(P_Mi, self.setups[b].O_ii)
@@ -480,40 +485,29 @@ class LCAOWaveFunctions(WaveFunctions):
                         pawcorrection_MM[M2:, :] += A2_MM
                         pawcorrection_MM[:, :M1] -= B1_MM
                         pawcorrection_MM[:, M2:] += B2_MM
+                
+                dEdrhodrhodR_av[a, v] -= (ChcEFCT_MM
+                                          * pawcorrection_MM).real.sum()
+            
+            for a, M1, M2 in my_slices():
+                dThetadR_iM = dThetadR_vMM[v, M1:M2, :]
+                dEdrhodrhodR_av[a, v] += 2 * (ChcEFCT_MM[M1:M2, :] *
+                                              dThetadR_iM).real.sum()
         
+        # Potential contribution
         dEdndndR_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
         DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
-
-        # Minimize synchronization by performing all operations requiring
-        # communication now
-        self.basis_functions.calculate_potential_matrix_derivative(vt_G,
-                                                                   DVt_MMv,
-                                                                   kpt.q)
-
-        self.basis_functions.gd.comm.sum(pawcorrection_avMM)
-        
-        for b in my_atom_indices:
-            M1 = self.basis_functions.M_a[b]
-            M2 = M1 + self.setups[b].niAO
+        basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_MMv, q)
+        for a, M1, M2 in slices():
             for v in range(3):
-                forcecontrib = -2 * (DVt_MMv[M1:M2, :, v]
-                                     * rhoT_MM[M1:M2, :]).real.sum()
-                dEdndndR_av[b, v] = forcecontrib
-
+                dEdndndR_av[a, v] = -2 * (DVt_MMv[M1:M2, :, v]
+                                          * rhoT_MM[M1:M2, :]).real.sum()
+        
+        # Atomic density contribution
+        dEdDdDdR_av = np.zeros_like(F_av)
         for v in range(3):
-            for a in atom_indices:
-                M1 = self.basis_functions.M_a[a]
-                M2 = M1 + self.setups[a].niAO
-                pawcorrection_MM = pawcorrection_avMM[a][v]
-                if a in dPdR_avMi:
-                    dSdRa_MM = pawcorrection_MM.copy()
-                    dThetadR_MM = dThetadR_vMM[v, :, :]
-                    dSdRa_MM[:, M1:M2] += dThetadR_MM[:, M1:M2]
-                    dSdRa_MM[M1:M2, :] -= dThetadR_MM[M1:M2, :]
-                    dEdrhodrhodR_av[a, v] = -(ChcEFC_MM.T
-                                              * dSdRa_MM).real.sum()
-            
+            for a, M1, M2 in slices():
                 for b in my_atom_indices:
                     dPdR_Mi = dPdR_avMi[b][v]
                     rhoP_Mi = np.dot(rho_MM, self.P_aqMi[b][q])
@@ -524,21 +518,8 @@ class LCAOWaveFunctions(WaveFunctions):
                     else:
                         A_ii = np.dot(dPdR_Mi.T.conj()[:, M2:], rhoP_Mi[M2:])\
                                - np.dot(dPdR_Mi.T.conj()[:, :M1],rhoP_Mi[:M1])
-                    dEdDdDdR_av[a, v] += 2 * (Hb_ii.T * A_ii).real.sum()
-
-
-        # The array dEdDdDdR_av may contain contributions for atoms on this
-        # cpu stored on other CPUs.  comm.sum() of this array yields
-        # correct result on all CPUs.  However this is postponed till after
-        # the force calculation.
-
-        #names = 'RTDn'
-        #self.print_arrays_with_ranks(names, [dEdrhodrhodR_av, dEdTdTdR_av,
-        #                                     dEdDdDdR_av, dEdndndR_av])
-
-        # For whom it may concern, dEdDdDdR is the only force component which
-        # is nonzero even for atoms outside my_atom_indices
-        # (though indeed zero for atoms outside atom_indices)
+                    dEdDdDdR_av[a, v] += 2 * (Hb_ii * A_ii).real.sum()
+        
         F_av -= (dEdrhodrhodR_av + dEdTdTdR_av + dEdDdDdR_av + dEdndndR_av)
 
 

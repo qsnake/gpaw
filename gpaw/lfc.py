@@ -637,13 +637,11 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        dom = gd.domain
-        h_cv = dom.cell_cv / gd.N_c
+        h_cv = gd.domain.cell_cv / gd.N_c
         self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_MMc, h_cv,
                                                        gd.n_c, q,
                                                        np.array(cspline_M),
                                                        gd.beg_c, self.pos_Wv)
-        self.gd.comm.sum(DVt_MMc)
 
     # Python implementations:
     if 0:
