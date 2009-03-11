@@ -237,7 +237,7 @@ def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
                                    R_c, usesymm)
     R_c[dir] = 1.
     h_sij, s_ij = get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k,
-                                   R_c, usesymm=None)
+                                   R_c, usesymm)
 
     h_smm[:, :nbf, :nbf] = h_smm[:, nbf:, nbf:] = h_sii
     h_smm[:, :nbf, nbf:] = h_sij
