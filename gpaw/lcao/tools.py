@@ -5,6 +5,7 @@ import cPickle as pickle
 import numpy as np
 from gpaw.mpi import world, rank
 
+
 def get_bf_centers(atoms):
     calc = atoms.get_calculator()
     if not calc.initialized:
@@ -22,45 +23,28 @@ def get_bf_centers(atoms):
         index += n
     return pos_ic
 
-def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0), 
+
+def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
                      usesymm=None):
 
+    nspins, nk, nbf = h_skmm.shape[:-1]
     phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
-    c_k = np.exp(1.0j * phase_k) * weight_k
-    c_k.shape = (len(ibzk_kc),1,1)
+    c_k = np.reshape(np.exp(1.j * phase_k) * weight_k, (nk, 1, 1))
 
-    if usesymm==None:                     
-        if h_skmm != None:
-            nbf = h_skmm.shape[-1]
-            nspins = len(h_skmm)
-            h_smm = np.empty((nspins,nbf,nbf),complex)
-            for s in range(nspins):
-                h_smm[s] = np.sum((h_skmm[s] * c_k), axis=0)
-        if s_kmm != None:
-            nbf = s_kmm.shape[-1]
-            s_mm = np.empty((nbf,nbf),complex)
-            s_mm[:] = np.sum((s_kmm * c_k), axis=0)      
-        if h_skmm != None and s_kmm != None:
-            return h_smm, s_mm
-        elif h_skmm == None:
-            return s_mm
-        elif s_kmm == None:
-            return h_smm
+    if usesymm is None:
+        h_smm = np.sum((h_skmm * c_k), axis=1)
+        if s_kmm is not None:
+            s_mm = np.sum((s_kmm * c_k), axis=0)
+    elif usesymm is False:
+        h_smm = np.sum((h_skmm * c_k).real, axis=1)
+        if s_kmm is not None:
+            s_mm = np.sum((s_kmm * c_k).real, axis=0)
+    else: #usesymm is True:
+        raise NotImplementedError, 'Only None and False have been implemented'
 
-    elif usesymm==False:        
-        nbf = h_skmm.shape[-1]
-        nspins = len(h_skmm)
-        h_smm = np.empty((nspins, nbf, nbf))
-        s_mm = np.empty((nbf,nbf))
-        for s in range(nspins):
-            h_smm[s] = np.sum((h_skmm[s] * c_k).real, axis=0)
-   
-        s_mm[:] = np.sum((s_kmm * c_k).real, axis=0)
-        
-        return h_smm, s_mm
-
-    elif usesymm==True:
-        raise 'Not implemented'
+    if s_kmm is None:
+        return h_smm
+    return h_smm, s_mm
             
 
 def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
@@ -85,6 +69,7 @@ def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
     elif s_rmm == None:
         return h_smm
 
+
 def remove_pbc(atoms, h, s=None, d=0):
     calc = atoms.get_calculator()
     if not calc.initialized:
@@ -102,7 +87,6 @@ def remove_pbc(atoms, h, s=None, d=0):
         if s != None:
             s[i, :] = s[i, :] * mask_i
             s[:, i] = s[:, i] * mask_i
-
 
 
 def dump_hamiltonian(filename, atoms, direction=None):
@@ -131,6 +115,7 @@ def dump_hamiltonian(filename, atoms, direction=None):
         fd.close()
 
     world.barrier()
+
 
 def dump_hamiltonian_parallel(filename, atoms, direction=None):
     """
@@ -191,6 +176,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         pickle.dump(calc_data, fd, 2) 
         fd.close()
 
+
 def get_hamiltonian(atoms):
     """Calculate the Hamiltonian and overlap matrix."""
     calc = atoms.calc
@@ -220,6 +206,7 @@ def get_hamiltonian(atoms):
 
     return h_skmm, s_kmm
 
+
 def lead_kspace2realspace_fromfile(filename, direction='x', usesymm=None):
     """Convert a dumped hamiltonian representing a lead, to a realspace
     hamiltonian of double size representing two principal layers and the
@@ -233,6 +220,7 @@ def lead_kspace2realspace_fromfile(filename, direction='x', usesymm=None):
     fd.close()
     return lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
                                  direction, usesymm)
+
 
 def lead_kspace2realspace(h_skmm, s_kmm, ibzk_kc, weight_k,
                           direction='x', usesymm=None):
