@@ -217,6 +217,14 @@ Alternatively, one can use something like ``h=0.25``, and the program
 will try to choose a number of grid points that gives approximately
 the desired grid spacing.  For more details, see :ref:`grids`.
 
+If you are more used to think in terms of plane waves; a conversion
+formula between plane wave energy cutoffs and realspace grid spacings
+have been provided by Briggs *et. al* PRB **54**, 14362 (1996).  The
+conversion can be done like this::
+
+  >>> from gpaw.utilities.tools import cutoff2gridspacing, gridspacing2cutoff
+  >>> from ase import *
+  >>> h = cutoff2gridspacing(50 * Rydberg)
 
 
 Use of symmetry
