@@ -499,7 +499,64 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         where v is either x, y, or z.
         """
-        raise NotImplementedError
+        assert not self.use_global_indices
+
+        dtype = a_xG.dtype
+        
+        xshape = a_xG.shape[:-3]
+        c_xMv = np.zeros(xshape + (self.Mmax, 3), dtype)
+
+        cspline_M = []
+        for a in self.atom_indices:
+            for spline in self.sphere_a[a].spline_j:
+                nm = 2 * spline.get_angular_momentum_number() + 1
+                cspline_M.extend([spline.spline] * nm)
+        gd = self.gd
+        h_cv = gd.domain.cell_cv / gd.N_c
+        self.lfc.derivative(a_xG, c_xMv, h_cv, gd.n_c, cspline_M,
+                            gd.beg_c, self.pos_Wv, q)
+
+        comm = self.gd.comm
+        rank = comm.rank
+        srequests = []
+        rrequests = []
+        c_arxiv = {}
+        b_axiv = {}
+        M1 = 0
+        for a in self.atom_indices:
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if sphere.rank != rank:
+                c_xiv = c_xMv[..., M1:M2, :].copy()
+                b_axiv[a] = c_xiv
+                srequests.append(comm.send(c_xiv,
+                                           sphere.rank, a, False))
+            else:
+                if len(sphere.ranks) > 0:
+                    c_rxiv = np.empty(sphere.ranks.shape + xshape +
+                                      (M2 - M1, 3), dtype)
+                    c_arxiv[a] = c_rxiv
+                    for r, b_xiv in zip(sphere.ranks, c_rxiv):
+                        rrequests.append(comm.receive(b_xiv, r, a, False))
+            M1 = M2
+
+        for request in rrequests:
+            comm.wait(request)
+
+        M1 = 0
+        for a in self.atom_indices:
+            c_xiv = c_axiv.get(a)
+            sphere = self.sphere_a[a]
+            M2 = M1 + sphere.Mmax
+            if c_xiv is not None:
+                if len(sphere.ranks) > 0:
+                    c_xiv[:] = c_xMv[..., M1:M2, :] + c_arxiv[a].sum(axis=0)
+                else:
+                    c_xiv[:] = c_xMv[..., M1:M2, :]
+            M1 = M2
+
+        for request in srequests:
+            comm.wait(request)
 
     def griditer(self):
         """Iterate over grid points."""
