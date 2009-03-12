@@ -51,6 +51,7 @@ parsize_bands = None
 sl_diagonalize = False
 sl_inverse_cholesky = False
 extra_parameters = {}
+profile = False
 i = 1
 while len(sys.argv) > i:
     arg = sys.argv[i]
@@ -114,6 +115,8 @@ while len(sys.argv) > i:
         extra_parameters = eval('dict(%s)' % arg[7:])
     elif arg == '--gpaw':
         extra_parameters = eval('dict(%s)' % sys.argv.pop(i + 1))
+    elif arg.startswith('--profile='):
+        profile = arg.split('=')[1]
     else:
         i += 1
         continue
@@ -206,3 +209,17 @@ if trace:
             indent = indent[:-2]
 
     sys.setprofile(profile)
+
+if profile:
+    from cProfile import Profile
+    import atexit
+    prof = Profile()
+    def f(prof, filename):
+        prof.disable()
+        from gpaw.mpi import rank
+        if filename == '-':
+            prof.print_stats('time')
+        else:
+            prof.dump_stats(filename + '.%04d' % rank)
+    atexit.register(f, prof, profile)
+    prof.enable()

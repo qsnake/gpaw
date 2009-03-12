@@ -7,7 +7,8 @@ Profiling
 profile
 =======
 
-Python has a ``profile`` module to help you find the places in the code where the time is spent.
+Python has a ``profile`` module to help you find the places in the
+code where the time is spent.
 
 Let's say you have a script
 (`CH4.py <https://svn.fysik.dtu.dk/projects/gpaw/trunk/test/CH4.py>`_)
@@ -16,7 +17,9 @@ that you want to run through the profiler.  This is what you do:
 >>> import profile
 >>> profile.run('import CH4', 'prof')
 
-This will run your script and generate a profile in the file ``prof``.  You can also generate the profile by inserting a line like this in your script::
+This will run your script and generate a profile in the file ``prof``.
+You can also generate the profile by inserting a line like this in
+your script::
 
   ...
   import profile
@@ -45,7 +48,8 @@ To analyse the results, you do this::
       ...
       ...
 
-The list shows the 20 functions where the most time is spent.  Check the pstats_ documentation if you want to do more fancy things.
+The list shows the 20 functions where the most time is spent.  Check
+the pstats_ documentation if you want to do more fancy things.
 
 .. _pstats: http://docs.python.org/lib/module-profile.html
 
@@ -57,6 +61,25 @@ The list shows the 20 functions where the most time is spent.  Check the pstats_
    calls to C-code in Python functions::
 
      $ python script.py --debug
+
+.. tip::
+
+   There is also a quick and simple way to profile a script::
+
+     $ pyhton script.py --profile=prof
+
+   This will produce a file called ``prof.0000`` where ``0000`` is the
+   rank number (if your run the script in parallel, there will be one
+   file per rank).
+
+   Use::
+
+     $ pyhton script.py --profile=-
+
+   to write the report directly to standard output.
+
+
+
 
 TAU
 ===
