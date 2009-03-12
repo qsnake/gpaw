@@ -62,11 +62,17 @@ class _Transformer:
         assert output.shape == self.ngpout
         self.transformer.apply(input, output, phases)
 
-if debug:
-    Transformer = _Transformer
-else:
-    def Transformer(gdin, gdout, nn=1, dtype=float):
-        return _Transformer(gdin, gdout, nn, dtype).transformer
+
+def Transformer(gdin, gdout, nn=1, dtype=float):
+    if nn != 9:
+        t = _Transformer(gdin, gdout, nn, dtype)
+        if not debug:
+            t = t.transformer
+        return t
+    class T:
+        def apply(self, input, output, phases=None):
+            output[:] = input
+    return T()
 
 def multiple_transform_apply(transformerlist, inputs, outputs, phases=None):
     return _gpaw.multiple_transform_apply(transformerlist, inputs, outputs, phases)

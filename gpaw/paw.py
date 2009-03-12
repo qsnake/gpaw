@@ -448,9 +448,14 @@ class PAW(PAWTextOutput):
         self.wfs.timer = self.timer
 
         if self.density is None:
-            # Construct grid descriptor for fine grids for densities
-            # and potentials:
-            self.finegd = GridDescriptor(self.domain, 2 * N_c)
+            if par.stencils[1] != 9:
+                # Construct grid descriptor for fine grids for densities
+                # and potentials:
+                self.finegd = GridDescriptor(self.domain, 2 * N_c)
+            else:
+                # Special case (use only coarse grid):
+                self.finegd = self.gd
+                
             self.density = Density(self.gd, self.finegd, nspins,
                                    par.charge + setups.core_charge)
 
