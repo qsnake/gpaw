@@ -2,7 +2,8 @@ import numpy as np
 
 
 class ForceCalculator:
-    def __init__(self):
+    def __init__(self, timer):
+        self.timer = timer
         self.reset()
         
     def reset(self):
