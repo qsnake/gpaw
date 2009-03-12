@@ -9,7 +9,7 @@ from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full, lowdin
 from gpaw.coulomb import get_vxc as get_ks_xc
-from gpaw.utilities.blas import r2k
+from gpaw.utilities.blas import r2k, gemm
 
 from gpaw.lcao.projected_wannier import dots, condition_number, eigvals,\
      get_bfs, get_lfc
@@ -231,16 +231,30 @@ class ProjectedWannierFunctionsIBL:
         A_ww += dots(self.U_Mw.T.conj(), A_MM, self.U_Mw)
         return A_ww
 
-    def rotate_projections(self, P_aoi, P_aMi):
+    def rotate_projections(self, P_aoi, P_aMi, indices=None):
+        if indices is None:
+            U_ow = self.U_ow
+            U_Mw = self.U_Mw
+        else:
+            U_ow = self.U_ow[:, indices]
+            U_Mw = self.U_Mw[:, indices]
         P_awi = {}
         for a, P_oi in P_aoi.items():
-            P_awi[a] = np.tensordot(self.U_ow, P_oi, axes=[[0], [0]]) + \
-                       np.tensordot(self.U_Mw, P_aMi[a], axes=[[0], [0]])
+            P_awi[a] = np.tensordot(U_ow, P_oi, axes=[[0], [0]]) + \
+                       np.tensordot(U_Mw, P_aMi[a], axes=[[0], [0]])
         return P_awi
 
-    def rotate_function(self, psit_oG, bfs, q=-1):
-        w_wG = np.tensordot(self.U_ow, psit_oG, axes=[[0], [0]]) # Do BLAS?
-        bfs.lcao_to_grid(self.U_Mw.T.copy(), w_wG, q)
+    def rotate_function(self, psit_oG, bfs, q=-1, indices=None):
+        if indices is None:
+            U_ow = self.U_ow
+            U_Mw = self.U_Mw
+        else:
+            U_ow = self.U_ow[:, indices]
+            U_Mw = self.U_Mw[:, indices]
+        #w_wG = np.tensordot(U_ow, psit_oG, axes=[[0], [0]]) # Do BLAS?
+        w_wG = np.empty((U_ow.shape[1],) + psit_oG.shape[1:])
+        gemm(1., psit_oG, U_ow.T.copy(), 0., w_wG)
+        bfs.lcao_to_grid(U_Mw.T.copy(), w_wG, q)
         return w_wG
 
 
@@ -274,7 +288,7 @@ class PWF2:
 
         if ibl:
             self.bfs = get_bfs(calc)
-            V_qnM, H_qMM, S_qMM, P_aqMi = get_lcao_projections_HSP(
+            V_qnM, H_qMM, S_qMM, self.P_aqMi = get_lcao_projections_HSP(
                 calc, bfs=self.bfs, spin=spin, projectionsonly=False)
             H_qMM -= Ef * S_qMM
             for q, M in enumerate(self.M_k):
@@ -293,30 +307,36 @@ class PWF2:
                 self.S_qww.append(pwf.S_ww)
                 self.H_qww.append(pwf.rotate_matrix(self.eps_kn[q]))
 
-    def get_projections(self, q=0):
-        kpt = self.calc.wfs.kpt_u[self.spin * self.nq + q]
+    def get_projections(self, q=0, indices=None):
+        kpt = self.calc.wfs.kpt_u[self.spin * self.nk + q]
         if not hasattr(self, 'P_awi'):
             if self.ibl:
+                M = self.M_k[q]
                 self.P_awi = self.pwf_q[q].rotate_projections(
                     dict([(a, P_ni[:M]) for a, P_ni in kpt.P_ani.items()]),
-                    dict([(a, P_qMi[q]) for a, P_qMi in P_aqMi.items()]))
+                    dict([(a, P_qMi[q]) for a, P_qMi in self.P_aqMi.items()]),
+                    indices)
             else:
-                self.P_awi = pwf.rotate_projections(kpt.P_ani)
+                self.P_awi = pwf.rotate_projections(kpt.P_ani, indices)
         return self.P_awi
 
-    def get_orbitals(self, q=0):
+    def get_orbitals(self, q=0, indices=None):
         kpt = self.calc.wfs.kpt_u[self.spin * self.nk + q]
         if not hasattr(self, 'w_wG'):
             if self.ibl:
                 self.w_wG = self.pwf_q[q].rotate_function(
-                    kpt.psit_nG[:][:self.M_k[q]], self.bfs)
+                    kpt.psit_nG[:][:self.M_k[q]], self.bfs, q, indices)
             else:
-                self.w_wG = self.pwf_q[q].rotate_function(kpt.psit_nG[:])
+                self.w_wG = self.pwf_q[q].rotate_function(
+                    kpt.psit_nG[:], indices)
         return self.w_wG
 
-    def get_Fcore(self, q=0):
-        Fcore_ww = np.zeros_like(self.H_qww[q])
-        for a, P_wi in self.get_projections(q).items():
+    def get_Fcore(self, q=0, indices=None):
+        if indices is None:
+            Fcore_ww = np.zeros_like(self.H_qww[q])
+        else:
+            Fcore_ww = np.zeros((len(indices), len(indices)))
+        for a, P_wi in self.get_projections(q, indices).items():
             X_ii = unpack(self.calc.wfs.setups[a].X_p)
             Fcore_ww -= dots(P_wi.conj(), X_ii, P_wi.T)
         return Fcore_ww * Hartree
@@ -327,10 +347,10 @@ class PWF2:
     def get_condition_number(self, q=0):
         return condition_number(self.S_qww[q])
 
-    def get_xc(self, q=0):
+    def get_xc(self, q=0, indices=None):
         if self.ibl:
-            return get_xc2(self.calc, self.get_orbitals(q),
-                           self.get_projections(q), self.spin)
+            return get_xc2(self.calc, self.get_orbitals(q, indices),
+                           self.get_projections(q, indices), self.spin)
         else:
             return self.pwf_q[q].rotate_matrix(get_ks_xc(self.calc,
                                                          spin=self.spin))
