@@ -2,7 +2,7 @@ from math import pi
 
 import numpy as np
 
-from gpaw import debug
+from gpaw import debug, extra_parameters
 from gpaw.spherical_harmonics import Y
 import _gpaw
 
@@ -830,7 +830,8 @@ class LocalizedFunctionsCollection(BaseLFC):
     def get_function_count(self, a):
         return self.lfs_a[a].ni
 
-#LocalizedFunctionsCollection = NewLocalizedFunctionsCollection
+if extra_parameters.get('usenewlfc'):
+    LocalizedFunctionsCollection = NewLocalizedFunctionsCollection
 
 def test():
     from gpaw.grid_descriptor import GridDescriptor

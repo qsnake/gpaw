@@ -50,6 +50,7 @@ parsize = None
 parsize_bands = None
 sl_diagonalize = False
 sl_inverse_cholesky = False
+extra_parameters = {}
 i = 1
 while len(sys.argv) > i:
     arg = sys.argv[i]
@@ -109,6 +110,10 @@ while len(sys.argv) > i:
                     sl_inverse_cholesky.append(int(sl_args[sl_args_index]))
                 else:
                     sl_inverse_cholesky.append(sl_args[sl_args_index])
+    elif arg.startswith('--gpaw='):
+        extra_parameters = eval('dict(%s)' % arg[7:])
+    elif arg == '--gpaw':
+        extra_parameters = eval('dict(%s)' % sys.argv.pop(i + 1))
     else:
         i += 1
         continue
