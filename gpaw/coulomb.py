@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, sqrt
 
 import numpy as np
 from numpy.fft import fftn
@@ -73,13 +73,13 @@ class Coulomb:
                 rc = 0.5 * np.average(self.gd.cell_c)
                 # ewald potential: 1 - cos(k rc)
                 self.ewald = (np.ones(self.gd.n_c) - 
-                              np.cos(np.sqrt(self.k2) * rc))
+                              np.cos(sqrt(self.k2) * rc))
                 # lim k -> 0 ewald / k2 
                 self.ewald[0, 0, 0] = 0.5 * rc**2
             elif method.endswith('gauss') and not hasattr(self, 'ng'):
                 gauss = Gaussian(self.gd)
-                self.ng = gauss.get_gauss(0) / np.sqrt(4 * pi)
-                self.vg = gauss.get_gauss_pot(0) / np.sqrt(4 * pi)
+                self.ng = gauss.get_gauss(0) / sqrt(4 * pi)
+                self.vg = gauss.get_gauss_pot(0) / sqrt(4 * pi)
         else: # method == 'real'
             if not hasattr(self, 'solve'):
                 if self.poisson is not None:
@@ -163,19 +163,19 @@ class Coulomb:
 
 
 class CoulombNEW:
-    def __init__(self, paw):
-        self.rhot1_G = paw.gd.empty()
-        self.rhot2_G = paw.gd.empty()
-        self.pot_G = paw.gd.empty()
-        self.dv = paw.gd.dv
-        self.poisson = PoissonSolver(nn=paw.hamiltonian.poisson.nn)
-        self.poisson.initialize(paw.gd)
-        self.setups = paw.wfs.setups
+    def __init__(self, gd, setups, spos_ac):
+        self.rhot1_G = gd.empty()
+        self.rhot2_G = gd.empty()
+        self.pot_G = gd.empty()
+        self.dv = gd.dv
+        self.poisson = PoissonSolver(nn=3)
+        self.poisson.initialize(gd)
+        self.setups = setups
 
         # Set coarse ghat
-        self.Ghat = LFC(paw.gd, [setup.ghat_l for setup in paw.density.setups],
-                        integral=np.sqrt(4 * pi))
-        self.Ghat.set_positions(paw.atoms.get_scaled_positions() % 1.0)
+        self.Ghat = LFC(gd, [setup.ghat_l for setup in setups],
+                        integral=sqrt(4 * pi))
+        self.Ghat.set_positions(spos_ac)
 
     def calculate(self, nt1_G, nt2_G, P1_ap, P2_ap):
         I = 0.0
@@ -207,7 +207,7 @@ class CoulombNEW:
 
 class HF:
     def __init__(self, paw):
-        #paw.set_positions() XXX ARGHHH.... don't do it, P_ani will die :-(
+        paw.initialize_positions()
         self.nspins       = paw.wfs.nspins
         self.nbands       = paw.wfs.nbands
         self.restrict     = paw.hamiltonian.restrict
