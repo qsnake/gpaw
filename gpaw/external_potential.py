@@ -43,7 +43,7 @@ class ExternalPotential:
         position [Angstrom]
         spos_c scaled position on the grid"""
         if spos_c is None:
-            spos_c = self.gd.domain.scale_position(position / Bohr)
+            spos_c = self.gd.scale_position(position / Bohr)
         g_c = self.gd.get_nearest_grid_point(spos_c)
         g_c -= (g_c == self.gd.n_c) # force point to this domain
         return self.vext_g[tuple(g_c)]
@@ -100,7 +100,7 @@ class ExternalPotential:
 
         coef_ani = {}
         for a, P_ni in P_ani.items():
-            c0 = npy.dot(spos_ac[a] * gd.domain.cell_c, strength)
+            c0 = npy.dot(spos_ac[a] * gd.cell_c, strength)
             cxyz = strength
             # calculate coefficient 
             # ---------------------
@@ -177,9 +177,9 @@ class ExternalPotential:
         for nucleus in pt_nuclei:
             if nucleus.in_this_domain:
                 # position
-                x_c = nucleus.spos_c[0] * kpt.gd.domain.cell_c[0]
-                y_c = nucleus.spos_c[1] * kpt.gd.domain.cell_c[1]
-                z_c = nucleus.spos_c[2] * kpt.gd.domain.cell_c[2]
+                x_c = nucleus.spos_c[0] * kpt.gd.cell_c[0]
+                y_c = nucleus.spos_c[1] * kpt.gd.cell_c[1]
+                z_c = nucleus.spos_c[2] * kpt.gd.cell_c[2]
                 # Delta r = max(r_cut) / 2
                 # factor sqrt(1/3) because (dr,dr,dr)^2 = Delta r
                 rcut = max(nucleus.setup.rcut_j)

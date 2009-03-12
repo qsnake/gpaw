@@ -10,7 +10,6 @@ from ase.data import molecules as g2
 
 from gpaw import Calculator
 from gpaw.kpoint import KPoint
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.spline import Spline
 from gpaw.localized_functions import create_localized_functions
@@ -152,8 +151,7 @@ def make_dummy_reference(l, function=None, rcut=6., a=12., n=60,
     
     mcount = 2*l + 1
     fcount = 1
-    domain = Domain((a, a, a), (False, False, False))
-    gd = GridDescriptor(domain, (n, n, n))
+    gd = GridDescriptor((n, n, n), (a, a, a), (False, False, False))
     spline = Spline(l, r[-1], function(r), points=50)
     center = (.5, .5, .5)
     lf = create_localized_functions([spline], gd, center, dtype=dtype)
@@ -168,8 +166,7 @@ def make_dummy_kpt_reference(l, function, k_c,
     mcount = 2*l + 1
     fcount = 1
     kcount = 1
-    domain = Domain((a, a, a,), (True, True, True))
-    gd = GridDescriptor(domain, (n, n, n))
+    gd = GridDescriptor((n, n, n), (a, a, a), (True, True, True))
     kpt = KPoint([], gd, 1., 0, 0, 0, k_c, dtype)
     spline = Spline(l, r[-1], function(r))
     center = (.5, .5, .5)
@@ -557,8 +554,7 @@ def dummy_kpt_test():
     refgauss = gaussians[realgaussindex]
     refspline = splines[realgaussindex]
 
-    domain = Domain((a,a,a), (1,1,1))
-    gd = GridDescriptor(domain, (60, 60, 60))
+    gd = GridDescriptor((60, 60, 60), (a,a,a), (1,1,1))
 
     reflf_a = [create_localized_functions([refspline], gd, spos_c, dtype=dtype)
                for spos_c in spos_ac_ref]

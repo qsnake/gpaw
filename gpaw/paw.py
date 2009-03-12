@@ -25,7 +25,6 @@ from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions import GridWaveFunctions, LCAOWaveFunctions
 from gpaw.wavefunctions import EmptyWaveFunctions
 from gpaw.utilities.memory import estimate_memory
-from gpaw.domain import Domain
 from gpaw.utilities import gcd
 from gpaw.parameters import InputParameters
 from gpaw.setup import Setups
@@ -71,7 +70,6 @@ class PAW(PAWTextOutput):
         self.forces = ForceCalculator(self.timer)
         self.wfs = EmptyWaveFunctions()
         self.occupations = None
-        self.domain = None
         self.density = None
         self.hamiltonian = None
         self.atoms = None
@@ -418,12 +416,8 @@ class PAW(PAWTextOutput):
                 self.density = None
                 self.hamiltonian = None
 
-            # Create a Domain object:
-            self.domain = Domain(cell_cv, pbc_c)
-            self.domain.set_decomposition(domain_comm, parsize, N_c)
-
             # Construct grid descriptor for coarse grids for wave functions:
-            self.gd = GridDescriptor(self.domain, N_c)
+            self.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
 
             # do k-point analysis here? XXX
 
@@ -451,7 +445,7 @@ class PAW(PAWTextOutput):
             if par.stencils[1] != 9:
                 # Construct grid descriptor for fine grids for densities
                 # and potentials:
-                self.finegd = GridDescriptor(self.domain, 2 * N_c)
+                self.finegd = self.gd.refine()
             else:
                 # Special case (use only coarse grid):
                 self.finegd = self.gd

@@ -2,7 +2,6 @@ import numpy as np
 import numpy.random as ra
 from gpaw.utilities import equal
 from gpaw.setup import Setup
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions
 from gpaw.spline import Spline
@@ -32,8 +31,7 @@ for name in ['LDA', 'PBE']:
 ##    n = 120
     n = 70
     n = 90
-    domain = Domain((a, a, a))
-    gd = GridDescriptor(domain, (n, n, n))
+    gd = GridDescriptor((n, n, n), (a, a, a))
     pr = create_localized_functions(wt_j, gd, (0.5, 0.5, 0.5))
 
     coefs = np.identity(niAO, float)

@@ -160,7 +160,7 @@ class Density:
 
         # With periodic boundary conditions, the interpolation will
         # conserve the number of electrons.
-        if not self.gd.domain.pbc_c.all():
+        if not self.gd.pbc_c.all():
             # With zero-boundary conditions in one or more directions,
             # this is not the case.
             pseudo_charge = -(self.charge + comp_charge)
@@ -360,7 +360,7 @@ class Density:
 
         # With periodic boundary conditions, the interpolation will
         # conserve the number of electrons.
-        if not self.gd.domain.pbc_c.all():
+        if not self.gd.pbc_c.all():
             # With zero-boundary conditions in one or more directions,
             # this is not the case.
             pseudo_charge = -(self.charge + comp_charge)

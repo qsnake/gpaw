@@ -1,5 +1,4 @@
 from time import time
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.operators import Laplace
 import gpaw.mpi as mpi
@@ -7,9 +6,7 @@ import gpaw.mpi as mpi
 n = 96
 h = 0.1
 L = n * h
-domain = Domain([L, L, L])
-domain.set_decomposition(mpi.world, N_c=(n, n, n))
-gd = GridDescriptor(domain, (n, n, n))
+gd = GridDescriptor((n, n, n), [L, L, L])
 
 # Allocate arrays:
 a = gd.zeros(100) + 1.2

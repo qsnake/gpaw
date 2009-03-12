@@ -2,7 +2,6 @@ from math import pi, sqrt
 import numpy as np
 from gpaw.utilities.tools import coordinates
 from gpaw.utilities.gauss import Gaussian
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.utilities import equal
 from gpaw.mpi import world
@@ -15,11 +14,7 @@ def norm(a):
 a = 20 # Size of cell
 N = 48 # Number of grid points
 Nc = (N, N, N)                # Number of grid points along each axis
-d  = Domain((a,a,a),
-            pbc=(0,0,0)) # Domain object
-d.set_decomposition(world,
-                    N_c=Nc)   # Decompose domain on processors
-gd = GridDescriptor(d, Nc)    # Grid-descriptor object
+gd = GridDescriptor(Nc, (a,a,a), 0)    # Grid-descriptor object
 solver = PoissonSolver(nn=3)  # Numerical poisson solver
 solver.initialize(gd)
 solve = solver.solve
@@ -75,8 +70,8 @@ for L in range(7): # Angular index of gaussian
     # print result
     print 'L=%s, processor %s of %s: %s'%(
         L,
-        d.comm.rank + 1,
-        d.comm.size,
+        gd.comm.rank + 1,
+        gd.comm.size,
         residual)
 
     assert residual < 0.6

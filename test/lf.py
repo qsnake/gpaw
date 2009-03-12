@@ -1,6 +1,5 @@
 import numpy as np
 from gpaw.utilities import equal
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions, \
      LocFuncBroadcaster
@@ -10,8 +9,7 @@ import gpaw.mpi as mpi
 s = Spline(0, 1.0, [1.0, 0.5, 0.0])
 n = 40
 a = 8.0
-domain = Domain((a, a, a))
-gd = GridDescriptor(domain, (n, n, n))
+gd = GridDescriptor((n, n, n), (a, a, a))
 
 lfbc = LocFuncBroadcaster(mpi.world)
 p = [create_localized_functions([s], gd, (0.5, 0.5, 0.25 + 0.25 * i),

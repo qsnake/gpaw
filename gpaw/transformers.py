@@ -13,7 +13,7 @@ import _gpaw
 class _Transformer:
     def __init__(self, gdin, gdout, nn=1, dtype=float):
         self.dtype = dtype
-        neighbor_cd = gdin.domain.neighbor_cd
+        neighbor_cd = gdin.neighbor_cd
 
         if gdin.comm.size > 1:
             comm = gdin.comm

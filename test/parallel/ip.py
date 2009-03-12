@@ -1,15 +1,12 @@
 from time import time
 from gpaw.transformers import Transformer
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 from gpaw.mpi import world
 
 ngpts = 80
 N_c = (ngpts, ngpts, ngpts)
 a = 10.0
-domain = Domain((a, a, a))
-domain.set_decomposition(world, N_c=N_c)
-gd = GridDescriptor(domain, N_c)
+gd = GridDescriptor(N_c, (a, a, a))
 gdfine = gd.refine()
 interpolate = Transformer(gd, gdfine, 3).apply
 a1 = gd.empty()

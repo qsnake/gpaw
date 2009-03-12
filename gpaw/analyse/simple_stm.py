@@ -12,7 +12,6 @@ from ase.io.plt import write_plt
 import gpaw.mpi as mpi
 from gpaw.mpi import MASTER
 from gpaw.io.plt import read_plt
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 
 class SimpleStm:
@@ -39,7 +38,7 @@ class SimpleStm:
             self.calc.initialize_wave_functions()
             
             self.gd = self.calc.gd
-            self.offset_c = [int(not a) for a in self.gd.domain.pbc_c]
+            self.offset_c = [int(not a) for a in self.gd.pbc_c]
 
     def calculate_ldos(self, bias):
         """bias is the n, k, s list/tuple."""
@@ -156,9 +155,8 @@ class SimpleStm:
                 if N_c[c] % 2 == 1:
                     pbc_c[c] = False
                     N_c[c] += 1
-            self.gd = GridDescriptor(Domain(cell.diagonal() / Bohr, pbc_c), 
-                                     N_c)
-            self.offset_c = [int(not a) for a in self.gd.domain.pbc_c]
+            self.gd = GridDescriptor(N_c, cell.diagonal() / Bohr, pbc_c) 
+            self.offset_c = [int(not a) for a in self.gd.pbc_c]
             
         else:
             raise NotImplementedError('unknown file type "' + filetype + '"')

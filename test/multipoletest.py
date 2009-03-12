@@ -1,6 +1,5 @@
 from math import sqrt, pi
 import numpy as np
-from gpaw.domain import Domain
 from gpaw.setup import Setup
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions
@@ -8,8 +7,7 @@ from gpaw.xc_functional import XCFunctional
 
 n = 60#40 /8 * 10
 a = 10.0
-domain = Domain((a, a, a))
-gd = GridDescriptor(domain, (n, n, n))
+gd = GridDescriptor((n, n, n), (a, a, a))
 c_LL = np.identity(9, float)
 a_Lg = gd.zeros(9)
 nspins = 2

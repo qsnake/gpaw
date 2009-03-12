@@ -49,7 +49,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     dtype = calc.wfs.dtype
     if bfs is None:
         bfs = get_bfs(calc)
-    tci = TwoCenterIntegrals(calc.domain, calc.wfs.setups,
+    tci = TwoCenterIntegrals(calc.gd, calc.wfs.setups,
                              calc.wfs.gamma, calc.wfs.ibzk_qc)
     tci.set_positions(spos_ac)
 

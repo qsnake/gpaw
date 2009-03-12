@@ -3,7 +3,6 @@ import sys
 import numpy as np
 from gpaw import parsize, parsize_bands
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 from gpaw.mpi import world
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.operator import Operator
@@ -35,10 +34,8 @@ r = world.rank // D * D
 domain_comm = world.new_communicator(np.arange(r, r + D))
 band_comm = world.new_communicator(np.arange(world.rank % D, world.size, D))
 
-# Set up domain and grid descriptors:
-domain = Domain((a, a, a))
-domain.set_decomposition(domain_comm, parsize, N_c=(G, G, G))
-gd = GridDescriptor(domain, (G, G, G))
+# Set up grid descriptor:
+gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize)
 
 # Random wave functions:
 psit_mG = gd.empty(M)

@@ -70,7 +70,7 @@ class Coulomb:
                 self.k2, self.N3 = construct_reciprocal(self.gd)
             if method.endswith('ewald') and not hasattr(self, 'ewald'):
                 # cutoff radius
-                rc = 0.5 * np.average(self.gd.domain.cell_c)
+                rc = 0.5 * np.average(self.gd.cell_c)
                 # ewald potential: 1 - cos(k rc)
                 self.ewald = (np.ones(self.gd.n_c) - 
                               np.cos(np.sqrt(self.k2) * rc))

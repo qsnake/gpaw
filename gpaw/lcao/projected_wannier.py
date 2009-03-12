@@ -83,8 +83,8 @@ def get_phs(calc, s=0):
     dtype = calc.wfs.dtype
     spos_ac = calc.atoms.get_scaled_positions()
     setups = calc.wfs.setups
-    domain = calc.domain
-    tci = TwoCenterIntegrals(domain, setups, calc.wfs.gamma, calc.wfs.ibzk_qc)
+    gd = calc.gd
+    tci = TwoCenterIntegrals(gd, setups, calc.wfs.gamma, calc.wfs.ibzk_qc)
     tci.set_positions(spos_ac)
 
     nq = len(calc.wfs.ibzk_qc)

@@ -1,6 +1,5 @@
 from math import pi
 from gpaw.grid_descriptor import RadialGridDescriptor, GridDescriptor
-from gpaw.domain import Domain
 from gpaw.xc_functional import XC3DGrid, XCRadialGrid
 import numpy as np
 from gpaw.utilities import equal
@@ -26,7 +25,7 @@ for name in ['LDA', 'PBE']:
 
     N = 20
     a = 1.0
-    gd = GridDescriptor(Domain((a, a, a)), (N, N, N))
+    gd = GridDescriptor((N, N, N), (a, a, a))
     xc = XC3DGrid(name, gd)
     n = 0.02 * np.ones((N, N, N))
     n += 0.01 * np.sin(np.arange(N) * 2 * pi / N)

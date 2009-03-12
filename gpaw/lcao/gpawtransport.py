@@ -1829,14 +1829,9 @@ class GPAWTransport:
                 self.density = None
                 self.hamiltonian = None
 
-            # Create a Domain object:
-            from gpaw.domain import Domain
-            calc.domain = Domain(cell_cv, pbc_c)
-            calc.domain.set_decomposition(domain_comm, parsize, N_c)
-
             # Construct grid descriptor for coarse grids for wave functions:
             from gpaw.grid_descriptor import GridDescriptor
-            calc.gd = GridDescriptor(calc.domain, N_c)
+            calc.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
 
             # do k-point analysis here? XXX
 

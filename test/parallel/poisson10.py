@@ -1,6 +1,5 @@
 import numpy as np
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 from gpaw.operators import Laplace
 from gpaw.mpi import rank, size, world
 
@@ -17,9 +16,7 @@ assert D * B == size
 r = rank // B * B
 domain_comm = mpi.world.new_communicator(np.arange(r, r + D))
 band_comm = mpi.world.new_communicator(np.arange(rank, size, D))
-domain = Domain((a, a, a))
-domain.set_decomposition(domain_comm, (G, G, G))
-gd = GridDescriptor(domain, (G, G, G))
+gd = GridDescriptor((G, G, G), (a, a, a), comm=domain_comm)
 
 np.random.seed(rank)
 psit_mG = np.random.uniform(size=(M,) + tuple(gd.n_c))

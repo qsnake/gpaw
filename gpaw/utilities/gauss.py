@@ -61,7 +61,7 @@ class Gaussian:
 
     def set_width(self, a):
         """Set exponent of exp-function to -a on the boundary."""
-        self.a = 4 * a / min(self.gd.domain.cell_c)**2
+        self.a = 4 * a / min(self.gd.cell_c)**2
         
     def get_gauss(self, L):
         a = self.a

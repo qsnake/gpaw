@@ -17,7 +17,7 @@ class Domain:
     A ``Domain`` object (in `domain.py`) holds informaion on the unit
     cell and the boundary conditions"""
 
-    def __init__(self, cell, pbc=(True, True, True)):
+    def __init__(self, cell, pbc, comm, parsize, N_c):
         """Create Domain object from a unit cell and boundary conditions.
 
         The arguments are the lengths of the three axes, followed by a
@@ -35,7 +35,6 @@ class Domain:
          ``stride_c``    Strides.
          =============== ==================================================
         """
-
         self.cell_c = npy.array(cell, float)
         if self.cell_c.ndim == 1:
             self.cell_cv = npy.diag(self.cell_c)
@@ -48,9 +47,7 @@ class Domain:
 
         self.pbc_c = npy.asarray(pbc, bool)
 
-        self.set_decomposition(serial_comm, (1, 1, 1))
-
-        self.comms = {}
+        self.set_decomposition(comm, parsize, N_c)
 
     def set_decomposition(self, comm, parsize_c=None, N_c=None):
         """Set MPI-communicator and do domain decomposition.
@@ -139,14 +136,6 @@ class Domain:
                     else:
                         # No:
                         self.neighbor_cd[c, d] = -1
-
-    def get_communicator(self, group):
-        t = tuple(group)
-        if t in self.comms:
-            return self.comms[t]
-        comm = self.comm.new_communicator(npy.array(group))
-        self.comms[t] = comm
-        return comm
 
 
 def decompose_domain(ng, p):

@@ -8,6 +8,7 @@ import numpy as npy
 from gpaw.interaction import GInteraction2 as GInteraction
 from gpaw.neighbor_list import NeighborList
 
+# XXX remove this file?
 
 class Neighbor:
     def __init__(self, v_LL, dvdr_LLc, nucleus):

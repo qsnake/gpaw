@@ -84,7 +84,7 @@ def construct_reciprocal(gd):
     """
     # Calculate reciprocal lattice vectors
     dim = npy.reshape(gd.n_c, (3, 1, 1, 1))
-    dk = 2 * npy.pi / gd.domain.cell_c
+    dk = 2 * npy.pi / gd.cell_c
     dk.shape = (3, 1, 1, 1)
     k = ((npy.indices(gd.n_c) + dim / 2) % dim - dim / 2) * dk
     k2 = sum(k**2)
@@ -104,7 +104,7 @@ def coordinates(gd):
     """    
     I  = npy.indices(gd.n_c)
     dr = npy.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = npy.reshape(gd.h_c * gd.beg_c - .5 * gd.domain.cell_c, (3, 1, 1, 1))
+    r0 = npy.reshape(gd.h_c * gd.beg_c - .5 * gd.cell_c, (3, 1, 1, 1))
     r0 = npy.ones(I.shape) * r0
     xyz = r0 + I * dr
     r2 = npy.sum(xyz**2, axis=0)

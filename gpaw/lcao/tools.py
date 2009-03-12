@@ -168,7 +168,7 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
             H_qMM[kpt.s, kpt.q] -= S_qMM[kpt.q] * \
                                    calc.occupations.get_fermi_level()    
     
-    if wfs.gd.domain.comm.rank==0:
+    if wfs.gd.comm.rank==0:
         fd = file(filename+'%i.pckl' % wfs.kpt_comm.rank, 'wb')
         H_qMM *= Hartree
         pickle.dump((H_qMM, S_qMM),fd , 2)

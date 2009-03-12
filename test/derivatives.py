@@ -1,11 +1,10 @@
 import numpy as np
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 from gpaw.spline import Spline
 a = 4.0
-domain = Domain(cell=[a, a + 1, a + 2], pbc=(0, 1, 1))
-gd = GridDescriptor(domain, N_c=[16, 20, 20])
+gd = GridDescriptor(N_c=[16, 20, 20], cell_cv=[a, a + 1, a + 2],
+                    pbc_c=(0, 1, 1))
 spos_ac = np.array([[0.25, 0.15, 0.35], [0.5, 0.5, 0.5]])
 kpts_kc = None
 s = Spline(l=0, rmax=2.0, f_g=np.array([1, 0.9, 0.1, 0.0]))
@@ -25,28 +24,29 @@ if 1 in C_ani:
     d = C_ani[1][:, 1:].diagonal()
     assert d.ptp() < 4e-6
     C_ani[1][:, 1:] -= np.diag(d)
-    assert abs(C_ani[1]).max() < 8e-18
+    assert abs(C_ani[1]).max() < 5e-17
 d_aniv = c.dict(3, derivative=True)
 c.derivative(psi, d_aniv)
-print d_aniv
 if 1 in d_aniv:
     for v in range(3):
         assert abs(d_aniv[1][v - 1, 0, v] + 0.2144) < 5e-5
         d_aniv[1][v - 1, 0, v] = 0
     assert abs(d_aniv[1]).max() < 3e-16
 eps = 0.0001
-pos_av = np.dot(spos_ac, domain.cell_cv)
+pos_av = np.dot(spos_ac, gd.cell_cv)
 for v in range(3):
     pos_av[0, v] += eps
-    c.set_positions(np.dot(pos_av, domain.icell_cv.T))
+    c.set_positions(np.dot(pos_av, gd.icell_cv.T))
     c.integrate(psi, C_ani)
-    C0_n = C_ani[0][:, 0].copy()
+    if 0 in d_aniv:
+        C0_n = C_ani[0][:, 0].copy()
     pos_av[0, v] -= 2 * eps
-    c.set_positions(np.dot(pos_av, domain.icell_cv.T))
+    c.set_positions(np.dot(pos_av, gd.icell_cv.T))
     c.integrate(psi, C_ani)
-    C0_n -= C_ani[0][:, 0]
-    C0_n /= -2 * eps
-    assert abs(C0_n - d_aniv[0][:, 0, v]).max() < 7e-6
+    if 0 in d_aniv:
+        C0_n -= C_ani[0][:, 0]
+        C0_n /= -2 * eps
+        assert abs(C0_n - d_aniv[0][:, 0, v]).max() < 7e-6
  
 
     

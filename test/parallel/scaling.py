@@ -13,7 +13,6 @@ from gpaw.operators import Laplace
 from gpaw.transformers import Transformer
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.preconditioner import Preconditioner
-from gpaw.domain import Domain
 
 def run(ngpts, repeat, narrays, prec=False):
     if mpi.rank == 0:
@@ -35,9 +34,7 @@ def run(ngpts, repeat, narrays, prec=False):
 def go(comm, ngpts, repeat, narrays, out, prec):
     N_c = npy.array((ngpts, ngpts, ngpts))
     a = 10.0
-    domain = Domain((a, a, a))
-    domain.set_decomposition(comm, N_c=N_c)
-    gd = GridDescriptor(domain, N_c)
+    gd = GridDescriptor(N_c, (a, a, a), comm=comm))
     gdcoarse = gd.coarsen()
     gdfine = gd.refine()
     kin1 = Laplace(gd, -0.5, 1).apply
@@ -90,7 +87,7 @@ def go(comm, ngpts, repeat, narrays, out, prec):
             T[4] += t4b - t4a
 
     if mpi.rank == 0:
-        out.write(' %2d %2d %2d' % tuple(domain.parsize_c))
+        out.write(' %2d %2d %2d' % tuple(gd.parsize_c))
         out.write(' %12.6f %12.6f %12.6f %12.6f %12.6f\n' %
                   tuple([t / repeat / narrays for t in T]))
         out.flush()

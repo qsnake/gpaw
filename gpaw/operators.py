@@ -33,7 +33,7 @@ class _Operator:
         stride_c = npy.array([M_c[1] * M_c[2], M_c[2], 1])
         offset_p = npy.dot(offset_pc, stride_c)
         coef_p = contiguous(coef_p, float)
-        neighbor_cd = gd.domain.neighbor_cd
+        neighbor_cd = gd.neighbor_cd
         assert npy.rank(coef_p) == 1
         assert coef_p.shape == offset_p.shape
         assert dtype in [float, complex]
@@ -95,7 +95,7 @@ else:
 def Gradient(gd, c, scale=1.0, dtype=float):
     h = gd.h_c
     a = 0.5 / h * scale
-    d = gd.domain.iucell_cv[:,c] 
+    d = gd.iucell_cv[:,c] 
 
     coef_p = []
     offset_pc = []  
@@ -147,7 +147,7 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
     n = int(n)
     h = gd.h_c
     h2 = h**2
-    iucell_cv = gd.domain.iucell_cv
+    iucell_cv = gd.iucell_cv
 
     d2 = (iucell_cv**2).sum(1) # gradient magnitudes squared [(Delta_xyzLattice_vector_i)**2]
 
@@ -194,14 +194,14 @@ from numpy.fft import fftn, ifftn
 
 class FTLaplace:
     def __init__(self, gd, scale, dtype):
-        assert gd.domain.comm.size == 1 and gd.domain.pbc_c.all()
+        assert gd.comm.size == 1 and gd.pbc_c.all()
 
         N_c1 = gd.N_c[:, npy.newaxis]
         i_cq = npy.indices(gd.N_c).reshape((3, -1))
         i_cq += N_c1 // 2
         i_cq %= N_c1
         i_cq -= N_c1 // 2
-        B_vc = 2.0 * pi * gd.domain.icell_cv.T
+        B_vc = 2.0 * pi * gd.icell_cv.T
         k_vq = npy.dot(B_vc, i_cq)
         k_vq *= k_vq
         self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)

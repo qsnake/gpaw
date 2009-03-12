@@ -3,13 +3,12 @@
 
 import numpy as np
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 from gpaw.transformers import Transformer
 import time
 
 
 n = 20
-gd = GridDescriptor(Domain((1,1,1)), (n,n,n))
+gd = GridDescriptor((n,n,n))
 np.random.seed(8)
 a = np.random.random((n, n, n))
 

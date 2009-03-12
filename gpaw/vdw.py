@@ -432,8 +432,8 @@ class RealSpaceVDWFunctional(VDWFunctional):
         self.Dhistogram = np.zeros(200)
         dr = 0.05
         dD = 0.05
-        E_vdwnl = _gpaw.vdw(n_i, q0_i, R_ic, gd.domain.cell_c,
-                            gd.domain.pbc_c,
+        E_vdwnl = _gpaw.vdw(n_i, q0_i, R_ic, gd.cell_c,
+                            gd.pbc_c,
                             repeat_c,
                             self.phi_ij, self.delta_i[1], self.D_j[1],
                             iA, iB,
@@ -555,8 +555,8 @@ class FFTVDWFunctional(VDWFunctional):
     def set_grid_descriptor(self, gd):
         if (self.gd is not None and
             (self.gd.N_c == gd.N_c).all() and
-            (self.gd.domain.pbc_c == gd.domain.pbc_c).all() and
-            (self.gd.domain.cell_c == gd.domain.cell_c).all()):
+            (self.gd.pbc_c == gd.pbc_c).all() and
+            (self.gd.cell_c == gd.cell_c).all()):
             return
 
         VDWFunctional.set_grid_descriptor(self, gd)
@@ -564,12 +564,12 @@ class FFTVDWFunctional(VDWFunctional):
         if self.size is None:
             self.shape = gd.N_c.copy()
             for c, n in enumerate(self.shape):
-                if not gd.domain.pbc_c[c]:
+                if not gd.pbc_c[c]:
                     self.shape[c] = int(2**ceil(log(n) / log(2)))
         else:
             self.shape = np.array(self.size)
             
-        d_c = gd.domain.cell_c / (2 * pi * gd.N_c)
+        d_c = gd.cell_c / (2 * pi * gd.N_c)
         kx2 = fftfreq(self.shape[0], d_c[0]).reshape((-1,  1,  1))**2
         ky2 = fftfreq(self.shape[1], d_c[1]).reshape(( 1, -1,  1))**2
         kz2 = fftfreq(self.shape[2], d_c[2]).reshape(( 1,  1, -1))**2

@@ -1,14 +1,13 @@
 from math import sqrt
 from gpaw.poisson import PoissonSolver
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 
 L = 2.87 / 0.529177
 def f(n):
     N = 2 * n
-    domain = Domain((L, L, L))
-    gd = GridDescriptor(domain, (N, N, N))
+    gd = GridDescriptor((N, N, N), (L, L, L))
     a = gd.zeros()
+    print a.shape
     p = PoissonSolver(nn=1, relax='J')
     p.initialize(gd)
     cut = N / 2.0 * 0.9
@@ -32,6 +31,7 @@ def f(n):
     I = gd.integrate(a)
     b = gd.zeros()
     p.solve(b, a)#, eps=1e-20)
-    return b[0,0,0]-b[C,C,C]
+    return b
 
-assert f(8) == 0
+b = f(8)
+assert b[0,0,0]-b[8,8,8] == 0

@@ -98,8 +98,8 @@ class PAWTextOutput:
         for c in range(3):
             t('  %s-axis   %s   %8.4f   %3d    %8.4f' %
               ('xyz'[c],
-               ['no ', 'yes'][int(self.domain.pbc_c[c])],
-               Bohr * self.domain.cell_c[c],
+               ['no ', 'yes'][int(self.gd.pbc_c[c])],
+               Bohr * self.gd.cell_c[c],
                self.gd.N_c[c],
                Bohr * self.gd.h_c[c]))
         t()
@@ -219,10 +219,10 @@ class PAWTextOutput:
                 t('Parallelization Over k-points on %d Processors' %
                   self.wfs.kpt_comm.size)
 
-        domain = self.domain
-        if domain.comm.size > 1:
+        gd = self.gd
+        if gd.comm.size > 1:
             t('Using Domain Decomposition: %d x %d x %d' %
-              tuple(domain.parsize_c))
+              tuple(gd.parsize_c))
 
         if self.wfs.symmetry is not None:
             self.wfs.symmetry.print_symmetries(t)

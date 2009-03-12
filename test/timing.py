@@ -4,13 +4,12 @@
 import numpy as np
 import numpy.random as ra
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.domain import Domain
 from gpaw.transformers import Transformer
 import time
 
 
 n = 6
-gda = GridDescriptor(Domain((1,1,1)), (n,n,n))
+gda = GridDescriptor((n,n,n))
 gdb = gda.refine()
 gdc = gdb.refine()
 a = gda.zeros()

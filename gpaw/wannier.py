@@ -13,7 +13,7 @@ class Wannier:
         self.spin = spin
         self.Z_nnc = None
         if calc is not None:
-            self.cell_c = calc.domain.cell_c * Bohr
+            self.cell_c = calc.gd.cell_c * Bohr
             if nbands is None:
                 nbands = calc.get_number_of_bands()
             self.Z_nnc = npy.empty((nbands, nbands, 3), complex)

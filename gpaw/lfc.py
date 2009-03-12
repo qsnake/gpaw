@@ -98,7 +98,7 @@ class Sphere:
         self.Mmax = M
         
         if ng > 0:
-            self.rank = gd.domain.get_rank_from_position(spos_c)
+            self.rank = gd.get_rank_from_position(spos_c)
         else:
             self.rank = None
             self.ranks = None
@@ -112,7 +112,7 @@ class Sphere:
         return True
 
     def spline_to_grid(self, spline, gd, start_c, end_c, spos_c):
-        dom = gd.domain
+        dom = gd
         h_cv = dom.cell_cv / gd.N_c[:, None]
         pos_v = np.dot(spos_c, dom.cell_cv)
         return _gpaw.spline_to_grid(spline.spline, start_c, end_c, pos_v, h_cv,
@@ -286,7 +286,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             sdisp_Wc[W:W + nw] = sphere.sdisp_wc
             self.pos_Wv[W:W + nw] = np.dot(spos_ac[a] -
                                            np.array(sphere.sdisp_wc),
-                                           self.gd.domain.cell_cv)
+                                           self.gd.cell_cv)
             for G_b in sphere.G_wb:
                 B2 = B1 + len(G_b)
                 self.G_B[B1:B2] = G_b
@@ -512,7 +512,7 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.domain.cell_cv / gd.N_c
+        h_cv = gd.cell_cv / gd.N_c
         self.lfc.derivative(a_xG, c_xMv, h_cv, gd.n_c, cspline_M,
                             gd.beg_c, self.pos_Wv, q)
 
@@ -694,7 +694,7 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                 nm = 2 * spline.get_angular_momentum_number() + 1
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
-        h_cv = gd.domain.cell_cv / gd.N_c
+        h_cv = gd.cell_cv / gd.N_c
         self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_MMc, h_cv,
                                                        gd.n_c, q,
                                                        np.array(cspline_M),
@@ -892,16 +892,12 @@ if extra_parameters.get('usenewlfc'):
 
 def test():
     from gpaw.grid_descriptor import GridDescriptor
-    from gpaw.domain import Domain
-    import gpaw.mpi as mpi
 
     ngpts = 40
     h = 1.0 / ngpts
     N_c = (ngpts, ngpts, ngpts)
     a = h * ngpts
-    domain = Domain((a, a, a))
-    domain.set_decomposition(mpi.world, N_c=N_c)
-    gd = GridDescriptor(domain, N_c)
+    gd = GridDescriptor(N_c, (a, a, a))
     
     from gpaw.spline import Spline
     a = np.array([1, 0.9, 0.8, 0.0])

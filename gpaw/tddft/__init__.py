@@ -213,10 +213,9 @@ class TDDFT(GPAW):
                 if wfs.nspins == 2:
                     self.text('Parallelization Over Spin')
 
-                domain = self.domain
-                if domain.comm.size > 1:
+                if self.gd.comm.size > 1:
                     self.text('Using Domain Decomposition: %d x %d x %d' %
-                              tuple(domain.parsize_c))
+                              tuple(self.gd.parsize_c))
 
                 if wfs.band_comm.size > 1:
                     self.text('Parallelization Over bands on %d Processors' %

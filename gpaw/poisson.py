@@ -102,10 +102,10 @@ class PoissonSolver:
             # System is charge neutral. Use standard solver
             return self.solve_neutral(phi, rho, eps=eps)
         
-        elif abs(charge) > maxcharge and self.gd.domain.pbc_c.all():
+        elif abs(charge) > maxcharge and self.gd.pbc_c.all():
             # System is charged and periodic. Subtract a homogeneous
             # background charge
-            background = charge / npy.product(self.gd.domain.cell_c)
+            background = charge / npy.product(self.gd.cell_c)
 
             if self.charged_periodic_correction == None:
                 print "+-----------------------------------------------------+"
@@ -113,7 +113,7 @@ class PoissonSolver:
                 print "| Ewald potential from a lattice of point charges in  |"
                 print "| a homogenous background density                     |"
                 print "+-----------------------------------------------------+"
-                ewald = Ewald(self.gd.domain.cell_cv)
+                ewald = Ewald(self.gd.cell_cv)
                 self.charged_periodic_correction = ewald.get_electrostatic_potential([.0,.0,.0], npy.array([[.0,.0,.0]]), [-1], 0)
                 print "Potential shift will be ", \
                       self.charged_periodic_correction , "Ha."
@@ -128,7 +128,7 @@ class PoissonSolver:
             phi += charge * self.charged_periodic_correction
             return iters            
         
-        elif abs(charge) > maxcharge and not self.gd.domain.pbc_c.any():
+        elif abs(charge) > maxcharge and not self.gd.pbc_c.any():
             # The system is charged and in a non-periodic unit cell.
             # Determine the potential by 1) subtract a gaussian from the
             # density, 2) determine potential from the neutralized density
@@ -177,7 +177,7 @@ class PoissonSolver:
             raise PoissonConvergenceError(msg)
         
         # Set the average potential to zero in periodic systems
-        if npy.alltrue(self.gd.domain.pbc_c):
+        if npy.alltrue(self.gd.pbc_c):
             phi_ave = self.gd.comm.sum(npy.sum(phi.ravel()))
             N_c = self.gd.get_size_of_global_array()
             phi_ave /= npy.product(N_c)
@@ -256,7 +256,7 @@ class PoissonFFTSolver(PoissonSolver):
     """FFT implementation of the poisson solver"""
     def initialize(self, gd, load_gauss=False):
         self.gd = gd
-        if self.gd.domain.comm.size > 1:
+        if self.gd.comm.size > 1:
             raise RuntimeError('Cannot do parallel FFT.')
         self.k2, self.N3 = construct_reciprocal(self.gd)
         if load_gauss:
@@ -285,14 +285,14 @@ class FFTPoissonSolver(PoissonSolver):
         pass
 
     def initialize(self, gd):
-        assert gd.domain.comm.size == 1 and gd.domain.pbc_c.all()
+        assert gd.comm.size == 1 and gd.pbc_c.all()
 
         N_c1 = gd.N_c[:, npy.newaxis]
         i_cq = npy.indices(gd.N_c).reshape((3, -1))
         i_cq += N_c1 // 2
         i_cq %= N_c1
         i_cq -= N_c1 // 2
-        B_vc = 2.0 * pi * gd.domain.icell_cv.T
+        B_vc = 2.0 * pi * gd.icell_cv.T
         k_vq = npy.dot(B_vc, i_cq)
         k_vq *= k_vq
         self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)

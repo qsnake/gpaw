@@ -196,8 +196,8 @@ class TwoCenterIntegralSplines:
 
 
 class TwoCenterIntegrals:
-    def __init__(self, domain, setups, gamma=True, ibzk_qc=None):
-        self.domain = domain
+    def __init__(self, gd, setups, gamma=True, ibzk_qc=None):
+        self.gd = gd
         self.setups = setups
         self.gamma = gamma
         self.ibzk_qc = ibzk_qc
@@ -242,8 +242,8 @@ class TwoCenterIntegrals:
             
             self.neighbors = NeighborList(cutoff_a, skin=0, sorted=True)
             self.atoms = Atoms(scaled_positions=spos_ac,
-                               cell=self.domain.cell_cv,
-                               pbc=self.domain.pbc_c)
+                               cell=self.gd.cell_cv,
+                               pbc=self.gd.pbc_c)
         else:
             self.atoms.set_scaled_positions(spos_ac)
         
@@ -314,7 +314,7 @@ class TwoCenterIntegrals:
         # correction.  Rather this is done in the force code.  Perhaps
         # this should be changed.
 
-        comm = self.domain.comm
+        comm = self.gd.comm
         comm.sum(S_qxMM)
         comm.sum(T_qxMM)
         if derivative:
@@ -336,7 +336,7 @@ class TwoCenterIntegrals:
             matrix_xMM += op * (tri2 * matrix_xMM).swapaxes(-1, -2).conj()
 
     def atom_iter(self, spos_ac, P_aqMi):
-        cell_cv = self.domain.cell_cv
+        cell_cv = self.gd.cell_cv
         for a1, spos1_c in enumerate(spos_ac):
             P1_qMi = P_aqMi.get(a1)
             i, offsets = self.neighbors.get_neighbors(a1)

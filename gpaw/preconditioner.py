@@ -59,7 +59,7 @@ class Teter:
         self.dtype = dtype
         dims = gd.n_c.copy()
         dims.shape = (3, 1, 1, 1)
-        icell = 1.0 / np.array(gd.domain.cell_c)
+        icell = 1.0 / np.array(gd.cell_c)
         icell.shape = (3, 1, 1, 1)
         q_cq = ((np.indices(gd.n_c) + dims / 2) % dims - dims / 2) * icell
         self.q2_q = np.sum(q_cq**2)

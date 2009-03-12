@@ -72,7 +72,7 @@ class WaveFunctions(EmptyWaveFunctions):
         ks0 = kpt_comm.rank * mynks
         k0 = ks0 % self.nibzkpts
         self.kpt_u = []
-        sdisp_cd = gd.domain.sdisp_cd
+        sdisp_cd = gd.sdisp_cd
         for ks in range(ks0, ks0 + mynks):
             s, k = divmod(ks, self.nibzkpts)
             q = k - k0
@@ -187,7 +187,7 @@ class WaveFunctions(EmptyWaveFunctions):
                                                     self.symmetry.maps))
 
     def set_positions(self, spos_ac):
-        self.rank_a = self.gd.domain.get_ranks_from_positions(spos_ac)
+        self.rank_a = self.gd.get_ranks_from_positions(spos_ac)
         if self.symmetry is not None:
             self.symmetry.check(spos_ac)
 
@@ -314,7 +314,7 @@ class LCAOWaveFunctions(WaveFunctions):
         
         if not self.tci:
             # First time:
-            self.tci = TwoCenterIntegrals(self.gd.domain, self.setups,
+            self.tci = TwoCenterIntegrals(self.gd, self.setups,
                                           self.gamma, self.ibzk_qc)
             
             self.S_qMM = np.empty((nq, nao, nao), self.dtype)
@@ -680,7 +680,7 @@ class GridWaveFunctions(WaveFunctions):
 
         shape = tuple(gd2.n_c)
 
-        scale = np.sqrt(12 / np.product(gd2.domain.cell_c))
+        scale = np.sqrt(12 / np.product(gd2.cell_c))
 
         from numpy.random import random, seed
 

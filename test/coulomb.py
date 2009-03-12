@@ -1,7 +1,6 @@
 import numpy as np
 from math import pi
 from gpaw.coulomb import Coulomb
-from gpaw.domain import Domain
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world, parallel
 from gpaw.utilities.gauss import coordinates
@@ -9,11 +8,8 @@ from gpaw.utilities import equal
 import time
 
 def test_coulomb(N=2**6, a=20):
-    d  = Domain((a, a, a),
-            pbc=(0,0,0)) # domain object
     Nc = (N, N, N)            # Number of grid point
-    d.set_decomposition(world, N_c=Nc) # decompose domain on processors
-    gd = GridDescriptor(d, Nc)# grid-descriptor object
+    gd = GridDescriptor(Nc, (a, a, a), 0)# grid-descriptor object
     xyz, r2 = coordinates(gd) # matrix with the square of the radial coordinate
     r  = np.sqrt(r2)         # matrix with the values of the radial coordinate
     nH = np.exp(-2 * r) / pi # density of the hydrogen atom
