@@ -413,9 +413,9 @@ class LCAOWaveFunctions(WaveFunctions):
             rho_MM = np.dot(kpt.C_nM.T.conj() * kpt.f_n, kpt.C_nM)
         else:
             rho_MM = kpt.rho_MM
-
+        
         rhoT_MM = rho_MM.T.copy()
-
+        
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
         H_MM = self.eigensolver.H_MM.copy()
         # H_MM is halfway full of garbage!  Only lower triangle is
@@ -424,103 +424,98 @@ class LCAOWaveFunctions(WaveFunctions):
         ltri = np.tri(nao)
         utri = np.tri(nao, nao, -1).T
         H_MM[:] = H_MM * ltri + H_MM.T.conj() * utri
-
-        ChcEFCT_MM = np.dot(np.dot(np.linalg.inv(S_MM), H_MM), rho_MM).T.copy()
-        del H_MM
-
+        
+        #
+        #         -----                    -----
+        #          \    -1                  \    *
+        # E      =  )  S     H    rho     =  )  c     eps  f  c
+        #  mu nu   /    mu x  x z    z nu   /    n mu    n  n  n nu
+        #         -----                    -----
+        #          x z                       n
+        #
+        # We use the transpose of that matrix
+        ET_MM = np.dot(np.dot(np.linalg.inv(S_MM), H_MM), rho_MM).T.copy()
+        del H_MM, rho_MM
+        
         # Useful check - whether C^dagger eps f C == S^(-1) H rho
         # Although this won't work if people are supplying a customized rho
-        #assert abs(ChcEFC_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
-        #                              kpt.C_nM)).max() < 1e-8
-
+        #assert abs(ET_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
+        #                          kpt.C_nM)).max() < 1e-8
+        
         basis_functions = self.basis_functions
         my_atom_indices = basis_functions.my_atom_indices
         atom_indices = basis_functions.atom_indices
-
+        
         def _slices(indices):
             for a in indices:
                 M1 = basis_functions.M_a[a]
                 M2 = M1 + self.setups[a].niAO
                 yield a, M1, M2
-
+        
         def slices():
             return _slices(atom_indices)
-
+        
         def my_slices():
             return _slices(my_atom_indices)
-
+        
         # Kinetic energy contribution
-        dEdTdTdR_av = np.zeros_like(F_av)
+        dET_av = np.zeros_like(F_av)
+        dEdTrhoT_vMM = (dTdR_vMM * rhoT_MM[np.newaxis]).real
         for a, M1, M2 in my_slices():
-            for v in range(3):
-                dTdR_iM = dTdR_vMM[v, M1:M2]
-                rhoT_iM = rhoT_MM[M1:M2]
-                dEdTdTdR_av[a, v] = -2 * (dTdR_iM * rhoT_iM).real.sum()
-
-        # Density matrix contributions
-        dEdrhodrhodR_av = np.zeros_like(F_av)
-        pawcorrection_MM = np.zeros((nao, nao), self.dtype)        
-        dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
-
-        for v in range(3):
-            for a, M1, M2 in slices():
-                pawcorrection_MM.fill(0.0)
-                for b in my_atom_indices:
-                    P_Mi = self.P_aqMi[b][q]
-                    PdO_Mi = np.dot(P_Mi, self.setups[b].O_ii)
-                    dOP_iM = PdO_Mi.T.conj()
-                    dPdR_Mi = dPdR_avMi[b][v]
-                    sign = cmp(b, a)
-                    if sign != 0:
-                        A_iM = np.dot(dPdR_Mi[M1:M2, :], dOP_iM)
-                        B_Mi = np.dot(PdO_Mi, dPdR_Mi.T.conj()[:, M1:M2])
-                        pawcorrection_MM[M1:M2, :] += A_iM * sign
-                        pawcorrection_MM[:, M1:M2] += B_Mi * sign
-                    else:
-                        A1_MM = np.dot(dPdR_Mi[:M1, :], dOP_iM)
-                        A2_MM = np.dot(dPdR_Mi[M2:, :], dOP_iM)
-                        B1_MM = np.dot(PdO_Mi, dPdR_Mi.T.conj()[:, :M1])
-                        B2_MM = np.dot(PdO_Mi, dPdR_Mi.T.conj()[:, M2:])
-                        pawcorrection_MM[:M1, :] -= A1_MM
-                        pawcorrection_MM[M2:, :] += A2_MM
-                        pawcorrection_MM[:, :M1] -= B1_MM
-                        pawcorrection_MM[:, M2:] += B2_MM
-                
-                dEdrhodrhodR_av[a, v] -= (ChcEFCT_MM
-                                          * pawcorrection_MM).real.sum()
-            
-            for a, M1, M2 in my_slices():
-                dThetadR_iM = dThetadR_vMM[v, M1:M2, :]
-                dEdrhodrhodR_av[a, v] += 2 * (ChcEFCT_MM[M1:M2, :] *
-                                              dThetadR_iM).real.sum()
+            dET_av[a, :] = -2 * dEdTrhoT_vMM[:, M1:M2].sum(-1).sum(-1)
+        del dEdTrhoT_vMM
         
         # Potential contribution
-        dEdndndR_av = np.zeros_like(F_av)
+        dEn_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
         DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
         basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_MMv, q)
         for a, M1, M2 in slices():
             for v in range(3):
-                dEdndndR_av[a, v] = -2 * (DVt_MMv[M1:M2, :, v]
-                                          * rhoT_MM[M1:M2, :]).real.sum()
+                dEn_av[a, v] = -2 * (DVt_MMv[M1:M2, :, v]
+                                     * rhoT_MM[M1:M2, :]).real.sum()
+        del DVt_MMv
+        
+        # Density matrix contribution due to basis overlap
+        dErho_av = np.zeros_like(F_av)
+        dThetadRE_vMM = (dThetadR_vMM * ET_MM[np.newaxis]).real
+        for a, M1, M2 in my_slices():
+            dErho_av[a, :] = 2 * dThetadRE_vMM[:, M1:M2].sum(-1).sum(-1)
+        del dThetadRE_vMM
+
+        # Density matrix contribution from PAW correction
+        dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
+        for v in range(3):
+            for b in my_atom_indices:
+                P_Mi = self.P_aqMi[b][q]
+                PdO_Mi = np.dot(P_Mi, self.setups[b].O_ii)
+                dOP_iM = PdO_Mi.T.conj()
+                dPdR_Mi = dPdR_avMi[b][v]
+                ZE_MM = (np.dot(dPdR_Mi, dOP_iM) * ET_MM).real
+                for a, M1, M2 in slices():
+                    if a != b:
+                        dE = np.sign(a - b) * ZE_MM[M1:M2].sum()
+                    if a == b:
+                        dE = ZE_MM[:M1].sum() - ZE_MM[M2:].sum()
+                    dErho_av[a, v] += 2 * dE
         
         # Atomic density contribution
-        dEdDdDdR_av = np.zeros_like(F_av)
+        dED_av = np.zeros_like(F_av)
         for v in range(3):
-            for a, M1, M2 in slices():
-                for b in my_atom_indices:
-                    dPdR_Mi = dPdR_avMi[b][v]
-                    rhoP_Mi = np.dot(rho_MM, self.P_aqMi[b][q])
-                    Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
+            for b in my_atom_indices:
+                dPdR_Mi = dPdR_avMi[b][v]
+                Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
+                PH_Mi = np.dot(self.P_aqMi[b][q], Hb_ii)
+                PHPrhoT_MM = np.dot(PH_Mi, dPdR_Mi.T.conj()) * rhoT_MM
+                for a, M1, M2 in slices():
                     if a != b:
-                        A_ii = np.dot(dPdR_Mi.T.conj()[:, M1:M2],
-                                      rhoP_Mi[M1:M2, :]) * cmp(b, a)
+                        dE = np.sign(b - a) * PHPrhoT_MM[:, M1:M2].real.sum()
                     else:
-                        A_ii = np.dot(dPdR_Mi.T.conj()[:, M2:], rhoP_Mi[M2:])\
-                               - np.dot(dPdR_Mi.T.conj()[:, :M1],rhoP_Mi[:M1])
-                    dEdDdDdR_av[a, v] += 2 * (Hb_ii * A_ii).real.sum()
-        
-        F_av -= (dEdrhodrhodR_av + dEdTdTdR_av + dEdDdDdR_av + dEdndndR_av)
+                        dE = (PHPrhoT_MM[:, M2:].real.sum()
+                              - PHPrhoT_MM[:, :M1].real.sum())
+                    dED_av[a, v] += 2 * dE
+                        
+        F_av -= (dET_av + dEn_av + dErho_av + dED_av)
 
 
 from gpaw.eigensolvers import get_eigensolver
