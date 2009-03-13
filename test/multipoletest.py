@@ -33,8 +33,9 @@ for soft in [False]:
             print soft, l, m, Q0, Q1_m
             assert abs(Q0) < 2e-6
             assert np.alltrue(abs(Q1_m) < 3e-5)
-    b_Lg = np.reshape(a_Lg, (9, n**3))
+    b_Lg = np.reshape(a_Lg, (9, -1))
     S_LL = np.inner(b_Lg, b_Lg)
+    gd.comm.sum(S_LL)
     S_LL.ravel()[::10] = 0.0
     print max(abs(S_LL).ravel())
     assert max(abs(S_LL).ravel()) < 3e-4

@@ -1,30 +1,24 @@
 import numpy as np
 from gpaw.utilities import equal
 from gpaw.grid_descriptor import GridDescriptor
-from gpaw.localized_functions import create_localized_functions, \
-     LocFuncBroadcaster
 from gpaw.spline import Spline
 import gpaw.mpi as mpi
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 
 s = Spline(0, 1.0, [1.0, 0.5, 0.0])
 n = 40
 a = 8.0
-gd = GridDescriptor((n, n, n), (a, a, a))
+gd = GridDescriptor((n, n, n), (a, a, a), comm=mpi.serial_comm)
+c = LFC(gd, [[s], [s], [s]], kpt_comm=mpi.world)
+c.set_positions([(0.5, 0.5, 0.25 + 0.25 * i) for i in [0, 1, 2]])
+b = gd.zeros()
+c.add(b)
+x = gd.integrate(b)
 
-lfbc = LocFuncBroadcaster(mpi.world)
-p = [create_localized_functions([s], gd, (0.5, 0.5, 0.25 + 0.25 * i),
-                                lfbc=lfbc)
-     for i in [0, 1, 2]]
-lfbc.broadcast()
-c = np.ones(1)
-a = gd.zeros()
-for q in p:
-    q.add(a, c)
-x = np.sum(a.ravel())
-
-p = [create_localized_functions([s], gd, (0.75, 0.25, 0.25 * i))
-     for i in [0, 1, 2]]
-a[:] = 0.0
-for q in p:
-    q.add(a, c)
-equal(x, np.sum(a.ravel()), 1e-13)
+gd = GridDescriptor((n, n, n), (a, a, a), comm=mpi.serial_comm)
+c = LFC(gd, [[s], [s], [s]], kpt_comm=mpi.world)
+c.set_positions([(0.5, 0.5, 0.25 + 0.25 * i) for i in [0, 1, 2]])
+b = gd.zeros()
+c.add(b)
+y = gd.integrate(b)
+equal(x, y, 1e-13)

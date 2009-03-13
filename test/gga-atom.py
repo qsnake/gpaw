@@ -8,7 +8,6 @@ from gpaw.spline import Spline
 from gpaw.xc_functional import XCFunctional, XC3DGrid
 from gpaw.utilities import pack
 
-
 ra.seed(8)
 nspins=1
 for name in ['LDA', 'PBE']:

@@ -19,8 +19,8 @@ def test_coulomb(N=2**6, a=20):
         C.load('real')
         t0 = time.time()
         print 'Processor %s of %s: %s Ha in %s sec'%(
-            d.comm.rank + 1,
-            d.comm.size,
+            gd.comm.rank + 1,
+            gd.comm.size,
             -.5 * C.coulomb(nH, method='real'),
             time.time() - t0)
         return

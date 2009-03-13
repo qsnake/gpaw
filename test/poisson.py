@@ -1,6 +1,9 @@
 from math import sqrt
+import numpy as np
+from gpaw.spline import Spline
 from gpaw.poisson import PoissonSolver
 from gpaw.grid_descriptor import GridDescriptor
+from gpaw.lfc import LocalizedFunctionsCollection as LFC
 
 L = 2.87 / 0.529177
 def f(n):
@@ -11,19 +14,10 @@ def f(n):
     p = PoissonSolver(nn=1, relax='J')
     p.initialize(gd)
     cut = N / 2.0 * 0.9
-    C = N // 2
-    for x in range(N):
-        for y in range(N):
-            for z in range(N):
-                r = sqrt((x-C)**2 + (y-C)**2 + (z-C)**2) / cut
-                if r < 1:
-                    a[x, y, z] = 1 - (3 - 2 * r) * r**2
-    for x in range(1-C, C+1):
-        for y in range(1-C, C+1):
-            for z in range(1-C, C+1):
-                r = sqrt(x**2 + y**2 + z**2) / cut
-                if r < 1:
-                    a[x, y, z] = 1 - (3 - 2 * r) * r**2
+    s = Spline(l=0, rmax=cut, f_g=np.array([1, 0.5, 0.0]))
+    c = LFC(gd, [[s], [s]])
+    c.set_positions([(0, 0, 0), (0.5, 0.5, 0.5)])
+    c.add(a)
 
     I0 = gd.integrate(a)
     a -= gd.integrate(a) / L**3
@@ -31,7 +25,7 @@ def f(n):
     I = gd.integrate(a)
     b = gd.zeros()
     p.solve(b, a)#, eps=1e-20)
-    return b
+    return gd.collect(b, broadcast=1)
 
 b = f(8)
-assert b[0,0,0]-b[8,8,8] == 0
+assert abs(b[0,0,0]-b[8,8,8]) < 6e-17
