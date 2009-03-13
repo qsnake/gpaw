@@ -7,6 +7,7 @@ from gpaw.localized_functions import create_localized_functions
 from gpaw.spline import Spline
 from gpaw.xc_functional import XCFunctional, XC3DGrid
 from gpaw.utilities import pack
+from gpaw.mpi import serial_comm
 
 ra.seed(8)
 nspins=1
@@ -30,7 +31,7 @@ for name in ['LDA', 'PBE']:
 ##    n = 120
     n = 70
     n = 90
-    gd = GridDescriptor((n, n, n), (a, a, a))
+    gd = GridDescriptor((n, n, n), (a, a, a), comm=serial_comm)
     pr = create_localized_functions(wt_j, gd, (0.5, 0.5, 0.5))
 
     coefs = np.identity(niAO, float)
