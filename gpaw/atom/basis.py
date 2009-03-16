@@ -313,30 +313,30 @@ class BasisMaker:
         #print 'Done!'
         return psi_g, e, de, vconf, rc
 
-    def rsplit_by_norm(self, l, u, tailnorm, txt):
+    def rsplit_by_norm(self, l, u, tailnorm_squared, txt):
         """Find radius outside which remaining tail has a particular norm."""
         g = self.generator
-        norm = npy.dot(g.dr, u*u)
-        partial_norm = 0.
+        norm_squared = npy.dot(g.dr, u*u)
+        partial_norm_squared = 0.
         i = len(u) - 1
-        absolute_tailnorm = tailnorm * norm
-        while partial_norm < absolute_tailnorm:
+        absolute_tailnorm_squared = tailnorm_squared * norm_squared
+        while partial_norm_squared < absolute_tailnorm_squared:
             # Integrate backwards.  This is important since the pseudo
             # wave functions have strange behaviour near the core.
-            partial_norm += g.dr[i] * u[i]**2
+            partial_norm_squared += g.dr[i] * u[i]**2
             i -= 1
         rsplit = g.r[i+1]
         msg = ('Tail norm %.03f :: rsplit=%.02f Bohr' %
-               (partial_norm / norm, rsplit))
+               ((partial_norm_squared / norm_squared)**.5, rsplit))
         print >> txt, msg
         splitwave = self.make_split_valence_vector(u, l, rsplit)
-        return rsplit, partial_norm, splitwave
+        return rsplit, partial_norm_squared, splitwave
 
     def generate(self, zetacount=2, polarizationcount=1,
-                 tailnorm=(0.03, 0.1, 0.4), energysplit=.3, tolerance=1.0e-3,
-                 referencefile=None, referenceindex=None, rcutpol_rel=1., 
-                 rcutmax=20., ngaussians=None, rcharpol_rel=None,
-                 vconf_args=(12., .6), txt='-',
+                 tailnorm=(0.16, 0.3, 0.6), energysplit=0.1, tolerance=1.0e-3,
+                 referencefile=None, referenceindex=None, rcutpol_rel=1.0, 
+                 rcutmax=20.0, ngaussians=None, rcharpol_rel=None,
+                 vconf_args=(12.0, 0.6), txt='-',
                  include_energy_derivatives=False):
         """Generate an entire basis set.
 
@@ -479,12 +479,10 @@ class BasisMaker:
                 
                 phit2_g = self.smoothify(u2, l)
                 dphit_g = phit2_g - phit_g
-                
                 dphit_norm = npy.dot(g.dr, dphit_g * dphit_g) ** .5
                 dphit_g /= dphit_norm
                 descr = '%s-dz E-derivative of sz' % orbitaltype
                 bf = BasisFunction(l, rc, dphit_g, descr)
-                                   
                 energy_derivative_functions.append(bf)
 
             for i, zeta in enumerate(zetacounter): # range(zetacount - 1):
@@ -494,7 +492,7 @@ class BasisMaker:
                 # Presumably not much, since most interesting stuff happens
                 # close to the core.
                 rsplit, norm, splitwave = self.rsplit_by_norm(l, phit_g,
-                                                              tailnorm[i],
+                                                              tailnorm[i]**2.0,
                                                               txt)
                 descr = '%s-%sz split-valence wave' % (orbitaltype,
                                                        '0sdtq56789'[zeta])
@@ -657,3 +655,4 @@ class BasisMaker:
         pylab.legend()
         if filename is not None:
             pylab.savefig(filename)
+

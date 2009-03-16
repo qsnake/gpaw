@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# Emacs: treat this as -*- python -*-
+
+import os
+import sys
+from optparse import OptionParser
+
+usage = '%prog [OPTION] [BASIS]...'
+parser = OptionParser(usage=usage, version='%prog 1.0')
+parser.add_option('-f', '--files', action='store_true',
+                  dest='actual_filenames',
+                  help='Read from specified filenames rather than searching '+
+                  'GPAW setup directories')
+parser.add_option('-s', '--save-figs', action='store_true', dest='save',
+                  help='Save figures to disk rather than showing plots')
+parser.add_option('-l', '--literal', action='store_true',
+                  help='Do *not* pre-multiply wave functions by r in plots')
+parser.add_option('-n', '--normalize', action='store_true',
+                  help='Plot normalized wave functions')
+parser.add_option('-x', '--ext', default='png',
+                  help='Image format [default: %default]')
+# The --setups parameter is actually handled by setup_data module internally
+# We just provide it here so the parser won't complain when it is used
+parser.add_option('--setups', metavar='DIR',
+                  help='Read setups from specified directory')
+
+opts, files = parser.parse_args()
+
+import pylab
+from gpaw.basis_data import Basis, BasisPlotter
+
+plotter = BasisPlotter(premultiply=not opts.literal,
+                       normalize=opts.normalize,
+                       show=False,
+                       save=opts.save,
+                       ext=opts.ext)
+
+for path in files:
+    dir, filename = os.path.split(path)
+    splitfilename = filename.split('.')
+    symbol = splitfilename[0]
+    extension = splitfilename[-1]
+    name = '.'.join(splitfilename[1:-1])
+    if opts.actual_filenames:
+        basis = Basis(symbol, name, False)
+        basis.read_xml(path)
+    else: # Search GPAW setup dirs
+        basis = Basis(symbol, name)        
+    plotter.plot(basis)
+
+if not opts.save:
+    pylab.show()

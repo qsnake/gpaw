@@ -7,7 +7,7 @@ import pickle
 a = 3.6
 L = 7.00 
 
-basis = BasisMaker('Na').generate(1, 1)
+basis = BasisMaker('Na').generate(1, 1, energysplit=0.3)
 
 atoms = Atoms('Na4', pbc=(1, 1, 1), cell=[L, L, 4 * a])
 atoms.positions[:4, 2] = [i * a for i in range(4)]

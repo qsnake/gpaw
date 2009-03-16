@@ -14,13 +14,12 @@ parser.add_option('-t', '--type', default='dzp', metavar='<type>',
                   help='type of basis.  For example: sz, dzp, qztp, '+
                   '4z3p.  [default: %default]')
 parser.add_option('-E', '--energy-shift', metavar='<energy>', type='float',
-                  default=.3,
+                  default=.1,
                   help='use given energy shift to determine cutoff')
 parser.add_option('-T', '--tail-norm', metavar='<norm>', type='string',
-                  default='.03,.1,.4', dest='tailnorm',
-                  help='use the given fraction to define the split'+
-                  '-valence cutoff.  To specify multiple cutoffs, '+
-                  'write: norm1,norm2,...')
+                  default='0.16,0.3,0.6', dest='tailnorm',
+                  help='use the given fractions to define the split'+
+                  '-valence cutoffs.  Default: [%default]')
 parser.add_option('-D', '--energy-derivative', action='store_true',
                   dest='derivative',
                   help='include derivative of atomic orbital with respect '+

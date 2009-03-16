@@ -5,7 +5,7 @@ import os
 import xml.sax
 import md5
 
-import numpy as npy
+import numpy as np
 
 from gpaw import setup_paths
 from gpaw.setup_data import search_for_file
@@ -41,19 +41,13 @@ class Basis:
         Writes all basis functions in the given list of basis functions
         to the file "<symbol>.<name>.basis".
         """
-        # NOTE: rcs should perhaps be different for orig. and split waves!
-        # I.e. have the same shape as basis_lm
-        # but right now we just have one rc for each l
-        # In fact even that is not supported, so we write the single largest rc
         if self.name is None:
             filename = '%s.basis' % self.symbol
         else:
             filename = '%s.%s.basis' % (self.symbol, self.name)
         write = open(filename, 'w').write
         write('<paw_basis version="0.1">\n')
-
-        #rc = max([bf.rc for bf in self.bf_j])
-        # hack since elsewhere multiple rcs are not supported
+        
         generatorattrs = ' '.join(['%s="%s"' % (key, value)
                                    for key, value
                                    in self.generatorattrs.iteritems()])
@@ -61,10 +55,6 @@ class Basis:
         for line in self.generatordata.split('\n'):
             write('\n    '+line)
         write('\n  </generator>\n')
-
-        #write(('  <radial_grid eq="r=a*i/(n-i)" a="%f" n="%d" ' +
-        #      'istart="0" iend="%d" id="g1"/>\n') % (self.beta, self.ng,
-        #                                             self.ng-1))
         write(('  <radial_grid eq="r=d*i" d="%f" istart="0" iend="%d" ' +
                'id="lingrid"/>\n') % (self.d, self.ng - 1))
 
@@ -84,7 +74,7 @@ class BasisFunction:
     """Encapsulates various basis function data."""
     def __init__(self, l=None, rc=None, phit_g=None, type=''):
         self.l = l
-        self.rc = rc # Guaranteed to correspond to last element in phit_g
+        self.rc = rc
         self.phit_g = phit_g
         self.ng = None
         if phit_g is not None:
@@ -133,10 +123,9 @@ for details."""
             self.data = []
         elif name == 'radial_grid':
             assert attrs['eq'] == 'r=d*i'
-            basis.ng = int(attrs['iend']) + 1#int(attrs['n'])
+            basis.ng = int(attrs['iend']) + 1
             basis.d = float(attrs['d'])
             assert int(attrs['istart']) == 0
-            #assert int(attrs['iend']) == basis.ng - 1
         elif name == 'basis_function':
             self.l = int(attrs['l'])
             self.rc = float(attrs['rc'])
@@ -151,10 +140,84 @@ for details."""
     def endElement(self, name):
         basis = self.basis
         if name == 'basis_function':
-            phit_g = npy.array([float(x) for x in ''.join(self.data).split()])
+            phit_g = np.array([float(x) for x in ''.join(self.data).split()])
             bf = BasisFunction(self.l, self.rc, phit_g, self.type)
             assert bf.ng == self.ng, ('Bad grid size %d vs ng=%d!'
                                       % (bf.ng, self.ng))
             basis.bf_j.append(bf)
         elif name == 'generator':
             basis.generatordata = ''.join([line for line in self.data])
+
+class BasisPlotter:
+    def __init__(self, premultiply=True, normalize=False,
+                 show=False, save=False, ext='png'):
+        self.premultiply = premultiply
+        self.show = show
+        self.save = save
+        self.ext = ext
+        self.default_filename = '%(symbol)s.%(name)s.' + ext
+
+        self.title = 'Basis functions: %(symbol)s %(name)s'
+        self.xlabel = r'r [Bohr]'
+        if premultiply:
+            ylabel = r'$\tilde{\phi} r$'
+        else:
+            ylabel = r'$\tilde{\phi}$'
+        self.ylabel = ylabel
+
+        self.normalize = normalize
+
+    def plot(self, basis, filename=None):
+        import pylab # Should not import in module namespace
+        rc = basis.d * (basis.ng - 1)
+        r_g = np.linspace(0., rc, basis.ng)
+
+        print 'Element  :', basis.symbol
+        print 'Name     :', basis.name
+        print 'Filename :', basis.filename
+        print
+        print 'Basis functions'
+        print '---------------'
+
+        norm_j = []
+        for j, bf in enumerate(basis.bf_j):
+            rphit_g = r_g[:bf.ng] * bf.phit_g
+            norm = (np.dot(rphit_g, rphit_g) * basis.d) ** .5
+            norm_j.append(norm)
+            print bf.type, '[norm=%0.4f]' % norm
+
+        print
+        print 'Generator'
+        for key, item in basis.generatorattrs.iteritems():
+            print '   ', key, ':', item
+        print
+        print 'Generator data'
+        print basis.generatordata
+
+        if self.premultiply:
+            factor = r_g
+        else:
+            factor = np.ones_like(r_g)
+
+        pylab.figure()
+        for norm, bf in zip(norm_j, basis.bf_j):
+            y_g = bf.phit_g * factor[:bf.ng]
+            if self.normalize:
+                y_g /= norm
+            pylab.plot(r_g[:bf.ng], y_g, label=bf.type[:12])
+        axis = pylab.axis()
+        rc = max([bf.rc for bf in basis.bf_j])
+        newaxis = [0., rc, axis[2], axis[3]]
+        pylab.axis(newaxis)
+        pylab.legend()
+        pylab.title(self.title % basis.__dict__)
+        pylab.xlabel(self.xlabel)
+        pylab.ylabel(self.ylabel)
+
+        if filename is None:
+            filename = self.default_filename
+        if self.save:
+            pylab.savefig(filename % basis.__dict__)
+
+        if self.show:
+            pylab.show()

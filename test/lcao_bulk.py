@@ -5,7 +5,7 @@ from gpaw.atom.basis import BasisMaker
 bm = BasisMaker('Li', run=False)
 bm.generator.N = 300
 bm.generator.run(write_xml=False)
-basis = bm.generate(2, 1)
+basis = bm.generate(2, 1, energysplit=0.3, tailnorm=0.03**0.5)
 
 bulk = Atoms('Li', pbc=True)
 k = 4
