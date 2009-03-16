@@ -308,9 +308,10 @@ class RawLDOS:
                     e_n = self.paw.get_eigenvalues(kpt=k, spin=s,
                                                    broadcast=True)
                     emin = min(e_n.min(), emin)
-                    emax = min(e_n.max(), emax)
+                    emax = max(e_n.max(), emax)
             emin -= 4 * width
             emax += 4 * width
+            print "::::::: emin, emax=", emin, emax
 
             # Fermi energy
             try:
@@ -349,7 +350,7 @@ class RawLDOS:
                     for key in ldbe:
                         val[key] = np.zeros((3))
                     for k in range(wfs.nibzkpts):
-                        w = wfs.weight_[k]
+                        w = wfs.kpt_u[k].weight
                         e_n = self.paw.get_eigenvalues(kpt=k, spin=s,
                                                        broadcast=True)
                         for n in range(wfs.nbands):
