@@ -9,7 +9,7 @@ import numpy as np
 
 from gpaw import GPAW, Mixer
 from gpaw import restart as restart_gpaw
-from gpaw.lcao.tools import get_realspace_hs, get_kspace_hs, \
+from gpaw.transport.tools import get_realspace_hs, get_kspace_hs, \
      tri2full, remove_pbc
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize
@@ -282,7 +282,7 @@ class GPAWTransport:
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
 
-    def get_lead_calc(self, l, nkpts=16):
+    def get_lead_calc(self, l, nkpts=13):
         p = self.atoms.calc.input_parameters.copy()
         p['nbands'] = None
         kpts = list(p['kpts'])
@@ -503,9 +503,9 @@ class GPAWTransport:
         if abs(e_diff) > tol:
             self.print_info('Warning*: hamiltonian boundary difference %f' %
                                                      e_diff)
-            self.do_shift = True
-            for i in range(self.nspins):
-                self.h_spkmm[i] -= e_diff * self.s_pkmm
+            #self.do_shift = True
+            #for i in range(self.nspins):
+            #    self.h_spkmm[i] -= e_diff * self.s_pkmm
         self.zero_shift = e_diff 
         matdiff = self.d_spkmm[:, :, :pl1, :pl1] - self.d1_spkmm
         print_diff = np.max(abs(matdiff))
@@ -618,8 +618,7 @@ class GPAWTransport:
                                                      self.gate) * self.s_pkmm
             self.step +=  1
         self.atoms.calc.scf.converged = self.cvgflag
-        self.atoms.calc.forces.F_av = None
-        self.forces = self.atoms.calc.get_forces(self.atoms)
+
  
     def initialize_scf(self, bias, gate, cal_loc, verbose):
         self.verbose = verbose
@@ -1120,6 +1119,13 @@ class GPAWTransport:
             h_skmm += self.linear_MM
         return h_skmm
     
+    def get_forces(self, atoms):
+        atoms = self.atoms
+        self.get_selfconsistent_hamiltonian(bias=0, gate=0)
+        atoms.calc.forces.F_av = None
+        self.forces = self.atoms.calc.get_forces(atoms)
+        return self.forces
+        
     def get_density(self,d_spkmm):
         #Calculate pseudo electron-density based on green function.
         calc = self.atoms.calc
