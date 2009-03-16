@@ -73,7 +73,7 @@ class Coulomb:
                 rc = 0.5 * np.average(self.gd.cell_c)
                 # ewald potential: 1 - cos(k rc)
                 self.ewald = (np.ones(self.gd.n_c) - 
-                              np.cos(sqrt(self.k2) * rc))
+                              np.cos(np.sqrt(self.k2) * rc))
                 # lim k -> 0 ewald / k2 
                 self.ewald[0, 0, 0] = 0.5 * rc**2
             elif method.endswith('gauss') and not hasattr(self, 'ng'):
