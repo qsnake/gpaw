@@ -285,6 +285,7 @@ class WaveFunctions(EmptyWaveFunctions):
             return b_o
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
+from gpaw.utilities.blas import gemm
 class LCAOWaveFunctions(WaveFunctions):
     def __init__(self, *args):
         WaveFunctions.__init__(self, *args)
@@ -351,20 +352,29 @@ class LCAOWaveFunctions(WaveFunctions):
         density.mix(comp_charge)
         hamiltonian.update(density)
 
+    def calculate_density_matrix(self, f_n, C_nM, rho_MM):
+        # XXX Should not conjugate, but call gemm(..., 'c')
+        # Although that requires knowing C_Mn and not C_nM.
+        # (that also conforms better to the usual conventions in literature)
+        Cf_Mn = C_nM.T.conj() * f_n
+        gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
+
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
         """Add contribution to pseudo electron-density. Do not use the standard
         occupation numbers, but ones given with argument f_n."""
-        
+        # Where is this function used? XXX deprecate/remove if not used.
         rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.k)
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
         """Add contribution to pseudo electron-density. """
-                
         if kpt.rho_MM is not None:
             rho_MM = kpt.rho_MM
         else:
-            rho_MM = np.dot(kpt.C_nM.conj().T * kpt.f_n, kpt.C_nM)
+            # XXX do we really want to allocate this array each time?
+            nao = self.setups.nao
+            rho_MM = np.empty((nao, nao), self.dtype)
+            self.calculate_density_matrix(kpt.f_n, kpt.C_nM, rho_MM)
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
 
     def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
@@ -409,42 +419,24 @@ class LCAOWaveFunctions(WaveFunctions):
                                    dThetadR_vMM, dTdR_vMM, dPdR_aqvMi):
         k = kpt.k
         q = kpt.q
+        nao = self.setups.nao
         if kpt.rho_MM is None:
-            rho_MM = np.dot(kpt.C_nM.T.conj() * kpt.f_n, kpt.C_nM)
+            rho_MM = np.empty((nao, nao), self.dtype)
+            self.calculate_density_matrix(kpt.f_n, kpt.C_nM, rho_MM)
         else:
             rho_MM = kpt.rho_MM
         
-        rhoT_MM = rho_MM.T.copy()
-        
-        self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
-        H_MM = self.eigensolver.H_MM.copy()
-        # H_MM is halfway full of garbage!  Only lower triangle is
-        # actually correct.  Create correct H_MM:
-        nao = self.setups.nao
-        ltri = np.tri(nao)
-        utri = np.tri(nao, nao, -1).T
-        H_MM[:] = H_MM * ltri + H_MM.T.conj() * utri
-        
-        #
-        #         -----                    -----
-        #          \    -1                  \    *
-        # E      =  )  S     H    rho     =  )  c     eps  f  c
-        #  mu nu   /    mu x  x z    z nu   /    n mu    n  n  n nu
-        #         -----                    -----
-        #          x z                       n
-        #
-        # We use the transpose of that matrix
-        ET_MM = np.dot(np.dot(np.linalg.inv(S_MM), H_MM), rho_MM).T.copy()
-        del H_MM, rho_MM
-        
-        # Useful check - whether C^dagger eps f C == S^(-1) H rho
-        # Although this won't work if people are supplying a customized rho
-        #assert abs(ET_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
-        #                          kpt.C_nM)).max() < 1e-8
-        
         basis_functions = self.basis_functions
         my_atom_indices = basis_functions.my_atom_indices
-        atom_indices = basis_functions.atom_indices
+        atom_indices = basis_functions.atom_indices        
+        
+        def gemmdot(a_ik, b_kj):
+            assert a_ik.flags.contiguous
+            assert b_kj.flags.contiguous
+            assert a_ik.dtype == b_kj.dtype
+            c_ij = np.empty((a_ik.shape[0], b_kj.shape[-1]), a_ik.dtype)
+            gemm(1.0, b_kj, a_ik, 0.0, c_ij, 'n')
+            return c_ij
         
         def _slices(indices):
             for a in indices:
@@ -457,6 +449,38 @@ class LCAOWaveFunctions(WaveFunctions):
         
         def my_slices():
             return _slices(my_atom_indices)
+        
+        
+        self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
+        H_MM = self.eigensolver.H_MM.copy()
+        # H_MM is halfway full of garbage!  Only lower triangle is
+        # actually correct.  Create correct H_MM:
+        ltri = np.tri(nao)
+        utri = np.tri(nao, nao, -1).T
+        H_MM[:] = H_MM * ltri + H_MM.T.conj() * utri
+        del ltri, utri
+        
+        #
+        #         -----                    -----
+        #          \    -1                  \    *
+        # E      =  )  S     H    rho     =  )  c     eps  f  c
+        #  mu nu   /    mu x  x z    z nu   /    n mu    n  n  n nu
+        #         -----                    -----
+        #          x z                       n
+        #
+        # We use the transpose of that matrix
+
+        ET_MM = gemmdot(gemmdot(np.linalg.inv(S_MM).copy(), #must be contiguous
+                                H_MM), rho_MM).T.copy()
+        # (We should also use BLAS for the inverse)
+        
+        # Useful check - whether C^dagger eps f C == S^(-1) H rho
+        # Although this won't work if people are supplying a customized rho
+        #assert abs(ET_MM - np.dot(kpt.C_nM.T.conj() * kpt.f_n * kpt.eps_n,
+        #                          kpt.C_nM)).max() < 1e-8
+        
+        rhoT_MM = rho_MM.T.copy()
+        del rho_MM
         
         # Kinetic energy contribution
         dET_av = np.zeros_like(F_av)
@@ -514,7 +538,7 @@ class LCAOWaveFunctions(WaveFunctions):
                         dE = (PHPrhoT_MM[:, M2:].real.sum()
                               - PHPrhoT_MM[:, :M1].real.sum())
                     dED_av[a, v] += 2 * dE
-                        
+        
         F_av -= (dET_av + dEn_av + dErho_av + dED_av)
 
 
