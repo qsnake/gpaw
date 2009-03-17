@@ -23,8 +23,16 @@ sys.path.append('.')
 # ---------------------
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
+try:
+    from sphinx.ext import pngmath
+    ext_png_math = 'sphinx.ext.pngmath'
+except ImportError:
+    ext_png_math = 'mathpng'
+    print 'Warning: sphinx uses custom mathpng.py: please update to sphinx >= 5.0'
+
+
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['ext', 'mathpng', 'images', 'sitelink', 'sphinx.ext.autodoc']
+extensions = ['ext', 'images', 'sitelink', 'sphinx.ext.autodoc', ext_png_math]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
