@@ -32,7 +32,7 @@ for ri in r: nbands = nbands*ri
 mixer = Mixer(0.1, 5, 'new', 100.0)
 # the next three lines decrease memory usage
 es = RMM_DIIS(keep_htpsit=False)
-from gpaw.operator import Operator
+from gpaw.hs_operators import Operator
 Operator.nblocks = 8
 calc = GPAW(nbands=nbands,
             # uncomment next two lines to use lcao/sz

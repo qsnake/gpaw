@@ -5,7 +5,7 @@ from gpaw import parsize, parsize_bands
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world
 from gpaw.utilities.lapack import inverse_cholesky
-from gpaw.operator import Operator
+from gpaw.hs_operators import Operator
 from gpaw.operators import Laplace
 
 B = parsize_bands or 1  # number of groups

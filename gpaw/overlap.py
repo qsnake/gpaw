@@ -16,7 +16,7 @@ from gpaw.mpi import parallel
 from gpaw.utilities.lapack import inverse_cholesky
 from gpaw.utilities import scalapack
 from gpaw import sl_inverse_cholesky
-from gpaw.operator import Operator
+from gpaw.hs_operators import Operator
 
 
 class Overlap:

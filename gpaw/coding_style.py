@@ -16,11 +16,11 @@ After this docstring we have import statements in this order:
 
 from math import pi
 
-import numpy as npy
+import numpy as np
 from ase.units import kJ, Hartree
 
 from gpaw import debug
-from gpaw.operator import Gradient
+from gpaw.operators import Gradient
 import gpaw.mpi as mpi
 
 
@@ -49,8 +49,8 @@ class SimpleExample:
         self-explanatory, the docstring can be the headline only (see
         the `reset` method).
 
-        Parameters
-        ----------
+        Parameters:
+
         name : string
             Name of the example.
         shape:  tuple
@@ -63,8 +63,8 @@ class SimpleExample:
         verbose: boolean
             Print information about this and that.
 
-        Other sections
-        --------------
+        Other sections:
+
         There can be other sections - see bolow and here:
 
           http://scipy.org/...
@@ -74,7 +74,7 @@ class SimpleExample:
         self.name = name
         if verbose:
             print name
-        self.a = npy.zeros(shape, dtype)
+        self.a = np.zeros(shape, dtype)
         self.verbose = verbose
 
     def method_with_long_name(self, b, out=None):
@@ -82,22 +82,22 @@ class SimpleExample:
 
         Long story with all details here ...
 
-        Parameters
-        ----------
+        Parameters:
+
         b : ndarray
             Add this array.
         out : ndarray
             Optional output array.
 
-        Returns
-        -------
+        Returns:
+
         The sum of ...
         """
 
         if out is none:
             return self.a + b
         else:
-            return npy.add(self.a, b, out)
+            return np.add(self.a, b, out)
 
     def run(self, n):
         """Do something.
