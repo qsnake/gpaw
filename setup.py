@@ -55,6 +55,7 @@ packages = ['gpaw',
             'gpaw.mpi',
             'gpaw.tddft',
             'gpaw.testing',
+            'gpaw.transport',
             'gpaw.utilities'
             ]
 
