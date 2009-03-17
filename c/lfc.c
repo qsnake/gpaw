@@ -910,7 +910,7 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
     double* c_Mv = (double*)c_xMv_obj->data;
     for (int x = 0; x < nx; x++) {
       GRID_LOOP_START(lfc, -1) {
-        // In one grid loop iteration, only iz changes.
+        // In one grid loop iteration, only i2 changes.
         int i2 = Ga % n_c[2] + beg_c[2];
         int i1 = (Ga / n_c[2]) % n_c[1] + beg_c[1];
         int i0 = Ga / (n_c[2] * n_c[1]) + beg_c[0];
@@ -937,7 +937,7 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
             double dfdr;
             bmgs_get_value_and_derivative(spline, r, &af, &dfdr);
 	    af *= a_G[G] * lfc->dv;
-            double afdrlYdx_m[nm];
+            double afdrlYdx_m[nm];  // a * f * d(r^l * Y)/dx
 	    spherical_harmonics_derivative_x(l, af, x, y, z, r2, afdrlYdx_m);
 	    for (int m = 0; m < nm; m++) c_mv[3 * m] += afdrlYdx_m[m];
 	    spherical_harmonics_derivative_y(l, af, x, y, z, r2, afdrlYdx_m);
@@ -945,7 +945,7 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
 	    spherical_harmonics_derivative_z(l, af, x, y, z, r2, afdrlYdx_m);
 	    for (int m = 0; m < nm; m++) c_mv[3 * m + 2] += afdrlYdx_m[m];
             if (r > 1e-15) {
-	      double arlm1Ydfdr_m[nm];
+	      double arlm1Ydfdr_m[nm]; // a * r^(l-1) * Y * df/dr
 	      double arm1dfdr = a_G[G] / r * dfdr * lfc->dv;
 	      spherical_harmonics(l, arm1dfdr, x, y, z, r2, arlm1Ydfdr_m);
 	      for (int m = 0; m < nm; m++)
