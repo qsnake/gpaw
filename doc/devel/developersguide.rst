@@ -6,6 +6,7 @@ Developers guide to GPAW
 
 .. default-role:: math
 
+XXX Update page to new GPAW style (after guc merge)
 
 This page goes through the most important equations of a PAW
 calculation and has references to the code.  It is a good idea to have
