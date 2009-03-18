@@ -607,7 +607,6 @@ class Transport(GPAW):
                                                            self.edge_den_diff)
             
     def get_selfconsistent_hamiltonian(self):
-        self.negf_prepare()
         self.initialize_scf()
         while not self.cvgflag and self.step < self.max_steps:
             self.iterate()
@@ -1176,6 +1175,7 @@ class Transport(GPAW):
 
     
     def get_forces(self, atoms):
+        self.negf_prepare()
         self.get_selfconsistent_hamiltonian()
         self.forces.F_av = None
         return GPAW.get_forces(self, atoms)
