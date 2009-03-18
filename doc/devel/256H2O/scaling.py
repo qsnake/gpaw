@@ -77,38 +77,49 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
         # extract gpaw version
         for n, l in enumerate(lines):
             if l.startswith(' |__ |  _|___|_____|'):
-                gpaw_version = lines[n + 0].strip().split()[3].split('.')[2]
+                gpaw_version = lines[n + 0].strip().split()[3].split('.')[-1]
                 break
         if gpaw_version[-1] == 'M':
             gpaw_version = gpaw_version[:-1]
         gpaw_version = int(gpaw_version)
-        # deal with changes in the output
-        if gpaw_version >= 3172:
+        # assume old version (< 3172)
+        start_iter = 0
+        # old style
+        #
+        #            Atomic orbitals used for initialization: 1536
+        #                     log10-error:    Total        Iterations:
+        #           Time      WFS    Density  Energy       Fermi  Poisson
+        #iter:   0  12:10:09                  -3568.07860  0      11
+        #                     log10-error:    Total        Iterations:
+        #           Time      WFS    Density  Energy       Fermi  Poisson
+        #iter:   0  12:13:29  +0.2            -3663.00195  0      1
+        #iter:   1  12:15:18  -0.8            -4417.57264  0      1
+        #iter:   2  12:17:07  -1.3            -4469.68829  0      1
+        #iter:   3  12:18:57  -0.9   -0.8     -4091.42827  0      7
+        #iter:   4  12:20:48  -1.1   -1.0     -4055.26110  0      7
+        #iter:   5  12:22:40  -1.4   -1.3     -4106.38102  0      7
+        #
+        # new style
+        #                     log10-error:    Total        Iterations:
+        #           Time      WFS    Density  Energy       Fermi  Poisson
+        #iter:   1  16:16:59  +0.4            -3663.00195  0      1
+        #iter:   2  16:19:11  -0.8            -4417.57264  0      1
+        #iter:   3  16:21:21  -1.3            -4469.68829  0      1
+        #iter:   4  16:23:34  -0.9   -0.8     -4091.42827  0      7
+        #iter:   5  16:25:49  -1.1   -1.0     -4055.26110  1      7
+        #
+        if len(str(gpaw_version)) == 1:
+            # stable release found
+            # assume new version - this is wrong but nothing else can be done
             start_iter = 1
-            # new style
-            #                     log10-error:    Total        Iterations:
-            #           Time      WFS    Density  Energy       Fermi  Poisson
-            #iter:   1  16:16:59  +0.4            -3663.00195  0      1
-            #iter:   2  16:19:11  -0.8            -4417.57264  0      1
-            #iter:   3  16:21:21  -1.3            -4469.68829  0      1
-            #iter:   4  16:23:34  -0.9   -0.8     -4091.42827  0      7
-            #iter:   5  16:25:49  -1.1   -1.0     -4055.26110  1      7
+        if len(str(gpaw_version)) > 4:
+            # more then 4 digits in svnversion found
+            # assume new version (can't compare strings here)
+            start_iter = 1
         else:
-            start_iter = 0
-            # old style
-            #
-            #            Atomic orbitals used for initialization: 1536
-            #                     log10-error:    Total        Iterations:
-            #           Time      WFS    Density  Energy       Fermi  Poisson
-            #iter:   0  12:10:09                  -3568.07860  0      11
-            #                     log10-error:    Total        Iterations:
-            #           Time      WFS    Density  Energy       Fermi  Poisson
-            #iter:   0  12:13:29  +0.2            -3663.00195  0      1
-            #iter:   1  12:15:18  -0.8            -4417.57264  0      1
-            #iter:   2  12:17:07  -1.3            -4469.68829  0      1
-            #iter:   3  12:18:57  -0.9   -0.8     -4091.42827  0      7
-            #iter:   4  12:20:48  -1.1   -1.0     -4055.26110  0      7
-            #iter:   5  12:22:40  -1.4   -1.3     -4106.38102  0      7
+            if gpaw_version >= 3172:
+                # new version
+                start_iter = 1
         # extract start time
         for n, l in enumerate(lines):
             if l.startswith('Date: '):
