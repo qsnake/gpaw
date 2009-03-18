@@ -28,4 +28,4 @@ def f(n):
     return gd.collect(b, broadcast=1)
 
 b = f(8)
-assert abs(b[0,0,0]-b[8,8,8]) < 6e-17
+assert abs(b[0,0,0]-b[8,8,8]) < 6e-16
