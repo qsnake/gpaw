@@ -292,7 +292,7 @@ class Transport(GPAW):
         self.inner_lead_index = []
         self.buffer_index = []
 
-        npk = self.npk
+        npk = self.my_npk
         
         if npk == 1:
             dtype = float
@@ -404,6 +404,7 @@ class Transport(GPAW):
             self.set_positions()
             self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(
                                                      self.restart_file + '.mat')
+            self.set_text('restart.txt', self.verbose)
             self.scat_restart = False
 
             
@@ -1241,8 +1242,11 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             natom_inlead[i] = len(self.pl_atoms[i])
             nb_atom = self.nblead[i] / natom_inlead[i]
-            pl1 = self.buffer[i] #+ self.nblead[i]
-            natom_print[i] = pl1 / nb_atom
+            if self.use_buffer:
+                pl1 = self.buffer[i]
+            else:
+                pl1 = self.nblead[i]
+            natom_print[i] = int(pl1 / nb_atom)
             ind = self.print_index[i]
             dim = len(ind)
             ind = np.resize(ind, [dim, dim])
