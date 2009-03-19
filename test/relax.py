@@ -72,7 +72,7 @@ print 'hydrogen molecule energy: %7.3f eV' % e2
 print 'bondlength              : %7.3f Ang' % d0
 
 
-molecule = GPAW('H2fa.gpw', txt=None).get_atoms()
+molecule = GPAW('H2fa.gpw', txt='H2.txt').get_atoms()
 relax = QuasiNewton(molecule)
 relax.run(fmax=0.05)
 e2q = molecule.get_potential_energy()
@@ -80,3 +80,9 @@ positions = molecule.get_positions()
 d0q = positions[1, 0] - positions[0, 0]
 assert abs(e2 - e2q) < 2e-6
 assert abs(d0q - d0) < 4e-4
+
+f0 = molecule.get_forces()
+del relax, molecule
+f = read('H2.txt').get_forces()
+assert abs(f - f0).max() < 5e-6  # 5 digits in txt file
+
