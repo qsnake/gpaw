@@ -132,6 +132,7 @@ class Transport(GPAW):
         self.LR_leads = p['LR_leads']
         self.bias = p['bias']
         self.gate = p['gate']
+        self.relax_step = 0
         
         if self.scat_restart and self.restart_file == None:
             self.restart_file = 'scat'
@@ -294,7 +295,7 @@ class Transport(GPAW):
 
         npk = self.my_npk
         
-        if npk == 1:
+        if self.npk == 1:
             dtype = float
         else:
             dtype = complex
@@ -330,7 +331,7 @@ class Transport(GPAW):
         self.d_skmm = np.empty((ns, nk, nb, nb), dtype)
         self.s_kmm = np.empty((nk, nb, nb), dtype)
         
-        if npk == 1:
+        if self.npk == 1:
             dtype = float
         else:
             dtype = complex        
@@ -416,7 +417,7 @@ class Transport(GPAW):
         S_qMM = wfs.S_qMM.copy()
         for S_MM in S_qMM:
             tri2full(S_MM)
-        H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, complex)
+        H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, self.h_skmm.dtype)
         for kpt in wfs.kpt_u:
             eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
             H_MM = eigensolver.H_MM
@@ -613,6 +614,8 @@ class Transport(GPAW):
             self.cvgflag = self.d_cvg and self.h_cvg
             self.step +=  1
         self.scf.converged = self.cvgflag
+        self.output('relax_step' + str(self.relax_step))
+        self.relax_step += 1
     
     def get_hamiltonian_matrix(self):
         self.timer.start('HamMM')            
@@ -1172,8 +1175,7 @@ class Transport(GPAW):
             if self.linear_mm == None:
                 self.linear_mm = self.get_linear_potential_matrix()            
             self.h_skmm += self.linear_mm
-
-    
+   
     def get_forces(self, atoms):
         self.negf_prepare()
         self.get_selfconsistent_hamiltonian()
@@ -1314,10 +1316,12 @@ class Transport(GPAW):
         return linear_potential
     
     def output(self, filename):
-        self.pl_write(filename + '.mat', (self.h_skmm, self.d_skmm, self.s_kmm))
+        self.pl_write(filename + '.mat', (self.h_skmm,
+                                          self.d_skmm,
+                                          self.s_kmm))
         world.barrier()
         self.write(filename + '.gpw')
-        if world.rank == 0:
+        if self.master:
             fd = file(filename, 'wb')
             pickle.dump((
                         self.bias,
