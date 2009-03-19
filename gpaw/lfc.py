@@ -164,7 +164,7 @@ class Sphere:
 
         for request in requests:
             comm.wait(request)
-        
+
         w = 0
         for M, A_gm in zip(self.M_w, self.A_wgm):
             if M == 0 and integral > 1e-15:
@@ -209,6 +209,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
     """
     def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
                  integral=None, forces=None):
+        if extra_parameters.get('normalize'):
+            integral = None
+
         self.gd = gd
         self.sphere_a = [Sphere(spline_j) for spline_j in spline_aj]
         self.cut = cut
@@ -502,6 +505,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         assert not self.use_global_indices
 
         dtype = a_xG.dtype
+
+        if dtype == complex:
+            raise NotImplementedError
         
         xshape = a_xG.shape[:-3]
         c_xMv = np.zeros(xshape + (self.Mmax, 3), dtype)
@@ -781,6 +787,9 @@ class LocalizedFunctionsCollection(BaseLFC):
     def __init__(self, gd, spline_aj, kpt_comm=None,
                  cut=False, forces=False, dtype=float,
                  integral=None):
+        if extra_parameters.get('normalize'):
+            integral = None
+            
         self.gd = gd
         self.spline_aj = spline_aj
         self.cut = cut

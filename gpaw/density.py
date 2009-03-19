@@ -8,7 +8,7 @@ from math import pi, sqrt
 
 import numpy as np
 
-from gpaw import debug
+from gpaw import debug, extra_parameters
 from gpaw.mixer import BaseMixer, Mixer, MixerSum
 from gpaw.transformers import Transformer
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
@@ -114,7 +114,8 @@ class Density:
         self.nt_sG += self.nct_G
         comp_charge = self.calculate_multipole_moments()
         
-        if isinstance(wfs, LCAOWaveFunctions):
+        if (isinstance(wfs, LCAOWaveFunctions) or
+            extra_parameters.get('normalize')):
             self.normalize(comp_charge)
 
         self.mix(comp_charge)
@@ -128,10 +129,19 @@ class Density:
             x = -(self.charge + comp_charge) / pseudo_charge
             self.nt_sG *= x
 
-    def calculate_pseudo_charge(self):
+    def calculate_pseudo_charge(self, comp_charge):
         self.nt_g = self.nt_sg.sum(axis=0)
         self.rhot_g = self.nt_g.copy()
         self.ghat.add(self.rhot_g, self.Q_aL)
+
+        if extra_parameters.get('normalize'):
+            if comp_charge is None:
+                comp_charge = self.calculate_multipole_moments()
+            Rt = self.finegd.integrate(self.rhot_g)
+            x = comp_charge / (comp_charge - Rt)
+            self.rhot_g *= x
+            self.rhot_g -= (1.0 - x) * self.nt_g
+            
         if debug:
             charge = self.finegd.integrate(self.rhot_g) + self.charge
             if abs(charge) > self.charge_eps:
@@ -143,7 +153,7 @@ class Density:
             comp_charge = None
           
         self.interpolate(comp_charge)
-        self.calculate_pseudo_charge()
+        self.calculate_pseudo_charge(comp_charge)
 
         if self.mixer.mix_rho:
             self.mixer.mix(self)
