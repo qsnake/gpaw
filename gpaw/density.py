@@ -121,6 +121,7 @@ class Density:
         self.mix(comp_charge)
 
     def normalize(self, comp_charge=None):
+        """Normalize pseudo density."""
         if comp_charge is None:
             comp_charge = self.calculate_multipole_moments()
         
@@ -138,15 +139,16 @@ class Density:
             if comp_charge is None:
                 comp_charge = self.calculate_multipole_moments()
             Rt = self.finegd.integrate(self.rhot_g)
-            x = comp_charge / (comp_charge - Rt)
+            x = comp_charge / (comp_charge + self.charge + Rt)
             self.rhot_g *= x
-            self.rhot_g -= (1.0 - x) * self.nt_g
-            
+            self.rhot_g += (1.0 - x) * self.nt_g
+
         if debug:
             charge = self.finegd.integrate(self.rhot_g) + self.charge
             if abs(charge) > self.charge_eps:
                 raise RuntimeError('Charge not conserved: excess=%.9f' %
                                    charge)
+
     def mix(self, comp_charge):
         if not self.mixer.mix_rho:
             self.mixer.mix(self)
@@ -159,6 +161,7 @@ class Density:
             self.mixer.mix(self)
 
     def interpolate(self, comp_charge=None):
+        """Interpolate pseudo density to fine grid."""
         if comp_charge is None:
             comp_charge = self.calculate_multipole_moments()
 
@@ -179,6 +182,12 @@ class Density:
                 self.nt_sg *= x
 
     def calculate_multipole_moments(self):
+        """Calculate multipole moments of compensation charges.
+
+        Returns the total compenstion charge in units of electron
+        charge, so the number will be negative because of the
+        dominating contribution from the nuclear charge."""
+
         comp_charge = 0.0
         self.Q_aL = {}
         for a, D_sp in self.D_asp.items():
