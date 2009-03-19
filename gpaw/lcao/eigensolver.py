@@ -1,7 +1,8 @@
 import numpy as np
+from gpaw.mpi import parallel
 from gpaw.utilities import unpack
 from gpaw.utilities.lapack import diagonalize
-from gpaw.mpi import parallel
+from gpaw.utilities.blas import gemm
 from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize
 
@@ -19,6 +20,7 @@ class LCAO:
         self.comm = None
         self.mynbands = None
         self.band_comm = None
+        self.last_k = None
 
     def calculate_hamiltonian_matrix(self, hamiltonian, wfs, kpt):
         s = kpt.s
@@ -40,9 +42,18 @@ class LCAO:
                                                        self.H_MM, q)
         self.timer.stop('LCAO: potential matrix')
 
+        # Add atomic contribution
+        #
+        #           --   a     a  a*
+        # H      += >   P    dH  P
+        #  mu nu    --   mu i  ij nu j
+        #           aij
+        #
         for a, P_Mi in kpt.P_aMi.items():
-            dH_ii = unpack(hamiltonian.dH_asp[a][s])
-            self.H_MM += np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
+            dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
+            dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
+            gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
+            gemm(1.0, dHP_iM, P_Mi, 1.0, self.H_MM)
         self.comm.sum(self.H_MM)
         self.H_MM += wfs.T_qMM[q]
 
@@ -51,7 +62,6 @@ class LCAO:
             self.iterate_one_k_point(hamiltonian, wfs, kpt)
 
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
-
         self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt)
         self.S_MM[:] = wfs.S_qMM[kpt.q]
 
@@ -64,46 +74,47 @@ class LCAO:
             kpt.eps_n = np.empty(self.mynbands)
             
         # Check and remove linear dependence for the current k-point
-        if 0:#k in self.linear_kpts:
-            print '*Warning*: near linear dependence detected for k=%s' % k
-            P_MM, p_M = wfs.lcao_hamiltonian.linear_kpts[k]
-            eps_q, C2_nM = self.remove_linear_dependence(P_MM, p_M, H_MM)
-            kpt.C_nM[:] = C2_nM[n1:n2]
-            kpt.eps_n[:] = eps_q[n1:n2]
+        #if 0:#k in self.linear_kpts:
+        #    print '*Warning*: near linear dependence detected for k=%s' % k
+        #    P_MM, p_M = wfs.lcao_hamiltonian.linear_kpts[k]
+        #    eps_q, C2_nM = self.remove_linear_dependence(P_MM, p_M, H_MM)
+        #    kpt.C_nM[:] = C2_nM[n1:n2]
+        #    kpt.eps_n[:] = eps_q[n1:n2]
+        #else:
+        if sl_diagonalize:
+            assert parallel
+            assert scalapack()
+            dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx'
         else:
-            if sl_diagonalize:
-                assert parallel
-                assert scalapack()
-                dsyev_zheev_string = 'LCAO: '+'pdsyevx/pzhegvx'
-            else:
-                dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
+            dsyev_zheev_string = 'LCAO: '+'dsygv/zhegv'
 
-            self.eps_n[0] = 42
+        self.eps_n[0] = 42
 
-            self.timer.start(dsyev_zheev_string)
-            if sl_diagonalize:
-                info = diagonalize(self.H_MM, self.eps_n, self.S_MM, root=0)
+        self.timer.start(dsyev_zheev_string)
+        if sl_diagonalize:
+            info = diagonalize(self.H_MM, self.eps_n, self.S_MM, root=0)
+            if info != 0:
+                raise RuntimeError('Failed to diagonalize: info=%d' % info)
+        else:
+            if self.comm.rank == 0:
+                info = diagonalize(self.H_MM, self.eps_n, self.S_MM)
                 if info != 0:
-                    raise RuntimeError('Failed to diagonalize: info=%d' % info)
-            else:
-                if self.comm.rank == 0:
-                    info = diagonalize(self.H_MM, self.eps_n, self.S_MM)
-                    if info != 0:
-                        raise RuntimeError('Failed to diagonalize: info=%d' %
-                                           info)
-            self.timer.stop(dsyev_zheev_string)
+                    raise RuntimeError('Failed to diagonalize: info=%d' %
+                                       info)
+        self.timer.stop(dsyev_zheev_string)
 
-            if rank == 0:
-                self.comm.broadcast(self.H_MM[:wfs.nbands], 0)
-                self.comm.broadcast(self.eps_n[:wfs.nbands], 0)
-                
-            self.band_comm.scatter(self.H_MM[:wfs.nbands], kpt.C_nM, 0)
-            self.band_comm.scatter(self.eps_n[:wfs.nbands], kpt.eps_n, 0)
+        if rank == 0:
+            self.comm.broadcast(self.H_MM[:wfs.nbands], 0)
+            self.comm.broadcast(self.eps_n[:wfs.nbands], 0)
 
-            assert kpt.eps_n[0] != 42
+        self.band_comm.scatter(self.H_MM[:wfs.nbands], kpt.C_nM, 0)
+        self.band_comm.scatter(self.eps_n[:wfs.nbands], kpt.eps_n, 0)
+
+        assert kpt.eps_n[0] != 42
 
         for a, P_ni in kpt.P_ani.items():
-            P_ni[:] = np.dot(kpt.C_nM, kpt.P_aMi[a])
+            #P_ni[:] = np.dot(kpt.C_nM, kpt.P_aMi[a])
+            gemm(1.0, kpt.P_aMi[a], kpt.C_nM, 0.0, P_ni, 'n')
 
     def remove_linear_dependence(self, P_MM, p_M, H_MM):
         """Diagonalize H_MM with a reduced overlap matrix from which the

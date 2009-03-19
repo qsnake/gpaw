@@ -3,6 +3,7 @@ import numpy as np
 from gpaw.lfc import BasisFunctions
 from gpaw.utilities.blas import axpy
 from gpaw.utilities import pack, unpack2
+from gpaw.utilities.tools import tri2full
 from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
 from gpaw.operators import Gradient
@@ -128,6 +129,8 @@ class WaveFunctions(EmptyWaveFunctions):
 
     def calculate_atomic_density_matrices_k_point_with_occupation(self, D_sii,
                                                                   kpt, a, f_n):
+        # XXX This method appears to be unused, deprecating
+        raise DeprecationWarning
         if kpt.rho_MM is not None: 
             P_Mi = kpt.P_aMi[a]
             rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
@@ -155,6 +158,8 @@ class WaveFunctions(EmptyWaveFunctions):
     def calculate_atomic_density_matrices_with_occupation(self, D_asp, f_kn):
         """Calculate atomic density matrices from projections with
         custom occupation f_kn."""
+        # XXX This method appears to be unused, deprecating
+        raise DeprecationWarning
         for a, D_sp in D_asp.items():
             ni = self.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
@@ -363,6 +368,7 @@ class LCAOWaveFunctions(WaveFunctions):
         """Add contribution to pseudo electron-density. Do not use the standard
         occupation numbers, but ones given with argument f_n."""
         # Where is this function used? XXX deprecate/remove if not used.
+        raise DeprecationWarning
         rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.k)
 
@@ -394,6 +400,7 @@ class LCAOWaveFunctions(WaveFunctions):
             dPdR_aqvMi[a] = np.empty((nq, 3, nao, ni), dtype)
         self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
                                       dPdR_aqvMi)
+        
         for kpt in self.kpt_u:
             self.calculate_forces_by_kpoint(kpt, hamiltonian,
                                             F_av, self.tci,
@@ -420,8 +427,9 @@ class LCAOWaveFunctions(WaveFunctions):
         k = kpt.k
         q = kpt.q
         nao = self.setups.nao
+        dtype = self.dtype
         if kpt.rho_MM is None:
-            rho_MM = np.empty((nao, nao), self.dtype)
+            rho_MM = np.empty((nao, nao), dtype)
             self.calculate_density_matrix(kpt.f_n, kpt.C_nM, rho_MM)
         else:
             rho_MM = kpt.rho_MM
@@ -452,13 +460,8 @@ class LCAOWaveFunctions(WaveFunctions):
         
         
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
-        H_MM = self.eigensolver.H_MM.copy()
-        # H_MM is halfway full of garbage!  Only lower triangle is
-        # actually correct.  Create correct H_MM:
-        ltri = np.tri(nao)
-        utri = np.tri(nao, nao, -1).T
-        H_MM[:] = H_MM * ltri + H_MM.T.conj() * utri
-        del ltri, utri
+        H_MM = self.eigensolver.H_MM
+        tri2full(H_MM)
         
         #
         #         -----                    -----
@@ -469,10 +472,7 @@ class LCAOWaveFunctions(WaveFunctions):
         #          x z                       n
         #
         # We use the transpose of that matrix
-
-        ET_MM = gemmdot(gemmdot(np.linalg.inv(S_MM).copy(), #must be contiguous
-                                H_MM), rho_MM).T.copy()
-        # (We should also use BLAS for the inverse)
+        ET_MM = np.linalg.solve(S_MM, gemmdot(H_MM, rho_MM)).T.copy()
         
         # Useful check - whether C^dagger eps f C == S^(-1) H rho
         # Although this won't work if people are supplying a customized rho
@@ -492,7 +492,7 @@ class LCAOWaveFunctions(WaveFunctions):
         # Potential contribution
         dEn_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
-        DVt_MMv = np.zeros((nao, nao, 3), self.dtype)
+        DVt_MMv = np.zeros((nao, nao, 3), dtype)
         basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_MMv, q)
         for a, M1, M2 in slices():
             for v in range(3):
@@ -509,19 +509,22 @@ class LCAOWaveFunctions(WaveFunctions):
 
         # Density matrix contribution from PAW correction
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
+        work_MM = np.empty((nao, nao), dtype)
         for v in range(3):
             for b in my_atom_indices:
-                P_Mi = self.P_aqMi[b][q]
-                PdO_Mi = np.dot(P_Mi, self.setups[b].O_ii)
-                dOP_iM = PdO_Mi.T.conj()
-                dPdR_Mi = dPdR_avMi[b][v]
-                ZE_MM = (np.dot(dPdR_Mi, dOP_iM) * ET_MM).real
+                setup = self.setups[b]
+                O_ii = np.asarray(setup.O_ii, dtype)
+                dOP_iM = np.empty((setup.ni, nao), dtype)
+                gemm(1.0, self.P_aqMi[b][q], O_ii, 0.0, dOP_iM, 'c')
+                gemm(1.0, dOP_iM, dPdR_avMi[b][v], 0.0, work_MM, 'n')
+                ZE_MM = (work_MM * ET_MM).real
                 for a, M1, M2 in slices():
                     if a != b:
                         dE = np.sign(a - b) * ZE_MM[M1:M2].sum()
                     if a == b:
                         dE = ZE_MM[:M1].sum() - ZE_MM[M2:].sum()
                     dErho_av[a, v] += 2 * dE
+        del work_MM, ZE_MM
         
         # Atomic density contribution
         dED_av = np.zeros_like(F_av)
@@ -529,8 +532,8 @@ class LCAOWaveFunctions(WaveFunctions):
             for b in my_atom_indices:
                 dPdR_Mi = dPdR_avMi[b][v]
                 Hb_ii = unpack(hamiltonian.dH_asp[b][kpt.s])
-                PH_Mi = np.dot(self.P_aqMi[b][q], Hb_ii)
-                PHPrhoT_MM = np.dot(PH_Mi, dPdR_Mi.T.conj()) * rhoT_MM
+                PH_Mi = gemmdot(self.P_aqMi[b][q], np.asarray(Hb_ii, dtype))
+                PHPrhoT_MM = gemmdot(PH_Mi, np.conj(dPdR_Mi.T)) * rhoT_MM
                 for a, M1, M2 in slices():
                     if a != b:
                         dE = np.sign(b - a) * PHPrhoT_MM[:, M1:M2].real.sum()
@@ -735,6 +738,8 @@ class GridWaveFunctions(WaveFunctions):
                             nt_G += (psi_m.conj() * ft * psi_n).real
 
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
+        # Appears to be unused
+        raise DeprecationWarning
         nt_G = nt_sG[kpt.s]
         if self.dtype == float:
             for f, psit_G in zip(f_n, kpt.psit_nG):
