@@ -14,7 +14,7 @@ from gpaw.utilities import devnull
 from gpaw.mpi import size, parallel
 from gpaw.version import version
 from gpaw.utilities import scalapack
-from gpaw import sl_diagonalize, sl_inverse_cholesky, dry_run
+from gpaw import sl_diagonalize, sl_inverse_cholesky, dry_run, extra_parameters
 from gpaw.utilities.memory import maxrss
 import gpaw
 
@@ -84,6 +84,8 @@ class PAWTextOutput:
         self.text('numpy:', os.path.dirname(npy.__file__))
         self.text('units: Angstrom and eV')
 
+        if extra_parameters:
+            self.text('Extra parameters:', extra_parameters)
 
     def print_init(self, pos_ac):
         t = self.text
