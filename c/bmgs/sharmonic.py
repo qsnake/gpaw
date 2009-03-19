@@ -137,7 +137,7 @@ def gauss_potential_to_string(l, m, numeric=False):
           l  l     l         l     l  l
 
        where::
-               4 pi /  -l-1 /r    l+2         l /oo   1-l      \
+               4 pi /  -l-1 /r    l+2         l /oo   1-l      \ 
        v (r) = ---- | r     | dx x   g (r) + r  | dx x   g (r) |
         l      2l+1 \       /0        l         /r        l    /
     """            

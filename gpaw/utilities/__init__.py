@@ -157,7 +157,7 @@ def pack(M2, tolerance=1e-10):
     
     The matrix::
     
-           / a00 a01 a02 \
+           / a00 a01 a02 \ 
       M2 = | a10 a11 a12 |
            \ a20 a21 a22 /
                 

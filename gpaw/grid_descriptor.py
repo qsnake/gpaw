@@ -37,11 +37,11 @@ class GridDescriptor(Domain):
     over space.  All methods work correctly also when the domain is
     parallelized via domain decomposition.
 
-    This is how a 2x2x2 3D array is layed out in memory::
+    This is how a 2x2x2 3D array is laid out in memory::
 
         3-----7
-        |\    |\
-        | \   | \
+        |\    |\ 
+        | \   | \ 
         |  1-----5      z
         2--|--6  |   y  |
          \ |   \ |    \ |

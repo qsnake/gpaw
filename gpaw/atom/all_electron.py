@@ -645,7 +645,7 @@ class AllElectron:
         and goes to infinity smoothly at rc, after which point it is nan.
         The potential is given by::
 
-                   alpha         /   rc - ri \
+                   alpha         /   rc - ri \ 
           V(r) = --------   exp ( - --------- )   for   ri < r < rc
                   rc - r         \    r - ri /
 

@@ -120,7 +120,7 @@ def r2k(alpha, a, b, beta, c):
     where ``a.b`` denotes the matrix multiplication defined by::
 
                  _
-                \  
+                \ 
       (a.b)   =  ) a         * b
            ij   /_  ipklm...     pjklm...
                pklm...
@@ -166,7 +166,7 @@ def dotu(a, b):
     Returns the value of the operation::
 
         _
-       \
+       \ 
         ) a       * b
        /_  ijk...    ijk...
        ijk...

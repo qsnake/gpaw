@@ -295,7 +295,7 @@ def overlaps(l, gd, splines, kpt_u, spos_ac=((.5, .5, .5),),
          kmij        kmi      kmj
 
                -----
-                \     /        |  ~   \   /  ~   |        \
+                \     /        |  ~   \   /  ~   |        \ 
         S     =  )   (  phi    | psi   ) (  psi  | phi     )
          kmij   /     \    mi  |    n /   \    n |     mj /
                -----
@@ -405,7 +405,7 @@ def old_overlaps(l, gd, splines, kpt_u, center=(.5, .5, .5)):
          mij        mi      mj
 
               -----
-               \     /        |  ~   \   /  ~   |        \
+               \     /        |  ~   \   /  ~   |        \ 
         S    =  )   (  phi    | psi   ) (  psi  | phi     )
          mij   /     \    mi  |    k /   \    k |     mj /
               -----
