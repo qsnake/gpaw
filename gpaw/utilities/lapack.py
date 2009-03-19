@@ -13,6 +13,7 @@ from gpaw.utilities import scalapack
 from gpaw import sl_diagonalize, sl_inverse_cholesky
 from gpaw.mpi import parallel, rank, size, world
 import _gpaw
+from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
 
 
@@ -49,10 +50,8 @@ def diagonalize(a, w, b=None, root=0):
             assert len(sl_diagonalize) == 4
             assert sl_diagonalize[0]*sl_diagonalize[1] <= size
             # symmetrize the matrix
-            for i in range(n):
-                for j in range(i, n):
-                    a[i,j] = a[j,i]
-                    b[i,j] = b[j,i]
+            tri2full(a)
+            tri2full(b)
             #if rank == root:
             #    print 'python ScaLapack diagonalize general not implemented yet'
             #assert (not sl_diagonalize)
@@ -74,9 +73,7 @@ def diagonalize(a, w, b=None, root=0):
             assert len(sl_diagonalize) == 4
             assert sl_diagonalize[0]*sl_diagonalize[1] <= size
             # symmetrize the matrix
-            for i in range(n):
-                for j in range(i, n):
-                    a[i,j] = a[j,i]
+            tri2full(a)
             info = world.diagonalize(a, w,
                                      sl_diagonalize[0],
                                      sl_diagonalize[1],
@@ -108,9 +105,7 @@ def inverse_cholesky(a, root=0):
         assert len(sl_inverse_cholesky) == 4
         assert sl_inverse_cholesky[0]*sl_inverse_cholesky[1] <= size
         # symmetrize the matrix
-        for i in range(n):
-            for j in range(i, n):
-                a[i,j] = a[j,i]
+        tri2full(a)
         info = world.inverse_cholesky(a,
                                       sl_inverse_cholesky[0],
                                       sl_inverse_cholesky[1],
