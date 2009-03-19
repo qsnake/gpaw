@@ -9,7 +9,7 @@
 #include "mympi.h"
 
 // BLACS
-#ifdef GPAW_AIX
+#ifdef GPAW_MKL
 #define   Cblacs_gridexit_ Cblacs_gridexit
 #define   Cblacs_gridinfo_ Cblacs_gridinfo
 #define   Cblacs_gridinit_ Cblacs_gridinit
@@ -33,7 +33,6 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #ifdef GPAW_AIX
 #define   descinit_   descinit
 #define   numroc_     numroc
-#define   Cpdgemr2do_ Cpdgemr2do
 #define   pdlamch_    pdlamch
 
 #define   pdpotrf_  pdpotrf
@@ -45,6 +44,10 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 
 #define   pdsyevd_  pdsyevd
 #define   pdsygvx_  pdsygvx
+#endif
+
+#ifdef GPAW_MKL
+#define   Cpdgemr2do_  Cpdgemr2do
 #endif
 
 // tools
