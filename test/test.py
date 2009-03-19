@@ -13,6 +13,7 @@ from glob import glob
 import gc
 from optparse import OptionParser
 
+import gpaw
 
 parser = OptionParser(usage='%prog [options] [tests]',
                       version='%prog 0.1')
