@@ -51,6 +51,7 @@ static INLINE void* gpaw_malloc(int n)
 #endif
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define INTP(a) ((int*) ((a)->data))
 #define LONGP(a) ((long*)((a)->data))
 #define DOUBLEP(a) ((double*)((a)->data))
 #define COMPLEXP(a) ((double_complex*)((a)->data))
