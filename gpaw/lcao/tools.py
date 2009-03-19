@@ -24,52 +24,21 @@ def get_bf_centers(atoms):
     return pos_ic
 
 
-def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
-                     usesymm=None):
-
+def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0)):
+    #This function only for get realspce hs which is supposed to be real,
+    # and if in need of get realspcace hs just in one direction which
+    #possibly to be complex, please use the get_realspace_hs in the
+    #gpaw/transport/tools.py
+    
     nspins, nk, nbf = h_skmm.shape[:-1]
     phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
     c_k = np.reshape(np.exp(1.j * phase_k) * weight_k, (nk, 1, 1))
-
-    if usesymm is None:
-        h_smm = np.sum((h_skmm * c_k), axis=1)
-        if s_kmm is not None:
-            s_mm = np.sum((s_kmm * c_k), axis=0)
-    elif usesymm is False:
-        h_smm = np.sum((h_skmm * c_k).real, axis=1)
-        if s_kmm is not None:
-            s_mm = np.sum((s_kmm * c_k).real, axis=0)
-    else: #usesymm is True:
-        raise NotImplementedError, 'Only None and False have been implemented'
-
-    if s_kmm is None:
-        return h_smm
-    return h_smm, s_mm
-            
-
-def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
-    phase_k = np.dot(2 * np.pi * R_vector, kvector)
-    c_k = np.exp(-1.0j * phase_k)
-    c_k.shape = (len(R_vector), 1, 1)
-    
-    if h_srmm != None:
-        nbf = h_srmm.shape[-1]
-        nspins = len(h_srmm)
-        h_smm = np.empty((nspins, nbf, nbf), complex)
-        for s in range(nspins):
-            h_smm[s] = np.sum((h_srmm[s] * c_k), axis=0)
-    elif s_rmm != None:
-        nbf = s_rmm.shape[-1]
-        s_mm = np.empty((nbf, nbf), complex)
-        s_mm[:] = np.sum((s_rmm * c_k), axis=0)
-    if h_srmm != None and s_rmm != None:    
+    h_smm = np.sum((h_skmm * c_k).real, axis=1)
+    if s_kmm is not None:
+        s_mm = np.sum((s_kmm * c_k).real, axis=0)
         return h_smm, s_mm
-    elif h_srmm == None:
-        return s_mm
-    elif s_rmm == None:
-        return h_smm
-
-
+    return h_smm
+           
 def remove_pbc(atoms, h, s=None, d=0):
     calc = atoms.get_calculator()
     if not calc.initialized:
