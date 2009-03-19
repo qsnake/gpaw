@@ -1,3 +1,4 @@
+#ifdef PARALLEL
 #include <Python.h>
 #ifdef GPAW_WITH_SL
 #define PY_ARRAY_UNIQUE_SYMBOL GPAW_ARRAY_API
@@ -555,3 +556,4 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 #endif
+#endif // PARALLEL

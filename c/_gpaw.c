@@ -49,12 +49,14 @@ PyObject* spline_to_grid(PyObject *self, PyObject *args);
 PyObject* NewLFCObject(PyObject *self, PyObject *args);
 PyObject* compiled_WITH_SL(PyObject *self, PyObject *args);
 #ifdef GPAW_WITH_SL
+#ifdef PARALLEL
 PyObject* blacs_create(PyObject *self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
+#endif
 #endif
 
 static PyMethodDef functions[] = {
@@ -102,12 +104,14 @@ static PyMethodDef functions[] = {
   {"construct_density1", construct_density1, METH_VARARGS, 0},
   */
 #ifdef GPAW_WITH_SL
+#ifdef PARALLEL
   {"blacs_create",      blacs_create,      METH_VARARGS, 0},
   {"blacs_destroy",     blacs_destroy,      METH_VARARGS, 0},
   {"scalapack_redist",      scalapack_redist,     METH_VARARGS, 0},
   {"scalapack_diagonalize_dc", scalapack_diagonalize_dc, METH_VARARGS, 0}, 
   {"scalapack_general_diagonalize", scalapack_general_diagonalize, METH_VARARGS, 0},
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
+#endif
 #endif
   {0, 0, 0, 0}
 };
