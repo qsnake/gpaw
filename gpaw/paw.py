@@ -32,7 +32,6 @@ from gpaw.output import PAWTextOutput
 from gpaw.scf import SCFLoop
 from gpaw.forces import ForceCalculator
 
-
 class PAW(PAWTextOutput):
     """This is the main calculation object for doing a PAW calculation."""
 
@@ -267,20 +266,20 @@ class PAW(PAWTextOutput):
         magnetic = magmom_a.any()
 
         spinpol = par.spinpol
+        fixmom = par.fixmom
+        if par.hund:
+            if natoms != 1:
+                raise ValueError('hund=True arg only valid for single atoms!')
+            fixmom = True
+            spinpol = True
+
         if spinpol is None:
             spinpol = magnetic
         elif magnetic and not spinpol:
-            raise ValueError('Non-zero initial magnetic moment for a ' +
+            raise ValueError('Non-zero initial magnetic moment for a '
                              'spin-paired calculation!')
 
         nspins = 1 + int(spinpol)
-        if not spinpol:
-            assert not par.hund
-
-        fixmom = par.fixmom
-        if par.hund:
-            fixmom = True
-            assert natoms == 1
 
         if par.gpts is not None and par.h is None:
             N_c = np.array(par.gpts)
@@ -352,6 +351,15 @@ class PAW(PAWTextOutput):
                 par.charge)
 
         M = magmom_a.sum()
+        if par.hund:
+            f_si = setups[0].calculate_initial_occupation_numbers(
+                magmom=0, hund=True, charge=par.charge)
+            Mh = -np.diff(f_si.sum(1))
+            if magnetic and M != Mh:
+                raise RuntimeError('You specified a magmom that does not'
+                                   'agree with hunds rule!')
+            else:
+                M = Mh
 
         if nbands <= 0:
             nbands = int(nvalence + M + 0.5) // 2 + (-nbands)
@@ -367,8 +375,7 @@ class PAW(PAWTextOutput):
                 self.occupations = occupations.FermiDirac(nvalence, nspins,
                                                           width)
 
-        self.occupations.magmom = atoms.get_initial_magnetic_moments().sum()
-        
+        self.occupations.magmom = M
         if fixmom:
             self.occupations.fix_moment(M)
 

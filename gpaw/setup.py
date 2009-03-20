@@ -853,9 +853,12 @@ class Setup:
 
         return self.I4_pp
 
-    def calculate_initial_occupation_numbers(self, magmom, hund, charge, f_j = None):
-        """ If f_j is specified, custom occupation numbers will be used. Hund rules
-        disabled if so."""
+    def calculate_initial_occupation_numbers(self, magmom, hund, charge,
+                                             f_j=None):
+        """If f_j is specified, custom occupation numbers will be used.
+
+        Hund rules disabled if so."""
+        
         niao = self.niAO
         nspins = self.xc_correction.nspins
         f_si = npy.zeros((nspins, niao))
