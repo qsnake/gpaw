@@ -16,6 +16,33 @@ from gpaw import debug
 import _gpaw
 
 
+def gemmdot(a, b, alpha=1.0, trans='n'):
+    """Matrix multiplication using gemm.
+
+    if transa is 'n', return c_ij = alpha * sum_k a_ik * b_kj
+    else, return c_ij = alpha * sum_k a_ik * (b^H)_kj
+
+    where H denotes the Hermitian conjugate (transpose + conjugation).
+    """
+    assert a.flags.contiguous
+    assert b.flags.contiguous
+    assert a.dtype == b.dtype
+    assert a.ndim == b.ndim == 2
+    if trans in ('n', 't'):
+        assert a.dtype is float
+    else:
+        assert a.dtype is complex
+    if trans == 'n':
+        assert a.shape[1] == b.shape[0]
+        c = np.empty((a.shape[0], b.shape[1]), float)
+        gemm(alpha, b, a, 0.0, c, 'n')
+    else: # 't' or 'c'
+        assert a.shape[0] == b.shape[0]
+        c = np.empty((a.shape[0], b.shape[0]), a.dtype)
+        gemm(alpha, b, a, 0.0, c, trans)
+    return c
+
+
 def gemm(alpha, a, b, beta, c, transa='n'):
     """General Matrix Multiply.
 
