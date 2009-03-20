@@ -290,7 +290,8 @@ def md5_hash():
     """
     try:
         # To replace md5, deprecated in Python 2.5
-        from hashlib import md5
+        #from hashlib import md5
+        import md5
     except ImportError:
         # Fallback to md5 to ensure 2.4 compatibility
         import md5
