@@ -26,6 +26,7 @@ GPAW calculator:
 .. toctree::
    :maxdepth: 1
    
+   lcao/lcao
    parallel_runs/parallel_runs
    restart_files
    rmm-diis
