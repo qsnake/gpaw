@@ -3,7 +3,6 @@
 
 import os
 import xml.sax
-import md5
 
 import numpy as np
 

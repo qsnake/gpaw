@@ -5,12 +5,12 @@ raise DeprecationWarning('Please use module setup_data instead')
 
 import os
 import xml.sax
-import md5
 import re
 from cStringIO import StringIO
 
 import numpy as npy
 
+from gpaw.utilities.tools import md5
 from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
 

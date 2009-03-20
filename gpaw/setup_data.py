@@ -2,7 +2,6 @@
 # Please see the accompanying LICENSE file for further information.
 import os
 import xml.sax
-import md5
 import re
 from cStringIO import StringIO
 from math import sqrt
@@ -10,6 +9,7 @@ from math import sqrt
 import numpy as npy
 from ase.data import atomic_names
 
+from gpaw.utilities.tools import md5
 from gpaw import setup_paths
 
 try:

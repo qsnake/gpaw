@@ -29,7 +29,7 @@ def core_states(symbol):
     from gpaw.atom.generator import parameters
 
     core = parameters[symbol].get('core', '')
-    
+
     # Parse core string:
     j = 0
     if core.startswith('['):
@@ -62,7 +62,7 @@ def get_kpoint_dimensions(kpts):
     nkpts = len(kpts)
     if nkpts == 1:
         return npy.ones(3, int)
-    
+
     tol = 1e-5
     Nk_c = npy.zeros(3)
     for c in range(3):
@@ -101,7 +101,7 @@ def coordinates(gd):
 
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
-    """    
+    """
     I  = npy.indices(gd.n_c)
     dr = npy.reshape(gd.h_c, (3, 1, 1, 1))
     r0 = npy.reshape(gd.h_c * gd.beg_c - .5 * gd.cell_c, (3, 1, 1, 1))
@@ -147,7 +147,7 @@ def normalize(U):
     """Normalize columns of U."""
     for col in U.T:
         col /= npy.linalg.norm(col)
-    
+
 def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
@@ -157,7 +157,7 @@ def gram_schmidt(U):
 
 def lowdin(U, S=None):
     """Orthonormalize columns of U according to the Lowdin procedure.
-    
+
     If the overlap matrix is know, it can be specified in S.
     """
     if S is None:
@@ -169,7 +169,7 @@ def lowdin(U, S=None):
 def lowdin_svd(U):
     """Orthogonalize according to the Lowdin procedure
        using singular value decomposition.
-       
+
        U is an N x M matrix containing M vectors as its columns.
     """
     Z, D, V = npy.linalg.svd(U, full_matrices=0)
@@ -210,7 +210,7 @@ def tri2full(H_nn, UL='L'):
 
     for n in range(N - 1):
         H_nn[n, n + 1:] = H_nn[n + 1:, n].conj()
-        
+
 def apply_subspace_mask(H_nn, f_n):
     """Uncouple occupied and unoccupied subspaces.
 
@@ -257,7 +257,7 @@ def tridiag(a, b, c, r, u):
     The solution is returned in u.
 
 
-    [b1 c1  0  ...            ] [u1]   [r1] 
+    [b1 c1  0  ...            ] [u1]   [r1]
     [a1 b2 c2 0 ...           ] [ :]   [ :]
     [ 0 a2 b3 c3 0 ...        ] [  ] = [  ]
     [                         ] [  ]   [  ]
@@ -283,6 +283,20 @@ def tridiag(a, b, c, r, u):
         # Backward substitution
         u[i-1] -= tmp[i-1] * u[i]
 
+# from http://hg.stuvel.eu/flickrapi/file/c96a2d1288ef/flickrapi/__init__.py
+def md5_hash():
+    """
+    Use hashlib when available - replace md5, deprecated in Python 2.5.
+    """
+    try:
+        # To replace md5, deprecated in Python 2.5
+        import hashlib.md5 as md5
+    except ImportError:
+        # Fallback to md5 to ensure 2.4 compatibility
+        import md5
+    return md5
+
+md5 = md5_hash()
 
 class Spline:
     def __init__(self, xi, yi, leftderiv=None, rightderiv=None):
@@ -308,7 +322,7 @@ class Spline:
         N = len(xi)
         self.ypp = u = np.zeros(N) # The second derivatives y''
         tmp = np.zeros(N - 1)
-        
+
         # Set left boundary condition
         if leftderiv is None: # natural spline - second derivative is zero
             tmp[0] = u[0] = 0.0
@@ -324,7 +338,7 @@ class Spline:
             tmp[i] = (yi[i + 1] - yi[i]) / (xi[i + 1] - xi[i]) - \
                      (yi[i] - yi[i - 1]) / (xi[i] - xi[i - 1])
             tmp[i] = (6 * tmp[i] / (xi[i +1] - xi[i-1]) - sig * tmp[i - 1]) / p
-            
+
         # Set right boundary condition
         if rightderiv is None: # natural spline - second derivative is zero
             qn = tmpn = 0.0
@@ -341,7 +355,7 @@ class Spline:
         """Evaluate spline for each point in input argument.
 
         The value in point x[i-1] < x <= x[i] is determined by::
-        
+
                                     ''       ''
           y(x) = a y    + b y  + c y    + d y
                     i-1      i      i-1      i
