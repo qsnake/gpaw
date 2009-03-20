@@ -104,6 +104,7 @@ keyword          type       default value        description
                  or
                  ``dict``
 ``eigensolver``  ``str``    ``'rmm-diis'``       Eigensolver
+``hund``         ``bool``   ``False``            Use Hund's rule
 ===============  =========  ===================  =============================
 
 *seq*: A sequence of three ``int``'s.
@@ -398,6 +399,15 @@ standard output.  One can also give a ``file`` object (anything with a
 ``write`` method will do).  If a string (different from ``'-'``) is
 passed to the ``txt`` keyword, a file with that name will be opened
 and used for output.  Use ``txt=None`` to disable all text output.
+
+Using Hund's rule for guessing initial magnetic moments
+-------------------------------------------------------
+
+The ``hund`` keyword can be used for single atoms only. If set to
+``True``, the calculation will become spinpolarized, and the initial
+ocupations, and magnetic moment of the atom will be fixed to the value
+required by Hund's rule. Any user specified magnetic moment is
+ignored.
 
 .. _manual_parallel_calculations:
 
