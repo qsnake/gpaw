@@ -24,29 +24,40 @@ def get_bf_centers(atoms):
     return pos_ic
 
 
-def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0)):
-    #This function only for get realspce hs which is supposed to be real,
-    # and if in need of get realspcace hs just in one direction which
-    #possibly to be complex, please use the get_realspace_hs in the
-    #gpaw/transport/tools.py
+def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
+                     usesymm=None):
+    # usesymm=False only works if the k-point reduction is only along one
+    # direction.
+    # For more functionality, see: gpaw/transport/tools.py
     
     nspins, nk, nbf = h_skmm.shape[:-1]
-    phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
-    c_k = np.reshape(np.exp(1.j * phase_k) * weight_k, (nk, 1, 1))
+    c_k = np.exp(2.j * np.pi * np.dot(ibzk_kc, R_c)) * weight_k
+    c_k.shape = (nk, 1, 1)
     h_smm = np.sum((h_skmm * c_k).real, axis=1)
-    if s_kmm is not None:
-        s_mm = np.sum((s_kmm * c_k).real, axis=0)
-        return h_smm, s_mm
-    return h_smm
-           
+
+    if usesymm is None:
+        h_smm = np.sum((h_skmm * c_k), axis=1)
+        if s_kmm is not None:
+            s_mm = np.sum((s_kmm * c_k), axis=0)
+    elif usesymm is False:
+        h_smm = np.sum((h_skmm * c_k).real, axis=1)
+        if s_kmm is not None:
+            s_mm = np.sum((s_kmm * c_k).real, axis=0)
+    else: #usesymm is True:
+        raise NotImplementedError, 'Only None and False have been implemented'
+
+    if s_kmm is None:
+        return h_smm
+    return h_smm, s_mm
+
+
 def remove_pbc(atoms, h, s=None, d=0):
     calc = atoms.get_calculator()
     if not calc.initialized:
         calc.initialize(atoms)
 
     nao = calc.wfs.setups.nao
-    
-    cutoff = atoms.get_cell()[d, d] * 0.5 
+    cutoff = atoms.get_cell()[d, d] * 0.5
     pos_i = get_bf_centers(atoms)[:, d]
     for i in range(nao):
         dpos_i = np.absolute(pos_i - pos_i[i])
@@ -144,6 +155,20 @@ def dump_hamiltonian_parallel(filename, atoms, direction=None):
         calc_data
         pickle.dump(calc_data, fd, 2) 
         fd.close()
+
+
+def get_lead_lcao_hamiltonian(calc, usesymm=False):
+    S_qMM = calc.wfs.S_qMM.copy()
+    H_sqMM = np.empty((calc.wfs.nspins,) + S_qMM.shape, calc.wfs.dtype)
+    Nk = len(calc.wfs.weight_k)
+    for kpt in calc.wfs.kpt_u:
+        calc.wfs.eigensolver.calculate_hamiltonian_matrix(
+            calc.hamiltonian, calc.wfs, kpt)
+        H_sqMM[kpt.s, kpt.k] = calc.wfs.eigensolver.H_MM * Hartree
+        tri2full(S_qMM[kpt.k])
+        tri2full(H_sqMM[kpt.s, kpt.k])
+    return lead_kspace2realspace(H_sqMM, S_qMM, calc.wfs.ibzk_kc,
+                                 calc.wfs.weight_k, 'x', usesymm)
 
 
 def get_hamiltonian(atoms):
