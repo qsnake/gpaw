@@ -126,6 +126,22 @@ class Timer:
             self.timers[name] = self.timers.get(name, 0.0) + t
 
 
+class NullTimer(Timer):
+    """Compatible with Timer and StepTimer interfaces.  Does nothing."""
+    def __init__(self): pass
+    def start(self, name): pass
+    def stop(self, name=None): pass
+    def gettime(self, name):
+        return 0.0
+    def reset(self): pass
+    def write(self, out=sys.stdout): pass
+    def add(self, timer): pass
+    def write_now(self, mark=''): pass
+
+
+nulltimer = NullTimer()
+
+
 class StepTimer(Timer):
     """Step timer to print out timing used in computation steps.
     
@@ -153,7 +169,7 @@ class StepTimer(Timer):
         self.start(self.now)
 
 
-    def write_now(self,mark=''):
+    def write_now(self, mark=''):
         self.stop(self.now)
         if self.alwaysprint or mpi.rank == MASTER:
             print >> self.out, self.name, mark, self.gettime(self.now)
