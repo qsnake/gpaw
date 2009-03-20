@@ -156,14 +156,14 @@ class Eigensolver:
         dH_aii = dict([(a, unpack(dH_sp[kpt.s]))
                        for a, dH_sp in hamiltonian.dH_asp.items()])
 
-        self.timer.start('Subspace diag: calc_hamiltonian_matrix')
+        self.timer.start('Subspace diag: calc_matrix')
         if hamiltonian.xc.xcfunc.hybrid == 0.0:
             H_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                            H, dH_aii)
         else:
             H_nn = hamiltonian.xc.xcfunc.exx.grr(wfs, kpt, Htpsit_xG,
                                                  hamiltonian)
-        self.timer.stop('Subspace diag: calc_hamiltonian_matrix')
+        self.timer.stop('Subspace diag: calc_matrix')
 
         if sl_diagonalize:
             assert parallel
