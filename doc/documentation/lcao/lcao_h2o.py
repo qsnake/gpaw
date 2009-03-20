@@ -13,4 +13,3 @@ dyn = QuasiNewton(mol, trajectory='lcao_h2o.traj')
 dyn.run(fmax=0.05)
 
 
-

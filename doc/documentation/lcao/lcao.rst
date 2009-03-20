@@ -9,12 +9,13 @@ LCAO Mode
 
 .. highlight:: bash
 
-In the LCAO mode the Kohn-Sham wave functions `\psi_n` are expanded
-onto a set of atomic-like orbitals `\Phi_{nlm}`
+In the LCAO mode the Kohn-Sham pseudo wave functions `\tilde{\psi}_n`
+are expanded onto a set of atomic-like orbitals `\Phi_{nlm}`, in the
+same spirit as the SIESTA method [Siesta]_ :
 
 .. math::
 
- \psi_n = \sum_N c_{\mu n} \Phi_{\mu}
+ \tilde{\psi}_n = \sum_N c_{\mu n} \Phi_{\mu}
 
 The atomic orbitals are constructed as products of numerical radial
 functions and spherical harmonics
@@ -25,7 +26,19 @@ functions and spherical harmonics
 
 where `r^a = \mathbf{r-R}^a` is the position of nucleus `a`.
 
-Some detailed informatiom can be found in the master theses `1`_ and `2`_   
+In this approximation the variational parameters are the coefficients
+`c_{\mu n}` rather than the real space wave function. The eigenvalue
+problem then becomes
+
+.. math::
+
+ \sum_\nu H_{\mu\nu} c_{\nu n}   = \sum_{\nu} S_{\mu\nu} c_{\nu n} \epsilon_n
+
+which can be solved by directly diagonalization of the Hamiltonian in
+the basis of the atomic orbitals.
+
+
+Some detailed informatiom can be found in the master theses `1`_ and `2`_.  
 
 .. _1: ../_static/askhl_master.pdf
 .. _2: ../_static/marco_master.pdf
@@ -55,9 +68,9 @@ Running a calculation
 In order to run a LCAO calculation, the ``lcao`` mode and a basis-set
 should be set in the calculator::
 
-  >>> calc=GPAW(mode='lcao',
-  >>>           basis='dzp',
-  >>>           ...)
+  >>> calc = GPAW(mode='lcao',
+  >>>             basis='dzp',
+  >>>             ...)
  
 The calculator can then be used in the usual way. 
 
@@ -70,3 +83,15 @@ calculator. The ``QuasiNewton`` minimizer will use the forces
 calculated using the localized basis set.
 
 .. literalinclude:: lcao_h2o.py
+
+It is possible to switch to the Finite Difference mode and further
+relax the structure simply by doing::
+
+  >>> calc.set(mode='fd')
+  >>> dyn.run(fmax=0.05)
+
+
+
+.. [Siesta] J.M. Soler et al.,
+   J. Phys. Cond. Matter 14, 2745-2779 (2002) 
+
