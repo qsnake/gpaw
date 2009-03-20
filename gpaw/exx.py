@@ -7,7 +7,7 @@ evaluation of exact exchange.
 The eXact-eXchange energy functional is::
 
                                          *  _       _     * _        _
-           __                /        phi  (r) phi (r) phi (r') phi (r')
+           __                /        psi  (r) psi (r) psi (r') psi (r')
        -1 \                  |  _  _      n       m       m        n
  E   = --  ) delta     f  f  | dr dr' ---------------------------------  (5.1)
   xx    2 /__     s s   n  m |                    _   _
@@ -17,7 +17,7 @@ The action of the non-local exchange potential on an orbital is::
 
                /                         __
  ^             | _    _  _        _     \      _       _
- V   phi (r) = |dr' V(r, r') phi (r') =  ) V  (r) phi (r)               (5.3)
+ V   psi (r) = |dr' V(r, r') psi (r') =  ) V  (r) psi (r)               (5.3)
   xx    n      |                n       /__ nm       m
                /                         m
 
@@ -42,6 +42,40 @@ and::
 Equation numbers as in
 'Exact Exchange in Density Functional Calculations'
 Masters Thesis by Carsten Rostgaard, CAMP 2006
+
+In PAW, equation (5.3) above transforms to::
+
+   ^     ~      --               /
+   v  | psi > = >  f  delta      |
+    xx     n    --  m      s ,s  |
+                m           n  m \
+
+                   ~        ~       -- /
+                   v  (r) |psi  > + >  |
+                    nm        m     -- |
+                                     a \
+
+                            --  ~a    --      a  /    ~a    ~       a
+                            >  |p  >  >  Delta   | dr g (r) v  (r) P
+                            --   i    --      L  /     L     nm     mi
+                            i i   1    L                              2
+                             1 2
+
+                            --     a       a           a
+                       +    >     D     * C         * D
+                            --     i i     i i i i     i i
+                          i i i i   1 2     1 3 2 4     3 4
+                           1 2 3 4
+
+                            --      a      a
+                       +    >      X    * D
+                            --      i i    i i
+                            i i      1 2    1 2
+                             1 2
+
+                             core-core  \ \
+                       +    E           | |
+                             xx         / /
 """
 
 import numpy as npy

@@ -374,7 +374,7 @@ class GPAWTransport:
             self.h2_spkmm = spk(ntk, kpts, self.h2_skmm, 'h')
             self.s2_pkmm = spk(ntk, kpts, self.s2_kmm)
             self.h2_spkmm_ij = spk(ntk, kpts, self.h2_skmm, 'h', position)
-            self.s2_pkmm_ij = spk(ntk, kpts, self.s2_kmm, 's', position)            
+            self.s2_pkmm_ij = spk(ntk, kpts, self.s2_kmm, 's', position)
         else:
             raise TypeError('unkown lead index')
 
