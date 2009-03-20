@@ -37,9 +37,7 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #define   pdlamch_    pdlamch
 
 #define   pdpotrf_  pdpotrf
-#define   pdpotri_  pdpotri
 #define   pzpotrf_  pzpotrf
-#define   pzpotri_  pzpotri
 #define   pdtrtri_  pdtrtri
 #define   pztrtri_  pztrtri
 
@@ -48,6 +46,7 @@ int Csys2blacs_handle_(MPI_Comm SysCtxt);
 #endif
 
 #ifdef GPAW_MKL
+#define   Cpdgemr2d_   Cpdgemr2d
 #define   Cpdgemr2do_  Cpdgemr2do
 #endif
 
@@ -57,6 +56,9 @@ void descinit_(int* desc, int* m, int* n, int* mb, int* nb, int* irsrc,
                int* lld, int* info);
 
 int numroc_(int* n, int* nb, int* iproc, int* isrcproc, int* nprocs);
+
+void Cpdgemr2d_(int m, int n, double *A, int IA, int JA, int *descA,
+               double *B, int IB, int JB, int *descB, int gcontext);
 
 void Cpdgemr2do_(int m, int n, double *A, int IA, int JA, int *descA,
                double *B, int IB, int JB, int *descB);
@@ -179,11 +181,12 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
     PyArrayObject* a_obj; //source matrix
     PyArrayObject* adesc; //source descriptor
     PyArrayObject* bdesc; //destination descriptor
+    PyArrayObject* cdesc = 0; //intermediate descriptor, must encompass adesc + bdesc
     int m = 0;
     int n = 0;
     static int one = 1;
 
-    if (!PyArg_ParseTuple(args, "OOO|ii", &a_obj, &adesc, &bdesc, &m, &n))
+    if (!PyArg_ParseTuple(args, "OOO|Oii", &a_obj, &adesc, &bdesc, &cdesc, &m, &n))
       return NULL;
 
     // adesc
@@ -253,7 +256,20 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
     // another ConTxt which encompasses MPI_COMM_WORLD. It is used as an intermediary
     // for copying between a_ConTxt and b_ConTxt. It then calls Cpdgemr2d which
     // performs the actual redistribution.
-    Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), DOUBLEP(b_obj), one, one, INTP(bdesc));
+    if (cdesc != 0)
+      {
+        int c_ConTxt = INTP(cdesc)[1];
+        if (c_ConTxt != -1)
+          {
+            Cpdgemr2d_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), DOUBLEP(b_obj), 
+                                               one, one, INTP(bdesc), c_ConTxt);
+          }
+      }
+    else
+      {
+        Cpdgemr2do_(m, n, DOUBLEP(a_obj), one, one, INTP(adesc), DOUBLEP(b_obj), 
+                                                        one, one, INTP(bdesc));
+      }
 
     // Note that we choose to return Py_None, instead of an empty array.
     if ((b_locM == 0) | (b_locN == 0))
