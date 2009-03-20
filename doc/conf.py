@@ -32,7 +32,15 @@ except ImportError:
 
 
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['ext', 'images', 'sitelink', 'sphinx.ext.autodoc', ext_png_math]
+extensions = ['ext', 'images', 'sitelink',
+              'sphinx.ext.autodoc',
+              ext_png_math]
+
+try:
+    from sphinx.ext import intersphinx
+    extensions.append('sphinx.ext.intersphinx')
+except ImportError:
+    print 'Warning: no sphinx.ext.intersphinx available: please update to sphinx >= 5.0'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -51,9 +59,9 @@ copyright = '2008, CAMd et al.'
 # other places throughout the built documents.
 #
 # The short X.Y version.
-version = '0.4'
+version = '0.5'
 # The full version, including alpha/beta/rc tags.
-release = '0.4'
+release = '0.5'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -66,7 +74,7 @@ today_fmt = '%B %d, %Y'
 
 # List of directories, relative to source directories, that shouldn't be searched
 # for source files.
-#exclude_dirs = []
+exclude_trees = ['_build']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -185,3 +193,25 @@ latex_preamble = '\usepackage{amsmath}\usepackage{amsfonts}'
 
 # If false, no module index is generated.
 #latex_use_modindex = True
+
+# Example configuration for intersphinx: refer to the Python standard library.
+intersphinx_mapping = {'http://wiki.fysik.dtu.dk/ase': None}
+
+# sphinx.ext.pngmath manual configuration
+# ---------------------------------------
+
+pngmath_latex_preamble = '\usepackage{amsmath}\usepackage{amsfonts}\usepackage[active]{preview}'
+
+# Additional arguments to give to dvipng, as a list.
+# The default value is ['-gamma 1.5', '-D 110']
+pngmath_dvipng_args = [
+    '-bgTransparent',
+    '-Ttight',
+    '--noghostscript',
+    '-l10',
+    '--depth',
+    '-D 136',
+    ]
+
+# correctly aligns the baselines
+pngmath_use_preview = True
