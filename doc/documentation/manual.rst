@@ -134,7 +134,7 @@ Mode
 ----
 
 The default mode (``mode='fd'``) is Finite Differece. This means that
-the wave functins will be expanded on a real space grid. The
+the wave functions will be expanded on a real space grid. The
 alternative is to expand the wave functions on a basis-set constructed
 as linear combination as atomic-like orbitals, in short LCAO. This is
 done by setting (``mode='lcao'``).

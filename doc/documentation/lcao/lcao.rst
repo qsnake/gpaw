@@ -34,9 +34,11 @@ directory. For example, typing::
 
   $ gpaw-basis H
 
-will generate a basis-set file (:file:`.basis`) for the Hydrogen atom with
-default parameters. Move the basis-set files to the same directory
-where the setups are. For a complete list of the parameters do::
+will generate the basis-set file :file:`H.dzp.basis` for the Hydrogen
+atom with default parameters. Note that :file:`dzp` stands for
+``double zeta polarized`` which is the default basis-set type. Move
+the basis-set files to the same directory where the setups are. For a
+complete list of the parameters do::
 
   $ gpaw-basis --help
 
@@ -44,4 +46,10 @@ where the setups are. For a complete list of the parameters do::
 Running a calculation
 ---------------------
 
+In order to run a LCAO calculation, the ``lcao`` mode and a basis-set
+should be set in the calculator::
 
+  >>> calc=GPAW(mode='fd',
+  >>>           basis='dzp',
+  >>>           ...)
+ 
