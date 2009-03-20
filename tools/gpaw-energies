@@ -99,7 +99,12 @@ print >> out, '# Zero Kelvin = ', (paw.hamiltonian.Etot +
 print >> out, '# kin.    "    = ',paw.hamiltonian.Ekin * Ha
 print >> out, '# pot.    "    = ',paw.hamiltonian.Epot * Ha
 print >> out, '# xc      "    = ',paw.hamiltonian.Exc * Ha
-print >> out, '# fermi level = ', paw.get_fermi_level()
+try:
+    eFermi = paw.get_fermi_level()
+except:
+    homo, lumo = paw.get_homo_lumo()
+    eFermi = 0.5 * (homo + lumo)
+print >> out, '# Fermi level = ', eFermi
 
 # dos
 if opt.gauss is None:
