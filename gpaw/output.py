@@ -100,11 +100,14 @@ class PAWTextOutput:
         if extra_parameters:
             self.text('Extra parameters:', extra_parameters)
 
-    def print_init(self, pos_ac):
+    def print_cell_and_parameters(self):
+        self.plot_atoms(self.atoms)
+        self.print_unit_cell(self.atoms.get_positions() / Bohr)
+        self.print_parameters()
+
+    def print_unit_cell(self, pos_ac):
         t = self.text
         p = self.input_parameters
-
-##        self.print_parameters()
 
         t()
         t('Unit Cell:')

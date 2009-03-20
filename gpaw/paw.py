@@ -88,15 +88,14 @@ class PAW(PAWTextOutput):
             
         self.set(**kwargs)
 
-        if filename is not None:
-            if not self.initialized:
-                self.initialize()
+        if filename is not None and not self.initialized:
+            self.initialize()
+            self.print_cell_and_parameters()
                 
         self.observers = []
 
     def read(self, reader):
         gpaw.io.read(self, reader)
-        self.plot_atoms(self.atoms)
 
     def set(self, **kwargs):
         p = self.input_parameters
@@ -192,6 +191,8 @@ class PAW(PAWTextOutput):
             
         if self.scf.converged:
             return
+        else:
+            self.print_cell_and_parameters()
 
         for iter in self.scf.run(self.wfs, self.hamiltonian, self.density,
                                  self.occupations):
@@ -477,11 +478,8 @@ class PAW(PAWTextOutput):
         if xcfunc.gllb:
             xcfunc.initialize_gllb(self)
 
-        self.plot_atoms(atoms)
-        self.print_init(pos_av)
-        self.print_parameters()
-
         if dry_run:
+            self.print_cell_and_parameters()
             self.txt.flush()
             raise SystemExit
 
