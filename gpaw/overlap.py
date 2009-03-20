@@ -79,11 +79,12 @@ class Overlap:
         nbands = mynbands * self.band_comm.size
 
         # Construct the overlap matrix:
+        self.timer.start('Orthonormalize: calc_matrix')
         S = lambda x: x
         dS_aii = dict([(a, self.setups[a].O_ii) for a in P_ani])
         S_nn = self.operator.calculate_matrix_elements(psit_nG, P_ani,
                                                        S, dS_aii)
-
+        self.timer.stop('Orthonormalize: calc_matrix')
         self.timer.start('Orthonormalize: inverse_cholesky')
 
         if sl_inverse_cholesky:
@@ -110,7 +111,9 @@ class Overlap:
             self.domain_comm.broadcast(C_nn, 0)
         self.band_comm.broadcast(C_nn, 0)
 
+        self.timer.start('Orthonormalize: rotate_psi')
         kpt.psit_nG = self.operator.matrix_multiply(C_nn, psit_nG, P_ani)
+        self.timer.stop('Orthonormalize: rotate_psi')
         self.timer.stop('Orthonormalize')
 
     def apply(self, a_xG, b_xG, wfs, kpt, calculate_P_ani=True):
