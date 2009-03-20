@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from ase import *
 from gpaw import GPAW
 

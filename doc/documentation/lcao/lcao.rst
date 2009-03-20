@@ -64,3 +64,9 @@ The calculator can then be used in the usual way.
 
 Example
 -------
+
+The following example will relax a water molecule using the LCAO
+calculator. The ``QuasiNewton`` minimizer will use the forces
+calculated using the localized basis set.
+
+.. literalinclude:: lcao_h2o.py
