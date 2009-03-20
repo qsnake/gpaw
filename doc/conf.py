@@ -59,9 +59,12 @@ copyright = '2008, CAMd et al.'
 # other places throughout the built documents.
 #
 # The short X.Y version.
-version = '0.5'
+try:
+    from gpaw.version import version
+except ImportError:
+    version = '0.5'
 # The full version, including alpha/beta/rc tags.
-release = '0.5'
+release = version
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -166,7 +169,7 @@ htmlhelp_basename = 'GPAWdoc'
 # ------------------------
 
 # The paper size ('letter' or 'a4').
-#latex_paper_size = 'letter'
+latex_paper_size = 'a4'
 
 # The font size ('10pt', '11pt' or '12pt').
 #latex_font_size = '10pt'
@@ -194,7 +197,7 @@ latex_preamble = '\usepackage{amsmath}\usepackage{amsfonts}'
 # If false, no module index is generated.
 #latex_use_modindex = True
 
-# Example configuration for intersphinx: refer to the Python standard library.
+# Example configuration for intersphinx: refer to ase.
 intersphinx_mapping = {'http://wiki.fysik.dtu.dk/ase': None}
 
 # sphinx.ext.pngmath manual configuration
