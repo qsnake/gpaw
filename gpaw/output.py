@@ -18,6 +18,36 @@ from gpaw import sl_diagonalize, sl_inverse_cholesky, dry_run, extra_parameters
 from gpaw.utilities.memory import maxrss
 import gpaw
 
+def initialize_text_stream(txt, rank, old_txt=None):
+    """Set the stream for text output.
+    
+    If `txt` is not a stream-object, then it must be one of:
+    
+    * None:  Throw output away.
+    * '-':  Use standard-output (``sys.stdout``).
+    * A filename:  Open a new file.
+    """
+    firsttime = (old_txt is None)
+
+    if txt is None or rank != 0:
+        return devnull, firsttime
+    elif txt == '-':
+        return sys.stdout, firsttime
+    elif isinstance(txt, str):
+        if isinstance(old_txt, file) and old_txt.name == txt:
+            return old_txt, firsttime
+        else:
+            if not firsttime:
+                # We want every file to start with the logo, so
+                # that the ase.io.read() function will recognize
+                # it as a GPAW text file.
+                firsttime = True
+            return open(txt, 'w'), firsttime
+    else:
+        assert hasattr(txt, 'write'), 'Not a stream object!'
+        return txt, firsttime
+
+    return old_txt, firsttime
 
 class PAWTextOutput:
     """Class for handling all text output."""
@@ -37,25 +67,8 @@ class PAWTextOutput:
 
         self.verbose = verbose
 
-        firsttime = (self.txt is None)
-
-        if txt is None or self.wfs.world.rank != 0:
-            self.txt = devnull
-        elif txt == '-':
-            self.txt = sys.stdout
-        elif isinstance(txt, str):
-            if isinstance(self.txt, file) and self.txt.name == txt:
-                pass
-            else:
-                if not firsttime:
-                    # We want every file to start with the logo, so
-                    # that the ase.io.read() function will recognize
-                    # it as a GPAW text file.
-                    firsttime = True
-                self.txt = open(txt, 'w')
-        else:
-            assert hasattr(txt, 'write'), 'Not a stream object!'
-            self.txt = txt
+        self.txt, firsttime = initialize_text_stream(txt, self.wfs.world.rank,
+                                                     self.txt)
         if firsttime:
             self.print_logo()
 

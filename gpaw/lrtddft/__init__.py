@@ -9,6 +9,7 @@ import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 from gpaw import debug
 from gpaw.poisson import PoissonSolver
+from gpaw.output import initialize_text_stream
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.lrtddft.omega_matrix import OmegaMatrix
@@ -66,17 +67,18 @@ class LrTDDFT(ExcitationList):
                  force_ApmB=False # for tests
                  ):
 
-        self.txt=txt
         self.nspins = None
         self.istart=None
         self.jend=None
 
         if isinstance(calculator, str):
+            ExcitationList.__init__(self, None, txt)
             return self.read(calculator)
+        else:
+            ExcitationList.__init__(self, calculator, txt)
+
         if filename is not None:
             return self.read(filename)
-
-        ExcitationList.__init__(self, calculator)
 
         self.filename=None
         self.calculator=None
@@ -134,7 +136,6 @@ class LrTDDFT(ExcitationList):
         if not changed: return
 
         self.calculator = calculator
-        self.out = calculator.txt
         self.nspins = nspins
         self.eps = eps
         self.istart = istart
@@ -146,7 +147,8 @@ class LrTDDFT(ExcitationList):
                              nspins=nspins,
                              eps=eps,
                              istart=istart,
-                             jend=jend)
+                             jend=jend,
+                             txt=self.txt)
         if not self.force_ApmB:
             Om = OmegaMatrix
             name = 'LrTDDFT'
@@ -160,7 +162,7 @@ class LrTDDFT(ExcitationList):
             name = 'LrTDDFThyb'
         self.Om = Om(self.calculator, self.kss,
                      self.xc, self.derivativeLevel, self.numscale,
-                     finegrid=self.finegrid, out=self.txt)
+                     finegrid=self.finegrid, txt=self.txt)
         self.name = name
 ##        self.diagonalize()
 
@@ -218,10 +220,10 @@ class LrTDDFT(ExcitationList):
             self.kss = KSSingles(filehandle=f)
             if self.name == 'LrTDDFT':
                 self.Om = OmegaMatrix(kss=self.kss, filehandle=f,
-                                      out=self.txt)
+                                      txt=self.txt)
             else:
                 self.Om = ApmB(kss=self.kss, filehandle=f,
-                                      out=self.txt)
+                                      txt=self.txt)
             self.Om.Kss(self.kss)
 
             # check if already diagonalized

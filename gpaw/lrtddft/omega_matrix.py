@@ -9,6 +9,7 @@ from ase.parallel import paropen
 from gpaw import debug
 import gpaw.mpi as mpi
 from gpaw.poisson import PoissonSolver
+from gpaw.output import initialize_text_stream
 from gpaw.lrtddft.excitation import Excitation,ExcitationList
 from gpaw.lrtddft.kssingle import KSSingles
 from gpaw.transformers import Transformer
@@ -32,7 +33,7 @@ class OmegaMatrix:
       - derivativeLevel: which level i of d^i Exc/dn^i to use
       - numscale: numeric epsilon for derivativeLevel=0,1
       - filehandle: the oject can be read from a filehandle
-      - out: output stream or file name
+      - txt: output stream or file name
       - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
         2 everything on the fine grid
     """
@@ -43,25 +44,13 @@ class OmegaMatrix:
                  derivativeLevel=None,
                  numscale=0.001,
                  filehandle=None,
-                 out=None,
+                 txt=None,
                  finegrid=2
                  ):
         
-        if out is None:
-            if calculator is not None:
-                out = calculator.txt
-            else:
-                if mpi.rank == MASTER:
-                    out = sys.stdout
-                else:
-                    out = open('/dev/null', 'w')
-        else:
-            if type(out) == type(''):
-                out = paropen(out, 'w')
-            else:
-                raise RuntimeError('unknown output object of type ' +
-                                   str(type(out)))
-        self.out = out
+        if not txt and calculator:
+            txt = calculator.txt
+        self.txt, firsttime = initialize_text_stream(txt, mpi.rank)
 
         if filehandle is not None:
             self.kss = kss
@@ -205,9 +194,9 @@ class OmegaMatrix:
 
         ns=self.numscale
         xc=self.xc
-        print >> self.out, 'XC',nij,'transitions'
+        print >> self.txt, 'XC',nij,'transitions'
         for ij in range(nij):
-            print >> self.out,'XC kss['+'%d'%ij+']' 
+            print >> self.txt,'XC kss['+'%d'%ij+']' 
 
             timer = Timer()
             timer.start('init')
@@ -360,7 +349,7 @@ class OmegaMatrix:
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
-                print >> self.out,'XC estimated time left',\
+                print >> self.txt,'XC estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
         return Om
@@ -375,12 +364,12 @@ class OmegaMatrix:
         
         # calculate omega matrix
         nij = len(kss)
-        print >> self.out,'RPA',nij,'transitions'
+        print >> self.txt,'RPA',nij,'transitions'
         
         Om = npy.zeros((nij,nij))
         
         for ij in range(nij):
-            print >> self.out,'RPA kss['+'%d'%ij+']=', kss[ij]
+            print >> self.txt,'RPA kss['+'%d'%ij+']=', kss[ij]
 
             timer = Timer()
             timer.start('init')
@@ -459,7 +448,7 @@ class OmegaMatrix:
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
-                print >> self.out,'RPA estimated time left',\
+                print >> self.txt,'RPA estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
         return Om
@@ -530,7 +519,7 @@ class OmegaMatrix:
             if self.fullkss.jend < jend:
                 raise RuntimeError('jend=%d has to be <= %d' %
                                    (jend,self.kss.jend))
-            print >> self.out,'# diagonalize: %d transitions original'\
+            print >> self.txt,'# diagonalize: %d transitions original'\
                   % len(self.fullkss)
             map= []
             kss = KSSingles()
@@ -540,7 +529,7 @@ class OmegaMatrix:
                     map.append(ij)
             kss.update()
             nij = len(kss)
-            print >> self.out,'# diagonalize: %d transitions now' % nij
+            print >> self.txt,'# diagonalize: %d transitions now' % nij
 
             evec = npy.zeros((nij,nij))
             for ij in range(nij):

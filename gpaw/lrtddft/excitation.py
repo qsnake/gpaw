@@ -9,6 +9,7 @@ import gpaw.mpi as mpi
 MASTER = mpi.MASTER
 from gpaw import debug
 from gpaw.utilities import pack, packed_index
+from gpaw.output import initialize_text_stream
 
 #from gpaw.io.plt import write_plt
 
@@ -19,19 +20,15 @@ class ExcitationList(list):
     """
     General Excitation List class
     """
-    def __init__(self, calculator=None, out=None):
+    def __init__(self, calculator=None, txt=None):
 
         # initialise empty list
         list.__init__(self)
 
         self.calculator = calculator
-        self.out = out
-        if calculator is not None:
-            if out is None:
-                self.out = calculator.txt
-        else:
-            if mpi.rank != MASTER: self.out = DownTheDrain()
-            else: self.out = sys.stdout
+        if not txt and calculator:
+            txt = calculator.txt
+        self.txt, firsttime = initialize_text_stream(txt, mpi.rank)
 
     def get_energies(self):
         """Get excitation energies in Hartrees"""

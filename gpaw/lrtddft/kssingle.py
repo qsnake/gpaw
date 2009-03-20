@@ -46,13 +46,13 @@ class KSSingles(ExcitationList):
                  jend=None,
                  energyrange=None,
                  filehandle=None,
-                 out=None):
+                 txt=None):
 
         if filehandle is not None:
             self.read(fh=filehandle)
             return None
 
-        ExcitationList.__init__(self, calculator, out=out)
+        ExcitationList.__init__(self, calculator, txt=txt)
         
         if calculator is None:
             return # leave the list empty
@@ -60,10 +60,10 @@ class KSSingles(ExcitationList):
         self.select(nspins, eps, istart, jend, energyrange)
 
         trkm = self.GetTRK()
-        print >> self.out, 'KSS TRK sum %g (%g,%g,%g)' % \
+        print >> self.txt, 'KSS TRK sum %g (%g,%g,%g)' % \
               (npy.sum(trkm)/3.,trkm[0],trkm[1],trkm[2])
         pol = self.GetPolarizabilities(lmax=3)
-        print >> self.out, \
+        print >> self.txt, \
               'KSS polarisabilities(l=0-3) %g, %g, %g, %g' % \
               tuple(pol.tolist())
 

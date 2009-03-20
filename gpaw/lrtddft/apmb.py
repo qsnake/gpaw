@@ -35,7 +35,7 @@ class ApmB(OmegaMatrix):
       - derivativeLevel: which level i of d^i Exc/dn^i to use
       - numscale: numeric epsilon for derivativeLevel=0,1
       - filehandle: the oject can be read from a filehandle
-      - out: output stream
+      - txt: output stream
       - finegrid: level of fine grid to use. 0: nothing, 1 for poisson only,
         2 everything on the fine grid
     """
@@ -60,7 +60,7 @@ class ApmB(OmegaMatrix):
 
         # calculate omega matrix
         nij = len(kss)
-        print >> self.out, 'RPAhyb', nij, 'transitions'
+        print >> self.txt, 'RPAhyb', nij, 'transitions'
         
         AmB = npy.zeros((nij,nij))
         ApB = npy.zeros((nij,nij))
@@ -69,7 +69,7 @@ class ApmB(OmegaMatrix):
         integrals = {}
         
         for ij in range(nij):
-            print >> self.out,'RPAhyb kss['+'%d'%ij+']=', kss[ij]
+            print >> self.txt,'RPAhyb kss['+'%d'%ij+']=', kss[ij]
 
             timer = Timer()
             timer.start('init')
@@ -128,7 +128,7 @@ class ApmB(OmegaMatrix):
             if ij < (nij-1):
                 t = timer.gettime(ij) # time for nij-ij calculations
                 t = .5*t*(nij-ij)  # estimated time for n*(n+1)/2, n=nij-(ij+1)
-                print >> self.out,'RPAhyb estimated time left',\
+                print >> self.txt,'RPAhyb estimated time left',\
                       self.timestring(t0*(nij-ij-1)+t)
 
         # add HF parts and apply symmetry
@@ -262,7 +262,7 @@ class ApmB(OmegaMatrix):
             if self.fullkss.jend < jend:
                 raise RuntimeError('jend=%d has to be <= %d' %
                                    (jend,self.kss.jend))
-            print >> self.out,'# diagonalize: %d transitions original'\
+            print >> self.txt, '# diagonalize: %d transitions original'\
                   % len(self.fullkss)
             map= []
             kss = KSSingles()
@@ -272,7 +272,7 @@ class ApmB(OmegaMatrix):
                     map.append(ij)
             kss.update()
             nij = len(kss)
-            print >> self.out,'# diagonalize: %d transitions now' % nij
+            print >> self.txt, '# diagonalize: %d transitions now' % nij
 
             ApB = npy.empty((nij,nij))
             AmB = npy.empty((nij,nij))
