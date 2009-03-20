@@ -42,4 +42,4 @@ To build a pdf-file, you do this::
   $ cd _build
   $ make GPAW.pdf
 
-More tricks to be found at ASE `Writing documentation <https://wiki.fysik.dtu.dk/ase/devel/writing_documentation_ase.html>`_ page.
+More tricks to be found at ASE `Writing documentation <https://wiki.fysik.dtu.dk/ase/development/writing_documentation_ase.html>`_ page.
