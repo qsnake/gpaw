@@ -64,7 +64,7 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 
   .. math:: \sigma = \frac{NE_{N-1} - (N-1)E_N}{2A}
 
-* The script :svn:`~doc/exercises/surface/Al100.py?format=raw` defines
+* The script :svn:`~doc/exercises/surface/Al100.py` defines
   an ``energy()`` function for calculating `E_N`.  Use it to calculate
   `\sigma` for `N` = 5.  Use a two-dimensional Monkhorst-Pack
   **k**-point sampling (``kpts=(k, k, 1)``) that matches the size of
@@ -94,7 +94,7 @@ the cohesive energy per bulk atom. For Aluminium we have `E_{coh}` = 3.34 eV.
 Work function
 =============
 
-Run the :svn:`~doc/exercises/surface/work_function.py?format=raw`
+Run the :svn:`~doc/exercises/surface/work_function.py`
 script and estimate the work function for a Al(100) surface. A typical
 experimental value for the work function of the Al(100) surface is
 4.20 eV. You may try to improve the result by adding more vacuum to the 

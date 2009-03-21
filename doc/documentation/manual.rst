@@ -171,7 +171,7 @@ Exchange-Correlation functional
 
 The exchange-correlation functional can be one of (only the most
 common are listed here, for the complete list see
-:svn:`~gpaw/libxc_functionals.py`):
+:trac:`~gpaw/libxc_functionals.py`):
 
 ============  =================== ===========================  ==========
 ``xc``        libxc_ keyword      description                  reference 

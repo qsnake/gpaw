@@ -7,8 +7,8 @@ Frequently Asked Questions
 General
 =======
 
-How should I cite GPAW?
------------------------
+Citation: how should I cite GPAW?
+---------------------------------
 
 If you find GPAW useful in your research please cite the original paper:
 
@@ -30,11 +30,13 @@ If you are using the time-dependent DFT part of the code, please cite also:
 How do you pronounce GPAW?
 --------------------------
 
-In english: "geepaw" with a long "a".
+In English: "geepaw" with a long "a".
 
-In danish: Først bogstavet "g", derefter "pav": "g-pav".
+In Danish: Først bogstavet "g", derefter "pav": "g-pav".
 
-In finnish: supisuomalaisittain "kee-pav"
+In Finnish: supisuomalaisittain "kee-pav".
+
+In Polish: "gyeh" jak `"Gie"rek <http://en.wikipedia.org/wiki/Edward_Gierek>`_, "pav" jak `paw <http://pl.wikipedia.org/wiki/Paw_indyjski>`_: "gyeh-pav".
 
 Download
 ========

@@ -126,6 +126,9 @@ over all processors and on top of that domain-decomposition is used.
 
 .. [Mor05] J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen,
    Phys. Rev. B, 71 035109 (2005)
+.. [Mor05b] J. J. Mortensen, K. Kaasbjerg, S. L. Frederiksen,
+   J. K. Nørskov, J. P. Sethna, and K. W. Jacobsen,
+   Phys. Rev. Lett. 95, 216401 (2005)
 .. [Blo94] P. E. Blöchl,
    Phys. Rev. B 50, 17953 (1994)
 .. [Blo03] P. E. Blöchl, C. J. Först and J. Schimpl,

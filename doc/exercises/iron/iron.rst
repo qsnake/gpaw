@@ -46,7 +46,7 @@ Hint: Do it in this exercise!
   moment parameters: magnetic moment for each of the two atoms in the
   unit cell.
 
-Start with this script: :svn:`~doc/exercises/iron/ferro.py?format=raw`.
+Start with this script: :svn:`~doc/exercises/iron/ferro.py`.
 
 Compare the energies of the three magnetic phases:
 
@@ -54,7 +54,7 @@ Compare the energies of the three magnetic phases:
   Is this reproduced for LDA and GGA?  Instead of repeating the three
   calculations using PBE, you can estimate the PBE numbers from the LDA
   densities you already have.  This is done in this script:
-  :svn:`~doc/exercises/iron/PBE.py?format=raw`.
+  :svn:`~doc/exercises/iron/PBE.py`.
 
 * Compare the calculated magnetic moment for the
   ferromagnetic phase with the experimental value.  You can find the

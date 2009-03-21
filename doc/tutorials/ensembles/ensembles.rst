@@ -29,7 +29,3 @@ Ensemble of atomization energies for H\ `2`:sub: :
 
 .. image:: ensemble.png
    :width: 400 px
-
-.. [Mor05b] J. J. Mortensen, K. Kaasbjerg, S. L. Frederiksen,
-   J. K. Nørskov, J. P. Sethna, and K. W. Jacobsen,
-   Phys. Rev. Lett. 95, 216401 (2005) 

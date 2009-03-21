@@ -54,8 +54,7 @@ Example 1: NaCl
 
 As an example of application, consider the three systems Na, Cl, and
 NaCl. The pseudo- and all-electron densities of these three systems
-can be calculated with the script :svn:`NaCl.py
-<doc/tutorials/all-electron/NaCl.py?format=txt>`:
+can be calculated with the script :svn:`~doc/tutorials/all-electron/NaCl.py`:
 
 .. literalinclude:: NaCl.py
 

@@ -24,14 +24,14 @@ and do this::
 
 The latest version of gpaw uses numpy `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-To build an optimized numpy for the compute nodes, based on ``goto`` blas, save the :svn:`numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran <doc/install/BGP/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran>`
+To build an optimized numpy for the compute nodes, based on ``goto`` blas, save the :svn:`~doc/install/BGP/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran`
 patch file
 (modifications required to get powerpc-bgp-linux-gfortran instead of
 gfortran compiler),
-the :svn:`numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg <doc/install/BGP/numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg>` patch file (lapack
+the :svn:`~doc/install/BGP/numpy-1.0.4-system_info.py.patch.lapack_bgp_goto_esslbg` patch file (lapack
 section configured to use ``lapack_bgp`` and
 blas section to use ``goto``, ``cblas_bgp``, and ``esslbg``),
-and the :svn:`numpy-1.0.4-site.cfg.lapack_bgp_esslbg <doc/install/BGP/numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg>` file (contains paths to
+and the :svn:`~doc/install/BGP/numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg` file (contains paths to
 ``lapack_bgp``, ``goto``, ``esslbg`` , ``cblas_bgp``,
 and xlf* related libraries).
 
@@ -91,7 +91,7 @@ for ``numpy.dot`` operation::
   num.dot(Anew, Anew)
   print num_string, time()-t
 
-To build standard numpy, save the :svn:`numpy-1.0.4-gnu.py.patch <doc/install/BGP/numpy-1.0.4-gnu.py.patch>` patch file
+To build standard numpy, save the :svn:`~doc/install/BGP/numpy-1.0.4-gnu.py.patch` patch file
 (modifications required to get mpif77 instead of gfortran compiler),
 get and numpy-1.0.4 and do this::
 

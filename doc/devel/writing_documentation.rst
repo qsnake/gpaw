@@ -1,12 +1,9 @@
-.. _using_sphinx:
-
-
 .. _reStructuredText: http://docutils.sf.net/rst.html
 .. _Sphinx: http://sphinx.pocoo.org
 .. _PDF: ../GPAW.pdf
 
-Using Sphinx
-============
+Writing documentation
+=====================
 
 .. highlight:: bash
 

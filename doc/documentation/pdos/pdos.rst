@@ -104,7 +104,7 @@ calculated by
 The example below calculates the density of states for CO adsorbed on
 a Pt(111) slab and the density of states projected onto the gas phase
 orbitals of CO. The ``.gpw`` files can be generated with the script
-:svn:`~doc/documentation/pdos/top.py?format=raw`
+:svn:`~doc/documentation/pdos/top.py`
 
 PDOS script::
 

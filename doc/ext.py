@@ -19,6 +19,25 @@ def svn_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
             text = text[1:]
         if '?' in name:
             name = name[:name.index('?')]
+    ref = 'http://svn.fysik.dtu.dk/projects/gpaw/branches/general_unit_cells/' + text
+    ref = 'http://svn.fysik.dtu.dk/projects/gpaw/trunk/' + text
+    set_classes(options)
+    node = nodes.reference(rawtext, name, refuri=ref,
+                           **options)
+    return [node], []
+
+def trac_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+    if text[-1] == '>':
+        i = text.index('<')
+        name = text[:i - 1]
+        text = text[i + 1:-1]
+    else:
+        name = text
+        if name[0] == '~':
+            name = name.split('/')[-1]
+            text = text[1:]
+        if '?' in name:
+            name = name[:name.index('?')]
     ref = 'http://trac.fysik.dtu.dk/projects/gpaw/browser/branches/general_unit_cells/' + text
     ref = 'http://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/' + text
     set_classes(options)
@@ -32,14 +51,14 @@ def epydoc_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
         i = text.index('<')
         name = text[:i - 1]
         text = text[i + 1:-1]
-        
+
     components = text.split('.')
     if components[0] != 'gpaw':
         components.insert(0, 'gpaw')
 
     if name is None:
         name = components[-1]
-        
+
     try:
         module = None
         for n in range(2, len(components) + 1):
@@ -69,11 +88,12 @@ def epydoc_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
 
 def setup(app):
     app.add_role('svn', svn_role)
+    app.add_role('trac', trac_role)
     app.add_role('epydoc', epydoc_role)
     #import atexit
     #atexit.register(fix_sidebar)
     create_png_files()
-    
+
 def create_png_files():
     for dirpath, dirnames, filenames in os.walk('.'):
         for filename in filenames:

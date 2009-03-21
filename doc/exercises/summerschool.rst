@@ -102,14 +102,14 @@ Octopus
 Octopus_ is installed on the 'q' opteron nodes on Niflheim. The way to
 run jobs is the following: Create inp file in the working directory as
 described in the tutorial_, and then run
-:svn:`~doc/run.py?format=raw`. To use various octopus utilities such
+:svn:`~doc/octopus_run.py`. To use various octopus utilities such
 as ``oct-cross-section`` and ``oct-broad`` you need to do::
 
   source /usr/local/openmpi-1.2.5-pathf90/bin/mpivars-1.2.5.sh
 
 first. Submitting jobs to the queue is done by::
 
-  qsub -l nodes=2:ppn=4:switch5 run.py
+  qsub -l nodes=2:ppn=4:switch5 octopus_run.py
 
 
 .. _Userguides: http://www.gbar.dtu.dk/index.php/Category:User_Guides

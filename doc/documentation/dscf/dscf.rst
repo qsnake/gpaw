@@ -116,7 +116,7 @@ chemisorbed on transition metals. In such cases the
 traditional Delta Self-Consistent Field breaks down since the orbital
 to be occupied is no longer well described by a single Kohn-Sham state.
 
-The script :svn:`~doc/documentation/dscf/homo.py?format=raw` calculates 
+The script :svn:`~doc/documentation/dscf/homo.py` calculates 
 the HOMO energy of CO adsorbed on-top Pt(111). The script starts
 from scratch, but usually one would start from an optimized configuration
 saved in a file ``gs.gpw``. The script only calculates the total energy of 
@@ -128,7 +128,7 @@ HOMO pseudo-wavefunctions and the projector overlaps are saved. The
 energy range [-100.0, 0.0] means we only include states below the Fermi
 level (default is states above).
 
-The script :svn:`~doc/documentation/dscf/lumo.py?format=raw` calculates
+The script :svn:`~doc/documentation/dscf/lumo.py` calculates
 the LUMO energy of the same system, but is slightly more complicated due to 
 the degeneracy of the `2\pi` orbital. We would like to occupy the `2\pi_y` 
 orbital and  we need to figure out which band (5 or 6) this orbital 

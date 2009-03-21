@@ -10,7 +10,7 @@ Release notes
 Version 0.4
 ===========
 
-13 November 2008: :svn:`tags/0.4 <../tags/0.4>`.
+13 November 2008: :trac:`tags/0.4 <../tags/0.4>`.
 
 
 * Now using ASE-3 and numpy.
@@ -45,4 +45,4 @@ Version 0.4
 Version 0.3
 ===========
 
-19 December 2007: :svn:`tags/0.3 <../tags/0.3>`.
+19 December 2007: :trac:`tags/0.3 <../tags/0.3>`.

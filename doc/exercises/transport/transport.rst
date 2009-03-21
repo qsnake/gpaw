@@ -130,8 +130,7 @@ the calculate the transmission function::
 You may now understand the transport behavior of the simple model
 system.  The transmission peak at -0.8 eV and 0.8 eV are due to the
 bonding and antibonding states of the TB described hydrogen molecule.
-A script containing the above can be found here: :svn:`script
-<doc/exercises/transport/pt_h2_tb_transport.py?format=txt>`.
+A script containing the above can be found here: :svn:`~doc/exercises/transport/pt_h2_tb_transport.py`.
 
 DFT description
 ===============
@@ -145,8 +144,7 @@ atomic orbitals.  Since real potential decay much slower than in our
 TB model, we increase the principal layers to 4 Pt atoms, and the
 scattering region to 5 Pt atoms on either side.  To obtain the
 matrices for the scattering region and the leads using DFT and pseudo
-atomic orbitals using a szp basis set run this :svn:`script
-<doc/exercises/transport/pt_h2_lcao.py?format=txt>`:
+atomic orbitals using a szp basis set run this :svn:`~doc/exercises/transport/pt_h2_lcao.py`:
 
 .. literalinclude:: pt_h2_lcao.py
 
@@ -201,6 +199,6 @@ Try to cut the relevant orbitals from the basis set, as we did for the
 TB model.
 
 Here is a script if you need some inspiration:
-:svn:`script <doc/exercises/transport/pt_h2_lcao_transport.py?format=txt>`.
+:svn:`~doc/exercises/transport/pt_h2_lcao_transport.py`.
 
 .. default-role::

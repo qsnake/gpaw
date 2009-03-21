@@ -24,7 +24,7 @@ following instructions are tested with python 2.5.1, and it is assumed
 that one is working in the top level of python source
 directory. First, one should create a special dynamic loader for
 correct resolution of namespaces. Save the file
-:svn:`dynload_redstorm.c <doc/install/Cray/dynload_redstorm.c>`
+:svn:`~doc/install/Cray/dynload_redstorm.c`
 in the :file:`Python/` directory::
 
   /* This module provides the simulation of dynamic loading in Red Storm */
@@ -61,7 +61,7 @@ You should be now ready to run :file:`configure`::
 
 Now, one should specify which modules will be statically linked in to
 the python interpreter by editing :file:`Modules/Setup`. An example can be
-loaded here :svn:`setup <doc/install/Cray/setup>`.
+loaded here :svn:`~doc/install/Cray/setup`.
 Note that at this point all numpy related stuff
 in the example should be commented out. Finally, in order to use
 ``distutils`` for building extensions the following function should be
@@ -101,7 +101,7 @@ of shared libraries static ones are created::
         self.static_lib_format = old_fmt
         print "Append to Setup: ", linkline
 
-See :svn:`unixccompiler.py <doc/install/Cray/unixccompiler.py>`
+See :svn:`~doc/install/Cray/unixccompiler.py`
 
 You should be now ready to run ``make`` and ``make install`` and have
 a working python interpreter.

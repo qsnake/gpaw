@@ -28,7 +28,7 @@ calculations::
 In order to speed up the calculation, use just a single frozen Al(100) layer.
 
 * Calculate the energy of the initial and final states.  Start from
-  this script: :svn:`~doc/exercises/diffusion/initial.py?format=raw`.
+  this script: :svn:`~doc/exercises/diffusion/initial.py`.
   Do we need to apply any constraint to the gold atom?
 
 * What is the PBE energy barrier? (Do not repeat the ASE-tutorial with GPAW, 
@@ -89,7 +89,7 @@ accepts: ``'ontop'``, ``'hollow'`` or ``'bridge'``.  The *height*
 argument is the height above the Al layer.  The function must relax a 
 gold atom at *site*, return the energy and write ``<site>.txt``, 
 ``<site>.traj``, and ``<site>.gpw`` files. Start from 
-:svn:`~doc/exercises/diffusion/initial.py?format=raw` and make the 
+:svn:`~doc/exercises/diffusion/initial.py` and make the 
 relevant changes
 
 * You could have used this functions to calculate the energy barrier
@@ -172,7 +172,7 @@ Using :program:`VMD` to plot density differences
 
 It is sometimes useful to look at density changes when studying for
 instance adsorption reactions. Copy the script
-:svn:`~doc/exercises/diffusion/densitydiff.py?format=raw` to your area.
+:svn:`~doc/exercises/diffusion/densitydiff.py` to your area.
 
 Read it and try to understand what is does. Change the necessary lines
 to look at one of your slabs with Au adsorbed. When you have written the 

@@ -3,10 +3,10 @@ Band structure
 ==============
 
 Band diagrams are usefull analysis tools. Read
-:svn:`~doc/exercises/band_structure/Na_band.py?format=raw` and try to
+:svn:`~doc/exercises/band_structure/Na_band.py` and try to
 understand what it does, then use it to construct the band diagram of
 bulk Na and Si. Read
-:svn:`~doc/exercises/band_structure/plot_band.py?format=raw` and try
+:svn:`~doc/exercises/band_structure/plot_band.py` and try
 to understand it, then use it to plot the band diagram.
 
 Compare the Si band diagram to the band diagram below (adapted from

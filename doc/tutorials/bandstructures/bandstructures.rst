@@ -4,7 +4,7 @@
 Calculation of electronic band structures
 =========================================
 
-The script :svn:`tutorials/bandstructures/bandstructure.py` will
+The script :svn:`~doc/tutorials/bandstructures/bandstructure.py` will
 calculate the band structure of Na along the Gamma-X direction.  The
 resulting band structure is shown below.
 

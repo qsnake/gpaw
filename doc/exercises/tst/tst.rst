@@ -34,7 +34,7 @@ by either looking at the plot or taking the partial derivatives. You will need
 the derivatives anyway at a later point.
 
 Plot the function with the plot program of your choice. In the script
-:svn:`~doc/exercises/tst/plot.py?format=raw` it is shown, how to plot
+:svn:`~doc/exercises/tst/plot.py` it is shown, how to plot
 the potential with :program:`matplotlib`.
 
 

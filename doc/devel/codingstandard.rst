@@ -23,6 +23,8 @@ Conventions`_ PEPs, summarized, clarified, and extended as follows:
 
 * 4 spaces per indentation level.  No hard tabs.
 
+* Avoid introducing `trailing whitespaces <http://www.gnu.org/software/emacs/manual/html_node/emacs/Useless-Whitespace.html>`_.
+
 * Try to use only 7-bit ASCII, no 8-bit strings.
 
 * No one-liner compound statements (i.e., no ``if x: return``: use two
@@ -92,6 +94,7 @@ General advice
 
  * Get rid of as many ``break`` and ``continue`` statements as possible.
 
+http://www.unix.com/shell-programming-scripting/52263-grep-m-file-using-perl-script.html
 
 Writing documentation in the code
 =================================

@@ -76,12 +76,7 @@ the number of iterations necessary in the grid code.
 .. image:: _static/goldwire.png
 
 
-.. [Mor05] J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen,
-   Phys. Rev. B, 71 035109 (2005)
 .. [Kur99] S. Kurth and J. P. Perdew and P. Blaha,
    Int. J. Quantum Chem. 75, 889 (1999)
 .. [Zha98] Y. Zhang and W. Yang,
    Phys. Rev. Lett. 80, 890 (1998)
-.. [Mor05b] J. J. Mortensen, K. Kaasbjerg, S. L. Frederiksen,
-   J. K. Nørskov, J. P. Sethna, and K. W. Jacobsen,
-   Phys. Rev. Lett. 95, 216401 (2005)
