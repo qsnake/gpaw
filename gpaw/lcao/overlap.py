@@ -3,13 +3,14 @@ from math import sqrt, pi
 import numpy as np
 from numpy.fft import ifft
 
-from gpaw.spherical_harmonics import Yl, nablaYL
 from ase import Atoms
 from ase.calculators.neighborlist import NeighborList
 
-from gpaw.spline import Spline
 from gpaw.gaunt import gaunt
+from gpaw.spherical_harmonics import Yl, nablaYL
+from gpaw.spline import Spline
 from gpaw.utilities import fac
+from gpaw.utilities.tools import tri2full
 
 
 # Generate the coefficients for the Fourier-Bessel transform
@@ -317,24 +318,18 @@ class TwoCenterIntegrals:
         comm = self.gd.comm
         comm.sum(S_qxMM)
         comm.sum(T_qxMM)
-        if derivative:
-            op = -1
-        else:
-            op = 1
-        self.symmetrize([S_qxMM, T_qxMM], op)
 
-    def symmetrize(self, matrices_nxMM, op=1):
-        """Make matrices Hermitian using their lower triangular parts.
-        
-        If op is -1, matrices are instead made anti-Hermitian."""
         nao = self.setups.nao
-        tri1 = np.tri(nao)
-        tri2 = np.tri(nao, None, -1)
-        for matrix_xMM in matrices_nxMM:
-            matrix_xMM = matrix_xMM.reshape((-1, nao, nao))
-            matrix_xMM *= tri1
-            matrix_xMM += op * (tri2 * matrix_xMM).swapaxes(-1, -2).conj()
-
+        for S_MM, T_MM in zip(S_qxMM.reshape(-1, nao, nao),
+                              T_qxMM.reshape(-1, nao, nao)):
+            if not derivative:
+                tri2full(S_MM)
+                tri2full(T_MM)
+            if derivative:
+                for M in range(nao - 1):
+                    S_MM[M, M + 1:] = -S_MM[M + 1:, M].conj()
+                    T_MM[M, M + 1:] = -T_MM[M + 1:, M].conj()
+                                     
     def atom_iter(self, spos_ac, P_aqMi):
         cell_cv = self.gd.cell_cv
         for a1, spos1_c in enumerate(spos_ac):
