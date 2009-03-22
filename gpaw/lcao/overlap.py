@@ -11,6 +11,7 @@ from gpaw.spherical_harmonics import Yl, nablaYL
 from gpaw.spline import Spline
 from gpaw.utilities import fac
 from gpaw.utilities.tools import tri2full
+from gpaw.utilities.blas import gemm
 
 
 # Generate the coefficients for the Fourier-Bessel transform
@@ -305,21 +306,24 @@ class TwoCenterIntegrals:
         #                         -----
         #                          aij
         #
+        nao = self.setups.nao
         if not derivative:
+            dOP_iM = None # Assign explicitly in case loop runs 0 times
             for a, P_qxMi in P_aqxMi.items():
-                dO_ii = self.setups[a].O_ii
+                dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
                 for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
-                    S_MM += np.dot(P_Mi, np.inner(dO_ii, P_Mi).conj())
+                    dOP_iM = np.empty((dO_ii.shape[1], nao), P_Mi.dtype)
+                    gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
+                    gemm(1.0, dOP_iM, P_Mi, 1.0, S_MM, 'n')
+            del dOP_iM
 
         # As it is now, the derivative calculation does not add the PAW
         # correction.  Rather this is done in the force code.  Perhaps
         # this should be changed.
-
         comm = self.gd.comm
         comm.sum(S_qxMM)
         comm.sum(T_qxMM)
 
-        nao = self.setups.nao
         for S_MM, T_MM in zip(S_qxMM.reshape(-1, nao, nao),
                               T_qxMM.reshape(-1, nao, nao)):
             if not derivative:
