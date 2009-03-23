@@ -227,25 +227,27 @@ if not debug:
     gemmdot = _gemmdot
     rotate = _rotate
 else:
-    def gemmdot(a, b, alpha=1.0, trans='n'):
+    def gemmdot(a, b, alpha=1., trans='n'):
         assert a.flags.contiguous
         assert b.flags.contiguous
         assert a.dtype == b.dtype
         assert a.ndim == b.ndim == 2
         if trans == 'n':
             assert a.dtype is float
-            assert a.shape[0], b.shape[1]
+            assert a.shape[0] == b.shape[1]
         elif trans == 't':
             assert a.dtype is float
-            assert a.shape[0], b.shape[0]
+            assert a.shape[0] == b.shape[0]
         else: # 'c'
             assert a.dtype is complex
-            assert a.shape[0], b.shape[0]
+            assert a.shape[0] == b.shape[0]
         return _gemmdot(a, b, alpha, trans)
 
     def rotate(out_ii, in_jj, U_ij, a=1., b=0., work_ij=None):
         assert out_ii.dtype == in_jj.dtype == U_ij.dtype
         assert (out_ii.flags.contiguous and in_jj.flags.contiguous and
                 U_ij.flags.contiguous)
+        assert out_jj.shape == U_ij.shape[1:] * 2
+        assert in_jj.shape == U_ij.shape[:1] * 2
         return _rotate(out_ii, in_jj, U_ij, a, b, work_ij)
         
