@@ -16,33 +16,6 @@ from gpaw import debug
 import _gpaw
 
 
-def gemmdot(a, b, alpha=1.0, trans='n'):
-    """Matrix multiplication using gemm.
-
-    if transa is 'n', return c_ij = alpha * sum_k a_ik * b_kj
-    else, return c_ij = alpha * sum_k a_ik * (b^H)_kj
-
-    where H denotes the Hermitian conjugate (transpose + conjugation).
-    """
-    assert a.flags.contiguous
-    assert b.flags.contiguous
-    assert a.dtype == b.dtype
-    assert a.ndim == b.ndim == 2
-    if trans in ('n', 't'):
-        assert a.dtype is float
-    else:
-        assert a.dtype is complex
-    if trans == 'n':
-        assert a.shape[1] == b.shape[0]
-        c = np.empty((a.shape[0], b.shape[1]), float)
-        gemm(alpha, b, a, 0.0, c, 'n')
-    else: # 't' or 'c'
-        assert a.shape[0] == b.shape[0]
-        c = np.empty((a.shape[0], b.shape[0]), a.dtype)
-        gemm(alpha, b, a, 0.0, c, trans)
-    return c
-
-
 def gemm(alpha, a, b, beta, c, transa='n'):
     """General Matrix Multiply.
 
@@ -205,6 +178,45 @@ def dotu(a, b):
     assert a.shape == b.shape
     return _gpaw.dotu(a, b)
     
+
+def _gemmdot(a, b, alpha=1., trans='n'):
+    """Matrix multiplication using gemm.
+
+    For the 2D matrices a, b, return::
+
+    c = alpha * a . b
+
+    where '.' denotes matrix multiplication.
+    If trans='t'; b is replaced by its transpose.
+    If trans='c'; b is replaced by its hermitian conjugate.
+    """
+    if trans == 'n':
+        c = np.empty((a.shape[0], b.shape[1]), float)
+    else: # 't' or 'c'
+        c = np.empty((a.shape[0], b.shape[0]), a.dtype)
+    gemm(alpha, b, a, 0., c, trans)
+    return c
+
+
+def _rotate(out_ii, in_jj, U_ij, a=1., b=0., work_ij=None):
+    """Do the rotation::
+
+      out <- a * U . in . U^d + b * out
+
+    where '.' denotes matrix multiplication and '^d' the hermitian conjugate.
+
+    The method uses the optimized BLAS subroutine GEMM.
+
+    work_ij is a temporary work array for storing the intermediate product.
+    A reference to this is returned so it can be reused if needed.
+    """
+    if work_ij is None:
+        work_ij = np.empty_like(U_ij)
+    gemm(1., in_jj, U_ij, 0., work_ij, 'n')
+    gemm(a, U_ij, work_ij, b, out_ii, 'c')
+    return work_ij
+
+
 if not debug:
     gemm = _gpaw.gemm
     axpy = _gpaw.axpy
@@ -212,3 +224,28 @@ if not debug:
     r2k = _gpaw.r2k
     dotc = _gpaw.dotc
     dotu = _gpaw.dotu
+    gemmdot = _gemmdot
+    rotate = _rotate
+else:
+    def gemmdot(a, b, alpha=1.0, trans='n'):
+        assert a.flags.contiguous
+        assert b.flags.contiguous
+        assert a.dtype == b.dtype
+        assert a.ndim == b.ndim == 2
+        if trans == 'n':
+            assert a.dtype is float
+            assert a.shape[0], b.shape[1]
+        elif trans == 't':
+            assert a.dtype is float
+            assert a.shape[0], b.shape[0]
+        else: # 'c'
+            assert a.dtype is complex
+            assert a.shape[0], b.shape[0]
+        return _gemmdot(a, b, alpha, trans)
+
+    def rotate(out_ii, in_jj, U_ij, a=1., b=0., work_ij=None):
+        assert out_ii.dtype == in_jj.dtype == U_ij.dtype
+        assert (out_ii.flags.contiguous and in_jj.flags.contiguous and
+                U_ij.flags.contiguous)
+        return _rotate(out_ii, in_jj, U_ij, a, b, work_ij)
+        
