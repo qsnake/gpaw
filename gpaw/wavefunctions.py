@@ -120,12 +120,12 @@ class WaveFunctions(EmptyWaveFunctions):
                 self.symmetry.symmetrize(nt_G, self.gd)
 
     def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a):
-        if kpt.rho_MM is not None: 
+        if kpt.rho_MM is not None:
             P_Mi = kpt.P_aMi[a] 
-            D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM), 
-                                   P_Mi).real 
-        else: 
-            P_ni = kpt.P_ani[a] 
+            D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM),
+                                   P_Mi).real
+        else:
+            P_ni = kpt.P_ani[a]
             D_sii[kpt.s] += np.dot(P_ni.T.conj() * kpt.f_n, P_ni).real
 
         if hasattr(kpt, 'c_on'):
@@ -300,8 +300,7 @@ class WaveFunctions(EmptyWaveFunctions):
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities.blas import gemm
 if extra_parameters.get('blacs'):
-    from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as \
-         TwoCenterIntegrals
+    from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as TwoCenterIntegrals
 
 class LCAOWaveFunctions(WaveFunctions):
     def __init__(self, *args):
@@ -371,7 +370,15 @@ class LCAOWaveFunctions(WaveFunctions):
 
     def initialize(self, density, hamiltonian, spos_ac):
         if density.nt_sG is None:
-            density.initialize_from_atomic_densities(self.basis_functions)
+            if self.kpt_u[0].f_n is None or self.kpt_u[0].C_nM is None:
+                density.initialize_from_atomic_densities(self.basis_functions)
+            else:
+                # We have the info we need for a density matrix, so initialize
+                # from that instead of from scratch.  This will be the case
+                # after set_positions() during a relaxation
+                density.nt_sG = self.gd.empty(self.nspins)
+                self.calculate_density(density)
+                density.nt_sG += density.nct_G
         comp_charge = density.calculate_multipole_moments()
         density.normalize(comp_charge)
         density.mix(comp_charge)
@@ -530,6 +537,7 @@ class LCAOWaveFunctions(WaveFunctions):
         # Density matrix contribution from PAW correction
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
         work_MM = np.empty((nao, nao), dtype)
+        ZE_MM = None
         for v in range(3):
             for b in my_atom_indices:
                 setup = self.setups[b]
