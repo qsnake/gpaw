@@ -67,6 +67,7 @@ def maxrss():
     # no more idea
     return 0.0
 
+
 def estimate_memory(paw):
 
     scales = {'GB': 1024.0**3,
@@ -74,15 +75,15 @@ def estimate_memory(paw):
 
     n_c = paw.gd.n_c
     h_c = paw.gd.h_c
-    nbands = paw.nbands
-    nspins = paw.nspins
-    nkpts = paw.nkpts
-    nmyu = paw.nmyu
-    nuclei = paw.nuclei
+    nbands = paw.wfs.mynbands
+    nspins = paw.wfs.nspins
+    #nkpts = paw.wfs.nkpts
+    nmyu = len(paw.wfs.kpt_u)
+    #nuclei = paw.nuclei
     out = paw.txt
 
     float_size = npy.array([1], float).itemsize
-    type_size = npy.array([1],paw.dtype).itemsize
+    type_size = npy.array([1],paw.wfs.dtype).itemsize
 
     # coarse grid size
     grid_size = long(n_c[0] * n_c[1] * n_c[2])
@@ -119,6 +120,7 @@ def estimate_memory(paw):
     mem_hamilt += grid_size * type_size
     mem += mem_hamilt
 
+    """
     # Localized functions. Normally 1 value + 3 derivatives + 1 work array
     # are stored
     mem_nuclei = npy.zeros(paw.domain.comm.size, dtype=long)
@@ -157,9 +159,12 @@ def estimate_memory(paw):
         # and conceivably another 4 if including tauct, but never 5.
         # Won't work for HGH setups which have no core density.
         mem_nuclei[nucleus.rank] += (5 * box[0] * box[1] * box[2] * float_size)
-
+        
     mem_nuclei = max(mem_nuclei)
     mem += mem_nuclei
+    """
+    mem_nuclei = 0.0
+
 
     #eigensolver (estimate for RMM-DIIS, CG higher)
     #preconditioner
@@ -178,14 +183,14 @@ def estimate_memory(paw):
     # temporary data in initialization
     ### Fixme! with LCAO below estimate is no longer correct!
     nao_tot = 0
-    mem_temp = npy.zeros(paw.domain.comm.size, dtype=long)
-    for nucleus in nuclei:
-        box = 2 * nucleus.setup.phit_j[0].get_cutoff() / h_c
-        box_size = box[0] * box[1] * box[2]
-        box_size = min(grid_size, box_size)
-        nao = nucleus.setup.niAO
-        nao_tot += nao
-        mem_temp[nucleus.rank] += (2 * nao * box_size)
+    mem_temp = npy.zeros(paw.gd.comm.size, dtype=long)
+    #for nucleus in nuclei:
+    #    box = 2 * nucleus.setup.phit_j[0].get_cutoff() / h_c
+    #    box_size = box[0] * box[1] * box[2]
+    #    box_size = min(grid_size, box_size)
+    #    nao = nucleus.setup.niAO
+    #    nao_tot += nao
+    #    mem_temp[nucleus.rank] += (2 * nao * box_size)
     mem_temp = max(mem_temp)
     # print >> out, "Atomic orbitals:                  %.3f" % (mem_temp * type_size)
 
@@ -204,9 +209,10 @@ def estimate_memory(paw):
 
     # Output
     print >> out
-    if paw.world.size > 1:
-        print >> out, "Estimated maximum memory consumption per processor (%s):" % scalename
-    else:
+    #if paw.world.size > 1:
+    #    print >> out, "Estimated maximum memory consumption per processor (%s):" % scalename
+    #else:
+    if 1:
         print >> out, "Estimated memory consumption (%s):" % scalename
     print >> out, "Initial overhead:       %.2f" % (mem_init / scale)
     print >> out, "Density object:         %.2f" % (mem_density / scale)
@@ -216,3 +222,36 @@ def estimate_memory(paw):
     print >> out, "Wave functions:         %.2f" % (mem_wave_functions / scale)
     print >> out, "---------------------------------"
     print >> out, "Total:                  %.2f %s" % (mem / scale, scalename)
+
+class MemNode:
+    def __init__(self, name, basesize):
+        self.name = name
+        self.basesize = float(basesize)
+        self.totalsize = npy.nan # Size including sub-objects
+        self.nodes = []
+
+    def write(self, txt, indent):
+        print >> txt, ''.join([indent, self.name, '  ',
+                               self.memformat(self.totalsize)])
+        for node in self.nodes:
+            node.write(txt, indent + '    ')
+        
+    def memformat(self, bytes):
+        return '%.2f MiB' % (bytes / float(1 << 20))
+
+    def calculate_size(self):
+        self.totalsize = self.basesize
+        for node in self.nodes:
+            self.totalsize += node.calculate_size()
+        # Datatype must not be fixed-size np integer
+        assert isinstance(self.totalsize, (float, int, long)) 
+        return self.totalsize
+
+    def subnode(self, name, basesize=0):
+        mem = MemNode(name, basesize)
+        self.nodes.append(mem)
+        return mem
+    
+    def set(self, name, basesize=0):
+        self.name = name
+        self.basesize = float(basesize)

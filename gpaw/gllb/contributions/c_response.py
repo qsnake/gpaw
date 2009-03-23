@@ -83,7 +83,7 @@ class C_Response(Contribution):
             if world.rank == 0:
                 print "Reusing potential"
             
-        self.density.interpolater.apply(self.vt_sG[0], self.vt_sg[0])
+        self.density.interpolator.apply(self.vt_sG[0], self.vt_sg[0])
         v_g[:] += self.weight * self.vt_sg[0]
         return 0.0
 

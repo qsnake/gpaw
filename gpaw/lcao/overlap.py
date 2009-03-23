@@ -144,7 +144,12 @@ class TwoCenterIntegralSplines:
                 P[(id1, id2)] = OverlapExpansion(l1, l2, p) #???
 
         return S, T, P
-                
+
+    def calculate_fft_dict_element(self, l, f, f_g):
+        f_g[:] = map(f, self.r_g)
+        f_q = fbt(l, f_g, self.r_g, self.k_q)
+        return f_q
+    
     def calculate_fft_dict(self, symbols, f_aj):
         """Calculate Fourier transforms of functions.
 
@@ -158,8 +163,7 @@ class TwoCenterIntegralSplines:
             for j, f in enumerate(f_j):
                 l = f.get_angular_momentum_number()
                 id = (symbol, j)
-                f_g[:] = map(f, self.r_g)
-                f_q = fbt(l, f_g, self.r_g, self.k_q)
+                f_q = self.calculate_fft_dict_element(l, f, f_g)
                 f_ajq[id] = (l, f_q)
         return f_ajq
 
@@ -196,6 +200,30 @@ class TwoCenterIntegralSplines:
             splines.append(s)
         return splines
 
+    def estimate_allocation(self, symbol_a, phit_aj, pt_aj):
+        nq = len(self.k_q)
+        ng = self.ng
+
+        # The loops and datastructures in this class are very complicated, so
+        # we'll subclass it and override all the allocations and expensive
+        # operations to just add the array sizes together along the way
+        class MemEstimateHack(TwoCenterIntegralSplines):
+            def __init__(self, rcmax):
+                TwoCenterIntegralSplines.__init__(self, rcmax)
+                self.count_fft = 0
+                self.count_realspace = 0
+            def calculate_fft_dict_element(self, l, f, f_g):
+                self.count_fft += nq
+                assert ng == len(f_g)
+                return 1.0
+            def calculate_splines(self, phit1, phit2, l1, l2):
+                lmax = l1 + l2
+                for l in range(lmax % 2, lmax + 1, 2):
+                    self.count_realspace += ng
+
+        meh = MemEstimateHack(self.rcmax)
+        meh.calculate_dicts(symbol_a, phit_aj, pt_aj)
+        return meh.count_fft, meh.count_realspace
 
 class TwoCenterIntegrals:
     def __init__(self, gd, setups, gamma=True, ibzk_qc=None):
@@ -203,31 +231,36 @@ class TwoCenterIntegrals:
         self.setups = setups
         self.gamma = gamma
         self.ibzk_qc = ibzk_qc
-
-        self.tci = None
         self.neighbors = None
         self.atoms = None
         self.M_a = None
 
+        rcmax = 0.0
+        symbols_a, phit_aj, pt_aj = self.get_symbols_and_phit_and_pt()
+        
+        for phit_j in phit_aj:
+            for phit in phit_j:
+                rcmax = max(rcmax, phit.get_cutoff())
+        for pt_j in pt_aj:
+            for pt in pt_j:
+                assert pt.get_cutoff() < rcmax
+
+        self.tci = TwoCenterIntegralSplines(rcmax)
+        self.positions_set = False
+
+    def get_symbols_and_phit_and_pt(self):
+        """Get the tuple of lists ([symbols...], [phit...], [pt...]).
+
+        Random order."""
+        return zip(*[(setup.symbol, setup.phit_j, setup.pt_j) 
+                     for setup in self.setups.setups.values()])
+
     def set_positions(self, spos_ac):
-        if not self.tci:
-            # First time:
-            rcmax = 0.0
-
+        if not self.positions_set: # First time
+            self.positions_set = True # Yuck!  Should be coded properly
             setups = self.setups.setups.values()
-            symbols_a, phit_aj, pt_aj = zip(*[(s.symbol, s.phit_j, s.pt_j)
-                                              for s in setups])
-            
-            for phit_j in phit_aj:
-                for phit in phit_j:
-                    rcmax = max(rcmax, phit.get_cutoff())
-            for pt_j in pt_aj:
-                for pt in pt_j:
-                    assert pt.get_cutoff() < rcmax
-
-            self.tci = TwoCenterIntegralSplines(rcmax)
+            symbols_a, phit_aj, pt_aj = self.get_symbols_and_phit_and_pt()
             S, T, P = self.tci.calculate_dicts(symbols_a, phit_aj, pt_aj)
-
             self.S = S
             self.T = T
             self.P = P
@@ -428,3 +461,13 @@ class TwoCenterIntegrals:
                 yield M1a, M1b, M2a, M2b, splines
                 M2a = M2b
             M1a = M1b
+
+    def estimate_memory(self, mem):
+        symbol_a, phit_aj, pt_aj = self.get_symbols_and_phit_and_pt()
+        fftcount, realspacecount = self.tci.estimate_allocation(symbol_a,
+                                                                phit_aj, 
+                                                                pt_aj)
+        itemsize = np.array(1, dtype=float).itemsize
+        mem.subnode('Fourier splines', fftcount * itemsize)
+        mem.subnode('Realspace splines', realspacecount * itemsize)
+

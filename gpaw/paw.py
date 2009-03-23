@@ -24,7 +24,7 @@ from gpaw.xc_functional import XCFunctional
 from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions import GridWaveFunctions, LCAOWaveFunctions
 from gpaw.wavefunctions import EmptyWaveFunctions
-from gpaw.utilities.memory import estimate_memory
+from gpaw.utilities.memory import MemNode, memory
 from gpaw.utilities import gcd
 from gpaw.parameters import InputParameters
 from gpaw.setup import Setups
@@ -446,7 +446,8 @@ class PAW(PAWTextOutput):
         eigensolver = get_eigensolver(par.eigensolver, par.mode,
                                       par.convergence)
         eigensolver.nbands_converge = nbands_converge
-        self.wfs.eigensolver = eigensolver
+        # XXX Eigensolver class doesn't define an nbands_converge property
+        self.wfs.set_eigensolver(eigensolver)
         self.wfs.timer = self.timer
 
         if self.density is None:
@@ -479,8 +480,12 @@ class PAW(PAWTextOutput):
         if xcfunc.gllb:
             xcfunc.initialize_gllb(self)
 
+        self.print_memory_estimate(self.txt)
+        self.txt.flush()
+
         if dry_run:
             self.print_cell_and_parameters()
+            self.print_memory_estimate(self.txt)
             self.txt.flush()
             raise SystemExit
 
@@ -592,3 +597,22 @@ class PAW(PAWTextOutput):
         """Return HOMO and LUMO eigenvalues."""
         return self.occupations.get_homo_lumo(self.wfs) * Hartree
 
+    def estimate_memory(self, mem):
+        mem_init = memory()
+        mem.subnode('Initial overhead', mem_init)
+        for name, obj in [('Density', self.density),
+                          ('Hamiltonian', self.hamiltonian),
+                          ('Wavefunctions', self.wfs),
+                          ]:
+            obj.estimate_memory(mem.subnode(name))
+
+    def print_memory_estimate(self, txt):
+        print >> txt, 'Memory estimate'
+        print >> txt, '---------------'
+        mem = MemNode('Calculator', 0)
+        try:
+            self.estimate_memory(mem)
+            mem.calculate_size()
+            mem.write(txt, '')
+        except AttributeError, m:
+            print >> txt, 'Attribute error', m

@@ -17,23 +17,30 @@ class LCAO:
         self.S_MM = None
         self.H_MM = None
         self.timer = None
-        self.comm = None
         self.mynbands = None
         self.band_comm = None
-        self.last_k = None
+        self.has_initialized = False # XXX
+
+    def initialize(self, gd, band_comm, dtype, nao, mynbands):
+        self.gd = gd
+        self.band_comm = band_comm
+        self.dtype = dtype
+        self.nao = nao
+        self.mynbands = mynbands
+        self.has_initialized = True # XXX
+        assert self.H_MM is None # Right now we're not sure whether
+        # this will work when reusing
 
     def calculate_hamiltonian_matrix(self, hamiltonian, wfs, kpt):
+        assert self.has_initialized
         s = kpt.s
         q = kpt.q
 
         if self.H_MM is None:
-            nao = wfs.setups.nao
+            nao = self.nao
             self.eps_n = np.empty(nao)
-            self.S_MM = np.empty((nao, nao), wfs.dtype)
-            self.H_MM = np.empty((nao, nao), wfs.dtype)
-            self.comm = wfs.gd.comm
-            self.mynbands = wfs.mynbands
-            self.band_comm = wfs.band_comm
+            self.S_MM = np.empty((nao, nao), self.dtype)
+            self.H_MM = np.empty((nao, nao), self.dtype)
             self.timer = wfs.timer
             #self.linear_dependence_check(wfs)
 
@@ -54,7 +61,7 @@ class LCAO:
             dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
             gemm(1.0, dHP_iM, P_Mi, 1.0, self.H_MM)
-        self.comm.sum(self.H_MM)
+        self.gd.comm.sum(self.H_MM)
         self.H_MM += wfs.T_qMM[q]
 
     def iterate(self, hamiltonian, wfs):
@@ -96,7 +103,7 @@ class LCAO:
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
         else:
-            if self.comm.rank == 0:
+            if self.gd.comm.rank == 0:
                 info = diagonalize(self.H_MM, self.eps_n, self.S_MM)
                 if info != 0:
                     raise RuntimeError('Failed to diagonalize: info=%d' %
@@ -104,9 +111,8 @@ class LCAO:
         self.timer.stop(dsyev_zheev_string)
 
         if rank == 0:
-            self.comm.broadcast(self.H_MM[:wfs.nbands], 0)
-            self.comm.broadcast(self.eps_n[:wfs.nbands], 0)
-
+            self.gd.comm.broadcast(self.H_MM[:wfs.nbands], 0)
+            self.gd.comm.broadcast(self.eps_n[:wfs.nbands], 0)
         self.band_comm.scatter(self.H_MM[:wfs.nbands], kpt.C_nM, 0)
         self.band_comm.scatter(self.eps_n[:wfs.nbands], kpt.eps_n, 0)
 
@@ -217,3 +223,8 @@ class LCAO:
             self.thres = 1e-6
             if (p_M <= self.thres).any():
                 self.linear_kpts[k] = (P_MM, p_M)
+
+    def estimate_memory(self, mem):
+        itemsize = np.array(1, self.dtype).itemsize
+        mem.subnode('H, work [2*MM]', self.nao * self.nao * itemsize)
+

@@ -206,3 +206,18 @@ class Eigensolver:
             hamiltonian.xc.xcfunc.exx.rotate(kpt, U_nn)
 
         self.timer.stop('Subspace diag.')
+
+    def estimate_memory(self, mem, gd, dtype, mynbands, nbands):
+        gridmem = gd.bytecount(dtype)
+
+        keep_htpsit = self.keep_htpsit and (mynbands == nbands)
+
+        if keep_htpsit:
+            mem.subnode('Htpsit', nbands * gridmem)
+        else:
+            mem.subnode('No Htpsit', 0)
+
+        itemsize = np.array(1, dtype).itemsize
+        mem.subnode('Preconditioner', 4 * gridmem)
+        mem.subnode('Work', gridmem)
+        mem.subnode('H_nn', nbands * nbands * itemsize)

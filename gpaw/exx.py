@@ -128,15 +128,18 @@ class EXX:
         if usefft:
             if use_finegrid:
                 solver = PoissonFFTSolver()
-                solver.initialize(density.finegd)
+                solver.set_grid_descriptor(density.finegd)
+                solver.initialize()
                 self.poisson_solve = solver.solve
             else:
                 solver = PoissonFFTSolver()
-                solver.initialize(wfs.gd)
+                solver.set_grid_descriptor(wfs.gd)
+                solver.initialize()
                 self.poisson_solve = solver.solve
         elif not use_finegrid:
             solver = PoissonSolver(nn=hamiltonian.poisson.nn)
-            solver.initialize(wfs.gd)
+            solver.set_grid_descriptor(wfs.gd)
+            solver.initialize()
             self.poisson_solve = solver.solve
             
         # Allocate space for matrices

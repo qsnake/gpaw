@@ -3,7 +3,7 @@
 
 from __future__ import division
 from math import pi
-import numpy as npy
+import numpy as np
 
 from gpaw import debug
 from gpaw.utilities import is_contiguous
@@ -23,9 +23,9 @@ class _Transformer:
         else:
             comm = None
 
-        pad_cd = npy.empty((3, 2), int)
-        neighborpad_cd = npy.empty((3, 2), int)
-        skip_cd = npy.empty((3, 2), int)
+        pad_cd = np.empty((3, 2), int)
+        neighborpad_cd = np.empty((3, 2), int)
+        skip_cd = np.empty((3, 2), int)
 
         if (gdin.N_c == 2 * gdout.N_c).all():
             # Restriction:
@@ -33,7 +33,7 @@ class _Transformer:
             pad_cd[:, 1] = 2 * nn - 2 + 2 * gdout.end_c - gdin.end_c
             neighborpad_cd[:, 0] = 2 * nn - 2 + 2 * gdout.beg_c - gdin.beg_c
             neighborpad_cd[:, 1] = 2 * nn - 1 - 2 * gdout.end_c + gdin.end_c
-            interpolate = False
+            self.interpolate = False
         else:
             assert (gdout.N_c == 2 * gdin.N_c).all()
             # Interpolation:
@@ -43,14 +43,15 @@ class _Transformer:
             neighborpad_cd[:, 1] = nn - 1 - gdout.end_c // 2 + gdin.end_c
             skip_cd[:, 0] = gdout.beg_c % 2
             skip_cd[:, 1] = gdout.end_c % 2
-            interpolate = True
+            self.interpolate = True
 
-        assert npy.alltrue(pad_cd.ravel() >= 0)
+        assert np.alltrue(pad_cd.ravel() >= 0)
 
-        self.transformer = _gpaw.Transformer(
-            gdin.n_c, 2 * nn, pad_cd, neighborpad_cd, skip_cd, neighbor_cd,
-            dtype == float, comm, interpolate)
-
+        self.transformer = _gpaw.Transformer(gdin.n_c, 2 * nn, pad_cd, 
+                                             neighborpad_cd, skip_cd,
+                                             neighbor_cd, dtype == float, comm,
+                                             self.interpolate)
+        
         self.ngpin = tuple(gdin.n_c)
         self.ngpout = tuple(gdout.n_c)
         assert dtype in [float, complex]
@@ -66,16 +67,20 @@ class _Transformer:
 def Transformer(gdin, gdout, nn=1, dtype=float):
     if nn != 9:
         t = _Transformer(gdin, gdout, nn, dtype)
+        interpolate = t.interpolate
         if not debug:
             t = t.transformer
-        return t
+        return TransformerWrapper(gdin, gdout, t, interpolate)
     class T:
         def apply(self, input, output, phases=None):
             output[:] = input
+        def estimate_memory(self, mem):
+            mem.set('Nulltransformer', 0)
     return T()
 
 def multiple_transform_apply(transformerlist, inputs, outputs, phases=None):
-    return _gpaw.multiple_transform_apply(transformerlist, inputs, outputs, phases)
+    return _gpaw.multiple_transform_apply(transformerlist, inputs, outputs, 
+                                          phases)
 
 
 def coefs(k, p):
@@ -91,3 +96,24 @@ def coefs(k, p):
                 d *= i - j
             print '%14.16f' % (n / d),
         print
+
+
+class TransformerWrapper:
+    def __init__(self, gdin, gdout, transformer, interpolate):
+        self.gdin = gdin
+        self.gdout = gdout
+        self.transformer = transformer
+        self.interpolate = interpolate
+        
+    def apply(self, input, output, phases=None):
+        self.transformer.apply(input, output, phases)
+
+    def estimate_memory(self, mem):
+        # Read transformers.c for details
+        inbytes = self.gdin.bytecount()
+        outbytes = self.gdout.bytecount()
+        mem.subnode('buf', inbytes)
+        if self.interpolate:
+            mem.subnode('buf2 interp', 16 * inbytes)
+        else:
+            mem.subnode('buf2 restrict', 4 * outbytes)

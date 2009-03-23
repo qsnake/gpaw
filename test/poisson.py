@@ -12,7 +12,8 @@ def f(n):
     a = gd.zeros()
     print a.shape
     p = PoissonSolver(nn=1, relax='J')
-    p.initialize(gd)
+    p.set_grid_descriptor(gd)
+    p.initialize()
     cut = N / 2.0 * 0.9
     s = Spline(l=0, rmax=cut, f_g=np.array([1, 0.5, 0.0]))
     c = LFC(gd, [[s], [s]])

@@ -17,6 +17,9 @@ class EmptyWaveFunctions:
     def set_orthonormalized(self, flag):
         pass
 
+    def estimate_memory(self, mem):
+        mem.set('Unknown WFs', 0)
+
 class WaveFunctions(EmptyWaveFunctions):
     """...
 
@@ -61,7 +64,6 @@ class WaveFunctions(EmptyWaveFunctions):
         self.weight_k = weight_k
         self.symmetry = symmetry
         self.rank_a = None
-
         self.nibzkpts = len(weight_k)
 
         # Total number of k-point/spin combinations:
@@ -72,7 +74,7 @@ class WaveFunctions(EmptyWaveFunctions):
 
         ks0 = kpt_comm.rank * mynks
         k0 = ks0 % self.nibzkpts
-        self.kpt_u = []
+        kpt_u = []
         sdisp_cd = gd.sdisp_cd
         for ks in range(ks0, ks0 + mynks):
             s, k = divmod(ks, self.nibzkpts)
@@ -83,8 +85,9 @@ class WaveFunctions(EmptyWaveFunctions):
             else:
                 phase_cd = np.exp(2j * np.pi *
                                   sdisp_cd * ibzk_kc[k, :, np.newaxis])
-            self.kpt_u.append(KPoint(weight, s, k, q, phase_cd))
+            kpt_u.append(KPoint(weight, s, k, q, phase_cd))
 
+        self.kpt_u = kpt_u
         self.ibzk_qc = ibzk_kc[k0:k + 1]
 
         self.eigensolver = None
@@ -95,6 +98,9 @@ class WaveFunctions(EmptyWaveFunctions):
 
     def set_setups(self, setups):
         self.setups = setups
+
+    def set_eigensolver(self, eigensolver):
+        self.eigensolver = eigensolver
 
     def __nonzero__(self):
         return True
@@ -289,40 +295,40 @@ class WaveFunctions(EmptyWaveFunctions):
             self.kpt_comm.receive(b_o, kpt_rank, 1302)
             return b_o
 
+
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities.blas import gemm
 class LCAOWaveFunctions(WaveFunctions):
     def __init__(self, *args):
         WaveFunctions.__init__(self, *args)
-        self.basis_functions = None
-        self.tci = None
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
+        self.tci = TwoCenterIntegrals(self.gd, self.setups,
+                                      self.gamma, self.ibzk_qc)
+        self.basis_functions = BasisFunctions(self.gd,
+                                              [setup.phit_j
+                                               for setup in self.setups],
+                                              self.kpt_comm,
+                                              cut=True)
+        if not self.gamma:
+            self.basis_functions.set_k_points(self.ibzk_qc)
+
+    def set_eigensolver(self, eigensolver):
+        WaveFunctions.set_eigensolver(self, eigensolver)
+        eigensolver.initialize(self.gd, self.band_comm, self.dtype, 
+                               self.setups.nao, self.mynbands)
 
     def set_positions(self, spos_ac):
-        WaveFunctions.set_positions(self, spos_ac)
-        
-        if not self.basis_functions:
-            # First time:
-            self.basis_functions = BasisFunctions(self.gd,
-                                                  [setup.phit_j
-                                                   for setup in self.setups],
-                                                  self.kpt_comm,
-                                                  cut=True)
-            if not self.gamma:
-                self.basis_functions.set_k_points(self.ibzk_qc)
+        WaveFunctions.set_positions(self, spos_ac)        
         self.basis_functions.set_positions(spos_ac)
 
         nq = len(self.ibzk_qc)
         nao = self.setups.nao
         mynbands = self.mynbands
         
-        if not self.tci:
+        if self.S_qMM is None: # XXX
             # First time:
-            self.tci = TwoCenterIntegrals(self.gd, self.setups,
-                                          self.gamma, self.ibzk_qc)
-            
             self.S_qMM = np.empty((nq, nao, nao), self.dtype)
             self.T_qMM = np.empty((nq, nao, nao), self.dtype)
             for kpt in self.kpt_u:
@@ -344,7 +350,7 @@ class LCAOWaveFunctions(WaveFunctions):
             kpt.P_aMi = dict([(a, P_qMi[q])
                               for a, P_qMi in self.P_aqMi.items()])
 
-        self.tci.set_positions(spos_ac)        
+        self.tci.set_positions(spos_ac)
         self.tci.calculate(spos_ac, self.S_qMM, self.T_qMM, self.P_aqMi)
             
         self.positions_set = True
@@ -544,6 +550,19 @@ class LCAOWaveFunctions(WaveFunctions):
         
         F_av -= (dET_av + dEn_av + dErho_av + dED_av)
 
+    def estimate_memory(self, mem):
+        nbands = self.nbands
+        nq = len(self.ibzk_qc)
+        nao = self.setups.nao
+        ni_total = sum([setup.ni for setup in self.setups])
+        itemsize = np.array(1, self.dtype).itemsize
+        mem.subnode('C [qnM]', nq * nbands * nao * itemsize)
+        mem.subnode('T, S [qMM]', 2 * nq * nao * nao * itemsize)
+        mem.subnode('P [aqMi]', nq * nao * ni_total / self.gd.comm.size)
+        self.tci.estimate_memory(mem.subnode('TCI'))
+        self.basis_functions.estimate_memory(mem.subnode('BasisFunctions'))
+        self.eigensolver.estimate_memory(mem.subnode('Eigensolver'))
+
 
 from gpaw.eigensolvers import get_eigensolver
 from gpaw.overlap import Overlap
@@ -649,6 +668,8 @@ class GridWaveFunctions(WaveFunctions):
         lcaowfs.set_positions(spos_ac)
         hamiltonian.update(density)
         eigensolver = get_eigensolver('lcao', 'lcao')
+        eigensolver.initialize(self.gd, self.band_comm, self.dtype,
+                               self.setups.nao, lcaomynbands)
         eigensolver.iterate(hamiltonian, lcaowfs)
 
         # Transfer coefficients ...
@@ -871,3 +892,11 @@ class GridWaveFunctions(WaveFunctions):
                 dO_ii = hamiltonian.setups[a].O_ii
                 F_vii -= np.dot(np.dot(F_niv.transpose(), P_ni), dO_ii)
                 F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
+
+    def estimate_memory(self, mem):
+        # XXX Laplacian operator?
+        gridbytes = self.gd.bytecount(self.dtype)
+        mem.subnode('psit_unG', len(self.kpt_u) * self.mynbands * gridbytes)
+        self.eigensolver.estimate_memory(mem.subnode('Eigensolver'), self.gd,
+                                         self.dtype, self.mynbands,
+                                         self.nbands)

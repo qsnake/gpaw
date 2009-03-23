@@ -31,8 +31,14 @@ class PoissonSolver:
         else:
             raise NotImplementedError('Relaxation method %s' % relax)
 
-    def initialize(self, gd, load_gauss=False):
+    def set_grid_descriptor(self, gd): # XXX
+        # This method exists only because it is nice to know the gd size
+        # before also having to allocate the arrays (which would be done in
+        # the actual initialize).  Maybe 'initialize' should be 'allocate'
         self.gd = gd
+
+    def initialize(self, load_gauss=False):
+        gd = self.gd
         scale = -0.25 / pi 
         self.dv = gd.dv
 
@@ -243,10 +249,23 @@ class PoissonSolver:
                                              residual.ravel())) * self.dv
             return error
 
+    def estimate_memory(self, mem):
+        # XXX Memory estimate works only for J or possibly GS !!
+
+        # Poisson (rhos, phis, residuals, interpolators, restrictors)
+        # Multigrid adds a factor of 1.14
+        nfinebytes = self.gd.bytecount()
+        nbytes = nfinebytes / 8
+        mem.subnode('poisson1', 8 * 4 * 1.14 * nbytes)
+        mem.subnode('poisson2', 6 * 1.14 * nbytes)
+        mem.subnode('poisson3', 12 * 1.14 * nbytes)
+        mem.subnode('Laplacian', nbytes)
+
 
 from numpy.fft import fftn, ifftn
 from gpaw.utilities.complex import real
 from gpaw.utilities.tools import construct_reciprocal
+
 
 class PoissonFFTSolver(PoissonSolver):
     def __init__(self):

@@ -86,7 +86,8 @@ class Coulomb:
                     self.solve = self.poisson.solve
                 else:
                     solver = PoissonSolver(nn=2)
-                    solver.initialize(self.gd, load_gauss=True)
+                    solver.set_grid_descriptor(self.gd)
+                    solver.initialize(load_gauss=True)
                     self.solve = solver.solve
 
     def coulomb(self, n1, n2=None, Z1=None, Z2=None, method='recip_gauss'):

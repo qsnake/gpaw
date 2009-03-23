@@ -40,7 +40,7 @@ class PairDensity2:
 
         if self.finegrid:
             # interpolate the pair density to the fine grid
-            self.density.interpolater.apply(nt_G, rhot_g)
+            self.density.interpolator.apply(nt_G, rhot_g)
         else:
             # copy values
             rhot_g[:] = nt_G
@@ -92,7 +92,7 @@ class PairDensity:
 
         # interpolate the pair density to the fine grid
         nijt_g = self.density.finegd.empty()
-        self.density.interpolater.apply(nijt, nijt_g)
+        self.density.interpolator.apply(nijt, nijt_g)
 
         return nijt_g
 

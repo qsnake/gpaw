@@ -174,6 +174,14 @@ class Sphere:
             w +=1
         self.normalized = True
         yield None
+
+    def estimate_gridpointcount(self, gd):
+        points = 0.0
+        for spline in self.spline_j:
+            l = spline.get_angular_momentum_number()
+            rc = spline.get_cutoff()
+            points += 4.0 * np.pi / 3.0 * rc**3 / gd.dv * (2 * l + 1)
+        return points
         
 # Quick hack: base class to share basic functionality across LFC classes
 class BaseLFC:
@@ -195,6 +203,14 @@ class BaseLFC:
                 if zero:
                     c_axi[a].fill(0.0)
             return c_axi
+
+    def estimate_memory(self, mem):
+        points = 0
+        for sphere in self.sphere_a:
+            points += sphere.estimate_gridpointcount(self.gd)
+        nbytes = points * np.array(1, self.dtype).itemsize
+        mem.set(mem.name, nbytes)
+
 
 class NewLocalizedFunctionsCollection(BaseLFC):
     """New LocalizedFunctionsCollection

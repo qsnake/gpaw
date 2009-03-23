@@ -510,6 +510,11 @@ class GridDescriptor(Domain):
             
         return Z_nn
 
+    def bytecount(self, dtype=float):
+        """Get the number of bytes used by a grid of specified dtype."""
+        return np.prod(self.n_c) * np.array(1, dtype).itemsize
+
+
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""
     def __init__(self, r_g, dr_g):

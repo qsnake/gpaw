@@ -194,6 +194,10 @@ class BaseMixer:
         for D_p in D_ap:
             self.D_iap[-1].append(D_p.copy())
 
+    def estimate_memory(self, mem, gd):
+        gridbytes = gd.bytecount()
+        mem.subnode('nt_iG, R_iG', 2 * self.nmaxold * gridbytes)
+
 
 class Mixer(BaseMixer):
     """Mix spin up and down densities separately"""

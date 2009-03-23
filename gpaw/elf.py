@@ -84,7 +84,7 @@ class ELF:
 
         # Transfer the density from the coarse to the fine grid
         for s in range(self.nspins):
-            self.density.interpolater.apply(self.nt_grad2_sG[s],
+            self.density.interpolator.apply(self.nt_grad2_sG[s],
                                             self.nt_grad2_sg[s])
 
     def update(self, wfs):

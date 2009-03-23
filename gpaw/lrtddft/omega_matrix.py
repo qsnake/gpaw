@@ -70,13 +70,15 @@ class OmegaMatrix:
         self.restrict = None
         self.poisson = PoissonSolver(nn=self.paw.hamiltonian.poisson.nn)
         if finegrid:
-            self.poisson.initialize(self.paw.density.finegd)
+            self.poisson.set_grid_descriptor(self.paw.density.finegd)
+            self.poisson.initialize()
             
             self.gd = self.paw.density.finegd
             if finegrid == 1:
                 self.gd = wfs.gd
         else:
-            self.poisson.initialize(wfs.gd)
+            self.poisson.set_grid_descriptor(wfs.gd)
+            self.poisson.initialize()
             self.gd = wfs.gd
         self.restrict = Transformer(self.paw.density.finegd, wfs.gd,
                                     self.paw.input_parameters.stencils[0]

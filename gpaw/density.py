@@ -65,7 +65,7 @@ class Density:
         self.magmom_a = magmom_a
         
         # Interpolation function for the density:
-        self.interpolater = Transformer(self.gd, self.finegd, stencil)
+        self.interpolator = Transformer(self.gd, self.finegd, stencil)
 
         self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
                        integral=[setup.Nct for setup in setups],
@@ -169,7 +169,7 @@ class Density:
             self.nt_sg = self.finegd.empty(self.nspins)
 
         for s in range(self.nspins):
-            self.interpolater.apply(self.nt_sG[s], self.nt_sg[s])
+            self.interpolator.apply(self.nt_sG[s], self.nt_sg[s])
 
         # With periodic boundary conditions, the interpolation will
         # conserve the number of electrons.
@@ -282,14 +282,14 @@ class Density:
             gd = self.finegd.refine()
             
             # Interpolation function for the density:
-            interpolater = Transformer(self.finegd, gd, 3)
+            interpolator = Transformer(self.finegd, gd, 3)
 
             # Transfer the pseudo-density to the fine grid:
             n_sg = gd.empty(self.nspins)
             if self.nt_sg is None:
                 self.interpolate()
             for s in range(self.nspins):
-                interpolater.apply(self.nt_sg[s], n_sg[s])
+                interpolator.apply(self.nt_sg[s], n_sg[s])
         else:
             raise NotImplementedError
 
@@ -371,7 +371,7 @@ class Density:
             self.taut_sg = self.finegd.empty(self.nspins)
 
         for s in range(self.nspins):
-            self.interpolater.apply(self.taut_sG[s], self.taut_sg[s])
+            self.interpolator.apply(self.taut_sG[s], self.taut_sg[s])
 
         """
         if comp_charge is None:
@@ -386,7 +386,7 @@ class Density:
             if abs(pseudo_charge) > 1.0e-14:
                 work_sg = self.finegd.empty(self.nspins)
                 for s in range(self.nspins):
-                    self.interpolater.apply(self.nt_sG[s], work_sg[s])
+                    self.interpolator.apply(self.nt_sG[s], work_sg[s])
 
                 x = pseudo_charge / self.finegd.integrate(work_sg).sum()
                 self.taut_sg *= x #TODO XXX scaling by same factor as nt_sg
@@ -416,3 +416,17 @@ class Density:
 
         return
 
+    def estimate_memory(self, mem):
+        nspins = self.nspins
+        nbytes = self.gd.bytecount()
+        nfinebytes = self.finegd.bytecount()
+
+        for name, size in [('nt_sG', nbytes * nspins),
+                           ('nt_sg', nfinebytes * nspins),
+                           ('nt_g', nfinebytes),
+                           ('rhot_g', nfinebytes),
+                           ('nct_G', nbytes)]:
+            mem.subnode(name, size)
+
+        self.interpolator.estimate_memory(mem.subnode('Interpolator'))
+        self.mixer.estimate_memory(mem.subnode('Mixer'), self.gd)

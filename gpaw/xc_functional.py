@@ -629,6 +629,11 @@ class XC3DGrid(XCGrid):
                                                 nb_g, vb_g)
         return e_g.sum() * self.dv
 
+    def estimate_memory(self, mem):
+        bytecount = self.gd.bytecount()
+        mem.subnode('local density', bytecount)
+        mem.subnode('extra contribs not implemented', 0)
+
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):

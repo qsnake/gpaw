@@ -65,6 +65,7 @@ class Hamiltonian:
         if psolver is None:
             psolver = PoissonSolver(nn='M', relax='J')
         self.poisson = psolver
+        self.poisson.set_grid_descriptor(finegd)
 
         # The external potential
         self.vext_g = vext_g
@@ -75,7 +76,8 @@ class Hamiltonian:
         self.vbar_g = None
 
         # Restrictor function for the potential:
-        self.restrict = Transformer(self.finegd, self.gd, stencil).apply
+        self.restrictor = Transformer(self.finegd, self.gd, stencil)
+        self.restrict = self.restrictor.apply
 
         # Exchange-correlation functional object:
         self.xc = XC3DGrid(xcfunc, finegd, nspins)
@@ -113,7 +115,7 @@ class Hamiltonian:
             self.vt_sg = self.finegd.empty(self.nspins)
             self.vHt_g = self.finegd.zeros()
             self.vt_sG = self.gd.empty(self.nspins)
-            self.poisson.initialize(self.finegd)
+            self.poisson.initialize()
 
         Ebar = np.vdot(self.vbar_g, density.nt_g) * self.finegd.dv
 
@@ -355,3 +357,12 @@ class Hamiltonian:
 
         return Exc - self.Exc
 
+    def estimate_memory(self, mem):
+        nbytes = self.gd.bytecount()
+        nfinebytes = self.finegd.bytecount()
+        mem.subnode('vHt_g', nfinebytes)
+        mem.subnode('vt_sG', self.nspins * nbytes)
+        mem.subnode('vt_sg', self.nspins * nfinebytes)
+        self.restrictor.estimate_memory(mem.subnode('Restrictor'))
+        self.xc.estimate_memory(mem.subnode('XC 3D grid'))
+        self.poisson.estimate_memory(mem.subnode('Poisson'))
