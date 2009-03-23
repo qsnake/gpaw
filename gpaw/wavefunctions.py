@@ -299,15 +299,16 @@ class WaveFunctions(EmptyWaveFunctions):
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities.blas import gemm
+if extra_parameters.get('blacs'):
+    from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as \
+         TwoCenterIntegrals
+
 class LCAOWaveFunctions(WaveFunctions):
     def __init__(self, *args):
         WaveFunctions.__init__(self, *args)
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
-        if extra_parameters.get('blacs'):
-            from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as \
-                 TwoCenterIntegrals
         self.tci = TwoCenterIntegrals(self.gd, self.setups,
                                       self.gamma, self.ibzk_qc)
         self.basis_functions = BasisFunctions(self.gd,
