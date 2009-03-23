@@ -4,13 +4,10 @@
 Building with gcc compiler
 ==========================
 
+NumPy
+=====
 Instructions for the ``V1R3M0_460_2008-081112P`` driver,
 compilation with gcc compiler.
-
-**Warning** - for this driver two versions of numpy need to be compiled for
-the compute nodes: a standard one used during the building process of gpaw,
-and the optimized one used for running gpaw jobs. Using optimized numpy
-for building of gpaw results in "ImportError: /opt/ibmcmp/lib/bg/bglib/libxlsmp.so.1: undefined symbol: __process_count" when importing numpy on the frontend node.
 
 The **0.3** version of gpaw uses Numeric `<https://svn.fysik.dtu.dk/projects/gpaw/tags/0.3/>`_.
 
@@ -37,10 +34,13 @@ and xlf* related libraries).
 
 **Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``surveyor/intrepid``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a``, and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``goto``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS_goto/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. Change the locations of the libraries to be used in the makefiles: `/soft/apps/LIBGOTO` and `/opt/ibmcmp/lib/bg`.
 
-**Warning**: - crashes have been reported with numpy compiled against ``goto``
+**Warning**: The optimized version of NumPy no longer seems to be running faster. This is
+currently under investigation.
+
+**Warning**: Crashes have been reported with numpy compiled against ``goto``
 so build numpy agains ``esslbg`` - see :ref:`rbgc`.
 
-**Warning** - if numpy built using these libraries fails
+**Warning** : If NumPy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
 - please add ``-qpic`` to compile options for both ``lapack_bgp`` and ``cblas_bgp``. 
 After bulding ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4 and do this::
@@ -58,7 +58,7 @@ After bulding ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4 and do this::
   $ c="\"/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -DNO_APPEND_FORTRAN -L/opt/ibmcmp/xlmass/bg/4.4/bglib\""
   $ MATHLIB="mass" LDFLAGS="$ldflags" LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
-Numpy built in this way does contain the
+NumPy built in this way does contain the
 :file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
 , and running the following python script results
 in better time than the standard version of numpy (~156 vs. ~329 sec)
@@ -105,6 +105,15 @@ get and numpy-1.0.4 and do this::
   $ c="\"mpicc\""
   $ LD_LIBRARY_PATH="$ldpath" CC="$c" $p setup.py install --root="$root"
 
+
+If you do not wish to build NumPy for yourself, you can use the version in Marcin Dulak's directory::
+  /home/dulak/numpy-1.0.4-1
+  /home/dulak/numpy-1.0.4-1.optimized
+
+GPAW
+====
+We presume that you have already downloaded: GPAW, GPAW_SETUPS, ASE, and NumPy.
+
 Set these environment variables in the :file:`.softenvrc` file::
 
   PYTHONPATH = ${HOME}/Numeric-24.2-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/Numeric
@@ -116,23 +125,102 @@ Set these environment variables in the :file:`.softenvrc` file::
   LD_LIBRARY_PATH += /opt/ibmcmp/xlf/bg/11.1/bglib:/opt/ibmcmp/lib/bglib
   LD_LIBRARY_PATH += /opt/ibmcmp/xlsmp/bg/1.7/bglib:/bgsys/drivers/ppcfloor/gnu-linux/lib
   PATH += ${HOME}/gpaw/tools:${HOME}/CamposASE2/tools:${HOME}/ase3k/tools
-  # to enable TAU profiling add also:
-  PYTHONPATH += /soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt
-  LD_LIBRARY_PATH += /soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt
 
 and do::
 
   resoft
 
-(to enable TAU profiling do also ``source /soft/apps/tau/tau.bashrc`` or ``soft add +tau``, if available),
-and build GPAW (``PYTHONPATH=~/numpy-1.0.4-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages /bgsys/drivers/ppcfloor/gnu-linux/bin/python
-setup.py build_ext``) with this :file:`customize.py` file::
+Because the ``popen3`` function is missing, you will need to remove all the
+contents of the :file:`gpaw/version.py` file after ``version =
+'0.4'``.  The same holds for :file:`ase/version.py` in the ase
+installation!  Suggestions how to skip the ``popen3`` testing in
+:file:`gpaw/version.py` on BG/P are welcome!
+
+Because NumPy is primarily built for the compute nodes and the optimized version
+cannot be imported on the front end nodes, it is necessary to comment out a number of lines in
+:file:`config.py` file::
+
+  def check_packages(packages, msg, force_inclusion_of_ase):
+      """Check the python version and required extra packages                     
+                                                                                
+      If ASE is not installed, the `packages` list is extended with the           
+      ASE modules if they are found."""
+
+      if sys.version_info < (2, 3, 0, 'final', 0):
+          raise SystemExit('Python 2.3.1 or later is required!')
+  
+      # try:                                                                      
+      #     import numpy                                                          
+      # except ImportError:                                                       
+      #     raise SystemExit('numpy is not installed!') 
+      ... 
+
+  def get_system_config(define_macros, undef_macros,
+                        include_dirs, libraries, library_dirs, extra_link_args,
+                        extra_compile_args, runtime_library_dirs, extra_objects,
+                        msg):
+
+      undef_macros += ['NDEBUG']
+      # import numpy                                                              
+      # include_dirs += [numpy.get_include()]                                     
+     ...
+
+A number of the GPAW source files in ``c`` directory are built using the ``disutils`` module
+which makes it difficult to control the flags which are passed to the gnu compiler. A work
+around is to use a modified version of `bg_compiler.py <https://svn.fysik.dtu.dk/projects/gpaw/trunk/bg_compiler.py>`_. 
+Please make a copy of it and call it ``bg_gcc.py``.
+
+Here are the lines to change::
+
+  import sys 
+  from subprocess import call
+  
+  args2change = {"-fno-strict-aliasing":"",
+                 "-fmessage-length=0":"",
+                 "-Wall":"",
+                 "-std=c99":"",
+                 "-fPIC":"",
+                 "-g":"",
+                 "-D_FORTIFY_SOURCE=2":"",
+                 "-DNDEBUG":"",
+                 "-UNDEBUG":"",
+                 "-pthread":"",
+                 "-shared":"",
+                 "-Xlinker":"",
+                 "-export-dynamic":"",
+                 "-Wstrict-prototypes":"",
+                 "-dynamic":"",
+                 "-O3":"",
+                 "-O2":"",
+                 "-O1":""}
+
+  fragile_files = ["test.c"]
+  
+  cmd = ""
+  fragile = False
+  
+  for arg in sys.argv[1:]:
+      cmd += " "
+      t = arg.strip()
+      if t in fragile_files:
+          fragile = True
+      if t in args2change:
+          cmd += args2change[t]
+      else:
+          cmd += arg
+  if fragile:
+      flags = "-O2 -std=c99 -fPIC -dynamic"
+  else:
+      flags = "-O3 -std=c99 -fPIC -dynamic"
+  cmd = "mpicc %s %s"%(flags, cmd)
+
+  print "\nexecmd: %s\n"%cmd
+  call(cmd, shell=True)
+
+Finally, we build GPAW by doing``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
+setup.py build_ext`` with this :file:`customize.py` file::
 
   scalapack = True
-
-  extra_compile_args += [
-      '-O3'
-      ]
 
   libraries = [
              'lapack_bgp',
@@ -164,55 +252,41 @@ setup.py build_ext``) with this :file:`customize.py` file::
   include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
                    gpfsdir+'/numpy-1.0.4-1.optimized/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
 
-  extra_compile_args += ['-std=c99']
-
   define_macros += [
             ('GPAW_AIX', '1'),
             ('GPAW_MKL', '1'),
             ('GPAW_BGP', '1')
+	    ('GPAW_ASYNC', '1')
             ]
 
-  # uncomment the following lines to enable TAU profiling
-  #tau_path = '/soft/apps/tau/tau_latest/bgp/'
-  #tau_make = tau_path+'lib/Makefile.tau-bgptimers-mpi-gnu-compensate-python-pdt'
-  #extra_compile_args += ['''-tau_options="-optShared -optTau='-rn Py_RETURN_NONE' -optVerbose"''']
-  #mpicompiler = "tau_cc.sh -tau_makefile="+tau_make
-  #mpilinker = mpicompiler
-  #compiler = mpicompiler
+  mpicompiler = "bg_gcc.py"
+  mpilinker = "bg_gcc.py"
+  compiler = "bg_gcc.py"
 
-Because of missing ``popen3`` function you need to remove all the
-contents of the :file:`gpaw/version.py` file after ``version =
-'0.4'``.  The same holds for :file:`ase/version.py` in the ase
-installation!  Suggestions how to skip the ``popen3`` testing in
-:file:`gpaw/version.py` on BGP are welcome!
+Additional BG/P specific hacks
+===============================
+A FLOPS (floating point per second) counter and a number of other hardware counters can be enabled by adding two extra lines to your customize.py::
+
+  libraries = [
+             'hpm',
+
+  define_macros += [('GPAW_BGP_PERF',1)]
+
+This hpm library is available on the BG/P machines at Argonne National Laboratory. It will produce two files for each core: ``hpm_flops.$rank`` and ``hpm_data.$rank``. The latter one contains a number of additional hardware counters. There are four cores per chip and data for only two of the four cores can be collected simultaneously. This is set through an environment variable which is passed to Cobalt with the *--env*  flag. *BGP_COUNTER_MODE=0* specifies core 1 and 2, while *BGP_COUNTER_MODE=1* specifies core 3 and 4. 
+
+A mapfile for the ranks can be generated by adding another macro to customize.py::
+  
+  define_macros += [('GPAW_BGP_MAP',1)]
+
+
+Submitting jobs
+==================
 
 A gpaw script ``CH4.py`` (fetch it from ``gpaw/test``) can be submitted like this::
 
   qsub -n 2 -t 10 --mode vn --env \
        OMP_NUM_THREADS=1:GPAW_SETUP_PATH=$GPAW_SETUP_PATH:PYTHONPATH=$PYTHONPATH:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib:LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
        ${HOME}/gpaw/build/bin.linux-ppc64-2.5/gpaw-python ${HOME}/CH4.py
-
-Absolute paths are important!
-
-If you want to perform profiling with TAU submit the following wrapper instead::
-
-  import tau
-
-  def OurMain():
-      import CH4;
-
-  tau.run('OurMain()')
-
-This TAU run will produce ``profile.*`` files that can be merged into
-the default TAU's ``ppk`` format using the command issued from the directory
-where the ``profile.*`` files reside::
-
- paraprof --pack CH4.ppk
-
-The actual analysis can be made on a different machine, by transferring
-the ``CH4.ppk`` file from ``surveyor``, installing TAU, and launching::
-
- paraprof CH4.ppk
 
 It's convenient to customize as in :file:`gpaw-qsub.py` which can be
 found at the :ref:`parallel_runs` page.
