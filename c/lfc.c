@@ -159,8 +159,11 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
   const PyArrayObject* vt_G_obj;
   PyArrayObject* Vt_MM_obj;
   int k;
+  int Mstart;
+  int Mstop;
 
-  if (!PyArg_ParseTuple(args, "OOi", &vt_G_obj, &Vt_MM_obj, &k))
+  if (!PyArg_ParseTuple(args, "OOiii", &vt_G_obj, &Vt_MM_obj, &k,
+                        &Mstart, &Mstop))
     return NULL; 
 
   const double* vt_G = (const double*)vt_G_obj->data;
@@ -169,46 +172,96 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
   double* work_gm = lfc->work_gm;
 
   if (!lfc->bloch_boundary_conditions) {
-    double* Vt_MM = (double*)Vt_MM_obj->data;
-    GRID_LOOP_START(lfc, -1) {
-      for (int i1 = 0; i1 < ni; i1++) {
-	LFVolume* v1 = volume_i + i1;
-	int M1 = v1->M;
-	int nm1 = v1->nm;
-	int gm1 = 0;
-	for (int G = Ga; G < Gb; G++)
-	  for (int m1 = 0; m1 < nm1; m1++, gm1++){
-            //printf("A %f\n", v1->A_gm[gm1]);
-            //assert(v1->A_gm[gm1] != 0.0);
-	    lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
+    if (Mstart == -1) {
+      double* Vt_MM = (double*)Vt_MM_obj->data;
+      GRID_LOOP_START(lfc, -1) {
+        for (int i1 = 0; i1 < ni; i1++) {
+          LFVolume* v1 = volume_i + i1;
+          int M1 = v1->M;
+          int nm1 = v1->nm;
+          int gm1 = 0;
+          for (int G = Ga; G < Gb; G++)
+            for (int m1 = 0; m1 < nm1; m1++, gm1++){
+              //printf("A %f\n", v1->A_gm[gm1]);
+              //assert(v1->A_gm[gm1] != 0.0);
+              lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
+            }
+          
+          for (int i2 = 0; i2 < ni; i2++) {
+            LFVolume* v2 = volume_i + i2;
+            int M2 = v2->M;
+            if (M1 >= M2) {
+              int nm2 = v2->nm;
+              double* Vt_mm = Vt_MM + M1 * nM + M2;
+              for (int g = 0; g < nG; g++)
+                for (int m1 = 0; m1 < nm1; m1++)
+                  for (int m2 = 0; m2 < nm2; m2++)
+                    Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
+                                            work_gm[g * nm1 + m1] *
+                                            lfc->dv);
+            }
           }
-              
-	for (int i2 = 0; i2 < ni; i2++) {
-	  LFVolume* v2 = volume_i + i2;
-	  int M2 = v2->M;
-	  if (M1 >= M2) {
-	    int nm2 = v2->nm;
-	    double* Vt_mm = Vt_MM + M1 * nM + M2;
-	    for (int g = 0; g < nG; g++)
-	      for (int m1 = 0; m1 < nm1; m1++)
-		for (int m2 = 0; m2 < nm2; m2++)
-		  Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
-					  work_gm[g * nm1 + m1] *
-					  lfc->dv);
-	  }
-	}
+        }
+      }
+      GRID_LOOP_STOP(lfc, -1);
+    }
+    else {
+      Mstop -= Mstart;
+      double* Vt_MM = (double*)Vt_MM_obj->data;
+      GRID_LOOP_START(lfc, -1) {
+        for (int i1 = 0; i1 < ni; i1++) {
+          LFVolume* v1 = volume_i + i1;
+          int M1 = v1->M - Mstart;
+          int nm1 = v1->nm;
+          if (M1 < 0) {
+            if (M1 + nm1 <= Mstart)
+              continue;
+            else {
+              if (M1 + nm1 <= Mstop) {
+                nm1 += M1;
+                M1 = 0;
+              }
+              else {
+                M1 = 0;
+                nm1 = Mstop;
+              }
+            }
+          }
+          else if (M1 >= Mstop)
+            continue;
+          if (M1 + nm1 > Mstop)
+            nm1 = Mstop - M1;
+          
+          int gm1 = 0;
+          for (int G = Ga; G < Gb; G++)
+            for (int m1 = 0; m1 < nm1; m1++, gm1++)
+              lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
+          
+          for (int i2 = 0; i2 < ni; i2++) {
+            LFVolume* v2 = volume_i + i2;
+            int M2 = v2->M;
+            int nm2 = v2->nm;
+            double* Vt_mm = Vt_MM + M1 * nM + M2;
+            for (int g = 0; g < nG; g++)
+              for (int m1 = 0; m1 < nm1; m1++)
+                for (int m2 = 0; m2 < nm2; m2++)
+                  Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
+                                          work_gm[g * nm1 + m1] *
+                                          lfc->dv);
+          }
+        }
+        GRID_LOOP_STOP(lfc, -1);
       }
     }
-    GRID_LOOP_STOP(lfc, -1);
   }
   else {
     complex double* Vt_MM = (complex double*)Vt_MM_obj->data;
     GRID_LOOP_START(lfc, k) {
       for (int i1 = 0; i1 < ni; i1++) {
-	LFVolume* v1 = volume_i + i1;
-	int M1 = v1->M;
-	int nm1 = v1->nm;
-	int gm1 = 0;
+        LFVolume* v1 = volume_i + i1;
+        int M1 = v1->M;
+        int nm1 = v1->nm;
+        int gm1 = 0;
 	for (int G = Ga; G < Gb; G++) {
 	  for (int m1 = 0; m1 < nm1; m1++, gm1++) {
 	    lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];

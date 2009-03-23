@@ -7,7 +7,8 @@ from gpaw.utilities.tools import tri2full
 from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
 from gpaw.operators import Gradient
-from gpaw import mpi
+import gpaw.mpi as mpi
+from gpaw import extra_parameters
 
 
 class EmptyWaveFunctions:
@@ -329,8 +330,15 @@ class LCAOWaveFunctions(WaveFunctions):
         
         if self.S_qMM is None: # XXX
             # First time:
-            self.S_qMM = np.empty((nq, nao, nao), self.dtype)
-            self.T_qMM = np.empty((nq, nao, nao), self.dtype)
+            if extra_parameters.get('blacs'):
+                self.basis_functions.set_matrix_distribution(self.band_comm)
+                mynao = (self.basis_functions.Mstop -
+                         self.basis_functions.Mstart)
+            else:
+                mynao = nao
+                
+            self.S_qMM = np.empty((nq, mynao, nao), self.dtype)
+            self.T_qMM = np.empty((nq, mynao, nao), self.dtype)
             for kpt in self.kpt_u:
                 q = kpt.q
                 kpt.S_MM = self.S_qMM[q]
@@ -648,7 +656,7 @@ class GridWaveFunctions(WaveFunctions):
             return
         
         self.timer.start('Wavefunction: lcao')
-        if self.nbands < self.setups.nao:
+        if self.nbands <= self.setups.nao:
             lcaonbands = self.nbands
             lcaomynbands = self.mynbands
         else:

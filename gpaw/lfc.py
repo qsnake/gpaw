@@ -611,6 +611,18 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                                                  dtype, integral,
                                                  forces)
         self.use_global_indices = True
+
+        self.Mstart = -1
+        self.Mstop = -1
+        
+    def set_matrix_distribution(self, orbital_comm):
+        """Distribute matrices using BLACS."""
+        B = orbital_comm.size
+        b = orbital_comm.rank
+        blocksize = -((-self.Mmax) // B)
+        # Range of basis functions for BLACS distribution of matrices:
+        self.Mstart = b * blocksize
+        self.Mstop = min(self.Mstart + blocksize, self.Mmax)
         
     def add_to_density(self, nt_sG, f_asi):
         """Add linear combination of squared localized functions to density.
@@ -679,7 +691,8 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
 
         Overwrites the elements of the target matrix Vt_MM. """
         Vt_MM[:] = 0.0
-        self.lfc.calculate_potential_matrix(vt_G, Vt_MM, q)
+        self.lfc.calculate_potential_matrix(vt_G, Vt_MM, q,
+                                            self.Mstart, self.Mstop)
 
     def lcao_to_grid(self, C_nM, psit_nG, q):
         """Deploy basis functions onto grids according to coefficients.
