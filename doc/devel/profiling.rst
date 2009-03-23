@@ -74,7 +74,7 @@ the pstats_ documentation if you want to do more fancy things.
 
    Use::
 
-     $ pyhton script.py --profile=-
+     $ python script.py --profile=-
 
    to write the report directly to standard output.
 
@@ -105,30 +105,24 @@ analysing profile data made elsewhere - skip the installation of
 Follow the vendor installation instructions for ``TAU`` or, on an RPM-based
 system (El4/EL5 and FC8/FC9 are currently supported), build RPM following
 `<https://wiki.fysik.dtu.dk/niflheim/Cluster_software_-_RPMS?action=show#tau>`_.
-Then, configure the environment by running first ``perfdmf_configure``.
-Choose the default answer for most of the questions, the only important
-points are to provide a reasonable path to the database directory
-(the database may grow to GB's), and ignore the password question::
 
-  Please enter the path to the database directory.
-  (/home/camp/dulak/.ParaProf/perfdmf):/scratch/dulak/perfdmf
-  Please enter the database username.
-  ():
-  Store the database password in CLEAR TEXT in your configuration file? (y/n):y
-  Please enter the database password:
-
-Similarly, run ``perfexplorer_configure`` letting the default settings.
+PerfDMF are a set of utilities that allow you to create a database for storing and analayzing your profile data. If you plan to collect any significant amount of profile data, it is highly recommend that you set one up. There are a number of options for the perfmdf database. For must users, the default based on derby is the simplest and it can be created by ``perfdmf_configure --create-default``. Other options are
+also available:
+`<http://www.cs.uoregon.edu/research/tau/docs/newguide/ch18s02.html>`_
+Note that altough Paraprof is the simplest way to load profile data into your database,
+it is also possible to accomplish this directly with the PerfDMF utilities.
+`<http://www.cs.uoregon.edu/research/tau/docs/newguide/ch19.html>`_
 
 Generating profile data
------------------------
-TAU has a number of capabilities including generating a call path
-tree, memory profiling, measuring MPI message sizes, and much
-more. Here we describe the flat profile. There are two methods for
-generating a flat profile:
+------------------------
+TAU has a number of capabilities including generating a call path, memory profiling, measuring MPI message sizes, and much more. Here we describe the flat profile. It
+is the mos basic type of profile. It will show you where the wall-clock time is going. There are two methods for generating a flat profile:
 
-* Manual - This is the most intuitive way to create profiles because it requires that you understand the fundamental algorithms. A TauTimer class is available that includes the most essential profiling commands. See gpaw/utilities/timing.py. Time is measured  **only** for each instance of ``timer.start(<text>)`` and ``timer.stop(<text>)``. There are a number of pre-defined timers for the most time consuming parts of GPAW, e.g. RMM-DIIS, subspace diagonalization, etc. It is very straightforward to add your own timers.
+Manual
+^^^^^^^^^^
+This is the most intuitive way to create profiles because it requires that you understand the fundamental algorithms. A TauTimer class is available that includes the most essential profiling commands. See gpaw/utilities/timing.py. Time is measured  **only** for each instance of ``timer.start(<text>)`` and ``timer.stop(<text>)``. There are a number of pre-defined timers for the most time consuming parts of GPAW, e.g. RMM-DIIS, subspace diagonalization, etc. It is very straightforward to add your own timers.
 
-Here is an example of how the TauTimer class can be used to profile a calculation. Note that the TAU library must be in your ``LD_LIBRARY_PATH``::
+Here is an example of how the TauTimer class can be used to profile a calculation. Note that the TAU binding library (\*.so) **must** be in your *PYTHON_PATH* and *LD_LIBRARY_PATH*::
 
   from gpaw.utilties.timing import TauTimer
 
@@ -138,7 +132,9 @@ Here is an example of how the TauTimer class can be used to profile a calculatio
   calc = MyGPAW(<args>)
 
 
-* Automatic - Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary.
+Automatic
+^^^^^^^^^^^^
+Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary.
 
 Simply include the following into ``customize.py`` and run ``python setup.py build_ext``::
 
@@ -156,7 +152,9 @@ Simply include the following into ``customize.py`` and run ``python setup.py bui
   c/libxc/src/gga_x_pbea.c: In function `func':
   c/libxc/src/gga_x_pbea.c:53: internal compiler error: in cgraph_expand_function, at cgraphunit.c:540
 
-There should be a number of Makefile TAU stubs available. Choose the one that is appropriate for the profile data that you wish to collect and the compiler.
+There should be a number of Makefile TAU stubs available. Choose the one that is appropriate for the profile data that you wish to collect and the compiler. Because automatic instrumentation generally has larger overhead than manual instrumentation, it is highly recommend that you chose a  Makefile TAU stub with the compensate option. In this way, the instrumentation time will be substracted out from the time reported by TAU. Without this compensation option, light weight functions may be over-represented in the flat profile
+
+Note that an alternate (and simpler) way to specify the long parameter list to ``tau_cc.sh`` is through the use of the environment variables *TAU_MAKEFILE* and *TAU_OPTIONS*. Ultimately, the the profile data collected and how it is collected is determined by these two environment variables.
  
 To obtain the profiler data run the following ``wrapper.py``::
 
@@ -180,13 +178,21 @@ You should be able to quickly view the profiler data with::
 
   paraprof CH4.ppk
 
+Understanding TAU_OPTIONS
+---------------------------
+There are a number of other *TAU_OPTIONS* which are helpful but
+may not work if TAU is not configured correctly.
 
+* **-optCompInst**: Performs the compiler-based instrumentation. This enables instrumentation by modifying the object files. This is only supported with certain compilers on certain options. The default is source-based instrumentation.
+* **-optShared**: Specifies the use of a dynamic TAU library binding (\*.so) instead of the default static library that would otherwise be linked into ``gpaw-python``. As a consequence,  the library binding is chosen at runtime by specifying the TAU library binding directory in your *PYTHON_PATH* and *LD_LIBRARY_PATH*
+* **-optTau**: This is frequently very platform and compiler specific. See the BG/P page for an example.
+* **-optVerbose**: Useful for debugging, all the details of the invocation of ``tau_cc.sh`` are passed to stdout.
 
 Analysing profile data
-----------------------
+-----------------------
 
 Now, assuming you have an ppk (ParaProf Packed Profile) file ready,
-run ``paraprof`` and choose the following using rigth clicks:
+run ``paraprof`` and choose the following using right clicks:
 ``Applications -> Default -> Add application -> Add experiment -> Add
 trial -> Trial Type: ParaProf Packed Profile``.
 
