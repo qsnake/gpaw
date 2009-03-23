@@ -23,7 +23,7 @@ def plot_count(fname):
     date, libxc, c, code, test, doc = pl.load(fname, unpack=True)
     zero = pl.zeros_like(date)
 
-    fig = pl.figure(1, figsize=(8, 6))
+    fig = pl.figure(1, figsize=(7.5, 5))
     ax = fig.add_subplot(111)
     polygon(date, c + code + test, c + code + test + doc,
              facecolor='m', label='Documentation')
