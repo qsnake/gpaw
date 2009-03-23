@@ -305,6 +305,9 @@ class LCAOWaveFunctions(WaveFunctions):
         self.S_qMM = None
         self.T_qMM = None
         self.P_aqMi = None
+        if extra_parameters.get('blacs'):
+            from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as \
+                 TwoCenterIntegrals
         self.tci = TwoCenterIntegrals(self.gd, self.setups,
                                       self.gamma, self.ibzk_qc)
         self.basis_functions = BasisFunctions(self.gd,
@@ -332,8 +335,10 @@ class LCAOWaveFunctions(WaveFunctions):
             # First time:
             if extra_parameters.get('blacs'):
                 self.basis_functions.set_matrix_distribution(self.band_comm)
-                mynao = (self.basis_functions.Mstop -
-                         self.basis_functions.Mstart)
+                Mstop = self.basis_functions.Mstop
+                Mstart = self.basis_functions.Mstart
+                mynao = Mstop - Mstart
+                self.tci.set_matrix_distribution(self.band_comm, Mstart, Mstop)
             else:
                 mynao = nao
                 

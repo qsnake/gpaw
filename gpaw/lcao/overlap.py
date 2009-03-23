@@ -471,3 +471,123 @@ class TwoCenterIntegrals:
         mem.subnode('Fourier splines', fftcount * itemsize)
         mem.subnode('Realspace splines', realspacecount * itemsize)
 
+
+class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
+    def set_matrix_distribution(self, band_comm, Mstart, Mstop):
+        """Distribute matrices using BLACS."""
+        self.band_comm = band_comm
+        # Range of basis functions for BLACS distribution of matrices:
+        self.Mstart = Mstart
+        self.Mstop = Mstop
+        
+    def set_positions(self, spos_ac):
+        TwoCenterIntegrals.set_positions(self, spos_ac)
+        natoms = len(spos_ac)
+        for a in range(natoms):
+            if self.M_a[a] > self.Mstart:
+                self.astart = a - 1
+                break
+        while a < natoms:
+            if self.M_a[a] > self.Mstop:
+                self.astop = a - 1
+                break
+            a += 1
+        else:
+            self.astop = a
+        from gpaw import mpi
+        print mpi.rank, self.Mstart, self.Mstop,self.astart, self.astop, self.M_a
+    def atom_iter(self, spos_ac, P_aqMi):
+        astart = self.astart
+        astop = self.astop
+        ai = TwoCenterIntegrals.atom_iter(self, spos_ac[astart:astop], P_aqMi)
+        for a1, a2, r, R, phase_q, offset in ai:
+            yield (a1, a2, r, R, phase_q, offset)
+            if a1 != a2 and astart <= a2 < astop:
+                yield (a2, a1, r, -R, phase_q.conj(), -offset)
+
+    def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative):
+        # Whether we're calculating values or derivatives, most operations
+        # are the same.  For this reason the "public" calculate and
+        # calculate_derivative methods merely point to this implementation
+        # (which would itself appear to have illogical variable names)
+        S_qxMM[:] = 0.0
+        T_qxMM[:] = 0.0
+        for P_qxMi in P_aqxMi.values():
+            P_qxMi[:] = 0.0
+
+        for (a1, a2, r, R, phase_q, offset) in self.atom_iter(spos_ac,
+                                                              P_aqxMi):
+            if derivative and a1 == a2:
+                continue
+
+            selfinteraction = (a1 == a2 and offset.any())
+            P1_qxMi = P_aqxMi.get(a1)
+            P2_qxMi = P_aqxMi.get(a2)
+            rlY_lm = []
+            drlYdR_lmc = []
+            for l in range(5):
+                rlY_m = np.empty(2 * l + 1)
+                Yl(l, R, rlY_m)
+                rlY_lm.append(rlY_m)
+
+                if derivative:
+                    drlYdR_mc = np.empty((2 * l + 1, 3))
+                    for m in range(2 * l + 1):
+                        L = l**2 + m
+                        drlYdR_mc[m, :] = nablaYL(L, R)
+                    drlYdR_lmc.append(drlYdR_mc)
+
+            self.stp_overlaps(S_qxMM, T_qxMM, P1_qxMi, P2_qxMi, a1, a2,
+                              r, R, rlY_lm, drlYdR_lmc, phase_q,
+                              selfinteraction, offset, derivative=derivative)
+
+        # Add adjustment from O_ii, having already calculated <phi_m1|phi_m2>:
+        #
+        #                         -----
+        #                          \            ~a   a   ~a
+        # S    = <phi  | phi  > +   )   <phi  | p > O   <p | phi  >
+        #  m1m2      m1     m2     /        m1   i   ij   j     m2
+        #                         -----
+        #                          aij
+        #
+        mynao, nao = S_qxMM.shape[-2:]
+        if not derivative:
+            dOP_iM = None # Assign explicitly in case loop runs 0 times
+            for a, P_qxMi in P_aqxMi.items():
+                dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
+                for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
+                    dOP_iM = np.empty((dO_ii.shape[1], mynao), P_Mi.dtype)
+                    gemm(1.0, P_Mi[self.Mstart:self.Mstop], dO_ii, 0.0,
+                         dOP_iM, 'c')
+                    gemm(1.0, dOP_iM, P_Mi, 1.0, S_MM, 'n')
+            del dOP_iM
+
+        # As it is now, the derivative calculation does not add the PAW
+        # correction.  Rather this is done in the force code.  Perhaps
+        # this should be changed.
+        comm = self.gd.comm
+        comm.sum(S_qxMM)
+        comm.sum(T_qxMM)
+                                     
+    def overlap(self, X, symbol1, symbol2, spline1_j, spline2_j,
+                r, R, rlY_lm, drlYdR_lmc, phase_q, selfinteraction, M1, M2,
+                X_qxMM):
+        """Calculate overlaps or kinetic energy matrix elements for the
+        (a,b) pair of atoms."""
+        for M1a, M1b, M2a, M2b, splines in self.slice_iter(symbol1, symbol2,
+                                                           M1, M2, spline1_j,
+                                                           spline2_j, X):
+            if not drlYdR_lmc:
+                X_xmm = splines.evaluate(r, R, rlY_lm)
+            else:
+                assert r != 0
+                X_xmm = splines.derivative(r, R, rlY_lm, drlYdR_lmc)
+            X_qxmm = X_xmm
+            if not self.gamma:
+                dims = np.rank(X_xmm)
+                # phase_q has a sort of funny shape (nq, 1, 1) and not (nq,)
+                phase_q = phase_q.reshape(-1, *np.ones(np.rank(X_xmm)))
+                X_qxmm = X_qxmm * phase_q.conj()
+            X_qxMM[..., M2a:M2b, M1a:M1b] += X_qxmm
+            if selfinteraction:
+                X_qxMM[..., M1a:M1b, M2a:M2b] += X_qxmm.swapaxes(-1, -2).conj()
