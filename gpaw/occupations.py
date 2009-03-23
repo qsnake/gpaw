@@ -185,7 +185,8 @@ class FermiDirac(OccupationNumbers):
         S = 0.0
         for kpt in kpts:
             if self.fixmom:
-                x = np.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
+                x = np.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0,
+                            100.0)
             else:
                 x = np.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
             y = np.exp(x)
@@ -263,14 +264,17 @@ class FermiDirac(OccupationNumbers):
             for kpt in kpts:
                 sign = 1.0 - 2 * kpt.s
                 if self.fixmom:
-                    x = np.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT, -100.0, 100.0)
+                    x = np.clip((kpt.eps_n - self.epsF[kpt.s]) / self.kT,
+                                -100.0, 100.0)
                     x = np.exp(x)
                     kpt.f_n[:] = kpt.weight / (x + 1.0)
                     dn = np.sum(kpt.f_n)
                     n[kpt.s] += dn
-                    dnde[kpt.s] += (dn - np.sum(kpt.f_n**2) / kpt.weight) / self.kT
+                    dnde[kpt.s] += (dn - np.sum(kpt.f_n**2) / kpt.weight) \
+                                   / self.kT
                 else:
-                    x = np.clip((kpt.eps_n - self.epsF) / self.kT, -100.0, 100.0)
+                    x = np.clip((kpt.eps_n - self.epsF) / self.kT, -100.0,
+                                100.0)
                     x = np.exp(x)
                     kpt.f_n[:] = kpt.weight / (x + 1.0)
                     dn = np.sum(kpt.f_n)
