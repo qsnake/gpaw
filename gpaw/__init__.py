@@ -195,7 +195,7 @@ if trace:
     from gpaw.mpi import parallel, rank
     if parallel:
         indent = 'CPU%d    ' % rank
-    def profile(frame, event, arg):
+    def f(frame, event, arg):
         global indent
         f = frame.f_code.co_filename
         if not f.startswith(path):
@@ -208,7 +208,7 @@ if trace:
         elif event == 'return':
             indent = indent[:-2]
 
-    sys.setprofile(profile)
+    sys.setprofile(f)
 
 if profile:
     from cProfile import Profile
