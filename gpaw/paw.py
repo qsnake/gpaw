@@ -480,9 +480,6 @@ class PAW(PAWTextOutput):
         if xcfunc.gllb:
             xcfunc.initialize_gllb(self)
 
-        self.print_memory_estimate(self.txt)
-        self.txt.flush()
-
         if dry_run:
             self.print_cell_and_parameters()
             self.print_memory_estimate(self.txt)
