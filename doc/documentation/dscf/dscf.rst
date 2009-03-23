@@ -17,10 +17,11 @@ is usually taken from the fermi level to keep the system neutral:
 
 .. math::
 
-  n(r) = \sum_{n=1}^{N-1}f(T,\varepsilon_n)|\varphi_n(r)|^2 + |\varphi_a(r)|^2.
+  n(r) = \sum_nf_{N-1}(T,\varepsilon_n)|\varphi_n(r)|^2 + |\varphi_a(r)|^2.
 
-with `N` being the total number of electrons. To get the band energy right 
-`\varphi_a(r)` needs to be expanded in Kohn-Sham orbitals:
+with `N` being the total number of electrons and `f_{N-1}(T,\varepsilon_n)`
+is the Fermi-Dirac distrution of `N-1` electrons . To get the band energy 
+right `\varphi_a(r)` needs to be expanded in Kohn-Sham orbitals:
 
 .. math::
 
@@ -74,32 +75,39 @@ Exciting the LUMO in CO::
 
     E_gs = CO.get_potential_energy()
 
-    calc.write('CO.gpw', mode='all')
-    CO, calc = restart('CO.gpw')
-
-    ## '''Obtain the pseudowavefunctions and projector overlaps of the
-    ##  state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals'''
+    # Obtain the pseudowavefunctions and projector overlaps of the
+    # state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals
+    n = 5
+    molecule = [0,1]
     wf_u = [kpt.psit_nG[5] for kpt in calc.wfs.kpt_u]
-    P_aui = [[kpt.P_ani[a][5] for kpt in calc.wfs.kpt_u]
-              for a in range(len(CO))]
+    p_uai = [dict([(molecule[a], P_ni[n]) for a, P_ni in kpt.P_ani.items()])
+             for kpt in calc.wfs.kpt_u]
 
     # Excited state calculation
     #--------------------------------------------
 
-    lumo = dscf.AEOrbital(calc, wf_u, P_aui, molecule=[0,1])
-    #lumo = dscf.MolecularOrbital(calc, molecule=[0,1], w=[[0,0,0,1],[0,0,0,-1]])
-    dscf.dscf_calculation(calc, [[1.0, lumo, 1]], CO)
+    calc_es = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
+                   convergence={'energy': 100,
+                                'density': 100,
+                                'eigenstates': 1.0e-9,
+                                'bands': -1})
+
+    CO.set_calculator(calc_es)
+    lumo = dscf.AEOrbital(calc_es, wf_u, p_uai)
+    #weights = {0:[0,0,0,1], 1:[0,0,0,-1]}
+    #lumo = dscf.MolecularOrbital(calc, weights=weights)
+    dscf.dscf_calculation(calc_es, [[1.0, lumo, 1]], CO)
 
     E_es = CO.get_potential_energy()
 
     print 'Excitation energy: ', E_es-E_gs
 
-The commented line ``dscf.Molecular...`` uses another class to specify the 
-`2\pi` orbital of CO which does not require a ground state calculation. 
-In the simple example above the two methods give identical results, 
-but for more complicated systems the AEOrbital class should be used
-\ [#des]_. When using the AEOrbital class the calculator has to be restarted 
-from a file or a new calculator object must be constructed for the dscf calculation.
+The commented lines ``lumo = dscf.dscf.Molecular...`` and ``weights = ...`` 
+uses another class to specify the `2\pi` orbital of CO which does not require 
+a ground state calculation of the molecule. In the simple example above the 
+two methods give identical results, but for more complicated systems the 
+AEOrbital class should be used \ [#des]_. When using the AEOrbital class 
+a new calculator object must be constructed for the dscf calculation.
 
 In the example above we only specify a single state, but the function 
 ``dscf.dscf_calculation`` takes a list of orbitals as input and we could for 

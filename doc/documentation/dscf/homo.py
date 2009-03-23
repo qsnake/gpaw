@@ -48,14 +48,14 @@ molecule.get_potential_energy()
 wf_u = [kpt.psit_nG[4] for kpt in c_mol.wfs.kpt_u]
 
 #Homo projector overlaps
-P_aui = [[kpt.P_ani[a][4] for kpt in c_mol.wfs.kpt_u]
-          for a in range(len(c_mol.wfs.kpt_u[0].P_ani))]
+mol = range(len(slab))[-2:]
+p_uai = [dict([(mol[a], P_ni[4]) for a, P_ni in kpt.P_ani.items()])
+         for kpt in c_mol.wfs.kpt_u]
 
 #   Slab with adsorbed molecule
 #-----------------------------------
 slab.set_calculator(calc)
-orbital = dscf.AEOrbital(calc, wf_u, P_aui, molecule=range(len(slab))[-2:],
-                         Estart=-100.0, Eend=0.0)
+orbital = dscf.AEOrbital(calc, wf_u, p_uai, Estart=-100.0, Eend=0.0)
 dscf.dscf_calculation(calc, [[-1.0, orbital, 1]], slab)
 slab.get_potential_energy()
 

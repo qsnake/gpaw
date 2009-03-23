@@ -17,11 +17,13 @@ CO.center(vacuum=3)
 CO.set_calculator(calc_mol)
 E_gs = CO.get_potential_energy()
 
-'''Obtain the pseudowavefunctions and projector overlaps of the
-state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals'''
-wf_u = [kpt.psit_nG[5] for kpt in calc_mol.wfs.kpt_u]
-P_aui = [[kpt.P_ani[a][5] for kpt in calc_mol.wfs.kpt_u]
-          for a in range(len(CO))]
+'''Get the pseudowavefunctions and projector overlaps of the
+   state which is to be occupied. n=5,6 is the 2pix and 2piy orbitals'''
+n = 5
+molecule = [0,1]
+wf_u = [kpt.psit_nG[n] for kpt in calc_mol.wfs.kpt_u]
+p_uai = [dict([(molecule[a], P_ni[n]) for a, P_ni in kpt.P_ani.items()])
+         for kpt in calc_mol.wfs.kpt_u]
 
 # Excited state calculations
 #--------------------------------------------
@@ -31,18 +33,18 @@ calc_1 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
                            'eigenstates': 1.0e-9,
                            'bands': -1})
 CO.set_calculator(calc_1)
-lumo = dscf.MolecularOrbital(calc_1, molecule=[0,1], w=[[0,0,0,1],[0,0,0,-1]])
+weights = {0: [0.,0.,0.,1.], 1: [0.,0.,0.,-1.]}
+lumo = dscf.MolecularOrbital(calc_1, weights=weights)
 dscf.dscf_calculation(calc_1, [[1.0, lumo, 1]], CO)
 E_es1 = CO.get_potential_energy()
 
 calc_2 = GPAW(nbands=8, h=0.2, xc='PBE', spinpol=True,
               convergence={'energy': 100,
-                           'density': 100,
+                          'density': 100,
                            'eigenstates': 1.0e-9,
                            'bands': -1})
-
 CO.set_calculator(calc_2)
-lumo = dscf.AEOrbital(calc_2, wf_u, P_aui, molecule=[0,1])
+lumo = dscf.AEOrbital(calc_2, wf_u, p_uai)
 dscf.dscf_calculation(calc_2, [[1.0, lumo, 1]], CO)
 E_es2 = CO.get_potential_energy()
 

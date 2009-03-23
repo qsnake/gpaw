@@ -46,12 +46,12 @@ molecule.set_calculator(c_mol)
 molecule.get_potential_energy()
 
 #Find band corresponding to lumo
-lumo = c_mol.get_pseudo_wave_function(band=5, kpt=0, spin=0)
+lumo = c_mol.get_pseudo_wave_function(band=5, kpt=0, spin=1)
 lumo = reshape(lumo, -1)
 
-wf1_k = [c_mol.get_pseudo_wave_function(band=5, kpt=k, spin=0)
+wf1_k = [c_mol.get_pseudo_wave_function(band=5, kpt=k, spin=1)
          for k in range(len(c_mol.wfs.weight_k))]
-wf2_k = [c_mol.get_pseudo_wave_function(band=6, kpt=k, spin=0)
+wf2_k = [c_mol.get_pseudo_wave_function(band=6, kpt=k, spin=1)
          for k in range(len(c_mol.wfs.weight_k))]
 
 band_k = []
@@ -69,17 +69,13 @@ for k in range(len(c_mol.wfs.weight_k)):
 wf_u = [kpt.psit_nG[band_k[kpt.k]] for kpt in c_mol.wfs.kpt_u]
 
 #Lumo projector overlaps
-P_aui = [[kpt.P_ani[a][band_k[kpt.k]] for kpt in c_mol.wfs.kpt_u]
-          for a in range(len(c_mol.wfs.kpt_u[0].P_ani))]
-
-#P_aui = []
-#for atom in c_mol.nuclei:
-#    P_aui.append([atom.P_uni[kpt.u][band_k[kpt.k]]
-#                  for kpt in c_mol.kpt_u])
+mol = range(len(slab))[-2:]
+p_uai = [dict([(mol[a], P_ni[band_k[kpt.k]]) for a, P_ni in kpt.P_ani.items()])
+         for kpt in c_mol.wfs.kpt_u]
 
 #   Slab with adsorbed molecule
 #-----------------------------------
 slab.set_calculator(calc)
-orbital = dscf.AEOrbital(calc, wf_u, P_aui, molecule=range(len(slab))[-2:])
+orbital = dscf.AEOrbital(calc, wf_u, p_uai)
 dscf.dscf_calculation(calc, [[1.0, orbital, 1]], slab)
 slab.get_potential_energy()
