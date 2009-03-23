@@ -212,15 +212,16 @@ Absolute times
 For a comparison of what to expect on different machines, the following absolute
 times where obtained with r=[1,1,1]
 
-===================   ======== ============  ======= ============  ========  ========      
-host                  type     cpu type      MHz     # procs       time [s]  date
-===================   ======== ============  ======= ============  ========  ========
-bfg.uni-freiburg.de   LINUX    Xeon 5160     3000    2             156       23.3.09
-bfg.uni-freiburg.de   LINUX    Xeon 5160     3000    4             119       23.3.09
-mmos3                 LINUX    Intel Q6600   2394    2             85        23.3.09
-mmos3                 LINUX    Intel Q6600   2394    4             62        23.3.09
-===================   ======== ============  ======= ============  ========  ========      
-
+===================   ================= ============  ======= ============  ========  ========      
+host                  type              cpu type      MHz     # procs       time [s]  date
+===================   ================= ============  ======= ============  ========  ========      
+jump.fz-juelich.de    IBM Regatta p690+ Power4+       1700    2             88        23.3.09
+jump.fz-juelich.de    IBM Regatta p690+ Power4+       1700    4             51        23.3.09
+mmos3                 LINUX             Intel Q6600   2394    2             85        23.3.09
+mmos3                 LINUX             Intel Q6600   2394    4             62        23.3.09
+bfg.uni-freiburg.de   LINUX             Xeon 5160     3000    2             156       23.3.09
+bfg.uni-freiburg.de   LINUX             Xeon 5160     3000    4             119       23.3.09
+===================   ================= ============  ======= ============  ========  ========      
 
 2. Medium size system
 +++++++++++++++++++++
