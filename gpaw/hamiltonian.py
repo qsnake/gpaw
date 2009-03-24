@@ -360,11 +360,15 @@ class Hamiltonian:
     def estimate_memory(self, mem):
         nbytes = self.gd.bytecount()
         nfinebytes = self.finegd.bytecount()
+        # XXXXXX Contrary to common sense, most of the arrays in Hamiltonian
+        # are allocated directly in the constructor.
+        # We'll exclude these in memcheck temporarily, because it will be
+        # counted in the paw initial overhead.
         arrays = mem.subnode('Arrays', 0)
         arrays.subnode('vHt_g', nfinebytes)
         arrays.subnode('vt_sG', self.nspins * nbytes)
         arrays.subnode('vt_sg', self.nspins * nfinebytes)
         self.restrictor.estimate_memory(mem.subnode('Restrictor'))
-        self.xc.estimate_memory(mem.subnode('XC 3D grid'))
+        #self.xc.estimate_memory(mem.subnode('XC 3D grid'))
         self.poisson.estimate_memory(mem.subnode('Poisson'))
         self.vbar.estimate_memory(mem.subnode('vbar'))
