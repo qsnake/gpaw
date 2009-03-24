@@ -66,7 +66,7 @@ class Density:
         
         # Interpolation function for the density:
         self.interpolator = Transformer(self.gd, self.finegd, stencil)
-
+        
         self.nct = LFC(self.gd, [[setup.nct] for setup in setups],
                        integral=[setup.Nct for setup in setups],
                        forces=True, cut=True)
@@ -434,5 +434,16 @@ class Density:
                           ('ghat', self.ghat)]:
             obj.estimate_memory(lfs.subnode(name))
         self.mixer.estimate_memory(mem.subnode('Mixer'), self.gd)
-        self.interpolator.estimate_memory(mem.subnode('Interpolator'))
+
+        # XXX interpolator is allocated in initialize, contrary to common sense
+        # As a big object, it should not be allocated yet.
+        # Don't include this in memory estimate, then, because the memory()
+        # call in PAW will include it
+
+        # TODO
+        # Also, the implementation of interpolator memory use is not very
+        # accurate; 20 MiB vs 13 MiB estimated in one example, probably
+        # worse for parallel calculations.
+        
+        #self.interpolator.estimate_memory(mem.subnode('Interpolator'))
 

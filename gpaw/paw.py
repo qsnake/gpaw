@@ -610,6 +610,10 @@ class PAW(PAWTextOutput):
 
         The PAW object must be initialize()'d, but needs not have large
         arrays allocated."""
+        # NOTE.  This should work with --dry-run=N
+        #
+        # However, the initial overhead estimate is wrong if this method
+        # is called within a real mpirun/gpaw-python context.
         if txt is None:
             txt = self.txt
         print >> txt, 'Memory estimate'
