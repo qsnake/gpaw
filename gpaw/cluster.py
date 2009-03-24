@@ -1,13 +1,11 @@
 import numpy as npy
 
-from ase import Atom, Atoms
+from ase import Atom, Atoms, read, write
 from ase.io.cube import write_cube
 from ase.io.xyz import read_xyz, write_xyz
 from ase.io.pdb import write_pdb
 from gpaw.io.cc1 import read_cc1
 from ase.io.cube import read_cube
-from ase import read as ase_read
-from ase import write as ase_write
 from gpaw.utilities.vector import Vector3d
 #from gpaw.io.xyz import read_xyz
 
@@ -138,28 +136,7 @@ class Cluster(Atoms):
         """Read the structure from some file. The type can be given
         or it will be guessed from the filename."""
 
-        if filetype is None:
-            # estimate file type from name ending
-            filetype = filename.split('.')[-1]
-        filetype.lower()
-
-        if filetype == 'cc1':
-            loa = read_cc1(filename)
-        elif filetype == 'cube':
-            loa = read_cube(filename)
-        elif filetype == 'vmol':
-            from gpaw.utilities.viewmol import Trajectory
-            traj = Trajectory(filename)
-            loa = traj[-1]
-        elif filetype == 'xyz':
-            loa = read_xyz(filename)
-        else:
-            try:
-                loa = ase_read(filename)
-            except:
-                raise NotImplementedError('unknown file type "'+filetype+'"')
-        self.__init__(loa)
-                
+        self.__init__(read(filename, format=filetype))
         return len(self)
 
     def write(self, filename, filetype=None, repeat=None):
@@ -186,21 +163,6 @@ class Cluster(Atoms):
                         copy.translate(npy.array([i, j, k]) * cell)
                         out += copy
 
-        if filetype is None:
-            # estimate file type from name ending
-            filetype = filename.split('.')[-1]
-        filetype.lower()
+        write(filename, out, filetype)
 
-        if filetype == 'cube':
-            write_cube(filename, out)
-        elif filetype == 'pdb':
-            write_pdb(filename, out)
-        elif filetype == 'xyz':
-            write_xyz(filename, out)
-        else:
-            try:
-                ase_write(filename, self)
-            except:
-                raise NotImplementedError('unknown file type "'+filetype+'"')
-                
        
