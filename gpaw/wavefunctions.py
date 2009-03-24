@@ -7,6 +7,7 @@ from gpaw.utilities.tools import tri2full
 from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
 from gpaw.operators import Gradient
+from gpaw.utilities.timing import nulltimer
 import gpaw.mpi as mpi
 from gpaw import extra_parameters
 
@@ -50,7 +51,7 @@ class WaveFunctions(EmptyWaveFunctions):
     """
     def __init__(self, gd, nspins, setups, nbands, mynbands, dtype,
                  world, kpt_comm, band_comm,
-                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry):
+                 gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
         self.nspins = nspins
         self.nbands = nbands
@@ -64,6 +65,7 @@ class WaveFunctions(EmptyWaveFunctions):
         self.ibzk_kc = ibzk_kc
         self.weight_k = weight_k
         self.symmetry = symmetry
+        self.timer = timer
         self.rank_a = None
         self.nibzkpts = len(weight_k)
 
@@ -92,7 +94,6 @@ class WaveFunctions(EmptyWaveFunctions):
         self.ibzk_qc = ibzk_kc[k0:k + 1]
 
         self.eigensolver = None
-        self.timer = None
         self.positions_set = False
         
         self.set_setups(setups)
@@ -577,7 +578,7 @@ class LCAOWaveFunctions(WaveFunctions):
         nq = len(self.ibzk_qc)
         nao = self.setups.nao
         ni_total = sum([setup.ni for setup in self.setups])
-        itemsize = np.array(1, self.dtype).itemsize
+        itemsize = mem.itemsize[self.dtype]
         mem.subnode('C [qnM]', nq * nbands * nao * itemsize)
         mem.subnode('T, S [qMM]', 2 * nq * nao * nao * itemsize)
         mem.subnode('P [aqMi]', nq * nao * ni_total / self.gd.comm.size)
@@ -599,6 +600,7 @@ class GridWaveFunctions(WaveFunctions):
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype)
         self.set_orthonormalized(False)
+        self.overlap = None
 
     def set_setups(self, setups):
         WaveFunctions.set_setups(self, setups)
@@ -607,8 +609,6 @@ class GridWaveFunctions(WaveFunctions):
         if not self.gamma:
             self.pt.set_k_points(self.ibzk_qc)
 
-        self.overlap = None
-
     def set_orthonormalized(self, flag):
         self.orthonormalized = flag
 
@@ -616,15 +616,11 @@ class GridWaveFunctions(WaveFunctions):
         WaveFunctions.set_positions(self, spos_ac)
         self.set_orthonormalized(False)
         self.pt.set_positions(spos_ac)
-
         self.allocate_arrays_for_projections(self.pt.my_atom_indices)
-
-        if not self.overlap:
-            self.overlap = Overlap(self)
-
         self.positions_set = True
 
     def initialize(self, density, hamiltonian, spos_ac):
+        self.overlap = Overlap(self)
         if self.kpt_u[0].psit_nG is None:
             basis_functions = BasisFunctions(self.gd,
                                              [setup.phit_j
@@ -924,3 +920,5 @@ class GridWaveFunctions(WaveFunctions):
                                          self.dtype, self.mynbands,
                                          self.nbands)
         self.pt.estimate_memory(mem.subnode('Projectors'))
+        self.overlap.estimate_memory(mem.subnode('Overlap op'),
+                                     self.mynbands, self.dtype)

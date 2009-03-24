@@ -100,8 +100,8 @@ class Sphere:
         if ng > 0:
             self.rank = gd.get_rank_from_position(spos_c)
         else:
-            self.rank = None
-            self.ranks = None
+            self.rank = None # XXX will *break* on empty domains
+            self.ranks = None # What about making empty lists instead?
             self.A_wgm = None
             self.G_wb = None
             self.M_w = None
@@ -208,8 +208,8 @@ class BaseLFC:
         points = 0
         for sphere in self.sphere_a:
             points += sphere.estimate_gridpointcount(self.gd)
-        nbytes = points * np.array(1, self.dtype).itemsize
-        mem.setsize(nbytes)
+        nbytes = points * mem.floatsize
+        mem.setsize(nbytes / self.gd.comm.size) # Assume equal distribution
 
 
 class NewLocalizedFunctionsCollection(BaseLFC):
@@ -926,15 +926,13 @@ class LocalizedFunctionsCollection(BaseLFC):
         return self.lfs_a[a].ni
 
     def estimate_memory(self, mem):
-        count = 0
-        itemsize = np.array(1, self.dtype).itemsize
+        count = 0        
         for spline_j in self.spline_aj:
             for spline in spline_j:
-                # Circular
-                #numbers += 4.0 * np.pi * spline.get_cutoff()**3 / 3.0 / gd.dv
                 l = spline.get_angular_momentum_number()
-                count += (2 * l + 1) * (2 * spline.get_cutoff())**3 / self.gd.dv
-        bytes = count * itemsize
+                sidelength = 2 * spline.get_cutoff()
+                count += (2 * l + 1) * sidelength**3 / self.gd.dv
+        bytes = count * mem.floatsize / self.gd.comm.size
         mem.subnode('Boxes', bytes)
         if self.forces:
             mem.subnode('Derivatives', 3 * bytes)

@@ -36,6 +36,21 @@ class Operator:
         nbands = ngroups * mynbands
         self.A_nn = np.empty((nbands, nbands), dtype)
 
+    def estimate_memory(self, mem, mynbands, dtype):
+        ngroups = self.band_comm.size
+        gdbytes = self.gd.bytecount(dtype)
+        # Code semipasted from allocate_work_arrays
+        if ngroups == 1 and self.nblocks == 1:
+            mem.subnode('work_xG', mynbands * gdbytes)
+        else:
+            X = mynbands // self.nblocks
+            if self.gd.n_c.prod() % self.nblocks != 0:
+                X += 1
+            mem.subnode('2 work_xG', 2 * X * gdbytes)
+            if ngroups > 1:
+                count = (ngroups // 2 + 1) * mynbands**2
+                mem.subnode('A_qnn', count * mem.itemsize[dtype])
+
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA_aii):
         """Calculate matrix elements for A-operator.
 

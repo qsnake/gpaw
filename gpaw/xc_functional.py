@@ -631,9 +631,15 @@ class XC3DGrid(XCGrid):
 
     def estimate_memory(self, mem):
         bytecount = self.gd.bytecount()
-        mem.subnode('local density', bytecount)
-        mem.subnode('extra contribs not implemented', 0)
-
+        mem.subnode('Local density arrays', bytecount) # from e_g
+        if self.xcfunc.gga:
+            gga = mem.subnode('GGA arrays')
+            gga.subnode('one spin', bytecount * 5)
+            if self.nspins == 2:
+                gga.subnode('spinpol', bytecount * 10)
+        if self.xcfunc.mgga:
+            mem.subnode('MGGA work', bytecount)
+            
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):

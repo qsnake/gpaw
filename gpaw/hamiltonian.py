@@ -367,3 +367,4 @@ class Hamiltonian:
         self.restrictor.estimate_memory(mem.subnode('Restrictor'))
         self.xc.estimate_memory(mem.subnode('XC 3D grid'))
         self.poisson.estimate_memory(mem.subnode('Poisson'))
+        self.vbar.estimate_memory(mem.subnode('vbar'))

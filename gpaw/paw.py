@@ -432,7 +432,7 @@ class PAW(PAWTextOutput):
             args = (self.gd, nspins, setups,
                     nbands, mynbands,
                     dtype, world, kpt_comm, band_comm,
-                    gamma, bzk_kc, ibzk_kc, weight_k, symmetry)
+                    gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':
                 self.wfs = LCAOWaveFunctions(*args)
             else:
@@ -448,7 +448,6 @@ class PAW(PAWTextOutput):
         eigensolver.nbands_converge = nbands_converge
         # XXX Eigensolver class doesn't define an nbands_converge property
         self.wfs.set_eigensolver(eigensolver)
-        self.wfs.timer = self.timer
 
         if self.density is None:
             if par.stencils[1] != 9:
@@ -596,7 +595,7 @@ class PAW(PAWTextOutput):
 
     def estimate_memory(self, mem):
         """Estimate memory use of this object."""
-        mem_init = memory()
+        mem_init = memory() # XXX initial overhead includes part of Hamiltonian
         mem.subnode('Initial overhead', mem_init)
         for name, obj in [('Density', self.density),
                           ('Hamiltonian', self.hamiltonian),

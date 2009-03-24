@@ -110,6 +110,8 @@ class TransformerWrapper:
 
     def estimate_memory(self, mem):
         # Read transformers.c for details
+        # Notes: restrictor estimate only counts ~90% of allocation,
+        # gets worse for parallel calculations
         inbytes = self.gdin.bytecount()
         outbytes = self.gdout.bytecount()
         mem.subnode('buf', inbytes)

@@ -166,3 +166,6 @@ class Overlap:
         for a, P_xi in P_axi.items():
             P_axi[a] = np.dot(P_xi, self.setups[a].C_ii)
         wfs.pt.add(b_xG, P_axi, kpt.q)
+
+    def estimate_memory(self, mem, mynbands, dtype):
+        self.operator.estimate_memory(mem, mynbands, dtype)

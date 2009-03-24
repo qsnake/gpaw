@@ -224,7 +224,11 @@ def estimate_memory(paw):
     print >> out, "Total:                  %.2f %s" % (mem / scale, scalename)
 
 class MemNode:
-    """Representing the estimated memory use of an object and its components."""
+    """Represents the estimated memory use of an object and its components."""
+    floatsize = npy.array(1, float).itemsize
+    complexsize = npy.array(1, complex).itemsize
+    itemsize = {float : floatsize, complex : complexsize}
+    
     def __init__(self, name, basesize):
         """Create node with specified name and intrinsic size without
         subcomponents."""
