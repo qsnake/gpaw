@@ -10,8 +10,9 @@ Instructions below are valid for ``frontend-13`` and the filesystem
 The latest version of gpaw uses numpy
 `<https://svn.fysik.dtu.dk/projects/gpaw/trunk/>`_.
 
-To build an optimized (consider to build based on ``goto`` blas to achieve the best performance: see :ref:`building_with_gcc_on_surveyor`) numpy, save the :svn:`~doc/install/BGP/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran`
-patch file
+To build an optimized (consider to build based on ``goto`` blas to achieve the best performance
+see :ref:`building_with_gcc_on_surveyor`) numpy,
+save the :svn:`~doc/install/BGP/numpy-1.0.4-gnu.py.patch.powerpc-bgp-linux-gfortran` patch file
 (modifications required to get powerpc-bgp-linux-gfortran instead of
 gfortran compiler),
 the :svn:`~doc/install/BGP/numpy-1.0.4-system_info.py.patch.lapack_bgp_esslbg` patch file (lapack
@@ -43,85 +44,17 @@ After bulding ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4 and do this::
 Numpy built in this way does contain the
 :file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
 , but running the following python
-script (save it as :file:`/gpfs/fs2/frontend-13/$USER/dot.py`) results
+script (save it as :file:`/gpfs/fs2/frontend-13/$USER/numpy_dot.py`) results
 in the same time as for the standard version of numpy (~329 sec)
-for ``numpy.dot`` operation::
+for ``numpy.dot`` operation (:svn:`~doc/install/BGP/numpy_dot.py`):
 
-  num_string = "numpy"
-  #num_string = "Numeric"
-
-  if num_string == "numpy":
-      import numpy as num
-  elif num_string == "Numeric":
-      import Numeric as num
-  print num.__file__
-
-  from time import time
-
-  import random
-
-  N = 1700
-
-  A = num.array(num.ones((N,N)))
-  Al = A.tolist()
-  for item in Al:
-      for n,value in enumerate(item):
-          if (n % 2) == 0:
-              item[n] = random.random()
-  Anew = num.array([Al])
-
-  t = time()
-  num.dot(Anew, Anew)
-  print num_string, time()-t
+.. literalinclude:: numpy_dot.py
 
 Use the following command to submit this job ``cd
 /gpfs/fs2/frontend-13/$USER; llsubmit numpy.llrun``, with the
-following :file:`numpy.llrun` file::
+following :svn:`~doc/install/BGP/numpy.llrun` file:
 
-  #!/bin/bash
-
-  # @ job_type = bluegene
-  # @ requirements = (Machine == "$(host)")
-  # @ class = medium
-  # @ job_name = $(user).$(host)
-  # @ comment = "LoadLeveler llrun script"
-  # @ error = $(job_name).$(jobid).err
-  # @ output = $(job_name).$(jobid).out
-  # @ wall_clock_limit = 00:15:00
-  # @ notification = always
-  # @ notify_user =
-  # @ bg_connection = prefer_torus
-  # @ bg_size = 32
-  # @ queue
-
-  dir="/gpfs/fs2/frontend-13/${USER}"
-  home=$dir
-  prog=/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-  args=${dir}/dot.py
-
-  ldpath="${ldpath}:/bgsys/opt/ibmcmp/lib/bg"
-  ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib"
-  ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/lib"
-  pythonpath=":${home}/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages:"
-
-  export LD_LIBRARY_PATH=\"$ldpath\"
-  export PYTHONPATH=\"$pythonpath\"
-  export OMP_NUM_THREADS=1
-
-  mpirun=/bgsys/drivers/ppcfloor/bin/mpirun
-
-  runargs="-np 1"
-  runargs="$runargs -cwd $PWD"
-  runargs="$runargs -exp_env LD_LIBRARY_PATH -exp_env PYTHONPATH -exp_env OMP_NUM_THREADS"
-  runargs="$runargs -mode SMP"
-  runargs="$runargs -verbose 2"
-
-  echo "Hello. This is `hostname` at `date` `pwd`"
-
-  echo "$mpirun $runargs $prog $args"
-  /usr/bin/time $mpirun $runargs $prog $args
-
-  echo "Program completed at `date` with exit code $?."
+.. literalinclude:: numpy.llrun
 
 **Note** the colon before and after the string when setting pythonpath!
 
@@ -142,50 +75,9 @@ Build GPAW
 LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
 :file:`/gpfs/fs2/frontend-13/$USER/gpaw` (you need to install the ase
 also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
-:file:`customize.py` file::
+:svn:`~doc/install/BGP/customize_rbgc.py` file:
 
-  scalapack = True
-
-  extra_compile_args += [
-      '-O3'
-      ]
-
-  libraries = [
-             'gfortran',
-             'lapack_bgp',
-             'scalapack',
-             'blacs',
-             'lapack_bgp',
-             'goto',
-             'xlf90_r',
-             'xlopt',
-             'xl',
-             'xlfmath',
-             'xlsmp'
-             ]
-
-  library_dirs = [
-             '/home/mdulak/blas-lapack-lib',
-             '/home/mdulak/blacs-dev',
-             '/home/mdulak/SCALAPACK',
-             '/opt/ibmcmp/xlf/bg/11.1/bglib',
-             '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
-             '/bgsys/drivers/ppcfloor/gnu-linux/lib'
-             ]
-
-  gpfsdir = '/gpfs/fs2/frontend-13/mdulak'
-  python_site = 'bgsys/drivers/ppcfloor/gnu-linux'
-
-  include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
-                   gpfsdir+'/numpy-1.0.4-1.optimized/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
-
-  extra_compile_args += ['-std=c99']
-
-  define_macros += [
-            ('GPAW_AIX', '1'),
-            ('GPAW_MKL', '1'),
-            ('GPAW_BGP', '1')
-            ]
+.. literalinclude:: customize_rbgc.py
 
 Because of missing ``popen3`` function you need to remove all the
 contents of the :file:`gpaw/version.py` file after ``version =
@@ -202,57 +94,9 @@ accesible to the compute nodes (even python scripts!).  A gpaw script
   cd /gpfs/fs2/frontend-13/$USER
   llsubmit gpaw-script.llrun
 
-where :file:`gpaw-script.llrun` looks like this::
+where :svn:`~doc/install/BGP/gpaw-script.llrun` looks like this:
 
-  #!/bin/bash
-
-  # @ job_type = bluegene
-  # @ requirements = (Machine == "$(host)")
-  # @ class = medium
-  # @ job_name = $(user).$(host)
-  # @ comment = "LoadLeveler llrun script"
-  # @ error = $(job_name).$(jobid).err
-  # @ output = $(job_name).$(jobid).out
-  # @ wall_clock_limit = 00:30:00
-  # @ notification = always
-  # @ notify_user =
-  # @ bg_connection = prefer_torus
-  # @ bg_size = 32
-  # @ queue
-
-  dir=/gpfs/fs2/frontend-13/$USER
-  home=$dir
-  prog=${home}/gpaw/build/bin.linux-ppc64-2.5/gpaw-python
-  #prog=/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-  args="${home}/gpaw/test/CH4.py --sl_diagonalize=2,2,2,4"
-
-  ldpath="${ldpath}:/bgsys/opt/ibmcmp/lib/bg"
-  ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib"
-  ldpath="${ldpath}:/bgsys/drivers/ppcfloor/gnu-linux/lib"
-  pythonpath=":${home}/Numeric-24.2-1/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/Numeric"
-  pythonpath="${pythonpath}:${home}/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages"
-  pythonpath="${pythonpath}:${home}/gpaw"
-  pythonpath="${pythonpath}:${home}/ase3k:"
-
-  export LD_LIBRARY_PATH=\"$ldpath\"
-  export PYTHONPATH=\"$pythonpath\"
-  export GPAW_SETUP_PATH="${home}/gpaw-setups-0.4.2039"
-  export OMP_NUM_THREADS=1
-
-  mpirun=/bgsys/drivers/ppcfloor/bin/mpirun
-
-  runargs="-np 32"
-  runargs="$runargs -cwd $PWD"
-  runargs="$runargs -exp_env LD_LIBRARY_PATH -exp_env PYTHONPATH -exp_env GPAW_SETUP_PATH -exp_env OMP_NUM_THREADS"
-  runargs="$runargs -mode SMP"
-  runargs="$runargs -verbose 1"
-
-  echo "Hello. This is `hostname` at `date` `pwd`"
-
-  echo "$mpirun $runargs $prog $args"
-  /usr/bin/time $mpirun $runargs $prog $args
-
-  echo "Program completed at `date` with exit code $?."
+.. literalinclude:: gpaw-script.llrun
 
 Absolute paths are important!
 

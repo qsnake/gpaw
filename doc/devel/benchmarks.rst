@@ -110,7 +110,7 @@ potential and 2 full SCF steps.
 All the stages are timed separately, due to their different scaling.
 
 **Note** that the size of the system can be changed easily by modifying
-just one variable in :file:`~/doc/devel/256H2O/b256H2O.py`::
+just one variable in :svn:`~doc/devel/256H2O/b256H2O.py`::
 
   r = [2, 2, 2]
 
@@ -235,7 +235,7 @@ potential and 2 full SCF steps.
 All the stages are timed separately, due to their different scaling.
 
 **Note** that the size of the system can be changed easily by modifying
-just one variable in :file:`~/doc/devel/Au_cluster/Au_cluster.py`::
+just one variable in :svn:`~doc/devel/Au_cluster/Au_cluster.py`::
 
   r = [1, 1, 1]
 

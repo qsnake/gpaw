@@ -6,6 +6,7 @@ Using TAU on surveyor
 
 gcc
 ===
+
 This applies to surveyor and intrepid, regardless of doing either
 manual or automatic instrumentation.
 
@@ -16,7 +17,7 @@ Add the following lines to you ``.softenvrc``. Note that here we specify
   TAUARCHITECTURE = ppc64
   TAUVERSION = 2.18.1
   TAU_MAKEFILE = /soft/apps/tau/tau-$TAUVERSION/bgp/lib/Makefile.tau-bgptimers-mpi-gnu-compensate-python-pdt
-  TAU_OPTIONS = '-optTau="-rn Py_RETURN_NONE"  -i/soft/apps/tau/tau-'$TAUVERSION'/include/TAU_PYTHON_FIX.h"' 
+  TAU_OPTIONS = '-optTau="-rn Py_RETURN_NONE"  -i/soft/apps/tau/tau-'$TAUVERSION'/include/TAU_PYTHON_FIX.h"'
   PATH += /soft/apps/tau/tau-$TAUVERSION/$TAUARCHITECTURE/bin
 
 The bindings are located in
@@ -24,20 +25,24 @@ The bindings are located in
 timer with minimal overhead), MPI, GNU compiler, Python, and compensation. This is the recommended library binding for
 flat profiles.
 
-You will also need to change one line in your ``bg_gcc.py``::
+You will also need to change one line in your :svn:`bgp_gcc.py`::
 
   cmd = "tau_cc.sh %s %s"%(flags, cmd)
   
 xlc
 ===
 
-* Following the instructions for **gcc** (above), except use filenames and
-directories that do not contain *gnu* in their name. 
-* There is no need to include TAU_PYTHON_FIX.h in *TAU_OPTIONS*.
-* At the moment the  ``-optShared`` is not working.
+Follow the instructions for **gcc** (above), except:
+
+  * use filenames and directories that do not contain *gnu* in their name,
+
+  * There is no need to include TAU_PYTHON_FIX.h in *TAU_OPTIONS*,
+
+  * At the moment the ``-optShared`` is not working.
 
 automatic instrumentation
 ==========================
+
 Overhead with the 2.18.1 version of TAU has been measured to be about
 20% for the `b256H2O.py
 <https://svn.fysik.dtu.dk/projects/gpaw/doc/devel/256H2O/b256H2O.py>`_
@@ -45,6 +50,7 @@ test case. Use manual instrumentation if this overhead is unacceptable.
 
 Submitting jobs
 ==================
+
 If you are doing manual instrumentation, the following environment variables must be append and passed to Cobalt via the qsub command::
 
   PYTHONPATH=/soft/apps/tau/tau_latest/bgp/lib/bindings-bgptimers-mpi-gnu-compensate-python-pdt

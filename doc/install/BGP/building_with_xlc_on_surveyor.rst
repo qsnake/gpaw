@@ -12,12 +12,16 @@ We currently do not know how to build NumPy with xlc on BG/P.
 GPAW
 ====
 
-Proceed as in the gcc case, but use `bg_compiler.py <https://svn.fysik.dtu.dk/projects/gpaw/trunk/bg_compiler.py>`_
-instead of the ``bg_gcc.py``; change the lines in ``customize.py`` accordingly::
+Proceed as in the :ref:`building_with_gcc_on_surveyor`,
+but use the following :svn:`~doc/install/BGP/bgp_xlc.py` file:
 
-  mpicompiler = "bg_gcc.py"
-  mpilinker = "bg_gcc.py"
-  compiler = "bg_gcc.py"
+.. literalinclude:: bgp_xlc.py
+
+Finally, change the lines in :svn:`~doc/install/BGP/customize_surveyor_gcc.py` accordingly::
+
+  mpicompiler = "bgp_xlc.py"
+  mpilinker = "bgp_xlc.py"
+  compiler = "bgp_xlc.py"
 
 Everything else should be the same.
 

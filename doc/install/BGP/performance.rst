@@ -18,8 +18,7 @@ flag. It is desirable to have the BG/P partition (compute) topology
 *exactly* match the domain decomposition to minimize the number of node hops
 during point-to-point communication. The BG/P partition dimensions (Px,
 Py, Pz) for surveyor and intrepid at Argonne Leadership Computing
-Facility are available here.
-https://wiki.alcf.anl.gov/index.php/Running#What_are_the_sizes_and_dimensions_of_the_partitions_on_the_system.3F
+Facility are available here `<https://wiki.alcf.anl.gov/index.php/Running#What_are_the_sizes_and_dimensions_of_the_partitions_on_the_system.3F>`_.
 
 There are several things to note:
 
@@ -43,6 +42,7 @@ parallezation, e.g. spin, band or k-point parallelization
 
 Band parallelization
 ====================
+
 Band parallelization is enabled on the
 ``gpaw-python`` command line with ``--state-parallelization=B``
 flag. Here *N* bands are divided into *B* groups. Efficient band parallelization
@@ -56,9 +56,9 @@ The syntax for the use of ``mapfile.py`` is::
   python mapfile.py <number of nodes> Nx, Ny, Nz
 
 Let's take a concreate example. Suppose you want to run on 128 nodes,
-which has partition dimensions Px=Py=4 and Pz=8, the physical problem has N
-= 2000  and it the grid points can be easily decomposed into
-Nx=Ny=Nz=4.  You also have enough memory to run in *vn* mode, then we
+which has partition dimensions Px=Py=4 and Pz=8, and the physical problem has N
+= 2000 and grid can be easily decomposed into
+Nx=Ny=Nz=4. You also have enough memory to run in *vn* mode, then we
 generate the **MAPFILE** with::
 
   python mapfile.py 128 4,4,4

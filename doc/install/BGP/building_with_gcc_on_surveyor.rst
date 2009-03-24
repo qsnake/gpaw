@@ -32,18 +32,18 @@ and the :svn:`~doc/install/BGP/numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg` file
 ``lapack_bgp``, ``goto``, ``esslbg`` , ``cblas_bgp``,
 and xlf* related libraries).
 
-**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``surveyor/intrepid``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all librairies to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a``, and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``goto``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS_goto/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. Change the locations of the libraries to be used in the makefiles: `/soft/apps/LIBGOTO` and `/opt/ibmcmp/lib/bg`.
+**Note** that ``lapack_bgp`` and ``cblas_bgp`` are not available on ``surveyor/intrepid``, to build use instructions from `<http://www.pdc.kth.se/systems_support/computers/bluegene/LAPACK-CBLAS/LAPACK-CBLAS-build>`_. Python requires all libraries to have names like ``liblapack_bgp.a``, so please make the required links for ``lapack_bgp.a``, and ``cblas_bgp.a``. Moreover numpy requires that ``lapack_bgp``, ``goto``, ``esslbg``, and ``cblas_bgp`` reside in the same directory, so choose a directory and edit ``numpy-1.0.4-site.cfg.lapack_bgp_goto_esslbg`` to reflect your installation path (in this example `/home/dulak/from_Nils_Smeds/CBLAS_goto/lib/bgp`). Include the directory containing `cblas.h` in `include_dirs`. Change the locations of the libraries to be used in the makefiles: `/soft/apps/LIBGOTO` and `/opt/ibmcmp/lib/bg`.
 
-**Warning**: The optimized version of NumPy no longer seems to be running faster. This is
+**Warning**: 23 March 2009: The optimized version of NumPy no longer seems to be running faster. This is
 currently under investigation.
 
-**Warning**: Crashes have been reported with numpy compiled against ``goto``
-so build numpy agains ``esslbg`` - see :ref:`rbgc`.
+**Warning**: 23 March 2009: Crashes have been reported with numpy compiled against ``goto``
+so build numpy against ``esslbg`` - see :ref:`rbgc`.
 
 **Warning** : If NumPy built using these libraries fails
 with errors of kind "R_PPC_REL24 relocation at 0xa3d664fc for symbol sqrt"
 - please add ``-qpic`` to compile options for both ``lapack_bgp`` and ``cblas_bgp``. 
-After bulding ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4 and do this::
+After building ``lapack_bgp`` and ``cblas_bgp``, get numpy-1.0.4 and do this::
 
   $ wget http://downloads.sourceforge.net/numpy/numpy-1.0.4.tar.gz
   $ gunzip -c numpy-1.0.4.tar.gz | tar xf -
@@ -62,34 +62,9 @@ NumPy built in this way does contain the
 :file:`$root/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages/numpy/core/_dotblas.so`
 , and running the following python script results
 in better time than the standard version of numpy (~156 vs. ~329 sec)
-for ``numpy.dot`` operation::
+for ``numpy.dot`` operation (:svn:`~doc/install/BGP/numpy_dot.py`):
 
-  num_string = "numpy"
-  #num_string = "Numeric"
-
-  if num_string == "numpy":
-      import numpy as num
-  elif num_string == "Numeric":
-      import Numeric as num
-  print num.__file__
-
-  from time import time
-
-  import random
-
-  N = 1700
-
-  A = num.array(num.ones((N,N)))
-  Al = A.tolist()
-  for item in Al:
-      for n,value in enumerate(item):
-          if (n % 2) == 0:
-              item[n] = random.random()
-  Anew = num.array([Al])
-
-  t = time()
-  num.dot(Anew, Anew)
-  print num_string, time()-t
+.. literalinclude:: numpy_dot.py
 
 To build standard numpy, save the :svn:`~doc/install/BGP/numpy-1.0.4-gnu.py.patch` patch file
 (modifications required to get mpif77 instead of gfortran compiler),
@@ -107,6 +82,7 @@ get and numpy-1.0.4 and do this::
 
 
 If you do not wish to build NumPy for yourself, you can use the version in Marcin Dulak's directory::
+
   /home/dulak/numpy-1.0.4-1
   /home/dulak/numpy-1.0.4-1.optimized
 
@@ -165,110 +141,26 @@ cannot be imported on the front end nodes, it is necessary to comment out a numb
       # include_dirs += [numpy.get_include()]                                     
      ...
 
-A number of the GPAW source files in ``c`` directory are built using the ``disutils`` module
-which makes it difficult to control the flags which are passed to the gnu compiler. A work
-around is to use a modified version of `bg_compiler.py <https://svn.fysik.dtu.dk/projects/gpaw/trunk/bg_compiler.py>`_. 
-Please make a copy of it and call it ``bg_gcc.py``.
+A number of the GPAW source files in ``c`` directory are built using
+the ``distutils`` module which makes it difficult to control the flags
+which are passed to the gnu compiler.
+A workaround is to use the following :svn:`~doc/install/BGP/bgp_gcc.py` file:
 
-Here are the lines to change::
-
-  import sys 
-  from subprocess import call
-  
-  args2change = {"-fno-strict-aliasing":"",
-                 "-fmessage-length=0":"",
-                 "-Wall":"",
-                 "-std=c99":"",
-                 "-fPIC":"",
-                 "-g":"",
-                 "-D_FORTIFY_SOURCE=2":"",
-                 "-DNDEBUG":"",
-                 "-UNDEBUG":"",
-                 "-pthread":"",
-                 "-shared":"",
-                 "-Xlinker":"",
-                 "-export-dynamic":"",
-                 "-Wstrict-prototypes":"",
-                 "-dynamic":"",
-                 "-O3":"",
-                 "-O2":"",
-                 "-O1":""}
-
-  fragile_files = ["test.c"]
-  
-  cmd = ""
-  fragile = False
-  
-  for arg in sys.argv[1:]:
-      cmd += " "
-      t = arg.strip()
-      if t in fragile_files:
-          fragile = True
-      if t in args2change:
-          cmd += args2change[t]
-      else:
-          cmd += arg
-  if fragile:
-      flags = "-O2 -std=c99 -fPIC -dynamic"
-  else:
-      flags = "-O3 -std=c99 -fPIC -dynamic"
-  cmd = "mpicc %s %s"%(flags, cmd)
-
-  print "\nexecmd: %s\n"%cmd
-  call(cmd, shell=True)
+.. literalinclude:: bgp_gcc.py
 
 Finally, we build GPAW by doing``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-setup.py build_ext`` with this :file:`customize.py` file::
+setup.py build_ext`` with this :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file:
 
-  scalapack = True
-
-  libraries = [
-             'lapack_bgp',
-             'scalapack',
-             'blacsCinit_MPI-BGP-0',
-             'blacs_MPI-BGP-0',
-             'lapack_bgp',
-             'goto',
-             'xlf90_r',
-             'xlopt',
-             'xl',
-             'xlfmath',
-             'xlsmp'
-             ]
-
-  library_dirs = [
-             '/soft/apps/LAPACK',
-             '/soft/apps/LIBGOTO',
-             '/soft/apps/BLACS',
-             '/soft/apps/SCALAPACK',
-             '/opt/ibmcmp/xlf/bg/11.1/bglib',
-             '/opt/ibmcmp/xlsmp/bg/1.7/bglib',
-             '/bgsys/drivers/ppcfloor/gnu-linux/lib'
-             ]
-
-  gpfsdir = '/home/dulak'
-  python_site = 'bgsys/drivers/ppcfloor/gnu-linux'
-
-  include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
-                   gpfsdir+'/numpy-1.0.4-1.optimized/'+python_site+'/lib/python2.5/site-packages/numpy/core/include']
-
-  define_macros += [
-            ('GPAW_AIX', '1'),
-            ('GPAW_MKL', '1'),
-            ('GPAW_BGP', '1')
-	    ('GPAW_ASYNC', '1')
-            ]
-
-  mpicompiler = "bg_gcc.py"
-  mpilinker = "bg_gcc.py"
-  compiler = "bg_gcc.py"
+.. literalinclude:: customize_surveyor_gcc.py
 
 Additional BG/P specific hacks
 ===============================
+
 A FLOPS (floating point per second) counter and a number of other hardware counters can be enabled by adding two extra lines to your customize.py::
 
-  libraries = [
+  libraries += [
              'hpm',
+            ]
 
   define_macros += [('GPAW_BGP_PERF',1)]
 
