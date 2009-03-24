@@ -215,7 +215,10 @@ class GPAW(PAW):
 
     def get_fermi_level(self):
         """Return the Fermi-level."""
-        return self.occupations.get_fermi_level() * Hartree
+        eFermi = self.occupations.get_fermi_level()
+        if eFermi is not None:
+            eFermi *= Hartree
+        return eFermi
 
     def get_wigner_seitz_densities(self, spin):
         """Get the weight of the spin-density in Wigner-Seitz cells
