@@ -91,12 +91,18 @@ if '--force-inclusion-of-ase' in sys.argv:
     force_inclusion_of_ase = True
     sys.argv.remove('--force-inclusion-of-ase')
 
-check_packages(packages, msg, force_inclusion_of_ase)
+force_inclusion_of_numpy = True
+if '--do-not-force-inclusion-of-numpy' in sys.argv:
+    force_inclusion_of_numpy = False
+    sys.argv.remove('--do-not-force-inclusion-of-numpy')
+
+check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_numpy)
 
 get_system_config(define_macros, undef_macros,
                   include_dirs, libraries, library_dirs,
                   extra_link_args, extra_compile_args,
-                  runtime_library_dirs, extra_objects, msg)
+                  runtime_library_dirs, extra_objects, msg,
+                  force_inclusion_of_numpy)
 
 mpicompiler = get_parallel_config(mpi_libraries,
                                   mpi_library_dirs,

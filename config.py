@@ -12,7 +12,7 @@ from glob import glob
 from os.path import join
 from stat import ST_MTIME
 
-def check_packages(packages, msg, force_inclusion_of_ase):
+def check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_numpy):
     """Check the python version and required extra packages
 
     If ASE is not installed, the `packages` list is extended with the
@@ -24,8 +24,11 @@ def check_packages(packages, msg, force_inclusion_of_ase):
     try:
         import numpy
     except ImportError:
-        raise SystemExit('numpy is not installed!')
-
+        if force_inclusion_of_numpy:
+            raise SystemExit('numpy is not installed!')
+        else:
+            msg += ['* numpy is not installed.',
+                    '  "include_dirs" in your customize.py must point to "numpy/core/include".']
     try:
         import Scientific.IO.NetCDF
     except ImportError:
@@ -72,11 +75,12 @@ def find_file(arg, dir, files):
 def get_system_config(define_macros, undef_macros,
                       include_dirs, libraries, library_dirs, extra_link_args,
                       extra_compile_args, runtime_library_dirs, extra_objects,
-                      msg):
+                      msg, force_inclusion_of_numpy):
 
     undef_macros += ['NDEBUG']
-    import numpy
-    include_dirs += [numpy.get_include()]
+    if force_inclusion_of_numpy:
+        import numpy
+        include_dirs += [numpy.get_include()]
     include_dirs += ['c/libxc']
 
     machine = os.uname()[4]

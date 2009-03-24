@@ -113,33 +113,9 @@ installation!  Suggestions how to skip the ``popen3`` testing in
 :file:`gpaw/version.py` on BG/P are welcome!
 
 Because NumPy is primarily built for the compute nodes and the optimized version
-cannot be imported on the front end nodes, it is necessary to comment out a number of lines in
-:file:`config.py` file::
-
-  def check_packages(packages, msg, force_inclusion_of_ase):
-      """Check the python version and required extra packages                     
-                                                                                
-      If ASE is not installed, the `packages` list is extended with the           
-      ASE modules if they are found."""
-
-      if sys.version_info < (2, 3, 0, 'final', 0):
-          raise SystemExit('Python 2.3.1 or later is required!')
-  
-      # try:                                                                      
-      #     import numpy                                                          
-      # except ImportError:                                                       
-      #     raise SystemExit('numpy is not installed!') 
-      ... 
-
-  def get_system_config(define_macros, undef_macros,
-                        include_dirs, libraries, library_dirs, extra_link_args,
-                        extra_compile_args, runtime_library_dirs, extra_objects,
-                        msg):
-
-      undef_macros += ['NDEBUG']
-      # import numpy                                                              
-      # include_dirs += [numpy.get_include()]                                     
-     ...
+cannot be imported on the front end nodes, it is necessary to use "--do-not-force-inclusion-of-numpy"
+option during build, and put the path to ``.../site-packages/numpy/core/include``
+in ``include_dirs`` variable in the :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file.
 
 A number of the GPAW source files in ``c`` directory are built using
 the ``distutils`` module which makes it difficult to control the flags
@@ -149,7 +125,8 @@ A workaround is to use the following :svn:`~doc/install/BGP/bgp_gcc.py` file:
 .. literalinclude:: bgp_gcc.py
 
 Finally, we build GPAW by doing``/bgsys/drivers/ppcfloor/gnu-linux/bin/python
-setup.py build_ext`` with this :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file:
+setup.py build_ext --do-not-force-inclusion-of-numpy``
+with this :svn:`~doc/install/BGP/customize_surveyor_gcc.py` file:
 
 .. literalinclude:: customize_surveyor_gcc.py
 

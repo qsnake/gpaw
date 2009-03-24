@@ -72,7 +72,7 @@ Here is how you build the standard numpy::
 
 Build GPAW
 (``PYTHONPATH=/gpfs/fs2/frontend-13/mdulak/numpy-1.0.4-1.optimized/bgsys/drivers/ppcfloor/gnu-linux/lib/python2.5/site-packages
-LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext``) in
+LD_LIBRARY_PATH="$ldpath" $p setup.py build_ext --do-not-force-inclusion-of-numpy``) in
 :file:`/gpfs/fs2/frontend-13/$USER/gpaw` (you need to install the ase
 also somewhere below :file:`/gpfs/fs2/frontend-13/$USER`!)  with this
 :svn:`~doc/install/BGP/customize_rbgc.py` file:
