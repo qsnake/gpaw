@@ -600,7 +600,9 @@ class GridWaveFunctions(WaveFunctions):
         # Kinetic energy operator:
         self.kin = Laplace(self.gd, -0.5, stencil, self.dtype)
         self.set_orthonormalized(False)
-        self.overlap = None
+        self.overlap = Overlap(self) # Object needed by memory estimate
+        # (it has to be overwritten on each initialize() anyway, because of
+        # weird object reuse issues, but we don't care)
 
     def set_setups(self, setups):
         WaveFunctions.set_setups(self, setups)
