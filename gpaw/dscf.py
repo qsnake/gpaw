@@ -160,7 +160,7 @@ class MolecularOrbital:
         The keys represent atoms and have values which are lists of weights
         of the contributing partial waves. The default value thuis corresponds
         to an antibonding 2\sigma orbital of atoms 0 and 1.
-        Format:
+        Format::
 
           {1. atom: [weight of 1. projector function of the 1. atom,
                      weight of 2. projector function of the 1. atom, ...],
