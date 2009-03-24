@@ -482,7 +482,7 @@ class PAW(PAWTextOutput):
 
         if dry_run:
             self.print_cell_and_parameters()
-            self.print_memory_estimate(self.txt)
+            self.print_memory_estimate(self.txt, maxdepth=2)
             self.txt.flush()
             raise SystemExit
 
@@ -595,6 +595,7 @@ class PAW(PAWTextOutput):
         return self.occupations.get_homo_lumo(self.wfs) * Hartree
 
     def estimate_memory(self, mem):
+        """Estimate memory use of this object."""
         mem_init = memory()
         mem.subnode('Initial overhead', mem_init)
         for name, obj in [('Density', self.density),
@@ -603,13 +604,23 @@ class PAW(PAWTextOutput):
                           ]:
             obj.estimate_memory(mem.subnode(name))
 
-    def print_memory_estimate(self, txt):
+    def print_memory_estimate(self, txt=None, maxdepth=-1):
+        """Print estimated memory usage for PAW object and components.
+
+        maxdepth is the maximum nesting level of displayed components.
+
+        The PAW object must be initialize()'d, but needs not have large
+        arrays allocated."""
+        if txt is None:
+            txt = self.txt
         print >> txt, 'Memory estimate'
         print >> txt, '---------------'
         mem = MemNode('Calculator', 0)
         try:
             self.estimate_memory(mem)
-            mem.calculate_size()
-            mem.write(txt, '')
         except AttributeError, m:
-            print >> txt, 'Attribute error', m
+            print >> txt, 'Attribute error:', m
+            print >> txt, 'Some object probably lacks estimate_memory() method'
+            print >> txt, 'Memory breakdown may be incomplete'
+        totalsize = mem.calculate_size()
+        mem.write(txt, maxdepth=maxdepth)

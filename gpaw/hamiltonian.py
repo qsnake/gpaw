@@ -360,9 +360,10 @@ class Hamiltonian:
     def estimate_memory(self, mem):
         nbytes = self.gd.bytecount()
         nfinebytes = self.finegd.bytecount()
-        mem.subnode('vHt_g', nfinebytes)
-        mem.subnode('vt_sG', self.nspins * nbytes)
-        mem.subnode('vt_sg', self.nspins * nfinebytes)
+        arrays = mem.subnode('Arrays', 0)
+        arrays.subnode('vHt_g', nfinebytes)
+        arrays.subnode('vt_sG', self.nspins * nbytes)
+        arrays.subnode('vt_sg', self.nspins * nfinebytes)
         self.restrictor.estimate_memory(mem.subnode('Restrictor'))
         self.xc.estimate_memory(mem.subnode('XC 3D grid'))
         self.poisson.estimate_memory(mem.subnode('Poisson'))

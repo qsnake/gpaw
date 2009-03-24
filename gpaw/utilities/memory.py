@@ -224,19 +224,30 @@ def estimate_memory(paw):
     print >> out, "Total:                  %.2f %s" % (mem / scale, scalename)
 
 class MemNode:
+    """Representing the estimated memory use of an object and its components."""
     def __init__(self, name, basesize):
+        """Create node with specified name and intrinsic size without
+        subcomponents."""
         self.name = name
         self.basesize = float(basesize)
         self.totalsize = npy.nan # Size including sub-objects
         self.nodes = []
+        self.indent = '    '
 
-    def write(self, txt, indent):
-        print >> txt, ''.join([indent, self.name, '  ',
+    def write(self, txt, maxdepth=-1, depth=0):
+        """Write representation of this node and its subnodes, recursively.
+
+        The depth parameter determines indentation.  maxdepth of -1 means
+        infinity."""
+        print >> txt, ''.join([depth * self.indent, self.name, '  ',
                                self.memformat(self.totalsize)])
+        if depth == maxdepth:
+            return
         for node in self.nodes:
-            node.write(txt, indent + '    ')
+            node.write(txt, maxdepth, depth + 1)
         
     def memformat(self, bytes):
+        # One MiB is 1024*1024 bytes, as opposed to one MB which is ambiguous
         return '%.2f MiB' % (bytes / float(1 << 20))
 
     def calculate_size(self):
@@ -244,14 +255,14 @@ class MemNode:
         for node in self.nodes:
             self.totalsize += node.calculate_size()
         # Datatype must not be fixed-size np integer
-        assert isinstance(self.totalsize, (float, int, long)) 
         return self.totalsize
 
     def subnode(self, name, basesize=0):
+        """Create subcomponent with given name and intrinsic size.  Use this 
+        to build component tree."""
         mem = MemNode(name, basesize)
         self.nodes.append(mem)
         return mem
     
-    def set(self, name, basesize=0):
-        self.name = name
+    def setsize(self, basesize):
         self.basesize = float(basesize)

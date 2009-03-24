@@ -209,7 +209,7 @@ class BaseLFC:
         for sphere in self.sphere_a:
             points += sphere.estimate_gridpointcount(self.gd)
         nbytes = points * np.array(1, self.dtype).itemsize
-        mem.set(mem.name, nbytes)
+        mem.setsize(nbytes)
 
 
 class NewLocalizedFunctionsCollection(BaseLFC):
@@ -924,6 +924,20 @@ class LocalizedFunctionsCollection(BaseLFC):
 
     def get_function_count(self, a):
         return self.lfs_a[a].ni
+
+    def estimate_memory(self, mem):
+        count = 0
+        itemsize = np.array(1, self.dtype).itemsize
+        for spline_j in self.spline_aj:
+            for spline in spline_j:
+                # Circular
+                #numbers += 4.0 * np.pi * spline.get_cutoff()**3 / 3.0 / gd.dv
+                l = spline.get_angular_momentum_number()
+                count += (2 * l + 1) * (2 * spline.get_cutoff())**3 / self.gd.dv
+        bytes = count * itemsize
+        mem.subnode('Boxes', bytes)
+        if self.forces:
+            mem.subnode('Derivatives', 3 * bytes)
 
 if extra_parameters.get('usenewlfc'):
     LocalizedFunctionsCollection = NewLocalizedFunctionsCollection

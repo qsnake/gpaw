@@ -918,7 +918,9 @@ class GridWaveFunctions(WaveFunctions):
     def estimate_memory(self, mem):
         # XXX Laplacian operator?
         gridbytes = self.gd.bytecount(self.dtype)
-        mem.subnode('psit_unG', len(self.kpt_u) * self.mynbands * gridbytes)
+        mem.subnode('Arrays psit_nG', 
+                    len(self.kpt_u) * self.mynbands * gridbytes)
         self.eigensolver.estimate_memory(mem.subnode('Eigensolver'), self.gd,
                                          self.dtype, self.mynbands,
                                          self.nbands)
+        self.pt.estimate_memory(mem.subnode('Projectors'))

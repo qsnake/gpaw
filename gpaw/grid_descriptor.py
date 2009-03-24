@@ -512,7 +512,7 @@ class GridDescriptor(Domain):
 
     def bytecount(self, dtype=float):
         """Get the number of bytes used by a grid of specified dtype."""
-        return np.prod(self.n_c) * np.array(1, dtype).itemsize
+        return long(np.prod(self.n_c)) * np.array(1, dtype).itemsize
 
 
 class RadialGridDescriptor:

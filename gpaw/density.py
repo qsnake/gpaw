@@ -421,12 +421,18 @@ class Density:
         nbytes = self.gd.bytecount()
         nfinebytes = self.finegd.bytecount()
 
+        arrays = mem.subnode('Arrays')
         for name, size in [('nt_sG', nbytes * nspins),
                            ('nt_sg', nfinebytes * nspins),
                            ('nt_g', nfinebytes),
                            ('rhot_g', nfinebytes),
                            ('nct_G', nbytes)]:
-            mem.subnode(name, size)
+            arrays.subnode(name, size)
 
-        self.interpolator.estimate_memory(mem.subnode('Interpolator'))
+        lfs = mem.subnode('Localized functions')
+        for name, obj in [('nct', self.nct),
+                          ('ghat', self.ghat)]:
+            obj.estimate_memory(lfs.subnode(name))
         self.mixer.estimate_memory(mem.subnode('Mixer'), self.gd)
+        self.interpolator.estimate_memory(mem.subnode('Interpolator'))
+
