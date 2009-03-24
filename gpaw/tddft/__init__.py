@@ -113,6 +113,9 @@ class TDDFT(GPAW):
         # Paw-object has no ``niter`` counter in this branch TODO!
         self.niter = 0
 
+        # No density mixing
+        self.density.mixer = DummyMixer()
+
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
         self.set_positions()
@@ -147,10 +150,6 @@ class TDDFT(GPAW):
         self.text('  Time-propagation TDDFT                  ')
         self.text('------------------------------------------')
         self.text('')
-
-
-        # No density mixing
-        self.density.mixer = DummyMixer()
 
         self.text('Charge epsilon: ', self.density.charge_eps)
 
