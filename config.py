@@ -21,14 +21,14 @@ def check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_num
     if sys.version_info < (2, 3, 0, 'final', 0):
         raise SystemExit('Python 2.3.1 or later is required!')
 
-    try:
-        import numpy
-    except ImportError:
-        if force_inclusion_of_numpy:
+    if force_inclusion_of_numpy:
+        try:
+            import numpy
+        except ImportError:
             raise SystemExit('numpy is not installed!')
-        else:
-            msg += ['* numpy is not installed.',
-                    '  "include_dirs" in your customize.py must point to "numpy/core/include".']
+    else:
+        msg += ['* numpy is not installed.',
+                '  "include_dirs" in your customize.py must point to "numpy/core/include".']
     try:
         import Scientific.IO.NetCDF
     except ImportError:
