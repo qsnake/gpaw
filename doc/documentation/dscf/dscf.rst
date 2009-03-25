@@ -20,8 +20,8 @@ is usually taken from the fermi level to keep the system neutral:
   n(r) = \sum_nf_{N-1}(T,\varepsilon_n)|\varphi_n(r)|^2 + |\varphi_a(r)|^2.
 
 with `N` being the total number of electrons and `f_{N-1}(T,\varepsilon_n)`
-is the Fermi-Dirac distrution of `N-1` electrons . To get the band energy 
-right `\varphi_a(r)` needs to be expanded in Kohn-Sham orbitals:
+is the Fermi-Dirac distribution of the `N-1` electron system . To get the 
+band energy right `\varphi_a(r)` needs to be expanded in Kohn-Sham orbitals:
 
 .. math::
 
@@ -35,8 +35,8 @@ and the band energy of the orbital becomes
   \varepsilon_a = \sum_n|c_{na}|^2\varepsilon_n.
 
 The method is a generalization of traditional Delta Self-Consistent Field
-where the occupation numbers are modified and reduces to that if only one
-(normalized) term is included in the expansion of `\varphi_a(r)`.
+where only the occupation numbers are modified and it will reduce to that, 
+if only one (normalized) term is included in the expansion of `\varphi_a(r)`.
 
 ----------------
 Simple molecules
@@ -94,15 +94,14 @@ Exciting the LUMO in CO::
 
     CO.set_calculator(calc_es)
     lumo = dscf.AEOrbital(calc_es, wf_u, p_uai)
-    #weights = {0:[0,0,0,1], 1:[0,0,0,-1]}
-    #lumo = dscf.MolecularOrbital(calc, weights=weights)
+    #lumo = dscf.MolecularOrbital(calc, weights={0:[0,0,0,1], 1:[0,0,0,-1]})
     dscf.dscf_calculation(calc_es, [[1.0, lumo, 1]], CO)
 
     E_es = CO.get_potential_energy()
 
     print 'Excitation energy: ', E_es-E_gs
 
-The commented lines ``lumo = dscf.dscf.Molecular...`` and ``weights = ...`` 
+The commented line ``lumo = dscf.Molecular...`` 
 uses another class to specify the `2\pi` orbital of CO which does not require 
 a ground state calculation of the molecule. In the simple example above the 
 two methods give identical results, but for more complicated systems the 
