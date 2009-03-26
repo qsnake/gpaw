@@ -270,10 +270,11 @@ from gpaw.utilities.tools import construct_reciprocal
 class PoissonFFTSolver(PoissonSolver):
     def __init__(self):
         self.charged_periodic_correction = None
-        pass
 
     """FFT implementation of the poisson solver"""
     def initialize(self, gd, load_gauss=False):
+        # XXX this won't work now, but supposedly this class will be deprecated
+        # in favour of FFTPoissonSolver, no?
         self.gd = gd
         if self.gd.comm.size > 1:
             raise RuntimeError('Cannot do parallel FFT.')
@@ -293,7 +294,7 @@ class PoissonFFTSolver(PoissonSolver):
 
 
 class FFTPoissonSolver(PoissonSolver):
-    """FFT poisson-solver for for general unit cells."""
+    """FFT poisson-solver for general unit cells."""
     
     relax_method = 0
     nn = 999
@@ -301,11 +302,13 @@ class FFTPoissonSolver(PoissonSolver):
     def __init__(self, eps=2e-10):
         self.charged_periodic_correction = None
         self.eps = eps
-        pass
 
-    def initialize(self, gd):
+    def set_grid_descriptor(self, gd):
         assert gd.comm.size == 1 and gd.pbc_c.all()
+        PoissonSolver.set_grid_descriptor(self, gd)
 
+    def initialize(self):
+        gd = self.gd
         N_c1 = gd.N_c[:, npy.newaxis]
         i_cq = npy.indices(gd.N_c).reshape((3, -1))
         i_cq += N_c1 // 2
