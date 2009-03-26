@@ -1518,9 +1518,12 @@ class GPAWTransport:
                     dim = (dim[0] * world.size,) + dim[1:]
                 else:
                     raise RuntimeError('wrong matrix dimension for pl_write')
-                totalmat = np.empty(dim, dtype=matlist[i].dtype)
-                self.kpt_comm.gather(matlist[i], 0, totalmat)
-                total_matlist.append(totalmat)
+                if world.rank == 0:
+                    totalmat = np.empty(dim, dtype=matlist[i].dtype)
+                    self.kpt_comm.gather(matlist[i], 0, totalmat)
+                    total_matlist.append(totalmat)
+                else:
+                    self.kpt_comm.gather(matlist[i], 0)
             else:
                 total_matlist.append(matlist[i])
         if world.rank == 0:
