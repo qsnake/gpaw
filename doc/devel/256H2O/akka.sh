@@ -14,4 +14,4 @@ module add openmpi/1.2.6/gcc
 
 gpawhome=${HOME}/gpaw
 export PYTHONPATH=${gpawhome}:${PYTHONPATH}
-mpiexec ${gpawhome}/build/bin.linux-x86_64-2.4/gpaw-python ../b256H2O.py --sl_diagonalize=4,4,64,8
+mpiexec ${gpawhome}/build/bin.linux-x86_64-2.4/gpaw-python ../b256H2O.py --sl_diagonalize=4,4,64,8 --gpaw=usenewlfc=1

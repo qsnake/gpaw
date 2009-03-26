@@ -141,11 +141,19 @@ Results
 
 gpaw code is executed in parallel in order to benchmark a number of processes that ranges from
 32, through integer powers of 2 and up to the total number of CPU 512 cores.
+
 The number of bands (1056) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
+
+**Note**: to achive optimal performance diagonalization steps are performed
+on `4x4` blacs grid with block size of `64` specified by adding ``--sl_diagonalize=4,4,64,d`` option.
+
 **Note** also that a default domain decomposition is appplied, and different
 results can be obtained by tuning ``--domain-decomposition`` argument
 to your platform (see :ref:`submit_tool_on_niflheim`).
+
+**Note**: the ``--gpaw=usenewlfc=1`` option is required to skip the calculation of forces
+and decrease **memory** usage.
 
 The results of the benchmark is scaling of execution time of different stages
 of gpaw run with the number of processes (CPU cores).
@@ -266,11 +274,19 @@ Results
 
 gpaw code is executed in parallel in order to benchmark a number of processes that ranges from
 512, through integer powers of 2 and up to the total number of CPU 4096 cores.
+
 The number of bands (1728) and cores are chosen to make comparisons
 of different band parallelizations (:ref:`band_parallelization`) possible.
+
+**Note**: to achive optimal performance diagonalization steps are performed
+on `5x5` blacs grid with block size of `64` specified by adding ``--sl_diagonalize=5,5,64,d`` option.
+
 **Note** also that a default domain decomposition is appplied, and different
 results can be obtained by tuning ``--domain-decomposition`` argument
 to your platform (see :ref:`submit_tool_on_niflheim`).
+
+**Note**: the ``--gpaw=usenewlfc=1`` option is required to skip the calculation of forces
+and decrease **memory** usage.
 
 The results of the benchmark is scaling of execution time of different stages
 of gpaw run with the number of processes (CPU cores).
