@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
@@ -32,6 +33,7 @@ for ending in endings:
         calc.write(restart, mode)
 
     barrier()
+    time.sleep(2)
     # refine the restart file containing the wfs 
     E1 = GPAW(restart_wf,
               convergence=

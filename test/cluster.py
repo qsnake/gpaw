@@ -5,6 +5,7 @@ from ase.parallel import barrier, rank
 #from gpaw.utilities.vector import Vector3d
 from gpaw.cluster import Cluster
 from gpaw.utilities import equal
+import time
 
 R = 2.0
 CO = Atoms([Atom('C', (1, 0, 0)), Atom('O', (1, 0, R))])
@@ -58,6 +59,7 @@ cell = [2.,3.,R+2.]
 CO.set_cell(cell, scale_atoms=True)
 CO.write(fxyz)
 barrier()
+time.sleep(2)
 CO_b = Cluster(filename=fxyz)
 assert(len(CO) == len(CO_b))
 #for a, b in zip(cell, CO_b.get_cell().diagonal()):
@@ -67,6 +69,7 @@ assert(offdiagonal == 0.0)
  
 CO.write(fxyz, repeat=[1,1,1])
 barrier()
+time.sleep(2)
 CO_b = Cluster(filename=fxyz)
 assert(8*len(CO) == len(CO_b)) 
  
@@ -84,6 +87,7 @@ O 0 0 1. 6. 7. 8."""
         f.close()
 
     barrier()
+    time.sleep(2)
 
     CO = Cluster(filename=fxyz)
 
