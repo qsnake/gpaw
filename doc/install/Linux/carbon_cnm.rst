@@ -10,6 +10,9 @@ Here you find information about the the system
 The Carbon machine is a cluster of dual socket, quad-core Intel Xeon
 5355 CPUs, 2.66 GHz processors with 2 GB of memory per core.
 
+**Warning**: numpy build instructions have not been tested recently and may not work.
+Please use the (unoptimized) system default numpy.
+
 To build (``python setup.py install --home=~/numpy-1.0.4-1``)
 numpy-1.0.4 add these lines to :file:`site.cfg`::
 
@@ -59,28 +62,30 @@ and build GPAW (``python setup.py build_ext``) with this
       '-O3'
       ]
 
-  libraries = [
-    'mkl_def',
-    'mkl',
-    'mkl_lapack',
-    'guide',
-    'mkl_scalapack',
-    'mkl_blacs_openmpi_lp64'
-    ]
+  libraries= []
 
-  library_dirs = [
-    '/opt/intel/mkl/10.0.2.018/lib/em64t',
-    '/usr/lib64/openmpi'
-    ]
+  mkl_lib_path = '/opt/intel/mkl/10.0.2.018/lib/em64t/'
+
+  extra_link_args = [
+  mkl_lib_path+'libmkl_intel_lp64.a',
+  mkl_lib_path+'libmkl_sequential.a',
+  mkl_lib_path+'libmkl_core.a',
+  mkl_lib_path+'libmkl_blacs_openmpi_lp64.a',
+  mkl_lib_path+'libmkl_scalapack.a',
+  mkl_lib_path+'libmkl_blacs_openmpi_lp64.a',
+  mkl_lib_path+'libmkl_intel_lp64.a',
+  mkl_lib_path+'libmkl_sequential.a',
+  mkl_lib_path+'libmkl_core.a',
+  mkl_lib_path+'libmkl_intel_lp64.a',
+  mkl_lib_path+'libmkl_sequential.a',
+  mkl_lib_path+'libmkl_core.a',
+  ]
 
   define_macros += [
     ('GPAW_MKL', '1')
   ]
 
-  mpi_runtime_library_dirs = [
-    '/opt/intel/mkl/10.0.2.018/lib/em64t',
-    '/usr/lib64/openmpi'
-    ]
+**Note**: due to linking problems similar to those found on :ref:`akka` static linking is required.
 
 A gpaw script :file:`gpaw-script.py` can be submitted like this::
 
@@ -90,7 +95,7 @@ A gpaw script :file:`gpaw-script.py` can be submitted like this::
 where :file:`run.sh` looks like this::
 
   cd $PBS_O_WORKDIR
-  mpirun -machinefile $PBS_NODEFILE -np 8 -mca btl openib -mca btl_openib_retry_count 14 -x OMP_NUM_THREADS \
+  mpirun -machinefile $PBS_NODEFILE -np 8 -x OMP_NUM_THREADS \
          $HOME/gpaw/build/bin.linux-x86_64-2.4/gpaw-python gpaw-script.py
 
 Please make sure that your jobs do not run multi-threaded, e.g. for a

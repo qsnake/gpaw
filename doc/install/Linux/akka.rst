@@ -52,20 +52,22 @@ and build GPAW (``python setup.py build_ext``) with this
       '-O3'
       ]
 
+  mkl_lib_path = '/usr/local/lib/'
+
   extra_link_args = [
-  '/usr/local/lib/libmkl_intel_lp64.a',
-  '/usr/local/lib/libmkl_sequential.a',
-  '/usr/local/lib/libmkl_core.a',
-  '/usr/local/lib/libmkl_blacs_openmpi_lp64.a',
-  '/usr/local/lib/libmkl_scalapack.a',
-  '/usr/local/lib/libmkl_blacs_openmpi_lp64.a',
-  '/usr/local/lib/libmkl_intel_lp64.a',
-  '/usr/local/lib/libmkl_sequential.a',
-  '/usr/local/lib/libmkl_core.a',
-  '/usr/local/lib/libmkl_intel_lp64.a',
-  '/usr/local/lib/libmkl_sequential.a',
-  '/usr/local/lib/libmkl_core.a',
-  ]  
+  mkl_lib_path+'libmkl_intel_lp64.a',
+  mkl_lib_path+'libmkl_sequential.a',
+  mkl_lib_path+'libmkl_core.a',
+  mkl_lib_path+'libmkl_blacs_openmpi_lp64.a',
+  mkl_lib_path+'libmkl_scalapack.a',
+  mkl_lib_path+'libmkl_blacs_openmpi_lp64.a',
+  mkl_lib_path+'libmkl_intel_lp64.a',
+  mkl_lib_path+'libmkl_sequential.a',
+  mkl_lib_path+'libmkl_core.a',
+  mkl_lib_path+'libmkl_intel_lp64.a',
+  mkl_lib_path+'libmkl_sequential.a',
+  mkl_lib_path+'libmkl_core.a',
+  ]
 
   define_macros += [
     ('GPAW_MKL', '1')
