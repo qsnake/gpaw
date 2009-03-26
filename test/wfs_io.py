@@ -6,7 +6,7 @@ import time
 from gpaw import GPAW
 from ase import *
 from gpaw.utilities import equal
-from ase.parallel import rank, barrier
+from ase.parallel import rank, barrier, size
 
 endings = ['gpw']
 try:
@@ -32,8 +32,9 @@ for ending in endings:
         calc.write(restart_wf, 'all')
         calc.write(restart, mode)
 
-    barrier()
-    time.sleep(2)
+    if size > 1:
+        barrier()
+        time.sleep(2)
     # refine the restart file containing the wfs 
     E1 = GPAW(restart_wf,
               convergence=
