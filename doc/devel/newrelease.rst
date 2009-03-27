@@ -12,6 +12,10 @@ When it is time for a new release of the code, here is what you have to do:
 
   and run the test suite (run ``python test.py`` in ``tests`` directory).
 
+* If a new ase release is required to pass the tests
+  modify :trac:`test/ase3k_version.py`, reflect the change in :ref:`download`,
+  and checking the changes.
+
 * Make a tag in svn, using the current version number::
 
     svn copy https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 -m "Version 0.4"
