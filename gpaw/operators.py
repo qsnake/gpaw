@@ -42,9 +42,6 @@ class _Operator:
         
         if gd.comm.size > 1:
             comm = gd.comm
-            if debug:
-                # get the C-communicator from the debug-wrapper:
-                comm = comm.comm
         else:
             comm = None
 

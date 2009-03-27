@@ -17,9 +17,6 @@ class _Transformer:
 
         if gdin.comm.size > 1:
             comm = gdin.comm
-            if debug:
-                # Get the C-communicator from the debug-wrapper:
-                comm = comm.comm
         else:
             comm = None
 

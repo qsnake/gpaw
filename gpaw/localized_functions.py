@@ -528,8 +528,6 @@ class LocFuncBroadcaster:
         and later broadcast arrays to the other CPU's.
         """
 
-        if debug:
-            kpt_comm = kpt_comm.comm
         self.kpt_comm = kpt_comm
         self.size = kpt_comm.size
         self.rank = kpt_comm.rank
