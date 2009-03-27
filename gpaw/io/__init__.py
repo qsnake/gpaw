@@ -326,7 +326,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         for s in range(wfs.nspins):
             for k in range(nibzkpts):
                 for o in range(norbitals):
-                    c_n = wfs.collect_array('c_on', k, s, subset=o)
+                    c_n = wfs.collect_array('c_on', k, s, subset=o, dtype=complex)
                     if master:
                         w.fill(c_n)
 

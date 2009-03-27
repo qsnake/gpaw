@@ -227,7 +227,7 @@ class WaveFunctions(EmptyWaveFunctions):
     def collect_occupations(self, k, s):
         return self.collect_array('f_n', k, s)
 
-    def collect_array(self, name, k, s, subset=None):
+    def collect_array(self, name, k, s, subset=None, dtype=float):
         """Helper method for collect_eigenvalues and collect_occupations.
 
         For the parallel case find the rank in kpt_comm that contains
@@ -244,6 +244,9 @@ class WaveFunctions(EmptyWaveFunctions):
             if subset is not None:
                 a_n = a_n[subset]
 
+            if a_n.dtype is not dtype:
+                a_n = a_n.astype(dtype)
+
             # Domain master send this to the global master
             if self.gd.comm.rank == 0:
                 if self.band_comm.size == 1:
@@ -253,7 +256,7 @@ class WaveFunctions(EmptyWaveFunctions):
                         self.kpt_comm.send(a_n, 0, 1301)
                 else:
                     if self.band_comm.rank == 0:
-                        b_n = np.zeros(self.nbands)
+                        b_n = np.zeros(self.nbands, dtype=dtype)
                     else:
                         b_n = None
                     self.band_comm.gather(a_n, 0, b_n)
@@ -264,11 +267,11 @@ class WaveFunctions(EmptyWaveFunctions):
                             self.kpt_comm.send(b_n, 0, 1301)
 
         elif self.world.rank == 0 and kpt_rank != 0:
-            b_n = np.zeros(self.nbands)
+            b_n = np.zeros(self.nbands, dtype=dtype)
             self.kpt_comm.receive(b_n, kpt_rank, 1301)
             return b_n
 
-    def collect_auxiliary(self, name, k, s, shape=1):
+    def collect_auxiliary(self, name, k, s, shape=1, dtype=float):
         """Helper method for collecting band-independent scalars/arrays.
 
         For the parallel case find the rank in kpt_comm that contains
@@ -285,6 +288,9 @@ class WaveFunctions(EmptyWaveFunctions):
             # Make sure data is a mutable object
             a_o = np.asarray(a_o)
 
+            if a_o.dtype is not dtype:
+                a_o = a_o.astype(dtype)
+
             # Domain master send this to the global master
             if self.gd.comm.rank == 0:
                 if kpt_rank == 0:
@@ -293,7 +299,7 @@ class WaveFunctions(EmptyWaveFunctions):
                     self.kpt_comm.send(a_o, 0, 1302)
 
         elif self.world.rank == 0 and kpt_rank != 0:
-            b_o = np.zeros(shape)
+            b_o = np.zeros(shape, dtype=dtype)
             self.kpt_comm.receive(b_o, kpt_rank, 1302)
             return b_o
 
