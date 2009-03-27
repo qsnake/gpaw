@@ -67,6 +67,8 @@ class Hamiltonian:
         self.poisson = psolver
         self.poisson.set_grid_descriptor(finegd)
 
+        self.dH_asp = None
+
         # The external potential
         self.vext_g = vext_g
 
@@ -74,6 +76,8 @@ class Hamiltonian:
         self.vHt_g = None
         self.vt_sg = None
         self.vbar_g = None
+
+        self.rank_a = None
 
         # Restrictor function for the potential:
         self.restrictor = Transformer(self.finegd, self.gd, stencil)
@@ -94,12 +98,41 @@ class Hamiltonian:
         self.Etot = None
         self.S = None
 
-    def set_positions(self, spos_ac):
+    def set_positions(self, spos_ac, rank_a=None):
         self.vbar.set_positions(spos_ac)
         if self.vbar_g is None:
             self.vbar_g = self.finegd.empty()
         self.vbar_g[:] = 0.0
         self.vbar.add(self.vbar_g)
+
+        # TODO XXX THIS FIX MIGHT NOT BE A FIX AT ALL
+        # If both old and new atomic ranks are present, start a blank dict if
+        # it previously didn't exist but it will needed for the new atoms.
+        if (self.rank_a is not None and rank_a is not None and
+            self.dH_asp is None and (rank_a == self.gd.comm.rank).any()):
+            self.dH_asp = {}
+
+        if self.dH_asp is not None:
+            requests = []
+            dH_asp = {}
+            for a in self.vbar.my_atom_indices: #TODO XXX copy/paste from density.set_positions but vbar is not nct!!!
+                if a in self.dH_asp:
+                    dH_asp[a] = self.dH_asp.pop(a)
+                else:
+                    # Get matrix from old domain:
+                    ni = self.setups[a].ni
+                    dH_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
+                    dH_asp[a] = dH_sp
+                    requests.append(self.gd.comm.receive(dH_sp, self.rank_a[a],
+                                                         38, False))
+            for a, dH_sp in self.dH_asp.items():
+                # Send matrix to new domain:
+                requests.append(self.gd.comm.send(dH_sp, rank_a[a], 38, False))
+            for request in requests:
+                self.gd.comm.wait(request)
+            self.dH_asp = dH_asp
+
+        self.rank_a = rank_a
 
     def update(self, density):
         """Calculate effective potential.

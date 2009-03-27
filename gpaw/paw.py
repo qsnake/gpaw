@@ -217,7 +217,7 @@ class PAW(PAWTextOutput):
 
         self.wfs.set_positions(spos_ac)
         self.density.set_positions(spos_ac, self.wfs.rank_a)
-        self.hamiltonian.set_positions(spos_ac)
+        self.hamiltonian.set_positions(spos_ac, self.wfs.rank_a)
 
         return spos_ac
     

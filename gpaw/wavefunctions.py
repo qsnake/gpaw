@@ -210,7 +210,7 @@ class WaveFunctions(EmptyWaveFunctions):
             if self.gd.comm.size == 1:
                 pass
             else:
-                # Redistribute P_ani among domains.  Not implemented:
+                # Redistribute P_ani among domains.  Not implemented: TODO XXX!!!
                 self.kpt_u[0].P_ani = None
                 self.allocate_arrays_for_projections(my_atom_indices)
         else:

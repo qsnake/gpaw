@@ -438,6 +438,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 def read(paw, reader):
     r = reader
     wfs = paw.wfs
+    density = paw.density
     hamiltonian = paw.hamiltonian
 
     world = paw.wfs.world
@@ -465,36 +466,30 @@ def read(paw, reader):
             
     # Read pseudoelectron density pseudo potential on the coarse grid
     # and distribute out to nodes:
-    paw.density.nt_sG = wfs.gd.empty(wfs.nspins)
+    density.nt_sG = wfs.gd.empty(wfs.nspins)
     for s in range(wfs.nspins):
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
-                          paw.density.nt_sG[s])
+                          density.nt_sG[s])
 
     
     if version > 0.3:
-        paw.hamiltonian.vt_sG = wfs.gd.empty(wfs.nspins)
+        hamiltonian.vt_sG = wfs.gd.empty(wfs.nspins)
         for s in range(wfs.nspins): 
             paw.gd.distribute(r.get('PseudoPotential', s),
-                              paw.hamiltonian.vt_sG[s])
+                              hamiltonian.vt_sG[s])
 
     # Read atomic density matrices and non-local part of hamiltonian:
-    D_sp = r.get('AtomicDensityMatrices')
-    if version > 0.3:
-        dH_sp = r.get('NonLocalPartOfHamiltonian')
-    paw.density.D_asp = {}
-    paw.hamiltonian.dH_asp = {}
     natoms = len(paw.atoms)
     wfs.rank_a = npy.zeros(natoms, int)
-    paw.density.rank_a = npy.zeros(natoms, int)
-    p1 = 0
-    for a, setup in enumerate(wfs.setups):
-        ni = setup.ni
-        p2 = p1 + ni * (ni + 1) // 2
-        if domain_comm.rank == 0:
-            paw.density.D_asp[a] = D_sp[:, p1:p2].copy()
-            if version > 0.3:
-                paw.hamiltonian.dH_asp[a] = dH_sp[:, p1:p2].copy()
-        p1 = p2
+    density.rank_a = npy.zeros(natoms, int)
+    hamiltonian.rank_a = npy.zeros(natoms, int)
+
+    if domain_comm.rank == 0:
+        density.D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices',
+                                             wfs.setups)
+        if version > 0.3:
+            hamiltonian.dH_asp = read_atomic_matrices(r, \
+                'NonLocalPartOfHamiltonian', wfs.setups)
 
     hamiltonian.Ekin = r['Ekin']
     hamiltonian.Epot = r['Epot']
@@ -511,7 +506,7 @@ def read(paw, reader):
         paw.scf.converged = r['Converged']
         density_error = r['DensityError']
         if density_error is not None:
-            paw.density.mixer.set_charge_sloshing(density_error)
+            density.mixer.set_charge_sloshing(density_error)
         Etot = hamiltonian.Etot
         energy_error = r['EnergyError']
         if energy_error is not None:
@@ -558,7 +553,7 @@ def read(paw, reader):
 
             if norbitals is not None:
                 kpt.ne_o = npy.empty(norbitals, dtype=float)
-                kpt.c_on = npy.empty((norbitals,wfs.mynbands), dtype=complex)
+                kpt.c_on = npy.empty((norbitals, wfs.mynbands), dtype=complex)
                 for o in range(norbitals):
                     kpt.ne_o[o] = r.get('LinearExpansionOccupations',  s, k, o)
                     c_n = r.get('LinearExpansionCoefficients', s, k, o)
@@ -604,8 +599,8 @@ def read(paw, reader):
         paw.forces.reset()
 
     # Read GLLB-releated stuff
-    if paw.hamiltonian.xcfunc.gllb:
-        paw.hamiltonian.xcfunc.xc.read(r)
+    if hamiltonian.xcfunc.gllb:
+        hamiltonian.xcfunc.xc.read(r)
 
 def read_atoms(reader):
     if isinstance(reader, str):
@@ -630,6 +625,16 @@ def read_atoms(reader):
 
     return atoms
 
+def read_atomic_matrices(reader, key, setups):
+    all_M_sp = reader.get(key)
+    M_asp = {}
+    p1 = 0
+    for a, setup in enumerate(setups):
+        ni = setup.ni
+        p2 = p1 + ni * (ni + 1) // 2
+        M_asp[a] = all_M_sp[:, p1:p2].copy()
+        p1 = p2
+    return M_asp
 
 def read_wave_function(gd, s, k, n, mode):
     """Read the wave function for spin s, kpoint k and index n
