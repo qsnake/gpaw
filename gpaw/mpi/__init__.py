@@ -198,8 +198,6 @@ if debug:
         def cart_create(self, dimx, dimy, dimz, periodic):
             return self.comm.cart_create(dimx, dimy, dimz, periodic)
 
-
-    world = _Communicator(world)
     serial_comm = _Communicator(serial_comm)
 
 def broadcast_string(string=None, root=MASTER, comm=world):
