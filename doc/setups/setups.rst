@@ -6,11 +6,11 @@ Atomic PAW Setups
 
 A setup is to the PAW method what a pseudo-potential is to the
 pseudo-potential method.  All available setups are contained in this
-tar-file: gpaw-setups-0.4.2039.tar.gz_.  Install them as described in the
+tar-file: gpaw-setups-0.5.3574.tar.gz_.  Install them as described in the
 :ref:`installationguide`.  The setups are stored as compressed pawxml_
 files.
 
-.. _gpaw-setups-0.4.2039.tar.gz: http://wiki.fysik.dtu.dk/stuff/gpaw-setups-0.4.2039.tar.gz
+.. _gpaw-setups-0.4.2039.tar.gz: http://wiki.fysik.dtu.dk/stuff/gpaw-setups-0.5.3574.tar.gz
 .. _pawxml: http://wiki.fysik.dtu.dk/stuff/pawxml/pawxml.xhtml
 
 Periodic table
