@@ -43,43 +43,131 @@ opt, tests = parser.parse_args()
 
 if len(tests) == 0:
     # Fastest first, slowest last:
-    tests = ['lapack.py', 'setups.py', 'xc.py', 'xcfunc.py', 'gradient.py',
-             'pbe-pw91.py', 'cg2.py', 'd2Excdn2.py', 'test_dot.py', 'gp2.py',
-             'non-periodic.py', 'lf.py', 'lxc_xc.py', 'Gauss.py', 'cluster.py',
-             'derivatives.py',
-             'integral4.py', 'transformations.py', 'pbc.py', 'poisson.py',
-             'XC2.py', 'XC2Spin.py', 'multipoletest.py', 'aedensity.py',
-             'proton.py', 'coulomb.py', 'ase3k.py', 'eed.py', 'timing.py',
-             'gauss_func.py', 'xcatom.py', 'parallel/overlap.py', 'mixer.py',
-             'mixer_broydn.py', 'ylexpand.py', 'wfs_io.py', 'restart.py',
-             'gga-atom.py', 'nonselfconsistentLDA.py', 'bee1.py', 'refine.py',
-             'revPBE.py', 'lrtddft2.py', 'nonselfconsistent.py', 'stdout.py',
-             'ewald.py', 'spinpol.py', 'plt.py', 'parallel/hamiltonian.py',
-             'bulk.py', 'restart2.py', 'hydrogen.py', 'H-force.py',
-             'CL_minus.py', 'gemm.py', 'fermilevel.py', 'degeneracy.py',
-             'h2o-xas.py', 'si.py', 'asewannier.py', 'vdw/quick.py',
-             'lxc_xcatom.py', 'davidson.py', 'cg.py', 'h2o-xas-recursion.py',
-             'atomize.py', 'lrtddft.py', 'lcao_force.py',
-             'wannier-ethylene.py', 'CH4.py', 'apmb.py', 'relax.py',
-             'ldos.py', 'lcao_bulk.py', 'revPBE_Li.py', 'fixmom.py',
-             'generatesetups.py', 'td_na2.py', 'exx_coarse.py', '2Al.py',
-             'si-xas.py', 'tpss.py', '8Si.py', 'transport.py', 'Cu.py',
-             'lcao_h2o.py', 'IP-oxygen.py', 'exx.py', 'dscf_CO.py',
-             'h2o_dks.py', 'H2Al110.py', 'ltt.py', 'vdw/ar2.py',
-             'mgga_restart.py']
+    tests = [
+        'ase3k_version.py',
+        'lapack.py',
+        'setups.py',
+        'xc.py',
+        'xcfunc.py',
+        'gradient.py',
+        'pbe-pw91.py',
+        'cg2.py',
+        'd2Excdn2.py',
+        'test_dot.py',
+        'gp2.py',
+        'non-periodic.py',
+        'lf.py',
+        'lxc_xc.py',
+        'Gauss.py',
+        'cluster.py',
+        'derivatives.py',
+        'integral4.py',
+        'transformations.py',
+        'pbc.py',
+        'poisson.py',
+        'XC2.py',
+        'XC2Spin.py',
+        'multipoletest.py',
+        'aedensity.py',
+        'proton.py',
+        'coulomb.py',
+        'ase3k.py',
+        'eed.py',
+        'timing.py',
+        'gauss_func.py',
+        'xcatom.py',
+        'parallel/overlap.py',
+        'mixer.py',
+        'mixer_broydn.py',
+        'ylexpand.py',
+        'wfs_io.py',
+        'restart.py',
+        'gga-atom.py',
+        'nonselfconsistentLDA.py',
+        'bee1.py',
+        'refine.py',
+        'revPBE.py',
+        'lrtddft2.py',
+        'nonselfconsistent.py',
+        'stdout.py',
+        'ewald.py',
+        'spinpol.py',
+        'plt.py',
+        'parallel/hamiltonian.py',
+        'bulk.py',
+        'restart2.py',
+        'hydrogen.py',
+        'H-force.py',
+        'CL_minus.py',
+        'gemm.py',
+        'fermilevel.py',
+        'degeneracy.py',
+        'h2o-xas.py',
+        'si.py',
+        'asewannier.py',
+        'vdw/quick.py',
+        'lxc_xcatom.py',
+        'davidson.py',
+        'cg.py',
+        'h2o-xas-recursion.py',
+        'atomize.py',
+        'lrtddft.py',
+        'lcao_force.py',
+        'wannier-ethylene.py',
+        'CH4.py',
+        'apmb.py',
+        'relax.py',
+        'ldos.py',
+        'lcao_bulk.py',
+        'revPBE_Li.py',
+        'fixmom.py',
+        'generatesetups.py',
+        'td_na2.py',
+        'exx_coarse.py',
+        '2Al.py',
+        'si-xas.py',
+        'tpss.py',
+        '8Si.py',
+        'transport.py',
+        'Cu.py',
+        'lcao_h2o.py',
+        'IP-oxygen.py',
+        'exx.py',
+        'dscf_CO.py',
+        'h2o_dks.py',
+        'H2Al110.py',
+        'ltt.py',
+        'vdw/ar2.py',
+        'mgga_restart.py',
+        ]
 
-disabled_tests = ['external_potential.py', 'dscf_H2Al.py',
-                  'lb.py', 'kli.py', 'C-force.py', 'apply.py',
-                  'viewmol_trajectory.py', 'fixdensity.py',
-                  'average_potential.py', 'lxc_testsetups.py',
-                  'restart3.py', 'totype_test.py',
-                  'wannier-hwire.py',
-                  'lxc_spinpol_Li.py', 'lxc_testsetups.py',
-                  'lxc_generatesetups.py', 'simple_stm.py']
+disabled_tests = [
+    'external_potential.py',
+    'dscf_H2Al.py',
+    'lb.py',
+    'kli.py',
+    'C-force.py',
+    'apply.py',
+    'viewmol_trajectory.py',
+    'fixdensity.py',
+    'average_potential.py',
+    'lxc_testsetups.py',
+    'restart3.py',
+    'totype_test.py',
+    'wannier-hwire.py',
+    'lxc_spinpol_Li.py',
+    'lxc_testsetups.py',
+    'lxc_generatesetups.py',
+    'simple_stm.py',
+    ]
 
-tests_parallel = ['parallel/restart.py', 'parallel/parmigrate.py',
-                  'parallel/par8.py', 'parallel/par6.py',
-                  'parallel/exx.py']
+tests_parallel = [
+    'parallel/restart.py',
+    'parallel/parmigrate.py',
+    'parallel/par8.py',
+    'parallel/par6.py',
+    'parallel/exx.py',
+    ]
 
 if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
@@ -97,9 +185,9 @@ if not opt.parallel:
 
 from ase.parallel import size
 if size > 1:
-    exclude += ['asewannier.py', 
+    exclude += ['asewannier.py',
                 'wannier-ethylene.py', 'lrtddft.py', 'apmb.py']
-    
+
 for test in exclude:
     if test in tests:
         tests.remove(test)
@@ -122,7 +210,7 @@ class ScriptTestCase(unittest.TestCase):
             execfile(self.filename, {})
         finally:
             mpi.world.barrier()
-        
+
     def tearDown(self):
         gc.collect()
         n = len(gc.garbage)
@@ -155,7 +243,7 @@ class MyTextTestResult(unittest._TextTestResult):
         unittest._TextTestResult.startTest(self, test)
         self.stream.flush()
         self.t0 = time.time()
-    
+
     def _write_time(self):
         if self.showAll:
             self.stream.write('(%.3fs) ' % (time.time() - self.t0))

@@ -54,22 +54,21 @@ Standard installation
    :file:`{<my-directory}>/bin/gpaw-python` can be used when executing
    parallel runs. See :ref:`parallel_installation` for details.
 
+   .. note::
+
+     Usually :envvar:`$HOME` is a good choice for :file:`{<my-directory>}`.
+
    Alternatively, if you have root-permissions, you can install GPAW system-wide::
 
      [gpaw]$ python setup.py install 2>&1 | tee install.log
 
-.. note::
+   .. note::
 
-   Usually :envvar:`$HOME` is a good choice for :file:`{<my-directory>}`.
-
-.. note::
-
-    This installation is suitable only as a first try:
+    The installation described here is suitable only as a first try:
 
      - if you install on a cluster, please follow :ref:`install_custom_installation`,
 
      - if you are a developer, please follow :ref:`developer_installation`.
-
 
 4) Get the tar file :file:`gpaw-setups-{<version>}.tar.gz` from the 
    :ref:`setups` page
@@ -78,7 +77,7 @@ Standard installation
    also be somewhere global where
    many users can access it like in :file:`/usr/share/gpaw/`.  There will
    now be a directory :file:`gpaw-setups-{<version>}/` containing all the
-   atomic data needed for doing LDA and PBE calculations.  Set the
+   atomic data needed for doing LDA, PBE, and RPBE calculations.  Set the
    environment variable :envvar:`GPAW_SETUP_PATH` to point to the directory
    :file:`gpaw-setups-{<version>}/`, e.g. put into :file:`~/.tcshrc`::
 
@@ -94,7 +93,8 @@ Standard installation
      [test]$ python test.py 2>&1 | tee test.log
 
    This will take around 20 minutes.  Please report errors to the
-   `GPAW developer mailing list`_ (send us :file:`test.log`).
+   `GPAW developer mailing list`_
+   (send us :file:`test.log`, and (only when requested) :file:`install.log`).
 
   .. _GPAW developer mailing list: gridpaw-developer@lists.berlios.de
 
