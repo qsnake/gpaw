@@ -415,24 +415,19 @@ ignored.
 Parallel calculations
 ---------------------
 
-Parallel calculations are done with MPI and a special GPAW Python
-interpreter::
+Parallel calculations are done with MPI and a special :program:`gpaw-python` python-interpreter.
 
-  $ mpirun ... gpaw-python script.py
-
-The parallelization is done both over the **k**-points (and spin in
-spin-polarized calculations) and using real-space domain
+The parallelization can be done over the **k**-points, bands, spin in
+spin-polarized calculations, and using real-space domain
 decomposition.  The code will try to make a sensible domain
 decomposition that match both the number of processors and the size of
-the unit cell.  If desired, this choise can be overruled with the
+the unit cell.  If desired, this choice can be overruled with the
 keyword ``parsize=(nx,ny,nz)``.  There is also a command line argument
-that allow you to control the domain decomposition::
-
-  $ mpirun .. gpaw-python script.py --domain-decomposition=2,2,3
+``--domain-decomposition`` that allows you to control the domain decomposition
+(see example at :ref:`submit_tool_on_niflheim`).
 
 There is more information about running parallel calculations on the
 :ref:`parallel_runs` page.
-
 
 
 .. _zero_energy:

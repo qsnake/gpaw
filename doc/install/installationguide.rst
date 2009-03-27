@@ -17,41 +17,59 @@ Requirements
 
 5) An MPI library is required for parallel calculations.
 
+.. note::
+
+   In order to use the code, you need also the setups for all your atoms (:ref:`setups`).
 
 .. _NumPy: http://www.scipy.org/NumPy
 
 See the :ref:`platforms_and_architectures` page for information on how to
 install GPAW on a specific architecture.
 
-**CAMd users**: please follow instructions for :ref:`Niflheim`.
-
-
 Standard installation
 =====================
 
 0) assuming bash
 
+.. note::
+
+   **CAMd users** installing on ``Niflheim``: please follow instructions for :ref:`Niflheim`.
+
 1) :ref:`download` the code.
 
-2) Go to the :file:`gpaw-*` directory (:file:`gpaw` if you use svn's "Latest development release"):
+2) Go to the :file:`gpaw` directory::
 
-     [~]$ cd gpaw-*
+     [~]$ cd gpaw
 
 3) install with the standard::
-
-     [gpaw]$ python setup.py install 2>&1 | tee install.log
-
-   This step requires root permissions - if you don't have that, just do a::
 
      [gpaw]$ python setup.py install --home=<my-directory>  2>&1 | tee install.log
 
    and put :file:`{<my-directory>}/lib/python` (or
    :file:`{<my-directory>}/lib64/python`) in your :envvar:`$PYTHONPATH` 
-   environment variable.  Usually :envvar:`$HOME` is a good choice for
-   :file:`{<my-directory>}`.
+   environment variable. Moreover, if parallel environment is found on your system,
+   a special :program:`gpaw-python` python-interpreter is created under
+   :file:`{<my-directory>}/bin`. Please add
+   :file:`{<my-directory>}/bin` to :envvar:`PATH`. Alternatively, the full pathname
+   :file:`{<my-directory}>/bin/gpaw-python` can be used when executing
+   parallel runs. See :ref:`parallel_installation` for details.
 
-   **Note** that this installation is suitable only as a first try,
-   if you install on a cluster, please follow :ref:`install_custom_installation`.
+   Alternatively, if you have root-permissions, you can install GPAW system-wide::
+
+     [gpaw]$ python setup.py install 2>&1 | tee install.log
+
+.. note::
+
+   Usually :envvar:`$HOME` is a good choice for :file:`{<my-directory>}`.
+
+.. note::
+
+    This installation is suitable only as a first try:
+
+     - if you install on a cluster, please follow :ref:`install_custom_installation`,
+
+     - if you are a developer, please follow :ref:`developer_installation`.
+
 
 4) Get the tar file :file:`gpaw-setups-{<version>}.tar.gz` from the 
    :ref:`setups` page
@@ -75,14 +93,10 @@ Standard installation
      [gpaw]$ cd test
      [test]$ python test.py 2>&1 | tee test.log
 
-   This will take around 20 minutes.  Please report errors to the `GPAW 
-   developer mailing list`_
+   This will take around 20 minutes.  Please report errors to the
+   `GPAW developer mailing list`_ (send us :file:`test.log`).
 
   .. _GPAW developer mailing list: gridpaw-developer@lists.berlios.de
-
-If you are a developer, you will want to install the code in a
-different way to allow code updates via SVN update.  See
-:ref:`developer_installation`.
 
 .. _install_custom_installation:
 
@@ -101,11 +115,12 @@ lines::
 
 Now, gpaw would be built with "``-Lpath_to_myblas -lmyblas
 -lmylapack``" linker flags. Look at the file :svn:`customize.py`
-itself for more possible options. After editing :svn:`customize.py`,
-follow the instructions for the standard installation from step 3 on.
+itself for more possible options.
+:ref:`platforms_and_architectures` provides examples of :file:`customize.py` for different platforms.
+After editing :svn:`customize.py`,
+follow the instructions for the :ref:`installationguide` from step 3 on.
 
-:ref:`platforms_and_architectures` provides examples of settings
-on different platforms.
+.. _parallel_installation:
 
 Parallel installation
 =====================
@@ -120,17 +135,6 @@ Additionally a user may want to enable scalapack, setting in :file:`customize.py
 
 and, if needed, providing blacs/scalapack `libraries` and `library_dirs`
 as described in :ref:`install_custom_installation`.
-
-For the parallel calculations, a special :program:`gpaw-python`
-python-interpreter is created. If GPAW was installed without root
-permissions, i.e.::
-
-  python setup.py install --home=<my-directory>  2>&1 | tee install.log
-
-:file:`{<my-directory>}/bin` should be added to
-:envvar:`PATH`. Alternatively, the full pathname
-:file:`{<my-directory}>/bin/gpaw-python` can be used when executing
-parallel runs.
 
 Instructions for running parallel calculations can be found in the
 :ref:`user manual <manual_parallel_calculations>`.
