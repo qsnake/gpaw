@@ -310,9 +310,8 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
     # Write the linear expansion coefficients for Delta SCF:
     if mode == 'all' and norbitals is not None:
-        w.dimension('norbitals', norbitals)
-
         if master:
+            w.dimension('norbitals', norbitals)
             w.add('LinearExpansionOccupations', ('nspins',
                   'nibzkpts', 'norbitals'), dtype=float)
         for s in range(wfs.nspins):
