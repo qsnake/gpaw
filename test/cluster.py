@@ -5,7 +5,6 @@ from ase.parallel import barrier, rank, size
 #from gpaw.utilities.vector import Vector3d
 from gpaw.cluster import Cluster
 from gpaw.utilities import equal
-import time
 
 R = 2.0
 CO = Atoms([Atom('C', (1, 0, 0)), Atom('O', (1, 0, R))])
@@ -57,10 +56,9 @@ fpdb='CO.pdb'
 
 cell = [2.,3.,R+2.]
 CO.set_cell(cell, scale_atoms=True)
+barrier()
 CO.write(fxyz)
-if size > 1:
-    barrier()
-    time.sleep(2)
+barrier()
 CO_b = Cluster(filename=fxyz)
 assert(len(CO) == len(CO_b))
 #for a, b in zip(cell, CO_b.get_cell().diagonal()):
@@ -68,13 +66,13 @@ assert(len(CO) == len(CO_b))
 offdiagonal = CO_b.get_cell().sum() - CO_b.get_cell().diagonal().sum()
 assert(offdiagonal == 0.0)
  
+barrier()
 CO.write(fxyz, repeat=[1,1,1])
-if size > 1:
-    barrier()
-    time.sleep(2)
+barrier()
 CO_b = Cluster(filename=fxyz)
 assert(8*len(CO) == len(CO_b)) 
  
+barrier()
 CO.write(fpdb)
 
 # read xyz files with additional info
@@ -89,7 +87,6 @@ O 0 0 1. 6. 7. 8."""
         f.close()
 
     barrier()
-    time.sleep(2)
 
     CO = Cluster(filename=fxyz)
 

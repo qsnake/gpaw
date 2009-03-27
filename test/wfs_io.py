@@ -29,12 +29,11 @@ for ending in endings:
         calc = GPAW(nbands=2, convergence={'eigenstates': 1e-3})
         H.set_calculator(calc)
         H.get_potential_energy()
+        barrier()
         calc.write(restart_wf, 'all')
         calc.write(restart, mode)
-
-    if size > 1:
         barrier()
-        time.sleep(2)
+        
     # refine the restart file containing the wfs 
     E1 = GPAW(restart_wf,
               convergence=
