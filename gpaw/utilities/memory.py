@@ -52,16 +52,26 @@ def stacksize(since=0.0):
 def maxrss():
     '''Return maximal resident memory size in bytes.
     '''
+    # see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
+
     # try to get it from rusage
     mm = resource.getrusage(resource.RUSAGE_SELF)[2]*resource.getpagesize()
     if mm > 0: return mm
 
     # try to get it from /proc/id/status
-    mm = _VmB('VmPeak:')
+    mm = _VmB('VmHWM:') # Peak resident set size ("high water mark")
+    if mm > 0: return mm
+
+    # try to get it from /proc/id/status
+    mm = _VmB('VmRss:') # Resident set size
+    if mm > 0: return mm
+
+    # try to get it from /proc/id/status
+    mm = _VmB('VmPeak:') # Peak virtual memory size
     if mm > 0: return mm
 
     # Finally, try to get the current usage from /proc/id/status
-    mm = _VmB('VmSize:')
+    mm = _VmB('VmSize:') # Virtual memory size
     if mm > 0: return mm
 
     # no more idea
