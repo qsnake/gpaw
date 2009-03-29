@@ -69,7 +69,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
-            V_nM += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
+            V_nM += dots(P_ni.conj(), dS_ii, P_Mi.T)
     if projectionsonly:
         return V_qnM
 
@@ -85,7 +85,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
-            H_MM += np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
+            H_MM += dots(P_Mi.conj(), dH_ii, P_Mi.T)
     
     # Fill in the upper triangles of H and S
     for H_MM, S_MM in zip(H_qMM, S_qMM):
@@ -123,7 +123,7 @@ def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
         for Vxc_MM, P_Mi in zip(Vxc_qMM, P_qMi):
-            Vxc_MM += np.dot(P_Mi, np.dot(H_ii, P_Mi.T))
+            Vxc_MM += dots(P_Mi.conj(), H_ii, P_Mi.T)
     return Vxc_qMM * Hartree
 
 
@@ -149,7 +149,7 @@ def get_xc2(calc, w_wG, P_awi, spin=0):
         calc.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
             D_sp, H_sp)
         H_ii = unpack(H_sp[spin])
-        xc_ww += dots(P_wi, H_ii, P_wi.T)
+        xc_ww += dots(P_wi.conj(), H_ii, P_wi.T)
     return xc_ww * Hartree
 
 
