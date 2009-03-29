@@ -347,6 +347,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
     if kpt_comm.rank == 0:
         for s in range(wfs.nspins):
             vt_sG = wfs.gd.collect(paw.hamiltonian.vt_sG[s])
+
             if master:
                 w.fill(vt_sG)
 
@@ -478,6 +479,8 @@ def read(paw, reader):
                               hamiltonian.vt_sG[s])
 
     # Read atomic density matrices and non-local part of hamiltonian:
+    density.D_asp = {}
+    hamiltonian.dH_asp = {}
     natoms = len(paw.atoms)
     wfs.rank_a = npy.zeros(natoms, int)
     density.rank_a = npy.zeros(natoms, int)
