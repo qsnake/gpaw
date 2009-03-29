@@ -111,7 +111,7 @@ def get_phs(calc, s=0):
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][s])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
-            H_MM +=  np.dot(P_Mi, np.inner(dH_ii, P_Mi).conj())
+            H_MM += dots(P_Mi.conj(), dH_ii, P_Mi.T)
 
     H_qMM += T_qMM # kinetic energy
     #fill in the upper triangle
