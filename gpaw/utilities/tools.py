@@ -129,15 +129,19 @@ def pick(a_ix, i):
     a_x = npy.dot(i, a_ix[:].reshape(shape[0], -1))
     return a_x.reshape(shape[1:])
 
-def dagger(a):
-    """Return Hermitian conjugate of input"""
-    return npy.conj(a.T)
+def dagger(a, copy=True):
+    """Return Hermitian conjugate of input
 
-def dagger_self(a):
-    """Hermitian conjugate input"""
-    a = a.T
-    if a.dtype == complex:
-        a.imag *= -1
+    If copy is False, the original array might be overwritten. This is faster,
+    but use with care.
+    """
+    if copy:
+        return np.conj(a.T)
+    else:
+        a = a.T
+        if a.dtype == complex:
+            a.imag *= -1
+        return a
 
 def project(a, b):
     """Return the projection of b onto a."""
