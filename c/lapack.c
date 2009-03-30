@@ -17,6 +17,14 @@
 #  define zpotri_ zpotri
 #  define dtrtri_ dtrtri
 #  define ztrtri_ ztrtri
+#  define dsytrf_ dsytrf
+#  define zsytrf_ zsytrf
+#  define dgetrf_ dgetrf
+#  define zgetrf_ zgetrf
+#  define dsytri_ dsytri
+#  define zsytri_ zsytri
+#  define dgetri_ dgetri
+#  define zgetri_ zgetri
 #endif
 
 int dsyev_(char *jobz, char *uplo, int *n, double *
@@ -50,6 +58,24 @@ int dtrtri_(char *uplo,char *diag, int *n, void *a,
 	    int *lda, int *info );
 int ztrtri_(char *uplo,char *diag, int *n, void *a, 
 	    int *lda, int *info );
+
+int dsytrf_(char *uplo, int *n, double *a, int *lda, int *ipiv, 
+            double *work, int *lwork, int *info);
+int zsytrf_(char *uplo, int *n, void *a, int *lda, int *ipiv, 
+            void *work, int *lwork, int *info);
+
+int dgetrf_(int *n, int *m, double *a, int *lda, int *ipiv, int *info); 
+int zgetrf_(int *n, int *m, void *a, int *lda, int *ipiv, int *info); 
+
+int dsytri_(char *uplo, int *n, double *a, int *lda, int *ipiv, 
+            double *work, int *info);
+int zsytri_(char *uplo, int *n, void *a, int *lda, int *ipiv, 
+            void *work, int *info);
+
+int dgetri_(int *n, double *a, int *lda, int *ipiv, 
+            double *work, int *lwork, int *info); 
+int zgetri_(int *n, void *a, int *lda, int *ipiv, 
+            void *work, int *lwork, int *info); 
 
 PyObject* diagonalize(PyObject *self, PyObject *args)
 {
@@ -221,3 +247,61 @@ PyObject* right_eigenvectors(PyObject *self, PyObject *args)
     }
   return Py_BuildValue("i", info);
 }
+
+PyObject* inverse_general(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  if (!PyArg_ParseTuple(args, "O", &a))
+    return NULL;
+  int n = a->dimensions[0];
+  int m = n;
+  int lda = n;
+  int lwork = n;
+  int* ipiv = GPAW_MALLOC(int, n);
+  int info = 0;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      dgetrf_(&n, &m, DOUBLEP(a), &lda, ipiv, &info);
+      dgetri_(&n, DOUBLEP(a), &lda, ipiv, work, &lwork, &info);
+      free(work);
+    }
+  else
+    {
+      void *work = GPAW_MALLOC(double_complex, lwork);
+      zgetrf_(&n, &m, (void*)COMPLEXP(a), &lda, ipiv, &info);
+      zgetri_(&n, (void*)COMPLEXP(a), &lda, ipiv, work, &lwork, &info);
+      free(work);
+    }
+  free(ipiv);
+  return Py_BuildValue("i", info);
+}
+
+PyObject* inverse_symmetric(PyObject *self, PyObject *args)
+{
+  PyArrayObject* a;
+  if (!PyArg_ParseTuple(args, "O", &a))
+    return NULL;
+  int n = a->dimensions[0];
+  int lda = n;
+  int lwork =n;
+  int* ipiv = GPAW_MALLOC(int, n);
+  int info = 0;
+  if (a->descr->type_num == PyArray_DOUBLE)
+    {
+      double* work = GPAW_MALLOC(double, lwork);
+      dsytrf_("U", &n, DOUBLEP(a), &lda, ipiv, work, &lwork, &info);
+      dsytri_("U", &n, DOUBLEP(a), &lda, ipiv, work, &info);
+      free(work);
+    }
+  else
+    {
+      void *work = GPAW_MALLOC(double_complex, lwork);
+      zsytrf_("U", &n, (void*)COMPLEXP(a), &lda, ipiv, work, &lwork, &info);
+      zsytri_("U", &n, (void*)COMPLEXP(a), &lda, ipiv, work, &info);
+      free(work);
+    }
+  free(ipiv);
+  return Py_BuildValue("i", info);
+}
+ 
