@@ -92,8 +92,8 @@ parameters = {
  'Au': {'core': '[Xe]4f', 'rcut': 2.5},
 #'Hg': Missing
 #'Tl': Missing
- 'Pb': {'core': '[Xe]4f', 'rcut': [2.4,2.6,2.4]},
- 'Bi': {'core': '[Xe]4f', 'rcut': [2.2,2.4,2.2]}
+ 'Pb': {'core': '[Xe]4f', 'rcut': [2.4, 2.6, 2.4]},
+ 'Bi': {'core': '[Xe]4f', 'rcut': [2.2, 2.4, 2.2]}
 #'Bi': Missing
 #'Po': Missing
 #'At': Missing

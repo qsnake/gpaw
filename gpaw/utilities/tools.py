@@ -1,4 +1,4 @@
-import numpy as npy
+import numpy as np
 
 def function_timer(func, *args, **kwargs):
     if 'timeout' in kwargs:
@@ -15,7 +15,7 @@ def function_timer(func, *args, **kwargs):
 
 def L_to_lm(L):
     """Convert L index to (l, m) index."""
-    l = int(npy.sqrt(L))
+    l = int(np.sqrt(L))
     m = L - l**2 - l
     return l, m
 
@@ -61,14 +61,14 @@ def get_kpoint_dimensions(kpts):
     """
     nkpts = len(kpts)
     if nkpts == 1:
-        return npy.ones(3, int)
+        return np.ones(3, int)
 
     tol = 1e-5
-    Nk_c = npy.zeros(3)
+    Nk_c = np.zeros(3)
     for c in range(3):
         # Sort kpoints in ascending order along current axis
-        slist = npy.argsort(kpts[:, c])
-        skpts = npy.take(kpts, slist)
+        slist = np.argsort(kpts[:, c])
+        skpts = np.take(kpts, slist)
 
         # Determine increment between kpoints along current axis
         DeltaK = max([skpts[n + 1, c] - skpts[n, c] for n in range(nkpts - 1)])
@@ -83,10 +83,10 @@ def construct_reciprocal(gd):
        grid defined in input grid-descriptor 'gd'.
     """
     # Calculate reciprocal lattice vectors
-    dim = npy.reshape(gd.n_c, (3, 1, 1, 1))
-    dk = 2 * npy.pi / gd.cell_c
+    dim = np.reshape(gd.n_c, (3, 1, 1, 1))
+    dk = 2 * np.pi / gd.cell_c
     dk.shape = (3, 1, 1, 1)
-    k = ((npy.indices(gd.n_c) + dim / 2) % dim - dim / 2) * dk
+    k = ((np.indices(gd.n_c) + dim / 2) % dim - dim / 2) * dk
     k2 = sum(k**2)
     k2[0, 0, 0] = 1.0
 
@@ -102,19 +102,19 @@ def coordinates(gd):
        The origin is placed in the center of the box described by the given
        grid-descriptor 'gd'.
     """
-    I  = npy.indices(gd.n_c)
-    dr = npy.reshape(gd.h_c, (3, 1, 1, 1))
-    r0 = npy.reshape(gd.h_c * gd.beg_c - .5 * gd.cell_c, (3, 1, 1, 1))
-    r0 = npy.ones(I.shape) * r0
+    I  = np.indices(gd.n_c)
+    dr = np.reshape(gd.h_c, (3, 1, 1, 1))
+    r0 = np.reshape(gd.h_c * gd.beg_c - .5 * gd.cell_c, (3, 1, 1, 1))
+    r0 = np.ones(I.shape) * r0
     xyz = r0 + I * dr
-    r2 = npy.sum(xyz**2, axis=0)
+    r2 = np.sum(xyz**2, axis=0)
 
     # Remove singularity at origin and replace with small number
     middle = gd.N_c / 2.
     # Check that middle is a gridpoint and that it is on this CPU
-    if (npy.alltrue(middle == npy.floor(middle)) and
-        npy.alltrue(gd.beg_c <= middle) and
-        npy.alltrue(middle < gd.end_c)):
+    if (np.alltrue(middle == np.floor(middle)) and
+        np.alltrue(gd.beg_c <= middle) and
+        np.alltrue(middle < gd.end_c)):
         m = (middle - gd.beg_c).astype(int)
         r2[m[0], m[1], m[2]] = 1e-12
 
@@ -126,7 +126,7 @@ def pick(a_ix, i):
     if isinstance(i, int):
         return a_ix[i]
     shape = a_ix.shape
-    a_x = npy.dot(i, a_ix[:].reshape(shape[0], -1))
+    a_x = np.dot(i, a_ix[:].reshape(shape[0], -1))
     return a_x.reshape(shape[1:])
 
 def dagger(a, copy=True):
@@ -145,19 +145,19 @@ def dagger(a, copy=True):
 
 def project(a, b):
     """Return the projection of b onto a."""
-    return a * (npy.dot(a.conj(), b) / npy.linalg.norm(a))
+    return a * (np.dot(a.conj(), b) / np.linalg.norm(a))
 
 def normalize(U):
     """Normalize columns of U."""
     for col in U.T:
-        col /= npy.linalg.norm(col)
+        col /= np.linalg.norm(col)
 
 def gram_schmidt(U):
     """Orthonormalize columns of U according to the Gram-Schmidt procedure."""
     for i, col in enumerate(U.T):
         for col2 in U.T[:i]:
-            col -= col2 * npy.dot(col2.conj(), col)
-        col /= npy.linalg.norm(col)
+            col -= col2 * np.dot(col2.conj(), col)
+        col /= np.linalg.norm(col)
 
 def lowdin(U, S=None):
     """Orthonormalize columns of U according to the Lowdin procedure.
@@ -165,10 +165,10 @@ def lowdin(U, S=None):
     If the overlap matrix is know, it can be specified in S.
     """
     if S is None:
-        S = npy.dot(dagger(U), U)
-    eig, rot = npy.linalg.eigh(S)
-    rot = npy.dot(rot / npy.sqrt(eig), dagger(rot))
-    U[:] = npy.dot(U, rot)
+        S = np.dot(dagger(U), U)
+    eig, rot = np.linalg.eigh(S)
+    rot = np.dot(rot / np.sqrt(eig), dagger(rot))
+    U[:] = np.dot(U, rot)
 
 def lowdin_svd(U):
     """Orthogonalize according to the Lowdin procedure
@@ -176,12 +176,12 @@ def lowdin_svd(U):
 
        U is an N x M matrix containing M vectors as its columns.
     """
-    Z, D, V = npy.linalg.svd(U, full_matrices=0)
-    return npy.dot(Z, V)
+    Z, D, V = np.linalg.svd(U, full_matrices=0)
+    return np.dot(Z, V)
 
 def rotate_matrix(h, U):
     """U contains the new basis as its columns"""
-    return npy.dot(dagger(U), npy.dot(h, U))
+    return np.dot(dagger(U), np.dot(h, U))
 
 def permute_basis(h, basis):
     """Permute basis of h according to list basis, specifying new order"""
@@ -190,8 +190,8 @@ def permute_basis(h, basis):
 
 def symmetrize(matrix):
     """Symmetrize input matrix."""
-    npy.add(dagger(matrix), matrix, matrix)
-    npy.multiply(.5, matrix, matrix)
+    np.add(dagger(matrix), matrix, matrix)
+    np.multiply(.5, matrix, matrix)
     return matrix
 
 def tri2full(H_nn, UL='L'):
@@ -208,7 +208,7 @@ def tri2full(H_nn, UL='L'):
     """
     N, tmp = H_nn.shape
     assert N == tmp, 'Matrix must be square'
-    #assert npy.isreal(H_nn.diagonal()).all(), 'Diagonal should be real'
+    #assert np.isreal(H_nn.diagonal()).all(), 'Diagonal should be real'
     if UL != 'L':
         H_nn = H_nn.T
 
@@ -229,14 +229,14 @@ def apply_subspace_mask(H_nn, f_n):
 def cutoff2gridspacing(E):
     """Convert planewave energy cutoff to a real-space gridspacing."""
     from ase import Hartree, Bohr
-    return .5 * npy.pi / npy.sqrt(E / Hartree) * Bohr
+    return .5 * np.pi / np.sqrt(E / Hartree) * Bohr
 
 def gridspacing2cutoff(h):
     """Convert real-space gridspacing to planewave energy cutoff."""
     # In Hartree units, E = k^2 / 2, where k_max is approx. given by pi / h
     # See PRB, Vol 54, 14362 (1996)
     from ase import Hartree, Bohr
-    return (.5 * npy.pi * Bohr / h)**2 * Hartree
+    return (.5 * np.pi * Bohr / h)**2 * Hartree
 
 def geth(cell, h=.2, nodes=None):
     """Convert suggested gridspacing to the actual gridspacing used by gpaw.
@@ -245,10 +245,10 @@ def geth(cell, h=.2, nodes=None):
     This does not take into account spin-kpoint parallelization, which will
     usually be done first.
     """
-    L_c = [npy.linalg.norm(axis) for axis in cell]
+    L_c = [np.linalg.norm(axis) for axis in cell]
     N_c = [max(4, int(.25 * L / h + .5) * 4) for L in L_c]
     print 'Grid points:', N_c
-    print 'Grid spacing:', npy.divide(L_c, N_c)
+    print 'Grid spacing:', np.divide(L_c, N_c)
     if nodes is not None:
         from gpaw.domain import decompose_domain
         print 'Domain decomposition:', decompose_domain(N_c, nodes)
