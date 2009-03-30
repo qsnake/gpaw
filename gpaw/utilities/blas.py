@@ -184,7 +184,7 @@ def _gemmdot(a, b, alpha=1., trans='n'):
 
     For the 2D matrices a, b, return::
 
-    c = alpha * a . b
+      c = alpha * a . b
 
     where '.' denotes matrix multiplication.
     If trans='t'; b is replaced by its transpose.
