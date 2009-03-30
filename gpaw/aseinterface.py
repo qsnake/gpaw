@@ -545,6 +545,11 @@ class GPAW(PAW):
 
         return f_kni.conj()
 
+    def get_dipole_moment(self, atoms=None):
+        """Return the total dipole moment in ASE units."""
+        rhot_g = self.density.rhot_g
+        return self.density.finegd.calculate_dipole_moment(rhot_g) * Bohr
+
     def get_magnetic_moment(self, atoms=None):
         """Return the total magnetic moment."""
         return self.occupations.magmom

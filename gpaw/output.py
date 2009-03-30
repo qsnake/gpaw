@@ -329,11 +329,11 @@ class PAWTextOutput:
         charge = self.finegd.integrate(self.density.rhot_g)
         t('Total Charge:  %f electrons' % charge)
 
-        dipole = self.finegd.calculate_dipole_moment(self.density.rhot_g)
+        dipole = self.get_dipole_moment()
         if self.density.charge == 0:
-            t('Dipole Moment: %s' % (dipole * Bohr))
+            t('Dipole Moment: %s' % dipole)
         else:
-            t('Center of Charge: %s' % (dipole * Bohr / abs(charge)))
+            t('Center of Charge: %s' % (dipole / abs(charge)))
 
         if self.wfs.nspins == 2:
             t()
