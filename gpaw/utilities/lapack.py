@@ -116,6 +116,21 @@ def inverse_cholesky(a, root=0):
         info = _gpaw.inverse_cholesky(a)
     return info
 
+def inverse_general(a):
+    assert a.dtype in [float, complex]
+    n = len(a)
+    assert a.shape == (n, n)
+    print 'ha', n
+    info = _gpaw.inverse_general(a)
+    return info 
+
+def inverse_symmetric(a):
+    assert a.dtype in [float, complex]
+    n = len(a)
+    assert a.shape == (n, n)
+    print 'ha', n
+    info = _gpaw.inverse_symmetric(a)
+    return info 
 
 def right_eigenvectors(a, w, v):
     """Get right eigenvectors and eigenvalues from a square matrix
