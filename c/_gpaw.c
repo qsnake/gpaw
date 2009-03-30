@@ -20,6 +20,8 @@ PyObject* dotc(PyObject *self, PyObject *args);
 PyObject* dotu(PyObject *self, PyObject *args);
 PyObject* diagonalize(PyObject *self, PyObject *args);
 PyObject* inverse_cholesky(PyObject *self, PyObject *args);
+PyObject* inverse_symmetric(PyObject *self, PyObject *args);
+PyObject* inverse_general(PyObject *self, PyObject *args);
 PyObject* right_eigenvectors(PyObject *self, PyObject *args);
 PyObject* NewLocalizedFunctionsObject(PyObject *self, PyObject *args);
 PyObject* NewOperatorObject(PyObject *self, PyObject *args);
@@ -70,6 +72,8 @@ static PyMethodDef functions[] = {
   {"dotu", dotu, METH_VARARGS, 0},
   {"diagonalize", diagonalize, METH_VARARGS, 0},
   {"inverse_cholesky", inverse_cholesky, METH_VARARGS, 0},
+  {"inverse_symmetric", inverse_symmetric, METH_VARARGS, 0},
+  {"inverse_general", inverse_general, METH_VARARGS, 0},
   {"right_eigenvectors", right_eigenvectors, METH_VARARGS, 0},
   {"LocalizedFunctions", NewLocalizedFunctionsObject, METH_VARARGS, 0},
   {"Operator", NewOperatorObject, METH_VARARGS, 0},
