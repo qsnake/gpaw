@@ -199,7 +199,9 @@ def _gemmdot(a, b, alpha=1., trans='n'):
 
 
 def _rotate(out_ii, in_jj, U_ij, a=1., b=0., work_ij=None):
-    """Do the rotation::
+    """Matrix rotation using gemm.
+
+    Do the rotation::
 
       out <- a * U . in . U^d + b * out
 
