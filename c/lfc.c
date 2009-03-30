@@ -145,7 +145,6 @@ PyObject * NewLFCObject(PyObject *obj, PyObject *args)
     if (volume->nm > nmmax)
       nmmax = volume->nm;
   }
-
   self->work_gm = GPAW_MALLOC(double, ngmax * nmmax);
   self->volume_i = GPAW_MALLOC(LFVolume, nimax);
   if (self->bloch_boundary_conditions)
@@ -168,9 +167,8 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
 
   const double* vt_G = (const double*)vt_G_obj->data;
 
-  int nM = Vt_MM_obj->dimensions[0];
+  int nM = Vt_MM_obj->dimensions[1];
   double* work_gm = lfc->work_gm;
-
   if (!lfc->bloch_boundary_conditions) {
     if (Mstart == -1) {
       double* Vt_MM = (double*)Vt_MM_obj->data;
@@ -181,12 +179,9 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
           int nm1 = v1->nm;
           int gm1 = 0;
           for (int G = Ga; G < Gb; G++)
-            for (int m1 = 0; m1 < nm1; m1++, gm1++){
-              //printf("A %f\n", v1->A_gm[gm1]);
-              //assert(v1->A_gm[gm1] != 0.0);
+            for (int m1 = 0; m1 < nm1; m1++, gm1++)
               lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
-            }
-          
+
           for (int i2 = 0; i2 < ni; i2++) {
             LFVolume* v2 = volume_i + i2;
             int M2 = v2->M;
@@ -206,52 +201,38 @@ PyObject* calculate_potential_matrix(LFCObject *lfc, PyObject *args)
       GRID_LOOP_STOP(lfc, -1);
     }
     else {
-      Mstop -= Mstart;
       double* Vt_MM = (double*)Vt_MM_obj->data;
       GRID_LOOP_START(lfc, -1) {
         for (int i1 = 0; i1 < ni; i1++) {
           LFVolume* v1 = volume_i + i1;
-          int M1 = v1->M - Mstart;
+          int M1 = v1->M;
           int nm1 = v1->nm;
-          if (M1 < 0) {
-            if (M1 + nm1 <= Mstart)
-              continue;
-            else {
-              if (M1 + nm1 <= Mstop) {
-                nm1 += M1;
-                M1 = 0;
-              }
-              else {
-                M1 = 0;
-                nm1 = Mstop;
-              }
-            }
-          }
-          else if (M1 >= Mstop)
-            continue;
-          if (M1 + nm1 > Mstop)
-            nm1 = Mstop - M1;
-          
+	  int M1p = MAX(M1, Mstart);
+	  int nm1p = MIN(M1 + nm1, Mstop) - M1p;
+	  if (nm1p <= 0)
+	    continue;
+	  int m1start = M1p - M1;
+
+          int gm = m1start;
           int gm1 = 0;
-          for (int G = Ga; G < Gb; G++)
-            for (int m1 = 0; m1 < nm1; m1++, gm1++)
-              lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm1];
-          
+          for (int G = Ga; G < Gb; G++, gm += nm1 - nm1p)
+            for (int m1 = 0; m1 < nm1p; m1++, gm1++, gm++)
+	    lfc->work_gm[gm1] = vt_G[G] * v1->A_gm[gm];
           for (int i2 = 0; i2 < ni; i2++) {
             LFVolume* v2 = volume_i + i2;
             int M2 = v2->M;
             int nm2 = v2->nm;
-            double* Vt_mm = Vt_MM + M1 * nM + M2;
+            double* Vt_mm = Vt_MM + (M1p - Mstart) * nM + M2;
+	    gm1 = 0;
             for (int g = 0; g < nG; g++)
-              for (int m1 = 0; m1 < nm1; m1++)
+              for (int m1 = 0; m1 < nm1p; m1++, gm1++)
                 for (int m2 = 0; m2 < nm2; m2++)
                   Vt_mm[m2 + m1 * nM] += (v2->A_gm[g * nm2 + m2] * 
-                                          work_gm[g * nm1 + m1] *
-                                          lfc->dv);
+                                          work_gm[gm1] * lfc->dv);
           }
-        }
-        GRID_LOOP_STOP(lfc, -1);
+	}
       }
+      GRID_LOOP_STOP(lfc, -1);
     }
   }
   else {
