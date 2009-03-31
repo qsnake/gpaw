@@ -16,6 +16,7 @@ For special topics, look at these pages:
 
 * :ref:`eigenvalues_of_core_states`
 * :ref:`generation_of_setups`
+* :ref:`electrostatic_potential`
 * Initial wave functions and densities (todo)
 * Finding the ground state (todo)
 * Density mixing (todo)
@@ -103,6 +104,7 @@ See also :epydoc:`gpaw.setup.Setup`,
 and :epydoc:`gpaw.spline.Spline`.
 
 
+.. _density:
 
 Densities
 =========
