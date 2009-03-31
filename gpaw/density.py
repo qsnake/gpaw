@@ -86,7 +86,6 @@ class Density:
         self.rhot_g = None
         self.Q_aL = None
 
-        # TODO XXX THIS FIX MIGHT NOT BE A FIX AT ALL
         # If both old and new atomic ranks are present, start a blank dict if
         # it previously didn't exist but it will needed for the new atoms.
         if (self.rank_a is not None and rank_a is not None and

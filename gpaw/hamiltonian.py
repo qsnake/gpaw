@@ -105,7 +105,6 @@ class Hamiltonian:
         self.vbar_g[:] = 0.0
         self.vbar.add(self.vbar_g)
 
-        # TODO XXX THIS FIX MIGHT NOT BE A FIX AT ALL
         # If both old and new atomic ranks are present, start a blank dict if
         # it previously didn't exist but it will needed for the new atoms.
         if (self.rank_a is not None and rank_a is not None and
@@ -115,7 +114,7 @@ class Hamiltonian:
         if self.dH_asp is not None:
             requests = []
             dH_asp = {}
-            for a in self.vbar.my_atom_indices: #TODO XXX copy/paste from density.set_positions but vbar is not nct!!!
+            for a in self.vbar.my_atom_indices: #XXX a better way to obtain?
                 if a in self.dH_asp:
                     dH_asp[a] = self.dH_asp.pop(a)
                 else:
@@ -359,7 +358,7 @@ class Hamiltonian:
 
         if newxcfunc.hybrid > 0.0 and not self.nuclei[0].ready: #bugged?
             self.set_positions(npy.array([n.spos_c * self.domain.cell_c
-                                          for n in self.nuclei]))
+                                          for n in self.nuclei]), self.rank_a)
         if newxcfunc.hybrid > 0.0:
             for nucleus in self.my_nuclei:
                 nucleus.allocate_non_local_things(self.nmyu,self.mynbands)
