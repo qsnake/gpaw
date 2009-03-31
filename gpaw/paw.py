@@ -88,7 +88,7 @@ class PAW(PAWTextOutput):
             
         self.set(**kwargs)
 
-        if filename is not None and not self.initialized:
+        if filename is not None and not self.initialized: # TODO last condition is redundant
             self.initialize()
             self.print_cell_and_parameters()
                 
@@ -118,7 +118,7 @@ class PAW(PAWTextOutput):
         for key in kwargs:
             if key in ['fixmom', 'mixer', 'basis',
                        'verbose', 'txt', 'hund', 'random',
-                       'eigensolver', 'poissonsolver', 'idiotproof']:
+                       'eigensolver', 'poissonsolver', 'idiotproof', 'notify']:
                 continue
                 
             if key in ['convergence', 'fixdensity', 'maxiter']:

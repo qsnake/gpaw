@@ -1,7 +1,9 @@
+
+import numpy as np
 from ase.units import Hartree
 
+from gpaw.notify import InputNotifier
 from gpaw.poisson import PoissonSolver
-
 
 class InputParameters(dict):
     def __init__(self):
@@ -38,7 +40,8 @@ class InputParameters(dict):
             ('convergence',   {'energy':      0.001,  # eV / atom
                                'density':     1.0e-4,
                                'eigenstates': 1.0e-9,
-                               'bands':       'occupied'})])
+                               'bands':       'occupied'}),
+            ('notify', InputNotifier(),)])
     
     def __getattr__(self, key):
         return self[key]
@@ -46,6 +49,22 @@ class InputParameters(dict):
     def __setattr__(self, key, value):
         assert key in self
         self[key] = value
+
+    def update(self, parameters):
+        assert isinstance(parameters, dict)
+
+        for key, value in parameters.items():
+            assert key in self
+
+            haschanged = (self[key] != value)
+
+            if isinstance(haschanged, np.ndarray):
+                haschanged = haschanged.any()
+
+            if haschanged:
+                self.notify(key)
+
+        dict.update(self, parameters)
 
     def read(self, reader):
         """Read state from file."""
