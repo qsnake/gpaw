@@ -488,22 +488,13 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
                 self.astart = a - 1
                 break
         while a < natoms:
-            if self.M_a[a] > self.Mstop:
-                self.astop = a - 1
+            if self.M_a[a] >= self.Mstop:
+                self.astop = a
                 break
             a += 1
         else:
-            self.astop = a
-        from gpaw import mpi
-        print mpi.rank, self.Mstart, self.Mstop,self.astart, self.astop, self.M_a
-    def atom_iter(self, spos_ac, P_aqMi):
-        astart = self.astart
-        astop = self.astop
-        ai = TwoCenterIntegrals.atom_iter(self, spos_ac[astart:astop], P_aqMi)
-        for a1, a2, r, R, phase_q, offset in ai:
-            yield (a1, a2, r, R, phase_q, offset)
-            if a1 != a2 and astart <= a2 < astop:
-                yield (a2, a1, r, -R, phase_q.conj(), -offset)
+            self.astop = natoms
+        #print self.M_a, self.astart, self.astop;adfg
 
     def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative):
         # Whether we're calculating values or derivatives, most operations
@@ -556,10 +547,10 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             for a, P_qxMi in P_aqxMi.items():
                 dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
                 for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
-                    dOP_iM = np.empty((dO_ii.shape[1], mynao), P_Mi.dtype)
-                    gemm(1.0, P_Mi[self.Mstart:self.Mstop], dO_ii, 0.0,
-                         dOP_iM, 'c')
-                    gemm(1.0, dOP_iM, P_Mi, 1.0, S_MM, 'n')
+                    dOP_iM = np.empty((dO_ii.shape[1], nao), P_Mi.dtype)
+                    gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
+                    gemm(1.0, dOP_iM, P_Mi[self.Mstart:self.Mstop],
+                         1.0, S_MM, 'n')
             del dOP_iM
 
         # As it is now, the derivative calculation does not add the PAW
@@ -569,25 +560,64 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
         comm.sum(S_qxMM)
         comm.sum(T_qxMM)
                                      
-    def overlap(self, X, symbol1, symbol2, spline1_j, spline2_j,
+    def blacs_overlap(self, X, symbol1, symbol2, spline1_j, spline2_j,
                 r, R, rlY_lm, drlYdR_lmc, phase_q, selfinteraction, M1, M2,
-                X_qxMM):
+                X_qMM):
         """Calculate overlaps or kinetic energy matrix elements for the
         (a,b) pair of atoms."""
+        
         for M1a, M1b, M2a, M2b, splines in self.slice_iter(symbol1, symbol2,
                                                            M1, M2, spline1_j,
                                                            spline2_j, X):
-            if not drlYdR_lmc:
-                X_xmm = splines.evaluate(r, R, rlY_lm)
-            else:
-                assert r != 0
-                X_xmm = splines.derivative(r, R, rlY_lm, drlYdR_lmc)
-            X_qxmm = X_xmm
-            if not self.gamma:
-                dims = np.rank(X_xmm)
-                # phase_q has a sort of funny shape (nq, 1, 1) and not (nq,)
-                phase_q = phase_q.reshape(-1, *np.ones(np.rank(X_xmm)))
-                X_qxmm = X_qxmm * phase_q.conj()
-            X_qxMM[..., M2a:M2b, M1a:M1b] += X_qxmm
-            if selfinteraction:
-                X_qxMM[..., M1a:M1b, M2a:M2b] += X_qxmm.swapaxes(-1, -2).conj()
+            M0 = self.Mstart
+            M3 = self.Mstop
+            if M1b <= M0 or M1a >= M3:
+                continue
+
+            X_mm = splines.evaluate(r, R, rlY_lm).T
+            M1ap = max(M1a, M0)
+            M1bp = min(M1b, M3)
+            A_qMM = X_qMM[:, M1ap - M0:M1bp - M0, M2a:M2b]
+            X_mm = X_mm[M1ap - M1a:M1bp - M1a]
+            A_qMM += X_mm
+
+    def stp_overlaps(self, S_qMM, T_qMM, P1_qMi, P2_qMi, a1, a2,
+                     r, R, rlY_lm, drlYdR_lmc, phase_q, selfinteraction,
+                     offset, derivative):
+        setup1 = self.setups[a1]
+        setup2 = self.setups[a2]
+        M1 = self.M_a[a1]
+        M2 = self.M_a[a2]
+
+        def reverse_Y(rlY_lm):
+            return [rlY_m * (-1)**l
+                    for l, rlY_m in enumerate(rlY_lm)]
+
+        if P2_qMi is not None:
+            # Calculate basis-basis overlaps:
+            for X, X_qMM in zip([self.S, self.T], [S_qMM, T_qMM]):
+                self.blacs_overlap(X, setup1.symbol, setup2.symbol,
+                             setup1.phit_j, setup2.phit_j,
+                             r, R, rlY_lm, drlYdR_lmc,
+                             phase_q, selfinteraction,
+                             M1, M2, X_qMM)
+            self.overlap(self.P,
+                         setup1.symbol, setup2.symbol,
+                         setup1.phit_j, setup2.pt_j,
+                         r, R, reverse_Y(rlY_lm), reverse_Y(drlYdR_lmc),
+                         phase_q.conj(), False, # XXX conj()?
+                         M1, 0, P2_qMi.swapaxes(-1, -2))
+
+        if P1_qMi is not None and (a1 != a2 or offset.any()):
+            for X, X_qMM in zip([self.S, self.T], [S_qMM, T_qMM]):
+                self.blacs_overlap(X, setup2.symbol, setup1.symbol,
+                             setup2.phit_j, setup1.phit_j,
+                             r, R, reverse_Y(rlY_lm), reverse_Y(drlYdR_lmc),
+                             phase_q.conj(), selfinteraction,
+                             M2, M1, X_qMM)
+            # XXX phase should not be conjugated here?
+            # also, what if P2 as well as P1 are not None?
+            self.overlap(self.P, setup2.symbol, setup1.symbol,
+                         setup2.phit_j, setup1.pt_j, r, R,
+                         rlY_lm, drlYdR_lmc, phase_q,
+                         False, M2, 0, P1_qMi.swapaxes(-1, -2))
