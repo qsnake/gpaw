@@ -116,11 +116,11 @@ class PAW(PAWTextOutput):
         self.initialized = False
 
         for key in kwargs:
-            if key in ['fixmom', 'mixer', 'basis',
+            if key in ['fixmom', 'mixer', 'basis', 
                        'verbose', 'txt', 'hund', 'random',
                        'eigensolver', 'poissonsolver', 'idiotproof', 'notify']:
                 continue
-                
+
             if key in ['convergence', 'fixdensity', 'maxiter']:
                 self.scf = None
                 continue
@@ -148,7 +148,7 @@ class PAW(PAWTextOutput):
                 self.wfs = EmptyWaveFunctions()
             else:
                 raise TypeError('Unknown keyword argument:' + key)
-         
+
         p.update(kwargs)
 
     def calculate(self, atoms=None, converge=False,
@@ -162,13 +162,9 @@ class PAW(PAWTextOutput):
             # First time:
             self.initialize(atoms)
             self.set_positions(atoms)
-        elif (len(atoms) != len(self.atoms) or
-              (atoms.get_atomic_numbers() !=
-               self.atoms.get_atomic_numbers()).any() or
+        elif (atoms != self.atoms or
               (atoms.get_initial_magnetic_moments() !=
-               self.atoms.get_initial_magnetic_moments()).any() or
-              (atoms.get_cell() != self.atoms.get_cell()).any() or
-              (atoms.get_pbc() != self.atoms.get_pbc()).any()):
+               self.atoms.get_initial_magnetic_moments()).any()):
             # Drastic changes:
             self.wfs = EmptyWaveFunctions()
             self.occupations = None
@@ -544,6 +540,7 @@ class PAW(PAWTextOutput):
         band_comm = world.new_communicator(ranks)
 
         assert size == domain_comm.size * kpt_comm.size * band_comm.size
+        assert kpt_comm.size <= nspins*nibzkpts
 
         return domain_comm, kpt_comm, band_comm
 
