@@ -1,89 +1,78 @@
-===
-VDW
-===
+.. _vdw:
 
-.. note::
+Introduction 
+------------ 
 
-   For the development version of the vdW-DF code, you need to
-   download this file: phi-0.500-1.000-20.000-21-201.pckl_.
+There is one method of including van der Waals forces in GPAW
+[#vdW-DF]_. This method is implemented in two different versions. The
+differences are related to how a six dimentional integral is
+calculated where one method (real space method) solves this integral
+in real space [#vdW-DF]_, while the other method solves it by
+approximating the integral as a convolution which can be Fourier
+Transformed (FFT method) [#soler]_. Both methods are using tables in
+order to speed up calculations. In the FFT method the function will
+look for an existing table with desired setups and generate one if it
+can not find a table. This requires scipy. A table with some default
+setups can be downloaded here: phi-0.500-1.000-20.000-21-201.pckl_.
 
 .. _phi-0.500-1.000-20.000-21-201.pckl: http://wiki.fysik.dtu.dk/gpaw-files/phi-0.500-1.000-20.000-21-201.pckl
 
-
-.. note::
-
-   THE DOCUMENTATION BELOW IS FOR VERSION 0.4 ONLY!!
-
-
-XXX
-
-------------
-Introduction
-------------
-
-The vdW-DF exchange correlation functional has been implemented
-following the scheme in reference [#vdW-DF]_ The vdW-DF exchange
-correlation functional implementation requires a table of phi, which
-can be downloaded here phi_. Download this an unpack it in a folder
+The real space methods table can be downloaded here phi_. Download this an unpack it in a folder
 name e.g VDW and refer to it as setenv VDW /home/user/Phi/. The
 provided interaction kernal phi has been calculated using the scripts
 which can be downloaded here: makephi_
 
 
 ---------------------------------
-Doing a van der Waals calculation
+Doing a van der Waals calculation 
 ---------------------------------
+The FFT method is up to 1000 times faster for big systems which probably makes it the weapon of choice for every GPAW vdW enthusiast
 
-A vdW calculation is done in the following way. Assuming that we have
-a input .gpw file
+The vdW-DF is implemented self consitently in GPAW. In many cases the density is hardly affected by van der Waals forces and hence it can make sense to add vdW forces to a self consistent GGA calculation . This method is possible to run parallell, with spins. This is parallellized over Nalpha, in the default case this is 20. For systems when the vdW calculation is small it can still make sense to use more than 20 CPUs since revPBE exchange and LDA correlation still can be parallellized on more CPUs.
+
+Perturbative vdW-DF calculation (Non self consistent) 
+-----------------------------------------------------
+  
+>>> from ase import *
+>>> from gpaw import *
+>>> from gpaw.vdw import FFTVDWFunctional
+>>> vdw = FFTVDWFunctional(nspins=1,
+                           Nalpha=20, lambd=1.2, 
+                           rcut=125.0, Nr=2048, 
+                           Verbose=True,
+                           size=None) 
+>>> calc = GPAW(input.gpw) 
+>>> GGA_energy = calc.get_potential_energy()
+>>> vdW_dif = calc.get_xc_difference(vdw)
+>>> vdW_energy = GGA_energy + vdW_dif 
+
+For self consistent vdW-DF calculations one should instead simply change XC functional to the vdW-DF. This can either be done in two ways.
+
+
+Self Consistent vdW-DF Calculation
+----------------------------------
 
 >>> from ase import *
 >>> from gpaw import *
->>> from ase.units import *
->>> calc = GPAW(input.gpw, txt=None)
->>> density = calc.get_all_electron_density()
->>> density = density*Bohr**3 
->>> vdw = VanDerWaals(density, calc.finegd,calc,'revPBE', ncoarsen=0)
->>> 
->>> totalenergy = calc.get_potential_energy()
->>> 
->>> corecorrected_nonlocal_correlation, nonlocal_correlation = vdw.get_energy(repeat=None, ncut=0.0005)
->>> 
->>> energy = totalenergy + corecorrected_nonlocal_correlation
+>>> from gpaw.vdw import FFTVDWFunctional
+>>> vdw = FFTVDWFunctional(nspins=1,Verbose=True)
+>>> atoms=Atoms('H'[(,0,0,0)],cell=(1,1,1),pbc=True)
+>>> calc=GPAW(xc=vdw,h=0.2,txt='H.txt')
+>>> atoms.set_calculator(calc)
+>>> e=calc.get_potential_energy()
 
-The user should check thoroughly that the grid spacing and ncut is converged.
-
-Parameters
-----------
-
-============  ==========  ===================  ===============================
-keyword       type        default value        description
-============  ==========  ===================  ===============================
-``ncut``       ``float``  ``0.0005``           Lower bound on density
-``ncoarsen``   ``str``    ``0``                Coarsening of the density grid
-``xcname``     ``str``    ``'revPBE'``         XC-functional
-``gd``                                         Grid descriptor object
-``density``                                    Density array 
-``calc``                  ``None``             Calculator object
-============  ==========  ===================  ===============================
+This is not quite the conventional method since we are now using an object and not a string. If one wants to use all the default settings it is also possible to use xc='vdW-DF' withouth having to import any vdW object. Another function is that it is now possible to extend the cell with empty space when doing a non self consistent vdW-DF calculation. This is practical since vdW interactions are long range which  would other wise have resulted in bigger cells and more demanding GGA calculations. This is referred to as zero padding. This is controlled by the 'size' argument and it only works for non periodic systems. The zero padded  cell should be a number dividable with 4. The calculations then adds zeros to the points not included in the GGA calculation.  
+ 
+It is also possible to use the slower real space method, which could make sense for smaller systems. This method is not self consistent and can only be used in the perturbative method described above. To use the real space method one changes the following lines from above:
 
 
+Real space method vdW-DF Calculation
+------------------------------------
 
-Methods
--------
+>>> from gpaw.vdw import RealSpaceVDWFunctional
+>>> vdw=RealSpaceVDWFunctional(nspins=1, repeat=None, ncut=0.0005)
 
-============================  ==========  ===============================  
-keyword                       type        description  
-============================  ==========  ===============================
-``get_kernel_plot``                        ``Returns plot of the kernel``
-``get_energy``                ``tupple``   ``Returns the energy``         
-``get_e_xc_LDA``                           ``LDA xc energy on grid``
-``get_e_c_LDA``                            ``LDA c energy on grid``
-``get_e_x_LDA``                            ``LDA x energy on grid`` 
-``get_q0``                                 ``q0 on the grid``
-``get_phitab_from_1darrays``               ``Reads phi from table``
-``get_c6``                                 ``Calculates C6 coefficients``
-============================  ==========  ===============================
+
 
 
 
@@ -91,6 +80,8 @@ keyword                       type        description
                 B. I. Lundqvist.  Van der Waals density functional for
                 general geometries.  Physical Review Letters, 92
                 (24):246401. 2004
+
+.. [#soler] Guillermo Román-Pérez and José M. Soler 
 
 .. _phi: ../../_static/phi.dat
 
