@@ -115,9 +115,9 @@ class LCAO:
             c1 = self.world.new_communicator(np.arange(B) * self.gd.comm.size)
             d1 = _gpaw.blacs_create(c1, nao, nao, 1, band_comm.size,
                                     nao, -((-nao) // band_comm.size))
-            n, m, nb, mb = sl_diagonalize
+            n, m, nb = sl_diagonalize[:3]
             c2 = self.world.new_communicator(np.arange(n * m))
-            d2 = _gpaw.blacs_create(c2, nao, nao, n, m, nb, mb)
+            d2 = _gpaw.blacs_create(c2, nao, nao, n, m, nb, nb)
             S_MM = _gpaw.scalapack_redist(self.S_MM, d1, d2)
             H_MM = _gpaw.scalapack_redist(self.H_MM, d1, d2)
             if self.world.rank < n * m:
