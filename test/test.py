@@ -87,6 +87,7 @@ if len(tests) == 0:
         'bee1.py',
         'refine.py',
         'revPBE.py',
+        'lcao_largecellforce.py',
         'lrtddft2.py',
         'nonselfconsistent.py',
         'stdout.py',
