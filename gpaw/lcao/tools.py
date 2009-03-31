@@ -33,7 +33,6 @@ def get_realspace_hs(h_skmm, s_kmm, ibzk_kc, weight_k, R_c=(0, 0, 0),
     nspins, nk, nbf = h_skmm.shape[:-1]
     c_k = np.exp(2.j * np.pi * np.dot(ibzk_kc, R_c)) * weight_k
     c_k.shape = (nk, 1, 1)
-    h_smm = np.sum((h_skmm * c_k).real, axis=1)
 
     if usesymm is None:
         h_smm = np.sum((h_skmm * c_k), axis=1)
