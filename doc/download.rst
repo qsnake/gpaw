@@ -19,11 +19,11 @@ When using svn please set the following variable:
 
    setenv GPAW_TAGS https://svn.fysik.dtu.dk/projects/gpaw/tags/
 
-======= =========== ================================== ===================== ===========
-Release Date        Retrieve as svn checkout           Retrieve as tarball   ASE release
-======= =========== ================================== ===================== ===========
-    0.4 Nov 16 2008 ``svn co $GPAW_TAGS/0.4 gpaw-0.4`` gpaw-0.4.2734.tar.gz_ ase-3.0.0_
-======= =========== ================================== ===================== ===========
+======= =========== ========================================== ===================== ===========
+Release Date        Retrieve as svn checkout                   Retrieve as tarball   ASE release
+======= =========== ========================================== ===================== ===========
+    0.4 Nov 16 2008 ``svn co -r 2734 $GPAW_TAGS/0.4 gpaw-0.4`` gpaw-0.4.2734.tar.gz_ ase-3.0.0_
+======= =========== ========================================== ===================== ===========
 
 .. _gpaw-0.4.2734.tar.gz:
     https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.4.2734.tar.gz
