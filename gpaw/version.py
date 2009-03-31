@@ -3,6 +3,8 @@
 
 version = '0.5'
 
+ase_required_svnrevision = '845'
+
 from os import popen3, path
 
 def write_svnrevision(output):

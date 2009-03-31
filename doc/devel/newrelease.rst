@@ -13,8 +13,8 @@ When it is time for a new release of the code, here is what you have to do:
   and run the test suite (run ``python test.py`` in ``tests`` directory).
 
 * If a new ase release is required to pass the tests
-  modify :trac:`test/ase3k_version.py`, reflect the change in :ref:`download`,
-  and checking the changes.
+  modify ``required_ase_svnrevision`` in :trac:`gpaw/version.py`,
+  reflect the change in :ref:`download`, and checking the changes.
 
 * Make a tag in svn, using the current version number::
 
