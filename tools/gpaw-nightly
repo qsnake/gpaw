@@ -70,7 +70,7 @@ print export
 # Run test-suite:
 os.chdir('test')
 ##if os.system(export + 'python test.py -p %s >& test.out' % tests) != 0:
-if os.system(export + 'python test.py %s >& test.out' % tests) != 0:
+if os.system(export + 'python -tt test.py %s >& test.out' % tests) != 0:
     fail('Testsuite failed!')
 try:
     failed = open('failed-tests.txt').readlines()
