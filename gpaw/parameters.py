@@ -3,7 +3,7 @@ import numpy as np
 from ase.units import Hartree
 
 from gpaw.notify import InputNotifier
-from gpaw.poisson import PoissonSolver
+from gpaw.poisson import PoissonSolver, FFTPoissonSolver
 
 class InputParameters(dict):
     def __init__(self):
@@ -138,7 +138,10 @@ class InputParameters(dict):
         else:
             self.stencils = (r['KohnShamStencil'],
                              r['InterpolationStencil'])
-            self.poissonsolver = PoissonSolver(nn=r['PoissonStencil'])
+            if r['PoissonStencil'] == 999:
+                self.poissonsolver = FFTPoissonSolver()
+            else:
+                self.poissonsolver = PoissonSolver(nn=r['PoissonStencil'])
             self.charge = r['Charge']
             self.fixmom = r['FixMagneticMoment']
 
