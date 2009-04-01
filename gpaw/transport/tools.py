@@ -3,6 +3,7 @@ from ase import Hartree
 import pickle
 import numpy as np
 from gpaw.mpi import world, rank
+from gpaw.utilities.blas import gemm
 
 
 def tri2full(M,UL='L'):
@@ -16,7 +17,11 @@ def tri2full(M,UL='L'):
         for i in range(nbf-1):
             M[i:,i] = M[i,i:].conjugate()
 
-def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
+def dagger(matrix):
+    return np.conj(matrix.T)
+
+#def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
+def k2r_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
     phase_k = np.dot(2 * np.pi * ibzk_kc, R_c)
     c_k = np.exp(1.0j * phase_k) * weight_k
     c_k.shape = (len(ibzk_kc),1,1)
@@ -38,7 +43,7 @@ def get_realspace_hs(h_skmm,s_kmm, ibzk_kc, weight_k, R_c=(0,0,0)):
     elif s_kmm == None:
         return h_smm
 
-def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
+def r2k_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
     phase_k = np.dot(2 * np.pi * R_vector, kvector)
     c_k = np.exp(-1.0j * phase_k)
     c_k.shape = (len(R_vector), 1, 1)
@@ -60,51 +65,45 @@ def get_kspace_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
     elif s_rmm == None:
         return h_smm
 
-def remove_pbc(atoms, h, s=None, d=0):
-    calc = atoms.get_calculator()
-    if not calc.initialized:
-        calc.initialize(atoms)
-    nbf = calc.nao
-   
-    cutoff = atoms.get_cell()[d,d] * 0.5
-    pos_i = get_bf_centers(atoms)[:,d]
-    for i in xrange(nbf):
-        dpos_i = np.absolute(pos_i - pos_i[i])
-        mask_i = (dpos_i < cutoff).astype(int)
-        h[i,:] = h[i,:] * mask_i
-        h[:,i] = h[:,i] * mask_i
-        if s != None:
-            s[i,:] = s[i,:] * mask_i
-            s[:,i] = s[:,i] * mask_i
-
-def get_hamiltonian(atoms):
+def get_hs(atoms):
     """Calculate the Hamiltonian and overlap matrix."""
     calc = atoms.calc
+    wfs = calc.wfs
     Ef = calc.get_fermi_level()
-    eigensolver = calc.eigensolver
-    hamiltonian = calc.hamiltonian
-    Vt_skmm = eigensolver.Vt_skmm
-    print "Calculating effective potential matrix (%i)" % rank
-    hamiltonian.calculate_effective_potential_matrix(Vt_skmm)
-    ibzk_kc = calc.ibzk_kc
-    nkpts = len(ibzk_kc)
-    nspins = calc.nspins
-    weight_k = calc.weight_k
-    nao = calc.nao
-    h_skmm = np.zeros((nspins, nkpts, nao, nao), complex)
-    s_kmm = np.zeros((nkpts, nao, nao), complex)
-    for k in range(nkpts):
-        s_kmm[k] = hamiltonian.S_kmm[k]
-        tri2full(s_kmm[k])
-        for s in range(nspins):
-            h_skmm[s,k] = calc.eigensolver.get_hamiltonian_matrix(hamiltonian,
-                                                                  k=k,
-                                                                  s=s)
-            tri2full(h_skmm[s, k])
-            h_skmm[s,k] *= Hartree
-            h_skmm[s,k] -= Ef * s_kmm[k]
+    eigensolver = wfs.eigensolver
+    ham = calc.hamiltonian
+    S_qMM = wfs.S_qMM.copy()
+    for S_MM in S_qMM:
+        tri2full(S_MM)
+    H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, complex)
+    for kpt in wfs.kpt_u:
+        eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
+        H_MM = eigensolver.H_MM
+        tri2full(H_MM)
+        H_MM *= Hartree
+        H_MM -= Ef * S_qMM[kpt.q]
+        H_sqMM[kpt.s, kpt.q] = H_MM
+    return H_sqMM, S_qMM
 
-    return h_skmm, s_kmm
+def dot(a, b):
+    assert len(a.shape) == 2 and a.shape[1] == b.shape[0]
+    dtype = complex
+    if a.dtype == complex and b.dtype == complex:
+        c = a
+        d = b
+    elif a.dtype == float and b.dtype == complex:
+        c = np.array(a, complex)
+        d = b
+    elif a.dtype == complex and b.dtype == float:
+        d = np.array(b, complex)
+        c = a
+    else:
+        dtype = float
+        c = a
+        d = b
+    e = np.empty([c.shape[0], d.shape[1]], dtype)
+    gemm(1.0, d, c, 0.0, e)
+    return e
 
 class P_info:
     def __init__(self):
@@ -234,3 +233,10 @@ def orbital_matrix_rotate_transformation(mat, X, basis_info):
             PutD(i, X, D, T)
         else:
             raise NotImplementError('undown shell name')
+        
+        
+        
+        
+        
+        
+        
