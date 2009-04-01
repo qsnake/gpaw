@@ -41,7 +41,7 @@ class InputParameters(dict):
                                'density':     1.0e-4,
                                'eigenstates': 1.0e-9,
                                'bands':       'occupied'}),
-            #('notify', InputNotifier(),)
+            ('notify', InputNotifier(),)
             ])
     
     def __getattr__(self, key):
@@ -62,8 +62,8 @@ class InputParameters(dict):
             if isinstance(haschanged, np.ndarray):
                 haschanged = haschanged.any()
 
-            #if haschanged:
-            #    self.notify(key)
+            if haschanged:
+                self.notify(key)
 
         dict.update(self, parameters)
 

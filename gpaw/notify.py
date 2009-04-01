@@ -60,7 +60,8 @@ class ChangeNotifier(dict):
 
     def extend(self, keys): #TODO allow ChangeNotifier in keys?
         values = [False]*len(keys)
-        dict.update(self, zip(keys, values))
+        extra = dict(zip(keys, values))
+        dict.update(self, extra)
 
 class EnergyNotifier(ChangeNotifier):
     def __init__(self, keys=None):
