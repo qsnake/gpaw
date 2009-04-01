@@ -8,20 +8,12 @@
 
 import os
 
-# defines where to automatically store a copy of the output
-# if no environment variables is set
-global db_path
-db_path = "/home/niflheim/repository/db"
-
-
-def set_db_path(path): 
-    global db_path
-    db_path = path
-
+# reads the path for the repository from 
+# the environment variable DB_REPOSITORY
+# and returns "", if not set
 def get_db_path():
     path = os.getenv('DB_REPOSITORY')
-    if path ==None or len(path.strip())==0:
-       global db_path
-       return db_path
+    if path == None or len(path.strip())==0:
+       return ""
     else:
        return path.strip()

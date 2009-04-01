@@ -281,11 +281,10 @@ class Writer:
 
         # Copy the file to the public location (if existant) if not there already
         dest = gpaw.db.get_db_path()
-        if os.path.exists(dest) and not self.fname.startswith(dest):
+        if len(dest)>0 and os.path.exists(dest) and not self.fname.startswith(dest):
           outfile = dest+"/"+str(time.time())+"_"+("%0.6d"%(random.randint(0,999999)))+".db"
           os.system("cp "+self.fname+" "+outfile)
           os.system("chmod "+self.private+" "+outfile)
-
 
 
 class Reader(xml.sax.handler.ContentHandler):
