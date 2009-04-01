@@ -9,8 +9,8 @@ import numpy as np
 
 from gpaw import GPAW, Mixer
 from gpaw import restart as restart_gpaw
-from gpaw.transport.tools import get_realspace_hs, get_kspace_hs, \
-     tri2full, remove_pbc
+from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full
+from gpaw.lcao.tools import get_realspace_hs, remove_pbc
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import pack
@@ -71,7 +71,7 @@ class GPAWTransport:
         self.update_lead_hamiltonian(0)
 
     def write(self, filename):
-        self.update_lead_hamiltonian(0)
+        self.update_lead_hamiltonian(0, False, False)
 
         pl1 = self.h1_skmm.shape[-1]
         h1 = np.zeros((2*pl1, 2 * pl1), complex)
@@ -82,16 +82,16 @@ class GPAWTransport:
         R_c = [0,0,0] 
         h1_sii, s1_ii = get_realspace_hs(self.h1_skmm,
                                          self.s1_kmm,
-                                         calc1.ibzk_kc, 
-                                         calc1.weight_k,
-                                         R_c=R_c)
+                                         calc1.wfs.ibzk_kc, 
+                                         calc1.wfs.weight_k,
+                                         R_c=R_c, usesymm=False)
         R_c = [0,0,0]
         R_c[self.d] = 1.0
         h1_sij, s1_ij = get_realspace_hs(self.h1_skmm,
                                          self.s1_kmm,
-                                         calc1.ibzk_kc, 
-                                         calc1.weight_k,
-                                         R_c=R_c)
+                                         calc1.wfs.ibzk_kc, 
+                                         calc1.wfs.weight_k,
+                                         R_c=R_c, usesymm=False)
 
         h1[:pl1, :pl1] = h1_sii[0]
         h1[pl1:2 * pl1, pl1:2 * pl1] = h1_sii[0]
@@ -111,7 +111,7 @@ class GPAWTransport:
 
         world.barrier()
         
-        self.update_lead_hamiltonian(1) 
+        self.update_lead_hamiltonian(1, False, False) 
         pl2 = self.h2_skmm.shape[-1]
         h2 = np.zeros((2 * pl2, 2 * pl2), complex)
         s2 = np.zeros((2 * pl2, 2 * pl2), complex)
@@ -123,7 +123,7 @@ class GPAWTransport:
                                          self.s2_kmm,
                                          calc2.wfs.ibzk_kc, 
                                          calc2.wfs.weight_k,
-                                         R_c=(0,0,0))
+                                         R_c=(0,0,0), usesymm=False)
         R_c = [0,0,0]
         R_c[self.d] = 1.0
 
@@ -131,8 +131,7 @@ class GPAWTransport:
                                          self.s2_kmm,
                                          calc1.wfs.ibzk_kc, 
                                          calc1.wfs.weight_k,
-                                         R_c=R_c)
-
+                                         R_c=R_c, usesymm=False)
 
         h2[:pl2,:pl2] = h2_sii[0]
         h2[pl2:2*pl2,pl2:2*pl2] = h2_sii[0]
@@ -154,7 +153,7 @@ class GPAWTransport:
         
         del self.atoms_l
 
-        self.update_scat_hamiltonian()
+        self.update_scat_hamiltonian(False, False, None, False)
         nbf_m = self.h_skmm.shape[-1]
         nbf = nbf_m + pl1 + pl2
         h = np.zeros((nbf, nbf), complex)
@@ -228,20 +227,21 @@ class GPAWTransport:
             self.npk = kpts.shape[0] / self.ntklead 
         self.nblead = self.h1_skmm.shape[-1]
         
-    def update_scat_hamiltonian(self, restart=False,
-                                           savefile=True, restart_file=None):
+    def update_scat_hamiltonian(self, restart=False, savefile=True,
+                                restart_file=None, cal_den=True):
         if not restart:
             atoms = self.atoms
             atoms.get_potential_energy()
             calc = atoms.calc
             rank = world.rank
             self.h_skmm, self.s_kmm = self.get_hs(atoms)
-            self.d_skmm = self.generate_density_matrix('scat')
-            if savefile:
-                calc.write('scat.gpw')
-                self.pl_write('scat.mat', (self.h_skmm,
-                                           self.d_skmm,
-                                           self.s_kmm))                        
+            if cal_den:
+                self.d_skmm = self.generate_density_matrix('scat')
+                if savefile:
+                    calc.write('scat.gpw')
+                    self.pl_write('scat.mat', (self.h_skmm,
+                                               self.d_skmm,
+                                               self.s_kmm))
         else:
             if restart_file == None:
                 restart_file = 'scat'
@@ -374,7 +374,7 @@ class GPAWTransport:
             self.h2_spkmm = spk(ntk, kpts, self.h2_skmm, 'h')
             self.s2_pkmm = spk(ntk, kpts, self.s2_kmm)
             self.h2_spkmm_ij = spk(ntk, kpts, self.h2_skmm, 'h', position)
-            self.s2_pkmm_ij = spk(ntk, kpts, self.s2_kmm, 's', position)
+            self.s2_pkmm_ij = spk(ntk, kpts, self.s2_kmm, 's', position)            
         else:
             raise TypeError('unkown lead index')
 
@@ -414,10 +414,10 @@ class GPAWTransport:
                 elif hors == 's':
                     tk_mm[j] = np.copy(k_mm[n + j])
             if hors == 'h':
-                pk_mm[:, i] = get_realspace_hs(tk_mm, None,
+                pk_mm[:, i] = k2r_hs(tk_mm, None,
                                                tkpts, weight, position)
             elif hors == 's':
-                pk_mm[i] = get_realspace_hs(None, tk_mm,
+                pk_mm[i] = k2r_hs(None, tk_mm,
                                                    tkpts, weight, position)
         return pk_mm   
             
@@ -1206,7 +1206,7 @@ class GPAWTransport:
             if ntk != 1:
                 for i in range(ntk):
                     for j in range(npk):
-                        self.d_skmm[s, j, i] = get_kspace_hs(None, dr_mm[s, j, :],
+                        self.d_skmm[s, j, i] = r2k_hs(None, dr_mm[s, j, :],
                                                              rvector, tkpts[i])
                         self.d_skmm[s, j, i] /=  ntk * self.npk 
             else:
