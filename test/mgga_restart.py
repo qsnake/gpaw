@@ -17,7 +17,7 @@ try:
 except:
     s = Cluster([Atom('H'), Atom('H', [0,0,1])])
     s.minimal_box(3.)
-    c = GPAW(xc='PBE', h=.25, convergence={'density':1e-3, 'eigenstates':1e-3})
+    c = GPAW(xc='PBE', h=.3, convergence={'density':1e-3, 'eigenstates':1e-3})
     c.calculate(s)
     c.write(fname)
     c.write(fwfname, 'all')
@@ -25,6 +25,7 @@ except:
 # full information
 c = GPAW(fwfname)
 E_PBE = c.get_potential_energy()
+c.wfs.initialize_wave_functions_from_restart_file()
 dE = c.get_xc_difference('TPSS')
 E_1 = E_PBE + dE
 print "E PBE, TPSS=", E_PBE, E_1

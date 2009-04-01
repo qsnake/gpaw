@@ -797,6 +797,10 @@ class GridWaveFunctions(WaveFunctions):
 
     def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
         """Add contribution to pseudo kinetic energy density."""
+
+        if isinstance(kpt.psit_nG, TarFileReference):
+            raise RuntimeError('Wavefunctions have not been initialized.')
+
         d_c = [Gradient(self.gd, c, dtype=self.dtype).apply for c in range(3)]
         dpsit_G = self.gd.empty(dtype=self.dtype)
         if self.dtype == float:
