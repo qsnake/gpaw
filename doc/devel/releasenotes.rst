@@ -4,7 +4,12 @@
 Release notes
 =============
 
-(The development version in trunk is now the version that will once become 0.5)
+(The development version in trunk is now the version that will once become 0.6)
+
+Version 0.5
+===========
+
+1 April 2009: :trac:`tags/0.5 <../tags/0.5>`.
 
 
 Version 0.4

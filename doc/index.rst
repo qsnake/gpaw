@@ -57,6 +57,8 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
+* :ref:`GPAW version 0.5 <releasenotes>` released (Apr  1 2009).
+
 * :ref:`GPAW version 0.4 <releasenotes>` released (Nov 13 2008).
 
 * The :ref:`exercises` are finally ready for use in the `CAMd summer

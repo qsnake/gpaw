@@ -18,7 +18,7 @@ When it is time for a new release of the code, here is what you have to do:
 
 * Make a tag in svn, using the current version number::
 
-    svn copy https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 -m "Version 0.4"
+    svn copy -r 2733 https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 -m "Version 0.4"
 
 * **Checkout** the source, specyfing the version number in the directory name::
 
@@ -34,7 +34,7 @@ When it is time for a new release of the code, here is what you have to do:
 
 * Put the tar file on web2 (set it read-able for all)::
 
-   scp dist/gpaw-0.4.2724.tar.gz root@web2:/var/www/wiki/gpaw-files
+   scp dist/gpaw-0.4.2734.tar.gz root@web2:/var/www/wiki/gpaw-files
 
 * Change the :ref:`download` link to the new tar file.
 
