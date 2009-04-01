@@ -211,6 +211,7 @@ class Transport(GPAW):
         self.gamma = len(self.kpts) == 1
         self.nbmol = self.wfs.setups.nao
         self.dimt_lead = []
+        self.dimt_buffer = []
         self.nblead = []
         self.edge_index = [[None] * self.lead_num, [None] * self.lead_num]
 
@@ -284,13 +285,14 @@ class Transport(GPAW):
             
     def get_buffer_index(self):
         if not self.use_buffer:
-            pass
+            self.dimt_buffer = [0] * self.lead_num
         elif self.LR_leads:
             for i in range(self.lead_num):
                 if i == 0:
                     self.buffer_index[i] = self.lead_index[i] - self.nblead[i]
                 if i == 1:
-                    self.buffer_index[i] = self.lead_index[i] + self.nblead[i]        
+                    self.buffer_index[i] = self.lead_index[i] + self.nblead[i]
+            self.dimt_buffer = self.dimt_lead
         else:
             basis_list = [setup.niAO for setup in self.wfs.setups]
             for i in range(self.lead_num):
@@ -298,7 +300,10 @@ class Transport(GPAW):
                     begin = np.sum(np.array(basis_list[:j], int))
                     for n in range(basis_list[j]):
                         self.buffer_index[i].append(begin + n) 
-                self.buffer_index[i] = np.array(self.buffer_index[i], int)            
+                self.buffer_index[i] = np.array(self.buffer_index[i], int)
+                self.dimt_buffer.append(self.dimt_lead[i] *
+                                        len(self.buffer_atoms[i]) /
+                                           len(self.pl_atoms[i]))
             
     def initialize_matrix(self):
         self.hl_skmm = []
@@ -1351,10 +1356,7 @@ class Transport(GPAW):
         linear_potential = np.zeros(self.hamiltonian.vt_sG.shape)
         dimt = linear_potential.shape[-1]
         dimp = linear_potential.shape[1:3]
-        if self.use_buffer:
-            buffer_dim = self.dimt_lead
-        else:
-            buffer_dim = 0
+        buffer_dim = self.dimt_buffer
         scat_dim = dimt - np.sum(buffer_dim)
         bias= []
         for i in range(self.lead_num): 
@@ -1489,7 +1491,8 @@ class Transport(GPAW):
         pylab.xlabel('Energy (eV)')
         pylab.show()
         
-    def plot_v(self, vt=None, tit=None, ylab=None, l_MM=False):
+    def plot_v(self, vt=None, tit=None, ylab=None,
+                                             l_MM=False, plot_buffer=True):
         import pylab
         self.use_linear_vt_mm = l_MM
         if vt == None:
@@ -1497,7 +1500,15 @@ class Transport(GPAW):
         dim = vt.shape
         for i in range(3):
             vt = np.sum(vt, axis=0) / dim[i]
-        pylab.plot(vt * Hartree, 'b--o')
+        db = self.dimt_buffer
+        if plot_buffer:
+            td = len(vt)
+            pylab.plot(range(db[0]), vt[:db[0]] * Hartree, 'g--o')
+            pylab.plot(range(db[0], td - db[1]),
+                               vt[db[0]: -db[1]] * Hartree, 'b--o')
+            pylab.plot(range(td - db[1], td), vt[-db[1]:] * Hartree, 'g--o')
+        else:
+            pylab.plot(vt[db[0]: db[1]] * Hartree, 'b--o')
         if ylab == None:
             ylab = 'energy(eV)'
         pylab.ylabel(ylab)
@@ -1506,14 +1517,21 @@ class Transport(GPAW):
         pylab.title(tit)
         pylab.show()
 
-    def plot_d(self, nt=None, tit=None, ylab=None):
+    def plot_d(self, nt=None, tit=None, ylab=None, plot_buffer=True):
         import pylab
         if nt == None:
             nt = self.density.nt_sG
         dim = nt.shape
         for i in range(3):
             nt = np.sum(nt, axis=0) / dim[i]
-        pylab.plot(nt, 'b--o')
+        db = self.dimt_buffer
+        if plot_buffer:
+            td = len(nt)
+            pylab.plot(range(db[0]), nt[:db[0]], 'g--o')
+            pylab.plot(range(db[0], td - db[1]), nt[db[0]: -db[1]], 'b--o')
+            pylab.plot(range(td - db[1], td), nt[-db[1]:], 'g--o')
+        else:
+            pylab.plot(nt[db[0]: db[1]], 'b--o')            
         if ylab == None:
             ylab = 'density'
         pylab.ylabel(ylab)
@@ -1588,9 +1606,12 @@ class Transport(GPAW):
                     dim = (dim[0] * world.size,) + dim[1:]
                 else:
                     raise RuntimeError('wrong matrix dimension for pl_write')
-                totalmat = np.empty(dim, dtype=matlist[i].dtype)
-                self.kpt_comm.gather(matlist[i], 0, totalmat)
-                total_matlist.append(totalmat)
+                if self.master:
+                    totalmat = np.empty(dim, dtype=matlist[i].dtype)
+                    self.kpt_comm.gather(matlist[i], 0, totalmat)
+                    total_matlist.append(totalmat)
+                else:
+                    self.kpt_comm.gather(matlist[i], 0)                    
             else:
                 total_matlist.append(matlist[i])
         if world.rank == 0:
