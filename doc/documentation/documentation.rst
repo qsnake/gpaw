@@ -37,6 +37,8 @@ GPAW calculator:
    pdos/pdos
    xas/xas
    densitymix/densitymix
+   ../devel/electrostatic_potential
+   ../devel/eigenvalues_of_core_states
 
 .. _ml:
 

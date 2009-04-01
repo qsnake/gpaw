@@ -19,7 +19,7 @@ For special topics, look at these pages:
 * :ref:`electrostatic_potential`
 * Initial wave functions and densities (todo)
 * Finding the ground state (todo)
-* Density mixing (todo)
+* :ref:`densitymix`
 * ...
 
 
