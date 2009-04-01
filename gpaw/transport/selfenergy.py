@@ -1,9 +1,7 @@
 import numpy as np
 from gpaw import GPAW
-from ase.transport.tools import dagger
-from gpaw.transport.tools import get_realspace_hs
-from gpaw.transport.tools import get_hs
-
+from gpaw.transport.tools import k2r_hs, get_hs, dagger, dot
+from gpaw.utilities.lapack import inverse_general, inverse_symmetric
 
 class LeadSelfEnergy:
     conv = 1e-8 # Convergence criteria for surface Green function
@@ -20,19 +18,24 @@ class LeadSelfEnergy:
 
     def __call__(self, energy):
         """Return self-energy (sigma) evaluated at specified energy."""
+        if self.h_im.dtype == float:
+            inv = inverse_symmetric
+        if self.h_im.dtype == complex:
+            inv = inverse_general
         if energy != self.energy:
             self.energy = energy
             z = energy - self.bias + self.eta * 1.j           
             tau_im = z * self.s_im - self.h_im
-            a_im = np.linalg.solve(self.get_sgfinv(energy), tau_im)
+            ginv = self.get_sgfinv(energy)
+            inv(ginv)
+            a_im = dot(ginv, tau_im)
             tau_mi = z * dagger(self.s_im) - dagger(self.h_im)
-            self.sigma_mm[:] = np.dot(tau_mi, a_im)
-
+            self.sigma_mm[:] = dot(tau_mi, a_im)
         return self.sigma_mm
 
     def set_bias(self, bias):
         self.bias = bias
-
+        
     def get_lambda(self, energy):
         """Return the lambda (aka Gamma) defined by i(S-S^d).
 
@@ -43,29 +46,31 @@ class LeadSelfEnergy:
         return 1.j * (sigma_mm - dagger(sigma_mm))
         
     def get_sgfinv(self, energy):
-        """The inverse of the retarded surface Green function""" 
+        """The inverse of the retarded surface Green function"""
+        if self.h_im.dtype == float:
+            inv = inverse_symmetric
+        if self.h_im.dtype == complex:
+            inv = inverse_general
         z = energy - self.bias + self.eta * 1.0j
         
         v_00 = z * dagger(self.s_ii) - dagger(self.h_ii)
         v_11 = v_00.copy()
         v_10 = z * self.s_ij - self.h_ij
         v_01 = z * dagger(self.s_ij) - dagger(self.h_ij)
-
         delta = self.conv + 1
         n = 0
         while delta > self.conv:
-            a = np.linalg.solve(v_11, v_01)
-            b = np.linalg.solve(v_11, v_10)
-            v_01_dot_b = np.dot(v_01, b)
+            inv(v_11)
+            a = dot(v_11, v_01)
+            b = dot(v_11, v_10)
+            v_01_dot_b = dot(v_01, b)
             v_00 -= v_01_dot_b
-            v_11 -= np.dot(v_10, a) 
+            v_11 -= dot(v_10, a)
             v_11 -= v_01_dot_b
-            v_01 = -np.dot(v_01, a)
-            v_10 = -np.dot(v_10, b)
-        
+            v_01 = -dot(v_01, a)
+            v_10 = -dot(v_10, b)
             delta = np.abs(v_01).max()
             n += 1
-
         return v_00
     
 class CellSelfEnergy:
@@ -121,11 +126,14 @@ class CellSelfEnergy:
         h_mm, s_mm = get_realspace_hs(h_skmm, s_kmm, kpts, weight)
         g_skmm = np.empty(h_skmm.shape, h_skmm.dtype)
         sigma = np.empty([ns, nb, nb], complex)
+        inv = inverse_general
         for s in range(ns):
             for k in range(nk):
-                g_skmm[s, k] = np.linalg.inv(energy * s_kmm[k] - h_skmm[s, k])
+                g_skmm[s, k] = energy * s_kmm[k] - h_skmm[s, k]
+                inv(g_skmm[s, k])
             g_mm = get_realspace_hs(g_skmm, None, kpts, weight)
-            sigma[s] = energy * s_mm - h_mm - np.linalg.inv(g_mm[s])
+            inv(g_mm[s])
+            sigma[s] = energy * s_mm - h_mm - g_mm[s]
         return sigma          
             
         
