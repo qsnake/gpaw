@@ -9,10 +9,10 @@
 import os
 
 # reads the path for the repository from 
-# the environment variable DB_REPOSITORY
+# the environment variable CMR_REPOSITORY
 # and returns "", if not set
 def get_db_path():
-    path = os.getenv('DB_REPOSITORY')
+    path = os.getenv('CMR_REPOSITORY')
     if path == None or len(path.strip())==0:
        return ""
     else:
