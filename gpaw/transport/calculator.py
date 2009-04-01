@@ -592,8 +592,8 @@ class Transport(GPAW):
         for kpt in calc.wfs.kpt_u:
             C_nm = kpt.C_nM
             f_nn = np.diag(kpt.f_n)
-            d_skmm[kpt.s, kpt.q] = dot(C_nm.T.conj(),
-                                          dot(f_nn, C_nm)) * ntk * npk
+            d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
+                                          np.dot(f_nn, C_nm)) * ntk * npk
         return d_skmm
     
     def fill_density_matrix(self):
@@ -628,6 +628,7 @@ class Transport(GPAW):
         
         for i in range(self.lead_num):
             self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
+            self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
             self.hl_skmm[i][:] += self.sl_kmm[i] * self.e_float[i]
 
         for i in range(self.lead_num):
@@ -657,7 +658,7 @@ class Transport(GPAW):
         self.timer.stop('HamMM')
         self.h_spkmm = self.substract_pk(self.ntkmol, self.kpts,
                                          self.h_skmm, 'h')
-        if self.verbose and self.master:
+        if self.master:
             self.text('HamMM', self.timer.gettime('HamMM'), 'second')        
   
     def get_density_matrix(self):
@@ -686,7 +687,7 @@ class Transport(GPAW):
                     self.d_spkmm[s, k, ind.T, ind] = self.spin_coff *   \
                                                      self.fock2den(s, k)
         self.timer.stop('DenMM')
-        if self.verbose and self.master:
+        if self.master:
             n_epoint = len(self.eqpathinfo[0][0].energy) + len(
                                          self.nepathinfo[0][0].energy)
             self.text('Energy Points on integral path %d' % n_epoint)
