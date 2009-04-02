@@ -5,6 +5,29 @@
 #include "extensions.h"
 #include <math.h>
 
+#ifdef GPAW_CRAYPAT
+#include <pat_api.h>
+
+PyObject* craypat_region_begin(PyObject *self, PyObject *args)
+{
+  int n;
+  char* s;
+  if (!PyArg_ParseTuple(args, "is", &n, &s))
+    return NULL;
+  PAT_region_begin(n, s);
+  Py_RETURN_NONE;
+}
+
+PyObject* craypat_region_end(PyObject *self, PyObject *args)
+{
+  int n;
+  if (!PyArg_ParseTuple(args, "i", &n))
+    return NULL;
+  PAT_region_end(n);
+  Py_RETURN_NONE;
+}
+#endif
+
 
 // returns the distance between two 3d double vectors
 double distance(double *a, double *b)

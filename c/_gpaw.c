@@ -10,6 +10,13 @@ void HPM_Print(void);
 void HPM_Print_Flops(void);
 #endif
 
+#ifdef GPAW_CRAYPAT
+#include <pat_api.h>
+PyObject* craypat_region_begin(PyObject *self, PyObject *args);
+PyObject* craypat_region_end(PyObject *self, PyObject *args);
+#endif
+
+
 PyObject* gemm(PyObject *self, PyObject *args);
 PyObject* axpy(PyObject *self, PyObject *args);
 PyObject* d2Excdnsdnt(PyObject *self, PyObject *args);
@@ -117,6 +124,10 @@ static PyMethodDef functions[] = {
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
 #endif
 #endif
+#ifdef GPAW_CRAYPAT
+  {"craypat_region_begin", craypat_region_begin, METH_VARARGS, 0},
+  {"craypat_region_end", craypat_region_end, METH_VARARGS, 0},
+#endif
   {0, 0, 0, 0}
 };
 
@@ -169,6 +180,7 @@ main(int argc, char **argv)
   int myid, numprocs, i, procnamesize;
   char procname[MPI_MAX_PROCESSOR_NAME];
 #endif
+
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
 #ifdef GPAW_BGP_MAP
