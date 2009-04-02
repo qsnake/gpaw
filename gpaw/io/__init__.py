@@ -440,6 +440,7 @@ def read(paw, reader):
     wfs = paw.wfs
     density = paw.density
     hamiltonian = paw.hamiltonian
+    natoms = len(paw.atoms)
 
     world = paw.wfs.world
     domain_comm = wfs.gd.comm
@@ -464,34 +465,35 @@ def read(paw, reader):
             else:
                 paw.warn(str)
             
-    # Read pseudoelectron density pseudo potential on the coarse grid
+    # Read pseudoelectron density on the coarse grid
     # and distribute out to nodes:
-    density.nt_sG = wfs.gd.empty(wfs.nspins)
-    for s in range(wfs.nspins):
+    density.nt_sG = paw.gd.empty(density.nspins)
+    for s in range(density.nspins):
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
                           density.nt_sG[s])
 
-    
-    if version > 0.3:
-        hamiltonian.vt_sG = wfs.gd.empty(wfs.nspins)
-        for s in range(wfs.nspins): 
-            paw.gd.distribute(r.get('PseudoPotential', s),
-                              hamiltonian.vt_sG[s])
-
-    # Read atomic density matrices and non-local part of hamiltonian:
+    # Read atomic density matrices
     density.D_asp = {}
-    hamiltonian.dH_asp = {}
-    natoms = len(paw.atoms)
-    wfs.rank_a = npy.zeros(natoms, int)
     density.rank_a = npy.zeros(natoms, int)
-    hamiltonian.rank_a = npy.zeros(natoms, int)
-
     if domain_comm.rank == 0:
         density.D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices',
                                              wfs.setups)
-        if version > 0.3:
-            hamiltonian.dH_asp = read_atomic_matrices(r, \
-                'NonLocalPartOfHamiltonian', wfs.setups)
+
+    # Read pseudo potential on the coarse grid
+    # and distribute out to nodes:    
+    if version > 0.3:
+        hamiltonian.vt_sG = paw.gd.empty(hamiltonian.nspins)
+        for s in range(hamiltonian.nspins): 
+            paw.gd.distribute(r.get('PseudoPotential', s),
+                              hamiltonian.vt_sG[s])
+
+    # Read non-local part of hamiltonian
+    hamiltonian.dH_asp = {}
+    hamiltonian.rank_a = npy.zeros(natoms, int)
+
+    if domain_comm.rank == 0 and version > 0.3:
+        hamiltonian.dH_asp = read_atomic_matrices(r, \
+            'NonLocalPartOfHamiltonian', wfs.setups)
 
     hamiltonian.Ekin = r['Ekin']
     hamiltonian.Epot = r['Epot']
@@ -503,6 +505,12 @@ def read(paw, reader):
     hamiltonian.Exc = r['Exc']
     hamiltonian.S = r['S']
     hamiltonian.Etot = r.get('PotentialEnergy') - 0.5 * hamiltonian.S
+
+    # Read GLLB-releated stuff
+    if hamiltonian.xcfunc.gllb:
+        hamiltonian.xcfunc.xc.read(r)
+
+    wfs.rank_a = npy.zeros(natoms, int)
 
     if version > 0.3:
         paw.scf.converged = r['Converged']
@@ -599,10 +607,6 @@ def read(paw, reader):
         paw.forces.F_av = r.get('CartesianForces')
     else:
         paw.forces.reset()
-
-    # Read GLLB-releated stuff
-    if hamiltonian.xcfunc.gllb:
-        hamiltonian.xcfunc.xc.read(r)
 
 def read_atoms(reader):
     if isinstance(reader, str):
