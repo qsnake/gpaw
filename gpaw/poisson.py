@@ -43,6 +43,9 @@ class PoissonSolver:
         self.dv = gd.dv
 
         if self.nn == 'M':
+            if (gd.cell_cv - npy.diag(gd.cell_cv.diagonal())).any():
+                raise RuntimeError('Cannot use Mehrstellen stencil with non orthogonal cell.')
+
             self.operators = [LaplaceA(gd, -scale)]
             self.B = LaplaceB(gd)
         else:
@@ -304,21 +307,13 @@ class FFTPoissonSolver(PoissonSolver):
         self.eps = eps
 
     def set_grid_descriptor(self, gd):
-        assert gd.comm.size == 1 and gd.pbc_c.all()
+        if gd.comm.size > 1:
+            raise RuntimeError('Cannot do parallel FFT.')
+        assert gd.pbc_c.all()
         PoissonSolver.set_grid_descriptor(self, gd)
 
     def initialize(self):
-        gd = self.gd
-        N_c1 = gd.N_c[:, npy.newaxis]
-        i_cq = npy.indices(gd.N_c).reshape((3, -1))
-        i_cq += N_c1 // 2
-        i_cq %= N_c1
-        i_cq -= N_c1 // 2
-        B_vc = 2.0 * pi * gd.icell_cv.T
-        k_vq = npy.dot(B_vc, i_cq)
-        k_vq *= k_vq
-        self.k2_Q = k_vq.sum(axis=0).reshape(gd.N_c)
-        self.k2_Q[0, 0, 0] = 42.0
+        self.k2_Q, self.N3 = construct_reciprocal(self.gd)
 
     def solve_neutral(self, phi_g, rho_g, eps=None):
         phi_g[:] = ifftn(fftn(rho_g) * 4.0 * pi / self.k2_Q).real
