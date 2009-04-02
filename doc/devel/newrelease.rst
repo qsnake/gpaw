@@ -13,23 +13,27 @@ When it is time for a new release of the code, here is what you have to do:
   and run the test suite (run ``python test.py`` in ``tests`` directory).
 
 * If a new ase release is required to pass the tests
-  modify ``required_ase_svnrevision`` in :trac:`gpaw/version.py`,
-  reflect the change in :ref:`download`, and checking the changes.
+  modify ``required_ase_version`` and ``required_ase_svnrevision``
+  in :trac:`gpaw/version.py`, and checkin the changes.
 
-* Make a tag in svn, using the current version number::
+* Make a tag in svn, using the current version number
+  (to make sure **not** to include changes done by other developers
+  in the meantime!)::
 
     svn copy -r 2733 https://svn.fysik.dtu.dk/projects/gpaw/trunk https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 -m "Version 0.4"
 
+  **Note** the resulting tag's revision ``tags_revision``.
+
 * **Checkout** the source, specyfing the version number in the directory name::
 
-   svn co https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
+   svn co -r tags_revision https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
 
 * Create the tar file::
 
    cd gpaw-0.4
    python setup.py sdist
 
-  Note that the current svn release number is put into the name of the
+  Note that the ``tags_revision`` is put into the name of the
   tar file automatically.
 
 * Put the tar file on web2 (set it read-able for all)::
