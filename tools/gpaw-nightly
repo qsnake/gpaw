@@ -33,21 +33,32 @@ def fail(msg, filename='/dev/null'):
     raise SystemExit
 
 
-tests = ''
+args = ''
 # For a quick test - uncomment this line:
-#tests = 'gradient.py hydrogen.py'
-#tests = 'PBE.py Gauss.py parallel-restart.py parmigrate.py wannier-hwire.py'
-#tests = 'parmigrate.py'
+#args = 'gradient.py hydrogen.py'
+#args = 'PBE.py Gauss.py parallel-restart.py parmigrate.py wannier-hwire.py'
+#args = 'parmigrate.py'
 
 tmpdir = tempfile.mkdtemp(prefix='gpaw-')
 os.chdir(tmpdir)
+
+day = time.localtime()[6]
 
 # Checkout a fresh version and install:
 if os.system('svn export ' +
              'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
     fail('Checkout of gpaw failed!')
+
+if day % 2:
+    d = {}
+    execfile('gpaw/gpaw/version.py', d)
+    aserevision = 'tags/' + d['ase_required_version']
+else:
+    aserevision = 'trunk'
+
 if os.system('svn export ' +
-             'https://svn.fysik.dtu.dk/projects/ase/trunk ase') != 0:
+             'https://svn.fysik.dtu.dk/projects/ase/%s ase' %
+             aserevision) != 0:
     fail('Checkout of ASE failed!')
 os.chdir('gpaw')
 if os.system('python setup.py install --home=%s ' % tmpdir +
@@ -64,13 +75,12 @@ os.system('tar xvzf gpaw-setups-latest.tar.gz')
 setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
 export = ('export PYTHONPATH=%s/lib/python; ' % tmpdir +
           'export GPAW_SETUP_PATH=%s; ' % setups)
-print export
 
-
+if day % 4 < 2:
+    args = '--debug ' + args
 # Run test-suite:
 os.chdir('test')
-##if os.system(export + 'python test.py -p %s >& test.out' % tests) != 0:
-if os.system(export + 'python -tt test.py %s >& test.out' % tests) != 0:
+if os.system(export + 'python -tt test.py %s >& test.out' % args) != 0:
     fail('Testsuite failed!')
 try:
     failed = open('failed-tests.txt').readlines()
@@ -196,13 +206,12 @@ print >> f, """\
 
 # Coverage test:
 os.chdir('test')
-day = time.localtime()[6]
 if day == 3:  # only Sunday
     if os.system(export +
                  'rm %s/*.cover; ' % dir +
                  'python %s/trace.py' % os.path.dirname(trace.__file__) +
                  ' --count --coverdir coverage --missing' +
-                 ' --ignore-dir /usr:%s test.py %s' % (home, tests)) != 0:
+                 ' --ignore-dir /usr:%s test.py %s' % (home, args)) != 0:
         fail('Coverage failed!')
     
     filenames = glob.glob('coverage/gpaw.*.cover')
@@ -264,5 +273,5 @@ os.system(export + 'cd ..; rm -rf gpaw/gui; '+
 if ' Warning:' in open('../warnings').read():
     send_jj_email('Warning(s) from epydoc!', '../warnings')
 
-#os.system('cd; rm -r ' + tmpdir)
+os.system('cd; rm -r ' + tmpdir)
 
