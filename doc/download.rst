@@ -22,15 +22,15 @@ When using svn please set the following variable:
 ======= =========== ========================================== ===================== ===========
 Release Date        Retrieve as svn checkout                   Retrieve as tarball   ASE release
 ======= =========== ========================================== ===================== ===========
-   0.5_ Apr  1 2009 ``svn co -r 3658 $GPAW_TAGS/0.5 gpaw-0.5`` gpaw-0.5.3658.tar.gz_ ase-3.1.0_
+   0.5_ Apr  1 2009 ``svn co -r 3667 $GPAW_TAGS/0.5 gpaw-0.5`` gpaw-0.5.3667.tar.gz_ ase-3.1.0_
    0.4_ Nov 16 2008 ``svn co -r 2734 $GPAW_TAGS/0.4 gpaw-0.4`` gpaw-0.4.2734.tar.gz_ ase-3.0.0_
 ======= =========== ========================================== ===================== ===========
 
 .. _0.5:
     https://trac.fysik.dtu.dk/projects/gpaw/browser/tags/0.5
 
-.. _gpaw-0.5.3658.tar.gz:
-    https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.5.3658.tar.gz
+.. _gpaw-0.5.3667.tar.gz:
+    https://wiki.fysik.dtu.dk/gpaw-files/gpaw-0.5.3667.tar.gz
 
 .. _ase-3.1.0:
     https://svn.fysik.dtu.dk/projects/ase/tags/3.1.0
