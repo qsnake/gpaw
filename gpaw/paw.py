@@ -421,6 +421,9 @@ class PAW(PAWTextOutput):
             if self.gd is not None and self.gd.comm.size != domain_comm.size:
                 # Domain decomposition has changed, so we need to
                 # reinitialize density and hamiltonian:
+                if par.fixdensity:
+                    raise RuntimeError("I'm confused - please specify parsize."
+                                       )
                 self.density = None
                 self.hamiltonian = None
 
