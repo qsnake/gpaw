@@ -1,7 +1,8 @@
 
 import numpy as npy
-import gpaw.mpi as mpi
 
+from gpaw import debug, parsize, parsize_bands
+from gpaw import mpi
 from gpaw.utilities.blas import axpy
 
 """
@@ -35,12 +36,36 @@ def dscf_find_lumo(paw,band):
 
 # -------------------------------------------------------------------
 
+"""
 def mpi_debug(text):
     if isinstance(text,list):
         for t in text:
             mpi_debug(t)
     else:
         print 'mpi.rank=%d, %s' % (mpi.rank,text)
+"""
+
+global msgcount
+msgcount = 0
+
+def mpi_debug(data, ordered=True):
+    global msgcount
+
+    if not isinstance(data, list):
+        data = [data]
+
+    if ordered:
+        for i in range(mpi.rank):
+            mpi.world.barrier()
+
+    for txt in data:
+        print '%02d-mpi%d, %s' % (msgcount, mpi.rank, txt)
+        if ordered:
+            msgcount += 1
+
+    if ordered:
+        for i in range(mpi.size-mpi.rank):
+            mpi.world.barrier()
 
 # -------------------------------------------------------------------
 
@@ -50,7 +75,7 @@ def dscf_find_atoms(atoms,symbol):
 
 # -------------------------------------------------------------------
 
-def dscf_find_bands(paw,bands,data=None,debug=False):
+def dscf_find_bands(paw,bands,data=None):
     """Entirely serial, but works regardless of parallelization. DOES NOT WORK WITH DOMAIN-DECOMPOSITION IN GPAW v0.5.2725 """ #TODO!
 
     if data is None:
@@ -125,18 +150,15 @@ def dscf_find_bands(paw,bands,data=None,debug=False):
 
 # -------------------------------------------------------------------
 
-def dscf_linear_combination(paw, molecule, bands, coefficients, debug=False):
+def dscf_linear_combination(paw, molecule, bands, coefficients):
     """Full parallelization over k-point - grid-decomposition parallelization needs heavy testing.""" #TODO!
 
     if debug: dumpkey = mpi.world.size == 1 and 'serial' or 'mpi'
 
     (band_ui,coeff_ui,) = dscf_find_bands(paw,bands,coefficients)
 
-    #if debug: mpi_debug('nkpts=%d, ni=%d, len(paw.wfs.kpt_u)=%d' % (paw.wfs.nibzkpts,paw.wfs.setups[0].ni, len(paw.wfs.kpt_u)))
-    if debug: mpi_debug('band_ui=%s, coeff_ui=%s' % (str(band_ui),str(coeff_ui)))
-    if debug: mpi_debug(['u=%d, k=%d, s=%d, paw.wfs.kpt_comm.rank=%d, k_c=%s' % (u,kpt.k,kpt.s,paw.wfs.kpt_comm.rank,paw.wfs.ibzk_kc[kpt.k]) for u,kpt in enumerate(paw.wfs.kpt_u)])
+    if debug: mpi_debug('band_ui=%s, coeff_ui=%s' % (band_ui,coeff_ui))
 
-    #P_aui = npy.zeros((len(molecule),len(paw.wfs.kpt_u),paw.wfs.setups[0].ni),dtype=complex)
     P_aui = {}
     for m,a in enumerate(molecule):
         if debug: mpi_debug('a=%d, paw.wfs.nibzkpts=%d, len(paw.wfs.kpt_u)=%d, paw.wfs.setups[%d].ni=%d' % (a,paw.wfs.nibzkpts,len(paw.wfs.kpt_u),a,paw.wfs.setups[a].ni))
