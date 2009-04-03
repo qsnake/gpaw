@@ -9,6 +9,11 @@ Here you find information about the the system
 
 Follow instructions from `<http://www.gbar.dtu.dk/index.php/GridEngine>`_ to create :file:`~/.grouprc`.
 
+Use ``python2.5`` and enable ``numpy``/``matplotlib``::
+
+ alias python="LD_PRELOAD=/opt/csw/lib/libncurses.so /usr/local/gbar/cswbin/python2.5"
+ export PYTHONPATH=/usr/local/gbar/lib/pythonmodules
+
 To build gpaw add to the ``gpaw/customize.py``:
 
   library_dirs += ['/opt/csw/lib']
@@ -46,5 +51,11 @@ Download `MPIscript.sh <http://www.hpc.dtu.dk/GridEngine/MPIscript.sh>`_ and edi
 Submit jobs like this::
 
   qsub -N test -pe HPC 2 MPIscript.sh
+
+
+.. note::
+
+   All scripts making use of ``#!/usr/bin/env python`` must be changed
+   to use ``#!/usr/bin/env python2.5`` instead.
 
 .. _bohr_gbar_dtu_dk:
