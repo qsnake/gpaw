@@ -50,3 +50,5 @@ If you can't find what you are looking for, ask on the `mailing list`_.
 
 .. _mailing list: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
 .. _Python: http://www.python.org
+
+or one of the other :ref:`mailing_lists`.
