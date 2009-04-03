@@ -316,7 +316,11 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         assert B1 == nB
 
         if self.gamma:
-            self.phase_qW = np.empty((0, nW), complex)
+            if self.dtype == float:
+                self.phase_qW = np.empty((0, nW), complex)
+            else:
+                # TDDFT calculation:
+                self.phase_qW = np.ones((1, nW), complex)
         else:
             self.phase_qW = np.exp(2j * pi * np.inner(self.ibzk_qc, sdisp_Wc))
 
@@ -379,6 +383,8 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                    a,i
         """
         assert not self.use_global_indices
+        if q == -1:
+            assert self.dtype == float
         
         if isinstance(c_axi, float):
             assert q == -1
@@ -458,7 +464,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
                    /     x       i
         """
         assert not self.use_global_indices
-
+        if q == -1:
+            assert self.dtype == float
+        
         dtype = a_xG.dtype
         
         xshape = a_xG.shape[:-3]
