@@ -47,6 +47,48 @@ def get_vxc(paw, spin=0, U=None):
     return Vxc_nn * Hartree
 
 
+def get_vxc2(paw):
+    """Calculate matrix elements of the xc-potential."""
+    dtype = paw.wfs.dtype
+    nbands = paw.wfs.nbands
+    nu = len(paw.wfs.kpt_u)
+    if paw.density.nt_sg is None:
+        paw.density.interpolate()
+
+    # Allocate space for result matrix
+    Vxc_unn = np.empty((nu, nbands, nbands), dtype=dtype)
+
+    # Get pseudo xc potential on the grid
+    Vxct_sG = paw.gd.empty(paw.wfs.nspins)
+    for nt_g, Vxct_G in zip(paw.density.nt_sg, Vxct_sG):
+        Vxct_g = paw.finegd.zeros()
+        paw.hamiltonian.xc.get_energy_and_potential(nt_g, Vxct_g)
+        paw.hamiltonian.restrict(Vxct_g, Vxct_G)
+
+    # Get atomic corrections to the xc potential
+    Vxc_asp = {}
+    for a, D_sp in paw.density.D_asp.items():
+        Vxc_asp[a] = np.zeros_like(D_sp)
+        paw.wfs.setups[a].xc_correction.calculate_energy_and_derivatives(
+            D_sp, Vxc_asp[a])
+
+    # Project potential onto the eigenstates
+    for kpt, Vxc_nn in xip(paw.wfs.kpt_u, Vxc_unn):
+        s, q = kpt.s, kpt.q
+        psit_nG = kpt.psit_nG[:]
+
+        # Project pseudo part
+        r2k(.5 * paw.gd.dv, psit_nG, Vxct_sG[s] * psit_nG, 0.0, Vxc_nn)
+        tri2full(Vxc_nn, 'L')
+        paw.gd.comm.sum(Vxc_nn)
+
+        # Add atomic corrections
+        for a, P_ni in kpt.P_ani.items():
+            Vxc_ii = unpack(Vxc_asp[a][s])
+            Vxc_nn += np.dot(P_ni.conj(), np.dot(H_ii, P_ni.T))
+    return Vxc_unn
+
+
 class Coulomb:
     """Class used to evaluate two index coulomb integrals."""
     def __init__(self, gd, poisson=None):
