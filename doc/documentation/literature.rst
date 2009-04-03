@@ -160,7 +160,14 @@ A study of gold cluster stability on a rutile TiO\ :sub:`2` surface, and CO adso
 
 .. 26 January 2009
 
+Interpretation of STM images with DFT calculations:
+  | F. Yin, J. Akola, P. Koskinen, M. Manninen, and R. E. Palmer
+  | `Bright Beaches of Nanoscale Potassium Islands on Graphite in STM Imaging`__  
+  | Physical Review Letters, Vol. **102**, 106102 (2009)
 
+  __ http://dx.doi.org/10.1103/PhysRevLett.102.106102
+
+.. 13 March 2009
 
 Articles on the PAW formalism
 -----------------------------
