@@ -422,7 +422,7 @@ class LCAOWaveFunctions(WaveFunctions):
                                   'wavefunctions is not implemented.')
 
     def calculate_forces(self, hamiltonian, F_av):
-        spos_ac = hamiltonian.vbar.spos_ac # XXX ugly way to obtain spos_ac
+        spos_ac = self.tci.atoms.get_scaled_positions()
         nao = self.setups.nao
         nq = len(self.ibzk_qc)
         dtype = self.dtype
