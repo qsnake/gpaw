@@ -16,7 +16,7 @@ atoms.center()
 atoms.set_calculator(GPAW(h=0.3,
                           xc='PBE',
                           basis={'Na': basis},
-                          kpts=(1,1,3),
+                          kpts=(2,2,3),
                           width=0.01,
                           mode='lcao',
                           txt='Na_lcao.txt',
@@ -31,7 +31,6 @@ gpawtran = GPAWTransport(atoms=atoms,
                          pl_atoms=(pl_atoms1, pl_atoms2),
                          pl_cells=(pl_cell1, pl_cell2),
                          d=2) 
-gpawtran.negf_prepare(scat_restart=False, lead_restart=False)
+gpawtran.negf_prepare(scat_restart=False, lead_restart=False, savefile=False)
 gpawtran.get_selfconsistent_hamiltonian(bias=0, gate=0,verbose=0)
-filename = 'Na4_eq'
-gpawtran.output(filename)
+
