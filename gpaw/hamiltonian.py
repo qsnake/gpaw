@@ -63,7 +63,10 @@ class Hamiltonian:
         
         # Solver for the Poisson equation:
         if psolver is None:
-            psolver = PoissonSolver(nn='M', relax='J')
+            if gd.is_non_orthogonal():
+                psolver = PoissonSolver(nn=2, relax='J')
+            else:
+                psolver = PoissonSolver(nn='M', relax='J')
         self.poisson = psolver
         self.poisson.set_grid_descriptor(finegd)
 

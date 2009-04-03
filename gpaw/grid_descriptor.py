@@ -514,6 +514,9 @@ class GridDescriptor(Domain):
         """Get the number of bytes used by a grid of specified dtype."""
         return long(np.prod(self.n_c)) * np.array(1, dtype).itemsize
 
+    def is_non_orthogonal(self):
+        return (self.cell_cv - np.diag(self.cell_cv.diagonal())).any()
+
 
 class RadialGridDescriptor:
     """Descriptor-class for radial grid."""

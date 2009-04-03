@@ -43,7 +43,7 @@ class PoissonSolver:
         self.dv = gd.dv
 
         if self.nn == 'M':
-            if (gd.cell_cv - npy.diag(gd.cell_cv.diagonal())).any():
+            if gd.is_non_orthogonal():
                 raise RuntimeError('Cannot use Mehrstellen stencil with non orthogonal cell.')
 
             self.operators = [LaplaceA(gd, -scale)]
