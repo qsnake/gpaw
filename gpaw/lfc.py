@@ -459,8 +459,8 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         ::
         
-                   /             a
-          c_axi =  | dG a (G) Phi (G)
+                   /             a*
+          c_axi =  | dG a (G) Phi  (G)
                    /     x       i
         """
         assert not self.use_global_indices
@@ -520,8 +520,8 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         ::
         
-                    d   /             a
-          c_axiv =  --  | dG a (G) Phi (G)
+                    d   /             a*
+          c_axiv =  --  | dG a (G) Phi  (G)
                     dv  /     x       i
 
         where v is either x, y, or z.
@@ -675,9 +675,9 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
 
         ::
         
-                  /
-          c_xM += | dG a (G) Phi (G)
-                  /     x       M
+                               /       *
+          c_xM += <Phi | a > = | dG Phi (G) a (G)
+                      M   x    /       M     x
         """
         xshape, Gshape = a_xG.shape[:-3], a_xG.shape[-3:]
         Nx = int(np.prod(xshape))
@@ -945,7 +945,7 @@ class LocalizedFunctionsCollection(BaseLFC):
         if self.forces:
             mem.subnode('Derivatives', 3 * bytes)
 
-if extra_parameters.get('usenewlfc'):
+if 1:#extra_parameters.get('usenewlfc'):
     LocalizedFunctionsCollection = NewLocalizedFunctionsCollection
 
 def test():
