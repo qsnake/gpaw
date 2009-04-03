@@ -749,7 +749,7 @@ class GridWaveFunctions(WaveFunctions):
 
         shape = tuple(gd2.n_c)
 
-        scale = np.sqrt(12 / np.product(gd2.cell_c))
+        scale = np.sqrt(12 / abs(np.linalg.det(gd2.cell_cv)))
 
         from numpy.random import random, seed
 

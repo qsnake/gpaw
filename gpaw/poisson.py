@@ -114,7 +114,7 @@ class PoissonSolver:
         elif abs(charge) > maxcharge and self.gd.pbc_c.all():
             # System is charged and periodic. Subtract a homogeneous
             # background charge
-            background = charge / npy.product(self.gd.cell_c)
+            background = charge / abs(npy.linalg.det(self.gd.cell_cv))
 
             if self.charged_periodic_correction == None:
                 print "+-----------------------------------------------------+"
