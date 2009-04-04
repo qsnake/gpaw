@@ -22,7 +22,6 @@ Contents
    mailinglists
 
    devel/devel
-   devel/updating_libxc
 
 Old pages that need some more work
 ----------------------------------
