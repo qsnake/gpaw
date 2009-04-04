@@ -32,6 +32,12 @@ distutils_
 
 MPI_
                    Message Passing Interface
+
+BLACS_
+                   Basic Linear Algebra Communication Subprograms
+
+ScaLAPACK_
+                   Scalable LAPACK
 =================  ======================================================
 
 
@@ -41,7 +47,9 @@ MPI_
 .. _docutils: http://docutils.sourceforge.net
 .. _BLAS: http://www.netlib.org/blas
 .. _LAPACK: http://www.netlib.org/lapack
-.. _NumPy: http://numpy.sf.net
+.. _NumPy: http://numpy.scipy.org
 .. _distutils: http://www.python.org/sigs/distutils-sig
 .. _MPI: http://www.mpi-forum.org
 .. _FFTW: http://www.fftw.org
+.. _BLACS: http://www.netlib.org/blacs
+.. _ScaLAPACK: http://www.netlib.org/scalapack/scalapack_home.html

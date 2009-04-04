@@ -13,15 +13,12 @@ and PDF_).
 First, you should take a look at the documentation for Sphinx_ and
 reStructuredText_.
 
-If you don't already have your own copy of the GPAW package, then get
-that first::
-
-  $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
-  $ cd gpaw
+If you don't already have your own copy of the GPAW package, then
+perform a :ref:`developer_installation`.
 
 Then :command:`cd` to the :file:`doc` directory and build the html-pages::
 
-  $ cd doc
+  $ cd ~/gpaw/doc
   $ sphinx-build . _build
 
 Make your changes to the ``.rst`` files, run the

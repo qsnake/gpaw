@@ -132,7 +132,7 @@ The following packages are required (names given for Fedora Core 10 system):
  - `campos-gpaw <https://wiki.fysik.dtu.dk/gpaw/install/installationguide.html>`_
  - `campos-ase3 <https://wiki.fysik.dtu.dk/ase/download.html>`_
 
-**Note** that gpaw has to built with scalapack enabled -
+**Note** that gpaw has to built with ScaLAPACK enabled -
 please refer to :ref:`platforms_and_architectures` for hints on
 installing gpaw on different platforms.
 
@@ -213,23 +213,18 @@ Please perform the following steps:
    Clearly SCF part scales better than the initialization stage. Superscaling comes probably
    from inacurracies in printed time, and should disappear if more SCF steps were timed (verify!).
 
+ - for a comparison of what to expect on different machines, the following absolute times where obtained with r=[1,1,1] (without ScaLAPACK)
 
-Absolute times
---------------
-
-For a comparison of what to expect on different machines, the following absolute
-times where obtained with r=[1,1,1]
-
-===================   ================= ============  ======= ============  ========  ========      
-host                  type              cpu type      MHz     # procs       time [s]  date
-===================   ================= ============  ======= ============  ========  ========      
-jump.fz-juelich.de    IBM Regatta p690+ Power4+       1700    2             88        23.3.09
-jump.fz-juelich.de    IBM Regatta p690+ Power4+       1700    4             51        23.3.09
-mmos3                 LINUX             Intel Q6600   2394    2             85        23.3.09
-mmos3                 LINUX             Intel Q6600   2394    4             62        23.3.09
-bfg.uni-freiburg.de   LINUX             Xeon 5160     3000    2             156       23.3.09
-bfg.uni-freiburg.de   LINUX             Xeon 5160     3000    4             119       23.3.09
-===================   ================= ============  ======= ============  ========  ========      
+   ===================   ================= ============  ======= ============  ========  ========      
+   host                  type              cpu type      MHz     # procs       time [s]  date
+   ===================   ================= ============  ======= ============  ========  ========      
+   jump.fz-juelich.de    IBM Regatta p690+ Power4+       1700    2             88        23.3.09
+   jump.fz-juelich.de    IBM Regatta p690+ Power4+       1700    4             51        23.3.09
+   mmos3                 LINUX             Intel Q6600   2394    2             85        23.3.09
+   mmos3                 LINUX             Intel Q6600   2394    4             62        23.3.09
+   bfg.uni-freiburg.de   LINUX             Xeon 5160     3000    2             156       23.3.09
+   bfg.uni-freiburg.de   LINUX             Xeon 5160     3000    4             119       23.3.09
+   ===================   ================= ============  ======= ============  ========  ========      
 
 2. Medium size system
 +++++++++++++++++++++
@@ -265,7 +260,7 @@ The following packages are required (names given for Fedora Core 10 system):
  - `campos-gpaw <https://wiki.fysik.dtu.dk/gpaw/install/installationguide.html>`_
  - `campos-ase3 <https://wiki.fysik.dtu.dk/ase/download.html>`_
 
-**Note** that gpaw has to built with scalapack enabled -
+**Note** that gpaw has to built with ScaLAPACK enabled -
 please refer to :ref:`platforms_and_architectures` for hints on
 installing gpaw on different platforms.
 

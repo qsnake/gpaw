@@ -4,10 +4,16 @@
 Download
 ========
 
+.. _latest_stable_release:
+
 Latest stable release
 =====================
 
 The latest stable release can be obtained from ``svn`` or as a ``tarball``.
+
+.. note::
+
+   The recommended installation path is :envvar:`$HOME`.
 
 When using svn please set the following variable:
 
@@ -46,8 +52,10 @@ Release Date        Retrieve as svn checkout                   Retrieve as tarba
 
 .. note::
 
-   GPAW should be retrieved together with compatible ASE release
+   GPAW should be retrieved together with the compatible ASE release
    (see :ase:`Download and install ASE <download.html>`).
+
+.. _latest_development_release:
 
 Latest development release
 ==========================
@@ -57,6 +65,10 @@ The latest revision can be obtained like this::
   $ svn checkout https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
 
 or from the daily snapshot: `<gpaw-snapshot.tar.gz>`_.
+
+.. note::
+
+   The recommended checkout path is :envvar:`$HOME`.
 
 See :ref:`faq` in case of problems.
 

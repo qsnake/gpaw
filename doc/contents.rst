@@ -8,16 +8,20 @@ Contents
    :maxdepth: 2
 
    index
-   Introduction <features_and_algorithms>
+   overview  <features_and_algorithms>
    download
    install/install
-   documentation/documentation
    setups/setups
-   devel/devel
    tutorials/tutorials
    exercises/exercises
+   documentation/documentation
+   performance
+   devel/benchmarks
+   devel/releasenotes
    faq
+   mailinglists
 
+   devel/devel
 
 Old pages that need some more work
 ----------------------------------
@@ -25,9 +29,8 @@ Old pages that need some more work
 .. toctree::
    :maxdepth: 2
 
-   exercises/summerschool
+   exercises/summerschool08
    technology
    introduction_to_paw
-   grids
-   tar
-   performance
+   devel/grids
+   devel/tar

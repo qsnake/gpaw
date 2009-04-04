@@ -36,7 +36,16 @@
         {%- block rootrellink %}
         <li><a href="{{ pathto('index') }}"><img class="logo" src="{{ pathto('_static/' + logo, 1) }}" alt="GPAW logo"/></a></li>
         {%- endblock %}
-	<li> {{ reldelim1 }} <a href="{{ pathto('contents') }}">Contents</a>{{ reldelim1 }}</li>
+
+	<li> {{ reldelim1 }} <a href="{{ pathto('download') }}">Download</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('setups/setups') }}">Setups</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('tutorials/tutorials') }}">Tutorials</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('documentation/documentation') }}">Documentation</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('performance') }}">Performance</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('faq') }}">FAQ</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('contents') }}">Contents</a>{{ reldelim1 }}</li>
+        <li> {{ reldelim1 }} <a href="{{ pathto('genindex') }}">Index</a>{{ reldelim1 }}</li>
+
         {%- for parent in parents %}
           <li><a href="{{ parent.link|e }}" accesskey="U">{{ parent.title }}</a>{{ reldelim1 }}</li>
         {%- endfor %}
@@ -52,28 +61,36 @@
         <div class="sphinxsidebarwrapper">
           {%- block sidebartoc %}
 
-	  <h3>Links</h3>
+	  <h3>GPAW</h3>
 	  <ul class="this-page-menu">
-	    <li><a href="{{ pathto('index') }}">Main page</a></li>
-	    <li><a href="{{ pathto('features_and_algorithms') }}">Introduction</a></li>
+	    <li><a href="{{ pathto('features_and_algorithms') }}">Overview</a></li>
 	    <li><a href="{{ pathto('download') }}">Download</a></li>
 	    <li><a href="{{ pathto('install/installationguide') }}">Install</a></li>
 	    <li><a href="{{ pathto('setups/setups') }}">Setups</a></li>
+            <li><a href="{{ pathto('tutorials/tutorials') }}">Tutorials</a></li>
+	    <!-- <li><a href="{{ pathto('exercises/exercises') }}">Exercises</a></li> -->
+
 	    <li><a href="{{ pathto('documentation/documentation') }}">Documentation</a></li>
 	    <!-- <li><a href="{{ pathto('manual') }}">Manual</a></li> -->
-	    <li><a href="{{ pathto('devel/devel') }}">Development</a></li>
-	    <li><a href="{{ pathto('tutorials/tutorials') }}">Tutorials</a></li>
-	    <li><a href="{{ pathto('exercises/exercises') }}">Exercises</a></li>
+            <li><a href="{{ pathto('performance') }}">Performance</a></li>
+            <li><a href="{{ pathto('devel/releasenotes') }}">Release Notes</a></li>
 	    <li><a href="{{ pathto('faq') }}">FAQ</a></li>
+            <li><a href="{{ pathto('mailinglists') }}">Mailing lists</a></li>
 	  </ul>
+	  <h3>Development</h3>
+	  <ul class="this-page-menu">
+            <li><a href="{{ pathto('devel/devel') }}">Development</a></li>
+            <li><a href="http://wiki.fysik.dtu.dk/gpaw/epydoc/gpaw-module.html">
+              Epydoc</a></li>
+            <li><a href="https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/">Source Code (svn)</a></li>
+            <li><a href="https://trac.fysik.dtu.dk/projects/gpaw/report/1">Bug Tracker</a></li>
+          </ul>
           <ul>
             <li><a href="https://wiki.fysik.dtu.dk/ase/">ASE Web Page</a></li>
-            <li><a href="https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/">Source Code</a></li>
-            <li><a href="https://trac.fysik.dtu.dk/projects/gpaw/report/1">Bug Tracker</a></li>
           </ul>
 
           {%- if display_toc and current_page_name not in ['index', 'contents'] %}
-            <h3>Contents</h3>
+            <h3>This page</h3>
             {{ toc }}
           {%- endif %}
 

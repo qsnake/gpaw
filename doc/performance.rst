@@ -33,9 +33,12 @@ The setups used for the test calculations can be found on the
 Efficiency
 ==========
 
-Hopefully the CPU-timings for the examples in this section will
-improve as we find time for optimization.
+Please consults our :ref:`benchmarks` page.
 
+
+.. note::
+
+   The information below is outdated!
 
 Molybdenumdisulfide slab
 ------------------------
@@ -80,3 +83,4 @@ the number of iterations necessary in the grid code.
    Int. J. Quantum Chem. 75, 889 (1999)
 .. [Zha98] Y. Zhang and W. Yang,
    Phys. Rev. Lett. 80, 890 (1998)
+

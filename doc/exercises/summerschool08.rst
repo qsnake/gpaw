@@ -1,4 +1,4 @@
-.. _summerschool:
+.. _summerschool08:
 
 =======================
 CAMd Summer school 2008
@@ -102,7 +102,7 @@ Octopus
 Octopus_ is installed on the 'q' opteron nodes on Niflheim. The way to
 run jobs is the following: Create inp file in the working directory as
 described in the tutorial_, and then run
-:svn:`~doc/octopus_run.py`. To use various octopus utilities such
+:svn:`~doc/exercises/octopus_run.py`. To use various octopus utilities such
 as ``oct-cross-section`` and ``oct-broad`` you need to do::
 
   source /usr/local/openmpi-1.2.5-pathf90/bin/mpivars-1.2.5.sh

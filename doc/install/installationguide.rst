@@ -23,25 +23,29 @@ Requirements
 
 .. _NumPy: http://www.scipy.org/NumPy
 
-See the :ref:`platforms_and_architectures` page for information on how to
-install GPAW on a specific architecture.
-
 Standard installation
 =====================
 
-0) assuming bash
+1) :ref:`download` the code.
 
 .. note::
 
    **CAMd users** installing on ``Niflheim``: please follow instructions for :ref:`Niflheim`.
 
-1) :ref:`download` the code.
-
 2) Go to the :file:`gpaw` directory::
 
      [~]$ cd gpaw
 
-3) install with the standard::
+.. note::
+
+   The installation described below is suitable only as a first try:
+
+    - if you install on a cluster, take a look at :ref:`install_custom_installation`,
+
+    - if you are a developer, please follow :ref:`developer_installation`.
+
+
+3) install with the standard (using bash)::
 
      [gpaw]$ python setup.py install --home=<my-directory>  2>&1 | tee install.log
 
@@ -52,30 +56,23 @@ Standard installation
    :file:`{<my-directory>}/bin`. Please add
    :file:`{<my-directory>}/bin` to :envvar:`PATH`. Alternatively, the full pathname
    :file:`{<my-directory}>/bin/gpaw-python` can be used when executing
-   parallel runs. See :ref:`parallel_installation` for details.
+   parallel runs. See :ref:`parallel_installation` for more details about
+   parallel runs.
 
    .. note::
 
      Usually :envvar:`$HOME` is a good choice for :file:`{<my-directory>}`.
 
-   Alternatively, if you have root-permissions, you can install GPAW system-wide::
+   Alternatively, if you have root-permissions, you can install GPAW system-wide (using bash)::
 
      [gpaw]$ python setup.py install 2>&1 | tee install.log
-
-   .. note::
-
-    The installation described here is suitable only as a first try:
-
-     - if you install on a cluster, please follow :ref:`install_custom_installation`,
-
-     - if you are a developer, please follow :ref:`developer_installation`.
 
 4) Get the tar file :file:`gpaw-setups-{<version>}.tar.gz` from the 
    :ref:`setups` page
    and unpack it somewhere, preferably in :envvar:`${HOME}`
    (``cd; tar zxf gpaw-setups-<version>.tar.gz``) - it could
    also be somewhere global where
-   many users can access it like in :file:`/usr/share/gpaw/`.  There will
+   many users can access it like in :file:`/usr/share/gpaw-setups/`.  There will
    now be a directory :file:`gpaw-setups-{<version>}/` containing all the
    atomic data needed for doing LDA, PBE, and RPBE calculations.  Set the
    environment variable :envvar:`GPAW_SETUP_PATH` to point to the directory
@@ -87,16 +84,46 @@ Standard installation
 
     export GPAW_SETUP_PATH=${HOME}/gpaw-setups-<version>
 
-5) Make sure that everything works by running the test suite::
+.. _running_tests:
 
-     [gpaw]$ cd test
-     [test]$ python test.py 2>&1 | tee test.log
+Run the tests
+=============
 
-   This will take around 20 minutes.  Please report errors to the
-   `GPAW developer mailing list`_
-   (send us :file:`test.log`, and (only when requested) :file:`install.log`).
+Make sure that everything works by running the test suite (using bash)::
 
-  .. _GPAW developer mailing list: gridpaw-developer@lists.berlios.de
+  [gpaw]$ cd ~/gpaw/test
+  [test]$ python test.py 2>&1 | tee test.log
+
+This will take around 20 minutes.  Please report errors to the
+``gridpaw-developer`` mailing list (see :ref:`mailing_lists`)
+Send us :file:`test.log`, as well as the information about your
+environment (processor architecture, versions of python and numpy,
+C-compiler, BLAS and LAPACK libraries, MPI library),
+and (only when requested) :file:`install.log`.
+
+If tests pass, and the parallel version is built, test the parallel code::
+
+  [gpaw]$ mpirun -np 2 gpaw-python -c "import gpaw.mpi as mpi; print mpi.rank"
+  1
+  0
+
+Try also::
+
+  [test]$ cd ~/gpaw/examples
+  [examples]$ mpirun -np 2 gpaw-python H.py
+
+This will do a calculation for a single hydrogen atom parallelized
+with spin up on one processor and spin down on the other.  If you run
+the example on 4 processors, you should get parallelization over both
+spins and the domain.
+
+If you enabled ScaLAPACK, do::
+
+  [examples]$ mpirun -np 2 gpaw-python ~/gpaw/test/CH4.py --sl_diagonalize=1,2,2,d
+
+This will enable ScaLAPACK's diagonalization on a 1x2 BLACS grid
+with the block size of 2. ScaLAPACK can be currently used
+only in cases **without** k-points.
 
 .. _install_custom_installation:
 
@@ -129,11 +156,11 @@ By default, setup looks if :program:`mpicc` is available, and if setup
 finds one, a parallel version is build. If the setup does not find
 mpicc, a user can specify one in the :svn:`customize.py` file.
 
-Additionally a user may want to enable scalapack, setting in :file:`customize.py`::
+Additionally a user may want to enable ScaLAPACK, setting in :file:`customize.py`::
 
  scalapack = True
 
-and, if needed, providing blacs/scalapack `libraries` and `library_dirs`
+and, if needed, providing BLACS/ScaLAPACK `libraries` and `library_dirs`
 as described in :ref:`install_custom_installation`.
 
 Instructions for running parallel calculations can be found in the

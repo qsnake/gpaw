@@ -11,6 +11,8 @@ Version 0.5
 
 1 April 2009: :trac:`tags/0.5 <../tags/0.5>`.
 
+* `new setups added Bi, Br, I, In, Os, Sc, Te; changed Rb setup <https://trac.fysik.dtu.dk/projects/gpaw/changeset/3612>`_.
+* `memory estimate feature is back <https://trac.fysik.dtu.dk/projects/gpaw/changeset/3575>`_
 
 Version 0.4
 ===========

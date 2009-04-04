@@ -11,7 +11,7 @@ in materials physics, chemistry and biology
 .. note::
 
   If you are participating in the CAMd summer school, you should read
-  this :ref:`page <summerschool>` before you start working on the
+  this :ref:`page <summerschool08>` before you start working on the
   exercises.
 
 
@@ -25,7 +25,7 @@ of :ase:`ASE <>` and Python_.  Here are some useful resources:
 
 .. _Python: http://www.python.org
 
-For comments and questions, write to the :ref:`ml`.
+For comments and questions, write to the :ref:`mailing_lists`.
 
 
 .. toctree::

@@ -32,6 +32,7 @@ GPAW calculator:
    rmm-diis
    orthogonalization
    xc/xc
+   xc/exx
    tddft/tddft
    dscf/dscf
    pdos/pdos
@@ -40,15 +41,8 @@ GPAW calculator:
    ../devel/electrostatic_potential
    ../devel/eigenvalues_of_core_states
 
-.. _ml:
+Mailing lists
+=============
 
-Mailing list
-============
-
-If you can't find what you are looking for, ask on the `mailing list`_.
-
-
-.. _mailing list: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
-.. _Python: http://www.python.org
-
-or one of the other :ref:`mailing_lists`.
+If you can't find what you are looking for,
+please consult :ref:`mailing_lists`.

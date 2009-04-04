@@ -4,21 +4,19 @@
 Mailing Lists
 =============
 
-If you want to keep completely up to date on development, you can
-subscribe to the relevant mailing lists at
-https://listserv.fysik.dtu.dk/mailman/listinfo:
+The mailing list for GPAW users and developers is located at BerliOS_:
 
-* gridpaw-developers_ (at BerliOS_)
+* gridpaw-developer_
+
+You should consider also subscribing
+to the ASE :ase:`Mailing lists <mailinglists.html>`.
+
+The mailing lists below are of interest for active GPAW developers only:
+
 * gpaw-svncheckins_
 * gpaw-tickets_
-* ase-developers_
-* ase-svncheckins_
-* ase-tickets_
-* ase-users_
-* campos_
-* campos-devel_
 
-.. _gridpaw-developers: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
+.. _gridpaw-developer: http://lists.berlios.de/mailman/listinfo/gridpaw-developer
 .. _gpaw-svncheckins: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-svncheckins
 .. _gpaw-tickets: https://listserv.fysik.dtu.dk/mailman/listinfo/gpaw-tickets
 .. _ase-developers: https://listserv.fysik.dtu.dk/mailman/listinfo/ase-developers

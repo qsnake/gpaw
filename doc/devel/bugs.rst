@@ -11,9 +11,6 @@ a problem with GPAW, like:
 * enhancement proposals
 * and problems with the documentation,
 
-you are also very welcome to report the problem to the :ref:`mailing
-list <ml>`.
-
 
 * General:
 

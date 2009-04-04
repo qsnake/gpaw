@@ -98,14 +98,18 @@ augmentation spheres.  The integration is done on a non-linear radial
 grid - very dense close to the nuclei and less dense away from the
 nuclei.
 
+Parallelization
+===============
+
+Parallelization is done by distributing **k**-points, spins, and bands
+over all processors and on top of that domain-decomposition is used.
 
 
 ASE interface
 =============
 
-The code has been designed to work well together with the atomic
-simulation environment (:ase:`ASE <>`).  Any force calculator that has
-the right interface can work with ASE.  ASE provides:
+The code has been designed to work together with the atomic
+simulation environment (:ase:`ASE <>`). ASE provides:
 
  * Structure optimization.
  * Molecular dynamics.
@@ -114,14 +118,15 @@ the right interface can work with ASE.  ASE provides:
  * Scanning tunneling microscopy images.
  * Transport calculations.
 
+Open Software
+=============
 
-
-
-Parallelization
-===============
-
-Parallelization is done by distributing **k**-points, spins, and bands
-over all processors and on top of that domain-decomposition is used.
+GPAW is released under the GNU
+Public License version 2.  See the file :trac:`LICENSE` which
+accompanies the downloaded files, or see the license at GNU's web
+server at http://www.gnu.org/licenses/old-licenses/gpl-2.0.html.
+Everybody is invited to participate in using and :ref:`developing the
+code <devel>`.
 
 
 .. [Mor05] J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen,

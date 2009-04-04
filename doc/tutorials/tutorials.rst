@@ -4,7 +4,10 @@
 Tutorials
 =========
 
-The tutorials are meant to guide the user through some scripts to
+If you are not familiar with :ase:`ASE <>`, consider
+:ase:`ASE Tutorials <tutorials/tutorials.html>` first.
+
+The GPAW tutorials are meant to guide the user through some scripts to
 perform some of the most common tasks:
 
 .. toctree::
@@ -19,3 +22,9 @@ perform some of the most common tasks:
    ensembles/ensembles
 
    neb/neb
+
+=========
+Exercises
+=========
+
+Please follow :ref:`exercises`.

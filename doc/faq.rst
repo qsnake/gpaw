@@ -10,13 +10,16 @@ General
 Citation: how should I cite GPAW?
 ---------------------------------
 
-If you find GPAW useful in your research please cite the original paper:
+If you find GPAW useful in your research please cite:
 
    | J. J. Mortensen, L. B. Hansen , and K. W. Jacobsen
    | `Real-space grid implementation of the projector augmented wave method`__
    | Physical Review B, Vol. **71**, 035109, 2005
   
    __ http://dx.doi.org/10.1103/PhysRevB.71.035109
+
+together with :ase:`ASE <>` citation
+(see :ase:`Citation: how should I cite ASE?<faq.html>`).
 
 If you are using the time-dependent DFT part of the code, please cite also:
 
@@ -25,6 +28,10 @@ If you are using the time-dependent DFT part of the code, please cite also:
    | Journal of Chemical Physics, Vol. **128**, 244101, 2008
 
    __ http://link.aip.org/link/?JCP/128/244101
+
+BibTex (:svn:`doc/GPAW.bib`):
+
+.. literalinclude:: GPAW.bib
 
 
 How do you pronounce GPAW?
@@ -47,7 +54,6 @@ Trying to checkout the code via SVN resulted::
  svn: Unrecognized URL scheme 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
 
 This error is diplayed in case the library 'libsvn_ra_dav' is missing on your system. The library is used by SVN, but is not installed by default. 
-
 
 
 Compiling the C-code
@@ -98,7 +104,6 @@ try either conjugate gradient or Davidson eigensolvers::
 
   GPAW(..., eigensolver='cg')
 
-
 Poisson solver did not converge!
 ================================
 
@@ -106,12 +111,30 @@ If you are doing a spin-polarized calculation for an isolated molecule,
 then you should set the Fermi temperature to a low value: 
 ``width=0.001``.
 
+How to switch between several GPAW versions
+===========================================
+
+For each GPAW installation use a separate,
+modified submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`.
+
+Assuming that your :ref:`developer_installation` is under :file:`~/gpaw.test`,
+and the :command:`gpaw-python`
+under :file:`~/gpaw.test/build/bin.linux-x86_64-2.3/`,
+modify the submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`:
+
+* set the :envvar:`PYTHONPATH` and :envvar:`PATH` passed to :command:`mpirun`::
+
+   ...
+   'export PYTHONPATH=${HOME}/gpaw.test:${PYTHONPATH} && ' +
+   'export PATH=${HOME}/gpaw.test/build/bin.linux-x86_64-2.3:${PATH} && ' +
+   'mpirun')
+
+* make sure that the corresponding :command:`gpaw-python` is used::
+
+   os.system('%s gpaw-python JOB' % (mpirun))
 
 Tests fail!
 ===========
 
-Please report the failing test as well as information about your
-environment (processor architecture, C-compiler, BLAS and LAPACK
-libraries, MPI library) to the mailing-list_.
+Please report the failing test as described on :ref:`running_tests`.
 
-.. _mailing-list: https://lists.berlios.de/mailman/listinfo/gridpaw-developer

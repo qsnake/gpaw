@@ -6,15 +6,15 @@ New release
 
 When it is time for a new release of the code, here is what you have to do:
 
-* Make a fresh checkout from svn::
+* Checkout the :ref:`latest_development_release`,
 
-   svn co https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw
-
-  and run the test suite (run ``python test.py`` in ``tests`` directory).
+* then :ref:`running_tests`.
 
 * If a new ase release is required to pass the tests
   modify ``required_ase_version`` and ``required_ase_svnrevision``
   in :trac:`gpaw/version.py`, and checkin the changes.
+
+* ``svn up`` and :ref:`running_tests` again.
 
 * Make a tag in svn, using the current version number
   (to make sure **not** to include changes done by other developers
@@ -24,7 +24,7 @@ When it is time for a new release of the code, here is what you have to do:
 
   **Note** the resulting tag's revision ``tags_revision``.
 
-* **Checkout** the source, specyfing the version number in the directory name::
+* **Checkout** the source, specifying the version number in the directory name::
 
    svn co -r tags_revision https://svn.fysik.dtu.dk/projects/gpaw/tags/0.4 gpaw-0.4
 
@@ -38,19 +38,18 @@ When it is time for a new release of the code, here is what you have to do:
 
 * Put the tar file on web2 (set it read-able for all)::
 
-   scp dist/gpaw-0.4.2734.tar.gz root@web2:/var/www/wiki/gpaw-files
+   scp dist/gpaw-0.4."tags_revision".tar.gz root@web2:/var/www/wiki/gpaw-files
 
-* Change the :ref:`download` link to the new tar file.
+* Add a link to the new GPAW release **together**
+  with the compatible ASE release at :ref:`latest_stable_release`.
 
 * Optionally, update the :ref:`releasenotes`.
 
 * Increase the version number in gpaw/version.py, and commit the change::
 
-    cd gpaw
+    cd ~/gpaw
     svn ci -m "Version 0.5"
 
   Now the trunk is ready for work on the new version.
 
-* Send announcement email to:
-
-  - gridpaw-developer@lists.berlios.de
+* Send announcement email to the ``gridpaw-developer`` mailing list (see :ref:`mailing_lists`).

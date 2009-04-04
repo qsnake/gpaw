@@ -10,10 +10,6 @@ algorithms used <features_and_algorithms>`.
 
 .. _Python: http://www.python.org
 
-* :ref:`Table of contents <toc>`
-* :ref:`genindex`
-
-
 
 .. |i0| image:: _static/logo-anl.png
         :height: 44 px
