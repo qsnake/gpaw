@@ -18,6 +18,7 @@ class C_XC(Contribution):
         
     def initialize(self):
         self.xc = XC3DGrid(XCFunctional(self.functional), self.nlfunc.finegd, self.nlfunc.nspins)
+        self.xc.allocate()
         self.vt_sg = self.nlfunc.finegd.empty(self.nlfunc.nspins)
         self.e_g = self.nlfunc.finegd.empty()
 

@@ -84,7 +84,8 @@ class Hamiltonian:
         self.rank_a = None
 
         # Restrictor function for the potential:
-        self.restrictor = Transformer(self.finegd, self.gd, stencil)
+        self.restrictor = Transformer(self.finegd, self.gd, stencil,
+                                      allocate=False)
         self.restrict = self.restrictor.apply
 
         # Exchange-correlation functional object:
@@ -101,8 +102,18 @@ class Hamiltonian:
         self.Exc = None
         self.Etot = None
         self.S = None
+        self.allocated = False
+
+    def allocate(self):
+        # TODO We should move most of the gd.empty() calls here
+        assert not self.allocated
+        self.restrictor.allocate()
+        self.xc.allocate()
+        self.allocated = True
 
     def set_positions(self, spos_ac, rank_a=None):
+        if not self.allocated:
+            self.allocate()
         self.vbar.set_positions(spos_ac)
         if self.vbar_g is None:
             self.vbar_g = self.finegd.empty()
@@ -442,15 +453,11 @@ class Hamiltonian:
     def estimate_memory(self, mem):
         nbytes = self.gd.bytecount()
         nfinebytes = self.finegd.bytecount()
-        # XXXXXX Contrary to common sense, most of the arrays in Hamiltonian
-        # are allocated directly in the constructor.
-        # We'll exclude these in memcheck temporarily, because it will be
-        # counted in the paw initial overhead.
         arrays = mem.subnode('Arrays', 0)
         arrays.subnode('vHt_g', nfinebytes)
         arrays.subnode('vt_sG', self.nspins * nbytes)
         arrays.subnode('vt_sg', self.nspins * nfinebytes)
         self.restrictor.estimate_memory(mem.subnode('Restrictor'))
-        #self.xc.estimate_memory(mem.subnode('XC 3D grid'))
+        self.xc.estimate_memory(mem.subnode('XC 3D grid'))
         self.poisson.estimate_memory(mem.subnode('Poisson'))
         self.vbar.estimate_memory(mem.subnode('vbar'))

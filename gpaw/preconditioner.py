@@ -21,10 +21,25 @@ class Preconditioner:
         self.scratch1 = gd1.zeros(3, dtype, False)
         self.scratch2 = gd2.zeros(3, dtype, False)
         self.step = 0.66666666 / kin0.get_diagonal_element()
-        self.restrictor0 = Transformer(gd0, gd1, 1, dtype).apply
-        self.restrictor1 = Transformer(gd1, gd2, 1, dtype).apply
-        self.interpolator2 = Transformer(gd2, gd1, 1, dtype).apply
-        self.interpolator1 = Transformer(gd1, gd0, 1, dtype).apply
+
+        self.restrictor_object0 = Transformer(gd0, gd1, 1,dtype, False)
+        self.restrictor_object1 = Transformer(gd1, gd2, 1, dtype, False)
+        self.interpolator_object2 = Transformer(gd2, gd1, 1, dtype, False)
+        self.interpolator_object1 = Transformer(gd1, gd0, 1, dtype, False)
+        self.restrictor0 = self.restrictor_object0.apply
+        self.restrictor1 = self.restrictor_object1.apply
+        self.interpolator2 = self.interpolator_object2.apply
+        self.interpolator1 = self.interpolator_object1.apply
+        self.allocated = False
+
+    def allocate(self):
+        assert not self.allocated
+        for transformer in [self.restrictor_object0,
+                            self.restrictor_object1,
+                            self.interpolator_object2,
+                            self.interpolator_object1]:
+            transformer.allocate()
+        self.allocated = True
         
     def __call__(self, residual, phases, phit=None, kpt=None):
         step = self.step

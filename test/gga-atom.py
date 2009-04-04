@@ -61,6 +61,7 @@ for name in ['LDA', 'PBE']:
     p = create_localized_functions([s.nct], gd, (0.5, 0.5, 0.5))
     p.add(n_g, np.ones(1))
     xc = XC3DGrid(xcfunc, gd, nspins=1)
+    xc.allocate()
     xc.get_energy_and_potential(n_g, v_g)
 
     r2_g = np.sum((np.indices((n, n, n)) - n / 2)**2, axis=0)

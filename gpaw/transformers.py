@@ -11,14 +11,11 @@ import _gpaw
 
 
 class _Transformer:
-    def __init__(self, gdin, gdout, nn=1, dtype=float):
+    def __init__(self, gdin, gdout, nn=1, dtype=float, allocate=True):
+        self.gdin = gdin
+        self.gdout = gdout
+        self.nn = nn
         self.dtype = dtype
-        neighbor_cd = gdin.neighbor_cd
-
-        if gdin.comm.size > 1:
-            comm = gdin.comm
-        else:
-            comm = None
 
         pad_cd = np.empty((3, 2), int)
         neighborpad_cd = np.empty((3, 2), int)
@@ -43,37 +40,90 @@ class _Transformer:
             self.interpolate = True
 
         assert np.alltrue(pad_cd.ravel() >= 0)
-
-        self.transformer = _gpaw.Transformer(gdin.n_c, 2 * nn, pad_cd, 
-                                             neighborpad_cd, skip_cd,
-                                             neighbor_cd, dtype == float, comm,
-                                             self.interpolate)
-        
         self.ngpin = tuple(gdin.n_c)
         self.ngpout = tuple(gdout.n_c)
         assert dtype in [float, complex]
+        self.transformer = None
+
+        self.pad_cd = pad_cd
+        self.neighborpad_cd = neighborpad_cd
+        self.skip_cd = skip_cd
+        self.allocated = False
+        if allocate:
+            self.allocate()
+
+    def allocate(self):
+        assert not self.allocated
+        gdin = self.gdin
+        if gdin.comm.size > 1:
+            comm = gdin.comm
+        else:
+            comm = None
+
+        self.transformer = _gpaw.Transformer(gdin.n_c, 2 * self.nn,
+                                             self.pad_cd, 
+                                             self.neighborpad_cd, self.skip_cd,
+                                             gdin.neighbor_cd,
+                                             self.dtype == float, comm,
+                                             self.interpolate)
+        self.allocated = True
+        
+    def apply(self, input, output, phases=None):
+        self.transformer.apply(input, output, phases)
+
+    def estimate_memory(self, mem):
+        # Read transformers.c for details
+        # Notes: restrictor estimate only counts ~90% of allocation,
+        # gets worse for parallel calculations
+        inbytes = self.gdin.bytecount()
+        outbytes = self.gdout.bytecount()
+        mem.subnode('buf', inbytes)
+        if self.interpolate:
+            mem.subnode('buf2 interp', 16 * inbytes)
+        else:
+            mem.subnode('buf2 restrict', 4 * outbytes)
+
+
+class TransformerWrapper:
+    def __init__(self, transformer):
+        self.transformer = transformer
+        self.allocated = transformer.allocated
+        self.dtype = transformer.dtype
+        self.ngpin = transformer.ngpin
+        self.ngpout = transformer.ngpout
+
+    def allocate(self):
+        assert not self.allocated
+        self.transformer.allocate()
+        self.allocated = True
 
     def apply(self, input, output, phases=None):
         assert is_contiguous(input, self.dtype)
         assert is_contiguous(output, self.dtype)
         assert input.shape == self.ngpin
         assert output.shape == self.ngpout
+        assert self.allocated
         self.transformer.apply(input, output, phases)
 
+    def estimate_memory(self, mem):
+        self.transformer.estimate_memory(mem)
 
-def Transformer(gdin, gdout, nn=1, dtype=float):
+
+def Transformer(gdin, gdout, nn=1, dtype=float, allocate=True):
     if nn != 9:
-        t = _Transformer(gdin, gdout, nn, dtype)
-        interpolate = t.interpolate
-        if not debug:
-            t = t.transformer
-        return TransformerWrapper(gdin, gdout, t, interpolate)
+        t = _Transformer(gdin, gdout, nn, dtype, allocate)
+        if debug:
+            t = TransformerWrapper(t)
+        return t
     class T:
+        def allocate(self):
+            pass
         def apply(self, input, output, phases=None):
             output[:] = input
         def estimate_memory(self, mem):
             mem.set('Nulltransformer', 0)
     return T()
+
 
 def multiple_transform_apply(transformerlist, inputs, outputs, phases=None):
     return _gpaw.multiple_transform_apply(transformerlist, inputs, outputs, 
@@ -93,26 +143,3 @@ def coefs(k, p):
                 d *= i - j
             print '%14.16f' % (n / d),
         print
-
-
-class TransformerWrapper:
-    def __init__(self, gdin, gdout, transformer, interpolate):
-        self.gdin = gdin
-        self.gdout = gdout
-        self.transformer = transformer
-        self.interpolate = interpolate
-        
-    def apply(self, input, output, phases=None):
-        self.transformer.apply(input, output, phases)
-
-    def estimate_memory(self, mem):
-        # Read transformers.c for details
-        # Notes: restrictor estimate only counts ~90% of allocation,
-        # gets worse for parallel calculations
-        inbytes = self.gdin.bytecount()
-        outbytes = self.gdout.bytecount()
-        mem.subnode('buf', inbytes)
-        if self.interpolate:
-            mem.subnode('buf2 interp', 16 * inbytes)
-        else:
-            mem.subnode('buf2 restrict', 4 * outbytes)

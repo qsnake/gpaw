@@ -434,6 +434,8 @@ class LCAOWaveFunctions(WaveFunctions):
             dPdR_aqvMi[a] = np.empty((nq, 3, nao, ni), dtype)
         self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
                                       dPdR_aqvMi)
+
+        # TODO: Most contributions will be the same for each spin.
         
         for kpt in self.kpt_u:
             self.calculate_forces_by_kpoint(kpt, hamiltonian,
@@ -492,7 +494,9 @@ class LCAOWaveFunctions(WaveFunctions):
         def my_slices():
             return _slices(my_atom_indices)
         
-        
+        # TODO: in gamma point calculations, Hamiltonian has the matrix already
+        # But not for both spins, if spinpolarized
+        # Hmmm....
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
         H_MM = self.eigensolver.H_MM
         tri2full(H_MM)

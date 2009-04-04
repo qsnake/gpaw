@@ -41,6 +41,7 @@ class C_GLLBScr(Contribution):
         self.occupations = self.nlfunc.occupations
         self.xc = XCFunctional(self.functional)
         self.xc_grid3d = XC3DGrid(self.xc, self.nlfunc.finegd, self.nlfunc.nspins)
+        self.xc_grid3d.allocate()
         self.vt_sg = self.nlfunc.finegd.empty(self.nlfunc.nspins)
         self.e_g = self.nlfunc.finegd.empty()#.ravel()
 

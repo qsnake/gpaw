@@ -486,14 +486,43 @@ class XCGrid:
 class XC3DGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):
         """XC-functional object for 3D uniform grids."""
+        self.allocated = False
         XCGrid.__init__(self, xcfunc, gd, nspins)
 
     def set_functional(self, xcfunc):
         XCGrid.set_functional(self, xcfunc)
-
         gd = self.gd
         self.shape = tuple(gd.n_c)
         self.dv = gd.dv
+
+        # TODO
+        # If xcfunc is actually changed after the constructor call, we should
+        # make sure that previously used arrays are set to None (not just
+        # those for the new xcfunc).  Or we could raise an error when that
+        # happens, such that XC3DGrid objects are not reusable wrt. change
+        # of xc functional.
+        if xcfunc.gga:
+            self.ddr = None
+            self.dndr_cg = None
+            self.a2_g = None
+            self.deda2_g = None
+            if self.nspins == 2:
+                self.dnadr_cg = None
+                self.dnbdr_cg = None
+                self.aa2_g = None
+                self.ab2_g = None
+                self.dedaa2_g = None
+                self.dedab2_g = None
+        if xcfunc.mgga:
+            self.temp = None
+        self.e_g = None
+        if self.allocated:
+            # If arrays were already allocated, make sure this is still true
+            self.allocate()
+
+    def allocate(self):
+        gd = self.gd
+        xcfunc = self.xcfunc
         if xcfunc.gga:
             self.ddr = [Gradient(gd, c).apply for c in range(3)]
             self.dndr_cg = gd.empty(3)
@@ -509,6 +538,7 @@ class XC3DGrid(XCGrid):
         if xcfunc.mgga:
             self.temp = gd.empty()
         self.e_g = gd.empty()
+        self.allocated = True
 
     # Calculates exchange energy and potential.
     # The energy density will be returned on reference e_g if it is specified.
@@ -639,7 +669,10 @@ class XC3DGrid(XCGrid):
                 gga.subnode('spinpol', bytecount * 10)
         if self.xcfunc.mgga:
             mem.subnode('MGGA work', bytecount)
-            
+        # For inexplicable reasons, the XC3DGrid object always uses precisely
+        # twice as much as it should.  Maybe the C code allocates something?
+        bytes_so_far = mem.calculate_size()
+        mem.subnode('Extra memory used for reasons unknown', bytes_so_far)
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):

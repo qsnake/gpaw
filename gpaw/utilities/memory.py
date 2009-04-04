@@ -6,7 +6,7 @@
 
 import os
 import resource
-import numpy as npy
+import numpy as np
 
 _proc_status = '/proc/%d/status' % os.getpid()
 
@@ -92,8 +92,8 @@ def estimate_memory(paw):
     #nuclei = paw.nuclei
     out = paw.txt
 
-    float_size = npy.array([1], float).itemsize
-    type_size = npy.array([1],paw.wfs.dtype).itemsize
+    float_size = np.array([1], float).itemsize
+    type_size = np.array([1],paw.wfs.dtype).itemsize
 
     # coarse grid size
     grid_size = long(n_c[0] * n_c[1] * n_c[2])
@@ -133,7 +133,7 @@ def estimate_memory(paw):
     """
     # Localized functions. Normally 1 value + 3 derivatives + 1 work array
     # are stored
-    mem_nuclei = npy.zeros(paw.domain.comm.size, dtype=long)
+    mem_nuclei = np.zeros(paw.domain.comm.size, dtype=long)
     for nucleus in nuclei:
         ni = nucleus.get_number_of_partial_waves()
         np = ni * (ni + 1) // 2
@@ -165,9 +165,6 @@ def estimate_memory(paw):
         # nct
         box = 2 * nucleus.setup.rcore / h_c
         
-        # XXX Why times 5?  There would be 4 from the func + derivs,
-        # and conceivably another 4 if including tauct, but never 5.
-        # Won't work for HGH setups which have no core density.
         mem_nuclei[nucleus.rank] += (5 * box[0] * box[1] * box[2] * float_size)
         
     mem_nuclei = max(mem_nuclei)
@@ -193,7 +190,7 @@ def estimate_memory(paw):
     # temporary data in initialization
     ### Fixme! with LCAO below estimate is no longer correct!
     nao_tot = 0
-    mem_temp = npy.zeros(paw.gd.comm.size, dtype=long)
+    mem_temp = np.zeros(paw.gd.comm.size, dtype=long)
     #for nucleus in nuclei:
     #    box = 2 * nucleus.setup.phit_j[0].get_cutoff() / h_c
     #    box_size = box[0] * box[1] * box[2]
@@ -235,8 +232,8 @@ def estimate_memory(paw):
 
 class MemNode:
     """Represents the estimated memory use of an object and its components."""
-    floatsize = npy.array(1, float).itemsize
-    complexsize = npy.array(1, complex).itemsize
+    floatsize = np.array(1, float).itemsize
+    complexsize = np.array(1, complex).itemsize
     itemsize = {float : floatsize, complex : complexsize}
     
     def __init__(self, name, basesize):
@@ -244,7 +241,7 @@ class MemNode:
         subcomponents."""
         self.name = name
         self.basesize = float(basesize)
-        self.totalsize = npy.nan # Size including sub-objects
+        self.totalsize = np.nan # Size including sub-objects
         self.nodes = []
         self.indent = '    '
 

@@ -44,6 +44,7 @@ class DummyMixer(BaseMixer):
 class KineticEnergyPreconditioner:
     def __init__(self, gd, kin, dtype):
         self.preconditioner = Preconditioner(gd, kin, dtype)
+        self.preconditioner.allocate()
 
     def apply(self, kpt, psi, psin):
         for i in range(len(psi)):

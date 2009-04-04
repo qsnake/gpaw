@@ -88,6 +88,7 @@ class OmegaMatrix:
             xc = None # enable RPA as keyword
         if xc is not None:
             self.xc = XC3DGrid(xc, self.gd, kss.npspins)
+            self.xc.allocate()
             # check derivativeLevel
             if derivativeLevel is None:
                 derivativeLevel= \

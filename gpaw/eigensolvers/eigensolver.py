@@ -67,6 +67,9 @@ class Eigensolver:
         if not self.initialized:
             self.initialize(wfs)
 
+        if not self.preconditioner.allocated:
+            self.preconditioner.allocate()
+
         if not wfs.orthonormalized:
             wfs.orthonormalize()
             

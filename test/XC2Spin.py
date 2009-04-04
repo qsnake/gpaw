@@ -28,6 +28,7 @@ for name in ['LDA', 'PBE']:
     a = 1.0
     gd = GridDescriptor((N, N, N), (a, a, a))
     xc = XC3DGrid(name, gd, nspins=2)
+    xc.allocate()
     na = gd.empty()
     na.fill(0.02)
     nb = 1.5 * na
