@@ -170,7 +170,8 @@ class CoulombNEW:
         self.pot_G = gd.empty()
         self.dv = gd.dv
         self.poisson = PoissonSolver(nn=3)
-        self.poisson.initialize(gd)
+        self.poisson.set_grid_descriptor(gd)
+        self.poisson.initialize()
         self.setups = setups
 
         # Set coarse ghat
