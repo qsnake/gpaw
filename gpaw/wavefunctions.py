@@ -137,8 +137,7 @@ class WaveFunctions(EmptyWaveFunctions):
 
     def calculate_atomic_density_matrices_k_point_with_occupation(self, D_sii,
                                                                   kpt, a, f_n):
-        # XXX This method appears to be unused, deprecating
-        raise DeprecationWarning
+        # Used in calculation of response part of GLLB-potential
         if kpt.rho_MM is not None: 
             P_Mi = kpt.P_aMi[a]
             rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
@@ -166,8 +165,7 @@ class WaveFunctions(EmptyWaveFunctions):
     def calculate_atomic_density_matrices_with_occupation(self, D_asp, f_kn):
         """Calculate atomic density matrices from projections with
         custom occupation f_kn."""
-        # XXX This method appears to be unused, deprecating
-        raise DeprecationWarning
+        # Used in calculation of response part of GLLB-potential
         for a, D_sp in D_asp.items():
             ni = self.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
@@ -401,8 +399,7 @@ class LCAOWaveFunctions(WaveFunctions):
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
         """Add contribution to pseudo electron-density. Do not use the standard
         occupation numbers, but ones given with argument f_n."""
-        # Where is this function used? XXX deprecate/remove if not used.
-        raise DeprecationWarning
+        # Used in calculation of response potential in GLLB-potential
         rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.k)
 
@@ -789,8 +786,8 @@ class GridWaveFunctions(WaveFunctions):
                             nt_G += (psi_m.conj() * ft * psi_n).real
 
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
-        # Appears to be unused
-        raise DeprecationWarning
+        # Used in calculation of response part of GLLB-potential
+        
         nt_G = nt_sG[kpt.s]
         if self.dtype == float:
             for f, psit_G in zip(f_n, kpt.psit_nG):
