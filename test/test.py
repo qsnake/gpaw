@@ -68,7 +68,6 @@ if len(tests) == 0:
         'XC2.py',
         'XC2Spin.py',
         'multipoletest.py',
-        'aedensity.py',
         'proton.py',
         'coulomb.py',
         'ase3k.py',
@@ -98,6 +97,7 @@ if len(tests) == 0:
         'bulk.py',
         'restart2.py',
         'hydrogen.py',
+        'aedensity.py',
         'H-force.py',
         'CL_minus.py',
         'gemm.py',
@@ -105,6 +105,7 @@ if len(tests) == 0:
         'degeneracy.py',
         'h2o-xas.py',
         'si.py',
+        'simple_stm.py',
         'asewannier.py',
         'vdw/quick.py',
         'lxc_xcatom.py',
@@ -159,7 +160,6 @@ disabled_tests = [
     'lxc_spinpol_Li.py',
     'lxc_testsetups.py',
     'lxc_generatesetups.py',
-    'simple_stm.py',
     ]
 
 tests_parallel = [

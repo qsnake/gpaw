@@ -15,6 +15,7 @@ LiH = Atoms([Atom('Li', [.0, .0, .41]),
              Atom('H', [.0, .0, -1.23]),
              ], cell=[5, 5, 6.5])
 LiH.center()
+fname = 'LiH-wfs.gpw'
 
 # finite system
 if not load:
@@ -22,9 +23,9 @@ if not load:
     cf = GPAW(spinpol=True, nbands=2, h=.3, txt=txt)
     LiH.set_calculator(cf)
     LiH.get_potential_energy()
-#    cf.write('LiH_wfs.gpw', 'all')
+    cf.write(fname, 'all')
 else:
-    cf = GPAW('LiH-wfs.gpw', txt=txt)
+    cf = GPAW(fname, txt=txt)
 
 f3dname = 'stm3d.plt'
 

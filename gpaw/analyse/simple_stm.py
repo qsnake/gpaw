@@ -35,7 +35,7 @@ class SimpleStm:
                 self.calc = atoms.get_calculator()
             else:
                 self.calc = atoms
-            self.calc.initialize_wave_functions()
+#            self.calc.initialize_wave_functions()
             
             self.gd = self.calc.gd
             self.offset_c = [int(not a) for a in self.gd.pbc_c]
@@ -49,17 +49,20 @@ class SimpleStm:
         self.is_wf = True
         self.ldos = self.gd.zeros()
 
-        try:
+        if hasattr(bias, '__len__') and len(bias) == 3:
             n, k, s = bias
             # only a single wf requested
             u = self.calc.get_myu(k, s)
             if u is not None:
                 self.add_wf_to_ldos(n, u, weight=1)
 
-        except:
+        else:
             # energy bias
-            efermi = self.calc.get_fermi_level()
-
+            try:
+                efermi = self.calc.get_fermi_level()
+            except:
+                efermi = self.calc.get_homo_lumo().mean() 
+                
             def is_number(x):
                 try:
                     x + 1
@@ -94,8 +97,8 @@ class SimpleStm:
             emin /= Hartree
             emax /= Hartree
             
-            for u in range(self.calc.nmyu):
-                kpt = self.calc.kpt_u[u]
+            for u in range(len(self.calc.wfs.kpt_u)):
+                kpt = self.calc.wfs.kpt_u[u]
                 for n, eps in enumerate(kpt.eps_n):
                     if eps > emin and eps < emax:
                         if occupied:
@@ -106,7 +109,7 @@ class SimpleStm:
 
     def add_wf_to_ldos(self, n, u, weight=None):
         """Add the wf with given kpoint and spin to the ldos"""
-        kpt = self.calc.kpt_u[u]
+        kpt = self.calc.wfs.kpt_u[u]
         psi = kpt.psit_nG[n]
         w = weight
         if w is None:
@@ -119,7 +122,7 @@ class SimpleStm:
 
         Units: [e/A^3]"""
         self.calculate_ldos(bias)
-        self.calc.kpt_comm.sum(self.ldos)
+        self.calc.wfs.kpt_comm.sum(self.ldos)
         ldos = self.gd.collect(self.ldos)
 ##        print "write: integrated =", self.gd.integrate(self.ldos)
         

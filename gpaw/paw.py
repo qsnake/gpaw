@@ -589,7 +589,7 @@ class PAW(PAWTextOutput):
     def get_myu(self, k, s):
         """Return my u corresponding to a certain kpoint and spin - or None"""
         # very slow, but we are sure that we have it
-        for u in range(self.nmyu):
+        for u in range(len(self.wfs.kpt_u)):
             if self.wfs.kpt_u[u].k == k and self.wfs.kpt_u[u].s == s:
                 return u
         return None
