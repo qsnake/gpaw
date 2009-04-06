@@ -146,7 +146,6 @@ def get_phs(calc, s=0):
             M2 = M1 + V_ni.shape[1]
             V_qnM[q, :, M1:M2] += V_ni
             M1 = M2
-    V_qnM = V_qnM.conj()
     return V_qnM, H_qMM, S_qMM, P_aqMi
 
 

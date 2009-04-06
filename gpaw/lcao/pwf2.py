@@ -70,7 +70,6 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
             V_nM += dots(P_ni, dS_ii, P_Mi.T.conj())
-    V_qnM = V_qnM.conj()
     if projectionsonly:
         return V_qnM
 
