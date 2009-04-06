@@ -1,6 +1,6 @@
 import pickle
 
-from gpaw.transport.selfenergy import LeadSelfEnergy
+from gpaw.transport.selfenergy import LeadSelfEnergy, CellSelfEnergy
 from gpaw.transport.greenfunction import GreenFunction
 from ase.transport.tools import function_integral, fermidistribution
 from ase import Atoms, Atom, monkhorst_pack, Hartree
@@ -12,6 +12,7 @@ from gpaw import GPAW
 from gpaw import Mixer
 from gpaw import restart as restart_gpaw
 from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full, dot
+from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import pack
@@ -82,8 +83,10 @@ class Transport(GPAW):
                            'lead_restart', 'scat_restart', 'save_file',
                            'restart_file', 'cal_loc', 'recal_path',
                            'use_qzk_boundary', 'use_linear_vt_mm',
-                           'use_buffer', 'buffer_atoms', 'edge_atom',
-                           'LR_leads', 'bias', 'gate']:
+                           'use_buffer', 'buffer_atoms', 'edge_atoms',
+                           'use_env', 'env_atoms', 'env_cells', 'env_kpts',
+                           'env_buffer_atoms', 'env_edge_atoms', 'env_pbc',
+                           'LR_leads', 'bias', 'gate', 'env_bias']:
                 del self.gpw_kwargs[key]
             if key in ['pl_kpts']:
                 p['pl_kpts'] = kw['pl_kpts']
@@ -107,8 +110,24 @@ class Transport(GPAW):
                 p['use_buffer'] = kw['use_buffer']
             if key in ['buffer_atoms']:
                 p['buffer_atoms'] = kw['buffer_atoms']
-            if key in ['edge_atom']:
-                p['edge_atom'] = kw['edge_atom']
+            if key in ['edge_atoms']:
+                p['edge_atoms'] = kw['edge_atoms']
+            if key in ['use_env']:
+                p['use_env'] = kw['use_env']
+            if key in ['env_atoms']:
+                p['env_atoms'] = kw['env_atoms']
+            if key in ['env_cells']:
+                p['env_cells'] = kw['env_cells']
+            if key in ['env_kpts']:
+                p['env_kpts'] = kw['env_kpts']
+            if key in ['env_buffer_atoms']:
+                p['env_buffer_atoms'] = kw ['env_buffer_atoms']
+            if key in ['env_edge_atoms']:
+                p['env_edge_atoms'] = kw['env_edge_atoms']
+            if key in ['env_pbc']:
+                p['env_pbc'] = kw['env_pbc']
+            if key in ['env_bias']:
+                p['env_bias'] = kw['env_bias']
             if key in ['LR_leads']:
                 p['LR_leads'] = kw['LR_leads']
             if key in ['bias']:
@@ -134,7 +153,21 @@ class Transport(GPAW):
         self.use_linear_vt_mm = p['use_linear_vt_mm']
         self.use_buffer = p['use_buffer']
         self.buffer_atoms = p['buffer_atoms']
-        self.edge_atom = p['edge_atom']
+        self.edge_atoms = p['edge_atoms']
+        self.use_env = p['use_env']
+        if self.use_env:
+            self.env_atoms = p['env_atoms']
+            self.env_cells = p['env_cells']
+            self.env_kpts = p['env_kpts']
+            self.env_buffer_atoms = p['env_buffer_atoms']
+            self.env_edge_atoms = p['env_edge_atoms']
+            self.env_pbc = p['env_pbc']
+            self.env_bias = p['env_bias']
+            self.env_num = len(self.env_atoms)
+            assert self.env_num == len(self.env_cells)
+            assert self.env_num == len(self.env_buffer_atoms)
+            assert self.env_num == len(self.env_edge_atoms[0])
+            assert self.env_num == len(self.env_bias)
         self.LR_leads = p['LR_leads']
         self.bias = p['bias']
         self.gate = p['gate']
@@ -149,26 +182,30 @@ class Transport(GPAW):
         if self.use_linear_vt_mm:
             self.use_buffer = False
         
-        if not self.LR_leads and self.buffer_atoms == None:
-            raise RuntimeError('need to point out the buffer_atoms')
+        #if not self.LR_leads and self.buffer_atoms == None:
+        #    raise RuntimeError('need to point out the buffer_atoms')
         if self.LR_leads and self.lead_num != 2:
             raise RuntimeErrir('wrong way to use keyword LR_leads')
-        if not self.LR_leads and self.lead_num != len(self.buffer_atoms):
-            raise RuntimeError('worng buffer_atoms information')
+        #if not self.LR_leads and self.lead_num != len(self.buffer_atoms):
+        #    raise RuntimeError('worng buffer_atoms information')
           
         self.initialized_transport = False
       
         nl = self.lead_num
-        assert nl >=2 and nl == len(self.pl_cells) and nl == len(self.bias)
+        #assert nl >=2 and nl == len(self.pl_cells) and nl == len(self.bias)
         
         self.atoms_l = [None] * self.lead_num
+        if self.use_env:
+            self.atoms_e = [None] * self.env_num
         
         kpts = kw['kpts']
         if kpts[0] == 1 and kpts[1] == 1:
             self.gpw_kwargs['usesymm'] = None
         else:
-            self.gpw_kwargs['usesymm'] = False            
- 
+            #self.gpw_kwargs['usesymm'] = False            
+            self.gpw_kwargs['usesymm'] = None 
+            print 'usesymm=None here'
+
     def set_default_transport_parameters(self):
         p = {}
         p['pl_atoms'] = []
@@ -185,7 +222,8 @@ class Transport(GPAW):
         p['use_linear_vt_mm'] = False
         p['use_buffer'] = True
         p['buffer_atoms'] = None
-        p['edge_atom'] = None
+        p['edge_atoms'] = None
+        p['use_env'] = False
         p['LR_leads'] = True
         p['bias'] = []
         p['gate'] = 0
@@ -214,7 +252,9 @@ class Transport(GPAW):
         self.dimt_buffer = []
         self.nblead = []
         self.edge_index = [[None] * self.lead_num, [None] * self.lead_num]
-
+        if self.use_env:
+            self.nbenv = []
+            self.env_edge_index = [[None] * self.env_num, [None] * self.env_num]
         for i in range(self.lead_num):
             self.atoms_l[i] = self.get_lead_atoms(i)
             calc = self.atoms_l[i].calc
@@ -224,6 +264,15 @@ class Transport(GPAW):
                 calc.set_positions(atoms)
             self.dimt_lead.append(calc.gd.N_c[self.d])
             self.nblead.append(calc.wfs.setups.nao)
+        if self.use_env:
+            for i in range(self.env_num):
+                self.atoms_e[i] = self.get_env_atoms(i)
+                calc = self.atoms_e[i].calc
+                atoms = self.atoms_e[i]
+                if not calc.initialized:
+                    calc.initialize(atoms)
+                    calc.set_positions(atoms)
+                self.nbenv.append(calc.wfs.setups.nao)
         if self.npk == 1:    
             self.lead_kpts = self.atoms_l[0].calc.wfs.bzk_kc
         else:
@@ -232,7 +281,10 @@ class Transport(GPAW):
         self.initialize_matrix()
         self.get_lead_index()
         self.get_buffer_index()
-        
+        if self.use_env:
+            self.get_env_index()
+            self.get_env_buffer_index()
+            self.get_env_buffer_index()
         if self.nbmol <= np.sum(self.nblead):
             self.use_buffer = False
             if self.master:
@@ -245,6 +297,10 @@ class Transport(GPAW):
         else:
             self.buffer = [0] * self.lead_num
             self.print_index = self.lead_index
+            
+        if self.use_env:
+            self.env_buffer = [len(self.env_buffer_index[i])
+                                               for i in range(self.env_num)]
         self.set_buffer()
             
         self.fermi = 0
@@ -254,11 +310,16 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             self.update_lead_hamiltonian(i)
             self.initialize_lead(i)
+        if self.use_env:
+            for i in range(self.env_num):
+                self.update_env_hamiltonian(i)
+                self.initialize_env(i)
         world.barrier()
         self.check_edge()
         self.get_edge_density()
         del self.atoms_l
-                
+        if self.use_env:
+            del self.atoms_e
         self.initialized_transport = True
 
     def get_lead_index(self):
@@ -270,18 +331,35 @@ class Transport(GPAW):
             for j, lj  in zip(self.pl_atoms[i], range(len(self.pl_atoms[i]))):
                 begin = np.sum(np.array(basis_list[:j], int))
                 l_begin = np.sum(np.array(lead_basis_list[i][:lj], int))
-                if self.edge_atom == None:
+                if self.edge_atoms == None:
                     self.edge_index[0][i] = -i * lead_basis_list[i][-1]
                     self.edge_index[1][i] = -i * lead_basis_list[i][-1]
                     assert self.lead_num == 2
                 else:
-                    if j == self.edge_atom[1][i]:
+                    if j == self.edge_atoms[1][i]:
                         self.edge_index[1][i] = begin
-                    if lj == self.edge_atom[0][i]:
+                    if lj == self.edge_atoms[0][i]:
                         self.edge_index[0][i] = l_begin
                 for n in range(basis_list[j]):
                     self.lead_index[i].append(begin + n) 
             self.lead_index[i] = np.array(self.lead_index[i], int)
+            
+    def get_env_index(self):
+        basis_list = [setup.niAO for setup in self.wfs.setups]
+        env_basis_list = []
+        for i in range(self.env_num):
+            calc = self.atoms_e[i].calc
+            env_basis_list.append([setup.niAO for setup in calc.wfs.setups])
+            for j, lj in zip(self.env_atoms[i], range(len(self.env_atoms[i]))):
+                begin = np.sum(np.array(basis_list[:j], int))
+                l_begin = np.sum(np.array(env_basis_list[i][:lj], int))
+                if j == self.env_edge_atoms[1][i]:
+                    self.env_edge_index[1][i] = begin
+                if lj == self.env_edge_atoms[0][i]:
+                    self.env_edge_index[0][i] = l_begin
+                for n in range(basis_list[j]):
+                    self.env_index[i].append(begin + n)
+            self.env_index[i] = np.array(self.env_index[i], int)
             
     def get_buffer_index(self):
         if not self.use_buffer:
@@ -304,7 +382,16 @@ class Transport(GPAW):
                 self.dimt_buffer.append(self.dimt_lead[i] *
                                         len(self.buffer_atoms[i]) /
                                            len(self.pl_atoms[i]))
-            
+    
+    def get_env_buffer_index(self):
+        basis_list = [setup.niAO for setup in self.wfs.setups]
+        for i in range(self.env_num):
+            for j in self.env_buffer_atoms[i]:
+                begin = np.sum(np.array(basis_list[:j], int))
+                for n in range(basis_list[j]):
+                    self.env_buffer_index[i].append(begin + n)
+            self.env_buffer_index[i] = np.array(self.env_buffer_index[i], int)
+           
     def initialize_matrix(self):
         self.hl_skmm = []
         self.dl_skmm = []
@@ -319,7 +406,18 @@ class Transport(GPAW):
         self.lead_index = []
         self.inner_lead_index = []
         self.buffer_index = []
-
+        if self.use_env:
+            self.he_skmm = []
+            self.de_skmm = []
+            self.se_kmm = []
+            self.he_smm = []
+            self.de_smm = []
+            self.se_mm = []
+            self.env_index = []
+            self.inner_env_index = []
+            self.env_buffer_index = []
+            self.env_ibzk_kc = []
+            self.env_weight = []
         npk = self.my_npk
         
         if self.npk == 1:
@@ -344,7 +442,25 @@ class Transport(GPAW):
             self.lead_index.append([])
             self.inner_lead_index.append([])
             self.buffer_index.append([])
-        
+       
+        if self.use_env:
+            for i in range(self.env_num):
+                calc = self.atoms_e[i].calc
+                ns = calc.wfs.nspins
+                nk = len(calc.wfs.ibzk_kc)
+                nb = self.nbenv[i]
+                self.he_skmm.append(np.empty((ns, nk, nb, nb), complex))
+                self.de_skmm.append(np.empty((ns, nk, nb, nb), complex))
+                self.se_kmm.append(np.empty((nk, nb, nb), complex))
+                self.he_smm.append(np.empty((ns, nb, nb)))
+                self.de_smm.append(np.empty((ns, nb, nb)))
+                self.se_mm.append(np.empty((nb, nb)))
+                self.env_index.append([])
+                self.inner_env_index.append([])
+                self.env_buffer_index.append([])
+                self.env_ibzk_kc.append([])
+                self.env_weight.append([])
+                
         self.ec = np.empty([self.lead_num, ns])        
         if self.gamma:
             dtype = float
@@ -412,7 +528,27 @@ class Transport(GPAW):
             (self.hl_skmm[l],
              self.dl_skmm[l],
              self.sl_kmm[l]) = self.pl_read('lead' + str(l) + '.mat')
-  
+
+    def update_env_hamiltonian(self, l):
+        if not self.lead_restart:
+            atoms = self.atoms_e[l]
+            atoms.get_potential_energy()
+            self.he_skmm[l], self.se_kmm[l] = self.get_hs(atoms.calc)
+            self.de_skmm[l] = self.initialize_density_matrix('env', l)
+            if self.save_file:
+                atoms.calc.write('env' + str(l) + '.gpw')                    
+                self.pl_write('env' + str(l) + '.mat',
+                                                  (self.he_skmm[l],
+                                                   self.de_skmm[l],
+                                                   self.se_kmm[l]))            
+        else:
+            atoms, calc = restart_gpaw('env' + str(l) + '.gpw')
+            calc.set_positions()
+            self.atoms_e[l] = atoms
+            (self.he_skmm[l],
+             self.de_skmm[l],
+             self.se_kmm[l]) = self.pl_read('env' + str(l) + '.mat')
+            
     def update_scat_hamiltonian(self, atoms):
         if not self.scat_restart:
             if atoms is None:
@@ -464,6 +600,15 @@ class Transport(GPAW):
         atomsl.set_calculator(self.get_lead_calc(l))
         return atomsl
 
+    def get_env_atoms(self, l):
+        atoms = self.atoms.copy()
+        atomsl = atoms[self.env_atoms[l]]
+        atomsl.cell = self.env_cells[l]
+        atomsl.center()
+        atomsl._pbc = np.array(self.env_pbc, dtype=bool)
+        atomsl.set_calculator(self.get_env_calc(l))
+        return atomsl
+    
     def get_lead_calc(self, l):
         p = self.gpw_kwargs.copy()
         p['nbands'] = None
@@ -477,6 +622,17 @@ class Transport(GPAW):
             p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         if 'txt' in p and p['txt'] != '-':
             p['txt'] = 'lead%i_' % (l + 1) + p['txt']
+        return gpaw.GPAW(**p)
+    
+    def get_env_calc(self, l):
+        p = self.gpw_kwargs.copy()
+        p['nbands'] = None
+        #p['usesymm'] = True
+        p['kpts'] = self.env_kpts
+        if 'mixer' in p:
+            p['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
+        if 'txt' in p and p['txt'] != '-':
+            p['txt'] = 'env%i_' % (l + 1) + p['txt']
         return gpaw.GPAW(**p)
 
     def negf_prepare(self, atoms=None):
@@ -507,6 +663,25 @@ class Transport(GPAW):
         self.dl_spkmm[l] = spk(ntk, kpts, self.dl_skmm[l], 'h')
         self.dl_spkcmm[l] = spk(ntk, kpts, self.dl_skmm[l], 'h', position)
 
+    def initialize_env(self, l):
+        wfs = self.atoms_e[l].calc.wfs
+        kpts = wfs.ibzk_kc
+        weight = wfs.weight_k
+        self.he_smm[l], self.se_mm[l] = get_realspace_hs(self.he_skmm[l],
+                                                         self.se_kmm[l],
+                                                         kpts,
+                                                         weight,
+                                                         R_c=(0,0,0),
+                                                         usesymm=False)
+        self.de_smm[l] = get_realspace_hs(self.de_skmm[l],
+                                          None,
+                                          kpts,
+                                          weight,
+                                          R_c=(0,0,0),
+                                          usesymm=False)
+        self.env_ibzk_kc[l] = kpts
+        self.env_weight[l] = weight
+        
     def initialize_mol(self):
         ntk = self.ntkmol
         kpts = self.my_kpts
@@ -588,17 +763,26 @@ class Transport(GPAW):
             ntk = self.ntklead
             calc = self.atoms_l[l].calc
             d_skmm = np.empty(self.hl_skmm[l].shape, self.hl_skmm[l].dtype)
+            nk = ntk * npk
+            weight = [1. / nk] * nk
+   
+        if region == 'env':
+            calc = self.atoms_e[l].calc
+            weight = calc.wfs.weight_k
+            d_skmm = np.empty(self.he_skmm[l].shape, self.he_skmm[l].dtype)
         
         if region == 'scat':
             ntk = self.ntkmol
             calc = self
             d_skmm = np.empty(self.h_skmm.shape, self.h_skmm.dtype)
+            nk = ntk * npk
+            weight = [1. / nk] * nk
             
-        for kpt in calc.wfs.kpt_u:
+        for kpt, i in zip(calc.wfs.kpt_u, range(len(calc.wfs.kpt_u))):
             C_nm = kpt.C_nM
             f_nn = np.diag(kpt.f_n)
             d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
-                                          np.dot(f_nn, C_nm)) * ntk * npk
+                                          np.dot(f_nn, C_nm)) / weight[i]
         return d_skmm
     
     def fill_density_matrix(self):
@@ -615,6 +799,10 @@ class Transport(GPAW):
         ham_diff = np.empty([self.lead_num])
         den_diff = np.empty([self.lead_num])
         self.e_float = np.empty([self.lead_num])
+        if self.use_env:
+            env_ham_diff = np.empty([self.env_num])
+            env_den_diff = np.empty([self.env_num])            
+            self.env_e_float = np.empty([self.env_num])
         for i in range(self.lead_num):
             ind = self.lead_index[i]
             dim = len(ind)
@@ -628,13 +816,38 @@ class Transport(GPAW):
             self.e_float[i] = (self.h_spkmm[0, 0, im, im] -
                                       self.hl_spkmm[i][0, 0, il, il]) / \
                                       self.sl_pkmm[i][0, il, il]
+        
         self.edge_ham_diff = np.max(ham_diff)
         self.edge_den_diff = np.max(den_diff)
+        
+        if self.use_env:
+            for i in range(self.env_num):
+                ind = self.env_index[i]
+                dim = len(ind)
+                ind = np.resize(ind, [dim, dim])
+                env_h_mat_diff = self.h_skmm[:, :, ind.T, ind] - \
+                                                               self.he_skmm[i]
+                env_d_mat_diff = self.d_skmm[:, :, ind.T, ind] - \
+                                                               self.de_skmm[i]            
+                env_ham_diff[i] = np.max(abs(env_h_mat_diff))
+                env_den_diff[i] = np.max(abs(env_d_mat_diff))
+                im = self.env_edge_index[1][i]
+                ie = self.env_edge_index[0][i]
+                self.env_e_float[i] = (self.h_skmm[0, 0, im, im] -
+                                       self.he_skmm[i][0, 0, ie, ie]) / \
+                                       self.se_kmm[i][0, ie, ie]
+            self.env_edge_ham_diff = np.max(env_ham_diff)
+            self.env_dege_den_diff = np.max(env_den_diff)
         
         for i in range(self.lead_num):
             self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
             self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
             self.hl_skmm[i][:] += self.sl_kmm[i] * self.e_float[i]
+
+        if self.use_env:
+            for i in range(self.env_num):
+                self.he_skmm[i][:] += self.se_kmm[i] * self.env_e_float[i]
+                self.he_smm[i][:] += self.se_mm[i] * self.env_e_float[i]
 
         for i in range(self.lead_num):
             if ham_diff[i] > tol and self.master:
@@ -737,7 +950,7 @@ class Transport(GPAW):
  
     def initialize_scf(self):
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
-                                                  self.fermi, self.bias)
+                                         self.fermi, self.bias, self.env_bias)
         
         self.selfenergies = []
         
@@ -751,6 +964,17 @@ class Transport(GPAW):
                                              1e-8))
 
             self.selfenergies[i].set_bias(self.bias[i])
+            
+        if self.use_env:
+            self.env_selfenergies = []
+            for i in range(self.env_num):
+                self.env_selfenergies.append(CellSelfEnergy((self.he_skmm[i],
+                                                             self.se_kmm[i]),
+                                                            (self.he_smm[i],
+                                                             self.se_mm[i]),
+                                                             self.env_ibzk_kc[i],
+                                                             self.env_weight[i],
+                                                            1e-8))
 
         self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
                                            H=self.h_spkmm[0,0],
@@ -782,7 +1006,10 @@ class Transport(GPAW):
         self.eqpathinfo = []
         self.nepathinfo = []
         self.locpathinfo = []
-       
+        if self.use_env:
+            ne = self.env_num
+        else:
+            ne = 0
         for s in range(self.nspins):
             self.eqpathinfo.append([])
             self.nepathinfo.append([])
@@ -791,10 +1018,11 @@ class Transport(GPAW):
             if self.cal_loc:
                 self.locpathinfo.append([])
             for k in self.my_pk:
-                self.eqpathinfo[s].append(PathInfo('eq', self.lead_num))
-                self.nepathinfo[s].append(PathInfo('ne', self.lead_num))    
+                self.eqpathinfo[s].append(PathInfo('eq', self.lead_num + ne))
+                self.nepathinfo[s].append(PathInfo('ne', self.lead_num + ne))    
                 if self.cal_loc:
-                    self.locpathinfo[s].append(PathInfo('eq', self.lead_num))
+                    self.locpathinfo[s].append(PathInfo('eq',
+                                                         self.lead_num + ne))
                     
     def calculate_integral_path(self):
         self.initialize_path()
@@ -826,6 +1054,11 @@ class Transport(GPAW):
             nblead = self.nblead[i]
             self.tgtint.append(np.empty([maxintcnt, nblead, nblead],
                                                            complex))
+        if self.use_env:
+            for i in range(self.env_num):
+                nbenv = self.nbenv[i]
+                self.tgtint.append(np.empty([maxintcnt, nbenv, nbenv],
+                                                           complex))
         self.cntint = -1
 
         sg = self.selfenergies
@@ -836,6 +1069,13 @@ class Transport(GPAW):
             sg[i].s_ij = self.sl_pkcmm[i][k]
             sg[i].h_im = self.hl_spkcmm[i][s, k]
             sg[i].s_im = self.sl_pkcmm[i][k]
+        
+        if self.use_env:
+            print 'Attention here, maybe confusing npk and nk'
+            env_sg = self.env_selfenergies
+            for i in range(self.env_num):
+                env_sg[i].h_skmm = self.he_skmm[i]
+                env_sg[i].s_kmm = self.se_kmm[i]
         
         ind = self.inner_mol_index
         dim = len(ind)
@@ -871,15 +1111,22 @@ class Transport(GPAW):
         siglist = []
         for i in range(self.lead_num):
             siglist.append([])
+        if self.use_env:
+            for i in range(self.env_num):
+                siglist.append([])
         for i in sgforder:
             flist.append(self.fint[i])
  
         for i in range(self.lead_num):
-            nblead = self.nblead[i]
-            sigma= np.empty([nblead, nblead], complex)
             for j in sgforder:
                 sigma = self.tgtint[i][j]
                 siglist[i].append(sigma)
+        if self.use_env:
+            nl = self.lead_num
+            for i in range(self.env_num):
+                for j in sgforder:
+                    sigma = self.tgtint[i + nl][j]
+                    siglist[i + nl].append(sigma)
         self.eqpathinfo[s][k].add(elist, wlist, flist, siglist)    
    
         del self.fint, self.tgtint, self.zint
@@ -897,6 +1144,12 @@ class Transport(GPAW):
         for i in range(self.lead_num):
             nblead = self.nblead[i]
             self.tgtint.append(np.empty([maxintcnt, nblead, nblead], complex))
+        
+        if self.use_env:
+            for i in range(self.env_num):
+                nbenv = self.nbenv[i]
+                self.tgtint.append(np.empty([maxintcnt, nbenv, nbenv],
+                                                                     complex))
             
         sg = self.selfenergies
         for i in range(self.lead_num):
@@ -906,7 +1159,14 @@ class Transport(GPAW):
             sg[i].s_ij = self.sl_pkcmm[i][k]
             sg[i].h_im = self.hl_spkcmm[i][s, k]
             sg[i].s_im = self.sl_pkcmm[i][k]
-        
+
+        if self.use_env:
+            print 'Attention here, maybe confusing npk and nk'
+            env_sg = self.env_selfenergies
+            for i in range(self.env_num):
+                env_sg[i].h_skmm = self.he_skmm[i]
+                env_sg[i].s_kmm = self.se_kmm[i]
+                
         ind = self.inner_mol_index
         dim = len(ind)
         ind = np.resize(ind, [dim, dim])
@@ -919,6 +1179,9 @@ class Transport(GPAW):
                 self.fint = []
                 for i in range(self.lead_num):
                     self.fint.append([[],[]])
+                if self.use_env:
+                    for i in range(self.env_num):
+                        self.fint.append([[],[]])
                 if intctrl.kt <= 0:
                     neintpath = [intctrl.neintpath[n - 1] + intpathtol,
                                  intctrl.neintpath[n] - intpathtol]
@@ -962,16 +1225,28 @@ class Transport(GPAW):
                 for i in range(self.lead_num):
                     flist.append([[],[]])
                     siglist.append([])
-
+                if self.use_env:
+                    for i in range(self.env_num):
+                        flist.append([[],[]])
+                        siglist.append([])
                 for l in range(self.lead_num):
-                    nblead = self.nblead[l]
-                    sigma= np.empty([nblead, nblead], complex)
+                    #nblead = self.nblead[l]
+                    #sigma= np.empty([nblead, nblead], complex)
                     for j in sgforder:
                         for i in [0, 1]:
                             fermi_factor = self.fint[l][i][j]
                             flist[l][i].append(fermi_factor)   
                         sigma = self.tgtint[l][j]
                         siglist[l].append(sigma)
+                if self.use_env:
+                    nl = self.lead_num
+                    for l in range(self.env_num):
+                        for j in sgforder:
+                            for i in [0, 1]:
+                                fermi_factor = self.fint[l + nl][i][j]
+                                flist[l + nl][i].append(fermi_factor)
+                            sigma = self.tgtint[l + nl][j]
+                            siglist[l + nl].append(sigma)
                 self.nepathinfo[s][k].add(zgp, wgp, flist, siglist)
         # Loop neintpath
         elif calcutype == 'locInt':
@@ -1008,13 +1283,22 @@ class Transport(GPAW):
             siglist = []
             for i in range(self.lead_num):
                 siglist.append([])
+            if self.use_env:
+                for i in range(self.env_num):
+                    siglist.append([])
             for i in sgforder:
                 flist.append(self.fint[i])
-            sigma= np.empty([nblead, nblead], complex)
+            #sigma= np.empty([nblead, nblead], complex)
             for i in range(self.lead_num):
                 for j in sgforder:
                     sigma = self.tgtint[i][j]
                     siglist[i].append(sigma)
+            if self.use_env:
+                nl = self.lead_num
+                for i in range(self.env_num):
+                    for j in sgforder:
+                        sigma = self.tgtint[i + nl][j]
+                        siglist[i + nl].append(sigma)
             self.locpathinfo[s][k].add(elist, wlist, flist, siglist)           
         
         del self.zint, self.tgtint
@@ -1049,27 +1333,54 @@ class Transport(GPAW):
         for i in range(nume):
             sigma = np.zeros([nbmol, nbmol], complex)
             gamma = np.zeros([self.lead_num, nbmol, nbmol], complex)
+            if self.use_env:
+                env_gamma = np.zeros([self.env_num, nbmol, nbmol], complex)
             if self.cntint + 1 >= len(self.zint):
                 self.zint += [0] * stepintcnt
                 for n in range(self.lead_num):
                     nblead = self.nblead[n]
                     tmp = self.tgtint[n].shape[0]
                     tmptgt = np.copy(self.tgtint[n])
-                    self.tgtint[n] = np.empty([tmp + stepintcnt, nblead, nblead],
-                                                                  complex)
+                    self.tgtint[n] = np.empty([tmp + stepintcnt,
+                                                nblead, nblead], complex)
                     self.tgtint[n][:tmp] = tmptgt
+                if self.use_env:
+                    nl = self.lead_num
+                    for n in range(self.env_num):
+                        nbenv = self.nbenv[n]
+                        tmp = self.tgtint[n + nl].shape[0]
+                        tmptgt = np.copy(self.tgtint[n + nl])
+                        self.tgtint[n + nl] = np.empty([tmp + stepintcnt,
+                                                       nbenv, nbenv], complex)
+                        self.tgtint[n + nl][:tmp] = tmptgt
             self.cntint += 1
             self.zint[self.cntint] = zp[i]
 
             for j in range(self.lead_num):
                 self.tgtint[j][self.cntint] = self.selfenergies[j](zp[i])
             
+            if self.use_env:
+                nl = self.lead_num
+                for j in range(self.env_num):
+                    self.tgtint[j + nl][self.cntint] = \
+                                               self.env_selfenergies[j](zp[i])
+                    
             for j in range(self.lead_num):
                 ind = self.inner_lead_index[j]
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
                 sigma[ind.T, ind] += self.tgtint[j][self.cntint]             
                 gamma[j, ind.T, ind] += self.selfenergies[j].get_lambda(zp[i])
+            
+            if self.use_env:
+                nl = self.lead_num
+                for j in range(self.env_num):
+                    ind = self.inner_env_index[j]
+                    dim = len(ind)
+                    ind = np.resize(ind, [dim, dim])
+                    sigma[ind.T, ind] += self.tgtint[j + nl][self.cntint]
+                    env_gamma[j, ind.T, ind] += \
+                                    self.env_selfenergies[j + nl].get_lambda(zp[i])
 
             gr = self.greenfunction.calculate(zp[i], sigma)       
         
@@ -1088,6 +1399,21 @@ class Transport(GPAW):
                                            kt) - fermidistribution(zp[i] -
                                             lead_ef, kt))                    
                     gammaocc += gamma[n] * self.fint[n][0][self.cntint]
+                if self.use_env:
+                    nl = self.lead_num
+                    for n in range(self.env_num):
+                        env_ef = intctrl.envfermi[n]
+                        min_ef = intctrl.minfermi
+                        max_ef = intctrl.maxfermi
+                        self.fint[n + nl][0].append(
+                                         fermidistribution(zp[i] - env_ef, kt)
+                                      - fermidistribution(zp[i] - min_ef, kt))
+                        self.fint[n + nl][1].append(
+                                         fermidistribution(zp[i] - max_ef, kt)
+                                      - fermidistribution(zp[i] - env_ef, kt))
+                        gammaocc += env_gamma[n] * \
+                                             self.fint[n + nl][0][self.cntint]
+                        
                 aocc = dot(gr, gammaocc)
                 aocc = dot(aocc, gr.T.conj())
                 gfunc[i] = aocc
@@ -1105,6 +1431,20 @@ class Transport(GPAW):
                                            kt) - fermidistribution(zp[i] -
                                             lead_ef, kt))
                     gammavir += gamma[n] * self.fint[n][1][self.cntint]
+                if self.use_env:
+                    nl = self.lead_num
+                    for n in range(self.env_num):
+                        env_ef = intctrl.envfermi[n]
+                        min_ef = intctrl.minfermi
+                        max_ef = intctrl.maxfermi
+                        self.fint[n + nl][0].append(
+                                         fermidistribution(zp[i] - env_ef, kt)
+                                      - fermidistribution(zp[i] - min_ef, kt))
+                        self.fint[n + nl][1].append(
+                                         fermidistribution(zp[i] - max_ef, kt)
+                                      - fermidistribution(zp[i] - env_ef, kt))
+                        gammavir += env_gamma[n] * \
+                                             self.fint[n + nl][1][self.cntint]                
                 avir = dot(gr, gammavir)
                 avir = dot(avir, gr.T.conj())
                 gfunc[i] = avir
@@ -1171,6 +1511,13 @@ class Transport(GPAW):
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
                 sigma[ind.T, ind] += pathinfo.sigma[n][i]
+            if self.use_env:
+                nl = self.lead_num
+                for n in range(self.env):
+                    ind = self.inner_env_index[n]
+                    dim = len(ind)
+                    ind = np.resize(ind, [dim, dim])
+                    sigma[ind.T, ind] += pathinfo.sigma[n + nl][i]
             gr = self.greenfunction.calculate(zp[i], sigma)
 
             for n in range(self.lead_num):
@@ -1184,6 +1531,22 @@ class Transport(GPAW):
                     fermifactor = np.real(pathinfo.fermi_factor[n][1][i])                    
                 sigmalesser[ind.T, ind] += 1.0j * fermifactor * (
                                           sigmatmp - sigmatmp.T.conj())
+            
+            if self.use_env:
+                nl = self.lead_num
+                for n in range(self.env_num):
+                    ind = self.inner_env_index[n]
+                    dim = len(ind)
+                    ind = np.resize(ind, [dim, dim])
+                    sigmatmp = pathinfo[n + nl][i]
+                    if ov == 'occ':
+                        fermifactor = np.real(
+                                         pathinfo.fermi_factor[n + nl][0][i])
+                    elif ov == 'vir':
+                        fermifactor = np.real(
+                                         pathinfo.fermi_factor[n + nl][1][i])
+                    sigmalesser[ind.T, ind] += 1.0j * fermifactor * (
+                                             sigmatmp - sigmatmp.T.conj())
    
             glesser = dot(sigmalesser, gr.T.conj())
             glesser = dot(gr, glesser)
@@ -1200,6 +1563,13 @@ class Transport(GPAW):
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
                 sigma[ind.T, ind] += pathinfo.sigma[n][i]
+            if self.use_env:
+                nl = self.lead_num
+                for n in range(self.env_num):
+                    ind = self.inner_env_index[n]
+                    dim = len(ind)
+                    ind = np.resize(ind, [dim, dim])
+                    sigma[ind.T, ind] += pathinfo.sigma[n + nl][i]
             gr = self.greenfunction.calculate(zp[i], sigma)
             fermifactor = pathinfo.fermi_factor[i]
             weight = pathinfo.weight[i]
@@ -1358,11 +1728,10 @@ class Transport(GPAW):
         dimp = linear_potential.shape[1:3]
         buffer_dim = self.dimt_buffer
         scat_dim = dimt - np.sum(buffer_dim)
-        bias= []
-        for i in range(self.lead_num): 
-            bias.append(self.bias[i] / Hartree)
+        bias= np.array(self.bias)
+        bias /= Hartree
         vt = np.empty([dimt])
-        if buffer_dim !=0:
+        if (np.array(buffer_dim) != 0).any():
             vt[:buffer_dim[0]] = bias[0]
             vt[-buffer_dim[1]:] = bias[1]         
             vt[buffer_dim[0]: -buffer_dim[1]] = np.linspace(bias[0],
@@ -1572,15 +1941,24 @@ class Transport(GPAW):
     
     def set_buffer(self):
         self.nbmol_inner = self.nbmol - np.sum(self.buffer)
+        if self.use_env:
+            self.nbmol_inner -= np.sum(self.env_buffer)
         ind = np.arange(self.nbmol)
         buffer_ind = []
         for i in range(self.lead_num):
             buffer_ind += list(self.buffer_index[i])
+        if self.use_env:
+            for i in range(self.env_num):
+                buffer_ind += list(self.env_buffer_index[i])
         ind = np.delete(ind, buffer_ind)
         self.inner_mol_index = ind
         for i in range(self.lead_num):
              self.inner_lead_index[i] = np.searchsorted(ind,
-                                                           self.lead_index[i])        
+                                                           self.lead_index[i])
+        if self.use_env:
+            for i in range(self.env_num):
+                self.inner_env_index[i] = np.searchsorted(ind,
+                                                            self.env_index[i])
 
     def integral_diff_weight(self, denocc, denvir, method='transiesta'):
         if method=='transiesta':
