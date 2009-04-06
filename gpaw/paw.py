@@ -445,12 +445,13 @@ class PAW(PAWTextOutput):
 
         self.occupations.set_communicator(self.wfs.kpt_comm,
                                           self.wfs.band_comm)
-            
-        eigensolver = get_eigensolver(par.eigensolver, par.mode,
-                                      par.convergence)
-        eigensolver.nbands_converge = nbands_converge
-        # XXX Eigensolver class doesn't define an nbands_converge property
-        self.wfs.set_eigensolver(eigensolver)
+        
+        if not self.wfs.eigensolver:
+            eigensolver = get_eigensolver(par.eigensolver, par.mode,
+                                          par.convergence)
+            eigensolver.nbands_converge = nbands_converge
+            # XXX Eigensolver class doesn't define an nbands_converge property
+            self.wfs.set_eigensolver(eigensolver)
 
         if self.density is None:
             if par.stencils[1] != 9:
