@@ -356,6 +356,26 @@ class GridDescriptor(Domain):
         self.distribute(A_g, b_g)
         return b_g
 
+    def apply_operation(self, a_g, operation):
+        """Apply an operation on an array."""
+
+        a = self.collect(a_g)
+
+        if self.rank == 0:
+            dim = a.shape
+            A_g = np.empty(dim)
+
+            for i in range(dim[0]):
+                for j in range(dim[1]):
+                    for k in range(dim[2]):
+                        r = np.dot(operation, (i, j, k))
+                        r = np.mod(r, dim)
+                        A_g[r[0]][r[1]][r[2]] = a[i, j, k]
+
+        b_g = self.empty()
+        self.distribute(A_g, b_g)
+        return b_g                    
+    
     def collect(self, a_xg, broadcast=False):
         """Collect distributed array to master-CPU or all CPU's."""
         if self.comm.size == 1:
