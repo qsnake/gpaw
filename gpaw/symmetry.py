@@ -64,11 +64,10 @@ class Symmetry:
         power = (6561, 2187, 729, 243, 81, 27, 9, 3, 1)
         for base3id in range(19683):
             operation = np.zeros((3,3))
-            i1 = base3id
+            m = base3id
             for ip, p in enumerate(power):
-                d, m = divmod(i1, p)
+                d, m = divmod(m, p)
                 operation += (1-d) * b[ip]
-                i1 -= p * d
             # No zero rows
             if not np.all(np.sum(abs(operation), axis=1)):
                 continue
