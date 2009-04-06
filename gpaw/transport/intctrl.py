@@ -17,17 +17,20 @@ class IntCtrl:
         neintpath    // [ minfermi leadfermi maxfermi ] + eta ( 1e-8 )}
     """
     
-    def __init__(self, kt, efermi, bias, verbose=False, eqintpath=None,
+    def __init__(self, kt, efermi, bias, env_bias=[], verbose=False, eqintpath=None,
                  eqinttol=None, locintpath=None, locinttol=None,
                  neintmethod=0, neintstep=0, neintpath=None, neinttol=None):
         
         #if u_l>u_r,bias>0
         self.kt = kt
         self.leadfermi = []
+        self.envfermi = []
         for i in range(len(bias)):
             self.leadfermi.append(efermi + bias[i])
-        self.minfermi = min(self.leadfermi)
-        self.maxfermi = max(self.leadfermi)
+        for i in range(len(env_bias)):
+            self.envfermi.append(efermi + env_bias[i])
+        self.minfermi = min(self.leadfermi + self.envfermi)
+        self.maxfermi = max(self.leadfermi + self.envfermi)
         self.eqinttol = 1e-6
         self.kttol = 1e-5
         self.biastol = 1e-10
