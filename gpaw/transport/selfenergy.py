@@ -2,6 +2,7 @@ import numpy as np
 from gpaw import GPAW
 from gpaw.transport.tools import k2r_hs, get_hs, dagger, dot
 from gpaw.utilities.lapack import inverse_general, inverse_symmetric
+from gpaw.lcao.tools import get_realspace_hs
 
 class LeadSelfEnergy:
     conv = 1e-8 # Convergence criteria for surface Green function
@@ -74,56 +75,27 @@ class LeadSelfEnergy:
         return v_00
     
 class CellSelfEnergy:
-    def __init__(self, atoms, eta=1e-4):
-        self.atoms = atoms
+    def __init__(self, hs_kii, hs_ii, kpts, weight, eta=1e-4):
+        self.h_skmm, self.s_kmm = hs_kii
+        self.h_smm, self.s_mm = hs_ii
+        self.kpts = kpts
+        self.weight = weight
         self.bias = 0
-        self.direction = (0, 0, 1)
-        self.kpts = None
-        self.pbc = (0, 0, 0)
+        self.energy = None
+        self.sigma = None
         
     def set_bias(self, bias):
         self.bias = bias
-    
-    def set_direction(self, vector):
-        self.direction = vector
         
-    def set_kpts(self, kpts):
-        self.kpts = kpts
-          
-    def set_pbc(self, pbc):
-        self.pbc = pbc
-        
-    def initialize(self):
-        cell = self.atoms._cell
-        if (cell != np.diag(np.diag(cell))).any():
-            raise RuntimError('gpaw demand cubic cell')
-        if self.kpts == None:
-            self.kpts = np.empty([3])
-            for i in range(3):
-                self.kpts[i] = 2 * int(35.0 / self.atoms.cell_c[i, i]) + 1
-        if not hasattr(self.atoms, 'calc'):
-            raise RuntimeError('a calculator is needed')
-        p = self.atoms.calc.input_parameters
-        p['kpts'] = list(self.kpts)
-        p['usesymm'] = None
-        if self.pbc == (0, 0, 0):
-            raise RuntimError('need pbc information')
-        self.atoms.pbc = self.pbc
-        self.atoms.set_calculator(GPAW(**p))
-        self.atoms.get_potential_energy()
-        self.h_skmm, self.s_kmm = get_hs(self.atoms)
-
     def __call__(self, energy):
-        h_skmm = self.h_skmm
-        s_kmm = self.s_kmm
+        h_skmm, s_kmm = self.h_skmm, self.s_kmm
+        h_mm, s_mm = self.h_smm, self.s_mm        
         ns = h_skmm.shape[0]
         nk = h_skmm.shape[1]
         nb = h_skmm.shape[-1]
-        wfs = self.atoms.calc.wfs
-        kpts = wfs.ibzk_kc
-        weight = wfs.weight_k
+        kpts = self.kpts
+        weight = self.weight
         
-        h_mm, s_mm = get_realspace_hs(h_skmm, s_kmm, kpts, weight)
         g_skmm = np.empty(h_skmm.shape, h_skmm.dtype)
         sigma = np.empty([ns, nb, nb], complex)
         inv = inverse_general
@@ -134,7 +106,11 @@ class CellSelfEnergy:
             g_mm = get_realspace_hs(g_skmm, None, kpts, weight)
             inv(g_mm[s])
             sigma[s] = energy * s_mm - h_mm - g_mm[s]
-        return sigma          
+        self.sigma = sigma[0]
+        return self.sigma
+    
+    def get_lambda(self, energy):
+        return 1.j * (self.sigma - dagger(self.sigma))
             
         
         
