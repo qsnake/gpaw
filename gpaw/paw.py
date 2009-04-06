@@ -336,7 +336,7 @@ class PAW(PAWTextOutput):
             width /= Hartree
             
         nao = setups.nao
-        nvalence = setups.nvalence - par.charge
+        self.nvalence = nvalence = setups.nvalence - par.charge
         
         nbands = par.nbands
         if nbands is None:
