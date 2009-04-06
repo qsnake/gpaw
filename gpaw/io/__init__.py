@@ -523,7 +523,6 @@ def read(paw, reader):
         energy_error = r['EnergyError']
         if energy_error is not None:
             paw.scf.energies = [Etot, Etot + energy_error, Etot]
-        wfs.eigensolver.error = r['EigenstateError']
     else:
         paw.scf.converged = True
         
@@ -572,6 +571,8 @@ def read(paw, reader):
                     kpt.c_on[o,:] = c_n[n0::nstride]
 
         if r.has_array('PseudoWaveFunctions'):
+            if version > 0.3:
+                wfs.eigensolver.error = r['EigenstateError']
             if band_comm.size == 1:
                 # We may not be able to keep all the wave
                 # functions in memory - so psit_nG will be a special type of
