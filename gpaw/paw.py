@@ -465,9 +465,9 @@ class PAW(PAWTextOutput):
             self.density = Density(self.gd, self.finegd, nspins,
                                    par.charge + setups.core_charge)
 
-        self.density.initialize(setups, par.stencils[1], self.timer,
-                                magmom_a, par.hund)
-        self.density.set_mixer(par.mixer, fixmom, width)
+            self.density.initialize(setups, par.stencils[1], self.timer,
+                                    magmom_a, par.hund)
+            self.density.set_mixer(par.mixer, fixmom, width)
 
         if self.hamiltonian is None:
             self.hamiltonian = Hamiltonian(self.gd, self.finegd, nspins,
@@ -632,3 +632,31 @@ class PAW(PAWTextOutput):
             print >> txt, 'Memory breakdown may be incomplete'
         totalsize = mem.calculate_size()
         mem.write(txt, maxdepth=maxdepth)
+
+    def converge_wave_functions(self):
+        """Converge the wave-functions if not present."""
+        
+        if self.scf.converged:
+            # are the wfs ok ?
+            error = self.wfs.eigensolver.error
+            criterion = (self.input_parameters['convergence']['eigenstates']
+                         * self.nvalence)
+
+            if error < criterion:
+                # print "nothing to be done"
+                return
+
+            # XXX direct access to private property
+            self.scf.converged = False
+
+            # is the density ok ?
+            error = self.density.mixer.get_charge_sloshing()
+            criterion = (self.input_parameters['convergence']['density']
+                         * self.nvalence)
+
+            if error < criterion:
+                # print "fixing the density"
+                self.scf.fix_density()
+
+        # we have nothing
+        self.calculate()

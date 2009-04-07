@@ -90,6 +90,7 @@ class LrTDDFT(ExcitationList):
         self.force_ApmB=force_ApmB
  
         if calculator is not None:
+            calculator.converge_wave_functions()
             if calculator.density.nct_G is None:
                 calculator.set_positions()
                 

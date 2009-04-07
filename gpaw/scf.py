@@ -18,11 +18,15 @@ class SCFLoop:
         self.fixdensity = fixdensity
         self.niter_fixdensity = niter_fixdensity
         if fixdensity:
-            self.niter_fixdensity = 10000000
-            self.max_density_error = np.inf
+            self.fix_density()
             
         self.reset()
 
+    def fix_density(self):
+        self.fixdensity = True
+        self.niter_fixdensity = 10000000
+        self.max_density_error = np.inf
+        
     def reset(self):
         self.energies = []
         self.eigenstates_error = None
