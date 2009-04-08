@@ -18,7 +18,7 @@ if not os.path.isfile('H2O.gpw'):
 
 atoms, calc = restart('H2O.gpw', txt=None)
 calc.initialize_positions()
-calc.hamiltonian.poisson.initialize(calc.finegd)
+calc.hamiltonian.poisson.initialize()
 
 locfun = LocFun()
 locfun.localize(calc, ortho=True)

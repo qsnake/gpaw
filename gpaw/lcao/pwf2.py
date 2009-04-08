@@ -263,7 +263,7 @@ class PWF2:
                  spin=0, ibl=True, basis='sz', zero_fermi=False):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
         calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
-        calc.hamiltonian.poisson.initialize(calc.finegd)
+        calc.hamiltonian.poisson.initialize()
         if zero_fermi:
             try:
                 Ef = calc.get_fermi_level()
