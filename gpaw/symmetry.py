@@ -22,7 +22,7 @@ class Symmetry:
 
         # Use full set of symmetries if set to True. False detects only orthogonal
         # symmetry matrices (subset of full symmetry operations in non orthogonal cell)
-        self.use_all_symmetries = False
+        self.use_all_symmetries = True
 
         self.symmetries = [((0, 1, 2), np.array((1, 1, 1)))]
         self.operations = [[np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0, 0, 1])]]
@@ -37,20 +37,12 @@ class Symmetry:
         self.operations = [] # Orthogonal symmetry operations as matrices
         self.op2sym = []     # Orthogonal operation to (swap, mirror) symmetry pointer
         
-        if self.use_all_symmetries:
-            # Analyze all possible symmetry operations
-            self.analyze_operations(spos_ac) 
-        else:
-            # Analyze only orthogonal operations
-            self.analyze_symmetries(spos_ac) 
-
-    def analyze_operations(self, spos_ac):
-
         # Only swap axes of equal length:
         cellsyms = [[abs(np.vdot(self.cell_cv[c1],self.cell_cv[c1])-np.vdot(self.cell_cv[c2],self.cell_cv[c2]))<self.tol and
                      self.pbc_c[c1] and self.pbc_c[c2]
                      for c1 in range(3)]
                     for c2 in range(3)]
+        
         # Metric tensor
         cell_cdt=np.dot(np.transpose(self.cell_cv),self.cell_cv)
         
@@ -71,6 +63,9 @@ class Symmetry:
             # No zero rows
             if not np.all(np.sum(abs(operation), axis=1)):
                 continue
+            # Should only orthogonal matrices be accepted?
+            elif (not self.use_all_symmetries) and (np.sometrue(np.dot(operation,np.transpose(operation)) - np.identity(3))):
+                continue
             else:
                 # Criterion of a matrix being a symmetry operation 
                 cell_cdo = np.dot(self.cell_cv, operation)
@@ -83,59 +78,6 @@ class Symmetry:
                     
         self.prune_symmetries(spos_ac)
         
-    def analyze_symmetries(self, spos_ac):
-        
-        # Generate all possible 3x3 orthogonal matrices
-        # There are six orderings of the axes:
-        allpossibleswaps = [(0, 1, 2), (0, 2, 1),
-                            (1, 0, 2), (1, 2, 0),
-                            (2, 0, 1), (2, 1, 0)]
-        # Only swap axes of equal length:
-        cellsyms = [[abs(np.vdot(self.cell_cv[c1],self.cell_cv[c1])-np.vdot(self.cell_cv[c2],self.cell_cv[c2]))<self.tol and
-                     self.pbc_c[c1] and self.pbc_c[c2]
-                     for c1 in range(3)]
-                    for c2 in range(3)]
-        swaps = []
-        for swap in allpossibleswaps:
-            ok = True
-            for c1, c2 in enumerate(swap):
-                if c1 == c2 or cellsyms[c1][c2]:
-                    continue
-                else:
-                    ok = False
-                    break
-            if ok:
-                swaps.append(swap)
-
-        mirrors = [[1.0], [1.0], [1.0]]
-        for c in range(3):
-            if self.pbc_c[c]:
-                mirrors[c].append(-1.0)
-        mirrors = [np.array((m0, m1, m2))
-                   for m0 in mirrors[0]
-                   for m1 in mirrors[1]
-                   for m2 in mirrors[2]]
-
-        # Metric tensor
-        cell_cdt=np.dot(np.transpose(self.cell_cv),self.cell_cv)
-
-        # Make orthogonal operation matrices out of (swap, mirror) pairs
-        for swap in swaps:
-            for mirror in mirrors:
-                operation=np.array(([[1,0,0],[0,1,0],[0,0,1]]),dtype=int)
-
-                for i1 in range(3):
-                    operation[i1]=np.take(operation[i1]*mirror,swap)
-
-                # Generalized criterion of a matrix being a symmetry operation 
-                cell_cdo = np.dot(self.cell_cv, operation)
-                cell_cdodt = np.dot(np.transpose(cell_cdo), cell_cdo)
-
-                if not np.sometrue(cell_cdt - cell_cdodt):
-                    self.operations.append(operation)
-                    
-        self.prune_symmetries(spos_ac)
-
     def prune_symmetries(self, spos_ac):
         """prune_symmetries(atoms)
 
@@ -189,7 +131,7 @@ class Symmetry:
 
         self.opmaps = maps
         self.operations = opok
-                
+
     def check(self, spos_ac):
         """Check(positions) -> boolean
 
@@ -285,6 +227,7 @@ class Symmetry:
         a /= len(self.operations)
 
     def symmetrize_forces(self, F0_av):
+        # XXX needs generalization
         F_ac = np.zeros_like(F0_av)
         for map_a, symmetry in zip(self.maps, self.symmetries):
             swap, mirror = symmetry
