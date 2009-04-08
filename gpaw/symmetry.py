@@ -46,20 +46,14 @@ class Symmetry:
         # Metric tensor
         cell_cdt=np.dot(np.transpose(self.cell_cv),self.cell_cv)
         
-        # Build auxiliary matrices
-        b = []
-        for i in range(9):
-            a = np.zeros(9, dtype=int)
-            a[i] = 1
-            b.append(a.reshape(3, 3))
         # Generate all possible 3x3 symmetry matrices using base-3 integers
         power = (6561, 2187, 729, 243, 81, 27, 9, 3, 1)
         for base3id in range(19683):
-            operation = np.zeros((3,3))
+            operation = np.empty((3,3),dtype=int)
             m = base3id
             for ip, p in enumerate(power):
                 d, m = divmod(m, p)
-                operation += (1-d) * b[ip]
+                operation[ip/3][ip%3] = 1-d
             # No zero rows
             if not np.all(np.sum(abs(operation), axis=1)):
                 continue
@@ -75,7 +69,7 @@ class Symmetry:
                     if not np.any([(abs(operation[i][np.mod(i + 1, 3)]) + abs(operation[np.mod(i + 1, 3)][i])!=0) and
                                    not cellsyms[i][np.mod(i + 1, 3)] for i in range(3)]):
                         self.operations.append(operation)
-                    
+
         self.prune_symmetries(spos_ac)
         
     def prune_symmetries(self, spos_ac):
