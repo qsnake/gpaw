@@ -120,7 +120,6 @@ def inverse_general(a):
     assert a.dtype in [float, complex]
     n = len(a)
     assert a.shape == (n, n)
-    print 'ha', n
     info = _gpaw.inverse_general(a)
     return info 
 
@@ -128,8 +127,8 @@ def inverse_symmetric(a):
     assert a.dtype in [float, complex]
     n = len(a)
     assert a.shape == (n, n)
-    print 'ha', n
     info = _gpaw.inverse_symmetric(a)
+    tri2full(a)
     return info 
 
 def right_eigenvectors(a, w, v):
