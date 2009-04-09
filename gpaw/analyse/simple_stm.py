@@ -35,7 +35,7 @@ class SimpleStm:
                 self.calc = atoms.get_calculator()
             else:
                 self.calc = atoms
-#            self.calc.initialize_wave_functions()
+            self.calc.converge_wave_functions()
             
             self.gd = self.calc.gd
             self.offset_c = [int(not a) for a in self.gd.pbc_c]
