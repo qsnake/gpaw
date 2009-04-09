@@ -311,7 +311,6 @@ class RawLDOS:
                     emax = max(e_n.max(), emax)
             emin -= 4 * width
             emax += 4 * width
-            print "::::::: emin, emax=", emin, emax
 
             # Fermi energy
             try:
