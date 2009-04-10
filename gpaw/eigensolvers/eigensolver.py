@@ -124,7 +124,7 @@ class Eigensolver:
 
         wfs.pt.add(R_nG, c_ani, kpt.q)
 
-    def subspace_diagonalize(self, hamiltonian, wfs, kpt):
+    def subspace_diagonalize(self, hamiltonian, wfs, kpt, rotate=True):
         """Diagonalize the Hamiltonian in the subspace of kpt.psit_nG
 
         *Htpsit_nG* is a work array of same size as psit_nG which contains
@@ -171,9 +171,9 @@ class Eigensolver:
         if sl_diagonalize:
             assert parallel
             assert scalapack()
-            dsyev_zheev_string = 'Subspace diag.: '+'pdsyevd/pzheevd'
+            dsyev_zheev_string = 'Subspace diag.: ' + 'pdsyevd/pzheevd'
         else:
-            dsyev_zheev_string = 'Subspace diag.: '+'dsyev/zheev'
+            dsyev_zheev_string = 'Subspace diag.: ' + 'dsyev/zheev'
 
         self.timer.start(dsyev_zheev_string)
         if sl_diagonalize:
@@ -185,7 +185,8 @@ class Eigensolver:
                 if self.band_comm.rank == 0:
                     info = diagonalize(H_nn, self.eps_n)
                     if info != 0:
-                        raise RuntimeError('Failed to diagonalize: info=%d' % info)
+                        raise RuntimeError('Failed to diagonalize: info=%d' %
+                                           info)
         self.timer.stop(dsyev_zheev_string)
 
         if self.comm.rank == 0:
@@ -197,6 +198,10 @@ class Eigensolver:
 
         self.comm.broadcast(U_nn, 0)
         self.comm.broadcast(kpt.eps_n, 0)
+
+        if not rotate:
+            self.timer.stop('Subspace diag.')
+            return
 
         self.timer.start('Subspace diag: rotate_psi')
         kpt.psit_nG = self.operator.matrix_multiply(U_nn, psit_nG, P_ani)

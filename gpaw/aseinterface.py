@@ -368,6 +368,44 @@ class GPAW(PAW):
                                                   self.density,
                                                   self.atoms) * Hartree
 
+    def get_nonselfconsistent_eigenvalues(self, xcname):
+        from gpaw.xc_functional import XCFunctional
+        wfs = self.wfs
+
+        # Read in stuff from the file
+        assert wfs.kpt_u[0].psit_nG is not None, 'gpw file must contain wfs!'
+        wfs.initialize_wave_functions_from_restart_file()
+        self.set_positions()
+        for kpt in wfs.kpt_u:
+            wfs.pt.integrate(kpt.psit_nG, kpt.P_ani, kpt.q)
+
+        # Change the xc functional
+        xc = XCFunctional(xcname, wfs.nspins)
+        xc.set_non_local_things(self.density, self.hamiltonian, wfs,
+                                self.atoms, energy_only=False)
+        self.hamiltonian.xc.set_functional(xc)
+        for setup in wfs.setups:
+            setup.xc_correction.xc.set_functional(xc)
+            if xc.mgga:
+                setup.xc_correction.initialize_kinetic(setup.data)
+
+        # Recalculate the effective potential
+        self.hamiltonian.update(self.density)
+        
+        if not wfs.eigensolver.initialized:
+            wfs.eigensolver.initialize(wfs)
+
+        # Apply Hamiltonian and get new eigenvalues, occupation, and energy
+        for kpt in wfs.kpt_u:
+            wfs.eigensolver.subspace_diagonalize(
+                self.hamiltonian, wfs, kpt, rotate=False)
+        self.occupations.calculate(wfs)
+        energy = self.hamiltonian.get_energy(self.occupations) * Hartree
+        eig_skn = np.array([[self.get_eigenvalues(kpt=k, spin=s)
+                             for k in range(wfs.nibzkpts)]
+                            for s in range(wfs.nspins)])
+        return energy, eig_skn
+
     def initial_wannier(self, initialwannier, kpointgrid, fixedstates,
                         edf, spin):
         """Initial guess for the shape of wannier functions.
