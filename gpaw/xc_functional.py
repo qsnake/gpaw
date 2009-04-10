@@ -382,16 +382,16 @@ class XCFunctional:
             self.timer.start('Local xc')
         if self.mgga:
             #dedtau on the grid not used, only in xc_correction 
-              self.xc.calculate_spinpolarized(e_g.ravel(), na_g, va_g, nb_g, vb_g,
-                                           a2_g, aa2_g, ab2_g,
-                                           deda2_g, dedaa2_g, dedab2_g,
-                                              taua_g,taub_g,dedtaua_g,dedtaub_g)
+            self.xc.calculate_spinpolarized(
+                e_g.ravel(), na_g, va_g, nb_g, vb_g, a2_g, aa2_g, ab2_g,
+                deda2_g, dedaa2_g, dedab2_g, taua_g, taub_g, dedtaua_g,
+                dedtaub_g)
         elif self.gga:
-            self.xc.calculate_spinpolarized(e_g.ravel(), na_g, va_g, nb_g, vb_g,
-                                           a2_g, aa2_g, ab2_g,
-                                           deda2_g, dedaa2_g, dedab2_g)
+            self.xc.calculate_spinpolarized(
+                e_g.ravel(), na_g, va_g, nb_g, vb_g, a2_g, aa2_g, ab2_g,
+                deda2_g, dedaa2_g, dedab2_g)
         else:
-            self.xc.calculate_spinpolarized(e_g.ravel(), na_g, va_g, nb_g, vb_g)
+            self.xc.calculate_spinpolarized(e_g.ravel(), na_g, va_g, nb_g,vb_g)
         if self.timer is not None:
             self.timer.stop('Local xc')
 
@@ -580,7 +580,8 @@ class XC3DGrid(XCGrid):
 
         return e_g.sum() * self.dv
 
-    def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g, e_g=None):
+    def get_energy_and_potential_spinpolarized(self, na_g, va_g, nb_g, vb_g,
+                                               e_g=None):
         if e_g == None:
             e_g = self.e_g
 
@@ -846,8 +847,8 @@ class XCRadialGrid(XCGrid):
 class vxcOperator(list):
     """vxc as operator object"""
     def __init__(self, v):
-        print "<vxcOperator::__init__> type(v)=",v
-        print "<vxcOperator::__init__> type(v)=",v.shape
+        print "<vxcOperator::__init__> type(v)=", v
+        print "<vxcOperator::__init__> type(v)=", v.shape
         # init the local part
         list.__init__(self,v)
         # lists for the operator part

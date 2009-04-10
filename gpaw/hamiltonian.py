@@ -284,14 +284,16 @@ class Hamiltonian:
         # Total free energy:
         self.Etot = (self.Ekin + self.Epot + self.Eext + 
                      self.Ebar + self.Exc - self.S)
-        #print self.Etot ,self.Ekin , self.Epot , self.Eext ,                     self.Ebar ,self.Exc , self.S
-        #print self.Enlxc,self.Enlkin
+        #print self.Etot, self.Ekin, self.Epot, self.Eext, self.Ebar, self.Exc,
+        #print self.S, self.Enlxc,self.Enlkin
 
         return self.Etot
 
     def apply_local_potential(self, psit_nG, Htpsit_nG, s):
         """Apply the Hamiltonian operator to a set of vectors.
 
+        XXX Parameter description is deprecated!
+        
         Parameters:
 
         a_nG: ndarray
