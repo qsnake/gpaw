@@ -53,23 +53,29 @@ algorithms used <features_and_algorithms>`.
 News
 ====
 
-* :ref:`GPAW version 0.5 <releasenotes>` released (Apr  1 2009).
+* :ref:`GPAW version 0.5 <releasenotes>` released (Apr 1 2009)
 
-* :ref:`GPAW version 0.4 <releasenotes>` released (Nov 13 2008).
+* A new :ref:`setups` bundle released (Mar 27 2009)
+
+* A second GPAW code sprint was successfully hosted at CAMD (Mar 20 2009)
+
+* :ref:`GPAW version 0.4 <releasenotes>` released (Nov 13 2008)
 
 * The :ref:`exercises` are finally ready for use in the `CAMd summer
   school 2008`_ (Aug 15 2008)
 
-* This site is now powered by Sphinx_ (Jul 31 2008).
+* This site is now powered by Sphinx_ (Jul 31 2008)
 
-* GPAW is now based on numpy_ instead of of Numeric. (Jan 22 2008).
+* GPAW is now based on numpy_ instead of of Numeric (Jan 22 2008)
 
-* :ref:`GPAW version 0.3 <releasenotes>` released (Dec 19 2007),
+* :ref:`GPAW version 0.3 <releasenotes>` released (Dec 19 2007)
 
 * CSC_ is organizing a `GPAW course`_: "Electronic structure
-  calculations with GPAW". (Dec 11 2007).
+  calculations with GPAW" (Dec 11 2007)
 
-* The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007).
+* The `code sprint 2007`_ was successfully finished (Nov 16 2007)
+
+* The source code is now in the hands of :ref:`svn` and Trac_ (Okt 22 2007)
 
 * A GPAW Sprint will be held on November 16 in Lyngby (Okt 18 2007)
 
@@ -81,3 +87,4 @@ News
 .. _Trac: https://trac.fysik.dtu.dk/projects/gpaw
 .. _Sphinx: http://sphinx.pocoo.org
 .. _CAMd summer school 2008: http://www.camd.dtu.dk/English/Events/CAMD_Summer_School_2008/Programme.aspx
+.. _code sprint 2007: http://www.dtu.dk/Nyheder/Nyt_fra_Institutterne.aspx?guid={38B92D63-FB09-4DFA-A074-504146A2D678}
