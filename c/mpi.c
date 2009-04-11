@@ -168,6 +168,7 @@ static PyObject * mpi_wait(MPIObject *self, PyObject *args)
 {
   mpi_request* s;
   int n;
+  int ret;
   if (!PyArg_ParseTuple(args, "s#:wait", &s, &n))
     return NULL;
   if (n != sizeof(mpi_request))
@@ -175,8 +176,15 @@ static PyObject * mpi_wait(MPIObject *self, PyObject *args)
       PyErr_SetString(PyExc_TypeError, "Invalid MPI request object.");
       return NULL;
     }
-  MPI_Wait(&(s->rq), MPI_STATUS_IGNORE); // Can this change the Python string?
+  ret = MPI_Wait(&(s->rq), MPI_STATUS_IGNORE); // Can this change the Python string?
   Py_DECREF(s->buffer);
+#ifdef GPAW_MPI_DEBUG
+  if (ret != MPI_SUCCESS)
+    {
+      PyErr_SetString(PyExc_RuntimeError, "MPI_Wait Error occured");
+      return NULL;
+    }
+#endif
   Py_RETURN_NONE;
 }
 
@@ -287,6 +295,7 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
     {
       int n;
       int elemsize;
+      int ret;
       MPI_Datatype datatype;
       CHK_ARRAY(obj);
       datatype = get_mpi_datatype(obj);
@@ -310,38 +319,53 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 	}
       if (root == -1)
         {
+#ifdef GPAW_MPI2
+	  ret = MPI_Allreduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
+                        operation, self->comm);
+#else
           char* b = GPAW_MALLOC(char, n * elemsize);
-          // XXX Use MPI_IN_PLACE!!
-          MPI_Allreduce(PyArray_BYTES(obj), b, n, datatype, operation,
+          ret = MPI_Allreduce(PyArray_BYTES(obj), b, n, datatype, operation,
 			self->comm);
 	  assert(PyArray_NBYTES(obj) == n * elemsize);
           memcpy(PyArray_BYTES(obj), b, n * elemsize);
           free(b);
+#endif
+#ifdef GPAW_MPIDEBUG
+          if (ret != MPI_SUCCESS)
+	    {
+	      PyErr_SetString(PyExc_RuntimeError, "MPI_Allreduce Error.");
+	      return NULL;
+	    }	
+#endif
         }
       else
         {
-          char* b = 0;
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-#ifdef GPAW_BGP
-          b = GPAW_MALLOC(char, n * elemsize); // bug on BGP
+#ifdef GPAW_MPI2
+          MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
+                     operation, root, self->comm);
 #else
+          char* b = 0;
           if (rank == root)
                b = GPAW_MALLOC(char, n * elemsize);
-#endif
-          // XXX Use MPI_IN_PLACE!!
+
           MPI_Reduce(PyArray_BYTES(obj), b, n, datatype, operation, root,
 		     self->comm);
+
           if (rank == root)
             {
 	      assert(PyArray_NBYTES(obj) == n * elemsize);
               memcpy(PyArray_BYTES(obj), b, n * elemsize);
-            }
-#ifdef GPAW_BGP
-          free(b); // bug on BGP
-#else
-          if (rank == root)
-               free(b);
+              free(b);
+	    }
+#endif
+#ifdef GPAW_MPI_DEBUG
+          if (ret != MPI_SUCCESS)
+            {
+	      PyErr_SetString(PyExc_RuntimeError, "MPI_Reduce Error occured");
+              return NULL;
+	    }
 #endif
         }
       Py_RETURN_NONE;

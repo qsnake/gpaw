@@ -175,7 +175,7 @@ int
 main(int argc, char **argv)
 {
   int status;
-#ifdef GPAW_BGP_PERF
+#ifdef GPAW_BGP_MAP
   int tag = 99;
   int myid, numprocs, i, procnamesize;
   char procname[MPI_MAX_PROCESSOR_NAME];
@@ -183,6 +183,7 @@ main(int argc, char **argv)
 
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
+  MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 #ifdef GPAW_BGP_MAP
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
   MPI_Comm_rank(MPI_COMM_WORLD, &myid );
