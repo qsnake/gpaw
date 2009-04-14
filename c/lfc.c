@@ -679,12 +679,13 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
   PyArrayObject* h_cv_obj;
   PyArrayObject* n_c_obj;
   int k;
+  int c;
   PyArrayObject* spline_obj_M_obj;
   PyArrayObject* beg_c_obj;
   PyArrayObject* pos_Wc_obj;
 
-  if (!PyArg_ParseTuple(args, "OOOOiOOO", &vt_G_obj, &DVt_MMc_obj, 
-			&h_cv_obj, &n_c_obj, &k,
+  if (!PyArg_ParseTuple(args, "OOOOiiOOO", &vt_G_obj, &DVt_MMc_obj, 
+			&h_cv_obj, &n_c_obj, &k, &c,
                         &spline_obj_M_obj, &beg_c_obj,
                         &pos_Wc_obj))
     return NULL;
@@ -702,7 +703,8 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
 
   if (!lfc->bloch_boundary_conditions) {
     double* DVt_MMc = (double*)DVt_MMc_obj->data;
-    for (int c = 0; c < 3; c++) {
+    {
+    //for (int c = 0; c < 3; c++) {
       GRID_LOOP_START(lfc, -1) {
         // In one grid loop iteration, only z changes.
         int iza = Ga % n_c[2] + beg_c[2];
@@ -808,7 +810,8 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
   }
   else {
     complex double* DVt_MMc = (complex double*)DVt_MMc_obj->data;
-    for (int c = 0; c < 3; c++) {
+    {
+    //for (int c = 0; c < 3; c++) {
       GRID_LOOP_START(lfc, k) {
         // In one grid loop iteration, only z changes.
         int iza = Ga % n_c[2] + beg_c[2];

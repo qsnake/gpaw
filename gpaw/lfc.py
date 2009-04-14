@@ -738,10 +738,12 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
                 cspline_M.extend([spline.spline] * nm)
         gd = self.gd
         h_cv = gd.cell_cv / gd.N_c
-        self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_MMc, h_cv,
-                                                       gd.n_c, q,
-                                                       np.array(cspline_M),
-                                                       gd.beg_c, self.pos_Wv)
+        for c in range(3): # XXX
+            self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_MMc, h_cv,
+                                                           gd.n_c, q, c,
+                                                           np.array(cspline_M),
+                                                           gd.beg_c,
+                                                           self.pos_Wv)
 
     # Python implementations:
     if 0:
