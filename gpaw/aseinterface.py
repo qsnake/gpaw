@@ -399,14 +399,12 @@ class GPAW(PAW):
         for kpt in wfs.kpt_u:
             wfs.eigensolver.subspace_diagonalize(
                 self.hamiltonian, wfs, kpt, rotate=False)
-        self.occupations.calculate(wfs)
-        energy = self.hamiltonian.get_energy(self.occupations) * Hartree
+        #self.occupations.calculate(wfs)
+        #energy = self.hamiltonian.get_energy(self.occupations) * Hartree
         eig_skn = np.array([[self.get_eigenvalues(kpt=k, spin=s)
                              for k in range(wfs.nibzkpts)]
                             for s in range(wfs.nspins)])
-        # Energy is relative to the reference of the ORIGINAL xc functional
-        # print 'Reference', wfs.setups.Eref * Hartree
-        return energy, eig_skn
+        return eig_skn
 
     def initial_wannier(self, initialwannier, kpointgrid, fixedstates,
                         edf, spin):
