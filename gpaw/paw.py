@@ -548,7 +548,7 @@ class PAW(PAWTextOutput):
         band_comm = world.new_communicator(ranks)
 
         assert size == domain_comm.size * kpt_comm.size * band_comm.size
-        assert kpt_comm.size <= nspins*nibzkpts
+        assert nspins * nibzkpts % kpt_comm.size == 0
         
         return domain_comm, kpt_comm, band_comm
 
