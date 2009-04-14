@@ -107,19 +107,21 @@ class WaveFunctions(EmptyWaveFunctions):
     def __nonzero__(self):
         return True
 
-    def calculate_density(self, density):
-        """Calculate density from wave functions."""
-        nt_sG = density.nt_sG
+    def calculate_density_contribution(self, nt_sG):
+        """Calculate contribution to pseudo density from wave functions."""
         nt_sG.fill(0.0)
         for kpt in self.kpt_u:
             self.add_to_density_from_k_point(nt_sG, kpt)
         self.band_comm.sum(nt_sG)
         self.kpt_comm.sum(nt_sG)
-
+        
         if self.symmetry:
             for nt_G in nt_sG:
                 self.symmetry.symmetrize(nt_G, self.gd)
 
+    def add_to_density_from_k_point(self, nt_sG, kpt):
+        raise NotImplementedError
+    
     def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a):
         if kpt.rho_MM is not None:
             P_Mi = kpt.P_aMi[a] 
@@ -147,9 +149,8 @@ class WaveFunctions(EmptyWaveFunctions):
             P_ni = kpt.P_ani[a] 
             D_sii[kpt.s] += np.dot(P_ni.T.conj() * f_n, P_ni).real 
 
-    def calculate_atomic_density_matrices(self, density):
+    def calculate_atomic_density_matrices(self, D_asp):
         """Calculate atomic density matrices from projections."""
-        D_asp = density.D_asp
         for a, D_sp in D_asp.items():
             ni = self.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
@@ -381,12 +382,8 @@ class LCAOWaveFunctions(WaveFunctions):
                 # We have the info we need for a density matrix, so initialize
                 # from that instead of from scratch.  This will be the case
                 # after set_positions() during a relaxation
-                density.nt_sG = self.gd.empty(self.nspins)
-                self.calculate_density(density)
-                density.nt_sG += density.nct_G
-        comp_charge = density.calculate_multipole_moments()
-        density.normalize(comp_charge)
-        density.mix(comp_charge)
+                density.initialize_from_wavefunctions(self)
+        #density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
 
     def calculate_density_matrix(self, f_n, C_nM, rho_MM):
@@ -642,20 +639,17 @@ class GridWaveFunctions(WaveFunctions):
             self.initialize_wave_functions_from_restart_file()
 
         if self.kpt_u[0].psit_nG is not None:
-            density.nt_sG = self.gd.empty(self.nspins)
-            self.calculate_density(density)
-            density.nt_sG += density.nct_G
+            density.initialize_from_wavefunctions(self)
         elif density.nt_sG is None:
             density.initialize_from_atomic_densities(basis_functions)
             # Initialize GLLB-potential from basis function orbitals
             if hamiltonian.xcfunc.gllb:
                 hamiltonian.xcfunc.xc.initialize_from_atomic_orbitals(
                     basis_functions)
-
-        comp_charge = density.calculate_multipole_moments()
-        density.normalize(comp_charge)
-        density.mix(comp_charge)
-
+        else: # XXX???
+            # We didn't even touch density, but some combinations in paw.set()
+            # will make it necessary to do this for some reason.
+            density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
 
         if self.kpt_u[0].psit_nG is None:
@@ -693,7 +687,6 @@ class GridWaveFunctions(WaveFunctions):
         lcaowfs.basis_functions = basis_functions
         lcaowfs.timer = self.timer
         lcaowfs.set_positions(spos_ac)
-        hamiltonian.update(density)
         eigensolver = get_eigensolver('lcao', 'lcao')
         eigensolver.initialize(self.gd, self.band_comm, self.dtype,
                                self.setups.nao, lcaomynbands, self.world)

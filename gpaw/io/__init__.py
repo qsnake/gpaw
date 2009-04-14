@@ -469,17 +469,20 @@ def read(paw, reader):
             
     # Read pseudoelectron density on the coarse grid
     # and distribute out to nodes:
-    density.nt_sG = paw.gd.empty(density.nspins)
+    nt_sG = paw.gd.empty(density.nspins)
     for s in range(density.nspins):
         paw.gd.distribute(r.get('PseudoElectronDensity', s),
-                          density.nt_sG[s])
+                          nt_sG[s])
 
     # Read atomic density matrices
-    density.D_asp = {}
+    D_asp = {}
     density.rank_a = npy.zeros(natoms, int)
     if domain_comm.rank == 0:
-        density.D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices',
-                                             wfs.setups)
+        D_asp = read_atomic_matrices(r, 'AtomicDensityMatrices',
+                                     wfs.setups)
+    
+    density.initialize_directly_from_arrays(nt_sG, D_asp)
+
 
     # Read pseudo potential on the coarse grid
     # and distribute out to nodes:    

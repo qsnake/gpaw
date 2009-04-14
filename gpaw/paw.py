@@ -181,7 +181,7 @@ class PAW(PAWTextOutput):
             self.initialize(atoms)
             self.set_positions(atoms)
         elif (atoms.get_positions() != self.atoms.get_positions()).any():
-            self.density.nt_sG = None
+            self.density.reset()
             self.set_positions(atoms)
         elif not self.scf.check_convergence(self.density,
                                             self.wfs.eigensolver):

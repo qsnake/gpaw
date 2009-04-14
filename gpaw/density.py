@@ -83,6 +83,10 @@ class Density:
         self.interpolator.allocate()
         self.allocated = True
 
+    def reset(self):
+        # TODO: reset other parameters?
+        self.nt_sG = None
+
     def set_positions(self, spos_ac, rank_a=None):
         if not self.allocated:
             self.allocate()
@@ -126,10 +130,18 @@ class Density:
 
         self.rank_a = rank_a
 
-    def update(self, wfs):
-        wfs.calculate_density(self)
-        wfs.calculate_atomic_density_matrices(self)
+    def calculate_pseudo_density(self, wfs):
+        """Calculate nt_sG from scratch.
+
+        nt_sG will be equal to nct_G plus the contribution from
+        wfs.add_to_density().
+        """
+        wfs.calculate_density_contribution(self.nt_sG)
         self.nt_sG += self.nct_G
+
+    def update(self, wfs):
+        self.calculate_pseudo_density(wfs)
+        wfs.calculate_atomic_density_matrices(self.D_asp)
         comp_charge = self.calculate_multipole_moments()
         
         if (isinstance(wfs, LCAOWaveFunctions) or
@@ -202,7 +214,7 @@ class Density:
     def calculate_multipole_moments(self):
         """Calculate multipole moments of compensation charges.
 
-        Returns the total compenstion charge in units of electron
+        Returns the total compensation charge in units of electron
         charge, so the number will be negative because of the
         dominating contribution from the nuclear charge."""
 
@@ -215,9 +227,9 @@ class Density:
         return self.gd.comm.sum(comp_charge) * sqrt(4 * pi)
 
     def initialize_from_atomic_densities(self, basis_functions):
-        """Initialize density from atomic densities.
+        """Initialize D_asp, nt_sG and Q_aL from atomic densities.
 
-        The density is initialized from atomic orbitals, and will
+        nt_sG is initialized from atomic orbitals, and will
         be constructed with the specified magnetic moments and
         obeying Hund's rules if ``hund`` is true."""
 
@@ -235,6 +247,26 @@ class Density:
         self.nt_sG = self.gd.zeros(self.nspins)
         basis_functions.add_to_density(self.nt_sG, f_asi)
         self.nt_sG += self.nct_G
+        self.calculate_normalized_charges_and_mix()
+
+    def initialize_from_wavefunctions(self, wfs):
+        """Initialize D_asp, nt_sG and Q_aL from wave functions."""
+        self.nt_sG = self.gd.empty(self.nspins)
+        self.calculate_pseudo_density(wfs)
+        self.calculate_normalized_charges_and_mix()
+
+    def initialize_directly_from_arrays(self, nt_sG, D_asp):
+        """Set D_asp and nt_sG directly."""
+        self.nt_sG = nt_sG
+        self.D_asp = D_asp
+        #self.calculate_normalized_charges_and_mix()
+        # No calculate multipole moments?  Tests will fail because of
+        # improperly initialized mixer
+
+    def calculate_normalized_charges_and_mix(self):
+        comp_charge = self.calculate_multipole_moments()
+        self.normalize(comp_charge)
+        self.mix(comp_charge)
 
     def set_mixer(self, mixer, fixmom, width):
         if mixer is not None:
