@@ -465,9 +465,9 @@ class PAW(PAWTextOutput):
             self.density = Density(self.gd, self.finegd, nspins,
                                    par.charge + setups.core_charge)
 
-            self.density.initialize(setups, par.stencils[1], self.timer,
-                                    magmom_a, par.hund)
-            self.density.set_mixer(par.mixer, fixmom, width)
+        self.density.initialize(setups, par.stencils[1], self.timer,
+                                magmom_a, par.hund)
+        self.density.set_mixer(par.mixer, fixmom, width)
 
         if self.hamiltonian is None:
             self.hamiltonian = Hamiltonian(self.gd, self.finegd, nspins,
