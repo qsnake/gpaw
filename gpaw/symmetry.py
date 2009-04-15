@@ -27,9 +27,7 @@ class Symmetry:
         self.use_all_symmetries = True
 
         self.symmetries = [((0, 1, 2), np.array((1, 1, 1)))]
-        self.operations = [[np.array([1, 0, 0]),
-                            np.array([0, 1, 0]),
-                            np.array([0, 0, 1])]]
+        self.operations = [np.identity(3)]
         self.op2sym = [0]
 
     def analyze(self, spos_ac):
@@ -59,7 +57,7 @@ class Symmetry:
             m = base3id
             for ip, p in enumerate(power):
                 d, m = divmod(m, p)
-                operation[ip / 3][ip % 3] = 1 - d
+                operation[ip / 3, ip % 3] = 1 - d
             # No zero rows
             if not np.all(np.sum(abs(operation), axis=1)):
                 continue
@@ -73,8 +71,8 @@ class Symmetry:
                 cell_cdodt = np.dot(np.transpose(cell_cdo), cell_cdo)
 
                 if not np.sometrue(cell_cdt - cell_cdodt):
-                    if not np.any([(abs(operation[i][(i + 1) % 3]) +
-                                    abs(operation[(i + 1) % 3][i]) != 0) and
+                    if not np.any([(abs(operation[i, (i + 1) % 3]) +
+                                    abs(operation[(i + 1) % 3, i]) != 0) and
                                    not cellsyms[i][(i + 1) % 3]
                                    for i in range(3)]):
                         self.operations.append(operation)
@@ -104,7 +102,7 @@ class Symmetry:
             map = np.zeros(len(spos_ac), int)
             for specie in species.values():
                 for a1, spos1_c in specie:
-                    spos1_c = np.dot(operation,spos1_c)
+                    spos1_c = np.dot(operation, spos1_c)
                     ok = False
                     for a2, spos2_c in specie:
                         sdiff = spos1_c - spos2_c
@@ -148,15 +146,15 @@ class Symmetry:
     def reduce(self, bzk_kc):
         # Add inversion symmetry if it's not there:
         have_inversion_symmetry = False
-        identity=np.identity(3).ravel()
+        identity = np.identity(3)
         for operation in self.operations:
-            if sum(abs(np.array(operation).ravel() + identity)) < self.tol:
+            if abs(operation + identity).sum() < self.tol:
                 have_inversion_symmetry = True
                 break
         nsym = len(self.operations)
         if not have_inversion_symmetry:
             for operation in self.operations[:nsym]:
-                self.operations.append(np.negative(operation))
+                self.operations.append(-operation)
 
         nbzkpts = len(bzk_kc)
         ibzk0_kc = np.empty((nbzkpts, 3))
@@ -188,7 +186,7 @@ class Symmetry:
 
         return ibzk_kc[::-1].copy(), weight_k[:nibzkpts][::-1] / nbzkpts
 
-    def convert_operations(self,operations):
+    def convert_operations(self, operations):
         # Create (swap, mirror) pairs for orthogonal matrices and pointers
         symmetries=[]
         maps=[]
@@ -205,16 +203,16 @@ class Symmetry:
                 op2sym.append(-1)
         return symmetries, maps, op2sym
 
-    def break_operation(self,operation):
+    def break_operation(self, operation):
         # Auxiliary method.
         # Break an orthogonal matrix to a (swap, mirror) pair.
         swap = [0, 0, 0]
         mirror = np.array([0., 0., 0.])
         for i1 in range(3):
             for i2 in range(3):
-                if abs(operation[i1][i2]) > 0:
+                if abs(operation[i1, i2]) > 0:
                     swap[i1] = i2
-                    mirror[i2] = operation[i1][i2]
+                    mirror[i2] = operation[i1, i2]
         return tuple(swap), mirror
 
     def symmetrize(self, a, gd):
