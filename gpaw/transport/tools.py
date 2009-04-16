@@ -233,10 +233,3 @@ def orbital_matrix_rotate_transformation(mat, X, basis_info):
             PutD(i, X, D, T)
         else:
             raise NotImplementError('undown shell name')
-        
-        
-        
-        
-        
-        
-        
