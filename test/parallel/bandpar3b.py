@@ -118,18 +118,20 @@ def overlap(psit_mG, send_mG, recv_mG):
     if world.rank == 0: print "before redist"
     H_nm = None 
     S_nm = None
+    B_nm = None
     B_mm = None
      
     # Step 1 - Fill matrices with values and convert to Fortran order 
     # Create a simple matrix H: diagonal elements + 0.1 off-diagonal
     # Create a simple overlap matrix: unity + 0.2 off-diagonal
     if (scalapack0_comm):
-        H_nm = scalapack0_comm.rank*np.eye(N,M,-M*scalapack0_comm.rank)
-        H_nm = H_nm[:,0:4] + 0.1*np.eye(N,M,-M*scalapack0_comm.rank+1)
-        H_nm = H_nm.copy("Fortran") # Fortran order required for ScaLAPACK
-        S_nm = np.eye(N,M,-M*scalapack0_comm.rank)
-        S_nm = S_nm[:,0:4] + 0.2*np.eye(N,M,-M*scalapack0_comm.rank+1)
-        S_nm = S_nm.copy("Fortran") # Fortran order required for ScaLAPACK
+        H_nm = scalapack0_comm.rank*np.eye(M,N,+M*scalapack0_comm.rank)
+        H_nm = H_nm[0:4,:] + 0.1*np.eye(M,N,+M*scalapack0_comm.rank-1)
+        # H_nm = H_nm.copy("Fortran") # Fortran order required for ScaLAPACK
+        S_nm = np.eye(M,N,+M*scalapack0_comm.rank)
+        S_nm = S_nm[0:4,:] + 0.2*np.eye(M,N,+M*scalapack0_comm.rank-1)
+        # S_nm = S_nm.copy("Fortran") # Fortran order required for ScaLAPACK
+        B_nm = S_nm.copy("Fortran")
         print scalapack0_comm.rank, "H_nm =", H_nm
         print scalapack0_comm.rank, "S_nm =", S_nm
 
@@ -191,7 +193,8 @@ def overlap(psit_mG, send_mG, recv_mG):
 
     # Step 8 - Redistribute from 2D -> 1D grid
     # Copy from B_mm -> B_nm
-    B_nm = _gpaw.scalapack_redist(B_mm,desc1,desc0)
+    if (scalapack1_comm):
+        B_nm = _gpaw.scalapack_redist(B_mm,desc1,desc0,desc1)
 
     # Step 9 - Convert to C array for general use in GPAW
     if B_nm is not None:
