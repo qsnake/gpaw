@@ -142,6 +142,7 @@ if len(tests) == 0:
         'ltt.py',
         'vdw/ar2.py',
         'mgga_restart.py',
+        'fd2lcao_restart.py',
         ]
 
 disabled_tests = [
