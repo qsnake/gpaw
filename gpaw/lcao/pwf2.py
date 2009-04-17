@@ -239,8 +239,9 @@ class ProjectedWannierFunctionsIBL:
             U_Mw = self.U_Mw[:, indices]
         P_awi = {}
         for a, P_oi in P_aoi.items():
-            P_awi[a] = np.tensordot(U_ow, P_oi, axes=[[0], [0]]) + \
-                       np.tensordot(U_Mw, P_aMi[a], axes=[[0], [0]])
+            P_awi[a] = np.tensordot(U_Mw, P_aMi[a], axes=[[0], [0]])
+            if len(U_ow) > 0:
+                P_awi[a] += np.tensordot(U_ow, P_oi, axes=[[0], [0]])
         return P_awi
 
     def rotate_function(self, psit_oG, bfs, q=-1, indices=None):
