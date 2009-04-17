@@ -383,7 +383,11 @@ class LCAOWaveFunctions(WaveFunctions):
                 # from that instead of from scratch.  This will be the case
                 # after set_positions() during a relaxation
                 density.initialize_from_wavefunctions(self)
-        #density.calculate_normalized_charges_and_mix()
+        else:
+            # After a restart, nt_sg doesn't exist yet, so we'll have to
+            # make sure it does.  Of course, this should have been taken care
+            # of already by this time, so we should improve the code elsewhere
+            density.calculate_normalized_charges_and_mix()
         hamiltonian.update(density)
 
     def calculate_density_matrix(self, f_n, C_nM, rho_MM):
