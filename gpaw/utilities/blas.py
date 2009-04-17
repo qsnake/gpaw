@@ -215,7 +215,7 @@ def _rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
     if work_ij is None:
         work_ij = npy.empty_like(U_ij)
     if out_ii is None:
-        out_ii = np.empty(U_ij.shape[:1] * 2, U_ij.dtype)
+        out_ii = npy.empty(U_ij.shape[:1] * 2, U_ij.dtype)
     if in_jj.dtype == float:
         trans = 't'
     else:
