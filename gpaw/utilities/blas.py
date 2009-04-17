@@ -191,9 +191,9 @@ def _gemmdot(a, b, alpha=1., trans='n'):
     If trans='c'; b is replaced by its hermitian conjugate.
     """
     if trans == 'n':
-        c = np.empty((a.shape[0], b.shape[1]), float)
+        c = npy.empty((a.shape[0], b.shape[1]), float)
     else: # 't' or 'c'
-        c = np.empty((a.shape[0], b.shape[0]), a.dtype)
+        c = npy.empty((a.shape[0], b.shape[0]), a.dtype)
     gemm(alpha, b, a, 0., c, trans)
     return c
 
@@ -213,7 +213,7 @@ def _rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
     The method returns a reference to out.
     """
     if work_ij is None:
-        work_ij = np.empty_like(U_ij)
+        work_ij = npy.empty_like(U_ij)
     if out_ii is None:
         out_ii = np.empty(U_ij.shape[:1] * 2, U_ij.dtype)
     if in_jj.dtype == float:
