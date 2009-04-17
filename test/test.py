@@ -108,6 +108,7 @@ if len(tests) == 0:
         'simple_stm.py',
         'asewannier.py',
         'vdw/quick.py',
+        'vdw/quick_spin.py'
         'lxc_xcatom.py',
         'davidson.py',
         'cg.py',
