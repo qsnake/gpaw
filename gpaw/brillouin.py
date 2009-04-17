@@ -8,7 +8,11 @@ def reduce_kpoints(atoms, bzk_kc, setups, usesymm):
     """Reduce the number of k-points using symmetry.
 
     Returns symmetry object, weights and k-points in the irreducible
-    part of the BZ."""
+    part of the BZ.
+
+    usesymm can be None, False, or True, to use either
+    no symmetries, inversion symmetry only (if present), or all symmetries
+    """
 
     #if np.logical_and(np.logical_not(atoms.pbc), bzk_kc.any(axis=0)).any():
     if (~atoms.pbc & bzk_kc.any(0)).any():
@@ -29,8 +33,10 @@ def reduce_kpoints(atoms, bzk_kc, setups, usesymm):
     if usesymm:
         # Find symmetry operations of atoms:
         symmetry.analyze(atoms.get_scaled_positions())
+    else:
+        symmetry.prune_symmetries(atoms.get_scaled_positions())
 
-    # Reduce the set of k-points:
+    # Reduce the set of k-points: (and add inversion if not already detected)
     ibzk_kc, weight_k = symmetry.reduce(bzk_kc)
 
     if usesymm:
