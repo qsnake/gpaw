@@ -188,7 +188,8 @@ if not opt.parallel:
 from ase.parallel import size
 if size > 1:
     exclude += ['asewannier.py',
-                'wannier-ethylene.py', 'lrtddft.py', 'apmb.py']
+                'wannier-ethylene.py', 'lrtddft.py', 'apmb.py',
+                'lrtddft2.py', 'simple_stm.py']
 
 for test in exclude:
     if test in tests:
