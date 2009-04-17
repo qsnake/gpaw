@@ -1,5 +1,4 @@
 import numpy as np
-la = np.linalg
 
 from ase import Hartree
 from gpaw.aseinterface import GPAW
@@ -16,7 +15,7 @@ from gpaw.lcao.projected_wannier import dots, condition_number, eigvals,\
 
 
 def get_rot(F_MM, V_oM, L):
-    eps_M, U_MM = la.eigh(F_MM)
+    eps_M, U_MM = np.linalg.eigh(F_MM)
     indices = eps_M.real.argsort()[-L:] 
     U_Ml = U_MM[:, indices]
     U_Ml /= np.sqrt(dots(U_Ml.T.conj(), F_MM, U_Ml).diagonal())
@@ -175,7 +174,7 @@ class ProjectedWannierFunctionsFBL:
         if ortho:
             lowdin(self.U_nw, self.S_ww)
             self.S_ww = np.identity(Nw)
-        self.norms_n = np.dot(self.U_nw, la.solve(
+        self.norms_n = np.dot(self.U_nw, np.linalg.solve(
             self.S_ww, self.U_nw.T.conj())).diagonal()
 
     def rotate_matrix(self, A_nn):
@@ -216,8 +215,8 @@ class ProjectedWannierFunctionsIBL:
         self.S_ww = self.rotate_matrix(np.ones(1), S_MM)
         P_uw = np.dot(V_uM, self.U_Mw)
         self.norms_n = np.hstack((
-            np.dot(U_ow, la.solve(self.S_ww, U_ow.T.conj())).diagonal(),
-            np.dot(P_uw, la.solve(self.S_ww, P_uw.T.conj())).diagonal()))
+           np.dot(U_ow, np.linalg.solve(self.S_ww, U_ow.T.conj())).diagonal(),
+           np.dot(P_uw, np.linalg.solve(self.S_ww, P_uw.T.conj())).diagonal()))
 
     def rotate_matrix(self, A_oo, A_MM):
         if A_oo.ndim == 1:
@@ -278,6 +277,7 @@ class PWF2:
         self.eps_kn = [calc.get_eigenvalues(kpt=q, spin=spin) - Ef
                        for q in range(self.nk)]
         self.M_k = [sum(eps_n <= fixedenergy) for eps_n in self.eps_kn]
+        print 'Fixed states:', self.M_k 
         self.calc = calc
         self.dtype = self.calc.wfs.dtype
         self.spin = spin
@@ -307,6 +307,21 @@ class PWF2:
                 self.norms_qn.append(pwf.norms_n)
                 self.S_qww.append(pwf.S_ww)
                 self.H_qww.append(pwf.rotate_matrix(self.eps_kn[q]))
+
+        for S in self.S_qww:
+            print 'Condition number:', condition_number(S)
+
+    def get_hamiltonian(self, q=0, indices=None):
+        if indices is None:
+            return self.H_qww[q]
+        else:
+            return self.H_qww[q].take(indices, 0).take(indices, 1)
+
+    def get_overlap(self, q=0, indices=None):
+        if indices is None:
+            return self.S_qww[q]
+        else:
+            return self.S_qww[q].take(indices, 0).take(indices, 1)
 
     def get_projections(self, q=0, indices=None):
         kpt = self.calc.wfs.kpt_u[self.spin * self.nk + q]
