@@ -343,14 +343,14 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
           int rank;
           MPI_Comm_rank(self->comm, &rank);
 #ifdef GPAW_MPI2
-          MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
+          ret = MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
                      operation, root, self->comm);
 #else
           char* b = 0;
           if (rank == root)
                b = GPAW_MALLOC(char, n * elemsize);
 
-          MPI_Reduce(PyArray_BYTES(obj), b, n, datatype, operation, root,
+          ret = MPI_Reduce(PyArray_BYTES(obj), b, n, datatype, operation, root,
 		     self->comm);
 
           if (rank == root)
@@ -363,7 +363,7 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 #ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
             {
-	      PyErr_SetString(PyExc_RuntimeError, "MPI_Reduce Error occured");
+	      PyErr_SetString(PyExc_RuntimeError, "MPI_Reduce Error occured.");
               return NULL;
 	    }
 #endif
