@@ -330,7 +330,7 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
           memcpy(PyArray_BYTES(obj), b, n * elemsize);
           free(b);
 #endif
-#ifdef GPAW_MPIDEBUG
+#ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
 	    {
 	      PyErr_SetString(PyExc_RuntimeError, "MPI_Allreduce Error.");
