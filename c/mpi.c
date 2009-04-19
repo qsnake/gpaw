@@ -343,8 +343,10 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
           int rank;
           MPI_Comm_rank(self->comm, &rank);
 #ifdef GPAW_MPI2
+#ifndef GPAW_BGP
           ret = MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
                      operation, root, self->comm);
+#endif
 #else
           char* b = 0;
           if (rank == root)
@@ -681,6 +683,10 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
   Py_DECREF(iranks);
   MPI_Comm comm;
   MPI_Comm_create(self->comm, newgroup, &comm);
+#ifdef GPAW_MPI_DEBUG
+  // Default Errhandler is MPI_ERRORS_ARE_FATAL
+  MPI_Errhandler_set(comm, MPI_ERRORS_RETURN); 
+#endif GPAW_MPI_DEBUG
   MPI_Group_free(&newgroup);
   MPI_Group_free(&group);
   if (comm == MPI_COMM_NULL)

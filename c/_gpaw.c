@@ -183,7 +183,7 @@ main(int argc, char **argv)
 
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
-  MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+
 #ifdef GPAW_BGP_MAP
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
   MPI_Comm_rank(MPI_COMM_WORLD, &myid );
@@ -203,14 +203,21 @@ main(int argc, char **argv)
       }
   }
 #endif
+
 #ifdef GPAW_BGP_PERF
   HPM_Init();
   HPM_Start("GPAW");
 #endif
+
 #else
   int granted;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
   if(granted != MPI_THREAD_MULTIPLE) exit(1);
+#endif // GPAW_OMP
+
+#ifdef GPAW_MPI_DEBUG
+  // Default Errhandler is MPI_ERRORS_ARE_FATAL
+  MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 #endif
 
   Py_Initialize();
