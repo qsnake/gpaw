@@ -61,9 +61,10 @@ class LeadSelfEnergy:
         delta = self.conv + 1
         n = 0
         while delta > self.conv:
-            inv(v_11)
-            a = dot(v_11, v_01)
-            b = dot(v_11, v_10)
+            inv_v_11 = np.copy(v_11)
+            inv(inv_v_11)
+            a = dot(inv_v_11, v_01)
+            b = dot(inv_v_11, v_10)
             v_01_dot_b = dot(v_01, b)
             v_00 -= v_01_dot_b
             v_11 -= dot(v_10, a)
@@ -82,22 +83,24 @@ class CellSelfEnergy:
         self.weight = weight
         self.bias = 0
         self.energy = None
-        self.sigma = None
+        self.g_skmm = np.empty(self.h_skmm.shape, self.h_skmm.dtype)
+        self.g_smm = np.empty(self.h_smm.shape, self.h_smm.dtype)
+        ns = self.h_skmm.shape[0]
+        nb = self.h_skmm.shape[-1]
+        self.sigma = np.empty([ns, nb, nb], complex)
         
     def set_bias(self, bias):
         self.bias = bias
         
     def __call__(self, energy):
         h_skmm, s_kmm = self.h_skmm, self.s_kmm
-        h_mm, s_mm = self.h_smm, self.s_mm        
+        h_mm, s_mm = self.h_smm, self.s_mm
+        g_skmm, g_smm = self.g_skmm, self.g_smm
         ns = h_skmm.shape[0]
         nk = h_skmm.shape[1]
-        nb = h_skmm.shape[-1]
         kpts = self.kpts
         weight = self.weight
         
-        g_skmm = np.empty(h_skmm.shape, h_skmm.dtype)
-        sigma = np.empty([ns, nb, nb], complex)
         inv = inverse_general
         for s in range(ns):
             for k in range(nk):
@@ -105,12 +108,11 @@ class CellSelfEnergy:
                 inv(g_skmm[s, k])
             g_mm = get_realspace_hs(g_skmm, None, kpts, weight)
             inv(g_mm[s])
-            sigma[s] = energy * s_mm - h_mm - g_mm[s]
-        self.sigma = sigma[0]
-        return self.sigma
+            self.sigma[s] = energy * s_mm - h_mm - g_mm[s]
+        return self.sigma[0]
     
     def get_lambda(self, energy):
-        return 1.j * (self.sigma - dagger(self.sigma))
+        return 1.j * (self.sigma[0] - dagger(self.sigma[0]))
             
         
         
