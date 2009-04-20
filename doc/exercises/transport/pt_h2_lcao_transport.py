@@ -3,8 +3,12 @@ import numpy as npy
 import pickle
 import pylab
 
+# Principal layer size
+pl = 4 * 9
+
 # Read in the hamiltonians
-h,  s  = pickle.load(file('scat_hs.pickle'))
+h, s = pickle.load(file('scat_hs.pickle'))
+h, s = h[pl:-pl, pl:-pl], s[pl:-pl, pl:-pl] 
 h1, s1 = pickle.load(file('lead1_hs.pickle'))
 h2, s2 = pickle.load(file('lead2_hs.pickle'))
 
