@@ -54,7 +54,7 @@ def r2k_hs(h_srmm, s_rmm, R_vector, kvector=(0,0,0)):
         h_smm = np.empty((nspins, nbf, nbf), complex)
         for s in range(nspins):
             h_smm[s] = np.sum((h_srmm[s] * c_k), axis=0)
-    elif s_rmm != None:
+    if s_rmm != None:
         nbf = s_rmm.shape[-1]
         s_mm = np.empty((nbf, nbf), complex)
         s_mm[:] = np.sum((s_rmm * c_k), axis=0)
