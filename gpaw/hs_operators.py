@@ -88,7 +88,7 @@ class Operator:
             self.domain_comm.sum(A_NN, 0)
             return A_NN
         
-        # Now is gets nasty!  We parallelize over B groups of bands
+        # Now it gets nasty!  We parallelize over B groups of bands
         # and each group is blocked in J blocks.
 
         Q = B // 2 + 1
