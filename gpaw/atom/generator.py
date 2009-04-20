@@ -861,7 +861,7 @@ class Generator(AllElectron):
             e_n = npy.zeros(ng)
             error = diagonalize(H, e_n, S)
             if error != 0:
-                raise RuntimeError('Diagonaliztion failed for l=%d.' % l)
+                raise RuntimeError('Diagonalization failed for l=%d.' % l)
             ePAW = e_n[0]
             if l <= self.lmax and self.n_ln[l][0] > 0:
                 eAE = self.e_ln[l][0]
