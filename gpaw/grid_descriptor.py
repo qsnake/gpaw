@@ -181,11 +181,22 @@ class GridDescriptor(Domain):
         else:
             return np.empty(shape, dtype)
         
-    def integrate(self, a_xg):
-        """Integrate function in array over domain."""
+    def integrate(self, a_xg, b_xg=None, global_integral=True):
+        """Integrate function(s) in array over domain.
+
+        If the array(s) are distributed over several domains, then the
+        total sum will be returned.  To get the local contribution
+        only, use global_integral=False."""
+        
         shape = a_xg.shape
         if len(shape) == 3:
-            return self.comm.sum(a_xg.sum()) * self.dv
+            if b_xg is None:
+                assert global_integral
+                return self.comm.sum(a_xg.sum()) * self.dv
+            else:
+                assert not global_integral
+                return np.vdot(a_xg, b_xg) * self.dv
+        assert b_xg is None and global_integral
         A_x = np.sum(np.reshape(a_xg, shape[:-3] + (-1,)), axis=-1)
         self.comm.sum(A_x)
         return A_x * self.dv
@@ -575,4 +586,4 @@ class RadialGridDescriptor:
     def integrate(self, f_g):
         """Integrate over a radial grid."""
         
-        return np.sum(self.dv_g * f_g)
+        return np.dot(self.dv_g, f_g)

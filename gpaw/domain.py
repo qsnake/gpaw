@@ -115,7 +115,7 @@ class Domain:
         calculated:
 
         * ``neighbor_cd``:  Rank of neighbor.
-        * ``disp_cd``:  Displacement for neighbor.
+        * ``sdisp_cd``:  Scaled displacement for neighbor.
         """
 
         self.neighbor_cd = npy.zeros((3, 2), int)

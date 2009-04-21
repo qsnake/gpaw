@@ -10,8 +10,8 @@ import numpy as np
 
 from gpaw.poisson import PoissonSolver
 from gpaw.transformers import Transformer
-from gpaw.xc_functional import XCFunctional, XC3DGrid
-from gpaw.lfc import LocalizedFunctionsCollection as LFC
+from gpaw.xc_functional import XCFunctional, xcgrid
+from gpaw.lfc import LFC
 from gpaw.utilities import unpack
 from gpaw.utilities.tools import tri2full
 
@@ -89,7 +89,7 @@ class Hamiltonian:
         self.restrict = self.restrictor.apply
 
         # Exchange-correlation functional object:
-        self.xc = XC3DGrid(xcfunc, finegd, nspins)
+        self.xc = xcgrid(xcfunc, finegd, nspins)
 
         self.vbar = LFC(self.finegd, [[setup.vbar] for setup in setups],
                         forces=True)
@@ -164,7 +164,8 @@ class Hamiltonian:
             self.vt_sG = self.gd.empty(self.nspins)
             self.poisson.initialize()
 
-        Ebar = np.vdot(self.vbar_g, density.nt_g) * self.finegd.dv
+        Ebar = self.finegd.integrate(self.vbar_g, density.nt_g,
+                                     global_integral=False) 
 
         vt_g = self.vt_sg[0]
         vt_g[:] = self.vbar_g
@@ -191,13 +192,15 @@ class Hamiltonian:
                                            charge=-density.charge)
         self.timer.stop('Poisson')
 
-        Epot = 0.5 * np.vdot(self.vHt_g, density.rhot_g) * self.finegd.dv
+        Epot = 0.5 * self.finegd.integrate(self.vHt_g, density.rhot_g,
+                                           global_integral=False)
         Ekin = 0.0
         for vt_g, vt_G, nt_G in zip(self.vt_sg, self.vt_sG, density.nt_sG):
             vt_g += self.vHt_g
             self.restrict(vt_g, vt_G)
-            Ekin -= np.vdot(vt_G, nt_G - density.nct_G) * self.gd.dv
-
+            Ekin -= self.gd.integrate(vt_G, nt_G - density.nct_G,
+                                      global_integral=False)
+            
         # Calculate atomic hamiltonians:
         self.timer.start('Atomic Hamiltonians')
         W_aL = {}

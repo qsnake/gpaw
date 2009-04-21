@@ -11,7 +11,7 @@ import numpy as np
 from gpaw import debug, extra_parameters
 from gpaw.mixer import BaseMixer, Mixer, MixerSum
 from gpaw.transformers import Transformer
-from gpaw.lfc import LocalizedFunctionsCollection as LFC
+from gpaw.lfc import LFC
 from gpaw.wavefunctions import LCAOWaveFunctions
 
 

@@ -438,8 +438,10 @@ class PAW(PAWTextOutput):
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':
                 self.wfs = LCAOWaveFunctions(*args)
-            else:
+            elif par.mode == 'fd':
                 self.wfs = GridWaveFunctions(par.stencils[0], *args)
+            else:
+                self.wfs = par.mode(self, *args)
         else:
             self.wfs.set_setups(setups)
 

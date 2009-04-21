@@ -4,6 +4,7 @@ import numpy as np
 
 from gpaw import debug, extra_parameters
 from gpaw.spherical_harmonics import Y
+from gpaw.grid_descriptor import GridDescriptor
 import _gpaw
 
 """
@@ -951,6 +952,17 @@ class LocalizedFunctionsCollection(BaseLFC):
 if extra_parameters.get('usenewlfc'):
     LocalizedFunctionsCollection = NewLocalizedFunctionsCollection
 
+
+def LFC(gd, spline_aj, kpt_comm=None,
+        cut=False, forces=False, dtype=float,
+        integral=None):
+    if isinstance(gd, GridDescriptor):
+        return LocalizedFunctionsCollection(gd, spline_aj, kpt_comm,
+                                            cut, forces, dtype, integral)
+    else:
+        return gd.get_lfc(gd, spline_aj)
+    
+                  
 def test():
     from gpaw.grid_descriptor import GridDescriptor
 

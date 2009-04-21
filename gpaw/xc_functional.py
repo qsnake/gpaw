@@ -4,7 +4,7 @@
 import array
 import numpy as npy
 
-from gpaw.grid_descriptor import RadialGridDescriptor
+from gpaw.grid_descriptor import GridDescriptor
 from gpaw.operators import Gradient
 from gpaw.utilities import is_contiguous
 from gpaw.utilities.timing import Timer
@@ -680,6 +680,9 @@ class XCRadialGrid(XCGrid):
         """XC-functional object for radial grids."""
         XCGrid.__init__(self, xcfunc, gd, nspins)
 
+    def allocate(self):
+        pass
+
     def set_functional(self, xcfunc):
         XCGrid.set_functional(self, xcfunc)
 
@@ -843,6 +846,12 @@ class XCRadialGrid(XCGrid):
                                                 nb_g, vb_g)
 
         return npy.dot(self.e_g, self.dv_g)
+
+def xcgrid(xcfunc, gd, nspins=1):
+    if isinstance(gd, GridDescriptor):
+        return XC3DGrid(xcfunc, gd, nspins)
+    else:
+        return XCRadialGrid(xcfunc, gd, nspins)
 
 class vxcOperator(list):
     """vxc as operator object"""
