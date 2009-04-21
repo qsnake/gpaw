@@ -76,6 +76,7 @@ if len(tests) == 0:
         'gauss_func.py',
         'xcatom.py',
         'parallel/overlap.py',
+        'usesymm.py',
         'mixer.py',
         'mixer_broydn.py',
         'ylexpand.py',
