@@ -323,6 +323,28 @@ def fix2(formula):
 def scalapack():
     return _gpaw.compiled_with_sl()
 
+def load_balance(paw, atoms):
+    try:
+        paw.initialize(atoms)
+    except SystemExit:
+        pass
+    spos_ac = paw.atoms.get_scaled_positions()
+    atoms_r = npy.zeros(paw.wfs.world.size)
+    rnk_a = paw.gd.get_ranks_from_positions(spos_ac)
+    for rnk in rnk_a:
+        atoms_r[rnk] += 1
+    max_atoms = max(atoms_r)
+    min_atoms = min(atoms_r)
+    ave_atoms = atoms_r.sum()/paw.wfs.world.size
+    stddev_atoms = sqrt((atoms_r**2).sum()/paw.wfs.world.size - ave_atoms**2)
+    print "Information about load balancing"
+    print "--------------------------------"
+    print "Number of atoms:", len(spos_ac)
+    print "Number of CPUs:", paw.wfs.world.size
+    print "Max. number of atoms/CPU:   ", max_atoms
+    print "Min. number of atoms/CPU:   ", min_atoms
+    print "Average number of atoms/CPU:", ave_atoms
+    print "    standard deviation:     %5.1f" % stddev_atoms
 
 if not debug:
     hartree = _gpaw.hartree
