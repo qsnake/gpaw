@@ -74,7 +74,8 @@ os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
 setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
 export = ('export PYTHONPATH=%s/lib/python; ' % tmpdir +
-          'export GPAW_SETUP_PATH=%s; ' % setups)
+          'export GPAW_SETUP_PATH=%s; ' % setups +
+          'export GPAW_VDW=/home/niflheim/jensj/VDW; ')
 
 if day % 4 < 2:
     args = '--debug ' + args
