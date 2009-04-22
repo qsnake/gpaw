@@ -181,11 +181,11 @@ class Surrounding:
             self.gd = GridDescriptor(self.N_c, self.cell, False)
             scale = -0.25 / np.pi
             self.operator = Laplace(self.gd, scale, n=1)
-
+            
             wfs = self.atoms.calc.wfs
             self.basis_functions = BasisFunctions(self.gd, 
                                                   [setup.phit_j
-                                                  for setup in wfs.setups],
+                                                   for setup in wfs.setups],
                                                   wfs.kpt_comm,
                                                   cut=True)
             pos = self.atoms.positions
@@ -196,36 +196,36 @@ class Surrounding:
 
             nao = wfs.setups.nao
             vt_MM = np.empty([nap, nao])
-                     
+            
         elif self.type == 'all':
-             self.sides = {}
-             self.atoms._pbc = self.pbc
-             self.sides['all'] = Side('all',
-                                      self.nn
-                                      self.atoms,
-                                      self.kpts,
-                                      self.gpw_kwargs)
-             dim = self.N_c.copy()
-             dim += 2 * self.nn
-             self.N_c = dim
-             self.cell = dim * self.h_c
-             self.gd = GridDescriptor(self.N_c, self.cell, False)
-             scale = -0.25 / np.pi
-             self.operator = Laplace(self.gd, scale, n=1)
- 
-             wfs = self.atoms.calc.wfs
-             self.basis_functions = BasisFunctions(self.gd, 
-                                                   [setup.phit_j
+            self.sides = {}
+            self.atoms._pbc = self.pbc
+            self.sides['all'] = Side('all',
+                                     self.nn
+                                     self.atoms,
+                                     self.kpts,
+                                     self.gpw_kwargs)
+            dim = self.N_c.copy()
+            dim += 2 * self.nn
+            self.N_c = dim
+            self.cell = dim * self.h_c
+            self.gd = GridDescriptor(self.N_c, self.cell, False)
+            scale = -0.25 / np.pi
+            self.operator = Laplace(self.gd, scale, n=1)
+            
+            wfs = self.atoms.calc.wfs
+            self.basis_functions = BasisFunctions(self.gd, 
+                                                  [setup.phit_j
                                                    for setup in wfs.setups],
-                                                   wfs.kpt_comm,
-                                                   cut=True)
-             pos = self.atoms.positions
-             for i in range(len(self.atoms)):
-                 pos[i] += self.nn * self.h_c
-             spos_ac = np.linalg.solve(np.diag(self.cell) * Bohr, pos.T).T
-             self.basis_functions.set_positions(spos_ac) 
-             nao = wfs.setups.nao
-             vt_MM = np.empty([nap, nao])
+                                                  wfs.kpt_comm,
+                                                  cut=True)
+            pos = self.atoms.positions
+            for i in range(len(self.atoms)):
+                pos[i] += self.nn * self.h_c
+            spos_ac = np.linalg.solve(np.diag(self.cell) * Bohr, pos.T).T
+            self.basis_functions.set_positions(spos_ac) 
+            nao = wfs.setups.nao
+            vt_MM = np.empty([nap, nao])
 
         self.initialized = True
         self.gpw_restart = False
