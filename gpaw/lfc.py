@@ -825,8 +825,8 @@ from gpaw.mpi import run
 
 class LocalizedFunctionsCollection(BaseLFC):
     def __init__(self, gd, spline_aj, kpt_comm=None,
-                 cut=False, forces=False, dtype=float,
-                 integral=None):
+                 cut=False, dtype=float,
+                 integral=None, forces=False):
         if extra_parameters.get('normalize'):
             integral = None
             
@@ -954,11 +954,11 @@ if extra_parameters.get('usenewlfc'):
 
 
 def LFC(gd, spline_aj, kpt_comm=None,
-        cut=False, forces=False, dtype=float,
-        integral=None):
+        cut=False, dtype=float,
+        integral=None, forces=False):
     if isinstance(gd, GridDescriptor):
         return LocalizedFunctionsCollection(gd, spline_aj, kpt_comm,
-                                            cut, forces, dtype, integral)
+                                            cut, dtype, integral, forces)
     else:
         return gd.get_lfc(gd, spline_aj)
     
