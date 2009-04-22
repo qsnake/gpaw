@@ -59,7 +59,7 @@ class _Transformer:
             comm = gdin.comm
         else:
             comm = None
-
+        
         self.transformer = _gpaw.Transformer(gdin.n_c, 2 * self.nn,
                                              self.pad_cd, 
                                              self.neighborpad_cd, self.skip_cd,
@@ -72,16 +72,26 @@ class _Transformer:
         self.transformer.apply(input, output, phases)
 
     def estimate_memory(self, mem):
-        # Read transformers.c for details
-        # Notes: restrictor estimate only counts ~90% of allocation,
-        # gets worse for parallel calculations
-        inbytes = self.gdin.bytecount()
-        outbytes = self.gdout.bytecount()
+        # Read transformers.c and bc.c for details
+        # Notes: estimates are somewhat off, mostly around 100%-110%, but
+        # below 100% for some small transformer objects.
+        # How exactly it is possible for the estimate to be too high will
+        # forever be a mystery.
+        #
+        # Accuracy not tested with OpenMP
+        nbase_c = np.array(self.gdin.n_c)
+        # Actual array size is gd array size plus pad_cd
+        nactual_c = nbase_c + np.array(self.pad_cd).sum(1)
+        # In the C code, the mysterious bc->ndouble is just 1 if real, else 2
+        itemsize = mem.itemsize[self.dtype]
+        inbytes = np.prod(nactual_c) * itemsize
         mem.subnode('buf', inbytes)
         if self.interpolate:
             mem.subnode('buf2 interp', 16 * inbytes)
         else:
-            mem.subnode('buf2 restrict', 4 * outbytes)
+            nactual_z = nactual_c[2] - 4 * self.nn + 3
+            N = 1 * nactual_c[0] * nactual_c[1] * nactual_z // 2
+            mem.subnode('buf2 restrict', N * itemsize)
 
 
 class TransformerWrapper:
