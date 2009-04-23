@@ -213,7 +213,7 @@ class C_Response(Contribution):
             print "Proc", world.rank, " Ecorr", Ecorr
             Ecorr = self.grid_comm.sum(Ecorr)
             print "Spherical correction from processor ",world.rank, ":", Ecorr * 27.21
-            eps_u.append(Ecorr + kpt.f_n[lumo_n] + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
+            eps_u.append(Ecorr + self.gd.integrate(self.nt_sG[0]*self.vt_sG[0]))
 
         method2_dxc = min(eps_u)
         method2_dxc = -self.kpt_comm.max(-method2_dxc)
