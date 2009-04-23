@@ -201,7 +201,7 @@ class Surrounding:
             self.sides = {}
             self.atoms._pbc = self.pbc
             self.sides['all'] = Side('all',
-                                     self.nn
+                                     self.nn,
                                      self.atoms,
                                      self.kpts,
                                      self.gpw_kwargs)
