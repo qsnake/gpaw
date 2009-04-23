@@ -9,9 +9,10 @@ import numpy as npy
 from gpaw import debug
 from gpaw.utilities import contiguous, is_contiguous
 import _gpaw
-    
+
 class _Operator:
-    def __init__(self, coef_p, offset_pc, gd, dtype=float):
+    def __init__(self, coef_p, offset_pc, gd, dtype=float,
+                 allocate=True):
         """Operator(coefs, offsets, gd, dtype) -> Operator object.
         """
 
@@ -45,9 +46,46 @@ class _Operator:
         else:
             comm = None
 
-        self.operator = _gpaw.Operator(coef_p, offset_p, n_c, mp,
-                                          neighbor_cd, dtype == float,
-                                          comm, cfd)
+        self.operator = None
+        self.args = [coef_p, offset_p, n_c, mp,
+                     neighbor_cd, dtype == float,
+                     comm, cfd]
+        self.mp = mp # padding
+        self.gd = gd
+
+        self.allocated = False
+        if allocate:
+            self.allocate()
+
+    def allocate(self):
+        assert not self.allocated
+        self.operator = _gpaw.Operator(*self.args)
+        self.args = None
+        self.allocated = True
+
+    def apply(self, in_xg, out_xg, phase_cd=None):
+        self.operator.apply(in_xg, out_xg, phase_cd)
+
+    def apply2(self, in_xg, out_xg, phase_cd=None):
+        self.operator.apply2(in_xg, out_xg, phase_cd=None)
+
+    def relax(self, relax_method, f_g, s_g, n, w=None):
+        self.operator.relax(relax_method, f_g, s_g, n, w)
+
+    def get_diagonal_element(self):
+        return self.operator.get_diagonal_element()
+
+    def estimate_memory(self, mem):
+        bufsize_c = npy.array(self.gd.n_c) + 2 * self.mp
+        itemsize = mem.itemsize[self.dtype]
+        mem.setsize(npy.prod(bufsize_c) * itemsize)
+
+
+class OperatorWrapper:
+    def __init__(self, operator):
+        self.operator = operator
+        self.shape = operator.shape
+        self.dtype = operator.dtype
 
     def apply(self, in_xg, out_xg, phase_cd=None):
         assert in_xg.shape == out_xg.shape
@@ -69,7 +107,6 @@ class _Operator:
                  phase_cd.shape == (3, 2)))
         self.operator.apply2(in_xg, out_xg, phase_cd)
 
-
     def relax(self, relax_method, f_g, s_g, n, w=None):
         assert f_g.shape == self.shape
         assert s_g.shape == self.shape
@@ -81,15 +118,22 @@ class _Operator:
     def get_diagonal_element(self):
         return self.operator.get_diagonal_element()
 
+    def estimate_memory(self, mem):
+        self.operator.estimate_memory(mem)
+
+    def allocate(self):
+        self.operator.allocate()
+
 
 if debug:
-    Operator = _Operator
+    def Operator(coef_p, offset_pc, gd, dtype=float, allocate=True):
+        return OperatorWrapper(_Operator(coef_p, offset_pc, gd, dtype,
+                                         allocate))
 else:
-    def Operator(coef_p, offset_pc, gd, dtype=float):
-        return _Operator(coef_p, offset_pc, gd, dtype).operator
+    Operator = _Operator
 
 
-def Gradient(gd, c, scale=1.0, dtype=float):
+def Gradient(gd, c, scale=1.0, dtype=float, allocate=True):
     h = gd.h_c
     a = 0.5 / h * scale
     d = gd.iucell_cv[:,c] 
@@ -105,7 +149,7 @@ def Gradient(gd, c, scale=1.0, dtype=float):
             offset[1, i] =  1                    
             offset_pc.extend(offset)
 
-    return Operator(coef_p, offset_pc, gd, dtype)
+    return Operator(coef_p, offset_pc, gd, dtype, allocate)
 
 
 # Expansion coefficients for finite difference Laplacian.  The numbers are
@@ -134,7 +178,7 @@ if debug:
         assert abs(coefs[0] + 2 * sum(coefs[1:])) < 1e-11
 
 
-def Laplace(gd, scale=1.0, n=1, dtype=float):
+def Laplace(gd, scale=1.0, n=1, dtype=float, allocate=True):
     """Central finite diference Laplacian.
 
     Uses (max) 12*n**2 + 6*n neighbors."""
@@ -185,7 +229,7 @@ def Laplace(gd, scale=1.0, n=1, dtype=float):
 
             ci+=1
 
-    return Operator(coefs, offsets, gd, dtype)
+    return Operator(coefs, offsets, gd, dtype, allocate)
 
 from numpy.fft import fftn, ifftn
 
@@ -215,8 +259,14 @@ class FTLaplace:
     def get_diagonal_element(self):
         return self.d
 
+    def allocate(self):
+        pass
 
-def LaplaceA(gd, scale, dtype=float):
+    def estimate_memory(self, mem):
+        mem.subnode('FTLaplace estimate not implemented', 0)
+
+
+def LaplaceA(gd, scale, dtype=float, allocate=True):
     c = npy.divide(-1/12, gd.h_c**2) * scale  # Why divide? XXX
     c0 = c[1] + c[2]
     c1 = c[0] + c[2]
@@ -237,9 +287,9 @@ def LaplaceA(gd, scale, dtype=float):
                      (0, -1, -1), (0, -1, 1), (0, 1, -1), (0, 1, 1),
                      (-1, 0, -1), (-1, 0, 1), (1, 0, -1), (1, 0, 1),
                      (-1, -1, 0), (-1, 1, 0), (1, -1, 0), (1, 1, 0)],
-                    gd, dtype)
+                    gd, dtype, allocate=allocate)
 
-def LaplaceB(gd, dtype=float):
+def LaplaceB(gd, dtype=float, allocate=True):
     a = 0.5
     b = 1.0 / 12.0
     return Operator([a,
@@ -248,4 +298,4 @@ def LaplaceB(gd, dtype=float):
                      (-1, 0, 0), (1, 0, 0),
                      (0, -1, 0), (0, 1, 0),
                      (0, 0, -1), (0, 0, 1)],
-                    gd, dtype)
+                    gd, dtype, allocate=allocate)
