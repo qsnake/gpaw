@@ -502,7 +502,9 @@ class XC3DGrid(XCGrid):
         # happens, such that XC3DGrid objects are not reusable wrt. change
         # of xc functional.
         if xcfunc.gga:
-            self.ddr = None
+            self.ddr_operator_objects = [Gradient(gd, c, allocate=False) 
+                                         for c in range(3)]
+            self.ddr = [obj.apply for obj in self.ddr_operator_objects]
             self.dndr_cg = None
             self.a2_g = None
             self.deda2_g = None
@@ -524,7 +526,8 @@ class XC3DGrid(XCGrid):
         gd = self.gd
         xcfunc = self.xcfunc
         if xcfunc.gga:
-            self.ddr = [Gradient(gd, c).apply for c in range(3)]
+            for obj in self.ddr_operator_objects:
+                obj.allocate()
             self.dndr_cg = gd.empty(3)
             self.a2_g = gd.empty()
             self.deda2_g = gd.empty()
@@ -665,15 +668,14 @@ class XC3DGrid(XCGrid):
         mem.subnode('Local density arrays', bytecount) # from e_g
         if self.xcfunc.gga:
             gga = mem.subnode('GGA arrays')
+            for c, obj in enumerate(self.ddr_operator_objects):
+                obj.estimate_memory(gga.subnode('Gradient op %d' % c))
             gga.subnode('one spin', bytecount * 5)
             if self.nspins == 2:
                 gga.subnode('spinpol', bytecount * 10)
         if self.xcfunc.mgga:
             mem.subnode('MGGA work', bytecount)
-        # For inexplicable reasons, the XC3DGrid object always uses precisely
-        # twice as much as it should.  Maybe the C code allocates something?
-        bytes_so_far = mem.calculate_size()
-        mem.subnode('Extra memory used for reasons unknown', bytes_so_far)
+
 
 class XCRadialGrid(XCGrid):
     def __init__(self, xcfunc, gd, nspins=1):

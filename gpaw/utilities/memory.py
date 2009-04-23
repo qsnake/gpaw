@@ -236,7 +236,7 @@ class MemNode:
     complexsize = np.array(1, complex).itemsize
     itemsize = {float : floatsize, complex : complexsize}
     
-    def __init__(self, name, basesize):
+    def __init__(self, name, basesize=0):
         """Create node with specified name and intrinsic size without
         subcomponents."""
         self.name = name
