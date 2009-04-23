@@ -251,7 +251,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                         all_P_ni[band_rank::nstride, i:i + ni] = P_ni
                         i += ni
                 w.fill(all_P_ni)
-        assert i == nproj
+                assert i == nproj
 
     # else is slave
     else:
@@ -543,14 +543,14 @@ def read(paw, reader):
 
     # Try to read the number of Delta SCF orbitals
     try:
-        norbitals = r.dims['norbitals']
+        norbitals = r.dimension('norbitals')
         paw.occupations.norbitals = norbitals
     except (AttributeError, KeyError):
         norbitals = None
 
     # Wave functions and eigenvalues:
-    nibzkpts = r.dims['nibzkpts']
-    nbands = r.dims['nbands']
+    nibzkpts = r.dimension('nibzkpts')
+    nbands = r.dimension('nbands')
 
     if (nibzkpts == len(wfs.ibzk_kc) and
         nbands == band_comm.size * wfs.mynbands):
