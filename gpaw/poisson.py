@@ -31,30 +31,24 @@ class PoissonSolver:
         else:
             raise NotImplementedError('Relaxation method %s' % relax)
 
-    def set_grid_descriptor(self, gd): # XXX
-        # This method exists only because it is nice to know the gd size
-        # before also having to allocate the arrays (which would be done in
-        # the actual initialize).  Maybe 'initialize' should be 'allocate'
+    def set_grid_descriptor(self, gd):
+        # Should probably be renamed initialize
         self.gd = gd
+        self.dv = gd.dv
 
-    def initialize(self, load_gauss=False):
         gd = self.gd
         scale = -0.25 / pi 
-        self.dv = gd.dv
 
         if self.nn == 'M':
             if gd.is_non_orthogonal():
                 raise RuntimeError('Cannot use Mehrstellen stencil with non orthogonal cell.')
 
-            self.operators = [LaplaceA(gd, -scale)]
-            self.B = LaplaceB(gd)
+            self.operators = [LaplaceA(gd, -scale, allocate=False)]
+            self.B = LaplaceB(gd, allocate=False)
         else:
-            self.operators = [Laplace(gd, scale, self.nn)]
+            self.operators = [Laplace(gd, scale, self.nn, allocate=False)]
             self.B = None
 
-        self.rhos = [gd.empty()]
-        self.phis = [None]
-        self.residuals = [gd.empty()]
         self.interpolators = []
         self.restrictors = []
 
@@ -71,12 +65,9 @@ class PoissonSolver:
                 gd2 = gd.coarsen()
             except ValueError:
                 break
-            self.operators.append(Laplace(gd2, scale, 1))
-            self.phis.append(gd2.empty())
-            self.rhos.append(gd2.empty())
-            self.residuals.append(gd2.empty())
-            self.interpolators.append(Transformer(gd2, gd))
-            self.restrictors.append(Transformer(gd, gd2))
+            self.operators.append(Laplace(gd2, scale, 1, allocate=False))
+            self.interpolators.append(Transformer(gd2, gd, allocate=False))
+            self.restrictors.append(Transformer(gd, gd2, allocate=False))
             self.presmooths.append(4)
             self.postsmooths.append(4)
             self.weights.append(1.0)
@@ -84,12 +75,34 @@ class PoissonSolver:
             gd = gd2
 
         self.levels = level
+
+    def initialize(self, load_gauss=False):
+        # Should probably be renamed allocate
+        gd = self.gd
+        self.rhos = [gd.empty()]
+        self.phis = [None]
+        self.residuals = [gd.empty()]
+        for level in range(self.levels):
+            gd2 = gd.coarsen()
+            self.phis.append(gd2.empty())
+            self.rhos.append(gd2.empty())
+            self.residuals.append(gd2.empty())
+            gd = gd2
+        assert len(self.phis) == len(self.rhos)
+        level += 1            
+        assert level == self.levels
+        
+        for obj in self.operators + self.interpolators + self.restrictors:
+            obj.allocate()
+        if self.B is not None:
+            self.B.allocate()
         self.step = 0.66666666 / self.operators[0].get_diagonal_element()
         self.presmooths[level] = 8
         self.postsmooths[level] = 8
 
         if load_gauss:
             self.load_gauss()
+        
 
     def load_gauss(self):
         if not hasattr(self, 'rho_gauss'):
@@ -104,7 +117,7 @@ class PoissonSolver:
             eps = self.eps
 
         # Determine charge (if set to None)
-        if charge == None:
+        if charge is None:
             charge = self.gd.integrate(rho)
 
         if abs(charge) < maxcharge:
@@ -116,7 +129,7 @@ class PoissonSolver:
             # background charge
             background = charge / abs(npy.linalg.det(self.gd.cell_cv))
 
-            if self.charged_periodic_correction == None:
+            if self.charged_periodic_correction is None:
                 print "+-----------------------------------------------------+"
                 print "| Calculating charged periodic correction using the   |"
                 print "| Ewald potential from a lattice of point charges in  |"
@@ -253,16 +266,27 @@ class PoissonSolver:
             return error
 
     def estimate_memory(self, mem):
-        # XXX Memory estimate works only for J or possibly GS !!
+        # XXX Memory estimate works only for J and GS, not FFT solver
+        # Poisson solver appears to use same amount of memory regardless
+        # of whether it's J or GS, which is a bit strange
 
-        # Poisson (rhos, phis, residuals, interpolators, restrictors)
-        # Multigrid adds a factor of 1.14
-        nfinebytes = self.gd.bytecount()
-        nbytes = nfinebytes / 8
-        mem.subnode('poisson1', 8 * 4 * 1.14 * nbytes)
-        mem.subnode('poisson2', 6 * 1.14 * nbytes)
-        mem.subnode('poisson3', 12 * 1.14 * nbytes)
-        mem.subnode('Laplacian', nbytes)
+        gdbytes = self.gd.bytecount()
+        nbytes = -gdbytes # No phi on finest grid, compensate ahead
+        for level in range(self.levels):
+            nbytes += 3 * gdbytes # Arrays: rho, phi, residual
+            gdbytes /= 8
+        mem.subnode('rho, phi, residual [%d levels]' % self.levels, nbytes)
+
+        for i, obj in enumerate(self.restrictors + self.interpolators):
+            obj.estimate_memory(mem.subnode('Transformer %d' % i))
+
+        for i, operator in enumerate(self.operators):
+            name = operator.__class__.__name__
+            operator.estimate_memory(mem.subnode('Operator %d [%s]' % (i, 
+                                                                       name)))
+        if self.B is not None:
+            name = self.B.__class__.__name__
+            self.B.estimate_memory(mem.subnode('B [%s]' % name))
 
 
 from numpy.fft import fftn, ifftn
