@@ -342,11 +342,9 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
         {
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-#ifdef GPAW_MPI2
-#ifndef GPAW_BGP
+#if defined(GPAW_MPI2) && !defined(GPAW_BGP)
           ret = MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
                      operation, root, self->comm);
-#endif
 #else
           char* b = 0;
           if (rank == root)
