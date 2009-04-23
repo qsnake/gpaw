@@ -11,7 +11,7 @@ try:
     calc = GPAW('NaCl.gpw')
     NaCl = calc.get_atoms()
 except IOError:
-    h = 0.17 # gridspacing
+    h = 0.21 # gridspacing
     a = [6.5, 6.5, 7.7] # unit cell
     d = 2.3608 # experimental bond length
 
