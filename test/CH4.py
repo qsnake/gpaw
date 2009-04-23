@@ -1,6 +1,15 @@
-from gpaw import GPAW
 from ase import *
+# note that we overwite numpy.equal in the next line
+from gpaw.utilities import equal
+from gpaw import GPAW
 
+ref_3775 = { # Values from revision 3775.
+    # d         Energy
+    1.0  : -23.4215573953,
+    1.05 : -23.541808956,
+    1.1  : -23.5629210099,
+    1.15 : -23.50919649,
+    }
 
 a = 4.0
 n = 20
@@ -15,7 +24,9 @@ atoms = Atoms([Atom('C', (0.0, 0.0, 0.0)),
 atoms.set_calculator(GPAW(gpts=(n, n, n), nbands=4, txt='-'))
 e0 = atoms.get_potential_energy()
 
-for d in [1.0, 1.05, 1.1, 1.15]:
+for d in ref_3775.keys():
     x = d / 3**0.5
     atoms.positions[1] = (x, x, x)
-    print d, atoms.get_potential_energy() - e0
+    e = atoms.get_potential_energy()
+    print d, e - e0
+    equal(ref_3775[d], e, 2e-5)
