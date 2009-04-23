@@ -148,6 +148,9 @@ class PAWTextOutput:
         else:
             t('Spin-Paired Calculation')
 
+        for setup in self.wfs.setups.setups.values():
+            setup.print_info(self.text)
+            
         t('Total Charge:      %.6f' % p['charge'])
         t('Fermi Temperature: %.6f' % (self.occupations.kT * Hartree))
         t('Mode:              %s' % p['mode'])

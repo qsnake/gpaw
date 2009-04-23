@@ -16,6 +16,7 @@ import sys
 
 import numpy as npy
 from ase.data import atomic_names, chemical_symbols, atomic_numbers
+from ase.units import Bohr, Hartree
 
 from gpaw.setup_data import SetupData
 from gpaw.basis_data import Basis
@@ -683,19 +684,20 @@ class Setup:
             text('  core   : %.1f' % self.Nc)
         text('  charge :', self.Z - self.Nv - self.Nc)
         text('  file   :', self.data.filename)
-        text(('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core) Bohr,'
-              ' lmax=%d' % (self.rcutcomp, self.rcutfilter,
-                            self.rcore, self.lmax)))
+        text(('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core),'
+              ' lmax=%d' % (self.rcutcomp * Bohr, self.rcutfilter * Bohr,
+                            self.rcore * Bohr, self.lmax)))
         text('  valence states:')
+        text('            energy   radius')
         j = 0
         for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
             if n > 0:
                 f = '(%d)' % f
-                text('    %d%s%-4s %7.3f Ha   %4.2f Bohr' % (
-                    n, 'spdf'[l], f, eps, self.rcut_j[j]))
+                text('    %d%s%-4s %7.3f   %5.3f' % (
+                    n, 'spdf'[l], f, eps * Hartree, self.rcut_j[j] * Bohr))
             else:
-                text('    *%s     %7.3f Ha   %4.2f Bohr' % (
-                    'spdf'[l], eps, self.rcut_j[j]))
+                text('    *%s     %7.3f   %5.3f' % (
+                    'spdf'[l], eps * Hartree, self.rcut_j[j] * Bohr))
             j += 1
 
         text()
