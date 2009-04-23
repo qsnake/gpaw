@@ -23,15 +23,14 @@ class LeadSelfEnergy:
             inv = inverse_symmetric
         if self.h_im.dtype == complex:
             inv = inverse_general
-        if energy != self.energy:
-            self.energy = energy
-            z = energy - self.bias + self.eta * 1.j           
-            tau_im = z * self.s_im - self.h_im
-            ginv = self.get_sgfinv(energy)
-            inv(ginv)
-            a_im = dot(ginv, tau_im)
-            tau_mi = z * dagger(self.s_im) - dagger(self.h_im)
-            self.sigma_mm[:] = dot(tau_mi, a_im)
+        self.energy = energy
+        z = energy - self.bias + self.eta * 1.j           
+        tau_im = z * self.s_im - self.h_im
+        ginv = self.get_sgfinv(energy)
+        inv(ginv)
+        a_im = dot(ginv, tau_im)
+        tau_mi = z * dagger(self.s_im) - dagger(self.h_im)
+        self.sigma_mm[:] = dot(tau_mi, a_im)
         return self.sigma_mm
 
     def set_bias(self, bias):
@@ -76,54 +75,87 @@ class LeadSelfEnergy:
         return v_00
     
 class CellSelfEnergy:
-    def __init__(self, hs_kii, hs_ii, kpts, weight, td=2, eta=1e-4):
-        self.h_skmm, self.s_kmm = hs_kii
-        self.h_smm, self.s_mm = hs_ii
+    def __init__(self, h_skmm, s_kmm, kpts, td=2, eta=1e-4):
+        self.h_skmm, self.s_kmm = h_skmm, s_kmm
         self.kpts = kpts
-        self.weight = weight
         self.bias = 0
         self.energy = None
         self.transport_direction = td
-        self.g_skmm = np.empty(self.h_skmm.shape, self.h_skmm.dtype)
-        self.g_smm = np.empty(self.h_smm.shape, self.h_smm.dtype)
         ns = self.h_skmm.shape[0]
         nb = self.h_skmm.shape[-1]
         self.sigma = np.empty([ns, nb, nb], complex)
+        self.sigma2 = np.empty([ns, nb, nb], complex)
+        self.sigma3 = np.empty([ns, nb, nb], complex)
+        self.initialize()
         
     def set_bias(self, bias):
         self.bias = bias
         
-   # def __call__(self, energy):
-   #     h_skmm, s_kmm = self.h_skmm, self.s_kmm
-   #     h_mm, s_mm = self.h_smm, self.s_mm
-   #     g_skmm, g_smm = self.g_skmm, self.g_smm
-   #     ns = h_skmm.shape[0]
-   #     nk = h_skmm.shape[1]
-   #     kpts = self.kpts
-   #     weight = self.weight
-   #     inv = inverse_general
-   #     for s in range(ns):
-   #         for k in range(nk):
-   #             g_skmm[s, k] = energy * s_kmm[k] - h_skmm[s, k]
-   #             inv(g_skmm[s, k])
-   #         g_mm = get_realspace_hs(g_skmm, None, kpts, weight)
-   #         inv(g_mm[s])
-   #         self.sigma[s] = energy * s_mm - h_mm - g_mm[s]
-   #     return self.sigma[0]
+    def call2(self, energy):
+        h_skmm, s_kmm = self.h_skmm, self.s_kmm
+        h_mm, s_mm = self.h_smm, self.s_mm
+        self.g_skmm = np.empty(self.h_skmm.shape, complex)
+        self.g_smm = np.empty(self.h_smm.shape, complex)
+
+        g_skmm, g_smm = self.g_skmm, self.g_smm
+        ns = h_skmm.shape[0]
+        nk = h_skmm.shape[1]
+        kpts = self.kpts
+        weight = [1./len(kpts)] * len(kpts)
+        inv = inverse_general
+        for s in range(ns):
+            for k in range(nk):
+                g_skmm[s, k] = energy * s_kmm[k] - h_skmm[s, k]
+                inv(g_skmm[s, k])
+            g_mm = get_realspace_hs(g_skmm, None, kpts, weight)
+            inv(g_mm[s])
+            self.sigma2[s] = energy * s_mm - h_mm - g_mm[s]
+        return self.sigma2[0]
+
+    def call3(self, energy):
+        self.g_skmm3 = np.empty(self.h_skmm.shape, complex)
+        self.g_spkmm3 = np.empty(self.h_spkmm.shape, complex)
+        self.g_smm3 = np.empty(self.h_smm.shape, complex)
+        ns, npk, nb = self.h_spkmm.shape[:3]
+        g_stkmm = np.empty([ns, self.ntk, nb, nb], complex)
+      
+        npk = self.npk
+        ntk = self.ntk
+        id = self.tp_index
+
+        inv = inverse_general
+        for k in range(npk):
+            for ik, i in zip(id[k], range(ntk)):
+                g_stkmm[:, i] = energy * self.s_kmm[ik] - self.h_skmm[:, ik]
+                for s in range(ns):
+                    inv(g_stkmm[s, i])
+            self.g_spkmm3[:, k] = k2r_hs(g_stkmm, None, self.t_kpts, self.t_weight)
+     
+        self.g_smm3 = k2r_hs(self.g_spkmm3, None, self.p_kpts, self.p_weight)
+        g_mm = self.g_smm3.copy()
+        
+        for s in range(ns):
+            inv(g_mm[s])
+            self.sigma3[s] = energy * self.s_mm - self.h_smm - g_mm[s]
+        return self.sigma3[0]
     
     def __call__(self, energy):
         ns, nk = self.h_spkmm.shape[:2]
         kpts = self.p_kpts
         weight = self.p_weight
-        inv = invserse_general
+        inv = inverse_general
         for k in range(nk):
             for s in range(ns):
-                self.g_spkmm[s, k] = self.get_tdse(s, k, energy)
-        self.g_smm = get_realspace_hs(self.g_spkmm, None, kpts,
-                                           weight, R_c=(0,0,0), usesymm=False)
+                self.g_spkmm[s, k] = self.get_tdse(s, k, energy - self.bias)
+        self.g_smm = k2r_hs(self.g_spkmm, None, kpts, weight)
+        g_mm = self.g_smm.copy()
+        
         for s in range(ns):
-            inv(self.g_smm[s])
-            self.sigma[s] = energy * self.s_mm - self.h_mm - self.g_smm[s]
+            inv(g_mm[s])
+            #g_mm[s] = np.linalg.inv(self.g_smm[s])
+            self.sigma[s] = (energy - self.bias) * self.s_mm - self.h_smm[s] \
+                                                              - g_mm[s]
+        return self.sigma
 
     def get_tdse(self, s, k, energy):
         sl = self.td_selfenergy_left
@@ -145,17 +177,21 @@ class CellSelfEnergy:
         sigma = sl(energy) + sr(energy)
 
         g_mm = energy * self.s_pkmm[k] - self.h_spkmm[s, k] - sigma
-        inverse_general(g_mm)
+        #g_mm = energy * self.s_pkmm[k] - self.h_spkmm[s, k]
+        #inverse_general(g_mm)
+        g_mm = np.linalg.inv(g_mm) 
         return g_mm
         
     def get_lambda(self, energy):
+        sigma = self.__call__(energy)
         return 1.j * (self.sigma[0] - dagger(self.sigma[0]))
 
     def divide_kpts(self, dim_type, dim_flag):
         td = self.transport_direction
         kpts = self.kpts
         t_kpts = []
-        p_kpts = []
+        p_kpts = [kpts[0].copy()]
+        p_kpts[0][td] = 0
         for kpt in kpts:
             if kpt[td] in t_kpts:
                 pass
@@ -163,7 +199,9 @@ class CellSelfEnergy:
                 t_kpts.append(kpt[td])
             p_kpt = kpt.copy()
             p_kpt[td] = 0.
-            if p_kpt in p_kpts:
+            tmp = p_kpt - p_kpts
+            tmp = np.sum(tmp, axis=1)
+            if not tmp.all():
                 pass
             else:
                 p_kpts.append(p_kpt)
@@ -176,7 +214,7 @@ class CellSelfEnergy:
         self.p_weight = [ 1./ self.npk] * self.npk
 
     def get_tp_index(self):
-        self.tp_index = np.empty([self.npk, self.ntk], int)
+        self.tp_index = np.zeros([self.npk, self.ntk], int)
         td = self.transport_direction
         num = 0
         for kpt in self.kpts:
@@ -186,14 +224,13 @@ class CellSelfEnergy:
             t_kpts -= tmp
             t_kpts = np.sum(abs(t_kpts), axis=1)
             col_index = np.argmin(t_kpts)
-   
+
             p_kpts = self.p_kpts.copy()
             tmp = kpt.copy()
             tmp[td] = 0
             p_kpts -= tmp
             p_kpts = np.sum(abs(p_kpts), axis=1)
             row_index = np.argmin(p_kpts)
-
             self.tp_index[row_index, col_index] = num
             num += 1
         
@@ -222,11 +259,13 @@ class CellSelfEnergy:
                                                         kpts,
                                                         weight,
                                                         R_c=positions[0])
+            
             self.h_spkcmm[:, i], self.s_pkcmm[i] = k2r_hs(h_skmm[:, id[i]],
                                                           s_kmm[id[i]],
                                                           kpts,
                                                           weight,
                                                           R_c=positions[1])
+            
             self.h_spkcmm2[:, i], self.s_pkcmm2[i] = k2r_hs(h_skmm[:, id[i]],
                                                             s_kmm[id[i]],
                                                             kpts,
@@ -243,11 +282,28 @@ class CellSelfEnergy:
                 dim_flag[i] = 1
         dim_type =  np.sum(dim_flag)
         if dim_type == 1:
-            raise RuntimError('Wrong dimension for using env')
+            pass
+            #raise RuntimError('Wrong dimension for using env')
         elif dim_type == 2:
             td = self.transport_direction
             if dim_flag[td] != 1:
                 raise RuntimeError('Wrong transport direction for env')
         self.divide_kpts(dim_type, dim_flag)
         self.get_tp_index()
-
+        self.substract_p_hs()
+        self.td_selfenergy_left = LeadSelfEnergy((self.h_spkmm[0,0],
+                                                  self.s_pkmm[0]),
+                                                 (self.h_spkcmm[0,0],
+                                                  self.s_pkcmm[0]),
+                                                 (self.h_spkcmm[0,0],
+                                                  self.s_pkcmm[0]), 0)
+        self.td_selfenergy_right = LeadSelfEnergy((self.h_spkmm[0,0],
+                                                  self.s_pkmm[0]),
+                                                 (self.h_spkcmm2[0,0],
+                                                  self.s_pkcmm2[0]),
+                                                 (self.h_spkcmm2[0,0],
+                                                  self.s_pkcmm2[0]), 0)
+        self.h_smm = np.sum(self.h_skmm, axis=1) / len(self.kpts)
+        self.s_mm = np.sum(self.s_kmm, axis=0) / len(self.kpts) 
+        self.g_spkmm = np.empty(self.h_spkmm.shape, self.h_spkmm.dtype)
+        self.g_smm = np.empty(self.h_smm.shape, self.h_smm.dtype)
