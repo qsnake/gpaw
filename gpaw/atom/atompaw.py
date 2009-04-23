@@ -31,7 +31,10 @@ class AtomWaveFunctions(WaveFunctions):
         hamiltonian.update(density)      
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
-        nt_sG[kpt.s] += np.dot(kpt.f_n, kpt.psit_nG**2)
+        nt_sG[kpt.s] += np.dot(kpt.f_n / 4 / pi, kpt.psit_nG**2)
+        #import pylab as p
+        #p.plot(self.gd.r_g, nt_sG[0])
+        #p.show();sdg
 
 class AtomPoissonSolver:
     def set_grid_descriptor(self, gd):
@@ -70,7 +73,8 @@ class AtomEigensolver:
             
         self.S_l = [np.eye(N) for l in range(4)]
         setup = wfs.setups[0]
-        self.pt_j = np.array([[pt(x) for x in r] for pt in setup.pt_j])
+        self.pt_j = np.array([[pt(x) * x**l for x in r]
+                              for pt, l in zip(setup.pt_j, setup.l_j)])
 
         dS_ii = setup.O_ii
         i1 = 0
@@ -83,13 +87,10 @@ class AtomEigensolver:
                 i2 += 2 * l2 + 1
             i1 += 2 * l1 + 1
 
-        nbands = sum([len(self.f_sln[s][l])
-                      for s in range(wfs.nspins)
-                      for l in range(4)])
         for kpt in wfs.kpt_u:
-            kpt.eps_n = np.empty(nbands)
-            kpt.psit_nG = self.gd.empty(nbands)
-            kpt.P_ani = {0: np.zeros((nbands, len(dS_ii)))}
+            kpt.eps_n = np.empty(wfs.nbands)
+            kpt.psit_nG = self.gd.empty(wfs.nbands)
+            kpt.P_ani = {0: np.zeros((wfs.nbands, len(dS_ii)))}
         
     def iterate(self, hamiltonian, wfs):
         if not self.initialized:
@@ -105,7 +106,7 @@ class AtomEigensolver:
         for s in range(wfs.nspins):
             dH_ii = unpack(hamiltonian.dH_asp[0][s])
             kpt = wfs.kpt_u[s]
-            n1 = 0
+            N1 = 0
             for l in range(4):
                 H = self.T_l[l] + np.diag(hamiltonian.vt_sg[s])
                 i1 = 0
@@ -117,22 +118,24 @@ class AtomEigensolver:
                                   np.outer(pt1 * r,  pt2 * r))
                         i2 += 2 * l2 + 1
                     i1 += 2 * l1 + 1
-                H0 = H.copy()
+                H0 = H.copy()#XXX
                 error = diagonalize(H, e_n, self.S_l[l].copy())
                 if error != 0:
                     raise RuntimeError('Diagonalization failed for l=%d.' % l)
-                n2 = n1 + len(self.f_sln[s][l])
-                kpt.eps_n[n1:n2] = e_n[:n2 - n1]
-                kpt.psit_nG[n1:n2] = H[:n2 - n1] / r / sqrt(4 * pi * h)
-                i1 = 0
-                for pt, ll in zip(self.pt_j, setup.l_j):
-                    i2 = i2 + 2 * ll + 1
-                    if ll == l:
-                        P_n = (np.dot(kpt.psit_nG[n1:n2], pt * r**2) *
-                               sqrt(4 * pi) * h)
-                        kpt.P_ani[0][n1:n2, i1:i2] = P_n
-                    i1 = i2
 
+                for n in range(len(self.f_sln[s][l])):
+                    N2 = N1 + 2 * l + 1
+                    kpt.eps_n[N1:N2] = e_n[n]
+                    kpt.psit_nG[N1:N2] = H[n] / r / sqrt(h)
+                    i1 = 0
+                    for pt, ll in zip(self.pt_j, setup.l_j):
+                        i2 = i1 + 2 * ll + 1
+                        if ll == l:
+                            P = np.dot(kpt.psit_nG[N1], pt * r**2) * h
+                            kpt.P_ani[0][N1:N2, i1:i2] = P * np.eye(2 * l + 1)
+                        i1 = i2
+                    N1 = N2
+        
 class AtomLocalizedFunctionsCollection:
     def __init__(self, gd, spline_aj):
         self.gd = gd
@@ -160,7 +163,7 @@ class AtomBasisFunctions:
         self.Mmax = 0
         for phit in phit_j:
             l = phit.get_angular_momentum_number()
-            self.bl_j.append((np.array([phit(x) for x in gd.r_g]), l))
+            self.bl_j.append((np.array([phit(x) * x**l for x in gd.r_g]), l))
             self.Mmax += 2 * l + 1
         self.atom_indices = [0]
         self.my_atom_indices = [0]
@@ -171,7 +174,7 @@ class AtomBasisFunctions:
     def add_to_density(self, nt_sG, f_asi):
         i = 0
         for b_g, l in self.bl_j:
-            nt_sG += f_asi[0][:, i] / 4 / pi * b_g**2
+            nt_sG += f_asi[0][:, i] * (2 * l + 1) / 4 / pi * b_g**2
             i += 2 * l + 1
 
 class AtomGridDescriptor(RadialGridDescriptor):
@@ -219,13 +222,14 @@ class AtomOccupations(OccupationNumbers):
         
     def calculate(self, wfs):
         OccupationNumbers.calculate(self, wfs)
-        n1 = 0
         for s in range(self.nspins):
+            n1 = 0
             for l in range(4):
                 f_n = self.f_sln[s][l]
-                n2 = n1 + len(f_n)
-                wfs.kpt_u[s].f_n[n1:n2] = f_n
-                n1 = n2
+                for f in f_n:
+                    n2 = n1 + 2 * l + 1
+                    wfs.kpt_u[s].f_n[n1:n2] = f / float(2 * l + 1)
+                    n1 = n2
         self.calculate_band_energy(wfs.kpt_u)
 
     def get_fermi_level(self):
@@ -237,6 +241,7 @@ def AtomPAW(symbol, f, h=0.4, rcut=10.0, **kwargs):
                 eigensolver=AtomEigensolver(gd, f),
                 poissonsolver=AtomPoissonSolver(),
                 stencils=(1, 9),
+                nbands=sum([(2 * l + 1) * len(f[0][l]) for l in range(4)]),
                 **kwargs)
     calc.occupations = AtomOccupations(f)
     calc.initialize(Atoms(symbol, calculator=calc))
