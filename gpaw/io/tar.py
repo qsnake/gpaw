@@ -34,6 +34,20 @@ class Writer:
     def add(self, name, shape, array=None, dtype=None, units=None):
         if array is not None:
             array = np.asarray(array)
+
+        self.dtype, type, itemsize = self.get_data_type(array, dtype)
+        self.xml2 += ['  <array name="%s" type="%s">' % (name, type)]
+        self.xml2 += ['    <dimension length="%s" name="%s"/>' %
+                      (self.dims[dim], dim)
+                      for dim in shape]
+        self.xml2 += ['  </array>']
+        self.shape = [self.dims[dim] for dim in shape]
+        size = itemsize * np.product([self.dims[dim] for dim in shape])
+        self.write_header(name, size)
+        if array is not None:
+            self.fill(array)
+
+    def get_data_type(self, array=None, dtype=None):
         if dtype is None:
             dtype = array.dtype
 
@@ -41,23 +55,11 @@ class Writer:
             dtype = np.int32
 
         dtype = np.dtype(dtype)
-        self.dtype = dtype
-
         type = {np.int32: 'int',
                 np.float64: 'float',
                 np.complex128: 'complex'}[dtype.type]
 
-        self.xml2 += ['  <array name="%s" type="%s">' % (name, type)]
-        self.xml2 += ['    <dimension length="%s" name="%s"/>' %
-                      (self.dims[dim], dim)
-                      for dim in shape]
-        self.xml2 += ['  </array>']
-        self.shape = [self.dims[dim] for dim in shape]
-        size = dtype.itemsize * np.product([self.dims[dim] for dim in shape])
-        self.write_header(name, size)
-        if array is not None:
-            self.fill(array)
-
+        return dtype, type, dtype.itemsize
 
     def fill(self, array):
         self.write(np.asarray(array, self.dtype).tostring())
@@ -150,13 +152,11 @@ class Reader(xml.sax.handler.ContentHandler):
         return TarFileReference(fileobj, shape, dtype, self.byteswap)
     
     def get_file_object(self, name, indices):
-        dtype = np.dtype({'int': np.int32,
-                           'float': float,
-                           'complex': complex}[self.dtypes[name]])
+        dtype, type, itemsize = self.get_data_type(name)
         fileobj = self.tar.extractfile(name)
         n = len(indices)
         shape = self.shapes[name]
-        size = dtype.itemsize * np.prod(shape[n:], dtype=int)
+        size = itemsize * np.prod(shape[n:], dtype=int)
         offset = 0
         stride = size
         for i in range(n - 1, -1, -1):
@@ -164,6 +164,13 @@ class Reader(xml.sax.handler.ContentHandler):
             stride *= shape[i]
         fileobj.seek(offset)
         return fileobj, shape[n:], size, dtype
+
+    def get_data_type(self, name):
+        type = self.dtypes[name]
+        dtype = np.dtype({'int': np.int32,
+                          'float': float,
+                          'complex': complex}[type])
+        return dtype, type, dtype.itemsize
 
     def get_parameters(self):
         return self.parameters

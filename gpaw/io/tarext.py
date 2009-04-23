@@ -17,21 +17,10 @@ class IncrementalWriter(Writer):
         self.xml3 = []
 
     def partition(self, name, shape, array=None, dtype=None, units=None):
-
         if array is not None:
             array = np.asarray(array)
-        if dtype is None:
-            dtype = array.dtype
 
-        if dtype in [int, bool]:
-            dtype = np.int32
-
-        dtype = np.dtype(dtype)
-        self.dtype = dtype
-
-        type = {np.int32: 'int',
-                np.float64: 'float',
-                np.complex128: 'complex'}[dtype.type]
+        self.dtype, type, itemsize = self.get_data_type(array, dtype)
 
         assert self._partkey not in shape
         shape = (self._partkey,) + shape
@@ -43,13 +32,11 @@ class IncrementalWriter(Writer):
                           for dim in shape]
             self.xml3 += ['  </partition>']
             self.partitions[name] = shape
-
             self.shape = [self.dims[dim] for dim in shape]
         else:
             assert self.partitions[name] == shape
 
-        size = dtype.itemsize * np.product([self.dims[dim] for dim in shape])
-
+        size = itemsize * np.product([self.dims[dim] for dim in shape])
         name += self._iterpattern % self.dims[self._iterkey]
         self.write_header(name, size)
         if array is not None:
@@ -75,7 +62,7 @@ class IncrementalWriter(Writer):
 
 # -------------------------------------------------------------------
 
-class FakeFileObj(object):
+class _FakeFileObject(object):
     def __init__(self, fileparts, partsize):
         self.fileparts = fileparts
         self.partsize = partsize
@@ -141,10 +128,9 @@ class IncrementalReader(Reader):
             self.dtypes[name] = attrs['type']
             self.shapes[name] = []
             self.name = name
-            self.partitions[name] = tuple() #TODO?!
+            self.partitions[name] = tuple()
         else:
             if tag == 'dimension' and self.name in self.partitions.keys():
-                n = int(attrs['length'])
                 if attrs['name'] == self._iterkey:
                     self.partitions[self.name] += (self._partkey,)
                 else:
@@ -154,36 +140,42 @@ class IncrementalReader(Reader):
 
     def get_file_object(self, name, indices):
         if name in self.partitions.keys():
-            # first index is the partition iterable
+            # The first index is the partition iterable
             if len(indices) == 0:
                 return self.get_partition_object(name)
 
             i, indices = indices[0], indices[1:]
-            dtype = self.dtypes[name] #HACK
-            partshape = [self.dims[dim] for dim in self.partitions[name]] #HACK
+            partshape = [self.dims[dim] for dim in self.partitions[name]]
             name += self._iterpattern % i
-            self.dtypes[name] = dtype #HACK
             self.shapes[name] = partshape[1:] #HACK
 
         return Reader.get_file_object(self, name, indices)
 
+    def get_data_type(self, name):
+        if name not in self.dtypes.keys():
+            try:
+                name, partname = name.rsplit('/',1)
+            except ValueError:
+                raise KeyError(name)
+
+            assert name in self.partitions.keys()
+
+        return Reader.get_data_type(self, name)
+
     def get_partition_object(self, name):
         assert name in self.partitions.keys()
 
-        dtype = np.dtype({'int': np.int32,
-                           'float': float,
-                           'complex': complex}[self.dtypes[name]])
-
+        dtype, type, itemsize = self.get_data_type(name)
         shape = self.shapes[name]
-        size = dtype.itemsize * np.prod(shape, dtype=int)
+        size = itemsize * np.prod(shape, dtype=int)
 
         partshape = [self.dims[dim] for dim in self.partitions[name]]
-        partsize = dtype.itemsize * np.prod(partshape, dtype=int)
+        partsize = itemsize * np.prod(partshape, dtype=int)
 
         fileobjs = []
-        for i in range(niter):
+        for i in range(self.dims[self._iterkey]):
             fileobj = self.tar.extractfile(name + self._iterpattern % i)
             fileobjs.append(fileobj)
 
-        return FakeFileObj(fileobjs, partsize), shape, size, dtype
+        return _FakeFileObject(fileobjs, partsize), shape, size, dtype
 
