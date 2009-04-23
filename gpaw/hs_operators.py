@@ -206,7 +206,7 @@ class Operator:
                     gemm(1.0, P_ni.copy(), C_nn, 0.0, P_ni)
             return newpsit_nG
         
-        # Now is gets nasty!  We parallelize over B groups of bands
+        # Now it gets nasty!  We parallelize over B groups of bands
         # and each group is blocked in J blocks.
 
         rank = bcomm.rank
