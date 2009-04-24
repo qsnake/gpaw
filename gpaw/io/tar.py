@@ -25,6 +25,9 @@ class Writer:
         self.mtime = int(time.time())
         
     def dimension(self, name, value):
+        if name in self.dims.keys() and self.dims[name] != value:
+            raise Warning('Dimension %s changed from %s to %s' % \
+                          (name, self.dims[name], value))
         self.dims[name] = value
 
     def __setitem__(self, name, value):

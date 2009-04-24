@@ -122,7 +122,6 @@ class IncrementalReader(Reader):
 
     def startElement(self, tag, attrs):
         if tag == 'partition':
-            print 'attrs=', attrs
             name = attrs['name']
             assert name not in self.partitions.keys()
             self.dtypes[name] = attrs['type']
