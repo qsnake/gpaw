@@ -225,41 +225,16 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         w['SetupTypes'] = repr(setup_types)
 
         dtype = {float: float, complex: complex}[wfs.dtype]
-        # write projections
+
+    # Write projections:
+    if master:
         w.add('Projections', ('nspins', 'nibzkpts', 'nbands', 'nproj'),
               dtype=dtype)
-
-        mynu = len(wfs.kpt_u)
-        all_P_ni = npy.empty((wfs.nbands, nproj), wfs.dtype)
-        nstride = band_comm.size
-        for kpt_rank in range(kpt_comm.size):
-            for u in range(mynu):
-                P_ani = wfs.kpt_u[u].P_ani
-                for band_rank in range(band_comm.size):
-                    i = 0
-                    for a in range(natoms):
-                        ni = wfs.setups[a].ni
-                        if (kpt_rank == 0 and band_rank == 0 and a in P_ani):
-                            P_ni = P_ani[a]
-                        else:
-                            P_ni = npy.empty((wfs.mynbands, ni), wfs.dtype)
-                            world_rank = (wfs.rank_a[a] +
-                                          kpt_rank * domain_comm.size *
-                                          band_comm.size +
-                                          band_rank * domain_comm.size)
-                            world.receive(P_ni, world_rank, 300 + a)
-                        all_P_ni[band_rank::nstride, i:i + ni] = P_ni
-                        i += ni
+    for s in range(wfs.nspins):
+        for k in range(wfs.nibzkpts):
+            all_P_ni = wfs.collect_projections(k, s)
+            if master:
                 w.fill(all_P_ni)
-                assert i == nproj
-
-    # else is slave
-    else:
-        for kpt in wfs.kpt_u:
-            P_ani = kpt.P_ani
-            for a in range(natoms):
-                if a in P_ani:
-                    world.send(P_ani[a], 0, 300 + a)
 
     # Write atomic density matrices and non-local part of hamiltonian:
     if master:
@@ -291,13 +266,12 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                 domain_comm.send(paw.density.D_asp[a], 0, 207)
                 domain_comm.send(paw.hamiltonian.dH_asp[a], 0, 2071)
 
-    nibzkpts = len(wfs.ibzk_kc)
     # Write the eigenvalues and occupation numbers:
     for name, var in [('Eigenvalues', 'eps_n'), ('OccupationNumbers', 'f_n')]:
         if master:
             w.add(name, ('nspins', 'nibzkpts', 'nbands'), dtype=float)
         for s in range(wfs.nspins):
-            for k in range(nibzkpts):
+            for k in range(wfs.nibzkpts):
                 a_n = wfs.collect_array(var, k, s)
                 if master:
                     w.fill(a_n)
@@ -315,7 +289,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             w.add('LinearExpansionOccupations', ('nspins',
                   'nibzkpts', 'norbitals'), dtype=float)
         for s in range(wfs.nspins):
-            for k in range(nibzkpts):
+            for k in range(wfs.nibzkpts):
                 ne_o = wfs.collect_auxiliary('ne_o', k, s, shape=norbitals)
                 if master:
                     w.fill(ne_o)
@@ -324,7 +298,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             w.add('LinearExpansionCoefficients', ('nspins',
                   'nibzkpts', 'norbitals', 'nbands'), dtype=complex)
         for s in range(wfs.nspins):
-            for k in range(nibzkpts):
+            for k in range(wfs.nibzkpts):
                 for o in range(norbitals):
                     c_n = wfs.collect_array('c_on', k, s, subset=o, dtype=complex)
                     if master:
@@ -363,7 +337,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
                   dtype=dtype)
 
         for s in range(wfs.nspins):
-            for k in range(nibzkpts):
+            for k in range(wfs.nibzkpts):
                 for n in range(wfs.nbands):
                     psit_G = wfs.get_wave_function_array(n, k, s)
                     if master: 
@@ -389,7 +363,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
         ngd = paw.gd.get_size_of_global_array()
         for s in range(wfs.nspins):
-            for k in range(nibzkpts):
+            for k in range(wfs.nibzkpts):
                 for n in range(wfs.nbands):
                     psit_G = wfs.get_wave_function_array(n, k, s)
                     if master:

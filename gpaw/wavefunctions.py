@@ -302,6 +302,46 @@ class WaveFunctions(EmptyWaveFunctions):
             self.kpt_comm.receive(b_o, kpt_rank, 1302)
             return b_o
 
+    def collect_projections(self, k, s):
+        """Helper method for collecting projector overlaps across domains.
+
+        For the parallel case find the rank in kpt_comm that contains
+        the (k,s) pair, for this rank, send to the global master."""
+
+        kpt_u = self.kpt_u
+        kpt_rank, u = divmod(k + self.nibzkpts * s, len(kpt_u))
+        P_ani = kpt_u[u].P_ani
+
+        natoms = len(self.rank_a) # it's a hack...
+        nproj = sum([setup.ni for setup in self.setups])
+
+        if self.world.rank == 0:
+            mynu = len(kpt_u)
+            all_P_ni = np.empty((self.nbands, nproj), self.dtype)
+            nstride = self.band_comm.size
+            for band_rank in range(self.band_comm.size):
+                i = 0
+                for a in range(natoms):
+                    ni = self.setups[a].ni
+                    if kpt_rank == 0 and band_rank == 0 and a in P_ani:
+                        P_ni = P_ani[a]
+                    else:
+                        P_ni = np.empty((self.mynbands, ni), self.dtype)
+                        world_rank = (self.rank_a[a] +
+                                      kpt_rank * self.gd.comm.size *
+                                      self.band_comm.size +
+                                      band_rank * self.gd.comm.size)
+                        self.world.receive(P_ni, world_rank, 1303 + a)
+                    all_P_ni[band_rank::nstride, i:i + ni] = P_ni
+                    i += ni
+            assert i == nproj
+            return all_P_ni
+
+        elif self.kpt_comm.rank == kpt_rank: # plain else works too...
+            for a in range(natoms):
+                if a in P_ani:
+                    self.world.send(P_ani[a], 0, 1303 + a)
+
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities.blas import gemm
