@@ -27,7 +27,7 @@ class Operator:
             assert mynbands % self.nblocks == 0
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
-                X += 1
+                X += self.nblocks
             self.work1_xG = self.gd.empty(X, dtype)
             self.work2_xG = self.gd.empty(X, dtype)
             if ngroups > 1:
