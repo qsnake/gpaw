@@ -9,7 +9,7 @@
 from sys import argv
 import numpy as np
 nodes = int(argv[1])
-ppn = 2
+ppn = 4
 shape = [int(x) for x in argv[2].split(',')]
 mode = 'normal'
 # print "Shape =", shape
@@ -28,7 +28,8 @@ layout = {   64: (4,  4,  4 ),
           32768: (32, 32, 32),
           40960: (40, 32, 32)}[nodes]
 domains = shape[0] * shape[1] * shape[2]
-blocks = nodes * ppn // domains
+cores = nodes * ppn
+blocks = cores // domains
 # print "State parallelization = ", blocks
 assert blocks * domains == nodes * ppn
 A = layout[0] // shape[0]
@@ -50,9 +51,18 @@ if mode == 'normal':
                     y = y0 + b
                     z = z0 + c // ppn
                     t = c % ppn
+                    if (rank > (cores // A - 1)) or (rank > (cores // B - 1)):
+                        reflections = (-1)**(cores // A - 1)
+                        if reflections == -1:
+                            z = layout[2] - 1 - z
                     check[x, y, z, t] = 1
+                    # For dual mode on BG/P, we *may* need
+                    # to use core 2 (not core 1) as the
+                    # 2nd core
+                    # if (ppn == 2) and (t == 1):
+                    #     t = 2
                     print x, y, z, t
-                rank += 1
+                    rank += 1
 else:
     assert mode == 'shared'
     for n in range(blocks):
@@ -68,6 +78,12 @@ else:
                     y = y0 + b
                     z = z0 + c
                     check[x, y, z, t] = 1
+                    # For dual mode on BG/P, we *may* need
+                    # to use core 2 (not core 1) as the
+                    # 2nd core
+                    # if (ppn == 2) and (t == 1):
+                    #     t = 2
                     print x, y, z, t
-                rank += 1
+                    rank += 1
+
 assert check.sum() == nodes * ppn
