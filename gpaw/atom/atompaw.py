@@ -65,13 +65,15 @@ class AtomEigensolver:
         r = self.gd.r_g
         h = r[0]
         N = len(r)
+        lmax = len(self.f_sln[0]) - 1
+        
         self.T_l = [np.eye(N) * (1.0 / h**2)]
         self.T_l[0].flat[1::N + 1] = -0.5 / h**2
         self.T_l[0].flat[N::N + 1] = -0.5 / h**2
-        for l in range(1, 4):
+        for l in range(1, lmax + 1):
             self.T_l.append(self.T_l[0] + np.diag(l * (l + 1) / 2.0 / r**2))
             
-        self.S_l = [np.eye(N) for l in range(4)]
+        self.S_l = [np.eye(N) for l in range(lmax + 1)]
         setup = wfs.setups[0]
         self.pt_j = np.array([[pt(x) * x**l for x in r]
                               for pt, l in zip(setup.pt_j, setup.l_j)])
@@ -81,7 +83,7 @@ class AtomEigensolver:
         for pt1, l1 in zip(self.pt_j, setup.l_j):
             i2 = 0
             for pt2, l2 in zip(self.pt_j, setup.l_j):
-                if l1 == l2:
+                if l1 == l2 and l1 <= lmax:
                     self.S_l[l1] += (np.outer(pt1 * r, pt2 * r) *
                                      h * dS_ii[i1, i2]) 
                 i2 += 2 * l2 + 1
@@ -99,6 +101,7 @@ class AtomEigensolver:
         r = self.gd.r_g
         h = r[0]
         N = len(r)
+        lmax = len(self.f_sln[0]) - 1
         setup = wfs.setups[0]
 
         e_n = np.zeros(N)
@@ -107,7 +110,7 @@ class AtomEigensolver:
             dH_ii = unpack(hamiltonian.dH_asp[0][s])
             kpt = wfs.kpt_u[s]
             N1 = 0
-            for l in range(4):
+            for l in range(lmax + 1):
                 H = self.T_l[l] + np.diag(hamiltonian.vt_sg[s])
                 i1 = 0
                 for pt1, l1 in zip(self.pt_j, setup.l_j):
@@ -135,7 +138,7 @@ class AtomEigensolver:
                             kpt.P_ani[0][N1:N2, i1:i2] = P * np.eye(2 * l + 1)
                         i1 = i2
                     N1 = N2
-        
+                    
 class AtomLocalizedFunctionsCollection:
     def __init__(self, gd, spline_aj):
         self.gd = gd
@@ -224,8 +227,7 @@ class AtomOccupations(OccupationNumbers):
         OccupationNumbers.calculate(self, wfs)
         for s in range(self.nspins):
             n1 = 0
-            for l in range(4):
-                f_n = self.f_sln[s][l]
+            for l, f_n in enumerate(self.f_sln[s]):
                 for f in f_n:
                     n2 = n1 + 2 * l + 1
                     wfs.kpt_u[s].f_n[n1:n2] = f / float(2 * l + 1)
@@ -241,7 +243,8 @@ def AtomPAW(symbol, f, h=0.4, rcut=10.0, **kwargs):
                 eigensolver=AtomEigensolver(gd, f),
                 poissonsolver=AtomPoissonSolver(),
                 stencils=(1, 9),
-                nbands=sum([(2 * l + 1) * len(f[0][l]) for l in range(4)]),
+                nbands=sum([(2 * l + 1) * len(f_n)
+                            for l, f_n in enumerate(f[0])]),
                 **kwargs)
     calc.occupations = AtomOccupations(f)
     calc.initialize(Atoms(symbol, calculator=calc))
