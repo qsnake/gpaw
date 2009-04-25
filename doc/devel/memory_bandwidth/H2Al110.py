@@ -107,7 +107,7 @@ if __name__ == '__main__':
         except ImportError:
             raise SystemExit('ASE (2) is not installed!')
 
-    runs = opt.runs
+    runs = int(opt.runs)
     assert runs >= 1, runs+' must be >= 1'
 
     memory_bandwidth(code=code, runs=runs)
