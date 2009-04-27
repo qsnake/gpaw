@@ -177,7 +177,7 @@ class AtomBasisFunctions:
     def add_to_density(self, nt_sG, f_asi):
         i = 0
         for b_g, l in self.bl_j:
-            nt_sG += f_asi[0][:, i] * (2 * l + 1) / 4 / pi * b_g**2
+            nt_sG += f_asi[0][:, i:i + 1] * (2 * l + 1) / 4 / pi * b_g**2
             i += 2 * l + 1
 
 class AtomGridDescriptor(RadialGridDescriptor):
@@ -233,6 +233,8 @@ class AtomOccupations(OccupationNumbers):
                     wfs.kpt_u[s].f_n[n1:n2] = f / float(2 * l + 1)
                     n1 = n2
         self.calculate_band_energy(wfs.kpt_u)
+        if self.nspins == 2:
+            self.magmom = wfs.kpt_u[0].f_n.sum() - wfs.kpt_u[1].f_n.sum()
 
     def get_fermi_level(self):
         raise NotImplementedError
