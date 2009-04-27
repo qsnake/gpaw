@@ -109,7 +109,7 @@ if len(tests) == 0:
         'simple_stm.py',
         'asewannier.py',
         'vdw/quick.py',
-        'vdw/quick_spin.py',
+        #'vdw/quick_spin.py',
         'lxc_xcatom.py',
         'davidson.py',
         'cg.py',
@@ -147,6 +147,7 @@ if len(tests) == 0:
         ]
 
 disabled_tests = [
+    'vdw/quick_spin.py',
     'external_potential.py',
     'dscf_H2Al.py',
     'lb.py',
