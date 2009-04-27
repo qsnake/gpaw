@@ -243,11 +243,10 @@ class VDWFunctional:
         v_LDAc_g = np.zeros_like(v_g)
         self.LDAc.calculate_spinpaired(e_LDAc_g, n_g, v_LDAc_g)
         v_g += v_LDAc_g
-        
+
         # revPBE exchange:
         self.revPBEx.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
         e_g += e_LDAc_g
-        
         if n_g.ndim == 3:
             # Non-local part:
             e = self.get_non_local_energy(n_g, a2_g, e_LDAc_g, v_LDAc_g,
@@ -255,28 +254,43 @@ class VDWFunctional:
             if self.gd.comm.rank == 0:
                 assert e_g.ndim == 1
                 e_g[0] += e / self.gd.dv
-                
+
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                 a2_g, aa2_g, ab2_g,
                                 deda2_g, dedaa2_g, dedab2_g):
+        raise NotImplementedError("Spin polarized self-consistent vdW calculation not supported yet.")
         """Calculate energy and potential."""
         # LDA correlation:
         e_LDAc_g = np.empty_like(e_g)
-        self.LDAc.calculate_spinpolarized(e_LDAc_g, na_g, va_g, nb_g, vb_g)
+        va_LDAc_g = np.zeros_like(va_g)
+        vb_LDAc_g = np.zeros_like(vb_g)
+        v_LDAc_g = np.zeros_like(va_g)
+        self.LDAc.calculate_spinpolarized(e_LDAc_g, na_g, va_LDAc_g, nb_g, vb_LDAc_g)
+        va_g += va_LDAc_g
+        vb_g += vb_LDAc_g
 
         # revPBE exchange:
         self.revPBEx.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
                                              a2_g, aa2_g, ab2_g,
                                              deda2_g, dedaa2_g, dedab2_g)
-        e_g += e_LDAc_g
-        
+        e_g += e_LDAc_g 
+
         if na_g.ndim == 3:
             # Non-local part:
-            e = self.get_non_local_energy(na_g + nb_g, a2_g, e_LDAc_g)
+            v_g = np.zeros_like(va_g)
+            deda2nl_g = np.zeros_like(deda2_g)
+            e = self.get_non_local_energy(na_g + nb_g, a2_g, e_LDAc_g,
+                                          (va_LDAc_g + vb_LDAc_g)/2.0,
+                                          v_g, deda2nl_g) 
+            deda2_g += deda2nl_g
+            dedaa2_g += deda2nl_g / 4.0  
+            dedab2_g += deda2nl_g / 4.0
+            va_g += v_g 
+            vb_g += v_g 
             if self.gd.comm.rank == 0:
                 assert e_g.ndim == 1
-                e_g[0] += e / self.gd.dv
-        
+                e_g[0] += e / self.gd.dv 
+
     def read_table(self):
         name = os.path.join(os.environ.get('GPAW_VDW', '.'),
                             'phi-%.3f-%.3f-%.3f-%d-%d.pckl' %
@@ -667,7 +681,6 @@ class FFTVDWFunctional(VDWFunctional):
         a2_g = self.gd.collect(a2_g, broadcast=True)
         e_LDAc_g = self.gd.collect(e_LDAc_g, broadcast=True)
         v_LDAc_g = self.gd.collect(v_LDAc_g, broadcast=True)
-
         dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
                    4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
                    7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
