@@ -1271,9 +1271,9 @@ class XCCorrection:
             phi_g = phi_jg[j]
             self.rgd.derivative(phi_g, dphidr_jg[j])
         ##second term
-        i1 = 0
-        p = 0
         for y in range(ny):
+            i1 = 0
+            p = 0
             Y_L = self.Y_yL[y]
             for j1, l1, L1 in jlL:
                 for j2, l2, L2 in jlL[i1:]:
@@ -1283,9 +1283,9 @@ class XCCorrection:
                     p += 1
                 i1 +=1
         ##first term
-        i1 = 0
-        p = 0
         for y in range(ny):
+            i1 = 0
+            p = 0
             A_Li = A_Liy[:self.Lmax, :, y]
             A_Lxg = A_Li[:, 0]
             A_Lyg = A_Li[:, 1]
