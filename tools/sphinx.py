@@ -31,7 +31,7 @@ def build():
 
     os.system('tar xvzf gpaw-setups-latest.tar.gz')
 
-    setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
+    setups = tmpdir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
 
     # Generate tar-file:
     assert os.system('python setup.py sdist') == 0

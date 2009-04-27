@@ -245,7 +245,7 @@ class PAWXMLParser(xml.sax.handler.ContentHandler):
             print """
 You need to set the GPAW_SETUP_PATH environment variable to point to
 the directory where the setup files are stored.  See
-http://wiki.fysik.dtu.dk/gpaw/Setups for details."""
+http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
             raise RuntimeError('Could not find %s-setup for "%s".' %
                                (setup.name + '.' + setup.setupname, 
                                 setup.symbol))
