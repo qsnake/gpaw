@@ -12,7 +12,7 @@ tpss_de = {
 'LiH': 59.1,
 }
 tpss_old = {
-'LiH': 56.3,
+'LiH': 56.1625,
 }
 
 exp_bonds_dE = {
@@ -83,6 +83,6 @@ for formula in tpss_de.keys():
         file.flush()
 
 
-#comparison to gpaw 0.4 version value in kcal/mol
+#comparison to gpaw 0.6.3798 version value in kcal/mol (note the grid:0.3 Ang)
     equal(de_tpss, tpss_old[formula], 0.1)
 
