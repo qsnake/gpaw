@@ -18,6 +18,8 @@ from gpaw.mixer import DummyMixer
 from gpaw.version import version
 from gpaw.preconditioner import Preconditioner
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
+from gpaw.tddft.units import attosec_to_autime, autime_to_attosec, \
+                             eV_to_aufrequency, aufrequency_to_eV
 from gpaw.tddft.utils import MultiBlas
 from gpaw.tddft.bicgstab import BiCGStab
 from gpaw.tddft.cscg import CSCG
@@ -89,12 +91,6 @@ class TDDFT(GPAW):
         if ground_state_file is None:
             raise RuntimeError('TDDFT calculation has to start from converged '
                                'ground or excited state restart file')
-
-        # Set units to ASE units
-        self.a0 = Bohr
-        self.Ha = Hartree
-        self.attosec_to_autime = 1/24.188843265
-        self.autime_to_attosec = 24.188843265
 
         # Set initial time
         self.time = 0.0
@@ -246,7 +242,7 @@ class TDDFT(GPAW):
         if self.rank == 0:
             self.text()
             self.text('Starting time: %7.2f as'
-                      % (self.time * self.autime_to_attosec))
+                      % (self.time * autime_to_attosec))
             self.text('Time step:     %7.2f as' % time_step)
             header = """\
                         Simulation      Total        log10     Iterations:
@@ -256,7 +252,7 @@ class TDDFT(GPAW):
 
 
         # Convert to atomic units
-        time_step = time_step * self.attosec_to_autime
+        time_step = time_step * attosec_to_autime
         
         if dipole_moment_file is not None:
             self.initialize_dipole_moment_file(dipole_moment_file)
@@ -322,7 +318,7 @@ class TDDFT(GPAW):
    %13.6f %9.1f %10d"""
                     self.text(iter_text % 
                               (self.niter, T[3], T[4], T[5],
-                               self.time * self.autime_to_attosec,
+                               self.time * autime_to_attosec,
                                self.Etot, log(abs(norm)+1e-16)/log(10),
                                niterpropagator))
 
@@ -344,7 +340,7 @@ class TDDFT(GPAW):
                 if self.rank == 0:
                     print 'Wrote restart file.'
                     print self.niter, ' iterations done. Current time is ', \
-                        self.time * self.autime_to_attosec, ' as.' 
+                        self.time * autime_to_attosec, ' as.' 
                     # print 'Warning: Writing restart files in TDDFT does not work yet.'
                     # print 'Continuing without writing restart file.'
 
@@ -505,51 +501,51 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         dt = time[1] - time[0]
         dm[:] = dm - dm[0]
         nw = int(e_max / delta_e)
-        dw = delta_e / 27.211
+        dw = delta_e * eV_to_aufrequency
         # f(w) = Nw exp(-w^2/2sigma^2)
-        #sigma = fwhm / 27.211 / (2.* np.sqrt(2.* np.log(2.0)))
-        # f(t) = Nt exp(-t^2/2gamma^2)
-        #gamma = 1.0 / sigma
-        sigma = width/27.211
-        gamma = 1.0 / sigma
+        #sigma = fwhm / Hartree / (2.* np.sqrt(2.* np.log(2.0)))
+        # f(t) = Nt exp(-t^2*sigma^2/2)
+        sigma = width * eV_to_aufrequency
         fwhm = sigma * (2.* np.sqrt(2.* np.log(2.0)))
         kick_magnitude = np.sum(strength**2)
 
         # write comment line
         f_file.write('# Photoabsorption spectrum from real-time propagation\n')
         f_file.write('# GPAW version: ' + str(version) + '\n')
-        f_file.write('# Total time = %lf fs, Time step = %lf as\n' % (n * dt * 24.1888/1000.0, dt *  24.1888))
+        f_file.write('# Total time = %lf fs, Time step = %lf as\n' \
+            % (n * dt * autime_to_attosec/1000.0, \
+               dt * autime_to_attosec))
         f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
-        f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> FWHM = %lf eV\n' % (folding, sigma*27.211, sigma, fwhm*27.211))
+        f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> FWHM = %lf eV\n' % (folding, sigma*aufrequency_to_eV, sigma, fwhm*aufrequency_to_eV))
 
         f_file.write('#  om (eV) %14s%20s%20s\n' % ('Sx', 'Sy', 'Sz'))
-        # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2/(2gamma^2))
+        # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2*sigma^2/2)
         #                                * ( dm(t) - dm(0) )
         alpha = 0
         for i in range(nw):
             w = i * dw
             # x
             alphax = np.sum( np.sin(t * w) 
-                              * np.exp(-t**2 / (2.0*gamma**2)) * dm[:,0] )
+                              * np.exp(-t**2*sigma**2/2.0) * dm[:,0] )
             alphax *= \
                 2 * dt / (2*np.pi) / kick_magnitude * strength[0]
             # y
             alphay = np.sum( np.sin(t * w) 
-                              * np.exp(-t**2 / (2.0*gamma**2)) * dm[:,1] )
+                              * np.exp(-t**2*sigma**2/2.0) * dm[:,1] )
             alphay *= \
                 2 * dt / (2*np.pi) / kick_magnitude * strength[1]
             # z
             alphaz = np.sum( np.sin(t * w) 
-                              * np.exp(-t**2 / (2.0*gamma**2)) * dm[:,2] )
+                              * np.exp(-t**2*sigma**2/2.0) * dm[:,2] )
             alphaz *= \
                 2 * dt / (2*np.pi) / kick_magnitude * strength[2]
 
             # f = 2 * omega * alpha
             line = '%10.6lf %20.10le %20.10le %20.10le\n' \
-                % ( w*27.211, 
-                    2*w*alphax / 27.211, 
-                    2*w*alphay / 27.211,
-                    2*w*alphaz / 27.211 )
+                % ( w*aufrequency_to_eV, 
+                    2*w*alphax / Hartree, 
+                    2*w*alphay / Hartree,
+                    2*w*alphaz / Hartree )
             f_file.write(line)
 
             if (i % 100) == 0:
