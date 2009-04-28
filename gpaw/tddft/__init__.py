@@ -95,19 +95,23 @@ class TDDFT(GPAW):
         # Set initial time
         self.time = 0.0
 
+        # Set initial kick strength
+        self.kick_strength = np.array([0.0, 0.0, 0.0], dtype=float)
+
+        # Set initial value of iteration counter
+        self.niter = 0
+
+        # Initialize paw-object without density mixing
+        # NB: TDDFT restart files contain additional information which
+        #     will override the initial settings for time/kick/niter.
+        GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer())
+
         # Prepare for dipole moment file handle
         self.dm_file = None
 
-        # Initialize paw-object without density mixing
-        GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer())
-
-        # Paw-object has no ``niter`` counter in this branch TODO!
-        self.niter = 0
-
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
-        self.set_positions()
-        #self.density.update_pseudo_charge() #TODO done in density.update() ?
+        self.set_positions() # TODO why is this done twice?
 
         # Don't be too strict
         self.density.charge_eps = 1e-5
@@ -213,8 +217,6 @@ class TDDFT(GPAW):
         self.eps_tmp = None
         self.mblas = MultiBlas(self.gd)
 
-        self.kick_strength = np.array([0.0,0.0,0.0], dtype=float)
-
     def read(self, reader):
         assert reader.has_array('PseudoWaveFunctions')
         GPAW.read(self, reader)
@@ -258,8 +260,9 @@ class TDDFT(GPAW):
             self.initialize_dipole_moment_file(dipole_moment_file)
 
         niterpropagator = 0
+        maxiter = self.niter + iterations
 
-        while self.niter<iterations:
+        while self.niter < maxiter:
             norm = self.finegd.integrate(self.density.rhot_g)
 
             # Write dipole moment at every iteration
@@ -292,7 +295,6 @@ class TDDFT(GPAW):
                     self.mblas.multi_zdotc(self.eps_tmp, kpt.psit_nG,
                                            self.hpsit, len(kpt_u[0].psit_nG))
                     self.eps_tmp *= self.gd.dv
-                    # print 'Eps_n = ', self.eps_tmp
                     kpt.eps_n[:] = self.eps_tmp.real
 
                 self.occupations.calculate_band_energy(kpt_u)
@@ -314,8 +316,8 @@ class TDDFT(GPAW):
 
                 T = time.localtime()
                 if self.rank == 0:
-                    iter_text = """iter: %3d  %02d:%02d:%02d %11.2f\
-   %13.6f %9.1f %10d"""
+                    iter_text = 'iter: %3d  %02d:%02d:%02d %11.2f' \
+                                '   %13.6f %9.1f %10d'
                     self.text(iter_text % 
                               (self.niter, T[3], T[4], T[5],
                                self.time * autime_to_attosec,
@@ -341,8 +343,6 @@ class TDDFT(GPAW):
                     print 'Wrote restart file.'
                     print self.niter, ' iterations done. Current time is ', \
                         self.time * autime_to_attosec, ' as.' 
-                    # print 'Warning: Writing restart files in TDDFT does not work yet.'
-                    # print 'Continuing without writing restart file.'
 
         # Write final results and close dipole moment file
         if dipole_moment_file is not None:
@@ -369,13 +369,16 @@ class TDDFT(GPAW):
                 mode = 'a'
 
             self.dm_file = file(dipole_moment_file, mode)
-            line = '# Kick = [%22.12le, %22.12le, %22.12le]\n' \
-                % (self.kick_strength[0], self.kick_strength[1], self.kick_strength[2])
-            self.dm_file.write(line)
-            line = '# %15s %15s %22s %22s %22s\n' \
+
+            # If the dipole moment file is empty, add a header
+            if self.dm_file.tell() == 0:
+                header = '# Kick = [%22.12le, %22.12le, %22.12le]\n' \
+                    % (self.kick_strength[0], self.kick_strength[1], \
+                       self.kick_strength[2])
+                header += '# %15s %15s %22s %22s %22s\n' \
                     % ('time', 'norm', 'dmx', 'dmy', 'dmz')
-            self.dm_file.write(line)
-            self.dm_file.flush()
+                self.dm_file.write(header)
+                self.dm_file.flush()
 
     def update_dipole_moment_file(self, norm):
         dm = self.finegd.calculate_dipole_moment(self.density.rhot_g)
@@ -396,7 +399,7 @@ class TDDFT(GPAW):
 
     # exp(ip.r) psi
     def absorption_kick(self, kick_strength):
-        """Delta absoprtion kick for photoabsorption spectrum.
+        """Delta absorption kick for photoabsorption spectrum.
 
         Parameters
         ----------
@@ -424,7 +427,6 @@ class TDDFT(GPAW):
 from gpaw.mpi import world
 
 # Function for calculating photoabsorption spectrum
-#def photoabsorption_spectrum(dipole_moment_file, spectrum_file, fwhm = 0.5, delta_omega = 0.05, max_energy = 50.0):
 def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
                              folding='Gauss', width=0.2123,
                              e_min=0.0, e_max=30.0, delta_e=0.05):
@@ -470,7 +472,8 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
     
     
     if world.rank == 0:
-        print 'Calculating photoabsorption spectrum from file "%s"' % dipole_moment_file
+        print 'Calculating photoabsorption spectrum from file "%s"' \
+              % dipole_moment_file
 
         f_file = file(spectrum_file, 'w')
         dm_file = file(dipole_moment_file, 'r')
@@ -515,8 +518,12 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         f_file.write('# Total time = %lf fs, Time step = %lf as\n' \
             % (n * dt * autime_to_attosec/1000.0, \
                dt * autime_to_attosec))
-        f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], kick_strength[1], kick_strength[2]))
-        f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> FWHM = %lf eV\n' % (folding, sigma*aufrequency_to_eV, sigma, fwhm*aufrequency_to_eV))
+        f_file.write('# Kick = [%lf,%lf,%lf]\n' % (kick_strength[0], \
+                                                   kick_strength[1], \
+                                                   kick_strength[2]))
+        f_file.write('# %sian folding, Width = %lf eV = %lf Hartree <=> ' \
+                     'FWHM = %lf eV\n' % (folding, sigma*aufrequency_to_eV, \
+                                          sigma, fwhm*aufrequency_to_eV))
 
         f_file.write('#  om (eV) %14s%20s%20s\n' % ('Sx', 'Sy', 'Sz'))
         # alpha = 2/(2*pi) / eps int dt sin(omega t) exp(-t^2*sigma^2/2)
@@ -525,27 +532,21 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         for i in range(nw):
             w = i * dw
             # x
-            alphax = np.sum( np.sin(t * w) 
-                              * np.exp(-t**2*sigma**2/2.0) * dm[:,0] )
-            alphax *= \
-                2 * dt / (2*np.pi) / kick_magnitude * strength[0]
+            alphax = np.sum(np.sin(t*w) * np.exp(-t**2*sigma**2/2.0) * dm[:,0])
+            alphax *= 2 * dt / (2*np.pi) / kick_magnitude * strength[0]
             # y
-            alphay = np.sum( np.sin(t * w) 
-                              * np.exp(-t**2*sigma**2/2.0) * dm[:,1] )
-            alphay *= \
-                2 * dt / (2*np.pi) / kick_magnitude * strength[1]
+            alphay = np.sum(np.sin(t*w) * np.exp(-t**2*sigma**2/2.0) * dm[:,1])
+            alphay *= 2 * dt / (2*np.pi) / kick_magnitude * strength[1]
             # z
-            alphaz = np.sum( np.sin(t * w) 
-                              * np.exp(-t**2*sigma**2/2.0) * dm[:,2] )
-            alphaz *= \
-                2 * dt / (2*np.pi) / kick_magnitude * strength[2]
+            alphaz = np.sum(np.sin(t*w) * np.exp(-t**2*sigma**2/2.0) * dm[:,2])
+            alphaz *= 2 * dt / (2*np.pi) / kick_magnitude * strength[2]
 
             # f = 2 * omega * alpha
             line = '%10.6lf %20.10le %20.10le %20.10le\n' \
-                % ( w*aufrequency_to_eV, 
-                    2*w*alphax / Hartree, 
-                    2*w*alphay / Hartree,
-                    2*w*alphaz / Hartree )
+                % (w*aufrequency_to_eV,
+                   2*w*alphax / Hartree,
+                   2*w*alphay / Hartree,
+                   2*w*alphaz / Hartree)
             f_file.write(line)
 
             if (i % 100) == 0:
@@ -555,7 +556,8 @@ def photoabsorption_spectrum(dipole_moment_file, spectrum_file,
         print ''
         f_file.close()
         
-        print ('Calculated photoabsorption spectrum saved to file "%s"' % spectrum_file)
+        print 'Calculated photoabsorption spectrum saved to file "%s"' \
+              % spectrum_file
 
             
     # Make static method

@@ -206,9 +206,16 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             w['DataType'] = 'Float'
         else:
             w['DataType'] = 'Complex'
-        # In time propagation, write current time
-        if hasattr(paw, 'time'):
-            w['Time'] = paw.time
+
+        # Try to write time and kick strength in time-propagation TDDFT:
+        for attr, name in [('time', 'Time'), ('niter', 'TimeSteps'), \
+                           ('kick_strength', 'AbsorptionKick')]:
+            if hasattr(paw, attr):
+                value = getattr(paw, attr)
+                if isinstance(value, npy.ndarray):
+                    w.add(name, ('3',), value)
+                else:
+                    w[name] = value
 
         w['Mode'] = p.mode
         
@@ -508,12 +515,18 @@ def read(paw, reader):
 
     #paw.occupations.magmom = paw.atoms.get_initial_magnetic_moments().sum()
     
-    # Try to read the current time in time-propagation:
-    if hasattr(paw, 'time'):
-        try:
-            paw.time = r['Time']
-        except KeyError:
-            pass
+    # Try to read the current time and kick strength in time-propagation TDDFT:
+    for attr, name in [('time', 'Time'), ('niter', 'TimeSteps'), \
+                       ('kick_strength', 'AbsorptionKick')]:
+        if hasattr(paw, attr):
+            try:
+                if r.has_array(name):
+                    value = r.get(name)
+                else:
+                    value = r[name]
+                setattr(paw, attr, value)
+            except KeyError:
+                pass
 
     # Try to read the number of Delta SCF orbitals
     try:
