@@ -10,7 +10,6 @@ import numpy as npy
 from gpaw.utilities.blas import axpy
 from gpaw.operators import Operator
 
-
 class BaseMixer:
     """Pulay density mixer."""
     
@@ -197,6 +196,12 @@ class BaseMixer:
     def estimate_memory(self, mem, gd):
         gridbytes = gd.bytecount()
         mem.subnode('nt_iG, R_iG', 2 * self.nmaxold * gridbytes)
+
+
+class DummyMixer(BaseMixer):
+    """Dummy mixer for TDDFT, i.e., it does not mix."""
+    def mix(self, nt_G):
+        pass
 
 
 class Mixer(BaseMixer):

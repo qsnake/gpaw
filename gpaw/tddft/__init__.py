@@ -14,7 +14,7 @@ from ase.units import Bohr, Hartree
 
 import gpaw.io
 from gpaw.aseinterface import GPAW
-from gpaw.mixer import BaseMixer
+from gpaw.mixer import DummyMixer
 from gpaw.version import version
 from gpaw.preconditioner import Preconditioner
 from gpaw.lfc import LocalizedFunctionsCollection as LFC
@@ -32,13 +32,6 @@ from gpaw.tddft.tdopers import \
     TimeDependentOverlap, \
     TimeDependentDensity, \
     AbsorptionKickHamiltonian
-
-# Where to put these?
-# vvvvvvvvv
-class DummyMixer(BaseMixer):
-    """Dummy mixer for TDDFT, i.e., it does not mix."""
-    def mix(self, nt_G):
-        pass
 
 # T^-1
 # Bad preconditioner
@@ -109,14 +102,11 @@ class TDDFT(GPAW):
         # Prepare for dipole moment file handle
         self.dm_file = None
 
-        # Initialize paw-object
-        GPAW.__init__(self, ground_state_file, txt=txt)
+        # Initialize paw-object without density mixing
+        GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer())
 
         # Paw-object has no ``niter`` counter in this branch TODO!
         self.niter = 0
-
-        # No density mixing
-        self.density.mixer = DummyMixer()
 
         # Initialize wavefunctions and density 
         # (necessary after restarting from file)
