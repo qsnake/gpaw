@@ -12,6 +12,7 @@ from math import log
 import numpy as np
 from ase.units import Bohr, Hartree
 
+import gpaw.io
 from gpaw.aseinterface import GPAW
 from gpaw.mixer import BaseMixer
 from gpaw.version import version
@@ -228,6 +229,9 @@ class TDDFT(GPAW):
 
         self.kick_strength = np.array([0.0,0.0,0.0], dtype=float)
 
+    def read(self, reader):
+        assert reader.has_array('PseudoWaveFunctions')
+        GPAW.read(self, reader)
 
     def propagate(self, time_step, iterations, dipole_moment_file=None,
                   restart_file=None, dump_interval=100):
