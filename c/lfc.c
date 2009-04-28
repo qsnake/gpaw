@@ -1000,5 +1000,64 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
       a_G += nG;
     }
   }
+  else {
+    const complex double* a_G = (const complex double*)a_xG_obj->data;
+    complex double* c_Mv = (complex double*)c_xMv_obj->data;
+    for (int x = 0; x < nx; x++) {
+      GRID_LOOP_START(lfc, q) {
+        // In one grid loop iteration, only i2 changes.
+        int i2 = Ga % n_c[2] + beg_c[2];
+        int i1 = (Ga / n_c[2]) % n_c[1] + beg_c[1];
+        int i0 = Ga / (n_c[2] * n_c[1]) + beg_c[0];
+        double xG = h_cv[0] * i0 + h_cv[3] * i1 + h_cv[6] * i2;
+        double yG = h_cv[1] * i0 + h_cv[4] * i1 + h_cv[7] * i2;
+        double zG = h_cv[2] * i0 + h_cv[5] * i1 + h_cv[8] * i2;
+        for (int G = Ga; G < Gb; G++) {
+          for (int i = 0; i < ni; i++) {
+            LFVolume* vol = volume_i + i;
+            int M = vol->M;
+	    double* c_mv = c_Mv + 3 * M;
+            const bmgsspline* spline = (const bmgsspline*) \
+	      &((const SplineObject*)PyList_GetItem(spline_M_obj, M))->spline;
+              
+            int nm = vol->nm;
+            int l = (nm - 1) / 2;
+            double x = xG - pos_Wc[vol->W][0];
+            double y = yG - pos_Wc[vol->W][1];
+            double z = zG - pos_Wc[vol->W][2];
+            double R_c[] = {x, y, z};
+            double r2 = x * x + y * y + z * z;
+            double r = sqrt(r2);
+            double af;
+            double dfdr;
+            bmgs_get_value_and_derivative(spline, r, &af, &dfdr);
+	    af *= a_G[G] * lfc->dv;
+            double afdrlYdx_m[nm];  // a * f * d(r^l * Y)/dx
+            complex double p = phase_i[i];
+	    spherical_harmonics_derivative_x(l, af, x, y, z, r2, afdrlYdx_m);
+	    for (int m = 0; m < nm; m++) c_mv[3 * m] += p * afdrlYdx_m[m];
+	    spherical_harmonics_derivative_y(l, af, x, y, z, r2, afdrlYdx_m);
+	    for (int m = 0; m < nm; m++) c_mv[3 * m + 1] += p * afdrlYdx_m[m];
+	    spherical_harmonics_derivative_z(l, af, x, y, z, r2, afdrlYdx_m);
+	    for (int m = 0; m < nm; m++) c_mv[3 * m + 2] += p * afdrlYdx_m[m];
+            if (r > 1e-15) {
+	      double arlm1Ydfdr_m[nm]; // a * r^(l-1) * Y * df/dr
+	      double arm1dfdr = a_G[G] / r * dfdr * lfc->dv;
+	      spherical_harmonics(l, arm1dfdr, x, y, z, r2, arlm1Ydfdr_m);
+	      for (int m = 0; m < nm; m++)
+		for (int v = 0; v < 3; v++)
+		  c_mv[m * 3 + v] += p * arlm1Ydfdr_m[m] * R_c[v];
+	    }
+	  }
+          xG += h_cv[6];
+          yG += h_cv[7];
+          zG += h_cv[8];
+        }
+      }
+      GRID_LOOP_STOP(lfc, q);
+      c_Mv += 3 * nM;
+      a_G += nG;
+    }
+  }
   Py_RETURN_NONE;
 }
