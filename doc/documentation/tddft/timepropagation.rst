@@ -78,32 +78,55 @@ Example::
   kick_strength = [0.0,0.0,1e-3]   # Kick to z-direction
   
   # Read ground state
-  td_atoms = TDDFT('be_gs.gpw')
+  td_calc = TDDFT('be_gs.gpw')
   
   # Kick with a delta pulse to z-direction
-  td_atoms.absorption_kick(kick_strength=kick_strength)
+  td_calc.absorption_kick(kick_strength=kick_strength)
   
   # Propagate, save the time-dependent dipole moment to 'be_dm.dat',
   # and use 'be_td.gpw' as restart file
-  td_atoms.propagate(time_step, iterations, 'be_dm.dat', 'be_td.gpw')
-  
+  td_calc.propagate(time_step, iterations, 'be_dm.dat', 'be_td.gpw')
+
   # Calculate photoabsorption spectrum and write it to 'be_spectrum_z.dat'
   photoabsorption_spectrum('be_dm.dat', 'be_spectrum_z.dat')
 
+When propagating after an absorption kick has been applied, it is a good
+idea to periodically write the time-evolution state to a restart file.
+This ensures that you can resume adding data to the dipole moment file
+if you experience oscillations in the spectrum because the the total
+simulation time was too short.
 
-Keywords for TDDFT:
+Example::
+
+  from gpaw.tddft import *
+  
+  time_step = 8.0                  # 1 attoseconds = 0.041341 autime
+  iterations = 2500                # 2500 x 8 as => 20 fs
+
+  # Read restart file with result of previous propagation
+  td_calc = TDDFT('be_td.gpw')
+
+  # Propagate more, appending the time-dependent dipole moment to the
+  # already existing 'be_dm.dat' and use 'be_td2.gpw' as restart file
+  td_calc.propagate(time_step, iterations, 'be_dm.dat', 'be_td2.gpw')
+
+  # Recalculate photoabsorption spectrum and write it to 'be_spectrum_z2.dat'
+  photoabsorption_spectrum('be_dm.dat', 'be_spectrum_z2.dat')
+
+
+Keywords for :class:`TDDFT`:
 
 ===================== =============== ============== =====================================
 Keyword               Type            Default        Description
 ===================== =============== ============== =====================================
 ``ground_state_file`` ``string``                     Name of the ground state file
 ``td_potential``      ``TDPotential`` ``None``       Time-dependent external potential
-``propagator``        ``string``      ``'SICN'``     Time-propagator
-``solver``            ``string``      ``'CSCG'``     Linear equation solver
+``propagator``        ``string``      ``'SICN'``     Time-propagator (``'ECN'``/``'SICN'``/``'SITE'``/``'SIKE'``)
+``solver``            ``string``      ``'CSCG'``     Linear equation solver (``'CSCG'``/``'BiCGStab'``)
 ``tolerance``         ``float``       ``1e-8``       Tolerance for linear solver
 ===================== =============== ============== =====================================
 
-Keywords for absorption_kick:
+Keywords for :func:`absorption_kick`:
 
 ================== =============== ================== =====================================
 Keyword            Type            Default            Description
@@ -111,19 +134,19 @@ Keyword            Type            Default            Description
 ``kick_strength``  ``float[3]``    ``[0,0,1e-3]``     Kick strength
 ================== =============== ================== =====================================
 
-Keywords for propagate:
+Keywords for :func:`propagate`:
 
 ====================== =========== =========== ================================================
 Keyword                Type        Default     Description
 ====================== =========== =========== ================================================
-``time_step``          ``float``               Time step in attoseconds (1 autime = 24.188 as)
+``time_step``          ``float``               Time step in attoseconds (``1 autime = 24.188 as``)
 ``iterations``         ``integer``             Iterations
 ``dipole_moment_file`` ``string``  ``None``    Name of the dipole moment file
 ``restart_file``       ``string``  ``None``    Name of the restart file
 ``dump_interal``       ``integer`` ``500``     How often restart file is written
 ====================== =========== =========== ================================================
 
-Keywords for photoabsorption_spectrum:
+Keywords for :func:`photoabsorption_spectrum`:
 
 ====================== ============ ============== ===============================================
 Keyword                Type         Default        Description
@@ -133,6 +156,6 @@ Keyword                Type         Default        Description
 ``folding``            ``string``   ``Gauss``      Gaussian folding (or Lorentzian in future)
 ``width``              ``float``    ``0.2123``     Width of the Gaussian/Lorentzian (in eV)
 ``e_min``              ``float``    ``0.0``        Lowest energy shown in spectrum (in eV)
-``e_max``              ``float``    ``3.0``        Highest energy shown in spectrum (in eV)
+``e_max``              ``float``    ``30.0``       Highest energy shown in spectrum (in eV)
 ``delta_e``            ``float``    ``0.05``       Resolution of energy in spectrum (in eV)
 ====================== ============ ============== ===============================================
