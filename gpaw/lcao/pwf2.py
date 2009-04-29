@@ -70,7 +70,8 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
             P_Mi = P_aqMi[a][q]
             V_nM += dots(P_ni, dS_ii, P_Mi.T.conj())
     if projectionsonly:
-        return V_qnM.conj()
+        #return V_qnM.conj()
+        return V_qnM
 
     # Determine potential matrix
     vt_G = calc.hamiltonian.vt_sG[spin]
@@ -92,7 +93,8 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
         tri2full(S_MM)
     H_qMM *= Hartree
 
-    return V_qnM.conj(), H_qMM, S_qMM, P_aqMi
+    #return V_qnM.conj(), H_qMM, S_qMM, P_aqMi
+    return V_qnM, H_qMM, S_qMM, P_aqMi
 
 
 def get_lcao_xc(calc, P_aqMi, bfs=None, spin=0):
