@@ -63,11 +63,10 @@ Optical photoabsorption spectrum
 
 Optical photoabsorption spectrum can be obtained by applying a weak 
 delta pulse of dipole electric field, and then letting the system evolve
-freely. Time-step around 4.0-8.0 attoseconds is reasonable. Total simulation
-time should be few tens of picoseconds depending on the desired resolution.
-Typically in experiments, the spherically averaged spectrum is measured.
-To obtain this, one must repeat the time-propagation to each Cartesian 
-direction and average over them.
+freely. A time-step around 4.0-8.0 attoseconds is reasonable. The total
+simulation time should be few tens of picoseconds depending on the 
+desired resolution.
+
 
 Example::
 
@@ -93,7 +92,7 @@ Example::
 When propagating after an absorption kick has been applied, it is a good
 idea to periodically write the time-evolution state to a restart file.
 This ensures that you can resume adding data to the dipole moment file
-if you experience oscillations in the spectrum because the the total
+if you experience artificial oscillations in the spectrum because the total
 simulation time was too short.
 
 Example::
@@ -113,6 +112,39 @@ Example::
   # Recalculate photoabsorption spectrum and write it to 'be_spectrum_z2.dat'
   photoabsorption_spectrum('be_dm.dat', 'be_spectrum_z2.dat')
 
+.. note::
+
+  Make sure to number of iterations is divisible by the dump interval
+  such that the last iteration will be stored in the restart file.
+
+
+Typically in experiments, the spherically averaged spectrum is measured.
+To obtain this, one must repeat the time-propagation to each Cartesian 
+direction and average over them.
+
+
+--------------------------------
+Time propagation
+--------------------------------
+
+Since the total CPU time also depends on the number of iterations performed
+by the linear solvers in each time-step, smaller time-steps around 2.0-3.0
+attoseconds might prove to be faster with the :class:`ECN` and :class:`SICN`
+propagators because they have an embedded Euler step in each predictor step:
+
+.. math::
+
+  \tilde{\psi}_n(t+\Delta t) \approx (1 - i \hat{S}^{\;-1}_\mathrm{approx.}(t) \tilde{H}(t) \Delta t)\tilde{\psi}_n(t)
+
+Therefore, as a rule-of-thumb, choose a time-step small enough to minimize the
+number of iterations performed by the linear solvers in each time-step, but
+large enough to minimize the number of time-steps required to arrive at the
+desired total simulation time.
+
+
+--------------------------------
+TDDFT reference manual
+--------------------------------
 
 Keywords for :class:`TDDFT`:
 
