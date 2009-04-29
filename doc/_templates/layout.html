@@ -37,14 +37,14 @@
         <li><a href="{{ pathto('index') }}"><img class="logo" src="{{ pathto('_static/' + logo, 1) }}" alt="GPAW logo"/></a></li>
         {%- endblock %}
 
-	<li> {{ reldelim1 }} <a href="{{ pathto('download') }}">Download</a>{{ reldelim1 }}</li>
-        <li> {{ reldelim1 }} <a href="{{ pathto('setups/setups') }}">Setups</a>{{ reldelim1 }}</li>
-        <li> {{ reldelim1 }} <a href="{{ pathto('tutorials/tutorials') }}">Tutorials</a>{{ reldelim1 }}</li>
-        <li> {{ reldelim1 }} <a href="{{ pathto('documentation/documentation') }}">Documentation</a>{{ reldelim1 }}</li>
-        <li> {{ reldelim1 }} <a href="{{ pathto('performance') }}">Performance</a>{{ reldelim1 }}</li>
-        <li> {{ reldelim1 }} <a href="{{ pathto('faq') }}">FAQ</a>{{ reldelim1 }}</li>
+	<!-- <li> {{ reldelim1 }} <a href="{{ pathto('download') }}">Download</a>{{ reldelim1 }}</li> -->
+        <!-- <li> {{ reldelim1 }} <a href="{{ pathto('setups/setups') }}">Setups</a>{{ reldelim1 }}</li> -->
+        <!-- <li> {{ reldelim1 }} <a href="{{ pathto('tutorials/tutorials') }}">Tutorials</a>{{ reldelim1 }}</li> -->
+        <!-- <li> {{ reldelim1 }} <a href="{{ pathto('documentation/documentation') }}">Documentation</a>{{ reldelim1 }}</li> -->
+        <!-- <li> {{ reldelim1 }} <a href="{{ pathto('performance') }}">Performance</a>{{ reldelim1 }}</li> -->
+        <!-- <li> {{ reldelim1 }} <a href="{{ pathto('faq') }}">FAQ</a>{{ reldelim1 }}</li> -->
         <li> {{ reldelim1 }} <a href="{{ pathto('contents') }}">Contents</a>{{ reldelim1 }}</li>
-        <li> {{ reldelim1 }} <a href="{{ pathto('genindex') }}">Index</a>{{ reldelim1 }}</li>
+        <!-- <li> {{ reldelim1 }} <a href="{{ pathto('genindex') }}">Index</a>{{ reldelim1 }}</li> -->
 
         {%- for parent in parents %}
           <li><a href="{{ parent.link|e }}" accesskey="U">{{ parent.title }}</a>{{ reldelim1 }}</li>

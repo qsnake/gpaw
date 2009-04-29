@@ -283,41 +283,43 @@ evaluated on radial grids inside the augmentation spheres:
 
 .. math::
 
-  \tilde{E} = -\frac{1}{2} \sum_{\sigma\mathbf{k}n} f_{\sigma\mathbf{k}n}
+  \tilde{E} &= -\frac{1}{2} \sum_{\sigma\mathbf{k}n} f_{\sigma\mathbf{k}n}
   \int d\mathbf{r}
   \tilde{\psi}_{\sigma\mathbf{k}n}(\mathbf{r})
   \nabla^2 \tilde{\psi}_{\sigma\mathbf{k}n}(\mathbf{r}) +
   \frac{1}{2}\int d\mathbf{r}d\mathbf{r}'
   \frac{\tilde{\rho}(\mathbf{r})\tilde{\rho}(\mathbf{r}')}
-       {|\mathbf{r}-\mathbf{r}'|} +
+       {|\mathbf{r}-\mathbf{r}'|} \\ &\quad+
   \sum_\sigma\sum_a\int d\mathbf{r}\tilde{n}_\sigma(\mathbf{r})
   \bar{v}^a(|\mathbf{r}-\mathbf{R}^a|) +
   E_{\text{xc}}[\tilde{n}_\uparrow, \tilde{n}_\downarrow]
-
-.. math::
-
-  E^a = -\frac{1}{2} 2\sum_i^{\text{core}} 
+  %
+  %.. math::
+  %
+  \\
+  E^a &= -\frac{1}{2} 2\sum_i^{\text{core}} 
   \int d\mathbf{r}
   \phi_i^a(\mathbf{r})
   \nabla^2 \phi_i^a(\mathbf{r})
   -\frac{1}{2} \sum_\sigma \sum_{i_1 i_2} D_{\sigma i_1 i_2}^a
   \int d\mathbf{r}
   \phi_{i_1}^a(\mathbf{r})
-  \nabla^2 \phi_{i_2}^a(\mathbf{r}) +
+  \nabla^2 \phi_{i_2}^a(\mathbf{r}) \\ &\quad+
   \frac{1}{2}\int d\mathbf{r}d\mathbf{r}'
   \frac{\rho^a(\mathbf{r})\rho^a(\mathbf{r}')}
        {|\mathbf{r}-\mathbf{r}'|} +
   E_{\text{xc}}[n^a_\uparrow, n^a_\downarrow]
-
-.. math::
-
-  \tilde{E}^a = -\frac{1}{2} \sum_\sigma\sum_{i_1 i_2} D_{\sigma i_1 i_2}^a
+  %
+  %.. math::
+  %
+  \\
+  \tilde{E}^a &= -\frac{1}{2} \sum_\sigma\sum_{i_1 i_2} D_{\sigma i_1 i_2}^a
   \int d\mathbf{r}
   \tilde{\phi}_{i_1}^a(\mathbf{r})
   \nabla^2 \tilde{\phi}_{i_2}^a(\mathbf{r}) +
   \frac{1}{2}\int d\mathbf{r}d\mathbf{r}'
   \frac{\tilde{\rho}^a(\mathbf{r})\tilde{\rho}^a(\mathbf{r}')}
-       {|\mathbf{r}-\mathbf{r}'|} +
+       {|\mathbf{r}-\mathbf{r}'|} \\ &\quad+
   \sum_\sigma \int d\mathbf{r}\tilde{n}^a_\sigma(\mathbf{r})
   \bar{v}^a(r) +
   E_{\text{xc}}[\tilde{n}^a_\uparrow, \tilde{n}^a_\downarrow]

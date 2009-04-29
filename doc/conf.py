@@ -213,7 +213,7 @@ pngmath_dvipng_args = [
     '--noghostscript',
     '-l10',
     '--depth',
-    '-D 136',
+    '-D 130',
     ]
 
 # correctly aligns the baselines
