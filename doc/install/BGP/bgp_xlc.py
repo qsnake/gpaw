@@ -38,9 +38,9 @@ for arg in sys.argv[1:]:
     else:
         cmd += arg
 if fragile:
-    flags = "-O3 -qhot=nosimd -qlanglvl=extc99 -qnostaticlink -qsmp -qarch=450d -qtune=450 -qflag=e:e"
+    flags = "-O3 -qstrict -qlanglvl=extc99 -qnostaticlink -qflag=e:e"
 else:
-    flags = "-O5 -qhot=nosimd -qlanglvl=extc99 -qnostaticlink -qsmp -qarch=450d -qtune=450 -qflag=e:e"
+    flags = "-O3 -qlanglvl=extc99 -qnostaticlink --qflag=e:e"
 cmd = "mpixlc_r %s %s"%(flags, cmd)
 
 #print "\nexecmd: %s\n"%cmd

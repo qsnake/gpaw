@@ -36,7 +36,7 @@ Follow the instructions for **gcc** (above), except:
 
 * use filenames and directories that do not contain *gnu* in their name,
 * There is no need to include TAU_PYTHON_FIX.h in *TAU_OPTIONS*,
-* At the moment the ``-optShared`` is not working.
+* At the moment the ``-optShared`` is not working with *bgptimers* binding libraries.
 
 
 automatic instrumentation

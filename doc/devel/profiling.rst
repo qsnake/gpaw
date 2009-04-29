@@ -134,7 +134,10 @@ Here is an example of how the TauTimer class can be used to profile a calculatio
 
 Automatic
 ^^^^^^^^^^^^
-Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary.
+Timing information for every Python and C function is measured. You will need to compile a special version of gpaw. This is often referred to as the instrumented binary. It is important to understand that instrumentation will be performed on three distinctlevels:
+* MPI
+* Python
+* C
 
 Simply include the following into ``customize.py`` and run ``python setup.py build_ext``::
 
@@ -183,8 +186,8 @@ Understanding TAU_OPTIONS
 There are a number of other *TAU_OPTIONS* which are helpful but
 may not work if TAU is not configured correctly.
 
-* **-optCompInst**: Performs the compiler-based instrumentation. This enables instrumentation by modifying the object files. This is only supported with certain compilers on certain options. The default is source-based instrumentation.
-* **-optShared**: Specifies the use of a dynamic TAU library binding (\*.so) instead of the default static library that would otherwise be linked into ``gpaw-python``. As a consequence,  the library binding is chosen at runtime by specifying the TAU library binding directory in your *PYTHON_PATH* and *LD_LIBRARY_PATH*
+* **-optCompInst**: Performs the compiler-based instrumentation. This enables instrumentation by modifying the object files. This is only supported with certain compilers. The default is source-based instrumentation. This applies only to C code.
+* **-optShared**: Specifies the use of a dynamic TAU library binding (\*.so) instead of the default static library that would otherwise be linked into ``gpaw-python``. Instrumentation on all three distinct levels requires this option. This should **always** be used, otherwise profile information will only be collected for the Python layer. Additionally,  the library binding is chosen at runtime by specifying the TAU library binding directory in your *PYTHON_PATH* and *LD_LIBRARY_PATH*
 * **-optTau**: This is frequently very platform and compiler specific. See the BG/P page for an example.
 * **-optVerbose**: Useful for debugging, all the details of the invocation of ``tau_cc.sh`` are passed to stdout.
 
