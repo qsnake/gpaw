@@ -30,10 +30,8 @@ band_comm = world.new_communicator(np.arange(world.rank % D, world.size, D))
 scalapack0_comm = world.new_communicator(np.arange(0, world.size, D))
 scalapack1_comm = world.new_communicator(np.arange(0, world.size, D // B))
     
-# Set up domain and grid descriptors:
-domain = Domain((a, a, a))
-domain.set_decomposition(domain_comm, parsize, N_c=(G, G, G))
-gd = GridDescriptor(domain, (G, G, G))
+# Set up domain grid descriptors:
+gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize)
 
 # Random wave functions:
 np.random.seed(world.rank)
