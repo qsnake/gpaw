@@ -664,8 +664,13 @@ PyObject* spline_to_grid(PyObject *self, PyObject *args)
                                                              NPY_INT);
   memcpy(G_B_obj->data, G_B, nB * sizeof(int));
   free(G_B);
-  
-  return Py_BuildValue("(OO)", A_gm_obj, G_B_obj);
+
+  // PyObjects created in the C code will be initialized with a refcount
+  // of 1, for which reason we'll have to decref them when done here
+  PyObject* values = Py_BuildValue("(OO)", A_gm_obj, G_B_obj);
+  Py_DECREF(A_gm_obj);
+  Py_DECREF(G_B_obj);
+  return values;
 }
 
 
