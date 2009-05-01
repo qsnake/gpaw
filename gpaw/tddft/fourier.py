@@ -37,6 +37,8 @@ class DensityFourierTransform(Observer):
         self.dtype = complex # np.complex128 really, but hey...
         self.Fnt_wsG = None
         self.Fnt_wsg = None
+        self.Ant_sG = None
+        self.Ant_sg = None
 
     def initialize(self, paw, allocate=True):
         self.allocated = False
@@ -50,9 +52,12 @@ class DensityFourierTransform(Observer):
         self.finegd = paw.density.finegd
         self.nspins = paw.density.nspins
         self.stencil = paw.input_parameters.stencils[1] # i.e. r['InterpolationStencil']
-        self.interpolator = Transformer(self.gd, self.finegd, self.stencil, \
+        self.interpolator = paw.density.interpolator #TODO is this leak-safe?
+        self.cinterpolator = Transformer(self.gd, self.finegd, self.stencil, \
                                         dtype=self.dtype, allocate=False)
         self.phase_cd = np.ones_like(paw.wfs.kpt_u[0].phase_cd) # not cool...
+
+        self.Ant_sG = paw.density.nt_sG.copy() # TODO in allocate instead?
 
         # Attach to PAW-type object
         paw.attach(self, self.interval, density=paw.density)
@@ -65,65 +70,103 @@ class DensityFourierTransform(Observer):
             self.Fnt_wsG = self.gd.zeros((self.nw, self.nspins), \
                                         dtype=self.dtype)
             self.Fnt_wsg = None
-            self.interpolator.allocate()
+            #self.Ant_sG = ...
+            self.Ant_sg = None
+            self.gamma_w = np.ones(self.nw, dtype=complex) * self.timestep
+            self.cinterpolator.allocate()
             self.allocated = True
 
         if debug:
             assert is_contiguous(self.Fnt_wsG, self.dtype)
 
-    def interpolate(self):
+    def interpolate_fourier_transform(self):
         if self.Fnt_wsg is None:
             self.Fnt_wsg = self.finegd.empty((self.nw, self.nspins), \
                                             dtype=self.dtype)
 
         for w in range(self.nw):
             for s in range(self.nspins):
-                self.interpolator.apply(self.Fnt_wsG[w,s], self.Fnt_wsg[w,s], \
+                self.cinterpolator.apply(self.Fnt_wsG[w,s], self.Fnt_wsg[w,s], \
                                         self.phase_cd)
 
+    def interpolate_average(self):
+        if self.Ant_sg is None:
+            self.Ant_sg = self.finegd.empty(self.nspins, dtype=float)
+
+        for s in range(self.nspins):
+            self.interpolator.apply(self.Ant_sG[s], self.Ant_sg[s])
+            
     def update(self, density):
 
         self.time += self.timestep
 
+        f_w = np.exp(1.0j*self.omega_w*self.time)
+
+        if self.sigma is not None:
+            f_w *= np.exp(-self.time**2*self.sigma**2/2.0)
+
         for w, omega in enumerate(self.omega_w):
-            f = np.exp(1.0j*omega*self.time)
 
-            if self.sigma is not None:
-                f *= np.exp(-self.time**2*self.sigma**2/2.0)
+            # Fnt_wG[N+1] = Fnt_wG[N] + 1/sqrt(pi) * (nt_G[N+1]-avg_nt_G[N]) \
+            #     * (f[N+1]*t[n+1] - gamma[N]) * dt[N+1]/(t[N+1]+dt[N+1])
+            self.Fnt_wsG[w] += 1/np.pi**0.5 * (density.nt_sG - self.Ant_sG) * \
+                (f_w[w]*self.time - self.gamma_w[w]) * self.timestep/(self.time + self.timestep)
 
-            self.Fnt_wsG[w] += 1/np.pi**0.5 * density.nt_sG * f * self.timestep
+        # gamma[N+1] = gamma[N] + f[N+1]*dt[N+1]
+        self.gamma_w += f_w * self.timestep
+
+        # Ant_G[N+1] = (t[N+1]*Ant_G[N] + nt_G[N+1]*dt[N+1])/(t[N+1]+dt[N+1])
+        self.Ant_sG = (self.time*self.Ant_sG + density.nt_sG*self.timestep) \
+            /(self.time + self.timestep)
 
     def get_fourier_transform(self, frequency=0, spin=0, gridrefinement=1):
         if gridrefinement == 1:
             return self.Fnt_wsG[frequency, spin]
         elif gridrefinement == 2:
             if self.Fnt_wsg is None:
-                self.interpolate()
+                self.interpolate_fourier_transform()
             return self.Fnt_wsg[frequency, spin]
+        else:
+            raise NotImplementedError('Arbitrary refinement not implemented')
+
+    def get_average(self, spin=0, gridrefinement=1):
+        if gridrefinement == 1:
+            return self.Ant_sG[spin]
+        elif gridrefinement == 2:
+            if self.Ant_sg is None:
+                self.interpolate_average()
+            return self.Ant_sg[spin]
         else:
             raise NotImplementedError('Arbitrary refinement not implemented')
 
     def dump(self, filename):
         if debug:
             assert is_contiguous(self.Fnt_wsG, self.dtype)
+            assert is_contiguous(self.Ant_sG, float)
 
-        all_nt_wsG = self.gd.collect(self.Fnt_wsG)
+        all_Fnt_wsG = self.gd.collect(self.Fnt_wsG)
+        all_Ant_sG = self.gd.collect(self.Ant_sG)
 
         if self.world.rank == 0:
-            all_nt_wsG.dump(filename)
+            all_Fnt_wsG.dump(filename)
+            all_Ant_sG.dump(filename+'_avg') #TODO XXX a crude hack!!!
 
     def load(self, filename):
         if self.world.rank == 0:
-            all_nt_wsG = np.load(filename)
+            all_Fnt_wsG = np.load(filename)
+            all_Ant_sG = np.load(filename+'_avg') #TODO XXX a crude hack!!!
         else:
-            all_nt_wsG = None
+            all_Fnt_wsG = None
+            all_Ant_sG = None
 
         if debug:
-            assert all_nt_wsG is None or is_contiguous(all_nt_wsG, self.dtype)
+            assert all_Fnt_wsG is None or is_contiguous(all_Fnt_wsG, self.dtype)
+            assert all_Ant_sG is None or is_contiguous(all_Ant_sG, float)
 
         if not self.allocated:
             self.allocate()
 
-        self.gd.distribute(all_nt_wsG, self.Fnt_wsG)
+        self.gd.distribute(all_Fnt_wsG, self.Fnt_wsG)
+        self.gd.distribute(all_Ant_sG, self.Ant_sG)
 
 
