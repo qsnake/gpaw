@@ -1021,7 +1021,7 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
           for (int i = 0; i < ni; i++) {
             LFVolume* vol = volume_i + i;
             int M = vol->M;
-	    double* c_mv = c_Mv + 3 * M;
+	    complex double* c_mv = c_Mv + 3 * M;
             const bmgsspline* spline = (const bmgsspline*) \
 	      &((const SplineObject*)PyList_GetItem(spline_M_obj, M))->spline;
               
