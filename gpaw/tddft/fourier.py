@@ -10,7 +10,7 @@ from gpaw.tddft import attosec_to_autime, eV_to_aufrequency
 # -------------------------------------------------------------------
 
 class DensityFourierTransform(Observer):
-    def __init__(self, timestep, frequencies, interval=1):
+    def __init__(self, timestep, frequencies, width=None, interval=1):
         """
         Parameters
         ----------
@@ -20,17 +20,18 @@ class DensityFourierTransform(Observer):
             Frequencies in eV for Fourier transforms
         width: float or None
             Width of Gaussian envelope in eV, otherwise no envelope
+        interval: int
+            Number of timesteps between calls (used when attaching)
         """
 
         Observer.__init__(self, interval)
         self.timestep = interval * timestep * attosec_to_autime # autime
         self.omega_w = np.asarray(frequencies) * eV_to_aufrequency # autime^(-1)
 
-        """
-        if width is not None:
-            width = width * eV_to_aufrequency # eV*(autime^(-1)/eV)
-            self.sigma = 1.0/width # autime
-        """
+        if width is None:
+            self.sigma = None
+        else:
+            self.sigma = width * eV_to_aufrequency # autime^(-1)
 
         self.nw = len(self.omega_w)
         self.dtype = complex # np.complex128 really, but hey...
@@ -40,8 +41,9 @@ class DensityFourierTransform(Observer):
     def initialize(self, paw, allocate=True):
         self.allocated = False
 
-        assert hasattr(paw, 'time'), 'Only TDDFT is supported'
+        assert hasattr(paw, 'time') and hasattr(paw, 'niter'), 'Use TDDFT!'
         self.time = paw.time
+        self.niter = paw.niter
 
         self.world = paw.wfs.world
         self.gd = paw.density.gd
@@ -51,6 +53,9 @@ class DensityFourierTransform(Observer):
         self.interpolator = Transformer(self.gd, self.finegd, self.stencil, \
                                         dtype=self.dtype, allocate=False)
         self.phase_cd = np.ones_like(paw.wfs.kpt_u[0].phase_cd) # not cool...
+
+        # Attach to PAW-type object
+        paw.attach(self, self.interval, density=paw.density)
 
         if allocate:
             self.allocate()
@@ -81,8 +86,12 @@ class DensityFourierTransform(Observer):
         self.time += self.timestep
 
         for w, omega in enumerate(self.omega_w):
-            self.Fnt_wsG[w] += 1/np.pi**0.5 * density.nt_sG * \
-                np.exp(1.0j*omega*self.time) * self.timestep
+            f = np.exp(1.0j*omega*self.time)
+
+            if self.sigma is not None:
+                f *= np.exp(-self.time**2*self.sigma**2/2.0)
+
+            self.Fnt_wsG[w] += 1/np.pi**0.5 * density.nt_sG * f * self.timestep
 
     def get_fourier_transform(self, frequency=0, spin=0, gridrefinement=1):
         if gridrefinement == 1:
