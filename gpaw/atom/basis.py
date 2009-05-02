@@ -337,7 +337,8 @@ class BasisMaker:
                  referencefile=None, referenceindex=None, rcutpol_rel=1.0, 
                  rcutmax=20.0, ngaussians=None, rcharpol_rel=None,
                  vconf_args=(12.0, 0.6), txt='-',
-                 include_energy_derivatives=False):
+                 include_energy_derivatives=False,
+                 lvalues=None):
         """Generate an entire basis set.
 
         This is a high-level method which will return a basis set
@@ -402,11 +403,12 @@ class BasisMaker:
         #
         # Get (only) one occupied valence state for each l
         # Not including polarization in this list
-        lvalues = npy.unique([l for l, f in zip(g.l_j[g.njcore:], 
-                                                g.f_j[g.njcore:])
-                              if f > 0])
-        if lvalues[0] != 0: # Always include s-orbital !
-            lvalues = npy.array([0] + list(lvalues))
+        if lvalues is None:
+            lvalues = npy.unique([l for l, f in zip(g.l_j[g.njcore:], 
+                                                    g.f_j[g.njcore:])
+                                  if f > 0])
+            if lvalues[0] != 0: # Always include s-orbital !
+                lvalues = npy.array([0] + list(lvalues))
             
         
         print >> txt, 'Basis functions for %s' % g.symbol
