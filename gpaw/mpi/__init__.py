@@ -54,7 +54,7 @@ serial_comm = SerialCommunicator()
 
 try:
     world = _gpaw.Communicator()
-except:
+except AttributeError:
     world = serial_comm
 
 if dry_run_size > 1:
@@ -199,6 +199,7 @@ if debug:
             return self.comm.cart_create(dimx, dimy, dimz, periodic)
 
     serial_comm = _Communicator(serial_comm)
+
 
 def broadcast_string(string=None, root=MASTER, comm=world):
     if rank == root:
