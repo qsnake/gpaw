@@ -243,7 +243,8 @@ class PAW(PAWTextOutput):
         world = par.communicator
         if world is None:
             world = mpi.world
-        elif isinstance(world, mpi._Communicator):
+        elif isinstance(world, (mpi.world.__class__,
+                                mpi.serial_comm.__class__)):
             # Correct type already.
             pass
         else:
