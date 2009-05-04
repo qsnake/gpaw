@@ -6,7 +6,7 @@ Developers guide to GPAW
 
 .. default-role:: math
 
-XXX Update page to new GPAW style (after guc merge)
+XXX Update page to new GPAW style (after guc merge) and mention NewLFCs.
 
 This page goes through the most important equations of a PAW
 calculation and has references to the code.  It is a good idea to have
@@ -62,12 +62,12 @@ numbers, and ``j`` refers to `n` and `\ell` only (see
 :ref:`overview_array_naming`).  So, to put an atom-centered function
 like `\tilde{p}_{n\ell m}^a(\mathbf{r})` on the 3D grid, you need both
 the radial part `\tilde{p}_{n\ell}^a(r)` (one of the splines in
-``paw.nucleus[a].setup.pt_j``) and a spherical harmonics `Y_{\ell
+``paw.wfs.setups[a].pt_j``) and a spherical harmonics `Y_{\ell
 m}(\theta,\phi)`.  Putting radial functions times spherical harmonics
-on a grid is done by the :epydoc:`create_localized_functions
-<gpaw.localized_functions>` function.  The result of the function is a
-:epydoc:`gpaw.localized_functions.LocFuncs` object
-(``paw.nuclei[a].pt_i``).
+on a grid is done by the :epydoc:`LocalizedFunctionsCollection <gpaw.lfc>`
+class (previously the :epydoc:`create_localized_functions 
+<gpaw.localized_functions>` function).  The result of the operation is a
+:epydoc:`gpaw.localized_functions.LocFuncs` object (``paw.wfs.pt.lfs_a[a]``).
 
 .. _orthogonality:
 
@@ -90,8 +90,8 @@ where the overlap operator looks like:
     \Delta O_{i_1 i_2}^a \langle\tilde{p}_{i_2}^a|.
 
 The constants `\Delta O_{i_1 i_2}^a` are found in
-``nuclei[a].setup.O_ii`` (``ndarray``).  Someone should rename
-``setup.O_ii`` to ``setup.dO_ii``.
+``paw.wfs.setups[a].O_ii`` (``ndarray``). XXX Someone should
+rename ``O_ii`` to ``dO_ii`` and :math:`\hat{S}` to :math:`\hat{O}`.
 
 .. math::
 
@@ -166,26 +166,34 @@ way as the pseudo electron spin-densities.
 
    * - formula
      - object
+     - previously
      - type
    * - `\hat{S}_s`
+     - ``paw.wfs.symmetry``
      - ``paw.symmetry``
      - :epydoc:`gpaw.symmetry.Symmetry`
    * - `\tilde{n}_\sigma`
      - ``paw.density.nt_sG`` and ``paw.density.nt_sg``
+     -
      - ``ndarray``
    * - `\tilde{n}=\sum_\sigma\tilde{n}_\sigma`
      - ``paw.density.nt_g``
+     -
      - ``ndarray``
    * - `\tilde{n}_c^a(r)`
+     - ``paw.wfs.setups[a].nct``
      - ``setup.nct``
      - :epydoc:`gpaw.spline.Spline`
    * - `\tilde{n}_c^a(\mathbf{r}-\mathbf{R}^a)`
+     - ``paw.density.nct.lfs_a[a]``
      - ``nuclei[a].nct``
      - :epydoc:`gpaw.localized_functions.LocFuncs`
    * - `f_{\sigma\mathbf{k}n}`
+     - ``paw.wfs.kpt_u[u].f_n``
      - ``paw.kpt_u[u].f_n``
      - ``ndarray``
    * - `D_{\sigma i_1 i_2}^a`
+     - ``paw.density.D_asp[a]``
      - ``nuclei[a].D_sp``
      - ``ndarray``
 
@@ -247,26 +255,34 @@ where
 
    * - formula
      - object
+     - previously
      - type
    * - `\tilde{\rho}`
      - ``paw.density.rhot_g``
+     -
      - ``ndarray``
    * - `\mathbb{Z}^a`
      - ``setup.Z``
+     -
      - ``int``
    * - `\Delta_{i_1 i_2 L}^a`
      - ``setup.Delta_pL``
+     -
      - ``ndarray``
    * - `\Delta_0^a`
      - ``setup.Delta0``
+     -
      - ``float``
    * - `\hat{g}_\ell^a(r)`
      - ``setup.ghat_l``
+     -
      - List of :epydoc:`gpaw.spline.Spline`\ s
    * - `\hat{g}_L^a(\mathbf{r}-\mathbf{R}^a)`
+     - ``paw.density.ghat.lfs_a[a]``
      - ``nuclei[a].ghat_L``
      - :epydoc:`gpaw.localized_functions.LocFuncs`
    * - `Q_L^a`
+     - ``paw.density.Q_aL[a]``
      - ``nuclei[a].Q_L``
      - ``ndarray``
 
