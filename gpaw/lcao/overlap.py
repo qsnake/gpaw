@@ -77,7 +77,7 @@ class OverlapExpansion:
     def zeros(self, shape=()):
         return np.zeros(shape + (2 * self.lb + 1, 2 * self.la + 1))
 
-    def evaluate(self, r, R, rlY_lm):
+    def evaluate(self, r, rlY_lm):
         """Get overlap between localized functions.
 
         Apply Gaunt coefficients to the list of real-space splines
@@ -100,6 +100,28 @@ class OverlapExpansion:
             dxdR_cmi += x * np.dot(drlYdR_lmc[l].T, G_mmm)
         return dxdR_cmi
 
+
+def spherical_harmonics(R, lmax=5):
+    R = np.asarray(R)
+    rlY_lm = []
+    for l in range(lmax):
+        rlY_m = np.empty(2 * l + 1)
+        Yl(l, R, rlY_m)
+        rlY_lm.append(rlY_m)
+    return rlY_lm
+
+
+def spherical_harmonics_and_derivatives(R, lmax=5):
+    R = np.asarray(R)
+    drlYdR_lmc = []
+    rlY_lm = spherical_harmonics(R, lmax)
+    for l, rlY_m in enumerate(rlY_lm):
+        drlYdR_mc = np.empty((2 * l + 1, 3))
+        for m in range(2 * l + 1):
+            L = l**2 + m
+            drlYdR_mc[m, :] = nablaYL(L, R)
+        drlYdR_lmc.append(drlYdR_mc)
+    return rlY_lm, drlYdR_lmc
 
 class TwoCenterIntegralSplines:
     """ Two-center integrals class.
@@ -167,7 +189,7 @@ class TwoCenterIntegralSplines:
                 f_ajq[id] = (l, f_q)
         return f_ajq
 
-    def calculate_splines(self, phit1, phit2, l1, l2):
+    def calculate_splines(self, phit1_q, phit2_q, l1, l2):
         """Calculate list of splines for one overlap integral.
 
         Given two Fourier transformed functions, return list of splines
@@ -187,7 +209,7 @@ class TwoCenterIntegralSplines:
         R1[0] = 1.0
         k1 = self.k_q.copy()
         k1[0] = 1.0
-        a_q = phit1 * phit2
+        a_q = phit1_q * phit2_q
         for l in range(lmax % 2, lmax + 1, 2):
             a_g = (8 * fbt(l, a_q * k1**(-2 - lmax - l), self.k_q, R) /
                    R1**(2 * l + 1))
@@ -312,19 +334,12 @@ class TwoCenterIntegrals:
             selfinteraction = (a1 == a2 and offset.any())
             P1_qxMi = P_aqxMi.get(a1)
             P2_qxMi = P_aqxMi.get(a2)
-            rlY_lm = []
-            drlYdR_lmc = []
-            for l in range(5):
-                rlY_m = np.empty(2 * l + 1)
-                Yl(l, R, rlY_m)
-                rlY_lm.append(rlY_m)
 
-                if derivative:
-                    drlYdR_mc = np.empty((2 * l + 1, 3))
-                    for m in range(2 * l + 1):
-                        L = l**2 + m
-                        drlYdR_mc[m, :] = nablaYL(L, R)
-                    drlYdR_lmc.append(drlYdR_mc)
+            if derivative:
+                rlY_lm, drlYdR_lmc = spherical_harmonics_and_derivatives(R, 5)
+            else:
+                rlY_lm = spherical_harmonics(R, 5)
+                drlYdR_lmc = []
 
             self.stp_overlaps(S_qxMM, T_qxMM, P1_qxMi, P2_qxMi, a1, a2,
                               r, R, rlY_lm, drlYdR_lmc, phase_q,
@@ -386,7 +401,7 @@ class TwoCenterIntegrals:
                 phase_q = np.exp(-2j * pi * np.dot(self.ibzk_qc, offset))
                 phase_q.shape = (-1, 1, 1)
 
-                yield (a1, a2, r, R, phase_q, offset)        
+                yield (a1, a2, r, R, phase_q, offset)
 
     def stp_overlaps(self, S_qMM, T_qMM, P1_qMi, P2_qMi, a1, a2,
                      r, R, rlY_lm, drlYdR_lmc, phase_q, selfinteraction,
@@ -432,7 +447,7 @@ class TwoCenterIntegrals:
                                                            M1, M2, spline1_j,
                                                            spline2_j, X):
             if not drlYdR_lmc:
-                X_xmm = splines.evaluate(r, R, rlY_lm)
+                X_xmm = splines.evaluate(r, rlY_lm)
             else:
                 assert r != 0
                 X_xmm = splines.derivative(r, R, rlY_lm, drlYdR_lmc)
@@ -574,7 +589,7 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             if M1b <= M0 or M1a >= M3:
                 continue
 
-            X_mm = splines.evaluate(r, R, rlY_lm).T
+            X_mm = splines.evaluate(r, rlY_lm).T
             M1ap = max(M1a, M0)
             M1bp = min(M1b, M3)
             A_qMM = X_qMM[:, M1ap - M0:M1bp - M0, M2a:M2b]
