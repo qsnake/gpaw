@@ -309,11 +309,11 @@ unset CC CFLAGS LDFLAGS
             print 'Note:', nodes * ppn, 'cores reserved but only', cores, 'cores used.'
             print '     Consider to use multiples of 8 processors for best performance.'
         print >> f, '#PBS -l nodes=' + str(nodes) + ':ppn=' + str(ppn)
-        print >> f, '#PBS -l walltime=' + str(set['time'])
+        print >> f, '#PBS -l cput=' + hms_string(set['time'])
+        print >> f, '#PBS -l walltime=' + hms_string(set['time'])
         print >> f, '#PBS -m bea'
         if set['mail'] is not None:
             print >> f, '#PBS -M',set['mail']
-        print >> f, '#PBS -q bfg'
         print >> f, 'export PATH=/usr/lib/openmpi/1.2.5-gcc/bin:$PATH'
         print >> f, 'cd', set['wd']
         print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
