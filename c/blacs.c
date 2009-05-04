@@ -159,7 +159,7 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
     }
   memcpy(desc_obj->data, desc, 9*sizeof(int));
 
-  return Py_BuildValue("O",desc_obj);
+  return desc_obj;
 }
 
 PyObject* blacs_destroy(PyObject *self, PyObject *args)
@@ -278,7 +278,7 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
         Py_RETURN_NONE;
       }
 
-    return Py_BuildValue("O",b_obj);
+    return b_obj;
 }
 
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
@@ -382,13 +382,17 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
         // printf("computation info = %d\n", info);
         free(work);
 	free(iwork);
-        return Py_BuildValue("(OO)", w_obj, z_obj);
+        PyObject* values = Py_BuildValue("(OO)", w_obj, z_obj);
+        Py_DECREF(w_obj);
+        Py_DECREF(z_obj);
+        return values;
       }
     else
       {
 	return Py_BuildValue("(OO)", Py_None, Py_None);
       }
 }
+
 PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
 {
     // Expert Driver for QR algorithm
@@ -526,7 +530,10 @@ PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args)
         free(iclustr);
         free(ifail);
 
-        return Py_BuildValue("(OO)", w_obj, z_obj);
+        PyObject* values = Py_BuildValue("(OO)", w_obj, z_obj);
+        Py_DECREF(w_obj);
+        Py_DECREF(z_obj);
+        return values;
       }
     else
       {
