@@ -57,8 +57,7 @@ PyObject* spherical_harmonics(PyObject *self, PyObject *args);
 PyObject* spline_to_grid(PyObject *self, PyObject *args);
 PyObject* NewLFCObject(PyObject *self, PyObject *args);
 PyObject* compiled_WITH_SL(PyObject *self, PyObject *args);
-#ifdef GPAW_WITH_SL
-#ifdef PARALLEL
+#if defined(GPAW_WITH_SL) && defined(PARALLEL)
 PyObject* blacs_create(PyObject *self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
@@ -66,7 +65,7 @@ PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
 PyObject* scalapack_general_diagonalize(PyObject *self, PyObject *args);
 PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args);
 #endif
-#endif
+
 
 static PyMethodDef functions[] = {
   {"gemm", gemm, METH_VARARGS, 0},
@@ -114,15 +113,13 @@ static PyMethodDef functions[] = {
   {"construct_density", construct_density, METH_VARARGS, 0},
   {"construct_density1", construct_density1, METH_VARARGS, 0},
   */
-#ifdef GPAW_WITH_SL
-#ifdef PARALLEL
+#if defined(GPAW_WITH_SL) && defined(PARALLEL)
   {"blacs_create",      blacs_create,      METH_VARARGS, 0},
   {"blacs_destroy",     blacs_destroy,      METH_VARARGS, 0},
   {"scalapack_redist",      scalapack_redist,     METH_VARARGS, 0},
   {"scalapack_diagonalize_dc", scalapack_diagonalize_dc, METH_VARARGS, 0}, 
   {"scalapack_general_diagonalize", scalapack_general_diagonalize, METH_VARARGS, 0},
   {"scalapack_inverse_cholesky", scalapack_inverse_cholesky, METH_VARARGS, 0},
-#endif
 #endif
 #ifdef GPAW_CRAYPAT
   {"craypat_region_begin", craypat_region_begin, METH_VARARGS, 0},
@@ -183,6 +180,11 @@ main(int argc, char **argv)
 
 #ifndef GPAW_OMP
   MPI_Init(&argc, &argv);
+#else
+  int granted;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
+  if(granted != MPI_THREAD_MULTIPLE) exit(1);
+#endif // GPAW_OMP
 
 #ifdef GPAW_BGP_MAP
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs );
@@ -209,11 +211,6 @@ main(int argc, char **argv)
   HPM_Start("GPAW");
 #endif
 
-#else
-  int granted;
-  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &granted);
-  if(granted != MPI_THREAD_MULTIPLE) exit(1);
-#endif // GPAW_OMP
 
 #ifdef GPAW_MPI_DEBUG
   // Default Errhandler is MPI_ERRORS_ARE_FATAL
