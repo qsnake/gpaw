@@ -23,8 +23,7 @@ else:
 
 # Open different files depending on rank
 output = '%d.txt' % rank
-comm = mpi.world.new_communicator(np.array([rank]))
-calc = GPAW(communicator=comm, txt=output, xc='PBE')
+calc = GPAW(communicator=[rank], txt=output, xc='PBE')
 system.set_calculator(calc)
 energy = system.get_potential_energy()
 

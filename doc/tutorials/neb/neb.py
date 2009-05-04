@@ -17,10 +17,9 @@ for i in range(3):
     ranks = np.arange(i * n, (i + 1) * n)
     image = initial.copy()
     if rank in ranks:
-        comm = world.new_communicator(ranks)
         calc = GPAW(h=0.3, kpts=(2, 2, 1),
                     txt='neb%d.txt' % j,
-                    communicator=comm)
+                    communicator=ranks)
         image.set_calculator(calc)
     image.set_constraint(constraint)
     images.append(image)

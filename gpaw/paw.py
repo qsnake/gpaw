@@ -243,6 +243,12 @@ class PAW(PAWTextOutput):
         world = par.communicator
         if world is None:
             world = mpi.world
+        elif isinstance(world, mpi._Communicator):
+            # Correct type already.
+            pass
+        else:
+            # world should be a list of ranks:
+            world = mpi.world.new_communicator(np.asarray(world))
         self.wfs.world = world
         
         self.set_text(par.txt, par.verbose)
