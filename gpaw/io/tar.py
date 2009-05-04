@@ -20,7 +20,7 @@ class Writer:
                      ('big', 'little')[int(np.little_endian)]]
         self.xml2 = []
         if os.path.isfile(name):
-            os.rename(name, name[:-4] + '.old.gpw')
+            os.rename(name, name[:-4] + '.old'+name[-4:])
         self.tar = tarfile.open(name, 'w')
         self.mtime = int(time.time())
         
