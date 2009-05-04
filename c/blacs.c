@@ -10,6 +10,7 @@
 #include "mympi.h"
 
 // BLACS
+#define BLOCK_CYCLIC_2D 1
 #ifdef GPAW_MKL
 #define   Cblacs_gridexit_ Cblacs_gridexit
 #define   Cblacs_gridinfo_ Cblacs_gridinfo
@@ -20,12 +21,12 @@
 
 void Cblacs_gridexit_(int ConTxt);
 
-void Cblacs_gridinfo_(int ConTxt, int *nprow, int *npcol,
-              int *myrow, int *mycol);
+void Cblacs_gridinfo_(int ConTxt, int* nprow, int* npcol,
+                      int* myrow, int* mycol);
 
-void Cblacs_gridinit_(int *ConTxt, char* order, int nprow, int npcol);
+void Cblacs_gridinit_(int* ConTxt, char* order, int nprow, int npcol);
 
-void Cblacs_pinfo_(int *mypnum, int *nprocs);
+void Cblacs_pinfo_(int* mypnum, int* nprocs);
 
 int Csys2blacs_handle_(MPI_Comm SysCtxt);
 // End of BLACS
@@ -57,38 +58,38 @@ void descinit_(int* desc, int* m, int* n, int* mb, int* nb, int* irsrc,
 
 int numroc_(int* n, int* nb, int* iproc, int* isrcproc, int* nprocs);
 
-void Cpdgemr2d_(int m, int n, double *A, int IA, int JA, int *descA,
-               double *B, int IB, int JB, int *descB, int gcontext);
+void Cpdgemr2d_(int m, int n, double* a, int ia, int ja, int* desca,
+               double* b, int ib, int jb, int* descb, int gcontext);
 
-void Cpdgemr2do_(int m, int n, double *A, int IA, int JA, int *descA,
-               double *B, int IB, int JB, int *descB);
+void Cpdgemr2do_(int m, int n, double* a, int ia, int ja, int* desca,
+               double* b, int ib, int jb, int* descb);
 
 double pdlamch_(int* ictxt, char* cmach);
 
 // cholesky
-void pdpotrf_(char *uplo, int *n, double* a, int *ia, int* ja, int* desca,
-              int *info);
+void pdpotrf_(char* uplo, int* n, double* a, int* ia, int* ja, int* desca,
+              int* info);
 
-void pdtrtri_(char *uplo, char *diag, int *n, double* a, int *ia, int* ja,
-              int* desca, int *info);
+void pdtrtri_(char* uplo, char* diag, int* n, double* a, int *ia, int* ja,
+              int* desca, int* info);
 
 // diagonalization
-void pdsyevd_(char *jobz, char *uplo, int *n, double* a, int *ia, int* ja,
-              int* desca, double *w,
-              double* z, int *iz, int* jz, int* descz, double *work,
-              int *lwork, int *iwork, int *liwork, int *info);
+void pdsyevd_(char* jobz, char* uplo, int* n, double* a, int* ia, int* ja,
+              int* desca, double* w,
+              double* z, int* iz, int* jz, int* descz, double* work,
+              int* lwork, int* iwork, int* liwork, int* info);
 
-void pdsygvx_(int *ibtype, char *jobz, char *range, char *uplo, int *n,
-              double* a, int *ia, int* ja,
+void pdsygvx_(int* ibtype, char* jobz, char* range, char* uplo, int* n,
+              double* a, int* ia, int* ja,
               int* desca, double* b, int *ib, int* jb, int* descb,
               double* vl, double* vu, int* il, int* iu,
               double* abstol, int* m, int* nz, double* w, double* orfac,
-              double* z, int *iz, int* jz, int* descz,
-              double *work, int *lwork, int *iwork, int *liwork, int *ifail,
-              int *iclustr, double* gap, int *info);
+              double* z, int* iz, int* jz, int* descz,
+              double* work, int* lwork, int* iwork, int* liwork, int* ifail,
+              int* iclustr, double* gap, int* info);
 
 
-PyObject* blacs_create(PyObject *self, PyObject *args)
+PyArrayObject* blacs_create(PyObject *self, PyObject *args)
 {
   PyObject*  comm_obj;     // communicator
   char order='R';
@@ -119,8 +120,9 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
       // SPECIAL CASE: Rank is not part of this communicator
       // ScaLAPACK documentation here is vague. It was emperically determined that
       // the values of desc[1]-desc[5] are important for use with pdgemr2d routines.
-      // (otherwise, ScaLAPACK core dumps). 
-      desc[0] = -1;
+      // (otherwise, ScaLAPACK core dumps). PBLAS requires desc[0] == 1 | 2, even
+      // for an inactive context.
+      desc[0] = BLOCK_CYCLIC_2D;
       desc[1] = -1; // Tells BLACS to ignore me.
       desc[2] = m;
       desc[3] = n;
@@ -147,7 +149,7 @@ PyObject* blacs_create(PyObject *self, PyObject *args)
       Cblacs_gridinfo_(ConTxt, &nprow, &npcol, &myrow, &mycol);
 
       lld = numroc_(&m, &mb, &myrow, &rsrc, &nprow);
-      desc[0] = 1; // BLOCK_CYCLIC_2D
+      desc[0] = BLOCK_CYCLIC_2D;
       desc[1] = ConTxt;
       desc[2] = m;
       desc[3] = n;
@@ -278,7 +280,9 @@ PyObject* scalapack_redist(PyObject *self, PyObject *args)
         Py_RETURN_NONE;
       }
 
-    return b_obj;
+    PyObject* value = Py_BuildValue("O",b_obj);
+    Py_DECREF(b_obj);
+    return value;
 }
 
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args)
@@ -578,5 +582,7 @@ PyObject* scalapack_inverse_cholesky(PyObject *self, PyObject *args)
       }
     Py_RETURN_NONE;
 }
+
 #endif
 #endif // PARALLEL
+
