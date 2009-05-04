@@ -136,6 +136,11 @@ propagators because they have an embedded Euler step in each predictor step:
 
   \tilde{\psi}_n(t+\Delta t) \approx (1 - i \hat{S}^{\;-1}_\mathrm{approx.}(t) \tilde{H}(t) \Delta t)\tilde{\psi}_n(t)
 
+, where :math:`\hat{S}^{\;-1}_\mathrm{approx.}` is an inexpensive operation
+which approximates the inverse of the overlap operator :math:`\hat{S}`. See
+the :ref:`Developers Guide <overlaps>` for details.
+
+
 Therefore, as a rule-of-thumb, choose a time-step small enough to minimize the
 number of iterations performed by the linear solvers in each time-step, but
 large enough to minimize the number of time-steps required to arrive at the
