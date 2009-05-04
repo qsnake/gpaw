@@ -211,8 +211,12 @@ class AllElectron:
                 except (ValueError, IndexError):
                     fd = None
                 else:
-                    t('Using old density for initial guess.')
-                    n *= Z / (npy.dot(n * r**2, dr) * 4 * pi)
+                    norm = npy.dot(n * r**2, dr) * 4 * pi
+                    if abs(norm - sum(f_j)) > 0.01:
+                        fd = None
+                    else:
+                        t('Using old density for initial guess.')
+                        n *= sum(f_j) / norm
 
         if fd is None:
             self.intialize_wave_functions()
