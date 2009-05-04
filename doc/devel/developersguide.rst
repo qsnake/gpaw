@@ -69,10 +69,14 @@ class (previously the :epydoc:`create_localized_functions
 <gpaw.localized_functions>` function).  The result of the operation is a
 :epydoc:`gpaw.localized_functions.LocFuncs` object (``paw.wfs.pt.lfs_a[a]``).
 
+See also :epydoc:`gpaw.setup.Setup` and :epydoc:`gpaw.spline.Spline`.
+
+
 .. _orthogonality:
 
-The pseudo wave-functions are othonormalized like this:
- 
+The wave-functions are othonormalized such that the pseudo wave-functions
+obey the following orthogonality requirements:
+
 .. math::
 
   \langle \psi_{\sigma\mathbf{k}n} | 
@@ -81,7 +85,16 @@ The pseudo wave-functions are othonormalized like this:
           \tilde{\psi}_{\sigma\mathbf{k}m} \rangle =
   \delta_{nm},
 
-where the overlap operator looks like:
+, where :math:`\hat{O}` is the overlap operator in the PAW formalism. Refer
+to :ref:`Orthogonalizing the wave functions <orthogonalization>` for details.
+
+
+.. _overlaps:
+
+Overlaps
+=========
+
+The overlap operator if defined in terms of the PAW overlap corrections:
 
 .. math::
 
@@ -100,8 +113,28 @@ rename ``O_ii`` to ``dO_ii`` and :math:`\hat{S}` to :math:`\hat{O}`.
   [\phi_{i_1}^a(\mathbf{r})\phi_{i_2}^a(\mathbf{r}) -
    \tilde{\phi}_{i_1}^a(\mathbf{r})\tilde{\phi}_{i_2}^a(\mathbf{r})].
 
-See also :epydoc:`gpaw.setup.Setup`,
-and :epydoc:`gpaw.spline.Spline`.
+
+An approximate inverse overlap operator is similarly defined by:
+
+.. math::
+
+ \hat{O}^{\;-1}_\mathrm{approx.} = 1 +
+    \sum_a \sum_{i_1 i_2} |\tilde{p}_{i_1}^a\rangle
+    C_{i_1 i_2}^a \langle\tilde{p}_{i_2}^a|.
+
+The inverse overlap coefficients :math:`C_{i_1 i_2}^a` are found in ``setup.C_ii``
+(``ndarray``) and are solutions to the system of linear equations:
+
+.. math::
+
+    C_{i_1 i_2}^a  + \Delta O_{i_1 i_2}^a + \sum_{i_3 i_4} C_{i_1 i_3}^a
+    B_{i_3 i_4}^a \Delta O_{i_4 i_2}^a = 0 \qquad ,\forall i_1,i_2
+
+, such that :math:`\hat{O}^{\;-1}_\mathrm{approx.}\hat{O} = \hat{I}` provided
+:math:`\langle\tilde{p}_{i_1}^a|\tilde{p}_{i_2}^{a'}\rangle = \delta_{a a'}
+\langle\tilde{p}_{i_1}^a|\tilde{p}_{i_2}^{a}\rangle`. These projector overlaps
+:math:`B_{i_1 i_2}^a = \langle\tilde{p}_{i_1}^a|\tilde{p}_{i_2}^{a}\rangle`
+are likewise found in ``setup.B_ii``.
 
 
 .. _density:

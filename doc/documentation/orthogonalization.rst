@@ -31,7 +31,7 @@ sparse because the projector functions `\tilde{P}^a_{iG} =
 \tilde{p}^a_i(\mathbf{r}_G - \mathbf{R}^a)` are localized inside the
 augmentation spheres.  The `\Delta O^a_{i_1i_2}` atomic PAW overlap
 corrections are small `N_p^a \times N_p^a` matrices (`N_p^a \sim 10`)
-defined :ref:`here <orthogonality>`.
+defined :ref:`here <overlaps>`.
 
 
 
