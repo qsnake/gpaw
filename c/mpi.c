@@ -684,7 +684,7 @@ static PyObject * MPICommunicator(MPIObject *self, PyObject *args)
 #ifdef GPAW_MPI_DEBUG
   // Default Errhandler is MPI_ERRORS_ARE_FATAL
   MPI_Errhandler_set(comm, MPI_ERRORS_RETURN); 
-#endif GPAW_MPI_DEBUG
+#endif 
   MPI_Group_free(&newgroup);
   MPI_Group_free(&group);
   if (comm == MPI_COMM_NULL)
