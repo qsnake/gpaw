@@ -94,7 +94,7 @@ to :ref:`Orthogonalizing the wave functions <orthogonalization>` for details.
 Overlaps
 =========
 
-The overlap operator if defined in terms of the PAW overlap corrections:
+The overlap operator is defined in terms of the PAW overlap corrections:
 
 .. math::
 
