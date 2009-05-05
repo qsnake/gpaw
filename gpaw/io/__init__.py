@@ -321,7 +321,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
             if master:
                 w.fill(nt_sG)
 
-    # Write the pseudpotential on the coarse grid:
+    # Write the pseudopotential on the coarse grid:
     if master:
         w.add('PseudoPotential',
               ('nspins', 'ngptsx', 'ngptsy', 'ngptsz'), dtype=float)
@@ -594,6 +594,10 @@ def read(paw, reader):
                 if domain_comm.rank == 0:
                     kpt.P_ani[a] = P_ni[n0::nstride, i1:i2].copy()
                 i1 = i2
+
+    if r['Mode'] == 'lcao':
+        spos_ac = paw.atoms.get_scaled_positions()
+        paw.wfs.load_lazily(hamiltonian, spos_ac)
 
     # Get the forces from the old calculation:
     if r.has_array('CartesianForces'):

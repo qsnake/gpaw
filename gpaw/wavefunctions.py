@@ -342,6 +342,49 @@ class WaveFunctions(EmptyWaveFunctions):
                 if a in P_ani:
                     self.world.send(P_ani[a], 0, 1303 + a)
 
+    def get_wave_function_array(self, n, k, s):
+        """Return pseudo-wave-function array.
+        
+        For the parallel case find the rank in kpt_comm that contains
+        the (k,s) pair, for this rank, collect on the corresponding
+        domain a full array on the domain master and send this to the
+        global master."""
+
+        nk = len(self.ibzk_kc)
+        mynu = len(self.kpt_u)
+        kpt_rank, u = divmod(k + nk * s, mynu)
+        nn, band_rank = divmod(n, self.band_comm.size)
+
+        psit1_G = self._get_wave_function_array(u, nn)
+        size = self.world.size
+        rank = self.world.rank
+        if size == 1:
+            return psit1_G
+
+        if self.kpt_comm.rank == kpt_rank:
+            if self.band_comm.rank == band_rank:
+                psit_G = self.gd.collect(psit1_G)
+
+                if kpt_rank == 0 and band_rank == 0:
+                    if rank == 0:
+                        return psit_G
+
+                # Domain master send this to the global master
+                if self.gd.comm.rank == 0:
+                    self.world.send(psit_G, 0, 1398)
+
+        if rank == 0:
+            # allocate full wavefunction and receive
+            psit_G = self.gd.empty(dtype=self.dtype, global_array=True)
+            world_rank = (kpt_rank * self.gd.comm.size *
+                          self.band_comm.size +
+                          band_rank * self.gd.comm.size)
+            self.world.receive(psit_G, world_rank, 1398)
+            return psit_G
+
+    def _get_wave_function_array(self, u, n):
+        raise NotImplementedError
+
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.utilities.blas import gemm
@@ -621,6 +664,37 @@ class LCAOWaveFunctions(WaveFunctions):
         
         F_av -= (dET_av + dEn_av + dErho_av + dED_av)
 
+
+    def _get_wave_function_array(self, u, n):
+        kpt = self.kpt_u[u]
+        C_nM = kpt.C_nM
+        if C_nM is None:
+            # Hack to make sure things are available after restart
+            self.lazyloader.load(self)
+        
+        psit_G = self.gd.zeros(dtype=self.dtype)
+        psit_1G = psit_G.reshape(1, -1)
+        C_1M = kpt.C_nM[n].reshape(1, -1)
+        q = kpt.q # Should we enforce q=-1 for gamma-point?
+        if self.gamma:
+            q = -1
+        self.basis_functions.lcao_to_grid(C_1M, psit_1G, q)
+        return psit_G
+
+    def load_lazily(self, hamiltonian, spos_ac):
+        """Horrible hack to recalculate lcao coefficients after restart."""
+        class LazyLoader:
+            def __init__(self, hamiltonian, spos_ac):
+                self.hamiltonian = hamiltonian
+                self.spos_ac = spos_ac
+            
+            def load(self, wfs):
+                wfs.set_positions(spos_ac)
+                wfs.eigensolver.iterate(hamiltonian, wfs)
+                del wfs.lazyloader
+        
+        self.lazyloader = LazyLoader(hamiltonian, spos_ac)
+        
     def estimate_memory(self, mem):
         nbands = self.nbands
         nq = len(self.ibzk_qc)
@@ -902,49 +976,6 @@ class GridWaveFunctions(WaveFunctions):
             else:
                 self.initialize_wave_functions_from_restart_file(paw)
 
-    def get_wave_function_array(self, n, k, s):
-        """Return pseudo-wave-function array.
-        
-        For the parallel case find the rank in kpt_comm that contains
-        the (k,s) pair, for this rank, collect on the corresponding
-        domain a full array on the domain master and send this to the
-        global master."""
-
-        nk = len(self.ibzk_kc)
-        mynu = len(self.kpt_u)
-        kpt_rank, u = divmod(k + nk * s, mynu)
-        nn, band_rank = divmod(n, self.band_comm.size)
-
-        psit_nG = self.kpt_u[u].psit_nG
-        if psit_nG is None:
-            raise RuntimeError('This calculator has no wave functions!')
-
-        size = self.world.size
-        rank = self.world.rank
-        if size == 1:
-            return psit_nG[nn][:]
-
-        if self.kpt_comm.rank == kpt_rank:
-            if self.band_comm.rank == band_rank:
-                psit_G = self.gd.collect(psit_nG[nn][:])
-
-                if kpt_rank == 0 and band_rank == 0:
-                    if rank == 0:
-                        return psit_G
-
-                # Domain master send this to the global master
-                if self.gd.comm.rank == 0:
-                    self.world.send(psit_G, 0, 1398)
-
-        if rank == 0:
-            # allocate full wavefunction and receive
-            psit_G = self.gd.empty(dtype=self.dtype, global_array=True)
-            world_rank = (kpt_rank * self.gd.comm.size *
-                          self.band_comm.size +
-                          band_rank * self.gd.comm.size)
-            self.world.receive(psit_G, world_rank, 1398)
-            return psit_G
-
     def calculate_forces(self, hamiltonian, F_av):
         # Calculate force-contribution from k-points:
         F_aniv = self.pt.dict(self.nbands, derivative=True)
@@ -960,6 +991,12 @@ class GridWaveFunctions(WaveFunctions):
                 dO_ii = hamiltonian.setups[a].O_ii
                 F_vii -= np.dot(np.dot(F_niv.transpose(), P_ni), dO_ii)
                 F_av[a] += 2 * F_vii.real.trace(0, 1, 2)
+
+    def _get_wave_function_array(self, u, n):
+        psit_nG = self.kpt_u[u].psit_nG
+        if psit_nG is None:
+            raise RuntimeError('This calculator has no wave functions!')
+        return psit_nG[n][:] # dereference possible tar-file content
 
     def estimate_memory(self, mem):
         # XXX Laplacian operator?
