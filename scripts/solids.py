@@ -1,4 +1,4 @@
-"""Minimal orthorhombic unicells for bulk crystals"""
+"""Minimal orthorhombic unitcells for bulk crystals"""
 
 from ase import Atoms, view
 from math import sqrt
