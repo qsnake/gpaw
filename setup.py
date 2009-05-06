@@ -96,6 +96,11 @@ if '--do-not-force-inclusion-of-numpy' in sys.argv:
     force_inclusion_of_numpy = False
     sys.argv.remove('--do-not-force-inclusion-of-numpy')
 
+remove_gcc_flags = False
+if '--remove-gcc-flags' in sys.argv:
+    remove_gcc_flags = True
+    sys.argv.remove('--remove-gcc-flags')
+
 check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_numpy)
 
 get_system_config(define_macros, undef_macros,
@@ -122,6 +127,13 @@ if compiler is not None:
     msg += ['* Compiling gpaw with %s' % compiler]
     # A hack to change the used compiler and linker:
     vars = get_config_vars()
+    if remove_gcc_flags:
+        for key in ['BASECFLAGS', 'CFLAGS', 'OPT', 'PY_CFLAGS']:
+            value = vars[key].split()
+            # remove all gcc flags (causing problems with other compilers)
+            for v in list(value):
+                value.remove(v)
+            vars[key] = ' '.join(value)
     for key in ['CC', 'LDSHARED']:
         value = vars[key].split()
         # first argument is the compiler/linker.  Replace with mpicompiler:
