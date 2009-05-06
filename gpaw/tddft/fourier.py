@@ -38,6 +38,7 @@ class DensityFourierTransform(Observer):
         self.dtype = complex # np.complex128 really, but hey...
         self.Fnt_wsG = None
         self.Fnt_wsg = None
+
         self.Ant_sG = None
         self.Ant_sg = None
 
@@ -165,7 +166,7 @@ class DensityFourierTransform(Observer):
 
         # Test time
         time = tar['Time']
-        assert time == self.time, 'Time is incompatible.'
+        assert abs(time-self.time)<1e-9, 'Time is incompatible.' #TODO
 
         # Test timestep (non-critical)
         timestep = tar['TimeStep']
