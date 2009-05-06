@@ -135,7 +135,7 @@ class VDWFunctional:
         self.gga = True
         self.mgga = not True
         self.hybrid = 0.0
-        self.uses_libxc = False
+        self.uses_libxc = self.revPBEx.uses_libxc
         self.gllb = False
         self.xcname = 'vdw-DF'
 
@@ -258,14 +258,13 @@ class VDWFunctional:
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                 a2_g, aa2_g, ab2_g,
                                 deda2_g, dedaa2_g, dedab2_g):
-        raise NotImplementedError("Spin polarized self-consistent vdW calculation not supported yet.")
         """Calculate energy and potential."""
         # LDA correlation:
         e_LDAc_g = np.empty_like(e_g)
         va_LDAc_g = np.zeros_like(va_g)
         vb_LDAc_g = np.zeros_like(vb_g)
-        v_LDAc_g = np.zeros_like(va_g)
-        self.LDAc.calculate_spinpolarized(e_LDAc_g, na_g, va_LDAc_g, nb_g, vb_LDAc_g)
+        self.LDAc.calculate_spinpolarized(e_LDAc_g,
+                                          na_g, va_LDAc_g, nb_g, vb_LDAc_g)
         va_g += va_LDAc_g
         vb_g += vb_LDAc_g
 
@@ -280,11 +279,10 @@ class VDWFunctional:
             v_g = np.zeros_like(va_g)
             deda2nl_g = np.zeros_like(deda2_g)
             e = self.get_non_local_energy(na_g + nb_g, a2_g, e_LDAc_g,
-                                          (va_LDAc_g + vb_LDAc_g)/2.0,
+                                          (va_LDAc_g + vb_LDAc_g) / 2.0,
                                           v_g, deda2nl_g) 
-            deda2_g += deda2nl_g
-            dedaa2_g += deda2nl_g / 4.0  
-            dedab2_g += deda2nl_g / 4.0
+            dedaa2_g += deda2nl_g * 2.0  
+            dedab2_g += deda2nl_g * 2.0
             va_g += v_g 
             vb_g += v_g 
             if self.gd.comm.rank == 0:

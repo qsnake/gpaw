@@ -130,6 +130,7 @@ class XCFunctional:
         elif xcname in ['vdW-DF', 'vdWDF']:
             code = 'vdW-DF'
             self.gga = True
+            self.uses_libxc = True
             self.setupname = 'revPBE'
         elif xcname == 'oldLDA':
             self.maxDerivativeLevel=2
