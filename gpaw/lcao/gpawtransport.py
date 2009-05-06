@@ -935,7 +935,8 @@ class GPAWTransport:
             self.zint[self.cntint] = zp[i]
 
             for j in [0, 1]:
-                self.tgtint[j, self.cntint] = self.selfenergies[j](zp[i])
+                self.tgtint[j, self.cntint] = self.selfenergies[j].retarded(
+                    zp[i])
             
             sigma[:nblead, :nblead] += self.tgtint[0, self.cntint]
             sigma[-nblead:, -nblead:] += self.tgtint[1, self.cntint]
