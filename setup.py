@@ -86,28 +86,28 @@ data_files=[
     ('share/gpaw/test/parallel', test_parallel_files)
     ]
 
-force_inclusion_of_ase = False
-if '--force-inclusion-of-ase' in sys.argv:
-    force_inclusion_of_ase = True
-    sys.argv.remove('--force-inclusion-of-ase')
+include_ase = False
+if '--include-ase' in sys.argv:
+    include_ase = True
+    sys.argv.remove('--include-ase')
 
-force_inclusion_of_numpy = True
-if '--do-not-force-inclusion-of-numpy' in sys.argv:
-    force_inclusion_of_numpy = False
-    sys.argv.remove('--do-not-force-inclusion-of-numpy')
+import_numpy = True
+if '--ignore-numpy' in sys.argv:
+    import_numpy = False
+    sys.argv.remove('--ignore-numpy')
 
 remove_gcc_flags = False
 if '--remove-gcc-flags' in sys.argv:
     remove_gcc_flags = True
     sys.argv.remove('--remove-gcc-flags')
 
-check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_numpy)
+check_packages(packages, msg, include_ase, import_numpy)
 
 get_system_config(define_macros, undef_macros,
                   include_dirs, libraries, library_dirs,
                   extra_link_args, extra_compile_args,
                   runtime_library_dirs, extra_objects, msg,
-                  force_inclusion_of_numpy)
+                  import_numpy)
 
 mpicompiler = get_parallel_config(mpi_libraries,
                                   mpi_library_dirs,

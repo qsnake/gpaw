@@ -12,7 +12,7 @@ from glob import glob
 from os.path import join
 from stat import ST_MTIME
 
-def check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_numpy):
+def check_packages(packages, msg, include_ase, import_numpy):
     """Check the python version and required extra packages
 
     If ASE is not installed, the `packages` list is extended with the
@@ -21,7 +21,7 @@ def check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_num
     if sys.version_info < (2, 3, 0, 'final', 0):
         raise SystemExit('Python 2.3.1 or later is required!')
 
-    if force_inclusion_of_numpy:
+    if import_numpy:
         try:
             import numpy
         except ImportError:
@@ -42,22 +42,22 @@ def check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_num
         msg += ['  You will not be able to write and read wave functions',
                 '  in the netCDF format.']
 
-    if not force_inclusion_of_ase:
+    if not include_ase:
         try:
             import ase
         except ImportError:
-            include_ase = True
+            import_ase = True
         else:
-            include_ase = False
+            import_ase = False
 
-    if force_inclusion_of_ase or include_ase:
+    if include_ase or import_ase:
         # Find ASE directories:
-        # force_inclusion_of_ase works in case:
+        # include_ase works in case:
         # cd gpaw # top-level gpaw source directory
         # tar zxf ~/python-ase-3.1.0.846.tar.gz
         # ln -s python-ase-3.1.0.846/ase .
         ase_root = 'ase'
-        if force_inclusion_of_ase:
+        if include_ase:
             assert os.path.isdir(ase_root), ase_root+': No such file or directory'
         ase = []
         for root, dirs, files in os.walk(ase_root):
@@ -84,10 +84,10 @@ def find_file(arg, dir, files):
 def get_system_config(define_macros, undef_macros,
                       include_dirs, libraries, library_dirs, extra_link_args,
                       extra_compile_args, runtime_library_dirs, extra_objects,
-                      msg, force_inclusion_of_numpy):
+                      msg, import_numpy):
 
     undef_macros += ['NDEBUG']
-    if force_inclusion_of_numpy:
+    if import_numpy:
         import numpy
         include_dirs += [numpy.get_include()]
     include_dirs += ['c/libxc']
