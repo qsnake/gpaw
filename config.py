@@ -52,10 +52,19 @@ def check_packages(packages, msg, force_inclusion_of_ase, force_inclusion_of_num
 
     if force_inclusion_of_ase or include_ase:
         # Find ASE directories:
+        # force_inclusion_of_ase works in case:
+        # cd gpaw # top-level gpaw source directory
+        # tar zxf ~/python-ase-3.1.0.846.tar.gz
+        # ln -s python-ase-3.1.0.846/ase .
+        ase_root = 'ase'
+        if force_inclusion_of_ase:
+            assert os.path.isdir(ase_root), ase_root+': No such file or directory'
         ase = []
-        for root, dirs, files in os.walk('ASE'):
+        for root, dirs, files in os.walk(ase_root):
             if 'CVS' in dirs:
                 dirs.remove('CVS')
+            if '.svn' in dirs:
+                dirs.remove('.svn')
             if '__init__.py' in files:
                 ase.append(root.replace('/', '.'))
 
