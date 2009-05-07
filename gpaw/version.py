@@ -33,7 +33,7 @@ def get_svnversion(dir='gpaw'):
         # subprocess was introduced with python 2.4
         from subprocess import Popen, PIPE
         cmd = Popen('svnversion -n '+dir, 
-                    shell=True, stdout=PIPE, close_fds=True).stdout
+                    shell=True, stdout=PIPE, stderr=PIPE, close_fds=True).stdout
     except:
         cmd = popen3('svnversion -n '+dir)[1] # assert that we are in gpaw project
     output = cmd.read()
