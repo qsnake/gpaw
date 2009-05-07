@@ -245,7 +245,12 @@ class GPAW(PAW):
     def get_dos(self, spin=0, npts=201, width=None):
         """The total DOS.
 
-        Fold eigenvalues with Gaussians, and put on an energy grid."""
+        Fold eigenvalues with Gaussians, and put on an energy grid.
+
+        returns an (energies, dos) tuple, where energies are relative to the
+        vacuum level for non-periodic systems, and the average potentail for
+        periodic systems.
+        """
         if width is None:
             width = self.get_electronic_temperature()
         if width == 0:
