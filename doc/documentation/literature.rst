@@ -72,6 +72,30 @@ Reports, presentations, and theses using gpaw
 .. _early gpaw: ../_static/mortensen_mini2003talk.pdf
 
 
+Articles on the PAW formalism
+-----------------------------
+
+The original article introducing the PAW formalism:
+   | P. E. Blöchl
+   | `Projector augmented-wave method`__
+   | Physical Review B, Vol. **50**, 17953, 1994
+
+   __ http://dx.doi.org/10.1103/PhysRevB.50.17953
+
+A different formulation of PAW by Kresse and Joubert designed to make the transistion from USPP to PAW easy.
+  | G. Kresse and D. Joubert
+  | `From ultrasoft pseudopotentials to the projector augmented-wave method`__
+  | Physical Review B, Vol. **59**, 1758, 1999
+
+  __ http://dx.doi.org/10.1103/PhysRevB.59.1758
+
+A second, more pedagogical, article on PAW by Blöchl and co-workers.
+  | P. E. Blöchl, C. J. Först, and J. Schimpl
+  | `Projector Augmented Wave Method: ab-initio molecular dynamics with full wave functions`__
+  | Bulletin of Materials Science, Vol. **26**, 33, 2003
+
+  __ http://www.ias.ac.in/matersci/
+
 
 Publications using the gpaw code
 --------------------------------
@@ -183,27 +207,3 @@ Interpretation of STM images with DFT calculations:
   __ http://dx.doi.org/10.1103/PhysRevLett.102.106102
 
 .. 13 March 2009
-
-Articles on the PAW formalism
------------------------------
-
-The original article introducing the PAW formalism:
-   | P. E. Blöchl
-   | `Projector augmented-wave method`__
-   | Physical Review B, Vol. **50**, 17953, 1994
-
-   __ http://dx.doi.org/10.1103/PhysRevB.50.17953
-
-A different formulation of PAW by Kresse and Joubert designed to make the transistion from USPP to PAW easy.
-  | G. Kresse and D. Joubert
-  | `From ultrasoft pseudopotentials to the projector augmented-wave method`__
-  | Physical Review B, Vol. **59**, 1758, 1999
-
-  __ http://dx.doi.org/10.1103/PhysRevB.59.1758
-
-A second, more pedagogical, article on PAW by Blöchl and co-workers.
-  | P. E. Blöchl, C. J. Först, and J. Schimpl
-  | `Projector Augmented Wave Method: ab-initio molecular dynamics with full wave functions`__
-  | Bulletin of Materials Science, Vol. **26**, 33, 2003
-
-  __ http://www.ias.ac.in/matersci/

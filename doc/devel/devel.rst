@@ -4,19 +4,17 @@
 Development
 ===========
 
-GPAW development can be done by anyone!
-
-Just take a look at the
+GPAW development can be done by anyone! Just take a look at the
 :ref:`todo` list and find something that suits your talents!
 
-Read about :ref:`Theory <features_and_algorithms>` and
-:ref:`technology` behind the code. Follow with :ref:`introduction_to_paw`
-and :ref:`code_overview`, and print :ref:`the_big_picture`.
+The primary source of information is still the :ref:`manual` and
+:ref:`documentation`, but as a developer you might need additional
+information which can be found here. For example the :ref:`code_overview`.
 
 As a developer, you should subscribe to all GPAW related :ref:`mailing_lists`.
 
-Now you are ready to to perfom a :ref:`developer_installation`
-and start development!
+Now you are ready to to perfom a :ref:`developer_installation` and
+start development!
 
 .. toctree::
    :maxdepth: 1
