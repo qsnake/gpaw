@@ -2,10 +2,11 @@ from ase import *
 from gpaw import *
 from gpaw.lcao.gpawtransport import GPAWTransport 
 from gpaw.atom.basis import BasisMaker
+from gpaw.poisson import PoissonSolver
 import pickle
 
 a = 3.6
-L = 7.00 
+L = 5.00
 
 basis = BasisMaker('Na').generate(1, 1, energysplit=0.3)
 
@@ -14,18 +15,19 @@ atoms.positions[:4, 2] = [i * a for i in range(4)]
 atoms.positions[:, :2] = L / 2.
 atoms.center()
 atoms.set_calculator(GPAW(h=0.3,
-                          xc='PBE',
+                          xc='LDA',
                           basis={'Na': basis},
-                          kpts=(2,2,3),
+                          kpts=(1,2,2),
                           width=0.01,
                           mode='lcao',
+                          poissonsolver=PoissonSolver(relax='GS'),
                           txt='Na_lcao.txt',
                           usesymm=None,
                           mixer=Mixer(0.1, 5, metric='new', weight=100.0)))
 pl_atoms1 = range(4)     
-pl_atoms2 = range(-4, 0) 
+pl_atoms2 = range(-4, 0)
 pl_cell1 = (L, L, 4 * a) 
-pl_cell2 = pl_cell1      
+pl_cell2 = pl_cell1
 
 gpawtran = GPAWTransport(atoms=atoms,
                          pl_atoms=(pl_atoms1, pl_atoms2),
