@@ -7,14 +7,18 @@ from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi
 
 class LocalizedFunctions:
-    def __init__(self, gd, f_iG, corner_c, vt_G=None):
+    def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
         self.gd = gd
         #assert gd.is_orthogonal()
         assert gd.is_not_orthogonal()
         self.size_c = np.array(f_iG.shape[1:4])
         self.f_iG = f_iG
         self.corner_c = corner_c
+        self.index = index
         self.vt_G = vt_G
+
+    def __len__(self):
+        return len(self.f_iG)
 
     def apply_t(self):
         """Apply kinetic energy operator and return new object."""
@@ -29,7 +33,8 @@ class LocalizedFunctions:
         f_ig[:, p:-p, p:-p, p:-p] = self.f_iG
         Tf_iG = np.empty_like(f_iG)
         T.apply(f_iG, Tf_iG)
-        return LocalizedFunctions(Tf_iG, self.corner_c - p)
+        return LocalizedFunctions(self.gd, Tf_iG, self.corner_c - p,
+                                  self.index)
         
     def overlap(self, other):
         start_c = np.maximum(self.corner_c, other.corner_c)
@@ -54,21 +59,24 @@ class LocalizedFunctions:
                                   start_c[2]:stop_c[2]].reshape((-1,))
             return self.gd.dv * np.inner(a_iG, b_iG)
         else:
-            return 0.0
+            return None
 
     def __or__(self, other):
         if isinstance(other, LocalizedFunctions):
             return self.overlap(other)
-        
-        return LocalizedFunctions(self.gd, self.f_iG, self.corner_c, other)
+
+        # other is a potential:
+        vt_G = other
+        return LocalizedFunctions(self.gd, self.f_iG, self.corner_c,
+                                  self.index, vt_G)
 
 class WannierFunction(LocalizedFunctions):
-    def __init__(self, gd, wanf_G, corner_c):
+    def __init__(self, gd, wanf_G, corner_c, index=None):
         LocalizedFunctions.__init__(self, gd, wanf_G[np.newaxis, :, :, :],
-                                    corner_c)
+                                    corner_c, index)
 
 class AtomCenteredFunctions(LocalizedFunctions):
-    def __init__(self, gd, spline_j, spos_c):
+    def __init__(self, gd, spline_j, spos_c, index=None):
         rcut = max([spline.get_cutoff() for spline in spline_j])
         corner_c = np.ceil(spos_c * gd.N_c - rcut / gd.h_c).astype(int)
         size_c = np.ceil(spos_c * gd.N_c + rcut / gd.h_c).astype(int) - corner_c
@@ -82,7 +90,7 @@ class AtomCenteredFunctions(LocalizedFunctions):
         ni = lfc.Mmax
         f_iG = smallgd.zeros(ni)
         lfc.add(f_iG, {0: np.eye(ni)})
-        LocalizedFunctions.__init__(self, gd, f_iG, corner_c)
+        LocalizedFunctions.__init__(self, gd, f_iG, corner_c, index)
 
 class STM:
     def __init__(self, tip, surface):
@@ -120,22 +128,52 @@ class STM:
         print 'Tip atoms:', tip_indices
         print 'Surface atoms:', srf_indices
         
-        self.tip_functions_kin = []
         self.tip_functions = []
+        i = 0
         for a in tip_indices:
             setup = self.tip.wfs.setups[a]
             spos_c = tip_pos_av[a] / self.tip.gd.cell_c
             for phit in setup.phit_j:
-                f = AtomCenteredFunctions(self.tip.gd, [phit], spos_c)
+                f = AtomCenteredFunctions(self.tip.gd, [phit], spos_c, i)
                 tip_functions.append(f)
-                tip_functions_kin.append(f.apply_t())
+                i += len(f.f_iG)
+        self.ni = i
+
+        # Apply kinetic energy:
+        self.tip_functions_kin = []
+        for f in tip_functions:
+            tip_functions_kin.append(f.apply_t())
 
         self.srf_functions = []
+        j = 0
         for a in srf_indices:
             setup = self.srf.wfs.setups[a]
             spos_c = srf_pos_av[a] / self.srf.gd.cell_c
             for phit in setup.phit_j:
-                f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c)
+                f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
                 srf_functions.append(f)
+
+                # Boundary conditions!!!?
+                #if f outside box:
+                #    srf_functions.append(f.translate())
+                    
                 
+                j += len(f.f_iG)
+        self.nj = j
+        
         #self.gd = GridDescriptor()
+
+        #S_ij = ...
+
+    def get_s(self, ):
+        S_ij = np.zeros((self.ni, self.nj))
+        for s in self.srf_functions:
+            j1 = s.index
+            j2 = j1 + len(s)
+            for t in self.tip_functions:
+                i1 = t.index
+                i2 = i1 + len(t)
+                overlap = (t | vt_G | s) # + kinetic energy XXX
+                if overlap is not None:
+                    S_ij[i1:i2, j1:j2] += overlap
+        return S_ij
