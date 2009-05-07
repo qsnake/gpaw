@@ -125,6 +125,9 @@ class VDWFunctional:
         self.revPBEx = XCFunctional('revPBEx', nspins)
         self.LDAc = XCFunctional('None-C_PW', nspins)
 
+        if nspins == 2:
+            self.LDAc_spinpaired = XCFunctional('None-C_PW', nspins=1)
+
         self.read_table()
 
         self.soft_correction = soft_correction
@@ -260,29 +263,31 @@ class VDWFunctional:
                                 deda2_g, dedaa2_g, dedab2_g):
         """Calculate energy and potential."""
         # LDA correlation:
-        e_LDAc_g = np.empty_like(e_g)
-        va_LDAc_g = np.zeros_like(va_g)
-        vb_LDAc_g = np.zeros_like(vb_g)
-        self.LDAc.calculate_spinpolarized(e_LDAc_g,
-                                          na_g, va_LDAc_g, nb_g, vb_LDAc_g)
-        va_g += va_LDAc_g
-        vb_g += vb_LDAc_g
+        self.LDAc.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g)
 
         # revPBE exchange:
-        self.revPBEx.calculate_spinpolarized(e_g, na_g, va_g, nb_g, vb_g,
+        e_revPBEx_g = np.empty_like(e_g)
+        self.revPBEx.calculate_spinpolarized(e_revPBEx_g,
+                                             na_g, va_g, nb_g, vb_g,
                                              a2_g, aa2_g, ab2_g,
                                              deda2_g, dedaa2_g, dedab2_g)
-        e_g += e_LDAc_g 
+        e_g += e_revPBEx_g
+        
+        e_LDAc_g = np.empty_like(e_g)
+        v_LDAc_g = np.zeros_like(va_g)
+        self.LDAc_spinpaired.calculate_spinpaired(e_LDAc_g,
+                                                  na_g + nb_g, v_LDAc_g)
 
         if na_g.ndim == 3:
             # Non-local part:
             v_g = np.zeros_like(va_g)
             deda2nl_g = np.zeros_like(deda2_g)
             e = self.get_non_local_energy(na_g + nb_g, a2_g, e_LDAc_g,
-                                          (va_LDAc_g + vb_LDAc_g) / 2.0,
+                                          v_LDAc_g,
                                           v_g, deda2nl_g) 
-            dedaa2_g += deda2nl_g * 2.0  
-            dedab2_g += deda2nl_g * 2.0
+            deda2_g += deda2nl_g * 2
+            dedaa2_g += deda2nl_g
+            dedab2_g += deda2nl_g
             va_g += v_g 
             vb_g += v_g 
             if self.gd.comm.rank == 0:
