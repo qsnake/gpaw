@@ -718,19 +718,19 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
         for C_M, psit_G in zip(C_nM, psit_nG):
             self.lfc.lcao_to_grid(C_M, psit_G, q)
 
-    def calculate_potential_matrix_derivative(self, vt_G, DVt_MMc, q):
+    def calculate_potential_matrix_derivative(self, vt_G, DVt_vMM, q):
         """Calculate derivatives of potential matrix elements.
 
         ::
 
-                     /     *  _
-                    |   Phi  (r)
-           ~c       |      mu    ~ _        _   _
-          DV      = |   -------- v(r) Phi  (r) dr
-            mu nu   |     dr             nu
-                   /        c
+                      /     *  _
+                     |   Phi  (r)
+           ~c        |      mu    ~ _        _   _
+          DV      += |   -------- v(r) Phi  (r) dr
+            mu nu    |     dr             nu
+                    /        c
 
-        Results are added to DVt_MMc.
+        Results are added to DVt_vMM.
         """
         cspline_M = []
         for a, sphere in enumerate(self.sphere_a):
@@ -740,7 +740,8 @@ class BasisFunctions(NewLocalizedFunctionsCollection):
         gd = self.gd
         h_cv = gd.cell_cv / gd.N_c
         for c in range(3): # XXX
-            self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_MMc, h_cv,
+            self.lfc.calculate_potential_matrix_derivative(vt_G, DVt_vMM[c],
+                                                           h_cv,
                                                            gd.n_c, q, c,
                                                            np.array(cspline_M),
                                                            gd.beg_c,

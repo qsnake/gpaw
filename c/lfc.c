@@ -680,7 +680,7 @@ PyObject* spline_to_grid(PyObject *self, PyObject *args)
 PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
 {
   const PyArrayObject* vt_G_obj;
-  PyArrayObject* DVt_MMc_obj;
+  PyArrayObject* DVt_MM_obj;
   PyArrayObject* h_cv_obj;
   PyArrayObject* n_c_obj;
   int k;
@@ -689,7 +689,7 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
   PyArrayObject* beg_c_obj;
   PyArrayObject* pos_Wc_obj;
 
-  if (!PyArg_ParseTuple(args, "OOOOiiOOO", &vt_G_obj, &DVt_MMc_obj, 
+  if (!PyArg_ParseTuple(args, "OOOOiiOOO", &vt_G_obj, &DVt_MM_obj, 
 			&h_cv_obj, &n_c_obj, &k, &c,
                         &spline_obj_M_obj, &beg_c_obj,
                         &pos_Wc_obj))
@@ -703,13 +703,13 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
   const double (*pos_Wc)[3] = (const double (*)[3])pos_Wc_obj->data;
 
   long* beg_c = LONGP(beg_c_obj);
-  int nM = DVt_MMc_obj->dimensions[0];
+  int nM = DVt_MM_obj->dimensions[0];
   double* work_gm = lfc->work_gm;
+  double dv = lfc->dv;
 
   if (!lfc->bloch_boundary_conditions) {
-    double* DVt_MMc = (double*)DVt_MMc_obj->data;
+    double* DVt_MM = (double*)DVt_MM_obj->data;
     {
-    //for (int c = 0; c < 3; c++) {
       GRID_LOOP_START(lfc, -1) {
         // In one grid loop iteration, only z changes.
         int iza = Ga % n_c[2] + beg_c[2];
@@ -729,42 +729,31 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             (const bmgsspline*)(&(spline_obj->spline));
           
           int nm1 = v1->nm;
+          double fdYdc_m[nm1];
+          double rlYdfdr_m[nm1];
+          double f, dfdr;
           int l = (nm1 - 1) / 2;
+          const double* pos_c = pos_Wc[v1->W];
           //assert(2 * l + 1 == nm1);
           //assert(spline_obj->spline.l == l);
 
           int gm1 = 0;
           for (int G = Ga; G < Gb; G++, iz++) {
-            double xG = h_cv[0] * ix + h_cv[3] * iy + h_cv[6] * iz;
-            double yG = h_cv[1] * ix + h_cv[4] * iy + h_cv[7] * iz;
-            double zG = h_cv[2] * ix + h_cv[5] * iy + h_cv[8] * iz;
-
-            double x = xG - pos_Wc[v1->W][0];
-            double y = yG - pos_Wc[v1->W][1];
-            double z = zG - pos_Wc[v1->W][2];
+            double x = h_cv[0] * ix + h_cv[3] * iy + h_cv[6] * iz - pos_c[0];
+            double y = h_cv[1] * ix + h_cv[4] * iy + h_cv[7] * iz - pos_c[1];
+            double z = h_cv[2] * ix + h_cv[5] * iy + h_cv[8] * iz - pos_c[2];
+            double vtdv = vt_G[G] * dv;
 
             double R_c[] = {x, y, z};
             
             double r2 = x * x + y * y + z * z;
             double r = sqrt(r2);
-            double invr;
-            if(r > 1e-15) {
-              invr = 1.0 / r;
-            }
-            else {
-              invr = 0.0;
-            }
+            double Rcinvr = r > 1e-15 ? R_c[c] / r : 0.0;
             //assert(G == ((ix - beg_c[0]) * n_c[1] + 
             //             (iy - beg_c[1])) * n_c[2] + iz - beg_c[2]);
 
-            double f;
-            double dfdr;
             bmgs_get_value_and_derivative(spline, r, &f, &dfdr);
             //assert (r <= spline->dr * spline->nbins); // important
-
-            double fdYdc_m[nm1];
-            double rlYdfdr_m[nm1];
-            double test_fY_m[nm1];
 
             switch(c) {
             case 0:
@@ -777,32 +766,28 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
               spherical_harmonics_derivative_z(l, f, x, y, z, r2, fdYdc_m);
               break;
             }
-            spherical_harmonics(l, dfdr, x, y, z, r2, rlYdfdr_m);
-            spherical_harmonics(l, f, x, y, z, r2, test_fY_m);
+            spherical_harmonics(l, dfdr * Rcinvr, x, y, z, r2, rlYdfdr_m);
 
             for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-              //assert(abs(test_fY_m[m1] - v1->A_gm[gm1]) < 1e-10);
-              //if(l == 0){
-              //  assert(fdYdc_m[m1] == 0);
-              //}
-              lfc->work_gm[gm1] = vt_G[G] * (fdYdc_m[m1] +
-                                             rlYdfdr_m[m1] * R_c[c] * invr);
+              work_gm[gm1] = vtdv * (fdYdc_m[m1] + rlYdfdr_m[m1]);
             }            
           } // end loop over G
           for (int i2 = 0; i2 < ni; i2++) {
             LFVolume* v2 = volume_i + i2;
             int M2 = v2->M;
-            //if (M1 >= M2) { // XXX // Matrix is hermitian
-            if (1){
-              int nm2 = v2->nm;
-              double* DVt_mmc = DVt_MMc + (M1 * nM + M2) * 3;
-              for (int g = 0; g < nG; g++) {
-                for (int m1 = 0; m1 < nm1; m1++) {
-                  for (int m2 = 0; m2 < nm2; m2++) {
-                    double A2 = v2->A_gm[g * nm2 + m2];
-                    double A1 = work_gm[g * nm1 + m1];
-                    DVt_mmc[3 * (m2 + m1 * nM) + c] += A2 * A1 * lfc->dv;
-                  }
+            const double* A2_start_gm = v2->A_gm;
+            const double* A2_gm;
+            int nm2 = v2->nm;
+            double* DVt_start_mm = DVt_MM + M1 * nM + M2;
+            double* DVt_mm;
+            double work;
+            for (int g = 0; g < nG; g++) {
+              A2_gm = A2_start_gm + g * nm2;
+              for (int m1 = 0; m1 < nm1; m1++) {
+                work = work_gm[g * nm1 + m1];
+                DVt_mm = DVt_start_mm + m1 * nM;
+                for (int m2 = 0; m2 < nm2; m2++) {
+                  DVt_mm[m2] += A2_gm[m2] * work;
                 }
               }
             }
@@ -814,9 +799,8 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
 
   }
   else {
-    complex double* DVt_MMc = (complex double*)DVt_MMc_obj->data;
+    complex double* DVt_MM = (complex double*)DVt_MM_obj->data;
     {
-    //for (int c = 0; c < 3; c++) {
       GRID_LOOP_START(lfc, k) {
         // In one grid loop iteration, only z changes.
         int iza = Ga % n_c[2] + beg_c[2];
@@ -833,39 +817,28 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
             (const bmgsspline*)(&(spline_obj->spline));
           
           int nm1 = v1->nm;
+          double fdYdc_m[nm1];
+          double rlYdfdr_m[nm1];
+          double f, dfdr;
           int l = (nm1 - 1) / 2;
           //assert(2 * l + 1 == nm1);
           //assert(spline_obj->spline.l == l);
+          const double* pos_c = pos_Wc[v1->W];
 
           int gm1 = 0;
           for (int G = Ga; G < Gb; G++, iz++) {
-            double xG = h_cv[0] * ix + h_cv[3] * iy + h_cv[6] * iz;
-            double yG = h_cv[1] * ix + h_cv[4] * iy + h_cv[7] * iz;
-            double zG = h_cv[2] * ix + h_cv[5] * iy + h_cv[8] * iz;
-
-            double x = xG - pos_Wc[v1->W][0];
-            double y = yG - pos_Wc[v1->W][1];
-            double z = zG - pos_Wc[v1->W][2];
+            double x = h_cv[0] * ix + h_cv[3] * iy + h_cv[6] * iz - pos_c[0];
+            double y = h_cv[1] * ix + h_cv[4] * iy + h_cv[7] * iz - pos_c[1];
+            double z = h_cv[2] * ix + h_cv[5] * iy + h_cv[8] * iz - pos_c[2];
+            double vtdv = vt_G[G] * dv;
 
             double R_c[] = {x, y, z};
             
             double r2 = x * x + y * y + z * z;
             double r = sqrt(r2);
-            double invr;
-            if(r > 1e-15) {
-              invr = 1.0 / r;
-            }
-            else {
-              invr = 0.0;
-            }
-            double f;
-            double dfdr;
+            double Rc_over_r = r > 1e-15 ? R_c[c] / r : 0.0;
             bmgs_get_value_and_derivative(spline, r, &f, &dfdr);
             //assert (r <= spline->dr * spline->nbins);
-
-            double fdYdc_m[nm1];
-            double rlYdfdr_m[nm1];
-            double test_fY_m[nm1];
 
             switch(c) {
             case 0:
@@ -878,34 +851,31 @@ PyObject* calculate_potential_matrix_derivative(LFCObject *lfc, PyObject *args)
               spherical_harmonics_derivative_z(l, f, x, y, z, r2, fdYdc_m);
               break;
             }
-            spherical_harmonics(l, dfdr, x, y, z, r2, rlYdfdr_m);
-            spherical_harmonics(l, f, x, y, z, r2, test_fY_m);
+            spherical_harmonics(l, dfdr * Rc_over_r, x, y, z, r2, rlYdfdr_m);
 
             for (int m1 = 0; m1 < nm1; m1++, gm1++) {
-              assert(abs(test_fY_m[m1] - v1->A_gm[gm1]) < 1e-10);
-              //if(l == 0){
-              //  assert(fdYdc_m[m1] == 0);
-              //}
-              lfc->work_gm[gm1] = vt_G[G] * (fdYdc_m[m1] +
-                                             rlYdfdr_m[m1] * R_c[c] * invr);
+              work_gm[gm1] = vtdv * (fdYdc_m[m1] + rlYdfdr_m[m1]);
             }            
           } // end loop over G
 	
           for (int i2 = 0; i2 < ni; i2++) {
             LFVolume* v2 = volume_i + i2;
             int M2 = v2->M;
-            if(1) { //if (M1 >= M2) { // XXX Matrix is hermitian
-              int nm2 = v2->nm;
-              double complex phase = (conj(phase_i[i1]) * phase_i[i2] 
-                                      * lfc->dv);
-              double complex* DVt_mmc = DVt_MMc + (M1 * nM + M2) * 3;
-              for (int g = 0; g < nG; g++) {
-                for (int m1 = 0; m1 < nm1; m1++) {
-                  complex double wphase = work_gm[g * nm1 + m1] * phase;
-                  for (int m2 = 0; m2 < nm2; m2++) {
-                    DVt_mmc[3 * (m2 + m1 * nM) + c] += (v2->A_gm[g * nm2 + m2] 
-                                                        * wphase);
-                  }
+            const double* A2_start_gm = v2->A_gm;
+            const double* A2_gm;
+            double complex* DVt_start_mm = DVt_MM + M1 * nM + M2;
+            double complex* DVt_mm;
+            double complex work;
+            int nm2 = v2->nm;
+            double complex phase = conj(phase_i[i1]) * phase_i[i2];
+            
+            for (int g = 0; g < nG; g++) {
+              A2_gm = A2_start_gm + g * nm2;
+              for (int m1 = 0; m1 < nm1; m1++) {
+                work = work_gm[g * nm1 + m1] * phase;
+                DVt_mm = DVt_start_mm + m1 * nM;
+                for (int m2 = 0; m2 < nm2; m2++) {
+                  DVt_mm[m2] += A2_gm[m2] * work;
                 }
               }
             }

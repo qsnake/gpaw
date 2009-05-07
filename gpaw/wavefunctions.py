@@ -503,6 +503,7 @@ class LCAOWaveFunctions(WaveFunctions):
                                   'wavefunctions is not implemented.')
 
     def calculate_forces(self, hamiltonian, F_av):
+        self.timer.start('LCAO forces')
         spos_ac = self.tci.atoms.get_scaled_positions()
         nao = self.setups.nao
         nq = len(self.ibzk_qc)
@@ -513,9 +514,11 @@ class LCAOWaveFunctions(WaveFunctions):
         for a in self.basis_functions.my_atom_indices:
             ni = self.setups[a].ni
             dPdR_aqvMi[a] = np.empty((nq, 3, nao, ni), dtype)
+        self.timer.start('LCAO forces: tci derivative')
         self.tci.calculate_derivative(spos_ac, dThetadR_qvMM, dTdR_qvMM,
                                       dPdR_aqvMi)
-
+        self.timer.stop('LCAO forces: tci derivative')
+        
         # TODO: Most contributions will be the same for each spin.
         
         for kpt in self.kpt_u:
@@ -527,6 +530,7 @@ class LCAOWaveFunctions(WaveFunctions):
                                             dThetadR_qvMM[kpt.q],
                                             dTdR_qvMM[kpt.q],
                                             dPdR_aqvMi)
+        self.timer.stop('LCAO forces')
 
     def print_arrays_with_ranks(self, names, arrays_nax):
         # Debugging function for checking properties of distributed arrays
@@ -578,6 +582,7 @@ class LCAOWaveFunctions(WaveFunctions):
         # TODO: in gamma point calculations, Hamiltonian has the matrix already
         # But not for both spins, if spinpolarized
         # Hmmm....
+        self.timer.start('LCAO forces: initial')
         self.eigensolver.calculate_hamiltonian_matrix(hamiltonian, self, kpt)
         H_MM = self.eigensolver.H_MM
         tri2full(H_MM)
@@ -600,6 +605,7 @@ class LCAOWaveFunctions(WaveFunctions):
         
         rhoT_MM = rho_MM.T.copy()
         del rho_MM
+        self.timer.stop('LCAO forces: initial')
         
         # Kinetic energy contribution
         dET_av = np.zeros_like(F_av)
@@ -607,17 +613,19 @@ class LCAOWaveFunctions(WaveFunctions):
         for a, M1, M2 in my_slices():
             dET_av[a, :] = -2 * dEdTrhoT_vMM[:, M1:M2].sum(-1).sum(-1)
         del dEdTrhoT_vMM
-        
+
         # Potential contribution
+        self.timer.start('LCAO forces: potential')
         dEn_av = np.zeros_like(F_av)
         vt_G = hamiltonian.vt_sG[kpt.s]
-        DVt_MMv = np.zeros((nao, nao, 3), dtype)
-        basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_MMv, q)
+        DVt_vMM = np.zeros((3, nao, nao), dtype)
+        basis_functions.calculate_potential_matrix_derivative(vt_G, DVt_vMM, q)
         for a, M1, M2 in slices():
             for v in range(3):
-                dEn_av[a, v] = -2 * (DVt_MMv[M1:M2, :, v]
+                dEn_av[a, v] = -2 * (DVt_vMM[v, M1:M2, :]
                                      * rhoT_MM[M1:M2, :]).real.sum()
-        del DVt_MMv
+        del DVt_vMM
+        self.timer.stop('LCAO forces: potential')
         
         # Density matrix contribution due to basis overlap
         dErho_av = np.zeros_like(F_av)
@@ -627,6 +635,7 @@ class LCAOWaveFunctions(WaveFunctions):
         del dThetadRE_vMM
 
         # Density matrix contribution from PAW correction
+        self.timer.start('LCAO forces: paw correction')
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
         work_MM = np.empty((nao, nao), dtype)
         ZE_MM = None
@@ -645,8 +654,10 @@ class LCAOWaveFunctions(WaveFunctions):
                         dE = ZE_MM[:M1].sum() - ZE_MM[M2:].sum()
                     dErho_av[a, v] += 2 * dE
         del work_MM, ZE_MM
+        self.timer.stop('LCAO forces: paw correction')
         
         # Atomic density contribution
+        self.timer.start('LCAO forces: atomic density')
         dED_av = np.zeros_like(F_av)
         for v in range(3):
             for b in my_atom_indices:
@@ -661,6 +672,7 @@ class LCAOWaveFunctions(WaveFunctions):
                         dE = (PHPrhoT_MM[:, M2:].real.sum()
                               - PHPrhoT_MM[:, :M1].real.sum())
                     dED_av[a, v] += 2 * dE
+        self.timer.stop('LCAO forces: atomic density')
         
         F_av -= (dET_av + dEn_av + dErho_av + dED_av)
 
