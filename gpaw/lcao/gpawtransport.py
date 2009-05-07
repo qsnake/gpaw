@@ -129,8 +129,8 @@ class GPAWTransport:
 
         h2_sij, s2_ij = get_realspace_hs(self.h2_skmm,
                                          self.s2_kmm,
-                                         calc1.wfs.ibzk_kc, 
-                                         calc1.wfs.weight_k,
+                                         calc2.wfs.ibzk_kc, 
+                                         calc2.wfs.weight_k,
                                          R_c=R_c, usesymm=False)
 
         h2[:pl2,:pl2] = h2_sii[0]
@@ -935,8 +935,7 @@ class GPAWTransport:
             self.zint[self.cntint] = zp[i]
 
             for j in [0, 1]:
-                self.tgtint[j, self.cntint] = self.selfenergies[j].retarded(
-                    zp[i])
+                self.tgtint[j, self.cntint] = self.selfenergies[j](zp[i])
             
             sigma[:nblead, :nblead] += self.tgtint[0, self.cntint]
             sigma[-nblead:, -nblead:] += self.tgtint[1, self.cntint]
