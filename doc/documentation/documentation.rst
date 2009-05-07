@@ -16,34 +16,9 @@ Here you can find some literature about the PAW method and its real
 space implementation GPAW:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    literature
 
-Here is a list of specific advanced topics and functionalities of the
-GPAW calculator:
-
-.. toctree::
-   :maxdepth: 1
-   
-   lcao/lcao
-   parallel_runs/parallel_runs
-   convergence/convergence	
-   restart_files
-   rmm-diis
-   orthogonalization
-   xc/xc
-   xc/exx
-   tddft/tddft
-   dscf/dscf
-   pdos/pdos
-   xas/xas
-   densitymix/densitymix
-   ../devel/electrostatic_potential
-   ../devel/eigenvalues_of_core_states
-
-Mailing lists
-=============
-
-If you can't find what you are looking for,
-please consult :ref:`mailing_lists`.
+If you can not find what you are looking for, please consult the
+:ref:`mailing_lists`.

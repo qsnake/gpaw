@@ -37,19 +37,10 @@ to become the next release.
 
    toc-general
 
+* Supported :ref:`platforms_and_architectures`.
 * A report_ from PyLint.
 
 .. _report: http://wiki.fysik.dtu.dk/stuff/pylint_global.html
-
-Specialized information
-=======================
-
-.. toctree::
-   :maxdepth: 1
-
-   toc-special
-
-* Supported :ref:`platforms_and_architectures`.
 
 .. _code_overview:
 
@@ -75,29 +66,27 @@ the corresponding objects are defined in the code:
 The big picture
 ===============
 
-Keep this under your pillow (work in progress):
-
-.. image:: overview.png
-   :target: overview.pdf_
-   :width: 550 px
-
-Created with OpenOffice.org-Draw_: overview.odg_.
-
+The old (outdated) "The big picture" created with OpenOffice.org-Draw_
+can be found here: overview.odg_, overview.pdf_
 
 .. _OpenOffice.org-Draw: http://www.openoffice.org/product/draw.html
 .. _overview.pdf: ../_static/overview.pdf
 .. _overview.odg: ../_static/overview.odg
 
-.. image:: bslogo.png
-   :target: http://developer.berlios.de/projects/gridpaw
 
-The source for the GPAW-logo can be found here: gpaw-logo.odg_
+The GPAW logo
+=============
 
+The GPAW-logo is available in the odg_ and svg_ file formats:
+gpaw-logo.odg_, gpaw-logo.svg_
+
+.. _odg: http://www.openoffice.org/product/draw.html
+.. _svg: http://en.wikipedia.org/wiki/Scalable_Vector_Graphics
 .. _gpaw-logo.odg: ../_static/gpaw-logo.odg
-
+.. _gpaw-logo.svg: ../_static/gpaw-logo.svg
 
 Old pages
----------
+=========
 
 These pages may contain inaccurate or outdated information
 

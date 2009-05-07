@@ -15,12 +15,27 @@ Guides and manual pages
 * A description of some of the more specific :ref:`techniques and
   algorithms <features_and_algorithms>` used in the code.
 
+* A list of the :ref:`technology` used in the code.
+
 * A review of some `current development <Morning_meeting_2007>`_ projects.
 
 * The gpaw :ref:`manual`.
 
+* A pdf file on the PAW theory: `paw note`_
+
 .. _literature_reports_presentations_and_theses:
 
+
+Specialized information
+=======================
+
+Here is a list of specific advanced topics and functionalities of the
+GPAW calculator:
+
+.. toctree::
+   :maxdepth: 1
+   
+   toc-special
 
 Reports, presentations, and theses using gpaw
 ---------------------------------------------
