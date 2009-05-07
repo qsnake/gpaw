@@ -27,7 +27,7 @@ Guides and manual pages
 
 
 Specialized information
-=======================
+-----------------------
 
 Here is a list of specific advanced topics and functionalities of the
 GPAW calculator:
