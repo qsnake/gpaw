@@ -128,7 +128,9 @@ if compiler is not None:
     # A hack to change the used compiler and linker:
     vars = get_config_vars()
     if remove_gcc_flags:
-        for key in ['BASECFLAGS', 'CFLAGS', 'OPT', 'PY_CFLAGS']:
+        for key in ['BASECFLAGS', 'CFLAGS', 'OPT', 'PY_CFLAGS',
+            'CCSHARED', 'CFLAGSFORSHARED', 'LINKFORSHARED',
+            'LIBS', 'SHLIBS']:
             value = vars[key].split()
             # remove all gcc flags (causing problems with other compilers)
             for v in list(value):
