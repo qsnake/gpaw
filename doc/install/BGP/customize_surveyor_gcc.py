@@ -33,7 +33,7 @@ include_dirs += [gpfsdir+'/Numeric-24.2-1/'+python_site+'/include/python2.5',
 define_macros += [
           ('GPAW_AIX', '1'),
           ('GPAW_MKL', '1'),
-          ('GPAW_BGP', '1')
+          ('GPAW_BGP', '1'),
           ('GPAW_ASYNC', '1')
           ]
 
