@@ -81,6 +81,8 @@ def analyse_benchmark(dir, pattern, output_prefix, iter, verbose=False):
                 break
         if gpaw_version[-1] == 'M':
             gpaw_version = gpaw_version[:-1]
+        if gpaw_version.rfind(':') != -1:
+            gpaw_version = gpaw_version[:gpaw_version.rfind(':')]
         gpaw_version = int(gpaw_version)
         # assume old version (< 3172)
         start_iter = 0

@@ -10,6 +10,9 @@ parser = OptionParser(usage='%prog [options]',
 parser.add_option('--dir', dest="dir",
                   default='.',
                   help='Results directory')
+parser.add_option("--runs", dest="runs",
+                  default=10,
+                  help='use that many runs to calculate the average.')
 
 opt, args = parser.parse_args()
 
@@ -40,7 +43,7 @@ def plot(xdata, ydata, std,
          xlabel, ylabel,
          label, color, num=1):
     import matplotlib
-    matplotlib.use('Agg')
+    #matplotlib.use('Agg')
     import pylab
 
     # all goes to figure num
@@ -67,7 +70,7 @@ def plot_save(directory_name, out_prefix):
 
     pylab.savefig(directory_name + os.path.sep + out_prefix +'.png')
 
-def analyse_benchmark(ncores=8, machine='TEST'):
+def analyse_benchmark(ncores=8, machine='TEST', runs=10):
     #system = ['carbon_py']
     #system = ['carbon']
     #system = ['niflheim_py']
@@ -100,40 +103,22 @@ def analyse_benchmark(ncores=8, machine='TEST'):
             if n%2==0:
                 processes.append(n)
 
+    timer_entries_all = []
     if system.find('_py') == -1:
-        timer_entries_all = [
-            'run: 0',
-            'run: 1',
-            'run: 2',
-            'run: 3',
-            'run: 4',
-            'run: 5',
-            'run: 6',
-            'run: 7',
-            'run: 8',
-            'run: 9'
-            ]
+        for i in range(runs):
+            timer_entries_all.append('run: '+str(i))
     else:
-        timer_entries_all = [
-            'Run:  0',
-            'Run:  1',
-            'Run:  2',
-            'Run:  3',
-            'Run:  4',
-            'Run:  5',
-            'Run:  6',
-            'Run:  7',
-            'Run:  8',
-            'Run:  9'
-            ]
-
+        for i in range(runs):
+            timer_entries_all.append('Run:  '+str(i))
 
     import re
 
     # Select timer entries
-    selected_entries = range(10)
+    selected_entries = range(runs)
 
     height = {}
+
+    gpaw_versions = []
 
     pre_results = {}
     results = {}
@@ -150,7 +135,16 @@ def analyse_benchmark(ncores=8, machine='TEST'):
     # lenght of directory name
     rootlen = len(root_abspath) + 1
 
-    ref_value = -44.85826
+    ref_value_3300 = -44.85826
+    ref_SCF_3300 = 19
+    ref_value_3301 = -44.85709
+    ref_SCF_3301 = 31
+    ref_value_3721 = -44.85666
+    ref_SCF_3721 = 35
+
+    ref_value = ref_value_3721
+    ref_SCF = ref_SCF_3721
+    
     tolerance = 0.0001
 
     ref_failed = False
@@ -166,6 +160,28 @@ def analyse_benchmark(ncores=8, machine='TEST'):
             #
             lines = f.readlines()
         except: pass
+        # extract gpaw version
+        for n, l in enumerate(lines):
+            if l.startswith(' |__ |  _|___|_____|'):
+                gpaw_version = lines[n + 0].strip().split()[3].split('.')[-1]
+                break
+        if gpaw_version[-1] == 'M':
+            gpaw_version = gpaw_version[:-1]
+        if gpaw_version.rfind(':') != -1:
+            gpaw_version = gpaw_version[:gpaw_version.rfind(':')]
+        gpaw_version = int(gpaw_version)
+        if len(str(gpaw_version)) > 1:
+            if gpaw_version <= 3720:
+                ref_value = ref_value_3301
+                ref_SCF = ref_SCF_3301
+            if gpaw_version <= 3300:
+                ref_value = ref_value_3300
+                ref_SCF = ref_SCF_3300
+        elif len(str(gpaw_version)) == 1:
+            if gpaw_version <= 4:
+                ref_value = ref_value_3300
+                ref_SCF = ref_SCF_3300
+        gpaw_versions.append(gpaw_version)
         # search for timings
         for entry in selected_entries:
             h = []
@@ -190,6 +206,10 @@ def analyse_benchmark(ncores=8, machine='TEST'):
                     ref_failed = True
                     break
     #
+    assert len(processes) == len(gpaw_versions)
+    for p in range(len(processes)):
+        assert gpaw_versions[p] == max(gpaw_versions), 'incompatible gpaw versions across cores'
+    #
     if h_failed:
         print 'Panic: negative time in '+file
         assert not h_failed
@@ -209,10 +229,15 @@ def analyse_benchmark(ncores=8, machine='TEST'):
         results[p] = []
         temp = []
         for q in range(p):
+            temp_q = []
             for i in range(len(pre_results[p])):
                 #print pre_results[p][i][q]
+                temp_q.append(pre_results[p][i][q])
                 temp.append(pre_results[p][i][q])
-            results[p].append((npy.average(temp), npy.std(temp)))
+            # averages for a given core q
+            results[p].append((npy.average(temp_q), npy.std(temp_q)))
+        # max, avrg, and std across all cores
+        results[p].append((npy.average(temp), npy.std(temp), max(temp)))
     #for p in processes:
     #    #N = len(pre_results[p])
     #    #avg = sum(pre_results[p])/N
@@ -243,15 +268,16 @@ def analyse_benchmark(ncores=8, machine='TEST'):
         parameters = []
         avg = []
         std = []
-        for i in range(len(results[p])):
+        for i in range(len(results[p])-1):
             parameters.append(p+0.3*i)
+            # avg and std across processes
             avg.append(results[p][i][0])
             std.append(results[p][i][1])
         # height
         #print parameters, avg, std
-        print 'No. of processes '+str(int(parameters[0]))+' Runtime '+str(round(max(avg),2))+' sec'
+        print 'No. of processes '+str(int(parameters[0]))+': Runtime [sec]: avg '+str(round(results[p][-1][0],2))+', stddev '+str(round(results[p][-1][1],2))+', max '+str(round(results[p][-1][2],2))
         plot(
-            parameters, avg, q,
+            parameters, avg, std,
             systems_string,
             'processes per node',
             'time [s]',
@@ -270,4 +296,7 @@ if __name__ == '__main__':
     MACHINE = environ.get('MACHINE', 'TEST')
     assert NCORES > 1, str(NCORES)+' must be > 1'
 
-    analyse_benchmark(NCORES, MACHINE)
+    runs = int(opt.runs)
+    assert runs >= 1, runs+' must be >= 1'
+
+    analyse_benchmark(NCORES, MACHINE, runs=runs)
