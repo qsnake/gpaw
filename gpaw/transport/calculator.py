@@ -273,7 +273,7 @@ class Transport(GPAW):
     def set_atoms(self, atoms):
         self.atoms = atoms.copy()
         
-    def initialize_transport(self):
+    def initialize_transport(self, dry=False):
         if not self.initialized:
             self.initialize()
             self.set_positions()
@@ -334,7 +334,8 @@ class Transport(GPAW):
                 self.lead_kpts = self.atoms_l[0].calc.wfs.bzk_kc
             else:
                 self.lead_kpts = self.atoms_l[0].calc.wfs.ibzk_kc
-     
+        if self.use_env:
+            self.env_kpts = self.atoms_e[0].calc.wfs.ibzk_kc               
         self.allocate_cpus()
         self.initialize_matrix()
        
@@ -367,17 +368,18 @@ class Transport(GPAW):
             
         self.current = 0
         self.linear_mm = None
-        
-        for i in range(self.lead_num):
-            if self.identical_leads and i > 0:
-                self.update_lead_hamiltonian(i, 'lead0')    
-            else:
-                self.update_lead_hamiltonian(i)
-            self.initialize_lead(i)
 
-        for i in range(self.env_num):
-            self.update_env_hamiltonian(i)
-            self.initialize_env(i)
+        if not dry:        
+            for i in range(self.lead_num):
+                if self.identical_leads and i > 0:
+                    self.update_lead_hamiltonian(i, 'lead0')    
+                else:
+                    self.update_lead_hamiltonian(i)
+                self.initialize_lead(i)
+
+            for i in range(self.env_num):
+                self.update_env_hamiltonian(i)
+                self.initialize_env(i)
 
         self.fermi = self.lead_fermi[0]
         self.text('*****should change here*******')
@@ -2158,6 +2160,7 @@ class Transport(GPAW):
                 current[i] += tcalc.T_e[j] * weight[j] * fermi_factor[i][0][j]
         self.current = current[0] - current[1]
         return self.current
+    
     def plot_eigen_channel(self, energy=[0]):
         tcalc = self.set_calculator(energy)
         tcalc.initialize()
@@ -2353,5 +2356,52 @@ class Transport(GPAW):
             H_MM *= Hartree
             H_sqMM[kpt.s, kpt.q] = H_MM      
         return H_sqMM            
-        
+
+    def estimate_transport_matrix_memory(self):
+        self.initialize_transport(dry=True)
+        sum = 0
+        ns = self.nspins
+        if self.use_lead:
+            nk = len(self.my_lead_kpts)
+            nb = max(self.nblead)
+            npk = self.my_npk
+            unit_real = np.array(1,float).itemsize
+            unit_complex = np.array(1, complex).itemsize
+            if self.npk == 1:
+                unit = unit_real
+            else:
+                unit = unit_complex
+            sum += self.lead_num * (2 * ns + 1)* nk * nb**2 * unit_complex
+            sum += self.lead_num * (2 * ns + 1)* npk * nb**2 * unit
             
+            if self.LR_leads:
+                sum += ( 2 * ns + 1) * npk * nb ** 2 * unit
+            sum += ns * npk * nb**2 * unit
+            
+            ntgt = 300
+            sum += self.lead_num * ns * ntgt * nb**2 * unit_complex
+        if self.use_env:
+            nk = len(self.env_kpts)
+            nb = self.nbenv
+            sum += self.env_num * (2 * ns + 1) * nk * nb ** 2 * unit_complex
+            sum += self.env_num * (2 * ns + 1) * nb ** 2 * unit_real
+            
+            sum += self.env_num * ns * ntgt * nb**2 * unit_complex
+            
+        if self.gamma:
+            unit = unit_real
+        else:
+            unit = unit_complex
+        nk = len(self.my_kpts)
+        nb = self.nbmol
+        sum += (2*ns + 1) * nk * nb**2 * unit
+        
+        if self.npk == 1:
+            unit = unit_real
+        else:
+            unit = unit_complex
+        sum += 2 * (2* ns + 1) * npk * nb**2 * unit
+        return sum
+    
+        
+        
