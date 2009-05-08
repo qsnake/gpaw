@@ -342,24 +342,26 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
         {
           int rank;
           MPI_Comm_rank(self->comm, &rank);
-#if defined(GPAW_MPI2) && !defined(GPAW_BGP)
-          ret = MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, datatype,
-                     operation, root, self->comm);
-#else
           char* b = 0;
           if (rank == root)
-               b = GPAW_MALLOC(char, n * elemsize);
-
-          ret = MPI_Reduce(PyArray_BYTES(obj), b, n, datatype, operation, root,
-		     self->comm);
-
-          if (rank == root)
             {
+#ifdef GPAW_MPI2 
+              ret = MPI_Reduce(MPI_IN_PLACE, PyArray_BYTES(obj), n, 
+                               datatype, operation, root, self->comm);
+#else
+              b = GPAW_MALLOC(char, n * elemsize);
+              ret = MPI_Reduce(PyArray_BYTES(obj), b, n, datatype, 
+                               operation, root, self->comm);
 	      assert(PyArray_NBYTES(obj) == n * elemsize);
               memcpy(PyArray_BYTES(obj), b, n * elemsize);
-              free(b);
-	    }
+              free(b);               
 #endif
+            }
+          else
+            {
+              ret = MPI_Reduce(PyArray_BYTES(obj), b, n, datatype, 
+                               operation, root, self->comm);
+            }
 #ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
             {
