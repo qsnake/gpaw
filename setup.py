@@ -96,10 +96,10 @@ if '--ignore-numpy' in sys.argv:
     import_numpy = False
     sys.argv.remove('--ignore-numpy')
 
-remove_gcc_flags = False
-if '--remove-gcc-flags' in sys.argv:
-    remove_gcc_flags = True
-    sys.argv.remove('--remove-gcc-flags')
+remove_default_flags = False
+if '--remove-default-flags' in sys.argv:
+    remove_default_flags = True
+    sys.argv.remove('--remove-default-flags')
 
 check_packages(packages, msg, include_ase, import_numpy)
 
@@ -127,7 +127,7 @@ if compiler is not None:
     msg += ['* Compiling gpaw with %s' % compiler]
     # A hack to change the used compiler and linker:
     vars = get_config_vars()
-    if remove_gcc_flags:
+    if remove_default_flags:
         for key in ['BASECFLAGS', 'CFLAGS', 'OPT', 'PY_CFLAGS',
             'CCSHARED', 'CFLAGSFORSHARED', 'LINKFORSHARED',
             'LIBS', 'SHLIBS']:
