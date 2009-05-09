@@ -10,12 +10,31 @@ class LocalizedFunctions:
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
         self.gd = gd
         #assert gd.is_orthogonal()
-        assert gd.is_not_orthogonal()
+        assert not gd.is_non_orthogonal()
         self.size_c = np.array(f_iG.shape[1:4])
         self.f_iG = f_iG
         self.corner_c = corner_c
         self.index = index
         self.vt_G = vt_G
+        
+        #check boundary conditions
+        #if bla
+        #if bub
+        #.........
+        #set flag
+        #self.periodic =[True,False]
+        #self.perioc_list=[corner_1,corner_2,corner_3]
+
+    def get_periodic(self):
+        return
+        #if not self.periodic:
+        #  return ...
+        #if self.periodic:
+        #
+        #list =[]
+        #  for corner in self.periodic_list:
+        #    list.append(LocalizedFunctions(gd,f_ig,corner,index=self.index))
+        #return list
 
     def __len__(self):
         return len(self.f_iG)
@@ -135,14 +154,14 @@ class STM:
             spos_c = tip_pos_av[a] / self.tip.gd.cell_c
             for phit in setup.phit_j:
                 f = AtomCenteredFunctions(self.tip.gd, [phit], spos_c, i)
-                tip_functions.append(f)
+                self.tip_functions.append(f)
                 i += len(f.f_iG)
         self.ni = i
 
         # Apply kinetic energy:
         self.tip_functions_kin = []
-        for f in tip_functions:
-            tip_functions_kin.append(f.apply_t())
+        #for f in self.tip_functions:
+        #    self.tip_functions_kin.append(f.apply_t())
 
         self.srf_functions = []
         j = 0
@@ -151,11 +170,11 @@ class STM:
             spos_c = srf_pos_av[a] / self.srf.gd.cell_c
             for phit in setup.phit_j:
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
-                srf_functions.append(f)
+                self.srf_functions.append(f)
 
                 # Boundary conditions!!!?
                 #if f outside box:
-                #    srf_functions.append(f.translate())
+                #    self.srf_functions.append(f.translate())
                     
                 
                 j += len(f.f_iG)
@@ -176,4 +195,5 @@ class STM:
                 overlap = (t | vt_G | s) # + kinetic energy XXX
                 if overlap is not None:
                     S_ij[i1:i2, j1:j2] += overlap
+  
         return S_ij
