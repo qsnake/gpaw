@@ -84,7 +84,7 @@ class Transport(GPAW):
                        'env_use_buffer', 'env_buffer_atoms', 'env_edge_atoms',
                        'env_bias', 'env_pbc', 'env_restart',                     
                        
-                       'LR_leads', 'gate',  'cal_loc',
+                       'LR_leads', 'gate',  'cal_loc', 'align_zero_energy',
                        'recal_path', 'use_qzk_boundary', 'use_linear_vt_mm',
                        'scat_restart', 'save_file', 'restart_file', 'fixed_boundary']:
                 
@@ -138,6 +138,8 @@ class Transport(GPAW):
                 p['cal_loc'] = kw['cal_loc']
             if key in ['recal_path']:
                 p['recal_path'] = kw['recal_path']
+            if key in ['align_zero_energy']:
+                p['align_zero_energy'] = kw['align_zero_energy']
             if key in ['use_qzk_boundary']:
                 p['use_qzk_boundary'] = kw['use_qzk_boundary']
             if key in ['use_linear_vt_mm']:
@@ -197,6 +199,7 @@ class Transport(GPAW):
         self.cal_loc = p['cal_loc']
         self.recal_path = p['recal_path']
         self.use_qzk_boundary = p['use_qzk_boundary']
+        self.align_zero_energy =  p['align_zero_energy']
         self.use_linear_vt_mm = p['use_linear_vt_mm']
         self.scat_restart = p['scat_restart']
         self.save_file = p['save_file']
@@ -260,7 +263,8 @@ class Transport(GPAW):
         p['gate'] = 0
         p['cal_loc'] = False
         p['recal_path'] = False
-        p['use_qzk_boundary'] = False 
+        p['use_qzk_boundary'] = False
+        p['align_zero_energy'] = False
         p['use_linear_vt_mm'] = False
         p['scat_restart'] = False
         p['save_file'] = True
@@ -273,10 +277,11 @@ class Transport(GPAW):
     def set_atoms(self, atoms):
         self.atoms = atoms.copy()
         
-    def initialize_transport(self, dry=False):
+    def initialize_transport(self, dryrun=False):
         if not self.initialized:
             self.initialize()
-            self.set_positions()
+            if not dryrun:
+                self.set_positions()
         self.nspins = self.wfs.nspins
 
         if self.LR_leads:
@@ -315,7 +320,8 @@ class Transport(GPAW):
             atoms = self.atoms_l[i]
             if not calc.initialized:
                 calc.initialize(atoms)
-                calc.set_positions(atoms)
+                if not dryrun:
+                    calc.set_positions(atoms)
             self.nblead.append(calc.wfs.setups.nao)
             if self.LR_leads:
                 self.dimt_lead.append(calc.gd.N_c[self.d])
@@ -326,7 +332,8 @@ class Transport(GPAW):
             atoms = self.atoms_e[i]
             if not calc.initialized:
                 calc.initialize(atoms)
-                calc.set_positions(atoms)
+                if not dryrun:
+                    calc.set_positions(atoms)
             self.nbenv.append(calc.wfs.setups.nao)
 
         if self.use_lead:
@@ -369,7 +376,7 @@ class Transport(GPAW):
         self.current = 0
         self.linear_mm = None
 
-        if not dry:        
+        if not dryrun:        
             for i in range(self.lead_num):
                 if self.identical_leads and i > 0:
                     self.update_lead_hamiltonian(i, 'lead0')    
@@ -598,10 +605,11 @@ class Transport(GPAW):
         rank = world.rank
         size = world.size
         npk = self.npk
-        parsize_energy = size // npk
         if size > npk:
+            parsize_energy = size // npk
             assert size % npk == 0
         else:
+            parsize_energy = 1
             assert npk % size == 0
  
         r0 = (rank // parsize_energy) * parsize_energy
@@ -871,6 +879,7 @@ class Transport(GPAW):
         self.h_spkmm = self.substract_pk(ntk, kpts, self.h_skmm, 'h')
         self.s_pkmm = self.substract_pk(ntk, kpts, self.s_kmm)
         self.d_spkmm = self.substract_pk(ntk, kpts, self.d_skmm, 'h')
+        self.remove_matrix_corner()
         #This line only for two_terminal
         if self.LR_leads:
             self.s_pkcmm , self.d_spkcmm = self.fill_density_matrix()
@@ -950,12 +959,13 @@ class Transport(GPAW):
 
     def initialize_density_matrix(self, region, l=0):
         npk = self.npk
+        ns = self.nspins
         if region == 'lead':
             ntk = self.ntklead
             calc = self.atoms_l[l].calc
             d_skmm = np.empty(self.hl_skmm[l].shape, self.hl_skmm[l].dtype)
             nk = ntk * npk
-            weight = [1. / nk] * nk
+            weight = [1. / nk] * nk * ns
    
         if region == 'env':
             calc = self.atoms_e[l].calc
@@ -967,7 +977,7 @@ class Transport(GPAW):
             calc = self
             d_skmm = np.empty(self.h_skmm.shape, self.h_skmm.dtype)
             nk = ntk * npk
-            weight = [1. / nk] * nk
+            weight = [1. / nk] * nk * ns
             
         for kpt, i in zip(calc.wfs.kpt_u, range(len(calc.wfs.kpt_u))):
             C_nm = kpt.C_nM
@@ -1007,12 +1017,13 @@ class Transport(GPAW):
             
             self.edge_ham_diff = np.max(ham_diff)
             self.edge_den_diff = np.max(den_diff)
-            #for i in range(self.lead_num):
-            #    self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
-            #    self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
-            #    self.hl_skmm[i][:] += self.sl_kmm[i] * self.e_float[i]
-            #self.h_spkmm[:] -= self.e_float[0] * self.s_pkmm
-            #self.h_spkcmm[:] -= self.e_float[0] * self.s_pkcmm
+
+            if self.align_zero_energy:
+                for i in range(self.lead_num):
+                    self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
+                    self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
+                    self.hl_skmm[i][:] += self.sl_kmm[i] * self.e_float[i]
+
             self.text('********cancel boundary shift***********')
 
             for i in range(self.lead_num):
@@ -1064,12 +1075,14 @@ class Transport(GPAW):
             raise RuntimeError('Transport do not converge in %d steps' %
                                                               self.max_steps)
     
+
     def get_hamiltonian_matrix(self):
         self.timer.start('HamMM')            
         self.den2fock()
         self.timer.stop('HamMM')
         self.h_spkmm = self.substract_pk(self.ntkmol, self.kpts,
                                          self.h_skmm, 'h')
+        self.remove_matrix_corner()
         if self.master:
             self.text('HamMM', self.timer.gettime('HamMM'), 'second')        
   
@@ -1654,8 +1667,6 @@ class Transport(GPAW):
     
     def fock2den(self, s, k):
         intctrl = self.intctrl
-
-  
         ind = self.inner_mol_index
         dim = len(ind)
         ind = np.resize(ind, [dim, dim])
@@ -1772,25 +1783,16 @@ class Transport(GPAW):
         return den
 
     def den2fock(self):
-        self.timer.start('get_density')
         self.get_density()
-        self.timer.stop('get_density')
-        self.text('get_density', self.timer.gettime('get_density'))
         if self.fixed:
             self.density.rhot_g += self.surround.get_extra_density()
            
         #self.update_kinetic()
-        self.timer.start('update_ham')
         self.hamiltonian.update(self.density)
-        self.timer.stop('update_ham')
-        self.text('update_ham', self.timer.gettime('update_ham'))
         
         if self.LR_leads and not self.use_linear_vt_mm:
             self.hamiltonian.vt_sG += self.get_linear_potential()
-        self.timer.start('get_hs')
         self.h_skmm, self.s_kmm = self.get_hs(self)
-        self.timer.stop('get_hs')
-        self.text('get_hs', self.timer.gettime('get_hs'))
         if self.fixed:
             self.h_skmm[0,0] += self.surround.get_potential_matrix_projection()
             self.s_kmm[0] += self.surround.get_overlap_matrix_projection()
@@ -1954,7 +1956,7 @@ class Transport(GPAW):
         bias= np.array(self.bias)
         bias /= Hartree
         vt = np.empty([dimt])
-        if (np.array(buffer_dim) != 0).any():
+        if buffer_dim[1] !=0:
             vt[:buffer_dim[0]] = bias[0]
             vt[-buffer_dim[1]:] = bias[1]         
             vt[buffer_dim[0]: -buffer_dim[1]] = np.linspace(bias[0],
@@ -1978,8 +1980,8 @@ class Transport(GPAW):
                         self.bias,
                         self.gate,
                         self.intctrl,
-                        self.eqpathinfo,
-                        self.nepathinfo,
+                        #self.eqpathinfo,
+                        #self.nepathinfo,
                         self.forces,
                         self.current,
                         self.step,
@@ -1995,22 +1997,16 @@ class Transport(GPAW):
         (self.bias,
          self.gate,
          self.intctrl,
-         self.eqpathinfo,
-         self.nepathinfo,
+         #self.eqpathinfo,
+         #self.nepathinfo,
          self.forces,
          self.current,
          self.step,
          self.cvgflag
          ) = pickle.load(fd)
         fd.close()
-        self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
-        (self.h1_skmm,
-                 self.d1_skmm,
-                 self.s1_kmm) = self.pl_read('lead0.mat', collect=True)
-        (self.h2_skmm,
-                 self.d2_skmm,
-                 self.s2_kmm) = self.pl_read('lead1.mat', collect=True)
         self.initialize_transport()
+        self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
         self.initialize_mol()
      
     def set_calculator(self, e_points, leads=[0,1]):
@@ -2277,7 +2273,7 @@ class Transport(GPAW):
                 local_mat = total_matlist[i]
                 self.pkpt_comm.broadcast(local_mat, 0)
             else:
-                local_mat = np.zeros([1], dtype=int)
+                local_mat = np.zeros([1])
                 local_mat[0] = total_matlist[i]
                 self.pkpt_comm.broadcast(local_mat, 0)
                 local_mat = local_mat[0]
@@ -2320,7 +2316,8 @@ class Transport(GPAW):
         pbc = self.atoms._pbc
         cell = N_c * h_c
         from gpaw.grid_descriptor import GridDescriptor
-        GD = GridDescriptor(N_c, cell, pbc)
+        comm = world.new_communicator(np.array([world.rank]))
+        GD = GridDescriptor(N_c, cell, pbc, comm)
         from gpaw.lfc import BasisFunctions
         basis_functions = BasisFunctions(GD,     
                                         [setup.phit_j
@@ -2355,10 +2352,10 @@ class Transport(GPAW):
             tri2full(H_MM)
             H_MM *= Hartree
             H_sqMM[kpt.s, kpt.q] = H_MM      
-        return H_sqMM            
+        return H_sqMM
 
     def estimate_transport_matrix_memory(self):
-        self.initialize_transport(dry=True)
+        self.initialize_transport(dryrun=True)
         sum = 0
         ns = self.nspins
         if self.use_lead:
@@ -2377,9 +2374,13 @@ class Transport(GPAW):
             if self.LR_leads:
                 sum += ( 2 * ns + 1) * npk * nb ** 2 * unit
             sum += ns * npk * nb**2 * unit
-            
-            ntgt = 300
-            sum += self.lead_num * ns * ntgt * nb**2 * unit_complex
+            print 'lead matrix memery  MB',  sum *1e-6
+           
+            ntgt = 200
+            tmp = self.lead_num * ns * npk * ntgt * nb**2 * unit_complex
+            sum += tmp
+            print 'selfenergy memery  MB',  tmp *1e-6
+
         if self.use_env:
             nk = len(self.env_kpts)
             nb = self.nbenv
@@ -2394,14 +2395,26 @@ class Transport(GPAW):
             unit = unit_complex
         nk = len(self.my_kpts)
         nb = self.nbmol
-        sum += (2*ns + 1) * nk * nb**2 * unit
-        
+        tmp = 0 
+        tmp += (2*ns + 1) * nk * nb**2 * unit
+
         if self.npk == 1:
             unit = unit_real
         else:
             unit = unit_complex
-        sum += 2 * (2* ns + 1) * npk * nb**2 * unit
-        return sum
-    
-        
-        
+        tmp += 2 * (2* ns + 1) * npk * nb**2 * unit
+        sum += tmp
+
+        print 'scat matrix memery  MB',  tmp *1e-6
+        print 'total memery  MB',  sum *1e-6
+        raise SystemExit
+
+    def remove_matrix_corner(self):
+        if self.gamma:
+            nb = max(self.nblead)
+            self.h_spkmm[:, :, -nb:, :nb] = 0
+            self.s_pkmm[:, -nb:, :nb] = 0
+            self.d_spkmm[:, :, -nb:, :nb] = 0
+            self.h_spkmm[:, :, :nb, -nb:] = 0
+            self.s_pkmm[:, :nb, -nb:] = 0
+            self.d_spkmm[:, :, :nb, -nb:] = 0
