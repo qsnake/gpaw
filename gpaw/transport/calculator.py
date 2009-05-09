@@ -643,7 +643,7 @@ class Transport(GPAW):
         self.total_ep = self.my_enum * self.energy_comm.size
         
     def distribute_energy_points(self):
-        rank = world.rank
+        rank = self.energy_comm.rank
         self.par_energy_index = np.empty([self.nspins, self.my_npk, 2, 2], int)
         for s in range(self.nspins):
             for k in range(self.my_npk):
@@ -661,7 +661,7 @@ class Transport(GPAW):
                 self.par_energy_index[s, k, 0] = [begin, end]
 
                 nene = self.nepathinfo[s][k].num
-                nene_each = nene // self.pkpt_comm.size
+                nene_each = nene // self.energy_comm.size
                 if nene % self.energy_comm.size != 0:
                     nene_each += 1
                 begin = rank % self.energy_comm.size * nene_each
@@ -1017,7 +1017,6 @@ class Transport(GPAW):
             
             self.edge_ham_diff = np.max(ham_diff)
             self.edge_den_diff = np.max(den_diff)
-
             if self.align_zero_energy:
                 for i in range(self.lead_num):
                     self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
@@ -2417,4 +2416,4 @@ class Transport(GPAW):
             self.d_spkmm[:, :, -nb:, :nb] = 0
             self.h_spkmm[:, :, :nb, -nb:] = 0
             self.s_pkmm[:, :nb, -nb:] = 0
-            self.d_spkmm[:, :, :nb, -nb:] = 0
+            self.d_spkmm[:, :, :nb, -nb:] = 0>>>>>>> .r3870
