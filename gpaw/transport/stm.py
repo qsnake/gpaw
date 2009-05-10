@@ -46,24 +46,36 @@ class LocalizedFunctions:
         self.index = index
         self.vt_G = vt_G
         
-        #check boundary conditions
-        #if bla
-        #if bub
-        #.........
-        #set flag
-        #self.periodic =[True,False]
-        #self.perioc_list=[corner_1,corner_2,corner_3]
+        #check boundary conditions and find translation vectors
+        v1_c = -np.sign(corner_c[:2])
+        v2_c = -np.sign(corner_c[:2]+self.size_c[:2]\
+               -(gd.end_c[:2]-np.array([1,1])))
+        trans_v = [np.array([0,0,0])]
+        for i in range(2):
+          if v1_c[i]==1:
+            v = np.zeros(3,dtype=int)
+            v[i]=1
+            trans_v.append(v)
+          if v2_c[i]==-1:
+            v = np.zeros(3,dtype=int)
+            v[i]=-1
+            trans_v.append(v)
+        if len(trans_v)==3:
+          v = trans_v[1]+trans_v[2]
+          trans_v.append(v)
+        trans_v[:]*=(self.gd.N_c-np.array([1,1,1]))
+        #List of corners of all periodic translations
+        self.periodic_list = trans_v+corner_c
+        
+    def get_periodic_list(self):
+        list = []
+        for corner in self.periodic_list:
+          list.append(LocalizedFunctions(self.gd,self.f_iG,
+                                        corner_c=corner,
+                                        index=self.index,
+                                        vt_G=self.vt_G))
+        return list
 
-    def get_periodic(self):
-        return
-        #if not self.periodic:
-        #  return ...
-        #if self.periodic:
-        #
-        #list =[]
-        #  for corner in self.periodic_list:
-        #    list.append(LocalizedFunctions(gd,f_ig,corner,index=self.index))
-        #return list
 
     def __len__(self):
         return len(self.f_iG)
