@@ -6,6 +6,35 @@ from gpaw.transformers import Transformer
 from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi
 
+class Transformer:
+    def __init__(self,gd, nn):
+        self.gd = gd
+        self.nn=nn
+
+    def apply(self,f_ig,Tf_iG):
+        nn = self.nn
+        gd = self.gd
+        h_c= gd.h_c
+
+        f_iG=f_ig[:, nn:-nn, nn:-nn, nn:-nn]
+        
+        Tf_ix=np.zeros_like(Tf_iG)
+        Tf_iy=np.zeros_like(Tf_iG)
+        Tf_iz=np.zeros_like(Tf_iG)
+                        
+        c_1 =[None,1,2,3,4]
+        c_2 =[-4,-3,-2,-1,None]
+        c_3 = [-1,16,-30,16,-1] #coefficients for a five point stencil
+        for i,j,k in zip(c_1,c_2,c_3):
+            Tf_ix[:,i:j,nn:-nn,nn:-nn]+=k*f_iG
+            Tf_iy[:,nn:-nn,i:j,nn:-nn]+=k*f_iG
+            Tf_iz[:,nn:-nn,nn:-nn,i:j]+=k*f_iG
+        
+        T=(Tf_ix/h_c[0]**2+Tf_iy/h_c[1]**2+Tf_iz/h_c[2]**2)/12.0
+        
+        Tf_iG[:,:,:,:]=T[:,:,:,:]
+
+
 class LocalizedFunctions:
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
         self.gd = gd
@@ -48,10 +77,10 @@ class LocalizedFunctions:
                             pbc_c=False,
                             comm=mpi.serial_comm)
         T = Transformer(gd, nn=p)
-        f_iG = np.zeros((len(self.f_iG),) + tuple(newsize_c))
+        f_ig = np.zeros((len(self.f_iG),) + tuple(newsize_c))
         f_ig[:, p:-p, p:-p, p:-p] = self.f_iG
-        Tf_iG = np.empty_like(f_iG)
-        T.apply(f_iG, Tf_iG)
+        Tf_iG = np.empty_like(f_ig)
+        T.apply(f_ig, Tf_iG)
         return LocalizedFunctions(self.gd, Tf_iG, self.corner_c - p,
                                   self.index)
         
