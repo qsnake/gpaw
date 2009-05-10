@@ -1153,7 +1153,7 @@ class Transport(GPAW):
                     self.min_diff_d = self.diff_d
                 elif self.diff_d < self.min_diff_d:
                     self.min_diff_d = self.diff_d
-                    #self.output('step')
+                    self.output('step')
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                                   self.scf.max_density_error))
@@ -2350,7 +2350,7 @@ class Transport(GPAW):
                                                        H_MM, kpt.q)
             tri2full(H_MM)
             H_MM *= Hartree
-            H_sqMM[kpt.s, kpt.q] = H_MM      
+            H_sqMM[kpt.s, kpt.q] = H_MM
         return H_sqMM
 
     def estimate_transport_matrix_memory(self):
@@ -2409,11 +2409,12 @@ class Transport(GPAW):
         raise SystemExit
 
     def remove_matrix_corner(self):
-        if self.gamma:
+        if self.npk == 1:
             nb = max(self.nblead)
             self.h_spkmm[:, :, -nb:, :nb] = 0
             self.s_pkmm[:, -nb:, :nb] = 0
             self.d_spkmm[:, :, -nb:, :nb] = 0
             self.h_spkmm[:, :, :nb, -nb:] = 0
             self.s_pkmm[:, :nb, -nb:] = 0
-            self.d_spkmm[:, :, :nb, -nb:] = 0>>>>>>> .r3870
+            self.d_spkmm[:, :, :nb, -nb:] = 0
+
