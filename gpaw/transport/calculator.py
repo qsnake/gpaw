@@ -1022,13 +1022,15 @@ class Transport(GPAW):
                     self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
                     self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
                     self.hl_skmm[i][:] += self.sl_kmm[i] * self.e_float[i]
+                    self.lead_fermi[i] += self.e_float[i]
+                self.fermi = self.lead_fermi[0]    
 
             self.text('********cancel boundary shift***********')
 
             for i in range(self.lead_num):
                 if ham_diff[i] > tol and self.master:
                     self.text('Warning*: hamiltonian boundary difference lead %d  %f' %
-                                                                 (i, ham_diff[i]))
+                                                                 (i, self.e_float[i]))
                 if den_diff[i] > tol and self.master:
                     self.text('Warning*: density boundary difference lead %d %f' % 
                                                              (i, den_diff[i]))
