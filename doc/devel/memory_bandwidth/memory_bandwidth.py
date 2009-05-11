@@ -240,7 +240,7 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=10):
             # averages for a given core q
             results[p].append((npy.average(temp_q), npy.std(temp_q)))
         # max, avrg, and std across all cores
-        results[p].append((npy.average(temp), npy.std(temp), max(temp)))
+        results[p].append((npy.average(temp), npy.std(temp), min(temp), max(temp)))
     #for p in processes:
     #    #N = len(pre_results[p])
     #    #avg = sum(pre_results[p])/N
@@ -278,7 +278,7 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=10):
             std.append(results[p][i][1])
         # height
         #print parameters, avg, std
-        print 'No. of processes '+str(int(parameters[0]))+': Runtime [sec]: avg '+str(round(results[p][-1][0],2))+', stddev '+str(round(results[p][-1][1],2))+', max '+str(round(results[p][-1][2],2))
+        print 'No. of processes '+str(int(parameters[0]))+': time [sec]: avg '+str(round(results[p][-1][0],1))+', stddev '+str(round(results[p][-1][1],1))+', min '+str(round(results[p][-1][2],1))+', max '+str(round(results[p][-1][3],1))
         plot(
             parameters, avg, std,
             systems_string,
