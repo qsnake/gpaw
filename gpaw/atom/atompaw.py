@@ -250,5 +250,5 @@ def AtomPAW(symbol, f, h=0.4, rcut=10.0, **kwargs):
                 **kwargs)
     calc.occupations = AtomOccupations(f)
     calc.initialize(Atoms(symbol, calculator=calc))
-    calc.calculate()
+    calc.calculate(converge=True)
     return calc
