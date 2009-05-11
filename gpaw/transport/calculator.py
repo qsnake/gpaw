@@ -2411,7 +2411,7 @@ class Transport(GPAW):
         raise SystemExit
 
     def remove_matrix_corner(self):
-        if self.npk == 1:
+        if self.ntkmol == 1:
             nb = max(self.nblead)
             self.h_spkmm[:, :, -nb:, :nb] = 0
             self.s_pkmm[:, -nb:, :nb] = 0
