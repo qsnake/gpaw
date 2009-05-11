@@ -1076,12 +1076,11 @@ class Transport(GPAW):
             raise RuntimeError('Transport do not converge in %d steps' %
                                                               self.max_steps)
     
-
     def get_hamiltonian_matrix(self):
         self.timer.start('HamMM')            
         self.den2fock()
         self.timer.stop('HamMM')
-        self.h_spkmm = self.substract_pk(self.ntkmol, self.kpts,
+        self.h_spkmm = self.substract_pk(self.ntkmol, self.my_kpts,
                                          self.h_skmm, 'h')
         self.remove_matrix_corner()
         if self.master:
@@ -1140,8 +1139,9 @@ class Transport(GPAW):
         cvg = False
         if var == 'h':
             if self.step > 0:
-                self.diff_h = np.max(abs(self.hamiltonian.vt_sG -
+                self.diff_h = self.gd.integrate(np.fabs(self.hamiltonian.vt_sG -
                                     self.ham_vt_old))
+                self.diff_h = np.max(self.diff_h)
                 if self.master:
                     self.text('hamiltonian: diff = %f  tol=%f' % (self.diff_h,
                                                   self.ham_vt_tol))
@@ -1167,37 +1167,7 @@ class Transport(GPAW):
         bias = self.bias + self.env_bias
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
                                                         self.fermi, bias)
-
-        
-        self.selfenergies = []
-        
-        if self.use_lead:
-            for i in range(self.lead_num):
-                self.selfenergies.append(LeadSelfEnergy((self.hl_spkmm[i][0,0],
-                                                             self.sl_pkmm[i][0]), 
-                                                (self.hl_spkcmm[i][0,0],
-                                                             self.sl_pkcmm[i][0]),
-                                                (self.hl_spkcmm[i][0,0],
-                                                             self.sl_pkcmm[i][0]),
-                                                 1e-8))
-    
-                self.selfenergies[i].set_bias(self.bias[i])
-            
-        if self.use_env:
-            self.env_selfenergies = []
-            for i in range(self.env_num):
-                self.env_selfenergies.append(CellSelfEnergy((self.he_skmm[i],
-                                                             self.se_kmm[i]),
-                                                            (self.he_smm[i],
-                                                             self.se_mm[i]),
-                                                             self.env_ibzk_kc[i],
-                                                             self.env_weight[i],
-                                                            1e-8))
-
-        self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
-                                           H=self.h_spkmm[0,0],
-                                           S=self.s_pkmm[0], eta=0)
-
+        self.initialize_green_function()
         self.calculate_integral_path()
         self.distribute_energy_points()
     
@@ -1212,7 +1182,7 @@ class Transport(GPAW):
         #------for check convergence------
         self.ham_vt_old = np.empty(self.hamiltonian.vt_sG.shape)
         self.ham_vt_diff = None
-        self.ham_vt_tol = 1e-4
+        self.ham_vt_tol = 1e-2
         
         self.step = 0
         self.cvgflag = False
@@ -1275,16 +1245,7 @@ class Transport(GPAW):
                                                            complex))
         self.cntint = -1
 
-        if self.use_lead:
-            sg = self.selfenergies
-            for i in range(self.lead_num):
-                sg[i].h_ii = self.hl_spkmm[i][s, k]
-                sg[i].s_ii = self.sl_pkmm[i][k]
-                sg[i].h_ij = self.hl_spkcmm[i][s, k]
-                sg[i].s_ij = self.sl_pkcmm[i][k]
-                sg[i].h_im = self.hl_spkcmm[i][s, k]
-                sg[i].s_im = self.sl_pkcmm[i][k]
-        
+        self.reset_lead_hs(s, k)        
         if self.use_env:
             print 'Attention here, maybe confusing npk and nk'
             env_sg = self.env_selfenergies
@@ -1355,16 +1316,7 @@ class Transport(GPAW):
             nbenv = self.nbenv[i]
             self.tgtint.append(np.empty([maxintcnt, nbenv, nbenv],
                                                                      complex))
-        if self.use_lead:    
-            sg = self.selfenergies
-            for i in range(self.lead_num):
-                sg[i].h_ii = self.hl_spkmm[i][s, k]
-                sg[i].s_ii = self.sl_pkmm[i][k]
-                sg[i].h_ij = self.hl_spkcmm[i][s, k]
-                sg[i].s_ij = self.sl_pkcmm[i][k]
-                sg[i].h_im = self.hl_spkcmm[i][s, k]
-                sg[i].s_im = self.sl_pkcmm[i][k]
-
+        self.reset_lead_hs(s, k)
         if self.use_env:
             print 'Attention here, maybe confusing npk and nk'
             env_sg = self.env_selfenergies
@@ -2310,26 +2262,17 @@ class Transport(GPAW):
 
     def get_linear_potential_matrix(self):
         # only ok for self.d = 2 now
+        nn = 64
         N_c = self.gd.N_c.copy()
         h_c = self.gd.h_c
-        nn = 64
         N_c[self.d] += nn
         pbc = self.atoms._pbc
         cell = N_c * h_c
         from gpaw.grid_descriptor import GridDescriptor
         comm = world.new_communicator(np.array([world.rank]))
         GD = GridDescriptor(N_c, cell, pbc, comm)
-        from gpaw.lfc import BasisFunctions
-        basis_functions = BasisFunctions(GD,     
-                                        [setup.phit_j
-                                        for setup in self.wfs.setups],
-                                        self.wfs.kpt_comm,
-                                        cut=True)
-        pos = self.atoms.positions.copy()
-        for i in range(len(pos)):
-            pos[i, self.d] += nn * h_c[self.d] / 2.
-        spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T
-        basis_functions.set_positions(spos_ac) 
+
+        basis_functions = self.initialize_projector(extend=True, nn=nn)
         linear_potential = GD.zeros(self.nspins)
         dim_s = self.gd.N_c[self.d] #scat
         dim_t = linear_potential.shape[3]#transport direction
@@ -2419,4 +2362,154 @@ class Transport(GPAW):
             self.h_spkmm[:, :, :nb, -nb:] = 0
             self.s_pkmm[:, :nb, -nb:] = 0
             self.d_spkmm[:, :, :nb, -nb:] = 0
+            
+    def reset_lead_hs(self, s, k):
+        if self.use_lead:    
+            sg = self.selfenergies
+            for i in range(self.lead_num):
+                sg[i].h_ii = self.hl_spkmm[i][s, k]
+                sg[i].s_ii = self.sl_pkmm[i][k]
+                sg[i].h_ij = self.hl_spkcmm[i][s, k]
+                sg[i].s_ij = self.sl_pkcmm[i][k]
+                sg[i].h_im = self.hl_spkcmm[i][s, k]
+                sg[i].s_im = self.sl_pkcmm[i][k]        
 
+    def initialize_projector(self, extend=False, nn=64):
+        N_c = self.gd.N_c.copy()
+        h_c = self.gd.h_c
+        N_c[self.d] += nn
+        pbc = self.atoms._pbc
+        cell = N_c * h_c
+        from gpaw.grid_descriptor import GridDescriptor
+        comm = world.new_communicator(np.array([world.rank]))
+        GD = GridDescriptor(N_c, cell, pbc, comm)
+        from gpaw.lfc import BasisFunctions
+        basis_functions = BasisFunctions(GD,     
+                                        [setup.phit_j
+                                        for setup in self.wfs.setups],
+                                        self.wfs.kpt_comm,
+                                        cut=True)
+        pos = self.atoms.positions.copy()
+        if extend:
+            for i in range(len(pos)):
+                pos[i, self.d] += nn * h_c[self.d] / 2.
+        spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T
+        basis_functions.set_positions(spos_ac)
+        return basis_functions
+    
+    def project_from_grid_to_orbital(self, vt_sg):
+        wfs = self.wfs
+        basis_functions = wfs.basis_functions
+        nao = wfs.setups.nao
+        if self.gamma:
+            dtype = float
+        else:
+            dtype = complex
+        vt_mm = np.empty((nao, nao), dtype)
+        ns = self.nspins
+        nk = len(self.my_kpts)
+        vt_SqMM = np.empty((ns, nk, nao, nao), dtype)
+        for kpt in wfs.kpt_u:
+            basis_functions.calculate_potential_matrix(vt_sg[kpt.s],
+                                                             vt_mm, kpt.q)
+            vt_SqMM[kpt.s, kpt.q] = vt_mm      
+        return 
+        
+    def project_from_orbital_to_grid(self, d_SqMM):
+        wfs = self.wfs
+        basis_functions = wfs.basis_functions
+        nt_sG = self.gd.zeros(self.nspins)        
+        for kpt in wfs.kpt_u:
+            basis_functions.construct_density(d_SqMM[kpt.s, kpt.q],
+                                              nt_sG[kpt.s], kpt.q)
+        return nt_sG
+
+    def initialize_green_function(self):
+        self.selfenergies = []
+        if self.use_lead:
+            for i in range(self.lead_num):
+                self.selfenergies.append(LeadSelfEnergy((self.hl_spkmm[i][0,0],
+                                                             self.sl_pkmm[i][0]), 
+                                                (self.hl_spkcmm[i][0,0],
+                                                             self.sl_pkcmm[i][0]),
+                                                (self.hl_spkcmm[i][0,0],
+                                                             self.sl_pkcmm[i][0]),
+                                                 1e-8))
+    
+                self.selfenergies[i].set_bias(self.bias[i])
+            
+        if self.use_env:
+            self.env_selfenergies = []
+            for i in range(self.env_num):
+                self.env_selfenergies.append(CellSelfEnergy((self.he_skmm[i],
+                                                             self.se_kmm[i]),
+                                                            (self.he_smm[i],
+                                                             self.se_mm[i]),
+                                                             self.env_ibzk_kc[i],
+                                                             self.env_weight[i],
+                                                            1e-8))
+
+        self.greenfunction = GreenFunction(selfenergies=self.selfenergies,
+                                           H=self.h_spkmm[0,0],
+                                           S=self.s_pkmm[0], eta=0)        
+
+    def calculate_green_function_of_k_point(self, s, k, energy):
+        ind = self.inner_mol_index
+        dim = len(ind)
+        ind = np.resize(ind, [dim, dim])
+        self.greenfunction.H = self.h_spkmm[s, k, ind.T, ind]
+        self.greenfunction.S = self.s_pkmm[k, ind.T, ind]
+        
+        self.reset_lead_hs(s, k)
+        nbmol = self.nbmol_inner
+        sigma = np.zeros([nbmol, nbmol], complex)
+        for i in range(self.lead_num):
+            ind = self.inner_lead_index[i]
+            dim = len(ind)
+            ind = np.resize(ind, [dim, dim])
+            sigma[ind.T, ind] += self.selfenergies[i](energy)
+        return self.greenfunction.calculate(energy, sigma)
+       
+    def calculate_real_dos(self, energy):
+        ns = self.nspins
+        nk = len(self.my_kpts)
+        nb = self.nbmol_inner
+        gr_skmm = np.zeros([ns, nk, nb, nb], complex)
+        gr_mm = np.zeros([nb, nb], complex)
+        self.initialize_green_function()
+        for s in range(ns):
+            for k in range(nk):
+                gr_mm = self.calculate_green_function_of_k_point(s,
+                                                                    k, energy)
+                gr_skmm[s, k] =  (gr_mm - gr_mm.conj()) /2.
+                print gr_skmm.dtype
+                
+        self.dos_sg = self.project_from_orbital_to_grid(gr_skmm)
+
+    def plot_real_dos(self, direction=0, mode='average', nl=0):
+        import pylab
+        dim = self.dos_sg.shape
+        print 'diff', np.max(abs(self.dos_sg[0] - self.dos_sg[1]))
+        ns, nx, ny, nz = dim
+        if mode == 'average':
+            for s in range(ns):
+                dos_g = np.sum(self.dos_sg[s], axis=direction)
+                dos_g /= dim[direction]
+                pylab.matshow(dos_g)
+                pylab.show()
+        elif mode == 'sl': # single layer mode
+            for s in range(ns):
+                if direction == 0:
+                    dos_g = self.dos_sg[s, nl]
+                elif direction == 1:
+                    dos_g = self.dos_sg[s, :, nl]
+                elif direction == 2:
+                    dos_g = self.dos_g[s, :, :, nl]
+                pylab.matshow(dos_g)
+                pylab.show()
+        
+        
+        
+            
+
+        
