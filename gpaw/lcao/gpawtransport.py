@@ -1,7 +1,7 @@
 import pickle
 
-from ase.transport.selfenergy import LeadSelfEnergy
-from ase.transport.greenfunction import GreenFunction
+from gpaw.transport.selfenergy import LeadSelfEnergy
+from gpaw.transport.greenfunction import GreenFunction
 from ase.transport.tools import function_integral, fermidistribution
 from ase import Atoms, Atom, monkhorst_pack, Hartree
 import ase
