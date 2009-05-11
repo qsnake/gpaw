@@ -13,6 +13,9 @@ parser.add_option('--dir', dest="dir",
 parser.add_option("--runs", dest="runs",
                   default=10,
                   help='use that many runs to calculate the average.')
+parser.add_option("--startcores", dest="startcores",
+                  default=1,
+                  help='use at lease that many cores.')
 
 opt, args = parser.parse_args()
 
@@ -70,7 +73,7 @@ def plot_save(directory_name, out_prefix):
 
     pylab.savefig(directory_name + os.path.sep + out_prefix +'.png')
 
-def analyse_benchmark(ncores=8, machine='TEST', runs=10):
+def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=10):
     #system = ['carbon_py']
     #system = ['carbon']
     #system = ['niflheim_py']
@@ -98,8 +101,8 @@ def analyse_benchmark(ncores=8, machine='TEST', runs=10):
     if not systems_string:
         systems_string = 'gpaw on '+machine
     if not processes:
-        processes = [1]
-        for n in range(1, ncores+1):
+        processes = [startcores]
+        for n in range(startcores+1, ncores+1):
             if n%2==0:
                 processes.append(n)
 
@@ -294,9 +297,11 @@ if __name__ == '__main__':
 
     NCORES = int(environ.get('NCORES', 8))
     MACHINE = environ.get('MACHINE', 'TEST')
-    assert NCORES > 1, str(NCORES)+' must be > 1'
+    assert NCORES >= 1, str(NCORES)+' must be >= 1'
 
     runs = int(opt.runs)
     assert runs >= 1, runs+' must be >= 1'
+    startcores = int(opt.startcores)
+    assert startcores >= 1, startcores+' must be >= 1'
 
-    analyse_benchmark(NCORES, MACHINE, runs=runs)
+    analyse_benchmark(NCORES, startcores, MACHINE, runs=runs)
