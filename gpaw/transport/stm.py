@@ -58,7 +58,7 @@ class LocalizedFunctions:
                             cell_cv=self.gd.h_c * (newsize_c + 1),
                             pbc_c=False,
                             comm=mpi.serial_comm)
-        T = Laplace(gd, n=1/2.)
+        T = Laplace(gd, scale =1/2., n=p)
         f_ig = np.zeros((len(self.f_iG),) + tuple(newsize_c))
         f_ig[:, p:-p, p:-p, p:-p] = self.f_iG
         Tf_iG = np.empty_like(f_ig)
