@@ -17,8 +17,6 @@ Guides and manual pages
 
 * A list of the :ref:`technology` used in the code.
 
-* A review of some `current development <Morning_meeting_2007>`_ projects.
-
 * The gpaw :ref:`manual`.
 
 * A pdf file on the PAW theory: `paw note`_
