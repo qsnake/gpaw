@@ -7,8 +7,8 @@ import numpy as npy
 
 from gpaw.polynomial import Polynomial
 from gpaw.external_potential import ExternalPotential
+from gpaw.utilities import pack2, unpack
 from gpaw.mpi import run
-
 
 # Hamiltonian
 class TimeDependentHamiltonian:
@@ -88,18 +88,84 @@ class TimeDependentHamiltonian:
 
         # copy old
         self.vt_sG[:] = self.hamiltonian.vt_sG
-        dH_asp = {}
+        self.dH_asp = {}
         for a, dH_sp in self.hamiltonian.dH_asp.items():
-            dH_asp[a] = dH_sp.copy()
+            self.dH_asp[a] = dH_sp.copy()
         # update
         self.hamiltonian.update(density)
-        # average
-        self.hamiltonian.vt_sG += self.vt_sG
-        self.hamiltonian.vt_sG *= .5
+        # average and difference
+        self.hamiltonian.vt_sG[:], self.vt_sG[:] = \
+            0.5*(self.hamiltonian.vt_sG + self.vt_sG), \
+            self.hamiltonian.vt_sG - self.vt_sG
         for a, dH_sp in self.hamiltonian.dH_asp.items():
-            dH_sp += dH_asp[a] 
-            dH_sp *= 0.5
+            dH_sp[:], self.dH_asp[a][:] = 0.5*(dH_sp + self.dH_asp[a]), \
+                dH_sp - self.dH_asp[a] #pack/unpack is linear for real values
+
+    def half_apply_local_potential(self, psit_nG, Htpsit_nG, s):
+        """Apply the half-difference Hamiltonian operator to a set of vectors.
         
+        Parameters:
+
+        psit_nG: ndarray
+            set of vectors to which the overlap operator is applied.
+        psit_nG: ndarray, output
+            resulting H applied to psit_nG vectors.
+        s: int
+            spin index of k-point object defined in kpoint.py.
+        
+        """
+        # Does exactly the same as Hamiltonian.apply_local_potential
+        # but uses the difference between vt_sG at time t and t+dt.
+        vt_G = self.vt_sG[s]
+        if psit_nG.ndim == 3:
+            Htpsit_nG += psit_nG * vt_G
+        else:
+            for psit_G, Htpsit_G in zip(psit_nG, Htpsit_nG):
+                Htpsit_G += psit_G * vt_G
+
+
+    def half_apply(self, kpt, psit, hpsit, calculate_P_ani=True):
+        """Applies the half-difference of the time-dependent Hamiltonian
+        to the wavefunction psit of the k-point kpt.
+        
+        Parameters
+        ----------
+        kpt: Kpoint
+            the current k-point (kpt_u[index_of_k-point])
+        psit: List of coarse grid
+            the wavefuntions (on coarse grid) 
+            (kpt_u[index_of_k-point].psit_nG[indices_of_wavefunc])
+        hpsit: List of coarse grid
+            the resulting "operated wavefunctions" (H psit)
+        calculate_P_ani: bool
+            When True, the integrals of projector times vectors
+            P_ni = <p_i | psit> are calculated.
+            When False, existing P_uni are used
+
+        """
+
+        hpsit.fill(0.0)
+        self.half_apply_local_potential(psit, hpsit, kpt.s)
+
+        # Does exactly the same as last part of Hamiltonian.apply but
+        # uses the difference between dH_asp at time t and t+dt.
+        shape = psit.shape[:-3]
+        P_axi = self.wfs.pt.dict(shape)
+
+        if calculate_P_ani:
+            self.wfs.pt.integrate(psit, P_axi, kpt.q)
+        else:
+            for a, P_ni in kpt.P_ani.items():
+                P_axi[a][:] = P_ni
+
+        for a, P_xi in P_axi.items():
+            dH_ii = unpack(self.dH_asp[a][kpt.s])
+            P_axi[a] = npy.dot(P_xi, dH_ii)
+        self.wfs.pt.add(hpsit, P_axi, kpt.q)
+
+        if self.td_potential is not None:
+            raise NotImplementedError
+
     def apply(self, kpt, psit, hpsit, calculate_P_ani=True):
         """Applies the time-dependent Hamiltonian to the wavefunction psit of
         the k-point kpt.

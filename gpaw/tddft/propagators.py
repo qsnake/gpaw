@@ -391,6 +391,7 @@ class SemiImplicitCrankNicolson(ExplicitCrankNicolson):
         self.td_density.update()
 
         # Estimate Hamiltonian H(t+dt/2) by averaging H(t) and H(t+dt)
+        # and retain the difference for a half-way Hamiltonian dH(t+dt/2).
         self.td_hamiltonian.half_update(self.td_density.get_density(),
                                         time + time_step)
 
@@ -403,6 +404,15 @@ class SemiImplicitCrankNicolson(ExplicitCrankNicolson):
         # Use predicted psit_nG in kpt_u as an initial guess, whereas the old 
         # wavefunction in old_kpt_u are used to calculate rhs based on psit(t)
         for [kpt, rhs_kpt] in zip(kpt_u, self.old_kpt_u):
+            # Average of psit(t) and predicted psit(t+dt)
+            mean_psit_nG = 0.5*(kpt.psit_nG + rhs_kpt.psit_nG)
+            self.td_hamiltonian.half_apply(kpt, mean_psit_nG, self.hpsit)
+            self.td_overlap.apply_inverse(kpt, self.hpsit, self.sinvhpsit)
+
+            # Update kpt.psit_nG to reflect psit(t+dt) - i S^(-1) dH(t+dt/2) dt/2 psit(t+dt/2)
+            #kpt.psit_nG[:] = kpt.psit_nG - .5J * self.sinvhpsit * time_step
+            self.mblas.multi_zaxpy(-.5j*time_step, self.sinvhpsit, kpt.psit_nG, nvec)
+
             self.solve_propagation_equation(kpt, rhs_kpt, time_step)
         
         return self.niter
