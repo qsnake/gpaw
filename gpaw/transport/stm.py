@@ -6,7 +6,46 @@ from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi
 
 class LocalizedFunctions:
-    def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
+    """ 
+       A typical transverse plane of some grid...
+       (pbc's only in transverse directions)
+
+        --------------------------------------------------(3)
+       |    Extended region                                |
+       |    .........                         .........    |
+       |    .    ---.-------------------------.--(2)  .    |
+       |    .   |   .                         .   |   .    |
+       |    o2..|....                         o3..|....    |    
+       |        |                                 |        |
+       |        |     Fixed region                |        |
+       |        |                                 |        |
+       |        |                                 |        |
+       |        |                                 |        |
+       |        |                                 |        |
+       |        |                                 |        |
+       |        |                                 |        |
+       |    ....|..oo                         ....|....    |
+       |    .   |   .                         .   |   .    |
+       |    .  (1)--.-------------------------.---    .    |
+       |    o........                         o1.......    |
+       |                                                   |
+      (0)--------------------------------------------------
+        
+       Extended region = region which is used to extend the potential in order to
+                         get rid of pbc's
+       
+       o1, o2, o3 = corners of LocalizedFunctions objects which are periodic
+                    translations of LF object with corner at o.
+        
+       Some vectors:
+       (1)-(0) = (3)-(2) = pbc_cutoff (if pbc_cutoff = 0 <=> (0)=(1) /\ (2)=(3))
+        o  - (1) = v1_c
+        oo - (2) = v2_c   
+        
+       more doc to come.......
+    """
+
+    def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None, extension_c=None):
         self.gd = gd
         #assert gd.is_orthogonal()
         assert not gd.is_non_orthogonal()
@@ -15,35 +54,63 @@ class LocalizedFunctions:
         self.corner_c = corner_c
         self.index = index
         self.vt_G = vt_G
+        if extension_c == None:
+            self.extension_c = np.array([0,0])
+        else:
+            self.extension_c = extension_c
         
-        #check boundary conditions and find translation vectors
-        v1_c = -np.sign(corner_c[:2])
-        v2_c = -np.sign(corner_c[:2]+self.size_c[:2]\
-               -(gd.end_c[:2]-np.array([1,1])))
-        trans_v = [np.array([0,0,0])]
-        for i in range(2):
-          if v1_c[i]==1:
-            v = np.zeros(3,dtype=int)
-            v[i]=1
-            trans_v.append(v)
-          if v2_c[i]==-1:
-            v = np.zeros(3,dtype=int)
-            v[i]=-1
-            trans_v.append(v)
-        if len(trans_v)==3:
-          v = trans_v[1]+trans_v[2]
-          trans_v.append(v)
-        trans_v[:]*=(self.gd.N_c-np.array([1,1,1]))
-        #List of corners of all periodic translations
-        self.periodic_list = trans_v+corner_c
+        # Periodic stuff
+               
+        # XXX Hmmmm... But, maybe move all the periodic stuff into another class
+        # which then can transform the LF object? I think the LF class should be kept
+        # as general as possible. Right now it seemes to get
+        # more and more  specialized in order to suit
+        # the STM-formalism (extension of surface region and so on....) 
         
+        v1_c = np.sign(corner_c[:2] - extension_c)
+        v2_c = np.sign(corner_c[:2] + self.size_c[:2]\
+               - (gd.end_c[:2] - extension_c - np.array([1,1])))
+        
+        # Translation vectors along the axes of the transverse unit-cell.
+        # Situation: Box has a spatial overlap with the extended region 
+        # and is placed at the edge between extended and fixed region
+        
+        trans_c = []
+        for i in np.where(v1_c == -1)[0]:
+            v = np.zeros(3,dtype=int)    
+            v[i] = 1
+            trans_c.append(v)
+            
+        for i in np.where(v2_c == 1)[0]:
+            v = np.zeros(3,dtype=int)
+            v[i] = -1
+            trans_c.append(v)
+        
+        # Translation vectors along the diagonal of the transverse unit-cell.
+        # Situation: Box has a spatial overlap with the extended region and
+        # is placed at the corner of extended and fixed region.
+        trans_diag_c = []
+        for i in range(len(trans_c)):
+            for j in range(i,len(trans_c)):
+                v = trans_c[i]+trans_c[j]
+                if not len(np.where(v == 0)[0]) >= 2:
+                    trans_diag_c.append(v)
+        
+        trans_c = trans_c+trans_diag_c
+        trans_c.append(np.zeros(3)) # The original LF object
+        
+        trans_c[:]*=(self.gd.N_c-np.array([1,1,1])) # XXX is this -np.array([1,1,1])
+                                                    # really nessesary?
+        self.periodic_list = trans_c+corner_c
+    
     def get_periodic_list(self):
         list = []
         for corner in self.periodic_list:
-          list.append(LocalizedFunctions(self.gd,self.f_iG,
+            list.append(LocalizedFunctions(self.gd,self.f_iG,
                                         corner_c=corner,
                                         index=self.index,
-                                        vt_G=self.vt_G))
+                                        vt_G=self.vt_G,
+                                        extension=self.extension))
         return list
 
 
@@ -90,6 +157,27 @@ class LocalizedFunctions:
             return self.gd.dv * np.inner(a_iG, b_iG)
         else:
             return None
+    def restrict(self):
+        """Restricts the box of the objet to the current grid"""
+        
+        start_c = np.maximum(self.corner_c, np.zeros(3))
+        stop_c = np.minimum(self.corner_c + self.size_c, self.gd.N_c)
+        
+        if (start_c < stop_c).all():
+            astart_c = start_c - self.corner_c
+            astop_c = stop_c -self.corner_c
+            a_iG = self.f_iG[:,
+                astart_c[0]:astop_c[0],
+                astart_c[1]:astop_c[1],
+                astart_c[2]:astop_c[2]]
+            new_corner_c = self.corner_c
+            for i in np.where(self.corner_c<0):
+                new_corner_c[i] = 0
+            return LocalizedFunctions(self.gd, a_iG,
+                                      new_corner_c, self.index,
+                                      self.vt_G, self.extension_c) 
+        else:
+            return None
 
     def __or__(self, other):
         if isinstance(other, LocalizedFunctions):
@@ -106,7 +194,7 @@ class WannierFunction(LocalizedFunctions):
                                     corner_c, index)
 
 class AtomCenteredFunctions(LocalizedFunctions):
-    def __init__(self, gd, spline_j, spos_c, index=None):
+    def __init__(self, gd, spline_j, spos_c, index=None,extension_c=np.array([0,0])):
         rcut = max([spline.get_cutoff() for spline in spline_j])
         corner_c = np.ceil(spos_c * gd.N_c - rcut / gd.h_c).astype(int)
         size_c = np.ceil(spos_c * gd.N_c + rcut / gd.h_c).astype(int) - corner_c
@@ -120,7 +208,8 @@ class AtomCenteredFunctions(LocalizedFunctions):
         ni = lfc.Mmax
         f_iG = smallgd.zeros(ni)
         lfc.add(f_iG, {0: np.eye(ni)})
-        LocalizedFunctions.__init__(self, gd, f_iG, corner_c, index)
+        LocalizedFunctions.__init__(self, gd, f_iG, corner_c, 
+                                    extension_c=extension_c, index=index)
 
 class STM:
     def __init__(self, tip, surface):
@@ -134,6 +223,7 @@ class STM:
         assert not (tgd.h_c - sgd.h_c).any()
 
     def initialize(self, tip_atom_index, dmin=2.0):
+
         dmin /= Bohr
         tip_pos_av = self.tip.atoms.get_positions() / Bohr
         srf_pos_av = self.srf.atoms.get_positions() / Bohr
