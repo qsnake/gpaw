@@ -90,7 +90,9 @@ should be set in the calculator::
   >>>             basis='dzp',
   >>>             ...)
  
-The calculator can then be used in the usual way. 
+The calculator can then be used in the usual way.  The ``basis``
+keyword accepts the same types of values as the ``setups`` keyword,
+such as ``basis={'H' : 'dzp', 'O' : 'mine', 'C' : 'szp'}``.
 
 
 Example

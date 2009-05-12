@@ -83,7 +83,7 @@ given in the following sections.
 ===============  =========  ===================  =============================
 keyword          type       default value        description
 ===============  =========  ===================  =============================
-``mode``         ``str``    ``fd``               :ref:`manual_mode`
+``mode``         ``str``    ``'fd'``             :ref:`manual_mode`
 ``nbands``       ``int``                         :ref:`manual_nbands`
 ``xc``           ``str``    ``'LDA'``            :ref:`manual_xc`
 ``kpts``         *seq*      `\Gamma`-point       **k**-point sampling
@@ -113,6 +113,9 @@ keyword          type       default value        description
                                                  calculation
 ``setups``       ``str``    ``'paw'``            Type of setups to use
                  or
+                 ``dict``
+``basis``        ``str``    ``{}``               Basis set for LCAO 
+                 or                              calculations
                  ``dict``
 ``eigensolver``  ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
 ``hund``         ``bool``   ``False``            Use Hund's rule
@@ -300,7 +303,7 @@ The ``convergence`` keyword is used to set the convergence criteria.
 The default value is this Python dictionary::
 
   {'energy': 0.001, # eV
-   'density': 1.0e-3,
+   'density': 1.0e-4,
    'eigenstates': 1.0e-9,
    'bands': 'occupied'}
 
@@ -312,7 +315,8 @@ In words:
   should be less than 0.001 electrons per valence electron.
 
 * The integrated value of the square of the residuals of the Kohn-Sham
-  equations should be less than :math:`1.0 \times 10^{-9}` (per state).
+  equations should be less than :math:`1.0 \times 10^{-9}` per state
+  (FD mode only).
 
 The individual criteria can be changed by giving only the specific
 entry of dictionary e.g. ``convergence={'energy': 0.0001}`` would set
@@ -367,11 +371,15 @@ The default solver for iterative diagonalization of the Kohn-Sham
 Hamiltonian is RMM-DIIS (Residual minimization method - direct
 inversion in iterative subspace) which seems to perform well in most
 cases. However, some times more efficient/stable convergence can be
-obtained with a different eigensolver. Especially, when calculating many
-unoccupied states RMM-DIIS might not be optimal. The available options
-are conjugate gradient method (``eigensolver='cg'``) and a simple
-Davidson method (``eigensolver='dav'``). From the alternatives,
-conjugate gradient seems to perform better in general.
+obtained with a different eigensolver. Especially, when calculating
+many unoccupied states RMM-DIIS might not be optimal. Further
+available options in FD mode are conjugate gradient method
+(``eigensolver='cg'``) and a simple Davidson method
+(``eigensolver='dav'``). From the alternatives, conjugate gradient
+seems to perform better in general.
+
+LCAO mode has its own eigensolver, which directly diagonalizes the
+Hamiltonian matrix instead of using an iterative method.
 
 
 Spinpolarized calculation
@@ -399,6 +407,14 @@ For an LDA calculation, GPAW will look for :file:`Li.mine.LDA` (or
 :file:`Li.mine.LDA.gz`) in your :envvar:`GPAW_SETUP_PATH` environment
 variable and use an all-electron potential for hydrogen atoms.
 
+
+Atomic basis set
+----------------
+
+The ``basis`` keyword can be used to specify the basis set which
+should be used in LCAO mode, which also affects the LCAO
+initialization in FD mode.  See the :ref:`lcao` documentation.  The
+default behaviour is to use the pseudo partial waves from the setup.
 
 
 Where to send text output
