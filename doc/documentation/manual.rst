@@ -143,6 +143,7 @@ alternative is to expand the wave functions on a basis-set constructed
 as linear combination as atomic-like orbitals, in short LCAO. This is
 done by setting (``mode='lcao'``).
 
+See also the page on :ref:`lcao`.
 
 .. _manual_nbands:
 
