@@ -157,6 +157,7 @@ class LocalizedFunctions:
             return self.gd.dv * np.inner(a_iG, b_iG)
         else:
             return None
+    
     def restrict(self):
         """Restricts the box of the objet to the current grid"""
         
