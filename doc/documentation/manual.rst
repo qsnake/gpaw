@@ -67,43 +67,54 @@ like this:
 ...             xc='PBE',
 ...             gpts=(24, 24, 24))
 
-Here, we want to use one electronic band, the Perdew, Burke,
-Ernzerhof (PBE)\ [#PBE]_ exchange-correlation functional and 24 grid points
-in each direction.  The complete list of all possible parameters is:
+Here, we want to use one electronic band, the Perdew, Burke, Ernzerhof
+(PBE)\ [#PBE]_ exchange-correlation functional and 24 grid points in
+each direction.
+
+
+----------
+Parameters
+----------
+
+The complete list of all possible parameters and their defaults is
+shown below. A detailed description of the individual parameters is
+given in the following sections.
 
 ===============  =========  ===================  =============================
 keyword          type       default value        description
 ===============  =========  ===================  =============================
-``mode``         ``str``    ``fd``               Finite Diff. or LCAO
-``nbands``       ``int``                         Number of bands
-``xc``           ``str``    ``'LDA'``            XC-functional
+``mode``         ``str``    ``fd``               :ref:`manual_mode`
+``nbands``       ``int``                         :ref:`manual_nbands`
+``xc``           ``str``    ``'LDA'``            :ref:`manual_xc`
 ``kpts``         *seq*      `\Gamma`-point       **k**-point sampling
 ``spinpol``      ``bool``                        Spinpolarized calculation
-``gpts``         *seq*                           Number of gridpoints
+``gpts``         *seq*                           :ref:`manual_gpts`
 ``h``            ``float``                       Grid spacing
-``usesymm``      ``bool``   ``True``             Use symmetry
+``usesymm``      ``bool``   ``True``             :ref:`manual_usesymm`
 ``random``       ``bool``   ``False``            Initialize wave functions 
                                                  with random numbers
-``width``        ``float``  ``0`` or ``0.1`` eV  Width of Fermi-distribution
+``width``        ``float``  ``0`` or ``0.1`` eV  Width of :ref:`manual_width`
 ``lmax``         ``int``    ``2``                Maximum angular momentum
                                                  for expansion of
-			      		         compensation charges
-``charge``       ``float``  ``0``                total charge of the system
-``convergence``  ``dict``   (see below_)         SCF-accuracy
+                                                 :ref:`manual_lmax`
+``charge``       ``float``  ``0``                Total :ref:`manual_charge`
+                                                 of the system
+``convergence``  ``dict``                        :ref:`manual_convergence`
 ``maxiter``      ``int``    ``120``              Maximum number of
                                                  SCF-iterations
 ``txt``                     ``sys.stdout``       Where to send text output
 ``parsize``      *seq*                           Parallel domain decomposition
 ``stencils``                ``(2, 3)``           Number of neighbors for
                                                  finite difference stencils.
-``mixer``                                        Density mixing object
+``mixer``                   ``Mixer`` object     Pulay :ref:`manual_mixer`
+                                                 scheme
 ``fixdensity``   ``bool``   ``False``            Keep the density fixed
 ``fixmom``       ``bool``   ``False``            Do a fixed spin moment
                                                  calculation
 ``setups``       ``str``    ``'paw'``            Type of setups to use
                  or
                  ``dict``
-``eigensolver``  ``str``    ``'rmm-diis'``       Eigensolver
+``eigensolver``  ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
 ``hund``         ``bool``   ``False``            Use Hund's rule
 ===============  =========  ===================  =============================
 
@@ -121,18 +132,10 @@ keyword          type       default value        description
    calculation will be done with one electron removed.
 
 
+.. _manual_mode:
 
-
-----------
-Parameters
-----------
-
-All of the parameters of a PAW calculation are described below.
-
-
-
-Mode
-----
+Finite Difference or LCAO mode
+------------------------------
 
 The default mode (``mode='fd'``) is Finite Differece. This means that
 the wave functions will be expanded on a real space grid. The
@@ -141,6 +144,7 @@ as linear combination as atomic-like orbitals, in short LCAO. This is
 done by setting (``mode='lcao'``).
 
 
+.. _manual_nbands:
 
 Number of electronic bands
 --------------------------
@@ -157,6 +161,7 @@ unoccupied bands will improve convergence.
    give ``n`` empty bands.
 
 
+.. _manual_charge:
 
 Charge
 ------
@@ -165,6 +170,8 @@ The default is charge neutral.  The systems total charge may be set in
 units of the negative electron charge (i.e. ``charge=-1`` means one
 electron more than the neutral).
 
+
+.. _manual_xc:
 
 Exchange-Correlation functional
 -------------------------------
@@ -202,6 +209,8 @@ See details of implementation on the :ref:`xc_functionals` page.
 .. _libxc: http://www.tddft.org/programs/octopus/wiki/index.php/Libxc
 
 
+.. _manual_kpts:
+
 Brillouin-zone sampling
 -----------------------
 
@@ -213,6 +222,7 @@ will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
 ``n2`` `\times` ``n3`` **k**-points.
 
 
+.. _manual_gpts:
 
 Number of grid points
 ---------------------
@@ -238,6 +248,8 @@ conversion can be done like this::
   >>> h = cutoff2gridspacing(50 * Rydberg)
 
 
+.. _manual_usesymm:
+
 Use of symmetry
 ---------------
 
@@ -252,7 +264,7 @@ might want to have no symmetry reduction of the **k**-points at all
 specifying ``usesymm=None``.
 
 
-
+.. _manual_width:
 
 Fermi-distribution
 ------------------
@@ -269,7 +281,7 @@ extrapolated to *T* = 0 Kelvin.  For a `\Gamma`-point calculation (no
 occupation numbers.
 
 
-
+.. _manual_lmax:
 
 Compensation charges
 --------------------
@@ -278,9 +290,7 @@ The compensation charges are expanded with correct multipoles up to
 and including `\ell=\ell_{max}`.  Default value: ``lmax=2``.
 
 
-
-
-.. _below:
+.. _manual_convergence:
 
 Accuracy of the self-consistency cycle
 --------------------------------------
@@ -319,7 +329,7 @@ also write ``{'bands': -10}`` to converge all bands except the last
 The calculation will stop with an error if convergence is not reached
 in ``maxiter`` self-consistent iterations (defaults to 120).
 
-.. _manual_density_mixing:
+.. _manual_mixer:
 
 Density mixing
 --------------
@@ -347,7 +357,7 @@ than there are precalculated atomic orbitals, random numbers will be
 used for the remaining bands.
 
 
-.. _gpaw_manual_eigensolver:
+.. _manual_eigensolver:
 
 Eigensolver
 -----------
@@ -361,7 +371,6 @@ unoccupied states RMM-DIIS might not be optimal. The available options
 are conjugate gradient method (``eigensolver='cg'``) and a simple
 Davidson method (``eigensolver='dav'``). From the alternatives,
 conjugate gradient seems to perform better in general.
-
 
 
 Spinpolarized calculation
@@ -415,7 +424,8 @@ ignored.
 Parallel calculations
 ---------------------
 
-Parallel calculations are done with MPI and a special :program:`gpaw-python` python-interpreter.
+Parallel calculations are done with MPI and a special
+:program:`gpaw-python` python-interpreter.
 
 The parallelization can be done over the **k**-points, bands, spin in
 spin-polarized calculations, and using real-space domain
@@ -423,8 +433,8 @@ decomposition.  The code will try to make a sensible domain
 decomposition that match both the number of processors and the size of
 the unit cell.  If desired, this choice can be overruled with the
 keyword ``parsize=(nx,ny,nz)``.  There is also a command line argument
-``--domain-decomposition`` that allows you to control the domain decomposition
-(see example at :ref:`submit_tool_on_niflheim`).
+``--domain-decomposition`` that allows you to control the domain
+decomposition (see example at :ref:`submit_tool_on_niflheim`).
 
 There is more information about running parallel calculations on the
 :ref:`parallel_runs` page.
@@ -450,11 +460,6 @@ calculations, your system is in an unstable state!
    and non-spherical symmetric ground state, with an energy that is
    lower than that of the spin-paired, and spherically symmetric
    reference atom.
-
-
-
-
-
 
 
 ------------------------
