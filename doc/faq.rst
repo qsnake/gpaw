@@ -53,13 +53,16 @@ Trying to checkout the code via SVN resulted::
  [~]$ svn checkout "https://svn.fysik.dtu.dk/projects/gpaw/trunk"
  svn: Unrecognized URL scheme 'https://svn.fysik.dtu.dk/projects/gpaw/trunk'
 
-This error is diplayed in case the library 'libsvn_ra_dav' is missing on your system. The library is used by SVN, but is not installed by default. 
+This error is diplayed in case the library 'libsvn_ra_dav' is missing
+on your system. The library is used by SVN, but is not installed by
+default.
 
 
 Compiling the C-code
 ====================
 
-For architecture dependent settings see the :ref:`platforms_and_architectures` page.
+For architecture dependent settings see the
+:ref:`platforms_and_architectures` page.
 
 Compilation of the C part failed::
 
@@ -69,7 +72,9 @@ Compilation of the C part failed::
  pgcc-Warning-Unknown switch: -fno-strict-aliasing
  PGC-S-0040-Illegal use of symbol, _Complex (/usr/include/bits/cmathcalls.h: 54)
 
-You are probably using another compiler, than it was used for compiling python. Undefine the environment variables CC, CFLAGS and LDFLAGS with::
+You are probably using another compiler, than it was used for
+compiling python. Undefine the environment variables CC, CFLAGS and
+LDFLAGS with::
 
  # sh/bash users:
  unset CC; unset CFLAGS; unset LDFLAGS
@@ -81,28 +86,33 @@ and try again.
 Calculation does not converge
 =============================
 
-First, you can try to get more information during the calculation by setting the ``verbose`` parameter::
+First, you can try to get more information during the calculation by
+setting the ``verbose`` parameter::
 
   GPAW(..., verbose=True)
 
-If your (finite) system contains nearly degenerate occupied and unoccupied states, there can be convergence problems.
-You can try to occupy the states with Fermi-distribution by specifying the ``width`` parameter::
+If your (finite) system contains nearly degenerate occupied and
+unoccupied states, there can be convergence problems.  You can try to
+occupy the states with Fermi-distribution by specifying the ``width``
+parameter::
 
   GPAW(..., width=0.05)
 
 However, note that this might change also the symmetry of your system
 
 Sometimes it is possible to improve the convergence by changing the
-default parameters for :ref:`manual_density_mixing`, try e.g.::
+default parameters for :ref:`manual_mixer`, try e.g.::
 
   mixer=Mixer(0.1, 5, metric='new', weight=100.0)
   GPAW(..., mixer=mixer)
 
-In rare occasions the default :ref:`eigensolver
-<gpaw_manual_eigensolver>` ``rmm-diis`` does not converge, and one can
-try either conjugate gradient or Davidson eigensolvers::
+In rare occasions the default :ref:`eigensolver <manual_eigensolver>`
+``rmm-diis`` does not converge, and one can try either conjugate
+gradient or Davidson eigensolvers::
 
   GPAW(..., eigensolver='cg')
+
+Consult the :ref:`convergence` page.
 
 Poisson solver did not converge!
 ================================
@@ -114,13 +124,13 @@ then you should set the Fermi temperature to a low value:
 How to switch between several GPAW versions
 ===========================================
 
-For each GPAW installation use a separate,
-modified submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`.
+For each GPAW installation use a separate, modified submit tool:
+:svn:`~doc/documentation/parallel_runs/gpaw-qsub`.
 
-Assuming that your :ref:`developer_installation` is under :file:`~/gpaw.test`,
-and the :command:`gpaw-python`
-under :file:`~/gpaw.test/build/bin.linux-x86_64-2.3/`,
-modify the submit tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`:
+Assuming that your :ref:`developer_installation` is under
+:file:`~/gpaw.test`, and the :command:`gpaw-python` under
+:file:`~/gpaw.test/build/bin.linux-x86_64-2.3/`, modify the submit
+tool: :svn:`~doc/documentation/parallel_runs/gpaw-qsub`:
 
 * set the :envvar:`PYTHONPATH` and :envvar:`PATH` passed to :command:`mpirun`::
 
