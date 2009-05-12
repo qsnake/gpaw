@@ -84,7 +84,7 @@ class Transport(GPAW):
                        'env_use_buffer', 'env_buffer_atoms', 'env_edge_atoms',
                        'env_bias', 'env_pbc', 'env_restart',                     
                        
-                       'LR_leads', 'gate',  'cal_loc', 'align_zero_energy',
+                       'LR_leads', 'gate',  'cal_loc', 'align_zero_energy',                       
                        'recal_path', 'use_qzk_boundary', 'use_linear_vt_mm',
                        'scat_restart', 'save_file', 'restart_file', 'fixed_boundary']:
                 
@@ -313,8 +313,13 @@ class Transport(GPAW):
         if self.use_env:
             self.nbenv = []
             self.env_edge_index = [[None] * self.env_num, [None] * self.env_num]
-
+         
+        if dryrun:
+            self.atoms_l = []
+            self.atoms_e = []
         for i in range(self.lead_num):
+            if dryrun:
+                self.atoms_l.append([])
             self.atoms_l[i] = self.get_lead_atoms(i)
             calc = self.atoms_l[i].calc
             atoms = self.atoms_l[i]
@@ -387,6 +392,13 @@ class Transport(GPAW):
             for i in range(self.env_num):
                 self.update_env_hamiltonian(i)
                 self.initialize_env(i)
+        else:
+            for l in range(self.lead_num):
+                (self.lead_fermi[l],
+                 self.hl_skmm[l],
+                 self.dl_skmm[l],
+                 self.sl_kmm[l]) = self.pl_read('lead' + str(l)+ '.mat')
+                self.initialize_lead(l)            
 
         self.fermi = self.lead_fermi[0]
         self.text('*****should change here*******')
@@ -1946,6 +1958,7 @@ class Transport(GPAW):
     def input(self, filename):
         GPAW.__init__(self, filename + '.gpw')
         self.set_positions()
+        self.initialize_transport(dryrun=True)
         fd = file(filename, 'rb')
         (self.bias,
          self.gate,
@@ -1958,7 +1971,6 @@ class Transport(GPAW):
          self.cvgflag
          ) = pickle.load(fd)
         fd.close()
-        self.initialize_transport()
         self.h_skmm, self.d_skmm, self.s_kmm = self.pl_read(filename + '.mat')
         self.initialize_mol()
      
@@ -2010,20 +2022,68 @@ class Transport(GPAW):
                                    )
         return tcalc
     
-    def plot_dos(self, E_range, point_num = 30, leads=[0,1]):
+    def calculate_dos(self, E_range=[-6,2], point_num = 50, leads=[0,1]):
+        data = {}
         e_points = np.linspace(E_range[0], E_range[1], point_num)
-        
         tcalc = self.set_calculator(e_points, leads)
         tcalc.get_transmission()
         tcalc.get_dos()
-        
         f1 = self.intctrl.leadfermi[leads[0]] * (np.zeros([10, 1]) + 1)
         f2 = self.intctrl.leadfermi[leads[1]] * (np.zeros([10, 1]) + 1)
         a1 = np.max(tcalc.T_e)
         a2 = np.max(tcalc.dos_e)
         l1 = np.linspace(0, a1, 10)
         l2 = np.linspace(0, a2, 10)
-       
+        data['e_points'] = e_points
+        data['T_e'] = tcalc.T_e
+        data['dos_e'] = tcalc.dos_e
+        data['f1'] = f1
+        data['f2'] = f2
+        data['l1'] = l1
+        data['l2'] = l2
+        return data
+  
+    def abstract_d_and_v(self):
+        data = {}
+        for s in range(self.nspins):
+            nt = self.density.nt_sG[s]
+            vt = self.hamiltonian.vt_sG[s]
+            for name, d in [('x', 0), ('y', 1), ('z', 2)]:
+                data['s' + str(s) + 'nt_1d_' +
+                     name] = self.array_average_in_one_d(nt, d)
+                data['s' + str(s) + 'nt_2d_' +
+                     name] = self.array_average_in_two_d(nt, d)            
+                data['s' + str(s) + 'vt_1d_' +
+                     name] = self.array_average_in_one_d(vt, d)
+                data['s' + str(s) + 'vt_2d_' +
+                     name] = self.array_average_in_two_d(vt, d)
+        return data    
+    
+    def array_average_in_one_d(self, a, d=2):
+        nx, ny, nz = a.shape
+        if d==0:
+            b = np.array([np.sum(a[i]) for i in range(nx)]) / (ny * nz)
+        if d==1:
+            b = np.array([np.sum(a[:, i, :]) for i in range(ny)]) / (nx * nz)        
+        if d==2:
+            b = np.array([np.sum(a[:, :, i]) for i in range(nz)]) / (nx * ny)
+        return b
+    
+    def array_average_in_two_d(self, a, d=0):
+        b = np.sum(a, axis=d) / a.shape[d]
+        return b        
+    
+    def plot_dos(self, E_range, point_num = 30, leads=[0,1]):
+        e_points = np.linspace(E_range[0], E_range[1], point_num)
+        tcalc = self.set_calculator(e_points, leads)
+        tcalc.get_transmission()
+        tcalc.get_dos()
+        f1 = self.intctrl.leadfermi[leads[0]] * (np.zeros([10, 1]) + 1)
+        f2 = self.intctrl.leadfermi[leads[1]] * (np.zeros([10, 1]) + 1)
+        a1 = np.max(tcalc.T_e)
+        a2 = np.max(tcalc.dos_e)
+        l1 = np.linspace(0, a1, 10)
+        l2 = np.linspace(0, a2, 10)
         import pylab
         pylab.figure(1)
         pylab.subplot(211)
@@ -2036,7 +2096,7 @@ class Transport(GPAW):
         pylab.show()
         
     def plot_v(self, vt=None, tit=None, ylab=None,
-                                             l_MM=False, plot_buffer=True):
+                                             l_MM=False, plot_buffer=False):
         import pylab
         self.use_linear_vt_mm = l_MM
         if vt == None:
@@ -2063,7 +2123,7 @@ class Transport(GPAW):
         pylab.title(tit)
         pylab.show()
 
-    def plot_d(self, nt=None, tit=None, ylab=None, plot_buffer=True):
+    def plot_d(self, nt=None, tit=None, ylab=None, plot_buffer=False):
         import pylab
         if nt == None:
             nt = self.density.nt_sG
@@ -2472,7 +2532,7 @@ class Transport(GPAW):
        
     def calculate_real_dos(self, energy):
         ns = self.nspins
-        nk = len(self.my_kpts)
+        nk = self.my_npk
         nb = self.nbmol_inner
         gr_skmm = np.zeros([ns, nk, nb, nb], complex)
         gr_mm = np.zeros([nb, nb], complex)
@@ -2507,9 +2567,105 @@ class Transport(GPAW):
                     dos_g = self.dos_g[s, :, :, nl]
                 pylab.matshow(dos_g)
                 pylab.show()
-        
-        
-        
-            
+    
+    def calculate_iv(self, v_limit=3, num_v=16):
+        bias = np.linspace(0, v_limit, num_v)
+        self.file_num = num_v
+        current = np.empty([num_v])
+        result = {}
+        result['N'] = num_v
+        for i in range(num_v):
+            v = bias[i]
+            self.bias = [v/2., -v /2.]
+            self.get_selfconsistent_hamiltonian()
+            result['step_data' + str(i)] = self.result_for_one_bias_step()            
+            current[i] = self.get_current()
+            self.output('bias' + str(i))
+        result['i_v'] = (bias, current)    
+        if self.master:
+            fd = file('result.dat', 'wb')
+            pickle.dump(result, fd, 2)
+            fd.close()
 
+    def restart_and_abstract_result(self, v_limit=3, num_v=16):
+        bias = np.linspace(0, v_limit, num_v)
+        current = np.empty([num_v])
+        result = {}
+        result['N'] = num_v
+        for i in range(num_v):
+            self.input('bias' + str(i))
+            self.hamiltonian.vt_sG += self.get_linear_potential()
+            result['step_data' + str(i)] = self.result_for_one_bias_step()            
+            current[i] = self.current
+        result['i_v'] = (bias, current)    
+        if self.master:
+            fd = file('result.dat', 'wb')
+            pickle.dump(result, fd, 2)
+            fd.close()
+            
+    def result_for_one_bias_step(self):
+        step_data = {}
+        step_data['bias'] = self.bias
+        step_data['v_d'] = self.abstract_d_and_v()
+        step_data['t_dos'] = self.calculate_dos()
+        return step_data
+  
+    def analysis(self):
+        if self.master:
+            fd = file('result.dat', 'r')
+            result = pickle.load(fd)
+            fd.close()
+            num_v = result['N']
+            for i in range(num_v):
+                step_data = result['step_data' + str(i)]
+                self.plot_step_data(step_data)
+            self.plot_iv(result['i_v'])    
         
+    def plot_step_data(self, step_data):
+        overview_d = 1
+        sd = step_data['t_dos']    
+        import pylab
+        pylab.figure(1)
+        pylab.subplot(211)
+        pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
+                                    'r--', sd['f2'], sd['l1'], 'r--')
+        pylab.ylabel('Transmission Coefficients')
+        pylab.subplot(212)
+        pylab.plot(sd['e_points'], sd['dos_e'], 'b-o', sd['f1'], sd['l2'],
+                                      'r--', sd['f2'], sd['l2'], 'r--')
+        pylab.ylabel('Density of States')
+        pylab.xlabel('Energy (eV)')
+        pylab.title('bias=' + str(self.bias))
+        pylab.show()
+        
+        sd = step_data['v_d']
+        dd = ['x', 'y', 'z']
+        for s in range(self.nspins):
+            pylab.plot(sd['s' + str(s) + 'vt_1d_' + dd[self.d]] * Hartree, 'b--o') 
+            pylab.ylabel('potential(eV)')
+            pylab.title('spin' + str(s) + 'bias=' + str(self.bias))
+            pylab.show()
+        
+            pylab.plot(sd['s' + str(s) + 'nt_1d_' + dd[self.d]], 'b--o')
+            pylab.ylabel('density')
+            pylab.title('spin' + str(s) + 'bias=' + str(self.bias))
+            pylab.show()
+        
+            pylab.matshow(sd['s' + str(s) + 'vt_2d_' + dd[overview_d]] * Hartree)
+            pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(self.bias))
+            pylab.show()
+       
+            pylab.matshow(sd['s' + str(s) + 'nt_2d_' + dd[overview_d]])
+            pylab.title('spin' + str(s) + 'density at bias=' + str(self.bias))
+            pylab.show()
+
+    def plot_iv(self, i_v):
+        v, i = i_v
+        import pylab
+        pylab.plot(v, i, 'b--o')
+        pylab.xlabel('bias(V)')
+        pylab.ylabel('current(au.)')
+        pylab.show()
+        
+        
+       
