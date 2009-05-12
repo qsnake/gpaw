@@ -64,7 +64,7 @@ class Davidson(Eigensolver):
                 else:
                     weight = kpt.f_n[n]
                 if self.nbands_converge != 'occupied':
-                    if n0 + n < self.nbands_converge:
+                    if n < self.nbands_converge:
                         weight = kpt.weight
                     else:
                         weight = 0.0
