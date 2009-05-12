@@ -595,9 +595,12 @@ def read(paw, reader):
                     kpt.P_ani[a] = P_ni[n0::nstride, i1:i2].copy()
                 i1 = i2
 
-    if r['Mode'] == 'lcao':
-        spos_ac = paw.atoms.get_scaled_positions()
-        paw.wfs.load_lazily(hamiltonian, spos_ac)
+    try:
+        if r['Mode'] == 'lcao':
+            spos_ac = paw.atoms.get_scaled_positions()
+            paw.wfs.load_lazily(hamiltonian, spos_ac)
+    except(AttributeError, KeyError):
+        pass
 
     # Get the forces from the old calculation:
     if r.has_array('CartesianForces'):
