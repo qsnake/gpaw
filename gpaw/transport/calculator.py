@@ -2022,7 +2022,7 @@ class Transport(GPAW):
                                    )
         return tcalc
     
-    def calculate_dos(self, E_range=[-6,2], point_num = 50, leads=[0,1]):
+    def calculate_dos(self, E_range=[-6,2], point_num = 60, leads=[0,1]):
         data = {}
         e_points = np.linspace(E_range[0], E_range[1], point_num)
         tcalc = self.set_calculator(e_points, leads)
@@ -2607,7 +2607,8 @@ class Transport(GPAW):
         step_data = {}
         step_data['bias'] = self.bias
         step_data['v_d'] = self.abstract_d_and_v()
-        step_data['t_dos'] = self.calculate_dos()
+        ef = self.fermi 
+        step_data['t_dos'] = self.calculate_dos([ef-4, ef+4])
         return step_data
   
     def analysis(self):
@@ -2623,7 +2624,8 @@ class Transport(GPAW):
         
     def plot_step_data(self, step_data):
         overview_d = 1
-        sd = step_data['t_dos']    
+        sd = step_data['t_dos']
+        bias = step_data['bias']
         import pylab
         pylab.figure(1)
         pylab.subplot(211)
@@ -2635,7 +2637,7 @@ class Transport(GPAW):
                                       'r--', sd['f2'], sd['l2'], 'r--')
         pylab.ylabel('Density of States')
         pylab.xlabel('Energy (eV)')
-        pylab.title('bias=' + str(self.bias))
+        pylab.title('bias=' + str(bias))
         pylab.show()
         
         sd = step_data['v_d']
@@ -2643,20 +2645,20 @@ class Transport(GPAW):
         for s in range(self.nspins):
             pylab.plot(sd['s' + str(s) + 'vt_1d_' + dd[self.d]] * Hartree, 'b--o') 
             pylab.ylabel('potential(eV)')
-            pylab.title('spin' + str(s) + 'bias=' + str(self.bias))
+            pylab.title('spin' + str(s) + 'bias=' + str(bias))
             pylab.show()
         
             pylab.plot(sd['s' + str(s) + 'nt_1d_' + dd[self.d]], 'b--o')
             pylab.ylabel('density')
-            pylab.title('spin' + str(s) + 'bias=' + str(self.bias))
+            pylab.title('spin' + str(s) + 'bias=' + str(bias))
             pylab.show()
         
             pylab.matshow(sd['s' + str(s) + 'vt_2d_' + dd[overview_d]] * Hartree)
-            pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(self.bias))
+            pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias))
             pylab.show()
        
             pylab.matshow(sd['s' + str(s) + 'nt_2d_' + dd[overview_d]])
-            pylab.title('spin' + str(s) + 'density at bias=' + str(self.bias))
+            pylab.title('spin' + str(s) + 'density at bias=' + str(bias))
             pylab.show()
 
     def plot_iv(self, i_v):
