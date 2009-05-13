@@ -210,6 +210,17 @@ class STM:
         assert not (tgd.h_c - sgd.h_c).any()
 
     def initialize(self, tip_atom_index, dmin=2.0):
+        
+        self.dmin = dmin/Bohr       
+        # Extension of the surface unit cell
+        tgd = self.tip.gd
+        sgd = self.srf.gd
+        tipcell_c = tgd.cell_c    
+        srfcell_c = sgd.cell_c
+        
+        extension = 0.5 * max([tipcell_c[0], tipcell_c[1]])
+        extension_c = np.ceil(np.array([extension,extension,0]) / sgd.h_c).astype(int)
+        # XXX We have to remember to align Fermi energies before we add the potentials
 
         dmin /= Bohr
         tip_pos_av = self.tip.atoms.get_positions() / Bohr
@@ -217,7 +228,7 @@ class STM:
         tip_zmin = tip_pos_av[tip_atom_index, 2]
         srf_zmax = srf_pos_av[:, 2].max()
 
-        offset_c = (tip_pos_av[tip_atom_index] / self.tip.gd.h_c).astype(int)
+        #offset_c = (tip_pos_av[tip_atom_index] / self.tip.gd.h_c).astype(int)
         tip_zmin_a = np.empty(len(tip_pos_av))
         
         for a, setup in enumerate(self.tip.wfs.setups):
@@ -228,20 +239,12 @@ class STM:
         for a, setup in enumerate(self.srf.wfs.setups):
             rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
             srf_zmax_a[a] = srf_pos_av[a, 2] + rcutmax - srf_zmax
-
+        
         tip_indices = np.where(tip_zmin_a < srf_zmax_a.max() - dmin)[0]  
         srf_indices = np.where(srf_zmax_a > tip_zmin_a.min() + dmin)[0]  
         print 'Tip atoms:', tip_indices
         print 'Surface atoms:', srf_indices
         
-        #XXX In order to perform the transport calculations a specific
-        # ordering  of the basis functions is required. 
-        # The basis functions in the principal layer part of repspectively
-        # Ht and Hs have to have the same ordering as the basis functions
-        # in the leads.
-        # Further the dimensions  of the tip and surface 
-        # hamiltonians have to be kept fixed.
-                
         self.tip_functions = []
         i=0
         print i
@@ -268,20 +271,17 @@ class STM:
             for phit in setup.phit_j:
                 print 'srf', j
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
-                self.srf_functions.append(f)
+                self.srf_functions += f.periodic(extension_c)
 
                 j += len(f.f_iG)
         self.nj = j
         
-        # Extension of the surface unit cell
-        tgd = self.tip.gd
-        sgd = self.srf.gd
-        tipcell_c = tgd.cell_c    
-        srfcell_c = sgd.cell_c
         
-        extension = 0.5 * max([tipcell_c[0], tipcell_c[1]])
-        extension_c = np.ceil(np.array([extension,extension,0]) / sgd.h_c).astype(int)
-        # XXX We have to remember to align Fermi energies before we add the potentials
+        # Apply kinetic energy:
+        self.srf_functions_kin = []
+        for f in self.srf_functions:
+            self.srf_functions_kin.append(f.apply_t())
+
         svt_G = self.srf.get_effective_potential()
         tvt_G = self.tip.get_effective_potential() 
         
@@ -296,25 +296,32 @@ class STM:
                 =svt_G[extension_c[0]:]
         extvt_G[:,:extension_c[1]] = extvt_G[:,-2*extension_c[1]:-extension_c[1]]        
         extvt_G[:,-extension_c[1]:] = extvt_G[:,extension_c[1]:2*extension_c[1]]        
-        
+        # XXX N_c = newsize_c + 1 ?
         # Grid descriptor of the extended grid
-        extsgd = GridDescriptor(N_c=newsize_c+1,
-                                  cell_cv=sgd.h_c*(newsize_c+1),
+        extsgd = GridDescriptor(N_c=newsize_c,
+                                  cell_cv=sgd.h_c*(newsize_c),
                                   pbc_c=False,
                                   comm=mpi.serial_comm)   
         
         # XXX when tip and surface potential are added fermi energies
         # first have to be aligned
-
+        self.svt_G = svt_G #XXX
         self.extsgd = extsgd #XXX
         self.extvt_G = extvt_G #XXX
         self.extension_c = extension_c #XXX  
         
-       
+    def get_V(self, tipc):
+        """ tipc = the koordinate in terms of gridpoints in 2D """
+        #set corners with resepct to large grid
+        #add pots
+        #actually calculate overlap
 
-
-        #S_ij = ...
-
+    def linescan(self,stargdp, endgdp):
+        # make list of gridpoints
+        for i in gridpints
+            v = self.get_V(i)
+            current = stm_calc(v)
+    
     def get_s(self, ):
         S_ij = np.zeros((self.ni, self.nj))
         for s in self.srf_functions:
