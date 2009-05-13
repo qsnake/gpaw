@@ -89,7 +89,7 @@ keyword            type       default value        description
 ``kpts``           *seq*      `\Gamma`-point       :ref:`manual_kpts`
 ``spinpol``        ``bool``                        :ref:`manual_spinpol`
 ``gpts``           *seq*                           :ref:`manual_gpts`
-``h``              ``float``                       :ref:`manual_h`
+``h``              ``float``  ``0.2``              :ref:`manual_h`
 ``usesymm``        ``bool``   ``True``             :ref:`manual_usesymm`
 ``random``         ``bool``   ``False``            Use random numbers for
                                                    :ref:`manual_random`
@@ -101,12 +101,14 @@ keyword            type       default value        description
                                                    of the system
 ``convergence``    ``dict``                        :ref:`manual_convergence`
 ``maxiter``        ``int``    ``120``              :ref:`manual_maxiter`
-``txt``                       ``sys.stdout``       Where to send text output
+``txt``            ``str``,   ``sys.stdout``       :ref:`manual_h`
+                   None, or
+                   file obj.
 ``parsize``        *seq*                           Parallel
                                                    :ref:`manual_parsize`
-``stencils``                  ``(2, 3)``           Number of neighbors for
+``stencils``       tuple      ``(2, 3)``           Number of neighbors for
                                                    :ref:`manual_stencils`
-``mixer``                     ``Mixer`` object     Pulay :ref:`manual_mixer`
+``mixer``          Object                          Pulay :ref:`manual_mixer`
                                                    scheme
 ``fixdensity``     ``bool``   ``False``            Use :ref:`manual_fixdensity`
 ``fixmom``         ``bool``   ``False``            Use :ref:`manual_fixmom`
@@ -119,13 +121,13 @@ keyword            type       default value        description
 ``eigensolver``    ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
 ``hund``           ``bool``   ``False``            :ref:`Use Hund's rule
                                                    <manual_hund>`
-``parsize_bands``                                  XXX Missing doc
-``external``                                       XXX Missing doc
-``verbose``                                        XXX Missing doc
-``poissonsolver``                                  XXX Missing doc
-``communicator``                                   XXX Missing doc
-``idiotproof``                                     XXX Missing doc
-``notify``                                         XXX Missing doc
+``parsize_bands``  ``int``    ``1``                XXX Missing doc
+``external``       Object                          XXX Missing doc
+``verbose``        ``int``    ``0``                XXX Missing doc
+``poissonsolver``  Object                          XXX Missing doc
+``communicator``   Object                          XXX Missing doc
+``idiotproof``     ``bool``   ``True``             XXX Missing doc
+``notify``         Object                          XXX Missing doc
 =================  =========  ===================  ============================
 
 *seq*: A sequence of three ``int``'s.
