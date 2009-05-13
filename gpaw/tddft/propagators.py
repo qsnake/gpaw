@@ -18,9 +18,8 @@ from gpaw.tddft.tdopers import DummyDensity
 ###############################################################################
 # DummyKPoint
 ###############################################################################
-class DummyKPoint:
-    def __init__(self):
-        pass
+class DummyKPoint(object):
+    __slots__ = ('psit_nG',)
 
 ###############################################################################
 # DummyPropagator
