@@ -277,7 +277,7 @@ class Transport(GPAW):
     def set_atoms(self, atoms):
         self.atoms = atoms.copy()
         
-    def initialize_transport(self, dryrun=False):
+    def initialize_transport(self, dryrun=False, restart=True):
         if not self.initialized:
             self.initialize()
             if not dryrun:
@@ -392,7 +392,7 @@ class Transport(GPAW):
             for i in range(self.env_num):
                 self.update_env_hamiltonian(i)
                 self.initialize_env(i)
-        else:
+        elif restart:
             for l in range(self.lead_num):
                 (self.lead_fermi[l],
                  self.hl_skmm[l],
@@ -2359,7 +2359,7 @@ class Transport(GPAW):
         return H_sqMM
 
     def estimate_transport_matrix_memory(self):
-        self.initialize_transport(dryrun=True)
+        self.initialize_transport(dryrun=True, restart=False)
         sum = 0
         ns = self.nspins
         if self.use_lead:
@@ -2624,6 +2624,7 @@ class Transport(GPAW):
         
     def plot_step_data(self, step_data):
         overview_d = 1
+        self.nspins = 2
         sd = step_data['t_dos']
         bias = step_data['bias']
         import pylab
