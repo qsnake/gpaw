@@ -45,36 +45,27 @@ class LocalizedFunctions:
        more doc to come.......
     """
 
-    def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None, extension_c=None):
+    def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
         self.gd = gd
-        #assert gd.is_orthogonal()
         assert not gd.is_non_orthogonal()
         self.size_c = np.array(f_iG.shape[1:4])
         self.f_iG = f_iG
         self.corner_c = corner_c
         self.index = index
         self.vt_G = vt_G
+   
+    def periodic(self, extension_c = None):
         if extension_c == None:
-            self.extension_c = np.array([0,0])
-        else:
-            self.extension_c = extension_c
+            extension_c = np.array([0,0,0])
         
-        # Periodic stuff
-               
-        # XXX Hmmmm... But, maybe move all the periodic stuff into another class
-        # which then can transform the LF object? I think the LF class should be kept
-        # as general as possible. Right now it seemes to get
-        # more and more  specialized in order to suit
-        # the STM-formalism (extension of surface region and so on....) 
+        v1_c = np.sign(self.corner_c[:2] - extension_c[:2])
+        v2_c = np.sign(self.corner_c[:2] + self.size_c[:2]-\
+                     (self.gd.end_c[:2] - extension_c[:2] - 1))
         
-        v1_c = np.sign(corner_c[:2] - extension_c)
-        v2_c = np.sign(corner_c[:2] + self.size_c[:2]\
-               - (gd.end_c[:2] - extension_c - np.array([1,1])))
+        self.v1_c = v1_c
+        self.v2_c = v2_c
         
         # Translation vectors along the axes of the transverse unit-cell.
-        # Situation: Box has a spatial overlap with the extended region 
-        # and is placed at the edge between extended and fixed region
-        
         trans_c = []
         for i in np.where(v1_c == -1)[0]:
             v = np.zeros(3,dtype=int)    
@@ -87,8 +78,6 @@ class LocalizedFunctions:
             trans_c.append(v)
         
         # Translation vectors along the diagonal of the transverse unit-cell.
-        # Situation: Box has a spatial overlap with the extended region and
-        # is placed at the corner of extended and fixed region.
         trans_diag_c = []
         for i in range(len(trans_c)):
             for j in range(i,len(trans_c)):
@@ -99,18 +88,15 @@ class LocalizedFunctions:
         trans_c = trans_c+trans_diag_c
         trans_c.append(np.zeros(3)) # The original LF object
         
-        trans_c[:]*=(self.gd.N_c-np.array([1,1,1])) # XXX is this -np.array([1,1,1])
-                                                    # really nessesary?
-        self.periodic_list = trans_c+corner_c
-    
-    def get_periodic_list(self):
+        trans_c[:]*=(self.gd.N_c-np.array([1,1,1])) 
+        self.periodic_list = trans_c+self.corner_c
+ 
         list = []
         for corner in self.periodic_list:
             list.append(LocalizedFunctions(self.gd,self.f_iG,
                                         corner_c=corner,
                                         index=self.index,
-                                        vt_G=self.vt_G,
-                                        extension=self.extension))
+                                        vt_G=self.vt_G))
         return list
 
 
@@ -195,7 +181,7 @@ class WannierFunction(LocalizedFunctions):
                                     corner_c, index)
 
 class AtomCenteredFunctions(LocalizedFunctions):
-    def __init__(self, gd, spline_j, spos_c, index=None,extension_c=np.array([0,0])):
+    def __init__(self, gd, spline_j, spos_c, index=None):
         rcut = max([spline.get_cutoff() for spline in spline_j])
         corner_c = np.ceil(spos_c * gd.N_c - rcut / gd.h_c).astype(int)
         size_c = np.ceil(spos_c * gd.N_c + rcut / gd.h_c).astype(int) - corner_c
@@ -210,7 +196,7 @@ class AtomCenteredFunctions(LocalizedFunctions):
         f_iG = smallgd.zeros(ni)
         lfc.add(f_iG, {0: np.eye(ni)})
         LocalizedFunctions.__init__(self, gd, f_iG, corner_c, 
-                                    extension_c=extension_c, index=index)
+                                     index=index)
 
 class STM:
     def __init__(self, tip, surface):
@@ -232,13 +218,12 @@ class STM:
         srf_zmax = srf_pos_av[:, 2].max()
 
         offset_c = (tip_pos_av[tip_atom_index] / self.tip.gd.h_c).astype(int)
-
         tip_zmin_a = np.empty(len(tip_pos_av))
         
         for a, setup in enumerate(self.tip.wfs.setups):
             rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
             tip_zmin_a[a] = tip_pos_av[a, 2] - rcutmax - tip_zmin
-
+    
         srf_zmax_a = np.empty(len(srf_pos_av))
         for a, setup in enumerate(self.srf.wfs.setups):
             rcutmax = max([phit.get_cutoff() for phit in setup.phit_j])
@@ -249,8 +234,46 @@ class STM:
         print 'Tip atoms:', tip_indices
         print 'Surface atoms:', srf_indices
         
-        self.tip_functions = []
+        #XXX In order to perform the transport calculations a specific
+        # ordering  of the basis functions is required. 
+        # The basis functions in the principal layer part of repspectively
+        # Ht and Hs have to have the same ordering as the basis functions
+        # in the leads.
+        # Further the the dimensions  of the tip and surface 
+        # hamiltonians have to be kept fixed.
+        
+        # Indexing convention: First basis function on the first atom
+        # in the srf-loa has index 0.
+        
+        #XXX clean up. This we has to be done in a different and smarter
+        # way  
+
+        srf_i = {}
         i = 0
+        for a, setup in enumerate(self.srf.wfs.setups):
+            ni_a = []
+            for phit in setup.phit_j:
+                print 'srf', i
+                ni_a.append(i)
+                l = phit.get_angular_momentum_number()
+                i += 2*l + 1 
+            srf_i[a] = ni_a
+         
+        tip_i = {}   
+        for a, setup in enumerate(self.tip.wfs.setups):
+            ni_a = []
+            for phit in setup.phit_j:
+                print 'tip', i
+                ni_a.append(i)
+                l = phit.get_angular_momentum_number()
+                i += 2*l + 1 
+            tip_i[a] = ni_a
+         
+        self.srf_i= srf_i
+        
+        self.tip_functions = []
+        i=0
+        print i
         for a in tip_indices:
             setup = self.tip.wfs.setups[a]
             spos_c = tip_pos_av[a] / self.tip.gd.cell_c
@@ -258,12 +281,13 @@ class STM:
                 f = AtomCenteredFunctions(self.tip.gd, [phit], spos_c, i)
                 self.tip_functions.append(f)
                 i += len(f.f_iG)
+                print i
         self.ni = i
 
         # Apply kinetic energy:
         self.tip_functions_kin = []
-        #for f in self.tip_functions:
-        #    self.tip_functions_kin.append(f.apply_t())
+        for f in self.tip_functions:
+            self.tip_functions_kin.append(f.apply_t())
 
         self.srf_functions = []
         j = 0
@@ -274,14 +298,56 @@ class STM:
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
                 self.srf_functions.append(f)
 
-                # Boundary conditions!!!?
-                #if f outside box:
-                #    self.srf_functions.append(f.translate())
-                    
-                
                 j += len(f.f_iG)
         self.nj = j
         
+        
+
+        # XXX clan this up
+        # Extension of the surface unit cell
+        tipcell = self.tip.atoms.cell / Bohr        
+        extension_c = 0.5 * max([tipcell[0,0], tipcell[1,1]])
+        # extension vection in terms of gridpoints        
+        self.extension_c = extension_c
+        tgd = self.tip.gd
+        sgd = self.srf.gd
+        scell= sgd.cell_c
+        assert extension_c < min([scell[0],scell[1]])
+        svt_G = self.srf.get_effective_potential()
+        extension_c = np.array([extension_c,extension_c,0])
+        tvt_G = self.tip.get_effective_potential()
+        self.svt_G = svt_G
+        self.tvt_G = tvt_G       
+        # How many gridpoints to extend
+        extension_c = np.ceil(extension_c / sgd.h_c).astype(int)
+        newsize_c = 2 * extension_c + sgd.N_c
+        self.newsize_c = newsize_c
+        
+        extvt_G = np.zeros(newsize_c)
+        extvt_G[extension_c[0]:-extension_c[0],
+                extension_c[1]:-extension_c[1],:] = svt_G       
+        extvt_G[:extension_c[0],
+                extension_c[1]:-extension_c[1]] = svt_G[-extension_c[0]:]
+        extvt_G[-extension_c[0]:,extension_c[1]:-extension_c[1]]\
+                =svt_G[extension_c[0]:]
+        extvt_G[:,:extension_c[1]] = extvt_G[:,-2*extension_c[1]:-extension_c[1]]        
+        extvt_G[:,-extension_c[1]:] = extvt_G[:,extension_c[1]:2*extension_c[1]]        
+        
+        # Grid descriptor of the large grid
+        extsgd = GridDescriptor(N_c=newsize_c+1,
+                                  cell_cv=sgd.h_c*(newsize_c+1),
+                                  pbc_c=False,
+                                  comm=mpi.serial_comm)   
+        
+        # XXX when tip and surface potential are added fermi energies
+        # first have to be aligned
+
+        self.extsgd = extsgd #XXX
+        self.extvt_G = extvt_G #XXX
+        self.extension_c2 = extension_c #XXX  
+        
+       
+
         #self.gd = GridDescriptor()
 
         #S_ij = ...
