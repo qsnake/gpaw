@@ -160,7 +160,7 @@ class TimeDependentHamiltonian:
 
         for a, P_xi in P_axi.items():
             dH_ii = unpack(self.dH_asp[a][kpt.s])
-            P_axi[a] = npy.dot(P_xi, dH_ii)
+            P_axi[a][:] = npy.dot(P_xi, dH_ii)
         self.wfs.pt.add(hpsit, P_axi, kpt.q)
 
         if self.td_potential is not None:
