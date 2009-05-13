@@ -108,10 +108,8 @@ keyword            type       default value        description
                                                    :ref:`manual_stencils`
 ``mixer``                     ``Mixer`` object     Pulay :ref:`manual_mixer`
                                                    scheme
-``fixdensity``     ``bool``   ``False``            Keep
-                                                   :ref:`manual_fixdensity`
-``fixmom``         ``bool``   ``False``            Do a calculation with
-                                                   :ref:`manual_fixmom`
+``fixdensity``     ``bool``   ``False``            Use :ref:`manual_fixdensity`
+``fixmom``         ``bool``   ``False``            Use :ref:`manual_fixmom`
 ``setups``         ``str``    ``'paw'``            :ref:`manual_setups`
                    or
                    ``dict``
@@ -399,7 +397,7 @@ and used for output.  Use ``txt=None`` to disable all text output.
 Domain decomposition
 --------------------
 
-XXX Missing doc
+See :ref:`manual_parallel_calculations`.
 
 
 .. _manual_stencils:
