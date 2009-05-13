@@ -239,38 +239,9 @@ class STM:
         # The basis functions in the principal layer part of repspectively
         # Ht and Hs have to have the same ordering as the basis functions
         # in the leads.
-        # Further the the dimensions  of the tip and surface 
+        # Further the dimensions  of the tip and surface 
         # hamiltonians have to be kept fixed.
-        
-        # Indexing convention: First basis function on the first atom
-        # in the srf-loa has index 0.
-        
-        #XXX clean up. This we has to be done in a different and smarter
-        # way  
-
-        srf_i = {}
-        i = 0
-        for a, setup in enumerate(self.srf.wfs.setups):
-            ni_a = []
-            for phit in setup.phit_j:
-                print 'srf', i
-                ni_a.append(i)
-                l = phit.get_angular_momentum_number()
-                i += 2*l + 1 
-            srf_i[a] = ni_a
-         
-        tip_i = {}   
-        for a, setup in enumerate(self.tip.wfs.setups):
-            ni_a = []
-            for phit in setup.phit_j:
-                print 'tip', i
-                ni_a.append(i)
-                l = phit.get_angular_momentum_number()
-                i += 2*l + 1 
-            tip_i[a] = ni_a
-         
-        self.srf_i= srf_i
-        
+                
         self.tip_functions = []
         i=0
         print i
@@ -278,10 +249,10 @@ class STM:
             setup = self.tip.wfs.setups[a]
             spos_c = tip_pos_av[a] / self.tip.gd.cell_c
             for phit in setup.phit_j:
+                print 'tip', i
                 f = AtomCenteredFunctions(self.tip.gd, [phit], spos_c, i)
                 self.tip_functions.append(f)
                 i += len(f.f_iG)
-                print i
         self.ni = i
 
         # Apply kinetic energy:
@@ -295,33 +266,26 @@ class STM:
             setup = self.srf.wfs.setups[a]
             spos_c = srf_pos_av[a] / self.srf.gd.cell_c
             for phit in setup.phit_j:
+                print 'srf', j
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
                 self.srf_functions.append(f)
 
                 j += len(f.f_iG)
         self.nj = j
         
-        
-
-        # XXX clan this up
         # Extension of the surface unit cell
-        tipcell = self.tip.atoms.cell / Bohr        
-        extension_c = 0.5 * max([tipcell[0,0], tipcell[1,1]])
-        # extension vection in terms of gridpoints        
-        self.extension_c = extension_c
         tgd = self.tip.gd
         sgd = self.srf.gd
-        scell= sgd.cell_c
-        assert extension_c < min([scell[0],scell[1]])
+        tipcell_c = tgd.cell_c    
+        srfcell_c = sgd.cell_c
+        
+        extension = 0.5 * max([tipcell_c[0], tipcell_c[1]])
+        extension_c = np.ceil(np.array([extension,extension,0]) / sgd.h_c).astype(int)
+        # XXX We have to remember to align Fermi energies before we add the potentials
         svt_G = self.srf.get_effective_potential()
-        extension_c = np.array([extension_c,extension_c,0])
-        tvt_G = self.tip.get_effective_potential()
-        self.svt_G = svt_G
-        self.tvt_G = tvt_G       
-        # How many gridpoints to extend
-        extension_c = np.ceil(extension_c / sgd.h_c).astype(int)
+        tvt_G = self.tip.get_effective_potential() 
+        
         newsize_c = 2 * extension_c + sgd.N_c
-        self.newsize_c = newsize_c
         
         extvt_G = np.zeros(newsize_c)
         extvt_G[extension_c[0]:-extension_c[0],
@@ -333,7 +297,7 @@ class STM:
         extvt_G[:,:extension_c[1]] = extvt_G[:,-2*extension_c[1]:-extension_c[1]]        
         extvt_G[:,-extension_c[1]:] = extvt_G[:,extension_c[1]:2*extension_c[1]]        
         
-        # Grid descriptor of the large grid
+        # Grid descriptor of the extended grid
         extsgd = GridDescriptor(N_c=newsize_c+1,
                                   cell_cv=sgd.h_c*(newsize_c+1),
                                   pbc_c=False,
@@ -344,11 +308,10 @@ class STM:
 
         self.extsgd = extsgd #XXX
         self.extvt_G = extvt_G #XXX
-        self.extension_c2 = extension_c #XXX  
+        self.extension_c = extension_c #XXX  
         
        
 
-        #self.gd = GridDescriptor()
 
         #S_ij = ...
 
