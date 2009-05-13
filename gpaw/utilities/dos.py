@@ -135,7 +135,7 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
     nb = paw.wfs.nbands
     ns = paw.wfs.nspins
     
-    P_un = np.zeros((nk*ns, nb), np.complex)
+    P_un = np.zeros((nk * ns, nb), np.complex)
     if wf_k is None:
         if lc is None:
             lc = [[1,0,0,0] for a in mol]
@@ -144,15 +144,15 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
             for atom, w_a in zip(mol, lc):
                 i=0
                 for w_o in w_a:
-                    P_un[u] += w_o * kpt.P_ani[atom][:,i]
+                    P_un[u] += w_o * kpt.P_ani[atom][:, i]
                     N += abs(w_o)**2
                     i +=1
         P_un /= sqrt(N)
 
     else:
         wf_k = np.array(wf_k)
-        P_aui = np.array(P_aui).conj()
-        for u, kpt in enumerate(paw.wfs.kpt_u[spin*nk:(spin+1)*nk]):
+        P_aui = [np.array(P_ui).conj() for P_ui in P_aui]
+        for u, kpt in enumerate(paw.wfs.kpt_u[spin * nk:(spin + 1) * nk]):
             w = np.reshape(wf_k.conj()[kpt.k], -1)
             for n in range(nb):
                 psit_nG = np.reshape(kpt.psit_nG[n], -1)
@@ -165,7 +165,8 @@ def all_electron_LDOS(paw, mol, spin, lc=None, wf_k=None, P_aui=None):
                             P_un[u][n] += (P_aui[b][u][i] *
                                            atom.O_ii[i][j] * p_i[j])
                 #print n, abs(P_un)[u][n]**2
-                
+
+            # XXX ??? why not print to paw.txt
             print 'Kpoint', u, ' Sum: ',  sum(abs(P_un[u])**2)
             
     energies = np.empty(nb * nk)
