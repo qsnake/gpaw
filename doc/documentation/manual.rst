@@ -80,46 +80,55 @@ The complete list of all possible parameters and their defaults is
 shown below. A detailed description of the individual parameters is
 given in the following sections.
 
-===============  =========  ===================  =============================
-keyword          type       default value        description
-===============  =========  ===================  =============================
-``mode``         ``str``    ``'fd'``             :ref:`manual_mode`
-``nbands``       ``int``                         :ref:`manual_nbands`
-``xc``           ``str``    ``'LDA'``            :ref:`manual_xc`
-``kpts``         *seq*      `\Gamma`-point       **k**-point sampling
-``spinpol``      ``bool``                        Spinpolarized calculation
-``gpts``         *seq*                           :ref:`manual_gpts`
-``h``            ``float``                       Grid spacing
-``usesymm``      ``bool``   ``True``             :ref:`manual_usesymm`
-``random``       ``bool``   ``False``            Initialize wave functions 
-                                                 with random numbers
-``width``        ``float``  ``0`` or ``0.1`` eV  Width of :ref:`manual_width`
-``lmax``         ``int``    ``2``                Maximum angular momentum
-                                                 for expansion of
-                                                 :ref:`manual_lmax`
-``charge``       ``float``  ``0``                Total :ref:`manual_charge`
-                                                 of the system
-``convergence``  ``dict``                        :ref:`manual_convergence`
-``maxiter``      ``int``    ``120``              Maximum number of
-                                                 SCF-iterations
-``txt``                     ``sys.stdout``       Where to send text output
-``parsize``      *seq*                           Parallel domain decomposition
-``stencils``                ``(2, 3)``           Number of neighbors for
-                                                 finite difference stencils.
-``mixer``                   ``Mixer`` object     Pulay :ref:`manual_mixer`
-                                                 scheme
-``fixdensity``   ``bool``   ``False``            Keep the density fixed
-``fixmom``       ``bool``   ``False``            Do a fixed spin moment
-                                                 calculation
-``setups``       ``str``    ``'paw'``            Type of setups to use
-                 or
-                 ``dict``
-``basis``        ``str``    ``{}``               Basis set for LCAO 
-                 or                              calculations
-                 ``dict``
-``eigensolver``  ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
-``hund``         ``bool``   ``False``            Use Hund's rule
-===============  =========  ===================  =============================
+=================  =========  ===================  ============================
+keyword            type       default value        description
+=================  =========  ===================  ============================
+``mode``           ``str``    ``'fd'``             :ref:`manual_mode`
+``nbands``         ``int``                         :ref:`manual_nbands`
+``xc``             ``str``    ``'LDA'``            :ref:`manual_xc`
+``kpts``           *seq*      `\Gamma`-point       :ref:`manual_kpts`
+``spinpol``        ``bool``                        :ref:`manual_spinpol`
+``gpts``           *seq*                           :ref:`manual_gpts`
+``h``              ``float``                       :ref:`manual_h`
+``usesymm``        ``bool``   ``True``             :ref:`manual_usesymm`
+``random``         ``bool``   ``False``            Use random numbers for
+                                                   :ref:`manual_random`
+``width``          ``float``  ``0`` or ``0.1`` eV  Width of :ref:`manual_width`
+``lmax``           ``int``    ``2``                Maximum angular momentum
+                                                   for expansion of
+                                                   :ref:`manual_lmax`
+``charge``         ``float``  ``0``                Total :ref:`manual_charge`
+                                                   of the system
+``convergence``    ``dict``                        :ref:`manual_convergence`
+``maxiter``        ``int``    ``120``              :ref:`manual_maxiter`
+``txt``                       ``sys.stdout``       Where to send text output
+``parsize``        *seq*                           Parallel
+                                                   :ref:`manual_parsize`
+``stencils``                  ``(2, 3)``           Number of neighbors for
+                                                   :ref:`manual_stencils`
+``mixer``                     ``Mixer`` object     Pulay :ref:`manual_mixer`
+                                                   scheme
+``fixdensity``     ``bool``   ``False``            Keep
+                                                   :ref:`manual_fixdensity`
+``fixmom``         ``bool``   ``False``            Do a calculation with
+                                                   :ref:`manual_fixmom`
+``setups``         ``str``    ``'paw'``            :ref:`manual_setups`
+                   or
+                   ``dict``
+``basis``          ``str``    ``{}``               Specification of
+                   or                              :ref:`manual_basis`
+                   ``dict``
+``eigensolver``    ``str``    ``'rmm-diis'``       :ref:`manual_eigensolver`
+``hund``           ``bool``   ``False``            :ref:`Use Hund's rule
+                                                   <manual_hund>`
+``parsize_bands``                                  XXX Missing doc
+``external``                                       XXX Missing doc
+``verbose``                                        XXX Missing doc
+``poissonsolver``                                  XXX Missing doc
+``communicator``                                   XXX Missing doc
+``idiotproof``                                     XXX Missing doc
+``notify``                                         XXX Missing doc
+=================  =========  ===================  ============================
 
 *seq*: A sequence of three ``int``'s.
 
@@ -163,16 +172,6 @@ unoccupied bands will improve convergence.
 .. tip::
    ``nbands=0`` will give zero empty bands, and ``nbands=-n`` will
    give ``n`` empty bands.
-
-
-.. _manual_charge:
-
-Charge
-------
-
-The default is charge neutral.  The systems total charge may be set in
-units of the negative electron charge (i.e. ``charge=-1`` means one
-electron more than the neutral).
 
 
 .. _manual_xc:
@@ -226,6 +225,17 @@ will sample the Brillouin-zone with a regular grid of ``n1`` `\times`
 ``n2`` `\times` ``n3`` **k**-points.
 
 
+.. _manual_spinpol:
+
+Spinpolarized calculation
+-------------------------
+
+If any of the atoms have magnetic moments, then the calculation will
+be spin-polarized - otherwise, a spin-paired calculation is carried
+out.  This behavior can be overruled with the ``spinpol`` keyword
+(``spinpol=True``).
+
+
 .. _manual_gpts:
 
 Number of grid points
@@ -252,6 +262,14 @@ conversion can be done like this::
   >>> h = cutoff2gridspacing(50 * Rydberg)
 
 
+.. _manual_h:
+
+Grid spacing
+------------
+
+XXX Missing doc
+
+
 .. _manual_usesymm:
 
 Use of symmetry
@@ -266,6 +284,17 @@ Hamiltonian is invariant under **k** -> -**k**). For some purposes you
 might want to have no symmetry reduction of the **k**-points at all
 (debugging, transport, wannier functions). This can be achieved be
 specifying ``usesymm=None``.
+
+
+.. _manual_random:
+
+Wave function initialization
+----------------------------
+
+By default, a linear combination of atomic orbitals is used as initial
+guess for the wave functions. If the user wants to calculate more bands
+than there are precalculated atomic orbitals, random numbers will be
+used for the remaining bands.
 
 
 .. _manual_width:
@@ -292,6 +321,16 @@ Compensation charges
 
 The compensation charges are expanded with correct multipoles up to
 and including `\ell=\ell_{max}`.  Default value: ``lmax=2``.
+
+
+.. _manual_charge:
+
+Charge
+------
+
+The default is charge neutral.  The systems total charge may be set in
+units of the negative electron charge (i.e. ``charge=-1`` means one
+electron more than the neutral).
 
 
 .. _manual_convergence:
@@ -334,6 +373,43 @@ also write ``{'bands': -10}`` to converge all bands except the last
 The calculation will stop with an error if convergence is not reached
 in ``maxiter`` self-consistent iterations (defaults to 120).
 
+
+.. _manual_maxiter:
+
+Maximum number of SCF-iterations
+--------------------------------
+
+XXX Missing doc
+
+
+.. _manual_txt:
+
+Where to send text output
+-------------------------
+
+The ``txt`` keyword defaults to the string ``'-'``, which means
+standard output.  One can also give a ``file`` object (anything with a
+``write`` method will do).  If a string (different from ``'-'``) is
+passed to the ``txt`` keyword, a file with that name will be opened
+and used for output.  Use ``txt=None`` to disable all text output.
+
+
+.. _manual_parsize:
+
+Domain decomposition
+--------------------
+
+XXX Missing doc
+
+
+.. _manual_stencils:
+
+Finite-difference stencils
+--------------------------
+
+XXX Missing doc
+
+
 .. _manual_mixer:
 
 Density mixing
@@ -353,13 +429,60 @@ occupations one has to use :class:`~gpaw.mixer.MixerSum` instead of
 See also the documentation on :ref:`density mixing <densitymix>`.
 
 
-Wave function initialization
-----------------------------
+.. _manual_fixdensity:
 
-By default, a linear combination of atomic orbitals is used as initial
-guess for the wave functions. If the user wants to calculate more bands
-than there are precalculated atomic orbitals, random numbers will be
-used for the remaining bands.
+Fixed density
+-------------
+
+XXX Missing doc
+
+
+.. _manual_fixmom:
+
+Fixed total magnetic moment
+---------------------------
+
+XXX Missing doc
+
+
+.. _manual_setups:
+
+Type of setup to use
+--------------------
+
+The ``setups`` keyword can be a dictionary mapping chemical symbols or
+atom numbers to types of setups (strings).  The default type is
+``'paw'``.  Another type is ``'ae'`` for all-electron calculations.
+In the future there might be a ``'hgh'`` type for
+Hartwigsen-Goedecker-Hutter pseudopotential calculations.  An
+example::
+
+  setups={'Li': 'mine', 'H': 'ae'}
+
+For an LDA calculation, GPAW will look for :file:`Li.mine.LDA` (or
+:file:`Li.mine.LDA.gz`) in your :envvar:`GPAW_SETUP_PATH` environment
+variable and use an all-electron potential for hydrogen atoms.
+
+
+.. _manual_basis:
+
+Atomic basis set
+----------------
+
+The ``basis`` keyword can be used to specify the basis set which
+should be used in LCAO mode, which also affects the LCAO
+initialization in FD mode.
+
+In FD mode, the initial guess for the density / wave functions is
+determined by solving the Kohn-Sham equations in the LCAO basis.
+
+Default is to use the pseudo partial waves from the setup as a
+basis. This basis is always available; choosing anything else requires
+the existence of the corresponding basis set file in the
+:envvar:`GPAW_SETUP_PATH`.
+
+For details on the LCAO mode and generation of basis set files; see
+the :ref:`LCAO <lcao>` documentation.
 
 
 .. _manual_eigensolver:
@@ -382,49 +505,7 @@ LCAO mode has its own eigensolver, which directly diagonalizes the
 Hamiltonian matrix instead of using an iterative method.
 
 
-Spinpolarized calculation
--------------------------
-
-If any of the atoms have magnetic moments, then the calculation will
-be spin-polarized - otherwise, a spin-paired calculation is carried
-out.  This behavior can be overruled with the ``spinpol`` keyword
-(``spinpol=True``).
-
-
-Type of setup to use
---------------------
-
-The ``setups`` keyword can be a dictionary mapping chemical symbols or
-atom numbers to types of setups (strings).  The default type is
-``'paw'``.  Another type is ``'ae'`` for all-electron calculations.
-In the future there might be a ``'hgh'`` type for
-Hartwigsen-Goedecker-Hutter pseudopotential calculations.  An
-example::
-
-  setups={'Li': 'mine', 'H': 'ae'}
-
-For an LDA calculation, GPAW will look for :file:`Li.mine.LDA` (or
-:file:`Li.mine.LDA.gz`) in your :envvar:`GPAW_SETUP_PATH` environment
-variable and use an all-electron potential for hydrogen atoms.
-
-
-Atomic basis set
-----------------
-
-The ``basis`` keyword can be used to specify the basis set which
-should be used in LCAO mode, which also affects the LCAO
-initialization in FD mode.  See the :ref:`lcao` documentation.  The
-default behaviour is to use the pseudo partial waves from the setup.
-
-
-Where to send text output
--------------------------
-
-The ``txt`` keyword defaults to the string ``'-'``, which means
-standard output.  One can also give a ``file`` object (anything with a
-``write`` method will do).  If a string (different from ``'-'``) is
-passed to the ``txt`` keyword, a file with that name will be opened
-and used for output.  Use ``txt=None`` to disable all text output.
+.. _manual_hund:
 
 Using Hund's rule for guessing initial magnetic moments
 -------------------------------------------------------

@@ -26,10 +26,10 @@ encountering convergence problems:
 * The initial guess for the electron density is always calculated
   using the LCAO scheme, with a default single-zeta basis, i.e. one
   orbital for each valence electron. You can try to make a better
-  initial guess by enlarging the basis-set. This can be done by
-  setting ``basis='szp'`` if you want to use a single-zeta-polarized
-  basis. Note that you first need to generate the basis file, as
-  described in :ref:`LCAO mode <lcao>`.
+  initial guess by enlarging the :ref:`manual_basis`. This can be done
+  by setting ``basis='szp'`` if you want to use a
+  single-zeta-polarized basis. Note that you first need to generate
+  the basis file, as described in :ref:`LCAO mode <lcao>`.
 * Try changing the :ref:`eigensolver <manual_eigensolver>`. The
   default, ``RMM-DIIS``, is good for speed, but can sometimes have
   poor convergence properties. The conjugate gradient, ``CG``, solver
