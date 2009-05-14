@@ -130,10 +130,10 @@ if debug:
     oldempty = numpy.empty
     def empty(*args, **kwargs):
         a = oldempty(*args, **kwargs)
-        if a.dtype == int:
-            a[:] = -100000000
-        else:
+        try:
             a[:] = numpy.nan
+        except:
+            a[:] = -100000000
         return a
     numpy.empty = empty
 
