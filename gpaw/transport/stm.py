@@ -54,16 +54,16 @@ class LocalizedFunctions:
         self.index = index
         self.vt_G = vt_G
    
-    def periodic(self, extension_c = None):
-        if extension_c == None:
-            extension_c = np.array([0,0,0])
+    def periodic(self, extension = 0):
+        """extension - Extension of the surface unit cell in terms of gridpoints"""
         
+        self.extension = extension
+        
+        extension_c = np.array([extension,extension,0],dtype=int)
+
         v1_c = np.sign(self.corner_c[:2] - extension_c[:2])
         v2_c = np.sign(self.corner_c[:2] + self.size_c[:2]-\
                      (self.gd.end_c[:2] - extension_c[:2] - 1))
-        
-        self.v1_c = v1_c
-        self.v2_c = v2_c
         
         # Translation vectors along the axes of the transverse unit-cell.
         trans_c = []
@@ -88,7 +88,7 @@ class LocalizedFunctions:
         trans_c = trans_c+trans_diag_c
         trans_c.append(np.zeros(3)) # The original LF object
         
-        trans_c[:]*=(self.gd.N_c-np.array([1,1,1])) 
+        trans_c[:] *= (self.gd.N_c-1) 
         self.periodic_list = trans_c+self.corner_c
  
         list = []
@@ -146,7 +146,7 @@ class LocalizedFunctions:
     
     def restrict(self):
         """Restricts the box of the objet to the current grid"""
-        
+        #XXX We probably do not need this function.
         start_c = np.maximum(self.corner_c, np.zeros(3))
         stop_c = np.minimum(self.corner_c + self.size_c, self.gd.N_c)
         
@@ -210,19 +210,22 @@ class STM:
         assert not (tgd.h_c - sgd.h_c).any()
 
     def initialize(self, tip_atom_index, dmin=2.0):
-        
-        self.dmin = dmin/Bohr       
+        #XXX We might want to look at the order of stuff that happens in this function.
+        self.dmin = dmin/Bohr
+        self.tip_atom_index = tip_atom_index     
         # Extension of the surface unit cell
         tgd = self.tip.gd
         sgd = self.srf.gd
         tipcell_c = tgd.cell_c    
         srfcell_c = sgd.cell_c
         
-        extension = 0.5 * max([tipcell_c[0], tipcell_c[1]])
-        extension_c = np.ceil(np.array([extension,extension,0]) / sgd.h_c).astype(int)
-        # XXX We have to remember to align Fermi energies before we add the potentials
-
-        dmin /= Bohr
+        extension = np.ceil(0.5 * max([tipcell_c[0]/sgd.h_c[0],\
+                                  tipcell_c[1]/sgd.h_c[1]])).astype(int)
+        self.extension = extension
+        extension_c = np.array([extension,extension,0])
+        self.extension_c = extension_c
+        print extension
+        dmin /= Bohr # XXX is done twice
         tip_pos_av = self.tip.atoms.get_positions() / Bohr
         srf_pos_av = self.srf.atoms.get_positions() / Bohr
         tip_zmin = tip_pos_av[tip_atom_index, 2]
@@ -244,20 +247,22 @@ class STM:
         srf_indices = np.where(srf_zmax_a > tip_zmin_a.min() + dmin)[0]  
         print 'Tip atoms:', tip_indices
         print 'Surface atoms:', srf_indices
-        
+
         self.tip_functions = []
         i=0
         print i
         for a in tip_indices:
             setup = self.tip.wfs.setups[a]
             spos_c = tip_pos_av[a] / self.tip.gd.cell_c
+            if a == self.tip_atom_index:
+                print 'tip_box0', i
+                self.tip_atom_box_0 = i
             for phit in setup.phit_j:
-                print 'tip', i
                 f = AtomCenteredFunctions(self.tip.gd, [phit], spos_c, i)
                 self.tip_functions.append(f)
                 i += len(f.f_iG)
         self.ni = i
-
+        print extension
         # Apply kinetic energy:
         self.tip_functions_kin = []
         for f in self.tip_functions:
@@ -271,58 +276,94 @@ class STM:
             for phit in setup.phit_j:
                 print 'srf', j
                 f = AtomCenteredFunctions(self.srf.gd, [phit], spos_c, j)
-                self.srf_functions += f.periodic(extension_c)
+                self.srf_functions += f.periodic(extension)
 
                 j += len(f.f_iG)
         self.nj = j
-        
         
         # Apply kinetic energy:
         self.srf_functions_kin = []
         for f in self.srf_functions:
             self.srf_functions_kin.append(f.apply_t())
 
+        # Extend the surface grid
         svt_G = self.srf.get_effective_potential()
-        tvt_G = self.tip.get_effective_potential() 
         
-        newsize_c = 2 * extension_c + sgd.N_c
+        newsize_c = 2 * self.extension_c + sgd.N_c
         
         extvt_G = np.zeros(newsize_c)
-        extvt_G[extension_c[0]:-extension_c[0],
-                extension_c[1]:-extension_c[1],:] = svt_G       
-        extvt_G[:extension_c[0],
-                extension_c[1]:-extension_c[1]] = svt_G[-extension_c[0]:]
-        extvt_G[-extension_c[0]:,extension_c[1]:-extension_c[1]]\
-                =svt_G[extension_c[0]:]
-        extvt_G[:,:extension_c[1]] = extvt_G[:,-2*extension_c[1]:-extension_c[1]]        
-        extvt_G[:,-extension_c[1]:] = extvt_G[:,extension_c[1]:2*extension_c[1]]        
+        extvt_G[extension:-extension,extension:-extension,:] = svt_G       
+        extvt_G[:extension,extension:-extension]  = svt_G[-extension:]
+        extvt_G[-extension:,extension:-extension] = svt_G[extension:]
+        extvt_G[:,:extension] = extvt_G[:,-2*extension:-extension]        
+        extvt_G[:,-extension:] = extvt_G[:,extension:2*extension]        
+        
         # XXX N_c = newsize_c + 1 ?
-        # Grid descriptor of the extended grid
         extsgd = GridDescriptor(N_c=newsize_c,
                                   cell_cv=sgd.h_c*(newsize_c),
                                   pbc_c=False,
                                   comm=mpi.serial_comm)   
         
-        # XXX when tip and surface potential are added fermi energies
-        # first have to be aligned
-        self.svt_G = svt_G #XXX
-        self.extsgd = extsgd #XXX
-        self.extvt_G = extvt_G #XXX
-        self.extension_c = extension_c #XXX  
+        # Set positions of the surface orbitals in the extended grid
+        for f, f_kin in zip(self.srf_functions, self.srf_functions_kin):
+            f.corner_c += extension_c
+            f_kin.corner_c += extension_c
+    
+        self.extsgd = extsgd
+        self.extvt_G = extvt_G
+
+        #XXX Get isolated tip and surface hamiltonians and
+        # and initialize all the transport stuff
+    
+    def position_tip_cell(self,grdpt_c, return_v = False):   
+        """Positions origin of the tip unit cell at grdpt_c
+            in the extended surface unit cell."""         
         
-    def get_V(self, tipc):
-        """ tipc = the koordinate in terms of gridpoints in 2D """
+        tvt_G = self.tip.get_effective_potential() 
+        tip_pos_av = self.tip.atoms.get_positions() / Bohr
+        srf_pos_av = self.srf.atoms.get_positions() / Bohr
+        tip_zmin = tip_pos_av[self.tip_atom_index, 2]
+        srf_zmax = srf_pos_av[:, 2].max()
+
+        #corner of the tip unit cell in the extended grid        
+        cell_corner_c = grdpt_c + self.extension_c      
+        cell_corner_c[2] = np.ceil(\
+           (srf_zmax + self.dmin - tip_zmin) / self.extsgd.h_c[2]).astype(int) 
+        
+        for f, f_kin in zip(self.tip_functions,self.tip_functions_kin):
+            f.corner_c += cell_corner_c
+            f_kin.corner_c += cell_corner_c
+        
+        # Add the tip potential at the respective place in the extended cell
+        # of the surface
+        size_c = self.tip.gd.N_c
+        current_Vt = self.extvt_G.copy()
+        current_Vt[cell_corner_c[0]:cell_corner_c[0] + size_c[0],
+                   cell_corner_c[1]:cell_corner_c[1] + size_c[1],
+                   cell_corner_c[2]:cell_corner_c[2] + size_c[2]] += tvt_G
+        
+        self.current=current_Vt
+        self.tip_cell_corner_c = cell_corner_c
+        if return_v:
+            return_v        
+
+    def position_tip(self, tip_pos):
+        """Positions the tip atom at the position tip_pos in the
+           original surface unit cell"""
+
+    def get_V(self, tip_pos):
+        """Returns the overlap hamiltonian for a position of the tip_atom """
         #set corners with resepct to large grid
         #add pots
         #actually calculate overlap
 
     def linescan(self,stargdp, endgdp):
+        print 'liiiiiiinescan'
         # make list of gridpoints
-        for i in gridpints
-            v = self.get_V(i)
-            current = stm_calc(v)
-    
-    def get_s(self, ):
+        #for i in gridpints
+        #    v = self.get_V(i)
+        #    current = stm_calc(v)
+    def get_s(self):
         S_ij = np.zeros((self.ni, self.nj))
         for s in self.srf_functions:
             j1 = s.index
