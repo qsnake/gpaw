@@ -17,7 +17,7 @@ class DummyCommunicator:
                                  size=len(ranks), ranks=ranks)
 
     def simulate_kpt_comm(self, nspins, nibzkpts):
-        # From gpaw/wavefunctions.py lines 75-83 rev. 3700
+        # From gpaw/wavefunctions.py lines 76-83 rev. 3893
         mynks = nspins*nibzkpts // self.size
         self.txt += ', mynks=%d' % mynks
         ks0 = self.rank * mynks
@@ -29,7 +29,14 @@ class DummyCommunicator:
         self.output('kpt_comm')
 
     def simulate_band_comm(self, nbands):
-        # From gpaw/io/__init__.py lines 560-563 rev. 3700
+        # From gpaw/__init__.py lines 398-401 rev. 3893
+        if nbands % self.size != 0:
+            raise RuntimeError('Cannot distribute %d bands to %d processors' %
+                               (nbands, self.size))
+        mynbands = nbands // self.size
+        self.txt += ', mynbands=%d' % mynbands
+
+        # From gpaw/io/__init__.py lines 540-543 rev. 3893
         n0 = self.rank
         nstride = self.size
         mybands = range(n0, nbands, nstride)
@@ -127,7 +134,7 @@ if __name__ in ['__main__', '__builtin__']:
     # GPAW-specific options
     parser.add_option('-s', '--spins', default=1, type='int', dest='nspins', \
         metavar='<nspins>', help='Number of spins [default: %default]')
-    parser.add_option('-u', '--kpoints', default=1, type='int', \
+    parser.add_option('-k', '--kpoints', default=1, type='int', \
         dest='nibzkpts', metavar='<nibzkpts>', \
         help='Number of irreducible k-points [default: %default]')
     parser.add_option('-n', '--bands', default=1, type='int', dest='nbands', \
@@ -148,7 +155,8 @@ if __name__ in ['__main__', '__builtin__']:
         parser.print_help()
         raise SystemExit(-1)
 
-    if (np.array(options.parsize_c)<1).any() or len(options.parsize_c) != 3:
+    if options.parsize_c is not None and (len(options.parsize_c) != 3 or
+       (np.array(options.parsize_c)<1).any()):
         sys.stderr.write('ERROR: Domain decomposition is invalid.\n')
         parser.print_help()
         raise SystemExit(-1)
