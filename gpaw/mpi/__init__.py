@@ -50,6 +50,10 @@ class SerialCommunicator:
     def cart_create(self, dimx, dimy, dimz, periodic):
         return self
 
+    def wait(self, request):
+        raise NotImplementedError('Calls to mpi wait should not happen in '
+                                  'serial mode')
+
 serial_comm = SerialCommunicator()
 
 try:
