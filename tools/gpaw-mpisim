@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+
+import sys
+import numpy as np
+from gpaw import GPAW
+
+class DummyCommunicator:
+    def __init__(self, rank, size, ranks=None):
+        self.rank = rank
+        self.size = size
+        self.ranks = ranks
+        self.txt = ''
+
+    def new_communicator(self, ranks):
+        # The process with rank i in new group is the
+        # process with rank ranks[i] in old group
+        return DummyCommunicator(rank=np.argwhere(ranks==self.rank)[0],
+                                 size=len(ranks), ranks=ranks)
+
+    def simulate_kpt_comm(self, nspins, nibzkpts):
+        # From gpaw/wavefunctions.py lines 75-83 rev. 3700
+        mynks = nspins*nibzkpts // self.size
+        self.txt += ', mynks=%d' % mynks
+        ks0 = self.rank * mynks
+        kpt_u = []
+        for ks in range(ks0, ks0 + mynks):
+            s, k = divmod(ks, nibzkpts)
+            kpt_u.append('%d%s' % (k, s==0 and '^' or 'v'))
+        self.txt += ', kpt_u=[' + ','.join(kpt_u) + ']'
+        self.output('kpt_comm')
+
+    def simulate_band_comm(self, nbands):
+        # From gpaw/io/__init__.py lines 560-563 rev. 3700
+        n0 = self.rank
+        nstride = self.size
+        mybands = range(n0, nbands, nstride)
+        self.txt += ', mybands=' + str(mybands)
+        self.output('band_comm')
+
+    def output(self, name='world'):
+        if name is not 'world':
+            name = '    ' + name.ljust(12)
+        print '%s: rank=%d, ranks=%s' % (name, self.rank, self.ranks) + self.txt
+
+# -------------------------------------------------------------------
+
+def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands):
+    print ''
+    print 'Simulating: world.size = %d' % world_size
+    print '    parsize_c =', parsize_c
+    print '    parsize_bands =', parsize_bands
+    print '    nspins =', nspins
+    print '    nibzkpts =', nibzkpts
+    print '    nbands =', nbands
+    print ''
+
+    for rank in range(world_size):
+        world = DummyCommunicator(rank, world_size)
+        world.output()
+
+        calc = GPAW()
+        (domain_comm, kpt_comm, band_comm) = calc.distribute_cpus(world, \
+            parsize_c, parsize_bands, nspins, nibzkpts)
+
+        kpt_comm.simulate_kpt_comm(nspins, nibzkpts)
+        band_comm.simulate_band_comm(nbands)
+        domain_comm.output('domain_comm') #TODO N_c parts!
+
+
+# -------------------------------------------------------------------
+
+def print_options():
+    print ''
+    print '%s --dry-run=N [ OPTIONS ]' % sys.argv[0].rsplit('/', 1)[-1]
+    print ''
+    print 'Options:'
+    print '    --state-parallelization=B'
+    print '    --domain-decomposition=(x,y,z)'
+    print ''
+
+if __name__ in ['__main__', '__builtin__']:
+
+    from gpaw import dry_run as world_size, parsize as parsize_c, parsize_bands
+
+    if parsize_bands is None:
+        parsize_bands = 1
+
+    if not world_size > 0:
+        print 'ERROR: MPI world size not specified.'
+        print_options()
+        raise SystemExit(-1)
+
+    print 'Please input:'
+
+    # Get number of spins
+    try:
+        sys.stdout.write('    nspins [1*/2]: ')
+        nspins = {'1':1,'2':2}[sys.stdin.readline().strip()]
+    except:
+        nspins = 1
+
+    # Get number of irreducible k-points
+    try:
+        sys.stdout.write('    nibzkpts [1*-]: ')
+        nibzkpts = int(sys.stdin.readline().strip())
+        assert nibzkpts>0
+    except:
+        nibzkpts = 1
+
+    # Get number of bands
+    try:
+        sys.stdout.write('    nbands [1*-]: ')
+        nbands = int(sys.stdin.readline().strip())
+        assert nbands>0
+    except:
+        nbands = 1
+
+    simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands)
+
