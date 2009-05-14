@@ -267,23 +267,63 @@ paw.hamiltonian.setups.
 Parallelization over spins, k-points domains and states
 =======================================================
 
-XXX
-
-When using parallization over spins, **k**-points and domains,
-three different MPI communicators are used:
+When using parallelization over spins, **k**-points, bands and
+domains, four different MPI communicators are used:
 
 * *mpi.world*
    Communicator containing all processors. 
 * *domain_comm*
    One *domain_comm* communicator contains the whole real space 
-   domain for a selection of the spin/k-point pairs.
+   domain for a selection of the spin/k-point pairs and bands.
 * *kpt_comm* 
    One *kpt_comm* communicator contains all k-points and spin 
-   for a part of the real space domain.
+   for a selection of bands over part of the real space domain.
+* *band_comm* 
+   One *band_comm* communicator contains all bands for a selection
+   of k-points and spins over part of the real space domain.
 
-For the case of a :math:`\Gamma`-point calculation all parallel communication
-is done in the one *domain_comm* communicator, which are in this case 
-equal to *mpi.world*. 
+These communicators constitute MPI groups, of which the latter three
+are subsets of the ``world`` communicator. The number of members in
+the a communicator group is signified by ``comm.size``. Within each
+group, every element (i.e. processor) is assigned a unique index
+``comm.rank`` into the list of processor ids in the group. For instance,
+a *domain_comm* rank of zero signifies that the processor is first in
+the group, hence it functions as a domain master.
+
+To investigate the way GPAW distributes calculated quantities across the
+various MPI groups, simulating an MPI run can be done using ``gpaw-mpisim``::
+
+  $ gpaw-mpisim -v --dry-run=4 --spins=2 --kpoints=4 --bands=3 --domain-decomposition=2,1,1
+  
+  Simulating: world.size = 4
+      parsize_c = (2, 1, 1)
+      parsize_bands = 1
+      nspins = 2
+      nibzkpts = 4
+      nbands = 3
+  
+  world: rank=0, ranks=None
+      kpt_comm    : rank=0, ranks=[0 2], mynks=4, kpt_u=[0^,1^,2^,3^]
+      band_comm   : rank=0, ranks=[0], mynbands=3, mybands=[0, 1, 2]
+      domain_comm : rank=0, ranks=[0 1]
+  world: rank=1, ranks=None
+      kpt_comm    : rank=0, ranks=[1 3], mynks=4, kpt_u=[0^,1^,2^,3^]
+      band_comm   : rank=0, ranks=[1], mynbands=3, mybands=[0, 1, 2]
+      domain_comm : rank=1, ranks=[0 1]
+  world: rank=2, ranks=None
+      kpt_comm    : rank=1, ranks=[0 2], mynks=4, kpt_u=[0v,1v,2v,3v]
+      band_comm   : rank=0, ranks=[2], mynbands=3, mybands=[0, 1, 2]
+      domain_comm : rank=0, ranks=[2 3]
+  world: rank=3, ranks=None
+      kpt_comm    : rank=1, ranks=[1 3], mynks=4, kpt_u=[0v,1v,2v,3v]
+      band_comm   : rank=0, ranks=[3], mynbands=3, mybands=[0, 1, 2]
+      domain_comm : rank=1, ranks=[2 3]
+
+
+
+For the case of a :math:`\Gamma`-point calculation without band-parallelization,
+all parallel communication is done in the one *domain_comm* communicator, 
+which in this case is equal to *mpi.world*.
 
 .. [1] J J. Mortensen and L. B. Hansen and K. W. Jacobsen,
        Phys. Rev. B 71 (2005) 035109.
