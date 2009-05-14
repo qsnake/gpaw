@@ -544,9 +544,8 @@ class Transport(GPAW):
             dtype = float
         else:
             dtype = complex
-            
+        ns = self.spin_comm.size        
         for i in range(self.lead_num):
-            ns = self.atoms_l[i].calc.wfs.nspins        
             nk = len(self.my_lead_kpts)
             nb = self.nblead[i]
             self.hl_skmm.append(np.empty((ns, nk, nb, nb), complex))
@@ -570,7 +569,6 @@ class Transport(GPAW):
        
         for i in range(self.env_num):
             calc = self.atoms_e[i].calc
-            ns = calc.wfs.nspins
             nk = len(calc.wfs.ibzk_kc)
             nb = self.nbenv[i]
             self.he_skmm.append(np.empty((ns, nk, nb, nb), complex))
@@ -593,7 +591,6 @@ class Transport(GPAW):
         else:
             dtype = complex
  
-        ns = self.nspins
         nk = len(self.my_kpts)
         nb = self.nbmol
         self.h_skmm = np.empty((ns, nk, nb, nb), dtype)
@@ -617,26 +614,35 @@ class Transport(GPAW):
         rank = world.rank
         size = world.size
         npk = self.npk
-        if size > npk:
-            parsize_energy = size // npk
-            assert size % npk == 0
+        ns = self.nspins
+        nspk = ns * npk
+        if size > nspk:
+            parsize_energy = size // (nspk)
+            assert size % nspk == 0
         else:
             parsize_energy = 1
-            assert npk % size == 0
+            assert nspk % size == 0
  
         r0 = (rank // parsize_energy) * parsize_energy
         ranks = np.arange(r0, r0 + parsize_energy)
         self.energy_comm = world.new_communicator(ranks)
         
-        r0 =  rank % parsize_energy
-        ranks = np.arange(r0, r0 + size, parsize_energy)
+        nepk = parsize_energy * npk
+        r0 = rank % nepk
+        ranks = np.arange(r0, r0 + size, nepk)
+        self.spin_comm = world.new_communicator(ranks)        
+        self.my_nspins = ns / self.spin_comm.size
+    
+        r0 = rank % parsize_energy
+        ranks = np.arange(r0, r0 + nepk, parsize_energy)
         self.pkpt_comm = world.new_communicator(ranks)
-
+      
         npk_each = npk / self.pkpt_comm.size           
         pk0 = self.pkpt_comm.rank * npk_each
         self.my_pk = np.arange(pk0, pk0 + npk_each)
         self.my_npk = npk_each
-    
+
+            
         self.my_kpts = np.empty((npk_each * self.ntkmol, 3))
         kpts = self.kpts
         for i in range(self.ntkmol):
@@ -656,8 +662,9 @@ class Transport(GPAW):
         
     def distribute_energy_points(self):
         rank = self.energy_comm.rank
-        self.par_energy_index = np.empty([self.nspins, self.my_npk, 2, 2], int)
-        for s in range(self.nspins):
+        ns = self.my_nspins
+        self.par_energy_index = np.empty([ns, self.my_npk, 2, 2], int)
+        for s in range(ns):
             for k in range(self.my_npk):
                 neeq = self.eqpathinfo[s][k].num
                 neeq_each = neeq // self.energy_comm.size
@@ -847,7 +854,7 @@ class Transport(GPAW):
         self.boundary_check()
     
     def initialize_lead(self, l):
-        nspins = self.nspins
+        nspins = self.my_nspins
         ntk = self.ntklead
         nblead = self.nblead[l]
         kpts = self.my_lead_kpts
@@ -948,7 +955,7 @@ class Transport(GPAW):
     
     def get_edge_density(self):
         for n in range(self.lead_num):
-            for i in range(self.nspins):
+            for i in range(self.my_nspins):
                 for j in range(self.my_npk):
                     self.ed_pkmm[n][i, j] = dot(self.dl_spkcmm[n][i, j],
                                                  self.sl_pkcmm[n][j].T.conj())
@@ -956,8 +963,8 @@ class Transport(GPAW):
         self.pkpt_comm.sum(self.ec)
         self.ed_pkmm *= 3 - self.nspins
         self.ec *= 3 - self.nspins
-        if self.master:
-            for i in range(self.nspins):
+        if self.spin_comm.rank == 0:
+            for i in range(self.my_nspins):
                 for n in range(self.lead_num):
                     total_edge_charge  = self.ec[n, i] / self.npk
                 self.text('edge_charge[%d]=%f' % (i, total_edge_charge))
@@ -971,7 +978,7 @@ class Transport(GPAW):
 
     def initialize_density_matrix(self, region, l=0):
         npk = self.npk
-        ns = self.nspins
+        ns = self.my_nspins
         if region == 'lead':
             ntk = self.ntklead
             calc = self.atoms_l[l].calc
@@ -1103,19 +1110,20 @@ class Transport(GPAW):
         ind = self.inner_mol_index
         dim = len(ind)
         ind = np.resize(ind, [dim, dim])
+        ns = self.my_nspins
+
         if self.use_qzk_boundary:
             self.fill_lead_with_scat()
             for i in range(self.lead_num):
                 self.selfenergies[i].set_bias(0)
         if self.recal_path:
             nb = self.nbmol_inner
-            ns = self.nspins
             npk = self.my_npk
             den = np.empty([ns, npk, nb, nb], complex)
             denocc = np.empty([ns, npk, nb, nb], complex)
             if self.cal_loc:
                 denloc = np.empty([ns, npk, nb, nb], complex) 
-            for s in range(self.nspins):
+            for s in range(ns):
                 for k in range(self.my_npk):
                     den[s, k] = self.get_eqintegral_points(s, k)
                     denocc[s, k] = self.get_neintegral_points(s, k)
@@ -1126,7 +1134,7 @@ class Transport(GPAW):
                                                               den[s, k] +
                                                               denocc[s, k])
         else:
-            for s in range(self.nspins):
+            for s in range(ns):
                 for k in range(self.my_npk):
                     self.d_spkmm[s, k, ind.T, ind] = self.spin_coff *   \
                                                      self.fock2den(s, k)
@@ -1207,7 +1215,7 @@ class Transport(GPAW):
         self.eqpathinfo = []
         self.nepathinfo = []
         self.locpathinfo = []
-        for s in range(self.nspins):
+        for s in range(self.my_nspins):
             self.eqpathinfo.append([])
             self.nepathinfo.append([])
             if self.cal_loc:
@@ -1224,7 +1232,7 @@ class Transport(GPAW):
     def calculate_integral_path(self):
         self.initialize_path()
         nb = self.nbmol_inner
-        ns = self.nspins
+        ns = self.my_nspins
         npk = self.my_npk
         den = np.empty([ns, npk, nb, nb], complex)
         denocc = np.empty([ns, npk, nb, nb], complex)
@@ -1795,7 +1803,7 @@ class Transport(GPAW):
        
     def get_density(self):
         #Calculate pseudo electron-density based on green function.
-        ns = self.nspins
+        ns = self.my_nspins
         ntk = self.ntkmol
         npk = self.my_npk
         nb = self.nbmol
@@ -1850,7 +1858,10 @@ class Transport(GPAW):
             if self.fixed:
                 kpt.P_aMi = self.calcf.wfs.kpt_u[0].P_aMi.copy()
                 print 'change here'
-            kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
+            if ns == 2:
+                kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
+            else:
+                kpt.rho_MM = self.d_skmm[0, kpt.q]
         if self.fixed:
             self.wfs.fixed = True
             self.wfs.boundary_nt_sG = self.surround.combine_nt_sG()
@@ -1903,13 +1914,14 @@ class Transport(GPAW):
 
     def calc_total_charge(self, d_spkmm):
         nbmol = self.nbmol 
-        qr_mm = np.empty([self.nspins, self.my_npk, nbmol, nbmol])
-        for i in range(self.nspins):  
+        qr_mm = np.empty([self.my_nspins, self.my_npk, nbmol, nbmol])
+        for i in range(self.my_nspins):  
             for j in range(self.my_npk):
                 qr_mm[i,j] = dot(d_spkmm[i, j], self.s_pkmm[j])
         Qmol = np.trace(np.sum(np.sum(qr_mm, axis=0), axis=0))
         Qmol += np.sum(self.ec)
         Qmol = self.pkpt_comm.sum(Qmol) / self.npk
+        self.spin_comm.sum(Qmol)
         return Qmol        
 
     def get_linear_potential(self):
@@ -2333,7 +2345,7 @@ class Transport(GPAW):
         GD = GridDescriptor(N_c, cell, pbc, comm)
 
         basis_functions = self.initialize_projector(extend=True, nn=nn)
-        linear_potential = GD.zeros(self.nspins)
+        linear_potential = GD.zeros(self.my_nspins)
         dim_s = self.gd.N_c[self.d] #scat
         dim_t = linear_potential.shape[3]#transport direction
         dim_p = linear_potential.shape[1:3] #transverse 
@@ -2342,7 +2354,7 @@ class Transport(GPAW):
         vt[:nn / 2] = bias[0] / 2.0
         vt[-nn / 2:] = bias[1] / 2.0
         vt[nn / 2: -nn / 2] = np.linspace(bias[0]/2.0, bias[1]/2.0, dim_s)
-        for s in range(self.nspins):
+        for s in range(self.my_nspins):
              for i in range(dim_t):
                   linear_potential[s,:,:,i] = vt[i] * (np.zeros(dim_p) + 1)
         wfs = self.wfs
@@ -2466,7 +2478,7 @@ class Transport(GPAW):
         else:
             dtype = complex
         vt_mm = np.empty((nao, nao), dtype)
-        ns = self.nspins
+        ns = self.my_nspins
         nk = len(self.my_kpts)
         vt_SqMM = np.empty((ns, nk, nao, nao), dtype)
         for kpt in wfs.kpt_u:
@@ -2478,7 +2490,7 @@ class Transport(GPAW):
     def project_from_orbital_to_grid(self, d_SqMM):
         wfs = self.wfs
         basis_functions = wfs.basis_functions
-        nt_sG = self.gd.zeros(self.nspins)        
+        nt_sG = self.gd.zeros(self.my_nspins)        
         for kpt in wfs.kpt_u:
             basis_functions.construct_density(d_SqMM[kpt.s, kpt.q],
                                               nt_sG[kpt.s], kpt.q)
@@ -2531,7 +2543,7 @@ class Transport(GPAW):
         return self.greenfunction.calculate(energy, sigma)
        
     def calculate_real_dos(self, energy):
-        ns = self.nspins
+        ns = self.my_nspins
         nk = self.my_npk
         nb = self.nbmol_inner
         gr_skmm = np.zeros([ns, nk, nb, nb], complex)
