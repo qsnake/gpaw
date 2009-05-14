@@ -2,7 +2,6 @@
 
 import sys
 import numpy as np
-from gpaw import GPAW
 
 class DummyCommunicator:
     def __init__(self, rank, size, ranks=None):
@@ -13,7 +12,7 @@ class DummyCommunicator:
 
     def new_communicator(self, ranks):
         # The process with rank i in new group is the
-        # process with rank ranks[i] in old group
+        # process with rank ranks[i] in the old group
         return DummyCommunicator(rank=np.argwhere(ranks==self.rank)[0],
                                  size=len(ranks), ranks=ranks)
 
@@ -44,7 +43,12 @@ class DummyCommunicator:
 
 # -------------------------------------------------------------------
 
-def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands):
+def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands,
+             show_kpt=True, show_band=True, show_domain=True, gd=None):
+
+    # We haven't imported GPAW until now because it messes with sys.argv
+    from gpaw import GPAW
+
     print ''
     print 'Simulating: world.size = %d' % world_size
     print '    parsize_c =', parsize_c
@@ -62,58 +66,114 @@ def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands):
         (domain_comm, kpt_comm, band_comm) = calc.distribute_cpus(world, \
             parsize_c, parsize_bands, nspins, nibzkpts)
 
-        kpt_comm.simulate_kpt_comm(nspins, nibzkpts)
-        band_comm.simulate_band_comm(nbands)
-        domain_comm.output('domain_comm') #TODO N_c parts!
+        if show_kpt:
+            kpt_comm.simulate_kpt_comm(nspins, nibzkpts)
+        if show_band:
+            band_comm.simulate_band_comm(nbands)
+        if show_domain:
+            domain_comm.output('domain_comm') #TODO N_c parts!
 
 
 # -------------------------------------------------------------------
 
-def print_options():
-    print ''
-    print '%s --dry-run=N [ OPTIONS ]' % sys.argv[0].rsplit('/', 1)[-1]
-    print ''
-    print 'Options:'
-    print '    --state-parallelization=B'
-    print '    --domain-decomposition=(x,y,z)'
-    print ''
+from optparse import Option, OptionValueError
+
+def check_int3(option, opt, value):
+    try:
+        x,y,z = value.split(',')
+        return (int(x), int(y), int(z),)
+    except ValueError:
+        raise OptionValueError('option %s: invalid int3 value: %r' \
+                               % (opt, value))
+
+class CustomOption(Option):
+    TYPES = Option.TYPES + ('int3',)
+    TYPE_CHECKER = Option.TYPE_CHECKER.copy()
+    TYPE_CHECKER['int3'] = check_int3
+
 
 if __name__ in ['__main__', '__builtin__']:
 
-    from gpaw import dry_run as world_size, parsize as parsize_c, parsize_bands
+    from optparse import OptionParser
 
-    if parsize_bands is None:
-        parsize_bands = 1
+    usage = '%prog [options]'
+    version = '%prog 0.1'
+    description = 'Simulate MPI parallelization of a GPAW calculation.'
 
-    if not world_size > 0:
-        print 'ERROR: MPI world size not specified.'
-        print_options()
+    parser = OptionParser(usage=usage, version=version,
+                          description=description, option_class=CustomOption)
+
+    # Output-specific options
+    parser.add_option('-v', '--verbose', action='store_true', \
+        default=None, dest='show_all', help='Simulate all communicators')
+    parser.add_option('-0', '--kpoint-communicators', action='store_true', \
+        default=False, dest='show_kpoint', help='Simulate kpoint communicators')
+    parser.add_option('-1', '--band-communicators', action='store_true', \
+        default=False, dest='show_band', help='Simulate band communicators')
+    parser.add_option('-2', '--domain-communicators', action='store_true', \
+        default=False, dest='show_domain', help='Simulate domain communicators')
+
+    # MPI-specific options
+    parser.add_option('-w', '--dry-run', default=0, type='int',
+        dest='world_size', metavar='<N>', \
+        help='Number of processes in parallelization [default: %default]')
+    parser.add_option('-c', '--domain-decomposition', default=None, \
+        type='int3', dest='parsize_c', metavar='<X,Y,Z>', \
+        help='Domain decomposition along three axes [default: %default]')
+    parser.add_option('-b', '--state-parallelization', default=1, type='int', \
+        dest='parsize_bands', metavar='<B>', \
+        help='Divide bands into this many blocks [default: %default]')
+
+    # GPAW-specific options
+    parser.add_option('-s', '--spins', default=1, type='int', dest='nspins', \
+        metavar='<nspins>', help='Number of spins [default: %default]')
+    parser.add_option('-u', '--kpoints', default=1, type='int', \
+        dest='nibzkpts', metavar='<nibzkpts>', \
+        help='Number of irreducible k-points [default: %default]')
+    parser.add_option('-n', '--bands', default=1, type='int', dest='nbands', \
+        metavar='<nbands>', help='Number of bands [default: %default]')
+    #parser.add_option('-g', '--grid-size', default=None, type='int3', \
+    #    dest='N_c', metavar='<X,Y,Z>', \
+    #    help='Size of the grid along three axes [default: %default]')
+
+    options, args = parser.parse_args()
+
+    if options.show_all is not None:
+        options.show_kpoint = True
+        options.show_band = True
+        options.show_domain = True
+
+    if not options.world_size > 0:
+        sys.stderr.write('ERROR: MPI world size is unspecified or invalid.\n')
+        parser.print_help()
         raise SystemExit(-1)
 
-    print 'Please input:'
+    if (np.array(options.parsize_c)<1).any() or len(options.parsize_c) != 3:
+        sys.stderr.write('ERROR: Domain decomposition is invalid.\n')
+        parser.print_help()
+        raise SystemExit(-1)
 
-    # Get number of spins
-    try:
-        sys.stdout.write('    nspins [1*/2]: ')
-        nspins = {'1':1,'2':2}[sys.stdin.readline().strip()]
-    except:
-        nspins = 1
+    if not options.parsize_bands > 0:
+        sys.stderr.write('ERROR: State-parallelization size is invalid.\n')
+        parser.print_help()
+        raise SystemExit(-1)
 
-    # Get number of irreducible k-points
-    try:
-        sys.stdout.write('    nibzkpts [1*-]: ')
-        nibzkpts = int(sys.stdin.readline().strip())
-        assert nibzkpts>0
-    except:
-        nibzkpts = 1
+    if not options.nspins in [1,2]:
+        sys.stderr.write('ERROR: Invalid number of spins.\n')
+        parser.print_help()
+        raise SystemExit(-1)
 
-    # Get number of bands
-    try:
-        sys.stdout.write('    nbands [1*-]: ')
-        nbands = int(sys.stdin.readline().strip())
-        assert nbands>0
-    except:
-        nbands = 1
+    if not options.nibzkpts > 0:
+        sys.stderr.write('ERROR: Invalid number of irreducible k-points.\n')
+        parser.print_help()
+        raise SystemExit(-1)
 
-    simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands)
+    if not options.nbands > 0:
+        sys.stderr.write('ERROR: Invalid number of bands.\n')
+        parser.print_help()
+        raise SystemExit(-1)
+
+    simulate(options.world_size, options.parsize_c, options.parsize_bands,
+             options.nspins, options.nibzkpts, options.nbands,
+             options.show_kpoint, options.show_band, options.show_domain)
 
