@@ -334,7 +334,7 @@ class FFTPoissonSolver(PoissonSolver):
         if gd.comm.size > 1:
             raise RuntimeError('Cannot do parallel FFT.')
         assert gd.pbc_c.all()
-        PoissonSolver.set_grid_descriptor(self, gd)
+        self.gd = gd
 
     def initialize(self):
         self.k2_Q, self.N3 = construct_reciprocal(self.gd)
