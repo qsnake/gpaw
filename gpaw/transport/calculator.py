@@ -2192,7 +2192,7 @@ class Transport(GPAW):
                 pylab.matshow(wt[0])
                 pylab.title('T=' + str(T[i]))
                 pylab.show()     
-    
+                
     def get_nepath_info(self):
         if hasattr(self, 'nepathinfo'):
             energy = self.nepathinfo[0][0].energy
@@ -2453,7 +2453,7 @@ class Transport(GPAW):
         if extend:
             for i in range(len(pos)):
                 pos[i, self.d] += nn * h_c[self.d] / 2.
-        spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T
+        spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T % 1.0
         basis_functions.set_positions(spos_ac)
         return basis_functions
     
@@ -2621,13 +2621,91 @@ class Transport(GPAW):
                 step_data = result['step_data' + str(i)]
                 self.plot_step_data(step_data)
             self.plot_iv(result['i_v'])    
-        
-    def plot_step_data(self, step_data):
+ 
+    def analysis_compare(self):
+        if self.master:
+            fd = file('result.dat', 'r')
+            result = pickle.load(fd)
+            fd.close()
+            num_v = result['N']
+            step_data1 = result['step_data' + str(0)]
+            step_data2 = result['step_data' + str(14)]
+            self.compare_step_data(step_data1, step_data2)
+            
+    def compare_step_data(self, step_data1, step_data2):
         overview_d = 1
         self.nspins = 2
+        sd = step_data1['t_dos']
+        bias = step_data1['bias']
+        import pylab
+        pylab.figure(1)
+        pylab.subplot(211)
+        pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
+                                    'r--', sd['f2'], sd['l1'], 'r--')
+        pylab.ylabel('Transmission Coefficients')
+        pylab.subplot(212)
+        pylab.plot(sd['e_points'], sd['dos_e'], 'b-o', sd['f1'], sd['l2'],
+                                      'r--', sd['f2'], sd['l2'], 'r--')
+        pylab.ylabel('Density of States')
+        pylab.xlabel('Energy (eV)')
+        pylab.title('bias=' + str(bias))
+        pylab.show()
+        
+        sd = step_data2['t_dos']
+        bias = step_data2['bias']
+        import pylab
+        import matplotlib
+        pylab.figure(1)
+        pylab.subplot(211)
+        pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
+                                    'r--', sd['f2'], sd['l1'], 'r--')
+        pylab.ylabel('Transmission Coefficients')
+        pylab.subplot(212)
+        pylab.plot(sd['e_points'], sd['dos_e'], 'b-o', sd['f1'], sd['l2'],
+                                      'r--', sd['f2'], sd['l2'], 'r--')
+        pylab.ylabel('Density of States')
+        pylab.xlabel('Energy (eV)')
+        pylab.title('bias=' + str(bias))
+        pylab.show()        
+        
+        sd1 = step_data1['v_d']
+        sd2 = step_data2['v_d']
+        bias1 = step_data1['bias']
+        bias2 = step_data2['bias']
+        dd = ['x', 'y', 'z']
+        for s in range(self.nspins):
+            tmp = sd1['s' + str(s) + 'vt_1d_' + dd[self.d]] - sd2['s' + str(s) + 'vt_1d_' + dd[self.d]]
+            pylab.plot(tmp * Hartree, 'b--o') 
+            pylab.ylabel('potential(eV)')
+            pylab.title('spin' + str(s) + 'bias=' + str(bias1) + '-' + str(bias2))
+            pylab.show()
+
+            tmp = sd1['s' + str(s) + 'nt_1d_' + dd[self.d]] - sd2['s' + str(s) + 'nt_1d_' + dd[self.d]]        
+            pylab.plot(tmp, 'b--o')
+            pylab.ylabel('density')
+            pylab.title('spin' + str(s) + 'bias=' + str(bias1) + '-' + str(bias2))
+            pylab.show()
+
+            tmp = sd1['s' + str(s) + 'vt_2d_' + dd[overview_d]] - sd2['s' + str(s) + 'vt_2d_' + dd[overview_d]]          
+            cb = pylab.matshow(tmp * Hartree)
+            pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias1) + '-' + str(bias2))
+            matplotlib.pyplot.colorbar(cb)            
+            pylab.show()
+
+            tmp = sd1['s' + str(s) + 'nt_2d_' + dd[overview_d]] - sd2['s' + str(s) + 'nt_2d_' + dd[overview_d]]              
+            cb = pylab.matshow(tmp)
+            pylab.title('spin' + str(s) + 'density at bias=' + str(bias1) + '-' + str(bias2))
+            matplotlib.pyplot.colorbar(cb)                
+            pylab.show()        
+       
+    def plot_step_data(self, step_data):
+        overview_d = 1
+        self.nspins = 1
+        self.d = 0
         sd = step_data['t_dos']
         bias = step_data['bias']
         import pylab
+        import matplotlib
         pylab.figure(1)
         pylab.subplot(211)
         pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
@@ -2654,12 +2732,14 @@ class Transport(GPAW):
             pylab.title('spin' + str(s) + 'bias=' + str(bias))
             pylab.show()
         
-            pylab.matshow(sd['s' + str(s) + 'vt_2d_' + dd[overview_d]] * Hartree)
+            cb = pylab.matshow(sd['s' + str(s) + 'vt_2d_' + dd[overview_d]] * Hartree)
             pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias))
+            matplotlib.pyplot.colorbar(cb)                
             pylab.show()
        
-            pylab.matshow(sd['s' + str(s) + 'nt_2d_' + dd[overview_d]])
+            cb = pylab.matshow(sd['s' + str(s) + 'nt_2d_' + dd[overview_d]])
             pylab.title('spin' + str(s) + 'density at bias=' + str(bias))
+            matplotlib.pyplot.colorbar(cb)                
             pylab.show()
 
     def plot_iv(self, i_v):
