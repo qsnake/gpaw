@@ -563,6 +563,12 @@ def read(paw, reader):
         if r.has_array('PseudoWaveFunctions'):
             if version > 0.3:
                 wfs.eigensolver.error = r['EigenstateError']
+            if mpi.size > 1:
+                # the distribution of kpt.P_ani is not implemented, 
+                # (see wavefunctions.py) therefore
+                # we can not trust the wave-functions loaded
+                paw.scf.converged = False
+                paw.wfs.eigensolver.error = npy.nan
             if band_comm.size == 1:
                 # We may not be able to keep all the wave
                 # functions in memory - so psit_nG will be a special type of
