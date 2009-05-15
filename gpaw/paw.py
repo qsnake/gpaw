@@ -83,6 +83,8 @@ class PAW(PAWTextOutput):
             self.input_parameters.read(reader)
             self.input_parameters.txt = kwargs.pop('txt', '-')
             self.input_parameters.idiotproof = kwargs.pop('idiotproof', True)
+            self.input_parameters.parsize = kwargs.pop('parsize', None)
+            self.input_parameters.parsize_bands = kwargs.pop('parsize_bands', 1)
             self.initialize()
             self.read(reader)
             
