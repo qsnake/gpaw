@@ -120,60 +120,38 @@ class WaveFunctions(EmptyWaveFunctions):
                 self.symmetry.symmetrize(nt_G, self.gd)
 
     def add_to_density_from_k_point(self, nt_sG, kpt):
-        raise NotImplementedError
+        self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
     
-    def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a):
+    def calculate_atomic_density_matrices_k_point(self, D_sii, kpt, a, f_n):
         if kpt.rho_MM is not None:
             P_Mi = kpt.P_aMi[a] 
             D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM),
                                    P_Mi).real
         else:
             P_ni = kpt.P_ani[a]
-            D_sii[kpt.s] += np.dot(P_ni.T.conj() * kpt.f_n, P_ni).real
+            D_sii[kpt.s] += np.dot(P_ni.T.conj() * f_n, P_ni).real
 
         if hasattr(kpt, 'c_on'):
             for ne, c_n in zip(kpt.ne_o, kpt.c_on):
                 ft_mn = ne * np.outer(c_n.conj(), c_n)
                 D_sii[kpt.s] += (np.dot(P_ni.T.conj(),
                                         np.dot(ft_mn, P_ni))).real
-
-    def calculate_atomic_density_matrices_k_point_with_occupation(self, D_sii,
-                                                                  kpt, a, f_n):
-        # Used in calculation of response part of GLLB-potential
-        if kpt.rho_MM is not None: 
-            P_Mi = kpt.P_aMi[a]
-            rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
-            D_sii[kpt.s] += np.dot(np.dot(P_Mi.T.conj(), kpt.rho_MM), 
-                                   P_Mi).real 
-        else: 
-            P_ni = kpt.P_ani[a] 
-            D_sii[kpt.s] += np.dot(P_ni.T.conj() * f_n, P_ni).real 
-
+    
     def calculate_atomic_density_matrices(self, D_asp):
         """Calculate atomic density matrices from projections."""
-        for a, D_sp in D_asp.items():
-            ni = self.setups[a].ni
-            D_sii = np.zeros((self.nspins, ni, ni))
-            for kpt in self.kpt_u:
-                self.calculate_atomic_density_matrices_k_point(D_sii, kpt, a)
+        f_un = [kpt.f_n for kpt in self.kpt_u]
+        self.calculate_atomic_density_matrices_with_occupation(D_asp, f_un)
 
-            D_sp[:] = [pack(D_ii) for D_ii in D_sii]
-            self.band_comm.sum(D_sp)
-            self.kpt_comm.sum(D_sp)
-
-        self.symmetrize_atomic_density_matrices(D_asp)
-
-    def calculate_atomic_density_matrices_with_occupation(self, D_asp, f_kn):
+    def calculate_atomic_density_matrices_with_occupation(self, D_asp, f_un):
         """Calculate atomic density matrices from projections with
-        custom occupation f_kn."""
-        # Used in calculation of response part of GLLB-potential
+        custom occupation f_un."""
+        # Varying f_n used in calculation of response part of GLLB-potential
         for a, D_sp in D_asp.items():
             ni = self.setups[a].ni
             D_sii = np.zeros((self.nspins, ni, ni))
-            for f_n, kpt in zip(f_kn, self.kpt_u):
-                self.calculate_atomic_density_matrices_k_point_with_occupation(
-                    D_sii, kpt, a, f_n)
-
+            for f_n, kpt in zip(f_un, self.kpt_u):
+                self.calculate_atomic_density_matrices_k_point(D_sii, kpt, a,
+                                                               f_n)
             D_sp[:] = [pack(D_ii) for D_ii in D_sii]
             self.band_comm.sum(D_sp)
             self.kpt_comm.sum(D_sp)
@@ -484,19 +462,18 @@ class LCAOWaveFunctions(WaveFunctions):
         """Add contribution to pseudo electron-density. Do not use the standard
         occupation numbers, but ones given with argument f_n."""
         # Used in calculation of response potential in GLLB-potential
-        rho_MM = np.dot(kpt.C_nM.conj().T * f_n, kpt.C_nM)
-        self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.k)
-
-    def add_to_density_from_k_point(self, nt_sG, kpt):
-        """Add contribution to pseudo electron-density. """
         if kpt.rho_MM is not None:
             rho_MM = kpt.rho_MM
         else:
             # XXX do we really want to allocate this array each time?
             nao = self.setups.nao
             rho_MM = np.empty((nao, nao), self.dtype)
-            self.calculate_density_matrix(kpt.f_n, kpt.C_nM, rho_MM)
+            self.calculate_density_matrix(f_n, kpt.C_nM, rho_MM)
         self.basis_functions.construct_density(rho_MM, nt_sG[kpt.s], kpt.q)
+
+    def add_to_density_from_k_point(self, nt_sG, kpt):
+        """Add contribution to pseudo electron-density. """
+        self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
 
     def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
         raise NotImplementedError('Kinetic density calculation for LCAO '
@@ -890,13 +867,17 @@ class GridWaveFunctions(WaveFunctions):
                 interpolate2(psit_G2, psit_G1, kpt.phase_cd)
                 interpolate1(psit_G1, psit_G, kpt.phase_cd)
 
-    def add_to_density_from_k_point(self, nt_sG, kpt):
+    #def add_to_density_from_k_point(self, nt_sG, kpt):
+    #    self.add_to_density_from_k_point_with_occupation(nt_sG, kpt, kpt.f_n)
+
+    def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
+        # Used in calculation of response part of GLLB-potential
         nt_G = nt_sG[kpt.s]
         if self.dtype == float:
-            for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
+            for f, psit_G in zip(f_n, kpt.psit_nG):
                 axpy(f, psit_G**2, nt_G)
         else:
-            for f, psit_G in zip(kpt.f_n, kpt.psit_nG):
+            for f, psit_G in zip(f_n, kpt.psit_nG):
                 nt_G += f * (psit_G * psit_G.conj()).real
 
         # Hack used in delta-scf calculations:
@@ -907,17 +888,6 @@ class GridWaveFunctions(WaveFunctions):
                     for ft, psi_n in zip(ft_n, kpt.psit_nG):
                         if abs(ft) > 1.e-12:
                             nt_G += (psi_m.conj() * ft * psi_n).real
-
-    def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
-        # Used in calculation of response part of GLLB-potential
-        
-        nt_G = nt_sG[kpt.s]
-        if self.dtype == float:
-            for f, psit_G in zip(f_n, kpt.psit_nG):
-                axpy(f, psit_G**2, nt_G)
-        else:
-            for f, psit_G in zip(f_n, kpt.psit_nG):
-                nt_G += f * (psit_G * psit_G.conj()).real
 
     def add_to_kinetic_density_from_k_point(self, taut_G, kpt):
         """Add contribution to pseudo kinetic energy density."""
