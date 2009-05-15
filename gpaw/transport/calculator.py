@@ -544,7 +544,7 @@ class Transport(GPAW):
             dtype = float
         else:
             dtype = complex
-        ns = self.spin_comm.size        
+        ns = self.my_nspins        
         for i in range(self.lead_num):
             nk = len(self.my_lead_kpts)
             nb = self.nblead[i]
@@ -596,7 +596,6 @@ class Transport(GPAW):
         self.h_skmm = np.empty((ns, nk, nb, nb), dtype)
         self.d_skmm = np.empty((ns, nk, nb, nb), dtype)
         self.s_kmm = np.empty((nk, nb, nb), dtype)
-        
         if self.npk == 1:
             dtype = float
         else:
@@ -611,6 +610,9 @@ class Transport(GPAW):
         self.s_pkcmm = np.empty((npk, nb, nb), dtype)
         
     def allocate_cpus(self):
+        # when do parallel calculation, if world.size > nspins * npk,
+        # use energy parallel, otherwise just parallel for s,k pairs, and
+        # s have first priority
         rank = world.rank
         size = world.size
         npk = self.npk
@@ -618,31 +620,40 @@ class Transport(GPAW):
         nspk = ns * npk
         if size > nspk:
             parsize_energy = size // (nspk)
+            nspins_each = 1
+            npk_each = 1
             assert size % nspk == 0
         else:
             parsize_energy = 1
+            if size == 1:
+                nspins_each = ns
+                npk_each = npk
+            else:
+                npk_each = npk // (size // ns)
+                nspins_each = 1
             assert nspk % size == 0
- 
         r0 = (rank // parsize_energy) * parsize_energy
         ranks = np.arange(r0, r0 + parsize_energy)
         self.energy_comm = world.new_communicator(ranks)
-        
-        nepk = parsize_energy * npk
-        r0 = rank % nepk
-        ranks = np.arange(r0, r0 + size, nepk)
-        self.spin_comm = world.new_communicator(ranks)        
-        self.my_nspins = ns / self.spin_comm.size
-    
-        r0 = rank % parsize_energy
-        ranks = np.arange(r0, r0 + nepk, parsize_energy)
+
+        pkpt_size = npk // npk_each
+        pke_size = pkpt_size * self.energy_comm.size
+        spin_size = size // pke_size
+        spin_rank = rank // pke_size
+
+        r0 = rank % self.energy_comm.size + spin_rank * pke_size
+        ranks = np.arange(r0, r0 + pke_size , self.energy_comm.size)
         self.pkpt_comm = world.new_communicator(ranks)
-      
-        npk_each = npk / self.pkpt_comm.size           
+        
+        r0 = rank % pke_size
+        ranks = np.arange(r0, r0 + size, pke_size)
+        self.spin_comm = world.new_communicator(ranks)
+           
         pk0 = self.pkpt_comm.rank * npk_each
         self.my_pk = np.arange(pk0, pk0 + npk_each)
         self.my_npk = npk_each
-
-            
+        self.my_nspins = nspins_each  
+           
         self.my_kpts = np.empty((npk_each * self.ntkmol, 3))
         kpts = self.kpts
         for i in range(self.ntkmol):
@@ -659,6 +670,13 @@ class Transport(GPAW):
         e0 = self.energy_comm.rank * self.my_enum
         self.my_ep = np.arange(e0, e0 + self.my_enum)
         self.total_ep = self.my_enum * self.energy_comm.size
+        #self.check_comm()
+    
+    def check_comm(self):
+        print 'wolrd.size, world.rank, my_nspins, my_npk, energy_comm, pkpt_comm, spin_comm'
+        print  world.size, world.rank, self.my_nspins, self.my_npk, self.energy_comm.size, self.energy_comm.rank, \
+        self.pkpt_comm.size, self.pkpt_comm.rank, self.spin_comm.size, self.spin_comm.rank
+        raise SystemExit
         
     def distribute_energy_points(self):
         rank = self.energy_comm.rank
@@ -787,13 +805,16 @@ class Transport(GPAW):
         S_qMM = wfs.S_qMM.copy()
         for S_MM in S_qMM:
             tri2full(S_MM)
-        H_sqMM = np.empty((wfs.nspins,) + S_qMM.shape, complex)
+        H_sqMM = np.empty((self.my_nspins,) + S_qMM.shape, complex)
         for kpt in wfs.kpt_u:
             eigensolver.calculate_hamiltonian_matrix(ham, wfs, kpt)
             H_MM = eigensolver.H_MM
             tri2full(H_MM)
             H_MM *= Hartree
-            H_sqMM[kpt.s, kpt.q] = H_MM
+            if self.my_nspins == 2:
+                H_sqMM[kpt.s, kpt.q] = H_MM
+            else:
+                H_sqMM[0, kpt.q] = H_MM
         return H_sqMM, S_qMM
 
     def get_lead_atoms(self, l):
@@ -978,14 +999,16 @@ class Transport(GPAW):
 
     def initialize_density_matrix(self, region, l=0):
         npk = self.npk
+        my_npk = self.my_npk
         ns = self.my_nspins
+        
         if region == 'lead':
             ntk = self.ntklead
             calc = self.atoms_l[l].calc
             d_skmm = np.empty(self.hl_skmm[l].shape, self.hl_skmm[l].dtype)
             nk = ntk * npk
-            weight = [1. / nk] * nk * ns
-   
+            weight = [1. / nk] * ntk * my_npk * ns
+
         if region == 'env':
             calc = self.atoms_e[l].calc
             weight = calc.wfs.weight_k
@@ -996,13 +1019,16 @@ class Transport(GPAW):
             calc = self
             d_skmm = np.empty(self.h_skmm.shape, self.h_skmm.dtype)
             nk = ntk * npk
-            weight = [1. / nk] * nk * ns
-            
+            weight = [1. / nk] * ntk * my_npk * ns
         for kpt, i in zip(calc.wfs.kpt_u, range(len(calc.wfs.kpt_u))):
             C_nm = kpt.C_nM
             f_nn = np.diag(kpt.f_n)
-            d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
-                                          np.dot(f_nn, C_nm)) / weight[i]
+            if ns == 2:
+                d_skmm[kpt.s, kpt.q] = np.dot(C_nm.T.conj(),
+                                             np.dot(f_nn, C_nm)) / weight[i]
+            else:
+                d_skmm[0, kpt.q] = np.dot(C_nm.T.conj(),
+                                             np.dot(f_nn, C_nm)) / weight[i]
         return d_skmm
     
     def fill_density_matrix(self):
@@ -1823,6 +1849,7 @@ class Transport(GPAW):
                 ind = np.resize(ind, [dim, dim])
                 qr_mm[:, :, ind.T, ind] += self.ed_pkmm[i]
         self.pkpt_comm.sum(qr_mm)
+        self.spin_comm.sum(qr_mm)
         qr_mm /= self.npk
         world.barrier()
         
@@ -2360,14 +2387,17 @@ class Transport(GPAW):
         wfs = self.wfs
         nq = len(wfs.ibzk_qc)
         nao = wfs.setups.nao
-        H_sqMM = np.empty([wfs.nspins, nq, nao, nao])
+        H_sqMM = np.empty([self.my_nspins, nq, nao, nao])
         H_MM = np.empty([nao, nao]) 
         for kpt in wfs.kpt_u:
-            basis_functions.calculate_potential_matrix(linear_potential[kpt.s],
+            basis_functions.calculate_potential_matrix(linear_potential[0],
                                                        H_MM, kpt.q)
             tri2full(H_MM)
             H_MM *= Hartree
-            H_sqMM[kpt.s, kpt.q] = H_MM
+            if self.my_nspins == 2:
+                H_sqMM[kpt.s, kpt.q] = H_MM
+            else:
+                H_sqMM[0, kpt.q] = H_MM
         return H_sqMM
 
     def estimate_transport_matrix_memory(self):
