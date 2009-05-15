@@ -177,19 +177,52 @@ class WaveFunctions(EmptyWaveFunctions):
                                                     self.symmetry.maps))
 
     def set_positions(self, spos_ac):
-        self.rank_a = self.gd.get_ranks_from_positions(spos_ac)
+        rank_a = self.gd.get_ranks_from_positions(spos_ac)
+
+        """
+        # If both old and new atomic ranks are present, start a blank dict if
+        # it previously didn't exist but it will needed for the new atoms.
+        if (self.rank_a is not None and rank_a is not None and
+            self.kpt_u[0].P_ani is None and (rank_a == self.gd.comm.rank).any()):
+            for kpt in self.kpt_u:
+                kpt.P_ani = {}
+        """
+
+        # Should we use pt.my_atom_indices or basis_functions.my_atom_indices?
+        # Regardless, they are updated after this invocation, so here's a hack:
+        my_atom_indices = np.argwhere(rank_a == self.gd.comm.rank).ravel()
+
+        if self.rank_a is not None and self.kpt_u[0].P_ani is not None:
+            # very slow when per-kpoint... try send/recieve of P_uni
+            for kpt in self.kpt_u:
+                requests = []
+                P_ani = {}
+                for a in my_atom_indices:
+                    if a in kpt.P_ani:
+                        P_ani[a] = kpt.P_ani.pop(a)
+                    else:
+                        # Get matrix from old domain:
+                        ni = self.setups[a].ni
+                        P_ni = np.empty((self.mynbands, ni), self.dtype)
+                        P_ani[a] = P_ni
+                        requests.append(self.gd.comm.receive(P_ni, self.rank_a[a],
+                                                             40, False))
+                for a, P_ni in kpt.P_ani.items():
+                    # Send matrix to new domain:
+                    requests.append(self.gd.comm.send(P_ni, rank_a[a], 40, False))
+                for request in requests:
+                    self.gd.comm.wait(request)
+                kpt.P_ani = P_ani
+
+        self.rank_a = rank_a
+
         if self.symmetry is not None:
             self.symmetry.check(spos_ac)
 
     def allocate_arrays_for_projections(self, my_atom_indices):
         if not self.positions_set and self.kpt_u[0].P_ani is not None:
             # Projections have been read from file - don't delete them!
-            if self.gd.comm.size == 1:
-                pass
-            else:
-                # Redistribute P_ani among domains.  Not implemented: TODO XXX!!!
-                self.kpt_u[0].P_ani = None
-                self.allocate_arrays_for_projections(my_atom_indices)
+            pass
         else:
             for kpt in self.kpt_u:
                 kpt.P_ani = {}
