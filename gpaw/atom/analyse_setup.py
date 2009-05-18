@@ -155,8 +155,8 @@ def analyse(generator, show=False):
     plt.subplot(325)
     if len(gen.logd) > 0:
         plt.plot(ref[:, 0], ref[:, 1], 'ko', label='_nolegend_')
-        for l, color in enumerate(colors[:3]):
-            id = 'spd'[l]
+        for l, color in enumerate(colors[:4]):
+            id = 'spdf'[l]
             plt.plot(elog, logd[l][0], linestyle='-', color=color, label=id)
             plt.plot(elog, logd[l][1], linestyle='--', color=color,
                      label='_nolegend_')
