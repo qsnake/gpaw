@@ -1201,7 +1201,7 @@ class Transport(GPAW):
                     self.min_diff_d = self.diff_d
                 elif self.diff_d < self.min_diff_d:
                     self.min_diff_d = self.diff_d
-                    self.output('step')
+                    #self.output('step')
                 if self.master:
                     self.text('density: diff = %f  tol=%f' % (self.diff_d,
                                                   self.scf.max_density_error))
@@ -2615,19 +2615,19 @@ class Transport(GPAW):
         self.file_num = num_v
         current = np.empty([num_v])
         result = {}
-        result['N'] = num_v
         for i in range(num_v):
             v = bias[i]
             self.bias = [v/2., -v /2.]
             self.get_selfconsistent_hamiltonian()
             result['step_data' + str(i)] = self.result_for_one_bias_step()            
             current[i] = self.get_current()
-            self.output('bias' + str(i))
-        result['i_v'] = (bias, current)    
-        if self.master:
-            fd = file('result.dat', 'wb')
-            pickle.dump(result, fd, 2)
-            fd.close()
+            #self.output('bias' + str(i))
+            result['i_v'] = (bias[:i+1], current[:i+1])    
+            result['N'] = i + 1
+            if self.master:
+                fd = file('result.dat', 'wb')
+                pickle.dump(result, fd, 2)
+                fd.close()
 
     def restart_and_abstract_result(self, v_limit=3, num_v=16):
         bias = np.linspace(0, v_limit, num_v)
@@ -2671,7 +2671,7 @@ class Transport(GPAW):
             fd.close()
             num_v = result['N']
             step_data1 = result['step_data' + str(0)]
-            step_data2 = result['step_data' + str(14)]
+            step_data2 = result['step_data' + str(3)]
             self.compare_step_data(step_data1, step_data2)
             
     def compare_step_data(self, step_data1, step_data2):
@@ -2743,7 +2743,7 @@ class Transport(GPAW):
     def plot_step_data(self, step_data):
         overview_d = 1
         self.nspins = 1
-        self.d = 0
+        #self.d = 0
         sd = step_data['t_dos']
         bias = step_data['bias']
         import pylab
