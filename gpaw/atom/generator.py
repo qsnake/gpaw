@@ -504,10 +504,11 @@ class Generator(AllElectron):
             assert lmax == 2
             uf = npy.zeros(N)
             l = 3
-            shoot(uf, l, self.vr, 0.0, self.r2dvdr, r, dr, c10, c2,
+            eps = 0#-.65#-1.
+            shoot(uf, l, self.vr, eps, self.r2dvdr, r, dr, c10, c2,
                   self.scalarrel, gmax=gmax)
             uf *= 1.0 / uf[gc]
-            sf = uf.copy()
+            #sf = uf.copy()
             A = npy.ones((4, 4))
             A[:, 0] = 1.0
             A[:, 1] = r[gc - 2:gc + 2]**2
@@ -517,12 +518,54 @@ class Generator(AllElectron):
             a = solve(A, a)
             r1 = r[:gc]
             r2 = r1**2
-            rl1 = r1**(l + 1)
-            y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))
-            sf[:gc] = rl1 * y
-            vbar = -self.kin(l, sf) - vt * sf
-            vbar[1:gc] /= sf[1:gc]
-            vbar[0] = vbar[1]
+            #rl1 = r1**(l + 1)
+            #y = a[0] + r2 * (a[1] + r2 * (a[2] + r2 * (a[3])))
+            #sf[:gc] = rl1 * y
+
+            a0, a1, a2, a3 = a
+
+            r4 = r2**2
+            r6 = r4 * r2
+
+            enumerator = (a0 * l * (l + 1) +
+                          a1 * (l + 2) * (l + 3) * r2 +
+                          a2 * (l + 4) * (l + 5) * r4 +
+                          a3 * (l + 6) * (l + 7) * r6)
+            denominator = a0 + a1 * r2 + a2 * r4 + a3 * r6            
+            ekin_dev_phit = - .5 * (enumerator / denominator - l * (l + 1))
+
+            ekin_dev_phit[1:] /= r2[1:]
+
+            #assert ekin_dev_phit[-1] < 1e-3 # vbar must approach 0
+            
+            vbar = -ekin_dev_phit - vt[:gc]
+            vbar[0] = vbar[1] # Actually we can collect the terms into
+            # a single fraction without poles, so as to avoid doing this,
+            # but this is good enough
+
+            #vbar2 = -self.kin(l, sf, eps) - vt * sf
+            #vbar2[1:gc] /= sf[1:gc]
+
+            #vbar2[0] = vbar2[1]
+
+            tmp = npy.empty_like(self.r)
+            tmp[:gc] = vbar
+            tmp[gc:] = 0.0
+            vbar = tmp
+            
+            # NOTE.  For small vbar-cutoffs, vbar does not approach
+            # zero at the cutoff, making the pseudopotential discontinuous.
+            # This should probably be fixed
+
+            #import pylab as pl
+            #pl.plot(r1[10:], vbar[10:gc] + vt[10:gc], 'b:',
+            #        label='vH + vXC + vbar-ours')
+            #pl.plot(r1[10:], vbar[10:gc], 'r', label='vbar-ours')
+            #pl.plot(r1[10:], vbar2[10:gc], 'g--', label='vbar-previous')
+            #pl.plot(r1[10:], vt[10:gc], 'k', label='vH + vXC')
+            #pl.legend()
+            #pl.show()
+            #vbar = vbar2
         else:
             assert vbar_type == 'poly'
             A = npy.ones((2, 2))
