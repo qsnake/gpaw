@@ -25,6 +25,11 @@ from os import remove
 from os.path import exists
 
 try:
+    import numpy as npy
+except ImportError:
+    raise SystemExit('numpy is not installed!')
+
+try:
     import gpaw
 except ImportError:
     raise SystemExit('gpaw is not installed!')
@@ -79,6 +84,7 @@ def memory_bandwidth(code='gpaw', runs=10):
         rank = 0
 
     t = 0.0
+    t_runs = []
     for n in range(runs):
         t0 = time.time()
         for i in range(1):
@@ -90,9 +96,12 @@ def memory_bandwidth(code='gpaw', runs=10):
             e = slab.get_potential_energy()
             del calc
             if exists('out.nc'): remove('out.nc')
-        t = t + time.time() - t0
+        t1 = time.time()
+        t = t + t1 - t0
+        t_runs.append(t1 - t0)
         print 'Run: ', n, ' energy ', e, ' rank: ', str(rank), ' time: ', time.time() - t0
-    print 'Average time: ', t/runs, ' rank: ', str(rank)
+    if rank == 0:
+        print 'Rank '+str(rank)+': time [sec]: avg '+str(round(npy.average(t_runs),1))+', stddev '+str(round(npy.std(t_runs),1))+', min '+str(round(min(t_runs),1))+', max '+str(round(max(t_runs),1))
 
 
 if __name__ == '__main__':
