@@ -120,10 +120,12 @@ class Density:
                     D_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
                     D_asp[a] = D_sp
                     requests.append(self.gd.comm.receive(D_sp, self.rank_a[a],
-                                                         39, False))
+                                                         tag=a, block=False))
+                
             for a, D_sp in self.D_asp.items():
                 # Send matrix to new domain:
-                requests.append(self.gd.comm.send(D_sp, rank_a[a], 39, False))
+                requests.append(self.gd.comm.send(D_sp, rank_a[a],
+                                                  tag=a, block=False))
             for request in requests:
                 self.gd.comm.wait(request)
             self.D_asp = D_asp

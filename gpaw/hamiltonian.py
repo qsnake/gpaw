@@ -138,10 +138,11 @@ class Hamiltonian:
                     dH_sp = np.empty((self.nspins, ni * (ni + 1) // 2))
                     dH_asp[a] = dH_sp
                     requests.append(self.gd.comm.receive(dH_sp, self.rank_a[a],
-                                                         38, False))
+                                                         tag=a, block=False))
             for a, dH_sp in self.dH_asp.items():
                 # Send matrix to new domain:
-                requests.append(self.gd.comm.send(dH_sp, rank_a[a], 38, False))
+                requests.append(self.gd.comm.send(dH_sp, rank_a[a],
+                                                  tag=a, block=False))
             for request in requests:
                 self.gd.comm.wait(request)
             self.dH_asp = dH_asp
