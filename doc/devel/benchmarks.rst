@@ -184,11 +184,11 @@ Please perform the following steps:
 
     - on akka::
 
-       cd $PATTERN_00032_; qsub -l nodes=4:8 ../akka.sh; cd ..
-       cd $PATTERN_00064_; qsub -l nodes=8:8 ../akka.sh; cd ..
-       cd $PATTERN_00128_; qsub -l nodes=16:8 ../akka.sh; cd ..
-       cd $PATTERN_00256_; qsub -l nodes=32:8 ../akka.sh; cd ..
-       cd $PATTERN_00512_; qsub -l nodes=64:8 ../akka.sh; cd ..
+       cd ${PATTERN}_00032_; qsub -l nodes=4:8 ../akka.sh; cd ..
+       cd ${PATTERN}_00064_; qsub -l nodes=8:8 ../akka.sh; cd ..
+       cd ${PATTERN}_00128_; qsub -l nodes=16:8 ../akka.sh; cd ..
+       cd ${PATTERN}_00256_; qsub -l nodes=32:8 ../akka.sh; cd ..
+       cd ${PATTERN}_00512_; qsub -l nodes=64:8 ../akka.sh; cd ..
 
    **Warning**: on Linux clusters it s desirable to repeat these runs 2-3 times
    to make sure that they give reproducible time.
@@ -314,10 +314,10 @@ Please perform the following steps:
 
     - on akka::
 
-       cd $PATTERN_00032_; qsub -l nodes=64:8 ../akka.sh; cd ..
-       cd $PATTERN_00064_; qsub -l nodes=128:8 ../akka.sh; cd ..
-       cd $PATTERN_00128_; qsub -l nodes=256:8 ../akka.sh; cd ..
-       cd $PATTERN_00256_; qsub -l nodes=512:8 ../akka.sh; cd ..
+       cd ${PATTERN}_00512_; qsub -l nodes=64:8 ../akka.sh; cd ..
+       cd ${PATTERN}_01024_; qsub -l nodes=128:8 ../akka.sh; cd ..
+       cd ${PATTERN}_02048_; qsub -l nodes=256:8 ../akka.sh; cd ..
+       cd ${PATTERN}_04096_; qsub -l nodes=512:8 ../akka.sh; cd ..
 
    **Warning**: on Linux clusters it s desirable to repeat these runs 2-3 times
    to make sure that they give reproducible time.
