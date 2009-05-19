@@ -47,6 +47,7 @@ Linux:
    Linux/davinci
    Linux/huygens
    Linux/monolith
+   Linux/neolith
    Linux/murska
    Linux/sepeli
 
