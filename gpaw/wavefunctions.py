@@ -205,11 +205,13 @@ class WaveFunctions(EmptyWaveFunctions):
                         ni = self.setups[a].ni
                         P_ni = np.empty((self.mynbands, ni), self.dtype)
                         P_ani[a] = P_ni
-                        requests.append(self.gd.comm.receive(P_ni, self.rank_a[a],
-                                                             40, False))
+                        requests.append(
+                            self.gd.comm.receive(P_ni, self.rank_a[a],
+                                                 tag=a, block=False))
                 for a, P_ni in kpt.P_ani.items():
                     # Send matrix to new domain:
-                    requests.append(self.gd.comm.send(P_ni, rank_a[a], 40, False))
+                    requests.append(self.gd.comm.send(P_ni, rank_a[a],
+                                                      tag=a, block=False))
                 for request in requests:
                     self.gd.comm.wait(request)
                 kpt.P_ani = P_ani
