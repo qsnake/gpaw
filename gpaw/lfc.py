@@ -389,9 +389,11 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         
         if isinstance(c_axi, float):
             assert q == -1
-            c_xi = np.array([c_axi])
-            c_axi = dict([(a, c_xi) for a in self.my_atom_indices])
-
+            c_xM = np.empty(self.Mmax)
+            c_xM.fill(c_axi)
+            self.lfc.add(c_xM, a_xG, q)
+            return
+        
         comm = self.gd.comm
         dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
