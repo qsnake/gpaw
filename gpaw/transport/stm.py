@@ -6,9 +6,10 @@ from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi
 
 class LocalizedFunctions:
-    """ 
-       A typical transverse plane of some grid...
-       (pbc's only in transverse directions)
+    """Localized functions object.
+ 
+    A typical transverse plane of some grid...  (pbc's only in
+    transverse directions)::
 
         --------------------------------------------------(3)
        |    Extended region                                |
@@ -31,18 +32,19 @@ class LocalizedFunctions:
        |                                                   |
       (0)--------------------------------------------------
         
-       Extended region = region which is used to extend the potential in order to
-                         get rid of pbc's
+    Extended region: region which is used to extend the potential in
+    order to get rid of pbc's.
        
-       o1, o2, o3 = corners of LocalizedFunctions objects which are periodic
-                    translations of LF object with corner at o.
+    o1, o2, o3: corners of LocalizedFunctions objects which are
+    periodic translations of LF object with corner at o.
         
-       Some vectors:
+    Some vectors::
+
        (1)-(0) = (3)-(2) = pbc_cutoff (if pbc_cutoff = 0 <=> (0)=(1) /\ (2)=(3))
         o  - (1) = v1_c
         oo - (2) = v2_c   
         
-       more doc to come.......
+    more doc to come.......
     """
 
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
