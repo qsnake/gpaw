@@ -89,7 +89,7 @@ void pdsygvx_(int* ibtype, char* jobz, char* range, char* uplo, int* n,
               int* iclustr, double* gap, int* info);
 
 
-PyArrayObject* blacs_create(PyObject *self, PyObject *args)
+PyObject* blacs_create(PyObject *self, PyObject *args)
 {
   PyObject*  comm_obj;     // communicator
   char order='R';
@@ -161,7 +161,7 @@ PyArrayObject* blacs_create(PyObject *self, PyObject *args)
     }
   memcpy(desc_obj->data, desc, 9*sizeof(int));
 
-  return desc_obj;
+  return (PyObject*)desc_obj;
 }
 
 PyObject* blacs_destroy(PyObject *self, PyObject *args)

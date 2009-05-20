@@ -58,7 +58,7 @@ PyObject* spline_to_grid(PyObject *self, PyObject *args);
 PyObject* NewLFCObject(PyObject *self, PyObject *args);
 PyObject* compiled_WITH_SL(PyObject *self, PyObject *args);
 #if defined(GPAW_WITH_SL) && defined(PARALLEL)
-PyArrayObject* blacs_create(PyObject *self, PyObject *args);
+PyObject* blacs_create(PyObject *self, PyObject *args);
 PyObject* blacs_destroy(PyObject *self, PyObject *args);
 PyObject* scalapack_redist(PyObject *self, PyObject *args);
 PyObject* scalapack_diagonalize_dc(PyObject *self, PyObject *args);
