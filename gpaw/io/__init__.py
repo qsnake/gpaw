@@ -399,21 +399,23 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
     # finished writing:
     world.barrier()
 
-    # Creates a db file
-    if master and db and not filename.endswith(".db"):
-       #Write a db copy to the database
-       tmp = tempfile.gettempdir()+"/"
-       if tmp==None:
-          tmp = "" #current directory
-       fname  = tmp+"gpaw.db"
-       
-       while os.path.exists(fname):
-             fname = tmp+str(time.time())+".db"
-       write(paw, fname, mode='', db=True, private=private, **kwargs)
-       try:
-           os.remove(fname)
-       except:
-           pass
+   # Creates a db file
+    if db and not filename.endswith(".db"):
+        #Write a db copy to the database
+        tmp = tempfile.gettempdir()+"/"
+        fname  = tmp+"gpaw.db"
+
+        if 0:#master:
+            while os.path.exists(fname):
+                fname = tmp+str(time.time())+".db"
+
+        write(paw, fname, mode='', db=True, private=private, **kwargs)
+
+        if master:
+            try:
+                os.remove(fname)
+            except:
+                pass
 
 
 def read(paw, reader):
