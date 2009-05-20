@@ -82,7 +82,7 @@ class Writer:
         self.params.write_version(self)
         
         self['units']='Angstrom and eV'
-        if len(sys.argv)>=1:
+        if len(sys.argv)>=1 and os.path.exists(sys.argv[0]):
            self['script_name']=sys.argv[0]
            #read the whole file to memory - can't be that big:
            f = file(sys.argv[0],"r")        
