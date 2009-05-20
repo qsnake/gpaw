@@ -105,6 +105,7 @@ The installation of user's packages on neolith described below uses
 
 - test numpy installation::
 
+   module use ${MODULEFILES}
    module load nose
    module load numpy
    python -c "import numpy; numpy.test()"
