@@ -18,6 +18,10 @@ from ase import *
 from gpaw import GPAW
 from gpaw.utilities import unpack
 from gpaw.poisson import PoissonSolver
+from gpaw.atom.basis import BasisMaker
+
+obasis = BasisMaker('O').generate(1)
+hbasis = BasisMaker('H').generate(1)
 
 mol = Atoms('OHH', positions=[(0, 0, 0.3), (0, 0.55, -0.2), (0, -0.45, -0.5)],
             pbc=True)
@@ -26,7 +30,8 @@ calc = GPAW(nbands=6, h=0.12, # Force is quite bad for h > 0.12, must be eggbox
             setups='hgh',
             poissonsolver=PoissonSolver(relax='GS'),
             mode='fd',
-            basis='sz', width=0.01)
+            basis={'H' : hbasis, 'O' : obasis},
+            width=0.01)
 mol.set_calculator(calc)
 e = mol.get_potential_energy()
 F_ac = mol.get_forces()
