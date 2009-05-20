@@ -1,5 +1,6 @@
 .. toctree::
    
+   ../technology
    lcao/lcao
    parallel_runs/parallel_runs
    convergence/convergence	
@@ -17,3 +18,4 @@
    ../devel/eigenvalues_of_core_states
    ../devel/grids
    ../devel/tar
+   ../setups/generation_of_setups

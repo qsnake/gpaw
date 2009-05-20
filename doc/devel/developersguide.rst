@@ -12,14 +12,10 @@ This page goes through the most important equations of a PAW
 calculation and has references to the code.  It is a good idea to have
 :ref:`the_big_picture` in front of you when reading this page.
 
-For special topics, look at these pages:
+For special topics, look at the :ref:`special_topics`
 
-* :ref:`eigenvalues_of_core_states`
-* :ref:`generation_of_setups`
-* :ref:`electrostatic_potential`
 * Initial wave functions and densities (todo)
 * Finding the ground state (todo)
-* :ref:`densitymix`
 * ...
 
 

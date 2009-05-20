@@ -1,28 +1,25 @@
 .. _literature:
 
-==========
+----------
 Literature
-==========
+----------
 
-Guides and manual pages
------------------------
 
-* An :ref:`introduction to paw <introduction_to_paw>`.
+Links to guides and manual pages
+--------------------------------
 
-* A :ref:`guide for developers <developersguide>` linking the the main
-  quantities of the equations to their names and positions in the code.
+* The GPAW calculator :ref:`manual`
 
-* A description of some of the more specific :ref:`techniques and
-  algorithms <features_and_algorithms>` used in the code.
+* The :ref:`devel` pages
 
-* A list of the :ref:`technology` used in the code.
+* The :ref:`guide for developers <developersguide>`
 
-* The gpaw :ref:`manual`.
+* The code :ref:`overview`
 
-* A pdf file on the PAW theory: `paw note`_
+* The :ref:`features_and_algorithms` used in the code
 
-.. _literature_reports_presentations_and_theses:
 
+.. _special_topics:
 
 Specialized information
 -----------------------
@@ -31,9 +28,12 @@ Here is a list of specific advanced topics and functionalities of the
 GPAW calculator:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    
    toc-special
+
+
+.. _literature_reports_presentations_and_theses:
 
 Reports, presentations, and theses using gpaw
 ---------------------------------------------
@@ -70,6 +70,8 @@ Reports, presentations, and theses using gpaw
 .. _early gpaw: ../_static/mortensen_mini2003talk.pdf
 
 
+.. _paw_papers:
+
 Articles on the PAW formalism
 -----------------------------
 
@@ -94,6 +96,8 @@ A second, more pedagogical, article on PAW by Blöchl and co-workers.
 
   __ http://www.ias.ac.in/matersci/
 
+
+.. _gpaw_publications:
 
 Publications using the gpaw code
 --------------------------------
