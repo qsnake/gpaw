@@ -41,7 +41,8 @@ def create_calc(name, spinpol, pbc):
                 xc='PBE',
                 spinpol=spinpol,
                 eigensolver='cg',
-                convergence={'eigenstates': 1e-7, 'bands':nbands},
+                convergence={'energy':1e-4/len(atoms), 'density':1e-5, \
+                             'eigenstates': 1e-9, 'bands':-1},
                 txt=name+'.txt', **kwargs)
 
     atoms.set_calculator(calc)
@@ -62,7 +63,7 @@ def get_calc(name, spinpol, parsize, pbc):
     return calc
 
 
-if __name__ == '__main__':
+if __name__ in ['__main__', '__builtin__']:
 
     import sys
 
@@ -71,8 +72,8 @@ if __name__ == '__main__':
             sys.stdout.write(text)
             sys.stdout.flush()
 
-    #pbcs_c = [tuple([bool(p & 2**c) for c in range(3)]) for p in range(8)]
-    pbcs_c = [(False, False, False)]
+    pbcs_c = [tuple([bool(p & 2**c) for c in range(3)]) for p in range(8)]
+    #pbcs_c = [(False, False, False)]
 
     for spinpol in [True,False]:
 
@@ -88,7 +89,7 @@ if __name__ == '__main__':
         parsizes_dc[8] = [(1,2,4),(1,4,2),(2,1,4),(2,2,2),(2,4,1),(4,1,2),(4,2,1)] #more
 
         if spinpol:
-            ndomains = world.size//2
+            ndomains = max(1, world.size//2)
         else:
             ndomains = world.size
 
@@ -104,6 +105,7 @@ if __name__ == '__main__':
                 try:
                     E1 = calc.get_potential_energy()
                     calc.scf.reset()
+                    calc.scf.niter_fixdensity = -1 #a hack!
                     calc.calculate(calc.atoms)
                     E2 = calc.get_potential_energy()
                 except ValueError, e:
@@ -111,6 +113,6 @@ if __name__ == '__main__':
                         raise e
                     write('ignored\n')
                 else:
-                    equal(E1, E2, 1e-3)
+                    equal(E1, E2, 1e-4)
                     write('ok\n')
 
