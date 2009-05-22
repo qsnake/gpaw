@@ -1,7 +1,7 @@
 # Copyright (C) 2003  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-"""This module defines a ``KPoint`` class."""
+"""This module defines a ``KPoint`` class and the derived ``GlobalKPoint``."""
 
 import numpy as np
 
@@ -14,6 +14,8 @@ class KPoint:
 
     The KPoint class takes care of all wave functions for a
     certain k-point and a certain spin.
+
+    XXX This needs to be updated.
 
     Attributes:
 
@@ -159,4 +161,66 @@ class KPoint:
         self.allocate(nbands)
         self.psit_nG = self.gd.zeros(nbands, self.dtype)
         self.random_wave_functions(self.psit_nG)                   
+
+
+class GlobalKPoint(KPoint):
+
+    def update(self, wfs):
+        """Distribute requested kpoint data across the kpoint communicator."""
+
+        # Locate rank and index of requested k-point
+        nks = len(wfs.ibzk_kc)
+        mynu = len(wfs.kpt_u)
+        kpt_rank, u = divmod(self.k + nks * self.s, mynu)
+        kpt_comm = wfs.kpt_comm
+
+        my_atom_indices = np.argwhere(wfs.rank_a == wfs.gd.comm.rank).ravel()
+        mynproj = sum([wfs.setups[a].ni for a in my_atom_indices])
+        my_P_ni = np.empty((wfs.mynbands, mynproj), wfs.dtype)
+
+        self.P_ani = {}
+
+        if self.phase_cd is None:
+            self.phase_cd = np.empty((3,2), wfs.dtype)
+
+        if self.psit_nG is None:
+            self.psit_nG = wfs.gd.empty(wfs.mynbands, wfs.dtype)
+
+        reqs = []
+
+        # Do I have the requested kpoint?
+        if kpt_comm.rank == kpt_rank:
+            self.phase_cd[:] = wfs.kpt_u[u].phase_cd
+            self.psit_nG[:] = wfs.kpt_u[u].psit_nG
+
+            # Compress entries in requested P_ani dict into my_P_ni ndarray
+            i = 0
+            for a,P_ni in wfs.kpt_u[u].P_ani.items():
+                ni = wfs.setups[a].ni
+                my_P_ni[:,i:i+ni] = P_ni
+                i += ni
+
+            assert (my_atom_indices == wfs.kpt_u[u].P_ani.keys()).all()
+
+            # Send phase_cd, psit_nG and my_P_ni to kpoint slaves
+            for rank in range(kpt_comm.size):
+                if rank != kpt_rank:
+                    reqs.append(kpt_comm.send(self.phase_cd, rank, 256, False))
+                    reqs.append(kpt_comm.send(self.psit_nG, rank, 257, False))
+                    reqs.append(kpt_comm.send(my_P_ni, rank, 258, False))
+        else:
+            # Receive phase_cd, psit_nG and my_P_ni from kpoint master
+            reqs.append(kpt_comm.receive(self.phase_cd, kpt_rank, 256, False))
+            reqs.append(kpt_comm.receive(self.psit_nG, kpt_rank, 257, False))
+            reqs.append(kpt_comm.receive(my_P_ni, kpt_rank, 258, False))
+
+        for request in reqs:
+            kpt_comm.wait(request)
+
+        # Decompress my_P_ni ndarray into entries in my P_ani dict
+        i = 0
+        for a in my_atom_indices:
+            ni = wfs.setups[a].ni
+            self.P_ani[a] = my_P_ni[:,i:i+ni] #copy?
+            i += ni
 
