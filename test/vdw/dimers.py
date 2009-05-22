@@ -3,7 +3,7 @@ from gpaw import GPAW
 
 L = 3.0 + 2 * 4.0
 d = np.linspace(3.0, 5.5, 11)
-if 0:#for symbol in ['Ar', 'Kr']:
+for symbol in ['Ar', 'Kr']:
     dimer = Atoms([symbol, symbol],
                   [(0, 0, 0), (1, 1, 1)],
                   cell=(L, L, L))

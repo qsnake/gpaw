@@ -21,7 +21,7 @@ for symbol in ['Ar', 'Kr']:
 
 e = np.empty(11)
 de = np.empty(11)
-vdw = VDWFunctional(verbose=1)
+vdw = FFTVDWFunctional(verbose=1)
 for i, r in enumerate(d):
     calc = GPAW('benzene-dimer-%.2f.gpw' % r, txt=None)
     e[i] = calc.get_atoms().get_potential_energy()
