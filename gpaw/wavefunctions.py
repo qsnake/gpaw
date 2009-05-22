@@ -193,28 +193,29 @@ class WaveFunctions(EmptyWaveFunctions):
         my_atom_indices = np.argwhere(rank_a == self.gd.comm.rank).ravel()
 
         if self.rank_a is not None and self.kpt_u[0].P_ani is not None:
-            # very slow when per-kpoint... try send/recieve of P_uni
-            for kpt in self.kpt_u:
-                requests = []
-                P_ani = {}
-                for a in my_atom_indices:
-                    if a in kpt.P_ani:
-                        P_ani[a] = kpt.P_ani.pop(a)
-                    else:
-                        # Get matrix from old domain:
-                        ni = self.setups[a].ni
-                        P_ni = np.empty((self.mynbands, ni), self.dtype)
-                        P_ani[a] = P_ni
-                        requests.append(
-                            self.gd.comm.receive(P_ni, self.rank_a[a],
-                                                 tag=a, block=False))
-                for a, P_ni in kpt.P_ani.items():
-                    # Send matrix to new domain:
-                    requests.append(self.gd.comm.send(P_ni, rank_a[a],
-                                                      tag=a, block=False))
-                for request in requests:
-                    self.gd.comm.wait(request)
-                kpt.P_ani = P_ani
+            requests = []
+            P_auni = {}
+            for a in my_atom_indices:
+                if a in self.kpt_u[0].P_ani:
+                    P_uni = np.array([kpt.P_ani.pop(a) for kpt in self.kpt_u])
+                else:
+                    # Get matrix from old domain:
+                    mynks = len(self.kpt_u)
+                    ni = self.setups[a].ni
+                    P_uni = np.empty((mynks, self.mynbands, ni), self.dtype)
+                    requests.append(self.gd.comm.receive(P_uni, self.rank_a[a],
+                                                         tag=a, block=False))
+                P_auni[a] = P_uni
+            for a in self.kpt_u[0].P_ani.keys():
+                # Send matrix to new domain:
+                P_uni = np.array([kpt.P_ani.pop(a) for kpt in self.kpt_u])
+                requests.append(self.gd.comm.send(P_uni, rank_a[a],
+                                                  tag=a, block=False))
+            for request in requests:
+                self.gd.comm.wait(request)
+            for u, kpt in enumerate(self.kpt_u):
+                assert len(kpt.P_ani.keys()) == 0
+                kpt.P_ani = dict([(a,P_uni[u],) for a,P_uni in P_auni.items()])
 
         self.rank_a = rank_a
 
@@ -347,7 +348,7 @@ class WaveFunctions(EmptyWaveFunctions):
                         self.world.receive(P_ni, world_rank, 1303 + a)
                     all_P_ni[band_rank::nstride, i:i + ni] = P_ni
                     i += ni
-            assert i == nproj
+                assert i == nproj
             return all_P_ni
 
         elif self.kpt_comm.rank == kpt_rank: # plain else works too...
