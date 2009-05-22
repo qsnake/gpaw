@@ -46,7 +46,7 @@ exercises = [
     ]
 
 #jobs += exercises
-jobs = [('COAu38/Au038to', 4, 10, [])]
+#jobs = [('COAu38/Au038to', 4, 10, [])]
 
 
 class Jobs:
@@ -75,6 +75,7 @@ class Jobs:
         return names
                               
     def run(self):
+        os.chdir(self.gpawdir + '/gpaw/test/long')
         status = self.status
         while True:
             done = True
@@ -137,13 +138,14 @@ class Jobs:
 
         dir = os.path.dirname(name)
         name = os.path.basename(name)
-        gpaw_python = self.gpawdir + '/bin/gpaw-python'
+        gpaw_python = (self.gpawdir +
+                       'gpaw/build/bin.linux-x86_64-2.3/gpaw-python')
         cmd = (
             'cd %s/gpaw/test/long/%s; ' % (self.gpawdir, dir) +
             'export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' +
             '/opt/acml-4.0.1/gfortran64/lib:' +
             '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' +
-            'export PYTHONPATH=%s/lib64/python && ' % self.gpawdir +
+            'export PYTHONPATH=%s/gpaw && ' % self.gpawdir +
             'export GPAW_SETUP_PATH=%s && ' % self.setupsdir +
             'export GPAW_VDW=/home/camp/jensj/VDW && ' +
             'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && '+
@@ -168,6 +170,7 @@ class Jobs:
 
 
     def install(self):
+        """Install ASE and GPAW."""
         dir = '/home/camp/jensj/test-%s' % time.asctime().replace(' ', '_')
         os.mkdir(dir)
         os.chdir(dir)
@@ -181,13 +184,16 @@ class Jobs:
             raise RuntimeError('Export of ASE failed!')
 
         os.chdir('gpaw')
+        
         if os.system(
             'source /usr/local/openmpi-1.2.5-gfortran/bin/mpivars-1.2.5.sh; ' +
-            'python setup.py install --home=%s ' % dir +
+            'cp doc/install/Linux/Niflheim/customize_ethernet.py customize.py;'
+            +
+            'python setup.py build_ext ' +
             '2>&1 | grep -v "c/libxc/src"') != 0:
             raise RuntimeError('Installation failed!')
 
-        os.system('mv ../ase/ase ../lib64/python')
+        os.system('mv ../ase/ase .')
 
         os.system('wget --no-check-certificate --quiet ' +
                   'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
