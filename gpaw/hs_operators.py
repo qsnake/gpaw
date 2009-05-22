@@ -51,7 +51,7 @@ class Operator:
                 count = (ngroups // 2 + 1) * mynbands**2
                 mem.subnode('A_qnn', count * mem.itemsize[dtype])
 
-    def calculate_matrix_elements(self, psit_nG, P_ani, A, dA_aii):
+    def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
         """Calculate matrix elements for A-operator.
 
         Results will be put in the *A_nn* array::
@@ -61,6 +61,24 @@ class Operator:
            A    = <psi |A|psi > + )  <psi |p > dA   <p |psi >
             nn'       n      n'  /___    n  i    ii'  i'   n'
                                   aii'
+
+        Fills in the lower part of *A_nn*, but only on domain and band masters.
+
+
+        Parameters:
+
+        psit_nG: ndarray
+            Set of vectors in which the matrix elements are evaulated.
+        P_ani: dict
+            Dictionary of projector overlap integrals P_ni = <p_i | psit_nG>.
+        A: function
+            Functional form of the operator A which works on psit_nG.
+            Must accept and return a ndarray of the same shape as psit_nG.
+        dA: dict or function
+            Dictionary of atomic matrix elements dA_ii = <phi_i | A | phi_i >
+            or functional form of the operator which works on | phi_i >.
+            Must accept atomic index a and P_ni and return a ndarray with the
+            same shape as P_ni, thus representing P_ni multiplied by dA_ii.
 
         """
 
@@ -74,6 +92,14 @@ class Operator:
             self.allocate_work_arrays(N, psit_nG.dtype)
 
         A_NN = self.A_nn
+
+        dAP_ani = {}
+        for a,P_ni in P_ani.items():
+            if callable(dA):
+                dAP_ani[a] = dA(a, P_ni)
+            else:
+                # dA denotes dA_aii as usual
+                dAP_ani[a] = np.dot(P_ni, dA[a])
         
         if B == 1 and J == 1:
             # Simple case:
@@ -84,7 +110,7 @@ class Operator:
             else:
                 r2k(0.5 * dv, psit_nG, Apsit_nG, 0.0, A_NN)
             for a, P_ni in P_ani.items():
-                gemm(1.0, P_ni, np.dot(P_ni, dA_aii[a]), 1.0, A_NN, 'c')
+                gemm(1.0, P_ni, dAP_ani[a], 1.0, A_NN, 'c')
             self.domain_comm.sum(A_NN, 0)
             return A_NN
         
@@ -116,7 +142,7 @@ class Operator:
                     rreq = bcomm.receive(rbuf_mG, rankp, 11, False)
                 if j == J - 1 and P_ani:
                     if q == 0:
-                        sbuf_In = np.concatenate([np.dot(P_ni, dA_aii[a]).T
+                        sbuf_In = np.concatenate([dAP_ani[a].T
                                                   for a, P_ni in P_ani.items()])
                         if B > 1:
                             rbuf_In = np.empty_like(sbuf_In)
