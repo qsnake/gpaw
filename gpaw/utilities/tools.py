@@ -291,6 +291,29 @@ def tridiag(a, b, c, r, u):
         # Backward substitution
         u[i-1] -= tmp[i-1] * u[i]
 
+def signtrim(data, decimals=None):
+    """Trim off the sign of potential zeros, usually occuring after round.
+
+    data is the ndarray holding NumPy data to round and trim.
+    decimals is an integer specifying how many decimals to round to.
+    """
+    if decimals is not None:
+        data = data.round(decimals) #np.round is buggy because -0 != 0
+
+    shape = data.shape
+    data = data.reshape(-1)
+
+    if data.dtype == complex:
+        i = np.argwhere(np.sign(data.real)==0).ravel()
+        j = np.argwhere(np.sign(data.imag)==0).ravel()
+        data.real[i] = 0
+        data.imag[j] = 0
+    else:
+        i = np.argwhere(np.sign(data)==0).ravel()
+        data[i] = 0
+
+    return data.reshape(shape)
+
 # from http://hg.stuvel.eu/flickrapi/file/c96a2d1288ef/flickrapi/__init__.py
 def md5_hash():
     """
@@ -306,6 +329,26 @@ def md5_hash():
     return md5
 
 md5 = md5_hash()
+
+def md5_array(data, decimals=None, numeric=False):
+    """Create MD5 hex digest from NumPy array. Optionally, will round of
+    the data before processing, and convert 128 bit hash to NumPy float.
+    """
+    if not isinstance(data, np.ndarray):
+        data = np.asarray(data)
+
+    assert np.issubdtype(data.dtype, np.number) #float,complex,int,...
+
+    if decimals is not None:
+        data = signtrim(data, decimals) #np.round is buggy because -0 != 0
+
+    md5hex = md5.md5(data.tostring()).hexdigest()
+
+    if numeric:
+        from binascii import a2b_hex
+        return np.fromstring(a2b_hex(md5hex), np.float128).item()
+    else:
+        return md5hex
 
 class Spline:
     def __init__(self, xi, yi, leftderiv=None, rightderiv=None):
