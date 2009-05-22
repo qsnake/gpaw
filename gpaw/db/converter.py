@@ -43,7 +43,7 @@ class GPW2DB:
         import gpaw
         import gpaw.db
         calc = gpaw.GPAW(gpw_filename)
-        calc.write(db_filename, db=db, private=private, kwargs=kwargs)
+        calc.write(db_filename, db=db, private=private, **kwargs)
         
 
 class NC2DB:

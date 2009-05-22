@@ -285,6 +285,8 @@ class Writer:
           outfile = dest+"/"+str(time.time())+"_"+("%0.6d"%(random.randint(0,999999)))+".db"
           os.system("cp "+self.fname+" "+outfile)
           os.system("chmod "+self.private+" "+outfile)
+          print "The data was successfully copied to the db-repository."
+          print " (File: "+outfile+")"
 
 
 class Reader(xml.sax.handler.ContentHandler):
