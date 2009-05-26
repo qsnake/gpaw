@@ -194,7 +194,7 @@ class AtomGridDescriptor(RadialGridDescriptor):
         self.N_c = np.ones(3, dtype=int) * 2 * N
         self.h_c = np.ones(3) * h
     def get_ranks_from_positions(self, spos_ac):
-        return [0]
+        return np.array([0])
     def refine(self):
         return self
     def is_non_orthogonal(self):
