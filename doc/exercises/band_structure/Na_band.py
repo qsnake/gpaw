@@ -13,8 +13,8 @@ atoms.get_potential_energy()
 calc.write('Na_sc.gpw')
 
 # Calculate band structure along Gamma-X i.e. from 0 to 0.5
-nkpt = 50
-kpts = [(0.5 * k / nkpt, 0, 0) for k in range(nkpt + 1)]
+nkpt = 40
+kpts = [(0.5 * k / (nkpt - 1), 0, 0) for k in range(nkpt)]
 calc = GPAW('Na_sc.gpw', txt='Na_harris.txt',
             kpts=kpts, fixdensity=True, nbands=7,
             eigensolver='cg', convergence={'bands': 'all'})

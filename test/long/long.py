@@ -10,40 +10,43 @@ jobs = [
 #   (name, #cpus, minutes, dependencies),
     ('COAu38/Au038to', 4, 10, []),
     ('O2Pt/o2pt', 4, 40, []),
-    ('../vdw/interaction', 4, 60,
-     [('../vdw/dimers', 4, 30, [])]),
+    ('../vdw/interaction', 4, 60, ['dimers']),
+    ('../vdw/dimers', 4, 30, []),
     ]
 
 # Test all exercises:
 exercises = [
     ('../../doc/exercises/neb/neb1', 4, 20, []),
+    ('../../doc/exercises/aluminium/Al_fcc', 4, 20, []),
     ('../../doc/exercises/aluminium/Al_fcc_convergence', 4, 20, []),
-    ('../../doc/exercises/surface/Al100', 4, 20, []),
-    ('../../doc/exercises/surface/work_function', 4, 20, []),
+    ('../../doc/exercises/surface/work_function', 4, 20, ['testAl100']),
+    ('../../doc/exercises/surface/testAl100', 4, 20, []),
     ('../../doc/exercises/diffusion/initial', 4, 20, []),
+    ('../../doc/exercises/diffusion/densitydiff', 4, 20, ['solution']),
     ('../../doc/exercises/diffusion/solution', 4, 20, []),
-    ('../../doc/exercises/diffusion/densitydiff', 4, 20, []),
+    ('../../doc/exercises/vibrations/H2O_vib', 4, 20, ['h2o']),
     ('../../doc/exercises/vibrations/h2o', 4, 20, []),
-    ('../../doc/exercises/vibrations/H2O_vib', 4, 20, []),
     ('../../doc/exercises/band_structure/Na_band', 4, 20, []),
     ('../../doc/exercises/band_structure/plot_band', 4, 20, []),
     ('../../doc/exercises/wannier/wannier-si', 4, 20, []),
+    ('../../doc/exercises/wannier/wannier-benzene', 4, 20, ['benzene']),
     ('../../doc/exercises/wannier/benzene', 4, 20, []),
-    ('../../doc/exercises/wannier/wannier-benzene', 4, 20, []),
-    ('../../doc/exercises/dos/pdos', 4, 20, []),
     ('../../doc/exercises/lrtddft/ground_state', 4, 20, []),
     ('../../doc/exercises/transport/pt_h2_tb_transport', 4, 20, []),
     ('../../doc/exercises/transport/pt_h2_lcao', 4, 20, []),
     ('../../doc/exercises/transport/pt_h2_lcao_transport', 4, 20, []),
-    ('../../doc/exercises/test', 4, 20,
-     [('../../doc/exercises/stm/HAl100', 4, 20, []),
-      ('../../doc/exercises/aluminium/Al_fcc', 4, 20, []),
-      ('../../doc/exercises/wannier/si', 4, 20, []),
-      ('../../doc/exercises/wavefunctions/CO', 4, 20, []),
-      ('../../doc/exercises/iron/PBE', 4, 20,
-       [('../../doc/exercises/iron/ferro', 4, 20, []),
-        ('../../doc/exercises/iron/anti', 4, 20, []),
-        ('../../doc/exercises/iron/non', 4, 20, [])])])
+    ('../../doc/exercises/dos/testdos', 4, 20,
+     ['ferro', 'anti', 'non', 'CO', 'si', 'Al_fcc']),
+    ('../../doc/exercises/stm/HAl100', 4, 20, []),
+    ('../../doc/exercises/stm/HAl100', 4, 20, []),
+    ('../../doc/exercises/aluminium/Al_fcc', 4, 20, []),
+    ('../../doc/exercises/wannier/si', 4, 20, []),
+    ('../../doc/exercises/wavefunctions/CO', 4, 20, []),
+    ('../../doc/exercises/iron/PBE', 4, 20, ['ferro', 'anti', 'non']),
+    ('../../doc/exercises/iron/ferro', 4, 20, []),
+    ('../../doc/exercises/iron/anti', 4, 20, []),
+    ('../../doc/exercises/iron/non', 4, 20, []),
+    ('../../doc/exercises/stm/teststm', 4, 20, ['HAl100']),
     ]
 
 jobs += exercises
@@ -63,8 +66,7 @@ class Jobs:
         """
         self.jobs = {}
         self.names = []
-        self.add(jobs)
-        self.status = dict([(name, 'waiting') for name in self.jobs])
+        self.status = {}
         self.fd = log
         self.ids = {}
         
@@ -73,29 +75,34 @@ class Jobs:
         self.fd.flush()
         
     def add(self, jobs):
-        names = []
         for name, p, t, dependencies in jobs:
-            self.jobs[name] = (p, t, self.add(dependencies))
+            dir = os.path.dirname(name)
+            name = os.path.basename(name)
+            assert name not in self.jobs
+            self.jobs[name] = (dir, p, t, dependencies)
             self.names.append(name)
-            names.append(name)
-        return names
                               
     def run(self):
-        os.chdir(self.gpawdir + '/gpaw/test/long')
         status = self.status
+
+        for name in self.jobs:
+            status[name] = 'waiting'
+
+        os.chdir(self.gpawdir + '/gpaw/test/long')
+
         while True:
             done = True
             for name in self.jobs:
                 if status[name] == 'waiting':
                     done = False
                     ready = True
-                    p, t, deps = self.jobs[name]
+                    dir, p, t, deps = self.jobs[name]
                     for dep in deps:
                         if status[dep] != 'done':
                             ready = False
                             break
                     if ready:
-                        self.start(name, p, t)
+                        self.start(name, dir, p, t)
                 elif status[name] == 'running':
                     done = False
 
@@ -105,49 +112,49 @@ class Jobs:
             time.sleep(20.0)
 
             for name in self.jobs:
-                if (status[name] == 'running' and
-                    os.path.isfile(name + '.done')):
-                    code = int(open(name + '.done').readlines()[-1])
+                dir, p, t, deps = self.jobs[name]
+                filemname = '%s/%s.done' % (dir, name)
+                if status[name] == 'running' and os.path.isfile(filename):
+                    code = int(open(filename).readlines()[-1])
                     if code == 0:
                         status[name] = 'done'
-                        self.log(name, '.py done.')
+                        self.log(name, 'done.')
                     else:
                         status[name] = 'failed'
-                        self.log('%s.py exited with errorcode: %d' %
-                                 (name, code))
+                        self.log('%s exited with errorcode: %d' % (name, code))
                         self.fail(name)
 
     def fail(self, failed_name):
         """Recursively disable jobs depending on failed job."""
         for name in self.jobs:
-            p, t, deps = self.jobs[name]
+            dir, p, t, deps = self.jobs[name]
             if failed_name in deps:
                 self.status[name] = 'disabled'
-                self.log('Disabling %s.py' % name)
+                self.log('Disabling %s' % name)
                 self.fail(name)
 
     def print_results(self):
         for name in self.names:
             status = self.status[name]
-            if status != 'disabled' and os.path.isfile(name + '.done'):
-                t = (float(open(name + '.done').readline()) -
-                     float(open(name + '.start').readline()))
+            dir, p, t, deps = self.jobs[name]
+            filemname = '%s/%s.done' % (dir, name)
+            if status != 'disabled' and os.path.isfile(filename):
+                t = (float(open(filename).readline()) -
+                     float(open(filename[:-4] + 'start').readline()))
                 t = '%8.1f' % t
             else:
                 t = '--------'
-            self.log('%40s %s %s' % (name, t, status))
+            self.log('%20s %s %s' % (name, t, status))
 
-    def start(self, name, p, t):
-        self.log('Starting: %s.py' % name)
+    def start(self, name, dir, p, t):
+        self.log('Starting: %s' % name)
         self.status[name] = 'running'
 
         try:
-            os.remove(name + '.done')
+            os.remove(dir + '/' + name + '.done')
         except OSError:
             pass
 
-        dir = os.path.dirname(name)
-        name = os.path.basename(name)
         gpaw_python = (self.gpawdir +
                        '/gpaw/build/bin.linux-x86_64-2.3/gpaw-python')
         cmd = (
@@ -160,12 +167,27 @@ class Jobs:
             '-x PYTHONPATH=%s/gpaw ' % self.gpawdir +
             '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
             '-x GPAW_VDW=/home/camp/jensj/VDW ' +
-            '%s %s.py > %s.output' % (gpaw_python, name, name))
+            '%s _%s.py > %s.output' % (gpaw_python, name, name))
+        header = '\n'.join(
+            ['import matplotlib',
+             "matplotlib.use('Agg')",
+             'import pylab',
+             '_n = 1',
+             'def show():',
+             '    global _n',
+             "    pylab.savefig('x%d.png' % _n)",
+             '    _n += 1',
+             'pylab.show = show',
+             '\n'])
         i = open('%s-job.py' % name, 'w')
         i.write('\n'.join(
             ['#!/usr/bin/env python',
              'import os',
              'import time',
+             'f = open("%s/_%s.py", "w")' % (dir, name),
+             'f.write("%s")' % header,
+             'f.write(open("%s/%s.py", "r")' % (dir, name),
+             'f.close()',
              'f = open("%s/%s.start", "w")' % (dir, name),
              'f.write("%f\\n" % time.time())',
              'x = os.system("%s")' % cmd,
@@ -218,7 +240,8 @@ class Jobs:
         print self.status
 
         
-j = Jobs(jobs)
+j = Jobs()
+j.add(jobs)
 j.install()
 try:
     j.run()

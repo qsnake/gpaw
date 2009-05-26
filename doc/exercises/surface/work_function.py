@@ -1,7 +1,7 @@
 from ase import *
 from gpaw import GPAW
 
-# Read in the 4-layer slab:
+# Read in the 5-layer slab:
 calc = GPAW('slab-5.gpw', txt=None)
 slab = calc.get_atoms()
 
