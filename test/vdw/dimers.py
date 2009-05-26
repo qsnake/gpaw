@@ -1,6 +1,18 @@
 from ase import *
 from gpaw import GPAW
 
+from ase.parallel import rank, barrier
+from gpaw.atom.generator import Generator, parameters
+from gpaw import setup_paths
+
+# Generate setup
+if rank == 0:
+    for symbol in ['Ar', 'Kr', 'C', 'H']:
+        g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
+    g.run(**parameters[symbol])
+barrier()
+setup_paths.insert(0, '.')
+
 L = 3.0 + 2 * 4.0
 d = np.linspace(3.0, 5.5, 11)
 for symbol in ['Ar', 'Kr']:

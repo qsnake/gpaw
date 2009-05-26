@@ -1,6 +1,7 @@
 """Run longer test jobs in parallel on Niflheim."""
 
 import os
+import sys
 import time
 import glob
 
@@ -45,12 +46,12 @@ exercises = [
         ('../../doc/exercises/iron/non', 4, 20, [])])])
     ]
 
-#jobs += exercises
+jobs += exercises
 #jobs = [('COAu38/Au038to', 4, 10, [])]
 
 
 class Jobs:
-    def __init__(self, jobs):
+    def __init__(self, jobs, log=sys.stdout):
         """Run jobs.
         
         jobs is a list of tuples containing:
@@ -63,9 +64,14 @@ class Jobs:
         self.jobs = {}
         self.names = []
         self.add(jobs)
-        self.status = dict([(name, 'queued') for name in self.jobs])
-        self.install()
-
+        self.status = dict([(name, 'waiting') for name in self.jobs])
+        self.fd = log
+        self.ids = {}
+        
+    def log(self, *args):
+        self.fd.write(' '.join(args) + '\n')
+        self.fd.flush()
+        
     def add(self, jobs):
         names = []
         for name, p, t, dependencies in jobs:
@@ -80,7 +86,7 @@ class Jobs:
         while True:
             done = True
             for name in self.jobs:
-                if status[name] == 'queued':
+                if status[name] == 'waiting':
                     done = False
                     ready = True
                     p, t, deps = self.jobs[name]
@@ -104,18 +110,21 @@ class Jobs:
                     code = int(open(name + '.done').readlines()[-1])
                     if code == 0:
                         status[name] = 'done'
-                        print name + '.py done.'
+                        self.log(name, '.py done.')
                     else:
                         status[name] = 'failed'
-                        print '%s.py exited with errorcode: %d' % (name, code)
+                        self.log('%s.py exited with errorcode: %d' %
+                                 (name, code))
                         self.fail(name)
 
-    def fail(self, name):
-        p, t, deps = self.jobs[name]
-        for dep in deps:
-            self.status[dep] = 'disabled'
-            print 'Disabling %s.py' % dep
-            self.fail(dep)
+    def fail(self, failed_name):
+        """Recursively disable jobs depending on failed job."""
+        for name in self.jobs:
+            p, t, deps = self.jobs[name]
+            if failed_name in deps:
+                self.status[name] = 'disabled'
+                self.log('Disabling %s.py' % name)
+                self.fail(name)
 
     def print_results(self):
         for name in self.names:
@@ -126,11 +135,12 @@ class Jobs:
                 t = '%8.1f' % t
             else:
                 t = '--------'
-            print '%40s %s %s' % (name, t, status)
+            self.log('%40s %s %s' % (name, t, status))
 
     def start(self, name, p, t):
-        print 'Starting: %s.py' % name
+        self.log('Starting: %s.py' % name)
         self.status[name] = 'running'
+
         try:
             os.remove(name + '.done')
         except OSError:
@@ -139,17 +149,18 @@ class Jobs:
         dir = os.path.dirname(name)
         name = os.path.basename(name)
         gpaw_python = (self.gpawdir +
-                       'gpaw/build/bin.linux-x86_64-2.3/gpaw-python')
+                       '/gpaw/build/bin.linux-x86_64-2.3/gpaw-python')
         cmd = (
             'cd %s/gpaw/test/long/%s; ' % (self.gpawdir, dir) +
             'export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' +
             '/opt/acml-4.0.1/gfortran64/lib:' +
             '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' +
-            'export PYTHONPATH=%s/gpaw && ' % self.gpawdir +
-            'export GPAW_SETUP_PATH=%s && ' % self.setupsdir +
-            'export GPAW_VDW=/home/camp/jensj/VDW && ' +
             'export PATH=/usr/local/openmpi-1.2.5-gfortran/bin:${PATH} && '+
-            'mpirun %s %s.py > %s.output' % (gpaw_python, name, name))
+            'mpirun ' +
+            '-x PYTHONPATH=%s/gpaw ' % self.gpawdir +
+            '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
+            '-x GPAW_VDW=/home/camp/jensj/VDW ' +
+            '%s %s.py > %s.output' % (gpaw_python, name, name))
         i = open('%s-job.py' % name, 'w')
         i.write('\n'.join(
             ['#!/usr/bin/env python',
@@ -166,12 +177,13 @@ class Jobs:
         options = ('-l nodes=%d:ppn=4:ethernet -l walltime=%d:%02d:00' %
                    (p // 4, t // 60, t % 60))
         
-        os.system('qsub %s %s-job.py' % (options, name))
-
+        id = os.popen('qsub %s %s-job.py' % (options, name), 'r').readline()
+        self.ids[name] = id.split('.')[0]
 
     def install(self):
         """Install ASE and GPAW."""
-        dir = '/home/camp/jensj/test-%s' % time.asctime().replace(' ', '_')
+        dir = '/home/camp/jensj/test-gpaw-%s' % time.asctime()
+        dir = dir.replace(' ', '_').replace(':', '.')
         os.mkdir(dir)
         os.chdir(dir)
 
@@ -198,9 +210,19 @@ class Jobs:
         os.system('wget --no-check-certificate --quiet ' +
                   'http://wiki.fysik.dtu.dk/stuff/gpaw-setups-latest.tar.gz')
         os.system('tar xzf gpaw-setups-latest.tar.gz')
-        self.setupsdir = dir + '/gpaw/' + glob.glob('gpaw-setups-*')[0]
+        self.setupsdir = dir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
         self.gpawdir = dir
+
+    def cleanup(self):
+        print self.jobs
+        print self.status
+
         
 j = Jobs(jobs)
-j.run()
-j.print_results()
+j.install()
+try:
+    j.run()
+except KeyboardInterrupt:
+    j.cleanup()
+else:
+    j.print_results()
