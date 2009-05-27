@@ -42,7 +42,7 @@ if mpi.size == 1:
     xas = XAS(calc)
     x, y = xas.get_spectra()
     e2_n = xas.eps_n
-    w_n = sum(xas.sigma_cn.real**2, axis=0)
+    w_n = np.sum(xas.sigma_cn.real**2, axis=0)
     de2 = e2_n[1] - e2_n[0]
 
     print de2 - 2.0801
