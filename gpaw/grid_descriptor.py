@@ -76,6 +76,9 @@ class GridDescriptor(Domain):
         parsize_c: 3 int's
             Number of domains.
 
+        Note that if pbc_c[c] is True, then the actual number of gridpoints
+        along axis c is one less than N_c[c].
+
         Attributes:
 
         ==========  ========================================================
