@@ -83,3 +83,5 @@ build()
     
 if tarfiledir is not None:
     os.system('cd ..; tar czf %s/gpaw-webpages.tar.gz _build' % tarfiledir)
+    os.system('cd; rm -r ' + tmpdir)
+

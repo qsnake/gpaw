@@ -20,8 +20,8 @@ import docutils
 
 
 def send_email(subject, filename='/dev/null'):
-    #assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
-    assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
+    assert os.system('mail -s "%s" gridpaw-developer@lists.berlios.de < %s' %
+    #assert os.system('mail -s "%s" jensj@fysik.dtu.dk < %s' %
                      (subject, filename)) == 0
 
 def send_jj_email(subject, filename='/dev/null'):
@@ -262,17 +262,6 @@ else:
     print >> out, 'Congratulations - the tests covers all of the code!'
 print >> out
 print >> out, '(coverage-test is performed Sunday nights only)'
-
-os.system(export + 'cd ..; rm -rf gpaw/gui; '+
-          'epydoc --docformat restructuredtext --parse-only ' +
-          '--name GPAW --url http://wiki.fysik.dtu.dk/gpaw ' +
-          '--show-imports --no-frames -v gpaw ' +
-          '>& warnings; ' +
-          'rm -rf %s/html; ' % dir +
-          'cp -rp html %s' % dir)
-
-if ' Warning:' in open('../warnings').read():
-    send_jj_email('Warning(s) from epydoc!', '../warnings')
 
 os.system('cd; rm -r ' + tmpdir)
 
