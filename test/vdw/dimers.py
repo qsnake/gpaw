@@ -9,7 +9,7 @@ from gpaw import setup_paths
 if rank == 0:
     for symbol in ['Ar', 'Kr', 'C', 'H']:
         g = Generator(symbol, 'revPBE', scalarrel=True, nofiles=True)
-    g.run(**parameters[symbol])
+        g.run(**parameters[symbol])
 barrier()
 setup_paths.insert(0, '.')
 

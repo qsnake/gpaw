@@ -27,26 +27,26 @@ exercises = [
     ('../../doc/exercises/vibrations/H2O_vib', 4, 20, ['h2o']),
     ('../../doc/exercises/vibrations/h2o', 4, 20, []),
     ('../../doc/exercises/band_structure/Na_band', 4, 20, []),
-    ('../../doc/exercises/band_structure/plot_band', 4, 20, []),
+    ('../../doc/exercises/band_structure/plot_band', 4, 20, ['Na_band']),
     ('../../doc/exercises/wannier/wannier-si', 4, 20, []),
-    ('../../doc/exercises/wannier/wannier-benzene', 4, 20, ['benzene']),
+    ('../../doc/exercises/wannier/wannier-benzene', 1, 20, ['benzene']),
     ('../../doc/exercises/wannier/benzene', 4, 20, []),
     ('../../doc/exercises/lrtddft/ground_state', 4, 20, []),
     ('../../doc/exercises/transport/pt_h2_tb_transport', 4, 20, []),
-    ('../../doc/exercises/transport/pt_h2_lcao', 4, 20, []),
-    ('../../doc/exercises/transport/pt_h2_lcao_transport', 4, 20, []),
+    ('../../doc/exercises/transport/pt_h2_lcao', 4, 20, ['makebasis']),
+    ('../../doc/exercises/transport/pt_h2_lcao_transport', 4, 20,
+     ['makebasis']),
+    ('../../doc/exercises/transport/makebasis', 1, 5, []),
     ('../../doc/exercises/dos/testdos', 4, 20,
      ['ferro', 'anti', 'non', 'CO', 'si', 'Al_fcc']),
     ('../../doc/exercises/stm/HAl100', 4, 20, []),
-    ('../../doc/exercises/stm/HAl100', 4, 20, []),
-    ('../../doc/exercises/aluminium/Al_fcc', 4, 20, []),
     ('../../doc/exercises/wannier/si', 4, 20, []),
     ('../../doc/exercises/wavefunctions/CO', 4, 20, []),
     ('../../doc/exercises/iron/PBE', 4, 20, ['ferro', 'anti', 'non']),
     ('../../doc/exercises/iron/ferro', 4, 20, []),
     ('../../doc/exercises/iron/anti', 4, 20, []),
     ('../../doc/exercises/iron/non', 4, 20, []),
-    ('../../doc/exercises/stm/teststm', 4, 20, ['HAl100']),
+    ('../../doc/exercises/stm/teststm', 1, 20, ['HAl100']),
     ]
 
 jobs += exercises
@@ -54,7 +54,7 @@ jobs += exercises
 
 
 class Jobs:
-    def __init__(self, jobs, log=sys.stdout):
+    def __init__(self, log=sys.stdout):
         """Run jobs.
         
         jobs is a list of tuples containing:
@@ -78,6 +78,7 @@ class Jobs:
         for name, p, t, dependencies in jobs:
             dir = os.path.dirname(name)
             name = os.path.basename(name)
+            print name
             assert name not in self.jobs
             self.jobs[name] = (dir, p, t, dependencies)
             self.names.append(name)
@@ -113,7 +114,7 @@ class Jobs:
 
             for name in self.jobs:
                 dir, p, t, deps = self.jobs[name]
-                filemname = '%s/%s.done' % (dir, name)
+                filename = '%s/%s.done' % (dir, name)
                 if status[name] == 'running' and os.path.isfile(filename):
                     code = int(open(filename).readlines()[-1])
                     if code == 0:
@@ -137,13 +138,13 @@ class Jobs:
         for name in self.names:
             status = self.status[name]
             dir, p, t, deps = self.jobs[name]
-            filemname = '%s/%s.done' % (dir, name)
+            filename = '%s/%s.done' % (dir, name)
             if status != 'disabled' and os.path.isfile(filename):
                 t = (float(open(filename).readline()) -
                      float(open(filename[:-4] + 'start').readline()))
                 t = '%8.1f' % t
             else:
-                t = '--------'
+                t = '        '
             self.log('%20s %s %s' % (name, t, status))
 
     def start(self, name, dir, p, t):
@@ -178,15 +179,15 @@ class Jobs:
              "    pylab.savefig('x%d.png' % _n)",
              '    _n += 1',
              'pylab.show = show',
-             '\n'])
+             ''])
         i = open('%s-job.py' % name, 'w')
         i.write('\n'.join(
             ['#!/usr/bin/env python',
              'import os',
              'import time',
              'f = open("%s/_%s.py", "w")' % (dir, name),
-             'f.write("%s")' % header,
-             'f.write(open("%s/%s.py", "r")' % (dir, name),
+             'f.write("""%s""")' % header,
+             'f.write(open("%s/%s.py", "r").read())' % (dir, name),
              'f.close()',
              'f = open("%s/%s.start", "w")' % (dir, name),
              'f.write("%f\\n" % time.time())',
@@ -195,9 +196,15 @@ class Jobs:
              'f.write("%f\\n%d\\n" % (time.time(), x))',
              '\n']))
         i.close()
-        assert p % 4 == 0
-        options = ('-l nodes=%d:ppn=4:ethernet -l walltime=%d:%02d:00' %
-                   (p // 4, t // 60, t % 60))
+        if p == 1:
+            ppn = 1
+            nodes = 1
+        else:
+            assert p % 4 == 0
+            ppn = 4
+            nodes = p // 4
+        options = ('-l nodes=%d:ppn=%d:ethernet -l walltime=%d:%02d:00' %
+                   (nodes, ppn, t // 60, t % 60))
         
         id = os.popen('qsub %s %s-job.py' % (options, name), 'r').readline()
         self.ids[name] = id.split('.')[0]
