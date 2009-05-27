@@ -18,6 +18,7 @@ H.get_potential_energy()
 calc.write(result)
 
 # the two files should be equal
+from gpaw.mpi import rank
 if rank == 0:
     for f in ['gpaw-restart', 'gpaw-result']:
         os.system('rm -rf %s; mkdir %s; cd %s; tar xf ../%s.gpw' %
