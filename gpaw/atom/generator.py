@@ -506,7 +506,7 @@ class Generator(AllElectron):
             l = 3
 
             # Solve for all-electron f-state:
-            eps = 0
+            eps = 0.0
             shoot(uf, l, self.vr, eps, self.r2dvdr, r, dr, c10, c2,
                   self.scalarrel, gmax=gmax)
             uf *= 1.0 / uf[gc]
@@ -534,7 +534,7 @@ class Generator(AllElectron):
                           a2 * (l + 4) * (l + 5) * r4 +
                           a3 * (l + 6) * (l + 7) * r6)
             denominator = a0 + a1 * r2 + a2 * r4 + a3 * r6            
-            ekin_over_phit = - .5 * (enumerator / denominator - l * (l + 1))
+            ekin_over_phit = - 0.5 * (enumerator / denominator - l * (l + 1))
             ekin_over_phit[1:] /= r2[1:]
 
             vbar = eps - vt
