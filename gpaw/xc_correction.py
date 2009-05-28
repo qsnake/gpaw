@@ -1293,7 +1293,7 @@ class XCCorrection:
             for j1, l1, L1 in jlL:
                 for j2, l2, L2 in jlL[i1:]:
                     temp = A_Lxg[L1] * A_Lxg[L2] + A_Lyg[L1] * A_Lyg[L2]
-                    + A_Lzg[L1] * A_Lzg[L2] 
+                    temp += A_Lzg[L1] * A_Lzg[L2] 
                     temp *=  phi_jg[j1] * phi_jg[j2] 
                     temp[1:] /= self.rgd.r_g[1:]**2                       
                     temp[0] = temp[1]
