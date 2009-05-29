@@ -59,14 +59,14 @@ def get_bfs(calc):
                          calc.wfs.kpt_comm, cut=True)
     if not calc.wfs.gamma:
         bfs.set_k_points(calc.wfs.ibzk_qc)
-    bfs.set_positions(calc.atoms.get_scaled_positions())
+    bfs.set_positions(calc.atoms.get_scaled_positions() % 1.)
     return bfs
 
 
 def get_lfc(calc):
     spos_Ac = []
     spline_Aj = []
-    for a, spos_c in enumerate(calc.atoms.get_scaled_positions()):
+    for a, spos_c in enumerate(calc.atoms.get_scaled_positions() % 1.):
         for phit in calc.wfs.setups[a].phit_j:
             spos_Ac.append(spos_c)
             spline_Aj.append([phit])
@@ -81,7 +81,7 @@ def get_lfc(calc):
 
 def get_phs(calc, s=0):
     dtype = calc.wfs.dtype
-    spos_ac = calc.atoms.get_scaled_positions()
+    spos_ac = calc.atoms.get_scaled_positions() % 1.
     setups = calc.wfs.setups
     gd = calc.gd
     tci = TwoCenterIntegrals(gd, setups, calc.wfs.gamma, calc.wfs.ibzk_qc)
