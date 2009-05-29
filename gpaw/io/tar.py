@@ -193,11 +193,24 @@ class TarFileReference:
     def __len__(self):
         return self.shape[0]
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     def __getitem__(self, indices):
         if isinstance(indices, slice):
-            indices = ()
+            start, stop, step = indices.indices(len(self))
+            if start != 0 or step != 1 or stop != len(self):
+                raise NotImplementedError('You can only slice a TarReference '
+                                          'with [:] or [int]')
+            else:
+                indices = ()
         elif isinstance(indices, int):
             indices = (indices,)
+        else: # Probably tuple or ellipsis
+            raise NotImplementedError('You can only slice a TarReference '
+                                      'with [:] or [int]')
+            
         n = len(indices)
 
         size = np.prod(self.shape[n:], dtype=int) * self.itemsize
