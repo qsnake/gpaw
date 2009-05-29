@@ -42,7 +42,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
       S_qMM  = <Phi_qM|Phi_qM'>
       P_aqMi = <pt^a_qi|Phi_qM>
     """
-    spos_ac = calc.atoms.get_scaled_positions()
+    spos_ac = calc.atoms.get_scaled_positions() % 1.
     nq = len(calc.wfs.ibzk_qc)
     nao = calc.wfs.setups.nao
     dtype = calc.wfs.dtype
