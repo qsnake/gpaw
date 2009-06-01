@@ -23,22 +23,6 @@ from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.wavefunctions import LCAOWaveFunctions
 
-
-from mytools import plot_diag
-pd = plot_diag
-from pylab import *
-
-def tr(filename):
-    fd = file(filename, 'rb')
-    mm = pickle.load(fd)
-    fd.close()
-    return mm
-
-def tw(filename, mm):
-    fd = file(filename, 'wb')
-    pickle.dump(mm, fd, 2)
-    fd.close()
-    
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
