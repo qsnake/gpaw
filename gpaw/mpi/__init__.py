@@ -9,7 +9,8 @@ import numpy as npy
 from gpaw import debug
 from gpaw import dry_run as dry_run_size
 from gpaw.utilities import is_contiguous
-from gpaw.utilities import scalapack
+from gpaw.utilities import scalapack, gcd
+
 import _gpaw
 
 
@@ -203,6 +204,40 @@ if debug:
             return self.comm.cart_create(dimx, dimy, dimz, periodic)
 
     serial_comm = _Communicator(serial_comm)
+
+
+def distribute_cpus(parsize_c, parsize_bands, nspins, nibzkpts, comm=world):
+    """Distribute k-points/spins to processors.
+
+    Construct communicators for parallelization over
+    k-points/spins and for parallelization using domain
+    decomposition."""
+
+    size = comm.size
+    rank = comm.rank
+
+    ntot = nspins * nibzkpts * parsize_bands
+    if parsize_c is None:
+        ndomains = size // gcd(ntot, size)
+    else:
+        ndomains = parsize_c[0] * parsize_c[1] * parsize_c[2]
+
+    r0 = (rank // ndomains) * ndomains
+    ranks = npy.arange(r0, r0 + ndomains)
+    domain_comm = comm.new_communicator(ranks)
+
+    r0 = rank % (ndomains * parsize_bands)
+    ranks = npy.arange(r0, r0 + size, ndomains * parsize_bands)
+    kpt_comm = comm.new_communicator(ranks)
+
+    r0 = rank % ndomains + kpt_comm.rank * (ndomains * parsize_bands)
+    ranks = npy.arange(r0, r0 + (ndomains * parsize_bands), ndomains)
+    band_comm = comm.new_communicator(ranks)
+
+    assert size == domain_comm.size * kpt_comm.size * band_comm.size
+    assert nspins * nibzkpts % kpt_comm.size == 0
+
+    return domain_comm, kpt_comm, band_comm
 
 
 def broadcast_string(string=None, root=MASTER, comm=world):

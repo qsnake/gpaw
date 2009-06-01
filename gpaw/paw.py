@@ -25,7 +25,6 @@ from gpaw.brillouin import reduce_kpoints
 from gpaw.wavefunctions import GridWaveFunctions, LCAOWaveFunctions
 from gpaw.wavefunctions import EmptyWaveFunctions
 from gpaw.utilities.memory import MemNode, memory
-from gpaw.utilities import gcd
 from gpaw.parameters import InputParameters
 from gpaw.setup import Setups
 from gpaw.output import PAWTextOutput
@@ -424,8 +423,8 @@ class PAW(PAWTextOutput):
                                            niter_fixdensity)
         
         if not self.wfs:
-            domain_comm, kpt_comm, band_comm = self.distribute_cpus(
-                world, parsize, parsize_bands, nspins, len(ibzk_kc))
+            domain_comm, kpt_comm, band_comm = mpi.distribute_cpus(parsize,
+                parsize_bands, nspins, len(ibzk_kc), world)
 
             if self.gd is not None and self.gd.comm.size != domain_comm.size:
                 # Domain decomposition has changed, so we need to
@@ -528,40 +527,6 @@ class PAW(PAWTextOutput):
                 if isinstance(function, str):
                     function = getattr(self, function)
                 function(*args, **kwargs)
-                
-    def distribute_cpus(self, world,
-                        parsize_c, parsize_bands, nspins, nibzkpts):
-        """Distribute k-points/spins to processors.
-
-        Construct communicators for parallelization over
-        k-points/spins and for parallelization using domain
-        decomposition."""
-        
-        size = world.size
-        rank = world.rank
-
-        ntot = nspins * nibzkpts * parsize_bands
-        if parsize_c is None:
-            ndomains = size // gcd(ntot, size)
-        else:
-            ndomains = parsize_c[0] * parsize_c[1] * parsize_c[2]
-
-        r0 = (rank // ndomains) * ndomains
-        ranks = np.arange(r0, r0 + ndomains)
-        domain_comm = world.new_communicator(ranks)
-
-        r0 = rank % (ndomains * parsize_bands)
-        ranks = np.arange(r0, r0 + size, ndomains * parsize_bands)
-        kpt_comm = world.new_communicator(ranks)
-
-        r0 = rank % ndomains + kpt_comm.rank * (ndomains * parsize_bands)
-        ranks = np.arange(r0, r0 + (ndomains * parsize_bands), ndomains)
-        band_comm = world.new_communicator(ranks)
-
-        assert size == domain_comm.size * kpt_comm.size * band_comm.size
-        assert nspins * nibzkpts % kpt_comm.size == 0
-        
-        return domain_comm, kpt_comm, band_comm
 
     def get_reference_energy(self):
         return self.wfs.setups.Eref * Hartree

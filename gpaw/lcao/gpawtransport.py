@@ -11,7 +11,7 @@ from gpaw import GPAW, Mixer
 from gpaw import restart as restart_gpaw
 from gpaw.transport.tools import k2r_hs, r2k_hs, tri2full
 from gpaw.lcao.tools import get_realspace_hs, remove_pbc
-from gpaw.mpi import world
+from gpaw.mpi import world, distribute_cpus
 from gpaw.utilities.lapack import diagonalize
 from gpaw.utilities import pack
 from gpaw.lcao.IntCtrl import IntCtrl
@@ -894,7 +894,7 @@ class GPAWTransport:
             del self.fint
         return den
          
-    def calgfunc(self, zp, calcutype):			 
+    def calgfunc(self, zp, calcutype):
         #calcutype = 
         #  - 'eqInt':  gfunc[Mx*Mx,nE] (default)
         #  - 'neInt':  gfunc[Mx*Mx,nE]
@@ -1829,8 +1829,8 @@ class GPAWTransport:
         mynbands = nbands // parsize_bands
         
         if not calc.wfs:
-            domain_comm, kpt_comm, band_comm = calc.distribute_cpus(
-                world, parsize, parsize_bands, nspins, len(ibzk_kc))
+            domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
+                parsize_bands, nspins, len(ibzk_kc), world)
 
             if calc.gd is not None and calc.gd.comm.size != domain_comm.size:
                 # Domain decomposition has changed, so we need to

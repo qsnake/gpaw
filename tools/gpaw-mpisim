@@ -54,7 +54,7 @@ def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands,
              show_kpt=True, show_band=True, show_domain=True, gd=None):
 
     # We haven't imported GPAW until now because it messes with sys.argv
-    from gpaw import GPAW
+    from gpaw import mpi
 
     print ''
     print 'Simulating: world.size = %d' % world_size
@@ -69,9 +69,8 @@ def simulate(world_size, parsize_c, parsize_bands, nspins, nibzkpts, nbands,
         world = DummyCommunicator(rank, world_size)
         world.output()
 
-        calc = GPAW()
-        (domain_comm, kpt_comm, band_comm) = calc.distribute_cpus(world, \
-            parsize_c, parsize_bands, nspins, nibzkpts)
+        (domain_comm, kpt_comm, band_comm) = mpi.distribute_cpus(parsize_c, \
+            parsize_bands, nspins, nibzkpts, world)
 
         if show_kpt:
             kpt_comm.simulate_kpt_comm(nspins, nibzkpts)
