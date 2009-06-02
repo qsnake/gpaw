@@ -252,7 +252,7 @@ class Surrounding:
                           integral=[setup.Nct for setup in setups],
                           forces=True, cut=True)
             self.ghat = LFC(self.finegd, [setup.ghat_l for setup in setups],
-                        integral=sqrt(4 * pi), forces=True)
+                        integral=np.sqrt(4 * np.pi), forces=True)
           
             self.nct.set_positions(spos_ac)
             self.ghat.set_positions(spos_ac)
