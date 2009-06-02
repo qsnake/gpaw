@@ -88,6 +88,7 @@ class Transport(GPAW):
                        
                        'LR_leads', 'gate',  'cal_loc', 'align_zero_energy',                       
                        'recal_path', 'use_qzk_boundary', 'use_linear_vt_mm',
+                       'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file', 'fixed_boundary']:
                 
                 del self.gpw_kwargs[key]
@@ -146,6 +147,8 @@ class Transport(GPAW):
                 p['use_qzk_boundary'] = kw['use_qzk_boundary']
             if key in ['use_linear_vt_mm']:
                 p['use_linear_vt_mm'] = kw['use_linear_vt_mm']
+            if key in ['use_linear_vt_array']:
+                p['use_linear_vt_array'] = kw['use_linear_vt_array']                
             if key in ['scat_restart']:
                 p['scat_restart'] = kw['scat_restart']
             if key in ['save_file']:
@@ -203,6 +206,7 @@ class Transport(GPAW):
         self.use_qzk_boundary = p['use_qzk_boundary']
         self.align_zero_energy =  p['align_zero_energy']
         self.use_linear_vt_mm = p['use_linear_vt_mm']
+        self.use_linear_vt_array = p['use_linear_vt_array']        
         self.scat_restart = p['scat_restart']
         self.save_file = p['save_file']
         self.restart_file = p['restart_file']
@@ -243,7 +247,7 @@ class Transport(GPAW):
         p['pl_atoms'] = []
         p['pl_cells'] = []
         p['pl_kpts'] = []
-        p['use_buffer'] = True
+        p['use_buffer'] = False
         p['buffer_atoms'] = None
         p['edge_atoms'] = None
         p['bias'] = []
@@ -268,10 +272,11 @@ class Transport(GPAW):
         p['use_qzk_boundary'] = False
         p['align_zero_energy'] = False
         p['use_linear_vt_mm'] = False
+        p['use_linear_vt_array'] = False        
         p['scat_restart'] = False
         p['save_file'] = True
         p['restart_file'] = None
-        p['fixed_boundary'] = False
+        p['fixed_boundary'] = True
         p['spinpol'] = False
         p['verbose'] = False
         return p     
@@ -417,8 +422,8 @@ class Transport(GPAW):
                                         directions=['z-','z+'],
                                         bias=self.bias)
             self.surround.initialize()
-        del self.atoms_l
-        del self.atoms_e
+        #del self.atoms_l
+        #del self.atoms_e
 
         self.initialized_transport = True
 
@@ -1117,6 +1122,10 @@ class Transport(GPAW):
             
     def get_selfconsistent_hamiltonian(self):
         self.initialize_scf()
+        ##temperary lines
+        self.hamiltonian.S = 0
+        self.hamiltonian.Etot = 0
+        ##temp
         while not self.cvgflag and self.step < self.max_steps:
             self.iterate()
             self.cvgflag = self.d_cvg and self.h_cvg
@@ -1125,6 +1134,9 @@ class Transport(GPAW):
         self.scf.converged = self.cvgflag
         for kpt in self.wfs.kpt_u:
             kpt.rho_MM = None
+            kpt.eps_n = np.zeros((self.nbmol))
+            kpt.f_n = np.zeros((self.nbmol))
+        self.linear_mm = None
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
                                                               self.max_steps)
@@ -1164,9 +1176,11 @@ class Transport(GPAW):
                     if self.cal_loc:
                         denloc[s, k] = self.get_neintegral_points(s, k,
                                                                   'locInt')
-                    self.d_spkmm[s, k, ind.T, ind] = self.spin_coff * (
+                    d_mm = self.spin_coff * (
                                                               den[s, k] +
                                                               denocc[s, k])
+                    self.d_spkmm[s, k, ind.T, ind] = (d_mm +
+                                                      d_mm.T.conj()) / 2
         else:
             for s in range(ns):
                 for k in range(self.my_npk):
@@ -1793,13 +1807,12 @@ class Transport(GPAW):
     def den2fock(self):
         self.get_density()
         self.update_hamiltonian(self.density)
-        if self.LR_leads and not self.use_linear_vt_mm:
+        if self.use_linear_vt_array:
             self.hamiltonian.vt_sG += self.get_linear_potential()
         self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')
         if self.use_linear_vt_mm:
             if self.linear_mm == None:
                 self.linear_mm = self.get_linear_potential_matrix()            
-
             self.h_skmm += self.linear_mm
    
     def get_forces(self, atoms):
@@ -1896,10 +1909,18 @@ class Transport(GPAW):
             #if (isinstance(wfs, LCAOWaveFunctions) or
             #    extra_parameters.get('normalize')):
             #    density.normalize(comp_charge)
-            density.mix(comp_charge)
-         
+            #density.mix(comp_charge)
+            pseudo_charge = density.gd.integrate(density.nt_sG).sum()
+            if pseudo_charge != 0:
+                x = -(density.charge + comp_charge) / pseudo_charge
+                print 'scaling', x
+            if not density.mixer.mix_rho:
+                density.mixer.mix(density)
+                comp_charge = None
             self.surround.interpolate_density(density, comp_charge)
             self.surround.calculate_pseudo_charge(density, comp_charge)
+            if density.mixer.mix_rho:
+                density.mixer.mix(density)            
             density.rhot_g -= self.surround.extra_rhot_g            
 
     def update_hamiltonian(self, density):
@@ -2603,9 +2624,13 @@ class Transport(GPAW):
             
     def add_matrix_corner(self):
         if self.atoms._pbc[self.d] and self.ntkmol == 1 and self.nbmol > np.sum(self.nblead):
-            nb = self.nblead[0]           
-            self.d_spkmm[:, :, :nb, -nb:] = self.dl_spkcmm[1]
-            self.d_spkmm[:, :, -nb:, :nb] = self.dl_spkcmm[0]
+            nb = self.nblead[0]
+            ns = self.d_spkmm.shape[0]
+            npk = self.d_spkmm.shape[1]
+            for s in range(ns):
+                for k in range(npk):
+                    self.d_spkmm[s, k, :nb, -nb:] = self.dl_spkcmm[1][s, k]
+                    self.d_spkmm[s, k, -nb:, :nb] = self.dl_spkcmm[1][s, k].T.conj()
             
     def reset_lead_hs(self, s, k):
         if self.use_lead:    
@@ -2813,12 +2838,12 @@ class Transport(GPAW):
             fd.close()
             num_v = result['N']
             step_data1 = result['step_data' + str(0)]
-            step_data2 = result['step_data' + str(3)]
+            step_data2 = result['step_data' + str(1)]
             self.compare_step_data(step_data1, step_data2)
             
     def compare_step_data(self, step_data1, step_data2):
-        overview_d = 1
-        self.nspins = 2
+        overview_d = 0
+        self.nspins = 1
         sd = step_data1['t_dos']
         bias = step_data1['bias']
         import pylab
@@ -2885,7 +2910,7 @@ class Transport(GPAW):
             pylab.show()        
        
     def plot_step_data(self, step_data):
-        overview_d = 1
+        overview_d = 0
         self.nspins = 1
         #self.d = 0
         sd = step_data['t_dos']
@@ -2928,17 +2953,17 @@ class Transport(GPAW):
             matplotlib.pyplot.colorbar(cb)                
             pylab.show()
 
-        cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
-                           sd['s' + str(1) + 'vt_2d_' + dd[overview_d]] * Hartree)
-        pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
-        matplotlib.pyplot.colorbar(cb)                
-        pylab.show()
+        #cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
+        #                   sd['s' + str(1) + 'vt_2d_' + dd[overview_d]] * Hartree)
+        #pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
+        #matplotlib.pyplot.colorbar(cb)                
+        #pylab.show()
        
-        cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
-                           sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
-        pylab.title('spin_diff' + 'density at bias=' + str(bias))
-        matplotlib.pyplot.colorbar(cb)                
-        pylab.show()
+        #cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
+        #                   sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
+        #pylab.title('spin_diff' + 'density at bias=' + str(bias))
+        #matplotlib.pyplot.colorbar(cb)                
+        #pylab.show()
 
     def plot_iv(self, i_v):
         v, i = i_v
