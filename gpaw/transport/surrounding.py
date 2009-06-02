@@ -7,7 +7,7 @@ from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lfc import BasisFunctions, LFC
 from gpaw.transformers import Transformer
 from gpaw.xc_functional import XCFunctional, xcgrid
-from gpaw.transport.tools import tri2full, substract_pk, count_tkpts_num
+from gpaw.transport.tools import tri2full
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
 from gpaw.utilities import unpack
@@ -15,10 +15,9 @@ from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
 
 class Side:
-    def __init__(self, type, atoms, nn, direction='x+', bias=0):
+    def __init__(self, type, atoms, nn, direction='x+'):
         self.type = type
         self.atoms = atoms
-        self.bias = bias
         self.nn = nn
         self.direction = direction
 
@@ -44,13 +43,11 @@ class Side:
         vHt_g = self.atoms.calc.hamiltonian.vHt_g
         nn = self.nn
         self.boundary_vHt_g = self.slice(nn, vHt_g)
-        self.boundary_vHt_g += self.bias / Hartree
 
     def abstract_boundary_vt_sg(self):
         vt_sg = self.atoms.calc.hamiltonian.vt_sg
         nn = self.nn
         self.boundary_vt_sg = self.slice(nn, vt_sg)
-        self.boundary_vt_sg += self.bias / Hartree
         
     def abstract_boundary_nt_sg(self):
         nt_sg = self.atoms.calc.density.nt_sg
@@ -61,7 +58,6 @@ class Side:
         vt_sG = self.atoms.calc.hamiltonian.vt_sG
         nn = self.nn / 2
         self.boundary_vt_sG = self.slice(nn, vt_sG)
-        self.boundary_vt_sG += self.bias / Hartree
     
     def abstract_boundary_nt_sG(self):
         nt_sG = self.atoms.calc.density.nt_sG
@@ -201,13 +197,14 @@ class Surrounding:
             assert self.lead_num == len(self.bias)
             assert self.lead_num == len(self.directions)
             self.sides = {}
+            self.bias_index = {}
             for i in range(self.lead_num):
                 direction = self.directions[i]
                 self.sides[direction] = Side('LR',
                                              self.atoms_l[i],
                                              self.nn,
-                                             direction,
-                                             self.bias[i])
+                                             direction)
+                self.bias_index[direction] = self.bias[i]
             di = direction
             di = abs(self.sides_index[di]) - 1
 
@@ -339,6 +336,14 @@ class Surrounding:
         self.get_extra_density()
         self.initialized = True
 
+    def reset_bias(self, bias):
+        self.bias = bias
+        for i in range(self.lead_num):
+            direction = self.directions[i]
+            self.bias_index[direction] = bias[i]
+        self.combine()
+        self.get_extra_density()
+
     def get_extended_cell(self):
         cell = self.atoms.cell
         if len(cell.shape) == 2:
@@ -403,13 +408,19 @@ class Surrounding:
     def combine_streching_atomic_hamiltonian(self):
         if self.type == 'LR':
             direction = self.directions[0][0]
-
+            
             atoms1 = self.sides[direction + '-'].atoms
-            nao1 = atoms1.calc.wfs.setups.nao
+            bias_shift1 = self.bias_index[direction + '-'] / Hartree
+            wfs = atoms1.calc.wfs
+            nao1 = wfs.setups.nao
+            S_qMM1 = wfs.S_qMM
             n_atoms1 = len(atoms1)
 
             atoms2 = self.sides[direction + '+'].atoms
-            nao2 = atoms2.calc.wfs.setups.nao
+            bias_shift2 = self.bias_index[direction + '+'] / Hartree            
+            wfs = atoms2.calc.wfs
+            nao2 = wfs.setups.nao
+            S_qMM2 = wfs.S_qMM
             n_atoms2 = len(atoms2)
             
             wfs = self.atoms.calc.wfs
@@ -419,10 +430,15 @@ class Surrounding:
             
             n_atoms = n_atoms1 + n_atoms2 + n_atoms0
             
+            s_qmm1 = np.zeros((nao, nao), wfs.dtype)
+            s_qmm2 = np.zeros((nao, nao), wfs.dtype)            
             for kpt in self.kpt_u:
                 s = kpt.s
                 q = kpt.q
-                sah_mm = np.zeros((nao, nao), wfs.dtype)
+                sah_mm1 = np.zeros((nao, nao), wfs.dtype)
+                sah_mm2 = np.zeros((nao, nao), wfs.dtype)
+                s_qmm1[:nao1, :nao1] = S_qMM1[q]
+                s_qmm2[-nao2:, -nao2:] = S_qMM2[q]                
                 for a, P_Mi in kpt.P_aMi.items():
                     dtype = P_Mi.dtype
                     if a in range(n_atoms1):
@@ -432,7 +448,8 @@ class Surrounding:
                         dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]),
                                                                        dtype)
                         gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
-                        gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm)                        
+                        gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm1)
+                        sah_mm1 += bias_shift1 * s_qmm1[q]
                     elif a in range(n_atoms0 + n_atoms1, n_atoms):
                         ex_a = a - n_atoms0 - n_atoms1
                         ham = atoms2.calc.hamiltonian
@@ -440,7 +457,9 @@ class Surrounding:
                         dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]),
                                                                        dtype)
                         gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
-                        gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm)
+                        gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm2)
+                        sah_mm2 += bias_shift2 * s_qmm2[q]
+                sah_mm = sah_mm1 + sah_mm2        
                 self.sah_spkmm[s, q] = sah_mm[nao1: nao1 + nao0,
                                            nao1: nao1 + nao0].copy()
         
@@ -562,63 +581,72 @@ class Surrounding:
             nn2 = self.nn / 2
             if direction == 'x':
                 assert gd0.N_c[0] > nn
+                
+                bias_shift0 = self.bias_index['x-'] / Hartree
+                bias_shift1 = self.bias_index['x+'] / Hartree
                 self.streching_nt_sG[:, :nn2] = self.sides['x-'].inner_nt_sG 
                 self.streching_nt_sG[:, -nn2:] = self.sides['x+'].inner_nt_sG
 
                 self.nt_sG[:, :nn2] = self.sides['x-'].boundary_nt_sG 
                 self.nt_sG[:, -nn2:] = self.sides['x+'].boundary_nt_sG
                 
-                self.vt_sG[:, :nn2] = self.sides['x-'].boundary_vt_sG 
-                self.vt_sG[:, -nn2:] = self.sides['x+'].boundary_vt_sG
+                self.vt_sG[:, :nn2] = self.sides['x-'].boundary_vt_sG + bias_shift0
+                self.vt_sG[:, -nn2:] = self.sides['x+'].boundary_vt_sG + bias_shift1
                
                 self.nt_sg[:, :nn] = self.sides['x-'].boundary_nt_sg 
                 self.nt_sg[:, -nn:] = self.sides['x+'].boundary_nt_sg
 
-                self.vt_sg[:, :nn] = self.sides['x-'].boundary_vt_sg
-                self.vt_sg[:, -nn:] = self.sides['x+'].boundary_vt_sg
+                self.vt_sg[:, :nn] = self.sides['x-'].boundary_vt_sg + bias_shift0
+                self.vt_sg[:, -nn:] = self.sides['x+'].boundary_vt_sg + bias_shift1
                 
-                self.vHt_g[:nn] = self.sides['x-'].boundary_vHt_g
-                self.vHt_g[-nn:] = self.sides['x+'].boundary_vHt_g
+                self.vHt_g[:nn] = self.sides['x-'].boundary_vHt_g + bias_shift0
+                self.vHt_g[-nn:] = self.sides['x+'].boundary_vHt_g + bias_shift1
             
             elif direction == 'y':
                 assert gd0.N_c[1] > nn
+                bias_shift0 = self.bias_index['y-'] / Hartree
+                bias_shift1 = self.bias_index['y+'] / Hartree
+                
                 self.streching_nt_sG[:, :, :nn2] = self.sides['y-'].inner_nt_sG 
                 self.streching_nt_sG[:, :, -nn2:] = self.sides['y+'].inner_nt_sG
 
                 self.nt_sG[:, :, :nn2] = self.sides['y-'].boundary_nt_sG 
                 self.nt_sG[:, :, -nn2:] = self.sides['y+'].boundary_nt_sG
                 
-                self.vt_sG[:, :, :nn2] = self.sides['y-'].boundary_vt_sG 
-                self.vt_sG[:, :, -nn2:] = self.sides['y+'].boundary_vt_sG
+                self.vt_sG[:, :, :nn2] = self.sides['y-'].boundary_vt_sG + bias_shift0
+                self.vt_sG[:, :, -nn2:] = self.sides['y+'].boundary_vt_sG + bias_shift1
                 
                 self.nt_sg[:, :, :nn] = self.sides['y-'].boundary_nt_sg 
                 self.nt_sg[:, :, -nn:] = self.sides['y+'].boundary_nt_sg
 
-                self.vt_sg[:, :, :nn] = self.sides['y-'].boundary_vt_sg
-                self.vt_sg[:, :, -nn:] = self.sides['y+'].boundary_vt_sg
+                self.vt_sg[:, :, :nn] = self.sides['y-'].boundary_vt_sg + bias_shift0
+                self.vt_sg[:, :, -nn:] = self.sides['y+'].boundary_vt_sg + bias_shift1
                 
-                self.vHt_g[:, :nn] = self.sides['y-'].boundary_vHt_g
-                self.vHt_g[:, -nn:] = self.sides['y+'].boundary_vHt_g
+                self.vHt_g[:, :nn] = self.sides['y-'].boundary_vHt_g + bias_shift0
+                self.vHt_g[:, -nn:] = self.sides['y+'].boundary_vHt_g + bias_shift1
             
             elif direction == 'z':
-                assert gd0.N_c[2] > nn                
+                assert gd0.N_c[2] > nn
+                bias_shift0 = self.bias_index['z-'] / Hartree
+                bias_shift1 = self.bias_index['z+'] / Hartree
+                
                 self.streching_nt_sG[:, :, :, :nn2] = self.sides['z-'].inner_nt_sG 
                 self.streching_nt_sG[:, :, :, -nn2:] = self.sides['z+'].inner_nt_sG
 
                 self.nt_sG[:, :, :, :nn2] = self.sides['z-'].boundary_nt_sG 
                 self.nt_sG[:, :, :, -nn2:] = self.sides['z+'].boundary_nt_sG
                 
-                self.vt_sG[:, :, :, :nn2] = self.sides['z-'].boundary_vt_sG 
-                self.vt_sG[:, :, :, -nn2:] = self.sides['z+'].boundary_vt_sG
+                self.vt_sG[:, :, :, :nn2] = self.sides['z-'].boundary_vt_sG + bias_shift0
+                self.vt_sG[:, :, :, -nn2:] = self.sides['z+'].boundary_vt_sG + bias_shift1
                 
                 self.nt_sg[:, :, :, :nn] = self.sides['z-'].boundary_nt_sg 
                 self.nt_sg[:, :, :, -nn:] = self.sides['z+'].boundary_nt_sg
 
-                self.vt_sg[:, :, :, :nn] = self.sides['z-'].boundary_vt_sg
-                self.vt_sg[:, :, :, -nn:] = self.sides['z+'].boundary_vt_sg
+                self.vt_sg[:, :, :, :nn] = self.sides['z-'].boundary_vt_sg + bias_shift0
+                self.vt_sg[:, :, :, -nn:] = self.sides['z+'].boundary_vt_sg + bias_shift1
                 
-                self.vHt_g[:, :, :nn] = self.sides['z-'].boundary_vHt_g
-                self.vHt_g[:, :, -nn:] = self.sides['z+'].boundary_vHt_g
+                self.vHt_g[:, :, :nn] = self.sides['z-'].boundary_vHt_g + bias_shift0
+                self.vHt_g[:, :, -nn:] = self.sides['z+'].boundary_vHt_g + bias_shift1
             self.combine_streching_atomic_hamiltonian()                   
 
     def calculate_pseudo_density(self, density, wfs):
