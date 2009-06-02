@@ -21,8 +21,9 @@ class BasisMaker:
     """Class for creating atomic basis functions."""
     def __init__(self, generator, name=None, run=True, gtxt='-'):
         if isinstance(generator, str): # treat 'generator' as symbol
-            generator = Generator(generator, scalarrel=False,
-                                  xcname='PBE', txt=gtxt)
+            generator = Generator(generator, scalarrel=True,
+                                  xcname='PBE', txt=gtxt,
+                                  nofiles=True)
         self.generator = generator
         self.name = name
         if run:
