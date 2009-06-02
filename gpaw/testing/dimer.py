@@ -239,7 +239,7 @@ class TestAtom:
                 plt.plot(x, y, color=colors[i], label=u'h=%.2f Å' % h[i])
             plt.title('Dimer')
             plt.xlabel(u'bond length [Å]')
-            plt.ylabel(r'$\Delta E=E_d-2E_a\ \rm{[eV]}$')
+            plt.ylabel(r'$\Delta E=E_d-2E_a\ (\rm{eV})$')
             plt.legend(loc='best')
 
             plt.subplot(322)
@@ -257,7 +257,7 @@ class TestAtom:
             plt.axis('tight')
             plt.title('Eggbox error')
             plt.xlabel(u'displacement [Å]')
-            plt.ylabel(r'$E_{egg}\ \rm{[meV]}$')
+            plt.ylabel(r'$E_{egg}\ (\rm{meV})$')
             
             plt.subplot(324)
             plt.plot(h, 1000 * (Ediss - Ediss[-1]), '-o', label=r'$\Delta E$')
