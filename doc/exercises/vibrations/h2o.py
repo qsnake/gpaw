@@ -1,3 +1,4 @@
+from math import cos, sin
 from ase import *
 from gpaw import GPAW
 

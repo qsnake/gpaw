@@ -12,7 +12,7 @@ L = slab.get_cell()[2, 2]
 v = calc.get_effective_potential()
 
 nx, ny, nz = v.shape
-z = linspace(0, L, nz, endpoint=False)
+z = np.linspace(0, L, nz, endpoint=False)
 
 efermi = calc.get_fermi_level()
 

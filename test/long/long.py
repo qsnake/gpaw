@@ -67,8 +67,11 @@ class Jobs:
         self.jobs = {}
         self.names = []
         self.status = {}
-        self.fd = log
         self.ids = {}
+        if isinstance(log, str):
+            self.fd = open(log, 'w')
+        else:
+            self.fd = log
         
     def log(self, *args):
         self.fd.write(' '.join(args) + '\n')
@@ -247,7 +250,7 @@ class Jobs:
         print self.status
 
         
-j = Jobs()
+j = Jobs('long.log')
 j.add(jobs)
 j.install()
 try:
