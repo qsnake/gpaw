@@ -5,69 +5,78 @@ import sys
 import time
 import glob
 
-# Test jobs:
+from gpaw.atom.generator import parameters as setup_parameters
+
+class Job:
+    def __init__(self, path, tmax=20, ncpu=4, deps=None, arg=''):
+        self.dir = os.path.dirname(path)
+        self.name = os.path.basename(path)
+        self.id = self.name + arg
+        self.prefix = path + arg
+        self.tmax = tmax
+        self.ncpu = ncpu
+        if deps is None:
+            deps = []
+        self.deps = deps
+        self.arg = arg
+        self.status = 'waiting'
+
+# Exercises:
+path = '../../doc/exercises/'
 jobs = [
-#   (name, #cpus, minutes, dependencies),
-    ('COAu38/Au038to', 4, 10, []),
-    ('O2Pt/o2pt', 4, 40, []),
-    ('../vdw/interaction', 4, 60, ['dimers']),
-    ('../vdw/dimers', 4, 30, []),
+    Job(path + 'neb/neb1'),
+    Job(path + 'aluminium/Al_fcc'),
+    Job(path + 'aluminium/Al_fcc_convergence'),
+    Job(path + 'surface/work_function', 20, deps=['testAl100']),
+    Job(path + 'surface/testAl100'),
+    Job(path + 'diffusion/initial'),
+    Job(path + 'diffusion/densitydiff', 20, deps=['solution']),
+    Job(path + 'diffusion/solution'),
+    Job(path + 'vibrations/H2O_vib', 20, deps=['h2o']),
+    Job(path + 'vibrations/h2o'),
+    Job(path + 'band_structure/Na_band'),
+    Job(path + 'band_structure/plot_band', 20, deps=['Na_band']),
+    Job(path + 'wannier/wannier-si'),
+    Job(path + 'wannier/wannier-benzene', 20, deps=['benzene']),
+    Job(path + 'wannier/benzene'),
+    Job(path + 'lrtddft/ground_state'),
+    Job(path + 'transport/pt_h2_tb_transport'),
+    Job(path + 'transport/pt_h2_lcao', 20, deps=['makebasis']),
+    Job(path + 'transport/pt_h2_lcao_transport', 20, deps=['makebasis']),
+    Job(path + 'transport/makebasis', 5, 1),
+    Job(path + 'dos/testdos', 20, 1,
+        deps=['ferro', 'anti', 'non', 'CO', 'si', 'Al_fcc']),
+    Job(path + 'stm/HAl100'),
+    Job(path + 'wannier/si'),
+    Job(path + 'wavefunctions/CO'),
+    Job(path + 'iron/PBE', 20, deps=['ferro', 'anti', 'non']),
+    Job(path + 'iron/ferro'),
+    Job(path + 'iron/anti'),
+    Job(path + 'iron/non'),
+    Job(path + 'stm/teststm', 20, 1, deps=['HAl100']),
     ]
 
-# Test all exercises:
-exercises = [
-    ('../../doc/exercises/neb/neb1', 4, 20, []),
-    ('../../doc/exercises/aluminium/Al_fcc', 4, 20, []),
-    ('../../doc/exercises/aluminium/Al_fcc_convergence', 4, 20, []),
-    ('../../doc/exercises/surface/work_function', 4, 20, ['testAl100']),
-    ('../../doc/exercises/surface/testAl100', 4, 20, []),
-    ('../../doc/exercises/diffusion/initial', 4, 20, []),
-    ('../../doc/exercises/diffusion/densitydiff', 4, 20, ['solution']),
-    ('../../doc/exercises/diffusion/solution', 4, 20, []),
-    ('../../doc/exercises/vibrations/H2O_vib', 4, 20, ['h2o']),
-    ('../../doc/exercises/vibrations/h2o', 4, 20, []),
-    ('../../doc/exercises/band_structure/Na_band', 4, 20, []),
-    ('../../doc/exercises/band_structure/plot_band', 4, 20, ['Na_band']),
-    ('../../doc/exercises/wannier/wannier-si', 4, 20, []),
-    ('../../doc/exercises/wannier/wannier-benzene', 1, 20, ['benzene']),
-    ('../../doc/exercises/wannier/benzene', 4, 20, []),
-    ('../../doc/exercises/lrtddft/ground_state', 4, 20, []),
-    ('../../doc/exercises/transport/pt_h2_tb_transport', 4, 20, []),
-    ('../../doc/exercises/transport/pt_h2_lcao', 4, 20, ['makebasis']),
-    ('../../doc/exercises/transport/pt_h2_lcao_transport', 4, 20,
-     ['makebasis']),
-    ('../../doc/exercises/transport/makebasis', 1, 5, []),
-    ('../../doc/exercises/dos/testdos', 4, 20,
-     ['ferro', 'anti', 'non', 'CO', 'si', 'Al_fcc']),
-    ('../../doc/exercises/stm/HAl100', 4, 20, []),
-    ('../../doc/exercises/wannier/si', 4, 20, []),
-    ('../../doc/exercises/wavefunctions/CO', 4, 20, []),
-    ('../../doc/exercises/iron/PBE', 4, 20, ['ferro', 'anti', 'non']),
-    ('../../doc/exercises/iron/ferro', 4, 20, []),
-    ('../../doc/exercises/iron/anti', 4, 20, []),
-    ('../../doc/exercises/iron/non', 4, 20, []),
-    ('../../doc/exercises/stm/teststm', 1, 20, ['HAl100']),
-    ]
+jobs = []
+setup_parameters = ['H', 'Li']
+for symbol in setup_parameters:
+    jobs.append(Job('../../doc/setups/make_setup_pages_data',
+                    tmax=20, ncpu=1, arg=symbol))
+jobs.append(Job('../../doc/setups/make_setup_pages_data', ncpu=1, 
+                deps=['make_setup_pages_data' + symbol
+                      for symbol in setup_parameters]))
 
-jobs += exercises
-#jobs = [('COAu38/Au038to', 4, 10, [])]
-
+#jobs += [
+#    Job('COAu38/Au038to', 10),
+#    Job('O2Pt/o2pt', 40),
+#    Job('../vdw/interaction', 60, deps=['dimers']),
+#    Job('../vdw/dimers', 60),
+#    ]
 
 class Jobs:
     def __init__(self, log=sys.stdout):
-        """Run jobs.
-        
-        jobs is a list of tuples containing:
-
-        * Name of the python script without the '.py' part.
-        * Number of processors to run the job on.
-        * Approximate walltime for job.
-        * List of dependencies.
-        """
+        """Test jobs."""
         self.jobs = {}
-        self.names = []
-        self.status = {}
-        self.ids = {}
+        self.ids = []
         if isinstance(log, str):
             self.fd = open(log, 'w')
         else:
@@ -78,91 +87,83 @@ class Jobs:
         self.fd.flush()
         
     def add(self, jobs):
-        for name, p, t, dependencies in jobs:
-            dir = os.path.dirname(name)
-            name = os.path.basename(name)
-            print name
-            assert name not in self.jobs
-            self.jobs[name] = (dir, p, t, dependencies)
-            self.names.append(name)
+        for job in jobs:
+            assert job.id not in self.jobs
+            self.jobs[job.id] = job
+            self.ids.append(job.id)
                               
     def run(self):
-        status = self.status
-
-        for name in self.jobs:
-            status[name] = 'waiting'
-
-        os.chdir(self.gpawdir + '/gpaw/test/long')
-
+        jobs = self.jobs
         while True:
             done = True
-            for name in self.jobs:
-                if status[name] == 'waiting':
+            for id, job in jobs.items():
+                if job.status == 'waiting':
                     done = False
                     ready = True
-                    dir, p, t, deps = self.jobs[name]
-                    for dep in deps:
-                        if status[dep] != 'done':
+                    for dep in job.deps:
+                        if jobs[dep].status != 'done':
                             ready = False
                             break
                     if ready:
-                        self.start(name, dir, p, t)
-                elif status[name] == 'running':
+                        self.start(job)
+                elif job.status == 'running':
                     done = False
 
             if done:
                 return
 
-            time.sleep(20.0)
+            time.sleep(60.0)
 
-            for name in self.jobs:
-                dir, p, t, deps = self.jobs[name]
-                filename = '%s/%s.done' % (dir, name)
-                if status[name] == 'running' and os.path.isfile(filename):
+            for id, job in jobs.items():
+                filename = job.prefix + '.done'
+                if job.status == 'running' and os.path.isfile(filename):
                     code = int(open(filename).readlines()[-1])
                     if code == 0:
-                        status[name] = 'done'
-                        self.log(name, 'done.')
+                        job.status = 'done'
+                        self.log(id, 'done.')
                     else:
-                        status[name] = 'failed'
-                        self.log('%s exited with errorcode: %d' % (name, code))
-                        self.fail(name)
+                        job.status = 'failed'
+                        self.log('%s exited with errorcode: %d' % (id, code))
+                        self.fail(id)
+                filename = job.prefix + '.start'
+                if job.status == 'running' and os.path.isfile(filename):
+                    t0 = float(open(filename).readline())
+                    if time.time() - t0 > job.tmax * 60:
+                        job.status = 'failed'
+                        self.log('%s timed out!' % id)
+                        self.fail(id)
 
-    def fail(self, failed_name):
+    def fail(self, failed_id):
         """Recursively disable jobs depending on failed job."""
-        for name in self.jobs:
-            dir, p, t, deps = self.jobs[name]
-            if failed_name in deps:
-                self.status[name] = 'disabled'
-                self.log('Disabling %s' % name)
-                self.fail(name)
+        for id, job in self.jobs.items():
+            if failed_id in job.deps:
+                job.status = 'disabled'
+                self.log('Disabling %s' % id)
+                self.fail(id)
 
     def print_results(self):
-        for name in self.names:
-            status = self.status[name]
-            dir, p, t, deps = self.jobs[name]
-            filename = '%s/%s.done' % (dir, name)
+        for id in self.ids:
+            job = self.jobs[id]
+            status = job.status
+            filename = job.prefix + '.done'
             if status != 'disabled' and os.path.isfile(filename):
                 t = (float(open(filename).readline()) -
                      float(open(filename[:-4] + 'start').readline()))
                 t = '%8.1f' % t
             else:
                 t = '        '
-            self.log('%20s %s %s' % (name, t, status))
+            self.log('%20s %s %s' % (id, t, status))
 
-    def start(self, name, dir, p, t):
-        self.log('Starting: %s' % name)
-        self.status[name] = 'running'
-
+    def start(self, job):
         try:
-            os.remove(dir + '/' + name + '.done')
+            os.remove(job.prefix + '.done')
         except OSError:
             pass
 
         gpaw_python = (self.gpawdir +
                        '/gpaw/build/bin.linux-x86_64-2.3/gpaw-python')
         cmd = (
-            'cd %s/gpaw/test/long/%s; ' % (self.gpawdir, dir) +
+            'cd %s/gpaw/test/long/%s; ' % (self.gpawdir, job.dir) +
             'export LD_LIBRARY_PATH=/opt/acml-4.0.1/gfortran64/lib:' +
             '/opt/acml-4.0.1/gfortran64/lib:' +
             '/usr/local/openmpi-1.2.5-gfortran/lib64 && ' +
@@ -171,7 +172,8 @@ class Jobs:
             '-x PYTHONPATH=%s/gpaw ' % self.gpawdir +
             '-x GPAW_SETUP_PATH=%s ' % self.setupsdir +
             '-x GPAW_VDW=/home/camp/jensj/VDW ' +
-            '%s _%s.py > %s.output' % (gpaw_python, name, name))
+            '%s _%s.py %s > %s.output' %
+            (gpaw_python, job.id, job.arg, job.id))
         header = '\n'.join(
             ['import matplotlib',
              "matplotlib.use('Agg')",
@@ -183,34 +185,37 @@ class Jobs:
              '    _n += 1',
              'pylab.show = show',
              ''])
-        i = open('%s-job.py' % name, 'w')
+        i = open('%s-job.py' % job.id, 'w')
         i.write('\n'.join(
             ['#!/usr/bin/env python',
              'import os',
              'import time',
-             'f = open("%s/_%s.py", "w")' % (dir, name),
+             'f = open("%s/_%s.py", "w")' % (job.dir, job.id),
              'f.write("""%s""")' % header,
-             'f.write(open("%s/%s.py", "r").read())' % (dir, name),
+             'f.write(open("%s/%s.py", "r").read())' % (job.dir, job.name),
              'f.close()',
-             'f = open("%s/%s.start", "w")' % (dir, name),
+             'f = open("%s/%s.start", "w")' % (job.dir, job.id),
              'f.write("%f\\n" % time.time())',
              'x = os.system("%s")' % cmd,
-             'f = open("%s/%s.done", "w")' % (dir, name),
+             'f = open("%s/%s.done", "w")' % (job.dir, job.id),
              'f.write("%f\\n%d\\n" % (time.time(), x))',
              '\n']))
         i.close()
-        if p == 1:
+        if job.ncpu == 1:
             ppn = 1
             nodes = 1
         else:
-            assert p % 4 == 0
+            assert job.ncpu % 4 == 0
             ppn = 4
-            nodes = p // 4
+            nodes = job.ncpu // 4
         options = ('-l nodes=%d:ppn=%d:ethernet -l walltime=%d:%02d:00' %
-                   (nodes, ppn, t // 60, t % 60))
+                   (nodes, ppn, job.tmax // 60, job.tmax % 60))
         
-        id = os.popen('qsub %s %s-job.py' % (options, name), 'r').readline()
-        self.ids[name] = id.split('.')[0]
+        x = os.popen('qsub %s %s-job.py' %
+                     (options, job.id), 'r').readline().split('.')[0]
+
+        self.log('Started: %s, %s' % (job.id, x))
+        job.status = 'running'
 
     def install(self):
         """Install ASE and GPAW."""
@@ -244,10 +249,13 @@ class Jobs:
         os.system('tar xzf gpaw-setups-latest.tar.gz')
         self.setupsdir = dir + '/gpaw/' + glob.glob('gpaw-setups-[0-9]*')[0]
         self.gpawdir = dir
+        os.chdir(self.gpawdir + '/gpaw/test/long')
 
     def cleanup(self):
-        print self.jobs
-        print self.status
+        for id in self.ids:
+            j = self.jobs[id]
+            print (j.dir, j.id, j.name, j.prefix,
+                   j.tmax, j.ncpu, j.deps, j.arg, j.status)
 
         
 j = Jobs('long.log')

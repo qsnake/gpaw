@@ -25,7 +25,7 @@ def make(symbol, show):
     tables = analyse(gen, show=show)
 
     t = TestAtom(symbol)
-    t.run(True, False)
+    t.run(False, False)
     hmin, B, n = t.summary(show=show)
 
     molecules = []
