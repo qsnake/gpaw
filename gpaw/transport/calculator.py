@@ -484,9 +484,6 @@ class Transport(GPAW):
                     for n in range(basis_list[j]):
                         self.buffer_index[i].append(begin + n) 
                 self.buffer_index[i] = np.array(self.buffer_index[i], int)
-                self.dimt_buffer.append(self.dimt_lead[i] *
-                                        len(self.buffer_atoms[i]) /
-                                           len(self.pl_atoms[i]))
     
     def get_env_buffer_index(self):
         basis_list = [setup.niAO for setup in self.wfs.setups]
@@ -545,10 +542,9 @@ class Transport(GPAW):
             self.dl_spkmm.append(np.empty((ns, npk, nb, nb), dtype))
             self.sl_pkmm.append(np.empty((npk, nb, nb), dtype))
 
-            if self.LR_leads:
-                self.hl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
-                self.dl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
-                self.sl_pkcmm.append(np.empty((npk, nb, nb), dtype))
+            self.hl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
+            self.dl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
+            self.sl_pkcmm.append(np.empty((npk, nb, nb), dtype))
 
             self.ed_pkmm.append(np.empty((ns, npk, nb, nb)))
 
@@ -1236,6 +1232,8 @@ class Transport(GPAW):
         bias = self.bias + self.env_bias
         self.intctrl = IntCtrl(self.occupations.kT * Hartree,
                                                         self.fermi, bias)
+        if self.fixed:
+            self.surround.reset_bias(bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
         self.distribute_energy_points()
@@ -2494,20 +2492,17 @@ class Transport(GPAW):
     def fill_lead_with_scat(self):
         for  i in range(self.lead_num):
             ind = self.inner_lead_index[i]
-            dim = len(dim)
+            dim = len(ind)
             ind = np.resize(ind, [dim, dim])
             self.hl_spkmm[i] = self.h_spkmm[:, :, ind.T, ind]
             self.sl_pkmm[i] = self.s_pkmm[:, ind.T, ind]
-            
-        self.h1_spkmm = self.h_spkmm_mol[:, :, :nblead, :nblead]
-        self.s1_pkmm = self.s_pkmm_mol[:, :nblead, :nblead]
-        self.h1_spkmm_ij = self.h_spkmm_mol[:, :, :nblead, nblead:2 * nblead]
-        self.s1_spkmm_ij = self.s_pkmm_mol[:, :nblead, nblead:2 * nblead]
         
-        self.h2_spkmm = self.h_spkmm_mol[:, :, -nblead:, -nblead:]
-        self.s2_pkmm = self.s_pkmm_mol[:, -nblead:, -nblead:]
-        self.h2_spkmm_ij = self.h_spkmm_mol[:, :, -nblead:, -nblead*2 : -nblead]
-        self.s2_spkmm_ij = self.s_pkmm_mol[:, -nblead:, -nblead*2 : -nblead]
+        nblead = self.nblead[0]   
+        self.hl_spkcmm[0] = self.h_spkmm[:, :, :nblead, nblead:2 * nblead]
+        self.sl_pkcmm[0] = self.s_pkmm[:, :nblead, nblead:2 * nblead]
+        
+        self.hl_spkcmm[1] = self.h_spkmm[:, :, -nblead:, -nblead*2 : -nblead]
+        self.sl_pkcmm[1] = self.s_pkmm[:, -nblead:, -nblead*2 : -nblead]
 
     def get_lead_layer_num(self):
         tol = 1e-4
