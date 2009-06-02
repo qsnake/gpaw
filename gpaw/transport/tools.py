@@ -85,6 +85,55 @@ def get_hs(atoms):
         H_sqMM[kpt.s, kpt.q] = H_MM
     return H_sqMM, S_qMM
 
+def substract_pk(d, npk, ntk, kpts, k_mm, hors='s', position=[0, 0, 0]):
+    weight = np.array([1.0 / ntk] * ntk )
+    if hors not in 'hs':
+        raise KeyError('hors should be h or s!')
+    if hors == 'h':
+        dim = k_mm.shape[:]
+        dim = (dim[0],) + (dim[1] / ntk,) + dim[2:]
+        pk_mm = np.empty(dim, k_mm.dtype)
+        dim = (dim[0],) + (ntk,) + dim[2:]
+        tk_mm = np.empty(dim, k_mm.dtype)
+    elif hors == 's':
+        dim = k_mm.shape[:]
+        dim = (dim[0] / ntk,) + dim[1:]
+        pk_mm = np.empty(dim, k_mm.dtype)
+        dim = (ntk,) + dim[1:]
+        tk_mm = np.empty(dim, k_mm.dtype)
+
+    tkpts = pick_out_tkpts(d, npk, ntk, kpts)
+    for i in range(npk):
+        n = i * ntk
+        for j in range(ntk):
+            if hors == 'h':
+                tk_mm[:, j] = np.copy(k_mm[:, n + j])
+            elif hors == 's':
+                tk_mm[j] = np.copy(k_mm[n + j])
+        if hors == 'h':
+            pk_mm[:, i] = k2r_hs(tk_mm, None, tkpts, weight, position)
+        elif hors == 's':
+            pk_mm[i] = k2r_hs(None, tk_mm, tkpts, weight, position)
+    return pk_mm   
+
+def pick_out_tkpts(d, npk, ntk, kpts):
+    tkpts = np.zeros([ntk, 3])
+    for i in range(ntk):
+        tkpts[i, d] = kpts[i, d]
+    return tkpts
+
+def count_tkpts_num(d, kpts):
+    tol = 1e-6
+    tkpts = [kpts[0]]
+    for kpt in kpts:
+        flag = False
+        for tkpt in tkpts:
+            if abs(kpt[d] - tkpt[d]) < tol:
+                flag = True
+        if not flag:
+            tkpts.append(kpt)
+    return len(tkpts)
+    
 def dot(a, b):
     assert len(a.shape) == 2 and a.shape[1] == b.shape[0]
     dtype = complex
@@ -233,3 +282,4 @@ def orbital_matrix_rotate_transformation(mat, X, basis_info):
             PutD(i, X, D, T)
         else:
             raise NotImplementError('undown shell name')
+
