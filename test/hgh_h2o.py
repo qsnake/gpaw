@@ -86,9 +86,9 @@ dH_asp = calc.hamiltonian.dH_asp
 assert ferr < 0.027, 'forces do not match FD check'
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
-for a, setup in enumerate(wfs.setups):
-    dH_p = dH_asp[a][0]
-    K_p = setup.K_p
+for a, dHsp in dH_asp.items():
+    dH_p = dH_sp[0]
+    K_p = wfs.setups[a].K_p
     # Actually, H2O might not be such a good test, since there'll only
     # be one element in the atomic Hamiltonian for O and zero for H.
     #print 'dH_p', dH_p
