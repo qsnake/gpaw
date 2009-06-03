@@ -1,4 +1,4 @@
-from numpy import reshape, vdot, empty
+import numpy as np
 
 def CG(A, X, B, maxiter=20, tolerance=1.0e-10, verbose=False):
     """Solve X*A=B using conjugate gradient method.
@@ -16,12 +16,12 @@ def CG(A, X, B, maxiter=20, tolerance=1.0e-10, verbose=False):
 
     m = len(X)
     shape = (m, 1, 1, 1)
-    R = empty(X.shape, X.dtype.char)
-    Q = empty(X.shape, X.dtype.char)
+    R = np.empty(X.shape, X.dtype.char)
+    Q = np.empty(X.shape, X.dtype.char)
     A(X, R)
     R -= B
     P = R.copy()
-    c1 = A.sum(reshape([abs(vdot(r, r)) for r in R], shape))
+    c1 = A.sum(np.reshape([abs(np.vdot(r, r)) for r in R], shape))
     for i in range(maxiter):
         error = sum(c1.ravel())
         if verbose:
@@ -30,11 +30,12 @@ def CG(A, X, B, maxiter=20, tolerance=1.0e-10, verbose=False):
             return i, error
         A(P, Q)
         #alpha = c1 / reshape([vdot(p, q) for p, q in zip(P, Q)], shape)
-        alpha = c1 / A.sum(reshape([vdot(q,p) for p, q in zip(P, Q)], shape))
+        alpha = c1 / A.sum(np.reshape([np.vdot(q,p)
+                                       for p, q in zip(P, Q)], shape))
         X -= alpha * P
         R -= alpha * Q
         c0 = c1
-        c1 = A.sum(reshape([abs(vdot(r, r)) for r in R], shape))
+        c1 = A.sum(np.reshape([abs(np.vdot(r, r)) for r in R], shape))
         beta = c1 / c0
         P *= beta
         P += R
