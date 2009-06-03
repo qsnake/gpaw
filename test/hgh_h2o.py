@@ -82,13 +82,18 @@ gd = wfs.gd
 psit_nG = wfs.kpt_u[0].psit_nG
 dH_asp = calc.hamiltonian.dH_asp
 
-#assert eerr < 1e-3, 'energy changed from reference'
+assert eerr < 1e-3, 'energy changed from reference'
 assert ferr < 0.027, 'forces do not match FD check'
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
-for a, dHsp in dH_asp.items():
+# Also the projectors should be normalized
+for a, dH_sp in dH_asp.items():
     dH_p = dH_sp[0]
     K_p = wfs.setups[a].K_p
+    B_ii = wfs.setups[a].B_ii
+    assert np.abs(B_ii.diagonal() - 1).max() < 1e-3
+    #print 'B_ii'
+    #print wfs.setups[a].B_ii
     # Actually, H2O might not be such a good test, since there'll only
     # be one element in the atomic Hamiltonian for O and zero for H.
     #print 'dH_p', dH_p
