@@ -388,13 +388,10 @@ class RecursionMethod:
         self.b_uci = npy.zeros((nmykpts, self.dim, 0), self.wfs.dtype)
 
         A_aci = self.wfs.pt.dict(3, zero=True)
-        A_aci[a] = A_ci
+        if a in A_aci:
+            A_aci[a] = A_ci
         for u in range(nmykpts):
             self.wfs.pt.add(self.w_ucG[u], A_aci, u)
-            #nucleus.pt_i.add(self.w_ucG[u], A_ci, self.k1 + u) 
-
-        print self.w_ucG.shape
-        
 
     def run(self, nsteps, inverse_overlap="exact"):
 
