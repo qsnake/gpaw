@@ -12,7 +12,7 @@ parser.add_option('--code', dest="code", type="choice",
                   choices=code_choices,
                   help='code: which code to use.')
 parser.add_option("--runs", dest="runs",
-                  default=10,
+                  default=7,
                   help='use that many runs to calculate the average.')
 parser.add_option('-v', '--verbose', action='store_true',
                   default=False,
@@ -50,7 +50,7 @@ d = a / 2**0.5
 z = 1.1
 b = 1.5
 
-def memory_bandwidth(code='gpaw', runs=10):
+def memory_bandwidth(code='gpaw', runs=7):
 
     slab = Atoms([Atom('Al', (0, 0, 0)),
                         Atom('Al', (a, 0, 0)),

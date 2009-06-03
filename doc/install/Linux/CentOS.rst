@@ -7,6 +7,42 @@ CentOS
 Here you find information about the the system
 `<http://www.centos.org/>`_.
 
+.. _PGO_gcc_EL5:
+
+Profile guided optimization
+===========================
+
+Example how describes how to use
+`profile guided optimization <http://en.wikipedia.org/wiki/Profile-guided_optimization>`_
+to compile GPAW with gcc version **4.3.0** on CentOS 5.3:
+
+- starting at :ref:`developer_installation`,
+  modify :file:`customize.py` so :envvar:`extra_compile_args` reads::
+
+    opt_string = '-fprofile-generate'
+    extra_compile_args =['-std=c99', opt_string]
+
+- moreover, :envvar:`mpicompiler` must be set, and :envvar:`mpilinker` read::
+
+    mpilinker = mpicompiler+' '+opt_string
+
+- build GPAW's :ref:`c_extension` as described at :ref:`developer_installation`.
+  This will create `*.gcno` files in the `./build/temp.<platform>-<python-version>/c/` directory.
+
+- perform a test run using :file:`gpaw-python`.
+  This will create `*.gcda` files in the `./build/temp.<platform>-python-version/c/` directory.
+
+- remove object files and :file:`_gpaw.so` (example for **linux-i686** platform, python **2.4**)::
+
+   find build/temp.linux-i686-2.4/ -name "*.o" | xargs rm
+   rm -f build/lib.linux-i686-2.4/_gpaw.so
+
+- change :file:`customize.py` so :envvar:`opt_string` reads::
+
+    opt_string = '-fprofile-use'
+
+  and rebuild GPAW's :ref:`c_extension`.
+
 i386 RPM based systems (el4, el5)
 =================================
 

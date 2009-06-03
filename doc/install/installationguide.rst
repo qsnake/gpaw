@@ -147,6 +147,15 @@ itself for more possible options.
 After editing :svn:`customize.py`,
 follow the instructions for the :ref:`installationguide` from step 3 on.
 
+.. _PGO:
+
+Profile guided optimization
+===========================
+
+Some compilers allow one to use
+`profile guided optimization <http://en.wikipedia.org/wiki/Profile-guided_optimization>`_ (PGO).
+See :ref:`PGO_gcc_EL5` for an example how use PGO to compile GPAW on CentOS.
+
 .. _parallel_installation:
 
 Parallel installation

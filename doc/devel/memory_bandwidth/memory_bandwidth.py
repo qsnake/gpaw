@@ -11,7 +11,7 @@ parser.add_option('--dir', dest="dir",
                   default='.',
                   help='Results directory')
 parser.add_option("--runs", dest="runs",
-                  default=10,
+                  default=7,
                   help='use that many runs to calculate the average.')
 parser.add_option("--startcores", dest="startcores",
                   default=1,
@@ -73,7 +73,7 @@ def plot_save(directory_name, out_prefix):
 
     pylab.savefig(directory_name + os.path.sep + out_prefix +'.png')
 
-def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=10):
+def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=7):
     #system = ['carbon_py']
     #system = ['carbon']
     #system = ['niflheim_py']
@@ -147,7 +147,7 @@ def analyse_benchmark(ncores=8, startcores=1, machine='TEST', runs=10):
 
     ref_value = ref_value_3721
     ref_SCF = ref_SCF_3721
-    
+
     tolerance = 0.0001
 
     ref_failed = False

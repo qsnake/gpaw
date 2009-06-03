@@ -1,8 +1,9 @@
 #!/bin/sh
-#UTILISATION METTRE 0 ET 1 EN ARGUMENT 
+#UTILISATION METTRE 0 ET 1 EN ARGUMENT
 OFFSET=$1
 shift
-STRIDE=$1
+# number cores per socket
+CORES_PER_SOCKET=$1
 shift
 NCPU=$(grep "^processor" /proc/cpuinfo |wc -l)
 
@@ -35,35 +36,34 @@ elif [ -n "${MPIRUN_RANK}" ]; then
 else
    echo "Error getting MPI_RANK";
 fi
-CPU=`echo "($OFFSET + $MPI_RANK * $STRIDE) % $NCPU"|bc`
-case $CPU in 
+CPU=`echo "($OFFSET + $MPI_RANK)"|bc`
+case $CPU in
 0)
 CPU=0
-MEM=0;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 1)
 CPU=1
-MEM=1;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 2)
 CPU=2
-MEM=0;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 3)
 CPU=3
-MEM=1;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 4)
 CPU=4
-MEM=0;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 5)
 CPU=5
-MEM=1;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 6)
 CPU=6
-MEM=0;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 7)
 CPU=7
-MEM=1;;
+MEM=`echo "$CPU / $CORES_PER_SOCKET" |bc`;;
 esac
 ulimit -s unlimited
 CMD="numactl --membind=$MEM --physcpubind=$CPU $@"
 echo $CMD
 eval $CMD
-

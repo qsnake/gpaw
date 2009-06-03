@@ -43,8 +43,43 @@ using OpenMPI in order to benchmark a number of processes that ranges from
 
 The benchmark result is the average execution time in seconds when running
 1, 2, up to NCORES processes, respectively, on the test machine.
-The scaling of execution time with the number of processes is part of
+The scaling of the execution time with the number of processes is part of
 the benchmark result.
+
+On `Non-Uniform Memory Access <http://en.wikipedia.org/wiki/Non-Uniform_Memory_Access>`_ machines,
+in order to get reproducible results,
+it is important to find the (fastest) combination of processor/memory.
+See section :ref:`opteron_285` for an example of performance degradation
+depending on the numa policy.
+
+To see which CPU corresponds to which node examine `/sys/devices/system/node/node*`.
+It is assumed the following mapping:
+
+- dual-socket dual-core machine::
+
+   numactl --membind=0 --physcpubind=0
+   numactl --membind=0 --physcpubind=1
+   numactl --membind=1 --physcpubind=2
+   numactl --membind=1 --physcpubind=3
+
+- dual-socket quad-core machine::
+
+   numactl --membind=0 --physcpubind=0
+   numactl --membind=0 --physcpubind=1
+   numactl --membind=0 --physcpubind=2
+   numactl --membind=0 --physcpubind=3
+   numactl --membind=1 --physcpubind=4
+   numactl --membind=1 --physcpubind=5
+   numactl --membind=1 --physcpubind=6
+   numactl --membind=1 --physcpubind=7
+
+**Note** that the mapping above assigns first all the cores belonging to the
+first memory node, what is **non**-optimal for runs with the number
+of processes larger than 1 and smaller than NCORES.
+See :ref:`opteron_285` section for example of this behaviour.
+
+For description of `numa` see `NUMACTL <https://computing.llnl.gov/LCdocs/chaos/index.jsp?show=s5.2.2>`_
+and `NUMA support <http://lwn.net/Articles/254445/>`_.
 
 Getting the results
 -------------------
@@ -60,11 +95,13 @@ Please perform the following steps:
 
     bash
     export NCORES=8 # default; set this variable to the number of cores in your machine
+    export CORES_PER_SOCKET=4 # default; set this variable to the number of cores per socket
     export MACHINE=TEST # default; optional: set this to the name of you machine
     mkdir /tmp/benchmark.$$; cd /tmp/benchmark.*
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/H2Al110.py
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/prepare.sh
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/run.sh
+    wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/run_numactl.sh
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/memory_bandwidth.py
     wget http://svn.fysik.dtu.dk/projects/gpaw/trunk/doc/devel/memory_bandwidth/twiny.py
     sh prepare.sh
@@ -73,23 +110,119 @@ Please perform the following steps:
 
     cd $MACHINE; nohup sh ../run.sh 2>&1 | tee $MACHINE.log&
 
+   **Warning**: on numa-enabled machines use::
+
+    cd $MACHINE; nohup sh ../run_numactl.sh 2>&1 | tee $MACHINE.log&
+
  - analyse the results::
 
     python ../memory_bandwidth.py
 
-   A typical (rather bad) output may look like
-   (example given for Intel Xeon dual-socket, quad-core L5k CPUs, 2.5 GHz,
-   gpaw linked with Intel mkl)::
+ - to estimate performance run the benchmark on the maximal number the cores only::
 
-    No. of processes 1 Runtime 380.89 sec
-    No. of processes 2 Runtime 396.16 sec
-    No. of processes 4 Runtime 457.62 sec
-    No. of processes 6 Runtime 595.06 sec
-    No. of processes 8 Runtime 806.88 sec
+    export NCORES=8
+    export CORES_PER_SOCKET=4
+    export MACHINE=TEST
+    export STARTCORES=${NCORES}
+    cd $MACHINE; nohup sh ../run_numactl.sh 2>&1 | tee $MACHINE.log&
 
-   Ideally the time should not increase with the No. of processes,
-   and increase of ~20% on 8 cores compared to 1 core can be considered
-   satisfactory.
+.. _opteron_285:
+
+Benchmarked systems
+-------------------
+
+Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- memory bandwidth:
+
+  **Note**: performed with gcc43/goto-1.26/acml-4.2.0, gpaw **0.6.3862**,
+  numpy *1.3.0* compiled with gcc/blas-3.0-37/lapack-3.0-37:
+
+  - run with default numa::
+
+     export NCORES=4
+     export CORES_PER_SOCKET=2
+     export MACHINE=gcc43
+     export STARTCORES=${NCORES}
+     cd $MACHINE; nohup sh ../run.sh 2>&1 | tee $MACHINE.log&
+
+   results in::
+
+    No. of processes 1: time [sec]: avg 716.1, stddev 3.7, min 710.8, max 719.6
+    No. of processes 2: time [sec]: avg 726.9, stddev 7.2, min 718.2, max 735.0
+    No. of processes 4: time [sec]: avg 898.6, stddev 7.5, min 890.5, max 914.1
+
+  - run with assumed numactl mapping for a dual-socket dual-core machine::
+
+     export NCORES=4
+     export CORES_PER_SOCKET=2
+     export MACHINE=gcc43.numactl
+     export STARTCORES=${NCORES}
+     cd $MACHINE; nohup sh ../run_numactl.sh 2>&1 | tee $MACHINE.log&
+
+   results in::
+
+    No. of processes 1: time [sec]: avg 717.5, stddev 0.8, min 716.0, max 718.1
+    No. of processes 2: time [sec]: avg 884.7, stddev 7.7, min 873.4, max 897.1
+    No. of processes 4: time [sec]: avg 894.3, stddev 15.4, min 874.9, max 913.9
+
+  **Note** the performance degradation in the case of numactl for two cores,
+  compared to a "default" run. The degradation of ~25% between 1 core and the maximal number
+  of cores (4) is typical for this generation of AMD systems.
+
+- performance estimate:
+
+  **Note**: gpaw **0.6.3862** was used, numpy *1.3.0* compiled with gcc/goto-1.26/acml-4.0.1.
+  Standard deviations are found below 15 sec. "**N.A.**" denotes the fact that libraries are not available,
+  "**-**" that tests were not performed.
+
+  ============================= ======= ======= ======= ======= ======= =======
+  blas/lapack : compiler        gcc     gcc43   amd4.2  pathcc  icc     pgcc
+  ============================= ======= ======= ======= ======= ======= =======
+  acml-4.2.0/acml-4.2.0         N.A.     991.74  985.83  980.75 1020.66 1082.64
+  acml-4.1.0/acml-4.1.0         N.A.    --      --       978.58 --      --     
+  acml-4.0.1/acml-4.0.1          991.95 N.A.    N.A.     984.23 --      --     
+  blas-3.0-37/lapack-3.0-37     1494.63 1495.52 --      --      --      --     
+  goto-1.26/acml-4.2.0          N.A      889.22  886.43 879.28  FAIL    FAIL
+  goto-1.26/acml-4.2.0 PGO      --       886.47 --      --      --      --     
+  goto-1.26/acml-4.0.1           888.79 N.A.    N.A.    --      --      --     
+  atlas-3.8.3/acml-4.2.0        --       931.41 --      --      --      --     
+  atlas-3.8.3/lapack-3.2.1      --       927.71 --      --      --      --     
+  mkl-10.1.2.024/mkl-10.1.2.024 --      1012.64 --      1030.06 --      --     
+  ============================= ======= ======= ======= ======= ======= =======
+
+  **Note**: the PGO entry refers to :ref:`PGO` driven using the benchmark.
+
+  ============================== =============================================
+  compiler                       options                     
+  ============================== =============================================
+  gcc 4.1.2 20080704             -O3 -funroll-all-loops -std=c99
+  gcc43 4.3.2 20081007           -O3 -funroll-all-loops -std=c99
+  gcc 4.2.0-amd-barcelona-rhel4  -O3 -funroll-all-loops -std=c99
+  pathcc Version 3.2 2008-06-16  -O3 -OPT:Ofast -ffast-math -std=c99
+  icc 11.0 083                   -xHOST -O3 -ipo -no-prec-div -static -std=c99
+  pgcc 8.0-6                     -fast -Mipa=fast,inline -Msmartalloc
+  ============================== =============================================
+
+  **Note**: that using wrong numa policy (in some situations also the **default** numa policy)
+  results in serious performance degradation, and non-reproducible results.
+  Example below is given for gcc43/goto-1.26/acml-4.2.0 (**A**),
+  and gcc43/mkl-10.1.2.024/mkl-10.1.2.024 (**B**).
+
+  ===================== ====================================== ======================================
+  MP pairs (see below)  A Runtime [sec]                        B Runtime [sec]                       
+  ===================== ====================================== ======================================
+  00 01 12 13           avg 889.22, stddev 7.61, max 902.53    avg 1012.64, stddev 11.65, max 1032.98
+  default (not set)     avg 892.22, stddev 12.54, max 915.96   avg 1047.2, stddev 51.8, max 1171.5
+  00 11 02 13           avg 953.39, stddev 81.57, max 1069.16  avg 1081.78, stddev 92.67, max 1204.43
+  10 11 02 03           avg 1330.88, stddev 11.75, max 1351.37 avg 1504.35, stddev 8.89, max 1527.54
+  00 01 02 03           avg 1549.29, stddev 59.61, max 1645.92 avg 1736.57, stddev 77.87, max 1849.49
+  ===================== ====================================== ======================================
+
+  **Note**: "MP pairs" denote pairs of M and P used for `numactl --membind=M --physcpubind=P`
+  for ranks 0, 1, 2, 3, respectively.
+  In this case **A** the **default** numa policy does not result in performance degradation.
 
 Strong scaling benchmarks
 =========================

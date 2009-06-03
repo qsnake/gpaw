@@ -12,6 +12,11 @@ then
    export STARTCORES=0
 fi
 
+if test -z $CORES_PER_SOCKET;
+then
+   export CORES_PER_SOCKET=4
+fi
+
 if test -z $MACHINE;
 then
    export MACHINE=TEST
@@ -44,7 +49,7 @@ do
   fi
   #
   echo Benchmark for ${p} tasks started at `date`
-  ( cd ${MACHINE}_py${p}_01; time mpiexec -np $p python $script > out.txt )
+  ( cd ${MACHINE}_py${p}_01; time mpiexec -np $p ../../taskit.BINDING.one.node 0 ${CORES_PER_SOCKET} python $script --runs=5 > out.txt )
   echo
   index=`expr $index + 2`
 done
