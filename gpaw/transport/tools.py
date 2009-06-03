@@ -150,7 +150,7 @@ def dot(a, b):
         dtype = float
         c = a
         d = b
-    e = np.empty([c.shape[0], d.shape[1]], dtype)
+    e = np.zeros([c.shape[0], d.shape[1]], dtype)
     gemm(1.0, d, c, 0.0, e)
     return e
 

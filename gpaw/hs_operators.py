@@ -22,19 +22,19 @@ class Operator:
     def allocate_work_arrays(self, mynbands, dtype):
         ngroups = self.band_comm.size
         if ngroups == 1 and self.nblocks == 1:
-            self.work1_xG = self.gd.empty(mynbands, dtype)
+            self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
             assert mynbands % self.nblocks == 0
             X = mynbands // self.nblocks
             if self.gd.n_c.prod() % self.nblocks != 0:
                 X += self.nblocks
-            self.work1_xG = self.gd.empty(X, dtype)
-            self.work2_xG = self.gd.empty(X, dtype)
+            self.work1_xG = self.gd.zeros(X, dtype)
+            self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:
-                self.A_qnn = np.empty((ngroups // 2 + 1, mynbands, mynbands),
+                self.A_qnn = np.zeros((ngroups // 2 + 1, mynbands, mynbands),
                                       dtype)
         nbands = ngroups * mynbands
-        self.A_nn = np.empty((nbands, nbands), dtype)
+        self.A_nn = np.zeros((nbands, nbands), dtype)
 
     def estimate_memory(self, mem, mynbands, dtype):
         ngroups = self.band_comm.size
@@ -94,7 +94,7 @@ class Operator:
         A_NN = self.A_nn
 
         dAP_ani = {}
-        for a,P_ni in P_ani.items():
+        for a, P_ni in P_ani.items():
             if callable(dA):
                 dAP_ani[a] = dA(a, P_ni)
             else:
@@ -104,7 +104,6 @@ class Operator:
         if B == 1 and J == 1:
             # Simple case:
             Apsit_nG = A(psit_nG)
-            A_NN.fill(0.0)  # Some BLAS libraries needs this!
             if Apsit_nG is psit_nG:
                 rk(dv, psit_nG, 0.0, A_NN)
             else:

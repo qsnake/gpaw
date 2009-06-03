@@ -360,7 +360,8 @@ class TwoCenterIntegrals:
             for a, P_qxMi in P_aqxMi.items():
                 dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
                 for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
-                    dOP_iM = np.empty((dO_ii.shape[1], nao), P_Mi.dtype)
+                    dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
+                    # (ATLAS can't handle uninitialized output array)
                     gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
                     gemm(1.0, dOP_iM, P_Mi, 1.0, S_MM, 'n')
             del dOP_iM
@@ -509,7 +510,6 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             a += 1
         else:
             self.astop = natoms
-        #print self.M_a, self.astart, self.astop;adfg
 
     def _calculate(self, spos_ac, S_qxMM, T_qxMM, P_aqxMi, derivative):
         # Whether we're calculating values or derivatives, most operations
@@ -562,7 +562,8 @@ class BlacsTwoCenterIntegrals(TwoCenterIntegrals):
             for a, P_qxMi in P_aqxMi.items():
                 dO_ii = np.asarray(self.setups[a].O_ii, P_qxMi.dtype)
                 for S_MM, P_Mi in zip(S_qxMM, P_qxMi):
-                    dOP_iM = np.empty((dO_ii.shape[1], nao), P_Mi.dtype)
+                    dOP_iM = np.zeros((dO_ii.shape[1], nao), P_Mi.dtype)
+                    # (ATLAS can't handle uninitialized output array)
                     gemm(1.0, P_Mi, dO_ii, 0.0, dOP_iM, 'c')
                     gemm(1.0, dOP_iM, P_Mi[self.Mstart:self.Mstop],
                          1.0, S_MM, 'n')

@@ -64,7 +64,8 @@ class LCAO:
         Mstop = wfs.basis_functions.Mstop
         for a, P_Mi in kpt.P_aMi.items():
             dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
-            dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
+            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
+            # (ATLAS can't handle uninitialized output array)
             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
             if Mstart != -1:
                 P_Mi = P_Mi[Mstart:Mstop]
@@ -163,7 +164,8 @@ class LCAO:
         assert kpt.eps_n[0] != 42
 
         for a, P_ni in kpt.P_ani.items():
-            #P_ni[:] = np.dot(kpt.C_nM, kpt.P_aMi[a])
+            # ATLAS can't handle uninitialized output array:
+            P_ni.fill(117)
             gemm(1.0, kpt.P_aMi[a], kpt.C_nM, 0.0, P_ni, 'n')
 
     def remove_linear_dependence(self, P_MM, p_M, H_MM):

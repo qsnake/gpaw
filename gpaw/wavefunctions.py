@@ -492,6 +492,8 @@ class LCAOWaveFunctions(WaveFunctions):
         # Although that requires knowing C_Mn and not C_nM.
         # (that also conforms better to the usual conventions in literature)
         Cf_Mn = C_nM.T.conj() * f_n
+        # ATLAS can't handle uninitialized output array:
+        rho_MM.fill(42)
         gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
 
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
@@ -576,7 +578,7 @@ class LCAOWaveFunctions(WaveFunctions):
             assert a_ik.flags.contiguous
             assert b_kj.flags.contiguous
             assert a_ik.dtype == b_kj.dtype
-            c_ij = np.empty((a_ik.shape[0], b_kj.shape[-1]), a_ik.dtype)
+            c_ij = np.zeros((a_ik.shape[0], b_kj.shape[-1]), a_ik.dtype)
             gemm(1.0, b_kj, a_ik, 0.0, c_ij, 'n')
             return c_ij
         
@@ -650,13 +652,13 @@ class LCAOWaveFunctions(WaveFunctions):
         # Density matrix contribution from PAW correction
         self.timer.start('LCAO forces: paw correction')
         dPdR_avMi = dict([(a, dPdR_aqvMi[a][q]) for a in my_atom_indices])
-        work_MM = np.empty((nao, nao), dtype)
+        work_MM = np.zeros((nao, nao), dtype)
         ZE_MM = None
         for v in range(3):
             for b in my_atom_indices:
                 setup = self.setups[b]
                 O_ii = np.asarray(setup.O_ii, dtype)
-                dOP_iM = np.empty((setup.ni, nao), dtype)
+                dOP_iM = np.zeros((setup.ni, nao), dtype)
                 gemm(1.0, self.P_aqMi[b][q], O_ii, 0.0, dOP_iM, 'c')
                 gemm(1.0, dOP_iM, dPdR_avMi[b][v], 0.0, work_MM, 'n')
                 ZE_MM = (work_MM * ET_MM).real

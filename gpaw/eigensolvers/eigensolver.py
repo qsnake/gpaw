@@ -43,10 +43,10 @@ class Eigensolver:
 
         if self.keep_htpsit:
             # Soft part of the Hamiltonian times psit:
-            self.Htpsit_nG = self.gd.empty(self.nbands, self.dtype)
+            self.Htpsit_nG = self.gd.zeros(self.nbands, self.dtype)
 
         # Hamiltonian matrix
-        self.H_nn = np.empty((self.nbands, self.nbands), self.dtype)
+        self.H_nn = np.zeros((self.nbands, self.nbands), self.dtype)
 
         for kpt in wfs.kpt_u:
             if kpt.eps_n is None:

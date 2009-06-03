@@ -42,6 +42,8 @@ def gemm(alpha, a, b, beta, c, transa='n'):
 
     where in case of "c" also complex conjugate of a is taken.
     """
+    assert npy.isfinite(c).all()
+    
     assert (a.dtype == float and b.dtype == float and c.dtype == float and
             isinstance(alpha, float) and isinstance(beta, float) or
             a.dtype == complex and b.dtype == complex and c.dtype == complex)
@@ -100,6 +102,8 @@ def rk(alpha, a, beta, c):
     
     Only the lower triangle of ``c`` will contain sensible numbers.
     """
+    assert npy.isfinite(c).all()
+
     assert (a.dtype == float and c.dtype == float or
             a.dtype == complex and c.dtype == complex)
     assert a.flags.contiguous
@@ -132,6 +136,8 @@ def r2k(alpha, a, b, beta, c):
 
     Only the lower triangle of ``c`` will contain sensible numbers.
     """
+    assert npy.isfinite(c).all()
+        
     assert (a.dtype == float and b.dtype == float and c.dtype == float or
             a.dtype == complex and b.dtype == complex and c.dtype == complex)
     assert a.flags.contiguous and b.flags.contiguous
@@ -179,7 +185,7 @@ def dotu(a, b):
     return _gpaw.dotu(a, b)
     
 
-def _gemmdot(a, b, alpha=1., trans='n'):
+def _gemmdot(a, b, alpha=1.0, trans='n'):
     """Matrix multiplication using gemm.
 
     For the 2D matrices a, b, return::
@@ -191,10 +197,11 @@ def _gemmdot(a, b, alpha=1., trans='n'):
     If trans='c'; b is replaced by its hermitian conjugate.
     """
     if trans == 'n':
-        c = npy.empty((a.shape[0], b.shape[1]), float)
+        c = npy.zeros((a.shape[0], b.shape[1]), float)
     else: # 't' or 'c'
-        c = npy.empty((a.shape[0], b.shape[0]), a.dtype)
-    gemm(alpha, b, a, 0., c, trans)
+        c = npy.zeros((a.shape[0], b.shape[0]), a.dtype)
+    # (ATLAS can't handle uninitialized output array)
+    gemm(alpha, b, a, 0.0, c, trans)
     return c
 
 
