@@ -16,7 +16,7 @@ for i in range(50):
     e = H.get_potential_energy()
     H.positions += (0.09123456789, 0.0423456789, 0.03456789)
 mem = float(os.popen(cmd).readlines()[-1].split()[-1])
-equal(e, e0, 0.0005)
+equal(e, e0, 0.0006)
 print e, e0, e-e0
 print mem, mem0
 assert mem < mem0 + 0.21

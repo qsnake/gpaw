@@ -30,7 +30,7 @@ system.center(vacuum=2.5)
 calc = GPAW(h=0.23,
             mode='lcao',
             basis=basis,
-            convergence={'density':1e-4},
+            convergence={'density':1e-4, 'energy': 1e-7},
             )
 
 system.set_calculator(calc)
@@ -53,7 +53,7 @@ ref = array([[ 0.        ,  0.        ,  4.61423124],
 
 if fd:
     from ase.calculators import numeric_forces
-    ref = numeric_forces(system, axes=[2])
+    ref = numeric_forces(system, axes=[2], d=0.002)
     print 'Calced'
     print F_ac
     print 'FD'

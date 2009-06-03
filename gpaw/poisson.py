@@ -110,25 +110,26 @@ class PoissonSolver:
             self.rho_gauss = gauss.get_gauss(0)
             self.phi_gauss = gauss.get_gauss_pot(0)
 
-    def solve(self, phi, rho, eps=None, charge=0, maxcharge=1e-6,
+    def solve(self, phi, rho, charge=None, eps=None, maxcharge=1e-6,
               zero_initial_phi=False):
 
         if eps is None:
             eps = self.eps
 
-        # Determine charge (if set to None)
-        if charge is None:
-            charge = self.gd.integrate(rho)
+        actual_charge = self.gd.integrate(rho)
+        background = (actual_charge / self.gd.dv /
+                      self.gd.get_size_of_global_array().prod())
 
-        if abs(charge) < maxcharge:
+        if charge is None:
+            charge = actual_charge
+
+        if abs(charge) <= maxcharge:
             # System is charge neutral. Use standard solver
-            return self.solve_neutral(phi, rho, eps=eps)
+            return self.solve_neutral(phi, rho - background, eps=eps)
         
         elif abs(charge) > maxcharge and self.gd.pbc_c.all():
             # System is charged and periodic. Subtract a homogeneous
             # background charge
-            background = charge / abs(npy.linalg.det(self.gd.cell_cv))
-
             if self.charged_periodic_correction is None:
                 print "+-----------------------------------------------------+"
                 print "| Calculating charged periodic correction using the   |"
@@ -136,7 +137,10 @@ class PoissonSolver:
                 print "| a homogenous background density                     |"
                 print "+-----------------------------------------------------+"
                 ewald = Ewald(self.gd.cell_cv)
-                self.charged_periodic_correction = ewald.get_electrostatic_potential([.0,.0,.0], npy.array([[.0,.0,.0]]), [-1], 0)
+                self.charged_periodic_correction = (
+                    ewald.get_electrostatic_potential([.0,.0,.0],
+                                                      npy.array([[.0,.0,.0]]),
+                                                      [-1], 0))
                 print "Potential shift will be ", \
                       self.charged_periodic_correction , "Ha."
                        
@@ -160,7 +164,7 @@ class PoissonSolver:
             self.load_gauss()
 
             # Remove monopole moment
-            q = charge / npy.sqrt(4 * pi) # Monopole moment
+            q = actual_charge / npy.sqrt(4 * pi) # Monopole moment
             rho_neutral = rho - q * self.rho_gauss # neutralized density
 
             # Set initial guess for potential

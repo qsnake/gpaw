@@ -45,6 +45,9 @@ class Density:
         self.charge = float(charge)
 
         self.charge_eps = 1e-7
+        if extra_parameters.get('usenewlfc'):
+            self.charge_eps = 1e-2
+        
         self.D_asp = None
         self.Q_aL = None
 
@@ -146,8 +149,7 @@ class Density:
         wfs.calculate_atomic_density_matrices(self.D_asp)
         comp_charge = self.calculate_multipole_moments()
         
-        if (isinstance(wfs, LCAOWaveFunctions) or
-            extra_parameters.get('normalize')):
+        if isinstance(wfs, LCAOWaveFunctions):
             self.normalize(comp_charge)
 
         self.mix(comp_charge)
@@ -166,14 +168,6 @@ class Density:
         self.nt_g = self.nt_sg.sum(axis=0)
         self.rhot_g = self.nt_g.copy()
         self.ghat.add(self.rhot_g, self.Q_aL)
-
-        if extra_parameters.get('normalize'):
-            if comp_charge is None:
-                comp_charge = self.calculate_multipole_moments()
-            Rt = self.finegd.integrate(self.rhot_g)
-            x = comp_charge / (comp_charge + self.charge + Rt)
-            self.rhot_g *= x
-            self.rhot_g += (1.0 - x) * self.nt_g
 
         if debug:
             charge = self.finegd.integrate(self.rhot_g) + self.charge

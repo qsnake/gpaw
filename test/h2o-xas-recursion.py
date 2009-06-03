@@ -30,7 +30,7 @@ if 1:
     calc.write('h2o.gpw')
 else:
     calc = GPAW('h2o.gpw')
-    calc.set_positions()
+    calc.initialize_positions()
 
 from gpaw.xas import RecursionMethod
 

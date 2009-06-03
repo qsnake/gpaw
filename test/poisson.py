@@ -25,7 +25,7 @@ def f(n, p):
 
     I = gd.integrate(a)
     b = gd.zeros()
-    p.solve(b, a)#, eps=1e-20)
+    p.solve(b, a, charge=0)#, eps=1e-20)
     return gd.collect(b, broadcast=1)
 
 b1 = f(8, PoissonSolver(nn=1, relax='J'))

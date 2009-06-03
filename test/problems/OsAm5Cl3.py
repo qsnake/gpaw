@@ -1,6 +1,6 @@
 # Calculations of Os complex: Os(NH3)5Cl-Cl-Cl
 from ase import *
-from gpaw import GPAW, MixerSum
+from gpaw import GPAW, MixerSum, Mixer
 
 molecule = Atoms('OsN5H15Cl2')
 molecule.positions = [
@@ -27,10 +27,10 @@ molecule.positions = [
     (5.627, 6.546, 4.105),
     (6.608, 6.631, 9.102),
     (4.108, 4.248, 4.703)]
-molecule += Atom('Cl', (8.72, 9.04, 4.6), magmom=1)
+molecule += Atom('Cl', (8.72, 9.04, 4.6))
 molecule.center(vacuum=4.0)
 molecule.set_constraint(FixAtoms(indices=[0]))
-
+molecule[0].magmom = 1
 # Calculator
 name = 'osam5cl3'
 mixer = MixerSum(0.05, 5, metric='new', weight=100.0)
@@ -40,10 +40,11 @@ calc = GPAW(h=0.18,
             txt=name + '.txt',
             maxiter=200,
             stencils=(3, 3),
-            width=0.01,
+            width=0.1,
             mixer=mixer)
 molecule.set_calculator(calc)
-
+molecule.get_potential_energy()
+calc.set(width=0.05)
 # Relaxation of the Cl atom, and calculations...
 qn = QuasiNewton(molecule, trajectory=name + '.traj')
 qn.run(fmax=0.05)

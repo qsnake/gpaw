@@ -1,5 +1,5 @@
 from ase import *
-from gpaw import GPAW
+from gpaw import GPAW, extra_parameters
 from gpaw.atom.basis import BasisMaker
 
 bm = BasisMaker('Li', run=False)
@@ -24,4 +24,7 @@ print e
 import numpy as np
 a = np.roots(np.polyder(np.polyfit(A, e, 2), 1))[0]
 print 'a =', a
-assert abs(a - 2.6567) < 0.0001
+if extra_parameters.get('usenewlfc'):
+    assert abs(a - 2.6591) < 0.0001
+else:
+    assert abs(a - 2.6567) < 0.0001

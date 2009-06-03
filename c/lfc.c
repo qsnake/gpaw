@@ -1003,25 +1003,24 @@ PyObject* derivative(LFCObject *lfc, PyObject *args)
             double R_c[] = {x, y, z};
             double r2 = x * x + y * y + z * z;
             double r = sqrt(r2);
-            double af;
+            double f;
             double dfdr;
-            bmgs_get_value_and_derivative(spline, r, &af, &dfdr);
-	    af *= a_G[G] * lfc->dv;
-            double afdrlYdx_m[nm];  // a * f * d(r^l * Y)/dx
-            complex double p = phase_i[i];
-	    spherical_harmonics_derivative_x(l, af, x, y, z, r2, afdrlYdx_m);
-	    for (int m = 0; m < nm; m++) c_mv[3 * m] += p * afdrlYdx_m[m];
-	    spherical_harmonics_derivative_y(l, af, x, y, z, r2, afdrlYdx_m);
-	    for (int m = 0; m < nm; m++) c_mv[3 * m + 1] += p * afdrlYdx_m[m];
-	    spherical_harmonics_derivative_z(l, af, x, y, z, r2, afdrlYdx_m);
-	    for (int m = 0; m < nm; m++) c_mv[3 * m + 2] += p * afdrlYdx_m[m];
+            bmgs_get_value_and_derivative(spline, r, &f, &dfdr);
+            double fdrlYdx_m[nm];  // a * f * d(r^l * Y)/dx
+            complex double ap = a_G[G] * phase_i[i] * lfc->dv;
+	    spherical_harmonics_derivative_x(l, f, x, y, z, r2, fdrlYdx_m);
+	    for (int m = 0; m < nm; m++) c_mv[3 * m    ] += ap * fdrlYdx_m[m];
+	    spherical_harmonics_derivative_y(l, f, x, y, z, r2, fdrlYdx_m);
+	    for (int m = 0; m < nm; m++) c_mv[3 * m + 1] += ap * fdrlYdx_m[m];
+	    spherical_harmonics_derivative_z(l, f, x, y, z, r2, fdrlYdx_m);
+	    for (int m = 0; m < nm; m++) c_mv[3 * m + 2] += ap * fdrlYdx_m[m];
             if (r > 1e-15) {
-	      double arlm1Ydfdr_m[nm]; // a * r^(l-1) * Y * df/dr
-	      double arm1dfdr = a_G[G] / r * dfdr * lfc->dv;
-	      spherical_harmonics(l, arm1dfdr, x, y, z, r2, arlm1Ydfdr_m);
+	      double rlm1Ydfdr_m[nm];  // r^(l-1) * Y * df/dr
+	      double rm1dfdr = dfdr / r;
+	      spherical_harmonics(l, rm1dfdr, x, y, z, r2, rlm1Ydfdr_m);
 	      for (int m = 0; m < nm; m++)
 		for (int v = 0; v < 3; v++)
-		  c_mv[m * 3 + v] += p * arlm1Ydfdr_m[m] * R_c[v];
+		  c_mv[m * 3 + v] += ap * rlm1Ydfdr_m[m] * R_c[v];
 	    }
 	  }
           xG += h_cv[6];

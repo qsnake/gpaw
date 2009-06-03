@@ -12,7 +12,7 @@ calc = GPAW(nbands=4, h=0.2, mode='lcao')
 mol.set_calculator(calc)
 e = mol.get_potential_energy()
 
-eref = -10.3830100992
+eref = -10.38311 # -10.3830100992
 err = abs(e - eref)
 
 print 'Energy', e

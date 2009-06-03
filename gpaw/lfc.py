@@ -68,7 +68,6 @@ class Sphere:
         self.G_wb = None
         self.M_w = None
         self.sdisp_wc = None
-        self.normalized = False
         
     def set_position(self, spos_c, gd, cut):
         if self.spos_c is not None and not (self.spos_c - spos_c).any():
@@ -109,7 +108,6 @@ class Sphere:
             self.sdisp_wc = None
             
         self.spos_c = spos_c
-        self.normalized = False
         return True
 
     def spline_to_grid(self, spline, gd, start_c, end_c, spos_c):
@@ -122,59 +120,6 @@ class Sphere:
     def get_function_count(self):
         return sum([2 * spline.get_angular_momentum_number() + 1
                     for spline in self.spline_j])
-
-    def normalize(self, integral, a, dv, comm):
-        """Normalize localized functions."""
-        if self.normalized:
-            yield None
-            yield None
-            yield None
-            return
-        
-        I_M = np.zeros(self.Mmax)
-        
-        nw = len(self.A_wgm) // len(self.spline_j)
-        assert nw * len(self.spline_j) == len(self.A_wgm)
-
-        for M, A_gm in zip(self.M_w, self.A_wgm):
-            I_m = A_gm.sum(axis=0)
-            I_M[M:M + len(I_m)] += I_m * dv
-
-        requests = []
-        if len(self.ranks) > 0:
-            I_rM = np.empty((len(self.ranks), self.Mmax))
-            for r, J_M in zip(self.ranks, I_rM):
-                requests.append(comm.receive(J_M, r, a, False))
-        if self.rank != comm.rank:
-            requests.append(comm.send(I_M, self.rank, a, False))
-
-        yield None
-
-        for request in requests:
-            comm.wait(request)
-            
-        requests = []
-        if len(self.ranks) > 0:
-            I_M += I_rM.sum(axis=0)
-            for r in self.ranks:
-                requests.append(comm.send(I_M, r, a, False))
-        if self.rank != comm.rank:
-            requests.append(comm.receive(I_M, self.rank, a, False))
-
-        yield None
-
-        for request in requests:
-            comm.wait(request)
-
-        w = 0
-        for M, A_gm in zip(self.M_w, self.A_wgm):
-            if M == 0 and integral > 1e-15:
-                A_gm *= integral / I_M[0]
-            else:
-                A_gm -= I_M[M:M + A_gm.shape[1]] * self.A_wgm[w % nw]
-            w +=1
-        self.normalized = True
-        yield None
 
     def estimate_gridpointcount(self, gd):
         points = 0.0
@@ -226,9 +171,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
     """
     def __init__(self, gd, spline_aj, kpt_comm=None, cut=False, dtype=float,
                  integral=None, forces=None):
-        if extra_parameters.get('normalize'):
-            integral = None
-
         self.gd = gd
         self.sphere_a = [Sphere(spline_j) for spline_j in spline_aj]
         self.cut = cut
@@ -238,12 +180,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
 
         # Global or local M-indices?
         self.use_global_indices = False
-        
-        if isinstance(integral, (float, int)):
-            self.integral_a = np.empty(len(self.sphere_a))
-            self.integral_a.fill(integral)
-        else:
-            self.integral_a = integral
         
     def set_k_points(self, ibzk_qc):
         self.ibzk_qc = ibzk_qc
@@ -346,17 +282,6 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             else:
                 sphere.ranks = []
 
-        if self.integral_a is not None:
-            iterators = []
-            for a in self.atom_indices:
-                iterator = self.sphere_a[a].normalize(self.integral_a[a], a,
-                                                       self.gd.dv,
-                                                       self.gd.comm)
-                iterators.append(iterator)
-            for i in range(3):
-                for iterator in iterators:
-                    iterator.next()
-            
     def M_to_ai(self, src_xM, dst_axi):
         xshape = src_xM.shape[:-1]
         src_xM = src_xM.reshape(np.prod(xshape), self.Mmax)        
@@ -393,7 +318,10 @@ class NewLocalizedFunctionsCollection(BaseLFC):
             c_xM.fill(c_axi)
             self.lfc.add(c_xM, a_xG, q)
             return
-        
+
+        if debug:
+            assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
+
         comm = self.gd.comm
         dtype = a_xG.dtype
         xshape = a_xG.shape[:-3]
@@ -470,6 +398,9 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         if q == -1:
             assert self.dtype == float
         
+        if debug:
+            assert (np.sort(c_axi.keys()) == self.my_atom_indices).all()
+
         dtype = a_xG.dtype
         
         xshape = a_xG.shape[:-3]
@@ -531,11 +462,11 @@ class NewLocalizedFunctionsCollection(BaseLFC):
         """
         assert not self.use_global_indices
 
+        if debug:
+            assert (np.sort(c_axiv.keys()) == self.my_atom_indices).all()
+
         dtype = a_xG.dtype
 
-        if dtype == complex:
-            raise NotImplementedError
-        
         xshape = a_xG.shape[:-3]
         c_xMv = np.zeros(xshape + (self.Mmax, 3), dtype)
 
@@ -830,8 +761,6 @@ class LocalizedFunctionsCollection(BaseLFC):
     def __init__(self, gd, spline_aj, kpt_comm=None,
                  cut=False, dtype=float,
                  integral=None, forces=False):
-        if extra_parameters.get('normalize'):
-            integral = None
             
         self.gd = gd
         self.spline_aj = spline_aj

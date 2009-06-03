@@ -2,7 +2,7 @@
 from ase import *
 from gpaw import GPAW
 
-a = 4.0
+a = 4.5
 H = Atoms('H', [(a / 2, a / 2, a / 2)],
           pbc=0,
           cell=(a, a, a))
