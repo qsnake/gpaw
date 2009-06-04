@@ -51,7 +51,11 @@ qsub += "os.chmod('%s', 0644)\n" % script
 # Start script:
 qsub += """
 path = get_gpaw_python_path()
-os.system('%s %s/gpaw-python JOB' % (mpirun, path))
+retcode = os.system('%s %s/gpaw-python JOB' % (mpirun, path))
+if (retcode & 0xff) == 0:
+    sys.exit(retcode >> 8)  # No signal, return the status only.
+else:
+    sys.exit(retcode)  # Return everything, signalling failure.
 """.replace('JOB', job)
 
 os.popen('qsub ' + options, 'w').write(qsub)
