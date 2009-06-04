@@ -78,6 +78,10 @@ class LCAO:
             self.iterate_one_k_point(hamiltonian, wfs, kpt)
 
     def iterate_one_k_point(self, hamiltonian, wfs, kpt):
+
+        if self.band_comm.size > 1 and wfs.bd.strided:
+            raise NotImplementedError
+
         self.calculate_hamiltonian_matrix(hamiltonian, wfs, kpt)
         self.S_MM[:] = wfs.S_qMM[kpt.q]
 
@@ -135,7 +139,7 @@ class LCAO:
             if H_MM is not None:
                 assert self.gd.comm.rank == 0
                 kpt.C_nM[:] = H_MM[:, :mynbands].T
-                self.band_comm.scatter(self.eps_n[:wfs.nbands], kpt.eps_n, 0)
+                wfs.bd.distribute(self.eps_n[:wfs.nbands], kpt.eps_n)
             else:
                 assert self.gd.comm.rank != 0
                 
@@ -158,8 +162,8 @@ class LCAO:
             if b == 0:
                 self.gd.comm.broadcast(self.H_MM[:wfs.nbands], 0)
                 self.gd.comm.broadcast(self.eps_n[:wfs.nbands], 0)
-            self.band_comm.scatter(self.H_MM[:wfs.nbands], kpt.C_nM, 0)
-            self.band_comm.scatter(self.eps_n[:wfs.nbands], kpt.eps_n, 0)
+            wfs.bd.distribute(self.H_MM[:wfs.nbands], kpt.C_nM)
+            wfs.bd.distribute(self.eps_n[:wfs.nbands], kpt.eps_n)
 
         assert kpt.eps_n[0] != 42
 

@@ -8,6 +8,7 @@ from gpaw.kpoint import KPoint
 from gpaw.transformers import Transformer
 from gpaw.operators import Gradient
 from gpaw.utilities.timing import nulltimer
+from gpaw.band_descriptor import BandDescriptor
 import gpaw.mpi as mpi
 from gpaw import extra_parameters
 
@@ -49,17 +50,17 @@ class WaveFunctions(EmptyWaveFunctions):
     kpt_comm:
         MPI-communicator for parallelization over **k**-points.
     """
-    def __init__(self, gd, nspins, setups, nbands, mynbands, dtype,
-                 world, kpt_comm, band_comm,
+    def __init__(self, gd, nspins, setups, bd, dtype, world, kpt_comm,
                  gamma, bzk_kc, ibzk_kc, weight_k, symmetry, timer=nulltimer):
         self.gd = gd
         self.nspins = nspins
-        self.nbands = nbands
-        self.mynbands = mynbands
+        self.bd = bd
+        self.nbands = self.bd.nbands #XXX
+        self.mynbands = self.bd.mynbands #XXX
         self.dtype = dtype
         self.world = world
         self.kpt_comm = kpt_comm
-        self.band_comm = band_comm
+        self.band_comm = self.bd.comm #XXX
         self.gamma = gamma
         self.bzk_kc = bzk_kc
         self.ibzk_kc = ibzk_kc
@@ -268,11 +269,7 @@ class WaveFunctions(EmptyWaveFunctions):
                     else:
                         self.kpt_comm.send(a_n, 0, 1301)
                 else:
-                    if self.band_comm.rank == 0:
-                        b_n = np.zeros(self.nbands, dtype=dtype)
-                    else:
-                        b_n = None
-                    self.band_comm.gather(a_n, 0, b_n)
+                    b_n = self.bd.collect(a_n)
                     if self.band_comm.rank == 0:
                         if kpt_rank == 0:
                             return b_n
@@ -332,8 +329,8 @@ class WaveFunctions(EmptyWaveFunctions):
         if self.world.rank == 0:
             mynu = len(kpt_u)
             all_P_ni = np.empty((self.nbands, nproj), self.dtype)
-            nstride = self.band_comm.size
             for band_rank in range(self.band_comm.size):
+                nslice = self.bd.get_slice(band_rank)
                 i = 0
                 for a in range(natoms):
                     ni = self.setups[a].ni
@@ -346,7 +343,7 @@ class WaveFunctions(EmptyWaveFunctions):
                                       self.band_comm.size +
                                       band_rank * self.gd.comm.size)
                         self.world.receive(P_ni, world_rank, 1303 + a)
-                    all_P_ni[band_rank::nstride, i:i + ni] = P_ni
+                    all_P_ni[nslice, i:i + ni] = P_ni
                     i += ni
                 assert i == nproj
             return all_P_ni
@@ -367,9 +364,9 @@ class WaveFunctions(EmptyWaveFunctions):
         nk = len(self.ibzk_kc)
         mynu = len(self.kpt_u)
         kpt_rank, u = divmod(k + nk * s, mynu)
-        nn, band_rank = divmod(n, self.band_comm.size)
+        band_rank, myn = self.bd.who_has(n)
 
-        psit1_G = self._get_wave_function_array(u, nn)
+        psit1_G = self._get_wave_function_array(u, myn)
         size = self.world.size
         rank = self.world.rank
         if size == 1:
@@ -814,11 +811,11 @@ class GridWaveFunctions(WaveFunctions):
             lcaomynbands = self.setups.nao
             assert self.band_comm.size == 1
 
-        lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.setups,
-                                    lcaonbands,
-                                    lcaomynbands, self.dtype,
-                                    self.world, self.kpt_comm,
-                                    self.band_comm,
+        lcaobd = BandDescriptor(lcaonbands, self.band_comm, self.bd.strided)
+        assert lcaobd.mynbands == lcaomynbands #XXX
+
+        lcaowfs = LCAOWaveFunctions(self.gd, self.nspins, self.setups, lcaobd,
+                                    self.dtype, self.world, self.kpt_comm,
                                     self.gamma, self.bzk_kc, self.ibzk_kc,
                                     self.weight_k, self.symmetry)
         lcaowfs.basis_functions = basis_functions

@@ -30,6 +30,7 @@ class InputParameters(dict):
             ('maxiter',       120,    ),
             ('parsize',       None,   ),
             ('parsize_bands', 1   ,   ),
+            ('parstride_bands', False,),
             ('external',      None,   ),  # eV
             ('verbose',       0,      ),
             ('eigensolver',   None,   ),

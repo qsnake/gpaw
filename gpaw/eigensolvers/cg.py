@@ -63,7 +63,7 @@ class CG(Eigensolver):
             Htpsit_G = self.Htpsit_nG[n]
             gamma_old = 1.0
             phi_old_G[:] = 0.0
-            error = self.comm.sum(np.vdot(R_G, R_G).real)
+            error = self.gd.comm.sum(np.vdot(R_G, R_G).real)
             for nit in range(niter):
                 if error < self.tolerance / self.nbands:
                     # print >> self.f, "cg:iters", n, nit
@@ -72,7 +72,7 @@ class CG(Eigensolver):
                 pR_G = self.preconditioner(R_G, kpt.phase_cd)
 
                 # New search direction
-                gamma = self.comm.sum(np.vdot(pR_G, R_G).real)
+                gamma = self.gd.comm.sum(np.vdot(pR_G, R_G).real)
                 phi_G[:] = -pR_G - gamma/gamma_old * phi_old_G
                 gamma_old = gamma
                 phi_old_G[:] = phi_G[:]
@@ -89,7 +89,7 @@ class CG(Eigensolver):
                         P_i = kpt.P_ani[a][nn]
                         dO_ii = wfs.setups[a].O_ii
                         overlap += np.vdot(P_i, np.inner(dO_ii, P2_i))
-                    overlap = self.comm.sum(overlap)
+                    overlap = self.gd.comm.sum(overlap)
                     # phi_G -= overlap * kpt.psit_nG[nn]
                     axpy(-overlap, kpt.psit_nG[nn], phi_G)
                     for a, P2_i in P2_ai.items():
@@ -100,7 +100,7 @@ class CG(Eigensolver):
                 for a, P2_i in P2_ai.items():
                     dO_ii = wfs.setups[a].O_ii
                     norm += np.vdot(P2_i, np.inner(dO_ii, P2_i))
-                norm = self.comm.sum(norm.real)
+                norm = self.gd.comm.sum(norm.real)
                 phi_G /= sqrt(norm)
                 for P2_i in P2_ai.values():
                     P2_i /= sqrt(norm)
@@ -117,8 +117,8 @@ class CG(Eigensolver):
                     dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
                     b += dot(P2_i, dot(dH_ii, P_i.conj()))
                     c += dot(P2_i, dot(dH_ii, P2_i.conj()))
-                b = self.comm.sum(b.real)
-                c = self.comm.sum(c.real)
+                b = self.gd.comm.sum(b.real)
+                c = self.gd.comm.sum(c.real)
 
                 theta = 0.5 * atan2(2 * b, an - c)
                 enew = (an * cos(theta)**2 +
@@ -155,7 +155,7 @@ class CG(Eigensolver):
                         coef_i[:] = (dot(P_i, dH_ii) -
                                      dot(P_i * kpt.eps_n[n], dO_ii))
                     wfs.pt.add(R_G, coef_ai, kpt.q)
-                    error_new = self.comm.sum(np.vdot(R_G, R_G).real)
+                    error_new = self.gd.comm.sum(np.vdot(R_G, R_G).real)
                     if error_new / error < 0.30:
                         # print >> self.f, "cg:iters", n, nit+1
                         break

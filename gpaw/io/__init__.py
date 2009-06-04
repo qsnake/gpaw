@@ -540,6 +540,7 @@ def read(paw, reader):
     # Wave functions and eigenvalues:
     nibzkpts = r.dimension('nibzkpts')
     nbands = r.dimension('nbands')
+    nslice = wfs.bd.get_slice()
 
     if (nibzkpts == len(wfs.ibzk_kc) and
         nbands == band_comm.size * wfs.mynbands):
@@ -549,10 +550,8 @@ def read(paw, reader):
             s = kpt.s
             eps_n = r.get('Eigenvalues', s, k)
             f_n = r.get('OccupationNumbers', s, k)
-            n0 = band_comm.rank
-            nstride = band_comm.size
-            kpt.eps_n = eps_n[n0::nstride].copy()
-            kpt.f_n = f_n[n0::nstride].copy()
+            kpt.eps_n = eps_n[nslice].copy()
+            kpt.f_n = f_n[nslice].copy()
 
             if norbitals is not None:
                 kpt.ne_o = npy.empty(norbitals, dtype=float)
@@ -560,7 +559,7 @@ def read(paw, reader):
                 for o in range(norbitals):
                     kpt.ne_o[o] = r.get('LinearExpansionOccupations',  s, k, o)
                     c_n = r.get('LinearExpansionCoefficients', s, k, o)
-                    kpt.c_on[o,:] = c_n[n0::nstride]
+                    kpt.c_on[o,:] = c_n[nslice]
 
         if r.has_array('PseudoWaveFunctions'):
             if version > 0.3:
@@ -577,7 +576,7 @@ def read(paw, reader):
                     # Read band by band to save memory
                     kpt.psit_nG = wfs.gd.empty(wfs.mynbands, wfs.dtype)
                     for myn, psit_G in enumerate(kpt.psit_nG):
-                        n = band_comm.rank + myn * band_comm.size
+                        n = wfs.bd.global_index(myn)
                         if domain_comm.rank == 0:
                             big_psit_G = npy.array(r.get('PseudoWaveFunctions',
                                                kpt.s, kpt.k, n), wfs.dtype)
@@ -588,13 +587,11 @@ def read(paw, reader):
         for u, kpt in enumerate(wfs.kpt_u):
             P_ni = r.get('Projections', kpt.s, kpt.k)
             i1 = 0
-            n0 = band_comm.rank
-            nstride = band_comm.size
             kpt.P_ani = {}
             for a, setup in enumerate(wfs.setups):
                 i2 = i1 + setup.ni
                 if domain_comm.rank == 0:
-                    kpt.P_ani[a] = P_ni[n0::nstride, i1:i2].copy()
+                    kpt.P_ani[a] = P_ni[nslice, i1:i2].copy()
                 i1 = i2
 
     try:

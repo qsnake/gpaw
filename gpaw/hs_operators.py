@@ -8,9 +8,8 @@ from gpaw.utilities.blas import rk, r2k, gemm
 class Operator:
     nblocks = 1
     """Base class for overlap and hamiltonian operators."""
-    def __init__(self, band_comm, gd, nblocks=None):
-        self.band_comm = band_comm
-        self.domain_comm = gd.comm
+    def __init__(self, bd, gd, nblocks=None):
+        self.bd = bd
         self.gd = gd
         self.work1_xG = None
         self.work2_xG = None
@@ -20,7 +19,7 @@ class Operator:
             self.nblocks = nblocks
 
     def allocate_work_arrays(self, mynbands, dtype):
-        ngroups = self.band_comm.size
+        ngroups = self.bd.comm.size
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
@@ -37,7 +36,7 @@ class Operator:
         self.A_nn = np.zeros((nbands, nbands), dtype)
 
     def estimate_memory(self, mem, mynbands, dtype):
-        ngroups = self.band_comm.size
+        ngroups = self.bd.comm.size
         gdbytes = self.gd.bytecount(dtype)
         # Code semipasted from allocate_work_arrays
         if ngroups == 1 and self.nblocks == 1:
@@ -82,8 +81,9 @@ class Operator:
 
         """
 
-        bcomm = self.band_comm
-        B = bcomm.size
+        band_comm = self.bd.comm
+        domain_comm = self.gd.comm
+        B = band_comm.size
         J = self.nblocks
         N = len(psit_nG)  # mynbands
         dv = self.gd.dv
@@ -110,14 +110,14 @@ class Operator:
                 r2k(0.5 * dv, psit_nG, Apsit_nG, 0.0, A_NN)
             for a, P_ni in P_ani.items():
                 gemm(1.0, P_ni, dAP_ani[a], 1.0, A_NN, 'c')
-            self.domain_comm.sum(A_NN, 0)
+            domain_comm.sum(A_NN, 0)
             return A_NN
         
         # Now it gets nasty!  We parallelize over B groups of bands
         # and each group is blocked in J blocks.
 
         Q = B // 2 + 1
-        rank = bcomm.rank
+        rank = band_comm.rank
         rankm = (rank - 1) % B
         rankp = (rank + 1) % B
         M = N // J
@@ -137,8 +137,8 @@ class Operator:
                 A_nn = A_qnn[q]
                 A_mn = A_nn[n1:n2]
                 if q < Q - 1:
-                    sreq = bcomm.send(sbuf_mG, rankm, 11, False)
-                    rreq = bcomm.receive(rbuf_mG, rankp, 11, False)
+                    sreq = band_comm.send(sbuf_mG, rankm, 11, False)
+                    rreq = band_comm.receive(rbuf_mG, rankp, 11, False)
                 if j == J - 1 and P_ani:
                     if q == 0:
                         sbuf_In = np.concatenate([dAP_ani[a].T
@@ -146,8 +146,8 @@ class Operator:
                         if B > 1:
                             rbuf_In = np.empty_like(sbuf_In)
                     if q < Q - 1:
-                        sreq2 = bcomm.send(sbuf_In, rankm, 31, False)
-                        rreq2 = bcomm.receive(rbuf_In, rankp, 31, False)
+                        sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
+                        rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
 
                 if q > 0:
                     gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
@@ -173,35 +173,35 @@ class Operator:
                     break
 
                 if j == J - 1 and P_ani:
-                    bcomm.wait(sreq2)
-                    bcomm.wait(rreq2)
+                    band_comm.wait(sreq2)
+                    band_comm.wait(rreq2)
                     sbuf_In, rbuf_In = rbuf_In, sbuf_In
 
-                bcomm.wait(sreq)
-                bcomm.wait(rreq)
+                band_comm.wait(sreq)
+                band_comm.wait(rreq)
 
                 if q == 0:
                     sbuf_mG = self.work1_xG[:M]
                 sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
 
-        self.domain_comm.sum(A_qnn, 0)
+        domain_comm.sum(A_qnn, 0)
 
         if B == 1:
             return A_NN
 
         A_bnbn = A_NN.reshape((B, N, B, N))
-        if self.domain_comm.rank == 0:
+        if domain_comm.rank == 0:
             if rank == 0:
                 A_bnbn[:Q, :, 0] = A_qnn
                 for q1 in range(1, B):
-                    bcomm.receive(A_qnn, q1, 13)
+                    band_comm.receive(A_qnn, q1, 13)
                     for q2 in range(Q):
                         if q1 + q2 < B:
                             A_bnbn[q1 + q2, :, q1] = A_qnn[q2]
                         else:
                             A_bnbn[q1, :, q1 + q2 - B] = A_qnn[q2].T
             else:
-                bcomm.send(A_qnn, 0, 13)
+                band_comm.send(A_qnn, 0, 13)
         return A_NN
         
     def matrix_multiply(self, C_nn, psit_nG, P_ani=None):
@@ -217,8 +217,8 @@ class Operator:
 
         """
 
-        bcomm = self.band_comm
-        B = bcomm.size
+        band_comm = self.bd.comm
+        B = band_comm.size
         J = self.nblocks
 
         if B == 1 and J == 1:
@@ -234,7 +234,7 @@ class Operator:
         # Now it gets nasty!  We parallelize over B groups of bands
         # and each group is blocked in J blocks.
 
-        rank = bcomm.rank
+        rank = band_comm.rank
         rankm = (rank - 1) % B
         rankp = (rank + 1) % B
         N = len(psit_nG)       # mynbands
@@ -264,11 +264,11 @@ class Operator:
                     if B > 1:
                         rbuf_In = np.empty_like(sbuf_In)
                     if q < B - 1:
-                        sreq2 = bcomm.send(sbuf_In, rankm, 31, False)
-                        rreq2 = bcomm.receive(rbuf_In, rankp, 31, False)
+                        sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
+                        rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
                 if q < B - 1:
-                    sreq = bcomm.send(sbuf_ng, rankm, 61, False)
-                    rreq = bcomm.receive(rbuf_ng, rankp, 61, False)
+                    sreq = band_comm.send(sbuf_ng, rankm, 61, False)
+                    rreq = band_comm.receive(rbuf_ng, rankp, 61, False)
                 C_mm = C_bnbn[rank, :, (rank + q) % B]
                 gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
                 if j == 0 and P_ani:
@@ -282,13 +282,13 @@ class Operator:
                     break
                 
                 if j == 0 and P_ani:
-                    bcomm.wait(sreq2)
-                    bcomm.wait(rreq2)
+                    band_comm.wait(sreq2)
+                    band_comm.wait(rreq2)
                     sbuf_In, rbuf_In = rbuf_In, sbuf_In
 
                 beta = 1.0
-                bcomm.wait(rreq)
-                bcomm.wait(sreq)
+                band_comm.wait(rreq)
+                band_comm.wait(sreq)
                 sbuf_ng, rbuf_ng = rbuf_ng, sbuf_ng
 
         psit_nG.shape = shape

@@ -85,8 +85,8 @@ class RMM_DIIS2(Eigensolver):
             axpy(-kpt.eps_n[n], self.work[1], dR_G)
 
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
-            RdR = self.comm.sum(real(npy.vdot(R_G, dR_G)))
-            dRdR = self.comm.sum(real(npy.vdot(dR_G, dR_G)))
+            RdR = self.gd.comm.sum(real(npy.vdot(R_G, dR_G)))
+            dRdR = self.gd.comm.sum(real(npy.vdot(dR_G, dR_G)))
             lam = -RdR / dRdR
 
             # Calculate new psi'_G = psi_G + lam pR_G + lam pR'_G
@@ -107,6 +107,6 @@ class RMM_DIIS2(Eigensolver):
         overlap.orthonormalize(kpt.psit_nG, kpt, self.work, self.S_nn)
      
      
-        error = self.comm.sum(error)
+        error = self.gd.comm.sum(error)
         return error
     

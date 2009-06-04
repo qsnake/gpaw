@@ -1823,20 +1823,29 @@ class GPAWTransport:
         if parsize_bands is None:
             parsize_bands = par.parsize_bands
 
+        # TODO delete/restructure so all checks are in BandDescriptor
         if nbands % parsize_bands != 0:
             raise RuntimeError('Cannot distribute %d bands to %d processors' %
                                (nbands, parsize_bands))
-        mynbands = nbands // parsize_bands
         
         if not calc.wfs:
             domain_comm, kpt_comm, band_comm = distribute_cpus(parsize,
                 parsize_bands, nspins, len(ibzk_kc), world)
 
+            if calc.bd is not None and calc.bd.comm.size != band_comm.size:
+                # Band grouping has changed, so we need to
+                # reinitialize - err what exactly? WaveFunctions? XXX
+                raise NotImplementedError('Band communicator size changed.')
+
+            # Construct grid descriptor for coarse grids for wave functions:
+            from gpaw.band_descriptor import BandDescriptor
+            calc.bd = BandDescriptor(nbands, band_comm, par.parstride_bands)
+
             if calc.gd is not None and calc.gd.comm.size != domain_comm.size:
                 # Domain decomposition has changed, so we need to
                 # reinitialize density and hamiltonian:
-                self.density = None
-                self.hamiltonian = None
+                calc.density = None
+                calc.hamiltonian = None
 
             # Construct grid descriptor for coarse grids for wave functions:
             from gpaw.grid_descriptor import GridDescriptor
@@ -1844,9 +1853,8 @@ class GPAWTransport:
 
             # do k-point analysis here? XXX
 
-            args = (calc.gd, nspins, setups,
-                    nbands, mynbands,
-                    dtype, world, kpt_comm, band_comm,
+            args = (calc.gd, nspins, setups, calc.bd,
+                    dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry)
             from gpaw.wavefunctions import LCAOWaveFunctions
             calc.wfs = LCAOWaveFunctions(*args)

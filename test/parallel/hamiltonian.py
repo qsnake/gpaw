@@ -2,6 +2,7 @@ from time import time
 import sys
 import numpy as np
 from gpaw import parsize, parsize_bands
+from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.mpi import world
 from gpaw.utilities.lapack import inverse_cholesky
@@ -35,7 +36,8 @@ r = world.rank // D * D
 domain_comm = world.new_communicator(np.arange(r, r + D))
 band_comm = world.new_communicator(np.arange(world.rank % D, world.size, D))
 
-# Set up grid descriptor:
+# Set up band and grid descriptors:
+bd = BandDescriptor(N, band_comm, False)
 gd = GridDescriptor((G, G, G), (a, a, a), True, domain_comm, parsize)
 
 # Random wave functions:
@@ -53,7 +55,7 @@ vt_G = gd.empty()
 vt_G.fill(0.567)
 
 def run(psit_mG):
-    overlap = Operator(band_comm, gd, J)
+    overlap = Operator(bd, gd, J)
     def H(psit_xG):
         kin(psit_xG, overlap.work1_xG[:M // J])
         for psit_G, y_G in zip(psit_xG, overlap.work1_xG):

@@ -28,8 +28,8 @@ class Eigensolver:
         self.kpt_comm = wfs.kpt_comm
         self.band_comm = wfs.band_comm
         self.dtype = wfs.dtype
+        self.bd = wfs.bd
         self.gd = wfs.gd
-        self.comm = wfs.gd.comm
         self.nbands = wfs.nbands
         self.mynbands = wfs.mynbands
 
@@ -141,6 +141,9 @@ class Eigensolver:
         *P_uni* are already calculated.
         """
 
+        if self.band_comm.size > 1 and wfs.bd.strided:
+            raise NotImplementedError
+
         self.timer.start('Subspace diag.')
 
         psit_nG = kpt.psit_nG
@@ -181,7 +184,7 @@ class Eigensolver:
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
         else:
-            if self.comm.rank == 0:
+            if self.gd.comm.rank == 0:
                 if self.band_comm.rank == 0:
                     info = diagonalize(H_nn, self.eps_n)
                     if info != 0:
@@ -189,15 +192,15 @@ class Eigensolver:
                                            info)
         self.timer.stop(dsyev_zheev_string)
 
-        if self.comm.rank == 0:
-            self.band_comm.scatter(self.eps_n, kpt.eps_n, 0)
+        if self.gd.comm.rank == 0:
+            self.bd.distribute(self.eps_n, kpt.eps_n)
             self.band_comm.broadcast(H_nn, 0)
 
         U_nn = H_nn
         del H_nn
 
-        self.comm.broadcast(U_nn, 0)
-        self.comm.broadcast(kpt.eps_n, 0)
+        self.gd.comm.broadcast(U_nn, 0)
+        self.gd.comm.broadcast(kpt.eps_n, 0)
 
         if not rotate:
             self.timer.stop('Subspace diag.')

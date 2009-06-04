@@ -83,8 +83,8 @@ class RMM_DIIS(Eigensolver):
                 pR_G, dR_G, kpt, n1)
             
             # Find lam that minimizes the norm of R'_G = R_G + lam dR_G
-            RdR = self.comm.sum(np.vdot(R_G, dR_G).real)
-            dRdR = self.comm.sum(np.vdot(dR_G, dR_G).real)
+            RdR = self.gd.comm.sum(np.vdot(R_G, dR_G).real)
+            dRdR = self.gd.comm.sum(np.vdot(dR_G, dR_G).real)
 
             lam = -RdR / dRdR
             # Calculate new psi'_G = psi_G + lam pR_G + lam pR'_G
@@ -95,6 +95,6 @@ class RMM_DIIS(Eigensolver):
                                                    kpt.psit_nG[n1])
             
         self.timer.stop('RMM-DIIS')
-        error = self.comm.sum(error)
+        error = self.gd.comm.sum(error)
         return error
     

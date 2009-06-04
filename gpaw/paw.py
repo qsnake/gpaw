@@ -17,6 +17,7 @@ import gpaw.occupations as occupations
 from gpaw import dry_run, KohnShamConvergenceError
 from gpaw.density import Density
 from gpaw.eigensolvers import get_eigensolver
+from gpaw.band_descriptor import BandDescriptor
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.hamiltonian import Hamiltonian
 from gpaw.utilities.timing import Timer
@@ -71,6 +72,7 @@ class PAW(PAWTextOutput):
         self.density = None
         self.hamiltonian = None
         self.atoms = None
+        self.bd = None
         self.gd = None
         self.finegd = None
 
@@ -84,6 +86,8 @@ class PAW(PAWTextOutput):
             self.input_parameters.idiotproof = kwargs.pop('idiotproof', True)
             self.input_parameters.parsize = kwargs.pop('parsize', None)
             self.input_parameters.parsize_bands = kwargs.pop('parsize_bands', 1)
+            self.input_parameters.parstride_bands = \
+                kwargs.pop('parstride_bands', False)
             self.initialize()
             self.read(reader)
             
@@ -138,8 +142,8 @@ class PAW(PAWTextOutput):
             elif key in ['kpts', 'nbands']:
                 self.wfs = EmptyWaveFunctions()
                 self.occupations = None
-            elif key in ['h', 'gpts', 'setups', 'spinpol',
-                         'usesymm', 'parsize', 'parsize_bands',
+            elif key in ['h', 'gpts', 'setups', 'spinpol', 'usesymm',
+                         'parsize', 'parsize_bands', 'parstride_bands',
                          'communicator']:
                 self.density = None
                 self.occupations = None
@@ -396,11 +400,6 @@ class PAW(PAWTextOutput):
         if parsize_bands is None:
             parsize_bands = par.parsize_bands
 
-        if nbands % parsize_bands != 0:
-            raise RuntimeError('Cannot distribute %d bands to %d processors' %
-                               (nbands, parsize_bands))
-        mynbands = nbands // parsize_bands
-
         cc = par.convergence
 
         # Number of bands to converge:
@@ -421,10 +420,23 @@ class PAW(PAWTextOutput):
                                            cc['density'] * nvalence,
                                            par.maxiter, par.fixdensity,
                                            niter_fixdensity)
-        
+
+        # TODO delete/restructure so all checks are in BandDescriptor
+        if nbands % parsize_bands != 0:
+            raise RuntimeError('Cannot distribute %d bands to %d processors' %
+                               (nbands, parsize_bands))
+
         if not self.wfs:
             domain_comm, kpt_comm, band_comm = mpi.distribute_cpus(parsize,
                 parsize_bands, nspins, len(ibzk_kc), world)
+
+            if self.bd is not None and self.bd.comm.size != band_comm.size:
+                # Band grouping has changed, so we need to
+                # reinitialize - err what exactly? WaveFunctions? XXX
+                raise NotImplementedError('Band communicator size changed.')
+
+            # Construct grid descriptor for coarse grids for wave functions:
+            self.bd = BandDescriptor(nbands, band_comm, par.parstride_bands)
 
             if self.gd is not None and self.gd.comm.size != domain_comm.size:
                 # Domain decomposition has changed, so we need to
@@ -440,9 +452,8 @@ class PAW(PAWTextOutput):
 
             # do k-point analysis here? XXX
 
-            args = (self.gd, nspins, setups,
-                    nbands, mynbands,
-                    dtype, world, kpt_comm, band_comm,
+            args = (self.gd, nspins, setups, self.bd,
+                    dtype, world, kpt_comm,
                     gamma, bzk_kc, ibzk_kc, weight_k, symmetry, self.timer)
             if par.mode == 'lcao':
                 self.wfs = LCAOWaveFunctions(*args)

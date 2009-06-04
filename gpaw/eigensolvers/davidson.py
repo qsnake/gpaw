@@ -89,7 +89,7 @@ class Davidson(Eigensolver):
                 dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
                 self.H_nn += np.dot(P2_ni, np.dot(dH_ii, P_ni.T.conj()))
 
-            self.comm.sum(self.H_nn, 0)
+            self.gd.comm.sum(self.H_nn, 0)
             H_2n2n[nbands:, :nbands] = self.H_nn
 
             # <psi2 | H | psi2>
@@ -98,7 +98,7 @@ class Davidson(Eigensolver):
                 dH_ii = unpack(hamiltonian.dH_asp[a][kpt.s])
                 self.H_nn += np.dot(P2_ni, np.dot(dH_ii, P2_ni.T.conj()))
 
-            self.comm.sum(self.H_nn, 0)
+            self.gd.comm.sum(self.H_nn, 0)
             H_2n2n[nbands:, nbands:] = self.H_nn
 
             # Overlap matrix
@@ -110,7 +110,7 @@ class Davidson(Eigensolver):
                 dO_ii = wfs.setups[a].O_ii
                 self.S_nn += np.dot(P2_ni, np.inner(dO_ii, P_ni.conj()))
 
-            self.comm.sum(self.S_nn, 0)
+            self.gd.comm.sum(self.S_nn, 0)
             S_2n2n[nbands:, :nbands] = self.S_nn
 
             # <psi2 | S | psi2>
@@ -119,16 +119,16 @@ class Davidson(Eigensolver):
                 dO_ii = wfs.setups[a].O_ii
                 self.S_nn += np.dot(P2_ni, np.dot(dO_ii, P2_ni.T.conj()))
 
-            self.comm.sum(self.S_nn, 0)
+            self.gd.comm.sum(self.S_nn, 0)
             S_2n2n[nbands:, nbands:] = self.S_nn
 
-            if self.comm.rank == 0:
+            if self.gd.comm.rank == 0:
                 info = diagonalize(H_2n2n, eps_2n, S_2n2n)
                 if info != 0:
                     raise RuntimeError, 'Very Bad!!'
 
-            self.comm.broadcast(H_2n2n, 0)
-            self.comm.broadcast(eps_2n, 0)
+            self.gd.comm.broadcast(H_2n2n, 0)
+            self.gd.comm.broadcast(eps_2n, 0)
 
             kpt.eps_n[:] = eps_2n[:nbands]
 
@@ -153,7 +153,7 @@ class Davidson(Eigensolver):
                 self.calculate_residuals2(wfs, hamiltonian, kpt, R_nG)
 
         self.timer.stop('Davidson')
-        error = self.comm.sum(error)
+        error = self.gd.comm.sum(error)
         return error
 
     
