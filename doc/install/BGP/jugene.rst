@@ -20,7 +20,13 @@ After that, numpy can be installed to $HOME/python as::
 
 In order to build GPAW, use the following customize.py::
 
+ scalapack = True
+
  libraries = [
+            'scalapack',
+            'blacsCinit',
+            'blacsF77init',
+            'blacs',
             'lapack',
             'esslbg',
              'xl',
