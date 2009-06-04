@@ -202,7 +202,7 @@ def _gemmdot(a, b, alpha=1.0, trans='n'):
     if trans == 'n':
         if isvector:
             b = b.reshape(-1, 1)
-        c = npy.zeros((a.shape[0], b.shape[1]), float)
+        c = npy.zeros((a.shape[0], b.shape[1]), a.dtype)
     else: # 't' or 'c'
         if isvector:
             b = b.reshape(1, -1)
@@ -258,10 +258,8 @@ else:
         assert a.ndim == 2
         assert 1 <= b.ndim <= 2
         if trans == 'n':
-            assert a.dtype == float
             assert a.shape[1] == b.shape[0]
         elif trans == 't':
-            assert a.dtype == float
             assert a.shape[1] == b.shape[-1]
         else: # 'c'
             assert a.dtype == complex
