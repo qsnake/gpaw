@@ -42,7 +42,8 @@ def initialize_text_stream(txt, rank, old_txt=None):
                 # that the ase.io.read() function will recognize
                 # it as a GPAW text file.
                 firsttime = True
-            return open(txt, 'w'), firsttime
+            # Open the file line buffered.
+            return open(txt, 'w', 1), firsttime
     else:
         assert hasattr(txt, 'write'), 'Not a stream object!'
         return txt, firsttime

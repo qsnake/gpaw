@@ -223,3 +223,10 @@ if profile:
             prof.dump_stats(filename + '.%04d' % rank)
     atexit.register(f, prof, profile)
     prof.enable()
+
+
+# Shut down all MPI tasks if one of them crash
+from gpaw.mpi import parallel
+if parallel:
+    import ase.parallel
+    ase.parallel.register_parallel_cleanup_function()
