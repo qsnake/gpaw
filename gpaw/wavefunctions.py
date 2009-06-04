@@ -401,7 +401,7 @@ class WaveFunctions(EmptyWaveFunctions):
 
 
 from gpaw.lcao.overlap import TwoCenterIntegrals
-from gpaw.utilities.blas import gemm
+from gpaw.utilities.blas import gemm, gemmdot
 if extra_parameters.get('blacs'):
     from gpaw.lcao.overlap import BlacsTwoCenterIntegrals as TwoCenterIntegrals
 
@@ -573,14 +573,6 @@ class LCAOWaveFunctions(WaveFunctions):
         basis_functions = self.basis_functions
         my_atom_indices = basis_functions.my_atom_indices
         atom_indices = basis_functions.atom_indices        
-        
-        def gemmdot(a_ik, b_kj):
-            assert a_ik.flags.contiguous
-            assert b_kj.flags.contiguous
-            assert a_ik.dtype == b_kj.dtype
-            c_ij = np.zeros((a_ik.shape[0], b_kj.shape[-1]), a_ik.dtype)
-            gemm(1.0, b_kj, a_ik, 0.0, c_ij, 'n')
-            return c_ij
         
         def _slices(indices):
             for a in indices:

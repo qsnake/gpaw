@@ -202,15 +202,17 @@ def _gemmdot(a, b, alpha=1.0, trans='n'):
     if trans == 'n':
         if isvector:
             b = b.reshape(-1, 1)
-        c = npy.zeros((a.shape[0], b.shape[1]), a.dtype)
+        shape = a.shape[0], b.shape[1]
     else: # 't' or 'c'
         if isvector:
             b = b.reshape(1, -1)
-        c = npy.zeros((a.shape[0], b.shape[0]), a.dtype)
+        shape = a.shape[0], b.shape[0]
+
     # (ATLAS can't handle uninitialized output array)
+    c = npy.zeros(shape, a.dtype)
     gemm(alpha, b, a, 0.0, c, trans)
     if isvector:
-        c = c.reshape(c.shape[0])
+        c = c.reshape(shape[0])
     return c
 
 
@@ -262,7 +264,6 @@ else:
         elif trans == 't':
             assert a.shape[1] == b.shape[-1]
         else: # 'c'
-            assert a.dtype == complex
             assert a.shape[1] == b.shape[-1]
         return _gemmdot(a, b, alpha, trans)
 

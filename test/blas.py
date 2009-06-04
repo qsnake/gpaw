@@ -1,32 +1,54 @@
 import numpy as np
-from gpaw.utilities.blas import gemm, axpy, r2k, rk, gemmdot, rotate
+from gpaw.utilities.blas import gemm, axpy, r2k, rk, gemmdot, rotate, dotc,dotu
+from gpaw.utilities.tools import tri2full
 
-a = np.arange(5 * 7, dtype=float).reshape(5, 7)
-b = np.arange(7, dtype=float)
+a = np.arange(5 * 7).reshape(5, 7) + 4.
+a2 = np.arange(3 * 7).reshape(3, 7) + 3.
+b = np.arange(7) - 2.
 
-ab_np = np.dot(a, b)
-a2_np = np.dot(a, a.T)
-b2_np = np.dot(b, b)
+# Check gemmdot with floats
+assert np.all(np.dot(a, b) == gemmdot(a, b))
+assert np.all(np.dot(a, a2.T) == gemmdot(a, a2, trans='t'))
+assert np.all(np.dot(a, a2.T) == gemmdot(a, a2, trans='c'))
+assert np.dot(b, b) == dotu(b, b)
 
-ab_blas = gemmdot(a, b)
-a2_blas = gemmdot(a, a, trans='t')
-b2_blas = gemmdot(b[None].copy(), b)
-
-assert np.all(ab_np == ab_blas)
-assert np.all(a2_np == a2_blas)
-assert np.all(b2_np == b2_blas)
-
+# Check gemmdot with complex arrays
 a = a * (2 + 1.j)
+a2 = a2 * (-1 + 3.j)
 b = b * (3 - 2.j)
+assert np.all(np.dot(a, b) == gemmdot(a, b))
+assert np.all(np.dot(a, a2.T) == gemmdot(a, a2, trans='t'))
+assert np.all(np.dot(a, a2.T.conj()) == gemmdot(a, a2, trans='c'))
+assert np.dot(b.conj(), b) == dotc(b, b)
+assert np.vdot(a, 5.j * a) == dotc(a, 5.j * a)
 
-ab_np = np.dot(a, b)
-a2_np = np.dot(a, a.T.conj())
-b2_np = np.dot(b, b.conj())
+# Check gemm for transa='n'
+a2 = np.arange(7 * 5 * 1 * 3).reshape(7, 5, 1, 3) * (-1. + 4.j) + 3.
+c = np.tensordot(a, a2, [[1], [0]])
+gemm(1., a2, a, -1., c, 'n')
+assert not c.any()
 
-ab_blas = gemmdot(a, b)
-a2_blas = gemmdot(a, a, trans='c')
-b2_blas = gemmdot(b[None].copy(), b, trans='c')
+# Check gemm for transa='c'
+a = np.arange(4 * 5 * 1 * 3).reshape(4, 5, 1, 3) * (3. - 2.j) + 4.
+c = np.tensordot(a, a2.conj(), [[1, 2, 3], [1, 2, 3]])
+gemm(1., a2, a, -1., c, 'c')
+assert not c.any()
 
-assert np.all(ab_np == ab_blas)
-assert np.all(a2_np == a2_blas)
-assert np.all(b2_np == b2_blas)
+# Check axpy
+c = 5.j * a
+axpy(-5.j, a, c)
+assert not c.any()
+
+# Check rk
+c = np.tensordot(a, a.conj(), [[1, 2, 3], [1, 2, 3]])
+rk(1., a, -1., c)
+tri2full(c)
+assert not c.any()
+
+# Check r2k
+a2 = 5. * a
+c = np.tensordot(a, a2.conj(), [[1, 2, 3], [1, 2, 3]])
+r2k(.5, a, a2, -1., c)
+tri2full(c)
+assert not c.any()
+

@@ -54,6 +54,7 @@ if len(tests) == 0:
         'cg2.py',
         'd2Excdn2.py',
         'test_dot.py',
+        'blas.py',
         'gp2.py',
         'non-periodic.py',
         'lf.py',
