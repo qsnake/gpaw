@@ -667,5 +667,4 @@ class Surrounding:
             charge = self.finegd.integrate(self.rhot_g) + self.charge
             if abs(charge) > self.charge_eps:
                 raise RuntimeError('Charge not conserved: excess=%.9f' %
-                                   charge)        
-                
+                                   charge)
