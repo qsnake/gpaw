@@ -7,6 +7,8 @@ Basic Linear Algebra Subroutines (BLAS)
 
 See also:
 http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
+and
+http://www.netlib.org/lapack/lug/node145.html
 """
 
 import numpy as npy
@@ -196,12 +198,18 @@ def _gemmdot(a, b, alpha=1.0, trans='n'):
     If trans='t'; b is replaced by its transpose.
     If trans='c'; b is replaced by its hermitian conjugate.
     """
+    isvector = False
+    if b.ndim == 1:
+        b = b.reshape(-1, 1)
+        isvector = True
     if trans == 'n':
         c = npy.zeros((a.shape[0], b.shape[1]), float)
     else: # 't' or 'c'
         c = npy.zeros((a.shape[0], b.shape[0]), a.dtype)
     # (ATLAS can't handle uninitialized output array)
     gemm(alpha, b, a, 0.0, c, trans)
+    if isvector:
+        c = c.reshape(c.shape[0])
     return c
 
 
@@ -246,15 +254,16 @@ else:
         assert a.flags.contiguous
         assert b.flags.contiguous
         assert a.dtype == b.dtype
-        assert a.ndim == b.ndim == 2
+        assert a.ndim == 2
+        assert 1 <= b.ndim <= 2
         if trans == 'n':
-            assert a.dtype is float
-            assert a.shape[0] == b.shape[1]
+            assert a.dtype == float
+            assert a.shape[1] == b.shape[0]
         elif trans == 't':
-            assert a.dtype is float
+            assert a.dtype == float
             assert a.shape[0] == b.shape[0]
         else: # 'c'
-            assert a.dtype is complex
+            assert a.dtype == complex
             assert a.shape[0] == b.shape[0]
         return _gemmdot(a, b, alpha, trans)
 

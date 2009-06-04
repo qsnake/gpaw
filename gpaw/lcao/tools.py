@@ -59,7 +59,7 @@ def remove_pbc(atoms, h, s=None, d=0):
     cutoff = atoms.get_cell()[d, d] * 0.5
     pos_i = get_bf_centers(atoms)[:, d]
     for i in range(nao):
-        dpos_i = np.absolute(pos_i - pos_i[i])
+        dpos_i = abs(pos_i - pos_i[i])
         mask_i = (dpos_i < cutoff).astype(int)
         h[i, :] = h[i, :] * mask_i
         h[:, i] = h[:, i] * mask_i
