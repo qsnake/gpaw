@@ -195,7 +195,7 @@ def get_system_config(define_macros, undef_macros,
             #extra_link_args += ['-Wl,-rpath=' + library_dirs[-1]]
         else:
             atlas = False
-            for dir in ['/usr/lib', 'usr/local/lib']:
+            for dir in ['/usr/lib', '/usr/local/lib']:
                 if glob(join(dir, 'libatlas.a')) != []:
                     atlas = True
                     break
