@@ -226,7 +226,7 @@ class LCAO:
             if info != 0:
                 raise RuntimeError('Failed to diagonalize: info=%d' % info)
         else:
-            if self.comm.rank == 0:
+            if self.gd.comm.rank == 0:
                 eps_q[0] = 42
                 info = diagonalize(H_qq, eps_q, S_qq)
                 assert eps_q[0] != 42
@@ -235,8 +235,8 @@ class LCAO:
 
         self.timer.stop(dsyev_zheev_string)
 
-        self.comm.broadcast(eps_q, 0)
-        self.comm.broadcast(H_qq, 0)
+        self.gd.comm.broadcast(eps_q, 0)
+        self.gd.comm.broadcast(H_qq, 0)
 
         C_nq = H_qq
         C_nM = np.dot(C_nq, P_Mq.T.conj())
@@ -258,7 +258,7 @@ class LCAO:
 
             self.timer.start(dsyev_zheev_string)
 
-            if self.comm.rank == 0:
+            if self.gd.comm.rank == 0:
                 p_M[0] = 42
                 info = diagonalize(P_MM, p_M)
                 assert p_M[0] != 42
@@ -267,8 +267,8 @@ class LCAO:
 
             self.timer.stop(dsyev_zheev_string)
 
-            self.comm.broadcast(P_MM, 0)
-            self.comm.broadcast(p_M, 0)
+            self.gd.comm.broadcast(P_MM, 0)
+            self.gd.comm.broadcast(p_M, 0)
 
             self.thres = 1e-6
             if (p_M <= self.thres).any():
