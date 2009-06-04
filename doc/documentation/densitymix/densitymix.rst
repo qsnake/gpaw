@@ -15,7 +15,7 @@ The density is updated using Pulay-mixing [#Pulay1980]_, [#Kresse1996]_.
 
 Pulay mixing (or direct inversion of the iterative subspace (DIIS))
 attempts to find a good approximation of the final solution as a
-linear combination of a set of trial vector `\{n^i\}` generated during
+linear combination of a set of trial vectors `\{n^i\}` generated during
 an iterative solution of a problem. If the error associated with a
 given solution is given as `\{R^i\}` then Pulay mixing assumes that
 the error of a linear combination of the trail vectors is given as the
