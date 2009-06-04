@@ -198,13 +198,14 @@ def _gemmdot(a, b, alpha=1.0, trans='n'):
     If trans='t'; b is replaced by its transpose.
     If trans='c'; b is replaced by its hermitian conjugate.
     """
-    isvector = False
-    if b.ndim == 1:
-        b = b.reshape(-1, 1)
-        isvector = True
+    isvector = b.ndim == 1
     if trans == 'n':
+        if isvector:
+            b = b.reshape(-1, 1)
         c = npy.zeros((a.shape[0], b.shape[1]), float)
     else: # 't' or 'c'
+        if isvector:
+            b = b.reshape(1, -1)
         c = npy.zeros((a.shape[0], b.shape[0]), a.dtype)
     # (ATLAS can't handle uninitialized output array)
     gemm(alpha, b, a, 0.0, c, trans)
@@ -261,10 +262,10 @@ else:
             assert a.shape[1] == b.shape[0]
         elif trans == 't':
             assert a.dtype == float
-            assert a.shape[0] == b.shape[0]
+            assert a.shape[1] == b.shape[-1]
         else: # 'c'
             assert a.dtype == complex
-            assert a.shape[0] == b.shape[0]
+            assert a.shape[1] == b.shape[-1]
         return _gemmdot(a, b, alpha, trans)
 
     def rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
