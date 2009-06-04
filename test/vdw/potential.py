@@ -7,6 +7,7 @@ from gpaw.xc_functional import XC3DGrid, XCRadialGrid
 import numpy as np
 from gpaw.utilities import equal
 from gpaw.vdw import FFTVDWFunctional
+from gpaw.mpi import world
 
 N = 8
 a = 2.0
@@ -57,6 +58,6 @@ def polarized():
     print i, x, x2, x - x2, x / x2
     equal(x, x2, 1e-10)
 
-if 'GPAW_VDW' in os.environ:
+if 'GPAW_VDW' in os.environ and world.size == 1:
     paired()
     polarized()
