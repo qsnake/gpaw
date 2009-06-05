@@ -227,6 +227,6 @@ if profile:
 
 # Shut down all MPI tasks if one of them crash
 from gpaw.mpi import parallel
-if parallel:
+if 0:#parallel:
     import ase.parallel
     ase.parallel.register_parallel_cleanup_function()
