@@ -485,13 +485,20 @@ class LCAOWaveFunctions(WaveFunctions):
         hamiltonian.update(density)
 
     def calculate_density_matrix(self, f_n, C_nM, rho_MM):
-        # XXX Should not conjugate, but call gemm(..., 'c')
-        # Although that requires knowing C_Mn and not C_nM.
-        # (that also conforms better to the usual conventions in literature)
-        Cf_Mn = C_nM.T.conj() * f_n
         # ATLAS can't handle uninitialized output array:
         rho_MM.fill(42)
-        gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
+
+        if 1:
+            # XXX Should not conjugate, but call gemm(..., 'c')
+            # Although that requires knowing C_Mn and not C_nM.
+            # that also conforms better to the usual conventions in literature
+            Cf_Mn = C_nM.T.conj() * f_n
+            gemm(1.0, C_nM, Cf_Mn, 0.0, rho_MM, 'n')
+        else:
+            # Alternative suggestion. Might be faster. Someone should test this
+            C_Mn = C_nM.T.copy()
+            r2k(0.5, C_Mn, f_n * C_Mn, 0.0, rho_MM)
+            tri2full(rho_MM)
 
     def add_to_density_from_k_point_with_occupation(self, nt_sG, kpt, f_n):
         """Add contribution to pseudo electron-density. Do not use the standard
@@ -906,6 +913,12 @@ class GridWaveFunctions(WaveFunctions):
         else:
             for f, psit_G in zip(f_n, kpt.psit_nG):
                 nt_G += f * (psit_G * psit_G.conj()).real
+        if 0:
+            # XXX Alternative suggestion.
+            # Might be faster. Someone should test this.
+            nt_G = nt_G.reshape(1, -1)
+            f_n = f_n.reshape(1, -1)
+            gemm(1.0, abs(psit_nG)**2, f_n, 1.0, nt_G, 'n')
 
         # Hack used in delta-scf calculations:
         if hasattr(kpt, 'c_on'):
