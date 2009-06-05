@@ -2,6 +2,7 @@
 # Emacs: treat this as -*- python -*-
 
 import os
+import stat
 import sys
 import re
 from optparse import OptionParser
@@ -26,7 +27,9 @@ hosts = { 'batman'             : 'pbs_batman',
           'louhi'              : 'louhi',
           'opaali.phys.jyu.fi' : 'sge',
           'sepeli.csc.fi'      : 'sepeli',
-          'ui.bfg.uni'         : 'pbs_bfg'
+          'ui.bfg.uni'         : 'pbs_bfg',
+          'xc2n992'            : 'xc2',
+          'xc2n993'            : 'xc2'
           }
 
 platforms = { 'aix5' : 'loadleveler' }
@@ -94,7 +97,9 @@ def s_from_dhms(time):
             except:
                 raise RuntimeError, 'unknown format in timestring ' + time
     return seconds
-    
+
+def minutes(secs):
+    return int(secs // 60)
 def list_systems(obj):
     print "Allowed names are:"
     p = re.compile('__')
@@ -113,7 +118,8 @@ class RunScript:
         f = open(name,'w')
         call = "self."+set['qsys']+"(f,set,env)"
         eval(call)
-        f.close()
+        if not f.closed:
+            f.close()
         print name,"written"
 
     def loadleveler(self, f, set, env):
@@ -383,6 +389,27 @@ export LD_LIBRARY_PATH=$MPIHOME/lib64:$MPIHOME/lib:$LD_LIBRARY_PATH
 echo \"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\"
 """        
 
+    def xc2(self, f, set, env):
+        print >> f, '#!/bin/bash'
+        print >> f, 'cd', set['wd']
+        print >> f, 'export PYTHONPATH=$PYTHONPATH:' + env['PYTHONPATH']
+        print >> f, 'export GPAW_SETUP_PATH='+env['GPAW_SETUP_PATH']
+        print >> f, 'export GPAW_PYTHON='+env['GPAW_PYTHON']
+        print >> f, 'mpirun $GPAW_PYTHON', set['script']
+        f.close()
+        os.chmod(f.name, 0755)
+        if set['cores'] > 16 or set['mem']:
+            jobclass = 'p'
+        else:
+            jobclass = 'd'
+        if set['mem']:
+            mem = 5000
+        else:
+            mem = 2000
+        print 'use: job_submit -t', str(minutes(set['time'])),\
+              '-m ' + str(mem) +' -p', str(set['cores']), \
+              '-c ' + jobclass + ' run.xc2'
+
 # ............................................................
 # program
 
@@ -438,7 +465,7 @@ else:
     except:
         dummy, hostname = os.popen4('hostname -s')
         host = hostname.readline().split()
-        
+
     if hosts.has_key(host):
         set['qsys']=hosts[host]
         print 'hostname',host,'found,',
