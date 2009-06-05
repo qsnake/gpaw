@@ -294,7 +294,6 @@ class PoissonSolver:
 
 
 from numpy.fft import fftn, ifftn
-from gpaw.utilities.complex import real
 from gpaw.utilities.tools import construct_reciprocal
 
 
@@ -316,11 +315,11 @@ class PoissonFFTSolver(PoissonSolver):
             self.phi_gauss = gauss.get_gauss_pot(0)
 
     def solve_neutral(self, phi, rho, eps=None):
-        phi[:] = real(ifftn(fftn(rho) * 4 * pi / self.k2))
+        phi[:] = np.real(ifftn(fftn(rho) * 4 * pi / self.k2))
         return 1
 
     def solve_screened(self, phi, rho, screening=0):
-        phi[:] = real(ifftn(fftn(rho) * 4 * pi / (self.k2 + screening**2)))
+        phi[:] = np.real(ifftn(fftn(rho) * 4 * pi / (self.k2 + screening**2)))
         return 1
 
 
