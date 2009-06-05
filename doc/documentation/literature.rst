@@ -208,4 +208,11 @@ Interpretation of STM images with DFT calculations:
 
   __ http://dx.doi.org/10.1103/PhysRevLett.102.106102
 
-.. 13 March 2009
+  |
+  | X. Lin, N. Nilius, H.-J. Freund, M. Walter, P. Frondelius, K. Honkala, and H. Häkkinen
+  | `Quantum well states in two-dimensional gold clusters on MgO thin films`__  
+  | Physical Review Letters, Vol. **102**, 206801 (2009)
+
+  __ http://dx.doi.org/10.1103/PhysRevLett.102.206801
+
+.. 5 June 2009
