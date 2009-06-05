@@ -211,6 +211,7 @@ class BandDescriptor:
         A_nx = self.empty(xshape, a_nx.dtype, global_array=True)
         for band_rank in range(self.comm.size):
             if band_rank != 0:
+                a_nx = self.empty(xshape, a_nx.dtype, global_array=False)
                 self.comm.receive(a_nx, band_rank, 3011)
             A_nx[self.get_slice(band_rank), ...] = a_nx
 
