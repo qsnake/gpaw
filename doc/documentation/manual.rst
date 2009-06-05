@@ -514,7 +514,7 @@ The ``hund`` keyword can be used for single atoms only. If set to
 ``True``, the calculation will become spinpolarized, and the initial
 ocupations, and magnetic moment of the atom will be fixed to the value
 required by Hund's rule. Any user specified magnetic moment is
-ignored.
+ignored. Default is False.
 
 .. _manual_parallel_calculations:
 
