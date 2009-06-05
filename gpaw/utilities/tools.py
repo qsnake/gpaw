@@ -331,7 +331,7 @@ def md5_hash():
 md5 = md5_hash()
 
 def md5_array(data, decimals=None, numeric=False):
-    """Create MD5 hex digest from NumPy array. Optionally, will round of
+    """Create MD5 hex digest from NumPy array. Optionally, will round off
     the data before processing, and convert 128 bit hash to NumPy float.
     """
     if not isinstance(data, np.ndarray):
