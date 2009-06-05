@@ -916,7 +916,7 @@ class GridWaveFunctions(WaveFunctions):
         if 0:
             # XXX Alternative suggestion.
             # Might be faster. Someone should test this.
-            nt_G = nt_G.reshape(1, -1)
+            nt_G = nt_G.reshape((1,) + nt_G.shape)
             f_n = f_n.reshape(1, -1)
             gemm(1.0, abs(psit_nG)**2, f_n, 1.0, nt_G, 'n')
 
