@@ -290,10 +290,10 @@ class ApmB(OmegaMatrix):
         S = sqrt_matrix(inv(S).copy())
 
         # get Omega matrix
-        M = npy.empty(ApB.shape)
-        gemm(1., ApB, S, 0., M)
-        self.eigenvectors = npy.empty(ApB.shape)
-        gemm(1., S, M, 0., self.eigenvectors)
+        M = npy.zeros(ApB.shape)
+        gemm(1.0, ApB, S, 0.0, M)
+        self.eigenvectors = npy.zeros(ApB.shape)
+        gemm(1.0, S, M, 0.0, self.eigenvectors)
         
         self.eigenvalues = npy.zeros((len(kss)))
         self.kss = kss
