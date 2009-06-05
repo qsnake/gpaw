@@ -4,6 +4,7 @@
 
 import sys
 from subprocess import call
+from glob import glob
 
 args2change = {"-fno-strict-aliasing":"",
                "-fmessage-length=0":"",
@@ -25,23 +26,30 @@ args2change = {"-fno-strict-aliasing":"",
                "-O1":""}
 
 fragile_files = ["test.c"]
+non_c99files = glob('c/libxc/src/*.c')
 
 cmd = ""
-fragile = False
+opt = 1
 
 for arg in sys.argv[1:]:
     cmd += " "
     t = arg.strip()
     if t in fragile_files:
-        fragile = True
+        opt += 1
+    if t in non_c99files:
+        opt += 2
     if t in args2change:
         cmd += args2change[t]
     else:
         cmd += arg
-if fragile:
-    flags = "-O2 -std=c99 -fPIC -dynamic"
-else:
-    flags = "-O3 -std=c99 -fPIC -dynamic"
+
+flags_list = {1: "-O3 -g -std=c99 -fPIC -dynamic",
+              2: "-O2 -g -std=c99 -fPIC -dynamic",
+              3: "-O3 -g -fPIC -dynamic",
+              4: "-O2 -g -fPIC -dynamic",
+              }
+
+flags = flags_list[opt]     
 cmd = "mpicc %s %s"%(flags, cmd)
 
 print "\nexecmd: %s\n"%cmd
