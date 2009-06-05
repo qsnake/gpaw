@@ -6,7 +6,7 @@
 import os
 from math import sqrt
 
-import numpy as npy
+import numpy as np
 
 import _gpaw
 from gpaw import debug
@@ -17,7 +17,7 @@ utilities_vdot = _gpaw.utilities_vdot
 utilities_vdot_self = _gpaw.utilities_vdot_self
 
 
-erf = npy.vectorize(_gpaw.erf, (float,), 'Error function')
+erf = np.vectorize(_gpaw.erf, (float,), 'Error function')
 
 
 # Factorials:
@@ -37,11 +37,11 @@ def gcd(a, b):
 def contiguous(array, dtype):
     # XXX Use numpy.ascontiguousarray(array, dtype=None) instead!
     """Convert a sequence to a contiguous Numpy array."""
-    array = npy.asarray(array, dtype)
+    array = np.asarray(array, dtype)
     if array.flags.contiguous:
         return array
     else:
-        return npy.array(array)
+        return np.array(array)
 
 
 def is_contiguous(array, dtype=None):
@@ -136,7 +136,7 @@ def unpack(M):
     """Unpack 1D array to 2D, assuming a packing as in ``pack2``."""
     assert is_contiguous(M)
     n = int(sqrt(0.25 + 2.0 * len(M)))
-    M2 = npy.zeros((n, n), M.dtype.char)
+    M2 = np.zeros((n, n), M.dtype.char)
     if M.dtype.char == complex:
         _gpaw.unpack_complex(M, M2)
     else:
@@ -166,14 +166,14 @@ def pack(M2, tolerance=1e-10):
       M = (a00, a01 + a10*, a02 + a20*, a11, a12 + a21*, a22)
     """
     n = len(M2)
-    M = npy.zeros(n * (n + 1) // 2, M2.dtype.char)
+    M = np.zeros(n * (n + 1) // 2, M2.dtype.char)
     p = 0
     for r in range(n):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] = M2[r, c] + npy.conjugate(M2[c, r])
-            error = abs(M2[r, c] - npy.conjugate(M2[c, r]))
+            M[p] = M2[r, c] + np.conjugate(M2[c, r])
+            error = abs(M2[r, c] - np.conjugate(M2[c, r]))
             assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
             p += 1
     assert p == len(M)
@@ -183,14 +183,14 @@ def pack(M2, tolerance=1e-10):
 def pack2(M2, tolerance=1e-10):
     """Pack a 2D array to 1D, averaging offdiagonal terms."""
     n = len(M2)
-    M = npy.zeros(n * (n + 1) // 2, M2.dtype.char)
+    M = np.zeros(n * (n + 1) // 2, M2.dtype.char)
     p = 0
     for r in range(n):
         M[p] = M2[r, r]
         p += 1
         for c in range(r + 1, n):
-            M[p] = (M2[r, c] + npy.conjugate(M2[c, r])) / 2. # note / 2.
-            error = abs(M2[r, c] - npy.conjugate(M2[c, r]))
+            M[p] = (M2[r, c] + np.conjugate(M2[c, r])) / 2. # note / 2.
+            error = abs(M2[r, c] - np.conjugate(M2[c, r]))
             assert error < tolerance, 'Pack not symmetric by %s' % error + ' %'
             p += 1
     assert p == len(M)
@@ -207,7 +207,7 @@ def element_from_packed(M, i, j):
     elif i > j:
         return .5 * M[p]
     else:
-        return .5 * npy.conjugate(M[p])
+        return .5 * np.conjugate(M[p])
 
 
 def check_unit_cell(cell):
@@ -215,7 +215,7 @@ def check_unit_cell(cell):
     c = cell.copy()
     # Zero the diagonal:
     c.flat[::4] = 0.0
-    if npy.sometrue(c.flat):
+    if np.sometrue(c.flat):
         raise RuntimeError('Unit cell not orthorhombic')
     
 
@@ -329,7 +329,7 @@ def load_balance(paw, atoms):
     except SystemExit:
         pass
     spos_ac = paw.atoms.get_scaled_positions()
-    atoms_r = npy.zeros(paw.wfs.world.size)
+    atoms_r = np.zeros(paw.wfs.world.size)
     rnk_a = paw.gd.get_ranks_from_positions(spos_ac)
     for rnk in rnk_a:
         atoms_r[rnk] += 1
