@@ -151,6 +151,9 @@ number of old densities used, ``metric`` is either ``None`` or
 ``'new'`` as described in `Special Metrics`_, and ``weight`` is the
 weight used by the metric, if any.
 
+MixerDif seems to be a good choice for spin polarized
+molecules. MixerSum is sometimes better for bulk systems.
+
 
 References
 ----------
