@@ -166,8 +166,10 @@ class BasisPlotter:
 
         self.normalize = normalize
 
-    def plot(self, basis, filename=None):
+    def plot(self, basis, filename=None, **plot_args):
         import pylab # Should not import in module namespace
+        if plot_args is None:
+            plot_args = {}
         rc = basis.d * (basis.ng - 1)
         r_g = np.linspace(0., rc, basis.ng)
 
@@ -203,7 +205,8 @@ class BasisPlotter:
             y_g = bf.phit_g * factor[:bf.ng]
             if self.normalize:
                 y_g /= norm
-            pylab.plot(r_g[:bf.ng], y_g, label=bf.type[:12])
+            pylab.plot(r_g[:bf.ng], y_g, label=bf.type[:12],
+                       **plot_args)
         axis = pylab.axis()
         rc = max([bf.rc for bf in basis.bf_j])
         newaxis = [0., rc, axis[2], axis[3]]
