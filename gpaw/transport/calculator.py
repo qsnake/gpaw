@@ -23,6 +23,10 @@ from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.wavefunctions import LCAOWaveFunctions
 
+from pylab import *
+from mytools import plot_diag, tr, tw
+pd = plot_diag
+
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
@@ -287,8 +291,6 @@ class Transport(GPAW):
     def initialize_transport(self, dryrun=False, restart=True):
         if not self.initialized:
             self.initialize()
-            if not dryrun:
-                self.set_positions()
         self.nspins = self.wfs.nspins
 
         if self.LR_leads:
@@ -420,11 +422,16 @@ class Transport(GPAW):
                                         atoms=self.atoms,
                                         atoms_l=self.atoms_l,
                                         directions=['z-','z+'],
+                                        lead_index=self.lead_index,
                                         bias=self.bias)
             self.surround.initialize()
+        if not dryrun:
+            if not self.fixed:
+                self.set_positions()
+            else:
+                self.surround.set_positions()
         #del self.atoms_l
         #del self.atoms_e
-
         self.initialized_transport = True
 
     def get_lead_index(self):
@@ -1177,6 +1184,8 @@ class Transport(GPAW):
                                                               denocc[s, k])
                     self.d_spkmm[s, k, ind.T, ind] = (d_mm +
                                                       d_mm.T.conj()) / 2
+                    #del self.eqpathinfo[s][k][:]
+                    #del self.nepathinfo[s][k][:]
         else:
             for s in range(ns):
                 for k in range(self.my_npk):
@@ -1230,9 +1239,12 @@ class Transport(GPAW):
  
     def initialize_scf(self):
         bias = self.bias + self.env_bias
-        self.intctrl = IntCtrl(self.occupations.kT * Hartree,
-                                                        self.fermi, bias)
-        if self.fixed:
+        if not self.fixed:
+            self.intctrl = IntCtrl(self.occupations.kT * Hartree,
+                                                        self.lead_fermi, bias)
+        else:
+            self.intctrl = IntCtrl(self.occupations.kT * Hartree,
+                                                        self.lead_fermi, bias)            
             self.surround.reset_bias(bias) 
         self.initialize_green_function()
         self.calculate_integral_path()
@@ -1909,6 +1921,7 @@ class Transport(GPAW):
             #    density.normalize(comp_charge)
             #density.mix(comp_charge)
             pseudo_charge = density.gd.integrate(density.nt_sG).sum()
+            print pseudo_charge, world.rank, 'pseudo_charge'
             if pseudo_charge != 0:
                 x = -(density.charge + comp_charge) / pseudo_charge
                 print 'scaling', x
@@ -2837,8 +2850,8 @@ class Transport(GPAW):
             self.compare_step_data(step_data1, step_data2)
             
     def compare_step_data(self, step_data1, step_data2):
-        overview_d = 0
-        self.nspins = 1
+        overview_d = 1
+        self.nspins = 2
         sd = step_data1['t_dos']
         bias = step_data1['bias']
         import pylab
@@ -2905,7 +2918,7 @@ class Transport(GPAW):
             pylab.show()        
        
     def plot_step_data(self, step_data):
-        overview_d = 0
+        overview_d = 1
         self.nspins = 1
         #self.d = 0
         sd = step_data['t_dos']
