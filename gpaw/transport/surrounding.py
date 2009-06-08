@@ -7,12 +7,16 @@ from gpaw.lcao.overlap import TwoCenterIntegrals
 from gpaw.lfc import BasisFunctions, LFC
 from gpaw.transformers import Transformer
 from gpaw.xc_functional import XCFunctional, xcgrid
-from gpaw.transport.tools import tri2full
+from gpaw.transport.tools import tri2full, count_tkpts_num, substract_pk
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
 from gpaw.utilities import unpack
 from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
+
+from pylab import *
+from mytools import plot_diag, tr, tw
+pd = plot_diag
 
 class Side:
     def __init__(self, type, atoms, nn, direction='x+'):
@@ -37,7 +41,8 @@ class Side:
         self.abstract_boundary_vt_sG()
         self.abstract_boundary_nt_sg()
         self.abstract_boundary_nt_sG()            
-        self.get_inner_nt_sG()
+        #self.get_inner_nt_sG()
+        self.get_density_matrix()
 
     def abstract_boundary_vHt_g(self):
         vHt_g = self.atoms.calc.hamiltonian.vHt_g
@@ -63,7 +68,31 @@ class Side:
         nt_sG = self.atoms.calc.density.nt_sG
         nn = self.nn / 2
         self.boundary_nt_sG = self.slice(nn, nt_sG)
-       
+
+    def get_density_matrix(self):
+        calc = self.atoms.calc
+        gd = calc.gd
+        wfs = calc.wfs
+        nao = wfs.setups.nao
+        ns = wfs.nspins
+        kpts = wfs.ibzk_qc
+        nq = len(kpts)
+        self.d_skmm = np.empty([ns, nq, nao, nao], wfs.dtype)
+        for kpt in wfs.kpt_u:
+            wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM,
+                                            self.d_skmm[kpt.s, kpt.q])
+        self.index = {'x-':-1, 'x+':1, 'y-':-2, 'y+':2, 'z-':-3, 'z+': 3}  
+        di = abs(self.index[self.direction]) - 1
+        position = np.zeros(3)
+        position[di] = 1
+        ntk = count_tkpts_num(di, kpts)
+        npk = len(wfs.ibzk_kc) / ntk
+        my_npk = len(kpts) / ntk
+        self.d_skmm *= ntk * npk
+        self.d_spkmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h')
+        self.d_spkcmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h',
+                                     position)
+   
     def get_inner_nt_sG(self):
         calc = self.atoms.calc
         gd = calc.gd
@@ -183,6 +212,8 @@ class Surrounding:
             if key in ['directions']:
                 self.directions = sk['directions']
                 del self.gpw_kwargs['directions']
+            if key in ['lead_index']:
+                self.lead_index = sk['lead_index']
             if key in ['bias']:
                 self.bias = sk['bias']
                 del self.gpw_kwargs['bias']
@@ -198,6 +229,7 @@ class Surrounding:
             assert self.lead_num == len(self.directions)
             self.sides = {}
             self.bias_index = {}
+            self.side_basis_index = {}
             for i in range(self.lead_num):
                 direction = self.directions[i]
                 self.sides[direction] = Side('LR',
@@ -205,33 +237,36 @@ class Surrounding:
                                              self.nn,
                                              direction)
                 self.bias_index[direction] = self.bias[i]
+                self.side_basis_index[direction] = self.lead_index[i]                
             di = direction
             di = abs(self.sides_index[di]) - 1
 
             gd = self.atoms.calc.gd
+            domain_comm = gd.comm
             pbc = gd.pbc_c
             N_c = gd.N_c
             h_c = gd.h_c
-            dim = N_c[:]
+            dim = N_c.copy()
 
             dim[di] += self.nn
             self.cell = np.array(dim) * h_c
-            self.gd = GridDescriptor(dim, self.cell, pbc)
+            self.gd = GridDescriptor(dim, self.cell, pbc, domain_comm)
             
-            self.finegd = GridDescriptor(dim * 2, self.cell, pbc)
+            self.finegd = GridDescriptor(dim * 2, self.cell, pbc, domain_comm)
             scale = -0.25 / np.pi
             self.operator = Laplace(self.finegd, scale, n=1)
-            
             wfs = self.atoms.calc.wfs
             self.basis_functions = BasisFunctions(self.gd, 
                                                   [setup.phit_j
                                                    for setup in wfs.setups],
-                                                  None,
+                                                  wfs.kpt_comm,
                                                   cut=True)
             pos = self.atoms.positions.copy()
             for i in range(len(self.atoms)):
                 pos[i, di] += self.nn * h_c[di] * Bohr / 2
             spos_ac = np.linalg.solve(np.diag(self.cell) * Bohr, pos.T).T % 1.0
+            if not wfs.gamma:
+                self.basis_functions.set_k_points(wfs.ibzk_qc)            
             self.basis_functions.set_positions(spos_ac)
             stencil = self.atoms.calc.input_parameters.stencils[1]
             self.restrictor = Transformer(self.finegd, self.gd, stencil,
@@ -264,37 +299,54 @@ class Surrounding:
             import copy
             self.kpt_u = copy.deepcopy(wfs.kpt_u)
             self.get_extended_atoms()
-
             Za = self.extended_atoms.get_atomic_numbers()
             par = self.atoms.calc.input_parameters
             setups = Setups(Za, par.setups, par.basis,
                                            wfs.nspins, par.lmax, xcfunc)
-              
-            N_c = self.extend_cell // (self.gd.h_c)
-            gd = GridDescriptor(N_c,
-                                self.extend_cell / Bohr, self.extended_atoms._pbc)
-            # the spacing infomation self.gd.N_c here can be arbitary 
+
+            N_c = self.atoms.calc.gd.N_c.copy()
+            for i in range(self.lead_num):
+                N_c[di] += self.atoms_l[i].calc.gd.N_c[di]
+            self.extended_gd = GridDescriptor(N_c, self.extend_cell / Bohr,
+                                              self.extended_atoms._pbc,
+                                              domain_comm)
+            self.extended_basis_functions = BasisFunctions(self.extended_gd, 
+                                                  [setup.phit_j
+                                                   for setup in setups],
+                                                  wfs.kpt_comm,
+                                                  cut=True)
             
-            self.tci = TwoCenterIntegrals(gd, setups,
+            self.tci = TwoCenterIntegrals(self.extended_gd, setups,
                                                       wfs.gamma, wfs.ibzk_qc)
-            self.P_aqMi = {}
+            self.extended_setups = setups
+            self.extended_P_aqMi = {}
             nao = setups.nao
             S_qMM = np.empty((nq, nao, nao), wfs.dtype)
             T_qMM = np.empty((nq, nao, nao), wfs.dtype)
 
             for a in range(len(Za)):
                 ni = setups[a].ni
-                self.P_aqMi[a] = np.empty((nq, nao, ni), wfs.dtype)
+                self.extended_P_aqMi[a] = np.empty((nq, nao, ni), wfs.dtype)
             for kpt in self.kpt_u:
                 q = kpt.q
                 kpt.P_aMi = dict([(a, P_qMi[q])
-                                  for a, P_qMi in self.P_aqMi.items()])                
+                                for a, P_qMi in self.extended_P_aqMi.items()])                
             pos = self.extended_atoms.positions
             spos_ac = np.linalg.solve(np.diag(self.extend_cell),
                                                               pos.T).T % 1.0                
+            if not wfs.gamma:
+                self.extended_basis_functions.set_k_points(wfs.ibzk_qc)     
+            self.extended_basis_functions.set_positions(spos_ac)
             self.tci.set_positions(spos_ac)
-            self.tci.calculate(spos_ac, S_qMM, T_qMM, self.P_aqMi)
-            
+            self.tci.calculate(spos_ac, S_qMM, T_qMM, self.extended_P_aqMi)
+            self.extended_nct = LFC(self.extended_gd, [[setup.nct]
+                                                for setup in setups],
+                                                integral=[setup.Nct
+                                                for setup in setups],
+                                                forces=True, cut=True)
+            self.extended_nct.set_positions(spos_ac)
+            self.extended_nct_G = self.extended_gd.zeros()
+            self.extended_nct.add(self.extended_nct_G, 1.0 / self.nspins)                 
            
         elif self.type == 'all':
             self.sides = {}
@@ -386,7 +438,7 @@ class Surrounding:
             self.get_extended_cell()
             al_atoms.set_cell(self.extend_cell)
             al_atoms.set_pbc(self.atoms._pbc)
-            al_atoms._pbc[di] = True
+            #al_atoms._pbc[di] = True
             self.extended_atoms = al_atoms
   
     def calculate_sides(self):
@@ -462,7 +514,59 @@ class Surrounding:
                 sah_mm = sah_mm1 + sah_mm2        
                 self.sah_spkmm[s, q] = sah_mm[nao1: nao1 + nao0,
                                            nao1: nao1 + nao0].copy()
-        
+
+    def combine_streching_density(self):
+        if self.type == 'LR':
+            direction = self.directions[0][0]
+            di = abs(self.sides_index[direction + '-']) - 1
+            side1 = self.sides[direction + '-']
+            wfs = side1.atoms.calc.wfs
+            nao1 = wfs.setups.nao
+            ind1 = self.side_basis_index[direction + '-'] + nao1
+            dim = len(ind1)
+            ind1 = np.resize(ind1, [dim, dim])
+            nn1 = side1.atoms.calc.gd.N_c[di]
+
+            side2 = self.sides[direction + '+']
+            wfs = side2.atoms.calc.wfs
+            nao2 = wfs.setups.nao
+            ind2 = self.side_basis_index[direction + '+'] + nao1
+            dim = len(ind2)
+            ind2 = np.resize(ind2, [dim, dim])            
+            nn2 = side2.atoms.calc.gd.N_c[di]            
+            
+            wfs = self.atoms.calc.wfs
+            nao0 = wfs.setups.nao
+            nao = nao1 + nao2 + nao0
+            kpts = wfs.ibzk_qc
+            nq = len(kpts)
+            self.d_spkmm = np.zeros([self.nspins, nq, nao, nao], wfs.dtype)
+            self.extended_nt_sG = self.extended_gd.zeros(self.nspins)
+            for kpt in self.kpt_u:
+                s = kpt.s
+                q = kpt.q
+                self.d_spkmm[s, q, :nao1, :nao1] = side1.d_spkmm[s, q]
+                self.d_spkmm[s, q, -nao2:, -nao2:] = side2.d_spkmm[s, q]
+                
+                ind = np.arange(nao1)
+                dim = len(ind)
+                ind = np.resize(ind, [dim, dim])                
+                self.d_spkmm[s, q, ind.T, ind1] = side1.d_spkcmm[s, q]
+                self.d_spkmm[s, q, ind1.T, ind] = side1.d_spkcmm[s, q].T.conj()
+                
+                ind = np.arange(nao2) + nao1 + nao0
+                dim = len(ind)
+                ind = np.resize(ind, [dim, dim])                       
+                self.d_spkmm[s, q, ind2.T, ind] = side2.d_spkcmm[s, q]
+                self.d_spkmm[s, q, ind.T, ind2] = side2.d_spkcmm[s, q].T.conj()
+                self.extended_basis_functions.construct_density(
+                                                    self.d_spkmm[s, q],
+                                                    self.extended_nt_sG[s], q)
+            wfs.band_comm.sum(self.extended_nt_sG)       
+            wfs.kpt_comm.sum(self.extended_nt_sG)
+            self.streching_nt_sG = self.uncapsule(nn1, direction,
+                                                  self.extended_nt_sG, nn2)
+ 
     def calculate_potential_matrix(self, vt_sG0, s, q):
         nn = self.nn / 2
         direction = self.directions[0][0]
@@ -544,24 +648,27 @@ class Surrounding:
                     raise ValueError('unknown direction')                
         return cap_array
     
-    def uncapsule(self, nn, direction, in_array):
+    def uncapsule(self, nn, direction, in_array, nn2=None):
+        nn1 = nn
+        if nn2 == None:
+            nn2 = nn1
         if self.type == 'LR':
             if len(in_array.shape) == 4:
                 if direction == 'x':
-                    uncap_array = in_array[:, nn:-nn]
+                    uncap_array = in_array[:, nn1:-nn2]
                 elif direction == 'y':
-                    uncap_array = in_array[:, :, nn:-nn]
+                    uncap_array = in_array[:, :, nn1:-nn2]
                 elif direction == 'z':
-                    uncap_array = in_array[:, :, :, nn:-nn]
+                    uncap_array = in_array[:, :, :, nn1:-nn2]
                 else:
                     raise ValueError('unknown direction')
             else:
                 if direction == 'x':
-                    uncap_array = in_array[nn:-nn]
+                    uncap_array = in_array[nn1:-nn2]
                 elif direction == 'y':
-                    uncap_array = in_array[:, nn:-nn]
+                    uncap_array = in_array[:, nn1:-nn2]
                 elif direction == 'z':
-                    uncap_array = in_array[:, :, nn:-nn]
+                    uncap_array = in_array[:, :, nn1:-nn2]
                 else:
                     raise ValueError('unknown direction')                
         return uncap_array.copy()
@@ -584,8 +691,8 @@ class Surrounding:
                 
                 bias_shift0 = self.bias_index['x-'] / Hartree
                 bias_shift1 = self.bias_index['x+'] / Hartree
-                self.streching_nt_sG[:, :nn2] = self.sides['x-'].inner_nt_sG 
-                self.streching_nt_sG[:, -nn2:] = self.sides['x+'].inner_nt_sG
+                #self.streching_nt_sG[:, :nn2] = self.sides['x-'].inner_nt_sG 
+                #self.streching_nt_sG[:, -nn2:] = self.sides['x+'].inner_nt_sG
 
                 self.nt_sG[:, :nn2] = self.sides['x-'].boundary_nt_sG 
                 self.nt_sG[:, -nn2:] = self.sides['x+'].boundary_nt_sG
@@ -607,8 +714,8 @@ class Surrounding:
                 bias_shift0 = self.bias_index['y-'] / Hartree
                 bias_shift1 = self.bias_index['y+'] / Hartree
                 
-                self.streching_nt_sG[:, :, :nn2] = self.sides['y-'].inner_nt_sG 
-                self.streching_nt_sG[:, :, -nn2:] = self.sides['y+'].inner_nt_sG
+                #self.streching_nt_sG[:, :, :nn2] = self.sides['y-'].inner_nt_sG 
+                #self.streching_nt_sG[:, :, -nn2:] = self.sides['y+'].inner_nt_sG
 
                 self.nt_sG[:, :, :nn2] = self.sides['y-'].boundary_nt_sG 
                 self.nt_sG[:, :, -nn2:] = self.sides['y+'].boundary_nt_sG
@@ -630,8 +737,8 @@ class Surrounding:
                 bias_shift0 = self.bias_index['z-'] / Hartree
                 bias_shift1 = self.bias_index['z+'] / Hartree
                 
-                self.streching_nt_sG[:, :, :, :nn2] = self.sides['z-'].inner_nt_sG 
-                self.streching_nt_sG[:, :, :, -nn2:] = self.sides['z+'].inner_nt_sG
+                #self.streching_nt_sG[:, :, :, :nn2] = self.sides['z-'].inner_nt_sG 
+                #self.streching_nt_sG[:, :, :, -nn2:] = self.sides['z+'].inner_nt_sG
 
                 self.nt_sG[:, :, :, :nn2] = self.sides['z-'].boundary_nt_sG 
                 self.nt_sG[:, :, :, -nn2:] = self.sides['z+'].boundary_nt_sG
@@ -647,6 +754,7 @@ class Surrounding:
                 
                 self.vHt_g[:, :, :nn] = self.sides['z-'].boundary_vHt_g + bias_shift0
                 self.vHt_g[:, :, -nn:] = self.sides['z+'].boundary_vHt_g + bias_shift1
+            self.combine_streching_density()
             self.combine_streching_atomic_hamiltonian()                   
 
     def calculate_pseudo_density(self, density, wfs):
@@ -667,4 +775,71 @@ class Surrounding:
             charge = self.finegd.integrate(self.rhot_g) + self.charge
             if abs(charge) > self.charge_eps:
                 raise RuntimeError('Charge not conserved: excess=%.9f' %
-                                   charge)
+                                   charge)        
+
+    def set_positions(self, atoms=None):
+        calc = self.atoms.calc
+        wfs = calc.wfs
+        density = calc.density
+        hamiltonian = calc.hamiltonian
+        charge = calc.input_parameters.charge
+        hund = calc.input_parameters.hund
+        spos_ac = calc.initialize_positions(atoms)        
+        #self.wfs.initialize(self.density, self.hamiltonian, spos_ac)
+        if density.nt_sG is None:
+            if wfs.kpt_u[0].f_n is None or wfs.kpt_u[0].C_nM is None:
+                self.initialize_from_atomic_densities(density, charge, hund)
+            else:
+                raise NonImplementError('missing the initialization from wfs')
+        else:
+            density.calculate_normalized_charges_and_mix()
+        calc.update_hamiltonian(density)        
+        calc.scf.reset()
+        calc.forces.reset()
+        calc.print_positions()        
+                    
+    def initialize_from_atomic_densities(self, density, charge, hund):
+        f_sM = np.empty((self.nspins, self.extended_basis_functions.Mmax))
+        self.extend_D_asp = {}
+        density.D_asp = {}
+        f_asi = {}
+        setups = self.extended_setups
+        basis_functions = self.extended_basis_functions
+        magmom_a = self.extended_atoms.get_initial_magnetic_moments()
+        charge += setups.core_charge
+        c = charge / len(setups) 
+        for a in basis_functions.atom_indices:
+            f_si = setups[a].calculate_initial_occupation_numbers(
+                       magmom_a[a], hund, charge=c)
+            if a in basis_functions.my_atom_indices:
+                self.extend_D_asp[a] = setups[a].initialize_density_matrix(f_si)
+            f_asi[a] = f_si
+        if self.type == 'LR':
+            direction = self.directions[0][0]            
+            di = abs(self.sides_index[direction + '-']) - 1
+            atoms1 = self.sides[direction + '-'].atoms
+            natoms1 = len(atoms1)
+            atoms2 = self.sides[direction + '+'].atoms            
+            natoms0 = len(self.atoms)
+            for a in range(natoms0):
+                density.D_asp[a] = self.extend_D_asp[a + natoms1].copy()
+        self.extended_nt_sG = self.extended_gd.zeros(self.nspins)
+        basis_functions.add_to_density(self.extended_nt_sG, f_asi)
+        self.extended_nt_sG += self.extended_nct_G
+        if self.type == 'LR':
+            nn1 = atoms1.calc.gd.N_c[di]
+            nn2 = atoms2.calc.gd.N_c[di]
+            density.nt_sG = self.uncapsule(nn1, direction,
+                                           self.extended_nt_sG, nn2)
+        comp_charge = density.calculate_multipole_moments()
+        if not density.mixer.mix_rho:
+            density.mixer.mix(density)
+            comp_charge = None
+        self.interpolate_density(density, comp_charge)
+        self.calculate_pseudo_charge(density, comp_charge)
+        if density.mixer.mix_rho:
+            density.mixer.mix(density)
+        density.rhot_g -= self.extra_rhot_g              
+
+
+
