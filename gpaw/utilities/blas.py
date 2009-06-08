@@ -238,6 +238,10 @@ def _gemmdot2(a, b, alpha=1.0, beta=1.0, out=None):
     """
     aisvector = a.ndim == 1
     bisvector = b.ndim == 1
+    ashape = a.shape # Store original shape
+    bshape = b.shape
+
+    # Pad with dummy dimension on vectors
     if aisvector and bisvector:
         assert out is None
         return beta * _dotu(a, b)
@@ -245,16 +249,27 @@ def _gemmdot2(a, b, alpha=1.0, beta=1.0, out=None):
         a = a.reshape(1, -1)
     elif bisvector:
         b = b.reshape(-1, 1)
+
+    # Fold multidimensional 'a' matrices to 2D
+    if a.ndim > 2:
+        a = a.reshape(-1, a.shape[-1])
+
+    # Apply BLAS gemm routine
     outshape = a.shape[:-1] + b.shape[1:]
     if out is None:
         out = np.zeros(outshape, a.dtype)
     else:
         out = out.reshape(outshape)
     gemm(alpha, b, a, beta, out, 'n')
+
+    # Determine actual shape of result array
     if aisvector:
-        outshape = outshape[1:]
+        outshape = bshape[1:]
     elif bisvector:
-        outshape = outshape[:-1]
+        outshape = ashape[:-1]
+    else:
+        outshape = ashape[:-1] + bshape[1:]
+
     return out.reshape(outshape)
 
 
