@@ -81,6 +81,8 @@ class Operator:
 
         """
 
+        #TODO eliminate need for A_nn.conj() by extended gemm(..., 'c')?
+
         band_comm = self.bd.comm
         domain_comm = self.gd.comm
         B = band_comm.size
@@ -149,9 +151,7 @@ class Operator:
                         sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
                         rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
 
-                if q > 0:
-                    gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
-                else:
+                if q == 0 and not self.bd.strided:
                     # We only need the lower part:
                     if j == 0:
                         # Important special-cases:
@@ -161,7 +161,9 @@ class Operator:
                             r2k(0.5 * dv, psit_mG, sbuf_mG, 0.0, A_mn[:, :M])
                     else:
                         gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
-                        
+                else:
+                    gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
+
                 if j == J - 1 and P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
@@ -189,22 +191,12 @@ class Operator:
         if B == 1:
             return A_NN
 
-        A_bnbn = A_NN.reshape((B, N, B, N))
         if domain_comm.rank == 0:
-            if rank == 0:
-                A_bnbn[:Q, :, 0] = A_qnn
-                for q1 in range(1, B):
-                    band_comm.receive(A_qnn, q1, 13)
-                    for q2 in range(Q):
-                        if q1 + q2 < B:
-                            A_bnbn[q1 + q2, :, q1] = A_qnn[q2]
-                        else:
-                            A_bnbn[q1, :, q1 + q2 - B] = A_qnn[q2].T
-            else:
-                band_comm.send(A_qnn, 0, 13)
+            self.bd.matrix_assembly(A_qnn, A_NN)
+
         return A_NN
         
-    def matrix_multiply(self, C_nn, psit_nG, P_ani=None):
+    def matrix_multiply(self, C_NN, psit_nG, P_ani=None):
         """Calculate new linear combinations of wave functions.
 
         ::
@@ -224,11 +216,11 @@ class Operator:
         if B == 1 and J == 1:
             # Simple case:
             newpsit_nG = self.work1_xG
-            gemm(1.0, psit_nG, C_nn, 0.0, newpsit_nG)
+            gemm(1.0, psit_nG, C_NN, 0.0, newpsit_nG)
             self.work1_xG = psit_nG
             if P_ani:
                 for P_ni in P_ani.values():
-                    gemm(1.0, P_ni.copy(), C_nn, 0.0, P_ni)
+                    gemm(1.0, P_ni.copy(), C_NN, 0.0, P_ni)
             return newpsit_nG
         
         # Now it gets nasty!  We parallelize over B groups of bands
@@ -244,8 +236,6 @@ class Operator:
         g = G // J
         if g * J < G:
             g += 1
-
-        C_bnbn = C_nn.reshape((B, N, B, N))
 
         for j in range(J):
             G1 = j * g
@@ -269,7 +259,7 @@ class Operator:
                 if q < B - 1:
                     sreq = band_comm.send(sbuf_ng, rankm, 61, False)
                     rreq = band_comm.receive(rbuf_ng, rankp, 61, False)
-                C_mm = C_bnbn[rank, :, (rank + q) % B]
+                C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
                 gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
                 if j == 0 and P_ani:
                     I1 = 0

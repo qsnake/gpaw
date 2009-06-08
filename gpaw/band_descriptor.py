@@ -11,6 +11,7 @@ This module contains classes defining two kinds of band groups:
 
 import numpy as np
 
+from gpaw import debug
 import gpaw.mpi as mpi
 
 NONBLOCKING = False
@@ -115,11 +116,23 @@ class BandDescriptor:
             nslice = slice(n0, n0 + self.mynbands)
         return nslice
 
+    def get_band_indices(self, band_rank=None):
+        nslice = self.get_slice(band_rank)
+        return np.arange(*nslice.indices(self.nbands))
+
+    def get_band_ranks(self):
+        rank_n = np.empty(self.nbands, dtype=int)
+        for band_rank in range(self.comm.size):
+            nslice = self.get_slice(band_rank)
+            rank_n[nslice] = band_rank
+        assert (rank_n >= 0).all() and (rank_n < self.comm.size).all()
+        return rank_n
+
     def who_has(self, n):
         if self.strided:
             myn, band_rank = divmod(n, self.comm.size)
         else:
-            band_rank, myn = divmod(n, self.mynbands) #TODO verify
+            band_rank, myn = divmod(n, self.mynbands)
 
         return band_rank, myn
 
@@ -251,8 +264,99 @@ class BandDescriptor:
             for request, a_nx in requests:
                 self.comm.wait(request)
 
-    def matrix_assembly(self, a_qnn, dtype=float):
-        # TODO move code from hs_operators.py into here...
-        A_nn = np.empty((self.nbands, self.nbands), dtype)
+    def matrix_assembly(self, A_qnn, A_NN):
+        if self.comm.size == 1:
+            self.blockwise_assign(A_qnn, A_NN, 0)
+            return
 
- 
+        if self.rank == 0:
+            for band_rank in range(self.comm.size):
+                if band_rank > 0:
+                    self.comm.receive(A_qnn, band_rank, 13)
+                self.blockwise_assign(A_qnn, A_NN, band_rank)
+        else:
+            self.comm.send(A_qnn, 0, 13)
+
+    def blockwise_assign(self, A_qnn, A_NN, band_rank):
+
+        N = self.mynbands
+        B = self.comm.size
+        assert band_rank in xrange(B)
+
+        if B == 1:
+            # Only fill in the lower part
+            mask = np.tri(N, dtype=bool)
+            A_NN[mask] = A_qnn.reshape((N,N))[mask]
+            return
+
+        # A_qnn[q2,myn1,myn2] on rank q1 is the q2'th overlap calculated
+        # between <psi_n1| and A|psit_n2> where n1 <-> (q1,myn1) and 
+        # n2 <-> ((q1+q2)%B,myn2) since we've sent/recieved q2 times.
+        q1 = band_rank
+        Q = B // 2 + 1
+
+        # Note that for integer inequalities, these relations are useful (X>0):
+        #     A*X > B   <=>   A > B//X   ^   A*X <= B   <=>   A <= B//X
+
+        if self.strided:
+            A_nbnb = A_NN.reshape((N, B, N, B))
+
+            for q2 in range(Q):
+                # n1 = (q1+q2)%B + myn1*B   ^   n2 = q1 + myn2*B
+                #
+                # We seek the lower triangular part i.e. n1 >= n2
+                #   <=>   (myn2-myn1)*B <= (q1+q2)%B-q1
+                #   <=>   myn2-myn1 <= dq//B
+                dq = (q1+q2)%B-q1 # within ]-B; Q[ so dq//B is -1 or 0
+
+                # Create mask for lower part of current block
+                mask = np.tri(N, N, dq//B, dtype=bool)
+                if debug:
+                    m1,m2 = np.indices((N,N))
+                    assert (mask == (m1 >= m2 - dq//B)).all()
+
+                # Copy lower part of A_qnn[q2] to its rightfull place
+                A_nbnb[:, (q1+q2)%B, :, q1][mask] = A_qnn[q2][mask]
+
+                # Negate and transpose mask to get complementary mask
+                mask = ~mask.T
+
+                # Copy upper part of Hermitian conjugate of A_qnn[q2]
+                A_nbnb[:, q1, :, (q1+q2)%B][mask] = A_qnn[q2].T.conj()[mask]
+        else:
+            A_bnbn = A_NN.reshape((B, N, B, N))
+
+            # Optimization for the first block
+            if q1 == 0:
+                A_bnbn[:Q, :, 0] = A_qnn
+                return
+
+            for q2 in range(Q):
+                # n1 = ((q1+q2)%B)*N + myn1   ^   n2 = q1*N + myn2
+                #
+                # We seek the lower triangular part i.e. n1 >= n2
+                #   <=>   ((q1+q2)%B-q1)*N >= myn2-myn1
+                #   <=>   myn2-myn1 <= dq*N
+                #   <=>   entire block if dq > 0,
+                #   ...   myn2 <= myn1 if dq == 0,
+                #   ...   copy nothing if dq < 0
+                if q1 + q2 < B:
+                    A_bnbn[q1 + q2, :, q1] = A_qnn[q2]
+                else:
+                    A_bnbn[q1, :, q1 + q2 - B] = A_qnn[q2].T.conj()
+
+
+    def extract_block(self, A_NN, q1, q2):
+        N = self.mynbands
+        B = self.comm.size
+
+        if B == 1:
+            return A_NN
+
+        if self.strided:
+            A_nbnb = A_NN.reshape((N, B, N, B))
+            return A_nbnb[:, q1, :, q2].copy() # last dim must have unit stride
+        else:
+            A_bnbn = A_NN.reshape((B, N, B, N))
+            return A_bnbn[q1, :, q2]
+
