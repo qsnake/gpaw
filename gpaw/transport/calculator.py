@@ -23,10 +23,6 @@ from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.wavefunctions import LCAOWaveFunctions
 
-from pylab import *
-from mytools import plot_diag, tr, tw
-pd = plot_diag
-
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
