@@ -187,89 +187,56 @@ def dotu(a, b):
     return _gpaw.dotu(a, b)
     
 
-def _gemmdot(a, b, alpha=1.0, trans='n'):
-    """Matrix multiplication using gemm.
-
-    For the 2D matrices a, b, return::
-
-      c = alpha * a . b
-
-    where '.' denotes matrix multiplication.
-    If trans='t'; b is replaced by its transpose.
-    If trans='c'; b is replaced by its hermitian conjugate.
-    """
-    isvector = b.ndim == 1
-    if trans == 'n':
-        if isvector:
-            b = b.reshape(-1, 1)
-        shape = a.shape[0], b.shape[1]
-    else: # 't' or 'c'
-        if isvector:
-            b = b.reshape(1, -1)
-        shape = a.shape[0], b.shape[0]
-
-    # (ATLAS can't handle uninitialized output array)
-    c = np.zeros(shape, a.dtype)
-    gemm(alpha, b, a, 0.0, c, trans)
-    if isvector:
-        c = c.reshape(shape[0])
-    return c
-
-
-def _gemmdot2(a, b, alpha=1.0, beta=1.0, out=None):
+def _gemmdot(a, b, alpha=1.0, beta=1.0, out=None, trans='n'):
     """Matrix multiplication using gemm.
 
     return reference to out, where::
 
       out <- beta * out + alpha * a . b
 
-    and ``a.b`` denotes the matrix multiplication defined by::
+    If out is None, a suitably sized zero array will be created.
 
-                           _
-                          \  
-      (a.b)             =  ) a        * b
-           ijk...pqr...   /_  ijk...l     lpqr...
-                           l
+    ``a.b`` denotes matrix multiplication, where the product-sum is
+    over the last dimension of a, and either
+    the first dimension of b (for trans='n'), or
+    the last dimension of b (for trans='t' or 'c').
 
-    I.e. the product-sum if over the last dimension of a, and first dimension
-    of b.
-    
-    If out is None, a suitable array will be created.
+    If trans='c', the complex conjugate of b is used.
     """
-    aisvector = a.ndim == 1
-    bisvector = b.ndim == 1
-    ashape = a.shape # Store original shape
+    # Store original shapes
+    ashape = a.shape
     bshape = b.shape
 
-    # Pad with dummy dimension on vectors
-    if aisvector and bisvector:
+    # Vector-vector multiplication is handled by dotu
+    if a.ndim == 1 and b.ndim == 1:
         assert out is None
-        return beta * _dotu(a, b)
-    elif aisvector:
-        a = a.reshape(1, -1)
-    elif bisvector:
-        b = b.reshape(-1, 1)
+        if trans is 'c':
+            return beta * _gpaw.dotc(b, a) # dotc conjugates *first* argument
+        else:
+            return beta * _gpaw.dotu(a, b)
 
-    # Fold multidimensional 'a' matrices to 2D
-    if a.ndim > 2:
-        a = a.reshape(-1, a.shape[-1])
-
+    # Map all arrays to 2D arrays
+    a = a.reshape(-1, a.shape[-1])
+    if trans == 'n':
+        b = b.reshape(b.shape[0], -1)
+        outshape = a.shape[0], b.shape[1]
+    else: # 't' or 'c'
+        b = b.reshape(-1, b.shape[-1])
+    
     # Apply BLAS gemm routine
-    outshape = a.shape[:-1] + b.shape[1:]
+    outshape = a.shape[0], b.shape[trans == 'n']
     if out is None:
+        # (ATLAS can't handle uninitialized output array)
         out = np.zeros(outshape, a.dtype)
     else:
         out = out.reshape(outshape)
-    gemm(alpha, b, a, beta, out, 'n')
+    gemm(alpha, b, a, beta, out, trans)
 
     # Determine actual shape of result array
-    if aisvector:
-        outshape = bshape[1:]
-    elif bisvector:
-        outshape = ashape[:-1]
-    else:
+    if trans == 'n':
         outshape = ashape[:-1] + bshape[1:]
-
+    else: # 't' or 'c'
+        outshape = ashape[:-1] + bshape[:-1]
     return out.reshape(outshape)
 
 
@@ -308,39 +275,25 @@ if not debug:
     dotc = _gpaw.dotc
     dotu = _gpaw.dotu
     gemmdot = _gemmdot
-    gemmdot2 = _gemmdot2
     rotate = _rotate
 else:
-    def gemmdot(a, b, alpha=1., trans='n'):
+    def gemmdot(a, b, alpha=1.0, beta=1.0, out=None, trans='n'):
         assert a.flags.contiguous
         assert b.flags.contiguous
         assert a.dtype == b.dtype
-        assert a.ndim == 2
-        assert 1 <= b.ndim <= 2
         if trans == 'n':
-            assert a.shape[1] == b.shape[0]
-        elif trans == 't':
-            assert a.shape[1] == b.shape[-1]
-        else: # 'c'
-            assert a.shape[1] == b.shape[-1]
-        return _gemmdot(a, b, alpha, trans)
-
-    def gemmdot2(a, b, alpha=1.0, beta=1.0, out=None):
-        assert a.flags.contiguous
-        assert b.flags.contiguous
-        assert a.dtype == b.dtype
-        assert a.shape[-1] == b.shape[0]
+            assert a.shape[-1] == b.shape[0]
+        else:
+            assert a.shape[-1] == b.shape[-1]
         if out is not None:
             assert out.flags.contiguous
             assert a.dtype == out.dtype
             assert a.ndim > 1 or b.ndim > 1
-            if a.ndim == 1:
-                assert out.shape == b.shape[1:]
-            elif b.ndim == 1:
-                assert out.shape == a.shape[:-1]
-            else:
+            if trans == 'n':
                 assert out.shape == a.shape[:-1] + b.shape[1:]
-        return _gemmdot2(a, b, alpha, beta, out)
+            else:
+                assert out.shape == a.shape[:-1] + b.shape[:-1]
+        return _gemmdot(a, b, alpha, beta, out, trans)
 
     def rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
         assert in_jj.dtype == U_ij.dtype
