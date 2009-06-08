@@ -216,6 +216,48 @@ def _gemmdot(a, b, alpha=1.0, trans='n'):
     return c
 
 
+def _gemmdot2(a, b, alpha=1.0, beta=1.0, out=None):
+    """Matrix multiplication using gemm.
+
+    return reference to out, where::
+
+      out <- beta * out + alpha * a . b
+
+    and ``a.b`` denotes the matrix multiplication defined by::
+
+                           _
+                          \  
+      (a.b)             =  ) a        * b
+           ijk...pqr...   /_  ijk...l     lpqr...
+                           l
+
+    I.e. the product-sum if over the last dimension of a, and first dimension
+    of b.
+    
+    If out is None, a suitable array will be created.
+    """
+    aisvector = a.ndim == 1
+    bisvector = b.ndim == 1
+    if aisvector and bisvector:
+        assert out is None
+        return beta * _dotu(a, b)
+    elif aisvector:
+        a = a.reshape(1, -1)
+    elif bisvector:
+        b = b.reshape(-1, 1)
+    outshape = a.shape[:-1] + b.shape[1:]
+    if out is None:
+        out = np.zeros(outshape, a.dtype)
+    else:
+        out = out.reshape(outshape)
+    gemm(alpha, b, a, beta, out, 'n')
+    if aisvector:
+        outshape = outshape[1:]
+    elif bisvector:
+        outshape = outshape[:-1]
+    return out.reshape(outshape)
+
+
 def _rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
     """Perform matrix rotation using gemm
 
@@ -251,6 +293,7 @@ if not debug:
     dotc = _gpaw.dotc
     dotu = _gpaw.dotu
     gemmdot = _gemmdot
+    gemmdot2 = _gemmdot2
     rotate = _rotate
 else:
     def gemmdot(a, b, alpha=1., trans='n'):
@@ -266,6 +309,23 @@ else:
         else: # 'c'
             assert a.shape[1] == b.shape[-1]
         return _gemmdot(a, b, alpha, trans)
+
+    def gemmdot2(a, b, alpha=1.0, beta=1.0, out=None):
+        assert a.flags.contiguous
+        assert b.flags.contiguous
+        assert a.dtype == b.dtype
+        assert a.shape[-1] == b.shape[0]
+        if out is not None:
+            assert out.flags.contiguous
+            assert a.dtype == out.dtype
+            assert a.ndim > 1 or b.ndim > 1
+            if a.ndim == 1:
+                assert out.shape == b.shape[1:]
+            elif b.ndim == 1:
+                assert out.shape == a.shape[:-1]
+            else:
+                assert out.shape == a.shape[:-1] + b.shape[1:]
+        return _gemmdot2(a, b, alpha, beta, out)
 
     def rotate(in_jj, U_ij, a=1., b=0., out_ii=None, work_ij=None):
         assert in_jj.dtype == U_ij.dtype
