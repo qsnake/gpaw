@@ -38,6 +38,8 @@ class _Transformer:
             skip_cd[:, 0] = gdout.beg_c % 2
             skip_cd[:, 1] = gdout.end_c % 2
             self.interpolate = True
+            assert ((gdin.n_c[0] + 2 * nn - 1) * (gdin.n_c[1] + 2 * nn - 1) <=
+                    gdout.n_c[0] * gdout.n_c[1])
 
         assert np.alltrue(pad_cd.ravel() >= 0)
         self.ngpin = tuple(gdin.n_c)
