@@ -14,10 +14,6 @@ from gpaw.utilities import unpack
 from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
 
-from pylab import *
-from mytools import plot_diag, tr, tw
-pd = plot_diag
-
 class Side:
     def __init__(self, type, atoms, nn, direction='x+'):
         self.type = type
