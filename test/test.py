@@ -27,11 +27,6 @@ parser.add_option('-x', '--exclude',
                   help='Exclude tests (comma separated list of tests).',
                   metavar='test1.py,test2.py,...')
 
-parser.add_option('-r', '--run-only',
-                  type='string', default=None,
-                  help='Only tests (comma separated list of tests).',
-                  metavar='test1.py,test2.py,...')
-
 parser.add_option('-f', '--run-failed-tests-only',
                   action='store_true',
                   help='Run failed tests only.')
@@ -182,9 +177,7 @@ tests_parallel = [
     'parallel/exx.py',
     ]
 
-if opt.run_only:
-    tests = opt.run_only.split(',')
-elif opt.run_failed_tests_only:
+if opt.run_failed_tests_only:
     tests = [line.strip() for line in open('failed-tests.txt')]
 
 if opt.debug:
