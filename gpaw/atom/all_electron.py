@@ -19,6 +19,7 @@ from gpaw.grid_descriptor import RadialGridDescriptor
 from gpaw.xc_functional import XCRadialGrid, XCFunctional
 from gpaw.utilities import hartree, devnull
 from gpaw.exx import atomic_exact_exchange
+from gpaw import ConvergenceError
 
 tempdir = tempfile.gettempdir()
 
@@ -74,9 +75,15 @@ class AllElectron:
                         f = 1.0
                     else:
                         f = float(conf[2:])
+                    #try:
                     assert n == self.n_j[j]
                     assert l == self.l_j[j]
                     self.f_j[j] = f
+                    #except IndexError:
+                    #    self.n_j.append(n)
+                    #    self.l_j.append(l)
+                    #    self.f_j.append(f)
+                    #    self.e_j.append(self.e_j[-1])
                     j += 1
                 else:
                     j += {'He': 1,
@@ -712,14 +719,8 @@ def shoot(u, l, vr, e, r2dvdr, r, dr, c10, c2, scalarrel=False, gmax=None):
         Mr = r
     c0 = l * (l + 1) + 2 * Mr * (vr - e * r)
     if gmax is None and npy.alltrue(c0 > 0):
-        print """
-Problem with initial electron density guess!  Try to run the program
-with the '-nw' option (non-scalar-relativistic calculation + write
-density) and then try again without the '-n' option (this will
-generate a good initial guess for the density).
-"""
-        
-        raise SystemExit
+        raise ConvergenceError('Bad initial electron density guess!')
+
     c1 = c10
     if scalarrel:
         c0 += x * r2dvdr / Mr

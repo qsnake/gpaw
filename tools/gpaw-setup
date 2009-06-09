@@ -57,13 +57,22 @@ parser.add_option('-p', '--plot', action='store_true',
 
 opt, args = parser.parse_args()
 
+import sys
 from gpaw.atom.generator import Generator, parameters
-from gpaw.atom.all_electron import AllElectron
+from gpaw.atom.all_electron import AllElectron, ConvergenceError
 
 if args:
     atoms = args
 else:
     atoms = parameters.keys()
+
+
+
+bad_density_warning = """\
+Problem with initial electron density guess!  Try to run the program
+with the '-nw' option (non-scalar-relativistic calculation + write
+density) and then try again without the '-n' option (this will
+generate a good initial guess for the density)."""
 
 for symbol in atoms:
     scalarrel = not opt.non_scalar_relativistic
@@ -80,7 +89,10 @@ for symbol in atoms:
     if opt.all_electron_only:
         a = AllElectron(symbol, opt.xcfunctional, scalarrel, corehole,
                         opt.configuration, not opt.write_files)
-        a.run()
+        try:
+            a.run()
+        except ConvergenceError:
+            print >> sys.stderr, bad_density_warning
         continue
     
     g = Generator(symbol, opt.xcfunctional, scalarrel, corehole,
@@ -118,6 +130,8 @@ for symbol in atoms:
     try:
         g.run(logderiv=opt.logarithmic_derivatives,
               exx=opt.exact_exchange, name=opt.name, **p)
+    except ConvergenceError:
+        print >> sys.stderr, bad_density_warning
     except RuntimeError, m:
         if len(m.__str__()) == 0:
             raise

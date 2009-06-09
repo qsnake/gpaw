@@ -20,11 +20,14 @@ parser.add_option('-T', '--tail-norm', metavar='<norm>', type='string',
                   default='0.16,0.3,0.6', dest='tailnorm',
                   help='use the given fractions to define the split'+
                   '-valence cutoffs.  Default: [%default]')
-parser.add_option('-D', '--energy-derivative', action='store_true',
-                  dest='derivative',
-                  help='include derivative of atomic orbital with respect '+
-                  'to confinement potential inner cutoff as second '+
-                  'basis function')
+parser.add_option('-g', '--non-relativistic-guess', action='store_true',
+                  help='Run non-scalar relativistic AE calculation for '
+                  'initial guess')
+#parser.add_option('-D', '--energy-derivative', action='store_true',
+#                  dest='derivative',
+#                  help='include derivative of atomic orbital with respect '+
+#                  'to confinement potential inner cutoff as second '+
+#                  'basis function')
 parser.add_option('-P', '--plot', action='store_true',
                   help='plot basis functions')
 parser.add_option('-N', '--no-files', action='store_true',
@@ -68,6 +71,7 @@ if __name__ == '__main__' and len(args) == 0 and not opts.exclude:
 
 from gpaw.atom.generator import Generator
 from gpaw.atom.basis import BasisMaker
+from gpaw.atom.all_electron import ConvergenceError
 from gpaw.atom import polarization
 
 if opts.exclude: # Invert selection of elements
@@ -88,6 +92,19 @@ if opts.exclude: # Invert selection of elements
     if len(args) == 0:
         print 'Another job well done!'
         sys.exit(0)
+
+bad_density_warning = """\
+Bad initial electron density guess!  Try rerunning the basis generator
+with the '-g' parameter to run a separate non-scalar relativistic
+all-electron calculation and use its resulting density as an initial
+guess."""
+
+very_bad_density_warning = """\
+Could not generate non-scalar relativistic electron density guess,
+or non-scalar relativistic guess was not good enough for the scalar
+relativistic calculation.  You probably have to use the Python interface
+to the basis generator in gpaw.atom.basis directly and choose very
+smart parameters."""
 
 def parse_basis_name(name):
     """Parse any basis type identifier: 'sz', 'dzp', 'qztp', '4z3p', ... """
@@ -139,8 +156,18 @@ def main():
 
     for symbol, referencefile, referenceindex in zip(symbols, referencefiles,
                                                      reference_atom_indices):
-        bm = BasisMaker(symbol, name, gtxt=None)
-
+        try:
+            bm = BasisMaker(symbol, name, gtxt=None,
+                            non_relativistic_guess=opts.non_relativistic_guess)
+        except ConvergenceError:
+            if opts.non_relativistic_guess:
+                print >> sys.stderr, very_bad_density_warning
+                import traceback
+                traceback.print_exc()
+            else:
+                print >> sys.stderr, bad_density_warning
+            continue
+        
         if opts.no_files:
             figfile = None
         else:
@@ -149,7 +176,7 @@ def main():
         vconf_args = None
         if not opts.vconf_sharp_confinement:
             vconf_args = opts.vconf_amplitude, opts.vconf_rstart_rel
-            
+        
         basis = bm.generate(zetacount, polcount,
                             tailnorm=tailnorm,
                             energysplit=opts.energy_shift,
@@ -159,8 +186,8 @@ def main():
                             rcutmax=opts.rcut_max,
                             ngaussians=opts.gaussians,
                             rcharpol_rel=opts.rchar_pol_rel,
-                            vconf_args=vconf_args,
-                            include_energy_derivatives=opts.derivative)
+                            vconf_args=vconf_args)
+        
         if opts.plot:
             bm.plot(basis, title=referencefile, filename=figfile)
         if not opts.no_files:

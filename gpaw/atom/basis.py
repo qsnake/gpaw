@@ -9,6 +9,7 @@ from numpy.linalg import solve
 from ase.units import Hartree
 
 from gpaw.spline import Spline
+from gpaw.atom.all_electron import AllElectron, ConvergenceError
 from gpaw.atom.generator import Generator, parameters
 from gpaw.atom.polarization import PolarizationOrbitalGenerator, Reference,\
      QuasiGaussian, default_rchar_rel, rchar_rels
@@ -19,15 +20,24 @@ from gpaw.version import version
 
 class BasisMaker:
     """Class for creating atomic basis functions."""
-    def __init__(self, generator, name=None, run=True, gtxt='-'):
+    def __init__(self, generator, name=None, run=True, gtxt='-',
+                 non_relativistic_guess=False):
         if isinstance(generator, str): # treat 'generator' as symbol
             generator = Generator(generator, scalarrel=True,
                                   xcname='PBE', txt=gtxt,
                                   nofiles=True)
+            generator.N *= 4
         self.generator = generator
         self.name = name
         if run:
-            generator.N *= 4
+            if non_relativistic_guess:
+                ae0 = AllElectron(generator.symbol, scalarrel=False,
+                                  nofiles=False, txt=gtxt)
+                ae0.N = generator.N
+                ae0.beta = generator.beta
+                ae0.run()
+                # Now files will be stored such that they can
+                # automagically be used by the next run()
             generator.run(write_xml=False, **parameters[generator.symbol])
 
     def smoothify(self, psi_mg, l):
