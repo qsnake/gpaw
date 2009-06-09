@@ -426,8 +426,8 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-        #del self.atoms_l
-        #del self.atoms_e
+        del self.atoms_l
+        del self.atoms_e
         self.initialized_transport = True
 
     def get_lead_index(self):
@@ -796,7 +796,10 @@ class Transport(GPAW):
             tri2full(H_MM)
             H_MM *= Hartree
             if self.fixed and region == 'scat':
-                H_MM += self.gate * S_qMM[kpt.q]
+                ind = self.inner_mol_index
+                dim = len(ind)
+                ind = np.resize(ind, [dim, dim])
+                H_MM[ind.T, ind] += self.gate * S_qMM[kpt.q, ind.T, ind]
             if self.my_nspins == 2:
                 H_sqMM[kpt.s, kpt.q] = H_MM
             else:
@@ -2101,7 +2104,7 @@ class Transport(GPAW):
                     info += '---******---'
             self.text(info)
         self.text('***total charge***')
-        self.text(np.trace(qr_mm)) 
+        self.text(np.trace(qr_mm) + np.sum(self.ec)) 
 
     def calc_total_charge(self, d_spkmm):
         nbmol = self.nbmol 
@@ -2251,8 +2254,8 @@ class Transport(GPAW):
     def abstract_d_and_v(self):
         data = {}
         for s in range(self.nspins):
-            nt = self.density.nt_sG[s]
-            vt = self.hamiltonian.vt_sG[s]
+            nt = self.gd.collect(self.density.nt_sG[s])
+            vt = self.gd.collect(self.hamiltonian.vt_sG[s])
             for name, d in [('x', 0), ('y', 1), ('z', 2)]:
                 data['s' + str(s) + 'nt_1d_' +
                      name] = self.array_average_in_one_d(nt, d)
@@ -2867,7 +2870,6 @@ class Transport(GPAW):
         sd = step_data2['t_dos']
         bias = step_data2['bias']
         import pylab
-        import matplotlib
         from mytools import gnu_save
         pylab.figure(1)
         pylab.subplot(211)
@@ -2903,14 +2905,14 @@ class Transport(GPAW):
             tmp = sd1['s' + str(s) + 'vt_2d_' + dd[overview_d]] - sd2['s' + str(s) + 'vt_2d_' + dd[overview_d]]          
             cb = pylab.matshow(tmp * Hartree)
             pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias1) + '-' + str(bias2))
-            matplotlib.pyplot.colorbar(cb)            
+            pylab.colorbar()
             pylab.show()
 
             tmp = sd1['s' + str(s) + 'nt_2d_' + dd[overview_d]] - sd2['s' + str(s) + 'nt_2d_' + dd[overview_d]]              
             cb = pylab.matshow(tmp)
             gnu_save('diff_s', tmp) 
             pylab.title('spin' + str(s) + 'density at bias=' + str(bias1) + '-' + str(bias2))
-            matplotlib.pyplot.colorbar(cb)                
+            pylab.colorbar()                
             pylab.show()        
        
     def plot_step_data(self, step_data):
@@ -2920,7 +2922,6 @@ class Transport(GPAW):
         sd = step_data['t_dos']
         bias = step_data['bias']
         import pylab
-        import matplotlib
         pylab.figure(1)
         pylab.subplot(211)
         pylab.plot(sd['e_points'], sd['T_e'], 'b-o', sd['f1'], sd['l1'],
@@ -2949,25 +2950,25 @@ class Transport(GPAW):
         
             cb = pylab.matshow(sd['s' + str(s) + 'vt_2d_' + dd[overview_d]] * Hartree)
             pylab.title('spin' + str(s) + 'potential(eV) at bias=' + str(bias))
-            matplotlib.pyplot.colorbar(cb)                
+            pylab.colorbar()               
             pylab.show()
        
             cb = pylab.matshow(sd['s' + str(s) + 'nt_2d_' + dd[overview_d]])
             pylab.title('spin' + str(s) + 'density at bias=' + str(bias))
-            matplotlib.pyplot.colorbar(cb)                
+            pylab.colorbar()
             pylab.show()
 
-        #cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
-        #                   sd['s' + str(1) + 'vt_2d_' + dd[overview_d]] * Hartree)
-        #pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
-        #matplotlib.pyplot.colorbar(cb)                
-        #pylab.show()
+        cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
+                           sd['s' + str(1) + 'vt_2d_' + dd[overview_d]] * Hartree)
+        pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
+        pylab.colorbar()                
+        pylab.show()
        
-        #cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
-        #                   sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
-        #pylab.title('spin_diff' + 'density at bias=' + str(bias))
-        #matplotlib.pyplot.colorbar(cb)                
-        #pylab.show()
+        cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
+                           sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
+        pylab.title('spin_diff' + 'density at bias=' + str(bias))
+        pylab.colorbar()                
+        pylab.show()
 
     def plot_iv(self, i_v):
         v, i = i_v
