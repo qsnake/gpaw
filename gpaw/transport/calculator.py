@@ -2259,8 +2259,8 @@ class Transport(GPAW):
     def abstract_d_and_v(self):
         data = {}
         for s in range(self.nspins):
-            nt = self.gd.collect(self.density.nt_sG[s])
-            vt = self.gd.collect(self.hamiltonian.vt_sG[s])
+            nt = self.gd.collect(self.density.nt_sG[s], True)
+            vt = self.gd.collect(self.hamiltonian.vt_sG[s], True)
             for name, d in [('x', 0), ('y', 1), ('z', 2)]:
                 data['s' + str(s) + 'nt_1d_' +
                      name] = self.array_average_in_one_d(nt, d)
@@ -2391,7 +2391,7 @@ class Transport(GPAW):
         from gpaw.utilities.lapack import diagonalize
         nmo = T_MM.shape[-1]
         T = np.zeros([nmo])
-        info = diagonalize(T_MM, T, self.s_pkmm[0])
+        info = diagonalize(T_MM, T)
         dmo = np.empty([nmo, nmo, nmo])
         for i in range(nmo):
             dmo[i] = np.dot(T_MM[i].T.conj(),T_MM[i])
