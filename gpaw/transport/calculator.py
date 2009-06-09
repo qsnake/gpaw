@@ -23,6 +23,9 @@ from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.wavefunctions import LCAOWaveFunctions
 
+from mytools import plot_diag
+pd = plot_diag
+
 class PathInfo:
     def __init__(self, type, nlead):
         self.type = type
@@ -406,7 +409,7 @@ class Transport(GPAW):
                 self.initialize_lead(l)            
 
         self.fermi = self.lead_fermi[0]
-        self.text('*****should change here*******')
+
         world.barrier()
         if self.use_lead:
             self.check_edge()
@@ -796,7 +799,7 @@ class Transport(GPAW):
             tri2full(H_MM)
             H_MM *= Hartree
             if self.fixed and region == 'scat':
-                ind = self.inner_mol_index
+                ind = self.gate_mol_index
                 dim = len(ind)
                 ind = np.resize(ind, [dim, dim])
                 H_MM[ind.T, ind] += self.gate * S_qMM[kpt.q, ind.T, ind]
@@ -999,11 +1002,12 @@ class Transport(GPAW):
         self.pkpt_comm.sum(self.ec)
         self.ed_pkmm *= 3 - self.nspins
         self.ec *= 3 - self.nspins
+        self.total_edge_charge = 0
         if self.spin_comm.rank == 0:
             for i in range(self.my_nspins):
                 for n in range(self.lead_num):
-                    total_edge_charge  = self.ec[n, i] / self.npk
-                self.text('edge_charge[%d]=%f' % (i, total_edge_charge))
+                    self.total_edge_charge  += self.ec[n, i] / self.npk
+        self.text('edge_charge =%f' % (self.total_edge_charge))
 
     def pick_out_tkpts(self, ntk, kpts):
         npk = self.npk
@@ -1864,12 +1868,13 @@ class Transport(GPAW):
                 dr_mm[s, i, 1] = self.d_spkmm[s, i]
                 dr_mm[s, i, 2]= self.d_spkcmm[s, i]
                 qr_mm[s, i] += dot(dr_mm[s, i, 1], self.s_pkmm[i]) 
-        if ntk != 1:
-            for i in range(self.lead_num):
-                ind = self.print_index[i]
-                dim = len(ind)
-                ind = np.resize(ind, [dim, dim])
-                qr_mm[:, :, ind.T, ind] += self.ed_pkmm[i]
+        
+        for i in range(self.lead_num):
+            ind = self.print_index[i]
+            dim = len(ind)
+            ind = np.resize(ind, [dim, dim])
+            qr_mm[:, :, ind.T, ind] += self.ed_pkmm[i]
+        
         self.pkpt_comm.sum(qr_mm)
         self.spin_comm.sum(qr_mm)
         qr_mm /= self.npk
@@ -2104,7 +2109,7 @@ class Transport(GPAW):
                     info += '---******---'
             self.text(info)
         self.text('***total charge***')
-        self.text(np.trace(qr_mm) + np.sum(self.ec)) 
+        self.text(np.trace(qr_mm))
 
     def calc_total_charge(self, d_spkmm):
         nbmol = self.nbmol 
@@ -2417,15 +2422,18 @@ class Transport(GPAW):
             self.nbmol_inner -= np.sum(self.env_buffer)
         ind = np.arange(self.nbmol)
         buffer_ind = []
+        lead_ind = []
 
         for i in range(self.lead_num):
             buffer_ind += list(self.buffer_index[i])
+            lead_ind += list(self.lead_index[i])
         for i in range(self.env_num):
             buffer_ind += list(self.env_buffer_index[i])
 
         ind = np.delete(ind, buffer_ind)
         self.inner_mol_index = ind
-
+        self.gate_mol_index = np.delete(ind, lead_ind)
+        
         for i in range(self.lead_num):
              self.inner_lead_index[i] = np.searchsorted(ind,
                                                            self.lead_index[i])
