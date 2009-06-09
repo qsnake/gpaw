@@ -175,19 +175,19 @@ Dual-socket dual Core AMD Opteron(tm) Processor 285/2.6 GHz/2 GB RAM per core
 - performance estimate:
 
   **Note**: gpaw **0.6.3862** was used, numpy *1.3.0* compiled with gcc/goto-1.26/acml-4.0.1.
-  Standard deviations are found below 15 sec. "**N.A.**" denotes the fact that libraries are not available,
+  Standard deviations are found below 15 sec. "**N/A**" denotes the fact that libraries are not available,
   "**-**" that tests were not performed.
 
   ============================= ======= ======= ======= ======= ======= =======
   blas/lapack : compiler        gcc     gcc43   amd4.2  pathcc  icc     pgcc
   ============================= ======= ======= ======= ======= ======= =======
-  acml-4.2.0/acml-4.2.0         N.A.     991.74  985.83  980.75 1020.66 1082.64
-  acml-4.1.0/acml-4.1.0         N.A.    --      --       978.58 --      --     
-  acml-4.0.1/acml-4.0.1          991.95 N.A.    N.A.     984.23 --      --     
+  acml-4.2.0/acml-4.2.0         N/A      991.74  985.83  980.75 1020.66 1082.64
+  acml-4.1.0/acml-4.1.0         N/A     --      --       978.58 --      --     
+  acml-4.0.1/acml-4.0.1          991.95 N/A     N/A      984.23 --      --     
   blas-3.0-37/lapack-3.0-37     1494.63 1495.52 --      --      --      --     
   goto-1.26/acml-4.2.0          N.A      889.22  886.43 879.28  FAIL    FAIL
   goto-1.26/acml-4.2.0 PGO      --       886.47 --      --      --      --     
-  goto-1.26/acml-4.0.1           888.79 N.A.    N.A.    --      --      --     
+  goto-1.26/acml-4.0.1           888.79 N/A     N/A     --      --      --     
   atlas-3.8.3/acml-4.2.0        --       931.41 --      --      --      --     
   atlas-3.8.3/lapack-3.2.1      --       927.71 --      --      --      --     
   mkl-10.1.2.024/mkl-10.1.2.024 --      1012.64 --      1030.06 --      --     
