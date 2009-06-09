@@ -77,7 +77,7 @@ class Side:
         for kpt in wfs.kpt_u:
             wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM,
                                             self.d_skmm[kpt.s, kpt.q])
-        self.index = {'x-':-1, 'x+':1, 'y-':-2, 'y+':2, 'z-':-3, 'z+': 3}  
+        self.index = {'x-':-1, 'x+':1, 'y-':-2, 'y+':2, 'z-':-3, 'z+':3}  
         di = abs(self.index[self.direction]) - 1
         position = np.zeros(3)
         position[di] = 1
@@ -161,6 +161,36 @@ class Side:
             else:
                 raise RuntimeError('wrong in_array')
         return slice_array
+
+    def slice2(self, nn, in_array):
+        direction = self.direction
+        if self.type == 'LR':
+            seq1 = np.arange(-nn + 1, 1)
+            seq2 = np.arange(nn)
+            di = abs(self.index[direction])
+            sign = direction[1]
+            assert len(in_array.shape) == 4 or len(in_array.shape) == 3
+            if len(in_array.shape) == 3:                 
+                di -= 1
+            if sign == '-':
+                slice_array = np.take(in_array, seq1, axis=di)
+            else:
+                slice_array = np.take(in_array, seq2, axis=di)
+        return slice_array
+
+    def slice_diff2(self, nn, in_array1, in_array2):
+        direction = self.direction
+        sign = direction[1]
+        di = direction[0]
+        if self.type == 'LR':
+            assert len(in_array1.shape) == 4 and len(in_array2.shape) == 4
+            seq1 = np.arange(-nn + 1, 1)
+            seq2 = np.arange(nn)
+            if sign == '-':
+                slice_array = np.take(in_array1 - in_array2, seq1, axis=di)
+            else:
+                slice_array = np.take(in_array1 - in_array2, seq2, axis=di)
+        return slice_array
     
     def slice_diff(self, nn, in_array1, in_array2):
         direction = self.direction
@@ -215,7 +245,7 @@ class Surrounding:
                 del self.gpw_kwargs['bias']
         self.sides_index = {'x-':-1, 'x+':1, 'y-':-2, 'y+':2, 'z-':-3, 'z+': 3}
         self.initialized = False
-        self.nn = 64
+        self.nn = 32
         self.nspins = self.atoms.calc.wfs.nspins
         
     def initialize(self):
@@ -668,7 +698,20 @@ class Surrounding:
                 else:
                     raise ValueError('unknown direction')                
         return uncap_array.copy()
-                
+
+    def uncapsule2(self, nn, direction, in_array, nn2=None):
+        nn1 = nn
+        if nn2 == None:
+            nn2 = nn1
+        if self.type == 'LR':
+            seq = np.arange(nn1, -nn2)
+            assert len(in_array.shape) == 4 or len(in_array.shape) == 3
+            di = abs(self.sides_index[direction + '-'])
+            if len(in_array.shape) == 3:
+                di -= 1
+            uncap_array = np.take(in_array, seq, axis=di)               
+        return uncap_array
+    
     def combine(self):
         if self.type == 'LR':
             ns = self.nspins
