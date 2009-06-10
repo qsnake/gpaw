@@ -59,7 +59,8 @@ opt, args = parser.parse_args()
 
 import sys
 from gpaw.atom.generator import Generator, parameters
-from gpaw.atom.all_electron import AllElectron, ConvergenceError
+from gpaw.atom.all_electron import AllElectron
+from gpaw import ConvergenceError
 
 if args:
     atoms = args
