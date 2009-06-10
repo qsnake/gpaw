@@ -134,7 +134,7 @@ def get_phs(calc, s=0):
             P_Mi = P_aqMi[a][q]
             V_qnM[q] += np.dot(P_ni, np.inner(dS_ii, P_Mi).conj())
 
-    # Hack XXX, not needed when BasisFunctions get
+    # Hackx XXX, not needed when BasisFunctions get
     # an integrate method.
     lfc = get_lfc(calc)
     V_qAni = [lfc.dict(calc.wfs.nbands) for q in range(nq)]
