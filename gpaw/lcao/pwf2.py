@@ -65,6 +65,8 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     V_qnM = np.zeros((nq, calc.wfs.nbands, nao), dtype)
     for q, V_nM in enumerate(V_qnM):
         bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[:], V_nM, q)
+        #for n, V_M in enumerate(V_nM): # band-by-band to save memory
+        #    bfs.integrate2(calc.wfs.kpt_u[q].psit_nG[n], V_M, q)
         for a, P_ni in calc.wfs.kpt_u[q].P_ani.items():
             dS_ii = calc.wfs.setups[a].O_ii
             P_Mi = P_aqMi[a][q]
@@ -85,7 +87,7 @@ def get_lcao_projections_HSP(calc, bfs=None, spin=0, projectionsonly=True):
     for a, P_qMi in P_aqMi.items():
         dH_ii = unpack(calc.hamiltonian.dH_asp[a][spin])
         for P_Mi, H_MM in zip(P_qMi, H_qMM):
-            H_MM += dots(P_Mi.conj(), dH_ii, P_Mi.T)
+            H_MM += dots(P_Mi, dH_ii, P_Mi.T.conj())
     
     # Fill in the upper triangles of H and S
     for H_MM, S_MM in zip(H_qMM, S_qMM):
@@ -265,6 +267,7 @@ class PWF2:
     def __init__(self, gpwfilename, fixedenergy=0.,
                  spin=0, ibl=True, basis='sz', zero_fermi=False):
         calc = GPAW(gpwfilename, txt=None, basis=basis)
+        calc.wfs.initialize_wave_functions_from_restart_file()
         calc.density.ghat.set_positions(calc.atoms.get_scaled_positions() % 1.)
         calc.hamiltonian.poisson.initialize()
         if zero_fermi:
