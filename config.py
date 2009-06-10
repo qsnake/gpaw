@@ -43,10 +43,13 @@ def check_packages(packages, msg, include_ase, import_numpy):
                 '  in the netCDF format.']
 
     if not include_ase:
-        try:
-            import ase
-        except ImportError:
-            import_ase = True
+        if import_numpy:
+            try:
+                import ase
+            except ImportError:
+                import_ase = True
+            else:
+                import_ase = False
         else:
             import_ase = False
 
