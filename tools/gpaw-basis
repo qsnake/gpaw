@@ -71,7 +71,7 @@ if __name__ == '__main__' and len(args) == 0 and not opts.exclude:
 
 from gpaw.atom.generator import Generator
 from gpaw.atom.basis import BasisMaker
-from gpaw.atom.all_electron import ConvergenceError
+from gpaw import ConvergenceError
 from gpaw.atom import polarization
 
 if opts.exclude: # Invert selection of elements
