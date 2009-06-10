@@ -427,8 +427,13 @@ class PAW(PAWTextOutput):
                                (nbands, parsize_bands))
 
         if not self.wfs:
+            if parsize == 'domain only':
+                nspins_parallel = 1
+                parsize = None
+            else:
+                nspins_parallel = nspins
             domain_comm, kpt_comm, band_comm = mpi.distribute_cpus(parsize,
-                parsize_bands, nspins, len(ibzk_kc), world)
+                parsize_bands, nspins_parallel, len(ibzk_kc), world)
 
             if self.bd is not None and self.bd.comm.size != band_comm.size:
                 # Band grouping has changed, so we need to

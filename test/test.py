@@ -175,6 +175,7 @@ tests_parallel = [
     'parallel/par8.py',
     'parallel/par6.py',
     'parallel/exx.py',
+    'parallel/domain_only.py',
     ]
 
 if opt.run_failed_tests_only:
