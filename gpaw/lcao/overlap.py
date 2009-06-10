@@ -383,18 +383,29 @@ class TwoCenterIntegrals:
                     S_MM[M, M + 1:] = -S_MM[M + 1:, M].conj()
                     T_MM[M, M + 1:] = -T_MM[M + 1:, M].conj()
                                      
-    def atom_iter(self, spos_ac, P_aqMi):
+    def atom_iter(self, spos_ac, indomain_a,
+                  spos2_ac=None, indomain2_a=None):
+        """Loop over pairs of atoms and separation vectors.
+
+        indomain_a is a set containing atoms in this domain, which
+        must support the operation "a1 in indomain".
+
+        The optional parameters allow looping over distinct lists
+        of positions."""
+        assert (spos2_ac is None) == (indomain2_a is None)
+        if spos2_ac is None:
+            spos2_ac = spos_ac
+            indomain2_a = indomain_a
+        
         cell_cv = self.gd.cell_cv
         for a1, spos1_c in enumerate(spos_ac):
-            P1_qMi = P_aqMi.get(a1)
             i, offsets = self.neighbors.get_neighbors(a1)
             for a2, offset in zip(i, offsets):
-                P2_qMi = P_aqMi.get(a2)
-                if P1_qMi is None and P2_qMi is None:
+                if not (a1 in indomain_a or a2 in indomain2_a):
                     continue
 
                 assert a2 >= a1
-                spos2_c = spos_ac[a2] + offset
+                spos2_c = spos2_ac[a2] + offset
 
                 R = -np.dot(spos2_c - spos1_c, cell_cv)
                 r = sqrt(np.dot(R, R))
