@@ -106,7 +106,8 @@ class TDDFT(GPAW):
         # NB: TDDFT restart files contain additional information which
         #     will override the initial settings for time/kick/niter.
         GPAW.__init__(self, ground_state_file, txt=txt, mixer=DummyMixer(), \
-                      parsize, parsize_bands, parstride_bands)
+                      parsize=parsize, parsize_bands=parsize_bands, \
+                      parstride_bands=parstride_bands)
 
         # Prepare for dipole moment file handle
         self.dm_file = None
