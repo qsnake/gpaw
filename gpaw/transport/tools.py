@@ -154,6 +154,19 @@ def dot(a, b):
     gemm(1.0, d, c, 0.0, e)
     return e
 
+def plot_diag(mtx, ind=1):
+    import pylab
+    dim = mtx.shape
+    if len(dim) != 2:
+        print 'Warning! check the dimenstion of the matrix'
+    if dim[0] != dim[1]:
+        print 'Warinng! check if the matrix is square'
+    diag_element = np.diag(mtx)
+    y_data = pick(diag_element, ind)
+    x_data = range(len(y_data))
+    pylab.plot(x_data, y_data,'b-o')
+    pylab.show()
+
 class P_info:
     def __init__(self):
         P.x = 0
