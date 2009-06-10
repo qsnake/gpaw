@@ -72,17 +72,14 @@ class Operator:
             Dictionary of projector overlap integrals P_ni = <p_i | psit_nG>.
         A: function
             Functional form of the operator A which works on psit_nG.
-            Must accept and return a ndarray of the same shape as psit_nG.
+            Must accept and return an ndarray of the same shape as psit_nG.
         dA: dict or function
             Dictionary of atomic matrix elements dA_ii = <phi_i | A | phi_i >
             or functional form of the operator which works on | phi_i >.
-            Must accept atomic index a and P_ni and return a ndarray with the
+            Must accept atomic index a and P_ni and return an ndarray with the
             same shape as P_ni, thus representing P_ni multiplied by dA_ii.
 
         """
-
-        #TODO eliminate need for A_nn.conj() by extended gemm(..., 'c')?
-
         band_comm = self.bd.comm
         domain_comm = self.gd.comm
         B = band_comm.size
@@ -111,6 +108,7 @@ class Operator:
             else:
                 r2k(0.5 * dv, psit_nG, Apsit_nG, 0.0, A_NN)
             for a, P_ni in P_ani.items():
+                # A_NN += np.dot(dAP_ani[a], P_ni.T.conj())
                 gemm(1.0, P_ni, dAP_ani[a], 1.0, A_NN, 'c')
             domain_comm.sum(A_NN, 0)
             return A_NN
