@@ -13,10 +13,13 @@ from gpaw.lfc import NewLocalizedFunctionsCollection as LFC
 import gpaw.mpi as mpi
 
 class LocalizedFunctions:
-    """ 
-       A typical transverse plane of some grid...
-       (pbc's only in transverse directions)
+    """HEADLINE ...
+    
+    A typical transverse plane of some grid...
+    (pbc's only in transverse directions)
 
+    ::
+    
         --------------------------------------------------(3)
        |    Extended region                                |
        |    .........                         .........    |
@@ -49,7 +52,7 @@ class LocalizedFunctions:
         o  - (1) = v1_c
         oo - (2) = v2_c   
         
-       more doc to come.......
+    more doc to come.......
     """
 
     def __init__(self, gd, f_iG, corner_c, index=None, vt_G=None):
