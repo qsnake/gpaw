@@ -87,17 +87,15 @@ class C_GLLBScr(Contribution):
             
             
         else:
-            # Mix the coefficients with 25%
             coeff = [ npy.array([ f * K_G * self.f( npy.where(e_ref - e>ee, e_ref-e,0))
                      for e, f in zip(kpt.eps_n, kpt.f_n) ])
                      for kpt in kpt_u ]
             if self.old_coeffs is None:
                 self.old_coeffs = coeff
             else:
-                mix = 1.0
-                #if self.iter > 7:
-                self.old_coeffs = [ (1-mix) * old + mix * new for old, new in zip(coeff, self.old_coeffs) ]
-                    
+                # Mix the coefficients with 25%
+                mix = 0.25
+                self.old_coeffs = [ (1-mix) * old + mix * new for new, old in zip(coeff, self.old_coeffs) ]
             return self.old_coeffs
         
 
