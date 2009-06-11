@@ -1139,7 +1139,7 @@ class Transport(GPAW):
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
             kpt.f_n = np.zeros((self.nbmol))
-        fd = ('linear_mm' + str(world.rank), 'wb')
+        fd = file('linear_mm' + str(world.rank), 'wb')
         pickle.dump(self.linear_mm, fd, 2)
         fd.close()
         self.linear_mm = None
