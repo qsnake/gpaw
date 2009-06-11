@@ -203,7 +203,7 @@ class Hamiltonian:
                                       global_integral=False)
             
         # Calculate atomic hamiltonians:
-        self.timer.start('Atomic Hamiltonians')
+        self.timer.start('Hamiltonian: atomic')
         W_aL = {}
         for a in density.D_asp:
             W_aL[a] = np.empty((self.setups[a].lmax + 1)**2)
@@ -254,13 +254,15 @@ class Hamiltonian:
                     dH_p += sqrt(4 * pi / 3) * np.dot(vext[1], Delta_p1)
 
             self.dH_asp[a] = dH_sp = np.zeros_like(D_sp)
+            self.timer.start('Hamiltonian: xc_correction')
             Exc += setup.xc_correction.calculate_energy_and_derivatives(
                 D_sp, dH_sp, a)
+            self.timer.stop('Hamiltonian: xc_correction')
             dH_sp += dH_p
 
             Ekin -= (D_sp * dH_sp).sum()
 
-        self.timer.stop('Atomic Hamiltonians')
+        self.timer.stop('Hamiltonian: atomic')
 
         # Make corrections due to non-local xc:
         xcfunc = self.xc.xcfunc
