@@ -250,7 +250,7 @@ class Transport(GPAW):
         p['use_buffer'] = False
         p['buffer_atoms'] = None
         p['edge_atoms'] = None
-        p['bias'] = []
+        p['bias'] = [0, 0]
         p['d'] = 2
         p['lead_restart'] = False
 
@@ -1139,6 +1139,9 @@ class Transport(GPAW):
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
             kpt.f_n = np.zeros((self.nbmol))
+        fd = ('linear_mm' + str(world.rank), 'wb')
+        pickle.dump(self.linear_mm, fd, 2)
+        fd.close()
         self.linear_mm = None
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
@@ -2121,7 +2124,8 @@ class Transport(GPAW):
         return Qmol        
 
     def get_linear_potential(self):
-        linear_potential = np.zeros(self.hamiltonian.vt_sG.shape)
+        local_linear_potential = self.gd.zeros(self.nspins)
+        linear_potential = self.gd.collect(local_linear_potential, True)
         dimt = linear_potential.shape[-1]
         dimp = linear_potential.shape[1:3]
         buffer_dim = self.dimt_buffer
@@ -2139,7 +2143,8 @@ class Transport(GPAW):
         for s in range(self.nspins):
             for i in range(dimt):
                 linear_potential[s,:,:,i] = vt[i] * (np.zeros(dimp) + 1)
-        return linear_potential
+        self.gd.distribute(linear_potential, local_linear_potential)  
+        return local_linear_potential
     
     def output(self, filename):
         self.pl_write(filename + '.mat', (self.h_skmm,
@@ -2539,11 +2544,11 @@ class Transport(GPAW):
         pbc = self.atoms._pbc
         cell = N_c * h_c
         from gpaw.grid_descriptor import GridDescriptor
-        comm = world.new_communicator(np.array([world.rank]))
+        comm = self.gd.comm
         GD = GridDescriptor(N_c, cell, pbc, comm)
-
         basis_functions = self.initialize_projector(extend=True, nn=nn)
-        linear_potential = GD.zeros(self.my_nspins)
+        local_linear_potential = GD.empty(self.my_nspins)
+        linear_potential = GD.zeros(self.my_nspins, global_array=True)
         dim_s = self.gd.N_c[self.d] #scat
         dim_t = linear_potential.shape[3]#transport direction
         dim_p = linear_potential.shape[1:3] #transverse 
@@ -2553,15 +2558,16 @@ class Transport(GPAW):
         vt[-nn / 2:] = bias[1] / 2.0
         vt[nn / 2: -nn / 2] = np.linspace(bias[0]/2.0, bias[1]/2.0, dim_s)
         for s in range(self.my_nspins):
-             for i in range(dim_t):
-                  linear_potential[s,:,:,i] = vt[i] * (np.zeros(dim_p) + 1)
+            for i in range(dim_t):
+                linear_potential[s,:,:,i] = vt[i] * (np.zeros(dim_p) + 1)
+        GD.distribute(linear_potential, local_linear_potential)
         wfs = self.wfs
         nq = len(wfs.ibzk_qc)
         nao = wfs.setups.nao
-        H_sqMM = np.empty([self.my_nspins, nq, nao, nao])
-        H_MM = np.empty([nao, nao]) 
+        H_sqMM = np.empty([self.my_nspins, nq, nao, nao], wfs.dtype)
+        H_MM = np.empty([nao, nao], wfs.dtype) 
         for kpt in wfs.kpt_u:
-            basis_functions.calculate_potential_matrix(linear_potential[0],
+            basis_functions.calculate_potential_matrix(local_linear_potential[0],
                                                        H_MM, kpt.q)
             tri2full(H_MM)
             H_MM *= Hartree
@@ -2569,6 +2575,7 @@ class Transport(GPAW):
                 H_sqMM[kpt.s, kpt.q] = H_MM
             else:
                 H_sqMM[0, kpt.q] = H_MM
+        self.gd.comm.sum(H_sqMM)  
         return H_sqMM
 
     def estimate_transport_matrix_memory(self):
@@ -2662,7 +2669,7 @@ class Transport(GPAW):
         pbc = self.atoms._pbc
         cell = N_c * h_c
         from gpaw.grid_descriptor import GridDescriptor
-        comm = world.new_communicator(np.array([world.rank]))
+        comm = self.gd.comm
         GD = GridDescriptor(N_c, cell, pbc, comm)
         from gpaw.lfc import BasisFunctions
         basis_functions = BasisFunctions(GD,     
@@ -2675,6 +2682,8 @@ class Transport(GPAW):
             for i in range(len(pos)):
                 pos[i, self.d] += nn * h_c[self.d] * Bohr / 2.
         spos_ac = np.linalg.solve(np.diag(cell) * Bohr, pos.T).T % 1.0
+        if not self.wfs.gamma:
+            basis_functions.set_k_points(self.wfs.ibzk_qc)
         basis_functions.set_positions(spos_ac)
         return basis_functions
     
@@ -2794,6 +2803,7 @@ class Transport(GPAW):
         self.file_num = num_v
         current = np.empty([num_v])
         result = {}
+        self.negf_prepare() 
         for i in range(num_v):
             v = bias[i]
             self.bias = [v/2., -v /2.]
@@ -2855,7 +2865,7 @@ class Transport(GPAW):
             
     def compare_step_data(self, step_data1, step_data2):
         overview_d = 1
-        self.nspins = 2
+        self.nspins = 1
         sd = step_data1['t_dos']
         bias = step_data1['bias']
         import pylab
@@ -2922,8 +2932,8 @@ class Transport(GPAW):
        
     def plot_step_data(self, step_data):
         overview_d = 1
-        self.nspins = 1
         #self.d = 0
+        self.nspins = 1
         sd = step_data['t_dos']
         bias = step_data['bias']
         import pylab
