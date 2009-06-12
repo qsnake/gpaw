@@ -394,7 +394,7 @@ class Setup:
             nct_g / sqrt(4 * pi),
             rgd,
             [(j, l_j[j]) for j in range(nj)],
-            2 * lcut,
+            min(2 * lcut, 4),
             data.e_xc,
             self.phicorehole_g,
             data.fcorehole,

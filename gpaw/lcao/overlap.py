@@ -12,12 +12,15 @@ from gpaw.spline import Spline
 from gpaw.utilities import fac
 from gpaw.utilities.tools import tri2full
 from gpaw.utilities.blas import gemm
+from gpaw import extra_parameters
 
 
 # Generate the coefficients for the Fourier-Bessel transform
 C = []
 a = 0.0
 n = 5
+if extra_parameters.get('fprojectors'):
+    n = 7
 for n in range(n):
     c = np.zeros(n+1, complex)
     for s in range(n + 1):
@@ -338,7 +341,10 @@ class TwoCenterIntegrals:
             if derivative:
                 rlY_lm, drlYdR_lmc = spherical_harmonics_and_derivatives(R, 5)
             else:
-                rlY_lm = spherical_harmonics(R, 5)
+                if extra_parameters.get('fprojectors'):
+                    rlY_lm = spherical_harmonics(R, 7)
+                else:
+                    rlY_lm = spherical_harmonics(R, 5)
                 drlYdR_lmc = []
 
             self.stp_overlaps(S_qxMM, T_qxMM, P1_qxMi, P2_qxMi, a1, a2,

@@ -65,7 +65,6 @@ class XCCorrection:
                  tauc_g=None, # kinetic core energy array
                  tauct_g=None): # kinetic core energy array
 
-        
         self.nc_g = nc_g
         self.nct_g = nct_g
         self.xc = xc

@@ -613,8 +613,9 @@ class Generator(AllElectron):
             dO_lnn.append(dO_nn)
             dH_lnn.append(dH_nn)
 
-            for n, q in enumerate(q_n):
-                q[:] = filter(q, l) * r**(l + 1)
+            if l <= 2:
+                for n, q in enumerate(q_n):
+                    q[:] = filter(q, l) * r**(l + 1)
 
             A_nn = npy.inner(s_n, q_n * dr)
             q_n[:] = npy.dot(inv(npy.transpose(A_nn)), q_n)
