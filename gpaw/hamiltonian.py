@@ -432,7 +432,7 @@ class Hamiltonian:
             self.xc.get_energy_and_potential(density.nt_sg[0], Vxct_sg[0],
                                              density.nt_sg[1], Vxct_sg[1])
         for Vxct_G, Vxct_g in zip(Vxct_sG, Vxct_sg):
-            sel.restrict(Vxct_g, Vxct_G)
+            self.restrict(Vxct_g, Vxct_G)
         del Vxct_sg
 
         # Get atomic corrections to the xc potential
