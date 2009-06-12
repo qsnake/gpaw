@@ -122,7 +122,7 @@ class Reader(xml.sax.handler.ContentHandler):
         else:
             assert tag == 'parameter'
             try:
-                value = eval(attrs['value'])
+                value = eval(attrs['value'], {})
             except (SyntaxError, NameError):
                 value = attrs['value'].encode()
             self.parameters[attrs['name']] = value
