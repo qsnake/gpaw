@@ -10,5 +10,5 @@ for name in ['N2', 'O2', 'NO']:
                 txt=name + '.txt')
     mol.set_calculator(calc)
   
-    opt = HessLBFGS(mol, logfile=name + '.log', trajectory=name + '.traj')
+    opt = QuasiNewton(mol, logfile=name + '.log', trajectory=name + '.traj')
     opt.run(fmax=0.05)

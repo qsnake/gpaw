@@ -2,6 +2,7 @@ from sys import argv
 from gpaw import *
 from ase import *
 from ase.lattice.surface import *
+from ase.optimize.lbfgs import HessLBFGS
 
 tag = 'Ru001'
 
