@@ -70,6 +70,7 @@ if len(tests) == 0:
         'XC2Spin.py',
         'multipoletest.py',
         'proton.py',
+        'parallel/compare.py',
         'coulomb.py',
         'ase3k.py',
         'eed.py',
