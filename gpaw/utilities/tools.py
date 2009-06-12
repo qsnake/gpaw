@@ -331,22 +331,24 @@ def md5_hash():
 md5 = md5_hash()
 
 def md5_array(data, decimals=None, numeric=False):
-    """Create MD5 hex digest from NumPy array. Optionally, will round off
-    the data before processing, and convert 128 bit hash to NumPy float.
-    """
+    """Create MD5 hex digest from NumPy array.
+
+    Optionally, will round off the data before processing, and convert
+    128 bit hash to 128 bit complex number."""
+    
     if not isinstance(data, np.ndarray):
         data = np.asarray(data)
 
-    assert np.issubdtype(data.dtype, np.number) #float,complex,int,...
+    assert np.issubdtype(data.dtype, np.number)  # float, complex, int, ...
 
     if decimals is not None:
-        data = signtrim(data, decimals) #np.round is buggy because -0 != 0
+        data = signtrim(data, decimals)  # np.round is buggy because -0 != 0
 
     md5hex = md5.md5(data.tostring()).hexdigest()
 
     if numeric:
         from binascii import a2b_hex
-        return np.fromstring(a2b_hex(md5hex), np.float128).item()
+        return np.fromstring(a2b_hex(md5hex), np.complex128).item()
     else:
         return md5hex
 
