@@ -57,20 +57,25 @@ jobs = [
     ]
 
 jobs = []
-setup_parameters = ['H', 'Li']
+#setup_parameters = ['H', 'Li']
 for symbol in setup_parameters:
     jobs.append(Job('../../doc/setups/make_setup_pages_data',
-                    tmax=20, ncpu=1, arg=symbol))
-jobs.append(Job('../../doc/setups/make_setup_pages_data', ncpu=1, 
+                    tmax=60, ncpu=1, arg=symbol))
+jobs.append(Job('../../doc/setups/make_setup_pages_data', tmax=60, ncpu=1, 
                 deps=['make_setup_pages_data' + symbol
                       for symbol in setup_parameters]))
 
-#jobs += [
+jobs = [
+    Job('NORu001/ruslab', tmax=5*60, ncpu=4),
+    Job('NORu001/ruslab', tmax=5*60, ncpu=8, arg='N'),
+    Job('NORu001/ruslab', tmax=5*60, ncpu=12, arg='O'),
+    Job('NORu001/NO', tmax=20, ncpu=4),
+#   Job('NORu001/result', ncpu=1, deps=['ruslab', 'ruslabN', 'ruslabO', 'NO']),
 #    Job('COAu38/Au038to', 10),
 #    Job('O2Pt/o2pt', 40),
 #    Job('../vdw/interaction', 60, deps=['dimers']),
 #    Job('../vdw/dimers', 60),
-#    ]
+    ]
 
 class Jobs:
     def __init__(self, log=sys.stdout):
@@ -196,6 +201,7 @@ class Jobs:
              'f.close()',
              'f = open("%s/%s.start", "w")' % (job.dir, job.id),
              'f.write("%f\\n" % time.time())',
+             'f.close()',
              'x = os.system("%s")' % cmd,
              'f = open("%s/%s.done", "w")' % (job.dir, job.id),
              'f.write("%f\\n%d\\n" % (time.time(), x))',
@@ -263,7 +269,8 @@ j.add(jobs)
 j.install()
 try:
     j.run()
-except KeyboardInterrupt:
+except:
     j.cleanup()
+    raise
 else:
     j.print_results()
