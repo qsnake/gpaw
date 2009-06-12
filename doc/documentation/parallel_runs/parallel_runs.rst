@@ -4,9 +4,23 @@
 Parallel runs
 =============
 
+.. toctree::
+   :maxdepth: 1
+
+.. _parallel_running_jobs:
 
 Running jobs in parallel
 ========================
+
+Parallel calculations are done with MPI and a special
+:program:`gpaw-python` python-interpreter.
+
+The parallelization can be done over the **k**-points, bands, spin in
+spin-polarized calculations, and using real-space domain
+decomposition.  The code will try to make a sensible domain
+decomposition that match both the number of processors and the size of
+the unit cell.  This choice can be overruled, see
+:ref:`manual_parallelization_types`.
 
 Before starting a parallel calculation, it might be useful to check how the parallelization corresponding to given number
 of processors would be done with ``--dry-run`` command line option::
@@ -134,8 +148,28 @@ ScaLapack
 
    ScaLapack/ScaLapack
 
+.. _manual_parallelization_types:
+
+Parallization modes
+===================
+
+.. _manual_parsize:
+
+Domain decomposition
+--------------------
+
+The choice for the domain decomposition can be forced using the 
+keyword ``parsize``. It can be set like ``parsize=(nx,ny,nz)`` to
+force the decomposition into nx, ny, and nz boxes in x,y, and z direction
+respectively. The use of domain decomposition only can be forced by
+``parsize='domain only'``.
+
+There is also a command line argument
+``--domain-decomposition`` that allows you to control the domain
+decomposition (see example at :ref:`submit_tool_on_niflheim`).
+
 Band parallelization
-====================
+--------------------
 
 .. toctree::
    :maxdepth: 1

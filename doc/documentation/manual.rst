@@ -394,14 +394,6 @@ passed to the ``txt`` keyword, a file with that name will be opened
 and used for output.  Use ``txt=None`` to disable all text output.
 
 
-.. _manual_parsize:
-
-Domain decomposition
---------------------
-
-See :ref:`manual_parallel_calculations`.
-
-
 .. _manual_stencils:
 
 Finite-difference stencils
@@ -522,19 +514,7 @@ ignored. Default is False.
 Parallel calculations
 ---------------------
 
-Parallel calculations are done with MPI and a special
-:program:`gpaw-python` python-interpreter.
-
-The parallelization can be done over the **k**-points, bands, spin in
-spin-polarized calculations, and using real-space domain
-decomposition.  The code will try to make a sensible domain
-decomposition that match both the number of processors and the size of
-the unit cell.  If desired, this choice can be overruled with the
-keyword ``parsize=(nx,ny,nz)``.  There is also a command line argument
-``--domain-decomposition`` that allows you to control the domain
-decomposition (see example at :ref:`submit_tool_on_niflheim`).
-
-There is more information about running parallel calculations on the
+Information about running parallel calculations can be found on the
 :ref:`parallel_runs` page.
 
 
