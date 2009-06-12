@@ -186,71 +186,71 @@ class LrTDDFT(ExcitationList):
         
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
-        if mpi.rank == mpi.MASTER:
 
-            if fh is None:
-                if filename.endswith('.gz'):
-                    try:
-                        import gzip
-                        f = gzip.open(filename)
-                    except:
-                        f = open(filename, 'r')
-                else:
+        if fh is None:
+            if filename.endswith('.gz'):
+                try:
+                    import gzip
+                    f = gzip.open(filename)
+                except:
                     f = open(filename, 'r')
-                self.filename = filename
             else:
-                f = fh
-                self.filename = None
+                f = open(filename, 'r')
+            self.filename = filename
+        else:
+            f = fh
+            self.filename = None
 
-            # get my name
-            s = f.readline().replace('\n','')
-            hash, self.name = s.split()
-            
-            self.xc = f.readline().replace('\n','')
-            values = f.readline().split()
-            self.eps = float(values[0])
-            if len(values) > 1:
-                self.derivativeLevel = int(values[1])
-                self.numscale = float(values[2])
-                self.finegrid = int(values[3])
-            else:
-                # old writing style, use old defaults
-                self.numscale = 0.001
-                pass
-                
-            self.kss = KSSingles(filehandle=f)
-            if self.name == 'LrTDDFT':
-                self.Om = OmegaMatrix(kss=self.kss, filehandle=f,
-                                      txt=self.txt)
-            else:
-                self.Om = ApmB(kss=self.kss, filehandle=f,
-                                      txt=self.txt)
-            self.Om.Kss(self.kss)
+        # get my name
+        s = f.readline().replace('\n','')
+        hash, self.name = s.split()
 
-            # check if already diagonalized
-            p = f.tell()
-            s = f.readline()
-            if s != '# Eigenvalues\n':
-                # go back to previous position
-                f.seek(p)
-            else:
-                # load the eigenvalues
-                n = int(f.readline().split()[0])
-                for i in range(n):
-                    l = f.readline().split()
-                    E = float(l[0])
-                    me = [float(l[1]),float(l[2]),float(l[3])]
-                    self.append(LrTDDFTExcitation(e=E,m=me))
-                    
-                # load the eigenvectors
-                pass
+        self.xc = f.readline().replace('\n','')
+        values = f.readline().split()
+        self.eps = float(values[0])
+        if len(values) > 1:
+            self.derivativeLevel = int(values[1])
+            self.numscale = float(values[2])
+            self.finegrid = int(values[3])
+        else:
+            # old writing style, use old defaults
+            self.numscale = 0.001
+            pass
 
-            if fh is None:
-                f.close()
+        self.kss = KSSingles(filehandle=f)
+        if self.name == 'LrTDDFT':
+            self.Om = OmegaMatrix(kss=self.kss, filehandle=f,
+                                  txt=self.txt)
+        else:
+            self.Om = ApmB(kss=self.kss, filehandle=f,
+                                  txt=self.txt)
+        self.Om.Kss(self.kss)
 
-            # update own variables
-            self.istart = self.Om.fullkss.istart
-            self.jend = self.Om.fullkss.jend
+        # check if already diagonalized
+        p = f.tell()
+        s = f.readline()
+        if s != '# Eigenvalues\n':
+            # go back to previous position
+            f.seek(p)
+        else:
+            # load the eigenvalues
+            n = int(f.readline().split()[0])
+            for i in range(n):
+                l = f.readline().split()
+                E = float(l[0])
+                me = [float(l[1]),float(l[2]),float(l[3])]
+                self.append(LrTDDFTExcitation(e=E,m=me))
+
+            # load the eigenvectors
+            pass
+
+        if fh is None:
+            f.close()
+
+        # update own variables
+        self.istart = self.Om.fullkss.istart
+        self.jend = self.Om.fullkss.jend
+
 
     def singlets_triplets(self):
         """Split yourself into a singlet and triplet object"""

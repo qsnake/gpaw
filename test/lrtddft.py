@@ -3,11 +3,14 @@ from ase import *
 from gpaw import GPAW
 from gpaw.utilities import equal
 from gpaw.lrtddft import LrTDDFT
+from gpaw.mpi import world 
 
 txt='-'
 txt='/dev/null'
 io_only=False
+#io_only=True
 load=False
+#load=True
 if not io_only:
     R=0.7 # approx. experimental bond length
     a = 3.0
@@ -47,7 +50,9 @@ if not io_only:
     equal(t1.get_energy(), t2.get_energy(), 5.e-7)
 
     if not load:
-        c_spin = GPAW(xc='PBE', nbands=2, spinpol=True, txt=txt)
+        c_spin = GPAW(xc='PBE', nbands=2, 
+                      spinpol=True, parsize='domain only',
+                      txt=txt)
         H2.set_calculator(c_spin)
         c_spin.calculate(H2)
 ##        c_spin.write('H2spin.gpw', 'all')
@@ -73,6 +78,7 @@ if not io_only:
 fname = 'lr.dat.gz'
 if not io_only:
     lr.write(fname)
+    world.barrier()
 lr = LrTDDFT(fname)
 lr.diagonalize()
 t4 = lr[0]

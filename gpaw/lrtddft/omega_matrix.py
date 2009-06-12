@@ -557,24 +557,23 @@ class OmegaMatrix:
  
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
-        if mpi.rank == mpi.MASTER:
-            if fh is None:
-                f = open(filename, 'r')
-            else:
-                f = fh
+        if fh is None:
+            f = open(filename, 'r')
+        else:
+            f = fh
 
-            f.readline()
-            nij = int(f.readline())
-            full = npy.zeros((nij,nij))
-            for ij in range(nij):
-                l = f.readline().split()
-                for kq in range(ij,nij):
-                    full[ij,kq] = float(l[kq-ij])
-                    full[kq,ij] = full[ij,kq]
-            self.full = full
+        f.readline()
+        nij = int(f.readline())
+        full = npy.zeros((nij,nij))
+        for ij in range(nij):
+            l = f.readline().split()
+            for kq in range(ij,nij):
+                full[ij,kq] = float(l[kq-ij])
+                full[kq,ij] = full[ij,kq]
+        self.full = full
 
-            if fh is None:
-                f.close()
+        if fh is None:
+            f.close()
 
     def write(self, filename=None, fh=None):
         """Write current state to a file."""

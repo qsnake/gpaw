@@ -140,25 +140,24 @@ class KSSingles(ExcitationList):
 
     def read(self, filename=None, fh=None):
         """Read myself from a file"""
-        if mpi.rank == mpi.MASTER:
-            if fh is None:
-                if filename.endswith('.gz'):
-                    import gzip
-                    f = gzip.open(filename)
-                else:
-                    f = open(filename, 'r')
+        if fh is None:
+            if filename.endswith('.gz'):
+                import gzip
+                f = gzip.open(filename)
             else:
-                f = fh
+                f = open(filename, 'r')
+        else:
+            f = fh
 
-            f.readline()
-            n = int(f.readline())
-            for i in range(n):
-                kss = KSSingle(string=f.readline())
-                self.append(kss)
-            self.update()
-                
-            if fh is None:
-                f.close()
+        f.readline()
+        n = int(f.readline())
+        for i in range(n):
+            kss = KSSingle(string=f.readline())
+            self.append(kss)
+        self.update()
+
+        if fh is None:
+            f.close()
 
     def update(self):
         istart = self[0].i

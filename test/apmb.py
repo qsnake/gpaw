@@ -47,7 +47,9 @@ equal(lr[0].get_energy(), lr_ApmB[0].get_energy(), 5.e-10)
 print '------ with spin'
 
 if not load:
-    c_spin = GPAW(xc='PBE', nbands=2, spinpol=True, txt=txt)
+    c_spin = GPAW(xc='PBE', nbands=2, 
+                  spinpol=True, parsize='domain only',
+                  txt=txt)
     H2.set_calculator(c_spin)
     c_spin.calculate(H2)
 ##    c_spin.write('H2spin.gpw', 'all')
