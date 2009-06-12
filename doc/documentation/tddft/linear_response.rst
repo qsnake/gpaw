@@ -44,6 +44,11 @@ The next step is to calculate the Omega Matrix from the ground state orbitals::
                nspins=2) # force the calculation of triplet excitations also
   lr.write('lr.dat.gz')
 
+Note, that parallelization over spin does not work here. As a workaround,
+domain decomposition only (see :ref:`manual_parsize`) 
+has to be used for spin polarised 
+calculations in parallel.
+
 Extracting the spectrum
 =======================
 
