@@ -303,8 +303,8 @@ class VDWFunctional:
             self.phi_ij = pickle.load(open(name))
             if self.verbose:
                 print 'VDW: using', name
-        except IOError:
-            print 'VDW: No such file:', name
+        except IOError, e:
+            print 'VDW: Could not read table file:', name, 'Error:', e
             self.make_table(name)
             
     def make_table(self, name):
@@ -496,6 +496,10 @@ class FFTVDWFunctional(VDWFunctional):
         
         self.C_aip = None
         self.phi_aajp = None
+
+        self.alphas = [a for a in range(self.Nalpha)
+                       if (a * self.world.size // self.Nalpha ==
+                           self.world.rank)]
         
     def construct_cubic_splines(self):
         """Construc interpolating splines for q0.
@@ -616,30 +620,38 @@ class FFTVDWFunctional(VDWFunctional):
 
         world = self.world
 
-        i_g = (np.log(q0_g / self.q_a[1] * (self.lambd - 1) + 1) /
-               log(self.lambd)).astype(int)
-            
-        dq0_g = q0_g - self.q_a[i_g]
+        if self.alphas:
+            i_g = (np.log(q0_g / self.q_a[1] * (self.lambd - 1) + 1) /
+                   log(self.lambd)).astype(int)
+            dq0_g = q0_g - self.q_a[i_g]
+        else:
+            i_g = None
+            dq0_g = None
         
         if self.verbose:
             print 'VDW: fft:',
             
         theta_ak = {}
         p_ag = {}
-        for a in range(world.rank, N, world.size):
+        for a in self.alphas:
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
             pa_g = (C_pg[0] + dq0_g *
                     (C_pg[1] + dq0_g *
                      (C_pg[2] + dq0_g * C_pg[3])))
+            del C_pg
             theta_ak[a] = fftn(n_g * pa_g, self.shape).copy()
 
             if not self.energy_only:
                 p_ag[a] = pa_g
-                
+            del pa_g
             if self.verbose:
                 print a,
                 sys.stdout.flush()
-
+        
+        if self.energy_only:
+            del i_g
+            del dq0_g
+        
         if self.verbose:
             print
             print 'VDW: convolution:',
@@ -648,9 +660,9 @@ class FFTVDWFunctional(VDWFunctional):
         dj_k = self.dj_k
         energy = 0.0
         for a in range(N):
-            ranka = a % world.size
+            ranka = a * world.size // N
             Fa_k = np.zeros(self.shape, complex)
-            for b in range(world.rank, N, world.size):
+            for b in self.alphas:
                 _gpaw.vdw2(self.phi_aajp[a, b], self.j_k, dj_k,
                            theta_ak[b], Fa_k)
 
@@ -661,11 +673,13 @@ class FFTVDWFunctional(VDWFunctional):
                 if not self.energy_only:
                     n1, n2, n3 = gd.get_size_of_global_array()
                     F_ag[a] = ifftn(Fa_k).real[:n1, :n2, :n3].copy()
-                
+
+            del Fa_k
             if self.verbose:
                 print a,
                 sys.stdout.flush()
 
+        del theta_ak
         if self.verbose:
             print
 
@@ -684,23 +698,26 @@ class FFTVDWFunctional(VDWFunctional):
         a2_g = self.gd.collect(a2_g, broadcast=True)
         e_LDAc_g = self.gd.collect(e_LDAc_g, broadcast=True)
         v_LDAc_g = self.gd.collect(v_LDAc_g, broadcast=True)
-        dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
-                   4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
-                   7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
-                   n_g**(-10.0 / 3.0))
-        dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+        if self.alphas:
+            dq0dn_g = ((pi / 3 / n_g)**(2.0 / 3.0) +
+                       4 * pi / 3 * (e_LDAc_g / n_g - v_LDAc_g) / n_g +
+                       7 * Zab / 108 / (3 * pi**2)**(1.0 / 3.0) * a2_g *
+                       n_g**(-10.0 / 3.0))
+            dq0da2_g = -Zab / 36 / (3 * pi**2)**(1.0 / 3.0) / n_g**(7.0 / 3.0)
+        
         v0_g = np.zeros_like(n_g)
         deda20_g = np.zeros_like(n_g)
 
-        for a in range(world.rank, N, world.size):
+        for a in self.alphas:
             C_pg = self.C_aip[a, i_g].transpose((3, 0, 1, 2))
             dpadq0_g = C_pg[1] + dq0_g * (2 * C_pg[2] + 3 * dq0_g * C_pg[3])
-
+            del C_pg
             dthetaadn_g = p_ag[a] + n_g * dpadq0_g * dq0dn_g * self.dhdx_g
             v0_g += dthetaadn_g * F_ag[a]
-            
+            del dthetaadn_g
             dthetaada2_g = n_g * dpadq0_g * dq0da2_g * self.dhdx_g
             deda20_g += dthetaada2_g * F_ag[a]
+            del dthetaada2_g
 
         world.sum(v0_g)
         world.sum(deda20_g)
