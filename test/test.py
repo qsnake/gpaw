@@ -125,6 +125,7 @@ if len(tests) == 0:
         'hgh_h2o.py',
         'apmb.py',
         'relax.py',
+        'restart_band_structure.py',
         'ldos.py',
         'lcao_bulk.py',
         'revPBE_Li.py',

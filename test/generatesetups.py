@@ -16,6 +16,7 @@ if rank == 0:
         g.run(exx=True, **parameters[symbol])
         files.append('%s.%s' % (symbol, XCFunctional(xcname).get_name()))
 
+    gen('Si','GLLBSC')
     for symbol in ['H', 'He', 'Li', 'C', 'N', 'O', 'Cl', 'Al', 'Si',
                    'Na', 'Fe', 'Cu']:
         gen(symbol, 'LDA')

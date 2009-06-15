@@ -42,7 +42,7 @@ class NonLocalFunctionalFactory:
                         from gpaw.gllb.contributions.c_xc import C_XC
                         C_Response(functional, 1.0,
                         C_GLLBScr(functional, 1.0,'X_PBE_SOL-None').get_coefficient_calculator())
-                        C_XC(functional, 1.0, 'None-C_PBE')
+                        C_XC(functional, 1.0, 'None-C_PBE_SOL')
                         return functional
         elif name == 'GLLBC':
             from gpaw.gllb.contributions.c_gllbscr import C_GLLBScr
