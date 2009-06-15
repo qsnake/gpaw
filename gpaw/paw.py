@@ -382,7 +382,8 @@ class PAW(PAWTextOutput):
             nbands = int(nvalence + M + 0.5) // 2 + (-nbands)
         
         if nvalence > 2 * nbands:
-            raise ValueError('Too few bands!')
+            raise ValueError('Too few bands!  Electrons: %d, bands: %d'
+                             % (nvalence, nbands))
 
         if self.occupations is None:
             # Create object for occupation numbers:
