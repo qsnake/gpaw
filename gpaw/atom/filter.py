@@ -117,6 +117,13 @@ class Filter:
         # j (x) = (--- - -) sin(x) - --- cos(x).
         #  2         3   x             2
         #           x                 x
+        #
+        #           15   6             15   1 
+        # j (x) = (--- - -) sin(x) - (--- - -) cos(x)
+        #  3         4   x              3   x 
+        #           x                  x      
+        #
+
 
         if l == 0:
             fq_i = npy.dot(self.sinqr_ig, fdrim_g * r_g) * self.cut_i
@@ -137,6 +144,18 @@ class Filter:
             fr_g = 3 * npy.dot(fq_i / q_i**2, self.sinqr_ig) / r_g**2
             fr_g -= npy.dot(fq_i, self.sinqr_ig)
             fr_g -= 3 * npy.dot(fq_i / q_i, self.cosqr_ig) / r_g
+        elif l == 3: ### This should be tested
+            fq_i = 15 * npy.dot(self.sinqr_ig, fdrim_g / r_g**2) / q_i**3
+            fq_i -= 6 * npy.dot(self.sinqr_ig, fdrim_g) / q_i
+            fq_i -= 15 * npy.dot(self.cosqr_ig, fdrim_g / r_g) / q_i**2
+            fq_i += npy.dot(self.cosqr_ig, r_g * fdrim_g)
+            fq_i[0] = 0.0
+            fq_i *= self.cut_i
+            fr_g = 15 * npy.dot(fq_i / q_i**3, self.sinqr_ig) / r_g**3
+            fr_g -= 6 * npy.dot(fq_i / q_i, self.sinqr_ig) / r_g
+            fr_g -= 15 * npy.dot(fq_i / q_i**2, self.cosqr_ig) / r_g**2
+            fr_g += npy.dot(fq_i, self.cosqr_ig)
+
         else:
             raise NotImplementedError
     
