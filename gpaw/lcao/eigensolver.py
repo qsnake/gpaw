@@ -136,6 +136,9 @@ class LCAO:
                                      nao, mynbands)
             
             H_MM = _gpaw.scalapack_redist(H_MM, d2, d1b)
+            _gpaw.blacs_destroy(d1b)
+            _gpaw.blacs_destroy(d2)
+            _gpaw.blacs_destroy(d1)
             if H_MM is not None:
                 assert self.gd.comm.rank == 0
                 kpt.C_nM[:] = H_MM[:, :mynbands].T
