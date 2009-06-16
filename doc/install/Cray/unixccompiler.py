@@ -13,7 +13,7 @@ the "typical" Unix-style command-line C compiler:
   * link shared library handled by 'cc -shared'
 """
 
-__revision__ = "$Id: unixccompiler.py 52237 2006-10-08 17:52:37Z ronald.oussoren $"
+__revision__ = "$Id: unixccompiler.py 54954 2007-04-25 06:42:41Z neal.norwitz $"
 
 import os, sys
 from types import StringType, NoneType
@@ -82,7 +82,7 @@ def _darwin_compiler_fixup(compiler_so, cc_args):
         except ValueError:
             pass
 
-    # Check if the SDK that is used during compilation actually exists, 
+    # Check if the SDK that is used during compilation actually exists,
     # the universal build requires the usage of a universal SDK and not all
     # users have that installed by default.
     sysroot = None
@@ -331,6 +331,7 @@ class UnixCCompiler(CCompiler):
         if output_dir is None:
             (output_dir, output_filename) = os.path.split(output_filename)
         output_fullname = os.path.join(output_dir, output_filename)
+        output_fullname = os.path.abspath(output_fullname)
         linkline = "%s %s" % (output_filename[:-2], output_fullname)
         for l in library_dirs:
             linkline += " -L" + l
@@ -343,8 +344,7 @@ class UnixCCompiler(CCompiler):
                                output_dir,
                                debug,
                                target_lang)
-        
+
         self.static_lib_format = old_fmt
         print "Append to Setup: ", linkline
-    
 
