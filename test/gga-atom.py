@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.random as ra
 from gpaw.utilities import equal
-from gpaw.setup import Setup
+from gpaw.setup import create_setup
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions
 from gpaw.spline import Spline
@@ -10,10 +10,10 @@ from gpaw.utilities import pack
 from gpaw.mpi import serial_comm
 
 ra.seed(8)
-nspins=1
+nspins = 1
 for name in ['LDA', 'PBE']:
     xcfunc = XCFunctional(name, nspins)
-    s = Setup('N', xcfunc)
+    s = create_setup('N', xcfunc)
     ni = s.ni
     niAO = s.niAO
     wt0_j = s.phit_j

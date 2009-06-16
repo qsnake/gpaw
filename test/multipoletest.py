@@ -1,6 +1,6 @@
 from math import sqrt, pi
 import numpy as np
-from gpaw.setup import Setup
+from gpaw.setup import create_setup
 from gpaw.grid_descriptor import GridDescriptor
 from gpaw.localized_functions import create_localized_functions
 from gpaw.xc_functional import XCFunctional
@@ -13,7 +13,7 @@ a_Lg = gd.zeros(9)
 nspins = 2
 xcfunc = XCFunctional('LDA', nspins)
 for soft in [False]:
-    s = Setup('Cu', xcfunc, lmax=2)
+    s = create_setup('Cu', xcfunc, lmax=2)
     ghat_l = s.ghat_l
     ghat_Lg = create_localized_functions(ghat_l, gd, (0.54321, 0.5432, 0.543))
     a_Lg[:] = 0.0

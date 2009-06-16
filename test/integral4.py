@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.random as ra
-from gpaw.setup import Setup
+from gpaw.setup import create_setup
 from gpaw.xc_functional import XCFunctional
 
 
@@ -8,7 +8,7 @@ x = 0.000001
 ra.seed(8)
 nspins = 1
 xcfunc = XCFunctional('LDA', nspins)
-s = Setup('H', xcfunc)
+s = create_setup('H', xcfunc)
 ni = s.ni
 nii = ni * (ni + 1) / 2
 D_p = 0.1 * ra.random((1, nii)) + 0.2

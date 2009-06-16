@@ -32,7 +32,7 @@ calc = GPAW(nbands=6, h=0.12, # Force is quite bad for h > 0.12, must be eggbox
             mode='fd',
             basis={'H' : hbasis, 'O' : obasis},
             width=0.01,
-            txt='hgh_h2o.txt')
+            txt='-')
 mol.set_calculator(calc)
 e = mol.get_potential_energy()
 F_ac = mol.get_forces()
@@ -45,7 +45,7 @@ if extra_parameters.get('usenewlfc'):
                          [  2.81319723e-03,  2.16079466e+01, -1.41077550e+01],
                          [  1.18679540e-02, -4.76265566e+00, -1.53033927e+00]])
 
-eref = -943.845730575
+eref = -924.014265873
 eerr = abs(e - eref)
 
 print 'energy', e
@@ -83,7 +83,7 @@ psit_nG = wfs.kpt_u[0].psit_nG
 dH_asp = calc.hamiltonian.dH_asp
 
 assert eerr < 1e-3, 'energy changed from reference'
-assert ferr < 0.027, 'forces do not match FD check'
+assert ferr < 0.027, 'forces do not match FD check' # error is 0.0257 right now
 
 # Sanity check.  In HGH, the atomic Hamiltonian is constant.
 # Also the projectors should be normalized

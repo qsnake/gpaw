@@ -4,13 +4,18 @@ import os
 import xml.sax
 import re
 from cStringIO import StringIO
-from math import sqrt
+from math import sqrt, pi
 
 import numpy as npy
 from ase.data import atomic_names
+from ase.units import Bohr, Hartree
 
-from gpaw.utilities.tools import md5
 from gpaw import setup_paths
+from gpaw.spline import Spline
+from gpaw.utilities import fac, divrl
+from gpaw.utilities.tools import md5
+from gpaw.xc_functional import XCRadialGrid
+from gpaw.xc_correction import XCCorrection
 
 try:
     import gzip
@@ -19,73 +24,187 @@ except:
 else:
     has_gzip = True
 
+
 class SetupData:
     """Container class for persistent setup attributes and XML I/O."""
-    def __init__(self, symbol, xcsetupname, name='paw', zero_reference=False,
-                 readxml=True):
+    def __init__(self, symbol, xcsetupname, name='paw', readxml=True,
+                 zero_reference=False):
         self.symbol = symbol
         self.setupname = xcsetupname
         self.name = name
         self.zero_reference = zero_reference
-        self.softgauss = False
 
+        # Default filename if this setup is written 
         if name is None or name == 'paw':
             self.stdfilename = '%s.%s' % (symbol, self.setupname)
         else:
             self.stdfilename = '%s.%s.%s' % (symbol, name, self.setupname)
 
-        self.filename = None # full path
-        self.fingerprint = None
-        
+        self.filename = None # full path if this setup was loaded from file
+        self.fingerprint = None # hash value of file data if applicable
+
+        self.Z = None
+        self.Nc = None
+        self.Nv = None
+
+        # Quantum numbers, energies
         self.n_j = []
         self.l_j = []
         self.f_j = []
         self.eps_j = []
-        self.rcut_j = []
-        self.id_j = []
+        self.e_kin_jj = None # <phi | T | phi> - <phit | T | phit>
+        
+        self.beta = None
+        self.ng = None
+        self.rcgauss = None # For compensation charge expansion functions
+        
+        # State identifier, like "X-2s" or "X-p1", where X is chemical symbol,
+        # for bound and unbound states
+        self.id_j = [] 
+        
+        # Partial waves, projectors
         self.phi_jg = []
         self.phit_jg = []
         self.pt_jg = []
+        self.rcut_j = []
+        
+        # Densities, potentials
+        self.nc_g = None
+        self.nct_g = None
+        self.nvt_g = None
+        self.vbar_g = None
+        
+        # Kinetic energy densities of core electrons
         self.tauc_g = None
         self.tauct_g = None
+        
+        # Reference energies
+        self.e_kinetic = 0.0
+        self.e_xc = 0.0
+        self.e_electrostatic = 0.0
+        self.e_total = 0.0
+        self.e_kinetic_core = 0.0
+        
+        # Generator may store description of setup in this string
+        self.generatorattrs = []
+        self.generatordata = ''
+        
+        # Optional quantities, normally not used
         self.X_p = None
         self.ExxC = None
+        self.extra_xc_data = {}
         self.phicorehole_g = None
         self.fcorehole = 0.0
         self.lcorehole = None
         self.ncorehole = None
         self.core_hole_e = None
         self.core_hole_e_kin = None
-        self.extra_xc_data = {}
-
-        self.Z = None
-        self.Nc = None
-        self.Nv = None
-        self.beta = None
-        self.ng = None
-        self.rcgauss = None
-        self.e_kinetic = None
-        self.e_xc = None
-        self.e_electrostatic = None
-        self.e_total = None
-        self.e_kinetic_core = None
-
-        self.nc_g = None
-        self.nct_g = None
-        self.nvt_g = None
-        self.vbar_g = None
-
-        self.e_kin_jj = None
-
-        self.generatorattrs = []
-        self.generatordata = ''
-        
-        self.has_corehole = False
+        self.has_corehole = False        
 
         if readxml:
             PAWXMLParser(self).parse()
             nj = len(self.l_j)
             self.e_kin_jj.shape = (nj, nj)
+
+    def is_compatible(self, xcfunc):
+        return xcfunc.get_setup_name() == self.setupname
+
+    def print_info(self, text, setup):
+        if self.phicorehole_g is None:
+            text(self.symbol + '-setup:')
+        else:
+            text('%s-setup (%.1f core hole):' % (self.symbol, self.fcorehole))
+        text('  name   :', atomic_names[self.Z])
+        text('  id     :', self.fingerprint)
+        text('  Z      :', self.Z)
+        text('  valence:', self.Nv)
+        if self.phicorehole_g is None:
+            text('  core   : %d' % self.Nc)
+        else:
+            text('  core   : %.1f' % self.Nc)
+        text('  charge :', self.Z - self.Nv - self.Nc)
+        text('  file   :', self.filename)
+        text(('  cutoffs: %4.2f(comp), %4.2f(filt), %4.2f(core),'
+              ' lmax=%d' % (sqrt(10) * self.rcgauss * Bohr,
+                            # XXX is this really true?  I don't think this is
+                            # actually the cutoff of the compensation charges
+                            setup.rcutfilter * Bohr,
+                            setup.rcore * Bohr,
+                            setup.lmax)))
+        text('  valence states:')
+        text('            energy   radius')
+        j = 0
+        for n, l, f, eps in zip(self.n_j, self.l_j, self.f_j, self.eps_j):
+            if n > 0:
+                f = '(%d)' % f
+                text('    %d%s%-4s %7.3f   %5.3f' % (
+                    n, 'spdf'[l], f, eps * Hartree, self.rcut_j[j] * Bohr))
+            else:
+                text('    *%s     %7.3f   %5.3f' % (
+                    'spdf'[l], eps * Hartree, self.rcut_j[j] * Bohr))
+            j += 1
+        text()
+
+    def get_smooth_core_density_integral(self, Delta0):
+        return -Delta0 * sqrt(4 * pi) - self.Z + self.Nc
+
+    def get_overlap_correction(self, Delta0_ii):
+        return sqrt(4.0 * pi) * Delta0_ii
+    
+    def get_linear_kinetic_correction(self, T0_qp):
+        e_kin_jj = self.e_kin_jj
+        nj = len(e_kin_jj)
+        K_q = []
+        for j1 in range(nj):
+            for j2 in range(j1, nj):
+                K_q.append(e_kin_jj[j1, j2])
+        K_p = sqrt(4 * pi) * npy.dot(K_q, T0_qp)
+        return K_p
+
+    def get_ghat(self, lmax, alpha, r, rcut):
+        d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
+               for l in range(lmax + 1)]
+        g = alpha**1.5 * npy.exp(-alpha * r**2)
+        g[-1] = 0.0
+        ghat_l = [Spline(l, rcut, d_l[l] * alpha**l * g)
+                  for l in range(lmax + 1)]
+        return ghat_l
+
+    def find_core_density_cutoff(self, r_g, dr_g, nc_g):
+        if self.Nc == 0:
+            return 0.5
+        else:
+            N = 0.0
+            g = self.ng - 1
+            while N < 1e-7:
+                N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
+                g -= 1
+            return r_g[g]
+
+    def get_xc_correction(self, rgd, xcfunc, gcut2, lcut):
+        xc = XCRadialGrid(xcfunc, rgd, xcfunc.nspins)
+        phicorehole_g = self.phicorehole_g
+        if phicorehole_g is not None:
+            phicorehole_g = phicorehole_g[:gcut2].copy()
+
+        xc_correction = XCCorrection(
+            xc,
+            [divrl(phi_g[:gcut2].copy(), l, rgd.r_g)
+             for l, phi_g in zip(self.l_j, self.phi_jg)],
+            [divrl(phit_g[:gcut2].copy(), l, rgd.r_g)
+             for l, phit_g in zip(self.l_j, self.phit_jg)],
+            self.nc_g[:gcut2].copy() / sqrt(4 * pi),
+            self.nct_g[:gcut2].copy() / sqrt(4 * pi),
+            rgd,
+            list(enumerate(self.l_j)),
+            #[(j, self.l_j[j]) for j in range(len(self.l_j))],
+            min(2 * lcut, 4),
+            self.e_xc,
+            phicorehole_g,
+            self.fcorehole,
+            xcfunc.nspins,
+            self.tauc_g[:gcut2].copy())
+        return xc_correction
 
     def write_xml(self):
         l_j = self.l_j
@@ -263,8 +382,8 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
             setup.e_electrostatic = 0.0
             setup.e_xc = 0.0
 
-        if not hasattr(setup, 'tauc_g'):
-            setup.tauc_g = setup.tauct_g = None
+        #if not hasattr(setup, 'tauc_g'):
+        #    setup.tauc_g = setup.tauct_g = None
 
 
     def startElement(self, name, attrs):

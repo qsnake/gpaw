@@ -4,7 +4,7 @@ from ase.parallel import rank, barrier
 
 from gpaw.atom.generator import Generator, parameters
 from gpaw.xc_functional import XCFunctional
-from gpaw.setup import Setup
+from gpaw.setup import create_setup
 from gpaw import setup_paths
 
 class Lxc_testsetups:
@@ -56,7 +56,7 @@ def gen(symbol, xcname):
     value = None
     try:
         xcfunc = XCFunctional(xcname, 1)
-        s = Setup(symbol, xcfunc)
+        s = create_setup(symbol, xcfunc)
     except (IOError, RuntimeError):
         if rank == 0:
             g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
