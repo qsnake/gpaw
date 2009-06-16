@@ -9,7 +9,7 @@ This module contains classes defining two kinds of grids:
 * Radial grids.
 """
 
-from math import pi, cos, sin
+from math import pi, cos, sin, ceil, floor
 from cmath import exp
 
 import numpy as np
@@ -590,3 +590,48 @@ class RadialGridDescriptor:
         """Integrate over a radial grid."""
         
         return np.dot(self.dv_g, f_g)
+
+
+class AERadialGridDescriptor(RadialGridDescriptor):
+    """Descriptor-class for non-uniform grid used by setups, all-electron.
+
+    The grid is defined by::
+    
+          beta g
+      r = ------,  g = 0, 1, ..., N - 1
+           N - g
+      
+            r N
+      g = --------
+          beta + r
+    """
+    def __init__(self, beta, N, _noarrays=False):
+        self.beta = beta
+        self.N = N
+        if _noarrays:
+            return
+
+        self.ng = N # different from N only if using truncate()
+        g = np.arange(N, dtype=float)
+        r_g = beta * g / (N - g)
+        dr_g = beta * N / (N - g)**2
+        RadialGridDescriptor.__init__(self, r_g, dr_g)
+        d2gdr2 = -2 * N * beta / (beta + r_g)**3
+        self.d2gdr2 = d2gdr2
+
+    def r2g_ceil(self, r):
+        return ceil(r * self.N / (self.beta + r))
+
+    def r2g_floor(self, r):
+        return floor(r * self.N / (self.beta + r))
+
+    def truncate(self, gcut):
+        """Return a descriptor for a subset of this grid."""
+        # Hack to make it possible to create subgrids with smaller arrays
+        other = DefaultRadialGridDescriptor(self.beta, self.N, _noarrays=True)
+        other.ng = gcut
+        other.r_g = self.r_g[:gcut]
+        other.dr_g = self.dr_g[:gcut]
+        RadialGridDescriptor.__init__(other, other.r_g, other.dr_g)
+        other.d2gdr2 = self.d2gdr2[:gcut]
+        return other
