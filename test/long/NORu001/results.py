@@ -1,18 +1,26 @@
-"""
-E_ad_O = Oad-clean-0.5*moli['O2']
-E_ad_N = Nad-clean-0.5*moli['N2']
-E_rebond = Oad+Nad-2*clean-moli['NO']
-delta = moli['O2']+moli['N2']-moli['NO']
+from gpaw import restart
 
-print '%9s %5.2f %14s' % ('E_ad_NO:', E_ad_NO, '(VASP: -4.56)')
-print '%9s %5.2f %14s' % ('E_ad_N:', E_ad_N, '(VASP: -0.94)')
-print '%9s %5.2f %14s' % ('E_ad_O:', E_ad_O, '(VASP: -2.67)')
-print '%9s %5.2f %14s' % ('delta:', delta, '(VASP: -0.95)')
-NO@Ru(0001):
-This test calculates N and O adsorption energies and a rebond energy, in a
-manner geared to J.Phys.: Condens. Matter 18 (2006) 41-54. Instead of
-considering a c(2x2) surface cell, as done in the paper, a smaller p(2x2) cell
-is considered here, which should not seriously affect the results.
-Default values of the function NO_Ru0001 resemble the settings described in the
-paper. Only PBE is used instead of PW91.
-"""
+# J.Phys.: Condens. Matter 18 (2006) 41-54
+pw91vasp = {'NO':     -0.95,
+            'N2':      0.00,
+            'O2':      0.00,
+            'NRu001': -0.94,
+            'ORu001': -2.67,
+            'Ru001':   0.00}
+
+pbe = {}
+pw91 = {}
+for name in ['NO', 'O2', 'N2', 'Ru001', 'NRu001', 'ORu001']:
+    a, calc = restart(name, txt=None)
+    pbe[name] = a.get_potential_energy()
+    pw91[name] = pbe[name] + calc.get_xc_difference('PW91')
+
+for data, text in [(pbe, 'PBE'),
+                   (pw91, 'PW91 (non-selfconsitent)'),
+                   (pw91vasp, 'PW91 (VASP)')]:
+    print ('%22s %.3f %.3f %.3f' %
+           (text,
+            data['NRu001'] - data['Ru001'] - data['N2'] / 2,
+            data['ORu001'] - data['Ru001'] - data['O2'] / 2,
+            data['NO'] - data['N2'] / 2 - data['O2'] / 2))
+
