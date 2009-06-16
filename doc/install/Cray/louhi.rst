@@ -85,6 +85,7 @@ of shared libraries static ones are created::
         if output_dir is None:
             (output_dir, output_filename) = os.path.split(output_filename)
         output_fullname = os.path.join(output_dir, output_filename)
+        output_fullname = os.path.abspath(output_fullname)
         linkline = "%s %s" % (output_filename[:-2], output_fullname)
         for l in library_dirs:
             linkline += " -L" + l
@@ -101,7 +102,9 @@ of shared libraries static ones are created::
         self.static_lib_format = old_fmt
         print "Append to Setup: ", linkline
 
-See :svn:`~doc/install/Cray/unixccompiler.py`
+If copy-pasting the above code block, be sure to add four whitespaces 
+to the beginning of each line or download the whole 
+file :svn:`~doc/install/Cray/unixccompiler.py`
 
 You should be now ready to run ``make`` and ``make install`` and have
 a working python interpreter.
