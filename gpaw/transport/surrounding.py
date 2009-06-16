@@ -13,6 +13,7 @@ from gpaw.mpi import world
 from gpaw.utilities import unpack
 from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
+from gpaw import debug
 
 class Side:
     def __init__(self, type, atoms, nn, direction='x+'):
@@ -89,7 +90,8 @@ class Side:
         ntk = count_tkpts_num(di, kpts)
         npk = len(wfs.ibzk_kc) / ntk
         my_npk = len(kpts) / ntk
-        self.d_skmm *= ntk * npk
+        self.d_skmm *=  ntk
+        #self.d_skmm *= ntk * npk
         self.d_spkmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h')
         self.d_spkcmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h',
                                      position)
@@ -395,16 +397,16 @@ class Surrounding:
                         dH_asp = side1.dH_asp
                         if ex_a in side1.my_atom_indices:
                             dH_ii = np.asarray(unpack(dH_asp[ex_a][s]), dtype)
-                            dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]),
+                            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]),
                                                                        dtype)
                             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
                             gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm1)
                     elif a in range(n_atoms0 + n_atoms1, n_atoms):
                         ex_a = a - n_atoms0 - n_atoms1
                         dH_asp = side2.dH_asp
-                        if ex_a in side1.my_atom_indices:
+                        if ex_a in side2.my_atom_indices:
                             dH_ii = np.asarray(unpack(dH_asp[ex_a][s]), dtype)
-                            dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]),
+                            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]),
                                                                        dtype)
                             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
                             gemm(1.0, dHP_iM, P_Mi, 1.0, sah_mm2)
@@ -478,6 +480,15 @@ class Surrounding:
         self.basis_functions.calculate_potential_matrix(vt_sG[s],
                                                             self.vt_MM, q)
         tri2full(self.vt_MM)
+        if debug:
+            from pylab import plot, show, title
+            dim = vt_sG.shape[1] / 2
+            plot(vt_sG[s, dim ,dim])
+            title('extend_vt_sG')
+            show()
+            plot(np.diag(self.vt_MM))
+            title('vt_MM')
+            show()
         return self.vt_MM
      
     def restrict(self, vt_sg, s):
@@ -487,6 +498,12 @@ class Surrounding:
         vt_G0 = self.gd.zeros()
         self.restrictor.apply(vt_sg0[s], vt_G0)
         nn /= 2
+        if debug:
+            from pylab import plot, show, title
+            dim = vt_sg.shape[1] / 2
+            plot(vt_sg[s, dim ,dim])
+            title('extend_vt_sg_restrict')
+            show()
         return self.uncapsule(nn, 'vt_sG', direction, vt_G0, collect=True)
     
     def get_xc(self, nt_sg0, vt_sg0):
@@ -494,7 +511,13 @@ class Surrounding:
         ns = nt_sg0.shape[0]
         direction = self.directions[0][0]
         nt_sg = self.capsule(nn, 'nt_sg', direction, nt_sg0)
-        vt_sg = self.capsule(nn, 'vt_sg', direction, vt_sg0)        
+        vt_sg = self.capsule(nn, 'vt_sg', direction, vt_sg0)
+        if debug:
+            from pylab import plot, show, title
+            dim = nt_sg.shape[1] / 2
+            plot(nt_sg[0, dim ,dim])
+            title('extend_nt_sg_xc')
+            show()            
         if ns == 1:
             Exc = self.xc.get_energy_and_potential(nt_sg[0], vt_sg[0])
         else:
@@ -512,6 +535,12 @@ class Surrounding:
         nn = self.nn / 2
         direction = self.directions[0][0]
         nt_sG = self.capsule(nn, 'nt_sG', direction, nt_sG0)
+        if debug:
+            from pylab import plot, show, title
+            dim = nt_sG.shape[1] / 2
+            plot(nt_sG[0, dim ,dim])
+            title('extend_nt_sG_interpolate')
+            show()          
         nt_sg = self.finegd.zeros(self.nspins)
         for s in range(density.nspins):
             self.interpolator.apply(nt_sG[s], nt_sg[s])
@@ -680,13 +709,18 @@ class Surrounding:
         density.rhot_g = density.nt_g.copy()
         rhot_g = self.finegd.zeros()
         self.ghat.add(rhot_g, density.Q_aL)
+        if debug:
+            from pylab import plot, show, title
+            dim = rhot_g.shape[0] / 2
+            plot(rhot_g[dim ,dim])
+            title('extended_rhot_g_multi_poles')
+            show()          
         density.rhot_g += self.uncapsule(nn, 'vHt_g', direction,
                                          rhot_g, collect=True)
         if debug:
-            charge = self.finegd.integrate(self.rhot_g) + self.charge
-            if abs(charge) > self.charge_eps:
-                raise RuntimeError('Charge not conserved: excess=%.9f' %
-                                   charge)        
+            charge = self.finegd.integrate(density.rhot_g) + density.charge
+            if abs(charge) >  density.charge_eps:
+                print 'Charge not conserved: excess=%.9f' %  charge
 
     def set_positions(self, atoms=None):
         calc = self.atoms.calc
