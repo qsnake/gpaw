@@ -22,6 +22,7 @@ from gpaw.utilities import pack, unpack
 from gpaw.utilities.blas import gemm
 from gpaw.utilities.timing import Timer
 from gpaw.wavefunctions import LCAOWaveFunctions
+from gpaw import debug
 
 class PathInfo:
     def __init__(self, type, nlead):
@@ -86,7 +87,7 @@ class Transport(GPAW):
                        'env_use_buffer', 'env_buffer_atoms', 'env_edge_atoms',
                        'env_bias', 'env_pbc', 'env_restart',                     
                        
-                       'LR_leads', 'gate',  'cal_loc', 'align_zero_energy',                       
+                       'LR_leads', 'gate',  'cal_loc', 'align',                       
                        'recal_path', 'use_qzk_boundary', 'use_linear_vt_mm',
                        'use_linear_vt_array',
                        'scat_restart', 'save_file', 'restart_file', 'fixed_boundary']:
@@ -141,8 +142,8 @@ class Transport(GPAW):
                 p['cal_loc'] = kw['cal_loc']
             if key in ['recal_path']:
                 p['recal_path'] = kw['recal_path']
-            if key in ['align_zero_energy']:
-                p['align_zero_energy'] = kw['align_zero_energy']
+            if key in ['align']:
+                p['align'] = kw['align']
             if key in ['use_qzk_boundary']:
                 p['use_qzk_boundary'] = kw['use_qzk_boundary']
             if key in ['use_linear_vt_mm']:
@@ -204,7 +205,7 @@ class Transport(GPAW):
         self.cal_loc = p['cal_loc']
         self.recal_path = p['recal_path']
         self.use_qzk_boundary = p['use_qzk_boundary']
-        self.align_zero_energy =  p['align_zero_energy']
+        self.align =  p['align']
         self.use_linear_vt_mm = p['use_linear_vt_mm']
         self.use_linear_vt_array = p['use_linear_vt_array']        
         self.scat_restart = p['scat_restart']
@@ -270,7 +271,7 @@ class Transport(GPAW):
         p['cal_loc'] = False
         p['recal_path'] = False
         p['use_qzk_boundary'] = False
-        p['align_zero_energy'] = False
+        p['align'] = False
         p['use_linear_vt_mm'] = False
         p['use_linear_vt_array'] = False        
         p['scat_restart'] = False
@@ -305,7 +306,8 @@ class Transport(GPAW):
             if self.use_lead:
                 self.ntklead = np.product(self.pl_kpts)
 
-        self.gamma = len(self.kpts) == 1
+        bzk_kc = self.wfs.bzk_kc 
+        self.gamma = len(bzk_kc) == 1 and not bzk_kc[0].any()
         self.nbmol = self.wfs.setups.nao
 
         if self.use_lead:
@@ -529,7 +531,7 @@ class Transport(GPAW):
             self.env_fermi = np.empty([self.lead_num])
 
         npk = self.my_npk
-        if self.npk == 1:
+        if self.npk == 1 and self.wfs.kpt_comm.size == 1:
             dtype = float
         else:
             dtype = complex
@@ -549,7 +551,7 @@ class Transport(GPAW):
             self.dl_spkcmm.append(np.empty((ns, npk, nb, nb), dtype))
             self.sl_pkcmm.append(np.empty((npk, nb, nb), dtype))
 
-            self.ed_pkmm.append(np.empty((ns, npk, nb, nb)))
+            self.ed_pkmm.append(np.empty((ns, npk, nb, nb), dtype))
 
             self.lead_index.append([])
             self.inner_lead_index.append([])
@@ -572,7 +574,7 @@ class Transport(GPAW):
             self.env_weight.append([])
                 
         if self.use_lead:
-            self.ec = np.empty([self.lead_num, ns])        
+            self.ec = np.zeros([self.lead_num, ns])        
 
         if self.gamma:
             dtype = float
@@ -584,7 +586,7 @@ class Transport(GPAW):
         self.h_skmm = np.empty((ns, nk, nb, nb), dtype)
         self.d_skmm = np.empty((ns, nk, nb, nb), dtype)
         self.s_kmm = np.empty((nk, nb, nb), dtype)
-        if self.npk == 1:
+        if self.npk == 1 and self.wfs.kpt_comm.size == 1:
             dtype = float
         else:
             dtype = complex        
@@ -821,7 +823,7 @@ class Transport(GPAW):
 
         for a, P_Mi in kpt.P_aMi.items():
             dH_ii = np.asarray(unpack(hamiltonian.dH_asp[a][s]), P_Mi.dtype)
-            dHP_iM = np.empty((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
+            dHP_iM = np.zeros((dH_ii.shape[1], P_Mi.shape[0]), P_Mi.dtype)
             gemm(1.0, P_Mi, dH_ii, 0.0, dHP_iM, 'c')
             if Mstart != -1:
                 P_Mi = P_Mi[Mstart:Mstop]
@@ -995,7 +997,7 @@ class Transport(GPAW):
                 for j in range(self.my_npk):
                     self.ed_pkmm[n][i, j] = dot(self.dl_spkcmm[n][i, j],
                                                  self.sl_pkcmm[n][j].T.conj())
-                    self.ec[n, i] += np.trace(self.ed_pkmm[n][i, j])   
+                    self.ec[n, i] += np.real(np.trace(self.ed_pkmm[n][i, j]))   
         self.pkpt_comm.sum(self.ec)
         self.ed_pkmm *= 3 - self.nspins
         self.ec *= 3 - self.nspins
@@ -1078,7 +1080,7 @@ class Transport(GPAW):
             
             self.edge_ham_diff = np.max(ham_diff)
             self.edge_den_diff = np.max(den_diff)
-            if self.align_zero_energy:
+            if self.align:
                 for i in range(self.lead_num):
                     self.hl_spkmm[i][:] += self.sl_pkmm[i] * self.e_float[i]
                     self.hl_spkcmm[i][:] += self.sl_pkcmm[i] * self.e_float[i]
@@ -1139,9 +1141,7 @@ class Transport(GPAW):
             kpt.rho_MM = None
             kpt.eps_n = np.zeros((self.nbmol))
             kpt.f_n = np.zeros((self.nbmol))
-        fd = file('linear_mm' + str(world.rank), 'wb')
-        pickle.dump(self.linear_mm, fd, 2)
-        fd.close()
+
         self.linear_mm = None
         if not self.scf.converged:
             raise RuntimeError('Transport do not converge in %d steps' %
@@ -2972,18 +2972,18 @@ class Transport(GPAW):
             pylab.title('spin' + str(s) + 'density at bias=' + str(bias))
             pylab.colorbar()
             pylab.show()
-
-        cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
+        if self.nspins == 2:
+            cb = pylab.matshow(sd['s' + str(0) + 'vt_2d_' + dd[overview_d]] * Hartree -
                            sd['s' + str(1) + 'vt_2d_' + dd[overview_d]] * Hartree)
-        pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
-        pylab.colorbar()                
-        pylab.show()
+            pylab.title('spin_diff' + 'potential(eV) at bias=' + str(bias))
+            pylab.colorbar()                
+            pylab.show()
        
-        cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
-                           sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
-        pylab.title('spin_diff' + 'density at bias=' + str(bias))
-        pylab.colorbar()                
-        pylab.show()
+            cb = pylab.matshow(sd['s' + str(0) + 'nt_2d_' + dd[overview_d]] -
+                               sd['s' + str(1) + 'nt_2d_' + dd[overview_d]])
+            pylab.title('spin_diff' + 'density at bias=' + str(bias))
+            pylab.colorbar()                
+            pylab.show()
 
     def plot_iv(self, i_v):
         v, i = i_v
