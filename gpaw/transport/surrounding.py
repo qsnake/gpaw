@@ -178,7 +178,8 @@ class Surrounding:
             self.finegd = GridDescriptor(dim * 2, self.cell, pbc, domain_comm)
             
             scale = -0.25 / np.pi
-            self.operator = Laplace(self.finegd, scale, n=1)
+            self.operator = Laplace(self.finegd, scale,
+                                    n=calc.hamiltonian.poisson.nn)
             wfs = self.atoms.calc.wfs
             self.basis_functions = BasisFunctions(self.gd, 
                                                   [setup.phit_j
