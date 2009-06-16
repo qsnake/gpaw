@@ -18,7 +18,7 @@ class XAS:
         #
         nkpts = len(wfs.ibzk_kc)
         if wfs.nspins == 1:
-            nocc = int(wfs.setups.nvalence / 2)
+            nocc = wfs.setups.nvalence // 2
             self.list_kpts = range(nkpts)
         else:
             self.list_kpts=[]

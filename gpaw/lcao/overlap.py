@@ -220,8 +220,8 @@ class TwoCenterIntegralSplines:
                 a_g[0] = 8 * np.sum(a_q * k1**(-lmax)) * self.dk
             else:
                 a_g[0] = a_g[1]  # XXXX
-            a_g *= (-1)**((-l1 + l2 - l) / 2)
-            s = Spline(l, self.Q // self.ng / 2 * self.rcmax, a_g)
+            a_g *= (-1)**((-l1 + l2 - l) // 2)
+            s = Spline(l, self.Q // self.ng // 2 * self.rcmax, a_g)
             splines.append(s)
         return splines
 

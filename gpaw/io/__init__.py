@@ -157,7 +157,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         for setup in wfs.setups:
             ni = setup.ni
             nproj += ni
-            nadm += ni * (ni + 1) / 2
+            nadm += ni * (ni + 1) // 2
         w.dimension('nproj', nproj)
         w.dimension('nadm', nadm)
 
@@ -250,7 +250,7 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
         p1 = 0
         for a in range(natoms):
             ni = wfs.setups[a].ni
-            nii = ni * (ni + 1) / 2
+            nii = ni * (ni + 1) // 2
             if a in paw.density.D_asp:
                 D_sp = paw.density.D_asp[a]
                 dH_sp = paw.hamiltonian.dH_asp[a]

@@ -168,7 +168,7 @@ class ApmB(OmegaMatrix):
 
     def Coulomb_integral_ijkq(self, i, j, k, q, spin, integrals):
         name = self.Coulomb_integral_name(i, j, k, q, spin)
-        if integrals.has_key(name):
+        if name in integrals:
             return integrals[name]
         # create the Kohn-Sham singles
         kss_ij = PairDensity(self.paw)

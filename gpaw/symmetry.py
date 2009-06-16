@@ -57,7 +57,7 @@ class Symmetry:
             m = base3id
             for ip, p in enumerate(power):
                 d, m = divmod(m, p)
-                operation[ip / 3, ip % 3] = 1 - d
+                operation[ip // 3, ip % 3] = 1 - d
             # No zero rows
             if not np.all(np.sum(abs(operation), axis=1)):
                 continue
@@ -93,7 +93,7 @@ class Symmetry:
         species = {}
         for a, id in enumerate(self.id_a):
             spos_c = spos_ac[a]
-            if species.has_key(id):
+            if id in species:
                 species[id].append((a, spos_c))
             else:
                 species[id] = [(a, spos_c)]

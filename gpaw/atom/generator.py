@@ -476,7 +476,7 @@ class Generator(AllElectron):
 
         # Calculate smooth charge density:
         Nt = npy.dot(nt, dv)
-        rhot = nt - (Nt + charge / 4 / pi) * gt
+        rhot = nt - (Nt + charge / (4 * pi)) * gt
         t('Pseudo-electron charge', 4 * pi * Nt)
 
         vHt = npy.zeros(N)

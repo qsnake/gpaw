@@ -94,7 +94,7 @@ class Operator:
 
         dAP_ani = {}
         for a, P_ni in P_ani.items():
-            if callable(dA):
+            if hasattr(dA, '__call__'):
                 dAP_ani[a] = dA(a, P_ni)
             else:
                 # dA denotes dA_aii as usual

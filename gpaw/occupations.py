@@ -83,7 +83,7 @@ class ZeroKelvin(OccupationNumbers):
             self.magmom = 0.0
         elif self.fixmom:
             M = int(round(self.M))
-            lumo = (self.ne + M) / 2, (self.ne - M) / 2
+            lumo = (self.ne + M) // 2, (self.ne - M) // 2
             for kpt in kpts:
                 b = lumo[kpt.s]
                 kpt.f_n[:b] = 1.0

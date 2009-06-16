@@ -487,22 +487,22 @@ class OmegaMatrix:
                                     self.full[map[ij], nkss + map[kl]])
         return sOm, tOm
 
-    def timestring(self,t):
-        ti = int(t+.5)
-        td = int(ti/86400)
-        st=''
-        if td>0:
-            st+='%d'%td+'d'
-            ti-=td*86400
-        th = int(ti/3600)
-        if th>0:
-            st+='%d'%th+'h'
-            ti-=th*3600
-        tm = int(ti/60)
-        if tm>0:
-            st+='%d'%tm+'m'
-            ti-=tm*60
-        st+='%d'%ti+'s'
+    def timestring(self, t):
+        ti = int(t + 0.5)
+        td = ti // 86400
+        st = ''
+        if td > 0:
+            st += '%d' % td + 'd'
+            ti -= td * 86400
+        th = ti // 3600
+        if th > 0:
+            st += '%d' % th + 'h'
+            ti -= th * 3600
+        tm = ti // 60
+        if tm > 0:
+            st += '%d' % tm + 'm'
+            ti -= tm * 60
+        st += '%d' % ti + 's'
         return st
 
     def diagonalize(self, istart=None, jend=None):

@@ -211,7 +211,7 @@ class XCFunctional:
                     parameters = [1.19, 0.01] # alpha, beta
                 if self.parameters:
                     for i, key in enumerate(['alpha', 'beta']):
-                        if self.parameters.has_key(key):
+                        if key in self.parameters:
                             parameters[i] = self.parameters[key]
             elif xcname == 'BEE1':
                 code = 18
@@ -306,7 +306,7 @@ class XCFunctional:
         if self.hybrid > 0.0:
             if wfs.dtype == complex:
                 raise NotImplementedError('k-point calculation with EXX')
-            if self.parameters and self.parameters.has_key('finegrid'):
+            if self.parameters and 'finegrid' in self.parameters:
                 use_finegrid = self.parameters['finegrid']
             else:
                 use_finegrid = True

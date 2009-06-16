@@ -411,8 +411,10 @@ class PAW(PAWTextOutput):
         nbands_converge = cc['bands']
         if nbands_converge == 'all':
             nbands_converge = nbands
-        elif nbands_converge < 0:
-            nbands_converge += nbands
+        elif nbands_converge != 'occupied':
+            assert isinstance(nbands_converge, int)
+            if nbands_converge < 0:
+                nbands_converge += nbands
 
         if par.mode == 'lcao':
             niter_fixdensity = 0

@@ -71,7 +71,7 @@ class HGHSetup(Setup):
         """Creates a HGH setup."""
         assert xcfunc.get_name() == 'LDA' # HGH setups are designed for LDA
         if hghdata is None:
-            if not setups.has_key(symbol):
+            if symbol in setups:
                 raise KeyError('No HGH setup for %s' % symbol)
             hghdata = setups[symbol]
         data = self.initialize_setup_data(symbol, xcfunc, hghdata)

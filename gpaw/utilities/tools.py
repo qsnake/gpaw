@@ -37,7 +37,7 @@ def core_states(symbol):
         core_symbol = a[1:]
         j = len(configurations[core_symbol][1])
 
-    Njcore = j + len(core) / 2
+    Njcore = j + len(core) // 2
     return Njcore
 
 def split_formula(formula):

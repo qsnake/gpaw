@@ -250,7 +250,7 @@ class RawLDOS:
         elemi = {}
         for i,a in enumerate(self.paw.atoms):
             symbol = a.symbol
-            if elemi.has_key(symbol):
+            if symbol in elemi:
                 elemi[symbol].append(i)
             else:
                 elemi[symbol] = [i]
