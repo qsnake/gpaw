@@ -33,6 +33,7 @@ def fail(msg, filename='/dev/null'):
     raise SystemExit
 
 
+
 args = ''
 # For a quick test - uncomment this line:
 #args = 'gradient.py hydrogen.py'
@@ -45,7 +46,7 @@ os.chdir(tmpdir)
 day = time.localtime()[6]
 
 # Checkout a fresh version and install:
-if os.system('svn export ' +
+if os.system('svn checkout ' +
              'https://svn.fysik.dtu.dk/projects/gpaw/trunk gpaw') != 0:
     fail('Checkout of gpaw failed!')
 
@@ -56,11 +57,32 @@ if day % 2:
 else:
     aserevision = 'trunk'
 
-if os.system('svn export ' +
+if os.system('svn checkout ' +
              'https://svn.fysik.dtu.dk/projects/ase/%s ase' %
              aserevision) != 0:
     fail('Checkout of ASE failed!')
+try: 
+    # subprocess was introduced with python 2.4
+    from subprocess import Popen, PIPE
+    cmd = Popen('svnversion ase',
+                shell=True, stdout=PIPE, stderr=PIPE, close_fds=True).stdout
+except ImportError:
+    cmd = popen3('svnversion ase')[1] # assert that we are in gpaw project
+aserevision = int(cmd.readline())
+cmd.close()
+
 os.chdir('gpaw')
+
+try: 
+    # subprocess was introduced with python 2.4
+    from subprocess import Popen, PIPE
+    cmd = Popen('svnversion', 
+                shell=True, stdout=PIPE, stderr=PIPE, close_fds=True).stdout
+except ImportError:
+    cmd = popen3('svnversion')[1] # assert that we are in gpaw project
+gpawrevision = int(cmd.readline().strip('M\n'))
+cmd.close()
+
 if os.system('python setup.py install --home=%s ' % tmpdir +
              '2>&1 | grep -v "c/libxc/src"') != 0:
     fail('Installation failed!')
@@ -98,6 +120,10 @@ else:
         if n > 2:
             subject += ', ...'
     fail(subject, 'test.out')
+
+open('/home/camp/jensj/gpawrevision.ok', 'w').write('%d %d\n' %
+                                                    (aserevision,
+                                                     gpawrevision))
 
 dir = '/scratch/jensj/nightly-test/'
 out = open(dir + 'test-results.txt', 'w')
