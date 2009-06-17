@@ -66,45 +66,12 @@ Note that at this point all numpy related stuff
 in the example should be commented out. Finally, in order to use
 ``distutils`` for building extensions the following function should be
 added to the end of :file:`Lib/distutils/unixccompiler.py` so that instead
-of shared libraries static ones are created::
+of shared libraries static ones are created
 
-    def link_shared_object (self,
-                         objects,
-                         output_filename,
-                         output_dir=None,
-                         libraries=None,
-                         library_dirs=None,
-                         runtime_library_dirs=None,
-                         export_symbols=None,
-                         debug=0,
-                         extra_preargs=None,
-                         extra_postargs=None,
-                         build_temp=None,
-                         target_lang=None):
+.. literalinclude:: linkforshared.py
 
-        if output_dir is None:
-            (output_dir, output_filename) = os.path.split(output_filename)
-        output_fullname = os.path.join(output_dir, output_filename)
-        output_fullname = os.path.abspath(output_fullname)
-        linkline = "%s %s" % (output_filename[:-2], output_fullname)
-        for l in library_dirs:
-            linkline += " -L" + l
-        for l in libraries:
-            linkline += " -l" + l
-        old_fmt = self.static_lib_format
-        self.static_lib_format = "%s%.0s"
-        self.create_static_lib(objects,
-                               output_filename,
-                               output_dir,
-                               debug,
-                               target_lang)
-
-        self.static_lib_format = old_fmt
-        print "Append to Setup: ", linkline
-
-If copy-pasting the above code block, be sure to add four whitespaces 
-to the beginning of each line or download the whole 
-file :svn:`~doc/install/Cray/unixccompiler.py`
+If copy-pasting the above code block, be sure to have the correct indentation (four whitespaces before ``def link_for_shared...``), or download the whole  
+file: :svn:`~doc/install/Cray/unixccompiler.py`
 
 You should be now ready to run ``make`` and ``make install`` and have
 a working python interpreter.
