@@ -334,7 +334,7 @@ def md5_array(data, decimals=None, numeric=False):
     """Create MD5 hex digest from NumPy array.
 
     Optionally, will round off the data before processing, and convert
-    128 bit hash to 128 bit complex number."""
+    128 bit hash to 64 bit integer."""
     
     if not isinstance(data, np.ndarray):
         data = np.asarray(data)
@@ -348,7 +348,7 @@ def md5_array(data, decimals=None, numeric=False):
 
     if numeric:
         from binascii import a2b_hex
-        return np.fromstring(a2b_hex(md5hex), np.complex128).item()
+        return np.fromstring(a2b_hex(md5hex), np.int64).sum()
     else:
         return md5hex
 

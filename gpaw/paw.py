@@ -670,7 +670,7 @@ class PAW(PAWTextOutput):
                                  self.atoms.get_initial_magnetic_moments()]])
         # Compare fingerprints:
         world = self.wfs.world
-        fingerprints = np.empty((world.size, 4), complex)
+        fingerprints = np.empty((world.size, 4), np.int64)
         world.all_gather(fingerprint, fingerprints)
         if fingerprints.ptp(0).any():
             raise RuntimeError('Atoms objects on different processors ' +
