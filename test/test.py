@@ -46,6 +46,7 @@ if len(tests) == 0:
     tests = [
         'ase3k_version.py',
         'lapack.py',
+        'eigh.py',
         'setups.py',
         'xc.py',
         'xcfunc.py',
