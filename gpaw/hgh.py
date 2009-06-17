@@ -220,7 +220,6 @@ class HGHSetup(SetupData):
             Mend = Mstart + Mcount
             H_ii[Mstart:Mend, Mstart:Mend] = H_MM
             Mstart = Mend
-        np.set_printoptions(precision=2.)
         K_p = pack2(H_ii)
         return K_p
 
