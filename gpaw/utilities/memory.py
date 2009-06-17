@@ -231,7 +231,23 @@ def estimate_memory(paw):
     print >> out, "Total:                  %.2f %s" % (mem / scale, scalename)
 
 class MemNode:
-    """Represents the estimated memory use of an object and its components."""
+    """Represents the estimated memory use of an object and its components.
+
+    Can be used on any object which implements estimate_memory().
+    Example::
+
+      from sys import stdout
+      from gpaw.utilities.memory import MemNode
+      node = MemNode('Root') # any name will do
+      some_object.estimate_memory(node)
+      nbytes = node.calculate_size()
+      print 'Bytes', nbytes
+      node.write(stdout) # write details
+      
+    Note that calculate_size() must be called before write().  Some
+    objects must be explicitly initialized before they can estimate
+    their memory use.
+    """    
     floatsize = np.array(1, float).itemsize
     complexsize = np.array(1, complex).itemsize
     itemsize = {float : floatsize, complex : complexsize}
