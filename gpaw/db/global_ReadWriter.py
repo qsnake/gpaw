@@ -12,8 +12,8 @@ import tarfile
 import xml.sax
 import random
 
-import numpy as npy
-from Numeric import *
+import numpy as np
+
 
 import gpaw
 import gpaw.db
@@ -35,8 +35,8 @@ from ase.version import version as ase_version
 
 
 #intsize = 4
-#floatsize = npy.array([1], float).itemsize
-#complexsize = npy.array([1], complex).itemsize
+#floatsize = np.array([1], float).itemsize
+#complexsize = np.array([1], complex).itemsize
 #itemsizes = {'int': intsize, 'float': floatsize, 'complex': complexsize}
 
 
@@ -61,7 +61,7 @@ class Writer:
         self.print_python_type = True
         self.files = {}
         self.xml1 = ['<db version="0.1" calculator="'+calculator+'" endianness="%s">' %
-                     ('big', 'little')[int(npy.little_endian)]]
+                     ('big', 'little')[int(np.little_endian)]]
         self.xml2 = []
         if os.path.isfile(name):
             os.rename(name, name[:-4] + '.old.db')
@@ -78,7 +78,7 @@ class Writer:
         self['pid']=os.getpid()
         self['ase_dir']=os.path.dirname(ase.__file__)
         self['ase_version']=ase_version
-        self['numpy_dir']=os.path.dirname(npy.__file__)
+        self['numpy_dir']=os.path.dirname(np.__file__)
         self.params.write_version(self)
         
         self['units']='Angstrom and eV'
@@ -105,17 +105,18 @@ class Writer:
            #print "Key \""+name+"\" is unknown or marked to be ignored and therefor not written."
            return
 
+        import Numeric 
         #for array types use fill
         #numpy.ndarray
-        if type(value)==type(array([])):
-           if type(value)==type(array([])):
+        if type(value)==type(Numeric.array([])):
+           if type(value)==type(Numeric.array([])):
                shape = value.shape
            else:
                shape=None
            dtype = None
            self.add(name, shape, value, dtype,unit)
            return
-        elif type(value)==npy.ndarray:
+        elif type(value)==np.ndarray:
            shape = value.shape
            dtype = value.dtype
            self.add(name, shape, value, dtype,unit)
@@ -157,14 +158,14 @@ class Writer:
 
         self.close_array()
         if array is not None:
-            array = npy.asarray(array)
+            array = np.asarray(array)
         if dtype is None:
             dtype = array.dtype
 
         if dtype in [int, bool]:
-            dtype = npy.int32
+            dtype = np.int32
 
-        dtype = npy.dtype(dtype)
+        dtype = np.dtype(dtype)
         self.dtype = dtype
 
         type_ = dtype.name
@@ -190,7 +191,7 @@ class Writer:
     def fill(self, array, indent=""):
         if self.ignore_mode:
            return
-        array = npy.asarray(array)
+        array = np.asarray(array)
         shape = array.shape
         self.xml2 += [indent+"    <ar>"]
         if len(shape)>1:
@@ -208,14 +209,14 @@ class Writer:
            #write the individual elements
            #Please note that there is probably a loss in precision
            if toprint!=None:
-              dtype = npy.dtype(array.dtype)  
-              if dtype==npy.int32 or dtype==npy.bool or dtype.name.startswith("int"):
+              dtype = np.dtype(array.dtype)
+              if dtype==np.int32 or dtype==np.bool or dtype.name.startswith("int"):
                  for a in xrange(len(toprint)):
                      self.xml2 += [indent+'       <el real="%d"/>'%toprint[a]]
-              elif dtype==npy.float64 or dtype.name.startswith("float"):
+              elif dtype==np.float64 or dtype.name.startswith("float"):
                  for a in xrange(len(toprint)):
                      self.xml2 += [indent+'       <el real="%.20f"/>'%toprint[a]]
-              elif dtype==npy.complex128 or dtype.name.startswith("complex"):
+              elif dtype==np.complex128 or dtype.name.startswith("complex"):
                  for a in xrange(len(toprint)):
                      self.xml2 += [indent+'       <el real="%.20f" imag="%.20f"/>'%(toprint[a].real,toprint[a].imag)]
               elif dtype.name.startswith("string"):
@@ -314,7 +315,7 @@ class Reader(xml.sax.handler.ContentHandler):
     def startElement(self, tag, attrs):
         if tag == 'db':
             self.byteswap = ((attrs['endianness'] == 'little')
-                             != npy.little_endian)
+                             != np.little_endian)
         elif tag == 'array':
             self.name = get_inv(attrs['name'])["local_name"]
             self.tmp_curtype = self.dtypes[self.name] = attrs['pythontype']
@@ -362,11 +363,11 @@ class Reader(xml.sax.handler.ContentHandler):
     
     def get(self, name, *indices): 
         shape, dtype = self.get_file_object(name, indices)
-        array = npy.asarray(self.arrays[get_inv(name)["local_name"]])
+        array = np.asarray(self.arrays[get_inv(name)["local_name"]])
         if self.byteswap:
             array = array.byteswap()
-        if dtype == npy.int32:
-            array = npy.asarray(array, int)
+        if dtype == np.int32:
+            array = np.asarray(array, int)
         array.shape = shape
         if shape == ():
             return array.item()
@@ -376,12 +377,12 @@ class Reader(xml.sax.handler.ContentHandler):
     def get_reference(self, name, *indices):
         shape, dtype = self.get_file_object(name, indices)
         name = get_inv(name)["local_name"]
-        assert dtype != npy.int32
-        return npy.asarray(name)
+        assert dtype != np.int32
+        return np.asarray(name)
 
     def get_file_object(self, name, indices):
         name = get_inv(name)["local_name"]
-        dtype = npy.dtype({'int': npy.int32,
+        dtype = np.dtype({'int': np.int32,
                            'float': float,
                            'complex': complex}[self.dtypes[name]])
         n = len(indices)
@@ -413,14 +414,14 @@ class TarFileReference:
             indices = (indices,)
         n = len(indices)
 
-        size = npy.prod(self.shape[n:], dtype=int) * self.itemsize
+        size = np.prod(self.shape[n:], dtype=int) * self.itemsize
         offset = self.offset
         stride = size
         for i in range(n - 1, -1, -1):
             offset += indices[i] * stride
             stride *= self.shape[i]
         self.fileobj.seek(offset)
-        array = npy.fromstring(self.fileobj.read(size), self.dtype)
+        array = np.fromstring(self.fileobj.read(size), self.dtype)
         if self.byteswap:
             array = array.byteswap()
         array.shape = self.shape[n:]
