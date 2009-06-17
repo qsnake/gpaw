@@ -330,27 +330,43 @@ def md5_hash():
 
 md5 = md5_hash()
 
-def md5_array(data, decimals=None, numeric=False):
+def md5_array(data, numeric=False):
     """Create MD5 hex digest from NumPy array.
 
-    Optionally, will round off the data before processing, and convert
-    128 bit hash to 64 bit integer."""
-    
+    Optionally, will cast the 128 bit hexadecimal hash to a 64 bit integer.
+
+    Warning: For floating point types, only bitwise identical data will
+    produce matching MD5 fingerprints, so do not attempt to match sets
+    of nearly identical data by rounding off beforehand.
+
+    Example:
+
+     >>> data = np.linspace(0,np.pi,1000000)
+     >>> eps = 1e-6
+     >>> a = md5_array(data.round(3))
+     >>> b = md5_array((data+eps).round(3))
+     >>> assert a==b, 'Mismatch between %s and %s' % (a,b)
+
+    This is due to the inexact nature of the floating point representation.
+    """
+
     if not isinstance(data, np.ndarray):
         data = np.asarray(data)
 
-    assert np.issubdtype(data.dtype, np.number)  # float, complex, int, ...
+    # Only accepts float,complex,int,bool,...
+    if (not np.issubdtype(data.dtype, np.number) and
+        data.dtype not in [bool, np.bool, np.bool_]):
+        raise TypeError('MD5 hex digest only accepts numeric/boolean arrays.')
 
-    if decimals is not None:
-        data = signtrim(data, decimals)  # np.round is buggy because -0 != 0
-
-    md5hex = md5.md5(data.tostring()).hexdigest()
+    datahash = md5.md5(data.tostring())
 
     if numeric:
-        from binascii import a2b_hex
-        return np.fromstring(a2b_hex(md5hex), np.int64).sum()
+        xor = lambda a,b: chr(ord(a)^ord(b)) # bitwise xor on 2 bytes -> 1 byte
+        sbuf128 = datahash.digest()
+        sbuf64 = ''.join([xor(a,b) for a,b in zip(sbuf128[::2],sbuf128[1::2])])
+        return np.fromstring(sbuf64, np.int64).item()
     else:
-        return md5hex
+        return datahash.hexdigest()
 
 class Spline:
     def __init__(self, xi, yi, leftderiv=None, rightderiv=None):
