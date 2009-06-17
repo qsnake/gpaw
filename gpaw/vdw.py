@@ -107,6 +107,8 @@ class VDWFunctional:
         verbose: bool
             Print useful information.
         """
+
+        self.nspins = nspins
         
         if world is None:
             self.world = mpi.world
