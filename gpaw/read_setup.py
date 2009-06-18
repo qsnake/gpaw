@@ -10,7 +10,7 @@ from cStringIO import StringIO
 
 import numpy as npy
 
-from gpaw.utilities.tools import md5
+from gpaw.utilities.tools import md5_new
 from gpaw.xc_functional import XCFunctional
 from gpaw import setup_paths
 
@@ -69,7 +69,7 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
             raise RuntimeError('Could not find %s-setup for "%s".' %
                                (setupname, symbol))
 
-        fingerprint = md5.new(source).hexdigest()
+        fingerprint = md5_new(source).hexdigest()
 
         # XXXX There must be a better way!
         # We don't want to look at the dtd now.  Remove it:

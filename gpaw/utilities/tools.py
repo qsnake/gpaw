@@ -314,21 +314,12 @@ def signtrim(data, decimals=None):
 
     return data.reshape(shape)
 
-# from http://hg.stuvel.eu/flickrapi/file/c96a2d1288ef/flickrapi/__init__.py
-def md5_hash():
-    """
-    Use hashlib when available - replace md5, deprecated in Python 2.5.
-    """
-    try:
-        # To replace md5, deprecated in Python 2.5
-        #from hashlib import md5
-        import md5
-    except ImportError:
-        # Fallback to md5 to ensure 2.4 compatibility
-        import md5
-    return md5
-
-md5 = md5_hash()
+try:
+    from hashlib import md5 as md5_new
+    import hashlib as md5
+except ImportError:
+    from md5 import new as md5_new
+    import md5
 
 def md5_array(data, numeric=False):
     """Create MD5 hex digest from NumPy array.

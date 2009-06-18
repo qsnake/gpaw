@@ -13,7 +13,7 @@ from ase.units import Bohr, Hartree
 from gpaw import setup_paths
 from gpaw.spline import Spline
 from gpaw.utilities import fac, divrl
-from gpaw.utilities.tools import md5
+from gpaw.utilities.tools import md5_new
 from gpaw.xc_functional import XCRadialGrid
 from gpaw.xc_correction import XCCorrection
 
@@ -369,7 +369,7 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
                                (setup.name + '.' + setup.setupname, 
                                 setup.symbol))
 
-        setup.fingerprint = md5.new(source).hexdigest()
+        setup.fingerprint = md5_new(source).hexdigest()
 
         # XXXX There must be a better way!
         # We don't want to look at the dtd now.  Remove it:
