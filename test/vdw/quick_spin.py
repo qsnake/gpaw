@@ -4,6 +4,7 @@ from gpaw import GPAW
 from ase.parallel import rank, barrier
 from gpaw.atom.generator import Generator, parameters
 from gpaw import setup_paths
+from gpaw.vdw import FFTVDWFunctional
 
 # Generate setup
 if rank == 0:
@@ -27,4 +28,11 @@ if 'GPAW_VDW' in os.environ:
                calc.get_eigenvalues(spin=1)[0]) < 1e-10
 
     assert abs(e1 - e2) < 1e-12
+
+    vdw = FFTVDWFunctional()
+    calc = GPAW(xc=vdw, width=0.001,
+                txt='H.vdw-DF2.txt')
+    a.set_calculator(calc)
+    e3 = a.get_potential_energy()
+    assert abs(e1 - e3) < 1e-12
 
