@@ -9,12 +9,9 @@ the tests.
 """
 
 if rank == 0:
-    files = []
-
     def gen(symbol, xcname):
         g = Generator(symbol, xcname, scalarrel=True, nofiles=True)
         g.run(exx=True, **parameters[symbol])
-        files.append('%s.%s' % (symbol, XCFunctional(xcname).get_name()))
 
     gen('Si','GLLBSC')
     for symbol in ['H', 'He', 'Li', 'C', 'N', 'O', 'Cl', 'Al', 'Si',
@@ -24,9 +21,3 @@ if rank == 0:
         gen(symbol, 'PBE')
     for symbol in ['He', 'Li']:
         gen(symbol, 'revPBE')
-
-    if __name__ != '__main__':
-        # We have been imported by test.py, so we should clean up:
-        from os import remove
-        for file in files:
-            remove(file)
