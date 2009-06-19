@@ -7,8 +7,9 @@ from gpaw.utilities.blas import rk, r2k, gemm
 
 class Operator:
     nblocks = 1
+    async = True
     """Base class for overlap and hamiltonian operators."""
-    def __init__(self, bd, gd, nblocks=None):
+    def __init__(self, bd, gd, nblocks=None, async=None):
         self.bd = bd
         self.gd = gd
         self.work1_xG = None
@@ -17,9 +18,14 @@ class Operator:
         self.A_nn = None
         if nblocks is not None:
             self.nblocks = nblocks
+        if async is not None:
+            self.async = async
 
     def allocate_work_arrays(self, mynbands, dtype):
+        # B = ngroups
+        # J = nblocks
         ngroups = self.bd.comm.size
+
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
@@ -32,6 +38,12 @@ class Operator:
             if ngroups > 1:
                 self.A_qnn = np.zeros((ngroups // 2 + 1, mynbands, mynbands),
                                       dtype)
+                if not self.async:
+                    # Sync send/recv only works for even ngroups
+                    # and blocked bands.
+                    assert ngroups % 2 == 0
+                    assert not self.bd.strided 
+
         nbands = ngroups * mynbands
         self.A_nn = np.zeros((nbands, nbands), dtype)
 
@@ -84,6 +96,7 @@ class Operator:
         domain_comm = self.gd.comm
         B = band_comm.size
         J = self.nblocks
+        async = self.async
         N = len(psit_nG)  # mynbands
         dv = self.gd.dv
         
@@ -127,62 +140,120 @@ class Operator:
         else:
             A_qnn = self.A_qnn
 
-        for j in range(J):
-            n1 = j * M
-            n2 = n1 + M
-            psit_mG = psit_nG[n1:n2]
-            sbuf_mG = A(psit_mG)
-            rbuf_mG = self.work2_xG[:M]
-            for q in range(Q):
-                A_nn = A_qnn[q]
-                A_mn = A_nn[n1:n2]
-                if q < Q - 1:
-                    sreq = band_comm.send(sbuf_mG, rankm, 11, False)
-                    rreq = band_comm.receive(rbuf_mG, rankp, 11, False)
-                if j == J - 1 and P_ani:
+        if async:
+            for j in range(J):
+                n1 = j * M
+                n2 = n1 + M
+                psit_mG = psit_nG[n1:n2]
+                sbuf_mG = A(psit_mG)
+                rbuf_mG = self.work2_xG[:M]
+                for q in range(Q):
+                    A_nn = A_qnn[q]
+                    A_mn = A_nn[n1:n2]
+                    if q < Q - 1:
+                        sreq = band_comm.send(sbuf_mG, rankm, 11, False)
+                        rreq = band_comm.receive(rbuf_mG, rankp, 11, False)
+                    if j == J - 1 and P_ani:
+                        if q == 0:
+                            sbuf_In = np.concatenate([dAP_ani[a].T
+                                                      for a, P_ni in P_ani.items()])
+                            if B > 1:
+                                rbuf_In = np.empty_like(sbuf_In)
+                        if q < Q - 1:
+                            sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
+                            rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
+
+                    if q == 0 and not self.bd.strided:
+                        # We only need the lower part:
+                        if j == 0:
+                            # Important special-cases:
+                            if sbuf_mG is psit_mG:
+                                rk(dv, psit_mG, 0.0, A_mn[:, :M])
+                            else:
+                                r2k(0.5 * dv, psit_mG, sbuf_mG, 0.0, A_mn[:, :M])
+                        else:
+                            gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
+                    else:
+                        gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
+
+                    if j == J - 1 and P_ani:
+                        I1 = 0
+                        for P_ni in P_ani.values():
+                            I2 = I1 + P_ni.shape[1]
+                            gemm(1.0, P_ni, sbuf_In[I1:I2].T.copy(), 1.0, A_nn, 'c')
+                            I1 = I2
+
+                    if q == Q - 1:
+                        break
+
+                    if j == J - 1 and P_ani:
+                        band_comm.wait(sreq2)
+                        band_comm.wait(rreq2)
+                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
+
+                    band_comm.wait(sreq)
+                    band_comm.wait(rreq)
+
                     if q == 0:
-                        sbuf_In = np.concatenate([dAP_ani[a].T
-                                                  for a, P_ni in P_ani.items()])
-                        if B > 1:
-                            rbuf_In = np.empty_like(sbuf_In)
+                        sbuf_mG = self.work1_xG[:M]
+                    sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
+        else:
+            for j in range(J):
+                n1 = j * M
+                n2 = n1 + M
+                psit_mG = psit_nG[n1:n2]
+                sbuf_mG = A(psit_mG)
+                rbuf_mG = self.work2_xG[:M]
+                for q in range(Q): 
+                    A_nn = A_qnn[q]
+                    A_mn = A_nn[n1:n2]
+
+                    if q > 0:
+                        gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
+                    else:
+                        # We only need the lower part:
+                        if j == 0:
+                            # Important special-cases:
+                            if sbuf_mG is psit_mG:
+                                rk(dv, psit_mG, 0.0, A_mn[:, :M])
+                            else:
+                                r2k(0.5 * dv, psit_mG, sbuf_mG, 0.0, A_mn[:, :M])
+                        else:
+                            gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
+
+                    if q == Q - 1:
+                        break
+
+                    if (rank % 2 == 0):
+                        band_comm.send(sbuf_mG, rankm, 11)
+                        band_comm.receive(rbuf_mG, rankp, 11)
+                    else:
+                        band_comm.receive(rbuf_mG, rankp, 11)
+                        band_comm.send(sbuf_mG, rankm, 11)
+
+                    if q == 0:
+                        sbuf_mG = self.work1_xG[:M]
+                    sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
+
+            if P_ani:
+                sbuf_In = np.concatenate([dAP_ani[a].T
+                                          for a, P_ni in P_ani.items()])
+                rbuf_In = np.empty_like(sbuf_In)
+                for q in range(Q): 
+                    A_nn = A_qnn[q]
                     if q < Q - 1:
                         sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
-                        rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
-
-                if q == 0 and not self.bd.strided:
-                    # We only need the lower part:
-                    if j == 0:
-                        # Important special-cases:
-                        if sbuf_mG is psit_mG:
-                            rk(dv, psit_mG, 0.0, A_mn[:, :M])
-                        else:
-                            r2k(0.5 * dv, psit_mG, sbuf_mG, 0.0, A_mn[:, :M])
-                    else:
-                        gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
-                else:
-                    gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
-
-                if j == J - 1 and P_ani:
+                        rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)      
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
                         gemm(1.0, P_ni, sbuf_In[I1:I2].T.copy(), 1.0, A_nn, 'c')
                         I1 = I2
 
-                if q == Q - 1:
-                    break
-
-                if j == J - 1 and P_ani:
-                    band_comm.wait(sreq2)
-                    band_comm.wait(rreq2)
-                    sbuf_In, rbuf_In = rbuf_In, sbuf_In
-
-                band_comm.wait(sreq)
-                band_comm.wait(rreq)
-
-                if q == 0:
-                    sbuf_mG = self.work1_xG[:M]
-                sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
+                    if q < Q - 1:
+                        band_comm.wait(sreq2)
+                        band_comm.wait(rreq2)
+                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
 
         domain_comm.sum(A_qnn, 0)
 
@@ -210,6 +281,7 @@ class Operator:
         band_comm = self.bd.comm
         B = band_comm.size
         J = self.nblocks
+        async = self.async
 
         if B == 1 and J == 1:
             # Simple case:
@@ -235,49 +307,98 @@ class Operator:
         if g * J < G:
             g += 1
 
-        for j in range(J):
-            G1 = j * g
-            G2 = G1 + g
-            if G2 > G:
-                G2 = G
-                g = G2 - G1
-            sbuf_ng = self.work1_xG.reshape(-1)[:N * g].reshape(N, g)
-            rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
-            sbuf_ng[:] = psit_nG[:, G1:G2]
+        if async:
+            for j in range(J):
+                G1 = j * g
+                G2 = G1 + g
+                if G2 > G:
+                    G2 = G
+                    g = G2 - G1
+                sbuf_ng = self.work1_xG.reshape(-1)[:N * g].reshape(N, g)
+                rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
+                sbuf_ng[:] = psit_nG[:, G1:G2]
+                if P_ani:
+                    sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
+                beta = 0.0
+                for q in range(B):
+                    if j == 0 and P_ani:
+                        if B > 1:
+                            rbuf_In = np.empty_like(sbuf_In)
+                        if q < B - 1:
+                            sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
+                            rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
+                    if q < B - 1:
+                        sreq = band_comm.send(sbuf_ng, rankm, 61, False)
+                        rreq = band_comm.receive(rbuf_ng, rankp, 61, False)
+                    C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
+                    gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
+                    if j == 0 and P_ani:
+                        I1 = 0
+                        for P_ni in P_ani.values():
+                            I2 = I1 + P_ni.shape[1]
+                            gemm(1.0, sbuf_In[I1:I2].T.copy(), C_mm, beta, P_ni)
+                            I1 = I2
+
+                    if q == B - 1:
+                        break
+
+                    if j == 0 and P_ani:
+                        band_comm.wait(sreq2)
+                        band_comm.wait(rreq2)
+                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
+
+                    beta = 1.0
+                    band_comm.wait(rreq)
+                    band_comm.wait(sreq)
+                    sbuf_ng, rbuf_ng = rbuf_ng, sbuf_ng
+        else:
             if P_ani:
+                beta = 0.0
                 sbuf_In = np.concatenate([P_ni.T for P_ni in P_ani.values()])
-            beta = 0.0
-            for q in range(B):
-                if j == 0 and P_ani:
-                    if B > 1:
-                        rbuf_In = np.empty_like(sbuf_In)
+                rbuf_In = np.empty_like(sbuf_In)
+                for q in range(B):
+                    C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
                     if q < B - 1:
                         sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
                         rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
-                if q < B - 1:
-                    sreq = band_comm.send(sbuf_ng, rankm, 61, False)
-                    rreq = band_comm.receive(rbuf_ng, rankp, 61, False)
-                C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
-                gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
-                if j == 0 and P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
                         gemm(1.0, sbuf_In[I1:I2].T.copy(), C_mm, beta, P_ni)
                         I1 = I2
 
-                if q == B - 1:
-                    break
-                
-                if j == 0 and P_ani:
-                    band_comm.wait(sreq2)
-                    band_comm.wait(rreq2)
-                    sbuf_In, rbuf_In = rbuf_In, sbuf_In
+                    beta = 1.0
+                    if q < B - 1:
+                        band_comm.wait(sreq2)
+                        band_comm.wait(rreq2)
+                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
 
-                beta = 1.0
-                band_comm.wait(rreq)
-                band_comm.wait(sreq)
-                sbuf_ng, rbuf_ng = rbuf_ng, sbuf_ng
+            for j in range(J):
+                G1 = j * g
+                G2 = G1 + g
+                if G2 > G:
+                    G2 = G
+                    g = G2 - G1
+                sbuf_ng = self.work1_xG.reshape(-1)[:N * g].reshape(N, g)
+                rbuf_ng = self.work2_xG.reshape(-1)[:N * g].reshape(N, g)
+                sbuf_ng[:] = psit_nG[:, G1:G2]
+                beta = 0.0
+                for q in range(B):
+                    C_mm = self.bd.extract_block(C_NN, rank, (rank + q) % B)
+                    gemm(1.0, sbuf_ng, C_mm, beta, psit_nG[:, G1:G2])
+                    beta = 1.0
+
+                    if q == B - 1:
+                        break
+
+                    if (rank % 2 == 0):
+                        band_comm.send(sbuf_ng, rankm, 11)
+                        band_comm.receive(rbuf_ng, rankp, 11)
+                    else:
+                        band_comm.receive(rbuf_ng, rankp, 11)
+                        band_comm.send(sbuf_ng, rankm, 11)
+
+                    sbuf_ng, rbuf_ng = rbuf_ng, sbuf_ng
 
         psit_nG.shape = shape
         return psit_nG
