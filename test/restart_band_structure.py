@@ -3,6 +3,8 @@ from ase import *
 from ase.calculators import numeric_force
 from gpaw.utilities import equal
 import os
+from gpaw import setup_paths
+setup_paths.insert(0, '.')
 
 for xc in ['GLLBSC','LDA']:
     a = 5.404
