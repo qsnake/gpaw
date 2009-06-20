@@ -249,9 +249,9 @@ def broadcast_string(string=None, root=MASTER, comm=world):
         n = npy.zeros(1, int)
     comm.broadcast(n, root)
     if rank == root:
-        string = npy.fromstring(string, int8)
+        string = npy.fromstring(string, npy.int8)
     else:
-        string = npy.zeros(n, int8)
+        string = npy.zeros(n, npy.int8)
     comm.broadcast(string, root)
     return string.tostring()
 
