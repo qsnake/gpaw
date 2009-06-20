@@ -64,6 +64,7 @@ static PyObject * mpi_receive(MPIObject *self, PyObject *args, PyObject *kwargs)
   int src;
   int tag = 123;
   int block = 1;
+  int ret;
   static char *kwlist[] = {"a", "src", "tag", "block", NULL};
 
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|ii:receive", kwlist,
@@ -76,8 +77,15 @@ static PyObject * mpi_receive(MPIObject *self, PyObject *args, PyObject *kwargs)
     n *= PyArray_DIM(a, d);
   if (block)
     {
-      MPI_Recv(PyArray_BYTES(a), n, MPI_BYTE, src, tag, self->comm,
+      ret = MPI_Recv(PyArray_BYTES(a), n, MPI_BYTE, src, tag, self->comm,
 	       MPI_STATUS_IGNORE);
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+	{
+	  PyErr_SetString(PyExc_RuntimeError, "MPI_Recv error occured.");
+	  return NULL;
+	}
+#endif
       Py_RETURN_NONE;
     }
   else
@@ -85,7 +93,14 @@ static PyObject * mpi_receive(MPIObject *self, PyObject *args, PyObject *kwargs)
       mpi_request req;
       req.buffer = a;
       Py_INCREF(req.buffer);
-      MPI_Irecv(PyArray_BYTES(a), n, MPI_BYTE, src, tag, self->comm, &(req.rq));
+      ret = MPI_Irecv(PyArray_BYTES(a), n, MPI_BYTE, src, tag, self->comm, &(req.rq));
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+	{
+	  PyErr_SetString(PyExc_RuntimeError, "MPI_Irecv error occured.");
+	  return NULL;
+	}
+#endif
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
@@ -96,6 +111,7 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args, PyObject *kwargs)
   int dest;
   int tag = 123;
   int block = 1;
+  int ret; 
   static char *kwlist[] = {"a", "dest", "tag", "block", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|ii:send", kwlist,
 				   &a, &dest, &tag, &block))
@@ -107,7 +123,14 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args, PyObject *kwargs)
     n *= PyArray_DIM(a,d);
   if (block)
     {
-      MPI_Send(PyArray_BYTES(a), n, MPI_BYTE, dest, tag, self->comm);
+      ret = MPI_Send(PyArray_BYTES(a), n, MPI_BYTE, dest, tag, self->comm);
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+	{
+	  PyErr_SetString(PyExc_RuntimeError, "MPI_Send error occured.");
+	  return NULL;
+	}
+#endif
       Py_RETURN_NONE;
     }
   else
@@ -115,8 +138,15 @@ static PyObject * mpi_send(MPIObject *self, PyObject *args, PyObject *kwargs)
       mpi_request req;
       req.buffer = a;
       Py_INCREF(a);
-      MPI_Isend(PyArray_BYTES(a), n, MPI_BYTE, dest, tag, self->comm,
+      ret = MPI_Isend(PyArray_BYTES(a), n, MPI_BYTE, dest, tag, self->comm,
 		&(req.rq));
+#ifdef GPAW_MPI_DEBUG
+      if (ret != MPI_SUCCESS)
+	{
+	  PyErr_SetString(PyExc_RuntimeError, "MPI_Isend error occured.");
+	  return NULL;
+	}
+#endif
       return Py_BuildValue("s#", &req, sizeof(req));
     }
 }
@@ -181,7 +211,7 @@ static PyObject * mpi_wait(MPIObject *self, PyObject *args)
 #ifdef GPAW_MPI_DEBUG
   if (ret != MPI_SUCCESS)
     {
-      PyErr_SetString(PyExc_RuntimeError, "MPI_Wait Error occured");
+      PyErr_SetString(PyExc_RuntimeError, "MPI_Wait error occured.");
       return NULL;
     }
 #endif
@@ -333,7 +363,7 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 #ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
 	    {
-	      PyErr_SetString(PyExc_RuntimeError, "MPI_Allreduce Error.");
+	      PyErr_SetString(PyExc_RuntimeError, "MPI_Allreduce error.");
 	      return NULL;
 	    }	
 #endif
@@ -365,7 +395,7 @@ static PyObject * mpi_reduce(MPIObject *self, PyObject *args, PyObject *kwargs,
 #ifdef GPAW_MPI_DEBUG
           if (ret != MPI_SUCCESS)
             {
-	      PyErr_SetString(PyExc_RuntimeError, "MPI_Reduce Error occured.");
+	      PyErr_SetString(PyExc_RuntimeError, "MPI_Reduce error occured.");
               return NULL;
 	    }
 #endif
