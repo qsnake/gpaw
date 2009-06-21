@@ -1,8 +1,35 @@
+#!/usr/bin/env python
+"""
+Python unit testing framework, based on Erich Gamma's JUnit and Kent Beck's
+Smalltalk testing framework. Parallel support by Christian Glinsvad.
+
+For further information please consult the documentation for the Unittest
+module, from which this module is derived. Online reference manual at:
+
+  http://docs.python.org/dev/library/unittest.html
+
+Copyright (c) 1999-2003 Steve Purcell
+This module is free software, and you may redistribute it and/or modify
+it under the same terms as Python itself, so long as this copyright message
+and disclaimer are retained in their original form.
+
+IN NO EVENT SHALL THE AUTHOR BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OF
+THIS CODE, EVEN IF THE AUTHOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+THE AUTHOR SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE.  THE CODE PROVIDED HEREUNDER IS ON AN "AS IS" BASIS,
+AND THERE IS NO OBLIGATION WHATSOEVER TO PROVIDE MAINTENANCE,
+SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+"""
 
 import sys
 import numpy as np
-from unittest import __version__, TestResult, TestCase, _TextTestResult, \
-                     TextTestRunner, TestProgram
+from unittest import __version__, TestResult, TestCase, TestSuite, \
+                     _TextTestResult, TextTestRunner, TestLoader, \
+                     FunctionTestCase, TestProgram, defaultTestLoader
 from gpaw.mpi import world, broadcast_string
 from gpaw.utilities import devnull
 
@@ -10,8 +37,9 @@ from gpaw.utilities import devnull
 # Exported classes and functions
 # -------------------------------------------------------------------
 
-__all__ = ['ParallelTestResult', 'ParallelTestCase', 'ParallelTextTestRunner',
-           'ParallelTestProgram', 'main']
+__all__ = ['ParallelTestResult', 'ParallelTestCase', 'ParallelTestSuite',
+           'ParallelTextTestRunner', 'ParallelTestLoader',
+           'ParallelFunctionTestCase', 'main', 'defaultParallelTestLoader']
 
 # -------------------------------------------------------------------
 # Limited backward compatibility
@@ -136,8 +164,8 @@ class ParallelTestCase(TestCase):
 
 
 # No point in implementing these as the originals work just fine
-#ParallelTestSuite = TestSuite
-#ParellelFunctionTestCase = FunctionTestCase
+ParallelTestSuite = TestSuite
+ParallelFunctionTestCase = FunctionTestCase
 
 
 # -------------------------------------------------------------------
@@ -145,8 +173,8 @@ class ParallelTestCase(TestCase):
 # -------------------------------------------------------------------
 
 # No point in implementing these as the originals work just fine
-#ParallelTestLoader = TestLoader
-#defaultParallelTestLoader = ParallelTestLoader()
+ParallelTestLoader = TestLoader
+defaultParallelTestLoader = ParallelTestLoader()
 
 
 # -------------------------------------------------------------------
