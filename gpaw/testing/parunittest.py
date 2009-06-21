@@ -1,50 +1,165 @@
 
+import sys
 import numpy as np
-from unittest import TestResult, _TextTestResult, TextTestRunner#, TestCase
-from ase.test import CustomTestCase as TestCase
+from unittest import __version__, TestResult, TestCase, _TextTestResult, \
+                     TextTestRunner, TestProgram
 from gpaw.mpi import world, broadcast_string
+from gpaw.utilities import devnull
 
-# ------------------------------------------------------------------
+# -------------------------------------------------------------------
+# Exported classes and functions
+# -------------------------------------------------------------------
 
-__all__ = ['ParallelTestResult', 'ParallelTextTestRunner', 'ParallelTestCase']
+__all__ = ['ParallelTestResult', 'ParallelTestCase', 'ParallelTextTestRunner',
+           'ParallelTestProgram', 'main']
+
+# -------------------------------------------------------------------
+# Limited backward compatibility
+# -------------------------------------------------------------------
+
+if sys.version_info[:2] < (2, 3):
+    raise RuntimeError('Python 2.3 or greater required!')
+
+unittest_version = tuple(map(int, __version__.split('.')))
+
+# Require at least Unittest version 1.56 rev. 34209 which fixed a lot of bugs
+if unittest_version < (1,56):
+    raise RuntimeError('Unittest 1.56 or greater required!')
+
+# -------------------------------------------------------------------
+# Test framework core
+# -------------------------------------------------------------------
 
 class ParallelTestResult(TestResult):
+    __doc__ = TestResult.__doc__
+
     def __init__(self, comm=None):
         if comm is None:
             comm = world
         self.comm = comm
         self.outcomes = []
+        self.last_errors = np.empty(self.comm.size, dtype=bool)
+        self.last_failed = np.empty(self.comm.size, dtype=bool)
         TestResult.__init__(self)
 
+    def stopTest(self, test):
+        """Called when the given test has been run. If the stop flag was
+        raised beforehand, will broadcast to raise flags for global stop."""
+        stop_flags = np.empty(self.comm.size, dtype=bool)
+        self.comm.all_gather(np.array([self.shouldStop]), stop_flags)
+        self.shouldStop = stop_flags.any()
+        TestResult.stopTest(test)
+
+    def _exc_info_to_string(self, err, test):
+        # Includes second argument as of Unittest version 1.63 rev. 34859
+        if unittest_version < (1,63):
+            return TestResult._exc_info_to_string(self, err)
+        else:
+            return TestResult._exc_info_to_string(self, err, test)
+
+    def addStatus(self, test, err=None, error=False, failure=False):
+        """Negotiate global status immediately after a test has been run.
+        Called on all processor with the local test status (i.e. error, failure
+        or success). 'err' is a tuple of values as returned by sys.exc_info().
+        """
+        if error and failure:
+            raise RuntimeError('Parallel unittest can\'t handle simultaneous' \
+                               + ' errors and failures within a single test.')
+
+        self.comm.all_gather(np.array([error]), self.last_errors)
+        if self.last_errors.any():
+            all_texts = []
+            for rank in np.argwhere(self.last_errors).ravel():
+                if rank == self.comm.rank:
+                    assert self.last_errors[self.comm.rank]
+                    text = self._exc_info_to_string(err, test)
+                else:
+                    text = None
+                text = broadcast_string(text, root=rank, comm=self.comm)
+                all_texts.append((rank,text))
+            self.errors.append((test, all_texts))
+
+        self.comm.all_gather(np.array([failure]), self.last_failed)
+        if self.last_failed.any():
+            all_texts = []
+            for rank in np.argwhere(self.last_failed).ravel():
+                if rank == self.comm.rank:
+                    assert self.last_failed[self.comm.rank]
+                    text = self._exc_info_to_string(err, test)
+                else:
+                    text = None
+                text = broadcast_string(text, root=rank, comm=self.comm)
+                all_texts.append((rank,text))
+            self.failures.append((test, all_texts))
+
     def addError(self, test, err):
-        self.has_errors = True
-        TestResult.addError(self, test, err)
+        """Negotiate global status. Called when an error has occurred on a
+        processor. 'err' is a tuple of values as returned by sys.exc_info().
+        """
+        self.addStatus(test, err, error=True)
 
     def addFailure(self, test, err):
-        self.has_failed = True
-        TestResult.addFailure(self, test, err)
+        """Negotiate global status. Called when an failure has occurred on a
+        processor. 'err' is a tuple of values as returned by sys.exc_info().
+        """
+        self.addStatus(test, err, failure=True)
 
-    def startTest(self, test):
-        self.has_errors = False
-        self.has_failed = False
-        TestResult.startTest(self, test)
+    def addSuccess(self, test):
+        """Probe global status for potential errors by passive negotiation.
+        Called when a test has completed successfully on a processor.
+        """
+        self.addStatus(test)
 
-    def stopTest(self, test):
-        errors_r = np.empty(self.comm.size, dtype=bool)
-        self.comm.all_gather(np.array([self.has_errors]), errors_r)
+    def addSkip(self, test, reason):
+        """Called when a test is skipped. Not ready!"""
+        raise NotImplementedError
 
-        failed_r = np.empty(self.comm.size, dtype=bool)
-        self.comm.all_gather(np.array([self.has_failed]), failed_r)
+    def addExpectedFailure(self, test, err):
+        """Called when an expected failure/error occured. Not ready!"""
+        raise NotImplementedError
 
-        TestResult.stopTest(self, test)
-        self.outcomes.append((test, errors_r, failed_r))
-        return errors_r, failed_r
+    def addUnexpectedSuccess(self, test):
+        """Called when a test was expected to fail, but succeed. Not ready!"""
+        raise NotImplementedError
+
+
+class ParallelTestCase(TestCase):
+    __doc__ = TestCase.__doc__
+
+    def defaultTestResult(self):
+        return ParallelTestResult()
+
+    def debug(self):
+        """Run the test without collecting errors in a TestResult"""
+        print 'WARNING: Test case is strictly serial in debug mode!'
+        TestCase.debug(self)
+
+
+# No point in implementing these as the originals work just fine
+#ParallelTestSuite = TestSuite
+#ParellelFunctionTestCase = FunctionTestCase
+
+
+# -------------------------------------------------------------------
+# Locating and loading tests
+# -------------------------------------------------------------------
+
+# No point in implementing these as the originals work just fine
+#ParallelTestLoader = TestLoader
+#defaultParallelTestLoader = ParallelTestLoader()
+
+
+# -------------------------------------------------------------------
+# Text UI
+# -------------------------------------------------------------------
 
 class _ParallelTextTestResult(ParallelTestResult, _TextTestResult):
+    __doc__ = _TextTestResult.__doc__
+    allErrors = False
 
     def __init__(self, comm, *args, **kwargs):
         ParallelTestResult.__init__(self, comm)
-        _TextTestResult.__init__(self, *args, **kwargs) #BAD FORM!
+        _TextTestResult.__init__(self, *args, **kwargs) # use new-style?
 
     def startTest(self, test):
         ParallelTestResult.startTest(self, test)
@@ -61,33 +176,35 @@ class _ParallelTextTestResult(ParallelTestResult, _TextTestResult):
     def addFailure(self, test, err):
         ParallelTestResult.addFailure(self, test, err)
 
-    def stopTest(self, test):
-        errors_r, failed_r = ParallelTestResult.stopTest(self, test)
+    def shortRanks(self, ranks):
+        if len(ranks) == 0:
+            return 'none'
+        elif isinstance(ranks, np.ndarray) and ranks.dtype == bool:
+            if ranks.all():
+                return 'all'
+            ranks = np.argwhere(ranks).ravel()
+        ranks = np.sort(ranks)
+        if np.all(ranks == range(self.comm.size)):
+            return 'all'
+        return 'rank ' + ','.join(map(str,ranks))
 
+    def stopTest(self, test):
         self.stream.flush()
         self.comm.barrier()
 
-        def findranks(status_r):
-            if status_r.all():
-                return 'all'
-            else:
-                return ','.join(map(str,np.argwhere(status_r).ravel()))
-
-        if errors_r.any() and failed_r.any():
-            if self.showAll:
-                self.stream.writeln("BOTH (%s)" % 'WHAT!?')
-            elif self.dots:
-                self.stream.writeln('B')
+        if self.last_errors.any() and self.last_failed.any():
             raise RuntimeError('Parallel unittest can\'t handle simultaneous' \
                                + ' errors and failures within a single test.')
-        elif errors_r.any():
+        elif self.last_errors.any():
             if self.showAll:
-                self.stream.writeln("ERROR (ranks: %s)" % findranks(errors_r))
+                rankinfo = self.shortRanks(self.last_errors)
+                self.stream.writeln("ERROR (%s)" % rankinfo)
             elif self.dots:
                 self.stream.writeln('E')
-        elif failed_r.any():
+        elif self.last_failed.any():
             if self.showAll:
-                self.stream.writeln("FAIL (ranks: %s)" % findranks(failed_r))
+                rankinfo = self.shortRanks(self.last_failed)
+                self.stream.writeln("FAIL (%s)" % rankinfo)
             elif self.dots:
                 self.stream.writeln('F')
         else:
@@ -96,54 +213,72 @@ class _ParallelTextTestResult(ParallelTestResult, _TextTestResult):
             else:
                 self.stream.writeln('.')
 
-    def printErrors(self):
-        if self.dots or self.showAll:
-            self.stream.writeln()
-        self.printErrorList('ERROR-RANK%d' % self.comm.rank, self.errors)
-        self.printErrorList('FAIL-RANK%d' % self.comm.rank, self.failures)
-
     def printErrorList(self, flavour, errors):
-        for test, errors_r, failed_r in self.outcomes:
-            if flavour.startswith('ERROR'):
-                status_r = errors_r
-            elif flavour.startswith('FAIL'):
-                status_r = failed_r
-            else:
-                raise RuntimeError('Error type %s is unsupported.' % flavour)
-
-            if status_r.any():
+        for test, all_texts in errors:
+            description = self.getDescription(test)
+            if all_texts:
                 self.stream.writeln(self.separator1)
-
-            i = 0
-            for rank in np.argwhere(status_r).ravel():
-                if rank == self.comm.rank:
-                    assert status_r[self.comm.rank]
-                    test, err = errors[i]
-                    text1 = '%s: %s' % (flavour,self.getDescription(test))
-                    text2 = '%s' % err
-                    i += 1
-                else:
-                    text1 = None
-                    text2 = None
-                text1 = broadcast_string(text1, root=rank, comm=self.comm)
-                text2 = broadcast_string(text2, root=rank, comm=self.comm)
-                self.stream.writeln(text1)
-                self.stream.writeln(self.separator2)
-                self.stream.writeln(text2)
+            if self.allErrors:
+                for rank, text2 in all_texts:
+                    rankinfo = self.shortRanks([rank]).upper()
+                    text1 = '%s-%s: %s' % (flavour, rankinfo, description)
+                    self.stream.writeln(text1)
+                    self.stream.writeln(self.separator2)
+                    self.stream.writeln(text2)
+            else:
+                text_ranks = {}
+                for rank, text2 in all_texts:
+                    if text2 not in text_ranks:
+                        text_ranks[text2] = []
+                    text_ranks[text2].append(rank)
+                for text2, ranks in text_ranks.items():
+                    rankinfo = self.shortRanks(ranks).upper()
+                    text1 = '%s-%s: %s' % (flavour, rankinfo, description)
+                    self.stream.writeln(text1)
+                    self.stream.writeln(self.separator2)
+                    self.stream.writeln(text2)
 
 
 class ParallelTextTestRunner(TextTestRunner):
-    def __init__(self, comm=None, **kwargs):
+    __doc__ = TextTestRunner.__doc__
+    logfile = None
+
+    def __init__(self, comm=None, stream=sys.stderr, **kwargs):
         if comm is None:
             comm = world
         self.comm = comm
-        TextTestRunner.__init__(self, **kwargs)
+        if self.comm.rank != 0:
+            stream = devnull
+        elif type(stream) is str:
+            self.logfile = stream
+            stream = open(self.logfile, 'w', buffering=0)
+        TextTestRunner.__init__(self, stream=stream, **kwargs)
 
     def _makeResult(self):
         return _ParallelTextTestResult(self.comm, self.stream, \
             self.descriptions, self.verbosity)
 
-class ParallelTestCase(TestCase):
-    def defaultTestResult(self):
-        return ParallelTestResult()
+    def run(self, test):
+        stderr_old = sys.stderr
+        try:
+            sys.stderr = self.stream
+            testresult = TextTestRunner.run(self, test)
+        finally:
+            sys.stderr = stderr_old
+        return testresult
+
+
+# -------------------------------------------------------------------
+# Facilities for running tests from the command line
+# -------------------------------------------------------------------
+
+class ParallelTestProgram(TestProgram):
+    __doc__ = TestProgram.__doc__
+
+    def runTests(self):
+        if self.testRunner is None:
+            self.testRunner = ParallelTextTestRunner(verbosity=self.verbosity)
+        TestProgram.runTests(self)
+
+main = ParallelTestProgram
 
