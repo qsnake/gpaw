@@ -70,13 +70,19 @@ class ParallelTestResult(TestResult):
         self.last_failed = np.empty(self.comm.size, dtype=bool)
         TestResult.__init__(self)
 
+    def startTest(self, test):
+        "Called when the given test is about to be run. Resets global flags."
+        self.last_errors.fill(False)
+        self.last_failed.fill(False)
+        TestResult.startTest(self, test)
+
     def stopTest(self, test):
         """Called when the given test has been run. If the stop flag was
         raised beforehand, will broadcast to raise flags for global stop."""
         stop_flags = np.empty(self.comm.size, dtype=bool)
         self.comm.all_gather(np.array([self.shouldStop]), stop_flags)
         self.shouldStop = stop_flags.any()
-        TestResult.stopTest(test)
+        TestResult.stopTest(self, test)
 
     def _exc_info_to_string(self, err, test):
         # Includes second argument as of Unittest version 1.63 rev. 34859
