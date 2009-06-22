@@ -5,17 +5,35 @@ louhi.csc.fi
 ============
 
 Here you find information about the the system
-`<http://raketti.csc.fi/english/research/Computing_services/computing/servers/louhi>`_.
+`<http://www.csc.fi/english/research/Computing_services/computing/servers/louhi>`_.
 
 The current operating system in Cray XT4 compute nodes, Compute Linux
 Environment (CLE) has some limitations, most notably it does not
-support shared libraries. In order to use python in CLE some
+support shared libraries. The following instructions are tested with 
+python 2.5.1 and the PGI compiler suite.
+
+In order to use python in CLE some
 modifications to the standard python are needed. Before installing a
 special python, there are two packages which are needed by GPAW, but
-which are not included in the python distribution. Installation of
-expat_ and zlib_ should succee with a standard ``./configure; make;
-make install;`` procedure.
+which are not included in the python distribution, expat_ and zlib_. 
 
+Before starting any of the installations, set the correct compiler::
+
+ setenv CC cc
+
+Install ``expat`` as::
+
+ > ./configure --prefix=PREFIX  --disable-shared
+ > make
+ > make install
+
+where ``PREFIX`` is your installation directory. Install ``zlib`` similarly::
+
+ > ./configure --prefix=PREFIX
+ > make
+ > make install
+
+ 
 .. _expat: http://expat.sourceforge.net/
 .. _zlib: http://www.zlib.net/  
 
