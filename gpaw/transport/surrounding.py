@@ -277,7 +277,10 @@ class Surrounding:
                                                 forces=True, cut=True)
             self.extended_nct.set_positions(spos_ac)
             self.extended_nct_G = self.extended_gd.zeros()
-            self.extended_nct.add(self.extended_nct_G, 1.0 / self.nspins)                 
+            self.extended_nct.add(self.extended_nct_G, 1.0 / self.nspins)
+            
+            self.boundary_data = {'vt_sG':{}, 'nt_sG':{}, 'vHt_g':{},
+                'H_asp':{}, 'D_asp':{}}
            
         elif self.type == 'all':
             raise NotImplementError()
@@ -480,9 +483,11 @@ class Surrounding:
         self.basis_functions.calculate_potential_matrix(vt_sG[s],
                                                             self.vt_MM, q)
         tri2full(self.vt_MM)
+        dim = vt_sG.shape[1] / 2
+        self.boundary_data['vt_sG'] = vt_sG[s, dim , dim]
+        
         if debug:
             from pylab import plot, show, title
-            dim = vt_sG.shape[1] / 2
             plot(vt_sG[s, dim ,dim])
             title('extend_vt_sG')
             show()
@@ -535,9 +540,13 @@ class Surrounding:
         nn = self.nn / 2
         direction = self.directions[0][0]
         nt_sG = self.capsule(nn, 'nt_sG', direction, nt_sG0)
+        dim = nt_sG.shape[1] / 2
+        
+        self.boundary_data['nt_sG'] = nt_sG[0, dim, dim]
+        
         if debug:
             from pylab import plot, show, title
-            dim = nt_sG.shape[1] / 2
+
             plot(nt_sG[0, dim ,dim])
             title('extend_nt_sG_interpolate')
             show()          
@@ -785,6 +794,5 @@ class Surrounding:
         if density.mixer.mix_rho:
             density.mixer.mix(density)
         density.rhot_g -= self.extra_rhot_g              
-
 
 
