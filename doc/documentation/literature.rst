@@ -216,3 +216,12 @@ Interpretation of STM images with DFT calculations:
   __ http://dx.doi.org/10.1103/PhysRevLett.102.206801
 
 .. 5 June 2009
+
+The effect of frustrated rotations in HEFatS is calculated using the delta SCF method
+  | Thomas Olsen
+  | `Inelastic scattering in a local polaron model with quadratic coupling to bosons`__
+  | Physical Review B, Vol. **79**, 235414 (2009)
+
+  __ http://dx.doi.org/10.1103/PhysRevB.79.235414
+
+.. 12 June 2009 
