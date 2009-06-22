@@ -8,7 +8,6 @@ the fastest will be run first.
 import os
 import sys
 import time
-import unittest
 from glob import glob
 import gc
 from optparse import OptionParser
@@ -38,6 +37,11 @@ parser.add_option('-d', '--debug',
 parser.add_option('-p', '--parallel',
                   action='store_true',
                   help='Add parallel tests.')
+
+parser.add_option('-u', '--new-unittest',
+                  action='store_true',
+                  help='Use new unittest module with parallel support.')
+
 
 opt, tests = parser.parse_args()
 
@@ -71,6 +75,7 @@ if len(tests) == 0:
         'XC2Spin.py',
         'multipoletest.py',
         'proton.py',
+        'parallel/ut_parallel.py',
         'parallel/compare.py',
         'coulomb.py',
         'ase3k.py',
@@ -173,6 +178,7 @@ disabled_tests = [
     ]
 
 tests_parallel = [
+    'parallel/ut_parallel.py',
     'parallel/restart.py',
     'parallel/parmigrate.py',
     'parallel/par8.py',
@@ -209,10 +215,17 @@ for test in exclude:
 
 import gpaw.mpi as mpi
 
-class ScriptTestCase(unittest.TestCase):
+if opt.new_unittest:
+    from gpaw.testing.parunittest import ParallelTestCase as TestCase, \
+        _ParallelTextTestResult as _TextTestResult, ParallelTextTestRunner as \
+        TextTestRunner, ParallelTestSuite as TestSuite
+else:
+    from unittest import TestCase, _TextTestResult, TextTestRunner, TestSuite
+
+class ScriptTestCase(TestCase):
     garbage = []
     def __init__(self, filename):
-        unittest.TestCase.__init__(self, 'testfile')
+        TestCase.__init__(self, 'testfile')
         self.filename = filename
 
     def setUp(self):
@@ -234,7 +247,7 @@ class ScriptTestCase(unittest.TestCase):
     def run(self, result=None):
         if result is None: result = self.defaultTestResult()
         try:
-            unittest.TestCase.run(self, result)
+            TestCase.run(self, result)
         except KeyboardInterrupt:
             result.stream.write('SKIPPED\n')
             try:
@@ -251,9 +264,9 @@ class ScriptTestCase(unittest.TestCase):
     def __repr__(self):
         return "ScriptTestCase('%s')" % self.filename
 
-class MyTextTestResult(unittest._TextTestResult):
+class MyTextTestResult(_TextTestResult):
     def startTest(self, test):
-        unittest._TextTestResult.startTest(self, test)
+        _TextTestResult.startTest(self, test)
         self.stream.flush()
         self.t0 = time.time()
 
@@ -263,19 +276,23 @@ class MyTextTestResult(unittest._TextTestResult):
 
     def addSuccess(self, test):
         self._write_time()
-        unittest._TextTestResult.addSuccess(self, test)
+        _TextTestResult.addSuccess(self, test)
     def addError(self, test, err):
         self._write_time()
-        unittest._TextTestResult.addError(self, test, err)
+        _TextTestResult.addError(self, test, err)
     def addFailure(self, test, err):
         self._write_time()
-        unittest._TextTestResult.addFailure(self, test, err)
+        _TextTestResult.addFailure(self, test, err)
 
-class MyTextTestRunner(unittest.TextTestRunner):
+class MyTextTestRunner(TextTestRunner):
+    parallel = opt.new_unittest
     def _makeResult(self):
-        return MyTextTestResult(self.stream, self.descriptions, self.verbosity)
+        args = (self.stream, self.descriptions, self.verbosity,)
+        if self.parallel:
+            args = (mpi.world,) + args
+        return MyTextTestResult(*args)
 
-ts = unittest.TestSuite()
+ts = TestSuite()
 for test in tests:
     ts.addTest(ScriptTestCase(filename=test))
 
