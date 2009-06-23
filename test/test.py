@@ -178,7 +178,6 @@ disabled_tests = [
     ]
 
 tests_parallel = [
-    'parallel/ut_parallel.py',
     'parallel/restart.py',
     'parallel/parmigrate.py',
     'parallel/par8.py',

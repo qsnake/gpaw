@@ -98,7 +98,7 @@ class UTParallel_Fails(UTParallel):
 
 if __name__ in ['__main__', '__builtin__']:
     # We may have been imported by test.py, if so we should redirect to logfile
-    output = (__name__ == '__builtin__') and 'ut_base.log' or sys.stdout
+    output = (__name__ == '__builtin__') and 'ut_parallel.log' or sys.stdout
     testrunner = ParallelTextTestRunner(stream=output, verbosity=2)
 
     testcases = [UTParallel_Succeeds, UTParallel_Raises, UTParallel_Fails]
@@ -128,5 +128,5 @@ if __name__ in ['__main__', '__builtin__']:
 
         # Provide feedback on failed tests if imported by test.py
         if __name__ == '__builtin__' and not verified:
-            raise SystemExit('Test failed. Check ut_base.log for details.')
+            raise SystemExit('Test failed. Check ut_parallel.log for details.')
 
