@@ -175,7 +175,6 @@ class BasisPlotter:
 
         print 'Element  :', basis.symbol
         print 'Name     :', basis.name
-        print 'Filename :', basis.filename
         print
         print 'Basis functions'
         print '---------------'

@@ -55,9 +55,9 @@ class AtomPoissonSolver:
         return 1
     
 class AtomEigensolver:
-    def __init__(self, gd, f):
+    def __init__(self, gd, f_sln):
         self.gd = gd
-        self.f_sln = f
+        self.f_sln = f_sln
         self.error = 0.0
         self.initialized = False
         
@@ -187,6 +187,9 @@ class AtomGridDescriptor(RadialGridDescriptor):
         rcut = N * h
         r = np.linspace(h, rcut, N)
         RadialGridDescriptor.__init__(self, r, np.ones(N) * h)
+        self.h = h
+        self.N = N
+        self.rcut = rcut
         self.sdisp_cd = np.empty((3, 2))
         self.comm = mpi.serial_comm
         self.pbc_c = np.zeros(3, bool)
@@ -219,9 +222,9 @@ class AtomGridDescriptor(RadialGridDescriptor):
         return np.zeros(3)
 
 class AtomOccupations(OccupationNumbers):
-    def __init__(self, f):
-        self.f_sln = f
-        OccupationNumbers.__init__(self, None, len(f))
+    def __init__(self, f_sln):
+        self.f_sln = f_sln
+        OccupationNumbers.__init__(self, None, len(f_sln))
         
     def calculate(self, wfs):
         OccupationNumbers.calculate(self, wfs)
@@ -239,16 +242,55 @@ class AtomOccupations(OccupationNumbers):
     def get_fermi_level(self):
         raise NotImplementedError
 
-def AtomPAW(symbol, f, h=0.4, rcut=10.0, **kwargs):
-    gd = AtomGridDescriptor(h, rcut)
-    calc = GPAW(mode=MakeWaveFunctions(gd),
-                eigensolver=AtomEigensolver(gd, f),
-                poissonsolver=AtomPoissonSolver(),
-                stencils=(1, 9),
-                nbands=sum([(2 * l + 1) * len(f_n)
-                            for l, f_n in enumerate(f[0])]),
-                **kwargs)
-    calc.occupations = AtomOccupations(f)
-    calc.initialize(Atoms(symbol, calculator=calc))
-    calc.calculate(converge=True)
-    return calc
+class AtomPAW(GPAW):
+    def __init__(self, symbol, f_sln, h=0.05, rcut=10.0, **kwargs):
+        assert len(f_sln) in [1, 2]
+        self.symbol = symbol
+        
+        gd = AtomGridDescriptor(h, rcut)
+        GPAW.__init__(self,
+                      mode=MakeWaveFunctions(gd),
+                      eigensolver=AtomEigensolver(gd, f_sln),
+                      poissonsolver=AtomPoissonSolver(),
+                      stencils=(1, 9),
+                      nbands=sum([(2 * l + 1) * len(f_n)
+                                  for l, f_n in enumerate(f_sln[0])]),
+                      **kwargs)
+        self.occupations = AtomOccupations(f_sln)
+        self.initialize(Atoms(symbol, calculator=self))
+        self.calculate(converge=True)
+        
+    def state_iter(self):
+        """Yield the tuples (l, n, f, eps, psit_G) of states.
+
+        Skips degenerate states."""
+        f_sln = self.occupations.f_sln
+        assert len(f_sln) == 1, 'Not yet implemented with more spins'
+        f_ln = f_sln[0]
+        kpt = self.wfs.kpt_u[0]
+
+        band = 0
+        for l, f_n in enumerate(f_ln):
+            for n, f in enumerate(f_n):
+                psit_G = kpt.psit_nG[band]
+                eps = kpt.eps_n[band]
+                yield l, n, f, eps, psit_G
+                band += 2 * l + 1
+
+    def extract_basis_functions(self, basis_name='atompaw.sz'):
+        """Create BasisFunctions object with pseudo wave functions."""
+        from gpaw.basis_data import Basis, BasisFunction
+        assert self.wfs.nspins == 1
+
+        basis = Basis(self.symbol, basis_name, readxml=False)
+        basis.d = self.gd.h
+        basis.ng = self.gd.N
+        basis.generatorattrs = {} # attrs of the setup maybe
+        basis.generatordata = 'AtomPAW' # version info too?
+        
+        bf_j = basis.bf_j
+        for l, n, f, eps, psit_G in self.state_iter():
+            bf = BasisFunction(l, self.gd.rcut, psit_G * np.sign(psit_G[-1]), 
+                               '%s%d e=%.3f f=%.3f' % ('spdf'[l], n, eps, f))
+            bf_j.append(bf)
+        return basis
