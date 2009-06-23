@@ -50,9 +50,12 @@ if sys.version_info[:2] < (2, 3):
 
 unittest_version = tuple(map(int, __version__.split('.')))
 
-# Require at least Unittest version 1.56 rev. 34209 which fixed a lot of bugs
+# User interface should at least comply with Unittest version 1.56 rev. 34209
 if unittest_version < (1,56):
-    raise RuntimeError('Unittest 1.56 or greater required!')
+    _TestCase = TestCase
+    class TestCase(_TestCase):
+        assertTrue = _TestCase.failUnless
+        assertFalse = _TestCase.failIf
 
 # -------------------------------------------------------------------
 # Test framework core
