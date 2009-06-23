@@ -438,16 +438,20 @@ class Transport(GPAW):
         atoms.pbc[self.d] = True
         kwargs = self.gpw_kwargs.copy()
         kwargs['poissonsolver'] = PoissonSolver(nn=2)
-        kwargs['kpts'] = (1,1,5)
+        #kwargs['kpts'] = (1,1,1)
         kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         atoms.set_calculator(gpaw.GPAW(**kwargs))
         atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc, 'lead')
-        ntk = 5
+        ntk = 1
         kpts = atoms.calc.wfs.ibzk_qc
         self.h_skmm = self.substract_pk(ntk, kpts, h_skmm, 'h')
         self.s_kmm = self.substract_pk(ntk, kpts, s_kmm)        
         del atoms
+
+    def get_hamiltonian_initial_guess2(self):
+        self.h_skmm = self.hl_spkmm[0].copy()
+        self.s_kmm = self.sl_pkmm[0].copy()
 
     def get_lead_index(self):
         basis_list = [setup.niAO for setup in self.wfs.setups]
@@ -2005,8 +2009,9 @@ class Transport(GPAW):
 
         ham.timer.start('Poisson')
         # npoisson is the number of iterations:
-        ham.npoisson = ham.poisson.solve(ham.vHt_g, density.rhot_g,
-                                           charge=-density.charge)
+        assert abs(density.charge) < 1e-6
+        ham.npoisson = ham.poisson.solve_neutral(ham.vHt_g, density.rhot_g,
+                                                          eps=ham.poisson.eps)
         ham.timer.stop('Poisson')
         dim = density.rhot_g.shape[0] / 2
         if self.fixed:
@@ -2963,7 +2968,7 @@ class Transport(GPAW):
     def plot_step_data(self, step_data):
         overview_d = 1
         #self.d = 0
-        self.nspins = 1
+        self.nspins = 2
         sd = step_data['t_dos']
         bias = step_data['bias']
         import pylab
