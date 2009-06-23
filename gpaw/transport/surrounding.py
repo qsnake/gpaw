@@ -14,6 +14,7 @@ from gpaw.utilities import unpack
 from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
 from gpaw import debug
+import pickle
 
 class Side:
     def __init__(self, type, atoms, nn, direction='x+'):
@@ -81,20 +82,29 @@ class Side:
         kpts = wfs.ibzk_qc
         nq = len(kpts)
         self.d_skmm = np.empty([ns, nq, nao, nao], wfs.dtype)
-        for kpt in wfs.kpt_u:
-            wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM,
+        restart = False
+        if not restart:
+            for kpt in wfs.kpt_u:
+                wfs.calculate_density_matrix(kpt.f_n, kpt.C_nM,
                                             self.d_skmm[kpt.s, kpt.q])
-        di = abs(self.index[self.direction]) - 1
-        position = np.zeros(3)
-        position[di] = 1
-        ntk = count_tkpts_num(di, kpts)
-        npk = len(wfs.ibzk_kc) / ntk
-        my_npk = len(kpts) / ntk
-        self.d_skmm *=  ntk
-        #self.d_skmm *= ntk * npk
-        self.d_spkmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h')
-        self.d_spkcmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h',
-                                     position)
+            di = abs(self.index[self.direction]) - 1
+            position = np.zeros(3)
+            position[di] = 1
+            ntk = count_tkpts_num(di, kpts)
+            npk = len(wfs.ibzk_kc) / ntk
+            my_npk = len(kpts) / ntk
+            self.d_skmm *=  ntk
+            #self.d_skmm *= ntk * npk
+            self.d_spkmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h')
+            self.d_spkcmm = substract_pk(di, my_npk, ntk, kpts, self.d_skmm, 'h',
+                                         position)
+            fd = file('sidedk.dat', 'wb')
+            pickle.dump((self.d_spkmm, self.d_spkcmm), fd, 2)
+            fd.close()
+        else:
+            fd = file('sidedk.dat', 'r')
+            self.d_spkmm, self.d_spkcmm = pickle.load(fd)
+            fd.close()
 
     def slice(self, nn, in_array):
         direction = self.direction
@@ -279,7 +289,8 @@ class Surrounding:
             self.extended_nct_G = self.extended_gd.zeros()
             self.extended_nct.add(self.extended_nct_G, 1.0 / self.nspins)
             
-            self.boundary_data = {'vt_sG':{}, 'nt_sG':{}, 'vHt_g':{},
+            self.boundary_data = {'vt_sg':{}, 'vt_sg1':{}, 'rhot_g':{},'rhot_g1':{},
+                'vt_sG':{}, 'nt_sG':{}, 'vHt_g':{}, 'vHt_g1':{}, 'vHt_g2':{}, 'rhot_g2':{},
                 'H_asp':{}, 'D_asp':{}}
            
         elif self.type == 'all':
@@ -356,10 +367,15 @@ class Surrounding:
     def get_extra_density(self):
         if self.type == 'LR':
             direction = self.directions[0][0]
-            rhot_g = self.finegd.zeros(global_array=True)
-            self.operator.apply(self.vHt_g, rhot_g)
+            rhot_g = self.finegd.zeros()
+            vHt_g = self.finegd.zeros()
+            self.finegd.distribute(self.vHt_g, vHt_g)
+            self.operator.apply(vHt_g, rhot_g)
+            dim = self.vHt_g.shape[1] / 2
+            self.boundary_data['vHt_g2'] = self.vHt_g[dim, dim]
+            self.boundary_data['rhot_g2'] = rhot_g[dim, dim]
             self.extra_rhot_g = self.uncapsule(self.nn, 'vHt_g',
-                                             direction, rhot_g)
+                                             direction, rhot_g, collect=True)
             
     def combine_streching_atomic_hamiltonian(self):
         if self.type == 'LR':
@@ -484,7 +500,7 @@ class Surrounding:
                                                             self.vt_MM, q)
         tri2full(self.vt_MM)
         dim = vt_sG.shape[1] / 2
-        self.boundary_data['vt_sG'] = vt_sG[s, dim , dim]
+        self.boundary_data['vt_sG'] = self.sides['z-'].boundary_vt_sG[s, dim , dim]
         
         if debug:
             from pylab import plot, show, title
@@ -499,7 +515,10 @@ class Surrounding:
     def restrict(self, vt_sg, s):
         nn = self.nn
         direction = self.directions[0][0]
+        dim = vt_sg.shape[1] / 2        
         vt_sg0 =  self.capsule(nn, 'vt_sg', direction, vt_sg)
+        self.boundary_data['vt_sg'] = self.vt_sg[s, dim , dim]
+        self.boundary_data['vt_sg1'] = vt_sg[s, dim, dim]
         vt_G0 = self.gd.zeros()
         self.restrictor.apply(vt_sg0[s], vt_G0)
         nn /= 2
@@ -542,7 +561,7 @@ class Surrounding:
         nt_sG = self.capsule(nn, 'nt_sG', direction, nt_sG0)
         dim = nt_sG.shape[1] / 2
         
-        self.boundary_data['nt_sG'] = nt_sG[0, dim, dim]
+        self.boundary_data['nt_sG'] = self.nt_sG[0, dim, dim]
         
         if debug:
             from pylab import plot, show, title
@@ -718,6 +737,8 @@ class Surrounding:
         density.rhot_g = density.nt_g.copy()
         rhot_g = self.finegd.zeros()
         self.ghat.add(rhot_g, density.Q_aL)
+        dim = rhot_g.shape[0] / 2
+        self.boundary_data['rhot_g'] = self.extra_rhot_g[dim, dim]
         if debug:
             from pylab import plot, show, title
             dim = rhot_g.shape[0] / 2
