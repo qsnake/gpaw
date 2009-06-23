@@ -428,7 +428,7 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-        self.get_hamiltonian_initial_guess()
+                self.get_hamiltonian_initial_guess()
         del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
@@ -438,12 +438,12 @@ class Transport(GPAW):
         atoms.pbc[self.d] = True
         kwargs = self.gpw_kwargs.copy()
         kwargs['poissonsolver'] = PoissonSolver(nn=2)
-        kwargs['kpts'] = (1,1,3)
+        kwargs['kpts'] = (1,1,5)
         kwargs['mixer'] = Mixer(0.1, 5, metric='new', weight=100.0)
         atoms.set_calculator(gpaw.GPAW(**kwargs))
         atoms.get_potential_energy()
         h_skmm, s_kmm =  self.get_hs(atoms.calc, 'lead')
-        ntk = 3
+        ntk = 5
         kpts = atoms.calc.wfs.ibzk_qc
         self.h_skmm = self.substract_pk(ntk, kpts, h_skmm, 'h')
         self.s_kmm = self.substract_pk(ntk, kpts, s_kmm)        
@@ -772,10 +772,10 @@ class Transport(GPAW):
                 atoms = self.atoms
             if not self.fixed:
                 GPAW.get_potential_energy(self, atoms)
-               
+                self.h_skmm, self.s_kmm = self.get_hs(self, 'scat')               
+            
             self.atoms = atoms.copy()
             rank = world.rank
-            #self.h_skmm, self.s_kmm = self.get_hs(self, 'scat') 
             if self.gamma:
                 self.h_skmm = np.real(self.h_skmm).copy()
          
@@ -2008,7 +2008,10 @@ class Transport(GPAW):
         ham.npoisson = ham.poisson.solve(ham.vHt_g, density.rhot_g,
                                            charge=-density.charge)
         ham.timer.stop('Poisson')
-
+        dim = density.rhot_g.shape[0] / 2
+        if self.fixed:
+            self.surround.boundary_data['rhot_g1'] = density.rhot_g[dim, dim]
+            self.surround.boundary_data['vHt_g1'] = ham.vHt_g[dim, dim]        
         Epot = 0.5 * ham.finegd.integrate(ham.vHt_g, density.rhot_g,
                                            global_integral=False)
         Ekin = 0.0
@@ -2855,7 +2858,8 @@ class Transport(GPAW):
         data['ham'] = self.hamiltonian.vt_sG[0, dim, dim]
         if hasattr(self, 'test_atomic_hamiltonian_matrix'):
             data['atomic_ham'] = self.test_atomic_hamiltonian_matrix
-        data['boundary'] = self.surround.boundary_data
+        if self.fixed:
+            data['boundary'] = self.surround.boundary_data
         data['step'] = self.step
         return data
   
@@ -3036,7 +3040,30 @@ class Transport(GPAW):
         pylab.plot(bsd['boundary']['vt_sG'], 'b--o')
         pylab.title('boundary_vt_sG')        
         pylab.show()        
+        pylab.plot(bsd['boundary']['vt_sg'], 'b--o')
+        pylab.title('boundary_vt_sg')        
+        pylab.show()
+        pylab.plot(bsd['boundary']['vt_sg1'], 'b--o')
+        pylab.title('boundary_vt_sg1')        
+        pylab.show()
+        pylab.plot(bsd['boundary']['rhot_g'], 'b--o')
+        pylab.title('boundary_rhot_g')        
+        pylab.show()
+        pylab.plot(bsd['boundary']['rhot_g1'], 'b--o')
+        pylab.title('boundary_rhot_g1')        
+        pylab.show()        
+        pylab.plot(bsd['boundary']['vHt_g1'], 'b--o')
+        pylab.title('boundary_vHt_g1')        
+        pylab.show()          
 
+        pylab.plot(bsd['boundary']['rhot_g2'], 'b--o')
+        pylab.title('boundary_rhot_g2')        
+        pylab.show()        
+        pylab.plot(bsd['boundary']['vHt_g2'], 'b--o')
+        pylab.title('boundary_vHt_g2')        
+        pylab.show()
+        
+        
     def plot_iv(self, i_v):
         v, i = i_v
         import pylab
