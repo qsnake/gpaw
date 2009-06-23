@@ -719,12 +719,11 @@ class LCAOWaveFunctions(WaveFunctions):
         self.lazyloader = LazyLoader(hamiltonian, spos_ac)
         
     def estimate_memory(self, mem):
-        nbands = self.nbands
         nq = len(self.ibzk_qc)
         nao = self.setups.nao
         ni_total = sum([setup.ni for setup in self.setups])
         itemsize = mem.itemsize[self.dtype]
-        mem.subnode('C [qnM]', nq * nbands * nao * itemsize)
+        mem.subnode('C [qnM]', nq * self.mynbands * nao * itemsize)
         mem.subnode('T, S [qMM]', 2 * nq * nao * nao * itemsize)
         mem.subnode('P [aqMi]', nq * nao * ni_total / self.gd.comm.size)
         self.tci.estimate_memory(mem.subnode('TCI'))
