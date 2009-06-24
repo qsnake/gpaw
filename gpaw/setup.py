@@ -157,11 +157,7 @@ class Setup:
         self.lmax = lmax
 
         # Find Fourier-filter cutoff radius:
-        g = ng - 1
-        while pt_jg[0][g] == 0.0:
-            g -= 1
-        gcutfilter = g + 1
-
+        gcutfilter = data.get_max_projector_cutoff()
         self.rcutfilter = rcutfilter = r_g[gcutfilter]
  
         rcutmax = max(rcut_j)
@@ -246,7 +242,7 @@ class Setup:
         T_Lqp = self.calculate_T_Lqp(lcut, nq, _np, nj, jlL_i)
         (g_lg, n_qg, nt_qg, Delta_lq, self.Lmax, self.Delta_pL, Delta0, 
          self.N0_p) = self.get_compensation_charges(r_g, dr_g, phi_jg,
-                                                       phit_jg, _np, T_Lqp)
+                                                    phit_jg, _np, T_Lqp)
         self.Delta0 = Delta0
         self.g_lg = g_lg
         self.Delta1_jj = self.get_derivative_integrals(r_g, dr_g, 
@@ -386,7 +382,7 @@ class Setup:
         pt_j = []
         for j, pt_g in enumerate(self.data.pt_jg):
             l = self.l_j[j]
-            pt_j.append(Spline(l, rcut, self.data.pt_jg[j], r_g, beta))
+            pt_j.append(Spline(l, rcut, pt_g, r_g, beta))
         return pt_j
 
     def get_inverse_overlap_coefficients(self, B_ii, O_ii):
@@ -432,19 +428,11 @@ class Setup:
 
     def get_compensation_charges(self, r_g, dr_g, phi_jg, phit_jg, _np, T_Lqp):
         lmax = self.lmax
-        rcgauss = self.data.rcgauss
         gcut2 = self.gcut2
         nq = self.nq
 
-        # Create gaussians used to expand compensation charges
-        g_lg = np.zeros((lmax + 1, gcut2))
-        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * np.exp(-(r_g / rcgauss)**2)
-        for l in range(1, lmax + 1):
-            g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
-
-        for l in range(lmax + 1):
-            g_lg[l] /= np.dot(r_g**(l + 2) * dr_g, g_lg[l])
-
+        g_lg = self.data.create_compensation_charge_functions(lmax, r_g, dr_g)
+        
         n_qg = np.zeros((nq, gcut2))
         nt_qg = np.zeros((nq, gcut2))
         q = 0 # q: common index for j1, j2

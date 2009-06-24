@@ -6,7 +6,7 @@ import re
 from cStringIO import StringIO
 from math import sqrt, pi
 
-import numpy as npy
+import numpy as np
 from ase.data import atomic_names
 from ase.units import Bohr, Hartree
 
@@ -145,6 +145,18 @@ class SetupData:
             j += 1
         text()
 
+    def create_compensation_charge_functions(self, lmax, r_g, dr_g):
+        """Create Gaussians used to expand compensation charges."""
+        rcgauss = self.rcgauss
+        g_lg = np.zeros((lmax + 1, len(r_g)))
+        g_lg[0] = 4 / rcgauss**3 / sqrt(pi) * np.exp(-(r_g / rcgauss)**2)
+        for l in range(1, lmax + 1):
+            g_lg[l] = 2.0 / (2 * l + 1) / rcgauss**2 * r_g * g_lg[l - 1]
+
+        for l in range(lmax + 1):
+            g_lg[l] /= np.dot(r_g**(l + 2) * dr_g, g_lg[l])
+        return g_lg
+
     def get_smooth_core_density_integral(self, Delta0):
         return -Delta0 * sqrt(4 * pi) - self.Z + self.Nc
 
@@ -158,13 +170,13 @@ class SetupData:
         for j1 in range(nj):
             for j2 in range(j1, nj):
                 K_q.append(e_kin_jj[j1, j2])
-        K_p = sqrt(4 * pi) * npy.dot(K_q, T0_qp)
+        K_p = sqrt(4 * pi) * np.dot(K_q, T0_qp)
         return K_p
 
     def get_ghat(self, lmax, alpha, r, rcut):
         d_l = [fac[l] * 2**(2 * l + 2) / sqrt(pi) / fac[2 * l + 1]
                for l in range(lmax + 1)]
-        g = alpha**1.5 * npy.exp(-alpha * r**2)
+        g = alpha**1.5 * np.exp(-alpha * r**2)
         g[-1] = 0.0
         ghat_l = [Spline(l, rcut, d_l[l] * alpha**l * g)
                   for l in range(lmax + 1)]
@@ -180,6 +192,15 @@ class SetupData:
                 N += sqrt(4 * pi) * nc_g[g] * r_g[g]**2 * dr_g[g]
                 g -= 1
             return r_g[g]
+
+    def get_max_projector_cutoff(self):
+        g = self.ng - 1
+        pt_g = self.pt_jg[0]
+        while pt_g[g] == 0.0:
+            g -= 1
+        gcutfilter = g + 1
+        return gcutfilter
+        #self.rcutfilter = rcutfilter = r_g[gcutfilter]
 
     def get_xc_correction(self, rgd, xcfunc, gcut2, lcut):
         xc = XCRadialGrid(xcfunc, rgd, xcfunc.nspins)
@@ -462,7 +483,7 @@ http://wiki.fysik.dtu.dk/gpaw/install/installationguide.html for details."""
         setup = self.setup
         if self.data is None:
             return
-        x_g = npy.array([float(x) for x in ''.join(self.data).split()])
+        x_g = np.array([float(x) for x in ''.join(self.data).split()])
         if name == 'ae_core_density':
             setup.nc_g = x_g
         elif name == 'pseudo_core_density':

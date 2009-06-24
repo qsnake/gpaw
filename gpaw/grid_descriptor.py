@@ -618,6 +618,7 @@ class AERadialGridDescriptor(RadialGridDescriptor):
         RadialGridDescriptor.__init__(self, r_g, dr_g)
         d2gdr2 = -2 * N * beta / (beta + r_g)**3
         self.d2gdr2 = d2gdr2
+        self.rc = r_g[-1]
 
     def r2g_ceil(self, r):
         return ceil(r * self.N / (self.beta + r))
@@ -628,10 +629,11 @@ class AERadialGridDescriptor(RadialGridDescriptor):
     def truncate(self, gcut):
         """Return a descriptor for a subset of this grid."""
         # Hack to make it possible to create subgrids with smaller arrays
-        other = DefaultRadialGridDescriptor(self.beta, self.N, _noarrays=True)
+        other = AERadialGridDescriptor(self.beta, self.N, _noarrays=True)
         other.ng = gcut
         other.r_g = self.r_g[:gcut]
         other.dr_g = self.dr_g[:gcut]
         RadialGridDescriptor.__init__(other, other.r_g, other.dr_g)
         other.d2gdr2 = self.d2gdr2[:gcut]
+        other.rc = other.r_g[-1]
         return other
