@@ -1,10 +1,12 @@
 from math import acos, cos, sin, sqrt
 import numpy as npy
+from ase.atoms import string2vector
 
 class Vector3d(list):
     def __init__(self,vector=None):
         if vector is None or vector == []:
             vector = [0,0,0]
+        vector = string2vector(vector)
         list.__init__(self)
         for c in range(3):
             self.append(float(vector[c]))
