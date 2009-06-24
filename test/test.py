@@ -155,6 +155,7 @@ if len(tests) == 0:
         'vdw/ar2.py',
         'mgga_restart.py',
         'fd2lcao_restart.py',
+        'pes.py'
         ]
 
 disabled_tests = [
@@ -203,7 +204,8 @@ if not opt.parallel:
 from ase.parallel import size
 if size > 1:
     exclude += ['asewannier.py',
-                'wannier-ethylene.py']
+                'wannier-ethylene.py',
+                'pes.py']
 
 for test in exclude:
     if test in tests:
