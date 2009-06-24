@@ -132,23 +132,29 @@ class Cluster(Atoms):
         else:
             self.data[name] = data
 
-    def read(self, filename, filetype=None):
+    def read(self, filename, format=None):
         """Read the structure from some file. The type can be given
         or it will be guessed from the filename."""
 
-        self.__init__(read(filename, format=filetype))
+        self.__init__(read(filename, format=format))
         return len(self)
 
-    def write(self, filename, filetype=None, repeat=None):
+    def write(self, filename=None, format=None, repeat=None):
         """Write the structure to file.
 
         Parameters
         ----------
-        filetype: string
+        format: string
           can be given or it will be guessed from the filename
         repeat: array, eg.: [1,0,1]
           can be used to repeat the structure
         """
+
+        if filename is None:
+            if format is None:
+                raise RuntimeError('Please specify either filename or format.')
+            else:
+                filename = self.get_name() + '.' + format
 
         out = self
         if repeat is None:
@@ -163,6 +169,6 @@ class Cluster(Atoms):
                         copy.translate(npy.array([i, j, k]) * cell)
                         out += copy
 
-        write(filename, out, filetype)
+        write(filename, out, format)
 
        
