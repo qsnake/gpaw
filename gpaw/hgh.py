@@ -12,6 +12,7 @@ from gpaw.grid_descriptor import AERadialGridDescriptor
 setups = {} # Filled out during parsing below
 sc_setups = {} # Semicore
 
+
 # Tabulated values of Gamma(m + 1/2)
 half_integer_gamma = [sqrt(pi)]
 for m in range(20):
@@ -73,6 +74,12 @@ class HGHSetup(SetupData):
     reference is subtracted.
     """
     def __init__(self, hghdata):
+        if isinstance(hghdata, str):
+            symbol = hghdata
+            if symbol.endswith('.sc'):
+                hghdata = sc_setups[symbol[:-3]]
+            else:
+                hghdata = setups[symbol]
         self.hghdata = hghdata
 
         chemsymbol = hghdata.symbol
@@ -101,11 +108,6 @@ class HGHSetup(SetupData):
         hghdata = self.hghdata
         rgd = self.get_grid_descriptor()
         self.rgd = rgd
-
-        #import sys
-        #self.hghdata.print_info(sys.stdout.write)
-        #print hghdata.c_n
-        #sfsdkfjsdkfj
 
         self.vloc_g = create_local_shortrange_potential(rgd.r_g,
                                                         hghdata.rloc,
@@ -286,8 +288,7 @@ class HGHSetup(SetupData):
         extraspace = 5.0
         gplotmax = self.rgd.r2g_ceil(extraspace * rloc)
         pl.plot(r_g, self.vloc_g[:gcut], 'r', label='vloc', linewidth=3)
-        g_lg = self.create_compensation_charge_expansion_functions(0, r_g,
-                                                                   dr_g)
+        g_lg = self.create_compensation_charge_functions(0, r_g, dr_g)
         g_g = g_lg[0]
         if self.vloc_g[0] != 0 and g_g[0] != 0:
             g_g *= self.vloc_g[0] / g_g[0]
@@ -296,10 +297,10 @@ class HGHSetup(SetupData):
 
         pl.legend(loc='center right')
 
-
         pl.subplot(212) # projectors
         for j, (n, l, pt_g) in enumerate(zip(self.n_j, self.l_j, self.pt_jg)):
-            label = 'r p[%d](r)/r^l l=%d j=%d' % (n, l, j)
+            label = 'n=%d, l=%d' % (n, l)
+            pl.ylabel('$r p_n^l(r) / r^l$')
             pl.plot(r_g, r_g * divrl(pt_g[:gcut], l, r_g), label=label)
                                         
             r0 = self.hghdata.v_l[self.l_j[j]].r0
@@ -434,32 +435,6 @@ def parse_hgh_setup(lines):
     return hgh
 
 
-def test_hgh():
-    from gpaw import Calculator
-    from ase.data.molecules import molecule
-
-    calc = Calculator(setups='hgh',
-                      h=.2,
-                      idiotproof=False,
-                      basis='sz')
-
-    system = molecule('N', cell=(8.,8.,8.))
-    system.center()
-    system.set_calculator(calc)
-    
-    E = system.get_potential_energy()
-
-    sys2 = molecule('N2', cell=(8.,8.,8.))
-    sys2.center()
-    sys2.set_calculator(calc)
-    E2 = sys2.get_potential_energy()
-
-    DE = E2 - 2 * E
-    print 'atomization energy', DE
-
-    return calc
-
-
 def parse(filename=None):
     """Read HGH data from file."""
     if filename is None:
@@ -485,9 +460,20 @@ def parse(filename=None):
         else:
             setups[symbol] = hgh
 
+def plot(symbol, extension=None):
+    import pylab as pl
+    s = HGHSetup(symbol)
+    s.plot()
+    if extension is not None:
+        pl.savefig('hgh.%s.%s' % (symbol, extension))
+
+def plot_many(*symbols):
+    import pylab as pl
+    if not symbols:
+        symbols = setups.keys() + [key + '.sc' for key in sc_setups.keys()]
+    for symbol in symbols:
+        pl.figure(1)
+        plot(symbol, extension='png')
+        pl.clf()
 
 parse()
-
-
-if __name__ == '__main__':
-    test_hgh()
