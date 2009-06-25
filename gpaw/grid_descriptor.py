@@ -133,6 +133,8 @@ class GridDescriptor(Domain):
         if max(self.h_c) / min(self.h_c) > 1.3:
             raise ValueError('Very anisotropic grid spacings: %s' % self.h_c)
 
+        self.use_fixed_bc = False
+        
     def get_size_of_global_array(self, pad=False):
         if pad:
             return self.N_c
@@ -212,16 +214,20 @@ class GridDescriptor(Domain):
         if np.sometrue(self.N_c % 2):
             raise ValueError('Grid %s not divisible by 2!' % self.N_c)
 
-        return GridDescriptor(self.N_c // 2, self.cell_cv,
-                              self.pbc_c, self.comm, self.parsize_c)
+        gd = GridDescriptor(self.N_c // 2, self.cell_cv,
+                            self.pbc_c, self.comm, self.parsize_c)
+        gd.use_fixed_bc = self.use_fixed_bc
+        return gd
 
     def refine(self):
         """Return refined `GridDescriptor` object.
 
         Reurned descriptor has 2x2x2 more grid points."""
-        return GridDescriptor(self.N_c * 2, self.cell_cv,
-                              self.pbc_c, self.comm, self.parsize_c)
-
+        gd = GridDescriptor(self.N_c * 2, self.cell_cv,
+                            self.pbc_c, self.comm, self.parsize_c)
+        gd.use_fixed_bc = self.use_fixed_bc
+        return gd
+    
     def get_boxes(self, spos_c, rcut, cut=True):
         """Find boxes enclosing sphere."""
         N_c = self.N_c
@@ -231,7 +237,7 @@ class GridDescriptor(Domain):
         beg_c = np.ceil(npos_c - ncut).astype(int)
         end_c = np.ceil(npos_c + ncut).astype(int)
 
-        if cut:
+        if cut or self.use_fixed_bc:
             for c in range(3):
                 if not self.pbc_c[c]:
                     if beg_c[c] < 0:
@@ -246,7 +252,7 @@ class GridDescriptor(Domain):
                                         'too close to boundary ' +
                                         '(beg. of box %s, end of box %s)') %
                                        (tuple(spos_c) + (beg_c, end_c)))
-
+                    
         range_c = ([], [], [])
         
         for c in range(3):
