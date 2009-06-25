@@ -460,8 +460,9 @@ class PAW(PAWTextOutput):
                 self.hamiltonian = None
 
             # Construct grid descriptor for coarse grids for wave functions:
-            self.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
-
+            self.construct_grid_descriptor(N_c, cell_cv, pbc_c,
+                                           domain_comm, parsize)
+            
             # do k-point analysis here? XXX
 
             args = (self.gd, nspins, setups, self.bd,
@@ -675,3 +676,7 @@ class PAW(PAWTextOutput):
         if fingerprints.ptp(0).any():
             raise RuntimeError('Atoms objects on different processors ' +
                                'are not identical!')
+
+    def construct_grid_descriptor(self, N_c, cell_cv,
+                                  pbc_c, domain_comm, parsize):
+        self.gd = GridDescriptor(N_c, cell_cv, pbc_c, domain_comm, parsize)
