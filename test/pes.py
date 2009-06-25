@@ -18,17 +18,19 @@ H2_plus = Atoms([Atom('H', (a / 2, a / 2, (c - R) / 2)),
                 Atom('H', (a / 2, a / 2, (c + R) / 2))],
                cell=(a, a, c))
 
-calc = GPAW(xc='PBE', nbands=1, h=h, spinpol=True, txt=txt)
+xc='LDA'
+
+calc = GPAW(xc=xc, nbands=1, h=h, parsize='domain only', 
+            spinpol=True, txt=txt)
 H2.set_calculator(calc)
 H2.get_potential_energy()
 
 
-calc_plus = GPAW(xc='PBE', nbands=2, h=h, spinpol=True, txt=txt)
+calc_plus = GPAW(xc=xc, nbands=2, h=h, parsize='domain only', 
+                 spinpol=True, txt=txt)
 calc_plus.set(charge=+1)
 H2_plus.set_calculator(calc_plus)
 H2_plus.get_potential_energy()
-
-xc='LDA'
 
 lr = LrTDDFT(calc_plus, xc=xc)
 
