@@ -10,7 +10,7 @@ from gpaw.xc_functional import XCFunctional, xcgrid
 from gpaw.transport.tools import tri2full, count_tkpts_num, substract_pk
 from gpaw.lcao.tools import get_realspace_hs
 from gpaw.mpi import world
-from gpaw.utilities import unpack
+from gpaw.utilities import unpack, pack
 from gpaw.utilities.blas import gemm
 from gpaw.setup import Setups
 from gpaw import debug
@@ -186,8 +186,10 @@ class Surrounding:
 
             dim[di] += self.nn
             self.cell = np.array(dim) * h_c
-            self.gd = GridDescriptor(dim, self.cell, pbc, domain_comm)
-            self.finegd = GridDescriptor(dim * 2, self.cell, pbc, domain_comm)
+            self.gd = self.set_grid_descriptor(dim, self.cell,
+                                               pbc, domain_comm)
+            self.finegd = self.set_grid_descriptor(dim * 2, self.cell,
+                                                   pbc, domain_comm)
             
             scale = -0.25 / np.pi
             self.operator = Laplace(self.finegd, scale,
@@ -248,9 +250,10 @@ class Surrounding:
             N_c = self.atoms.calc.gd.N_c.copy()
             for i in range(self.lead_num):
                 N_c[di] += self.atoms_l[i].calc.gd.N_c[di]
-            self.extended_gd = GridDescriptor(N_c, self.extend_cell / Bohr,
-                                              self.extended_atoms._pbc,
-                                              domain_comm)
+            self.extended_gd = self.set_grid_descriptor(N_c,
+                                                     self.extend_cell / Bohr,
+                                                     self.extended_atoms._pbc,
+                                                     domain_comm)
             self.extended_basis_functions = BasisFunctions(self.extended_gd, 
                                                   [setup.phit_j
                                                    for setup in setups],
@@ -772,7 +775,62 @@ class Surrounding:
         calc.scf.reset()
         calc.forces.reset()
         calc.print_positions()        
-                    
+
+    def calculate_atomic_density_matrices(self):
+        calc = self.atoms.calc
+        wfs = calc.wfs
+        density = calc.density
+        kpt_u = self.kpt_u
+        f_un = [kpt.f_n for kpt in kpt_u]
+        self.combine_density_matrix()
+        self.calculate_atomic_density_matrices_with_occupation(wfs,
+                                                               kpt_u, f_un)
+        if self.type == 'LR':
+            direction = self.directions[0][0]            
+            di = abs(self.sides_index[direction + '-']) - 1
+            side1 = self.sides[direction + '-']
+            side2 = self.sides[direction + '+']            
+            natoms1 = side1.n_atoms
+            natoms0 = len(self.atoms)
+            for a in self.atoms.calc.wfs.basis_functions.my_atom_indices:
+                density.D_asp[a][:] = self.global_extend_D_asp[a + natoms1]
+             
+    def combine_density_matrix(self):
+        wfs = self.atoms.calc.wfs
+        direction = self.directions[0][0]            
+        di = abs(self.sides_index[direction + '-']) - 1
+        side1 = self.sides[direction + '-']
+        nao1 = side1.nao
+        nao0 = wfs.setups.nao
+        ind = np.arange(nao0) + nao1
+        dim = len(ind)
+        ind = np.resize(ind, (dim, dim))
+            
+        for kpt0, kpt1 in zip(wfs.kpt_u, self.kpt_u):
+            s = kpt0.s
+            q = kpt0.q
+            if self.type == 'LR':
+                nao = self.extended_setups.nao
+                kpt1.rho_MM = np.zeros((nao, nao), kpt0.rho_MM.dtype)
+                kpt1.rho_MM += self.d_spkmm[s, q]
+                kpt1.rho_MM[ind.T, ind] += kpt0.rho_MM
+    
+    def calculate_atomic_density_matrices_with_occupation(self, wfs,
+                                                          kpt_u, f_un):
+        #self.global_extend_D_asp = {}
+        
+        for a, D_sp in self.global_extend_D_asp.items():
+            ni = self.extended_setups[a].ni
+            D_sii = np.zeros((self.nspins, ni, ni))
+            for f_n, kpt in zip(f_un, kpt_u):
+                wfs.calculate_atomic_density_matrices_k_point(D_sii, kpt,
+                                                              a, f_n)
+            D_sp[:] = [pack(D_ii) for D_ii in D_sii]
+            wfs.band_comm.sum(D_sp)
+            wfs.kpt_comm.sum(D_sp)
+        wfs.symmetrize_atomic_density_matrices(self.global_extend_D_asp) 
+        #attention! symmetrize canbe wrong!!
+                 
     def initialize_from_atomic_densities(self, density, charge, hund):
         f_sM = np.empty((self.nspins, self.extended_basis_functions.Mmax))
         self.global_extend_D_asp = {}
@@ -816,4 +874,8 @@ class Surrounding:
             density.mixer.mix(density)
         density.rhot_g -= self.extra_rhot_g              
 
-
+    def set_grid_descriptor(self, dim, cell, pbc, domain_comm):
+        gd = GridDescriptor(dim, cell, pbc, domain_comm)
+        gd.use_fixed_bc = True
+        return gd
+        
