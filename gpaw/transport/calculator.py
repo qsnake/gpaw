@@ -241,6 +241,12 @@ class Transport(GPAW):
         else:
             self.gpw_kwargs['usesymm'] = False
    
+    def construct_grid_descriptor(self, N_c, cell_cv,
+                                  pbc_c, domain_comm, parsize):
+        GPAW.construct_grid_descriptor(self, N_c, cell_cv,
+                                  pbc_c, domain_comm, parsize)
+        self.gd.use_fixed_bc = True
+
     def set_default_transport_parameters(self):
         p = {}
         p['use_lead'] = True
@@ -428,8 +434,8 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess()
-        del self.atoms_l
+                self.get_hamiltonian_initial_guess2()
+        #del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
 
@@ -1953,7 +1959,8 @@ class Transport(GPAW):
             density = self.density
             self.surround.calculate_pseudo_density(density, wfs)
             density.nt_sG += self.surround.streching_nt_sG
-            wfs.calculate_atomic_density_matrices(density.D_asp)
+            #wfs.calculate_atomic_density_matrices(density.D_asp)
+            self.surround.calculate_atomic_density_matrices()
             comp_charge = density.calculate_multipole_moments()
             #if (isinstance(wfs, LCAOWaveFunctions) or
             #    extra_parameters.get('normalize')):
