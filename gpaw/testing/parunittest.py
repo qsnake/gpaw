@@ -203,6 +203,7 @@ class _ParallelTextTestResult(ParallelTestResult, _TextTestResult):
         if self.showAll:
             self.stream.write(self.getDescription(test))
             self.stream.write(" ... ")
+            self.stream.flush()
 
     def addSuccess(self, test):
         ParallelTestResult.addSuccess(self, test)
