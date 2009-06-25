@@ -92,6 +92,22 @@ class XCFunctional:
             code = 'lxc' # libxc
             self.uses_libxc = True
             xcname = 'X_PBE-C_PBE'
+        elif xcname == 'TPSS':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            self.mgga = True ## use real tau and local potential
+            local_tau = False ## use Weiszacker term
+            self.orbital_dependent = True
+            xcname = 'X_TPSS-C_TPSS'
+        elif xcname == 'M06L':
+            assert (nspins is not None)
+            code = 'lxc' # libxc
+            self.uses_libxc = True
+            self.mgga = True ## use real tau and local potential
+            local_tau = False ## use Weiszacker term
+            self.orbital_dependent = True
+            xcname = 'X_M06L-C_M06L'
         elif xcname == 'revPBE':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -314,7 +330,8 @@ class XCFunctional:
                            energy_only=energy_only,
                            use_finegrid=use_finegrid)
 
-        if self.xcname == 'TPSS':
+#        if self.xcname == 'TPSS':
+        if self.mgga:
             density.initialize_kinetic(atoms)
             density.update_kinetic(wfs, symmetry=wfs.symmetry)
             density.interpolate_kinetic()
@@ -433,20 +450,22 @@ class XCFunctional:
 
     def calculate_xcenergy(self, na, nb,
                            sigma0=None, sigma1=None, sigma2=None,
-                           taua=None,taub=None):
+                           taua=0.0,taub=0.0):
         # see c/libxc.c for the input and output values
-        d_exc = npy.zeros(5)
-        d_ex = npy.zeros(5)
-        d_ec = npy.zeros(5)
+        d_exc = npy.zeros(7)
+        d_ex = npy.zeros(7)
+        d_ec = npy.zeros(7)
         (exc, ex, ec,
          d_exc[0], d_exc[1],
          d_exc[2], d_exc[3], d_exc[4],
+         d_exc[5], d_exc[6], 
          d_ex[0], d_ex[1],
          d_ex[2], d_ex[3], d_ex[4],
+         d_ex[5], d_ex[6], 
          d_ec[0], d_ec[1],
-         d_ec[2], d_ec[3], d_ec[4]
-         ) = self.xc.calculate_xcenergy(na, nb,
-                                        sigma0, sigma1, sigma2)
+         d_ec[2], d_ec[3], d_ec[4],
+         d_ec[5], d_ec[6]
+		 ) = self.xc.calculate_xcenergy(na, nb, sigma0, sigma1, sigma2, taua, taub)
         return exc, ex, ec, d_exc, d_ex, d_ec
 
 class XCGrid:
@@ -540,7 +559,20 @@ class XC3DGrid(XCGrid):
                 self.dedaa2_g = gd.empty()
                 self.dedab2_g = gd.empty()
         if xcfunc.mgga:
-            self.temp = gd.empty()
+            self.temp = gd.empty() # only one here before
+            self.ddr = [Gradient(gd, c).apply for c in range(3)]
+            self.dndr_cg = gd.empty(3)
+            self.a2_g = gd.empty()
+            self.deda2_g = gd.empty()
+            self.dedtaua_g = gd.empty()
+            if self.nspins == 2:
+                self.dnadr_cg = gd.empty(3)
+                self.dnbdr_cg = gd.empty(3)
+                self.aa2_g = gd.empty()
+                self.ab2_g = gd.empty()
+                self.dedaa2_g = gd.empty()
+                self.dedab2_g = gd.empty()
+                self.dedtaub_g = gd.empty()
         self.e_g = gd.empty()
         self.allocated = True
 
@@ -559,7 +591,7 @@ class XC3DGrid(XCGrid):
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
-                                             self.taua_g,self.temp)
+                                             self.taua_g,self.dedtaua_g)
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
@@ -608,8 +640,8 @@ class XC3DGrid(XCGrid):
                                                 self.dedab2_g,
                                                 self.taua_g,
                                                 self.taub_g,
-                                                self.temp,
-                                                self.temp)
+                                                self.dedtaua_g,
+                                                self.dedtaub_g)
             tmp_g = self.a2_g
             for c in range(3):
                 if not self.uses_libxc:
@@ -620,6 +652,17 @@ class XC3DGrid(XCGrid):
                     va_g -= 4.0 * tmp_g
                     self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
                     vb_g -= 4.0 * tmp_g
+                else: # libxc uses https://wiki.fysik.dtu.dk/gpaw/GGA
+                    # see also:
+                    # http://www.cse.scitech.ac.uk/ccg/dft/design.html
+                    self.ddr[c](self.deda2_g * self.dnadr_cg[c], tmp_g)
+                    vb_g -= tmp_g
+                    self.ddr[c](self.deda2_g * self.dnbdr_cg[c], tmp_g)
+                    va_g -= tmp_g
+                    self.ddr[c](self.dedaa2_g * self.dnadr_cg[c], tmp_g)
+                    va_g -= 2.0 * tmp_g
+                    self.ddr[c](self.dedab2_g * self.dnbdr_cg[c], tmp_g)
+                    vb_g -= 2.0 * tmp_g
 
         elif self.xcfunc.gga:
             for c in range(3):
@@ -757,7 +800,6 @@ class XCRadialGrid(XCGrid):
             self.a2_g[:] = self.dndr_g**2
             self.aa2_g[:] = self.dnadr_g**2
             self.ab2_g[:] = self.dnbdr_g**2
-
             self.xcfunc.calculate_spinpolarized(self.e_g,
                                                 na_g, va_g,
                                                 nb_g, vb_g,

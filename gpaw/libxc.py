@@ -90,8 +90,8 @@ class Libxc:
     def lxc_define_filter(self, s):
         return (
             s.startswith('#define  XC_LDA') or
-            s.startswith('#define  XC_GGA')
-            ## XC_MGGA and XC_LCA not implemented yet # MDTMP
+            s.startswith('#define  XC_GGA') or 
+            s.startswith('#define  XC_MGGA') 
             ##            s.startswith('#define  XC_MGGA') or  # MDTMP
             ##            s.startswith('#define  XC_LCA')  # MDTMP
             ## End of: XC_MGGA and XC_LCA not implemented yet  # MDTMP

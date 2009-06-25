@@ -65,6 +65,8 @@ module libxc_funcs_m
   integer, parameter :: XC_HYB_GGA_XC_B1WC   = 412  !  Becke 1-parameter mixture of WC and EXX 
   integer, parameter :: XC_MGGA_X_TPSS       = 201  !  Perdew, Tao, Staroverov & Scuseria exchange 
   integer, parameter :: XC_MGGA_C_TPSS       = 202  !  Perdew, Tao, Staroverov & Scuseria correlation 
+  integer, parameter :: XC_MGGA_X_M06L       = 203  !  Zhao, Truhlar exchange 
+  integer, parameter :: XC_MGGA_C_M06L       = 204  !  Zhao, Truhlar correlation 
   integer, parameter :: XC_LCA_OMC           = 301  !  Orestes, Marcasso & Capelle  
   integer, parameter :: XC_LCA_LCH           = 302  !  Lee, Colwell & Handy         
 

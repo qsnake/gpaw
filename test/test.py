@@ -142,6 +142,8 @@ if len(tests) == 0:
         '2Al.py',
         'si-xas.py',
         'tpss.py',
+        'atomize.py',
+        'nsc_MGGA.py',
         '8Si.py',
         'transport.py',
         'Cu.py',

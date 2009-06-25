@@ -409,16 +409,16 @@ module XC_F90(lib_m)
 
   !----------------------------------------------------------------
   interface
-    subroutine XC_F90(mgga)(p, rho, grho, tau, e, dedd, dedgd, dedtau)
+    subroutine XC_F90(mgga)(p, rho, sigma, tau, e, dedd, vsigma, dedtau)
       use XC_F90(types_m)
       type(XC_F90(func_t)),   intent(in)  :: p
       real(xc_f90_kind), intent(in)  :: rho   ! rho(nspin) the density
-      real(xc_f90_kind), intent(in)  :: grho  ! grho(3,nspin) the gradient of the density
+      real(xc_f90_kind), intent(in)  :: sigma ! grho(3,nspin) the gradient of the density
       real(xc_f90_kind), intent(in)  :: tau   ! tau(nspin) the kinetic energy density
       real(xc_f90_kind), intent(out) :: e     ! the energy per unit particle
       real(xc_f90_kind), intent(out) :: dedd  ! dedd(nspin) the derivative of the energy
                                               ! in terms of the density
-      real(xc_f90_kind), intent(out) :: dedgd ! in terms of the gradient of the density
+      real(xc_f90_kind), intent(out) :: vsigma! in terms of the gradient of the density
       real(xc_f90_kind), intent(out) :: dedtau! and in terms of tau
     end subroutine XC_F90(mgga)
   end interface

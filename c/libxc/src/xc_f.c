@@ -300,10 +300,10 @@ void XC_FC_FUNC(f90_mgga_end, F90_MGGA_END)
 }
 
 void XC_FC_FUNC(f90_mgga, F90_MGGA)
-  (void **p, FLOAT *rho, FLOAT *grho, FLOAT *tau,
-   FLOAT *e, FLOAT *dedd, FLOAT *dedgd, FLOAT *dedtau)
+  (void **p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
+   FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
-  XC(mgga)((XC(mgga_type) *)(*p), rho, grho, tau, e, dedd, dedgd, dedtau);
+  XC(mgga)((XC(mgga_type) *)(*p), rho, sigma, tau, e, dedd, vsigma, dedtau);
 }
 
 

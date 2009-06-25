@@ -20,14 +20,23 @@
 #include <assert.h>
 
 #include "util.h"
+#include "funcs_mgga.c"
 
 /* initialization */
 void XC(mgga_init)(XC(mgga_type) *p, int functional, int nspin)
 {
-  /* sanity check */
-  assert(functional == XC_MGGA_X_TPSS    ||
-	 functional == XC_MGGA_C_TPSS);
+  int i;
+
+  assert(p != NULL);
+
+  for(i=0; XC(mgga_known_funct)[i]!=NULL; i++){
+    if(XC(mgga_known_funct)[i]->number == functional) break;
+  }
+  assert(XC(mgga_known_funct)[i] != NULL);
   
+  /* initialize structure */
+  p->info = XC(mgga_known_funct)[i];
+
   assert(nspin==XC_UNPOLARIZED || nspin==XC_POLARIZED);
   p->nspin = nspin;
   
@@ -38,6 +47,12 @@ void XC(mgga_init)(XC(mgga_type) *p, int functional, int nspin)
     break;
   case(XC_MGGA_C_TPSS):
     XC(mgga_c_tpss_init)(p);
+    break;
+  case(XC_MGGA_X_M06L): 
+    XC(mgga_x_m06l_init)(p);
+    break;
+  case(XC_MGGA_C_M06L): 
+    XC(mgga_c_m06l_init)(p);
     break;
   }
 }
@@ -52,12 +67,18 @@ void XC(mgga_end)(XC(mgga_type) *p)
   case(XC_MGGA_C_TPSS) :
     XC(mgga_c_tpss_end)(p);
     break;
+  case(XC_MGGA_X_M06L) : 
+    XC(mgga_x_m06l_end)(p);
+    break;
+  case(XC_MGGA_C_M06L) : 
+    XC(mgga_c_m06l_end)(p);
+    break;
   }
 }
 
 
-void XC(mgga)(XC(mgga_type) *p, FLOAT *rho, FLOAT *grho, FLOAT *tau,
-	  FLOAT *e, FLOAT *dedd, FLOAT *dedgd, FLOAT *dedtau)
+void XC(mgga)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
+	  FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 
 {
   FLOAT dens;
@@ -68,23 +89,30 @@ void XC(mgga)(XC(mgga_type) *p, FLOAT *rho, FLOAT *grho, FLOAT *tau,
   if(p->nspin == XC_POLARIZED) dens += rho[1];
   
   if(dens <= MIN_DENS){
-    int i;
+    int i, n;
     *e = 0.0;
     for(i=0; i<  p->nspin; i++){
       dedd  [i] = 0.0;
       dedtau[i] = 0.0;
     }
-    for(i=0; i<3*p->nspin; i++) dedgd[i] = 0.0;
+    n = (p->nspin == XC_UNPOLARIZED) ? 1 : 3;
+    for(i=0; i<n; i++)
+      vsigma[i] = 0.0;
     return;
   }
   
   switch(p->info->number){
   case(XC_MGGA_X_TPSS):
-    XC(mgga_x_tpss)(p, rho, grho, tau, e, dedd, dedgd, dedtau);
+    XC(mgga_x_tpss)(p, rho, sigma, tau, e, dedd, vsigma, dedtau);
     break;
-
   case(XC_MGGA_C_TPSS):
-    XC(mgga_c_tpss)(p, rho, grho, tau, e, dedd, dedgd, dedtau);
+    XC(mgga_c_tpss)(p, rho, sigma, tau, e, dedd, vsigma, dedtau);
+    break;
+  case(XC_MGGA_X_M06L):
+	XC(mgga_x_m06l)(p, rho, sigma, tau, e, dedd, vsigma, dedtau);
+    break;
+  case(XC_MGGA_C_M06L):
+	XC(mgga_c_m06l)(p, rho, sigma, tau, e, dedd, vsigma, dedtau);
     break;
   }
 

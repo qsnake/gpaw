@@ -60,5 +60,7 @@
 #define  XC_HYB_GGA_XC_B1WC   412  /* Becke 1-parameter mixture of WC and EXX                    */
 #define  XC_MGGA_X_TPSS       201  /* Perdew, Tao, Staroverov & Scuseria exchange                */
 #define  XC_MGGA_C_TPSS       202  /* Perdew, Tao, Staroverov & Scuseria correlation             */
+#define  XC_MGGA_X_M06L       203  /* Zhao, Truhlar exchange                                     */
+#define  XC_MGGA_C_M06L       204  /* Zhao, Truhlar correlation                                  */
 #define  XC_LCA_OMC           301  /* Orestes, Marcasso & Capelle                                */
 #define  XC_LCA_LCH           302  /* Lee, Colwell & Handy                                       */

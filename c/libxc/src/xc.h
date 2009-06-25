@@ -156,11 +156,16 @@ FLOAT XC(hyb_gga_exx_coef)   (XC(hyb_gga_type) *p);
 #define XC_MGGA_X_TPSS        201 /* Perdew, Tao, Staroverov & Scuseria exchange    */
 #define XC_MGGA_C_TPSS        202 /* Perdew, Tao, Staroverov & Scuseria correlation */
 
+#define XC_MGGA_X_M06L        203 
+#define XC_MGGA_C_M06L        204 
+
+
 typedef struct{
   const XC(func_info_type) *info;  /* which functional did we chose   */
   int nspin;                       /* XC_UNPOLARIZED or XC_POLARIZED  */
   
   XC(lda_type) *lda_aux;           /* most meta-GGAs are based on a LDA    */
+  XC(lda_type) *lda_aux2;          /* most meta-GGAs are based on a LDA    */
   XC(gga_type) *gga_aux1;          /* or on a GGA                          */
   XC(gga_type) *gga_aux2;          /* or on a GGA                          */
 
@@ -168,8 +173,8 @@ typedef struct{
 
 void XC(mgga_init)(XC(mgga_type) *p, int functional, int nspin);
 void XC(mgga_end) (XC(mgga_type) *p);
-void XC(mgga)     (XC(mgga_type) *p, FLOAT *rho, FLOAT *grho, FLOAT *tau,
-		  FLOAT *e, FLOAT *dedd, FLOAT *dedgd, FLOAT *dedtau);
+void XC(mgga)     (XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
+		  FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau);
 
 /* the LCAs */
 

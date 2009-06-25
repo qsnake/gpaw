@@ -1,20 +1,3 @@
-/*
- Copyright (C) 2006-2007 M.A.L. Marques
-
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 3 of the License, or
- (at your option) any later version.
-  
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-  
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +13,12 @@
 ************************************************************************/
 
 #define XC_MGGA_X_TPSS          201 /* Perdew, Tao, Staroverov & Scuseria exchange */
+#define NMIN   1.0E-10
 
-static XC(func_info_type) func_info_mgga_x_tpss = {
+#define   _(is, x)   [3*is + x]
+
+/*changes static with const*/
+const XC(func_info_type) XC(func_info_mgga_x_tpss) = {
   XC_MGGA_X_TPSS,
   XC_EXCHANGE,
   "Perdew, Tao, Staroverov & Scuseria",
@@ -43,9 +30,11 @@ static XC(func_info_type) func_info_mgga_x_tpss = {
 
 void XC(mgga_x_tpss_init)(XC(mgga_type) *p)
 {
-  p->info = &func_info_mgga_x_tpss;
+  p->info = &XC(func_info_mgga_x_tpss);
+
   p->lda_aux = (XC(lda_type) *) malloc(sizeof(XC(lda_type)));
   XC(lda_x_init)(p->lda_aux, XC_UNPOLARIZED, 3, XC_NON_RELATIVISTIC);
+
 }
 
 
@@ -122,7 +111,7 @@ void x_tpss_10(FLOAT p, FLOAT z,
   
   { /* third term */
     FLOAT a = sqrt(0.5*(9.0*z2/25.0 + p2));
-    FLOAT h = 72.0/405;
+    FLOAT h = 73.0/405;
     x1    += -h*qb*a;
     dxdp1 += -h*(a*dqbdp + 0.5*qb*p/a);
     dxdz1 += -h*(a*dqbdz + 0.5*qb*(9.0/25.0)*z/a);
@@ -156,31 +145,44 @@ void x_tpss_10(FLOAT p, FLOAT z,
 }
 
 static void 
-x_tpss_para(XC(mgga_type) *pt, FLOAT rho, FLOAT *grho, FLOAT tau_,
-	    FLOAT *energy, FLOAT *dedd, FLOAT *dedgd, FLOAT *dedtau)
+x_tpss_para(XC(mgga_type) *pt, FLOAT *rho, FLOAT sigma, FLOAT tau_,
+	    FLOAT *energy, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
 
   FLOAT gdms, p, tau, tauw, z;
   FLOAT x, dxdp, dxdz, Fx, dFxdx;
   FLOAT exunif, vxunif;
-  
-  tau = max(tau_, MIN_TAU);
+  FLOAT dpdd, dpdsigma, dzdtau, dzdd, dzdsigma;
+
 
   /* get the uniform gas energy and potential */
-  XC(lda_vxc)(pt->lda_aux, &rho, &exunif, &vxunif);
+  XC(lda_vxc)(pt->lda_aux, rho, &exunif, &vxunif);
 
   /* calculate |nabla rho|^2 */
-  gdms = grho[0]*grho[0] + grho[1]*grho[1] + grho[2]*grho[2];
+  gdms = sigma;
   gdms = max(MIN_GRAD*MIN_GRAD, gdms);
   
   /* Eq. (4) */
-  p = gdms/(4.0*POW(3*M_PI*M_PI, 2.0/3.0)*POW(rho, 8.0/3.0));
+  p = gdms/(4.0*POW(3*M_PI*M_PI, 2.0/3.0)*POW(rho[0], 8.0/3.0));
+  dpdd = -(8.0/3.0)*p/rho[0];
+  dpdsigma= 1/(4.0*POW(3*M_PI*M_PI, 2.0/3.0)*POW(rho[0], 8.0/3.0));
 
   /* von Weisaecker kinetic energy density */
-  tauw = gdms/(8.0*rho);
+  tauw = gdms/(8.0*rho[0]);
+  /* GMadsen: tau lower bound by tauw */
+  tau = max(tau_, tauw);
   z  = tauw/tau;
+  if(tauw >= tau_){
+	  dzdtau = 0.0;
+	  dzdd = 0.0;
+	  dzdsigma = 0.0;
+  }else{
+	  dzdtau= -z/tau;
+	  dzdd = -z/rho[0];
+	  dzdsigma = 1/(8*rho[0]*tau);
+  }
 
-  /* Eq. 10 */
+  /* get Eq. (10) */
   x_tpss_10(p, z, &x, &dxdp, &dxdz);
 
   { /* Eq. (5) */
@@ -190,41 +192,54 @@ x_tpss_para(XC(mgga_type) *pt, FLOAT rho, FLOAT *grho, FLOAT tau_,
   }
   
   { /* Eq. (3) */
-    int i;
-    FLOAT a = rho*exunif*dFxdx;
 
-    *energy = exunif*Fx;
-    *dedd   = vxunif*Fx + exunif*dFxdx*(-(8.0/3.0)*p*dxdp - z*dxdz);
-    *dedtau = a * (-z/tau*dxdz);
+    *energy = exunif*Fx*rho[0];
+	//printf("Ex %.9e\n", *energy);
 
-    for(i=0; i<3; i++)
-      dedgd[i] = a * 2.0*grho[i]/gdms * (p*dxdp + z*dxdz);
+    /* exunif is en per particle already so we multiply by n the terms with exunif*/
+
+    *dedd   = vxunif*Fx + exunif*dFxdx*(dpdd*dxdp + dzdd*dxdz)*rho[0];
+
+    *vsigma = exunif*dFxdx*rho[0]*(dxdp*dpdsigma + dxdz*dzdsigma);
+
+    *dedtau = exunif*dFxdx*rho[0]*(dzdtau*dxdz);
+
   }
 }
 
 
 void 
-XC(mgga_x_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *grho, FLOAT *tau,
-	    FLOAT *e, FLOAT *dedd, FLOAT *dedgd, FLOAT *dedtau)
+XC(mgga_x_tpss)(XC(mgga_type) *p, FLOAT *rho, FLOAT *sigma, FLOAT *tau,
+	    FLOAT *e, FLOAT *dedd, FLOAT *vsigma, FLOAT *dedtau)
 {
   if(p->nspin == XC_UNPOLARIZED){
-    x_tpss_para(p, rho[0], grho, tau[0], e, dedd, dedgd, dedtau);
-
+	  FLOAT en;
+    x_tpss_para(p, rho, sigma[0], tau[0], &en, dedd, vsigma, dedtau);
+    *e = en/(rho[0]+rho[1]);
   }else{ 
     /* The spin polarized version is handle using the exact spin scaling
           Ex[n1, n2] = (Ex[2*n1] + Ex[2*n2])/2
     */
-    int is;
 
-    *e = 0.0;
-    for(is=0; is<2; is++){
-      /* FLOAT gr[3], e1;
-         int i;
-         for(i=0; i<3; i++) gr[i] = 2.0*grho _(is, i);
+	  *e = 0.0;
 
-         x_tpss_para(p, 2.0*rho[is], gr, 2.0*tau[is], &e1, 
-      	 &(dedd[is]), &(dedgd _(is, 0)), &(dedtau[is]));
-	 *e += e1; */
-    }
+      FLOAT e2na, e2nb, rhoa[2], rhob[2];
+
+      FLOAT vsigmapart[3]; 
+	  
+	  rhoa[0]=2*rho[0];
+	  rhoa[1]=0.0;
+	  rhob[0]=2*rho[1];
+	  rhob[1]=0.0;
+
+
+		  
+      x_tpss_para(p, rhoa, 4*sigma[0], 2.0*tau[0], &e2na, &(dedd[0]), &(vsigmapart[0]), &(dedtau[0]));
+
+      x_tpss_para(p, rhob, 4*sigma[2], 2.0*tau[1], &e2nb, &(dedd[1]), &(vsigmapart[2]), &(dedtau[1]));
+		 
+	  *e = (e2na + e2nb )/(2.*(rho[0]+rho[1]));
+	  vsigma[0] = 2*vsigmapart[0];
+	  vsigma[2] = 2*vsigmapart[2];
   }
 }

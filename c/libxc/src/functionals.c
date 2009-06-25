@@ -23,6 +23,7 @@
 extern XC(func_info_type) 
   *XC(lda_known_funct)[], 
   *XC(gga_known_funct)[],
+  *XC(mgga_known_funct)[], 
   *XC(hyb_gga_known_funct)[];
 
 int XC(family_from_id)(int id)
@@ -38,6 +39,11 @@ int XC(family_from_id)(int id)
   for(i=0; XC(gga_known_funct)[i]!=NULL; i++){
     if(XC(gga_known_funct)[i]->number == id) return XC_FAMILY_GGA;
   }
+
+  /* or is it a MGGA? */
+  for(i=0; XC(mgga_known_funct)[i]!=NULL; i++){
+    if(XC(mgga_known_funct)[i]->number == id) return XC_FAMILY_MGGA;
+    } 
 
   /* or is it a hybrid GGA? */
   for(i=0; XC(hyb_gga_known_funct)[i]!=NULL; i++){
