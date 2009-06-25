@@ -31,7 +31,6 @@ from gpaw.setup import Setups
 from gpaw.output import PAWTextOutput
 from gpaw.scf import SCFLoop
 from gpaw.forces import ForceCalculator
-from gpaw.utilities.tools import md5_array
 
 
 class PAW(PAWTextOutput):
@@ -663,17 +662,7 @@ class PAW(PAWTextOutput):
 
     def check_atoms(self):
         """Check that atoms objects are identical on all processors."""
-        # Construct fingerprint:
-        fingerprint = np.array([md5_array(array, numeric=True) for array in
-                                [self.atoms.positions,
-                                 self.atoms.cell,
-                                 self.atoms.pbc * 1.0,
-                                 self.atoms.get_initial_magnetic_moments()]])
-        # Compare fingerprints:
-        world = self.wfs.world
-        fingerprints = np.empty((world.size, 4), np.int64)
-        world.all_gather(fingerprint, fingerprints)
-        if fingerprints.ptp(0).any():
+        if not mpi.compare_atoms(self.atoms, comm=self.wfs.world):
             raise RuntimeError('Atoms objects on different processors ' +
                                'are not identical!')
 

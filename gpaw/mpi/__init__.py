@@ -10,6 +10,7 @@ from gpaw import debug
 from gpaw import dry_run as dry_run_size
 from gpaw.utilities import is_contiguous
 from gpaw.utilities import scalapack, gcd
+from gpaw.utilities.tools import md5_array
 
 import _gpaw
 
@@ -238,6 +239,20 @@ def distribute_cpus(parsize_c, parsize_bands, nspins, nibzkpts, comm=world):
     assert nspins * nibzkpts % kpt_comm.size == 0
 
     return domain_comm, kpt_comm, band_comm
+
+
+def compare_atoms(atoms, comm=world):
+    """Check whether atoms objects are identical on all processors."""
+    # Construct fingerprint:
+    fingerprint = npy.array([md5_array(array, numeric=True) for array in
+                             [atoms.positions,
+                              atoms.cell,
+                              atoms.pbc * 1.0,
+                              atoms.get_initial_magnetic_moments()]])
+    # Compare fingerprints:
+    fingerprints = npy.empty((comm.size, 4), fingerprint.dtype)
+    comm.all_gather(fingerprint, fingerprints)
+    return not fingerprints.ptp(0).any()
 
 
 def broadcast_string(string=None, root=MASTER, comm=world):
