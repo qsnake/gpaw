@@ -866,12 +866,12 @@ class Surrounding:
                                            self.extended_nt_sG, True, nn2)
         comp_charge = density.calculate_multipole_moments()
         if not density.mixer.mix_rho:
-            density.mixer.mix(density)
+            #density.mixer.mix(density)
             comp_charge = None
         self.interpolate_density(density, comp_charge)
         self.calculate_pseudo_charge(density, comp_charge)
-        if density.mixer.mix_rho:
-            density.mixer.mix(density)
+        #if density.mixer.mix_rho:
+            #density.mixer.mix(density)
         density.rhot_g -= self.extra_rhot_g              
 
     def set_grid_descriptor(self, dim, cell, pbc, domain_comm):
