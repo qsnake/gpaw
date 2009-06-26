@@ -147,6 +147,9 @@ class Hamiltonian:
                 self.gd.comm.wait(request)
             self.dH_asp = dH_asp
 
+        if self.xc.xcfunc.mgga:
+            self.xc.set_positions(spos_ac)
+            
         self.rank_a = rank_a
 
     def update(self, density):
@@ -374,6 +377,7 @@ class Hamiltonian:
                                        energy_only=True)
 
         xc.set_functional(newxcfunc)
+        xc.set_positions(atoms.get_scaled_positions() % 1.0)
         for setup in self.setups.setups.values():
             setup.xc_correction.xc.set_functional(newxcfunc)
             if newxcfunc.mgga:

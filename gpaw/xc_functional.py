@@ -11,6 +11,7 @@ from gpaw.utilities.timing import Timer
 from gpaw.exx import EXX
 from gpaw.gllb.nonlocalfunctionalfactory import NonLocalFunctionalFactory
 from gpaw.libxc import Libxc
+from gpaw.lfc import LFC
 import _gpaw
 
 """
@@ -100,6 +101,7 @@ class XCFunctional:
             local_tau = False ## use Weiszacker term
             self.orbital_dependent = True
             xcname = 'X_TPSS-C_TPSS'
+            self.setupname = 'PBE'
         elif xcname == 'M06L':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -108,6 +110,7 @@ class XCFunctional:
             local_tau = False ## use Weiszacker term
             self.orbital_dependent = True
             xcname = 'X_M06L-C_M06L'
+            self.setupname = 'PBE'
         elif xcname == 'revPBE':
             assert (nspins is not None)
             code = 'lxc' # libxc
@@ -206,12 +209,6 @@ class XCFunctional:
             elif xcname == 'oldRPBEx':
                 code = 12
                 xcname = 'RPBEx'
-            elif xcname == 'TPSS':
-                code = 9
-                self.mgga = True ## use real tau and local potential
-                local_tau = False ## use Weiszacker term
-                self.orbital_dependent = True
-
             elif xcname == 'oldPW91':
                 code = 14
                 xcname = 'PW91'
@@ -255,8 +252,6 @@ class XCFunctional:
                                          0.0, 0, parameters.ravel())
         elif code == 6:
             self.xc = ZeroFunctional()
-        elif code == 9:
-            self.xc = _gpaw.MGGAFunctional(code,local_tau)
         elif code == 'vdW-DF':
             from gpaw.vdw import FFTVDWFunctional
             self.xc = FFTVDWFunctional(nspins)
@@ -330,16 +325,9 @@ class XCFunctional:
                            energy_only=energy_only,
                            use_finegrid=use_finegrid)
 
-#        if self.xcname == 'TPSS':
         if self.mgga:
-            density.initialize_kinetic(atoms)
-            density.update_kinetic(wfs, symmetry=wfs.symmetry)
-            density.interpolate_kinetic()
-            if self.nspins == 1:
-                hamiltonian.xc.taua_g = density.taut_sg[0]
-            if self.nspins == 2:
-                hamiltonian.xc.taua_g = density.taut_sg[0]
-                hamiltonian.xc.taub_g = density.taut_sg[1]
+            self.wfs = wfs
+            self.interpolator = density.interpolator
             for setup in wfs.setups:
                 setup.xc_correction.initialize_kinetic(setup.data)
 
@@ -377,12 +365,12 @@ class XCFunctional:
             self.exx.adjust_residual(pR_G, dR_G, kpt, n)
 
     def calculate_spinpaired(self, e_g, n_g, v_g, a2_g=None, deda2_g=None,
-                             taua_g=None,dedtaua_g=None):
+                             taua_g=None, dedtaua_g=None):
         if self.timer is not None:
             self.timer.start('Local xc')
         if self.mgga:
             self.xc.calculate_spinpaired(e_g.ravel(), n_g, v_g, a2_g, deda2_g,
-                                         taua_g,dedtaua_g)
+                                         taua_g, dedtaua_g)
         elif self.gga:
             # e_g.ravel() !!!!! XXX
             self.xc.calculate_spinpaired(e_g.ravel(), n_g, v_g, a2_g, deda2_g)
@@ -394,8 +382,8 @@ class XCFunctional:
     def calculate_spinpolarized(self, e_g, na_g, va_g, nb_g, vb_g,
                                a2_g=None, aa2_g=None, ab2_g=None,
                                deda2_g=None, dedaa2_g=None, dedab2_g=None,
-                                taua_g=None,taub_g=None,dedtaua_g=None,
-                                dedtaub_g=None):
+                                taua_g=None, taub_g=None,
+                                dedtaua_g=None, dedtaub_g=None):
         if self.timer is not None:
             self.timer.start('Local xc')
         if self.mgga:
@@ -521,7 +509,7 @@ class XC3DGrid(XCGrid):
         # those for the new xcfunc).  Or we could raise an error when that
         # happens, such that XC3DGrid objects are not reusable wrt. change
         # of xc functional.
-        if xcfunc.gga:
+        if xcfunc.gga or xcfunc.mgga:
             self.ddr_operator_objects = [Gradient(gd, c, allocate=False) 
                                          for c in range(3)]
             self.ddr = [obj.apply for obj in self.ddr_operator_objects]
@@ -535,8 +523,7 @@ class XC3DGrid(XCGrid):
                 self.ab2_g = None
                 self.dedaa2_g = None
                 self.dedab2_g = None
-        if xcfunc.mgga:
-            self.temp = None
+            
         self.e_g = None
         if self.allocated:
             # If arrays were already allocated, make sure this is still true
@@ -545,7 +532,7 @@ class XC3DGrid(XCGrid):
     def allocate(self):
         gd = self.gd
         xcfunc = self.xcfunc
-        if xcfunc.gga:
+        if xcfunc.gga or xcfunc.mgga:
             for obj in self.ddr_operator_objects:
                 obj.allocate()
             self.dndr_cg = gd.empty(3)
@@ -559,22 +546,24 @@ class XC3DGrid(XCGrid):
                 self.dedaa2_g = gd.empty()
                 self.dedab2_g = gd.empty()
         if xcfunc.mgga:
-            self.temp = gd.empty() # only one here before
-            self.ddr = [Gradient(gd, c).apply for c in range(3)]
-            self.dndr_cg = gd.empty(3)
-            self.a2_g = gd.empty()
-            self.deda2_g = gd.empty()
             self.dedtaua_g = gd.empty()
             if self.nspins == 2:
-                self.dnadr_cg = gd.empty(3)
-                self.dnbdr_cg = gd.empty(3)
-                self.aa2_g = gd.empty()
-                self.ab2_g = gd.empty()
-                self.dedaa2_g = gd.empty()
-                self.dedab2_g = gd.empty()
                 self.dedtaub_g = gd.empty()
+            wfs = self.xcfunc.wfs
+            self.taut_sG = wfs.gd.empty(self.nspins)
+            self.taut_sg = gd.empty(self.nspins)
+            self.tauct = LFC(wfs.gd,
+                             [[setup.tauct] for setup in wfs.setups],
+                             forces=True, cut=True)
+                
         self.e_g = gd.empty()
         self.allocated = True
+
+        """Initial pseudo electron kinetic density."""
+
+    def set_positions(self, spos_ac):
+        if self.xcfunc.mgga:
+            self.tauct.set_positions(spos_ac)
 
     # Calculates exchange energy and potential.
     # The energy density will be returned on reference e_g if it is specified.
@@ -585,13 +574,31 @@ class XC3DGrid(XCGrid):
             e_g = self.e_g
 
         if self.xcfunc.mgga:
+            self.taut_sG[:] = 0.
+            wfs = self.xcfunc.wfs
+            # Add contribution from all k-points
+            for kpt in wfs.kpt_u:
+                wfs.add_to_kinetic_density_from_k_point(self.taut_sG[0], kpt)
+            wfs.band_comm.sum(self.taut_sG)
+            wfs.kpt_comm.sum(self.taut_sG)
+
+            # Add the pseudo core kinetic array
+            self.tauct.add(self.taut_sG[0])
+
+            # For periodic boundary conditions
+            if wfs.symmetry is not None:
+                symmetry.symmetrize(taut_sG[0], wfs.gd)
+                    
+            # Interpolate pseudo electron kinetic density to the fine grid:
+            self.xcfunc.interpolator.apply(self.taut_sG[0], self.taut_sg[0])
+                
             for c in range(3):
                 self.ddr[c](n_g, self.dndr_cg[c])
             npy.sum(self.dndr_cg**2, axis=0, out=self.a2_g)
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
-                                             self.taua_g,self.dedtaua_g)
+                                             self.taut_sg[0], self.dedtaua_g)
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
@@ -622,6 +629,29 @@ class XC3DGrid(XCGrid):
             e_g = self.e_g
 
         if self.xcfunc.mgga:
+            self.taut_sG[:] = 0.
+            wfs = self.xcfunc.wfs
+            # Add contribution from all k-points
+            for kpt in wfs.kpt_u:
+                wfs.add_to_kinetic_density_from_k_point(self.taut_sG[kpt.s],
+                                                        kpt)
+            wfs.band_comm.sum(self.taut_sG)
+            wfs.kpt_comm.sum(self.taut_sG)
+
+            # Add the pseudo core kinetic array
+            for s in range(wfs.nspins):
+                self.tauct.add(self.taut_sG[s], 1.0 / wfs.nspins)
+
+            # For periodic boundary conditions
+            if wfs.symmetry is not None:
+                for taut_G in self.taut_sG:
+                    symmetry.symmetrize(taut_G, wfs.gd)
+                    
+            # Interpolate pseudo electron kinetic density to the fine grid:
+            for s in range(self.nspins):
+                self.xcfunc.interpolator.apply(self.taut_sG[s],
+                                               self.taut_sg[s])
+                
             for c in range(3):
                 self.ddr[c](na_g, self.dnadr_cg[c])
                 self.ddr[c](nb_g, self.dnbdr_cg[c])
@@ -638,8 +668,8 @@ class XC3DGrid(XCGrid):
                                                 self.deda2_g,
                                                 self.dedaa2_g,
                                                 self.dedab2_g,
-                                                self.taua_g,
-                                                self.taub_g,
+                                                self.taut_sg[0],
+                                                self.taut_sg[1],
                                                 self.dedtaua_g,
                                                 self.dedtaub_g)
             tmp_g = self.a2_g

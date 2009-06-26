@@ -567,24 +567,6 @@ class PAW(PAWTextOutput):
         gpaw.io.write(self, filename, mode, db=db, private=private, **kwargs)
         self.timer.stop('IO')
         
-    def initialize_kinetic(self):
-        if not self.hamiltonian.xc.xcfunc.mgga:
-            return
-        else:
-            #pseudo kinetic energy array on 3D grid
-            self.density.initialize_kinetic(self.atoms)
-            self.density.interpolate_kinetic()
-            self.hamiltonian.xc.set_kinetic(self.density.taut_sg)
-
-    def update_kinetic(self):
-        if not self.hamiltonian.xc.xcfunc.mgga:
-            return
-        else:
-            #pseudo kinetic energy array on 3D grid
-            self.density.update_kinetic(self.wfs)
-            self.density.interpolate_kinetic()
-            self.hamiltonian.xc.set_kinetic(self.density.taut_sg)           
-
     def get_myu(self, k, s):
         """Return my u corresponding to a certain kpoint and spin - or None"""
         # very slow, but we are sure that we have it

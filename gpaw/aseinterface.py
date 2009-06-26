@@ -386,6 +386,8 @@ class GPAW(PAW):
             xc.set_non_local_things(calc.density, calc.hamiltonian, calc.wfs,
                                     calc.atoms, energy_only=energy_only)
             calc.hamiltonian.xc.set_functional(xc)
+            calc.hamiltonian.xc.set_positions(
+                calc.atoms.get_scaled_positions() % 1.0)
             for setup in calc.wfs.setups:
                 setup.xc_correction.xc.set_functional(xc)
                 if xc.mgga:
