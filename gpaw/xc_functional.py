@@ -328,6 +328,7 @@ class XCFunctional:
         if self.mgga:
             self.wfs = wfs
             self.interpolator = density.interpolator
+            self.restrictor = hamiltonian.restrictor
             for setup in wfs.setups:
                 setup.xc_correction.initialize_kinetic(setup.data)
 
@@ -546,15 +547,20 @@ class XC3DGrid(XCGrid):
                 self.dedaa2_g = gd.empty()
                 self.dedab2_g = gd.empty()
         if xcfunc.mgga:
-            self.dedtaua_g = gd.empty()
-            if self.nspins == 2:
-                self.dedtaub_g = gd.empty()
             wfs = self.xcfunc.wfs
+            self.dedtau_sg = gd.empty(self.nspins)
+            self.dpsidr_G = wfs.gd.empty()
+            self.tmp_G = wfs.gd.empty()
+            self.dedtau_G = wfs.gd.empty()
             self.taut_sG = wfs.gd.empty(self.nspins)
             self.taut_sg = gd.empty(self.nspins)
             self.tauct = LFC(wfs.gd,
                              [[setup.tauct] for setup in wfs.setups],
                              forces=True, cut=True)
+            self.ddrG_operator_objects = [Gradient(wfs.gd, c, dtype=wfs.dtype,
+                                                   allocate=True) 
+                                          for c in range(3)]
+            self.ddrG = [obj.apply for obj in self.ddrG_operator_objects]
                 
         self.e_g = gd.empty()
         self.allocated = True
@@ -598,7 +604,7 @@ class XC3DGrid(XCGrid):
             self.xcfunc.calculate_spinpaired(e_g, n_g, v_g,
                                              self.a2_g,
                                              self.deda2_g,
-                                             self.taut_sg[0], self.dedtaua_g)
+                                             self.taut_sg[0], self.dedtau_sg[0])
             tmp_g = self.dndr_cg[0]
             for c in range(3):
                 self.ddr[c](self.deda2_g * self.dndr_cg[c], tmp_g)
@@ -670,8 +676,8 @@ class XC3DGrid(XCGrid):
                                                 self.dedab2_g,
                                                 self.taut_sg[0],
                                                 self.taut_sg[1],
-                                                self.dedtaua_g,
-                                                self.dedtaub_g)
+                                                self.dedtau_sg[0],
+                                                self.dedtau_sg[1])
             tmp_g = self.a2_g
             for c in range(3):
                 if not self.uses_libxc:
@@ -737,6 +743,18 @@ class XC3DGrid(XCGrid):
                                                 nb_g, vb_g)
         return e_g.sum() * self.dv
 
+    def add_non_local_terms(self, psit_nG, Htpsit_nG, s):
+        if self.xcfunc.mgga:
+            self.xcfunc.restrictor.apply(self.dedtau_sg[s], self.dedtau_G)
+            for psit_G, Htpsit_G in zip(psit_nG, Htpsit_nG):
+                for c in range(3):
+                    if psit_G.dtype == float:                        
+                        self.ddrG[c](psit_G, self.dpsidr_G)
+                    else:
+                        self.ddrG[c](a_G,dpsidr_G, kpt.phase_cd)
+                    self.ddrG[c](self.dedtau_G * self.dpsidr_G, self.tmp_G)
+                    Htpsit_G -= self.tmp_G
+        
     def estimate_memory(self, mem):
         bytecount = self.gd.bytecount()
         mem.subnode('Local density arrays', bytecount) # from e_g

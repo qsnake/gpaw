@@ -157,6 +157,7 @@ class Eigensolver:
         def H(psit_xG):
             wfs.kin.apply(psit_xG, Htpsit_xG, kpt.phase_cd)
             hamiltonian.apply_local_potential(psit_xG, Htpsit_xG, kpt.s)
+            hamiltonian.xc.add_non_local_terms(psit_xG, Htpsit_xG, kpt.s)
             return Htpsit_xG
                 
         dH_aii = dict([(a, unpack(dH_sp[kpt.s]))
