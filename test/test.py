@@ -146,6 +146,7 @@ if len(tests) == 0:
         'nsc_MGGA.py',
         '8Si.py',
         'transport.py',
+        'fixed_boundary.py',
         'Cu.py',
         'lcao_h2o.py',
         'IP-oxygen.py',
