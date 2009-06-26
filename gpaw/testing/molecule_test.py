@@ -15,14 +15,14 @@ from ase.utils.molecule_test import MoleculeTest, EnergyTest, BondLengthTest,\
 
 class GPAWMoleculeTest(MoleculeTest):
     def __init__(self, name='gpaw', vacuum=6.0, h=0.17, xc='LDA',
-                 setups='paw', eigensolver='rmm-diis', basis=None,
+                 setups='paw', mode='fd', basis=None,
                  exceptions=(RuntimeError, ConvergenceError)):
         MoleculeTest.__init__(self, name=name, vacuum=vacuum,
                               exceptions=exceptions)
         if basis is None:
             basis = {}
         self.basis = basis
-        self.eigensolver=eigensolver
+        self.mode = mode
         self.setups = setups
         self.h = h
         self.xc = xc
@@ -40,7 +40,7 @@ class GPAWMoleculeTest(MoleculeTest):
                     fixmom=True,
                     setups=self.setups,
                     txt=self.get_filename(formula, extension='txt'),
-                    eigensolver=self.eigensolver,
+                    mode=self.mode,
                     basis=self.basis
                     )
 
@@ -70,7 +70,7 @@ def main():
     dimers = [formula for formula in g1 if len(molecule(formula)) == 2]
 
     kwargs = dict(vacuum=3.0,
-                  eigensolver='lcao',
+                  mode='lcao',
                   basis='dzp')
     etest = BatchTest(GPAWEnergyTest('test/energy', **kwargs))
     btest = BatchTest(GPAWBondLengthTest('test/bonds', **kwargs))
