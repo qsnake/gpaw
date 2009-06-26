@@ -281,7 +281,7 @@ class Transport(GPAW):
         p['use_linear_vt_mm'] = False
         p['use_linear_vt_array'] = False        
         p['scat_restart'] = False
-        p['save_file'] = False
+        p['save_file'] = True
         p['restart_file'] = None
         p['fixed_boundary'] = True
         p['spinpol'] = False
@@ -434,7 +434,7 @@ class Transport(GPAW):
                 self.set_positions()
             else:
                 self.surround.set_positions()
-                self.get_hamiltonian_initial_guess2()
+                self.get_hamiltonian_initial_guess()
         #del self.atoms_l
         del self.atoms_e
         self.initialized_transport = True
@@ -452,7 +452,10 @@ class Transport(GPAW):
         ntk = 1
         kpts = atoms.calc.wfs.ibzk_qc
         self.h_skmm = self.substract_pk(ntk, kpts, h_skmm, 'h')
-        self.s_kmm = self.substract_pk(ntk, kpts, s_kmm)        
+        self.s_kmm = self.substract_pk(ntk, kpts, s_kmm)
+        fd = file('guess.dat', 'wb')
+        pickle.dump((self.h_skmm, self.s_kmm), fd, 2)
+        fd.close()
         del atoms
 
     def get_hamiltonian_initial_guess2(self):
@@ -727,7 +730,7 @@ class Transport(GPAW):
                 self.par_energy_index[s, k, 1] = [begin, end] 
 
     def update_lead_hamiltonian(self, l, restart_file=None):
-        if not self.lead_restart:
+        if not self.lead_restart and restart_file==None:
             atoms = self.atoms_l[l]
             atoms.get_potential_energy()
             kpts = self.lead_kpts 
@@ -747,6 +750,7 @@ class Transport(GPAW):
                 restart_file = 'lead' + str(l)
             atoms, calc = restart_gpaw(restart_file +'.gpw')
             calc.set_positions()
+            self.recover_kpts(calc)
             self.atoms_l[l] = atoms
             (self.lead_fermi[l],
              self.hl_skmm[l],
@@ -1929,6 +1933,7 @@ class Transport(GPAW):
         tkpts = self.pick_out_tkpts(ntk, self.my_kpts)
 
         self.d_skmm.shape = (ns, npk, ntk, nb, nb)
+
         for s in range(ns):
             if ntk != 1:
                 for i in range(ntk):
@@ -1943,7 +1948,7 @@ class Transport(GPAW):
                     self.d_skmm[s, j, 0] =  dr_mm[s, j, 1]
                     self.d_skmm[s, j, 0] /= self.npk 
         self.d_skmm.shape = (ns, ntk * npk, nb, nb)
-          
+       
         for kpt in self.wfs.kpt_u:
             if ns == 2:
                 kpt.rho_MM = self.d_skmm[kpt.s, kpt.q]
@@ -1971,6 +1976,7 @@ class Transport(GPAW):
             if pseudo_charge != 0:
                 x = -(density.charge + comp_charge) / pseudo_charge
                 print 'scaling', x
+                #density.nt_sG *= x                
             if not density.mixer.mix_rho:
                 density.mixer.mix(density)
                 comp_charge = None
@@ -3084,6 +3090,12 @@ class Transport(GPAW):
         pylab.ylabel('current(au.)')
         pylab.show()
       
-  
+    def recover_kpts(self, calc):
+        wfs = calc.wfs
+        hamiltonian = calc.hamiltonian
+        occupations = calc.occupations
+        wfs.eigensolver.iterate(hamiltonian, wfs)
+        occupations.calculate(wfs)
+     
         
            
