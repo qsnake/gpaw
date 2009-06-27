@@ -158,6 +158,7 @@ if len(tests) == 0:
         'vdw/ar2.py',
         'mgga_restart.py',
         'fd2lcao_restart.py',
+        'parallel/ut_hsops.py',
         'pes.py'
         ]
 
