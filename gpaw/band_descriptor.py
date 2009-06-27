@@ -264,21 +264,26 @@ class BandDescriptor:
             for request, a_nx in requests:
                 self.comm.wait(request)
 
-    def matrix_assembly(self, A_qnn, A_NN):
+    def matrix_assembly(self, A_qnn, A_NN, hermitian):
         if self.comm.size == 1:
-            self.blockwise_assign(A_qnn, A_NN, 0)
+            self.blockwise_assign(A_qnn, A_NN, 0, hermitian)
             return
 
         if self.rank == 0:
             for band_rank in range(self.comm.size):
                 if band_rank > 0:
                     self.comm.receive(A_qnn, band_rank, 13)
-                self.blockwise_assign(A_qnn, A_NN, band_rank)
+                self.blockwise_assign(A_qnn, A_NN, band_rank, hermitian)
         else:
             self.comm.send(A_qnn, 0, 13)
 
-    def blockwise_assign(self, A_qnn, A_NN, band_rank):
+    def blockwise_assign(self, A_qnn, A_NN, band_rank, hermitian):
+        if hermitian:
+            self.triangular_blockwise_assign(A_qnn, A_NN, band_rank)
+        else:
+            self.full_blockwise_assign(A_qnn, A_NN, band_rank)
 
+    def triangular_blockwise_assign(self, A_qnn, A_NN, band_rank):
         N = self.mynbands
         B = self.comm.size
         assert band_rank in xrange(B)
@@ -345,6 +350,28 @@ class BandDescriptor:
                 else:
                     A_bnbn[q1, :, q1 + q2 - B] = A_qnn[q2].T.conj()
 
+    def full_blockwise_assign(self, A_qnn, A_NN, band_rank):
+        N = self.mynbands
+        B = self.comm.size
+        assert band_rank in xrange(B)
+
+        if B == 1:
+            A_NN[:] = A_qnn.reshape((N,N))
+            return
+
+        # A_qnn[q2,myn1,myn2] on rank q1 is the q2'th overlap calculated
+        # between <psi_n1| and A|psit_n2> where n1 <-> (q1,myn1) and 
+        # n2 <-> ((q1+q2)%B,myn2) since we've sent/recieved q2 times.
+        q1 = band_rank
+
+        if self.strided:
+            A_nbnb = A_NN.reshape((N, B, N, B))
+            for q2 in range(B):
+                A_nbnb[:, (q1+q2)%B, :, q1] = A_qnn[q2]
+        else:
+            A_bnbn = A_NN.reshape((B, N, B, N))
+            for q2 in range(B):
+                A_bnbn[(q1+q2)%B, :, q1] = A_qnn[q2]
 
     def extract_block(self, A_NN, q1, q2):
         N = self.mynbands

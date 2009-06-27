@@ -7,9 +7,9 @@ from gpaw.utilities.blas import rk, r2k, gemm
 
 class Operator:
     nblocks = 1
-    async = True
+
     """Base class for overlap and hamiltonian operators."""
-    def __init__(self, bd, gd, nblocks=None, async=None):
+    def __init__(self, bd, gd, nblocks=None, async=True, hermitian=True):
         self.bd = bd
         self.gd = gd
         self.work1_xG = None
@@ -18,14 +18,11 @@ class Operator:
         self.A_nn = None
         if nblocks is not None:
             self.nblocks = nblocks
-        if async is not None:
-            self.async = async
+        self.async = async
+        self.hermitian = hermitian
 
     def allocate_work_arrays(self, mynbands, dtype):
-        # B = ngroups
-        # J = nblocks
         ngroups = self.bd.comm.size
-
         if ngroups == 1 and self.nblocks == 1:
             self.work1_xG = self.gd.zeros(mynbands, dtype)
         else:
@@ -36,14 +33,11 @@ class Operator:
             self.work1_xG = self.gd.zeros(X, dtype)
             self.work2_xG = self.gd.zeros(X, dtype)
             if ngroups > 1:
-                self.A_qnn = np.zeros((ngroups // 2 + 1, mynbands, mynbands),
-                                      dtype)
-                if not self.async:
-                    # Sync send/recv only works for even ngroups
-                    # and blocked bands.
-                    assert ngroups % 2 == 0
-                    assert not self.bd.strided 
-
+                if self.hermitian:
+                    Q = ngroups // 2 + 1
+                else:
+                    Q = ngroups
+                self.A_qnn = np.zeros((Q, mynbands, mynbands), dtype)
         nbands = ngroups * mynbands
         self.A_nn = np.zeros((nbands, nbands), dtype)
 
@@ -61,6 +55,87 @@ class Operator:
             if ngroups > 1:
                 count = (ngroups // 2 + 1) * mynbands**2
                 mem.subnode('A_qnn', count * mem.itemsize[dtype])
+
+    def _pseudo_braket(self, bra_xG, ket_yG, A_yx, square=None):
+        """Calculate matrix elements of braket pairs of pseudo wave functions.
+        Low-level helper function. Results will be put in the *A_yx* array::
+        
+                   /     ~ *     ~   
+           A    =  | dG bra (G) ket  (G)
+            nn'    /       n       n'
+
+
+        Parameters:
+
+        bra_xG: ndarray
+            Set of bra-like vectors in which the matrix elements are evaulated.
+        key_yG: ndarray
+            Set of ket-like vectors in which the matrix elements are evaulated.
+        A_yx: ndarray
+            Matrix in which to put calculated elements. Take care: Due to the
+            difference in Fortran/C array order and the inherent BLAS nature,
+            the matrix has to be filled in transposed (conjugated in future?).
+
+        """
+        assert bra_xG.shape[1:] == ket_yG.shape[1:]
+        assert (ket_yG.shape[0], bra_xG.shape[0]) == A_yx.shape
+
+        if square is None:
+            square = (bra_xG.shape[0]==ket_yG.shape[0])
+
+        dv = self.gd.dv
+        if ket_yG is bra_xG:
+            rk(dv, bra_xG, 0.0, A_yx)
+        elif self.hermitian and square:
+            r2k(0.5 * dv, bra_xG, ket_yG, 0.0, A_yx)
+        else:
+            gemm(dv, bra_xG, ket_yG, 0.0, A_yx, 'c')
+
+
+    def _initialize_cycle(self, sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, auxiliary):
+        band_comm = self.bd.comm
+        rankm = (band_comm.rank - 1) % band_comm.size
+        rankp = (band_comm.rank + 1) % band_comm.size
+        self.req, self.req2 = [], []
+
+        # If asyncronous, non-blocking send/receives of psit_nG's start here.
+        if self.async:
+            self.req.append(band_comm.send(sbuf_mG, rankm, 11, False))
+            self.req.append(band_comm.receive(rbuf_mG, rankp, 11, False))
+        else:
+            pass
+
+        # Auxiliary asyncronous cycle, also send/receive of P_ani's.
+        if auxiliary:
+            self.req2.append(band_comm.send(sbuf_In, rankm, 31, False))
+            self.req2.append(band_comm.receive(rbuf_In, rankp, 31, False))
+
+    def _finish_cycle(self, sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, auxiliary):
+        band_comm = self.bd.comm
+        rankm = (band_comm.rank - 1) % band_comm.size
+        rankp = (band_comm.rank + 1) % band_comm.size
+
+        # If syncronous, blocking send/receives of psit_nG's carried out here.
+        if self.async:
+            assert len(self.req) == 2, 'Expected asynchronous request pairs.'
+            map(band_comm.wait, self.req)
+        else:
+            assert len(self.req) == 0, 'Got unexpected asynchronous requests.'
+            if (band_comm.rank % 2 == 0):
+                band_comm.send(sbuf_mG, rankm, 11)
+                band_comm.receive(rbuf_mG, rankp, 11)
+            else:
+                band_comm.receive(rbuf_mG, rankp, 11)
+                band_comm.send(sbuf_mG, rankm, 11)
+        sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
+
+        # Auxiliary asyncronous cycle, also wait for P_ani's.
+        if auxiliary:
+            assert len(self.req2) == 2, 'Expected asynchronous request pairs.'
+            map(band_comm.wait, self.req2)
+            sbuf_In, rbuf_In = rbuf_In, sbuf_In
+
+        return sbuf_mG, rbuf_mG, sbuf_In, rbuf_In
 
     def calculate_matrix_elements(self, psit_nG, P_ani, A, dA):
         """Calculate matrix elements for A-operator.
@@ -96,8 +171,7 @@ class Operator:
         domain_comm = self.gd.comm
         B = band_comm.size
         J = self.nblocks
-        async = self.async
-        N = len(psit_nG)  # mynbands
+        N = self.bd.mynbands
         dv = self.gd.dv
         
         if self.work1_xG is None:
@@ -116,10 +190,7 @@ class Operator:
         if B == 1 and J == 1:
             # Simple case:
             Apsit_nG = A(psit_nG)
-            if Apsit_nG is psit_nG:
-                rk(dv, psit_nG, 0.0, A_NN)
-            else:
-                r2k(0.5 * dv, psit_nG, Apsit_nG, 0.0, A_NN)
+            self._pseudo_braket(psit_nG, Apsit_nG, A_NN)
             for a, P_ni in P_ani.items():
                 # A_NN += np.dot(dAP_ani[a], P_ni.T.conj())
                 gemm(1.0, P_ni, dAP_ani[a], 1.0, A_NN, 'c')
@@ -127,133 +198,79 @@ class Operator:
             return A_NN
         
         # Now it gets nasty!  We parallelize over B groups of bands
-        # and each group is blocked in J blocks.
+        # and each group is blocked in J smaller slices (less memory).
 
-        Q = B // 2 + 1
+        if self.hermitian:
+            Q = B // 2 + 1
+        else:
+            Q = B
         rank = band_comm.rank
         rankm = (rank - 1) % B
         rankp = (rank + 1) % B
         M = N // J
-        
+
+        # Buffer for storage of blocks of calculated matrix elements.
         if B == 1:
             A_qnn = A_NN.reshape((1, N, N))
         else:
             A_qnn = self.A_qnn
 
-        if async:
-            for j in range(J):
-                n1 = j * M
-                n2 = n1 + M
-                psit_mG = psit_nG[n1:n2]
-                sbuf_mG = A(psit_mG)
-                rbuf_mG = self.work2_xG[:M]
-                for q in range(Q):
-                    A_nn = A_qnn[q]
-                    A_mn = A_nn[n1:n2]
-                    if q < Q - 1:
-                        sreq = band_comm.send(sbuf_mG, rankm, 11, False)
-                        rreq = band_comm.receive(rbuf_mG, rankp, 11, False)
-                    if j == J - 1 and P_ani:
-                        if q == 0:
-                            sbuf_In = np.concatenate([dAP_ani[a].T
-                                                      for a, P_ni in P_ani.items()])
-                            if B > 1:
-                                rbuf_In = np.empty_like(sbuf_In)
-                        if q < Q - 1:
-                            sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
-                            rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)
-
-                    if q == 0 and not self.bd.strided:
-                        # We only need the lower part:
-                        if j == 0:
-                            # Important special-cases:
-                            if sbuf_mG is psit_mG:
-                                rk(dv, psit_mG, 0.0, A_mn[:, :M])
-                            else:
-                                r2k(0.5 * dv, psit_mG, sbuf_mG, 0.0, A_mn[:, :M])
-                        else:
-                            gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
-                    else:
-                        gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
-
-                    if j == J - 1 and P_ani:
-                        I1 = 0
-                        for P_ni in P_ani.values():
-                            I2 = I1 + P_ni.shape[1]
-                            gemm(1.0, P_ni, sbuf_In[I1:I2].T.copy(), 1.0, A_nn, 'c')
-                            I1 = I2
-
-                    if q == Q - 1:
-                        break
-
-                    if j == J - 1 and P_ani:
-                        band_comm.wait(sreq2)
-                        band_comm.wait(rreq2)
-                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
-
-                    band_comm.wait(sreq)
-                    band_comm.wait(rreq)
-
-                    if q == 0:
-                        sbuf_mG = self.work1_xG[:M]
-                    sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
-        else:
-            for j in range(J):
-                n1 = j * M
-                n2 = n1 + M
-                psit_mG = psit_nG[n1:n2]
-                sbuf_mG = A(psit_mG)
-                rbuf_mG = self.work2_xG[:M]
-                for q in range(Q): 
-                    A_nn = A_qnn[q]
-                    A_mn = A_nn[n1:n2]
-
-                    if q > 0:
-                        gemm(dv, psit_nG, sbuf_mG, 0.0, A_mn, 'c')
-                    else:
-                        # We only need the lower part:
-                        if j == 0:
-                            # Important special-cases:
-                            if sbuf_mG is psit_mG:
-                                rk(dv, psit_mG, 0.0, A_mn[:, :M])
-                            else:
-                                r2k(0.5 * dv, psit_mG, sbuf_mG, 0.0, A_mn[:, :M])
-                        else:
-                            gemm(dv, psit_nG[:n2], sbuf_mG, 0.0, A_mn[:, :n2], 'c')
-
-                    if q == Q - 1:
-                        break
-
-                    if (rank % 2 == 0):
-                        band_comm.send(sbuf_mG, rankm, 11)
-                        band_comm.receive(rbuf_mG, rankp, 11)
-                    else:
-                        band_comm.receive(rbuf_mG, rankp, 11)
-                        band_comm.send(sbuf_mG, rankm, 11)
-
-                    if q == 0:
-                        sbuf_mG = self.work1_xG[:M]
-                    sbuf_mG, rbuf_mG = rbuf_mG, sbuf_mG
-
-            if P_ani:
-                sbuf_In = np.concatenate([dAP_ani[a].T
-                                          for a, P_ni in P_ani.items()])
+        # Buffers for send/receive of operated-on versions of P_ani's.
+        if P_ani:
+            sbuf_In = np.concatenate([dAP_ani[a].T for a,P_ni in P_ani.items()])
+            if B > 1:
                 rbuf_In = np.empty_like(sbuf_In)
-                for q in range(Q): 
-                    A_nn = A_qnn[q]
-                    if q < Q - 1:
-                        sreq2 = band_comm.send(sbuf_In, rankm, 31, False)
-                        rreq2 = band_comm.receive(rbuf_In, rankp, 31, False)      
+
+        #XXX actually odd number of processors mysterically works in sync too
+        if not self.async:
+            if B > 1 and B % 2 != 0:
+                raise NotImplementedError('Synchronous band-parallel operator' \
+                    ' requires an even number of processors.')
+
+        for j in range(J):
+            n1 = j * M
+            n2 = n1 + M
+            psit_mG = psit_nG[n1:n2]
+            sbuf_mG = A(psit_mG)
+            rbuf_mG = self.work2_xG[:M]
+            cycle_P_ani = (j == J - 1 and P_ani)
+
+            for q in range(Q):
+                A_nn = A_qnn[q]
+                A_mn = A_nn[n1:n2]
+
+                # Start sending currently buffered kets to rank below
+                # and receiving next set of kets from rank above us.
+                # If we're at the last slice, start cycling P_ani too.
+                if q < Q - 1:
+                    self._initialize_cycle(sbuf_mG, rbuf_mG, \
+                        sbuf_In, rbuf_In, cycle_P_ani)
+
+                # Calculate pseudo-braket contributions for the current slice
+                # of bands in the current mynbands x mynbands matrix block.
+                if q == 0 and self.hermitian and not self.bd.strided:
+                    # Special case, we only need the lower part:
+                    self._pseudo_braket(psit_nG[:n2], sbuf_mG, A_mn[:, :n2])
+                else:
+                    self._pseudo_braket(psit_nG, sbuf_mG, A_mn, square=False)
+
+                # If we're at the last slice, add contributions from P_ani's.
+                if cycle_P_ani:
                     I1 = 0
                     for P_ni in P_ani.values():
                         I2 = I1 + P_ni.shape[1]
                         gemm(1.0, P_ni, sbuf_In[I1:I2].T.copy(), 1.0, A_nn, 'c')
                         I1 = I2
 
-                    if q < Q - 1:
-                        band_comm.wait(sreq2)
-                        band_comm.wait(rreq2)
-                        sbuf_In, rbuf_In = rbuf_In, sbuf_In
+                # Wait for all send/receives to finish before next iteration.
+                # Swap send and receive buffer such that next becomes current.
+                # If we're at the last slice, also finishes the P_ani cycle.
+                if q < Q - 1:
+                    sbuf_mG, rbuf_mG, sbuf_In, rbuf_In = self._finish_cycle( \
+                        sbuf_mG, rbuf_mG, sbuf_In, rbuf_In, cycle_P_ani)
+
+                if q == 0:
+                    rbuf_mG = self.work1_xG[:M]
 
         domain_comm.sum(A_qnn, 0)
 
@@ -261,7 +278,7 @@ class Operator:
             return A_NN
 
         if domain_comm.rank == 0:
-            self.bd.matrix_assembly(A_qnn, A_NN)
+            self.bd.matrix_assembly(A_qnn, A_NN, self.hermitian)
 
         return A_NN
         
@@ -277,6 +294,9 @@ class Operator:
                      n'                                n'
 
         """
+
+        if not self.hermitian:
+            raise NotImplementedError('Non-hermitian mode is untested.')
 
         band_comm = self.bd.comm
         B = band_comm.size
