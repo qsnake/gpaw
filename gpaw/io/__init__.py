@@ -494,10 +494,6 @@ def read(paw, reader):
     hamiltonian.S = r['S']
     hamiltonian.Etot = r.get('PotentialEnergy') - 0.5 * hamiltonian.S
 
-    # Read GLLB-releated stuff
-    if hamiltonian.xcfunc.gllb:
-        hamiltonian.xcfunc.xc.read(r)
-
     wfs.rank_a = npy.zeros(natoms, int)
 
     if version > 0.3:

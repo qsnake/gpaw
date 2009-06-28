@@ -96,6 +96,10 @@ class PAW(PAWTextOutput):
 
         if filename is not None and not self.initialized: # TODO last condition is redundant
             self.initialize()
+            # Read GLLB-releated stuff here, so they are not overwritten by self.initialize()
+            if self.hamiltonian.xcfunc.gllb:
+                self.hamiltonian.xcfunc.xc.read(reader)
+                            
             self.print_cell_and_parameters()
                 
         self.observers = []
