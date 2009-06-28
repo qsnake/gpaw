@@ -319,9 +319,9 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
         """
         Allocate constant wavefunctions and their projections according to::
 
-                                  _____    i*phase*(n-m)
-           <psi |psi > =  Q    * V m*n  * e
-               n    n'     total
+                          /          \     _____    i*phase*(n-m)
+           <psi |psi > = ( 1 + Q      ) * V m*n  * e
+               n    n'    \     total/
 
         """
         if self.allocated:
@@ -329,6 +329,15 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
 
         self.allocate_wavefunctions()
         self.allocate_projections()
+
+        # XXX DEBUG disables projection contributions
+        if False:
+            for a,P_ni in self.P_ani.items():
+                P_ni[:] = 0.
+                self.Qeff_a[a] = 0.
+            self.Qtotal = 0.
+            self.Z_a[:] = 2**63-1
+        # XXX DEBUG
 
         Qlocal = sum([Qeff for Qeff in self.Qeff_a.values()]) # never np.sum!
         self.Qtotal = self.gd.comm.sum(Qlocal)
@@ -571,6 +580,76 @@ class UTConstantWavefunctionSetup(UTBandParallelSetup):
             self.mem_test = record_memory()
 
         self.check_and_plot(S_nn, alpha*self.S0_nn, 9, 'overlaps,nonhermitian')
+
+    def test_overlap_multiply(self):
+        # Known starting point of S_nn = <psit_m|S|psit_n>
+        S_nn = self.S0_nn
+
+        # Eigenvector decomposition S_nn = V_nn * W_nn * V_nn^dag
+        # Utilize the fact that they are analytically known (cf. Maple)
+        band_indices = np.arange(self.nbands)
+        V_nn = np.eye(self.nbands).astype(self.dtype)
+        if self.dtype == complex:
+            V_nn[1:,1] = np.conj(self.gamma)**band_indices[1:] * band_indices[1:]**0.5
+            V_nn[1,2:] = -self.gamma**band_indices[1:-1] * band_indices[2:]**0.5
+        else:
+            V_nn[2:,1] = band_indices[2:]**0.5
+            V_nn[1,2:] = -band_indices[2:]**0.5
+
+        W_n = np.zeros(self.nbands).astype(self.dtype)
+        W_n[1] = (1. + self.Qtotal) * self.nbands * (self.nbands - 1) // 2
+
+        # Find the inverse
+        Vinv_nn = np.linalg.inv(V_nn)
+
+        # Test analytical eigenvectors for consistency against analytical S_nn
+        D_nn = np.dot(Vinv_nn, np.dot(S_nn, V_nn))
+        self.assertAlmostEqual(np.abs(D_nn.diagonal()-W_n).max(), 0, 8)
+        self.assertAlmostEqual(np.abs(np.tril(D_nn, -1)).max(), 0, 4)
+        self.assertAlmostEqual(np.abs(np.triu(D_nn, 1)).max(), 0, 4)
+        del D_nn
+
+        if True:
+            # Eigenvector basis should do just fine
+            C_nn = Vinv_nn.copy()
+        else:
+            # To mix it up, perform Gram Schmidt orthonormalization
+            from gpaw.utilities.tools import gram_schmidt
+            Q_nn = V_nn.copy()
+            gram_schmidt(Q_nn)
+            self.assertAlmostEqual(np.abs(np.dot(Q_nn.T.conj(), Q_nn) \
+                                          - np.eye(self.nbands)).max(), 0, 6)
+            C_nn = np.linalg.inverse(Q_nn)
+
+        # XXX must be strictly hermitian apparently!!!
+        #C_nn[:] = np.triu(C_nn)
+        C_nn[:] = (C_nn+C_nn.T.conj())/2.
+        del Vinv_nn
+
+        S = lambda x: x
+        dS = lambda a, P_ni: np.dot(P_ni, self.setups[a].O_ii)
+        nblocks = self.get_optimal_number_of_blocks(self.blocking)
+        overlap = Operator(self.bd, self.gd, nblocks, self.async, True)
+        self.psit_nG = overlap.matrix_multiply(C_nn.conj(), self.psit_nG, self.P_ani)
+        #D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
+        #    self.P_ani, S, dS).conj() # conjugate to get <psit_m|A|psit_n>
+        #tri2full(D_nn)
+        D_nn = overlap.calculate_matrix_elements(self.psit_nG, \
+            self.P_ani, S, dS).T.copy() # conjugate to get <psit_m|A|psit_n>
+        tri2full(D_nn, 'U') #upper to lower now...
+
+        if self.bd.comm.rank == 0:
+            self.gd.comm.broadcast(D_nn, 0)
+        self.bd.comm.broadcast(D_nn, 0)
+
+        if memstats:
+            self.mem_test = record_memory()
+
+        # D_nn = C_nn^dag * S_nn * C_nn = C_nn^dag * L_nn * L_nn^dag * C_nn
+        D0_nn = np.dot(C_nn.T.conj(), np.dot(S_nn, C_nn))
+        #self.assertAlmostEqual(np.abs(D0_nn-np.diag(W_n)).max(), 0, 9)
+        self.check_and_plot(D_nn, D0_nn, 9, 'overlaps,multiply')
+
 
 # -------------------------------------------------------------------
 
