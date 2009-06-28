@@ -61,16 +61,16 @@ class YLExpansion:
         raise NotImplementedError
 
 class DensityExpansion(YLExpansion):
-    def __init__(self, n_sLg, Y_yL):
+    def __init__(self, n_sLg, Y_yL, ng):
         YLExpansion.__init__(self, n_sLg, Y_yL)
+        self.n_sg = npy.zeros((len(n_sLg), ng))
         
     def __iter__(self):
         for Y_L in self.Y_yL:
-            #for n_Lg in self.n_sLg:
-            #    print Y_L.shape
-            #    print n_Lg.shape
-            #    print npy.dot(Y_L, n_Lg)
-            yield [ npy.dot(Y_L, n_Lg) for n_Lg in self.n_sLg ]
+            for i, n_Lg in enumerate(self.n_sLg):
+                self.n_sg[i][:] = npy.dot(Y_L, n_Lg) 
+            yield self.n_sg
+            #yield [ npy.dot(Y_L, n_Lg) for n_Lg in self.n_sLg ]
 
 class GradientExpansion(YLExpansion):
     def __init__(self, n_sLg, Y_yL, dndr_sLg):
@@ -94,6 +94,7 @@ class GradientExpansion(YLExpansion):
             a1_g = npy.dot(Y_L, self.dndr_Lg)
             a2_g += a1_g**2
             yield a2_g                                                                                        
+
 class Integrator:
     def __init__(self, H_sp, weights, Y_yL, n_qg, nt_qg, B_pqL, dv_g):
         self.H_sp = H_sp
@@ -206,7 +207,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0 / len(D_sp)) * self.nc_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL)
+        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
     
     def expand_pseudo_density(self, D_sp, core=True):
         n_sLg = []
@@ -218,7 +219,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0/len(D_sp))*self.nct_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL)
+        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
 
     def expand_gradient(self, D_sp, core=True):
         raise NotImplementedError
@@ -235,7 +236,9 @@ class XCCorrection:
         vxct_sg = npy.zeros((len(D_sp), self.ng))
         integrator = self.get_integrator(H_sp)
         Etot = 0
-        H_sp[:] = 0.0
+	for H_p in H_sp:        
+            H_p[:] = 0.0
+            
         # Zip makes the iterators to be calculated instantly, which is not good
         
         for n_sg, nt_sg, i_slice in izip(self.expand_density(D_sp),
@@ -1678,337 +1681,6 @@ class XCCorrection:
                 
                 y += 1
         return E - self.Exc0
-
-    # THIS METHOD IS SOON TO BE OBSOLETE, AND COULD BE REMOVED -Mikael
-    def GLLB(self, nucleus, gllb):
-        D_sp = nucleus.D_sp
-        Dresp_sp = nucleus.Dresp_sp
-        H_sp = nucleus.H_sp
-        extra_xc_data = nucleus.setup.extra_xc_data
-        K_G = gllb.K_G
-        reference_levels = [ gllb.fermi_level ]
-        
-        r_g = self.rgd.r_g
-
-        # Normally, the response-part from core orbitals is calculated using the reference-level of setup-atom
-        # If relaxed_core_response flag is on, the response-part is calculated using
-        # core eigenvalues and self consistent reference level.
-        if self.xc.xcfunc.xc.relaxed_core_response:
-            core_response = npy.zeros(self.ng)
-            njcore = extra_xc_data['njcore']
-            for nc in range(0, njcore):
-                psi2_g = extra_xc_data['core_orbital_density_'+str(nc)]
-                deps = reference_levels[0]-extra_xc_data['core_eigenvalue_'+str(nc)]
-                
-                core_response[:] += psi2_g * extra_xc_data['core_occupation_'+str(nc)]* K_G * (npy.where(deps<0, 0, deps))**(0.5)
-        else:
-            # Otherwise, the static core response from setup is used
-            core_response = extra_xc_data['core_response']
-        
-        xcfunc = self.xc.xcfunc.xc.slater_xc
-        vfunc = self.xc.xcfunc.xc.v_xc
-        E = 0.0
-        if len(D_sp) == 1:
-            D_p = D_sp[0]
-            D_Lq = dot3(self.B_Lqp, D_p)
-            n_Lg = npy.dot(D_Lq, self.n_qg)
-            n_Lg[0] += self.nc_g * sqrt(4 * pi)
-
-            Dresp_p = Dresp_sp[0]
-            Dresp_Lq = dot3(self.B_Lqp, Dresp_p)
-            nresp_Lg = npy.dot(Dresp_Lq, self.n_qg)
-            
-            nt_Lg = npy.dot(D_Lq, self.nt_qg)
-            nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-
-            ntresp_Lg = npy.dot(Dresp_Lq, self.nt_qg)
-            
-            dndr_Lg = npy.zeros((self.Lmax, self.ng))
-            dntdr_Lg = npy.zeros((self.Lmax, self.ng))
-            for L in range(self.Lmax):
-                self.rgd.derivative(n_Lg[L], dndr_Lg[L])
-                self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
-            dEdD_p = H_sp[0][:]
-            dEdD_p[:] = 0.0
-            y = 0
-            for w, Y_L in zip(self.weights, self.Y_yL):
-                A_Li = A_Liy[:self.Lmax, :, y]
-                n_g = npy.dot(Y_L, n_Lg)
-
-                if not (npy.all(n_g >= 0 )):
-                    print "Warning.... negative density!"
-                    return 0.0
-                    #n_g = n_g - npy.min(n_g)
-                
-                nresp_g = npy.dot(Y_L, nresp_Lg)
-                
-                a1x_g = npy.dot(A_Li[:, 0], n_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], n_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], n_Lg)
-                a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
-                a2_g[1:] /= r_g[1:]**2
-                a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dndr_Lg)
-                a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-
-                x_g = (2*e_g + nresp_g + core_response) / (n_g + SMALL_NUMBER)
-                x_g[0] = x_g[1]
-
-                if vfunc is not None:
-                    # if vfunc.gga:
-                    # Assume vfunc is a lib-xc LDA
-                    assert(vfunc.gga == False)
-                    v2_g = npy.zeros(self.ng)
-                    e2_g = npy.zeros(self.ng)
-                    vfunc.calculate_spinpaired(e2_g, n_g, v2_g)
-                    e_g[:] += e2_g
-                    x_g += v2_g
-                
-                E += w * npy.dot(e_g, self.dv_g)
-
-                #print "x_g", x_g
-                
-                x_g *= self.dv_g
-
-                if gllb.relaxed_core_response:
-                    # This is the XC-contribution to core-eigenvalue
-                    for k in range(0, njcore):
-                        psi2_g = extra_xc_data['core_orbital_density_'+str(k)]
-                        nucleus.coreref_k[k] += w * npy.dot(x_g, psi2_g)
-                
-                B_Lqp = self.B_Lqp
-                dEdD_p += w * npy.dot(dot3(self.B_pqL, Y_L),
-                                      npy.dot(self.n_qg, x_g))
-
-                n_g = npy.dot(Y_L, nt_Lg)
-                ntresp_g = npy.dot(Y_L, ntresp_Lg)
-                
-                a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
-                a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
-                a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
-                a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
-                a2_g[1:] /= r_g[1:]**2
-                a2_g[0] = a2_g[1]
-                a1_g = npy.dot(Y_L, dntdr_Lg)
-                a2_g += a1_g**2
-                v_g = npy.zeros(self.ng)
-                e_g = npy.zeros(self.ng)
-                deda2_g = npy.zeros(self.ng)
-                xcfunc.calculate_spinpaired(e_g, n_g, v_g, a2_g, deda2_g)
-
-                x_g = (2*e_g + ntresp_g) / (n_g + SMALL_NUMBER)
-                x_g[0] = x_g[1]
-
-                if vfunc is not None:
-                    # if vfunc.gga:
-                    # Assume vfunc is a lib-xc LDA
-                    assert(vfunc.gga == False)
-                    v2_g = npy.zeros(self.ng)
-                    e2_g = npy.zeros(self.ng)
-                    vfunc.calculate_spinpaired(e2_g, n_g, v2_g)
-                    e_g[:] += e2_g
-                    x_g += v2_g
-
-                E -= w * npy.dot(e_g, self.dv_g)
-                
-                x_g *= self.dv_g
-                
-                B_Lqp = self.B_Lqp
-                dEdD_p -= w * npy.dot(dot3(self.B_pqL, Y_L),
-                                      npy.dot(self.nt_qg, x_g))
-                y += 1
-        else:
-            raise NotImplementedError('GLLB spinpolarized xc-corrections')
-        return E - self.Exc0
-
-    # THIS METHOD IS SOON TO BE OBSOLETE, AND COULD BE REMOVED -Mikael
-    def GLLBint(self, D_p, Dresp_p, Dlumo_p):
-        r_g = self.rgd.r_g
-        E = 0.0
-        D_Lq = dot3(self.B_Lqp, D_p)
-        n_Lg = npy.dot(D_Lq, self.n_qg)
-        n_Lg[0] += self.nc_g * sqrt(4 * pi)
-        nt_Lg = npy.dot(D_Lq, self.nt_qg)
-        nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-            
-        Dresp_Lq = dot3(self.B_Lqp, Dresp_p)
-        nresp_Lg = npy.dot(Dresp_Lq, self.n_qg)
-        ntresp_Lg = npy.dot(Dresp_Lq, self.nt_qg)
-
-        Dlumo_Lq = dot3(self.B_Lqp, Dlumo_p)
-        nlumo_Lg = npy.dot(Dlumo_Lq, self.n_qg)
-        ntlumo_Lg = npy.dot(Dlumo_Lq, self.nt_qg)
-            
-        y = 0
-        for w, Y_L in zip(self.weights, self.Y_yL):
-            A_Li = A_Liy[:self.Lmax, :, y]
-            n_g = npy.dot(Y_L, n_Lg)
-            nt_g = npy.dot(Y_L, nt_Lg)
-            nresp_g = npy.dot(Y_L, nresp_Lg)
-            ntresp_g = npy.dot(Y_L, ntresp_Lg)
-            nlumo_g = npy.dot(Y_L, nlumo_Lg)
-            ntlumo_g = npy.dot(Y_L, ntlumo_Lg)
-            
-            E += w * npy.dot(nlumo_g * nresp_g / (n_g + SMALL_NUMBER), self.dv_g)
-            E -= w * npy.dot(ntlumo_g * ntresp_g / (nt_g + SMALL_NUMBER), self.dv_g)
-                
-            y += 1
-
-        return E
-
-    def prepare_custom_integration(self, D_p, n_qg):
-        D_Lq = dot3(self.B_Lqp, D_p)
-        n_Lg = npy.dot(D_Lq, n_qg)
-        return (n_Lg ,)
-
-    def prepare_density_integration(self, D_p, add_core = False, add_ae_core= False):
-        D_Lq = dot3(self.B_Lqp, D_p)
-        n_Lg = npy.dot(D_Lq, self.n_qg)
-        if add_core or add_ae_core:
-            n_Lg[0] += self.nc_g * sqrt(4 * pi)
-
-        nt_Lg = npy.dot(D_Lq, self.nt_qg)
-        if add_core:
-            nt_Lg[0] += self.nct_g * sqrt(4 * pi)
-        return (n_Lg, nt_Lg)
-
-    def prepare_compensation_integration(self, Znn_L):
-        # Returns the compensation charge and it's coulomb integral
-        st_Lg = npy.zeros((self.Lmax, self.ng))
-        wst_Lg = npy.zeros((self.Lmax, self.ng))
-        # Note that the compensation charge vector can be shorter,
-        # it does not matter, since the others values equal zero.
-        lmax = 2 # Expand compensation charges to quadrupole
-        for L, Znn in enumerate(Znn_L):
-            l, m = L_to_lm(L)
-            if l <= lmax:
-                wst_Lg[L][:] += Znn * self.wg_lg[l][:] * 4 * pi
-                st_Lg[L][:] += Znn * self.g_lg[l][:]
-            
-        return (st_Lg, wst_Lg)
-
-    def prepare_linearization_integration(self, W_L):
-        # Returns the compensation charge and it's coulomb integral
-        Vt_Lg = npy.zeros((self.Lmax, self.ng))
-        lmax = npy.sqrt(len(W_L)) -1
-        L = 0
-        lmax = 2
-        for L, W in enumerate(W_L):
-            l,m = L_to_lm(L)
-            if l <= lmax:
-                Vt_Lg[L][:] = W * (self.rgd.r_g ** l) * self.rgd.dv_g
-
-        return (Vt_Lg,)
-
-    def prepare_custom_slater_integration(self, D_p, wn_lqg):
-        s_Lg = npy.zeros((self.Lmax, self.ng))
-
-        D_Lq = dot3(self.B_Lqp, D_p)
-
-        L = 0
-        for l in range(0, self.lmax+1):
-            for m in range(0, 2*l+1):
-                s_Lg[L][:] += npy.dot(D_Lq[L], wn_lqg[l])
-                L += 1
-
-        return (s_Lg, )
-    
-    def prepare_slater_integration(self, Dnn_p, wn_lqg = None, wnt_lqg = None):
-        if wnt_lqg == None:
-            wnt_lqg = self.wnt_lqg
-        if wn_lqg == None:
-            wn_lqg = self.wn_lqg
-            
-        st_Lg = npy.zeros((self.Lmax, self.ng))
-        s_Lg = npy.zeros((self.Lmax, self.ng))
-
-        D_Lq = dot3(self.B_Lqp, Dnn_p)
-
-        L = 0
-        for l in range(0, self.lmax+1):
-            for m in range(0, 2*l+1):
-                st_Lg[L][:] += npy.dot(D_Lq[L], wnt_lqg[l]) 
-                s_Lg[L][:] += npy.dot(D_Lq[L], wn_lqg[l]) 
-                L += 1
-
-        return (s_Lg, st_Lg)
-
-    def prepare_gradient_integration(self, i_n):
-        (n_Lg, nt_Lg) = i_n
-        dndr_Lg = npy.zeros((self.Lmax, self.ng))
-        dntdr_Lg = npy.zeros((self.Lmax, self.ng))
-        for L in range(self.Lmax):
-            self.rgd.derivative(n_Lg[L], dndr_Lg[L])
-            self.rgd.derivative(nt_Lg[L], dntdr_Lg[L])
-        return (dndr_Lg, dntdr_Lg)
-
-    def prepare_response_density_integration(self, Dresp_p):
-        Dresp_Lq = dot3(self.B_Lqp, Dresp_p)
-        nresp_Lg = npy.dot(Dresp_Lq, self.n_qg)
-        ntresp_Lg = npy.dot(Dresp_Lq, self.nt_qg)
-        return (nresp_Lg, ntresp_Lg)
-
-    def get_slices(self):
-        return enumerate(zip(self.weights, self.Y_yL))
-
-    def integrate(self, i, i_n, dEdD_p, v_g, vt_g, weighted = False):
-        y, (w, Y_L) = i
-        if not weighted:
-            dEdD_p -= w * npy.dot(dot3(self.B_pqL, Y_L),
-                                  npy.dot(self.nt_qg, vt_g * self.rgd.dv_g))
-
-            dEdD_p += w * npy.dot(dot3(self.B_pqL, Y_L),
-                                  npy.dot(self.n_qg, v_g * self.rgd.dv_g))
-        else:
-            dEdD_p -= w * npy.dot(dot3(self.B_pqL, Y_L),
-                                  npy.dot(self.nt_qg, vt_g))
-            
-            dEdD_p += w * npy.dot(dot3(self.B_pqL, Y_L),
-                                  npy.dot(self.n_qg, v_g))
-
-    
-
-    #def expand_density(self, i, i_n, n_g, nt_g):
-    #    (n_Lg, nt_Lg) = i_n
-    #    (y, (w, Y_L)) = i
-    #    n_g[:] = npy.dot(Y_L, n_Lg)
-    #    nt_g[:] = npy.dot(Y_L, nt_Lg)
-
-    def expand_single_density(self, i, i_n, n_g):
-        (n_Lg) = i_n
-        (y, (w, Y_L)) = i
-        n_g[:] = npy.dot(Y_L, n_Lg)
-
-    def expand_gradient(self, i, i_g, i_n, a2_g, a2t_g):
-        (y, (w, Y_L)) = i
-        (dndr_Lg, dntdr_Lg) = i_g
-        (n_Lg, nt_Lg) = i_n
-
-        A_Li = A_Liy[:self.Lmax, :, y]
-
-        # Expand the all--electron density gradient
-        a1x_g = npy.dot(A_Li[:, 0], n_Lg)
-        a1y_g = npy.dot(A_Li[:, 1], n_Lg)
-        a1z_g = npy.dot(A_Li[:, 2], n_Lg)
-        a2_g[:] = a1x_g**2 + a1y_g**2 + a1z_g**2
-        a2_g[1:] /= self.rgd.r_g[1:]**2
-        a2_g[0] = a2_g[1]
-        a1_g = npy.dot(Y_L, dndr_Lg)
-        a2_g[:] += a1_g**2
-
-        # Expand the pseudo density gradient
-        a1x_g = npy.dot(A_Li[:, 0], nt_Lg)
-        a1y_g = npy.dot(A_Li[:, 1], nt_Lg)
-        a1z_g = npy.dot(A_Li[:, 2], nt_Lg)
-        a2t_g[:] = a1x_g**2 + a1y_g**2 + a1z_g**2
-        a2t_g[1:] /= self.rgd.r_g[1:]**2
-        a2t_g[0] = a2t_g[1]
-        a1_g = npy.dot(Y_L, dntdr_Lg)
-        a2t_g[:] += a1_g**2
 
     def two_phi_integrals(self,
                           D_sp # density matrix in packed(pack) form
