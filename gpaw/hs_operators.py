@@ -301,6 +301,11 @@ class Operator:
         band_comm = self.bd.comm
         B = band_comm.size
         J = self.nblocks
+        N = self.bd.mynbands
+
+        if self.work1_xG is None:
+            self.allocate_work_arrays(N, psit_nG.dtype)
+
         async = self.async
 
         if B == 1 and J == 1:
