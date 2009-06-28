@@ -397,10 +397,11 @@ class C_Response(Contribution):
         for a, setup in enumerate(wfs.setups):
             ni = setup.ni
             p2 = p1 + ni * (ni + 1) // 2
-            if domain_comm.rank == 0:
-                # NOTE: Distrbibutes the matrices to more processors than necessary
-                self.D_asp[a] = D_sp[:, p1:p2].copy()
-                self.Dresp_asp[a] = Dresp_sp[:, p1:p2].copy()
+            # NOTE: Distrbibutes the matrices to more processors than necessary
+            self.D_asp[a] = D_sp[:, p1:p2].copy()
+            self.Dresp_asp[a] = Dresp_sp[:, p1:p2].copy()
+
+            print "Proc", world.rank, " reading atom ", a
             p1 = p2
 
         #print "Read Dresp_asp", self.Dresp_asp

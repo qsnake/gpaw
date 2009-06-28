@@ -334,7 +334,10 @@ def write(paw, filename, mode, db=True, private="660", **kwargs):
 
     # Write GLLB-releated stuff
     if paw.hamiltonian.xcfunc.gllb:
-        paw.hamiltonian.xcfunc.xc.write(w)
+        if master:
+            paw.hamiltonian.xcfunc.xc.write(w)
+        else:
+            paw.hamiltonian.xcfunc.xc.write(None)
 
     if mode == 'all':
         # Write the wave functions:
