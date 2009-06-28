@@ -12,6 +12,8 @@ from gpaw.spherical_harmonics import YL
 # load points and weights for the angular integration
 from gpaw.sphere import Y_nL, points, weights
 
+from itertools import izip
+
 """
                            3
              __   dn       __   __    dY
@@ -50,6 +52,77 @@ for R in points:
             A_Liy[L, :, y] -= l * R * Y_nL[y, L]
     y += 1
 
+class YLExpansion:
+    def __init__(self, n_sLg, Y_yL):
+        self.n_sLg = n_sLg
+        self.Y_yL = Y_yL
+
+    def __iter__(self):
+        raise NotImplementedError
+
+class DensityExpansion(YLExpansion):
+    def __init__(self, n_sLg, Y_yL):
+        YLExpansion.__init__(self, n_sLg, Y_yL)
+        
+    def __iter__(self):
+        for Y_L in self.Y_yL:
+            #for n_Lg in self.n_sLg:
+            #    print Y_L.shape
+            #    print n_Lg.shape
+            #    print npy.dot(Y_L, n_Lg)
+            yield [ npy.dot(Y_L, n_Lg) for n_Lg in self.n_sLg ]
+
+class GradientExpansion(YLExpansion):
+    def __init__(self, n_sLg, Y_yL, dndr_sLg):
+        YLExpansion.__init__(self, n_sLg, Y_yL)
+        self.dndr_sLg = dndr_sLg
+
+    def __iter__(self):
+        # TODO: Can preallocation of arrays speed this up
+        # TODO: No spin polarized gradients implemented
+        assert len(dndr_sLg) == 1
+        dndr_Lg = self.dndr_sLg[0]
+        
+        for y, Y_L in iterate(self.Y_yL):
+            A_Li = A_Liy[:self.Lmax, :, y]
+            a2_g = (npy.dot(A_Li[:, 0], self.n_Lg)**2+
+                    npy.dot(A_Li[:, 1], self.n_Lg)**2+
+                    npy.dot(A_Li[:, 2], self.n_Lg)**2)
+            a2_g = a1x_g**2 + a1y_g**2 + a1z_g**2
+            a2_g[1:] /= r_g[1:]**2
+            a2_g[0] = a2_g[1]
+            a1_g = npy.dot(Y_L, self.dndr_Lg)
+            a2_g += a1_g**2
+            yield a2_g                                                                                        
+class Integrator:
+    def __init__(self, H_sp, weights, Y_yL, n_qg, nt_qg, B_pqL, dv_g):
+        self.H_sp = H_sp
+        self.weights = weights
+        self.Y_yL = Y_yL
+        self.n_qg = n_qg
+        self.nt_qg = nt_qg
+        self.B_pqL = B_pqL
+        self.dv_g = dv_g
+        
+    def __iter__(self):
+        for w, Y_L in zip(self.weights, self.Y_yL):
+            yield [w, Y_L]
+
+    def integrate_H_sp(self, i_slice, v_sg, vt_sg):
+        # TODO: Gradient integration missing
+        w, Y_L = i_slice
+        s = 0
+        for v_g, vt_g in zip(v_sg, vt_sg):
+            dEdD_q = npy.dot(self.n_qg, v_g * self.dv_g)
+            dEdD_q -= npy.dot(self.nt_qg, vt_g * self.dv_g)
+            self.H_sp[s] += npy.dot(dot3(self.B_pqL, Y_L),
+                              dEdD_q) * w
+            s = s + 1
+
+    def integrate_E(self, i_slice, E):
+        w, Y_L = i_slice
+        return E*w
+            
 class XCCorrection:
     def __init__(self,
                  xc,    # radial exchange-correlation object
@@ -125,6 +198,64 @@ class XCCorrection:
                 self.nca_g = 0.5 * (nc_g - ncorehole_g)
                 self.ncb_g = 0.5 * (nc_g + ncorehole_g)
 
+    def expand_density(self, D_sp, core=True):
+        n_sLg = []
+        for D_p in D_sp:
+            D_Lq = dot3(self.B_Lqp, D_p)
+            n_Lg = npy.dot(D_Lq, self.n_qg)
+            if core:
+                n_Lg[0] += (1.0 / len(D_sp)) * self.nc_g * sqrt(4 * pi)
+            n_sLg.append(n_Lg)
+        return DensityExpansion(n_sLg, self.Y_yL)
+    
+    def expand_pseudo_density(self, D_sp, core=True):
+        n_sLg = []
+        for D_p in D_sp:
+            # TODO: when calling both expand pseudo_density
+            # and expand_density this line is redunant
+            D_Lq = dot3(self.B_Lqp, D_p)
+            n_Lg = npy.dot(D_Lq, self.nt_qg)
+            if core:
+                n_Lg[0] += (1.0/len(D_sp))*self.nct_g * sqrt(4 * pi)
+            n_sLg.append(n_Lg)
+        return DensityExpansion(n_sLg, self.Y_yL)
+
+    def expand_gradient(self, D_sp, core=True):
+        raise NotImplementedError
+    
+    def expand_pseudo_gradient(self, D_sp, core=True):
+        raise NotImplementedError
+
+    def get_integrator(self, H_sp):
+        return Integrator(H_sp, self.weights, self.Y_yL,
+                          self.n_qg, self.nt_qg, self.B_pqL, self.dv_g)
+
+    def LDA_new(self, D_sp, H_sp):
+        vxc_sg = npy.zeros((len(D_sp), self.ng))
+        vxct_sg = npy.zeros((len(D_sp), self.ng))
+        integrator = self.get_integrator(H_sp)
+        Etot = 0
+        H_sp[:] = 0.0
+        # Zip makes the iterators to be calculated instantly, which is not good
+        
+        for n_sg, nt_sg, i_slice in izip(self.expand_density(D_sp),
+                                 self.expand_pseudo_density(D_sp),
+                                 integrator):
+            vxc_sg[:] = 0.0
+            vxct_sg[:] = 0.0
+            if len(D_sp) == 1:
+                E = self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0])
+                E -= self.xc.get_energy_and_potential(nt_sg[0], vxct_sg[0])
+            else:
+                E = self.xc.get_energy_and_potential(n_sg[0], vxc_sg[0],
+                                                      n_sg[1], vxc_sg[1])
+                E -= self.xc.get_energy_and_potential(nt_sg[0], vxct_sg[0],
+                                                      nt_sg[1], vxct_sg[1])
+            
+            integrator.integrate_H_sp(i_slice, vxc_sg, vxct_sg)
+            Etot += integrator.integrate_E(i_slice, E)
+        return Etot
+            
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().is_gllb():
             # The coefficients for GLLB-functional are evaluated elsewhere
@@ -142,6 +273,10 @@ class XCCorrection:
                 return self.GGA_libxc(D_sp, H_sp)
             else:
                 return self.GGA(D_sp, H_sp)
+            
+        #Enable this line to test new XC_Correction methods
+        #return self.LDA_new(D_sp, H_sp) - self.Exc0
+
         E = 0.0
         if len(D_sp) == 1:
             D_p = D_sp[0]
@@ -1837,11 +1972,11 @@ class XCCorrection:
 
     
 
-    def expand_density(self, i, i_n, n_g, nt_g):
-        (n_Lg, nt_Lg) = i_n
-        (y, (w, Y_L)) = i
-        n_g[:] = npy.dot(Y_L, n_Lg)
-        nt_g[:] = npy.dot(Y_L, nt_Lg)
+    #def expand_density(self, i, i_n, n_g, nt_g):
+    #    (n_Lg, nt_Lg) = i_n
+    #    (y, (w, Y_L)) = i
+    #    n_g[:] = npy.dot(Y_L, n_Lg)
+    #    nt_g[:] = npy.dot(Y_L, nt_Lg)
 
     def expand_single_density(self, i, i_n, n_g):
         (n_Lg) = i_n
@@ -2036,3 +2171,4 @@ class XCCorrection:
         self.tauct_g = npy.array(tauct_g[:ng].copy())
         return
     
+
