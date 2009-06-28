@@ -7,9 +7,11 @@ from gpaw.utilities.blas import rk, r2k, gemm
 
 class Operator:
     nblocks = 1
+    async = True
+    hermitian = True
 
     """Base class for overlap and hamiltonian operators."""
-    def __init__(self, bd, gd, nblocks=None, async=True, hermitian=True):
+    def __init__(self, bd, gd, nblocks=None, async=None, hermitian=None):
         self.bd = bd
         self.gd = gd
         self.work1_xG = None
@@ -18,8 +20,10 @@ class Operator:
         self.A_nn = None
         if nblocks is not None:
             self.nblocks = nblocks
-        self.async = async
-        self.hermitian = hermitian
+        if async is not None:
+            self.async = async
+        if hermitian is not None:
+            self.hermitian = hermitian
 
     def allocate_work_arrays(self, mynbands, dtype):
         ngroups = self.bd.comm.size
