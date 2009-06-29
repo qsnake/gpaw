@@ -25,9 +25,11 @@ t = Transport(h=0.3,
               width=0.1,
               mode='lcao',
               poissonsolver=PoissonSolver(relax='GS'),
+              use_linear_vt_mm=True,
               txt='Na_lcao.txt',
               usesymm=None,
               fixed_boundary=False,
+              identical_leads=False,
               mixer=Mixer(0.1, 5, metric='new', weight=100.0),
               pl_atoms=[pl_atoms1, pl_atoms2],
               pl_cells=[pl_cell1, pl_cell2],
@@ -35,6 +37,4 @@ t = Transport(h=0.3,
               bias=[0,0],
              )
 atoms.set_calculator(t)
-t.negf_prepare()
-t.get_selfconsistent_hamiltonian()
-
+t.calculate_iv(0.5, 2)
