@@ -394,7 +394,7 @@ class STM:
                      % (T[3], T[4], T[5])+' Updating transport calculator'
 
             if p['energies'] == None:
-                energies = -np.sign(bias) * \
+                energies = np.sign(bias) * \
                 np.arange(-abs(bias)*w, -abs(bias)*(w-1)+de, de)
                 energies.sort()
             else:
