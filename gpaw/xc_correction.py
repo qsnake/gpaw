@@ -61,21 +61,16 @@ class YLExpansion:
         raise NotImplementedError
 
 class DensityExpansion(YLExpansion):
-    def __init__(self, n_sLg, Y_yL, ng):
-        YLExpansion.__init__(self, n_sLg, Y_yL)
-        self.n_sg = npy.zeros((len(n_sLg), ng))
-        
     def __iter__(self):
         for Y_L in self.Y_yL:
-            for i, n_Lg in enumerate(self.n_sLg):
-                self.n_sg[i][:] = npy.dot(Y_L, n_Lg) 
-            yield self.n_sg
-            #yield [ npy.dot(Y_L, n_Lg) for n_Lg in self.n_sLg ]
+            yield npy.dot(Y_L, n_sLg)
 
 class GradientExpansion(YLExpansion):
-    def __init__(self, n_sLg, Y_yL, dndr_sLg):
+    def __init__(self, n_sLg, Y_yL, dndr_sLg, lmax):
         YLExpansion.__init__(self, n_sLg, Y_yL)
         self.dndr_sLg = dndr_sLg
+        #self.lmax = lmax       
+        self.Lmax = (lmax + 1)**2
 
     def __iter__(self):
         # TODO: Can preallocation of arrays speed this up
@@ -83,8 +78,9 @@ class GradientExpansion(YLExpansion):
         assert len(dndr_sLg) == 1
         dndr_Lg = self.dndr_sLg[0]
         
-        for y, Y_L in iterate(self.Y_yL):
+        for y, Y_L in enumerate(self.Y_yL):
             A_Li = A_Liy[:self.Lmax, :, y]
+            #a2_g = (npy.tensordot(A_Li, self.n_Lg, axes=[0,0])**2).sum(axis=0)
             a2_g = (npy.dot(A_Li[:, 0], self.n_Lg)**2+
                     npy.dot(A_Li[:, 1], self.n_Lg)**2+
                     npy.dot(A_Li[:, 2], self.n_Lg)**2)
@@ -93,7 +89,7 @@ class GradientExpansion(YLExpansion):
             a2_g[0] = a2_g[1]
             a1_g = npy.dot(Y_L, self.dndr_Lg)
             a2_g += a1_g**2
-            yield a2_g                                                                                        
+            yield a2_g
 
 class Integrator:
     def __init__(self, H_sp, weights, Y_yL, n_qg, nt_qg, B_pqL, dv_g):
@@ -116,13 +112,12 @@ class Integrator:
         for v_g, vt_g in zip(v_sg, vt_sg):
             dEdD_q = npy.dot(self.n_qg, v_g * self.dv_g)
             dEdD_q -= npy.dot(self.nt_qg, vt_g * self.dv_g)
-            self.H_sp[s] += npy.dot(dot3(self.B_pqL, Y_L),
-                              dEdD_q) * w
-            s = s + 1
+            self.H_sp[s] += npy.dot(dot3(self.B_pqL, Y_L), dEdD_q) * w
+            s += 1
 
     def integrate_E(self, i_slice, E):
         w, Y_L = i_slice
-        return E*w
+        return E * w
             
 class XCCorrection:
     def __init__(self,
@@ -134,7 +129,7 @@ class XCCorrection:
                  rgd,   # radial grid edscriptor
                  jl,    # ?
                  lmax,  # maximal angular momentum to consider
-                 Exc0,
+                 Exc0,  # xc energy of reference atom
                  phicorehole_g, fcorehole, nspins, # ?
                  tauc_g=None, # kinetic core energy array
                  tauct_g=None): # kinetic core energy array
@@ -207,7 +202,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0 / len(D_sp)) * self.nc_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
+        return DensityExpansion(n_sLg, self.Y_yL)
     
     def expand_pseudo_density(self, D_sp, core=True):
         n_sLg = []
@@ -219,7 +214,7 @@ class XCCorrection:
             if core:
                 n_Lg[0] += (1.0/len(D_sp))*self.nct_g * sqrt(4 * pi)
             n_sLg.append(n_Lg)
-        return DensityExpansion(n_sLg, self.Y_yL, self.ng)
+        return DensityExpansion(n_sLg, self.Y_yL)
 
     def expand_gradient(self, D_sp, core=True):
         raise NotImplementedError
@@ -240,7 +235,6 @@ class XCCorrection:
             H_p[:] = 0.0
             
         # Zip makes the iterators to be calculated instantly, which is not good
-        
         for n_sg, nt_sg, i_slice in izip(self.expand_density(D_sp),
                                  self.expand_pseudo_density(D_sp),
                                  integrator):
@@ -262,7 +256,8 @@ class XCCorrection:
     def calculate_energy_and_derivatives(self, D_sp, H_sp, a=None):
         if self.xc.get_functional().is_gllb():
             # The coefficients for GLLB-functional are evaluated elsewhere
-            return self.xc.xcfunc.xc.calculate_energy_and_derivatives(D_sp, H_sp, a)
+            return self.xc.xcfunc.xc.calculate_energy_and_derivatives(D_sp,
+                                                                      H_sp, a)
 
         if self.xc.get_functional().mgga:
             #return self.MGGA(D_sp, H_sp)
