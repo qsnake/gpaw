@@ -1,5 +1,5 @@
 import sys
-import numpy as npy
+import numpy as np
 from math import exp, pi, sqrt
 
 from ase import Hartree as Ha
@@ -15,18 +15,10 @@ def spectrum(exlist=None,
              energyunit='eV',
              folding='Gauss',
              width=0.08, # Gauss/Lorentz width
-             comment=None
+             comment=None,
+             title='Photoabsorption spectrum from linear response TD-DFT'
              ):
-    """spectrum(exlist=None,
-             filename=None,
-             emin=None,
-             emax=None,
-             de=None,
-             energyunit='eV',
-             folding='Gauss',
-             width=0.08 # Gauss/Lorentz width
-             )
-    Print the optical spectrum of an excitation list
+    """Write out a folded spectrum.
 
     Parameters:
     =============== ===================================================
@@ -90,10 +82,10 @@ def spectrum(exlist=None,
         emax=emax+.5*de
         e=emin
         while e<emax:
-            val=npy.zeros((4))
+            val=np.zeros((4))
             for ex in exlist:
                 wght=func.get(ex.get_energy()*Ha-e)
-                osz=npy.array(ex.GetOscillatorStrength())
+                osz=np.array(ex.GetOscillatorStrength())
                 val += wght*osz
             print >> out, "%10.5f %12.7e %12.7e %11.7e %11.7e" % \
                   (e,val[0],val[1],val[2],val[3])
@@ -113,3 +105,95 @@ def spectrum(exlist=None,
     if filename != None: out.close()
 
 
+from gpaw.version import version
+from gpaw.gauss import Gauss, Lorentz
+
+class Writer:
+    def __init__(self, folding=None, width=0.08, # Gauss/Lorentz width
+                 ):
+
+        self.folding = folding
+        if folding == 'Gauss':
+            self.func = Gauss(width)
+        elif folding == 'Lorentz':
+            self.func = Lorentz(width)
+        elif folding is None:
+            self.func=None
+        else:
+            raise RuntimeError('unknown folding "'+folding+'"')
+
+        self.width = width
+
+    def write(self, filename=None, emin=None, emax=None, de=None,
+              comment=None):
+
+        out = sys.stdout
+        if filename != None:
+            out = open( filename, 'w' )
+ 
+        print >> out, '#', self.title
+        print >> out, '# GPAW version:', version
+        if comment:
+            print >> out, '#', comment
+
+        if self.func is not None: # fold the spectrum
+        
+             # minimal and maximal energies
+            if emin == None:
+                emin = min(self.energies)
+                emin -= 4 * self.width
+            if emax == None:
+                emax = max(self.energies)
+                emax += 4 * self.width
+            if de == None:
+                # set de to sample 4 points in the width
+                de = self.width / 4.
+
+            print >> out, '# %s folded, width=%g [eV]' % (self.folding,
+                                                          self.width)
+            print >> out, '#', self.fields
+
+            # loop over energies
+            e = emin
+            while e < emax:
+                folded = np.zeros((len(self.values[0])))
+                               
+                for ene, val in zip(self.energies, self.values):
+                    wght = self.func.get(ene - e)
+                    folded += wght * np.array(val)
+
+                str = '%10.5f' % e
+                for vf in folded:
+                    str += ' %12.7e' % vf
+                print >> out, str
+
+                e += de
+
+        else: # just list energies and oszillator strengths
+
+            print >> out, '#', self.fields
+
+            for ene, val in zip(self.energies, self.values):
+                str = '%10.5f' % ene
+                for vf in val:
+                    str += ' %12.7e' % vf
+                print >> out, str
+                
+        if filename != None: 
+            out.close()
+
+class AbsoptionSpectrum(Writer):    
+    def __init__(self,
+                 exlist,
+                 folding=None, 
+                 width=0.08 # Gauss/Lorentz width
+                 ):
+        Writer.__init__(self, folding, width)
+        self.title = 'Photoabsorption spectrum from linear response TD-DFT'
+        self.fields = 'om [eV]     osz          osz x       osz y       osz z'
+
+        self.energies = []
+        self.values = []
+        for ex in exlist:
+            self.energies.append(ex.get_energy() * Ha)
+            self.values.append(ex.get_oscillator_strength())
