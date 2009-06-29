@@ -30,6 +30,7 @@ Cray:
    :maxdepth: 1
 
    Cray/louhi
+   Cray/jaguar
 
 Linux:
 

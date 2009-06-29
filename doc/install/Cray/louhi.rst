@@ -79,7 +79,7 @@ You should be now ready to run :file:`configure`::
 
 Now, one should specify which modules will be statically linked in to
 the python interpreter by editing :file:`Modules/Setup`. An example can be
-loaded here :svn:`~doc/install/Cray/Setup`.
+loaded here :svn:`~doc/install/Cray/Setup_louhi`.
 Note that at this point all numpy related stuff
 in the example should be commented out. Finally, in order to use
 ``distutils`` for building extensions the following function should be
@@ -115,7 +115,7 @@ then :ref:`compile GPAW <installationguide>` as usual. Here is an example
 of :file:`customize.py`, modify according your own directory
 structures:
 
-.. literalinclude:: customize.py
+.. literalinclude:: customize_louhi.py
 
 Now you should be ready for massively parallel calculations, a sample
 job file would be::
